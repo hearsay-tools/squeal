@@ -1,0 +1,14 @@
+import { DatabaseSync } from "node:sqlite";
+const [store, code, root] = process.argv.slice(2);
+const s = new DatabaseSync(store, { readOnly: true });
+const c = new DatabaseSync(code, { readOnly: true });
+const cols = c.prepare("select sql from sqlite_master where name = 'coverage'").get();
+console.log(cols?.sql);
+const wt = s.prepare("select id from worktrees where root = ?").get(root).id;
+const rows = s.prepare("select project, path, key from test_file_keys where worktree_id = ? and key is not null").all(wt);
+const has = c.prepare("select 1 from coverage where result_key = ? limit 1");
+const missing = rows.filter((r) => !has.get(r.key));
+console.log(`listed ${rows.length}, no coverage row at current key ${missing.length}`);
+const dur = s.prepare("select sum(r.duration_ms) ms from results r join checks k on k.id = r.check_id where k.project = ? and k.test_path = ? and r.key = ?");
+const out = missing.map((m) => ({ ...m, s: (dur.get(m.project, m.path, m.key)?.ms ?? 0) / 1000 })).sort((a, b) => b.s - a.s);
+for (const m of out.slice(0, 40)) console.log(`${m.s.toFixed(1).padStart(7)} s  ${m.project || "-"}  ${m.path}`);

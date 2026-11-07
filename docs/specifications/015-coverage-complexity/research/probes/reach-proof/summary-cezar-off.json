@@ -1,0 +1,1342 @@
+{
+ "v": 1,
+ "history": true,
+ "suite": {
+  "testFiles": 1689,
+  "seconds": 10144.246832060022,
+  "withoutSeconds": 0,
+  "withoutClosure": 0,
+  "leftOut": 98
+ },
+ "window": {
+  "from": 1792013318369,
+  "to": 1794057029380,
+  "edits": 530
+ },
+ "coverage": "off",
+ "edges": true,
+ "notRecorded": 363,
+ "moreFiles": 0,
+ "moreTestFiles": 0,
+ "proposals": [
+  {
+   "kind": "coverage",
+   "keys": [
+    "\"coverage\": { \"enabled\": true }"
+   ],
+   "command": "squeal warmup"
+  }
+ ],
+ "files": [
+  {
+   "files": [
+    "scripts/check-workspace-resolution.mjs"
+   ],
+   "folder": null,
+   "testFiles": 1689,
+   "seconds": 10144.246832060022,
+   "share": 1,
+   "avoidableSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "unknown": 1
+   },
+   "kinds": {
+    "setup": 1
+   },
+   "gateway": null,
+   "suggestion": {
+    "kind": "setup",
+    "text": "scripts/check-workspace-resolution.mjs is a setup file: keep its imports leaf-only"
+   }
+  },
+  {
+   "files": [
+    "package.json"
+   ],
+   "folder": null,
+   "testFiles": 1656,
+   "seconds": 10118.395735872024,
+   "share": 0.9974516495294359,
+   "avoidableSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "unknown": 1
+   },
+   "kinds": {
+    "setup": 0.04328948104896892,
+    "runtime read": 0.9567105189510301
+   },
+   "gateway": null,
+   "suggestion": null,
+   "note": "these tests start the program from source; Squeal re-runs them by design"
+  },
+  {
+   "files": [
+    "scripts/test-home-setup.mjs",
+    "scripts/test-install-marker.mjs",
+    "scripts/test-sandbox.mjs"
+   ],
+   "folder": "scripts",
+   "testFiles": 1656,
+   "seconds": 10118.395735872024,
+   "share": 0.9974516495294359,
+   "avoidableSeconds": 0,
+   "edits": 4,
+   "editSeconds": 40473.582943488094,
+   "coverage": {
+    "unknown": 1
+   },
+   "kinds": {
+    "setup": 1
+   },
+   "gateway": null,
+   "suggestion": {
+    "kind": "setup",
+    "text": "these files are setup files: keep their imports leaf-only"
+   }
+  },
+  {
+   "files": [
+    "packages/cezar/package.json"
+   ],
+   "folder": null,
+   "testFiles": 1549,
+   "seconds": 9921.338672747017,
+   "share": 0.9780261498952764,
+   "avoidableSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "unknown": 1
+   },
+   "kinds": {
+    "setup": 0.020512912480252093,
+    "declared input": 0.0002073951747713378,
+    "child process": 0.0007977882656845602,
+    "runtime read": 0.978481904079292
+   },
+   "gateway": null,
+   "suggestion": null,
+   "note": "these tests start the program from source; Squeal re-runs them by design"
+  },
+  {
+   "files": [
+    "packages/contract/package.json"
+   ],
+   "folder": null,
+   "testFiles": 1542,
+   "seconds": 9850.564994125014,
+   "share": 0.9710494191636927,
+   "avoidableSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "unknown": 1
+   },
+   "kinds": {
+    "declared input": 0.0005349647586857109,
+    "runtime read": 0.9994650352413144
+   },
+   "gateway": null,
+   "suggestion": null,
+   "note": "these tests start the program from source; Squeal re-runs them by design"
+  },
+  {
+   "files": [
+    ".github/scripts/ci-test-sequencer.mjs",
+    ".github/scripts/vitest-coverage-tests.mjs",
+    ".github/scripts/vitest-file-duration.mjs",
+    ".github/scripts/vitest-worker-count.cjs"
+   ],
+   "folder": ".github/scripts",
+   "testFiles": 1655,
+   "seconds": 9825.74071064602,
+   "share": 0.9686022898804679,
+   "avoidableSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "unknown": 1
+   },
+   "kinds": {
+    "setup": 0.9878366443243805,
+    "declared input": 0.012163355675619313
+   },
+   "gateway": null,
+   "suggestion": {
+    "kind": "setup",
+    "text": "these files are setup files: keep their imports leaf-only"
+   }
+  },
+  {
+   "files": [
+    "vitest.config.ts"
+   ],
+   "folder": null,
+   "testFiles": 1570,
+   "seconds": 9708.860964025016,
+   "share": 0.9570805131969969,
+   "avoidableSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "unknown": 1
+   },
+   "kinds": {
+    "setup": 0.999728677501021,
+    "declared input": 0.0002713224989791102
+   },
+   "gateway": null,
+   "suggestion": {
+    "kind": "setup",
+    "text": "vitest.config.ts is a setup file: keep its imports leaf-only"
+   }
+  },
+  {
+   "files": [
+    "packages/web/package.json"
+   ],
+   "folder": null,
+   "testFiles": 1538,
+   "seconds": 9697.806293318014,
+   "share": 0.9559907653931418,
+   "avoidableSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "unknown": 1
+   },
+   "kinds": {
+    "declared input": 0.0017813314850290251,
+    "runtime read": 0.9982186685149711
+   },
+   "gateway": null,
+   "suggestion": null,
+   "note": "these tests start the program from source; Squeal re-runs them by design"
+  },
+  {
+   "files": [
+    "packages/api-client/package.json"
+   ],
+   "folder": null,
+   "testFiles": 1536,
+   "seconds": 9682.433273186014,
+   "share": 0.9544753231541562,
+   "avoidableSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "unknown": 1
+   },
+   "kinds": {
+    "declared input": 0.000544254215476354,
+    "runtime read": 0.9994557457845237
+   },
+   "gateway": null,
+   "suggestion": null,
+   "note": "these tests start the program from source; Squeal re-runs them by design"
+  },
+  {
+   "files": [
+    "packages/contract/src/application-update.ts"
+   ],
+   "folder": null,
+   "testFiles": 1408,
+   "seconds": 9677.808771008018,
+   "share": 0.9540194487797885,
+   "avoidableSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "unknown": 1
+   },
+   "kinds": {
+    "setup": 0.9010716037747991,
+    "declared input": 0.0002126140138420695,
+    "child process": 0.0008178636053144061,
+    "barrel": 0.04939881095772107,
+    "test helper": 0.02855345543030581,
+    "transitive": 0.002572740134583857,
+    "import": 0.017372912083433098
+   },
+   "gateway": {
+    "kind": "setup",
+    "gateway": "packages/contract/src/health.ts",
+    "chain": [
+     "packages/cezar/src/runs/run-exits.ts",
+     "packages/contract/src/waits.ts",
+     "packages/contract/src/delegation.ts",
+     "packages/contract/src/discovery.ts",
+     "packages/contract/src/health.ts",
+     "packages/contract/src/application-update.ts"
+    ],
+    "testFiles": 1156,
+    "seconds": 8720.398670318013,
+    "coverage": {
+     "unknown": 1
+    }
+   },
+   "suggestion": {
+    "kind": "setup",
+    "text": "keep the setup's imports leaf-only: packages/cezar/src/runs/run-exits.ts \u2192 packages/contract/src/waits.ts \u2192 packages/contract/src/delegation.ts \u2192 packages/contract/src/discovery.ts \u2192 packages/contract/src/health.ts \u2192 packages/contract/src/application-update.ts"
+   }
+  },
+  {
+   "files": [
+    "packages/contract/src/health.ts"
+   ],
+   "folder": null,
+   "testFiles": 1408,
+   "seconds": 9677.808771008018,
+   "share": 0.9540194487797885,
+   "avoidableSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "unknown": 1
+   },
+   "kinds": {
+    "setup": 0.9010716037747991,
+    "declared input": 0.0002126140138420695,
+    "child process": 0.0008178636053144061,
+    "barrel": 0.04939881095772107,
+    "test helper": 0.02855345543030581,
+    "transitive": 0.002572740134583857,
+    "import": 0.017372912083433098
+   },
+   "gateway": {
+    "kind": "setup",
+    "gateway": "packages/contract/src/discovery.ts",
+    "chain": [
+     "packages/cezar/src/runs/run-exits.ts",
+     "packages/contract/src/waits.ts",
+     "packages/contract/src/delegation.ts",
+     "packages/contract/src/discovery.ts",
+     "packages/contract/src/health.ts"
+    ],
+    "testFiles": 1156,
+    "seconds": 8720.398670318013,
+    "coverage": {
+     "unknown": 1
+    }
+   },
+   "suggestion": {
+    "kind": "setup",
+    "text": "keep the setup's imports leaf-only: packages/cezar/src/runs/run-exits.ts \u2192 packages/contract/src/waits.ts \u2192 packages/contract/src/delegation.ts \u2192 packages/contract/src/discovery.ts \u2192 packages/contract/src/health.ts"
+   }
+  },
+  {
+   "files": [
+    "packages/contract/src/team-skill-ref.ts"
+   ],
+   "folder": null,
+   "testFiles": 1406,
+   "seconds": 9677.254666589019,
+   "share": 0.9539648262505684,
+   "avoidableSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "unknown": 1
+   },
+   "kinds": {
+    "setup": 0.9011231977210875,
+    "declared input": 0.00021262618778691955,
+    "child process": 0.0008179104349012525,
+    "barrel": 0.07479678757778631,
+    "test helper": 0.003144063458518483,
+    "transitive": 0.0025728874456474415,
+    "import": 0.017332527174271518
+   },
+   "gateway": {
+    "kind": "setup",
+    "gateway": "packages/contract/src/workspace.ts",
+    "chain": [
+     "packages/cezar/src/runs/run-exits.ts",
+     "packages/contract/src/waits.ts",
+     "packages/contract/src/delegation.ts",
+     "packages/contract/src/discovery.ts",
+     "packages/contract/src/workspace.ts",
+     "packages/contract/src/team-skill-ref.ts"
+    ],
+    "testFiles": 1156,
+    "seconds": 8720.398670318013,
+    "coverage": {
+     "unknown": 1
+    }
+   },
+   "suggestion": {
+    "kind": "setup",
+    "text": "keep the setup's imports leaf-only: packages/cezar/src/runs/run-exits.ts \u2192 packages/contract/src/waits.ts \u2192 packages/contract/src/delegation.ts \u2192 packages/contract/src/discovery.ts \u2192 packages/contract/src/workspace.ts \u2192 packages/contract/src/team-skill-ref.ts"
+   }
+  },
+  {
+   "files": [
+    "packages/contract/src/effort.ts"
+   ],
+   "folder": null,
+   "testFiles": 1405,
+   "seconds": 9676.94400274302,
+   "share": 0.9539342016166117,
+   "avoidableSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "unknown": 1
+   },
+   "kinds": {
+    "setup": 0.9011521269365758,
+    "declared input": 0.0002126330138333697,
+    "child process": 0.0008179366926951715,
+    "barrel": 0.04921859273557773,
+    "test helper": 0.028692656967767467,
+    "transitive": 0.002572970044359283,
+    "import": 0.017333083609190572
+   },
+   "gateway": {
+    "kind": "setup",
+    "gateway": "packages/contract/src/delegation.ts",
+    "chain": [
+     "packages/cezar/src/runs/run-exits.ts",
+     "packages/contract/src/waits.ts",
+     "packages/contract/src/delegation.ts",
+     "packages/contract/src/effort.ts"
+    ],
+    "testFiles": 1156,
+    "seconds": 8720.398670318013,
+    "coverage": {
+     "unknown": 1
+    }
+   },
+   "suggestion": {
+    "kind": "setup",
+    "text": "keep the setup's imports leaf-only: packages/cezar/src/runs/run-exits.ts \u2192 packages/contract/src/waits.ts \u2192 packages/contract/src/delegation.ts \u2192 packages/contract/src/effort.ts"
+   }
+  },
+  {
+   "files": [
+    "packages/contract/src/per-runner-optional-strings.ts"
+   ],
+   "folder": null,
+   "testFiles": 1405,
+   "seconds": 9676.94400274302,
+   "share": 0.9539342016166117,
+   "avoidableSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "unknown": 1
+   },
+   "kinds": {
+    "setup": 0.9011521269365758,
+    "declared input": 0.0002126330138333697,
+    "child process": 0.0008179366926951715,
+    "runtime read": 0.0006502383993558694,
+    "barrel": 0.07476708530936134,
+    "test helper": 0.003144164393983834,
+    "transitive": 0.002572970044359283,
+    "import": 0.016682845209834703
+   },
+   "gateway": {
+    "kind": "setup",
+    "gateway": "packages/contract/src/workspace.ts",
+    "chain": [
+     "packages/cezar/src/runs/run-exits.ts",
+     "packages/contract/src/waits.ts",
+     "packages/contract/src/delegation.ts",
+     "packages/contract/src/discovery.ts",
+     "packages/contract/src/workspace.ts",
+     "packages/contract/src/per-runner-optional-strings.ts"
+    ],
+    "testFiles": 1156,
+    "seconds": 8720.398670318013,
+    "coverage": {
+     "unknown": 1
+    }
+   },
+   "suggestion": {
+    "kind": "setup",
+    "text": "keep the setup's imports leaf-only: packages/cezar/src/runs/run-exits.ts \u2192 packages/contract/src/waits.ts \u2192 packages/contract/src/delegation.ts \u2192 packages/contract/src/discovery.ts \u2192 packages/contract/src/workspace.ts \u2192 packages/contract/src/per-runner-optional-strings.ts"
+   }
+  },
+  {
+   "files": [
+    "packages/contract/src/workspace.ts"
+   ],
+   "folder": null,
+   "testFiles": 1405,
+   "seconds": 9676.94400274302,
+   "share": 0.9539342016166117,
+   "avoidableSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "unknown": 1
+   },
+   "kinds": {
+    "setup": 0.9011521269365758,
+    "declared input": 0.0002126330138333697,
+    "child process": 0.0008179366926951715,
+    "direct": 0.00016518829937911035,
+    "barrel": 0.07476708530936134,
+    "test helper": 0.003144164393983834,
+    "transitive": 0.0024077817449801725,
+    "import": 0.017333083609190572
+   },
+   "gateway": {
+    "kind": "setup",
+    "gateway": "packages/contract/src/discovery.ts",
+    "chain": [
+     "packages/cezar/src/runs/run-exits.ts",
+     "packages/contract/src/waits.ts",
+     "packages/contract/src/delegation.ts",
+     "packages/contract/src/discovery.ts",
+     "packages/contract/src/workspace.ts"
+    ],
+    "testFiles": 1156,
+    "seconds": 8720.398670318013,
+    "coverage": {
+     "unknown": 1
+    }
+   },
+   "suggestion": {
+    "kind": "setup",
+    "text": "keep the setup's imports leaf-only: packages/cezar/src/runs/run-exits.ts \u2192 packages/contract/src/waits.ts \u2192 packages/contract/src/delegation.ts \u2192 packages/contract/src/discovery.ts \u2192 packages/contract/src/workspace.ts"
+   }
+  },
+  {
+   "files": [
+    "packages/contract/src/ask-schema.ts",
+    "packages/contract/src/conversations.ts"
+   ],
+   "folder": "packages/contract/src",
+   "testFiles": 1399,
+   "seconds": 9669.790796750016,
+   "share": 0.9532290525689371,
+   "avoidableSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "unknown": 1
+   },
+   "kinds": {
+    "setup": 0.9018187521956431,
+    "declared input": 0.00021279030862710757,
+    "child process": 0.0008185417595239235,
+    "direct": 0.0003493353851187075,
+    "barrel": 0.04874891506488778,
+    "test helper": 0.028529417397811774,
+    "transitive": 0.0021763421695816915,
+    "import": 0.017345905718805617
+   },
+   "gateway": {
+    "kind": "setup",
+    "gateway": "packages/contract/src/waits.ts",
+    "chain": [
+     "packages/cezar/src/runs/run-exits.ts",
+     "packages/contract/src/waits.ts",
+     "packages/contract/src/ask-schema.ts"
+    ],
+    "testFiles": 1156,
+    "seconds": 8720.398670318013,
+    "coverage": {
+     "unknown": 1
+    }
+   },
+   "suggestion": {
+    "kind": "setup",
+    "text": "keep the setup's imports leaf-only: packages/cezar/src/runs/run-exits.ts \u2192 packages/contract/src/waits.ts \u2192 packages/contract/src/ask-schema.ts"
+   }
+  },
+  {
+   "files": [
+    "packages/contract/src/delegation.ts"
+   ],
+   "folder": null,
+   "testFiles": 1398,
+   "seconds": 9669.587998069015,
+   "share": 0.9532090610718493,
+   "avoidableSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "unknown": 1
+   },
+   "kinds": {
+    "setup": 0.9018376658922228,
+    "declared input": 0.00021279477144330283,
+    "child process": 0.0008185589266658129,
+    "direct": 0.00024773206826168463,
+    "barrel": 0.048660612958790275,
+    "test helper": 0.02871448450776262,
+    "transitive": 0.00216188136321574,
+    "import": 0.017346269511637456
+   },
+   "gateway": {
+    "kind": "setup",
+    "gateway": "packages/contract/src/waits.ts",
+    "chain": [
+     "packages/cezar/src/runs/run-exits.ts",
+     "packages/contract/src/waits.ts",
+     "packages/contract/src/delegation.ts"
+    ],
+    "testFiles": 1156,
+    "seconds": 8720.398670318013,
+    "coverage": {
+     "unknown": 1
+    }
+   },
+   "suggestion": {
+    "kind": "setup",
+    "text": "keep the setup's imports leaf-only: packages/cezar/src/runs/run-exits.ts \u2192 packages/contract/src/waits.ts \u2192 packages/contract/src/delegation.ts"
+   }
+  },
+  {
+   "files": [
+    "packages/contract/src/discovery.ts"
+   ],
+   "folder": null,
+   "testFiles": 1398,
+   "seconds": 9669.587998069015,
+   "share": 0.9532090610718493,
+   "avoidableSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "unknown": 1
+   },
+   "kinds": {
+    "setup": 0.9018376658922228,
+    "declared input": 0.00021279477144330283,
+    "child process": 0.0008185589266658129,
+    "barrel": 0.048660612958790275,
+    "test helper": 0.02871448450776262,
+    "transitive": 0.002409613431477425,
+    "import": 0.017346269511637456
+   },
+   "gateway": {
+    "kind": "setup",
+    "gateway": "packages/contract/src/delegation.ts",
+    "chain": [
+     "packages/cezar/src/runs/run-exits.ts",
+     "packages/contract/src/waits.ts",
+     "packages/contract/src/delegation.ts",
+     "packages/contract/src/discovery.ts"
+    ],
+    "testFiles": 1156,
+    "seconds": 8720.398670318013,
+    "coverage": {
+     "unknown": 1
+    }
+   },
+   "suggestion": {
+    "kind": "setup",
+    "text": "keep the setup's imports leaf-only: packages/cezar/src/runs/run-exits.ts \u2192 packages/contract/src/waits.ts \u2192 packages/contract/src/delegation.ts \u2192 packages/contract/src/discovery.ts"
+   }
+  },
+  {
+   "files": [
+    "packages/contract/src/ci-wait.ts"
+   ],
+   "folder": null,
+   "testFiles": 1387,
+   "seconds": 9651.137634143017,
+   "share": 0.9513902603041385,
+   "avoidableSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "unknown": 1
+   },
+   "kinds": {
+    "setup": 0.9035617355064639,
+    "declared input": 0.00021320157747213708,
+    "child process": 0.0008201237898627099,
+    "barrel": 0.046868636575730024,
+    "test helper": 0.029788614585075122,
+    "transitive": 0.001368257079692199,
+    "import": 0.017379430885703446
+   },
+   "gateway": {
+    "kind": "setup",
+    "gateway": "packages/contract/src/waits.ts",
+    "chain": [
+     "packages/cezar/src/runs/run-exits.ts",
+     "packages/contract/src/waits.ts",
+     "packages/contract/src/ci-wait.ts"
+    ],
+    "testFiles": 1156,
+    "seconds": 8720.398670318013,
+    "coverage": {
+     "unknown": 1
+    }
+   },
+   "suggestion": {
+    "kind": "setup",
+    "text": "keep the setup's imports leaf-only: packages/cezar/src/runs/run-exits.ts \u2192 packages/contract/src/waits.ts \u2192 packages/contract/src/ci-wait.ts"
+   }
+  },
+  {
+   "files": [
+    "packages/contract/src/waits.ts"
+   ],
+   "folder": null,
+   "testFiles": 1387,
+   "seconds": 9651.137634143017,
+   "share": 0.9513902603041385,
+   "avoidableSeconds": 0,
+   "edits": 1,
+   "editSeconds": 9651.137634143017,
+   "coverage": {
+    "unknown": 1
+   },
+   "kinds": {
+    "setup": 0.9035617355064639,
+    "declared input": 0.00021320157747213708,
+    "child process": 0.0008201237898627099,
+    "direct": 0.00030785062586705336,
+    "barrel": 0.043044111538658836,
+    "test helper": 0.03396365200651357,
+    "transitive": 0.0007098940694578921,
+    "import": 0.017379430885703446
+   },
+   "gateway": {
+    "kind": "setup",
+    "gateway": "packages/cezar/src/runs/run-exits.ts",
+    "chain": [
+     "packages/cezar/src/runs/run-exits.ts",
+     "packages/contract/src/waits.ts"
+    ],
+    "testFiles": 1156,
+    "seconds": 8720.398670318013,
+    "coverage": {
+     "unknown": 1
+    }
+   },
+   "suggestion": {
+    "kind": "setup",
+    "text": "keep the setup's imports leaf-only: packages/cezar/src/runs/run-exits.ts \u2192 packages/contract/src/waits.ts"
+   }
+  },
+  {
+   "files": [
+    "packages/contract/src/preview.ts"
+   ],
+   "folder": null,
+   "testFiles": 1121,
+   "seconds": 9211.258861689008,
+   "share": 0.9080278717763072,
+   "avoidableSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "unknown": 1
+   },
+   "kinds": {
+    "declared input": 0.003714679963703232,
+    "child process": 0.5879675730398393,
+    "runtime read": 0.0022539337152221875,
+    "direct": 0.00013786466932133807,
+    "barrel": 0.050003230825666344,
+    "test helper": 0.21456497432052393,
+    "transitive": 0.12366211259392762,
+    "import": 0.01769563087179508
+   },
+   "gateway": null,
+   "suggestion": null,
+   "note": "these tests start the program from source; Squeal re-runs them by design"
+  },
+  {
+   "files": [
+    "packages/contract/src/workflows.ts"
+   ],
+   "folder": null,
+   "testFiles": 1124,
+   "seconds": 9209.806720634006,
+   "share": 0.9078847225530042,
+   "avoidableSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "unknown": 1
+   },
+   "kinds": {
+    "declared input": 0.0037152656697278116,
+    "child process": 0.588060279855272,
+    "runtime read": 0.002324816907289674,
+    "direct": 0.0005022217345383758,
+    "barrel": 0.049530668045832484,
+    "test helper": 0.194996879199477,
+    "transitive": 0.14312796768858313,
+    "import": 0.01774190089927876
+   },
+   "gateway": null,
+   "suggestion": null,
+   "note": "these tests start the program from source; Squeal re-runs them by design"
+  },
+  {
+   "files": [
+    "packages/contract/src/github.ts"
+   ],
+   "folder": null,
+   "testFiles": 1119,
+   "seconds": 9208.341226726006,
+   "share": 0.907740257031585,
+   "avoidableSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "unknown": 1
+   },
+   "kinds": {
+    "declared input": 0.003715856948772704,
+    "child process": 0.5881538687804047,
+    "runtime read": 0.0022546478672773626,
+    "direct": 0.00043356343500961723,
+    "barrel": 0.06603769583647444,
+    "test helper": 0.20572521120783252,
+    "transitive": 0.1159779182455113,
+    "import": 0.017701237678716408
+   },
+   "gateway": null,
+   "suggestion": null,
+   "note": "these tests start the program from source; Squeal re-runs them by design"
+  },
+  {
+   "files": [
+    "packages/contract/src/runs.ts"
+   ],
+   "folder": null,
+   "testFiles": 1115,
+   "seconds": 9206.630164346006,
+   "share": 0.9075715838507834,
+   "avoidableSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "unknown": 1
+   },
+   "kinds": {
+    "declared input": 0.0037165475448888738,
+    "child process": 0.588263177826229,
+    "runtime read": 0.0022550668960725872,
+    "direct": 0.009201197398702886,
+    "barrel": 0.04954775757286042,
+    "test helper": 0.22234256661220092,
+    "transitive": 0.1069691586757636,
+    "import": 0.017704527473280846
+   },
+   "gateway": null,
+   "suggestion": null,
+   "note": "these tests start the program from source; Squeal re-runs them by design"
+  },
+  {
+   "files": [
+    "packages/contract/src/task-options.ts"
+   ],
+   "folder": null,
+   "testFiles": 1118,
+   "seconds": 9201.315942936006,
+   "share": 0.9070477183043334,
+   "avoidableSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "unknown": 1
+   },
+   "kinds": {
+    "declared input": 0.0037186940374837178,
+    "child process": 0.5709919296302919,
+    "runtime read": 0.018404198711273162,
+    "barrel": 0.052758413752185644,
+    "test helper": 0.21473834671832034,
+    "transitive": 0.13938841715044453
+   },
+   "gateway": null,
+   "suggestion": null,
+   "note": "these tests start the program from source; Squeal re-runs them by design"
+  },
+  {
+   "files": [
+    "packages/contract/src/attachments.ts"
+   ],
+   "folder": null,
+   "testFiles": 1116,
+   "seconds": 9194.510039626004,
+   "share": 0.9063768056754636,
+   "avoidableSeconds": 0,
+   "edits": 1,
+   "editSeconds": 9194.510039626004,
+   "coverage": {
+    "unknown": 1
+   },
+   "kinds": {
+    "declared input": 0.003721446666166434,
+    "child process": 0.5890386213303103,
+    "runtime read": 0.0007991802900134622,
+    "barrel": 0.049714471640143316,
+    "test helper": 0.2121738055619495,
+    "transitive": 0.12682460908101112,
+    "import": 0.01772786543040527
+   },
+   "gateway": null,
+   "suggestion": null,
+   "note": "these tests start the program from source; Squeal re-runs them by design"
+  },
+  {
+   "files": [
+    "packages/contract/src/handoff.ts"
+   ],
+   "folder": null,
+   "testFiles": 1115,
+   "seconds": 9193.461453395004,
+   "share": 0.9062734380969377,
+   "avoidableSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "unknown": 1
+   },
+   "kinds": {
+    "declared input": 0.0037218711262844563,
+    "child process": 0.589105805795159,
+    "runtime read": 0.0009381770096849522,
+    "direct": 0.00013829031180965072,
+    "barrel": 0.0496483200694167,
+    "test helper": 0.21345399539945026,
+    "transitive": 0.12543334713130858,
+    "import": 0.017560193156885767
+   },
+   "gateway": null,
+   "suggestion": null,
+   "note": "these tests start the program from source; Squeal re-runs them by design"
+  },
+  {
+   "files": [
+    "packages/contract/src/run-labels.ts",
+    "packages/contract/src/run-limits.ts"
+   ],
+   "folder": "packages/contract/src",
+   "testFiles": 1114,
+   "seconds": 9193.216668638004,
+   "share": 0.9062493076946463,
+   "avoidableSeconds": 0,
+   "edits": 2,
+   "editSeconds": 18386.43333727601,
+   "coverage": {
+    "unknown": 1
+   },
+   "kinds": {
+    "declared input": 0.0037219702273229797,
+    "child process": 0.5891214917217196,
+    "runtime read": 0.0007992927247181517,
+    "barrel": 0.0574389233541508,
+    "test helper": 0.21484810633976087,
+    "transitive": 0.1163398561122409,
+    "import": 0.017730359520086097
+   },
+   "gateway": null,
+   "suggestion": null,
+   "note": "these tests start the program from source; Squeal re-runs them by design"
+  },
+  {
+   "files": [
+    "packages/contract/src/defined.ts"
+   ],
+   "folder": null,
+   "testFiles": 1204,
+   "seconds": 9099.040611347005,
+   "share": 0.8969656162732819,
+   "avoidableSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "unknown": 1
+   },
+   "kinds": {
+    "setup": 0.105503097096067,
+    "declared input": 0.003760493022894047,
+    "child process": 0.024816956886355893,
+    "runtime read": 0.001197260536612473,
+    "barrel": 0.8647221924580704
+   },
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "packages/cezar/src/core/defined.ts",
+    "chain": [
+     "packages/cezar/src/activity/publisher.test.ts",
+     "packages/cezar/src/activity/publisher.ts",
+     "packages/cezar/src/activity/read-model.ts",
+     "packages/cezar/src/activity/requests.ts",
+     "packages/cezar/src/delegation/conversations.ts",
+     "packages/cezar/src/runs/store.ts",
+     "packages/cezar/src/core/defined.ts",
+     "packages/contract/src/defined.ts"
+    ],
+    "testFiles": 791,
+    "seconds": 7868.1423467090035,
+    "coverage": {
+     "unknown": 1
+    }
+   },
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import packages/contract/src/defined.ts from its own path in the files that use it, or split packages/cezar/src/core/defined.ts"
+   }
+  },
+  {
+   "files": [
+    "packages/contract/src/events.ts"
+   ],
+   "folder": null,
+   "testFiles": 1033,
+   "seconds": 8883.705750060999,
+   "share": 0.8757383270668069,
+   "avoidableSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "unknown": 1
+   },
+   "kinds": {
+    "declared input": 0.0038516447636466407,
+    "child process": 0.15150109376053567,
+    "runtime read": 0.002019785272590416,
+    "direct": 0.0002817378090199368,
+    "barrel": 0.0777431756471963,
+    "test helper": 0.609393117685356,
+    "transitive": 0.1545835338837705,
+    "import": 0.0006259111778845017
+   },
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/workflows/waits-parity-cells.testkit.ts",
+    "chain": [
+     "packages/cezar/src/workflows/waits-claude-answers-parity.test.ts",
+     "packages/cezar/src/workflows/waits-parity-cells.testkit.ts",
+     "packages/contract/src/pending-ask.ts",
+     "packages/contract/src/ask.ts",
+     "packages/contract/src/events.ts"
+    ],
+    "testFiles": 93,
+    "seconds": 1501.7026008429998,
+    "coverage": {
+     "unknown": 1
+    }
+   },
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/workflows/waits-parity-cells.testkit.ts: Squeal cannot tell which of the 93 test files that load packages/contract/src/events.ts through it call it"
+   }
+  }
+ ],
+ "testFiles": [
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/harness-cursor-session-parity.test.ts",
+   "seconds": 31.559838021,
+   "sources": 483,
+   "called": null,
+   "edits": 92,
+   "via": null,
+   "avoidableSeconds": 0
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/session-signal-cli.test.ts",
+   "seconds": 26.582245635000003,
+   "sources": 1,
+   "called": null,
+   "edits": 109,
+   "via": null,
+   "avoidableSeconds": 0
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/ci-wait-rerun-recovered-parity.test.ts",
+   "seconds": 37.03270446,
+   "sources": 332,
+   "called": null,
+   "edits": 89,
+   "via": null,
+   "avoidableSeconds": 0
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/harness-cursor-owned-input-parity.test.ts",
+   "seconds": 26.45713804,
+   "sources": 477,
+   "called": null,
+   "edits": 92,
+   "via": null,
+   "avoidableSeconds": 0
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/harness-opencode-run-parity.test.ts",
+   "seconds": 26.425624272,
+   "sources": 477,
+   "called": null,
+   "edits": 92,
+   "via": null,
+   "avoidableSeconds": 0
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/run.test.ts",
+   "seconds": 36.476134902,
+   "sources": 310,
+   "called": null,
+   "edits": 76,
+   "via": null,
+   "avoidableSeconds": 0
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/waits-cursor-closed-parity.test.ts",
+   "seconds": 34.077558079999996,
+   "sources": 342,
+   "called": null,
+   "edits": 89,
+   "via": null,
+   "avoidableSeconds": 0
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/workflow-no-progress-parked-input-parity.test.ts",
+   "seconds": 33.759719753999995,
+   "sources": 340,
+   "called": null,
+   "edits": 89,
+   "via": null,
+   "avoidableSeconds": 0
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/pr-merge-wait-parity.test.ts",
+   "seconds": 34.017081411999996,
+   "sources": 362,
+   "called": null,
+   "edits": 89,
+   "via": null,
+   "avoidableSeconds": 0
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/waits-codex-entries-parity.test.ts",
+   "seconds": 33.349683696,
+   "sources": 347,
+   "called": null,
+   "edits": 89,
+   "via": null,
+   "avoidableSeconds": 0
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/workflow-autonomous-ask-refusal-parity.test.ts",
+   "seconds": 33.108241826,
+   "sources": 339,
+   "called": null,
+   "edits": 89,
+   "via": null,
+   "avoidableSeconds": 0
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/task-cli/cli.test.ts",
+   "seconds": 26.423046287000002,
+   "sources": 487,
+   "called": null,
+   "edits": 94,
+   "via": null,
+   "avoidableSeconds": 0
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/ci-tools-definitions-validation.test.ts",
+   "seconds": 29.976075462999997,
+   "sources": 338,
+   "called": null,
+   "edits": 89,
+   "via": null,
+   "avoidableSeconds": 0
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/waits-wake.test.ts",
+   "seconds": 32.59507817000001,
+   "sources": 340,
+   "called": null,
+   "edits": 89,
+   "via": null,
+   "avoidableSeconds": 0
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/worker-destroy-process-holders.test.ts",
+   "seconds": 34.050046159,
+   "sources": 353,
+   "called": null,
+   "edits": 88,
+   "via": null,
+   "avoidableSeconds": 0
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/harness-cursor-run-parity.test.ts",
+   "seconds": 23.761206622000003,
+   "sources": 477,
+   "called": null,
+   "edits": 92,
+   "via": null,
+   "avoidableSeconds": 0
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/delegation-integration-reviewed-integration.test.ts",
+   "seconds": 23.011155478,
+   "sources": 425,
+   "called": null,
+   "edits": 97,
+   "via": null,
+   "avoidableSeconds": 0
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/harness-autosave-settlement-success.test.ts",
+   "seconds": 31.582050817999995,
+   "sources": 359,
+   "called": null,
+   "edits": 89,
+   "via": null,
+   "avoidableSeconds": 0
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/harness-claude-owned-input-parity.test.ts",
+   "seconds": 23.373931579,
+   "sources": 477,
+   "called": null,
+   "edits": 92,
+   "via": null,
+   "avoidableSeconds": 0
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/waits-cursor-answers-parity.test.ts",
+   "seconds": 30.759962744,
+   "sources": 348,
+   "called": null,
+   "edits": 89,
+   "via": null,
+   "avoidableSeconds": 0
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/waits-cursor-delivery-parity.test.ts",
+   "seconds": 30.374879651,
+   "sources": 346,
+   "called": null,
+   "edits": 89,
+   "via": null,
+   "avoidableSeconds": 0
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/harness-opencode-settlement-parity.test.ts",
+   "seconds": 22.864540543,
+   "sources": 483,
+   "called": null,
+   "edits": 92,
+   "via": null,
+   "avoidableSeconds": 0
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/workflow-no-progress-progress-parity.test.ts",
+   "seconds": 29.811348108,
+   "sources": 340,
+   "called": null,
+   "edits": 89,
+   "via": null,
+   "avoidableSeconds": 0
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/waits-opencode-closed-parity.test.ts",
+   "seconds": 29.407191337,
+   "sources": 341,
+   "called": null,
+   "edits": 89,
+   "via": null,
+   "avoidableSeconds": 0
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/workflow-final-message-silent-nudge-parity.test.ts",
+   "seconds": 30.014223169,
+   "sources": 358,
+   "called": null,
+   "edits": 89,
+   "via": null,
+   "avoidableSeconds": 0
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/ci-wait-nonfinal-source-retry-parity.test.ts",
+   "seconds": 29.335226412,
+   "sources": 341,
+   "called": null,
+   "edits": 89,
+   "via": null,
+   "avoidableSeconds": 0
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/worker-location-evidence.test.ts",
+   "seconds": 29.561040973000004,
+   "sources": 359,
+   "called": null,
+   "edits": 89,
+   "via": null,
+   "avoidableSeconds": 0
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/waits-cursor-asks-parity.test.ts",
+   "seconds": 29.042612657000003,
+   "sources": 347,
+   "called": null,
+   "edits": 89,
+   "via": null,
+   "avoidableSeconds": 0
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/harness-claude-run-parity.test.ts",
+   "seconds": 21.81932793,
+   "sources": 477,
+   "called": null,
+   "edits": 92,
+   "via": null,
+   "avoidableSeconds": 0
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/waits-cursor-recovery-parity.test.ts",
+   "seconds": 28.195556148,
+   "sources": 347,
+   "called": null,
+   "edits": 89,
+   "via": null,
+   "avoidableSeconds": 0
+  }
+ ],
+ "entries": {
+  "files": 2903,
+  "testFiles": 1543
+ }
+}

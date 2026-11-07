@@ -1,0 +1,83 @@
+Reach: what one edit of each file re-runs, of 1689 test files and 10144 s recorded; 98 test files of manual groups left out.
+Edits: 530 from 2026-10-14 to 2026-11-07, every worktree's watch revisions in which HEAD did not move.
+363 pairs read import, path not recorded yet: their test files were walked before Squeal stored import chains; their next run records them.
+Coverage is off, so called reads unknown: Squeal cannot tell which of these tests call the file; the path kinds are a proxy.
+
+Files, by avoidable seconds per edit, then seconds re-run:
+  1. scripts/check-workspace-resolution.mjs
+     re-runs 100% of the suite: 1689 test files, 10144 s; no edits in the window
+     coverage: called: unknown; avoidable 0 s
+     paths: setup 100%
+     suggestion: scripts/check-workspace-resolution.mjs is a setup file: keep its imports leaf-only
+  2. package.json
+     re-runs 100% of the suite: 1656 test files, 10118 s; no edits in the window
+     coverage: called: unknown; avoidable 0 s
+     paths: runtime read 96%, setup 4%
+     note: these tests start the program from source; Squeal re-runs them by design
+  3. 3 files in scripts/ (setup)
+     re-runs 100% of the suite (each): 1656 test files, 10118 s; 4 edits in the window re-ran 40474 s
+     coverage: called: unknown; avoidable 0 s
+     paths: setup 100%
+     suggestion: these files are setup files: keep their imports leaf-only
+  4. packages/cezar/package.json
+     re-runs 98% of the suite: 1549 test files, 9921 s; no edits in the window
+     coverage: called: unknown; avoidable 0 s
+     paths: runtime read 98%, setup 2%, child process <1%, declared input <1%
+     note: these tests start the program from source; Squeal re-runs them by design
+  5. packages/contract/package.json
+     re-runs 97% of the suite: 1542 test files, 9851 s; no edits in the window
+     coverage: called: unknown; avoidable 0 s
+     paths: runtime read 100%, declared input <1%
+     note: these tests start the program from source; Squeal re-runs them by design
+  6. 4 files in .github/scripts/ (setup)
+     re-runs 97% of the suite (each): 1655 test files, 9826 s; no edits in the window
+     coverage: called: unknown; avoidable 0 s
+     paths: setup 99%, declared input 1%
+     suggestion: these files are setup files: keep their imports leaf-only
+  7. vitest.config.ts
+     re-runs 96% of the suite: 1570 test files, 9709 s; no edits in the window
+     coverage: called: unknown; avoidable 0 s
+     paths: setup 100%, declared input <1%
+     suggestion: vitest.config.ts is a setup file: keep its imports leaf-only
+  8. packages/web/package.json
+     re-runs 96% of the suite: 1538 test files, 9698 s; no edits in the window
+     coverage: called: unknown; avoidable 0 s
+     paths: runtime read 100%, declared input <1%
+     note: these tests start the program from source; Squeal re-runs them by design
+  9. packages/api-client/package.json
+     re-runs 95% of the suite: 1536 test files, 9682 s; no edits in the window
+     coverage: called: unknown; avoidable 0 s
+     paths: runtime read 100%, declared input <1%
+     note: these tests start the program from source; Squeal re-runs them by design
+  10. packages/contract/src/application-update.ts
+     re-runs 95% of the suite: 1408 test files, 9678 s; no edits in the window
+     coverage: called: unknown; avoidable 0 s
+     paths: setup 90%, barrel 5%, test helper 3%, import 2%, transitive <1%, child process <1%, declared input <1%
+     gateway: setup through packages/contract/src/health.ts, for example packages/cezar/src/runs/run-exits.ts → packages/contract/src/waits.ts → packages/contract/src/delegation.ts → packages/contract/src/discovery.ts → packages/contract/src/health.ts → packages/contract/src/application-update.ts
+     suggestion: keep the setup's imports leaf-only: packages/cezar/src/runs/run-exits.ts → packages/contract/src/waits.ts → packages/contract/src/delegation.ts → packages/contract/src/discovery.ts → packages/contract/src/health.ts → packages/contract/src/application-update.ts
+  … and 2893 more; --limit lists more.
+
+Test files, by avoidable seconds, then seconds re-run:
+  1. server: packages/cezar/src/core/harness-cursor-session-parity.test.ts, 32 s
+     loads 483 source files on import paths, calls unknown; 92 edits in the window re-ran it
+  2. server: packages/cezar/src/session-signal-cli.test.ts, 27 s
+     loads 1 source file on import paths, calls unknown; 109 edits in the window re-ran it
+  3. server: packages/cezar/src/workflows/ci-wait-rerun-recovered-parity.test.ts, 37 s
+     loads 332 source files on import paths, calls unknown; 89 edits in the window re-ran it
+  4. server: packages/cezar/src/core/harness-cursor-owned-input-parity.test.ts, 26 s
+     loads 477 source files on import paths, calls unknown; 92 edits in the window re-ran it
+  5. server: packages/cezar/src/core/harness-opencode-run-parity.test.ts, 26 s
+     loads 477 source files on import paths, calls unknown; 92 edits in the window re-ran it
+  6. server: packages/cezar/src/workflows/run.test.ts, 36 s
+     loads 310 source files on import paths, calls unknown; 76 edits in the window re-ran it
+  7. server: packages/cezar/src/workflows/waits-cursor-closed-parity.test.ts, 34 s
+     loads 342 source files on import paths, calls unknown; 89 edits in the window re-ran it
+  8. server: packages/cezar/src/core/workflow-no-progress-parked-input-parity.test.ts, 34 s
+     loads 340 source files on import paths, calls unknown; 89 edits in the window re-ran it
+  9. server: packages/cezar/src/workflows/pr-merge-wait-parity.test.ts, 34 s
+     loads 362 source files on import paths, calls unknown; 89 edits in the window re-ran it
+  10. server: packages/cezar/src/workflows/waits-codex-entries-parity.test.ts, 33 s
+     loads 347 source files on import paths, calls unknown; 89 edits in the window re-ran it
+  … and 1533 more; --limit lists more.
+
+Proposal: set `"coverage": { "enabled": true }` in squeal.config.json, then run squeal warmup, so Squeal can tell which tests call each file. Cost: every Vitest and node:test file runs once more, because turning coverage on changes their keys, and each later run takes about a tenth more CPU; turning it off again re-runs them once more. squeal reach does not turn coverage on.

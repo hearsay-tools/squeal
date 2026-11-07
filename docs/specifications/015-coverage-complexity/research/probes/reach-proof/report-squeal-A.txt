@@ -1,0 +1,84 @@
+Reach: what one edit of each file re-runs, of 1490 test files and 6301 s recorded.
+Edits: 521 from 2026-10-06 to 2026-11-07, every worktree's watch revisions in which HEAD did not move.
+1322 test files have no import closure Squeal trusts at their current inputs, so their reach is not counted; their next runs store them.
+3177 pairs read import, path not recorded yet: their test files were walked before Squeal stored import chains; their next run records them.
+
+Files, by avoidable seconds per edit, then seconds re-run:
+  1. src/core/fs/index.ts
+     re-runs 10% of the suite: 103 test files, 613 s; 2 edits in the window re-ran 1226 s
+     coverage: no record 77%, loaded only 23%; avoidable 140 s
+     paths: runtime read 72%, import 23%, direct 4%, test helper 1%
+     note: these tests start the program from source; Squeal re-runs them by design
+  2. 7 files in src/core/fs/ through src/core/fs/index.ts
+     re-runs 10% of the suite (each): 103 test files, 613 s; 6 edits in the window re-ran 3679 s
+     coverage: no record 77%, loaded only 20%, called 3%; avoidable 121 s
+     paths: barrel 77%, import 23%
+     gateway: barrel through src/core/fs/index.ts, for example test/daemon/departure.test.ts → test/daemon/helpers.ts → src/core/fs/index.ts → src/core/fs/compare.ts
+     suggestion: import these files from their own paths in the files that use them, or split src/core/fs/index.ts
+  3. 5 files in evals/lib/ (import)
+     re-runs 1% of the suite (each): 38 test files, 60 s; no edits in the window
+     coverage: loaded only 97%, called 2%, no record <1%; avoidable 59 s
+     paths: import 99%, child process 1%, barrel <1%, direct <1%
+  4. 8 files in evals/lib/ (import)
+     re-runs 1% of the suite (each): 40 test files, 70 s; no edits in the window
+     coverage: loaded only 79%, outside the test's process 14%, called 7%, no record <1%; avoidable 36 s
+     paths: import 53%, child process 47%, barrel <1%
+  5. src/core/keys/glob.ts
+     re-runs 8% of the suite: 46 test files, 503 s; 2 edits in the window re-ran 1006 s
+     coverage: no record 94%, loaded only 6%, called <1%; avoidable 29 s
+     paths: barrel 90%, import 6%, transitive 4%
+     gateway: barrel through src/core/keys/index.ts, for example test/daemon/departure.test.ts → test/harness/helpers.ts → src/core/keys/index.ts → src/core/keys/glob.ts
+     suggestion: import src/core/keys/glob.ts from its own path in the files that use it, or split src/core/keys/index.ts
+  6. 5 files in src/core/keys/ through src/core/keys/index.ts
+     re-runs 8% of the suite (each): 47 test files, 503 s; 8 edits in the window re-ran 4027 s
+     coverage: no record 94%, loaded only 6%, called <1%; avoidable 28 s
+     paths: barrel 94%, import 6%
+     gateway: barrel through src/core/keys/index.ts, for example test/daemon/departure.test.ts → test/harness/helpers.ts → src/core/keys/index.ts → src/core/keys/environment.ts → src/core/keys/hidden-lockfile.ts
+     suggestion: import these files from their own paths in the files that use them, or split src/core/keys/index.ts
+  7. src/core/keys/check-key.ts
+     re-runs 8% of the suite: 44 test files, 503 s; 2 edits in the window re-ran 1005 s
+     coverage: no record 94%, loaded only 5%, called 1%; avoidable 24 s
+     paths: runtime read 88%, barrel 6%, import 6%
+     note: these tests start the program from source; Squeal re-runs them by design
+  8. 3 files in src/core/keys/ through src/core/keys/index.ts
+     re-runs 8% of the suite (each): 44 test files, 503 s; 6 edits in the window re-ran 3016 s
+     coverage: no record 94%, loaded only 5%, called 1%; avoidable 24 s
+     paths: barrel 94%, import 6%
+     gateway: barrel through src/core/keys/index.ts, for example test/daemon/departure.test.ts → test/harness/helpers.ts → src/core/keys/index.ts → src/core/keys/environment.ts
+     suggestion: import these files from their own paths in the files that use them, or split src/core/keys/index.ts
+  9. 17 files in evals/lib/ (child process)
+     re-runs 1% of the suite (each): 40 test files, 70 s; no edits in the window
+     coverage: loaded only 54%, called 31%, outside the test's process 14%, no record <1%; avoidable 19 s
+     paths: child process 54%, import 45%, barrel <1%, direct <1%
+     note: these tests start the program from source; Squeal re-runs them by design
+  10. 7 files in src/core/keys/ (runtime read)
+     re-runs 8% of the suite (each): 41 test files, 491 s; 11 edits in the window re-ran 5406 s
+     coverage: no record 96%, loaded only 3%, called <1%; avoidable 17 s
+     paths: runtime read 90%, barrel 5%, import 4%, test helper 1%
+     note: these tests start the program from source; Squeal re-runs them by design
+  … and 368 more; --limit lists more.
+
+Test files, by avoidable seconds, then seconds re-run:
+  1. test/lint/oxlint/replay.test.ts, 55 s
+     loads 22 source files on import paths, calls 14; 3 edits in the window re-ran it
+  2. test/evals/atomic-scenarios.test.ts, 14 s
+     loads 30 source files on import paths, calls 8; 0 edits in the window re-ran it
+  3. test/keys/key-index.test.ts, 4.5 s
+     loads 29 source files on import paths, calls 6; 7 edits in the window re-ran it
+  4. test/lint/provider/ts-config.test.ts, 5.6 s
+     loads 19 source files on import paths, calls 2; 3 edits in the window re-ran it
+  5. test/lint/provider/nested.test.ts, 4.8 s
+     loads 19 source files on import paths, calls 2; 3 edits in the window re-ran it
+  6. test/runners/observe/recorder.test.ts, 2.5 s
+     loads 38 source files on import paths, calls 8; 8 edits in the window re-ran it
+  7. test/evals/teardown.test.ts, 2.7 s
+     loads 30 source files on import paths, calls 5; 0 edits in the window re-ran it
+  8. test/evals/retry-knobs.test.ts, 2.6 s
+     loads 32 source files on import paths, calls 7; 0 edits in the window re-ran it
+  9. test/runners/pytest/graph/cost.test.ts, 7.3 s
+     loads 23 source files on import paths, calls 15; 3 edits in the window re-ran it
+  10. test/runners/node-test/graph-structural.test.ts, 4.8 s
+     loads 20 source files on import paths, calls 9; 10 edits in the window re-ran it
+  … and 154 more; --limit lists more.
+
+16% of the suite's seconds (20 test files) have no coverage record at their current inputs, so their pairs read no record; squeal run --all --force re-runs every test file and records them, about one run of the whole suite.

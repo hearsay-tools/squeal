@@ -1,0 +1,101 @@
+Reach: what one edit of each file re-runs, of 1689 test files and 10181 s recorded; 98 test files of manual groups left out.
+Edits: 530 from 2026-10-14 to 2026-11-07, every worktree's watch revisions in which HEAD did not move.
+363 pairs read import, path not recorded yet: their test files were walked before Squeal stored import chains; their next run records them.
+
+Files, by avoidable seconds per edit, then seconds re-run:
+  1. packages/contract/src/project-limits.ts
+     re-runs 83% of the suite: 984 test files, 8479 s; 1 edit in the window re-ran 8479 s
+     coverage: loaded only 98%, outside the test's process 1%, no record 1%, not loaded <1%; avoidable 8190 s
+     paths: test helper 73%, transitive 16%, barrel 8%, child process 3%, declared input <1%, runtime read <1%, direct <1%, import <1%
+     gateway: test helper through packages/cezar/src/workflows/waits-parity-cells.testkit.ts, for example packages/cezar/src/workflows/waits-claude-answers-parity.test.ts → packages/cezar/src/workflows/waits-parity-cells.testkit.ts → packages/cezar/src/ci-wait/supervisor.ts → packages/cezar/src/ci-wait/progress.ts → packages/contract/src/activity.ts → packages/contract/src/project-limits.ts
+     suggestion: split packages/cezar/src/workflows/waits-parity-cells.testkit.ts: 99 of the 99 test files that load packages/contract/src/project-limits.ts through it never call it
+  2. packages/contract/src/live-limits.ts
+     re-runs 83% of the suite: 960 test files, 8443 s; 1 edit in the window re-ran 8443 s
+     coverage: loaded only 99%, no record 1%, outside the test's process 1%, not loaded <1%; avoidable 8168 s
+     paths: test helper 76%, transitive 13%, barrel 8%, child process 2%, declared input <1%, runtime read <1%, direct <1%
+     gateway: test helper through packages/cezar/src/core/harness-parity.testkit.ts, for example packages/cezar/src/core/child-home-env.test.ts → packages/cezar/src/core/harness-parity.testkit.ts → packages/cezar/src/runs/store.ts → packages/cezar/src/runs/live-item-snapshots.ts → packages/contract/src/live-limits.ts
+     suggestion: split packages/cezar/src/core/harness-parity.testkit.ts: 287 of the 287 test files that load packages/contract/src/live-limits.ts through it never call it
+  3. packages/contract/src/projects.ts
+     re-runs 83% of the suite: 955 test files, 8429 s; no edits in the window
+     coverage: loaded only 97%, outside the test's process 1%, called 1%, no record 1%, not loaded <1%; avoidable 8078 s
+     paths: test helper 73%, transitive 15%, barrel 8%, child process 3%, declared input <1%, runtime read <1%, import <1%, direct <1%
+     gateway: test helper through packages/cezar/src/workflows/waits-parity-cells.testkit.ts, for example packages/cezar/src/workflows/waits-claude-answers-parity.test.ts → packages/cezar/src/workflows/waits-parity-cells.testkit.ts → packages/cezar/src/workflows/run.ts → packages/cezar/src/workspace/semaphore.ts → packages/cezar/src/workspace/config.ts → packages/contract/src/projects.ts
+     suggestion: split packages/cezar/src/workflows/waits-parity-cells.testkit.ts: 99 of the 99 test files that load packages/contract/src/projects.ts through it never call it
+  4. packages/contract/src/run-search.ts
+     re-runs 83% of the suite: 955 test files, 8422 s; no edits in the window
+     coverage: loaded only 97%, called 1%, outside the test's process 1%, no record 1%, not loaded <1%; avoidable 8026 s
+     paths: test helper 76%, transitive 13%, barrel 8%, child process 3%, declared input <1%, runtime read <1%, direct <1%
+     gateway: test helper through packages/cezar/src/core/harness-parity.testkit.ts, for example packages/cezar/src/core/child-home-env.test.ts → packages/cezar/src/core/harness-parity.testkit.ts → packages/cezar/src/runs/store.ts → packages/contract/src/run-search.ts
+     suggestion: split packages/cezar/src/core/harness-parity.testkit.ts: 287 of the 287 test files that load packages/contract/src/run-search.ts through it never call it
+  5. packages/contract/src/home-recovery.ts
+     re-runs 80% of the suite: 922 test files, 8192 s; no edits in the window
+     coverage: loaded only 99%, no record 1%, outside the test's process <1%, not loaded <1%; avoidable 7952 s
+     paths: test helper 84%, transitive 11%, barrel 3%, child process 2%, declared input <1%, import <1%, runtime read <1%, direct <1%
+     gateway: test helper through packages/cezar/src/core/harness-parity.testkit.ts, for example packages/cezar/src/core/ci-tools-ask-done.test.ts → packages/cezar/src/core/ci-tools.testkit.ts → packages/cezar/src/core/harness-parity.testkit.ts → packages/cezar/src/delegation/execution-identity.ts → packages/cezar/src/core/agent-model-policy.ts → packages/cezar/src/home/store.ts → packages/contract/src/home-recovery.ts
+     suggestion: split packages/cezar/src/core/harness-parity.testkit.ts: 227 of the 227 test files that load packages/contract/src/home-recovery.ts through it never call it
+  6. packages/contract/src/agent-profiles.ts
+     re-runs 80% of the suite: 870 test files, 8166 s; no edits in the window
+     coverage: loaded only 98%, outside the test's process 1%, no record 1%, called <1%, not loaded <1%; avoidable 7868 s
+     paths: test helper 75%, transitive 17%, barrel 5%, child process 3%, declared input <1%, runtime read <1%, import <1%
+     gateway: test helper through packages/cezar/src/workflows/waits-parity-cells.testkit.ts, for example packages/cezar/src/workflows/waits-claude-answers-parity.test.ts → packages/cezar/src/workflows/waits-parity-cells.testkit.ts → packages/cezar/src/workflows/run.ts → packages/cezar/src/workflows/run/launch-read-resolver.ts → packages/cezar/src/workspace/agent-accounts.ts → packages/contract/src/agent-profiles.ts
+     suggestion: split packages/cezar/src/workflows/waits-parity-cells.testkit.ts: 99 of the 99 test files that load packages/contract/src/agent-profiles.ts through it never call it
+  7. packages/contract/src/report-title.ts
+     re-runs 79% of the suite: 849 test files, 8029 s; no edits in the window
+     coverage: loaded only 96%, not loaded 2%, no record 1%, outside the test's process <1%, called <1%; avoidable 7748 s
+     paths: test helper 80%, transitive 13%, barrel 4%, child process 3%, declared input <1%, runtime read <1%, direct <1%
+     gateway: test helper through packages/cezar/src/core/harness-parity.testkit.ts, for example packages/cezar/src/core/child-home-env.test.ts → packages/cezar/src/core/harness-parity.testkit.ts → packages/cezar/src/runs/store.ts → packages/cezar/src/artifacts/reports-index.ts → packages/contract/src/report-title.ts
+     suggestion: split packages/cezar/src/core/harness-parity.testkit.ts: 287 of the 287 test files that load packages/contract/src/report-title.ts through it never call it
+  8. packages/contract/src/test-factories.testkit.ts
+     re-runs 78% of the suite: 786 test files, 7945 s; no edits in the window
+     coverage: loaded only 98%, called 2%, outside the test's process <1%, no record <1%; avoidable 7747 s
+     paths: test helper 72%, direct 20%, barrel 5%, import 3%, declared input <1%, runtime read <1%
+     gateway: test helper through packages/cezar/src/workflows/waits-parity-cells.testkit.ts, for example packages/cezar/src/workflows/waits-claude-answers-parity.test.ts → packages/cezar/src/workflows/waits-parity-cells.testkit.ts → packages/contract/src/test-factories.testkit.ts
+     suggestion: split packages/cezar/src/workflows/waits-parity-cells.testkit.ts: 99 of the 99 test files that load packages/contract/src/test-factories.testkit.ts through it never call it
+  9. packages/cezar/src/core/defined.ts
+     re-runs 77% of the suite: 823 test files, 7866 s; no edits in the window
+     coverage: loaded only 99%, no record 1%, outside the test's process 1%, not loaded <1%; avoidable 7697 s
+     paths: test helper 82%, transitive 16%, child process 2%, declared input <1%, direct <1%, runtime read <1%, import <1%
+     gateway: test helper through packages/cezar/src/core/harness-parity.testkit.ts, for example packages/cezar/src/core/child-home-env.test.ts → packages/cezar/src/core/harness-parity.testkit.ts → packages/cezar/src/runs/store.ts → packages/cezar/src/core/defined.ts
+     suggestion: split packages/cezar/src/core/harness-parity.testkit.ts: 287 of the 287 test files that load packages/cezar/src/core/defined.ts through it never call it
+  10. packages/contract/src/activity.ts
+     re-runs 77% of the suite: 778 test files, 7825 s; no edits in the window
+     coverage: loaded only 96%, not loaded 3%, outside the test's process 1%, no record 1%; avoidable 7581 s
+     paths: test helper 82%, transitive 12%, barrel 3%, child process 2%, declared input <1%, direct <1%, runtime read <1%
+     gateway: test helper through packages/cezar/src/workflows/waits-parity-cells.testkit.ts, for example packages/cezar/src/workflows/waits-claude-answers-parity.test.ts → packages/cezar/src/workflows/waits-parity-cells.testkit.ts → packages/cezar/src/ci-wait/supervisor.ts → packages/cezar/src/ci-wait/progress.ts → packages/contract/src/activity.ts
+     suggestion: split packages/cezar/src/workflows/waits-parity-cells.testkit.ts: 99 of the 99 test files that load packages/contract/src/activity.ts through it never call it
+  … and 2893 more; --limit lists more.
+
+Test files, by avoidable seconds, then seconds re-run:
+  1. server: packages/cezar/src/core/harness-cursor-session-parity.test.ts, 32 s
+     loads 483 source files on import paths, calls 46; 92 edits in the window re-ran it
+     most uncalled files come through packages/cezar/src/core/harness-parity-cells.testkit.ts (437)
+  2. server: packages/cezar/src/core/harness-opencode-session-parity.test.ts, 21 s
+     loads 483 source files on import paths, calls 51; 92 edits in the window re-ran it
+     most uncalled files come through packages/cezar/src/core/harness-parity-cells.testkit.ts (432)
+  3. server: packages/cezar/src/core/ci-tools-definitions-validation.test.ts, 30 s
+     loads 338 source files on import paths, calls 60; 89 edits in the window re-ran it
+     most uncalled files come through packages/cezar/src/core/ci-tools.testkit.ts (278)
+  4. server: packages/cezar/src/core/harness-claude-session-parity.test.ts, 18 s
+     loads 483 source files on import paths, calls 45; 92 edits in the window re-ran it
+     most uncalled files come through packages/cezar/src/core/harness-parity-cells.testkit.ts (438)
+  5. server: packages/cezar/src/task-cli/cli.test.ts, 26 s
+     loads 487 source files on import paths, calls 203; 94 edits in the window re-ran it
+     most uncalled files come through packages/cezar/src/task-cli/cockpit.testkit.ts (245)
+  6. server: packages/cezar/src/core/harness-cursor-owned-input-parity.test.ts, 26 s
+     loads 477 source files on import paths, calls 206; 92 edits in the window re-ran it
+     most uncalled files come through packages/cezar/src/core/harness-parity-cells.testkit.ts (271)
+  7. server: packages/cezar/src/task-cli/status-question.test.ts, 22 s
+     loads 487 source files on import paths, calls 162; 94 edits in the window re-ran it
+     most uncalled files come through packages/cezar/src/task-cli/cockpit.testkit.ts (278)
+  8. server: packages/cezar/src/core/workflow-final-message-silent-tail-parity.test.ts, 22 s
+     loads 358 source files on import paths, calls 54; 89 edits in the window re-ran it
+     most uncalled files come through packages/cezar/src/core/workflow-final-message-cells.testkit.ts (304)
+  9. server: packages/cezar/src/task-cli/watch.test.ts, 21 s
+     loads 487 source files on import paths, calls 174; 94 edits in the window re-ran it
+     most uncalled files come through packages/cezar/src/task-cli/cockpit.testkit.ts (275)
+  10. server: packages/cezar/src/core/harness-pi-session-parity.test.ts, 15 s
+     loads 483 source files on import paths, calls 45; 92 edits in the window re-ran it
+     most uncalled files come through packages/cezar/src/core/harness-parity-cells.testkit.ts (438)
+  … and 1533 more; --limit lists more.
+
+1% of the suite's seconds (23 test files) have no coverage record at their current inputs, so their pairs read no record; squeal run --all --force re-runs every test file and records them, about one run of the whole suite.
