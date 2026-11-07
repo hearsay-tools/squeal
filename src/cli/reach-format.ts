@@ -49,7 +49,9 @@ function head(report: ReachReport): string[] {
     ...(suite.withoutClosure === 0
       ? []
       : [
-          `${plural(suite.withoutClosure, "test file")} ${has(suite.withoutClosure)} no import closure Squeal trusts at its current inputs, so its reach is not counted; the next run stores one.`,
+          suite.withoutClosure === 1
+            ? "1 test file has no import closure Squeal trusts at its current inputs, so its reach is not counted; its next run stores one."
+            : `${suite.withoutClosure} test files have no import closure Squeal trusts at their current inputs, so their reach is not counted; their next runs store them.`,
         ]),
     ...(report.notRecorded === 0
       ? []
