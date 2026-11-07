@@ -1,7 +1,8 @@
 import { rmSync } from "node:fs";
 import { describe, expect, it, onTestFinished } from "vitest";
-import { readRetries } from "../../src/core/retry/index.js";
-import type { Store, TestFileRef } from "../../src/core/types/index.js";
+import { readRetries } from "../../src/core/retry/records.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import type { Store } from "../../src/core/types/store.js";
 import { SLOW } from "./cleanup.js";
 import { addWorktree, openRepoStore } from "./repo.js";
 import { ask, FLAKY, failing, flakyRepo, flips, loadKnob, options, pass } from "./retry-fixture.js";

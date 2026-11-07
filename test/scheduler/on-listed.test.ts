@@ -1,6 +1,6 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
-import { listingMetaKey, parseListing } from "../../src/core/types/index.js";
+import { listingMetaKey, parseListing } from "../../src/core/types/scheduler.js";
 import { SLOW } from "./cleanup.js";
 import { createRepo, openRepoStore } from "./repo.js";
 import { type Harness, openHarness } from "./vitest-harness.js";

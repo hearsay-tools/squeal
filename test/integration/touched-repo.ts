@@ -2,9 +2,10 @@ import { existsSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { expect } from "vitest";
-import { createFsHasher } from "../../src/core/hash/index.js";
-import { statCandidates } from "../../src/core/revision/index.js";
-import type { RunnerAdapter, TestFileRef } from "../../src/core/types/index.js";
+import { createFsHasher } from "../../src/core/hash/hasher.js";
+import { statCandidates } from "../../src/core/revision/reconcile.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import type { RunnerAdapter } from "../../src/core/types/runner.js";
 import type { Harness } from "../scheduler/vitest-harness.js";
 import { BASE, OLD, readsNew, warmOptions } from "./stamps-repo.js";
 

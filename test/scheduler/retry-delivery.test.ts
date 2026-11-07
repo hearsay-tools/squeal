@@ -1,14 +1,12 @@
 import { rmSync, writeFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { createDelivery, formatDelta, formatRegistration } from "../../src/core/delivery/index.js";
-import { agoText, readRetries, recordedText } from "../../src/core/retry/index.js";
-import {
-  type Consumer,
-  MAIN_AGENT,
-  type RecordedFacts,
-  type RetryFact,
-  type Store,
-} from "../../src/core/types/index.js";
+import { createDelivery } from "../../src/core/delivery/delivery.js";
+import { formatDelta, formatRegistration } from "../../src/core/delivery/format.js";
+import { readRetries } from "../../src/core/retry/records.js";
+import { agoText, recordedText } from "../../src/core/retry/text.js";
+import { type Consumer, MAIN_AGENT } from "../../src/core/types/delivery.js";
+import type { RecordedFacts, RetryFact } from "../../src/core/types/status.js";
+import type { Store } from "../../src/core/types/store.js";
 import { SLOW } from "./cleanup.js";
 import { openRepoStore } from "./repo.js";
 import { ask, FLAKY, failing, flakyRepo, flips, loadKnob, options, pass } from "./retry-fixture.js";

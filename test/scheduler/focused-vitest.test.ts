@@ -2,7 +2,7 @@ import { appendFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type FocusedRun, readFocused } from "../../src/core/scheduler/focused-row.js";
-import type { RunnerAdapter } from "../../src/core/types/index.js";
+import type { RunnerAdapter } from "../../src/core/types/runner.js";
 import { SLOW } from "./cleanup.js";
 import { createRepo, openRepoStore, ref } from "./repo.js";
 import { openHarness } from "./vitest-harness.js";

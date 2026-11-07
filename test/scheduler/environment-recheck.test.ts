@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { InvalidateResult, RunnerAdapter } from "../../src/core/types/index.js";
+import type { InvalidateResult, RunnerAdapter } from "../../src/core/types/runner.js";
 import { SLOW } from "./cleanup.js";
 import { createRepo, openRepoStore } from "./repo.js";
 import { type Harness, openHarness } from "./vitest-harness.js";
