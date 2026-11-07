@@ -1,4 +1,4 @@
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import type { CliIo } from "../../src/cli/main.js";
@@ -214,6 +214,41 @@ describe("squeal reach", () => {
         "    test/b.test.ts  2 s  loaded only\n" +
         "    test/a.test.ts  1 s  called\n",
     );
+  });
+
+  it("names declared patterns of either shape, and a barrel read from its bytes", async () => {
+    const { repo, store } = seeded({ ...ON, inputs: { "test/b.test.ts": ["src/two.ts"] } });
+    mkdirSync(join(repo.main, "src"));
+    writeFileSync(join(repo.main, "src/index.ts"), 'export * from "./one.js";\n');
+    store.testFiles.put({
+      testFile: { project: "", path: A },
+      closure: {
+        testFile: { project: "", path: A },
+        paths: [A, "src/index.ts", "src/one.ts"],
+        complete: true,
+        method: "static imports plus declared inputs",
+      },
+      updatedAt: 1,
+      updatedBy: repo.mainId,
+    });
+    const graph = fakeGraph({ [A]: ["src/index.ts"], "src/index.ts": ["src/one.ts"] });
+    const named = JSON.parse((await run(repo.main, ["src", "--json"], graph)).stdout).named;
+    expect(named.map((f: { path: string }) => f.path)).toEqual([
+      "src/index.ts",
+      "src/one.ts",
+      "src/two.ts",
+    ]);
+    expect(named[1].routes).toContainEqual(
+      expect.objectContaining({ kind: "barrel", gateway: "src/index.ts", testFiles: 1 }),
+    );
+    expect(named[2].suggestion.text).toBe(
+      'the input "src/two.ts" in squeal.config.json gives src/two.ts to the test files "test/b.test.ts" matches: 1 test file here',
+    );
+    const list = seeded({ ...ON, inputs: ["src/one.ts"] });
+    const kinds = JSON.parse(
+      (await run(list.repo.main, ["src/one.ts", "--json"], null)).stdout,
+    ).named[0].routes.map((r: { kind: string }) => r.kind);
+    expect(kinds).toEqual(["declared input"]);
   });
 
   it("with coverage off, reads called unknown and proposes coverage", async () => {

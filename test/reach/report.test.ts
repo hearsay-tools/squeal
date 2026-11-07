@@ -230,6 +230,7 @@ describe("limits, edits and seconds", () => {
       [["src/a.ts"], null, null],
       [["src/b.ts", "src/c.ts"], "src", null],
     ]);
+    expect(formatReach(all)).toContain("  2. 2 files in src/ (import)\n");
   });
 });
 
