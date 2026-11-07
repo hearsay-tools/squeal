@@ -3,6 +3,9 @@ import { lstatSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { blobHash } from "../../src/core/hash/blob.js";
+import { assembleClosure } from "../../src/core/keys/closure.js";
+import type { SchedulerContext } from "../../src/core/scheduler/context.js";
+import { storeClosures } from "../../src/core/scheduler/revision.js";
 import {
   type FetchedPart,
   type ImportGraphSource,
@@ -233,6 +236,32 @@ describe("environment files (015-108)", () => {
     expect(tree.graph().environment("unit")).toEqual(["test/setup.ts", "vitest.config.ts"]);
     const rows = connectionOf(tree.store).all("SELECT environment FROM environment_files");
     expect(rows).toEqual([{ environment: "env-2" }]);
+  });
+});
+
+describe("storeClosures (015-108)", () => {
+  it("stores the closures, and the part's edges and environment files, in one transaction", () => {
+    const tree = new Tree(open(fakeCommonDir()), "w1");
+    tree.write("src/index.ts", INDEX);
+    tree.write("test/setup.ts", "export {};\n");
+    tree.environments.set("", { hash: "env-1", files: ["test/setup.ts"] });
+    const ref = { project: "", path: "test/a.test.ts" };
+    const assembled = assembleClosure({ testFile: ref, paths: ["src/index.ts"] }, []);
+    const source = tree.source();
+    const index = { ...source.keys.index, closure: () => assembled };
+    const context = { ...source, keys: { ...source.keys, index } } as unknown as SchedulerContext;
+
+    storeClosures(context, [ref], {
+      ...closure(imports("src/index.ts", INDEX, { static: ["src/a.ts"] })),
+      environments: [environment("")],
+    });
+
+    expect(tree.store.testFiles.get(ref)?.closure.paths).toEqual([
+      "src/index.ts",
+      "test/a.test.ts",
+    ]);
+    expect(tree.graph().targets("src/index.ts")).toEqual({ static: ["src/a.ts"], dynamic: [] });
+    expect(tree.graph().environment("")).toEqual(["test/setup.ts"]);
   });
 });
 
