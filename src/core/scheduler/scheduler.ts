@@ -7,6 +7,7 @@ import { createFsHasher } from "../hash/hasher.js";
 import { appendNote } from "../notes.js";
 import { hostLoad } from "../retry/load.js";
 import { statCandidates } from "../revision/reconcile.js";
+import { readSlowActivity } from "../slow/state.js";
 import { describeFailure } from "../state/fingerprint.js";
 import { isBusy, withBusySlice } from "../store/connection.js";
 import { plural } from "../text.js";
@@ -1031,6 +1032,8 @@ class TierScheduler implements Scheduler {
     const rewalk = this.#rewalk;
     return this.#lock.run(() => {
       const { context, ledger } = this.#started();
+      // A slow file waiting for the shared slot or the load guard goes first (spec 004 D2, D3).
+      if (readSlowActivity(context.store, context.worktreeId)?.kind === "waiting") return false;
       const chunk = rewalk.next(context, ledger);
       if (chunk === null) return false;
       this.#runnerWork.queueRewalk(chunk, (closures, changed) =>
