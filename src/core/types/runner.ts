@@ -161,8 +161,8 @@ export interface RunnerEnvironment {
    */
   readonly packages?: RunnerPackages;
   /**
-   * Spec 015 D11 (review 0.1.415 B3): each walked project file of the
-   * config, setup and global setup walks, with its direct imports, as a
+   * Spec 015 D11 (review 0.1.415 B3, R2-N1): each walked project file of
+   * the config, setup and global setup walks, with its direct imports, as a
    * closure's `imports` gives them. The core stores them beside the
    * environment files; no key or environment hash reads them. Absent when
    * the runner gives none.
@@ -174,13 +174,6 @@ export interface RunnerEnvironment {
    * `globalSetup` entries. In no hash; absent when the runner gives none.
    */
   readonly roots?: readonly RelativePath[];
-  /**
-   * Spec 015 D11 (review 0.1.415 B3): the config files with the
-   * dependencies the runner bundled them with, which no transform walks;
-   * the core reads their imports for the setup chains. In no hash; absent
-   * when the runner gives none.
-   */
-  readonly configs?: readonly RelativePath[];
 }
 
 /**
