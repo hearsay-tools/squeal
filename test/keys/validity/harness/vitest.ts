@@ -72,6 +72,33 @@ function hinted(adapter: RunnerAdapter, files: readonly TestFileRef[]): void {
   if (first !== undefined) adapter.tierWidth?.(first, 2);
 }
 
+/**
+ * Row 015-108: each of `refs`' closures, read in turn so a later walk meets
+ * the files an earlier one walked: its paths and packages, which key it.
+ * Its `imports` key nothing and are left out.
+ */
+async function closuresOf(
+  adapter: RunnerAdapter,
+  refs: readonly TestFileRef[] | undefined,
+): Promise<unknown[] | undefined> {
+  if (refs === undefined) return undefined;
+  const out: unknown[] = [];
+  for (const ref of refs) {
+    const closure = await adapter.closure(ref);
+    out.push([closure.testFile.path, closure.paths, closure.packages]);
+  }
+  return out;
+}
+
+/** The case's keys: the environments and the closures it read, when it read any. */
+function keysOf(environments: unknown, closures: unknown): { readonly keys?: object } {
+  const keys = {
+    ...(environments === undefined ? {} : { environments }),
+    ...(closures === undefined ? {} : { closures }),
+  };
+  return Object.keys(keys).length === 0 ? {} : { keys };
+}
+
 /** A `fileEnded` callback that throws: the run must still complete (row 011-54). */
 const throwing = () => {
   throw new Error("fileEnded throws (validity case)");
@@ -176,11 +203,13 @@ export async function vitestCase(input: VitestInput, scratch: string): Promise<C
   // Row 013-06: a case that removes its instance's temp directory starts it under one of its own.
   const tmp = input.runs.some((run) => run.removeTempDir === true) ? join(scratch, "tmp") : null;
   let environments: unknown;
+  let closures: unknown[] | undefined;
   try {
     await withTmpDir(tmp, () => adapter.open());
     if (input.environment === true) {
       environments = (await adapter.environment()).map((e) => [e.project, e.files]);
     }
+    closures = await closuresOf(adapter, input.closures);
     for (const [at, run] of input.runs.entries()) {
       writeFileSync(hold, "");
       rmSync(started, { force: true });
@@ -222,7 +251,7 @@ export async function vitestCase(input: VitestInput, scratch: string): Promise<C
     await adapter.close();
   }
   return {
-    ...(environments === undefined ? {} : { keys: { environments } }),
+    ...keysOf(environments, closures),
     outputs: { runs: reports.map(storedOf) },
     wording: { failures: reports.map((r) => r.failure), rechecks },
   };
