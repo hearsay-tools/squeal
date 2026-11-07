@@ -12,7 +12,8 @@ describe("vitest adapter: closure, enumerate, testFiles, environment", SLOW, () 
   it("builds a closure from the transform graph plus the snapshot path", async () => {
     const fx = await openFixture();
     // Spec 001 D3: "its snapshot file path whether or not the file exists" (review B1).
-    expect(await fx.adapter.closure(ref("test/math.test.ts"))).toEqual({
+    const { imports, ...closure } = await fx.adapter.closure(ref("test/math.test.ts"));
+    expect(closure).toEqual({
       testFile: ref("test/math.test.ts"),
       paths: [
         "src/deep.ts",
@@ -23,6 +24,13 @@ describe("vitest adapter: closure, enumerate, testFiles, environment", SLOW, () 
       // Task 001-105: `vitest` resolves from the repository, outside this worktree's install.
       packages: { imports: [], builtins: [] },
     });
+    // Spec 015 D11 (row 015-108): each walked project file's direct imports.
+    const edges = imports?.map((file) => [file.path, file.static, file.dynamic]);
+    expect(edges?.sort()).toEqual([
+      ["src/deep.ts", [], []],
+      ["src/math.ts", ["src/deep.ts"], []],
+      ["test/math.test.ts", ["src/math.ts"], []],
+    ]);
     expect((await fx.adapter.closure(ref("test/strings.test.ts"))).paths).toEqual([
       "src/strings.ts",
       "test/__snapshots__/strings.test.ts.snap",
