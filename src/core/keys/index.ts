@@ -1,3 +1,11 @@
+/*
+ * Row 015-110: a barrel kept on purpose; biome.json turns noBarrelFile off
+ * for it. The key alarm's global entries re-export it as the `keys`
+ * namespace, and the alarm compares that emitted code with old releases.
+ * The alarm's harness (`test/keys/validity/harness.ts`, `harness/assemble.ts`)
+ * finds names through it at releases where their modules differ. Every other
+ * file imports the module that defines the name.
+ */
 export { checkKey } from "./check-key.js";
 export {
   assembleClosure,
