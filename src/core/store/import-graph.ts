@@ -28,14 +28,24 @@ export interface ImportGraph {
   ):
     | { readonly static: readonly RelativePath[]; readonly dynamic: readonly RelativePath[] }
     | undefined;
-  /** The project's environment files for its current environment hash; undefined when not recorded. */
-  environment(project: string): readonly RelativePath[] | undefined;
+  /**
+   * The project's environment files for its current environment hash, and
+   * the roots its setup chains start at (review 0.1.415 B3: the config
+   * files, `setupFiles` and `globalSetup` entries); undefined when not
+   * recorded.
+   */
+  environment(
+    project: string,
+  ):
+    | { readonly files: readonly RelativePath[]; readonly roots: readonly RelativePath[] }
+    | undefined;
 }
 
 /** A project's environment as this worktree reads it now. */
 interface Current {
   readonly hash: string;
   readonly files: readonly RelativePath[];
+  readonly roots: readonly RelativePath[];
 }
 
 /**
@@ -74,7 +84,10 @@ export function readImportGraph(store: Store, root: string, worktreeId: string):
         ? undefined
         : edgesAt(conn, path, blob, project, context.hash);
     },
-    environment: (project) => environment(project)?.files,
+    environment: (project) => {
+      const context = environment(project);
+      return context === undefined ? undefined : { files: context.files, roots: context.roots };
+    },
   };
 }
 
@@ -126,8 +139,8 @@ function environmentOf(
   current: (path: RelativePath) => FileHash | null | undefined,
 ): Current | undefined {
   const row = conn.get(
-    `SELECT w.environment, f.files FROM worktree_environments w
-     JOIN environment_files f ON f.project = w.project AND f.environment = w.environment
+    `SELECT w.environment, f.files, f.roots FROM worktree_environments w
+     JOIN environment_inputs f ON f.project = w.project AND f.environment = w.environment
      WHERE w.worktree_id = ? AND w.project = ?`,
     worktreeId,
     project,
@@ -135,6 +148,10 @@ function environmentOf(
   if (row === null) return undefined;
   const files = JSON.parse(str(row, "files")) as [RelativePath, FileHash | null][];
   return files.every(([path, blob]) => current(path) === blob)
-    ? { hash: str(row, "environment"), files: files.map(([path]) => path) }
+    ? {
+        hash: str(row, "environment"),
+        files: files.map(([path]) => path),
+        roots: JSON.parse(str(row, "roots")) as RelativePath[],
+      }
     : undefined;
 }

@@ -84,21 +84,15 @@ export function walk(graph: ImportGraph, project: string, starts: readonly Relat
 }
 
 /**
- * The setup chains of one project: a walk from its environment files that
- * no other of them imports (the config and setup files), so a setup pair
- * names the chain from the file the runner loads first.
+ * The setup chains of one project: a walk of its edges from the roots the
+ * runner recorded (review 0.1.415 B3), the files it loads first: config
+ * files, `setupFiles` and `globalSetup` entries. No root is inferred from
+ * the flat file list; a file no recorded edge reaches has no chain.
  */
 export function setupWalk(
   graph: ImportGraph,
   project: string,
-  environment: readonly RelativePath[],
+  roots: readonly RelativePath[],
 ): Walk {
-  const files = new Set(environment);
-  const imported = new Set<RelativePath>();
-  for (const file of environment) {
-    for (const to of targetsOf(graph, project, file) ?? []) if (to !== file) imported.add(to);
-  }
-  const roots = environment.filter((f) => !imported.has(f));
-  const starts = (roots.length > 0 ? roots : environment).filter((f) => files.has(f));
-  return walk(graph, project, [...starts].sort(compare));
+  return walk(graph, project, [...roots].sort(compare));
 }

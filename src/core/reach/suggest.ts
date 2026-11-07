@@ -104,9 +104,15 @@ function siblingText(
 }
 
 function setupText(them: string, chain: readonly RelativePath[]): string {
+  // Review 0.1.415 B3: no recorded edge from a root reaches it, so no chain is named.
+  if (chain.length === 0) {
+    return `keep the setup's imports leaf-only; the chain from a setup or config file to ${them} is not recorded`;
+  }
   const [root = ""] = chain;
   if (isConfigPath(root) && chain.length === 2) {
-    return `${root} imports ${them}: name it by path, or load it only where it is used`;
+    return them === "these files"
+      ? `${root} imports these files: name them by path, or load them only where they are used`
+      : `${root} imports ${them}: name it by path, or load it only where it is used`;
   }
   if (chain.length < 2) {
     return them === "these files"

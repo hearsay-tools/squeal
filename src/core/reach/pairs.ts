@@ -69,7 +69,7 @@ export interface Pair {
   readonly chain: readonly RelativePath[];
   /** The last barrel or helper on the chain, else the module that imports the file directly. */
   readonly gateway: RelativePath | null;
-  /** An `import` pair the stored edges do not reach yet: `path not recorded yet`. */
+  /** An `import` or `setup` pair the stored edges do not reach: its chain is not recorded. */
   readonly notRecorded?: true;
   readonly declared?: DeclaredPattern;
 }
@@ -87,11 +87,14 @@ export class PairContext {
   setup(project: string) {
     if (this.#setups.has(project)) return this.#setups.get(project) ?? null;
     const graph = this.snapshot.graph;
-    const files = graph?.environment(project);
+    const environment = graph?.environment(project);
     const setup =
-      graph == null || files === undefined
+      graph == null || environment === undefined
         ? null
-        : { files: new Set(files), walk: setupWalk(graph, project, files) };
+        : {
+            files: new Set(environment.files),
+            walk: setupWalk(graph, project, environment.roots),
+          };
     this.#setups.set(project, setup);
     return setup;
   }
@@ -117,8 +120,10 @@ export function pairsOf(test: ReachTestFile, context: PairContext): Pair[] {
   for (const path of paths) {
     if (!context.isSource(test, path)) continue;
     if (setup?.files.has(path) === true) {
-      const chain = setup.walk.chain(path) ?? [path];
-      pairs.push(pair(test, path, "setup", chain, chain.at(-2) ?? null));
+      // Review 0.1.415 B3: a file no recorded edge from a root reaches has no chain, never one of its own.
+      const chain = setup.walk.chain(path);
+      const known = pair(test, path, "setup", chain ?? [], chain?.at(-2) ?? null);
+      pairs.push(chain === null ? { ...known, notRecorded: true } : known);
       continue;
     }
     const declared = context.snapshot.declared(test.ref.path, path);
