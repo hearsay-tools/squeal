@@ -81,7 +81,8 @@ var WORKTREE_META_ROWS = {
   testCommandDenied: { prefix: "test-command-denied:", owner: "delivery/test-command-denied" },
   ignoredReads: { prefix: "ignored-reads:", owner: "scheduler/ignored-reads" },
   omittedTestFiles: { prefix: "omitted-test-files:", owner: "scheduler/omitted-test-files" },
-  unknownFiles: { prefix: "unknown-files:", owner: "scheduler/unknown-files" }
+  unknownFiles: { prefix: "unknown-files:", owner: "scheduler/unknown-files" },
+  importRewalk: { prefix: "import-rewalk:", owner: "scheduler/import-rewalk" }
 };
 function worktreeMetaKey(row, worktreeId) {
   return `${WORKTREE_META_ROWS[row].prefix}${worktreeId}`;
@@ -2726,7 +2727,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.415";
+  if (true) return "0.1.416";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
