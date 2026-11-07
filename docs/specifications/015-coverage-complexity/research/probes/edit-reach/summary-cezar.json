@@ -1,0 +1,654 @@
+{
+ "repo": "/tmp/er015/cezar",
+ "head": "d6fed8685",
+ "tests": 1780,
+ "durations": {
+  "fromReports": 1646,
+  "fromResults": 133,
+  "none": 1
+ },
+ "suite": {
+  "files": 1780,
+  "sec": 13862.961200619997,
+  "autoFiles": 1683,
+  "autoSec": 11714.979281275486
+ },
+ "editRevisions": 663,
+ "editedSources": 87,
+ "sourceFiles": {
+  "tracked": 1513,
+  "reached": 1490
+ },
+ "setup": {
+  "server": [
+   ".github/scripts/ci-test-sequencer.mjs",
+   ".github/scripts/vitest-coverage-tests.mjs",
+   ".github/scripts/vitest-file-duration.mjs",
+   ".github/scripts/vitest-worker-count.cjs",
+   "packages/cezar/src/home/test-home-selector.testkit.ts",
+   "packages/cezar/src/runs/run-exits.ts",
+   "packages/cezar/src/test-outbound-guard.testkit.ts",
+   "packages/cezar/vitest.config.ts",
+   "packages/cezar/vitest.setup.ts",
+   "packages/contract/src/application-update.ts",
+   "packages/contract/src/ask-schema.ts",
+   "packages/contract/src/ci-wait.ts",
+   "packages/contract/src/conversations.ts",
+   "packages/contract/src/delegation.ts",
+   "packages/contract/src/discovery.ts",
+   "packages/contract/src/effort.ts",
+   "packages/contract/src/health.ts",
+   "packages/contract/src/per-runner-optional-strings.ts",
+   "packages/contract/src/team-skill-ref.ts",
+   "packages/contract/src/waits.ts",
+   "packages/contract/src/workspace.ts",
+   "scripts/check-workspace-resolution.mjs",
+   "scripts/test-install-marker.mjs",
+   "scripts/test-sandbox.mjs",
+   "vitest.config.ts"
+  ],
+  "web": [
+   ".github/scripts/ci-test-sequencer.mjs",
+   ".github/scripts/vitest-coverage-tests.mjs",
+   ".github/scripts/vitest-file-duration.mjs",
+   ".github/scripts/vitest-worker-count.cjs",
+   "packages/api-client/src/contract/defined.ts",
+   "packages/contract/src/defined.ts",
+   "packages/web/src/lib/highlighter.ts",
+   "packages/web/vite.config.ts",
+   "packages/web/vitest.config.ts",
+   "packages/web/vitest.setup.ts",
+   "scripts/check-workspace-resolution.mjs",
+   "scripts/test-sandbox.mjs",
+   "vitest.config.ts"
+  ],
+  "contract": [
+   ".github/scripts/ci-test-sequencer.mjs",
+   ".github/scripts/vitest-coverage-tests.mjs",
+   ".github/scripts/vitest-file-duration.mjs",
+   ".github/scripts/vitest-worker-count.cjs",
+   "packages/contract/vitest.config.ts",
+   "scripts/check-workspace-resolution.mjs",
+   "vitest.config.ts"
+  ],
+  "api-client": [
+   ".github/scripts/ci-test-sequencer.mjs",
+   ".github/scripts/vitest-coverage-tests.mjs",
+   ".github/scripts/vitest-file-duration.mjs",
+   ".github/scripts/vitest-worker-count.cjs",
+   "packages/api-client/vitest.config.ts",
+   "scripts/check-workspace-resolution.mjs",
+   "vitest.config.ts"
+  ],
+  "e2e": [
+   ".ai/scripts/resolve-browser-launch.mjs",
+   ".ai/scripts/test-env-inputs.mjs",
+   ".ai/scripts/test-env-lease.mjs",
+   ".github/scripts/ci-test-sequencer.mjs",
+   ".github/scripts/cockpit-test-sequencer.mjs",
+   ".github/scripts/vitest-coverage-tests.mjs",
+   ".github/scripts/vitest-file-duration.mjs",
+   ".github/scripts/vitest-worker-count.cjs",
+   "packages/cezar/src/core/agent-profiles.ts",
+   "packages/cezar/src/delegation/process-liveness.ts",
+   "packages/cezar/src/detached-process.ts",
+   "packages/cezar/src/home/boundary.ts",
+   "packages/cezar/src/home/entry-authorization.ts",
+   "packages/cezar/src/home/home.ts",
+   "packages/cezar/src/home/install-marker.ts",
+   "packages/cezar/src/home/private-files.ts",
+   "packages/cezar/src/home/process-identity.ts",
+   "packages/cezar/src/home/store.ts",
+   "packages/cezar/src/home/version-log.ts",
+   "packages/cezar/src/home/write-lock.ts",
+   "packages/cezar/src/paths.ts",
+   "packages/cezar/src/workspace/backups.ts",
+   "packages/web/e2e/agent-browser.ts",
+   "packages/web/e2e/browser-launch.ts",
+   "packages/web/e2e/browser-page.ts",
+   "packages/web/e2e/environment.ts",
+   "packages/web/e2e/failure-setup.ts",
+   "packages/web/e2e/fetch-setup.mjs",
+   "packages/web/e2e/visual-ready.ts",
+   "packages/web/e2e/vitest.config.ts",
+   "packages/web/e2e/wait-support.ts",
+   "packages/web/e2e/workspace-registry.ts",
+   "scripts/check-workspace-resolution.mjs",
+   "scripts/test-git-env.mjs",
+   "scripts/test-sandbox.mjs",
+   "vitest.config.ts"
+  ]
+ },
+ "sharesEverySourceOnce": {
+  "direct": 1,
+  "transitive": 17.9,
+  "barrel": 1.3,
+  "helper": 70.5,
+  "typesModule": 0,
+  "setup": 3.1,
+  "declared": 2.3,
+  "typeImport": 0.2,
+  "childProcess": 3,
+  "observed": 0.7
+ },
+ "sharesByRealEdits": {
+  "direct": 3.7,
+  "transitive": 12,
+  "barrel": 0,
+  "helper": 72.4,
+  "typesModule": 0,
+  "setup": 8.1,
+  "declared": 1,
+  "typeImport": 0.2,
+  "childProcess": 1.9,
+  "observed": 0.7
+ },
+ "meanAutoSharePerSource": 21.3,
+ "meanAutoSharePerRealEdit": 36.7,
+ "cuts": [
+  {
+   "path": "packages/cezar/src/workflows/run.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 682,
+   "pctOfPairSec": 27.6,
+   "pctOfRealEditSec": 3.7,
+   "imports": 35
+  },
+  {
+   "path": "packages/cezar/src/workflows/run/compose.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 682,
+   "pctOfPairSec": 10.2,
+   "pctOfRealEditSec": 0.8,
+   "imports": 47
+  },
+  {
+   "path": "packages/cezar/src/core/harness-parity.testkit.ts",
+   "barrel": false,
+   "helper": true,
+   "testsHit": 380,
+   "pctOfPairSec": 7.5,
+   "pctOfRealEditSec": 8.7,
+   "imports": 16
+  },
+  {
+   "path": "packages/cezar/src/core/runner-factory.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 690,
+   "pctOfPairSec": 7.1,
+   "pctOfRealEditSec": 4.6,
+   "imports": 6
+  },
+  {
+   "path": "packages/cezar/src/workflows/fixture-cleanup.testkit.ts",
+   "barrel": false,
+   "helper": true,
+   "testsHit": 171,
+   "pctOfPairSec": 5.8,
+   "pctOfRealEditSec": 3,
+   "imports": 3
+  },
+  {
+   "path": "packages/cezar/src/runs/store.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 771,
+   "pctOfPairSec": 5.6,
+   "pctOfRealEditSec": 1.2,
+   "imports": 49
+  },
+  {
+   "path": "packages/cezar/src/workflows/worker-wait.testkit.ts",
+   "barrel": false,
+   "helper": true,
+   "testsHit": 127,
+   "pctOfPairSec": 5.1,
+   "pctOfRealEditSec": 5.6,
+   "imports": 17
+  },
+  {
+   "path": "packages/cezar/src/delegation/service.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 579,
+   "pctOfPairSec": 2.4,
+   "pctOfRealEditSec": 0,
+   "imports": 22
+  },
+  {
+   "path": "packages/cezar/src/workflows/run/launch-context.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 682,
+   "pctOfPairSec": 2.2,
+   "pctOfRealEditSec": 0.7,
+   "imports": 12
+  },
+  {
+   "path": "packages/cezar/src/delegation/provision.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 392,
+   "pctOfPairSec": 1.2,
+   "pctOfRealEditSec": 2.9,
+   "imports": 8
+  },
+  {
+   "path": "packages/cezar/src/workflows/run/step-loop.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 684,
+   "pctOfPairSec": 0.4,
+   "pctOfRealEditSec": 0,
+   "imports": 16
+  },
+  {
+   "path": "packages/cezar/src/workflows/run/input-delivery.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 697,
+   "pctOfPairSec": 0.4,
+   "pctOfRealEditSec": 0,
+   "imports": 18
+  },
+  {
+   "path": "packages/cezar/src/workflows/run/turn-bookkeeping.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 682,
+   "pctOfPairSec": 0.4,
+   "pctOfRealEditSec": 0,
+   "imports": 5
+  },
+  {
+   "path": "packages/cezar/src/workflows/run/worker-questions.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 682,
+   "pctOfPairSec": 0.4,
+   "pctOfRealEditSec": 0,
+   "imports": 9
+  },
+  {
+   "path": "packages/cezar/src/workflows/active-run.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 697,
+   "pctOfPairSec": 0.2,
+   "pctOfRealEditSec": 0,
+   "imports": 8
+  },
+  {
+   "path": "packages/cezar/src/workflows/run/run-settlement.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 684,
+   "pctOfPairSec": 0.2,
+   "pctOfRealEditSec": 0,
+   "imports": 15
+  },
+  {
+   "path": "packages/cezar/src/workflows/waits-parity.testkit.ts",
+   "barrel": false,
+   "helper": true,
+   "testsHit": 230,
+   "pctOfPairSec": 0.2,
+   "pctOfRealEditSec": 0,
+   "imports": 3
+  },
+  {
+   "path": "packages/cezar/src/workflows/run/completion-gate.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 685,
+   "pctOfPairSec": 0.2,
+   "pctOfRealEditSec": 0,
+   "imports": 5
+  },
+  {
+   "path": "packages/cezar/src/runs/auto-name.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 537,
+   "pctOfPairSec": 0.2,
+   "pctOfRealEditSec": 0,
+   "imports": 5
+  },
+  {
+   "path": "packages/cezar/src/workflows/run/family-reconciler.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 682,
+   "pctOfPairSec": 0.2,
+   "pctOfRealEditSec": 0,
+   "imports": 8
+  },
+  {
+   "path": "packages/cezar/src/workflows/run/session-events.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 536,
+   "pctOfPairSec": 0.2,
+   "pctOfRealEditSec": 0,
+   "imports": 17
+  },
+  {
+   "path": "packages/cezar/src/core/owned-input-delivery.testkit.ts",
+   "barrel": false,
+   "helper": true,
+   "testsHit": 120,
+   "pctOfPairSec": 0.1,
+   "pctOfRealEditSec": 0,
+   "imports": 2
+  },
+  {
+   "path": "packages/cezar/src/workflows/run/continuation-session.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 1,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 21
+  },
+  {
+   "path": "packages/cezar/src/workflows/run/step-session.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 0,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 14
+  },
+  {
+   "path": "packages/cezar/src/workflows/run/wake-admission.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 1,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 14
+  },
+  {
+   "path": "packages/cezar/src/workflows/run/launch-settings.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 3,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 2
+  },
+  {
+   "path": "packages/cezar/src/workflows/run/run-finish.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 0,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 9
+  },
+  {
+   "path": "packages/cezar/src/workflows/run/turn-settler.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 0,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 11
+  },
+  {
+   "path": "packages/cezar/src/workflows/run/wait-registry.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 15,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 15
+  },
+  {
+   "path": "packages/cezar/src/workflows/run/turn-nudges.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 0,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 7
+  },
+  {
+   "path": "packages/cezar/src/planner.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 4,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 5
+  },
+  {
+   "path": "packages/cezar/src/workflows/monitoring-turn.testkit.ts",
+   "barrel": false,
+   "helper": true,
+   "testsHit": 0,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 1
+  },
+  {
+   "path": "packages/cezar/src/workflows/completion-policy.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 1,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 4
+  },
+  {
+   "path": "packages/cezar/src/workflows/wait-scope.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 1,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 5
+  },
+  {
+   "path": "packages/cezar/src/workflows/question-routing.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 0,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 2
+  },
+  {
+   "path": "packages/cezar/src/delegation/conversations.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 22,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 5
+  },
+  {
+   "path": "packages/cezar/src/delegation/task-discovery.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 0,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 4
+  },
+  {
+   "path": "packages/cezar/src/delegation/conversation-send.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 0,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 4
+  },
+  {
+   "path": "packages/cezar/src/runs/run-store.testkit.ts",
+   "barrel": false,
+   "helper": true,
+   "testsHit": 5,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 4
+  },
+  {
+   "path": "packages/cezar/src/workflows/run/run-workspace.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 106,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0.1,
+   "imports": 4
+  }
+ ],
+ "setupKinds": {
+  "server": {
+   "pctOfPairSec": 2.8,
+   "pctOfRealEditSec": 7
+  },
+  "web": {
+   "pctOfPairSec": 0.3,
+   "pctOfRealEditSec": 1.1
+  },
+  "api-client": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0
+  },
+  "contract": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0
+  }
+ },
+ "declaredKinds": {
+  ".github/scripts/*.test.cjs": {
+   "pctOfPairSec": 1.4,
+   "pctOfRealEditSec": 0.7
+  },
+  "packages/cezar/src/lint/lint-runner.test.ts": {
+   "pctOfPairSec": 0.8,
+   "pctOfRealEditSec": 0.4
+  },
+  "packages/cezar/src/lint/lint-ast-grep-1.test.ts": {
+   "pctOfPairSec": 0.3,
+   "pctOfRealEditSec": 0.2
+  },
+  "packages/cezar/src/lint/lint-ast-grep-2.test.ts": {
+   "pctOfPairSec": 0.2,
+   "pctOfRealEditSec": 0.1
+  },
+  ".github/scripts/change-surface-readers.test.cjs": {
+   "pctOfPairSec": 0.2,
+   "pctOfRealEditSec": 0.1
+  },
+  "packages/cezar/test/unit/test-env-launcher.test.ts": {
+   "pctOfPairSec": 0.1,
+   "pctOfRealEditSec": 0
+  },
+  "scripts/squeal-browser.test.mjs": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0
+  },
+  "scripts/test-changed.test.mjs": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0
+  },
+  ".ai/skills/check-code-quality/scripts/restart-wrapper.test.mjs": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0
+  },
+  "packages/cezar/test/unit/cursor-hang-stdin.test.ts": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0
+  },
+  "packages/cezar/test/unit/web-typecheck.test.ts": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0
+  },
+  ".github/scripts/agents-md-budget.test.cjs": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0
+  },
+  ".github/scripts/issue-template.test.cjs": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0
+  },
+  ".github/scripts/coderabbit.workflow.test.cjs": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0
+  },
+  ".github/scripts/issue-intake.workflow.test.cjs": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0
+  },
+  ".github/scripts/transcript-facts-responsiveness.workflow.test.cjs": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0
+  },
+  ".github/scripts/upstream-ledger.test.cjs": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0
+  },
+  ".github/scripts/vitest-actions-report.test.cjs": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0
+  },
+  ".github/scripts/ci.workflow.test.cjs": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0
+  },
+  ".github/scripts/e2e-runner.test.cjs": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0
+  },
+  "packages/cezar/src/ast-grep-rules.test.ts": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0
+  },
+  "packages/cezar/src/contract-subpaths.test.ts": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0
+  },
+  "packages/cezar/src/inline-contract-check.test.ts": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0
+  },
+  "packages/cezar/src/lint/plugin.test.ts": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0
+  },
+  "packages/cezar/src/lint/run-history-reader.test.ts": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0
+  },
+  "packages/cezar/src/contract-import-boundaries.test.ts": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0
+  },
+  "packages/cezar/src/pid-file.testkit.test.ts": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0
+  },
+  "packages/cezar/src/runs/history-readers.test.ts": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0
+  },
+  "packages/cezar/src/test-task-env.test.ts": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0
+  },
+  "packages/web/src/design-guardian.test.ts": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0
+  },
+  ".github/scripts/cockpit-test-sequencer.test.cjs": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0
+  }
+ }
+}

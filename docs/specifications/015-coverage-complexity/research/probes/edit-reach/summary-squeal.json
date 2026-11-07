@@ -1,0 +1,670 @@
+{
+ "repo": "/tmp/er015/squeal",
+ "head": "bc58ad12f",
+ "tests": 1504,
+ "durations": {
+  "fromReports": 1498,
+  "fromResults": 0,
+  "none": 6
+ },
+ "suite": {
+  "files": 1504,
+  "sec": 6695.665229046503,
+  "autoFiles": 1504,
+  "autoSec": 6695.665229046503
+ },
+ "editRevisions": 971,
+ "editedSources": 66,
+ "sourceFiles": {
+  "tracked": 2910,
+  "reached": 1557
+ },
+ "setup": {
+  "": [
+   "src/core/daemon/paths.ts",
+   "src/core/delivery/harness-process.ts",
+   "src/core/delivery/slots.ts",
+   "src/core/fs/compare.ts",
+   "src/core/fs/concurrency.ts",
+   "src/core/fs/errors.ts",
+   "src/core/fs/git-layout.ts",
+   "src/core/fs/git.ts",
+   "src/core/fs/index.ts",
+   "src/core/fs/json.ts",
+   "src/core/fs/paths.ts",
+   "src/core/types/common.ts",
+   "src/core/types/daemon.ts",
+   "src/core/types/delivery.ts",
+   "src/core/types/index.ts",
+   "src/core/types/policy.ts",
+   "src/core/types/runner.ts",
+   "src/core/types/scheduler.ts",
+   "src/core/types/state.ts",
+   "src/core/types/store-records.ts",
+   "src/core/types/store.ts",
+   "src/core/types/watcher.ts",
+   "test/daemon/strays.ts",
+   "test/global-teardown.ts",
+   "vitest.config.ts"
+  ]
+ },
+ "sharesEverySourceOnce": {
+  "direct": 0.9,
+  "transitive": 11,
+  "barrel": 41.1,
+  "helper": 16.2,
+  "typesModule": 0.2,
+  "setup": 0.9,
+  "declared": 5.9,
+  "typeImport": 2.4,
+  "childProcess": 1.7,
+  "observed": 19.6
+ },
+ "sharesByRealEdits": {
+  "direct": 0.8,
+  "transitive": 9.1,
+  "barrel": 45.6,
+  "helper": 11.6,
+  "typesModule": 0,
+  "setup": 0.7,
+  "declared": 5.1,
+  "typeImport": 2.7,
+  "childProcess": 2.5,
+  "observed": 22
+ },
+ "meanAutoSharePerSource": 16.4,
+ "meanAutoSharePerRealEdit": 27.5,
+ "coverage": {
+  "testFilesWithRecord": 1511,
+  "byKind": {
+   "barrel": {
+    "called": 394318.6308923399,
+    "loadedOnly": 853365.3480923064,
+    "loadedUnknown": 0,
+    "notLoaded": 20118.59322417534,
+    "noRecord": 49554.57277522452
+   },
+   "helper": {
+    "called": 239836.8731827253,
+    "loadedOnly": 261152.11548806046,
+    "loadedUnknown": 0,
+    "notLoaded": 9573.116292712608,
+    "noRecord": 9887.536813580993
+   },
+   "typesModule": {
+    "called": 0,
+    "loadedOnly": 5780.462682818499,
+    "loadedUnknown": 0,
+    "notLoaded": 0,
+    "noRecord": 480.8031693765
+   },
+   "direct": {
+    "called": 20570.40057039701,
+    "loadedOnly": 8040.108490600492,
+    "loadedUnknown": 0,
+    "notLoaded": 0,
+    "noRecord": 1380.9005626479993
+   },
+   "setup": {
+    "called": 0,
+    "loadedOnly": 0,
+    "loadedUnknown": 0,
+    "notLoaded": 28192.423257111837,
+    "noRecord": 1504.3625023774994
+   },
+   "observed": {
+    "called": 0,
+    "loadedOnly": 0,
+    "loadedUnknown": 0,
+    "notLoaded": 613946.8270276142,
+    "noRecord": 12947.502482703516
+   },
+   "transitive": {
+    "called": 105192.00900926707,
+    "loadedOnly": 198283.78549745685,
+    "loadedUnknown": 0,
+    "notLoaded": 49893.88729524912,
+    "noRecord": 30.983908801000013
+   },
+   "typeImport": {
+    "called": 0,
+    "loadedOnly": 0,
+    "loadedUnknown": 0,
+    "notLoaded": 76150.72397592888,
+    "noRecord": 0
+   },
+   "childProcess": {
+    "called": 0,
+    "loadedOnly": 0,
+    "loadedUnknown": 0,
+    "notLoaded": 52919.35714488519,
+    "noRecord": 0
+   },
+   "declared": {
+    "called": 0,
+    "loadedOnly": 0,
+    "loadedUnknown": 0,
+    "notLoaded": 189760.8346612003,
+    "noRecord": 0
+   }
+  },
+  "byKindRealEdits": {
+   "barrel": {
+    "called": 43358.00886616289,
+    "loadedOnly": 66095.33496032769,
+    "loadedUnknown": 0,
+    "notLoaded": 1783.7509277585004,
+    "noRecord": 5288.6946837495
+   },
+   "helper": {
+    "called": 11856.355318410511,
+    "loadedOnly": 14490.051529752034,
+    "loadedUnknown": 0,
+    "notLoaded": 557.528925146,
+    "noRecord": 2789.2491162979986
+   },
+   "typesModule": {
+    "called": 0,
+    "loadedOnly": 0,
+    "loadedUnknown": 0,
+    "notLoaded": 0,
+    "noRecord": 0
+   },
+   "direct": {
+    "called": 1126.9444183460002,
+    "loadedOnly": 350.14238510700005,
+    "loadedUnknown": 0,
+    "notLoaded": 0,
+    "noRecord": 528.4561896414999
+   },
+   "setup": {
+    "called": 0,
+    "loadedOnly": 0,
+    "loadedUnknown": 0,
+    "notLoaded": 1737.5975074060002,
+    "noRecord": 0
+   },
+   "observed": {
+    "called": 0,
+    "loadedOnly": 0,
+    "loadedUnknown": 0,
+    "notLoaded": 45072.25125197866,
+    "noRecord": 11049.180002730498
+   },
+   "transitive": {
+    "called": 5855.57610919499,
+    "loadedOnly": 15125.20057927403,
+    "loadedUnknown": 0,
+    "notLoaded": 2237.9244505135,
+    "noRecord": 23.834759808999998
+   },
+   "typeImport": {
+    "called": 0,
+    "loadedOnly": 0,
+    "loadedUnknown": 0,
+    "notLoaded": 6807.376230593991,
+    "noRecord": 0
+   },
+   "childProcess": {
+    "called": 0,
+    "loadedOnly": 0,
+    "loadedUnknown": 0,
+    "notLoaded": 6319.023398806998,
+    "noRecord": 0
+   },
+   "declared": {
+    "called": 0,
+    "loadedOnly": 0,
+    "loadedUnknown": 0,
+    "notLoaded": 13065.98428138884,
+    "noRecord": 0
+   }
+  }
+ },
+ "cuts": [
+  {
+   "path": "test/scheduler/helpers.ts",
+   "barrel": false,
+   "helper": true,
+   "testsHit": 153,
+   "pctOfPairSec": 16.4,
+   "pctOfRealEditSec": 14,
+   "imports": 23
+  },
+  {
+   "path": "src/core/delivery/index.ts",
+   "barrel": true,
+   "helper": false,
+   "testsHit": 611,
+   "pctOfPairSec": 5.8,
+   "pctOfRealEditSec": 2.8,
+   "imports": 11
+  },
+  {
+   "path": "src/core/scheduler/index.ts",
+   "barrel": true,
+   "helper": false,
+   "testsHit": 389,
+   "pctOfPairSec": 4.1,
+   "pctOfRealEditSec": 7.1,
+   "imports": 4
+  },
+  {
+   "path": "src/core/state/index.ts",
+   "barrel": true,
+   "helper": false,
+   "testsHit": 890,
+   "pctOfPairSec": 3.2,
+   "pctOfRealEditSec": 11.5,
+   "imports": 20
+  },
+  {
+   "path": "src/core/scheduler/scheduler.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 389,
+   "pctOfPairSec": 3,
+   "pctOfRealEditSec": 3.3,
+   "imports": 48
+  },
+  {
+   "path": "src/core/status/index.ts",
+   "barrel": true,
+   "helper": false,
+   "testsHit": 417,
+   "pctOfPairSec": 2.8,
+   "pctOfRealEditSec": 1,
+   "imports": 13
+  },
+  {
+   "path": "src/core/scheduler/tiers.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 690,
+   "pctOfPairSec": 2.7,
+   "pctOfRealEditSec": 1.8,
+   "imports": 16
+  },
+  {
+   "path": "src/core/scheduler/record-tier.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 690,
+   "pctOfPairSec": 1.2,
+   "pctOfRealEditSec": 0,
+   "imports": 13
+  },
+  {
+   "path": "src/core/delivery/delivery.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 611,
+   "pctOfPairSec": 1.1,
+   "pctOfRealEditSec": 0,
+   "imports": 30
+  },
+  {
+   "path": "src/core/scheduler/slow-tier.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 429,
+   "pctOfPairSec": 1.1,
+   "pctOfRealEditSec": 0.7,
+   "imports": 13
+  },
+  {
+   "path": "src/core/scheduler/ledger.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 697,
+   "pctOfPairSec": 0.7,
+   "pctOfRealEditSec": 0,
+   "imports": 21
+  },
+  {
+   "path": "src/core/delivery/liveness.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 138,
+   "pctOfPairSec": 0.4,
+   "pctOfRealEditSec": 0.4,
+   "imports": 7
+  },
+  {
+   "path": "src/core/scheduler/yields.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 643,
+   "pctOfPairSec": 0.3,
+   "pctOfRealEditSec": 0,
+   "imports": 9
+  },
+  {
+   "path": "src/core/scheduler/environment-growth.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 293,
+   "pctOfPairSec": 0.3,
+   "pctOfRealEditSec": 0,
+   "imports": 4
+  },
+  {
+   "path": "src/core/delivery/format.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 614,
+   "pctOfPairSec": 0.2,
+   "pctOfRealEditSec": 0,
+   "imports": 17
+  },
+  {
+   "path": "src/core/scheduler/install.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 396,
+   "pctOfPairSec": 0.2,
+   "pctOfRealEditSec": 0,
+   "imports": 8
+  },
+  {
+   "path": "src/core/scheduler/record.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 389,
+   "pctOfPairSec": 0.2,
+   "pctOfRealEditSec": 0,
+   "imports": 12
+  },
+  {
+   "path": "src/core/status/snapshot.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 412,
+   "pctOfPairSec": 0.2,
+   "pctOfRealEditSec": 0,
+   "imports": 28
+  },
+  {
+   "path": "src/core/scheduler/retries.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 184,
+   "pctOfPairSec": 0.1,
+   "pctOfRealEditSec": 0.4,
+   "imports": 4
+  },
+  {
+   "path": "src/core/scheduler/bootstrap.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 389,
+   "pctOfPairSec": 0.1,
+   "pctOfRealEditSec": 0,
+   "imports": 17
+  },
+  {
+   "path": "src/core/scheduler/runner-work.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 389,
+   "pctOfPairSec": 0.1,
+   "pctOfRealEditSec": 0,
+   "imports": 3
+  },
+  {
+   "path": "src/core/scheduler/interrupted.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 1,
+   "pctOfPairSec": 0.1,
+   "pctOfRealEditSec": 0.1,
+   "imports": 3
+  },
+  {
+   "path": "src/core/status/format-why.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 418,
+   "pctOfPairSec": 0.1,
+   "pctOfRealEditSec": 0,
+   "imports": 13
+  },
+  {
+   "path": "src/core/scheduler/focused.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 51,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 5
+  },
+  {
+   "path": "src/core/scheduler/backlog.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 0,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 1
+  },
+  {
+   "path": "src/core/scheduler/quiet.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 0,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 4
+  },
+  {
+   "path": "src/core/scheduler/slots.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 1,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 4
+  },
+  {
+   "path": "src/core/scheduler/promoted-tier.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 1,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 3
+  },
+  {
+   "path": "src/core/scheduler/revision.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 197,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 8
+  },
+  {
+   "path": "src/core/scheduler/install-stamp.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 0,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 6
+  },
+  {
+   "path": "src/core/scheduler/batch.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 7,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 7
+  },
+  {
+   "path": "src/core/delivery/code-since.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 2,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 3
+  },
+  {
+   "path": "src/core/scheduler/refinement.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 0,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 9
+  },
+  {
+   "path": "src/core/scheduler/focused-record.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 0,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 4
+  },
+  {
+   "path": "src/core/scheduler/beside.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 0,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 1
+  },
+  {
+   "path": "src/core/scheduler/handover.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 0,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 2
+  },
+  {
+   "path": "src/core/scheduler/runner-work-bound.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 0,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 1
+  },
+  {
+   "path": "src/core/scheduler/claims.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 0,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 3
+  },
+  {
+   "path": "src/core/status/failures.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 0,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 10
+  },
+  {
+   "path": "src/core/status/format-why-replaced.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 0,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 3
+  }
+ ],
+ "setupKinds": {
+  "": {
+   "pctOfPairSec": 0.9,
+   "pctOfRealEditSec": 0.7
+  }
+ },
+ "declaredKinds": {
+  "test/harness/codex/**/*.test.ts": {
+   "pctOfPairSec": 2.2,
+   "pctOfRealEditSec": 2.7
+  },
+  "test/harness/opencode/**/*.test.ts": {
+   "pctOfPairSec": 1.8,
+   "pctOfRealEditSec": 1.7
+  },
+  "test/harness/pi/**/*.test.ts": {
+   "pctOfPairSec": 0.8,
+   "pctOfRealEditSec": 1
+  },
+  "test/runners/pytest/**/*.test.ts": {
+   "pctOfPairSec": 0.6,
+   "pctOfRealEditSec": 0
+  },
+  "test/runners/vitest/**/*.test.ts": {
+   "pctOfPairSec": 0.5,
+   "pctOfRealEditSec": 0
+  },
+  "test/lint/integration/**/*.test.ts": {
+   "pctOfPairSec": 0.4,
+   "pctOfRealEditSec": 0
+  },
+  "test/lint/provider/**/*.test.ts": {
+   "pctOfPairSec": 0.3,
+   "pctOfRealEditSec": 0.1
+  },
+  "test/runners/node-test/**/*.test.ts": {
+   "pctOfPairSec": 0.2,
+   "pctOfRealEditSec": 0
+  },
+  "test/integration/node-test.test.ts": {
+   "pctOfPairSec": 0.2,
+   "pctOfRealEditSec": 0.2
+  },
+  "test/kit/node-test.test.ts": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0
+  },
+  "test/kit/pytest.test.ts": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0
+  },
+  "test/kit/vitest.test.ts": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0
+  },
+  "test/lint/surface/keyed-eslint.test.ts": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0
+  },
+  "test/policy/repository-inputs.test.ts": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0
+  },
+  "test/runners/node-test/graph-memory.test.ts": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0
+  },
+  "test/plugins/codex/**/*.test.ts": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0
+  },
+  "test/runners/node-test/graph-bundle.test.ts": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0
+  },
+  "test/harness/plugin.test.ts": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0.1
+  },
+  "test/lint/cli/changed-eslint.test.ts": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0
+  }
+ }
+}
