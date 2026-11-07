@@ -12,7 +12,7 @@ import {
   catchUpRepo,
   catchUpSide,
 } from "./catch-up-fixture.js";
-import { SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
 import { ignoring, type Observing, observing } from "./one-write-path-fixture.js";
 
 /*

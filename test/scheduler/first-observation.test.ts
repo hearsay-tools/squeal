@@ -4,14 +4,9 @@ import { describe, expect, it } from "vitest";
 import { formatStatus, readStatus } from "../../src/core/status/index.js";
 import type { TestFileRef } from "../../src/core/types/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import {
-  addWorktree,
-  createRepo,
-  type Harness,
-  openHarness,
-  openRepoStore,
-  SLOW,
-} from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { addWorktree, createRepo, openRepoStore } from "./repo.js";
+import { type Harness, openHarness } from "./vitest-harness.js";
 
 /*
  * Task 001-134 (review wave 12d, B1; spec 001 D3, D5 as amended): a path a

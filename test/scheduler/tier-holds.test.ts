@@ -8,7 +8,9 @@ import { CAPACITY_RECHECK_MS } from "../../src/core/scheduler/capacity.js";
 import { takePermit } from "../../src/core/slow/index.js";
 import type { RunOptions, TestFileRef } from "../../src/core/types/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { createRepo, openRepoStore } from "./repo.js";
+import { openHarness } from "./vitest-harness.js";
 
 /*
  * 011 C10 as amended 2026-10-21 (design 011-83 Q2 (a), row 011-97): a tier

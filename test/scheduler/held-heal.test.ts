@@ -6,7 +6,9 @@ import { afterEach, describe, expect, it } from "vitest";
 import type { CheckId } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { addWorktree, createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { addWorktree, createRepo, openRepoStore } from "./repo.js";
+import { openHarness } from "./vitest-harness.js";
 
 /*
  * Review wave 13i, B1 (task 001-187): a heal that cannot apply in a

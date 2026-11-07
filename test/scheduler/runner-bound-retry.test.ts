@@ -3,8 +3,10 @@ import type { DaemonSync, SyncState } from "../../src/cli/status-sync.js";
 import { waitForStatus } from "../../src/cli/status-wait.js";
 import type { RunnerEnvironment } from "../../src/core/types/index.js";
 import { type DaemonNote, notesMetaKey } from "../../src/core/types/index.js";
-import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { createRepo, openRepoStore } from "./repo.js";
 import { HARNESS_INCARNATION, liveDaemon } from "./store-wait.js";
+import { type Harness, openHarness } from "./vitest-harness.js";
 
 /*
  * Task 001-259 (`research/wait-from-store.md` question 3): 001-228 bounded a

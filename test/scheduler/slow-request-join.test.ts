@@ -7,7 +7,9 @@ import { testFileId } from "../../src/core/keys/index.js";
 import { DEFAULT_POLICY, type WorktreeId } from "../../src/core/types/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
-import { createRepo, openHarness, openRepoStore, ref, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { createRepo, openRepoStore, ref } from "./repo.js";
+import { openHarness } from "./vitest-harness.js";
 
 /*
  * Spec 004 D8 as amended 2026-10-19 (row 004-83): `squeal run --slow --wait`

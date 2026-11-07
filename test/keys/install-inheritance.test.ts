@@ -3,14 +3,9 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import {
-  ALL_TEST_FILES,
-  addWorktree,
-  createRepo,
-  openHarness,
-  openRepoStore,
-  SLOW,
-} from "../scheduler/helpers.js";
+import { SLOW } from "../scheduler/cleanup.js";
+import { ALL_TEST_FILES, addWorktree, createRepo, openRepoStore } from "../scheduler/repo.js";
+import { openHarness } from "../scheduler/vitest-harness.js";
 import { type FixturePackage, writeInstall } from "./install.js";
 
 // Task 001-105, lessons defect 20 through a real bootstrap: a second worktree whose install differs

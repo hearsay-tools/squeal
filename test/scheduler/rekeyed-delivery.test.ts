@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { testFileId } from "../../src/core/keys/index.js";
 import { readRekeyed } from "../../src/core/scheduler/rekeyed-record.js";
-import { createRepo, openHarness, openRepoStore, ref, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { createRepo, openRepoStore, ref } from "./repo.js";
 import { liveDaemon, movesOnceRefined } from "./store-wait.js";
+import { openHarness } from "./vitest-harness.js";
 
 /*
  * Review wave 13u, B1 (task 001-238): a delivery's edit notes (tasks 001-223

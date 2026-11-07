@@ -7,8 +7,9 @@ import { cancelled as cancelText } from "../../src/runners/vitest/run.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
 import { completions, suite } from "./backlog-suite.js";
-import { type Harness, openHarness, openRepoStore } from "./helpers.js";
+import { openRepoStore } from "./repo.js";
 import { pause, SETTLE_MS } from "./tier-yields-fixture.js";
+import { type Harness, openHarness } from "./vitest-harness.js";
 
 /*
  * Task 001-364 (005-agent-adoption `lessons.md`, proposed row 1): a build

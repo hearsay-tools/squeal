@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { waitFor } from "../watcher/helpers.js";
+import { SLOW } from "./cleanup.js";
 import {
   A,
   doneOf,
@@ -10,7 +11,6 @@ import {
   listing,
   phaseOf,
 } from "./forced-requeue-fixture.js";
-import { SLOW } from "./helpers.js";
 
 /*
  * Row 011-120, found while making a `run --all --force` keep its file forced

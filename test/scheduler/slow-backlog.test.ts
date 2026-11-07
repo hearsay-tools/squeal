@@ -7,14 +7,9 @@ import { readSlowActivity } from "../../src/core/slow/state.js";
 import { DEFAULT_POLICY, type RunOptions, type TestFileRef } from "../../src/core/types/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
-import {
-  createRepo,
-  type Harness,
-  type HarnessOptions,
-  openHarness,
-  openRepoStore,
-  SLOW,
-} from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { createRepo, openRepoStore } from "./repo.js";
+import { type Harness, type HarnessOptions, openHarness } from "./vitest-harness.js";
 
 /*
  * Spec 004 D2 as amended 2026-10-14 (task 004-60, from a cezar warm-up whose

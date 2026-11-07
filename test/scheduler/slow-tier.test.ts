@@ -15,16 +15,9 @@ import {
 } from "../../src/core/types/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
-import {
-  addWorktree,
-  createRepo,
-  type Harness,
-  type HarnessOptions,
-  openHarness,
-  openRepoStore,
-  ref,
-  SLOW,
-} from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { addWorktree, createRepo, openRepoStore, ref } from "./repo.js";
+import { type Harness, type HarnessOptions, openHarness } from "./vitest-harness.js";
 
 /*
  * Spec 004 D2 to D6 with the scheduler over real Vitest runs: slow files form

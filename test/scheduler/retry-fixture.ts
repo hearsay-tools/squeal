@@ -7,7 +7,8 @@ import { askRetry, type HostLoad, type RetryReason } from "../../src/core/retry/
 import type { CheckId, Store } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { createRepo, type Harness, type HarnessOptions } from "./helpers.js";
+import { createRepo } from "./repo.js";
+import type { Harness, HarnessOptions } from "./vitest-harness.js";
 
 /*
  * Spec 001 D6 as amended (001-348, scope 001-368): the agent asks Squeal to

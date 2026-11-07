@@ -9,7 +9,9 @@ import { checkIdentity, readFlakyNotes } from "../../src/core/state/index.js";
 import type { CheckId } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { createRepo, type HarnessOptions, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { createRepo, openRepoStore } from "./repo.js";
+import { type HarnessOptions, openHarness } from "./vitest-harness.js";
 
 /*
  * Spec 001 D6 as amended (task 001-171, decided by the human 2026-10-09): a

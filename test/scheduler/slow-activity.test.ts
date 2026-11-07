@@ -12,14 +12,9 @@ import {
 } from "../../src/core/types/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
-import {
-  createRepo,
-  type Harness,
-  type HarnessOptions,
-  openHarness,
-  openRepoStore,
-  SLOW,
-} from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { createRepo, openRepoStore } from "./repo.js";
+import { type Harness, type HarnessOptions, openHarness } from "./vitest-harness.js";
 
 /*
  * Spec 004 D8: the slow tier publishes why its pending slow files wait, and

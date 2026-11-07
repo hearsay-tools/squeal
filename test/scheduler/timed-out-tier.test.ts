@@ -6,7 +6,9 @@ import { testFileId } from "../../src/core/keys/index.js";
 import { readUnknownFiles } from "../../src/core/scheduler/unknown-files.js";
 import type { TestCheckId } from "../../src/core/types/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { createRepo, openHarness, openRepoStore, type RecordedRun } from "./helpers.js";
+import type { RecordedRun } from "./recording-runner.js";
+import { createRepo, openRepoStore } from "./repo.js";
+import { openHarness } from "./vitest-harness.js";
 
 /*
  * 004 lessons, defect 13 (task 001-179): a 200-file backlog tier that reached

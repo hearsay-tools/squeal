@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { DEFAULT_POLICY, type Policy } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { ALL_TEST_FILES, createRepo } from "./helpers.js";
+import { ALL_TEST_FILES, createRepo } from "./repo.js";
 
 export const DATA = ".runtime/descriptor.json";
 export const A = "test/a.test.ts";

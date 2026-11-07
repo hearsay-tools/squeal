@@ -22,7 +22,7 @@ import {
 import { createNodeTestAdapter } from "../../src/runners/node-test/adapter.js";
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { createRepo, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
 import {
   CONTROL_TEST,
   HIDDEN_TEST,
@@ -34,6 +34,7 @@ import {
   twoWorktrees,
 } from "./preload-worktrees.js";
 import { RecordingSink } from "./recording-sink.js";
+import { createRepo, openRepoStore } from "./repo.js";
 import { HARNESS_INCARNATION, liveDaemon } from "./store-wait.js";
 
 /*

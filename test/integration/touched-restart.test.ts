@@ -1,7 +1,9 @@
 import { cpSync, existsSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { openHarness, openRepoStore, SLOW } from "../scheduler/helpers.js";
+import { SLOW } from "../scheduler/cleanup.js";
+import { openRepoStore } from "../scheduler/repo.js";
+import { openHarness } from "../scheduler/vitest-harness.js";
 import { createRepo, freshOutcomes, NEW, OLD, stored } from "./stamps-repo.js";
 import { OPTIMIZED, optimizeNow, warmOn } from "./touched-repo.js";
 

@@ -4,7 +4,9 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { describe, expect, it, vi } from "vitest";
 import { readDaemonNotes } from "../../src/core/notes.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { type Harness, openHarness, openRepoStore, SLOW } from "../scheduler/helpers.js";
+import { SLOW } from "../scheduler/cleanup.js";
+import { openRepoStore } from "../scheduler/repo.js";
+import { type Harness, openHarness } from "../scheduler/vitest-harness.js";
 import {
   BASE,
   createRepo,

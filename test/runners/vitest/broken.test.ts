@@ -9,13 +9,8 @@ import { createVitestAdapter } from "../../../src/runners/vitest/index.js";
 import { loadVitest, type VitestNode } from "../../../src/runners/vitest/load.js";
 import { WorktreePaths } from "../../../src/runners/vitest/paths.js";
 import { RUN_MISSING } from "../../helpers/baseline.js";
-import {
-  ALL_TEST_FILES,
-  addWorktree,
-  createRepo,
-  openHarness,
-  openRepoStore,
-} from "../../scheduler/helpers.js";
+import { ALL_TEST_FILES, addWorktree, createRepo, openRepoStore } from "../../scheduler/repo.js";
+import { openHarness } from "../../scheduler/vitest-harness.js";
 import { openFixture, ref, SLOW } from "./helpers.js";
 
 /*

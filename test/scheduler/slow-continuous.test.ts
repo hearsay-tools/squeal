@@ -9,7 +9,9 @@ import { readSlowActivity } from "../../src/core/slow/state.js";
 import { DEFAULT_POLICY, type SlowTrigger } from "../../src/core/types/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
-import { createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { createRepo, openRepoStore } from "./repo.js";
+import { openHarness } from "./vitest-harness.js";
 
 /*
  * Spec 004 D2 trigger (a) as amended 2026-10-18 (004-79, row 004-80): under

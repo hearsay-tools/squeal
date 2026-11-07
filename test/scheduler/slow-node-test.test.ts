@@ -5,7 +5,10 @@ import { setTimeout as delay } from "node:timers/promises";
 import { afterAll, describe, expect, it, onTestFinished } from "vitest";
 import { DEFAULT_POLICY, type NodeTestProject } from "../../src/core/types/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { openHarness } from "./node-test-harness.js";
+import { createRepo, openRepoStore } from "./repo.js";
+import type { Harness } from "./vitest-harness.js";
 
 /*
  * Review wave 4, B2 (task 004-37): an idle slow tier of node:test files

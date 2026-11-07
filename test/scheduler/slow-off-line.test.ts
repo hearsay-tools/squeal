@@ -7,8 +7,10 @@ import { testFileId } from "../../src/core/keys/index.js";
 import { consumersIdle } from "../../src/core/scheduler/slow-tier.js";
 import { slowTierText } from "../../src/core/state/index.js";
 import { DEFAULT_POLICY, type Policy } from "../../src/core/types/index.js";
-import { createRepo, openHarness, openRepoStore, ref, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { createRepo, openRepoStore, ref } from "./repo.js";
 import { HARNESS_DAEMON } from "./store-wait.js";
+import { openHarness } from "./vitest-harness.js";
 
 /*
  * Review wave-13ax B1, task 001-323: the slow-tier line's off-line claims an

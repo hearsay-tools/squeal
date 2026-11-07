@@ -7,8 +7,10 @@ import {
 } from "../../src/core/scheduler/rekeyed-moves.js";
 import type { CheckKey, RevisionNumber, WorktreeId } from "../../src/core/types/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { createRepo, openRepoStore } from "./repo.js";
 import { HARNESS_INCARNATION, liveDaemon } from "./store-wait.js";
+import { openHarness } from "./vitest-harness.js";
 
 /*
  * Reviews wave 13ac and 13ad, B1 (tasks 001-265, 001-268): a daemon before

@@ -4,7 +4,8 @@ import { describe, expect, it } from "vitest";
 import { createNodeTestRunners } from "../../src/core/daemon/node-test-runners.js";
 import type { NodeTestProject, TestFileRef } from "../../src/core/types/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { createRepo, openHarness, openRepoStore } from "./helpers.js";
+import { createRepo, openRepoStore } from "./repo.js";
+import { openHarness } from "./vitest-harness.js";
 
 /*
  * Task 001-366, done-when 7 (`research/backlog-wall-budget.md`), as task

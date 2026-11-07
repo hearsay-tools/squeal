@@ -1,7 +1,9 @@
 import { describe, expect, it, onTestFinished } from "vitest";
 import { waitForStatus } from "../../src/cli/status-wait.js";
-import { createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { createRepo, openRepoStore } from "./repo.js";
 import { captureSync, liveDaemon } from "./store-wait.js";
+import { openHarness } from "./vitest-harness.js";
 
 /*
  * Task 001-194, from review 003-44 B1's note on 001-186: a wait whose sync

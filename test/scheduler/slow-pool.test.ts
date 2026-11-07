@@ -6,7 +6,9 @@ import { createPermitPool } from "../../src/core/capacity/index.js";
 import { DEFAULT_POLICY, type RunOptions } from "../../src/core/types/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
-import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { createRepo, openRepoStore } from "./repo.js";
+import { type Harness, openHarness } from "./vitest-harness.js";
 
 /*
  * Task 001-386 (review 001-384 S1, settled by the human): slow tiers, idle

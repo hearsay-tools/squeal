@@ -1,15 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
-import {
-  ALL_TEST_FILES,
-  addWorktree,
-  createRepo,
-  openHarness,
-  openRepoStore,
-  ref,
-  SLOW,
-} from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { ALL_TEST_FILES, addWorktree, createRepo, openRepoStore, ref } from "./repo.js";
+import { openHarness } from "./vitest-harness.js";
 
 describe("scheduler: baseline and run --all (D5, D7)", SLOW, () => {
   it("baseline looks every test file up, then runs the misses in tiers of one checkpoint", async () => {

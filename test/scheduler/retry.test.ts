@@ -3,7 +3,8 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { cancelRetries, readRetries, readRunLoads } from "../../src/core/retry/index.js";
 import { checkIdentity, readFlakyNotes } from "../../src/core/state/index.js";
-import { addWorktree, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { addWorktree, openRepoStore } from "./repo.js";
 import {
   ask,
   FLAKY,
@@ -15,6 +16,7 @@ import {
   pass,
   REF,
 } from "./retry-fixture.js";
+import { openHarness } from "./vitest-harness.js";
 
 /* Spec 001 D6 as amended (001-368): the scheduler's side of `squeal retry`. */
 

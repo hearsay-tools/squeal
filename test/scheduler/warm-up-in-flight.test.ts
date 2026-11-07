@@ -3,7 +3,8 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { readIgnoredReads } from "../../src/core/status/index.js";
 import type { CheckpointRecord, RunOptions, TestFileRef } from "../../src/core/types/index.js";
-import { type Harness, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import type { Harness } from "./vitest-harness.js";
 import { BUILD, QUIET, READS, snapshot, VITEST, warmUpRepo } from "./warm-up-repo.js";
 
 /*

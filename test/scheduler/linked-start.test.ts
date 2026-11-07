@@ -14,8 +14,9 @@ import {
 import { createWatcherBackend } from "../../src/core/watcher/index.js";
 import { createVitestAdapter } from "../../src/runners/vitest/index.js";
 import { waitFor } from "../watcher/helpers.js";
-import { createRepo, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
 import { RecordingSink } from "./recording-sink.js";
+import { createRepo, openRepoStore } from "./repo.js";
 
 /*
  * Task 001-166: git lists a symlinked directory, never the files under it, so
