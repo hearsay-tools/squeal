@@ -1,0 +1,126 @@
+Reach: what one edit of each file re-runs, of 1490 test files and 6176 s recorded.
+Edits: 580 from 2026-10-06 to 2026-11-07, every worktree's watch revisions in which HEAD did not move.
+169 test files have no import closure Squeal trusts at their current inputs, so their reach is not counted; their next runs store them.
+
+Files, by avoidable seconds per edit, then seconds re-run:
+  1. src/core/types/policy.ts
+     re-runs 87% of the suite: 1156 test files, 5401 s; no edits in the window
+     coverage: loaded only 84%, no record 16%, outside the test's process <1%; avoidable 4368 s
+     paths: barrel 96%, child process 4%, runtime read 1%
+     gateway: barrel through src/core/types/index.ts, for example test/capacity/cores.test.ts → src/core/capacity/cores.ts → src/core/ps/proc.ts → src/core/daemon/escaped.ts → src/core/daemon/low-priority.ts → src/core/types/index.ts → src/core/types/policy.ts
+     suggestion: import src/core/types/policy.ts from its own path in the files that use it, or split src/core/types/index.ts
+  2. src/core/fs/index.ts
+     re-runs 90% of the suite: 1249 test files, 5538 s; no edits in the window
+     coverage: loaded only 85%, no record 15%; avoidable 4241 s
+     paths: test helper 43%, transitive 28%, runtime read 13%, barrel 6%, direct 5%, child process 4%
+     gateway: test helper through test/scheduler/helpers.ts, for example test/code/pass/listing-failed.test.ts → test/scheduler/helpers.ts → src/core/fs/index.ts
+     suggestion: split test/scheduler/helpers.ts: 96 of the 99 test files that load src/core/fs/index.ts through it never call it
+  3. src/core/types/index.ts
+     re-runs 87% of the suite: 1155 test files, 5393 s; no edits in the window
+     coverage: loaded only 84%, no record 16%, outside the test's process <1%; avoidable 4087 s
+     paths: test helper 40%, transitive 23%, direct 16%, runtime read 14%, barrel 5%, child process 4%
+     gateway: test helper through test/scheduler/helpers.ts, for example test/integration/fingerprint-two-worktrees.test.ts → test/scheduler/helpers.ts → src/core/types/index.ts
+     suggestion: split test/scheduler/helpers.ts: 60 of the 61 test files that load src/core/types/index.ts through it never call it
+  4. src/core/types/state.ts
+     re-runs 87% of the suite: 1155 test files, 5393 s; no edits in the window
+     coverage: loaded only 84%, no record 16%, outside the test's process <1%; avoidable 4087 s
+     paths: barrel 83%, runtime read 14%, child process 4%
+     gateway: barrel through src/core/types/index.ts, for example test/capacity/cores.test.ts → src/core/capacity/cores.ts → src/core/ps/proc.ts → src/core/daemon/escaped.ts → src/core/daemon/low-priority.ts → src/core/types/index.ts → src/core/types/state.ts
+     suggestion: exports no runtime value: tests re-run because src/core/types/index.ts re-exports it with `export *`; `export type *` takes it out of their closure
+  5. src/core/keys/index.ts
+     re-runs 84% of the suite: 998 test files, 5202 s; 1 edit in the window re-ran 5202 s
+     coverage: loaded only 83%, no record 16%, outside the test's process <1%, not loaded <1%; avoidable 3935 s
+     paths: test helper 37%, transitive 20%, barrel 18%, runtime read 14%, direct 8%, child process 4%
+     gateway: test helper through test/scheduler/helpers.ts, for example test/code/pass/daemon-loop.test.ts → test/scheduler/helpers.ts → src/core/keys/index.ts
+     suggestion: split test/scheduler/helpers.ts: 113 of the 116 test files that load src/core/keys/index.ts through it never call it
+  6. 2 files in src/core/keys/ through src/core/keys/index.ts
+     re-runs 84% of the suite (each): 1005 test files, 5218 s; no edits in the window
+     coverage: loaded only 81%, no record 16%, called 3%, outside the test's process <1%, not loaded <1%; avoidable 3931 s
+     paths: barrel 80%, test helper 8%, runtime read 5%, child process 3%, transitive 3%, direct <1%
+     gateway: barrel through src/core/keys/index.ts, for example test/cli/codex-runtime.test.ts → src/cli/main.ts → src/cli/named-selection.ts → src/core/keys/index.ts → src/core/keys/environment.ts → src/core/keys/pnpm-lockfile.ts
+     second gateway: src/core/keys/environment.ts
+     suggestion: load these files only where they are used: src/core/keys/environment.ts imports 2 sibling modules, so each test file that loads src/core/keys/environment.ts loads them all; for example, a registry that each test fills
+     suggestion: import these files from their own paths in the files that use them, or split src/core/keys/index.ts
+  7. src/core/state/index.ts
+     re-runs 77% of the suite: 849 test files, 4740 s; no edits in the window
+     coverage: loaded only 83%, no record 17%, outside the test's process <1%; avoidable 3784 s
+     paths: barrel 40%, test helper 30%, transitive 21%, direct 4%, child process 4%, runtime read 1%
+     gateway: barrel through src/core/delivery/index.ts, for example test/code/delivery/catch-up.test.ts → src/core/delivery/index.ts → src/core/state/index.ts
+     suggestion: import src/core/state/index.ts from its own path in the files that use it, or split src/core/delivery/index.ts
+  8. src/core/slow/index.ts
+     re-runs 77% of the suite: 879 test files, 4753 s; 2 edits in the window re-ran 9506 s
+     coverage: loaded only 83%, no record 16%, outside the test's process <1%; avoidable 3704 s
+     paths: barrel 59%, transitive 20%, test helper 8%, direct 6%, child process 4%, runtime read 3%
+     gateway: barrel through src/core/scheduler/index.ts, for example test/code/pass/daemon-loop.test.ts → src/core/daemon-loop/index.ts → src/core/scheduler/index.ts → src/core/scheduler/scheduler.ts → src/core/scheduler/pool-wait.ts → src/core/slow/index.ts
+     suggestion: import src/core/slow/index.ts from its own path in the files that use it, or split src/core/scheduler/index.ts
+  9. src/core/store/index.ts
+     re-runs 81% of the suite: 1001 test files, 4989 s; 1 edit in the window re-ran 4989 s
+     coverage: loaded only 83%, no record 17%, outside the test's process <1%; avoidable 3689 s
+     paths: test helper 51%, runtime read 15%, transitive 13%, barrel 11%, direct 6%, child process 4%
+     gateway: test helper through test/scheduler/helpers.ts, for example test/code/pass/listing-failed.test.ts → test/scheduler/helpers.ts → src/core/store/index.ts
+     suggestion: split test/scheduler/helpers.ts: 123 of the 126 test files that load src/core/store/index.ts through it never call it
+  10. src/core/hash/index.ts
+     re-runs 81% of the suite: 931 test files, 5025 s; no edits in the window
+     coverage: loaded only 81%, no record 17%, outside the test's process 2%; avoidable 3641 s
+     paths: test helper 56%, runtime read 17%, barrel 11%, transitive 9%, child process 4%, direct 3%
+     gateway: test helper through test/scheduler/helpers.ts, for example test/harness/stop-slow-scheduler.test.ts → test/scheduler/helpers.ts → src/core/hash/index.ts
+     suggestion: split test/scheduler/helpers.ts: 133 of the 136 test files that load src/core/hash/index.ts through it never call it
+  … and 2232 more; --limit lists more.
+
+Files, by seconds re-run over the window's edits:
+  1. 17 files in src/ (runtime read): 150 edits re-ran 142963 s, 953 s each file; avoidable 0 s; rank 602 above
+     note: these tests start the program from source; Squeal re-runs them by design
+  2. package.json: 36 edits re-ran 133891 s, 3719 s each; avoidable 0 s; rank 581 above
+     note: these tests start the program from source; Squeal re-runs them by design
+  3. 9 files in src/core/scheduler/ through src/core/scheduler/index.ts: 21 edits re-ran 80313 s, 3824 s each file; avoidable 449 s; rank 327 above
+     suggestion: import these files from their own paths in the files that use them, or split src/core/scheduler/index.ts
+  4. 5 files in src/core/scheduler/ through src/core/status/index.ts: 12 edits re-ran 54027 s, 4502 s each file; avoidable 1140 s; rank 187 above
+     suggestion: import these files from their own paths in the files that use them, or split src/core/status/index.ts
+  5. 17 files in src/core/state/ through src/core/state/index.ts: 10 edits re-ran 47398 s, 4740 s each file; avoidable 2264 s; rank 102 above
+     suggestion: import these files from their own paths in the files that use them, or split src/core/state/index.ts
+  6. 10 files in src/runners/node-test/graph/ through test/scheduler/helpers.ts: 14 edits re-ran 46399 s, 3314 s each file; avoidable 1860 s; rank 137 above
+     suggestion: split test/scheduler/helpers.ts: 139 of the 141 test files that load these files through it never call it
+  7. 8 files in src/core/types/ through src/core/types/index.ts: 7 edits re-ran 37748 s, 5393 s each file; avoidable 3107 s; rank 35 above
+     suggestion: import these files from their own paths in the files that use them, or split src/core/types/index.ts
+  8. src/runners/vitest/graph.ts: 6 edits re-ran 20703 s, 3450 s each; avoidable 375 s; rank 367 above
+  9. 2 files in src/runners/vitest/ through src/runners/vitest/index.ts: 6 edits re-ran 20701 s, 3450 s each file; avoidable 580 s; rank 292 above
+  10. 3 files in src/runners/node-test/run/ through test/scheduler/helpers.ts: 6 edits re-ran 19896 s, 3316 s each file; avoidable 1878 s; rank 134 above
+     suggestion: split test/scheduler/helpers.ts: 136 of the 141 test files that load these files through it never call it
+  … and 269 more; --limit lists more.
+
+Test files, by avoidable pair-seconds (seconds times the source files they load on import paths and never call), then seconds re-run:
+  1. test/scheduler/timed-out-tier.test.ts, 126 s
+     loads 472 source files on import paths, calls 198; 91 edits in the window re-ran it
+     most uncalled files come through test/scheduler/helpers.ts (256)
+  2. test/lint/integration/injection.test.ts, 99 s
+     loads 292 source files on import paths, calls 23; 32 edits in the window re-ran it
+     most uncalled files come through test/lint/integration/helpers.ts (171)
+  3. test/keys/validity/compare.test.ts, 69 s
+     loads 372 source files on import paths, calls 39; 83 edits in the window re-ran it
+     most uncalled files come through test/keys/validity/driver.ts (265)
+  4. test/scheduler/backlog-slots-overhead.test.ts, 86 s
+     loads 474 source files on import paths, calls 220; 91 edits in the window re-ran it
+     most uncalled files come through test/scheduler/slots-fixture.ts (254)
+  5. test/scheduler/backlog-tiers.test.ts, 80 s
+     loads 472 source files on import paths, calls 202; 91 edits in the window re-ran it
+     most uncalled files come through test/scheduler/helpers.ts (262)
+  6. test/lint/cli/bundled.test.ts, 28 s
+     loads 779 source files on import paths, calls 136; 151 edits in the window re-ran it
+     most uncalled files come through test/lint/wiring/rig.ts (512)
+  7. test/keys/validity/pytest.test.ts, 34 s
+     loads 381 source files on import paths, calls 39; 78 edits in the window re-ran it
+     most uncalled files come through test/keys/validity/driver.ts (274)
+  8. test/keys/validity/adapters.test.ts, 31 s
+     loads 381 source files on import paths, calls 38; 78 edits in the window re-ran it
+     most uncalled files come through test/keys/validity/driver.ts (274)
+  9. test/lint/cli/same-revision.test.ts, 16 s
+     loads 779 source files on import paths, calls 135; 105 edits in the window re-ran it
+     most uncalled files come through test/lint/cli/same-revision-rig.ts (644)
+  10. test/cli/status-wait.test.ts, 16 s
+     loads 766 source files on import paths, calls 141; 105 edits in the window re-ran it
+     most uncalled files come through src/cli/main.ts (530)
+  … and 1307 more; --limit lists more.
+
+20 test files have no coverage record at the current inputs, 14% of the suite's seconds, so their pairs read no record.
+9 test files have no result at the current inputs: `squeal retry test/daemon/departure.test.ts test/daemon/drain-checkpoint.test.ts test/daemon/drain-wait.test.ts test/daemon/drain.test.ts test/daemon/restart-handover-signal.test.ts test/daemon/stop-cancel.test.ts test/evals/eval-root.test.ts test/kit/vitest.test.ts test/scheduler/environment-growth-wait.test.ts` runs each once.
+11 test files have a result and no record: test/cli/warmup.test.ts, test/daemon/busy-store.test.ts, test/daemon/lifecycle.test.ts, test/harness/opencode-hooks.test.ts, test/integration/setup-missing-import.test.ts, test/kit/pytest.test.ts, test/lint/oxlint/pass-replay.test.ts, test/scheduler/edit-beside-backlog.test.ts, test/scheduler/focused-vitest.test.ts, test/scheduler/ordering.test.ts and 1 more (--json lists every one). Squeal re-runs a current result only in a forced checkpoint, squeal run --all --force, which re-runs every test file, about one run of the whole suite.

@@ -1,0 +1,3669 @@
+{
+ "v": 1,
+ "history": true,
+ "suite": {
+  "testFiles": 1490,
+  "seconds": 6175.620901058007,
+  "withoutSeconds": 0,
+  "withoutClosure": 0,
+  "leftOut": 0
+ },
+ "window": {
+  "from": 1791320718043,
+  "to": 1794091540914,
+  "edits": 580
+ },
+ "coverage": "on",
+ "edges": true,
+ "notRecorded": 0,
+ "moreFiles": 0,
+ "moreByEdits": 0,
+ "moreTestFiles": 0,
+ "proposals": [
+  {
+   "kind": "records",
+   "command": "squeal run --all --force",
+   "retry": "squeal retry",
+   "testFiles": 20,
+   "share": 0.142458987109503,
+   "current": [
+    "test/cli/warmup.test.ts",
+    "test/daemon/busy-store.test.ts",
+    "test/daemon/lifecycle.test.ts",
+    "test/harness/opencode-hooks.test.ts",
+    "test/integration/setup-missing-import.test.ts",
+    "test/kit/pytest.test.ts",
+    "test/lint/oxlint/pass-replay.test.ts",
+    "test/scheduler/edit-beside-backlog.test.ts",
+    "test/scheduler/focused-vitest.test.ts",
+    "test/scheduler/ordering.test.ts",
+    "test/scheduler/tier-yields.test.ts"
+   ],
+   "noResult": [
+    "test/daemon/departure.test.ts",
+    "test/daemon/drain-checkpoint.test.ts",
+    "test/daemon/drain-wait.test.ts",
+    "test/daemon/drain.test.ts",
+    "test/daemon/restart-handover-signal.test.ts",
+    "test/daemon/stop-cancel.test.ts",
+    "test/evals/eval-root.test.ts",
+    "test/kit/vitest.test.ts",
+    "test/scheduler/environment-growth-wait.test.ts"
+   ]
+  }
+ ],
+ "unmeasured": [],
+ "files": [
+  {
+   "files": [
+    "src/core/types/policy.ts"
+   ],
+   "folder": null,
+   "testFiles": 1253,
+   "seconds": 5799.706328415008,
+   "share": 0.9391292667303142,
+   "avoidableSeconds": 4502.837527617006,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "loaded only": 0.8412491719951241,
+    "no record": 0.15165274416288735,
+    "outside the test's process": 0.007098083841988324
+   },
+   "kinds": {
+    "declared input": 0.03572730036843562,
+    "child process": 0.037483735369823704,
+    "runtime read": 0.006851103118157181,
+    "barrel": 0.9199378611435842
+   },
+   "kind": "barrel",
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "src/core/types/index.ts",
+    "chain": [
+     "test/capacity/cores.test.ts",
+     "src/core/capacity/cores.ts",
+     "src/core/ps/proc.ts",
+     "src/core/daemon/escaped.ts",
+     "src/core/daemon/low-priority.ts",
+     "src/core/types/index.ts",
+     "src/core/types/policy.ts"
+    ],
+    "testFiles": 1141,
+    "seconds": 5335.369435023013,
+    "coverage": {
+     "loaded only": 0.8439598386681512,
+     "no record": 0.1560401613318477
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import src/core/types/policy.ts from its own path in the files that use it, or split src/core/types/index.ts"
+   },
+   "rank": 1
+  },
+  {
+   "files": [
+    "src/core/fs/index.ts"
+   ],
+   "folder": null,
+   "testFiles": 1348,
+   "seconds": 5937.665727595006,
+   "share": 0.9614686235966597,
+   "avoidableSeconds": 4241.499671493001,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "loaded only": 0.8484230338917143,
+    "no record": 0.14812915047665537,
+    "outside the test's process": 0.0034478156316307116
+   },
+   "kinds": {
+    "declared input": 0.0348971901670065,
+    "child process": 0.03907561647360984,
+    "runtime read": 0.15005550863468403,
+    "direct": 0.05117004712389959,
+    "barrel": 0.055451175055177694,
+    "test helper": 0.40476041668641477,
+    "transitive": 0.2645900458592063
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "test/scheduler/helpers.ts",
+    "chain": [
+     "test/code/pass/listing-failed.test.ts",
+     "test/scheduler/helpers.ts",
+     "src/core/fs/index.ts"
+    ],
+    "testFiles": 99,
+    "seconds": 987.6469010100002,
+    "coverage": {
+     "loaded only": 0.8620342321778617,
+     "no record": 0.13796576782213824
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split test/scheduler/helpers.ts: 96 of the 99 test files that load src/core/fs/index.ts through it never call it"
+   },
+   "rank": 2
+  },
+  {
+   "files": [
+    "src/core/types/index.ts"
+   ],
+   "folder": null,
+   "testFiles": 1252,
+   "seconds": 5790.920115071009,
+   "share": 0.9377065412287384,
+   "avoidableSeconds": 4087.3131453260016,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "loaded only": 0.8425255485559706,
+    "no record": 0.15188283771243408,
+    "outside the test's process": 0.005591613731594871
+   },
+   "kinds": {
+    "declared input": 0.0357815072435098,
+    "child process": 0.03754060717764439,
+    "runtime read": 0.1576681490747527,
+    "direct": 0.14546003795403256,
+    "barrel": 0.044501816511734085,
+    "test helper": 0.36812531969901996,
+    "transitive": 0.21092256233930504
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "test/scheduler/helpers.ts",
+    "chain": [
+     "test/integration/fingerprint-two-worktrees.test.ts",
+     "test/scheduler/helpers.ts",
+     "src/core/types/index.ts"
+    ],
+    "testFiles": 61,
+    "seconds": 654.1850986430001,
+    "coverage": {
+     "loaded only": 0.9335971929517982,
+     "no record": 0.0664028070482018
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split test/scheduler/helpers.ts: 60 of the 61 test files that load src/core/types/index.ts through it never call it"
+   },
+   "rank": 3
+  },
+  {
+   "files": [
+    "src/core/types/state.ts"
+   ],
+   "folder": null,
+   "testFiles": 1252,
+   "seconds": 5790.920115071009,
+   "share": 0.9377065412287384,
+   "avoidableSeconds": 4087.3131453260016,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "loaded only": 0.8425255485559706,
+    "no record": 0.15188283771243408,
+    "outside the test's process": 0.005591613731594871
+   },
+   "kinds": {
+    "declared input": 0.0357815072435098,
+    "child process": 0.03754060717764439,
+    "runtime read": 0.1576681490747527,
+    "barrel": 0.7690097365040919
+   },
+   "kind": "barrel",
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "src/core/types/index.ts",
+    "chain": [
+     "test/capacity/cores.test.ts",
+     "src/core/capacity/cores.ts",
+     "src/core/ps/proc.ts",
+     "src/core/daemon/escaped.ts",
+     "src/core/daemon/low-priority.ts",
+     "src/core/types/index.ts",
+     "src/core/types/state.ts"
+    ],
+    "testFiles": 1089,
+    "seconds": 4453.273951807002,
+    "coverage": {
+     "loaded only": 0.9178220764225599,
+     "no record": 0.08217792357744
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "barrel",
+    "text": "exports no runtime value: tests re-run because src/core/types/index.ts re-exports it with `export *`; `export type *` takes it out of their closure"
+   },
+   "rank": 4
+  },
+  {
+   "files": [
+    "src/core/keys/index.ts"
+   ],
+   "folder": null,
+   "testFiles": 1095,
+   "seconds": 5600.298303748006,
+   "share": 0.906839715952863,
+   "avoidableSeconds": 3935.2967531729996,
+   "unknownSeconds": 0,
+   "edits": 1,
+   "editSeconds": 5600.298303748006,
+   "coverage": {
+    "loaded only": 0.79341780266406,
+    "not loaded": 4.165115594715574e-05,
+    "no record": 0.15705259476166938,
+    "outside the test's process": 0.049487951418323364
+   },
+   "kinds": {
+    "declared input": 0.03699943088840925,
+    "child process": 0.03561233558943186,
+    "runtime read": 0.15934743884245678,
+    "direct": 0.0741418689218958,
+    "barrel": 0.16919074023090375,
+    "test helper": 0.3431239465008442,
+    "transitive": 0.1815842390260571
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "test/scheduler/helpers.ts",
+    "chain": [
+     "test/code/pass/daemon-loop.test.ts",
+     "test/scheduler/helpers.ts",
+     "src/core/keys/index.ts"
+    ],
+    "testFiles": 116,
+    "seconds": 1100.8464927870002,
+    "coverage": {
+     "loaded only": 0.9040302716834457,
+     "no record": 0.09596972831655423
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split test/scheduler/helpers.ts: 113 of the 116 test files that load src/core/keys/index.ts through it never call it"
+   },
+   "rank": 5
+  },
+  {
+   "files": [
+    "src/core/keys/hidden-lockfile.ts",
+    "src/core/keys/pnpm-lockfile.ts"
+   ],
+   "folder": "src/core/keys",
+   "testFiles": 1102,
+   "seconds": 5616.615675939006,
+   "share": 0.9094819396988516,
+   "avoidableSeconds": 3931.0921874075,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "called": 0.023576013432655238,
+    "loaded only": 0.772237115689043,
+    "not loaded": 4.1530151154770426e-05,
+    "no record": 0.1565963261134037,
+    "outside the test's process": 0.04754901461374269
+   },
+   "kinds": {
+    "declared input": 0.036891940271373144,
+    "child process": 0.0355088747568004,
+    "runtime read": 0.0777826179803484,
+    "direct": 5.385367131238352e-05,
+    "barrel": 0.7429751467836266,
+    "test helper": 0.07828696379461428,
+    "transitive": 0.02850060274192389
+   },
+   "kind": "barrel",
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "src/core/keys/index.ts",
+    "chain": [
+     "test/cli/codex-runtime.test.ts",
+     "src/cli/main.ts",
+     "src/cli/named-selection.ts",
+     "src/core/keys/index.ts",
+     "src/core/keys/environment.ts",
+     "src/core/keys/pnpm-lockfile.ts"
+    ],
+    "testFiles": 866,
+    "seconds": 4152.888142266001,
+    "coverage": {
+     "called": 0.0029762676697706035,
+     "loaded only": 0.8381231967210685,
+     "not loaded": 5.6167874021457164e-05,
+     "no record": 0.15884436773513927
+    }
+   },
+   "second": {
+    "gateway": "src/core/keys/environment.ts",
+    "suggestion": {
+     "kind": "transitive",
+     "text": "load these files only where they are used: src/core/keys/environment.ts imports 2 sibling modules, so each test file that loads src/core/keys/environment.ts loads them all; for example, a registry that each test fills"
+    }
+   },
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import these files from their own paths in the files that use them, or split src/core/keys/index.ts"
+   },
+   "rank": 6
+  },
+  {
+   "files": [
+    "src/core/state/index.ts"
+   ],
+   "folder": null,
+   "testFiles": 946,
+   "seconds": 5138.2093887240035,
+   "share": 0.8320150266742775,
+   "avoidableSeconds": 3784.19129526,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "loaded only": 0.7863963255877433,
+    "no record": 0.15906099536164706,
+    "outside the test's process": 0.05454267905060918
+   },
+   "kinds": {
+    "declared input": 0.04032685987821467,
+    "child process": 0.03835602348991506,
+    "runtime read": 0.04173303810615068,
+    "direct": 0.03548259600827122,
+    "barrel": 0.36732160324974616,
+    "test helper": 0.28027229690490035,
+    "transitive": 0.1965075823628011
+   },
+   "kind": "barrel",
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "src/core/delivery/index.ts",
+    "chain": [
+     "test/code/delivery/catch-up.test.ts",
+     "src/core/delivery/index.ts",
+     "src/core/state/index.ts"
+    ],
+    "testFiles": 184,
+    "seconds": 1485.852183367999,
+    "coverage": {
+     "loaded only": 0.8741553380692587,
+     "no record": 0.1258446619307415
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import src/core/state/index.ts from its own path in the files that use it, or split src/core/delivery/index.ts"
+   },
+   "rank": 7
+  },
+  {
+   "files": [
+    "src/core/slow/index.ts"
+   ],
+   "folder": null,
+   "testFiles": 976,
+   "seconds": 5151.140992387005,
+   "share": 0.8341090029513489,
+   "avoidableSeconds": 3704.4643405680004,
+   "unknownSeconds": 0,
+   "edits": 2,
+   "editSeconds": 10302.28198477401,
+   "coverage": {
+    "loaded only": 0.7872761083601729,
+    "no record": 0.15866168310183912,
+    "outside the test's process": 0.0540622085379871
+   },
+   "kinds": {
+    "declared input": 0.040225621925363206,
+    "child process": 0.038363348216455345,
+    "runtime read": 0.06486771588621582,
+    "direct": 0.055046394542115594,
+    "barrel": 0.5485909129193745,
+    "test helper": 0.07164064619089244,
+    "transitive": 0.18126536031958207
+   },
+   "kind": "barrel",
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "src/core/scheduler/index.ts",
+    "chain": [
+     "test/code/pass/daemon-loop.test.ts",
+     "src/core/daemon-loop/index.ts",
+     "src/core/scheduler/index.ts",
+     "src/core/scheduler/scheduler.ts",
+     "src/core/scheduler/pool-wait.ts",
+     "src/core/slow/index.ts"
+    ],
+    "testFiles": 144,
+    "seconds": 1537.6828732739996,
+    "coverage": {
+     "loaded only": 0.8561723296233976,
+     "no record": 0.1438276703766026
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import src/core/slow/index.ts from its own path in the files that use it, or split src/core/scheduler/index.ts"
+   },
+   "rank": 8
+  },
+  {
+   "files": [
+    "src/core/store/index.ts"
+   ],
+   "folder": null,
+   "testFiles": 1098,
+   "seconds": 5386.987117988008,
+   "share": 0.8722988674815045,
+   "avoidableSeconds": 3688.815608588,
+   "unknownSeconds": 0,
+   "edits": 1,
+   "editSeconds": 5386.987117988008,
+   "coverage": {
+    "loaded only": 0.8307176259189576,
+    "no record": 0.16327148381440734,
+    "outside the test's process": 0.006010890266634583
+   },
+   "kinds": {
+    "declared input": 0.03846451560132748,
+    "child process": 0.03934652009547869,
+    "runtime read": 0.16949059576069928,
+    "direct": 0.053826226197900714,
+    "barrel": 0.10402027632660987,
+    "test helper": 0.474025107277727,
+    "transitive": 0.12082675874025522
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "test/scheduler/helpers.ts",
+    "chain": [
+     "test/code/pass/listing-failed.test.ts",
+     "test/scheduler/helpers.ts",
+     "src/core/store/index.ts"
+    ],
+    "testFiles": 126,
+    "seconds": 1431.9577493259994,
+    "coverage": {
+     "loaded only": 0.9048425394540196,
+     "no record": 0.09515746054598063
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split test/scheduler/helpers.ts: 123 of the 126 test files that load src/core/store/index.ts through it never call it"
+   },
+   "rank": 9
+  },
+  {
+   "files": [
+    "src/core/hash/index.ts"
+   ],
+   "folder": null,
+   "testFiles": 1028,
+   "seconds": 5423.274849989008,
+   "share": 0.8781748324382885,
+   "avoidableSeconds": 3640.584582588,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "loaded only": 0.7594720127786538,
+    "no record": 0.1621790162533958,
+    "outside the test's process": 0.07834897096794961
+   },
+   "kinds": {
+    "declared input": 0.03820714527208959,
+    "child process": 0.03923978298747505,
+    "runtime read": 0.18887081153338117,
+    "direct": 0.02660563992055326,
+    "barrel": 0.10399011073081482,
+    "test helper": 0.5176373674243504,
+    "transitive": 0.08544914213133402
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "test/scheduler/helpers.ts",
+    "chain": [
+     "test/harness/stop-slow-scheduler.test.ts",
+     "test/scheduler/helpers.ts",
+     "src/core/hash/index.ts"
+    ],
+    "testFiles": 136,
+    "seconds": 1434.560928427,
+    "coverage": {
+     "loaded only": 0.9050152138296345,
+     "no record": 0.09498478617036579
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split test/scheduler/helpers.ts: 133 of the 136 test files that load src/core/hash/index.ts through it never call it"
+   },
+   "rank": 10
+  },
+  {
+   "files": [
+    "src/core/daemon/run-group.ts"
+   ],
+   "folder": null,
+   "testFiles": 989,
+   "seconds": 5154.753910619005,
+   "share": 0.8346940320990062,
+   "avoidableSeconds": 3563.176046566999,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "called": 0.036925700359601216,
+    "loaded only": 0.7504995041630295,
+    "no record": 0.15855047862970756,
+    "outside the test's process": 0.054024316847660875
+   },
+   "kinds": {
+    "declared input": 0.04019742816764603,
+    "child process": 0.03893339174748306,
+    "runtime read": 0.06139092454852005,
+    "direct": 0.001154046870354988,
+    "barrel": 0.7428964748036134,
+    "test helper": 0.0463188028505377,
+    "transitive": 0.06910893101184365
+   },
+   "kind": "barrel",
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "src/core/delivery/index.ts",
+    "chain": [
+     "test/cli/named-wait-reasons.test.ts",
+     "test/cli/next-step-seed.ts",
+     "src/core/delivery/index.ts",
+     "src/core/delivery/delivery.ts",
+     "src/core/slow/stop-wait.ts",
+     "src/core/daemon/run-group.ts"
+    ],
+    "testFiles": 304,
+    "seconds": 1723.6449762439986,
+    "coverage": {
+     "loaded only": 0.8398493255063898,
+     "no record": 0.1601506744936107
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import src/core/daemon/run-group.ts from its own path in the files that use it, or split src/core/delivery/index.ts"
+   },
+   "rank": 11
+  },
+  {
+   "files": [
+    "src/core/commit/report.ts"
+   ],
+   "folder": null,
+   "testFiles": 950,
+   "seconds": 5139.294144216004,
+   "share": 0.8321906779179953,
+   "avoidableSeconds": 3557.4829310029995,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "called": 0.007541771569471574,
+    "loaded only": 0.7788996395402183,
+    "no record": 0.15902742221260366,
+    "outside the test's process": 0.054531166677705765
+   },
+   "kinds": {
+    "declared input": 0.04031834805120098,
+    "child process": 0.038347927649131405,
+    "runtime read": 0.09464150810795802,
+    "direct": 3.0783825280375044e-05,
+    "barrel": 0.8201828131919511,
+    "transitive": 0.0064786191744779405
+   },
+   "kind": "barrel",
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "src/core/scheduler/index.ts",
+    "chain": [
+     "test/cli/status-wait-ask-scheduler.test.ts",
+     "test/scheduler/catch-up-fixture.ts",
+     "src/core/scheduler/index.ts",
+     "src/core/scheduler/scheduler.ts",
+     "src/core/scheduler/head-move.ts",
+     "src/core/commit/report.ts"
+    ],
+    "testFiles": 205,
+    "seconds": 1994.5313549329999,
+    "coverage": {
+     "loaded only": 0.8891161350289079,
+     "no record": 0.11088386497109202
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import src/core/commit/report.ts from its own path in the files that use it, or split src/core/scheduler/index.ts"
+   },
+   "rank": 12
+  },
+  {
+   "files": [
+    "src/core/daemon/policy-node-test.ts"
+   ],
+   "folder": null,
+   "testFiles": 1037,
+   "seconds": 5406.406800580007,
+   "share": 0.8754434391615233,
+   "avoidableSeconds": 3553.134167567999,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "called": 0.09551519812430703,
+    "loaded only": 0.6899628229704831,
+    "no record": 0.1626850165896953,
+    "outside the test's process": 0.05183696231551319
+   },
+   "kinds": {
+    "declared input": 0.03832635199071042,
+    "child process": 0.0368895108989216,
+    "runtime read": 0.05448041066857953,
+    "barrel": 0.33669943999528723,
+    "test helper": 0.34923820650407555,
+    "transitive": 0.18436607994242424
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "test/scheduler/helpers.ts",
+    "chain": [
+     "test/code/pass/listing-failed.test.ts",
+     "test/scheduler/helpers.ts",
+     "src/runners/vitest/adapter.ts",
+     "src/core/daemon/policy.ts",
+     "src/core/daemon/policy-node-test.ts"
+    ],
+    "testFiles": 110,
+    "seconds": 1309.1182171199998,
+    "coverage": {
+     "called": 0.005692806847035774,
+     "loaded only": 0.89022074683128,
+     "no record": 0.10408644632168439
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split test/scheduler/helpers.ts: 105 of the 110 test files that load src/core/daemon/policy-node-test.ts through it never call it"
+   },
+   "rank": 13
+  },
+  {
+   "files": [
+    "src/core/daemon/terminate.ts"
+   ],
+   "folder": null,
+   "testFiles": 1006,
+   "seconds": 5395.52906274001,
+   "share": 0.8736820392935143,
+   "avoidableSeconds": 3546.737370886999,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "called": 0.05567403836472948,
+    "loaded only": 0.7174743224845336,
+    "not loaded": 4.323188612045844e-05,
+    "no record": 0.1614018454241737,
+    "outside the test's process": 0.0654065618404408
+   },
+   "kinds": {
+    "declared input": 0.03840362041137327,
+    "child process": 0.03662569755534691,
+    "runtime read": 0.08111273774730635,
+    "direct": 0.0066800770482174955,
+    "barrel": 0.6840636915625579,
+    "test helper": 0.03056455105354446,
+    "transitive": 0.12254962462165159
+   },
+   "kind": "barrel",
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "src/core/presence/index.ts",
+    "chain": [
+     "test/cli/group-pending.test.ts",
+     "src/cli/group-pending.ts",
+     "src/core/presence/index.ts",
+     "src/core/presence/lock-events.ts",
+     "src/core/daemon/terminate.ts"
+    ],
+    "testFiles": 645,
+    "seconds": 3431.8816109749987,
+    "coverage": {
+     "called": 0.03635058974471972,
+     "loaded only": 0.7909261410922761,
+     "no record": 0.17272326916300443
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import src/core/daemon/terminate.ts from its own path in the files that use it, or split src/core/presence/index.ts"
+   },
+   "rank": 14
+  },
+  {
+   "files": [
+    "src/core/retry/index.ts"
+   ],
+   "folder": null,
+   "testFiles": 902,
+   "seconds": 4936.278263538003,
+   "share": 0.7993169177033389,
+   "avoidableSeconds": 3480.5763091699987,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "loaded only": 0.7453907600348295,
+    "no record": 0.16556779340904107,
+    "outside the test's process": 0.08904144655612894
+   },
+   "kinds": {
+    "declared input": 0.04197653353024042,
+    "child process": 0.03992507502377813,
+    "runtime read": 0.08083836662643763,
+    "direct": 0.014155828419793466,
+    "barrel": 0.6126021718063784,
+    "test helper": 0.06924152668087705,
+    "transitive": 0.141260497912494
+   },
+   "kind": "barrel",
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "src/core/delivery/index.ts",
+    "chain": [
+     "test/cli/status-wait-listing.test.ts",
+     "src/cli/status-wait-held.ts",
+     "src/core/delivery/index.ts",
+     "src/core/delivery/delivery.ts",
+     "src/core/retry/index.ts"
+    ],
+    "testFiles": 340,
+    "seconds": 2093.3543075790003,
+    "coverage": {
+     "loaded only": 0.7836467597275529,
+     "no record": 0.21635324027244635
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import src/core/retry/index.ts from its own path in the files that use it, or split src/core/delivery/index.ts"
+   },
+   "rank": 15
+  },
+  {
+   "files": [
+    "src/core/store/busy.ts"
+   ],
+   "folder": null,
+   "testFiles": 1098,
+   "seconds": 5386.987117988008,
+   "share": 0.8722988674815045,
+   "avoidableSeconds": 3420.9253086529993,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "called": 0.030526492224176503,
+    "loaded only": 0.8001911336947809,
+    "no record": 0.16327148381440734,
+    "outside the test's process": 0.006010890266634583
+   },
+   "kinds": {
+    "declared input": 0.03846451560132748,
+    "child process": 0.03934652009547869,
+    "runtime read": 0.18274902321906597,
+    "barrel": 0.7394399410841263
+   },
+   "kind": "barrel",
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "src/core/store/index.ts",
+    "chain": [
+     "test/capacity/edit-mark.test.ts",
+     "src/core/capacity/index.ts",
+     "src/core/capacity/marks.ts",
+     "src/core/slow/index.ts",
+     "src/core/slow/slot.ts",
+     "src/core/store/index.ts",
+     "src/core/store/busy.ts"
+    ],
+    "testFiles": 936,
+    "seconds": 3983.353437146,
+    "coverage": {
+     "called": 0.04128326119281606,
+     "loaded only": 0.8588053665416218,
+     "no record": 0.09991137226556202
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import src/core/store/busy.ts from its own path in the files that use it, or split src/core/store/index.ts"
+   },
+   "rank": 16
+  },
+  {
+   "files": [
+    "src/core/presence/index.ts",
+    "src/core/status/feed-late.ts"
+   ],
+   "folder": "src/core",
+   "testFiles": 930,
+   "seconds": 4956.512464675004,
+   "share": 0.8025933819587039,
+   "avoidableSeconds": 3354.5228565154976,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "called": 0.03355696288890617,
+    "loaded only": 0.729395709016854,
+    "no record": 0.16489188831296306,
+    "outside the test's process": 0.07215543978127578
+   },
+   "kinds": {
+    "declared input": 0.04180517077698632,
+    "child process": 0.0391831540568383,
+    "runtime read": 0.07243878011755235,
+    "direct": 0.017679663804647732,
+    "barrel": 0.6902734760671758,
+    "test helper": 0.03932089468270493,
+    "transitive": 0.09929886049409373
+   },
+   "kind": "barrel",
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "src/core/delivery/index.ts",
+    "chain": [
+     "test/cli/group-pending-release.test.ts",
+     "src/core/daemon/index.ts",
+     "src/core/daemon/daemon.ts",
+     "src/core/daemon/lifecycle.ts",
+     "src/core/delivery/index.ts",
+     "src/core/delivery/header.ts",
+     "src/core/status/feed-late.ts"
+    ],
+    "testFiles": 388,
+    "seconds": 2327.205115874,
+    "coverage": {
+     "called": 0.012221043113476828,
+     "loaded only": 0.7931661209170089,
+     "no record": 0.19461283596951373
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import these files from their own paths in the files that use them, or split src/core/delivery/index.ts"
+   },
+   "rank": 17
+  },
+  {
+   "files": [
+    "src/core/capacity/index.ts"
+   ],
+   "folder": null,
+   "testFiles": 799,
+   "seconds": 4836.633754034004,
+   "share": 0.783181777431544,
+   "avoidableSeconds": 3327.9352474559973,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "loaded only": 0.7283647826453208,
+    "not loaded": 0.0005250353506469258,
+    "no record": 0.16897882728154448,
+    "outside the test's process": 0.10213135472248686
+   },
+   "kinds": {
+    "declared input": 0.04284133564406811,
+    "child process": 0.0407476129127255,
+    "runtime read": 0.09346112342514616,
+    "direct": 0.025426817158199774,
+    "barrel": 0.5574347105772286,
+    "test helper": 0.09536135509233297,
+    "transitive": 0.14472704519029803
+   },
+   "kind": "barrel",
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "src/core/scheduler/index.ts",
+    "chain": [
+     "test/cli/hold-wait.test.ts",
+     "test/scheduler/merge-hold-fixture.ts",
+     "test/scheduler/catch-up-fixture.ts",
+     "src/core/scheduler/index.ts",
+     "src/core/scheduler/scheduler.ts",
+     "src/core/scheduler/capacity.ts",
+     "src/core/capacity/index.ts"
+    ],
+    "testFiles": 203,
+    "seconds": 1830.9349540539993,
+    "coverage": {
+     "loaded only": 0.9009737412437577,
+     "no record": 0.09902625875624232
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import src/core/capacity/index.ts from its own path in the files that use it, or split src/core/scheduler/index.ts"
+   },
+   "rank": 18
+  },
+  {
+   "files": [
+    "src/core/daemon/scratch.ts"
+   ],
+   "folder": null,
+   "testFiles": 979,
+   "seconds": 5152.277869669005,
+   "share": 0.8342930941221338,
+   "avoidableSeconds": 3313.8998907809973,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "called": 0.02941680847557563,
+    "loaded only": 0.7653585954003156,
+    "no record": 0.15862667356477508,
+    "outside the test's process": 0.0465979225593327
+   },
+   "kinds": {
+    "declared input": 0.04021674592975931,
+    "child process": 0.0385640494447487,
+    "runtime read": 0.1390036001829632,
+    "direct": 0.007690672414286066,
+    "barrel": 0.5506438119233779,
+    "test helper": 0.1137842511358305,
+    "transitive": 0.11009686896903367
+   },
+   "kind": "barrel",
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "src/core/scheduler/index.ts",
+    "chain": [
+     "test/code/pass/daemon-loop.test.ts",
+     "src/core/daemon-loop/index.ts",
+     "src/core/scheduler/index.ts",
+     "src/core/scheduler/scheduler.ts",
+     "src/core/scheduler/slow-tier.ts",
+     "src/core/scheduler/group-limits.ts",
+     "src/core/slow/slot-files.ts",
+     "src/core/daemon/scratch.ts"
+    ],
+    "testFiles": 161,
+    "seconds": 1616.1740857739996,
+    "coverage": {
+     "loaded only": 0.8631574733268391,
+     "no record": 0.1368425266731609
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import src/core/daemon/scratch.ts from its own path in the files that use it, or split src/core/scheduler/index.ts"
+   },
+   "rank": 19
+  },
+  {
+   "files": [
+    "src/core/daemon/lock.ts",
+    "src/core/daemon/test-pause.ts"
+   ],
+   "folder": "src/core/daemon",
+   "testFiles": 934,
+   "seconds": 5038.192140593005,
+   "share": 0.8158195299406837,
+   "avoidableSeconds": 3306.351331912997,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "called": 0.034584057313660016,
+    "loaded only": 0.7161702895248863,
+    "no record": 0.16221864449393616,
+    "outside the test's process": 0.08702700866751632
+   },
+   "kinds": {
+    "declared input": 0.04112742115857676,
+    "child process": 0.039161659051827453,
+    "runtime read": 0.09938400596728031,
+    "direct": 0.009693596405347026,
+    "barrel": 0.6969541950945126,
+    "test helper": 0.03336174499861696,
+    "transitive": 0.08031737732383737
+   },
+   "kind": "barrel",
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "src/core/presence/index.ts",
+    "chain": [
+     "test/cli/group-pending.test.ts",
+     "src/cli/group-pending.ts",
+     "src/core/presence/index.ts",
+     "src/core/presence/marks.ts",
+     "src/core/daemon/lock.ts",
+     "src/core/daemon/test-pause.ts"
+    ],
+    "testFiles": 637,
+    "seconds": 3481.3710058649967,
+    "coverage": {
+     "loaded only": 0.8297320767509763,
+     "no record": 0.17026792324902434
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import these files from their own paths in the files that use them, or split src/core/presence/index.ts"
+   },
+   "rank": 20
+  },
+  {
+   "files": [
+    "src/core/revision/index.ts"
+   ],
+   "folder": null,
+   "testFiles": 815,
+   "seconds": 5073.137440452003,
+   "share": 0.8214781188370668,
+   "avoidableSeconds": 3281.700181332997,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "loaded only": 0.7313969409278226,
+    "not loaded": 0.0005005588215985227,
+    "no record": 0.17337227511908987,
+    "outside the test's process": 0.0947302251314882
+   },
+   "kinds": {
+    "declared input": 0.04084412308481401,
+    "child process": 0.038848007238778966,
+    "runtime read": 0.2067304846950011,
+    "direct": 0.0222672554573911,
+    "barrel": 0.15836869238169432,
+    "test helper": 0.5043111514806601,
+    "transitive": 0.028630285661659313
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "test/scheduler/helpers.ts",
+    "chain": [
+     "test/code/pass/daemon-loop.test.ts",
+     "test/scheduler/helpers.ts",
+     "src/core/revision/index.ts"
+    ],
+    "testFiles": 138,
+    "seconds": 1467.2823731459996,
+    "coverage": {
+     "loaded only": 0.9071334423906141,
+     "no record": 0.09286655760938631
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split test/scheduler/helpers.ts: 135 of the 138 test files that load src/core/revision/index.ts through it never call it"
+   },
+   "rank": 21
+  },
+  {
+   "files": [
+    "src/core/retry/gate.ts",
+    "src/core/retry/kept.ts",
+    "src/core/retry/waits.ts"
+   ],
+   "folder": "src/core/retry",
+   "testFiles": 901,
+   "seconds": 4924.082795075003,
+   "share": 0.7973421416187333,
+   "avoidableSeconds": 3276.525242823331,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "called": 0.04331053499255488,
+    "loaded only": 0.7039263332181377,
+    "no record": 0.1659778549143082,
+    "outside the test's process": 0.08678527687499839
+   },
+   "kinds": {
+    "declared input": 0.042080496747789506,
+    "child process": 0.04002395739712539,
+    "runtime read": 0.08485379738718136,
+    "barrel": 0.8154593810487512,
+    "test helper": 7.213261997853752e-05,
+    "transitive": 0.017510234799173394
+   },
+   "kind": "barrel",
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "src/core/retry/index.ts",
+    "chain": [
+     "test/cli/codex-runtime.test.ts",
+     "src/cli/main.ts",
+     "src/cli/retry.ts",
+     "src/core/retry/index.ts",
+     "src/core/retry/kept.ts"
+    ],
+    "testFiles": 770,
+    "seconds": 4092.51736629,
+    "coverage": {
+     "called": 0.016976183123196282,
+     "loaded only": 0.8236177364898074,
+     "no record": 0.1594060803869958
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import these files from their own paths in the files that use them, or split src/core/retry/index.ts"
+   },
+   "rank": 22
+  },
+  {
+   "files": [
+    "src/core/keys/package-scans.ts",
+    "src/core/keys/packages.ts",
+    "src/core/keys/pnpm-graph.ts"
+   ],
+   "folder": "src/core/keys",
+   "testFiles": 1102,
+   "seconds": 5616.615675939006,
+   "share": 0.9094819396988516,
+   "avoidableSeconds": 3231.062628760334,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "called": 0.14791229362073857,
+    "loaded only": 0.6479008355009596,
+    "not loaded": 4.1530151154770426e-05,
+    "no record": 0.1565963261134037,
+    "outside the test's process": 0.04754901461374269
+   },
+   "kinds": {
+    "declared input": 0.03689194027137315,
+    "child process": 0.03550887475680041,
+    "runtime read": 0.07778261798034841,
+    "barrel": 0.7709883119568626,
+    "test helper": 0.06546125244995182,
+    "transitive": 0.013367002584662628
+   },
+   "kind": "barrel",
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "src/core/keys/index.ts",
+    "chain": [
+     "test/cli/codex-runtime.test.ts",
+     "src/cli/main.ts",
+     "src/cli/named-selection.ts",
+     "src/core/keys/index.ts",
+     "src/core/keys/pnpm-graph.ts"
+    ],
+    "testFiles": 926,
+    "seconds": 4349.136728413,
+    "coverage": {
+     "called": 0.0030297142147582374,
+     "loaded only": 0.8452399100028746,
+     "not loaded": 5.363337889014038e-05,
+     "no record": 0.15167674240347714
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import these files from their own paths in the files that use them, or split src/core/keys/index.ts"
+   },
+   "rank": 23
+  },
+  {
+   "files": [
+    "src/core/daemon/escaped.ts"
+   ],
+   "folder": null,
+   "testFiles": 829,
+   "seconds": 4892.271619934005,
+   "share": 0.7921910522544966,
+   "avoidableSeconds": 3225.1513820289974,
+   "unknownSeconds": 0,
+   "edits": 1,
+   "editSeconds": 4892.271619934005,
+   "coverage": {
+    "called": 0.030211986922957033,
+    "loaded only": 0.6997001051432168,
+    "no record": 0.1670570980599039,
+    "outside the test's process": 0.10303080987392102
+   },
+   "kinds": {
+    "declared input": 0.04235411811554222,
+    "child process": 0.04039330416524702,
+    "runtime read": 0.09445918168035689,
+    "direct": 0.006623620114010988,
+    "barrel": 0.7046540311501553,
+    "test helper": 0.03331041122021722,
+    "transitive": 0.07820533355446878
+   },
+   "kind": "barrel",
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "src/core/capacity/index.ts",
+    "chain": [
+     "test/capacity/edit-mark.test.ts",
+     "src/core/capacity/index.ts",
+     "src/core/capacity/pool.ts",
+     "src/core/capacity/cores.ts",
+     "src/core/ps/proc.ts",
+     "src/core/daemon/escaped.ts"
+    ],
+    "testFiles": 522,
+    "seconds": 3384.4432117209967,
+    "coverage": {
+     "loaded only": 0.824855737222852,
+     "no record": 0.17514426277714887
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import src/core/daemon/escaped.ts from its own path in the files that use it, or split src/core/capacity/index.ts"
+   },
+   "rank": 24
+  },
+  {
+   "files": [
+    "src/core/lint/store/index.ts"
+   ],
+   "folder": null,
+   "testFiles": 975,
+   "seconds": 5263.636327901006,
+   "share": 0.8523250394141324,
+   "avoidableSeconds": 3217.9550912699974,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "loaded only": 0.7681282909806,
+    "no record": 0.15527073848449413,
+    "outside the test's process": 0.07660097053490492
+   },
+   "kinds": {
+    "declared input": 0.10073557830513025,
+    "child process": 0.03744203963433595,
+    "runtime read": 0.19800783250115173,
+    "direct": 0.004303890329185003,
+    "barrel": 0.5578385592647697,
+    "test helper": 0.016721249874817587,
+    "transitive": 0.08495085009060864
+   },
+   "kind": "barrel",
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "src/core/state/index.ts",
+    "chain": [
+     "test/cli/group-pending.test.ts",
+     "test/harness/helpers.ts",
+     "src/core/state/index.ts",
+     "src/core/state/required.ts",
+     "src/core/lint/surface/source.ts",
+     "src/core/lint/store/index.ts"
+    ],
+    "testFiles": 417,
+    "seconds": 1579.28957805,
+    "coverage": {
+     "loaded only": 0.9462417256556404,
+     "no record": 0.053758274344359716
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import src/core/lint/store/index.ts from its own path in the files that use it, or split src/core/state/index.ts"
+   },
+   "rank": 25
+  },
+  {
+   "files": [
+    "src/core/slow/rank-tokens.ts"
+   ],
+   "folder": null,
+   "testFiles": 800,
+   "seconds": 4904.472954318004,
+   "share": 0.7941667781903144,
+   "avoidableSeconds": 3180.8252994109985,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "called": 0.029835043181382456,
+    "loaded only": 0.6879340816695702,
+    "not loaded": 0.0005177730048983661,
+    "no record": 0.16664149386886545,
+    "outside the test's process": 0.11507160827528273
+   },
+   "kinds": {
+    "declared input": 0.042248749656488505,
+    "child process": 0.040183987524385345,
+    "runtime read": 0.10616048147326383,
+    "barrel": 0.7240746162790931,
+    "test helper": 0.04084206920554916,
+    "transitive": 0.046490095861218994
+   },
+   "kind": "barrel",
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "src/core/scheduler/index.ts",
+    "chain": [
+     "test/cli/codex-runtime.test.ts",
+     "src/cli/main.ts",
+     "src/cli/daemon.ts",
+     "src/core/daemon/daemon.ts",
+     "src/core/scheduler/index.ts",
+     "src/core/scheduler/scheduler.ts",
+     "src/core/scheduler/ledger.ts",
+     "src/core/slow/rank.ts",
+     "src/core/slow/rank-tokens.ts"
+    ],
+    "testFiles": 380,
+    "seconds": 2781.6927595019997,
+    "coverage": {
+     "called": 0.052421297025306936,
+     "loaded only": 0.8457316930127735,
+     "not loaded": 0.0009128986982209437,
+     "no record": 0.10093411126369874
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import src/core/slow/rank-tokens.ts from its own path in the files that use it, or split src/core/scheduler/index.ts"
+   },
+   "rank": 26
+  },
+  {
+   "files": [
+    "src/core/scheduler/awaiting-install.ts"
+   ],
+   "folder": null,
+   "testFiles": 801,
+   "seconds": 4638.822799611,
+   "share": 0.7511508355080988,
+   "avoidableSeconds": 3170.6374047299973,
+   "unknownSeconds": 0,
+   "edits": 1,
+   "editSeconds": 4638.822799611,
+   "coverage": {
+    "called": 0.0027222625404141245,
+    "loaded only": 0.7191618045433323,
+    "no record": 0.16433625325630608,
+    "outside the test's process": 0.11377967965994741
+   },
+   "kinds": {
+    "declared input": 0.044668196866967165,
+    "child process": 0.04248519258518061,
+    "runtime read": 0.09783903803979307,
+    "direct": 0.001974609418098084,
+    "barrel": 0.8060501478083089,
+    "transitive": 0.0069828152816521286
+   },
+   "kind": "barrel",
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "src/core/delivery/index.ts",
+    "chain": [
+     "test/cli/codex-runtime.test.ts",
+     "src/cli/main.ts",
+     "src/cli/code.ts",
+     "src/core/delivery/index.ts",
+     "src/core/delivery/header.ts",
+     "src/core/scheduler/awaiting-install.ts"
+    ],
+    "testFiles": 520,
+    "seconds": 2856.096734374001,
+    "coverage": {
+     "called": 9.85774597938152e-05,
+     "loaded only": 0.820457105279246,
+     "no record": 0.17944431726096002
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import src/core/scheduler/awaiting-install.ts from its own path in the files that use it, or split src/core/delivery/index.ts"
+   },
+   "rank": 27
+  },
+  {
+   "files": [
+    "src/core/scheduler/timeout-split.ts"
+   ],
+   "folder": null,
+   "testFiles": 791,
+   "seconds": 4900.585609235003,
+   "share": 0.7935373119155412,
+   "avoidableSeconds": 3143.2361185089976,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "called": 0.036735813339072096,
+    "loaded only": 0.6808094344301876,
+    "not loaded": 0.0005181837236379612,
+    "no record": 0.1667736807223293,
+    "outside the test's process": 0.11516288778477216
+   },
+   "kinds": {
+    "declared input": 0.04228226309392965,
+    "child process": 0.040215863107993945,
+    "runtime read": 0.10624469231224733,
+    "barrel": 0.6334107420620196,
+    "test helper": 0.08797557424454444,
+    "transitive": 0.08987086517926393
+   },
+   "kind": "barrel",
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "src/core/scheduler/index.ts",
+    "chain": [
+     "test/cli/codex-runtime.test.ts",
+     "src/cli/main.ts",
+     "src/cli/daemon.ts",
+     "src/core/daemon/daemon.ts",
+     "src/core/scheduler/index.ts",
+     "src/core/scheduler/scheduler.ts",
+     "src/core/scheduler/tiers.ts",
+     "src/core/scheduler/record-tier.ts",
+     "src/core/scheduler/timeout-split.ts"
+    ],
+    "testFiles": 311,
+    "seconds": 2293.6641770799993,
+    "coverage": {
+     "called": 0.07848882150750919,
+     "loaded only": 0.8153681843672841,
+     "not loaded": 0.001107138405166551,
+     "no record": 0.1050358557200404
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import src/core/scheduler/timeout-split.ts from its own path in the files that use it, or split src/core/scheduler/index.ts"
+   },
+   "rank": 28
+  },
+  {
+   "files": [
+    "src/core/types/common.ts",
+    "src/core/types/daemon.ts",
+    "src/core/types/delivery.ts",
+    "src/core/types/runner.ts",
+    "src/core/types/scheduler.ts",
+    "src/core/types/store-records.ts",
+    "src/core/types/store.ts",
+    "src/core/types/watcher.ts"
+   ],
+   "folder": "src/core/types",
+   "testFiles": 1252,
+   "seconds": 5790.920115071008,
+   "share": 0.9377065412287383,
+   "avoidableSeconds": 3143.064230106002,
+   "unknownSeconds": 0,
+   "edits": 7,
+   "editSeconds": 40536.44080549706,
+   "coverage": {
+    "called": 0.222755913815724,
+    "loaded only": 0.6197696347402464,
+    "no record": 0.15188283771243408,
+    "outside the test's process": 0.005591613731594872
+   },
+   "kinds": {
+    "declared input": 0.035781507243509814,
+    "child process": 0.0375406071776444,
+    "runtime read": 0.04324829838602928,
+    "direct": 4.044113614009479e-05,
+    "barrel": 0.8833730144138602,
+    "transitive": 1.6131642816463635e-05
+   },
+   "kind": "barrel",
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "src/core/types/index.ts",
+    "chain": [
+     "test/capacity/cores.test.ts",
+     "src/core/capacity/cores.ts",
+     "src/core/ps/proc.ts",
+     "src/core/daemon/escaped.ts",
+     "src/core/daemon/low-priority.ts",
+     "src/core/types/index.ts",
+     "src/core/types/common.ts"
+    ],
+    "testFiles": 1118,
+    "seconds": 5058.724911203006,
+    "coverage": {
+     "loaded only": 0.8532812744307735,
+     "no record": 0.1467187255692258
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import these files from their own paths in the files that use them, or split src/core/types/index.ts"
+   },
+   "rank": 29
+  },
+  {
+   "files": [
+    "src/core/lint/fingerprint.ts"
+   ],
+   "folder": null,
+   "testFiles": 981,
+   "seconds": 5327.0154916310075,
+   "share": 0.8625878396645726,
+   "avoidableSeconds": 3128.8280091099964,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "called": 0.08549127043247311,
+    "loaded only": 0.7075582132515944,
+    "no record": 0.15342337581540716,
+    "outside the test's process": 0.05352714050052384
+   },
+   "kinds": {
+    "declared input": 0.09953705791019847,
+    "child process": 0.03591923155969938,
+    "runtime read": 0.19565199725801619,
+    "direct": 0.000138896280508743,
+    "barrel": 0.6379057480385831,
+    "test helper": 0.025807383616770357,
+    "transitive": 0.005039685336221959
+   },
+   "kind": "barrel",
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "src/core/state/index.ts",
+    "chain": [
+     "test/cli/daemon-socket.test.ts",
+     "test/harness/helpers.ts",
+     "src/core/state/index.ts",
+     "src/core/state/required.ts",
+     "src/core/lint/pass/commit-news.ts",
+     "src/core/lint/fingerprint.ts"
+    ],
+    "testFiles": 672,
+    "seconds": 3167.874123632998,
+    "coverage": {
+     "loaded only": 0.930186195281217,
+     "no record": 0.06981380471878301
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import src/core/lint/fingerprint.ts from its own path in the files that use it, or split src/core/state/index.ts"
+   },
+   "rank": 30
+  }
+ ],
+ "byEdits": [
+  {
+   "files": [
+    "src/cli/reach-format.ts",
+    "src/cli/reach-proposals.ts",
+    "src/cli/reach.ts",
+    "src/core/reach/analyze.ts",
+    "src/core/reach/called.ts",
+    "src/core/reach/chains.ts",
+    "src/core/reach/entries.ts",
+    "src/core/reach/modules.ts",
+    "src/core/reach/named.ts",
+    "src/core/reach/names.ts",
+    "src/core/reach/pairs.ts",
+    "src/core/reach/proposals.ts",
+    "src/core/reach/read.ts",
+    "src/core/reach/report-types.ts",
+    "src/core/reach/report.ts",
+    "src/core/reach/suggest.ts",
+    "src/core/store/repos/edits.ts"
+   ],
+   "folder": "src",
+   "testFiles": 77,
+   "seconds": 1144.24823721,
+   "share": 0.18528472772899118,
+   "avoidableSeconds": 0,
+   "unknownSeconds": 0,
+   "edits": 150,
+   "editSeconds": 171637.2355815,
+   "coverage": {
+    "no record": 0.4208519237863779,
+    "outside the test's process": 0.5791480762136221
+   },
+   "kinds": {
+    "child process": 0.13853972408690435,
+    "runtime read": 0.8614602759130957
+   },
+   "kind": "runtime read",
+   "gateway": null,
+   "second": null,
+   "suggestion": null,
+   "note": "these tests start the program from source; Squeal re-runs them by design",
+   "rank": 639
+  },
+  {
+   "files": [
+    "package.json"
+   ],
+   "folder": null,
+   "testFiles": 650,
+   "seconds": 4073.2005661670014,
+   "share": 0.6595613026488043,
+   "avoidableSeconds": 0,
+   "unknownSeconds": 0,
+   "edits": 36,
+   "editSeconds": 146635.22038201205,
+   "coverage": {
+    "no record": 0.17180209264713847,
+    "outside the test's process": 0.8281979073528619
+   },
+   "kinds": {
+    "declared input": 0.00040331643711468676,
+    "runtime read": 0.9995966835628854
+   },
+   "kind": "runtime read",
+   "gateway": null,
+   "second": null,
+   "suggestion": null,
+   "note": "these tests start the program from source; Squeal re-runs them by design",
+   "rank": 604
+  },
+  {
+   "files": [
+    "src/core/scheduler/bootstrap.ts",
+    "src/core/scheduler/handover.ts",
+    "src/core/scheduler/install-stamp.ts",
+    "src/core/scheduler/refinement.ts",
+    "src/core/scheduler/runner-work.ts",
+    "src/core/scheduler/scheduler.ts",
+    "src/core/scheduler/stored-keys.ts",
+    "src/core/scheduler/warm-up.ts"
+   ],
+   "folder": "src/core/scheduler",
+   "testFiles": 542,
+   "seconds": 4222.802179838997,
+   "share": 0.6837858488229981,
+   "avoidableSeconds": 455.18143762850013,
+   "unknownSeconds": 0,
+   "edits": 21,
+   "editSeconds": 88678.84577661895,
+   "coverage": {
+    "called": 0.5042766320246357,
+    "loaded only": 0.020779673546736106,
+    "not loaded": 0.08808400642584255,
+    "no record": 0.18052627756222892,
+    "outside the test's process": 0.2063334104405573
+   },
+   "kinds": {
+    "declared input": 0.04906880341998406,
+    "child process": 0.04163132745936557,
+    "runtime read": 0.2307434359651084,
+    "direct": 0.0002551760755913705,
+    "barrel": 0.6757346745503761,
+    "test helper": 0.002566582529574764
+   },
+   "kind": "barrel",
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "src/core/scheduler/index.ts",
+    "chain": [
+     "test/cli/codex-runtime.test.ts",
+     "src/cli/main.ts",
+     "src/cli/daemon.ts",
+     "src/core/daemon/daemon.ts",
+     "src/core/scheduler/index.ts",
+     "src/core/scheduler/scheduler.ts",
+     "src/core/scheduler/runner-work.ts",
+     "src/core/scheduler/refinement.ts"
+    ],
+    "testFiles": 389,
+    "seconds": 2865.409585072998,
+    "coverage": {
+     "called": 0.599805900339101,
+     "loaded only": 0.1723980371945378,
+     "not loaded": 0.12981087809634173,
+     "no record": 0.09798518437001992
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import these files from their own paths in the files that use them, or split src/core/scheduler/index.ts"
+   },
+   "rank": 337
+  },
+  {
+   "files": [
+    "src/core/scheduler/backlog.ts",
+    "src/core/scheduler/environment-growth.ts",
+    "src/core/scheduler/revision.ts",
+    "src/core/scheduler/slots.ts",
+    "src/core/scheduler/tiers.ts"
+   ],
+   "folder": "src/core/scheduler",
+   "testFiles": 791,
+   "seconds": 4900.585609235003,
+   "share": 0.7935373119155412,
+   "avoidableSeconds": 1139.6112055620001,
+   "unknownSeconds": 0,
+   "edits": 12,
+   "editSeconds": 58807.027310820034,
+   "coverage": {
+    "called": 0.4455899937805339,
+    "loaded only": 0.2719552539887259,
+    "not loaded": 0.0005181837236379612,
+    "no record": 0.1667736807223293,
+    "outside the test's process": 0.11516288778477216
+   },
+   "kinds": {
+    "declared input": 0.04228226309392964,
+    "child process": 0.040215863107993945,
+    "runtime read": 0.10624469231224731,
+    "direct": 0.0008578939427723386,
+    "barrel": 0.6585727351012247,
+    "test helper": 0.07519276475243993,
+    "transitive": 0.07663378768939098
+   },
+   "kind": "barrel",
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "src/core/status/index.ts",
+    "chain": [
+     "test/cli/failures-active.test.ts",
+     "src/core/status/index.ts",
+     "src/core/status/format-status.ts",
+     "src/core/status/outstanding-text.ts",
+     "src/core/status/next-step.ts",
+     "src/core/scheduler/yields.ts",
+     "src/core/scheduler/backlog.ts"
+    ],
+    "testFiles": 175,
+    "seconds": 841.2566216369997,
+    "coverage": {
+     "called": 0.0013789622217090416,
+     "loaded only": 0.5513747923177111,
+     "no record": 0.44724624546058017
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import these files from their own paths in the files that use them, or split src/core/status/index.ts"
+   },
+   "rank": 196
+  },
+  {
+   "files": [
+    "src/runners/node-test/graph/closures.ts",
+    "src/runners/node-test/graph/glob.ts",
+    "src/runners/node-test/graph/graph.ts",
+    "src/runners/node-test/graph/index.ts",
+    "src/runners/node-test/graph/loader-chain.ts",
+    "src/runners/node-test/graph/modules.ts",
+    "src/runners/node-test/graph/packages.ts",
+    "src/runners/node-test/graph/preload-notes.ts",
+    "src/runners/node-test/graph/resolver.ts",
+    "src/runners/node-test/graph/tsconfig.ts"
+   ],
+   "folder": "src/runners/node-test/graph",
+   "testFiles": 474,
+   "seconds": 3714.249691057,
+   "share": 0.6014374506732878,
+   "avoidableSeconds": 1860.0038596724994,
+   "unknownSeconds": 0,
+   "edits": 14,
+   "editSeconds": 51999.495674797996,
+   "coverage": {
+    "called": 0.0718580957643012,
+    "loaded only": 0.4065624832176435,
+    "not loaded": 0.10100941388036654,
+    "no record": 0.18840531446335151,
+    "outside the test's process": 0.23216469267433706
+   },
+   "kinds": {
+    "declared input": 0.05618274110500491,
+    "child process": 0.047331459909193845,
+    "runtime read": 0.2650990388464675,
+    "direct": 0.00047589336213876897,
+    "barrel": 0.056733815943599726,
+    "test helper": 0.43481240508184654,
+    "transitive": 0.13936464575174845
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "test/scheduler/helpers.ts",
+    "chain": [
+     "test/code/pass/daemon-loop.test.ts",
+     "test/scheduler/helpers.ts",
+     "src/runners/node-test/adapter.ts",
+     "src/runners/node-test/adapter-project.ts",
+     "src/runners/node-test/graph/index.ts",
+     "src/runners/node-test/graph/graph.ts",
+     "src/runners/node-test/graph/modules.ts",
+     "src/runners/node-test/graph/glob.ts"
+    ],
+    "testFiles": 141,
+    "seconds": 1381.8302822950004,
+    "coverage": {
+     "loaded only": 0.9328269633794403,
+     "no record": 0.06717303662055941
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split test/scheduler/helpers.ts: 139 of the 141 test files that load these files through it never call it"
+   },
+   "rank": 143
+  },
+  {
+   "files": [
+    "src/core/state/baseline.ts",
+    "src/core/state/before-edits.ts",
+    "src/core/state/check-name.ts",
+    "src/core/state/file-class.ts",
+    "src/core/state/flaky.ts",
+    "src/core/state/groups.ts",
+    "src/core/state/header.ts",
+    "src/core/state/inherited.ts",
+    "src/core/state/producers.ts",
+    "src/core/state/required.ts",
+    "src/core/state/rerun-first.ts",
+    "src/core/state/shown-result.ts",
+    "src/core/state/sink.ts",
+    "src/core/state/slow.ts",
+    "src/core/state/transitions.ts"
+   ],
+   "folder": "src/core/state",
+   "testFiles": 946,
+   "seconds": 5138.2093887240035,
+   "share": 0.8320150266742775,
+   "avoidableSeconds": 2179.219762018333,
+   "unknownSeconds": 0,
+   "edits": 8,
+   "editSeconds": 41105.67510979203,
+   "coverage": {
+    "called": 0.31669781276746256,
+    "loaded only": 0.46969851282028036,
+    "no record": 0.159060995361647,
+    "outside the test's process": 0.05454267905060916
+   },
+   "kinds": {
+    "declared input": 0.04032685987821466,
+    "child process": 0.03835602348991508,
+    "runtime read": 0.0693432867834687,
+    "direct": 2.1866396903409983e-05,
+    "barrel": 0.8482224755802068,
+    "test helper": 0.0032279714366640244,
+    "transitive": 0.0005015164346270312
+   },
+   "kind": "barrel",
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "src/core/state/index.ts",
+    "chain": [
+     "test/cli/codex-runtime.test.ts",
+     "src/cli/main.ts",
+     "src/cli/retry.ts",
+     "src/core/state/index.ts",
+     "src/core/state/shown-result.ts"
+    ],
+    "testFiles": 826,
+    "seconds": 4422.195045578002,
+    "coverage": {
+     "called": 0.03794561556862929,
+     "loaded only": 0.8082943207813224,
+     "no record": 0.1537600636500479
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import these files from their own paths in the files that use them, or split src/core/state/index.ts"
+   },
+   "rank": 112
+  },
+  {
+   "files": [
+    "src/core/types/common.ts",
+    "src/core/types/daemon.ts",
+    "src/core/types/delivery.ts",
+    "src/core/types/runner.ts",
+    "src/core/types/scheduler.ts",
+    "src/core/types/store-records.ts",
+    "src/core/types/store.ts",
+    "src/core/types/watcher.ts"
+   ],
+   "folder": "src/core/types",
+   "testFiles": 1252,
+   "seconds": 5790.920115071008,
+   "share": 0.9377065412287383,
+   "avoidableSeconds": 3143.064230106002,
+   "unknownSeconds": 0,
+   "edits": 7,
+   "editSeconds": 40536.44080549706,
+   "coverage": {
+    "called": 0.222755913815724,
+    "loaded only": 0.6197696347402464,
+    "no record": 0.15188283771243408,
+    "outside the test's process": 0.005591613731594872
+   },
+   "kinds": {
+    "declared input": 0.035781507243509814,
+    "child process": 0.0375406071776444,
+    "runtime read": 0.04324829838602928,
+    "direct": 4.044113614009479e-05,
+    "barrel": 0.8833730144138602,
+    "transitive": 1.6131642816463635e-05
+   },
+   "kind": "barrel",
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "src/core/types/index.ts",
+    "chain": [
+     "test/capacity/cores.test.ts",
+     "src/core/capacity/cores.ts",
+     "src/core/ps/proc.ts",
+     "src/core/daemon/escaped.ts",
+     "src/core/daemon/low-priority.ts",
+     "src/core/types/index.ts",
+     "src/core/types/common.ts"
+    ],
+    "testFiles": 1118,
+    "seconds": 5058.724911203006,
+    "coverage": {
+     "loaded only": 0.8532812744307735,
+     "no record": 0.1467187255692258
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import these files from their own paths in the files that use them, or split src/core/types/index.ts"
+   },
+   "rank": 29
+  },
+  {
+   "files": [
+    "src/runners/vitest/graph.ts"
+   ],
+   "folder": null,
+   "testFiles": 503,
+   "seconds": 3848.9818183069992,
+   "share": 0.623254224955355,
+   "avoidableSeconds": 375.17418429900016,
+   "unknownSeconds": 0,
+   "edits": 6,
+   "editSeconds": 23093.890909841997,
+   "coverage": {
+    "called": 0.496192591715347,
+    "not loaded": 0.09747361822146072,
+    "no record": 0.18406878669736837,
+    "outside the test's process": 0.22226500336582383
+   },
+   "kinds": {
+    "declared input": 0.05383445800093223,
+    "child process": 0.046287379712114246,
+    "runtime read": 0.2558193490163334,
+    "direct": 0.0008455122673017596,
+    "barrel": 0.054747870550785865,
+    "test helper": 0.4604335040658917,
+    "transitive": 0.12803192638664068
+   },
+   "kind": "transitive",
+   "gateway": {
+    "kind": "transitive",
+    "gateway": "src/runners/vitest/adapter.ts",
+    "chain": [
+     "test/cli/codex-runtime.test.ts",
+     "src/cli/main.ts",
+     "src/cli/daemon.ts",
+     "src/core/daemon/daemon.ts",
+     "src/runners/vitest/index.ts",
+     "src/runners/vitest/adapter.ts",
+     "src/runners/vitest/graph.ts"
+    ],
+    "testFiles": 123,
+    "seconds": 482.0981044990001,
+    "coverage": {
+     "called": 0.4239588835002853,
+     "not loaded": 0.452401673631663,
+     "no record": 0.12363944286805141
+    }
+   },
+   "second": null,
+   "suggestion": null,
+   "rank": 382
+  },
+  {
+   "files": [
+    "src/runners/vitest/adapter.ts",
+    "src/runners/vitest/load.ts"
+   ],
+   "folder": "src/runners/vitest",
+   "testFiles": 501,
+   "seconds": 3848.6704192319994,
+   "share": 0.6232038010255204,
+   "avoidableSeconds": 579.8530816430001,
+   "unknownSeconds": 0,
+   "edits": 6,
+   "editSeconds": 23092.022515391996,
+   "coverage": {
+    "called": 0.43579794055467397,
+    "loaded only": 0.060353887690739655,
+    "not loaded": 0.09748150489172466,
+    "no record": 0.1840836798536198,
+    "outside the test's process": 0.22228298700924187
+   },
+   "kinds": {
+    "declared input": 0.05383881379100997,
+    "child process": 0.04629112486190792,
+    "runtime read": 0.2558400475693331,
+    "direct": 0.006411953820385687,
+    "barrel": 0.054752300245820944,
+    "test helper": 0.46368700386148176,
+    "transitive": 0.11917875585006041
+   },
+   "kind": "transitive",
+   "gateway": {
+    "kind": "transitive",
+    "gateway": "src/runners/vitest/index.ts",
+    "chain": [
+     "test/cli/codex-runtime.test.ts",
+     "src/cli/main.ts",
+     "src/cli/daemon.ts",
+     "src/core/daemon/daemon.ts",
+     "src/runners/vitest/index.ts",
+     "src/runners/vitest/adapter.ts"
+    ],
+    "testFiles": 118,
+    "seconds": 460.0932092050001,
+    "coverage": {
+     "called": 0.39565813500170577,
+     "loaded only": 0.0007504082631355817,
+     "not loaded": 0.47403870556329386,
+     "no record": 0.12955275117186457
+    }
+   },
+   "second": null,
+   "suggestion": null,
+   "rank": 305
+  },
+  {
+   "files": [
+    "src/runners/node-test/run/errors.ts",
+    "src/runners/node-test/run/events.ts",
+    "src/runners/node-test/run/report.ts"
+   ],
+   "folder": "src/runners/node-test/run",
+   "testFiles": 472,
+   "seconds": 3714.467823784,
+   "share": 0.6014727722596505,
+   "avoidableSeconds": 1878.3218130749995,
+   "unknownSeconds": 0,
+   "edits": 6,
+   "editSeconds": 22286.806942704,
+   "coverage": {
+    "called": 0.06737653411950874,
+    "loaded only": 0.4114266390823548,
+    "not loaded": 0.1010469656691328,
+    "no record": 0.18839425033062107,
+    "outside the test's process": 0.2317556107983826
+   },
+   "kinds": {
+    "declared input": 0.055783993797774586,
+    "child process": 0.0473286803615136,
+    "runtime read": 0.2650834708623008,
+    "direct": 2.939650375598002e-05,
+    "barrel": 0.05673048424103237,
+    "test helper": 0.43478687065264865,
+    "transitive": 0.14025710358097368
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "test/scheduler/helpers.ts",
+    "chain": [
+     "test/code/pass/daemon-loop.test.ts",
+     "test/scheduler/helpers.ts",
+     "src/runners/node-test/adapter.ts",
+     "src/runners/node-test/adapter-project.ts",
+     "src/runners/node-test/run/run.ts",
+     "src/runners/node-test/run/report.ts",
+     "src/runners/node-test/run/errors.ts"
+    ],
+    "testFiles": 141,
+    "seconds": 1381.8302822950004,
+    "coverage": {
+     "called": 0.017373780230903007,
+     "loaded only": 0.9154531831485374,
+     "no record": 0.06717303662055941
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split test/scheduler/helpers.ts: 136 of the 141 test files that load these files through it never call it"
+   },
+   "rank": 140
+  },
+  {
+   "files": [
+    "src/runners/node-test/adapter-environment.ts",
+    "src/runners/node-test/adapter-files.ts",
+    "src/runners/node-test/adapter-project.ts",
+    "src/runners/node-test/adapter.ts",
+    "src/runners/node-test/coverage.ts",
+    "src/runners/node-test/version.ts"
+   ],
+   "folder": "src/runners/node-test",
+   "testFiles": 465,
+   "seconds": 3696.0707950380006,
+   "share": 0.5984937958877609,
+   "avoidableSeconds": 1852.3823393144996,
+   "unknownSeconds": 0,
+   "edits": 6,
+   "editSeconds": 22176.424770228,
+   "coverage": {
+    "called": 0.07089093021434925,
+    "loaded only": 0.4053617088777278,
+    "not loaded": 0.10150622244646232,
+    "no record": 0.18933197437085492,
+    "outside the test's process": 0.23290916409060536
+   },
+   "kinds": {
+    "declared input": 0.056061656157175836,
+    "child process": 0.04756425677262833,
+    "runtime read": 0.26526454545524636,
+    "direct": 0.003379356306189183,
+    "barrel": 0.05815122436193042,
+    "test helper": 0.4369510030519843,
+    "transitive": 0.13262795789484516
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "test/scheduler/helpers.ts",
+    "chain": [
+     "test/code/pass/daemon-loop.test.ts",
+     "test/scheduler/helpers.ts",
+     "src/runners/node-test/adapter.ts",
+     "src/runners/node-test/version.ts"
+    ],
+    "testFiles": 141,
+    "seconds": 1381.8302822950004,
+    "coverage": {
+     "loaded only": 0.9328269633794403,
+     "no record": 0.06717303662055941
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split test/scheduler/helpers.ts: 139 of the 141 test files that load these files through it never call it"
+   },
+   "rank": 144
+  },
+  {
+   "files": [
+    "src/core/code/crap/brought.ts",
+    "src/core/code/crap/cache.ts",
+    "src/core/code/crap/checks.ts",
+    "src/core/code/crap/judge.ts",
+    "src/core/code/crap/loaders.ts",
+    "src/core/code/crap/removed.ts",
+    "src/core/code/crap/seed.ts",
+    "src/core/code/crap/step.ts",
+    "src/core/code/crap/summary.ts",
+    "src/core/code/crap/walk.ts"
+   ],
+   "folder": "src/core/code/crap",
+   "testFiles": 823,
+   "seconds": 4247.927386081001,
+   "share": 0.6878542990476061,
+   "avoidableSeconds": 2390.4040393279,
+   "unknownSeconds": 0,
+   "edits": 5,
+   "editSeconds": 21239.63693040501,
+   "coverage": {
+    "called": 0.09573876661406404,
+    "loaded only": 0.6355396387832747,
+    "no record": 0.1647354856704833,
+    "outside the test's process": 0.10398610893217779
+   },
+   "kinds": {
+    "declared input": 0.048778576282388665,
+    "child process": 0.04639469136307925,
+    "runtime read": 0.17606146718917542,
+    "direct": 1.3502146455689514e-05,
+    "barrel": 0.7277712202103895,
+    "transitive": 0.0009805428085113165
+   },
+   "kind": "barrel",
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "src/core/code/crap/index.ts",
+    "chain": [
+     "test/cli/codex-runtime.test.ts",
+     "src/cli/main.ts",
+     "src/cli/code.ts",
+     "src/core/code/crap/index.ts",
+     "src/core/code/crap/seed.ts",
+     "src/core/code/crap/judge.ts"
+    ],
+    "testFiles": 609,
+    "seconds": 3200.294258901,
+    "coverage": {
+     "called": 0.019183536072111918,
+     "loaded only": 0.8136856346048132,
+     "no record": 0.16713082932307508
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import these files from their own paths in the files that use them, or split src/core/code/crap/index.ts"
+   },
+   "rank": 95
+  },
+  {
+   "files": [
+    "src/core/slow/guard.ts",
+    "src/core/slow/slot.ts"
+   ],
+   "folder": "src/core/slow",
+   "testFiles": 976,
+   "seconds": 5151.140992387005,
+   "share": 0.8341090029513489,
+   "avoidableSeconds": 2214.7262613959997,
+   "unknownSeconds": 0,
+   "edits": 4,
+   "editSeconds": 20604.56396954802,
+   "coverage": {
+    "called": 0.24869972918336916,
+    "loaded only": 0.5385763791768039,
+    "no record": 0.15866168310183912,
+    "outside the test's process": 0.0540622085379871
+   },
+   "kinds": {
+    "declared input": 0.040225621925363206,
+    "child process": 0.038467954450063846,
+    "runtime read": 0.14707523982330964,
+    "direct": 0.0017191611029649483,
+    "barrel": 0.7718970594824425,
+    "transitive": 0.000614963215854839
+   },
+   "kind": "barrel",
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "src/core/slow/index.ts",
+    "chain": [
+     "test/capacity/edit-mark.test.ts",
+     "src/core/capacity/index.ts",
+     "src/core/capacity/marks.ts",
+     "src/core/slow/index.ts",
+     "src/core/slow/guard.ts"
+    ],
+    "testFiles": 818,
+    "seconds": 3761.8514928339987,
+    "coverage": {
+     "called": 0.0943163312373896,
+     "loaded only": 0.8164378204170456,
+     "no record": 0.0892458483455649
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import these files from their own paths in the files that use them, or split src/core/slow/index.ts"
+   },
+   "rank": 111
+  },
+  {
+   "files": [
+    "src/runners/vitest/broken.ts",
+    "src/runners/vitest/config-stamps.ts",
+    "src/runners/vitest/empty-closed.ts",
+    "src/runners/vitest/environment.ts",
+    "src/runners/vitest/exclude.ts",
+    "src/runners/vitest/optimizer.ts",
+    "src/runners/vitest/startup.ts",
+    "src/runners/vitest/touched.ts"
+   ],
+   "folder": "src/runners/vitest",
+   "testFiles": 501,
+   "seconds": 3848.6704192319994,
+   "share": 0.6232038010255204,
+   "avoidableSeconds": 628.3433621935001,
+   "unknownSeconds": 0,
+   "edits": 5,
+   "editSeconds": 19243.352096159997,
+   "coverage": {
+    "called": 0.4238447169575414,
+    "loaded only": 0.0723071112878722,
+    "not loaded": 0.09748150489172465,
+    "no record": 0.18408367985361979,
+    "outside the test's process": 0.22228298700924182
+   },
+   "kinds": {
+    "declared input": 0.05383881379100998,
+    "child process": 0.04629112486190792,
+    "runtime read": 0.2550201247270558,
+    "direct": 0.0006623690354560679,
+    "barrel": 0.05557222308809817,
+    "test helper": 0.46368700386148176,
+    "transitive": 0.12492834063499005
+   },
+   "kind": "transitive",
+   "gateway": {
+    "kind": "transitive",
+    "gateway": "src/runners/vitest/adapter.ts",
+    "chain": [
+     "test/cli/codex-runtime.test.ts",
+     "src/cli/main.ts",
+     "src/cli/daemon.ts",
+     "src/core/daemon/daemon.ts",
+     "src/runners/vitest/index.ts",
+     "src/runners/vitest/adapter.ts",
+     "src/runners/vitest/environment.ts"
+    ],
+    "testFiles": 124,
+    "seconds": 483.3572492390001,
+    "coverage": {
+     "called": 0.2845843996951917,
+     "loaded only": 0.14087506984783182,
+     "not loaded": 0.45122316810884866,
+     "no record": 0.12331736234812761
+    }
+   },
+   "second": null,
+   "suggestion": null,
+   "rank": 276
+  },
+  {
+   "files": [
+    "src/core/scheduler/keying.ts",
+    "src/core/scheduler/lockfiles.ts"
+   ],
+   "folder": "src/core/scheduler",
+   "testFiles": 558,
+   "seconds": 4455.5478939549985,
+   "share": 0.7214736729049664,
+   "avoidableSeconds": 543.7590547929999,
+   "unknownSeconds": 0,
+   "edits": 4,
+   "editSeconds": 17822.191575819994,
+   "coverage": {
+    "called": 0.49698546949439765,
+    "loaded only": 0.04231163952535981,
+    "not loaded": 0.0834827372967202,
+    "no record": 0.1850680226830771,
+    "outside the test's process": 0.1921521310004455
+   },
+   "kinds": {
+    "declared input": 0.04650558247283712,
+    "child process": 0.03945662004520596,
+    "runtime read": 0.2180241853923187,
+    "direct": 0.001533614121345368,
+    "barrel": 0.676161232901658,
+    "test helper": 0.01678515094528919,
+    "transitive": 0.001533614121345368
+   },
+   "kind": "barrel",
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "src/core/scheduler/index.ts",
+    "chain": [
+     "test/cli/codex-runtime.test.ts",
+     "src/cli/main.ts",
+     "src/cli/daemon.ts",
+     "src/core/daemon/daemon.ts",
+     "src/core/scheduler/index.ts",
+     "src/core/scheduler/scheduler.ts",
+     "src/core/scheduler/keying.ts"
+    ],
+    "testFiles": 389,
+    "seconds": 2865.409585072998,
+    "coverage": {
+     "called": 0.7636402234940017,
+     "loaded only": 0.008563714039636976,
+     "not loaded": 0.12981087809634173,
+     "no record": 0.09798518437001992
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import these files from their own paths in the files that use them, or split src/core/scheduler/index.ts"
+   },
+   "rank": 315
+  },
+  {
+   "files": [
+    "src/core/daemon/desk-messages.ts",
+    "src/core/scheduler/options.ts",
+    "src/core/types/capacity.ts",
+    "src/core/types/check.ts",
+    "src/core/types/keys.ts",
+    "src/core/types/revision.ts",
+    "src/core/types/status.ts",
+    "src/harness/codex/entries/interrupt.ts",
+    "src/harness/codex/entries/post-tool-use.ts",
+    "src/harness/codex/entries/pre-tool-use.ts",
+    "src/harness/codex/entries/session-end.ts",
+    "src/harness/codex/entries/session-start.ts",
+    "src/harness/codex/entries/stop-slow.ts",
+    "src/harness/codex/entries/stop.ts",
+    "src/harness/codex/entries/subagent-start.ts",
+    "src/harness/codex/entries/subagent-stop.ts",
+    "src/harness/codex/entries/user-prompt-submit.ts",
+    "src/harness/codex/hook.ts",
+    "src/harness/opencode/api.ts",
+    "src/harness/pi/api.ts",
+    "src/harness/pi/protocol.ts"
+   ],
+   "folder": "src",
+   "testFiles": 134,
+   "seconds": 1127.4457817730001,
+   "share": 0.1825639558898193,
+   "avoidableSeconds": 0,
+   "unknownSeconds": 0,
+   "edits": 15,
+   "editSeconds": 16911.686726595002,
+   "coverage": {
+    "no record": 0.4138301889703992,
+    "outside the test's process": 0.5861698110296005
+   },
+   "kinds": {
+    "declared input": 0.1837852013762903,
+    "runtime read": 0.8162147986237094
+   },
+   "kind": "runtime read",
+   "gateway": null,
+   "second": null,
+   "suggestion": null,
+   "note": "these tests start the program from source; Squeal re-runs them by design",
+   "rank": 644
+  },
+  {
+   "files": [
+    "src/runners/node-test/run/coverage.ts",
+    "src/runners/node-test/run/reads.ts",
+    "src/runners/node-test/run/run.ts"
+   ],
+   "folder": "src/runners/node-test/run",
+   "testFiles": 471,
+   "seconds": 3714.3040352330004,
+   "share": 0.6014462504647372,
+   "avoidableSeconds": 2009.7659229309995,
+   "unknownSeconds": 0,
+   "edits": 4,
+   "editSeconds": 14857.216140932,
+   "coverage": {
+    "called": 0.03421234123277557,
+    "loaded only": 0.44458234407577557,
+    "not loaded": 0.10103692634003557,
+    "no record": 0.18840255789537225,
+    "outside the test's process": 0.23176583045604085
+   },
+   "kinds": {
+    "declared input": 0.055786453687817636,
+    "child process": 0.04733076740013608,
+    "runtime read": 0.2628296031873152,
+    "direct": 0.0016622249612403368,
+    "barrel": 0.058998542849473555,
+    "test helper": 0.43480604331887696,
+    "transitive": 0.1385863645951399
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "test/scheduler/helpers.ts",
+    "chain": [
+     "test/code/pass/daemon-loop.test.ts",
+     "test/scheduler/helpers.ts",
+     "src/runners/node-test/adapter.ts",
+     "src/runners/node-test/adapter-project.ts",
+     "src/runners/node-test/run/coverage.ts"
+    ],
+    "testFiles": 141,
+    "seconds": 1381.8302822950004,
+    "coverage": {
+     "loaded only": 0.9328269633794403,
+     "no record": 0.06717303662055941
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split test/scheduler/helpers.ts: 139 of the 141 test files that load these files through it never call it"
+   },
+   "rank": 126
+  },
+  {
+   "files": [
+    "plugins/codex/dist/interrupt.mjs",
+    "plugins/codex/dist/post-tool-use.mjs",
+    "plugins/codex/dist/pre-tool-use.mjs",
+    "plugins/codex/dist/session-end.mjs",
+    "plugins/codex/dist/session-start.mjs",
+    "plugins/codex/dist/stop.mjs",
+    "plugins/codex/dist/subagent-start.mjs",
+    "plugins/codex/dist/subagent-stop.mjs",
+    "plugins/codex/dist/user-prompt-submit.mjs",
+    "plugins/codex/seed/.codex-plugin/plugin.json",
+    "plugins/codex/seed/bin/squeal-launcher",
+    "plugins/codex/seed/dist/cli/coverage-map.mjs",
+    "plugins/codex/seed/dist/cli/front-desk.mjs",
+    "plugins/codex/seed/dist/cli/lint-worker.mjs",
+    "plugins/codex/seed/dist/cli/ps.mjs",
+    "plugins/codex/seed/dist/cli/squeal.mjs",
+    "plugins/codex/seed/dist/code/tree-sitter-tsx.wasm",
+    "plugins/codex/seed/dist/coverage/provider.mjs",
+    "plugins/codex/seed/dist/interrupt.mjs",
+    "plugins/codex/seed/dist/node-test/recorder.cjs",
+    "plugins/codex/seed/dist/node-test/reporter.mjs",
+    "plugins/codex/seed/dist/observe/fs.cjs",
+    "plugins/codex/seed/dist/observe/preloads.cjs",
+    "plugins/codex/seed/dist/observe/recorder.cjs",
+    "plugins/codex/seed/dist/observe/spawn.cjs",
+    "plugins/codex/seed/dist/post-tool-use.mjs",
+    "plugins/codex/seed/dist/pre-tool-use.mjs",
+    "plugins/codex/seed/dist/pytest/sitecustomize.py",
+    "plugins/codex/seed/dist/pytest/squeal_pytest.py",
+    "plugins/codex/seed/dist/pytest/tree-sitter-python.wasm",
+    "plugins/codex/seed/dist/pytest/web-tree-sitter.wasm",
+    "plugins/codex/seed/dist/runtime.mjs",
+    "plugins/codex/seed/dist/session-end.mjs",
+    "plugins/codex/seed/dist/session-start.mjs",
+    "plugins/codex/seed/dist/stop-slow.mjs",
+    "plugins/codex/seed/dist/stop.mjs",
+    "plugins/codex/seed/dist/subagent-start.mjs",
+    "plugins/codex/seed/dist/subagent-stop.mjs",
+    "plugins/codex/seed/dist/user-prompt-submit.mjs",
+    "plugins/codex/seed/runtime.json",
+    "plugins/codex/seed/skills/setup/SKILL.md",
+    "plugins/codex/seed/skills/squeal/SKILL.md",
+    "plugins/codex/seed/skills/squeal/references/commands.md",
+    "plugins/codex/seed/skills/squeal/references/policy.md",
+    "plugins/codex/seed/skills/squeal/references/reports.md"
+   ],
+   "folder": "plugins/codex",
+   "testFiles": 44,
+   "seconds": 89.62307139199994,
+   "share": 0.014512398482336526,
+   "avoidableSeconds": 0,
+   "unknownSeconds": 0,
+   "edits": 152,
+   "editSeconds": 13622.706851584,
+   "coverage": {
+    "outside the test's process": 1
+   },
+   "kinds": {
+    "declared input": 1
+   },
+   "kind": "declared input",
+   "gateway": null,
+   "second": null,
+   "suggestion": {
+    "kind": "declared input",
+    "text": "the input \"plugins/codex*/**\" in squeal.config.json gives these files to the test files \"test/harness/codex/**/*.test.ts\" matches: 42 test files here"
+   },
+   "rank": 752
+  },
+  {
+   "files": [
+    "src/core/scheduler/slow-tier.ts"
+   ],
+   "folder": null,
+   "testFiles": 582,
+   "seconds": 4484.710076447,
+   "share": 0.7261958187360043,
+   "avoidableSeconds": 603.445837906,
+   "unknownSeconds": 0,
+   "edits": 3,
+   "editSeconds": 13454.130229340999,
+   "coverage": {
+    "called": 0.48791158818465896,
+    "loaded only": 0.07039990720005047,
+    "not loaded": 0.06516608815023675,
+    "no record": 0.18223891529561148,
+    "outside the test's process": 0.1942835011694422
+   },
+   "kinds": {
+    "declared input": 0.04620317623924528,
+    "child process": 0.03920005024812614,
+    "runtime read": 0.21726797669582087,
+    "direct": 0.003106623133604622,
+    "barrel": 0.5314409206327578,
+    "test helper": 0.06928316643205688,
+    "transitive": 0.09349808661838824
+   },
+   "kind": "transitive",
+   "gateway": {
+    "kind": "transitive",
+    "gateway": "src/core/lint/pass/idle.ts",
+    "chain": [
+     "test/cli/codex-runtime.test.ts",
+     "src/cli/main.ts",
+     "src/cli/daemon.ts",
+     "src/core/daemon/daemon.ts",
+     "src/core/lint/pass/index.ts",
+     "src/core/lint/pass/idle.ts",
+     "src/core/scheduler/slow-tier.ts"
+    ],
+    "testFiles": 94,
+    "seconds": 419.3118111860001,
+    "coverage": {
+     "called": 0.15146026660534107,
+     "loaded only": 0.07124605759733352,
+     "not loaded": 0.5040643525809101,
+     "no record": 0.273229323216415
+    }
+   },
+   "second": null,
+   "suggestion": null,
+   "rank": 297
+  },
+  {
+   "files": [
+    "src/core/keys/dependencies.ts",
+    "src/core/keys/environment-hash.ts",
+    "src/core/keys/key-format.ts",
+    "src/core/keys/key-index.ts",
+    "src/core/keys/resolution.ts",
+    "src/core/keys/reverse-index.ts",
+    "src/core/keys/startup.ts"
+   ],
+   "folder": "src/core/keys",
+   "testFiles": 1095,
+   "seconds": 5600.298303748007,
+   "share": 0.9068397159528631,
+   "avoidableSeconds": 1941.2340414998587,
+   "unknownSeconds": 0,
+   "edits": 2,
+   "editSeconds": 11200.596607496012,
+   "coverage": {
+    "called": 0.3562900189984613,
+    "loaded only": 0.43712778366559796,
+    "not loaded": 4.165115594715573e-05,
+    "no record": 0.15705259476166933,
+    "outside the test's process": 0.049487951418323364
+   },
+   "kinds": {
+    "declared input": 0.03699943088840925,
+    "child process": 0.03561233558943186,
+    "runtime read": 0.14228202308060423,
+    "direct": 7.043260083771218e-05,
+    "barrel": 0.7843662327297904,
+    "test helper": 3.253129514155924e-05,
+    "transitive": 0.0006370138157841463
+   },
+   "kind": "barrel",
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "src/core/keys/index.ts",
+    "chain": [
+     "test/cli/codex-runtime.test.ts",
+     "src/cli/main.ts",
+     "src/cli/named-selection.ts",
+     "src/core/keys/index.ts",
+     "src/core/keys/key-format.ts"
+    ],
+    "testFiles": 936,
+    "seconds": 4163.5807279050005,
+    "coverage": {
+     "loaded only": 0.9043574286063208,
+     "not loaded": 5.602362803647846e-05,
+     "no record": 0.09558654776564252
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import these files from their own paths in the files that use them, or split src/core/keys/index.ts"
+   },
+   "rank": 131
+  },
+  {
+   "files": [
+    "src/runners/node-test/run/observed.ts"
+   ],
+   "folder": null,
+   "testFiles": 472,
+   "seconds": 3714.725163149,
+   "share": 0.6015144424607723,
+   "avoidableSeconds": 1800.3291851639997,
+   "unknownSeconds": 0,
+   "edits": 3,
+   "editSeconds": 11144.175489447,
+   "coverage": {
+    "called": 0.08843667321609144,
+    "loaded only": 0.3904026061455975,
+    "not loaded": 0.10103996559218538,
+    "no record": 0.1883811992286901,
+    "outside the test's process": 0.23173955581743552
+   },
+   "kinds": {
+    "declared input": 0.05578012933488417,
+    "child process": 0.04732540164451152,
+    "runtime read": 0.265065107077884,
+    "direct": 0.00011336717994044186,
+    "barrel": 0.056726554209563136,
+    "test helper": 0.43475675058392493,
+    "transitive": 0.14023268996929159
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "test/scheduler/helpers.ts",
+    "chain": [
+     "test/code/pass/daemon-loop.test.ts",
+     "test/scheduler/helpers.ts",
+     "src/runners/node-test/adapter.ts",
+     "src/runners/node-test/adapter-project.ts",
+     "src/runners/node-test/run/run.ts",
+     "src/runners/node-test/run/observed.ts"
+    ],
+    "testFiles": 141,
+    "seconds": 1381.8302822950004,
+    "coverage": {
+     "called": 0.060854917156206716,
+     "loaded only": 0.8719720462232335,
+     "no record": 0.06717303662055941
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split test/scheduler/helpers.ts: 128 of the 141 test files that load src/runners/node-test/run/observed.ts through it never call it"
+   },
+   "rank": 147
+  },
+  {
+   "files": [
+    "src/core/store/codec.ts",
+    "src/core/store/connection.ts",
+    "src/core/store/prune.ts",
+    "src/core/store/repos/consumers.ts",
+    "src/core/store/repos/failures.ts",
+    "src/core/store/repos/replaced.ts",
+    "src/core/store/repos/results.ts",
+    "src/core/store/repos/runs.ts",
+    "src/core/store/repos/states.ts",
+    "src/core/store/repos/test-files.ts",
+    "src/core/store/repos/unknown-runs.ts",
+    "src/core/store/repos/workspace.ts",
+    "src/core/store/repos/worktrees.ts",
+    "src/core/store/schema.ts",
+    "src/core/store/store.ts"
+   ],
+   "folder": "src/core/store",
+   "testFiles": 1110,
+   "seconds": 5393.663297776007,
+   "share": 0.8733799214993856,
+   "avoidableSeconds": 1093.7712872131335,
+   "unknownSeconds": 0,
+   "edits": 2,
+   "editSeconds": 10787.326595552015,
+   "coverage": {
+    "called": 0.6001316084834502,
+    "loaded only": 0.23079555212499483,
+    "no record": 0.1630693892971897,
+    "outside the test's process": 0.006003450094363812
+   },
+   "kinds": {
+    "declared input": 0.03841690491311143,
+    "child process": 0.03929781767790325,
+    "runtime read": 0.004334316146512053,
+    "direct": 0.00010476908986260581,
+    "barrel": 0.8697075480380395,
+    "test helper": 0.021699192135468566,
+    "transitive": 0.02643945199910194
+   },
+   "kind": "barrel",
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "src/core/store/index.ts",
+    "chain": [
+     "test/capacity/edit-mark.test.ts",
+     "src/core/capacity/index.ts",
+     "src/core/capacity/marks.ts",
+     "src/core/slow/index.ts",
+     "src/core/slow/slot.ts",
+     "src/core/store/index.ts",
+     "src/core/store/store.ts",
+     "src/core/store/prune.ts"
+    ],
+    "testFiles": 874,
+    "seconds": 4298.126479668002,
+    "coverage": {
+     "called": 0.004972585154276542,
+     "loaded only": 0.8141183676724388,
+     "no record": 0.1809090471732841
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import these files from their own paths in the files that use them, or split src/core/store/index.ts"
+   },
+   "rank": 212
+  },
+  {
+   "files": [
+    "src/core/slow/index.ts"
+   ],
+   "folder": null,
+   "testFiles": 976,
+   "seconds": 5151.140992387005,
+   "share": 0.8341090029513489,
+   "avoidableSeconds": 3704.4643405680004,
+   "unknownSeconds": 0,
+   "edits": 2,
+   "editSeconds": 10302.28198477401,
+   "coverage": {
+    "loaded only": 0.7872761083601729,
+    "no record": 0.15866168310183912,
+    "outside the test's process": 0.0540622085379871
+   },
+   "kinds": {
+    "declared input": 0.040225621925363206,
+    "child process": 0.038363348216455345,
+    "runtime read": 0.06486771588621582,
+    "direct": 0.055046394542115594,
+    "barrel": 0.5485909129193745,
+    "test helper": 0.07164064619089244,
+    "transitive": 0.18126536031958207
+   },
+   "kind": "barrel",
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "src/core/scheduler/index.ts",
+    "chain": [
+     "test/code/pass/daemon-loop.test.ts",
+     "src/core/daemon-loop/index.ts",
+     "src/core/scheduler/index.ts",
+     "src/core/scheduler/scheduler.ts",
+     "src/core/scheduler/pool-wait.ts",
+     "src/core/slow/index.ts"
+    ],
+    "testFiles": 144,
+    "seconds": 1537.6828732739996,
+    "coverage": {
+     "loaded only": 0.8561723296233976,
+     "no record": 0.1438276703766026
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import src/core/slow/index.ts from its own path in the files that use it, or split src/core/scheduler/index.ts"
+   },
+   "rank": 8
+  },
+  {
+   "files": [
+    "src/core/slow/state.ts"
+   ],
+   "folder": null,
+   "testFiles": 951,
+   "seconds": 5141.454408081004,
+   "share": 0.8325404830468415,
+   "avoidableSeconds": 1021.1083247380003,
+   "unknownSeconds": 0,
+   "edits": 2,
+   "editSeconds": 10282.908816162007,
+   "coverage": {
+    "called": 0.5698964018857513,
+    "loaded only": 0.21663473926256624,
+    "no record": 0.15896060431119233,
+    "outside the test's process": 0.0545082545404893
+   },
+   "kinds": {
+    "declared input": 0.0403014076558423,
+    "child process": 0.03833181515725209,
+    "runtime read": 0.05629025105135975,
+    "direct": 0.059668786955655216,
+    "barrel": 0.6723554481155551,
+    "test helper": 0.05021881545777819,
+    "transitive": 0.0828334756065565
+   },
+   "kind": "barrel",
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "src/core/state/index.ts",
+    "chain": [
+     "test/cli/group-pending-release.test.ts",
+     "test/harness/helpers.ts",
+     "src/core/state/index.ts",
+     "src/core/state/inherited.ts",
+     "src/core/slow/state.ts"
+    ],
+    "testFiles": 383,
+    "seconds": 1321.2264802899995,
+    "coverage": {
+     "called": 0.6266727892081496,
+     "loaded only": 0.26812292798827675,
+     "no record": 0.10520428280357415
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import src/core/slow/state.ts from its own path in the files that use it, or split src/core/state/index.ts"
+   },
+   "rank": 215
+  },
+  {
+   "files": [
+    "src/core/state/group-text.ts",
+    "src/core/state/slow-text.ts"
+   ],
+   "folder": "src/core/state",
+   "testFiles": 947,
+   "seconds": 5138.381147257003,
+   "share": 0.8320428390247685,
+   "avoidableSeconds": 2899.2329696569977,
+   "unknownSeconds": 0,
+   "edits": 2,
+   "editSeconds": 10276.762294514006,
+   "coverage": {
+    "called": 0.1607202149128924,
+    "loaded only": 0.6256832507161801,
+    "no record": 0.15905567849580196,
+    "outside the test's process": 0.054540855875124306
+   },
+   "kinds": {
+    "declared input": 0.04032551188901443,
+    "child process": 0.03835474137904443,
+    "runtime read": 0.08265477125577222,
+    "direct": 4.4335951629748874e-05,
+    "barrel": 0.8348284281308976,
+    "transitive": 0.0037922113936413645
+   },
+   "kind": "barrel",
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "src/core/state/index.ts",
+    "chain": [
+     "test/cli/codex-runtime.test.ts",
+     "src/cli/main.ts",
+     "src/cli/retry.ts",
+     "src/core/state/index.ts",
+     "src/core/state/group-text.ts"
+    ],
+    "testFiles": 799,
+    "seconds": 4257.410849248002,
+    "coverage": {
+     "called": 0.16622880785654126,
+     "loaded only": 0.6805390575489707,
+     "no record": 0.15323213459448726
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import these files from their own paths in the files that use them, or split src/core/state/index.ts"
+   },
+   "rank": 44
+  },
+  {
+   "files": [
+    "src/core/scheduler/observed.ts"
+   ],
+   "folder": null,
+   "testFiles": 799,
+   "seconds": 5048.920327991005,
+   "share": 0.8175567135485963,
+   "avoidableSeconds": 1230.1979341420003,
+   "unknownSeconds": 0,
+   "edits": 2,
+   "editSeconds": 10097.84065598201,
+   "coverage": {
+    "called": 0.42960956612165097,
+    "loaded only": 0.3004990220364007,
+    "not loaded": 0.0005029597486261867,
+    "no record": 0.17420385407289138,
+    "outside the test's process": 0.09518459802042972
+   },
+   "kinds": {
+    "declared input": 0.04104003164701336,
+    "child process": 0.03903434144472226,
+    "runtime read": 0.10512028815142467,
+    "direct": 0.0019210943730339012,
+    "barrel": 0.6261873053631657,
+    "test helper": 0.09946643428374866,
+    "transitive": 0.08723050473689008
+   },
+   "kind": "barrel",
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "src/core/status/index.ts",
+    "chain": [
+     "test/cli/retry-busy.test.ts",
+     "src/cli/retry.ts",
+     "src/core/status/index.ts",
+     "src/core/status/format-status.ts",
+     "src/core/status/outstanding-text.ts",
+     "src/core/status/next-step.ts",
+     "src/core/scheduler/yields.ts",
+     "src/core/scheduler/tiers.ts",
+     "src/core/scheduler/observed.ts"
+    ],
+    "testFiles": 162,
+    "seconds": 761.5047562679998,
+    "coverage": {
+     "loaded only": 0.5841883824865273,
+     "no record": 0.415811617513473
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import src/core/scheduler/observed.ts from its own path in the files that use it, or split src/core/status/index.ts"
+   },
+   "rank": 189
+  },
+  {
+   "files": [
+    "src/core/reach/types.ts"
+   ],
+   "folder": null,
+   "testFiles": 57,
+   "seconds": 908.0424632659999,
+   "share": 0.147036626407951,
+   "avoidableSeconds": 0,
+   "unknownSeconds": 0,
+   "edits": 11,
+   "editSeconds": 9988.467095925998,
+   "coverage": {
+    "no record": 0.5138207956122023,
+    "outside the test's process": 0.48617920438779777
+   },
+   "kinds": {
+    "runtime read": 1
+   },
+   "kind": "runtime read",
+   "gateway": null,
+   "second": null,
+   "suggestion": null,
+   "note": "these tests start the program from source; Squeal re-runs them by design",
+   "rank": 649
+  },
+  {
+   "files": [
+    "src/core/daemon/composite-runner.ts"
+   ],
+   "folder": null,
+   "testFiles": 835,
+   "seconds": 4904.2664660980045,
+   "share": 0.7941333421644787,
+   "avoidableSeconds": 2812.549752851001,
+   "unknownSeconds": 0,
+   "edits": 2,
+   "editSeconds": 9808.532932196009,
+   "coverage": {
+    "called": 0.08110225709869731,
+    "loaded only": 0.6506812400583024,
+    "no record": 0.16664851010782492,
+    "outside the test's process": 0.1015679927351741
+   },
+   "kinds": {
+    "declared input": 0.04225052848909763,
+    "child process": 0.04029451029406015,
+    "runtime read": 0.1944056560851127,
+    "direct": 0.0030884978998808976,
+    "barrel": 0.16589904431647598,
+    "test helper": 0.4027554298014212,
+    "transitive": 0.15130633311395023
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "test/scheduler/helpers.ts",
+    "chain": [
+     "test/code/pass/daemon-loop.test.ts",
+     "test/scheduler/helpers.ts",
+     "src/core/daemon/composite-runner.ts"
+    ],
+    "testFiles": 153,
+    "seconds": 1607.143703407,
+    "coverage": {
+     "called": 0.1615537120971737,
+     "loaded only": 0.7397500930723692,
+     "no record": 0.09869619483045732
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split test/scheduler/helpers.ts: 133 of the 153 test files that load src/core/daemon/composite-runner.ts through it never call it"
+   },
+   "rank": 52
+  },
+  {
+   "files": [
+    "src/core/store/import-graph.ts"
+   ],
+   "folder": null,
+   "testFiles": 79,
+   "seconds": 1207.959331178,
+   "share": 0.1956012764596759,
+   "avoidableSeconds": 0,
+   "unknownSeconds": 0,
+   "edits": 8,
+   "editSeconds": 9663.674649424,
+   "coverage": {
+    "no record": 0.44799969585007177,
+    "outside the test's process": 0.5520003041499283
+   },
+   "kinds": {
+    "child process": 0.14553541316126867,
+    "runtime read": 0.854464586838731
+   },
+   "kind": "runtime read",
+   "gateway": null,
+   "second": null,
+   "suggestion": null,
+   "note": "these tests start the program from source; Squeal re-runs them by design",
+   "rank": 630
+  },
+  {
+   "files": [
+    "src/core/daemon/daemon.ts"
+   ],
+   "folder": null,
+   "testFiles": 286,
+   "seconds": 1903.1489983500003,
+   "share": 0.3081712800771098,
+   "avoidableSeconds": 364.74065472100006,
+   "unknownSeconds": 0,
+   "edits": 5,
+   "editSeconds": 9515.744991750002,
+   "coverage": {
+    "called": 0.05870675931041979,
+    "loaded only": 0.19673832825628382,
+    "no record": 0.2843526247478163,
+    "outside the test's process": 0.46020228768548
+   },
+   "kinds": {
+    "declared input": 0.10887631510914059,
+    "child process": 0.09746087045355377,
+    "runtime read": 0.5119850759040805,
+    "direct": 0.04448267853720145,
+    "barrel": 0.04020379912520579,
+    "test helper": 0.05615802449606455,
+    "transitive": 0.14083323637475303
+   },
+   "kind": "transitive",
+   "gateway": {
+    "kind": "transitive",
+    "gateway": "src/cli/daemon.ts",
+    "chain": [
+     "test/cli/codex-runtime.test.ts",
+     "src/cli/main.ts",
+     "src/cli/daemon.ts",
+     "src/core/daemon/daemon.ts"
+    ],
+    "testFiles": 70,
+    "seconds": 268.02663274100007,
+    "coverage": {
+     "called": 0.0028050643076447984,
+     "loaded only": 0.7748053155324849,
+     "no record": 0.22238962015987007
+    }
+   },
+   "second": null,
+   "suggestion": null,
+   "note": "these tests start the program from source; Squeal re-runs them by design",
+   "rank": 395
+  }
+ ],
+ "testFiles": [
+  {
+   "project": "",
+   "path": "test/scheduler/timed-out-tier.test.ts",
+   "seconds": 126.30846812499999,
+   "sources": 472,
+   "called": 198,
+   "edits": 91,
+   "via": {
+    "path": "test/scheduler/helpers.ts",
+    "uncalled": 256
+   },
+   "avoidablePairSeconds": 34608.520266249994
+  },
+  {
+   "project": "",
+   "path": "test/lint/integration/injection.test.ts",
+   "seconds": 98.83914828600001,
+   "sources": 292,
+   "called": 23,
+   "edits": 32,
+   "via": {
+    "path": "test/lint/integration/helpers.ts",
+    "uncalled": 171
+   },
+   "avoidablePairSeconds": 26587.730888934002
+  },
+  {
+   "project": "",
+   "path": "test/keys/validity/compare.test.ts",
+   "seconds": 68.623985955,
+   "sources": 372,
+   "called": 39,
+   "edits": 83,
+   "via": {
+    "path": "test/keys/validity/driver.ts",
+    "uncalled": 265
+   },
+   "avoidablePairSeconds": 22851.787323015
+  },
+  {
+   "project": "",
+   "path": "test/scheduler/backlog-slots-overhead.test.ts",
+   "seconds": 86.421841116,
+   "sources": 474,
+   "called": 220,
+   "edits": 91,
+   "via": {
+    "path": "test/scheduler/slots-fixture.ts",
+    "uncalled": 254
+   },
+   "avoidablePairSeconds": 21951.147643464
+  },
+  {
+   "project": "",
+   "path": "test/scheduler/backlog-tiers.test.ts",
+   "seconds": 80.20513110300001,
+   "sources": 472,
+   "called": 202,
+   "edits": 91,
+   "via": {
+    "path": "test/scheduler/helpers.ts",
+    "uncalled": 262
+   },
+   "avoidablePairSeconds": 21655.385397810005
+  },
+  {
+   "project": "",
+   "path": "test/lint/cli/bundled.test.ts",
+   "seconds": 27.552490477,
+   "sources": 779,
+   "called": 136,
+   "edits": 151,
+   "via": {
+    "path": "test/lint/wiring/rig.ts",
+    "uncalled": 512
+   },
+   "avoidablePairSeconds": 17716.251376711
+  },
+  {
+   "project": "",
+   "path": "test/keys/validity/pytest.test.ts",
+   "seconds": 34.320240209000005,
+   "sources": 381,
+   "called": 39,
+   "edits": 78,
+   "via": {
+    "path": "test/keys/validity/driver.ts",
+    "uncalled": 274
+   },
+   "avoidablePairSeconds": 11737.522151478002
+  },
+  {
+   "project": "",
+   "path": "test/keys/validity/adapters.test.ts",
+   "seconds": 31.265512142,
+   "sources": 381,
+   "called": 38,
+   "edits": 78,
+   "via": {
+    "path": "test/keys/validity/driver.ts",
+    "uncalled": 274
+   },
+   "avoidablePairSeconds": 10724.070664706
+  },
+  {
+   "project": "",
+   "path": "test/lint/cli/same-revision.test.ts",
+   "seconds": 15.724159021,
+   "sources": 779,
+   "called": 135,
+   "edits": 105,
+   "via": {
+    "path": "test/lint/cli/same-revision-rig.ts",
+    "uncalled": 644
+   },
+   "avoidablePairSeconds": 10126.358409524
+  },
+  {
+   "project": "",
+   "path": "test/cli/status-wait.test.ts",
+   "seconds": 15.787018777,
+   "sources": 766,
+   "called": 141,
+   "edits": 105,
+   "via": {
+    "path": "src/cli/main.ts",
+    "uncalled": 530
+   },
+   "avoidablePairSeconds": 9866.886735625
+  },
+  {
+   "project": "",
+   "path": "test/cli/wait-reads.test.ts",
+   "seconds": 15.821629849,
+   "sources": 769,
+   "called": 151,
+   "edits": 105,
+   "via": {
+    "path": "src/cli/main.ts",
+    "uncalled": 503
+   },
+   "avoidablePairSeconds": 9777.767246682
+  },
+  {
+   "project": "",
+   "path": "test/scheduler/tier-ended-files.test.ts",
+   "seconds": 69.029901944,
+   "sources": 301,
+   "called": 167,
+   "edits": 46,
+   "via": {
+    "path": "test/scheduler/catch-up-fixture.ts",
+    "uncalled": 132
+   },
+   "avoidablePairSeconds": 9250.006860496
+  },
+  {
+   "project": "",
+   "path": "test/scheduler/catch-up-order.test.ts",
+   "seconds": 65.717270119,
+   "sources": 300,
+   "called": 165,
+   "edits": 46,
+   "via": {
+    "path": "test/scheduler/catch-up-fixture.ts",
+    "uncalled": 133
+   },
+   "avoidablePairSeconds": 8871.831466065001
+  },
+  {
+   "project": "",
+   "path": "test/daemon/vacant-wait.test.ts",
+   "seconds": 17.939040248999998,
+   "sources": 582,
+   "called": 103,
+   "edits": 93,
+   "via": {
+    "path": "src/core/daemon/daemon.ts",
+    "uncalled": 467
+   },
+   "avoidablePairSeconds": 8592.800279271
+  },
+  {
+   "project": "",
+   "path": "test/cli/run-all-verdict.test.ts",
+   "seconds": 13.185822923000002,
+   "sources": 766,
+   "called": 125,
+   "edits": 105,
+   "via": {
+    "path": "src/cli/main.ts",
+    "uncalled": 610
+   },
+   "avoidablePairSeconds": 8452.112493643
+  },
+  {
+   "project": "",
+   "path": "test/harness/stop-holds.test.ts",
+   "seconds": 28.161989336999998,
+   "sources": 464,
+   "called": 166,
+   "edits": 75,
+   "via": {
+    "path": "src/harness/claude-code/index.ts",
+    "uncalled": 151
+   },
+   "avoidablePairSeconds": 8392.272822425999
+  },
+  {
+   "project": "",
+   "path": "test/scheduler/revision-lag.test.ts",
+   "seconds": 30.359170888000005,
+   "sources": 472,
+   "called": 204,
+   "edits": 91,
+   "via": {
+    "path": "test/scheduler/helpers.ts",
+    "uncalled": 223
+   },
+   "avoidablePairSeconds": 8136.257797984002
+  },
+  {
+   "project": "",
+   "path": "test/scheduler/on-listed.test.ts",
+   "seconds": 30.137463099,
+   "sources": 470,
+   "called": 204,
+   "edits": 91,
+   "via": {
+    "path": "test/scheduler/helpers.ts",
+    "uncalled": 258
+   },
+   "avoidablePairSeconds": 8016.565184334
+  },
+  {
+   "project": "",
+   "path": "test/scheduler/discards.test.ts",
+   "seconds": 34.95743318899999,
+   "sources": 471,
+   "called": 244,
+   "edits": 91,
+   "via": {
+    "path": "test/scheduler/helpers.ts",
+    "uncalled": 227
+   },
+   "avoidablePairSeconds": 7935.337333902999
+  },
+  {
+   "project": "",
+   "path": "test/scheduler/backlog.test.ts",
+   "seconds": 29.134260139,
+   "sources": 473,
+   "called": 201,
+   "edits": 91,
+   "via": {
+    "path": "test/scheduler/helpers.ts",
+    "uncalled": 240
+   },
+   "avoidablePairSeconds": 7924.5187578079995
+  },
+  {
+   "project": "",
+   "path": "test/scheduler/backlog-slots.test.ts",
+   "seconds": 29.85498981,
+   "sources": 476,
+   "called": 220,
+   "edits": 91,
+   "via": {
+    "path": "test/scheduler/slots-fixture.ts",
+    "uncalled": 235
+   },
+   "avoidablePairSeconds": 7642.87739136
+  },
+  {
+   "project": "",
+   "path": "test/daemon/start-handoff.test.ts",
+   "seconds": 27.684265377,
+   "sources": 403,
+   "called": 127,
+   "edits": 179,
+   "via": {
+    "path": "test/daemon/start-helpers.ts",
+    "uncalled": 135
+   },
+   "avoidablePairSeconds": 7640.857244052
+  },
+  {
+   "project": "",
+   "path": "test/scheduler/first-observation.test.ts",
+   "seconds": 30.072606652,
+   "sources": 506,
+   "called": 254,
+   "edits": 91,
+   "via": {
+    "path": "src/core/status/index.ts",
+    "uncalled": 132
+   },
+   "avoidablePairSeconds": 7578.296876304
+  },
+  {
+   "project": "",
+   "path": "test/code/pass/listing-failed.test.ts",
+   "seconds": 29.816688297,
+   "sources": 490,
+   "called": 238,
+   "edits": 91,
+   "via": {
+    "path": "test/scheduler/helpers.ts",
+    "uncalled": 216
+   },
+   "avoidablePairSeconds": 7513.805450844
+  },
+  {
+   "project": "",
+   "path": "test/scheduler/withheld-retry.test.ts",
+   "seconds": 27.70893216,
+   "sources": 473,
+   "called": 206,
+   "edits": 91,
+   "via": {
+    "path": "test/scheduler/helpers.ts",
+    "uncalled": 187
+   },
+   "avoidablePairSeconds": 7398.28488672
+  },
+  {
+   "project": "",
+   "path": "test/scheduler/runs.test.ts",
+   "seconds": 27.836426785999997,
+   "sources": 474,
+   "called": 211,
+   "edits": 91,
+   "via": {
+    "path": "test/scheduler/helpers.ts",
+    "uncalled": 261
+   },
+   "avoidablePairSeconds": 7320.980244717999
+  },
+  {
+   "project": "",
+   "path": "test/cli/wait-locked.test.ts",
+   "seconds": 11.564486937,
+   "sources": 767,
+   "called": 138,
+   "edits": 105,
+   "via": {
+    "path": "src/cli/main.ts",
+    "uncalled": 548
+   },
+   "avoidablePairSeconds": 7274.062283373
+  },
+  {
+   "project": "",
+   "path": "test/cli/run-group-wait.test.ts",
+   "seconds": 11.264289498999998,
+   "sources": 766,
+   "called": 126,
+   "edits": 105,
+   "via": {
+    "path": "src/cli/main.ts",
+    "uncalled": 566
+   },
+   "avoidablePairSeconds": 7209.145279359999
+  },
+  {
+   "project": "",
+   "path": "test/runners/pytest/spawned.test.ts",
+   "seconds": 23.148866546999997,
+   "sources": 548,
+   "called": 242,
+   "edits": 94,
+   "via": {
+    "path": "test/scheduler/helpers.ts",
+    "uncalled": 164
+   },
+   "avoidablePairSeconds": 7083.553163381999
+  },
+  {
+   "project": "",
+   "path": "test/harness/stop-slow-handoff.test.ts",
+   "seconds": 23.214214967000004,
+   "sources": 464,
+   "called": 163,
+   "edits": 75,
+   "via": {
+    "path": "src/harness/shared/stop-slow.ts",
+    "uncalled": 210
+   },
+   "avoidablePairSeconds": 6987.478705067001
+  }
+ ],
+ "entries": {
+  "files": 2511,
+  "byEdits": 298,
+  "testFiles": 1473
+ }
+}
