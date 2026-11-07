@@ -58,6 +58,7 @@ export function testFile(
     runner: "vitest",
     inSuite: true,
     seconds: 1,
+    current: true,
     closure,
     childProcess: new Set(),
     runtimeRead: new Set(),
@@ -71,7 +72,13 @@ export interface SnapshotOptions {
   readonly barrels?: string[];
   /** Per barrel, the targets it re-exports with `export *`. */
   readonly stars?: Record<string, string[]>;
-  readonly functions?: Record<string, number>;
+  /** Modules that export no runtime value; any other reads `null`, not known. */
+  readonly typesOnly?: string[];
+  /** Modules that export a runtime value. */
+  readonly values?: string[];
+  /** Files that do not exist in the worktree. */
+  readonly missing?: string[];
+  readonly onStart?: ReachSnapshot["onStart"];
   readonly declared?: Record<string, DeclaredPattern>;
   readonly edits?: { at: number; paths: string[] }[];
   readonly coverageOn?: boolean;
@@ -84,7 +91,10 @@ export function snapshot(
     graph = null,
     barrels = [],
     stars = {},
-    functions = {},
+    typesOnly = [],
+    values = [],
+    missing = [],
+    onStart = "lookup-only",
     declared = {},
     edits = [],
     coverageOn = true,
@@ -99,8 +109,11 @@ export function snapshot(
     modules: {
       barrel: (path) => barrels.includes(path),
       starTargets: (path) => new Set(stars[path] ?? []),
-      functions: (path) => functions[path] ?? null,
+      exportsValue: (path) =>
+        typesOnly.includes(path) ? false : values.includes(path) ? true : null,
+      hasBytes: (path) => !missing.includes(path),
     },
     declared: (_test, path) => declared[path] ?? null,
+    onStart,
   };
 }

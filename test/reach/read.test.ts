@@ -59,11 +59,39 @@ describe("moduleFacts", () => {
     };
     for (const [path, text] of Object.entries(files)) writeFileSync(join(root, path), text);
     const graph = fakeGraph({ "src/index.ts": ["src/a.ts", "src/b.ts"] });
-    const facts = moduleFacts(root, graph, () => null);
+    const facts = moduleFacts(root, graph);
     expect(Object.keys(files).filter((p) => facts.barrel(p))).toEqual(["src/index.ts"]);
     expect(facts.starTargets("src/index.ts", { project: "", path: "test/a.test.ts" })).toEqual(
       new Set(["src/a.ts"]),
     );
     expect(facts.barrel("src/missing.ts")).toBe(false);
+  });
+
+  it("reads whether a module exports a runtime value from its bytes, not its function count (015-116, P4)", async () => {
+    await lexerReady;
+    const root = fakeRepo().main;
+    mkdirSync(join(root, "src"));
+    const files: Record<string, string> = {
+      // Squeal's src/core/types/policy.ts: no function, and a value, DEFAULT_POLICY.
+      "src/policy.ts":
+        "export interface Policy { readonly a: number }\nexport const DEFAULT_POLICY: Policy = { a: 1 };\n",
+      "src/state.ts":
+        'import type { Policy } from "./policy.js";\nexport type State = Policy | null;\nexport interface Run { readonly at: number }\nexport declare const marker: unique symbol;\nexport type { Policy };\n',
+      "src/kinds.ts": "export enum Kind {\n  A,\n  B,\n}\n",
+      "src/again.ts": 'export * from "./policy.js";\n',
+      "src/types-again.ts": 'export type * from "./policy.js";\n',
+    };
+    for (const [path, text] of Object.entries(files)) writeFileSync(join(root, path), text);
+    const facts = moduleFacts(root, null);
+    expect(Object.fromEntries(Object.keys(files).map((p) => [p, facts.exportsValue(p)]))).toEqual({
+      "src/policy.ts": true,
+      "src/state.ts": false,
+      "src/kinds.ts": true,
+      "src/again.ts": true,
+      "src/types-again.ts": false,
+    });
+    expect(facts.exportsValue("src/gone.ts")).toBeNull();
+    expect(facts.hasBytes("src/state.ts")).toBe(true);
+    expect(facts.hasBytes("src/gone.ts")).toBe(false);
   });
 });

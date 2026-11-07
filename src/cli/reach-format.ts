@@ -2,7 +2,6 @@ import type { CoverageState, PathKind } from "../core/reach/pairs.js";
 import type {
   FileEntry,
   NamedFile,
-  Proposal,
   ReachReport,
   ReachRoute,
   Split,
@@ -11,6 +10,7 @@ import type {
 import { chainText } from "../core/reach/suggest.js";
 import { plural } from "../core/text.js";
 import type { EpochMs } from "../core/types/common.js";
+import { proposalLines } from "./reach-proposals.js";
 
 /*
  * Spec 015 D11: the human rendering of `squeal reach`. Every number is
@@ -20,7 +20,6 @@ import type { EpochMs } from "../core/types/common.js";
 const pct = (share: number) => (share > 0 && share < 0.005 ? "<1%" : `${Math.round(share * 100)}%`);
 const secs = (s: number) => `${s < 10 ? Math.round(s * 10) / 10 : Math.round(s)} s`;
 const day = (at: EpochMs) => new Date(at).toISOString().slice(0, 10);
-const has = (n: number) => (n === 1 ? "has" : "have");
 
 /** `called 24%, loaded only 41%`; with coverage off, `called: unknown`. */
 function splitText<K extends string>(split: Split<K>): string {
@@ -70,33 +69,74 @@ function routeLine(route: ReachRoute): string {
   return `${route.kind}${through}`;
 }
 
-/** The path kind with the most seconds. */
-const mainKind = (entry: FileEntry) =>
-  (Object.entries(entry.kinds) as [PathKind, number][]).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "";
-
-function fileLines(entry: FileEntry, rank: number): string[] {
+/** `src/a.ts`, or `11 files in src/core/types/ through src/core/types/index.ts`. */
+function entryName(entry: FileEntry): string {
   const [first = ""] = entry.files;
-  const name =
-    entry.files.length === 1
-      ? first
-      : `${entry.files.length} files in ${entry.folder}/${entry.gateway === null ? ` (${mainKind(entry)})` : ` through ${entry.gateway.gateway}`}`;
+  if (entry.files.length === 1) return first;
+  const via = entry.gateway === null ? ` (${entry.kind})` : ` through ${entry.gateway.gateway}`;
+  return `${entry.files.length} files in ${entry.folder}/${via}`;
+}
+
+/** What the order counts: avoidable seconds, and import seconds whose coverage is unknown (015-116, P8). */
+function ordered(entry: FileEntry): string {
+  const unknown = `on import paths with called unknown ${secs(entry.unknownSeconds)}`;
+  if (entry.unknownSeconds === 0) return `avoidable ${secs(entry.avoidableSeconds)}`;
+  if (entry.avoidableSeconds === 0) return unknown;
+  return `avoidable ${secs(entry.avoidableSeconds)}, ${unknown}`;
+}
+
+function advice(entry: FileEntry | NamedFile, indent: string): string[] {
+  return [
+    ...(entry.second === null
+      ? []
+      : [
+          `${indent}second gateway: ${entry.second.gateway}`,
+          `${indent}suggestion: ${entry.second.suggestion.text}`,
+        ]),
+    ...(entry.suggestion === null ? [] : [`${indent}suggestion: ${entry.suggestion.text}`]),
+    ...(entry.note === undefined ? [] : [`${indent}note: ${entry.note}`]),
+  ];
+}
+
+function fileLines(entry: FileEntry): string[] {
   const each = entry.files.length === 1 ? "" : " (each)";
   const edits =
     entry.edits === 0
       ? "no edits in the window"
       : `${plural(entry.edits, "edit")} in the window re-ran ${secs(entry.editSeconds)}`;
   return [
-    `  ${rank}. ${name}`,
+    `  ${entry.rank}. ${entryName(entry)}`,
     `     re-runs ${pct(entry.share)} of the suite${each}: ${plural(entry.testFiles, "test file")}, ${secs(entry.seconds)}; ${edits}`,
-    `     coverage: ${splitText(entry.coverage)}; avoidable ${secs(entry.avoidableSeconds)}`,
+    `     coverage: ${splitText(entry.coverage)}; ${ordered(entry)}`,
     `     paths: ${splitText<PathKind>(entry.kinds)}`,
     ...(entry.gateway === null
       ? []
       : [
           `     gateway: ${routeLine(entry.gateway)}, for example ${chainText(entry.gateway.chain)}`,
         ]),
-    ...(entry.suggestion === null ? [] : [`     suggestion: ${entry.suggestion.text}`]),
-    ...(entry.note === undefined ? [] : [`     note: ${entry.note}`]),
+    ...advice(entry, "     "),
+  ];
+}
+
+/** 015-118: the second list, short: what the window's edits re-ran, and where the entry ranks above. */
+function editLines(entry: FileEntry, at: number): string[] {
+  const each = entry.files.length === 1 ? "each" : "each file";
+  return [
+    `  ${at}. ${entryName(entry)}: ${plural(entry.edits, "edit")} re-ran ${secs(entry.editSeconds)}, ${secs(entry.seconds)} ${each}; ${ordered(entry)}; rank ${entry.rank} above`,
+    ...advice(entry, "     "),
+  ];
+}
+
+function editsPart(report: ReachReport): string[] {
+  const title = "Files, by seconds re-run over the window's edits";
+  if (report.window === null) return [`${title}: none ranked, because no edits are recorded yet.`];
+  if (report.byEdits.length === 0) {
+    return [`${title}: none; no edit in the window changed a file that a test re-runs on.`];
+  }
+  return [
+    `${title}:`,
+    ...report.byEdits.flatMap((e, i) => editLines(e, i + 1)),
+    ...more(report.moreByEdits),
   ];
 }
 
@@ -112,37 +152,27 @@ function testLines(entry: TestEntry, rank: number): string[] {
   ];
 }
 
-const more = (n: number) => (n === 0 ? [] : [`  … and ${n} more; --limit lists more.`]);
+/** `… and 3 more`, or of a named thing, `… and 1 more route`. */
+const more = (n: number, noun?: string) => {
+  const what = noun === undefined ? "" : ` ${noun}${n === 1 ? "" : "s"}`;
+  return n === 0 ? [] : [`  … and ${n} more${what}; --limit lists more.`];
+};
 
-function proposalLines(proposal: Proposal, coverage: "on" | "off"): string[] {
-  switch (proposal.kind) {
-    case "warmup": {
-      const count =
-        proposal.testFiles === null ? "" : ` (${plural(proposal.testFiles, "test file")} listed)`;
-      const extra =
-        coverage === "on"
-          ? "; with coverage on, each test file's coverage record costs about a tenth more CPU in each run"
-          : "";
-      return [
-        "Reach: no test file of this worktree has a recorded result, so Squeal cannot tell yet what an edit re-runs.",
-        `Proposal: ${proposal.command} runs every test file without a current result${count}. It costs about one run of the whole suite${extra}. squeal reach starts nothing.`,
-      ];
-    }
-    case "seconds":
-      return [
-        `${plural(proposal.testFiles, "test file")} of the suite ${has(proposal.testFiles)} no recorded seconds, left out of every share; ${proposal.command} runs ${proposal.testFiles === 1 ? "it" : "them"}.`,
-      ];
-    case "coverage": {
-      const keys = proposal.keys.map((k) => `\`${k}\``).join(" and ");
-      return [
-        `Proposal: set ${keys} in squeal.config.json, then run ${proposal.command}, so Squeal can tell which tests call each file. Cost: every Vitest and node:test file runs once more, because turning coverage on changes their keys, and each later run takes about a tenth more CPU; turning it off again re-runs them once more. squeal reach does not turn coverage on.`,
-      ];
-    }
-    case "records":
-      return [
-        `${pct(proposal.share)} of the suite's seconds (${plural(proposal.testFiles, "test file")}) have no coverage record at their current inputs, so their pairs read no record; ${proposal.command} re-runs every test file and records them, about one run of the whole suite.`,
-      ];
+/** The orders' titles, by what coverage can tell (015-116, P8 and P12). */
+function titles(report: ReachReport): { readonly files: string; readonly tests: string } {
+  if (report.coverage === "off") {
+    return {
+      files:
+        "Files, by seconds re-run on import paths per edit (called is unknown), then seconds re-run:",
+      tests:
+        "Test files, by pair-seconds on import paths (seconds times the source files they load; called is unknown), then seconds re-run:",
+    };
   }
+  const some = report.unmeasured.length > 0;
+  return {
+    files: `Files, by avoidable seconds per edit${some ? ", or seconds on import paths where called is unknown" : ""}, then seconds re-run:`,
+    tests: `Test files, by avoidable pair-seconds (seconds times the source files they load on import paths and never call${some ? ", or every one where called is unknown" : ""}), then seconds re-run:`,
+  };
 }
 
 function namedLines(file: NamedFile): string[] {
@@ -159,9 +189,10 @@ function namedLines(file: NamedFile): string[] {
         (t) =>
           `    ${t.path}  ${t.seconds === null ? "no recorded seconds" : secs(t.seconds)}  ${t.coverage}`,
       ),
+      ...more(route.moreTests, "test file").map((line) => `  ${line}`),
     ]),
-    ...(file.suggestion === null ? [] : [`  suggestion: ${file.suggestion.text}`]),
-    ...(file.note === undefined ? [] : [`  note: ${file.note}`]),
+    ...more(file.moreRoutes, "route"),
+    ...advice(file, "  "),
   ];
 }
 
@@ -170,15 +201,18 @@ export function formatReach(report: ReachReport): string {
     return `${report.proposals.flatMap((p) => proposalLines(p, report.coverage)).join("\n")}\n`;
   }
   const named = report.named;
+  const title = titles(report);
   const body =
     named === undefined
       ? [
           "",
-          "Files, by avoidable seconds per edit, then seconds re-run:",
-          ...report.files.flatMap((e, i) => fileLines(e, i + 1)),
+          title.files,
+          ...report.files.flatMap(fileLines),
           ...more(report.moreFiles),
           "",
-          "Test files, by avoidable seconds, then seconds re-run:",
+          ...editsPart(report),
+          "",
+          title.tests,
           ...report.testFiles.flatMap((e, i) => testLines(e, i + 1)),
           ...more(report.moreTestFiles),
         ]

@@ -196,6 +196,50 @@ describe("path kinds", () => {
     ]);
   });
 
+  it("counts a gap only for a module with bytes: an absent import target is a leaf (015-116, P2)", () => {
+    // test/preloaded.cjs is a file a test writes at run time: the walk names it and has no entry for it.
+    const g = fakeGraph({ [T]: ["src/a.ts", "test/preloaded.cjs"], "src/a.ts": [] });
+    const t = testFile(T, [T, "src/a.ts", "test/preloaded.cjs", "src/b.ts"]);
+    const read = (missing: string[]) =>
+      byPath(pairsOf(t, new PairContext(snapshot([t], { graph: g, missing }))))["src/b.ts"];
+    expect(read(["test/preloaded.cjs"])).toEqual(
+      expect.not.objectContaining({ notRecorded: true }),
+    );
+    expect(read(["test/preloaded.cjs"])?.kind).toBe("import");
+    // The same target with bytes and no entry is a gap: what it could import is not recorded.
+    expect(read([])).toMatchObject({ kind: "import", notRecorded: true });
+  });
+
+  it("counts a setup file with no chain as not recorded only when it is a module with bytes (P2)", () => {
+    const g = fakeGraph(
+      { "vitest.config.ts": [] },
+      {
+        "": {
+          files: ["vitest.config.ts", "package.json", "src/gone.ts", "src/kept.ts"],
+          roots: ["vitest.config.ts"],
+        },
+      },
+    );
+    const t = testFile(T, [T]);
+    const p = byPath(
+      pairsOf(t, new PairContext(snapshot([t], { graph: g, missing: ["src/gone.ts"] }))),
+    );
+    expect(p["package.json"]).toEqual(expect.not.objectContaining({ notRecorded: true }));
+    expect(p["src/gone.ts"]).toEqual(expect.not.objectContaining({ notRecorded: true }));
+    expect(p["src/kept.ts"]).toMatchObject({ kind: "setup", notRecorded: true });
+  });
+
+  it("reads node:test and pytest pairs import, unsplit, and never as not recorded (P2)", () => {
+    const none = { walk: () => undefined };
+    // Built from parts, so test/version-sensitive.test.ts does not read this file as one that runs node:test.
+    for (const runner of [["node", "Test"].join(""), "pytest"] as CheckRunner[]) {
+      const t = testFile(T, [T, "src/a.ts"], { runner });
+      expect(pairsOf(t, new PairContext(snapshot([t], { graph: none })))).toEqual([
+        { path: "src/a.ts", kind: "import", coverage: "unknown", chain: [], gateway: null },
+      ]);
+    }
+  });
+
   it("walks dynamic imports too", () => {
     const g = fakeGraph({ [T]: [], "src/lazy.ts": [] }, {}, { [T]: ["src/lazy.ts"] });
     const t = testFile(T, [T, "src/lazy.ts"]);
