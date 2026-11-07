@@ -1,7 +1,7 @@
 import { plural } from "../text.js";
 import type { RelativePath } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
-import type { Route } from "./analyze.js";
+import type { Evidence, FileReach, Route } from "./analyze.js";
 import { targetsIn } from "./chains.js";
 import { isConfigPath, siblingsAmong } from "./names.js";
 import type { PathKind } from "./pairs.js";
@@ -44,13 +44,17 @@ export function typesOnlyThrough(file: RelativePath, route: Route, snapshot: Rea
   return modules.starTargets(route.gateway, route.test).has(file);
 }
 
-/** The suggestion for `files`, which share `route`; `null` for a kind that has none. */
+/**
+ * The suggestion for `files`, which share `route`, the main route of
+ * `lead`, one of them; `null` for a kind that has none.
+ */
 export function suggestionFor(
   files: readonly RelativePath[],
   route: Route,
   snapshot: ReachSnapshot,
+  lead: FileReach,
 ): Suggestion | null {
-  const text = textFor(files, route, snapshot);
+  const text = textFor(files, route, snapshot, lead);
   return text === null ? null : { kind: route.kind, text };
 }
 
@@ -58,6 +62,7 @@ function textFor(
   files: readonly RelativePath[],
   route: Route,
   snapshot: ReachSnapshot,
+  lead: FileReach,
 ): string | null {
   const [first = ""] = files;
   const them = files.length === 1 ? first : "these files";
@@ -67,8 +72,11 @@ function textFor(
       return gateway === null ? null : barrelText(files, them, gateway, route, snapshot);
     case "test helper":
       return gateway === null ? null : helperText(them, gateway, route);
-    case "transitive":
-      return gateway === null ? null : siblingText(first, them, gateway, route.test, snapshot);
+    case "transitive": {
+      if (gateway === null) return null;
+      const evidence = lead.through.get(gateway);
+      return siblingText(first, them, gateway, route.test, snapshot, evidence);
+    }
     case "setup":
       return setupText(them, route.chain);
     case "declared input": {
@@ -117,29 +125,42 @@ export function secondGateway(
   files: readonly RelativePath[],
   route: Route,
   snapshot: ReachSnapshot,
+  lead: FileReach,
 ): SecondGateway | null {
   if (route.kind !== "barrel" && route.kind !== "test helper") return null;
   const file = route.chain.at(-1);
   const importer = route.chain.at(-2);
   if (file === undefined || importer === undefined || importer === route.gateway) return null;
   const them = files.length === 1 ? file : "these files";
-  const text = siblingText(file, them, importer, route.test, snapshot);
+  const evidence = lead.through.get(importer);
+  const text = siblingText(file, them, importer, route.test, snapshot, evidence);
   return text === null ? null : { gateway: importer, suggestion: { kind: "transitive", text } };
 }
 
+/**
+ * D11's text for a module that imports many siblings, with its evidence as
+ * the helper text gives it (015-121): the test files that load the file
+ * through the module and never call it. With none, it is left out.
+ */
 function siblingText(
   file: RelativePath,
   them: string,
   importer: RelativePath,
   test: TestFileRef,
   snapshot: ReachSnapshot,
+  evidence: Evidence | undefined,
 ): string | null {
   const walked = snapshot.graph?.walk(test);
   const targets = walked === undefined ? undefined : targetsIn(walked.imports, importer);
   const siblings = siblingsAmong(file, targets ?? []);
-  if (siblings.length < 2) return null;
-  const where = them === file ? "it is" : "they are";
-  return `load ${them} only where ${where} used: ${importer} imports ${siblings.length} sibling modules, so each test file that loads ${importer} loads them all; for example, a registry that each test fills`;
+  if (siblings.length < 2 || evidence === undefined) return null;
+  const [where, it] = them === file ? ["it is", "it"] : ["they are", "them"];
+  const loads = `${plural(evidence.testFiles, "test file")} that load ${them} through ${importer}`;
+  let count: string;
+  if (evidence.measured === 0) count = `Squeal cannot tell which of the ${loads} call ${it}`;
+  else if (evidence.uncalled === 0) return null;
+  else count = `${evidence.uncalled} of the ${loads} never call ${it}`;
+  return `load ${them} only where ${where} used: ${importer} imports ${siblings.length} sibling modules, so each test file that loads it loads them all; ${count}; for example, a registry that each test fills`;
 }
 
 function setupText(them: string, chain: readonly RelativePath[]): string {

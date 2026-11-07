@@ -180,14 +180,15 @@ describe("P6: a module that imports many siblings is a second gateway, even afte
   const entry = r.files.find((e) => e.files.includes("src/core/omp-runner.ts"));
 
   it("keeps the helper as the gateway and names the factory beside it", () => {
+    // 015-121: claude-runner.ts, which both test files call, has no evidence and no second gateway.
     expect(entry).toMatchObject({
-      files: RUNNERS,
+      files: ["src/core/omp-runner.ts", "src/core/pi-runner.ts"],
       gateway: { kind: "test helper", gateway: KIT },
       second: {
         gateway: FACTORY,
         suggestion: {
           kind: "transitive",
-          text: "load these files only where they are used: src/core/runner-factory.ts imports 3 sibling modules, so each test file that loads src/core/runner-factory.ts loads them all; for example, a registry that each test fills",
+          text: "load these files only where they are used: src/core/runner-factory.ts imports 3 sibling modules, so each test file that loads it loads them all; 2 of the 2 test files that load these files through src/core/runner-factory.ts never call them; for example, a registry that each test fills",
         },
       },
       suggestion: { kind: "test helper" },

@@ -103,3 +103,52 @@ describe("015-120: setupFiles pairs in the test's process can be avoidable", () 
     expect(waits).toMatchObject({ avoidableSeconds: 0, unknownSeconds: 1, kind: "barrel" });
   });
 });
+
+describe("015-121: the second-gateway suggestion gives its evidence, and is left out at 0", () => {
+  // Cezar: cursor-print-capabilities.ts imports 2 sibling catalogs, named with no count.
+  const KIT = "test/caps.testkit.ts";
+  const CAPS = "src/core/print-capabilities.ts";
+  const CATALOGS = ["src/core/model-catalog.ts", "src/core/tool-catalog.ts"];
+  // Test file c's closure leaves the tool catalog out, so each catalog has its own reach and entry.
+  const tests = ["a", "b", "c"].map((n) =>
+    testFile(`test/${n}.test.ts`, [
+      `test/${n}.test.ts`,
+      KIT,
+      CAPS,
+      ...(n === "c" ? [CATALOGS[0] as string] : CATALOGS),
+    ]),
+  );
+  const graph = fakeGraph({
+    ...Object.fromEntries(tests.map((t) => [t.ref.path, [KIT]])),
+    [KIT]: [CAPS],
+    [CAPS]: CATALOGS,
+    ...Object.fromEntries(CATALOGS.map((c) => [c, []])),
+  });
+  const second = (coverage: (i: number) => ReturnType<typeof record>) =>
+    report(
+      snapshot(
+        tests.map((t, i) => ({ ...t, coverage: coverage(i) })),
+        { graph },
+      ),
+    ).files.find((e) => e.files.includes("src/core/model-catalog.ts"))?.second;
+
+  it("counts the test files that load the file through the module and never call it", () => {
+    // Test file a calls the model catalog; b and c only load it.
+    const found = second((i) =>
+      record(i === 0 ? [KIT, CAPS, CATALOGS[0] as string] : [KIT, CAPS], CATALOGS),
+    );
+    expect(found?.suggestion.text).toBe(
+      "load src/core/model-catalog.ts only where it is used: src/core/print-capabilities.ts imports 2 sibling modules, so each test file that loads it loads them all; 2 of the 3 test files that load src/core/model-catalog.ts through src/core/print-capabilities.ts never call it; for example, a registry that each test fills",
+    );
+  });
+
+  it("is left out when every test file that loads the file through the module calls it", () => {
+    expect(second(() => record([KIT, CAPS, ...CATALOGS]))).toBeNull();
+  });
+
+  it("says what Squeal cannot tell while coverage is unknown", () => {
+    expect(second(() => UNKNOWN)?.suggestion.text).toContain(
+      "; Squeal cannot tell which of the 3 test files that load src/core/model-catalog.ts through src/core/print-capabilities.ts call it;",
+    );
+  });
+});
