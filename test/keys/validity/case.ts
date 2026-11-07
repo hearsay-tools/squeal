@@ -278,6 +278,12 @@ export interface VitestInput {
   /** Read each project's environment files once open, as the case's keys (row 011-88). */
   readonly environment?: true;
   /**
+   * Row 015-108: read these files' closures in turn once open, as the case's
+   * keys: each one's paths and packages. Its `imports` are no key, and are
+   * left out.
+   */
+  readonly closures?: readonly TestFileRef[];
+  /**
    * Row 015-11: coverage on, through Squeal's provider (spec 015 D8). The
    * adapter takes it as its tenth argument, which a release before it
    * ignores, so there the runs are coverage off and must store alike.
