@@ -101,6 +101,7 @@ export interface ReachReport {
     readonly testFiles: number;
     readonly seconds: number;
     readonly withoutSeconds: number;
+    readonly withoutClosure: number;
     readonly leftOut: number;
   };
   /** The edits the store keeps, by time; `null` with none. */

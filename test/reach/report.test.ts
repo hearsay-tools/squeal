@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { formatReach } from "../../src/cli/reach-format.js";
 import { buildReport, type ReportOptions } from "../../src/core/reach/report.js";
 import type { ReachSnapshot } from "../../src/core/reach/types.js";
 import { fakeGraph, NONE, record, snapshot, testFile } from "./fixture.js";
@@ -204,7 +205,13 @@ describe("limits, edits and seconds", () => {
   });
 
   it("leaves manual groups and files without seconds out of every share", () => {
-    expect(r.suite).toEqual({ testFiles: 2, seconds: 2, withoutSeconds: 1, leftOut: 1 });
+    expect(r.suite).toEqual({
+      testFiles: 2,
+      seconds: 2,
+      withoutSeconds: 1,
+      withoutClosure: 0,
+      leftOut: 1,
+    });
     expect(r.files[0]).toMatchObject({ files: ["src/a.ts"], testFiles: 2, seconds: 2, share: 1 });
     expect(r.proposals).toContainEqual({ kind: "seconds", command: "squeal warmup", testFiles: 1 });
   });
@@ -259,6 +266,14 @@ describe("proposals", () => {
       { kind: "records", command: "squeal run --all --force", testFiles: 1, share: 0.25 },
     ]);
     expect(r.files[0]?.coverage).toEqual({ called: 0.75, "no record": 0.25 });
+  });
+
+  it("counts and names test files with no trusted closure, whose reach is not counted", () => {
+    const r = report(snapshot([{ ...t, closure: null }]));
+    expect(r).toMatchObject({ history: true, files: [], suite: { withoutClosure: 1 } });
+    expect(formatReach(r)).toContain(
+      "1 test file has no import closure Squeal trusts at its current inputs, so its reach is not counted; the next run stores one.",
+    );
   });
 
   it("reads unknown for pytest while coverage is on, and names the runner", () => {
