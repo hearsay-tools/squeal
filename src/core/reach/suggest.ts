@@ -45,11 +45,11 @@ function textFor(
   const { gateway } = route;
   switch (route.kind) {
     case "barrel":
-      return gateway === null ? null : barrelText(files, them, gateway, snapshot);
+      return gateway === null ? null : barrelText(files, them, gateway, route.project, snapshot);
     case "test helper":
       return gateway === null ? null : helperText(them, gateway, route);
     case "transitive":
-      return gateway === null ? null : siblingText(first, them, gateway, snapshot);
+      return gateway === null ? null : siblingText(first, them, gateway, route.project, snapshot);
     case "setup":
       return setupText(them, route.chain);
     case "declared input": {
@@ -68,9 +68,10 @@ function barrelText(
   files: readonly RelativePath[],
   them: string,
   barrel: RelativePath,
+  project: string,
   snapshot: ReachSnapshot,
 ): string {
-  const stars = snapshot.modules.starTargets(barrel);
+  const stars = snapshot.modules.starTargets(barrel, project);
   const empty = files.every((f) => snapshot.modules.functions(f) === 0 && stars.has(f));
   if (empty) {
     const holds = files.length === 1 ? "holds" : "hold";
@@ -91,9 +92,11 @@ function siblingText(
   file: RelativePath,
   them: string,
   importer: RelativePath,
+  project: string,
   snapshot: ReachSnapshot,
 ): string | null {
-  const targets = snapshot.graph === null ? undefined : targetsOf(snapshot.graph, importer);
+  const targets =
+    snapshot.graph === null ? undefined : targetsOf(snapshot.graph, project, importer);
   const siblings = siblingsAmong(file, targets ?? []);
   if (siblings.length < 2) return null;
   const where = them === file ? "it is" : "they are";

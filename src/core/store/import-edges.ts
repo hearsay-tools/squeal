@@ -19,9 +19,13 @@ import { connectionOf } from "./store.js";
  * them. They live outside `schema.ts`, which the key-format alarm bundles:
  * they decide nothing a check stores or accepts.
  *
- * - `import_edges`: a file's targets by the file's path and blob id, shared
- *   by every worktree at those bytes. `static` and `dynamic` are JSON lists
- *   of project paths, sorted.
+ * - `import_targets`: a file's targets by its path and blob id, and by the
+ *   project and environment hash its walk resolved in (review 0.1.415 B2):
+ *   the importer's bytes alone do not fix what Vite resolves, an alias
+ *   does too, and the environment hash holds the project's config. Shared
+ *   by every worktree at those bytes in that resolution context. `static`
+ *   and `dynamic` are JSON lists of project paths, sorted. Named apart from
+ *   0.1.415's `import_edges`, which held no resolution context.
  * - `environment_files`: the files a project's environment hash was computed
  *   from, by project and hash, as JSON `[path, blob id or null]` pairs; `null`
  *   is a path with no file (a resolution candidate).
@@ -29,14 +33,16 @@ import { connectionOf } from "./store.js";
  *   each project.
  */
 export const IMPORT_GRAPH_TABLES: Readonly<Record<string, string>> = {
-  import_edges: `
-CREATE TABLE import_edges (
+  import_targets: `
+CREATE TABLE import_targets (
   path TEXT NOT NULL,
   hash TEXT NOT NULL,
+  project TEXT NOT NULL,
+  environment TEXT NOT NULL,
   static TEXT NOT NULL,
   dynamic TEXT NOT NULL,
   recorded_at INTEGER NOT NULL,
-  PRIMARY KEY (path, hash)
+  PRIMARY KEY (path, hash, project, environment)
 ) STRICT, WITHOUT ROWID;
 `,
   environment_files: `
@@ -104,12 +110,25 @@ export interface ImportGraphSource {
  */
 export function recordImportGraph(source: ImportGraphSource, fetched: FetchedPart): void {
   const { keys } = source;
-  const imports = (fetched.closures ?? []).flatMap((closure) => closure.imports ?? []);
+  const byProject = new Map<ProjectName, FileImports[]>();
+  for (const closure of fetched.closures ?? []) {
+    const { project } = closure.testFile;
+    const held = byProject.get(project) ?? [];
+    held.push(...(closure.imports ?? []));
+    byProject.set(project, held);
+  }
+  // An edge is kept in the resolution context it was walked in; a project with no hash yet keeps none.
+  const walks = [...byProject].flatMap(([project, imports]) => {
+    const environment = keys.index.environment(project);
+    return environment === undefined || imports.length === 0
+      ? []
+      : [{ project, environment, imports }];
+  });
   const environments = (fetched.environments ?? []).flatMap(({ project }) => {
     const hash = keys.index.environment(project);
     return hash === undefined ? [] : [{ project, hash, files: keys.environmentFiles(project) }];
   });
-  if (imports.length === 0 && environments.length === 0) return;
+  if (walks.length === 0 && environments.length === 0) return;
   let conn: Connection;
   try {
     conn = connectionOf(source.store);
@@ -121,10 +140,17 @@ export function recordImportGraph(source: ImportGraphSource, fetched: FetchedPar
     worktreeId: source.worktreeId,
     now: source.now(),
     hashOf: (path) => keys.cache.hashOf(path),
-    imports,
+    walks,
     environments,
   };
   conn.transaction(() => writeImportGraph(conn, write));
+}
+
+/** One project's walked files and the environment hash their imports were resolved under. */
+export interface ImportWalk {
+  readonly project: ProjectName;
+  readonly environment: EnvironmentHash;
+  readonly imports: readonly FileImports[];
 }
 
 /** What one daemon stores of a runner part's walk; `hashOf` is its stat cache's current blob id. */
@@ -133,7 +159,8 @@ export interface ImportGraphWrite {
   readonly worktreeId: string;
   readonly now: EpochMs;
   readonly hashOf: (path: RelativePath) => FileHash | null | undefined;
-  readonly imports: Iterable<FileImports>;
+  /** Each project's walked files, with the environment hash they were resolved under. */
+  readonly walks: readonly ImportWalk[];
   /** Each project's environment hash and the files it was computed from, as just read. */
   readonly environments: readonly {
     readonly project: ProjectName;
@@ -151,12 +178,14 @@ export interface ImportGraphWrite {
  */
 export function writeImportGraph(conn: Connection, write: ImportGraphWrite): void {
   ensureTables(conn);
-  const seen = new Set<FileImports>();
-  for (const file of write.imports) {
-    if (seen.has(file)) continue;
-    seen.add(file);
-    const blob = write.hashOf(file.path);
-    if (typeof blob === "string") writeEdges(conn, write, file, blob);
+  for (const walk of write.walks) {
+    const seen = new Set<FileImports>();
+    for (const file of walk.imports) {
+      if (seen.has(file)) continue;
+      seen.add(file);
+      const blob = write.hashOf(file.path);
+      if (typeof blob === "string") writeEdges(conn, write, walk, file, blob);
+    }
   }
   for (const environment of write.environments) writeEnvironment(conn, write, environment);
 }
@@ -164,14 +193,18 @@ export function writeImportGraph(conn: Connection, write: ImportGraphWrite): voi
 function writeEdges(
   conn: Connection,
   write: ImportGraphWrite,
+  { project, environment }: ImportWalk,
   file: FileImports,
   blob: FileHash,
 ): void {
   const targets = { static: JSON.stringify(file.static), dynamic: JSON.stringify(file.dynamic) };
   const held = conn.get(
-    "SELECT static, dynamic FROM import_edges WHERE path = ? AND hash = ?",
+    `SELECT static, dynamic FROM import_targets
+     WHERE path = ? AND hash = ? AND project = ? AND environment = ?`,
     file.path,
     blob,
+    project,
+    environment,
   );
   const same =
     held !== null &&
@@ -180,21 +213,27 @@ function writeEdges(
   if (same) return;
   if (!walkedBytesAre(join(write.root, file.path), file.sha1, blob)) return;
   conn.run(
-    `INSERT INTO import_edges (path, hash, static, dynamic, recorded_at) VALUES (?, ?, ?, ?, ?)
-     ON CONFLICT (path, hash) DO UPDATE SET
+    `INSERT INTO import_targets (path, hash, project, environment, static, dynamic, recorded_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT (path, hash, project, environment) DO UPDATE SET
        static = excluded.static, dynamic = excluded.dynamic, recorded_at = excluded.recorded_at`,
     file.path,
     blob,
+    project,
+    environment,
     targets.static,
     targets.dynamic,
     write.now,
   );
-  // A new version: the path's versions no worktree holds now go.
+  // A new version: the path's versions in this context that no worktree holds now go.
   if (held === null) {
     conn.run(
-      `DELETE FROM import_edges WHERE path = ? AND hash <> ? AND hash NOT IN (
+      `DELETE FROM import_targets
+       WHERE path = ? AND project = ? AND environment = ? AND hash <> ? AND hash NOT IN (
          SELECT hash FROM file_hashes WHERE path = ? AND worktree_id IN (SELECT id FROM worktrees))`,
       file.path,
+      project,
+      environment,
       blob,
       file.path,
     );
@@ -245,11 +284,13 @@ function writeEnvironment(
     project,
     hash,
   );
-  // The project's lists no worktree reads now go.
-  conn.run(
-    `DELETE FROM environment_files WHERE project = ? AND environment NOT IN (
-       SELECT environment FROM worktree_environments WHERE project = ?)`,
-    project,
-    project,
-  );
+  // The project's lists, and edges resolved in them, that no worktree reads now go.
+  for (const table of ["environment_files", "import_targets"]) {
+    conn.run(
+      `DELETE FROM ${table} WHERE project = ? AND environment NOT IN (
+         SELECT environment FROM worktree_environments WHERE project = ?)`,
+      project,
+      project,
+    );
+  }
 }

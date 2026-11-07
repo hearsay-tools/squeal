@@ -91,7 +91,7 @@ export class PairContext {
     const setup =
       graph == null || files === undefined
         ? null
-        : { files: new Set(files), walk: setupWalk(graph, files) };
+        : { files: new Set(files), walk: setupWalk(graph, project, files) };
     this.#setups.set(project, setup);
     return setup;
   }
@@ -131,7 +131,7 @@ export function pairsOf(test: ReachTestFile, context: PairContext): Pair[] {
     } else if (graph === null) {
       pairs.push(pair(test, path, MODULE.test(path) ? "import" : "runtime read", [], null));
     } else {
-      imports ??= walk(graph, [test.ref.path]);
+      imports ??= walk(graph, test.ref.project, [test.ref.path]);
       pairs.push(importPair(test, path, imports, context));
     }
   }

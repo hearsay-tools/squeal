@@ -16,9 +16,15 @@ import { connectionOf } from "./store.js";
  * codes against.
  */
 export interface ImportGraph {
-  /** Direct targets of `path` at its current bytes in this worktree; undefined when not recorded at those bytes. */
+  /**
+   * Direct targets of `path` at its current bytes in this worktree, as a
+   * walk of `project` resolved them in its current environment (review
+   * 0.1.415 B2: an alias decides a target as much as the bytes do);
+   * undefined when not recorded there.
+   */
   targets(
     path: RelativePath,
+    project: string,
   ):
     | { readonly static: readonly RelativePath[]; readonly dynamic: readonly RelativePath[] }
     | undefined;
@@ -26,13 +32,20 @@ export interface ImportGraph {
   environment(project: string): readonly RelativePath[] | undefined;
 }
 
+/** A project's environment as this worktree reads it now. */
+interface Current {
+  readonly hash: string;
+  readonly files: readonly RelativePath[];
+}
+
 /**
  * Reads `worktreeId`'s view of the stored graph. Writes nothing. A path's
  * current bytes are its `file_hashes` blob id while the file on disk still
  * has the stat recorded with it; a file changed since the daemon last
- * looked has none. An environment list is current while each of its files is
- * at the blob id, or still absent, that its hash was computed from. A store
- * whose daemon never wrote the tables reads `undefined` throughout.
+ * looked has none. An environment is current while each of its files is at
+ * the blob id, or still absent, that its hash was computed from; edges are
+ * read only in a project's current environment. A store whose daemon never
+ * wrote the tables reads `undefined` throughout.
  */
 export function readImportGraph(store: Store, root: string, worktreeId: string): ImportGraph {
   const conn = connectionOf(store);
@@ -45,13 +58,23 @@ export function readImportGraph(store: Store, root: string, worktreeId: string):
     if (blob !== undefined) blobs.set(path, blob);
     return blob;
   };
+  const environments = new Map<string, Current | undefined>();
+  const environment = (project: string): Current | undefined => {
+    if (!tables) return undefined;
+    if (!environments.has(project)) {
+      environments.set(project, environmentOf(conn, worktreeId, project, current));
+    }
+    return environments.get(project);
+  };
   return {
-    targets: (path) => {
-      const blob = tables ? current(path) : undefined;
-      return typeof blob === "string" ? edgesAt(conn, path, blob) : undefined;
+    targets: (path, project) => {
+      const context = environment(project);
+      const blob = context === undefined ? undefined : current(path);
+      return context === undefined || typeof blob !== "string"
+        ? undefined
+        : edgesAt(conn, path, blob, project, context.hash);
     },
-    environment: (project) =>
-      tables ? environmentOf(conn, worktreeId, project, current) : undefined,
+    environment: (project) => environment(project)?.files,
   };
 }
 
@@ -74,11 +97,20 @@ function statOf(abs: string): FileStat | null {
   return { mtimeMs: stats.mtimeMs, ctimeMs: stats.ctimeMs, size: stats.size, inode: stats.ino };
 }
 
-function edgesAt(conn: Connection, path: RelativePath, blob: FileHash) {
+function edgesAt(
+  conn: Connection,
+  path: RelativePath,
+  blob: FileHash,
+  project: string,
+  environment: string,
+) {
   const row = conn.get(
-    "SELECT static, dynamic FROM import_edges WHERE path = ? AND hash = ?",
+    `SELECT static, dynamic FROM import_targets
+     WHERE path = ? AND hash = ? AND project = ? AND environment = ?`,
     path,
     blob,
+    project,
+    environment,
   );
   if (row === null) return undefined;
   return {
@@ -92,9 +124,9 @@ function environmentOf(
   worktreeId: string,
   project: string,
   current: (path: RelativePath) => FileHash | null | undefined,
-): readonly RelativePath[] | undefined {
+): Current | undefined {
   const row = conn.get(
-    `SELECT f.files FROM worktree_environments w
+    `SELECT w.environment, f.files FROM worktree_environments w
      JOIN environment_files f ON f.project = w.project AND f.environment = w.environment
      WHERE w.worktree_id = ? AND w.project = ?`,
     worktreeId,
@@ -103,6 +135,6 @@ function environmentOf(
   if (row === null) return undefined;
   const files = JSON.parse(str(row, "files")) as [RelativePath, FileHash | null][];
   return files.every(([path, blob]) => current(path) === blob)
-    ? files.map(([path]) => path)
+    ? { hash: str(row, "environment"), files: files.map(([path]) => path) }
     : undefined;
 }

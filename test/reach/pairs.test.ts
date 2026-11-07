@@ -141,9 +141,9 @@ describe("path kinds", () => {
     const inner = fakeGraph({ "test/a.test.ts": ["src/a.ts"], "test/b.test.ts": ["src/a.ts"] });
     const graph = {
       ...inner,
-      targets: (p: string) => {
+      targets: (p: string, project: string) => {
         asked.push(p);
-        return inner.targets(p);
+        return inner.targets(p, project);
       },
     };
     const tests = ["test/a.test.ts", "test/b.test.ts"].map((t) => testFile(t, [t, "src/a.ts"]));

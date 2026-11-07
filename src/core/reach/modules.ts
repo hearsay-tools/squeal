@@ -58,9 +58,9 @@ export function moduleFacts(
   };
   return {
     barrel: (path) => of(path)?.barrel === true,
-    starTargets(path) {
+    starTargets(path, project) {
       const stars = of(path)?.stars ?? [];
-      const targets = graph === null ? [] : (targetsOf(graph, path) ?? []);
+      const targets = graph === null ? [] : (targetsOf(graph, project, path) ?? []);
       const wanted = new Set(
         stars
           .filter((s) => s.startsWith("."))
