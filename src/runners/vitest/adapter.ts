@@ -19,6 +19,7 @@ import type {
   RunReport,
   TestFileRef,
 } from "../../core/types/index.js";
+import type { FileImports } from "../../core/types/runner.js";
 import { focusedTexts } from "../focus.js";
 import { readsOfEvery, withRecorderSignatures } from "../observe/index.js";
 import { affectedTestFiles } from "./affected.js";
@@ -46,7 +47,7 @@ import { closeEmptied } from "./empty-closed.js";
 import { projectEnvironment } from "./environment.js";
 import { exclusion } from "./exclude.js";
 import { Gate, type Hold } from "./gate.js";
-import { importClosure, missingCandidates } from "./graph.js";
+import { fileImports, importClosure, missingCandidates } from "./graph.js";
 import { loadVitest, type VitestNode } from "./load.js";
 import { mayHaveReadTouched, mayHaveRun, withoutFiles, withoutTouched } from "./moved.js";
 import { namePattern } from "./name-pattern.js";
@@ -106,6 +107,8 @@ export class VitestAdapter implements RunnerAdapter {
   #tempDirs: AbsolutePath[] = [];
   /** What the current instance read of each project file (task 001-146). */
   #sources: SourceStamps;
+  /** Spec 015 D11: each walked file's last `FileImports`, shared by the closures that name it. */
+  readonly #imports = new Map<AbsolutePath, FileImports>();
   /** The current instance's config files, stamped before the next one reads them (task 001-157). */
   #configFiles = new Set<AbsolutePath>();
   /** What was on disk of them before the current instance read them. */
@@ -507,7 +510,12 @@ export class VitestAdapter implements RunnerAdapter {
         .filter((p): p is RelativePath => p !== null)
         .sort();
       // Task 001-105: the installed packages the closure imports, for the key.
-      return { testFile, paths, packages: closurePackages(graph, this.paths) };
+      const packages = closurePackages(graph, this.paths);
+      // Spec 015 D11: each walked file's imports, by the bytes Vite read; no key reads them.
+      const read = (file: AbsolutePath) =>
+        this.#sources.readHash(project.vite.environments.ssr, file);
+      const imports = fileImports(graph, this.paths, read, this.#imports);
+      return { testFile, paths, packages, imports };
     });
   }
 

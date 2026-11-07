@@ -2,8 +2,11 @@ import { existsSync, statSync } from "node:fs";
 import { builtinModules } from "node:module";
 import { basename, dirname, extname, join, resolve } from "node:path";
 import type { TestProject } from "vitest/node";
-import type { AbsolutePath } from "../../core/types/index.js";
+import { compare } from "../../core/fs/compare.js";
+import type { AbsolutePath, RelativePath } from "../../core/types/common.js";
+import type { FileImports } from "../../core/types/runner.js";
 import { environmentPackage, moduleLoads } from "./loads.js";
+import type { WorktreePaths } from "./paths.js";
 
 /** Files reached from some entry files through the transform graph. */
 export interface ImportClosure {
@@ -31,6 +34,19 @@ export interface ImportClosure {
    */
   readonly rooted: ReadonlySet<string>;
   readonly root: AbsolutePath;
+  /**
+   * Spec 015 D11: each walked file outside `node_modules` with a transform,
+   * and its targets. `importClosure` gives them; a one-hop read does not.
+   */
+  readonly edges?: ReadonlyMap<AbsolutePath, ImportEdges>;
+}
+
+/** One file's import targets as its transform gave them, static apart from dynamic (spec 015 D11). */
+export interface ImportEdges {
+  /** `import`, `export ... from` and a relative `require` resolved here. */
+  readonly static: readonly AbsolutePath[];
+  /** `import()` with a literal specifier. */
+  readonly dynamic: readonly AbsolutePath[];
 }
 
 /** One hop of the transform graph out of a project file. */
@@ -40,6 +56,8 @@ interface ImportTargets {
   readonly builtins: readonly string[];
   /** The package of the environment the file's docblock names. */
   readonly environment: string | null;
+  /** `targets` by kind; `null` when the file has no transform, so its imports are unknown. */
+  readonly edges: ImportEdges | null;
 }
 
 const BUILTINS: ReadonlySet<string> = new Set(
@@ -64,6 +82,7 @@ export async function importClosure(
   const bare = new Map<AbsolutePath, ReadonlySet<string>>();
   const builtins = new Set<string>();
   const rooted = new Set<string>();
+  const edges = new Map<AbsolutePath, ImportEdges>();
   const entrySet = new Set(entries);
 
   const visit = async (file: AbsolutePath): Promise<void> => {
@@ -78,11 +97,12 @@ export async function importClosure(
     if (hop.bare.length > 0) bare.set(file, new Set(hop.bare));
     for (const name of hop.builtins) builtins.add(name);
     if (hop.environment !== null && entrySet.has(file)) rooted.add(hop.environment);
+    if (hop.edges !== null) edges.set(file, hop.edges);
     await Promise.all(hop.targets.map(visit));
   };
 
   await Promise.all(entries.map(visit));
-  return { files, missing, bare, builtins, rooted, root: project.config.root };
+  return { files, missing, bare, builtins, rooted, root: project.config.root, edges };
 }
 
 /**
@@ -131,6 +151,7 @@ async function importTargets(project: TestProject, file: AbsolutePath): Promise<
   }
   if (!transformed) return NO_TARGETS;
   const targets: AbsolutePath[] = [];
+  const edges = { static: [] as AbsolutePath[], dynamic: [] as AbsolutePath[] };
   const bare: string[] = [];
   const builtins: string[] = [];
   const add = (specifier: string): void => {
@@ -141,11 +162,20 @@ async function importTargets(project: TestProject, file: AbsolutePath): Promise<
       if (name !== null) bare.push(isManifest(specifier, name) ? specifier : name);
     }
   };
-  for (const dep of [...(transformed.deps ?? []), ...(transformed.dynamicDeps ?? [])]) {
+  // Kept apart before they are joined: Vite lists a literal `import()` only in `dynamicDeps`.
+  const deps = [
+    ...(transformed.deps ?? []).map((dep) => [dep, edges.static] as const),
+    ...(transformed.dynamicDeps ?? []).map((dep) => [dep, edges.dynamic] as const),
+  ];
+  for (const [dep, kind] of deps) {
     const target = depToPath(dep, file, project.config.root);
-    if (target !== null) targets.push(target);
-    else add(dep);
+    if (target === null) add(dep);
+    else {
+      targets.push(target);
+      kind.push(target);
+    }
   }
+  const fromDeps = targets.length;
   // Review wave-11b B2: a `require` Vite does not see. One no specifier
   // names can reach any package, as `module` can. Review wave-11d S3: a
   // relative one reaches a file, walked like an import's.
@@ -160,11 +190,61 @@ async function importTargets(project: TestProject, file: AbsolutePath): Promise<
     else builtins.push("module");
   }
   if (loads.unnamed) builtins.push("module");
+  // A relative `require` resolved here loads its target as an import does.
+  edges.static.push(...targets.slice(fromDeps));
   const named = loads.environment === null ? null : environmentPackage(loads.environment);
-  return { targets, bare, builtins, environment: named };
+  return { targets, bare, builtins, environment: named, edges };
 }
 
-const NO_TARGETS: ImportTargets = { targets: [], bare: [], builtins: [], environment: null };
+const NO_TARGETS: ImportTargets = {
+  targets: [],
+  bare: [],
+  builtins: [],
+  environment: null,
+  edges: null,
+};
+
+/**
+ * Spec 015 D11: `closure`'s edges as the runner reports them, each walked
+ * project file with the sha1 of the bytes its transform read (`readHash`)
+ * and its project targets, sorted. A file without a stamp of its read is
+ * left out: its bytes are not known. `shared` keeps one entry per file, so
+ * closures that walked a file at the same bytes to the same targets hold
+ * one copy; a closure here averages some 300 files.
+ */
+export function fileImports(
+  closure: ImportClosure,
+  paths: WorktreePaths,
+  readHash: (file: AbsolutePath) => string | undefined,
+  shared: Map<AbsolutePath, FileImports>,
+): FileImports[] {
+  const relative = (files: readonly AbsolutePath[]): RelativePath[] => [
+    ...new Set(files.flatMap((f) => (paths.isProjectFile(f) ? (paths.toRelative(f) ?? []) : []))),
+  ];
+  const out: FileImports[] = [];
+  for (const [file, edges] of closure.edges ?? []) {
+    const path = paths.isProjectFile(file) ? paths.toRelative(file) : null;
+    const sha1 = readHash(file);
+    if (path === null || sha1 === undefined) continue;
+    const entry = {
+      path,
+      sha1,
+      static: relative(edges.static).sort(compare),
+      dynamic: relative(edges.dynamic).sort(compare),
+    };
+    const held = shared.get(file);
+    const same = held !== undefined && sameImports(held, entry);
+    out.push(same ? held : entry);
+    if (!same) shared.set(file, entry);
+  }
+  return out;
+}
+
+function sameImports(a: FileImports, b: FileImports): boolean {
+  const same = (x: readonly string[], y: readonly string[]) =>
+    x.length === y.length && x.every((value, i) => value === y[i]);
+  return a.sha1 === b.sha1 && same(a.static, b.static) && same(a.dynamic, b.dynamic);
+}
 
 /** Whether `specifier` reads the manifest of package `name`, and so loads none of its code. */
 function isManifest(specifier: string, name: string): boolean {
