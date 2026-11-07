@@ -1726,6 +1726,7 @@ Spec: `specifications/015-coverage-complexity/spec.md`, approved by the human 20
 | 015-111 split `test/scheduler/helpers.ts` | running (worker 573f10bc, claude opus xhigh, 2026-11-07) | `research/edit-reach.md` 3: 506 lines, 23 imports including both runner adapters, reached by 153 test files; 16.4% of pair-seconds hang on its imports. Shared helpers apart from per-runner ones; no re-export file. | Runner-adapter reach through the helpers before and after; changed tests current with no failure; lint and typecheck pass. |
 | 015-112 research: reach before and after wave 28 | running (phase 1, before; researcher 090b45e4, claude opus high, 2026-11-07) | `/researcher`, read only with the `research/probes/edit-reach/` method, no test run: pair-seconds and the called share, every source once and by real edits, by path kind, on main before and on the candidate. | `research/edit-reach-refactor.md` committed with both measurements and the method's limits. |
 | 015-113 review of the wave 28 candidate | planned | `/reviewer`, codex gpt-6.1-sol high, pinned to the candidate SHA. | `reviews/<version>.md` committed with a verdict. |
+
 ### Wave 29: `squeal reach`, the on-demand edit-reach report (spec D11, approved by the human 2026-11-07 in task f3b0d84b: name `squeal reach`, coverage-off option A, "Yes, dispatch"; brief `specifications/015-coverage-complexity/tasks/wave-29.md`; coordinator f3b0d84b; one candidate, version claimed at integration; 015-108 and 015-109 in parallel; 015-114 after them and after wave 28)
 
 | Task | Status | Scope | Done when |
