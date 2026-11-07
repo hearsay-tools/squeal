@@ -30,8 +30,10 @@ export function buildReport(snapshot: ReachSnapshot, options: ReportOptions): Re
   const analysis = analyze(snapshot, isNamed);
   const { suite } = analysis;
   const history = suite.testFiles > 0 && suite.withoutSeconds < suite.testFiles;
-  const times = snapshot.edits.map((e) => e.at);
-  const { files, byEdits } = history ? fileEntries(analysis, snapshot) : { files: [], byEdits: [] };
+  const times = analysis.kept.map((e) => e.at);
+  const { files, byEdits, absent } = history
+    ? fileEntries(analysis, snapshot)
+    : { files: [], byEdits: [], absent: 0 };
   const tests = history ? testEntries(analysis) : [];
   const limit = options.limit ?? Number.POSITIVE_INFINITY;
   const unmeasured = snapshot.coverage.on
@@ -51,6 +53,7 @@ export function buildReport(snapshot: ReachSnapshot, options: ReportOptions): Re
     unmeasured: [...new Set(unmeasured)].sort(compare),
     edges: snapshot.graph !== null,
     notRecorded: [...analysis.files.values()].reduce((n, f) => n + f.notRecorded, 0),
+    absent,
     files: files.slice(0, limit),
     moreFiles: Math.max(0, files.length - limit),
     byEdits: byEdits.slice(0, limit),

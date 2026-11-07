@@ -11,7 +11,7 @@ import {
   type PathKind,
   pairsOf,
 } from "./pairs.js";
-import type { DeclaredPattern, ReachSnapshot, ReachTestFile } from "./types.js";
+import type { DeclaredPattern, ReachEdit, ReachSnapshot, ReachTestFile } from "./types.js";
 
 /*
  * Spec 015 D11: every pair of the suite summed per source file and per test
@@ -97,6 +97,8 @@ export interface Analysis {
   readonly tests: readonly TestReach[];
   /** Per path, the edits that changed it. */
   readonly edits: ReadonlyMap<RelativePath, number>;
+  /** The window's edits, each of the paths this worktree has; an edit of none is left out (015-122). */
+  readonly kept: readonly ReachEdit[];
 }
 
 const UNCALLED: ReadonlySet<CoverageState> = new Set(["loaded only", "not loaded"]);
@@ -122,15 +124,20 @@ export function analyze(
 ): Analysis {
   const context = new PairContext(snapshot);
   const suite = snapshot.testFiles.filter((t) => t.inSuite);
+  // 015-122: a path other worktrees edited that this one does not have costs nothing here.
+  const kept = snapshot.edits.flatMap((edit) => {
+    const paths = [...new Set(edit.paths)].filter((p) => snapshot.modules.hasBytes(p));
+    return paths.length === 0 ? [] : [{ at: edit.at, paths }];
+  });
   const edits = new Map<RelativePath, number>();
-  for (const edit of snapshot.edits) {
-    for (const path of new Set(edit.paths)) edits.set(path, (edits.get(path) ?? 0) + 1);
+  for (const edit of kept) {
+    for (const path of edit.paths) edits.set(path, (edits.get(path) ?? 0) + 1);
   }
   const files = new Map<RelativePath, FileReach>();
   const tests = suite.map((test, index) => {
     const pairs = test.closure === null ? [] : pairsOf(test, context);
     for (const pair of pairs) addPair(files, pair, test, index, detail(pair.path));
-    return testReach(test, pairs, snapshot);
+    return testReach(test, pairs, kept);
   });
   return {
     suite: {
@@ -143,6 +150,7 @@ export function analyze(
     files,
     tests,
     edits,
+    kept,
   };
 }
 
@@ -219,7 +227,7 @@ function count(evidence: Evidence, coverage: CoverageState) {
   if (MEASURED.has(coverage)) evidence.measured++;
 }
 
-function testReach(test: ReachTestFile, pairs: readonly Pair[], snapshot: ReachSnapshot) {
+function testReach(test: ReachTestFile, pairs: readonly Pair[], edits: readonly ReachEdit[]) {
   const imports = pairs.filter((p) => IMPORT_KINDS.has(p.kind));
   const uncalled = imports.filter((p) => UNCALLED.has(p.coverage));
   const uncalledVia = new Map<RelativePath, number>();
@@ -236,6 +244,6 @@ function testReach(test: ReachTestFile, pairs: readonly Pair[], snapshot: ReachS
     called: tells ? imports.filter((p) => p.coverage === "called").length : null,
     uncalled: uncalled.length,
     uncalledVia,
-    edits: snapshot.edits.filter((e) => e.paths.some((p) => reach.has(p))).length,
+    edits: edits.filter((e) => e.paths.some((p) => reach.has(p))).length,
   };
 }

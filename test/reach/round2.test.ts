@@ -152,3 +152,45 @@ describe("015-121: the second-gateway suggestion gives its evidence, and is left
     );
   });
 });
+
+describe("015-122: paths with no bytes in this worktree are left out of the lists", () => {
+  // Squeal: the second list began with 17 src/core/reach/** files of later commits, read at run time
+  // by daemon tests in other worktrees, with 150 edits made there.
+  const GONE = ["src/later/a.ts", "src/later/b.ts"];
+  const t = testFile("test/d.test.ts", ["test/d.test.ts", "src/kept.ts", ...GONE], {
+    seconds: 4,
+    runtimeRead: new Set(GONE),
+    coverage: record([], ["src/kept.ts"]),
+  });
+  const edits = [
+    ...[1, 2, 3, 4, 5].map((at) => ({ at, paths: GONE })),
+    { at: 10, paths: ["src/kept.ts"] },
+    { at: 20, paths: ["src/kept.ts", GONE[0] as string] },
+  ];
+  const r = report(snapshot([t], { edits, missing: GONE }));
+
+  it("lists only paths the worktree has, in both lists, and counts the rest", () => {
+    expect(r.files.map((e) => e.files)).toEqual([["src/kept.ts"]]);
+    expect(r.byEdits.map((e) => [e.files, e.edits, e.editSeconds])).toEqual([
+      [["src/kept.ts"], 2, 8],
+    ]);
+    expect(r.absent).toBe(2);
+    expect(formatReach(r)).toContain(
+      "2 paths with no bytes in this worktree are left out of the lists: files of other worktrees or commits, or paths tests look for at run time.\n",
+    );
+  });
+
+  it("counts only edits of paths the worktree has", () => {
+    expect(r.window).toEqual({ from: 10, to: 20, edits: 2 });
+    expect(r.testFiles[0]?.edits).toBe(2);
+    expect(formatReach(r)).toContain(
+      "Edits: 2 from 1970-01-01 to 1970-01-01, every worktree's watch revisions in which HEAD did not move, of files this worktree has.\n",
+    );
+  });
+
+  it("prints no such line when every path is present", () => {
+    const all = report(snapshot([t], { edits }));
+    expect(all.absent).toBe(0);
+    expect(formatReach(all)).not.toContain("no bytes in this worktree");
+  });
+});
