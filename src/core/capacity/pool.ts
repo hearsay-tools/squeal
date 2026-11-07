@@ -3,8 +3,15 @@ import { join } from "node:path";
 import type { DatabaseSync } from "node:sqlite";
 import { currentUid, preparePrivateDir } from "../daemon/paths.js";
 import { SLOT_WAITER_FRESH_MS, type SlowSlotOwner, takePermit } from "../slow/index.js";
-import type { AbsolutePath, CheckPriority } from "../types/index.js";
-import { createHostCpu, createTreeCpu, gatedPermits, type HostCpu, type TreeCpu } from "./cores.js";
+import type { AbsolutePath, CheckPriority, PoolGate } from "../types/index.js";
+import {
+  createHostCpu,
+  createTreeCpu,
+  gatedCores,
+  gatedPermits,
+  type HostCpu,
+  type TreeCpu,
+} from "./cores.js";
 import { clearMark, type PoolMark, readMarks, writeMark } from "./marks.js";
 import { fairShares } from "./share.js";
 
@@ -103,6 +110,12 @@ export interface PermitPool {
    * ends it; idempotent, never throws.
    */
   running(workers: number): () => void;
+  /**
+   * What the last `acquire` or `offer` read (row 011-309): the cores the CPU
+   * gate counted, the host's CPUs, the slots and the permits other daemons
+   * hold. `null` before the first.
+   */
+  gate(): PoolGate | null;
   /** Releases every lease and clears the mark. */
   close(): void;
 }
@@ -194,6 +207,8 @@ class LockFilePool implements PermitPool {
   #idleSince: number | null = null;
   #timer: NodeJS.Timeout | null = null;
   #mark: PoolMark | null = null;
+  /** What the last look read, for a refused tier's wait (row 011-309). */
+  #gate: PoolGate | null = null;
   #closed = false;
 
   constructor(options: PermitPoolOptions) {
@@ -301,6 +316,10 @@ class LockFilePool implements PermitPool {
       if (this.#active()) this.#republish();
       else this.#deactivate();
     };
+  }
+
+  gate(): PoolGate | null {
+    return this.#gate;
   }
 
   close(): void {
@@ -442,8 +461,14 @@ class LockFilePool implements PermitPool {
   /** How many of `want` permits the CPU gate lets this daemon take now (rows 011-98, 011-182). */
   #gated(others: readonly PoolMark[], inUse: number, want: number, kind: PoolTierKind): number {
     const cores = this.#cores();
+    const busy = cores !== null && kind === "backlog" ? this.#busy(cores) : null;
+    this.#gate = {
+      busyCores: cores === null ? null : gatedCores(others, cores, busy),
+      cpus: availableParallelism(),
+      hostSlots: this.#hostSlots,
+      grants: others.reduce((sum, m) => sum + m.grant, 0),
+    };
     if (cores === null) return want;
-    const busy = kind === "backlog" ? this.#busy(cores) : null;
     return gatedPermits(others, { cores, grant: inUse }, this.#hostSlots, want, busy);
   }
 

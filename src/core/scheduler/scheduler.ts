@@ -67,6 +67,7 @@ import { Ledger } from "./ledger.js";
 import { Mutex } from "./mutex.js";
 import { narrowAnswer, queueNarrow, REINSTALLED_REASON, selectNarrow } from "./narrow-run.js";
 import type { SchedulerOptions } from "./options.js";
+import { PoolWaits, publishPoolWaits } from "./pool-wait.js";
 import { answeredOf } from "./promoted-tier.js";
 import { priorityOf } from "./queue.js";
 import { BacklogQuiet, publishQuiet, quietSleepMs } from "./quiet.js";
@@ -230,10 +231,21 @@ class TierScheduler implements Scheduler {
             // Only a pump a busy store stopped: one a batch restarted, or another error stopped, is not this wait's.
             if (this.#stalled && !this.#failed) this.#pump();
           });
+    // Row 011-309: a lane the pool refuses waits for CPU, in the daemon's log and for status.
+    const waits = new PoolWaits({
+      now: options.now ?? Date.now,
+      log: options.log ?? (() => {}),
+      publish: (lanes, at) => publishPoolWaits(options.store, options.worktreeId, lanes, at),
+    });
     this.#capacity =
       options.capacity === undefined
         ? null
-        : new TierCapacity(options.capacity, options.worktreeId, (message) => this.#note(message));
+        : new TierCapacity(
+            options.capacity,
+            options.worktreeId,
+            (message) => this.#note(message),
+            waits,
+          );
     const host = {
       lock: this.#lock,
       started: () => this.#started(),

@@ -71,8 +71,7 @@ export function gatedPermits(
   want: number,
   busy: number | null = null,
 ): number {
-  const marked = marks.reduce((sum, m) => sum + (m.cores ?? m.grant), own.cores);
-  let cores = Math.max(marked, busy ?? 0);
+  let cores = gatedCores(marks, own.cores, busy);
   let grants = marks.reduce((sum, m) => sum + m.grant, own.grant);
   let taken = 0;
   for (; taken < want && (cores < hostSlots || grants < hostSlots / 2); taken++) {
@@ -80,6 +79,20 @@ export function gatedPermits(
     grants++;
   }
   return taken;
+}
+
+/**
+ * The cores `gatedPermits` counts in use before it takes a permit: the fresh
+ * marks' and `own`, or `busy`, the host's, when more. A refused tier's wait
+ * names them (row 011-309).
+ */
+export function gatedCores(
+  marks: readonly PoolMark[],
+  own: number,
+  busy: number | null = null,
+): number {
+  const marked = marks.reduce((sum, m) => sum + (m.cores ?? m.grant), own);
+  return Math.max(marked, busy ?? 0);
 }
 
 /** The tree of `options.pid`, or `null` where its process cannot be read (no `/proc`). */

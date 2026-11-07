@@ -2,6 +2,7 @@ import { readPolicy } from "../daemon/policy.js";
 import { testFileId } from "../keys/index.js";
 import { hostLoad } from "../retry/load.js";
 import { claimBoundMs } from "../scheduler/claims.js";
+import { publishedPoolWaits } from "../scheduler/pool-wait.js";
 import { publishedBatches } from "../scheduler/promotions.js";
 import { type PublishedQuiet, publishedWaits } from "../scheduler/quiet.js";
 import { runnerPartBoundMs } from "../scheduler/runner-work-bound.js";
@@ -143,6 +144,8 @@ export function standingsOf(
   const row = liveYieldRow(store, worktreeId, startedAt);
   const yields = row.tiers;
   const quiet = startedAt === null ? null : publishedWaits(store, worktreeId, startedAt, now);
+  // Row 011-309: the lanes whose tier the pool refused, with what the pool read.
+  const pool = startedAt === null ? null : publishedPoolWaits(store, worktreeId, startedAt, now);
   const header = reads?.header ?? readHeader(store, worktreeId, states, keys);
   const unlisted = unlistedReason(header, policy);
   const reasons = unknownReasons(store, worktreeId, states, root, now);
@@ -246,6 +249,14 @@ export function standingsOf(
       if (pending.kind === "queued" && pending.behind === null && wait !== undefined) {
         if (!promoted.has(testFileId(ref))) {
           const held: PendingReason = { ...pending, ...wait };
+          return { testFile: ref, state, pending: held, standing: held };
+        }
+      }
+      // Row 011-309: no tier runs in its lane, whose tier the pool refused; a batch's never waits.
+      const refused = pending.kind === "queued" ? pool?.get(pending.lane) : undefined;
+      if (pending.kind === "queued" && pending.behind === null && refused !== undefined) {
+        if (!promoted.has(testFileId(ref))) {
+          const held: PendingReason = { ...pending, pool: refused };
           return { testFile: ref, state, pending: held, standing: held };
         }
       }
