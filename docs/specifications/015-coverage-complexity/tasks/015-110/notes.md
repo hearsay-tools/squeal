@@ -89,5 +89,9 @@ There are two exceptions:
 ## Effects outside this row
 
 - The committed bundles (`plugins/*/dist`) will drift: module order and the `// src/...` markers change. The rebuild belongs to integration.
-- The key alarm (`test/keys/key-format.test.ts`) compares the emitted code of the alarm entries with the last release. Its entries' import closures changed, so expect it to ask for a raise. Do not re-pin it here (brief).
+- **The key alarm fires on all five components.** Each component's entries bundle differs from squeal--v0.1.413's. The probe bundled them in memory with the alarm's own `bundleEntries` and `extractTree`, and no case ran. Bundle lines: global 5,945→5,851, vitest 4,888→4,886, node:test 3,012→3,010, pytest 3,564→3,544, recorder 322→313. Dependency lines are the same.
+- **The alarm asks for no raise.** `test/keys/key-format.test.ts` ("moves only when the validity path's outputs differ from the last release's") passed at revision 7 (`a98ee3a0a`), which holds every `src/` change. It took 33 s, against 9 to 12 s elsewhere: it ran the cases, every case agreed and every changed line ran.
+- **Files the alarm reads.** Each entries bundle now reads fewer files: global 155→86, vitest 104→81, node:test 90→57, pytest 91→54, recorder 36→9. An edit now fires fewer components.
+- **`test/keys/key-format.test.ts` changed, import lines only.** The brief lists this file as leave-alone. The pin and the test body are unchanged. Its `failures` import now names `validity/verdict.ts`, because `compare.ts`'s re-export of it was deleted with the dead re-exports.
+- **`test/keys/validity/compare.test.ts` changed, by the coordinator's agreement.** Its "holds no component to its changed lines … (011-105)" test edited a line of `keys/check-key.ts` as a line every component's bundle holds. That was true only through the barrels. The probe line is now in `ReverseIndex.below` (`keys/reverse-index.ts`). Only that module and `fs/compare.ts` are read by all five bundles now.
 - `test/scheduler/ordering.test.ts` line 88 still names `src/core/state/index.ts`, in a comment that describes review wave 4.5. That barrel is now deleted.
