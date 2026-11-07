@@ -1,5 +1,5 @@
 import { dirname, isAbsolute, join, resolve } from "node:path";
-import type { AbsolutePath } from "../../../core/types/index.js";
+import type { AbsolutePath } from "../../../core/types/common.js";
 
 /**
  * What tsx takes from one importer's tsconfig `extends` chain (spec 003 D3,

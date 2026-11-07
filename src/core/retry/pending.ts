@@ -1,12 +1,8 @@
-import { testFileId } from "../keys/index.js";
-import type {
-  PendingRetries,
-  PendingRetry,
-  RunRecord,
-  Store,
-  TestFileKeyRecord,
-  TestFileRef,
-} from "../types/index.js";
+import { testFileId } from "../keys/reverse-index.js";
+import type { TestFileRef } from "../types/keys.js";
+import type { PendingRetries, PendingRetry } from "../types/status.js";
+import type { Store } from "../types/store.js";
+import type { RunRecord, TestFileKeyRecord } from "../types/store-records.js";
 import { gateClosedSince } from "./gate.js";
 import { type HostLoad, hostLoad } from "./load.js";
 import { type RetryRecord, readRetries } from "./records.js";

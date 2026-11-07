@@ -1,9 +1,9 @@
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { WorktreePaths } from "../../../src/core/fs/worktree-paths.js";
 import { parseEvents } from "../../../src/runners/node-test/run/events.js";
 import { type FileReport, readFileStream } from "../../../src/runners/node-test/run/report.js";
-import { WorktreePaths } from "../../../src/runners/vitest/paths.js";
 
 /**
  * Result mapping on event streams recorded under Node 22.23.3 and 24.21.0

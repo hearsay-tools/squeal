@@ -1,8 +1,8 @@
 import { sep } from "node:path";
 import type { SerializedError, Vitest } from "vitest/node";
-import type { AbsolutePath } from "../../core/types/index.js";
+import type { WorktreePaths } from "../../core/fs/worktree-paths.js";
+import type { AbsolutePath } from "../../core/types/common.js";
 import { closeEmptied } from "./empty-closed.js";
-import type { WorktreePaths } from "./paths.js";
 import { errorText, type RunCollector } from "./reporter.js";
 import { type RunExecution, settleWithin } from "./run.js";
 

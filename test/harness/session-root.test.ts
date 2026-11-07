@@ -1,11 +1,12 @@
 import { readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { MAIN_AGENT } from "../../src/core/types/index.js";
-import { type HookDeps, runHook } from "../../src/harness/claude-code/index.js";
-import { runCodexHook } from "../../src/harness/codex/index.js";
+import { MAIN_AGENT } from "../../src/core/types/delivery.js";
+import { runHook } from "../../src/harness/claude-code/hooks.js";
+import { runCodexHook } from "../../src/harness/codex/hooks.js";
 import { bridgeDeps, register } from "../../src/harness/opencode/bridge.js";
 import { after, before } from "../../src/harness/opencode/bridge-turn.js";
+import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { rootKey, sessionRootFiles } from "../../src/harness/shared/session-root.js";
 import { tempDir } from "../store/helpers.js";
 import { codexInput, codexRecorded } from "./codex/helpers.js";

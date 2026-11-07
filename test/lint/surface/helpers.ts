@@ -1,8 +1,9 @@
 import { afterEach } from "vitest";
 import type { CodeBound } from "../../../src/core/delivery/code-delta.js";
-import type { LintPassOptions } from "../../../src/core/lint/pass/index.js";
+import type { LintPassOptions } from "../../../src/core/lint/pass/types.js";
 import { type LintStoreSource, openForReading } from "../../../src/core/lint/surface/source.js";
-import type { Consumer, Policy } from "../../../src/core/types/index.js";
+import type { Consumer } from "../../../src/core/types/delivery.js";
+import type { Policy } from "../../../src/core/types/policy.js";
 import type { FakeWorktree } from "../../code/pass/helpers.js";
 import { LINT_ON } from "../helpers.js";
 import { FakeProvider, lintPass, lintTree, storeOf } from "../pass/helpers.js";

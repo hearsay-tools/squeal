@@ -1,11 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { createDelivery, formatRegistration } from "../../src/core/delivery/index.js";
-import {
-  type RunReport,
-  type SetupCheckId,
-  type TestFileRef,
-  worktreeMetaKey,
-} from "../../src/core/types/index.js";
+import { createDelivery } from "../../src/core/delivery/delivery.js";
+import { formatRegistration } from "../../src/core/delivery/format.js";
+import type { SetupCheckId } from "../../src/core/types/check.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import type { RunReport } from "../../src/core/types/runner.js";
+import { worktreeMetaKey } from "../../src/core/types/store.js";
 import { fixedStatus, liveDaemon } from "../delivery/fakes.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import {

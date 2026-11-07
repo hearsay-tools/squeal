@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { daemonLiveness } from "../../src/core/delivery/liveness.js";
+import { daemonLiveness } from "../../src/core/presence/heartbeat.js";
 import { BACKLOG_QUIET_MS } from "../../src/core/scheduler/quiet.js";
 import { nextStep } from "../../src/core/status/next-step.js";
 import { standingsOf } from "../../src/core/status/standing.js";

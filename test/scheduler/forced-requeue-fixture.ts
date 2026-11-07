@@ -1,12 +1,9 @@
 import { lstatSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import {
-  type CandidateBatch,
-  type CheckKey,
-  checkpointMetaKey,
-  parseCheckpointProgress,
-  type RelativePath,
-} from "../../src/core/types/index.js";
+import type { RelativePath } from "../../src/core/types/common.js";
+import type { CheckKey } from "../../src/core/types/keys.js";
+import { checkpointMetaKey, parseCheckpointProgress } from "../../src/core/types/scheduler.js";
+import type { CandidateBatch } from "../../src/core/types/watcher.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { createRepo, openRepoStore } from "./repo.js";
 import { type Harness, openHarness } from "./vitest-harness.js";

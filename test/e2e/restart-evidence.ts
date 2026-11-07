@@ -6,9 +6,10 @@ import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { acquireDaemonLock } from "../../src/core/daemon/lock.js";
 import type { TestPause } from "../../src/core/daemon/test-pause.js";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
-import { stoppedMetaKey } from "../../src/core/presence/index.js";
-import { isStoreOpenFailure, lockFileFor, openStore } from "../../src/core/store/index.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
+import { stoppedMetaKey } from "../../src/core/presence/stored.js";
+import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
+import { lockFileFor } from "../../src/core/store/paths.js";
 import type { BundleRun } from "../harness/bundle-helpers.js";
 import type { E2E } from "./harness.js";
 

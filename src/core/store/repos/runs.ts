@@ -1,13 +1,7 @@
-import {
-  type CheckpointLane,
-  type CheckpointRecord,
-  type CheckpointRepo,
-  type RunRecord,
-  type RunRepo,
-  type TestFileRef,
-  type WorktreeId,
-  worktreeMetaKey,
-} from "../../types/index.js";
+import type { WorktreeId } from "../../types/common.js";
+import type { TestFileRef } from "../../types/keys.js";
+import { type CheckpointRepo, type RunRepo, worktreeMetaKey } from "../../types/store.js";
+import type { CheckpointLane, CheckpointRecord, RunRecord } from "../../types/store-records.js";
 import { json, num, numOrNull, oneOf, oneOfOrNull, str, strOrNull } from "../codec.js";
 import type { Connection, Row } from "../connection.js";
 

@@ -1,15 +1,14 @@
 import { describe, expect, it } from "vitest";
+import { StepCache } from "../../../src/core/code/crap/cache.js";
 import {
   ALL_CHECKS,
   type CoverageChecks,
   coverageChecks,
-  readCoverageChange,
-  readSummary,
-  SEED_FILES,
-  STEP_BUDGET_MS,
-  StepCache,
-} from "../../../src/core/code/crap/index.js";
-import { DEFAULT_POLICY } from "../../../src/core/types/index.js";
+} from "../../../src/core/code/crap/checks.js";
+import { SEED_FILES } from "../../../src/core/code/crap/seed.js";
+import { STEP_BUDGET_MS } from "../../../src/core/code/crap/step.js";
+import { readCoverageChange, readSummary } from "../../../src/core/code/crap/summary.js";
+import { DEFAULT_POLICY } from "../../../src/core/types/policy.js";
 import { WT } from "../../state/helpers.js";
 import { fakeCounter, pass } from "../pass/helpers.js";
 import { COVERED, type CoverageRig, consumer, coverageRig, sourceOf } from "./rig.js";

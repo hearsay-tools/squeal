@@ -1,8 +1,12 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { startTurn } from "../../src/core/delivery/turn.js";
-import { formatStatus, readStatus } from "../../src/core/status/index.js";
-import type { Consumer, KnownState, RevisionTrigger, Store } from "../../src/core/types/index.js";
+import { formatStatus } from "../../src/core/status/format-status.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
+import type { Consumer } from "../../src/core/types/delivery.js";
+import type { RevisionTrigger } from "../../src/core/types/revision.js";
+import type { KnownState } from "../../src/core/types/state.js";
+import type { Store } from "../../src/core/types/store.js";
 import { check, type FakeRepo, fakeRepo, seedStore, state } from "./helpers.js";
 
 /* The slow-tier line's fixtures (spec 004 D8), shared by its status tests. */

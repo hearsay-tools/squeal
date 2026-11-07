@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { RunnerAdapter, TestFileRef } from "../../src/core/types/index.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import type { RunnerAdapter } from "../../src/core/types/runner.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { SLOW } from "../scheduler/cleanup.js";
 import { openRepoStore } from "../scheduler/repo.js";

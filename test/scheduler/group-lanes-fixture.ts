@@ -2,17 +2,12 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, onTestFinished } from "vitest";
-import { createDelivery } from "../../src/core/delivery/index.js";
-import {
-  type CheckGroup,
-  type Consumer,
-  DEFAULT_POLICY,
-  type GroupSlotScope,
-  MAIN_AGENT,
-  type Policy,
-  type PytestProject,
-  type TestFileRef,
-} from "../../src/core/types/index.js";
+import { createDelivery } from "../../src/core/delivery/delivery.js";
+import type { GroupSlotScope } from "../../src/core/types/capacity.js";
+import type { CheckGroup } from "../../src/core/types/check-groups.js";
+import { type Consumer, MAIN_AGENT } from "../../src/core/types/delivery.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import { DEFAULT_POLICY, type Policy, type PytestProject } from "../../src/core/types/policy.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   type CatchUpFile,

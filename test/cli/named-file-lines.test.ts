@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { REASON_GROUPS_SHOWN, reasonGroups } from "../../src/cli/named-file-lines.js";
-import type { NamedFile, PendingReason } from "../../src/cli/named-files.js";
-import type { EpochMs } from "../../src/core/types/index.js";
+import type { NamedFile, PendingReason } from "../../src/core/status/standing.js";
+import type { EpochMs } from "../../src/core/types/common.js";
 
 /*
  * Review wave-1.11 S1 (task 011-13): the verdict line's reason groups are

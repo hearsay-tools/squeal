@@ -1,10 +1,13 @@
 import { readPolicy } from "../core/daemon/policy.js";
-import { worktreeLiveness } from "../core/delivery/index.js";
-import { groupLanesOf, type QueueReads } from "../core/retry/index.js";
+import { worktreeLiveness } from "../core/presence/heartbeat.js";
+import { groupLanesOf, type QueueReads } from "../core/retry/waits.js";
 import { groupView } from "../core/scheduler/slow.js";
-import { readGroupTiers, readSlowTier, slowPolicyView } from "../core/state/index.js";
-import { openRunsOf } from "../core/status/index.js";
-import type { KnownState, Store, WorktreeId } from "../core/types/index.js";
+import { readGroupTiers } from "../core/state/groups.js";
+import { readSlowTier, slowPolicyView } from "../core/state/slow.js";
+import { openRunsOf } from "../core/status/open-runs.js";
+import type { WorktreeId } from "../core/types/common.js";
+import type { KnownState } from "../core/types/state.js";
+import type { Store } from "../core/types/store.js";
 
 /**
  * What the live daemon recorded that a retry's queued run waits on, as

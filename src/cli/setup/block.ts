@@ -8,8 +8,8 @@ import {
   writeFileSync,
 } from "node:fs";
 import { basename, dirname, join, relative } from "node:path";
-import { runGit, splitNul } from "../../core/fs/index.js";
-import type { AbsolutePath } from "../../core/types/index.js";
+import { runGit, splitNul } from "../../core/fs/git.js";
+import type { AbsolutePath } from "../../core/types/common.js";
 import type { HarnessId } from "./harnesses.js";
 import type { BlockState, InstructionFile } from "./plan.js";
 

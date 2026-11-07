@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
-import type { AbsolutePath } from "../../../core/types/index.js";
+import type { AbsolutePath } from "../../../core/types/common.js";
 import { type ParsedPython, parsePython } from "./parse.js";
 import type { Resolution, Resolver } from "./resolver.js";
 

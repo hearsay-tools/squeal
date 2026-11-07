@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { loadPolicy, POLICY_FILE } from "../../src/core/daemon/policy.js";
 import { createInputMatcher } from "../../src/core/keys/glob.js";
-import { DEFAULT_POLICY } from "../../src/core/types/index.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 
 /* Spec 017 D1: the `lint` keys, off by default (goal 1). */
 

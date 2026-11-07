@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { ignoredReadNotes, ignoredReadText, slowFileReads } from "../../src/cli/warmup.js";
-import type { IgnoredReads } from "../../src/core/status/index.js";
-import type { ProjectName, RelativePath, TestFileRef } from "../../src/core/types/index.js";
+import type { IgnoredReads } from "../../src/core/scheduler/ignored-reads.js";
+import type { ProjectName, RelativePath } from "../../src/core/types/common.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
 
 /*
  * Row 005-29 (spec 005 D3, 001-307): what the warm-up says of each slow

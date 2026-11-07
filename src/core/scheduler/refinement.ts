@@ -1,19 +1,15 @@
-import { closuresToReresolve, type KeyChange, testFileId } from "../keys/index.js";
-import type {
-  InvalidatedPath,
-  ProjectName,
-  RelativePath,
-  Revision,
-  RevisionNumber,
-  RunnerClosure,
-  RunnerEnvironment,
-  TestFileRef,
-} from "../types/index.js";
+import type { KeyChange } from "../keys/key-index.js";
+import { closuresToReresolve } from "../keys/resolution.js";
+import { testFileId } from "../keys/reverse-index.js";
+import { listPaths } from "../text.js";
+import type { ProjectName, RelativePath, RevisionNumber } from "../types/common.js";
+import type { TestFileRef } from "../types/keys.js";
+import type { Revision } from "../types/revision.js";
+import type { InvalidatedPath, RunnerClosure, RunnerEnvironment } from "../types/runner.js";
 import { type SchedulerContext, tryRunner } from "./context.js";
 import { demote, type EditCut, editWork, fetchEditCut, observedDirectOf } from "./edit-cut.js";
 import { type Failures, failed, settleFailures } from "./failures.js";
 import type { Ledger } from "./ledger.js";
-import { listPaths } from "./notes.js";
 import { listTestFilesOf } from "./omitted-test-files.js";
 import { quietCaughtUp, quietQueued } from "./quiet.js";
 import {

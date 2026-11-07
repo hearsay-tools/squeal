@@ -1,12 +1,8 @@
 import { statSync } from "node:fs";
 import { createConnection } from "node:net";
-import type {
-  AbsolutePath,
-  DaemonRecord,
-  DaemonRequest,
-  DaemonResponse,
-  PingResponse,
-} from "../types/index.js";
+import type { AbsolutePath } from "../types/common.js";
+import type { DaemonRequest, DaemonResponse, PingResponse } from "../types/daemon.js";
+import type { DaemonRecord } from "../types/store-records.js";
 
 /** A failed socket request. `code` is the socket error code, or `ETIMEDOUT`. */
 export interface DaemonRequestError extends Error {

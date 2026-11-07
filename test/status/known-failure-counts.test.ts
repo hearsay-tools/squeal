@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { type EndedWait, waitLine } from "../../src/cli/status-wait-lines.js";
-import { createDelivery, formatRegistration } from "../../src/core/delivery/index.js";
-import { createStateSink } from "../../src/core/state/index.js";
-import { formatStatus, readStatus } from "../../src/core/status/index.js";
-import type { Consumer, StatusSnapshot, Store, TestFileRef } from "../../src/core/types/index.js";
+import { createDelivery } from "../../src/core/delivery/delivery.js";
+import { formatRegistration } from "../../src/core/delivery/format.js";
+import { createStateSink } from "../../src/core/state/sink.js";
+import { formatStatus } from "../../src/core/status/format-status.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
+import type { Consumer } from "../../src/core/types/delivery.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import type { StatusSnapshot } from "../../src/core/types/status.js";
+import type { Store } from "../../src/core/types/store.js";
 import { knownFailuresLine, statusText } from "../../src/harness/shared/text.js";
 import { fixedStatus } from "../delivery/fakes.js";
 import { check, result } from "../state/helpers.js";

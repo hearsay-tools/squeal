@@ -8,13 +8,13 @@ import {
   RUNTIME_TREE,
   UPLOAD_NOTES,
 } from "../../../../scripts/package-codex-runtime.js";
+import { decodeRuntimeArtifact } from "../../../../src/harness/codex/runtime-release/artifact.js";
 import {
-  decodeRuntimeArtifact,
   parseReleaseDescriptor,
   RUNTIME_ARTIFACT_ASSET,
   RUNTIME_DESCRIPTOR_ASSET,
-  stageRuntimeArtifact,
-} from "../../../../src/harness/codex/runtime-release/index.js";
+} from "../../../../src/harness/codex/runtime-release/descriptor.js";
+import { stageRuntimeArtifact } from "../../../../src/harness/codex/runtime-release/stage.js";
 import { git, initRepo, tempDir } from "../../../hash/git-repo.js";
 import { runtimeTree } from "../adapter/fixture.js";
 import { snapshotTree } from "./fixture.js";

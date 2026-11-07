@@ -1,7 +1,9 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { gitDirOf, isMissing, type RunGitOptions, resolveCommonDir, runGit } from "../fs/index.js";
-import type { AbsolutePath, CommitSha } from "../types/index.js";
+import { isMissing } from "../fs/errors.js";
+import { type RunGitOptions, runGit } from "../fs/git.js";
+import { gitDirOf, resolveCommonDir } from "../fs/git-layout.js";
+import type { AbsolutePath, CommitSha } from "../types/common.js";
 
 const SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
 

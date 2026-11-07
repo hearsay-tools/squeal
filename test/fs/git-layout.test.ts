@@ -2,7 +2,6 @@ import { createHash } from "node:crypto";
 import { mkdirSync, realpathSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { worktreeIdOfRealPath } from "../../src/core/fs/git-layout.js";
 import {
   findWorktreeRoot,
   gitDirOf,
@@ -10,7 +9,8 @@ import {
   linkedWorktreeDir,
   resolveCommonDir,
   worktreeIdFor,
-} from "../../src/core/fs/index.js";
+  worktreeIdOfRealPath,
+} from "../../src/core/fs/git-layout.js";
 import { tempDir } from "../store/helpers.js";
 
 describe("worktreeIdFor", () => {

@@ -11,8 +11,8 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { storePaths } from "../../src/core/store/index.js";
-import { runHook } from "../../src/harness/claude-code/index.js";
+import { storePaths } from "../../src/core/store/paths.js";
+import { runHook } from "../../src/harness/claude-code/hooks.js";
 import { findHarnessProcess } from "../../src/harness/shared/harness-process.js";
 import { CANCELLED, cancelled } from "../../src/runners/vitest/run.js";
 import { stoppedLine } from "../cli/stop-lines.js";

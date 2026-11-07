@@ -1,32 +1,18 @@
 import { rmSync } from "node:fs";
 import { setImmediate as nextTurn } from "node:timers/promises";
-import type { ObjectFormat } from "../../hash/index.js";
-import type {
-  AbsolutePath,
-  CheckKey,
-  EpochMs,
-  Policy,
-  RelativePath,
-  WorktreeId,
-} from "../../types/index.js";
+import type { ObjectFormat } from "../../hash/blob.js";
+import type { AbsolutePath, EpochMs, RelativePath, WorktreeId } from "../../types/common.js";
+import type { CheckKey } from "../../types/keys.js";
+import type { Policy } from "../../types/policy.js";
 import { Pace } from "../coverage/pace.js";
 import { coverageOn } from "../coverage/runtime.js";
-import {
-  type CoverageChecks,
-  clearCoverage,
-  coverageChecks,
-  type LoaderCondition,
-  type LoaderInputs,
-  runCoverageStep,
-  StepCache,
-  sameChecks,
-} from "../crap/index.js";
-import {
-  type CodeStore,
-  codeStorePath,
-  isCodeStoreOpenFailure,
-  openCodeStore,
-} from "../store/index.js";
+import { StepCache } from "../crap/cache.js";
+import { type CoverageChecks, coverageChecks, sameChecks } from "../crap/checks.js";
+import type { LoaderCondition, LoaderInputs } from "../crap/loaders.js";
+import { clearCoverage } from "../crap/removed.js";
+import { runCoverageStep } from "../crap/step.js";
+import { codeStorePath, isCodeStoreOpenFailure, openCodeStore } from "../store/open.js";
+import type { CodeStore } from "../store/types.js";
 import { nextRetry, RETRY_AFTER_MS, readUncountable, restartRetries } from "./failed.js";
 import { runPass } from "./pass.js";
 import type { Counter, PassReport, PassSource } from "./types.js";

@@ -1,4 +1,5 @@
-import type { ProjectName, RelativePath, TestFileRef } from "../types/index.js";
+import type { ProjectName, RelativePath } from "../types/common.js";
+import type { TestFileRef } from "../types/keys.js";
 import type { FileState } from "./files.js";
 import type { Ledger, SettleOptions } from "./ledger.js";
 import type { RecordedCause } from "./unknown-files.js";

@@ -7,7 +7,7 @@ import { terminalAsker } from "../../../src/cli/setup/ask.js";
 import { setupCommand } from "../../../src/cli/setup/command.js";
 import { buildPlan } from "../../../src/cli/setup/plan.js";
 import { readRepoFacts } from "../../../src/cli/setup/repo.js";
-import type { AbsolutePath } from "../../../src/core/types/index.js";
+import type { AbsolutePath } from "../../../src/core/types/common.js";
 import { capture, cleanupFixtures, harnessEnv, json, squealShaped } from "./fixture.js";
 
 /*

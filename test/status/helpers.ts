@@ -1,13 +1,9 @@
 import { mkdirSync, realpathSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
-import type {
-  CheckId,
-  FileCheckId,
-  KnownState,
-  Store,
-  TestCheckId,
-} from "../../src/core/types/index.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
+import type { CheckId, FileCheckId, TestCheckId } from "../../src/core/types/check.js";
+import type { KnownState } from "../../src/core/types/state.js";
+import type { Store } from "../../src/core/types/store.js";
 import { open, tempDir } from "../store/helpers.js";
 
 /** A repository on disk without git: a main worktree with a `.git` directory and linked worktrees. */

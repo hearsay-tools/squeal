@@ -1,5 +1,5 @@
-import { compare } from "../../fs/index.js";
-import type { RelativePath, RevisionNumber } from "../../types/index.js";
+import { compare } from "../../fs/compare.js";
+import type { RelativePath, RevisionNumber } from "../../types/common.js";
 import type { Entry } from "./blobs.js";
 import { type FailedCounts, seedsQuietly } from "./failed.js";
 import { includedSet } from "./included.js";

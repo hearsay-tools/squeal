@@ -3,12 +3,12 @@ import { createServer, type Socket } from "node:net";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
-import { socketPathFor } from "../../src/core/daemon/index.js";
+import { socketPathFor } from "../../src/core/daemon/paths.js";
 import { release } from "../../src/core/lint/pass/commit-entry.js";
 import { lintScope } from "../../src/core/lint/pass/records.js";
-import { isLintStoreOpenFailure, openLintStore } from "../../src/core/lint/store/index.js";
-import { DEFAULT_POLICY } from "../../src/core/types/index.js";
+import { isLintStoreOpenFailure, openLintStore } from "../../src/core/lint/store/open.js";
 import type { LintOutcome } from "../../src/core/types/lint.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 import { squealRepo } from "../harness/helpers.js";
 import { clientGone, closeFakeDaemons, fakeDaemon, lockStore, received } from "./fake-daemon.js";
 

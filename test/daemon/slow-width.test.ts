@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { createCompositeRunner } from "../../src/core/daemon/composite-runner.js";
 import { afterEachRun, type RunSweeper } from "../../src/core/daemon/escaped.js";
 import { withSlowInstance } from "../../src/core/daemon/slow-instance.js";
-import type { RunnerAdapter, TestFileRef } from "../../src/core/types/index.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import type { RunnerAdapter } from "../../src/core/types/runner.js";
 
 /*
  * Review 001-394 B2: the slow tier asks the daemon's runner how many of its

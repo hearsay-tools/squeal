@@ -12,10 +12,10 @@ import { join, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 import { socketPathFor } from "../../src/core/daemon/paths.js";
-import { readHeader } from "../../src/core/delivery/index.js";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
-import { REINSTALL_NOTE } from "../../src/core/scheduler/index.js";
-import { storePaths } from "../../src/core/store/index.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
+import { REINSTALL_NOTE } from "../../src/core/scheduler/install.js";
+import { readHeader } from "../../src/core/state/header.js";
+import { storePaths } from "../../src/core/store/paths.js";
 import { git } from "../hash/git-repo.js";
 import { runMissingConfig } from "../helpers/baseline.js";
 import {

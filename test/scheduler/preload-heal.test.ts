@@ -2,16 +2,13 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { readHead } from "../../src/core/daemon-loop/head.js";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
-import { createScheduler } from "../../src/core/scheduler/index.js";
-import { readFlakyNotes } from "../../src/core/state/index.js";
-import { storePaths } from "../../src/core/store/index.js";
-import {
-  DEFAULT_POLICY,
-  type NodeTestProject,
-  type RunnerAdapter,
-  type Store,
-} from "../../src/core/types/index.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
+import { createScheduler } from "../../src/core/scheduler/scheduler.js";
+import { readFlakyNotes } from "../../src/core/state/flaky.js";
+import { storePaths } from "../../src/core/store/paths.js";
+import { DEFAULT_POLICY, type NodeTestProject } from "../../src/core/types/policy.js";
+import type { RunnerAdapter } from "../../src/core/types/runner.js";
+import type { Store } from "../../src/core/types/store.js";
 import { createNodeTestAdapter } from "../../src/runners/node-test/adapter.js";
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";

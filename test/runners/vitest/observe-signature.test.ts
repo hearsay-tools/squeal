@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { describeFailure } from "../../../src/core/state/index.js";
+import { describeFailure } from "../../../src/core/state/fingerprint.js";
 import { createVitestAdapter } from "../../../src/runners/vitest/index.js";
 import { openFixture, ref, SLOW } from "./helpers.js";
 

@@ -3,14 +3,10 @@ import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import {
-  createPermitPool,
-  type PermitPool,
-  poolPermitFile,
-} from "../../src/core/capacity/index.js";
+import { createPermitPool, type PermitPool, poolPermitFile } from "../../src/core/capacity/pool.js";
 import { TierCapacity, WAIT_FOR_CAPACITY } from "../../src/core/scheduler/capacity.js";
-import { takePermit } from "../../src/core/slow/index.js";
-import type { WorktreeId } from "../../src/core/types/index.js";
+import { takePermit } from "../../src/core/slow/slot.js";
+import type { WorktreeId } from "../../src/core/types/common.js";
 
 /*
  * Review 001-384, B2: a mark that cannot be written must never strand a

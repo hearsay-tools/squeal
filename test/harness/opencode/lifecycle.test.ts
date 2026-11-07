@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DISPOSE_DEADLINE_MS } from "../../../src/harness/opencode/plugin.js";
+import { DISPOSE_DEADLINE_MS } from "../../../src/harness/opencode/hooks.js";
 import {
   CHILD_ID,
   chatOutput,

@@ -3,9 +3,10 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { namedText } from "../../src/cli/status-wait-lines.js";
 import { namedCode, waitForNamed } from "../../src/cli/status-wait-paths.js";
-import type { RevisionNumber } from "../../src/core/types/index.js";
+import type { RevisionNumber } from "../../src/core/types/common.js";
 import { CODEX } from "../harness/primer-helpers.js";
-import { A, finish, later, NOW, repoWith, SLOW_FILE } from "./status-wait-fixture.js";
+import { A, finish, NOW, repoWith, SLOW_FILE } from "./status-wait-fixture.js";
+import { later } from "./wait-clock.js";
 
 /*
  * Row 019-25 (spec 019 D1, D6; the coordinator, 2026-11-04): a named

@@ -3,8 +3,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { SerializedError, Vitest } from "vitest/node";
-import type { CheckRunResult, TestFileRef } from "../../../src/core/types/index.js";
-import { WorktreePaths } from "../../../src/runners/vitest/paths.js";
+import { WorktreePaths } from "../../../src/core/fs/worktree-paths.js";
+import type { TestFileRef } from "../../../src/core/types/keys.js";
+import type { CheckRunResult } from "../../../src/core/types/runner.js";
 import { errorText, RunCollector } from "../../../src/runners/vitest/reporter.js";
 import { refKey } from "../../../src/runners/vitest/results.js";
 import {

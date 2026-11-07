@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createCoverageWriter } from "../../../src/core/code/coverage/index.js";
+import { createCoverageWriter } from "../../../src/core/code/coverage/writer.js";
 import { commonDir, ON } from "../helpers.js";
 import { type PayloadSet, payloads } from "./payloads.js";
 

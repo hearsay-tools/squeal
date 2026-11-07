@@ -1,7 +1,8 @@
 import { open } from "node:fs/promises";
 import { join } from "node:path";
-import { isMissing, isRecord } from "../fs/index.js";
-import type { AbsolutePath } from "../types/index.js";
+import { isMissing } from "../fs/errors.js";
+import { isRecord } from "../fs/json.js";
+import type { AbsolutePath } from "../types/common.js";
 
 type Manager = "npm" | "pnpm" | "yarn" | "bun";
 

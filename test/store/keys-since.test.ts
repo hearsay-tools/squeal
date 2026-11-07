@@ -1,6 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
-import { storePaths } from "../../src/core/store/index.js";
+import { storePaths } from "../../src/core/store/paths.js";
 import { KEYS_SINCE } from "../../src/core/store/repos/results.js";
 import { fakeCommonDir, open, result, testCheck } from "./helpers.js";
 

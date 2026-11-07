@@ -2,13 +2,13 @@ import { randomUUID } from "node:crypto";
 import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { afterEach } from "vitest";
+import type { TestFileRef } from "../../../src/core/types/keys.js";
 import type {
   AffectedTestFiles,
   RunnerAdapter,
   RunOptions,
   RunReport,
-  TestFileRef,
-} from "../../../src/core/types/index.js";
+} from "../../../src/core/types/runner.js";
 import { createVitestAdapter } from "../../../src/runners/vitest/index.js";
 import { compareRefs } from "../../../src/runners/vitest/results.js";
 

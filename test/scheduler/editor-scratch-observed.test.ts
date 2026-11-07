@@ -1,8 +1,8 @@
 import { readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createFsHasher } from "../../src/core/hash/index.js";
-import { statCandidates } from "../../src/core/revision/index.js";
+import { createFsHasher } from "../../src/core/hash/hasher.js";
+import { statCandidates } from "../../src/core/revision/reconcile.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   type CatchUpFile,

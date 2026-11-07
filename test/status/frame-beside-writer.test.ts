@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { createStateSink, describeFailure } from "../../src/core/state/index.js";
-import {
-  readFailures,
-  readStatus,
-  readWhy,
-  type StatusContext,
-  withStatusStore,
-} from "../../src/core/status/index.js";
-import { storePaths } from "../../src/core/store/index.js";
-import type { CheckError, ResultRecord, TestFileRef } from "../../src/core/types/index.js";
+import { describeFailure } from "../../src/core/state/fingerprint.js";
+import { createStateSink } from "../../src/core/state/sink.js";
+import { readFailures } from "../../src/core/status/failures.js";
+import { type StatusContext, withStatusStore } from "../../src/core/status/open.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
+import { readWhy } from "../../src/core/status/why.js";
+import { storePaths } from "../../src/core/store/paths.js";
+import type { CheckError } from "../../src/core/types/check.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import type { ResultRecord } from "../../src/core/types/store-records.js";
 import { check, setKey } from "../state/helpers.js";
 import { fakeRepo, seedStore } from "./helpers.js";
 import { holdLock, type LockHolder } from "./hold-lock.js";

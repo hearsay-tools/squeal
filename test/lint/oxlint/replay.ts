@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { RelativePath } from "../../../src/core/types/index.js";
+import type { RelativePath } from "../../../src/core/types/common.js";
 import { OXLINT_PACKAGE } from "./helpers.js";
 
 /*

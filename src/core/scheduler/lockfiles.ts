@@ -1,14 +1,14 @@
 import { join } from "node:path";
-import { toRelative } from "../fs/index.js";
+import { toRelative } from "../fs/paths.js";
+import { type DependencyKeys, dependencyKeys } from "../keys/dependencies.js";
 import {
-  type DependencyKeys,
-  dependencyKeys,
   findInstalledLockfile,
   type InstalledDependencies,
   installedDependencies,
-  PackageScans,
-} from "../keys/index.js";
-import type { AbsolutePath, ProjectName, RelativePath, RunnerEnvironment } from "../types/index.js";
+} from "../keys/environment.js";
+import { PackageScans } from "../keys/package-scans.js";
+import type { AbsolutePath, ProjectName, RelativePath } from "../types/common.js";
+import type { RunnerEnvironment } from "../types/runner.js";
 
 /** An installed lockfile and its patches directory, relative to the worktree root. */
 interface Lockfile {

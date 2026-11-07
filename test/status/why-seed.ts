@@ -1,5 +1,6 @@
 import { join } from "node:path";
-import type { Store, WhyReport, WhyResult } from "../../src/core/types/index.js";
+import type { WhyReport, WhyResult } from "../../src/core/types/status.js";
+import type { Store } from "../../src/core/types/store.js";
 import { result } from "../store/helpers.js";
 import { appendRevisions, check, type FakeRepo, state } from "./helpers.js";
 

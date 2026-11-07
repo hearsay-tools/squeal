@@ -1,4 +1,4 @@
-import type { WorktreeId } from "../../types/index.js";
+import type { WorktreeId } from "../../types/common.js";
 
 /*
  * Rows 015-48 and 015-55: a pass that writes many states stages them, and

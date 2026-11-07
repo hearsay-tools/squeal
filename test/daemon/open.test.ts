@@ -1,11 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { OpenedDaemon } from "../../src/core/daemon/open.js";
-import type {
-  AbsolutePath,
-  DaemonExit,
-  DaemonRecord,
-  WorktreeId,
-} from "../../src/core/types/index.js";
+import type { AbsolutePath, WorktreeId } from "../../src/core/types/common.js";
+import type { DaemonExit } from "../../src/core/types/daemon.js";
+import type { DaemonRecord } from "../../src/core/types/store-records.js";
 import { createFixtureRepo, type FixtureRepo, readNotes } from "./helpers.js";
 
 const integrityChecks = vi.hoisted(() => ({ count: 0 }));
@@ -42,7 +39,7 @@ describe("openDaemon: lock before store (spec 001 D10, review S8)", () => {
     repos.push(repo);
     // An existing store: the winner opens it once. A start that creates it opens it again
     // to read the file it holds (review 0.1.329, B3).
-    const { openStore } = await import("../../src/core/store/index.js");
+    const { openStore } = await import("../../src/core/store/open.js");
     const seeded = openStore(repo.commonDir);
     if ("reason" in seeded) throw new Error(JSON.stringify(seeded));
     seeded.close();
@@ -61,14 +58,14 @@ describe("openDaemon: lock before store (spec 001 D10, review S8)", () => {
   it("releases the lock when the store cannot be opened, so the next start can try", async () => {
     const repo = createFixtureRepo();
     repos.push(repo);
-    const { storePaths } = await import("../../src/core/store/index.js");
+    const { storePaths } = await import("../../src/core/store/paths.js");
     const { mkdirSync } = await import("node:fs");
     // A directory where the database file belongs: openStore fails.
     mkdirSync(storePaths(repo.commonDir).database, { recursive: true });
     const first = await openDaemon(repo.root, Date.now);
     expect(first).toMatchObject({ reason: "store-unusable", code: 1 });
     const { acquireDaemonLock } = await import("../../src/core/daemon/lock.js");
-    const { lockFileFor } = await import("../../src/core/store/index.js");
+    const { lockFileFor } = await import("../../src/core/store/paths.js");
     const lock = acquireDaemonLock(lockFileFor(repo.commonDir, repo.worktreeId));
     expect(lock).not.toBeNull();
     lock?.release();
@@ -79,7 +76,7 @@ describe("openDaemon: a lost lock with no daemon recorded (task 001-340, D10)", 
   /** The lock as a stopping daemon past its record and socket holds it. */
   async function held(repo: FixtureRepo) {
     const { acquireDaemonLock } = await import("../../src/core/daemon/lock.js");
-    const { lockFileFor } = await import("../../src/core/store/index.js");
+    const { lockFileFor } = await import("../../src/core/store/paths.js");
     const lock = acquireDaemonLock(
       lockFileFor(repo.commonDir as AbsolutePath, repo.worktreeId as WorktreeId),
     );
@@ -89,7 +86,7 @@ describe("openDaemon: a lost lock with no daemon recorded (task 001-340, D10)", 
 
   /** The store with the worktree's row and `daemon` as its record, as a stopping daemon leaves it. */
   async function record(repo: FixtureRepo, daemon: DaemonRecord | null) {
-    const { openStore } = await import("../../src/core/store/index.js");
+    const { openStore } = await import("../../src/core/store/open.js");
     const store = openStore(repo.commonDir as AbsolutePath);
     if ("reason" in store) throw new Error("no store");
     const id = repo.worktreeId as WorktreeId;
@@ -142,7 +139,7 @@ describe("openDaemon: a lost lock with no daemon recorded (task 001-340, D10)", 
       heartbeatIntervalMs: 5_000,
       squealVersion,
     });
-    const { openStore } = await import("../../src/core/store/index.js");
+    const { openStore } = await import("../../src/core/store/open.js");
     const store = openStore(repo.commonDir as AbsolutePath);
     if ("reason" in store) throw new Error("no store");
     store.worktrees.setDaemon(repo.worktreeId as WorktreeId, null);

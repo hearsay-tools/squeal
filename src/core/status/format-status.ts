@@ -1,14 +1,11 @@
-import { RECORDED_UNKNOWN_TEXT, recordedText } from "../retry/index.js";
-import {
-  formatCheck,
-  fullSuiteText,
-  groupTierLines,
-  runnerPartText,
-  slowAffectedText,
-  slowTierText,
-} from "../state/index.js";
+import { RECORDED_UNKNOWN_TEXT, recordedText } from "../retry/text.js";
+import { formatCheck } from "../state/check-name.js";
+import { groupTierLines } from "../state/group-text.js";
+import { fullSuiteText, runnerPartText } from "../state/header.js";
+import { slowAffectedText, slowTierText } from "../state/slow-text.js";
 import { excludedFilesText, excludedProjectsText, plural } from "../text.js";
-import type { EpochMs, StatusResult, StatusSnapshot, StatusUnavailable } from "../types/index.js";
+import type { EpochMs } from "../types/common.js";
+import type { StatusResult, StatusSnapshot, StatusUnavailable } from "../types/status.js";
 import {
   countedText,
   earlierFailuresLines,

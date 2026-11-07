@@ -1,13 +1,12 @@
-import type { Counter, PassReport } from "../../../src/core/code/pass/index.js";
-import type { CodeStore } from "../../../src/core/code/store/index.js";
+import type { Counter, PassReport } from "../../../src/core/code/pass/types.js";
+import type { CodeStore } from "../../../src/core/code/store/types.js";
 import { dropCode } from "../../../src/core/delivery/code-deliver.js";
 import { type CodeSource, codeSource } from "../../../src/core/delivery/code-source.js";
-import {
-  createDelivery,
-  formatDelta,
-  formatRegistration,
-} from "../../../src/core/delivery/index.js";
-import type { Consumer, Policy, Store } from "../../../src/core/types/index.js";
+import { createDelivery } from "../../../src/core/delivery/delivery.js";
+import { formatDelta, formatRegistration } from "../../../src/core/delivery/format.js";
+import type { Consumer } from "../../../src/core/types/delivery.js";
+import type { Policy } from "../../../src/core/types/policy.js";
+import type { Store } from "../../../src/core/types/store.js";
 import { fixedStatus } from "../../delivery/fakes.js";
 import { freshStore, setKey, WT } from "../../state/helpers.js";
 import { writePolicy } from "../delivery/helpers.js";

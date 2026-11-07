@@ -8,7 +8,7 @@ import {
   LAUNCHER_KEY_SOURCE,
   PLUGIN_KEY_SOURCE,
 } from "../../src/cli/codex/hash.js";
-import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
+import { REPO_ROOT } from "../../src/harness/build.js";
 
 /*
  * Spec 002 D1: the trust hash is a port of an undocumented Codex format, so

@@ -8,7 +8,7 @@ import type {
   CodeViewEntry,
 } from "../types/code.js";
 import type { CodeDeltaEntry, CodeDeltaKind } from "../types/code-delivery.js";
-import type { EpochMs, RelativePath, RevisionNumber } from "../types/index.js";
+import type { EpochMs, RelativePath, RevisionNumber } from "../types/common.js";
 
 /*
  * Spec 015 D5, D6: the consumer's code view against the current states,

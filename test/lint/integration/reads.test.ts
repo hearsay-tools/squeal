@@ -1,9 +1,9 @@
 import { appendFileSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { blobHash } from "../../../src/core/hash/index.js";
-import type { LintEnvironment, LintProvider } from "../../../src/core/lint/pass/index.js";
+import { blobHash } from "../../../src/core/hash/blob.js";
 import { underModules } from "../../../src/core/lint/pass/keys.js";
+import type { LintEnvironment, LintProvider } from "../../../src/core/lint/pass/provider.js";
 import { FakeWorktree } from "../../code/pass/helpers.js";
 import { commonDir } from "../helpers.js";
 import { cli } from "../provider/helpers.js";

@@ -1,21 +1,13 @@
 import { readPolicy } from "../daemon/policy.js";
-import { testFileId } from "../keys/index.js";
-import { groupLanesOf, type QueueReads, retryWaitOf } from "../retry/index.js";
+import { testFileId } from "../keys/reverse-index.js";
+import { groupLanesOf, type QueueReads, retryWaitOf } from "../retry/waits.js";
 import { runnerPartBoundMs } from "../scheduler/runner-work-bound.js";
 import { groupView, slowView } from "../scheduler/slow.js";
-import type {
-  AbsolutePath,
-  CheckpointInProgress,
-  DaemonLiveness,
-  EpochMs,
-  LoadNow,
-  OutstandingGroup,
-  OutstandingStanding,
-  PendingRetries,
-  Store,
-  TestFileRef,
-  WorktreeId,
-} from "../types/index.js";
+import type { AbsolutePath, EpochMs, WorktreeId } from "../types/common.js";
+import type { TestFileRef } from "../types/keys.js";
+import type { LoadNow, OutstandingGroup, OutstandingStanding } from "../types/standing.js";
+import type { CheckpointInProgress, DaemonLiveness, PendingRetries } from "../types/status.js";
+import type { Store } from "../types/store.js";
 import { standingsOf, type WorktreeReads } from "./standing.js";
 import { groupId, widest } from "./standing-groups.js";
 

@@ -1,8 +1,9 @@
 import { dirname, sep } from "node:path";
-import { compare } from "../../../core/fs/index.js";
+import { compare } from "../../../core/fs/compare.js";
 import type { WorktreePaths } from "../../../core/fs/worktree-paths.js";
-import type { AbsolutePath, RelativePath, TestFileRef } from "../../../core/types/index.js";
-import { writtenAbove } from "../../observe/index.js";
+import type { AbsolutePath, RelativePath } from "../../../core/types/common.js";
+import type { TestFileRef } from "../../../core/types/keys.js";
+import { writtenAbove } from "../../observe/inputs.js";
 import type { ImportEvent, SpawnedEvent, WrittenEvent } from "./events.js";
 import type { BatchFile } from "./report.js";
 

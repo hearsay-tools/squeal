@@ -1,6 +1,6 @@
 import { num } from "../../store/codec.js";
 import type { Connection } from "../../store/connection.js";
-import type { EpochMs } from "../../types/index.js";
+import type { EpochMs } from "../../types/common.js";
 import { isManifest, readManifest } from "../coverage/parts.js";
 
 /*

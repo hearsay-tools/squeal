@@ -1,15 +1,11 @@
 import { join } from "node:path";
 import { loadPolicy } from "../../../../src/core/daemon/policy.js";
 import { readHead } from "../../../../src/core/daemon-loop/head.js";
-import { createFsHasher } from "../../../../src/core/hash/index.js";
+import { createFsHasher } from "../../../../src/core/hash/hasher.js";
 import { WorktreeKeys } from "../../../../src/core/scheduler/keying.js";
-import type {
-  CheckKey,
-  RunnerEnvironment,
-  RunnerPackages,
-  TestFileRef,
-  WorktreeId,
-} from "../../../../src/core/types/index.js";
+import type { WorktreeId } from "../../../../src/core/types/common.js";
+import type { CheckKey, TestFileRef } from "../../../../src/core/types/keys.js";
+import type { RunnerEnvironment, RunnerPackages } from "../../../../src/core/types/runner.js";
 import { git, scratchStore, writeTree } from "./shared.js";
 
 /*

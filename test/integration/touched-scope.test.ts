@@ -2,7 +2,7 @@ import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
-import type { NodeTestProject } from "../../src/core/types/index.js";
+import type { NodeTestProject } from "../../src/core/types/policy.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { SLOW } from "../scheduler/cleanup.js";
 import { openHarness } from "../scheduler/node-test-harness.js";

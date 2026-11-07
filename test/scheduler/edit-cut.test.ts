@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { notesMetaKey } from "../../src/core/types/index.js";
+import { notesMetaKey } from "../../src/core/types/scheduler.js";
 import type { CatchUpFile } from "./catch-up-fixture.js";
 import {
   editAndRun,

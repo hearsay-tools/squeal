@@ -1,5 +1,6 @@
-import type { CoverageRun } from "../../core/code/coverage/index.js";
-import type { AbsolutePath, RelativePath, TestFileRef } from "../../core/types/index.js";
+import type { CoverageRun } from "../../core/code/coverage/types.js";
+import type { AbsolutePath, RelativePath } from "../../core/types/common.js";
+import type { TestFileRef } from "../../core/types/keys.js";
 import type { NodeTestGraph } from "./graph/index.js";
 import type { CoveragePayload } from "./run/coverage.js";
 

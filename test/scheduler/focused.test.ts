@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { isBesideLane, type Policy, type TestCheckId } from "../../src/core/types/index.js";
+import type { TestCheckId } from "../../src/core/types/check.js";
+import type { Policy } from "../../src/core/types/policy.js";
+import { isBesideLane } from "../../src/core/types/runner.js";
 import {
   type CatchUpFile,
   type CatchUpRun,

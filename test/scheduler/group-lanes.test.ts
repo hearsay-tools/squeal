@@ -1,16 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { groupView, laneFor, slowView } from "../../src/core/scheduler/slow.js";
 import { slowFiles, slowGlobs } from "../../src/core/slow/classify.js";
-import {
-  type CheckGroup,
-  DEFAULT_POLICY,
-  groupLane,
-  isGroupLane,
-  isSlowLane,
-  laneGroup,
-  type Policy,
-  type PytestProject,
-} from "../../src/core/types/index.js";
+import type { CheckGroup } from "../../src/core/types/check-groups.js";
+import { DEFAULT_POLICY, type Policy, type PytestProject } from "../../src/core/types/policy.js";
+import { isSlowLane } from "../../src/core/types/runner.js";
+import { groupLane, isGroupLane, laneGroup } from "../../src/core/types/scheduler.js";
 import { nodeTestEntries, nodeTestGroup, slowNodeTestPolicy } from "./group-lanes-fixture.js";
 
 /*

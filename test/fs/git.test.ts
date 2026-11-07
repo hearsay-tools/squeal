@@ -1,7 +1,7 @@
 import { realpathSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { runGit, splitNul } from "../../src/core/fs/index.js";
+import { runGit, splitNul } from "../../src/core/fs/git.js";
 import { initRepo, tempDir } from "../hash/git-repo.js";
 
 describe("splitNul", () => {

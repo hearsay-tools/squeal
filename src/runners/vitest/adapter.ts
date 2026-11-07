@@ -1,26 +1,26 @@
 import type { TestSpecification, Vitest } from "vitest/node";
 import { POLICY_FILE } from "../../core/daemon/policy.js";
-import { compare } from "../../core/fs/index.js";
+import { compare } from "../../core/fs/compare.js";
+import type { WorktreePaths } from "../../core/fs/worktree-paths.js";
+import { findInstalledLockfile } from "../../core/keys/environment.js";
 import { createInputMatcher } from "../../core/keys/glob.js";
-import { findInstalledLockfile } from "../../core/keys/index.js";
 import { optimizerOffNote } from "../../core/state/optimizer-note.js";
+import type { AbsolutePath, EpochMs, RelativePath } from "../../core/types/common.js";
+import type { TestFileRef } from "../../core/types/keys.js";
 import type {
-  AbsolutePath,
   AffectedTestFiles,
   EnumeratedCheck,
-  EpochMs,
   InvalidatedPath,
   InvalidateResult,
-  RelativePath,
   RunnerAdapter,
   RunnerClosure,
   RunnerEnvironment,
   RunOptions,
   RunReport,
-  TestFileRef,
-} from "../../core/types/index.js";
+} from "../../core/types/runner.js";
 import { focusedTexts } from "../focus.js";
-import { readsOfEvery, withRecorderSignatures } from "../observe/index.js";
+import { readsOfEvery } from "../observe/inputs.js";
+import { withRecorderSignatures } from "../observe/signature.js";
 import { affectedTestFiles } from "./affected.js";
 import {
   closeBroken,
@@ -53,7 +53,6 @@ import { namePattern } from "./name-pattern.js";
 import { VitestObserver } from "./observe.js";
 import { noteOnce, withoutOptimizer } from "./optimizer.js";
 import { closurePackages, environmentPackages } from "./packages.js";
-import type { WorktreePaths } from "./paths.js";
 import {
   configFiles,
   findProject,

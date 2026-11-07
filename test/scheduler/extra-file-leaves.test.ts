@@ -1,17 +1,14 @@
 import { rmSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
-import { createFsHasher } from "../../src/core/hash/index.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
+import { createFsHasher } from "../../src/core/hash/hasher.js";
 import { IgnoredMarks } from "../../src/core/scheduler/ignored-marks.js";
 import { WorktreeKeys } from "../../src/core/scheduler/keying.js";
-import {
-  DEFAULT_POLICY,
-  type Policy,
-  type RelativePath,
-  type Revision,
-  type TestFileRef,
-} from "../../src/core/types/index.js";
+import type { RelativePath } from "../../src/core/types/common.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import { DEFAULT_POLICY, type Policy } from "../../src/core/types/policy.js";
+import type { Revision } from "../../src/core/types/revision.js";
 import {
   DESCRIPTOR,
   daemon,

@@ -1,5 +1,6 @@
-import type { KeyIndex } from "../keys/index.js";
-import type { CheckKey, EpochMs } from "../types/index.js";
+import type { KeyIndex } from "../keys/key-index.js";
+import type { EpochMs } from "../types/common.js";
+import type { CheckKey } from "../types/keys.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
 import type { FileState } from "./files.js";
 import type { Ledger } from "./ledger.js";

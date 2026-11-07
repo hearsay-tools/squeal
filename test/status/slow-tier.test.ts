@@ -2,22 +2,20 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createDelivery } from "../../src/core/delivery/delivery.js";
 import {
-  createDelivery,
   formatDelta,
   formatRegistration,
-  headerLines,
   MESSAGE_CAP_CHARS,
-} from "../../src/core/delivery/index.js";
+} from "../../src/core/delivery/format.js";
+import { headerLines } from "../../src/core/delivery/header.js";
 import { publishSlowActivity } from "../../src/core/slow/state.js";
-import { clockText, readHeader } from "../../src/core/state/index.js";
-import { readStatus } from "../../src/core/status/index.js";
-import type {
-  Consumer,
-  SlowTierActivity,
-  StatusSnapshot,
-  Store,
-} from "../../src/core/types/index.js";
+import { readHeader } from "../../src/core/state/header.js";
+import { clockText } from "../../src/core/state/slow-text.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
+import type { Consumer } from "../../src/core/types/delivery.js";
+import type { SlowTierActivity, StatusSnapshot } from "../../src/core/types/status.js";
+import type { Store } from "../../src/core/types/store.js";
 import { fixedStatus } from "../delivery/fakes.js";
 import {
   FAST,

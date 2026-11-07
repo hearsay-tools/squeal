@@ -2,18 +2,13 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { onTestFinished } from "vitest";
 import { readHead } from "../../src/core/daemon-loop/head.js";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
-import { createScheduler } from "../../src/core/scheduler/index.js";
-import { storePaths } from "../../src/core/store/index.js";
-import {
-  type CheckKey,
-  DEFAULT_POLICY,
-  type NodeTestProject,
-  type Policy,
-  type RunnerAdapter,
-  type Store,
-  type TestFileRef,
-} from "../../src/core/types/index.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
+import { createScheduler } from "../../src/core/scheduler/scheduler.js";
+import { storePaths } from "../../src/core/store/paths.js";
+import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
+import { DEFAULT_POLICY, type NodeTestProject, type Policy } from "../../src/core/types/policy.js";
+import type { RunnerAdapter } from "../../src/core/types/runner.js";
+import type { Store } from "../../src/core/types/store.js";
 import { createNodeTestAdapter } from "../../src/runners/node-test/adapter.js";
 import { git } from "../hash/git-repo.js";
 import { RecordingSink } from "./recording-sink.js";

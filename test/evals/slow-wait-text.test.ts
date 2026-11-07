@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { SLOW_CHECKS, squealEvidence } from "../../evals/lib/index.mjs";
 import { type EndedWait, waitText } from "../../src/cli/status-wait-lines.js";
 import { formatDelta, formatRegistration } from "../../src/core/delivery/format.js";
-import { formatStatus } from "../../src/core/status/index.js";
-import type { StatusSnapshot } from "../../src/core/types/index.js";
+import { formatStatus } from "../../src/core/status/format-status.js";
+import type { StatusSnapshot } from "../../src/core/types/status.js";
 import { settled } from "./status-snapshot.js";
 
 /*

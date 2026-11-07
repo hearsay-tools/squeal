@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Priority, RunQueue } from "../../src/core/scheduler/queue.js";
-import type { TestFileRef } from "../../src/core/types/index.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
 
 const ref = (path: string): TestFileRef => ({ project: "", path });
 

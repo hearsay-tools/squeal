@@ -2,8 +2,8 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
-import { coverageOn, coverageProvider } from "../../../src/core/code/coverage/index.js";
-import { DEFAULT_POLICY } from "../../../src/core/types/index.js";
+import { coverageOn, coverageProvider } from "../../../src/core/code/coverage/runtime.js";
+import { DEFAULT_POLICY } from "../../../src/core/types/policy.js";
 import { tempDir } from "../../store/helpers.js";
 import { ON } from "../helpers.js";
 

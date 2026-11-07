@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { realpathSync, statSync } from "node:fs";
-import type { AbsolutePath } from "../../../core/types/index.js";
+import type { AbsolutePath } from "../../../core/types/common.js";
 
 /** What the interpreter says about itself, for D2's environment hash. */
 export interface InterpreterInfo {

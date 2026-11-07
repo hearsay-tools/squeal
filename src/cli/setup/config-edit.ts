@@ -1,8 +1,8 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { POLICY_FILE } from "../../core/daemon/policy.js";
-import { isRecord } from "../../core/fs/index.js";
-import type { AbsolutePath } from "../../core/types/index.js";
+import { isRecord } from "../../core/fs/json.js";
+import type { AbsolutePath } from "../../core/types/common.js";
 import type { SetupChoices } from "./apply.js";
 
 /* `squeal init`'s setup choices as `squeal.config.json` edits (spec 005 D3 step 4). */

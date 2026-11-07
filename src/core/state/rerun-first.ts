@@ -1,11 +1,8 @@
-import type {
-  CheckKey,
-  EpochMs,
-  RerunFirstFailure,
-  ResultRecord,
-  Store,
-  TestFileRef,
-} from "../types/index.js";
+import type { EpochMs } from "../types/common.js";
+import type { CheckKey, TestFileRef } from "../types/keys.js";
+import type { RerunFirstFailure } from "../types/state.js";
+import type { Store } from "../types/store.js";
+import type { ResultRecord } from "../types/store-records.js";
 import { checkIdentity } from "./derive.js";
 
 /*

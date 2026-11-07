@@ -1,16 +1,11 @@
 import { harnessGone, pidNamespace } from "../delivery/harness-process.js";
 import { readCommandHolds, readMergeHold } from "../scheduler/hold-rows.js";
 import { plural, timeText } from "../text.js";
-import type {
-  DaemonLiveness,
-  EpochMs,
-  HarnessProcess,
-  HoldChange,
-  HoldEnded,
-  StatusHold,
-  Store,
-  WorktreeRecord,
-} from "../types/index.js";
+import type { EpochMs } from "../types/common.js";
+import type { HoldChange, HoldEnded, StatusHold } from "../types/standing.js";
+import type { DaemonLiveness } from "../types/status.js";
+import type { Store } from "../types/store.js";
+import type { HarnessProcess, WorktreeRecord } from "../types/store-records.js";
 import { liveStartedAt } from "./open-runs.js";
 
 /*

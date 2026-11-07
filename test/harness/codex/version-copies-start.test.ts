@@ -10,12 +10,10 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { worktreeIdFor } from "../../../src/core/fs/index.js";
+import { worktreeIdFor } from "../../../src/core/fs/git-layout.js";
 import { shellWord } from "../../../src/core/text.js";
-import {
-  createRuntimeManifest,
-  serializeRuntimeManifest,
-} from "../../../src/harness/codex/runtime-release/index.js";
+import { serializeRuntimeManifest } from "../../../src/harness/codex/runtime-release/manifest.js";
+import { createRuntimeManifest } from "../../../src/harness/codex/runtime-release/tree.js";
 import { writeFixedPlugin } from "../../cli/codex-runtime-fixture.js";
 import { ping, waitFor } from "../../daemon/helpers.js";
 import { runtimeDir } from "../bundle-helpers.js";

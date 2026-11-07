@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createRecoveringRunner } from "../../src/core/daemon/runner.js";
-import type { RunnerAdapter, RunnerEnvironment } from "../../src/core/types/index.js";
+import type { RunnerAdapter, RunnerEnvironment } from "../../src/core/types/runner.js";
 
 function fakeAdapter(log: string[]): RunnerAdapter {
   const environment: RunnerEnvironment = {

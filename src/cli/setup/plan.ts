@@ -1,8 +1,8 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { loadPolicy, POLICY_FILE } from "../../core/daemon/policy.js";
-import { isRecord } from "../../core/fs/index.js";
-import type { AbsolutePath } from "../../core/types/index.js";
+import { isRecord } from "../../core/fs/json.js";
+import type { AbsolutePath } from "../../core/types/common.js";
 import { type CodexHookTrust, readCodexTrust } from "../codex/trust.js";
 import type { SeededProject } from "../node-test-seed.js";
 import { PLUGIN_ID } from "../plugin-id.js";

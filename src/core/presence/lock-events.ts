@@ -2,7 +2,7 @@ import { mkdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import type { DaemonLock } from "../daemon/lock.js";
 import { lifeOf } from "../daemon/terminate.js";
-import type { AbsolutePath, EpochMs } from "../types/index.js";
+import type { AbsolutePath, EpochMs } from "../types/common.js";
 import { spawnedAt, spawnMarkFor, startMarkFor } from "./marks.js";
 
 /*

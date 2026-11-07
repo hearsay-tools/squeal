@@ -4,12 +4,8 @@ import { getPriority } from "node:os";
 import { afterEach, describe, expect, it, onTestFinished } from "vitest";
 import { afterEachRun, EscapedChildren, type RunSweeper } from "../../src/core/daemon/escaped.js";
 import { statOf } from "../../src/core/daemon/terminate.js";
-import type {
-  RunnerAdapter,
-  RunOptions,
-  RunReport,
-  TestFileRef,
-} from "../../src/core/types/index.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import type { RunnerAdapter, RunOptions, RunReport } from "../../src/core/types/runner.js";
 import { isAlive } from "./strays.js";
 
 /*

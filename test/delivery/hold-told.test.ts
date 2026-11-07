@@ -1,8 +1,9 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createDelivery, formatDelta, formatRegistration } from "../../src/core/delivery/index.js";
-import type { Consumer } from "../../src/core/types/index.js";
+import { createDelivery } from "../../src/core/delivery/delivery.js";
+import { formatDelta, formatRegistration } from "../../src/core/delivery/format.js";
+import type { Consumer } from "../../src/core/types/delivery.js";
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import {

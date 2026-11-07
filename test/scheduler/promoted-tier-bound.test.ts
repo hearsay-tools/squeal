@@ -1,18 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { StatCache } from "../../src/core/hash/index.js";
+import { StatCache } from "../../src/core/hash/stat-cache.js";
 import type { SchedulerContext } from "../../src/core/scheduler/context.js";
 import type { FileState } from "../../src/core/scheduler/files.js";
 import { Ledger } from "../../src/core/scheduler/ledger.js";
 import { Priority } from "../../src/core/scheduler/queue.js";
 import type { Tier } from "../../src/core/scheduler/tiers.js";
 import { publishedYieldRow, TierYields } from "../../src/core/scheduler/yields.js";
-import {
-  type CheckKey,
-  DEFAULT_POLICY,
-  type RelativePath,
-  type Store,
-  type WorktreeId,
-} from "../../src/core/types/index.js";
+import type { RelativePath, WorktreeId } from "../../src/core/types/common.js";
+import type { CheckKey } from "../../src/core/types/keys.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
+import type { Store } from "../../src/core/types/store.js";
 import { freshStore } from "../state/helpers.js";
 
 /*

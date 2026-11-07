@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { readTurn } from "../../src/core/delivery/turn.js";
-import type { HarnessDelivery } from "../../src/core/types/index.js";
-import { type HookDeps, runHook } from "../../src/harness/claude-code/index.js";
+import type { HarnessDelivery } from "../../src/core/types/delivery.js";
+import { runHook } from "../../src/harness/claude-code/hooks.js";
+import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { recorded, squealRepo } from "./helpers.js";
 
 /*

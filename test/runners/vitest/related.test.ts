@@ -3,10 +3,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import type { Vitest } from "vitest/node";
-import type { RunReport, TestFileRef } from "../../../src/core/types/index.js";
+import { WorktreePaths } from "../../../src/core/fs/worktree-paths.js";
+import type { TestFileRef } from "../../../src/core/types/keys.js";
+import type { RunReport } from "../../../src/core/types/runner.js";
 import { VitestAdapter } from "../../../src/runners/vitest/adapter.js";
 import { loadVitest, type VitestNode } from "../../../src/runners/vitest/load.js";
-import { WorktreePaths } from "../../../src/runners/vitest/paths.js";
 import { compareRefs } from "../../../src/runners/vitest/results.js";
 import { type FixtureProject, openFixture, paths, ref, SLOW } from "./helpers.js";
 

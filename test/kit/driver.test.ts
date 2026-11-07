@@ -2,15 +2,16 @@ import { mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync } from "no
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { accepted, describePlayed, forms, type Pack, play } from "./driver.js";
+import { forms, type Pack, play } from "./driver.js";
 import { fakePack } from "./fake.js";
-import type { Scenario } from "./scenarios/index.js";
 import { K1 } from "./scenarios/k1-flip.js";
 import { K2 } from "./scenarios/k2-two-hops.js";
 import { K3 } from "./scenarios/k3-load-error.js";
 import { K7 } from "./scenarios/k7-same-stat.js";
 import { K8 } from "./scenarios/k8-cut.js";
 import { K10 } from "./scenarios/k10-two-worktrees.js";
+import type { Scenario } from "./scenarios/types.js";
+import { accepted, describePlayed } from "./verdicts.js";
 
 /*
  * Spec 016 D1: the driver's verdicts over a fake pack, and the rule that

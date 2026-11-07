@@ -1,6 +1,6 @@
 import { posix } from "node:path";
 import { globToRegExp } from "../../core/keys/glob.js";
-import type { Policy } from "../../core/types/index.js";
+import type { Policy } from "../../core/types/policy.js";
 import { parseTestScript } from "../node-test-seed.js";
 import {
   type BuildOutputCandidate,

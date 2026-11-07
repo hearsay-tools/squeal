@@ -3,7 +3,8 @@ import { namedWaitCommand } from "../../src/cli/named-print.js";
 import { namedSnapshotCommand } from "../../src/cli/status-paths.js";
 import type { DaemonSync, SyncState } from "../../src/cli/status-sync.js";
 import { CLOSURE_METHOD } from "../../src/core/keys/closure.js";
-import type { RevisionNumber, Store } from "../../src/core/types/index.js";
+import type { RevisionNumber } from "../../src/core/types/common.js";
+import type { Store } from "../../src/core/types/store.js";
 import { A, NOW, ref, repoWith } from "./status-wait-fixture.js";
 import { capture, focusing } from "./status-wait-focus-fixture.js";
 

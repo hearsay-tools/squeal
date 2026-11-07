@@ -3,9 +3,11 @@ import { startDaemon } from "../../src/core/daemon/daemon.js";
 import { acquireDaemonLock } from "../../src/core/daemon/lock.js";
 import { openDaemon } from "../../src/core/daemon/open.js";
 import { squealVersion } from "../../src/core/daemon/version.js";
-import { claimHandoff, readHandoff, readShortHandoff } from "../../src/core/presence/index.js";
-import { isStoreOpenFailure, lockFileFor, openStore } from "../../src/core/store/index.js";
-import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/index.js";
+import { claimHandoff } from "../../src/core/presence/events.js";
+import { readHandoff, readShortHandoff } from "../../src/core/presence/stored.js";
+import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
+import { lockFileFor } from "../../src/core/store/paths.js";
+import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/common.js";
 import { createFixtureRepo, type FixtureRepo, readNotes, withStore } from "./helpers.js";
 
 /*

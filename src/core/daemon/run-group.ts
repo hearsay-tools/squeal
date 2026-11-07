@@ -1,15 +1,12 @@
 import { randomUUID } from "node:crypto";
 import {
   type AbsolutePath,
-  type DaemonResponse,
   type EpochMs,
-  type GroupHolder,
-  type NarrowRun,
   PAYLOAD_SCHEMA_VERSION,
   type RelativePath,
-  type RunGroupResponse,
-  type Scheduler,
-} from "../types/index.js";
+} from "../types/common.js";
+import type { DaemonResponse, GroupHolder, RunGroupResponse } from "../types/daemon.js";
+import type { NarrowRun, Scheduler } from "../types/scheduler.js";
 import { requestDaemon } from "./client.js";
 import type { SlowSuiteRequested } from "./run-slow.js";
 

@@ -1,7 +1,9 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
-import { isMissing, toAbsolute, toRelative } from "../../../core/fs/index.js";
-import type { AbsolutePath, PytestProject } from "../../../core/types/index.js";
+import { isMissing } from "../../../core/fs/errors.js";
+import { toAbsolute, toRelative } from "../../../core/fs/paths.js";
+import type { AbsolutePath } from "../../../core/types/common.js";
+import type { PytestProject } from "../../../core/types/policy.js";
 
 /** How the interpreter was found (spec 007 D2's discovery order). */
 export type EnvironmentSource = "declared" | "venv" | "pdm-python";

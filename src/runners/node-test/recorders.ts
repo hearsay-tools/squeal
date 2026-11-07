@@ -1,4 +1,4 @@
-import type { NodeTestProject } from "../../core/types/index.js";
+import type { NodeTestProject } from "../../core/types/policy.js";
 import { ownNodeOptions, UNOBSERVED } from "../process/recorders.js";
 
 /** Settings of 001-132's recorder (`src/runners/observe/runtime.ts`). */

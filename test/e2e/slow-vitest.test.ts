@@ -1,5 +1,6 @@
 import { describe, it } from "vitest";
-import { e2eSuite, OTHER_SESSION, PLUGINS, STRINGS } from "./harness.js";
+import { e2eSuite, OTHER_SESSION } from "./harness.js";
+import { PLUGINS } from "./plugins.js";
 import {
   CLI,
   fastFirstThenSlow,
@@ -7,6 +8,7 @@ import {
   type Shape,
   SLOW_TUNING,
 } from "./slow-shape.js";
+import { STRINGS } from "./sources.js";
 
 /*
  * Spec 004 Testing, end to end, on this repository's shape: a Vitest e2e

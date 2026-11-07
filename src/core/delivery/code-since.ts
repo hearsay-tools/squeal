@@ -1,6 +1,8 @@
 import type { CodeStore } from "../code/store/types.js";
 import type { CodeKnownState, CodeMeasure } from "../types/code.js";
-import type { Consumer, RevisionNumber, Store, WorktreeId } from "../types/index.js";
+import type { RevisionNumber, WorktreeId } from "../types/common.js";
+import type { Consumer } from "../types/delivery.js";
+import type { Store } from "../types/store.js";
 import { lastTransition } from "./code-deliver.js";
 import { type CodeBound, isOwn } from "./code-delta.js";
 import { type Registration, registration } from "./registered.js";

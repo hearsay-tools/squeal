@@ -2,7 +2,7 @@ import { statSync } from "node:fs";
 import { join, posix } from "node:path";
 import { POLICY_FILE } from "../../core/daemon/policy.js";
 import { globToRegExp } from "../../core/keys/glob.js";
-import type { NodeTestProject, Policy } from "../../core/types/index.js";
+import type { NodeTestProject, Policy } from "../../core/types/policy.js";
 import type { RepoFacts } from "./repo.js";
 
 /*

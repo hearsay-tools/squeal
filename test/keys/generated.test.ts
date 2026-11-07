@@ -1,8 +1,10 @@
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { StatCache, seedStatCache } from "../../src/core/hash/index.js";
-import { assembleClosure, KeyIndex } from "../../src/core/keys/index.js";
-import type { TestFileRef } from "../../src/core/types/index.js";
+import { seedStatCache } from "../../src/core/hash/hasher.js";
+import { StatCache } from "../../src/core/hash/stat-cache.js";
+import { assembleClosure } from "../../src/core/keys/closure.js";
+import { KeyIndex } from "../../src/core/keys/key-index.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
 import { git, initRepo, tempDir, writeFile } from "../hash/git-repo.js";
 
 const testFile: TestFileRef = { project: "", path: "test/api.test.ts" };

@@ -1,8 +1,8 @@
 import { readdirSync, statSync } from "node:fs";
 import { join, relative, resolve, sep } from "node:path";
 import { parse as parseToml } from "smol-toml";
-import type { AbsolutePath } from "../../../core/types/index.js";
-import type { MappedModule } from "../environment/index.js";
+import type { AbsolutePath } from "../../../core/types/common.js";
+import type { MappedModule } from "../environment/import-roots.js";
 import { readOptional } from "../environment/site.js";
 
 /**

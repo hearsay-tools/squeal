@@ -2,7 +2,7 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
-import type { ResultRecord } from "../../src/core/types/index.js";
+import type { ResultRecord } from "../../src/core/types/store-records.js";
 import { check, fakeRepo, seedStore } from "../status/helpers.js";
 import { result } from "../store/helpers.js";
 

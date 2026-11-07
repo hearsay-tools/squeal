@@ -2,8 +2,8 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import type { LintRunReport, LintSnapshot } from "../../../src/core/lint/pass/provider.js";
 import { eslintProvider } from "../../../src/core/lint/provider/eslint-provider.js";
-import type { LintRunReport, LintSnapshot } from "../../../src/core/lint/provider/index.js";
 import { project, provider, write } from "./helpers.js";
 
 /* Spec 017 D9: each error case and what the provider tells of it. */

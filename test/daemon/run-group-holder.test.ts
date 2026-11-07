@@ -14,12 +14,9 @@ import {
   requestGroup,
 } from "../../src/core/daemon/run-group.js";
 import { Mutex } from "../../src/core/scheduler/mutex.js";
-import type {
-  AbsolutePath,
-  DaemonResponse,
-  RevisionNumber,
-  Scheduler,
-} from "../../src/core/types/index.js";
+import type { AbsolutePath, RevisionNumber } from "../../src/core/types/common.js";
+import type { DaemonResponse } from "../../src/core/types/daemon.js";
+import type { Scheduler } from "../../src/core/types/scheduler.js";
 
 /*
  * Row 011-302 (gh-154): until the scheduler took a `run-group` request, each

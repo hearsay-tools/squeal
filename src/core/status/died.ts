@@ -1,5 +1,5 @@
 import { testFileLabel } from "../run-log.js";
-import type { DaemonDeath } from "../types/index.js";
+import type { DaemonDeath } from "../types/status.js";
 
 /** Test files a death names per run; the rest are counted. */
 export const DIED_FILES_SHOWN = 5;

@@ -1,24 +1,18 @@
 import { existsSync } from "node:fs";
-import { pruneCodeStoreAfter } from "../code/store/index.js";
-import { dropGoneHarnesses, dropLeft, expireConsumers, lastDeparture } from "../delivery/index.js";
-import {
-  observedDirectMetaKey,
-  observedMetaKey,
-  observedModulesMetaKey,
-  observedStartupMetaKey,
-} from "../keys/index.js";
-import { markRest, recordHeartbeat } from "../presence/index.js";
-import { type BusyWaits, storePaths } from "../store/index.js";
+import { pruneCodeStoreAfter } from "../code/store/prune-main.js";
+import { dropGoneHarnesses, dropLeft, expireConsumers, lastDeparture } from "../delivery/expiry.js";
+import { observedModulesMetaKey } from "../keys/modules.js";
+import { observedDirectMetaKey, observedMetaKey } from "../keys/observed.js";
+import { observedStartupMetaKey } from "../keys/startup.js";
+import { markRest, recordHeartbeat } from "../presence/events.js";
+import type { BusyWaits } from "../store/busy.js";
+import { storePaths } from "../store/paths.js";
 import { listPaths, plural } from "../text.js";
-import type {
-  AbsolutePath,
-  DaemonExitReason,
-  EpochMs,
-  Policy,
-  SlowWaiting,
-  Store,
-  WorktreeId,
-} from "../types/index.js";
+import type { AbsolutePath, EpochMs, WorktreeId } from "../types/common.js";
+import type { DaemonExitReason } from "../types/daemon.js";
+import type { Policy } from "../types/policy.js";
+import type { SlowWaiting } from "../types/scheduler.js";
+import type { Store } from "../types/store.js";
 import { recordDaemonUsed } from "./last-use.js";
 import { SlicedWrites } from "./sliced-writes.js";
 import { type StoreFile, storeCondemned } from "./store-file.js";

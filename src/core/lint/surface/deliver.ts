@@ -1,5 +1,6 @@
 import type { CodeBound } from "../../delivery/code-delta.js";
-import type { Consumer, EpochMs, RelativePath } from "../../types/index.js";
+import type { EpochMs, RelativePath } from "../../types/common.js";
+import type { Consumer } from "../../types/delivery.js";
 import type { LintCheckId, LintKnownState, LintViewEntry } from "../../types/lint.js";
 import {
   LINT_LISTED_MAX,

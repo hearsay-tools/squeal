@@ -1,18 +1,22 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterEach } from "vitest";
+import { packRuntime } from "../../../../src/harness/codex/runtime-release/artifact.js";
 import {
   createReleaseDescriptor,
-  fetchTransport,
-  LATEST_RELEASE_URL,
-  packRuntime,
-  type ReleaseTransport,
   RUNTIME_ARTIFACT_ASSET,
   RUNTIME_DESCRIPTOR_ASSET,
-  releaseAssetUrl,
   releaseTagFor,
   serializeReleaseDescriptor,
-} from "../../../../src/harness/codex/runtime-release/index.js";
+} from "../../../../src/harness/codex/runtime-release/descriptor.js";
+import {
+  LATEST_RELEASE_URL,
+  releaseAssetUrl,
+} from "../../../../src/harness/codex/runtime-release/release.js";
+import {
+  fetchTransport,
+  type ReleaseTransport,
+} from "../../../../src/harness/codex/runtime-release/transport.js";
 import { runtimeTree } from "./fixture.js";
 
 /*

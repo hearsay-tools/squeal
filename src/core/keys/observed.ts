@@ -1,17 +1,12 @@
 import { createHash } from "node:crypto";
 import { readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { compare, isRecord } from "../fs/index.js";
-import type {
-  AbsolutePath,
-  FileChange,
-  FileHash,
-  HashSource,
-  ProjectName,
-  RelativePath,
-  Store,
-  TestFileRef,
-} from "../types/index.js";
+import { compare } from "../fs/compare.js";
+import { isRecord } from "../fs/json.js";
+import type { AbsolutePath, ProjectName, RelativePath } from "../types/common.js";
+import type { FileHash, HashSource, TestFileRef } from "../types/keys.js";
+import type { FileChange } from "../types/revision.js";
+import type { Store } from "../types/store.js";
 
 /**
  * Spec 001 D3 as amended (task 001-132): the project paths a test file's runs

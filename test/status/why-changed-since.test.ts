@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { formatWhy, readWhy, WHY_CHANGED_LIMIT } from "../../src/core/status/index.js";
-import type { Store } from "../../src/core/types/index.js";
+import { formatWhy } from "../../src/core/status/format-why.js";
+import { readWhy, WHY_CHANGED_LIMIT } from "../../src/core/status/why.js";
+import type { Store } from "../../src/core/types/store.js";
 import { check, fakeRepo, seedStore, state } from "./helpers.js";
 import { reportOf } from "./why-seed.js";
 

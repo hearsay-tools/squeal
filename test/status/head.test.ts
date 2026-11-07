@@ -1,8 +1,9 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { formatStatus, readStatus } from "../../src/core/status/index.js";
-import type { StatusResult, StatusSnapshot } from "../../src/core/types/index.js";
+import { formatStatus } from "../../src/core/status/format-status.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
+import type { StatusResult, StatusSnapshot } from "../../src/core/types/status.js";
 import { appendRevisions, fakeRepo, seedStore } from "./helpers.js";
 
 const NOW = Date.UTC(2026, 9, 4, 12, 0, 0);

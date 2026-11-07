@@ -1,27 +1,24 @@
-import { HANDOFF_BOUND_MS } from "../core/presence/index.js";
-import { runnerPartText, slowWaitText } from "../core/state/index.js";
-import { statusRevisionText } from "../core/status/identity.js";
+import { HANDOFF_BOUND_MS } from "../core/presence/stored.js";
+import type { DownReason } from "../core/presence/wait.js";
+import { runnerPartText } from "../core/state/header.js";
+import { slowWaitText } from "../core/state/slow-text.js";
 import {
   countedText,
   failureCountText,
-  formatStatus,
-  holdLines,
-  holdVerdictLine,
   notCurrentText,
-  type StatusFormatOptions,
   splitByValidity,
-} from "../core/status/index.js";
+} from "../core/status/checks.js";
+import { formatStatus, type StatusFormatOptions } from "../core/status/format-status.js";
+import { holdLines, holdVerdictLine } from "../core/status/holds.js";
+import { statusRevisionText } from "../core/status/identity.js";
 import { lockedText, startText as markedText } from "../core/status/outstanding-text.js";
 import { lateHeartbeatDetail } from "../core/status/status-detail.js";
 import { stoppingState } from "../core/status/stopping.js";
 import { plural, testFileText } from "../core/text.js";
-import {
-  type DaemonLiveness,
-  type EpochMs,
-  SLOW_GROUP,
-  type StatusSnapshot,
-  type TestFileRef,
-} from "../core/types/index.js";
+import type { EpochMs } from "../core/types/common.js";
+import type { TestFileRef } from "../core/types/keys.js";
+import { SLOW_GROUP } from "../core/types/scheduler.js";
+import type { DaemonLiveness, StatusSnapshot } from "../core/types/status.js";
 import { classLines, namedFailures, reasonGroups } from "./named-file-lines.js";
 import { heldByPaths, namedPathLines, pathsText } from "./named-path-lines.js";
 import { timeoutText, waitAgainText } from "./no-verdict-lines.js";
@@ -31,7 +28,7 @@ import { focusedVerdictText, focusLines, refusedLine } from "./status-wait-focus
 import { groupsQuietText, leftForGroups, leftGroupText } from "./status-wait-groups.js";
 import { type NamedWait, namedResult } from "./status-wait-paths.js";
 import { failuresText, noVerdictText, verdictCode } from "./verdict.js";
-import type { DownReason, HeartbeatLapse } from "./wait-liveness.js";
+import type { HeartbeatLapse } from "./wait-liveness.js";
 
 /** A wait that ended with a snapshot. */
 export type EndedWait = Extract<StatusWait, { result: StatusSnapshot }>;

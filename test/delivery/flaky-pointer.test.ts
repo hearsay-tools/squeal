@@ -1,13 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { formatDelta } from "../../src/core/delivery/index.js";
-import { FLAKY_INPUTS_TEXT } from "../../src/core/state/index.js";
-import type {
-  Delta,
-  DeltaEntry,
-  FlakyNote,
-  StatusHeader,
-  TransitionEntry,
-} from "../../src/core/types/index.js";
+import { formatDelta } from "../../src/core/delivery/format.js";
+import { FLAKY_INPUTS_TEXT } from "../../src/core/state/flaky.js";
+import type { Delta, DeltaEntry, TransitionEntry } from "../../src/core/types/delivery.js";
+import type { FlakyNote } from "../../src/core/types/state.js";
+import type { StatusHeader } from "../../src/core/types/status.js";
 
 // Row 011-244 (gh-98): a flaky note reads "under the same tracked inputs", and a notice points to
 // `inputs` in squeal.config.json once, right after the first note it names, however many notes

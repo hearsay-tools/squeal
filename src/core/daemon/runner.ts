@@ -1,14 +1,11 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join, posix } from "node:path";
 import { stripVTControlCharacters } from "node:util";
-import { isRecord, runGit, splitNul } from "../fs/index.js";
-import type {
-  AbsolutePath,
-  InvalidatedPath,
-  InvalidateResult,
-  RunnerAdapter,
-  TestFileRef,
-} from "../types/index.js";
+import { runGit, splitNul } from "../fs/git.js";
+import { isRecord } from "../fs/json.js";
+import type { AbsolutePath } from "../types/common.js";
+import type { TestFileRef } from "../types/keys.js";
+import type { InvalidatedPath, InvalidateResult, RunnerAdapter } from "../types/runner.js";
 
 export interface RecoveringRunnerOptions {
   readonly name: string;

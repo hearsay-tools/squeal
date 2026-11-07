@@ -1,10 +1,7 @@
 import { describe, expect, it } from "vitest";
-import {
-  ObservedSets,
-  observedMetaKey,
-  observedStartupMetaKey,
-} from "../../src/core/keys/index.js";
-import type { Policy } from "../../src/core/types/index.js";
+import { ObservedSets, observedMetaKey } from "../../src/core/keys/observed.js";
+import { observedStartupMetaKey } from "../../src/core/keys/startup.js";
+import type { Policy } from "../../src/core/types/policy.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   type CatchUpFile,

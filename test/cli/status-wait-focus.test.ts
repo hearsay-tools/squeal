@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 import { namedWaitCommand } from "../../src/cli/named-print.js";
 import { focusedRun, test, writeRuns } from "../status/focused-fixture.js";
 import { result } from "../store/helpers.js";
-import { A, B, finish, later, ref, repoWith } from "./status-wait-fixture.js";
+import { A, B, finish, ref, repoWith } from "./status-wait-fixture.js";
 import { A_DONE, A_QUEUED, capture, focusing } from "./status-wait-focus-fixture.js";
+import { later } from "./wait-clock.js";
 
 /*
  * Row 011-146 (011 C15 as amended 2026-10-23, "Focused checks"): a named

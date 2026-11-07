@@ -1,16 +1,9 @@
-import { isRecord } from "../fs/index.js";
-import { testFileId } from "../keys/index.js";
-import {
-  type CheckKey,
-  type EpochMs,
-  type RelativePath,
-  type RevisionNumber,
-  type Store,
-  type TestFileRef,
-  type UnknownCause,
-  type WorktreeId,
-  worktreeMetaKey,
-} from "../types/index.js";
+import { isRecord } from "../fs/json.js";
+import { testFileId } from "../keys/reverse-index.js";
+import type { EpochMs, RelativePath, RevisionNumber, WorktreeId } from "../types/common.js";
+import type { CheckKey, TestFileRef } from "../types/keys.js";
+import type { UnknownCause } from "../types/status.js";
+import { type Store, worktreeMetaKey } from "../types/store.js";
 
 /*
  * Task 001-403: why each test file is `unknown`, by the key it was marked at,

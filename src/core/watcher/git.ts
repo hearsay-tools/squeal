@@ -1,5 +1,5 @@
-import { runGit, splitNul } from "../fs/index.js";
-import type { AbsolutePath, RelativePath } from "../types/index.js";
+import { runGit, splitNul } from "../fs/git.js";
+import type { AbsolutePath, RelativePath } from "../types/common.js";
 import { ignoredAsDirectories, SymlinkProbe } from "./links.js";
 
 /**

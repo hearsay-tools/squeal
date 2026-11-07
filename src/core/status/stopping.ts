@@ -1,5 +1,5 @@
-import { HANDOFF_BOUND_MS } from "../presence/index.js";
-import type { DaemonShort, DaemonStopping } from "../types/index.js";
+import { HANDOFF_BOUND_MS } from "../presence/stored.js";
+import type { DaemonShort, DaemonStopping } from "../types/status.js";
 
 /**
  * What every text says of a daemon that ended its handoff short (row

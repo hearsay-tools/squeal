@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { RevisionTrigger } from "../../src/core/types/index.js";
+import type { RevisionTrigger } from "../../src/core/types/revision.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   type CatchUpOptions,

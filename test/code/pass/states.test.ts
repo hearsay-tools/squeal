@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { readRecount } from "../../../src/core/code/pass/index.js";
-import type { CodeStore } from "../../../src/core/code/store/index.js";
+import { readRecount } from "../../../src/core/code/pass/cursor.js";
+import type { CodeStore } from "../../../src/core/code/store/types.js";
 import { open } from "../helpers.js";
 import { type FakeWorktree, fakeCounter, pass, worktree } from "./helpers.js";
 

@@ -1,13 +1,12 @@
 import { existsSync, rmSync } from "node:fs";
-import type { ObjectFormat } from "../../hash/index.js";
-import { BUSY_SLICE_MS, busyBackoffMs, isBusy, withBusySliceSync } from "../../store/index.js";
-import type { AbsolutePath, CheckKey, EpochMs, Policy } from "../../types/index.js";
-import {
-  type CodeStore,
-  type CodeStoreOpenFailure,
-  isCodeStoreOpenFailure,
-  openCodeStore,
-} from "../store/index.js";
+import type { ObjectFormat } from "../../hash/blob.js";
+import { BUSY_SLICE_MS, busyBackoffMs } from "../../store/busy.js";
+import { isBusy, withBusySliceSync } from "../../store/connection.js";
+import type { AbsolutePath, EpochMs } from "../../types/common.js";
+import type { CheckKey } from "../../types/keys.js";
+import type { Policy } from "../../types/policy.js";
+import { isCodeStoreOpenFailure, openCodeStore } from "../store/open.js";
+import type { CodeStore, CodeStoreOpenFailure } from "../store/types.js";
 import { type DropCause, Drops } from "./drops.js";
 import {
   type Mapper,

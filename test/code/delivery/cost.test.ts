@@ -1,10 +1,11 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { isCodeStoreOpenFailure, openCodeStore } from "../../../src/core/code/store/index.js";
+import { isCodeStoreOpenFailure, openCodeStore } from "../../../src/core/code/store/open.js";
 import type { CodeStore } from "../../../src/core/code/store/types.js";
 import type { CodeKnownState, FunctionCount } from "../../../src/core/types/code.js";
-import { type HookDeps, runHook } from "../../../src/harness/claude-code/index.js";
+import { runHook } from "../../../src/harness/claude-code/hooks.js";
+import type { HookDeps } from "../../../src/harness/shared/hook.js";
 import { recorded, type SquealRepo, squealRepo } from "../../harness/helpers.js";
 import { ON } from "../helpers.js";
 import { codeState, codeTransition, fn, fnCheck, putFile } from "./helpers.js";

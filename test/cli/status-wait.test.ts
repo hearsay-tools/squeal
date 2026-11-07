@@ -3,15 +3,12 @@ import { type CliIo, main } from "../../src/cli/main.js";
 import { statusCommand } from "../../src/cli/status-command.js";
 import type { SyncState } from "../../src/cli/status-sync.js";
 import { STATUS_WAIT_SETTLE_MS, waitForStatus } from "../../src/cli/status-wait.js";
-import { readStatus } from "../../src/core/status/index.js";
-import {
-  checkpointMetaKey,
-  type DaemonRecord,
-  type KnownState,
-  type RevisionNumber,
-  refinedMetaKey,
-  type Store,
-} from "../../src/core/types/index.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
+import type { RevisionNumber } from "../../src/core/types/common.js";
+import { checkpointMetaKey, refinedMetaKey } from "../../src/core/types/scheduler.js";
+import type { KnownState } from "../../src/core/types/state.js";
+import type { Store } from "../../src/core/types/store.js";
+import type { DaemonRecord } from "../../src/core/types/store-records.js";
 import { appendRevisions, check, fakeRepo, seedStore, state } from "../status/helpers.js";
 import { later, timed } from "./wait-clock.js";
 

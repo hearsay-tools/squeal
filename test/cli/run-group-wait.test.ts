@@ -3,16 +3,11 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
 import { AWAITING_INSTALL_REASON } from "../../src/core/scheduler/install.js";
-import {
-  awaitingInstallMetaKey,
-  type CheckId,
-  type CheckKey,
-  installCommandMetaKey,
-  type KnownOutcome,
-  type PendingPhase,
-  type RevisionNumber,
-  type Validity,
-} from "../../src/core/types/index.js";
+import type { CheckId } from "../../src/core/types/check.js";
+import type { RevisionNumber } from "../../src/core/types/common.js";
+import type { CheckKey } from "../../src/core/types/keys.js";
+import { awaitingInstallMetaKey, installCommandMetaKey } from "../../src/core/types/scheduler.js";
+import type { KnownOutcome, PendingPhase, Validity } from "../../src/core/types/state.js";
 import { appendRevisions, check, fakeRepo, seedStore, state } from "../status/helpers.js";
 import { closeFakeDaemons, fakeDaemon } from "./fake-daemon.js";
 

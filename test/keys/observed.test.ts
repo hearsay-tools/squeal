@@ -2,9 +2,10 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
+import { assembleClosure } from "../../src/core/keys/closure.js";
 import {
+  ABSENT_LISTING,
   ancestorListings,
-  assembleClosure,
   gitEntryByKind,
   Listings,
   listedDirectory,
@@ -12,11 +13,9 @@ import {
   ObservedSets,
   observedDirectMetaKey,
   observedMetaKey,
-  observedStartupMetaKey,
-  StartupSets,
-} from "../../src/core/keys/index.js";
-import { ABSENT_LISTING } from "../../src/core/keys/observed.js";
-import type { FileChange } from "../../src/core/types/index.js";
+} from "../../src/core/keys/observed.js";
+import { observedStartupMetaKey, StartupSets } from "../../src/core/keys/startup.js";
+import type { FileChange } from "../../src/core/types/revision.js";
 import { fakeCommonDir, open } from "../store/helpers.js";
 
 /* Task 001-132: the shared observed sets and directory listings (spec 001 D3 as amended). */

@@ -5,10 +5,13 @@ import { locateDaemon } from "../core/daemon/ensure.js";
 import { acquireDaemonLock, type DaemonLock } from "../core/daemon/lock.js";
 import { checkPrivateDir, currentUid, socketPathFor, userTmpDir } from "../core/daemon/paths.js";
 import { daemonScratch } from "../core/daemon/scratch.js";
-import { isRecord, resolveCommonDir, runGit, splitNul } from "../core/fs/index.js";
+import { runGit, splitNul } from "../core/fs/git.js";
+import { resolveCommonDir } from "../core/fs/git-layout.js";
+import { isRecord } from "../core/fs/json.js";
 import { isStoreOpenFailure, openStore } from "../core/store/open.js";
 import { storePaths } from "../core/store/paths.js";
-import type { AbsolutePath, WorktreeRecord } from "../core/types/index.js";
+import type { AbsolutePath } from "../core/types/common.js";
+import type { WorktreeRecord } from "../core/types/store-records.js";
 import { askDaemon, CLI_SOCKET_TIMEOUT_MS, worktreeRoot } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
 import {

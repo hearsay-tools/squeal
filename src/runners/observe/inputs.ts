@@ -1,14 +1,11 @@
 import { statSync } from "node:fs";
 import { dirname } from "node:path";
-import { compare } from "../../core/fs/index.js";
+import { compare } from "../../core/fs/compare.js";
 import type { WorktreePaths } from "../../core/fs/worktree-paths.js";
-import { testFileId } from "../../core/keys/index.js";
-import type {
-  AbsolutePath,
-  ObservedInputs,
-  RelativePath,
-  TestFileRef,
-} from "../../core/types/index.js";
+import { testFileId } from "../../core/keys/reverse-index.js";
+import type { AbsolutePath, RelativePath } from "../../core/types/common.js";
+import type { TestFileRef } from "../../core/types/keys.js";
+import type { ObservedInputs } from "../../core/types/runner.js";
 import type { RecordedFile } from "./read.js";
 
 /**

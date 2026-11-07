@@ -1,9 +1,5 @@
-import type {
-  RunnerAdapter,
-  RunOptions,
-  RunReport,
-  TestFileRef,
-} from "../../src/core/types/index.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import type { RunnerAdapter, RunOptions, RunReport } from "../../src/core/types/runner.js";
 
 /*
  * Task 011-21 slice 2: a runner whose runs a test times, and whose backlog

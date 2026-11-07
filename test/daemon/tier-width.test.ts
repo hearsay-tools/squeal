@@ -5,7 +5,7 @@ import { describe, expect, it, onTestFinished } from "vitest";
 import { createCompositeRunner } from "../../src/core/daemon/composite-runner.js";
 import { createNodeTestRunners } from "../../src/core/daemon/node-test-runners.js";
 import { createPytestRunners } from "../../src/core/daemon/pytest-runners.js";
-import type { RunnerAdapter } from "../../src/core/types/index.js";
+import type { RunnerAdapter } from "../../src/core/types/runner.js";
 import { fakeCommonDir, open } from "../store/helpers.js";
 
 /*

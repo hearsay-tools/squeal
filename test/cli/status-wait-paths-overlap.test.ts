@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { selectNamedFiles } from "../../src/cli/named-selection.js";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
 import { assembleClosure, createDeclaredInputs } from "../../src/core/keys/closure.js";
-import { withStatusStore } from "../../src/core/status/index.js";
-import type { PolicyInputs, RelativePath, Store } from "../../src/core/types/index.js";
+import { withStatusStore } from "../../src/core/status/open.js";
+import type { RelativePath } from "../../src/core/types/common.js";
+import type { PolicyInputs } from "../../src/core/types/policy.js";
+import type { Store } from "../../src/core/types/store.js";
 import { NOW, ref, repoWith } from "./status-wait-fixture.js";
 
 /*

@@ -7,7 +7,8 @@ import {
 } from "../../../src/core/lint/pass/commit-entry.js";
 import { heldKey, lintScope, readQuiet } from "../../../src/core/lint/pass/records.js";
 import { keyingLinted, progressOf } from "../../../src/core/lint/surface/snapshot.js";
-import type { CheckGroup, Policy } from "../../../src/core/types/index.js";
+import type { CheckGroup } from "../../../src/core/types/check-groups.js";
+import type { Policy } from "../../../src/core/types/policy.js";
 import { LINT_ON } from "../helpers.js";
 import { FakeProvider, lintPass, lintTree, outcomes, storeOf } from "./helpers.js";
 

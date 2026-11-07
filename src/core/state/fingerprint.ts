@@ -2,12 +2,9 @@ import { realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { stripVTControlCharacters } from "node:util";
 import { cap } from "../text.js";
-import type {
-  CheckError,
-  CheckErrorCause,
-  DiagnosticFingerprint,
-  SourceLocation,
-} from "../types/index.js";
+import type { CheckError, CheckErrorCause } from "../types/check.js";
+import type { SourceLocation } from "../types/common.js";
+import type { DiagnosticFingerprint } from "../types/state.js";
 
 /** Longest `summary`, in characters. Deltas show it whole; full text stays in the run log. */
 export const SUMMARY_MAX_CHARS = 300;

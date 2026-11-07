@@ -1,20 +1,19 @@
 import { cpSync, existsSync, readdirSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
-import {
-  COVERAGE_PROVIDER_VERSION,
-  type CoverageRecord,
-  decodeRecord,
-} from "../../../src/core/code/coverage/index.js";
+import { COVERAGE_PROVIDER_VERSION, decodeRecord } from "../../../src/core/code/coverage/record.js";
+import type { CoverageRecord } from "../../../src/core/code/coverage/types.js";
 import {
   codeStorePath,
   isCodeStoreOpenFailure,
   openCodeStore,
-} from "../../../src/core/code/store/index.js";
+} from "../../../src/core/code/store/open.js";
 import { startDaemon } from "../../../src/core/daemon/daemon.js";
 import { daemonScratch } from "../../../src/core/daemon/scratch.js";
-import { worktreeIdFor } from "../../../src/core/fs/index.js";
-import type { CheckKey, Store, TestFileKeyRecord } from "../../../src/core/types/index.js";
+import { worktreeIdFor } from "../../../src/core/fs/git-layout.js";
+import type { CheckKey } from "../../../src/core/types/keys.js";
+import type { Store } from "../../../src/core/types/store.js";
+import type { TestFileKeyRecord } from "../../../src/core/types/store-records.js";
 import {
   createFixtureRepo,
   type FixtureRepo,

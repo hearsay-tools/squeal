@@ -1,6 +1,7 @@
 import { statSync } from "node:fs";
-import { readStoreMark, storePaths } from "../store/index.js";
-import type { AbsolutePath } from "../types/index.js";
+import { readStoreMark } from "../store/open.js";
+import { storePaths } from "../store/paths.js";
+import type { AbsolutePath } from "../types/common.js";
 
 /** The store file a daemon opened, by device and inode. */
 export interface StoreFile {

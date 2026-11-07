@@ -1,39 +1,38 @@
 import { stat } from "node:fs/promises";
 import { setTimeout as delay } from "node:timers/promises";
 import { heldUntilAsked } from "../daemon/check-groups.js";
-import { isMissing } from "../fs/index.js";
-import { createFsHasher, readObjectFormat } from "../hash/index.js";
+import { isMissing } from "../fs/errors.js";
+import { readObjectFormat } from "../hash/git-index.js";
+import { createFsHasher } from "../hash/hasher.js";
 import { appendNote } from "../notes.js";
-import { hostLoad } from "../retry/index.js";
-import { statCandidates } from "../revision/index.js";
-import { describeFailure } from "../state/index.js";
-import { isBusy, withBusySlice } from "../store/index.js";
+import { hostLoad } from "../retry/load.js";
+import { statCandidates } from "../revision/reconcile.js";
+import { describeFailure } from "../state/fingerprint.js";
+import { isBusy, withBusySlice } from "../store/connection.js";
 import { plural } from "../text.js";
+import type { ResolvedGroup } from "../types/check-groups.js";
+import type { EpochMs, RelativePath } from "../types/common.js";
+import type { SyncAnswer } from "../types/daemon.js";
+import type { TestFileRef } from "../types/keys.js";
+import type { Revision } from "../types/revision.js";
+import { BESIDE_LANE_PREFIX, type CancelCause } from "../types/runner.js";
 import {
-  BESIDE_LANE_PREFIX,
-  type CancelCause,
-  type CandidateBatch,
   type ClosureIndex,
-  type EpochMs,
   type FullSuiteCheckpoint,
   type FullSuiteRequest,
   isGroupLane,
   type LockHolder,
   laneGroup,
   type NarrowRunRequest,
-  type RelativePath,
-  type ResolvedGroup,
-  type Revision,
   type Scheduler,
   type SchedulerCloseOptions,
   type SchedulerStatus,
   SLOW_GROUP,
   type SlowSuiteRequest,
   type SlowWaiting,
-  type SyncAnswer,
   TESTS_GROUP,
-  type TestFileRef,
-} from "../types/index.js";
+} from "../types/scheduler.js";
+import type { CandidateBatch } from "../types/watcher.js";
 import { reconcileBatch } from "./batch.js";
 import { besideDone, besideFiles } from "./beside.js";
 import { baseline, scan, type UnseenChanges } from "./bootstrap.js";
@@ -80,16 +79,9 @@ import { busyLanes } from "./slots.js";
 import { groupView, slowView } from "./slow.js";
 import { SlowRelease } from "./slow-release.js";
 import { queueGroup, type SlowRun, SlowTier } from "./slow-tier.js";
+import { supersededIn } from "./store-decision.js";
 import { StoredKeys } from "./stored-keys.js";
-import {
-  cancels,
-  endTier,
-  executeTier,
-  laneOf,
-  selectTier,
-  supersededIn,
-  type Tier,
-} from "./tiers.js";
+import { cancels, endTier, executeTier, laneOf, selectTier, type Tier } from "./tiers.js";
 import { WarmUp } from "./warm-up.js";
 import { TierYields } from "./yields.js";
 

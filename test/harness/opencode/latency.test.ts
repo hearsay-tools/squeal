@@ -2,8 +2,8 @@ import { loadavg } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { writeTurn } from "../../../src/core/delivery/turn.js";
-import { type Consumer, MAIN_AGENT } from "../../../src/core/types/index.js";
-import type { CodexHookName } from "../../../src/harness/codex/index.js";
+import { type Consumer, MAIN_AGENT } from "../../../src/core/types/delivery.js";
+import type { CodexHookName } from "../../../src/harness/codex/hooks.js";
 import { type BridgeCommand, callBridge } from "../../../src/harness/opencode/bridge-client.js";
 import {
   bridgeFile,

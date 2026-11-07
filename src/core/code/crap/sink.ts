@@ -1,4 +1,4 @@
-import type { StateSink } from "../../types/index.js";
+import type { StateSink } from "../../types/state.js";
 
 /**
  * Row 015-12 (agreed with the coordinator): the daemon's state sink, with

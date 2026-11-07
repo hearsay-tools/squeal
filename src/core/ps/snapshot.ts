@@ -1,4 +1,4 @@
-import type { EpochMs } from "../types/index.js";
+import type { EpochMs } from "../types/common.js";
 import { discover, lockedAgain } from "./discover.js";
 import { hostTotals, readPool } from "./host.js";
 import { below, measure, takeSample } from "./measure.js";

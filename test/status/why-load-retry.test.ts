@@ -2,8 +2,10 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { main } from "../../src/cli/main.js";
-import { askRetry, recordRunLoad } from "../../src/core/retry/index.js";
-import { formatWhy, readWhy } from "../../src/core/status/index.js";
+import { recordRunLoad } from "../../src/core/retry/load.js";
+import { askRetry } from "../../src/core/retry/records.js";
+import { formatWhy } from "../../src/core/status/format-why.js";
+import { readWhy } from "../../src/core/status/why.js";
 import { NOW, seededFailure } from "../retry/load-retry-fixture.js";
 import { reportOf } from "./why-seed.js";
 

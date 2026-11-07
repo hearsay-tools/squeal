@@ -1,11 +1,9 @@
-import { type KeyChange, testFileId } from "../keys/index.js";
-import type {
-  FileChange,
-  InvalidatedPath,
-  RelativePath,
-  Revision,
-  TestFileRef,
-} from "../types/index.js";
+import type { KeyChange } from "../keys/key-index.js";
+import { testFileId } from "../keys/reverse-index.js";
+import type { RelativePath } from "../types/common.js";
+import type { TestFileRef } from "../types/keys.js";
+import type { FileChange, Revision } from "../types/revision.js";
+import type { InvalidatedPath } from "../types/runner.js";
 import { NOTHING_CHANGED, type SchedulerContext, tryRunner } from "./context.js";
 import { onlyEditorScratch } from "./editor-scratch.js";
 import { type Failures, failed, settleFailures } from "./failures.js";

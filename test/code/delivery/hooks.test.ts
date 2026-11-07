@@ -6,11 +6,12 @@ import {
   codeStorePath,
   isCodeStoreOpenFailure,
   openCodeStore,
-} from "../../../src/core/code/store/index.js";
+} from "../../../src/core/code/store/open.js";
 import type { CodeStore } from "../../../src/core/code/store/types.js";
 import { seededKey } from "../../../src/core/delivery/code-deliver.js";
-import { type HookDeps, runHook } from "../../../src/harness/claude-code/index.js";
-import { runCodexHook } from "../../../src/harness/codex/index.js";
+import { runHook } from "../../../src/harness/claude-code/hooks.js";
+import { runCodexHook } from "../../../src/harness/codex/hooks.js";
+import type { HookDeps } from "../../../src/harness/shared/hook.js";
 import { codexRecorded, sessionOf } from "../../harness/codex/helpers.js";
 import { recorded, type SquealRepo, squealRepo } from "../../harness/helpers.js";
 import { ON } from "../helpers.js";

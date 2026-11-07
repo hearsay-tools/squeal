@@ -4,8 +4,8 @@ import {
   type PoolLane,
   type PoolLease,
   type PoolTierKind,
-} from "../capacity/index.js";
-import type { WorktreeId } from "../types/index.js";
+} from "../capacity/pool.js";
+import type { WorktreeId } from "../types/common.js";
 import type { CapacityOptions } from "./options.js";
 import type { PoolWaits } from "./pool-wait.js";
 

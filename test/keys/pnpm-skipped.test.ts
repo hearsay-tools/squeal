@@ -2,8 +2,10 @@ import { lutimesSync, mkdirSync, symlinkSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { dependencyKeys, installedDependencies, PackageScans } from "../../src/core/keys/index.js";
-import type { RunnerPackages } from "../../src/core/types/index.js";
+import { dependencyKeys } from "../../src/core/keys/dependencies.js";
+import { installedDependencies } from "../../src/core/keys/environment.js";
+import { PackageScans } from "../../src/core/keys/package-scans.js";
+import type { RunnerPackages } from "../../src/core/types/runner.js";
 import { tempDir } from "../hash/git-repo.js";
 import { type PnpmFixture, writePnpmInstall } from "./install.js";
 

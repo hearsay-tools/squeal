@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { classLines } from "../../src/cli/named-file-lines.js";
-import { daemonLiveness } from "../../src/core/delivery/liveness.js";
+import { daemonLiveness } from "../../src/core/presence/heartbeat.js";
 import { standingsOf } from "../../src/core/status/standing.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import {

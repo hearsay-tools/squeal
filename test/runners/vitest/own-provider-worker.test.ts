@@ -4,7 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
-import { coverageProvider, type V8Script } from "../../../src/core/code/coverage/index.js";
+import { coverageProvider } from "../../../src/core/code/coverage/runtime.js";
+import type { V8Script } from "../../../src/core/code/coverage/types.js";
 
 /*
  * Row 013-09: Vitest 4.1.10's worker calls `startCoverage({ isolate })` and

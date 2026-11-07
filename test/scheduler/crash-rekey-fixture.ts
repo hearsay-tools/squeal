@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect } from "vitest";
-import type { TestCheckId } from "../../src/core/types/index.js";
+import type { TestCheckId } from "../../src/core/types/check.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
 import { type PhaseTrace, processState } from "./phase-trace.js";

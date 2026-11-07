@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import type { EpochMs } from "../types/index.js";
+import type { EpochMs } from "../types/common.js";
 
 /*
  * Spec 014 D11: the one interface every `squeal ps` stage reads the host

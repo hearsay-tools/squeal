@@ -5,14 +5,12 @@ import { afterEach, describe, expect, it } from "vitest";
 import { squealEvidence } from "../../evals/lib/index.mjs";
 import { requestDaemon } from "../../src/core/daemon/client.js";
 import { acquireDaemonLock } from "../../src/core/daemon/lock.js";
-import {
-  claimHandoff,
-  clearHandoff,
-  handoffFrom,
-  readHandoff,
-} from "../../src/core/presence/index.js";
-import { isStoreOpenFailure, lockFileFor, openStore } from "../../src/core/store/index.js";
-import type { DaemonRecord, EpochMs, WorktreeId } from "../../src/core/types/index.js";
+import { claimHandoff, clearHandoff } from "../../src/core/presence/events.js";
+import { handoffFrom, readHandoff } from "../../src/core/presence/stored.js";
+import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
+import { lockFileFor } from "../../src/core/store/paths.js";
+import type { EpochMs, WorktreeId } from "../../src/core/types/common.js";
+import type { DaemonRecord } from "../../src/core/types/store-records.js";
 import { closeFakeDaemons, fakeDaemon } from "../cli/fake-daemon.js";
 import {
   daemonSuite,

@@ -13,8 +13,9 @@ import {
 } from "node:fs";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { worktreeIdFor } from "../../../src/core/fs/index.js";
-import type { AbsolutePath, NodeTestProject } from "../../../src/core/types/index.js";
+import { worktreeIdFor } from "../../../src/core/fs/git-layout.js";
+import type { AbsolutePath } from "../../../src/core/types/common.js";
+import type { NodeTestProject } from "../../../src/core/types/policy.js";
 import { runNodeTest } from "../../../src/runners/node-test/run/run.js";
 import { nodeTestRuntime } from "../../../src/runners/node-test/runtime.js";
 import { tempDir } from "../../store/helpers.js";

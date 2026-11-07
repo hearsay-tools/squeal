@@ -1,4 +1,5 @@
-import type { FocusedFile, TestFileRef } from "../core/types/index.js";
+import type { TestFileRef } from "../core/types/keys.js";
+import type { FocusedFile } from "../core/types/runner.js";
 
 /*
  * A focused run's texts (spec 011 C14 as amended 2026-10-23, row 011-135):

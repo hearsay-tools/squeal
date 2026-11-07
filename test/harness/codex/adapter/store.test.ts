@@ -3,8 +3,8 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { currentFile, pinFile } from "../../../../src/harness/codex/adapter/layout.js";
 import { RuntimeError } from "../../../../src/harness/codex/adapter/manifest.js";
+import { publishRuntime } from "../../../../src/harness/codex/adapter/publish.js";
 import {
-  publishRuntime,
   releaseSession,
   runtimeReadiness,
   selectRuntime,

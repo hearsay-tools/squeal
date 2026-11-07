@@ -1,13 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { testFileId } from "../../src/core/keys/index.js";
+import { testFileId } from "../../src/core/keys/reverse-index.js";
 import {
   type PublishedPromotion,
   promotionsMetaKey,
   publishedBatches,
   publishPromotions,
-} from "../../src/core/scheduler/promotions.js";
+} from "../../src/core/scheduler/promotions-row.js";
 import { Priority, RunQueue } from "../../src/core/scheduler/queue.js";
-import type { EpochMs, TestFileRef } from "../../src/core/types/index.js";
+import type { EpochMs } from "../../src/core/types/common.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { fakeCommonDir, open } from "../store/helpers.js";
 import { claimRepo, fileName, side } from "./claims-fixture.js";

@@ -1,8 +1,8 @@
 import { isAbsolute, join, normalize } from "node:path";
 import { POLICY_FILE } from "../../core/daemon/policy.js";
-import { findWorktreeRoot } from "../../core/fs/index.js";
+import { findWorktreeRoot } from "../../core/fs/git-layout.js";
 import { globToRegExp } from "../../core/keys/glob.js";
-import type { AbsolutePath } from "../../core/types/index.js";
+import type { AbsolutePath } from "../../core/types/common.js";
 import type { CliIo } from "../main.js";
 import { blockText, resolved, unfindableBlock, withBlock, writeBlockFile } from "./block.js";
 import { editConfig, readConfig, readOrEmpty } from "./config-edit.js";

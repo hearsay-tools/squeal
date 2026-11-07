@@ -5,11 +5,9 @@ import { observedModulesMetaKey } from "../../src/core/keys/modules.js";
 import { observedDirectMetaKey, observedMetaKey } from "../../src/core/keys/observed.js";
 import { runtimeFilesMetaKey } from "../../src/core/keys/runtime-applied.js";
 import { observedStartupMetaKey } from "../../src/core/keys/startup.js";
-import {
-  ASKED_KEYS_META_KEY,
-  RETRIES_META_KEY,
-  RUN_LOADS_META_KEY,
-} from "../../src/core/retry/index.js";
+import { ASKED_KEYS_META_KEY } from "../../src/core/retry/kept.js";
+import { RUN_LOADS_META_KEY } from "../../src/core/retry/load.js";
+import { RETRIES_META_KEY } from "../../src/core/retry/records.js";
 import { slowTokensMetaKey } from "../../src/core/slow/rank-store.js";
 import { FLAKY_META_KEY } from "../../src/core/state/flaky.js";
 import { RERUN_FIRST_META_KEY } from "../../src/core/state/rerun-first.js";
@@ -18,7 +16,7 @@ import {
   WORKTREE_META_ROWS,
   type WorktreeMetaRow,
   worktreeMetaKey,
-} from "../../src/core/types/index.js";
+} from "../../src/core/types/store.js";
 import { fakeCommonDir, open, worktree } from "./helpers.js";
 
 /*

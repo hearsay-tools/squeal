@@ -1,4 +1,5 @@
-import type { CheckKey, FileHash, RelativePath } from "../../types/index.js";
+import type { RelativePath } from "../../types/common.js";
+import type { CheckKey, FileHash } from "../../types/keys.js";
 import type { LintKnownState, LintResult, LintTransition } from "../../types/lint.js";
 import { type Spoiled, spoiled } from "./held.js";
 import { type JudgeAt, judgeResult, lintCheck, resultOf, unknownState } from "./judge.js";

@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readdirSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
-import { lintStorePath } from "../../../src/core/lint/store/index.js";
+import { lintStorePath } from "../../../src/core/lint/store/open.js";
 import {
   acknowledgeLint,
   dropLint,
@@ -20,8 +20,8 @@ import {
   lintStoreSource,
   withLint,
 } from "../../../src/core/lint/surface/source.js";
-import { storePaths } from "../../../src/core/store/index.js";
-import { DEFAULT_POLICY } from "../../../src/core/types/index.js";
+import { storePaths } from "../../../src/core/store/paths.js";
+import { DEFAULT_POLICY } from "../../../src/core/types/policy.js";
 import { LINT_ON } from "../helpers.js";
 import { lintTree } from "../pass/helpers.js";
 import { consumer, lintRig, ownAfter, sourceOf } from "./helpers.js";

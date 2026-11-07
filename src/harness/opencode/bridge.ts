@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { readPolicy } from "../../core/daemon/policy.js";
-import { formatRegistration, MESSAGE_CAP_CHARS } from "../../core/delivery/index.js";
+import { formatRegistration, MESSAGE_CAP_CHARS } from "../../core/delivery/format.js";
 import { shellWord } from "../../core/text.js";
 import { locate, usesSqueal } from "../shared/context.js";
 import { coverageOf } from "../shared/coverage.js";

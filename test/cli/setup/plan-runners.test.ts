@@ -2,9 +2,10 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { main } from "../../../src/cli/main.js";
 import type { SetupPlan } from "../../../src/cli/setup/plan.js";
-import { worktreeIdFor } from "../../../src/core/fs/index.js";
-import { isStoreOpenFailure, openStore } from "../../../src/core/store/index.js";
-import type { CheckKey, RevisionNumber } from "../../../src/core/types/index.js";
+import { worktreeIdFor } from "../../../src/core/fs/git-layout.js";
+import { isStoreOpenFailure, openStore } from "../../../src/core/store/open.js";
+import type { RevisionNumber } from "../../../src/core/types/common.js";
+import type { CheckKey } from "../../../src/core/types/keys.js";
 import { git } from "../../hash/git-repo.js";
 import { state } from "../../status/helpers.js";
 import {

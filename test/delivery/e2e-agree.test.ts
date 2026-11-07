@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { formatDelta, formatRegistration } from "../../src/core/delivery/format.js";
-import type { StatusSnapshot } from "../../src/core/types/index.js";
+import type { StatusSnapshot } from "../../src/core/types/status.js";
 import { expectAgrees, headerRevision } from "../e2e/agree.js";
 import { settled } from "../evals/status-snapshot.js";
 

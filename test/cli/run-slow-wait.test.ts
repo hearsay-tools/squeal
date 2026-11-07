@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
-import { socketPathFor } from "../../src/core/daemon/index.js";
+import { socketPathFor } from "../../src/core/daemon/paths.js";
 import { check } from "../status/helpers.js";
 import { closeFakeDaemons, fakeDaemon } from "./fake-daemon.js";
 import { A, fail, finish, INCARNATION, NOW, repoWith, SLOW_FILE } from "./status-wait-fixture.js";

@@ -1,6 +1,8 @@
 import { join, posix } from "node:path";
-import { compare, isRecord } from "../fs/index.js";
-import type { AbsolutePath, PackageImport, RelativePath } from "../types/index.js";
+import { compare } from "../fs/compare.js";
+import { isRecord } from "../fs/json.js";
+import type { AbsolutePath, RelativePath } from "../types/common.js";
+import type { PackageImport } from "../types/runner.js";
 import { PackageScans } from "./package-scans.js";
 import { type PackageGraph, parent } from "./packages.js";
 import { PNPM_VIRTUAL_STORE, type PnpmLockfile, pnpmFolderName } from "./pnpm-lockfile.js";

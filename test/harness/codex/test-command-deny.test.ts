@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { testCommandDenied } from "../../../src/core/delivery/test-command-denied.js";
 import { omittedTestFilesMetaKey } from "../../../src/core/scheduler/omitted-test-files.js";
-import { runCodexHook } from "../../../src/harness/codex/index.js";
+import { runCodexHook } from "../../../src/harness/codex/hooks.js";
 import type { HookDeps } from "../../../src/harness/shared/hook.js";
 import { squealRepo } from "../helpers.js";
 import { codexRecorded, sessionOf } from "./helpers.js";

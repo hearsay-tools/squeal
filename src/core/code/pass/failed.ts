@@ -1,12 +1,7 @@
 import type { CodeFile } from "../../types/code.js";
-import type {
-  EpochMs,
-  FileHash,
-  RelativePath,
-  RevisionNumber,
-  WorktreeId,
-} from "../../types/index.js";
-import type { CodeMetaRepo, CodeStore } from "../store/index.js";
+import type { EpochMs, RelativePath, RevisionNumber, WorktreeId } from "../../types/common.js";
+import type { FileHash } from "../../types/keys.js";
+import type { CodeMetaRepo, CodeStore } from "../store/types.js";
 
 /** Row 015-18 (review 0.1.283 S1): counts tried at one blob before the pass stops until it changes. */
 export const COUNT_ATTEMPTS = 3;

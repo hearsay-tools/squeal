@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, writeFileSyn
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import type { NodeTestProject } from "../../../src/core/types/index.js";
+import type { NodeTestProject } from "../../../src/core/types/policy.js";
 import { coverageDir } from "../../../src/runners/node-test/run/coverage.js";
 import { runNodeTest } from "../../../src/runners/node-test/run/run.js";
 

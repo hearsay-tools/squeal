@@ -1,12 +1,17 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { acquireDaemonLock } from "../../src/core/daemon/lock.js";
-import { formatRegistration, headerLines } from "../../src/core/delivery/index.js";
+import { formatRegistration } from "../../src/core/delivery/format.js";
+import { headerLines } from "../../src/core/delivery/header.js";
 import { readLiveHeader } from "../../src/core/delivery/liveness.js";
 import { appendNote } from "../../src/core/notes.js";
-import { claimHandoff, daemonExitMetaKey, handoffFrom } from "../../src/core/presence/index.js";
-import { formatStatus, readStatus } from "../../src/core/status/index.js";
-import { lockFileFor } from "../../src/core/store/index.js";
-import type { DaemonRecord, EpochMs, StatusSnapshot } from "../../src/core/types/index.js";
+import { claimHandoff } from "../../src/core/presence/events.js";
+import { daemonExitMetaKey, handoffFrom } from "../../src/core/presence/stored.js";
+import { formatStatus } from "../../src/core/status/format-status.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
+import { lockFileFor } from "../../src/core/store/paths.js";
+import type { EpochMs } from "../../src/core/types/common.js";
+import type { StatusSnapshot } from "../../src/core/types/status.js";
+import type { DaemonRecord } from "../../src/core/types/store-records.js";
 import { appendRevisions, fakeRepo, seedStore } from "./helpers.js";
 
 /*

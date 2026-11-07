@@ -5,9 +5,11 @@ import { type CliIo, main } from "../../src/cli/main.js";
 import type { DaemonSync, SyncState } from "../../src/cli/status-sync.js";
 import { namedText } from "../../src/cli/status-wait-lines.js";
 import { namedCode, waitForNamed } from "../../src/cli/status-wait-paths.js";
-import type { RevisionNumber, Store } from "../../src/core/types/index.js";
+import type { RevisionNumber } from "../../src/core/types/common.js";
+import type { Store } from "../../src/core/types/store.js";
 import { check, state } from "../status/helpers.js";
-import { A, finish, key, later, NOW, ref, repoWith, SLOW_FILE } from "./status-wait-fixture.js";
+import { A, finish, key, NOW, ref, repoWith, SLOW_FILE } from "./status-wait-fixture.js";
+import { later } from "./wait-clock.js";
 
 /*
  * Task 004-78 (research `atomic-flags-0215.md` 1, 2 and 4, item 1): a named

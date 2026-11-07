@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import type { Policy } from "../../src/core/types/policy.js";
 import {
-  type KnownState,
   type ListingFact,
   listingMetaKey,
-  type Policy,
   parseListing,
   refinedMetaKey,
-  type TestFileRef,
-} from "../../src/core/types/index.js";
+} from "../../src/core/types/scheduler.js";
+import type { KnownState } from "../../src/core/types/state.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { claimRepo, fileName, type Side, side } from "./claims-fixture.js";
 

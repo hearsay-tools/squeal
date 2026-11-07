@@ -1,5 +1,7 @@
 import { connectionOf } from "../core/store/store.js";
-import type { StatusHeader, Store, WorktreeId } from "../core/types/index.js";
+import type { WorktreeId } from "../core/types/common.js";
+import type { StatusHeader } from "../core/types/status.js";
+import type { Store } from "../core/types/store.js";
 
 /**
  * The snapshot's listing evidence, even when the poll read only held files.

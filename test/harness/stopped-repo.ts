@@ -2,9 +2,10 @@ import { mkdirSync, realpathSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { type CliIo, main } from "../../src/cli/main.js";
 import type { EnsureDaemonOptions } from "../../src/core/daemon/ensure.js";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
-import type { AbsolutePath } from "../../src/core/types/index.js";
-import type { HookDeps, HookResult } from "../../src/harness/claude-code/index.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
+import type { AbsolutePath } from "../../src/core/types/common.js";
+import type { HookResult } from "../../src/harness/claude-code/run.js";
+import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { git, tempDir } from "../hash/git-repo.js";
 import type { FakeRepo } from "../status/helpers.js";
 

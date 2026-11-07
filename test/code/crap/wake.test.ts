@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { RECORD_WAIT_MS, readSummary } from "../../../src/core/code/crap/index.js";
+import { RECORD_WAIT_MS } from "../../../src/core/code/crap/loaders.js";
+import { readSummary } from "../../../src/core/code/crap/summary.js";
 import { WT } from "../../state/helpers.js";
 import { daemonPass } from "../pass/helpers.js";
 import { COVERED, coverageRig } from "./rig.js";

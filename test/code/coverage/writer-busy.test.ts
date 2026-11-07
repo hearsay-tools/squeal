@@ -6,16 +6,17 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { setImmediate as nextTurn } from "node:timers/promises";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { DROPPED_TOPIC } from "../../../src/core/code/coverage/drops.js";
+import { COVERAGE_PROVIDER_VERSION } from "../../../src/core/code/coverage/record.js";
+import type { CoveredFile } from "../../../src/core/code/coverage/types.js";
 import {
   BUSY_BUDGET_MS,
-  COVERAGE_PROVIDER_VERSION,
   type CoverageWriterOptions,
-  type CoveredFile,
   createCoverageWriter,
-  DROPPED_TOPIC,
-} from "../../../src/core/code/coverage/index.js";
-import { codeStorePath } from "../../../src/core/code/store/index.js";
-import { BUSY_SLICE_MS, DEFAULT_BUSY_TIMEOUT_MS } from "../../../src/core/store/index.js";
+} from "../../../src/core/code/coverage/writer.js";
+import { codeStorePath } from "../../../src/core/code/store/open.js";
+import { BUSY_SLICE_MS } from "../../../src/core/store/busy.js";
+import { DEFAULT_BUSY_TIMEOUT_MS } from "../../../src/core/store/open.js";
 import { commonDir, ON, open } from "../helpers.js";
 
 /*

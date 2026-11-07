@@ -21,12 +21,12 @@ import {
   runtimeNodeFloor,
   SKILL_SOURCE,
 } from "../../../../src/harness/codex/build.js";
-import { CODEX_HOOKS } from "../../../../src/harness/codex/index.js";
+import { CODEX_HOOKS } from "../../../../src/harness/codex/hooks.js";
+import { serializeRuntimeManifest } from "../../../../src/harness/codex/runtime-release/manifest.js";
 import {
   createRuntimeManifest,
-  serializeRuntimeManifest,
   validateRuntimeTree,
-} from "../../../../src/harness/codex/runtime-release/index.js";
+} from "../../../../src/harness/codex/runtime-release/tree.js";
 import { STOP_SLOW_HOOK_TIMEOUT_S } from "../../../../src/harness/shared/stop-slow.js";
 import { tempDir } from "../../../store/helpers.js";
 import { expectSameFiles } from "../../bundle-helpers.js";

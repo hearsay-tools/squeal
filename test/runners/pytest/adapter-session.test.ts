@@ -1,13 +1,10 @@
 import { readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import type {
-  AbsolutePath,
-  PytestProject,
-  RunnerAdapter,
-  RunOptions,
-  TestFileRef,
-} from "../../../src/core/types/index.js";
+import type { AbsolutePath } from "../../../src/core/types/common.js";
+import type { TestFileRef } from "../../../src/core/types/keys.js";
+import type { PytestProject } from "../../../src/core/types/policy.js";
+import type { RunnerAdapter, RunOptions } from "../../../src/core/types/runner.js";
 import { createPytestAdapter } from "../../../src/runners/pytest/adapter.js";
 import { PYTHONS, requireSynced, type Synced, syncFixture } from "../../helpers/pytest-env.js";
 

@@ -3,8 +3,9 @@ import { join } from "node:path";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { type RunningDaemon, startDaemon } from "../../src/core/daemon/daemon.js";
 import type { GcFunction } from "../../src/core/daemon/idle-gc.js";
-import { readHeader } from "../../src/core/delivery/index.js";
-import { acquireSlowSlot, slotFiles, slowSlotDir } from "../../src/core/slow/index.js";
+import { acquireSlowSlot, slowSlotDir } from "../../src/core/slow/slot.js";
+import { slotFiles } from "../../src/core/slow/slot-files.js";
+import { readHeader } from "../../src/core/state/header.js";
 import { runMissingConfig } from "../helpers/baseline.js";
 import { createFixtureRepo, delay, type FixtureRepo, SLOW, waitFor, withStore } from "./helpers.js";
 

@@ -11,7 +11,9 @@ import type {
   PsTestProcess,
 } from "../../src/core/ps/shape.js";
 import type { PsSource } from "../../src/core/ps/source.js";
-import type { DaemonRecord, EpochMs, Store } from "../../src/core/types/index.js";
+import type { EpochMs } from "../../src/core/types/common.js";
+import type { Store } from "../../src/core/types/store.js";
+import type { DaemonRecord } from "../../src/core/types/store-records.js";
 import { BOOT_SECONDS, type FixtureProcess, statLine } from "./fixture.js";
 import {
   DAEMON_AGE_S,

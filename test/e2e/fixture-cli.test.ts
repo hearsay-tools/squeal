@@ -2,11 +2,11 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
+import { REPO_ROOT } from "../../src/harness/build.js";
 import { tempDir } from "../store/helpers.js";
 import { FixtureCli } from "./fixture-cli.js";
-import { e2eSuite, PLUGINS, type Plugin } from "./harness.js";
-import { CODEX_SESSION } from "./plugins.js";
+import { e2eSuite } from "./harness.js";
+import { CODEX_SESSION, PLUGINS, type Plugin } from "./plugins.js";
 import { cliProcess, cliWith, daemonProcesses, soon } from "./restart-evidence.js";
 
 const fixture = e2eSuite();

@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { recordsForFile } from "../../../src/core/scheduler/records.js";
 import { describeFailure } from "../../../src/core/state/fingerprint.js";
-import type { CheckKey, Provenance } from "../../../src/core/types/index.js";
+import type { CheckKey } from "../../../src/core/types/keys.js";
+import type { Provenance } from "../../../src/core/types/store-records.js";
 import { openFixture, ref, SLOW } from "./helpers.js";
 
 /*

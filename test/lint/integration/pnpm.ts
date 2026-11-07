@@ -9,7 +9,7 @@ import {
 } from "node:fs";
 import { join, relative } from "node:path";
 import { type EslintMessage, eslintFindings } from "../../../src/core/lint/eslint.js";
-import type { LintFileResult } from "../../../src/core/lint/provider/index.js";
+import type { LintFileResult } from "../../../src/core/lint/pass/provider.js";
 
 /*
  * Rows 017-19 and 017-20: ESLint 10 installed as pnpm installs it, and

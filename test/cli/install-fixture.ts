@@ -12,7 +12,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join, relative } from "node:path";
-import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
+import { REPO_ROOT } from "../../src/harness/build.js";
 import { runtimeDir } from "../harness/bundle-helpers.js";
 import { writeFixedPlugin, writeRuntime } from "./codex-runtime-fixture.js";
 

@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { loadPolicy, POLICY_FILE } from "../../src/core/daemon/policy.js";
-import { DEFAULT_POLICY } from "../../src/core/types/index.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 
 /*
  * Spec 004 D1 and D7 (one `slow` object, status.md 2026-10-08): `slow.include`

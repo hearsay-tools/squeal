@@ -1,4 +1,5 @@
-import { COVERAGE_MEASURES, functionKey, readEvidence, readSummary } from "../code/crap/index.js";
+import { COVERAGE_MEASURES } from "../code/crap/seed.js";
+import { functionKey, readEvidence, readSummary } from "../code/crap/summary.js";
 import type { CodeStore } from "../code/store/types.js";
 import { plural } from "../text.js";
 import type { CodeKnownState, CodeMeasure } from "../types/code.js";
@@ -7,7 +8,7 @@ import type {
   CodeDeltaEntry,
   CodeFileLoaders,
 } from "../types/code-delivery.js";
-import type { WorktreeId } from "../types/index.js";
+import type { WorktreeId } from "../types/common.js";
 
 /*
  * Spec 015 D9 (row 015-12): the `crap` and `uncovered` kinds of a code

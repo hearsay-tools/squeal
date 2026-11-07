@@ -2,10 +2,8 @@ import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { currentFile, pinFile, SCHEMA } from "../../src/harness/codex/adapter/layout.js";
 import { REQUIRED_ENTRIES } from "../../src/harness/codex/adapter/manifest.js";
-import {
-  createRuntimeManifest,
-  serializeRuntimeManifest,
-} from "../../src/harness/codex/runtime-release/index.js";
+import { serializeRuntimeManifest } from "../../src/harness/codex/runtime-release/manifest.js";
+import { createRuntimeManifest } from "../../src/harness/codex/runtime-release/tree.js";
 
 /*
  * Spec 002 D7 to D9 on a scratch machine: the fixed Codex plugin (its

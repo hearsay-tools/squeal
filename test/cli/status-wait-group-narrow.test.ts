@@ -3,9 +3,10 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { namedText } from "../../src/cli/status-wait-lines.js";
 import { waitForNamed } from "../../src/cli/status-wait-paths.js";
-import type { AbsolutePath, RevisionNumber } from "../../src/core/types/index.js";
+import type { AbsolutePath, RevisionNumber } from "../../src/core/types/common.js";
 import { CODEX } from "../harness/primer-helpers.js";
-import { A, B, C, finish, later, NOW, repoWith } from "./status-wait-fixture.js";
+import { A, B, C, finish, NOW, repoWith } from "./status-wait-fixture.js";
+import { later } from "./wait-clock.js";
 
 /*
  * Row 019-52 (019 D6 "Narrow run", amended after review 0.1.412 B1): a

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { readSummary, StepCache, writeSummary } from "../../../src/core/code/crap/index.js";
+import { StepCache } from "../../../src/core/code/crap/cache.js";
+import { readSummary, writeSummary } from "../../../src/core/code/crap/summary.js";
 import { WT } from "../../state/helpers.js";
 import { COVERED, coverageRig, sourceOf } from "./rig.js";
 

@@ -1,6 +1,6 @@
 import { sep } from "node:path";
 import { stripVTControlCharacters } from "node:util";
-import type { AbsolutePath, RelativePath, SourceLocation } from "../types/index.js";
+import type { AbsolutePath, RelativePath, SourceLocation } from "../types/common.js";
 import { toAbsolute, toRelative } from "./paths.js";
 
 /**

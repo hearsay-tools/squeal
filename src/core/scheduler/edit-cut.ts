@@ -1,18 +1,14 @@
-import { compare } from "../fs/index.js";
-import { testFileId } from "../keys/index.js";
-import type {
-  AffectedTestFiles,
-  RelativePath,
-  RevisionNumber,
-  RunnerClosure,
-  TestFileRef,
-} from "../types/index.js";
+import { compare } from "../fs/compare.js";
+import { testFileId } from "../keys/reverse-index.js";
+import { listPaths } from "../text.js";
+import type { RelativePath, RevisionNumber } from "../types/common.js";
+import type { TestFileRef } from "../types/keys.js";
+import type { AffectedTestFiles, RunnerClosure } from "../types/runner.js";
 import { type SchedulerContext, tryRunner } from "./context.js";
 import type { FileState } from "./files.js";
 import type { WorktreeKeys } from "./keying.js";
 import type { Ledger } from "./ledger.js";
 import { namesakesOf } from "./namesakes.js";
-import { listPaths } from "./notes.js";
 import type { RunnerPartBound } from "./runner-work-bound.js";
 
 /**

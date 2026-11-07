@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
-import { compare } from "../../fs/index.js";
+import { compare } from "../../fs/compare.js";
 import type { CodeFile } from "../../types/code.js";
-import type { CheckKey, EpochMs, RelativePath } from "../../types/index.js";
+import type { EpochMs, RelativePath } from "../../types/common.js";
+import type { CheckKey } from "../../types/keys.js";
 import { COVERAGE_PROVIDER_VERSION, decodeRecord } from "../coverage/record.js";
 import type { CoverageRecord } from "../coverage/types.js";
 import type { PassReport } from "../pass/types.js";

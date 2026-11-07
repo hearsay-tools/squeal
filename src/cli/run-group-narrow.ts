@@ -1,12 +1,8 @@
 import { NARROW_NOT_SUPPORTED } from "../core/daemon/run-group.js";
 import { plural } from "../core/text.js";
-import type {
-  AbsolutePath,
-  NarrowRun,
-  RelativePath,
-  ResolvedGroup,
-  RevisionNumber,
-} from "../core/types/index.js";
+import type { ResolvedGroup } from "../core/types/check-groups.js";
+import type { AbsolutePath, RelativePath, RevisionNumber } from "../core/types/common.js";
+import type { NarrowRun } from "../core/types/scheduler.js";
 import { daemonSocket } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
 import { worktreePath } from "./named-selection.js";

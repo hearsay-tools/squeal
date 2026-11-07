@@ -1,6 +1,7 @@
 import { type Dir, opendirSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
-import type { AbsolutePath, WatchHint } from "../types/index.js";
+import type { AbsolutePath } from "../types/common.js";
+import type { WatchHint } from "../types/watcher.js";
 import type { Exclusions } from "./exclusions.js";
 
 /**

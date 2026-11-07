@@ -1,4 +1,6 @@
-import type { DaemonRecord, DaemonStopping, EpochMs } from "../types/index.js";
+import type { EpochMs } from "../types/common.js";
+import type { DaemonStopping } from "../types/status.js";
+import type { DaemonRecord } from "../types/store-records.js";
 import { heartbeatFresh, heartbeatGraceEnd } from "./heartbeat.js";
 import { type LockMarks, startOf } from "./marks.js";
 import { HANDOFF_BOUND_MS } from "./stored.js";

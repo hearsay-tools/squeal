@@ -7,7 +7,7 @@ import type {
   CoveredFile,
   ExecutedSource,
   V8Script,
-} from "../../../src/core/code/coverage/index.js";
+} from "../../../src/core/code/coverage/types.js";
 
 /*
  * Row 015-42: synthetic V8 payloads of a size the records' writer meets in

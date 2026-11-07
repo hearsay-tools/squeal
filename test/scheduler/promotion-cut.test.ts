@@ -1,10 +1,11 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { testFileId } from "../../src/core/keys/index.js";
-import { promotionsMetaKey } from "../../src/core/scheduler/promotions.js";
+import { testFileId } from "../../src/core/keys/reverse-index.js";
+import { promotionsMetaKey } from "../../src/core/scheduler/promotions-row.js";
 import { Priority, RunQueue } from "../../src/core/scheduler/queue.js";
-import type { RunReport, TestFileRef } from "../../src/core/types/index.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import type { RunReport } from "../../src/core/types/runner.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   type CatchUpFile,

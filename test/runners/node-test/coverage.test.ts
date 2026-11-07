@@ -12,19 +12,19 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { countFile } from "../../../src/core/code/count/index.js";
-import {
-  COVERAGE_PROVIDER_VERSION,
-  type CoverageRecord,
-  type CoverageRun,
-  type CoveredFile,
-  createCoverageWriter,
-  decodeRecord,
-} from "../../../src/core/code/coverage/index.js";
 import { type MapWorker, mapHere } from "../../../src/core/code/coverage/mapper.js";
+import { COVERAGE_PROVIDER_VERSION, decodeRecord } from "../../../src/core/code/coverage/record.js";
+import type {
+  CoverageRecord,
+  CoverageRun,
+  CoveredFile,
+} from "../../../src/core/code/coverage/types.js";
+import { createCoverageWriter } from "../../../src/core/code/coverage/writer.js";
 import { joinCoverage } from "../../../src/core/code/crap/join.js";
-import { blobHash } from "../../../src/core/hash/index.js";
-import { environmentHash } from "../../../src/core/keys/index.js";
-import type { NodeTestProject, RunnerAdapter } from "../../../src/core/types/index.js";
+import { blobHash } from "../../../src/core/hash/blob.js";
+import { environmentHash } from "../../../src/core/keys/environment-hash.js";
+import type { NodeTestProject } from "../../../src/core/types/policy.js";
+import type { RunnerAdapter } from "../../../src/core/types/runner.js";
 import { createNodeTestAdapter } from "../../../src/runners/node-test/adapter.js";
 import { TS_WORKER } from "../../code/coverage/payloads.js";
 import { commonDir, ON, open } from "../../code/helpers.js";

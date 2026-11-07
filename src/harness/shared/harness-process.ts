@@ -1,5 +1,5 @@
-import { type ProcStat, pidNamespace, readProcStat } from "../../core/delivery/index.js";
-import type { HarnessProcess } from "../../core/types/index.js";
+import { type ProcStat, pidNamespace, readProcStat } from "../../core/delivery/harness-process.js";
+import type { HarnessProcess } from "../../core/types/store-records.js";
 
 /** Shells and launchers a hook's ancestor chain passes before the harness. */
 const SKIPPED: ReadonlySet<string> = new Set([

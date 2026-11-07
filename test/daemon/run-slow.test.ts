@@ -6,12 +6,9 @@ import { prepareFrontDesk } from "../../src/core/daemon/desk.js";
 import { createHandlers, type HandlerContext } from "../../src/core/daemon/handlers.js";
 import { parseRequest } from "../../src/core/daemon/protocol.js";
 import { requestSlowSuite, SLOW_NOT_SUPPORTED } from "../../src/core/daemon/run-slow.js";
-import type {
-  AbsolutePath,
-  DaemonResponse,
-  RevisionNumber,
-  Scheduler,
-} from "../../src/core/types/index.js";
+import type { AbsolutePath, RevisionNumber } from "../../src/core/types/common.js";
+import type { DaemonResponse } from "../../src/core/types/daemon.js";
+import type { Scheduler } from "../../src/core/types/scheduler.js";
 
 const cleanups: (() => unknown)[] = [];
 afterEach(async () => {

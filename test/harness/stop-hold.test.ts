@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { type HookDeps, runHook } from "../../src/harness/claude-code/index.js";
+import { runHook } from "../../src/harness/claude-code/hooks.js";
+import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
 import { holdCommand, holdMerge } from "./hold-fixture.js";
 

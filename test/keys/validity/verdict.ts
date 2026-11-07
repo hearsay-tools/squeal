@@ -1,4 +1,4 @@
-import { isRecord } from "../../../src/core/fs/index.js";
+import { isRecord } from "../../../src/core/fs/json.js";
 import { sameFingerprint } from "../../../src/core/state/fingerprint.js";
 import { APPROVED_RAISES, type Raise, raiseOf } from "./approved.js";
 import type { Case, CaseKind, CaseOutput } from "./case.js";

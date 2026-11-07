@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import type { AbsolutePath, TestFileRef } from "../../../core/types/index.js";
+import type { AbsolutePath } from "../../../core/types/common.js";
+import type { TestFileRef } from "../../../core/types/keys.js";
 
 /*
  * Spec 015 D8 (row 015-86): V8 coverage of a node:test file's own process.

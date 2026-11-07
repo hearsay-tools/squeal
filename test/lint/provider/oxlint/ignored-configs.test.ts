@@ -3,12 +3,12 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { describe, expect, it, onTestFinished } from "vitest";
-import { blobHash } from "../../../../src/core/hash/index.js";
-import type { LintSource, LintSourceFile } from "../../../../src/core/lint/pass/index.js";
+import { blobHash } from "../../../../src/core/hash/blob.js";
 import { createLintPass } from "../../../../src/core/lint/pass/index.js";
+import type { LintSource, LintSourceFile } from "../../../../src/core/lint/pass/types.js";
 import { findConfigs } from "../../../../src/core/lint/provider/oxlint/configs.js";
-import { oxlintProvider } from "../../../../src/core/lint/provider/oxlint/index.js";
-import type { AbsolutePath, RelativePath } from "../../../../src/core/types/index.js";
+import { oxlintProvider } from "../../../../src/core/lint/provider/oxlint/provider.js";
+import type { AbsolutePath, RelativePath } from "../../../../src/core/types/common.js";
 import { commonDir, LINT_ON, open } from "../../helpers.js";
 import { project, write } from "../../oxlint/helpers.js";
 

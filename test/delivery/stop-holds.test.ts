@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { createDelivery } from "../../src/core/delivery/index.js";
+import { createDelivery } from "../../src/core/delivery/delivery.js";
 import {
   countStopHold,
   promptTurn,
@@ -8,7 +8,8 @@ import {
   startTurn,
   turnMetaKey,
 } from "../../src/core/delivery/turn.js";
-import type { Consumer, HarnessDelivery, Store } from "../../src/core/types/index.js";
+import type { Consumer, HarnessDelivery } from "../../src/core/types/delivery.js";
+import type { Store } from "../../src/core/types/store.js";
 import { freshStore, setKey, WT } from "../state/helpers.js";
 import { fixedStatus } from "./fakes.js";
 

@@ -1,14 +1,11 @@
-import { toKnownFailure } from "../../core/state/index.js";
-import { shortCommit } from "../../core/status/format-status.js";
-import { formatCheck } from "../../core/status/index.js";
+import { formatCheck } from "../../core/state/check-name.js";
+import { toKnownFailure } from "../../core/state/header.js";
+import { shortCommit } from "../../core/status/identity.js";
 import { atText } from "../../core/status/test-frame.js";
 import { plural } from "../../core/text.js";
-import type {
-  KnownState,
-  RevisionNumber,
-  TestFileRef,
-  WorktreeId,
-} from "../../core/types/index.js";
+import type { RevisionNumber, WorktreeId } from "../../core/types/common.js";
+import type { TestFileRef } from "../../core/types/keys.js";
+import type { KnownState } from "../../core/types/state.js";
 
 /** Test files a reason names one by one; past this many it names their directories. */
 const NAMED_FILES = 10;

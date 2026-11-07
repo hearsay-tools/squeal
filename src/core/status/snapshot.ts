@@ -2,34 +2,39 @@ import { readPolicy } from "../daemon/policy.js";
 import { vitestDetected } from "../daemon/runner.js";
 import { withTestFileFrames } from "../delivery/attribution.js";
 import type { ShellSession } from "../delivery/code-since.js";
-import { resolveCommonDir, worktreeIdFor } from "../fs/index.js";
-import { CLOSURE_METHOD, testFileId } from "../keys/index.js";
+import { resolveCommonDir, worktreeIdFor } from "../fs/git-layout.js";
+import { CLOSURE_METHOD } from "../keys/closure.js";
+import { testFileId } from "../keys/reverse-index.js";
 import { readDaemonNotes } from "../notes.js";
-import { readPresence, statusView } from "../presence/index.js";
-import { pendingRetriesOf, withRecorded } from "../retry/index.js";
+import { readPresence } from "../presence/decide.js";
+import { statusView } from "../presence/views.js";
 import { hostLoad } from "../retry/load.js";
-import { readHeader, testFileKeyOf } from "../state/index.js";
-import { META_STORE_RECOVERED, readTransaction } from "../store/index.js";
+import { pendingRetriesOf } from "../retry/pending.js";
+import { withRecorded } from "../retry/recorded.js";
+import { testFileKeyOf } from "../state/derive.js";
+import { readHeader } from "../state/header.js";
+import { META_STORE_RECOVERED } from "../store/open.js";
+import { readTransaction } from "../store/store.js";
 import {
   type AbsolutePath,
-  type CheckBreakdown,
-  type CheckpointInProgress,
-  checkpointMetaKey,
-  type DaemonLiveness,
   type EpochMs,
-  type InheritedSource,
-  type KnownState,
-  type LoadNow,
   PAYLOAD_SCHEMA_VERSION,
-  parseCheckpointProgress,
-  type RunRecord,
-  type StatusBuilder,
-  type StatusResult,
-  type StatusSnapshot,
-  type Store,
-  type TestFileKeyRecord,
   type WorktreeId,
-} from "../types/index.js";
+} from "../types/common.js";
+import { checkpointMetaKey, parseCheckpointProgress } from "../types/scheduler.js";
+import type { LoadNow } from "../types/standing.js";
+import type { KnownState } from "../types/state.js";
+import type {
+  CheckBreakdown,
+  CheckpointInProgress,
+  DaemonLiveness,
+  InheritedSource,
+  StatusBuilder,
+  StatusResult,
+  StatusSnapshot,
+} from "../types/status.js";
+import type { Store } from "../types/store.js";
+import type { RunRecord, TestFileKeyRecord } from "../types/store-records.js";
 import { knownFailureCounts } from "./checks.js";
 import { codeStatusOf } from "./code-status.js";
 import { configProblemsOf, withConfigProblems } from "./config-problems.js";

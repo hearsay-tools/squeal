@@ -1,5 +1,5 @@
-import { formatDelta } from "../../core/delivery/index.js";
-import { daemonLiveness } from "../../core/delivery/liveness.js";
+import { formatDelta } from "../../core/delivery/format.js";
+import { daemonLiveness } from "../../core/presence/heartbeat.js";
 import { type ConsumerInput, type HookLocation, usesSqueal } from "./context.js";
 import { coverageOf } from "./coverage.js";
 import { ensureToRegister } from "./ensure.js";

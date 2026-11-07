@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { formatCodeReport } from "../../../src/cli/code.js";
 import { readCodeReport } from "../../../src/cli/code-report.js";
 import { recountLine, toldOverLine } from "../../../src/core/delivery/code-format.js";
-import { createStateSink } from "../../../src/core/state/index.js";
+import { createStateSink } from "../../../src/core/state/sink.js";
 import { check, result, WT } from "../../state/helpers.js";
 import { type CoverageRig, consumer, coverageRig, sourceOf } from "./rig.js";
 

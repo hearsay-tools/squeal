@@ -3,7 +3,7 @@ import { availableParallelism } from "node:os";
 import { join } from "node:path";
 import { CHILD_VARIABLE } from "../daemon/escaped.js";
 import { TICKS_PER_SECOND } from "../daemon/terminate.js";
-import type { EpochMs } from "../types/index.js";
+import type { EpochMs } from "../types/common.js";
 import {
   type CommandRunner,
   type CpuTimes,

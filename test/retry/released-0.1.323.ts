@@ -7,14 +7,10 @@ import {
   type RetryRecord,
   readRetries,
   retriesAt,
-} from "../../src/core/retry/index.js";
-import type {
-  CheckKey,
-  EpochMs,
-  Store,
-  TestFileRef,
-  WorktreeId,
-} from "../../src/core/types/index.js";
+} from "../../src/core/retry/records.js";
+import type { EpochMs, WorktreeId } from "../../src/core/types/common.js";
+import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
+import type { Store } from "../../src/core/types/store.js";
 
 /*
  * The request writer Squeal 0.1.323 shipped, copied from

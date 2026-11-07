@@ -5,7 +5,7 @@ import {
   releaseTagFor,
   serializeReleaseDescriptor,
   versionOfTag,
-} from "../../../../src/harness/codex/runtime-release/index.js";
+} from "../../../../src/harness/codex/runtime-release/descriptor.js";
 import { failure } from "./fixture.js";
 
 /*

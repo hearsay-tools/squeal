@@ -1,13 +1,13 @@
 import { realpath } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
+import type { AbsolutePath } from "../types/common.js";
 import type {
-  AbsolutePath,
   WatcherBackend,
   WatchHint,
   WatchListener,
   WatchSpec,
   WatchSubscription,
-} from "../types/index.js";
+} from "../types/watcher.js";
 import { Exclusions } from "./exclusions.js";
 import { nowNs, RACY_NS, RootRecheck, stamp } from "./root-recheck.js";
 

@@ -1,10 +1,5 @@
-import type {
-  AbsolutePath,
-  CheckKey,
-  FileHash,
-  RelativePath,
-  TestFileRef,
-} from "../../types/index.js";
+import type { AbsolutePath, RelativePath } from "../../types/common.js";
+import type { CheckKey, FileHash, TestFileRef } from "../../types/keys.js";
 
 /** What Squeal reads of a source map v3. */
 export interface SourceMapLike {

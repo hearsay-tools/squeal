@@ -1,4 +1,5 @@
-import { type MetaRepo, type WorktreeId, worktreeMetaKey } from "../types/index.js";
+import type { WorktreeId } from "../types/common.js";
+import { type MetaRepo, worktreeMetaKey } from "../types/store.js";
 import { type CommitReport, parseCommitReport } from "./report.js";
 
 /*

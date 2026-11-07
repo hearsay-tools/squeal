@@ -10,8 +10,8 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { worktreeIdFor } from "../../../src/core/fs/index.js";
-import type { CodexHookName } from "../../../src/harness/codex/index.js";
+import { worktreeIdFor } from "../../../src/core/fs/git-layout.js";
+import type { CodexHookName } from "../../../src/harness/codex/hooks.js";
 import { ping, waitFor } from "../../daemon/helpers.js";
 import { open } from "../../store/helpers.js";
 import { liveSocket, runBundle, runtimeDir } from "../bundle-helpers.js";

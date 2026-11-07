@@ -10,7 +10,9 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import type { AbsolutePath, PytestProject, TestFileRef } from "../../../src/core/types/index.js";
+import type { AbsolutePath } from "../../../src/core/types/common.js";
+import type { TestFileRef } from "../../../src/core/types/keys.js";
+import type { PytestProject } from "../../../src/core/types/policy.js";
 import { createPytestAdapter } from "../../../src/runners/pytest/adapter.js";
 import { fnmatchEx, listTestFiles } from "../../../src/runners/pytest/adapter-files.js";
 import { requireSynced, type Synced, syncFixture } from "../../helpers/pytest-env.js";

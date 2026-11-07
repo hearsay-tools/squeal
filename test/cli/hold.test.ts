@@ -4,12 +4,9 @@ import { describe, expect, it } from "vitest";
 import { endCommandHolds, holdCommand } from "../../src/cli/hold.js";
 import { type CliIo, main } from "../../src/cli/main.js";
 import { readCommandHolds } from "../../src/core/scheduler/hold-rows.js";
-import type {
-  AbsolutePath,
-  DaemonRequest,
-  DaemonResponse,
-  Store,
-} from "../../src/core/types/index.js";
+import type { AbsolutePath } from "../../src/core/types/common.js";
+import type { DaemonRequest, DaemonResponse } from "../../src/core/types/daemon.js";
+import type { Store } from "../../src/core/types/store.js";
 import { hold, liveProcess } from "../scheduler/command-hold-fixture.js";
 import { fakeRepo, seedStore } from "../status/helpers.js";
 

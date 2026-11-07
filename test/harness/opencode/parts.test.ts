@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { partAfter, partId } from "../../../src/harness/opencode/plugin.js";
+import { partAfter, partId } from "../../../src/harness/opencode/parts.js";
 import {
   chatOutput,
   created,

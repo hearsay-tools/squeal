@@ -7,12 +7,8 @@ import { namedText } from "../../src/cli/status-wait-lines.js";
 import { waitForNamed } from "../../src/cli/status-wait-paths.js";
 import { requestGroup } from "../../src/core/daemon/run-group.js";
 import { CLOSURE_METHOD } from "../../src/core/keys/closure.js";
-import type {
-  AbsolutePath,
-  CheckGroup,
-  RelativePath,
-  RevisionNumber,
-} from "../../src/core/types/index.js";
+import type { CheckGroup } from "../../src/core/types/check-groups.js";
+import type { AbsolutePath, RelativePath, RevisionNumber } from "../../src/core/types/common.js";
 import { shellWords } from "../../src/harness/shared/test-command.js";
 import { type CatchUpFile, catchUpRepo, catchUpSide } from "../scheduler/catch-up-fixture.js";
 import { groupPolicy, inTurn, runnerLane, tierLog } from "../scheduler/group-lanes-fixture.js";

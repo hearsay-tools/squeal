@@ -1,9 +1,10 @@
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
-import { mapConcurrent } from "../../core/fs/index.js";
-import { isRacy, sameStat } from "../../core/hash/index.js";
-import type { AbsolutePath, EpochMs, FileStat } from "../../core/types/index.js";
-import type { WorktreePaths } from "./paths.js";
+import { mapConcurrent } from "../../core/fs/concurrency.js";
+import type { WorktreePaths } from "../../core/fs/worktree-paths.js";
+import { isRacy, sameStat } from "../../core/hash/stat-cache.js";
+import type { AbsolutePath, EpochMs } from "../../core/types/common.js";
+import type { FileStat } from "../../core/types/watcher.js";
 import { changedBefore, readStamp, statOrNull } from "./stamp.js";
 
 /** A script at the root: where config files and the files they import usually sit. */

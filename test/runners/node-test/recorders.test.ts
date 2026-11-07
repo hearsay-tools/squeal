@@ -1,6 +1,6 @@
 import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
-import type { NodeTestProject } from "../../../src/core/types/index.js";
+import type { NodeTestProject } from "../../../src/core/types/policy.js";
 import { projectEnv } from "../../../src/runners/node-test/recorders.js";
 import {
   isSquealRecorder,

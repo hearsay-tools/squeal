@@ -1,9 +1,11 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import type { StatusSnapshot } from "../../src/core/types/index.js";
+import type { StatusSnapshot } from "../../src/core/types/status.js";
 import { expectAgrees, headerRevision } from "./agree.js";
-import { DEMO, type E2E, e2eSuite, OTHER_SESSION, PLUGINS, STRINGS } from "./harness.js";
+import { type E2E, e2eSuite, OTHER_SESSION } from "./harness.js";
+import { PLUGINS } from "./plugins.js";
+import { DEMO, STRINGS } from "./sources.js";
 
 /*
  * Spec 003 Testing, end to end: the shipped plugin against a repository

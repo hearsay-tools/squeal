@@ -13,11 +13,11 @@ import {
   rootVersion,
 } from "../build.js";
 import {
-  createRuntimeManifest,
   RUNTIME_MANIFEST,
   type RuntimeManifest,
   serializeRuntimeManifest,
-} from "./runtime-release/index.js";
+} from "./runtime-release/manifest.js";
+import { createRuntimeManifest } from "./runtime-release/tree.js";
 
 /*
  * The Codex runtime's routine build, on the shared one in src/harness/build.ts

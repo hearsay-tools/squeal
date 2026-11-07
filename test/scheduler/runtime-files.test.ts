@@ -3,21 +3,18 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { readHead } from "../../src/core/daemon-loop/head.js";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
-import { createFsHasher } from "../../src/core/hash/index.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
+import { createFsHasher } from "../../src/core/hash/hasher.js";
 import { observedModulesMetaKey } from "../../src/core/keys/modules.js";
 import { observedMetaKey } from "../../src/core/keys/observed.js";
-import { statCandidates } from "../../src/core/revision/index.js";
+import { statCandidates } from "../../src/core/revision/reconcile.js";
 import { WorktreeKeys } from "../../src/core/scheduler/keying.js";
 import { observedGrowth } from "../../src/core/scheduler/observed.js";
-import { isStoreOpenFailure, openStore } from "../../src/core/store/index.js";
-import {
-  DEFAULT_POLICY,
-  type Policy,
-  type RunReport,
-  type Store,
-  type TestFileRef,
-} from "../../src/core/types/index.js";
+import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import { DEFAULT_POLICY, type Policy } from "../../src/core/types/policy.js";
+import type { RunReport } from "../../src/core/types/runner.js";
+import type { Store } from "../../src/core/types/store.js";
 import { git } from "../hash/git-repo.js";
 
 const READERS = ["test/a.test.ts", "test/b.test.ts", "test/outside.test.ts"].map(

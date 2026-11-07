@@ -7,8 +7,9 @@ import {
   squealEvidence,
 } from "../../evals/lib/index.mjs";
 import { formatDelta } from "../../src/core/delivery/format.js";
-import { FLAKY_INPUTS_TEXT } from "../../src/core/state/index.js";
-import type { Delta, FlakyNote, TransitionEntry } from "../../src/core/types/index.js";
+import { FLAKY_INPUTS_TEXT } from "../../src/core/state/flaky.js";
+import type { Delta, TransitionEntry } from "../../src/core/types/delivery.js";
+import type { FlakyNote } from "../../src/core/types/state.js";
 import { denialSentence, knownFailuresLine } from "../../src/harness/shared/text.js";
 import { CLAIM, type Harness, REGISTERED, session } from "./reference-sessions.js";
 

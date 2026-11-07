@@ -6,7 +6,7 @@ import {
   lintSubject,
 } from "../core/lint/surface/format.js";
 import { plural } from "../core/text.js";
-import type { RelativePath } from "../core/types/index.js";
+import type { RelativePath } from "../core/types/common.js";
 import type { LintFinding } from "../core/types/lint.js";
 import type {
   LintChanged,

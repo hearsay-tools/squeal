@@ -2,16 +2,13 @@ import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { type Presence, startTimers } from "../../src/core/daemon/lifecycle.js";
-import { drop } from "../../src/core/delivery/expiry.js";
-import { recordHarness } from "../../src/core/delivery/harness-process.js";
-import { departedMetaKey, pidNamespace } from "../../src/core/delivery/index.js";
-import { storePaths } from "../../src/core/store/index.js";
-import {
-  type Consumer,
-  type DaemonExitReason,
-  DEFAULT_POLICY,
-  type Store,
-} from "../../src/core/types/index.js";
+import { departedMetaKey, drop } from "../../src/core/delivery/expiry.js";
+import { pidNamespace, recordHarness } from "../../src/core/delivery/harness-process.js";
+import { storePaths } from "../../src/core/store/paths.js";
+import type { DaemonExitReason } from "../../src/core/types/daemon.js";
+import type { Consumer } from "../../src/core/types/delivery.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
+import type { Store } from "../../src/core/types/store.js";
 import { fakeCommonDir, open } from "../store/helpers.js";
 import { delay, waitFor } from "./helpers.js";
 

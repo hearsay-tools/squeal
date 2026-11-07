@@ -3,7 +3,9 @@ import type { DaemonSync, SyncState } from "../../src/cli/status-sync.js";
 import type { NamedWaitOptions } from "../../src/cli/status-wait-paths.js";
 import type { FocusReply } from "../../src/cli/status-wait-promote.js";
 import type { FocusedRun } from "../../src/core/scheduler/focused-row.js";
-import type { CheckKey, RevisionNumber, Store, TestFileRef } from "../../src/core/types/index.js";
+import type { RevisionNumber } from "../../src/core/types/common.js";
+import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
+import type { Store } from "../../src/core/types/store.js";
 import { focusedRun, writeRuns } from "../status/focused-fixture.js";
 import { A, NOW } from "./status-wait-fixture.js";
 

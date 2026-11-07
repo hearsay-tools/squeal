@@ -1,4 +1,4 @@
-import type { EpochMs } from "../types/index.js";
+import type { EpochMs } from "../types/common.js";
 
 /*
  * Spec 014 D7 and D8 (tasks 014-10, 014-11): the words of `squeal ps`, in

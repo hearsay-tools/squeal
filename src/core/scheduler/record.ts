@@ -1,6 +1,7 @@
-import { isBusy } from "../store/index.js";
+import { isBusy } from "../store/connection.js";
 import { plural } from "../text.js";
-import type { RelativePath, RunReport } from "../types/index.js";
+import type { RelativePath } from "../types/common.js";
+import type { RunReport } from "../types/runner.js";
 import type { BusyResume } from "./busy-resume.js";
 import type { SchedulerContext } from "./context.js";
 import { scratchUnstable } from "./editor-scratch.js";

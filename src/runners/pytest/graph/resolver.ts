@@ -1,6 +1,6 @@
 import { statSync } from "node:fs";
 import { dirname, join, sep } from "node:path";
-import type { AbsolutePath } from "../../../core/types/index.js";
+import type { AbsolutePath } from "../../../core/types/common.js";
 import type { SearchPath } from "./search-path.js";
 
 /** What the import system would find for a module name, without running anything. */

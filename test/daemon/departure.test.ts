@@ -2,10 +2,12 @@ import { type ChildProcess, spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync, rmSync } from "node:fs";
 import { afterEach, describe, expect, it } from "vitest";
-import { lastDeparture, readHeader } from "../../src/core/delivery/index.js";
-import type { HarnessProcess } from "../../src/core/types/index.js";
-import { type HookDeps, runHook } from "../../src/harness/claude-code/index.js";
+import { lastDeparture } from "../../src/core/delivery/expiry.js";
+import { readHeader } from "../../src/core/state/header.js";
+import type { HarnessProcess } from "../../src/core/types/store-records.js";
+import { runHook } from "../../src/harness/claude-code/hooks.js";
 import { findHarnessProcess } from "../../src/harness/shared/harness-process.js";
+import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { recorded } from "../harness/helpers.js";
 import { runMissingConfig } from "../helpers/baseline.js";
 import {

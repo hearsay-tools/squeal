@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { describe, expect, it, onTestFinished } from "vitest";
-import type { CheckGroup } from "../../src/core/types/index.js";
+import type { CheckGroup } from "../../src/core/types/check-groups.js";
 import {
   type CatchUpFile,
   type CatchUpSide,

@@ -1,9 +1,10 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
-import { createDelivery } from "../../src/core/delivery/index.js";
+import { createDelivery } from "../../src/core/delivery/delivery.js";
 import { PreparedReports } from "../../src/core/delivery/prepared.js";
 import { readStopHolds } from "../../src/core/delivery/turn.js";
-import type { CheckGroup, PolicyFile } from "../../src/core/types/index.js";
+import type { CheckGroup } from "../../src/core/types/check-groups.js";
+import type { PolicyFile } from "../../src/core/types/policy.js";
 import type { HookContext } from "../../src/harness/shared/context.js";
 import { STOP_RECORD_WAIT_MS, waitingEntryRecorded } from "../../src/harness/shared/stop-decide.js";
 import { FILE, type SquealRepo } from "./helpers.js";

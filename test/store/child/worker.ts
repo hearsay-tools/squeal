@@ -10,8 +10,10 @@
  */
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { isBusy, isStoreOpenFailure, openStore } from "../../../src/core/store/index.js";
-import type { ResultRecord, Store } from "../../../src/core/types/index.js";
+import { isBusy } from "../../../src/core/store/connection.js";
+import { isStoreOpenFailure, openStore } from "../../../src/core/store/open.js";
+import type { Store } from "../../../src/core/types/store.js";
+import type { ResultRecord } from "../../../src/core/types/store-records.js";
 
 const [mode, commonDir, ...rest] = process.argv.slice(2);
 if (!mode || !commonDir) throw new Error("usage: worker <mode> <commonDir> ...");

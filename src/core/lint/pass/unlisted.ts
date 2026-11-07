@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { blobHash, type ObjectFormat } from "../../hash/index.js";
-import type { AbsolutePath, FileHash, RelativePath } from "../../types/index.js";
+import { blobHash, type ObjectFormat } from "../../hash/blob.js";
+import type { AbsolutePath, RelativePath } from "../../types/common.js";
+import type { FileHash } from "../../types/keys.js";
 import { underModules } from "./keys.js";
 import { lookupMoved } from "./state.js";
 

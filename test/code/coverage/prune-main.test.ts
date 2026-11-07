@@ -1,7 +1,8 @@
 import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { codeStorePath, pruneCodeStoreAfter } from "../../../src/core/code/store/index.js";
+import { codeStorePath } from "../../../src/core/code/store/open.js";
+import { pruneCodeStoreAfter } from "../../../src/core/code/store/prune-main.js";
 import { POLICY_CODE_OFF } from "../../helpers/policy.js";
 import {
   DAY_MS,

@@ -1,5 +1,6 @@
-import type { Policy, RevisionNumber, WorktreeId } from "../../types/index.js";
-import type { CodeMetaRepo } from "../store/index.js";
+import type { RevisionNumber, WorktreeId } from "../../types/common.js";
+import type { Policy } from "../../types/policy.js";
+import type { CodeMetaRepo } from "../store/types.js";
 import type { RecountReason, RecountRecord } from "./types.js";
 
 /**

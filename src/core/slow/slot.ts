@@ -3,8 +3,8 @@ import { dirname, isAbsolute, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { pathToFileURL } from "node:url";
 import { checkPrivateDir, currentUid, preparePrivateDir, userTmpDir } from "../daemon/paths.js";
-import { isBusy } from "../store/index.js";
-import type { AbsolutePath, WorktreeId } from "../types/index.js";
+import { isBusy } from "../store/connection.js";
+import type { AbsolutePath, WorktreeId } from "../types/common.js";
 import { isRepositorySlotDir, slotFiles } from "./slot-files.js";
 
 export * from "./slot-files.js";

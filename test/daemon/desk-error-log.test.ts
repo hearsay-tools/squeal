@@ -1,7 +1,7 @@
 import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { requestDaemon } from "../../src/core/daemon/client.js";
 import { startDaemon } from "../../src/core/daemon/daemon.js";
-import type { AbsolutePath } from "../../src/core/types/index.js";
+import type { AbsolutePath } from "../../src/core/types/common.js";
 import { createFixtureRepo, SLOW } from "./helpers.js";
 
 /*

@@ -1,11 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { classLines, fileEntry } from "../../src/cli/named-file-lines.js";
-import { daemonLiveness } from "../../src/core/delivery/liveness.js";
-import { promotionsMetaKey } from "../../src/core/scheduler/promotions.js";
+import { daemonLiveness } from "../../src/core/presence/heartbeat.js";
+import { promotionsMetaKey } from "../../src/core/scheduler/promotions-row.js";
 import { publishedYieldRow, yieldsMetaKey } from "../../src/core/scheduler/yields.js";
 import { nextStep } from "../../src/core/status/next-step.js";
 import { standingsOf } from "../../src/core/status/standing.js";
-import type { RunReport, TestFileRef } from "../../src/core/types/index.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import type { RunReport } from "../../src/core/types/runner.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   type CatchUpFile,

@@ -2,15 +2,10 @@ import { loadText } from "../retry/text.js";
 import { ASKS_AGAIN, gateText } from "../scheduler/pool-wait.js";
 import { YIELD_REMAINDER_MS } from "../scheduler/yields.js";
 import { timeText } from "../text.js";
-import {
-  type BatchPlace,
-  type CheckMoment,
-  isGroupLane,
-  isSlowLane,
-  laneGroup,
-  type Standing,
-  type TierYield,
-} from "../types/index.js";
+import type { CheckMoment } from "../types/check-groups.js";
+import { isSlowLane } from "../types/runner.js";
+import { isGroupLane, laneGroup } from "../types/scheduler.js";
+import type { BatchPlace, Standing, TierYield } from "../types/standing.js";
 import { onHoldText } from "./holds.js";
 import { slotHoldersText } from "./slot-holders.js";
 import { keptYieldText, laneText, noKeptYieldText, runText, waitedRunText } from "./tier-text.js";
@@ -23,7 +18,7 @@ import { keptYieldText, laneText, noKeptYieldText, runText, waitedRunText } from
  * why. The named class lines and the verdict line's groups read it.
  */
 
-export type { KnownSetup, LoadNow, Standing } from "../types/index.js";
+export type { KnownSetup, LoadNow, Standing } from "../types/standing.js";
 
 /** A file `retry` runs once: how many of the worktree's test files are not current, what `run --all --wait` runs. */
 interface Retryable {

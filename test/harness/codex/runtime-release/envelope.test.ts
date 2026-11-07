@@ -1,11 +1,9 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import {
-  type RuntimeReleaseErrorCode,
-  serializeRuntimeManifest,
-  stageRuntimeArtifact,
-} from "../../../../src/harness/codex/runtime-release/index.js";
+import type { RuntimeReleaseErrorCode } from "../../../../src/harness/codex/runtime-release/errors.js";
+import { serializeRuntimeManifest } from "../../../../src/harness/codex/runtime-release/manifest.js";
+import { stageRuntimeArtifact } from "../../../../src/harness/codex/runtime-release/stage.js";
 import { tempDir } from "../../../store/helpers.js";
 import { envelopeOf, failure, gz, put, type Rec, runtimeTree, writeManifest } from "./fixture.js";
 

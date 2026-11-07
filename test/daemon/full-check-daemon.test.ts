@@ -2,17 +2,13 @@ import { realpathSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
-import type { DaemonTimings } from "../../src/core/daemon/daemon.js";
 import type { FullCheck } from "../../src/core/daemon/full-check.js";
+import type { DaemonTimings } from "../../src/core/daemon/lifecycle.js";
 import { socketPathFor } from "../../src/core/daemon/paths.js";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
-import {
-  META_FULL_CHECK,
-  META_STORE_RECOVERED,
-  readStoreMark,
-  storePaths,
-} from "../../src/core/store/index.js";
-import type { AbsolutePath } from "../../src/core/types/index.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
+import { META_FULL_CHECK, META_STORE_RECOVERED, readStoreMark } from "../../src/core/store/open.js";
+import { storePaths } from "../../src/core/store/paths.js";
+import type { AbsolutePath } from "../../src/core/types/common.js";
 import { git } from "../hash/git-repo.js";
 import { seedIndexFault } from "../store/helpers.js";
 import { until } from "./full-check-helpers.js";

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createInputMatcher, globToRegExp } from "../../src/core/keys/index.js";
+import { createInputMatcher, globToRegExp } from "../../src/core/keys/glob.js";
 
 const matches = (glob: string, path: string): boolean => globToRegExp(glob).test(path);
 

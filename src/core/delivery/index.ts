@@ -1,7 +1,8 @@
 /** Consumer views, deltas and messages, spec 001 D6 and D9. Task 001-21. */
 
+export { DAEMON_START_GRACE_MS, daemonLiveness, worktreeLiveness } from "../presence/heartbeat.js";
 /** The shared header reader lives with the known state; hooks import it from here too. */
-export { readHeader } from "../state/index.js";
+export { readHeader } from "../state/header.js";
 export { checkName } from "./collapse.js";
 export { otherSessionVersions, recordVersion, versionMetaKey } from "./consumer-version.js";
 export {
@@ -28,11 +29,4 @@ export {
 export { harnessOf, type ProcStat, pidNamespace, readProcStat } from "./harness-process.js";
 export { type HeaderForm, headerLines } from "./header.js";
 export { leavingMarks, markLeaving } from "./leaving.js";
-export {
-  DAEMON_START_GRACE_MS,
-  daemonLiveness,
-  livenessMetaKey,
-  readLiveHeader,
-  toldRevision,
-  worktreeLiveness,
-} from "./liveness.js";
+export { livenessMetaKey, readLiveHeader, toldRevision } from "./liveness.js";

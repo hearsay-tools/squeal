@@ -1,6 +1,7 @@
 import { describe, expect, it, onTestFinished } from "vitest";
-import { crapScore, readSummary } from "../../../src/core/code/crap/index.js";
-import { isCodeStoreOpenFailure, openCodeStore } from "../../../src/core/code/store/index.js";
+import { crapScore } from "../../../src/core/code/crap/score.js";
+import { readSummary } from "../../../src/core/code/crap/summary.js";
+import { isCodeStoreOpenFailure, openCodeStore } from "../../../src/core/code/store/open.js";
 import { startDaemon } from "../../../src/core/daemon/daemon.js";
 import { createFixtureRepo, SLOW, waitFor } from "../../daemon/helpers.js";
 import { ON } from "../helpers.js";

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { readSummary, summaryKey } from "../../../src/core/code/crap/index.js";
-import { afterResults } from "../../../src/core/code/pass/index.js";
-import type { StateSink } from "../../../src/core/types/index.js";
+import { afterResults } from "../../../src/core/code/crap/sink.js";
+import { readSummary, summaryKey } from "../../../src/core/code/crap/summary.js";
+import type { StateSink } from "../../../src/core/types/state.js";
 import { freshStore, result, WT } from "../../state/helpers.js";
 import { open } from "../helpers.js";
 import { daemonPass, policyOn, worktree } from "../pass/helpers.js";

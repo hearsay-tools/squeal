@@ -2,13 +2,11 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
-import type {
-  CheckId,
-  CheckKey,
-  CheckpointRecord,
-  RevisionNumber,
-  Validity,
-} from "../../src/core/types/index.js";
+import type { CheckId } from "../../src/core/types/check.js";
+import type { RevisionNumber } from "../../src/core/types/common.js";
+import type { CheckKey } from "../../src/core/types/keys.js";
+import type { Validity } from "../../src/core/types/state.js";
+import type { CheckpointRecord } from "../../src/core/types/store-records.js";
 import { appendRevisions, check, fakeRepo, seedStore, state } from "../status/helpers.js";
 import { closeFakeDaemons, fakeDaemon, received } from "./fake-daemon.js";
 

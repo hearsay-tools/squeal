@@ -3,15 +3,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach } from "vitest";
-import { isStoreOpenFailure, openStore, storePaths } from "../../src/core/store/index.js";
-import type {
-  CheckId,
-  KnownState,
-  ResultRecord,
-  Store,
-  TestCheckId,
-  WorktreeRecord,
-} from "../../src/core/types/index.js";
+import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
+import { storePaths } from "../../src/core/store/paths.js";
+import type { CheckId, TestCheckId } from "../../src/core/types/check.js";
+import type { KnownState } from "../../src/core/types/state.js";
+import type { Store } from "../../src/core/types/store.js";
+import type { ResultRecord, WorktreeRecord } from "../../src/core/types/store-records.js";
 
 export const DAY_MS = 24 * 60 * 60 * 1000;
 

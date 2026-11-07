@@ -1,5 +1,6 @@
 import type { CodeFile, FileCount } from "../../types/code.js";
-import type { CheckKey, RevisionNumber } from "../../types/index.js";
+import type { RevisionNumber } from "../../types/common.js";
+import type { CheckKey } from "../../types/keys.js";
 import type { StepCache } from "./cache.js";
 import { ALL_CHECKS } from "./checks.js";
 import { coverageOf, type FileCondition, type ReadyLoader } from "./file.js";

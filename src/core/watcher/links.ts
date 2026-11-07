@@ -2,8 +2,10 @@ import { createHash } from "node:crypto";
 import { copyFile, lstat, mkdir, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { isMissing, runGit, splitNul, toAbsolute } from "../fs/index.js";
-import type { AbsolutePath, RelativePath } from "../types/index.js";
+import { isMissing } from "../fs/errors.js";
+import { runGit, splitNul } from "../fs/git.js";
+import { toAbsolute } from "../fs/paths.js";
+import type { AbsolutePath, RelativePath } from "../types/common.js";
 import { selfAndAncestors } from "./paths.js";
 
 /** Caches "is this directory a symlink" for one batch. */

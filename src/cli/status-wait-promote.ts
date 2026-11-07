@@ -1,9 +1,6 @@
-import type {
-  AbsolutePath,
-  FocusRequest,
-  PromoteRequest,
-  TestFileRef,
-} from "../core/types/index.js";
+import type { AbsolutePath } from "../core/types/common.js";
+import type { FocusRequest, PromoteRequest } from "../core/types/daemon.js";
+import type { TestFileRef } from "../core/types/keys.js";
 import { askDaemon, daemonSocket } from "./daemon-access.js";
 
 /** How a named wait sends its promotion (`NamedWaitOptions.promote`). */

@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { publishSlowActivity } from "../../src/core/slow/state.js";
-import { clockText, readHeader } from "../../src/core/state/index.js";
-import type { FileHash, Store } from "../../src/core/types/index.js";
+import { readHeader } from "../../src/core/state/header.js";
+import { clockText } from "../../src/core/state/slow-text.js";
+import type { FileHash } from "../../src/core/types/keys.js";
+import type { Store } from "../../src/core/types/store.js";
 import {
   FAST,
   inTurn,

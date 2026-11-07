@@ -8,7 +8,7 @@ import {
   type CommandHoldEntry,
   readCommandHolds,
 } from "../../src/core/scheduler/hold-rows.js";
-import type { HarnessProcess } from "../../src/core/types/index.js";
+import type { HarnessProcess } from "../../src/core/types/store-records.js";
 import type { CatchUpFile, CatchUpSide } from "./catch-up-fixture.js";
 
 /*

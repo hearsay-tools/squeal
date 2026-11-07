@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { setTimeout as sleep } from "node:timers/promises";
-import type { DaemonNote } from "../types/index.js";
+import type { DaemonNote } from "../types/scheduler.js";
 
 /** How long a process told to stop gets before it is killed. */
 export const GRACE_MS = 1_000;

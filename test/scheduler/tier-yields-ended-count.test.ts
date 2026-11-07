@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { classLines } from "../../src/cli/named-file-lines.js";
-import { daemonLiveness } from "../../src/core/delivery/liveness.js";
+import { daemonLiveness } from "../../src/core/presence/heartbeat.js";
 import type { SchedulerContext } from "../../src/core/scheduler/context.js";
 import type { Tier } from "../../src/core/scheduler/tiers.js";
 import { ENDED_WRITE_MS } from "../../src/core/scheduler/yield-history.js";
 import { readYieldRow } from "../../src/core/scheduler/yield-row.js";
 import { TierYields, yieldsMetaKey } from "../../src/core/scheduler/yields.js";
 import { standingsOf } from "../../src/core/status/standing.js";
-import type { TestFileRef } from "../../src/core/types/index.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { type CatchUpFile, catchUpRepo, catchUpSide } from "./catch-up-fixture.js";
 import { heldRun, holdRuns, ref } from "./tier-yields-fixture.js";

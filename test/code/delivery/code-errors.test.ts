@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { main } from "../../../src/cli/main.js";
 import { countFile } from "../../../src/core/code/count/index.js";
 import { judge } from "../../../src/core/code/pass/judge.js";
-import { isCodeStoreOpenFailure, openCodeStore } from "../../../src/core/code/store/index.js";
+import { isCodeStoreOpenFailure, openCodeStore } from "../../../src/core/code/store/open.js";
 import { type Seeded, seed } from "../../status/slow-tier-seed.js";
 import { ON } from "../helpers.js";
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { slowCandidates } from "../../src/cli/warmup.js";
-import { storePaths } from "../../src/core/store/index.js";
+import { storePaths } from "../../src/core/store/paths.js";
 import { check, fakeRepo, seedStore } from "../status/helpers.js";
 import { holdLock } from "../status/hold-lock.js";
 import { result } from "../store/helpers.js";

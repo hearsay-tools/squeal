@@ -1,12 +1,10 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import type { DaemonSync, SyncState } from "../../src/cli/status-sync.js";
 import { answerMoves } from "../../src/core/scheduler/rekeyed-moves.js";
-import {
-  daemonIncarnation,
-  type RekeyedTestFile,
-  type RevisionNumber,
-  type Store,
-} from "../../src/core/types/index.js";
+import type { RevisionNumber } from "../../src/core/types/common.js";
+import { daemonIncarnation } from "../../src/core/types/daemon.js";
+import type { RekeyedTestFile } from "../../src/core/types/scheduler.js";
+import type { Store } from "../../src/core/types/store.js";
 
 /*
  * What `status --wait` needs of a daemon since task 001-258: the revision

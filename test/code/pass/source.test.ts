@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { headAfterMove, mainStoreSource } from "../../../src/core/code/pass/index.js";
+import { headAfterMove, mainStoreSource } from "../../../src/core/code/pass/source.js";
+import type { CommitSha } from "../../../src/core/types/common.js";
 import {
-  type CommitSha,
   headMoveMetaKey,
   listingMetaKey,
   refinedMetaKey,
-} from "../../../src/core/types/index.js";
+} from "../../../src/core/types/scheduler.js";
 import { freshStore, WT } from "../../state/helpers.js";
 
 /**

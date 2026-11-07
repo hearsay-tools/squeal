@@ -1,11 +1,7 @@
 import type { WorktreePaths } from "../../../core/fs/worktree-paths.js";
-import type {
-  CheckError,
-  CheckRunResult,
-  FileLevelError,
-  RunOutcome,
-  TestFileRef,
-} from "../../../core/types/index.js";
+import type { CheckError, RunOutcome } from "../../../core/types/check.js";
+import type { TestFileRef } from "../../../core/types/keys.js";
+import type { CheckRunResult, FileLevelError } from "../../../core/types/runner.js";
 import { identify, type ReportedTest } from "../identity.js";
 import { stderrError, toCheckError } from "./errors.js";
 import type { TestEvent, TestEventData } from "./events.js";

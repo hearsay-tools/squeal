@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { PytestProject } from "../../../../src/core/types/index.js";
+import type { PytestProject } from "../../../../src/core/types/policy.js";
 import { discoverEnvironment } from "../../../../src/runners/pytest/environment/discover.js";
 import { link, tempDir, venv, write } from "./tree.js";
 

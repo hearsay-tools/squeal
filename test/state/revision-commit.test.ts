@@ -1,18 +1,15 @@
 import { realpathSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { headerLines } from "../../src/core/delivery/index.js";
+import { headerLines } from "../../src/core/delivery/header.js";
 import type { SchedulerContext } from "../../src/core/scheduler/context.js";
 import { recordHeadMove } from "../../src/core/scheduler/head-move.js";
 import type { Ledger } from "../../src/core/scheduler/ledger.js";
-import { readHeader } from "../../src/core/state/index.js";
+import { readHeader } from "../../src/core/state/header.js";
 import { readGitHead } from "../../src/core/status/git-head.js";
-import {
-  type CommitSha,
-  type HeadMove,
-  headMoveMetaKey,
-  type Store,
-} from "../../src/core/types/index.js";
+import type { CommitSha } from "../../src/core/types/common.js";
+import { type HeadMove, headMoveMetaKey } from "../../src/core/types/scheduler.js";
+import type { Store } from "../../src/core/types/store.js";
 import { git, initRepo, tempDir, writeFile } from "../hash/git-repo.js";
 import { reftableUnsupported } from "../hash/reftable.js";
 import { freshStore, WT } from "./helpers.js";

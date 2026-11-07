@@ -11,12 +11,12 @@ import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { afterEach, describe, expect, it } from "vitest";
 import { type EnsuredDaemon, ensureDaemonProcess } from "../../src/core/daemon/ensure.js";
-import { resolveCommonDir, worktreeIdFor } from "../../src/core/fs/index.js";
+import { resolveCommonDir, worktreeIdFor } from "../../src/core/fs/git-layout.js";
 import { worktreeLabel } from "../../src/core/process-label.js";
 import { discover } from "../../src/core/ps/discover.js";
 import type { PsPlaces } from "../../src/core/ps/model.js";
 import { createProcSource } from "../../src/core/ps/proc.js";
-import type { AbsolutePath } from "../../src/core/types/index.js";
+import type { AbsolutePath } from "../../src/core/types/common.js";
 import { keepVersion } from "../../src/harness/shared/version-copies.js";
 import { tempDir } from "../store/helpers.js";
 

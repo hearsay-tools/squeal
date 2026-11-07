@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { formatDelta } from "../../src/core/delivery/index.js";
+import { formatDelta } from "../../src/core/delivery/format.js";
+import { WorktreePaths } from "../../src/core/fs/worktree-paths.js";
 import { withheldForTouch } from "../../src/core/scheduler/stability.js";
-import { SUMMARY_MAX_CHARS } from "../../src/core/state/index.js";
-import type { Delta, RunReport, TransitionEntry } from "../../src/core/types/index.js";
+import { SUMMARY_MAX_CHARS } from "../../src/core/state/fingerprint.js";
+import type { Delta, TransitionEntry } from "../../src/core/types/delivery.js";
+import type { RunReport } from "../../src/core/types/runner.js";
 import { withoutFiles, withoutTouched } from "../../src/runners/vitest/moved.js";
-import { WorktreePaths } from "../../src/runners/vitest/paths.js";
 
 /*
  * Task 011-02 (gh-13): a reason that names many paths says why first, then

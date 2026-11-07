@@ -1,14 +1,11 @@
 import type { DaemonSync, SyncState } from "../../src/cli/status-sync.js";
 import { type AskNamed, askNamedRuns } from "../../src/cli/status-wait-ask-store.js";
 import type { NamedWaitOptions } from "../../src/cli/status-wait-paths.js";
-import { endRetries } from "../../src/core/retry/index.js";
-import type {
-  CheckKey,
-  PendingPhase,
-  RevisionNumber,
-  Store,
-  TestFileRef,
-} from "../../src/core/types/index.js";
+import { endRetries } from "../../src/core/retry/records.js";
+import type { RevisionNumber } from "../../src/core/types/common.js";
+import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
+import type { PendingPhase } from "../../src/core/types/state.js";
+import type { Store } from "../../src/core/types/store.js";
 import { check, state } from "../status/helpers.js";
 import { result } from "../store/helpers.js";
 import { A, ADDS, NOW, ref } from "./status-wait-fixture.js";

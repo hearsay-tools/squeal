@@ -1,16 +1,18 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { squealEvidence } from "../../evals/lib/index.mjs";
-import { createDelivery, formatDelta, formatRegistration } from "../../src/core/delivery/index.js";
-import { createStateSink, describeFailure } from "../../src/core/state/index.js";
+import { createDelivery } from "../../src/core/delivery/delivery.js";
+import { formatDelta, formatRegistration } from "../../src/core/delivery/format.js";
+import { describeFailure } from "../../src/core/state/fingerprint.js";
+import { createStateSink } from "../../src/core/state/sink.js";
 import type {
   Consumer,
   Delta,
   HarnessDelivery,
-  ResultRecord,
-  StateSink,
-  Store,
   TransitionEntry,
-} from "../../src/core/types/index.js";
+} from "../../src/core/types/delivery.js";
+import type { StateSink } from "../../src/core/types/state.js";
+import type { Store } from "../../src/core/types/store.js";
+import type { ResultRecord } from "../../src/core/types/store-records.js";
 import { check, FILE, freshStore, OTHER, result, setKey, WT } from "../state/helpers.js";
 import { fixedStatus, liveDaemon } from "./fakes.js";
 

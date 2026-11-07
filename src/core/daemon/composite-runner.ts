@@ -1,5 +1,7 @@
-import { compare } from "../fs/index.js";
-import type { ProjectName, RunEnd, RunnerAdapter, RunReport, TestFileRef } from "../types/index.js";
+import { compare } from "../fs/compare.js";
+import type { ProjectName } from "../types/common.js";
+import type { TestFileRef } from "../types/keys.js";
+import type { RunEnd, RunnerAdapter, RunReport } from "../types/runner.js";
 import { Flights, withheld } from "./composite-flights.js";
 import type { RunnerSet } from "./runner-set.js";
 

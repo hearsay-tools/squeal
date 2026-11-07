@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
-import type { AbsolutePath } from "../../../core/types/index.js";
+import type { AbsolutePath } from "../../../core/types/common.js";
 import { pthFiles, readOptional, readPyvenvCfg, sitePackagesDir, stdlibDirs } from "./site.js";
 
 /**

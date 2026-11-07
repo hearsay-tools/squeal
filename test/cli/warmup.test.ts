@@ -13,7 +13,7 @@ import { describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
 import { readVerdict } from "../../src/cli/verdict.js";
 import { progressText } from "../../src/cli/warmup.js";
-import { readIgnoredReads } from "../../src/core/status/index.js";
+import { readIgnoredReads } from "../../src/core/scheduler/ignored-reads.js";
 import { buildCli, daemonSuite, SLOW, spawnCli, withStore } from "../daemon/helpers.js";
 
 /*

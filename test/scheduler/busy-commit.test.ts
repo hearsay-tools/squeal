@@ -5,24 +5,15 @@ import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it } from "vitest";
 import type { SchedulerContext } from "../../src/core/scheduler/context.js";
 import { Ledger } from "../../src/core/scheduler/ledger.js";
-import { createStateSink } from "../../src/core/state/index.js";
-import {
-  isStoreOpenFailure,
-  openStore,
-  setBusyTimeout,
-  storePaths,
-} from "../../src/core/store/index.js";
-import {
-  type CheckError,
-  type CheckKey,
-  DEFAULT_POLICY,
-  type ResultRecord,
-  type RunOutcome,
-  type SetupCheckId,
-  type Store,
-  type TestFileRef,
-  type WorktreeId,
-} from "../../src/core/types/index.js";
+import { createStateSink } from "../../src/core/state/sink.js";
+import { isStoreOpenFailure, openStore, setBusyTimeout } from "../../src/core/store/open.js";
+import { storePaths } from "../../src/core/store/paths.js";
+import type { CheckError, RunOutcome, SetupCheckId } from "../../src/core/types/check.js";
+import type { WorktreeId } from "../../src/core/types/common.js";
+import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
+import type { Store } from "../../src/core/types/store.js";
+import type { ResultRecord } from "../../src/core/types/store-records.js";
 
 /*
  * Row 011-126: `Ledger.commit` drained what it owed (the key rows of dirty

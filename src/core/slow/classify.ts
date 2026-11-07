@@ -1,6 +1,8 @@
 import { posix } from "node:path";
 import { createInputMatcher } from "../keys/glob.js";
-import type { NodeTestProject, Policy, ProjectName, TestFileRef } from "../types/index.js";
+import type { ProjectName } from "../types/common.js";
+import type { TestFileRef } from "../types/keys.js";
+import type { NodeTestProject, Policy } from "../types/policy.js";
 
 /** What marks a runner entry's files slow (spec 004 D1, 007 D1): a `nodeTest` or `pytest` entry. */
 type Marking = Pick<NodeTestProject, "name" | "cwd" | "include" | "slow">;

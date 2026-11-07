@@ -1,10 +1,10 @@
 import { rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
-import { testFileId } from "../../src/core/keys/index.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
+import { testFileId } from "../../src/core/keys/reverse-index.js";
 import { readUnknownFiles } from "../../src/core/scheduler/unknown-files.js";
-import type { TestCheckId } from "../../src/core/types/index.js";
+import type { TestCheckId } from "../../src/core/types/check.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import type { RecordedRun } from "./recording-runner.js";
 import { createRepo, openRepoStore } from "./repo.js";

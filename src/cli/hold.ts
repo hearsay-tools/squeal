@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { constants } from "node:os";
 import { setTimeout as sleep } from "node:timers/promises";
 import { pidNamespace } from "../core/delivery/harness-process.js";
-import { findWorktreeRoot, resolveCommonDir, worktreeIdFor } from "../core/fs/index.js";
+import { findWorktreeRoot, resolveCommonDir, worktreeIdFor } from "../core/fs/git-layout.js";
 import {
   boundText,
   COMMAND_HOLD_MAX_MS,
@@ -17,15 +17,11 @@ import {
   removeCommandHold,
   setCommandHoldChild,
 } from "../core/scheduler/hold-rows.js";
-import { STATUS_BUSY_TIMEOUT_MS } from "../core/status/index.js";
-import { isStoreOpenFailure, openStore } from "../core/store/index.js";
-import type {
-  AbsolutePath,
-  DaemonRequest,
-  DaemonResponse,
-  Store,
-  WorktreeId,
-} from "../core/types/index.js";
+import { STATUS_BUSY_TIMEOUT_MS } from "../core/status/open.js";
+import { isStoreOpenFailure, openStore } from "../core/store/open.js";
+import type { AbsolutePath, WorktreeId } from "../core/types/common.js";
+import type { DaemonRequest, DaemonResponse } from "../core/types/daemon.js";
+import type { Store } from "../core/types/store.js";
 import { askDaemon, daemonSocket } from "./daemon-access.js";
 import { durationMs } from "./failures.js";
 import type { CliIo } from "./main.js";

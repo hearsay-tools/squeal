@@ -1,15 +1,15 @@
-import type { ObjectFormat } from "../../hash/index.js";
+import type { ObjectFormat } from "../../hash/blob.js";
 import type {
   AbsolutePath,
   EpochMs,
-  FileHash,
-  Policy,
   RelativePath,
   RevisionNumber,
-  SharedCapacity,
   WorktreeId,
-} from "../../types/index.js";
+} from "../../types/common.js";
+import type { FileHash } from "../../types/keys.js";
 import type { LintTool } from "../../types/lint.js";
+import type { Policy } from "../../types/policy.js";
+import type { SharedCapacity } from "../../types/scheduler.js";
 import type { LintProvider } from "./provider.js";
 
 /** One file of the worktree as the main store's stat cache holds it (011 C2, C3). */

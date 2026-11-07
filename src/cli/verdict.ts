@@ -1,28 +1,23 @@
-import { worktreeLiveness } from "../core/delivery/index.js";
-import { testFileId } from "../core/keys/index.js";
-import { type FileClass, fileClassOf, readHeader, testFileKeyOf } from "../core/state/index.js";
-import {
-  type CheckCounts,
-  checkPartsText,
-  readHolds,
-  unknownFileText,
-} from "../core/status/index.js";
+import { testFileId } from "../core/keys/reverse-index.js";
+import { worktreeLiveness } from "../core/presence/heartbeat.js";
+import { testFileKeyOf } from "../core/state/derive.js";
+import { type FileClass, fileClassOf } from "../core/state/file-class.js";
+import { readHeader } from "../core/state/header.js";
+import { type CheckCounts, checkPartsText } from "../core/status/checks.js";
+import { readHolds } from "../core/status/holds.js";
+import { unknownFileText } from "../core/status/unknown-files.js";
 import { plural } from "../core/text.js";
-import type {
-  EpochMs,
-  KnownState,
-  RevisionNumber,
-  StatusHold,
-  StatusResult,
-  Store,
-  TestFileKeyRecord,
-  TestFileRef,
-  WorktreeId,
-} from "../core/types/index.js";
+import type { EpochMs, RevisionNumber, WorktreeId } from "../core/types/common.js";
+import type { TestFileRef } from "../core/types/keys.js";
+import type { StatusHold } from "../core/types/standing.js";
+import type { KnownState } from "../core/types/state.js";
+import type { StatusResult } from "../core/types/status.js";
+import type { Store } from "../core/types/store.js";
+import type { TestFileKeyRecord } from "../core/types/store-records.js";
 import type { SyncState } from "./status-sync.js";
 
 /* Row 011-26: the class moved to `src/core/state`, where `readHeader` counts by it. */
-export { type FileClass, fileClassOf } from "../core/state/index.js";
+export { type FileClass, fileClassOf } from "../core/state/file-class.js";
 
 /**
  * How a set of test files stands at the worktree's current revision: how

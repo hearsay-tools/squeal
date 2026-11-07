@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
-import { formatDelta } from "../../src/core/delivery/index.js";
-import type { Delta, TransitionEntry } from "../../src/core/types/index.js";
+import { formatDelta } from "../../src/core/delivery/format.js";
+import type { Delta, TransitionEntry } from "../../src/core/types/delivery.js";
 
 // Review 006-18 (reviews/wave-2.6.md): Squeal's deliveries as the product's own `formatDelta`
 // words them, and the real runner output the review's controls printed, captured from Vitest

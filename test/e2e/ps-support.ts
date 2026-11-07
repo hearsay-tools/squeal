@@ -4,10 +4,11 @@ import { createServer } from "node:net";
 import { join } from "node:path";
 import { expect } from "vitest";
 import { socketPathFor } from "../../src/core/daemon/paths.js";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
 import type { PsDaemon, PsSnapshot } from "../../src/core/ps/shape.js";
 import { type BundleRun, runNode } from "../harness/bundle-helpers.js";
-import { type E2E, until } from "./harness.js";
+import type { E2E } from "./harness.js";
+import { until } from "./support.js";
 
 /*
  * Spec 014 Testing, Integration and No side effects (task 014-14): how

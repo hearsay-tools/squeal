@@ -1,10 +1,11 @@
 import { appendFileSync, realpathSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { readHeader } from "../../src/core/delivery/index.js";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
-import { type HookDeps, runHook } from "../../src/harness/claude-code/index.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
+import { readHeader } from "../../src/core/state/header.js";
+import { runHook } from "../../src/harness/claude-code/hooks.js";
 import { findHarnessProcess } from "../../src/harness/shared/harness-process.js";
+import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { sessionRootFiles } from "../../src/harness/shared/session-root.js";
 import { recorded, SUBAGENT } from "../harness/helpers.js";
 import { git } from "../hash/git-repo.js";

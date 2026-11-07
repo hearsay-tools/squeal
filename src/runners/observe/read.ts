@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import type { AbsolutePath } from "../../core/types/index.js";
+import type { AbsolutePath } from "../../core/types/common.js";
 
 /** What every process of one test file recorded, absolute paths (`recorder.cjs`). */
 export interface RecordedFile {

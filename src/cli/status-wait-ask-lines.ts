@@ -1,4 +1,4 @@
-import type { RetryOutcome } from "../core/retry/index.js";
+import type { RetryOutcome } from "../core/retry/records.js";
 import { fromBase } from "../core/status/next-step-text.js";
 import { plural, shellWord } from "../core/text.js";
 import type { AskedEnd } from "./status-wait-ask.js";

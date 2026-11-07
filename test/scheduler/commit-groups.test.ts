@@ -1,12 +1,10 @@
 import { describe, expect, it } from "vitest";
-import {
-  type CommitReport,
-  commitReportsMetaKey,
-  readCommitReports,
-} from "../../src/core/commit/index.js";
-import { createFsHasher } from "../../src/core/hash/index.js";
-import { statCandidates } from "../../src/core/revision/index.js";
-import type { CheckGroup, Policy } from "../../src/core/types/index.js";
+import type { CommitReport } from "../../src/core/commit/report.js";
+import { commitReportsMetaKey, readCommitReports } from "../../src/core/commit/store.js";
+import { createFsHasher } from "../../src/core/hash/hasher.js";
+import { statCandidates } from "../../src/core/revision/reconcile.js";
+import type { CheckGroup } from "../../src/core/types/check-groups.js";
+import type { Policy } from "../../src/core/types/policy.js";
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import {

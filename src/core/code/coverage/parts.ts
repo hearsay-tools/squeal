@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { constants, deflateRawSync, inflateRawSync } from "node:zlib";
-import { compare } from "../../fs/index.js";
-import type { RelativePath } from "../../types/index.js";
+import { compare } from "../../fs/compare.js";
+import type { RelativePath } from "../../types/common.js";
 import type { CoverageRecord, CoverageSource } from "./types.js";
 
 /*

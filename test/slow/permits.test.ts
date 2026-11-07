@@ -2,7 +2,8 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import { acquireSlowSlot, SLOW_LOCK_FILE } from "../../src/core/slow/index.js";
+import { acquireSlowSlot } from "../../src/core/slow/slot.js";
+import { SLOW_LOCK_FILE } from "../../src/core/slow/slot-files.js";
 
 /*
  * Spec 004 D2 as amended 2026-10-09: the slot is `slow.maxParallel` permits

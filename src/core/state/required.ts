@@ -1,18 +1,15 @@
-import { testFileId } from "../keys/index.js";
+import { testFileId } from "../keys/reverse-index.js";
 import { waitsToLint } from "../lint/pass/commit-news.js";
 import { lintGroupOf } from "../lint/pass/moment.js";
 import { type LintStoreSource, readOrNull, withLint } from "../lint/surface/source.js";
 import { groupView } from "../scheduler/slow.js";
 import { stopWaitBoundMs } from "../slow/stop-wait.js";
-import type {
-  KnownState,
-  Policy,
-  RelativePath,
-  TestFileKeyRecord,
-  TestFileRef,
-  WorktreeId,
-} from "../types/index.js";
+import type { RelativePath, WorktreeId } from "../types/common.js";
+import type { TestFileRef } from "../types/keys.js";
 import type { LintTool } from "../types/lint.js";
+import type { Policy } from "../types/policy.js";
+import type { KnownState } from "../types/state.js";
+import type { TestFileKeyRecord } from "../types/store-records.js";
 import { classifyGroupFiles, groupTextsShown } from "./groups.js";
 import { classifySlowFiles } from "./slow.js";
 

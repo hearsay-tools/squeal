@@ -2,17 +2,14 @@ import { mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
-import { createDelivery } from "../../src/core/delivery/index.js";
-import { storePaths } from "../../src/core/store/index.js";
-import { type Consumer, MAIN_AGENT } from "../../src/core/types/index.js";
-import { acquireWaiterLock } from "../../src/core/waiter-lock/index.js";
-import {
-  type HookDeps,
-  type HookResult,
-  runHook,
-  waiterLockPath,
-} from "../../src/harness/claude-code/index.js";
+import { createDelivery } from "../../src/core/delivery/delivery.js";
+import { storePaths } from "../../src/core/store/paths.js";
+import { type Consumer, MAIN_AGENT } from "../../src/core/types/delivery.js";
+import { acquireWaiterLock, waiterLockPath } from "../../src/core/waiter-lock/waiter-lock.js";
+import { runHook } from "../../src/harness/claude-code/hooks.js";
+import type { HookResult } from "../../src/harness/claude-code/run.js";
 import type { HookContext } from "../../src/harness/shared/context.js";
+import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { PRIMER } from "../../src/harness/shared/primer.js";
 import { unregisterSession } from "../../src/harness/shared/sweep.js";
 import { recorded, SESSION, type SquealRepo, SUBAGENT, squealRepo } from "./helpers.js";

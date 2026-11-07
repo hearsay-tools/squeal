@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { SEED_FILES } from "../../../src/core/code/crap/index.js";
-import { Seed } from "../../../src/core/code/crap/seed.js";
+import { SEED_FILES, Seed } from "../../../src/core/code/crap/seed.js";
 import { writeUncountable } from "../../../src/core/code/pass/failed.js";
-import type { CodeStore } from "../../../src/core/code/store/index.js";
+import type { CodeStore } from "../../../src/core/code/store/types.js";
 import type { CodeFile } from "../../../src/core/types/code.js";
 import { WT } from "../../state/helpers.js";
 import { fakeCounter, pass } from "../pass/helpers.js";

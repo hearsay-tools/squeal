@@ -1,20 +1,20 @@
-import { testFileId } from "../keys/index.js";
+import { testFileId } from "../keys/reverse-index.js";
 import { type FocusedCheck, type FocusedRun, readFocused } from "../scheduler/focused-row.js";
-import { checkIdentity, formatCheck, testFileOf } from "../state/index.js";
+import { formatCheck } from "../state/check-name.js";
+import { checkIdentity, testFileOf } from "../state/derive.js";
 import { plural, testFileText, timeText } from "../text.js";
+import type { CheckId } from "../types/check.js";
+import type { WorktreeId } from "../types/common.js";
+import type { CheckKey, TestFileRef } from "../types/keys.js";
+import type { PendingPhase } from "../types/state.js";
 import type {
-  CheckId,
-  CheckKey,
-  PendingPhase,
-  ResultRecord,
   StatusFocused,
   StatusFocusedCheck,
   StatusSnapshot,
-  Store,
-  TestFileRef,
   WhyFocused,
-  WorktreeId,
-} from "../types/index.js";
+} from "../types/status.js";
+import type { Store } from "../types/store.js";
+import type { ResultRecord } from "../types/store-records.js";
 import { atText } from "./test-frame.js";
 
 /*

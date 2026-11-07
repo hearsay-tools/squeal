@@ -1,4 +1,5 @@
-import type { DaemonLiveness, EpochMs } from "../types/index.js";
+import type { EpochMs } from "../types/common.js";
+import type { DaemonLiveness } from "../types/status.js";
 import { decidePresence, type MarkedStart, type Presence } from "./decide.js";
 import type { PresenceFacts } from "./facts.js";
 import { DAEMON_START_GRACE_MS } from "./heartbeat.js";

@@ -4,8 +4,8 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 import { requestDaemon } from "../../src/core/daemon/client.js";
-import { storePaths } from "../../src/core/store/index.js";
-import type { EnsureDaemonResult } from "../../src/core/types/index.js";
+import { storePaths } from "../../src/core/store/paths.js";
+import type { EnsureDaemonResult } from "../../src/core/types/daemon.js";
 import { resume, stoppedItself, testPause } from "../e2e/restart-evidence.js";
 import {
   daemonSuite,

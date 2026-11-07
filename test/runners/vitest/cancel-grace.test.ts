@@ -2,10 +2,10 @@ import { existsSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "no
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import type { CancelCause } from "../../../src/core/types/index.js";
+import { WorktreePaths } from "../../../src/core/fs/worktree-paths.js";
+import type { CancelCause } from "../../../src/core/types/runner.js";
 import { VitestAdapter } from "../../../src/runners/vitest/adapter.js";
 import { loadVitest } from "../../../src/runners/vitest/load.js";
-import { WorktreePaths } from "../../../src/runners/vitest/paths.js";
 import { witnessed } from "../../keys/validity/harness/vitest.js";
 import { openFixture, ref, SLOW } from "./helpers.js";
 

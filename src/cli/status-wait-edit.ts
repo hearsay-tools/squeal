@@ -1,16 +1,14 @@
-import { toldRevision } from "../core/delivery/index.js";
-import { testFileId } from "../core/keys/index.js";
-import { testFileOf, worktreeLaneFiles } from "../core/state/index.js";
-import type {
-  DeltaEntry,
-  RekeyedTestFile,
-  RevisionNumber,
-  StatusHeader,
-  Store,
-  TestFileKeyRecord,
-  TestFileRef,
-  WorktreeId,
-} from "../core/types/index.js";
+import { toldRevision } from "../core/delivery/liveness.js";
+import { testFileId } from "../core/keys/reverse-index.js";
+import { testFileOf } from "../core/state/derive.js";
+import { worktreeLaneFiles } from "../core/state/groups.js";
+import type { RevisionNumber, WorktreeId } from "../core/types/common.js";
+import type { DeltaEntry } from "../core/types/delivery.js";
+import type { TestFileRef } from "../core/types/keys.js";
+import type { RekeyedTestFile } from "../core/types/scheduler.js";
+import type { StatusHeader } from "../core/types/status.js";
+import type { Store } from "../core/types/store.js";
+import type { TestFileKeyRecord } from "../core/types/store-records.js";
 
 /*
  * Lessons, defect 32, decided by the human (2026-10-09, task 001-186): a

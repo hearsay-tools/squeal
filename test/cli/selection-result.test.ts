@@ -8,9 +8,10 @@ import {
   type SelectionRead,
   selectionResult,
 } from "../../src/cli/verdict.js";
-import { socketPathFor } from "../../src/core/daemon/index.js";
-import { askRetry } from "../../src/core/retry/index.js";
-import type { CheckKey, RevisionNumber } from "../../src/core/types/index.js";
+import { socketPathFor } from "../../src/core/daemon/paths.js";
+import { askRetry } from "../../src/core/retry/records.js";
+import type { RevisionNumber } from "../../src/core/types/common.js";
+import type { CheckKey } from "../../src/core/types/keys.js";
 import { check } from "../status/helpers.js";
 import { type Answer, closeFakeDaemons, fakeDaemon } from "./fake-daemon.js";
 import { A, fail, INCARNATION, NOW, ref, repoWith } from "./status-wait-fixture.js";

@@ -2,15 +2,18 @@ import { randomUUID } from "node:crypto";
 import { cpSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import { join, relative, resolve, sep } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { readObjectFormat, StatCache, seedStatCache } from "../../src/core/hash/index.js";
+import { readObjectFormat } from "../../src/core/hash/git-index.js";
+import { seedStatCache } from "../../src/core/hash/hasher.js";
+import { StatCache } from "../../src/core/hash/stat-cache.js";
+import { assembleClosure } from "../../src/core/keys/closure.js";
 import {
-  assembleClosure,
   coreEnvironmentInputs,
-  environmentHash,
   installedDependenciesFingerprint,
-  KeyIndex,
-} from "../../src/core/keys/index.js";
-import type { CheckKey, RunnerClosure, TestFileRef } from "../../src/core/types/index.js";
+} from "../../src/core/keys/environment.js";
+import { environmentHash } from "../../src/core/keys/environment-hash.js";
+import { KeyIndex } from "../../src/core/keys/key-index.js";
+import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
+import type { RunnerClosure } from "../../src/core/types/runner.js";
 import { createVitestAdapter } from "../../src/runners/vitest/index.js";
 import { git, initRepo, writeFile } from "../hash/git-repo.js";
 

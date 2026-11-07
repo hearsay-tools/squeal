@@ -1,6 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it } from "vitest";
-import { codeStorePath } from "../../../src/core/code/store/index.js";
+import { codeStorePath } from "../../../src/core/code/store/open.js";
 import { markParts, PART_REFRESH_MS, sweepParts } from "../../../src/core/code/store/parts.js";
 import type { CodePruneOptions } from "../../../src/core/code/store/types.js";
 import { Connection } from "../../../src/core/store/connection.js";

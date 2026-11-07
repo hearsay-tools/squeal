@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { formatCodeReport } from "../../../src/cli/code.js";
 import { unknownCrapReason } from "../../../src/cli/code-crap-reason.js";
 import { readCodeReport } from "../../../src/cli/code-report.js";
-import { type FileSummary, readSummary } from "../../../src/core/code/crap/index.js";
+import { type FileSummary, readSummary } from "../../../src/core/code/crap/summary.js";
 import type { CodeKnownState } from "../../../src/core/types/code.js";
 import { WT } from "../../state/helpers.js";
 import { type CoverageRig, coverageRig, sourceOf } from "./rig.js";

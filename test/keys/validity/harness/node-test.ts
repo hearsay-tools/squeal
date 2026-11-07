@@ -1,7 +1,8 @@
 import { copyFileSync, mkdirSync, realpathSync } from "node:fs";
 import { basename, join } from "node:path";
-import type { CoverageRun } from "../../../../src/core/code/coverage/index.js";
-import type { AbsolutePath, TestFileRef } from "../../../../src/core/types/index.js";
+import type { CoverageRun } from "../../../../src/core/code/coverage/types.js";
+import type { AbsolutePath } from "../../../../src/core/types/common.js";
+import type { TestFileRef } from "../../../../src/core/types/keys.js";
 import { createNodeTestAdapter } from "../../../../src/runners/node-test/adapter.js";
 import type { CaseOutput, NodeTestInput } from "../case.js";
 import { type Decided, decided, Kept, storedRun } from "./reported.js";

@@ -1,7 +1,9 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { findWorktreeRoot, gitDirOf, runGit } from "../../fs/index.js";
-import type { AbsolutePath, FileHash, RelativePath, RevisionNumber } from "../../types/index.js";
+import { runGit } from "../../fs/git.js";
+import { findWorktreeRoot, gitDirOf } from "../../fs/git-layout.js";
+import type { AbsolutePath, RelativePath, RevisionNumber } from "../../types/common.js";
+import type { FileHash } from "../../types/keys.js";
 import type { PassContext } from "./pass.js";
 
 /** Long enough for a batch of paths on a loaded host; a git that takes longer leaves every edit marked. */

@@ -5,9 +5,10 @@ import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { afterAll } from "vitest";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
-import { readStatus } from "../../src/core/status/index.js";
-import type { AbsolutePath, StatusSnapshot } from "../../src/core/types/index.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
+import type { AbsolutePath } from "../../src/core/types/common.js";
+import type { StatusSnapshot } from "../../src/core/types/status.js";
 import { childEnv, ping } from "../daemon/helpers.js";
 import { until } from "../e2e/support.js";
 

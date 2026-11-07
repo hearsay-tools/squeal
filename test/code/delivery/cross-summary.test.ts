@@ -1,16 +1,17 @@
 import { existsSync } from "node:fs";
 import { beforeEach, describe, expect, it } from "vitest";
-import { codeStorePath } from "../../../src/core/code/store/index.js";
+import { codeStorePath } from "../../../src/core/code/store/open.js";
 import type { CodeStore } from "../../../src/core/code/store/types.js";
 import { type CodeSource, codeSource } from "../../../src/core/delivery/code-source.js";
+import { createDelivery } from "../../../src/core/delivery/delivery.js";
 import {
-  createDelivery,
   formatDelta,
   formatRegistration,
   MESSAGE_CAP_CHARS,
-} from "../../../src/core/delivery/index.js";
-import { createStateSink } from "../../../src/core/state/index.js";
-import type { Consumer, Delta, Store } from "../../../src/core/types/index.js";
+} from "../../../src/core/delivery/format.js";
+import { createStateSink } from "../../../src/core/state/sink.js";
+import type { Consumer, Delta } from "../../../src/core/types/delivery.js";
+import type { Store } from "../../../src/core/types/store.js";
 import { fixedStatus } from "../../delivery/fakes.js";
 import { check, freshStore, result, setKey, WT } from "../../state/helpers.js";
 import { commonDir, open } from "../helpers.js";

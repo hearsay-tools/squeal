@@ -1,7 +1,8 @@
 import { describeProblems, unknownKey } from "../daemon/config-file.js";
 import { loadPolicy, POLICY_FILE } from "../daemon/policy.js";
-import { findWorktreeRoot } from "../fs/index.js";
-import type { AbsolutePath, IgnoredConfigRule, StatusResult } from "../types/index.js";
+import { findWorktreeRoot } from "../fs/git-layout.js";
+import type { AbsolutePath } from "../types/common.js";
+import type { IgnoredConfigRule, StatusResult } from "../types/status.js";
 import { ignoredConfigOf } from "./ignored-config.js";
 
 /**

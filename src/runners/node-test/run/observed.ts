@@ -1,9 +1,10 @@
 import { realpathSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { compare } from "../../../core/fs/index.js";
+import { compare } from "../../../core/fs/compare.js";
 import type { WorktreePaths } from "../../../core/fs/worktree-paths.js";
-import type { AbsolutePath, RelativePath, TestFileRef } from "../../../core/types/index.js";
-import { writtenAbove } from "../../observe/index.js";
+import type { AbsolutePath, RelativePath } from "../../../core/types/common.js";
+import type { TestFileRef } from "../../../core/types/keys.js";
+import { writtenAbove } from "../../observe/inputs.js";
 
 /**
  * The project files one test file's run loaded, from the recorder's edges

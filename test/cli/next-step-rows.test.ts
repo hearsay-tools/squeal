@@ -5,16 +5,16 @@ import type { CliIo } from "../../src/cli/main.js";
 import { fileEntry } from "../../src/cli/named-file-lines.js";
 import { retryCommand } from "../../src/cli/retry.js";
 import { CLOSURE_METHOD } from "../../src/core/keys/closure.js";
-import { readRetries } from "../../src/core/retry/index.js";
+import { readRetries } from "../../src/core/retry/records.js";
 import { AWAITING_INSTALL_REASON } from "../../src/core/scheduler/install.js";
+import type { RevisionNumber } from "../../src/core/types/common.js";
+import type { CheckKey } from "../../src/core/types/keys.js";
 import {
   awaitingInstallMetaKey,
   awaitingInstallValue,
-  type CheckKey,
   installCommandMetaKey,
-  type RevisionNumber,
-  type Store,
-} from "../../src/core/types/index.js";
+} from "../../src/core/types/scheduler.js";
+import type { Store } from "../../src/core/types/store.js";
 import { check, state } from "../status/helpers.js";
 import { BUSY, config, doneKey, marked, named, waited } from "./next-step-seed.js";
 import { A, key, NOW, ref, repoWith } from "./status-wait-fixture.js";

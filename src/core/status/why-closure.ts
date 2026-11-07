@@ -1,12 +1,8 @@
 import { closureChanges } from "../delivery/attribution.js";
-import type {
-  CheckId,
-  KnownState,
-  RelativePath,
-  RevisionNumber,
-  Store,
-  WorktreeId,
-} from "../types/index.js";
+import type { CheckId } from "../types/check.js";
+import type { RelativePath, RevisionNumber, WorktreeId } from "../types/common.js";
+import type { KnownState } from "../types/state.js";
+import type { Store } from "../types/store.js";
 
 /** The harness session `squeal why` runs in, from its shell (`waitConsumer`); `null` when it names none. */
 export interface WhySession {

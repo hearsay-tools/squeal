@@ -3,16 +3,13 @@ import { join, posix } from "node:path";
 import { readPolicy } from "../core/daemon/policy.js";
 import { vitestDetected } from "../core/daemon/runner.js";
 import { createInputMatcher } from "../core/keys/glob.js";
-import { readHeader } from "../core/state/index.js";
+import { readHeader } from "../core/state/header.js";
 import { shellWord } from "../core/text.js";
-import {
-  type AbsolutePath,
-  bootstrappedMetaKey,
-  type Policy,
-  type Store,
-  type TestFileKeyRecord,
-  type WorktreeId,
-} from "../core/types/index.js";
+import type { AbsolutePath, WorktreeId } from "../core/types/common.js";
+import { bootstrappedMetaKey } from "../core/types/daemon.js";
+import type { Policy } from "../core/types/policy.js";
+import type { Store } from "../core/types/store.js";
+import type { TestFileKeyRecord } from "../core/types/store-records.js";
 
 /** A path `retry` found no key for: `rel` from the root, `shown` as the reply names it, `given` as the command did. */
 export interface NotKeyedPath {

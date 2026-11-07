@@ -3,14 +3,12 @@ import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { CliIo } from "../../src/cli/main.js";
 import { retryCommand } from "../../src/cli/retry.js";
-import { readRetries } from "../../src/core/retry/index.js";
+import { readRetries } from "../../src/core/retry/records.js";
 import { shellWord } from "../../src/core/text.js";
-import {
-  bootstrappedMetaKey,
-  type CheckKey,
-  type RevisionNumber,
-  refinedMetaKey,
-} from "../../src/core/types/index.js";
+import type { RevisionNumber } from "../../src/core/types/common.js";
+import { bootstrappedMetaKey } from "../../src/core/types/daemon.js";
+import type { CheckKey } from "../../src/core/types/keys.js";
+import { refinedMetaKey } from "../../src/core/types/scheduler.js";
 import { fakeRepo, seedStore } from "../status/helpers.js";
 
 /*

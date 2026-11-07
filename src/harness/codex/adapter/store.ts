@@ -13,13 +13,8 @@ import {
   SCHEMA,
 } from "./layout.js";
 import { checkRoot, PLUGIN_MANIFEST, RuntimeError } from "./manifest.js";
-import {
-  errorText,
-  publishRuntime,
-  type RuntimeRef,
-  selectCurrent,
-  unwritable,
-} from "./publish.js";
+import { errorText, publishRuntime, type RuntimeRef, unwritable } from "./publish.js";
+import { selectCurrent } from "./selection.js";
 
 export { type PublishOptions, publishRuntime, type RuntimeRef } from "./publish.js";
 

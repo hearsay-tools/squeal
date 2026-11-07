@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { formatWhy, readWhy } from "../../src/core/status/index.js";
+import { formatWhy } from "../../src/core/status/format-why.js";
+import { readWhy } from "../../src/core/status/why.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { SLOW } from "../scheduler/cleanup.js";
 import { createRepo, openRepoStore } from "../scheduler/repo.js";

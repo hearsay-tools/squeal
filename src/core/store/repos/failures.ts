@@ -1,5 +1,6 @@
 import type { SQLInputValue } from "node:sqlite";
-import type { CheckError, FailureRepo, FailureSelection } from "../../types/index.js";
+import type { CheckError } from "../../types/check.js";
+import type { FailureRepo, FailureSelection } from "../../types/store.js";
 import { CHECK_COLUMNS, checkFrom, checkParams, json, num, strOrNull, toResult } from "../codec.js";
 import type { Connection } from "../connection.js";
 import { failingAt, keepReplaced, readReplaced } from "./replaced.js";

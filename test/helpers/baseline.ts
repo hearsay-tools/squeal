@@ -1,4 +1,4 @@
-import type { Policy } from "../../src/core/types/index.js";
+import type { Policy } from "../../src/core/types/policy.js";
 import { CODE_OFF } from "./policy.js";
 
 /*

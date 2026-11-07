@@ -1,12 +1,6 @@
 import { createHash } from "node:crypto";
-import type {
-  CheckKey,
-  Closure,
-  EnvironmentHash,
-  FileHash,
-  RelativePath,
-  TestFileRef,
-} from "../types/index.js";
+import type { RelativePath } from "../types/common.js";
+import type { CheckKey, Closure, EnvironmentHash, FileHash, TestFileRef } from "../types/keys.js";
 
 /** Bumped when the encoding below changes, so old keys can never collide with new ones. */
 const KEY_ENCODING = "squeal-check-key/2";

@@ -1,9 +1,11 @@
-import { retryText } from "../retry/index.js";
-import { FLAKY_INPUTS_TEXT, flakyText, SUMMARY_MAX_CHARS } from "../state/index.js";
+import { retryText } from "../retry/text.js";
+import { SUMMARY_MAX_CHARS } from "../state/fingerprint.js";
+import { FLAKY_INPUTS_TEXT, flakyText } from "../state/flaky.js";
 import { checkPartsText, countChecks } from "../status/checks.js";
 import { atText } from "../status/test-frame.js";
 import { cap, plural, shellWord } from "../text.js";
-import type { FlakyNote, TransitionEntry } from "../types/index.js";
+import type { TransitionEntry } from "../types/delivery.js";
+import type { FlakyNote } from "../types/state.js";
 import { type Collapsed, nameLines } from "./collapse.js";
 import { seenLine, touchesLine } from "./provenance.js";
 

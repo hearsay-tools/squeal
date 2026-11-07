@@ -1,5 +1,5 @@
 import { endInOrder, type PreparedReports } from "../../core/delivery/prepared.js";
-import { HOOK_TIMEOUT_MS } from "../../core/types/index.js";
+import { HOOK_TIMEOUT_MS } from "../../core/types/store-records.js";
 
 /** Reports a hand-off took, and the `close` of the store they hold open. */
 interface Taken {

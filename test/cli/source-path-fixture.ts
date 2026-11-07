@@ -1,13 +1,9 @@
 import type { DaemonSync, SyncState } from "../../src/cli/status-sync.js";
 import { CLOSURE_METHOD } from "../../src/core/keys/closure.js";
 import { ReverseIndex } from "../../src/core/keys/reverse-index.js";
-import type {
-  CheckKey,
-  RelativePath,
-  RevisionNumber,
-  Store,
-  TestFileRef,
-} from "../../src/core/types/index.js";
+import type { RelativePath, RevisionNumber } from "../../src/core/types/common.js";
+import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
+import type { Store } from "../../src/core/types/store.js";
 import { NOW, ref } from "./status-wait-fixture.js";
 
 /*

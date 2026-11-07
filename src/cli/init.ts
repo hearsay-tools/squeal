@@ -1,7 +1,8 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { findWorktreeRoot, isRecord } from "../core/fs/index.js";
-import { DEFAULT_POLICY } from "../core/types/index.js";
+import { findWorktreeRoot } from "../core/fs/git-layout.js";
+import { isRecord } from "../core/fs/json.js";
+import { DEFAULT_POLICY } from "../core/types/policy.js";
 import { initCodex, printLauncherConfig } from "./codex/init.js";
 import type { CliIo } from "./main.js";
 import { type NodeTestSeed, seedNodeTest } from "./node-test-seed.js";

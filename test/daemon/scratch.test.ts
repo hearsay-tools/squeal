@@ -15,7 +15,7 @@ import { basename, dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { ensureDaemon } from "../../src/core/daemon/ensure.js";
 import { daemonScratch, prepareScratch, removeScratch } from "../../src/core/daemon/scratch.js";
-import { storePaths } from "../../src/core/store/index.js";
+import { storePaths } from "../../src/core/store/paths.js";
 import { git } from "../hash/git-repo.js";
 import { runMissingConfig } from "../helpers/baseline.js";
 import {

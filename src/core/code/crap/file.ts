@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
-import { compare } from "../../fs/index.js";
+import { compare } from "../../fs/compare.js";
 import type { FunctionCount } from "../../types/code.js";
-import type { CheckKey, EpochMs, FileHash, RelativePath, TestFileRef } from "../../types/index.js";
+import type { EpochMs, RelativePath } from "../../types/common.js";
+import type { CheckKey, FileHash, TestFileRef } from "../../types/keys.js";
 import type { CoverageRecord, CoverageSource } from "../coverage/types.js";
 import { joinCoverage } from "./join.js";
 import type { Loader, PendingReason, UnknownCause } from "./loaders.js";

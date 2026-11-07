@@ -7,10 +7,12 @@ import { POLICY_FILE, readPolicy } from "../daemon/policy.js";
 import { countingOf } from "../delivery/code-deliver.js";
 import { codeSince, type ShellSession, wentOverSince } from "../delivery/code-since.js";
 import { codeSource, withCode } from "../delivery/code-source.js";
-import { isRecord } from "../fs/index.js";
+import { isRecord } from "../fs/json.js";
 import { plural } from "../text.js";
 import type { CodeCoverageStatus, CodeStatus } from "../types/code-delivery.js";
-import type { AbsolutePath, StatusSnapshot, Store, WorktreeId } from "../types/index.js";
+import type { AbsolutePath, WorktreeId } from "../types/common.js";
+import type { StatusSnapshot } from "../types/status.js";
+import type { Store } from "../types/store.js";
 
 /*
  * Spec 015 D6: status's complexity line and its `code` JSON, read from the

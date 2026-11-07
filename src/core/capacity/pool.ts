@@ -2,8 +2,11 @@ import { availableParallelism } from "node:os";
 import { join } from "node:path";
 import type { DatabaseSync } from "node:sqlite";
 import { currentUid, preparePrivateDir } from "../daemon/paths.js";
-import { SLOT_WAITER_FRESH_MS, type SlowSlotOwner, takePermit } from "../slow/index.js";
-import type { AbsolutePath, CheckPriority, PoolGate } from "../types/index.js";
+import { type SlowSlotOwner, takePermit } from "../slow/slot.js";
+import { SLOT_WAITER_FRESH_MS } from "../slow/slot-files.js";
+import type { CheckPriority } from "../types/check-groups.js";
+import type { AbsolutePath } from "../types/common.js";
+import type { PoolGate } from "../types/standing.js";
 import {
   createHostCpu,
   createTreeCpu,

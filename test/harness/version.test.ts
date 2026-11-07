@@ -10,7 +10,7 @@ import {
   squealVersion,
   UNKNOWN_VERSION,
 } from "../../src/core/daemon/version.js";
-import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
+import { REPO_ROOT } from "../../src/harness/build.js";
 import { runtimeDir } from "./bundle-helpers.js";
 
 const ROOT_VERSION = (

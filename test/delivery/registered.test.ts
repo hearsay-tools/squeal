@@ -1,16 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createDelivery, formatDelta } from "../../src/core/delivery/index.js";
-import { createStateSink } from "../../src/core/state/index.js";
-import {
-  CONSUMER_EXPIRY_MS,
-  type Consumer,
-  type Delta,
-  type HarnessDelivery,
-  type ResultRecord,
-  type StateSink,
-  type Store,
-  type TransitionEntry,
-} from "../../src/core/types/index.js";
+import { createDelivery } from "../../src/core/delivery/delivery.js";
+import { formatDelta } from "../../src/core/delivery/format.js";
+import { createStateSink } from "../../src/core/state/sink.js";
+import type {
+  Consumer,
+  Delta,
+  HarnessDelivery,
+  TransitionEntry,
+} from "../../src/core/types/delivery.js";
+import type { StateSink } from "../../src/core/types/state.js";
+import type { Store } from "../../src/core/types/store.js";
+import { CONSUMER_EXPIRY_MS, type ResultRecord } from "../../src/core/types/store-records.js";
 import { check, FILE, freshStore, OTHER, result, setKey, WT } from "../state/helpers.js";
 import { fixedStatus, liveDaemon } from "./fakes.js";
 

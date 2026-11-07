@@ -9,15 +9,12 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
-import { createFsHasher, StatCache, seedStatCache } from "../../src/core/hash/index.js";
-import { statCandidates } from "../../src/core/revision/index.js";
-import {
-  DEFAULT_POLICY,
-  type NodeTestProject,
-  type Policy,
-  type Store,
-} from "../../src/core/types/index.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
+import { createFsHasher, seedStatCache } from "../../src/core/hash/hasher.js";
+import { StatCache } from "../../src/core/hash/stat-cache.js";
+import { statCandidates } from "../../src/core/revision/reconcile.js";
+import { DEFAULT_POLICY, type NodeTestProject, type Policy } from "../../src/core/types/policy.js";
+import type { Store } from "../../src/core/types/store.js";
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { SLOW } from "./cleanup.js";

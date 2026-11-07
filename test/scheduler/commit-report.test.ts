@@ -9,19 +9,16 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import {
-  type CommitReport,
-  type CommitTestCounts,
-  commitReportText,
-  readCommitReports,
-} from "../../src/core/commit/index.js";
+import type { CommitReport, CommitTestCounts } from "../../src/core/commit/report.js";
+import { readCommitReports } from "../../src/core/commit/store.js";
+import { commitReportText } from "../../src/core/commit/text.js";
 import * as tree from "../../src/core/commit/tree.js";
-import { createFsHasher } from "../../src/core/hash/index.js";
+import { createFsHasher } from "../../src/core/hash/hasher.js";
 import { lintScope, writeCursor, writeInputs } from "../../src/core/lint/pass/records.js";
-import { isLintStoreOpenFailure, openLintStore } from "../../src/core/lint/store/index.js";
+import { isLintStoreOpenFailure, openLintStore } from "../../src/core/lint/store/open.js";
 import type { LintStore } from "../../src/core/lint/store/types.js";
-import { statCandidates } from "../../src/core/revision/index.js";
-import { DEFAULT_POLICY, type Policy } from "../../src/core/types/index.js";
+import { statCandidates } from "../../src/core/revision/reconcile.js";
+import { DEFAULT_POLICY, type Policy } from "../../src/core/types/policy.js";
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { finding } from "../lint/helpers.js";

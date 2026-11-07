@@ -1,11 +1,8 @@
-import type {
-  PresenceNote,
-  PresenceState,
-  StopMark,
-  ToldLiveness,
-} from "../../src/core/presence/index.js";
-import { HANDOFF_BOUND_MS } from "../../src/core/presence/index.js";
-import type { DaemonLiveness } from "../../src/core/types/index.js";
+import type { PresenceNote, PresenceState } from "../../src/core/presence/state.js";
+import type { StopMark } from "../../src/core/presence/stored.js";
+import { HANDOFF_BOUND_MS } from "../../src/core/presence/stored.js";
+import type { ToldLiveness } from "../../src/core/presence/told.js";
+import type { DaemonLiveness } from "../../src/core/types/status.js";
 import { at, OPEN_RUN, SELF, START_MARKED, type Stored, VERSION } from "./fixture.js";
 
 /*

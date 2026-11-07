@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { describe as describeStop } from "../../src/core/daemon/terminate.js";
 import { appendNote } from "../../src/core/notes.js";
-import { formatStatus, readStatus } from "../../src/core/status/index.js";
+import { formatStatus } from "../../src/core/status/format-status.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
 import {
   type CheckpointProgress,
   checkpointMetaKey,
-  type StatusResult,
-  type StatusSnapshot,
   type StoppedProcesses,
-  type Store,
-} from "../../src/core/types/index.js";
+} from "../../src/core/types/scheduler.js";
+import type { StatusResult, StatusSnapshot } from "../../src/core/types/status.js";
+import type { Store } from "../../src/core/types/store.js";
 import { appendRevisions, type FakeRepo, fakeRepo, seedStore } from "./helpers.js";
 
 /*

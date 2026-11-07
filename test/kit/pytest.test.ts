@@ -3,9 +3,10 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PYTHONS, requireSynced, type Synced, syncFixture } from "../helpers/pytest-env.js";
-import { accepted, describePlayed, forms, play } from "./driver.js";
+import { forms, play } from "./driver.js";
 import { pytestPack } from "./packs/pytest.js";
 import { SCENARIOS } from "./scenarios/index.js";
+import { accepted, describePlayed } from "./verdicts.js";
 
 /*
  * Spec 016 D1: every kit scenario through pytest's pack, on each Python CI

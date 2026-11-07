@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { LintPassReport } from "../../../src/core/lint/pass/index.js";
+import type { LintPassReport } from "../../../src/core/lint/pass/types.js";
 import { commonDir } from "../helpers.js";
 import { history, lintPass, lintTree, outcomes, storeOf } from "./helpers.js";
 import { Clock, LazyRules, NODE_MAJOR, unheld } from "./lazy-rules.js";

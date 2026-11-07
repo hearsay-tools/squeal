@@ -1,12 +1,8 @@
 import { realpathSync, statSync } from "node:fs";
 import { relative, sep } from "node:path";
-import type {
-  AbsolutePath,
-  InvalidatedPath,
-  NodeTestProject,
-  PolicyInputs,
-  RunnerAdapter,
-} from "../../core/types/index.js";
+import type { AbsolutePath } from "../../core/types/common.js";
+import type { NodeTestProject, PolicyInputs } from "../../core/types/policy.js";
+import type { InvalidatedPath, RunnerAdapter } from "../../core/types/runner.js";
 import { projectEnvironment } from "./adapter-environment.js";
 import { projectCwd } from "./adapter-files.js";
 import { openProject, type ProjectContext, unavailable } from "./adapter-project.js";

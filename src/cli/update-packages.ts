@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { isRecord } from "../core/fs/index.js";
+import { isRecord } from "../core/fs/json.js";
 import { compareVersions } from "./setup/harnesses.js";
 
 /*

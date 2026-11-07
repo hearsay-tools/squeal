@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
-import { isMissing, isRecord } from "../fs/index.js";
+import { isMissing } from "../fs/errors.js";
+import { isRecord } from "../fs/json.js";
 
 /**
  * Spec 001 D11's loader rules, shared by `squeal.config.json` and the

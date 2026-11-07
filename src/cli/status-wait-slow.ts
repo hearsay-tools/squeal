@@ -1,14 +1,12 @@
-import { testFileId } from "../core/keys/index.js";
-import { classifySlowFiles, testFileOf, worktreeSlowView } from "../core/state/index.js";
-import type {
-  DeltaEntry,
-  KnownState,
-  RelativePath,
-  Store,
-  TestFileKeyRecord,
-  TestFileRef,
-  WorktreeId,
-} from "../core/types/index.js";
+import { testFileId } from "../core/keys/reverse-index.js";
+import { testFileOf } from "../core/state/derive.js";
+import { classifySlowFiles, worktreeSlowView } from "../core/state/slow.js";
+import type { RelativePath, WorktreeId } from "../core/types/common.js";
+import type { DeltaEntry } from "../core/types/delivery.js";
+import type { TestFileRef } from "../core/types/keys.js";
+import type { KnownState } from "../core/types/state.js";
+import type { Store } from "../core/types/store.js";
+import type { TestFileKeyRecord } from "../core/types/store-records.js";
 
 /*
  * Task 001-282 (research `slow-claims.md` §2): `run --slow --wait` holds for

@@ -1,10 +1,6 @@
-import { isRecord } from "../fs/index.js";
-import {
-  type RevisionNumber,
-  type Store,
-  type WorktreeId,
-  worktreeMetaKey,
-} from "../types/index.js";
+import { isRecord } from "../fs/json.js";
+import type { RevisionNumber, WorktreeId } from "../types/common.js";
+import { type Store, worktreeMetaKey } from "../types/store.js";
 
 /*
  * Review wave 13u, B1 (task 001-238): the scheduler's record of the files

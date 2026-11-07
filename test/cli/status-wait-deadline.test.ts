@@ -5,9 +5,12 @@ import type { CliIo } from "../../src/cli/main.js";
 import { namedWaitCommand } from "../../src/cli/named-print.js";
 import type { DaemonSync, SyncState } from "../../src/cli/status-sync.js";
 import { type NamedWaitOptions, namedCode, waitForNamed } from "../../src/cli/status-wait-paths.js";
-import type { CheckKey, RevisionNumber, Store } from "../../src/core/types/index.js";
+import type { RevisionNumber } from "../../src/core/types/common.js";
+import type { CheckKey } from "../../src/core/types/keys.js";
+import type { Store } from "../../src/core/types/store.js";
 import { appendRevisions, check, state } from "../status/helpers.js";
-import { A, ADDS, fail, later, NOW, ref, repoWith } from "./status-wait-fixture.js";
+import { A, ADDS, fail, NOW, ref, repoWith } from "./status-wait-fixture.js";
+import { later } from "./wait-clock.js";
 
 /*
  * Review wave-1, B1. Spec 005 D2: "The wait returns when every selected file

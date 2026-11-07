@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { publishQuiet } from "../../src/core/scheduler/quiet.js";
-import { formatStatus, readStatus } from "../../src/core/status/index.js";
+import { formatStatus } from "../../src/core/status/format-status.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
 import { timeText } from "../../src/core/text.js";
 import { A, B, NOW, repoWith } from "../cli/status-wait-fixture.js";
 

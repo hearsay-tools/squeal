@@ -1,7 +1,9 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
-import { bootstrappedMetaKey } from "../../src/core/types/index.js";
-import { type HookDeps, type HookResult, runHook } from "../../src/harness/claude-code/index.js";
+import { bootstrappedMetaKey } from "../../src/core/types/daemon.js";
+import { runHook } from "../../src/harness/claude-code/hooks.js";
+import type { HookResult } from "../../src/harness/claude-code/run.js";
+import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { result } from "../state/helpers.js";
 import { ADDS, FILE, recorded, type SquealRepo, squealRepo } from "./helpers.js";
 

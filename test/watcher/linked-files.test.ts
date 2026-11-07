@@ -1,11 +1,11 @@
 import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { runGit, splitNul } from "../../src/core/fs/index.js";
+import { runGit, splitNul } from "../../src/core/fs/git.js";
 import { candidatesForReconcile } from "../../src/core/watcher/candidates.js";
 import { Exclusions } from "../../src/core/watcher/exclusions.js";
-import { buildWatchSpec } from "../../src/core/watcher/index.js";
 import { linkedFiles } from "../../src/core/watcher/linked-files.js";
+import { buildWatchSpec } from "../../src/core/watcher/watch-spec.js";
 import { git, makeRepo } from "./helpers.js";
 
 function write(root: string, path: string, content = "x\n"): void {

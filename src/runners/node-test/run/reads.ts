@@ -2,15 +2,12 @@ import { mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, sep } from "node:path";
 import type { WorktreePaths } from "../../../core/fs/worktree-paths.js";
-import type { AbsolutePath, ObservedInputs, TestFileRef } from "../../../core/types/index.js";
-import {
-  OBSERVE_VARIABLE,
-  observedInputs,
-  observeRecorder,
-  readsOfEvery,
-  recorderOption,
-  takeRecorded,
-} from "../../observe/index.js";
+import type { AbsolutePath } from "../../../core/types/common.js";
+import type { TestFileRef } from "../../../core/types/keys.js";
+import type { ObservedInputs } from "../../../core/types/runner.js";
+import { observedInputs, readsOfEvery } from "../../observe/inputs.js";
+import { takeRecorded } from "../../observe/read.js";
+import { OBSERVE_VARIABLE, observeRecorder, recorderOption } from "../../observe/runtime.js";
 
 /**
  * A warm-up's reads (task 001-307): 001-132's recorder in every process of

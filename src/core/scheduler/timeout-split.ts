@@ -1,4 +1,4 @@
-import type { CheckKey } from "../types/index.js";
+import type { CheckKey } from "../types/keys.js";
 import { NOTHING_CHANGED } from "./context.js";
 import type { FileState } from "./files.js";
 import type { Ledger } from "./ledger.js";

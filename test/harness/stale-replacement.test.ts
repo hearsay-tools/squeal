@@ -1,11 +1,13 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
 import { acquireDaemonLock, type DaemonLock } from "../../src/core/daemon/lock.js";
-import { DAEMON_START_GRACE_MS } from "../../src/core/delivery/index.js";
-import { clearStartMark, markStart } from "../../src/core/presence/index.js";
-import { lockFileFor } from "../../src/core/store/index.js";
-import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/index.js";
-import { type HookDeps, type HookResult, runHook } from "../../src/harness/claude-code/index.js";
+import { DAEMON_START_GRACE_MS } from "../../src/core/presence/heartbeat.js";
+import { clearStartMark, markStart } from "../../src/core/presence/lock-events.js";
+import { lockFileFor } from "../../src/core/store/paths.js";
+import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/common.js";
+import { runHook } from "../../src/harness/claude-code/hooks.js";
+import type { HookResult } from "../../src/harness/claude-code/run.js";
+import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
 
 /*

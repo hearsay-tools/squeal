@@ -1,9 +1,6 @@
-import type {
-  CheckError,
-  CheckRunResult,
-  TestCheckId,
-  TestFileRef,
-} from "../../../../../src/core/types/index.js";
+import type { CheckError, TestCheckId } from "../../../../../src/core/types/check.js";
+import type { TestFileRef } from "../../../../../src/core/types/keys.js";
+import type { CheckRunResult } from "../../../../../src/core/types/runner.js";
 import type { Case, RowsInput } from "../../case.js";
 
 /*

@@ -1,21 +1,25 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { daemonStart } from "../../src/core/presence/marks.js";
 import {
-  daemonExitMetaKey,
-  daemonRestMetaKey,
-  daemonStart,
-  feedDeliveredMetaKey,
-  handoffFrom,
-  handoffMetaKey,
   readEditLine,
   readHookHandoff,
   readHookStop,
   readShortHandoffOf,
   readStopping,
+} from "../../src/core/presence/narrow.js";
+import {
+  daemonExitMetaKey,
+  daemonRestMetaKey,
+  feedDeliveredMetaKey,
+  handoffFrom,
+  handoffMetaKey,
   shortHandoffMetaKey,
   stoppedMetaKey,
-} from "../../src/core/presence/index.js";
-import { lockFileFor } from "../../src/core/store/index.js";
-import { notesMetaKey, type Store, type WorktreeId } from "../../src/core/types/index.js";
+} from "../../src/core/presence/stored.js";
+import { lockFileFor } from "../../src/core/store/paths.js";
+import type { WorktreeId } from "../../src/core/types/common.js";
+import { notesMetaKey } from "../../src/core/types/scheduler.js";
+import type { Store } from "../../src/core/types/store.js";
 import { at, type Stored, scratch } from "./fixture.js";
 
 /*

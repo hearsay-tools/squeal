@@ -3,19 +3,18 @@ import { squealEvidence } from "../../evals/lib/index.mjs";
 import {
   formatDelta,
   formatRegistration,
-  headerLines,
   MESSAGE_CAP_CHARS,
-} from "../../src/core/delivery/index.js";
+} from "../../src/core/delivery/format.js";
+import { headerLines } from "../../src/core/delivery/header.js";
+import type { CheckId } from "../../src/core/types/check.js";
 import type {
-  CheckId,
   Delta,
   DeltaEntry,
-  KnownFailure,
-  KnownOutcome,
   RetiredEntry,
-  StatusHeader,
   TransitionEntry,
-} from "../../src/core/types/index.js";
+} from "../../src/core/types/delivery.js";
+import type { KnownOutcome } from "../../src/core/types/state.js";
+import type { KnownFailure, StatusHeader } from "../../src/core/types/status.js";
 
 /*
  * Spec 005 D1, review wave 3 B1: every count of checks a delivery prints

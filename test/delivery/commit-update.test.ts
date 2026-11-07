@@ -2,15 +2,18 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import type { CommitReport } from "../../src/core/commit/index.js";
+import type { CommitReport } from "../../src/core/commit/report.js";
 import {
   readCommitReports,
   replaceCommitReport,
   writeCommitReports,
 } from "../../src/core/commit/store.js";
-import { createDelivery, formatDelta } from "../../src/core/delivery/index.js";
-import { createStateSink } from "../../src/core/state/index.js";
-import type { Consumer, HarnessDelivery, Store, TestFileRef } from "../../src/core/types/index.js";
+import { createDelivery } from "../../src/core/delivery/delivery.js";
+import { formatDelta } from "../../src/core/delivery/format.js";
+import { createStateSink } from "../../src/core/state/sink.js";
+import type { Consumer, HarnessDelivery } from "../../src/core/types/delivery.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import type { Store } from "../../src/core/types/store.js";
 import { check, freshStore, result, setKey, WT } from "../state/helpers.js";
 import { fixedStatus, liveDaemon } from "./fakes.js";
 

@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { testFileId } from "../../src/core/keys/index.js";
+import { testFileId } from "../../src/core/keys/reverse-index.js";
 import { barredByTouch } from "../../src/core/scheduler/stability.js";
-import type { CheckKey, RunReport, TestFileRef } from "../../src/core/types/index.js";
+import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
+import type { RunReport } from "../../src/core/types/runner.js";
 
 /*
  * Task 013-02 (D2 of 013-01, 011 C2 as amended 2026-10-20): the completion

@@ -1,10 +1,13 @@
 import { constants } from "node:fs";
 import { lstat, open } from "node:fs/promises";
 import { join } from "node:path";
-import { mapConcurrent, runGit } from "../fs/index.js";
+import { mapConcurrent } from "../fs/concurrency.js";
+import { runGit } from "../fs/git.js";
 import { blobHash } from "../hash/blob.js";
 import { isRacy, sameStat } from "../hash/stat-cache.js";
-import type { AbsolutePath, FileHash, FileStat, RelativePath } from "../types/index.js";
+import type { AbsolutePath, RelativePath } from "../types/common.js";
+import type { FileHash } from "../types/keys.js";
+import type { FileStat } from "../types/watcher.js";
 
 /**
  * Row 019-39 (review 0.1.401-r2 N1): how long `storedBlobs` waits for git.

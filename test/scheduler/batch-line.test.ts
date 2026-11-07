@@ -5,9 +5,9 @@ import {
   promotionsMetaKey,
   publishedBatches,
   publishPromotions,
-} from "../../src/core/scheduler/promotions.js";
+} from "../../src/core/scheduler/promotions-row.js";
 import { timeText } from "../../src/core/text.js";
-import type { EpochMs, WorktreeId } from "../../src/core/types/index.js";
+import type { EpochMs, WorktreeId } from "../../src/core/types/common.js";
 import { liveDaemon } from "../delivery/fakes.js";
 import { freshStore } from "../state/helpers.js";
 import { heldBatch, P, P_MS, Q, standingOf } from "./batch-fixture.js";

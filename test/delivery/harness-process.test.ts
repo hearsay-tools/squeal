@@ -2,21 +2,22 @@ import { type ChildProcess, spawn } from "node:child_process";
 import { existsSync, mkdirSync } from "node:fs";
 import { afterEach, describe, expect, it } from "vitest";
 import {
-  harnessAlive,
-  harnessGone,
-  recordHarness,
-} from "../../src/core/delivery/harness-process.js";
-import {
   dropGoneHarnesses,
   expireConsumers,
-  harnessOf,
   lastDeparture,
+} from "../../src/core/delivery/expiry.js";
+import {
+  harnessAlive,
+  harnessGone,
+  harnessOf,
   pidNamespace,
   readProcStat,
-} from "../../src/core/delivery/index.js";
-import { storePaths } from "../../src/core/store/index.js";
-import type { Consumer, HarnessProcess } from "../../src/core/types/index.js";
-import { acquireWaiterLock, waiterLockPath } from "../../src/core/waiter-lock/index.js";
+  recordHarness,
+} from "../../src/core/delivery/harness-process.js";
+import { storePaths } from "../../src/core/store/paths.js";
+import type { Consumer } from "../../src/core/types/delivery.js";
+import type { HarnessProcess } from "../../src/core/types/store-records.js";
+import { acquireWaiterLock, waiterLockPath } from "../../src/core/waiter-lock/waiter-lock.js";
 import { fakeCommonDir, open } from "../store/helpers.js";
 
 /*

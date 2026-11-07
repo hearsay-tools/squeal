@@ -13,7 +13,8 @@ import {
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import type { NodeTestProject, RunnerAdapter } from "../../../src/core/types/index.js";
+import type { NodeTestProject } from "../../../src/core/types/policy.js";
+import type { RunnerAdapter } from "../../../src/core/types/runner.js";
 import { createNodeTestAdapter } from "../../../src/runners/node-test/adapter.js";
 
 /**

@@ -1,9 +1,7 @@
 import { describe, expect, it } from "vitest";
-import type {
-  CheckRunResult,
-  PytestProject,
-  RunOutcome,
-} from "../../../../src/core/types/index.js";
+import type { RunOutcome } from "../../../../src/core/types/check.js";
+import type { PytestProject } from "../../../../src/core/types/policy.js";
+import type { CheckRunResult } from "../../../../src/core/types/runner.js";
 import type { PytestFileReport } from "../../../../src/runners/pytest/run/report.js";
 import { allSkippedNote } from "../../../../src/runners/pytest/run/run.js";
 

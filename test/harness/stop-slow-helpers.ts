@@ -5,18 +5,14 @@ import { onTestFinished } from "vitest";
 import { type DeskEvents, prepareFrontDesk } from "../../src/core/daemon/desk.js";
 import { squealVersion } from "../../src/core/daemon/version.js";
 import { readTurn } from "../../src/core/delivery/turn.js";
-import { recordStopWait, type StopWaitHarness } from "../../src/core/slow/index.js";
-import {
-  type AbsolutePath,
-  type Consumer,
-  DEFAULT_POLICY,
-  type PolicyFile,
-  type Store,
-  type TestFileRef,
-  type WorktreeId,
-} from "../../src/core/types/index.js";
-import { runHook } from "../../src/harness/claude-code/index.js";
-import { runCodexHook } from "../../src/harness/codex/index.js";
+import { recordStopWait, type StopWaitHarness } from "../../src/core/slow/stop-wait.js";
+import type { AbsolutePath, WorktreeId } from "../../src/core/types/common.js";
+import type { Consumer } from "../../src/core/types/delivery.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import { DEFAULT_POLICY, type PolicyFile } from "../../src/core/types/policy.js";
+import type { Store } from "../../src/core/types/store.js";
+import { runHook } from "../../src/harness/claude-code/hooks.js";
+import { runCodexHook } from "../../src/harness/codex/hooks.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { check, result } from "../state/helpers.js";
 import { codexRecorded } from "./codex/helpers.js";

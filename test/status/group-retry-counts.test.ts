@@ -2,7 +2,8 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { groupTierLines, readHeader } from "../../src/core/state/index.js";
+import { groupTierLines } from "../../src/core/state/group-text.js";
+import { readHeader } from "../../src/core/state/header.js";
 import { CODEX } from "../harness/primer-helpers.js";
 import { keys, SLOW_A, SLOW_B, SLOW_POLICY, seed, states, status } from "./slow-tier-seed.js";
 

@@ -12,7 +12,7 @@ import type {
   FunctionCount,
 } from "../../../src/core/types/code.js";
 import type { CodeRecount } from "../../../src/core/types/code-delivery.js";
-import { DEFAULT_POLICY } from "../../../src/core/types/index.js";
+import { DEFAULT_POLICY } from "../../../src/core/types/policy.js";
 import { commonDir, open } from "../helpers.js";
 
 /*

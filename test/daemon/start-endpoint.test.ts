@@ -2,15 +2,13 @@ import { renameSync } from "node:fs";
 import { createServer } from "node:net";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { claimHandoff, endHandoff, handoffFrom } from "../../src/core/presence/index.js";
-import { isStoreOpenFailure, openStore } from "../../src/core/store/index.js";
-import type {
-  DaemonRecord,
-  DaemonRequest,
-  EpochMs,
-  Store,
-  WorktreeId,
-} from "../../src/core/types/index.js";
+import { claimHandoff, endHandoff } from "../../src/core/presence/events.js";
+import { handoffFrom } from "../../src/core/presence/stored.js";
+import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
+import type { EpochMs, WorktreeId } from "../../src/core/types/common.js";
+import type { DaemonRequest } from "../../src/core/types/daemon.js";
+import type { Store } from "../../src/core/types/store.js";
+import type { DaemonRecord } from "../../src/core/types/store-records.js";
 import { daemonSuite, type FixtureRepo, SLOW } from "./helpers.js";
 import { spawnLog, startIn } from "./start-helpers.js";
 

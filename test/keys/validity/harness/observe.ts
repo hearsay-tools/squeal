@@ -3,12 +3,9 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { WorktreePaths } from "../../../../src/core/fs/worktree-paths.js";
 import { listingPath, ObservedSets, observedMetaKey } from "../../../../src/core/keys/index.js";
-import {
-  OBSERVE_VARIABLE,
-  observedInputs,
-  observeEnv,
-  takeRecorded,
-} from "../../../../src/runners/observe/index.js";
+import { observedInputs } from "../../../../src/runners/observe/inputs.js";
+import { takeRecorded } from "../../../../src/runners/observe/read.js";
+import { OBSERVE_VARIABLE, observeEnv } from "../../../../src/runners/observe/runtime.js";
 import type { CaseOutput, ObserveInput } from "../case.js";
 import { scratchStore, writeTree } from "./shared.js";
 

@@ -9,7 +9,7 @@ import {
   symlinkSync,
 } from "node:fs";
 import { dirname, join, relative, sep } from "node:path";
-import type { AbsolutePath } from "../../../core/types/index.js";
+import type { AbsolutePath } from "../../../core/types/common.js";
 
 /** A run's own prefix left by a process that died is removed by a later run after this long. */
 const ABANDONED_MS = 24 * 60 * 60 * 1000;

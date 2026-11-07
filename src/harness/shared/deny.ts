@@ -1,19 +1,24 @@
 import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
 import { readPolicy } from "../../core/daemon/policy.js";
-import { formatDelta, readLiveHeader } from "../../core/delivery/index.js";
+import { formatDelta } from "../../core/delivery/format.js";
+import { readLiveHeader } from "../../core/delivery/liveness.js";
 import {
   recordTestCommandDenied,
   testCommandDenied,
 } from "../../core/delivery/test-command-denied.js";
 import { resumeTurn } from "../../core/delivery/turn.js";
-import { testFileId } from "../../core/keys/index.js";
+import { testFileId } from "../../core/keys/reverse-index.js";
 import { readOmittedTestFiles } from "../../core/scheduler/omitted-test-files.js";
-import { testFileKeyOf } from "../../core/state/index.js";
-import type { DeltaKind, EpochMs, KnownState, Policy } from "../../core/types/index.js";
+import { testFileKeyOf } from "../../core/state/derive.js";
+import type { EpochMs } from "../../core/types/common.js";
+import type { DeltaKind } from "../../core/types/delivery.js";
+import type { Policy } from "../../core/types/policy.js";
+import type { KnownState } from "../../core/types/state.js";
+import type { TestCommand } from "../../runners/descriptions.js";
 import { commandContext, configuredProjects, describing } from "../../runners/descriptions.js";
 import type { HookContext, HookLocation } from "./context.js";
-import { recognizeTestCommand, type TestCommand } from "./test-command.js";
+import { recognizeTestCommand } from "./test-command.js";
 import { resolveTestFiles } from "./test-command-files.js";
 import { testCommandReason } from "./test-command-reason.js";
 import { denialSentence } from "./text.js";

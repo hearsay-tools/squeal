@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import type { TestFileRef } from "../../../src/core/types/index.js";
+import type { TestFileRef } from "../../../src/core/types/keys.js";
 import { createVitestAdapter } from "../../../src/runners/vitest/index.js";
 import { type FixtureProject, openFixture, ref, SLOW } from "./helpers.js";
 

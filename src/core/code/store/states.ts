@@ -1,7 +1,7 @@
 import { num, numOrNull, oneOf, str } from "../../store/codec.js";
 import type { Connection, Params, Row } from "../../store/connection.js";
 import type { CodeCheckId, CodeKnownState, CodeMeasure, CodeOutcome } from "../../types/code.js";
-import type { RelativePath, WorktreeId } from "../../types/index.js";
+import type { RelativePath, WorktreeId } from "../../types/common.js";
 import type { CodeEdit, CodeStateRepo } from "./types.js";
 
 export const MEASURES = [

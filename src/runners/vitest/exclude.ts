@@ -1,4 +1,4 @@
-import type { AbsolutePath } from "../../core/types/index.js";
+import type { AbsolutePath } from "../../core/types/common.js";
 import type { VitestNode } from "./load.js";
 
 /** Policy `vitest.excludeProjects` as the instance starts with it (spec 001 D11). */

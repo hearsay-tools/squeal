@@ -1,9 +1,10 @@
 import { existsSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
-import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
-import { e2eSuite, PLUGINS, until } from "./harness.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
+import { REPO_ROOT } from "../../src/harness/build.js";
+import { e2eSuite } from "./harness.js";
+import { PLUGINS } from "./plugins.js";
 import {
   ancestors,
   countingSocket,
@@ -19,6 +20,7 @@ import {
   whileStopped,
 } from "./ps-support.js";
 import { SLOW_TUNING } from "./slow-shape.js";
+import { until } from "./support.js";
 
 /*
  * Spec 014 Testing, Integration, No side effects and Proof (task 014-14):

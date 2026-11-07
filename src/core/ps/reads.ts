@@ -1,7 +1,7 @@
 import { lstatSync, readdirSync, type Stats } from "node:fs";
 import { join } from "node:path";
-import { slowSlotDir } from "../slow/index.js";
-import type { AbsolutePath } from "../types/index.js";
+import { slowSlotDir } from "../slow/slot.js";
+import type { AbsolutePath } from "../types/common.js";
 import type { PsPlaces } from "./model.js";
 
 /*

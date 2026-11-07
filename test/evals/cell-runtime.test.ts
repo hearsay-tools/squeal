@@ -4,8 +4,8 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { cellEnv, clearScratch } from "../../evals/lib/index.mjs";
 import { MAX_SOCKET_PATH_BYTES, socketPathFor, userTmpDir } from "../../src/core/daemon/paths.js";
-import { slowSlotDir } from "../../src/core/slow/index.js";
-import type { WorktreeId } from "../../src/core/types/index.js";
+import { slowSlotDir } from "../../src/core/slow/slot.js";
+import type { WorktreeId } from "../../src/core/types/common.js";
 
 // 006-56: each cell its own XDG_RUNTIME_DIR, so its daemon's slow slot and capacity pool
 // (`slowSlotDir`, spec 004 D2 as amended, 004-16) are the cell's, never the host's other daemons'.

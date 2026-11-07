@@ -3,8 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { acquireSlowSlot, heldPermits, slowSlotHeld } from "../../src/core/slow/index.js";
-import type { WorktreeId } from "../../src/core/types/index.js";
+import { acquireSlowSlot, heldPermits, slowSlotHeld } from "../../src/core/slow/slot.js";
+import type { WorktreeId } from "../../src/core/types/common.js";
 
 /*
  * Row 011-58 (gh-58; spec 004 D2): every held permit of the slot names the

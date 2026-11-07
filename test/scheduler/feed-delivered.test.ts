@@ -3,18 +3,16 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createDaemonLoop } from "../../src/core/daemon-loop/index.js";
 import { headerLines } from "../../src/core/delivery/header.js";
-import { readLiveHeader } from "../../src/core/delivery/index.js";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
-import { feedDeliveredMetaKey, readFeedDelivered } from "../../src/core/presence/index.js";
-import { formatStatus, readStatus } from "../../src/core/status/index.js";
-import { storePaths } from "../../src/core/store/index.js";
+import { readLiveHeader } from "../../src/core/delivery/liveness.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
+import { feedDeliveredMetaKey, readFeedDelivered } from "../../src/core/presence/stored.js";
+import { formatStatus } from "../../src/core/status/format-status.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
+import { storePaths } from "../../src/core/store/paths.js";
 import { timeText } from "../../src/core/text.js";
-import {
-  type AbsolutePath,
-  DEFAULT_POLICY,
-  type WatcherBackend,
-  type WatchListener,
-} from "../../src/core/types/index.js";
+import type { AbsolutePath } from "../../src/core/types/common.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
+import type { WatcherBackend, WatchListener } from "../../src/core/types/watcher.js";
 import { statusText } from "../../src/harness/shared/text.js";
 import { createVitestAdapter } from "../../src/runners/vitest/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";

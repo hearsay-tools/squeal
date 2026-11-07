@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { readTurn } from "../../src/core/delivery/turn.js";
-import { testFileId } from "../../src/core/keys/index.js";
-import type { StopWaitHarness } from "../../src/core/slow/index.js";
-import { DEFAULT_POLICY, type TestFileRef } from "../../src/core/types/index.js";
-import { runHook } from "../../src/harness/claude-code/index.js";
-import { runCodexHook } from "../../src/harness/codex/index.js";
+import { testFileId } from "../../src/core/keys/reverse-index.js";
+import type { StopWaitHarness } from "../../src/core/slow/stop-wait.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
+import { runHook } from "../../src/harness/claude-code/hooks.js";
+import { runCodexHook } from "../../src/harness/codex/hooks.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { codexRecorded } from "./codex/helpers.js";
 import { FILE, recorded, type SquealRepo, squealRepo } from "./helpers.js";

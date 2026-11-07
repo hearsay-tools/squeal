@@ -2,16 +2,13 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { createDaemonServer } from "../../src/core/daemon/server.js";
-import type { StopWaitHarness } from "../../src/core/slow/index.js";
-import {
-  type AbsolutePath,
-  type CheckMoment,
-  DEFAULT_POLICY,
-  PAYLOAD_SCHEMA_VERSION,
-  type TestFileRef,
-} from "../../src/core/types/index.js";
-import { runHook } from "../../src/harness/claude-code/index.js";
-import { runCodexHook } from "../../src/harness/codex/index.js";
+import type { StopWaitHarness } from "../../src/core/slow/stop-wait.js";
+import type { CheckMoment } from "../../src/core/types/check-groups.js";
+import { type AbsolutePath, PAYLOAD_SCHEMA_VERSION } from "../../src/core/types/common.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
+import { runHook } from "../../src/harness/claude-code/hooks.js";
+import { runCodexHook } from "../../src/harness/codex/hooks.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { codexRecorded } from "./codex/helpers.js";
 import { recorded, type SquealRepo, squealRepo } from "./helpers.js";

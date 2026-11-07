@@ -1,8 +1,9 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { POLICY_FILE } from "../../core/daemon/policy.js";
-import { isRecord } from "../../core/fs/index.js";
-import type { AbsolutePath, Policy } from "../../core/types/index.js";
+import { isRecord } from "../../core/fs/json.js";
+import type { AbsolutePath } from "../../core/types/common.js";
+import type { Policy } from "../../core/types/policy.js";
 import { seedPytest } from "../pytest-seed.js";
 import type { SetupPlan } from "./plan.js";
 import type { RepoFacts } from "./repo.js";

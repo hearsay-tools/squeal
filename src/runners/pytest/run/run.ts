@@ -3,16 +3,12 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { toAbsolute } from "../../../core/fs/index.js";
+import { toAbsolute } from "../../../core/fs/paths.js";
 import { WorktreePaths } from "../../../core/fs/worktree-paths.js";
-import type {
-  AbsolutePath,
-  FocusedFile,
-  PytestProject,
-  RelativePath,
-  RunReport,
-  TestFileRef,
-} from "../../../core/types/index.js";
+import type { AbsolutePath, RelativePath } from "../../../core/types/common.js";
+import type { TestFileRef } from "../../../core/types/keys.js";
+import type { PytestProject } from "../../../core/types/policy.js";
+import type { FocusedFile, RunReport } from "../../../core/types/runner.js";
 import { focusedTexts } from "../../focus.js";
 import { startGroup } from "../../process/group.js";
 import type { PytestEnvironment } from "../environment/index.js";

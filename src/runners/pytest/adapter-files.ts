@@ -1,12 +1,14 @@
 import { type Dirent, existsSync, readdirSync } from "node:fs";
 import { basename, dirname, join, relative, sep } from "node:path";
-import { compare } from "../../core/fs/index.js";
+import { compare } from "../../core/fs/compare.js";
 import { createInputMatcher } from "../../core/keys/glob.js";
-import type { AbsolutePath, PytestProject, RelativePath } from "../../core/types/index.js";
+import type { AbsolutePath, RelativePath } from "../../core/types/common.js";
+import type { PytestProject } from "../../core/types/policy.js";
 import { environmentDir } from "./adapter-environment.js";
 import { isDependencyPath, rootedDependencyIncludes } from "./discovery-defaults.js";
+import { findPytestConfig } from "./environment/config.js";
 import { configArgs, readConfigValue } from "./environment/config-values.js";
-import { findPytestConfig, projectDir } from "./environment/index.js";
+import { projectDir } from "./environment/discover.js";
 
 /**
  * pytest's `norecursedirs` default (`_pytest/main.py`, pytest 9.1.1), which

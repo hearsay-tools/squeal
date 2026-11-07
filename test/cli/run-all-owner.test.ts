@@ -3,7 +3,9 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
 import { Checkpoints } from "../../src/core/scheduler/checkpoints.js";
-import type { CheckKey, CheckpointRecord, RevisionNumber } from "../../src/core/types/index.js";
+import type { RevisionNumber } from "../../src/core/types/common.js";
+import type { CheckKey } from "../../src/core/types/keys.js";
+import type { CheckpointRecord } from "../../src/core/types/store-records.js";
 import {
   appendRevisions,
   check,

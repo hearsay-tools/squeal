@@ -2,19 +2,13 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
-import type { StatusSnapshot } from "../../src/core/types/index.js";
+import type { StatusSnapshot } from "../../src/core/types/status.js";
 import { PYTHONS } from "../helpers/pytest-env.js";
 import { expectAgrees, headerRevision } from "./agree.js";
-import {
-  type E2E,
-  e2eSuite,
-  OTHER_SESSION,
-  PLUGINS,
-  type Plugin,
-  RATES,
-  RESOURCES,
-  until,
-} from "./harness.js";
+import { type E2E, e2eSuite, OTHER_SESSION } from "./harness.js";
+import { PLUGINS, type Plugin } from "./plugins.js";
+import { RATES, RESOURCES } from "./sources.js";
+import { until } from "./support.js";
 
 /*
  * Spec 007 Testing, end to end, and goals 1, 2, 7 and 8: the shipped

@@ -4,12 +4,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it } from "vitest";
-import {
-  COVERAGE_PROVIDER_VERSION,
-  type CoveredFile,
-  createCoverageWriter,
-} from "../../../src/core/code/coverage/index.js";
-import { codeStorePath } from "../../../src/core/code/store/index.js";
+import { COVERAGE_PROVIDER_VERSION } from "../../../src/core/code/coverage/record.js";
+import type { CoveredFile } from "../../../src/core/code/coverage/types.js";
+import { createCoverageWriter } from "../../../src/core/code/coverage/writer.js";
+import { codeStorePath } from "../../../src/core/code/store/open.js";
 import { commonDir, ON, open } from "../helpers.js";
 
 /*

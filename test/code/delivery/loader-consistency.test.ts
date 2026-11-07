@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { functionKey, readEvidence, writeEvidence } from "../../../src/core/code/crap/index.js";
+import { functionKey, readEvidence, writeEvidence } from "../../../src/core/code/crap/summary.js";
 import type { CodeMetaRepo, CodeStore } from "../../../src/core/code/store/types.js";
 import { evidenceOf } from "../../../src/core/delivery/code-coverage.js";
 import { codeLines } from "../../../src/core/delivery/code-format.js";

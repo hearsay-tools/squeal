@@ -3,8 +3,11 @@ import { setImmediate as tick } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
 import { buildSnapshot } from "../../src/core/status/snapshot.js";
 import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
-import type { StatusSnapshot, Store } from "../../src/core/types/index.js";
-import { e2eSuite, MATH, PLUGINS } from "./harness.js";
+import type { StatusSnapshot } from "../../src/core/types/status.js";
+import type { Store } from "../../src/core/types/store.js";
+import { e2eSuite } from "./harness.js";
+import { PLUGINS } from "./plugins.js";
+import { MATH } from "./sources.js";
 
 /*
  * Task 002-20, the cause of the Codex transitions flake: `buildSnapshot`

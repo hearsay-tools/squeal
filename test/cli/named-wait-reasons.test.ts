@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { testFileId } from "../../src/core/keys/index.js";
+import { testFileId } from "../../src/core/keys/reverse-index.js";
 import { writeRetries } from "../../src/core/retry/records.js";
-import { publishPromotions } from "../../src/core/scheduler/promotions.js";
-import type { CheckKey, EpochMs, WorktreeId } from "../../src/core/types/index.js";
+import { publishPromotions } from "../../src/core/scheduler/promotions-row.js";
+import type { EpochMs, WorktreeId } from "../../src/core/types/common.js";
+import type { CheckKey } from "../../src/core/types/keys.js";
 import { config, named } from "./next-step-seed.js";
 import { B, NOW, ref, repoWith, SLOW_FILE } from "./status-wait-fixture.js";
 

@@ -1,4 +1,4 @@
-import type { TestFileRef } from "../../../../../src/core/types/index.js";
+import type { TestFileRef } from "../../../../../src/core/types/keys.js";
 import type { Case, VitestInput } from "../../case.js";
 
 /*
