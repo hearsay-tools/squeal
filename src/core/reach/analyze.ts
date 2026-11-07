@@ -26,8 +26,9 @@ const zero = <K extends string>(keys: readonly K[]) =>
 export interface Route {
   readonly kind: PathKind;
   readonly gateway: RelativePath | null;
-  /** The first pair's chain. */
+  /** The first pair's chain, and the project of its test file, whose edges it follows. */
   readonly chain: readonly RelativePath[];
+  readonly project: string;
   testFiles: number;
   seconds: number;
   /** Test files whose coverage says they never call the file: loaded only or not loaded. */
@@ -163,6 +164,7 @@ function addPair(
       kind: pair.kind,
       gateway: pair.gateway,
       chain: pair.chain,
+      project: test.ref.project,
       testFiles: 0,
       seconds: 0,
       uncalled: 0,
