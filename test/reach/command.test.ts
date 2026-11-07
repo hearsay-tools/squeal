@@ -276,28 +276,31 @@ describe("squeal reach", () => {
     const conn = connectionOf(store);
     conn.transaction(() =>
       writeImportGraph(conn, {
-        root: repo.main,
-        worktreeId: repo.mainId,
         now: 1,
-        hashOf: (path) => hashes.get(path),
-        walks: [
-          {
-            project: "",
-            environment: "env-1",
-            imports: Object.entries(files).map(([path, text]) => ({
-              path,
-              sha1: createHash("sha1").update(text).digest("hex"),
-              static: edges[path] ?? [],
-              dynamic: [],
-            })),
-          },
-        ],
+        // Each walk under the key its test file holds in this worktree (R2), with that key's environment.
+        walks: [A, B].map((path) => ({
+          testFile: { project: "", path },
+          key: `key-${path}`,
+          environment: "env-1",
+          imports: Object.entries(files).map(([path, text]) => ({
+            path,
+            sha1: createHash("sha1").update(text).digest("hex"),
+            static: edges[path] ?? [],
+            dynamic: [],
+          })),
+        })),
         environments: [
           {
             project: "",
             hash: "env-1",
             files: ["vitest.config.ts", "src/reporter.ts"],
             roots: ["vitest.config.ts"],
+            imports: Object.entries(files).map(([path, text]) => ({
+              path,
+              sha1: createHash("sha1").update(text).digest("hex"),
+              static: edges[path] ?? [],
+              dynamic: [],
+            })),
           },
         ],
       }),
