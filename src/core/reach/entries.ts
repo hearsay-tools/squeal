@@ -94,6 +94,8 @@ interface Group {
   readonly files: FileReach[];
   /** Of its files' main routes, the one with the most avoidable seconds: its suggestion's evidence. */
   route: Route | null;
+  /** The file whose main route that is. */
+  lead: FileReach;
 }
 
 function groups(analysis: Analysis, snapshot: ReachSnapshot): Group[] {
@@ -105,19 +107,22 @@ function groups(analysis: Analysis, snapshot: ReachSnapshot): Group[] {
     const via = route?.gateway ?? `${route?.declared?.tests}\0${route?.declared?.input}`;
     // P4 and P6: a types-only file, and the files of a second gateway, get their own entry and text.
     const typesOnly = route !== null && typesOnlyThrough(file.path, route, snapshot);
-    const second = route === null ? null : secondGateway([file.path], route, snapshot);
+    const second = route === null ? null : secondGateway([file.path], route, snapshot, file);
     const apart = `${typesOnly}\0${second?.gateway ?? ""}`;
     const key = route === null ? `\0${file.path}` : `${route.kind}\0${via}\0${reach}\0${apart}`;
-    const group = out.get(key) ?? { files: [], route };
+    const group = out.get(key) ?? { files: [], route, lead: file };
     group.files.push(file);
-    if (route !== null && group.route !== null && better(route, group.route)) group.route = route;
+    if (route !== null && group.route !== null && better(route, group.route)) {
+      group.route = route;
+      group.lead = file;
+    }
     out.set(key, group);
   }
   return [...out.values()];
 }
 
 function entryOf(
-  { files, route }: Group,
+  { files, route, lead }: Group,
   analysis: Analysis,
   snapshot: ReachSnapshot,
 ): Omit<FileEntry, "rank"> {
@@ -141,8 +146,8 @@ function entryOf(
     kinds: split(kinds, seconds * files.length),
     kind: route?.kind ?? "import",
     gateway: route?.gateway == null ? null : routeOf(route),
-    second: route === null ? null : secondGateway(paths, route, snapshot),
-    suggestion: route === null ? null : suggestionFor(paths, route, snapshot),
+    second: route === null ? null : secondGateway(paths, route, snapshot, lead),
+    suggestion: route === null ? null : suggestionFor(paths, route, snapshot, lead),
     ...noteOf(kinds),
   };
 }
