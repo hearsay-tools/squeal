@@ -232,8 +232,12 @@ describe("the comparison, under a change unmade", SLOW, () => {
   });
 
   it("holds no component to its changed lines under a raised format that empties the list, and each unraised one under an adapter's raise (011-105)", async () => {
-    // A line every component's bundle holds (`KeyIndex`'s segments) and no rows case runs.
-    const unrun = edited("src/core/keys/check-key.ts", "`).toString();", '`, "utf8").toString();');
+    // A line every component's bundle holds (`ReverseIndex.below`) and no rows case runs.
+    const unrun = edited(
+      "src/core/keys/reverse-index.ts",
+      "paths.push(...members);",
+      "paths.push(...[...members]);",
+    );
     const plain = CASES.filter((c) => c.name === "plain rows");
     const emptied = await compare({ ...unrun, ...raised(true) }, plain);
     expect(emptied.uncovered).not.toEqual([]);
