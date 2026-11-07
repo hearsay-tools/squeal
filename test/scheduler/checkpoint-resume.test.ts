@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { FullSuiteCheckpoint } from "../../src/core/types/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { ALL_TEST_FILES, createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { ALL_TEST_FILES, createRepo, openRepoStore } from "./repo.js";
+import { openHarness } from "./vitest-harness.js";
 
 const ran = (runs: readonly { files: readonly { path: string }[] }[]) =>
   runs.flatMap((run) => run.files.map((file) => file.path)).sort();

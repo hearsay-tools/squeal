@@ -17,7 +17,8 @@ import { createPytestAdapter } from "../../src/runners/pytest/adapter.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { pythonEnv } from "../helpers/pytest-env.js";
 import { pytestRepos } from "../integration/pytest-repo.js";
-import { openHarness, openRepoStore } from "./helpers.js";
+import { openRepoStore } from "./repo.js";
+import { openHarness } from "./vitest-harness.js";
 
 /*
  * Task 007-26 (007 review wave 2.5, R2): an idle daemon's quiet pass over a

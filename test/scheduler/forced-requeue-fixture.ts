@@ -8,7 +8,8 @@ import {
   type RelativePath,
 } from "../../src/core/types/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { createRepo, type Harness, openHarness, openRepoStore } from "./helpers.js";
+import { createRepo, openRepoStore } from "./repo.js";
+import { type Harness, openHarness } from "./vitest-harness.js";
 
 /*
  * Row 011-120's repository (row 011-118's E8, `tasks/011-118/notes.md` 2):

@@ -8,14 +8,9 @@ import { DEFAULT_POLICY, type Policy, type TestFileRef } from "../../src/core/ty
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
-import {
-  createRepo,
-  type Harness,
-  type HarnessOptions,
-  openHarness,
-  openRepoStore,
-  SLOW,
-} from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { createRepo, openRepoStore } from "./repo.js";
+import { type Harness, type HarnessOptions, openHarness } from "./vitest-harness.js";
 
 /*
  * Spec 004 `lessons.md` defect 17 (task 004-54): a daemon that starts after

@@ -8,14 +8,9 @@ import {
   type TestCheckId,
 } from "../../src/core/types/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import {
-  ALL_TEST_FILES,
-  createRepo,
-  type Harness,
-  openHarness,
-  openRepoStore,
-  SLOW,
-} from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { ALL_TEST_FILES, createRepo, openRepoStore } from "./repo.js";
+import { type Harness, openHarness } from "./vitest-harness.js";
 
 const adds: TestCheckId = {
   kind: "test",

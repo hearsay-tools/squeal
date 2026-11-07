@@ -14,7 +14,9 @@ import type {
   WorktreeId,
 } from "../../src/core/types/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { openHarness } from "./node-test-harness.js";
+import { createRepo, openRepoStore } from "./repo.js";
 
 /*
  * Spec 001 D11 Capacity (task 001-376): backlog and checkpoint tiers take a

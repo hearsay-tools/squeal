@@ -4,7 +4,10 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
 import type { NodeTestProject } from "../../src/core/types/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { type Harness, openHarness, openRepoStore, SLOW } from "../scheduler/helpers.js";
+import { SLOW } from "../scheduler/cleanup.js";
+import { openHarness } from "../scheduler/node-test-harness.js";
+import { openRepoStore } from "../scheduler/repo.js";
+import type { Harness } from "../scheduler/vitest-harness.js";
 import { BASE, createRepo, stored } from "./stamps-repo.js";
 
 /*

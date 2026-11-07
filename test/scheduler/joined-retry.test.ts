@@ -2,9 +2,11 @@ import { rmSync } from "node:fs";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { readRetries } from "../../src/core/retry/index.js";
 import type { Store, TestFileRef } from "../../src/core/types/index.js";
-import { addWorktree, type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { addWorktree, openRepoStore } from "./repo.js";
 import { ask, FLAKY, failing, flakyRepo, flips, loadKnob, options, pass } from "./retry-fixture.js";
 import { HARNESS_DAEMON } from "./store-wait.js";
+import { type Harness, openHarness } from "./vitest-harness.js";
 
 /*
  * Review 001-398, B1: a retry is one decision per test file and key. While

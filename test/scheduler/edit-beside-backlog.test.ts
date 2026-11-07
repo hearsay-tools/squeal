@@ -12,7 +12,8 @@ import type {
   TestFileRef,
 } from "../../src/core/types/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { createRepo, type Harness, openHarness, openRepoStore } from "./helpers.js";
+import { createRepo, openRepoStore } from "./repo.js";
+import { type Harness, openHarness } from "./vitest-harness.js";
 
 /*
  * Task 011-21, done-when 1 and 2 (spec 011 C4 step 5 as amended 2026-10-19,

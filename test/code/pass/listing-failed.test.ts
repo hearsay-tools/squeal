@@ -8,14 +8,10 @@ import {
   type PassReport,
 } from "../../../src/core/code/pass/index.js";
 import { listingMetaKey, parseListing } from "../../../src/core/types/index.js";
-import {
-  createRepo,
-  type FailingCall,
-  type Harness,
-  openHarness,
-  openRepoStore,
-  SLOW,
-} from "../../scheduler/helpers.js";
+import { SLOW } from "../../scheduler/cleanup.js";
+import type { FailingCall } from "../../scheduler/recording-runner.js";
+import { createRepo, openRepoStore } from "../../scheduler/repo.js";
+import { type Harness, openHarness } from "../../scheduler/vitest-harness.js";
 import { open } from "../helpers.js";
 import { fakeCounter, policyOn } from "./helpers.js";
 

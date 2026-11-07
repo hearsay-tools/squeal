@@ -3,9 +3,11 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { CheckKey, TestCheckId } from "../../src/core/types/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
+import { cleanUp, SLOW, traceRepo } from "./cleanup.js";
 import { crashRekey } from "./crash-rekey-fixture.js";
-import { cleanUp, createRepo, openHarness, openRepoStore, SLOW, traceRepo } from "./helpers.js";
 import { PHASES, StallError } from "./phase-trace.js";
+import { createRepo, openRepoStore } from "./repo.js";
+import { openHarness } from "./vitest-harness.js";
 
 const check = (path: string, fullName: string): TestCheckId => ({
   kind: "test",

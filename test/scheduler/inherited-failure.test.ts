@@ -9,14 +9,9 @@ import { formatWhy, readWhy } from "../../src/core/status/index.js";
 import { type CheckId, DEFAULT_POLICY, type Store } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import {
-  addWorktree,
-  createRepo,
-  type HarnessOptions,
-  openHarness,
-  openRepoStore,
-  SLOW,
-} from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { addWorktree, createRepo, openRepoStore } from "./repo.js";
+import { type HarnessOptions, openHarness } from "./vitest-harness.js";
 
 /*
  * Spec 001 D6 as amended (task 001-170, decided by the human 2026-10-09): an

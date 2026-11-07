@@ -5,7 +5,9 @@ import { afterEach, describe, expect, it, onTestFinished } from "vitest";
 import { DEFAULT_POLICY, type TestFileRef } from "../../src/core/types/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
-import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { createRepo, openRepoStore } from "./repo.js";
+import { type Harness, openHarness } from "./vitest-harness.js";
 
 /*
  * Spec 011 C9, "Unused", as amended 2026-10-21 (row 011-84, code row

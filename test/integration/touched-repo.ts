@@ -5,7 +5,7 @@ import { expect } from "vitest";
 import { createFsHasher } from "../../src/core/hash/index.js";
 import { statCandidates } from "../../src/core/revision/index.js";
 import type { RunnerAdapter, TestFileRef } from "../../src/core/types/index.js";
-import type { Harness } from "../scheduler/helpers.js";
+import type { Harness } from "../scheduler/vitest-harness.js";
 import { BASE, OLD, readsNew, warmOptions } from "./stamps-repo.js";
 
 /*

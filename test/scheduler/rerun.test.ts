@@ -4,7 +4,7 @@ import type { Ledger } from "../../src/core/scheduler/ledger.js";
 import { RunQueue } from "../../src/core/scheduler/queue.js";
 import { failsAfterTestsPassed, queueReruns, RERUN_CAP } from "../../src/core/scheduler/rerun.js";
 import type { CheckKey, ResultRecord } from "../../src/core/types/index.js";
-import { ref } from "./helpers.js";
+import { ref } from "./repo.js";
 
 /** The ledger surface `queueReruns` uses, its queue and `enqueue`, and the notes it writes. */
 function fake(rerunCap = RERUN_CAP, slow: readonly string[] = []) {

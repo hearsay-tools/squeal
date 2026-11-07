@@ -4,7 +4,9 @@ import { formatDelta, MESSAGE_CAP_CHARS } from "../../src/core/delivery/index.js
 import { formatStatus, formatWhy, readStatus, readWhy } from "../../src/core/status/index.js";
 import type { StatusResult } from "../../src/core/types/index.js";
 import { reportOf } from "../status/why-seed.js";
-import { createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { createRepo, openRepoStore } from "./repo.js";
+import { openHarness } from "./vitest-harness.js";
 
 /** A port nothing listens on: bound once, then released. */
 async function closedPort(): Promise<number> {

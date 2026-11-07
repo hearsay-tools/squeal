@@ -10,7 +10,8 @@ import { runPytest } from "../../../src/runners/pytest/run/run.js";
 import { RUN_MISSING } from "../../helpers/baseline.js";
 import { findPython, PYTHONS, pythonEnv } from "../../helpers/pytest-env.js";
 import { pytestRepos } from "../../integration/pytest-repo.js";
-import { openHarness, openRepoStore } from "../../scheduler/helpers.js";
+import { openRepoStore } from "../../scheduler/repo.js";
+import { openHarness } from "../../scheduler/vitest-harness.js";
 
 /*
  * Task 007-55, live: the small fixture's `outcomes/test_spawn_module.py`

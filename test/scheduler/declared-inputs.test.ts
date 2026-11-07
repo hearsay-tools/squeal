@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { readDaemonNotes } from "../../src/core/notes.js";
 import { DEFAULT_POLICY, type Policy } from "../../src/core/types/index.js";
-import { ALL_TEST_FILES, createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
 import { idleAfterQuiet } from "./quiet-clock.js";
+import { ALL_TEST_FILES, createRepo, openRepoStore } from "./repo.js";
+import { openHarness } from "./vitest-harness.js";
 
 /*
  * Spec 001 D3 and D11 as amended; lessons, surprise 2: a map from test-file

@@ -3,7 +3,9 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type FocusedRun, readFocused } from "../../src/core/scheduler/focused-row.js";
 import type { RunnerAdapter } from "../../src/core/types/index.js";
-import { createRepo, openHarness, openRepoStore, ref, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { createRepo, openRepoStore, ref } from "./repo.js";
+import { openHarness } from "./vitest-harness.js";
 
 /*
  * Row 011-145 on a real Vitest adapter (spec 011 C4, C5 and C15 as amended

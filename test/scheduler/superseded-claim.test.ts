@@ -10,7 +10,9 @@ import type {
   Store,
   TestFileRef,
 } from "../../src/core/types/index.js";
-import { createRepo, type Harness, openHarness, openRepoStore, ref, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { createRepo, openRepoStore, ref } from "./repo.js";
+import { type Harness, openHarness } from "./vitest-harness.js";
 
 /*
  * Row 011-71 (`research/stuck-tier.md` section 4, done-when 1 to 3): a tier

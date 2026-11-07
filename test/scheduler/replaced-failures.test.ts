@@ -5,8 +5,10 @@ import { formatCheck } from "../../src/core/state/index.js";
 import { formatFailures, formatWhy, readFailures, readWhy } from "../../src/core/status/index.js";
 import type { AbsolutePath, FailuresReport, WhyReport } from "../../src/core/types/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { addWorktree, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { addWorktree, openRepoStore } from "./repo.js";
 import { ask, FLAKY, failing, flakyRepo, flips, loadKnob, pass } from "./retry-fixture.js";
+import { openHarness } from "./vitest-harness.js";
 
 /*
  * 011-64 R3 test 1 (gh-54, row 011-77): issue 54's probe scenario through the

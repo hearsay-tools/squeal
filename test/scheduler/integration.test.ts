@@ -4,7 +4,9 @@ import { describe, expect, it } from "vitest";
 import type { FileCheckId, TestCheckId } from "../../src/core/types/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
-import { createRepo, openHarness, openRepoStore, ref, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { createRepo, openRepoStore, ref } from "./repo.js";
+import { openHarness } from "./vitest-harness.js";
 
 const adds: TestCheckId = {
   kind: "test",

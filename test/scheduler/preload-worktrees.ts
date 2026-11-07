@@ -16,8 +16,8 @@ import {
 } from "../../src/core/types/index.js";
 import { createNodeTestAdapter } from "../../src/runners/node-test/adapter.js";
 import { git } from "../hash/git-repo.js";
-import { addWorktree, createRepo, openRepoStore } from "./helpers.js";
 import { RecordingSink } from "./recording-sink.js";
+import { addWorktree, createRepo, openRepoStore } from "./repo.js";
 
 /*
  * Two worktrees of one repository with a node:test project whose test file,

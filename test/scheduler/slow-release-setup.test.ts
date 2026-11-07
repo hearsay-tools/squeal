@@ -7,9 +7,11 @@ import { readSlowActivity } from "../../src/core/slow/state.js";
 import { DEFAULT_POLICY } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
+import { SLOW } from "./cleanup.js";
 import { hold, liveProcess, settle } from "./command-hold-fixture.js";
-import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
 import { unmergeIndex } from "./merge-hold-fixture.js";
+import { createRepo, openRepoStore } from "./repo.js";
+import { type Harness, openHarness } from "./vitest-harness.js";
 
 /*
  * Row 011-211 (004 D2, 013 V1; gh-78): the slow lane's Vitest instance

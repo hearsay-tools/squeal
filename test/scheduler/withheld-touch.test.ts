@@ -5,7 +5,9 @@ import { MAX_DISCARDS } from "../../src/core/scheduler/ledger.js";
 import { DEFAULT_POLICY, type Policy, type TestCheckId } from "../../src/core/types/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { git, waitFor } from "../watcher/helpers.js";
-import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { createRepo, openRepoStore } from "./repo.js";
+import { type Harness, openHarness } from "./vitest-harness.js";
 
 /*
  * Issue 10 (task 011-06, research `001-core-loop/research/issue-10.md`,

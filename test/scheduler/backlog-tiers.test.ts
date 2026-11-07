@@ -8,7 +8,8 @@ import { testFileId } from "../../src/core/keys/index.js";
 import { cancelled as cancelText } from "../../src/runners/vitest/run.js";
 import { waitFor } from "../watcher/helpers.js";
 import { suite } from "./backlog-suite.js";
-import { openHarness, openRepoStore } from "./helpers.js";
+import { openRepoStore } from "./repo.js";
+import { openHarness } from "./vitest-harness.js";
 
 /*
  * Lessons, defect 25: a re-queued suite ran in 559 tiers of exactly 4, 4.6 h
