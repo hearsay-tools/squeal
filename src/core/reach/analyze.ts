@@ -1,6 +1,7 @@
 import type { RelativePath } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
 import {
+  AVOIDABLE_KINDS,
   COVERAGE_STATES,
   type CoverageState,
   IMPORT_KINDS,
@@ -47,7 +48,7 @@ export interface FileReach {
   testFiles: number;
   withoutSeconds: number;
   seconds: number;
-  /** Seconds of its `import` pairs that are loaded only or not loaded (D11). */
+  /** Seconds of its `import` and in-process `setup` pairs that are loaded only or not loaded (D11; 015-120). */
   avoidable: number;
   /** Seconds of its `import` pairs whose coverage is unknown: the order's proxy for avoidable (015-116, P8). */
   unknown: number;
@@ -97,12 +98,14 @@ const UNCALLED: ReadonlySet<CoverageState> = new Set(["loaded only", "not loaded
 /**
  * The seconds a route ranks by: its avoidable seconds, and with coverage
  * unknown its import seconds, since the path kinds are then the proxy
- * (015-116, P3 and P8). Only import kinds have any.
+ * (015-116, P3 and P8). A setup route with coverage unknown has none: it
+ * cannot tell a `setupFiles` chain from the config's (015-120).
  */
 export function rankedSeconds(route: Route): number {
-  if (!IMPORT_KINDS.has(route.kind)) return 0;
+  if (!AVOIDABLE_KINDS.has(route.kind)) return 0;
   const { coverage } = route;
-  return coverage["loaded only"] + coverage["not loaded"] + coverage.unknown;
+  const avoidable = coverage["loaded only"] + coverage["not loaded"];
+  return IMPORT_KINDS.has(route.kind) ? avoidable + coverage.unknown : avoidable;
 }
 const MEASURED: ReadonlySet<CoverageState> = new Set(["called", "loaded only", "not loaded"]);
 
@@ -167,7 +170,7 @@ function addPair(
   file.seconds += seconds;
   file.kinds[pair.kind] += seconds;
   file.coverage[pair.coverage] += seconds;
-  if (IMPORT_KINDS.has(pair.kind) && UNCALLED.has(pair.coverage)) file.avoidable += seconds;
+  if (AVOIDABLE_KINDS.has(pair.kind) && UNCALLED.has(pair.coverage)) file.avoidable += seconds;
   if (IMPORT_KINDS.has(pair.kind) && pair.coverage === "unknown") file.unknown += seconds;
   if (pair.notRecorded === true) file.notRecorded++;
   file.reach.push(index);
