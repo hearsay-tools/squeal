@@ -256,7 +256,7 @@ export async function applyRunnerPart(
   if (part.failures.size > 0) touchKeys(keys.unverifyRuntime([...part.failures.keys()]));
   if (part.listed === null) touchKeys(keys.unverifyRuntime([null]));
   touchKeys(await keys.trackUntracked());
-  storeClosures(context, resolved);
+  storeClosures(context, resolved, part);
   touch(part.reresolved);
   // 016 D4: read once the refresh above took another worktree's marks, over the closures applied.
   const observedDirect = observedDirectOf(keys, changed, part.direct);
