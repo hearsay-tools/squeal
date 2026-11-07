@@ -20,6 +20,7 @@ import type { EpochMs } from "../core/types/common.js";
 const pct = (share: number) => (share > 0 && share < 0.005 ? "<1%" : `${Math.round(share * 100)}%`);
 const secs = (s: number) => `${s < 10 ? Math.round(s * 10) / 10 : Math.round(s)} s`;
 const day = (at: EpochMs) => new Date(at).toISOString().slice(0, 10);
+const has = (n: number) => (n === 1 ? "has" : "have");
 
 /** `called 24%, loaded only 41%`; with coverage off, `called: unknown`. */
 function splitText<K extends string>(split: Split<K>): string {
@@ -44,6 +45,11 @@ function head(report: ReachReport): string[] {
       ? []
       : [
           "Import chains are not stored yet, so import paths read unsplit and setup files are not listed.",
+        ]),
+    ...(suite.withoutClosure === 0
+      ? []
+      : [
+          `${plural(suite.withoutClosure, "test file")} ${has(suite.withoutClosure)} no import closure Squeal trusts at its current inputs, so its reach is not counted; the next run stores one.`,
         ]),
     ...(report.notRecorded === 0
       ? []
@@ -122,7 +128,7 @@ function proposalLines(proposal: Proposal, coverage: "on" | "off"): string[] {
     }
     case "seconds":
       return [
-        `${plural(proposal.testFiles, "test file")} of the suite have no recorded seconds and are left out of every share; ${proposal.command} runs them.`,
+        `${plural(proposal.testFiles, "test file")} of the suite ${has(proposal.testFiles)} no recorded seconds, left out of every share; ${proposal.command} runs ${proposal.testFiles === 1 ? "it" : "them"}.`,
       ];
     case "coverage": {
       const keys = proposal.keys.map((k) => `\`${k}\``).join(" and ");
