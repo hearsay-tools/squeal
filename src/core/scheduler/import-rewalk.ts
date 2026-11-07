@@ -1,3 +1,5 @@
+import { sameList } from "../fs/compare.js";
+import { assembleClosure } from "../keys/closure.js";
 import { testFileId } from "../keys/reverse-index.js";
 import { recordImportGraph } from "../store/import-edges.js";
 import { storedWalkKeys } from "../store/import-graph.js";
@@ -76,7 +78,7 @@ export class ImportRewalk {
       const ref = closure.testFile;
       if (!ledger.file(ref) || context.keys.index.key(ref) === null) return false;
       if ([ref.path, ...closure.paths].some((path) => changedMeanwhile.has(path))) return false;
-      return context.keys.keysAlike(closure);
+      return keysAlike(context, closure);
     });
     if (kept.length > 0) recordImportGraph(context, { closures: kept });
   }
@@ -86,6 +88,25 @@ export class ImportRewalk {
     this.#pending = [];
     return null;
   }
+}
+
+/**
+ * Whether `runner` assembles, as `setClosure` does, to the very closure the
+ * worktree keys its test file by: then its walk belongs to the current
+ * key, and storing it moves no key.
+ */
+function keysAlike(context: SchedulerContext, runner: RunnerClosure): boolean {
+  const { keys } = context;
+  const ref = runner.testFile;
+  const current = keys.index.closure(ref);
+  if (current === undefined) return false;
+  const observed = keys.observes(ref.project)
+    ? keys.effectiveObserved(ref, keys.observedOf(ref))
+    : [];
+  return sameList(
+    assembleClosure(runner, keys.declaredFor(ref.path), observed).paths,
+    current.paths,
+  );
 }
 
 /**
