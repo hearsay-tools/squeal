@@ -1,6 +1,6 @@
 # Wave 29: `squeal reach`, the edit-reach report (D11)
 
-Approved by the human 2026-11-07 (task f3b0d84b): design D11, name `squeal reach`, coverage-off option A, rows dispatched. Coordinator f3b0d84b. 015-108 and 015-109 run in parallel on disjoint files. 015-114 runs after both are integrated and after wave 28 (coordinator 1f84ab15, the barrel refactor) lands. 015-115 reviews the candidate.
+Approved by the human 2026-11-07 (task f3b0d84b): design D11, name `squeal reach`, coverage-off option A, rows dispatched. Coordinator f3b0d84b. 015-108 and 015-109 run in parallel on disjoint files. 015-114 runs after both are integrated. It does not wait for wave 28 (coordinator 1f84ab15, the barrel refactor): squeal before that refactor is the state `research/edit-reach.md` measured, so it is the better test of what the report finds (coordinator, 2026-11-07). 015-115 reviews the candidate.
 
 **For every row.** Read `docs/specifications/015-coverage-complexity/spec.md` D11, and `research/edit-reach.md` sections 2 and 5. Wave 28 (015-110) removes this repository's own barrels, and Biome then forbids them. So import from the defining module, never from an `index.ts` barrel. The coordinator rebases this wave onto wave 28 at integration. Use no full suite and no `pnpm run build` in a worker tree. Before finishing, read `squeal status --wait 60000 <changed paths>`, and run lint (`pnpm run lint`) and typecheck (`pnpm run typecheck`).
 
@@ -110,12 +110,12 @@ Then run the report from source against this repository's store, read-only, and 
 
 ## 015-114 proof on squeal and cezar
 
-Use /worker. Shape: finish (proof). This row is dispatched after 015-108, 015-109 and wave 28 are on the candidate.
+Use /worker. Shape: finish (proof). This row is dispatched once 015-108 and 015-109 are on the candidate; it does not wait for wave 28.
 
 **Outcome.** Run the candidate's `squeal reach` on squeal and on cezar, then write `lessons.md` "Edit reach, round 1". Copy each store with its `-wal` and `-shm` first, and keep both checkouts read-only.
 
 The report must name what `research/edit-reach.md` found by hand, or explain each miss:
-- squeal: the global teardown path (now gone after 015-106) and the barrels and `test/scheduler/helpers.ts` (changed by wave 28);
+- squeal, at the candidate's code before wave 28: the barrels (`src/core/types/index.ts`, `src/core/state/index.ts`) and `test/scheduler/helpers.ts`. The global teardown path is gone since 015-106, so it should not appear;
 - cezar: `harness-parity.testkit.ts`, `runner-factory.ts`, `vitest.setup.ts` to `contract/src/waits.ts`, and the config's reporters. Cezar has coverage records (about 204,000 since 2026-10-28; correction from task 7d611fc4, 2026-11-07: `edit-reach.md` said it had none). So its run also answers the research's open question: what share of the engine's reach calls the edited file. Test the coverage-off proposal on a scratch clone whose `squeal.config.json` sets `"coverage": { "enabled": false }`.
 
 Edges exist only after the candidate's daemon walks the closures. Use a scratch clone with a store copy, and state the load at the time.
