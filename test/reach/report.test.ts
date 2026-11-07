@@ -96,7 +96,7 @@ describe("suggestions by path kind", () => {
       files: ["src/claude-runner.ts", "src/pi-runner.ts"],
       suggestion: {
         kind: "transitive",
-        text: "load these files only where they are used: src/factory.ts imports 2 sibling modules, so each test file that loads src/factory.ts loads them all; for example, a registry that each test fills",
+        text: "load these files only where they are used: src/factory.ts imports 2 sibling modules, so each test file that loads it loads them all; 1 of the 1 test file that load these files through src/factory.ts never call them; for example, a registry that each test fills",
       },
     });
   });

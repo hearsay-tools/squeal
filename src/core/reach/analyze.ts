@@ -25,22 +25,26 @@ const zero = <K extends string>(keys: readonly K[]) =>
   Object.fromEntries(keys.map((k) => [k, 0])) as Seconds<K>;
 
 /** The pairs of one file that share a path kind and a gateway. */
-export interface Route {
+export interface Route extends Evidence {
   readonly kind: PathKind;
   readonly gateway: RelativePath | null;
   /** The first pair's chain, and its test file, whose keyed walk the chain follows. */
   readonly chain: readonly RelativePath[];
   readonly test: TestFileRef;
-  testFiles: number;
   seconds: number;
-  /** Test files whose coverage says they never call the file: loaded only or not loaded. */
-  uncalled: number;
-  /** Test files whose coverage tells: called, loaded only or not loaded. */
-  measured: number;
   readonly coverage: Seconds<CoverageState>;
   readonly declared?: DeclaredPattern;
   /** With `detail`, each test file of the route. */
   readonly tests?: { path: RelativePath; seconds: number | null; coverage: CoverageState }[];
+}
+
+/** Test files on a way to a file, and of them those whose coverage tells and those that never call it. */
+export interface Evidence {
+  testFiles: number;
+  /** Test files whose coverage says they never call the file: loaded only or not loaded. */
+  uncalled: number;
+  /** Test files whose coverage tells: called, loaded only or not loaded. */
+  measured: number;
 }
 
 export interface FileReach {
@@ -59,6 +63,8 @@ export interface FileReach {
   readonly reach: number[];
   /** `import` pairs the stored edges do not reach yet. */
   notRecorded: number;
+  /** By the module that imports it on a pair's chain (not the test file itself), its import pairs (015-121). */
+  readonly through: Map<RelativePath, Evidence>;
 }
 
 export interface TestReach {
@@ -161,6 +167,7 @@ function addPair(
       routes: new Map(),
       reach: [],
       notRecorded: 0,
+      through: new Map(),
     };
     files.set(pair.path, file);
   }
@@ -173,6 +180,12 @@ function addPair(
   if (AVOIDABLE_KINDS.has(pair.kind) && UNCALLED.has(pair.coverage)) file.avoidable += seconds;
   if (IMPORT_KINDS.has(pair.kind) && pair.coverage === "unknown") file.unknown += seconds;
   if (pair.notRecorded === true) file.notRecorded++;
+  if (IMPORT_KINDS.has(pair.kind) && pair.chain.length > 2) {
+    const importer = pair.chain.at(-2) as RelativePath;
+    const evidence = file.through.get(importer) ?? { testFiles: 0, uncalled: 0, measured: 0 };
+    count(evidence, pair.coverage);
+    file.through.set(importer, evidence);
+  }
   file.reach.push(index);
   const declared =
     pair.declared === undefined ? "" : `${pair.declared.tests}\0${pair.declared.input}`;
@@ -194,12 +207,16 @@ function addPair(
     };
     file.routes.set(key, route);
   }
-  route.testFiles++;
   route.seconds += seconds;
   route.coverage[pair.coverage] += seconds;
-  if (UNCALLED.has(pair.coverage)) route.uncalled++;
-  if (MEASURED.has(pair.coverage)) route.measured++;
+  count(route, pair.coverage);
   route.tests?.push({ path: test.ref.path, seconds: test.seconds, coverage: pair.coverage });
+}
+
+function count(evidence: Evidence, coverage: CoverageState) {
+  evidence.testFiles++;
+  if (UNCALLED.has(coverage)) evidence.uncalled++;
+  if (MEASURED.has(coverage)) evidence.measured++;
 }
 
 function testReach(test: ReachTestFile, pairs: readonly Pair[], snapshot: ReachSnapshot) {
