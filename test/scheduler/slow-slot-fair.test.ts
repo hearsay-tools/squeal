@@ -21,8 +21,8 @@ import { claimRepo, fileName, type Side, side } from "./claims-fixture.js";
 
 const probes = vi.hoisted(() => ({ count: 0 }));
 
-vi.mock("../../src/core/slow/index.js", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../src/core/slow/index.js")>();
+vi.mock("../../src/core/slow/slot.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/core/slow/slot.js")>();
   return {
     ...actual,
     slowSlotHeld: (...args: Parameters<typeof actual.slowSlotHeld>) => {

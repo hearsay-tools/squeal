@@ -31,9 +31,12 @@ vi.mock("../../../src/runners/pytest/run/run.js", () => ({
   },
 }));
 
-vi.mock("../../../src/runners/pytest/environment/index.js", async (actual) => ({
-  ...(await actual<typeof import("../../../src/runners/pytest/environment/index.js")>()),
+vi.mock("../../../src/runners/pytest/environment/states.js", async (actual) => ({
+  ...(await actual<typeof import("../../../src/runners/pytest/environment/states.js")>()),
   syncNote: () => null,
+}));
+vi.mock("../../../src/runners/pytest/environment/fingerprint.js", async (actual) => ({
+  ...(await actual<typeof import("../../../src/runners/pytest/environment/fingerprint.js")>()),
   readEnvironmentFiles: () => [],
   environmentFingerprint: () => "f",
 }));

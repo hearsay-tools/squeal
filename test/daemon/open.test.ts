@@ -7,8 +7,8 @@ import { createFixtureRepo, type FixtureRepo, readNotes } from "./helpers.js";
 
 const integrityChecks = vi.hoisted(() => ({ count: 0 }));
 
-vi.mock("../../src/core/store/index.js", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../src/core/store/index.js")>();
+vi.mock("../../src/core/store/open.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/core/store/open.js")>();
   return {
     ...actual,
     openStore: ((...args: Parameters<typeof actual.openStore>) => {

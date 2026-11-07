@@ -27,7 +27,7 @@ const hooks = vi.hoisted(() => ({
   before: null as ((call: number) => void) | null,
 }));
 
-vi.mock("../../src/core/delivery/index.js", async (importOriginal) => {
+vi.mock("../../src/core/delivery/delivery.js", async (importOriginal) => {
   const original = await importOriginal<{ createDelivery: typeof CreateDelivery }>();
   const createDelivery: typeof CreateDelivery = (store, options) => {
     const delivery = original.createDelivery(store, options);
