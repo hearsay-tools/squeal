@@ -25,12 +25,23 @@ describe("path kinds", () => {
       "src/types.ts": [],
       "src/deep.ts": [],
       "src/leaf.ts": [],
-      "vitest.config.ts": ["test/setup.ts", "src/reporter.ts"],
+      "vitest.config.ts": ["src/reporter.ts"],
       "test/setup.ts": ["src/env.ts"],
       "src/reporter.ts": [],
       "src/env.ts": [],
     },
-    { "": ["vitest.config.ts", "test/setup.ts", "src/env.ts", "src/reporter.ts"] },
+    {
+      "": {
+        files: [
+          "vitest.config.ts",
+          "test/setup.ts",
+          "src/env.ts",
+          "src/reporter.ts",
+          "src/stray.ts",
+        ],
+        roots: ["vitest.config.ts", "test/setup.ts"],
+      },
+    },
   );
   const closure = [
     T,
@@ -75,6 +86,7 @@ describe("path kinds", () => {
       "test/setup.ts": "setup",
       "src/env.ts": "setup",
       "src/reporter.ts": "setup",
+      "src/stray.ts": "setup",
     });
   });
 
@@ -95,12 +107,25 @@ describe("path kinds", () => {
     });
   });
 
-  it("chains a setup pair from the file the runner loads first", () => {
+  it("chains a setup pair from the root the runner loads first", () => {
     expect(pairs["src/env.ts"]).toMatchObject({
-      chain: ["vitest.config.ts", "test/setup.ts", "src/env.ts"],
+      chain: ["test/setup.ts", "src/env.ts"],
       gateway: "test/setup.ts",
     });
-    expect(pairs["vitest.config.ts"]?.chain).toEqual(["vitest.config.ts"]);
+    expect(pairs["src/reporter.ts"]).toMatchObject({
+      chain: ["vitest.config.ts", "src/reporter.ts"],
+      gateway: "vitest.config.ts",
+    });
+    expect(pairs["vitest.config.ts"]).toMatchObject({ chain: ["vitest.config.ts"], gateway: null });
+  });
+
+  it("never makes a root of a setup file no recorded edge reaches (R1 B3)", () => {
+    expect(pairs["src/stray.ts"]).toMatchObject({
+      kind: "setup",
+      chain: [],
+      gateway: null,
+      notRecorded: true,
+    });
   });
 
   it("without the stored edges, reads import unsplit and has no setup pairs", () => {

@@ -7,6 +7,7 @@ import type { EnvironmentHash, FileHash } from "../types/keys.js";
 import type { FileImports, RunnerClosure, RunnerEnvironment } from "../types/runner.js";
 import type { Store } from "../types/store.js";
 import { str } from "./codec.js";
+import { configImports } from "./config-imports.js";
 import type { Connection } from "./connection.js";
 import { connectionOf } from "./store.js";
 
@@ -26,9 +27,14 @@ import { connectionOf } from "./store.js";
  *   by every worktree at those bytes in that resolution context. `static`
  *   and `dynamic` are JSON lists of project paths, sorted. Named apart from
  *   0.1.415's `import_edges`, which held no resolution context.
- * - `environment_files`: the files a project's environment hash was computed
- *   from, by project and hash, as JSON `[path, blob id or null]` pairs; `null`
- *   is a path with no file (a resolution candidate).
+ * - `environment_inputs`: the files a project's environment hash was
+ *   computed from, by project and hash, as JSON `[path, blob id or null]`
+ *   pairs (`null` is a path with no file, a resolution candidate), and the
+ *   roots its setup chains start at (review 0.1.415 B3): the config files,
+ *   `setupFiles` and `globalSetup` entries, a JSON list. The edges of the
+ *   config and setup walks are kept in `import_targets` under the same
+ *   hash. Named apart from 0.1.415's `environment_files`, which held no
+ *   roots.
  * - `worktree_environments`: the hash each worktree's daemon last read for
  *   each project.
  */
@@ -45,11 +51,12 @@ CREATE TABLE import_targets (
   PRIMARY KEY (path, hash, project, environment)
 ) STRICT, WITHOUT ROWID;
 `,
-  environment_files: `
-CREATE TABLE environment_files (
+  environment_inputs: `
+CREATE TABLE environment_inputs (
   project TEXT NOT NULL,
   environment TEXT NOT NULL,
   files TEXT NOT NULL,
+  roots TEXT NOT NULL,
   recorded_at INTEGER NOT NULL,
   PRIMARY KEY (project, environment)
 ) STRICT, WITHOUT ROWID;
@@ -117,6 +124,12 @@ export function recordImportGraph(source: ImportGraphSource, fetched: FetchedPar
     held.push(...(closure.imports ?? []));
     byProject.set(project, held);
   }
+  // Review 0.1.415 B3: the setup walks' edges, and the config walk's for the files no transform walked.
+  for (const { project, imports = [], configs = [] } of fetched.environments ?? []) {
+    const walked = new Set(imports.map((file) => file.path));
+    const config = configImports(source.root, configs).filter((f) => !walked.has(f.path));
+    byProject.set(project, [...(byProject.get(project) ?? []), ...imports, ...config]);
+  }
   // An edge is kept in the resolution context it was walked in; a project with no hash yet keeps none.
   const walks = [...byProject].flatMap(([project, imports]) => {
     const environment = keys.index.environment(project);
@@ -124,9 +137,10 @@ export function recordImportGraph(source: ImportGraphSource, fetched: FetchedPar
       ? []
       : [{ project, environment, imports }];
   });
-  const environments = (fetched.environments ?? []).flatMap(({ project }) => {
+  const environments = (fetched.environments ?? []).flatMap(({ project, roots }) => {
     const hash = keys.index.environment(project);
-    return hash === undefined ? [] : [{ project, hash, files: keys.environmentFiles(project) }];
+    const files = keys.environmentFiles(project);
+    return hash === undefined ? [] : [{ project, hash, files, roots: roots ?? [] }];
   });
   if (walks.length === 0 && environments.length === 0) return;
   let conn: Connection;
@@ -166,6 +180,8 @@ export interface ImportGraphWrite {
     readonly project: ProjectName;
     readonly hash: EnvironmentHash;
     readonly files: readonly RelativePath[];
+    /** Where its setup chains start; empty when the runner gave none. */
+    readonly roots: readonly RelativePath[];
   }[];
 }
 
@@ -264,11 +280,13 @@ function writeEnvironment(
   const { project, hash } = environment;
   const files = environment.files.map((path) => [path, write.hashOf(path) ?? null]);
   conn.run(
-    `INSERT INTO environment_files (project, environment, files, recorded_at) VALUES (?, ?, ?, ?)
+    `INSERT INTO environment_inputs (project, environment, files, roots, recorded_at)
+     VALUES (?, ?, ?, ?, ?)
      ON CONFLICT (project, environment) DO NOTHING`,
     project,
     hash,
     JSON.stringify(files),
+    JSON.stringify(environment.roots),
     write.now,
   );
   const held = conn.get(
@@ -285,7 +303,7 @@ function writeEnvironment(
     hash,
   );
   // The project's lists, and edges resolved in them, that no worktree reads now go.
-  for (const table of ["environment_files", "import_targets"]) {
+  for (const table of ["environment_inputs", "import_targets"]) {
     conn.run(
       `DELETE FROM ${table} WHERE project = ? AND environment NOT IN (
          SELECT environment FROM worktree_environments WHERE project = ?)`,
