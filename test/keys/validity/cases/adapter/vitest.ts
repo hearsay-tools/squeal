@@ -281,7 +281,8 @@ const CLIENT: Readonly<Record<string, string>> = {
 
 /**
  * Row 015-108: two closures whose walks meet one barrel, through a type-only
- * import, a dynamic import and a dynamic import of a missing file.
+ * import, a dynamic import and a dynamic import of a missing file. The run
+ * only completes the second file.
  */
 const IMPORTS: Readonly<Record<string, string>> = {
   "package.json": '{ "name": "validity-vitest", "private": true, "type": "module" }\n',
@@ -300,7 +301,11 @@ const IMPORTS: Readonly<Record<string, string>> = {
     "",
   ].join("\n"),
   "test/a.test.ts": held('import { shape } from "../src/uses.js";', "expect(shape.n).toBe(1);"),
-  "test/b.test.ts": held('import { one } from "../src/barrel.js";', "expect(one).toBe(1);"),
+  // Run, so like `HELD_ONLY` it holds no skip: a change to how a skip is read leaves this case alone.
+  "test/b.test.ts": HELD_ONLY.replace(
+    'import { expect, it } from "vitest";',
+    'import { expect, it } from "vitest";\nimport { one } from "../src/barrel.js";',
+  ).replace("expect(1).toBe(1);", "expect(one).toBe(1);"),
 };
 
 export const VITEST_RUNS: readonly Case[] = [
