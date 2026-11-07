@@ -57,6 +57,9 @@ function seeded(
 ): { repo: FakeRepo; store: Store } {
   const repo = fakeRepo();
   writeFileSync(join(repo.main, "squeal.config.json"), JSON.stringify(policy));
+  // 015-122: the report lists only paths the worktree has.
+  mkdirSync(join(repo.main, "src"), { recursive: true });
+  for (const path of SRC) writeFileSync(join(repo.main, path), "export const value = 1;\n");
   const store = seedStore(repo);
   open.push(store);
   store.worktrees.upsert({
@@ -361,6 +364,7 @@ describe("squeal reach", () => {
 
   it("reads a real record's called first-line function called, and its load-only control loaded only (R1 B1)", async () => {
     const { repo, store } = seeded(ON);
+    writeFileSync(join(repo.main, "src/answer.mjs"), ANSWER);
     for (const path of [A, B]) {
       store.testFiles.put({
         testFile: { project: "", path },
