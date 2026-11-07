@@ -5,7 +5,9 @@ import { onTestFinished } from "vitest";
 import { DEFAULT_POLICY, type NodeTestProject } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { createRepo, type Harness, openHarness, openRepoStore } from "./helpers.js";
+import { openHarness } from "./node-test-harness.js";
+import { createRepo, openRepoStore } from "./repo.js";
+import type { Harness } from "./vitest-harness.js";
 
 /*
  * Task 001-307 (spec 005 D3, open question 6; 001 D4 as amended): a

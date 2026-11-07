@@ -3,7 +3,9 @@ import { describe, expect, it, vi } from "vitest";
 import { readDaemonNotes } from "../../src/core/notes.js";
 import { BusyWaits, setBusyTimeout, storePaths } from "../../src/core/store/index.js";
 import type { Store } from "../../src/core/types/index.js";
-import { createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { createRepo, openRepoStore } from "./repo.js";
+import { openHarness } from "./vitest-harness.js";
 
 /*
  * Task 001-422: a tier whose record met a busy store stopped the pump with

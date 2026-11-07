@@ -7,7 +7,7 @@ import type { RunReport, TestFileRef } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
 import { busyWaits, busyWrite } from "./busy-fixture.js";
 import { type CatchUpOptions, type CatchUpSide, catchUpSide } from "./catch-up-fixture.js";
-import { createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
 import {
   A,
   B,
@@ -22,6 +22,8 @@ import {
   rows,
   unmergeIndex,
 } from "./merge-hold-fixture.js";
+import { createRepo, openRepoStore } from "./repo.js";
+import { openHarness } from "./vitest-harness.js";
 
 /*
  * Review 0.1.273, B1 (011 C9, row 011-126): a record that waited for a busy

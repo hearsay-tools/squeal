@@ -1,8 +1,9 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { cleanUp, SLOW, traceRepo } from "./cleanup.js";
 import { crashRekey } from "./crash-rekey-fixture.js";
-import { cleanUp, createRepo, SLOW, traceRepo } from "./helpers.js";
+import { createRepo } from "./repo.js";
 
 /*
  * Row 011-289 (`research/ci-crash-rekey-stall.md`): a worker that dies while

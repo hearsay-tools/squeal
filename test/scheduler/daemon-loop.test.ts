@@ -10,8 +10,9 @@ import { createVitestAdapter } from "../../src/runners/vitest/index.js";
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
-import { createRepo, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
 import { RecordingSink } from "./recording-sink.js";
+import { createRepo, openRepoStore } from "./repo.js";
 
 describe("daemon loop: change feed into scheduler", SLOW, () => {
   it("a gitignored generated file in a closure is watched and changes the key when rewritten (B2)", async () => {

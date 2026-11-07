@@ -4,7 +4,9 @@ import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { createPermitPool, type PoolMark, readMarks } from "../../src/core/capacity/index.js";
 import type { RunOptions, TestFileRef } from "../../src/core/types/index.js";
-import { createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { createRepo, openRepoStore } from "./repo.js";
+import { openHarness } from "./vitest-harness.js";
 
 /*
  * 011 C10 as amended 2026-10-21 (row 011-98): an edit's tier runs without a

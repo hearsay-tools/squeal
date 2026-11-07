@@ -8,8 +8,10 @@ import {
   rekeyedMovesMetaKey,
 } from "../../src/core/scheduler/rekeyed-moves.js";
 import { refinedMetaKey } from "../../src/core/types/index.js";
-import { createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { createRepo, openRepoStore } from "./repo.js";
 import { captureSync, HARNESS_INCARNATION, liveDaemon } from "./store-wait.js";
+import { openHarness } from "./vitest-harness.js";
 
 /*
  * Review wave 13l, S1 (task 001-202): a second move of the file resolved by

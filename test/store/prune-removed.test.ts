@@ -4,15 +4,9 @@ import { describe, expect, it } from "vitest";
 import { storePaths } from "../../src/core/store/index.js";
 import type { CheckId, Store } from "../../src/core/types/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import {
-  ALL_TEST_FILES,
-  addWorktree,
-  createRepo,
-  type Harness,
-  openHarness,
-  openRepoStore,
-  SLOW,
-} from "../scheduler/helpers.js";
+import { SLOW } from "../scheduler/cleanup.js";
+import { ALL_TEST_FILES, addWorktree, createRepo, openRepoStore } from "../scheduler/repo.js";
+import { type Harness, openHarness } from "../scheduler/vitest-harness.js";
 import {
   DAY_MS,
   fakeCommonDir,

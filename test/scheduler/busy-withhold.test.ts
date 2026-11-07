@@ -9,8 +9,10 @@ import type { TestCheckId } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { busyWaits, busyWrite } from "./busy-fixture.js";
-import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
 import { unmergeIndex } from "./merge-hold-fixture.js";
+import { createRepo, openRepoStore } from "./repo.js";
+import { type Harness, openHarness } from "./vitest-harness.js";
 
 /*
  * Row 011-128 (review 0.1.273-r2, N2; 011 C9): a record that a busy store

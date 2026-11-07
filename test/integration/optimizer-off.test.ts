@@ -6,7 +6,9 @@ import { OPTIMIZER_OFF_NOTE, optimizerOffNote } from "../../src/core/state/optim
 import { formatStatus, readStatus } from "../../src/core/status/index.js";
 import { createVitestAdapter } from "../../src/runners/vitest/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { openHarness, openRepoStore, SLOW } from "../scheduler/helpers.js";
+import { SLOW } from "../scheduler/cleanup.js";
+import { openRepoStore } from "../scheduler/repo.js";
+import { openHarness } from "../scheduler/vitest-harness.js";
 import { SEPARATE } from "./optimizer-repo.js";
 import {
   BASE,

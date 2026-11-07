@@ -13,8 +13,9 @@ import {
 import { createVitestAdapter } from "../../src/runners/vitest/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { busyWaits } from "./busy-fixture.js";
-import { createRepo, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
 import { RecordingSink } from "./recording-sink.js";
+import { createRepo, openRepoStore } from "./repo.js";
 
 /** A feed that lags: the watcher never reports, and the idle pass is a minute away. */
 const silent: WatcherBackend = {

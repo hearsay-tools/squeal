@@ -7,7 +7,8 @@ import { createPytestAdapter } from "../../src/runners/pytest/adapter.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { findPython, PYTHONS, pythonEnv } from "../helpers/pytest-env.js";
 import { pytestRepos } from "../integration/pytest-repo.js";
-import { openHarness, openRepoStore } from "./helpers.js";
+import { openRepoStore } from "./repo.js";
+import { openHarness } from "./vitest-harness.js";
 
 /*
  * Spec 016 D4 through the real pytest adapter, on the small fixture with

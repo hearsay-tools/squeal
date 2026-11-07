@@ -8,7 +8,9 @@ import {
   setBusyTimeout,
   storePaths,
 } from "../../src/core/store/index.js";
-import { createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { createRepo, openRepoStore } from "./repo.js";
+import { openHarness } from "./vitest-harness.js";
 
 /*
  * Row 011-126 (`tasks/011-122/notes.md`, "With a tier in the hold"): a tier

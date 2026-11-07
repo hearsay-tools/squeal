@@ -8,10 +8,11 @@ import { readStatus } from "../../src/core/status/snapshot.js";
 import { readWhy } from "../../src/core/status/why.js";
 import { DEFAULT_POLICY } from "../../src/core/types/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
 import { idleAfterQuiet } from "./quiet-clock.js";
-
+import { openRepoStore } from "./repo.js";
 import { A, B, DATA, fixture, OUT, rules, scoped, text } from "./runtime-files-fixture.js";
+import { openHarness } from "./vitest-harness.js";
 
 describe("runtime-file lifecycle", SLOW, () => {
   it("uses raw-only records without a first-seen rerun, and restores tracking on reload", async () => {

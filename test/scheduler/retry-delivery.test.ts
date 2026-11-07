@@ -9,8 +9,10 @@ import {
   type RetryFact,
   type Store,
 } from "../../src/core/types/index.js";
-import { type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { openRepoStore } from "./repo.js";
 import { ask, FLAKY, failing, flakyRepo, flips, loadKnob, options, pass } from "./retry-fixture.js";
+import { type Harness, openHarness } from "./vitest-harness.js";
 
 /*
  * Spec 001 D6 as amended (001-368): a session meeting a failure at

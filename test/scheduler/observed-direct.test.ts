@@ -10,10 +10,11 @@ import {
   catchUpRepo,
   catchUpSide,
 } from "./catch-up-fixture.js";
+import { SLOW } from "./cleanup.js";
 import { editAndRun, pathsOf } from "./edit-cut-fixture.js";
-import { createRepo, openRepoStore, SLOW } from "./helpers.js";
 import { type Observing, observing } from "./one-write-path-fixture.js";
 import { NT, open as openNodeTest } from "./preload-worktrees.js";
+import { createRepo, openRepoStore } from "./repo.js";
 
 /*
  * Spec 016 D4, goal 6 (row 007-56): an edit of a path a process the test

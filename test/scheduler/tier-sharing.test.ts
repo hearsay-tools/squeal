@@ -5,7 +5,9 @@ import { afterEach, describe, expect, it } from "vitest";
 import { joinSpan, SHARE_FLOOR_MS, SHARE_RATIO } from "../../src/core/scheduler/sharing.js";
 import type { Store, WorktreeId } from "../../src/core/types/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { createRepo, openRepoStore } from "./repo.js";
+import { openHarness } from "./vitest-harness.js";
 
 /*
  * Lessons, defect 31 (001-172): a tier stores its results when it ends, so on

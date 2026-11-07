@@ -7,7 +7,10 @@ import { readSlowActivity } from "../../src/core/slow/state.js";
 import { DEFAULT_POLICY } from "../../src/core/types/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
-import { createRepo, openHarness, openRepoStore, type RecordingRunner, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import type { RecordingRunner } from "./recording-runner.js";
+import { createRepo, openRepoStore } from "./repo.js";
+import { openHarness } from "./vitest-harness.js";
 
 /*
  * Task 001-281: a slow file waiting for its consumer to go idle is looked at

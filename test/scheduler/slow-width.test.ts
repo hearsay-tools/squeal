@@ -6,7 +6,9 @@ import { acquireSlowSlot } from "../../src/core/slow/index.js";
 import { DEFAULT_POLICY, isSlowLane, type RunOptions } from "../../src/core/types/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
-import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { createRepo, openRepoStore } from "./repo.js";
+import { type Harness, openHarness } from "./vitest-harness.js";
 
 /*
  * Review 001-394 B2 (row 001-378): Vitest runs a tier under the project's own

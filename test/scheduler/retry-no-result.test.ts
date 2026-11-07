@@ -5,8 +5,10 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { askNoResultRun, readRetries } from "../../src/core/retry/index.js";
 import type { CheckId } from "../../src/core/types/index.js";
-import { createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { createRepo, openRepoStore } from "./repo.js";
 import { loadKnob, options } from "./retry-fixture.js";
+import { openHarness } from "./vitest-harness.js";
 
 /*
  * Spec 011 C5 as amended (gh-36, row 011-16): `squeal retry` on a test file

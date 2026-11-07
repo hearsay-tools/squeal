@@ -6,7 +6,9 @@ import { BACKLOG_QUIET_MS } from "../../src/core/scheduler/quiet.js";
 import { cancelled } from "../../src/runners/vitest/run.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { suite } from "./backlog-suite.js";
-import { openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { openRepoStore } from "./repo.js";
+import { openHarness } from "./vitest-harness.js";
 
 /*
  * Row 011-94, test 8 of `tasks/011-82/design.md` row A (spec 011 C4 step 5

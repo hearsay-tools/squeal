@@ -18,9 +18,10 @@ import {
 import { createNodeTestAdapter } from "../../src/runners/node-test/adapter.js";
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { createRepo, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
 import { outcome, PRELOAD_SRC, PRELOADED } from "./preload-worktrees.js";
 import { RecordingSink } from "./recording-sink.js";
+import { createRepo, openRepoStore } from "./repo.js";
 import { captureSync, HARNESS_DAEMON, HARNESS_INCARNATION } from "./store-wait.js";
 
 /*

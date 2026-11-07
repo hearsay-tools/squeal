@@ -5,7 +5,9 @@ import { readDaemonNotes } from "../../src/core/notes.js";
 import type { Store, TestCheckId } from "../../src/core/types/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { claimRepo, fileName, side } from "./claims-fixture.js";
-import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { createRepo, openRepoStore } from "./repo.js";
+import { type Harness, openHarness } from "./vitest-harness.js";
 
 /*
  * Task 007-30: the completion barrier (task 001-168) withholds a run whose

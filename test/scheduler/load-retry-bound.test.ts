@@ -2,8 +2,10 @@ import { rmSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { readDaemonNotes } from "../../src/core/notes.js";
 import { LOAD_RETRY_WAIT_MS, readRetries } from "../../src/core/retry/index.js";
-import { openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { openRepoStore } from "./repo.js";
 import { ask, FLAKY, failing, flakyRepo, flips, loadKnob, options, pass } from "./retry-fixture.js";
+import { openHarness } from "./vitest-harness.js";
 
 /*
  * Spec 011 C5 as amended (row 011-213, gh-92): a `load` retry waits for the

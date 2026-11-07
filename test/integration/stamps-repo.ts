@@ -14,7 +14,7 @@ import {
 } from "../../src/core/types/index.js";
 import { createVitestAdapter, VITEST_ADAPTER_VERSION } from "../../src/runners/vitest/index.js";
 import { git } from "../hash/git-repo.js";
-import type { Harness, HarnessOptions } from "../scheduler/helpers.js";
+import type { Harness, HarnessOptions } from "../scheduler/vitest-harness.js";
 
 /*
  * Fixture repositories for the source-stamp regressions (tasks 001-146,

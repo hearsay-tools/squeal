@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_POLICY, type PolicyInputs } from "../../src/core/types/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { openHarness, openRepoStore, SLOW } from "../scheduler/helpers.js";
+import { SLOW } from "../scheduler/cleanup.js";
+import { openRepoStore } from "../scheduler/repo.js";
+import { openHarness } from "../scheduler/vitest-harness.js";
 import { createRepo, freshOutcomes, NEW, OLD, stored } from "./stamps-repo.js";
 import {
   CSS,

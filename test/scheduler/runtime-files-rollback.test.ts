@@ -1,8 +1,10 @@
 import { expect, it } from "vitest";
 import { observedMetaKey } from "../../src/core/keys/observed.js";
 import { BusyWaits } from "../../src/core/store/index.js";
-import { openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { openRepoStore } from "./repo.js";
 import { A, B, DATA, fixture, scoped } from "./runtime-files-fixture.js";
+import { openHarness } from "./vitest-harness.js";
 
 it(
   "commits a raw-only observation when the result transaction retries after rollback",

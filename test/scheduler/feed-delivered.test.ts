@@ -19,8 +19,9 @@ import { statusText } from "../../src/harness/shared/text.js";
 import { createVitestAdapter } from "../../src/runners/vitest/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
-import { createRepo, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
 import { RecordingSink } from "./recording-sink.js";
+import { createRepo, openRepoStore } from "./repo.js";
 
 /*
  * Row 011-200 through the daemon loop: the feed hands each delivered batch's start to the store,

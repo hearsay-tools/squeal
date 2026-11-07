@@ -9,8 +9,10 @@ import { formatWhy, readWhy } from "../../src/core/status/index.js";
 import type { CheckId, Policy } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
 import { idleAfterQuiet } from "./quiet-clock.js";
+import { createRepo, openRepoStore } from "./repo.js";
+import { openHarness } from "./vitest-harness.js";
 
 /*
  * Row 011-244 (gh-98): a FAIL -> PASS at one key reads "under the same

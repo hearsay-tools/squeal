@@ -2,7 +2,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { observedStartupMetaKey } from "../../src/core/keys/index.js";
-import { SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
 import { CONTROL_TEST, keyOf, open, PRELOADED, twoWorktrees } from "./preload-worktrees.js";
 
 /*

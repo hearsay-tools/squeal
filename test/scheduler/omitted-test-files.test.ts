@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { readOmittedTestFiles } from "../../src/core/scheduler/omitted-test-files.js";
-import { createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { createRepo, openRepoStore } from "./repo.js";
+import { openHarness } from "./vitest-harness.js";
 
 /*
  * Task 005-26 (review wave-2 B1): every successful listing records how many

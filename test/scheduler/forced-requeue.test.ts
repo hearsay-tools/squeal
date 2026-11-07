@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { waitFor } from "../watcher/helpers.js";
+import { SLOW } from "./cleanup.js";
 import {
   A,
   BROKEN,
@@ -12,7 +13,6 @@ import {
   phaseOf,
   statNow,
 } from "./forced-requeue-fixture.js";
-import { SLOW } from "./helpers.js";
 
 /*
  * Row 011-120 (`tasks/011-118/notes.md` 2; 011 C4 step 5; 001-171 S1: "a

@@ -3,13 +3,9 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { DEFAULT_POLICY } from "../../src/core/types/index.js";
-import {
-  createRepo,
-  type Harness,
-  openHarness,
-  openRepoStore,
-  SLOW,
-} from "../scheduler/helpers.js";
+import { SLOW } from "../scheduler/cleanup.js";
+import { createRepo, openRepoStore } from "../scheduler/repo.js";
+import { type Harness, openHarness } from "../scheduler/vitest-harness.js";
 
 /*
  * Spec 004 goals 1, 2 and 4 on a repository shaped like this one: a Vitest

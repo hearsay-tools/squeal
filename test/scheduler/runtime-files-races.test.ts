@@ -5,9 +5,11 @@ import { observedMetaKey } from "../../src/core/keys/observed.js";
 import { runtimeFilesStatus } from "../../src/core/status/runtime-files.js";
 import { DEFAULT_POLICY, type Policy } from "../../src/core/types/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { addWorktree, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
 import { idleAfterQuiet } from "./quiet-clock.js";
+import { addWorktree, openRepoStore } from "./repo.js";
 import { A, B, DATA, fixture, rules, scoped, text } from "./runtime-files-fixture.js";
+import { openHarness } from "./vitest-harness.js";
 
 it("never records observation growth across a policy change during a run", SLOW, async () => {
   const repo = fixture(false);

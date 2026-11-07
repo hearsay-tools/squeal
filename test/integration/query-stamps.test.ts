@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { RunnerAdapter, TestFileRef } from "../../src/core/types/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { type Harness, openHarness, openRepoStore, SLOW } from "../scheduler/helpers.js";
+import { SLOW } from "../scheduler/cleanup.js";
+import { openRepoStore } from "../scheduler/repo.js";
+import { type Harness, openHarness } from "../scheduler/vitest-harness.js";
 import {
   BASE,
   createRepo,

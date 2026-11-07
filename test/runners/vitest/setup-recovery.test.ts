@@ -3,13 +3,9 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { KnownState } from "../../../src/core/types/index.js";
 import { RUN_MISSING } from "../../helpers/baseline.js";
-import {
-  createRepo,
-  type Harness,
-  openHarness,
-  openRepoStore,
-  SLOW,
-} from "../../scheduler/helpers.js";
+import { SLOW } from "../../scheduler/cleanup.js";
+import { createRepo, openRepoStore } from "../../scheduler/repo.js";
+import { type Harness, openHarness } from "../../scheduler/vitest-harness.js";
 
 /*
  * Review wave-13bp B3 and B4 (task 001-389), through the scheduler: a failed
