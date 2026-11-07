@@ -1,4 +1,4 @@
-import { testFileId } from "../../../../src/core/keys/index.js";
+import { testFileId } from "../../../../src/core/keys/reverse-index.js";
 import type { ObservedGrowth, TierObservations } from "../../../../src/core/scheduler/observed.js";
 import { barredByTouch, Withholds } from "../../../../src/core/scheduler/stability.js";
 import type { CheckKey, TestFileRef } from "../../../../src/core/types/keys.js";
