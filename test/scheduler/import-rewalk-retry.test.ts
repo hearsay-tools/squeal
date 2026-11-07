@@ -11,12 +11,12 @@ import { fakeCommonDir, open, tempDir, worktree } from "../store/helpers.js";
 
 /*
  * R1 0.1.416 (proof round 2): the re-walk goes until nothing is left. A
- * file refused at a key (its fresh closure is not the one the key covers,
- * as while start-up re-keys files from other worktrees' closures) is tried
- * again once its key moves, and the marker is written only when every
- * listed file at its current key has a walk or was refused there, and no
- * closure call failed. A real store; the keys and ledger are the few
- * calls the pass makes.
+ * file given up at a key (its fresh closure is not the one the key covers,
+ * as for a key taken from another worktree's closure, or it had nothing to
+ * store) is tried again once its key moves, during the pass and after it,
+ * and the marker is written only when every listed file at its current
+ * key has a walk or was given up there, and no closure call failed. A real
+ * store; the keys and ledger are the few calls the pass makes.
  */
 
 const A: TestFileRef = { project: "", path: "test/a.test.ts" };
@@ -107,6 +107,26 @@ describe("the re-walk's convergence (R1 0.1.416)", () => {
     expect(marker()).toBe(VERSION);
   });
 
+  it("after the pass, walks a refused file again once a later revision moved its key, and only it", () => {
+    const { context, ledger, set, rows, marker } = setup();
+    set(A, "ka", ca);
+    set(B, "kb1", stale);
+    const rewalk = new ImportRewalk(VERSION);
+    rewalk.apply(context, ledger, rewalk.next(context, ledger) ?? [], [ca, fresh], new Set());
+    expect(rewalk.next(context, ledger)).toBeNull();
+    expect(marker()).toBe(VERSION);
+    expect(rewalk.next(context, ledger)).toBeNull();
+
+    // A revision moves both keys; only B was given up, so only B is walked again.
+    set(A, "ka2", ca);
+    set(B, "kb2", fresh);
+    const again = rewalk.next(context, ledger);
+    expect(again).toEqual([B]);
+    rewalk.apply(context, ledger, again ?? [], [fresh], new Set());
+    expect(rows()).toEqual(["test/a.test.ts@ka", "test/b.test.ts@kb2"]);
+    expect(rewalk.next(context, ledger)).toBeNull();
+  });
+
   it("writes no marker while a closure call failed, so the next start tries it again", () => {
     const { context, ledger, set, rows, marker } = setup();
     set(A, "ka", ca);
@@ -119,7 +139,7 @@ describe("the re-walk's convergence (R1 0.1.416)", () => {
     expect(marker()).toBeNull();
   });
 
-  it("looks again at a file a revision changed while its chunk was read", () => {
+  it("looks again at a file a revision changed while its chunk was read, at the key it moved to", () => {
     const { context, ledger, set, rows } = setup();
     set(A, "ka", ca);
     set(B, "kb", fresh);
@@ -127,9 +147,23 @@ describe("the re-walk's convergence (R1 0.1.416)", () => {
     const first = rewalk.next(context, ledger) ?? [];
     rewalk.apply(context, ledger, first, [ca, fresh], new Set(["src/new.ts"]));
     expect(rows()).toEqual(["test/a.test.ts@ka"]);
+    // The revision re-keyed B; the pass walks it at its new key.
+    set(B, "kb2", fresh);
     const again = rewalk.next(context, ledger) ?? [];
     expect(again).toEqual([B]);
     rewalk.apply(context, ledger, again, [fresh], new Set());
-    expect(rows()).toEqual(["test/a.test.ts@ka", "test/b.test.ts@kb"]);
+    expect(rows()).toEqual(["test/a.test.ts@ka", "test/b.test.ts@kb2"]);
+  });
+
+  it("ends, giving a file up at its key when its walk has nothing to store", () => {
+    const { context, ledger, set, rows, marker } = setup();
+    set(A, "ka", ca);
+    const bare: RunnerClosure = { testFile: B, paths: [B.path] };
+    set(B, "kb", bare);
+    const rewalk = new ImportRewalk(VERSION);
+    rewalk.apply(context, ledger, rewalk.next(context, ledger) ?? [], [ca, bare], new Set());
+    expect(rewalk.next(context, ledger)).toBeNull();
+    expect(rows()).toEqual(["test/a.test.ts@ka"]);
+    expect(marker()).toBe(VERSION);
   });
 });

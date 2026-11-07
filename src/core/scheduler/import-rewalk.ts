@@ -39,51 +39,60 @@ export function rewalkMetaKey(worktreeId: WorktreeId): string {
 
 /**
  * One daemon's re-walk pass. It goes until nothing is left to walk: each
- * time its list runs out it looks again, so a file whose key moved since
- * (start-up keys files from other worktrees' newest closures, then
- * re-keys them; proof round 2) is walked at its new key. A file is given
- * up at a key, not for good: refused, when its fresh closure is not the
- * one the key covers, or failed, when the runner's call failed. Either is
- * tried again once its key moves.
+ * time its list runs out it looks again. A file whose walk was not stored
+ * is given up at the key it held, not for good: its fresh closure is not
+ * the one the key covers, the runner's call failed, a revision changed it
+ * meanwhile, or there is nothing to store. Each file is tried at most once
+ * at a key, so the pass ends.
+ *
+ * A file given up at a key that moves later is tried again at its new
+ * key, during the pass and after it, at the pump's next idle point, so
+ * after the revision or the run that moved it: a key a start took from
+ * another worktree's closure moves to this worktree's own only then
+ * (proof round 2). After the pass only those files are looked at, while
+ * they have no walk at their new key; an edit's refinement or a run
+ * stores one for most.
  */
 export class ImportRewalk {
   #pending: TestFileRef[] = [];
   #looked = false;
   #walked = 0;
-  #done = false;
-  /** By test file, the key it was refused at. */
-  readonly #refused = new Map<string, CheckKey>();
-  /** By test file, the key its closure call failed at. */
-  readonly #failed = new Map<string, CheckKey>();
+  #failed = false;
+  #ended = false;
+  /** By test file, the file and the key it was given up at. */
+  readonly #givenUp = new Map<string, { readonly ref: TestFileRef; readonly key: CheckKey }>();
 
   constructor(private readonly version: string) {}
 
   /**
-   * The next chunk to walk; `null` once nothing is left. Then every listed
-   * Vitest test file at its current key has a walk, or was refused or
-   * failed at that very key, and the pass writes its marker unless a call
-   * failed (the next start tries those again) or it walked nothing.
+   * The next chunk to walk; `null` when nothing is left. At the end of the
+   * pass every listed Vitest test file at its current key has a walk or was
+   * given up at that very key, and the pass writes its marker unless a
+   * call failed (the next start tries those again) or it walked nothing.
+   * After the end, the given-up files whose key moved.
    */
   next(context: SchedulerContext, ledger: Ledger): readonly TestFileRef[] | null {
-    if (this.#done) return null;
     const marker = rewalkMetaKey(context.worktreeId);
     if (!this.#looked) {
       this.#looked = true;
-      if (context.store.meta.get(marker) === this.version) return this.#finish();
+      this.#ended = context.store.meta.get(marker) === this.version;
     }
+    if (this.#ended) return this.#moved(context, ledger);
     if (this.#pending.length === 0) this.#pending = this.#eligible(context, ledger);
     const chunk = this.#pending.splice(0, REWALK_CHUNK);
     if (chunk.length > 0) return chunk;
-    if (this.#walked > 0 && this.#failed.size === 0) context.store.meta.set(marker, this.version);
-    return this.#finish();
+    if (this.#walked > 0 && !this.#failed) context.store.meta.set(marker, this.version);
+    this.#ended = true;
+    return null;
   }
 
   /**
    * Stores, under the lock, the walks of `closures` that still belong to
-   * their file's current key: the file is listed and keyed, no revision
-   * changed a path of its closure while `chunk` was read, and the closure
-   * assembles to the one the key covers. No closure is set. A file changed
-   * meanwhile is left to its revision, and looked at again after it.
+   * their file's current key: the file is listed and keyed with an
+   * environment, no revision changed a path of its closure while `chunk`
+   * was read, the runner gave its imports, and the closure assembles to the
+   * one the key covers. No closure is set. Every other file of `chunk` is
+   * given up at its current key.
    */
   apply(
     context: SchedulerContext,
@@ -92,37 +101,49 @@ export class ImportRewalk {
     closures: readonly RunnerClosure[],
     changedMeanwhile: ReadonlySet<RelativePath>,
   ): void {
-    const answered = new Set(closures.map((closure) => testFileId(closure.testFile)));
-    for (const ref of chunk) {
-      const key = context.keys.index.key(ref);
-      if (!answered.has(testFileId(ref)) && key !== null) this.#failed.set(testFileId(ref), key);
-    }
     this.#walked += closures.length;
-    const kept: RunnerClosure[] = [];
-    for (const closure of closures) {
+    if (closures.length < chunk.length) this.#failed = true;
+    const kept = closures.filter((closure) => {
       const ref = closure.testFile;
-      const key = context.keys.index.key(ref);
-      if (!ledger.file(ref) || key === null) continue;
-      if ([ref.path, ...closure.paths].some((path) => changedMeanwhile.has(path))) continue;
-      if (keysAlike(context, closure)) kept.push(closure);
-      else this.#refused.set(testFileId(ref), key);
-    }
+      if (!ledger.file(ref) || closure.imports === undefined) return false;
+      if (context.keys.index.environment(ref.project) === undefined) return false;
+      if ([ref.path, ...closure.paths].some((path) => changedMeanwhile.has(path))) return false;
+      return keysAlike(context, closure);
+    });
     if (kept.length > 0) recordImportGraph(context, { closures: kept });
+    const stored = new Set(kept.map((closure) => testFileId(closure.testFile)));
+    for (const ref of chunk) {
+      const id = testFileId(ref);
+      const key = context.keys.index.key(ref);
+      if (stored.has(id) || key === null) this.#givenUp.delete(id);
+      else this.#givenUp.set(id, { ref, key });
+    }
   }
 
   /** What is left to walk: unwalked, and not given up at the key it holds now. */
   #eligible(context: SchedulerContext, ledger: Ledger): TestFileRef[] {
-    return unwalked(context, ledger).filter((ref) => {
-      const id = testFileId(ref);
-      const key = context.keys.index.key(ref);
-      return this.#refused.get(id) !== key && this.#failed.get(id) !== key;
-    });
+    return unwalked(context, ledger).filter(
+      (ref) => this.#givenUp.get(testFileId(ref))?.key !== context.keys.index.key(ref),
+    );
   }
 
-  #finish(): null {
-    this.#done = true;
-    this.#pending = [];
-    return null;
+  /**
+   * After the pass: the given-up files whose key moved and that have no
+   * walk at their new key. A file with one, or that is not listed or keyed
+   * any more, is forgotten. Without a moved key, no store read.
+   */
+  #moved(context: SchedulerContext, ledger: Ledger): readonly TestFileRef[] | null {
+    const moved = [...this.#givenUp.values()].filter(
+      ({ ref, key }) => context.keys.index.key(ref) !== key,
+    );
+    if (moved.length === 0) return null;
+    const left = new Set(unwalked(context, ledger).map(testFileId));
+    const chunk: TestFileRef[] = [];
+    for (const { ref } of moved) {
+      if (!left.has(testFileId(ref))) this.#givenUp.delete(testFileId(ref));
+      else if (chunk.length < REWALK_CHUNK) chunk.push(ref);
+    }
+    return chunk.length > 0 ? chunk : null;
   }
 }
 
