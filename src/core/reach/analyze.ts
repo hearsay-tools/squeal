@@ -77,6 +77,8 @@ export interface Analysis {
     readonly testFiles: number;
     readonly seconds: number;
     readonly withoutSeconds: number;
+    /** Test files with no closure Squeal trusts at their current inputs: their reach is not counted. */
+    readonly withoutClosure: number;
     /** Test files of groups at `manual`, left out. */
     readonly leftOut: number;
   };
@@ -111,6 +113,7 @@ export function analyze(
       testFiles: suite.length,
       seconds: suite.reduce((sum, t) => sum + (t.seconds ?? 0), 0),
       withoutSeconds: suite.filter((t) => t.seconds === null).length,
+      withoutClosure: suite.filter((t) => t.closure === null).length,
       leftOut: snapshot.testFiles.length - suite.length,
     },
     files,
