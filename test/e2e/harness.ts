@@ -32,10 +32,6 @@ import {
 import { DEMO, MATH, RATES, SLOW, SOURCE_PATH, type Source, STRINGS } from "./sources.js";
 import { metric, type RunRow, readRuns, registeredSessions, until } from "./support.js";
 
-export { type HookName, PLUGINS, type Plugin } from "./plugins.js";
-export { DEMO, MATH, RATES, RESOURCES, SLOW, SLOW_MS, STRINGS } from "./sources.js";
-export { hasNodeModulesAbove, until } from "./support.js";
-
 /*
  * Spec 001 Testing, end to end, and review wave 3 "Inputs for wave 4": the
  * plugin as a marketplace install copies it (the tracked files of

@@ -21,7 +21,6 @@ import { dependencyLines, type Overlay, ROOT, readAsOneOf, versionOf } from "./t
 import { type CaseVerdict, same, verdictOf } from "./verdict.js";
 
 export type { CaseVerdict } from "./verdict.js";
-export { failures, reportedChanges, wordingChanges } from "./verdict.js";
 
 /*
  * The comparison (011 C3, task 011-37 sections 2 and 3): each component's

@@ -167,5 +167,3 @@ export function decidePresence(facts: PresenceFacts, at: EpochMs): Presence {
     heartbeatLate,
   };
 }
-
-export { spawnStartCurrent, stopHeld } from "./findings.js";

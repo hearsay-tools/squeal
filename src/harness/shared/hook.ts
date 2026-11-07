@@ -76,8 +76,6 @@ export interface HookDeps {
   readonly handOff?: HandOff;
 }
 
-export { HOOK_TIMEOUT_MS } from "../../core/types/store-records.js";
-
 /**
  * Runs `fn` with an open store; `null` without one. The reports its
  * deliveries prepared (row 011-288) go, with the store, to `deps.handOff`

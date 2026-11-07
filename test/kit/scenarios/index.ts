@@ -11,7 +11,6 @@ import { K10 } from "./k10-two-worktrees.js";
 import type { Scenario } from "./types.js";
 
 export type { Module, Outcome, Scenario, Step, Written } from "./types.js";
-export { isTest } from "./types.js";
 
 /** Every scenario, in the order each runner's kit file plays them (spec 016 D1). */
 export const SCENARIOS: readonly Scenario[] = [K1, K2, K3, K4, K5, K6, K7, K8, K9, K10];
