@@ -2,15 +2,10 @@ import { appendFileSync } from "node:fs";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { movesSeq } from "../../src/core/scheduler/rekeyed-moves.js";
 import type { RevisionNumber } from "../../src/core/types/index.js";
-import {
-  ALL_TEST_FILES,
-  createRepo,
-  type Harness,
-  openHarness,
-  openRepoStore,
-  SLOW,
-} from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { ALL_TEST_FILES, createRepo, openRepoStore } from "./repo.js";
 import { liveDaemon, movesOnceRefined } from "./store-wait.js";
+import { type Harness, openHarness } from "./vitest-harness.js";
 
 /*
  * Lessons, defect 32 (task 001-186): `status --wait` holds for the test files

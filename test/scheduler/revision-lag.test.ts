@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import { isPending } from "../../src/core/state/index.js";
 import { cancelled as cancelText } from "../../src/runners/vitest/run.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { createRepo, openRepoStore } from "./repo.js";
+import { type Harness, openHarness } from "./vitest-harness.js";
 
 /*
  * Lessons, defect 1: a revision lagged the workspace by a whole tier, because

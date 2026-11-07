@@ -4,8 +4,10 @@ import { join } from "node:path";
 import { afterEach, expect, it } from "vitest";
 import { cancelled } from "../../src/runners/vitest/run.js";
 import { git } from "../hash/git-repo.js";
-import { createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { createRepo, openRepoStore } from "./repo.js";
 import { CUT_WITHIN_MS, SETTLE_MS } from "./tier-yields-fixture.js";
+import { openHarness } from "./vitest-harness.js";
 
 /*
  * Row 011-54 on a real Vitest adapter (spec 011 C4 step 5; review

@@ -7,8 +7,10 @@ import { readDaemonNotes } from "../../src/core/notes.js";
 import { readSlowActivity } from "../../src/core/slow/state.js";
 import { DEFAULT_POLICY, type Policy, type SlowTierWait } from "../../src/core/types/index.js";
 import { CODE_OFF } from "../helpers/policy.js";
-import { createRepo, openHarness, openRepoStore, SLOW } from "../scheduler/helpers.js";
+import { SLOW } from "../scheduler/cleanup.js";
+import { createRepo, openRepoStore } from "../scheduler/repo.js";
 import { HARNESS_DAEMON } from "../scheduler/store-wait.js";
+import { openHarness } from "../scheduler/vitest-harness.js";
 import { waitFor } from "../watcher/helpers.js";
 import {
   HARNESSES,

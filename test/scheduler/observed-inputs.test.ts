@@ -5,14 +5,9 @@ import { observedMetaKey } from "../../src/core/keys/index.js";
 import { DEFAULT_POLICY, type Policy, type TestFileRef } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import {
-  addWorktree,
-  createRepo,
-  type Harness,
-  openHarness,
-  openRepoStore,
-  SLOW,
-} from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { addWorktree, createRepo, openRepoStore } from "./repo.js";
+import { type Harness, openHarness } from "./vitest-harness.js";
 
 /*
  * Task 001-132 (spec 001 D3, D4, D5, D11 as amended; research

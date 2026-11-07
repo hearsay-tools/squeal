@@ -7,7 +7,9 @@ import { readSlowEvidence, slowTokensMetaKey } from "../../src/core/slow/rank-st
 import { DEFAULT_POLICY, type Policy } from "../../src/core/types/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
-import { createRepo, type Harness, openHarness, openRepoStore, ref, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { createRepo, openRepoStore, ref } from "./repo.js";
+import { type Harness, openHarness } from "./vitest-harness.js";
 
 /*
  * Spec 004 D2 as amended 2026-10-18 (task 004-82) with the scheduler over

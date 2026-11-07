@@ -9,9 +9,11 @@ import { DEFAULT_POLICY, type Policy } from "../../src/core/types/index.js";
 import { delay } from "../daemon/helpers.js";
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
 import { idleAfterQuiet } from "./quiet-clock.js";
+import { openRepoStore } from "./repo.js";
 import { A, B, DATA, fixture, scoped } from "./runtime-files-fixture.js";
+import { type Harness, openHarness } from "./vitest-harness.js";
 
 /** The daemon restarts these timers on policy reload and keeps their accepted snapshot. */
 function observedTimers(h: Harness, commonDir: string) {

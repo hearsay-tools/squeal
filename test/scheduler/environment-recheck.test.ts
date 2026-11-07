@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { InvalidateResult, RunnerAdapter } from "../../src/core/types/index.js";
-import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { createRepo, openRepoStore } from "./repo.js";
+import { type Harness, openHarness } from "./vitest-harness.js";
 
 /*
  * Task 007-26 (007 review wave 2.5, R2): a reconciliation pass that applied

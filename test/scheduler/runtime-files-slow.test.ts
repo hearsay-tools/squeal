@@ -3,9 +3,11 @@ import { join } from "node:path";
 import { expect, it, onTestFinished } from "vitest";
 import { observedMetaKey } from "../../src/core/keys/observed.js";
 import type { Policy } from "../../src/core/types/index.js";
-import { type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
 import { idleAfterQuiet } from "./quiet-clock.js";
+import { openRepoStore } from "./repo.js";
 import { A, B, DATA, fixture, scoped, text } from "./runtime-files-fixture.js";
+import { type Harness, openHarness } from "./vitest-harness.js";
 
 const slowPolicy: Policy = {
   ...scoped,

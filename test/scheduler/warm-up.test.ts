@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { readIgnoredReads } from "../../src/core/status/index.js";
 import { storePaths } from "../../src/core/store/index.js";
 import { readRuns } from "../e2e/support.js";
-import type { Harness } from "./helpers.js";
-import { SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import type { Harness } from "./vitest-harness.js";
 import {
   BUILD,
   MANY,

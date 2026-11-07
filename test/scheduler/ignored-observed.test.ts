@@ -4,8 +4,9 @@ import { describe, expect, it } from "vitest";
 import { observedMetaKey } from "../../src/core/keys/index.js";
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { createRepo, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
 import { NT, open as openNodeTest } from "./preload-worktrees.js";
+import { createRepo, openRepoStore } from "./repo.js";
 
 /*
  * Spec 016 D4, the written-directory bound (the human, 2026-10-25, O1 (b)),

@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { createRepo } from "./helpers.js";
+import { createRepo } from "./repo.js";
 
 /* The suites of the backlog tests (task 001-124 and after): one module per test file. */
 

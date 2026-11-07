@@ -1,7 +1,9 @@
 import { describe, expect, it, onTestFinished } from "vitest";
 import { waitForStatus } from "../../src/cli/status-wait.js";
-import { createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { createRepo, openRepoStore } from "./repo.js";
 import { captureSync, liveDaemon } from "./store-wait.js";
+import { openHarness } from "./vitest-harness.js";
 
 /*
  * Review wave 13k, S1 (task 001-196): a result clears its file's

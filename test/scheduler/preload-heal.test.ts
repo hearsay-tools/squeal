@@ -15,8 +15,9 @@ import {
 import { createNodeTestAdapter } from "../../src/runners/node-test/adapter.js";
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { addWorktree, createRepo, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
 import { RecordingSink } from "./recording-sink.js";
+import { addWorktree, createRepo, openRepoStore } from "./repo.js";
 
 /*
  * Review wave 13i, B2 (task 001-187, a stopgap until row 003-43): a node:test

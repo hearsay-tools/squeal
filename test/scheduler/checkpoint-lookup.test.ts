@@ -4,7 +4,9 @@ import { describe, expect, it } from "vitest";
 import { checkpointMetaKey } from "../../src/core/types/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
-import { createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { createRepo, openRepoStore } from "./repo.js";
+import { openHarness } from "./vitest-harness.js";
 
 /*
  * Row 011-118 (`research/edit-latency.md` 3, E8; 011 C4 Explicit

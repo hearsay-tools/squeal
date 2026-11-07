@@ -4,7 +4,10 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it, onTestFinished } from "vitest";
 import type { NodeTestProject, Store, WorktreeId } from "../../src/core/types/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { openHarness } from "./node-test-harness.js";
+import { createRepo, openRepoStore } from "./repo.js";
+import type { Harness } from "./vitest-harness.js";
 
 /*
  * Lessons 003, defect 2: at r4 the edit touched only node:test files, whose

@@ -4,14 +4,9 @@ import { describe, expect, it } from "vitest";
 import { REINSTALL_NOTE } from "../../src/core/scheduler/index.js";
 import { InstallStamps } from "../../src/core/scheduler/install-stamp.js";
 import type { RunnerAdapter } from "../../src/core/types/index.js";
-import {
-  createRepo,
-  type Harness,
-  type HarnessOptions,
-  openHarness,
-  openRepoStore,
-  SLOW,
-} from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { createRepo, openRepoStore } from "./repo.js";
+import { type Harness, type HarnessOptions, openHarness } from "./vitest-harness.js";
 
 /*
  * Task 001-113, decided by the human after review wave 11c (B1, B2): when

@@ -7,7 +7,9 @@ import { readTurn } from "../../src/core/delivery/turn.js";
 import { DEFAULT_POLICY } from "../../src/core/types/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
-import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { createRepo, openRepoStore } from "./repo.js";
+import { type Harness, openHarness } from "./vitest-harness.js";
 
 /*
  * Spec 004 D2, review wave-1 B1: the trigger that chose a slow file is checked

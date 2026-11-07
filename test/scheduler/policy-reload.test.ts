@@ -1,14 +1,9 @@
 import { describe, expect, it, onTestFinished } from "vitest";
 import { DEFAULT_POLICY, type FileChange, type Policy } from "../../src/core/types/index.js";
-import {
-  ALL_TEST_FILES,
-  createRepo,
-  type Harness,
-  openHarness,
-  openRepoStore,
-  SLOW,
-} from "./helpers.js";
+import { SLOW } from "./cleanup.js";
 import { idleAfterQuiet } from "./quiet-clock.js";
+import { ALL_TEST_FILES, createRepo, openRepoStore } from "./repo.js";
+import { type Harness, openHarness } from "./vitest-harness.js";
 
 const keysOf = (h: Harness) => ALL_TEST_FILES.map((path) => h.keyOf(path));
 

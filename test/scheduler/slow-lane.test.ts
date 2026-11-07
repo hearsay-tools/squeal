@@ -5,7 +5,9 @@ import { setTimeout as delay } from "node:timers/promises";
 import { afterEach, describe, expect, it, onTestFinished } from "vitest";
 import { DEFAULT_POLICY } from "../../src/core/types/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { createRepo, openRepoStore } from "./repo.js";
+import { type Harness, openHarness } from "./vitest-harness.js";
 
 /*
  * Spec 004 D2, execution: a slow file runs in a lane of its own,

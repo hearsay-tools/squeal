@@ -8,7 +8,9 @@ import { HOST_WINDOW_MIN_MS } from "../../src/core/capacity/index.js";
 import { poolKind } from "../../src/core/scheduler/capacity.js";
 import type { RunOptions, TestFileRef } from "../../src/core/types/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { createRepo, openRepoStore } from "./repo.js";
+import { openHarness } from "./vitest-harness.js";
 
 /*
  * 011 C10 Size as amended 2026-10-24 (row 011-182): a backlog tier's permits

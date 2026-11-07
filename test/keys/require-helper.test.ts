@@ -2,7 +2,9 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { createRepo, openHarness, openRepoStore, SLOW } from "../scheduler/helpers.js";
+import { SLOW } from "../scheduler/cleanup.js";
+import { createRepo, openRepoStore } from "../scheduler/repo.js";
+import { openHarness } from "../scheduler/vitest-harness.js";
 
 // Task 001-117, review wave-11d S3, through the scheduler: a project file a test loads by a
 // relative `require` is in the test file's closure, so editing it re-keys and re-runs the test.

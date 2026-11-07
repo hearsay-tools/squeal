@@ -13,14 +13,9 @@ import {
 import type { KnownState } from "../../../src/core/types/index.js";
 import { knownFailuresLine } from "../../../src/harness/shared/text.js";
 import { RUN_MISSING } from "../../helpers/baseline.js";
-import {
-  ALL_TEST_FILES,
-  createRepo,
-  type Harness,
-  openHarness,
-  openRepoStore,
-  SLOW,
-} from "../../scheduler/helpers.js";
+import { SLOW } from "../../scheduler/cleanup.js";
+import { ALL_TEST_FILES, createRepo, openRepoStore } from "../../scheduler/repo.js";
+import { type Harness, openHarness } from "../../scheduler/vitest-harness.js";
 
 /*
  * Task 001-382, research cezar-e2e-setup: Vitest marks a project's

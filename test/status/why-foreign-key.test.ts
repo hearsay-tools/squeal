@@ -5,7 +5,9 @@ import { formatWhy, readWhy, WHY_RESULT_LIMIT } from "../../src/core/status/inde
 import type { CheckId, ResultRecord } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { addWorktree, createRepo, openHarness, openRepoStore, SLOW } from "../scheduler/helpers.js";
+import { SLOW } from "../scheduler/cleanup.js";
+import { addWorktree, createRepo, openRepoStore } from "../scheduler/repo.js";
+import { openHarness } from "../scheduler/vitest-harness.js";
 import { result } from "../store/helpers.js";
 import { reportOf } from "./why-seed.js";
 

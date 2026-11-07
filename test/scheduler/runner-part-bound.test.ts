@@ -7,7 +7,9 @@ import {
 } from "../../src/core/scheduler/runner-work-bound.js";
 import { type DaemonNote, notesMetaKey } from "../../src/core/types/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { createRepo, openRepoStore } from "./repo.js";
+import { type Harness, openHarness } from "./vitest-harness.js";
 
 /*
  * Review wave-13r B2 (task 001-228): a runner-part call had no maximum

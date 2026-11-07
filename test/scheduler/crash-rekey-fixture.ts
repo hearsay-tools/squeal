@@ -4,8 +4,10 @@ import { expect } from "vitest";
 import type { TestCheckId } from "../../src/core/types/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
-import { type createRepo, openHarness, openRepoStore, type RecordedRun } from "./helpers.js";
 import { type PhaseTrace, processState } from "./phase-trace.js";
+import type { RecordedRun } from "./recording-runner.js";
+import { type createRepo, openRepoStore } from "./repo.js";
+import { openHarness } from "./vitest-harness.js";
 
 /** A child's poll gives its bound this much room, so the trace's bound runs out first. */
 const POLL_SLACK_MS = 2_000;

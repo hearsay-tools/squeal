@@ -3,7 +3,7 @@ import { startTimers } from "../../src/core/daemon/lifecycle.js";
 import { worktreeIdFor } from "../../src/core/fs/index.js";
 import { DEFAULT_POLICY, type NodeTestProject, type Store } from "../../src/core/types/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
 import {
   CONTROL_TEST,
   HIDDEN_TEST,

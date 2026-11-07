@@ -4,7 +4,9 @@ import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { openHarness, openRepoStore, SLOW } from "../scheduler/helpers.js";
+import { SLOW } from "../scheduler/cleanup.js";
+import { openRepoStore } from "../scheduler/repo.js";
+import { openHarness } from "../scheduler/vitest-harness.js";
 import {
   createRepo,
   freshOutcomes,

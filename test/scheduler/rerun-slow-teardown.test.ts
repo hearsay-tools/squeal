@@ -8,7 +8,9 @@ import { formatWhy, readWhy } from "../../src/core/status/index.js";
 import { type CheckId, DEFAULT_POLICY } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { createRepo, type HarnessOptions, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { createRepo, openRepoStore } from "./repo.js";
+import { type HarnessOptions, openHarness } from "./vitest-harness.js";
 
 /*
  * Spec 011 C5 as amended 2026-10-18 (gh-20, task 011-19;

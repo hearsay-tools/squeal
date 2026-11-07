@@ -3,15 +3,10 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { git } from "../hash/git-repo.js";
 import { writeInstall } from "../keys/install.js";
-import {
-  ALL_TEST_FILES,
-  createRepo,
-  type HarnessOptions,
-  openHarness,
-  openRepoStore,
-  SLOW,
-} from "./helpers.js";
+import { SLOW } from "./cleanup.js";
 import { idleAfterQuiet } from "./quiet-clock.js";
+import { ALL_TEST_FILES, createRepo, openRepoStore } from "./repo.js";
+import { type HarnessOptions, openHarness } from "./vitest-harness.js";
 
 /*
  * Task 011-85, regression 4 (011 C11, Q5): a test that reads the root

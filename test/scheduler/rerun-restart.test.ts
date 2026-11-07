@@ -7,7 +7,9 @@ import { checkIdentity, readFlakyNotes } from "../../src/core/state/index.js";
 import type { CheckId } from "../../src/core/types/index.js";
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
-import { createRepo, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { createRepo, openRepoStore } from "./repo.js";
+import { openHarness } from "./vitest-harness.js";
 
 /*
  * Review wave 13i, S1 (task 001-187): a new failure's pending re-run and the

@@ -4,7 +4,9 @@ import { describe, expect, it } from "vitest";
 import type { TestFileRef } from "../../../src/core/types/index.js";
 import { git } from "../../hash/git-repo.js";
 import { RUN_MISSING } from "../../helpers/baseline.js";
-import { createRepo, openHarness, openRepoStore, SLOW } from "../../scheduler/helpers.js";
+import { SLOW } from "../../scheduler/cleanup.js";
+import { createRepo, openRepoStore } from "../../scheduler/repo.js";
+import { openHarness } from "../../scheduler/vitest-harness.js";
 
 /*
  * Task 011-60 (gh-56; research issue-56 F2): a Vitest test whose child

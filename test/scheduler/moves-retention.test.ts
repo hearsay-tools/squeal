@@ -9,8 +9,10 @@ import {
   rekeyedMovesMetaKey,
 } from "../../src/core/scheduler/rekeyed-moves.js";
 import { refinedMetaKey } from "../../src/core/types/index.js";
-import { createRepo, type Harness, openHarness, openRepoStore, SLOW } from "./helpers.js";
+import { SLOW } from "./cleanup.js";
+import { createRepo, openRepoStore } from "./repo.js";
 import { captureSync, HARNESS_INCARNATION, liveDaemon } from "./store-wait.js";
+import { type Harness, openHarness } from "./vitest-harness.js";
 
 /*
  * Review wave-13r B2 (task 001-226): abandoned sync requests kept retention
