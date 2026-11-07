@@ -16,7 +16,7 @@
 // barrel, side-effect imports, `vi.mock`/`vi.importActual`/`vi.doMock` paths and other import()
 // forms that name a barrel, and barrel imports outside src/ and test/: those are hand fixes.
 // It also lists mocks and dynamic imports of a module that defines code and re-exports, to check.
-// It keeps the key alarm's barrel imports under test/keys/validity/ (`KEEP_IMPORT`, below).
+// It keeps the key alarm's barrel imports in test/keys/validity/ (`KEEP_IMPORT`, below).
 //
 // Usage, from the repository root:
 //   node docs/specifications/015-coverage-complexity/tasks/015-110/rewrite-imports.mjs [--write] [--delete] [--skip <path>]...
@@ -48,14 +48,16 @@ const tracked = execFileSync("git", ["ls-files", "-z"], { cwd: root, encoding: "
   .filter((f) => CODE.test(f) && !f.endsWith(".d.ts") && !f.startsWith("docs/"));
 const inScope = (f) => /^(src|test)\//.test(f) && !f.startsWith("test/fixtures/");
 const KEEP = (f) => f === "src/cli/index.ts" || f.startsWith("test/keys/validity/entries/");
-// Imports kept as they are. The key alarm's entries re-export the keys and recorder barrels as
-// namespaces: their emitted code is what the alarm compares with the last release. Its harness
-// is bundled against older releases too (test/keys/validity/notes.md, `bundle.ts`): through the
-// keys barrel it finds `environmentHash`, whose module is newer than the oldest release it
-// compares (squeal--v0.1.232).
+// Imports kept as they are (the coordinator, 2026-11-07). The key alarm's entries re-export the
+// keys and recorder barrels as namespaces: their emitted code is what the alarm compares with the
+// last release. Its harness is bundled against older releases too (test/keys/validity/notes.md,
+// `bundle.ts`): through the keys barrel harness.ts finds `environmentHash`, whose module
+// (keys/environment-hash.ts, v0.1.388) is newer than the oldest release it compares
+// (squeal--v0.1.232), and assemble.ts reads the barrel as a namespace, `observedStartupMetaKey?.`.
 const KEEP_IMPORT = (from, target) =>
   from.startsWith("test/keys/validity/entries/") ||
-  (from.startsWith("test/keys/validity/") && target === "src/core/keys/index.ts");
+  (target === "src/core/keys/index.ts" &&
+    ["test/keys/validity/harness.ts", "test/keys/validity/harness/assemble.ts"].includes(from));
 
 const config = ts.getParsedCommandLineOfConfigFile(join(root, "tsconfig.json"), {}, {
   ...ts.sys,
