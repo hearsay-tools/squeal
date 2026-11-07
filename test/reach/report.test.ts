@@ -273,7 +273,16 @@ describe("proposals", () => {
     const r = report(snapshot([{ ...t, closure: null }]));
     expect(r).toMatchObject({ history: true, files: [], suite: { withoutClosure: 1 } });
     expect(formatReach(r)).toContain(
-      "1 test file has no import closure Squeal trusts at its current inputs, so its reach is not counted; the next run stores one.",
+      "1 test file has no import closure Squeal trusts at its current inputs, so its reach is not counted; its next run stores one.",
+    );
+    const two = report(
+      snapshot([
+        { ...t, closure: null },
+        { ...t, closure: null },
+      ]),
+    );
+    expect(formatReach(two)).toContain(
+      "2 test files have no import closure Squeal trusts at their current inputs, so their reach is not counted; their next runs store them.",
     );
   });
 
