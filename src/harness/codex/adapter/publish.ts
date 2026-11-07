@@ -19,8 +19,6 @@ import {
 } from "./manifest.js";
 import { type SelectionOptions, selectCurrent } from "./selection.js";
 
-export { selectCurrent } from "./selection.js";
-
 /*
  * Spec 002 D8 and D9, `tasks/wave-4-contract.md`: publication retains a
  * whole, validated runtime tree as `<PLUGIN_DATA>/versions/<version>/` by one

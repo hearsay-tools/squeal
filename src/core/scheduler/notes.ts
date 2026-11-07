@@ -4,8 +4,6 @@ import { readDaemonNotes } from "../notes.js";
 import type { WorktreeId } from "../types/common.js";
 import type { Store } from "../types/store.js";
 
-export { listPaths } from "../text.js";
-
 /**
  * One note per policy `inputs` entry that selects nothing, in the shape of
  * the daemon's policy notes (review wave 4.5, S5). The matching rule goes

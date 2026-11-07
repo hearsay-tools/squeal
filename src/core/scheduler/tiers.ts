@@ -25,8 +25,6 @@ import { groupView, laneFor } from "./slow.js";
 import { changedSince, type Moved, snapshotInputs } from "./stability.js";
 import { tierEnd } from "./store-decision.js";
 
-export { supersededIn } from "./store-decision.js";
-
 /** One test file of a tier and the key it runs under. */
 export interface TierFile {
   readonly file: FileState;

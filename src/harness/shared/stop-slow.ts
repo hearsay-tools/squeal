@@ -34,8 +34,6 @@ import { statusText } from "./text.js";
  */
 export const STOP_SLOW_HOOK_TIMEOUT_S = 3_600;
 
-export { STOP_SLOW_WAIT_CAP_MS } from "../../core/slow/stop-wait.js";
-
 /**
  * How long the waiting entry waits for the 2 s Stop entry beside it to end
  * the turn: that entry's whole hook timeout and a second more.

@@ -16,11 +16,8 @@ import { type Store, worktreeMetaKey } from "../types/store.js";
 import type { TestFileKeyRecord } from "../types/store-records.js";
 import { readSlot, writeSlot } from "./slots.js";
 
-export { resumesRest } from "../presence/facts.js";
 // Row 011-293: the heartbeat rule, the told start and the rest are daemon presence's (`presence/`).
-export { DAEMON_START_GRACE_MS, daemonLiveness, worktreeLiveness } from "../presence/heartbeat.js";
 export type { ToldLiveness } from "../presence/told.js";
-export { toldOf } from "../presence/views.js";
 
 /**
  * The shared header (D6) with the worktree's daemon presence as delivered

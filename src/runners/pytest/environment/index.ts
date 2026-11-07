@@ -10,14 +10,9 @@ import { type InterpreterInfo, queryInterpreter } from "./interpreter.js";
 import { readOptional } from "./site.js";
 import { type EnvironmentState, environmentState } from "./states.js";
 
-export { findPytestConfig, type PytestConfigFile } from "./config.js";
-export { type Discovery, discoverEnvironment, projectDir } from "./discover.js";
 export type { PytestPlugin } from "./entry-points.js";
-export { environmentFingerprint, readEnvironmentFiles } from "./fingerprint.js";
-export { PYTEST_VARIABLES, pytestVariables, runEnvironment } from "./hash.js";
 export type { ImportRoots, MappedModule } from "./import-roots.js";
 export type { InterpreterInfo } from "./interpreter.js";
-export { type EnvironmentState, type OutsideEditable, syncNote } from "./states.js";
 
 /**
  * A pytest project's environment, computed from files and one cached

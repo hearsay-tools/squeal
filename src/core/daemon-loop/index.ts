@@ -9,8 +9,6 @@ import type { BatchRetry } from "../watcher/batch-retry.js";
 import { type ChangeFeed, createChangeFeed, type WatcherTimings } from "../watcher/change-feed.js";
 import { readHead } from "./head.js";
 
-export { readHead } from "./head.js";
-
 export interface DaemonLoopOptions
   extends Omit<SchedulerOptions, "head" | "onExtraFiles" | "passes"> {
   /**

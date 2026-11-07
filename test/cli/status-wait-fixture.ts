@@ -9,8 +9,6 @@ import type { Store } from "../../src/core/types/store.js";
 import type { DaemonRecord } from "../../src/core/types/store-records.js";
 import { appendRevisions, check, fakeRepo, seedStore, state } from "../status/helpers.js";
 
-export { later, timed } from "./wait-clock.js";
-
 /*
  * A worktree at revision 4 for `status --wait`'s edit window (lessons, defect
  * 32, tasks 001-186 and 001-191), and a daemon whose store records the

@@ -16,7 +16,6 @@ import {
  * in the plugin's manifests (001-76). Run by `npm run build:plugin`.
  */
 
-export { REPO_ROOT, rootVersion } from "../build.js";
 export const PLUGIN_DIR = join(REPO_ROOT, "plugins/claude-code");
 export const PLUGIN_DIST = join(PLUGIN_DIR, "dist");
 

@@ -37,5 +37,3 @@ export async function countFile(
   );
   return { blob, language, counterVersion: COUNTER_VERSION, functions, errors };
 }
-
-export { counterReady } from "./parser.js";

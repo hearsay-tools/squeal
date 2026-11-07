@@ -16,9 +16,6 @@ import type { Store } from "../core/types/store.js";
 import type { TestFileKeyRecord } from "../core/types/store-records.js";
 import type { SyncState } from "./status-sync.js";
 
-/* Row 011-26: the class moved to `src/core/state`, where `readHeader` counts by it. */
-export { type FileClass, fileClassOf } from "../core/state/file-class.js";
-
 /**
  * How a set of test files stands at the worktree's current revision: how
  * many have a current result and how many do not and why, which is what
