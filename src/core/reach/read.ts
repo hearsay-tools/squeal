@@ -14,10 +14,12 @@ import { hasImportGraphTables } from "../store/import-edges.js";
 import { readImportGraph } from "../store/import-graph.js";
 import { readEdits } from "../store/repos/edits.js";
 import { connectionOf } from "../store/store.js";
+import type { FunctionCount } from "../types/code.js";
 import type { RelativePath, WorktreeId } from "../types/common.js";
 import type { CheckKey } from "../types/keys.js";
 import type { Policy } from "../types/policy.js";
 import type { Store } from "../types/store.js";
+import { sourceCalls } from "./called.js";
 import { moduleFacts } from "./modules.js";
 import type { CoverageView, DeclaredPattern, ReachSnapshot, ReachTestFile } from "./types.js";
 
@@ -49,6 +51,7 @@ export function readSnapshot({ store, root, code }: SnapshotSource): {
   const modules = new ModuleSets(store);
   const groups = groupView(policy);
   const on = coverageOn(policy);
+  const counted = countedFunctions(code, id);
   const testFiles = rows.map(({ testFile: ref, key }): ReachTestFile => {
     const runner = runnerOf(policy, ref.project);
     // `usedAt` 0: reading a duration is not a lookup hit (spec 001 D8) and writes nothing.
@@ -62,7 +65,7 @@ export function readSnapshot({ store, root, code }: SnapshotSource): {
       closure: closure(ref) ?? null,
       childProcess: new Set([...modules.of(ref), ...observed.directOf(ref)]),
       runtimeRead: new Set(observed.of(ref)),
-      coverage: !on || runner === "pytest" ? { kind: "unknown" } : coverageView(code, key),
+      coverage: !on || runner === "pytest" ? { kind: "unknown" } : coverageView(code, key, counted),
     };
   });
   const snapshot: ReachSnapshot = {
@@ -74,14 +77,18 @@ export function readSnapshot({ store, root, code }: SnapshotSource): {
       complexityEnabled: policy.complexity.enabled,
     },
     graph,
-    modules: moduleFacts(root, graph, functionCounts(code, id)),
+    modules: moduleFacts(root, graph, (path) => counted(path)?.length ?? null),
     declared: declaredPatterns(policy.inputs),
   };
   return { snapshot, listed: rows.length === 0 ? null : rows.length };
 }
 
 /** The record at the test file's current key, as D11 reads it. */
-function coverageView(code: CodeStore | null, key: CheckKey | null): CoverageView {
+function coverageView(
+  code: CodeStore | null,
+  key: CheckKey | null,
+  counted: Counted,
+): CoverageView {
   if (code === null || key === null) return { kind: "none" };
   const bytes = code.coverage.get({ resultKey: key, providerVersion: COVERAGE_PROVIDER_VERSION });
   if (bytes === null) return { kind: "none" };
@@ -92,27 +99,32 @@ function coverageView(code: CodeStore | null, key: CheckKey | null): CoverageVie
     return { kind: "none" };
   }
   const called = new Set<RelativePath>();
+  const loaded = new Set<RelativePath>();
+  // Review 0.1.415 B1: a source whose record cannot tell its top level from a function reads unread.
+  const unread = new Set<RelativePath>(record.unread);
   for (const source of record.sources) {
-    // The module's own top level starts at line 1, column 0; any other function that ran is a call.
-    if (source.functions.some((f) => f[4] === 1 && !(f[0] === 1 && f[1] === 0))) {
-      called.add(source.path);
-    }
+    const firstLine = counted(source.path)?.some((f) => f.range.startLine === 1) ?? null;
+    const calls = sourceCalls(source, firstLine);
+    if (calls === "uncertain") unread.add(source.path);
+    else loaded.add(source.path);
+    if (calls === "called") called.add(source.path);
   }
-  return {
-    kind: "record",
-    called,
-    loaded: new Set(record.sources.map((s) => s.path)),
-    unread: new Set(record.unread),
-  };
+  return { kind: "record", called, loaded, unread };
 }
 
-/** The counter's function count of a file at its current bytes (D3), read when asked. */
-function functionCounts(code: CodeStore | null, id: WorktreeId) {
-  return (path: RelativePath): number | null => {
+/** The counter's functions of a file at its current bytes (D3); `null` without a count. */
+type Counted = (path: RelativePath) => readonly FunctionCount[] | null;
+
+function countedFunctions(code: CodeStore | null, id: WorktreeId): Counted {
+  const known = new Map<RelativePath, readonly FunctionCount[] | null>();
+  return (path) => {
     if (code === null) return null;
+    if (known.has(path)) return known.get(path) ?? null;
     const [file] = code.files.list(id, [path]);
-    if (file === undefined) return null;
-    return code.counts.get(file.blob, file.language, file.counterVersion)?.functions.length ?? null;
+    const count =
+      file === undefined ? null : code.counts.get(file.blob, file.language, file.counterVersion);
+    known.set(path, count?.functions ?? null);
+    return count?.functions ?? null;
   };
 }
 
