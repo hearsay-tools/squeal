@@ -1,0 +1,279 @@
+{
+ "revisions": 54,
+ "failures": 7,
+ "failureClasses": {
+  "called": 1,
+  "notLoaded": 6
+ },
+ "failureKinds": {
+  "direct": 1,
+  "noValuePath": 6
+ },
+ "failureRevisions": 4,
+ "byOrder": {
+  "T": {
+   "inEditWork": 1,
+   "aheadP50": 46.8,
+   "aheadP90": 918.1,
+   "aheadMax": 918.1,
+   "sooner": 0,
+   "later": 0,
+   "same": 7,
+   "deltaP10": 0,
+   "deltaP50": 0,
+   "deltaP90": 0,
+   "movedOutOfEditWork": 0,
+   "movedIntoEditWork": 0
+  },
+  "A": {
+   "inEditWork": 1,
+   "aheadP50": 213.4,
+   "aheadP90": 2070.7,
+   "aheadMax": 2070.7,
+   "sooner": 0,
+   "later": 4,
+   "same": 3,
+   "deltaP10": 0,
+   "deltaP50": 143.9,
+   "deltaP90": 2023.9,
+   "movedOutOfEditWork": 0,
+   "movedIntoEditWork": 0
+  },
+  "B": {
+   "inEditWork": 1,
+   "aheadP50": 1643.8,
+   "aheadP90": 3212.8,
+   "aheadMax": 3212.8,
+   "sooner": 0,
+   "later": 6,
+   "same": 1,
+   "deltaP10": 0,
+   "deltaP50": 1629.5,
+   "deltaP90": 3166,
+   "movedOutOfEditWork": 0,
+   "movedIntoEditWork": 0
+  },
+  "C": {
+   "inEditWork": 1,
+   "aheadP50": 1643.8,
+   "aheadP90": 3212.8,
+   "aheadMax": 3212.8,
+   "sooner": 0,
+   "later": 6,
+   "same": 1,
+   "deltaP10": 0,
+   "deltaP50": 1629.5,
+   "deltaP90": 3166,
+   "movedOutOfEditWork": 0,
+   "movedIntoEditWork": 0
+  },
+  "P": {
+   "inEditWork": 1,
+   "aheadP50": 686,
+   "aheadP90": 3340.3,
+   "aheadMax": 3340.3,
+   "sooner": 0,
+   "later": 4,
+   "same": 3,
+   "deltaP10": 0,
+   "deltaP50": 616.6,
+   "deltaP90": 3293.5,
+   "movedOutOfEditWork": 0,
+   "movedIntoEditWork": 0
+  }
+ },
+ "firstFailure": {
+  "T": {
+   "aheadP50": 815,
+   "aheadP90": 918.1,
+   "sooner": 0,
+   "later": 0,
+   "deltaP50": 0,
+   "deltaMin": 0,
+   "deltaMax": 0,
+   "firstInEditWork": 1
+  },
+  "A": {
+   "aheadP50": 918.1,
+   "aheadP90": 2070.7,
+   "sooner": 0,
+   "later": 1,
+   "deltaP50": 0,
+   "deltaMin": 0,
+   "deltaMax": 2023.9,
+   "firstInEditWork": 1
+  },
+  "B": {
+   "aheadP50": 1040.5,
+   "aheadP90": 3212.8,
+   "sooner": 0,
+   "later": 3,
+   "deltaP50": 122.4,
+   "deltaMin": 0,
+   "deltaMax": 3166,
+   "firstInEditWork": 1
+  },
+  "C": {
+   "aheadP50": 1040.5,
+   "aheadP90": 3212.8,
+   "sooner": 0,
+   "later": 3,
+   "deltaP50": 122.4,
+   "deltaMin": 0,
+   "deltaMax": 3166,
+   "firstInEditWork": 1
+  },
+  "P": {
+   "aheadP50": 918.1,
+   "aheadP90": 3340.3,
+   "sooner": 0,
+   "later": 1,
+   "deltaP50": 0,
+   "deltaMin": 0,
+   "deltaMax": 3293.5,
+   "firstInEditWork": 1
+  }
+ },
+ "fail_loadedOnly": {
+  "n": 0,
+  "inTEdit": 0,
+  "inAEdit": 0,
+  "laterUnderA": [],
+  "laterUnderC": []
+ },
+ "fail_notLoaded": {
+  "n": 6,
+  "inTEdit": 0,
+  "inAEdit": 0,
+  "laterUnderA": [
+   0,
+   0,
+   143.9,
+   143.9,
+   143.9,
+   2023.9
+  ],
+  "laterUnderC": [
+   65.5,
+   122.4,
+   1629.5,
+   1635.1,
+   1635.1,
+   3166
+  ]
+ },
+ "fail_noRecord": {
+  "n": 0,
+  "inTEdit": 0,
+  "inAEdit": 0,
+  "laterUnderA": [],
+  "laterUnderC": []
+ },
+ "editWork": {
+  "T": {
+   "filesP50": 4,
+   "filesP90": 5,
+   "filesMax": 16,
+   "secP50": 1.7,
+   "secP90": 62.9,
+   "secTotal": 465
+  },
+  "A": {
+   "filesP50": 2,
+   "filesP90": 23,
+   "filesMax": 451,
+   "secP50": 0,
+   "secP90": 144.4,
+   "secTotal": 8898
+  },
+  "B": {
+   "filesP50": 4,
+   "filesP90": 5,
+   "filesMax": 16,
+   "secP50": 1.7,
+   "secP90": 62.9,
+   "secTotal": 465
+  },
+  "C": {
+   "filesP50": 4,
+   "filesP90": 4,
+   "filesMax": 5,
+   "secP50": 1.7,
+   "secP90": 11.2,
+   "secTotal": 408
+  },
+  "P": {
+   "filesP50": 4,
+   "filesP90": 5,
+   "filesMax": 16,
+   "secP50": 1.7,
+   "secP90": 62.9,
+   "secTotal": 465
+  }
+ },
+ "rekeyedSec": 43370,
+ "tEditSec": 465,
+ "tEditNotCalledSec": 355,
+ "tEditNotCalledShare": 76.3,
+ "revisionsWithTEditNotCalled": 54,
+ "clsShareOfRekeyedSec": {
+  "noRecord": 20.6,
+  "notLoaded": 47.3,
+  "loadedOnly": 12.3,
+  "called": 19.8
+ },
+ "proxy": {
+  "pairs": 5138,
+  "calledShareSec": 24.9,
+  "calledShareFiles": 20.1,
+  "direct": {
+   "precisionSec": 100,
+   "recallSec": 1.2,
+   "shareOfSec": 0.3,
+   "precisionFiles": 100,
+   "recallFiles": 2.3
+  },
+  "depthLe2": {
+   "precisionSec": 82.9,
+   "recallSec": 15.1,
+   "shareOfSec": 4.6,
+   "precisionFiles": 68.9,
+   "recallFiles": 19.5
+  },
+  "plainPath": {
+   "precisionSec": 37.9,
+   "recallSec": 12.3,
+   "shareOfSec": 8.1,
+   "precisionFiles": 18.3,
+   "recallFiles": 12.5
+  },
+  "plainLe2": {
+   "precisionSec": 71.6,
+   "recallSec": 6.7,
+   "shareOfSec": 2.3,
+   "precisionFiles": 50,
+   "recallFiles": 5.9
+  },
+  "anyValue": {
+   "precisionSec": 67.9,
+   "recallSec": 95.7,
+   "shareOfSec": 35.1,
+   "precisionFiles": 45.5,
+   "recallFiles": 90.8
+  },
+  "namesake": {
+   "precisionSec": 100,
+   "recallSec": 0,
+   "shareOfSec": 0,
+   "precisionFiles": 100,
+   "recallFiles": 0.5
+  },
+  "directOrNamesake": {
+   "precisionSec": 100,
+   "recallSec": 1.2,
+   "shareOfSec": 0.3,
+   "precisionFiles": 100,
+   "recallFiles": 2.4
+  }
+ }
+}
