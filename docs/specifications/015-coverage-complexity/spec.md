@@ -31,6 +31,12 @@ Wave 2, coverage and CRAP (after wave 1's dogfood):
 10. A test file that can read V8 coverage itself gets no coverage, and status names it (the human, 2026-10-23, "skip and name") (D8).
 11. Each function has a CRAP state and a "no test runs it" state. Each is `pending` until every test file that loads the function's source has a current result with a coverage record, and `unknown` when one of those files can have no record (D9).
 
+Wave 3, edit reach (proposed 2026-11-07, waiting for the human; D11):
+
+12. `squeal code --reach` ranks the files whose edits re-run the largest share of the user's own suite. It names the path each reach takes and gives one suggestion per entry. It reads the stores only: no test, no daemon, no write (D11).
+13. With coverage records, it splits each file's reach into test files that call the file, load it only, or do not load it. It also lists the test files that load the most code they never call. Without records, it says that part is unknown (D11).
+14. With no run history, or with coverage off, it proposes the exact command and its cost and starts nothing (D11).
+
 ## Non-goals
 
 - Line-level test selection. The research measured 71% fewer runs on a 30-file sample. It is measured on the full suite after 015's coverage records are in the store, and 011's non-goal "Per-test closures from runtime coverage" stands until then (the human, 2026-10-23).
@@ -270,6 +276,88 @@ Without this rule, the first test file to finish after an edit would make CRAP r
 015-80 (2026-10-27, the human's option a) changes wording only. Each untested FAIL or STILL FAIL line, including one with no loader, states the thread limit. A CRAP line states it when its evidence says no test ran the function; a block states it once. The process sentence above replaces that limit sentence. CLI details state it once per coverage part with a failing function or untested count. Collection does not expand.
 
 015-81 uses one set of file-level loader facts per source path in a delivery. Every listed function from that source uses those facts. Function hit counts and CRAP evidence remain specific to the function; a function without usable hit evidence gains no proof from another function. A missing loader count does not mean zero loaders. File-level facts travel separately from function hit evidence, including on entries without that evidence. New readers prefer that field, then accept the older loader fields when it is absent; old fields stay readable.
+
+### D11. Edit reach: which files make an edit re-run much of the suite (proposed 2026-11-07, waiting for the human)
+
+The human, 2026-11-07: "something to call and if there is no run history - it should propose the first run with coverage. And then analyze the project and give suggestions on the tests / files that would cause running a lot of tests (especially the tests that don't actually run its code?)". Evidence: `research/edit-reach.md`. On this repository each real source edit re-ran 28% of the suite's recorded seconds on average. On cezar the figure was 37%. Coverage splits this repository's re-run seconds as follows: in 24% the test file calls a function of the edited file; in 41% it loads the file and calls none of its functions; in 33% it does not load the file in its own process.
+
+**The command.** `squeal code --reach [<path>...] [--limit <n>] [--json]`. It is pull only. No session gets it pushed, and no registration, delivery or status line names it (vision: "push transitions, pull state"). It reads the stores and needs no daemon, like `squeal code` (D6) and `status` (011 C6). It runs no test, starts nothing and writes nothing: result reads pass `usedAt` 0. `--reach` with `--changed` or `--told` exits 2. Exit 1 means no store, as in `squeal code`. It works with complexity off. It gets a richer answer with it on (**Suggestions**, types-only modules).
+
+**Terms.**
+
+- *Reach* of a source file: the test files an edit to it re-runs in this worktree. These are the test files whose trusted closure holds the file (`closureFor`), plus every test file of a project whose environment files (setup, global setup, config closure) hold it.
+- *Recorded seconds* of a test file: `durationOf` of its result at its current key, else its newest result.
+- *Suite*: the test files of groups that run on an edit. Groups at `manual` are left out (spec 019).
+- *Share*: the reach's seconds over the suite's seconds.
+- *Edits*: the store's revisions with trigger `watch` in which `HEAD` did not move, over every worktree of the repository, in the window the store keeps. The report names that window.
+
+Every number is relative to the user's own suite, seconds and edits. No limit in seconds or files is built in, and nothing is tuned to one host.
+
+**Each (source, test file) pair gets one path, the strongest:**
+
+1. `setup`: the file is in the project's environment files.
+2. `declared input`: the policy's `inputs` match it for that test file, recomputed from `squeal.config.json`.
+3. `child process` or `runtime read`: from the `observedModules.`, `observedDirect.` and `observed.` maps.
+4. `import`: anything else in the closure. With import edges (below), an `import` pair is split by one shortest value-import chain from the test file:
+   - `direct`: the test file imports the file itself.
+   - `barrel`: the chain passes a module of imports and re-exports only.
+   - `test helper`: the chain passes a module the runner does not list as a test, outside the project's source roots, or named `*.testkit.*` or `test/**`. Which modules count is the worker's to settle against both research repositories.
+   - `transitive`: none of the above.
+
+   The *gateway* of a pair is the last barrel or helper on its chain, or else the module on the chain that imports the file directly.
+
+**Coverage per pair.** The test file's coverage record at its current key gives one of these:
+
+- `called`: a function of the file other than its module top level ran.
+- `loaded only`: the file ran at load, but none of its functions did.
+- `not loaded`: the record does not name the file.
+- `unread`: the record cannot confirm the file's bytes.
+- `no record`.
+
+Pairs on a `setup`, `declared input`, `child process` or `runtime read` path read `outside the test's process` when the file is not loaded. Squeal does not measure there (D8 non-goal), and the report never calls such seconds avoidable. A runner that gives no records (pytest) and coverage off read `unknown`. *Avoidable seconds* of a file are the seconds of its pairs that are `loaded only` or `not loaded` on an `import` path.
+
+**The report, with history.** It has two parts, ranked by avoidable seconds per edit, then by reach seconds:
+
+1. **Files.** One entry per file. Files that share the same gateway and the same reach collapse into one entry, for example "11 files in src/core/types/ through src/core/types/index.ts". An entry gives:
+   - the share, test files and recorded seconds one edit re-runs;
+   - the edits in the window and their re-run seconds;
+   - the coverage split as shares of those seconds;
+   - the main gateway with one example chain;
+   - one suggestion.
+2. **Test files.** These re-run on many files' edits while calling little of what they load. An entry gives:
+   - the source files in the test file's `import` closure and how many of them it calls;
+   - its recorded seconds;
+   - how many window edits re-ran it;
+   - the direct import of the test file that brings in most of its uncalled files.
+
+Each part lists `--limit` entries, 10 by default, and says how many more there are. `--json` gives every entry in a versioned shape. With paths, the report gives every named file in full: each gateway with its test files, seconds, coverage split and one chain. It also lists the test files above it.
+
+**Suggestions** depend on the path kind, never on a threshold:
+
+- *barrel*: import the file from its own path in the files that use it, or split the barrel. A file in which the counter found no function (D3) reads "holds no functions: tests re-run because <barrel> re-exports it with `export *`; `export type *` takes it out of their closure".
+- *test helper*: split the helper. The suggestion names how many of the test files that load the file through it never call it.
+- *transitive*, through a module that imports many sibling modules: load the file only where it is used. Example: a registry that each test fills.
+- *setup*: keep the setup's imports leaf-only, and name the chain from the setup file. For a config import such as a reporter: name it by path, or load it only where it is used.
+- *declared input*: name the pattern in `squeal.config.json` and the test files it gives the file to.
+- *child process* and *runtime read*: "these tests start the program from source; Squeal re-runs them by design". There is no suggestion.
+
+A suggestion is evidence and an option, not an instruction.
+
+**No history.** The report proposes the run and never starts it.
+
+- While no test file of this worktree has a recorded result, the whole answer is the proposal. It names `squeal warmup`, which runs every test file without a current result, and the number of test files it will run, when they are listed. It states the cost: about one run of the whole suite. With coverage on, a coverage record per test file costs about a tenth more CPU per run (D10).
+- When some test files have no recorded seconds, they are left out of every share. The report counts them and names the same command.
+- When coverage is off, the report still gives reach, seconds, edits, paths and suggestions. It reads `called: unknown` and says what that leaves open: "Squeal cannot tell which of these tests call the file; the path kinds are a proxy." It then proposes coverage. The proposal names the key (`"coverage": { "enabled": true }` in `squeal.config.json`) and then `squeal warmup`. It states the cost: every Vitest and node:test file runs once more, because turning coverage on changes their keys (D8, **Keys**), and each later run takes about a tenth more CPU. Turning it off again re-runs them once more. The report never turns coverage on.
+- When a share of the reach has `no record` at current keys, the report gives that share and the command that would make the records. The row names the command after checking which command re-runs a current result that has no record.
+
+**New stored data.** Neither item changes a key, `KEY_FORMAT_VERSION` or a stored result. Older daemons ignore both: the tables are additive, and the main store's `user_version` stays unchanged.
+
+1. **Direct import edges.** When the Vitest adapter walks a closure (`importClosure`), it keeps each visited file's direct targets, static and dynamic apart. They are stored by the importer's content, so worktrees at the same bytes share them. A chain is never built from edges of bytes the worktree no longer has. A test file walked before this version reads `path not recorded yet` until its next walk, and the report counts those pairs. node:test and pytest closures give no edges in this row: their pairs read `import`, unsplit.
+2. **A Vitest project's environment files.** This is the list that `environmentHash` hashes. Today it lives only in daemon memory. It is stored per project and environment hash.
+
+**Cost.** One read of each store: closures, current results, revisions, and the coverage records at current keys. On this repository the read is measured by the proof row with the host's load.
+
+**Not in scope.** The report does not turn coverage on, run tests, change selection or keys, or measure a cut: what-if edge removal stays a research probe. It is not pushed into sessions, and it does not split node:test and pytest import chains.
 
 ### D10. Cost
 
