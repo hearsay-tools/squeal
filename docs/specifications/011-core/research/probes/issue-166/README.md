@@ -3,7 +3,7 @@
 This is a throwaway research fixture, not a product test. Run from the repository root:
 
 ```sh
-pnpm exec tsx research/probes/issue-166/probe.ts > research/probes/issue-166/result.jsonl 2> research/probes/issue-166/stderr.txt
+pnpm exec tsx docs/specifications/011-core/research/probes/issue-166/probe.ts > docs/specifications/011-core/research/probes/issue-166/result.jsonl 2> docs/specifications/011-core/research/probes/issue-166/stderr.txt
 ```
 
 It needs the installed repository dependencies, Node with `node:sqlite`, Git, and the committed Claude Code CLI bundle. It installs nothing and starts no test suite. `node_modules` is not part of this fixture.

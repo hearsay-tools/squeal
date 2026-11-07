@@ -6,15 +6,15 @@ import { cpus, loadavg, tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
-import { createFsHasher } from "../../../src/core/hash/hasher.js";
-import { assembleClosure } from "../../../src/core/keys/closure.js";
-import { ObservedSets, observedMetaKey } from "../../../src/core/keys/observed.js";
-import { WorktreeKeys } from "../../../src/core/scheduler/keying.js";
-import { buildSnapshot } from "../../../src/core/status/snapshot.js";
-import { isStoreOpenFailure, openStore } from "../../../src/core/store/open.js";
-import { DEFAULT_POLICY } from "../../../src/core/types/policy.js";
+import { createFsHasher } from "../../../../../../src/core/hash/hasher.js";
+import { assembleClosure } from "../../../../../../src/core/keys/closure.js";
+import { ObservedSets, observedMetaKey } from "../../../../../../src/core/keys/observed.js";
+import { WorktreeKeys } from "../../../../../../src/core/scheduler/keying.js";
+import { buildSnapshot } from "../../../../../../src/core/status/snapshot.js";
+import { isStoreOpenFailure, openStore } from "../../../../../../src/core/store/open.js";
+import { DEFAULT_POLICY } from "../../../../../../src/core/types/policy.js";
 
-const repository = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
+const repository = resolve(dirname(fileURLToPath(import.meta.url)), "../../../../../..");
 const version = JSON.parse(readFileSync(join(repository, "package.json"), "utf8")).version;
 const emit = (value: unknown) => console.log(JSON.stringify(value));
 emit({
