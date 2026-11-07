@@ -1,4 +1,5 @@
 import type { RelativePath } from "../types/common.js";
+import type { TestFileRef } from "../types/keys.js";
 import {
   COVERAGE_STATES,
   type CoverageState,
@@ -26,9 +27,9 @@ const zero = <K extends string>(keys: readonly K[]) =>
 export interface Route {
   readonly kind: PathKind;
   readonly gateway: RelativePath | null;
-  /** The first pair's chain, and the project of its test file, whose edges it follows. */
+  /** The first pair's chain, and its test file, whose keyed walk the chain follows. */
   readonly chain: readonly RelativePath[];
-  readonly project: string;
+  readonly test: TestFileRef;
   testFiles: number;
   seconds: number;
   /** Test files whose coverage says they never call the file: loaded only or not loaded. */
@@ -164,7 +165,7 @@ function addPair(
       kind: pair.kind,
       gateway: pair.gateway,
       chain: pair.chain,
-      project: test.ref.project,
+      test: test.ref,
       testFiles: 0,
       seconds: 0,
       uncalled: 0,

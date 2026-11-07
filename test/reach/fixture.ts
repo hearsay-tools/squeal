@@ -4,27 +4,30 @@ import type {
   ReachSnapshot,
   ReachTestFile,
 } from "../../src/core/reach/types.js";
-import type { ImportGraph } from "../../src/core/store/import-graph.js";
+import type { ImportGraph, ImportMap } from "../../src/core/store/import-graph.js";
 
 /* Fixtures for `squeal reach` (row 015-109): a fake import graph and snapshots built from plain maps. */
 
 /**
- * Static targets by importer; `dynamic` holds dynamic ones; a file absent
- * from both is not recorded. `environment` gives each project's files and
- * the roots its setup chains start at.
+ * Every test file's keyed walk holds `edges` (static targets by importer)
+ * and `dynamic`; a file absent from both is not recorded. `environment`
+ * gives each project's files and setup roots, whose walk is the same map.
  */
 export function fakeGraph(
   edges: Record<string, string[]>,
   environment: Record<string, { files: string[]; roots: string[] }> = {},
   dynamic: Record<string, string[]> = {},
 ): ImportGraph {
-  return {
-    targets: (path) =>
-      path in edges || path in dynamic
-        ? { static: edges[path] ?? [], dynamic: dynamic[path] ?? [] }
-        : undefined,
-    environment: (project) => environment[project],
-  };
+  const imports: ImportMap = new Map(
+    [...new Set([...Object.keys(edges), ...Object.keys(dynamic)])].map((path) => [
+      path,
+      { static: edges[path] ?? [], dynamic: dynamic[path] ?? [] },
+    ]),
+  );
+  const environments = new Map(
+    Object.entries(environment).map(([project, env]) => [project, { ...env, imports }]),
+  );
+  return { walk: (ref) => ({ imports, environment: environments.get(ref.project) }) };
 }
 
 export const UNKNOWN: CoverageView = { kind: "unknown" };

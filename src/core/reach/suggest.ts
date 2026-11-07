@@ -1,7 +1,8 @@
 import { plural } from "../text.js";
 import type { RelativePath } from "../types/common.js";
+import type { TestFileRef } from "../types/keys.js";
 import type { Route } from "./analyze.js";
-import { targetsOf } from "./chains.js";
+import { targetsIn } from "./chains.js";
 import { isConfigPath, siblingsAmong } from "./names.js";
 import type { PathKind } from "./pairs.js";
 import type { ReachSnapshot } from "./types.js";
@@ -45,11 +46,11 @@ function textFor(
   const { gateway } = route;
   switch (route.kind) {
     case "barrel":
-      return gateway === null ? null : barrelText(files, them, gateway, route.project, snapshot);
+      return gateway === null ? null : barrelText(files, them, gateway, route.test, snapshot);
     case "test helper":
       return gateway === null ? null : helperText(them, gateway, route);
     case "transitive":
-      return gateway === null ? null : siblingText(first, them, gateway, route.project, snapshot);
+      return gateway === null ? null : siblingText(first, them, gateway, route.test, snapshot);
     case "setup":
       return setupText(them, route.chain);
     case "declared input": {
@@ -68,10 +69,10 @@ function barrelText(
   files: readonly RelativePath[],
   them: string,
   barrel: RelativePath,
-  project: string,
+  test: TestFileRef,
   snapshot: ReachSnapshot,
 ): string {
-  const stars = snapshot.modules.starTargets(barrel, project);
+  const stars = snapshot.modules.starTargets(barrel, test);
   const empty = files.every((f) => snapshot.modules.functions(f) === 0 && stars.has(f));
   if (empty) {
     const holds = files.length === 1 ? "holds" : "hold";
@@ -92,11 +93,11 @@ function siblingText(
   file: RelativePath,
   them: string,
   importer: RelativePath,
-  project: string,
+  test: TestFileRef,
   snapshot: ReachSnapshot,
 ): string | null {
-  const targets =
-    snapshot.graph === null ? undefined : targetsOf(snapshot.graph, project, importer);
+  const walked = snapshot.graph?.walk(test);
+  const targets = walked === undefined ? undefined : targetsIn(walked.imports, importer);
   const siblings = siblingsAmong(file, targets ?? []);
   if (siblings.length < 2) return null;
   const where = them === file ? "it is" : "they are";

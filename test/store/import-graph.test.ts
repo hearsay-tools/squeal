@@ -1,8 +1,4 @@
-import { createHash } from "node:crypto";
-import { lstatSync, mkdirSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { blobHash } from "../../src/core/hash/blob.js";
 import { assembleClosure } from "../../src/core/keys/closure.js";
 import type { SchedulerContext } from "../../src/core/scheduler/context.js";
 import { storeClosures } from "../../src/core/scheduler/revision.js";
@@ -14,60 +10,53 @@ import {
 import { readImportGraph } from "../../src/core/store/import-graph.js";
 import { SCHEMA_VERSION, userVersion } from "../../src/core/store/schema.js";
 import { connectionOf } from "../../src/core/store/store.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
 import type { FileImports, RunnerEnvironment } from "../../src/core/types/runner.js";
 import type { Store } from "../../src/core/types/store.js";
 import { fakeCommonDir, open, tempDir, worktree } from "./helpers.js";
 
 /*
- * Spec 015 D11 "New stored data" (row 015-108): import edges by the
- * importer's content, and each project's environment files by its hash,
- * written as a daemon's runner part does and read as `squeal reach` will.
+ * Spec 015 D11 "New stored data" under R2's rule (review 0.1.415-r2):
+ * stored import edges belong to a test file's result key. A walk is
+ * written with the closure its key was set from, and read only while that
+ * key is the worktree's current key for the file; setup and config walks
+ * are read only through a key row, at the environment hash it names.
  */
 
-const sha1 = (text: string) => createHash("sha1").update(text).digest("hex");
-const blob = (text: string) => blobHash(Buffer.from(text), "sha1");
+const T: TestFileRef = { project: "", path: "test/a.test.ts" };
 
-/** One worktree on disk, its stat cache in `file_hashes` as its daemon flushed it. */
+/** One worktree whose daemon keyed its test files: its current keys, and each project's hash. */
 class Tree {
-  readonly root = tempDir("squeal-import-graph-");
-  readonly hashes = new Map<string, string>();
-  environments = new Map<string, { hash: string; files: string[] }>();
+  readonly keys = new Map<string, string>();
+  readonly environments = new Map<string, { hash: string; files: string[] }>([
+    ["", { hash: "env-1", files: [] }],
+  ]);
 
   constructor(
     readonly store: Store,
     readonly id: string,
   ) {
-    store.worktrees.upsert(worktree(id, this.root));
-    // The default project's environment, whose hash its edges are resolved under (review 0.1.415 B2).
-    this.environments.set("", { hash: "env-1", files: [] });
+    store.worktrees.upsert(worktree(id, tempDir("squeal-import-graph-")));
   }
 
-  /** Writes `path` and records its stat and blob id, as a reconciliation does. */
-  write(path: string, text: string, flush = true): void {
-    const abs = join(this.root, path);
-    mkdirSync(dirname(abs), { recursive: true });
-    writeFileSync(abs, text);
-    if (flush) this.flush(path, text);
-  }
-
-  flush(path: string, text: string): void {
-    const s = lstatSync(join(this.root, path));
-    const hash = blob(text);
-    this.hashes.set(path, hash);
-    this.store.fileHashes.upsertMany(this.id, [
-      { path, mtimeMs: s.mtimeMs, ctimeMs: s.ctimeMs, size: s.size, inode: s.ino, hash },
+  /** The worktree's current key for `ref`, as its daemon stores it. */
+  key(ref: TestFileRef, key: string | null): void {
+    if (key === null) this.keys.delete(`${ref.project}\0${ref.path}`);
+    else this.keys.set(`${ref.project}\0${ref.path}`, key);
+    this.store.testFileKeys.upsertMany([
+      { worktreeId: this.id, testFile: ref, key, revision: 1, pending: null },
     ]);
   }
 
   source(): ImportGraphSource {
     return {
       store: this.store,
-      root: this.root,
-      worktreeId: this.id,
       now: () => 1_000,
       keys: {
-        cache: { hashOf: (path) => this.hashes.get(path) },
-        index: { environment: (project) => this.environments.get(project)?.hash },
+        index: {
+          environment: (project) => this.environments.get(project)?.hash,
+          key: (ref) => this.keys.get(`${ref.project}\0${ref.path}`) ?? null,
+        },
         environmentFiles: (project) => this.environments.get(project)?.files ?? [],
       },
     };
@@ -78,324 +67,189 @@ class Tree {
   }
 
   graph() {
-    return readImportGraph(this.store, this.root, this.id);
+    return readImportGraph(this.store, this.id);
   }
 }
 
 const imports = (
   path: string,
-  text: string,
   targets: { static?: string[]; dynamic?: string[] },
 ): FileImports => ({
   path,
-  sha1: sha1(text),
+  sha1: "walked",
   static: targets.static ?? [],
   dynamic: targets.dynamic ?? [],
 });
 
-/** A runner closure of `test/a.test.ts` whose walk read `files`, with its project's environment. */
-const closure = (...files: FileImports[]): FetchedPart => ({
-  closures: [{ testFile: { project: "", path: "test/a.test.ts" }, paths: [], imports: files }],
-  environments: [environment("")],
+/** A runner closure of `ref` whose walk read `files`. */
+const closure = (ref: TestFileRef, ...files: FileImports[]): FetchedPart => ({
+  closures: [{ testFile: ref, paths: [], imports: files }],
 });
 
-const environment = (project: string): RunnerEnvironment => ({
+const environment = (
+  project: string,
+  extra: Partial<RunnerEnvironment> = {},
+): RunnerEnvironment => ({
   project,
   runnerName: "vitest",
   runnerVersion: "5",
   adapterVersion: "1",
   resolvedConfig: "{}",
   files: [],
+  ...extra,
 });
 
-const INDEX = 'export * from "./a.js";\nexport const load = () => import("./lazy.js");\n';
+const targetsOf = (tree: Tree, path: string, ref = T) => tree.graph().walk(ref)?.imports.get(path);
 
-describe("import edges (015-108)", () => {
-  it("records a file's targets with static and dynamic apart, under its blob id", () => {
+describe("walks by result key (R2)", () => {
+  it("writes a closure's walk under its test file's key, static and dynamic apart, and reads it while that key is current", () => {
     const tree = new Tree(open(fakeCommonDir()), "w1");
-    tree.write("src/index.ts", INDEX);
+    tree.key(T, "key-1");
     tree.record(
-      closure(imports("src/index.ts", INDEX, { static: ["src/a.ts"], dynamic: ["src/lazy.ts"] })),
+      closure(T, imports("src/index.ts", { static: ["src/a.ts"], dynamic: ["src/lazy.ts"] })),
     );
 
-    expect(tree.graph().targets("src/index.ts", "")).toEqual({
+    expect(targetsOf(tree, "src/index.ts")).toEqual({
       static: ["src/a.ts"],
       dynamic: ["src/lazy.ts"],
     });
     const rows = connectionOf(tree.store).all(
-      "SELECT path, hash, project, environment FROM import_targets",
+      "SELECT project, path, key, environment FROM test_file_imports",
     );
-    expect(rows).toEqual([
-      { path: "src/index.ts", hash: blob(INDEX), project: "", environment: "env-1" },
-    ]);
+    expect(rows).toEqual([{ project: "", path: T.path, key: "key-1", environment: "env-1" }]);
   });
 
-  it("shares a file's edges with every worktree at the same bytes, and only with those", () => {
+  it("shares a walk with every worktree at the same key, and gives none to a worktree at another", () => {
+    const store = open(fakeCommonDir());
+    const one = new Tree(store, "w1");
+    const same = new Tree(store, "w2");
+    const other = new Tree(store, "w3");
+    one.key(T, "key-1");
+    same.key(T, "key-1");
+    other.key(T, "key-2");
+    one.record(closure(T, imports("src/gateway.ts", { static: ["src/leaf.ts"] })));
+
+    expect(targetsOf(same, "src/gateway.ts")?.static).toEqual(["src/leaf.ts"]);
+    expect(other.graph().walk(T)).toBeUndefined();
+    // Another key's walk never replaces it: each key owns its own.
+    other.record(closure(T, imports("src/gateway.ts", { static: ["src/leaf.js"] })));
+    expect(targetsOf(one, "src/gateway.ts")?.static).toEqual(["src/leaf.ts"]);
+    expect(targetsOf(other, "src/gateway.ts")?.static).toEqual(["src/leaf.js"]);
+  });
+
+  it("reads none once the worktree's key moved, until a walk is written with the new key", () => {
+    const tree = new Tree(open(fakeCommonDir()), "w1");
+    tree.key(T, "key-1");
+    tree.record(closure(T, imports("src/index.ts", { static: ["src/a.ts"] })));
+    tree.key(T, "key-2");
+    expect(tree.graph().walk(T)).toBeUndefined();
+
+    tree.record(closure(T, imports("src/index.ts", { static: ["src/b.ts"] })));
+    expect(targetsOf(tree, "src/index.ts")?.static).toEqual(["src/b.ts"]);
+    // No worktree holds key-1 now: its walk went with the new one.
+    const keys = connectionOf(tree.store).all("SELECT key FROM test_file_imports");
+    expect(keys).toEqual([{ key: "key-2" }]);
+  });
+
+  it("keeps a walk another worktree's key still holds", () => {
     const store = open(fakeCommonDir());
     const one = new Tree(store, "w1");
     const two = new Tree(store, "w2");
-    const three = new Tree(store, "w3");
-    one.write("src/index.ts", INDEX);
-    two.write("src/index.ts", INDEX);
-    three.write("src/index.ts", `${INDEX}// other bytes\n`);
-    one.record(closure(imports("src/index.ts", INDEX, { static: ["src/a.ts"] })));
-    // Each worktree's daemon records its own environment when it reads it; the same hash shares.
-    for (const tree of [two, three]) tree.record({ environments: [environment("")] });
+    one.key(T, "key-1");
+    two.key(T, "key-1");
+    one.record(closure(T, imports("src/index.ts", { static: ["src/a.ts"] })));
+    one.key(T, "key-2");
+    one.record(closure(T, imports("src/index.ts", { static: ["src/b.ts"] })));
 
-    expect(two.graph().targets("src/index.ts", "")).toEqual({ static: ["src/a.ts"], dynamic: [] });
-    expect(three.graph().targets("src/index.ts", "")).toBeUndefined();
+    expect(targetsOf(two, "src/index.ts")?.static).toEqual(["src/a.ts"]);
   });
 
-  it("reads a changed file as not recorded until its next walk", () => {
+  it("writes nothing for a test file with no key", () => {
     const tree = new Tree(open(fakeCommonDir()), "w1");
-    tree.write("src/index.ts", INDEX);
-    tree.record(closure(imports("src/index.ts", INDEX, { static: ["src/a.ts"] })));
-
-    // Changed on disk, no daemon looked yet: the stat no longer matches the record.
-    const edited = 'export * from "./b.js";\n';
-    tree.write("src/index.ts", edited, false);
-    expect(tree.graph().targets("src/index.ts", "")).toBeUndefined();
-    // The daemon hashed it: the new blob id has no edges until the walk.
-    tree.flush("src/index.ts", edited);
-    expect(tree.graph().targets("src/index.ts", "")).toBeUndefined();
-
-    tree.record(closure(imports("src/index.ts", edited, { static: ["src/b.ts"] })));
-    expect(tree.graph().targets("src/index.ts", "")).toEqual({ static: ["src/b.ts"], dynamic: [] });
-  });
-
-  it("stores nothing for a walk of bytes the file no longer holds", () => {
-    const tree = new Tree(open(fakeCommonDir()), "w1");
-    tree.write("src/index.ts", INDEX);
-    // The walk read other bytes, then the file was written back before the store.
-    tree.record(closure(imports("src/index.ts", "export {};\n", { static: ["src/gone.ts"] })));
-
-    expect(tree.graph().targets("src/index.ts", "")).toBeUndefined();
-    expect(connectionOf(tree.store).all("SELECT path FROM import_targets")).toEqual([]);
-  });
-
-  it("drops a path's versions no worktree holds when a new one is stored", () => {
-    const store = open(fakeCommonDir());
-    const one = new Tree(store, "w1");
-    const two = new Tree(store, "w2");
-    const versions = ["export const v = 1;\n", "export const v = 2;\n", "export const v = 3;\n"];
-    two.write("src/v.ts", versions[0] as string);
-    two.record(closure(imports("src/v.ts", versions[0] as string, {})));
-    for (const text of versions) {
-      one.write("src/v.ts", text);
-      one.record(closure(imports("src/v.ts", text, {})));
-    }
-
-    const held = store.fileHashes.get("w2", "src/v.ts")?.hash;
-    const rows = connectionOf(store).all("SELECT hash FROM import_targets ORDER BY hash");
-    expect(rows.map((row) => row.hash).sort()).toEqual([held, blob(versions[2] as string)].sort());
-    expect(two.graph().targets("src/v.ts", "")).toEqual({ static: [], dynamic: [] });
+    tree.record(closure(T, imports("src/index.ts", {})));
+    expect(tree.graph().walk(T)).toBeUndefined();
   });
 });
 
-describe("edges by resolution context (R1 B2)", () => {
-  /** Identical bytes in every worktree and project; an alias decides the target. */
-  const GATEWAY = 'export { value } from "@leaf";\n';
-  const walked = (project: string, target: string): FetchedPart => ({
-    closures: [
-      {
-        testFile: { project, path: "test/a.test.ts" },
-        paths: [],
-        imports: [imports("src/gateway.ts", GATEWAY, { static: [target] })],
-      },
-    ],
-    environments: [environment(project)],
-  });
-
-  it("keeps two worktrees' targets of one importer's bytes apart when their configs differ", () => {
-    const store = open(fakeCommonDir());
-    const one = new Tree(store, "w1");
-    const two = new Tree(store, "w2");
-    const same = new Tree(store, "w3");
-    for (const tree of [one, two, same]) tree.write("src/gateway.ts", GATEWAY);
-    // `@leaf` is `src/a.ts` in one's config and `src/b.ts` in two's: two environment hashes.
-    one.environments.set("", { hash: "env-a", files: [] });
-    two.environments.set("", { hash: "env-b", files: [] });
-    same.environments.set("", { hash: "env-a", files: [] });
-    one.record(walked("", "src/a.ts"));
-    two.record(walked("", "src/b.ts"));
-    same.record({ environments: [environment("")] });
-
-    expect(one.graph().targets("src/gateway.ts", "")).toEqual({
-      static: ["src/a.ts"],
-      dynamic: [],
+describe("setup chains through the key row (R2)", () => {
+  const config = imports("vitest.config.ts", { static: ["src/reporter.ts"] });
+  const setup = imports("test/setup.ts", { static: ["src/env.ts"] });
+  const unit = (roots: string[]) =>
+    environment("", {
+      roots,
+      imports: [config, setup],
+      files: ["test/setup.ts", "vitest.config.ts"],
     });
-    expect(two.graph().targets("src/gateway.ts", "")).toEqual({
-      static: ["src/b.ts"],
-      dynamic: [],
-    });
-    // A worktree with the same config shares the first one's row.
-    expect(same.graph().targets("src/gateway.ts", "")).toEqual({
-      static: ["src/a.ts"],
-      dynamic: [],
-    });
-  });
 
-  it("keeps two projects' targets of one importer's bytes apart in one worktree", () => {
+  it("reads a project's setup and config walks at the environment hash the test file's key names", () => {
     const tree = new Tree(open(fakeCommonDir()), "w1");
-    tree.write("src/gateway.ts", GATEWAY);
-    tree.environments.set("unit", { hash: "env-unit", files: [] });
-    tree.environments.set("e2e", { hash: "env-e2e", files: [] });
-    tree.record(walked("unit", "src/a.ts"));
-    tree.record(walked("e2e", "src/b.ts"));
+    tree.environments.set("", { hash: "env-1", files: ["test/setup.ts", "vitest.config.ts"] });
+    tree.record({ environments: [unit(["test/setup.ts", "vitest.config.ts"])] });
+    tree.key(T, "key-1");
+    tree.record(closure(T));
 
-    expect(tree.graph().targets("src/gateway.ts", "unit")).toEqual({
-      static: ["src/a.ts"],
-      dynamic: [],
-    });
-    expect(tree.graph().targets("src/gateway.ts", "e2e")).toEqual({
-      static: ["src/b.ts"],
-      dynamic: [],
-    });
-    expect(tree.graph().targets("src/gateway.ts", "other")).toBeUndefined();
+    const walked = tree.graph().walk(T)?.environment;
+    expect(walked?.files).toEqual(["test/setup.ts", "vitest.config.ts"]);
+    expect(walked?.roots).toEqual(["test/setup.ts", "vitest.config.ts"]);
+    expect(walked?.imports.get("vitest.config.ts")?.static).toEqual(["src/reporter.ts"]);
+    expect(walked?.imports.get("test/setup.ts")?.static).toEqual(["src/env.ts"]);
   });
 
-  it("reads no targets once the project moved to an environment its edges were not walked in", () => {
+  it("gives a key row whose environment walk was never stored no setup chain", () => {
     const tree = new Tree(open(fakeCommonDir()), "w1");
-    tree.write("src/gateway.ts", GATEWAY);
-    tree.environments.set("", { hash: "env-a", files: [] });
-    tree.record(walked("", "src/a.ts"));
-    tree.environments.set("", { hash: "env-b", files: [] });
-    tree.record({ environments: [environment("")] });
-
-    expect(tree.graph().targets("src/gateway.ts", "")).toBeUndefined();
-    // The old environment's edges went with its list: no worktree reads it.
-    expect(connectionOf(tree.store).all("SELECT environment FROM import_targets")).toEqual([]);
-  });
-});
-
-describe("environment files (015-108)", () => {
-  it("records each project's files under its environment hash and reads them back", () => {
-    const store = open(fakeCommonDir());
-    const one = new Tree(store, "w1");
-    const two = new Tree(store, "w2");
-    for (const tree of [one, two]) {
-      tree.write("vitest.config.ts", "export default {};\n");
-      tree.write("test/setup.ts", "globalThis.x = 1;\n");
-      // A resolution candidate with no file is listed as absent.
-      tree.environments.set("unit", {
-        hash: "env-1",
-        files: ["test/setup.ts", "test/setup/index.ts", "vitest.config.ts"],
-      });
-    }
-    one.record({ environments: [environment("unit")] });
-    two.record({ environments: [environment("unit")] });
-
-    const files = ["test/setup.ts", "test/setup/index.ts", "vitest.config.ts"];
-    expect(one.graph().environment("unit")?.files).toEqual(files);
-    expect(two.graph().environment("unit")?.files).toEqual(files);
-    expect(one.graph().environment("e2e")).toBeUndefined();
-    expect(connectionOf(store).all("SELECT project, environment FROM environment_inputs")).toEqual([
-      { project: "unit", environment: "env-1" },
-    ]);
+    tree.key(T, "key-1");
+    tree.record(closure(T));
+    expect(tree.graph().walk(T)).toMatchObject({ environment: undefined });
   });
 
-  it("reads a list as not recorded once one of its files changed or appeared", () => {
+  it("drops the environment walks no key row names and no project reads now", () => {
     const tree = new Tree(open(fakeCommonDir()), "w1");
-    tree.write("test/setup.ts", "globalThis.x = 1;\n");
-    tree.environments.set("unit", { hash: "env-1", files: ["test/setup.ts", "test/setup.js"] });
-    tree.record({ environments: [environment("unit")] });
-    expect(tree.graph().environment("unit")?.files).toEqual(["test/setup.ts", "test/setup.js"]);
+    tree.record({ environments: [unit(["vitest.config.ts"])] });
+    tree.key(T, "key-1");
+    tree.record(closure(T));
+    tree.environments.set("", { hash: "env-2", files: [] });
+    tree.record({ environments: [unit(["vitest.config.ts"])] });
+    tree.key(T, "key-2");
+    tree.record(closure(T));
 
-    tree.write("test/setup.ts", "globalThis.x = 2;\n");
-    expect(tree.graph().environment("unit")).toBeUndefined();
-    tree.write("test/setup.ts", "globalThis.x = 1;\n");
-    expect(tree.graph().environment("unit")?.files).toEqual(["test/setup.ts", "test/setup.js"]);
-    tree.write("test/setup.js", "// appeared\n", false);
-    expect(tree.graph().environment("unit")).toBeUndefined();
-  });
-
-  it("moves a worktree to its new hash and drops the lists no worktree reads", () => {
-    const tree = new Tree(open(fakeCommonDir()), "w1");
-    tree.write("test/setup.ts", "globalThis.x = 1;\n");
-    tree.environments.set("unit", { hash: "env-1", files: ["test/setup.ts"] });
-    tree.record({ environments: [environment("unit")] });
-    tree.environments.set("unit", { hash: "env-2", files: ["test/setup.ts", "vitest.config.ts"] });
-    tree.write("vitest.config.ts", "export default {};\n");
-    tree.record({ environments: [environment("unit")] });
-
-    expect(tree.graph().environment("unit")?.files).toEqual(["test/setup.ts", "vitest.config.ts"]);
-    const rows = connectionOf(tree.store).all("SELECT environment FROM environment_inputs");
+    const rows = connectionOf(tree.store).all("SELECT environment FROM environment_walks");
     expect(rows).toEqual([{ environment: "env-2" }]);
   });
 });
 
-describe("setup chains' roots and edges (R1 B3)", () => {
-  it("stores an environment's roots and its config and setup walks' edges under its hash", () => {
+describe("storeClosures (015-108, R2)", () => {
+  it("stores the closures, and their walks under the keys just set, in one transaction", () => {
     const tree = new Tree(open(fakeCommonDir()), "w1");
-    const config = 'import Reporter from "./src/reporter.ts";\nexport default { Reporter };\n';
-    const setup = 'import { init } from "../src/env.ts";\ninit();\n';
-    tree.write("vitest.config.ts", config);
-    tree.write("test/setup.ts", setup);
-    tree.environments.set("unit", { hash: "env-1", files: ["test/setup.ts", "vitest.config.ts"] });
-    tree.record({
-      environments: [
-        {
-          ...environment("unit"),
-          roots: ["test/setup.ts", "vitest.config.ts"],
-          imports: [
-            imports("vitest.config.ts", config, { static: ["src/reporter.ts"] }),
-            imports("test/setup.ts", setup, { static: ["src/env.ts"] }),
-          ],
-        },
-      ],
-    });
-
-    const graph = tree.graph();
-    expect(graph.environment("unit")).toEqual({
-      files: ["test/setup.ts", "vitest.config.ts"],
-      roots: ["test/setup.ts", "vitest.config.ts"],
-    });
-    expect(graph.targets("vitest.config.ts", "unit")?.static).toEqual(["src/reporter.ts"]);
-    expect(graph.targets("test/setup.ts", "unit")?.static).toEqual(["src/env.ts"]);
-  });
-});
-
-describe("storeClosures (015-108)", () => {
-  it("stores the closures, and the part's edges and environment files, in one transaction", () => {
-    const tree = new Tree(open(fakeCommonDir()), "w1");
-    tree.write("src/index.ts", INDEX);
-    tree.write("test/setup.ts", "export {};\n");
-    tree.environments.set("", { hash: "env-1", files: ["test/setup.ts"] });
-    const ref = { project: "", path: "test/a.test.ts" };
-    const assembled = assembleClosure({ testFile: ref, paths: ["src/index.ts"] }, []);
+    tree.key(T, "key-1");
+    const assembled = assembleClosure({ testFile: T, paths: ["src/index.ts"] }, []);
     const source = tree.source();
     const index = { ...source.keys.index, closure: () => assembled };
-    const context = { ...source, keys: { ...source.keys, index } } as unknown as SchedulerContext;
+    const context = { ...source, worktreeId: tree.id, keys: { ...source.keys, index } };
 
-    storeClosures(context, [ref], {
-      ...closure(imports("src/index.ts", INDEX, { static: ["src/a.ts"] })),
+    storeClosures(context as unknown as SchedulerContext, [T], {
+      ...closure(T, imports("src/index.ts", { static: ["src/a.ts"] })),
       environments: [environment("")],
     });
 
-    expect(tree.store.testFiles.get(ref)?.closure.paths).toEqual([
-      "src/index.ts",
-      "test/a.test.ts",
-    ]);
-    expect(tree.graph().targets("src/index.ts", "")).toEqual({ static: ["src/a.ts"], dynamic: [] });
-    expect(tree.graph().environment("")?.files).toEqual(["test/setup.ts"]);
+    expect(tree.store.testFiles.get(T)?.closure.paths).toEqual(["src/index.ts", "test/a.test.ts"]);
+    expect(targetsOf(tree, "src/index.ts")?.static).toEqual(["src/a.ts"]);
   });
 });
 
-describe("the main store's schema (015-108)", () => {
+describe("the main store's schema (015-108, R2)", () => {
   it("reads nothing from a store no daemon of this version wrote, and keeps its user_version", () => {
     const commonDir = fakeCommonDir();
     const tree = new Tree(open(commonDir), "w1");
-    tree.write("src/index.ts", INDEX);
-    expect(tree.graph().targets("src/index.ts", "")).toBeUndefined();
-    expect(tree.graph().environment("unit")).toBeUndefined();
+    tree.key(T, "key-1");
+    expect(tree.graph().walk(T)).toBeUndefined();
     const tables = () =>
       connectionOf(tree.store)
         .all("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
         .map((row) => row.name);
-    expect(tables()).not.toContain("import_targets");
+    expect(tables()).not.toContain("test_file_imports");
 
-    tree.record(closure(imports("src/index.ts", INDEX, { static: ["src/a.ts"] })));
-    expect(tables()).toEqual(expect.arrayContaining(["import_targets", "environment_inputs"]));
+    tree.record(closure(T, imports("src/index.ts", { static: ["src/a.ts"] })));
+    expect(tables()).toEqual(expect.arrayContaining(["test_file_imports", "environment_walks"]));
     expect(userVersion(connectionOf(tree.store).db)).toBe(SCHEMA_VERSION);
     // Opened again, as an older daemon of the same schema opens it: unchanged.
     expect(userVersion(connectionOf(open(commonDir)).db)).toBe(SCHEMA_VERSION);
@@ -404,14 +258,13 @@ describe("the main store's schema (015-108)", () => {
   it("stores nothing, and throws nothing, through a store not opened by openStore", () => {
     const store = open(fakeCommonDir());
     const tree = new Tree(store, "w1");
-    tree.write("src/index.ts", INDEX);
-    const wrapped = new Proxy(store, {});
+    tree.key(T, "key-1");
     recordImportGraph(
-      { ...tree.source(), store: wrapped },
-      closure(imports("src/index.ts", INDEX, {})),
+      { ...tree.source(), store: new Proxy(store, {}) },
+      closure(T, imports("src/index.ts", {})),
     );
     expect(
-      connectionOf(store).all("SELECT name FROM sqlite_master WHERE name = 'import_targets'"),
+      connectionOf(store).all("SELECT name FROM sqlite_master WHERE name = 'test_file_imports'"),
     ).toEqual([]);
   });
 });
