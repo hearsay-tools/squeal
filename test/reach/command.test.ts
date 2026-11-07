@@ -279,12 +279,18 @@ describe("squeal reach", () => {
         worktreeId: repo.mainId,
         now: 1,
         hashOf: (path) => hashes.get(path),
-        imports: Object.entries(files).map(([path, text]) => ({
-          path,
-          sha1: createHash("sha1").update(text).digest("hex"),
-          static: edges[path] ?? [],
-          dynamic: [],
-        })),
+        walks: [
+          {
+            project: "",
+            environment: "env-1",
+            imports: Object.entries(files).map(([path, text]) => ({
+              path,
+              sha1: createHash("sha1").update(text).digest("hex"),
+              static: edges[path] ?? [],
+              dynamic: [],
+            })),
+          },
+        ],
         environments: [
           { project: "", hash: "env-1", files: ["vitest.config.ts", "src/reporter.ts"] },
         ],

@@ -38,6 +38,8 @@ class Tree {
     readonly id: string,
   ) {
     store.worktrees.upsert(worktree(id, this.root));
+    // The default project's environment, whose hash its edges are resolved under (review 0.1.415 B2).
+    this.environments.set("", { hash: "env-1", files: [] });
   }
 
   /** Writes `path` and records its stat and blob id, as a reconciliation does. */
@@ -91,9 +93,10 @@ const imports = (
   dynamic: targets.dynamic ?? [],
 });
 
-/** A runner closure of `test/a.test.ts` whose walk read `files`. */
+/** A runner closure of `test/a.test.ts` whose walk read `files`, with its project's environment. */
 const closure = (...files: FileImports[]): FetchedPart => ({
   closures: [{ testFile: { project: "", path: "test/a.test.ts" }, paths: [], imports: files }],
+  environments: [environment("")],
 });
 
 const environment = (project: string): RunnerEnvironment => ({
@@ -115,12 +118,16 @@ describe("import edges (015-108)", () => {
       closure(imports("src/index.ts", INDEX, { static: ["src/a.ts"], dynamic: ["src/lazy.ts"] })),
     );
 
-    expect(tree.graph().targets("src/index.ts")).toEqual({
+    expect(tree.graph().targets("src/index.ts", "")).toEqual({
       static: ["src/a.ts"],
       dynamic: ["src/lazy.ts"],
     });
-    const rows = connectionOf(tree.store).all("SELECT path, hash FROM import_edges");
-    expect(rows).toEqual([{ path: "src/index.ts", hash: blob(INDEX) }]);
+    const rows = connectionOf(tree.store).all(
+      "SELECT path, hash, project, environment FROM import_targets",
+    );
+    expect(rows).toEqual([
+      { path: "src/index.ts", hash: blob(INDEX), project: "", environment: "env-1" },
+    ]);
   });
 
   it("shares a file's edges with every worktree at the same bytes, and only with those", () => {
@@ -132,9 +139,11 @@ describe("import edges (015-108)", () => {
     two.write("src/index.ts", INDEX);
     three.write("src/index.ts", `${INDEX}// other bytes\n`);
     one.record(closure(imports("src/index.ts", INDEX, { static: ["src/a.ts"] })));
+    // Each worktree's daemon records its own environment when it reads it; the same hash shares.
+    for (const tree of [two, three]) tree.record({ environments: [environment("")] });
 
-    expect(two.graph().targets("src/index.ts")).toEqual({ static: ["src/a.ts"], dynamic: [] });
-    expect(three.graph().targets("src/index.ts")).toBeUndefined();
+    expect(two.graph().targets("src/index.ts", "")).toEqual({ static: ["src/a.ts"], dynamic: [] });
+    expect(three.graph().targets("src/index.ts", "")).toBeUndefined();
   });
 
   it("reads a changed file as not recorded until its next walk", () => {
@@ -145,13 +154,13 @@ describe("import edges (015-108)", () => {
     // Changed on disk, no daemon looked yet: the stat no longer matches the record.
     const edited = 'export * from "./b.js";\n';
     tree.write("src/index.ts", edited, false);
-    expect(tree.graph().targets("src/index.ts")).toBeUndefined();
+    expect(tree.graph().targets("src/index.ts", "")).toBeUndefined();
     // The daemon hashed it: the new blob id has no edges until the walk.
     tree.flush("src/index.ts", edited);
-    expect(tree.graph().targets("src/index.ts")).toBeUndefined();
+    expect(tree.graph().targets("src/index.ts", "")).toBeUndefined();
 
     tree.record(closure(imports("src/index.ts", edited, { static: ["src/b.ts"] })));
-    expect(tree.graph().targets("src/index.ts")).toEqual({ static: ["src/b.ts"], dynamic: [] });
+    expect(tree.graph().targets("src/index.ts", "")).toEqual({ static: ["src/b.ts"], dynamic: [] });
   });
 
   it("stores nothing for a walk of bytes the file no longer holds", () => {
@@ -160,8 +169,8 @@ describe("import edges (015-108)", () => {
     // The walk read other bytes, then the file was written back before the store.
     tree.record(closure(imports("src/index.ts", "export {};\n", { static: ["src/gone.ts"] })));
 
-    expect(tree.graph().targets("src/index.ts")).toBeUndefined();
-    expect(connectionOf(tree.store).all("SELECT path FROM import_edges")).toEqual([]);
+    expect(tree.graph().targets("src/index.ts", "")).toBeUndefined();
+    expect(connectionOf(tree.store).all("SELECT path FROM import_targets")).toEqual([]);
   });
 
   it("drops a path's versions no worktree holds when a new one is stored", () => {
@@ -177,9 +186,85 @@ describe("import edges (015-108)", () => {
     }
 
     const held = store.fileHashes.get("w2", "src/v.ts")?.hash;
-    const rows = connectionOf(store).all("SELECT hash FROM import_edges ORDER BY hash");
+    const rows = connectionOf(store).all("SELECT hash FROM import_targets ORDER BY hash");
     expect(rows.map((row) => row.hash).sort()).toEqual([held, blob(versions[2] as string)].sort());
-    expect(two.graph().targets("src/v.ts")).toEqual({ static: [], dynamic: [] });
+    expect(two.graph().targets("src/v.ts", "")).toEqual({ static: [], dynamic: [] });
+  });
+});
+
+describe("edges by resolution context (R1 B2)", () => {
+  /** Identical bytes in every worktree and project; an alias decides the target. */
+  const GATEWAY = 'export { value } from "@leaf";\n';
+  const walked = (project: string, target: string): FetchedPart => ({
+    closures: [
+      {
+        testFile: { project, path: "test/a.test.ts" },
+        paths: [],
+        imports: [imports("src/gateway.ts", GATEWAY, { static: [target] })],
+      },
+    ],
+    environments: [environment(project)],
+  });
+
+  it("keeps two worktrees' targets of one importer's bytes apart when their configs differ", () => {
+    const store = open(fakeCommonDir());
+    const one = new Tree(store, "w1");
+    const two = new Tree(store, "w2");
+    const same = new Tree(store, "w3");
+    for (const tree of [one, two, same]) tree.write("src/gateway.ts", GATEWAY);
+    // `@leaf` is `src/a.ts` in one's config and `src/b.ts` in two's: two environment hashes.
+    one.environments.set("", { hash: "env-a", files: [] });
+    two.environments.set("", { hash: "env-b", files: [] });
+    same.environments.set("", { hash: "env-a", files: [] });
+    one.record(walked("", "src/a.ts"));
+    two.record(walked("", "src/b.ts"));
+    same.record({ environments: [environment("")] });
+
+    expect(one.graph().targets("src/gateway.ts", "")).toEqual({
+      static: ["src/a.ts"],
+      dynamic: [],
+    });
+    expect(two.graph().targets("src/gateway.ts", "")).toEqual({
+      static: ["src/b.ts"],
+      dynamic: [],
+    });
+    // A worktree with the same config shares the first one's row.
+    expect(same.graph().targets("src/gateway.ts", "")).toEqual({
+      static: ["src/a.ts"],
+      dynamic: [],
+    });
+  });
+
+  it("keeps two projects' targets of one importer's bytes apart in one worktree", () => {
+    const tree = new Tree(open(fakeCommonDir()), "w1");
+    tree.write("src/gateway.ts", GATEWAY);
+    tree.environments.set("unit", { hash: "env-unit", files: [] });
+    tree.environments.set("e2e", { hash: "env-e2e", files: [] });
+    tree.record(walked("unit", "src/a.ts"));
+    tree.record(walked("e2e", "src/b.ts"));
+
+    expect(tree.graph().targets("src/gateway.ts", "unit")).toEqual({
+      static: ["src/a.ts"],
+      dynamic: [],
+    });
+    expect(tree.graph().targets("src/gateway.ts", "e2e")).toEqual({
+      static: ["src/b.ts"],
+      dynamic: [],
+    });
+    expect(tree.graph().targets("src/gateway.ts", "other")).toBeUndefined();
+  });
+
+  it("reads no targets once the project moved to an environment its edges were not walked in", () => {
+    const tree = new Tree(open(fakeCommonDir()), "w1");
+    tree.write("src/gateway.ts", GATEWAY);
+    tree.environments.set("", { hash: "env-a", files: [] });
+    tree.record(walked("", "src/a.ts"));
+    tree.environments.set("", { hash: "env-b", files: [] });
+    tree.record({ environments: [environment("")] });
+
+    expect(tree.graph().targets("src/gateway.ts", "")).toBeUndefined();
+    // The old environment's edges went with its list: no worktree reads it.
+    expect(connectionOf(tree.store).all("SELECT environment FROM import_targets")).toEqual([]);
   });
 });
 
@@ -260,7 +345,7 @@ describe("storeClosures (015-108)", () => {
       "src/index.ts",
       "test/a.test.ts",
     ]);
-    expect(tree.graph().targets("src/index.ts")).toEqual({ static: ["src/a.ts"], dynamic: [] });
+    expect(tree.graph().targets("src/index.ts", "")).toEqual({ static: ["src/a.ts"], dynamic: [] });
     expect(tree.graph().environment("")).toEqual(["test/setup.ts"]);
   });
 });
@@ -270,16 +355,16 @@ describe("the main store's schema (015-108)", () => {
     const commonDir = fakeCommonDir();
     const tree = new Tree(open(commonDir), "w1");
     tree.write("src/index.ts", INDEX);
-    expect(tree.graph().targets("src/index.ts")).toBeUndefined();
+    expect(tree.graph().targets("src/index.ts", "")).toBeUndefined();
     expect(tree.graph().environment("unit")).toBeUndefined();
     const tables = () =>
       connectionOf(tree.store)
         .all("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
         .map((row) => row.name);
-    expect(tables()).not.toContain("import_edges");
+    expect(tables()).not.toContain("import_targets");
 
     tree.record(closure(imports("src/index.ts", INDEX, { static: ["src/a.ts"] })));
-    expect(tables()).toEqual(expect.arrayContaining(["import_edges", "environment_files"]));
+    expect(tables()).toEqual(expect.arrayContaining(["import_targets", "environment_files"]));
     expect(userVersion(connectionOf(tree.store).db)).toBe(SCHEMA_VERSION);
     // Opened again, as an older daemon of the same schema opens it: unchanged.
     expect(userVersion(connectionOf(open(commonDir)).db)).toBe(SCHEMA_VERSION);
@@ -295,7 +380,7 @@ describe("the main store's schema (015-108)", () => {
       closure(imports("src/index.ts", INDEX, {})),
     );
     expect(
-      connectionOf(store).all("SELECT name FROM sqlite_master WHERE name = 'import_edges'"),
+      connectionOf(store).all("SELECT name FROM sqlite_master WHERE name = 'import_targets'"),
     ).toEqual([]);
   });
 });

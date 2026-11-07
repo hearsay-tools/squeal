@@ -61,7 +61,7 @@ describe("moduleFacts", () => {
     const graph = fakeGraph({ "src/index.ts": ["src/a.ts", "src/b.ts"] });
     const facts = moduleFacts(root, graph, () => null);
     expect(Object.keys(files).filter((p) => facts.barrel(p))).toEqual(["src/index.ts"]);
-    expect(facts.starTargets("src/index.ts")).toEqual(new Set(["src/a.ts"]));
+    expect(facts.starTargets("src/index.ts", "")).toEqual(new Set(["src/a.ts"]));
     expect(facts.barrel("src/missing.ts")).toBe(false);
   });
 });
