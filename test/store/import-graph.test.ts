@@ -286,10 +286,10 @@ describe("environment files (015-108)", () => {
     two.record({ environments: [environment("unit")] });
 
     const files = ["test/setup.ts", "test/setup/index.ts", "vitest.config.ts"];
-    expect(one.graph().environment("unit")).toEqual(files);
-    expect(two.graph().environment("unit")).toEqual(files);
+    expect(one.graph().environment("unit")?.files).toEqual(files);
+    expect(two.graph().environment("unit")?.files).toEqual(files);
     expect(one.graph().environment("e2e")).toBeUndefined();
-    expect(connectionOf(store).all("SELECT project, environment FROM environment_files")).toEqual([
+    expect(connectionOf(store).all("SELECT project, environment FROM environment_inputs")).toEqual([
       { project: "unit", environment: "env-1" },
     ]);
   });
@@ -299,12 +299,12 @@ describe("environment files (015-108)", () => {
     tree.write("test/setup.ts", "globalThis.x = 1;\n");
     tree.environments.set("unit", { hash: "env-1", files: ["test/setup.ts", "test/setup.js"] });
     tree.record({ environments: [environment("unit")] });
-    expect(tree.graph().environment("unit")).toEqual(["test/setup.ts", "test/setup.js"]);
+    expect(tree.graph().environment("unit")?.files).toEqual(["test/setup.ts", "test/setup.js"]);
 
     tree.write("test/setup.ts", "globalThis.x = 2;\n");
     expect(tree.graph().environment("unit")).toBeUndefined();
     tree.write("test/setup.ts", "globalThis.x = 1;\n");
-    expect(tree.graph().environment("unit")).toEqual(["test/setup.ts", "test/setup.js"]);
+    expect(tree.graph().environment("unit")?.files).toEqual(["test/setup.ts", "test/setup.js"]);
     tree.write("test/setup.js", "// appeared\n", false);
     expect(tree.graph().environment("unit")).toBeUndefined();
   });
@@ -318,9 +318,40 @@ describe("environment files (015-108)", () => {
     tree.write("vitest.config.ts", "export default {};\n");
     tree.record({ environments: [environment("unit")] });
 
-    expect(tree.graph().environment("unit")).toEqual(["test/setup.ts", "vitest.config.ts"]);
-    const rows = connectionOf(tree.store).all("SELECT environment FROM environment_files");
+    expect(tree.graph().environment("unit")?.files).toEqual(["test/setup.ts", "vitest.config.ts"]);
+    const rows = connectionOf(tree.store).all("SELECT environment FROM environment_inputs");
     expect(rows).toEqual([{ environment: "env-2" }]);
+  });
+});
+
+describe("setup chains' roots and edges (R1 B3)", () => {
+  it("stores an environment's roots and its config and setup walks' edges under its hash", () => {
+    const tree = new Tree(open(fakeCommonDir()), "w1");
+    const config = 'import Reporter from "./src/reporter.ts";\nexport default { Reporter };\n';
+    const setup = 'import { init } from "../src/env.ts";\ninit();\n';
+    tree.write("vitest.config.ts", config);
+    tree.write("test/setup.ts", setup);
+    tree.environments.set("unit", { hash: "env-1", files: ["test/setup.ts", "vitest.config.ts"] });
+    tree.record({
+      environments: [
+        {
+          ...environment("unit"),
+          roots: ["test/setup.ts", "vitest.config.ts"],
+          imports: [
+            imports("vitest.config.ts", config, { static: ["src/reporter.ts"] }),
+            imports("test/setup.ts", setup, { static: ["src/env.ts"] }),
+          ],
+        },
+      ],
+    });
+
+    const graph = tree.graph();
+    expect(graph.environment("unit")).toEqual({
+      files: ["test/setup.ts", "vitest.config.ts"],
+      roots: ["test/setup.ts", "vitest.config.ts"],
+    });
+    expect(graph.targets("vitest.config.ts", "unit")?.static).toEqual(["src/reporter.ts"]);
+    expect(graph.targets("test/setup.ts", "unit")?.static).toEqual(["src/env.ts"]);
   });
 });
 
@@ -346,7 +377,7 @@ describe("storeClosures (015-108)", () => {
       "test/a.test.ts",
     ]);
     expect(tree.graph().targets("src/index.ts", "")).toEqual({ static: ["src/a.ts"], dynamic: [] });
-    expect(tree.graph().environment("")).toEqual(["test/setup.ts"]);
+    expect(tree.graph().environment("")?.files).toEqual(["test/setup.ts"]);
   });
 });
 
@@ -364,7 +395,7 @@ describe("the main store's schema (015-108)", () => {
     expect(tables()).not.toContain("import_targets");
 
     tree.record(closure(imports("src/index.ts", INDEX, { static: ["src/a.ts"] })));
-    expect(tables()).toEqual(expect.arrayContaining(["import_targets", "environment_files"]));
+    expect(tables()).toEqual(expect.arrayContaining(["import_targets", "environment_inputs"]));
     expect(userVersion(connectionOf(tree.store).db)).toBe(SCHEMA_VERSION);
     // Opened again, as an older daemon of the same schema opens it: unchanged.
     expect(userVersion(connectionOf(open(commonDir)).db)).toBe(SCHEMA_VERSION);
