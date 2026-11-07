@@ -54,6 +54,29 @@ export interface RunnerClosure {
    * fingerprint.
    */
   readonly packages?: RunnerPackages;
+  /**
+   * Spec 015 D11, "New stored data": the direct import targets of each
+   * project file the walk transformed, by the bytes the runner read. The
+   * core stores them by content; no key reads them. Absent when the runner
+   * gives none (node:test, pytest). Entries may be shared between closures.
+   */
+  readonly imports?: readonly FileImports[];
+}
+
+/**
+ * One walked project file's direct import targets (spec 015 D11). The core
+ * stores them under the file's blob id only after it confirms that the
+ * bytes on disk still hash to `sha1`: the edges of other bytes never read
+ * as current.
+ */
+export interface FileImports {
+  readonly path: RelativePath;
+  /** The sha1 of the bytes the runner read and walked, not a git blob id. */
+  readonly sha1: string;
+  /** Targets of `import` and `export ... from`, and of a `require` the runner resolved: project files, sorted. */
+  readonly static: readonly RelativePath[];
+  /** Targets of `import()` with a literal specifier: project files, sorted. */
+  readonly dynamic: readonly RelativePath[];
 }
 
 /**
