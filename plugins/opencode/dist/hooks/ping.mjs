@@ -1614,6 +1614,12 @@ var MARK = Buffer.from(`${CHILD_VARIABLE}=`);
 // src/core/capacity/pool.ts
 var MARK_REFRESH_MS = SLOT_WAITER_FRESH_MS / 3;
 
+// src/core/scheduler/capacity.ts
+var CAPACITY_RECHECK_MS = 2e3;
+
+// src/core/scheduler/pool-wait.ts
+var ASKS_AGAIN = `the daemon asks again every ${CAPACITY_RECHECK_MS / 1e3} s`;
+
 // src/core/slow/rank.ts
 var MAX_READ_BYTES = 1024 * 1024;
 

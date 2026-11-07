@@ -139,6 +139,7 @@ var WORKTREE_META_ROWS = {
   focused: { prefix: "focused:", owner: "scheduler/focused-row" },
   yields: { prefix: "yields:", owner: "scheduler/yields" },
   quiet: { prefix: "quiet:", owner: "scheduler/quiet" },
+  poolWait: { prefix: "pool-wait:", owner: "scheduler/pool-wait" },
   mergeHold: { prefix: "merge-hold:", owner: "scheduler/hold-rows" },
   commandHold: { prefix: "command-hold:", owner: "scheduler/hold-rows" },
   rekeyed: { prefix: "rekeyed.", owner: "scheduler/rekeyed-record" },
@@ -8269,7 +8270,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.412";
+  if (true) return "0.1.413";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -11780,6 +11781,37 @@ var MARK = Buffer.from(`${CHILD_VARIABLE}=`);
 // src/core/capacity/pool.ts
 var MARK_REFRESH_MS = SLOT_WAITER_FRESH_MS / 3;
 
+// src/core/scheduler/capacity.ts
+var CAPACITY_RECHECK_MS = 2e3;
+
+// src/core/scheduler/pool-wait.ts
+function poolWaitMetaKey(worktreeId) {
+  return worktreeMetaKey("poolWait", worktreeId);
+}
+var NO_WAITS = /* @__PURE__ */ new Map();
+function publishedPoolWaits(store, worktreeId, daemonStartedAt, now) {
+  const raw = store.meta.get(poolWaitMetaKey(worktreeId));
+  if (raw === null) return NO_WAITS;
+  try {
+    const { at, lanes } = JSON.parse(raw);
+    if (typeof at !== "number" || at < daemonStartedAt || now - at > SLOT_WAITER_FRESH_MS)
+      return NO_WAITS;
+    if (typeof lanes !== "object" || lanes === null) return NO_WAITS;
+    return new Map(
+      Object.entries(lanes).filter((entry3) => isPoolWait(entry3[1]))
+    );
+  } catch {
+    return NO_WAITS;
+  }
+}
+function isPoolWait(value) {
+  if (typeof value !== "object" || value === null) return false;
+  const w = value;
+  const busy = w.busyCores;
+  return typeof w.since === "number" && (busy === null || typeof busy === "number") && typeof w.cpus === "number" && typeof w.hostSlots === "number" && typeof w.grants === "number";
+}
+var ASKS_AGAIN = `the daemon asks again every ${CAPACITY_RECHECK_MS / 1e3} s`;
+
 // src/core/scheduler/claims.ts
 var CLAIM_GRACE_MS = 6e3;
 var CLAIM_UNBOUNDED_MS = 6e5;
@@ -12225,6 +12257,7 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
   const row = liveYieldRow(store, worktreeId, startedAt);
   const yields = row.tiers;
   const quiet = startedAt === null ? null : publishedWaits(store, worktreeId, startedAt, now);
+  const pool = startedAt === null ? null : publishedPoolWaits(store, worktreeId, startedAt, now);
   const header = reads?.header ?? readHeader(store, worktreeId, states, keys);
   const unlisted2 = unlistedReason(header, policy);
   const reasons = unknownReasons(store, worktreeId, states, root, now);
@@ -12306,6 +12339,13 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
     if (pending.kind === "queued" && pending.behind === null && wait !== void 0) {
       if (!promoted.has(testFileId(ref))) {
         const held = { ...pending, ...wait };
+        return { testFile: ref, state, pending: held, standing: held };
+      }
+    }
+    const refused = pending.kind === "queued" ? pool?.get(pending.lane) : void 0;
+    if (pending.kind === "queued" && pending.behind === null && refused !== void 0) {
+      if (!promoted.has(testFileId(ref))) {
+        const held = { ...pending, pool: refused };
         return { testFile: ref, state, pending: held, standing: held };
       }
     }
@@ -12410,7 +12450,7 @@ function groupId(s) {
     case "running":
       return `running ${s.lane} ${(s.files ?? 1) > 1} ${s.setup?.file ?? ""} ${batchId(s.batch)}`;
     case "queued":
-      return `queued ${s.lane} ${s.behind === null} ${s.promoted === true} ${yieldId(s.yields)} ${s.quietUntil ?? "-"} ${s.quietCatchUp === true} ${batchId(s.batch)}`;
+      return `queued ${s.lane} ${s.behind === null} ${s.promoted === true} ${yieldId(s.yields)} ${s.quietUntil ?? "-"} ${s.quietCatchUp === true} ${batchId(s.batch)} ${s.pool?.since ?? "-"}`;
     case "unlisted":
       return `unlisted ${yieldId(s.yields)}`;
     case "claim":

@@ -274,7 +274,7 @@ import { readdirSync, readFileSync as readFileSync2 } from "node:fs";
 import { dirname as dirname2, join as join3 } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.412";
+  if (true) return "0.1.413";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -424,6 +424,7 @@ var init_store = __esm({
       focused: { prefix: "focused:", owner: "scheduler/focused-row" },
       yields: { prefix: "yields:", owner: "scheduler/yields" },
       quiet: { prefix: "quiet:", owner: "scheduler/quiet" },
+      poolWait: { prefix: "pool-wait:", owner: "scheduler/pool-wait" },
       mergeHold: { prefix: "merge-hold:", owner: "scheduler/hold-rows" },
       commandHold: { prefix: "command-hold:", owner: "scheduler/hold-rows" },
       rekeyed: { prefix: "rekeyed.", owner: "scheduler/rekeyed-record" },
@@ -17911,8 +17912,7 @@ var init_proc = __esm({
 import { readdirSync as readdirSync15, readFileSync as readFileSync24 } from "node:fs";
 import { join as join31 } from "node:path";
 function gatedPermits(marks, own, hostSlots, want, busy = null) {
-  const marked4 = marks.reduce((sum, m) => sum + (m.cores ?? m.grant), own.cores);
-  let cores = Math.max(marked4, busy ?? 0);
+  let cores = gatedCores(marks, own.cores, busy);
   let grants = marks.reduce((sum, m) => sum + m.grant, own.grant);
   let taken3 = 0;
   for (; taken3 < want && (cores < hostSlots || grants < hostSlots / 2); taken3++) {
@@ -17920,6 +17920,10 @@ function gatedPermits(marks, own, hostSlots, want, busy = null) {
     grants++;
   }
   return taken3;
+}
+function gatedCores(marks, own, busy = null) {
+  const marked4 = marks.reduce((sum, m) => sum + (m.cores ?? m.grant), own);
+  return Math.max(marked4, busy ?? 0);
 }
 function createTreeCpu(options = {}) {
   const pid = options.pid ?? process.pid;
@@ -18148,6 +18152,8 @@ var init_pool = __esm({
       #idleSince = null;
       #timer = null;
       #mark = null;
+      /** What the last look read, for a refused tier's wait (row 011-309). */
+      #gate = null;
       #closed = false;
       constructor(options) {
         this.#options = options;
@@ -18234,6 +18240,9 @@ var init_pool = __esm({
           if (this.#active()) this.#republish();
           else this.#deactivate();
         };
+      }
+      gate() {
+        return this.#gate;
       }
       close() {
         this.#closed = true;
@@ -18360,8 +18369,14 @@ var init_pool = __esm({
       /** How many of `want` permits the CPU gate lets this daemon take now (rows 011-98, 011-182). */
       #gated(others, inUse, want, kind) {
         const cores = this.#cores();
+        const busy = cores !== null && kind === "backlog" ? this.#busy(cores) : null;
+        this.#gate = {
+          busyCores: cores === null ? null : gatedCores(others, cores, busy),
+          cpus: availableParallelism4(),
+          hostSlots: this.#hostSlots,
+          grants: others.reduce((sum, m) => sum + m.grant, 0)
+        };
         if (cores === null) return want;
-        const busy = kind === "backlog" ? this.#busy(cores) : null;
         return gatedPermits(others, { cores, grant: inUse }, this.#hostSlots, want, busy);
       }
       /**
@@ -18510,12 +18525,14 @@ var init_capacity2 = __esm({
       #pool;
       #dir;
       #note;
+      #waits;
       #failed = null;
       #refused = false;
-      constructor(options, worktreeId, note) {
+      constructor(options, worktreeId, note, waits2 = null) {
         const { dir: dir2, refreshMs, hostSlots, project, host } = options;
         this.#dir = dir2;
         this.#note = note;
+        this.#waits = waits2;
         this.#pool = createPermitPool({
           dir: dir2,
           owner: { pid: process.pid, worktreeId },
@@ -18529,13 +18546,16 @@ var init_capacity2 = __esm({
        * The grant for a tier of `want` files that runs no fewer than `least`
        * workers (row 011-97); `null` when the pool failed and the tier runs
        * ungranted. A `backlog` tier's gate also counts the host's busy cores
-       * (row 011-182).
+       * (row 011-182). `waitsIn`, the scheduler's lane of a tier whose files
+       * wait while it is refused: a refusal starts or goes on with that lane's
+       * wait for CPU, a grant ends it (row 011-309).
        */
-      take(want, lane = "fast", least = 1, kind = "checkpoint") {
+      take(want, lane = "fast", least = 1, kind = "checkpoint", waitsIn = null) {
         try {
           const lease = this.#pool.acquire(want, lane, least, kind);
           this.#failed = null;
           if (lease === null) this.#refused = true;
+          if (waitsIn !== null) this.#told(waitsIn, lease !== null);
           return lease ?? WAIT_FOR_CAPACITY;
         } catch (error) {
           const reason2 = error instanceof Error ? error.message : String(error);
@@ -18546,6 +18566,15 @@ var init_capacity2 = __esm({
           }
           this.#failed = reason2;
           return null;
+        }
+      }
+      /** `lane`'s wait for CPU hears of a look: refused, with what the pool read, or granted. */
+      #told(lane, granted) {
+        if (this.#waits === null) return;
+        if (granted) this.#waits.granted(lane);
+        else {
+          const gate = this.#pool.gate();
+          if (gate !== null) this.#waits.refused(lane, gate);
         }
       }
       /**
@@ -18584,9 +18613,122 @@ var init_capacity2 = __esm({
         }
       }
       close() {
+        this.#waits?.close();
         this.#pool.close();
       }
     };
+  }
+});
+
+// src/core/scheduler/pool-wait.ts
+function poolWaitMetaKey(worktreeId) {
+  return worktreeMetaKey("poolWait", worktreeId);
+}
+function publishPoolWaits(store, worktreeId, lanes, at2) {
+  const key3 = poolWaitMetaKey(worktreeId);
+  if (lanes.size === 0) store.meta.delete(key3);
+  else store.meta.set(key3, JSON.stringify({ at: at2, lanes: Object.fromEntries(lanes) }));
+}
+function publishedPoolWaits(store, worktreeId, daemonStartedAt, now) {
+  const raw = store.meta.get(poolWaitMetaKey(worktreeId));
+  if (raw === null) return NO_WAITS;
+  try {
+    const { at: at2, lanes } = JSON.parse(raw);
+    if (typeof at2 !== "number" || at2 < daemonStartedAt || now - at2 > SLOT_WAITER_FRESH_MS)
+      return NO_WAITS;
+    if (typeof lanes !== "object" || lanes === null) return NO_WAITS;
+    return new Map(
+      Object.entries(lanes).filter((entry4) => isPoolWait(entry4[1]))
+    );
+  } catch {
+    return NO_WAITS;
+  }
+}
+function isPoolWait(value) {
+  if (typeof value !== "object" || value === null) return false;
+  const w2 = value;
+  const busy = w2.busyCores;
+  return typeof w2.since === "number" && (busy === null || typeof busy === "number") && typeof w2.cpus === "number" && typeof w2.hostSlots === "number" && typeof w2.grants === "number";
+}
+function gateText(gate) {
+  const cores = gate.busyCores === null ? "" : `${Math.min(gate.cpus, Math.round(gate.busyCores))} of ${gate.cpus} cores in use; `;
+  return `${cores}Squeal's daemons hold ${gate.grants} of ${gate.hostSlots} test slots`;
+}
+function laneName(lane) {
+  return lane === "" ? "test" : lane;
+}
+var POOL_WAIT_REFRESH_MS, NO_WAITS, PoolWaits, ASKS_AGAIN;
+var init_pool_wait = __esm({
+  "src/core/scheduler/pool-wait.ts"() {
+    "use strict";
+    init_slow();
+    init_types();
+    init_capacity2();
+    POOL_WAIT_REFRESH_MS = 1e4;
+    NO_WAITS = /* @__PURE__ */ new Map();
+    PoolWaits = class {
+      #options;
+      #lanes = /* @__PURE__ */ new Map();
+      /** When the row was last written; `null` before, or after a write that failed. */
+      #publishedAt = null;
+      /** The row may hold a wait: the last write had one, or failed. */
+      #written = false;
+      constructor(options) {
+        this.#options = options;
+      }
+      /** The pool refused `lane`'s tier at a look that read `gate`. */
+      refused(lane, gate) {
+        const now = this.#options.now();
+        const live = this.#live(lane, now);
+        const wait = { ...gate, since: live?.wait.since ?? now };
+        this.#lanes.set(lane, { wait, last: now });
+        if (live === void 0) {
+          this.#options.log(
+            `the pool refused the ${laneName(lane)} lane's tier: it waits for CPU (${gateText(gate)}); ${ASKS_AGAIN}`
+          );
+          this.#publish(now);
+        } else if (this.#publishedAt === null || now - this.#publishedAt >= POOL_WAIT_REFRESH_MS) {
+          this.#publish(now);
+        }
+      }
+      /** The pool granted `lane`'s tier: its wait ends, logged with its seconds while it was live. */
+      granted(lane) {
+        const now = this.#options.now();
+        const live = this.#live(lane, now);
+        if (!this.#lanes.delete(lane)) return;
+        if (live !== void 0) {
+          const seconds3 = Math.round((now - live.wait.since) / 1e3);
+          this.#options.log(
+            `the pool granted the ${laneName(lane)} lane's tier after ${seconds3} s of waiting for CPU`
+          );
+        }
+        this.#publish(now);
+      }
+      /** The daemon's scheduler closes: its lanes wait no more, and the row goes. */
+      close() {
+        this.#lanes.clear();
+        if (this.#written) this.#publish(this.#options.now());
+      }
+      #live(lane, now) {
+        const entry4 = this.#lanes.get(lane);
+        return entry4 !== void 0 && now - entry4.last <= SLOT_WAITER_FRESH_MS ? entry4 : void 0;
+      }
+      /** Writes the live waits; one whose daemon stopped looking leaves them. */
+      #publish(now) {
+        for (const lane of [...this.#lanes.keys()])
+          if (this.#live(lane, now) === void 0) this.#lanes.delete(lane);
+        const waits2 = new Map([...this.#lanes].map(([lane, { wait }]) => [lane, wait]));
+        try {
+          this.#options.publish(waits2, now);
+          this.#publishedAt = now;
+          this.#written = waits2.size > 0;
+        } catch {
+          this.#publishedAt = null;
+          this.#written = true;
+        }
+      }
+    };
+    ASKS_AGAIN = `the daemon asks again every ${CAPACITY_RECHECK_MS / 1e3} s`;
   }
 });
 
@@ -23440,8 +23582,9 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set(), cut = NON
   const { wide = true, rest: rest2 = false } = pass;
   const beside = pass.beside ?? null;
   const free = beside ?? ((ref2) => !busy.has(laneOf(context, ref2)));
-  const postBatch = wide && beside === null && batchTurnDue(ledger, free);
-  const focused = beside === null ? selectFocusedTier(context, ledger, busy, turnDue || postBatch) : null;
+  const again = pass.asEdit === true;
+  const postBatch = wide && beside === null && !again && batchTurnDue(ledger, free);
+  const focused = beside === null && !again ? selectFocusedTier(context, ledger, busy, turnDue || postBatch) : null;
   if (focused !== null) return focused;
   if (postBatch) {
     const turnOfRest = selectTier(context, ledger, busy, cut, true, { wide: false, rest: true });
@@ -23450,13 +23593,14 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set(), cut = NON
   const picked = [];
   ledger.claims.begin();
   const batch = wide && beside === null ? batchFiles(context, ledger, free) : null;
+  const asEdit = again && batch !== null;
   const backlog = !rest2 && (batch !== null || !ledger.queue.hasFirstGroup(free));
   const turn = !backlog && (turnDue || rest2);
   let turnTier = false;
-  let size = batch !== null ? policy.runner.backlogTierSize : backlog ? ledger.claims.backlogSize(ledger.queue.fastSize) : policy.runner.tierSize;
-  const offer = backlog ? context.capacity?.offer(size, poolKind(ledger.checkpoints.active)) ?? defaultHostSlots() : 0;
+  let size = batch !== null ? asEdit ? policy.runner.tierSize : policy.runner.backlogTierSize : backlog ? ledger.claims.backlogSize(ledger.queue.fastSize) : policy.runner.tierSize;
+  const offer = backlog && !asEdit ? context.capacity?.offer(size, poolKind(ledger.checkpoints.active)) ?? defaultHostSlots() : 0;
   const budget2 = (batch !== null ? batchBudget : backlogBudget)(policy.runner.timeoutMs);
-  const wall = backlog ? new BacklogWall(budget2) : null;
+  const wall = backlog && !asEdit ? new BacklogWall(budget2) : null;
   let batchRank = null;
   let span = null;
   let tookBacklog = false;
@@ -23535,11 +23679,17 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set(), cut = NON
     ledger.commit();
     return selectTier(context, ledger, busy, cut, false, pass);
   }
-  const granted = backlog || turnTier;
+  const granted = (backlog || turnTier) && !asEdit;
   const width = slot2 !== null ? 1 : granted ? widest(context, picked) : 0;
   const least = slot2 !== null ? 1 : fewest(context, picked);
   const asks = poolKind(ledger.checkpoints.active, picked);
-  const taken3 = picked.length > 0 && granted ? context.capacity?.take(width, "fast", least, asks) : null;
+  const waitsIn = batch === null ? lane : null;
+  const taken3 = picked.length > 0 && granted ? context.capacity?.take(width, "fast", least, asks, waitsIn) : null;
+  if (batch !== null && narrowerThanEdit(context, picked, taken3)) {
+    if (taken3 !== WAIT_FOR_CAPACITY) taken3?.release();
+    ledger.commit();
+    return selectTier(context, ledger, busy, cut, turnDue, { ...pass, asEdit: true });
+  }
   if (taken3 === WAIT_FOR_CAPACITY) {
     ledger.commit();
     return turnTier && !rest2 ? selectTier(context, ledger, busy, cut, false, pass) : null;
@@ -23567,7 +23717,8 @@ function selectTier(context, ledger, busy = /* @__PURE__ */ new Set(), cut = NON
     if (tier === null) lease?.release();
   }
   if (tier !== null) {
-    if (batch !== null) batchStarted(context, ledger, tier, lease?.grant ?? offer);
+    const grant = lease?.grant ?? (asEdit ? tier.files.length : offer);
+    if (batch !== null) batchStarted(context, ledger, tier, grant);
     else if (beside === null) ledger.queue.tierSelected(tookBacklog);
     return tier;
   }
@@ -23587,6 +23738,11 @@ function batchStarted(context, ledger, tier, grant) {
   const estimate = wallEstimate(sum, Math.max(0, ...durations2), width);
   ledger.queue.batchSelected();
   ledger.queue.batchStarted(first, (tier.startedAt ?? context.now()) + estimate);
+}
+function narrowerThanEdit(context, picked, taken3) {
+  if (taken3 === WAIT_FOR_CAPACITY) return true;
+  if (taken3 === null || taken3 === void 0) return false;
+  return taken3.grant < widest(context, picked.slice(0, context.policy.runner.tierSize));
 }
 function tierWidth(context, ref2, grant) {
   return Math.max(1, context.runner.tierWidth?.(ref2, grant) ?? grant);
@@ -29925,6 +30081,7 @@ var init_scheduler2 = __esm({
     init_ledger();
     init_mutex();
     init_narrow_run();
+    init_pool_wait();
     init_promoted_tier();
     init_queue();
     init_quiet();
@@ -29969,7 +30126,18 @@ var init_scheduler2 = __esm({
         this.#busy = options.busyWaits === void 0 ? null : new BusyResume(options.busyWaits, () => {
           if (this.#stalled && !this.#failed) this.#pump();
         });
-        this.#capacity = options.capacity === void 0 ? null : new TierCapacity(options.capacity, options.worktreeId, (message3) => this.#note(message3));
+        const waits2 = new PoolWaits({
+          now: options.now ?? Date.now,
+          log: options.log ?? (() => {
+          }),
+          publish: (lanes, at2) => publishPoolWaits(options.store, options.worktreeId, lanes, at2)
+        });
+        this.#capacity = options.capacity === void 0 ? null : new TierCapacity(
+          options.capacity,
+          options.worktreeId,
+          (message3) => this.#note(message3),
+          waits2
+        );
         const host = {
           lock: this.#lock,
           started: () => this.#started(),
@@ -69437,6 +69605,7 @@ function files(refs2) {
 
 // src/core/status/next-step.ts
 init_text3();
+init_pool_wait();
 init_yields();
 init_text();
 init_types();
@@ -69942,6 +70111,13 @@ function queuedStep(s, context) {
       return same2(
         `queued: the ${laneText(s.lane)} lane waits for quiet until ${timeText(s.quietUntil)}, ${why2}`,
         { kind: "command", args: "run --all", text: "{command} ends the wait" }
+      );
+    }
+    if (s.pool !== void 0) {
+      const since = timeText(s.pool.since);
+      return same2(
+        `queued, waiting for CPU since ${since}: the host is busy (${gateText(s.pool)}); ${ASKS_AGAIN}`,
+        { kind: "none", text: "" }
       );
     }
     return {
@@ -71778,6 +71954,7 @@ init_policy2();
 init_keys();
 init_load();
 init_claims();
+init_pool_wait();
 init_promotions();
 init_quiet();
 init_runner_work_bound();
@@ -71919,6 +72096,7 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
   const row2 = liveYieldRow(store, worktreeId, startedAt);
   const yields = row2.tiers;
   const quiet = startedAt === null ? null : publishedWaits(store, worktreeId, startedAt, now);
+  const pool = startedAt === null ? null : publishedPoolWaits(store, worktreeId, startedAt, now);
   const header = reads2?.header ?? readHeader(store, worktreeId, states, keys);
   const unlisted2 = unlistedReason(header, policy);
   const reasons = unknownReasons(store, worktreeId, states, root, now);
@@ -72000,6 +72178,13 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
     if (pending.kind === "queued" && pending.behind === null && wait !== void 0) {
       if (!promoted.has(testFileId(ref2))) {
         const held3 = { ...pending, ...wait };
+        return { testFile: ref2, state, pending: held3, standing: held3 };
+      }
+    }
+    const refused = pending.kind === "queued" ? pool?.get(pending.lane) : void 0;
+    if (pending.kind === "queued" && pending.behind === null && refused !== void 0) {
+      if (!promoted.has(testFileId(ref2))) {
+        const held3 = { ...pending, pool: refused };
         return { testFile: ref2, state, pending: held3, standing: held3 };
       }
     }
@@ -72131,7 +72316,7 @@ function groupId(s) {
     case "running":
       return `running ${s.lane} ${(s.files ?? 1) > 1} ${s.setup?.file ?? ""} ${batchId(s.batch)}`;
     case "queued":
-      return `queued ${s.lane} ${s.behind === null} ${s.promoted === true} ${yieldId(s.yields)} ${s.quietUntil ?? "-"} ${s.quietCatchUp === true} ${batchId(s.batch)}`;
+      return `queued ${s.lane} ${s.behind === null} ${s.promoted === true} ${yieldId(s.yields)} ${s.quietUntil ?? "-"} ${s.quietCatchUp === true} ${batchId(s.batch)} ${s.pool?.since ?? "-"}`;
     case "unlisted":
       return `unlisted ${yieldId(s.yields)}`;
     case "claim":
@@ -74746,7 +74931,8 @@ function yieldFields(standing3) {
   return {
     ...ended3 === void 0 ? {} : { ended: ended3 },
     ...standing3.lastYield === void 0 ? {} : { lastYield: standing3.lastYield },
-    ...standing3.batch === void 0 ? {} : { batch: standing3.batch }
+    ...standing3.batch === void 0 ? {} : { batch: standing3.batch },
+    ...standing3.kind !== "queued" || standing3.pool === void 0 ? {} : { pool: standing3.pool }
   };
 }
 
@@ -80812,6 +80998,8 @@ var Daemon = class {
         now: this.#now,
         // Task 001-422: a busy store's error was retried or noted by its subject; no bare note.
         onError: (error) => isBusy(error) ? this.#log(`daemon error: ${error.message}`) : this.#note(`daemon error: ${error.message}`),
+        // Row 011-309: a lane's wait for the pool, at its start and its grant.
+        log: this.#log,
         busySliceMs: BUSY_SLICE_MS,
         busyWaits: this.#busyWaits,
         // Task 001-113: a fresh daemon waits for the install with no runner open.
