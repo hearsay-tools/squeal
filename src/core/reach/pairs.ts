@@ -129,7 +129,7 @@ export function pairsOf(test: ReachTestFile, context: PairContext): Pair[] {
     } else if (test.runtimeRead.has(path)) {
       pairs.push(pair(test, path, "runtime read", [], null));
     } else if (graph === null) {
-      pairs.push(pair(test, path, "import", [], null));
+      pairs.push(pair(test, path, MODULE.test(path) ? "import" : "runtime read", [], null));
     } else {
       imports ??= walk(graph, [test.ref.path]);
       pairs.push(importPair(test, path, imports, context));
@@ -137,6 +137,13 @@ export function pairsOf(test: ReachTestFile, context: PairContext): Pair[] {
   }
   return pairs;
 }
+
+/**
+ * A module a test file can import. Any other closure path no import edge
+ * reaches (a snapshot, a fixture the runner keys) is read at run time,
+ * so it never reads as an avoidable import.
+ */
+const MODULE = /\.(?:[mc]?[jt]s|[jt]sx|py)$/;
 
 function pair(
   test: ReachTestFile,
@@ -152,6 +159,7 @@ function pair(
 function importPair(test: ReachTestFile, path: RelativePath, imports: Walk, context: PairContext) {
   const chain = imports.chain(path);
   if (chain === null) {
+    if (!MODULE.test(path)) return pair(test, path, "runtime read", [], null);
     const unsplit = pair(test, path, "import", [], null);
     return imports.incomplete ? { ...unsplit, notRecorded: true as const } : unsplit;
   }
