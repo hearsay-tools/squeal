@@ -789,6 +789,8 @@ class Daemon {
           isBusy(error)
             ? this.#log(`daemon error: ${error.message}`)
             : this.#note(`daemon error: ${error.message}`),
+        // Row 011-309: a lane's wait for the pool, at its start and its grant.
+        log: this.#log,
         busySliceMs: BUSY_SLICE_MS,
         busyWaits: this.#busyWaits,
         // Task 001-113: a fresh daemon waits for the install with no runner open.

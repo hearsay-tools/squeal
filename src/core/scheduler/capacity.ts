@@ -7,6 +7,7 @@ import {
 } from "../capacity/index.js";
 import type { WorktreeId } from "../types/index.js";
 import type { CapacityOptions } from "./options.js";
+import type { PoolWaits } from "./pool-wait.js";
 
 /** The tier may not start yet: no permit it may take is free. */
 export const WAIT_FOR_CAPACITY = "wait";
@@ -22,19 +23,28 @@ export const CAPACITY_RECHECK_MS = 2_000;
  * 001-376). Only backlog and checkpoint tiers ask; an edit's tier runs at
  * `runner.tierSize` without asking. A pool that fails (its directory refused
  * or gone) costs no tier: the tier runs without a grant, as with no pool,
- * and one note says why until the pool works again.
+ * and one note says why until the pool works again. With `waits`, a tier
+ * that names its lane waits for CPU there from its refusal to a grant in
+ * that lane (`PoolWaits`, row 011-309).
  */
 export class TierCapacity {
   readonly #pool: PermitPool;
   readonly #dir: string;
   readonly #note: (message: string) => void;
+  readonly #waits: PoolWaits | null;
   #failed: string | null = null;
   #refused = false;
 
-  constructor(options: CapacityOptions, worktreeId: WorktreeId, note: (message: string) => void) {
+  constructor(
+    options: CapacityOptions,
+    worktreeId: WorktreeId,
+    note: (message: string) => void,
+    waits: PoolWaits | null = null,
+  ) {
     const { dir, refreshMs, hostSlots, project, host } = options;
     this.#dir = dir;
     this.#note = note;
+    this.#waits = waits;
     this.#pool = createPermitPool({
       dir,
       owner: { pid: process.pid, worktreeId },
@@ -49,18 +59,22 @@ export class TierCapacity {
    * The grant for a tier of `want` files that runs no fewer than `least`
    * workers (row 011-97); `null` when the pool failed and the tier runs
    * ungranted. A `backlog` tier's gate also counts the host's busy cores
-   * (row 011-182).
+   * (row 011-182). `waitsIn`, the scheduler's lane of a tier whose files
+   * wait while it is refused: a refusal starts or goes on with that lane's
+   * wait for CPU, a grant ends it (row 011-309).
    */
   take(
     want: number,
     lane: PoolLane = "fast",
     least = 1,
     kind: PoolTierKind = "checkpoint",
+    waitsIn: string | null = null,
   ): PoolLease | typeof WAIT_FOR_CAPACITY | null {
     try {
       const lease = this.#pool.acquire(want, lane, least, kind);
       this.#failed = null;
       if (lease === null) this.#refused = true;
+      if (waitsIn !== null) this.#told(waitsIn, lease !== null);
       return lease ?? WAIT_FOR_CAPACITY;
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
@@ -71,6 +85,16 @@ export class TierCapacity {
       }
       this.#failed = reason;
       return null;
+    }
+  }
+
+  /** `lane`'s wait for CPU hears of a look: refused, with what the pool read, or granted. */
+  #told(lane: string, granted: boolean): void {
+    if (this.#waits === null) return;
+    if (granted) this.#waits.granted(lane);
+    else {
+      const gate = this.#pool.gate();
+      if (gate !== null) this.#waits.refused(lane, gate);
     }
   }
 
@@ -112,6 +136,7 @@ export class TierCapacity {
   }
 
   close(): void {
+    this.#waits?.close();
     this.#pool.close();
   }
 }
