@@ -16,8 +16,6 @@ import { checkRoot, PLUGIN_MANIFEST, RuntimeError } from "./manifest.js";
 import { errorText, publishRuntime, type RuntimeRef, unwritable } from "./publish.js";
 import { selectCurrent } from "./selection.js";
 
-export { type PublishOptions, publishRuntime, type RuntimeRef } from "./publish.js";
-
 /*
  * Spec 002 D8 and D9, `tasks/wave-4-contract.md` "Ownership and exported
  * operations": the runtime store in Codex's `PLUGIN_DATA`. Publication

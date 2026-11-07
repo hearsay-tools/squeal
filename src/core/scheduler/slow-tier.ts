@@ -34,8 +34,6 @@ import { groupView } from "./slow.js";
 import { momentHolds, quietLeftMs } from "./slow-trigger.js";
 import { laneOf, startTier, type Tier, type TierFile } from "./tiers.js";
 
-export { consumersIdle } from "./slow-trigger.js";
-
 /**
  * Spec 004 D2, D3: the longest a pending slow file waits for the slot, or for
  * an idle consumer under `slow.trigger: "idle"`, before the scheduler looks

@@ -30,8 +30,6 @@ import { slowSlotLines } from "./slot-holders.js";
 import { detailLines, hiddenParts } from "./status-detail.js";
 import { atText } from "./test-frame.js";
 
-export { shortCommit } from "./identity.js";
-
 export interface StatusFormatOptions {
   /** `squeal status --full`: every outstanding group, then the detail block (row 011-29). */
   readonly full?: boolean;

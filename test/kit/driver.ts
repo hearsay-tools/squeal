@@ -9,15 +9,6 @@ import { type Last, playStep, type Stage } from "./steps.js";
 import { type Gap, type Played, verdictOf } from "./verdicts.js";
 import { initRepository, OpenWorktree } from "./worktrees.js";
 
-export {
-  accepted,
-  describePlayed,
-  type Gap,
-  type Played,
-  type Verdict,
-  verdictOf,
-} from "./verdicts.js";
-
 /*
  * Spec 016 D1: the kit's driver. It writes a scenario's fixture with a
  * pack, then drives the pack's adapter through `RunnerAdapter` alone: list,

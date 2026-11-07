@@ -3,13 +3,6 @@ import type { EpochMs } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { PublishedPromotion } from "./promotions-row.js";
 
-export {
-  type PublishedPromotion,
-  promotionsMetaKey,
-  publishedBatches,
-  publishPromotions,
-} from "./promotions-row.js";
-
 /**
  * One named wait's batch (spec 011 C15 as amended 2026-10-29, row 011-268,
  * `research/named-wait-batches.md` Recommendation 1): the test files it

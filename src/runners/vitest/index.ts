@@ -9,7 +9,6 @@ import { loadVitest, type VitestNode } from "./load.js";
 import { VitestWidths } from "./width.js";
 
 export type { VitestCoverage } from "./coverage.js";
-export { VITEST_ADAPTER_VERSION } from "./version.js";
 
 export interface VitestAdapterOptions {
   /** Worktree root. Spec 001 D4: one Vitest instance per worktree. */
