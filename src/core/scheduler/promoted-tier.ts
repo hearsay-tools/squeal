@@ -17,8 +17,13 @@ import { backlogSlot } from "./slots.js";
  * tiers, holds a promoted file, whether or not an edit's work is queued. It
  * holds the files of one batch, the first with a file that can start, in
  * `RunQueue.orderedBatches`' order, longest first. It is chosen as the
- * backlog's, a grant from the pool that it waits for, with no wall budget:
- * up to `runner.backlogTierSize` files within `batchBudget`. In flight it is
+ * backlog's, a grant from the pool, with no wall budget: up to
+ * `runner.backlogTierSize` files within `batchBudget`. It never waits for
+ * the pool (C10 Capacity and C15 as amended 2026-11-07, row 011-308): when
+ * the pool refuses it, or grants fewer workers than an edit's tier of its
+ * files runs with, it starts at once as an edit's tier would, at most
+ * `runner.tierSize` of its files with no grant (`selectTier`'s `asEdit`),
+ * and the rest of the batch leads the lane's next selection. In flight it is
  * a backlog tier (`Tier.promoted`). Its files stay in their batch while
  * they run, so only a revision that supersedes it cancels it, an edit's
  * work does not make it yield (`cancelsBacklog`, `TierYields`, row
