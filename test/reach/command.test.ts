@@ -185,7 +185,7 @@ describe("squeal reach", () => {
     expect(report).toMatchObject({
       v: 1,
       history: true,
-      suite: { testFiles: 2, seconds: 3, withoutSeconds: 0, leftOut: 0 },
+      suite: { testFiles: 2, seconds: 3, withoutSeconds: 0, withoutClosure: 0, leftOut: 0 },
       window: { from: Date.UTC(2026, 10, 2), to: Date.UTC(2026, 10, 3), edits: 2 },
       coverage: "on",
       edges: true,
