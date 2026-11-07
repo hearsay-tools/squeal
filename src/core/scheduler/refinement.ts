@@ -9,6 +9,7 @@ import type { InvalidatedPath, RunnerClosure, RunnerEnvironment } from "../types
 import { type SchedulerContext, tryRunner } from "./context.js";
 import { demote, type EditCut, editWork, fetchEditCut, observedDirectOf } from "./edit-cut.js";
 import { type Failures, failed, settleFailures } from "./failures.js";
+import { freshWalks } from "./fresh-walks.js";
 import type { Ledger } from "./ledger.js";
 import { listTestFilesOf } from "./omitted-test-files.js";
 import { quietCaughtUp, quietQueued } from "./quiet.js";
@@ -256,7 +257,9 @@ export async function applyRunnerPart(
   if (part.failures.size > 0) touchKeys(keys.unverifyRuntime([...part.failures.keys()]));
   if (part.listed === null) touchKeys(keys.unverifyRuntime([null]));
   touchKeys(await keys.trackUntracked());
-  storeClosures(context, resolved, part);
+  // Row 015-119: a walk changed meanwhile is never stored under the key set now; its carried part is.
+  const walks = freshWalks(part.closures, part.environments, resolved, stale, changedMeanwhile);
+  storeClosures(context, resolved, walks);
   touch(part.reresolved);
   // 016 D4: read once the refresh above took another worktree's marks, over the closures applied.
   const observedDirect = observedDirectOf(keys, changed, part.direct);
