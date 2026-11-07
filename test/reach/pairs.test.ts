@@ -311,4 +311,13 @@ describe("name rules settled against squeal and cezar", () => {
       ]),
     ).toHaveLength(2);
   });
+
+  it("never takes two folders' index modules for siblings (015-116)", () => {
+    expect(
+      siblingsAmong("src/core/slow/index.ts", [
+        "src/core/slow/index.ts",
+        "src/core/state/index.ts",
+      ]),
+    ).toEqual(["src/core/slow/index.ts"]);
+  });
 });

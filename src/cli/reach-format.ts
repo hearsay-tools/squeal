@@ -55,7 +55,8 @@ function head(report: ReachReport): string[] {
     ...(report.notRecorded === 0
       ? []
       : [
-          `${plural(report.notRecorded, "pair")} read import, path not recorded yet: their test files were walked before Squeal stored import chains; their next run records them.`,
+          // 015-116 (P2): only Vitest walks are counted, and a run is not what reads them again under lookup-only.
+          `${plural(report.notRecorded, "pair")} read import, path not recorded yet: Squeal stored no complete walk of their test files' imports at the current inputs; the daemon stores one when it reads those imports again.`,
         ]),
     ...(report.coverage === "off" ? [COVERAGE_OFF] : []),
     ...report.unmeasured.map(

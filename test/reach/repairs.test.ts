@@ -14,6 +14,20 @@ const OPTIONS: ReportOptions = { paths: null, limit: null, command: "squeal", li
 const report = (snap: ReachSnapshot, options: Partial<ReportOptions> = {}) =>
   buildReport(snap, { ...OPTIONS, ...options });
 
+describe("P2: the not-recorded line names a cause that holds", () => {
+  it("counts only Vitest pairs and never says a run records them", () => {
+    const T = "test/a.test.ts";
+    const none = { walk: () => undefined };
+    const vitest = testFile(T, [T, "src/a.ts"]);
+    const node = testFile("test/n.test.js", ["test/n.test.js", "src/a.ts"], { runner: "pytest" });
+    const r = report(snapshot([vitest, node], { graph: none }));
+    expect(r.notRecorded).toBe(1);
+    expect(formatReach(r)).toContain(
+      "1 pair read import, path not recorded yet: Squeal stored no complete walk of their test files' imports at the current inputs; the daemon stores one when it reads those imports again.\n",
+    );
+  });
+});
+
 describe("P3: the main route is chosen among the routes with avoidable seconds", () => {
   // Squeal's src/core/fs/index.ts: its helper seconds spread over gateways, one runtime-read route larger than each.
   const X = "src/fs.ts";
