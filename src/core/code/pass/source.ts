@@ -1,14 +1,11 @@
+import type { CommitSha, RelativePath, RevisionNumber, WorktreeId } from "../../types/common.js";
 import {
-  type CommitSha,
   headMoveMetaKey,
   listingMetaKey,
   parseHeadMove,
   parseListing,
-  type RelativePath,
-  type RevisionNumber,
-  type Store,
-  type WorktreeId,
-} from "../../types/index.js";
+} from "../../types/scheduler.js";
+import type { Store } from "../../types/store.js";
 import type { PassSource } from "./types.js";
 
 /**

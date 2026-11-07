@@ -15,12 +15,9 @@ import { dirname, join, relative } from "node:path";
 import { buildSync } from "esbuild";
 import { afterAll, afterEach } from "vitest";
 import { type EslintMessage, eslintFindings } from "../../../src/core/lint/eslint.js";
+import type { LintFileResult, LintProvider } from "../../../src/core/lint/pass/provider.js";
+import type { EslintProviderOptions } from "../../../src/core/lint/provider/eslint-provider.js";
 import { eslintProvider } from "../../../src/core/lint/provider/eslint-provider.js";
-import type {
-  EslintProviderOptions,
-  LintFileResult,
-  LintProvider,
-} from "../../../src/core/lint/provider/index.js";
 
 const REPO = join(import.meta.dirname, "../../..");
 const TOOLCHAIN = join(REPO, "test/fixtures/lint/toolchain/node_modules");

@@ -9,7 +9,7 @@ import type {
   WatchListener,
   WatchSpec,
   WatchSubscription,
-} from "../../src/core/types/index.js";
+} from "../../src/core/types/watcher.js";
 
 const FIXTURES = fileURLToPath(new URL("../fixtures/watcher/", import.meta.url));
 

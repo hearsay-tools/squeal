@@ -1,11 +1,6 @@
 import { basename, join, relative, sep } from "node:path";
-import type {
-  AbsolutePath,
-  InvalidatedPath,
-  PackageImport,
-  RelativePath,
-  RunnerPackages,
-} from "../../../core/types/index.js";
+import type { AbsolutePath, RelativePath } from "../../../core/types/common.js";
+import type { InvalidatedPath, PackageImport, RunnerPackages } from "../../../core/types/runner.js";
 import { ClosureIndex } from "./closures.js";
 import type { LoaderChain } from "./loader-chain.js";
 import { ModuleTable } from "./modules.js";

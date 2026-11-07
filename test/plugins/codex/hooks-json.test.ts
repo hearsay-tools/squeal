@@ -7,7 +7,7 @@ import {
   hookHashes,
   PLUGIN_KEY_SOURCE,
 } from "../../../src/cli/codex/hash.js";
-import { REPO_ROOT } from "../../../src/harness/claude-code/build.js";
+import { REPO_ROOT } from "../../../src/harness/build.js";
 import { CODEX_ADAPTER_VERSION } from "../../../src/harness/codex/build-adapter.js";
 
 /*

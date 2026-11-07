@@ -1,7 +1,8 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { isAbsolute, join, resolve } from "node:path";
-import { compare, isMissing } from "../../../core/fs/index.js";
-import type { AbsolutePath } from "../../../core/types/index.js";
+import { compare } from "../../../core/fs/compare.js";
+import { isMissing } from "../../../core/fs/errors.js";
+import type { AbsolutePath } from "../../../core/types/common.js";
 
 /** `pyvenv.cfg` as `key = value` pairs, keys and values trimmed, as `site` reads it. */
 export function parsePyvenvCfg(text: string): Readonly<Record<string, string>> {

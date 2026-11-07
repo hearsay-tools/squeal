@@ -1,4 +1,4 @@
-import type { DaemonLiveness } from "../types/index.js";
+import type { DaemonLiveness } from "../types/status.js";
 import type { HoldsChange } from "./hold-told.js";
 
 /*

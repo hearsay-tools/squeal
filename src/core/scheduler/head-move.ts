@@ -12,14 +12,10 @@ import { type CommitReport, isFailedReport } from "../commit/report.js";
 import { readCommitReports, replaceCommitReport, writeCommitReports } from "../commit/store.js";
 import { storedBlobs } from "../commit/stored.js";
 import { changedPaths, committedBlobs } from "../commit/tree.js";
-import { resolveCommonDir } from "../fs/index.js";
+import { resolveCommonDir } from "../fs/git-layout.js";
 import { gitHead } from "../status/git-head.js";
-import {
-  type HeadMove,
-  headMoveMetaKey,
-  parseHeadMove,
-  type RelativePath,
-} from "../types/index.js";
+import type { RelativePath } from "../types/common.js";
+import { type HeadMove, headMoveMetaKey, parseHeadMove } from "../types/scheduler.js";
 import { checkIgnored } from "../watcher/git.js";
 import { askCommitGroups, askedTestFile, heldTestFile, testWaitEnded } from "./commit-moment.js";
 import type { SchedulerContext } from "./context.js";

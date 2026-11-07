@@ -1,13 +1,9 @@
 import { afterEach, describe, expect, it } from "vitest";
-import {
-  HANDOFF_BOUND_MS,
-  readLockMarks,
-  readPresence,
-  type SocketState,
-  type WaitReading,
-  waitView,
-} from "../../src/core/presence/index.js";
-import { lockFileFor } from "../../src/core/store/index.js";
+import { readPresence } from "../../src/core/presence/decide.js";
+import { readLockMarks } from "../../src/core/presence/marks.js";
+import { HANDOFF_BOUND_MS } from "../../src/core/presence/stored.js";
+import { type SocketState, type WaitReading, waitView } from "../../src/core/presence/wait.js";
+import { lockFileFor } from "../../src/core/store/paths.js";
 import { at, type Stored, scratch } from "./fixture.js";
 
 /*

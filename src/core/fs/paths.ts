@@ -1,5 +1,5 @@
 import { isAbsolute, join, relative, sep } from "node:path";
-import type { AbsolutePath, RelativePath } from "../types/index.js";
+import type { AbsolutePath, RelativePath } from "../types/common.js";
 
 /**
  * `abs` relative to `root` with `/` separators, or `null` when it is the root

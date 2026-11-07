@@ -1,5 +1,5 @@
 import { plural } from "../text.js";
-import type { CommitLine } from "../types/index.js";
+import type { CommitLine } from "../types/status.js";
 import { type CommitReport, isFailedReport } from "./report.js";
 
 /** A commit as the report names it: its first 7 characters, as git's short form. */

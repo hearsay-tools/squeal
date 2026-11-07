@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { isAbsolute, relative, sep } from "node:path";
-import { blobHash, type ObjectFormat } from "../../hash/index.js";
-import type { AbsolutePath, RelativePath } from "../../types/index.js";
+import { blobHash, type ObjectFormat } from "../../hash/blob.js";
+import type { AbsolutePath, RelativePath } from "../../types/common.js";
 import { ownMap } from "./own-map.js";
 import { recordOf, scriptPath, sourceEntry } from "./record.js";
 import type {

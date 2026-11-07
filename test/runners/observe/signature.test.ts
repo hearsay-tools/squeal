@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { describeFailure, SUMMARY_MAX_CHARS } from "../../../src/core/state/index.js";
-import type { CheckError } from "../../../src/core/types/index.js";
-import { type RecorderUse, recorderSignature } from "../../../src/runners/observe/index.js";
+import { describeFailure, SUMMARY_MAX_CHARS } from "../../../src/core/state/fingerprint.js";
+import type { CheckError } from "../../../src/core/types/check.js";
+import { type RecorderUse, recorderSignature } from "../../../src/runners/observe/signature.js";
 
 /* Task 001-390, spec 001 D11 Fidelity: a failure with a recorder signature says it ran under it. */
 

@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { createDelivery } from "../../src/core/delivery/index.js";
-import { readStatus } from "../../src/core/status/index.js";
-import type { Consumer, StatusSnapshot } from "../../src/core/types/index.js";
+import { createDelivery } from "../../src/core/delivery/delivery.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
+import type { Consumer } from "../../src/core/types/delivery.js";
+import type { StatusSnapshot } from "../../src/core/types/status.js";
 import { fixedStatus } from "../delivery/fakes.js";
 import { check, fakeRepo, seedStore, state } from "./helpers.js";
 

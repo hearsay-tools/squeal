@@ -1,14 +1,15 @@
 import { existsSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { storePaths } from "../../src/core/store/index.js";
+import { storePaths } from "../../src/core/store/paths.js";
 import {
   REPLACED_KEPT,
   REPLACED_META_KEY,
   REPLACED_PER_CHECK,
 } from "../../src/core/store/repos/replaced.js";
 import { connectionOf } from "../../src/core/store/store.js";
-import type { CheckId, Store } from "../../src/core/types/index.js";
+import type { CheckId } from "../../src/core/types/check.js";
+import type { Store } from "../../src/core/types/store.js";
 import { DAY_MS, fakeCommonDir, open, result, testCheck, worktree } from "./helpers.js";
 
 /*

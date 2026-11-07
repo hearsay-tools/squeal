@@ -4,15 +4,11 @@ import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { afterEach, describe, expect, it } from "vitest";
 import { readTurn } from "../../src/core/delivery/turn.js";
-import { testFileId } from "../../src/core/keys/index.js";
+import { testFileId } from "../../src/core/keys/reverse-index.js";
 import { readDaemonNotes } from "../../src/core/notes.js";
 import { readSlowActivity } from "../../src/core/slow/state.js";
-import {
-  DEFAULT_POLICY,
-  type Policy,
-  type PolicyInputs,
-  type TestFileRef,
-} from "../../src/core/types/index.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import { DEFAULT_POLICY, type Policy, type PolicyInputs } from "../../src/core/types/policy.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
 import { SLOW } from "./cleanup.js";

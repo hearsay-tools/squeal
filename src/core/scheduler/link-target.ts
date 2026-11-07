@@ -1,6 +1,6 @@
 import { realpath } from "node:fs/promises";
 import { dirname, join, relative, sep } from "node:path";
-import type { AbsolutePath, RelativePath } from "../types/index.js";
+import type { AbsolutePath, RelativePath } from "../types/common.js";
 
 /**
  * The in-scope target spelling of each observed file path whose directory is

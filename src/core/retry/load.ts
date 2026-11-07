@@ -1,5 +1,5 @@
 import { availableParallelism, loadavg } from "node:os";
-import type { Store } from "../types/index.js";
+import type { Store } from "../types/store.js";
 
 /*
  * Spec 001 D6 as amended (001-368): a `load` retry waits until the one-minute

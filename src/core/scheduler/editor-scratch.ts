@@ -1,11 +1,7 @@
-import { ancestorListings, listedDirectory } from "../keys/index.js";
-import type {
-  FileChange,
-  RelativePath,
-  RevisionNumber,
-  Store,
-  WorktreeId,
-} from "../types/index.js";
+import { ancestorListings, listedDirectory } from "../keys/observed.js";
+import type { RelativePath, RevisionNumber, WorktreeId } from "../types/common.js";
+import type { FileChange } from "../types/revision.js";
+import type { Store } from "../types/store.js";
 import type { SchedulerContext } from "./context.js";
 import type { ObservedGrowth } from "./observed.js";
 import type { Tier } from "./tiers.js";

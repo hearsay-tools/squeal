@@ -1,4 +1,5 @@
-import type { TestCheckId, TestFileRef } from "../../../../../src/core/types/index.js";
+import type { TestCheckId } from "../../../../../src/core/types/check.js";
+import type { TestFileRef } from "../../../../../src/core/types/keys.js";
 import type { Case } from "../../case.js";
 
 /*

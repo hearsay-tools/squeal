@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { BACKLOG_QUIET_MS } from "../../src/core/scheduler/quiet.js";
-import { BESIDE_LANE_PREFIX, isBesideLane } from "../../src/core/types/index.js";
+import { BESIDE_LANE_PREFIX, isBesideLane } from "../../src/core/types/runner.js";
 import {
   batchesOf,
   E,

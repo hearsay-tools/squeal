@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { RunOptions, RunReport, TestFileRef } from "../../src/core/types/index.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import type { RunOptions, RunReport } from "../../src/core/types/runner.js";
 import { catchUpRepo, catchUpSide } from "./catch-up-fixture.js";
 import { focus, focusedRows, focusing } from "./focused-fixture.js";
 

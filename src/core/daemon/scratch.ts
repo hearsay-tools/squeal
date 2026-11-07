@@ -14,7 +14,7 @@ import {
 import { rm } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 import { storePaths } from "../store/paths.js";
-import type { AbsolutePath } from "../types/index.js";
+import type { AbsolutePath } from "../types/common.js";
 import { currentUid, preparePrivateDir, userTmpDir } from "./paths.js";
 
 /**

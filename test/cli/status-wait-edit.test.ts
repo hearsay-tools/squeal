@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { waitForStatus } from "../../src/cli/status-wait.js";
 import { type EndedWait, waitLine } from "../../src/cli/status-wait-lines.js";
-import { refinedMetaKey } from "../../src/core/types/index.js";
+import { refinedMetaKey } from "../../src/core/types/scheduler.js";
 import {
   A,
   ADDS,
@@ -13,12 +13,11 @@ import {
   C,
   fail,
   finish,
-  later,
   options,
   repoWith,
   SLOW_FILE,
-  timed,
 } from "./status-wait-fixture.js";
+import { later, timed } from "./wait-clock.js";
 
 /*
  * Lessons, defect 32, decided by the human (2026-10-09, task 001-186): a

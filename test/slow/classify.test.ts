@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { slowFiles, slowGlobs } from "../../src/core/slow/classify.js";
-import { DEFAULT_POLICY, type NodeTestProject, type Policy } from "../../src/core/types/index.js";
+import { DEFAULT_POLICY, type NodeTestProject, type Policy } from "../../src/core/types/policy.js";
 
 /*
  * Spec 004 D1: a file matched by `slow.include` is slow whatever its runner;

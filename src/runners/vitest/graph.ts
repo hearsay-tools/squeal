@@ -2,7 +2,7 @@ import { existsSync, statSync } from "node:fs";
 import { builtinModules } from "node:module";
 import { basename, dirname, extname, join, resolve } from "node:path";
 import type { TestProject } from "vitest/node";
-import type { AbsolutePath } from "../../core/types/index.js";
+import type { AbsolutePath } from "../../core/types/common.js";
 import { environmentPackage, moduleLoads } from "./loads.js";
 
 /** Files reached from some entry files through the transform graph. */

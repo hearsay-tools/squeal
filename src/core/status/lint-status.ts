@@ -2,8 +2,10 @@ import { codeSince, type ShellSession } from "../delivery/code-since.js";
 import { lintStatusLines } from "../lint/surface/format.js";
 import { lintStatus } from "../lint/surface/report.js";
 import { lintStoreSource } from "../lint/surface/source.js";
-import type { AbsolutePath, StatusSnapshot, Store, WorktreeId } from "../types/index.js";
+import type { AbsolutePath, WorktreeId } from "../types/common.js";
 import type { LintStatus } from "../types/lint-delivery.js";
+import type { StatusSnapshot } from "../types/status.js";
+import type { Store } from "../types/store.js";
 
 /*
  * Spec 017 D8: status's lint line and its `lint` JSON, read from the lint

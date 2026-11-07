@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { RunOptions, RunReport, TestFileRef } from "../../src/core/types/index.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import type { RunOptions, RunReport } from "../../src/core/types/runner.js";
 
 /*
  * Spec 019 D3 (row 019-12): a run's processes take idle I/O (`ionice -c 3`)

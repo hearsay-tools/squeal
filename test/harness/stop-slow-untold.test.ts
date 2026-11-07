@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { startTurn } from "../../src/core/delivery/turn.js";
-import { refinedMetaKey } from "../../src/core/types/index.js";
+import { refinedMetaKey } from "../../src/core/types/scheduler.js";
 import type { SquealRepo } from "./helpers.js";
 import {
   clock,

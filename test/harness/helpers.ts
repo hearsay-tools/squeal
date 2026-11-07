@@ -1,18 +1,15 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { testFileId } from "../../src/core/keys/index.js";
+import { testFileId } from "../../src/core/keys/reverse-index.js";
 import { recordRekeyed } from "../../src/core/scheduler/rekeyed-record.js";
-import { createStateSink } from "../../src/core/state/index.js";
-import {
-  bootstrappedMetaKey,
-  type Consumer,
-  MAIN_AGENT,
-  type PolicyFile,
-  type ResultRecord,
-  type StateSink,
-  type Store,
-  type TestFileRef,
-} from "../../src/core/types/index.js";
+import { createStateSink } from "../../src/core/state/sink.js";
+import { bootstrappedMetaKey } from "../../src/core/types/daemon.js";
+import { type Consumer, MAIN_AGENT } from "../../src/core/types/delivery.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import type { PolicyFile } from "../../src/core/types/policy.js";
+import type { StateSink } from "../../src/core/types/state.js";
+import type { Store } from "../../src/core/types/store.js";
+import type { ResultRecord } from "../../src/core/types/store-records.js";
 import { CODE_OFF } from "../helpers/policy.js";
 import { check, result, setKey } from "../state/helpers.js";
 import { type FakeRepo, fakeRepo, seedStore } from "../status/helpers.js";

@@ -2,7 +2,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { codeStatusOf, coverageStatusLines } from "../../../src/core/status/code-status.js";
-import type { StatusSnapshot } from "../../../src/core/types/index.js";
+import type { StatusSnapshot } from "../../../src/core/types/status.js";
 import { WT } from "../../state/helpers.js";
 import { type CoverageRig, coverageRig, sourceOf } from "./rig.js";
 

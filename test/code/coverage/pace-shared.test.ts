@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createCoverageWriter, Pace } from "../../../src/core/code/coverage/index.js";
-import type { Store } from "../../../src/core/types/index.js";
+import { Pace } from "../../../src/core/code/coverage/pace.js";
+import { createCoverageWriter } from "../../../src/core/code/coverage/writer.js";
+import type { Store } from "../../../src/core/types/store.js";
 import { WT } from "../../state/helpers.js";
 import { COVERED, coverageRig, sourceOf } from "../crap/rig.js";
 import { commonDir, ON } from "../helpers.js";

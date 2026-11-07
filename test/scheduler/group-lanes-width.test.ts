@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { CheckGroup } from "../../src/core/types/index.js";
+import type { CheckGroup } from "../../src/core/types/check-groups.js";
 import type { CatchUpRun, CatchUpSide } from "./catch-up-fixture.js";
 import { groupPolicy, groupSide, tierLog } from "./group-lanes-fixture.js";
 

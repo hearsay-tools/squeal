@@ -1,7 +1,7 @@
 import { num, numOrNull, oneOf } from "../../store/codec.js";
 import type { Connection, Row } from "../../store/connection.js";
 import type { CodeTold, CodeViewEntry } from "../../types/code.js";
-import type { Consumer } from "../../types/index.js";
+import type { Consumer } from "../../types/delivery.js";
 import {
   CHECK_COLUMNS,
   checkFrom,

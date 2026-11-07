@@ -1,8 +1,11 @@
 import { createServer } from "node:net";
 import { describe, expect, it } from "vitest";
-import { formatDelta, MESSAGE_CAP_CHARS } from "../../src/core/delivery/index.js";
-import { formatStatus, formatWhy, readStatus, readWhy } from "../../src/core/status/index.js";
-import type { StatusResult } from "../../src/core/types/index.js";
+import { formatDelta, MESSAGE_CAP_CHARS } from "../../src/core/delivery/format.js";
+import { formatStatus } from "../../src/core/status/format-status.js";
+import { formatWhy } from "../../src/core/status/format-why.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
+import { readWhy } from "../../src/core/status/why.js";
+import type { StatusResult } from "../../src/core/types/status.js";
 import { reportOf } from "../status/why-seed.js";
 import { SLOW } from "./cleanup.js";
 import { createRepo, openRepoStore } from "./repo.js";

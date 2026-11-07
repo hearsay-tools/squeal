@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { ReverseIndex } from "../../src/core/keys/index.js";
-import type { TestFileRef } from "../../src/core/types/index.js";
+import { ReverseIndex } from "../../src/core/keys/reverse-index.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
 
 const a: TestFileRef = { project: "unit", path: "test/a.test.ts" };
 const b: TestFileRef = { project: "unit", path: "test/b.test.ts" };

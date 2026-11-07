@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { harnessOf, type ProcStat, pidNamespace } from "../../src/core/delivery/index.js";
-import type { HarnessProcess } from "../../src/core/types/index.js";
-import { type HookDeps, runHook } from "../../src/harness/claude-code/index.js";
+import { harnessOf, type ProcStat, pidNamespace } from "../../src/core/delivery/harness-process.js";
+import type { HarnessProcess } from "../../src/core/types/store-records.js";
+import { runHook } from "../../src/harness/claude-code/hooks.js";
 import { findHarnessProcess } from "../../src/harness/shared/harness-process.js";
+import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { recorded, SESSION, SUBAGENT, squealRepo } from "./helpers.js";
 
 /*

@@ -1,6 +1,6 @@
 import { closeSync, constants, fstatSync, openSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { COVERAGE_MEASURES } from "../core/code/crap/index.js";
+import { COVERAGE_MEASURES } from "../core/code/crap/seed.js";
 import { type FailedCount, uncountableFiles } from "../core/code/pass/failed.js";
 import type { CodeStore } from "../core/code/store/types.js";
 import { isTooBig } from "../core/delivery/code-deliver.js";
@@ -14,7 +14,7 @@ import {
   toldTo,
 } from "../core/delivery/code-since.js";
 import { changedNotJudged, toldOver } from "../core/delivery/code-told.js";
-import { blobHash } from "../core/hash/index.js";
+import { blobHash } from "../core/hash/blob.js";
 import type {
   CodeCheckId,
   CodeFile,
@@ -25,12 +25,12 @@ import type {
 } from "../core/types/code.js";
 import type {
   AbsolutePath,
-  FileHash,
   RelativePath,
   RevisionNumber,
-  Store,
   WorktreeId,
-} from "../core/types/index.js";
+} from "../core/types/common.js";
+import type { FileHash } from "../core/types/keys.js";
+import type { Store } from "../core/types/store.js";
 import {
   type CodeReportCoverage,
   type CodeReportCoverageOf,

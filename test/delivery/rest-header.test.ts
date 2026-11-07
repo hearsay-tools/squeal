@@ -1,21 +1,15 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import {
-  createDelivery,
-  DAEMON_START_GRACE_MS,
-  formatDelta,
-  worktreeLiveness,
-} from "../../src/core/delivery/index.js";
-import { testFileId } from "../../src/core/keys/index.js";
-import { markRest, spawnedAfterRest } from "../../src/core/presence/index.js";
+import { createDelivery } from "../../src/core/delivery/delivery.js";
+import { formatDelta } from "../../src/core/delivery/format.js";
+import { testFileId } from "../../src/core/keys/reverse-index.js";
+import { markRest, spawnedAfterRest } from "../../src/core/presence/events.js";
+import { DAEMON_START_GRACE_MS, worktreeLiveness } from "../../src/core/presence/heartbeat.js";
 import { recordRekeyed } from "../../src/core/scheduler/rekeyed-record.js";
-import { createStateSink } from "../../src/core/state/index.js";
-import {
-  type Consumer,
-  type HarnessDelivery,
-  refinedMetaKey,
-  type StateSink,
-  type Store,
-} from "../../src/core/types/index.js";
+import { createStateSink } from "../../src/core/state/sink.js";
+import type { Consumer, HarnessDelivery } from "../../src/core/types/delivery.js";
+import { refinedMetaKey } from "../../src/core/types/scheduler.js";
+import type { StateSink } from "../../src/core/types/state.js";
+import type { Store } from "../../src/core/types/store.js";
 import { check, FILE, freshStore, result, setKey, WT } from "../state/helpers.js";
 import { fixedStatus } from "./fakes.js";
 

@@ -1,6 +1,6 @@
 import { str } from "../../store/codec.js";
 import type { Connection } from "../../store/connection.js";
-import type { AbsolutePath } from "../../types/index.js";
+import type { AbsolutePath } from "../../types/common.js";
 import { createCountRepo, createFileRepo } from "./counts.js";
 import { createCoverageRepo } from "./coverage.js";
 import { pruneCodeStore } from "./prune.js";

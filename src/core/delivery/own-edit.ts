@@ -1,4 +1,7 @@
-import type { Consumer, KnownState, RelativePath, RevisionNumber, Store } from "../types/index.js";
+import type { RelativePath, RevisionNumber } from "../types/common.js";
+import type { Consumer } from "../types/delivery.js";
+import type { KnownState } from "../types/state.js";
+import type { Store } from "../types/store.js";
 import { changedAfter, registration } from "./registered.js";
 
 /*

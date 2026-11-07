@@ -5,18 +5,15 @@ import { describe, expect, it, onTestFinished } from "vitest";
 import { type StatusWait, waitForStatus } from "../../src/cli/status-wait.js";
 import { readHead } from "../../src/core/daemon-loop/head.js";
 import { tellRevision } from "../../src/core/delivery/liveness.js";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
-import { createFsHasher } from "../../src/core/hash/index.js";
-import { statCandidates } from "../../src/core/revision/index.js";
-import { createScheduler } from "../../src/core/scheduler/index.js";
-import { storePaths } from "../../src/core/store/index.js";
-import {
-  DEFAULT_POLICY,
-  MAIN_AGENT,
-  type NodeTestProject,
-  type RevisionNumber,
-  type RunnerAdapter,
-} from "../../src/core/types/index.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
+import { createFsHasher } from "../../src/core/hash/hasher.js";
+import { statCandidates } from "../../src/core/revision/reconcile.js";
+import { createScheduler } from "../../src/core/scheduler/scheduler.js";
+import { storePaths } from "../../src/core/store/paths.js";
+import type { RevisionNumber } from "../../src/core/types/common.js";
+import { MAIN_AGENT } from "../../src/core/types/delivery.js";
+import { DEFAULT_POLICY, type NodeTestProject } from "../../src/core/types/policy.js";
+import type { RunnerAdapter } from "../../src/core/types/runner.js";
 import { createNodeTestAdapter } from "../../src/runners/node-test/adapter.js";
 import { git } from "../hash/git-repo.js";
 import { SLOW } from "./cleanup.js";

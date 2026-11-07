@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { dependencyKeys, installedDependencies } from "../../../src/core/keys/index.js";
-import type { RunnerPackages } from "../../../src/core/types/index.js";
+import { dependencyKeys } from "../../../src/core/keys/dependencies.js";
+import { installedDependencies } from "../../../src/core/keys/environment.js";
+import type { RunnerPackages } from "../../../src/core/types/runner.js";
 import { createVitestAdapter } from "../../../src/runners/vitest/index.js";
 import { type FixturePackage, writeInstall } from "../../keys/install.js";
 import { type FixtureProject, openFixture, ref, SLOW } from "./helpers.js";

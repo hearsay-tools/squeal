@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { failedKey, offKey } from "../../../src/core/lint/pass/index.js";
+import { failedKey, offKey } from "../../../src/core/lint/pass/records.js";
 import { FakeProvider, history, lintPass, lintTree, outcomes, storeOf } from "./helpers.js";
 
 /* Spec 017 D9: what the pass does when the provider cannot give a result. */

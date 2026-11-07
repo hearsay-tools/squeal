@@ -1,18 +1,16 @@
 import { existsSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
-import { runGit, worktreeIdFor } from "../fs/index.js";
-import { clearHandoff, markStart } from "../presence/index.js";
-import { isBusy, isStoreOpenFailure, lockFileFor, openStore } from "../store/index.js";
-import type {
-  AbsolutePath,
-  DaemonExit,
-  DaemonExitReason,
-  EpochMs,
-  Store,
-  StoreOpenFailure,
-  WorktreeId,
-} from "../types/index.js";
+import { runGit } from "../fs/git.js";
+import { worktreeIdFor } from "../fs/git-layout.js";
+import { clearHandoff } from "../presence/events.js";
+import { markStart } from "../presence/lock-events.js";
+import { isBusy } from "../store/connection.js";
+import { isStoreOpenFailure, openStore } from "../store/open.js";
+import { lockFileFor } from "../store/paths.js";
+import type { AbsolutePath, EpochMs, WorktreeId } from "../types/common.js";
+import type { DaemonExit, DaemonExitReason } from "../types/daemon.js";
+import type { Store, StoreOpenFailure } from "../types/store.js";
 import { liveDaemonRecorded, recordedDaemon } from "./ensure.js";
 import { acquireDaemonLock, awaitDaemonLock, type DaemonLock, type LockWaitEnd } from "./lock.js";
 import { VACANT_LOCK_WAIT_MS } from "./lock-wait.js";

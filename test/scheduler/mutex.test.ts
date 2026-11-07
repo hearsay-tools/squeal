@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Mutex } from "../../src/core/scheduler/mutex.js";
-import type { LockHolder } from "../../src/core/types/index.js";
+import type { LockHolder } from "../../src/core/types/scheduler.js";
 
 /*
  * Row 011-302 (gh-154): the scheduler's lock keeps what its current task

@@ -2,14 +2,11 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { readTurn } from "../../../src/core/delivery/turn.js";
-import { type Consumer, MAIN_AGENT } from "../../../src/core/types/index.js";
-import { REPO_ROOT } from "../../../src/harness/claude-code/build.js";
-import {
-  type CodexHookName,
-  type CodexHookResult,
-  runCodexHook,
-} from "../../../src/harness/codex/index.js";
+import { type Consumer, MAIN_AGENT } from "../../../src/core/types/delivery.js";
+import { REPO_ROOT } from "../../../src/harness/build.js";
+import { type CodexHookName, runCodexHook } from "../../../src/harness/codex/hooks.js";
 import { CONTEXT_CAP_CHARS } from "../../../src/harness/codex/output.js";
+import type { CodexHookResult } from "../../../src/harness/codex/run.js";
 import type { HookDeps } from "../../../src/harness/shared/hook.js";
 import { PRIMER } from "../../../src/harness/shared/primer.js";
 import { outsideGit } from "../bundle-helpers.js";

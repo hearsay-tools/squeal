@@ -1,17 +1,15 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { squealVersion } from "../../core/daemon/version.js";
-import { readLiveHeader } from "../../core/delivery/index.js";
+import { readLiveHeader } from "../../core/delivery/liveness.js";
 import { readStopHolds } from "../../core/delivery/turn.js";
-import { type StopWaitHarness, stopWaitRuns } from "../../core/slow/index.js";
-import { type StopRequired, stopRequired, toKnownFailure } from "../../core/state/index.js";
-import { readTransaction } from "../../core/store/index.js";
-import {
-  type EpochMs,
-  type KnownFailure,
-  MAIN_AGENT,
-  type Policy,
-  type StatusHeader,
-} from "../../core/types/index.js";
+import { type StopWaitHarness, stopWaitRuns } from "../../core/slow/stop-wait.js";
+import { toKnownFailure } from "../../core/state/header.js";
+import { type StopRequired, stopRequired } from "../../core/state/required.js";
+import { readTransaction } from "../../core/store/store.js";
+import type { EpochMs } from "../../core/types/common.js";
+import { MAIN_AGENT } from "../../core/types/delivery.js";
+import type { Policy } from "../../core/types/policy.js";
+import type { KnownFailure, StatusHeader } from "../../core/types/status.js";
 import type { HookContext } from "./context.js";
 import { type HookDeps, isRegistered } from "./hook.js";
 import { codeStopReason } from "./stop-code.js";

@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { testFileId } from "../../src/core/keys/index.js";
+import { testFileId } from "../../src/core/keys/reverse-index.js";
 import type { SchedulerContext } from "../../src/core/scheduler/context.js";
 import { Ledger } from "../../src/core/scheduler/ledger.js";
 import {
@@ -10,15 +10,12 @@ import {
   readRekeyed,
   rekeyedMetaKey,
 } from "../../src/core/scheduler/rekeyed-record.js";
-import { createStateSink } from "../../src/core/state/index.js";
-import { isStoreOpenFailure, openStore } from "../../src/core/store/index.js";
-import {
-  type CheckKey,
-  DEFAULT_POLICY,
-  type Store,
-  type TestFileRef,
-  type WorktreeId,
-} from "../../src/core/types/index.js";
+import { createStateSink } from "../../src/core/state/sink.js";
+import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
+import type { WorktreeId } from "../../src/core/types/common.js";
+import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
+import type { Store } from "../../src/core/types/store.js";
 
 /*
  * Review wave 13u, B1 (task 001-238): the ledger's commit records the

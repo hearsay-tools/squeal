@@ -1,4 +1,4 @@
-import { functionKey, readEvidence } from "../code/crap/index.js";
+import { functionKey, readEvidence } from "../code/crap/summary.js";
 import type { CodeStore } from "../code/store/types.js";
 import type {
   CodeDeltaEntry,
@@ -6,7 +6,8 @@ import type {
   CodeFileLoaders,
   CodeNews,
 } from "../types/code-delivery.js";
-import type { Consumer, RelativePath } from "../types/index.js";
+import type { RelativePath } from "../types/common.js";
+import type { Consumer } from "../types/delivery.js";
 
 /*
  * Row 015-65, spec 015 D9 Delivery as amended 2026-10-26: what an

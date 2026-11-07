@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
-import type { CheckError, ResultRepo } from "../../types/index.js";
+import type { CheckError } from "../../types/check.js";
+import type { ResultRepo } from "../../types/store.js";
 import {
   CHECK_COLUMNS,
   checkFrom,

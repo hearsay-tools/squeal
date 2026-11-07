@@ -1,8 +1,9 @@
 import { dropCode } from "../../core/delivery/code-deliver.js";
 import { dropLint } from "../../core/lint/surface/deliver.js";
-import { storePaths } from "../../core/store/index.js";
-import type { Consumer, WorktreeId } from "../../core/types/index.js";
-import { removeWaiterLock } from "../../core/waiter-lock/index.js";
+import { storePaths } from "../../core/store/paths.js";
+import type { WorktreeId } from "../../core/types/common.js";
+import type { Consumer } from "../../core/types/delivery.js";
+import { removeWaiterLock } from "../../core/waiter-lock/waiter-lock.js";
 import type { HookContext } from "./context.js";
 
 /**

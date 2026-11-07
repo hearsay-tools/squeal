@@ -1,10 +1,6 @@
-import {
-  type Consumer,
-  type RelativePath,
-  type Store,
-  type WorktreeId,
-  worktreeMetaKey,
-} from "../types/index.js";
+import type { RelativePath, WorktreeId } from "../types/common.js";
+import type { Consumer } from "../types/delivery.js";
+import { type Store, worktreeMetaKey } from "../types/store.js";
 import { closureFor } from "./closure.js";
 import { changedAfter, registration } from "./registered.js";
 import { readSlot, writeSlot } from "./slots.js";

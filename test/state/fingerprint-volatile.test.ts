@@ -4,7 +4,8 @@ import {
   renormalizeFingerprint,
   sameFingerprint,
 } from "../../src/core/state/fingerprint.js";
-import type { CheckError, SourceLocation } from "../../src/core/types/index.js";
+import type { CheckError } from "../../src/core/types/check.js";
+import type { SourceLocation } from "../../src/core/types/common.js";
 
 /*
  * Task 011-14 (issue 28): ports and temp paths a re-run draws afresh. The

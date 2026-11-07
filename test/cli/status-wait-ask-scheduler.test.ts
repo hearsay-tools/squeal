@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { namedWaitCommand } from "../../src/cli/named-print.js";
 import type { SyncState } from "../../src/cli/status-sync.js";
 import { askNamedRuns } from "../../src/cli/status-wait-ask-store.js";
-import { readRetries } from "../../src/core/retry/index.js";
-import type { EpochMs, RevisionNumber } from "../../src/core/types/index.js";
+import { readRetries } from "../../src/core/retry/records.js";
+import type { EpochMs, RevisionNumber } from "../../src/core/types/common.js";
 import { type CatchUpSide, catchUpRepo, catchUpSide } from "../scheduler/catch-up-fixture.js";
 import { capture } from "./status-wait-focus-fixture.js";
 

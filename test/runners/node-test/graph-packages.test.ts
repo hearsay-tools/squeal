@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import type { PackageImport, RunnerPackages } from "../../../src/core/types/index.js";
+import type { PackageImport, RunnerPackages } from "../../../src/core/types/runner.js";
 import { createNodeTestGraph } from "../../../src/runners/node-test/graph/index.js";
 
 /**

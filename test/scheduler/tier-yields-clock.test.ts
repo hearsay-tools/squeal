@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { publishedYieldRow, TierYields, yieldsMetaKey } from "../../src/core/scheduler/yields.js";
-import type { TestFileRef, TierYield } from "../../src/core/types/index.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import type { TierYield } from "../../src/core/types/standing.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   type CatchUpFile,

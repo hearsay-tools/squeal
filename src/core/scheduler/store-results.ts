@@ -1,5 +1,8 @@
-import { createStateSink, heldFailure, recordFlips } from "../state/index.js";
-import type { ResultRecord, WorktreeId } from "../types/index.js";
+import { recordFlips } from "../state/flaky.js";
+import { heldFailure } from "../state/inherited.js";
+import { createStateSink } from "../state/sink.js";
+import type { WorktreeId } from "../types/common.js";
+import type { ResultRecord } from "../types/store-records.js";
 import type { SchedulerContext } from "./context.js";
 import { unresolvedPreloads } from "./growth.js";
 import { addHeldFile } from "./held.js";

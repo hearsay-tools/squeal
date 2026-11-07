@@ -1,8 +1,8 @@
 import { join } from "node:path";
-import { SLOT_WAITER_FRESH_MS } from "../slow/index.js";
+import { SLOT_WAITER_FRESH_MS } from "../slow/slot-files.js";
 import { lockFileWorktreeId, storePaths } from "../store/paths.js";
 import { shellWord } from "../text.js";
-import type { AbsolutePath } from "../types/index.js";
+import type { AbsolutePath } from "../types/common.js";
 import type { PsModel, PsPlaces } from "./model.js";
 import { lstatOrNull, names, poolDirs } from "./reads.js";
 import { dateOf } from "./render-units.js";

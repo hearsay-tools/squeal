@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readPolicy } from "../../../src/core/daemon/policy.js";
 import { readStopHolds } from "../../../src/core/delivery/turn.js";
 import { releaseLintGroup } from "../../../src/core/lint/pass/commit-entry.js";
-import { refinedMetaKey } from "../../../src/core/types/index.js";
+import { refinedMetaKey } from "../../../src/core/types/scheduler.js";
 import { ADDS, FILE, type SquealRepo } from "../../harness/helpers.js";
 import {
   HARNESSES,

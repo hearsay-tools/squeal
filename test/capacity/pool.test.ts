@@ -2,14 +2,14 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { readMarks } from "../../src/core/capacity/marks.js";
 import {
   createPermitPool,
   type PermitPool,
   type PoolCapacity,
   type PoolLane,
   type PoolLease,
-} from "../../src/core/capacity/index.js";
-import { readMarks } from "../../src/core/capacity/marks.js";
+} from "../../src/core/capacity/pool.js";
 
 /*
  * Spec 001 D11 Capacity (task 001-376): the slow slot's lock files extended

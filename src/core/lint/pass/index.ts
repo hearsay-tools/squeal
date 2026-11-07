@@ -1,7 +1,8 @@
 import { rmSync } from "node:fs";
 import { installedDependenciesFingerprint } from "../../keys/environment.js";
-import type { EpochMs, Policy, RelativePath } from "../../types/index.js";
-import { isLintStoreOpenFailure, lintStorePath, openLintStore } from "../store/index.js";
+import type { EpochMs, RelativePath } from "../../types/common.js";
+import type { Policy } from "../../types/policy.js";
+import { isLintStoreOpenFailure, lintStorePath, openLintStore } from "../store/open.js";
 import type { LintStore } from "../store/types.js";
 import { forgetRecords, lintScope } from "./records.js";
 import { runLintPass } from "./run.js";

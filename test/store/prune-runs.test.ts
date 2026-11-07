@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { storePaths } from "../../src/core/store/index.js";
+import { storePaths } from "../../src/core/store/paths.js";
 import { REPLACED_META_KEY } from "../../src/core/store/repos/replaced.js";
 import { DAY_MS, fakeCommonDir, open, result, tempDir, testCheck, worktree } from "./helpers.js";
 

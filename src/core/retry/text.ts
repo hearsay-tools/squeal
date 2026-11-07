@@ -1,7 +1,9 @@
 import { NO_EARLIER_PASS_TEXT } from "../state/flaky.js";
 import { followedGroupsText } from "../state/group-text.js";
 import { durationText, shellWord, timeText } from "../text.js";
-import type { EpochMs, RecordedFacts, RetryFact, RetryWait, WorktreeId } from "../types/index.js";
+import type { EpochMs, WorktreeId } from "../types/common.js";
+import type { RetryWait } from "../types/standing.js";
+import type { RecordedFacts, RetryFact } from "../types/status.js";
 import { LOAD_RETRY_WAIT_MS, loadRetryDue } from "./gate.js";
 import { type HostLoad, loadAllows } from "./load.js";
 import type { RetryOutcome, RetryReason } from "./records.js";

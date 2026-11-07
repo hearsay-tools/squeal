@@ -1,7 +1,9 @@
 import { createHash } from "node:crypto";
 import { dirname, join, resolve } from "node:path";
-import { compare, toRelative } from "../fs/index.js";
-import type { AbsolutePath, CoreEnvironmentInputs, RelativePath } from "../types/index.js";
+import { compare } from "../fs/compare.js";
+import { toRelative } from "../fs/paths.js";
+import type { AbsolutePath, RelativePath } from "../types/common.js";
+import type { CoreEnvironmentInputs } from "../types/keys.js";
 import { listEntries, readIfFile } from "./files.js";
 import { HIDDEN_LOCKFILE } from "./hidden-lockfile.js";
 import type { PackageScans } from "./package-scans.js";

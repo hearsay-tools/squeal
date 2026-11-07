@@ -1,7 +1,8 @@
 import { type ExecFileException, execFile } from "node:child_process";
 import { getPriority, setPriority } from "node:os";
 import { setTimeout as sleep } from "node:timers/promises";
-import { type CheckPriority, isSlowLane } from "../types/index.js";
+import type { CheckPriority } from "../types/check-groups.js";
+import { isSlowLane } from "../types/runner.js";
 import type { EscapedChildren } from "./escaped.js";
 import { childrenOf, type ProcessEntry, statOf } from "./terminate.js";
 

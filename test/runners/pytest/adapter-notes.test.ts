@@ -2,13 +2,10 @@ import { existsSync, realpathSync, renameSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { appendNote, readDaemonNotes } from "../../../src/core/notes.js";
-import {
-  type AbsolutePath,
-  type DaemonNote,
-  notesMetaKey,
-  type PytestProject,
-  type Store,
-} from "../../../src/core/types/index.js";
+import type { AbsolutePath } from "../../../src/core/types/common.js";
+import type { PytestProject } from "../../../src/core/types/policy.js";
+import { type DaemonNote, notesMetaKey } from "../../../src/core/types/scheduler.js";
+import type { Store } from "../../../src/core/types/store.js";
 import { createPytestAdapter } from "../../../src/runners/pytest/adapter.js";
 import type { Clock } from "../../../src/runners/pytest/adapter-environment.js";
 import {

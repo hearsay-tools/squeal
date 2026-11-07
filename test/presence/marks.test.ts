@@ -2,16 +2,10 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { acquireDaemonLock, type DaemonLock } from "../../src/core/daemon/lock.js";
-import {
-  clearStartMark,
-  DAEMON_START_GRACE_MS,
-  daemonStart,
-  markSpawn,
-  markStart,
-  spawnMarkFor,
-  startMarkFor,
-} from "../../src/core/presence/index.js";
-import type { AbsolutePath, EpochMs } from "../../src/core/types/index.js";
+import { DAEMON_START_GRACE_MS } from "../../src/core/presence/heartbeat.js";
+import { clearStartMark, markSpawn, markStart } from "../../src/core/presence/lock-events.js";
+import { daemonStart, spawnMarkFor, startMarkFor } from "../../src/core/presence/marks.js";
+import type { AbsolutePath, EpochMs } from "../../src/core/types/common.js";
 import { NOW } from "./fixture.js";
 
 /*

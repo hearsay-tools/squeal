@@ -1,4 +1,4 @@
-import type { RelativePath } from "../types/index.js";
+import type { RelativePath } from "../types/common.js";
 
 /** `path` and each of its ancestors, deepest first, root excluded: `a/b/c`, `a/b`, `a`. */
 export function* selfAndAncestors(path: RelativePath): Generator<RelativePath> {

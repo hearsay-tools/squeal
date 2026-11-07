@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { formatCodeReport } from "../../../src/cli/code.js";
 import { type CodeReportCoverage, coverageLines } from "../../../src/cli/code-coverage.js";
 import { readCodeReport } from "../../../src/cli/code-report.js";
-import { coverageChecks } from "../../../src/core/code/crap/index.js";
-import { DEFAULT_POLICY } from "../../../src/core/types/index.js";
+import { coverageChecks } from "../../../src/core/code/crap/checks.js";
+import { DEFAULT_POLICY } from "../../../src/core/types/policy.js";
 import { WT } from "../../state/helpers.js";
 import { type CoverageRig, coverageRig, sourceOf } from "./rig.js";
 

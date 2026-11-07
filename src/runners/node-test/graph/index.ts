@@ -1,10 +1,6 @@
 import { realpathSync } from "node:fs";
-import type {
-  AbsolutePath,
-  InvalidatedPath,
-  RelativePath,
-  RunnerPackages,
-} from "../../../core/types/index.js";
+import type { AbsolutePath, RelativePath } from "../../../core/types/common.js";
+import type { InvalidatedPath, RunnerPackages } from "../../../core/types/runner.js";
 import { type AffectedPaths, Graph, type StaticClosure, type TestFileClosure } from "./graph.js";
 import { readLoaderChain } from "./loader-chain.js";
 import { parserReady } from "./parse.js";

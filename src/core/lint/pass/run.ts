@@ -1,5 +1,7 @@
-import type { EpochMs, FileHash, Policy, RelativePath, RevisionNumber } from "../../types/index.js";
+import type { EpochMs, RelativePath, RevisionNumber } from "../../types/common.js";
+import type { FileHash } from "../../types/keys.js";
 import type { LintTool } from "../../types/lint.js";
+import type { Policy } from "../../types/policy.js";
 import type { LintStore } from "../store/types.js";
 import { type MomentHold, momentHold } from "./commit-entry.js";
 import { Keyer } from "./keyer.js";

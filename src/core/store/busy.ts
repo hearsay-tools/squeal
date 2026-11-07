@@ -1,4 +1,4 @@
-import type { EpochMs } from "../types/index.js";
+import type { EpochMs } from "../types/common.js";
 
 /**
  * How long a write of a reconciliation pass or of the daemon's timers waits

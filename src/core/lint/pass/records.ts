@@ -1,10 +1,5 @@
-import type {
-  EpochMs,
-  FileHash,
-  RelativePath,
-  RevisionNumber,
-  WorktreeId,
-} from "../../types/index.js";
+import type { EpochMs, RelativePath, RevisionNumber, WorktreeId } from "../../types/common.js";
+import type { FileHash } from "../../types/keys.js";
 import type { LintTool } from "../../types/lint.js";
 import type { LintMetaRepo } from "../store/types.js";
 import type { KeyInputs } from "./keys.js";

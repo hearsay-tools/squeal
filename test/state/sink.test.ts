@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { readFailureKeys } from "../../src/core/slow/state.js";
-import { createStateSink } from "../../src/core/state/index.js";
-import type { StateSink, Store } from "../../src/core/types/index.js";
+import { createStateSink } from "../../src/core/state/sink.js";
+import type { StateSink } from "../../src/core/types/state.js";
+import type { Store } from "../../src/core/types/store.js";
 import { check, FILE, freshStore, OTHER, result, setKey, WT } from "./helpers.js";
 
 const NONE = { checkpointId: null };

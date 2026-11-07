@@ -1,7 +1,9 @@
 import { appendFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import type { KnownState, StatusHeader, TestCheckId } from "../../src/core/types/index.js";
+import type { TestCheckId } from "../../src/core/types/check.js";
+import type { KnownState } from "../../src/core/types/state.js";
+import type { StatusHeader } from "../../src/core/types/status.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
 import { SLOW } from "./cleanup.js";

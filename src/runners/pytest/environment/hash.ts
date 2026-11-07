@@ -1,8 +1,10 @@
 import { createHash } from "node:crypto";
 import { realpathSync } from "node:fs";
 import { delimiter, join } from "node:path";
-import { compare, toRelative } from "../../../core/fs/index.js";
-import type { AbsolutePath, PytestProject } from "../../../core/types/index.js";
+import { compare } from "../../../core/fs/compare.js";
+import { toRelative } from "../../../core/fs/paths.js";
+import type { AbsolutePath } from "../../../core/types/common.js";
+import type { PytestProject } from "../../../core/types/policy.js";
 import type { PytestConfigFile } from "./config.js";
 import type { EnvironmentFiles } from "./fingerprint.js";
 import type { InterpreterInfo } from "./interpreter.js";

@@ -1,6 +1,7 @@
 import { posix } from "node:path";
-import { compare } from "../fs/index.js";
-import type { RelativePath, TestFileRef } from "../types/index.js";
+import { compare } from "../fs/compare.js";
+import type { RelativePath } from "../types/common.js";
+import type { TestFileRef } from "../types/keys.js";
 
 /** Map key of a test file. NUL cannot occur in a project name or a path. */
 export function testFileId(ref: TestFileRef): string {

@@ -1,23 +1,20 @@
 import { randomUUID } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
-import { createFsHasher } from "../../src/core/hash/index.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
+import { createFsHasher } from "../../src/core/hash/hasher.js";
 import { encodeSegment, keyFromSegments } from "../../src/core/keys/check-key.js";
-import {
-  coreEnvironmentInputs,
-  environmentHash,
-  KEY_FORMAT_VERSION,
-} from "../../src/core/keys/index.js";
+import { coreEnvironmentInputs } from "../../src/core/keys/environment.js";
+import { environmentHash } from "../../src/core/keys/environment-hash.js";
+import { KEY_FORMAT_VERSION } from "../../src/core/keys/key-format.js";
 import { recordFailureKeys } from "../../src/core/slow/state.js";
-import { checkIdentity } from "../../src/core/state/index.js";
-import { formatWhy, readWhy } from "../../src/core/status/index.js";
-import {
-  type CheckKey,
-  DEFAULT_POLICY,
-  type EpochMs,
-  type ResultRecord,
-  type Store,
-} from "../../src/core/types/index.js";
+import { checkIdentity } from "../../src/core/state/derive.js";
+import { formatWhy } from "../../src/core/status/format-why.js";
+import { readWhy } from "../../src/core/status/why.js";
+import type { EpochMs } from "../../src/core/types/common.js";
+import type { CheckKey } from "../../src/core/types/keys.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
+import type { Store } from "../../src/core/types/store.js";
+import type { ResultRecord } from "../../src/core/types/store-records.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { claimRepo, FakeRunner, fileName, type Side, side } from "./claims-fixture.js";
 

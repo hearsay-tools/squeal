@@ -3,7 +3,7 @@ import { classLines, fileEntry } from "../../src/cli/named-file-lines.js";
 import { YIELD_REMAINDER_MS } from "../../src/core/scheduler/yields.js";
 import type { NamedFile } from "../../src/core/status/standing.js";
 import { timeText } from "../../src/core/text.js";
-import type { TierYield } from "../../src/core/types/index.js";
+import type { TierYield } from "../../src/core/types/standing.js";
 
 /*
  * Row 011-103 slice 6 (`quality/2026-10.md`): the group id and the line read

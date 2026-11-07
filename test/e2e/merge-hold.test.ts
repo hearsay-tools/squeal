@@ -1,6 +1,9 @@
 import { execFileSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
-import { type E2E, e2eSuite, MATH, PLUGINS, until } from "./harness.js";
+import { type E2E, e2eSuite } from "./harness.js";
+import { PLUGINS } from "./plugins.js";
+import { MATH } from "./sources.js";
+import { until } from "./support.js";
 
 /*
  * Row 011-73 (gh-68; spec 011 C6, C8 and C9 as amended 2026-10-21;

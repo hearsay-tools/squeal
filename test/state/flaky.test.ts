@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
+import { checkIdentity } from "../../src/core/state/derive.js";
 import {
-  checkIdentity,
   FLAKY_KEPT,
   FLAKY_META_KEY,
   flakyText,
   readFlakyNotes,
   recordFlips,
-} from "../../src/core/state/index.js";
-import type { FlakyNote } from "../../src/core/types/index.js";
+} from "../../src/core/state/flaky.js";
+import type { FlakyNote } from "../../src/core/types/state.js";
 import { check, freshStore, OTHER, result, WT } from "./helpers.js";
 
 /*

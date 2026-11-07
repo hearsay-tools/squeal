@@ -5,8 +5,9 @@ import { startDaemon } from "../../src/core/daemon/daemon.js";
 import { acquireDaemonLock, type DaemonLock } from "../../src/core/daemon/lock.js";
 import { DAEMON_BUSY_TIMEOUT_MS, openDaemon } from "../../src/core/daemon/open.js";
 import { squealVersion } from "../../src/core/daemon/version.js";
-import { lockFileFor, openStore, storePaths } from "../../src/core/store/index.js";
-import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/index.js";
+import { openStore } from "../../src/core/store/open.js";
+import { lockFileFor, storePaths } from "../../src/core/store/paths.js";
+import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/common.js";
 import { createFixtureRepo, type FixtureRepo, readNotes } from "./helpers.js";
 
 /*

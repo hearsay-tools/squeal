@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { editWindow, heldPending } from "../../src/cli/status-wait-edit.js";
-import { createDelivery, formatDelta } from "../../src/core/delivery/index.js";
-import { testFileId } from "../../src/core/keys/index.js";
+import { createDelivery } from "../../src/core/delivery/delivery.js";
+import { formatDelta } from "../../src/core/delivery/format.js";
+import { testFileId } from "../../src/core/keys/reverse-index.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "../../src/core/scheduler/context.js";
 import type { FileState } from "../../src/core/scheduler/files.js";
 import { Ledger } from "../../src/core/scheduler/ledger.js";
@@ -9,18 +10,14 @@ import { priorityOf } from "../../src/core/scheduler/queue.js";
 import { answerMoves, movesSeq } from "../../src/core/scheduler/rekeyed-moves.js";
 import { readRekeyed } from "../../src/core/scheduler/rekeyed-record.js";
 import { endRerun, queueReruns, RERUN_CAP } from "../../src/core/scheduler/rerun.js";
-import { createStateSink } from "../../src/core/state/index.js";
-import {
-  type CheckKey,
-  type Consumer,
-  DEFAULT_POLICY,
-  daemonIncarnation,
-  type HarnessDelivery,
-  type ResultRecord,
-  type Store,
-  type TestFileRef,
-  type WorktreeId,
-} from "../../src/core/types/index.js";
+import { createStateSink } from "../../src/core/state/sink.js";
+import type { WorktreeId } from "../../src/core/types/common.js";
+import { daemonIncarnation } from "../../src/core/types/daemon.js";
+import type { Consumer, HarnessDelivery } from "../../src/core/types/delivery.js";
+import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
+import type { Store } from "../../src/core/types/store.js";
+import type { ResultRecord } from "../../src/core/types/store-records.js";
 import { check, FILE, freshStore, result, WT } from "../state/helpers.js";
 import { fixedStatus, liveDaemon } from "./fakes.js";
 

@@ -1,7 +1,9 @@
 import { describe, expect, it, onTestFinished } from "vitest";
 import { afterEachRun, EscapedChildren } from "../../src/core/daemon/escaped.js";
 import { createNodeTestRunners } from "../../src/core/daemon/node-test-runners.js";
-import type { NodeTestProject, RunOptions, TestFileRef } from "../../src/core/types/index.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import type { NodeTestProject } from "../../src/core/types/policy.js";
+import type { RunOptions } from "../../src/core/types/runner.js";
 import { createFixtureRepo, SLOW } from "./helpers.js";
 
 /*

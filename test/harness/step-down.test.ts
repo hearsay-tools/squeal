@@ -5,7 +5,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createHandlers } from "../../src/core/daemon/handlers.js";
 import { parseRequest } from "../../src/core/daemon/protocol.js";
 import { isNewerVersion, squealVersion } from "../../src/core/daemon/version.js";
-import type { DaemonRecord, DaemonRequest } from "../../src/core/types/index.js";
+import type { DaemonRequest } from "../../src/core/types/daemon.js";
+import type { DaemonRecord } from "../../src/core/types/store-records.js";
 import { SOCKET_TIMEOUT_MS, stepDownIfOlder } from "../../src/harness/shared/ensure.js";
 
 /*

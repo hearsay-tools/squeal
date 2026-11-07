@@ -1,13 +1,9 @@
-import { testFileId } from "../keys/index.js";
-import type {
-  CheckId,
-  CheckKey,
-  PendingPhase,
-  ResultRecord,
-  RevisionNumber,
-  TestFileRef,
-  Validity,
-} from "../types/index.js";
+import { testFileId } from "../keys/reverse-index.js";
+import type { CheckId } from "../types/check.js";
+import type { RevisionNumber } from "../types/common.js";
+import type { CheckKey, TestFileRef } from "../types/keys.js";
+import type { PendingPhase, Validity } from "../types/state.js";
+import type { ResultRecord } from "../types/store-records.js";
 
 /** What the scheduler knows about one test file of its worktree. */
 export interface FileState {

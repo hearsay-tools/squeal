@@ -4,8 +4,9 @@ import { describe, expect, it } from "vitest";
 import { observedModulesMetaKey } from "../../src/core/keys/modules.js";
 import { observedMetaKey } from "../../src/core/keys/observed.js";
 import { runtimeFilesMetaKey } from "../../src/core/keys/runtime-applied.js";
-import { storePaths } from "../../src/core/store/index.js";
-import type { CheckError, Store } from "../../src/core/types/index.js";
+import { storePaths } from "../../src/core/store/paths.js";
+import type { CheckError } from "../../src/core/types/check.js";
+import type { Store } from "../../src/core/types/store.js";
 import {
   DAY_MS,
   fakeCommonDir,

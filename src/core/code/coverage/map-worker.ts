@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { parentPort, workerData } from "node:worker_threads";
-import type { ObjectFormat } from "../../hash/index.js";
-import type { AbsolutePath } from "../../types/index.js";
+import type { ObjectFormat } from "../../hash/blob.js";
+import type { AbsolutePath } from "../../types/common.js";
 import type { FromWorker, ToWorker } from "./mapper.js";
 import { ownRecord } from "./own.js";
 import { shareRecord } from "./parts.js";

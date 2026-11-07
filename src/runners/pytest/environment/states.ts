@@ -2,8 +2,10 @@ import { realpathSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse } from "smol-toml";
-import { isRecord, toRelative } from "../../../core/fs/index.js";
-import type { AbsolutePath, PytestProject } from "../../../core/types/index.js";
+import { isRecord } from "../../../core/fs/json.js";
+import { toRelative } from "../../../core/fs/paths.js";
+import type { AbsolutePath } from "../../../core/types/common.js";
+import type { PytestProject } from "../../../core/types/policy.js";
 import { type Discovery, discoverEnvironment, projectDir } from "./discover.js";
 import { listOptional, readOptional, sitePackagesDir } from "./site.js";
 

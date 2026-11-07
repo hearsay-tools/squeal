@@ -1,8 +1,9 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { observedStartupMetaKey } from "../../src/core/keys/index.js";
-import type { AbsolutePath, StatusSnapshot } from "../../src/core/types/index.js";
+import { observedStartupMetaKey } from "../../src/core/keys/startup.js";
+import type { AbsolutePath } from "../../src/core/types/common.js";
+import type { StatusSnapshot } from "../../src/core/types/status.js";
 import { sitePackagesDir } from "../../src/runners/pytest/environment/site.js";
 import { runMissingConfig } from "../helpers/baseline.js";
 import {

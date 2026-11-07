@@ -2,18 +2,13 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createDelivery, formatDelta, formatRegistration } from "../../src/core/delivery/index.js";
-import { createStateSink } from "../../src/core/state/index.js";
-import type {
-  CheckId,
-  Consumer,
-  Delta,
-  FileCheckId,
-  HarnessDelivery,
-  SetupCheckId,
-  StateSink,
-  Store,
-} from "../../src/core/types/index.js";
+import { createDelivery } from "../../src/core/delivery/delivery.js";
+import { formatDelta, formatRegistration } from "../../src/core/delivery/format.js";
+import { createStateSink } from "../../src/core/state/sink.js";
+import type { CheckId, FileCheckId, SetupCheckId } from "../../src/core/types/check.js";
+import type { Consumer, Delta, HarnessDelivery } from "../../src/core/types/delivery.js";
+import type { StateSink } from "../../src/core/types/state.js";
+import type { Store } from "../../src/core/types/store.js";
 import { freshStore, OTHER, result, setKey, WT } from "../state/helpers.js";
 import { fixedStatus, liveDaemon } from "./fakes.js";
 

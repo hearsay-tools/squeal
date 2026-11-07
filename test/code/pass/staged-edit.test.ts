@@ -1,7 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { setImmediate as nextTurn } from "node:timers/promises";
 import { describe, expect, it, vi } from "vitest";
-import { stagedId } from "../../../src/core/code/store/index.js";
+import { stagedId } from "../../../src/core/code/store/staged.js";
 import type { CodeStore } from "../../../src/core/code/store/types.js";
 import type { CodeKnownState } from "../../../src/core/types/code.js";
 import { check, open } from "../helpers.js";

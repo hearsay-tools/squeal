@@ -1,9 +1,10 @@
 import { fileURLToPath } from "node:url";
 import type { TestProject } from "vitest/node";
 import { COVERAGE_PROVIDER_VERSION } from "../../core/code/coverage/record.js";
-import { compare } from "../../core/fs/index.js";
-import type { AbsolutePath, RelativePath, RunnerEnvironment } from "../../core/types/index.js";
-import type { WorktreePaths } from "./paths.js";
+import { compare } from "../../core/fs/compare.js";
+import type { WorktreePaths } from "../../core/fs/worktree-paths.js";
+import type { AbsolutePath, RelativePath } from "../../core/types/common.js";
+import type { RunnerEnvironment } from "../../core/types/runner.js";
 import { globalSetupFiles, type ProjectInputs } from "./project.js";
 
 export interface EnvironmentContext {

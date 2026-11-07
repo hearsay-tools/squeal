@@ -4,7 +4,8 @@ import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { readCommitReports } from "../../src/core/commit/store.js";
 import { startDaemon } from "../../src/core/daemon/daemon.js";
-import { type HookDeps, runHook } from "../../src/harness/claude-code/index.js";
+import { runHook } from "../../src/harness/claude-code/hooks.js";
+import type { HookDeps } from "../../src/harness/shared/hook.js";
 import {
   createFixtureRepo,
   type FixtureRepo,

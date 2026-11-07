@@ -7,9 +7,9 @@
 // The daemon is reported alive and never spawned. The test gives it a private
 // HOME and XDG_RUNTIME_DIR.
 import { readFileSync, writeFileSync } from "node:fs";
-import { HOOKS, type HookName } from "../../../src/harness/claude-code/index.js";
+import { HOOKS, type HookName } from "../../../src/harness/claude-code/hooks.js";
 import { runMain } from "../../../src/harness/claude-code/main.js";
-import { CODEX_HOOKS, type CodexHookName } from "../../../src/harness/codex/index.js";
+import { CODEX_HOOKS, type CodexHookName } from "../../../src/harness/codex/hooks.js";
 import { runHookInput } from "../../../src/harness/codex/main.js";
 
 const [harness, name, marker] = process.argv.slice(2);

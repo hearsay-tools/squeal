@@ -1,15 +1,13 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { StatCache } from "../../src/core/hash/index.js";
+import { StatCache } from "../../src/core/hash/stat-cache.js";
 import { writeRetries } from "../../src/core/retry/records.js";
 import type { SchedulerContext } from "../../src/core/scheduler/context.js";
 import { Ledger } from "../../src/core/scheduler/ledger.js";
 import { answeredOf } from "../../src/core/scheduler/promoted-tier.js";
-import {
-  type CheckKey,
-  DEFAULT_POLICY,
-  type Store,
-  type WorktreeId,
-} from "../../src/core/types/index.js";
+import type { WorktreeId } from "../../src/core/types/common.js";
+import type { CheckKey } from "../../src/core/types/keys.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
+import type { Store } from "../../src/core/types/store.js";
 import { liveDaemon } from "../delivery/fakes.js";
 import { freshStore } from "../state/helpers.js";
 

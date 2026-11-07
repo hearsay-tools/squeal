@@ -2,12 +2,10 @@ import { existsSync, readFileSync, rmSync } from "node:fs";
 import { loadavg } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
+import { REPO_ROOT } from "../../src/harness/build.js";
 import { pinFile } from "../../src/harness/codex/adapter/layout.js";
-import {
-  RUNTIME_ARTIFACT_ASSET,
-  releaseAssetUrl,
-} from "../../src/harness/codex/runtime-release/index.js";
+import { RUNTIME_ARTIFACT_ASSET } from "../../src/harness/codex/runtime-release/descriptor.js";
+import { releaseAssetUrl } from "../../src/harness/codex/runtime-release/release.js";
 import { appServer } from "./codex-app-server.js";
 import {
   ADAPTER_VERSION,

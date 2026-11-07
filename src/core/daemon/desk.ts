@@ -1,14 +1,10 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { Worker } from "node:worker_threads";
-import type {
-  DaemonPhase,
-  FullSuiteCheckpoint,
-  FullSuiteRequest,
-  RelativePath,
-  SyncAnswer,
-  TestFileRef,
-} from "../types/index.js";
+import type { RelativePath } from "../types/common.js";
+import type { DaemonPhase, SyncAnswer } from "../types/daemon.js";
+import type { TestFileRef } from "../types/keys.js";
+import type { FullSuiteCheckpoint, FullSuiteRequest } from "../types/scheduler.js";
 import type { DeskIdentity, FromDesk, ToDesk } from "./desk-messages.js";
 import { createHandlers } from "./handlers.js";
 import { GROUP_NOT_SUPPORTED, type GroupRequested, type Held, MainSteps } from "./run-group.js";

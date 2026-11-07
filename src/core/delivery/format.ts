@@ -1,7 +1,7 @@
 import { lintLines, lintRegistrationLine, lintTitleWords } from "../lint/surface/format.js";
-import { stopOf } from "../presence/index.js";
-import { RECORDED_UNKNOWN_TEXT, recordedText, retryText } from "../retry/index.js";
-import { SUMMARY_MAX_CHARS } from "../state/index.js";
+import { stopOf } from "../presence/views.js";
+import { RECORDED_UNKNOWN_TEXT, recordedText, retryText } from "../retry/text.js";
+import { SUMMARY_MAX_CHARS } from "../state/fingerprint.js";
 import {
   checkPartsText,
   checksText,
@@ -19,20 +19,18 @@ import { lateHeartbeatDetail } from "../status/status-detail.js";
 import { stoppingText } from "../status/stopping.js";
 import { atText } from "../status/test-frame.js";
 import { cap, plural, shellWord } from "../text.js";
+import type { CheckId } from "../types/check.js";
 import type {
-  CheckId,
-  DaemonLiveness,
   Delta,
   DeltaEntry,
   EditsSettled,
-  HoldChange,
-  KnownFailure,
-  KnownOutcome,
   Registration,
   RetiredEntry,
-  StatusHeader,
   TransitionEntry,
-} from "../types/index.js";
+} from "../types/delivery.js";
+import type { HoldChange } from "../types/standing.js";
+import type { KnownOutcome } from "../types/state.js";
+import type { DaemonLiveness, KnownFailure, StatusHeader } from "../types/status.js";
 import {
   codeLines,
   codeRegistrationLine,

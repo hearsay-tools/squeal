@@ -3,7 +3,8 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { requestDaemon } from "../../src/core/daemon/client.js";
 import { prepareFrontDesk } from "../../src/core/daemon/desk.js";
-import type { AbsolutePath, CheckpointRecord, RevisionNumber } from "../../src/core/types/index.js";
+import type { AbsolutePath, RevisionNumber } from "../../src/core/types/common.js";
+import type { CheckpointRecord } from "../../src/core/types/store-records.js";
 
 /*
  * Review wave-3, B4: the checkpoint whose tiers do a `run --all` request's

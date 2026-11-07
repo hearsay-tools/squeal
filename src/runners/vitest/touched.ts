@@ -1,7 +1,7 @@
 import { basename } from "node:path";
 import type { Vitest } from "vitest/node";
-import type { AbsolutePath, RelativePath } from "../../core/types/index.js";
-import type { WorktreePaths } from "./paths.js";
+import type { WorktreePaths } from "../../core/fs/worktree-paths.js";
+import type { AbsolutePath, RelativePath } from "../../core/types/common.js";
 import { recreateTriggers } from "./project.js";
 import { type Environment, environments, sourceOf } from "./sources.js";
 

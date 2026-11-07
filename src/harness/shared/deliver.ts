@@ -1,6 +1,6 @@
 import { syncOnHeadMove } from "../../core/commit/boundary.js";
-import { formatDelta, MESSAGE_CAP_CHARS, notValidatedLine } from "../../core/delivery/index.js";
-import { readEditLine } from "../../core/presence/index.js";
+import { formatDelta, MESSAGE_CAP_CHARS, notValidatedLine } from "../../core/delivery/format.js";
+import { readEditLine } from "../../core/presence/narrow.js";
 import type { HookContext } from "./context.js";
 import { coverageOf } from "./coverage.js";
 import { ensureIfStale, startingAfter } from "./ensure.js";

@@ -1,8 +1,10 @@
 import { expect } from "vitest";
-import { daemonLiveness } from "../../src/core/delivery/liveness.js";
-import { publishedBatches } from "../../src/core/scheduler/promotions.js";
+import { daemonLiveness } from "../../src/core/presence/heartbeat.js";
+import { publishedBatches } from "../../src/core/scheduler/promotions-row.js";
 import { standingsOf } from "../../src/core/status/standing.js";
-import { type BatchPlace, type EpochMs, isBesideLane } from "../../src/core/types/index.js";
+import type { EpochMs } from "../../src/core/types/common.js";
+import { isBesideLane } from "../../src/core/types/runner.js";
+import type { BatchPlace } from "../../src/core/types/standing.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   type CatchUpFile,

@@ -1,20 +1,16 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { classLines, fileEntry, reasonGroups } from "../../src/cli/named-file-lines.js";
-import { readNamedFiles } from "../../src/cli/named-files.js";
 import type { DaemonSync, SyncState } from "../../src/cli/status-sync.js";
 import { namedText } from "../../src/cli/status-wait-lines.js";
 import { waitForNamed } from "../../src/cli/status-wait-paths.js";
-import { daemonLiveness } from "../../src/core/delivery/index.js";
+import { daemonLiveness } from "../../src/core/presence/heartbeat.js";
 import { type RecordedCause, recordUnknownFiles } from "../../src/core/scheduler/unknown-files.js";
-import type { LoadNow } from "../../src/core/status/next-step.js";
-import type {
-  CheckKey,
-  EpochMs,
-  RevisionNumber,
-  Store,
-  WorktreeId,
-} from "../../src/core/types/index.js";
+import { readNamedFiles } from "../../src/core/status/standing.js";
+import type { EpochMs, RevisionNumber, WorktreeId } from "../../src/core/types/common.js";
+import type { CheckKey } from "../../src/core/types/keys.js";
+import type { LoadNow } from "../../src/core/types/standing.js";
+import type { Store } from "../../src/core/types/store.js";
 import { NOW, ref } from "./status-wait-fixture.js";
 
 /*

@@ -1,8 +1,8 @@
 import { mkdtempSync, renameSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { readHeader } from "../../src/core/delivery/index.js";
-import type { Store } from "../../src/core/types/index.js";
+import { readHeader } from "../../src/core/state/header.js";
+import type { Store } from "../../src/core/types/store.js";
 import { buildDist } from "../../src/harness/build.js";
 import { CLAUDE_CODE_PLUGIN } from "../../src/harness/claude-code/build.js";
 import { CODEX_RUNTIME } from "../../src/harness/codex/build.js";

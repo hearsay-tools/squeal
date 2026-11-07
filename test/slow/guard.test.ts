@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { waitForCapacity } from "../../src/core/slow/index.js";
+import { waitForCapacity } from "../../src/core/slow/guard.js";
 
 /** A clock that only moves when the guard sleeps, and a load that follows a script of [fromMs, load] steps. */
 function host(steps: readonly (readonly [number, number])[], cpus = 4) {

@@ -1,8 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { readCodeReport } from "../../../src/cli/code-report.js";
-import { createDelivery, formatDelta } from "../../../src/core/delivery/index.js";
+import { createDelivery } from "../../../src/core/delivery/delivery.js";
+import { formatDelta } from "../../../src/core/delivery/format.js";
 import { codeStatusOf } from "../../../src/core/status/code-status.js";
-import type { Consumer, RevisionTrigger, Store } from "../../../src/core/types/index.js";
+import type { Consumer } from "../../../src/core/types/delivery.js";
+import type { RevisionTrigger } from "../../../src/core/types/revision.js";
+import type { Store } from "../../../src/core/types/store.js";
 import type { HookContext } from "../../../src/harness/shared/context.js";
 import { codeStopReason } from "../../../src/harness/shared/stop-code.js";
 import { fixedStatus } from "../../delivery/fakes.js";

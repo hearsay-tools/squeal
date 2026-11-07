@@ -1,9 +1,10 @@
 import { setImmediate as nextTurn } from "node:timers/promises";
 import type { CodeCheckId, CodeKnownState, CodeTransition } from "../../types/code.js";
-import type { RelativePath } from "../../types/index.js";
+import type { RelativePath } from "../../types/common.js";
 import { moveChecks } from "../crap/checks.js";
 import { removedFailures } from "../crap/removed.js";
-import { type CodeEdit, stagedId } from "../store/index.js";
+import { stagedId } from "../store/staged.js";
+import type { CodeEdit } from "../store/types.js";
 import { bodiesOf } from "./bodies.js";
 import type { EditPlan } from "./edit.js";
 import { type End, report, writeEnd } from "./end.js";

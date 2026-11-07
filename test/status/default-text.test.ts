@@ -3,13 +3,12 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
 import { appendNote } from "../../src/core/notes.js";
-import { formatStatus, readStatus } from "../../src/core/status/index.js";
-import {
-  type CheckKey,
-  type DaemonRecord,
-  refinedMetaKey,
-  type StatusSnapshot,
-} from "../../src/core/types/index.js";
+import { formatStatus } from "../../src/core/status/format-status.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
+import type { CheckKey } from "../../src/core/types/keys.js";
+import { refinedMetaKey } from "../../src/core/types/scheduler.js";
+import type { StatusSnapshot } from "../../src/core/types/status.js";
+import type { DaemonRecord } from "../../src/core/types/store-records.js";
 import { CODE_OFF } from "../helpers/policy.js";
 import { appendRevisions, check, fakeRepo, fileCheck, seedStore, state } from "./helpers.js";
 

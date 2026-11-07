@@ -1,13 +1,8 @@
 import { toHarness } from "../delivery/harness-process.js";
-import { isRecord } from "../fs/index.js";
-import {
-  type EpochMs,
-  type HarnessProcess,
-  type RelativePath,
-  type Store,
-  type WorktreeId,
-  worktreeMetaKey,
-} from "../types/index.js";
+import { isRecord } from "../fs/json.js";
+import type { EpochMs, RelativePath, WorktreeId } from "../types/common.js";
+import { type Store, worktreeMetaKey } from "../types/store.js";
+import type { HarnessProcess } from "../types/store-records.js";
 
 /*
  * Row 011-72 (spec 011 C9 as amended 2026-10-21, "Holds"): the two `meta`

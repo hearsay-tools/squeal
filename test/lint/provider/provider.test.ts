@@ -1,7 +1,7 @@
 import { realpathSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import type { LintRunReport, LintSnapshot } from "../../../src/core/lint/provider/index.js";
+import type { LintRunReport, LintSnapshot } from "../../../src/core/lint/pass/provider.js";
 import { cli, onDisk, project, provider } from "./helpers.js";
 
 const FILES = ["src/a.js", "src/b.js", "src/t.ts", "src/u.ts"];

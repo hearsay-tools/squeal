@@ -1,7 +1,8 @@
 import { isAbsolute, relative, resolve } from "node:path";
-import type { AbsolutePath, TestFileRef } from "../../core/types/index.js";
+import type { AbsolutePath } from "../../core/types/common.js";
+import type { TestFileRef } from "../../core/types/keys.js";
+import type { TestCommand } from "../../runners/descriptions.js";
 import { describing } from "../../runners/descriptions.js";
-import type { TestCommand } from "./test-command.js";
 
 /**
  * Spec 005 D8 step 2: the test files `command` would run, from Squeal's own

@@ -1,7 +1,8 @@
 import { setImmediate as nextTurn } from "node:timers/promises";
 import type { CodeCheckId, CodeKnownState } from "../../types/code.js";
-import type { RelativePath, RevisionNumber, WorktreeId } from "../../types/index.js";
-import { type CodeStore, stagedId } from "../store/index.js";
+import type { RelativePath, RevisionNumber, WorktreeId } from "../../types/common.js";
+import { stagedId } from "../store/staged.js";
+import type { CodeStore } from "../store/types.js";
 import type { Entry } from "./blobs.js";
 import { type End, report, writeEnd } from "./end.js";
 import { type FileAfter, judge } from "./judge.js";

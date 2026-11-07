@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import type { TestSpecification, Vitest } from "vitest/node";
-import type { AbsolutePath } from "../../core/types/index.js";
+import type { AbsolutePath } from "../../core/types/common.js";
 import { directImports, importClosure, isMissingTarget } from "./graph.js";
 import { isProjectInput, projectInputs, snapshotPath } from "./project.js";
 import { relatedSpecifications } from "./related.js";

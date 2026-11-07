@@ -1,12 +1,7 @@
 import { createInputMatcher } from "../../keys/glob.js";
 import type { CodeCheckId, CodeFile } from "../../types/code.js";
-import type {
-  EpochMs,
-  Policy,
-  RelativePath,
-  RevisionNumber,
-  WorktreeId,
-} from "../../types/index.js";
+import type { EpochMs, RelativePath, RevisionNumber, WorktreeId } from "../../types/common.js";
+import type { Policy } from "../../types/policy.js";
 import type { CodeStore } from "../store/types.js";
 import { COVERAGE_MEASURES } from "./seed.js";
 import {

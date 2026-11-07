@@ -4,8 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, expect, test } from "vitest";
-import { createPermitPool } from "../../src/core/capacity/index.js";
-import { SLOT_WAITER_FRESH_MS } from "../../src/core/slow/index.js";
+import { createPermitPool } from "../../src/core/capacity/pool.js";
+import { SLOT_WAITER_FRESH_MS } from "../../src/core/slow/slot-files.js";
 
 /*
  * Spec 001 D11 Capacity (task 001-376): "the OS releases it when its holder

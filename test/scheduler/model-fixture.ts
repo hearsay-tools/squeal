@@ -8,16 +8,12 @@ import {
   type CommandHoldEntry,
   removeCommandHold,
 } from "../../src/core/scheduler/hold-rows.js";
-import { promotionsMetaKey } from "../../src/core/scheduler/promotions.js";
+import { promotionsMetaKey } from "../../src/core/scheduler/promotions-row.js";
 import { yieldsMetaKey } from "../../src/core/scheduler/yields.js";
-import {
-  DEFAULT_POLICY,
-  isSlowLane,
-  notesMetaKey,
-  type RunOptions,
-  type RunReport,
-  type TestFileRef,
-} from "../../src/core/types/index.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
+import { isSlowLane, type RunOptions, type RunReport } from "../../src/core/types/runner.js";
+import { notesMetaKey } from "../../src/core/types/scheduler.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   type CatchUpFile,

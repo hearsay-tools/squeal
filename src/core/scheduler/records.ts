@@ -1,17 +1,9 @@
-import type {
-  CheckError,
-  CheckId,
-  CheckKey,
-  CheckRunResult,
-  DiagnosticFingerprint,
-  FileCheckId,
-  Provenance,
-  ResultRecord,
-  RunReport,
-  SourceLocation,
-  TestCheckId,
-  TestFileRef,
-} from "../types/index.js";
+import type { CheckError, CheckId, FileCheckId, TestCheckId } from "../types/check.js";
+import type { SourceLocation } from "../types/common.js";
+import type { CheckKey, TestFileRef } from "../types/keys.js";
+import type { CheckRunResult, RunReport } from "../types/runner.js";
+import type { DiagnosticFingerprint } from "../types/state.js";
+import type { Provenance, ResultRecord } from "../types/store-records.js";
 import { checkId } from "./files.js";
 
 /**

@@ -1,7 +1,9 @@
-import { compare } from "../fs/index.js";
-import { ancestorListings } from "../keys/index.js";
-import { type BatchDiff, commitBatch, diffBatch, statCandidates } from "../revision/index.js";
-import type { CandidateBatch, RelativePath, Revision } from "../types/index.js";
+import { compare } from "../fs/compare.js";
+import { ancestorListings } from "../keys/observed.js";
+import { type BatchDiff, commitBatch, diffBatch, statCandidates } from "../revision/reconcile.js";
+import type { RelativePath } from "../types/common.js";
+import type { Revision } from "../types/revision.js";
+import type { CandidateBatch } from "../types/watcher.js";
 import type { SchedulerContext } from "./context.js";
 import { isEditorScratch } from "./editor-scratch.js";
 import { recordHeadMove, rememberHead, reportHeadMove } from "./head-move.js";

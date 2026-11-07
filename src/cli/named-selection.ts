@@ -1,17 +1,12 @@
 import { realpathSync } from "node:fs";
 import { isAbsolute, relative, resolve, sep } from "node:path";
 import { readPolicy } from "../core/daemon/policy.js";
-import { testFileId } from "../core/keys/index.js";
-import type {
-  AbsolutePath,
-  CheckKey,
-  Policy,
-  RelativePath,
-  Store,
-  TestFileKeyRecord,
-  TestFileRef,
-  WorktreeId,
-} from "../core/types/index.js";
+import { testFileId } from "../core/keys/reverse-index.js";
+import type { AbsolutePath, RelativePath, WorktreeId } from "../core/types/common.js";
+import type { CheckKey, TestFileRef } from "../core/types/keys.js";
+import type { Policy } from "../core/types/policy.js";
+import type { Store } from "../core/types/store.js";
+import type { TestFileKeyRecord } from "../core/types/store-records.js";
 import { notRunTestFile } from "./retry-unlisted.js";
 
 /**

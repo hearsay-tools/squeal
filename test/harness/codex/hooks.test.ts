@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { readTurn } from "../../../src/core/delivery/turn.js";
-import { type Consumer, MAIN_AGENT } from "../../../src/core/types/index.js";
-import { type CodexHookResult, runCodexHook } from "../../../src/harness/codex/index.js";
+import { type Consumer, MAIN_AGENT } from "../../../src/core/types/delivery.js";
+import { runCodexHook } from "../../../src/harness/codex/hooks.js";
+import type { CodexHookResult } from "../../../src/harness/codex/run.js";
 import type { HookDeps } from "../../../src/harness/shared/hook.js";
 import { PRIMER } from "../../../src/harness/shared/primer.js";
 import { check } from "../../state/helpers.js";

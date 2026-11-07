@@ -10,7 +10,7 @@ import {
   psRows,
   psTable,
 } from "../../src/core/daemon/outlived.js";
-import type { RunnerAdapter, RunOptions, RunReport } from "../../src/core/types/index.js";
+import type { RunnerAdapter, RunOptions, RunReport } from "../../src/core/types/runner.js";
 import type { RunCollector } from "../../src/runners/vitest/reporter.js";
 import { execute } from "../../src/runners/vitest/run.js";
 

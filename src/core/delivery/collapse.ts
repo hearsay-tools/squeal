@@ -1,7 +1,8 @@
-import { formatCheck, SUMMARY_MAX_CHARS } from "../state/index.js";
+import { formatCheck } from "../state/check-name.js";
+import { SUMMARY_MAX_CHARS } from "../state/fingerprint.js";
 import { checkPartsText, countChecks, failureCountText } from "../status/checks.js";
 import { cap, plural } from "../text.js";
-import type { CheckId } from "../types/index.js";
+import type { CheckId } from "../types/check.js";
 
 /*
  * Task 001-91, lessons defect 15: an install that fixes 31 checks printed 31

@@ -1,20 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createDelivery } from "../../src/core/delivery/delivery.js";
 import { editsMetaKey } from "../../src/core/delivery/edits.js";
 import { drop } from "../../src/core/delivery/expiry.js";
-import { createDelivery, formatDelta } from "../../src/core/delivery/index.js";
-import { testFileId } from "../../src/core/keys/index.js";
+import { formatDelta } from "../../src/core/delivery/format.js";
+import { testFileId } from "../../src/core/keys/reverse-index.js";
 import { readRekeyed, recordRekeyed } from "../../src/core/scheduler/rekeyed-record.js";
-import { createStateSink } from "../../src/core/state/index.js";
-import {
-  CONSUMER_EXPIRY_MS,
-  type Consumer,
-  type HarnessDelivery,
-  refinedMetaKey,
-  type StateSink,
-  type Store,
-  type TestFileKeyRecord,
-  type TestFileRef,
-} from "../../src/core/types/index.js";
+import { createStateSink } from "../../src/core/state/sink.js";
+import type { Consumer, HarnessDelivery } from "../../src/core/types/delivery.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import { refinedMetaKey } from "../../src/core/types/scheduler.js";
+import type { StateSink } from "../../src/core/types/state.js";
+import type { Store } from "../../src/core/types/store.js";
+import { CONSUMER_EXPIRY_MS, type TestFileKeyRecord } from "../../src/core/types/store-records.js";
 import { check, FILE, freshStore, result, WT } from "../state/helpers.js";
 import { fixedStatus, liveDaemon } from "./fakes.js";
 

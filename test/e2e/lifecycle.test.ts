@@ -1,16 +1,11 @@
 import { describe, expect, it } from "vitest";
-import type { StatusSnapshot } from "../../src/core/types/index.js";
+import type { StatusSnapshot } from "../../src/core/types/status.js";
 import { expectAgrees } from "./agree.js";
-import {
-  type E2E,
-  e2eSuite,
-  HOOK_BUDGET_MS,
-  MATH,
-  OTHER_SESSION,
-  PLUGINS,
-  until,
-} from "./harness.js";
+import { type E2E, e2eSuite, HOOK_BUDGET_MS, OTHER_SESSION } from "./harness.js";
+import { PLUGINS } from "./plugins.js";
 import { daemonProcesses, withRestartEvidence } from "./restart-evidence.js";
+import { MATH } from "./sources.js";
+import { until } from "./support.js";
 
 /*
  * Spec 001 goal 6, D10 and D11, end to end, and review wave 3 S2 and S3: a

@@ -1,7 +1,7 @@
 import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { findWorktreeRoot } from "../../core/fs/index.js";
-import { DEFAULT_POLICY } from "../../core/types/index.js";
+import { findWorktreeRoot } from "../../core/fs/git-layout.js";
+import { DEFAULT_POLICY } from "../../core/types/policy.js";
 import type { CliIo } from "../main.js";
 import { type NodeTestSeed, seedNodeTest } from "../node-test-seed.js";
 import {

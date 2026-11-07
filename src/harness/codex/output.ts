@@ -1,4 +1,4 @@
-import { SQUEAL_COMMAND } from "../../core/delivery/index.js";
+import { SQUEAL_COMMAND } from "../../core/delivery/format.js";
 import { trailingPrimer } from "../shared/primer.js";
 
 /*

@@ -1,5 +1,5 @@
 import { focusesFile } from "../daemon/composite-runner.js";
-import type { CheckKey, TestFileRef } from "../types/index.js";
+import type { CheckKey, TestFileRef } from "../types/keys.js";
 import { peekClaim } from "./claims.js";
 import type { SchedulerContext } from "./context.js";
 import type { FileState } from "./files.js";

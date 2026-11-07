@@ -2,11 +2,13 @@ import { chmodSync, linkSync, readFileSync, rmSync, symlinkSync, writeFileSync }
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
-  createRuntimeManifest,
   LAUNCHER,
   parseRuntimeManifest,
+} from "../../../../src/harness/codex/runtime-release/manifest.js";
+import {
+  createRuntimeManifest,
   validateRuntimeTree,
-} from "../../../../src/harness/codex/runtime-release/index.js";
+} from "../../../../src/harness/codex/runtime-release/tree.js";
 import { failure, NODE_FLOOR, put, runtimeTree, writeManifest } from "./fixture.js";
 
 /*

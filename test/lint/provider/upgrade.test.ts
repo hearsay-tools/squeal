@@ -4,7 +4,7 @@ import type {
   LintFileResult,
   LintOff,
   LintProvider,
-} from "../../../src/core/lint/pass/index.js";
+} from "../../../src/core/lint/pass/provider.js";
 import { FakeWorktree } from "../../code/pass/helpers.js";
 import { commonDir } from "../helpers.js";
 import { daemon } from "../integration/helpers.js";

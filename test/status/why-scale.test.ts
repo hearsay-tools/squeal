@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { readWhy } from "../../src/core/status/index.js";
-import type { KnownState, ResultRecord, TestFileKeyRecord } from "../../src/core/types/index.js";
+import { readWhy } from "../../src/core/status/why.js";
+import type { KnownState } from "../../src/core/types/state.js";
+import type { ResultRecord, TestFileKeyRecord } from "../../src/core/types/store-records.js";
 import { result } from "../store/helpers.js";
 import { check, fakeRepo, seedStore, state } from "./helpers.js";
 

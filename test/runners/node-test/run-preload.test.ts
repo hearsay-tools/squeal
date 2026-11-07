@@ -12,7 +12,7 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import type { NodeTestProject } from "../../../src/core/types/index.js";
+import type { NodeTestProject } from "../../../src/core/types/policy.js";
 import { runNodeTest } from "../../../src/runners/node-test/run/run.js";
 import { nodeTestRuntime } from "../../../src/runners/node-test/runtime.js";
 

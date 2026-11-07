@@ -6,8 +6,8 @@ import {
   type OxlintProvider,
   type OxlintProviderOptions,
   oxlintProvider,
-} from "../../../src/core/lint/provider/oxlint/index.js";
-import type { AbsolutePath } from "../../../src/core/types/index.js";
+} from "../../../src/core/lint/provider/oxlint/provider.js";
+import type { AbsolutePath } from "../../../src/core/types/common.js";
 
 /*
  * Spec 017 D11 tests: scratch projects under the system temp folder, with

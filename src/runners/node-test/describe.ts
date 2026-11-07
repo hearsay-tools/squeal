@@ -1,4 +1,5 @@
-import type { NodeTestProject, TestFileRef } from "../../core/types/index.js";
+import type { TestFileRef } from "../../core/types/keys.js";
+import type { NodeTestProject } from "../../core/types/policy.js";
 import type { CoveredProject, Listing, RunnerDescription } from "../descriptions.js";
 
 /** A configured `nodeTest` project's own command, recognized by 005 D8 step 1. */

@@ -1,10 +1,12 @@
 import { realpathSync, utimesSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createFsHasher, StatCache, seedStatCache } from "../../src/core/hash/index.js";
-import { reconcile } from "../../src/core/revision/index.js";
-import type { CandidateBatch, Revision } from "../../src/core/types/index.js";
-import { type ChangeFeed, createChangeFeed } from "../../src/core/watcher/index.js";
+import { createFsHasher, seedStatCache } from "../../src/core/hash/hasher.js";
+import { StatCache } from "../../src/core/hash/stat-cache.js";
+import { reconcile } from "../../src/core/revision/reconcile.js";
+import type { Revision } from "../../src/core/types/revision.js";
+import type { CandidateBatch } from "../../src/core/types/watcher.js";
+import { type ChangeFeed, createChangeFeed } from "../../src/core/watcher/change-feed.js";
 import { FakeStore } from "../hash/fakes.js";
 import { git, initRepo, tempDir, writeFile } from "../hash/git-repo.js";
 import { delay, waitFor } from "../watcher/helpers.js";

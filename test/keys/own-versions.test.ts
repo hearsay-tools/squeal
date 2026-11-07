@@ -1,7 +1,8 @@
 import { lutimesSync, rmSync, symlinkSync, utimesSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { dependencyKeys, installedDependencies } from "../../src/core/keys/index.js";
+import { dependencyKeys } from "../../src/core/keys/dependencies.js";
+import { installedDependencies } from "../../src/core/keys/environment.js";
 import { tempDir, writeFile } from "../hash/git-repo.js";
 
 // Task 011-85, R1 (011 C11): npm's hidden lockfile keys the install, never the root's or a

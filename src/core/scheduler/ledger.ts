@@ -1,24 +1,19 @@
-import { testFileId } from "../keys/index.js";
+import { testFileId } from "../keys/reverse-index.js";
 import { fsRankSource, SlowRanker } from "../slow/rank.js";
 import { metaTokenRecords, publishSlowEvidence, readSlowEvidence } from "../slow/rank-store.js";
-import { isBusy } from "../store/index.js";
+import { isBusy } from "../store/connection.js";
+import type { CheckId } from "../types/check.js";
+import type { CommitSha, RelativePath, RevisionNumber } from "../types/common.js";
+import type { CheckKey, TestFileRef } from "../types/keys.js";
 import {
-  type CheckId,
-  type CheckKey,
-  type CommitSha,
   type ListingFact,
   listingMetaKey,
-  type MarkedUnknown,
   parseListing,
-  type RelativePath,
-  type ResultRecord,
-  type RevisionNumber,
   refinedMetaKey,
-  type SetupOutcome,
   SLOW_GROUP,
-  type TestFileKeyRecord,
-  type TestFileRef,
-} from "../types/index.js";
+} from "../types/scheduler.js";
+import type { SetupOutcome } from "../types/state.js";
+import type { MarkedUnknown, ResultRecord, TestFileKeyRecord } from "../types/store-records.js";
 import { acceptedAt, currentChecks, type ReadAsOne } from "./accept.js";
 import { Checkpoints } from "./checkpoints.js";
 import { Claims } from "./claims.js";
@@ -34,7 +29,7 @@ import {
 } from "./files.js";
 import { takeHeldFiles } from "./held.js";
 import { sinkWithoutResults } from "./hold.js";
-import { publishPromotions } from "./promotions.js";
+import { publishPromotions } from "./promotions-row.js";
 import { type Priority, priorityOf, RunQueue } from "./queue.js";
 import { adoptsAtFirstCommit, movesWouldChange, recordMoves } from "./rekeyed-moves.js";
 import { recordRekeyed } from "./rekeyed-record.js";

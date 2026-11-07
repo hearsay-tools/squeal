@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { testFileId } from "../../src/core/keys/index.js";
+import { testFileId } from "../../src/core/keys/reverse-index.js";
 import { readRekeyed } from "../../src/core/scheduler/rekeyed-record.js";
 import { SLOW } from "./cleanup.js";
 import { createRepo, openRepoStore, ref } from "./repo.js";

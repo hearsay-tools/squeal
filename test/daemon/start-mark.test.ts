@@ -2,15 +2,18 @@ import { subscribe, unsubscribe } from "node:diagnostics_channel";
 import { existsSync, readFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { type WaitLiveness, watchDaemon } from "../../src/cli/wait-liveness.js";
+import { watchDaemon } from "../../src/cli/wait-liveness.js";
 import { startDaemon } from "../../src/core/daemon/daemon.js";
 import { acquireDaemonLock } from "../../src/core/daemon/lock.js";
 import { abandon, openDaemon } from "../../src/core/daemon/open.js";
 import { squealVersion } from "../../src/core/daemon/version.js";
-import { markSpawn, markStart, startMarked, startMarkFor } from "../../src/core/presence/index.js";
+import { markSpawn, markStart } from "../../src/core/presence/lock-events.js";
+import { startMarked, startMarkFor } from "../../src/core/presence/marks.js";
+import type { WaitLiveness } from "../../src/core/presence/wait.js";
 import { readStatus } from "../../src/core/status/snapshot.js";
-import { lockFileFor, openStore } from "../../src/core/store/index.js";
-import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/index.js";
+import { openStore } from "../../src/core/store/open.js";
+import { lockFileFor } from "../../src/core/store/paths.js";
+import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/common.js";
 import { createFixtureRepo, type FixtureRepo } from "./helpers.js";
 
 /*

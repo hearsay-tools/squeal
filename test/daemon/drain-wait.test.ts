@@ -2,10 +2,12 @@ import { appendFileSync, existsSync, mkdtempSync, rmSync, writeFileSync } from "
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { acquireSlowSlot, slotFiles, slowSlotDir } from "../../src/core/slow/index.js";
+import { acquireSlowSlot, slowSlotDir } from "../../src/core/slow/slot.js";
+import { slotFiles } from "../../src/core/slow/slot-files.js";
 import { readSlowActivity } from "../../src/core/slow/state.js";
-import { type HookDeps, runHook } from "../../src/harness/claude-code/index.js";
+import { runHook } from "../../src/harness/claude-code/hooks.js";
 import { findHarnessProcess } from "../../src/harness/shared/harness-process.js";
+import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { recorded } from "../harness/helpers.js";
 import {
   daemonSuite,

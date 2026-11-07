@@ -2,9 +2,10 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { deflateRawSync, inflateRawSync } from "node:zlib";
-import { compare } from "../../fs/index.js";
-import { blobHash, type ObjectFormat } from "../../hash/index.js";
-import type { AbsolutePath, FileHash, RelativePath } from "../../types/index.js";
+import { compare } from "../../fs/compare.js";
+import { blobHash, type ObjectFormat } from "../../hash/blob.js";
+import type { AbsolutePath, RelativePath } from "../../types/common.js";
+import type { FileHash } from "../../types/keys.js";
 import { mapScript } from "./map.js";
 import type {
   CoverageRecord,

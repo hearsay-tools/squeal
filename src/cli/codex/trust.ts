@@ -1,6 +1,6 @@
 import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process";
 import { createInterface } from "node:readline";
-import { isRecord } from "../../core/fs/index.js";
+import { isRecord } from "../../core/fs/json.js";
 import type { CliIo } from "../main.js";
 
 /*

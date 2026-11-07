@@ -10,10 +10,11 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
-import { storePaths } from "../../src/core/store/index.js";
-import { type Consumer, MAIN_AGENT, type StatusSnapshot } from "../../src/core/types/index.js";
-import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
+import { storePaths } from "../../src/core/store/paths.js";
+import { type Consumer, MAIN_AGENT } from "../../src/core/types/delivery.js";
+import type { StatusSnapshot } from "../../src/core/types/status.js";
+import { REPO_ROOT } from "../../src/harness/build.js";
 import { type BundleRun, runNode } from "../harness/bundle-helpers.js";
 import { atGate, gateCall, type PiWorld } from "../harness/pi/real-pi.js";
 import { runMissingConfig } from "../helpers/baseline.js";

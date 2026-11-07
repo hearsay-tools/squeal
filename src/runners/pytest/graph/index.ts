@@ -1,6 +1,7 @@
 import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
-import type { AbsolutePath, InvalidatedPath, RelativePath } from "../../../core/types/index.js";
+import type { AbsolutePath, RelativePath } from "../../../core/types/common.js";
+import type { InvalidatedPath } from "../../../core/types/runner.js";
 import { pythonParserReady } from "../../python/parser.js";
 import { type AffectedPaths, Graph, type StaticClosure, type TestFileClosure } from "./graph.js";
 import type { ImportMode, SearchPath } from "./search-path.js";

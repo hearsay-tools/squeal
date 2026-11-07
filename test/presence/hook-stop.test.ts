@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { EnsureDaemonResult } from "../../src/core/types/index.js";
+import type { EnsureDaemonResult } from "../../src/core/types/daemon.js";
 import type { HookContext } from "../../src/harness/shared/context.js";
 import { ensure } from "../../src/harness/shared/ensure.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";

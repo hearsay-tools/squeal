@@ -1,15 +1,14 @@
+import type { ResolvedGroup } from "../types/check-groups.js";
+import type { TestFileRef } from "../types/keys.js";
+import type { Policy } from "../types/policy.js";
 import {
-  groupLane,
   type InvalidatedPath,
   isBesideLane,
-  isGroupLane,
-  type Policy,
-  type ResolvedGroup,
   type RunnerAdapter,
   type RunOptions,
   type RunReport,
-  type TestFileRef,
-} from "../types/index.js";
+} from "../types/runner.js";
+import { groupLane, isGroupLane } from "../types/scheduler.js";
 import { resolveGroups } from "./check-groups.js";
 import { focusesFile } from "./composite-runner.js";
 

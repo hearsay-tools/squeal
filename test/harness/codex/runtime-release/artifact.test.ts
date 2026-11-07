@@ -3,10 +3,8 @@ import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { gunzipSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
-import {
-  packRuntime,
-  stageRuntimeArtifact,
-} from "../../../../src/harness/codex/runtime-release/index.js";
+import { packRuntime } from "../../../../src/harness/codex/runtime-release/artifact.js";
+import { stageRuntimeArtifact } from "../../../../src/harness/codex/runtime-release/stage.js";
 import { tempDir } from "../../../store/helpers.js";
 import { envelopeOf, failure, gz, runtimeTree, snapshot } from "./fixture.js";
 

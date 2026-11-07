@@ -1,4 +1,4 @@
-import type { MetaRepo, Store } from "../types/index.js";
+import type { MetaRepo, Store } from "../types/store.js";
 import { num, str } from "./codec.js";
 import type { Connection } from "./connection.js";
 import type { StorePaths } from "./paths.js";

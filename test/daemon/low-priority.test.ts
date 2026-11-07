@@ -7,7 +7,7 @@ import { describe, expect, it, onTestFinished } from "vitest";
 import { EscapedChildren } from "../../src/core/daemon/escaped.js";
 import { type Identity, lowerWhile, TEST_NICE } from "../../src/core/daemon/low-priority.js";
 import { childrenOf, statOf } from "../../src/core/daemon/terminate.js";
-import type { CheckPriority } from "../../src/core/types/index.js";
+import type { CheckPriority } from "../../src/core/types/check-groups.js";
 import { leaderGroup, SCAN_EVERY_MS, watched } from "./low-priority-helpers.js";
 
 /*

@@ -1,16 +1,16 @@
 import { realpathSync, statSync } from "node:fs";
-import { sameList, toAbsolute, toRelative } from "../../core/fs/index.js";
+import { sameList } from "../../core/fs/compare.js";
+import { toAbsolute, toRelative } from "../../core/fs/paths.js";
+import type { AbsolutePath, RelativePath } from "../../core/types/common.js";
+import type { TestFileRef } from "../../core/types/keys.js";
+import type { PytestProject } from "../../core/types/policy.js";
 import type {
-  AbsolutePath,
   InvalidatedPath,
   InvalidateResult,
   ObservedInputs,
-  PytestProject,
-  RelativePath,
   RunnerAdapter,
   RunReport,
-  TestFileRef,
-} from "../../core/types/index.js";
+} from "../../core/types/runner.js";
 import { focusedTexts } from "../focus.js";
 import { type ProjectSettings, projectSettings, sameSettings } from "./adapter-config.js";
 import {
@@ -27,7 +27,9 @@ import {
 import { listTestFiles } from "./adapter-files.js";
 import { currentFingerprint, runProject, unavailable } from "./adapter-run.js";
 import { enumerate } from "./enumerate.js";
-import { projectDir, readEnvironment, runEnvironment } from "./environment/index.js";
+import { projectDir } from "./environment/discover.js";
+import { runEnvironment } from "./environment/hash.js";
+import { readEnvironment } from "./environment/index.js";
 import { createPytestGraph, type PytestGraph } from "./graph/index.js";
 import type { PytestObservedClosure } from "./run/observed.js";
 import { PYTEST_ADAPTER_VERSION } from "./version.js";

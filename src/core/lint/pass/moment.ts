@@ -1,7 +1,8 @@
 import { groupOf } from "../../daemon/check-groups.js";
 import { groupView } from "../../scheduler/slow.js";
-import type { CheckMoment, Policy, ResolvedGroup } from "../../types/index.js";
+import type { CheckMoment, ResolvedGroup } from "../../types/check-groups.js";
 import type { LintTool } from "../../types/lint.js";
+import type { Policy } from "../../types/policy.js";
 import type { LintMetaRepo } from "../store/types.js";
 import { heldKey } from "./records.js";
 

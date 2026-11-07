@@ -1,6 +1,8 @@
 import { SLOW_RECHECK_MS } from "../../scheduler/slow-tier.js";
 import { consumersIdle } from "../../scheduler/slow-trigger.js";
-import type { EpochMs, Policy, Store, WorktreeId } from "../../types/index.js";
+import type { EpochMs, WorktreeId } from "../../types/common.js";
+import type { Policy } from "../../types/policy.js";
+import type { Store } from "../../types/store.js";
 
 /** What `lintPauseIn` reads: the main store's consumers of the worktree. */
 export interface LintPauseOptions {

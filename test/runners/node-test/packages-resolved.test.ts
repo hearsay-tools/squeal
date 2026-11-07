@@ -3,8 +3,10 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { dependencyKeys, installedDependencies } from "../../../src/core/keys/index.js";
-import type { NodeTestProject, RunnerPackages } from "../../../src/core/types/index.js";
+import { dependencyKeys } from "../../../src/core/keys/dependencies.js";
+import { installedDependencies } from "../../../src/core/keys/environment.js";
+import type { NodeTestProject } from "../../../src/core/types/policy.js";
+import type { RunnerPackages } from "../../../src/core/types/runner.js";
 import { createNodeTestAdapter } from "../../../src/runners/node-test/adapter.js";
 import { type FixturePackage, writeInstall } from "../../keys/install.js";
 

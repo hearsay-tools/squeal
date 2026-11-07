@@ -1,4 +1,4 @@
-import type { CheckKey, TestFileRef } from "../types/index.js";
+import type { CheckKey, TestFileRef } from "../types/keys.js";
 import type { FileState } from "./files.js";
 import type { Ledger } from "./ledger.js";
 

@@ -2,7 +2,7 @@ import { writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
-import { DEFAULT_BUSY_TIMEOUT_MS } from "../../../src/core/store/index.js";
+import { DEFAULT_BUSY_TIMEOUT_MS } from "../../../src/core/store/open.js";
 import { tempDir } from "../../store/helpers.js";
 import { runNode } from "../bundle-helpers.js";
 

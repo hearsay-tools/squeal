@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
 import { readFileSync, statSync } from "node:fs";
 import { dirname, join, normalize } from "node:path";
-import type { FileHash, RelativePath } from "../types/index.js";
+import type { RelativePath } from "../types/common.js";
+import type { FileHash } from "../types/keys.js";
 import { localSpecifiers, matches, matchSide, offeredTokens } from "./rank-tokens.js";
 
 /**

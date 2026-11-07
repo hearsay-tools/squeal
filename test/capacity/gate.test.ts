@@ -3,13 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import type { TreeCpu } from "../../src/core/capacity/cores.js";
-import {
-  createPermitPool,
-  type PermitPool,
-  type PoolMark,
-  readMarks,
-  writeMark,
-} from "../../src/core/capacity/index.js";
+import { type PoolMark, readMarks, writeMark } from "../../src/core/capacity/marks.js";
+import { createPermitPool, type PermitPool } from "../../src/core/capacity/pool.js";
 
 /*
  * 011 C10 Size as amended 2026-10-21 (design 011-83 Q3 (a), row 011-98):

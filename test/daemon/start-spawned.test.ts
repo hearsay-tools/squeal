@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { squealEvidence } from "../../evals/lib/index.mjs";
 import { squealVersion } from "../../src/core/daemon/version.js";
-import { isStoreOpenFailure, openStore } from "../../src/core/store/index.js";
-import type { DaemonRecord, EpochMs, WorktreeId } from "../../src/core/types/index.js";
+import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
+import type { EpochMs, WorktreeId } from "../../src/core/types/common.js";
+import type { DaemonRecord } from "../../src/core/types/store-records.js";
 import { closeFakeDaemons, fakeDaemon } from "../cli/fake-daemon.js";
 import { createFixtureRepo, delay, type FixtureRepo, SLOW, waitFor } from "./helpers.js";
 import { spawnLog, startIn } from "./start-helpers.js";

@@ -3,12 +3,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { slotFiles } from "../../src/core/slow/index.js";
+import { slotFiles } from "../../src/core/slow/slot-files.js";
 import { publishSlowActivity } from "../../src/core/slow/state.js";
-import { formatStatus, readStatus } from "../../src/core/status/index.js";
+import { formatStatus } from "../../src/core/status/format-status.js";
 import { nextStep } from "../../src/core/status/next-step.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
 import { readNamedFiles } from "../../src/core/status/standing.js";
-import type { StatusSnapshot } from "../../src/core/types/index.js";
+import type { StatusSnapshot } from "../../src/core/types/status.js";
 import { keys, NOW, SLOW_A, SLOW_B, SLOW_C, SLOW_D, SLOW_POLICY, seed } from "./slow-tier-seed.js";
 
 /*

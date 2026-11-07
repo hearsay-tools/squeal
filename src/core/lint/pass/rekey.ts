@@ -1,13 +1,8 @@
 import { extname } from "node:path";
-import type {
-  CheckKey,
-  EpochMs,
-  Policy,
-  RelativePath,
-  RevisionNumber,
-  WorktreeId,
-} from "../../types/index.js";
+import type { EpochMs, RelativePath, RevisionNumber, WorktreeId } from "../../types/common.js";
+import type { CheckKey } from "../../types/keys.js";
 import type { LintCheckId, LintKnownState, LintTool, LintTransition } from "../../types/lint.js";
+import type { Policy } from "../../types/policy.js";
 import type { LintStore } from "../store/types.js";
 import { grownByLint } from "./grown.js";
 import {

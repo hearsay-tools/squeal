@@ -1,14 +1,9 @@
-import { testFileId } from "../keys/index.js";
+import { testFileId } from "../keys/reverse-index.js";
 import { checkIdentity } from "../state/derive.js";
-import type {
-  CheckError,
-  CommitSha,
-  KnownState,
-  ProjectName,
-  SetupCheckId,
-  SetupOutcome,
-  StartupFailure,
-} from "../types/index.js";
+import type { CheckError, SetupCheckId } from "../types/check.js";
+import type { CommitSha, ProjectName } from "../types/common.js";
+import type { StartupFailure } from "../types/runner.js";
+import type { KnownState, SetupOutcome } from "../types/state.js";
 import { NOTHING_CHANGED } from "./context.js";
 import { block, type Failures, failed } from "./failures.js";
 import type { FileState } from "./files.js";

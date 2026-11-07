@@ -1,8 +1,8 @@
 import { DatabaseSync } from "node:sqlite";
 import { setImmediate as nextTurn } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
-import type { Counter } from "../../../src/core/code/pass/index.js";
-import { codeStorePath } from "../../../src/core/code/store/index.js";
+import type { Counter } from "../../../src/core/code/pass/types.js";
+import { codeStorePath } from "../../../src/core/code/store/open.js";
 import { HOOK_TIMEOUT_MS } from "../../../src/core/types/store-records.js";
 import { open } from "../helpers.js";
 import { fakeCounter, pass, policyOn, worktree } from "./helpers.js";

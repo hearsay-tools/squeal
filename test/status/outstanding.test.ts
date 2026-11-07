@@ -2,18 +2,19 @@ import { describe, expect, it } from "vitest";
 import type { EndedWait } from "../../src/cli/status-wait-lines.js";
 import { waitText } from "../../src/cli/status-wait-lines.js";
 import { AWAITING_INSTALL_REASON } from "../../src/core/scheduler/install.js";
-import { formatStatus, readStatus } from "../../src/core/status/index.js";
+import { formatStatus } from "../../src/core/status/format-status.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
 import { timeText } from "../../src/core/text.js";
+import type { RevisionNumber } from "../../src/core/types/common.js";
 import {
   awaitingInstallMetaKey,
   awaitingInstallValue,
   installCommandMetaKey,
-  type LoadNow,
-  type RevisionNumber,
   refinedMetaKey,
-  type StatusSnapshot,
-  type Store,
-} from "../../src/core/types/index.js";
+} from "../../src/core/types/scheduler.js";
+import type { LoadNow } from "../../src/core/types/standing.js";
+import type { StatusSnapshot } from "../../src/core/types/status.js";
+import type { Store } from "../../src/core/types/store.js";
 import { BUSY, config, doneKey, marked, QUIET } from "../cli/next-step-seed.js";
 import { B, key, NOW, ref, repoWith, SLOW_FILE } from "../cli/status-wait-fixture.js";
 import { check, fakeRepo, seedStore, state } from "./helpers.js";

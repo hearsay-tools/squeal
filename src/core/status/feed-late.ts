@@ -1,10 +1,7 @@
 import { timeText } from "../text.js";
-import {
-  type DaemonLiveness,
-  type FeedLate,
-  type RevisionNumber,
-  WATCHER_TIMINGS,
-} from "../types/index.js";
+import type { RevisionNumber } from "../types/common.js";
+import type { DaemonLiveness, FeedLate } from "../types/status.js";
+import { WATCHER_TIMINGS } from "../types/watcher.js";
 
 /**
  * Row 011-200 (C6, C8): the change feed is late once the last batch it delivered, a watch batch

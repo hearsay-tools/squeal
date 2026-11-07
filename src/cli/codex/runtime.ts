@@ -8,15 +8,15 @@ import {
   type SelectedRuntime,
   selectRuntime,
 } from "../../harness/codex/adapter/store.js";
-import { type ReleaseTransport, versionOfTag } from "../../harness/codex/runtime-release/index.js";
+import { versionOfTag } from "../../harness/codex/runtime-release/descriptor.js";
+import type { ReleaseTransport } from "../../harness/codex/runtime-release/transport.js";
+import { isAdapterRoot } from "../../harness/codex/runtime-update/paths.js";
+import { readUpdateState, type UpdateState } from "../../harness/codex/runtime-update/state.js";
 import {
-  isAdapterRoot,
   type RuntimeUpdateResult,
-  readUpdateState,
   selectedRuntime,
-  type UpdateState,
   updateRuntime,
-} from "../../harness/codex/runtime-update/index.js";
+} from "../../harness/codex/runtime-update/update.js";
 import type { CliIo } from "../main.js";
 import { MARKETPLACE_NAME, PLUGIN_ID, PLUGIN_NAME } from "../plugin-id.js";
 

@@ -4,11 +4,10 @@ import { describe, expect, it } from "vitest";
 import {
   buildRecord,
   COVERAGE_PROVIDER_VERSION,
-  type CoverageSource,
   hasLine,
-  type V8Script,
-} from "../../../src/core/code/coverage/index.js";
-import { blobHash } from "../../../src/core/hash/index.js";
+} from "../../../src/core/code/coverage/record.js";
+import type { CoverageSource, V8Script } from "../../../src/core/code/coverage/types.js";
+import { blobHash } from "../../../src/core/hash/blob.js";
 import type { createVitestAdapter } from "../../../src/runners/vitest/index.js";
 import { covering } from "./coverage-helpers.js";
 import { openFixture, ref, SLOW } from "./helpers.js";

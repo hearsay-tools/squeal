@@ -1,13 +1,11 @@
 import { fileURLToPath } from "node:url";
 import { squealVersion } from "../core/daemon/version.js";
-import {
-  CLI_READ_RETRY_MS,
-  formatStatus,
-  formatWhy,
-  readStatus,
-  readWhy,
-} from "../core/status/index.js";
-import type { EpochMs } from "../core/types/index.js";
+import { formatStatus } from "../core/status/format-status.js";
+import { formatWhy } from "../core/status/format-why.js";
+import { CLI_READ_RETRY_MS } from "../core/status/open.js";
+import { readStatus } from "../core/status/snapshot.js";
+import { readWhy } from "../core/status/why.js";
+import type { EpochMs } from "../core/types/common.js";
 import { codeCommand } from "./code.js";
 import { codexRuntimeCommand } from "./codex/runtime.js";
 import { codexStatusLine } from "./codex/status.js";

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { testFileId } from "../../src/core/keys/index.js";
+import { testFileId } from "../../src/core/keys/reverse-index.js";
 import { Withholds } from "../../src/core/scheduler/stability.js";
 
 /*

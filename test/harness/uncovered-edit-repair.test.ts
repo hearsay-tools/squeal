@@ -1,15 +1,15 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { MESSAGE_CAP_CHARS } from "../../src/core/delivery/index.js";
+import { MESSAGE_CAP_CHARS } from "../../src/core/delivery/format.js";
 import { readAll, slot } from "../../src/core/delivery/slots.js";
 import { uncoveredMetaKey } from "../../src/core/delivery/uncovered.js";
-import {
-  CONSUMER_EXPIRY_MS,
-  type TestFileRef,
-  worktreeMetaKey,
-} from "../../src/core/types/index.js";
-import { type HookDeps, type HookResult, runHook } from "../../src/harness/claude-code/index.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import { worktreeMetaKey } from "../../src/core/types/store.js";
+import { CONSUMER_EXPIRY_MS } from "../../src/core/types/store-records.js";
+import { runHook } from "../../src/harness/claude-code/hooks.js";
+import type { HookResult } from "../../src/harness/claude-code/run.js";
+import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { fitUncovered, UNCOVERED_LINE_CAP_CHARS } from "../../src/harness/shared/uncovered-edit.js";
 import { check } from "../state/helpers.js";
 import { FILE, recorded, type SquealRepo, squealRepo } from "./helpers.js";

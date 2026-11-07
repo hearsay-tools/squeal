@@ -6,7 +6,7 @@ import { createHash } from "node:crypto";
 import { existsSync, lstatSync, readFileSync, realpathSync, type Stats } from "node:fs";
 import { lstat } from "node:fs/promises";
 import { dirname, isAbsolute, join, resolve } from "node:path";
-import type { AbsolutePath, WorktreeId } from "../types/index.js";
+import type { AbsolutePath, WorktreeId } from "../types/common.js";
 import { isMissing } from "./errors.js";
 
 /** The `gitdir:` line of a `.git` file. */

@@ -3,7 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import type { TreeCpu } from "../../src/core/capacity/cores.js";
-import { createPermitPool, type PermitPool, readMarks } from "../../src/core/capacity/index.js";
+import { readMarks } from "../../src/core/capacity/marks.js";
+import { createPermitPool, type PermitPool } from "../../src/core/capacity/pool.js";
 
 /*
  * Review 0.1.255, B1 and B2: the mark an edit's tier writes (011 C10 as

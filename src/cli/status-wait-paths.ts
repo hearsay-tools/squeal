@@ -1,18 +1,15 @@
-import { daemonLiveness } from "../core/delivery/index.js";
-import { worktreeIdFor } from "../core/fs/index.js";
-import { testFileId } from "../core/keys/index.js";
-import { buildSnapshot, STATUS_BUSY_TIMEOUT_MS, withStatusStore } from "../core/status/index.js";
+import { worktreeIdFor } from "../core/fs/git-layout.js";
+import { testFileId } from "../core/keys/reverse-index.js";
+import { daemonLiveness } from "../core/presence/heartbeat.js";
+import type { DownReason, WaitLiveness } from "../core/presence/wait.js";
+import { STATUS_BUSY_TIMEOUT_MS, withStatusStore } from "../core/status/open.js";
+import { buildSnapshot } from "../core/status/snapshot.js";
+import { type NamedFile, pauseOnlyIds, readNamedFiles } from "../core/status/standing.js";
 import { lockFileFor } from "../core/store/paths.js";
-import type {
-  AbsolutePath,
-  EpochMs,
-  RelativePath,
-  StatusHold,
-  StatusSnapshot,
-  StatusUnavailable,
-  TestFileRef,
-} from "../core/types/index.js";
-import { type NamedFile, pauseOnlyIds, readNamedFiles } from "./named-files.js";
+import type { AbsolutePath, EpochMs, RelativePath } from "../core/types/common.js";
+import type { TestFileRef } from "../core/types/keys.js";
+import type { StatusHold } from "../core/types/standing.js";
+import type { StatusSnapshot, StatusUnavailable } from "../core/types/status.js";
 import {
   type NamedSelection,
   selectNamedFiles,
@@ -63,11 +60,9 @@ import {
 } from "./verdict.js";
 import {
   type DaemonWatch,
-  type DownReason,
   type HeartbeatLapse,
   lockedOf,
   stoppingOf,
-  type WaitLiveness,
   watchDaemon,
 } from "./wait-liveness.js";
 

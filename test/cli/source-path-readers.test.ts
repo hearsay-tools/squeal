@@ -5,7 +5,7 @@ import type { DaemonSync } from "../../src/cli/status-sync.js";
 import { syncRequest } from "../../src/cli/status-sync.js";
 import { type NamedWaitOptions, namedCode, waitForNamed } from "../../src/cli/status-wait-paths.js";
 import { MAX_LINE_BYTES } from "../../src/core/daemon/protocol.js";
-import type { Store } from "../../src/core/types/index.js";
+import type { Store } from "../../src/core/types/store.js";
 import { check, state } from "../status/helpers.js";
 import {
   ALL,
@@ -19,7 +19,8 @@ import {
   storeClosures,
   TYPES,
 } from "./source-path-fixture.js";
-import { finish, key, later, NOW, repoWith, timed } from "./status-wait-fixture.js";
+import { finish, key, NOW, repoWith } from "./status-wait-fixture.js";
+import { later, timed } from "./wait-clock.js";
 
 /*
  * Row 011-234 (005 D2 as amended, `research/source-path-selection.md`): a

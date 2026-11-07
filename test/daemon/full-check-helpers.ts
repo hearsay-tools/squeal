@@ -1,8 +1,9 @@
 import { DatabaseSync } from "node:sqlite";
 import { setTimeout as sleep } from "node:timers/promises";
 import type { FullCheck, FullCheckOutcome } from "../../src/core/daemon/full-check.js";
-import { storePaths } from "../../src/core/store/index.js";
-import type { EpochMs, Store } from "../../src/core/types/index.js";
+import { storePaths } from "../../src/core/store/paths.js";
+import type { EpochMs } from "../../src/core/types/common.js";
+import type { Store } from "../../src/core/types/store.js";
 
 /**
  * A full check that ends when the test says so; its stop ends it as a

@@ -1,8 +1,10 @@
 import { createHash } from "node:crypto";
 import { type Dirent, lstatSync, readdirSync, readFileSync, readlinkSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
-import { compare, isMissing, isRecord } from "../fs/index.js";
-import type { AbsolutePath } from "../types/index.js";
+import { compare } from "../fs/compare.js";
+import { isMissing } from "../fs/errors.js";
+import { isRecord } from "../fs/json.js";
+import type { AbsolutePath } from "../types/common.js";
 
 /** npm's hidden lockfile, relative to the directory that holds `node_modules`. */
 export const HIDDEN_LOCKFILE = "node_modules/.package-lock.json";

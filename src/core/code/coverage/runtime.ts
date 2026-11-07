@@ -1,6 +1,9 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import type { AbsolutePath, CheckKey, Policy, Store, WorktreeId } from "../../types/index.js";
+import type { AbsolutePath, WorktreeId } from "../../types/common.js";
+import type { CheckKey } from "../../types/keys.js";
+import type { Policy } from "../../types/policy.js";
+import type { Store } from "../../types/store.js";
 import type { ResultKeyOf } from "./types.js";
 
 /** The provider's file name, beside this module and in a plugin's `dist/coverage/`. */

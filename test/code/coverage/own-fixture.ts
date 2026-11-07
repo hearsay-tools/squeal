@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { transformSync } from "esbuild";
-import type { V8Script } from "../../../src/core/code/coverage/index.js";
+import type { V8Script } from "../../../src/core/code/coverage/types.js";
 
 export const SHAPES = [
   "export function area(w: number, h: number): number {",

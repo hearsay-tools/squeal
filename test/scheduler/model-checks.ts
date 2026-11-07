@@ -1,5 +1,5 @@
 import { SLOW_RELEASE_MS } from "../../src/core/scheduler/slow-release.js";
-import { isSlowLane } from "../../src/core/types/index.js";
+import { isSlowLane } from "../../src/core/types/runner.js";
 import type { Flight, Model } from "./model-fixture.js";
 import { ALL, type Plan } from "./model-plans.js";
 

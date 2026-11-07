@@ -1,22 +1,17 @@
-import { compare } from "../fs/index.js";
-import { testFileId } from "../keys/index.js";
-import {
-  type EpochMs,
-  type RelativePath,
-  type RevisionNumber,
-  SLOW_GROUP,
-  TESTS_GROUP,
-  type TestFileRef,
-} from "../types/index.js";
+import { compare } from "../fs/compare.js";
+import { testFileId } from "../keys/reverse-index.js";
+import type { EpochMs, RelativePath, RevisionNumber } from "../types/common.js";
+import type { TestFileRef } from "../types/keys.js";
+import { SLOW_GROUP, TESTS_GROUP } from "../types/scheduler.js";
 import type { FileState } from "./files.js";
 import { FocusedEntries } from "./focused-entries.js";
 import {
   type InheritedBatch,
   type PromotionRank,
   Promotions,
-  type PublishedPromotion,
   type SelectedFacts,
 } from "./promotions.js";
+import type { PublishedPromotion } from "./promotions-row.js";
 
 /**
  * Run order of queued test files, most urgent first.

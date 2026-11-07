@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import type { AbsolutePath } from "../../core/types/index.js";
+import type { AbsolutePath } from "../../core/types/common.js";
 
 /** A literal `require("x")`; `myrequire(` and `require(x)` do not match. */
 const REQUIRE = /\brequire\s*\(\s*(["'])([^"'\n]+)\1\s*\)/g;

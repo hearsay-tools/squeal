@@ -3,9 +3,11 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { clearStoppedMark, leaveStoppedMark, stopTree } from "../../src/cli/stopped-mark.js";
 import { stopHolds } from "../../src/core/delivery/stopped.js";
-import { readPresence, stoppedMetaKey } from "../../src/core/presence/index.js";
-import type { AbsolutePath, EpochMs } from "../../src/core/types/index.js";
-import { type HookDeps, runHook } from "../../src/harness/claude-code/index.js";
+import { readPresence } from "../../src/core/presence/decide.js";
+import { stoppedMetaKey } from "../../src/core/presence/stored.js";
+import type { AbsolutePath, EpochMs } from "../../src/core/types/common.js";
+import { runHook } from "../../src/harness/claude-code/hooks.js";
+import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
 import { gitRepo, recording, text } from "./stopped-repo.js";
 

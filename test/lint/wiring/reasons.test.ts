@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { main } from "../../../src/cli/main.js";
-import { formatRegistration } from "../../../src/core/delivery/index.js";
+import { formatRegistration } from "../../../src/core/delivery/format.js";
 import { NOW } from "../../status/slow-tier-seed.js";
 import { FakeProvider } from "../pass/helpers.js";
 import { deliveryOf, runLint, wiredRig } from "./rig.js";

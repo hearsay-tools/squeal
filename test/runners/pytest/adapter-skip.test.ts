@@ -5,20 +5,17 @@ import { join, resolve } from "node:path";
 import { afterAll, describe, expect, it, type TestContext } from "vitest";
 import { createCompositeRunner } from "../../../src/core/daemon/composite-runner.js";
 import { readHead } from "../../../src/core/daemon-loop/head.js";
-import { worktreeIdFor } from "../../../src/core/fs/index.js";
-import { createFsHasher } from "../../../src/core/hash/index.js";
-import { statCandidates } from "../../../src/core/revision/index.js";
-import { createScheduler } from "../../../src/core/scheduler/index.js";
-import { isStoreOpenFailure, openStore, storePaths } from "../../../src/core/store/index.js";
-import {
-  type AbsolutePath,
-  DEFAULT_POLICY,
-  type Policy,
-  type PytestProject,
-  type RunnerAdapter,
-  type Scheduler,
-  type Store,
-} from "../../../src/core/types/index.js";
+import { worktreeIdFor } from "../../../src/core/fs/git-layout.js";
+import { createFsHasher } from "../../../src/core/hash/hasher.js";
+import { statCandidates } from "../../../src/core/revision/reconcile.js";
+import { createScheduler } from "../../../src/core/scheduler/scheduler.js";
+import { isStoreOpenFailure, openStore } from "../../../src/core/store/open.js";
+import { storePaths } from "../../../src/core/store/paths.js";
+import type { AbsolutePath } from "../../../src/core/types/common.js";
+import { DEFAULT_POLICY, type Policy, type PytestProject } from "../../../src/core/types/policy.js";
+import type { RunnerAdapter } from "../../../src/core/types/runner.js";
+import type { Scheduler } from "../../../src/core/types/scheduler.js";
+import type { Store } from "../../../src/core/types/store.js";
 import { createPytestAdapter } from "../../../src/runners/pytest/adapter.js";
 import { RUN_MISSING } from "../../helpers/baseline.js";
 import { findPython, pythonEnv } from "../../helpers/pytest-env.js";

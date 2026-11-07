@@ -6,11 +6,12 @@ import { DatabaseSync } from "node:sqlite";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
 import { lockFreed } from "../../src/cli/stop.js";
-import { acquireDaemonLock, socketPathFor } from "../../src/core/daemon/index.js";
-import { DAEMON_START_GRACE_MS } from "../../src/core/delivery/liveness.js";
-import { markSpawn, markStart } from "../../src/core/presence/index.js";
-import { lockFileFor } from "../../src/core/store/index.js";
-import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/index.js";
+import { acquireDaemonLock } from "../../src/core/daemon/lock.js";
+import { socketPathFor } from "../../src/core/daemon/paths.js";
+import { DAEMON_START_GRACE_MS } from "../../src/core/presence/heartbeat.js";
+import { markSpawn, markStart } from "../../src/core/presence/lock-events.js";
+import { lockFileFor } from "../../src/core/store/paths.js";
+import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/common.js";
 import { squealRepo } from "../harness/helpers.js";
 import { stoppedLine } from "./stop-lines.js";
 

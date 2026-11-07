@@ -1,16 +1,10 @@
-import { checkIdentity, firstOfEachCheck, formatCheck } from "../state/index.js";
-import type {
-  AbsolutePath,
-  CheckId,
-  EpochMs,
-  FailureEntry,
-  FailureSelection,
-  ReplacedFailure,
-  ResultRecord,
-  Store,
-  WhyReplacedFailure,
-  WorktreeId,
-} from "../types/index.js";
+import { formatCheck } from "../state/check-name.js";
+import { checkIdentity, firstOfEachCheck } from "../state/derive.js";
+import type { CheckId } from "../types/check.js";
+import type { AbsolutePath, EpochMs, WorktreeId } from "../types/common.js";
+import type { FailureEntry, WhyReplacedFailure } from "../types/status.js";
+import type { FailureSelection, Store } from "../types/store.js";
+import type { ReplacedFailure, ResultRecord } from "../types/store-records.js";
 import { testFileFrame } from "./test-frame.js";
 
 /*

@@ -1,6 +1,6 @@
 import { loadavg } from "node:os";
 import { describe, expect, it } from "vitest";
-import type { Counter } from "../../../src/core/code/pass/index.js";
+import type { Counter } from "../../../src/core/code/pass/types.js";
 import { open } from "../helpers.js";
 import { fakeCounter, pass, worktree } from "./helpers.js";
 import { TurnLog } from "./turns.js";

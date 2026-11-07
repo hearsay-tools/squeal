@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { createDelivery } from "../../src/core/delivery/index.js";
+import { createDelivery } from "../../src/core/delivery/delivery.js";
 import { writeTurn } from "../../src/core/delivery/turn.js";
-import { createStateSink } from "../../src/core/state/index.js";
-import type { Consumer, HarnessDelivery, Store, TestFileRef } from "../../src/core/types/index.js";
+import { createStateSink } from "../../src/core/state/sink.js";
+import type { Consumer, HarnessDelivery } from "../../src/core/types/delivery.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import type { Store } from "../../src/core/types/store.js";
 import { check, result, setKey, WT } from "../state/helpers.js";
 import { fakeCommonDir, open } from "../store/helpers.js";
 import { fixedStatus } from "./fakes.js";

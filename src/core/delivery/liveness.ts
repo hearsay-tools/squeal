@@ -1,41 +1,26 @@
-import { isInstalledLockfile, testFileId } from "../keys/index.js";
-import {
-  forgetRest,
-  headerView,
-  newsChange,
-  readPresence,
-  readTold,
-  type ToldLiveness,
-  withToldStart,
-} from "../presence/index.js";
-import { readHeader } from "../state/index.js";
+import { isInstalledLockfile } from "../keys/environment.js";
+import { testFileId } from "../keys/reverse-index.js";
+import { readPresence } from "../presence/decide.js";
+import { forgetRest } from "../presence/events.js";
+import { readTold, type ToldLiveness } from "../presence/told.js";
+import { headerView, newsChange, withToldStart } from "../presence/views.js";
+import { readHeader } from "../state/header.js";
 import { readHolds } from "../status/holds.js";
 import { openRuns } from "../status/open-runs.js";
-import {
-  type Consumer,
-  type DaemonLiveness,
-  type EpochMs,
-  type FileChange,
-  type KnownState,
-  type RelativePath,
-  type RevisionNumber,
-  type StatusHeader,
-  type Store,
-  type TestFileKeyRecord,
-  type WorktreeId,
-  worktreeMetaKey,
-} from "../types/index.js";
+import type { EpochMs, RelativePath, RevisionNumber, WorktreeId } from "../types/common.js";
+import type { Consumer } from "../types/delivery.js";
+import type { FileChange } from "../types/revision.js";
+import type { KnownState } from "../types/state.js";
+import type { DaemonLiveness, StatusHeader } from "../types/status.js";
+import { type Store, worktreeMetaKey } from "../types/store.js";
+import type { TestFileKeyRecord } from "../types/store-records.js";
 import { readSlot, writeSlot } from "./slots.js";
 
+export { resumesRest } from "../presence/facts.js";
 // Row 011-293: the heartbeat rule, the told start and the rest are daemon presence's (`presence/`).
-export {
-  DAEMON_START_GRACE_MS,
-  daemonLiveness,
-  resumesRest,
-  type ToldLiveness,
-  toldOf,
-  worktreeLiveness,
-} from "../presence/index.js";
+export { DAEMON_START_GRACE_MS, daemonLiveness, worktreeLiveness } from "../presence/heartbeat.js";
+export type { ToldLiveness } from "../presence/told.js";
+export { toldOf } from "../presence/views.js";
 
 /**
  * The shared header (D6) with the worktree's daemon presence as delivered

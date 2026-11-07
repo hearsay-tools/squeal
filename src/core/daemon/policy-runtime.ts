@@ -1,4 +1,4 @@
-import { isRecord } from "../fs/index.js";
+import { isRecord } from "../fs/json.js";
 import { normalizeRuntimePath } from "../keys/runtime-files.js";
 import type { RuntimeFileRule } from "../types/policy.js";
 import type { Leaf } from "./config-file.js";

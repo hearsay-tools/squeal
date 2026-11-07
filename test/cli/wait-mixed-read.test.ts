@@ -4,16 +4,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
 import { watchDaemon } from "../../src/cli/wait-liveness.js";
 import { acquireDaemonLock, type DaemonLock } from "../../src/core/daemon/lock.js";
-import { clearStartMark, markStart, startMarked } from "../../src/core/presence/index.js";
+import { clearStartMark, markStart } from "../../src/core/presence/lock-events.js";
+import { startMarked } from "../../src/core/presence/marks.js";
 import { withStatusStore } from "../../src/core/status/open.js";
-import { lockFileFor } from "../../src/core/store/index.js";
-import type {
-  AbsolutePath,
-  DaemonRecord,
-  EpochMs,
-  Store,
-  WorktreeId,
-} from "../../src/core/types/index.js";
+import { lockFileFor } from "../../src/core/store/paths.js";
+import type { AbsolutePath, EpochMs, WorktreeId } from "../../src/core/types/common.js";
+import type { Store } from "../../src/core/types/store.js";
+import type { DaemonRecord } from "../../src/core/types/store-records.js";
 import { A, NOW, repoWith } from "./status-wait-fixture.js";
 
 /*

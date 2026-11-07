@@ -1,5 +1,5 @@
 import { plural, testFileText } from "../text.js";
-import type { CommitLine, NotDeterminedTestFile } from "../types/index.js";
+import type { CommitLine, NotDeterminedTestFile } from "../types/status.js";
 
 /**
  * Spec 019 D5 step 3 (row 019-16): the newest commit report's line. With

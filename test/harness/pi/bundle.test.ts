@@ -1,8 +1,8 @@
 import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { storePaths } from "../../../src/core/store/index.js";
-import { waiterLockState } from "../../../src/core/waiter-lock/index.js";
+import { storePaths } from "../../../src/core/store/paths.js";
+import { waiterLockState } from "../../../src/core/waiter-lock/waiter-lock.js";
 import { tempDir } from "../../store/helpers.js";
 import { liveSocket, quietCli, runNode, runtimeDir } from "../bundle-helpers.js";
 import { SESSION, squealRepo } from "../helpers.js";

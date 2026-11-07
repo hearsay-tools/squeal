@@ -1,8 +1,9 @@
 import { execFileSync } from "node:child_process";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { observedDirectMetaKey, observedMetaKey } from "../../src/core/keys/index.js";
-import type { AbsolutePath, PytestProject } from "../../src/core/types/index.js";
+import { observedDirectMetaKey, observedMetaKey } from "../../src/core/keys/observed.js";
+import type { AbsolutePath } from "../../src/core/types/common.js";
+import type { PytestProject } from "../../src/core/types/policy.js";
 import { createPytestAdapter } from "../../src/runners/pytest/adapter.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { findPython, PYTHONS, pythonEnv } from "../helpers/pytest-env.js";

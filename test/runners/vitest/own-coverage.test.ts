@@ -1,7 +1,7 @@
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import type { RunReport } from "../../../src/core/types/index.js";
+import type { RunReport } from "../../../src/core/types/runner.js";
 import { type FixtureProject, openFixture, ref, SLOW } from "./helpers.js";
 
 /** Row 013-07: what the fixture's provider would print, as `@vitest/coverage-v8` does. */

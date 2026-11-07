@@ -1,6 +1,7 @@
 import { describe, expect, it, onTestFinished } from "vitest";
-import { createDelivery } from "../../src/core/delivery/index.js";
-import { type Consumer, DEFAULT_POLICY } from "../../src/core/types/index.js";
+import { createDelivery } from "../../src/core/delivery/delivery.js";
+import type { Consumer } from "../../src/core/types/delivery.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 import { fixedStatus } from "../delivery/fakes.js";
 import { openTestStore, SLOW } from "./helpers.js";
 import { type Entry, type ReloadRepo, reloadRepo, touch } from "./reload-projects-kit.js";

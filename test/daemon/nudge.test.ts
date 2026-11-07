@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { requestDaemon } from "../../src/core/daemon/client.js";
 import { prepareFrontDesk } from "../../src/core/daemon/desk.js";
-import type { AbsolutePath } from "../../src/core/types/index.js";
+import type { AbsolutePath } from "../../src/core/types/common.js";
 
 /*
  * Task 001-281: a hook's `nudge` reaches the daemon's main thread as

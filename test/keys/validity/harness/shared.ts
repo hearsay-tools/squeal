@@ -2,14 +2,11 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, realpathSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { isStoreOpenFailure, openStore } from "../../../../src/core/store/open.js";
-import type {
-  CheckKey,
-  Provenance,
-  ResultRecord,
-  RunReport,
-  Store,
-  WorktreeId,
-} from "../../../../src/core/types/index.js";
+import type { WorktreeId } from "../../../../src/core/types/common.js";
+import type { CheckKey } from "../../../../src/core/types/keys.js";
+import type { RunReport } from "../../../../src/core/types/runner.js";
+import type { Store } from "../../../../src/core/types/store.js";
+import type { Provenance, ResultRecord } from "../../../../src/core/types/store-records.js";
 
 /* What the case kinds share: a store of the tree's own schema, a fixture worktree, a row's projections. */
 

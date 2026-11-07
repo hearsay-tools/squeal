@@ -1,37 +1,31 @@
-import { worktreeIdFor } from "../fs/index.js";
-import { testFileId } from "../keys/index.js";
-import { withRecorded } from "../retry/index.js";
-import {
-  checkIdentity,
-  failureKeysOnce,
-  firstOfEachCheck,
-  formatCheck,
-  heldFailure,
-  observedSince,
-  parseCheck,
-  readFlakyNotes,
-  readRerunFirstFailures,
-  readRevisionCommit,
-  shownResult,
-  testFileOf,
-} from "../state/index.js";
-import { storePaths } from "../store/index.js";
+import { worktreeIdFor } from "../fs/git-layout.js";
+import { testFileId } from "../keys/reverse-index.js";
+import { withRecorded } from "../retry/recorded.js";
+import { formatCheck, parseCheck } from "../state/check-name.js";
+import { checkIdentity, firstOfEachCheck, testFileOf } from "../state/derive.js";
+import { readFlakyNotes } from "../state/flaky.js";
+import { failureKeysOnce, heldFailure } from "../state/inherited.js";
+import { readRerunFirstFailures } from "../state/rerun-first.js";
+import { readRevisionCommit } from "../state/revision-commit.js";
+import { observedSince, shownResult } from "../state/shown-result.js";
+import { storePaths } from "../store/paths.js";
+import type { CheckId } from "../types/check.js";
 import {
   type AbsolutePath,
-  type CheckId,
-  type CheckKey,
   PAYLOAD_SCHEMA_VERSION,
-  type ReplacedFailure,
-  type ResultRecord,
   type RevisionNumber,
-  type Store,
-  type WhyChangedPath,
-  type WhyChangedSince,
-  type WhyNoMatch,
-  type WhyReport,
-  type WhyResult,
   type WorktreeId,
-} from "../types/index.js";
+} from "../types/common.js";
+import type { CheckKey } from "../types/keys.js";
+import type {
+  WhyChangedPath,
+  WhyChangedSince,
+  WhyNoMatch,
+  WhyReport,
+  WhyResult,
+} from "../types/status.js";
+import type { Store } from "../types/store.js";
+import type { ReplacedFailure, ResultRecord } from "../types/store-records.js";
 import { durationsOf } from "./durations.js";
 import { focusedCheckIds, whyFocusedOf } from "./focused.js";
 import { type StatusContext, type StatusStoreOptions, withStatusStore } from "./open.js";

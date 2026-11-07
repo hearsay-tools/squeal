@@ -1,4 +1,4 @@
-import type { RunReport } from "../core/types/index.js";
+import type { RunReport } from "../core/types/runner.js";
 
 /*
  * A run log's report (001 D8 as amended 2026-10-23, row 011-164): how the

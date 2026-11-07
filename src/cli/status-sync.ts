@@ -1,13 +1,8 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { MAX_LINE_BYTES } from "../core/daemon/protocol.js";
-import type {
-  AbsolutePath,
-  RelativePath,
-  RevisionNumber,
-  SyncRequest,
-  SyncResponse,
-  TestFileRef,
-} from "../core/types/index.js";
+import type { AbsolutePath, RelativePath, RevisionNumber } from "../core/types/common.js";
+import type { SyncRequest, SyncResponse } from "../core/types/daemon.js";
+import type { TestFileRef } from "../core/types/keys.js";
 import { askDaemon, daemonSocket } from "./daemon-access.js";
 
 /**

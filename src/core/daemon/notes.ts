@@ -1,13 +1,9 @@
 import { DatabaseSync } from "node:sqlite";
 import { appendNote, withNote } from "../notes.js";
-import { storePaths } from "../store/index.js";
-import {
-  type AbsolutePath,
-  type DaemonNote,
-  notesMetaKey,
-  type Store,
-  type WorktreeId,
-} from "../types/index.js";
+import { storePaths } from "../store/paths.js";
+import type { AbsolutePath, WorktreeId } from "../types/common.js";
+import { type DaemonNote, notesMetaKey } from "../types/scheduler.js";
+import type { Store } from "../types/store.js";
 
 /** Persists a note for status; a store that cannot take it costs only the log line. */
 export function writeNote(

@@ -1,5 +1,6 @@
 import { describe, expect, it, onTestFinished } from "vitest";
-import type { Delta, TestCheckId } from "../../src/core/types/index.js";
+import type { TestCheckId } from "../../src/core/types/check.js";
+import type { Delta } from "../../src/core/types/delivery.js";
 import { waitFor } from "../watcher/helpers.js";
 import { SLOW } from "./cleanup.js";
 import { createRepo, openRepoStore } from "./repo.js";

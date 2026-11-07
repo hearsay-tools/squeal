@@ -1,13 +1,17 @@
-import { checkName, headerLines, SQUEAL_COMMAND } from "../../core/delivery/index.js";
+import { checkName } from "../../core/delivery/collapse.js";
+import { SQUEAL_COMMAND } from "../../core/delivery/format.js";
+import { headerLines } from "../../core/delivery/header.js";
+import { formatCheck } from "../../core/state/check-name.js";
 import {
   earlierFailuresLines,
-  formatCheck,
   knownFailureCounts,
   notCurrentText,
   splitByValidity,
-} from "../../core/status/index.js";
+} from "../../core/status/checks.js";
 import { plural } from "../../core/text.js";
-import type { CheckId, KnownFailure, StatusHeader, Validity } from "../../core/types/index.js";
+import type { CheckId } from "../../core/types/check.js";
+import type { Validity } from "../../core/types/state.js";
+import type { KnownFailure, StatusHeader } from "../../core/types/status.js";
 
 /*
  * Hook-specific wording. Spec 001 D6: "Wording is factual, never imperative:

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_POLICY } from "../../src/core/types/index.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 import { API_PROJECT, EXAMPLE, useLoad } from "./checks-load.js";
 
 /*

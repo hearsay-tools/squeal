@@ -1,4 +1,4 @@
-export type { CacheUpdate } from "../hash/index.js";
+export type { CacheUpdate } from "../hash/stat-cache.js";
 export {
   type BatchDiff,
   type CommitContext,

@@ -1,8 +1,8 @@
 import { setTimeout as sleep } from "node:timers/promises";
-import { formatDelta } from "../../core/delivery/index.js";
-import { storePaths } from "../../core/store/index.js";
-import type { Delta } from "../../core/types/index.js";
-import { acquireWaiterLock } from "../../core/waiter-lock/index.js";
+import { formatDelta } from "../../core/delivery/format.js";
+import { storePaths } from "../../core/store/paths.js";
+import type { Delta } from "../../core/types/delivery.js";
+import { acquireWaiterLock } from "../../core/waiter-lock/waiter-lock.js";
 import type { ConsumerInput, HookContext, HookLocation } from "./context.js";
 import { type HookDeps, isRegistered, withContext } from "./hook.js";
 

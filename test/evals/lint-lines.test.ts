@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { squealEvidence } from "../../evals/lib/index.mjs";
-import { formatDelta, formatRegistration } from "../../src/core/delivery/index.js";
-import { createStateSink } from "../../src/core/state/index.js";
+import { formatDelta, formatRegistration } from "../../src/core/delivery/format.js";
+import { createStateSink } from "../../src/core/state/sink.js";
 import { deliveryOf, type WiredRig, wiredRig } from "../lint/wiring/rig.js";
 import { check, result } from "../state/helpers.js";
 import { NOW } from "../status/slow-tier-seed.js";

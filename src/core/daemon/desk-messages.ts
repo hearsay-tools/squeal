@@ -1,13 +1,7 @@
-import type {
-  DaemonPhase,
-  EpochMs,
-  FullSuiteCheckpoint,
-  FullSuiteRequest,
-  RelativePath,
-  SyncAnswer,
-  TestFileRef,
-  WorktreeId,
-} from "../types/index.js";
+import type { EpochMs, RelativePath, WorktreeId } from "../types/common.js";
+import type { DaemonPhase, SyncAnswer } from "../types/daemon.js";
+import type { TestFileRef } from "../types/keys.js";
+import type { FullSuiteCheckpoint, FullSuiteRequest } from "../types/scheduler.js";
 import type { GroupRequested, HeldBy } from "./run-group.js";
 import type { SlowSuiteRequested } from "./run-slow.js";
 

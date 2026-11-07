@@ -1,7 +1,9 @@
 import type { Vitest } from "vitest/node";
+import type { WorktreePaths } from "../../core/fs/worktree-paths.js";
 import { pathsReason } from "../../core/text.js";
-import type { AbsolutePath, RunReport, TestFileRef } from "../../core/types/index.js";
-import type { WorktreePaths } from "./paths.js";
+import type { AbsolutePath } from "../../core/types/common.js";
+import type { TestFileRef } from "../../core/types/keys.js";
+import type { RunReport } from "../../core/types/runner.js";
 import { refKey } from "./results.js";
 import type { Sorted } from "./touched.js";
 

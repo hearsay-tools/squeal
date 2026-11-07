@@ -11,19 +11,23 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
-import { REPO_ROOT } from "../../src/harness/claude-code/build.js";
+import { REPO_ROOT } from "../../src/harness/build.js";
+import { packRuntime } from "../../src/harness/codex/runtime-release/artifact.js";
 import {
   createReleaseDescriptor,
-  createRuntimeManifest,
-  LATEST_RELEASE_URL,
-  packRuntime,
   RUNTIME_ARTIFACT_ASSET,
   RUNTIME_DESCRIPTOR_ASSET,
-  type RuntimeManifest,
-  releaseAssetUrl,
   serializeReleaseDescriptor,
+} from "../../src/harness/codex/runtime-release/descriptor.js";
+import {
+  type RuntimeManifest,
   serializeRuntimeManifest,
-} from "../../src/harness/codex/runtime-release/index.js";
+} from "../../src/harness/codex/runtime-release/manifest.js";
+import {
+  LATEST_RELEASE_URL,
+  releaseAssetUrl,
+} from "../../src/harness/codex/runtime-release/release.js";
+import { createRuntimeManifest } from "../../src/harness/codex/runtime-release/tree.js";
 import { copyPlugin, suppressCodexUpdate } from "./plugins.js";
 
 /** Real Codex is optional on CI; local proof still runs whenever it is installed. */

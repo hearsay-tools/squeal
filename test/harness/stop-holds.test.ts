@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { readStopHolds } from "../../src/core/delivery/turn.js";
-import { MAIN_AGENT } from "../../src/core/types/index.js";
-import { runHook } from "../../src/harness/claude-code/index.js";
-import { runCodexHook } from "../../src/harness/codex/index.js";
+import { MAIN_AGENT } from "../../src/core/types/delivery.js";
+import { runHook } from "../../src/harness/claude-code/hooks.js";
+import { runCodexHook } from "../../src/harness/codex/hooks.js";
 import { STOP_SLOW_HANDOFF_MS } from "../../src/harness/shared/stop-slow.js";
 import { codexRecorded } from "./codex/helpers.js";
 import { recorded, type SquealRepo } from "./helpers.js";

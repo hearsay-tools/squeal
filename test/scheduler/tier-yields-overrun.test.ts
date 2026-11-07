@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { publishedYieldRow, YIELD_REMAINDER_MS } from "../../src/core/scheduler/yields.js";
-import type { Policy } from "../../src/core/types/index.js";
-import { DEFAULT_POLICY } from "../../src/core/types/index.js";
+import type { Policy } from "../../src/core/types/policy.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   type CatchUpFile,

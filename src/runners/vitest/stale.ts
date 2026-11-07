@@ -2,8 +2,9 @@ import { existsSync, readFileSync } from "node:fs";
 import { isBuiltin } from "node:module";
 import { basename, dirname, join } from "node:path";
 import type { TestProject, Vitest } from "vitest/node";
-import { isRecord } from "../../core/fs/index.js";
-import type { AbsolutePath, InvalidatedPath } from "../../core/types/index.js";
+import { isRecord } from "../../core/fs/json.js";
+import type { AbsolutePath } from "../../core/types/common.js";
+import type { InvalidatedPath } from "../../core/types/runner.js";
 import { expandsFromDisk } from "./dynamic.js";
 import { depToPath, resolutionBases, resolutionCandidates } from "./graph.js";
 

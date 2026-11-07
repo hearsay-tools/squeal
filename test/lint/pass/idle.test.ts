@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { createDelivery } from "../../../src/core/delivery/index.js";
-import { lintIdleIn, lintPauseIn } from "../../../src/core/lint/pass/index.js";
+import { createDelivery } from "../../../src/core/delivery/delivery.js";
+import { lintIdleIn, lintPauseIn } from "../../../src/core/lint/pass/idle.js";
 import { SLOW_RECHECK_MS } from "../../../src/core/scheduler/slow-tier.js";
-import { type Consumer, DEFAULT_POLICY, type Store } from "../../../src/core/types/index.js";
+import type { Consumer } from "../../../src/core/types/delivery.js";
+import { DEFAULT_POLICY } from "../../../src/core/types/policy.js";
+import type { Store } from "../../../src/core/types/store.js";
 import { fixedStatus } from "../../delivery/fakes.js";
 import { freshStore, WT } from "../../state/helpers.js";
 

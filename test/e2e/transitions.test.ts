@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { expectAgrees, headerRevision } from "./agree.js";
-import { e2eSuite, HOOK_BUDGET_MS, hasNodeModulesAbove, MATH, PLUGINS } from "./harness.js";
+import { e2eSuite, HOOK_BUDGET_MS } from "./harness.js";
+import { PLUGINS } from "./plugins.js";
+import { MATH } from "./sources.js";
+import { hasNodeModulesAbove } from "./support.js";
 
 /*
  * Spec 001 goals 1 to 3 and Testing, end to end: one PASS -> FAIL, then one

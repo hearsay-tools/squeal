@@ -1,17 +1,14 @@
 import { readPolicy } from "../core/daemon/policy.js";
-import { testFileId } from "../core/keys/index.js";
+import { testFileId } from "../core/keys/reverse-index.js";
 import { groupView } from "../core/scheduler/slow.js";
-import { groupRunText, groupWhenText } from "../core/state/index.js";
+import { groupRunText, groupWhenText } from "../core/state/group-text.js";
 import { fromBase } from "../core/status/next-step-text.js";
 import { plural, shellWord, testFileText } from "../core/text.js";
-import {
-  type AbsolutePath,
-  type CheckMoment,
-  type GroupTierState,
-  SLOW_GROUP,
-  type StatusSnapshot,
-  type TestFileRef,
-} from "../core/types/index.js";
+import type { CheckMoment } from "../core/types/check-groups.js";
+import type { AbsolutePath } from "../core/types/common.js";
+import type { TestFileRef } from "../core/types/keys.js";
+import { SLOW_GROUP } from "../core/types/scheduler.js";
+import type { GroupTierState, StatusSnapshot } from "../core/types/status.js";
 
 /*
  * Row 019-24 item 2 (spec 019 D6): what `status --wait`'s verdict lines say

@@ -7,8 +7,10 @@ import type { DaemonSync } from "../../src/cli/status-sync.js";
 import { waitForStatus } from "../../src/cli/status-wait.js";
 import { waitForNamed } from "../../src/cli/status-wait-paths.js";
 import { watchDaemon } from "../../src/cli/wait-liveness.js";
-import { socketPathFor } from "../../src/core/daemon/index.js";
-import type { DaemonRecord, EpochMs, Store, WorktreeId } from "../../src/core/types/index.js";
+import { socketPathFor } from "../../src/core/daemon/paths.js";
+import type { EpochMs, WorktreeId } from "../../src/core/types/common.js";
+import type { Store } from "../../src/core/types/store.js";
+import type { DaemonRecord } from "../../src/core/types/store-records.js";
 import { closeFakeDaemons, fakeDaemon } from "./fake-daemon.js";
 import { finish, INCARNATION, NOW, repoWith, SLOW_FILE } from "./status-wait-fixture.js";
 

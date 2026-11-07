@@ -3,9 +3,10 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it } from "vitest";
 import { ensureDaemon, probeDaemon } from "../../src/core/daemon/ensure.js";
-import { SCHEMA_VERSION, storePaths } from "../../src/core/store/index.js";
-import { notesMetaKey } from "../../src/core/types/index.js";
-import { rootVersion } from "../../src/harness/claude-code/build.js";
+import { storePaths } from "../../src/core/store/paths.js";
+import { SCHEMA_VERSION } from "../../src/core/store/schema.js";
+import { notesMetaKey } from "../../src/core/types/scheduler.js";
+import { rootVersion } from "../../src/harness/build.js";
 import {
   daemonSuite,
   delay,
@@ -194,7 +195,7 @@ describe("squeal daemon: singleton and restart (spec 001 D10)", SLOW, () => {
 
 async function linkedRepo(repo: FixtureRepo, root: string) {
   const { realpathSync } = await import("node:fs");
-  const { worktreeIdFor } = await import("../../src/core/fs/index.js");
+  const { worktreeIdFor } = await import("../../src/core/fs/git-layout.js");
   const { socketPathFor } = await import("../../src/core/daemon/paths.js");
   const real = realpathSync(root);
   const worktreeId = worktreeIdFor(real);

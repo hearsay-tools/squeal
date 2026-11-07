@@ -1,10 +1,12 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join, posix } from "node:path";
 import { loadPolicy } from "../../core/daemon/policy.js";
-import { isRecord, runGit, splitNul, worktreeIdFor } from "../../core/fs/index.js";
+import { runGit, splitNul } from "../../core/fs/git.js";
+import { worktreeIdFor } from "../../core/fs/git-layout.js";
+import { isRecord } from "../../core/fs/json.js";
 import { createInputMatcher, globToRegExp } from "../../core/keys/glob.js";
-import { withStatusStore } from "../../core/status/index.js";
-import type { AbsolutePath } from "../../core/types/index.js";
+import { withStatusStore } from "../../core/status/open.js";
+import type { AbsolutePath } from "../../core/types/common.js";
 import { readVerdict } from "../verdict.js";
 
 /*

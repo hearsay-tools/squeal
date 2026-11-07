@@ -1,13 +1,10 @@
-import { resolveCommonDir } from "../core/fs/index.js";
-import { worktreeSlowView } from "../core/state/index.js";
-import { isStoreOpenFailure, openStore } from "../core/store/index.js";
-import type {
-  AbsolutePath,
-  CheckpointLane,
-  CheckpointRecord,
-  Store,
-  TestFileRef,
-} from "../core/types/index.js";
+import { resolveCommonDir } from "../core/fs/git-layout.js";
+import { worktreeSlowView } from "../core/state/slow.js";
+import { isStoreOpenFailure, openStore } from "../core/store/open.js";
+import type { AbsolutePath } from "../core/types/common.js";
+import type { TestFileRef } from "../core/types/keys.js";
+import type { Store } from "../core/types/store.js";
+import type { CheckpointLane, CheckpointRecord } from "../core/types/store-records.js";
 
 /**
  * What `run` was asked for (task 004-61): `--all` both lanes, `--fast` the

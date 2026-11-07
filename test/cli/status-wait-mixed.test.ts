@@ -5,8 +5,9 @@ import { readNamedSnapshot } from "../../src/cli/status-paths.js";
 import type { DaemonSync, SyncState } from "../../src/cli/status-sync.js";
 import { namedText } from "../../src/cli/status-wait-lines.js";
 import { type NamedWaitOptions, namedCode, waitForNamed } from "../../src/cli/status-wait-paths.js";
-import { socketPathFor } from "../../src/core/daemon/index.js";
-import type { RevisionNumber, TestFileRef } from "../../src/core/types/index.js";
+import { socketPathFor } from "../../src/core/daemon/paths.js";
+import type { RevisionNumber } from "../../src/core/types/common.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
 import { closeFakeDaemons, fakeDaemon } from "./fake-daemon.js";
 import {
   A,
@@ -15,12 +16,11 @@ import {
   fail,
   finish,
   INCARNATION,
-  later,
   NOW,
   ref,
   repoWith,
-  timed,
 } from "./status-wait-fixture.js";
+import { later, timed } from "./wait-clock.js";
 
 /*
  * Row 011-63 (gh-59, gh-65, the human 2026-10-21, triage round 9 group C): a

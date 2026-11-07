@@ -1,19 +1,14 @@
 import { readPolicy } from "../daemon/policy.js";
 import { loadUserConfig } from "../daemon/user-config.js";
-import { heldPermits, type PermitRecord, slotFiles, slowSlotDir } from "../slow/index.js";
-import { readSlowTier, worktreeSlowView } from "../state/index.js";
+import { heldPermits, type PermitRecord, slowSlotDir } from "../slow/slot.js";
+import { slotFiles } from "../slow/slot-files.js";
+import { readSlowTier, worktreeSlowView } from "../state/slow.js";
 import { durationText, plural } from "../text.js";
-import {
-  type AbsolutePath,
-  type EpochMs,
-  SLOW_GROUP,
-  type SlotHolder,
-  type SlowSlotHolders,
-  type StatusHeader,
-  type StatusSnapshot,
-  type Store,
-  type WorktreeId,
-} from "../types/index.js";
+import type { AbsolutePath, EpochMs, WorktreeId } from "../types/common.js";
+import { SLOW_GROUP } from "../types/scheduler.js";
+import type { SlotHolder, SlowSlotHolders } from "../types/standing.js";
+import type { StatusHeader, StatusSnapshot } from "../types/status.js";
+import type { Store } from "../types/store.js";
 
 /*
  * Row 011-58 (gh-58; spec 004 D2 and D8): while this worktree's slow tier

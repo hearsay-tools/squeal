@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import type { PytestProject } from "../../../../src/core/types/index.js";
+import type { PytestProject } from "../../../../src/core/types/policy.js";
 import { environmentState, syncNote } from "../../../../src/runners/pytest/environment/states.js";
 import { editable, link, tempDir, venv, write } from "./tree.js";
 

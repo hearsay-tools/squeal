@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { readStatus } from "../../src/core/status/index.js";
-import { META_STORE_RECOVERED } from "../../src/core/store/index.js";
-import type { StatusResult, StatusSnapshot } from "../../src/core/types/index.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
+import { META_STORE_RECOVERED } from "../../src/core/store/open.js";
+import type { StatusResult, StatusSnapshot } from "../../src/core/types/status.js";
 import { fakeRepo, seedStore } from "./helpers.js";
 
 /*

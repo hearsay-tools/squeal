@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
-import { formatDelta } from "../../src/core/delivery/index.js";
-import { formatCheck } from "../../src/core/status/index.js";
-import type { Delta, ResultRecord, TestCheckId } from "../../src/core/types/index.js";
+import { formatDelta } from "../../src/core/delivery/format.js";
+import { formatCheck } from "../../src/core/state/check-name.js";
+import type { TestCheckId } from "../../src/core/types/check.js";
+import type { Delta } from "../../src/core/types/delivery.js";
+import type { ResultRecord } from "../../src/core/types/store-records.js";
 import { shellWords } from "../../src/harness/shared/test-command.js";
 import { check, fakeRepo, seedStore, state } from "../status/helpers.js";
 import { result } from "../store/helpers.js";

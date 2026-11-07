@@ -5,7 +5,8 @@ import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { createCompositeRunner } from "../../src/core/daemon/composite-runner.js";
 import { socketPathFor } from "../../src/core/daemon/paths.js";
 import { vitestBelowRootNote, vitestDetected } from "../../src/core/daemon/runner.js";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
 import type {
   AffectedTestFiles,
   CheckRunResult,
@@ -13,8 +14,7 @@ import type {
   RunnerAdapter,
   RunOptions,
   RunReport,
-  TestFileRef,
-} from "../../src/core/types/index.js";
+} from "../../src/core/types/runner.js";
 import { git } from "../hash/git-repo.js";
 import {
   childEnv,

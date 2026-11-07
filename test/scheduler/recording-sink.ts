@@ -1,16 +1,15 @@
-import { createStateSink } from "../../src/core/state/index.js";
+import { createStateSink } from "../../src/core/state/sink.js";
+import type { CheckId } from "../../src/core/types/check.js";
+import type { RevisionNumber, WorktreeId } from "../../src/core/types/common.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
 import type {
-  CheckId,
   KnownState,
-  RevisionNumber,
   SetupOutcome,
   StateProvenance,
   StateSink,
-  Store,
-  TestFileRef,
   Transition,
-  WorktreeId,
-} from "../../src/core/types/index.js";
+} from "../../src/core/types/state.js";
+import type { Store } from "../../src/core/types/store.js";
 
 export type SinkCall =
   | {

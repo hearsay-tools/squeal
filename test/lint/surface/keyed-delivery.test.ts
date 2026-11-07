@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDelta } from "../../../src/core/delivery/index.js";
+import { formatDelta } from "../../../src/core/delivery/format.js";
 import { FakeProvider } from "../pass/helpers.js";
 import { deliveryOf, wiredRig } from "../wiring/rig.js";
 

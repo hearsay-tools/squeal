@@ -6,13 +6,8 @@ import { requestDaemon } from "../../src/core/daemon/client.js";
 import { prepareFrontDesk } from "../../src/core/daemon/desk.js";
 import { createHandlers, type HandlerContext } from "../../src/core/daemon/handlers.js";
 import { parseRequest } from "../../src/core/daemon/protocol.js";
-import type {
-  AbsolutePath,
-  DaemonPhase,
-  DaemonResponse,
-  RevisionNumber,
-  SyncAnswer,
-} from "../../src/core/types/index.js";
+import type { AbsolutePath, RevisionNumber } from "../../src/core/types/common.js";
+import type { DaemonPhase, DaemonResponse, SyncAnswer } from "../../src/core/types/daemon.js";
 
 /*
  * Lessons, defect 30: `status --wait` asks the daemon for a reconciliation

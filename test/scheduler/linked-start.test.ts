@@ -3,15 +3,13 @@ import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createDaemonLoop, type DaemonLoop } from "../../src/core/daemon-loop/index.js";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
-import { storePaths } from "../../src/core/store/index.js";
-import {
-  DEFAULT_POLICY,
-  type Revision,
-  type Store,
-  type WatcherBackend,
-} from "../../src/core/types/index.js";
-import { createWatcherBackend } from "../../src/core/watcher/index.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
+import { storePaths } from "../../src/core/store/paths.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
+import type { Revision } from "../../src/core/types/revision.js";
+import type { Store } from "../../src/core/types/store.js";
+import type { WatcherBackend } from "../../src/core/types/watcher.js";
+import { createWatcherBackend } from "../../src/core/watcher/backend.js";
 import { createVitestAdapter } from "../../src/runners/vitest/index.js";
 import { waitFor } from "../watcher/helpers.js";
 import { SLOW } from "./cleanup.js";

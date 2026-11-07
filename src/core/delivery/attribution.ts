@@ -1,25 +1,25 @@
-import { isInstalledLockfile, testFileId } from "../keys/index.js";
-import { passedRetry } from "../retry/index.js";
+import { isInstalledLockfile } from "../keys/environment.js";
+import { testFileId } from "../keys/reverse-index.js";
+import { passedRetry } from "../retry/recorded.js";
 import { readFailureKeys } from "../slow/state.js";
-import { beforeEditsFor, checkIdentity, readFlakyNotes, testFileOf } from "../state/index.js";
+import { beforeEditsFor } from "../state/before-edits.js";
+import { checkIdentity, testFileOf } from "../state/derive.js";
+import { readFlakyNotes } from "../state/flaky.js";
 import { testFileFrame } from "../status/test-frame.js";
+import type { CheckId } from "../types/check.js";
 import type {
-  CheckId,
-  CheckKey,
-  Consumer,
-  DeltaEntry,
-  KnownFailure,
-  KnownState,
   RelativePath,
-  ResultRecord,
   RevisionNumber,
   SourceLocation,
-  StatusHeader,
-  Store,
   TestFileFrame,
-  TransitionEntry,
   WorktreeId,
-} from "../types/index.js";
+} from "../types/common.js";
+import type { Consumer, DeltaEntry, TransitionEntry } from "../types/delivery.js";
+import type { CheckKey } from "../types/keys.js";
+import type { KnownState } from "../types/state.js";
+import type { KnownFailure, StatusHeader } from "../types/status.js";
+import type { Store } from "../types/store.js";
+import type { ResultRecord } from "../types/store-records.js";
 import { closureFor } from "./closure.js";
 import { changedAfter, registration, seesEveryChange } from "./registered.js";
 import { slot } from "./slots.js";

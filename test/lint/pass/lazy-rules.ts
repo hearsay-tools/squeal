@@ -1,7 +1,9 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { blobHash, type ObjectFormat } from "../../../src/core/hash/index.js";
+import { blobHash, type ObjectFormat } from "../../../src/core/hash/blob.js";
 import { lineHash } from "../../../src/core/lint/fingerprint.js";
+import { lintCheck } from "../../../src/core/lint/pass/judge.js";
+import { lintKey } from "../../../src/core/lint/pass/keys.js";
 import type {
   LintDeclaration,
   LintEnvironment,
@@ -11,11 +13,10 @@ import type {
   LintRefresh,
   LintRunReport,
   LintSnapshot,
-} from "../../../src/core/lint/pass/index.js";
-import { lintCheck } from "../../../src/core/lint/pass/judge.js";
-import { lintKey } from "../../../src/core/lint/pass/keys.js";
+} from "../../../src/core/lint/pass/provider.js";
 import type { LintStore } from "../../../src/core/lint/store/types.js";
-import type { CheckKey, EpochMs } from "../../../src/core/types/index.js";
+import type { EpochMs } from "../../../src/core/types/common.js";
+import type { CheckKey } from "../../../src/core/types/keys.js";
 import { FakeProvider } from "./helpers.js";
 
 /** The Node major the pass keys at: given, so no test reads the running version (spec 010 D4). */

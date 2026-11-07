@@ -1,12 +1,9 @@
 import { describe, expect, it, onTestFinished } from "vitest";
-import {
-  COVERAGE_PROVIDER_VERSION,
-  type CoverageRecord,
-  decodeRecord,
-} from "../../../src/core/code/coverage/index.js";
-import { isCodeStoreOpenFailure, openCodeStore } from "../../../src/core/code/store/index.js";
+import { COVERAGE_PROVIDER_VERSION, decodeRecord } from "../../../src/core/code/coverage/record.js";
+import type { CoverageRecord } from "../../../src/core/code/coverage/types.js";
+import { isCodeStoreOpenFailure, openCodeStore } from "../../../src/core/code/store/open.js";
 import { startDaemon } from "../../../src/core/daemon/daemon.js";
-import type { CheckKey } from "../../../src/core/types/index.js";
+import type { CheckKey } from "../../../src/core/types/keys.js";
 import { ON } from "../../code/helpers.js";
 import { createFixtureRepo, SLOW, waitFor, withStore } from "../../daemon/helpers.js";
 

@@ -1,8 +1,8 @@
-import { testFileId } from "../core/keys/index.js";
+import { testFileId } from "../core/keys/reverse-index.js";
 import { fromBase, PATHS_IN_COMMAND } from "../core/status/next-step-text.js";
 import { lockedText } from "../core/status/outstanding-text.js";
 import { shellWord } from "../core/text.js";
-import type { StatusSnapshot } from "../core/types/index.js";
+import type { StatusSnapshot } from "../core/types/status.js";
 import { coverText, filesCounted, reasonGroups } from "./named-file-lines.js";
 import type { SyncState } from "./status-sync.js";
 import type { EndedNamed } from "./status-wait-lines.js";

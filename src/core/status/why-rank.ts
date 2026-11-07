@@ -1,6 +1,9 @@
-import { testFileId } from "../keys/index.js";
+import { testFileId } from "../keys/reverse-index.js";
 import { readSlowEvidence } from "../slow/rank-store.js";
-import type { Store, TestFileRef, WhyRankedBy, WorktreeId } from "../types/index.js";
+import type { WorktreeId } from "../types/common.js";
+import type { TestFileRef } from "../types/keys.js";
+import type { WhyRankedBy } from "../types/status.js";
+import type { Store } from "../types/store.js";
 
 /**
  * Spec 004 D2 as amended 2026-10-18 (task 004-82): the tokens that ranked

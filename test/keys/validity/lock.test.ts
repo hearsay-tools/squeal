@@ -2,10 +2,10 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "no
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { failures } from "./compare.js";
 import { esbuildOf, installLock } from "./lock.js";
 import { comparisons, edited, read, SLOW } from "./self-test.js";
 import { dependencyLines, extractTree, type Overlay, ROOT } from "./trees.js";
+import { failures } from "./verdict.js";
 
 /*
  * Risk 9 of task 011-37 (design section 6): a package an entry imports, or

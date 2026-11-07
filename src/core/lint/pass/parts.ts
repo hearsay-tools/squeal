@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { setImmediate as nextTurn } from "node:timers/promises";
-import { blobHash, type ObjectFormat } from "../../hash/index.js";
+import { blobHash, type ObjectFormat } from "../../hash/blob.js";
 import { CAPACITY_RECHECK_MS, WAIT_FOR_CAPACITY } from "../../scheduler/capacity.js";
 import type {
   AbsolutePath,
@@ -9,7 +9,7 @@ import type {
   RelativePath,
   RevisionNumber,
   WorktreeId,
-} from "../../types/index.js";
+} from "../../types/common.js";
 import type { LintTool } from "../../types/lint.js";
 import type { LintStore } from "../store/types.js";
 import type { Keyer } from "./keyer.js";

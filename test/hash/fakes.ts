@@ -1,13 +1,12 @@
 import type {
   CommitSha,
-  FileHashRecord,
-  FileHashRepo,
   RelativePath,
-  Revision,
   RevisionNumber,
-  RevisionRepo,
   WorktreeId,
-} from "../../src/core/types/index.js";
+} from "../../src/core/types/common.js";
+import type { Revision } from "../../src/core/types/revision.js";
+import type { FileHashRepo, RevisionRepo } from "../../src/core/types/store.js";
+import type { FileHashRecord } from "../../src/core/types/store-records.js";
 
 /** In-memory `FileHashRepo`. */
 export class FakeFileHashRepo implements FileHashRepo {

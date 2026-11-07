@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { socketNameFor, socketWorktreeId } from "../../src/core/daemon/paths.js";
-import { lockFileFor, storePaths } from "../../src/core/store/index.js";
-import { lockFileParts, lockFileWorktreeId } from "../../src/core/store/paths.js";
+import {
+  lockFileFor,
+  lockFileParts,
+  lockFileWorktreeId,
+  storePaths,
+} from "../../src/core/store/paths.js";
 
 describe("storePaths (spec 001 D1)", () => {
   it("lays the store out under <common-dir>/squeal/", () => {

@@ -6,14 +6,9 @@ import { requestDaemon } from "../../src/core/daemon/client.js";
 import { prepareFrontDesk } from "../../src/core/daemon/desk.js";
 import { createHandlers } from "../../src/core/daemon/handlers.js";
 import { parseRequest } from "../../src/core/daemon/protocol.js";
-import type {
-  AbsolutePath,
-  DaemonResponse,
-  RelativePath,
-  RevisionNumber,
-  SyncAnswer,
-  TestFileRef,
-} from "../../src/core/types/index.js";
+import type { AbsolutePath, RelativePath, RevisionNumber } from "../../src/core/types/common.js";
+import type { DaemonResponse, SyncAnswer } from "../../src/core/types/daemon.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
 
 /*
  * Row 011-234 (005 D2 as amended): a named wait's sync carries its source

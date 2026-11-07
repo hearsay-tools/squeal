@@ -2,8 +2,8 @@ import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { availableParallelism, tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { clearMark, type PoolMark, writeMark } from "../../src/core/capacity/index.js";
-import { StatCache } from "../../src/core/hash/index.js";
+import { clearMark, type PoolMark, writeMark } from "../../src/core/capacity/marks.js";
+import { StatCache } from "../../src/core/hash/stat-cache.js";
 import { TierCapacity, WAIT_FOR_CAPACITY } from "../../src/core/scheduler/capacity.js";
 import type { SchedulerContext } from "../../src/core/scheduler/context.js";
 import { Ledger } from "../../src/core/scheduler/ledger.js";
@@ -11,16 +11,12 @@ import { POOL_WAIT_REFRESH_MS, PoolWaits } from "../../src/core/scheduler/pool-w
 import { Priority } from "../../src/core/scheduler/queue.js";
 import { NONE_CUT } from "../../src/core/scheduler/sharing.js";
 import { selectTier } from "../../src/core/scheduler/tiers.js";
-import { createStateSink } from "../../src/core/state/index.js";
-import {
-  type AbsolutePath,
-  type CheckKey,
-  DEFAULT_POLICY,
-  type PoolGate,
-  type PoolWait,
-  type Store,
-  type WorktreeId,
-} from "../../src/core/types/index.js";
+import { createStateSink } from "../../src/core/state/sink.js";
+import type { AbsolutePath, WorktreeId } from "../../src/core/types/common.js";
+import type { CheckKey } from "../../src/core/types/keys.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
+import type { PoolGate, PoolWait } from "../../src/core/types/standing.js";
+import type { Store } from "../../src/core/types/store.js";
 import { liveDaemon } from "../delivery/fakes.js";
 import { freshStore } from "../state/helpers.js";
 

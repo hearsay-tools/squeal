@@ -7,7 +7,7 @@ import {
   readSlowActivity,
   slowTierMetaKey,
 } from "../../src/core/slow/state.js";
-import type { SlowTierActivity } from "../../src/core/types/index.js";
+import type { SlowTierActivity } from "../../src/core/types/status.js";
 import { fakeCommonDir, open } from "../store/helpers.js";
 
 /*

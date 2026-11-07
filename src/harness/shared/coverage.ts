@@ -1,13 +1,12 @@
 import { CHECK_MOMENTS } from "../../core/daemon/check-groups.js";
 import { readPolicy } from "../../core/daemon/policy.js";
 import { groupView } from "../../core/scheduler/slow.js";
-import { slowPolicyView, testsAtEdit } from "../../core/state/index.js";
-import {
-  type CheckMoment,
-  type Policy,
-  TESTS_GROUP,
-  type TestFileKeyRecord,
-} from "../../core/types/index.js";
+import { testsAtEdit } from "../../core/state/groups.js";
+import { slowPolicyView } from "../../core/state/slow.js";
+import type { CheckMoment } from "../../core/types/check-groups.js";
+import type { Policy } from "../../core/types/policy.js";
+import { TESTS_GROUP } from "../../core/types/scheduler.js";
+import type { TestFileKeyRecord } from "../../core/types/store-records.js";
 import {
   configuredProjects,
   DESCRIPTIONS,

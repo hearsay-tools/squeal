@@ -1,16 +1,14 @@
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it } from "vitest";
-import { createDelivery, expireConsumers } from "../../src/core/delivery/index.js";
+import { createDelivery } from "../../src/core/delivery/delivery.js";
+import { expireConsumers } from "../../src/core/delivery/expiry.js";
 import { registration } from "../../src/core/delivery/registered.js";
-import { storePaths } from "../../src/core/store/index.js";
-import {
-  CONSUMER_EXPIRY_MS,
-  type Consumer,
-  type Store,
-  WAITERLESS_EXPIRY_MS,
-} from "../../src/core/types/index.js";
-import { acquireWaiterLock, waiterLockPath } from "../../src/core/waiter-lock/index.js";
+import { storePaths } from "../../src/core/store/paths.js";
+import type { Consumer } from "../../src/core/types/delivery.js";
+import type { Store } from "../../src/core/types/store.js";
+import { CONSUMER_EXPIRY_MS, WAITERLESS_EXPIRY_MS } from "../../src/core/types/store-records.js";
+import { acquireWaiterLock, waiterLockPath } from "../../src/core/waiter-lock/waiter-lock.js";
 import { fakeCommonDir, open } from "../store/helpers.js";
 import { fixedStatus, liveDaemon } from "./fakes.js";
 

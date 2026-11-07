@@ -1,5 +1,5 @@
 import { timeText } from "../text.js";
-import type { BatchPlace, OutstandingStanding, TierYield } from "../types/index.js";
+import type { BatchPlace, OutstandingStanding, TierYield } from "../types/standing.js";
 import { remainderSeconds } from "./next-step.js";
 
 /*

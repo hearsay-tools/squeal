@@ -1,7 +1,7 @@
 import { cpSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import type { LintRunReport } from "../../../src/core/lint/provider/index.js";
+import type { LintRunReport } from "../../../src/core/lint/pass/provider.js";
 import { cli, FIXTURES, onDisk, project, provider, read, workerScript, write } from "./helpers.js";
 
 /*

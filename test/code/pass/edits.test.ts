@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { CodeStore } from "../../../src/core/code/store/index.js";
+import type { CodeStore } from "../../../src/core/code/store/types.js";
 import { open } from "../helpers.js";
 import { type FakeWorktree, fakeCounter, pass, policyOn, worktree } from "./helpers.js";
 

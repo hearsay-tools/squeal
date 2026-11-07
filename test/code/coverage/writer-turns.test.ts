@@ -1,7 +1,7 @@
 import { loadavg } from "node:os";
 import { monitorEventLoopDelay } from "node:perf_hooks";
 import { afterEach, describe, expect, it } from "vitest";
-import { createCoverageWriter } from "../../../src/core/code/coverage/index.js";
+import { createCoverageWriter } from "../../../src/core/code/coverage/writer.js";
 import { commonDir, ON } from "../helpers.js";
 import { type PayloadSet, payloads, TS_WORKER } from "./payloads.js";
 

@@ -1,9 +1,12 @@
 import { existsSync, rmSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { readRetries } from "../../src/core/retry/index.js";
-import { formatCheck } from "../../src/core/state/index.js";
-import { formatFailures, formatWhy, readFailures, readWhy } from "../../src/core/status/index.js";
-import type { AbsolutePath, FailuresReport, WhyReport } from "../../src/core/types/index.js";
+import { readRetries } from "../../src/core/retry/records.js";
+import { formatCheck } from "../../src/core/state/check-name.js";
+import { formatFailures, readFailures } from "../../src/core/status/failures.js";
+import { formatWhy } from "../../src/core/status/format-why.js";
+import { readWhy } from "../../src/core/status/why.js";
+import type { AbsolutePath } from "../../src/core/types/common.js";
+import type { FailuresReport, WhyReport } from "../../src/core/types/status.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { SLOW } from "./cleanup.js";
 import { addWorktree, openRepoStore } from "./repo.js";

@@ -3,12 +3,8 @@ import {
   focusedMetaKey,
   readFocused,
 } from "../../src/core/scheduler/focused-row.js";
-import type {
-  FocusedFile,
-  RunOptions,
-  RunReport,
-  TestFileRef,
-} from "../../src/core/types/index.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import type { FocusedFile, RunOptions, RunReport } from "../../src/core/types/runner.js";
 import { focusedTexts, holdsCheckText } from "../../src/runners/focus.js";
 import type { CatchUpRun, CatchUpSide } from "./catch-up-fixture.js";
 

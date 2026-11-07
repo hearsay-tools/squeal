@@ -1,17 +1,18 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { createDelivery, formatDelta, formatRegistration } from "../../src/core/delivery/index.js";
+import { createDelivery } from "../../src/core/delivery/delivery.js";
+import { formatDelta, formatRegistration } from "../../src/core/delivery/format.js";
 import { registeredMetaKey } from "../../src/core/delivery/registered.js";
-import { createStateSink } from "../../src/core/state/index.js";
+import { createStateSink } from "../../src/core/state/sink.js";
+import type { CheckError } from "../../src/core/types/check.js";
 import type {
-  CheckError,
   Consumer,
   Delta,
   HarnessDelivery,
-  ResultRecord,
-  StateSink,
-  Store,
   TransitionEntry,
-} from "../../src/core/types/index.js";
+} from "../../src/core/types/delivery.js";
+import type { StateSink } from "../../src/core/types/state.js";
+import type { Store } from "../../src/core/types/store.js";
+import type { ResultRecord } from "../../src/core/types/store-records.js";
 import { withLoad } from "../../src/runners/vitest/results.js";
 import { check, FILE, freshStore, OTHER, result, setKey, WT } from "../state/helpers.js";
 import { fixedStatus, liveDaemon } from "./fakes.js";

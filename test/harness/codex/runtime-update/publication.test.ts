@@ -3,13 +3,10 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { pinFile, readCurrent } from "../../../../src/harness/codex/adapter/layout.js";
 import { checkRoot } from "../../../../src/harness/codex/adapter/manifest.js";
+import { publishRuntime } from "../../../../src/harness/codex/adapter/publish.js";
 import { selectCurrent } from "../../../../src/harness/codex/adapter/selection.js";
-import {
-  publishRuntime,
-  runtimeReadiness,
-  selectRuntime,
-} from "../../../../src/harness/codex/adapter/store.js";
-import { prepareRuntimeUpdate } from "../../../../src/harness/codex/runtime-release/index.js";
+import { runtimeReadiness, selectRuntime } from "../../../../src/harness/codex/adapter/store.js";
+import { prepareRuntimeUpdate } from "../../../../src/harness/codex/runtime-release/release.js";
 import { stagingDir } from "../../../../src/harness/codex/runtime-update/paths.js";
 import { updateRuntime } from "../../../../src/harness/codex/runtime-update/update.js";
 import { runtimeTree } from "../runtime-release/fixture.js";

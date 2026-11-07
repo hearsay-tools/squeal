@@ -1,15 +1,10 @@
 import { basename, dirname } from "node:path";
-import { testFileOf } from "../state/index.js";
-import type {
-  AbsolutePath,
-  CheckId,
-  KnownState,
-  Store,
-  WhyReport,
-  WhyRunLog,
-  WhyUnknownRun,
-  WorktreeId,
-} from "../types/index.js";
+import { testFileOf } from "../state/derive.js";
+import type { CheckId } from "../types/check.js";
+import type { AbsolutePath, WorktreeId } from "../types/common.js";
+import type { KnownState } from "../types/state.js";
+import type { WhyReport, WhyRunLog, WhyUnknownRun } from "../types/status.js";
+import type { Store } from "../types/store.js";
 
 /*
  * Row 011-108 (gh-74; 011 C6 and C7 as amended): `why` names the run behind

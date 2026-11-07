@@ -1,11 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
-import {
-  isStoreOpenFailure,
-  META_STORE_RECOVERED,
-  openStore,
-  storePaths,
-} from "../../src/core/store/index.js";
+import { isStoreOpenFailure, META_STORE_RECOVERED, openStore } from "../../src/core/store/open.js";
+import { storePaths } from "../../src/core/store/paths.js";
 import { spawnWorker } from "./child/spawn.js";
 import { fakeCommonDir, open } from "./helpers.js";
 

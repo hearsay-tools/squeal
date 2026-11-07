@@ -1,12 +1,9 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import {
-  type DaemonNote,
-  notesMetaKey,
-  type Store,
-  type TestCheckId,
-} from "../../src/core/types/index.js";
+import type { TestCheckId } from "../../src/core/types/check.js";
+import { type DaemonNote, notesMetaKey } from "../../src/core/types/scheduler.js";
+import type { Store } from "../../src/core/types/store.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { SLOW } from "./cleanup.js";
 import { ALL_TEST_FILES, createRepo, openRepoStore } from "./repo.js";

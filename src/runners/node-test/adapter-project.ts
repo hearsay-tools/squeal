@@ -1,24 +1,21 @@
 import { basename, join } from "node:path";
-import { compare, sameList, toAbsolute } from "../../core/fs/index.js";
+import { compare, sameList } from "../../core/fs/compare.js";
+import { toAbsolute } from "../../core/fs/paths.js";
 import { isInputList } from "../../core/keys/closure.js";
 import { createInputMatcher } from "../../core/keys/glob.js";
-import {
-  type AbsolutePath,
-  isGroupLane,
-  type NodeTestProject,
-  type PolicyInputs,
-  type RelativePath,
-  type RunnerAdapter,
-  type RunReport,
-  type TestFileRef,
-} from "../../core/types/index.js";
+import type { AbsolutePath, RelativePath } from "../../core/types/common.js";
+import type { TestFileRef } from "../../core/types/keys.js";
+import type { NodeTestProject, PolicyInputs } from "../../core/types/policy.js";
+import type { RunnerAdapter, RunReport } from "../../core/types/runner.js";
+import { isGroupLane } from "../../core/types/scheduler.js";
 import { asyncLoaders, tokenizeNodeOptions } from "../process/node-options.js";
 import type { NodeTestAdapterOptions } from "./adapter.js";
 import { type NodeProbe, probeNode, projectEnvironment } from "./adapter-environment.js";
 import { listTestFiles } from "./adapter-files.js";
 import { ProjectCoverage } from "./coverage.js";
 import { enumerate } from "./enumerate.js";
-import { createNodeTestGraph, MANIFEST } from "./graph/index.js";
+import { MANIFEST } from "./graph/graph.js";
+import { createNodeTestGraph } from "./graph/index.js";
 import { projectEnv } from "./recorders.js";
 import { coveragePayloads } from "./run/coverage.js";
 import type { ObservedClosure } from "./run/observed.js";

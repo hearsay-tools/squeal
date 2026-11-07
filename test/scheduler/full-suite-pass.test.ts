@@ -2,14 +2,12 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createDaemonLoop, type DaemonLoop } from "../../src/core/daemon-loop/index.js";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
-import { storePaths } from "../../src/core/store/index.js";
-import {
-  DEFAULT_POLICY,
-  type Store,
-  type WatcherBackend,
-  type WorktreeId,
-} from "../../src/core/types/index.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
+import { storePaths } from "../../src/core/store/paths.js";
+import type { WorktreeId } from "../../src/core/types/common.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
+import type { Store } from "../../src/core/types/store.js";
+import type { WatcherBackend } from "../../src/core/types/watcher.js";
 import { createVitestAdapter } from "../../src/runners/vitest/index.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { busyWaits } from "./busy-fixture.js";

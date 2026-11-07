@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readRecount } from "../../../src/core/code/pass/index.js";
+import { readRecount } from "../../../src/core/code/pass/cursor.js";
 import { open } from "../helpers.js";
 import { fakeCounter, pass, policyOn, worktree } from "./helpers.js";
 

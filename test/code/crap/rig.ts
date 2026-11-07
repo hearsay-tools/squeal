@@ -1,34 +1,22 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import {
-  COVERAGE_PROVIDER_VERSION,
-  type CoverageSource,
-  encodeRecord,
-} from "../../../src/core/code/coverage/index.js";
-import {
-  type CoverageStepInput,
-  type LoaderCondition,
-  runCoverageStep,
-} from "../../../src/core/code/crap/index.js";
-import type { Counter } from "../../../src/core/code/pass/index.js";
+import { COVERAGE_PROVIDER_VERSION, encodeRecord } from "../../../src/core/code/coverage/record.js";
+import type { CoverageSource } from "../../../src/core/code/coverage/types.js";
+import type { LoaderCondition } from "../../../src/core/code/crap/loaders.js";
+import { type CoverageStepInput, runCoverageStep } from "../../../src/core/code/crap/step.js";
 import type { PassContext } from "../../../src/core/code/pass/pass.js";
-import type { CodeStore } from "../../../src/core/code/store/index.js";
+import type { Counter } from "../../../src/core/code/pass/types.js";
+import type { CodeStore } from "../../../src/core/code/store/types.js";
 import { codeSource } from "../../../src/core/delivery/code-source.js";
-import {
-  createDelivery,
-  formatDelta,
-  formatRegistration,
-} from "../../../src/core/delivery/index.js";
+import { createDelivery } from "../../../src/core/delivery/delivery.js";
+import { formatDelta, formatRegistration } from "../../../src/core/delivery/format.js";
+import type { RunOutcome } from "../../../src/core/types/check.js";
 import type { CodeMeasure } from "../../../src/core/types/code.js";
-import {
-  type ClosureIndex,
-  type Consumer,
-  DEFAULT_POLICY,
-  type Policy,
-  type RunOutcome,
-  type Store,
-  type TestFileRef,
-} from "../../../src/core/types/index.js";
+import type { Consumer } from "../../../src/core/types/delivery.js";
+import type { TestFileRef } from "../../../src/core/types/keys.js";
+import { DEFAULT_POLICY, type Policy } from "../../../src/core/types/policy.js";
+import type { ClosureIndex } from "../../../src/core/types/scheduler.js";
+import type { Store } from "../../../src/core/types/store.js";
 import { fixedStatus } from "../../delivery/fakes.js";
 import { freshStore, result, WT } from "../../state/helpers.js";
 import { commonDir, open } from "../helpers.js";

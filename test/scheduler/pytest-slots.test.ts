@@ -4,7 +4,7 @@ import { loadavg, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { describe, expect, it, onTestFinished, type TestContext } from "vitest";
 import { createPytestRunners } from "../../src/core/daemon/pytest-runners.js";
-import type { AbsolutePath } from "../../src/core/types/index.js";
+import type { AbsolutePath } from "../../src/core/types/common.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { findPython, pythonEnv } from "../helpers/pytest-env.js";
 import { createRepo, openRepoStore } from "./repo.js";

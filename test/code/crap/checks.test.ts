@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { coverageChecks } from "../../../src/core/code/crap/checks.js";
 import {
-  coverageChecks,
   readCoverageChange,
   readEvidence,
   readSummary,
-} from "../../../src/core/code/crap/index.js";
-import { DEFAULT_POLICY } from "../../../src/core/types/index.js";
+} from "../../../src/core/code/crap/summary.js";
+import { DEFAULT_POLICY } from "../../../src/core/types/policy.js";
 import { WT } from "../../state/helpers.js";
 import { type CoverageRig, consumer, coverageRig, sourceOf } from "./rig.js";
 

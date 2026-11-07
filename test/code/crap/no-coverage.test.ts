@@ -1,10 +1,7 @@
 import { describe, expect, it } from "vitest";
-import {
-  crapScore,
-  RECORD_WAIT_MS,
-  readSummary,
-  writeSummary,
-} from "../../../src/core/code/crap/index.js";
+import { RECORD_WAIT_MS } from "../../../src/core/code/crap/loaders.js";
+import { crapScore } from "../../../src/core/code/crap/score.js";
+import { readSummary, writeSummary } from "../../../src/core/code/crap/summary.js";
 import { WT } from "../../state/helpers.js";
 import { type CoverageRig, coverageRig, sourceOf } from "./rig.js";
 

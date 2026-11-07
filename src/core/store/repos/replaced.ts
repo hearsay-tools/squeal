@@ -1,11 +1,7 @@
-import { isRecord } from "../../fs/index.js";
-import type {
-  CheckKey,
-  EpochMs,
-  FailingRow,
-  ReplacedFailure,
-  ResultRecord,
-} from "../../types/index.js";
+import { isRecord } from "../../fs/json.js";
+import type { EpochMs } from "../../types/common.js";
+import type { CheckKey } from "../../types/keys.js";
+import type { FailingRow, ReplacedFailure, ResultRecord } from "../../types/store-records.js";
 import { CHECK_COLUMNS, checkParams, strOrNull, toResult } from "../codec.js";
 import type { Connection } from "../connection.js";
 import { readMetaList, writeMetaList } from "./meta-list.js";

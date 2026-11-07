@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { createDelivery } from "../../src/core/delivery/index.js";
-import { createStatusBuilder, readStatus } from "../../src/core/status/index.js";
+import { createDelivery } from "../../src/core/delivery/delivery.js";
+import { createStatusBuilder, readStatus } from "../../src/core/status/snapshot.js";
 import { check, fakeRepo, seedStore, state } from "./helpers.js";
 
 const NOW = Date.UTC(2026, 9, 4, 12, 0, 0);

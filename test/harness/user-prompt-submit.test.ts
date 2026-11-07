@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { readTurn } from "../../src/core/delivery/turn.js";
-import { type HookDeps, type HookResult, runHook } from "../../src/harness/claude-code/index.js";
+import { runHook } from "../../src/harness/claude-code/hooks.js";
+import type { HookResult } from "../../src/harness/claude-code/run.js";
+import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { codeOff } from "../helpers/policy.js";
 import { fakeRepo } from "../status/helpers.js";
 import { recorded, squealRepo } from "./helpers.js";

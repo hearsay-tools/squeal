@@ -1,9 +1,9 @@
 import { pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { observeRecorder } from "../../../src/runners/observe/index.js";
+import { WorktreePaths } from "../../../src/core/fs/worktree-paths.js";
+import { observeRecorder } from "../../../src/runners/observe/runtime.js";
 import { UNOBSERVED } from "../../../src/runners/process/recorders.js";
 import { VitestObserver } from "../../../src/runners/vitest/observe.js";
-import { WorktreePaths } from "../../../src/runners/vitest/paths.js";
 
 /*
  * Task 001-431, spec 001 D11 Fidelity: an instance that does not observe adds

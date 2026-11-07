@@ -1,8 +1,9 @@
 import { existsSync, readFileSync, rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { Worker } from "node:worker_threads";
-import type { ObjectFormat } from "../../hash/index.js";
-import type { AbsolutePath, TestFileRef } from "../../types/index.js";
+import type { ObjectFormat } from "../../hash/blob.js";
+import type { AbsolutePath } from "../../types/common.js";
+import type { TestFileRef } from "../../types/keys.js";
 import { ownRecord } from "./own.js";
 import type { Pace } from "./pace.js";
 import { type SharedRecord, shareRecord } from "./parts.js";

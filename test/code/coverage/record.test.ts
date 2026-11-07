@@ -3,17 +3,16 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { Counts } from "../../../src/core/code/coverage/ranges.js";
 import {
   buildRecord,
-  type CoveredFile,
   decodeRecord,
   encodeRecord,
   hasLine,
-  type V8Script,
-} from "../../../src/core/code/coverage/index.js";
-import { Counts } from "../../../src/core/code/coverage/ranges.js";
+} from "../../../src/core/code/coverage/record.js";
 import { decodeMappings } from "../../../src/core/code/coverage/sourcemap.js";
-import { blobHash } from "../../../src/core/hash/index.js";
+import type { CoveredFile, V8Script } from "../../../src/core/code/coverage/types.js";
+import { blobHash } from "../../../src/core/hash/blob.js";
 
 /* Spec 015 D8 (row 015-11): mapping a V8 payload to a test file's record. */
 

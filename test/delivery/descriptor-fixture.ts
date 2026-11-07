@@ -3,21 +3,19 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach } from "vitest";
 import { readHead } from "../../src/core/daemon-loop/head.js";
-import { headerLines, readLiveHeader } from "../../src/core/delivery/index.js";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
-import { createFsHasher } from "../../src/core/hash/index.js";
-import { type HeadState, statCandidates } from "../../src/core/revision/index.js";
+import { headerLines } from "../../src/core/delivery/header.js";
+import { readLiveHeader } from "../../src/core/delivery/liveness.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
+import { createFsHasher } from "../../src/core/hash/hasher.js";
+import { type HeadState, statCandidates } from "../../src/core/revision/reconcile.js";
 import { IgnoredMarks } from "../../src/core/scheduler/ignored-marks.js";
 import { WorktreeKeys } from "../../src/core/scheduler/keying.js";
-import { isStoreOpenFailure, openStore } from "../../src/core/store/index.js";
-import {
-  DEFAULT_POLICY,
-  type Policy,
-  type RevisionNumber,
-  type RunnerEnvironment,
-  type Store,
-  type TestFileRef,
-} from "../../src/core/types/index.js";
+import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
+import type { RevisionNumber } from "../../src/core/types/common.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import { DEFAULT_POLICY, type Policy } from "../../src/core/types/policy.js";
+import type { RunnerEnvironment } from "../../src/core/types/runner.js";
+import type { Store } from "../../src/core/types/store.js";
 import { git } from "../hash/git-repo.js";
 
 /*

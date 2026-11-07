@@ -1,7 +1,8 @@
-import { testFileId } from "../core/keys/index.js";
-import { testFileKeyOf } from "../core/state/index.js";
-import { formatCheck } from "../core/status/index.js";
-import type { NextStep, Standing } from "../core/status/next-step.js";
+import { testFileId } from "../core/keys/reverse-index.js";
+import { formatCheck } from "../core/state/check-name.js";
+import { testFileKeyOf } from "../core/state/derive.js";
+import type { FileClass } from "../core/state/file-class.js";
+import type { NextStep } from "../core/status/next-step.js";
 import {
   fill,
   fromBase,
@@ -9,22 +10,16 @@ import {
   stepCommand,
   stepText,
 } from "../core/status/next-step-text.js";
+import type { NamedFile, NamedVerdict } from "../core/status/standing.js";
 import { groupId, widest } from "../core/status/standing-groups.js";
 import { atText } from "../core/status/test-frame.js";
 import { plural, testFileText } from "../core/text.js";
-import type {
-  BatchPlace,
-  FileEnd,
-  LastYield,
-  PoolWait,
-  StatusSnapshot,
-  TestFileRef,
-} from "../core/types/index.js";
+import type { TestFileRef } from "../core/types/keys.js";
+import type { BatchPlace, FileEnd, LastYield, PoolWait, Standing } from "../core/types/standing.js";
+import type { StatusSnapshot } from "../core/types/status.js";
 import { fileEndId, withFileEnd } from "./named-file-end.js";
-import type { NamedFile, NamedVerdict } from "./named-files.js";
 import type { NamedSelection } from "./named-selection.js";
 import { namedStep, retriedId } from "./named-step.js";
-import type { FileClass } from "./verdict.js";
 
 /*
  * Task 011-12 (011 C15, issues 17 and 23): the text a named wait gives each

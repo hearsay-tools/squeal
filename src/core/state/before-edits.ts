@@ -1,14 +1,11 @@
-import { isRecord } from "../fs/index.js";
-import { testFileId } from "../keys/index.js";
-import type {
-  BeforeEdits,
-  CheckId,
-  CheckKey,
-  RevisionNumber,
-  Store,
-  WorktreeId,
-} from "../types/index.js";
-import { worktreeMetaKey } from "../types/index.js";
+import { isRecord } from "../fs/json.js";
+import { testFileId } from "../keys/reverse-index.js";
+import type { CheckId } from "../types/check.js";
+import type { RevisionNumber, WorktreeId } from "../types/common.js";
+import type { BeforeEdits } from "../types/delivery.js";
+import type { CheckKey } from "../types/keys.js";
+import type { Store } from "../types/store.js";
+import { worktreeMetaKey } from "../types/store.js";
 import { checkIdentity, testFileOf } from "./derive.js";
 
 /*

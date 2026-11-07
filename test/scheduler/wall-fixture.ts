@@ -3,19 +3,15 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { onTestFinished } from "vitest";
 import { readHead } from "../../src/core/daemon-loop/head.js";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
-import { createScheduler } from "../../src/core/scheduler/index.js";
-import { isStoreOpenFailure, openStore, storePaths } from "../../src/core/store/index.js";
-import {
-  DEFAULT_POLICY,
-  type Policy,
-  type RunnerAdapter,
-  type RunOptions,
-  type RunReport,
-  type Scheduler,
-  type Store,
-  type TestFileRef,
-} from "../../src/core/types/index.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
+import { createScheduler } from "../../src/core/scheduler/scheduler.js";
+import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
+import { storePaths } from "../../src/core/store/paths.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import { DEFAULT_POLICY, type Policy } from "../../src/core/types/policy.js";
+import type { RunnerAdapter, RunOptions, RunReport } from "../../src/core/types/runner.js";
+import type { Scheduler } from "../../src/core/types/scheduler.js";
+import type { Store } from "../../src/core/types/store.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { claimRepo, fileName } from "./claims-fixture.js";
 import { RecordingSink } from "./recording-sink.js";

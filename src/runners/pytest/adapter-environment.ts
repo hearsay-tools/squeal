@@ -1,15 +1,13 @@
 import { existsSync } from "node:fs";
 import { join, relative, resolve, sep } from "node:path";
-import { compare, toRelative } from "../../core/fs/index.js";
-import type {
-  AbsolutePath,
-  InvalidatedPath,
-  PytestProject,
-  RelativePath,
-  RunnerEnvironment,
-} from "../../core/types/index.js";
+import { compare } from "../../core/fs/compare.js";
+import { toRelative } from "../../core/fs/paths.js";
+import type { AbsolutePath, RelativePath } from "../../core/types/common.js";
+import type { PytestProject } from "../../core/types/policy.js";
+import type { InvalidatedPath, RunnerEnvironment } from "../../core/types/runner.js";
 import { slashes } from "./adapter-files.js";
-import { discoverEnvironment, type PytestEnvironment, projectDir } from "./environment/index.js";
+import { discoverEnvironment, projectDir } from "./environment/discover.js";
+import type { PytestEnvironment } from "./environment/index.js";
 import { listOptional, sitePackagesDir } from "./environment/site.js";
 
 /** `runnerVersion` while the environment is not `ready`: no stored result was produced under it. */

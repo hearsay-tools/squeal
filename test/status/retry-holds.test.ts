@@ -1,16 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { askRetry, claimRetries, endRetries } from "../../src/core/retry/index.js";
+import { askRetry, claimRetries, endRetries } from "../../src/core/retry/records.js";
 import { publishSlowActivity } from "../../src/core/slow/state.js";
-import { formatStatus, readStatus } from "../../src/core/status/index.js";
+import { formatStatus } from "../../src/core/status/format-status.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
 import { timeText } from "../../src/core/text.js";
-import type {
-  CheckKey,
-  EpochMs,
-  OutstandingGroup,
-  RetryWait,
-  SlowTierActivity,
-  StatusSnapshot,
-} from "../../src/core/types/index.js";
+import type { EpochMs } from "../../src/core/types/common.js";
+import type { CheckKey } from "../../src/core/types/keys.js";
+import type { OutstandingGroup, RetryWait } from "../../src/core/types/standing.js";
+import type { SlowTierActivity, StatusSnapshot } from "../../src/core/types/status.js";
 import { check, state } from "./helpers.js";
 import { FAST, keys, NOW, SLOW_A, SLOW_B, seed } from "./slow-tier-seed.js";
 

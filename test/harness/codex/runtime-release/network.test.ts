@@ -1,16 +1,18 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { DEFAULT_RUNTIME_LIMITS } from "../../../../src/harness/codex/runtime-release/artifact.js";
 import {
-  DEFAULT_RUNTIME_LIMITS,
-  LATEST_RELEASE_URL,
-  prepareRuntimeUpdate,
-  type ReleaseTransport,
   RUNTIME_ARTIFACT_ASSET,
   RUNTIME_DESCRIPTOR_ASSET,
-  type RuntimeReleaseErrorCode,
+} from "../../../../src/harness/codex/runtime-release/descriptor.js";
+import type { RuntimeReleaseErrorCode } from "../../../../src/harness/codex/runtime-release/errors.js";
+import {
+  LATEST_RELEASE_URL,
+  prepareRuntimeUpdate,
   releaseAssetUrl,
-} from "../../../../src/harness/codex/runtime-release/index.js";
+} from "../../../../src/harness/codex/runtime-release/release.js";
+import type { ReleaseTransport } from "../../../../src/harness/codex/runtime-release/transport.js";
 import { tempDir } from "../../../store/helpers.js";
 import { put, rejection, snapshot } from "./fixture.js";
 import { publish, type ReleaseServer, releaseServer, send, stall, stream } from "./server.js";

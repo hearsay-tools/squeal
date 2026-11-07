@@ -1,5 +1,6 @@
 import { dirname } from "node:path";
-import type { AbsolutePath, WatchSpec } from "../types/index.js";
+import type { AbsolutePath } from "../types/common.js";
+import type { WatchSpec } from "../types/watcher.js";
 
 /**
  * Answers "is this absolute path excluded by the spec?" in O(depth): a path is

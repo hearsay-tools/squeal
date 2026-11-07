@@ -1,8 +1,9 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { observedMetaKey } from "../../src/core/keys/index.js";
-import { DEFAULT_POLICY, type Policy, type TestFileRef } from "../../src/core/types/index.js";
+import { observedMetaKey } from "../../src/core/keys/observed.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import { DEFAULT_POLICY, type Policy } from "../../src/core/types/policy.js";
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { SLOW } from "./cleanup.js";

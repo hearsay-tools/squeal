@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
-import type { FailuresReport, ResultRecord, Store } from "../../src/core/types/index.js";
+import type { FailuresReport } from "../../src/core/types/status.js";
+import type { Store } from "../../src/core/types/store.js";
+import type { ResultRecord } from "../../src/core/types/store-records.js";
 import { check, fakeRepo, seedStore } from "../status/helpers.js";
 import { result } from "../store/helpers.js";
 import { keyTestFiles } from "./failures-keys.js";

@@ -1,4 +1,6 @@
-import type { AbsolutePath, EpochMs, Policy, Store } from "../../types/index.js";
+import type { AbsolutePath, EpochMs } from "../../types/common.js";
+import type { Policy } from "../../types/policy.js";
+import type { Store } from "../../types/store.js";
 import { isCodeStoreOpenFailure, openCodeStore } from "./open.js";
 import type { CodePruneReport } from "./types.js";
 

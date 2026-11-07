@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
 import { socketPathFor } from "../../src/core/daemon/paths.js";
-import type { RevisionNumber } from "../../src/core/types/index.js";
+import type { RevisionNumber } from "../../src/core/types/common.js";
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import type { CatchUpSide } from "../scheduler/catch-up-fixture.js";

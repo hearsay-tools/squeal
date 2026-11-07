@@ -8,14 +8,13 @@ import {
   type HostCpu,
   type TreeCpu,
 } from "../../src/core/capacity/cores.js";
+import { type PoolMark, writeMark } from "../../src/core/capacity/marks.js";
 import {
   createPermitPool,
   HOST_WINDOW_MIN_MS,
   type PermitPool,
-  type PoolMark,
-  writeMark,
-} from "../../src/core/capacity/index.js";
-import { SLOT_WAITER_FRESH_MS } from "../../src/core/slow/index.js";
+} from "../../src/core/capacity/pool.js";
+import { SLOT_WAITER_FRESH_MS } from "../../src/core/slow/slot-files.js";
 
 /*
  * 011 C10 Size as amended 2026-10-24 (row 011-182): for a backlog tier, the

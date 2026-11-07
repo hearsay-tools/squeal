@@ -5,7 +5,8 @@ import { describe, expect, it } from "vitest";
 import type { Vitest } from "vitest/node";
 import { exposeGc } from "../../../src/core/daemon/idle-gc.js";
 import { withSlowInstance } from "../../../src/core/daemon/slow-instance.js";
-import { type InvalidatedPath, SLOW_LANE_PREFIX } from "../../../src/core/types/index.js";
+import { WorktreePaths } from "../../../src/core/fs/worktree-paths.js";
+import { type InvalidatedPath, SLOW_LANE_PREFIX } from "../../../src/core/types/runner.js";
 import { VitestAdapter } from "../../../src/runners/vitest/adapter.js";
 import {
   closedTargets,
@@ -13,7 +14,6 @@ import {
   emptyClosed,
 } from "../../../src/runners/vitest/empty-closed.js";
 import { loadVitest, type VitestNode } from "../../../src/runners/vitest/load.js";
-import { WorktreePaths } from "../../../src/runners/vitest/paths.js";
 import { RunCollector } from "../../../src/runners/vitest/reporter.js";
 import { abandon } from "../../../src/runners/vitest/run.js";
 import { openFixture, outcomes, ref, SLOW } from "./helpers.js";

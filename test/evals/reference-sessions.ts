@@ -10,7 +10,7 @@ import {
   regradeAtomic,
   type ServiceStart,
 } from "../../evals/lib/index.mjs";
-import type { StatusSnapshot } from "../../src/core/types/index.js";
+import type { StatusSnapshot } from "../../src/core/types/status.js";
 import { settled } from "./status-snapshot.js";
 
 // Spec 006 Testing, "Reference sessions": synthetic Codex or Claude Code sessions of an agent

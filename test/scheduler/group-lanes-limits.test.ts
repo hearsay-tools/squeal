@@ -3,7 +3,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
 import { readDaemonNotes } from "../../src/core/notes.js";
 import { readGroupActivity, readSlowActivity } from "../../src/core/slow/state.js";
-import type { CheckGroup } from "../../src/core/types/index.js";
+import type { CheckGroup } from "../../src/core/types/check-groups.js";
 import type { CatchUpRun } from "./catch-up-fixture.js";
 import { allCurrent, groupPolicy, groupSide, ranPaths, tierLog } from "./group-lanes-fixture.js";
 

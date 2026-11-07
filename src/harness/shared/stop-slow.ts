@@ -1,14 +1,17 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { readPolicy } from "../../core/daemon/policy.js";
 import { squealVersion } from "../../core/daemon/version.js";
-import { readLiveHeader } from "../../core/delivery/index.js";
+import { readLiveHeader } from "../../core/delivery/liveness.js";
 import { countStopHold, readStopHolds, readTurn, startTurn } from "../../core/delivery/turn.js";
-import { recordStopWait, requestGroups, type StopWaitHarness } from "../../core/slow/index.js";
-import { type StopRequired, stopRequired, toKnownFailure } from "../../core/state/index.js";
-import { readTransaction } from "../../core/store/index.js";
-import type { EpochMs, KnownFailure, StatusHeader } from "../../core/types/index.js";
+import { recordStopWait, requestGroups, type StopWaitHarness } from "../../core/slow/stop-wait.js";
+import { toKnownFailure } from "../../core/state/header.js";
+import { type StopRequired, stopRequired } from "../../core/state/required.js";
+import { readTransaction } from "../../core/store/store.js";
+import type { EpochMs } from "../../core/types/common.js";
+import type { KnownFailure, StatusHeader } from "../../core/types/status.js";
+import { HOOK_TIMEOUT_MS } from "../../core/types/store-records.js";
 import type { ConsumerInput, HookContext, HookLocation } from "./context.js";
-import { HOOK_TIMEOUT_MS, type HookDeps, isRegistered, withContext } from "./hook.js";
+import { type HookDeps, isRegistered, withContext } from "./hook.js";
 import { unchangedSinceRegistration } from "./no-edit.js";
 import { newsText } from "./stop.js";
 import {
@@ -31,7 +34,7 @@ import { statusText } from "./text.js";
  */
 export const STOP_SLOW_HOOK_TIMEOUT_S = 3_600;
 
-export { STOP_SLOW_WAIT_CAP_MS } from "../../core/slow/index.js";
+export { STOP_SLOW_WAIT_CAP_MS } from "../../core/slow/stop-wait.js";
 
 /**
  * How long the waiting entry waits for the 2 s Stop entry beside it to end

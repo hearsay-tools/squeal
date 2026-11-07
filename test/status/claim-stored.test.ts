@@ -1,14 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { formatStatus, readStatus } from "../../src/core/status/index.js";
+import { formatStatus } from "../../src/core/status/format-status.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
 import { readNamedFiles } from "../../src/core/status/standing.js";
 import { timeText } from "../../src/core/text.js";
-import type {
-  CheckKey,
-  RevisionNumber,
-  StatusSnapshot,
-  Store,
-  WorktreeId,
-} from "../../src/core/types/index.js";
+import type { RevisionNumber, WorktreeId } from "../../src/core/types/common.js";
+import type { CheckKey } from "../../src/core/types/keys.js";
+import type { StatusSnapshot } from "../../src/core/types/status.js";
+import type { Store } from "../../src/core/types/store.js";
 import { C, NOW, ref, repoWith } from "../cli/status-wait-fixture.js";
 import { result } from "../store/helpers.js";
 import { check } from "./helpers.js";

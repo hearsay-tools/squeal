@@ -2,16 +2,14 @@ import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
-import {
-  createDelivery,
-  dropLeft,
-  lastDeparture,
-  leavingMarks,
-} from "../../src/core/delivery/index.js";
+import { createDelivery } from "../../src/core/delivery/delivery.js";
+import { dropLeft, lastDeparture } from "../../src/core/delivery/expiry.js";
+import { leavingMarks } from "../../src/core/delivery/leaving.js";
 import { slot } from "../../src/core/delivery/slots.js";
-import { storePaths } from "../../src/core/store/index.js";
-import { LEAVING_GRACE_MS } from "../../src/core/types/index.js";
-import { type HookDeps, runHook } from "../../src/harness/claude-code/index.js";
+import { storePaths } from "../../src/core/store/paths.js";
+import { LEAVING_GRACE_MS } from "../../src/core/types/store-records.js";
+import { runHook } from "../../src/harness/claude-code/hooks.js";
+import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { fixedStatus } from "../delivery/fakes.js";
 import { FILE } from "../state/helpers.js";
 import { recorded, type SquealRepo, SUBAGENT, squealRepo } from "./helpers.js";

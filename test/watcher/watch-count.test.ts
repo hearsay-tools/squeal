@@ -2,8 +2,8 @@ import { spawn } from "node:child_process";
 import { mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { createWatcherBackend } from "../../src/core/watcher/backend.js";
 import { type ChangeFeed, createChangeFeed } from "../../src/core/watcher/change-feed.js";
-import { createWatcherBackend } from "../../src/core/watcher/index.js";
 import { delay, git, makeRepo, PausableBackend, waitFor } from "./helpers.js";
 
 /** Inotify watches this process holds: one `inotify wd:` line per watched inode. */

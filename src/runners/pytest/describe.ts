@@ -1,6 +1,8 @@
 import { realpathSync } from "node:fs";
 import { join, resolve } from "node:path";
-import type { AbsolutePath, PytestProject, TestFileRef } from "../../core/types/index.js";
+import type { AbsolutePath } from "../../core/types/common.js";
+import type { TestFileRef } from "../../core/types/keys.js";
+import type { PytestProject } from "../../core/types/policy.js";
 import type { CoveredProject, Listing, RunnerDescription } from "../descriptions.js";
 import { discoverEnvironment, projectDir } from "./environment/discover.js";
 

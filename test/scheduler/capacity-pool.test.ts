@@ -4,15 +4,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { describe, expect, it, onTestFinished } from "vitest";
-import { createPermitPool, readMarks } from "../../src/core/capacity/index.js";
+import { readMarks } from "../../src/core/capacity/marks.js";
+import { createPermitPool } from "../../src/core/capacity/pool.js";
 import { CAPACITY_RECHECK_MS } from "../../src/core/scheduler/capacity.js";
-import type {
-  NodeTestProject,
-  RunOptions,
-  Store,
-  TestFileRef,
-  WorktreeId,
-} from "../../src/core/types/index.js";
+import type { WorktreeId } from "../../src/core/types/common.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import type { NodeTestProject } from "../../src/core/types/policy.js";
+import type { RunOptions } from "../../src/core/types/runner.js";
+import type { Store } from "../../src/core/types/store.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { SLOW } from "./cleanup.js";
 import { openHarness } from "./node-test-harness.js";

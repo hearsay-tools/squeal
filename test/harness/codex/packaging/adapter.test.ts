@@ -4,8 +4,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { hookHashes, PLUGIN_KEY_SOURCE } from "../../../../src/cli/codex/hash.js";
 import { readPluginHooks } from "../../../../src/cli/codex/launcher.js";
 import { LAUNCHER_COPY, LAUNCHER_SOURCE, REPO_ROOT } from "../../../../src/harness/build.js";
-import { ADAPTER_HOOKS } from "../../../../src/harness/codex/adapter/index.js";
-import { publishRuntime } from "../../../../src/harness/codex/adapter/store.js";
+import { RUNTIME_HOOKS as ADAPTER_HOOKS } from "../../../../src/harness/codex/adapter/manifest.js";
+import { publishRuntime } from "../../../../src/harness/codex/adapter/publish.js";
 import { CODEX_DESCRIPTION, CODEX_PLUGIN_DIR } from "../../../../src/harness/codex/build.js";
 import {
   buildCodexAdapter,

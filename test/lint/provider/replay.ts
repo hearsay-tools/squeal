@@ -7,7 +7,7 @@ import type {
   LintRefresh,
   LintRunReport,
   LintSnapshot,
-} from "../../../src/core/lint/provider/index.js";
+} from "../../../src/core/lint/pass/provider.js";
 import { cli, FIXTURES, type Major, onDisk, project, provider } from "./helpers.js";
 import { NESTED_CONFIG, Replay, SOURCES } from "./schedule.js";
 

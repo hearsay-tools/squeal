@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { requestDaemon } from "../../src/core/daemon/client.js";
 import { createDaemonServer, type DaemonServer } from "../../src/core/daemon/server.js";
-import { PAYLOAD_SCHEMA_VERSION } from "../../src/core/types/index.js";
+import { PAYLOAD_SCHEMA_VERSION } from "../../src/core/types/common.js";
 
 /*
  * Board row 001-77: socket paths are keyed by the root path alone, so a

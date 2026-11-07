@@ -3,14 +3,15 @@ import { join } from "node:path";
 import { pruneVersions } from "../../shared/version-copies.js";
 import { isNewer, runtimeRoot } from "../adapter/layout.js";
 import { checkRoot, RuntimeError } from "../adapter/manifest.js";
-import { publishRuntime, runtimeReadiness } from "../adapter/store.js";
+import { publishRuntime } from "../adapter/publish.js";
+import { runtimeReadiness } from "../adapter/store.js";
+import { RuntimeReleaseError } from "../runtime-release/errors.js";
 import {
   DEFAULT_RELEASE_TIMEOUT_MS,
   prepareRuntimeUpdate,
-  type ReleaseTransport,
-  RuntimeReleaseError,
   resolveRuntimeRelease,
-} from "../runtime-release/index.js";
+} from "../runtime-release/release.js";
+import type { ReleaseTransport } from "../runtime-release/transport.js";
 import { acquireLock } from "./lock.js";
 import { STAGED_PREFIX, stagingDir } from "./paths.js";
 import { isDue, readUpdateState, recordCheck, type UpdateFailure } from "./state.js";

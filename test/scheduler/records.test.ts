@@ -1,14 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { recordsForFile } from "../../src/core/scheduler/records.js";
-import { describeFailure } from "../../src/core/state/index.js";
-import type {
-  CheckError,
-  CheckId,
-  Provenance,
-  RunReport,
-  TestCheckId,
-  TestFileRef,
-} from "../../src/core/types/index.js";
+import { describeFailure } from "../../src/core/state/fingerprint.js";
+import type { CheckError, CheckId, TestCheckId } from "../../src/core/types/check.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import type { RunReport } from "../../src/core/types/runner.js";
+import type { Provenance } from "../../src/core/types/store-records.js";
 
 const file: TestFileRef = { project: "", path: "test/a.test.ts" };
 const other: TestFileRef = { project: "", path: "test/b.test.ts" };

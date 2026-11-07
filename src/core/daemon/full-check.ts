@@ -2,18 +2,12 @@ import { spawn } from "node:child_process";
 import { setPriority } from "node:os";
 import { setTimeout as sleep } from "node:timers/promises";
 import { argv0For, storeCheckLabel } from "../process-label.js";
-import {
-  BUSY_SLICE_MS,
-  busyBackoffMs,
-  isBusy,
-  isCorruption,
-  META_FULL_CHECK,
-  markStore,
-  type StoreMark,
-  storePaths,
-  withBusySliceSync,
-} from "../store/index.js";
-import type { AbsolutePath, EpochMs, Store } from "../types/index.js";
+import { BUSY_SLICE_MS, busyBackoffMs } from "../store/busy.js";
+import { isBusy, withBusySliceSync } from "../store/connection.js";
+import { isCorruption, META_FULL_CHECK, markStore, type StoreMark } from "../store/open.js";
+import { storePaths } from "../store/paths.js";
+import type { AbsolutePath, EpochMs } from "../types/common.js";
+import type { Store } from "../types/store.js";
 import { TEST_NICE } from "./low-priority.js";
 import { DAEMON_START_BUSY_TIMEOUT_MS } from "./open.js";
 

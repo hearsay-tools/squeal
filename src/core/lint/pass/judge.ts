@@ -1,11 +1,5 @@
-import type {
-  CheckKey,
-  EpochMs,
-  FileHash,
-  RelativePath,
-  RevisionNumber,
-  WorktreeId,
-} from "../../types/index.js";
+import type { EpochMs, RelativePath, RevisionNumber, WorktreeId } from "../../types/common.js";
+import type { CheckKey, FileHash } from "../../types/keys.js";
 import type {
   LintChange,
   LintCheckId,

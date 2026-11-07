@@ -6,15 +6,13 @@ import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { currentUid, userTmpDir } from "../../src/core/daemon/paths.js";
+import { acquireSlowSlot, slowSlotDir, slowSlotHeld } from "../../src/core/slow/slot.js";
 import {
-  acquireSlowSlot,
   clearSlotWaiter,
   markSlotWaiter,
   othersWaitingForSlot,
   SLOT_WAITER_FRESH_MS,
-  slowSlotDir,
-  slowSlotHeld,
-} from "../../src/core/slow/index.js";
+} from "../../src/core/slow/slot-files.js";
 
 const register = fileURLToPath(new URL("../store/child/register-ts.mjs", import.meta.url));
 const slotModule = fileURLToPath(new URL("../../src/core/slow/slot.ts", import.meta.url));

@@ -4,23 +4,19 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { onTestFinished } from "vitest";
 import { readHead } from "../../src/core/daemon-loop/head.js";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
-import { createFsHasher } from "../../src/core/hash/index.js";
-import { statCandidates } from "../../src/core/revision/index.js";
-import { createScheduler, type SchedulerOptions } from "../../src/core/scheduler/index.js";
-import { isStoreOpenFailure, openStore, storePaths } from "../../src/core/store/index.js";
-import {
-  type CheckKey,
-  DEFAULT_POLICY,
-  type EpochMs,
-  type Policy,
-  type RunEnd,
-  type RunnerAdapter,
-  type RunReport,
-  type Scheduler,
-  type Store,
-  type TestFileRef,
-} from "../../src/core/types/index.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
+import { createFsHasher } from "../../src/core/hash/hasher.js";
+import { statCandidates } from "../../src/core/revision/reconcile.js";
+import type { SchedulerOptions } from "../../src/core/scheduler/options.js";
+import { createScheduler } from "../../src/core/scheduler/scheduler.js";
+import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
+import { storePaths } from "../../src/core/store/paths.js";
+import type { EpochMs } from "../../src/core/types/common.js";
+import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
+import { DEFAULT_POLICY, type Policy } from "../../src/core/types/policy.js";
+import type { RunEnd, RunnerAdapter, RunReport } from "../../src/core/types/runner.js";
+import type { Scheduler } from "../../src/core/types/scheduler.js";
+import type { Store } from "../../src/core/types/store.js";
 import { git } from "../hash/git-repo.js";
 import { RecordingSink } from "./recording-sink.js";
 

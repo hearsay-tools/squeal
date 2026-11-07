@@ -2,9 +2,9 @@ import { mkdirSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 import { CHECK_COLUMNS } from "../../src/core/store/codec.js";
-import { storePaths } from "../../src/core/store/index.js";
+import { storePaths } from "../../src/core/store/paths.js";
 import { MIGRATIONS } from "../../src/core/store/schema.js";
-import { worktreeMetaKey } from "../../src/core/types/index.js";
+import { worktreeMetaKey } from "../../src/core/types/store.js";
 import { fakeCommonDir, open, result, testCheck } from "./helpers.js";
 
 /*

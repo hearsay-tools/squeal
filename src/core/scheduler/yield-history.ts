@@ -1,5 +1,7 @@
-import { testFileId } from "../keys/index.js";
-import type { EpochMs, LastYield, TestFileRef, TierYield } from "../types/index.js";
+import { testFileId } from "../keys/reverse-index.js";
+import type { EpochMs } from "../types/common.js";
+import type { TestFileRef } from "../types/keys.js";
+import type { LastYield, TierYield } from "../types/standing.js";
 import type { Tier, TierFile } from "./tiers.js";
 import type { YieldRow } from "./yield-row.js";
 

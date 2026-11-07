@@ -1,8 +1,10 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { formatCheck, formatWhy, parseCheck, readWhy } from "../../src/core/status/index.js";
-import type { CheckId } from "../../src/core/types/index.js";
+import { formatCheck, parseCheck } from "../../src/core/state/check-name.js";
+import { formatWhy } from "../../src/core/status/format-why.js";
+import { readWhy } from "../../src/core/status/why.js";
+import type { CheckId } from "../../src/core/types/check.js";
 import { check, fakeRepo, seedStore } from "./helpers.js";
 import { LOGIN, reportOf, seedLogin } from "./why-seed.js";
 

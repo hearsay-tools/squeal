@@ -1,24 +1,25 @@
 import { randomUUID } from "node:crypto";
 import {
   type AbsolutePath,
-  type DaemonPhase,
-  type DaemonResponse,
-  daemonIncarnation,
   type EpochMs,
-  type FullSuiteCheckpoint,
-  type FullSuiteRequest,
-  type HoldResponse,
   PAYLOAD_SCHEMA_VERSION,
   type RelativePath,
   type RevisionNumber,
+  type WorktreeId,
+} from "../types/common.js";
+import {
+  type DaemonPhase,
+  type DaemonResponse,
+  daemonIncarnation,
+  type HoldResponse,
   type RunAllResponse,
   type RunSlowResponse,
   type SyncAnswer,
   type SyncReaders,
   type SyncResponse,
-  type TestFileRef,
-  type WorktreeId,
-} from "../types/index.js";
+} from "../types/daemon.js";
+import type { TestFileRef } from "../types/keys.js";
+import type { FullSuiteCheckpoint, FullSuiteRequest } from "../types/scheduler.js";
 import { errorResponse } from "./protocol.js";
 import { type GroupRequested, groupRequests, type Held, type MainStep } from "./run-group.js";
 import { SLOW_NOT_SUPPORTED, type SlowSuiteRequested } from "./run-slow.js";

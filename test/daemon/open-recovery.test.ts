@@ -50,9 +50,7 @@ vi.mock("../../src/core/daemon/scratch.js", async (importOriginal) => {
 const { openDaemon } = await import("../../src/core/daemon/open.js");
 const { removeScratch } = await import("../../src/core/daemon/scratch.js");
 const { storeCondemned, storeFileOf } = await import("../../src/core/daemon/store-file.js");
-const { META_STORE_RECOVERED, markStore, openStore } = await import(
-  "../../src/core/store/index.js"
-);
+const { META_STORE_RECOVERED, markStore, openStore } = await import("../../src/core/store/open.js");
 
 const repos: FixtureRepo[] = [];
 const opened: OpenedDaemon[] = [];

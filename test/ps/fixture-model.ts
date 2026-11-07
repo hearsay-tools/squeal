@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, realpathSync, utimesSync, writeFileSync } from 
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { VACANT_LOCK_WAIT_MS } from "../../src/core/daemon/lock-wait.js";
-import { SUCCESSOR_LOCK_WAIT_MS } from "../../src/core/presence/index.js";
+import { SUCCESSOR_LOCK_WAIT_MS } from "../../src/core/presence/stored.js";
 import type {
   Attribution,
   ConsumerState,
@@ -15,7 +15,7 @@ import type {
   SocketFile,
 } from "../../src/core/ps/model.js";
 import type { LockEntry, ProcessRow, ProcessTable, PsSource } from "../../src/core/ps/source.js";
-import type { DaemonRecord } from "../../src/core/types/index.js";
+import type { DaemonRecord } from "../../src/core/types/store-records.js";
 import { BOOT_SECONDS, CLOCK_TICKS, UPTIME_SECONDS } from "./fixture.js";
 import { rowOf as fakeRow, fakeSource } from "./fixture-samples.js";
 

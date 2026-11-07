@@ -3,18 +3,16 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { readHead } from "../../src/core/daemon-loop/head.js";
-import { worktreeIdFor } from "../../src/core/fs/index.js";
-import { createFsHasher } from "../../src/core/hash/index.js";
-import { statCandidates } from "../../src/core/revision/index.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
+import { createFsHasher } from "../../src/core/hash/hasher.js";
+import { statCandidates } from "../../src/core/revision/reconcile.js";
 import { WorktreeKeys } from "../../src/core/scheduler/keying.js";
-import { isStoreOpenFailure, openStore } from "../../src/core/store/index.js";
-import {
-  DEFAULT_POLICY,
-  type RunnerEnvironment,
-  type Store,
-  type TestFileRef,
-  type WorktreeId,
-} from "../../src/core/types/index.js";
+import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
+import type { WorktreeId } from "../../src/core/types/common.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
+import type { RunnerEnvironment } from "../../src/core/types/runner.js";
+import type { Store } from "../../src/core/types/store.js";
 import { git } from "../hash/git-repo.js";
 
 /*

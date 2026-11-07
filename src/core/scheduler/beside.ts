@@ -1,4 +1,4 @@
-import type { TestFileRef } from "../types/index.js";
+import type { TestFileRef } from "../types/keys.js";
 import type { SchedulerContext } from "./context.js";
 import type { Ledger } from "./ledger.js";
 import { cancels, laneOf, type Tier } from "./tiers.js";

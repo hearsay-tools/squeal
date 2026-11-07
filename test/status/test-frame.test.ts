@@ -3,13 +3,8 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { WorktreePaths } from "../../src/core/fs/worktree-paths.js";
 import { testFileFrame } from "../../src/core/status/test-frame.js";
-import type {
-  AbsolutePath,
-  CheckError,
-  CheckId,
-  ProjectName,
-  RelativePath,
-} from "../../src/core/types/index.js";
+import type { CheckError, CheckId } from "../../src/core/types/check.js";
+import type { AbsolutePath, ProjectName, RelativePath } from "../../src/core/types/common.js";
 import { parsePytestEvents } from "../../src/runners/pytest/run/events.js";
 import { readBatch } from "../../src/runners/pytest/run/report.js";
 

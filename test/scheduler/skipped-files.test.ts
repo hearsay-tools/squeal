@@ -1,15 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { recordsForFile } from "../../src/core/scheduler/records.js";
-import { describeFailure } from "../../src/core/state/index.js";
-import type {
-  CheckId,
-  CheckRunResult,
-  FileCheckId,
-  Provenance,
-  RunReport,
-  TestCheckId,
-  TestFileRef,
-} from "../../src/core/types/index.js";
+import { describeFailure } from "../../src/core/state/fingerprint.js";
+import type { CheckId, FileCheckId, TestCheckId } from "../../src/core/types/check.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import type { CheckRunResult, RunReport } from "../../src/core/types/runner.js";
+import type { Provenance } from "../../src/core/types/store-records.js";
 
 /*
  * Spec 007 D6, task 007-23 (review wave 2, B3): a file listed in

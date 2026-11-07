@@ -1,13 +1,12 @@
-import { isRecord } from "../../fs/index.js";
+import { isRecord } from "../../fs/json.js";
+import type { EpochMs } from "../../types/common.js";
 import {
-  type DaemonRecord,
-  type EpochMs,
   WORKTREE_META_ROWS,
   type WorktreeMetaRow,
-  type WorktreeRecord,
   type WorktreeRepo,
   worktreeMetaKey,
-} from "../../types/index.js";
+} from "../../types/store.js";
+import type { DaemonRecord, WorktreeRecord } from "../../types/store-records.js";
 import { bool, flag, num, numOrNull, str, strOrNull } from "../codec.js";
 import type { Connection, Row } from "../connection.js";
 

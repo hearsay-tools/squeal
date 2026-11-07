@@ -1,11 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { formatDelta, formatRegistration } from "../../src/core/delivery/index.js";
-import type {
-  Delta,
-  SlowTierState,
-  StatusHeader,
-  TransitionEntry,
-} from "../../src/core/types/index.js";
+import { formatDelta, formatRegistration } from "../../src/core/delivery/format.js";
+import type { Delta, TransitionEntry } from "../../src/core/types/delivery.js";
+import type { SlowTierState, StatusHeader } from "../../src/core/types/status.js";
 
 /*
  * Task 001-407, decided by the human: a change delivery sends the news. It

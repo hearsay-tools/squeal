@@ -1,16 +1,12 @@
 import { readFailureKeys } from "../slow/state.js";
-import { checkIdentity, readFailureProducers } from "../state/index.js";
-import type {
-  AbsolutePath,
-  CheckKey,
-  KnownState,
-  ResultRecord,
-  Store,
-  WhyReplacement,
-  WhyRunLog,
-  WhyRunLogGap,
-  WorktreeId,
-} from "../types/index.js";
+import { checkIdentity } from "../state/derive.js";
+import { readFailureProducers } from "../state/producers.js";
+import type { AbsolutePath, WorktreeId } from "../types/common.js";
+import type { CheckKey } from "../types/keys.js";
+import type { KnownState } from "../types/state.js";
+import type { WhyReplacement, WhyRunLog, WhyRunLogGap } from "../types/status.js";
+import type { Store } from "../types/store.js";
+import type { ResultRecord } from "../types/store-records.js";
 
 /*
  * Issue 15 (011-04, spec 011 C6 and C7): one row per check and key, so a

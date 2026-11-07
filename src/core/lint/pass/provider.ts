@@ -1,5 +1,5 @@
-import type { ObjectFormat } from "../../hash/index.js";
-import type { RelativePath } from "../../types/index.js";
+import type { ObjectFormat } from "../../hash/blob.js";
+import type { RelativePath } from "../../types/common.js";
 import type { LintFinding, LintTool } from "../../types/lint.js";
 
 /*

@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { main } from "../../../src/cli/main.js";
 import { blockText } from "../../../src/cli/setup/block.js";
 import { buildPlan } from "../../../src/cli/setup/plan.js";
-import type { AbsolutePath } from "../../../src/core/types/index.js";
+import type { AbsolutePath } from "../../../src/core/types/common.js";
 import { initRepo } from "../../hash/git-repo.js";
 import { capture, cleanupFixtures, harnessEnv, json, scratch } from "./fixture.js";
 

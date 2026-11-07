@@ -1,12 +1,12 @@
 import { chmodSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { gzipSync } from "node:zlib";
+import { RuntimeReleaseError } from "../../../../src/harness/codex/runtime-release/errors.js";
 import {
-  createRuntimeManifest,
   HOOK_ENTRIES,
-  RuntimeReleaseError,
   serializeRuntimeManifest,
-} from "../../../../src/harness/codex/runtime-release/index.js";
+} from "../../../../src/harness/codex/runtime-release/manifest.js";
+import { createRuntimeManifest } from "../../../../src/harness/codex/runtime-release/tree.js";
 import { tempDir } from "../../../store/helpers.js";
 
 /*

@@ -8,8 +8,9 @@ import { requestDaemon } from "../../src/core/daemon/client.js";
 import { ensureDaemon } from "../../src/core/daemon/ensure.js";
 import { squealVersion } from "../../src/core/daemon/version.js";
 import { lockFileFor } from "../../src/core/store/paths.js";
-import type { EnsureDaemonResult } from "../../src/core/types/index.js";
-import { type HookDeps, runHook } from "../../src/harness/claude-code/index.js";
+import type { EnsureDaemonResult } from "../../src/core/types/daemon.js";
+import { runHook } from "../../src/harness/claude-code/hooks.js";
+import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { recorded } from "../harness/helpers.js";
 import {
   type DaemonSuite,

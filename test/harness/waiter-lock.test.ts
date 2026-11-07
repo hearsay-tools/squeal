@@ -2,13 +2,13 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
-import { MAIN_AGENT } from "../../src/core/types/index.js";
+import { MAIN_AGENT } from "../../src/core/types/delivery.js";
 import {
   acquireWaiterLock,
   removeWaiterLock,
   waiterLockPath,
   waiterLockState,
-} from "../../src/core/waiter-lock/index.js";
+} from "../../src/core/waiter-lock/waiter-lock.js";
 import { tempDir } from "../store/helpers.js";
 
 const consumer = { worktreeId: "0123456789abcdef", sessionId: "s", agentId: MAIN_AGENT };

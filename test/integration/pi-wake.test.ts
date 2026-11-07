@@ -1,9 +1,9 @@
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { storePaths } from "../../src/core/store/index.js";
-import type { Consumer } from "../../src/core/types/index.js";
-import { type WaiterLockState, waiterLockState } from "../../src/core/waiter-lock/index.js";
+import { storePaths } from "../../src/core/store/paths.js";
+import type { Consumer } from "../../src/core/types/delivery.js";
+import { type WaiterLockState, waiterLockState } from "../../src/core/waiter-lock/waiter-lock.js";
 import { type SquealRepo, squealRepo } from "../harness/helpers.js";
 import { buildPiBundles } from "../harness/pi/helpers.js";
 import {

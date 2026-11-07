@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
-import { readFailures, readStatus, readWhy } from "../../src/core/status/index.js";
-import { storePaths } from "../../src/core/store/index.js";
+import { readFailures } from "../../src/core/status/failures.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
+import { readWhy } from "../../src/core/status/why.js";
+import { storePaths } from "../../src/core/store/paths.js";
 import { fakeRepo, seedStore } from "./helpers.js";
 import { holdLock } from "./hold-lock.js";
 import { LOGIN, reportOf, seedLogin } from "./why-seed.js";

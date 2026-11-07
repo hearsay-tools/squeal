@@ -1,13 +1,12 @@
+import type { ProjectName, RelativePath } from "../types/common.js";
 import type {
   CheckKey,
   Closure,
   EnvironmentHash,
   FileHash,
   HashSource,
-  ProjectName,
-  RelativePath,
   TestFileRef,
-} from "../types/index.js";
+} from "../types/keys.js";
 import { encodeSegment, keyFromSegments } from "./check-key.js";
 import { ReverseIndex, testFileId } from "./reverse-index.js";
 

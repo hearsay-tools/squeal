@@ -1,8 +1,9 @@
 import type { Dirent } from "node:fs";
 import { readdir } from "node:fs/promises";
 import { join, relative } from "node:path";
-import { hasGitEntry, isMissing } from "../fs/index.js";
-import type { AbsolutePath, RelativePath } from "../types/index.js";
+import { isMissing } from "../fs/errors.js";
+import { hasGitEntry } from "../fs/git-layout.js";
+import type { AbsolutePath, RelativePath } from "../types/common.js";
 import { ignoredAsDirectories } from "./links.js";
 
 /**

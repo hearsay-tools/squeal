@@ -2,9 +2,9 @@ import { mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import type { CachedSourceMap } from "../../../src/core/code/coverage/index.js";
 import { ownRecord } from "../../../src/core/code/coverage/own.js";
 import { ownMap } from "../../../src/core/code/coverage/own-map.js";
+import type { CachedSourceMap } from "../../../src/core/code/coverage/types.js";
 import { SHAPES, underLoader } from "./own-fixture.js";
 
 // Row 015-95: Node 24.22.1 serializes lazy maps as null data plus a retained URL.

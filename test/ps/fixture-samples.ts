@@ -8,7 +8,7 @@ import type {
   ProcessTable,
   PsSource,
 } from "../../src/core/ps/source.js";
-import type { EpochMs } from "../../src/core/types/index.js";
+import type { EpochMs } from "../../src/core/types/common.js";
 import { CLOCK_TICKS } from "./fixture.js";
 
 /*

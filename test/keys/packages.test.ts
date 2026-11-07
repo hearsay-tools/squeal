@@ -1,12 +1,9 @@
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import {
-  type DependencyKeys,
-  dependencyKeys,
-  installedDependencies,
-  PackageScans,
-} from "../../src/core/keys/index.js";
-import type { RunnerPackages } from "../../src/core/types/index.js";
+import { type DependencyKeys, dependencyKeys } from "../../src/core/keys/dependencies.js";
+import { installedDependencies } from "../../src/core/keys/environment.js";
+import { PackageScans } from "../../src/core/keys/package-scans.js";
+import type { RunnerPackages } from "../../src/core/types/runner.js";
 import { tempDir, writeFile } from "../hash/git-repo.js";
 import { type FixturePackage, writeInstall } from "./install.js";
 

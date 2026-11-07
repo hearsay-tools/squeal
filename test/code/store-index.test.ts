@@ -3,8 +3,12 @@ import { readFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { CODE_SCHEMA_VERSION, codeStorePath } from "../../src/core/code/store/index.js";
-import { CODE_INDEXES, CODE_TABLES } from "../../src/core/code/store/schema.js";
+import { codeStorePath } from "../../src/core/code/store/open.js";
+import {
+  CODE_INDEXES,
+  CODE_SCHEMA_VERSION,
+  CODE_TABLES,
+} from "../../src/core/code/store/schema.js";
 import { commonDir, open } from "./helpers.js";
 
 /*

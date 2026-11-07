@@ -2,15 +2,15 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { recordUnknownFiles } from "../../src/core/scheduler/unknown-files.js";
-import { SUMMARY_MAX_CHARS } from "../../src/core/state/index.js";
-import {
-  formatStatus,
-  formatWhy,
-  readStatus,
-  readWhy,
-  UNKNOWN_FILES_LISTED,
-} from "../../src/core/status/index.js";
-import type { CheckKey, PendingPhase, RevisionNumber } from "../../src/core/types/index.js";
+import { SUMMARY_MAX_CHARS } from "../../src/core/state/fingerprint.js";
+import { formatStatus } from "../../src/core/status/format-status.js";
+import { formatWhy } from "../../src/core/status/format-why.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
+import { UNKNOWN_FILES_LISTED } from "../../src/core/status/unknown-files.js";
+import { readWhy } from "../../src/core/status/why.js";
+import type { RevisionNumber } from "../../src/core/types/common.js";
+import type { CheckKey } from "../../src/core/types/keys.js";
+import type { PendingPhase } from "../../src/core/types/state.js";
 import { withoutTouched } from "../../src/runners/vitest/moved.js";
 import { runMissingConfig } from "../helpers/baseline.js";
 import { appendRevisions, check, fakeRepo, seedStore, state } from "./helpers.js";

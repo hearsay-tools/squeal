@@ -1,4 +1,4 @@
-import type { RelativePath } from "../types/index.js";
+import type { RelativePath } from "../types/common.js";
 
 /**
  * Compiles a policy `inputs` glob to a regular expression over worktree

@@ -7,13 +7,13 @@ import {
   waitText,
 } from "../../src/cli/status-wait-lines.js";
 import { formatDelta, formatRegistration } from "../../src/core/delivery/format.js";
-import { formatStatus } from "../../src/core/status/index.js";
+import { formatStatus } from "../../src/core/status/format-status.js";
+import type { EpochMs } from "../../src/core/types/common.js";
 import type {
   DaemonLiveness,
   DaemonStopping,
-  EpochMs,
   StatusSnapshot,
-} from "../../src/core/types/index.js";
+} from "../../src/core/types/status.js";
 import { settled } from "./status-snapshot.js";
 
 // Row 011-34 (011 C9 as amended 2026-10-20): a daemon that stops or hands over validates

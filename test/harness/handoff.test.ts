@@ -4,19 +4,21 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { EnsureDaemonOptions } from "../../src/core/daemon/ensure.js";
+import { clearHandoff } from "../../src/core/presence/events.js";
 import {
-  clearHandoff,
   daemonExitMetaKey,
   HANDOFF_BOUND_MS,
   handoffMetaKey,
   readHandoff,
   SUCCESSOR_LOCK_WAIT_MS,
-} from "../../src/core/presence/index.js";
-import { storePaths } from "../../src/core/store/index.js";
-import type { DaemonRequest, EpochMs } from "../../src/core/types/index.js";
-import { type HookDeps, runHook } from "../../src/harness/claude-code/index.js";
+} from "../../src/core/presence/stored.js";
+import { storePaths } from "../../src/core/store/paths.js";
+import type { EpochMs } from "../../src/core/types/common.js";
+import type { DaemonRequest } from "../../src/core/types/daemon.js";
+import { runHook } from "../../src/harness/claude-code/hooks.js";
 import { openContext } from "../../src/harness/shared/context.js";
 import { ensure } from "../../src/harness/shared/ensure.js";
+import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
 
 /*

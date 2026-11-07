@@ -1,25 +1,19 @@
 import { describe, expect, it } from "vitest";
+import { createDelivery } from "../../src/core/delivery/delivery.js";
+import { formatRegistration } from "../../src/core/delivery/format.js";
 import { headerLines } from "../../src/core/delivery/header.js";
-import {
-  createDelivery,
-  formatRegistration,
-  readLiveHeader,
-} from "../../src/core/delivery/index.js";
-import {
-  FeedDeliveredRow,
-  feedDeliveredMetaKey,
-  readFeedDelivered,
-} from "../../src/core/presence/index.js";
+import { readLiveHeader } from "../../src/core/delivery/liveness.js";
+import { FeedDeliveredRow } from "../../src/core/presence/events.js";
+import { feedDeliveredMetaKey, readFeedDelivered } from "../../src/core/presence/stored.js";
 import { FEED_LATE_MS } from "../../src/core/status/feed-late.js";
-import { formatStatus, readStatus } from "../../src/core/status/index.js";
+import { formatStatus } from "../../src/core/status/format-status.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
 import { timeText } from "../../src/core/text.js";
-import {
-  type CheckKey,
-  type Consumer,
-  type DaemonRecord,
-  refinedMetaKey,
-  type Store,
-} from "../../src/core/types/index.js";
+import type { Consumer } from "../../src/core/types/delivery.js";
+import type { CheckKey } from "../../src/core/types/keys.js";
+import { refinedMetaKey } from "../../src/core/types/scheduler.js";
+import type { Store } from "../../src/core/types/store.js";
+import type { DaemonRecord } from "../../src/core/types/store-records.js";
 import { statusText } from "../../src/harness/shared/text.js";
 import { fixedStatus } from "../delivery/fakes.js";
 import { appendRevisions, check, type FakeRepo, fakeRepo, seedStore, state } from "./helpers.js";

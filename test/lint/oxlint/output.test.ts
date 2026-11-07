@@ -6,7 +6,7 @@ import {
   parseRun,
   utf16Column,
 } from "../../../src/core/lint/provider/oxlint/output.js";
-import type { RelativePath } from "../../../src/core/types/index.js";
+import type { RelativePath } from "../../../src/core/types/common.js";
 
 /*
  * Spec 017 D11 "Output": oxlint's `--format json` as `LintFinding`s.

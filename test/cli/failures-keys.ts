@@ -1,4 +1,5 @@
-import type { ResultRecord, Store } from "../../src/core/types/index.js";
+import type { Store } from "../../src/core/types/store.js";
+import type { ResultRecord } from "../../src/core/types/store-records.js";
 
 /**
  * A `test_file_keys` row for each record's test file in the worktree that

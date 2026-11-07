@@ -1,13 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { DAEMON_START_GRACE_MS } from "../../src/core/delivery/index.js";
-import { markStopped } from "../../src/core/presence/index.js";
-import type { EpochMs } from "../../src/core/types/index.js";
-import {
-  type HookDeps,
-  type HookResult,
-  runHook,
-  SPAWN_SETTLE_MS,
-} from "../../src/harness/claude-code/index.js";
+import { markStopped } from "../../src/core/presence/events.js";
+import { DAEMON_START_GRACE_MS } from "../../src/core/presence/heartbeat.js";
+import type { EpochMs } from "../../src/core/types/common.js";
+import { runHook } from "../../src/harness/claude-code/hooks.js";
+import type { HookResult } from "../../src/harness/claude-code/run.js";
+import { SPAWN_SETTLE_MS } from "../../src/harness/shared/ensure.js";
+import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { recorded, type SquealRepo, squealRepo } from "./helpers.js";
 
 /*

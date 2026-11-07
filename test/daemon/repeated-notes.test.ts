@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { cgroupUnit, signalNote } from "../../src/core/daemon/signals.js";
 import { readDaemonNotes } from "../../src/core/notes.js";
-import { formatStatus, readStatus } from "../../src/core/status/index.js";
-import type { AbsolutePath } from "../../src/core/types/index.js";
+import { formatStatus } from "../../src/core/status/format-status.js";
+import { readStatus } from "../../src/core/status/snapshot.js";
+import type { AbsolutePath } from "../../src/core/types/common.js";
 import { daemonSuite, SLOW, stopProcess, waitReady, withStore } from "./helpers.js";
 
 /*

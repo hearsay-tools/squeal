@@ -3,16 +3,8 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { waitForStatus } from "../../src/cli/status-wait.js";
 import { type EndedWait, waitLine } from "../../src/cli/status-wait-lines.js";
-import {
-  A,
-  answering,
-  finish,
-  key,
-  later,
-  options,
-  repoWith,
-  SLOW_FILE,
-} from "./status-wait-fixture.js";
+import { A, answering, finish, key, options, repoWith, SLOW_FILE } from "./status-wait-fixture.js";
+import { later } from "./wait-clock.js";
 
 /*
  * Spec 004 D8 as amended 2026-10-18 (gh-35, task 004-71;

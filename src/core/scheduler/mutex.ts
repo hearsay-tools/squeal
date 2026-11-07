@@ -1,4 +1,4 @@
-import type { LockHolder } from "../types/index.js";
+import type { LockHolder } from "../types/scheduler.js";
 
 type Watcher = {
   readonly listener: (holder: LockHolder | null) => void;

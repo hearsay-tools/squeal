@@ -4,11 +4,8 @@ import { join, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createCompositeRunner } from "../../../src/core/daemon/composite-runner.js";
 import { createNodeTestRunners } from "../../../src/core/daemon/node-test-runners.js";
-import type {
-  NodeTestProject,
-  RunnerAdapter,
-  RunnerEnvironment,
-} from "../../../src/core/types/index.js";
+import type { NodeTestProject } from "../../../src/core/types/policy.js";
+import type { RunnerAdapter, RunnerEnvironment } from "../../../src/core/types/runner.js";
 import { createNodeTestAdapter } from "../../../src/runners/node-test/adapter.js";
 
 /**

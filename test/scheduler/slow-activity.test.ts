@@ -2,14 +2,13 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, onTestFinished } from "vitest";
-import { acquireSlowSlot } from "../../src/core/slow/index.js";
+import { acquireSlowSlot } from "../../src/core/slow/slot.js";
 import { readSlowActivity } from "../../src/core/slow/state.js";
-import { clockText, readHeader, slowTierText } from "../../src/core/state/index.js";
-import {
-  DEFAULT_POLICY,
-  type SlowTierActivity,
-  type TestFileRef,
-} from "../../src/core/types/index.js";
+import { readHeader } from "../../src/core/state/header.js";
+import { clockText, slowTierText } from "../../src/core/state/slow-text.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
+import type { SlowTierActivity } from "../../src/core/types/status.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
 import { SLOW } from "./cleanup.js";

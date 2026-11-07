@@ -2,9 +2,10 @@ import { mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { accepted, describePlayed, forms, play } from "./driver.js";
+import { forms, play } from "./driver.js";
 import { vitest as PACK } from "./packs/vitest.js";
 import { SCENARIOS } from "./scenarios/index.js";
+import { accepted, describePlayed } from "./verdicts.js";
 
 /* Spec 016 D1: every kit scenario through Vitest's pack. */
 

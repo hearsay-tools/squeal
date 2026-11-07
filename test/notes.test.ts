@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { appendNote, NOTES_PER_TOPIC, readDaemonNotes, withNote } from "../src/core/notes.js";
 import { persistedNoteTexts } from "../src/core/scheduler/notes.js";
-import { type DaemonNote, MAX_PERSISTED_NOTES, notesMetaKey } from "../src/core/types/index.js";
+import { type DaemonNote, MAX_PERSISTED_NOTES, notesMetaKey } from "../src/core/types/scheduler.js";
 import { fakeCommonDir, open } from "./store/helpers.js";
 
 /*

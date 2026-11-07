@@ -1,7 +1,7 @@
 import { appendFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import type { FileCheckId, TestCheckId } from "../../src/core/types/index.js";
+import type { FileCheckId, TestCheckId } from "../../src/core/types/check.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
 import { SLOW } from "./cleanup.js";

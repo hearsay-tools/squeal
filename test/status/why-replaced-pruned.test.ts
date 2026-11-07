@@ -1,10 +1,14 @@
 import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { formatCheck } from "../../src/core/state/index.js";
-import { formatWhy, readFailures, readWhy } from "../../src/core/status/index.js";
-import { storePaths } from "../../src/core/store/index.js";
-import type { CheckId, Store, WhyResult } from "../../src/core/types/index.js";
+import { formatCheck } from "../../src/core/state/check-name.js";
+import { readFailures } from "../../src/core/status/failures.js";
+import { formatWhy } from "../../src/core/status/format-why.js";
+import { readWhy } from "../../src/core/status/why.js";
+import { storePaths } from "../../src/core/store/paths.js";
+import type { CheckId } from "../../src/core/types/check.js";
+import type { WhyResult } from "../../src/core/types/status.js";
+import type { Store } from "../../src/core/types/store.js";
 import { result } from "../store/helpers.js";
 import { check, fakeRepo, seedStore } from "./helpers.js";
 import { at, reportOf } from "./why-seed.js";

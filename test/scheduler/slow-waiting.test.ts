@@ -3,9 +3,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { describe, expect, it, onTestFinished } from "vitest";
-import { markSlotWaiter } from "../../src/core/slow/index.js";
+import { markSlotWaiter } from "../../src/core/slow/slot-files.js";
 import { readSlowActivity } from "../../src/core/slow/state.js";
-import { DEFAULT_POLICY } from "../../src/core/types/index.js";
+import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 import { claimRepo, fileName, type Side, side } from "./claims-fixture.js";
 
 /*

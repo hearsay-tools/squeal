@@ -2,7 +2,7 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import type { RunReport } from "../../../src/core/types/index.js";
+import type { RunReport } from "../../../src/core/types/runner.js";
 import { openFixture, outcomes, ref, SLOW } from "./helpers.js";
 
 /*

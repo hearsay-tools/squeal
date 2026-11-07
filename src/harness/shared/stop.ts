@@ -1,31 +1,27 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { requestDaemon } from "../../core/daemon/client.js";
 import { readPolicy } from "../../core/daemon/policy.js";
-import {
-  formatDelta,
-  formatRegistration,
-  markLeaving,
-  readHeader,
-  worktreeLiveness,
-} from "../../core/delivery/index.js";
+import { formatDelta, formatRegistration } from "../../core/delivery/format.js";
+import { markLeaving } from "../../core/delivery/leaving.js";
 import { countStopHold } from "../../core/delivery/turn.js";
+import { worktreeLiveness } from "../../core/presence/heartbeat.js";
 import { slowView } from "../../core/scheduler/slow.js";
-import type { StopWaitHarness } from "../../core/slow/index.js";
-import { isFastPending } from "../../core/state/index.js";
-import { readHolds, STATUS_BUSY_TIMEOUT_MS } from "../../core/status/index.js";
-import { readTransaction, storePaths } from "../../core/store/index.js";
-import {
-  type EpochMs,
-  MAIN_AGENT,
-  type Policy,
-  type RevisionNumber,
-  type StatusHeader,
-  type TestFileRef,
-} from "../../core/types/index.js";
-import { removeWaiterLock } from "../../core/waiter-lock/index.js";
+import type { StopWaitHarness } from "../../core/slow/stop-wait.js";
+import { isFastPending, readHeader } from "../../core/state/header.js";
+import { readHolds } from "../../core/status/holds.js";
+import { STATUS_BUSY_TIMEOUT_MS } from "../../core/status/open.js";
+import { storePaths } from "../../core/store/paths.js";
+import { readTransaction } from "../../core/store/store.js";
+import type { EpochMs, RevisionNumber } from "../../core/types/common.js";
+import { MAIN_AGENT } from "../../core/types/delivery.js";
+import type { TestFileRef } from "../../core/types/keys.js";
+import type { Policy } from "../../core/types/policy.js";
+import type { StatusHeader } from "../../core/types/status.js";
+import { HOOK_TIMEOUT_MS } from "../../core/types/store-records.js";
+import { removeWaiterLock } from "../../core/waiter-lock/waiter-lock.js";
 import type { ConsumerInput, HookContext, HookLocation } from "./context.js";
 import { ensureIfStale, SOCKET_TIMEOUT_MS, startingAfter } from "./ensure.js";
-import { HOOK_TIMEOUT_MS, type HookDeps, isRegistered, withContext } from "./hook.js";
+import { type HookDeps, isRegistered, withContext } from "./hook.js";
 import {
   decide,
   holdsNow,

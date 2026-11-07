@@ -6,34 +6,35 @@ import {
   registerLint,
 } from "../lint/surface/deliver.js";
 import type { LintStoreSource } from "../lint/surface/source.js";
-import { withRecorded } from "../retry/index.js";
+import { toldOf } from "../presence/views.js";
+import { withRecorded } from "../retry/recorded.js";
 import { forgetStopWait } from "../slow/stop-wait.js";
-import { baselineFindings } from "../state/index.js";
+import { baselineFindings } from "../state/baseline.js";
 import { splitByValidity } from "../status/checks.js";
 import { ignoredConfigAt } from "../status/ignored-config.js";
-import { type ChangeMarker, changeMarker } from "../store/index.js";
+import { type ChangeMarker, changeMarker } from "../store/store.js";
 import type { CodeNews } from "../types/code-delivery.js";
+import { type EpochMs, PAYLOAD_SCHEMA_VERSION, type RevisionNumber } from "../types/common.js";
+import type {
+  Consumer,
+  Delta,
+  DeltaEntry,
+  EndTurnOptions,
+  HarnessDelivery,
+  RegisterOptions,
+  ToolBoundaryOptions,
+  TurnState,
+  ViewEntry,
+} from "../types/delivery.js";
+import type { LintNews } from "../types/lint-delivery.js";
+import type { KnownState } from "../types/state.js";
+import type { StatusBuilder } from "../types/status.js";
+import type { Store } from "../types/store.js";
 import {
-  type Consumer,
-  type Delta,
-  type DeltaEntry,
-  type EndTurnOptions,
-  type EpochMs,
-  type HarnessDelivery,
   type HarnessProcess,
   HOOK_TIMEOUT_MS,
-  type KnownState,
-  PAYLOAD_SCHEMA_VERSION,
-  type RegisterOptions,
-  type RevisionNumber,
-  type StatusBuilder,
-  type Store,
   type TestFileKeyRecord,
-  type ToolBoundaryOptions,
-  type TurnState,
-  type ViewEntry,
-} from "../types/index.js";
-import type { LintNews } from "../types/lint-delivery.js";
+} from "../types/store-records.js";
 import { annotate, withClosureChanges, withDependencies } from "./attribution.js";
 import { loaderCounts } from "./closure.js";
 import { registerCode, tellCode } from "./code-deliver.js";
@@ -55,7 +56,6 @@ import {
   tellLiveness,
   tellRevision,
   toldLiveness,
-  toldOf,
   toldRevision,
   withTold,
 } from "./liveness.js";

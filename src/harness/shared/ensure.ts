@@ -4,28 +4,19 @@ import { ensureDaemon } from "../../core/daemon/ensure.js";
 import { isNewerVersion, squealVersion } from "../../core/daemon/version.js";
 import { otherSessionVersions } from "../../core/delivery/consumer-version.js";
 import { stopHolds } from "../../core/delivery/stopped.js";
-import { worktreeIdFor } from "../../core/fs/index.js";
-import {
-  claimHandoff,
-  handoffFrom,
-  heartbeatFresh,
-  lastHeartbeat,
-  markSpawn,
-  readHookHandoff,
-  readHookStop,
-  SUCCESSOR_LOCK_WAIT_MS,
-  spawnedAfterRest,
-  spawnStartCurrent,
-} from "../../core/presence/index.js";
-import { lockFileFor, readTransaction } from "../../core/store/index.js";
-import type {
-  DaemonRecord,
-  DaemonRequest,
-  EnsureDaemonResult,
-  EpochMs,
-  Store,
-  WorktreeId,
-} from "../../core/types/index.js";
+import { worktreeIdFor } from "../../core/fs/git-layout.js";
+import { claimHandoff, spawnedAfterRest } from "../../core/presence/events.js";
+import { spawnStartCurrent } from "../../core/presence/findings.js";
+import { heartbeatFresh, lastHeartbeat } from "../../core/presence/heartbeat.js";
+import { markSpawn } from "../../core/presence/lock-events.js";
+import { readHookHandoff, readHookStop } from "../../core/presence/narrow.js";
+import { handoffFrom, SUCCESSOR_LOCK_WAIT_MS } from "../../core/presence/stored.js";
+import { lockFileFor } from "../../core/store/paths.js";
+import { readTransaction } from "../../core/store/store.js";
+import type { EpochMs, WorktreeId } from "../../core/types/common.js";
+import type { DaemonRequest, EnsureDaemonResult } from "../../core/types/daemon.js";
+import type { Store } from "../../core/types/store.js";
+import type { DaemonRecord } from "../../core/types/store-records.js";
 import type { HookContext, HookLocation } from "./context.js";
 import type { HookDeps } from "./hook.js";
 

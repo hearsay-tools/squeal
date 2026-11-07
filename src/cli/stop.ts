@@ -10,10 +10,10 @@ import {
   lstatOrNull,
   resolveCommonDir,
   worktreeIdFor,
-} from "../core/fs/index.js";
-import { daemonStart } from "../core/presence/index.js";
-import { lockFileFor } from "../core/store/index.js";
-import type { AbsolutePath, EpochMs } from "../core/types/index.js";
+} from "../core/fs/git-layout.js";
+import { daemonStart } from "../core/presence/marks.js";
+import { lockFileFor } from "../core/store/paths.js";
+import type { AbsolutePath, EpochMs } from "../core/types/common.js";
 import { askDaemon, daemonSocket, worktreeRoot } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
 import { statusCommand } from "./status-command.js";

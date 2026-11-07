@@ -6,7 +6,7 @@ import { dirname, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
-import { storePaths } from "../../src/core/store/index.js";
+import { storePaths } from "../../src/core/store/paths.js";
 import { git } from "../hash/git-repo.js";
 import { runMissingConfig } from "../helpers/baseline.js";
 import {

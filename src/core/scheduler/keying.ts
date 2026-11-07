@@ -1,51 +1,44 @@
 import { createHash } from "node:crypto";
-import { runGit, sameList, splitNul } from "../fs/index.js";
-import { type Hasher, type ObjectFormat, StatCache, seedStatCache } from "../hash/index.js";
+import { sameList } from "../fs/compare.js";
+import { runGit, splitNul } from "../fs/git.js";
+import type { ObjectFormat } from "../hash/blob.js";
+import { type Hasher, seedStatCache } from "../hash/hasher.js";
+import { StatCache } from "../hash/stat-cache.js";
 import {
   assembleClosure,
-  coreEnvironmentInputs,
   createDeclaredInputs,
-  createInputMatcher,
   type DeclaredInputs,
-  type DependencyKeys,
-  environmentHash,
-  gitEntryByKind,
   inputGlobs,
-  KEY_FORMATS_READ_AS_ONE,
-  type KeyChange,
-  KeyIndex,
+  sameInputs,
+  type UnmatchedInputs,
+  unmatchedInputs,
+} from "../keys/closure.js";
+import type { DependencyKeys } from "../keys/dependencies.js";
+import { coreEnvironmentInputs } from "../keys/environment.js";
+import { environmentHash } from "../keys/environment-hash.js";
+import { createInputMatcher } from "../keys/glob.js";
+import { KEY_FORMATS_READ_AS_ONE } from "../keys/key-format.js";
+import { type KeyChange, KeyIndex, type ReadAsOne } from "../keys/key-index.js";
+import { ModuleSets } from "../keys/modules.js";
+import {
+  gitEntryByKind,
   Listings,
   listedDirectory,
   listingPath,
   ObservedSets,
-  type ReadAsOne,
-  StartupSets,
-  sameInputs,
-  testFileId,
-  type UnmatchedInputs,
-  unmatchedInputs,
-} from "../keys/index.js";
-import { ModuleSets } from "../keys/modules.js";
+} from "../keys/observed.js";
+import { testFileId } from "../keys/reverse-index.js";
 import { runtimeFilesMetaKey, runtimePolicySignature } from "../keys/runtime-applied.js";
 import { RuntimeFiles, runtimeIdentity } from "../keys/runtime-files.js";
-import { type HeadState, reconcile, statCandidates } from "../revision/index.js";
-import type {
-  AbsolutePath,
-  CandidateBatch,
-  EnvironmentHash,
-  FileChange,
-  FileHash,
-  Policy,
-  ProjectName,
-  RelativePath,
-  Revision,
-  RunnerClosure,
-  RunnerEnvironment,
-  Store,
-  TestFileRef,
-  WorktreeId,
-} from "../types/index.js";
-import type { RuntimeFileApplication } from "../types/policy.js";
+import { StartupSets } from "../keys/startup.js";
+import { type HeadState, reconcile, statCandidates } from "../revision/reconcile.js";
+import type { AbsolutePath, ProjectName, RelativePath, WorktreeId } from "../types/common.js";
+import type { EnvironmentHash, FileHash, TestFileRef } from "../types/keys.js";
+import type { Policy, RuntimeFileApplication } from "../types/policy.js";
+import type { FileChange, Revision } from "../types/revision.js";
+import type { RunnerClosure, RunnerEnvironment } from "../types/runner.js";
+import type { Store } from "../types/store.js";
+import type { CandidateBatch } from "../types/watcher.js";
 import { checkIgnored } from "../watcher/git.js";
 import { linkedFiles } from "../watcher/linked-files.js";
 import { Lockfiles } from "./lockfiles.js";

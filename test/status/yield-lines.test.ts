@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { nextStep } from "../../src/core/status/next-step.js";
 import { timeText } from "../../src/core/text.js";
-import type { LastYield, Standing } from "../../src/core/types/index.js";
+import type { LastYield, Standing } from "../../src/core/types/standing.js";
 
 /*
  * Row 011-209 (`research/issue-91.md` F2 to F4, spec 011 C15): every line

@@ -1,10 +1,6 @@
-import type {
-  FileChange,
-  FileHashRecord,
-  FileHashRepo,
-  Revision,
-  RevisionRepo,
-} from "../../types/index.js";
+import type { FileChange, Revision } from "../../types/revision.js";
+import type { FileHashRepo, RevisionRepo } from "../../types/store.js";
+import type { FileHashRecord } from "../../types/store-records.js";
 import { bool, flag, json, num, oneOf, str, strOrNull } from "../codec.js";
 import type { Connection, Row } from "../connection.js";
 

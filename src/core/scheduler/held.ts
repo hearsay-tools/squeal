@@ -1,11 +1,7 @@
-import { testFileId } from "../keys/index.js";
-import {
-  type CheckKey,
-  type Store,
-  type TestFileRef,
-  type WorktreeId,
-  worktreeMetaKey,
-} from "../types/index.js";
+import { testFileId } from "../keys/reverse-index.js";
+import type { WorktreeId } from "../types/common.js";
+import type { CheckKey, TestFileRef } from "../types/keys.js";
+import { type Store, worktreeMetaKey } from "../types/store.js";
 
 /*
  * Review wave 13i, B1 (task 001-187): a heal (`storeResults`) refreshes

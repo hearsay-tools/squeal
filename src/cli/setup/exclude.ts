@@ -1,6 +1,6 @@
 import { posix } from "node:path";
 import { POLICY_FILE } from "../../core/daemon/policy.js";
-import { isRecord } from "../../core/fs/index.js";
+import { isRecord } from "../../core/fs/json.js";
 import { globToRegExp } from "../../core/keys/glob.js";
 import type { ExcludeProposal, Runners, SetupPlan } from "./plan.js";
 

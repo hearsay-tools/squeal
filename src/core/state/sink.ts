@@ -1,17 +1,10 @@
-import { testFileId } from "../keys/index.js";
+import { testFileId } from "../keys/reverse-index.js";
 import { recordFailureKeys } from "../slow/state.js";
-import type {
-  CheckKey,
-  EpochMs,
-  KnownState,
-  ResultRecord,
-  RevisionNumber,
-  StateSink,
-  Store,
-  TestFileKeyRecord,
-  Transition,
-  WorktreeId,
-} from "../types/index.js";
+import type { EpochMs, RevisionNumber, WorktreeId } from "../types/common.js";
+import type { CheckKey } from "../types/keys.js";
+import type { KnownState, StateSink, Transition } from "../types/state.js";
+import type { Store } from "../types/store.js";
+import type { ResultRecord, TestFileKeyRecord } from "../types/store-records.js";
 import { recordBaselineFindings } from "./baseline.js";
 import {
   checkIdentity,

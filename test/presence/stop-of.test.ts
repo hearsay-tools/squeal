@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { headerLines } from "../../src/core/delivery/header.js";
-import { formatStatus } from "../../src/core/status/index.js";
-import type { DaemonLiveness, EpochMs } from "../../src/core/types/index.js";
+import { formatStatus } from "../../src/core/status/format-status.js";
+import type { EpochMs } from "../../src/core/types/common.js";
+import type { DaemonLiveness } from "../../src/core/types/status.js";
 import { settled } from "../evals/status-snapshot.js";
 
 /*

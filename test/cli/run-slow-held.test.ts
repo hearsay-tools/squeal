@@ -4,7 +4,9 @@ import { describe, expect, it } from "vitest";
 import type { DaemonSync } from "../../src/cli/status-sync.js";
 import { waitForStatus } from "../../src/cli/status-wait.js";
 import { type EndedWait, waitLine } from "../../src/cli/status-wait-lines.js";
-import type { CheckKey, RevisionNumber, Store } from "../../src/core/types/index.js";
+import type { RevisionNumber } from "../../src/core/types/common.js";
+import type { CheckKey } from "../../src/core/types/keys.js";
+import type { Store } from "../../src/core/types/store.js";
 import { check, state } from "../status/helpers.js";
 import {
   A,
@@ -13,12 +15,11 @@ import {
   fail,
   finish,
   key,
-  later,
   options,
   repoWith,
   SLOW_FILE,
-  timed,
 } from "./status-wait-fixture.js";
+import { later, timed } from "./wait-clock.js";
 
 /*
  * Review wave-13ak, B2 and S1 (task 001-287). `run --slow --wait` holds the

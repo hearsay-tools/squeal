@@ -1,14 +1,11 @@
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { readWhy } from "../../src/core/status/index.js";
+import { readWhy } from "../../src/core/status/why.js";
 import { unknownRunOf } from "../../src/core/status/why-unknown.js";
-import type {
-  AbsolutePath,
-  CheckId,
-  Store,
-  WhyRunLog,
-  WorktreeId,
-} from "../../src/core/types/index.js";
+import type { CheckId } from "../../src/core/types/check.js";
+import type { AbsolutePath, WorktreeId } from "../../src/core/types/common.js";
+import type { WhyRunLog } from "../../src/core/types/status.js";
+import type { Store } from "../../src/core/types/store.js";
 import { check, type FakeRepo, fakeRepo, seedStore, state } from "./helpers.js";
 import { at, LOGIN, reportOf } from "./why-seed.js";
 

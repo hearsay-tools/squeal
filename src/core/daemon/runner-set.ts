@@ -1,5 +1,7 @@
-import { compare, isRecord } from "../fs/index.js";
-import type { ProjectName, RunnerAdapter } from "../types/index.js";
+import { compare } from "../fs/compare.js";
+import { isRecord } from "../fs/json.js";
+import type { ProjectName } from "../types/common.js";
+import type { RunnerAdapter } from "../types/runner.js";
 
 /** What one reconcile changed (`RunnerSet.reconcile`). */
 export interface Reconciled {

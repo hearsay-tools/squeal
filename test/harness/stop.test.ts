@@ -1,18 +1,19 @@
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
-import { askRetry } from "../../src/core/retry/index.js";
-import { storePaths } from "../../src/core/store/index.js";
-import { refinedMetaKey, type TestFileRef } from "../../src/core/types/index.js";
+import { askRetry } from "../../src/core/retry/records.js";
+import { storePaths } from "../../src/core/store/paths.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import { refinedMetaKey } from "../../src/core/types/scheduler.js";
+import { HOOK_TIMEOUT_MS } from "../../src/core/types/store-records.js";
+import { runHook } from "../../src/harness/claude-code/hooks.js";
+import type { HookResult } from "../../src/harness/claude-code/run.js";
+import { SOCKET_TIMEOUT_MS } from "../../src/harness/shared/ensure.js";
+import type { HookDeps } from "../../src/harness/shared/hook.js";
 import {
-  HOOK_TIMEOUT_MS,
-  type HookDeps,
-  type HookResult,
-  runHook,
   STOP_MARGIN_MS,
   STOP_WAIT_CAP_MS,
   stopBusyTimeoutMs,
-} from "../../src/harness/claude-code/index.js";
-import { SOCKET_TIMEOUT_MS } from "../../src/harness/shared/index.js";
+} from "../../src/harness/shared/stop.js";
 import { check, result, setKey } from "../state/helpers.js";
 import { recorded, type SquealRepo, SUBAGENT, squealRepo } from "./helpers.js";
 

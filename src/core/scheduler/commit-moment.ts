@@ -1,8 +1,10 @@
 import type { WaitingTestFile } from "../commit/report.js";
 import { heldUntilAsked } from "../daemon/check-groups.js";
-import { resolveCommonDir } from "../fs/index.js";
+import { resolveCommonDir } from "../fs/git-layout.js";
 import { releaseLintGroup } from "../lint/pass/commit-entry.js";
-import type { CheckMoment, RelativePath, TestFileRef } from "../types/index.js";
+import type { CheckMoment } from "../types/check-groups.js";
+import type { RelativePath } from "../types/common.js";
+import type { TestFileRef } from "../types/keys.js";
 import type { CommitAsk } from "./commit-asks.js";
 import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
 import { classify } from "./files.js";

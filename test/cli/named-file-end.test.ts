@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { fileEndText } from "../../src/cli/named-file-end.js";
 import { classLines, fileEntry, reasonGroups } from "../../src/cli/named-file-lines.js";
-import type { NamedFile } from "../../src/cli/named-files.js";
+import type { NamedFile } from "../../src/core/status/standing.js";
 import { timeText } from "../../src/core/text.js";
-import type { FileEnd, Standing, TestFileRef } from "../../src/core/types/index.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import type { FileEnd, Standing } from "../../src/core/types/standing.js";
 
 /*
  * Row 011-274 (gh-111; spec 011 C15): the line forms of a selected file its

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { failedKey } from "../../../src/core/lint/pass/index.js";
+import { failedKey } from "../../../src/core/lint/pass/records.js";
 import { FakeWorktree } from "../../code/pass/helpers.js";
 import { commonDir, open } from "../helpers.js";
 import { daemon } from "./helpers.js";

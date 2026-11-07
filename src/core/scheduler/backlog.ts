@@ -1,4 +1,4 @@
-import type { Revision } from "../types/index.js";
+import type { Revision } from "../types/revision.js";
 import type { SchedulerContext } from "./context.js";
 import type { Ledger } from "./ledger.js";
 import { laneOf, type Tier } from "./tiers.js";

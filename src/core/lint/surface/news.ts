@@ -1,5 +1,5 @@
 import { type CodeBound, isOwn } from "../../delivery/code-delta.js";
-import type { EpochMs } from "../../types/index.js";
+import type { EpochMs } from "../../types/common.js";
 import type {
   LintCheckId,
   LintFinding,

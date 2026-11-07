@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { namedWaitCommand } from "../../src/cli/named-print.js";
 import type { SyncState } from "../../src/cli/status-sync.js";
-import type { EpochMs, RevisionNumber } from "../../src/core/types/index.js";
+import type { EpochMs, RevisionNumber } from "../../src/core/types/common.js";
 import { catchUpRepo, catchUpSide } from "../scheduler/catch-up-fixture.js";
 import { focus, focusedRows, focusing } from "../scheduler/focused-fixture.js";
 import { capture } from "./status-wait-focus-fixture.js";

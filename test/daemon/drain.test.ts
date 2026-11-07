@@ -2,9 +2,10 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import type { HarnessProcess } from "../../src/core/types/index.js";
-import { type HookDeps, runHook } from "../../src/harness/claude-code/index.js";
+import type { HarnessProcess } from "../../src/core/types/store-records.js";
+import { runHook } from "../../src/harness/claude-code/hooks.js";
 import { findHarnessProcess } from "../../src/harness/shared/harness-process.js";
+import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { recorded } from "../harness/helpers.js";
 import { runMissingConfig } from "../helpers/baseline.js";
 import {

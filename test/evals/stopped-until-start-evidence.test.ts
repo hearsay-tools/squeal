@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { squealEvidence } from "../../evals/lib/index.mjs";
 import { formatDelta, formatRegistration } from "../../src/core/delivery/format.js";
-import { formatStatus } from "../../src/core/status/index.js";
-import type { DaemonLiveness, EpochMs, StatusSnapshot } from "../../src/core/types/index.js";
+import { formatStatus } from "../../src/core/status/format-status.js";
+import type { EpochMs } from "../../src/core/types/common.js";
+import type { DaemonLiveness, StatusSnapshot } from "../../src/core/types/status.js";
 import { settled } from "./status-snapshot.js";
 
 // Row 011-254 (gh-104): a stop `--until-start` has its own line in every form the product's

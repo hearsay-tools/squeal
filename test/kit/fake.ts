@@ -1,7 +1,8 @@
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import type { AbsolutePath } from "../../src/core/types/common.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
 import type {
-  AbsolutePath,
   AffectedTestFiles,
   CheckRunResult,
   FileLevelError,
@@ -9,10 +10,10 @@ import type {
   RunnerAdapter,
   RunOptions,
   RunReport,
-  TestFileRef,
-} from "../../src/core/types/index.js";
-import type { Gap, Pack } from "./driver.js";
-import { isTest, type Module } from "./scenarios/index.js";
+} from "../../src/core/types/runner.js";
+import type { Pack } from "./driver.js";
+import { isTest, type Module } from "./scenarios/types.js";
+import type { Gap } from "./verdicts.js";
 
 /*
  * A pack whose runner is this file, to prove the driver's verdicts without

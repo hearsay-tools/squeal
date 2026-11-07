@@ -1,4 +1,5 @@
-import type { CheckGroup, CheckMoment, Policy } from "../types/index.js";
+import type { CheckGroup, CheckMoment } from "../types/check-groups.js";
+import type { Policy } from "../types/policy.js";
 import { CHECK_MOMENTS, defaultGroups } from "./check-groups.js";
 
 /*

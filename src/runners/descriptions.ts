@@ -1,5 +1,7 @@
 import { posix } from "node:path";
-import type { AbsolutePath, NodeTestProject, Policy, TestFileRef } from "../core/types/index.js";
+import type { AbsolutePath } from "../core/types/common.js";
+import type { TestFileRef } from "../core/types/keys.js";
+import type { NodeTestProject, Policy } from "../core/types/policy.js";
 import {
   NODE_TEST,
   type NodeTestCommand,

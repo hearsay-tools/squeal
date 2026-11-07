@@ -1,11 +1,8 @@
 import type { EnsureDaemonOptions } from "../../core/daemon/ensure.js";
 import { squealVersion } from "../../core/daemon/version.js";
-import type {
-  AbsolutePath,
-  EnsureDaemonResult,
-  EpochMs,
-  HarnessProcess,
-} from "../../core/types/index.js";
+import type { AbsolutePath, EpochMs } from "../../core/types/common.js";
+import type { EnsureDaemonResult } from "../../core/types/daemon.js";
+import type { HarnessProcess } from "../../core/types/store-records.js";
 import {
   type ConsumerInput,
   type ContextOptions,
@@ -79,7 +76,7 @@ export interface HookDeps {
   readonly handOff?: HandOff;
 }
 
-export { HOOK_TIMEOUT_MS } from "../../core/types/index.js";
+export { HOOK_TIMEOUT_MS } from "../../core/types/store-records.js";
 
 /**
  * Runs `fn` with an open store; `null` without one. The reports its

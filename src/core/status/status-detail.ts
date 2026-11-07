@@ -1,6 +1,8 @@
-import { stopOf } from "../presence/index.js";
+import { stopOf } from "../presence/views.js";
 import { plural } from "../text.js";
-import type { DaemonNote, EpochMs, HeartbeatLate, StatusSnapshot } from "../types/index.js";
+import type { EpochMs } from "../types/common.js";
+import type { DaemonNote } from "../types/scheduler.js";
+import type { HeartbeatLate, StatusSnapshot } from "../types/status.js";
 import { partsSuffix } from "./checks.js";
 import { commitHiddenParts } from "./commit-lines.js";
 import { DEATH_CAUSE, deathText } from "./died.js";

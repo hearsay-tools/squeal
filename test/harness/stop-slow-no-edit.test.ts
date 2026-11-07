@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_POLICY, type PolicyFile } from "../../src/core/types/index.js";
+import { DEFAULT_POLICY, type PolicyFile } from "../../src/core/types/policy.js";
 import { FILE, type SquealRepo, squealRepo } from "./helpers.js";
 import {
   HARNESSES,

@@ -1,5 +1,5 @@
 import type { CodeCheckId, CodeTransition } from "../../types/code.js";
-import type { EpochMs, RevisionNumber, WorktreeId } from "../../types/index.js";
+import type { EpochMs, RevisionNumber, WorktreeId } from "../../types/common.js";
 import type { CodeStore } from "../store/types.js";
 import { COVERAGE_MEASURES } from "./seed.js";
 import { deleteSummary, readSummary, writeEvidence } from "./summary.js";

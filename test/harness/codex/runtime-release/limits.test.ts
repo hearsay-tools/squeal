@@ -7,9 +7,9 @@ import {
   DEFAULT_RUNTIME_LIMITS,
   packRuntime,
   type RuntimeArtifactLimits,
-  type RuntimeReleaseErrorCode,
-  stageRuntimeArtifact,
-} from "../../../../src/harness/codex/runtime-release/index.js";
+} from "../../../../src/harness/codex/runtime-release/artifact.js";
+import type { RuntimeReleaseErrorCode } from "../../../../src/harness/codex/runtime-release/errors.js";
+import { stageRuntimeArtifact } from "../../../../src/harness/codex/runtime-release/stage.js";
 import { tempDir } from "../../../store/helpers.js";
 import { envelopeOf, failure, gz, runtimeTree, snapshot } from "./fixture.js";
 

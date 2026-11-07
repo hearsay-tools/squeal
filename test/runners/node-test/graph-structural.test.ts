@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import type { InvalidatedPath } from "../../../src/core/types/index.js";
+import type { InvalidatedPath } from "../../../src/core/types/runner.js";
 import {
   createNodeTestGraph,
   type NodeTestGraph,

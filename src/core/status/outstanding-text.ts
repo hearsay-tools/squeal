@@ -1,16 +1,13 @@
-import { testFileId } from "../keys/index.js";
-import { stopOf } from "../presence/index.js";
+import { testFileId } from "../keys/reverse-index.js";
+import { stopOf } from "../presence/views.js";
 import { loadRetryDue } from "../retry/gate.js";
 import { type HostLoad, loadAllows } from "../retry/load.js";
 import { holdText, waitsText } from "../retry/text.js";
 import { plural, testFileText, timeText } from "../text.js";
-import type {
-  EpochMs,
-  OutstandingGroup,
-  OutstandingStanding,
-  StatusSnapshot,
-  TestFileRef,
-} from "../types/index.js";
+import type { EpochMs } from "../types/common.js";
+import type { TestFileRef } from "../types/keys.js";
+import type { OutstandingGroup, OutstandingStanding } from "../types/standing.js";
+import type { StatusSnapshot } from "../types/status.js";
 import { DEATH_CAUSE, deathText } from "./died.js";
 import { nextStep } from "./next-step.js";
 import { fromBase, reasonWords, stepText } from "./next-step-text.js";

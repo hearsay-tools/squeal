@@ -1,6 +1,6 @@
 import { num, oneOf, strOrNull } from "../../store/codec.js";
 import type { Connection, Row } from "../../store/connection.js";
-import type { Consumer } from "../../types/index.js";
+import type { Consumer } from "../../types/delivery.js";
 import type { LintTold, LintViewEntry } from "../../types/lint.js";
 import {
   CHECK_COLUMNS,

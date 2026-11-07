@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { formatDelta, formatRegistration } from "../../../src/core/delivery/index.js";
+import { formatDelta, formatRegistration } from "../../../src/core/delivery/format.js";
 import { judgeResult, resultOf } from "../../../src/core/lint/pass/judge.js";
 import { lintStoreSource, withLint } from "../../../src/core/lint/surface/source.js";
-import { createStateSink } from "../../../src/core/state/index.js";
+import { createStateSink } from "../../../src/core/state/sink.js";
 import { check, result } from "../../state/helpers.js";
 import { NOW } from "../../status/slow-tier-seed.js";
 import { finding } from "../helpers.js";

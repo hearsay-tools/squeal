@@ -2,16 +2,14 @@ import { existsSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { beforeEach, describe, expect, it } from "vitest";
 import { writeTooBigEdits } from "../../../src/core/code/pass/too-big.js";
-import { codeStorePath } from "../../../src/core/code/store/index.js";
+import { codeStorePath } from "../../../src/core/code/store/open.js";
 import type { CodeSource } from "../../../src/core/delivery/code-source.js";
 import { codeSource } from "../../../src/core/delivery/code-source.js";
-import {
-  createDelivery,
-  formatDelta,
-  formatRegistration,
-} from "../../../src/core/delivery/index.js";
-import { createStateSink } from "../../../src/core/state/index.js";
-import type { Consumer, Store } from "../../../src/core/types/index.js";
+import { createDelivery } from "../../../src/core/delivery/delivery.js";
+import { formatDelta, formatRegistration } from "../../../src/core/delivery/format.js";
+import { createStateSink } from "../../../src/core/state/sink.js";
+import type { Consumer } from "../../../src/core/types/delivery.js";
+import type { Store } from "../../../src/core/types/store.js";
 import { fixedStatus } from "../../delivery/fakes.js";
 import { check, freshStore, result, setKey, WT } from "../../state/helpers.js";
 import { commonDir } from "../helpers.js";

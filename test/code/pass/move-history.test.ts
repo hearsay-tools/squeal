@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { readCodeReport } from "../../../src/cli/code-report.js";
 import { consumerSince, wentOverSince } from "../../../src/core/delivery/code-since.js";
 import { codeStatusOf } from "../../../src/core/status/code-status.js";
-import type { Consumer } from "../../../src/core/types/index.js";
+import type { Consumer } from "../../../src/core/types/delivery.js";
 import type { HookContext } from "../../../src/harness/shared/context.js";
 import { codeStopReason } from "../../../src/harness/shared/stop-code.js";
 import { WT } from "../../state/helpers.js";

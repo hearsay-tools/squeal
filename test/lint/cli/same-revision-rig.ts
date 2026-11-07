@@ -1,7 +1,7 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect } from "vitest";
-import { blobHash } from "../../../src/core/hash/index.js";
+import { blobHash } from "../../../src/core/hash/blob.js";
 import type { Major } from "../provider/helpers.js";
 import { eslintRig } from "./eslint-rig.js";
 

@@ -1,9 +1,8 @@
-import {
-  createNodeTestAdapter,
-  NODE_TEST_ADAPTER_VERSION,
-} from "../../runners/node-test/adapter.js";
+import { createNodeTestAdapter } from "../../runners/node-test/adapter.js";
 import type { NodeTestCoverage } from "../../runners/node-test/coverage.js";
-import type { AbsolutePath, NodeTestProject, PolicyInputs } from "../types/index.js";
+import { NODE_TEST_ADAPTER_VERSION } from "../../runners/node-test/version.js";
+import type { AbsolutePath } from "../types/common.js";
+import type { NodeTestProject, PolicyInputs } from "../types/policy.js";
 import { createRecoveringRunner, type RecoveringRunner } from "./runner.js";
 import { createRunnerSet, type RunnerSet } from "./runner-set.js";
 

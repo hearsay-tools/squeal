@@ -1,7 +1,8 @@
 import { extname } from "node:path";
 import { createInputMatcher } from "../../keys/glob.js";
 import { CODE_EXTENSIONS, type CodeLanguage } from "../../types/code.js";
-import type { Policy, RelativePath } from "../../types/index.js";
+import type { RelativePath } from "../../types/common.js";
+import type { Policy } from "../../types/policy.js";
 
 /**
  * Spec 015 D1: the language a path is counted as, or `null` when it is not

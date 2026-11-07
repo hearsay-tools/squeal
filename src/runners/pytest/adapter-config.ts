@@ -1,9 +1,11 @@
 import { resolve } from "node:path";
-import type { AbsolutePath, PytestProject } from "../../core/types/index.js";
+import type { AbsolutePath } from "../../core/types/common.js";
+import type { PytestProject } from "../../core/types/policy.js";
 import type { CollectionNames } from "./enumerate.js";
+import { findPytestConfig, type PytestConfigFile } from "./environment/config.js";
 import { configArgs, readConfigValue, shellSplit } from "./environment/config-values.js";
-import { findPytestConfig, type PytestConfigFile, projectDir } from "./environment/index.js";
-import type { ImportMode } from "./graph/index.js";
+import { projectDir } from "./environment/discover.js";
+import type { ImportMode } from "./graph/search-path.js";
 
 /**
  * What the project's pytest config and arguments say for the graph and
