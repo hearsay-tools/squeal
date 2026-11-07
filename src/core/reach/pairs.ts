@@ -33,7 +33,7 @@ export const PATH_KINDS: readonly PathKind[] = [
   "import",
 ];
 
-/** The kinds the test file's own imports give: the only ones whose seconds can be avoidable. */
+/** The kinds the test file's own imports give. */
 export const IMPORT_KINDS: ReadonlySet<PathKind> = new Set([
   "direct",
   "barrel",
@@ -41,6 +41,14 @@ export const IMPORT_KINDS: ReadonlySet<PathKind> = new Set([
   "transitive",
   "import",
 ]);
+
+/**
+ * The kinds whose seconds can be avoidable: the imports, and setup, whose
+ * pairs read loaded only or not loaded only in the test's own process,
+ * the `setupFiles` chains (015-120). Global setup and config pairs read
+ * outside the test's process.
+ */
+export const AVOIDABLE_KINDS: ReadonlySet<PathKind> = new Set([...IMPORT_KINDS, "setup"]);
 
 export type CoverageState =
   | "called"
@@ -130,7 +138,10 @@ export function pairsOf(test: ReachTestFile, context: PairContext): Pair[] {
     if (setup?.files.has(path) === true) {
       // Review 0.1.415 B3: a file no recorded edge from a root reaches has no chain, never one of its own.
       const chain = setup.walk.chain(path);
-      const known = pair(test, path, "setup", chain ?? [], chain?.at(-2) ?? null);
+      const known = {
+        ...pair(test, path, "setup", chain ?? [], chain?.at(-2) ?? null),
+        coverage: setupCoverage(test.coverage, path, chain ?? []),
+      };
       // 015-116 (P2): only a module with bytes is a gap; an absent file or a manifest is a leaf.
       const modules = context.snapshot.modules;
       const gap = chain === null && isModulePath(path) && modules.hasBytes(path);
@@ -197,6 +208,26 @@ const OUTSIDE: ReadonlySet<PathKind> = new Set([
   "child process",
   "runtime read",
 ]);
+
+/**
+ * 015-120: a setup file the record does not name is not loaded in the
+ * test's process when its chain starts at a root the record names: a
+ * `setupFiles` entry, which runs in each test's process. A root it does not
+ * name (the config, a `globalSetup` entry, or one its coverage leaves out)
+ * keeps the chain outside the test's process, where Squeal does not
+ * measure (D8). The stored roots do not say which entry each one is.
+ */
+function setupCoverage(
+  view: CoverageView,
+  path: RelativePath,
+  chain: readonly RelativePath[],
+): CoverageState {
+  const state = coverageOf(view, path, "setup");
+  if (state !== "outside the test's process" || view.kind !== "record") return state;
+  const [root] = chain;
+  const ran = root !== undefined && (view.loaded.has(root) || view.unread.has(root));
+  return ran ? "not loaded" : state;
+}
 
 /** D11 "Coverage per pair", from the test file's record at its current key. */
 export function coverageOf(view: CoverageView, path: RelativePath, kind: PathKind): CoverageState {
