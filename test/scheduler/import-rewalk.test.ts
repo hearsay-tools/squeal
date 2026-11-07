@@ -1,6 +1,10 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { closureFor } from "../../src/core/delivery/closure.js";
+import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
+import { readSnapshot } from "../../src/core/reach/read.js";
+import { buildReport } from "../../src/core/reach/report.js";
 import { rewalkMetaKey } from "../../src/core/scheduler/import-rewalk.js";
 import { readImportGraph } from "../../src/core/store/import-graph.js";
 import { connectionOf } from "../../src/core/store/store.js";
@@ -8,7 +12,7 @@ import type { TestFileRef } from "../../src/core/types/keys.js";
 import type { RunnerClosure } from "../../src/core/types/runner.js";
 import type { Store } from "../../src/core/types/store.js";
 import { SLOW } from "./cleanup.js";
-import { createRepo, openRepoStore, ref } from "./repo.js";
+import { addWorktree, createRepo, openRepoStore, ref } from "./repo.js";
 import { type Harness, openHarness } from "./vitest-harness.js";
 
 /*
@@ -135,5 +139,52 @@ describe("the once-after-upgrade re-walk (015-117)", SLOW, () => {
     const walk = readImportGraph(shared, h.worktreeId).walk(ref(GATE));
     expect(walk?.imports.get(GATEWAY)?.static).toEqual(["src/a.ts"]);
     expect(h.errors).toEqual([]);
+  });
+
+  /*
+   * R1 0.1.416 (review 0.1.416 B1): a peer worktree wrote the shared closure
+   * last, at its own key, so closureFor does not give this worktree that
+   * closure. The walk the re-walk stores at this worktree's current key is
+   * trusted evidence of the test file's closure, as valid as its result,
+   * and the report counts the file through it.
+   */
+  it("lets the report count a test file whose shared closure a peer wrote last", async () => {
+    const repo = createRepo("basic");
+    const other = addWorktree(repo.main, repo.dir, "other");
+    for (const root of [repo.main, other]) {
+      for (const [path, text] of Object.entries(FILES)) writeFileSync(join(root, path), text);
+    }
+    // Only a comment differs: the same closure paths, another key.
+    writeFileSync(join(other, "src/leaf.ts"), `// the peer's comment\n${FILES["src/leaf.ts"]}`);
+    const shared = openRepoStore(repo.commonDir);
+    for (const root of [repo.main, other]) {
+      const h = await openHarness(root, shared, repo.commonDir, {
+        tierSize: 2,
+        policy: { baseline: { onStart: "lookup-then-run-missing" } },
+      });
+      await h.scheduler.start();
+      await h.scheduler.idle();
+      await h.scheduler.close();
+    }
+    // A store from before the walks: closures and results, no walk and no marker.
+    connectionOf(shared).run("DELETE FROM test_file_imports");
+    shared.meta.delete(rewalkMetaKey(worktreeIdFor(repo.main)));
+
+    const { h, walked } = await next(repo, shared);
+    await h.scheduler.start();
+    await h.scheduler.idle();
+    expect(walked).toContain(GATE);
+    expect(h.runner.runs).toEqual([]);
+    expect(closureFor(shared, h.worktreeId)(ref(GATE))).toBeUndefined();
+    expect(readImportGraph(shared, h.worktreeId).walk(ref(GATE))).toBeDefined();
+
+    const { snapshot, listed } = readSnapshot({ store: shared, root: repo.main, code: null });
+    const report = buildReport(snapshot, { paths: null, limit: null, command: "squeal", listed });
+    expect(report.suite.withoutClosure).toBe(0);
+    const entry = (file: string) => report.files.find((e) => e.files.includes(file));
+    for (const file of ["src/gateway.ts", "src/a.ts", "src/leaf.ts"]) {
+      expect(entry(file), file).toMatchObject({ testFiles: 1 });
+    }
+    expect(entry("src/gateway.ts")?.kinds).toEqual({ direct: 1 });
   });
 });
