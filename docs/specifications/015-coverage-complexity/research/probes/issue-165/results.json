@@ -1,0 +1,219 @@
+{
+  "utc": "2026-11-07T21:46:28.369Z",
+  "node": "v24.22.1",
+  "cli": "/home/agent/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
+  "scratch": "/home/agent/projects/squeal/.ai/cezar/t/9b5eede8/sq-issue-165-xfykj3",
+  "commit": "6922ff21415850088e3efe558c66b58bf341a5a1",
+  "cases": [
+    {
+      "name": "no-python-runner",
+      "load": {
+        "utc": "2026-11-07T21:46:28.373Z",
+        "load1": 16.42,
+        "cpus": 24
+      },
+      "launchLoad": {
+        "utc": "2026-11-07T21:46:28.531Z",
+        "load1": 16.42,
+        "cpus": 24
+      },
+      "files": {
+        ".gitignore": "runtime/\nhome/\nconfig/\nnode_modules/\n",
+        "package.json": "{\"name\":\"issue-165-no-python-runner\",\"private\":true,\"type\":\"module\"}",
+        "squeal.config.json": "{\"baseline\":{\"onStart\":\"lookup-then-run-missing\"},\"nodeTest\":[{\"name\":\"probe\",\"cwd\":\".\",\"node\":\"/home/agent/.nvm/versions/node/v24.22.1/bin/node\",\"include\":[\"test/*.test.mjs\"]}],\"complexity\":{\"enabled\":true},\"coverage\":{\"enabled\":true,\"exclude\":[]},\"crap\":{\"enabled\":true},\"lint\":{\"enabled\":false}}",
+        "src/sign.mjs": "export function sign(n) {\n  if (n < 0) return -1;\n  if (n === 0) return 0;\n  return 1;\n}\n",
+        "test/sign.test.mjs": "import { test } from 'node:test';\nimport assert from 'node:assert/strict';\nimport { sign } from '../src/sign.mjs';\ntest('sign', () => { assert.equal(sign(-2), -1); assert.equal(sign(0), 0); assert.equal(sign(3), 1); });\n",
+        "bench/__init__.py": "",
+        "bench/stats.py": "def classify(n):\n    if n < 0:\n        return \"negative\"\n    if n == 0:\n        return \"zero\"\n    return \"positive\"\n\n\ndef summarize(rows, strict=False):\n    total = 0\n    for row in rows:\n        if row is None:\n            continue\n        if strict and row < 0:\n            raise ValueError(\"negative row\")\n        if row > 100 or row < -100:\n            total += 100\n        else:\n            total += row\n    return total\n",
+        "bench/test_stats.py": "from bench.stats import classify, summarize\n\n\ndef test_classify():\n    assert classify(-1) == \"negative\"\n    assert classify(0) == \"zero\"\n    assert classify(2) == \"positive\"\n\n\ndef test_summarize():\n    assert summarize([1, None, 200]) == 101\n"
+      },
+      "commands": [
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
+            "--version"
+          ],
+          "exit": 0,
+          "stdout": "0.1.414\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
+            "status",
+            "--wait",
+            "30000",
+            "test/sign.test.mjs"
+          ],
+          "exit": 0,
+          "stdout": "Revision: 0\nSelected: test/sign.test.mjs\nNamed test files at revision 0: no known failures; 1 test file, each with a current result, after 0.3 s. Worktree: known failures 0; all 1 test file current\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
+            "code",
+            "bench/stats.py"
+          ],
+          "exit": 0,
+          "stdout": "Complexity: 2 functions in bench/stats.py, threshold 20\n  bench/stats.py:1  classify  CC 3 (if 2), at or under; CRAP 12; untested: no test runs it in the test's own thread\n  bench/stats.py:9  summarize  CC 7 (if 3, logical 2, loop 1), at or under; CRAP 56, over; untested: no test runs it in the test's own thread\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
+            "code",
+            "bench/stats.py",
+            "--json"
+          ],
+          "exit": 0,
+          "stdout": "{\n  \"v\": 1,\n  \"available\": true,\n  \"threshold\": 20,\n  \"maxFileBytes\": 524288,\n  \"paths\": [\n    \"bench/stats.py\"\n  ],\n  \"functions\": [\n    {\n      \"path\": \"bench/stats.py\",\n      \"qualifiedName\": \"classify\",\n      \"occurrence\": 0,\n      \"line\": 1,\n      \"outcome\": \"pass\",\n      \"complexity\": 3,\n      \"threshold\": 20,\n      \"decisions\": {\n        \"if\": 2\n      },\n      \"changedAt\": 0,\n      \"coverage\": {\n        \"crap\": {\n          \"outcome\": \"pass\",\n          \"value\": 12\n        },\n        \"uncovered\": \"fail\",\n        \"lines\": 0,\n        \"covered\": 0,\n        \"testFiles\": 0,\n        \"first\": []\n      }\n    },\n    {\n      \"path\": \"bench/stats.py\",\n      \"qualifiedName\": \"summarize\",\n      \"occurrence\": 0,\n      \"line\": 9,\n      \"outcome\": \"pass\",\n      \"complexity\": 7,\n      \"threshold\": 20,\n      \"decisions\": {\n        \"loop\": 1,\n        \"if\": 3,\n        \"logical\": 2\n      },\n      \"changedAt\": 0,\n      \"coverage\": {\n        \"crap\": {\n          \"outcome\": \"fail\",\n          \"value\": 56\n        },\n        \"uncovered\": \"fail\",\n        \"lines\": 0,\n        \"covered\": 0,\n        \"testFiles\": 0,\n        \"first\": []\n      }\n    }\n  ],\n  \"files\": []\n}\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
+            "code",
+            "src/sign.mjs"
+          ],
+          "exit": 0,
+          "stdout": "Complexity: 1 function in src/sign.mjs, threshold 20\n  src/sign.mjs:1  sign  CC 3 (if 2), at or under; CRAP 3; 100% of its lines ran in 1 test file\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
+            "code"
+          ],
+          "exit": 0,
+          "stdout": "Complexity: 0 functions over 20\nCRAP: 1 function over 30; 4 functions untested; squeal code <path> shows them by file\n  bench/stats.py  summarize  CRAP 56, fail, since revision 0\n  Coverage counts what ran in the test's own thread. Squeal does not measure worker threads or child processes.\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
+            "status"
+          ],
+          "exit": 0,
+          "stdout": "Revision: 0\nKnown failures: 0; all 1 test file current\nAffected checks: 2 passed (1 test, 1 test file loaded), 0 running, 0 queued\nFull-suite checkpoint: completed at revision 0\nComplexity: 0 functions over 20; squeal code lists them.\nCoverage: 1 function over CRAP 30, 4 untested; squeal code lists them.\nMore: `squeal status --full` adds the worktree and daemon and 2 notes\n",
+          "stderr": ""
+        }
+      ],
+      "daemonLog": "squeal daemon: serving /home/agent/projects/squeal/.ai/cezar/t/9b5eede8/sq-issue-165-xfykj3/no-python-runner on /tmp/squeal-1001/squeal-f7d113d304e3559e.sock\nsqueal daemon: full integrity check: ok\nsqueal daemon: daemon stopped: SIGTERM while it ran in systemd unit cezar.service; the next Squeal hook starts a new daemon, or `squeal start` starts one now\nsqueal daemon: daemon stopped: SIGTERM while it ran in systemd unit cezar.service; the next Squeal hook starts a new daemon, or `squeal start` starts one now\n",
+      "daemonExit": 0,
+      "daemonSignal": null
+    },
+    {
+      "name": "coverage-exclude",
+      "load": {
+        "utc": "2026-11-07T21:46:31.412Z",
+        "load1": 16.39,
+        "cpus": 24
+      },
+      "launchLoad": {
+        "utc": "2026-11-07T21:46:31.551Z",
+        "load1": 16.39,
+        "cpus": 24
+      },
+      "files": {
+        ".gitignore": "runtime/\nhome/\nconfig/\nnode_modules/\n",
+        "package.json": "{\"name\":\"issue-165-coverage-exclude\",\"private\":true,\"type\":\"module\"}",
+        "squeal.config.json": "{\"baseline\":{\"onStart\":\"lookup-then-run-missing\"},\"nodeTest\":[{\"name\":\"probe\",\"cwd\":\".\",\"node\":\"/home/agent/.nvm/versions/node/v24.22.1/bin/node\",\"include\":[\"test/*.test.mjs\"]}],\"complexity\":{\"enabled\":true},\"coverage\":{\"enabled\":true,\"exclude\":[\"bench/**\"]},\"crap\":{\"enabled\":true},\"lint\":{\"enabled\":false}}",
+        "src/sign.mjs": "export function sign(n) {\n  if (n < 0) return -1;\n  if (n === 0) return 0;\n  return 1;\n}\n",
+        "test/sign.test.mjs": "import { test } from 'node:test';\nimport assert from 'node:assert/strict';\nimport { sign } from '../src/sign.mjs';\ntest('sign', () => { assert.equal(sign(-2), -1); assert.equal(sign(0), 0); assert.equal(sign(3), 1); });\n",
+        "bench/__init__.py": "",
+        "bench/stats.py": "def classify(n):\n    if n < 0:\n        return \"negative\"\n    if n == 0:\n        return \"zero\"\n    return \"positive\"\n\n\ndef summarize(rows, strict=False):\n    total = 0\n    for row in rows:\n        if row is None:\n            continue\n        if strict and row < 0:\n            raise ValueError(\"negative row\")\n        if row > 100 or row < -100:\n            total += 100\n        else:\n            total += row\n    return total\n",
+        "bench/test_stats.py": "from bench.stats import classify, summarize\n\n\ndef test_classify():\n    assert classify(-1) == \"negative\"\n    assert classify(0) == \"zero\"\n    assert classify(2) == \"positive\"\n\n\ndef test_summarize():\n    assert summarize([1, None, 200]) == 101\n"
+      },
+      "commands": [
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
+            "--version"
+          ],
+          "exit": 0,
+          "stdout": "0.1.414\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
+            "status",
+            "--wait",
+            "30000",
+            "test/sign.test.mjs"
+          ],
+          "exit": 0,
+          "stdout": "Revision: 0\nSelected: test/sign.test.mjs\nNamed test files at revision 0: no known failures; 1 test file, each with a current result, after 0.3 s. Worktree: known failures 0; all 1 test file current\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
+            "code",
+            "bench/stats.py"
+          ],
+          "exit": 0,
+          "stdout": "Complexity: 2 functions in bench/stats.py, threshold 20\n  bench/stats.py:1  classify  CC 3 (if 2), at or under; coverage not checked (coverage.exclude)\n  bench/stats.py:9  summarize  CC 7 (if 3, logical 2, loop 1), at or under; coverage not checked (coverage.exclude)\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
+            "code",
+            "bench/stats.py",
+            "--json"
+          ],
+          "exit": 0,
+          "stdout": "{\n  \"v\": 1,\n  \"available\": true,\n  \"threshold\": 20,\n  \"maxFileBytes\": 524288,\n  \"paths\": [\n    \"bench/stats.py\"\n  ],\n  \"functions\": [\n    {\n      \"path\": \"bench/stats.py\",\n      \"qualifiedName\": \"classify\",\n      \"occurrence\": 0,\n      \"line\": 1,\n      \"outcome\": \"pass\",\n      \"complexity\": 3,\n      \"threshold\": 20,\n      \"decisions\": {\n        \"if\": 2\n      },\n      \"changedAt\": 0,\n      \"coverage\": {\n        \"excluded\": true\n      }\n    },\n    {\n      \"path\": \"bench/stats.py\",\n      \"qualifiedName\": \"summarize\",\n      \"occurrence\": 0,\n      \"line\": 9,\n      \"outcome\": \"pass\",\n      \"complexity\": 7,\n      \"threshold\": 20,\n      \"decisions\": {\n        \"loop\": 1,\n        \"if\": 3,\n        \"logical\": 2\n      },\n      \"changedAt\": 0,\n      \"coverage\": {\n        \"excluded\": true\n      }\n    }\n  ],\n  \"files\": []\n}\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
+            "code",
+            "src/sign.mjs"
+          ],
+          "exit": 0,
+          "stdout": "Complexity: 1 function in src/sign.mjs, threshold 20\n  src/sign.mjs:1  sign  CC 3 (if 2), at or under; CRAP 3; 100% of its lines ran in 1 test file\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
+            "code"
+          ],
+          "exit": 0,
+          "stdout": "Complexity: 0 functions over 20\nCRAP: 0 functions over 30; 0 functions untested; squeal code <path> shows them by file\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+            "/home/agent/projects/squeal/.ai/cezar/worktrees/9b5eede8-9024-41de-971d-5a231904050b/plugins/claude-code/dist/cli/squeal.mjs",
+            "status"
+          ],
+          "exit": 0,
+          "stdout": "Revision: 0\nKnown failures: 0; all 1 test file current\nAffected checks: 2 passed (1 test, 1 test file loaded), 0 running, 0 queued\nFull-suite checkpoint: completed at revision 0\nComplexity: 0 functions over 20; squeal code lists them.\nCoverage: 0 functions over CRAP 30, 0 untested; squeal code lists them.\nMore: `squeal status --full` adds the worktree and daemon and 2 notes\n",
+          "stderr": ""
+        }
+      ],
+      "daemonLog": "squeal daemon: serving /home/agent/projects/squeal/.ai/cezar/t/9b5eede8/sq-issue-165-xfykj3/coverage-exclude on /tmp/squeal-1001/squeal-7279ee2182bbed04.sock\nsqueal daemon: full integrity check: ok\nsqueal daemon: daemon stopped: SIGTERM while it ran in systemd unit cezar.service; the next Squeal hook starts a new daemon, or `squeal start` starts one now\nsqueal daemon: daemon stopped: SIGTERM while it ran in systemd unit cezar.service; the next Squeal hook starts a new daemon, or `squeal start` starts one now\n",
+      "daemonExit": 0,
+      "daemonSignal": null
+    }
+  ]
+}
