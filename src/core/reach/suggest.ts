@@ -20,11 +20,29 @@ export interface Suggestion {
   readonly text: string;
 }
 
+/** 015-116 (P6): the module that imports the file and many of its siblings, after a barrel or helper gateway. */
+export interface SecondGateway {
+  readonly gateway: RelativePath;
+  readonly suggestion: Suggestion;
+}
+
 /** The note for a route Squeal re-runs by design. */
 export const BY_DESIGN = "these tests start the program from source; Squeal re-runs them by design";
 
 /** `a → b → c`. */
 export const chainText = (chain: readonly RelativePath[]) => chain.join(" → ");
+
+/**
+ * Whether `file` leaves the closure of the tests that load it through
+ * `route`'s barrel with `export type *`: the barrel re-exports it with
+ * `export *` and it exports no runtime value (015-116, P4).
+ */
+export function typesOnlyThrough(file: RelativePath, route: Route, snapshot: ReachSnapshot) {
+  const { modules } = snapshot;
+  if (route.kind !== "barrel" || route.gateway === null) return false;
+  if (modules.exportsValue(file) !== false) return false;
+  return modules.starTargets(route.gateway, route.test).has(file);
+}
 
 /** The suggestion for `files`, which share `route`; `null` for a kind that has none. */
 export function suggestionFor(
@@ -46,7 +64,7 @@ function textFor(
   const { gateway } = route;
   switch (route.kind) {
     case "barrel":
-      return gateway === null ? null : barrelText(files, them, gateway, route.test, snapshot);
+      return gateway === null ? null : barrelText(files, them, gateway, route, snapshot);
     case "test helper":
       return gateway === null ? null : helperText(them, gateway, route);
     case "transitive":
@@ -69,24 +87,44 @@ function barrelText(
   files: readonly RelativePath[],
   them: string,
   barrel: RelativePath,
-  test: TestFileRef,
+  route: Route,
   snapshot: ReachSnapshot,
 ): string {
-  const stars = snapshot.modules.starTargets(barrel, test);
-  const empty = files.every((f) => snapshot.modules.functions(f) === 0 && stars.has(f));
-  if (empty) {
-    const holds = files.length === 1 ? "holds" : "hold";
-    return `${holds} no functions: tests re-run because ${barrel} re-exports ${files.length === 1 ? "it" : "them"} with \`export *\`; \`export type *\` takes ${files.length === 1 ? "it" : "them"} out of their closure`;
+  if (files.every((f) => typesOnlyThrough(f, route, snapshot))) {
+    const [exports, it] = files.length === 1 ? ["exports", "it"] : ["export", "them"];
+    return `${exports} no runtime value: tests re-run because ${barrel} re-exports ${it} with \`export *\`; \`export type *\` takes ${it} out of their closure`;
   }
   const own = files.length === 1 ? "its own path" : "their own paths";
   return `import ${them} from ${own} in the files that use ${files.length === 1 ? "it" : "them"}, or split ${barrel}`;
 }
 
-function helperText(them: string, helper: RelativePath, route: Route): string {
+function helperText(them: string, helper: RelativePath, route: Route): string | null {
   const loads = `${plural(route.testFiles, "test file")} that load ${them} through it`;
   if (route.measured === 0)
     return `split ${helper}: Squeal cannot tell which of the ${loads} call it`;
+  // 015-116 (P5): every test file that can tell calls it, so a split spares none of them.
+  if (route.uncalled === 0) return null;
   return `split ${helper}: ${route.uncalled} of the ${loads} never call it`;
+}
+
+/**
+ * 015-116 (P6, D11 as amended): the module on the route's chain that
+ * imports the file and many of its siblings, when a barrel or helper
+ * before it is the gateway. Cezar's runner factory, which loads all six
+ * runners, sits after its parity testkits on the chain.
+ */
+export function secondGateway(
+  files: readonly RelativePath[],
+  route: Route,
+  snapshot: ReachSnapshot,
+): SecondGateway | null {
+  if (route.kind !== "barrel" && route.kind !== "test helper") return null;
+  const file = route.chain.at(-1);
+  const importer = route.chain.at(-2);
+  if (file === undefined || importer === undefined || importer === route.gateway) return null;
+  const them = files.length === 1 ? file : "these files";
+  const text = siblingText(file, them, importer, route.test, snapshot);
+  return text === null ? null : { gateway: importer, suggestion: { kind: "transitive", text } };
 }
 
 function siblingText(

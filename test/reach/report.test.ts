@@ -61,7 +61,8 @@ describe("suggestions by path kind", () => {
     graph,
     barrels: ["src/index.ts"],
     stars: { "src/index.ts": ["src/types/state.ts", "src/types/run.ts"] },
-    functions: { "src/types/state.ts": 0, "src/types/run.ts": 0, "src/used.ts": 2 },
+    typesOnly: ["src/types/state.ts", "src/types/run.ts"],
+    values: ["src/used.ts"],
     declared: { "fixtures/x.json": { tests: "test/**", input: "fixtures/**" } },
   });
   const r = report(snap);
@@ -76,13 +77,12 @@ describe("suggestions by path kind", () => {
     expect(entry("src/used.ts")?.files).toEqual(["src/used.ts"]);
   });
 
-  it("says a barrel's file with no functions leaves with export type *", () => {
+  it("says a barrel's file that exports no runtime value leaves with export type *", () => {
     expect(entry("src/types/state.ts")?.suggestion?.text).toBe(
-      "hold no functions: tests re-run because src/index.ts re-exports them with `export *`; `export type *` takes them out of their closure",
+      "export no runtime value: tests re-run because src/index.ts re-exports them with `export *`; `export type *` takes them out of their closure",
     );
-    expect(entry("src/used.ts")?.suggestion?.text).toBe(
-      "import src/used.ts from its own path in the files that use it, or split src/index.ts",
-    );
+    // 015-116 (P3): test/b.test.ts imports it directly and never loads it, the only avoidable route.
+    expect(entry("src/used.ts")).toMatchObject({ kind: "direct", suggestion: null });
   });
 
   it("counts the helper's test files that never call the file", () => {
@@ -159,7 +159,7 @@ describe("suggestions by path kind", () => {
       sources: 9,
       called: 2,
       via: { path: "src/index.ts", uncalled: 3 },
-      avoidableSeconds: 21,
+      avoidablePairSeconds: 21,
     });
     expect(r.testFiles.find((t) => t.path === "test/b.test.ts")).toMatchObject({
       sources: 3,
@@ -269,7 +269,15 @@ describe("proposals", () => {
     });
     const r = report(snapshot([{ ...t, coverage: NONE }, u]));
     expect(r.proposals).toEqual([
-      { kind: "records", command: "squeal run --all --force", testFiles: 1, share: 0.25 },
+      {
+        kind: "records",
+        command: "squeal run --all --force",
+        retry: "squeal retry",
+        testFiles: 1,
+        share: 0.25,
+        current: ["test/x.test.ts"],
+        noResult: [],
+      },
     ]);
     expect(r.files[0]?.coverage).toEqual({ called: 0.75, "no record": 0.25 });
   });

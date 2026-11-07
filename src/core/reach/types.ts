@@ -2,6 +2,7 @@ import type { ImportGraph } from "../store/import-graph.js";
 import type { CheckRunner } from "../types/check-groups.js";
 import type { EpochMs, RelativePath } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
+import type { Policy } from "../types/policy.js";
 
 /*
  * Spec 015 D11 (row 015-109): what `squeal reach` reads, as plain data. The
@@ -35,6 +36,8 @@ export interface ReachTestFile {
   readonly inSuite: boolean;
   /** Recorded seconds: at its current key, else its newest result; `null` when none. */
   readonly seconds: number | null;
+  /** It has a result at its current key (015-116, P7: `squeal retry` queues one that has none). */
+  readonly current: boolean;
   /** Its trusted closure (`closureFor`); `null` when none is. */
   readonly closure: readonly RelativePath[] | null;
   /** Paths a process it started imported (`observedModules.`, `observedDirect.`). */
@@ -56,8 +59,13 @@ export interface ModuleFacts {
   barrel(path: RelativePath): boolean;
   /** The targets `barrel` re-exports with `export *` (not `export type *`), in `test`'s keyed walk. */
   starTargets(path: RelativePath, test: TestFileRef): ReadonlySet<RelativePath>;
-  /** The counter's function count at the file's current bytes (D3); `null` when not known. */
-  functions(path: RelativePath): number | null;
+  /**
+   * Whether the module exports a runtime value, read from its bytes: false
+   * for one of types only (015-116, P4); `null` when it cannot be read.
+   */
+  exportsValue(path: RelativePath): boolean | null;
+  /** Whether the file exists in the worktree (015-116, P2: an absent import target is a leaf). */
+  hasBytes(path: RelativePath): boolean;
 }
 
 /** The `squeal.config.json` `inputs` entry that gives `path` to a test file: its test glob and input glob. */
@@ -85,4 +93,6 @@ export interface ReachSnapshot {
   readonly modules: ModuleFacts;
   /** The `inputs` entry that gives `path` to the test file at `testPath`; `null` when none does. */
   declared(testPath: RelativePath, path: RelativePath): DeclaredPattern | null;
+  /** `baseline.onStart`: whether `squeal start` runs the test files its lookups find no result for (015-116, P9). */
+  readonly onStart: Policy["baseline"]["onStart"];
 }

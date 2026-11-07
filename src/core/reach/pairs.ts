@@ -93,7 +93,8 @@ export class PairContext {
     if (environment === undefined) return null;
     let setup = this.#setups.get(environment);
     if (setup === undefined) {
-      setup = { files: new Set(environment.files), walk: setupWalk(environment) };
+      const walked = setupWalk(environment, (path) => this.snapshot.modules.hasBytes(path));
+      setup = { files: new Set(environment.files), walk: walked };
       this.#setups.set(environment, setup);
     }
     return setup;
@@ -118,7 +119,9 @@ export function pairsOf(test: ReachTestFile, context: PairContext): Pair[] {
   for (const file of setup?.files ?? []) paths.add(file);
   let imports: Walk | undefined;
   const importWalk = (found: TestWalk) => {
-    imports ??= walk(found.imports, [test.ref.path]);
+    imports ??= walk(found.imports, [test.ref.path], (path) =>
+      context.snapshot.modules.hasBytes(path),
+    );
     return imports;
   };
   const pairs: Pair[] = [];
@@ -128,7 +131,10 @@ export function pairsOf(test: ReachTestFile, context: PairContext): Pair[] {
       // Review 0.1.415 B3: a file no recorded edge from a root reaches has no chain, never one of its own.
       const chain = setup.walk.chain(path);
       const known = pair(test, path, "setup", chain ?? [], chain?.at(-2) ?? null);
-      pairs.push(chain === null ? { ...known, notRecorded: true } : known);
+      // 015-116 (P2): only a module with bytes is a gap; an absent file or a manifest is a leaf.
+      const modules = context.snapshot.modules;
+      const gap = chain === null && isModulePath(path) && modules.hasBytes(path);
+      pairs.push(gap ? { ...known, notRecorded: true } : known);
     } else {
       pairs.push(closurePair(test, path, context, walked, importWalk));
     }
@@ -151,8 +157,10 @@ function closurePair(
   if (walked !== undefined) return importPair(test, path, importWalk(walked), context);
   if (!isModulePath(path)) return pair(test, path, "runtime read", [], null);
   const unsplit = pair(test, path, "import", [], null);
-  // A graph but no walk written with this key: the chain is not recorded yet.
-  return context.snapshot.graph === null ? unsplit : { ...unsplit, notRecorded: true };
+  // A graph but no walk written with this key: the chain is not recorded yet. Only Vitest
+  // records walks; node:test and pytest pairs read import, unsplit (D11; 015-116, P2).
+  const walks = context.snapshot.graph !== null && test.runner === "vitest";
+  return walks ? { ...unsplit, notRecorded: true } : unsplit;
 }
 
 function pair(
