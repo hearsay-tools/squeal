@@ -1,5 +1,5 @@
 import { compare } from "../../../../src/core/fs/compare.js";
-import { listingPath } from "../../../../src/core/keys/index.js";
+import { listingPath } from "../../../../src/core/keys/observed.js";
 import { describeFailure } from "../../../../src/core/state/fingerprint.js";
 import type { CheckError } from "../../../../src/core/types/check.js";
 import type { RelativePath } from "../../../../src/core/types/common.js";

@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { WorktreePaths } from "../../../../src/core/fs/worktree-paths.js";
-import { listingPath, ObservedSets, observedMetaKey } from "../../../../src/core/keys/index.js";
+import { listingPath, ObservedSets, observedMetaKey } from "../../../../src/core/keys/observed.js";
 import { observedInputs } from "../../../../src/runners/observe/inputs.js";
 import { takeRecorded } from "../../../../src/runners/observe/read.js";
 import { OBSERVE_VARIABLE, observeEnv } from "../../../../src/runners/observe/runtime.js";
