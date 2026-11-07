@@ -1,8 +1,10 @@
 import { readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { cancelRetries, readRetries, readRunLoads } from "../../src/core/retry/index.js";
-import { checkIdentity, readFlakyNotes } from "../../src/core/state/index.js";
+import { readRunLoads } from "../../src/core/retry/load.js";
+import { cancelRetries, readRetries } from "../../src/core/retry/records.js";
+import { checkIdentity } from "../../src/core/state/derive.js";
+import { readFlakyNotes } from "../../src/core/state/flaky.js";
 import { SLOW } from "./cleanup.js";
 import { addWorktree, openRepoStore } from "./repo.js";
 import {

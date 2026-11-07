@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import type { InvalidatedPath } from "../../src/core/types/index.js";
+import type { InvalidatedPath } from "../../src/core/types/runner.js";
 import { SLOW } from "./cleanup.js";
 import { createRepo, openRepoStore } from "./repo.js";
 import { type Harness, openHarness } from "./vitest-harness.js";

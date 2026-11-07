@@ -2,14 +2,10 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { createNodeTestRunners } from "../../src/core/daemon/node-test-runners.js";
-import type {
-  CheckKey,
-  NodeTestProject,
-  RunnerAdapter,
-  RunOptions,
-  Store,
-  TestFileRef,
-} from "../../src/core/types/index.js";
+import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
+import type { NodeTestProject } from "../../src/core/types/policy.js";
+import type { RunnerAdapter, RunOptions } from "../../src/core/types/runner.js";
+import type { Store } from "../../src/core/types/store.js";
 import { SLOW } from "./cleanup.js";
 import { createRepo, openRepoStore, ref } from "./repo.js";
 import { type Harness, openHarness } from "./vitest-harness.js";

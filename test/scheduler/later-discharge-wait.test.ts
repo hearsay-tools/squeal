@@ -1,13 +1,13 @@
 import { describe, expect, it, onTestFinished } from "vitest";
 import { waitForStatus } from "../../src/cli/status-wait.js";
-import { testFileId } from "../../src/core/keys/index.js";
+import { testFileId } from "../../src/core/keys/reverse-index.js";
 import {
   MOVES_GRACE_MS,
   MOVES_RETENTION_MS,
   recordMoves,
   rekeyedMovesMetaKey,
 } from "../../src/core/scheduler/rekeyed-moves.js";
-import { refinedMetaKey } from "../../src/core/types/index.js";
+import { refinedMetaKey } from "../../src/core/types/scheduler.js";
 import { SLOW } from "./cleanup.js";
 import { createRepo, openRepoStore } from "./repo.js";
 import { captureSync, HARNESS_INCARNATION, liveDaemon } from "./store-wait.js";

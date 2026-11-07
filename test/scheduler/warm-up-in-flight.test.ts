@@ -1,8 +1,10 @@
 import { appendFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { readIgnoredReads } from "../../src/core/status/index.js";
-import type { CheckpointRecord, RunOptions, TestFileRef } from "../../src/core/types/index.js";
+import { readIgnoredReads } from "../../src/core/scheduler/ignored-reads.js";
+import type { TestFileRef } from "../../src/core/types/keys.js";
+import type { RunOptions } from "../../src/core/types/runner.js";
+import type { CheckpointRecord } from "../../src/core/types/store-records.js";
 import { SLOW } from "./cleanup.js";
 import type { Harness } from "./vitest-harness.js";
 import { BUILD, QUIET, READS, snapshot, VITEST, warmUpRepo } from "./warm-up-repo.js";

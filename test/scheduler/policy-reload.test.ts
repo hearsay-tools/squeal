@@ -1,5 +1,6 @@
 import { describe, expect, it, onTestFinished } from "vitest";
-import { DEFAULT_POLICY, type FileChange, type Policy } from "../../src/core/types/index.js";
+import { DEFAULT_POLICY, type Policy } from "../../src/core/types/policy.js";
+import type { FileChange } from "../../src/core/types/revision.js";
 import { SLOW } from "./cleanup.js";
 import { idleAfterQuiet } from "./quiet-clock.js";
 import { ALL_TEST_FILES, createRepo, openRepoStore } from "./repo.js";

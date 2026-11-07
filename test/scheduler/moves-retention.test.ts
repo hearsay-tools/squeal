@@ -8,7 +8,7 @@ import {
   recordMoves,
   rekeyedMovesMetaKey,
 } from "../../src/core/scheduler/rekeyed-moves.js";
-import { refinedMetaKey } from "../../src/core/types/index.js";
+import { refinedMetaKey } from "../../src/core/types/scheduler.js";
 import { SLOW } from "./cleanup.js";
 import { createRepo, openRepoStore } from "./repo.js";
 import { captureSync, HARNESS_INCARNATION, liveDaemon } from "./store-wait.js";
