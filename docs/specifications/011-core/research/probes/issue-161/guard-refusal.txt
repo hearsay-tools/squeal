@@ -1,0 +1,12 @@
+{"mode":"excluded","date":"2026-11-07T21:43:11.875Z","node":"v24.22.1","load":15.73,"cpus":24,"cli":"/home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.414/dist/cli/squeal.mjs","sha256":"c44681839af3b88b9056327d1837c4bc7407c7e4b876d756991407cedfbba596","vitest":"5.0.3"}
+file:///home/agent/projects/squeal/.ai/cezar/worktrees/5ff30d0b-2f4a-4244-859f-ad126d3de578/docs/specifications/011-core/research/probes/issue-161/probe.mjs:18
+if (existsSync(root)) throw Error('fixture already exists');
+                            ^
+
+Error: fixture already exists
+    at file:///home/agent/projects/squeal/.ai/cezar/worktrees/5ff30d0b-2f4a-4244-859f-ad126d3de578/docs/specifications/011-core/research/probes/issue-161/probe.mjs:18:29
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+
+Node.js v24.22.1
