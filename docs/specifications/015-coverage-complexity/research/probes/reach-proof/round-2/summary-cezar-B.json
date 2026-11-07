@@ -1,0 +1,3534 @@
+{
+ "v": 1,
+ "history": true,
+ "suite": {
+  "testFiles": 1689,
+  "seconds": 10181.255074852996,
+  "withoutSeconds": 0,
+  "withoutClosure": 0,
+  "leftOut": 98
+ },
+ "window": {
+  "from": 1792013318369,
+  "to": 1794091001286,
+  "edits": 520
+ },
+ "coverage": "on",
+ "edges": true,
+ "notRecorded": 0,
+ "moreFiles": 0,
+ "moreByEdits": 0,
+ "moreTestFiles": 0,
+ "proposals": [
+  {
+   "kind": "records",
+   "command": "squeal run --all --force",
+   "retry": "squeal retry",
+   "testFiles": 23,
+   "share": 0.014410792016633417,
+   "current": [
+    ".github/scripts/ci-coverage.workflow.test.cjs",
+    ".github/scripts/ci-sweep-collect.test.cjs",
+    ".github/scripts/mutants-file.test.cjs",
+    ".github/scripts/release-ci.test.cjs",
+    ".github/scripts/release-finalization.test.cjs",
+    ".github/scripts/require-e2e-passed.test.cjs",
+    ".github/scripts/upstream-ledger.test.cjs",
+    ".github/scripts/vitest-actions-report.test.cjs",
+    "packages/cezar/src/core/mock-session-context.test.ts",
+    "packages/contract/src/delegation.test.ts",
+    "packages/contract/src/sidebar-limits.test.ts",
+    "packages/contract/src/test-factories.test.ts",
+    "packages/contract/src/worker-destroy.test.ts"
+   ],
+   "noResult": [
+    ".github/scripts/change-surface-readers.test.cjs",
+    "packages/cezar/src/artifacts/cli.test.ts",
+    "packages/cezar/src/lint/plugin.test.ts",
+    "packages/cezar/src/run-store-unavailable-cli.test.ts",
+    "packages/cezar/src/server/application-update.test.ts",
+    "packages/cezar/src/server/automations-api.test.ts",
+    "packages/cezar/src/server/preview-socket.test.ts",
+    "packages/cezar/src/server/task-webhook-api.test.ts",
+    "packages/cezar/src/webhooks/cli.test.ts",
+    "packages/web/src/components/application-update-handoff.test.tsx"
+   ]
+  }
+ ],
+ "unmeasured": [],
+ "files": [
+  {
+   "files": [
+    "packages/contract/src/project-limits.ts"
+   ],
+   "folder": null,
+   "testFiles": 984,
+   "seconds": 8479.027625044995,
+   "share": 0.8328077002989164,
+   "avoidableSeconds": 8190.235465641998,
+   "unknownSeconds": 0,
+   "edits": 1,
+   "editSeconds": 8479.027625044995,
+   "coverage": {
+    "loaded only": 0.9799916806866047,
+    "not loaded": 0.003843895498079244,
+    "no record": 0.005291771586929097,
+    "outside the test's process": 0.010872652228386953
+   },
+   "kinds": {
+    "declared input": 0.003922411961456903,
+    "child process": 0.026514354982633635,
+    "runtime read": 0.0016959425056624568,
+    "direct": 0.0008574732882724175,
+    "barrel": 0.08264799276311842,
+    "test helper": 0.7264348751893958,
+    "transitive": 0.15721866047982436,
+    "import": 0.0007082888296366566
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/workflows/waits-parity-cells.testkit.ts",
+    "chain": [
+     "packages/cezar/src/workflows/waits-claude-answers-parity.test.ts",
+     "packages/cezar/src/workflows/waits-parity-cells.testkit.ts",
+     "packages/cezar/src/ci-wait/supervisor.ts",
+     "packages/cezar/src/ci-wait/progress.ts",
+     "packages/contract/src/activity.ts",
+     "packages/contract/src/project-limits.ts"
+    ],
+    "testFiles": 99,
+    "seconds": 1634.3883790979996,
+    "coverage": {
+     "loaded only": 1
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/workflows/waits-parity-cells.testkit.ts: 99 of the 99 test files that load packages/contract/src/project-limits.ts through it never call it"
+   },
+   "rank": 1
+  },
+  {
+   "files": [
+    "packages/contract/src/live-limits.ts"
+   ],
+   "folder": null,
+   "testFiles": 960,
+   "seconds": 8442.746975118,
+   "share": 0.829244225102562,
+   "avoidableSeconds": 8168.489356187998,
+   "unknownSeconds": 0,
+   "edits": 1,
+   "editSeconds": 8442.746975118,
+   "coverage": {
+    "loaded only": 0.9852035806760326,
+    "not loaded": 0.004262295774947946,
+    "no record": 0.005314511687160078,
+    "outside the test's process": 0.0052196118618589886
+   },
+   "kinds": {
+    "declared input": 0.003939267572037496,
+    "child process": 0.024795322489701187,
+    "runtime read": 0.0018146602449596529,
+    "direct": 0.0004623877473179207,
+    "barrel": 0.08140198235828269,
+    "test helper": 0.7613510911717405,
+    "transitive": 0.12623528841596063
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/core/harness-parity.testkit.ts",
+    "chain": [
+     "packages/cezar/src/core/child-home-env.test.ts",
+     "packages/cezar/src/core/harness-parity.testkit.ts",
+     "packages/cezar/src/runs/store.ts",
+     "packages/cezar/src/runs/live-item-snapshots.ts",
+     "packages/contract/src/live-limits.ts"
+    ],
+    "testFiles": 287,
+    "seconds": 4260.006052218999,
+    "coverage": {
+     "loaded only": 1
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/core/harness-parity.testkit.ts: 287 of the 287 test files that load packages/contract/src/live-limits.ts through it never call it"
+   },
+   "rank": 2
+  },
+  {
+   "files": [
+    "packages/contract/src/projects.ts"
+   ],
+   "folder": null,
+   "testFiles": 955,
+   "seconds": 8428.741551055,
+   "share": 0.8278686163038401,
+   "avoidableSeconds": 8077.649037424999,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "called": 0.005800018688778158,
+    "loaded only": 0.9724808923122137,
+    "not loaded": 0.00386682827069487,
+    "no record": 0.00532334242297225,
+    "outside the test's process": 0.012528918305340846
+   },
+   "kinds": {
+    "declared input": 0.00394581316517377,
+    "child process": 0.02667254025956704,
+    "runtime read": 0.00329746011259785,
+    "direct": 0.0001542586071864141,
+    "barrel": 0.08028615198733886,
+    "test helper": 0.7344052778694113,
+    "transitive": 0.1505259835009647,
+    "import": 0.0007125144977601427
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/workflows/waits-parity-cells.testkit.ts",
+    "chain": [
+     "packages/cezar/src/workflows/waits-claude-answers-parity.test.ts",
+     "packages/cezar/src/workflows/waits-parity-cells.testkit.ts",
+     "packages/cezar/src/workflows/run.ts",
+     "packages/cezar/src/workspace/semaphore.ts",
+     "packages/cezar/src/workspace/config.ts",
+     "packages/contract/src/projects.ts"
+    ],
+    "testFiles": 99,
+    "seconds": 1634.3883790979996,
+    "coverage": {
+     "loaded only": 1
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/workflows/waits-parity-cells.testkit.ts: 99 of the 99 test files that load packages/contract/src/projects.ts through it never call it"
+   },
+   "rank": 3
+  },
+  {
+   "files": [
+    "packages/contract/src/run-search.ts"
+   ],
+   "folder": null,
+   "testFiles": 955,
+   "seconds": 8422.098592649996,
+   "share": 0.8272161468041405,
+   "avoidableSeconds": 8025.656457175996,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "called": 0.014085222105750035,
+    "loaded only": 0.9724452308988015,
+    "not loaded": 0.0024872097571122004,
+    "no record": 0.005327541227094806,
+    "outside the test's process": 0.005654796011241518
+   },
+   "kinds": {
+    "declared input": 0.003948925438491615,
+    "child process": 0.02619687628396409,
+    "runtime read": 0.0009007331776690899,
+    "direct": 0.00016960080201941193,
+    "barrel": 0.07556438404917255,
+    "test helper": 0.7630853136593153,
+    "transitive": 0.13013416658936844
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/core/harness-parity.testkit.ts",
+    "chain": [
+     "packages/cezar/src/core/child-home-env.test.ts",
+     "packages/cezar/src/core/harness-parity.testkit.ts",
+     "packages/cezar/src/runs/store.ts",
+     "packages/contract/src/run-search.ts"
+    ],
+    "testFiles": 287,
+    "seconds": 4260.006052218999,
+    "coverage": {
+     "loaded only": 1
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/core/harness-parity.testkit.ts: 287 of the 287 test files that load packages/contract/src/run-search.ts through it never call it"
+   },
+   "rank": 4
+  },
+  {
+   "files": [
+    "packages/contract/src/home-recovery.ts"
+   ],
+   "folder": null,
+   "testFiles": 922,
+   "seconds": 8191.627421145993,
+   "share": 0.8045793333848155,
+   "avoidableSeconds": 7952.210919565998,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "loaded only": 0.9903008915002774,
+    "not loaded": 0.00036734055289577985,
+    "no record": 0.005477431426528784,
+    "outside the test's process": 0.0038543365202983017
+   },
+   "kinds": {
+    "declared input": 0.004060028327478209,
+    "child process": 0.022827465228983754,
+    "runtime read": 0.00034500394374682486,
+    "direct": 0.00021889531479071442,
+    "barrel": 0.026463552425785613,
+    "test helper": 0.8350096843126547,
+    "transitive": 0.11034223156655097,
+    "import": 0.0007331388800102224
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/core/harness-parity.testkit.ts",
+    "chain": [
+     "packages/cezar/src/core/ci-tools-ask-done.test.ts",
+     "packages/cezar/src/core/ci-tools.testkit.ts",
+     "packages/cezar/src/core/harness-parity.testkit.ts",
+     "packages/cezar/src/delegation/execution-identity.ts",
+     "packages/cezar/src/core/agent-model-policy.ts",
+     "packages/cezar/src/home/store.ts",
+     "packages/contract/src/home-recovery.ts"
+    ],
+    "testFiles": 227,
+    "seconds": 3310.745296881998,
+    "coverage": {
+     "loaded only": 1
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/core/harness-parity.testkit.ts: 227 of the 227 test files that load packages/contract/src/home-recovery.ts through it never call it"
+   },
+   "rank": 5
+  },
+  {
+   "files": [
+    "packages/contract/src/agent-profiles.ts"
+   ],
+   "folder": null,
+   "testFiles": 870,
+   "seconds": 8166.101103157997,
+   "share": 0.8020721456363183,
+   "avoidableSeconds": 7867.151679728995,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "called": 0.0014963178357263582,
+    "loaded only": 0.9848175197628823,
+    "not loaded": 0.001267792824778561,
+    "no record": 0.0054945532640599095,
+    "outside the test's process": 0.006923816312552708
+   },
+   "kinds": {
+    "declared input": 0.004072719521576626,
+    "child process": 0.025635322328552083,
+    "runtime read": 0.003403513955178893,
+    "barrel": 0.04531280590218291,
+    "test helper": 0.7491812520192882,
+    "transitive": 0.1722791814862472,
+    "import": 0.00011520478697431063
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/workflows/waits-parity-cells.testkit.ts",
+    "chain": [
+     "packages/cezar/src/workflows/waits-claude-answers-parity.test.ts",
+     "packages/cezar/src/workflows/waits-parity-cells.testkit.ts",
+     "packages/cezar/src/workflows/run.ts",
+     "packages/cezar/src/workflows/run/launch-read-resolver.ts",
+     "packages/cezar/src/workspace/agent-accounts.ts",
+     "packages/contract/src/agent-profiles.ts"
+    ],
+    "testFiles": 99,
+    "seconds": 1634.3883790979996,
+    "coverage": {
+     "loaded only": 1
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/workflows/waits-parity-cells.testkit.ts: 99 of the 99 test files that load packages/contract/src/agent-profiles.ts through it never call it"
+   },
+   "rank": 6
+  },
+  {
+   "files": [
+    "packages/contract/src/report-title.ts"
+   ],
+   "folder": null,
+   "testFiles": 849,
+   "seconds": 8028.601503787,
+   "share": 0.7885669737925629,
+   "avoidableSeconds": 7747.702643096996,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "called": 0.002176279750060883,
+    "loaded only": 0.9637644166626307,
+    "not loaded": 0.024330872231217226,
+    "no record": 0.005588654194611075,
+    "outside the test's process": 0.004139777161479824
+   },
+   "kinds": {
+    "declared input": 0.00414246981399095,
+    "child process": 0.026074358510415098,
+    "runtime read": 0.0005591853298338901,
+    "direct": 4.627596348190312e-06,
+    "barrel": 0.03545422603995663,
+    "test helper": 0.8028637568173678,
+    "transitive": 0.13090137589208736
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/core/harness-parity.testkit.ts",
+    "chain": [
+     "packages/cezar/src/core/child-home-env.test.ts",
+     "packages/cezar/src/core/harness-parity.testkit.ts",
+     "packages/cezar/src/runs/store.ts",
+     "packages/cezar/src/artifacts/reports-index.ts",
+     "packages/contract/src/report-title.ts"
+    ],
+    "testFiles": 287,
+    "seconds": 4260.006052218999,
+    "coverage": {
+     "loaded only": 1
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/core/harness-parity.testkit.ts: 287 of the 287 test files that load packages/contract/src/report-title.ts through it never call it"
+   },
+   "rank": 7
+  },
+  {
+   "files": [
+    "packages/cezar/src/core/defined.ts"
+   ],
+   "folder": null,
+   "testFiles": 823,
+   "seconds": 7866.288750691998,
+   "share": 0.7726246609930434,
+   "avoidableSeconds": 7696.902245925,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "loaded only": 0.9892239299170729,
+    "not loaded": 0.00017402212153470428,
+    "no record": 0.005392075242759007,
+    "outside the test's process": 0.005209972718633639
+   },
+   "kinds": {
+    "declared input": 0.0035281685232516433,
+    "child process": 0.01542019797141686,
+    "runtime read": 0.0005078829905205992,
+    "direct": 0.0008802510901205942,
+    "test helper": 0.8203421011137336,
+    "transitive": 0.15910994759172756,
+    "import": 0.00021145071922940492
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/core/harness-parity.testkit.ts",
+    "chain": [
+     "packages/cezar/src/core/child-home-env.test.ts",
+     "packages/cezar/src/core/harness-parity.testkit.ts",
+     "packages/cezar/src/runs/store.ts",
+     "packages/cezar/src/core/defined.ts"
+    ],
+    "testFiles": 287,
+    "seconds": 4260.006052218999,
+    "coverage": {
+     "loaded only": 1
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/core/harness-parity.testkit.ts: 287 of the 287 test files that load packages/cezar/src/core/defined.ts through it never call it"
+   },
+   "rank": 8
+  },
+  {
+   "files": [
+    "packages/contract/src/activity.ts"
+   ],
+   "folder": null,
+   "testFiles": 778,
+   "seconds": 7825.294633878999,
+   "share": 0.7685982304094259,
+   "avoidableSeconds": 7580.683814647,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "loaded only": 0.9612656385160606,
+    "not loaded": 0.02542249251136327,
+    "no record": 0.005733851512343427,
+    "outside the test's process": 0.007578017460232662
+   },
+   "kinds": {
+    "declared input": 0.004250094205272612,
+    "child process": 0.0243473356949573,
+    "runtime read": 0.0005737133731122616,
+    "direct": 0.0013106192272425799,
+    "barrel": 0.03199719349223825,
+    "test helper": 0.8174374465841886,
+    "transitive": 0.12008359742298877
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/workflows/waits-parity-cells.testkit.ts",
+    "chain": [
+     "packages/cezar/src/workflows/waits-claude-answers-parity.test.ts",
+     "packages/cezar/src/workflows/waits-parity-cells.testkit.ts",
+     "packages/cezar/src/ci-wait/supervisor.ts",
+     "packages/cezar/src/ci-wait/progress.ts",
+     "packages/contract/src/activity.ts"
+    ],
+    "testFiles": 99,
+    "seconds": 1634.3883790979996,
+    "coverage": {
+     "loaded only": 1
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/workflows/waits-parity-cells.testkit.ts: 99 of the 99 test files that load packages/contract/src/activity.ts through it never call it"
+   },
+   "rank": 9
+  },
+  {
+   "files": [
+    "packages/cezar/src/runs/store-open-error.ts"
+   ],
+   "folder": null,
+   "testFiles": 786,
+   "seconds": 7746.244343116001,
+   "share": 0.7608339331610201,
+   "avoidableSeconds": 7560.544454509998,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "called": 0.004541123419797762,
+    "loaded only": 0.9849678126341981,
+    "not loaded": 0.00010751031559443395,
+    "no record": 0.005475636830730014,
+    "outside the test's process": 0.004907916799679331
+   },
+   "kinds": {
+    "declared input": 0.0035828449420994965,
+    "child process": 0.014201422525196043,
+    "runtime read": 0.0015907022297780207,
+    "direct": 0.0023871959896841436,
+    "test helper": 0.8460985802137191,
+    "transitive": 0.13213925409952326
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/workflows/worker-wait.testkit.ts",
+    "chain": [
+     "packages/cezar/src/delegation/scratch-cleanup.test.ts",
+     "packages/cezar/src/workflows/worker-wait.testkit.ts",
+     "packages/cezar/src/runs/store-open-error.ts"
+    ],
+    "testFiles": 259,
+    "seconds": 3791.9097114879983,
+    "coverage": {
+     "called": 0.0014373320779468807,
+     "loaded only": 0.9985626679220532
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/workflows/worker-wait.testkit.ts: 258 of the 259 test files that load packages/cezar/src/runs/store-open-error.ts through it never call it"
+   },
+   "rank": 10
+  },
+  {
+   "files": [
+    "packages/cezar/src/ci-wait/merge-progress.ts"
+   ],
+   "folder": null,
+   "testFiles": 735,
+   "seconds": 7708.597733713001,
+   "share": 0.7571362938104469,
+   "avoidableSeconds": 7554.342521677999,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "called": 0.000592738932661772,
+    "loaded only": 0.9853220211254294,
+    "no record": 0.005502378291125287,
+    "outside the test's process": 0.008582861650783253
+   },
+   "kinds": {
+    "declared input": 0.003600342542667864,
+    "child process": 0.01329478781903391,
+    "runtime read": 0.0004034759915409276,
+    "test helper": 0.832150568969854,
+    "transitive": 0.1505508246769033
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/workflows/waits-parity-cells.testkit.ts",
+    "chain": [
+     "packages/cezar/src/workflows/waits-claude-answers-parity.test.ts",
+     "packages/cezar/src/workflows/waits-parity-cells.testkit.ts",
+     "packages/cezar/src/ci-wait/supervisor.ts",
+     "packages/cezar/src/ci-wait/github.ts",
+     "packages/cezar/src/ci-wait/merge-progress.ts"
+    ],
+    "testFiles": 99,
+    "seconds": 1634.3883790979996,
+    "coverage": {
+     "loaded only": 1
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/workflows/waits-parity-cells.testkit.ts: 99 of the 99 test files that load packages/cezar/src/ci-wait/merge-progress.ts through it never call it"
+   },
+   "rank": 11
+  },
+  {
+   "files": [
+    "packages/contract/src/test-factories.testkit.ts"
+   ],
+   "folder": null,
+   "testFiles": 786,
+   "seconds": 7944.579139721999,
+   "share": 0.7803143209077009,
+   "avoidableSeconds": 7542.223219076999,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "called": 0.044452593043003905,
+    "loaded only": 0.9493546588725807,
+    "no record": 0.0022267769160417786,
+    "outside the test's process": 0.003965971168373627
+   },
+   "kinds": {
+    "declared input": 0.004186280832890512,
+    "runtime read": 0.0003475107743840297,
+    "direct": 0.20320361393435504,
+    "barrel": 0.047823561059308045,
+    "test helper": 0.7186290279717418,
+    "import": 0.025810005427320242
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/workflows/waits-parity-cells.testkit.ts",
+    "chain": [
+     "packages/cezar/src/workflows/waits-claude-answers-parity.test.ts",
+     "packages/cezar/src/workflows/waits-parity-cells.testkit.ts",
+     "packages/contract/src/test-factories.testkit.ts"
+    ],
+    "testFiles": 99,
+    "seconds": 1634.3883790979996,
+    "coverage": {
+     "loaded only": 1
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/workflows/waits-parity-cells.testkit.ts: 99 of the 99 test files that load packages/contract/src/test-factories.testkit.ts through it never call it"
+   },
+   "rank": 12
+  },
+  {
+   "files": [
+    "packages/cezar/src/core/shell-env.ts"
+   ],
+   "folder": null,
+   "testFiles": 844,
+   "seconds": 7874.600945866997,
+   "share": 0.7734410824571838,
+   "avoidableSeconds": 7516.122802323997,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "called": 0.02344948596486236,
+    "loaded only": 0.9632082103430192,
+    "not loaded": 0.00020736817715913001,
+    "no record": 0.00538638352807731,
+    "outside the test's process": 0.0077485519868819245
+   },
+   "kinds": {
+    "declared input": 0.0035244442932141897,
+    "child process": 0.01832455547740936,
+    "runtime read": 0.0016490125285415734,
+    "direct": 0.002193132443881391,
+    "test helper": 0.7872807252009175,
+    "transitive": 0.18626547546639,
+    "import": 0.0007626545896464828
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/workflows/waits-parity-cells.testkit.ts",
+    "chain": [
+     "packages/cezar/src/workflows/waits-claude-answers-parity.test.ts",
+     "packages/cezar/src/workflows/waits-parity-cells.testkit.ts",
+     "packages/cezar/src/workflows/run.ts",
+     "packages/cezar/src/workflows/run/launch-read-resolver.ts",
+     "packages/cezar/src/workspace/agent-accounts.ts",
+     "packages/cezar/src/core/provider-auth.ts",
+     "packages/cezar/src/core/shell-env.ts"
+    ],
+    "testFiles": 99,
+    "seconds": 1634.3883790979996,
+    "coverage": {
+     "loaded only": 1
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/workflows/waits-parity-cells.testkit.ts: 99 of the 99 test files that load packages/cezar/src/core/shell-env.ts through it never call it"
+   },
+   "rank": 13
+  },
+  {
+   "files": [
+    "packages/cezar/src/artifacts/reports-index.ts"
+   ],
+   "folder": null,
+   "testFiles": 782,
+   "seconds": 7735.116385104,
+   "share": 0.7597409482657211,
+   "avoidableSeconds": 7510.946349995,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "called": 0.00890441875297962,
+    "loaded only": 0.9820280529460795,
+    "not loaded": 0.00010766498298639404,
+    "no record": 0.005483514237314182,
+    "outside the test's process": 0.0034763490806400395
+   },
+   "kinds": {
+    "declared input": 0.003587999324541107,
+    "child process": 0.014221853094783257,
+    "runtime read": 0.00015436227169113843,
+    "direct": 0.000644563456162265,
+    "test helper": 0.8435302058341652,
+    "transitive": 0.13786101601865713
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/core/harness-parity.testkit.ts",
+    "chain": [
+     "packages/cezar/src/core/child-home-env.test.ts",
+     "packages/cezar/src/core/harness-parity.testkit.ts",
+     "packages/cezar/src/runs/store.ts",
+     "packages/cezar/src/artifacts/reports-index.ts"
+    ],
+    "testFiles": 287,
+    "seconds": 4260.006052218999,
+    "coverage": {
+     "loaded only": 1
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/core/harness-parity.testkit.ts: 287 of the 287 test files that load packages/cezar/src/artifacts/reports-index.ts through it never call it"
+   },
+   "rank": 14
+  },
+  {
+   "files": [
+    "packages/contract/src/skill-sources.ts"
+   ],
+   "folder": null,
+   "testFiles": 776,
+   "seconds": 7790.805157319,
+   "share": 0.7652106837556556,
+   "avoidableSeconds": 7499.327212470999,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "called": 0.006136451700256848,
+    "loaded only": 0.9557801756594626,
+    "not loaded": 0.02483332712951304,
+    "no record": 0.005759234965444896,
+    "outside the test's process": 0.0074908105453227476
+   },
+   "kinds": {
+    "declared input": 0.004268909144359213,
+    "child process": 0.024455120044173224,
+    "runtime read": 0.0004554987796949594,
+    "direct": 0.0005247625524505979,
+    "barrel": 0.027521391531601963,
+    "test helper": 0.7993582653947515,
+    "transitive": 0.14264519505727594,
+    "import": 0.0007708574956926107
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/workflows/waits-parity-cells.testkit.ts",
+    "chain": [
+     "packages/cezar/src/workflows/waits-claude-answers-parity.test.ts",
+     "packages/cezar/src/workflows/waits-parity-cells.testkit.ts",
+     "packages/cezar/src/workflows/run.ts",
+     "packages/cezar/src/workflows/run/launch-read-resolver.ts",
+     "packages/cezar/src/skills-remote.ts",
+     "packages/contract/src/skill-sources.ts"
+    ],
+    "testFiles": 99,
+    "seconds": 1634.3883790979996,
+    "coverage": {
+     "loaded only": 1
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/workflows/waits-parity-cells.testkit.ts: 99 of the 99 test files that load packages/contract/src/skill-sources.ts through it never call it"
+   },
+   "rank": 15
+  },
+  {
+   "files": [
+    "packages/cezar/src/artifacts/reports-watch.ts"
+   ],
+   "folder": null,
+   "testFiles": 782,
+   "seconds": 7735.444196901,
+   "share": 0.7597731458479042,
+   "avoidableSeconds": 7493.420352146999,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "called": 0.008986580097345851,
+    "loaded only": 0.9819864366700717,
+    "not loaded": 0.00010766042037167556,
+    "no record": 0.00548328185755547,
+    "outside the test's process": 0.003436040954654975
+   },
+   "kinds": {
+    "declared input": 0.003587847272703323,
+    "child process": 0.01321295459929075,
+    "runtime read": 0.00338816512250194,
+    "direct": 8.253869483743252e-05,
+    "test helper": 0.8402204886065682,
+    "transitive": 0.13950800570409846
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/core/harness-parity.testkit.ts",
+    "chain": [
+     "packages/cezar/src/core/child-home-env.test.ts",
+     "packages/cezar/src/core/harness-parity.testkit.ts",
+     "packages/cezar/src/runs/store.ts",
+     "packages/cezar/src/artifacts/reports-index.ts",
+     "packages/cezar/src/artifacts/reports-watch.ts"
+    ],
+    "testFiles": 287,
+    "seconds": 4260.006052218999,
+    "coverage": {
+     "loaded only": 1
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/core/harness-parity.testkit.ts: 287 of the 287 test files that load packages/cezar/src/artifacts/reports-watch.ts through it never call it"
+   },
+   "rank": 16
+  },
+  {
+   "files": [
+    "packages/contract/src/artifacts.ts"
+   ],
+   "folder": null,
+   "testFiles": 800,
+   "seconds": 7793.079840563001,
+   "share": 0.7654341025018984,
+   "avoidableSeconds": 7483.555063095999,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "called": 0.0028042395658840332,
+    "loaded only": 0.9840622576943817,
+    "no record": 0.005757553931047432,
+    "outside the test's process": 0.007375948808686571
+   },
+   "kinds": {
+    "declared input": 0.0042676631137398046,
+    "child process": 0.02738205802477495,
+    "runtime read": 0.003687144696303295,
+    "direct": 0.0003543116351289071,
+    "barrel": 0.00016145953239831023,
+    "test helper": 0.8058065923814954,
+    "transitive": 0.15834077061615912
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/workflows/worker-wait.testkit.ts",
+    "chain": [
+     "packages/cezar/src/delegation/scratch-cleanup.test.ts",
+     "packages/cezar/src/workflows/worker-wait.testkit.ts",
+     "packages/cezar/src/delegation/results.ts",
+     "packages/cezar/src/artifacts/store.ts",
+     "packages/contract/src/artifacts.ts"
+    ],
+    "testFiles": 140,
+    "seconds": 1871.481380176,
+    "coverage": {
+     "loaded only": 1
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/workflows/worker-wait.testkit.ts: 140 of the 140 test files that load packages/contract/src/artifacts.ts through it never call it"
+   },
+   "rank": 17
+  },
+  {
+   "files": [
+    "packages/cezar/src/home/changes.ts",
+    "packages/cezar/src/home/registry-content.ts",
+    "packages/cezar/src/home/reset-detection.ts"
+   ],
+   "folder": "packages/cezar/src/home",
+   "testFiles": 873,
+   "seconds": 7967.240249901993,
+   "share": 0.7825400887539427,
+   "avoidableSeconds": 7454.731459373998,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "called": 0.04585348714838794,
+    "loaded only": 0.9454585058477004,
+    "not loaded": 2.817979600938503e-05,
+    "no record": 0.005323753206202332,
+    "outside the test's process": 0.0033360740017005204
+   },
+   "kinds": {
+    "declared input": 0.0034834637207458883,
+    "child process": 0.017403431618584073,
+    "runtime read": 0.00011087257799347352,
+    "direct": 0.0001286681638198719,
+    "test helper": 0.8645936083413247,
+    "transitive": 0.1135261687749983,
+    "import": 0.0007537868025347768
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/core/harness-parity.testkit.ts",
+    "chain": [
+     "packages/cezar/src/core/ci-tools-ask-done.test.ts",
+     "packages/cezar/src/core/ci-tools.testkit.ts",
+     "packages/cezar/src/core/harness-parity.testkit.ts",
+     "packages/cezar/src/delegation/execution-identity.ts",
+     "packages/cezar/src/core/agent-model-policy.ts",
+     "packages/cezar/src/home/store.ts",
+     "packages/cezar/src/home/changes.ts"
+    ],
+    "testFiles": 227,
+    "seconds": 3310.745296881998,
+    "coverage": {
+     "loaded only": 1
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/core/harness-parity.testkit.ts: 227 of the 227 test files that load these files through it never call it"
+   },
+   "rank": 18
+  },
+  {
+   "files": [
+    "packages/cezar/src/delegation/windows-workspace-identity.ts"
+   ],
+   "folder": null,
+   "testFiles": 720,
+   "seconds": 7586.300038943,
+   "share": 0.745124248746173,
+   "avoidableSeconds": 7449.095333222,
+   "unknownSeconds": 0,
+   "edits": 3,
+   "editSeconds": 22758.900116828998,
+   "coverage": {
+    "loaded only": 0.9872656249787005,
+    "not loaded": 6.731362368725277e-05,
+    "no record": 0.005591081371322847,
+    "outside the test's process": 0.007075980026289509
+   },
+   "kinds": {
+    "declared input": 0.003658383167358473,
+    "child process": 0.012020633226721918,
+    "runtime read": 0.0002532136508098943,
+    "direct": 3.442542407489432e-05,
+    "test helper": 0.8708080743029045,
+    "transitive": 0.11322527022813075
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/core/harness-parity.testkit.ts",
+    "chain": [
+     "packages/cezar/src/core/child-home-env.test.ts",
+     "packages/cezar/src/core/harness-parity.testkit.ts",
+     "packages/cezar/src/delegation/workspace.ts",
+     "packages/cezar/src/delegation/windows-workspace-identity.ts"
+    ],
+    "testFiles": 357,
+    "seconds": 5168.970300018999,
+    "coverage": {
+     "loaded only": 1
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/core/harness-parity.testkit.ts: 357 of the 357 test files that load packages/cezar/src/delegation/windows-workspace-identity.ts through it never call it"
+   },
+   "rank": 19
+  },
+  {
+   "files": [
+    "packages/contract/src/workflow-file.ts"
+   ],
+   "folder": null,
+   "testFiles": 807,
+   "seconds": 7788.2482222809995,
+   "share": 0.7649595423178661,
+   "avoidableSeconds": 7448.994124356999,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "called": 0.00969463437875463,
+    "loaded only": 0.980218788545381,
+    "not loaded": 0.00010693048683495755,
+    "no record": 0.005761125761584789,
+    "outside the test's process": 0.0042185208274445
+   },
+   "kinds": {
+    "declared input": 0.004270310656362134,
+    "child process": 0.026879039801031013,
+    "runtime read": 0.0006179794460365041,
+    "barrel": 0.0001615596975196924,
+    "test helper": 0.7719806659229858,
+    "transitive": 0.19582683079447608,
+    "import": 0.00026361368158842497
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/workflows/waits-parity-cells.testkit.ts",
+    "chain": [
+     "packages/cezar/src/workflows/waits-claude-answers-parity.test.ts",
+     "packages/cezar/src/workflows/waits-parity-cells.testkit.ts",
+     "packages/cezar/src/workflows/types.ts",
+     "packages/contract/src/workflow-file.ts"
+    ],
+    "testFiles": 99,
+    "seconds": 1634.3883790979996,
+    "coverage": {
+     "loaded only": 1
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/workflows/waits-parity-cells.testkit.ts: 99 of the 99 test files that load packages/contract/src/workflow-file.ts through it never call it"
+   },
+   "rank": 20
+  },
+  {
+   "files": [
+    "packages/cezar/src/core/cursor-print-tool-catalog.ts"
+   ],
+   "folder": null,
+   "testFiles": 713,
+   "seconds": 7585.227170986,
+   "share": 0.7450188719582316,
+   "avoidableSeconds": 7436.9581043769995,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "loaded only": 0.9830363337904784,
+    "not loaded": 0.0028361408439140476,
+    "no record": 0.005591872183768283,
+    "outside the test's process": 0.008535653181839225
+   },
+   "kinds": {
+    "declared input": 0.003658900615549043,
+    "child process": 0.012022333446362159,
+    "runtime read": 0.0017119217822070907,
+    "direct": 0.0004312062092894221,
+    "test helper": 0.879903509720516,
+    "transitive": 0.10214810109850432,
+    "import": 0.00012402712757220025
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/core/harness-parity.testkit.ts",
+    "chain": [
+     "packages/cezar/src/core/child-home-env.test.ts",
+     "packages/cezar/src/core/harness-parity.testkit.ts",
+     "packages/cezar/src/core/runner-factory.ts",
+     "packages/cezar/src/core/cursor-runner.ts",
+     "packages/cezar/src/core/cursor-print-capabilities.ts",
+     "packages/cezar/src/core/cursor-print-tool-catalog.ts"
+    ],
+    "testFiles": 285,
+    "seconds": 4298.707869029998,
+    "coverage": {
+     "loaded only": 1
+    }
+   },
+   "second": {
+    "gateway": "packages/cezar/src/core/cursor-print-capabilities.ts",
+    "suggestion": {
+     "kind": "transitive",
+     "text": "load packages/cezar/src/core/cursor-print-tool-catalog.ts only where it is used: packages/cezar/src/core/cursor-print-capabilities.ts imports 2 sibling modules, so each test file that loads packages/cezar/src/core/cursor-print-capabilities.ts loads them all; for example, a registry that each test fills"
+    }
+   },
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/core/harness-parity.testkit.ts: 285 of the 285 test files that load packages/cezar/src/core/cursor-print-tool-catalog.ts through it never call it"
+   },
+   "rank": 21
+  },
+  {
+   "files": [
+    "packages/cezar/src/core/cursor-print-capabilities.ts"
+   ],
+   "folder": null,
+   "testFiles": 713,
+   "seconds": 7585.227170986,
+   "share": 0.7450188719582316,
+   "avoidableSeconds": 7419.577616527,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "called": 0.0022913602266892577,
+    "loaded only": 0.9807449735637892,
+    "not loaded": 0.0028361408439140476,
+    "no record": 0.005591872183768283,
+    "outside the test's process": 0.008535653181839225
+   },
+   "kinds": {
+    "declared input": 0.003658900615549043,
+    "child process": 0.012022333446362159,
+    "runtime read": 0.0017119217822070907,
+    "direct": 0.0004312062092894221,
+    "test helper": 0.879903509720516,
+    "transitive": 0.10214810109850432,
+    "import": 0.00012402712757220025
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/core/harness-parity.testkit.ts",
+    "chain": [
+     "packages/cezar/src/core/child-home-env.test.ts",
+     "packages/cezar/src/core/harness-parity.testkit.ts",
+     "packages/cezar/src/core/runner-factory.ts",
+     "packages/cezar/src/core/cursor-runner.ts",
+     "packages/cezar/src/core/cursor-print-capabilities.ts"
+    ],
+    "testFiles": 285,
+    "seconds": 4298.707869029998,
+    "coverage": {
+     "loaded only": 1
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/core/harness-parity.testkit.ts: 285 of the 285 test files that load packages/cezar/src/core/cursor-print-capabilities.ts through it never call it"
+   },
+   "rank": 22
+  },
+  {
+   "files": [
+    "packages/cezar/src/core/hook-items.ts"
+   ],
+   "folder": null,
+   "testFiles": 735,
+   "seconds": 7614.904838143,
+   "share": 0.7479338040504746,
+   "avoidableSeconds": 7417.686464078,
+   "unknownSeconds": 0,
+   "edits": 1,
+   "editSeconds": 7614.904838143,
+   "coverage": {
+    "called": 0.006428091814202759,
+    "loaded only": 0.9767973130857814,
+    "not loaded": 0.0027021291218155066,
+    "no record": 0.005570078907951742,
+    "outside the test's process": 0.008502387070248526
+   },
+   "kinds": {
+    "declared input": 0.0036446407348365625,
+    "child process": 0.011975478650661439,
+    "runtime read": 0.0017052498872942778,
+    "test helper": 0.8619487711374526,
+    "transitive": 0.12050742844066614,
+    "import": 0.00021843114908913643
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/core/harness-parity.testkit.ts",
+    "chain": [
+     "packages/cezar/src/core/child-home-env.test.ts",
+     "packages/cezar/src/core/harness-parity.testkit.ts",
+     "packages/cezar/src/core/runner-factory.ts",
+     "packages/cezar/src/core/claude-cli-runner.ts",
+     "packages/cezar/src/core/claude-ui-mapper.ts",
+     "packages/cezar/src/core/hook-items.ts"
+    ],
+    "testFiles": 280,
+    "seconds": 4207.704025230997,
+    "coverage": {
+     "loaded only": 1
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/core/harness-parity.testkit.ts: 280 of the 280 test files that load packages/cezar/src/core/hook-items.ts through it never call it"
+   },
+   "rank": 23
+  },
+  {
+   "files": [
+    "packages/cezar/src/core/opencode-permissions.ts"
+   ],
+   "folder": null,
+   "testFiles": 714,
+   "seconds": 7596.926274367001,
+   "share": 0.7461679545904797,
+   "avoidableSeconds": 7410.164059631001,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "called": 0.005103991441226777,
+    "loaded only": 0.9779955203010143,
+    "not loaded": 0.0028317732478972237,
+    "no record": 0.005583260820644755,
+    "outside the test's process": 0.008485454189216977
+   },
+   "kinds": {
+    "declared input": 0.003653265987145902,
+    "child process": 0.012003819310935516,
+    "runtime read": 0.0016722311894567545,
+    "direct": 3.741847778082932e-05,
+    "test helper": 0.8784746459180396,
+    "transitive": 0.10403478298818344,
+    "import": 0.00012383612845820178
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/core/harness-parity.testkit.ts",
+    "chain": [
+     "packages/cezar/src/core/child-home-env.test.ts",
+     "packages/cezar/src/core/harness-parity.testkit.ts",
+     "packages/cezar/src/core/runner-factory.ts",
+     "packages/cezar/src/core/opencode-server-runner.ts",
+     "packages/cezar/src/core/opencode-permissions.ts"
+    ],
+    "testFiles": 284,
+    "seconds": 4293.027416492997,
+    "coverage": {
+     "called": 0.001454993260467613,
+     "loaded only": 0.9985450067395324
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/core/harness-parity.testkit.ts: 283 of the 284 test files that load packages/cezar/src/core/opencode-permissions.ts through it never call it"
+   },
+   "rank": 24
+  },
+  {
+   "files": [
+    "packages/cezar/src/core/cursor-model-catalog.ts"
+   ],
+   "folder": null,
+   "testFiles": 720,
+   "seconds": 7596.604488058001,
+   "share": 0.7461363488300273,
+   "avoidableSeconds": 7396.849290168,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "called": 0.0067775190036465805,
+    "loaded only": 0.9764074756099592,
+    "not loaded": 0.00270863859706617,
+    "no record": 0.005583497323268326,
+    "outside the test's process": 0.008522869466059487
+   },
+   "kinds": {
+    "declared input": 0.0036534207366763854,
+    "child process": 0.012004327783466372,
+    "runtime read": 0.0017093578634261072,
+    "direct": 0.0014871364245380133,
+    "test helper": 0.8633513196213047,
+    "transitive": 0.11767059619652727,
+    "import": 0.00012384137406112343
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/core/harness-parity.testkit.ts",
+    "chain": [
+     "packages/cezar/src/core/child-home-env.test.ts",
+     "packages/cezar/src/core/harness-parity.testkit.ts",
+     "packages/cezar/src/core/runner-factory.ts",
+     "packages/cezar/src/core/cursor-runner.ts",
+     "packages/cezar/src/core/cursor-print-capabilities.ts",
+     "packages/cezar/src/core/cursor-model-catalog.ts"
+    ],
+    "testFiles": 269,
+    "seconds": 4062.2884484939977,
+    "coverage": {
+     "loaded only": 1
+    }
+   },
+   "second": {
+    "gateway": "packages/cezar/src/core/cursor-print-capabilities.ts",
+    "suggestion": {
+     "kind": "transitive",
+     "text": "load packages/cezar/src/core/cursor-model-catalog.ts only where it is used: packages/cezar/src/core/cursor-print-capabilities.ts imports 2 sibling modules, so each test file that loads packages/cezar/src/core/cursor-print-capabilities.ts loads them all; for example, a registry that each test fills"
+    }
+   },
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/core/harness-parity.testkit.ts: 269 of the 269 test files that load packages/cezar/src/core/cursor-model-catalog.ts through it never call it"
+   },
+   "rank": 25
+  },
+  {
+   "files": [
+    "packages/cezar/src/automations/prompts.ts"
+   ],
+   "folder": null,
+   "testFiles": 707,
+   "seconds": 7550.418990164,
+   "share": 0.7416000222617956,
+   "avoidableSeconds": 7394.749581618,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "called": 0.0009801233476765322,
+    "loaded only": 0.984827221992814,
+    "no record": 0.005617651269453419,
+    "outside the test's process": 0.008575003390056065
+   },
+   "kinds": {
+    "declared input": 0.0036757685104833065,
+    "child process": 0.012077757596604483,
+    "runtime read": 0.0017198139115082343,
+    "direct": 0.001299963094867508,
+    "test helper": 0.863704059156107,
+    "transitive": 0.11752263773042963
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/workflows/waits-parity-cells.testkit.ts",
+    "chain": [
+     "packages/cezar/src/workflows/waits-claude-answers-parity.test.ts",
+     "packages/cezar/src/workflows/waits-parity-cells.testkit.ts",
+     "packages/cezar/src/workflows/run.ts",
+     "packages/cezar/src/workflows/run/launch-context.ts",
+     "packages/cezar/src/automations/prompts.ts"
+    ],
+    "testFiles": 99,
+    "seconds": 1634.3883790979996,
+    "coverage": {
+     "loaded only": 1
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/workflows/waits-parity-cells.testkit.ts: 99 of the 99 test files that load packages/cezar/src/automations/prompts.ts through it never call it"
+   },
+   "rank": 26
+  },
+  {
+   "files": [
+    "packages/cezar/src/workflows/run/workflow-position.ts"
+   ],
+   "folder": null,
+   "testFiles": 703,
+   "seconds": 7531.603255491,
+   "share": 0.7397519461125717,
+   "avoidableSeconds": 7393.078309487,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "loaded only": 0.9870656531747106,
+    "no record": 0.005631685497251387,
+    "outside the test's process": 0.007302661328038102
+   },
+   "kinds": {
+    "declared input": 0.0036849514536982458,
+    "child process": 0.012107930705127804,
+    "runtime read": 0.0004303459571688101,
+    "test helper": 0.8708620351089389,
+    "transitive": 0.11291473677506644
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/workflows/waits-parity-cells.testkit.ts",
+    "chain": [
+     "packages/cezar/src/workflows/waits-claude-answers-parity.test.ts",
+     "packages/cezar/src/workflows/waits-parity-cells.testkit.ts",
+     "packages/cezar/src/workflows/run.ts",
+     "packages/cezar/src/workflows/run/workflow-position.ts"
+    ],
+    "testFiles": 99,
+    "seconds": 1634.3883790979996,
+    "coverage": {
+     "loaded only": 1
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/workflows/waits-parity-cells.testkit.ts: 99 of the 99 test files that load packages/cezar/src/workflows/run/workflow-position.ts through it never call it"
+   },
+   "rank": 27
+  },
+  {
+   "files": [
+    "packages/cezar/src/workflows/run/opening.ts"
+   ],
+   "folder": null,
+   "testFiles": 702,
+   "seconds": 7530.044185954001,
+   "share": 0.7395988147426632,
+   "avoidableSeconds": 7391.519239949999,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "loaded only": 0.9870629751630522,
+    "no record": 0.00563285151820477,
+    "outside the test's process": 0.007304173318742858
+   },
+   "kinds": {
+    "declared input": 0.003685714410118541,
+    "child process": 0.012110437610194001,
+    "runtime read": 0.00043043505880694446,
+    "test helper": 0.8715485086889361,
+    "transitive": 0.1122249042319447
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/workflows/waits-parity-cells.testkit.ts",
+    "chain": [
+     "packages/cezar/src/workflows/waits-claude-answers-parity.test.ts",
+     "packages/cezar/src/workflows/waits-parity-cells.testkit.ts",
+     "packages/cezar/src/workflows/run.ts",
+     "packages/cezar/src/workflows/run/opening.ts"
+    ],
+    "testFiles": 99,
+    "seconds": 1634.3883790979996,
+    "coverage": {
+     "loaded only": 1
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/workflows/waits-parity-cells.testkit.ts: 99 of the 99 test files that load packages/cezar/src/workflows/run/opening.ts through it never call it"
+   },
+   "rank": 28
+  },
+  {
+   "files": [
+    "packages/cezar/src/workflows/run/constants.ts"
+   ],
+   "folder": null,
+   "testFiles": 701,
+   "seconds": 7529.259630523,
+   "share": 0.7395217559296552,
+   "avoidableSeconds": 7390.734684519,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "loaded only": 0.9870616271137628,
+    "no record": 0.0056334384662537805,
+    "outside the test's process": 0.0073049344199835374
+   },
+   "kinds": {
+    "declared input": 0.0036860984647798857,
+    "child process": 0.012111699528372565,
+    "runtime read": 0.0004304799105160967,
+    "direct": 0.004586622698598747,
+    "test helper": 0.8777215402415277,
+    "transitive": 0.10146355915620543
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/workflows/waits-parity-cells.testkit.ts",
+    "chain": [
+     "packages/cezar/src/workflows/waits-claude-answers-parity.test.ts",
+     "packages/cezar/src/workflows/waits-parity-cells.testkit.ts",
+     "packages/cezar/src/workflows/run.ts",
+     "packages/cezar/src/workflows/run/constants.ts"
+    ],
+    "testFiles": 99,
+    "seconds": 1634.3883790979996,
+    "coverage": {
+     "loaded only": 1
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/workflows/waits-parity-cells.testkit.ts: 99 of the 99 test files that load packages/cezar/src/workflows/run/constants.ts through it never call it"
+   },
+   "rank": 29
+  },
+  {
+   "files": [
+    "packages/cezar/src/automations/builtin-skill.ts"
+   ],
+   "folder": null,
+   "testFiles": 702,
+   "seconds": 7539.003751128001,
+   "share": 0.7404788207053986,
+   "avoidableSeconds": 7383.823560000001,
+   "unknownSeconds": 0,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "called": 0.000916715888086134,
+    "loaded only": 0.9848691395379752,
+    "no record": 0.005626157278228398,
+    "outside the test's process": 0.008587987295710357
+   },
+   "kinds": {
+    "declared input": 0.0036813342029240206,
+    "child process": 0.012096045223794412,
+    "runtime read": 0.0017224179806326681,
+    "test helper": 0.8663410200519889,
+    "transitive": 0.11615918254066028
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/workflows/waits-parity-cells.testkit.ts",
+    "chain": [
+     "packages/cezar/src/workflows/waits-claude-answers-parity.test.ts",
+     "packages/cezar/src/workflows/waits-parity-cells.testkit.ts",
+     "packages/cezar/src/workflows/run.ts",
+     "packages/cezar/src/workflows/run/launch-context.ts",
+     "packages/cezar/src/automations/builtin-skill.ts"
+    ],
+    "testFiles": 99,
+    "seconds": 1634.3883790979996,
+    "coverage": {
+     "loaded only": 1
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/workflows/waits-parity-cells.testkit.ts: 99 of the 99 test files that load packages/cezar/src/automations/builtin-skill.ts through it never call it"
+   },
+   "rank": 30
+  }
+ ],
+ "byEdits": [
+  {
+   "files": [
+    "packages/cezar/src/delegation/workspace.ts"
+   ],
+   "folder": null,
+   "testFiles": 721,
+   "seconds": 7596.592576889001,
+   "share": 0.7461351789183699,
+   "avoidableSeconds": 3393.214116992001,
+   "unknownSeconds": 0,
+   "edits": 25,
+   "editSeconds": 189914.81442222503,
+   "coverage": {
+    "called": 0.5346313200225932,
+    "loaded only": 0.4512622910698309,
+    "not loaded": 6.722242121468741e-05,
+    "no record": 0.005583506077980331,
+    "outside the test's process": 0.008455660408380824
+   },
+   "kinds": {
+    "declared input": 0.003653426465101516,
+    "child process": 0.01200434660579698,
+    "runtime read": 0.0016421381224197087,
+    "direct": 0.04488830474763299,
+    "test helper": 0.8696282262252658,
+    "transitive": 0.06818355783378328
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/core/harness-parity.testkit.ts",
+    "chain": [
+     "packages/cezar/src/core/child-home-env.test.ts",
+     "packages/cezar/src/core/harness-parity.testkit.ts",
+     "packages/cezar/src/delegation/workspace.ts"
+    ],
+    "testFiles": 357,
+    "seconds": 5168.970300018999,
+    "coverage": {
+     "called": 0.5538495850027375,
+     "loaded only": 0.44615041499726205
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/core/harness-parity.testkit.ts: 181 of the 357 test files that load packages/cezar/src/delegation/workspace.ts through it never call it"
+   },
+   "rank": 127
+  },
+  {
+   "files": [
+    "packages/cezar/src/delegation/destroy-observation.ts",
+    "packages/cezar/src/delegation/service.ts"
+   ],
+   "folder": "packages/cezar/src/delegation",
+   "testFiles": 599,
+   "seconds": 7047.5136322820035,
+   "share": 0.6922047999454292,
+   "avoidableSeconds": 5791.8020725305,
+   "unknownSeconds": 0,
+   "edits": 13,
+   "editSeconds": 91617.67721966605,
+   "coverage": {
+    "called": 0.1620107730033991,
+    "loaded only": 0.8227837950026646,
+    "no record": 0.006018522707172928,
+    "outside the test's process": 0.009186909286762945
+   },
+   "kinds": {
+    "declared input": 0.003938068631449148,
+    "child process": 0.009030054375559027,
+    "runtime read": 0.0018425385596303305,
+    "direct": 0.01668065755808048,
+    "test helper": 0.9108658211693874,
+    "transitive": 0.057642859705893
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/workflows/worker-wait.testkit.ts",
+    "chain": [
+     "packages/cezar/src/delegation/scratch-cleanup.test.ts",
+     "packages/cezar/src/workflows/worker-wait.testkit.ts",
+     "packages/cezar/src/delegation/service.ts",
+     "packages/cezar/src/delegation/worker-cleanup.ts",
+     "packages/cezar/src/delegation/destroy-observation.ts"
+    ],
+    "testFiles": 242,
+    "seconds": 3534.5569559129985,
+    "coverage": {
+     "loaded only": 1
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/workflows/worker-wait.testkit.ts: 242 of the 242 test files that load these files through it never call it"
+   },
+   "rank": 79
+  },
+  {
+   "files": [
+    "packages/cezar/src/workflows/run.ts"
+   ],
+   "folder": null,
+   "testFiles": 703,
+   "seconds": 7539.813330065001,
+   "share": 0.7405583373201036,
+   "avoidableSeconds": 728.7217722839999,
+   "unknownSeconds": 0,
+   "edits": 10,
+   "editSeconds": 75398.13330065,
+   "coverage": {
+    "called": 0.8879957076607464,
+    "loaded only": 0.09768430012293824,
+    "no record": 0.005625553175947704,
+    "outside the test's process": 0.008694439040367442
+   },
+   "kinds": {
+    "declared input": 0.0036809389238235605,
+    "child process": 0.012094746424605958,
+    "runtime read": 0.00182960690803748,
+    "direct": 0.06945951641955109,
+    "test helper": 0.871176293446296,
+    "transitive": 0.04175889787768601
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/workflows/fixture-cleanup.testkit.ts",
+    "chain": [
+     "packages/cezar/src/automations/task-template.test.ts",
+     "packages/cezar/src/workflows/fixture-cleanup.testkit.ts",
+     "packages/cezar/src/workflows/run.ts"
+    ],
+    "testFiles": 175,
+    "seconds": 1375.3862395200008,
+    "coverage": {
+     "called": 0.7804116620998017,
+     "loaded only": 0.21958833790019752
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/workflows/fixture-cleanup.testkit.ts: 46 of the 175 test files that load packages/cezar/src/workflows/run.ts through it never call it"
+   },
+   "rank": 341
+  },
+  {
+   "files": [
+    "packages/cezar/src/runs/store.ts"
+   ],
+   "folder": null,
+   "testFiles": 789,
+   "seconds": 7749.818040370001,
+   "share": 0.7611849406967046,
+   "avoidableSeconds": 533.2563879770003,
+   "unknownSeconds": 0,
+   "edits": 7,
+   "editSeconds": 54248.72628259,
+   "coverage": {
+    "called": 0.9194532327340684,
+    "loaded only": 0.06959940804316592,
+    "not loaded": 0.00010746073903436312,
+    "no record": 0.005789694317630432,
+    "outside the test's process": 0.005050204166100837
+   },
+   "kinds": {
+    "declared input": 0.0035811927738725277,
+    "child process": 0.0141948737798685,
+    "runtime read": 0.0020511017575118567,
+    "direct": 0.12191144852671824,
+    "test helper": 0.8419300017741431,
+    "transitive": 0.016331381387885768
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/core/harness-parity.testkit.ts",
+    "chain": [
+     "packages/cezar/src/core/child-home-env.test.ts",
+     "packages/cezar/src/core/harness-parity.testkit.ts",
+     "packages/cezar/src/runs/store.ts"
+    ],
+    "testFiles": 287,
+    "seconds": 4260.006052218999,
+    "coverage": {
+     "called": 0.9379963272696725,
+     "loaded only": 0.062003672730327204
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/core/harness-parity.testkit.ts: 40 of the 287 test files that load packages/cezar/src/runs/store.ts through it never call it"
+   },
+   "rank": 415
+  },
+  {
+   "files": [
+    "packages/cezar/src/delegation/process-liveness.ts"
+   ],
+   "folder": null,
+   "testFiles": 915,
+   "seconds": 8073.811263831998,
+   "share": 0.7930074636646478,
+   "avoidableSeconds": 2116.021634736001,
+   "unknownSeconds": 0,
+   "edits": 5,
+   "editSeconds": 40369.056319159994,
+   "coverage": {
+    "called": 0.7155661059470877,
+    "loaded only": 0.2724470505610983,
+    "not loaded": 9.105694039360911e-05,
+    "no record": 0.00525348183639218,
+    "outside the test's process": 0.006642304715028316
+   },
+   "kinds": {
+    "declared input": 0.003437483421160327,
+    "child process": 0.02076282512782407,
+    "runtime read": 0.002074131958473839,
+    "direct": 0.012968213350494624,
+    "test helper": 0.7765715866369135,
+    "transitive": 0.18344192238078785,
+    "import": 0.0007438371243458591
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/core/harness-parity.testkit.ts",
+    "chain": [
+     "packages/cezar/src/core/child-home-env.test.ts",
+     "packages/cezar/src/core/harness-parity.testkit.ts",
+     "packages/cezar/src/delegation/workspace.ts",
+     "packages/cezar/src/delegation/process-liveness.ts"
+    ],
+    "testFiles": 165,
+    "seconds": 2238.4987844119996,
+    "coverage": {
+     "called": 0.7510731379917326,
+     "loaded only": 0.24892686200826733
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/core/harness-parity.testkit.ts: 63 of the 165 test files that load packages/cezar/src/delegation/process-liveness.ts through it never call it"
+   },
+   "rank": 158
+  },
+  {
+   "files": [
+    "packages/cezar/src/core/codex-app-server-runner.ts"
+   ],
+   "folder": null,
+   "testFiles": 717,
+   "seconds": 7586.627668524001,
+   "share": 0.7451564284311522,
+   "avoidableSeconds": 4127.350380108,
+   "unknownSeconds": 0,
+   "edits": 5,
+   "editSeconds": 37933.138342620005,
+   "coverage": {
+    "called": 0.43642687719393036,
+    "loaded only": 0.5466125881029033,
+    "not loaded": 0.002835617290044941,
+    "no record": 0.005590839919688858,
+    "outside the test's process": 0.008534077493432109
+   },
+   "kinds": {
+    "declared input": 0.0036582251795677667,
+    "child process": 0.012020114113988368,
+    "runtime read": 0.001711605760076312,
+    "direct": 0.0019980974598097275,
+    "test helper": 0.8804158927146208,
+    "transitive": 0.09997681947789135,
+    "import": 0.00021924529404559613
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/core/harness-parity.testkit.ts",
+    "chain": [
+     "packages/cezar/src/core/child-home-env.test.ts",
+     "packages/cezar/src/core/harness-parity.testkit.ts",
+     "packages/cezar/src/core/runner-factory.ts",
+     "packages/cezar/src/core/codex-app-server-runner.ts"
+    ],
+    "testFiles": 285,
+    "seconds": 4298.707869029998,
+    "coverage": {
+     "called": 0.5970519550685681,
+     "loaded only": 0.402948044931432
+    }
+   },
+   "second": {
+    "gateway": "packages/cezar/src/core/runner-factory.ts",
+    "suggestion": {
+     "kind": "transitive",
+     "text": "load packages/cezar/src/core/codex-app-server-runner.ts only where it is used: packages/cezar/src/core/runner-factory.ts imports 6 sibling modules, so each test file that loads packages/cezar/src/core/runner-factory.ts loads them all; for example, a registry that each test fills"
+    }
+   },
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/core/harness-parity.testkit.ts: 132 of the 285 test files that load packages/cezar/src/core/codex-app-server-runner.ts through it never call it"
+   },
+   "rank": 116
+  },
+  {
+   "files": [
+    "packages/cezar/src/core/runner-runtime.ts"
+   ],
+   "folder": null,
+   "testFiles": 759,
+   "seconds": 7703.2832951220025,
+   "share": 0.7566143111519311,
+   "avoidableSeconds": 1294.8905626630003,
+   "unknownSeconds": 0,
+   "edits": 4,
+   "editSeconds": 30813.13318048801,
+   "coverage": {
+    "called": 0.8162333026017077,
+    "loaded only": 0.1697995256184181,
+    "not loaded": 5.615680657544204e-05,
+    "no record": 0.005506174341512158,
+    "outside the test's process": 0.008404840631786032
+   },
+   "kinds": {
+    "declared input": 0.003602826392555831,
+    "child process": 0.01386514380661998,
+    "runtime read": 0.0016856858458292416,
+    "direct": 0.007878304509770574,
+    "test helper": 0.8577580236510505,
+    "transitive": 0.11499409066844792,
+    "import": 0.00021592512572571261
+   },
+   "kind": "transitive",
+   "gateway": {
+    "kind": "transitive",
+    "gateway": "packages/cezar/src/core/claude-cli-runner.ts",
+    "chain": [
+     "packages/cezar/src/automations/service.test.ts",
+     "packages/cezar/src/automations/service.ts",
+     "packages/cezar/src/discovery/catalog.ts",
+     "packages/cezar/src/core/host-model-catalog.ts",
+     "packages/cezar/src/core/claude-model-catalog.ts",
+     "packages/cezar/src/core/claude-cli-runner.ts",
+     "packages/cezar/src/core/runner-runtime.ts"
+    ],
+    "testFiles": 134,
+    "seconds": 616.4816403509999,
+    "coverage": {
+     "called": 0.2734946833923609,
+     "loaded only": 0.6993015541542246,
+     "not loaded": 0.0007017107431677927,
+     "no record": 0.026502051710246846
+    }
+   },
+   "second": null,
+   "suggestion": null,
+   "rank": 185
+  },
+  {
+   "files": [
+    "scripts/test-sandbox.mjs"
+   ],
+   "folder": null,
+   "testFiles": 1539,
+   "seconds": 9464.770802203995,
+   "share": 0.929627116953521,
+   "avoidableSeconds": 0,
+   "unknownSeconds": 0,
+   "edits": 3,
+   "editSeconds": 28394.312406611985,
+   "coverage": {
+    "called": 0.9954474439402201,
+    "no record": 0.004552556059779724
+   },
+   "kinds": {
+    "setup": 0.9993178434678525,
+    "import": 0.0006821565321472477
+   },
+   "kind": "setup",
+   "gateway": {
+    "kind": "setup",
+    "gateway": "packages/cezar/vitest.setup.ts",
+    "chain": [
+     "packages/cezar/vitest.setup.ts",
+     "scripts/test-sandbox.mjs"
+    ],
+    "testFiles": 1156,
+    "seconds": 8501.050132524999,
+    "coverage": {
+     "called": 0.9958624203423501,
+     "no record": 0.004137579657650203
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "setup",
+    "text": "keep the setup's imports leaf-only: packages/cezar/vitest.setup.ts \u2192 scripts/test-sandbox.mjs"
+   },
+   "rank": 981
+  },
+  {
+   "files": [
+    "packages/cezar/vitest.setup.ts"
+   ],
+   "folder": null,
+   "testFiles": 1157,
+   "seconds": 8503.107770293,
+   "share": 0.8351728453690445,
+   "avoidableSeconds": 0,
+   "unknownSeconds": 0,
+   "edits": 3,
+   "editSeconds": 25509.323310879,
+   "coverage": {
+    "called": 0.9956214350246068,
+    "no record": 0.0043785649753933535
+   },
+   "kinds": {
+    "setup": 0.9997580134436036,
+    "declared input": 0.00024198655639632075
+   },
+   "kind": "setup",
+   "gateway": null,
+   "second": null,
+   "suggestion": {
+    "kind": "setup",
+    "text": "packages/cezar/vitest.setup.ts is a setup file: keep its imports leaf-only"
+   },
+   "rank": 988
+  },
+  {
+   "files": [
+    "packages/cezar/src/runs/agent-tmpdir.ts",
+    "packages/cezar/src/runs/worker-execution.ts"
+   ],
+   "folder": "packages/cezar/src/runs",
+   "testFiles": 787,
+   "seconds": 7747.192013316001,
+   "share": 0.7609270130606035,
+   "avoidableSeconds": 946.3717975204995,
+   "unknownSeconds": 0,
+   "edits": 3,
+   "editSeconds": 23241.576039948002,
+   "coverage": {
+    "called": 0.8602897355364214,
+    "loaded only": 0.1292204838301154,
+    "not loaded": 0.00010749716446534017,
+    "no record": 0.005474967027033192,
+    "outside the test's process": 0.004907316441964285
+   },
+   "kinds": {
+    "declared input": 0.0035824066729334535,
+    "child process": 0.014199685345466716,
+    "runtime read": 0.0015905076481673361,
+    "direct": 0.010442829009006525,
+    "test helper": 0.8305571640362469,
+    "transitive": 0.13950508294170977,
+    "import": 0.00012232434646916314
+   },
+   "kind": "transitive",
+   "gateway": {
+    "kind": "transitive",
+    "gateway": "packages/cezar/src/runs/store.ts",
+    "chain": [
+     "packages/cezar/src/activity/publisher.test.ts",
+     "packages/cezar/src/activity/publisher.ts",
+     "packages/cezar/src/activity/read-model.ts",
+     "packages/cezar/src/activity/requests.ts",
+     "packages/cezar/src/delegation/conversations.ts",
+     "packages/cezar/src/runs/store.ts",
+     "packages/cezar/src/runs/agent-tmpdir.ts"
+    ],
+    "testFiles": 245,
+    "seconds": 983.238472501,
+    "coverage": {
+     "called": 0.5685580793050503,
+     "loaded only": 0.4139783755172231,
+     "not loaded": 0.0008469981568984558,
+     "no record": 0.016616547020828033
+    }
+   },
+   "second": null,
+   "suggestion": null,
+   "rank": 284
+  },
+  {
+   "files": [
+    "packages/cezar/src/core/cursor-print-process.ts"
+   ],
+   "folder": null,
+   "testFiles": 716,
+   "seconds": 7597.257176849002,
+   "share": 0.7462004557388713,
+   "avoidableSeconds": 4249.422251363,
+   "unknownSeconds": 0,
+   "edits": 3,
+   "editSeconds": 22791.771530547005,
+   "coverage": {
+    "called": 0.42114749894567005,
+    "loaded only": 0.5619156962500768,
+    "not loaded": 0.0028316499085427197,
+    "no record": 0.005583017638820025,
+    "outside the test's process": 0.008522137256890024
+   },
+   "kinds": {
+    "declared input": 0.0036531068672484945,
+    "child process": 0.0120032964783512,
+    "runtime read": 0.001709211010596027,
+    "direct": 0.0008488655651479176,
+    "test helper": 0.8785102115690371,
+    "transitive": 0.10315147777490796,
+    "import": 0.00012383073471131204
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/core/harness-parity.testkit.ts",
+    "chain": [
+     "packages/cezar/src/core/child-home-env.test.ts",
+     "packages/cezar/src/core/harness-parity.testkit.ts",
+     "packages/cezar/src/core/runner-factory.ts",
+     "packages/cezar/src/core/cursor-runner.ts",
+     "packages/cezar/src/core/cursor-print-runner.ts",
+     "packages/cezar/src/core/cursor-print-process.ts"
+    ],
+    "testFiles": 285,
+    "seconds": 4298.707869029998,
+    "coverage": {
+     "called": 0.5846639567266348,
+     "loaded only": 0.4153360432733655
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/core/harness-parity.testkit.ts: 144 of the 285 test files that load packages/cezar/src/core/cursor-print-process.ts through it never call it"
+   },
+   "rank": 106
+  },
+  {
+   "files": [
+    "packages/cezar/src/delegation/windows-workspace-identity.ts"
+   ],
+   "folder": null,
+   "testFiles": 720,
+   "seconds": 7586.300038943,
+   "share": 0.745124248746173,
+   "avoidableSeconds": 7449.095333222,
+   "unknownSeconds": 0,
+   "edits": 3,
+   "editSeconds": 22758.900116828998,
+   "coverage": {
+    "loaded only": 0.9872656249787005,
+    "not loaded": 6.731362368725277e-05,
+    "no record": 0.005591081371322847,
+    "outside the test's process": 0.007075980026289509
+   },
+   "kinds": {
+    "declared input": 0.003658383167358473,
+    "child process": 0.012020633226721918,
+    "runtime read": 0.0002532136508098943,
+    "direct": 3.442542407489432e-05,
+    "test helper": 0.8708080743029045,
+    "transitive": 0.11322527022813075
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/core/harness-parity.testkit.ts",
+    "chain": [
+     "packages/cezar/src/core/child-home-env.test.ts",
+     "packages/cezar/src/core/harness-parity.testkit.ts",
+     "packages/cezar/src/delegation/workspace.ts",
+     "packages/cezar/src/delegation/windows-workspace-identity.ts"
+    ],
+    "testFiles": 357,
+    "seconds": 5168.970300018999,
+    "coverage": {
+     "loaded only": 1
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/core/harness-parity.testkit.ts: 357 of the 357 test files that load packages/cezar/src/delegation/windows-workspace-identity.ts through it never call it"
+   },
+   "rank": 19
+  },
+  {
+   "files": [
+    "packages/cezar/src/git-worktree-lock.ts",
+    "packages/cezar/src/git-worktree.ts"
+   ],
+   "folder": "packages/cezar/src",
+   "testFiles": 765,
+   "seconds": 7741.506625857002,
+   "share": 0.7603685959089655,
+   "avoidableSeconds": 1877.8362776470008,
+   "unknownSeconds": 0,
+   "edits": 2,
+   "editSeconds": 15483.013251714005,
+   "coverage": {
+    "called": 0.7387980954207146,
+    "loaded only": 0.24388061067169783,
+    "not loaded": 6.59640778830269e-05,
+    "no record": 0.005478987860493434,
+    "outside the test's process": 0.011776341969210374
+   },
+   "kinds": {
+    "declared input": 0.0035850376039596316,
+    "child process": 0.015973940450552837,
+    "runtime read": 0.0018990541027112415,
+    "direct": 0.014778809673993473,
+    "test helper": 0.8298433090907966,
+    "transitive": 0.13391984907798624
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/core/harness-parity.testkit.ts",
+    "chain": [
+     "packages/cezar/src/core/child-home-env.test.ts",
+     "packages/cezar/src/core/harness-parity.testkit.ts",
+     "packages/cezar/src/delegation/workspace.ts",
+     "packages/cezar/src/git-worktree.ts"
+    ],
+    "testFiles": 301,
+    "seconds": 4442.684010874999,
+    "coverage": {
+     "called": 0.7995306111015555,
+     "loaded only": 0.20046938889844426
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/core/harness-parity.testkit.ts: 86 of the 301 test files that load these files through it never call it"
+   },
+   "rank": 164
+  },
+  {
+   "files": [
+    "packages/cezar/src/core/opencode-server-runner.ts"
+   ],
+   "folder": null,
+   "testFiles": 714,
+   "seconds": 7596.923507507001,
+   "share": 0.7461676828302714,
+   "avoidableSeconds": 4182.631885034,
+   "unknownSeconds": 0,
+   "edits": 2,
+   "editSeconds": 15193.847015014002,
+   "coverage": {
+    "called": 0.4299138398111597,
+    "loaded only": 0.553148611492338,
+    "not loaded": 0.0028317742792515767,
+    "no record": 0.005583262854112778,
+    "outside the test's process": 0.008522511563137564
+   },
+   "kinds": {
+    "declared input": 0.003653267317694448,
+    "child process": 0.012003823682822039,
+    "runtime read": 0.0017092860819473026,
+    "direct": 0.004585852345699414,
+    "test helper": 0.8784749658654967,
+    "transitive": 0.09944896853277992,
+    "import": 0.00012383617356030529
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/core/harness-parity.testkit.ts",
+    "chain": [
+     "packages/cezar/src/core/child-home-env.test.ts",
+     "packages/cezar/src/core/harness-parity.testkit.ts",
+     "packages/cezar/src/core/runner-factory.ts",
+     "packages/cezar/src/core/opencode-server-runner.ts"
+    ],
+    "testFiles": 284,
+    "seconds": 4293.027416492997,
+    "coverage": {
+     "called": 0.5969656915782195,
+     "loaded only": 0.4030343084217809
+    }
+   },
+   "second": {
+    "gateway": "packages/cezar/src/core/runner-factory.ts",
+    "suggestion": {
+     "kind": "transitive",
+     "text": "load packages/cezar/src/core/opencode-server-runner.ts only where it is used: packages/cezar/src/core/runner-factory.ts imports 6 sibling modules, so each test file that loads packages/cezar/src/core/runner-factory.ts loads them all; for example, a registry that each test fills"
+    }
+   },
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/core/harness-parity.testkit.ts: 130 of the 284 test files that load packages/cezar/src/core/opencode-server-runner.ts through it never call it"
+   },
+   "rank": 113
+  },
+  {
+   "files": [
+    "packages/contract/src/waits.ts"
+   ],
+   "folder": null,
+   "testFiles": 1387,
+   "seconds": 9475.351564636,
+   "share": 0.9306663564533876,
+   "avoidableSeconds": 489.024095938,
+   "unknownSeconds": 0,
+   "edits": 1,
+   "editSeconds": 9475.351564636,
+   "coverage": {
+    "called": 0.7902296741716353,
+    "loaded only": 0.20255226309386348,
+    "not loaded": 0.0022815128980209474,
+    "no record": 0.004936549836480597
+   },
+   "kinds": {
+    "setup": 0.8971751680700378,
+    "declared input": 0.00021715687845077288,
+    "child process": 0.0008353386699171054,
+    "direct": 0.0003135618494715069,
+    "barrel": 0.04382959909614224,
+    "test helper": 0.034555722844630765,
+    "transitive": 0.000723063975332634,
+    "import": 0.022350388616017073
+   },
+   "kind": "barrel",
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "packages/api-client/src/contract/waits.ts",
+    "chain": [
+     "packages/web/src/api/artifact-metadata.test.tsx",
+     "packages/web/src/api/queries.ts",
+     "packages/web/src/lib/tasks-table.ts",
+     "packages/api-client/src/contract/waits.ts",
+     "packages/contract/src/waits.ts"
+    ],
+    "testFiles": 65,
+    "seconds": 249.27636967899997,
+    "coverage": {
+     "called": 0.02060701438975083,
+     "loaded only": 0.9490479882053979,
+     "not loaded": 0.030344997404851273
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import packages/contract/src/waits.ts from its own path in the files that use it, or split packages/api-client/src/contract/waits.ts"
+   },
+   "rank": 423
+  },
+  {
+   "files": [
+    "packages/contract/src/attachments.ts"
+   ],
+   "folder": null,
+   "testFiles": 1116,
+   "seconds": 9000.054679198995,
+   "share": 0.8839828305086388,
+   "avoidableSeconds": 2984.034043837001,
+   "unknownSeconds": 0,
+   "edits": 1,
+   "editSeconds": 9000.054679198995,
+   "coverage": {
+    "called": 0.24062837062249323,
+    "loaded only": 0.7457617780235924,
+    "not loaded": 0.0022297491957888904,
+    "no record": 0.0051664225282393875,
+    "outside the test's process": 0.006213679629886114
+   },
+   "kinds": {
+    "declared input": 0.00369533747998962,
+    "child process": 0.5786220038708119,
+    "runtime read": 0.0017649082249146623,
+    "barrel": 0.050859782848090306,
+    "test helper": 0.21492454817987355,
+    "transitive": 0.12716545192321657,
+    "import": 0.022967967473104003
+   },
+   "kind": "transitive",
+   "gateway": {
+    "kind": "transitive",
+    "gateway": "packages/contract/src/runs.ts",
+    "chain": [
+     "packages/contract/src/activity.test.ts",
+     "packages/contract/src/activity.ts",
+     "packages/contract/src/runs.ts",
+     "packages/contract/src/attachments.ts"
+    ],
+    "testFiles": 291,
+    "seconds": 1019.6295032590001,
+    "coverage": {
+     "called": 0.03187099522535629,
+     "loaded only": 0.9507548759774896,
+     "not loaded": 0.00042426370423504287,
+     "no record": 0.016949865092918934
+    }
+   },
+   "second": null,
+   "suggestion": null,
+   "note": "these tests start the program from source; Squeal re-runs them by design",
+   "rank": 133
+  },
+  {
+   "files": [
+    "packages/contract/src/run-limits.ts"
+   ],
+   "folder": null,
+   "testFiles": 1114,
+   "seconds": 8998.672504186996,
+   "share": 0.8838470736690511,
+   "avoidableSeconds": 3723.9332847660007,
+   "unknownSeconds": 0,
+   "edits": 1,
+   "editSeconds": 8998.672504186996,
+   "coverage": {
+    "loaded only": 0.9861677074904007,
+    "not loaded": 0.0024504423944465147,
+    "no record": 0.005167216078634364,
+    "outside the test's process": 0.0062146340365180925
+   },
+   "kinds": {
+    "declared input": 0.0036959050751680608,
+    "child process": 0.5787108788548465,
+    "runtime read": 0.0017651793106826812,
+    "barrel": 0.06154342923484746,
+    "test helper": 0.2136392650326471,
+    "transitive": 0.11767384719271651,
+    "import": 0.022971495299091996
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/contract/src/test-factories.testkit.ts",
+    "chain": [
+     "packages/contract/src/ask-schema.test.ts",
+     "packages/contract/src/test-factories.testkit.ts",
+     "packages/contract/src/runs.ts",
+     "packages/contract/src/run-limits.ts"
+    ],
+    "testFiles": 182,
+    "seconds": 1050.2589138809997,
+    "coverage": {
+     "loaded only": 0.9993483001610803,
+     "no record": 0.0006516998389194842
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/contract/src/test-factories.testkit.ts: 181 of the 182 test files that load packages/contract/src/run-limits.ts through it never call it"
+   },
+   "note": "these tests start the program from source; Squeal re-runs them by design",
+   "rank": 120
+  },
+  {
+   "files": [
+    "packages/contract/src/run-labels.ts"
+   ],
+   "folder": null,
+   "testFiles": 1114,
+   "seconds": 8998.672504186996,
+   "share": 0.8838470736690511,
+   "avoidableSeconds": 1338.1533305800003,
+   "unknownSeconds": 0,
+   "edits": 1,
+   "editSeconds": 8998.672504186996,
+   "coverage": {
+    "called": 0.8137490877492027,
+    "loaded only": 0.17241861974119896,
+    "not loaded": 0.0024504423944465147,
+    "no record": 0.005167216078634364,
+    "outside the test's process": 0.0062146340365180925
+   },
+   "kinds": {
+    "declared input": 0.0036959050751680608,
+    "child process": 0.5787108788548465,
+    "runtime read": 0.0017651793106826812,
+    "barrel": 0.05593618928556355,
+    "test helper": 0.2192465049819311,
+    "transitive": 0.11767384719271651,
+    "import": 0.022971495299091996
+   },
+   "kind": "transitive",
+   "gateway": {
+    "kind": "transitive",
+    "gateway": "packages/contract/src/runs.ts",
+    "chain": [
+     "packages/contract/src/activity.test.ts",
+     "packages/contract/src/activity.ts",
+     "packages/contract/src/runs.ts",
+     "packages/contract/src/run-labels.ts"
+    ],
+    "testFiles": 306,
+    "seconds": 1058.908413195,
+    "coverage": {
+     "called": 0.6239698210569659,
+     "loaded only": 0.35930052216228503,
+     "not loaded": 0.00040852616204526977,
+     "no record": 0.016321130618703827
+    }
+   },
+   "second": null,
+   "suggestion": null,
+   "note": "these tests start the program from source; Squeal re-runs them by design",
+   "rank": 181
+  },
+  {
+   "files": [
+    "packages/contract/src/project-limits.ts"
+   ],
+   "folder": null,
+   "testFiles": 984,
+   "seconds": 8479.027625044995,
+   "share": 0.8328077002989164,
+   "avoidableSeconds": 8190.235465641998,
+   "unknownSeconds": 0,
+   "edits": 1,
+   "editSeconds": 8479.027625044995,
+   "coverage": {
+    "loaded only": 0.9799916806866047,
+    "not loaded": 0.003843895498079244,
+    "no record": 0.005291771586929097,
+    "outside the test's process": 0.010872652228386953
+   },
+   "kinds": {
+    "declared input": 0.003922411961456903,
+    "child process": 0.026514354982633635,
+    "runtime read": 0.0016959425056624568,
+    "direct": 0.0008574732882724175,
+    "barrel": 0.08264799276311842,
+    "test helper": 0.7264348751893958,
+    "transitive": 0.15721866047982436,
+    "import": 0.0007082888296366566
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/workflows/waits-parity-cells.testkit.ts",
+    "chain": [
+     "packages/cezar/src/workflows/waits-claude-answers-parity.test.ts",
+     "packages/cezar/src/workflows/waits-parity-cells.testkit.ts",
+     "packages/cezar/src/ci-wait/supervisor.ts",
+     "packages/cezar/src/ci-wait/progress.ts",
+     "packages/contract/src/activity.ts",
+     "packages/contract/src/project-limits.ts"
+    ],
+    "testFiles": 99,
+    "seconds": 1634.3883790979996,
+    "coverage": {
+     "loaded only": 1
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/workflows/waits-parity-cells.testkit.ts: 99 of the 99 test files that load packages/contract/src/project-limits.ts through it never call it"
+   },
+   "rank": 1
+  },
+  {
+   "files": [
+    "packages/contract/src/live-limits.ts"
+   ],
+   "folder": null,
+   "testFiles": 960,
+   "seconds": 8442.746975118,
+   "share": 0.829244225102562,
+   "avoidableSeconds": 8168.489356187998,
+   "unknownSeconds": 0,
+   "edits": 1,
+   "editSeconds": 8442.746975118,
+   "coverage": {
+    "loaded only": 0.9852035806760326,
+    "not loaded": 0.004262295774947946,
+    "no record": 0.005314511687160078,
+    "outside the test's process": 0.0052196118618589886
+   },
+   "kinds": {
+    "declared input": 0.003939267572037496,
+    "child process": 0.024795322489701187,
+    "runtime read": 0.0018146602449596529,
+    "direct": 0.0004623877473179207,
+    "barrel": 0.08140198235828269,
+    "test helper": 0.7613510911717405,
+    "transitive": 0.12623528841596063
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/core/harness-parity.testkit.ts",
+    "chain": [
+     "packages/cezar/src/core/child-home-env.test.ts",
+     "packages/cezar/src/core/harness-parity.testkit.ts",
+     "packages/cezar/src/runs/store.ts",
+     "packages/cezar/src/runs/live-item-snapshots.ts",
+     "packages/contract/src/live-limits.ts"
+    ],
+    "testFiles": 287,
+    "seconds": 4260.006052218999,
+    "coverage": {
+     "loaded only": 1
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/core/harness-parity.testkit.ts: 287 of the 287 test files that load packages/contract/src/live-limits.ts through it never call it"
+   },
+   "rank": 2
+  },
+  {
+   "files": [
+    "packages/cezar/src/detached-process.ts"
+   ],
+   "folder": null,
+   "testFiles": 926,
+   "seconds": 8105.625205545997,
+   "share": 0.7961322200409592,
+   "avoidableSeconds": 692.3704550119999,
+   "unknownSeconds": 0,
+   "edits": 1,
+   "editSeconds": 8105.625205545997,
+   "coverage": {
+    "called": 0.9021549118934895,
+    "loaded only": 0.08720731368770276,
+    "not loaded": 2.7698690638494254e-05,
+    "no record": 0.005232862333182955,
+    "outside the test's process": 0.005377213394986236
+   },
+   "kinds": {
+    "declared input": 0.0034239915689675054,
+    "child process": 0.022156611053780223,
+    "runtime read": 0.0009088082725512341,
+    "direct": 0.00019830946425948448,
+    "test helper": 0.7641608126796887,
+    "transitive": 0.20521616501782886,
+    "import": 0.003935301942924134
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/core/harness-parity.testkit.ts",
+    "chain": [
+     "packages/cezar/src/core/child-home-env.test.ts",
+     "packages/cezar/src/core/harness-parity.testkit.ts",
+     "packages/cezar/src/delegation/workspace.ts",
+     "packages/cezar/src/delegation/idle-test-app.ts",
+     "packages/cezar/src/detached-process.ts"
+    ],
+    "testFiles": 165,
+    "seconds": 2238.4987844119996,
+    "coverage": {
+     "called": 0.8835016896631906,
+     "loaded only": 0.1164983103368095
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/core/harness-parity.testkit.ts: 37 of the 165 test files that load packages/cezar/src/detached-process.ts through it never call it"
+   },
+   "rank": 358
+  },
+  {
+   "files": [
+    "packages/cezar/src/workflows/waits.ts"
+   ],
+   "folder": null,
+   "testFiles": 791,
+   "seconds": 7748.473646768001,
+   "share": 0.761052894736544,
+   "avoidableSeconds": 990.6383065069994,
+   "unknownSeconds": 0,
+   "edits": 1,
+   "editSeconds": 7748.473646768001,
+   "coverage": {
+    "called": 0.8548857463375368,
+    "loaded only": 0.13462620808733233,
+    "not loaded": 0.00010747938393613472,
+    "no record": 0.0054740614421128165,
+    "outside the test's process": 0.004906504749081495
+   },
+   "kinds": {
+    "declared input": 0.0035818141262668446,
+    "child process": 0.014197336651701175,
+    "runtime read": 0.0016758546533117992,
+    "direct": 0.0027977590092265916,
+    "test helper": 0.8100725736859352,
+    "transitive": 0.16767466187355806
+   },
+   "kind": "transitive",
+   "gateway": {
+    "kind": "transitive",
+    "gateway": "packages/cezar/src/runs/outcome-commit.ts",
+    "chain": [
+     "packages/cezar/src/activity/publisher.test.ts",
+     "packages/cezar/src/activity/publisher.ts",
+     "packages/cezar/src/activity/read-model.ts",
+     "packages/cezar/src/activity/requests.ts",
+     "packages/cezar/src/delegation/conversations.ts",
+     "packages/cezar/src/runs/outcome-commit.ts",
+     "packages/cezar/src/workflows/waits.ts"
+    ],
+    "testFiles": 225,
+    "seconds": 922.2518951499998,
+    "coverage": {
+     "called": 0.5265707952934209,
+     "loaded only": 0.45481083203063316,
+     "not loaded": 0.0009030083628774208,
+     "no record": 0.01771536431306839
+    }
+   },
+   "second": null,
+   "suggestion": null,
+   "rank": 231
+  },
+  {
+   "files": [
+    "packages/cezar/src/core/hook-items.ts"
+   ],
+   "folder": null,
+   "testFiles": 735,
+   "seconds": 7614.904838143,
+   "share": 0.7479338040504746,
+   "avoidableSeconds": 7417.686464078,
+   "unknownSeconds": 0,
+   "edits": 1,
+   "editSeconds": 7614.904838143,
+   "coverage": {
+    "called": 0.006428091814202759,
+    "loaded only": 0.9767973130857814,
+    "not loaded": 0.0027021291218155066,
+    "no record": 0.005570078907951742,
+    "outside the test's process": 0.008502387070248526
+   },
+   "kinds": {
+    "declared input": 0.0036446407348365625,
+    "child process": 0.011975478650661439,
+    "runtime read": 0.0017052498872942778,
+    "test helper": 0.8619487711374526,
+    "transitive": 0.12050742844066614,
+    "import": 0.00021843114908913643
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/core/harness-parity.testkit.ts",
+    "chain": [
+     "packages/cezar/src/core/child-home-env.test.ts",
+     "packages/cezar/src/core/harness-parity.testkit.ts",
+     "packages/cezar/src/core/runner-factory.ts",
+     "packages/cezar/src/core/claude-cli-runner.ts",
+     "packages/cezar/src/core/claude-ui-mapper.ts",
+     "packages/cezar/src/core/hook-items.ts"
+    ],
+    "testFiles": 280,
+    "seconds": 4207.704025230997,
+    "coverage": {
+     "loaded only": 1
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/core/harness-parity.testkit.ts: 280 of the 280 test files that load packages/cezar/src/core/hook-items.ts through it never call it"
+   },
+   "rank": 23
+  },
+  {
+   "files": [
+    "packages/cezar/src/core/cursor-cli-flags.ts"
+   ],
+   "folder": null,
+   "testFiles": 722,
+   "seconds": 7605.4517205600005,
+   "share": 0.7470053215094224,
+   "avoidableSeconds": 4252.040502105,
+   "unknownSeconds": 0,
+   "edits": 1,
+   "editSeconds": 7605.4517205600005,
+   "coverage": {
+    "called": 0.4214639403650017,
+    "loaded only": 0.5617776274588466,
+    "not loaded": 0.002705487705270046,
+    "no record": 0.005577002179941112,
+    "outside the test's process": 0.008475942290940407
+   },
+   "kinds": {
+    "declared input": 0.003649170803355841,
+    "child process": 0.011990363448035325,
+    "runtime read": 0.0016703566766004794,
+    "direct": 0.0005277091940706558,
+    "test helper": 0.8708708033354413,
+    "transitive": 0.11116789923002046,
+    "import": 0.00012369731247609966
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/core/harness-parity.testkit.ts",
+    "chain": [
+     "packages/cezar/src/core/child-home-env.test.ts",
+     "packages/cezar/src/core/harness-parity.testkit.ts",
+     "packages/cezar/src/core/runner-factory.ts",
+     "packages/cezar/src/core/cursor-runner.ts",
+     "packages/cezar/src/core/cursor-print-capabilities.ts",
+     "packages/cezar/src/core/cursor-cli-flags.ts"
+    ],
+    "testFiles": 285,
+    "seconds": 4298.707869029998,
+    "coverage": {
+     "called": 0.5846639567266348,
+     "loaded only": 0.4153360432733655
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/core/harness-parity.testkit.ts: 144 of the 285 test files that load packages/cezar/src/core/cursor-cli-flags.ts through it never call it"
+   },
+   "rank": 105
+  },
+  {
+   "files": [
+    "packages/cezar/src/core/claude-cli-runner.ts"
+   ],
+   "folder": null,
+   "testFiles": 720,
+   "seconds": 7594.454750279001,
+   "share": 0.7459252021920937,
+   "avoidableSeconds": 2777.470903824,
+   "unknownSeconds": 0,
+   "edits": 1,
+   "editSeconds": 7594.454750279001,
+   "coverage": {
+    "called": 0.6183811258704871,
+    "loaded only": 0.3647991089738497,
+    "not loaded": 0.002709405322645983,
+    "no record": 0.005585077825823079,
+    "outside the test's process": 0.008525282007193661
+   },
+   "kinds": {
+    "declared input": 0.003654454898685176,
+    "child process": 0.012007725809762688,
+    "runtime read": 0.00170984172583594,
+    "direct": 0.03748413419430037,
+    "test helper": 0.8642697972918818,
+    "transitive": 0.08075016965009509,
+    "import": 0.00012387642943891903
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/core/harness-parity.testkit.ts",
+    "chain": [
+     "packages/cezar/src/core/child-home-env.test.ts",
+     "packages/cezar/src/core/harness-parity.testkit.ts",
+     "packages/cezar/src/core/runner-factory.ts",
+     "packages/cezar/src/core/claude-cli-runner.ts"
+    ],
+    "testFiles": 280,
+    "seconds": 4207.704025230997,
+    "coverage": {
+     "called": 0.7132744941874171,
+     "loaded only": 0.28672550581258316
+    }
+   },
+   "second": {
+    "gateway": "packages/cezar/src/core/runner-factory.ts",
+    "suggestion": {
+     "kind": "transitive",
+     "text": "load packages/cezar/src/core/claude-cli-runner.ts only where it is used: packages/cezar/src/core/runner-factory.ts imports 6 sibling modules, so each test file that loads packages/cezar/src/core/runner-factory.ts loads them all; for example, a registry that each test fills"
+    }
+   },
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/core/harness-parity.testkit.ts: 104 of the 280 test files that load packages/cezar/src/core/claude-cli-runner.ts through it never call it"
+   },
+   "rank": 140
+  },
+  {
+   "files": [
+    "packages/cezar/src/core/codex-approvals.ts",
+    "packages/cezar/src/core/codex-permissions.ts"
+   ],
+   "folder": "packages/cezar/src/core",
+   "testFiles": 717,
+   "seconds": 7586.627668524001,
+   "share": 0.7451564284311522,
+   "avoidableSeconds": 5779.868733701,
+   "unknownSeconds": 0,
+   "edits": 1,
+   "editSeconds": 7586.627668524001,
+   "coverage": {
+    "called": 0.21860699386828653,
+    "loaded only": 0.7644324714285473,
+    "not loaded": 0.002835617290044941,
+    "no record": 0.005590839919688858,
+    "outside the test's process": 0.008534077493432109
+   },
+   "kinds": {
+    "declared input": 0.0036582251795677667,
+    "child process": 0.012020114113988368,
+    "runtime read": 0.001711605760076312,
+    "direct": 0.00028287436997913496,
+    "test helper": 0.8804158927146208,
+    "transitive": 0.10169204256772195,
+    "import": 0.00021924529404559613
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/core/harness-parity.testkit.ts",
+    "chain": [
+     "packages/cezar/src/core/child-home-env.test.ts",
+     "packages/cezar/src/core/harness-parity.testkit.ts",
+     "packages/cezar/src/core/runner-factory.ts",
+     "packages/cezar/src/core/codex-app-server-runner.ts",
+     "packages/cezar/src/core/codex-approvals.ts"
+    ],
+    "testFiles": 285,
+    "seconds": 4298.707869029998,
+    "coverage": {
+     "called": 0.0014530705850010414,
+     "loaded only": 0.9985469294149988
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/core/harness-parity.testkit.ts: 284 of the 285 test files that load these files through it never call it"
+   },
+   "rank": 80
+  },
+  {
+   "files": [
+    "packages/contract/src/permissions.ts"
+   ],
+   "folder": null,
+   "testFiles": 710,
+   "seconds": 7565.186372872,
+   "share": 0.743050470423582,
+   "avoidableSeconds": 7294.994872334002,
+   "unknownSeconds": 0,
+   "edits": 1,
+   "editSeconds": 7565.186372872,
+   "coverage": {
+    "called": 0.00017659108687534297,
+    "loaded only": 0.9828490704988752,
+    "no record": 0.00593099432842739,
+    "outside the test's process": 0.011043344085822372
+   },
+   "kinds": {
+    "declared input": 0.004396222080828136,
+    "child process": 0.02518445230195568,
+    "runtime read": 0.003798216142438738,
+    "direct": 3.7575467805968054e-05,
+    "barrel": 0.00016632333494281379,
+    "test helper": 0.8529091988939919,
+    "transitive": 0.113508011778037
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/workflows/waits-parity-cells.testkit.ts",
+    "chain": [
+     "packages/cezar/src/workflows/waits-claude-answers-parity.test.ts",
+     "packages/cezar/src/workflows/waits-parity-cells.testkit.ts",
+     "packages/cezar/src/workflows/run.ts",
+     "packages/cezar/src/workflows/run/launch-context.ts",
+     "packages/cezar/src/runs/webhook.ts",
+     "packages/cezar/src/runs/event-history.ts",
+     "packages/cezar/src/runs/event-history-context.ts",
+     "packages/contract/src/permissions.ts"
+    ],
+    "testFiles": 99,
+    "seconds": 1634.3883790979996,
+    "coverage": {
+     "loaded only": 1
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/workflows/waits-parity-cells.testkit.ts: 99 of the 99 test files that load packages/contract/src/permissions.ts through it never call it"
+   },
+   "rank": 37
+  },
+  {
+   "files": [
+    "packages/cezar/src/git-worktree-release.ts"
+   ],
+   "folder": null,
+   "testFiles": 709,
+   "seconds": 7554.851617037,
+   "share": 0.7420353936222429,
+   "avoidableSeconds": 7012.871112238,
+   "unknownSeconds": 0,
+   "edits": 1,
+   "editSeconds": 7554.851617037,
+   "coverage": {
+    "called": 0.05218131599659574,
+    "loaded only": 0.9337019503702122,
+    "no record": 0.005614355248135943,
+    "outside the test's process": 0.008502378385055898
+   },
+   "kinds": {
+    "declared input": 0.00367361184201324,
+    "child process": 0.01207067126379451,
+    "runtime read": 0.0016512110235055203,
+    "direct": 6.759382869259855e-05,
+    "test helper": 0.879306063142427,
+    "transitive": 0.10323084889956752
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/workflows/worker-wait.testkit.ts",
+    "chain": [
+     "packages/cezar/src/delegation/scratch-cleanup.test.ts",
+     "packages/cezar/src/workflows/worker-wait.testkit.ts",
+     "packages/cezar/src/delegation/service.ts",
+     "packages/cezar/src/delegation/worker-cleanup.ts",
+     "packages/cezar/src/git-worktree-release.ts"
+    ],
+    "testFiles": 242,
+    "seconds": 3534.5569559129985,
+    "coverage": {
+     "loaded only": 1
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/workflows/worker-wait.testkit.ts: 242 of the 242 test files that load packages/cezar/src/git-worktree-release.ts through it never call it"
+   },
+   "rank": 51
+  },
+  {
+   "files": [
+    "packages/cezar/src/workflows/turn-end.ts"
+   ],
+   "folder": null,
+   "testFiles": 717,
+   "seconds": 7553.252916871999,
+   "share": 0.7418783697432371,
+   "avoidableSeconds": 1311.899225969001,
+   "unknownSeconds": 0,
+   "edits": 1,
+   "editSeconds": 7553.252916871999,
+   "coverage": {
+    "called": 0.8103685775147892,
+    "loaded only": 0.1754813613286111,
+    "no record": 0.00561554356670019,
+    "outside the test's process": 0.008534517589898998
+   },
+   "kinds": {
+    "declared input": 0.0036743893883131734,
+    "child process": 0.012073226107959465,
+    "runtime read": 0.0016819001296279887,
+    "direct": 0.005035942931426746,
+    "test helper": 0.8630854817060375,
+    "transitive": 0.11444905973663551
+   },
+   "kind": "test helper",
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "packages/cezar/src/workflows/fixture-cleanup.testkit.ts",
+    "chain": [
+     "packages/cezar/src/automations/task-template.test.ts",
+     "packages/cezar/src/workflows/fixture-cleanup.testkit.ts",
+     "packages/cezar/src/workflows/run.ts",
+     "packages/cezar/src/workflows/turn-end.ts"
+    ],
+    "testFiles": 166,
+    "seconds": 1352.012708580001,
+    "coverage": {
+     "called": 0.574231021702013,
+     "loaded only": 0.42576897829798627
+    }
+   },
+   "second": null,
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split packages/cezar/src/workflows/fixture-cleanup.testkit.ts: 100 of the 166 test files that load packages/cezar/src/workflows/turn-end.ts through it never call it"
+   },
+   "rank": 182
+  },
+  {
+   "files": [
+    "packages/web/vitest.setup.ts"
+   ],
+   "folder": null,
+   "testFiles": 386,
+   "seconds": 1001.7542186080001,
+   "share": 0.09839201662693478,
+   "avoidableSeconds": 0,
+   "unknownSeconds": 0,
+   "edits": 7,
+   "editSeconds": 7012.279530256001,
+   "coverage": {
+    "called": 0.9476866373442179,
+    "no record": 0.009955301565745117,
+    "outside the test's process": 0.04235806109003706
+   },
+   "kinds": {
+    "setup": 0.9555879043675787,
+    "declared input": 0.027704991752932517,
+    "runtime read": 0.01670710387948881
+   },
+   "kind": "setup",
+   "gateway": null,
+   "second": null,
+   "suggestion": {
+    "kind": "setup",
+    "text": "packages/web/vitest.setup.ts is a setup file: keep its imports leaf-only"
+   },
+   "note": "these tests start the program from source; Squeal re-runs them by design",
+   "rank": 1027
+  }
+ ],
+ "testFiles": [
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/harness-cursor-session-parity.test.ts",
+   "seconds": 31.559838021,
+   "sources": 483,
+   "called": 46,
+   "edits": 87,
+   "via": {
+    "path": "packages/cezar/src/core/harness-parity-cells.testkit.ts",
+    "uncalled": 437
+   },
+   "avoidablePairSeconds": 13791.649215177
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/harness-opencode-session-parity.test.ts",
+   "seconds": 21.088362206000003,
+   "sources": 483,
+   "called": 51,
+   "edits": 87,
+   "via": {
+    "path": "packages/cezar/src/core/harness-parity-cells.testkit.ts",
+    "uncalled": 432
+   },
+   "avoidablePairSeconds": 9110.172472992
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/ci-tools-definitions-validation.test.ts",
+   "seconds": 29.976075462999997,
+   "sources": 338,
+   "called": 60,
+   "edits": 84,
+   "via": {
+    "path": "packages/cezar/src/core/ci-tools.testkit.ts",
+    "uncalled": 278
+   },
+   "avoidablePairSeconds": 8333.348978713999
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/harness-claude-session-parity.test.ts",
+   "seconds": 17.786455735,
+   "sources": 483,
+   "called": 45,
+   "edits": 87,
+   "via": {
+    "path": "packages/cezar/src/core/harness-parity-cells.testkit.ts",
+    "uncalled": 438
+   },
+   "avoidablePairSeconds": 7790.46761193
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/task-cli/cli.test.ts",
+   "seconds": 26.423046287000002,
+   "sources": 487,
+   "called": 203,
+   "edits": 89,
+   "via": {
+    "path": "packages/cezar/src/task-cli/cockpit.testkit.ts",
+    "uncalled": 245
+   },
+   "avoidablePairSeconds": 7504.1451455080005
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/harness-cursor-owned-input-parity.test.ts",
+   "seconds": 26.45713804,
+   "sources": 477,
+   "called": 206,
+   "edits": 87,
+   "via": {
+    "path": "packages/cezar/src/core/harness-parity-cells.testkit.ts",
+    "uncalled": 271
+   },
+   "avoidablePairSeconds": 7169.88440884
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/task-cli/status-question.test.ts",
+   "seconds": 21.969179077000003,
+   "sources": 487,
+   "called": 162,
+   "edits": 89,
+   "via": {
+    "path": "packages/cezar/src/task-cli/cockpit.testkit.ts",
+    "uncalled": 278
+   },
+   "avoidablePairSeconds": 7139.983200025001
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/workflow-final-message-silent-tail-parity.test.ts",
+   "seconds": 22.146161391,
+   "sources": 358,
+   "called": 54,
+   "edits": 84,
+   "via": {
+    "path": "packages/cezar/src/core/workflow-final-message-cells.testkit.ts",
+    "uncalled": 304
+   },
+   "avoidablePairSeconds": 6732.433062864
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/task-cli/watch.test.ts",
+   "seconds": 21.342030044999998,
+   "sources": 487,
+   "called": 174,
+   "edits": 89,
+   "via": {
+    "path": "packages/cezar/src/task-cli/cockpit.testkit.ts",
+    "uncalled": 275
+   },
+   "avoidablePairSeconds": 6680.055404084999
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/harness-pi-session-parity.test.ts",
+   "seconds": 14.709104262,
+   "sources": 483,
+   "called": 45,
+   "edits": 87,
+   "via": {
+    "path": "packages/cezar/src/core/harness-parity-cells.testkit.ts",
+    "uncalled": 438
+   },
+   "avoidablePairSeconds": 6442.5876667560005
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/harness-cursor-run-parity.test.ts",
+   "seconds": 23.761206622000003,
+   "sources": 477,
+   "called": 212,
+   "edits": 87,
+   "via": {
+    "path": "packages/cezar/src/core/harness-parity-cells.testkit.ts",
+    "uncalled": 265
+   },
+   "avoidablePairSeconds": 6296.719754830001
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/ci-tools-ask-done.test.ts",
+   "seconds": 22.116831501999997,
+   "sources": 337,
+   "called": 56,
+   "edits": 84,
+   "via": {
+    "path": "packages/cezar/src/core/ci-tools.testkit.ts",
+    "uncalled": 281
+   },
+   "avoidablePairSeconds": 6214.829652061999
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/harness-codex-session-parity.test.ts",
+   "seconds": 14.269115004,
+   "sources": 483,
+   "called": 52,
+   "edits": 87,
+   "via": {
+    "path": "packages/cezar/src/core/harness-parity-cells.testkit.ts",
+    "uncalled": 431
+   },
+   "avoidablePairSeconds": 6149.988566724
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/pi-runner.test.ts",
+   "seconds": 20.234221601999998,
+   "sources": 331,
+   "called": 28,
+   "edits": 71,
+   "via": {
+    "path": "packages/cezar/src/workflows/run.ts",
+    "uncalled": 249
+   },
+   "avoidablePairSeconds": 6130.969145405999
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/harness-cursor-settlement-parity.test.ts",
+   "seconds": 20.595280687,
+   "sources": 483,
+   "called": 209,
+   "edits": 87,
+   "via": {
+    "path": "packages/cezar/src/core/harness-parity-cells.testkit.ts",
+    "uncalled": 274
+   },
+   "avoidablePairSeconds": 5643.106908238
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/harness-omp-session-parity.test.ts",
+   "seconds": 12.620225393999998,
+   "sources": 483,
+   "called": 47,
+   "edits": 87,
+   "via": {
+    "path": "packages/cezar/src/core/harness-parity-cells.testkit.ts",
+    "uncalled": 436
+   },
+   "avoidablePairSeconds": 5502.418271783999
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/worker-destroy-process-holders.test.ts",
+   "seconds": 34.050046159,
+   "sources": 353,
+   "called": 192,
+   "edits": 83,
+   "via": {
+    "path": "packages/cezar/src/workflows/run.ts",
+    "uncalled": 51
+   },
+   "avoidablePairSeconds": 5482.057431599
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/worker-wait.testkit.test.ts",
+   "seconds": 15.761592690999999,
+   "sources": 352,
+   "called": 13,
+   "edits": 83,
+   "via": {
+    "path": "packages/cezar/src/workflows/worker-wait.testkit.ts",
+    "uncalled": 339
+   },
+   "avoidablePairSeconds": 5343.179922249
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/native-delivery-control.test.ts",
+   "seconds": 17.456289698,
+   "sources": 357,
+   "called": 54,
+   "edits": 84,
+   "via": {
+    "path": "packages/cezar/src/core/harness-parity.testkit.ts",
+    "uncalled": 303
+   },
+   "avoidablePairSeconds": 5289.255778494
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/harness-claude-owned-input-parity.test.ts",
+   "seconds": 19.951743025000003,
+   "sources": 477,
+   "called": 212,
+   "edits": 87,
+   "via": {
+    "path": "packages/cezar/src/core/harness-parity-cells.testkit.ts",
+    "uncalled": 265
+   },
+   "avoidablePairSeconds": 5287.211901625001
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/harness-opencode-settlement-parity.test.ts",
+   "seconds": 22.864540543,
+   "sources": 483,
+   "called": 252,
+   "edits": 87,
+   "via": {
+    "path": "packages/cezar/src/core/harness-parity-cells.testkit.ts",
+    "uncalled": 231
+   },
+   "avoidablePairSeconds": 5281.708865433
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/harness-claude-run-parity.test.ts",
+   "seconds": 20.246718019,
+   "sources": 477,
+   "called": 217,
+   "edits": 87,
+   "via": {
+    "path": "packages/cezar/src/core/harness-parity-cells.testkit.ts",
+    "uncalled": 260
+   },
+   "avoidablePairSeconds": 5264.146684939999
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/harness-opencode-run-parity.test.ts",
+   "seconds": 19.618454690000004,
+   "sources": 477,
+   "called": 218,
+   "edits": 87,
+   "via": {
+    "path": "packages/cezar/src/core/harness-parity-cells.testkit.ts",
+    "uncalled": 259
+   },
+   "avoidablePairSeconds": 5081.179764710001
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/workflows/waits-cursor-answers-parity.test.ts",
+   "seconds": 30.759962744,
+   "sources": 348,
+   "called": 187,
+   "edits": 84,
+   "via": {
+    "path": "packages/cezar/src/workflows/waits-parity-cells.testkit.ts",
+    "uncalled": 161
+   },
+   "avoidablePairSeconds": 4952.354001784
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/ci-tools-wait-cancel.test.ts",
+   "seconds": 17.572753524000003,
+   "sources": 337,
+   "called": 56,
+   "edits": 84,
+   "via": {
+    "path": "packages/cezar/src/core/ci-tools.testkit.ts",
+    "uncalled": 281
+   },
+   "avoidablePairSeconds": 4937.943740244001
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/server/repo-pull.test.ts",
+   "seconds": 12.636024848000002,
+   "sources": 481,
+   "called": 94,
+   "edits": 86,
+   "via": {
+    "path": "packages/cezar/src/server/server.ts",
+    "uncalled": 335
+   },
+   "avoidablePairSeconds": 4890.141616176001
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/runner-shutdown-signal-readiness-parity.test.ts",
+   "seconds": 15.543197709,
+   "sources": 359,
+   "called": 49,
+   "edits": 84,
+   "via": {
+    "path": "packages/cezar/src/core/runner-shutdown.testkit.ts",
+    "uncalled": 310
+   },
+   "avoidablePairSeconds": 4818.39128979
+  },
+  {
+   "project": "web",
+   "path": "packages/web/src/routes.test.tsx",
+   "seconds": 11.765453253,
+   "sources": 571,
+   "called": 171,
+   "edits": 19,
+   "via": {
+    "path": "packages/web/src/routes.tsx",
+    "uncalled": 349
+   },
+   "avoidablePairSeconds": 4706.1813012
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/harness-parity.test.ts",
+   "seconds": 18.26304013,
+   "sources": 479,
+   "called": 222,
+   "edits": 87,
+   "via": {
+    "path": "packages/cezar/src/core/harness-parity-cells.testkit.ts",
+    "uncalled": 212
+   },
+   "avoidablePairSeconds": 4693.60131341
+  },
+  {
+   "project": "server",
+   "path": "packages/cezar/src/core/native-failure-control.test.ts",
+   "seconds": 15.210064669,
+   "sources": 357,
+   "called": 55,
+   "edits": 84,
+   "via": {
+    "path": "packages/cezar/src/core/harness-parity.testkit.ts",
+    "uncalled": 302
+   },
+   "avoidablePairSeconds": 4593.439530038
+  }
+ ],
+ "entries": {
+  "files": 2949,
+  "byEdits": 128,
+  "testFiles": 1548
+ }
+}

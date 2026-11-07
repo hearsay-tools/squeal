@@ -1,0 +1,34 @@
+Reach: what one edit of each file re-runs, of 1490 test files and 6176 s recorded.
+Edits: 580 from 2026-10-06 to 2026-11-07, every worktree's watch revisions in which HEAD did not move.
+
+test/daemon/strays.ts: re-runs 100% of the suite: 1490 test files, 6176 s; 0 edits in the window
+  coverage: outside the test's process 73%, no record 14%, called 7%, loaded only 5%
+  setup through test/global-teardown.ts: 1490 test files, 6176 s; outside the test's process 73%, no record 14%, called 7%, loaded only 5%
+    chain: test/global-teardown.ts → test/daemon/strays.ts
+    test/daemon/drain-wait.test.ts  177 s  no record
+    test/scheduler/timed-out-tier.test.ts  126 s  outside the test's process
+    test/lint/integration/injection.test.ts  99 s  outside the test's process
+    … and 1487 more test files; --limit lists more.
+  suggestion: keep the setup's imports leaf-only: test/global-teardown.ts → test/daemon/strays.ts
+test/global-teardown.ts: re-runs 100% of the suite: 1490 test files, 6176 s; 0 edits in the window
+  coverage: outside the test's process 86%, no record 14%, called <1%
+  setup: 1490 test files, 6176 s; outside the test's process 86%, no record 14%, called <1%
+    chain: test/global-teardown.ts
+    test/daemon/drain-wait.test.ts  177 s  no record
+    test/scheduler/timed-out-tier.test.ts  126 s  outside the test's process
+    test/lint/integration/injection.test.ts  99 s  outside the test's process
+    … and 1487 more test files; --limit lists more.
+  suggestion: test/global-teardown.ts is a setup file: keep its imports leaf-only
+vitest.config.ts: re-runs 100% of the suite: 1490 test files, 6176 s; 0 edits in the window
+  coverage: outside the test's process 86%, no record 14%
+  setup: 1490 test files, 6176 s; outside the test's process 86%, no record 14%
+    chain: vitest.config.ts
+    test/daemon/drain-wait.test.ts  177 s  no record
+    test/scheduler/timed-out-tier.test.ts  126 s  outside the test's process
+    test/lint/integration/injection.test.ts  99 s  outside the test's process
+    … and 1487 more test files; --limit lists more.
+  suggestion: vitest.config.ts is a setup file: keep its imports leaf-only
+
+20 test files have no coverage record at the current inputs, 14% of the suite's seconds, so their pairs read no record.
+9 test files have no result at the current inputs: `squeal retry test/daemon/departure.test.ts test/daemon/drain-checkpoint.test.ts test/daemon/drain-wait.test.ts test/daemon/drain.test.ts test/daemon/restart-handover-signal.test.ts test/daemon/stop-cancel.test.ts test/evals/eval-root.test.ts test/kit/vitest.test.ts test/scheduler/environment-growth-wait.test.ts` runs each once.
+11 test files have a result and no record: test/cli/warmup.test.ts, test/daemon/busy-store.test.ts, test/daemon/lifecycle.test.ts, test/harness/opencode-hooks.test.ts, test/integration/setup-missing-import.test.ts, test/kit/pytest.test.ts, test/lint/oxlint/pass-replay.test.ts, test/scheduler/edit-beside-backlog.test.ts, test/scheduler/focused-vitest.test.ts, test/scheduler/ordering.test.ts and 1 more (--json lists every one). Squeal re-runs a current result only in a forced checkpoint, squeal run --all --force, which re-runs every test file, about one run of the whole suite.
