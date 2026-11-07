@@ -33,7 +33,7 @@ import { pathToFileURL } from "node:url";
 const [daemonPath, root, out, commonDir] = process.argv.slice(2);
 const daemonUrl = pathToFileURL(daemonPath);
 const { startDaemon } = await import(daemonUrl);
-const { openStore } = await import(new URL("../store/index.js", daemonUrl));
+const { openStore } = await import(new URL("../store/open.js", daemonUrl));
 const daemon = await startDaemon({ root, env: process.env });
 if ("reason" in daemon) throw new Error(daemon.message);
 const stopping = daemon.stop("stop-requested");
