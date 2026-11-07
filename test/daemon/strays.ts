@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, readlinkSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { inject } from "vitest";
 
@@ -16,6 +16,33 @@ const repoRoot = resolve(import.meta.dirname, "../..");
 
 /** Every test build of this worktree, of every run. */
 export const TEST_CACHE = join(repoRoot, "node_modules/.cache/squeal-test");
+
+/*
+ * Copies of three product functions, node built-ins only. The global setup
+ * (`test/global-teardown.ts`) imports them from here: its import closure goes
+ * into every test file's key, so with the product modules there an edit to
+ * `src/core/{daemon,delivery,fs,types}` re-keyed the whole suite (row
+ * 015-106). `strays.test.ts` checks each copy against its product function.
+ */
+
+/** Copy of `currentUid` in `src/core/daemon/paths.ts`: the real uid, 0 without `process.getuid`. */
+export function currentUid(): number {
+  return process.getuid?.() ?? 0;
+}
+
+/** Copy of `userTmpDir` in `src/core/daemon/paths.ts`: `/tmp/squeal-<uid>`. */
+export function userTmpDir(uid: number = currentUid()): string {
+  return join("/tmp", `squeal-${uid}`);
+}
+
+/** Copy of `pidNamespace` in `src/core/delivery/harness-process.ts`: `pid:[…]`, `null` without `/proc`. */
+export function pidNamespace(): string | null {
+  try {
+    return readlinkSync("/proc/self/ns/pid");
+  } catch {
+    return null;
+  }
+}
 
 declare module "vitest" {
   interface ProvidedContext {
