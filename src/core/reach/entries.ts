@@ -70,12 +70,18 @@ export function noteOf(kinds: Seconds<PathKind>): { readonly note?: string } {
   return byDesign > imports ? { note: BY_DESIGN } : {};
 }
 
-/** The entries of part 1 in both orders: by ranked seconds per edit, and by the window's edits (015-118). */
+/**
+ * The entries of part 1 in both orders: by ranked seconds per edit, and by
+ * the window's edits (015-118). A path with no bytes in this worktree (a
+ * file of another worktree or commit, a path a test looks for at run time)
+ * is left out of both and counted (015-122).
+ */
 export function fileEntries(
   analysis: Analysis,
   snapshot: ReachSnapshot,
-): { readonly files: FileEntry[]; readonly byEdits: FileEntry[] } {
-  const ranked = groups(analysis, snapshot)
+): { readonly files: FileEntry[]; readonly byEdits: FileEntry[]; readonly absent: number } {
+  const present = [...analysis.files.values()].filter((f) => snapshot.modules.hasBytes(f.path));
+  const ranked = groups(present, snapshot)
     .map((group) => entryOf(group, analysis, snapshot))
     .sort(
       (a, b) =>
@@ -85,7 +91,7 @@ export function fileEntries(
   const byEdits = files
     .filter((e) => e.editSeconds > 0)
     .sort((a, b) => b.editSeconds - a.editSeconds || a.rank - b.rank);
-  return { files, byEdits };
+  return { files, byEdits, absent: analysis.files.size - present.length };
 }
 
 const rank = (e: Omit<FileEntry, "rank">) => e.avoidableSeconds + e.unknownSeconds;
@@ -98,9 +104,9 @@ interface Group {
   lead: FileReach;
 }
 
-function groups(analysis: Analysis, snapshot: ReachSnapshot): Group[] {
+function groups(files: readonly FileReach[], snapshot: ReachSnapshot): Group[] {
   const out = new Map<string, Group>();
-  for (const file of analysis.files.values()) {
+  for (const file of files) {
     const route = mainRoute(file);
     const reach = createHash("sha1").update(file.reach.join(",")).digest("hex");
     // Without a gateway (no stored edges, a declared input, a runtime read) the kind and its pattern stand in.

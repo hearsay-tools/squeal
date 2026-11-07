@@ -38,8 +38,13 @@ function head(report: ReachReport): string[] {
   return [
     `Reach: what one edit of each file re-runs, of ${plural(suite.testFiles, "test file")} and ${secs(suite.seconds)} recorded${left}.`,
     window === null
-      ? "Edits: none recorded (watch revisions in which HEAD did not move)."
-      : `Edits: ${window.edits} from ${day(window.from)} to ${day(window.to)}, every worktree's watch revisions in which HEAD did not move.`,
+      ? "Edits: none recorded of files this worktree has (watch revisions in which HEAD did not move)."
+      : `Edits: ${window.edits} from ${day(window.from)} to ${day(window.to)}, every worktree's watch revisions in which HEAD did not move, of files this worktree has.`,
+    ...(report.absent === 0
+      ? []
+      : [
+          `${plural(report.absent, "path")} with no bytes in this worktree ${report.absent === 1 ? "is" : "are"} left out of the lists: files of other worktrees or commits, or paths tests look for at run time.`,
+        ]),
     ...(report.edges
       ? []
       : [

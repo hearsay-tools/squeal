@@ -130,7 +130,7 @@ export interface ReachReport {
     readonly withoutClosure: number;
     readonly leftOut: number;
   };
-  /** The edits the store keeps, by time; `null` with none. */
+  /** The edits the store keeps of paths this worktree has, by time; `null` with none (015-122). */
   readonly window: { readonly from: EpochMs; readonly to: EpochMs; readonly edits: number } | null;
   readonly coverage: "on" | "off";
   /** Runners of the suite whose runs give no coverage records, while coverage is on. */
@@ -139,6 +139,8 @@ export interface ReachReport {
   readonly edges: boolean;
   /** `import` pairs whose chain is not recorded yet. */
   readonly notRecorded: number;
+  /** Paths with no bytes in this worktree, left out of `files` and `byEdits` (015-122). */
+  readonly absent: number;
   readonly files: readonly FileEntry[];
   readonly moreFiles: number;
   /** 015-118: the entries the window's edits changed, by the seconds those edits re-ran; empty with no edits. */
