@@ -4,9 +4,9 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { cpus, loadavg, tmpdir } from "node:os";
 import { join } from "node:path";
-import { readPolicy } from "../../../src/core/daemon/policy.ts";
-import { stopRequired } from "../../../src/core/state/required.ts";
-import { stepReason } from "../../../src/harness/shared/stop-required.ts";
+import { readPolicy } from "../../../../../../src/core/daemon/policy.ts";
+import { stopRequired } from "../../../../../../src/core/state/required.ts";
+import { stepReason } from "../../../../../../src/harness/shared/stop-required.ts";
 
 console.log(
   JSON.stringify({

@@ -24,10 +24,10 @@ Research only, 2026-11-07, within the 15-minute bound. Inspected and probed **Sq
 **verified by experiment, 0.1.414.** Command:
 
 ```sh
-pnpm exec tsx research/probes/issue-156/stop.mjs > research/probes/issue-156/output.txt
+pnpm exec tsx docs/specifications/011-core/research/probes/issue-156/stop.mjs > docs/specifications/011-core/research/probes/issue-156/output.txt
 ```
 
-Exit **0**; final line: `PASS: four synthetic policy/Stop-text cases; no timer wait, daemon, linter or test suite.` The fixture uses `{"name":"lint","lint":true,"at":"stop"}`, with lint enabled, one pending ESLint check and revision 2. It calls `readPolicy`, `stopRequired` and `stepReason`. Exact complete output is in [output.txt](../../../../research/probes/issue-156/output.txt).
+Exit **0**; final line: `PASS: four synthetic policy/Stop-text cases; no timer wait, daemon, linter or test suite.` The fixture uses `{"name":"lint","lint":true,"at":"stop"}`, with lint enabled, one pending ESLint check and revision 2. It calls `readPolicy`, `stopRequired` and `stepReason`. Exact complete output is in [output.txt](probes/issue-156/output.txt).
 
 | Config change | Resolved budget | Reason's duration |
 | --- | ---: | --- |
@@ -77,10 +77,14 @@ Open: the original hook's full output, effective policy, elapsed time and daemon
 
 ## Sources and verification
 
-- Fetched issues: [#156](https://github.com/hearsay-tools/squeal/issues/156), [#154](https://github.com/hearsay-tools/squeal/issues/154). Exact commands: [probe README](../../../../research/probes/issue-156/README.md).
+- Fetched issues: [#156](https://github.com/hearsay-tools/squeal/issues/156), [#154](https://github.com/hearsay-tools/squeal/issues/154). Exact commands: [probe README](probes/issue-156/README.md).
 - Local source at `d3f363054fbe5d30e6e11bf8f212e1ac74d567e1`: `src/core/{daemon/policy.ts,state/required.ts,slow/stop-wait.ts}`, `src/harness/shared/{stop.ts,stop-slow.ts,stop-required.ts,stop-lint.ts}`. [Pinned source tree](https://github.com/hearsay-tools/squeal/tree/d3f363054fbe5d30e6e11bf8f212e1ac74d567e1).
 - Official project reference: `plugins/claude-code/skills/squeal/references/policy.md`; installed copy `/home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.414/skills/squeal/references/policy.md`. Historical source: tag `squeal--v0.1.408` at the commit above.
 - Specs and amendment logs: `docs/specifications/011-core/{spec,status}.md`, `019-run-triggers/{spec,status}.md`, `017-lint-checks/{spec,status}.md` at the inspected commit.
 - Probe assertions passed; no product test suite, build or typecheck was needed for this research-only change. Additional checks are recorded below.
 - `pnpm exec biome check research/probes/issue-156/stop.mjs`: exit 0, `Checked 1 file in 6ms. No fixes applied.` `node --check research/probes/issue-156/stop.mjs` and `git diff --check`: exit 0, no output.
 - `/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 research/probes/issue-156/stop.mjs docs/specifications/011-core/research/issue-156.md`: exit **3**, revision **5**: `No verdict: no test file's closure holds research/probes/issue-156/stop.mjs; no test file's closure holds docs/specifications/011-core/research/issue-156.md. Worktree: known failures 0; not current: 529 of 1490 test files (529 unknown)`. These paths have direct research evidence, not an affected-suite pass.
+
+Coordinator correction: probes were moved from root `research/` to this spec's `research/probes/issue-156/` as required by the triage brief. Commands above use the final paths; the original recorded run used the root path. Imports were adjusted for the move.
+
+After relocation: `node --check docs/specifications/011-core/research/probes/issue-156/stop.mjs` and `git diff --check` passed. Biome ignored the relocated docs path and processed zero files, so this is not a second lint pass. The researcher's passing lint result above applies to the same probe before its relative imports changed.
