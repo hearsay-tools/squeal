@@ -1714,7 +1714,7 @@ Spec: `specifications/015-coverage-complexity/spec.md`, approved by the human 20
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 015-106 the global test setup imports nothing from `src/` | planned | `research/edit-reach.md` 1 and 3: `test/global-teardown.ts` imports `src/core/daemon/paths.ts` and `src/core/delivery/harness-process.ts`, so 25 source files re-key 1,504 of 1,504 test files (0.9% of pair-seconds; most tests also reach them through barrels). Test copies of `currentUid`, `userTmpDir`, `pidNamespace` in `test/daemon/strays.ts` with a parity test. Repo-local; how Squeal hashes a user's global setup is unchanged. | The setup closure holds no `src/` file (before and after counts); parity test; strays tests current; lint and typecheck pass. |
+| 015-106 the global test setup imports nothing from `src/` | running (worker b8ce4a07, claude opus xhigh, 2026-11-07) | `research/edit-reach.md` 1 and 3: `test/global-teardown.ts` imports `src/core/daemon/paths.ts` and `src/core/delivery/harness-process.ts`, so 25 source files re-key 1,504 of 1,504 test files (0.9% of pair-seconds; most tests also reach them through barrels). Test copies of `currentUid`, `userTmpDir`, `pidNamespace` in `test/daemon/strays.ts` with a parity test. Repo-local; how Squeal hashes a user's global setup is unchanged. | The setup closure holds no `src/` file (before and after counts); parity test; strays tests current; lint and typecheck pass. |
 | 015-107 review of cand/015-106 | planned | `/reviewer`, codex gpt-6.1-sol high, pinned to the candidate SHA. | `reviews/015-106.md` committed with a verdict. |
 
 ### After 015
