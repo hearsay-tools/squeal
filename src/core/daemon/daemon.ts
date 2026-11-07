@@ -481,32 +481,46 @@ class Daemon {
     try {
       const [
         { createDaemonLoop },
-        { createStateSink, describeFailure },
-        vitest,
+        { createStateSink },
+        { describeFailure },
+        { createVitestAdapter },
+        { VITEST_ADAPTER_VERSION },
         nodeTest,
         pytest,
         runnerModule,
         { createCompositeRunner },
         { withSlowInstance, vitestLaneGroup, laneInstanceWorkers },
         { awaitsInstall },
-        codePass,
+        { createCodePass },
+        { mainStoreSource },
+        { afterResults },
         { readObjectFormat },
         coverage,
+        { Pace },
+        { createCoverageWriter },
         lintPass,
+        lintIdle,
       ] = await Promise.all([
         import("../daemon-loop/index.js"),
-        import("../state/index.js"),
+        import("../state/sink.js"),
+        import("../state/fingerprint.js"),
         import("../../runners/vitest/index.js"),
+        import("../../runners/vitest/version.js"),
         import("./node-test-runners.js"),
         import("./pytest-runners.js"),
         import("./runner.js"),
         import("./composite-runner.js"),
         import("./slow-instance.js"),
-        import("../scheduler/index.js"),
+        import("../scheduler/install.js"),
         import("../code/pass/index.js"),
-        import("../hash/index.js"),
-        import("../code/coverage/index.js"),
+        import("../code/pass/source.js"),
+        import("../code/crap/sink.js"),
+        import("../hash/git-index.js"),
+        import("../code/coverage/runtime.js"),
+        import("../code/coverage/pace.js"),
+        import("../code/coverage/writer.js"),
         this.options.lintProviders === undefined ? null : import("../lint/pass/index.js"),
+        this.options.lintProviders === undefined ? null : import("../lint/pass/idle.js"),
       ]);
       const { storePaths } = await import("../store/paths.js");
       const around = this.options.ownsProcess
@@ -539,7 +553,7 @@ class Daemon {
             };
       // Each Vitest instance's workers carry the mark of its lane (001 D12, task 004-18).
       const vitestInstance = (lane: string, maxWorkers?: number) => () =>
-        vitest.createVitestAdapter({
+        createVitestAdapter({
           root,
           note: (text) => this.#note(text),
           optimizer: (projects) => this.#optimizerOff(projects),
@@ -554,7 +568,7 @@ class Daemon {
         configured.length + configuredPytest.length === 0 || runnerModule.vitestDetected(root)
           ? runnerModule.createRecoveringRunner({
               name: "vitest",
-              adapterVersion: vitest.VITEST_ADAPTER_VERSION,
+              adapterVersion: VITEST_ADAPTER_VERSION,
               create: vitestInstance("vitest"),
               // Spec 011 C14 (row 011-145): the fast instance runs focused tiers; no slow file gets one.
               focuses: true,
@@ -594,7 +608,7 @@ class Daemon {
             : `group ${group?.name ?? lane}:`;
         return runnerModule.createRecoveringRunner({
           name: "vitest",
-          adapterVersion: vitest.VITEST_ADAPTER_VERSION,
+          adapterVersion: VITEST_ADAPTER_VERSION,
           create: vitestInstance(lane, workers),
           onFailure: (text) => this.#note(`${whose} ${text}`),
           around,
@@ -605,7 +619,7 @@ class Daemon {
       const besideVitest = () =>
         runnerModule.createRecoveringRunner({
           name: "vitest",
-          adapterVersion: vitest.VITEST_ADAPTER_VERSION,
+          adapterVersion: VITEST_ADAPTER_VERSION,
           create: vitestInstance(`${BESIDE_LANE_PREFIX}vitest`, this.#policy.runner.tierSize),
           onFailure: (text) => this.#note(`the tier beside a named wait's batch: ${text}`),
           around,
@@ -660,9 +674,9 @@ class Daemon {
       if (this.#phase === "stopping" || this.#stopRequested) return;
       const format = await readObjectFormat(root);
       // Row 015-45: the writer and the coverage step keep to one half of the main thread together.
-      const pace = new coverage.Pace(this.#now);
+      const pace = new Pace(this.#now);
       // Spec 015 D8: the records, stored at their results' keys off the run's path.
-      this.#coverage = coverage.createCoverageWriter({
+      this.#coverage = createCoverageWriter({
         commonDir,
         format,
         policy: () => this.#policy,
@@ -677,16 +691,12 @@ class Daemon {
         pace,
       });
       // Spec 015 D4: outside the scheduler's lanes, with no test permit, nudged after each batch.
-      const code = codePass.createCodePass({
+      const code = createCodePass({
         worktreeId,
         root,
         commonDir,
         format,
-        source: codePass.mainStoreSource(
-          store,
-          worktreeId,
-          () => this.#loop?.scheduler.extraFiles() ?? [],
-        ),
+        source: mainStoreSource(store, worktreeId, () => this.#loop?.scheduler.extraFiles() ?? []),
         policy: () => this.#policy,
         // The grammars load only once complexity is on (goal 1).
         counter: async () => (await import("../code/pass/counter.js")).treeSitterCounter,
@@ -715,7 +725,7 @@ class Daemon {
           (root: AbsolutePath) => LintProvider,
         ][];
         for (const [tool, provider] of this.#policy.lint.enabled ? providers : []) {
-          if (lintPass === null || this.#lints.has(tool)) continue;
+          if (lintPass === null || lintIdle === null || this.#lints.has(tool)) continue;
           // ESLint's notes read as the release before's; another tool's name it.
           const label = tool === "eslint" ? "lint" : `lint (${tool})`;
           const pass = lintPass.createLintPass({
@@ -724,7 +734,7 @@ class Daemon {
             root,
             commonDir,
             format,
-            source: codePass.mainStoreSource(
+            source: mainStoreSource(
               store,
               worktreeId,
               () => this.#loop?.scheduler.extraFiles() ?? [],
@@ -732,7 +742,7 @@ class Daemon {
             policy: () => this.#policy,
             provider: () => provider(root),
             capacity: () => this.#loop?.scheduler.capacity() ?? null,
-            idleIn: lintPass.lintIdleIn({
+            idleIn: lintIdle.lintIdleIn({
               store,
               worktreeId,
               policy: () => this.#policy,
@@ -740,7 +750,7 @@ class Daemon {
               inUse: () => this.#loop?.scheduler.inUse() ?? false,
             }),
             // Row 019-45: a lint group at `pause` or `stop` lints once the agent pauses.
-            pauseIn: lintPass.lintPauseIn({ store, worktreeId, now: this.#now }),
+            pauseIn: lintIdle.lintPauseIn({ store, worktreeId, now: this.#now }),
             now: this.#now,
             log: this.#log,
             onError: (error) =>
@@ -762,7 +772,7 @@ class Daemon {
         store,
         runner,
         // Row 015-12: stored results nudge the coverage step; nothing while coverage is off.
-        sink: codePass.afterResults(createStateSink(store, { now: this.#now }), () => code.soon()),
+        sink: afterResults(createStateSink(store, { now: this.#now }), () => code.soon()),
         policy: this.#policy,
         reloadPolicy: (changes) =>
           changes.some((change) => change.path === POLICY_FILE) ? this.#reloadPolicy() : null,
