@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import type { CliIo } from "../../src/cli/main.js";
 import { reachCommand } from "../../src/cli/reach.js";
+import { countFile } from "../../src/core/code/count/index.js";
 import { COVERAGE_PROVIDER_VERSION, encodeRecord } from "../../src/core/code/coverage/record.js";
 import { isCodeStoreOpenFailure, openCodeStore } from "../../src/core/code/store/open.js";
 import { blobHash } from "../../src/core/hash/blob.js";
@@ -13,7 +14,7 @@ import { changeMarker, connectionOf } from "../../src/core/store/store.js";
 import type { Store } from "../../src/core/types/store.js";
 import { ON as CODE_ON } from "../code/helpers.js";
 import { type FakeRepo, fakeRepo, seedStore } from "../status/helpers.js";
-import { answerRecord } from "./v8-payload.js";
+import { ANSWER, answerRecord } from "./v8-payload.js";
 
 /*
  * Row 015-109 (spec 015 D11): `squeal reach` from a real store: exit codes
@@ -354,6 +355,20 @@ describe("squeal reach", () => {
         1,
       );
     }
+    // The counter's count of the file: it finds `answer` on line 1, which only a two-entry record settles.
+    const counted = await countFile(ANSWER, "javascript");
+    code.counts.put(counted, 1);
+    code.files.upsertMany(repo.mainId, [
+      {
+        path: "src/answer.mjs",
+        blob: counted.blob,
+        language: "javascript",
+        counterVersion: counted.counterVersion,
+        size: ANSWER.length,
+        revision: 1,
+      },
+    ]);
+    expect(counted.functions.map((f) => f.range.startLine)).toEqual([1]);
     code.close();
     const report = JSON.parse((await run(repo.main, ["--json"])).stdout) as ReachReport;
     expect(report.files[0]).toMatchObject({
