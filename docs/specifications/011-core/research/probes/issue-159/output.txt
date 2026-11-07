@@ -1,0 +1,18 @@
+
+ RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/worktrees/48970dfd-4352-422b-ab10-d6d7373b337e
+
+{"host":{"at":"2026-11-07T21:42:51.686Z","node":"v24.22.1","load":16.85,"cpus":24}}
+{"scenario":"same revision and scanned daemon","unchanged":true,"revision":1,"dirty":true,"waitMs":150,"asked":[],"elapsedMs":2,"holds":0,"again":{}}
+{"scenario":"clean revision after reset/build, parent wait","unchanged":false,"revision":2,"dirty":false,"waitMs":150,"asked":["lint"],"elapsedMs":159,"holds":1,"reason":"Squeal policy checks puts the lint group at stop and after 0.1 s 1 lint check is still not linted at revision 2: src/untouched.js. `squeal run lint --wait` waits for their results.\nThis is Stop's last hold this turn: no later Stop in it waits for the lint group, and `squeal run lint --wait` runs it and waits for its results.","again":{}}
+{"scenario":"clean revision after reset/build, CI wait","unchanged":false,"revision":2,"dirty":false,"waitMs":150,"asked":["lint"],"elapsedMs":159,"holds":1,"reason":"Squeal policy checks puts the lint group at stop and after 0.1 s 1 lint check is still not linted at revision 2: src/untouched.js. `squeal run lint --wait` waits for their results.\nThis is Stop's last hold this turn: no later Stop in it waits for the lint group, and `squeal run lint --wait` runs it and waits for its results.","again":{}}
+{"scenario":"clean revision after reset/build, complete","unchanged":false,"revision":2,"dirty":false,"waitMs":150,"asked":["lint"],"elapsedMs":157,"holds":1,"reason":"Squeal policy checks puts the lint group at stop and after 0.1 s 1 lint check is still not linted at revision 2: src/untouched.js. `squeal run lint --wait` waits for their results.\nThis is Stop's last hold this turn: no later Stop in it waits for the lint group, and `squeal run lint --wait` runs it and waits for its results.","again":{}}
+{"scenario":"same revision, scan evidence absent","unchanged":false,"revision":1,"dirty":true,"waitMs":150,"asked":["lint"],"elapsedMs":159,"holds":1,"reason":"Squeal policy checks puts the lint group at stop and after 0.1 s 1 lint check is still not linted at revision 1: src/untouched.js. `squeal run lint --wait` waits for their results.\nThis is Stop's last hold this turn: no later Stop in it waits for the lint group, and `squeal run lint --wait` runs it and waits for its results.","again":{}}
+
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+   Start at  22:42:47
+   Duration  4.88s (transform 73%, tests 19%, import 8%)
+
+  Transform  transforming modules took 3.46s · 73% of tracked time, re-done on every run
+             persist transforms across runs with fsModuleCache: true
+             learn more: https://vitest.dev/guide/improving-performance#caching-between-reruns
