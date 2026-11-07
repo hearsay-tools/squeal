@@ -1,0 +1,1336 @@
+{
+ "v": 1,
+ "history": true,
+ "suite": {
+  "testFiles": 1490,
+  "seconds": 6301.392588703006,
+  "withoutSeconds": 0,
+  "withoutClosure": 1322,
+  "leftOut": 0
+ },
+ "window": {
+  "from": 1791320718043,
+  "to": 1794063690155,
+  "edits": 521
+ },
+ "coverage": "on",
+ "edges": true,
+ "notRecorded": 3177,
+ "moreFiles": 0,
+ "moreTestFiles": 0,
+ "proposals": [
+  {
+   "kind": "records",
+   "command": "squeal run --all --force",
+   "testFiles": 20,
+   "share": 0.15957494662127814
+  }
+ ],
+ "files": [
+  {
+   "files": [
+    "src/core/fs/index.ts"
+   ],
+   "folder": null,
+   "testFiles": 103,
+   "seconds": 613.1986318379998,
+   "share": 0.09731160584048174,
+   "avoidableSeconds": 139.73388243100007,
+   "edits": 2,
+   "editSeconds": 1226.3972636759995,
+   "coverage": {
+    "loaded only": 0.2278770290340703,
+    "no record": 0.7721229709659302
+   },
+   "kinds": {
+    "runtime read": 0.7238082894536809,
+    "direct": 0.03625283888740471,
+    "test helper": 0.01206184262484464,
+    "import": 0.2278770290340703
+   },
+   "gateway": null,
+   "suggestion": null,
+   "note": "these tests start the program from source; Squeal re-runs them by design"
+  },
+  {
+   "files": [
+    "src/core/fs/compare.ts",
+    "src/core/fs/concurrency.ts",
+    "src/core/fs/errors.ts",
+    "src/core/fs/git-layout.ts",
+    "src/core/fs/git.ts",
+    "src/core/fs/json.ts",
+    "src/core/fs/paths.ts"
+   ],
+   "folder": "src/core/fs",
+   "testFiles": 103,
+   "seconds": 613.1986318379996,
+   "share": 0.09731160584048171,
+   "avoidableSeconds": 121.2654172464286,
+   "edits": 6,
+   "editSeconds": 3679.1917910279985,
+   "coverage": {
+    "called": 0.03011824264710785,
+    "loaded only": 0.19775878638696245,
+    "no record": 0.7721229709659303
+   },
+   "kinds": {
+    "barrel": 0.7721229709659303,
+    "import": 0.22787702903407037
+   },
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "src/core/fs/index.ts",
+    "chain": [
+     "test/daemon/departure.test.ts",
+     "test/daemon/helpers.ts",
+     "src/core/fs/index.ts",
+     "src/core/fs/compare.ts"
+    ],
+    "testFiles": 8,
+    "seconds": 473.464749407,
+    "coverage": {
+     "no record": 1
+    }
+   },
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import these files from their own paths in the files that use them, or split src/core/fs/index.ts"
+   }
+  },
+  {
+   "files": [
+    "evals/lib/atomic-compare.mjs",
+    "evals/lib/atomic-trend.mjs",
+    "evals/lib/index.mjs",
+    "evals/lib/stats.mjs",
+    "evals/lib/trend.mjs"
+   ],
+   "folder": "evals/lib",
+   "testFiles": 38,
+   "seconds": 60.360626460000006,
+   "share": 0.009578934435574315,
+   "avoidableSeconds": 58.7518926078,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "called": 0.02281976909422553,
+    "loaded only": 0.9733479596460769,
+    "no record": 0.0038322712596975924
+   },
+   "kinds": {
+    "child process": 0.007476637332435001,
+    "direct": 0.0007664542519395185,
+    "barrel": 0.003065817007758074,
+    "import": 0.9886910914078675
+   },
+   "gateway": null,
+   "suggestion": null
+  },
+  {
+   "files": [
+    "evals/lib/calibration.mjs",
+    "evals/lib/commands.mjs",
+    "evals/lib/daemon.mjs",
+    "evals/lib/grade.mjs",
+    "evals/lib/prepare.mjs",
+    "evals/lib/regrade-cells.mjs",
+    "evals/lib/shell.mjs",
+    "evals/lib/transcript.mjs"
+   ],
+   "folder": "evals/lib",
+   "testFiles": 40,
+   "seconds": 70.22084518500002,
+   "share": 0.011143702633429054,
+   "avoidableSeconds": 35.52027051975001,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "called": 0.0660103740782111,
+    "loaded only": 0.7902782109934524,
+    "no record": 0.0032941542271469598,
+    "outside the test's process": 0.14041726070118932
+   },
+   "kinds": {
+    "child process": 0.4668929528795872,
+    "barrel": 0.0032941542271469598,
+    "import": 0.5298128928932656
+   },
+   "gateway": null,
+   "suggestion": null
+  },
+  {
+   "files": [
+    "src/core/keys/glob.ts"
+   ],
+   "folder": null,
+   "testFiles": 46,
+   "seconds": 503.0611328279998,
+   "share": 0.07983332664114222,
+   "avoidableSeconds": 28.534538591999997,
+   "edits": 2,
+   "editSeconds": 1006.1222656559996,
+   "coverage": {
+    "called": 0.0021107669817995106,
+    "loaded only": 0.05672181118742115,
+    "no record": 0.9411674218307797
+   },
+   "kinds": {
+    "barrel": 0.8969775813614294,
+    "transitive": 0.04418984046935039,
+    "import": 0.05883257816922066
+   },
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "src/core/keys/index.ts",
+    "chain": [
+     "test/daemon/departure.test.ts",
+     "test/harness/helpers.ts",
+     "src/core/keys/index.ts",
+     "src/core/keys/glob.ts"
+    ],
+    "testFiles": 6,
+    "seconds": 276.73735019000003,
+    "coverage": {
+     "no record": 1
+    }
+   },
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import src/core/keys/glob.ts from its own path in the files that use it, or split src/core/keys/index.ts"
+   }
+  },
+  {
+   "files": [
+    "src/core/keys/hidden-lockfile.ts",
+    "src/core/keys/package-scans.ts",
+    "src/core/keys/packages.ts",
+    "src/core/keys/pnpm-graph.ts",
+    "src/core/keys/pnpm-lockfile.ts"
+   ],
+   "folder": "src/core/keys",
+   "testFiles": 47,
+   "seconds": 503.33186513599975,
+   "share": 0.07987629052637693,
+   "avoidableSeconds": 28.1520237616,
+   "edits": 8,
+   "editSeconds": 4026.6549210879984,
+   "coverage": {
+    "called": 0.0034074774243362956,
+    "loaded only": 0.0559313361851099,
+    "no record": 0.9406611863905543
+   },
+   "kinds": {
+    "barrel": 0.9406611863905543,
+    "import": 0.05933881360944619
+   },
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "src/core/keys/index.ts",
+    "chain": [
+     "test/daemon/departure.test.ts",
+     "test/harness/helpers.ts",
+     "src/core/keys/index.ts",
+     "src/core/keys/environment.ts",
+     "src/core/keys/hidden-lockfile.ts"
+    ],
+    "testFiles": 8,
+    "seconds": 473.464749407,
+    "coverage": {
+     "no record": 1
+    }
+   },
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import these files from their own paths in the files that use them, or split src/core/keys/index.ts"
+   }
+  },
+  {
+   "files": [
+    "src/core/keys/check-key.ts"
+   ],
+   "folder": null,
+   "testFiles": 44,
+   "seconds": 502.7139011969998,
+   "share": 0.0797782226897359,
+   "avoidableSeconds": 23.987747300999995,
+   "edits": 2,
+   "editSeconds": 1005.4278023939996,
+   "coverage": {
+    "called": 0.010466001589516816,
+    "loaded only": 0.04771649887517205,
+    "no record": 0.9418174995353115
+   },
+   "kinds": {
+    "runtime read": 0.8828843836408493,
+    "barrel": 0.05893311589446218,
+    "import": 0.058182500464688876
+   },
+   "gateway": null,
+   "suggestion": null,
+   "note": "these tests start the program from source; Squeal re-runs them by design"
+  },
+  {
+   "files": [
+    "src/core/keys/environment.ts",
+    "src/core/keys/files.ts",
+    "src/core/keys/pnpm-install.ts"
+   ],
+   "folder": "src/core/keys",
+   "testFiles": 44,
+   "seconds": 502.7139011969998,
+   "share": 0.0797782226897359,
+   "avoidableSeconds": 23.631390016666668,
+   "edits": 6,
+   "editSeconds": 3016.283407181999,
+   "coverage": {
+    "called": 0.011174868568299023,
+    "loaded only": 0.04700763189638985,
+    "no record": 0.9418174995353115
+   },
+   "kinds": {
+    "barrel": 0.9418174995353115,
+    "import": 0.058182500464688876
+   },
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "src/core/keys/index.ts",
+    "chain": [
+     "test/daemon/departure.test.ts",
+     "test/harness/helpers.ts",
+     "src/core/keys/index.ts",
+     "src/core/keys/environment.ts"
+    ],
+    "testFiles": 8,
+    "seconds": 473.464749407,
+    "coverage": {
+     "no record": 1
+    }
+   },
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import these files from their own paths in the files that use them, or split src/core/keys/index.ts"
+   }
+  },
+  {
+   "files": [
+    "evals/lib/atomic-measures.mjs",
+    "evals/lib/atomic.mjs",
+    "evals/lib/behaviours.mjs",
+    "evals/lib/claim.mjs",
+    "evals/lib/evidence.mjs",
+    "evals/lib/judge.mjs",
+    "evals/lib/results.mjs",
+    "evals/lib/retry-evidence.mjs",
+    "evals/lib/retry-knobs.mjs",
+    "evals/lib/root.mjs",
+    "evals/lib/rubric.mjs",
+    "evals/lib/scratch.mjs",
+    "evals/lib/selection.mjs",
+    "evals/lib/session.mjs",
+    "evals/lib/slow-claim.mjs",
+    "evals/lib/squeal-text.mjs",
+    "evals/lib/variant.mjs"
+   ],
+   "folder": "evals/lib",
+   "testFiles": 40,
+   "seconds": 70.22084518500002,
+   "share": 0.011143702633429054,
+   "avoidableSeconds": 19.219195545176472,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "called": 0.31202056802506034,
+    "loaded only": 0.5442680170466031,
+    "no record": 0.0032941542271469615,
+    "outside the test's process": 0.14041726070118932
+   },
+   "kinds": {
+    "child process": 0.5428099053450269,
+    "direct": 0.00019377377806746823,
+    "barrel": 0.0031003804490794934,
+    "import": 0.4538959404278259
+   },
+   "gateway": null,
+   "suggestion": null,
+   "note": "these tests start the program from source; Squeal re-runs them by design"
+  },
+  {
+   "files": [
+    "src/core/keys/dependencies.ts",
+    "src/core/keys/environment-hash.ts",
+    "src/core/keys/index.ts",
+    "src/core/keys/key-format.ts",
+    "src/core/keys/key-index.ts",
+    "src/core/keys/modules.ts",
+    "src/core/keys/resolution.ts"
+   ],
+   "folder": "src/core/keys",
+   "testFiles": 41,
+   "seconds": 491.4959787279999,
+   "share": 0.077997993587821,
+   "avoidableSeconds": 17.031064032285713,
+   "edits": 11,
+   "editSeconds": 5406.455766007999,
+   "coverage": {
+    "called": 0.002034940939502152,
+    "loaded only": 0.03465148194368223,
+    "no record": 0.9633135771168159
+   },
+   "kinds": {
+    "runtime read": 0.9030353695968402,
+    "barrel": 0.05166703501712212,
+    "test helper": 0.00861117250285369,
+    "import": 0.03668642288318438
+   },
+   "gateway": null,
+   "suggestion": null,
+   "note": "these tests start the program from source; Squeal re-runs them by design"
+  },
+  {
+   "files": [
+    "src/core/keys/closure.ts",
+    "src/core/keys/observed.ts",
+    "src/core/keys/reverse-index.ts",
+    "src/core/keys/startup.ts"
+   ],
+   "folder": "src/core/keys",
+   "testFiles": 41,
+   "seconds": 491.49597872799984,
+   "share": 0.077997993587821,
+   "avoidableSeconds": 13.8529055325,
+   "edits": 10,
+   "editSeconds": 4914.959787279999,
+   "coverage": {
+    "called": 0.008501236977184586,
+    "loaded only": 0.0281851859059998,
+    "no record": 0.963313577116816
+   },
+   "kinds": {
+    "barrel": 0.9520061645599869,
+    "transitive": 0.011307412556829113,
+    "import": 0.03668642288318439
+   },
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "src/core/keys/index.ts",
+    "chain": [
+     "test/daemon/departure.test.ts",
+     "test/harness/helpers.ts",
+     "src/core/keys/index.ts",
+     "src/core/keys/closure.ts"
+    ],
+    "testFiles": 7,
+    "seconds": 451.234558201,
+    "coverage": {
+     "no record": 1
+    }
+   },
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import these files from their own paths in the files that use them, or split src/core/keys/index.ts"
+   }
+  },
+  {
+   "files": [
+    "src/runners/pytest/environment/import-roots.ts"
+   ],
+   "folder": null,
+   "testFiles": 14,
+   "seconds": 454.79609462699995,
+   "share": 0.07217390255010425,
+   "avoidableSeconds": 7.992641666,
+   "edits": 2,
+   "editSeconds": 909.5921892539999,
+   "coverage": {
+    "called": 0.0065198452450034835,
+    "loaded only": 0.017574121151051544,
+    "no record": 0.9759060336039451
+   },
+   "kinds": {
+    "runtime read": 0.9759060336039451,
+    "import": 0.02409396639605503
+   },
+   "gateway": null,
+   "suggestion": null,
+   "note": "these tests start the program from source; Squeal re-runs them by design"
+  },
+  {
+   "files": [
+    "src/runners/node-test/graph/code-ranges.ts",
+    "src/runners/node-test/graph/parse.ts"
+   ],
+   "folder": "src/runners/node-test/graph",
+   "testFiles": 14,
+   "seconds": 481.502664932,
+   "share": 0.07641210385704694,
+   "avoidableSeconds": 7.516157139,
+   "edits": 1,
+   "editSeconds": 481.502664932,
+   "coverage": {
+    "called": 0.016444485893174078,
+    "loaded only": 0.01560979343709648,
+    "no record": 0.9679457206697294
+   },
+   "kinds": {
+    "runtime read": 0.9217773547913403,
+    "transitive": 0.04616836587838916,
+    "import": 0.03205427933027056
+   },
+   "gateway": null,
+   "suggestion": null,
+   "note": "these tests start the program from source; Squeal re-runs them by design"
+  },
+  {
+   "files": [
+    "src/core/lint/provider/oxlint/config-set.ts",
+    "src/core/lint/provider/oxlint/configs.ts",
+    "src/core/lint/provider/oxlint/discover.ts",
+    "src/core/lint/provider/oxlint/index.ts",
+    "src/core/lint/provider/oxlint/output.ts",
+    "src/core/lint/provider/oxlint/preload.ts",
+    "src/core/lint/provider/oxlint/provider.ts",
+    "src/core/lint/provider/oxlint/run.ts",
+    "src/core/lint/provider/oxlint/spawn.ts"
+   ],
+   "folder": "src/core/lint/provider/oxlint",
+   "testFiles": 14,
+   "seconds": 521.828026407,
+   "share": 0.0828115403161075,
+   "avoidableSeconds": 7.025536512333333,
+   "edits": 1,
+   "editSeconds": 521.828026407,
+   "coverage": {
+    "called": 0.10770654172344148,
+    "loaded only": 0.015851912744468982,
+    "no record": 0.8505450653197155,
+    "outside the test's process": 0.025896480212374107
+   },
+   "kinds": {
+    "declared input": 0.02828507524141291,
+    "runtime read": 0.8505450653197155,
+    "import": 0.12116985943887167
+   },
+   "gateway": null,
+   "suggestion": null,
+   "note": "these tests start the program from source; Squeal re-runs them by design"
+  },
+  {
+   "files": [
+    "src/core/lint/fingerprint.ts"
+   ],
+   "folder": null,
+   "testFiles": 16,
+   "seconds": 544.1250246120001,
+   "share": 0.08634996422655765,
+   "avoidableSeconds": 5.886540403,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "called": 0.12465647654482846,
+    "loaded only": 0.012287340976033012,
+    "no record": 0.8565466077292438,
+    "outside the test's process": 0.006509574749894501
+   },
+   "kinds": {
+    "declared input": 0.027126017592234233,
+    "runtime read": 0.8156916751301566,
+    "barrel": 0.04085493259908734,
+    "import": 0.11632737467852174
+   },
+   "gateway": null,
+   "suggestion": null,
+   "note": "these tests start the program from source; Squeal re-runs them by design"
+  },
+  {
+   "files": [
+    "src/core/types/code.ts"
+   ],
+   "folder": null,
+   "testFiles": 9,
+   "seconds": 448.56878497699995,
+   "share": 0.07118565914797689,
+   "avoidableSeconds": 4.730532170999999,
+   "edits": 1,
+   "editSeconds": 448.56878497699995,
+   "coverage": {
+    "loaded only": 0.010545834506167329,
+    "no record": 0.9894541654938328
+   },
+   "kinds": {
+    "runtime read": 0.9894541654938328,
+    "import": 0.010545834506167329
+   },
+   "gateway": null,
+   "suggestion": null,
+   "note": "these tests start the program from source; Squeal re-runs them by design"
+  },
+  {
+   "files": [
+    "src/core/lint/eslint.ts"
+   ],
+   "folder": null,
+   "testFiles": 15,
+   "seconds": 521.8948334060001,
+   "share": 0.08282214225814803,
+   "avoidableSeconds": 4.617332997,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "called": 0.13239816022521594,
+    "loaded only": 0.010378800398635497,
+    "no record": 0.8504361882822528,
+    "outside the test's process": 0.00678685109389565
+   },
+   "kinds": {
+    "declared input": 0.02828145451004633,
+    "runtime read": 0.8504361882822528,
+    "import": 0.12128235720770078
+   },
+   "gateway": null,
+   "suggestion": null,
+   "note": "these tests start the program from source; Squeal re-runs them by design"
+  },
+  {
+   "files": [
+    "src/core/fs/worktree-paths.ts",
+    "src/runners/observe/index.ts",
+    "src/runners/observe/inputs.ts",
+    "src/runners/observe/read.ts",
+    "src/runners/observe/runtime.ts",
+    "src/runners/observe/signature.ts",
+    "src/runners/process/recorders.ts"
+   ],
+   "folder": "src",
+   "testFiles": 20,
+   "seconds": 482.5570998339999,
+   "share": 0.07657943748801135,
+   "avoidableSeconds": 3.9840271841428567,
+   "edits": 15,
+   "editSeconds": 7238.356497509999,
+   "coverage": {
+    "called": 0.0105859456727803,
+    "loaded only": 0.008256074121618696,
+    "no record": 0.9811579802056012
+   },
+   "kinds": {
+    "runtime read": 0.9197631802716836,
+    "barrel": 0.04385342852422696,
+    "test helper": 0.010960302346672956,
+    "transitive": 0.006581069063017829,
+    "import": 0.018842019794398996
+   },
+   "gateway": null,
+   "suggestion": null,
+   "note": "these tests start the program from source; Squeal re-runs them by design"
+  },
+  {
+   "files": [
+    "src/runners/node-test/graph/closures.ts",
+    "src/runners/node-test/graph/glob.ts",
+    "src/runners/node-test/graph/graph.ts",
+    "src/runners/node-test/graph/index.ts",
+    "src/runners/node-test/graph/loader-chain.ts",
+    "src/runners/node-test/graph/modules.ts",
+    "src/runners/node-test/graph/packages.ts",
+    "src/runners/node-test/graph/preload-notes.ts",
+    "src/runners/node-test/graph/resolver.ts",
+    "src/runners/node-test/graph/tsconfig.ts"
+   ],
+   "folder": "src/runners/node-test/graph",
+   "testFiles": 13,
+   "seconds": 481.42122697499997,
+   "share": 0.07639918005395839,
+   "avoidableSeconds": 2.7958895763999996,
+   "edits": 32,
+   "editSeconds": 15405.479263199997,
+   "coverage": {
+    "called": 0.02608296577510919,
+    "loaded only": 0.0058075743646949516,
+    "no record": 0.9681094598601958
+   },
+   "kinds": {
+    "runtime read": 0.9219332840698534,
+    "transitive": 0.04617617579034255,
+    "import": 0.03189054013980414
+   },
+   "gateway": null,
+   "suggestion": null,
+   "note": "these tests start the program from source; Squeal re-runs them by design"
+  },
+  {
+   "files": [
+    "src/core/hash/git-index.ts",
+    "src/core/hash/hasher.ts",
+    "src/core/hash/index.ts"
+   ],
+   "folder": "src/core/hash",
+   "testFiles": 19,
+   "seconds": 477.25058791300006,
+   "share": 0.07573732015500892,
+   "avoidableSeconds": 2.770665233666666,
+   "edits": 6,
+   "editSeconds": 2863.5035274780003,
+   "coverage": {
+    "called": 0.0021271283850537517,
+    "loaded only": 0.005805472646524518,
+    "no record": 0.9920673989684217
+   },
+   "kinds": {
+    "runtime read": 0.929989955060902,
+    "direct": 0.01552656806089497,
+    "barrel": 0.04138496260501305,
+    "test helper": 0.005165913241611556,
+    "import": 0.00793260103157827
+   },
+   "gateway": null,
+   "suggestion": null,
+   "note": "these tests start the program from source; Squeal re-runs them by design"
+  },
+  {
+   "files": [
+    "src/core/hash/stat-cache.ts"
+   ],
+   "folder": null,
+   "testFiles": 19,
+   "seconds": 477.250587913,
+   "share": 0.07573732015500892,
+   "avoidableSeconds": 2.251950993,
+   "edits": 2,
+   "editSeconds": 954.501175826,
+   "coverage": {
+    "called": 0.0032140086400053182,
+    "loaded only": 0.004718592391572952,
+    "no record": 0.9920673989684217
+   },
+   "kinds": {
+    "barrel": 0.9920673989684217,
+    "import": 0.00793260103157827
+   },
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "src/core/hash/index.ts",
+    "chain": [
+     "test/daemon/departure.test.ts",
+     "src/core/delivery/index.ts",
+     "src/core/delivery/delivery.ts",
+     "src/core/delivery/code-deliver.ts",
+     "src/core/code/crap/index.ts",
+     "src/core/code/crap/cache.ts",
+     "src/core/code/coverage/record.ts",
+     "src/core/hash/index.ts",
+     "src/core/hash/stat-cache.ts"
+    ],
+    "testFiles": 8,
+    "seconds": 473.464749407,
+    "coverage": {
+     "no record": 1
+    }
+   },
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import src/core/hash/stat-cache.ts from its own path in the files that use it, or split src/core/hash/index.ts"
+   }
+  },
+  {
+   "files": [
+    "test/evals/cell-processes.ts",
+    "test/evals/fake-cell.ts"
+   ],
+   "folder": "test/evals",
+   "testFiles": 10,
+   "seconds": 35.845095731,
+   "share": 0.005688440329088887,
+   "avoidableSeconds": 2.137399674,
+   "edits": 0,
+   "editSeconds": 0,
+   "coverage": {
+    "called": 0.9403712103312504,
+    "loaded only": 0.05962878966874979
+   },
+   "kinds": {
+    "import": 1
+   },
+   "gateway": null,
+   "suggestion": null
+  },
+  {
+   "files": [
+    "test/lint/oxlint/replay.ts"
+   ],
+   "folder": null,
+   "testFiles": 2,
+   "seconds": 57.343288208,
+   "share": 0.009100097700753281,
+   "avoidableSeconds": 2.0435426949999997,
+   "edits": 2,
+   "editSeconds": 114.686576416,
+   "coverage": {
+    "called": 0.9643630011661085,
+    "loaded only": 0.035636998833891494
+   },
+   "kinds": {
+    "import": 1
+   },
+   "gateway": null,
+   "suggestion": null
+  },
+  {
+   "files": [
+    "src/harness/build.ts"
+   ],
+   "folder": null,
+   "testFiles": 9,
+   "seconds": 445.72956759799996,
+   "share": 0.07073508931931868,
+   "avoidableSeconds": 1.74363429,
+   "edits": 2,
+   "editSeconds": 891.4591351959999,
+   "coverage": {
+    "called": 0.00033132309977962224,
+    "loaded only": 0.003911865886295814,
+    "no record": 0.9957568110139247
+   },
+   "kinds": {
+    "runtime read": 0.9957568110139247,
+    "import": 0.004243188986075436
+   },
+   "gateway": null,
+   "suggestion": null,
+   "note": "these tests start the program from source; Squeal re-runs them by design"
+  },
+  {
+   "files": [
+    "src/harness/claude-code/build.ts"
+   ],
+   "folder": null,
+   "testFiles": 8,
+   "seconds": 445.581887096,
+   "share": 0.07071165315026223,
+   "avoidableSeconds": 1.74363429,
+   "edits": 1,
+   "editSeconds": 445.581887096,
+   "coverage": {
+    "loaded only": 0.0039131624073945725,
+    "no record": 0.9960868375926054
+   },
+   "kinds": {
+    "runtime read": 0.9960868375926054,
+    "import": 0.0039131624073945725
+   },
+   "gateway": null,
+   "suggestion": null,
+   "note": "these tests start the program from source; Squeal re-runs them by design"
+  },
+  {
+   "files": [
+    "src/core/store/paths.ts"
+   ],
+   "folder": null,
+   "testFiles": 11,
+   "seconds": 474.601626689,
+   "share": 0.07531694304205946,
+   "avoidableSeconds": 1.136877282,
+   "edits": 2,
+   "editSeconds": 949.203253378,
+   "coverage": {
+    "loaded only": 0.002395434861720312,
+    "no record": 0.9976045651382797
+   },
+   "kinds": {
+    "barrel": 0.9507648790607452,
+    "transitive": 0.04683968607753455,
+    "import": 0.002395434861720312
+   },
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "src/core/store/index.ts",
+    "chain": [
+     "test/daemon/departure.test.ts",
+     "test/daemon/helpers.ts",
+     "src/core/store/index.ts",
+     "src/core/store/paths.ts"
+    ],
+    "testFiles": 7,
+    "seconds": 451.234558201,
+    "coverage": {
+     "no record": 1
+    }
+   },
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import src/core/store/paths.ts from its own path in the files that use it, or split src/core/store/index.ts"
+   }
+  },
+  {
+   "files": [
+    "src/core/daemon/paths.ts"
+   ],
+   "folder": null,
+   "testFiles": 10,
+   "seconds": 467.205321294,
+   "share": 0.07414318576684066,
+   "avoidableSeconds": 1.136877282,
+   "edits": 2,
+   "editSeconds": 934.410642588,
+   "coverage": {
+    "loaded only": 0.0024333568779808332,
+    "no record": 0.9975666431220191
+   },
+   "kinds": {
+    "test helper": 0.9499854401844544,
+    "transitive": 0.04758120293756485,
+    "import": 0.0024333568779808332
+   },
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "test/daemon/helpers.ts",
+    "chain": [
+     "test/daemon/departure.test.ts",
+     "test/daemon/helpers.ts",
+     "src/core/daemon/paths.ts"
+    ],
+    "testFiles": 6,
+    "seconds": 443.838252806,
+    "coverage": {
+     "no record": 1
+    }
+   },
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split test/daemon/helpers.ts: Squeal cannot tell which of the 6 test files that load src/core/daemon/paths.ts through it call it"
+   }
+  },
+  {
+   "files": [
+    "src/core/daemon/scratch.ts"
+   ],
+   "folder": null,
+   "testFiles": 10,
+   "seconds": 467.205321294,
+   "share": 0.07414318576684066,
+   "avoidableSeconds": 1.136877282,
+   "edits": 2,
+   "editSeconds": 934.410642588,
+   "coverage": {
+    "loaded only": 0.0024333568779808332,
+    "no record": 0.9975666431220191
+   },
+   "kinds": {
+    "runtime read": 0.40322689016303237,
+    "barrel": 0.04758120293756485,
+    "test helper": 0.5467585500214218,
+    "import": 0.0024333568779808332
+   },
+   "gateway": {
+    "kind": "test helper",
+    "gateway": "test/daemon/scratch-helpers.ts",
+    "chain": [
+     "test/daemon/drain-wait.test.ts",
+     "test/daemon/scratch-helpers.ts",
+     "src/core/daemon/scratch.ts"
+    ],
+    "testFiles": 2,
+    "seconds": 255.44850403299995,
+    "coverage": {
+     "no record": 1
+    }
+   },
+   "suggestion": {
+    "kind": "test helper",
+    "text": "split test/daemon/scratch-helpers.ts: Squeal cannot tell which of the 2 test files that load src/core/daemon/scratch.ts through it call it"
+   }
+  },
+  {
+   "files": [
+    "src/core/slow/slot-files.ts"
+   ],
+   "folder": null,
+   "testFiles": 10,
+   "seconds": 467.205321294,
+   "share": 0.07414318576684066,
+   "avoidableSeconds": 1.136877282,
+   "edits": 2,
+   "editSeconds": 934.410642588,
+   "coverage": {
+    "loaded only": 0.0024333568779808332,
+    "no record": 0.9975666431220191
+   },
+   "kinds": {
+    "barrel": 0.9975666431220191,
+    "import": 0.0024333568779808332
+   },
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "src/core/slow/index.ts",
+    "chain": [
+     "test/daemon/departure.test.ts",
+     "src/harness/claude-code/index.ts",
+     "src/harness/shared/stop.ts",
+     "src/core/scheduler/slow.ts",
+     "src/core/slow/index.ts",
+     "src/core/slow/slot.ts",
+     "src/core/slow/slot-files.ts"
+    ],
+    "testFiles": 6,
+    "seconds": 443.838252806,
+    "coverage": {
+     "no record": 1
+    }
+   },
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import src/core/slow/slot-files.ts from its own path in the files that use it, or split src/core/slow/index.ts"
+   }
+  },
+  {
+   "files": [
+    "src/core/text.ts"
+   ],
+   "folder": null,
+   "testFiles": 14,
+   "seconds": 474.522583641,
+   "share": 0.0753043992992459,
+   "avoidableSeconds": 0.8407247330000001,
+   "edits": 2,
+   "editSeconds": 949.045167282,
+   "coverage": {
+    "called": 0.00045753249367843404,
+    "loaded only": 0.001771727546767406,
+    "no record": 0.9977707399595542
+   },
+   "kinds": {
+    "barrel": 0.8673875188064645,
+    "test helper": 0.015586835379358203,
+    "transitive": 0.11479638577373148,
+    "import": 0.00222926004044584
+   },
+   "gateway": {
+    "kind": "barrel",
+    "gateway": "src/core/slow/index.ts",
+    "chain": [
+     "test/daemon/drain-wait.test.ts",
+     "src/core/slow/index.ts",
+     "src/core/slow/stop-wait.ts",
+     "src/core/daemon/check-groups.ts",
+     "src/core/text.ts"
+    ],
+    "testFiles": 1,
+    "seconds": 174.49720801099997,
+    "coverage": {
+     "no record": 1
+    }
+   },
+   "suggestion": {
+    "kind": "barrel",
+    "text": "import src/core/text.ts from its own path in the files that use it, or split src/core/slow/index.ts"
+   }
+  }
+ ],
+ "testFiles": [
+  {
+   "project": "",
+   "path": "test/lint/oxlint/replay.test.ts",
+   "seconds": 55.299745513,
+   "sources": 22,
+   "called": 14,
+   "edits": 3,
+   "via": null,
+   "avoidableSeconds": 442.397964104
+  },
+  {
+   "project": "",
+   "path": "test/evals/atomic-scenarios.test.ts",
+   "seconds": 13.910266183,
+   "sources": 30,
+   "called": 8,
+   "edits": 0,
+   "via": null,
+   "avoidableSeconds": 306.025856026
+  },
+  {
+   "project": "",
+   "path": "test/keys/key-index.test.ts",
+   "seconds": 4.514765663,
+   "sources": 29,
+   "called": 6,
+   "edits": 7,
+   "via": null,
+   "avoidableSeconds": 103.839610249
+  },
+  {
+   "project": "",
+   "path": "test/lint/provider/ts-config.test.ts",
+   "seconds": 5.575544861,
+   "sources": 19,
+   "called": 2,
+   "edits": 3,
+   "via": null,
+   "avoidableSeconds": 94.784262637
+  },
+  {
+   "project": "",
+   "path": "test/lint/provider/nested.test.ts",
+   "seconds": 4.8430683,
+   "sources": 19,
+   "called": 2,
+   "edits": 3,
+   "via": null,
+   "avoidableSeconds": 82.3321611
+  },
+  {
+   "project": "",
+   "path": "test/runners/observe/recorder.test.ts",
+   "seconds": 2.5043578949999996,
+   "sources": 38,
+   "called": 8,
+   "edits": 8,
+   "via": null,
+   "avoidableSeconds": 75.13073684999999
+  },
+  {
+   "project": "",
+   "path": "test/evals/teardown.test.ts",
+   "seconds": 2.73178075,
+   "sources": 30,
+   "called": 5,
+   "edits": 0,
+   "via": null,
+   "avoidableSeconds": 68.29451875
+  },
+  {
+   "project": "",
+   "path": "test/evals/retry-knobs.test.ts",
+   "seconds": 2.611533293,
+   "sources": 32,
+   "called": 7,
+   "edits": 0,
+   "via": null,
+   "avoidableSeconds": 65.288332325
+  },
+  {
+   "project": "",
+   "path": "test/runners/pytest/graph/cost.test.ts",
+   "seconds": 7.265878026,
+   "sources": 23,
+   "called": 15,
+   "edits": 3,
+   "via": null,
+   "avoidableSeconds": 58.127024208
+  },
+  {
+   "project": "",
+   "path": "test/runners/node-test/graph-structural.test.ts",
+   "seconds": 4.759138941,
+   "sources": 20,
+   "called": 9,
+   "edits": 10,
+   "via": null,
+   "avoidableSeconds": 52.350528350999994
+  },
+  {
+   "project": "",
+   "path": "test/runners/node-test/graph-cost.test.ts",
+   "seconds": 4.7155250109999995,
+   "sources": 20,
+   "called": 9,
+   "edits": 10,
+   "via": null,
+   "avoidableSeconds": 51.870775120999994
+  },
+  {
+   "project": "",
+   "path": "test/runners/observe/spawn-preload.test.ts",
+   "seconds": 1.6603476289999999,
+   "sources": 38,
+   "called": 8,
+   "edits": 7,
+   "via": null,
+   "avoidableSeconds": 49.810428869999996
+  },
+  {
+   "project": "",
+   "path": "test/lint/oxlint/contain.test.ts",
+   "seconds": 4.617332997,
+   "sources": 21,
+   "called": 11,
+   "edits": 3,
+   "via": null,
+   "avoidableSeconds": 46.17332997
+  },
+  {
+   "project": "",
+   "path": "test/runners/node-test/enumerate.test.ts",
+   "seconds": 4.023340168,
+   "sources": 20,
+   "called": 9,
+   "edits": 10,
+   "via": null,
+   "avoidableSeconds": 44.256741848
+  },
+  {
+   "project": "",
+   "path": "test/evals/atomic-turns.test.ts",
+   "seconds": 8.786213344,
+   "sources": 7,
+   "called": 2,
+   "edits": 0,
+   "via": null,
+   "avoidableSeconds": 43.931066720000004
+  },
+  {
+   "project": "",
+   "path": "test/runners/observe/reach.test.ts",
+   "seconds": 1.354529007,
+   "sources": 38,
+   "called": 8,
+   "edits": 8,
+   "via": null,
+   "avoidableSeconds": 40.63587021
+  },
+  {
+   "project": "",
+   "path": "test/evals/failing-builtins.test.ts",
+   "seconds": 4.782016501,
+   "sources": 8,
+   "called": 0,
+   "edits": 0,
+   "via": null,
+   "avoidableSeconds": 38.256132008
+  },
+  {
+   "project": "",
+   "path": "test/evals/fake-daemon.test.ts",
+   "seconds": 3.7742043720000003,
+   "sources": 12,
+   "called": 2,
+   "edits": 0,
+   "via": null,
+   "avoidableSeconds": 37.742043720000005
+  },
+  {
+   "project": "",
+   "path": "test/evals/runner.test.ts",
+   "seconds": 1.677774351,
+   "sources": 30,
+   "called": 8,
+   "edits": 0,
+   "via": null,
+   "avoidableSeconds": 36.911035722
+  },
+  {
+   "project": "",
+   "path": "test/code/count/corpus.test.ts",
+   "seconds": 4.0218971759999995,
+   "sources": 19,
+   "called": 10,
+   "edits": 4,
+   "via": null,
+   "avoidableSeconds": 36.19707458399999
+  },
+  {
+   "project": "",
+   "path": "test/lint/provider/units.test.ts",
+   "seconds": 3.542022521,
+   "sources": 9,
+   "called": 1,
+   "edits": 3,
+   "via": null,
+   "avoidableSeconds": 28.336180168
+  },
+  {
+   "project": "",
+   "path": "test/evals/atomic-trend.test.ts",
+   "seconds": 1.239114616,
+   "sources": 30,
+   "called": 8,
+   "edits": 1,
+   "via": null,
+   "avoidableSeconds": 27.260521552
+  },
+  {
+   "project": "",
+   "path": "test/evals/kill-running.test.ts",
+   "seconds": 0.9809003479999999,
+   "sources": 31,
+   "called": 5,
+   "edits": 0,
+   "via": null,
+   "avoidableSeconds": 25.503409047999998
+  },
+  {
+   "project": "",
+   "path": "test/evals/retry-cell.test.ts",
+   "seconds": 4.998218578,
+   "sources": 7,
+   "called": 2,
+   "edits": 0,
+   "via": null,
+   "avoidableSeconds": 24.99109289
+  },
+  {
+   "project": "",
+   "path": "test/evals/cell-squeal.test.ts",
+   "seconds": 0.63431673,
+   "sources": 44,
+   "called": 6,
+   "edits": 3,
+   "via": null,
+   "avoidableSeconds": 24.10403574
+  },
+  {
+   "project": "",
+   "path": "test/runners/observe/direct.test.ts",
+   "seconds": 0.48546102199999996,
+   "sources": 52,
+   "called": 8,
+   "edits": 7,
+   "via": null,
+   "avoidableSeconds": 21.360284968
+  },
+  {
+   "project": "",
+   "path": "test/evals/commands-lookup.test.ts",
+   "seconds": 1.010909503,
+   "sources": 30,
+   "called": 10,
+   "edits": 0,
+   "via": null,
+   "avoidableSeconds": 20.218190059999998
+  },
+  {
+   "project": "",
+   "path": "test/runners/observe/spawn-unread.test.ts",
+   "seconds": 0.6207705940000001,
+   "sources": 38,
+   "called": 8,
+   "edits": 7,
+   "via": null,
+   "avoidableSeconds": 18.623117820000004
+  },
+  {
+   "project": "",
+   "path": "test/lint/oxlint/inputs.test.ts",
+   "seconds": 2.0435426949999997,
+   "sources": 22,
+   "called": 13,
+   "edits": 3,
+   "via": null,
+   "avoidableSeconds": 18.391884254999997
+  },
+  {
+   "project": "",
+   "path": "test/evals/judge-kill.test.ts",
+   "seconds": 0.6823657069999999,
+   "sources": 32,
+   "called": 7,
+   "edits": 0,
+   "via": null,
+   "avoidableSeconds": 17.059142674999997
+  }
+ ],
+ "entries": {
+  "files": 378,
+  "testFiles": 164
+ }
+}

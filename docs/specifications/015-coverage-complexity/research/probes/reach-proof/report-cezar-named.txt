@@ -1,0 +1,153 @@
+Reach: what one edit of each file re-runs, of 1689 test files and 10181 s recorded; 98 test files of manual groups left out.
+Edits: 522 from 2026-10-14 to 2026-11-07, every worktree's watch revisions in which HEAD did not move.
+363 pairs read import, path not recorded yet: their test files were walked before Squeal stored import chains; their next run records them.
+
+.github/scripts/ci-test-sequencer.mjs: re-runs 96% of the suite: 1655 test files, 9741 s; 0 edits in the window
+  coverage: outside the test's process 98%, no record 2%, called <1%, loaded only <1%
+  setup: 1568 test files, 9484 s; outside the test's process 100%, no record <1%, loaded only <1%
+    chain: .github/scripts/ci-test-sequencer.mjs
+  declared input: 87 test files, 256 s; outside the test's process 60%, no record 39%, called 1%
+  suggestion: .github/scripts/ci-test-sequencer.mjs is a setup file: keep its imports leaf-only
+packages/cezar/src/core/runner-factory.ts: re-runs 74% of the suite: 710 test files, 7571 s; 0 edits in the window
+  coverage: called 86%, loaded only 13%, outside the test's process 1%, no record 1%, not loaded <1%
+  test helper through packages/cezar/src/core/harness-parity.testkit.ts: 285 test files, 4299 s; called 99%, loaded only 1%
+    chain: packages/cezar/src/core/child-home-env.test.ts → packages/cezar/src/core/harness-parity.testkit.ts → packages/cezar/src/core/runner-factory.ts
+  test helper through packages/cezar/src/core/harness-parity-cells.testkit.ts: 49 test files, 563 s; called 100%
+    chain: packages/cezar/src/core/harness-claude-owned-input-parity.test.ts → packages/cezar/src/core/harness-parity-cells.testkit.ts → packages/cezar/src/core/runner-factory.ts
+  test helper through packages/cezar/src/workflows/worker-wait.testkit.ts: 46 test files, 489 s; called 95%, loaded only 5%
+    chain: packages/cezar/src/delegation/scratch-cleanup.test.ts → packages/cezar/src/workflows/worker-wait.testkit.ts → packages/cezar/src/workflows/run.ts → packages/cezar/src/workflows/run/compose.ts → packages/cezar/src/workflows/run/step-session.ts → packages/cezar/src/core/runner-factory.ts
+  test helper through packages/cezar/src/workflows/fixture-cleanup.testkit.ts: 90 test files, 404 s; loaded only 75%, called 22%, not loaded 3%
+    chain: packages/cezar/src/automations/task-template.test.ts → packages/cezar/src/workflows/fixture-cleanup.testkit.ts → packages/cezar/src/workflows/run.ts → packages/cezar/src/workflows/run/compose.ts → packages/cezar/src/workflows/run/step-session.ts → packages/cezar/src/core/runner-factory.ts
+  transitive through packages/cezar/src/planner.ts: 90 test files, 300 s; loaded only 86%, called 8%, no record 5%, not loaded <1%
+    chain: packages/cezar/src/home/runtime-cli.test.ts → packages/cezar/src/index.ts → packages/cezar/src/server/server.ts → packages/cezar/src/planner.ts → packages/cezar/src/core/runner-factory.ts
+  test helper through packages/cezar/src/core/workflow-autonomous-parity.testkit.ts: 15 test files, 284 s; called 100%
+    chain: packages/cezar/src/core/workflow-autonomous-ask-refusal-parity.test.ts → packages/cezar/src/core/workflow-autonomous-parity.testkit.ts → packages/cezar/src/core/runner-factory.ts
+  test helper through packages/cezar/src/workflows/runner-session-capture.testkit.ts: 18 test files, 191 s; called 99%, loaded only 1%
+    chain: packages/cezar/src/workflows/ci-wait-continued-parity.test.ts → packages/cezar/src/workflows/ci-wait-registration-parity.testkit.ts → packages/cezar/src/workflows/runner-session-capture.testkit.ts → packages/cezar/src/core/runner-factory.ts
+  test helper through packages/cezar/src/core/skill-resume-parity.testkit.ts: 8 test files, 134 s; called 100%
+    chain: packages/cezar/src/core/skill-resume-generation-claude-codex-parity.test.ts → packages/cezar/src/core/skill-resume-parity.testkit.ts → packages/cezar/src/core/runner-factory.ts
+  transitive through packages/cezar/src/workflows/run/step-session.ts: 31 test files, 125 s; called 62%, loaded only 33%, not loaded 5%
+    chain: packages/cezar/src/home/runtime-boundaries.test.ts → packages/cezar/src/server/project-context.ts → packages/cezar/src/workflows/run.ts → packages/cezar/src/workflows/run/compose.ts → packages/cezar/src/workflows/run/step-session.ts → packages/cezar/src/core/runner-factory.ts
+  child process: 9 test files, 91 s; called 30%, outside the test's process 29%, no record 26%, loaded only 15%
+  test helper through packages/cezar/src/task-cli/cockpit.testkit.ts: 4 test files, 74 s; loaded only 100%
+    chain: packages/cezar/src/automations/automation-cli.test.ts → packages/cezar/src/task-cli/cockpit.testkit.ts → packages/cezar/src/server/server.ts → packages/cezar/src/planner.ts → packages/cezar/src/core/runner-factory.ts
+  test helper through packages/cezar/src/core/runner-shutdown.testkit.ts: 9 test files, 70 s; called 98%, loaded only 2%
+    chain: packages/cezar/src/core/runner-shutdown-end-escalation-parity.test.ts → packages/cezar/src/core/runner-shutdown.testkit.ts → packages/cezar/src/core/runner-factory.ts
+  test helper through packages/cezar/src/delegation/provision-workflows.testkit.ts: 5 test files, 64 s; loaded only 100%
+    chain: packages/cezar/src/delegation/provision-accepted-grants.test.ts → packages/cezar/src/delegation/provision-workflows.testkit.ts → packages/cezar/src/core/runner-factory.ts
+  transitive through packages/cezar/src/runs/auto-name.ts: 4 test files, 58 s; called 100%
+    chain: packages/cezar/src/runs/auto-name.test.ts → packages/cezar/src/runs/auto-name.ts → packages/cezar/src/core/runner-factory.ts
+  test helper through packages/cezar/src/core/conversation-answer-delivery.testkit.ts: 4 test files, 56 s; called 97%, loaded only 3%
+    chain: packages/cezar/src/core/conversation-answer-delivery-declared-delivery.test.ts → packages/cezar/src/core/conversation-answer-delivery.testkit.ts → packages/cezar/src/core/runner-factory.ts
+  test helper through packages/cezar/src/workflows/delegation-integration.testkit.ts: 5 test files, 51 s; called 95%, loaded only 5%
+    chain: packages/cezar/src/workflows/delegation-integration-cli.test.ts → packages/cezar/src/workflows/delegation-integration.testkit.ts → packages/cezar/src/server/server.ts → packages/cezar/src/planner.ts → packages/cezar/src/core/runner-factory.ts
+  direct through packages/cezar/src/workflows/worker-destroy-process-holders.test.ts: 1 test file, 34 s; loaded only 100%
+    chain: packages/cezar/src/workflows/worker-destroy-process-holders.test.ts → packages/cezar/src/core/runner-factory.ts
+  direct through packages/cezar/src/workflows/worker-destroy-orphaned-generation.test.ts: 1 test file, 28 s; loaded only 100%
+    chain: packages/cezar/src/workflows/worker-destroy-orphaned-generation.test.ts → packages/cezar/src/core/runner-factory.ts
+  direct through packages/cezar/src/core/omp-runner.test.ts: 1 test file, 25 s; called 100%
+    chain: packages/cezar/src/core/omp-runner.test.ts → packages/cezar/src/core/runner-factory.ts
+  direct through packages/cezar/src/workflows/subagent-waits.test.ts: 1 test file, 24 s; called 100%
+    chain: packages/cezar/src/workflows/subagent-waits.test.ts → packages/cezar/src/core/runner-factory.ts
+  direct through packages/cezar/src/delegation/service-fixture.test.ts: 1 test file, 22 s; loaded only 100%
+    chain: packages/cezar/src/delegation/service-fixture.test.ts → packages/cezar/src/core/runner-factory.ts
+  direct through packages/cezar/src/core/pi-runner.test.ts: 1 test file, 20 s; called 100%
+    chain: packages/cezar/src/core/pi-runner.test.ts → packages/cezar/src/core/runner-factory.ts
+  declared input: 1 test file, 16 s; outside the test's process 100%
+  direct through packages/cezar/src/workflows/team-skill-materialize.test.ts: 1 test file, 15 s; loaded only 100%
+    chain: packages/cezar/src/workflows/team-skill-materialize.test.ts → packages/cezar/src/core/runner-factory.ts
+  direct through packages/cezar/src/workflows/worker-destroy.test.ts: 1 test file, 14 s; called 100%
+    chain: packages/cezar/src/workflows/worker-destroy.test.ts → packages/cezar/src/core/runner-factory.ts
+  direct through packages/cezar/src/workflows/worker-destroy-completion-proof.test.ts: 1 test file, 14 s; called 100%
+    chain: packages/cezar/src/workflows/worker-destroy-completion-proof.test.ts → packages/cezar/src/core/runner-factory.ts
+  runtime read: 8 test files, 13 s; outside the test's process 100%
+  direct through packages/cezar/src/workflows/ci-wait-registration.test.ts: 1 test file, 12 s; called 100%
+    chain: packages/cezar/src/workflows/ci-wait-registration.test.ts → packages/cezar/src/core/runner-factory.ts
+  direct through packages/cezar/src/workflows/worker-wait-readiness.test.ts: 1 test file, 12 s; called 100%
+    chain: packages/cezar/src/workflows/worker-wait-readiness.test.ts → packages/cezar/src/core/runner-factory.ts
+  transitive through packages/cezar/src/workflows/run/launch-settings.ts: 4 test files, 8.8 s; called 65%, loaded only 35%
+    chain: packages/cezar/src/workflows/prelaunch-cancel.test.ts → packages/cezar/src/workflows/run/continuation-session.ts → packages/cezar/src/workflows/run/launch-settings.ts → packages/cezar/src/core/runner-factory.ts
+  direct through packages/cezar/src/core/owned-attach-placement.test.ts: 1 test file, 8.5 s; loaded only 100%
+    chain: packages/cezar/src/core/owned-attach-placement.test.ts → packages/cezar/src/core/runner-factory.ts
+  direct through packages/cezar/src/workflows/ci-wait-delivery.test.ts: 1 test file, 8.5 s; called 100%
+    chain: packages/cezar/src/workflows/ci-wait-delivery.test.ts → packages/cezar/src/core/runner-factory.ts
+  direct through packages/cezar/src/workflows/skill-resume-continuation.test.ts: 1 test file, 8.4 s; loaded only 100%
+    chain: packages/cezar/src/workflows/skill-resume-continuation.test.ts → packages/cezar/src/core/runner-factory.ts
+  direct through packages/cezar/src/workflows/launch-read-boundaries.test.ts: 1 test file, 7.6 s; loaded only 100%
+    chain: packages/cezar/src/workflows/launch-read-boundaries.test.ts → packages/cezar/src/core/runner-factory.ts
+  declared input: 1 test file, 4.9 s; outside the test's process 100%
+  declared input: 1 test file, 4.7 s; outside the test's process 100%
+  direct through packages/cezar/src/delegation/input.test.ts: 1 test file, 4.4 s; loaded only 100%
+    chain: packages/cezar/src/delegation/input.test.ts → packages/cezar/src/core/runner-factory.ts
+  direct through packages/cezar/src/workflows/launch-disposal-routes.test.ts: 1 test file, 3.2 s; loaded only 100%
+    chain: packages/cezar/src/workflows/launch-disposal-routes.test.ts → packages/cezar/src/core/runner-factory.ts
+  direct through packages/cezar/src/core/dry-run-backends.test.ts: 1 test file, 3 s; called 100%
+    chain: packages/cezar/src/core/dry-run-backends.test.ts → packages/cezar/src/core/runner-factory.ts
+  declared input: 1 test file, 2.1 s; no record 100%
+  direct through packages/cezar/src/workflows/recover-autonomous.test.ts: 1 test file, 1.5 s; loaded only 100%
+    chain: packages/cezar/src/workflows/recover-autonomous.test.ts → packages/cezar/src/core/runner-factory.ts
+  direct through packages/cezar/src/workflows/run-fixture.test.ts: 1 test file, 1.1 s; loaded only 100%
+    chain: packages/cezar/src/workflows/run-fixture.test.ts → packages/cezar/src/core/runner-factory.ts
+  import: 1 test file, 0.9 s; called 100%
+  direct through packages/cezar/src/home/runtime-calls.test.ts: 1 test file, 0.9 s; not loaded 100%
+    chain: packages/cezar/src/home/runtime-calls.test.ts → packages/cezar/src/core/runner-factory.ts
+  suggestion: split packages/cezar/src/core/harness-parity.testkit.ts: 23 of the 285 test files that load packages/cezar/src/core/runner-factory.ts through it never call it
+packages/cezar/vitest.setup.ts: re-runs 84% of the suite: 1157 test files, 8503 s; 3 edits in the window
+  coverage: called 100%, no record <1%
+  setup: 1156 test files, 8501 s; called 100%, no record <1%
+    chain: packages/cezar/vitest.setup.ts
+  declared input: 1 test file, 2.1 s; no record 100%
+  suggestion: packages/cezar/vitest.setup.ts is a setup file: keep its imports leaf-only
+packages/contract/src/waits.ts: re-runs 93% of the suite: 1387 test files, 9475 s; 1 edit in the window
+  coverage: called 77%, loaded only 22%, no record <1%, not loaded <1%
+  setup through packages/cezar/src/runs/run-exits.ts: 1156 test files, 8501 s; called 83%, loaded only 17%, no record <1%
+    chain: packages/cezar/src/runs/run-exits.ts → packages/contract/src/waits.ts
+  test helper through packages/contract/src/test-factories.testkit.ts: 92 test files, 327 s; called 67%, loaded only 32%, no record <1%
+    chain: packages/contract/src/activity.test.ts → packages/contract/src/test-factories.testkit.ts → packages/contract/src/waits.ts
+  barrel through packages/api-client/src/contract/waits.ts: 65 test files, 249 s; loaded only 95%, not loaded 3%, called 2%
+    chain: packages/web/src/api/artifact-metadata.test.tsx → packages/web/src/api/queries.ts → packages/web/src/lib/tasks-table.ts → packages/api-client/src/contract/waits.ts → packages/contract/src/waits.ts
+  import: 5 test files, 212 s; loaded only 100%
+  barrel through packages/api-client/src/contract/runs.ts: 38 test files, 131 s; loaded only 70%, called 20%, not loaded 11%
+    chain: packages/web/src/api/events.test.ts → packages/api-client/src/contract/runs.ts → packages/contract/src/runs.ts → packages/contract/src/waits.ts
+  barrel through packages/api-client/src/contract/reports.ts: 5 test files, 11 s; loaded only 100%
+    chain: packages/web/src/api/reports-live-hook.test.tsx → packages/web/src/api/reports.ts → packages/api-client/src/contract/reports.ts → packages/contract/src/reports.ts → packages/contract/src/runs.ts → packages/contract/src/waits.ts
+  barrel through packages/api-client/src/contract/repo.ts: 3 test files, 10 s; loaded only 100%
+    chain: packages/web/src/routes/repo-git/git-sidebar.test.tsx → packages/api-client/src/contract/repo.ts → packages/contract/src/repo.ts → packages/contract/src/runs.ts → packages/contract/src/waits.ts
+  child process: 1 test file, 7.9 s; no record 100%
+  barrel through packages/api-client/src/contract/run-predicates.ts: 2 test files, 7.1 s; called 100%
+    chain: packages/web/src/components/sidebar-limits.test.tsx → packages/web/src/components/task-quick-list.tsx → packages/api-client/src/contract/run-predicates.ts → packages/contract/src/run-predicates.ts → packages/contract/src/waits.ts
+  barrel through packages/api-client/src/contract/attention.ts: 2 test files, 3.6 s; loaded only 100%
+    chain: packages/web/src/routes/activity/global-arcs.test.ts → packages/web/src/routes/activity/global-arcs.tsx → packages/web/src/routes/activity/activity-motion.ts → packages/web/src/lib/attention.ts → packages/api-client/src/contract/attention.ts → packages/contract/src/attention.ts → packages/contract/src/waits.ts
+  transitive through packages/contract/src/runs.ts: 6 test files, 3.5 s; loaded only 63%, called 26%, no record 11%
+    chain: packages/contract/src/completion-options.test.ts → packages/contract/src/runs.ts → packages/contract/src/waits.ts
+  declared input: 1 test file, 2.1 s; no record 100%
+  transitive through packages/cezar/src/task-cli/cli.ts: 1 test file, 2 s; loaded only 100%
+    chain: packages/web/src/lib/automation-cli.test.ts → packages/cezar/src/automations/automation-cli.ts → packages/cezar/src/task-cli/cli.ts → packages/contract/src/waits.ts
+  barrel through packages/api-client/src/contract/activity.ts: 1 test file, 1.3 s; loaded only 100%
+    chain: packages/web/src/routes/activity/use-server-now.test.ts → packages/web/src/api/activity-live.ts → packages/api-client/src/contract/activity.ts → packages/contract/src/activity.ts → packages/contract/src/attention.ts → packages/contract/src/waits.ts
+  transitive through packages/contract/src/attention.ts: 2 test files, 1.3 s; loaded only 100%
+    chain: packages/contract/src/project-webhooks.test.ts → packages/contract/src/projects.ts → packages/contract/src/attention.ts → packages/contract/src/waits.ts
+  barrel through packages/api-client/src/contract/workspace-events.ts: 1 test file, 1.3 s; loaded only 100%
+    chain: packages/web/src/api/live-owner.test.ts → packages/web/src/api/events.ts → packages/api-client/src/contract/workspace-events.ts → packages/contract/src/workspace-events.ts → packages/contract/src/runs.ts → packages/contract/src/waits.ts
+  barrel through packages/contract/src/index.ts: 1 test file, 1.3 s; loaded only 100%
+    chain: packages/web/src/test/api-client-subpaths.test.ts → packages/api-client/src/index.ts → packages/contract/src/index.ts → packages/contract/src/waits.ts
+  direct through packages/contract/src/waits.test.ts: 1 test file, 0.8 s; called 100%
+    chain: packages/contract/src/waits.test.ts → packages/contract/src/waits.ts
+  direct through packages/contract/src/run-predicates.test.ts: 1 test file, 0.7 s; called 100%
+    chain: packages/contract/src/run-predicates.test.ts → packages/contract/src/waits.ts
+  direct through packages/contract/src/test-factories.test.ts: 1 test file, 0.6 s; no record 100%
+    chain: packages/contract/src/test-factories.test.ts → packages/contract/src/waits.ts
+  direct through packages/contract/src/attention.test.ts: 1 test file, 0.5 s; called 100%
+    chain: packages/contract/src/attention.test.ts → packages/contract/src/waits.ts
+  direct through packages/contract/src/ask-schema.test.ts: 1 test file, 0.4 s; loaded only 100%
+    chain: packages/contract/src/ask-schema.test.ts → packages/contract/src/waits.ts
+  suggestion: keep the setup's imports leaf-only: packages/cezar/src/runs/run-exits.ts → packages/contract/src/waits.ts
+vitest.config.ts: re-runs 93% of the suite: 1570 test files, 9488 s; 0 edits in the window
+  coverage: outside the test's process 100%, no record <1%
+  setup: 1568 test files, 9484 s; outside the test's process 100%, no record <1%
+    chain: vitest.config.ts
+  declared input: 1 test file, 3.4 s; outside the test's process 100%
+  declared input: 1 test file, 0.8 s; no record 100%
+  suggestion: vitest.config.ts is a setup file: keep its imports leaf-only
+
+1% of the suite's seconds (23 test files) have no coverage record at their current inputs, so their pairs read no record; squeal run --all --force re-runs every test file and records them, about one run of the whole suite.
