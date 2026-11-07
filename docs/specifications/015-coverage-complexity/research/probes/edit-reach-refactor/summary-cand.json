@@ -1,0 +1,1505 @@
+{
+ "outcome": {
+  "mode": "static",
+  "pairSec": 2722291,
+  "pairEditSec": 178660,
+  "realEdits": 105,
+  "sources": 1530,
+  "meanSharePerSourceOnce": 28.68,
+  "meanSharePerRealEdit": 27.42,
+  "calledEverySourceOnce": {
+   "direct": {
+    "sec": 32231,
+    "calledPct": 79,
+    "noRecordPct": 11.7
+   },
+   "transitive": {
+    "sec": 756666,
+    "calledPct": 35.1,
+    "noRecordPct": 0
+   },
+   "helper": {
+    "sec": 979007,
+    "calledPct": 47.6,
+    "noRecordPct": 0.3
+   },
+   "setup": {
+    "sec": 17268,
+    "calledPct": 0,
+    "noRecordPct": 0
+   },
+   "childProcess": {
+    "sec": 55658,
+    "calledPct": 0,
+    "noRecordPct": 0
+   },
+   "typeImport": {
+    "sec": 82477,
+    "calledPct": 0.2,
+    "noRecordPct": 0
+   },
+   "observed": {
+    "sec": 603154,
+    "calledPct": 0,
+    "noRecordPct": 0
+   },
+   "barrel": {
+    "sec": 3904,
+    "calledPct": 19,
+    "noRecordPct": 0
+   },
+   "declared": {
+    "sec": 191925,
+    "calledPct": 0,
+    "noRecordPct": 0
+   },
+   "all": {
+    "sec": 2722291,
+    "calledPct": 27.8
+   }
+  },
+  "calledByRealEdits": {
+   "direct": {
+    "sec": 1714,
+    "calledPct": 97.2,
+    "noRecordPct": 0
+   },
+   "transitive": {
+    "sec": 51282,
+    "calledPct": 37,
+    "noRecordPct": 0
+   },
+   "helper": {
+    "sec": 60489,
+    "calledPct": 52.3,
+    "noRecordPct": 0
+   },
+   "setup": {
+    "sec": 0,
+    "calledPct": null,
+    "noRecordPct": null
+   },
+   "childProcess": {
+    "sec": 5575,
+    "calledPct": 0,
+    "noRecordPct": 0
+   },
+   "typeImport": {
+    "sec": 6741,
+    "calledPct": 0,
+    "noRecordPct": 0
+   },
+   "observed": {
+    "sec": 41471,
+    "calledPct": 0,
+    "noRecordPct": 0
+   },
+   "barrel": {
+    "sec": 123,
+    "calledPct": 32.1,
+    "noRecordPct": 0
+   },
+   "declared": {
+    "sec": 11266,
+    "calledPct": 0,
+    "noRecordPct": 0
+   },
+   "all": {
+    "sec": 178660,
+    "calledPct": 29.3
+   }
+  }
+ },
+ "repo": "/tmp/er112/cand",
+ "head": "963aff844",
+ "tests": 1507,
+ "durations": {
+  "fromReports": 1501,
+  "fromResults": 0,
+  "none": 6
+ },
+ "suite": {
+  "files": 1507,
+  "sec": 6685.368921657499,
+  "autoFiles": 1490,
+  "autoSec": 6204.565752281001
+ },
+ "editRevisions": 869,
+ "editedSources": 50,
+ "sourceFiles": {
+  "tracked": 2892,
+  "reached": 1530
+ },
+ "sharesEverySourceOnce": {
+  "direct": 1.2,
+  "transitive": 27.8,
+  "barrel": 0.1,
+  "helper": 36,
+  "typesModule": 0,
+  "setup": 0.6,
+  "declared": 7.1,
+  "typeImport": 3,
+  "childProcess": 2,
+  "observed": 22.2
+ },
+ "sharesByRealEdits": {
+  "direct": 1,
+  "transitive": 28.7,
+  "barrel": 0.1,
+  "helper": 33.9,
+  "typesModule": 0,
+  "setup": 0,
+  "declared": 6.3,
+  "typeImport": 3.8,
+  "childProcess": 3.1,
+  "observed": 23.2
+ },
+ "meanAutoSharePerSource": 15.2,
+ "meanAutoSharePerRealEdit": 27.4,
+ "coverage": {
+  "testFilesWithRecord": 1514,
+  "byKind": {
+   "direct": {
+    "called": 25466.46618937179,
+    "loadedOnly": 2994.855723806999,
+    "loadedUnknown": 0,
+    "notLoaded": 0,
+    "noRecord": 3769.7478874869926
+   },
+   "transitive": {
+    "called": 265933.57055359875,
+    "loadedOnly": 428589.73989229463,
+    "loadedUnknown": 0,
+    "notLoaded": 62142.92365316085,
+    "noRecord": 0
+   },
+   "helper": {
+    "called": 465597.1943023474,
+    "loadedOnly": 498325.89738044963,
+    "loadedUnknown": 0,
+    "notLoaded": 12563.436623313866,
+    "noRecord": 2520.475519237001
+   },
+   "setup": {
+    "called": 0,
+    "loadedOnly": 0,
+    "loadedUnknown": 0,
+    "notLoaded": 17268.40238657652,
+    "noRecord": 0
+   },
+   "childProcess": {
+    "called": 2.42698561,
+    "loadedOnly": 4476.1014795005085,
+    "loadedUnknown": 0,
+    "notLoaded": 51179.541466262344,
+    "noRecord": 0
+   },
+   "typeImport": {
+    "called": 174.7531585035,
+    "loadedOnly": 11336.155011692945,
+    "loadedUnknown": 0,
+    "notLoaded": 70966.153643989,
+    "noRecord": 0
+   },
+   "observed": {
+    "called": 1.7724433994999997,
+    "loadedOnly": 6726.99682972249,
+    "loadedUnknown": 0,
+    "notLoaded": 596425.595928507,
+    "noRecord": 0
+   },
+   "barrel": {
+    "called": 741.0772525949991,
+    "loadedOnly": 3162.783448056496,
+    "loadedUnknown": 0,
+    "notLoaded": 0,
+    "noRecord": 0
+   },
+   "declared": {
+    "called": 78.6274379075,
+    "loadedOnly": 7366.792573302011,
+    "loadedUnknown": 0,
+    "notLoaded": 184479.26801142166,
+    "noRecord": 0
+   }
+  },
+  "byKindRealEdits": {
+   "direct": {
+    "called": 1666.1311606964987,
+    "loadedOnly": 47.912947694500005,
+    "loadedUnknown": 0,
+    "notLoaded": 0,
+    "noRecord": 0
+   },
+   "transitive": {
+    "called": 18997.226356511004,
+    "loadedOnly": 28769.07241724003,
+    "loadedUnknown": 0,
+    "notLoaded": 3515.5754070129965,
+    "noRecord": 0
+   },
+   "helper": {
+    "called": 31605.845812192492,
+    "loadedOnly": 28015.008744646482,
+    "loadedUnknown": 0,
+    "notLoaded": 867.6510433694992,
+    "noRecord": 0
+   },
+   "setup": {
+    "called": 0,
+    "loadedOnly": 0,
+    "loadedUnknown": 0,
+    "notLoaded": 0,
+    "noRecord": 0
+   },
+   "childProcess": {
+    "called": 0,
+    "loadedOnly": 91.81510584950001,
+    "loadedUnknown": 0,
+    "notLoaded": 5482.764965262498,
+    "noRecord": 0
+   },
+   "typeImport": {
+    "called": 0,
+    "loadedOnly": 42.925058566000004,
+    "loadedUnknown": 0,
+    "notLoaded": 6698.029877325991,
+    "noRecord": 0
+   },
+   "observed": {
+    "called": 0,
+    "loadedOnly": 176.856543445,
+    "loadedUnknown": 0,
+    "notLoaded": 41293.976989224044,
+    "noRecord": 0
+   },
+   "barrel": {
+    "called": 39.508506053999994,
+    "loadedOnly": 83.3883959405,
+    "loadedUnknown": 0,
+    "notLoaded": 0,
+    "noRecord": 0
+   },
+   "declared": {
+    "called": 0,
+    "loadedOnly": 236.89036852350006,
+    "loadedUnknown": 0,
+    "notLoaded": 11029.584468750498,
+    "noRecord": 0
+   }
+  }
+ },
+ "cuts": [
+  {
+   "path": "test/scheduler/vitest-harness.ts",
+   "barrel": false,
+   "helper": true,
+   "testsHit": 136,
+   "pctOfPairSec": 15.2,
+   "pctOfRealEditSec": 9.4,
+   "imports": 25
+  },
+  {
+   "path": "src/cli/main.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 104,
+   "pctOfPairSec": 6.9,
+   "pctOfRealEditSec": 8.4,
+   "imports": 31
+  },
+  {
+   "path": "src/core/scheduler/scheduler.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 382,
+   "pctOfPairSec": 6.8,
+   "pctOfRealEditSec": 8,
+   "imports": 52
+  },
+  {
+   "path": "src/harness/claude-code/hooks.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 105,
+   "pctOfPairSec": 4.9,
+   "pctOfRealEditSec": 3.8,
+   "imports": 9
+  },
+  {
+   "path": "src/core/delivery/delivery.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 388,
+   "pctOfPairSec": 4.5,
+   "pctOfRealEditSec": 0.9,
+   "imports": 32
+  },
+  {
+   "path": "src/core/status/snapshot.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 353,
+   "pctOfPairSec": 3.6,
+   "pctOfRealEditSec": 3.6,
+   "imports": 34
+  },
+  {
+   "path": "src/core/status/outstanding.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 238,
+   "pctOfPairSec": 2.4,
+   "pctOfRealEditSec": 3.2,
+   "imports": 7
+  },
+  {
+   "path": "src/core/scheduler/tiers.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 636,
+   "pctOfPairSec": 1.9,
+   "pctOfRealEditSec": 1.2,
+   "imports": 17
+  },
+  {
+   "path": "src/core/scheduler/record-tier.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 636,
+   "pctOfPairSec": 1.3,
+   "pctOfRealEditSec": 0,
+   "imports": 13
+  },
+  {
+   "path": "src/core/scheduler/ledger.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 643,
+   "pctOfPairSec": 0.8,
+   "pctOfRealEditSec": 0,
+   "imports": 21
+  },
+  {
+   "path": "src/core/scheduler/slow-tier.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 383,
+   "pctOfPairSec": 0.7,
+   "pctOfRealEditSec": 2,
+   "imports": 15
+  },
+  {
+   "path": "src/core/scheduler/yields.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 625,
+   "pctOfPairSec": 0.4,
+   "pctOfRealEditSec": 0,
+   "imports": 9
+  },
+  {
+   "path": "src/core/scheduler/install.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 390,
+   "pctOfPairSec": 0.3,
+   "pctOfRealEditSec": 0,
+   "imports": 8
+  },
+  {
+   "path": "src/core/scheduler/environment-growth.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 244,
+   "pctOfPairSec": 0.3,
+   "pctOfRealEditSec": 0,
+   "imports": 4
+  },
+  {
+   "path": "src/core/scheduler/runner-work.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 382,
+   "pctOfPairSec": 0.2,
+   "pctOfRealEditSec": 0,
+   "imports": 3
+  },
+  {
+   "path": "src/core/scheduler/record.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 382,
+   "pctOfPairSec": 0.2,
+   "pctOfRealEditSec": 0,
+   "imports": 12
+  },
+  {
+   "path": "src/core/delivery/expiry.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 362,
+   "pctOfPairSec": 0.2,
+   "pctOfRealEditSec": 0.1,
+   "imports": 15
+  },
+  {
+   "path": "src/core/scheduler/revision.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 254,
+   "pctOfPairSec": 0.1,
+   "pctOfRealEditSec": 0,
+   "imports": 8
+  },
+  {
+   "path": "src/core/scheduler/bootstrap.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 382,
+   "pctOfPairSec": 0.1,
+   "pctOfRealEditSec": 0,
+   "imports": 17
+  },
+  {
+   "path": "src/core/scheduler/refinement.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 382,
+   "pctOfPairSec": 0.1,
+   "pctOfRealEditSec": 0,
+   "imports": 10
+  },
+  {
+   "path": "src/core/scheduler/interrupted.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 1,
+   "pctOfPairSec": 0.1,
+   "pctOfRealEditSec": 0.1,
+   "imports": 3
+  },
+  {
+   "path": "src/core/status/standing.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 367,
+   "pctOfPairSec": 0.1,
+   "pctOfRealEditSec": 0,
+   "imports": 19
+  },
+  {
+   "path": "src/core/status/next-step.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 396,
+   "pctOfPairSec": 0.1,
+   "pctOfRealEditSec": 0,
+   "imports": 9
+  },
+  {
+   "path": "src/core/status/standing-groups.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 116,
+   "pctOfPairSec": 0.1,
+   "pctOfRealEditSec": 0,
+   "imports": 2
+  },
+  {
+   "path": "src/harness/shared/stop.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 123,
+   "pctOfPairSec": 0.1,
+   "pctOfRealEditSec": 0,
+   "imports": 19
+  },
+  {
+   "path": "src/harness/shared/deliver.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 123,
+   "pctOfPairSec": 0.1,
+   "pctOfRealEditSec": 0,
+   "imports": 8
+  },
+  {
+   "path": "src/core/scheduler/focused.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 18,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 5
+  },
+  {
+   "path": "src/core/scheduler/backlog.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 0,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 1
+  },
+  {
+   "path": "src/core/scheduler/quiet.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 1,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 4
+  },
+  {
+   "path": "src/core/scheduler/slots.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 1,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 4
+  },
+  {
+   "path": "src/core/scheduler/promoted-tier.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 1,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 2
+  },
+  {
+   "path": "src/core/scheduler/install-stamp.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 0,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 6
+  },
+  {
+   "path": "src/core/scheduler/batch.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 8,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 7
+  },
+  {
+   "path": "src/core/scheduler/focused-record.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 0,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 4
+  },
+  {
+   "path": "src/core/scheduler/beside.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 0,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 1
+  },
+  {
+   "path": "src/core/scheduler/handover.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 0,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 2
+  },
+  {
+   "path": "test/scheduler/quiet-clock.ts",
+   "barrel": false,
+   "helper": true,
+   "testsHit": 0,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 1
+  },
+  {
+   "path": "src/core/delivery/code-since.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 7,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 3
+  },
+  {
+   "path": "src/harness/shared/stop-slow.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 1,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 14
+  },
+  {
+   "path": "src/harness/shared/stop-decide.ts",
+   "barrel": false,
+   "helper": false,
+   "testsHit": 124,
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0,
+   "imports": 13
+  }
+ ],
+ "setupKinds": {
+  "": {
+   "pctOfPairSec": 0.6,
+   "pctOfRealEditSec": 0
+  }
+ },
+ "declaredKinds": {
+  "test/harness/codex/**/*.test.ts": {
+   "pctOfPairSec": 2.6,
+   "pctOfRealEditSec": 3.3
+  },
+  "test/harness/opencode/**/*.test.ts": {
+   "pctOfPairSec": 2.1,
+   "pctOfRealEditSec": 2.2
+  },
+  "test/harness/pi/**/*.test.ts": {
+   "pctOfPairSec": 1,
+   "pctOfRealEditSec": 1.1
+  },
+  "test/runners/pytest/**/*.test.ts": {
+   "pctOfPairSec": 0.7,
+   "pctOfRealEditSec": 0
+  },
+  "test/runners/vitest/**/*.test.ts": {
+   "pctOfPairSec": 0.6,
+   "pctOfRealEditSec": 0
+  },
+  "test/lint/integration/**/*.test.ts": {
+   "pctOfPairSec": 0.4,
+   "pctOfRealEditSec": 0
+  },
+  "test/lint/provider/**/*.test.ts": {
+   "pctOfPairSec": 0.4,
+   "pctOfRealEditSec": 0
+  },
+  "test/integration/node-test.test.ts": {
+   "pctOfPairSec": 0.3,
+   "pctOfRealEditSec": 0.3
+  },
+  "test/runners/node-test/**/*.test.ts": {
+   "pctOfPairSec": 0.3,
+   "pctOfRealEditSec": 0
+  },
+  "test/harness/plugin.test.ts": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0.1
+  },
+  "test/kit/node-test.test.ts": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0
+  },
+  "test/kit/pytest.test.ts": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0
+  },
+  "test/kit/vitest.test.ts": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0
+  },
+  "test/lint/cli/changed-eslint.test.ts": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0
+  },
+  "test/lint/surface/keyed-eslint.test.ts": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0
+  },
+  "test/plugins/codex/**/*.test.ts": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0
+  },
+  "test/policy/repository-inputs.test.ts": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0
+  },
+  "test/runners/node-test/graph-bundle.test.ts": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0
+  },
+  "test/runners/node-test/graph-memory.test.ts": {
+   "pctOfPairSec": 0,
+   "pctOfRealEditSec": 0
+  }
+ },
+ "top": [
+  {
+   "path": "vitest.config.ts",
+   "files": 1490,
+   "sec": 6205,
+   "share": 100,
+   "allFiles": 1507,
+   "allSec": 6685,
+   "edits": 0,
+   "barrel": false,
+   "typesOnly": false,
+   "helper": false,
+   "inSetup": [
+    ""
+   ],
+   "coverage": {
+    "called": 0,
+    "loadedOnly": 0,
+    "loadedUnknown": 0,
+    "notLoaded": 100,
+    "noRecord": 0
+   },
+   "kinds": {
+    "setup": 100
+   },
+   "projects": {
+    "": 1490
+   }
+  },
+  {
+   "path": "test/global-teardown.ts",
+   "files": 1490,
+   "sec": 6205,
+   "share": 100,
+   "allFiles": 1507,
+   "allSec": 6685,
+   "edits": 0,
+   "barrel": false,
+   "typesOnly": false,
+   "helper": true,
+   "inSetup": [
+    ""
+   ],
+   "coverage": {
+    "called": 0,
+    "loadedOnly": 0,
+    "loadedUnknown": 0,
+    "notLoaded": 100,
+    "noRecord": 0
+   },
+   "kinds": {
+    "setup": 100,
+    "direct": 0
+   },
+   "projects": {
+    "": 1490
+   }
+  },
+  {
+   "path": "test/daemon/strays.ts",
+   "files": 1490,
+   "sec": 6205,
+   "share": 100,
+   "allFiles": 1507,
+   "allSec": 6685,
+   "edits": 0,
+   "barrel": false,
+   "typesOnly": false,
+   "helper": true,
+   "inSetup": [
+    ""
+   ],
+   "coverage": {
+    "called": 16,
+    "loadedOnly": 6,
+    "loadedUnknown": 0,
+    "notLoaded": 78,
+    "noRecord": 0
+   },
+   "kinds": {
+    "setup": 78,
+    "helper": 20,
+    "direct": 1
+   },
+   "projects": {
+    "": 1490
+   }
+  },
+  {
+   "path": "src/core/fs/errors.ts",
+   "files": 1189,
+   "sec": 5823,
+   "share": 93.8,
+   "allFiles": 1205,
+   "allSec": 6303,
+   "edits": 0,
+   "barrel": false,
+   "typesOnly": false,
+   "helper": false,
+   "inSetup": [],
+   "coverage": {
+    "called": 58,
+    "loadedOnly": 41,
+    "loadedUnknown": 0,
+    "notLoaded": 0,
+    "noRecord": 0
+   },
+   "kinds": {
+    "transitive": 54,
+    "helper": 44,
+    "declared": 1,
+    "childProcess": 0,
+    "direct": 0,
+    "observed": 0
+   },
+   "projects": {
+    "": 1189
+   }
+  },
+  {
+   "path": "src/core/fs/json.ts",
+   "files": 1215,
+   "sec": 5741,
+   "share": 92.5,
+   "allFiles": 1232,
+   "allSec": 6221,
+   "edits": 0,
+   "barrel": false,
+   "typesOnly": false,
+   "helper": false,
+   "inSetup": [],
+   "coverage": {
+    "called": 80,
+    "loadedOnly": 20,
+    "loadedUnknown": 0,
+    "notLoaded": 0,
+    "noRecord": 0
+   },
+   "kinds": {
+    "transitive": 58,
+    "helper": 41,
+    "typeImport": 0,
+    "direct": 0,
+    "declared": 0,
+    "observed": 0,
+    "childProcess": 0
+   },
+   "projects": {
+    "": 1215
+   }
+  },
+  {
+   "path": "src/core/types/runner.ts",
+   "files": 1127,
+   "sec": 5680,
+   "share": 91.5,
+   "allFiles": 1143,
+   "allSec": 6161,
+   "edits": 2,
+   "barrel": false,
+   "typesOnly": false,
+   "helper": false,
+   "inSetup": [],
+   "coverage": {
+    "called": 11,
+    "loadedOnly": 88,
+    "loadedUnknown": 0,
+    "notLoaded": 1,
+    "noRecord": 0
+   },
+   "kinds": {
+    "transitive": 55,
+    "helper": 43,
+    "declared": 1,
+    "typeImport": 0,
+    "observed": 0,
+    "direct": 0,
+    "childProcess": 0
+   },
+   "projects": {
+    "": 1127
+   }
+  },
+  {
+   "path": "src/core/types/store.ts",
+   "files": 1184,
+   "sec": 5643,
+   "share": 90.9,
+   "allFiles": 1201,
+   "allSec": 6124,
+   "edits": 0,
+   "barrel": false,
+   "typesOnly": false,
+   "helper": false,
+   "inSetup": [],
+   "coverage": {
+    "called": 78,
+    "loadedOnly": 22,
+    "loadedUnknown": 0,
+    "notLoaded": 1,
+    "noRecord": 0
+   },
+   "kinds": {
+    "transitive": 60,
+    "helper": 39,
+    "typeImport": 0,
+    "declared": 0,
+    "direct": 0,
+    "observed": 0,
+    "childProcess": 0
+   },
+   "projects": {
+    "": 1184
+   }
+  },
+  {
+   "path": "src/core/fs/compare.ts",
+   "files": 1198,
+   "sec": 5562,
+   "share": 89.6,
+   "allFiles": 1214,
+   "allSec": 6043,
+   "edits": 0,
+   "barrel": false,
+   "typesOnly": false,
+   "helper": false,
+   "inSetup": [],
+   "coverage": {
+    "called": 55,
+    "loadedOnly": 44,
+    "loadedUnknown": 0,
+    "notLoaded": 0,
+    "noRecord": 0
+   },
+   "kinds": {
+    "transitive": 62,
+    "helper": 35,
+    "declared": 2,
+    "childProcess": 1,
+    "direct": 0,
+    "observed": 0
+   },
+   "projects": {
+    "": 1198
+   }
+  },
+  {
+   "path": "src/core/types/scheduler.ts",
+   "files": 1089,
+   "sec": 5550,
+   "share": 89.5,
+   "allFiles": 1105,
+   "allSec": 6031,
+   "edits": 1,
+   "barrel": false,
+   "typesOnly": false,
+   "helper": false,
+   "inSetup": [],
+   "coverage": {
+    "called": 75,
+    "loadedOnly": 24,
+    "loadedUnknown": 0,
+    "notLoaded": 1,
+    "noRecord": 0
+   },
+   "kinds": {
+    "transitive": 47,
+    "helper": 46,
+    "direct": 6,
+    "declared": 1,
+    "typeImport": 0,
+    "observed": 0,
+    "childProcess": 0
+   },
+   "projects": {
+    "": 1089
+   }
+  },
+  {
+   "path": "src/core/keys/reverse-index.ts",
+   "files": 1060,
+   "sec": 5529,
+   "share": 89.1,
+   "allFiles": 1076,
+   "allSec": 6010,
+   "edits": 0,
+   "barrel": false,
+   "typesOnly": false,
+   "helper": false,
+   "inSetup": [],
+   "coverage": {
+    "called": 71,
+    "loadedOnly": 23,
+    "loadedUnknown": 0,
+    "notLoaded": 6,
+    "noRecord": 0
+   },
+   "kinds": {
+    "transitive": 48,
+    "helper": 40,
+    "direct": 5,
+    "observed": 4,
+    "declared": 2,
+    "childProcess": 0
+   },
+   "projects": {
+    "": 1060
+   }
+  },
+  {
+   "path": "src/core/types/policy.ts",
+   "files": 1065,
+   "sec": 5486,
+   "share": 88.4,
+   "allFiles": 1081,
+   "allSec": 5967,
+   "edits": 0,
+   "barrel": false,
+   "typesOnly": false,
+   "helper": false,
+   "inSetup": [],
+   "coverage": {
+    "called": 0,
+    "loadedOnly": 99,
+    "loadedUnknown": 0,
+    "notLoaded": 1,
+    "noRecord": 0
+   },
+   "kinds": {
+    "helper": 52,
+    "transitive": 37,
+    "direct": 10,
+    "typeImport": 1,
+    "declared": 1,
+    "observed": 0,
+    "childProcess": 0
+   },
+   "projects": {
+    "": 1065
+   }
+  },
+  {
+   "path": "src/core/keys/glob.ts",
+   "files": 1050,
+   "sec": 5439,
+   "share": 87.7,
+   "allFiles": 1053,
+   "allSec": 5440,
+   "edits": 0,
+   "barrel": false,
+   "typesOnly": false,
+   "helper": false,
+   "inSetup": [],
+   "coverage": {
+    "called": 79,
+    "loadedOnly": 15,
+    "loadedUnknown": 0,
+    "notLoaded": 6,
+    "noRecord": 0
+   },
+   "kinds": {
+    "transitive": 47,
+    "helper": 47,
+    "observed": 4,
+    "declared": 2,
+    "childProcess": 0,
+    "direct": 0
+   },
+   "projects": {
+    "": 1050
+   }
+  },
+  {
+   "path": "src/core/store/paths.ts",
+   "files": 1091,
+   "sec": 5400,
+   "share": 87,
+   "allFiles": 1108,
+   "allSec": 5881,
+   "edits": 0,
+   "barrel": false,
+   "typesOnly": false,
+   "helper": false,
+   "inSetup": [],
+   "coverage": {
+    "called": 92,
+    "loadedOnly": 7,
+    "loadedUnknown": 0,
+    "notLoaded": 1,
+    "noRecord": 0
+   },
+   "kinds": {
+    "helper": 50,
+    "transitive": 38,
+    "direct": 11,
+    "declared": 0,
+    "observed": 0
+   },
+   "projects": {
+    "": 1091
+   }
+  },
+  {
+   "path": "src/core/store/connection.ts",
+   "files": 1087,
+   "sec": 5399,
+   "share": 87,
+   "allFiles": 1104,
+   "allSec": 5880,
+   "edits": 0,
+   "barrel": false,
+   "typesOnly": false,
+   "helper": false,
+   "inSetup": [],
+   "coverage": {
+    "called": 92,
+    "loadedOnly": 8,
+    "loadedUnknown": 0,
+    "notLoaded": 1,
+    "noRecord": 0
+   },
+   "kinds": {
+    "helper": 53,
+    "transitive": 47,
+    "direct": 0,
+    "declared": 0,
+    "observed": 0
+   },
+   "projects": {
+    "": 1087
+   }
+  },
+  {
+   "path": "src/core/store/store.ts",
+   "files": 1050,
+   "sec": 5385,
+   "share": 86.8,
+   "allFiles": 1067,
+   "allSec": 5866,
+   "edits": 0,
+   "barrel": false,
+   "typesOnly": false,
+   "helper": false,
+   "inSetup": [],
+   "coverage": {
+    "called": 85,
+    "loadedOnly": 14,
+    "loadedUnknown": 0,
+    "notLoaded": 1,
+    "noRecord": 0
+   },
+   "kinds": {
+    "helper": 56,
+    "transitive": 43,
+    "childProcess": 0,
+    "direct": 0,
+    "declared": 0,
+    "observed": 0
+   },
+   "projects": {
+    "": 1050
+   }
+  },
+  {
+   "path": "src/core/store/repos/worktrees.ts",
+   "files": 1050,
+   "sec": 5385,
+   "share": 86.8,
+   "allFiles": 1067,
+   "allSec": 5866,
+   "edits": 0,
+   "barrel": false,
+   "typesOnly": false,
+   "helper": false,
+   "inSetup": [],
+   "coverage": {
+    "called": 85,
+    "loadedOnly": 14,
+    "loadedUnknown": 0,
+    "notLoaded": 1,
+    "noRecord": 0
+   },
+   "kinds": {
+    "helper": 56,
+    "transitive": 43,
+    "childProcess": 0,
+    "declared": 0,
+    "observed": 0
+   },
+   "projects": {
+    "": 1050
+   }
+  },
+  {
+   "path": "src/core/store/repos/workspace.ts",
+   "files": 1050,
+   "sec": 5385,
+   "share": 86.8,
+   "allFiles": 1067,
+   "allSec": 5866,
+   "edits": 0,
+   "barrel": false,
+   "typesOnly": false,
+   "helper": false,
+   "inSetup": [],
+   "coverage": {
+    "called": 85,
+    "loadedOnly": 14,
+    "loadedUnknown": 0,
+    "notLoaded": 1,
+    "noRecord": 0
+   },
+   "kinds": {
+    "helper": 56,
+    "transitive": 43,
+    "childProcess": 0,
+    "declared": 0,
+    "observed": 0
+   },
+   "projects": {
+    "": 1050
+   }
+  },
+  {
+   "path": "src/core/store/repos/test-files.ts",
+   "files": 1050,
+   "sec": 5385,
+   "share": 86.8,
+   "allFiles": 1067,
+   "allSec": 5866,
+   "edits": 0,
+   "barrel": false,
+   "typesOnly": false,
+   "helper": false,
+   "inSetup": [],
+   "coverage": {
+    "called": 85,
+    "loadedOnly": 14,
+    "loadedUnknown": 0,
+    "notLoaded": 1,
+    "noRecord": 0
+   },
+   "kinds": {
+    "helper": 56,
+    "transitive": 43,
+    "childProcess": 0,
+    "declared": 0,
+    "observed": 0
+   },
+   "projects": {
+    "": 1050
+   }
+  },
+  {
+   "path": "src/core/store/repos/states.ts",
+   "files": 1050,
+   "sec": 5385,
+   "share": 86.8,
+   "allFiles": 1067,
+   "allSec": 5866,
+   "edits": 0,
+   "barrel": false,
+   "typesOnly": false,
+   "helper": false,
+   "inSetup": [],
+   "coverage": {
+    "called": 85,
+    "loadedOnly": 14,
+    "loadedUnknown": 0,
+    "notLoaded": 1,
+    "noRecord": 0
+   },
+   "kinds": {
+    "helper": 56,
+    "transitive": 43,
+    "childProcess": 0,
+    "declared": 0,
+    "observed": 0
+   },
+   "projects": {
+    "": 1050
+   }
+  },
+  {
+   "path": "src/core/store/repos/runs.ts",
+   "files": 1050,
+   "sec": 5385,
+   "share": 86.8,
+   "allFiles": 1067,
+   "allSec": 5866,
+   "edits": 0,
+   "barrel": false,
+   "typesOnly": false,
+   "helper": false,
+   "inSetup": [],
+   "coverage": {
+    "called": 85,
+    "loadedOnly": 14,
+    "loadedUnknown": 0,
+    "notLoaded": 1,
+    "noRecord": 0
+   },
+   "kinds": {
+    "helper": 56,
+    "transitive": 43,
+    "childProcess": 0,
+    "declared": 0,
+    "observed": 0
+   },
+   "projects": {
+    "": 1050
+   }
+  },
+  {
+   "path": "src/core/store/repos/results.ts",
+   "files": 1050,
+   "sec": 5385,
+   "share": 86.8,
+   "allFiles": 1067,
+   "allSec": 5866,
+   "edits": 0,
+   "barrel": false,
+   "typesOnly": false,
+   "helper": false,
+   "inSetup": [],
+   "coverage": {
+    "called": 85,
+    "loadedOnly": 14,
+    "loadedUnknown": 0,
+    "notLoaded": 1,
+    "noRecord": 0
+   },
+   "kinds": {
+    "helper": 56,
+    "transitive": 43,
+    "childProcess": 0,
+    "declared": 0,
+    "observed": 0,
+    "direct": 0
+   },
+   "projects": {
+    "": 1050
+   }
+  },
+  {
+   "path": "src/core/store/repos/failures.ts",
+   "files": 1050,
+   "sec": 5385,
+   "share": 86.8,
+   "allFiles": 1067,
+   "allSec": 5866,
+   "edits": 0,
+   "barrel": false,
+   "typesOnly": false,
+   "helper": false,
+   "inSetup": [],
+   "coverage": {
+    "called": 85,
+    "loadedOnly": 14,
+    "loadedUnknown": 0,
+    "notLoaded": 1,
+    "noRecord": 0
+   },
+   "kinds": {
+    "helper": 56,
+    "transitive": 43,
+    "childProcess": 0,
+    "declared": 0,
+    "observed": 0,
+    "direct": 0
+   },
+   "projects": {
+    "": 1050
+   }
+  },
+  {
+   "path": "src/core/store/repos/consumers.ts",
+   "files": 1050,
+   "sec": 5385,
+   "share": 86.8,
+   "allFiles": 1067,
+   "allSec": 5866,
+   "edits": 0,
+   "barrel": false,
+   "typesOnly": false,
+   "helper": false,
+   "inSetup": [],
+   "coverage": {
+    "called": 85,
+    "loadedOnly": 14,
+    "loadedUnknown": 0,
+    "notLoaded": 1,
+    "noRecord": 0
+   },
+   "kinds": {
+    "helper": 56,
+    "transitive": 43,
+    "childProcess": 0,
+    "declared": 0,
+    "observed": 0
+   },
+   "projects": {
+    "": 1050
+   }
+  },
+  {
+   "path": "src/core/store/prune.ts",
+   "files": 1050,
+   "sec": 5385,
+   "share": 86.8,
+   "allFiles": 1067,
+   "allSec": 5866,
+   "edits": 0,
+   "barrel": false,
+   "typesOnly": false,
+   "helper": false,
+   "inSetup": [],
+   "coverage": {
+    "called": 0,
+    "loadedOnly": 99,
+    "loadedUnknown": 0,
+    "notLoaded": 1,
+    "noRecord": 0
+   },
+   "kinds": {
+    "helper": 56,
+    "transitive": 43,
+    "childProcess": 0,
+    "declared": 0,
+    "observed": 0
+   },
+   "projects": {
+    "": 1050
+   }
+  },
+  {
+   "path": "src/core/store/codec.ts",
+   "files": 1050,
+   "sec": 5385,
+   "share": 86.8,
+   "allFiles": 1067,
+   "allSec": 5866,
+   "edits": 0,
+   "barrel": false,
+   "typesOnly": false,
+   "helper": false,
+   "inSetup": [],
+   "coverage": {
+    "called": 91,
+    "loadedOnly": 8,
+    "loadedUnknown": 0,
+    "notLoaded": 1,
+    "noRecord": 0
+   },
+   "kinds": {
+    "helper": 56,
+    "transitive": 43,
+    "childProcess": 0,
+    "declared": 0,
+    "observed": 0,
+    "direct": 0
+   },
+   "projects": {
+    "": 1050
+   }
+  }
+ ]
+}

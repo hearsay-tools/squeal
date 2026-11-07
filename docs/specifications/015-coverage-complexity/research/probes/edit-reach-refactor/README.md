@@ -15,6 +15,11 @@ The rules of `../edit-reach/README.md`. Read only; checkouts are `git clone`s un
 | `spec-main.json` | Phase 1 inputs: origin/main `6db9fcb7b`, static mode, compare on, `test/e2e/**` as not run on edit |
 | `summary-main.json` | The phase 1 output without the graph and per-file rows |
 | `rows-main.json` | The phase 1 per-source rows (seconds, edits, kinds, coverage), so phase 2 can compare without a re-run |
+| `spec-cand.json`, `summary-cand.json`, `rows-cand.json` | The same for phase 2: the candidate `963aff844` (`cand/0.1.414`), `base` `6db9fcb7b`, compare off |
+| `compare-main-cand.md` | The output of `compare.mjs` for main against the candidate |
+| `removed.mjs`, `added.mjs` | Value pairs main holds and the candidate does not, by their kind at main; and the other way round. Both read the two `reach.mjs` outputs (absolute paths under `/tmp/er112`) |
+| `lostcalled.mjs` | Called pairs at main whose import path the candidate lost, with the functions that ran (from the store's coverage records) |
+| `observed-bound.mjs` | The bound on the observed-read carry-over: observed reads of files that leave the bundle entries' value closure at the candidate |
 
 ## Re-running
 
@@ -29,7 +34,7 @@ nice -n 10 node reach.mjs spec-main.json $S/out-main-static.json
 nice -n 10 node compare.mjs $S/out-main-static.json $S/out-cand-static.json
 ```
 
-One `reach.mjs` run took 43 s at nice 10. Clean up: `rm -rf /tmp/er112`.
+One `reach.mjs` run took 43 s (main) and 119 s (candidate) at nice 10. Clean up: `rm -rf /tmp/er112`.
 
 ## Known limits
 
