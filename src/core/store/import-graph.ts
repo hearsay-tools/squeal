@@ -103,3 +103,17 @@ function environmentOf(conn: Connection, project: string, hash: string) {
     imports: decodeImports(row),
   };
 }
+
+/**
+ * Row 015-117: every stored walk's test file and key, as
+ * `project NUL path NUL key`; empty while the store has no walk table.
+ */
+export function storedWalkKeys(store: Store): ReadonlySet<string> {
+  const conn = connectionOf(store);
+  if (!hasImportGraphTables(conn)) return new Set();
+  return new Set(
+    conn
+      .all("SELECT project, path, key FROM test_file_imports")
+      .map((row) => `${str(row, "project")}\0${str(row, "path")}\0${str(row, "key")}`),
+  );
+}
