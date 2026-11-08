@@ -1,6 +1,6 @@
 # Spec 018 wave 1: the environment record
 
-Dispatch only after the human approves `spec.md`.
+Approved by the human 2026-11-08.
 
 ## 018-06 environment record and named differences
 

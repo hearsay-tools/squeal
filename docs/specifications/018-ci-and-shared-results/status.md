@@ -1,6 +1,6 @@
 # 018 CI and shared results: status
 
-Stage: spec, awaiting the human's approval (2026-11-08). Research was parked 2026-11-01 and reopened 2026-11-08.
+Stage: build, wave 1 (spec approved by the human 2026-11-08). Research was parked 2026-11-01 and reopened 2026-11-08.
 Started: 2026-10-31
 
 ## Decisions so far
@@ -17,6 +17,7 @@ Started: 2026-10-31
 - 2026-11-08, row 018-05 landed (`research/main-results.md`, researcher a42d1179): CI on main had run 20 to 37% of cezar's local background test seconds (26 to 41% after its lookup-only switch), 7 to 15% of squeal's; only reusing main's existing CI test run pays; no CI key matches a developer key today (Node, `CI=true`, Squeal's coverage provider, observed sets).
 - 2026-11-08, the human, after `main-results.md`: "Yes, start it" for the smallest first slice: `squeal export`/`import` (passes only by default, closures and observed sets travel), `status` naming each environment difference, one trial in cezar counting matches in a developer worktree at the same commit. Changes to cezar's CI are the human's call: proposed, not made. No transport in this slice.
 - 2026-11-08, the coordinator (3739e45a): `spec.md` written from the five findings files, D1 to D7; rows 018-06 (environment record), 018-07 (export, import, imported origin, status counts) and 018-08 (the cezar trial). Design choices for the human's review: import is a CLI write to the shared store, not through the daemon; closures and observed entries are add-only, never merged; the trial runs `squeal run --all` in a separate dispatched job with the CI variables removed and Node pinned, not inside cezar's merge-group test job; no key change, `CI=true` tolerance left for the next slice.
+- 2026-11-08, the human: "Design: Approve" (spec D1 to D7, rows 018-06 and 018-07) and "cezar CI: Approve as proposed" (spec D7: one new manual, non-gating workflow file in cezar for row 018-08, after the release with 018-07).
 
 ## Open questions
 

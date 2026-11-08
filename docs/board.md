@@ -1924,7 +1924,7 @@ Human authorized 2026-10-26; coordinator 474cc4f5. Brief: `specifications/017-li
 
 ## Feature 018: CI and shared results
 
-Spec `specifications/018-ci-and-shared-results/spec.md` (stage: spec, awaiting the human's approval; coordinator 3739e45a). Reopened by the human 2026-11-08 (task 7d611fc4) with a new goal: less test load on developers' machines by reusing what CI on main already ran, without adding CI wall time. First slice, approved in outline the same day ("Yes, start it"): `squeal export`/`import`, `status` naming environment differences, one trial in cezar. Earlier: research parked 2026-10-31 and 2026-11-01; the four wave-0 findings stand. No row below 018-05 is authorized until the human approves the spec and rows; 018-08 also needs the human's approval of the cezar CI file (spec D7).
+Spec `specifications/018-ci-and-shared-results/spec.md` (stage: build; spec, rows 018-06 to 018-08 and the cezar workflow file approved by the human 2026-11-08; coordinator 3739e45a). Reopened by the human 2026-11-08 (task 7d611fc4) with a new goal: less test load on developers' machines by reusing what CI on main already ran, without adding CI wall time. First slice, approved in outline the same day ("Yes, start it"): `squeal export`/`import`, `status` naming environment differences, one trial in cezar. Earlier: research parked 2026-10-31 and 2026-11-01; the four wave-0 findings stand. 
 
 ### Wave 0: research
 
@@ -1940,19 +1940,19 @@ Spec `specifications/018-ci-and-shared-results/spec.md` (stage: spec, awaiting t
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 018-06 environment record and named differences | planned (awaits the human's approval of the spec) | Spec D1: the daemon stores an `EnvironmentDescriptor` per environment hash and the hash each worktree keys each project with; pure `describeDifferences`. No key change. | Tests prove equal parts give equal hashes, any changed part changes the hash and is named, and no allow-listed or config value is stored; key-format test unchanged. |
+| 018-06 environment record and named differences | planned (approved, the human 2026-11-08) | Spec D1: the daemon stores an `EnvironmentDescriptor` per environment hash and the hash each worktree keys each project with; pure `describeDifferences`. No key change. | Tests prove equal parts give equal hashes, any changed part changes the hash and is named, and no allow-listed or config value is stored; key-format test unchanged. |
 
 ### Wave 2: export and import (brief `tasks/wave-2.md`; after 018-06; one candidate with wave 1)
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 018-07 `squeal export` and `squeal import`, the imported origin, status counts | planned (awaits the human's approval of the spec) | Spec D2 to D5: the export file, import with add-only closures and observed entries, origin `imported`, `status --full`/`--json` counts by reason, one default line when the environment differs. | A round trip between two fixture stores makes every exported file current with origin `imported`; the reasons of D5 each come from a fixture; the file holds no absolute path or failure text; a running daemon sees imported keys without a restart. |
+| 018-07 `squeal export` and `squeal import`, the imported origin, status counts | planned (approved, the human 2026-11-08; after 018-06) | Spec D2 to D5: the export file, import with add-only closures and observed entries, origin `imported`, `status --full`/`--json` counts by reason, one default line when the environment differs. | A round trip between two fixture stores makes every exported file current with origin `imported`; the reasons of D5 each come from a fixture; the file holds no absolute path or failure text; a running daemon sees imported keys without a restart. |
 
 ### Wave 3: the trial (after the release with 018-07; needs the human's approval of the cezar CI file, spec D7)
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 018-08 trial: CI export imported into a fresh cezar clone | planned (needs the human's approval of the cezar workflow file and a release with `export`) | Spec D7: one dispatched non-gating job in cezar exports; a fresh clone at that SHA imports and counts current files and D5 reasons. Read-only on cezar apart from the approved workflow file. | `research/import-trial.md` committed with the counts, the reasons, the CI job time and the Squeal version. |
+| 018-08 trial: CI export imported into a fresh cezar clone | planned (approved with the cezar workflow file, the human 2026-11-08; waits for a release with `export`) | Spec D7: one dispatched non-gating job in cezar exports; a fresh clone at that SHA imports and counts current files and D5 reasons. Read-only on cezar apart from the approved workflow file. | `research/import-trial.md` committed with the counts, the reasons, the CI job time and the Squeal version. |
 
 ## Feature 019: run triggers
 
