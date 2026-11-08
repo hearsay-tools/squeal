@@ -97,6 +97,13 @@ export interface AcceptInput {
    * (review 0.1.266, B1).
    */
   readonly heal?: true;
+  /**
+   * After the runs, the receiver applies every stored row twice through its
+   * own state sink, as two passes of its daemon do, so the second derives
+   * each state from the first; its known states after are an output, origin
+   * aside (018 D4: an imported row, applied again, stands as it stood).
+   */
+  readonly reapplied?: true;
 }
 
 /** A fixture repository keyed as a daemon keys it. */

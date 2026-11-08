@@ -71,6 +71,11 @@ export async function writeAccept(input: AcceptInput, scratch: string): Promise<
       stored.push(...records);
     }
     if (input.unknown !== undefined) timeOut(store, sink, input, stored, input.unknown);
+    if (input.reapplied) {
+      for (const _ of [1, 2]) {
+        sink.applyResults(input.receiver as WorktreeId, 1, stored, { checkpointId: null });
+      }
+    }
     return {};
   } finally {
     store.close();
@@ -137,6 +142,7 @@ export async function decideAccept(
         retired: probe.retired,
         ...(input.unknown === undefined ? {} : { unknown: unknownStates(store, worktreeId) }),
         ...(input.heal === undefined ? {} : { healed: healedStates(store, input) }),
+        ...(input.reapplied === undefined ? {} : { reapplied: reappliedStates(store, input) }),
       },
     };
   } finally {
@@ -180,6 +186,19 @@ function unknownStates(store: Store, worktreeId: WorktreeId) {
     .list(worktreeId)
     .map((s) => ({ check: s.check, outcome: s.outcome, validity: s.validity }));
   return { states, atKey: store.results.byKey(KEY, 3_000).map(verdictOf) };
+}
+
+/**
+ * The receiver's known states after it applied the rows twice. Origin is left
+ * out: each tree stores it its own way (018 D4), and it decides no validity.
+ */
+function reappliedStates(store: Store, input: AcceptInput) {
+  return store.knownStates.list(input.receiver as WorktreeId).map((s) => ({
+    check: s.check,
+    outcome: s.outcome,
+    validity: s.validity,
+    observedAt: s.observedAt,
+  }));
 }
 
 /** The receiver keyed at `KEY` before the runs, as its daemon keys it: what a heal reaches. */
