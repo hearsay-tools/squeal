@@ -38,7 +38,8 @@ export interface SlowPolicyView {
  * The slow view of `policy`; `null` when it declares no slow file (D1).
  * With a `checks` key a slow file is one the default `slow` group owns: a
  * configured group may own a file marked slow (spec 019 D2), and its line
- * is the group's (row 019-16).
+ * is the group's (row 019-16). The slow tier's line, not the lane: a
+ * configured group's file is outside the fast lane too (`slowView`).
  */
 export function slowPolicyView(policy: Policy): SlowPolicyView | null {
   const globs = slowGlobs(policy, policy.nodeTest);
