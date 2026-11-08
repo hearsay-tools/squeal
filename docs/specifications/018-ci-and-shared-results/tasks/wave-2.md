@@ -1,6 +1,6 @@
 # Spec 018 wave 2: export and import
 
-Dispatch after 018-06 is integrated on the coordinator's branch; the coordinator adds 018-06's final interface note here first.
+Dispatch after 018-06 is integrated on the coordinator's branch (done 2026-11-08).
 
 ## 018-07 `squeal export`, `squeal import`, the imported origin, status counts
 
@@ -22,4 +22,11 @@ Done when: the spec's Testing items for D2 to D5 pass; `squeal status --wait 600
 
 ## 018-06 interface note
 
-(Filled in by the coordinator after 018-06 integrates.)
+From worker e21f67ca's final message (commits `4217f8b34`, `528546822` on its branch):
+
+- Build: `environmentRecord(core, runner, hashOf, ci: boolean, format?)` in `src/core/keys/environment-hash.ts` returns `{ hash, descriptor }` from one reading of the runner files.
+- Compare: `describeDifferences(a, b): Difference[]` in `src/core/keys/environment-descriptor.ts`; `a` is the export, `b` this worktree. A `Difference` has `part`, `values?` (plain parts), `names?` (hashed parts) and `text`. `sawCi(env): boolean`.
+- Write (`src/core/store/environments.ts`): `putEnvironments(store, records, now)` for import (D3 step 5; throws on a store `openStore` did not open); `recordWorktreeEnvironments(store, worktreeId, records, now)` is the daemon's.
+- Read: `readEnvironment(store, hash)`, `worktreeEnvironments(store, worktreeId)`, `worktreeEnvironment(store, worktreeId, project)`; `StoredEnvironment` is `{ project, hash, descriptor | null, recordedAt }`. Readers return `null` or `[]` before the first write and for a descriptor they cannot read.
+- Per-worktree table: `worktree_environment_hashes` (not `worktree_environments`).
+- Bundle drift: until the coordinator rebuilds, the four bundle-drift tests (`test/harness/plugin.test.ts` and the codex, opencode, pi packaging tests) fail with "cli/squeal.mjs differs from the build". That is expected in a worker tree; do not run `pnpm run build`.
