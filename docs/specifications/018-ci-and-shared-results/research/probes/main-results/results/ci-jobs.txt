@@ -1,0 +1,10 @@
+cezar merge groups, Vitest
+{"runs":362,"ranTests":315,"skippedTests":47,"wall":{"n":315,"p10":786,"p50":869,"p90":1008},"longestJob":{"n":315,"p10":634,"p50":700,"p90":791},"testStep":{"n":1232,"p10":449,"p50":592,"p90":711},"outsideStep":{"n":1232,"p10":26,"p50":31,"p90":39},"jobsPerRun":{"n":315,"p10":4,"p50":4,"p90":4},"testStepSumPerRun":{"n":315,"p10":1972,"p50":2291,"p90":2617}}
+cezar merge groups, browser
+{"runs":362,"ranTests":318,"skippedTests":44,"wall":{"n":318,"p10":784,"p50":868,"p90":1008},"longestJob":{"n":318,"p10":608,"p50":695,"p90":807},"testStep":{"n":1262,"p10":511,"p50":588,"p90":703},"outsideStep":{"n":1262,"p10":19,"p50":24,"p90":35},"jobsPerRun":{"n":318,"p10":4,"p50":4,"p90":4},"testStepSumPerRun":{"n":318,"p10":2104,"p50":2396,"p90":2716}}
+cezar merge groups, unit/build (node:test)
+{"runs":362,"ranTests":359,"skippedTests":3,"wall":{"n":359,"p10":494,"p50":855,"p90":998},"longestJob":{"n":359,"p10":272,"p50":343,"p90":370},"testStep":{"n":359,"p10":170,"p50":210,"p90":221},"outsideStep":{"n":359,"p10":100,"p50":133,"p90":150},"jobsPerRun":{"n":359,"p10":1,"p50":1,"p90":1},"testStepSumPerRun":{"n":359,"p10":170,"p50":210,"p90":221}}
+squeal main pushes, Node 22 shards
+{"runs":131,"ranTests":131,"skippedTests":0,"wall":{"n":131,"p10":844,"p50":930,"p90":1004},"longestJob":{"n":131,"p10":840,"p50":921,"p90":965},"testStep":{"n":381,"p10":656,"p50":780,"p90":887},"outsideStep":{"n":381,"p10":43,"p50":55,"p90":69},"jobsPerRun":{"n":131,"p10":3,"p50":3,"p90":3},"testStepSumPerRun":{"n":131,"p10":2075,"p50":2301,"p90":2501}}
+squeal main pushes, Node 24 job
+{"runs":131,"ranTests":129,"skippedTests":2,"wall":{"n":129,"p10":842,"p50":930,"p90":1010},"longestJob":{"n":129,"p10":258,"p50":334,"p90":351},"testStep":{"n":129,"p10":218,"p50":281,"p90":293},"outsideStep":{"n":129,"p10":40,"p50":53,"p90":62},"jobsPerRun":{"n":129,"p10":1,"p50":1,"p90":1},"testStepSumPerRun":{"n":129,"p10":218,"p50":281,"p90":293}}
