@@ -1,6 +1,6 @@
 # 018 CI and shared results: status
 
-Stage: research, parked (the human, 2026-11-01: "Stop here" after `ci-reuse`; no spec, no build authorized)
+Stage: spec, awaiting the human's approval (2026-11-08). Research was parked 2026-11-01 and reopened 2026-11-08.
 Started: 2026-10-31
 
 ## Decisions so far
@@ -13,8 +13,13 @@ Started: 2026-10-31
 - 2026-11-01, the human: "If Squeal and CI could run and record the store so that new PRs or reruns could actually reuse the results from earlier, that would probably shorten CI wall time a lot." Then: "Take a look at cezar project for a reference CI time. Also, the research should also check whether existing tools cannot accomplish this." Topic `ci-reuse`, row 018-04: cezarion's CI as the reference, a replay of its merged PRs, this repository with the version and test-setup causes fixed, and existing tools.
 - 2026-11-01, the coordinator: 018-04 landed (`research/ci-reuse.md`, researcher da1c1c9c). Reuse in CI shortens waits little, because the slowest job group sets the wait: in cezarion the browser tests re-key in 43 of 50 merged PRs, so a PR run saves a mean 94 s of a 676 s test phase; here about 85 s per candidate run, 160 s with the version and test-setup causes fixed. A re-run of one failed job saves about 500 to 570 s. The larger gain is CI cost, about 35% of a cezarion PR run's job-minutes. Two blockers in cezarion: coverage settings differ between PR and main runs and are in the key, and `pull_request_target` runs cannot write a cache by default. Closest existing tools: Datadog Test Impact Analysis and Nx Cloud (both paid; test data leaves the repository); free `vitest --changed` keeps no results. Correction to `ci-run.md` 4: the test setup reaches `src/core/types` through `src/core/delivery/harness-process.ts` (`worktreeMetaKey`), not `paths.ts`; its conclusion holds. Recommendation: no spec for shorter waits; the human decides whether lower CI cost is worth one more measurement (a shadow trial in cezarion PR runs, 250 to 500 job-minutes).
 - 2026-11-01, the human, on `ci-reuse`: "Next step: Stop here." Not chosen: a dry trial in cezarion's PR runs, or a design aimed at CI cost. Research parked with four findings files on file.
+- 2026-11-08, the human (task 7d611fc4), reopening 018 with a new goal, load on developers' machines, not CI wall time: "even if all worktrees finish everything - it doesn't get reused if we then start a new worktree off of main. And main combines different changes so that some of it is automatically a project state nobody has seen before. What if CI could produce the current state on main? Maybe as an artifact squeal could download and import when it starts a daemon? ... delegate some of it to CI without adding CI wall time." Topic `main-results`, row 018-05.
+- 2026-11-08, row 018-05 landed (`research/main-results.md`, researcher a42d1179): CI on main had run 20 to 37% of cezar's local background test seconds (26 to 41% after its lookup-only switch), 7 to 15% of squeal's; only reusing main's existing CI test run pays; no CI key matches a developer key today (Node, `CI=true`, Squeal's coverage provider, observed sets).
+- 2026-11-08, the human, after `main-results.md`: "Yes, start it" for the smallest first slice: `squeal export`/`import` (passes only by default, closures and observed sets travel), `status` naming each environment difference, one trial in cezar counting matches in a developer worktree at the same commit. Changes to cezar's CI are the human's call: proposed, not made. No transport in this slice.
+- 2026-11-08, the coordinator (3739e45a): `spec.md` written from the five findings files, D1 to D7; rows 018-06 (environment record), 018-07 (export, import, imported origin, status counts) and 018-08 (the cezar trial). Design choices for the human's review: import is a CLI write to the shared store, not through the daemon; closures and observed entries are add-only, never merged; the trial runs `squeal run --all` in a separate dispatched job with the CI variables removed and Node pinned, not inside cezar's merge-group test job; no key change, `CI=true` tolerance left for the next slice.
 
 ## Open questions
 
-- Does any of the three fit vision principle 5 ("Squeal does not replace ... CI")?
-- Are content keys portable across machines today, and if not, at what cost could they be?
+- Principle 5: answered in spec D6 (CI produces every result; Squeal carries and qualifies them).
+- Key portability: answered by `result-import.md` and `main-results.md` 3; the trial (018-08) measures it on cezar.
+- The spec's own open questions are in `spec.md`.
