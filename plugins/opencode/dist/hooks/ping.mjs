@@ -1344,6 +1344,15 @@ function stored(text, last = false) {
 // src/core/code/store/parts.ts
 var PART_REFRESH_MS = 60 * 6e4;
 
+// src/core/hash/blob.ts
+import { constants as constants2 } from "node:fs";
+var OPEN_FLAGS = constants2.O_RDONLY | constants2.O_NOFOLLOW | constants2.O_NONBLOCK;
+
+// src/core/code/coverage/sourcemap.ts
+var BASE64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+var DIGIT = new Int8Array(128).fill(-1);
+for (let i = 0; i < BASE64.length; i++) DIGIT[BASE64.charCodeAt(i)] = i;
+
 // src/core/code/store/prune.ts
 var DAY_MS2 = 24 * 60 * 60 * 1e3;
 
