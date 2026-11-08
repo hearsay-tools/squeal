@@ -2,7 +2,14 @@ import { testFileId } from "../keys/reverse-index.js";
 import type { CheckId } from "../types/check.js";
 import type { CommitSha, RevisionNumber, SourceLocation, WorktreeId } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
-import type { KnownState, PendingPhase, ResultOrigin, Validity } from "../types/state.js";
+import {
+  importIdOf,
+  type KnownState,
+  originWorktree,
+  type PendingPhase,
+  type ResultOrigin,
+  type Validity,
+} from "../types/state.js";
 import type { ResultRecord, TestFileKeyRecord } from "../types/store-records.js";
 import { describeFailure, sameFingerprint } from "./fingerprint.js";
 
@@ -65,19 +72,23 @@ export function classify(
   return { validity: outcome === "unknown" ? "unknown" : "stale", pendingPhase: null };
 }
 
+/**
+ * Spec 018 D4: a result another worktree stored is `inherited`, one an
+ * import stored (its provenance names the import, `importIdOf`) `imported`.
+ */
 function originOf(worktreeId: WorktreeId, result: ResultRecord): ResultOrigin {
   const p = result.provenance;
-  return p.worktreeId === worktreeId
-    ? { kind: "own" }
-    : { kind: "inherited", worktreeId: p.worktreeId, commit: p.commit };
+  if (p.worktreeId === worktreeId) return { kind: "own" };
+  const importId = importIdOf(p.worktreeId);
+  return importId === null
+    ? { kind: "inherited", worktreeId: p.worktreeId, commit: p.commit }
+    : { kind: "imported", importId, commit: p.commit };
 }
 
 function sameOrigin(a: ResultOrigin | null, b: ResultOrigin): boolean {
   if (a === null || a.kind !== b.kind) return false;
-  return (
-    a.kind === "own" ||
-    (b.kind === "inherited" && a.worktreeId === b.worktreeId && a.commit === b.commit)
-  );
+  if (a.kind === "own" || b.kind === "own") return true;
+  return originWorktree(a) === originWorktree(b) && a.commit === b.commit;
 }
 
 /**

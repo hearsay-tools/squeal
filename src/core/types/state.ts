@@ -35,11 +35,39 @@ export type PendingPhase = "queued" | "running";
  * Where a current result came from.
  *
  * Spec 001 D6: "its origin (`own` or `inherited from <worktree> at
- * <commit>`)".
+ * <commit>`)". Spec 018 D4: or `imported`, from the `squeal import` named by
+ * `importId`, at the export's commit; its source label is the import's row
+ * (`src/core/store/imports.ts`).
  */
 export type ResultOrigin =
   | { readonly kind: "own" }
-  | { readonly kind: "inherited"; readonly worktreeId: WorktreeId; readonly commit: CommitSha };
+  | { readonly kind: "inherited"; readonly worktreeId: WorktreeId; readonly commit: CommitSha }
+  | { readonly kind: "imported"; readonly importId: string; readonly commit: CommitSha };
+
+/**
+ * Spec 018 D4: the provenance worktree field of an imported result. A
+ * worktree id is 16 hex characters, so none holds the colon.
+ */
+const IMPORT_MARK = "import:";
+
+/** The provenance worktree field that names import `importId`. */
+export function importMark(importId: string): WorktreeId {
+  return `${IMPORT_MARK}${importId}`;
+}
+
+/** The import a provenance worktree field names, or `null` for a worktree's. */
+export function importIdOf(worktreeId: WorktreeId): string | null {
+  return worktreeId.startsWith(IMPORT_MARK) ? worktreeId.slice(IMPORT_MARK.length) : null;
+}
+
+/**
+ * The provenance worktree field the results of a result's `origin` carry:
+ * another worktree's id, an import's mark, or `null` for this worktree's own.
+ */
+export function originWorktree(origin: ResultOrigin): WorktreeId | null {
+  if (origin.kind === "own") return null;
+  return origin.kind === "inherited" ? origin.worktreeId : importMark(origin.importId);
+}
 
 /**
  * Normalized first error line plus source location, used to tell a changed

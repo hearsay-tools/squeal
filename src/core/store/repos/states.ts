@@ -1,4 +1,10 @@
-import type { KnownState, ResultOrigin, Transition } from "../../types/state.js";
+import {
+  importIdOf,
+  type KnownState,
+  originWorktree,
+  type ResultOrigin,
+  type Transition,
+} from "../../types/state.js";
 import type { KnownStateRepo, TransitionRepo } from "../../types/store.js";
 import {
   CHECK_COLUMNS,
@@ -83,9 +89,9 @@ export function createKnownStateRepo(conn: Connection): KnownStateRepo {
             s.pendingPhase,
             s.observedAt,
             s.commit,
-            origin?.kind ?? null,
-            origin?.kind === "inherited" ? origin.worktreeId : null,
-            origin?.kind === "inherited" ? origin.commit : null,
+            storedKind(origin),
+            origin === null ? null : originWorktree(origin),
+            origin === null || origin.kind === "own" ? null : origin.commit,
             s.durationMs,
             ...locationParams(s.location),
             s.summary,
@@ -108,9 +114,27 @@ export function createKnownStateRepo(conn: Connection): KnownStateRepo {
   };
 }
 
+/**
+ * Spec 018 D4: an imported origin is stored with no kind and the import's
+ * mark as its worktree. A release before 018 reads the kind with
+ * `oneOfOrNull` of `own` and `inherited`, so a kind it did not know would
+ * throw; it reads no kind as no known origin.
+ */
+function storedKind(origin: ResultOrigin | null): "own" | "inherited" | null {
+  return origin === null || origin.kind === "imported" ? null : origin.kind;
+}
+
 function toOrigin(row: Row): ResultOrigin | null {
-  const kind = oneOfOrNull(row, "origin_kind", ["own", "inherited"] as const);
-  if (kind === null) return null;
+  const stored = strOrNull(row, "origin_kind");
+  // A kind a later release stores reads as no known origin, as this one's reads before 018.
+  const kind = stored === "own" || stored === "inherited" ? stored : null;
+  if (stored !== null && kind === null) return null;
+  if (kind === null) {
+    const marked = strOrNull(row, "origin_worktree");
+    const importId = marked === null ? null : importIdOf(marked);
+    if (importId === null) return null;
+    return { kind: "imported", importId, commit: strOrNull(row, "origin_commit") };
+  }
   if (kind === "own") return { kind };
   return {
     kind,
