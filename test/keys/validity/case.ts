@@ -143,6 +143,8 @@ export interface AssembleInput {
   readonly stability?: Readonly<Record<string, string>>;
   /** Read from the runner (`setEnvironments`) in place of one fixed environment hash (011-36). */
   readonly environment?: RunnerEnvironment;
+  /** The keys read the store through a `Proxy`, as a test's wrapped store: no connection of its own (018 D1). */
+  readonly wrappedStore?: true;
   /**
    * Then the runner's closures replace the first ones, the `removed` test
    * files are forgotten, and untracked paths are tracked again (011-36).

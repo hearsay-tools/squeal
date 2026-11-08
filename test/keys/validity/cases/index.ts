@@ -13,6 +13,7 @@ import { PYTEST_PDM } from "./adapter/pytest-pdm.js";
 import { VITEST_RUNS } from "./adapter/vitest.js";
 import { CHECK_GROUPS } from "./assemble/check-groups.js";
 import { DECLARED } from "./assemble/declared.js";
+import { DESCRIBED } from "./assemble/described.js";
 import { ELSEWHERE } from "./assemble/elsewhere.js";
 import { INHERITED } from "./assemble/inherited.js";
 import { REWRITTEN } from "./assemble/rewritten.js";
@@ -57,6 +58,7 @@ export const CASES: readonly Case[] = [
   ...INHERITED,
   ...REWRITTEN,
   ...ELSEWHERE,
+  ...DESCRIBED,
   ...IGNORED_LISTING,
   ...STORE_TIERS,
   ...RUNTIME_STORES,

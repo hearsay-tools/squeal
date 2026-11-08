@@ -175,7 +175,8 @@ async function keyed(
   const keys = new WorktreeKeys({
     root,
     worktreeId: id,
-    store,
+    // 018 D1: a `Proxy` of the store, as a test wraps one, has no connection of its own.
+    store: input.wrappedStore === true ? new Proxy(store, {}) : store,
     hasher,
     objectFormat: "sha1",
     policy: loadPolicy(root).policy,
