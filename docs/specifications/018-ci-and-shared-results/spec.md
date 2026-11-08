@@ -44,7 +44,7 @@ An `EnvironmentDescriptor` per environment hash:
 
 The descriptor is derived from the same objects the hash is computed from, in the same call, so the two cannot disagree. A test proves that two descriptors with equal parts give equal hashes, and that a change in any one part changes the hash.
 
-Storage: a table `environments(hash primary key, descriptor json, recorded_at)` plus `worktree_environments(worktree_id, project, hash, recorded_at)` for the hash each worktree keys each project with now. Both are created by the first write, outside `schema.ts`, in the pattern of `IMPORT_GRAPH_TABLES` (`src/core/store/import-edges.ts`), so the key-format alarm does not fire.
+Storage: a table `environments(hash primary key, descriptor json, recorded_at)` plus `worktree_environment_hashes(worktree_id, project, hash, recorded_at)` (named so because release 0.1.415 already has a `worktree_environments` table with other columns; 2026-11-08, row 018-06) for the hash each worktree keys each project with now. Both are created by the first write, outside `schema.ts`, in the pattern of `IMPORT_GRAPH_TABLES` (`src/core/store/import-edges.ts`), so the key-format alarm does not fire.
 
 `describeDifferences(a, b): Difference[]` is a pure function. Each `Difference` names one part and, for plain values, both values; for hashed parts, the names that differ (`config fields allowOnly, snapshotOptions`; `allow-listed variables differ (names: A, B)`; `installed dependencies differ`). When the exporting side saw a CI environment and only config fields differ, the text adds `(the export ran with CI set)`.
 

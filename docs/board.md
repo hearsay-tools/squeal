@@ -1940,13 +1940,13 @@ Spec `specifications/018-ci-and-shared-results/spec.md` (stage: build; spec, row
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 018-06 environment record and named differences | running (worker e21f67ca, approved by the human 2026-11-08) | Spec D1: the daemon stores an `EnvironmentDescriptor` per environment hash and the hash each worktree keys each project with; pure `describeDifferences`. No key change. | Tests prove equal parts give equal hashes, any changed part changes the hash and is named, and no allow-listed or config value is stored; key-format test unchanged. |
+| 018-06 environment record and named differences | integrated on coordinator branch, awaiting the candidate review with 018-07 (worker e21f67ca; table `worktree_environment_hashes`) | Spec D1: the daemon stores an `EnvironmentDescriptor` per environment hash and the hash each worktree keys each project with; pure `describeDifferences`. No key change. | Tests prove equal parts give equal hashes, any changed part changes the hash and is named, and no allow-listed or config value is stored; key-format test unchanged. |
 
 ### Wave 2: export and import (brief `tasks/wave-2.md`; after 018-06; one candidate with wave 1)
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 018-07 `squeal export` and `squeal import`, the imported origin, status counts | planned (approved, the human 2026-11-08; after 018-06) | Spec D2 to D5: the export file, import with add-only closures and observed entries, origin `imported`, `status --full`/`--json` counts by reason, one default line when the environment differs. | A round trip between two fixture stores makes every exported file current with origin `imported`; the reasons of D5 each come from a fixture; the file holds no absolute path or failure text; a running daemon sees imported keys without a restart. |
+| 018-07 `squeal export` and `squeal import`, the imported origin, status counts | running (approved by the human 2026-11-08) | Spec D2 to D5: the export file, import with add-only closures and observed entries, origin `imported`, `status --full`/`--json` counts by reason, one default line when the environment differs. | A round trip between two fixture stores makes every exported file current with origin `imported`; the reasons of D5 each come from a fixture; the file holds no absolute path or failure text; a running daemon sees imported keys without a restart. |
 
 ### Wave 3: the trial (after the release with 018-07; needs the human's approval of the cezar CI file, spec D7)
 
