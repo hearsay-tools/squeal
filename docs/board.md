@@ -1924,7 +1924,7 @@ Human authorized 2026-10-26; coordinator 474cc4f5. Brief: `specifications/017-li
 
 ## Feature 018: CI and shared results
 
-Spec `specifications/018-ci-and-shared-results/spec.md` (stage: build; spec, rows 018-06 to 018-08 and the cezar workflow file approved by the human 2026-11-08; coordinator 3739e45a). Reopened by the human 2026-11-08 (task 7d611fc4) with a new goal: less test load on developers' machines by reusing what CI on main already ran, without adding CI wall time. First slice, approved in outline the same day ("Yes, start it"): `squeal export`/`import`, `status` naming environment differences, one trial in cezar. Earlier: research parked 2026-10-31 and 2026-11-01; the four wave-0 findings stand. 
+Spec `specifications/018-ci-and-shared-results/spec.md` (stage: build, 0.1.417 landed with 018-06/07/09, release next, then trial 018-08; spec, rows 018-06 to 018-08 and the cezar workflow file approved by the human 2026-11-08; coordinator 3739e45a). Reopened by the human 2026-11-08 (task 7d611fc4) with a new goal: less test load on developers' machines by reusing what CI on main already ran, without adding CI wall time. First slice, approved in outline the same day ("Yes, start it"): `squeal export`/`import`, `status` naming environment differences, one trial in cezar. Earlier: research parked 2026-10-31 and 2026-11-01; the four wave-0 findings stand. 
 
 ### Wave 0: research
 
@@ -1940,19 +1940,19 @@ Spec `specifications/018-ci-and-shared-results/spec.md` (stage: build; spec, row
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 018-06 environment record and named differences | review (on `cand/0.1.417`; worker e21f67ca; table `worktree_environment_hashes`) | Spec D1: the daemon stores an `EnvironmentDescriptor` per environment hash and the hash each worktree keys each project with; pure `describeDifferences`. No key change. | Tests prove equal parts give equal hashes, any changed part changes the hash and is named, and no allow-listed or config value is stored; key-format test unchanged. |
+| 018-06 environment record and named differences | done (0.1.417, worker e21f67ca; table `worktree_environment_hashes`; reviews `wave-1-2.md`, `wave-2.5.md`) | Spec D1: the daemon stores an `EnvironmentDescriptor` per environment hash and the hash each worktree keys each project with; pure `describeDifferences`. No key change. | Tests prove equal parts give equal hashes, any changed part changes the hash and is named, and no allow-listed or config value is stored; key-format test unchanged. |
 
 ### Wave 2: export and import (brief `tasks/wave-2.md`; after 018-06; one candidate with wave 1)
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 018-07 `squeal export` and `squeal import`, the imported origin, status counts | review (on `cand/0.1.417`, worker 5530f229; review FAIL B1, repair 018-09) | Spec D2 to D5: the export file, import with add-only closures and observed entries, origin `imported`, `status --full`/`--json` counts by reason, one default line when the environment differs. | A round trip between two fixture stores makes every exported file current with origin `imported`; the reasons of D5 each come from a fixture; the file holds no absolute path or failure text; a running daemon sees imported keys without a restart. |
+| 018-07 `squeal export` and `squeal import`, the imported origin, status counts | done (0.1.417, worker 5530f229; B1 repaired by 018-09; re-review PASS `wave-2.5.md`) | Spec D2 to D5: the export file, import with add-only closures and observed entries, origin `imported`, `status --full`/`--json` counts by reason, one default line when the environment differs. | A round trip between two fixture stores makes every exported file current with origin `imported`; the reasons of D5 each come from a fixture; the file holds no absolute path or failure text; a running daemon sees imported keys without a restart. |
 
 ### Wave 2.5: review repair (review `reviews/wave-1-2.md`; on `cand/0.1.417`)
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 018-09 repair B1 and N1: import status counts follow adopted states | running (coordinator repair after review FAIL of `ee17cb230`, 2026-11-08) | Spec D5 as amended 2026-11-08: current-from-import by adopted imported known states only; reasons "same key, another result kept" and "same key, not adopted yet"; default line only when every non-current file differs by environment. Status code only; import writer unchanged. | Fixtures: kept local failure, kept local pass, two imports with equal keys, before daemon adoption, mixed environment/content default line; `--full` and `--json` agree with adopted states. |
+| 018-09 repair B1 and N1: import status counts follow adopted states | done (0.1.417, worker 89bf4dd3 plus coordinator rewording; re-review PASS at `ea776c75c`) | Spec D5 as amended 2026-11-08: current-from-import by adopted imported known states only; reasons "same key, another result kept" and "same key, not adopted yet"; default line only when every non-current file differs by environment. Status code only; import writer unchanged. | Fixtures: kept local failure, kept local pass, two imports with equal keys, before daemon adoption, mixed environment/content default line; `--full` and `--json` agree with adopted states. |
 
 ### Wave 3: the trial (after the release with 018-07; needs the human's approval of the cezar CI file, spec D7)
 
