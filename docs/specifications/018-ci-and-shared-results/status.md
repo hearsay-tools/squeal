@@ -23,6 +23,7 @@ Started: 2026-10-31
 - 2026-11-08, repair 018-09 (worker 89bf4dd3, `5566156be`): a file counts as current from an import when it has a current state and all its current states come from that import; an equal key with nothing stored by the import reads "another result kept". The coordinator renamed the two reasons to "another result kept at the same key" and "not adopted yet" (the first wording held a comma inside a comma-joined list); D5 edited.
 - 2026-11-08, narrow re-review of `ea776c75c` (`reviews/wave-2.5.md`): PASS, B1 and N1 resolved. Candidate CI 42463506305 green on that SHA. 0.1.417 landed on main. Follow-ups for the next slice (from 018-07's notes): `imports` and `import_files` are never pruned; `src/harness/shared/test-command-reason.ts` names inherited sources only.
 - 2026-11-08, the coordinator: 0.1.417 released (tag `squeal--v0.1.417` at `ea776c75c`, hub `7645044`, GitHub latest release with `install.sh` and both Codex runtime assets; exact-commit CI 42463506305 green). No issue to close. The trial's workflow file is drafted as `tasks/018-08-squeal-results-trial.yml`: `install.sh` needs a harness on the PATH, so the job runs the release's bundled CLI from a shallow clone of the tag.
+- 2026-11-08, the human: "Open and run it" for the cezar trial. Draft PR hearsay-tools/cezarion#3018 adds `.github/workflows/squeal-results-trial.yml` (actions pinned to `ci.yml`'s SHAs, inputs through `env`, `persist-credentials: false`). cezar's auto-merge check says it does not qualify (a CI path), so it waits for the owner's merge.
 
 ## Open questions
 
