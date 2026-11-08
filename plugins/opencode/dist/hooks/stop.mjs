@@ -879,8 +879,34 @@ function compare(a, b) {
 
 // src/core/keys/observed.ts
 import { createHash } from "node:crypto";
+function observedMetaKey(project) {
+  return `observed.${project}`;
+}
+function observedDirectMetaKey(project) {
+  return `observedDirect.${project}`;
+}
+var LIST = "";
+function readSharedEntries(store, key, shape = "map") {
+  return parse(store.meta.get(key), shape);
+}
 var ABSENT_LISTING = createHash("sha1").update("\0absent").digest("hex");
 var EMPTY_LISTING = createHash("sha1").update("\0empty").digest("hex");
+function parse(raw, shape) {
+  if (raw === null) return {};
+  let value;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    return {};
+  }
+  const entries = shape === "list" ? { [LIST]: value } : value;
+  if (!isRecord(entries)) return {};
+  return Object.fromEntries(
+    Object.entries(entries).flatMap(
+      ([entry3, paths]) => Array.isArray(paths) ? [[entry3, paths.filter((p) => typeof p === "string")]] : []
+    )
+  );
+}
 
 // src/core/keys/closure.ts
 var CLOSURE_METHOD = "static imports plus declared inputs";
@@ -1907,6 +1933,19 @@ function testFileId(ref) {
   return `${ref.project}\0${ref.path}`;
 }
 
+// src/core/types/state.ts
+var IMPORT_MARK = "import:";
+function importMark(importId) {
+  return `${IMPORT_MARK}${importId}`;
+}
+function importIdOf(worktreeId) {
+  return worktreeId.startsWith(IMPORT_MARK) ? worktreeId.slice(IMPORT_MARK.length) : null;
+}
+function originWorktree(origin) {
+  if (origin.kind === "own") return null;
+  return origin.kind === "inherited" ? origin.worktreeId : importMark(origin.importId);
+}
+
 // src/core/state/fingerprint.ts
 import { realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -2727,7 +2766,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.416";
+  if (true) return "0.1.417";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -3279,7 +3318,7 @@ var crapRecountKey = (worktreeId) => `crapRecount:${worktreeId}`;
 var changeKey = (worktreeId) => `coverageChange:${worktreeId}`;
 var evidenceKey = (worktreeId, path) => `coverage:${worktreeId}:${path}`;
 var functionKey = (fn) => `${fn.qualifiedName}\0${fn.occurrence}`;
-function parse(text2, valid) {
+function parse2(text2, valid) {
   if (text2 === null) return null;
   try {
     const value = JSON.parse(text2);
@@ -3290,25 +3329,25 @@ function parse(text2, valid) {
 }
 var isObject = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
 function readSummary(meta, worktreeId) {
-  return parse(
+  return parse2(
     meta.get(summaryKey(worktreeId)),
     (v) => isObject(v) && v.v === 1 && typeof v.since === "number" && isObject(v.files)
   );
 }
 function readCoverageChange(meta, worktreeId) {
-  return parse(
+  return parse2(
     meta.get(changeKey(worktreeId)),
     (v) => isObject(v) && typeof v.revision === "number" && typeof v.at === "number" && Array.isArray(v.off) && typeof v.excluded === "number"
   );
 }
 function readCrapRecount(meta, worktreeId) {
-  return parse(
+  return parse2(
     meta.get(crapRecountKey(worktreeId)),
     (v) => isObject(v) && typeof v.revision === "number" && typeof v.at === "number" && typeof v.threshold === "number"
   );
 }
 function readEvidence(meta, worktreeId, path) {
-  return parse(
+  return parse2(
     meta.get(evidenceKey(worktreeId, path)),
     (v) => isObject(v) && typeof v.blob === "string" && isObject(v.functions)
   );
@@ -4162,6 +4201,10 @@ function inheritedFrom(entry3) {
   if (entry3.origin.kind !== "inherited") return null;
   return `${entry3.originRoot ?? `worktree ${entry3.origin.worktreeId}`} at ${commitText(entry3.origin.commit)}`;
 }
+function importedFrom(entry3) {
+  if (entry3.origin.kind !== "imported") return null;
+  return entry3.originSource ?? `import ${entry3.origin.importId} at ${commitText(entry3.origin.commit)}`;
+}
 function beforeEditsText(before) {
   switch (before?.outcome) {
     case "none": {
@@ -4186,10 +4229,12 @@ function validityText(entry3, revision) {
 }
 function seenLine(entry3, revision) {
   const from = inheritedFrom(entry3);
+  const imported = importedFrom(entry3);
   const baseline = entry3.baseline === true;
   const { text: text2, joined: joined2 } = changeBefore(entry3);
+  const by = baseline ? "by the baseline " : "";
   const parts = [
-    from === null ? `seen by Squeal's ${baseline ? "baseline " : ""}run at revision ${entry3.observedAt}` : `seen by Squeal's run in ${from}, inherited ${baseline ? "by the baseline " : ""}at revision ${entry3.observedAt}`,
+    imported !== null ? `imported from ${imported} ${by}at revision ${entry3.observedAt}` : from === null ? `seen by Squeal's ${baseline ? "baseline " : ""}run at revision ${entry3.observedAt}` : `seen by Squeal's run in ${from}, inherited ${by}at revision ${entry3.observedAt}`,
     validityText(entry3, revision)
   ];
   return `${text2}${joined2}${parts.filter((p) => p !== null).join(", ")}`;
@@ -4202,6 +4247,8 @@ function recoveryProvenance(entry3, revision) {
   }
   const from = inheritedFrom(entry3);
   if (from !== null) parts.push(`inherited from ${from}`);
+  const imported = importedFrom(entry3);
+  if (imported !== null) parts.push(`imported from ${imported}`);
   return parts.length === 0 ? null : parts.join("; ");
 }
 var CHANGED_HERE = "files changed here since this session started";
@@ -4847,11 +4894,11 @@ function consumerInTurn(store, worktreeId) {
 function groupTextsShown(policy) {
   return policy.checks.length > 0;
 }
-function testsAtEdit(policy, listed3) {
+function testsAtEdit(policy, listed4) {
   const view = groupView(policy);
-  const owns = (name2) => listed3.some((row) => view.of(row.testFile).name === name2);
+  const owns = (name2) => listed4.some((row) => view.of(row.testFile).name === name2);
   return view.groups.some(
-    (group) => group.at === "edit" && group.select.kind !== "lint" && (group.index !== null || group.name === TESTS_GROUP && listed3.length === 0 || owns(group.name))
+    (group) => group.at === "edit" && group.select.kind !== "lint" && (group.index !== null || group.name === TESTS_GROUP && listed4.length === 0 || owns(group.name))
   );
 }
 function readGroupTiers(store, worktreeId, states, keys, policy) {
@@ -4905,28 +4952,30 @@ function readOptimizerOff(store, worktreeId) {
 }
 
 // src/core/state/header.ts
-function readHeader(store, worktreeId, states = store.knownStates.list(worktreeId), keys = store.testFileKeys.list(worktreeId), isSlow, openFiles2) {
-  const latest = store.revisions.latest(worktreeId);
-  const revision = latest?.number ?? 0;
-  const commit = readRevisionCommit(store, worktreeId, latest);
+function countStates(states) {
   const counts = { current: 0, pending: 0, stale: 0, unknown: 0 };
-  const fileLevelCounts = {
-    current: 0,
-    pending: 0,
-    stale: 0,
-    unknown: 0
-  };
+  const fileLevelCounts = { ...counts };
   let inheritedCount = 0;
   let inheritedFileLevelCount = 0;
+  let importedCount = 0;
   for (const state of states) {
     if (state.check.kind === "setup") continue;
     counts[state.validity]++;
     if (state.check.kind === "file") fileLevelCounts[state.validity]++;
-    if (state.validity === "current" && state.origin?.kind === "inherited") {
+    if (state.validity !== "current") continue;
+    if (state.origin?.kind === "inherited") {
       inheritedCount++;
       if (state.check.kind === "file") inheritedFileLevelCount++;
     }
+    if (state.origin?.kind === "imported") importedCount++;
   }
+  return { counts, fileLevelCounts, inheritedCount, inheritedFileLevelCount, importedCount };
+}
+function readHeader(store, worktreeId, states = store.knownStates.list(worktreeId), keys = store.testFileKeys.list(worktreeId), isSlow, openFiles2) {
+  const latest = store.revisions.latest(worktreeId);
+  const revision = latest?.number ?? 0;
+  const commit = readRevisionCommit(store, worktreeId, latest);
+  const { counts, fileLevelCounts, inheritedCount, inheritedFileLevelCount, importedCount } = countStates(states);
   const refinedRevision = readRefined(store, worktreeId);
   const missing = parseAwaitingInstall(store.meta.get(awaitingInstallMetaKey(worktreeId)));
   const awaiting2 = missing !== null;
@@ -4952,6 +5001,7 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
     testFilesListed: keys.length > 0 || !awaiting2 && last !== null,
     inheritedCount,
     inheritedFileLevelCount,
+    ...importedCount === 0 ? {} : { importedCount },
     refinedRevision,
     runnerPartPending: refinedRevision !== null && refinedRevision < revision,
     ...slow === void 0 ? {} : { slowPending: countSlowPending(states, keys, slow) },
@@ -5076,9 +5126,9 @@ function changedText(header) {
   return ` (changed ${shown}${more > 0 ? ` and ${more} more` : ""})`;
 }
 function incompleteText(header) {
-  const listed3 = header.testFilesListed === false ? ` ${NOT_LISTED_SENTENCE}` : "";
+  const listed4 = header.testFilesListed === false ? ` ${NOT_LISTED_SENTENCE}` : "";
   const runnerPart = header.runnerPartPending === true ? ` ${capitalize2(runnerPartText(header.revision))} is pending; test files it adds are not counted yet.` : "";
-  return `${listed3}${runnerPart}`;
+  return `${listed4}${runnerPart}`;
 }
 function daemonText(header, command) {
   const awaiting2 = awaitingInstallText(header);
@@ -5088,9 +5138,11 @@ function fullCounts(header, owed2) {
   const { counts, fileLevelCounts: fileLevel, testFilesWithoutChecks: files2 } = header;
   const inheritedCount = header.inheritedCount ?? 0;
   const inherited = inheritedCount === 0 ? "" : ` Inherited: ${inheritedCount} of ${counts.current} current${partsSuffix(inheritedCount, header.inheritedFileLevelCount)}.`;
+  const importedCount = header.importedCount ?? 0;
+  const imported = importedCount === 0 ? "" : ` Imported: ${importedCount} of ${counts.current} current.`;
   const queuedNone = owed2?.lookupOnly === true && files2.unknown > 0 ? "; the baseline is lookup-only, so it queued none of them" : "";
   const withoutChecks = files2.pending + files2.unknown === 0 ? "" : ` Test files without checks: ${files2.pending} pending, ${files2.unknown} unknown${queuedNone}.`;
-  return `${countsText(counts, fileLevel)}.${inherited}${withoutChecks}`;
+  return `${countsText(counts, fileLevel)}.${inherited}${imported}${withoutChecks}`;
 }
 function fullLine(header, command, owed2) {
   return `Revision ${revisionText(header.revision, header.commit)}${changedText(header)}: ${fullCounts(header, owed2)}${incompleteText(header)} Full-suite checkpoint: ${fullSuiteText(header, command)}.${daemonText(header, command)}${holdsText2(header, command)}`;
@@ -5242,14 +5294,14 @@ function unknownBlocks(entries, command) {
     const first = group[0]?.check;
     const from = (outcome) => group.filter((e) => e.from === outcome).map((e) => e.check);
     const counts = ["pass", "fail"].filter((o) => from(o).length > 0).map((o) => `${upper2(o)} -> UNKNOWN (${partsText2(from(o))})`);
-    const listed3 = files2.slice(0, 5).join(", ");
+    const listed4 = files2.slice(0, 5).join(", ");
     const more = files2.length > 5 ? ` and ${plural(files2.length - 5, "more file")}` : "";
     return block(
       `UNKNOWN  ${checksText(group.map((e) => e.check))} in ${plural(files2.length, "test file")}`,
       [
         counts.join(", "),
         cap(reason, SUMMARY_MAX_CHARS),
-        `${listed3}${more}`,
+        `${listed4}${more}`,
         first === void 0 ? null : `Full reason: ${command} why ${shellWord(checkName(first))}`
       ],
       group.map((e) => ({ check: e.check, shown: "unknown" }))
@@ -6624,9 +6676,9 @@ function createKnownStateRepo(conn) {
           s.pendingPhase,
           s.observedAt,
           s.commit,
-          origin?.kind ?? null,
-          origin?.kind === "inherited" ? origin.worktreeId : null,
-          origin?.kind === "inherited" ? origin.commit : null,
+          storedKind(origin),
+          origin === null ? null : originWorktree(origin),
+          origin === null || origin.kind === "own" ? null : origin.commit,
           s.durationMs,
           ...locationParams(s.location),
           s.summary,
@@ -6647,9 +6699,19 @@ function createKnownStateRepo(conn) {
     })
   };
 }
+function storedKind(origin) {
+  return origin === null || origin.kind === "imported" ? null : origin.kind;
+}
 function toOrigin(row) {
-  const kind = oneOfOrNull(row, "origin_kind", ["own", "inherited"]);
-  if (kind === null) return null;
+  const stored4 = strOrNull(row, "origin_kind");
+  const kind = stored4 === "own" || stored4 === "inherited" ? stored4 : null;
+  if (stored4 !== null && kind === null) return null;
+  if (kind === null) {
+    const marked2 = strOrNull(row, "origin_worktree");
+    const importId = marked2 === null ? null : importIdOf(marked2);
+    if (importId === null) return null;
+    return { kind: "imported", importId, commit: strOrNull(row, "origin_commit") };
+  }
   if (kind === "own") return { kind };
   return {
     kind,
@@ -6911,19 +6973,19 @@ function createRevisionRepo(conn) {
         "SELECT coalesce(max(number), 0) AS n FROM revisions WHERE worktree_id = ?",
         revision.worktreeId
       );
-      const stored3 = { ...revision, number: (row === null ? 0 : num(row, "n")) + 1 };
+      const stored4 = { ...revision, number: (row === null ? 0 : num(row, "n")) + 1 };
       conn.run(
         `INSERT INTO revisions (worktree_id, number, created_at, head, dirty, trigger, changes)
            VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        stored3.worktreeId,
-        stored3.number,
-        stored3.createdAt,
-        stored3.head,
-        flag(stored3.dirty),
-        stored3.trigger,
-        JSON.stringify(stored3.changes)
+        stored4.worktreeId,
+        stored4.number,
+        stored4.createdAt,
+        stored4.head,
+        flag(stored4.dirty),
+        stored4.trigger,
+        JSON.stringify(stored4.changes)
       );
-      return stored3;
+      return stored4;
     }),
     latest: (worktreeId) => {
       const row = conn.get(
@@ -7171,6 +7233,11 @@ function fromRow(row) {
 
 // src/core/store/store.ts
 var connections = /* @__PURE__ */ new WeakMap();
+function connectionOf(store) {
+  const conn = connections.get(store);
+  if (conn === void 0) throw new Error("squeal store: not opened by openStore");
+  return conn;
+}
 var CONNECTION = /* @__PURE__ */ Symbol("squeal.connection");
 function readTransaction(store, fn) {
   const conn = store[CONNECTION];
@@ -7775,7 +7842,7 @@ function createCoverageRepo(conn) {
     putParts(key, record, at) {
       conn.transaction(() => {
         const before = storedAt2(key);
-        const stored3 = before === null ? at : Math.max(at, before + 1);
+        const stored4 = before === null ? at : Math.max(at, before + 1);
         const known = /* @__PURE__ */ new Map();
         for (const row of conn.all(
           `SELECT j.key AS i, p.id, p.used_at FROM json_each(?) j
@@ -7785,7 +7852,7 @@ function createCoverageRepo(conn) {
           const hash2 = record.parts[num(row, "i")]?.hash ?? "";
           known.set(hash2, { id: num(row, "id"), usedAt: num(row, "used_at") });
         }
-        const stale = [...known.values()].filter((p) => p.usedAt < stored3 - PART_REFRESH_MS).map((p) => p.id);
+        const stale = [...known.values()].filter((p) => p.usedAt < stored4 - PART_REFRESH_MS).map((p) => p.id);
         const ids = record.parts.map((part) => {
           const found2 = known.get(part.hash);
           if (found2 !== void 0) return found2.id;
@@ -7793,21 +7860,21 @@ function createCoverageRepo(conn) {
             "INSERT INTO coverage_parts (hash, part, used_at) VALUES (?, ?, ?) RETURNING id",
             part.hash,
             part.bytes,
-            stored3
+            stored4
           );
           const id = made === null ? 0 : num(made, "id");
-          known.set(part.hash, { id, usedAt: stored3 });
+          known.set(part.hash, { id, usedAt: stored4 });
           return id;
         });
         if (stale.length > 0) {
           conn.run(
             "UPDATE coverage_parts SET used_at = ? WHERE id IN (SELECT value FROM json_each(?)) AND used_at < ?",
-            stored3,
+            stored4,
             JSON.stringify(stale),
-            stored3 - PART_REFRESH_MS
+            stored4 - PART_REFRESH_MS
           );
         }
-        conn.run(UPSERT, key.resultKey, key.providerVersion, manifestBytes(record, ids), stored3);
+        conn.run(UPSERT, key.resultKey, key.providerVersion, manifestBytes(record, ids), stored4);
       });
     }
   };
@@ -8614,7 +8681,7 @@ var offKey = (worktreeId) => `lint-off:${worktreeId}`;
 var failedKey = (worktreeId) => `lint-failed:${worktreeId}`;
 var failuresKey = (worktreeId) => `lint-failures:${worktreeId}`;
 var offsKey = (worktreeId) => `lint-offs:${worktreeId}`;
-function parse2(text2) {
+function parse3(text2) {
   if (text2 === null) return null;
   try {
     return JSON.parse(text2);
@@ -8623,12 +8690,12 @@ function parse2(text2) {
   }
 }
 function readCursor(meta, worktreeId) {
-  const raw = parse2(meta.get(cursorKey(worktreeId)));
+  const raw = parse3(meta.get(cursorKey(worktreeId)));
   if (typeof raw?.revision !== "number" || typeof raw.environment !== "string") return null;
   return { revision: raw.revision, environment: raw.environment };
 }
 function readKeying(meta, worktreeId) {
-  const raw = parse2(meta.get(keyingKey(worktreeId)));
+  const raw = parse3(meta.get(keyingKey(worktreeId)));
   const { seq, mode, revision, at, transition } = raw ?? {};
   const numbers = [seq, revision, at, transition];
   if (!numbers.every((n) => typeof n === "number")) return null;
@@ -8636,17 +8703,17 @@ function readKeying(meta, worktreeId) {
   return { seq, mode, revision, at, transition };
 }
 function readBlobs(meta, key) {
-  const raw = parse2(meta.get(key));
+  const raw = parse3(meta.get(key));
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return /* @__PURE__ */ new Map();
   const entries = Object.entries(raw);
   return new Map(entries.filter((e) => typeof e[1] === "string"));
 }
 function readQuiet(meta, worktreeId) {
-  const raw = parse2(meta.get(quietKey(worktreeId)));
+  const raw = parse3(meta.get(quietKey(worktreeId)));
   return new Set(Array.isArray(raw) ? raw.filter((p) => typeof p === "string") : []);
 }
 function readCount(meta, key) {
-  const value = parse2(meta.get(key));
+  const value = parse3(meta.get(key));
   return typeof value === "number" ? value : 0;
 }
 var isNotInstalled = (reason) => /^no (ESLint|oxlint) installed in /.test(reason);
@@ -9493,9 +9560,9 @@ function lintStep(store, consumer, at, seenUpTo2) {
   const lastId = store.transitions.lastId(worktreeId);
   const transitions = store.transitions.after(worktreeId, fromId(mark));
   const paths = [...new Set(candidatesOf(mark, transitions).map((n) => lintCheckOf(n).path))];
-  const listed3 = (filter) => store.states.list(worktreeId, filter);
+  const listed4 = (filter) => store.states.list(worktreeId, filter);
   const states = new Map(
-    (paths.length === 0 ? [] : listed3({ paths })).map((s) => [lintCheckName(s.check), s])
+    (paths.length === 0 ? [] : listed4({ paths })).map((s) => [lintCheckName(s.check), s])
   );
   const view = new Map(store.views.list(consumer).map((v) => [lintCheckName(v.check), v]));
   const keying = readKeying(store.meta, worktreeId);
@@ -9510,7 +9577,7 @@ function lintStep(store, consumer, at, seenUpTo2) {
     at
   });
   let all = null;
-  const due = summaryOf(store, consumer, keying, mark, () => all ??= listed3({}));
+  const due = summaryOf(store, consumer, keying, mark, () => all ??= listed4({}));
   const told = plan.entries.slice(0, LINT_LISTED_MAX);
   const notices = noticesOf(store, worktreeId);
   const next = {
@@ -9630,7 +9697,7 @@ function producingResult(worktreeId, state, producer, failureKey, results) {
   const origin = state.origin;
   if (producer === void 0 || failureKey === void 0 || origin === null) return null;
   return results.find(
-    (r) => r.provenance.runId === producer.runId && r.provenance.recordedAt === producer.recordedAt && r.key === failureKey && r.outcome === state.outcome && sameFingerprint(fingerprintOf(r), state.fingerprint) && r.provenance.commit === state.commit && (origin.kind === "inherited" ? r.provenance.worktreeId === origin.worktreeId : r.provenance.worktreeId === worktreeId && r.provenance.revision === state.observedAt)
+    (r) => r.provenance.runId === producer.runId && r.provenance.recordedAt === producer.recordedAt && r.key === failureKey && r.outcome === state.outcome && sameFingerprint(fingerprintOf(r), state.fingerprint) && r.provenance.commit === state.commit && (origin.kind === "own" ? r.provenance.worktreeId === worktreeId && r.provenance.revision === state.observedAt : r.provenance.worktreeId === originWorktree(origin))
   ) ?? null;
 }
 
@@ -9700,6 +9767,105 @@ function baselineFindings(store, worktreeId) {
   return (check, fingerprint) => entries.has(current(entry(check, fingerprint)));
 }
 
+// src/core/store/imports.ts
+var IMPORT_TABLES = {
+  imports: `
+CREATE TABLE imports (
+  id TEXT PRIMARY KEY,
+  header TEXT NOT NULL,
+  file_hash TEXT NOT NULL,
+  imported_at INTEGER NOT NULL
+) STRICT, WITHOUT ROWID;
+`,
+  import_files: `
+CREATE TABLE import_files (
+  import_id TEXT NOT NULL,
+  project TEXT NOT NULL,
+  path TEXT NOT NULL,
+  key TEXT NOT NULL,
+  environment TEXT NOT NULL,
+  closure TEXT NOT NULL,
+  observed TEXT NOT NULL,
+  PRIMARY KEY (import_id, project, path)
+) STRICT, WITHOUT ROWID;
+`
+};
+function sourceLabel(header) {
+  const at = header.commit === null ? "an unborn commit" : header.commit.slice(0, 8);
+  if (header.source.kind === "local") return `local export at ${at}`;
+  const { runId, repository } = header.source;
+  return `CI run ${runId ?? "?"} on ${repository ?? "an unnamed repository"} at ${at}`;
+}
+function hasTables(conn) {
+  const found2 = conn.all(
+    "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN (SELECT value FROM json_each(?))",
+    JSON.stringify(Object.keys(IMPORT_TABLES))
+  );
+  return found2.length === Object.keys(IMPORT_TABLES).length;
+}
+function readable(store) {
+  let conn;
+  try {
+    conn = connectionOf(store);
+  } catch {
+    return null;
+  }
+  return hasTables(conn) ? conn : null;
+}
+function listImports(store) {
+  const conn = readable(store);
+  if (conn === null) return [];
+  return conn.all("SELECT * FROM imports ORDER BY imported_at DESC, id").flatMap((row) => {
+    const header = parseHeader(row.header);
+    return header === null ? [] : [
+      {
+        id: String(row.id),
+        header,
+        fileHash: String(row.file_hash),
+        importedAt: Number(row.imported_at)
+      }
+    ];
+  });
+}
+function importSourceOf(store) {
+  let labels;
+  return (importId) => {
+    labels ??= new Map(listImports(store).map((i) => [i.id, sourceLabel(i.header)]));
+    return labels.get(importId) ?? null;
+  };
+}
+function importFiles(store, importId) {
+  const conn = readable(store);
+  if (conn === null) return [];
+  return conn.all("SELECT * FROM import_files WHERE import_id = ? ORDER BY project, path", importId).map(toImportFile);
+}
+function toImportFile(row) {
+  return {
+    importId: String(row.import_id),
+    project: String(row.project),
+    path: String(row.path),
+    key: String(row.key),
+    environment: String(row.environment),
+    closure: String(row.closure),
+    observed: String(row.observed)
+  };
+}
+function parseHeader(text2) {
+  if (typeof text2 !== "string") return null;
+  try {
+    const value = JSON.parse(text2);
+    return isHeader(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+function isHeader(value) {
+  if (typeof value !== "object" || value === null) return false;
+  const h = value;
+  const source = h.source;
+  return typeof h.squealVersion === "string" && typeof h.keyFormat === "number" && (typeof h.commit === "string" || h.commit === null) && typeof h.dirty === "boolean" && typeof h.createdAt === "number" && typeof source === "object" && source !== null && (source.kind === "local" || source.kind === "github");
+}
+
 // src/core/types/store-records.ts
 var CONSUMER_EXPIRY_MS = 12 * 60 * 60 * 1e3;
 var HOOK_TIMEOUT_MS = 2e3;
@@ -9713,16 +9879,16 @@ import { isAbsolute as isAbsolute7, join as join15 } from "node:path";
 var HIDDEN_LOCKFILE = "node_modules/.package-lock.json";
 var PACKAGE_FOLDERS_ENCODING = "squeal-package-folders/1";
 function staleHiddenLockfile(dir, lockfile) {
-  const listed3 = lockfile === null ? null : packagesIn(lockfile);
-  if (listed3 === null) return "not valid JSON";
+  const listed4 = lockfile === null ? null : packagesIn(lockfile);
+  if (listed4 === null) return "not valid JSON";
   const lockTime = lstatSync2(join15(dir, HIDDEN_LOCKFILE)).mtimeMs;
-  const folders = packageFolders(dir, workspaces(listed3));
+  const folders = packageFolders(dir, workspaces(listed4));
   const seen = new Set(folders.map((folder) => folder.path));
-  const unlisted2 = folders.filter((folder) => !Object.hasOwn(listed3, folder.path)).map((folder) => folder.path);
+  const unlisted2 = folders.filter((folder) => !Object.hasOwn(listed4, folder.path)).map((folder) => folder.path);
   const newer = folders.filter(
-    (folder) => Object.hasOwn(listed3, folder.path) && folder.mtimeMs > lockTime
+    (folder) => Object.hasOwn(listed4, folder.path) && folder.mtimeMs > lockTime
   );
-  const missing = Object.keys(listed3).filter((path) => isInstalledFolder(path) && !seen.has(path));
+  const missing = Object.keys(listed4).filter((path) => isInstalledFolder(path) && !seen.has(path));
   const parts = [
     ["not listed in it", unlisted2],
     ["newer than it", newer.map((folder) => folder.path)],
@@ -9766,8 +9932,8 @@ function insideInstall(path) {
 function isWorkspace(path) {
   return insideInstall(path) && !isInstalledFolder(path);
 }
-function workspaces(listed3) {
-  return Object.keys(listed3).filter(isWorkspace);
+function workspaces(listed4) {
+  return Object.keys(listed4).filter(isWorkspace);
 }
 function packageFolders(dir, workspaceFolders) {
   const folders = [];
@@ -10031,8 +10197,8 @@ function npmReading(dir, base, content, scans) {
     return { manager: "npm", stale, folders: packageFoldersFingerprint(dir, hidden), graph: null };
   }
   if (hidden === null) return WHOLE;
-  const listed3 = packagesOf(content);
-  const graph = listed3 === null || base === null ? null : new InstalledGraph(dir, base, listed3, scans);
+  const listed4 = packagesOf(content);
+  const graph = listed4 === null || base === null ? null : new InstalledGraph(dir, base, listed4, scans);
   return { manager: "npm", stale, text: withoutOwnVersions(hidden), graph };
 }
 var WHOLE = { manager: null, stale: null, text: null, graph: null };
@@ -10722,9 +10888,9 @@ function closureFor(store, worktreeId) {
 function loaderCounts(store, worktreeId) {
   let closures;
   const read4 = () => {
-    const listed3 = new Set(store.testFileKeys.list(worktreeId).map((r) => testFileId(r.testFile)));
+    const listed4 = new Set(store.testFileKeys.list(worktreeId).map((r) => testFileId(r.testFile)));
     const trusts = closureTrust(store, worktreeId);
-    return store.testFiles.list().filter((r) => listed3.has(testFileId(r.testFile)) && trusts(r)).map((r) => r.closure.paths);
+    return store.testFiles.list().filter((r) => listed4.has(testFileId(r.testFile)) && trusts(r)).map((r) => r.closure.paths);
   };
   return (path) => {
     closures ??= read4();
@@ -10850,7 +11016,7 @@ var TIMED_OUT = /timed out in \d+ms/;
 var LOAD_RESULTS_READ = 50;
 function loadOf(store, worktreeId, entry3) {
   if (entry3.summary === null || !TIMED_OUT.test(entry3.summary)) return void 0;
-  const from = entry3.origin.kind === "inherited" ? entry3.origin.worktreeId : worktreeId;
+  const from = originWorktree(entry3.origin) ?? worktreeId;
   const result = store.results.listForCheck(entry3.check, LOAD_RESULTS_READ).find((r) => r.outcome === "fail" && r.provenance.worktreeId === from);
   return result?.errors.find((e) => e.loadAverage !== void 0)?.loadAverage;
 }
@@ -11345,10 +11511,10 @@ function codeStep(store, consumer, { at, since, limit }, write2) {
     toldAt: at,
     pulled: pulledReader(store.meta, worktreeId)
   });
-  const listed3 = plan.entries.slice(0, CODE_LISTED_MAX);
+  const listed4 = plan.entries.slice(0, CODE_LISTED_MAX);
   const more = plan.entries.slice(CODE_LISTED_MAX).filter((e) => !isStillFail(e.kind)).length;
   if (write2) {
-    const full = new Set(listed3.map(codeKey));
+    const full = new Set(listed4.map(codeKey));
     store.views.removeMany(consumer, plan.removals);
     store.views.writeMany(
       consumer,
@@ -11357,7 +11523,7 @@ function codeStep(store, consumer, { at, since, limit }, write2) {
   }
   const writes = plan.removals.length + plan.writes.length + tooBig.length > 0;
   if (plan.entries.length === 0 && tooBig.length === 0) return { news: null, writes };
-  const entries = listed3.map((e) => ({
+  const entries = listed4.map((e) => ({
     ...e,
     line: e.kind === "removed" ? null : lineOf2(store, worktreeId, e.check),
     ...evidenceOf(store, worktreeId, e)
@@ -11552,6 +11718,16 @@ function restrictPlan(plan, keep) {
 function toView2(state, toldAt) {
   return { check: state.check, outcome: state.outcome, fingerprint: state.fingerprint, toldAt };
 }
+function originNames(state, input) {
+  const origin = state.origin;
+  if (origin?.kind === "inherited") {
+    const originRoot = input.rootOf(origin.worktreeId);
+    return originRoot === null ? {} : { originRoot };
+  }
+  if (origin?.kind !== "imported") return {};
+  const originSource = input.sourceOf?.(origin.importId) ?? null;
+  return originSource === null ? {} : { originSource };
+}
 function planDelta(input) {
   const told = new Map(input.view.map((v) => [checkIdentity(v.check), v]));
   const entries = [];
@@ -11569,7 +11745,6 @@ function planDelta(input) {
     if (before === null || kind !== null) writes.push(toView2(state, input.toldAt));
     if (kind === null) continue;
     const baseline = kind === "first-seen-fail" && input.isBaselineFinding(state.check, state.fingerprint);
-    const originRoot = state.origin?.kind === "inherited" ? input.rootOf(state.origin.worktreeId) : null;
     entries.push({
       check: state.check,
       kind,
@@ -11578,7 +11753,7 @@ function planDelta(input) {
       validity: state.validity,
       observedAt: state.observedAt ?? input.revision,
       origin: state.origin ?? { kind: "own" },
-      ...originRoot === null ? {} : { originRoot },
+      ...originNames(state, input),
       summary: state.summary,
       location: state.location,
       ...baseline ? { baseline } : {}
@@ -11958,7 +12133,7 @@ function turnMetaKey(worktreeId) {
 }
 var START_IDLE = { turn: "idle", testFiles: [], newTestFiles: false };
 var IN_TURN = { turn: "in-turn" };
-function parse3(value) {
+function parse4(value) {
   if (!isRecord(value)) return START_IDLE;
   if (value.turn === "in-turn") return IN_TURN;
   const files2 = Array.isArray(value.testFiles) ? value.testFiles : [];
@@ -11978,7 +12153,7 @@ function withHandoff(value) {
   return isRecord(value) && typeof value.at === "number" ? { handoff: { at: value.at } } : {};
 }
 function readTurn(store, consumer) {
-  return parse3(readSlot(store, turnMetaKey(consumer.worktreeId), consumer));
+  return parse4(readSlot(store, turnMetaKey(consumer.worktreeId), consumer));
 }
 function writeTurn(store, consumer, state) {
   const stopHolds2 = state === null ? 0 : readStopHolds(store, consumer);
@@ -12289,6 +12464,7 @@ function createDelivery(store, options) {
       isBaselineFinding: baselineFindings(store, consumer.worktreeId),
       toldAt,
       rootOf: (id) => store.worktrees.get(id)?.root ?? null,
+      sourceOf: importSourceOf(store),
       revision,
       history: (check) => store.transitions.history(consumer.worktreeId, check),
       ownEdit: ownEditUnknown(store, consumer, revision)
@@ -12858,6 +13034,287 @@ function countsOf3(outcomes) {
   return whole(pass) && whole(fail) && whole(skip) ? { outcomes: { pass, fail, skip } } : null;
 }
 
+// src/core/keys/modules.ts
+function observedModulesMetaKey(project) {
+  return `observedModules.${project}`;
+}
+
+// src/core/store/environments.ts
+var ENVIRONMENT_TABLES = {
+  environments: `
+CREATE TABLE environments (
+  hash TEXT PRIMARY KEY,
+  descriptor TEXT NOT NULL,
+  recorded_at INTEGER NOT NULL
+) STRICT, WITHOUT ROWID;
+`,
+  worktree_environment_hashes: `
+CREATE TABLE worktree_environment_hashes (
+  worktree_id TEXT NOT NULL,
+  project TEXT NOT NULL,
+  hash TEXT NOT NULL,
+  recorded_at INTEGER NOT NULL,
+  PRIMARY KEY (worktree_id, project)
+) STRICT, WITHOUT ROWID;
+`
+};
+function readEnvironment(store, hash2) {
+  const conn = openedConnection(store);
+  if (conn === null || !hasTables2(conn)) return null;
+  const row = conn.get("SELECT descriptor FROM environments WHERE hash = ?", hash2);
+  return row === null ? null : parseDescriptor(row.descriptor);
+}
+function worktreeEnvironments(store, worktreeId) {
+  const conn = openedConnection(store);
+  if (conn === null || !hasTables2(conn)) return [];
+  return conn.all(
+    `SELECT w.project, w.hash, w.recorded_at, e.descriptor
+       FROM worktree_environment_hashes w LEFT JOIN environments e ON e.hash = w.hash
+       WHERE w.worktree_id = ? ORDER BY w.project`,
+    worktreeId
+  ).map(stored3);
+}
+function stored3(row) {
+  return {
+    project: String(row.project),
+    hash: String(row.hash),
+    descriptor: parseDescriptor(row.descriptor),
+    recordedAt: Number(row.recorded_at)
+  };
+}
+function parseDescriptor(text2) {
+  if (typeof text2 !== "string") return null;
+  let value;
+  try {
+    value = JSON.parse(text2);
+  } catch {
+    return null;
+  }
+  if (value === null || typeof value !== "object") return null;
+  const d = value;
+  const strings5 = [
+    "project",
+    "runnerName",
+    "runnerVersion",
+    "adapterVersion",
+    "nodeVersion",
+    "platform",
+    "arch",
+    "installedDependencies"
+  ];
+  const env = d.env;
+  const sound = typeof d.keyFormat === "number" && strings5.every((name2) => typeof d[name2] === "string") && typeof env === "object" && env !== null && Array.isArray(env.names) && typeof env.hash === "string" && typeof d.config === "object" && d.config !== null && Array.isArray(d.files) && typeof d.ci === "boolean";
+  return sound ? value : null;
+}
+function openedConnection(store) {
+  try {
+    return connectionOf(store);
+  } catch {
+    return null;
+  }
+}
+function hasTables2(conn) {
+  const found2 = conn.all(
+    "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN (SELECT value FROM json_each(?))",
+    JSON.stringify(Object.keys(ENVIRONMENT_TABLES))
+  );
+  return found2.length === Object.keys(ENVIRONMENT_TABLES).length;
+}
+
+// src/core/store/transfer-bundle.ts
+import { createHash as createHash8 } from "node:crypto";
+var OBSERVED_MAPS = ["observed", "observedDirect", "observedModules"];
+function listHash(paths) {
+  const sorted = [...new Set(paths)].sort(compare);
+  return createHash8("sha256").update(JSON.stringify(sorted)).digest("hex").slice(0, 32);
+}
+function observedHash(observed) {
+  return listHash(OBSERVED_MAPS.flatMap((map) => (observed[map] ?? []).map((p) => `${map}:${p}`)));
+}
+
+// src/core/keys/environment-descriptor.ts
+var PLAIN = [
+  ["keyFormat", "key format"],
+  ["project", "project"],
+  ["runnerName", "runner"],
+  ["runnerVersion", "runner version"],
+  ["adapterVersion", "adapter version"],
+  ["nodeVersion", "Node"],
+  ["platform", "platform"],
+  ["arch", "arch"]
+];
+var SHOWN = 5;
+function describeDifferences(a, b) {
+  const differences2 = [];
+  for (const [part, word] of PLAIN) {
+    const [x, y] = [String(a[part]), String(b[part])];
+    if (x === y) continue;
+    const shown = part === "project" ? [JSON.stringify(x), JSON.stringify(y)] : [x, y];
+    differences2.push({
+      part,
+      values: [x, y],
+      text: `${word} ${shown[0]} in the export, ${shown[1]} here`
+    });
+  }
+  if (a.installedDependencies !== b.installedDependencies) {
+    differences2.push({ part: "installedDependencies", text: installedText(a, b) });
+  }
+  if (a.env.hash !== b.env.hash) differences2.push(envDifference(a.env.names, b.env.names));
+  const fields = differingNames(
+    new Map(Object.entries(a.config)),
+    new Map(Object.entries(b.config))
+  );
+  const files2 = differingNames(new Map(a.files), new Map(b.files));
+  if (fields.length > 0) {
+    const onlyFields = differences2.length === 0 && files2.length === 0;
+    const ci = a.ci && !b.ci && onlyFields ? " (the export ran with CI set)" : "";
+    differences2.push({
+      part: "config",
+      names: fields,
+      text: `config fields ${listed(fields)} differ${ci}`
+    });
+  }
+  if (files2.length > 0) {
+    differences2.push({
+      part: "files",
+      names: files2,
+      text: `config and setup files differ: ${listed(files2)}`
+    });
+  }
+  return differences2;
+}
+function installedText(a, b) {
+  if (a.installedDependencies === "none") return "no installed dependencies in the export";
+  if (b.installedDependencies === "none") return "no installed dependencies here";
+  return "installed dependencies differ";
+}
+function envDifference(a, b) {
+  const ours = new Set(b);
+  const theirs = new Set(a);
+  const apart = [.../* @__PURE__ */ new Set([...a, ...b])].filter((n) => !ours.has(n) || !theirs.has(n)).sort(compare);
+  if (apart.length > 0) {
+    return {
+      part: "env",
+      names: apart,
+      text: `allow-listed variables differ (names: ${listed(apart)})`
+    };
+  }
+  return {
+    part: "env",
+    names: [...b],
+    text: `allow-listed variables differ (values: ${listed(b)})`
+  };
+}
+function differingNames(a, b) {
+  const names2 = /* @__PURE__ */ new Set([...a.keys(), ...b.keys()]);
+  return [...names2].filter((n) => !a.has(n) || !b.has(n) || a.get(n) !== b.get(n)).sort(compare);
+}
+function listed(names2) {
+  const shown = names2.slice(0, SHOWN).join(", ");
+  return names2.length > SHOWN ? `${shown} and ${names2.length - SHOWN} more` : shown;
+}
+
+// src/core/status/import-environment.ts
+function compareEnvironment(exported, local) {
+  if (local === null) return { kind: "unknown" };
+  if (local.hash === exported.hash) return { kind: "equal" };
+  const differences2 = exported.descriptor === null || local.descriptor === null ? [] : describeDifferences(exported.descriptor, local.descriptor).map((d) => d.text);
+  return { kind: "differs", differences: differences2 };
+}
+
+// src/core/status/imports.ts
+var MAP_KEY = {
+  observed: observedMetaKey,
+  observedDirect: observedDirectMetaKey,
+  observedModules: observedModulesMetaKey
+};
+function readImports(store, worktreeId, keys, states) {
+  const imports = listImports(store);
+  if (imports.length === 0) return [];
+  const here = hereOf(store, worktreeId, keys);
+  return imports.flatMap((record) => {
+    const files2 = importFiles(store, record.id).filter((f) => here.keys.has(testFileId(f)));
+    if (files2.length === 0) return [];
+    const notCurrent = {
+      environment: 0,
+      closure: 0,
+      observed: 0,
+      content: 0,
+      noKey: 0
+    };
+    let currentFiles = 0;
+    for (const file of files2) {
+      const reason = reasonOf(file, here);
+      if (reason === "current") currentFiles++;
+      else notCurrent[reason]++;
+    }
+    const currentResults = states.filter(
+      (s) => s.validity === "current" && s.origin?.kind === "imported" && s.origin.importId === record.id
+    ).length;
+    return [
+      {
+        importId: record.id,
+        source: sourceLabel(record.header),
+        commit: record.header.commit,
+        importedAt: record.importedAt,
+        currentResults,
+        testFiles: files2.length,
+        currentFiles,
+        notCurrent,
+        environmentDifferences: notCurrent.environment === 0 ? [] : differences(store, worktreeId, files2)
+      }
+    ];
+  });
+}
+function reasonOf(file, here) {
+  const key = here.keys.get(testFileId(file));
+  if (key?.key === file.key) return "current";
+  const environment = here.environments.get(file.project);
+  if (environment !== void 0 && environment !== file.environment) return "environment";
+  const closure = here.closure(file);
+  if (closure !== null && file.closure !== "" && closure !== file.closure) return "closure";
+  if (here.observed(file) !== file.observed) return "observed";
+  return key?.key === null || key?.key === void 0 ? "noKey" : "content";
+}
+function hereOf(store, worktreeId, keys) {
+  const maps = /* @__PURE__ */ new Map();
+  const entries = (map, project) => {
+    const key = MAP_KEY[map](project);
+    const read4 = maps.get(key) ?? readSharedEntries(store, key);
+    maps.set(key, read4);
+    return read4;
+  };
+  return {
+    keys: new Map(keys.map((k) => [testFileId(k.testFile), k])),
+    environments: new Map(worktreeEnvironments(store, worktreeId).map((e) => [e.project, e.hash])),
+    closure: (file) => {
+      const record = store.testFiles.get(file);
+      return record === null ? null : listHash(record.closure.paths);
+    },
+    observed: (file) => {
+      const observed = {};
+      for (const map of OBSERVED_MAPS) {
+        const paths = entries(map, file.project)[file.path];
+        if (paths !== void 0) observed[map] = paths;
+      }
+      return observedHash(observed);
+    }
+  };
+}
+function differences(store, worktreeId, files2) {
+  const exported = new Map(files2.map((f) => [f.project, f.environment]));
+  const local = new Map(worktreeEnvironments(store, worktreeId).map((e) => [e.project, e]));
+  return [...exported].flatMap(([project, hash2]) => {
+    const comparison = compareEnvironment(
+      { hash: hash2, descriptor: readEnvironment(store, hash2) },
+      local.get(project) ?? null
+    );
+    if (comparison.kind !== "differs") return [];
+    const named3 = comparison.differences.length === 0 ? ["parts not recorded"] : comparison.differences;
+    return exported.size === 1 ? named3 : named3.map((d) => `${project || "(default)"}: ${d}`);
+  });
+}
+
 // src/core/lint/surface/report.ts
 function closedAs(read4, empty) {
   if ("read" in read4) return read4.read;
@@ -13003,11 +13460,11 @@ function runnerPartBoundMs(timeoutMs) {
 }
 
 // src/core/slow/slot-files.ts
-import { createHash as createHash9 } from "node:crypto";
+import { createHash as createHash10 } from "node:crypto";
 import { basename as basename4, join as join24 } from "node:path";
 
 // src/core/daemon/scratch.ts
-import { createHash as createHash8, randomBytes } from "node:crypto";
+import { createHash as createHash9, randomBytes } from "node:crypto";
 import {
   linkSync,
   lstatSync as lstatSync5,
@@ -13098,7 +13555,7 @@ function slotFiles(group = SLOW_GROUP2, scope = DEFAULT_GROUP_SLOT_SCOPE) {
   return { dir, permit: (i) => `group.${group}.${i}.lock`, waiterPrefix: `group.${group}.wait.` };
 }
 function hash(text2) {
-  return createHash9("sha256").update(text2).digest("hex").slice(0, 16);
+  return createHash10("sha256").update(text2).digest("hex").slice(0, 16);
 }
 var SLOT_WAITER_FRESH_MS = 3e4;
 
@@ -14099,9 +14556,9 @@ function pendingTestFilesOf(phases) {
   for (const { testFile, phase } of phases.values()) {
     (phase === "running" ? running : queued).push(testFile);
   }
-  return { running: listed(running), queued: listed(queued) };
+  return { running: listed2(running), queued: listed2(queued) };
 }
-function listed(files2) {
+function listed2(files2) {
   const sorted = files2.sort((a, b) => testFileId(a).localeCompare(testFileId(b)));
   return {
     files: sorted.slice(0, PHASE_FILES_LISTED),
@@ -14187,6 +14644,7 @@ function snapshot(store, worktreeId, root, now, hostLoadNow = hostLoad, shell = 
     knownFailures,
     knownFailureCounts: knownFailureCounts(knownFailures),
     inherited: inheritedSources(store, states),
+    ...importsOf(store, worktreeId, keys, states),
     breakdown: breakdown(states, keys, held),
     closureMethod: CLOSURE_METHOD,
     storeSchemaVersion: store.schemaVersion,
@@ -14240,6 +14698,10 @@ function openCheckpoint(store, worktreeId, daemon) {
   }
   if (daemon.state !== "alive" || store.checkpoints.get(progress.id)?.end !== null) return {};
   return { checkpoint: { ...rest, owed: false } };
+}
+function importsOf(store, worktreeId, keys, states) {
+  const imports = readImports(store, worktreeId, keys, states);
+  return imports.length === 0 ? {} : { imports };
 }
 function inheritedSources(store, states) {
   const groups = /* @__PURE__ */ new Map();
@@ -14509,7 +14971,7 @@ function daemonCliEntry(cli, env = process.env) {
 }
 
 // src/core/delivery/stopped.ts
-import { createHash as createHash10 } from "node:crypto";
+import { createHash as createHash11 } from "node:crypto";
 import { join as join27 } from "node:path";
 var TREE_PRINT_TIMEOUT_MS = 1e3;
 async function stopHolds(store, at, mark) {
@@ -14540,7 +15002,7 @@ async function treePrint(root, timeoutMs) {
         options
       )
     ]);
-    const hash2 = createHash10("sha1").update(head ?? "").update("\0").update(status);
+    const hash2 = createHash11("sha1").update(head ?? "").update("\0").update(status);
     for (const path of listedPaths(status)) {
       const stat = lstatOrNull(join27(root, path));
       hash2.update(stat === null ? "-\0" : `${stat.size} ${stat.mtimeMs} ${stat.ino}\0`);
@@ -14873,7 +15335,7 @@ function primer(command = SQUEAL_COMMAND, coverage = DEFAULT_COVERAGE) {
   let text2 = "";
   for (const arrival of arrivals) {
     const sentences = (covers, naming, wait) => [
-      `${PRIMER_OPENING}${listed2(names2, "and")} tests in the background${arrival} do not run ${listed2(names2, "or")} to learn whether your edits broke something.`,
+      `${PRIMER_OPENING}${listed3(names2, "and")} tests in the background${arrival} do not run ${listed3(names2, "or")} to learn whether your edits broke something.`,
       ...groups === void 0 ? [] : [momentsSentence(command, naming, groups)],
       waitSentence(command, naming, wait, quiet),
       ...coverage.slow === null ? [] : slowSentences(command, naming, coverage.slow),
@@ -14931,7 +15393,7 @@ var AT = {
 function momentsSentence(command, naming, groups) {
   const cli = (sub) => naming === "every" && command === SQUEAL_COMMAND ? `\`${command} ${sub}\`` : `the CLI's \`${sub}\``;
   const clauses = groups.moments.map(({ at, names: names2 }) => {
-    const named3 = listed2(
+    const named3 = listed3(
       names2.map((name2) => name2 === "tests" ? "tests (the test files no group selects)" : name2),
       "and"
     );
@@ -14952,7 +15414,7 @@ function runnersOf(coverage) {
 function projectsOf(covered) {
   return "projects" in covered ? covered.projects : null;
 }
-function listed2(words, conjunction) {
+function listed3(words, conjunction) {
   if (words.length <= 2) return words.join(` ${conjunction} `);
   return `${words.slice(0, -1).join(", ")} ${conjunction} ${words.at(-1)}`;
 }
@@ -14962,7 +15424,7 @@ function coversSentence(coverage, node) {
   );
   const files2 = coverage.slow?.files;
   const slow = coverage.slow === null ? "" : files2 === null || files2 === void 0 ? ", with slow test files not counted yet" : `, with ${files2} slow test ${files2 === 1 ? "file" : "files"} at the daemon's last listing`;
-  return `Squeal covers ${listed2(suites, "and")}${slow}.`;
+  return `Squeal covers ${listed3(suites, "and")}${slow}.`;
 }
 function suite(runner, covered, shown) {
   if (!("projects" in covered)) {
@@ -14988,9 +15450,9 @@ function notCovered(coverage) {
 function named2(noun, entries, shown) {
   const nouns = entries.length === 1 ? noun : `${noun}s`;
   if (shown === 0) return `${entries.length} ${nouns}`;
-  const listed3 = entries.slice(0, shown);
+  const listed4 = entries.slice(0, shown);
   const rest = entries.length - shown;
-  const tail = rest > 0 ? [...listed3, `${rest} more`] : listed3;
+  const tail = rest > 0 ? [...listed4, `${rest} more`] : listed4;
   const last = tail.pop();
   return `${nouns} ${tail.length === 0 ? last : `${tail.join(", ")} and ${last}`}`;
 }
