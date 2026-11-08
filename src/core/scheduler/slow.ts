@@ -63,7 +63,9 @@ export function runnerOf(policy: Policy, project: ProjectName): CheckRunner {
 export interface SlowView {
   /**
    * A group other than `tests` owns the file (spec 019 D3): it runs in a
-   * group lane. With no `checks` key, a file spec 004 D1 marks slow.
+   * group lane. With no `checks` key, a file spec 004 D1 marks slow. The
+   * one lane rule: a one-lane checkpoint's files and the verdict `run
+   * --fast` gives on them (`laneFiles`) both take it (row 018-11).
    */
   readonly isSlow: (ref: TestFileRef) => boolean;
   readonly globs: readonly string[];

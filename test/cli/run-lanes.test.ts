@@ -19,6 +19,12 @@ import { closeFakeDaemons, fakeDaemon, received } from "./fake-daemon.js";
 
 const FAST = "test/a.test.ts";
 const SLOW = "test/e2e/b.test.ts";
+const BROWSER = "test/browser/c.test.ts";
+const SLOW_CONFIG = { slow: { include: ["test/e2e/**"] } };
+/** Row 018-11: cezar's shape, a configured group at `manual` and no slow file. */
+const MANUAL_CONFIG = {
+  checks: [{ name: "browser", runner: "vitest", tests: ["test/browser/**"], at: "manual" }],
+};
 const ref = (path: string) => ({ project: "", path: path as never });
 const fileCheck = (path: string): CheckId => ({ kind: "file", project: "", testPath: path });
 
@@ -34,13 +40,10 @@ afterEach(() => {
   process.env = { ...saved };
 });
 
-/** A worktree at revision 3 with one fast and one slow file, and its daemon's socket. */
-function worktree() {
+/** A worktree at revision 3 under `config`, and its daemon's socket. */
+function worktree(config: object = SLOW_CONFIG) {
   const repo = fakeRepo();
-  writeFileSync(
-    join(repo.main, "squeal.config.json"),
-    JSON.stringify({ slow: { include: ["test/e2e/**"] } }),
-  );
+  writeFileSync(join(repo.main, "squeal.config.json"), JSON.stringify(config));
   const store = seedStore(repo);
   const id = repo.mainId;
   store.worktrees.upsert({
@@ -126,6 +129,21 @@ describe("run lane flags (task 004-61)", () => {
     await daemonFor(w.socket, record);
     const result = await run(["run", "--fast", "--wait", "5000"], w.root);
     expect(sent()).toEqual([{ type: "run-all", force: false, lane: "fast" }]);
+    expect(result.first).toBe(
+      "Checkpoint c1 (the fast lane only, not a full-suite checkpoint: slow test files are not in it) completed at revision 3: no known failures; 1 test file, 0 already current, 1 run now",
+    );
+    expect(result.code).toBe(0);
+  });
+
+  // Row 018-11: the daemon leaves every configured group's file out of the fast lane.
+  it("--fast ends with a verdict when a manual group's files never ran", async () => {
+    const w = worktree(MANUAL_CONFIG);
+    w.file(FAST, "current");
+    w.file(BROWSER, "unknown");
+    const record = w.checkpoint("fast");
+    w.store.checkpoints.finish("c1", "completed", Date.now());
+    await daemonFor(w.socket, record);
+    const result = await run(["run", "--fast", "--wait", "5000"], w.root);
     expect(result.first).toBe(
       "Checkpoint c1 (the fast lane only, not a full-suite checkpoint: slow test files are not in it) completed at revision 3: no known failures; 1 test file, 0 already current, 1 run now",
     );
