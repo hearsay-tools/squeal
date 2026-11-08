@@ -1924,7 +1924,7 @@ Human authorized 2026-10-26; coordinator 474cc4f5. Brief: `specifications/017-li
 
 ## Feature 018: CI and shared results
 
-Spec `specifications/018-ci-and-shared-results/` (stage: research; parked by the human 2026-10-31, "Stop here for now"; reopened for topic `ci-reuse` by the human 2026-11-01, done and parked again the same day, "Stop here"; coordinator e3814b62). Findings: ideas 1 and 2 are one feature, shared results from main (CI on main produces results, developers' Squeal imports them from a git ref); blocked today by Node patch version and `CI=true` changing keys; no remote store service. The human, 2026-10-31: research whether Squeal can run tests in CI, whether a local Squeal could import CI results so what merges to main is shared with team members, and whether a remote store could be an option. Research only; no build authorized. Rules and topics in `research/README.md`, briefs in `tasks/wave-0.md`.
+Spec `specifications/018-ci-and-shared-results/spec.md` (stage: spec, awaiting the human's approval; coordinator 3739e45a). Reopened by the human 2026-11-08 (task 7d611fc4) with a new goal: less test load on developers' machines by reusing what CI on main already ran, without adding CI wall time. First slice, approved in outline the same day ("Yes, start it"): `squeal export`/`import`, `status` naming environment differences, one trial in cezar. Earlier: research parked 2026-10-31 and 2026-11-01; the four wave-0 findings stand. No row below 018-05 is authorized until the human approves the spec and rows; 018-08 also needs the human's approval of the cezar CI file (spec D7).
 
 ### Wave 0: research
 
@@ -1934,6 +1934,25 @@ Spec `specifications/018-ci-and-shared-results/` (stage: research; parked by the
 | 018-02 research: importing results made elsewhere | done (researcher 8dcf4861, `research/result-import.md`: keys equal across path, user, HOME, pnpm store and shallow clone; differ on Node patch version, `CI=true` (five Vitest fields), `core.autocrlf`; no CI key matches a developer key here today; export per main commit 1.6 MB gzipped, applied in 0.4 s; import passes as current, failures as held, main pushes only) | `research/README.md`, topic `result-import`: key portability across paths, users and machines, measured; how an imported result is named to the agent; which sources to trust; when to import; export size. | `research/result-import.md` committed. |
 | 018-03 research: a remote store | done (researcher e314569f, `research/remote-store.md`: no remote store; per-key HTTP lookup 27 s at 20 ms round trip against 0.06 s local; one bundle per main commit on a git ref such as `refs/notes/squeal`, written by CI only, imported in bulk; 17 result sets pack to 1.18 MiB, next landing fetches in 16 ms locally) | `research/README.md`, topic `remote-store`: prior-art protocols, the shared and local split of the store, the lookup latency budget, backends with no server, write rights, where it belongs. | `research/remote-store.md` committed. |
 | 018-04 research: CI reuse across PR runs and reruns, against existing tools | done (researcher da1c1c9c, `research/ci-reuse.md`: no spec for wall time; cezarion PR run saves mean 94 s of a 676 s test phase (browser tests re-key in 43 of 50 PRs), this repository about 85 s per candidate run, 160 s with both causes fixed; re-run of one failed job saves about 500 to 570 s; the gain is job-minutes, about 35% per cezarion PR run; blocked in cezarion by coverage settings in the key and `pull_request_target` cache rules; closest existing tools Datadog Test Impact Analysis and Nx Cloud, both paid) | `research/README.md`, topic `ci-reuse` (the human, 2026-11-01): cezarion's CI time as the reference; replay of its merged PRs and this repository's landings with the version and test-setup causes fixed; existing tools (Vitest, Nx, Turborepo, Bazel, Develocity, Datadog, Launchable, Buildkite, testmon); GitHub cache scope. | `research/ci-reuse.md` committed. |
+| 018-05 research: CI results on main and developer load | done (researcher a42d1179 for task 7d611fc4, `research/main-results.md`: CI on main had run 20 to 37% of cezar's local background test seconds, 7 to 15% of squeal's; only reusing main's existing CI test run pays, a separate per-commit run costs 3 to 8 times what it saves; no CI key matches a developer key today (Node, `CI=true`, coverage provider, observed sets)) | Topic `main-results`. | `research/main-results.md` committed. |
+
+### Wave 1: the environment record (brief `specifications/018-ci-and-shared-results/tasks/wave-1.md`)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 018-06 environment record and named differences | planned (awaits the human's approval of the spec) | Spec D1: the daemon stores an `EnvironmentDescriptor` per environment hash and the hash each worktree keys each project with; pure `describeDifferences`. No key change. | Tests prove equal parts give equal hashes, any changed part changes the hash and is named, and no allow-listed or config value is stored; key-format test unchanged. |
+
+### Wave 2: export and import (brief `tasks/wave-2.md`; after 018-06; one candidate with wave 1)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 018-07 `squeal export` and `squeal import`, the imported origin, status counts | planned (awaits the human's approval of the spec) | Spec D2 to D5: the export file, import with add-only closures and observed entries, origin `imported`, `status --full`/`--json` counts by reason, one default line when the environment differs. | A round trip between two fixture stores makes every exported file current with origin `imported`; the reasons of D5 each come from a fixture; the file holds no absolute path or failure text; a running daemon sees imported keys without a restart. |
+
+### Wave 3: the trial (after the release with 018-07; needs the human's approval of the cezar CI file, spec D7)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 018-08 trial: CI export imported into a fresh cezar clone | planned (needs the human's approval of the cezar workflow file and a release with `export`) | Spec D7: one dispatched non-gating job in cezar exports; a fresh clone at that SHA imports and counts current files and D5 reasons. Read-only on cezar apart from the approved workflow file. | `research/import-trial.md` committed with the counts, the reasons, the CI job time and the Squeal version. |
 
 ## Feature 019: run triggers
 
