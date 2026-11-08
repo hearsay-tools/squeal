@@ -7,7 +7,7 @@ import { DatabaseSync } from "node:sqlite";
 import { setImmediate as nextTurn } from "node:timers/promises";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DROPPED_TOPIC } from "../../../src/core/code/coverage/drops.js";
-import { COVERAGE_PROVIDER_VERSION } from "../../../src/core/code/coverage/record.js";
+import { COVERAGE_RECORD_VERSION } from "../../../src/core/code/coverage/record.js";
 import type { CoveredFile } from "../../../src/core/code/coverage/types.js";
 import {
   BUSY_BUDGET_MS,
@@ -101,7 +101,7 @@ function writer(dir: string, options: Partial<CoverageWriterOptions> = {}) {
   return { writer: made, seen };
 }
 
-const at = (resultKey: string) => ({ resultKey, providerVersion: COVERAGE_PROVIDER_VERSION });
+const at = (resultKey: string) => ({ resultKey, providerVersion: COVERAGE_RECORD_VERSION });
 
 describe("the records' writer beside a busy code store (row 015-79)", () => {
   it("keeps each record while another process holds the write lock, and stores it once free", async () => {

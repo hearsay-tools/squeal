@@ -2,7 +2,7 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { COVERAGE_PROVIDER_VERSION, decodeRecord } from "../../../src/core/code/coverage/record.js";
+import { COVERAGE_RECORD_VERSION, decodeRecord } from "../../../src/core/code/coverage/record.js";
 import { createCoverageWriter } from "../../../src/core/code/coverage/writer.js";
 import type { CancelCause } from "../../../src/core/types/runner.js";
 import type * as Broken from "../../../src/runners/vitest/broken.js";
@@ -125,7 +125,7 @@ describe("vitest adapter: which runs leave a coverage record (review 0.1.295 B3)
     const recordAt = (path: string) => {
       const bytes = open(store).coverage.get({
         resultKey: `key:${path}`,
-        providerVersion: COVERAGE_PROVIDER_VERSION,
+        providerVersion: COVERAGE_RECORD_VERSION,
       });
       return bytes === null ? null : decodeRecord(bytes).sources.map((s) => s.path);
     };

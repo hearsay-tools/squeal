@@ -5,7 +5,7 @@ import { pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   buildRecord,
-  COVERAGE_PROVIDER_VERSION,
+  COVERAGE_RECORD_VERSION,
   decodeRecord,
 } from "../../../src/core/code/coverage/record.js";
 import type { CoveredFile } from "../../../src/core/code/coverage/types.js";
@@ -48,7 +48,7 @@ async function stored(files: readonly CoveredFile[][], over: Partial<CoverageWri
   const records = files.flat().map((file) => {
     const bytes = store.coverage.get({
       resultKey: `key-${file.testFile.path}`,
-      providerVersion: COVERAGE_PROVIDER_VERSION,
+      providerVersion: COVERAGE_RECORD_VERSION,
     });
     return bytes === null ? null : decodeRecord(bytes);
   });

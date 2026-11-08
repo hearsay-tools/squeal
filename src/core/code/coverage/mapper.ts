@@ -7,7 +7,7 @@ import type { TestFileRef } from "../../types/keys.js";
 import { ownRecord } from "./own.js";
 import type { Pace } from "./pace.js";
 import { type SharedRecord, shareRecord } from "./parts.js";
-import { type BlobCache, buildRecord, COVERAGE_PROVIDER_VERSION, encodeRecord } from "./record.js";
+import { type BlobCache, buildRecord, COVERAGE_RECORD_VERSION, encodeRecord } from "./record.js";
 import type { CoverageRecord, CoveredFile, ExecutedSource, V8Payload } from "./types.js";
 
 /**
@@ -89,10 +89,7 @@ export function threadMapper(options: MapperOptions, blobs: BlobCache): Mapper {
   return {
     map: async (file) =>
       options.pace.measure(() =>
-        shareRecord(
-          recordHere(file, options.format, blobs, options.skip),
-          COVERAGE_PROVIDER_VERSION,
-        ),
+        shareRecord(recordHere(file, options.format, blobs, options.skip), COVERAGE_RECORD_VERSION),
       ),
     close: () => Promise.resolve(),
   };

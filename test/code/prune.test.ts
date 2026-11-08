@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { COVERAGE_RECORD_VERSION as V } from "../../src/core/code/coverage/record.js";
 import type { CodeKnownState } from "../../src/core/types/code.js";
 import { check, commonDir, count, file, open } from "./helpers.js";
 
@@ -6,6 +7,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const NOW = 100 * DAY_MS;
 const OLD = NOW - 8 * DAY_MS;
 const RECENT = NOW - DAY_MS;
+const at = (resultKey: string, providerVersion = V) => ({ resultKey, providerVersion });
 
 function failing(worktreeId: string, qualifiedName: string): CodeKnownState {
   return {
@@ -134,9 +136,10 @@ describe("code store prune (015 D4, 011 C7)", () => {
   it("drops a coverage record with the last result at its key, whatever its age (row 015-11)", () => {
     const store = open(commonDir());
     const record = new Uint8Array([1]);
-    store.coverage.put({ resultKey: "kept-old", providerVersion: 1 }, record, OLD);
-    store.coverage.put({ resultKey: "gone-recent", providerVersion: 1 }, record, RECENT);
-    store.coverage.put({ resultKey: "kept-old", providerVersion: 2 }, record, RECENT);
+    store.coverage.put(at("kept-old"), record, OLD);
+    store.coverage.put(at("gone-recent"), record, RECENT);
+    // A newer Squeal's record stays for it, as an older daemon's prune would keep it.
+    store.coverage.put(at("kept-old", V + 1), record, RECENT);
 
     const report = store.prune({
       now: NOW,
@@ -147,19 +150,40 @@ describe("code store prune (015 D4, 011 C7)", () => {
     });
 
     expect(report.coverageRemoved).toBe(1);
-    expect(store.coverage.get({ resultKey: "kept-old", providerVersion: 1 })).toEqual(record);
-    expect(store.coverage.get({ resultKey: "kept-old", providerVersion: 2 })).toEqual(record);
-    expect(store.coverage.get({ resultKey: "gone-recent", providerVersion: 1 })).toBeNull();
+    expect(store.coverage.get(at("kept-old"))).toEqual(record);
+    expect(store.coverage.get(at("kept-old", V + 1))).toEqual(record);
+    expect(store.coverage.get(at("gone-recent"))).toBeNull();
   });
 
   it("without the result keys, drops coverage records past the retention", () => {
     const store = open(commonDir());
-    store.coverage.put({ resultKey: "old", providerVersion: 1 }, new Uint8Array([1]), OLD);
-    store.coverage.put({ resultKey: "recent", providerVersion: 1 }, new Uint8Array([1]), RECENT);
+    store.coverage.put(at("old"), new Uint8Array([1]), OLD);
+    store.coverage.put(at("recent"), new Uint8Array([1]), RECENT);
 
     expect(
       store.prune({ now: NOW, retentionDays: 7, worktrees: [], consumers: [] }).coverageRemoved,
     ).toBe(1);
+  });
+
+  it("drops a record of an older record version, which no reader takes (row 018-10 R1)", () => {
+    const record = new Uint8Array([1]);
+    for (const resultKeys of [["kept"], undefined]) {
+      const store = open(commonDir());
+      store.coverage.put(at("kept", V - 1), record, RECENT);
+      store.coverage.put(at("kept"), record, RECENT);
+
+      const report = store.prune({
+        now: NOW,
+        retentionDays: 7,
+        worktrees: [],
+        consumers: [],
+        ...(resultKeys === undefined ? {} : { resultKeys }),
+      });
+
+      expect(report.coverageRemoved).toBe(1);
+      expect(store.coverage.get(at("kept", V - 1))).toBeNull();
+      expect(store.coverage.get(at("kept"))).toEqual(record);
+    }
   });
 
   it("deletes in batches, so a large removed worktree is many short transactions", () => {

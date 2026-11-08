@@ -1,13 +1,13 @@
 import { DatabaseSync } from "node:sqlite";
 import { shareRecord } from "../../../src/core/code/coverage/parts.js";
-import { COVERAGE_PROVIDER_VERSION, decodeRecord } from "../../../src/core/code/coverage/record.js";
+import { COVERAGE_RECORD_VERSION, decodeRecord } from "../../../src/core/code/coverage/record.js";
 import type { CoverageRecord, CoverageSource } from "../../../src/core/code/coverage/types.js";
 import { codeStorePath } from "../../../src/core/code/store/open.js";
 import type { CodeStore } from "../../../src/core/code/store/types.js";
 
 /* Records, parts and raw reads for the shared parts' tests (row 015-85). */
 
-export const V = COVERAGE_PROVIDER_VERSION;
+export const V = COVERAGE_RECORD_VERSION;
 export const at = (resultKey: string, providerVersion = V) => ({ resultKey, providerVersion });
 
 /** A bitset of 1-based lines, as `CoverageSource.lines` holds one. */

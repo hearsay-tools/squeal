@@ -5,7 +5,7 @@ import { pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { ownRecord } from "../../../src/core/code/coverage/own.js";
 import {
-  COVERAGE_PROVIDER_VERSION,
+  COVERAGE_RECORD_VERSION,
   decodeRecord,
   hasLine,
 } from "../../../src/core/code/coverage/record.js";
@@ -191,7 +191,7 @@ describe("ownRecord (row 015-86)", () => {
       await writer.close();
       const bytes = open(store).coverage.get({
         resultKey: "key",
-        providerVersion: COVERAGE_PROVIDER_VERSION,
+        providerVersion: COVERAGE_RECORD_VERSION,
       });
       expect(bytes === null ? null : decodeRecord(bytes)).toEqual(expected);
       // Worker failure would otherwise fall back to the main thread and hide a broken worker.

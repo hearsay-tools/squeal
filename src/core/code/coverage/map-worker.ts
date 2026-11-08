@@ -5,7 +5,7 @@ import type { AbsolutePath } from "../../types/common.js";
 import type { FromWorker, ToWorker } from "./mapper.js";
 import { ownRecord } from "./own.js";
 import { shareRecord } from "./parts.js";
-import { type BlobCache, buildRecord, COVERAGE_PROVIDER_VERSION, scriptPath } from "./record.js";
+import { type BlobCache, buildRecord, COVERAGE_RECORD_VERSION, scriptPath } from "./record.js";
 import type { ExecutedSource, V8Payload, V8Script } from "./types.js";
 
 /*
@@ -64,7 +64,7 @@ function take(job: Extract<ToWorker, { type: "job" }>): void {
   const payload = JSON.parse(readFileSync(job.payload, "utf8")) as V8Payload;
   if (job.ownRoot !== undefined) {
     const record = ownRecord(job.ownRoot, payload, format);
-    send({ type: "record", id: job.id, record: shareRecord(record, COVERAGE_PROVIDER_VERSION) });
+    send({ type: "record", id: job.id, record: shareRecord(record, COVERAGE_RECORD_VERSION) });
     return;
   }
   const scripts = [...payload.result];
@@ -94,6 +94,6 @@ function finish(): void {
   send({
     type: "record",
     id: job.id,
-    record: shareRecord(buildRecord(file, scripts, format, blobs), COVERAGE_PROVIDER_VERSION),
+    record: shareRecord(buildRecord(file, scripts, format, blobs), COVERAGE_RECORD_VERSION),
   });
 }

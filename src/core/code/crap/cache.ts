@@ -3,7 +3,7 @@ import { compare } from "../../fs/compare.js";
 import type { CodeFile } from "../../types/code.js";
 import type { EpochMs, RelativePath } from "../../types/common.js";
 import type { CheckKey } from "../../types/keys.js";
-import { COVERAGE_PROVIDER_VERSION, decodeRecord } from "../coverage/record.js";
+import { COVERAGE_RECORD_VERSION, decodeRecord } from "../coverage/record.js";
 import type { CoverageRecord } from "../coverage/types.js";
 import type { PassReport } from "../pass/types.js";
 import type { CodeCoverageRepo } from "../store/types.js";
@@ -125,7 +125,7 @@ export class StepCache {
   record(coverage: Pick<CodeCoverageRepo, "get">, key: CheckKey): CoverageRecord | null {
     const known = this.#records.get(key);
     if (known?.epoch === this.#epoch) return known.record;
-    const bytes = coverage.get({ resultKey: key, providerVersion: COVERAGE_PROVIDER_VERSION });
+    const bytes = coverage.get({ resultKey: key, providerVersion: COVERAGE_RECORD_VERSION });
     if (bytes === null) {
       this.#records.delete(key);
       return null;

@@ -1,4 +1,4 @@
-import { COVERAGE_PROVIDER_VERSION, decodeRecord } from "../code/coverage/record.js";
+import { COVERAGE_RECORD_VERSION, decodeRecord } from "../code/coverage/record.js";
 import { coverageOn } from "../code/coverage/runtime.js";
 import type { CoverageRecord } from "../code/coverage/types.js";
 import type { CodeStore } from "../code/store/types.js";
@@ -130,7 +130,7 @@ function coverageView(
   counted: Counted,
 ): CoverageView {
   if (code === null || key === null) return { kind: "none" };
-  const bytes = code.coverage.get({ resultKey: key, providerVersion: COVERAGE_PROVIDER_VERSION });
+  const bytes = code.coverage.get({ resultKey: key, providerVersion: COVERAGE_RECORD_VERSION });
   if (bytes === null) return { kind: "none" };
   let record: CoverageRecord;
   try {

@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import type { CliIo } from "../../src/cli/main.js";
 import { reachCommand } from "../../src/cli/reach.js";
 import { countFile } from "../../src/core/code/count/index.js";
-import { COVERAGE_PROVIDER_VERSION, encodeRecord } from "../../src/core/code/coverage/record.js";
+import { COVERAGE_RECORD_VERSION, encodeRecord } from "../../src/core/code/coverage/record.js";
 import { isCodeStoreOpenFailure, openCodeStore } from "../../src/core/code/store/open.js";
 import { blobHash } from "../../src/core/hash/blob.js";
 import type { ReachReport } from "../../src/core/reach/report-types.js";
@@ -148,7 +148,7 @@ function records(repo: FakeRepo) {
   });
   const put = (key: string, sources: ReturnType<typeof source>[]) =>
     code.coverage.put(
-      { resultKey: key, providerVersion: COVERAGE_PROVIDER_VERSION },
+      { resultKey: key, providerVersion: COVERAGE_RECORD_VERSION },
       encodeRecord({ v: 1, sources, unread: [] }),
       1,
     );
@@ -385,7 +385,7 @@ describe("squeal reach", () => {
       [B, false],
     ] as const) {
       code.coverage.put(
-        { resultKey: `key-${path}`, providerVersion: COVERAGE_PROVIDER_VERSION },
+        { resultKey: `key-${path}`, providerVersion: COVERAGE_RECORD_VERSION },
         encodeRecord(answerRecord(call).record),
         1,
       );

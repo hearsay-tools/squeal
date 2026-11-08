@@ -150,7 +150,7 @@ export interface CodeViewRepo {
 
 /**
  * Spec 015 D8: one coverage record per test file result, at the result's
- * key and the provider's version. Since row 015-85 (D4) a record is stored
+ * key and the record version (`COVERAGE_RECORD_VERSION`). Since row 015-85 (D4) a record is stored
  * as a manifest of its sources' parts, each part once (`putParts`); one an
  * older daemon stored, or `put`, is the whole record (`encodeRecord`,
  * `src/core/code/coverage/record.ts`).

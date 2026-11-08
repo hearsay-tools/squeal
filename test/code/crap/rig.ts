@@ -1,6 +1,6 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { COVERAGE_PROVIDER_VERSION, encodeRecord } from "../../../src/core/code/coverage/record.js";
+import { COVERAGE_RECORD_VERSION, encodeRecord } from "../../../src/core/code/coverage/record.js";
 import type { CoverageSource } from "../../../src/core/code/coverage/types.js";
 import type { LoaderCondition } from "../../../src/core/code/crap/loaders.js";
 import { type CoverageStepInput, runCoverageStep } from "../../../src/core/code/crap/step.js";
@@ -45,6 +45,8 @@ export interface LoaderSpec {
   /** The record's sources; `null` stores none. Default none. */
   readonly record?: readonly CoverageSource[] | null;
   readonly unread?: readonly string[];
+  /** The record version the record is stored at; default `COVERAGE_RECORD_VERSION` (018-10 R1). */
+  readonly recordVersion?: number;
   readonly recordedAt?: number;
   /**
    * The key this worktree's key index made; default the row's. `null`
@@ -236,7 +238,7 @@ export function coverageRig(): CoverageRig {
       if (spec.record === undefined || spec.record === null) return;
       const record = { v: 1 as const, sources: spec.record, unread: spec.unread ?? [] };
       store.coverage.put(
-        { resultKey: key, providerVersion: COVERAGE_PROVIDER_VERSION },
+        { resultKey: key, providerVersion: spec.recordVersion ?? COVERAGE_RECORD_VERSION },
         encodeRecord(record),
         1,
       );
