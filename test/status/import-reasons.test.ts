@@ -4,6 +4,7 @@ import { recoveryProvenance } from "../../src/core/delivery/provenance.js";
 import type { EnvironmentDescriptor } from "../../src/core/keys/environment-descriptor.js";
 import { KEY_FORMAT_VERSION } from "../../src/core/keys/key-format.js";
 import { observedMetaKey } from "../../src/core/keys/observed.js";
+import { stateFromResult } from "../../src/core/state/derive.js";
 import { compareEnvironment, comparisonText } from "../../src/core/status/import-environment.js";
 import { importDefaultLines, importLines } from "../../src/core/status/import-lines.js";
 import { readImports } from "../../src/core/status/imports.js";
@@ -11,15 +12,18 @@ import { recordWorktreeEnvironments } from "../../src/core/store/environments.js
 import { importResults } from "../../src/core/store/transfer.js";
 import type { ExportedTestFile, ResultsBundle } from "../../src/core/store/transfer-bundle.js";
 import type { TransitionEntry } from "../../src/core/types/delivery.js";
-import type { StatusHeader, StatusSnapshot } from "../../src/core/types/status.js";
+import type { KnownState } from "../../src/core/types/state.js";
+import type { ImportStatus, StatusHeader, StatusSnapshot } from "../../src/core/types/status.js";
 import type { Store } from "../../src/core/types/store.js";
 import { fakeCommonDir, open } from "../store/helpers.js";
 
 /*
  * Spec 018 D5 from fixtures: one exported file per reason it is not current
- * here, counted in order (environment, closure list, observed set, content,
- * no local key); D4's texts in `status --full`, the default status line, the
- * hook header and a recovery's provenance.
+ * here, counted in order (same key with another result kept, same key not
+ * adopted yet, environment, closure list, observed set, content, no local
+ * key); a file is current from an import only by the states the daemon
+ * adopted (review wave-1-2 B1); D4's texts in `status --full`, the default
+ * status line, the hook header and a recovery's provenance.
  */
 
 const HERE = "0123456789abcdef";
@@ -160,33 +164,148 @@ function here(): Store {
   return store;
 }
 
+/** The states this worktree's daemon derives from the results at its keys, once it adopted them. */
+function adopted(store: Store): KnownState[] {
+  return store.testFileKeys
+    .list(HERE)
+    .flatMap((k) => store.results.byKey(k.key, 0).map((r) => stateFromResult(HERE, 1, r, k, null)));
+}
+
+/** A result this worktree's own run stored for `t/current.test.ts` at the exported key. */
+function ownResult(store: Store, outcome: "pass" | "fail"): void {
+  store.results.putMany([
+    {
+      check: { kind: "test", project: "", testPath: "t/current.test.ts", fullName: "passes" },
+      key: "k-current",
+      outcome,
+      durationMs: 1,
+      location: null,
+      fingerprint: null,
+      summary: outcome === "fail" ? "expected 1 to be 2" : null,
+      errors: [],
+      provenance: {
+        worktreeId: HERE,
+        revision: 1,
+        commit: COMMIT,
+        dirty: false,
+        runId: "r",
+        recordedAt: 2,
+      },
+    },
+  ]);
+}
+
+/** `readImports` over the key rows of `paths` only. */
+function readOf(store: Store, paths: readonly string[], states: readonly KnownState[]) {
+  const keys = store.testFileKeys.list(HERE).filter((k) => paths.includes(k.testFile.path));
+  return readImports(store, HERE, keys, states);
+}
+
 const SOURCE = "CI run 77 on o/r at cccccccc";
+const NONE = {
+  sameKeyKept: 0,
+  sameKeyNotAdopted: 0,
+  environment: 0,
+  closure: 0,
+  observed: 0,
+  content: 0,
+  noKey: 0,
+};
+const counts = (imports: readonly ImportStatus[]) =>
+  imports.map(({ importId, currentResults, currentFiles, notCurrent }) => ({
+    importId,
+    currentResults,
+    currentFiles,
+    notCurrent,
+  }));
 
 describe("status names why imported files are not current (018 D5)", () => {
   it("counts each reason, in order, and names the environment's differences", () => {
     const store = here();
     const ci = { nodeVersion: "v26.13.0", ci: true };
     importResults(store, bundle(ci), { importId: "imp", fileHash: "h", now: 5 });
-    const imports = readImports(store, HERE, store.testFileKeys.list(HERE), []);
+    const imports = readImports(store, HERE, store.testFileKeys.list(HERE), adopted(store));
     expect(imports).toEqual([
       {
         importId: "imp",
         source: SOURCE,
         commit: COMMIT,
         importedAt: 5,
-        currentResults: 0,
+        currentResults: 1,
         testFiles: 6,
         currentFiles: 1,
-        notCurrent: { environment: 1, closure: 1, observed: 1, content: 1, noKey: 1 },
+        notCurrent: { ...NONE, environment: 1, closure: 1, observed: 1, content: 1, noKey: 1 },
         environmentDifferences: ["other: Node v26.13.0 in the export, v24.22.1 here"],
       },
     ]);
     expect(importLines({ imports } as unknown as StatusSnapshot)).toEqual([
-      `Imported: 1 of 6 test files current from ${SOURCE} (0 current results)`,
+      `Imported: 1 of 6 test files current from ${SOURCE} (1 current result)`,
       "  Not current: 1 environment differs (other: Node v26.13.0 in the export, v24.22.1 here), 1 closure list differs, 1 observed set differs, 1 content differs, 1 no local key yet",
     ]);
     // An import with a current file adds no line to the default text.
     expect(importDefaultLines({ imports } as unknown as StatusSnapshot)).toEqual([]);
+  });
+
+  it.each(["fail", "pass"] as const)(
+    "a local %s the import did not replace is not current from it (review B1)",
+    (outcome) => {
+      const store = here();
+      ownResult(store, outcome);
+      importResults(store, bundle({}), { importId: "imp", fileHash: "h", now: 5 });
+      const states = adopted(store);
+      expect(states.map((s) => [s.outcome, s.validity, s.origin?.kind])).toEqual([
+        [outcome, "current", "own"],
+      ]);
+      const imports = readOf(store, ["t/current.test.ts"], states);
+      expect(counts(imports)).toEqual([
+        {
+          importId: "imp",
+          currentResults: 0,
+          currentFiles: 0,
+          notCurrent: { ...NONE, sameKeyKept: 1 },
+        },
+      ]);
+      expect(importLines({ imports } as unknown as StatusSnapshot)).toEqual([
+        `Imported: 0 of 1 test file current from ${SOURCE} (0 current results)`,
+        "  Not current: 1 same key, another result kept",
+      ]);
+      expect(importDefaultLines({ imports } as unknown as StatusSnapshot)).toEqual([]);
+    },
+  );
+
+  it("before the daemon adopts it, an import at an equal key is not adopted yet; a second at that key keeps the first's", () => {
+    const store = here();
+    importResults(store, bundle({}), { importId: "imp", fileHash: "h", now: 5 });
+    importResults(store, bundle({}), { importId: "imp2", fileHash: "h2", now: 6 });
+    const paths = ["t/current.test.ts", "t/content.test.ts"];
+    const before = readOf(store, paths, []);
+    expect(counts(before)).toEqual([
+      {
+        importId: "imp2",
+        currentResults: 0,
+        currentFiles: 0,
+        notCurrent: { ...NONE, sameKeyKept: 1, content: 1 },
+      },
+      {
+        importId: "imp",
+        currentResults: 0,
+        currentFiles: 0,
+        notCurrent: { ...NONE, sameKeyNotAdopted: 1, content: 1 },
+      },
+    ]);
+    expect(importLines({ imports: before } as unknown as StatusSnapshot)[3]).toBe(
+      "  Not current: 1 same key, not adopted yet, 1 content differs",
+    );
+    const after = readOf(store, paths, adopted(store));
+    expect(counts(after)).toEqual([
+      {
+        importId: "imp2",
+        currentResults: 0,
+        currentFiles: 0,
+        notCurrent: { ...NONE, sameKeyKept: 1, content: 1 },
+      },
+      { importId: "imp", currentResults: 1, currentFiles: 1, notCurrent: { ...NONE, content: 1 } },
+    ]);
   });
 
   it("the default text adds one line when the environment keeps every file from being current", () => {
@@ -198,6 +317,18 @@ describe("status names why imported files are not current (018 D5)", () => {
     expect(importDefaultLines({ imports } as unknown as StatusSnapshot)).toEqual([
       `Imported results from ${SOURCE}: none current here, the environment differs (Node v26.13.0 in the export, v24.22.1 here; platform darwin in the export, linux here; 1 more in squeal status --full)`,
     ]);
+  });
+
+  it("the default text says nothing when the environment is one reason among others (review N1)", () => {
+    const store = here();
+    importResults(store, bundle({ nodeVersion: "v26.13.0" }), {
+      importId: "imp",
+      fileHash: "h",
+      now: 5,
+    });
+    const imports = readOf(store, ["t/env.test.ts", "t/content.test.ts"], []);
+    expect(counts(imports)[0]?.notCurrent).toEqual({ ...NONE, environment: 1, content: 1 });
+    expect(importDefaultLines({ imports } as unknown as StatusSnapshot)).toEqual([]);
   });
 
   it("no import, or none with a file this worktree lists, says nothing", () => {

@@ -658,9 +658,17 @@ export interface InheritedSource {
 
 /**
  * Spec 018 D5: an import's exported test files this worktree lists that are
- * not current here, by reason, in this order.
+ * not current here from it, by reason, in this order.
  */
 export interface ImportNotCurrent {
+  /**
+   * The key here equals the exported key, but this worktree's current result
+   * at it is its own, inherited or another import's (D5 as amended, review
+   * wave-1-2 B1): the add-only import kept what the store held.
+   */
+  readonly sameKeyKept: number;
+  /** The key here equals the exported key; the daemon has not taken the import's results yet. */
+  readonly sameKeyNotAdopted: number;
   /** The export's environment hash for the file's project differs from this worktree's (D1). */
   readonly environment: number;
   /** Equal environment; the closure list the store holds differs from the export's. */
@@ -685,7 +693,11 @@ export interface ImportStatus {
   readonly currentResults: number;
   /** The import's exported test files this worktree lists. */
   readonly testFiles: number;
-  /** Of `testFiles`, those whose key here equals the exported key. */
+  /**
+   * Of `testFiles`, those whose current known states all come from this
+   * import (validity `current`, origin `imported` with its id); an equal key
+   * alone does not count (D5 as amended, review wave-1-2 B1).
+   */
   readonly currentFiles: number;
   readonly notCurrent: ImportNotCurrent;
   /** D1's named differences, when any file's environment differs. */

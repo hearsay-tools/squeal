@@ -3,14 +3,17 @@ import type { ImportNotCurrent, ImportStatus, StatusSnapshot } from "../types/st
 
 /*
  * Spec 018 D4 and D5: what `squeal status` says about imports. `--full` gives
- * each import with a test file this worktree lists: its current files and
- * results, and the rest by reason. The default text adds one line only when
- * an import's results are all not current because the environment differs,
- * with its first two differences; silence otherwise (principle 1).
+ * each import with a test file this worktree lists: its files and results
+ * current from it, and the rest by reason. The default text adds one line
+ * only when none of an import's files is current from it and the environment
+ * differs for every one of them, with its first two differences; silence
+ * otherwise (principle 1), also for a mix of reasons (review wave-1-2 N1).
  */
 
 /** D5's reasons, in order, with the words that name each. */
 const REASONS: readonly (readonly [keyof ImportNotCurrent, string])[] = [
+  ["sameKeyKept", "same key, another result kept"],
+  ["sameKeyNotAdopted", "same key, not adopted yet"],
   ["environment", "environment differs"],
   ["closure", "closure list differs"],
   ["observed", "observed set differs"],
@@ -38,7 +41,7 @@ export function importLines(s: StatusSnapshot): string[] {
 /** The default text's one line, or none (D5). */
 export function importDefaultLines(s: StatusSnapshot): string[] {
   return (s.imports ?? []).flatMap((i) => {
-    if (i.currentFiles > 0 || i.notCurrent.environment === 0) return [];
+    if (i.currentFiles > 0 || i.notCurrent.environment < i.testFiles) return [];
     return [
       `Imported results from ${i.source}: none current here, the environment differs${environmentText(i, DEFAULT_SHOWN)}`,
     ];

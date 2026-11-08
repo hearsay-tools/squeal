@@ -22,6 +22,15 @@ import { claimRepo, fileName, side } from "../scheduler/claims-fixture.js";
 const COUNT = 3;
 const LOOKUP_ONLY = { baseline: { onStart: "lookup-only" as const } };
 const SLOW = { timeout: 60_000 } as const;
+const NONE = {
+  sameKeyKept: 0,
+  sameKeyNotAdopted: 0,
+  environment: 0,
+  closure: 0,
+  observed: 0,
+  content: 0,
+  noKey: 0,
+};
 
 function io(cwd: string): CliIo & { out: string[]; err: string[] } {
   const out: string[] = [];
@@ -73,6 +82,9 @@ describe("squeal export and squeal import (018 D2 to D4)", SLOW, () => {
     expect(status).toContain(
       `Inherited from other worktrees: none\nImported: 3 of 3 test files current from ${source} (6 current results)\n`,
     );
+    expect(readStatus(main)).toMatchObject({
+      imports: [{ testFiles: 3, currentFiles: 3, currentResults: 6, notCurrent: NONE }],
+    });
     const why = formatWhy(readWhy(main, `${fileName(0)} > passes`));
     expect(why).toContain(`  Origin: Imported PASS from ${source}`);
     expect(why).toContain(`imported from ${source}, revision 0, commit ${commit.slice(0, 7)}`);
@@ -92,6 +104,35 @@ describe("squeal export and squeal import (018 D2 to D4)", SLOW, () => {
     await b.scheduler.handleBatch({ trigger: "interval", paths: [] });
     await b.scheduler.idle();
     expect(b.passing()).toBe(COUNT);
+  });
+
+  it("results this worktree ran at the same keys stay its own, and status says so (review B1)", async () => {
+    const { file, commit } = await exported();
+    const { main } = claimRepo(COUNT);
+    const b = side(main, { count: COUNT, policy: LOOKUP_ONLY });
+    b.runner.failing.add(fileName(0));
+    await b.scheduler.start();
+    await b.scheduler.requestFullSuite();
+    await b.scheduler.idle();
+    expect(await importCommand([file], io(main))).toBe(0);
+    await b.scheduler.handleBatch({ trigger: "interval", paths: [] });
+    await b.scheduler.idle();
+    const snapshot = readStatus(main);
+    expect(snapshot).toMatchObject({
+      imports: [
+        {
+          testFiles: 3,
+          currentFiles: 0,
+          currentResults: 0,
+          notCurrent: { ...NONE, sameKeyKept: 3 },
+        },
+      ],
+    });
+    const source = `local export at ${commit.slice(0, 8)}`;
+    expect(formatStatus(snapshot, Date.now(), "squeal", { full: true })).toContain(
+      `Imported: 0 of 3 test files current from ${source} (0 current results)\n  Not current: 3 same key, another result kept\n`,
+    );
+    expect(formatStatus(snapshot, Date.now(), "squeal")).not.toContain("Imported");
   });
 
   it("a dry run writes nothing", async () => {
