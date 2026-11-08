@@ -10,7 +10,8 @@ import {
   observedHash,
 } from "../store/transfer-bundle.js";
 import type { ProjectName, WorktreeId } from "../types/common.js";
-import type { KnownState } from "../types/state.js";
+import type { CheckKey } from "../types/keys.js";
+import { importIdOf, type KnownState } from "../types/state.js";
 import type { ImportNotCurrent, ImportStatus } from "../types/status.js";
 import type { Store } from "../types/store.js";
 import type { TestFileKeyRecord } from "../types/store-records.js";
@@ -18,10 +19,13 @@ import { compareEnvironment } from "./import-environment.js";
 
 /*
  * Spec 018 D5: per import that has an exported file this worktree lists, how
- * many of those files are current here at the exported key, and the rest by
- * reason, in this order: environment differs, closure list differs, observed
- * set differs, content differs (equal environment and lists: the file's
- * bytes or a closure file's differ), no local key yet.
+ * many of those files are current here from it, and the rest by reason, in
+ * this order: same key with another result kept, same key not adopted yet,
+ * environment differs, closure list differs, observed set differs, content
+ * differs (equal environment and lists: the file's bytes or a closure file's
+ * differ), no local key yet. A file is current from an import only by the
+ * known states the daemon adopted, never by an equal key alone (D5 as
+ * amended, review wave-1-2 B1).
  */
 
 const MAP_KEY = {
@@ -32,9 +36,13 @@ const MAP_KEY = {
 
 type Reason = keyof ImportNotCurrent | "current";
 
-/** What one exported file's comparison reads: this worktree's key row, environment and lists. */
+/** What one exported file's comparison reads: this worktree's key row, states, environment and lists. */
 interface Here {
   readonly keys: ReadonlyMap<string, TestFileKeyRecord>;
+  /** The current known states of each test file's checks, by `testFileId`. */
+  readonly current: ReadonlyMap<string, readonly KnownState[]>;
+  /** Whether the store holds a result import `importId` stored at `key`. */
+  stored(importId: string, key: CheckKey): boolean;
   readonly environments: ReadonlyMap<ProjectName, string>;
   closure(file: ImportFileRecord): string | null;
   observed(file: ImportFileRecord): string;
@@ -49,11 +57,13 @@ export function readImports(
 ): ImportStatus[] {
   const imports = listImports(store);
   if (imports.length === 0) return [];
-  const here = hereOf(store, worktreeId, keys);
+  const here = hereOf(store, worktreeId, keys, states);
   return imports.flatMap((record) => {
     const files = importFiles(store, record.id).filter((f) => here.keys.has(testFileId(f)));
     if (files.length === 0) return [];
     const notCurrent: Record<keyof ImportNotCurrent, number> = {
+      sameKeyKept: 0,
+      sameKeyNotAdopted: 0,
       environment: 0,
       closure: 0,
       observed: 0,
@@ -61,17 +71,14 @@ export function readImports(
       noKey: 0,
     };
     let currentFiles = 0;
+    let currentResults = 0;
     for (const file of files) {
       const reason = reasonOf(file, here);
       if (reason === "current") currentFiles++;
       else notCurrent[reason]++;
+      const current = here.current.get(testFileId(file)) ?? [];
+      currentResults += current.filter((s) => fromImport(s, record.id)).length;
     }
-    const currentResults = states.filter(
-      (s) =>
-        s.validity === "current" &&
-        s.origin?.kind === "imported" &&
-        s.origin.importId === record.id,
-    ).length;
     return [
       {
         importId: record.id,
@@ -91,7 +98,7 @@ export function readImports(
 
 function reasonOf(file: ImportFileRecord, here: Here): Reason {
   const key = here.keys.get(testFileId(file));
-  if (key?.key === file.key) return "current";
+  if (key?.key === file.key) return adoption(file, here);
   const environment = here.environments.get(file.project);
   if (environment !== undefined && environment !== file.environment) return "environment";
   const closure = here.closure(file);
@@ -100,7 +107,43 @@ function reasonOf(file: ImportFileRecord, here: Here): Reason {
   return key?.key === null || key?.key === undefined ? "noKey" : "content";
 }
 
-function hereOf(store: Store, worktreeId: WorktreeId, keys: readonly TestFileKeyRecord[]): Here {
+/**
+ * An equal key: current from the import when every current state of the
+ * file's checks is the import's; another result kept when any is not, or
+ * when the import stored nothing at the key (the store held results there);
+ * else not adopted yet.
+ */
+function adoption(file: ImportFileRecord, here: Here): Reason {
+  const current = here.current.get(testFileId(file)) ?? [];
+  if (current.length > 0) {
+    return current.every((s) => fromImport(s, file.importId)) ? "current" : "sameKeyKept";
+  }
+  return here.stored(file.importId, file.key) ? "sameKeyNotAdopted" : "sameKeyKept";
+}
+
+function fromImport(state: KnownState, importId: string): boolean {
+  return state.origin?.kind === "imported" && state.origin.importId === importId;
+}
+
+/** The current known states of test and file checks, by test file. */
+function currentByFile(states: readonly KnownState[]): Map<string, KnownState[]> {
+  const byFile = new Map<string, KnownState[]>();
+  for (const s of states) {
+    if (s.validity !== "current" || s.check.kind === "setup") continue;
+    const id = testFileId({ project: s.check.project, path: s.check.testPath });
+    const list = byFile.get(id);
+    if (list === undefined) byFile.set(id, [s]);
+    else list.push(s);
+  }
+  return byFile;
+}
+
+function hereOf(
+  store: Store,
+  worktreeId: WorktreeId,
+  keys: readonly TestFileKeyRecord[],
+  states: readonly KnownState[],
+): Here {
   const maps = new Map<string, Record<string, string[]>>();
   const entries = (map: keyof typeof MAP_KEY, project: ProjectName) => {
     const key = MAP_KEY[map](project);
@@ -110,6 +153,9 @@ function hereOf(store: Store, worktreeId: WorktreeId, keys: readonly TestFileKey
   };
   return {
     keys: new Map(keys.map((k) => [testFileId(k.testFile), k])),
+    current: currentByFile(states),
+    stored: (importId, key) =>
+      store.results.byKey(key, 0).some((r) => importIdOf(r.provenance.worktreeId) === importId),
     environments: new Map(worktreeEnvironments(store, worktreeId).map((e) => [e.project, e.hash])),
     closure: (file) => {
       const record = store.testFiles.get(file);
