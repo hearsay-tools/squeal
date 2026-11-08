@@ -359,6 +359,19 @@ A suggestion is evidence and an option, not an instruction.
 
 **Not in scope.** The report does not turn coverage on, run tests, change selection or keys, or measure a cut: what-if edge removal stays a research probe. It is not pushed into sessions, and it does not split node:test and pytest import chains.
 
+**As built, 0.1.415 and 0.1.416** (amended 2026-11-08, the coordinator, from reviews `0.1.415*.md`, `0.1.416*.md` and `lessons.md` "Edit reach", rounds 1 and 2):
+- **Validity.** Stored import walks belong to a test file's result key. They are written with the closure for that key and read only at the worktree's current key. Setup and config walks are read only through the key row's environment hash. So a route is exactly as valid as the result (the human's "one rule", 2026-11-07).
+- **Stale walks.** A walk read before an edit is never bound to the newer key (015-119).
+- **Untrusted closures.** When the shared closure row is another worktree's, the report takes the closure from the walk at the current key.
+- **After an upgrade (015-117, the human's option A).** The daemon re-walks, once per version and when nothing else is pending, every listed Vitest test file whose current key has no walk. It runs no test and moves no key. A file refused at one key is retried when that key moves. The marker is written only when nothing is left.
+- **Config imports** come from the adapter's own transform walk, never a text scan.
+- **Second gateway (P6).** A module that imports sibling modules is named as a second gateway, even after a helper, with its count of test files that never call the file (015-121).
+- **`setupFiles`.** Pairs that are loaded only or not loaded in the test's own process count as avoidable (015-120).
+- **Second list (015-118).** A second list ranks by re-run seconds over the window's real edits. With no edits recorded, it says so.
+- **Absent paths.** Paths with no bytes in the worktree are left out of the lists and counted in one line (015-122).
+- **The remaining proof defects** P2 to P10 and P12 are repaired (015-116).
+- **Known limit.** A setup import whose resolution changes, because a shadowing file appears, re-keys nothing (a key-validity defect in spec 011's keys, relayed 2026-11-07). Routes share that limit with the results.
+
 ### D10. Cost
 
 - **Wave 1** adds the counter's CPU: a few ms per changed file, and the first count once per repository and policy. It adds the grammar's bytes to each plugin.
