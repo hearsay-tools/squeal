@@ -65,14 +65,18 @@ jobs:
           # removing the variables keeps the resolved config equal to a developer's.
           env -u CI -u GITHUB_ACTIONS node "$RUNNER_TEMP/squeal/plugins/claude-code/dist/cli/squeal.mjs" start
           status=0
-          env -u CI -u GITHUB_ACTIONS node "$RUNNER_TEMP/squeal/plugins/claude-code/dist/cli/squeal.mjs" run --all --wait 5400000 || status=$?
+          env -u CI -u GITHUB_ACTIONS node "$RUNNER_TEMP/squeal/plugins/claude-code/dist/cli/squeal.mjs" run --all --wait 5400000 > "$RUNNER_TEMP/squeal-run.log" 2>&1 || status=$?
+          cat "$RUNNER_TEMP/squeal-run.log"
           echo "squeal run --all exit: $status (0 pass, 1 known failures, 3 no verdict)"
-          # 1 is a verdict: export leaves out every file with a failure. Anything else
-          # (3: deadline passed or no daemon) would export a partial suite, so stop here.
-          if [ "$status" -ne 0 ] && [ "$status" -ne 1 ]; then
+          # Exit 0 or 1 counts only with Squeal's completed-checkpoint line: a store error can
+          # also exit 1. Export leaves out every file with a failure, so known failures are fine.
+          # Anything else would export a partial suite, so stop here.
+          verdict=no
+          if grep -q '^Checkpoint .* completed at revision ' "$RUNNER_TEMP/squeal-run.log"; then verdict=yes; fi
+          if { [ "$status" -ne 0 ] && [ "$status" -ne 1 ]; } || [ "$verdict" != yes ]; then
             squeal stop || true
-            echo "::error::squeal run --all reached no verdict (exit $status); no export uploaded"
-            exit "$status"
+            echo "::error::squeal run --all reached no completed verdict (exit $status); no export uploaded"
+            exit 1
           fi
           squeal export --out "$RUNNER_TEMP/squeal-results.json.gz"
           squeal stop
