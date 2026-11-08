@@ -1,7 +1,13 @@
 // Spec 015 D8: Squeal's own Vitest coverage provider (`coverage.provider:
 // "custom"`), so a project needs no `@vitest/coverage-*` package. Vitest
-// loads this file by path in its workers and in the daemon, so it imports
+// loads this file by path in its workers and in the daemon, so it uses
 // Node's builtins only; the plugin bundles carry it in `dist/coverage/`.
+//
+// Row 018-10: Vitest's module runner evaluates this file again in a worker
+// after a test file ran, with that file's `vi.mock`s in place, so a static
+// import of `node:path` could get `path.win32` and write the payload to a
+// relative `\tmp\...` file. It takes each builtin through
+// `process.getBuiltinModule` (Node 22.3), which no test's mock reaches.
 //
 // The worker side takes V8 precise coverage through `node:inspector`, as
 // `@vitest/coverage-v8` does. It takes none in a project run with
@@ -14,11 +20,11 @@
 // `coverageFilesDirectory`. Vitest 4.1.10 passes neither (row 013-09):
 // `reportsDirectory` is then read from the worker's config, and the payload
 // goes where Vitest 5 puts it, `<reportsDirectory>/.tmp`.
-import { randomUUID } from "node:crypto";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import inspector from "node:inspector/promises";
-import { join } from "node:path";
-import { fileURLToPath } from "node:url";
+const { randomUUID } = process.getBuiltinModule("node:crypto");
+const { mkdirSync, readFileSync, writeFileSync } = process.getBuiltinModule("node:fs");
+const inspector = process.getBuiltinModule("node:inspector/promises");
+const { join } = process.getBuiltinModule("node:path");
+const { fileURLToPath } = process.getBuiltinModule("node:url");
 
 // The module runner may evaluate this file more than once in a worker
 // (015-01's probe: `takeCoverage` found no session), so the session lives
