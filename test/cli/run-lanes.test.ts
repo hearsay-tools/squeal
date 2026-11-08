@@ -150,6 +150,15 @@ describe("run lane flags (task 004-61)", () => {
     expect(result.code).toBe(0);
   });
 
+  it("--fast counts no manual group's file as already current when it starts", async () => {
+    const w = worktree(MANUAL_CONFIG);
+    w.file(FAST, "pending");
+    w.file(BROWSER, "current");
+    await daemonFor(w.socket, w.checkpoint("fast"));
+    const result = await run(["run", "--fast"], w.root);
+    expect(result.first).toMatch(/: 1 test file to run, 0 already current$/);
+  });
+
   it("names the lane when the checkpoint starts", async () => {
     const w = worktree();
     w.file(FAST, "pending");
