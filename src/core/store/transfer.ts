@@ -16,7 +16,7 @@ import type { Store } from "../types/store.js";
 import type { ResultRecord } from "../types/store-records.js";
 import { putEnvironments, worktreeEnvironments } from "./environments.js";
 import { type ExportHeader, ensureImportTables } from "./imports.js";
-import { connectionOf } from "./store.js";
+import { connectionOf, readTransaction } from "./store.js";
 import {
   absolutePathIn,
   type ExportedResult,
@@ -66,6 +66,15 @@ export class AbsolutePathError extends Error {
  * hold an absolute path.
  */
 export function exportResults(
+  store: Store,
+  worktreeId: WorktreeId,
+  header: ExportHeader,
+): { readonly bundle: ResultsBundle; readonly counts: ExportCounts } {
+  // One read transaction: a daemon's commit between the reads never mixes two states.
+  return readTransaction(store, () => exportOf(store, worktreeId, header));
+}
+
+function exportOf(
   store: Store,
   worktreeId: WorktreeId,
   header: ExportHeader,

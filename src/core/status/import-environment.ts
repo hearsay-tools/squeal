@@ -27,22 +27,17 @@ export function compareEnvironment(
   return { kind: "differs", differences };
 }
 
-/** `project "<name>"`, or `the project` for the unnamed one. */
-export function projectName(project: ProjectName): string {
-  return project === "" ? "the project" : `project ${JSON.stringify(project)}`;
-}
-
-/** One line per comparison, as `squeal import` prints it. */
+/** One line per comparison, as `squeal import` prints it; a named project is named. */
 export function comparisonText(project: ProjectName, comparison: EnvironmentComparison): string {
-  const name = projectName(project);
+  const name = project === "" ? "Environment" : `Environment of project ${JSON.stringify(project)}`;
   switch (comparison.kind) {
     case "equal":
-      return `${name}: the export's environment equals this worktree's`;
+      return `${name}: equal to this worktree's`;
     case "unknown":
-      return `${name}: this worktree has no environment recorded yet; squeal status --full compares them once its daemon keyed the files`;
+      return `${name}: none recorded for this worktree yet; squeal status --full compares them once its daemon keyed the files`;
     case "differs":
       return comparison.differences.length === 0
-        ? `${name}: the export's environment differs from this worktree's; one side holds no record of its parts`
-        : `${name}: the environment differs: ${comparison.differences.join("; ")}`;
+        ? `${name}: differs from this worktree's; one side holds no record of its parts`
+        : `${name}: differs from this worktree's: ${comparison.differences.join("; ")}`;
   }
 }

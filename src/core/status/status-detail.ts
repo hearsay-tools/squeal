@@ -77,6 +77,9 @@ export function hiddenParts(s: StatusSnapshot, command: string): string[] {
  * line never reads as nothing being current (lessons, defect 27).
  */
 function inheritedLine(s: StatusSnapshot): string {
+  // Spec 018 D4: imported results are not run here either; their own line follows.
+  const imported = (s.importedCount ?? 0) > 0;
+  if (s.inherited.count === 0 && imported) return "Inherited from other worktrees: none";
   return s.inherited.count === 0
     ? "Inherited from other worktrees: none (every current result here was run in this worktree)"
     : `Inherited from other worktrees: ${plural(s.inherited.count, "current result")}${partsSuffix(s.inherited.count, s.inheritedFileLevelCount)}`;

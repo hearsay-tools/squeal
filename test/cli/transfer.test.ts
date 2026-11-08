@@ -62,7 +62,7 @@ describe("squeal export and squeal import (018 D2 to D4)", SLOW, () => {
     const source = `local export at ${commit.slice(0, 8)}`;
     expect(run.out.join("")).toBe(
       `Imported 6 results of 3 test files from ${source}.\nAdded where the store had none: 3 closure lists.\n` +
-        "the project: this worktree has no environment recorded yet; squeal status --full compares them once its daemon keyed the files\n",
+        "Environment: none recorded for this worktree yet; squeal status --full compares them once its daemon keyed the files\n",
     );
 
     const b = side(main, { count: COUNT, policy: LOOKUP_ONLY });
@@ -71,13 +71,27 @@ describe("squeal export and squeal import (018 D2 to D4)", SLOW, () => {
     expect(b.runner.runs).toEqual([]);
     const status = formatStatus(readStatus(main), Date.now(), "squeal", { full: true });
     expect(status).toContain(
-      `Imported: 3 of 3 test files current from ${source} (6 current results)`,
+      `Inherited from other worktrees: none\nImported: 3 of 3 test files current from ${source} (6 current results)\n`,
     );
     const why = formatWhy(readWhy(main, `${fileName(0)} > passes`));
     expect(why).toContain(`  Origin: Imported PASS from ${source}`);
     expect(why).toContain(`imported from ${source}, revision 0, commit ${commit.slice(0, 7)}`);
     expect(why).toContain("log: none, an imported result has no run log");
     expect(why).toContain(`Run log: none, the result was imported from ${source}`);
+  });
+
+  it("after this worktree's daemon keyed its files, the import says the environments are equal", async () => {
+    const { file } = await exported();
+    const { main } = claimRepo(COUNT);
+    const b = side(main, { count: COUNT, policy: LOOKUP_ONLY });
+    await b.scheduler.start();
+    await b.scheduler.idle();
+    const run = io(main);
+    expect(await importCommand([file], run)).toBe(0);
+    expect(run.out.join("")).toContain("\nEnvironment: equal to this worktree's\n");
+    await b.scheduler.handleBatch({ trigger: "interval", paths: [] });
+    await b.scheduler.idle();
+    expect(b.passing()).toBe(COUNT);
   });
 
   it("a dry run writes nothing", async () => {
