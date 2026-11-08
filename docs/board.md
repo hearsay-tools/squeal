@@ -1940,7 +1940,7 @@ Spec `specifications/018-ci-and-shared-results/spec.md` (stage: build; spec, row
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 018-06 environment record and named differences | planned (approved, the human 2026-11-08) | Spec D1: the daemon stores an `EnvironmentDescriptor` per environment hash and the hash each worktree keys each project with; pure `describeDifferences`. No key change. | Tests prove equal parts give equal hashes, any changed part changes the hash and is named, and no allow-listed or config value is stored; key-format test unchanged. |
+| 018-06 environment record and named differences | running (worker e21f67ca, approved by the human 2026-11-08) | Spec D1: the daemon stores an `EnvironmentDescriptor` per environment hash and the hash each worktree keys each project with; pure `describeDifferences`. No key change. | Tests prove equal parts give equal hashes, any changed part changes the hash and is named, and no allow-listed or config value is stored; key-format test unchanged. |
 
 ### Wave 2: export and import (brief `tasks/wave-2.md`; after 018-06; one candidate with wave 1)
 
