@@ -2,6 +2,7 @@ import type { Case } from "../case.js";
 import { ABSENT } from "./accept/absent.js";
 import { FORMER } from "./accept/former.js";
 import { HEAL } from "./accept/heal.js";
+import { IMPORTED } from "./accept/imported.js";
 import { INHERIT } from "./accept/inherit.js";
 import { RETIRED } from "./accept/retired.js";
 import { SLOW_INHERIT } from "./accept/slow.js";
@@ -46,6 +47,7 @@ export const CASES: readonly Case[] = [
   ...OBSERVED_STARTED,
   ...FAILED_IMPORTS,
   ...INHERIT,
+  ...IMPORTED,
   ...RETIRED,
   ...SLOW_INHERIT,
   ...UNKNOWN_AFTER,
