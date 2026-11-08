@@ -60983,7 +60983,7 @@ function parsePython(source2) {
           continue;
         case "import_from_statement":
         case "future_import_statement":
-          imports.push(fromImport(node, line));
+          imports.push(fromImport2(node, line));
           continue;
         case "call": {
           const target = dynamicTarget(node);
@@ -61012,7 +61012,7 @@ function parsePython(source2) {
     };
   });
 }
-function fromImport(node, line) {
+function fromImport2(node, line) {
   if (node.type === "future_import_statement") {
     return { kind: "from", module: "__future__", level: 0, names: importedNames(node), line };
   }
@@ -68888,6 +68888,8 @@ function shortCommit(commit) {
 // src/core/status/import-lines.ts
 init_text();
 var REASONS = [
+  ["sameKeyKept", "another result kept at the same key"],
+  ["sameKeyNotAdopted", "not adopted yet"],
   ["environment", "environment differs"],
   ["closure", "closure list differs"],
   ["observed", "observed set differs"],
@@ -68909,7 +68911,7 @@ function importLines(s) {
 }
 function importDefaultLines(s) {
   return (s.imports ?? []).flatMap((i3) => {
-    if (i3.currentFiles > 0 || i3.notCurrent.environment === 0) return [];
+    if (i3.currentFiles > 0 || i3.notCurrent.environment < i3.testFiles) return [];
     return [
       `Imported results from ${i3.source}: none current here, the environment differs${environmentText(i3, DEFAULT_SHOWN)}`
     ];
@@ -71797,6 +71799,9 @@ function isResult(value) {
   return typeof value.project === "string" && typeof value.testPath === "string" && (value.kind === "test" || value.kind === "file" || value.kind === "setup") && (typeof value.fullName === "string" || value.fullName === null && value.kind !== "test") && (at2 === null || isObject2(at2) && typeof at2.path === "string" && typeof at2.line === "number" && typeof at2.column === "number") && typeof value.key === "string" && (value.outcome === "pass" || value.outcome === "skip") && typeof value.durationMs === "number";
 }
 
+// src/core/status/imports.ts
+init_state();
+
 // src/core/status/import-environment.ts
 init_environment_descriptor();
 function compareEnvironment(exported, local) {
@@ -71826,11 +71831,13 @@ var MAP_KEY = {
 function readImports(store, worktreeId, keys, states) {
   const imports = listImports(store);
   if (imports.length === 0) return [];
-  const here = hereOf(store, worktreeId, keys);
+  const here = hereOf(store, worktreeId, keys, states);
   return imports.flatMap((record) => {
     const files3 = importFiles(store, record.id).filter((f) => here.keys.has(testFileId(f)));
     if (files3.length === 0) return [];
     const notCurrent = {
+      sameKeyKept: 0,
+      sameKeyNotAdopted: 0,
       environment: 0,
       closure: 0,
       observed: 0,
@@ -71838,14 +71845,14 @@ function readImports(store, worktreeId, keys, states) {
       noKey: 0
     };
     let currentFiles = 0;
+    let currentResults = 0;
     for (const file of files3) {
       const reason2 = reasonOf(file, here);
       if (reason2 === "current") currentFiles++;
       else notCurrent[reason2]++;
+      const current2 = here.current.get(testFileId(file)) ?? [];
+      currentResults += current2.filter((s) => fromImport(s, record.id)).length;
     }
-    const currentResults = states.filter(
-      (s) => s.validity === "current" && s.origin?.kind === "imported" && s.origin.importId === record.id
-    ).length;
     return [
       {
         importId: record.id,
@@ -71863,7 +71870,7 @@ function readImports(store, worktreeId, keys, states) {
 }
 function reasonOf(file, here) {
   const key3 = here.keys.get(testFileId(file));
-  if (key3?.key === file.key) return "current";
+  if (key3?.key === file.key) return adoption(file, here);
   const environment = here.environments.get(file.project);
   if (environment !== void 0 && environment !== file.environment) return "environment";
   const closure = here.closure(file);
@@ -71871,7 +71878,28 @@ function reasonOf(file, here) {
   if (here.observed(file) !== file.observed) return "observed";
   return key3?.key === null || key3?.key === void 0 ? "noKey" : "content";
 }
-function hereOf(store, worktreeId, keys) {
+function adoption(file, here) {
+  const current2 = here.current.get(testFileId(file)) ?? [];
+  if (current2.length > 0) {
+    return current2.every((s) => fromImport(s, file.importId)) ? "current" : "sameKeyKept";
+  }
+  return here.stored(file.importId, file.key) ? "sameKeyNotAdopted" : "sameKeyKept";
+}
+function fromImport(state, importId) {
+  return state.origin?.kind === "imported" && state.origin.importId === importId;
+}
+function currentByFile(states) {
+  const byFile = /* @__PURE__ */ new Map();
+  for (const s of states) {
+    if (s.validity !== "current" || s.check.kind === "setup") continue;
+    const id = testFileId({ project: s.check.project, path: s.check.testPath });
+    const list2 = byFile.get(id);
+    if (list2 === void 0) byFile.set(id, [s]);
+    else list2.push(s);
+  }
+  return byFile;
+}
+function hereOf(store, worktreeId, keys, states) {
   const maps = /* @__PURE__ */ new Map();
   const entries3 = (map, project) => {
     const key3 = MAP_KEY[map](project);
@@ -71881,6 +71909,8 @@ function hereOf(store, worktreeId, keys) {
   };
   return {
     keys: new Map(keys.map((k) => [testFileId(k.testFile), k])),
+    current: currentByFile(states),
+    stored: (importId, key3) => store.results.byKey(key3, 0).some((r) => importIdOf(r.provenance.worktreeId) === importId),
     environments: new Map(worktreeEnvironments(store, worktreeId).map((e) => [e.project, e.hash])),
     closure: (file) => {
       const record = store.testFiles.get(file);

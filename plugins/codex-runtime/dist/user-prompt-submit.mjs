@@ -11925,11 +11925,13 @@ var MAP_KEY = {
 function readImports(store, worktreeId, keys, states) {
   const imports = listImports(store);
   if (imports.length === 0) return [];
-  const here = hereOf(store, worktreeId, keys);
+  const here = hereOf(store, worktreeId, keys, states);
   return imports.flatMap((record) => {
     const files2 = importFiles(store, record.id).filter((f) => here.keys.has(testFileId(f)));
     if (files2.length === 0) return [];
     const notCurrent = {
+      sameKeyKept: 0,
+      sameKeyNotAdopted: 0,
       environment: 0,
       closure: 0,
       observed: 0,
@@ -11937,14 +11939,14 @@ function readImports(store, worktreeId, keys, states) {
       noKey: 0
     };
     let currentFiles = 0;
+    let currentResults = 0;
     for (const file of files2) {
       const reason = reasonOf(file, here);
       if (reason === "current") currentFiles++;
       else notCurrent[reason]++;
+      const current2 = here.current.get(testFileId(file)) ?? [];
+      currentResults += current2.filter((s) => fromImport(s, record.id)).length;
     }
-    const currentResults = states.filter(
-      (s) => s.validity === "current" && s.origin?.kind === "imported" && s.origin.importId === record.id
-    ).length;
     return [
       {
         importId: record.id,
@@ -11962,7 +11964,7 @@ function readImports(store, worktreeId, keys, states) {
 }
 function reasonOf(file, here) {
   const key = here.keys.get(testFileId(file));
-  if (key?.key === file.key) return "current";
+  if (key?.key === file.key) return adoption(file, here);
   const environment = here.environments.get(file.project);
   if (environment !== void 0 && environment !== file.environment) return "environment";
   const closure = here.closure(file);
@@ -11970,7 +11972,28 @@ function reasonOf(file, here) {
   if (here.observed(file) !== file.observed) return "observed";
   return key?.key === null || key?.key === void 0 ? "noKey" : "content";
 }
-function hereOf(store, worktreeId, keys) {
+function adoption(file, here) {
+  const current2 = here.current.get(testFileId(file)) ?? [];
+  if (current2.length > 0) {
+    return current2.every((s) => fromImport(s, file.importId)) ? "current" : "sameKeyKept";
+  }
+  return here.stored(file.importId, file.key) ? "sameKeyNotAdopted" : "sameKeyKept";
+}
+function fromImport(state, importId) {
+  return state.origin?.kind === "imported" && state.origin.importId === importId;
+}
+function currentByFile(states) {
+  const byFile2 = /* @__PURE__ */ new Map();
+  for (const s of states) {
+    if (s.validity !== "current" || s.check.kind === "setup") continue;
+    const id = testFileId({ project: s.check.project, path: s.check.testPath });
+    const list = byFile2.get(id);
+    if (list === void 0) byFile2.set(id, [s]);
+    else list.push(s);
+  }
+  return byFile2;
+}
+function hereOf(store, worktreeId, keys, states) {
   const maps = /* @__PURE__ */ new Map();
   const entries = (map, project) => {
     const key = MAP_KEY[map](project);
@@ -11980,6 +12003,8 @@ function hereOf(store, worktreeId, keys) {
   };
   return {
     keys: new Map(keys.map((k) => [testFileId(k.testFile), k])),
+    current: currentByFile(states),
+    stored: (importId, key) => store.results.byKey(key, 0).some((r) => importIdOf(r.provenance.worktreeId) === importId),
     environments: new Map(worktreeEnvironments(store, worktreeId).map((e) => [e.project, e.hash])),
     closure: (file) => {
       const record = store.testFiles.get(file);
