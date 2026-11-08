@@ -1924,7 +1924,7 @@ Human authorized 2026-10-26; coordinator 474cc4f5. Brief: `specifications/017-li
 
 ## Feature 018: CI and shared results
 
-Spec `specifications/018-ci-and-shared-results/spec.md` (stage: build; **0.1.417 released** 2026-11-08 (tag `squeal--v0.1.417` at `ea776c75c`, hub `7645044`, GitHub latest with installer and Codex runtime assets, exact-commit CI 42463506305) with 018-06/07/09; next the trial 018-08, its cezar pull request awaiting the human's go; spec, rows 018-06 to 018-08 and the cezar workflow file approved by the human 2026-11-08; coordinator 3739e45a). Reopened by the human 2026-11-08 (task 7d611fc4) with a new goal: less test load on developers' machines by reusing what CI on main already ran, without adding CI wall time. First slice, approved in outline the same day ("Yes, start it"): `squeal export`/`import`, `status` naming environment differences, one trial in cezar. Earlier: research parked 2026-10-31 and 2026-11-01; the four wave-0 findings stand. 
+Spec `specifications/018-ci-and-shared-results/spec.md` (stage: build; **0.1.417 released** 2026-11-08 (tag `squeal--v0.1.417` at `ea776c75c`, hub `7645044`, GitHub latest with installer and Codex runtime assets, exact-commit CI 42463506305) with 018-06/07/09; next the trial 018-08 (cezar PR hearsay-tools/cezarion#3018); spec, rows 018-06 to 018-08 and the cezar workflow file approved by the human 2026-11-08; coordinator 3739e45a). Reopened by the human 2026-11-08 (task 7d611fc4) with a new goal: less test load on developers' machines by reusing what CI on main already ran, without adding CI wall time. First slice, approved in outline the same day ("Yes, start it"): `squeal export`/`import`, `status` naming environment differences, one trial in cezar. Earlier: research parked 2026-10-31 and 2026-11-01; the four wave-0 findings stand. 
 
 ### Wave 0: research
 
@@ -1958,7 +1958,7 @@ Spec `specifications/018-ci-and-shared-results/spec.md` (stage: build; **0.1.417
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 018-08 trial: CI export imported into a fresh cezar clone | planned (approved with the cezar workflow file, the human 2026-11-08; 0.1.417 has `export`; draft `tasks/018-08-squeal-results-trial.yml`; opening the cezar pull request awaits the human's go) | Spec D7: one dispatched non-gating job in cezar exports; a fresh clone at that SHA imports and counts current files and D5 reasons. Read-only on cezar apart from the approved workflow file. | `research/import-trial.md` committed with the counts, the reasons, the CI job time and the Squeal version. |
+| 018-08 trial: CI export imported into a fresh cezar clone | planned (approved with the cezar workflow file, the human 2026-11-08; 0.1.417 has `export`; draft `tasks/018-08-squeal-results-trial.yml`; the human 2026-11-08: "Open and run it"; draft PR hearsay-tools/cezarion#3018 opened, waits for its checks and the owner's merge) | Spec D7: one dispatched non-gating job in cezar exports; a fresh clone at that SHA imports and counts current files and D5 reasons. Read-only on cezar apart from the approved workflow file. | `research/import-trial.md` committed with the counts, the reasons, the CI job time and the Squeal version. |
 
 ## Feature 019: run triggers
 
