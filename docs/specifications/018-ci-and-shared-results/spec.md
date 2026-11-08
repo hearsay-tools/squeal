@@ -91,10 +91,10 @@ Where it shows, beside `inherited` today: `status --full` (`Imported: N of M cur
 
 `squeal status --full` and `--json` gain, per import that has any result for this worktree's test files:
 
-- how many of the exported test files are current here from the import;
-- for the rest, the count by reason, in this order: environment differs (with D1's named differences), closure list differs, observed set differs, content differs (equal environment and lists, so a file's bytes differ: the expected case after the commit moved), no local key yet.
+- how many of the exported test files are current here from the import: a file counts only when its current known states come from this import (validity `current`, origin `imported` with this import's id). An equal key alone is not enough (review wave-1-2 B1, 2026-11-08);
+- for the rest, the count by reason, in this order: same key, another result kept (the key matches, but this worktree's current result at it is its own, inherited or from another import, for example a local failure the add-only import did not replace); same key, not adopted yet (the key matches, but the daemon has not taken the imported result yet); environment differs (with D1's named differences); closure list differs; observed set differs; content differs (equal environment and lists, so a file's bytes differ: the expected case after the commit moved); no local key yet.
 
-The default `status` text adds one line only when an import exists and none of its results are current because the environment differs; it names the first two differences. Silence otherwise (principle 1).
+The default `status` text adds one line only when an import exists, none of its files is current from it, and the environment differs for every file that is not current; it names the first two differences. Silence otherwise (principle 1), including a mix of environment and other reasons (review wave-1-2 N1).
 
 ### D6. Trust and principle 5
 
