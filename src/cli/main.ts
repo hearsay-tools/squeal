@@ -10,8 +10,10 @@ import { codeCommand } from "./code.js";
 import { codexRuntimeCommand } from "./codex/runtime.js";
 import { codexStatusLine } from "./codex/status.js";
 import { daemonCommand } from "./daemon.js";
+import { exportCommand } from "./export.js";
 import { failuresCommand } from "./failures.js";
 import { holdCommand } from "./hold.js";
+import { importCommand } from "./import.js";
 import { init } from "./init.js";
 import { lintCommand } from "./lint.js";
 import { baseOf } from "./named-selection.js";
@@ -164,6 +166,17 @@ Usage:
                                 any reason or none
   squeal retry --cancel <test file>...
                                 Withdraw a pending retry
+  squeal export [--out <file>]  Write this worktree's passing results at its current
+                                inputs to one gzipped file (default
+                                squeal-results-<commit8>.json.gz), with what another
+                                store needs to compute the same inputs; a test file with
+                                a failure there is left out; needs no daemon
+  squeal import <file> [--dry-run]
+                                Add an export's results to this repository's store; a
+                                result counts only where this worktree's inputs equal
+                                the export's; prints the results added and each
+                                difference of the export's environment from this
+                                worktree's; --dry-run writes nothing
   squeal ps [--repo] [--full] [--json]
                                 Every Squeal daemon of this user on this host, with its
                                 test processes, their CPU and memory over 2 s, the host's
@@ -246,6 +259,8 @@ const COMMANDS: Readonly<Record<string, Command>> = {
   start: startCommand,
   run: runCommand,
   retry: retryCommand,
+  export: exportCommand,
+  import: importCommand,
   ps: psCommand,
   stop: stopCommand,
   hold: holdCommand,

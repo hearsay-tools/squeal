@@ -143,6 +143,18 @@ export function listImports(store: Store): ImportRecord[] {
   });
 }
 
+/**
+ * Spec 018 D4: each import's source label by id, read at the first ask, for
+ * naming imported results; `null` for an import the store holds no row of.
+ */
+export function importSourceOf(store: Store): (importId: string) => string | null {
+  let labels: Map<string, string> | undefined;
+  return (importId) => {
+    labels ??= new Map(listImports(store).map((i) => [i.id, sourceLabel(i.header)]));
+    return labels.get(importId) ?? null;
+  };
+}
+
 /** The exported test files of `importId`, by project and path. */
 export function importFiles(store: Store, importId: string): ImportFileRecord[] {
   const conn = readable(store);

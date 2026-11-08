@@ -3,7 +3,7 @@ import { checkIdentity } from "../state/derive.js";
 import { readFailureProducers } from "../state/producers.js";
 import type { AbsolutePath, WorktreeId } from "../types/common.js";
 import type { CheckKey } from "../types/keys.js";
-import type { KnownState } from "../types/state.js";
+import { type KnownState, originWorktree } from "../types/state.js";
 import type { WhyReplacement, WhyRunLog, WhyRunLogGap } from "../types/status.js";
 import type { Store } from "../types/store.js";
 import type { ResultRecord } from "../types/store-records.js";
@@ -63,7 +63,7 @@ export function unshownLog(
     const named =
       failureKey !== undefined && (knownState.validity !== "current" || failureKey === key);
     const run = store.runs.get(producer.runId);
-    const source = origin.kind === "inherited" ? origin.worktreeId : worktreeId;
+    const source = originWorktree(origin) ?? worktreeId;
     if (named && run === null) return gap("producer-pruned");
     if (named && run !== null && run.worktreeId === source) {
       const log = logOf({ runId: run.id, worktreeId: run.worktreeId }, run.logDir);

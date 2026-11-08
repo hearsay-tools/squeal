@@ -1,6 +1,6 @@
 import type { EpochMs, WorktreeId } from "../types/common.js";
 import type { CheckKey } from "../types/keys.js";
-import type { KnownState } from "../types/state.js";
+import { type KnownState, originWorktree } from "../types/state.js";
 import type { Store } from "../types/store.js";
 import { worktreeMetaKey } from "../types/store.js";
 import type { ResultRecord } from "../types/store-records.js";
@@ -118,9 +118,9 @@ export function producingResult(
         r.outcome === state.outcome &&
         sameFingerprint(fingerprintOf(r), state.fingerprint) &&
         r.provenance.commit === state.commit &&
-        (origin.kind === "inherited"
-          ? r.provenance.worktreeId === origin.worktreeId
-          : r.provenance.worktreeId === worktreeId && r.provenance.revision === state.observedAt),
+        (origin.kind === "own"
+          ? r.provenance.worktreeId === worktreeId && r.provenance.revision === state.observedAt
+          : r.provenance.worktreeId === originWorktree(origin)),
     ) ?? null
   );
 }

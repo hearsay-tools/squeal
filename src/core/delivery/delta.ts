@@ -26,6 +26,8 @@ export interface PlanInput {
   readonly toldAt: EpochMs;
   /** Root of a registered worktree, for naming the origin of inherited results. */
   readonly rootOf: (worktreeId: WorktreeId) => AbsolutePath | null;
+  /** Spec 018 D4: an import's source label, for naming the origin of imported results. */
+  readonly sourceOf?: (importId: string) => string | null;
   /** Current revision: `observedAt` of a retired entry and of a state never observed. */
   readonly revision: RevisionNumber;
   /**
@@ -113,6 +115,24 @@ export function toView(state: KnownState, toldAt: EpochMs): ViewEntry {
 }
 
 /**
+ * The root of the worktree an inherited result came from, or the source of
+ * the import an imported one came from (018 D4), where known.
+ */
+function originNames(
+  state: KnownState,
+  input: Pick<PlanInput, "rootOf" | "sourceOf">,
+): { readonly originRoot?: AbsolutePath; readonly originSource?: string } {
+  const origin = state.origin;
+  if (origin?.kind === "inherited") {
+    const originRoot = input.rootOf(origin.worktreeId);
+    return originRoot === null ? {} : { originRoot };
+  }
+  if (origin?.kind !== "imported") return {};
+  const originSource = input.sourceOf?.(origin.importId) ?? null;
+  return originSource === null ? {} : { originSource };
+}
+
+/**
  * Spec 001 D6: "At delivery time the daemon or hook computes the delta
  * between the view and the current known states, keeps only notable
  * differences (the transition kinds above, evaluated between what was told
@@ -155,8 +175,6 @@ export function planDelta(input: PlanInput): DeltaPlan {
     if (kind === null) continue;
     const baseline =
       kind === "first-seen-fail" && input.isBaselineFinding(state.check, state.fingerprint);
-    const originRoot =
-      state.origin?.kind === "inherited" ? input.rootOf(state.origin.worktreeId) : null;
     entries.push({
       check: state.check,
       kind,
@@ -165,7 +183,7 @@ export function planDelta(input: PlanInput): DeltaPlan {
       validity: state.validity,
       observedAt: state.observedAt ?? input.revision,
       origin: state.origin ?? { kind: "own" },
-      ...(originRoot === null ? {} : { originRoot }),
+      ...originNames(state, input),
       summary: state.summary,
       location: state.location,
       ...(baseline ? { baseline } : {}),

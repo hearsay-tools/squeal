@@ -16,7 +16,7 @@ import type {
 } from "../types/common.js";
 import type { Consumer, DeltaEntry, TransitionEntry } from "../types/delivery.js";
 import type { CheckKey } from "../types/keys.js";
-import type { KnownState } from "../types/state.js";
+import { type KnownState, originWorktree } from "../types/state.js";
 import type { KnownFailure, StatusHeader } from "../types/status.js";
 import type { Store } from "../types/store.js";
 import type { ResultRecord } from "../types/store-records.js";
@@ -46,7 +46,7 @@ const LOAD_RESULTS_READ = 50;
  */
 function loadOf(store: Store, worktreeId: WorktreeId, entry: TransitionEntry): number | undefined {
   if (entry.summary === null || !TIMED_OUT.test(entry.summary)) return undefined;
-  const from = entry.origin.kind === "inherited" ? entry.origin.worktreeId : worktreeId;
+  const from = originWorktree(entry.origin) ?? worktreeId;
   const result = store.results
     .listForCheck(entry.check, LOAD_RESULTS_READ)
     .find((r) => r.outcome === "fail" && r.provenance.worktreeId === from);

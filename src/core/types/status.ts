@@ -366,6 +366,11 @@ export interface StatusHeader {
    */
   readonly inheritedFileLevelCount?: number;
   /**
+   * Spec 018 D4: checks whose current result an import stored, a part of
+   * `counts.current`. Set by `readHeader`; absent reads as 0.
+   */
+  readonly importedCount?: number;
+  /**
    * The newest revision whose runner part the daemon applied
    * (`refinedMetaKey`); `null` when no daemon recorded one. Set by
    * `readHeader`.
@@ -652,6 +657,42 @@ export interface InheritedSource {
 }
 
 /**
+ * Spec 018 D5: an import's exported test files this worktree lists that are
+ * not current here, by reason, in this order.
+ */
+export interface ImportNotCurrent {
+  /** The export's environment hash for the file's project differs from this worktree's (D1). */
+  readonly environment: number;
+  /** Equal environment; the closure list the store holds differs from the export's. */
+  readonly closure: number;
+  /** Equal environment and closure list; the observed entries differ. */
+  readonly observed: number;
+  /** Equal environment and lists, another key: the bytes of the file or of a closure file differ. */
+  readonly content: number;
+  /** This worktree has no key for the file yet. */
+  readonly noKey: number;
+}
+
+/** Spec 018 D4 and D5: one import with a test file this worktree lists. */
+export interface ImportStatus {
+  readonly importId: string;
+  /** `CI run <id> on <repository> at <commit8>`, or `local export at <commit8>`. */
+  readonly source: string;
+  /** The export's commit. */
+  readonly commit: CommitSha;
+  readonly importedAt: EpochMs;
+  /** Current checks here whose result this import stored. */
+  readonly currentResults: number;
+  /** The import's exported test files this worktree lists. */
+  readonly testFiles: number;
+  /** Of `testFiles`, those whose key here equals the exported key. */
+  readonly currentFiles: number;
+  readonly notCurrent: ImportNotCurrent;
+  /** D1's named differences, when any file's environment differs. */
+  readonly environmentDifferences: readonly string[];
+}
+
+/**
  * Counts behind the human line "Affected checks: 47 passed, 3 running, 12
  * queued" (vision, "The desired experience"). `ValidityCounts` says how many
  * checks are current or pending; this says what the current ones are and
@@ -736,6 +777,8 @@ export interface StatusSnapshot extends StatusHeader {
     readonly count: number;
     readonly sources: readonly InheritedSource[];
   };
+  /** Spec 018 D5: each import with a test file this worktree lists, newest first. Absent when none has. */
+  readonly imports?: readonly ImportStatus[];
   readonly breakdown: CheckBreakdown;
   readonly closureMethod: ClosureMethod;
   readonly storeSchemaVersion: number;
@@ -1032,6 +1075,11 @@ export interface WhyReport {
   readonly check: CheckId;
   /** Root of every worktree in the store, for naming origins and producers. */
   readonly worktreeRoots: Readonly<Record<WorktreeId, AbsolutePath>>;
+  /**
+   * Spec 018 D4: the source label of every import in the store, by import
+   * id, for naming imported results. Absent when the store holds none.
+   */
+  readonly importSources?: Readonly<Record<string, string>>;
   /** Known state in this worktree; `null` when it has none. */
   readonly knownState: KnownState | null;
   /**

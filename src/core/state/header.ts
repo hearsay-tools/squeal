@@ -33,6 +33,29 @@ import { readOptimizerOff } from "./optimizer-note.js";
 import { readRevisionCommit } from "./revision-commit.js";
 import { readSlowTier, type SlowPolicyView, slowPolicyView } from "./slow.js";
 
+/** The validity counts of `states`, and how many current ones are inherited or imported. */
+function countStates(states: readonly KnownState[]) {
+  const counts: Record<Validity, number> = { current: 0, pending: 0, stale: 0, unknown: 0 };
+  const fileLevelCounts: Record<Validity, number> = { ...counts };
+  let inheritedCount = 0;
+  let inheritedFileLevelCount = 0;
+  let importedCount = 0;
+  for (const state of states) {
+    // Task 001-382: a global setup is no test's check; it counts among known failures only.
+    if (state.check.kind === "setup") continue;
+    counts[state.validity]++;
+    if (state.check.kind === "file") fileLevelCounts[state.validity]++;
+    if (state.validity !== "current") continue;
+    if (state.origin?.kind === "inherited") {
+      inheritedCount++;
+      if (state.check.kind === "file") inheritedFileLevelCount++;
+    }
+    // Spec 018 D4: the hook header's count of imported results.
+    if (state.origin?.kind === "imported") importedCount++;
+  }
+  return { counts, fileLevelCounts, inheritedCount, inheritedFileLevelCount, importedCount };
+}
+
 /**
  * Spec 001 D6: "Every delivered message carries a header [...]. Delivery and
  * status derive these from one shared header reader".
@@ -78,25 +101,8 @@ export function readHeader(
   const latest = store.revisions.latest(worktreeId);
   const revision = latest?.number ?? 0;
   const commit = readRevisionCommit(store, worktreeId, latest);
-  const counts: Record<Validity, number> = { current: 0, pending: 0, stale: 0, unknown: 0 };
-  const fileLevelCounts: Record<Validity, number> = {
-    current: 0,
-    pending: 0,
-    stale: 0,
-    unknown: 0,
-  };
-  let inheritedCount = 0;
-  let inheritedFileLevelCount = 0;
-  for (const state of states) {
-    // Task 001-382: a global setup is no test's check; it counts among known failures only.
-    if (state.check.kind === "setup") continue;
-    counts[state.validity]++;
-    if (state.check.kind === "file") fileLevelCounts[state.validity]++;
-    if (state.validity === "current" && state.origin?.kind === "inherited") {
-      inheritedCount++;
-      if (state.check.kind === "file") inheritedFileLevelCount++;
-    }
-  }
+  const { counts, fileLevelCounts, inheritedCount, inheritedFileLevelCount, importedCount } =
+    countStates(states);
   const refinedRevision = readRefined(store, worktreeId);
   const missing = parseAwaitingInstall(store.meta.get(awaitingInstallMetaKey(worktreeId)));
   const awaiting = missing !== null;
@@ -122,6 +128,7 @@ export function readHeader(
     testFilesListed: keys.length > 0 || (!awaiting && last !== null),
     inheritedCount,
     inheritedFileLevelCount,
+    ...(importedCount === 0 ? {} : { importedCount }),
     refinedRevision,
     runnerPartPending: refinedRevision !== null && refinedRevision < revision,
     ...(slow === undefined ? {} : { slowPending: countSlowPending(states, keys, slow) }),

@@ -22,6 +22,7 @@ import { focusedLines } from "./focused.js";
 import { holdLines } from "./holds.js";
 import { statusRevisionText } from "./identity.js";
 import { ignoredConfigLines } from "./ignored-config.js";
+import { importDefaultLines } from "./import-lines.js";
 import { lintStatusPart } from "./lint-status.js";
 import { fromBase } from "./next-step-text.js";
 import { outstandingLines } from "./outstanding-text.js";
@@ -94,6 +95,8 @@ export function formatStatus(
     ...focusedLines(result, full),
     `Affected checks: ${affected(result, command)}`,
     `Full-suite checkpoint: ${fullSuiteText(result, command)}`,
+    // Spec 018 D5: an import none of whose results is current because the environment differs.
+    ...importDefaultLines(result),
     ...owedLine(result),
     ...slowLine(result, command),
     // Spec 019 D5, D6 (row 019-16), with a `checks` key only: each group not all current, the commit.

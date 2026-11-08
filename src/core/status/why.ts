@@ -8,6 +8,7 @@ import { failureKeysOnce, heldFailure } from "../state/inherited.js";
 import { readRerunFirstFailures } from "../state/rerun-first.js";
 import { readRevisionCommit } from "../state/revision-commit.js";
 import { observedSince, shownResult } from "../state/shown-result.js";
+import { listImports, sourceLabel } from "../store/imports.js";
 import { storePaths } from "../store/paths.js";
 import type { CheckId } from "../types/check.js";
 import {
@@ -250,6 +251,7 @@ function report(
     ...(commit === undefined ? {} : { commit }),
     check,
     worktreeRoots,
+    ...importSourcesOf(store),
     knownState,
     ...(recorded === undefined ? {} : { recorded }),
     ...(frame === null ? {} : { testFileFrame: frame }),
@@ -338,4 +340,11 @@ function heldFor(
     worktreeId,
     results.filter((r) => r.key === key),
   );
+}
+
+/** Spec 018 D4: each import's source label by id; nothing when the store holds no import. */
+function importSourcesOf(store: Store): Pick<WhyReport, "importSources"> {
+  const imports = listImports(store);
+  if (imports.length === 0) return {};
+  return { importSources: Object.fromEntries(imports.map((i) => [i.id, sourceLabel(i.header)])) };
 }

@@ -7,6 +7,7 @@ import { partsSuffix } from "./checks.js";
 import { commitHiddenParts } from "./commit-lines.js";
 import { DEATH_CAUSE, deathText } from "./died.js";
 import { shortCommit, worktreeLine } from "./identity.js";
+import { importLines } from "./import-lines.js";
 import { runtimeFilesLines } from "./runtime-files.js";
 import { shortText, stoppingText } from "./stopping.js";
 import { unknownFilesLines } from "./unknown-files.js";
@@ -34,6 +35,8 @@ export function detailLines(
       (source) =>
         `  ${source.count}${partsSuffix(source.count, source.fileLevelCount)} from ${source.worktreeRoot ?? source.worktreeId} at ${shortCommit(source.commit)}`,
     ),
+    // Spec 018 D4 and D5: beside inheritance, each import and why its other files are not current.
+    ...importLines(s),
     ...(s.breakdown.testFilesWithoutChecks === 0
       ? []
       : [

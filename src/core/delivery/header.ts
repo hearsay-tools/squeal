@@ -85,8 +85,8 @@ function daemonText(header: StatusHeader, command: string): string {
 }
 
 /**
- * The full form's counts: the four validities, the inherited sentence and
- * the test files without checks. Row 011-205: `owed`, the counts a consumer
+ * The full form's counts: the four validities, the inherited and imported
+ * sentences and the test files without checks. Row 011-205: `owed`, the counts a consumer
  * registered before the listing is owed, adds why no unknown one is queued.
  */
 function fullCounts(header: StatusHeader, owed: Delta["countsOwed"]): string {
@@ -96,6 +96,10 @@ function fullCounts(header: StatusHeader, owed: Delta["countsOwed"]): string {
     inheritedCount === 0
       ? ""
       : ` Inherited: ${inheritedCount} of ${counts.current} current${partsSuffix(inheritedCount, header.inheritedFileLevelCount)}.`;
+  // Spec 018 D4: beside the inherited count, the imported one.
+  const importedCount = header.importedCount ?? 0;
+  const imported =
+    importedCount === 0 ? "" : ` Imported: ${importedCount} of ${counts.current} current.`;
   const queuedNone =
     owed?.lookupOnly === true && files.unknown > 0
       ? "; the baseline is lookup-only, so it queued none of them"
@@ -104,7 +108,7 @@ function fullCounts(header: StatusHeader, owed: Delta["countsOwed"]): string {
     files.pending + files.unknown === 0
       ? ""
       : ` Test files without checks: ${files.pending} pending, ${files.unknown} unknown${queuedNone}.`;
-  return `${countsText(counts, fileLevel)}.${inherited}${withoutChecks}`;
+  return `${countsText(counts, fileLevel)}.${inherited}${imported}${withoutChecks}`;
 }
 
 function fullLine(header: StatusHeader, command: string, owed: Delta["countsOwed"]): string {

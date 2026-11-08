@@ -12,6 +12,7 @@ import { forgetStopWait } from "../slow/stop-wait.js";
 import { baselineFindings } from "../state/baseline.js";
 import { splitByValidity } from "../status/checks.js";
 import { ignoredConfigAt } from "../status/ignored-config.js";
+import { importSourceOf } from "../store/imports.js";
 import { type ChangeMarker, changeMarker } from "../store/store.js";
 import type { CodeNews } from "../types/code-delivery.js";
 import { type EpochMs, PAYLOAD_SCHEMA_VERSION, type RevisionNumber } from "../types/common.js";
@@ -190,6 +191,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
       isBaselineFinding: baselineFindings(store, consumer.worktreeId),
       toldAt,
       rootOf: (id) => store.worktrees.get(id)?.root ?? null,
+      sourceOf: importSourceOf(store),
       revision,
       history: (check) => store.transitions.history(consumer.worktreeId, check),
       ownEdit: ownEditUnknown(store, consumer, revision),

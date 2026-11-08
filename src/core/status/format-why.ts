@@ -7,7 +7,7 @@ import { FLAKY_INPUTS_TEXT, flakyText } from "../state/flaky.js";
 import { revisionText } from "../state/revision-commit.js";
 import { plural } from "../text.js";
 import type { EpochMs } from "../types/common.js";
-import type { KnownOutcome, KnownState, Transition } from "../types/state.js";
+import { importIdOf, type KnownOutcome, type KnownState, type Transition } from "../types/state.js";
 import type {
   WhyChangedSince,
   WhyNoMatch,
@@ -232,6 +232,12 @@ function stateLines(why: WhyReport, s: KnownState | null): string[] {
       why.worktreeRoots[s.origin.worktreeId] ?? `removed worktree ${s.origin.worktreeId}`;
     lines.push(`  Origin: inherited from ${source} at ${shortCommit(s.origin.commit)}`);
   }
+  // Spec 018 D4: an imported result names the import's source.
+  if (s.origin?.kind === "imported") {
+    lines.push(
+      `  Origin: Imported ${upper(s.outcome)} from ${importSource(why, s.origin.importId)}`,
+    );
+  }
   if (s.summary !== null) lines.push(`  Summary: ${s.summary}`);
   if (s.location !== null) {
     // 011 C5 as amended 2026-10-21 (gh-67): the test-file frame beside a helper's location.
@@ -273,14 +279,18 @@ function results(why: WhyReport): string[] {
 
 function resultLines(why: WhyReport, { result, worktreeRoot, logDir }: WhyResultEntry): string[] {
   const p = result.provenance;
+  const importId = importIdOf(p.worktreeId);
   const where =
     p.worktreeId === why.worktreeId
       ? `${worktreeRoot ?? why.worktreeRoot} (this worktree)`
-      : (worktreeRoot ?? `removed worktree ${p.worktreeId}`);
+      : importId !== null
+        ? `imported from ${importSource(why, importId)}`
+        : (worktreeRoot ?? `removed worktree ${p.worktreeId}`);
+  const noLog = importId === null ? "run record pruned" : "none, an imported result has no run log";
   const lines = [
     `  ${upper(result.outcome).padEnd(4)}  ${new Date(p.recordedAt).toISOString()}  ${where}, revision ${p.revision}, commit ${shortCommit(p.commit)}, ${p.dirty ? "dirty" : "clean"}`,
     `${INDENT}run ${p.runId}, ${Math.round(result.durationMs)} ms, key ${result.key.slice(0, 12)}${replacedHere(why, result) ? ", replaced the result behind this worktree's known state" : ""}`,
-    `${INDENT}log: ${logDir ?? "run record pruned"}`,
+    `${INDENT}log: ${logDir ?? noLog}`,
   ];
   if (result.summary !== null) lines.push(`${INDENT}${result.summary}`);
   return [...lines, ...errorLines(result.errors)];
@@ -307,6 +317,11 @@ function runLog(why: WhyReport): string[] {
   // Row 011-108 (gh-74): an UNKNOWN names the run that produced it, or why it cannot.
   if (log === null && why.unknownRun !== undefined) return unknownRunLines(why, why.unknownRun);
   if (log === null) return [`Run log: unknown, ${gapText(why.runLogUnavailable)}`];
+  // Spec 018 D2: an export carries no run log.
+  const importId = importIdOf(log.worktreeId);
+  if (importId !== null) {
+    return [`Run log: none, the result was imported from ${importSource(why, importId)}`];
+  }
   const where = producer(why, log);
   const file = testFileLabel(why.check.project, why.check.testPath);
   if (log.state === "pruned") {
@@ -381,6 +396,11 @@ function producer(why: WhyReport, log: WhyRunLog): string {
   if (log.worktreeId === why.worktreeId) return `${root ?? why.worktreeRoot} (this worktree)`;
   const other = root ?? `removed worktree ${log.worktreeId}`;
   return why.knownState?.origin?.kind === "inherited" ? `${other} (inherited)` : other;
+}
+
+/** Spec 018 D4: an import's source label, or its id when the store holds no row of it. */
+function importSource(why: WhyReport, importId: string): string {
+  return why.importSources?.[importId] ?? `import ${importId}`;
 }
 
 function capitalize(text: string): string {
