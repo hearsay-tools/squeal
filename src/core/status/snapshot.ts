@@ -42,6 +42,7 @@ import { readStatusFocused } from "./focused.js";
 import { readHolds } from "./holds.js";
 import { statusIdentity } from "./identity.js";
 import { ignoredConfigOf, liveDaemonVersion } from "./ignored-config.js";
+import { readImports } from "./imports.js";
 import { lintStatusOf } from "./lint-status.js";
 import { type StatusStoreOptions, unavailable, withStatusStore } from "./open.js";
 import { openRuns } from "./open-runs.js";
@@ -188,6 +189,7 @@ function snapshot(
     knownFailures,
     knownFailureCounts: knownFailureCounts(knownFailures),
     inherited: inheritedSources(store, states),
+    ...importsOf(store, worktreeId, keys, states),
     breakdown: breakdown(states, keys, held),
     closureMethod: CLOSURE_METHOD,
     storeSchemaVersion: store.schemaVersion,
@@ -261,6 +263,17 @@ function openCheckpoint(
   }
   if (daemon.state !== "alive" || store.checkpoints.get(progress.id)?.end !== null) return {};
   return { checkpoint: { ...rest, owed: false } };
+}
+
+/** Spec 018 D5: the imports with a test file this worktree lists; nothing when none has. */
+function importsOf(
+  store: Store,
+  worktreeId: WorktreeId,
+  keys: readonly TestFileKeyRecord[],
+  states: readonly KnownState[],
+): Pick<StatusSnapshot, "imports"> {
+  const imports = readImports(store, worktreeId, keys, states);
+  return imports.length === 0 ? {} : { imports };
 }
 
 /** Current inherited results grouped by source worktree and commit, largest group first. */

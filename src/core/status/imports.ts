@@ -1,0 +1,147 @@
+import { observedModulesMetaKey } from "../keys/modules.js";
+import { observedDirectMetaKey, observedMetaKey, readSharedEntries } from "../keys/observed.js";
+import { testFileId } from "../keys/reverse-index.js";
+import { readEnvironment, worktreeEnvironments } from "../store/environments.js";
+import { type ImportFileRecord, importFiles, listImports, sourceLabel } from "../store/imports.js";
+import {
+  listHash,
+  OBSERVED_MAPS,
+  type ObservedEntries,
+  observedHash,
+} from "../store/transfer-bundle.js";
+import type { ProjectName, WorktreeId } from "../types/common.js";
+import type { KnownState } from "../types/state.js";
+import type { ImportNotCurrent, ImportStatus } from "../types/status.js";
+import type { Store } from "../types/store.js";
+import type { TestFileKeyRecord } from "../types/store-records.js";
+import { compareEnvironment } from "./import-environment.js";
+
+/*
+ * Spec 018 D5: per import that has an exported file this worktree lists, how
+ * many of those files are current here at the exported key, and the rest by
+ * reason, in this order: environment differs, closure list differs, observed
+ * set differs, content differs (equal environment and lists: the file's
+ * bytes or a closure file's differ), no local key yet.
+ */
+
+const MAP_KEY = {
+  observed: observedMetaKey,
+  observedDirect: observedDirectMetaKey,
+  observedModules: observedModulesMetaKey,
+} as const;
+
+type Reason = keyof ImportNotCurrent | "current";
+
+/** What one exported file's comparison reads: this worktree's key row, environment and lists. */
+interface Here {
+  readonly keys: ReadonlyMap<string, TestFileKeyRecord>;
+  readonly environments: ReadonlyMap<ProjectName, string>;
+  closure(file: ImportFileRecord): string | null;
+  observed(file: ImportFileRecord): string;
+}
+
+/** Each import with a file `worktreeId` lists, newest first; empty before the first import. */
+export function readImports(
+  store: Store,
+  worktreeId: WorktreeId,
+  keys: readonly TestFileKeyRecord[],
+  states: readonly KnownState[],
+): ImportStatus[] {
+  const imports = listImports(store);
+  if (imports.length === 0) return [];
+  const here = hereOf(store, worktreeId, keys);
+  return imports.flatMap((record) => {
+    const files = importFiles(store, record.id).filter((f) => here.keys.has(testFileId(f)));
+    if (files.length === 0) return [];
+    const notCurrent: Record<keyof ImportNotCurrent, number> = {
+      environment: 0,
+      closure: 0,
+      observed: 0,
+      content: 0,
+      noKey: 0,
+    };
+    let currentFiles = 0;
+    for (const file of files) {
+      const reason = reasonOf(file, here);
+      if (reason === "current") currentFiles++;
+      else notCurrent[reason]++;
+    }
+    const currentResults = states.filter(
+      (s) =>
+        s.validity === "current" &&
+        s.origin?.kind === "imported" &&
+        s.origin.importId === record.id,
+    ).length;
+    return [
+      {
+        importId: record.id,
+        source: sourceLabel(record.header),
+        commit: record.header.commit,
+        importedAt: record.importedAt,
+        currentResults,
+        testFiles: files.length,
+        currentFiles,
+        notCurrent,
+        environmentDifferences:
+          notCurrent.environment === 0 ? [] : differences(store, worktreeId, files),
+      },
+    ];
+  });
+}
+
+function reasonOf(file: ImportFileRecord, here: Here): Reason {
+  const key = here.keys.get(testFileId(file));
+  if (key?.key === file.key) return "current";
+  const environment = here.environments.get(file.project);
+  if (environment !== undefined && environment !== file.environment) return "environment";
+  const closure = here.closure(file);
+  if (closure !== null && file.closure !== "" && closure !== file.closure) return "closure";
+  if (here.observed(file) !== file.observed) return "observed";
+  return key?.key === null || key?.key === undefined ? "noKey" : "content";
+}
+
+function hereOf(store: Store, worktreeId: WorktreeId, keys: readonly TestFileKeyRecord[]): Here {
+  const maps = new Map<string, Record<string, string[]>>();
+  const entries = (map: keyof typeof MAP_KEY, project: ProjectName) => {
+    const key = MAP_KEY[map](project);
+    const read = maps.get(key) ?? readSharedEntries(store, key);
+    maps.set(key, read);
+    return read;
+  };
+  return {
+    keys: new Map(keys.map((k) => [testFileId(k.testFile), k])),
+    environments: new Map(worktreeEnvironments(store, worktreeId).map((e) => [e.project, e.hash])),
+    closure: (file) => {
+      const record = store.testFiles.get(file);
+      return record === null ? null : listHash(record.closure.paths);
+    },
+    observed: (file) => {
+      const observed: { -readonly [M in keyof ObservedEntries]: ObservedEntries[M] } = {};
+      for (const map of OBSERVED_MAPS) {
+        const paths = entries(map, file.project)[file.path];
+        if (paths !== undefined) observed[map] = paths;
+      }
+      return observedHash(observed);
+    },
+  };
+}
+
+/** D1's named differences of each project whose environment differs, the project named when more than one. */
+function differences(
+  store: Store,
+  worktreeId: WorktreeId,
+  files: readonly ImportFileRecord[],
+): string[] {
+  const exported = new Map(files.map((f) => [f.project, f.environment]));
+  const local = new Map(worktreeEnvironments(store, worktreeId).map((e) => [e.project, e]));
+  return [...exported].flatMap(([project, hash]) => {
+    const comparison = compareEnvironment(
+      { hash, descriptor: readEnvironment(store, hash) },
+      local.get(project) ?? null,
+    );
+    if (comparison.kind !== "differs") return [];
+    const named =
+      comparison.differences.length === 0 ? ["parts not recorded"] : comparison.differences;
+    return exported.size === 1 ? named : named.map((d) => `${project || "(default)"}: ${d}`);
+  });
+}

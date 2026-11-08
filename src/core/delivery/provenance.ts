@@ -34,6 +34,14 @@ function inheritedFrom(entry: TransitionEntry): string | null {
   return `${entry.originRoot ?? `worktree ${entry.origin.worktreeId}`} at ${commitText(entry.origin.commit)}`;
 }
 
+/** Spec 018 D4: the import an imported result came from, by its source label. */
+function importedFrom(entry: TransitionEntry): string | null {
+  if (entry.origin.kind !== "imported") return null;
+  return (
+    entry.originSource ?? `import ${entry.origin.importId} at ${commitText(entry.origin.commit)}`
+  );
+}
+
 /**
  * 011 C5 as amended (gh-32, task 011-18): what a first-seen failure's
  * baseline says, `null` when it says nothing more. A pass baseline is told
@@ -83,12 +91,16 @@ function validityText(entry: TransitionEntry, revision: number): string | null {
  */
 export function seenLine(entry: TransitionEntry, revision: number): string {
   const from = inheritedFrom(entry);
+  const imported = importedFrom(entry);
   const baseline = entry.baseline === true;
   const { text, joined } = changeBefore(entry);
+  const by = baseline ? "by the baseline " : "";
   const parts = [
-    from === null
-      ? `seen by Squeal's ${baseline ? "baseline " : ""}run at revision ${entry.observedAt}`
-      : `seen by Squeal's run in ${from}, inherited ${baseline ? "by the baseline " : ""}at revision ${entry.observedAt}`,
+    imported !== null
+      ? `imported from ${imported} ${by}at revision ${entry.observedAt}`
+      : from === null
+        ? `seen by Squeal's ${baseline ? "baseline " : ""}run at revision ${entry.observedAt}`
+        : `seen by Squeal's run in ${from}, inherited ${by}at revision ${entry.observedAt}`,
     validityText(entry, revision),
   ];
   return `${text}${joined}${parts.filter((p) => p !== null).join(", ")}`;
@@ -103,6 +115,8 @@ export function recoveryProvenance(entry: TransitionEntry, revision: number): st
   }
   const from = inheritedFrom(entry);
   if (from !== null) parts.push(`inherited from ${from}`);
+  const imported = importedFrom(entry);
+  if (imported !== null) parts.push(`imported from ${imported}`);
   return parts.length === 0 ? null : parts.join("; ");
 }
 

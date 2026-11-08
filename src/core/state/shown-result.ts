@@ -1,6 +1,6 @@
 import type { EpochMs, RevisionNumber, WorktreeId } from "../types/common.js";
 import type { CheckKey } from "../types/keys.js";
-import type { KnownState } from "../types/state.js";
+import { type KnownState, originWorktree } from "../types/state.js";
 import type { Store } from "../types/store.js";
 import type { ResultRecord } from "../types/store-records.js";
 import { describeFailure, sameFingerprint } from "./fingerprint.js";
@@ -39,11 +39,11 @@ export function shownResult(
     r.outcome === knownState.outcome &&
     sameFingerprint(fingerprintOf(r), knownState.fingerprint) &&
     r.provenance.commit === knownState.commit &&
-    (origin.kind === "inherited"
-      ? r.provenance.worktreeId === origin.worktreeId &&
+    (origin.kind === "own"
+      ? r.provenance.worktreeId === worktreeId && r.provenance.revision === knownState.observedAt
+      : r.provenance.worktreeId === originWorktree(origin) &&
         observedSince !== null &&
-        r.provenance.recordedAt <= observedSince
-      : r.provenance.worktreeId === worktreeId && r.provenance.revision === knownState.observedAt);
+        r.provenance.recordedAt <= observedSince);
   if (knownState.validity === "current" && key !== null) {
     const atKey = results.find((r) => r.key === key);
     return atKey !== undefined && names(atKey) ? atKey : null;

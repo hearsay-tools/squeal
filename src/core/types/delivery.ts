@@ -102,6 +102,12 @@ export interface TransitionEntry {
    * table. Absent for own results and when that worktree has no row.
    */
   readonly originRoot?: AbsolutePath;
+  /**
+   * Spec 018 D4: the source label of the import an imported result came
+   * from (`CI run <id> on <repository> at <commit8>`). Absent for other
+   * origins and when the store holds no row of the import.
+   */
+  readonly originSource?: string;
   readonly summary: string | null;
   readonly location: SourceLocation | null;
   /**
