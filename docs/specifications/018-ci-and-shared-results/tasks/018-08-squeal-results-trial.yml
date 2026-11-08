@@ -1,0 +1,56 @@
+# Proposed for hearsay-tools/cezarion as .github/workflows/squeal-results-trial.yml
+# (spec 018 D7, row 018-08; approved in outline by the human 2026-11-08).
+# Manual only. Not a required check. Not in the merge queue. Changes no other job.
+name: Squeal results trial
+
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: Main commit to export results for
+        required: true
+      node:
+        description: Node version the developers run (exact)
+        required: true
+        default: '24.22.1'
+      squeal:
+        description: Squeal release tag with `export`
+        required: true
+        default: 'squeal--v0.1.417'
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.sha }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '12.11.2'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Fetch the Squeal release
+        run: git clone --depth 1 --branch "${{ inputs.squeal }}" https://github.com/hearsay-tools/squeal.git "$RUNNER_TEMP/squeal"
+      - name: Run the suite under Squeal, CI variables removed
+        run: |
+          SQUEAL="node $RUNNER_TEMP/squeal/plugins/claude-code/dist/cli/squeal.mjs"
+          env -u CI -u GITHUB_ACTIONS $SQUEAL start
+          set +e
+          env -u CI -u GITHUB_ACTIONS $SQUEAL run --all --wait 5400000
+          echo "run exit $?"
+          set -e
+          $SQUEAL export --out "$RUNNER_TEMP/squeal-results.json.gz"
+          $SQUEAL stop
+      - uses: actions/upload-artifact@v4
+        with:
+          name: squeal-results-${{ inputs.sha }}
+          path: ${{ runner.temp }}/squeal-results.json.gz
+          retention-days: 7
