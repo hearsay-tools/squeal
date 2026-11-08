@@ -349,7 +349,7 @@ function positionOf(starts, offset) {
 }
 
 // src/core/code/coverage/record.ts
-var COVERAGE_PROVIDER_VERSION = 3;
+var COVERAGE_RECORD_VERSION = 4;
 var BLOB_CACHE_LIMIT = 2e4;
 function buildRecord(file, payload, format2, blobs2, skip = () => false) {
   const sources = [];
@@ -473,7 +473,7 @@ var COMPRESS_OVER = 1024;
 var MANIFEST_HEAD = stored('{"v":1,"sources":[],"parts":');
 var RECORD_HEAD = stored('{"v":1,"sources":[');
 var COMMA = stored(",");
-function shareRecord(record, providerVersion) {
+function shareRecord(record, recordVersion) {
   const paths = [.../* @__PURE__ */ new Set([...record.sources.map((s) => s.path), ...record.unread])].sort(
     compare
   );
@@ -483,7 +483,7 @@ function shareRecord(record, providerVersion) {
     const head = partHead(source.path);
     return {
       at: index.get(source.path) ?? 0,
-      hash: createHash3("sha256").update(`${providerVersion}
+      hash: createHash3("sha256").update(`${recordVersion}
 ${text}`).digest("hex"),
       bytes: Buffer.concat([stored(head), rest(text.slice(head.length), text.length)])
     };
@@ -548,7 +548,7 @@ function take(job) {
   const payload = JSON.parse(readFileSync3(job.payload, "utf8"));
   if (job.ownRoot !== void 0) {
     const record = ownRecord(job.ownRoot, payload, format);
-    send({ type: "record", id: job.id, record: shareRecord(record, COVERAGE_PROVIDER_VERSION) });
+    send({ type: "record", id: job.id, record: shareRecord(record, COVERAGE_RECORD_VERSION) });
     return;
   }
   const scripts = [...payload.result];
@@ -576,6 +576,6 @@ function finish() {
   send({
     type: "record",
     id: job.id,
-    record: shareRecord(buildRecord(file, scripts, format, blobs), COVERAGE_PROVIDER_VERSION)
+    record: shareRecord(buildRecord(file, scripts, format, blobs), COVERAGE_RECORD_VERSION)
   });
 }

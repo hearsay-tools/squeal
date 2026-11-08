@@ -2581,6 +2581,26 @@ function createCoverageRepo(conn) {
   };
 }
 
+// src/core/hash/blob.ts
+import { constants as constants2 } from "node:fs";
+
+// src/core/fs/errors.ts
+function isMissing(error) {
+  const code = error?.code;
+  return code === "ENOENT" || code === "ENOTDIR" || code === "EISDIR";
+}
+
+// src/core/hash/blob.ts
+var OPEN_FLAGS = constants2.O_RDONLY | constants2.O_NOFOLLOW | constants2.O_NONBLOCK;
+
+// src/core/code/coverage/sourcemap.ts
+var BASE64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+var DIGIT = new Int8Array(128).fill(-1);
+for (let i = 0; i < BASE64.length; i++) DIGIT[BASE64.charCodeAt(i)] = i;
+
+// src/core/code/coverage/record.ts
+var COVERAGE_RECORD_VERSION = 4;
+
 // src/core/code/store/prune.ts
 var DAY_MS2 = 24 * 60 * 60 * 1e3;
 var DELETE_BATCH2 = 256;
@@ -2589,6 +2609,7 @@ var DEAD_WORKTREE = "worktree_id NOT IN (SELECT value FROM json_each(?))";
 var COVERAGE_META_OF_DEAD = `key LIKE 'coverage:%' AND (CASE
     WHEN instr(substr(key, 10), ':') = 0 THEN substr(key, 10)
     ELSE substr(key, 10, instr(substr(key, 10), ':') - 1) END) NOT IN (SELECT value FROM json_each(?))`;
+var OLDER_RECORD = "provider_version < ?";
 var PER_WORKTREE = [
   ["files", "worktree_id, path"],
   ["states", "worktree_id, check_id, measure"],
@@ -2624,12 +2645,20 @@ function pruneCodeStore(conn, options) {
      AND counts.blob NOT IN (SELECT s.blob FROM states s)`,
     cutoff
   );
-  const coverageRemoved = options.resultKeys === void 0 ? deleteInBatches(conn, "coverage", "result_key, provider_version", "recorded_at < ?", cutoff) : deleteInBatches(
+  const coverageRemoved = options.resultKeys === void 0 ? deleteInBatches(
     conn,
     "coverage",
     "result_key, provider_version",
-    "result_key NOT IN (SELECT value FROM json_each(?))",
-    JSON.stringify(options.resultKeys)
+    `recorded_at < ? OR ${OLDER_RECORD}`,
+    cutoff,
+    COVERAGE_RECORD_VERSION
+  ) : deleteInBatches(
+    conn,
+    "coverage",
+    "result_key, provider_version",
+    `result_key NOT IN (SELECT value FROM json_each(?)) OR ${OLDER_RECORD}`,
+    JSON.stringify(options.resultKeys),
+    COVERAGE_RECORD_VERSION
   );
   const partsRemoved = pruneParts(conn, cutoff, DELETE_BATCH2);
   const checksRemoved = deleteInBatches(
@@ -3326,14 +3355,6 @@ var DEFAULT_POLICY = {
 
 // src/core/daemon/config-file.ts
 import { readFileSync as readFileSync2 } from "node:fs";
-
-// src/core/fs/errors.ts
-function isMissing(error) {
-  const code = error?.code;
-  return code === "ENOENT" || code === "ENOTDIR" || code === "EISDIR";
-}
-
-// src/core/daemon/config-file.ts
 var positiveInteger = (v) => Number.isInteger(v) && v > 0 ? null : "a positive integer";
 function loadConfigFile(path, shape, defaults) {
   let text2;
