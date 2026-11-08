@@ -12,8 +12,8 @@ import type { ImportNotCurrent, ImportStatus, StatusSnapshot } from "../types/st
 
 /** D5's reasons, in order, with the words that name each. */
 const REASONS: readonly (readonly [keyof ImportNotCurrent, string])[] = [
-  ["sameKeyKept", "same key, another result kept"],
-  ["sameKeyNotAdopted", "same key, not adopted yet"],
+  ["sameKeyKept", "another result kept at the same key"],
+  ["sameKeyNotAdopted", "not adopted yet"],
   ["environment", "environment differs"],
   ["closure", "closure list differs"],
   ["observed", "observed set differs"],

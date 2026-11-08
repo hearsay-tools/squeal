@@ -267,7 +267,7 @@ describe("status names why imported files are not current (018 D5)", () => {
       ]);
       expect(importLines({ imports } as unknown as StatusSnapshot)).toEqual([
         `Imported: 0 of 1 test file current from ${SOURCE} (0 current results)`,
-        "  Not current: 1 same key, another result kept",
+        "  Not current: 1 another result kept at the same key",
       ]);
       expect(importDefaultLines({ imports } as unknown as StatusSnapshot)).toEqual([]);
     },
@@ -294,7 +294,7 @@ describe("status names why imported files are not current (018 D5)", () => {
       },
     ]);
     expect(importLines({ imports: before } as unknown as StatusSnapshot)[3]).toBe(
-      "  Not current: 1 same key, not adopted yet, 1 content differs",
+      "  Not current: 1 not adopted yet, 1 content differs",
     );
     const after = readOf(store, paths, adopted(store));
     expect(counts(after)).toEqual([

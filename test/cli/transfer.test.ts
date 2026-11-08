@@ -130,7 +130,7 @@ describe("squeal export and squeal import (018 D2 to D4)", SLOW, () => {
     });
     const source = `local export at ${commit.slice(0, 8)}`;
     expect(formatStatus(snapshot, Date.now(), "squeal", { full: true })).toContain(
-      `Imported: 0 of 3 test files current from ${source} (0 current results)\n  Not current: 3 same key, another result kept\n`,
+      `Imported: 0 of 3 test files current from ${source} (0 current results)\n  Not current: 3 another result kept at the same key\n`,
     );
     expect(formatStatus(snapshot, Date.now(), "squeal")).not.toContain("Imported");
   });
