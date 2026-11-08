@@ -27,7 +27,7 @@ const UPSERT = `INSERT INTO coverage (result_key, provider_version, record, reco
 
 /**
  * Spec 015 D8: coverage records at their test file's result key and the
- * provider's version. The key names the result's inputs, so a worktree that
+ * record version (`COVERAGE_RECORD_VERSION`, in `provider_version`). The key names the result's inputs, so a worktree that
  * adopts the result finds the record at the same key (011-23), and prune
  * drops it when no result is left at that key (C7). A record stored over
  * another gets a later `recorded_at` than it, also within one ms, so the

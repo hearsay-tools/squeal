@@ -17,7 +17,7 @@ import {
 } from "./mapper.js";
 import { Pace } from "./pace.js";
 import type { SharedRecord } from "./parts.js";
-import { type BlobCache, COVERAGE_PROVIDER_VERSION } from "./record.js";
+import { type BlobCache, COVERAGE_RECORD_VERSION } from "./record.js";
 import type { CoverageRun, CoveredFile, ResultKeyOf } from "./types.js";
 
 /**
@@ -178,7 +178,7 @@ export function createCoverageWriter(options: CoverageWriterOptions): CoverageWr
         return;
       }
       cause = "store-error";
-      const at = { resultKey: key, providerVersion: COVERAGE_PROVIDER_VERSION };
+      const at = { resultKey: key, providerVersion: COVERAGE_RECORD_VERSION };
       withBusySliceSync(BUSY_SLICE_MS, () => opened.coverage.putParts(at, record, now()));
     } catch (error) {
       if (isBusy(error)) stall(job);

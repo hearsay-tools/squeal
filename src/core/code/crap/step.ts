@@ -2,7 +2,7 @@ import { compare } from "../../fs/compare.js";
 import type { CodeFile, FileCount } from "../../types/code.js";
 import type { EpochMs, RevisionNumber, WorktreeId } from "../../types/common.js";
 import type { CheckKey } from "../../types/keys.js";
-import { COVERAGE_PROVIDER_VERSION } from "../coverage/record.js";
+import { COVERAGE_RECORD_VERSION } from "../coverage/record.js";
 import type { CodeStore } from "../store/types.js";
 import { broughtByGit, keepUnjudged } from "./brought.js";
 import { StepCache } from "./cache.js";
@@ -124,7 +124,7 @@ export function runCoverageStep(given: CoverageStepInput): CoverageStepReport | 
   if (checks.measures.length === 0) return IDLE;
   // A check switched on, or a file no longer left out, is seeded and judged as a recount's.
   const input = reseed === given.reseed ? given : { ...given, reseed };
-  const start = summary === null || summary.provider !== COVERAGE_PROVIDER_VERSION;
+  const start = summary === null || summary.provider !== COVERAGE_RECORD_VERSION;
   // Each count is read once, when a file is judged or seeded.
   const counts = new Map<string, FileCount>();
   const countOf = (file: CodeFile): FileCount | null => {
@@ -162,7 +162,7 @@ export function runCoverageStep(given: CoverageStepInput): CoverageStepReport | 
     const written: CoverageSummary = {
       v: 1,
       since: start ? input.revision : (summary?.since ?? input.revision),
-      provider: COVERAGE_PROVIDER_VERSION,
+      provider: COVERAGE_RECORD_VERSION,
       files: next,
       ...(waiting.length === 0 ? {} : { quiet: waiting }),
       ...(loaders.withoutImports === 0 ? {} : { withoutImports: loaders.withoutImports }),

@@ -1,6 +1,7 @@
 import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { COVERAGE_RECORD_VERSION } from "../../../src/core/code/coverage/record.js";
 import { codeStorePath } from "../../../src/core/code/store/open.js";
 import { pruneCodeStoreAfter } from "../../../src/core/code/store/prune-main.js";
 import { POLICY_CODE_OFF } from "../../helpers/policy.js";
@@ -23,7 +24,7 @@ import { count, ON, open } from "../helpers.js";
 
 const NOW = 100 * DAY_MS;
 const RECORD = new Uint8Array([1]);
-const at = (resultKey: string) => ({ resultKey, providerVersion: 1 });
+const at = (resultKey: string) => ({ resultKey, providerVersion: COVERAGE_RECORD_VERSION });
 
 describe("the code store's prune after the main store's", () => {
   it("drops a coverage record with its result, and a count nothing uses past the retention", () => {

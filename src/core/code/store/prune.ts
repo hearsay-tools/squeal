@@ -1,4 +1,5 @@
 import type { Connection, Params } from "../../store/connection.js";
+import { COVERAGE_RECORD_VERSION } from "../coverage/record.js";
 import { pruneParts } from "./parts.js";
 import type { CodePruneOptions, CodePruneReport } from "./types.js";
 
@@ -20,6 +21,13 @@ const COVERAGE_META_OF_DEAD = `key LIKE 'coverage:%' AND (CASE
     WHEN instr(substr(key, 10), ':') = 0 THEN substr(key, 10)
     ELSE substr(key, 10, instr(substr(key, 10), ':') - 1) END) NOT IN (SELECT value FROM json_each(?))`;
 
+/**
+ * A coverage record of an older record version, which no reader takes (row
+ * 018-10 R1); a newer one stays for the Squeal that wrote it. The parameter
+ * is `COVERAGE_RECORD_VERSION`.
+ */
+const OLDER_RECORD = "provider_version < ?";
+
 /** Per-worktree tables, each with the columns that name one row. */
 const PER_WORKTREE = [
   ["files", "worktree_id, path"],
@@ -36,7 +44,8 @@ const PER_WORKTREE = [
  * dropped once it is also older than the retention, so a later worktree at
  * the same bytes still finds it;
  * a coverage record goes with the last result at its key (`resultKeys`, row
- * 015-11), else by the same age rule; a coverage part once no kept record
+ * 015-11), else by the same age rule, and at once when its record version is
+ * older than this Squeal's (row 018-10 R1); a coverage part once no kept record
  * lists it and it was last used before the cutoff (row 015-85, `./parts.ts`);
  * `checks` rows nothing references go last.
  */
@@ -75,13 +84,21 @@ export function pruneCodeStore(conn: Connection, options: CodePruneOptions): Cod
   );
   const coverageRemoved =
     options.resultKeys === undefined
-      ? deleteInBatches(conn, "coverage", "result_key, provider_version", "recorded_at < ?", cutoff)
+      ? deleteInBatches(
+          conn,
+          "coverage",
+          "result_key, provider_version",
+          `recorded_at < ? OR ${OLDER_RECORD}`,
+          cutoff,
+          COVERAGE_RECORD_VERSION,
+        )
       : deleteInBatches(
           conn,
           "coverage",
           "result_key, provider_version",
-          "result_key NOT IN (SELECT value FROM json_each(?))",
+          `result_key NOT IN (SELECT value FROM json_each(?)) OR ${OLDER_RECORD}`,
           JSON.stringify(options.resultKeys),
+          COVERAGE_RECORD_VERSION,
         );
   const partsRemoved = pruneParts(conn, cutoff, DELETE_BATCH);
 

@@ -5,7 +5,7 @@ import { type CodeCommandOptions, codeCommand } from "../../../src/cli/code.js";
 import { main } from "../../../src/cli/main.js";
 import { statusCommand } from "../../../src/cli/status-command.js";
 import { countFile } from "../../../src/core/code/count/index.js";
-import { COVERAGE_PROVIDER_VERSION } from "../../../src/core/code/coverage/record.js";
+import { COVERAGE_RECORD_VERSION } from "../../../src/core/code/coverage/record.js";
 import { writeSummary } from "../../../src/core/code/crap/summary.js";
 import { isCodeStoreOpenFailure, openCodeStore } from "../../../src/core/code/store/open.js";
 import { NOW, type Seeded, seed } from "../../status/slow-tier-seed.js";
@@ -199,7 +199,7 @@ describe("squeal code names the CLI as status does in a CRAP reason (review 0.1.
     writeSummary(code.meta, s.repo.mainId, {
       v: 1,
       since: 2,
-      provider: COVERAGE_PROVIDER_VERSION,
+      provider: COVERAGE_RECORD_VERSION,
       files: { [OK]: { state: "pending", blob: file?.blob ?? "", reason: "run", waiting: 1 } },
     });
     code.close();

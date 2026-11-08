@@ -13,7 +13,7 @@ import { dirname, join, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { countFile } from "../../../src/core/code/count/index.js";
 import { type MapWorker, mapHere } from "../../../src/core/code/coverage/mapper.js";
-import { COVERAGE_PROVIDER_VERSION, decodeRecord } from "../../../src/core/code/coverage/record.js";
+import { COVERAGE_RECORD_VERSION, decodeRecord } from "../../../src/core/code/coverage/record.js";
 import type {
   CoverageRecord,
   CoverageRun,
@@ -187,7 +187,7 @@ async function stored(file: CoveredFile, worker: MapWorker | null): Promise<Cove
   await writer.close();
   const bytes = open(store).coverage.get({
     resultKey: "key",
-    providerVersion: COVERAGE_PROVIDER_VERSION,
+    providerVersion: COVERAGE_RECORD_VERSION,
   });
   return bytes === null ? null : decodeRecord(bytes);
 }

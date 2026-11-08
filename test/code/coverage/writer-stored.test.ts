@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it } from "vitest";
-import { COVERAGE_PROVIDER_VERSION } from "../../../src/core/code/coverage/record.js";
+import { COVERAGE_RECORD_VERSION } from "../../../src/core/code/coverage/record.js";
 import type { CoveredFile } from "../../../src/core/code/coverage/types.js";
 import { createCoverageWriter } from "../../../src/core/code/coverage/writer.js";
 import { codeStorePath } from "../../../src/core/code/store/open.js";
@@ -72,7 +72,7 @@ describe("coverage records' writer, for the coverage step", () => {
     expect(calls).toBe(2);
     expect(logs).toEqual(["coverage: after storing a.test.js: Error: boom"]);
     const store = open(dir);
-    const key = (resultKey: string) => ({ resultKey, providerVersion: COVERAGE_PROVIDER_VERSION });
+    const key = (resultKey: string) => ({ resultKey, providerVersion: COVERAGE_RECORD_VERSION });
     expect(store.coverage.has(key("key-a.test.js"))).toBe(true);
     expect(store.coverage.has(key("key-b.test.js"))).toBe(true);
     expect(store.coverage.has(key("key-c.test.js"))).toBe(false);
@@ -109,7 +109,7 @@ describe("coverage records' writer, for the coverage step", () => {
     expect(
       open(dir).coverage.has({
         resultKey: "key-a.test.js",
-        providerVersion: COVERAGE_PROVIDER_VERSION,
+        providerVersion: COVERAGE_RECORD_VERSION,
       }),
     ).toBe(false);
   });

@@ -16,13 +16,29 @@ import type {
 } from "./types.js";
 
 /**
- * Bumped when a record's meaning changes (its mapping, its fields), so a
- * record of another meaning is never read as this one: it is part of the
- * record's key (spec 015 D8). 2: functions at one span with different hits
- * are two entries, no longer one with the hits joined (review 0.1.297 B4).
- * 3: node:test lazy inline maps preserve executed text; unusable maps are unread (015-95).
+ * Two versions, each moved for its own reason. The provider version is a
+ * key input of every test result run with coverage (the runners' environment
+ * hashes): it moves only when a test's outcome can differ, since a move
+ * re-keys every such result. The record version is part of each record's
+ * key in `code.sqlite` (spec 015 D8): it moves when a record's meaning
+ * does (its mapping, its fields), so a record of another meaning is never
+ * read as this one; such a record reads as no coverage until its test file
+ * runs again.
+ *
+ * Provider versions: 2: functions at one span with different hits are two
+ * entries, no longer one with the hits joined (review 0.1.297 B4). 3:
+ * node:test lazy inline maps preserve executed text; unusable maps are
+ * unread (015-95).
  */
 export const COVERAGE_PROVIDER_VERSION = 3;
+
+/**
+ * Record versions: 3 and before, the provider version's. 4: a test file
+ * that mocks `node:url` is mapped with its evaluator's wrapper offset
+ * (row 018-10; review wave-3.5 B1), so its earlier records hold the wrong
+ * lines at the same result key.
+ */
+export const COVERAGE_RECORD_VERSION = 4;
 
 /** Blob ids already confirmed, by the sha1 of the bytes Vite read; shared by every record mapped. */
 export type BlobCache = Map<string, FileHash>;

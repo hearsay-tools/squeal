@@ -205,10 +205,14 @@ export interface CodeViewEntry {
 
 /**
  * Spec 015 D8 (wave 2): a test file's coverage record, stored at its result
- * key and the provider's version, so it is adopted and pruned with the
+ * key and the record version, so it is adopted and pruned with the
  * result. Its payload's shape is wave 2's.
  */
 export interface CoverageRecordKey {
   readonly resultKey: CheckKey;
+  /**
+   * `COVERAGE_RECORD_VERSION`; named for the provider version it equalled
+   * up to 3 (row 018-10 R1), as is the store's `provider_version` column.
+   */
   readonly providerVersion: number;
 }

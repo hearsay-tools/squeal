@@ -3,7 +3,7 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { COVERAGE_PROVIDER_VERSION, decodeRecord } from "../../../src/core/code/coverage/record.js";
+import { COVERAGE_RECORD_VERSION, decodeRecord } from "../../../src/core/code/coverage/record.js";
 import type { CoveredFile, ResultKeyOf } from "../../../src/core/code/coverage/types.js";
 import { createCoverageWriter } from "../../../src/core/code/coverage/writer.js";
 import { codeStorePath } from "../../../src/core/code/store/open.js";
@@ -66,7 +66,7 @@ describe("coverage records' writer", () => {
     expect(existsSync(file.payload)).toBe(false);
     const record = open(dir).coverage.get({
       resultKey: "key-1",
-      providerVersion: COVERAGE_PROVIDER_VERSION,
+      providerVersion: COVERAGE_RECORD_VERSION,
     });
     expect(record === null ? null : decodeRecord(record).sources.map((s) => s.path)).toEqual([
       "a.js",

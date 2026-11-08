@@ -72,7 +72,7 @@ const RECORD_HEAD = stored('{"v":1,"sources":[');
 const COMMA = stored(",");
 
 /** `record` as parts, for `CodeCoverageRepo.putParts`. */
-export function shareRecord(record: CoverageRecord, providerVersion: number): SharedRecord {
+export function shareRecord(record: CoverageRecord, recordVersion: number): SharedRecord {
   const paths = [...new Set([...record.sources.map((s) => s.path), ...record.unread])].sort(
     compare,
   );
@@ -82,7 +82,7 @@ export function shareRecord(record: CoverageRecord, providerVersion: number): Sh
     const head = partHead(source.path);
     return {
       at: index.get(source.path) ?? 0,
-      hash: createHash("sha256").update(`${providerVersion}\n${text}`).digest("hex"),
+      hash: createHash("sha256").update(`${recordVersion}\n${text}`).digest("hex"),
       bytes: Buffer.concat([stored(head), rest(text.slice(head.length), text.length)]),
     };
   });

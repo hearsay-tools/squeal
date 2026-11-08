@@ -111,7 +111,7 @@ export interface CoverageSource {
 
 /**
  * Spec 015 D8: a test file's coverage record, stored in the code store at
- * its result key and `COVERAGE_PROVIDER_VERSION`. `unread` names the
+ * its result key and `COVERAGE_RECORD_VERSION`. `unread` names the
  * sources the run executed whose bytes could no longer be confirmed (an
  * edit after the run, before mapping): they have no entry, so a reader
  * cannot take the file as not running them.

@@ -3,7 +3,7 @@ import type { CheckKey, TestFileRef } from "../../types/keys.js";
 import type { ClosureIndex } from "../../types/scheduler.js";
 import type { Store } from "../../types/store.js";
 import type { TestFileKeyRecord } from "../../types/store-records.js";
-import { COVERAGE_PROVIDER_VERSION } from "../coverage/record.js";
+import { COVERAGE_RECORD_VERSION } from "../coverage/record.js";
 import { IN_PROCESS_ENVIRONMENTS, RECORDING_RUNNERS } from "../coverage/runtime.js";
 import { RESULT_WAITS_MS } from "../coverage/writer.js";
 import type { CodeCoverageRepo } from "../store/types.js";
@@ -93,7 +93,7 @@ function conditionAt(
 ): LoaderCondition {
   if (key === null) return { kind: "unknown", cause: "unkeyed" };
   if (queued) return { kind: "pending", reason: "run" };
-  const record = { resultKey: key, providerVersion: COVERAGE_PROVIDER_VERSION };
+  const record = { resultKey: key, providerVersion: COVERAGE_RECORD_VERSION };
   const keep = (condition: LoaderCondition) => {
     inputs.settled?.set(key, condition);
     return condition;

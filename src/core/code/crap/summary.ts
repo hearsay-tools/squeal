@@ -51,7 +51,7 @@ export interface CoverageSummary {
   readonly v: 1;
   /** The revision the worktree's coverage states were first seeded at. */
   readonly since: RevisionNumber;
-  /** `COVERAGE_PROVIDER_VERSION` the states were judged from; another seeds them again. */
+  /** `COVERAGE_RECORD_VERSION` the states were judged from; another seeds them again. */
   readonly provider: number;
   readonly files: Readonly<Record<RelativePath, FileSummary>>;
   /**

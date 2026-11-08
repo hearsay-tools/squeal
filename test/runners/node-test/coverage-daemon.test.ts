@@ -1,5 +1,5 @@
 import { describe, expect, it, onTestFinished } from "vitest";
-import { COVERAGE_PROVIDER_VERSION, decodeRecord } from "../../../src/core/code/coverage/record.js";
+import { COVERAGE_RECORD_VERSION, decodeRecord } from "../../../src/core/code/coverage/record.js";
 import type { CoverageRecord } from "../../../src/core/code/coverage/types.js";
 import { isCodeStoreOpenFailure, openCodeStore } from "../../../src/core/code/store/open.js";
 import { startDaemon } from "../../../src/core/daemon/daemon.js";
@@ -43,7 +43,7 @@ function recordAt(commonDir: string, key: CheckKey): CoverageRecord | null {
   try {
     const bytes = store.coverage.get({
       resultKey: key,
-      providerVersion: COVERAGE_PROVIDER_VERSION,
+      providerVersion: COVERAGE_RECORD_VERSION,
     });
     return bytes === null ? null : decodeRecord(bytes);
   } finally {
