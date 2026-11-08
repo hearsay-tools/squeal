@@ -15,7 +15,12 @@ import {
 } from "../keys/closure.js";
 import type { DependencyKeys } from "../keys/dependencies.js";
 import { coreEnvironmentInputs } from "../keys/environment.js";
-import { environmentHash } from "../keys/environment-hash.js";
+import { sawCi } from "../keys/environment-descriptor.js";
+import {
+  type EnvironmentRecord,
+  environmentHash,
+  environmentRecord,
+} from "../keys/environment-hash.js";
 import { createInputMatcher } from "../keys/glob.js";
 import { KEY_FORMATS_READ_AS_ONE } from "../keys/key-format.js";
 import { type KeyChange, KeyIndex, type ReadAsOne } from "../keys/key-index.js";
@@ -32,6 +37,7 @@ import { runtimeFilesMetaKey, runtimePolicySignature } from "../keys/runtime-app
 import { RuntimeFiles, runtimeIdentity } from "../keys/runtime-files.js";
 import { StartupSets } from "../keys/startup.js";
 import { type HeadState, reconcile, statCandidates } from "../revision/reconcile.js";
+import { recordWorktreeEnvironments } from "../store/environments.js";
 import type { AbsolutePath, ProjectName, RelativePath, WorktreeId } from "../types/common.js";
 import type { EnvironmentHash, FileHash, TestFileRef } from "../types/keys.js";
 import type { Policy, RuntimeFileApplication } from "../types/policy.js";
@@ -111,6 +117,8 @@ export class WorktreeKeys {
   readonly #seenByGit = new Set<RelativePath>();
   /** The environment names the lockfiles: no inherited path is judged before its first read. */
   #environmentsRead = false;
+  /** Each project's environment hash as last stored with its parts (018 D1). */
+  #recordedEnvironments: string | null = null;
   readonly #lockfiles: Lockfiles;
   /** How each project's installed dependencies enter its keys (D3, task 001-105). */
   #dependencies = new Map<ProjectName, DependencyKeys>();
@@ -264,8 +272,10 @@ export class WorktreeKeys {
 
     const hashOf = (path: RelativePath) => this.cache.hashOf(path);
     const hashes = new Map<ProjectName, EnvironmentHash>();
+    const described: EnvironmentRecord[] = [];
     const readAsOne = new Map<ProjectName, ReadAsOne[]>();
     const formats = Object.keys(KEY_FORMATS_READ_AS_ONE).map(Number);
+    const ci = sawCi(env ?? process.env);
     for (const environment of environments) {
       const dependencies = this.#dependencies.get(environment.project);
       const core = coreEnvironmentInputs({
@@ -274,8 +284,10 @@ export class WorktreeKeys {
         allowlist: policy.env.allowlist,
         ...(env === undefined ? {} : { env }),
       });
-      const hash = environmentHash(core, environment, hashOf);
-      hashes.set(environment.project, hash);
+      // Spec 018 D1: the parts of the hash, from the same inputs in the same call.
+      const record = environmentRecord(core, environment, hashOf, ci);
+      hashes.set(environment.project, record.hash);
+      described.push(record);
       readAsOne.set(
         environment.project,
         formats.map((format) => ({
@@ -283,6 +295,7 @@ export class WorktreeKeys {
         })),
       );
     }
+    this.#recordEnvironments(described);
     // Task 001-105: each test file's packages are keyed against the new install.
     const installed = this.index.setInstalled(
       hashes,
@@ -301,6 +314,15 @@ export class WorktreeKeys {
         .filter((r) => this.runtimeSelected(r.testFile))
         .flatMap((r) => this.setClosure(r, this.#saved.has(testFileId(r.testFile)))),
     ];
+  }
+
+  /** 018 D1: stores each project's hash with its parts when one moved since the last record. */
+  #recordEnvironments(described: readonly EnvironmentRecord[]): void {
+    const hashes = described.map((d) => d.hash).join("\n");
+    if (hashes === this.#recordedEnvironments) return;
+    const { store, worktreeId } = this.options;
+    recordWorktreeEnvironments(store, worktreeId, described, Date.now());
+    this.#recordedEnvironments = hashes;
   }
 
   /**
