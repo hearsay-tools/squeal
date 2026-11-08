@@ -1,6 +1,6 @@
 # CI and shared results: first slice, moving results between stores
 
-Stage: spec, awaiting the human's approval (2026-11-08). No code before it.
+Stage: approved by the human 2026-11-08, including the cezar workflow file of D7.
 
 ## Problem
 
@@ -102,7 +102,7 @@ The user chooses the file in this slice, so trust is the user's. The design keep
 
 Principle 5 ("Squeal does not replace ... CI. They stay the source of truth for results"): CI's runner produces every result; Squeal only carries results to developer machines and qualifies them, current only at an equal key and named as imported. Nothing in CI gates on Squeal, no CI run is skipped, and CI keeps its full suite.
 
-### D7. The trial in cezar (proposal; the human approves the CI change)
+### D7. The trial in cezar (CI change approved by the human, 2026-11-08)
 
 Question: in a fresh clone of cezar at the commit CI exported, how many test files are current from the import alone?
 
