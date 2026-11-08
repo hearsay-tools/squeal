@@ -29,6 +29,7 @@ Started: 2026-10-31
 - 2026-11-08, researcher a9fd78c8 confirmed CodeRabbit's finding on hearsay-tools/cezarion#3029 in source: with `checks` groups, `run --fast --wait` counts files the daemon leaves out of the fast checkpoint, so it never ends with a verdict. The trial workflow now runs the `tests` group. The human: fix it in the same release (row 018-11).
 - 2026-11-08, repair R1 of 018-10 (worker c19e673e): `COVERAGE_RECORD_VERSION = 4` for every write, read, shared-part hash and prune of coverage records; the key keeps `COVERAGE_PROVIDER_VERSION = 3`, so no result re-keys. Prune deletes older record versions at once. The `handover-tier.test.ts` failure passed 3 of 3 on Node 22.19.0 and is not this row's: the provider runs only in Vitest workers.
 - 2026-11-08, row 018-11 (worker d41f7441), deviation accepted: the verdict calls the daemon's lane rule (`slowView(...).isSlow`, the function `requestFullSuite` uses), not the checkpoint's recorded file list, because a checkpoint records only the files it queued. Follow-ups, not rows yet: `state/groups.ts` `inGroupLane` and `queue.ts` `#isSlow` repeat the same rule; `laneText` still says only "slow test files are not in it" when a manual group is also left out.
+- 2026-11-08, re-review of `cand/0.1.418` at `2b7ae252c` (`reviews/wave-3.5-r2.md`): PASS, B1 and S1 resolved, 018-11 proven. Candidate CI 42494177395 green on that SHA. 0.1.418 landed on main with rows 018-10 and 018-11.
 
 ## Open questions
 
