@@ -1,0 +1,32 @@
+2026-11-08T12:55:05.1966606Z Squeal daemon spawned for /home/runner/work/cezarion/cezarion
+2026-11-08T12:55:05.1967323Z 
+2026-11-08T12:55:05.1986876Z Revision: 0
+2026-11-08T12:55:05.1987698Z Known failures: 0; the daemon has not listed this worktree's test files yet
+2026-11-08T12:55:05.1988907Z Affected checks: none counted; the daemon has not listed this worktree's test files yet
+2026-11-08T12:55:05.1990224Z Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+2026-11-08T12:55:05.1991367Z Slow tier: no slow test files listed yet; Squeal runs them after the fast tests.
+2026-11-08T12:55:05.1992159Z Outstanding:
+2026-11-08T12:55:05.1992919Z   the daemon is still listing this worktree's test files; `squeal status --wait 60000` waits for it
+2026-11-08T12:55:05.1993757Z Complexity: no file counted yet.
+2026-11-08T12:55:05.1994345Z Lint: linting has not started.
+2026-11-08T12:55:05.1995042Z More: `squeal status --full` adds the worktree and daemon and 1 note
+2026-11-08T12:55:54.4771986Z Checkpoint 1e9020c7-207d-45b8-979d-9cb852208afa has no verdict: revision 1 was recorded after the checkpoint's revision 0
+2026-11-08T12:55:54.4773183Z Checkpoint 1e9020c7-207d-45b8-979d-9cb852208afa started at revision 0: 1843 test files to run, 0 already current
+2026-11-08T12:55:54.4773709Z 
+2026-11-08T12:55:54.4774288Z Revision: 1 · bed82fdb + 1, dirty
+2026-11-08T12:55:54.4775404Z Known failures: 0; not current: 1843 of 1843 test files (200 running, 1643 queued); revision 1 is not listed yet, so test files it adds are not counted
+2026-11-08T12:55:54.4776866Z Affected checks: 0 passed, 0 running, 0 queued; 1843 test files without checks yet: 200 running, 1643 queued; the runner part of revision 1 is pending, so test files it adds are not counted yet
+2026-11-08T12:55:54.4778703Z Full-suite checkpoint: none completed at any revision (the counts are for revision 1; `squeal run --all` requests one)
+2026-11-08T12:55:54.4780195Z browser: 98 test files; 98 pending, waiting for the shared worker pool. Squeal runs them only on request; `squeal run browser --wait 60000` runs them now and waits for their results.
+2026-11-08T12:55:54.4784250Z Running: 200 test files: api-client: packages/api-client/src/protocol/tool-display.test.ts, api-client: packages/api-client/src/utils/project-scope.test.ts, contract: packages/contract/src/activity.test.ts, contract: packages/contract/src/ask-schema.test.ts, contract: packages/contract/src/attention.test.ts, contract: packages/contract/src/automation-schedule.test.ts, 
+2026-11-08T12:55:54.4792645Z Queued: 1643 test files: e2e: packages/web/e2e/activity.e2e.ts, e2e: packages/web/e2e/agent-browser-tabs.e2e.ts, e2e: packages/web/e2e/agents-dock.e2e.ts, e2e: packages/web/e2e/application-update.e2e.ts, e2e: packages/web/e2e/artifact-project-links.e2e.ts and 1638 more
+2026-11-08T12:55:54.4794082Z Outstanding:
+2026-11-08T12:55:54.4796283Z   1545 test files queued, revision 1 not listed yet, because the runner part waits for the run in flight, each of its calls bounded at 966 s: root:test:unit: .ai/skills/check-code-quality/scripts/changed-functions.test.mjs, root:test:unit: .ai/skills/check-code-quality/scripts/complexity-gate.test.mjs, root:test:unit: .ai/skills/check-code-quality/scripts/istanbul-merg
+2026-11-08T12:55:54.4799872Z   a checkpoint in progress: `run --all` requested at revision 0, started 20 s ago: 0 of 1843 test files done; `squeal run --all --wait` waits for it
+2026-11-08T12:55:54.4801406Z   200 test files in the vitest tier of 200 test files running since 12:55:35, 57 of them ended: api-client: packages/api-client/src/protocol/tool-display.test.ts, api-client: packages/api-client/src/utils/project-scope.test.ts, contract: packages/contract/src/activity.test.ts and 197 more; no command runs them sooner (a running tier is not interrupted)
+2026-11-08T12:55:54.4802479Z Complexity: 0 functions over 20; squeal code lists them.
+2026-11-08T12:55:54.4803080Z Coverage: 41 functions over CRAP 30, 366 untested; 1587 files wait for test runs, which squeal run --all makes; squeal code lists them.
+2026-11-08T12:55:54.4803544Z Lint: linting, 0 of 3195 files.
+2026-11-08T12:55:54.4803888Z More: `squeal status --full` adds the worktree and daemon and 4 notes
+2026-11-08T12:55:54.4804293Z squeal run --all exit: 3 (0 pass, 1 known failures, 3 no verdict)
+2026-11-08T12:56:00.1145663Z Squeal daemon stopped for /home/runner/work/cezarion/cezarion; `squeal stop --until-start` keeps it stopped through edits and Git operations
