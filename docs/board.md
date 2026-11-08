@@ -1954,11 +1954,17 @@ Spec `specifications/018-ci-and-shared-results/spec.md` (stage: build; **0.1.417
 |---|---|---|---|
 | 018-09 repair B1 and N1: import status counts follow adopted states | done (0.1.417, worker 89bf4dd3 plus coordinator rewording; re-review PASS at `ea776c75c`) | Spec D5 as amended 2026-11-08: current-from-import by adopted imported known states only; reasons "same key, another result kept" and "same key, not adopted yet"; default line only when every non-current file differs by environment. Status code only; import writer unchanged. | Fixtures: kept local failure, kept local pass, two imports with equal keys, before daemon adoption, mixed environment/content default line; `--full` and `--json` agree with adopted states. |
 
+### Wave 3.5: coverage provider fix found by the trial (brief `tasks/wave-3.5.md`)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 018-10 coverage provider takes Node built-ins past test mocks | running (approved by the human 2026-11-08, "Fix it now") | `src/core/code/coverage/provider.mjs` imports `node:path` through the module runner, so cezar's `vi.mock('node:path')` test made it write a `\tmp\squeal-...` file into the checkout root (trial run 42482427002 had no verdict) and lose that file's coverage. Spec 015's provider. | A test that mocks `node:path` writes nothing outside the reports directory and keeps its coverage record. |
+
 ### Wave 3: the trial (after the release with 018-07; needs the human's approval of the cezar CI file, spec D7)
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 018-08 trial: CI export imported into a fresh cezar clone | running (hearsay-tools/cezarion#3018 merged by the human 2026-11-08 as `bed82fd`; trial run 42482427002 dispatched at that SHA, Node 24.22.1, `squeal--v0.1.417`; the counting researcher starts when it ends, brief `tasks/wave-3.md`) | Spec D7: one dispatched non-gating job in cezar exports; a fresh clone at that SHA imports and counts current files and D5 reasons; a second clone with a copy of cezar's store counts what inheriting already gives. | `research/import-trial.md` committed with the counts, the reasons, the CI job time and the Squeal version. |
+| 018-08 trial: CI export imported into a fresh cezar clone | running (researcher a9fd78c8; #3018 merged `bed82fd`; run 42482427002 had no verdict: a `vi.mock('node:path')` test made the coverage provider write into the checkout (row 018-10); fix PR hearsay-tools/cezarion#3029 (exclude backslash names, fast lane) approved by the human 2026-11-08, awaits merge; counts follow) | Spec D7: one dispatched non-gating job in cezar exports; a fresh clone at that SHA imports and counts current files and D5 reasons; a second clone with a copy of cezar's store counts what inheriting already gives. | `research/import-trial.md` committed with the counts, the reasons, the CI job time and the Squeal version. |
 
 ## Feature 019: run triggers
 
