@@ -242,6 +242,38 @@ export class SharedPaths {
   }
 }
 
+/**
+ * The entries of one shared `meta` key (`SharedPaths`): a map of test path to
+ * paths, or, in the list shape, the one entry `""`. Spec 018 D2's export reads
+ * them as stored.
+ */
+export function readSharedEntries(
+  store: Store,
+  key: string,
+  shape: "map" | "list" = "map",
+): Record<string, RelativePath[]> {
+  return parse(store.meta.get(key), shape);
+}
+
+/**
+ * Spec 018 D3 step 4: adds to the shared `meta` key each of `entries` it has
+ * no entry for, and changes no entry it holds, so no local key moves. Inside
+ * the caller's transaction. Returns the entries added.
+ */
+export function addMissingEntries(
+  store: Store,
+  key: string,
+  entries: Readonly<Record<string, readonly RelativePath[]>>,
+  shape: "map" | "list" = "map",
+): string[] {
+  const stored = parse(store.meta.get(key), shape);
+  const added = Object.keys(entries).filter((entry) => stored[entry] === undefined);
+  if (added.length === 0) return [];
+  for (const entry of added) stored[entry] = [...new Set(entries[entry])].sort(compare);
+  store.meta.set(key, format(stored, shape));
+  return added;
+}
+
 function merge(
   sets: Map<string, Set<RelativePath>>,
   entry: string,
