@@ -56,27 +56,15 @@ export function putEnvironments(
   environments: readonly EnvironmentRecord[],
   now: EpochMs,
 ): void {
-  if (environments.length === 0) return;
   const conn = connectionOf(store);
-  conn.transaction(() => {
-    ensureTables(conn);
-    for (const { hash, descriptor } of environments) {
-      conn.run(
-        `INSERT INTO environments (hash, descriptor, recorded_at) VALUES (?, ?, ?)
-         ON CONFLICT (hash) DO NOTHING`,
-        hash,
-        JSON.stringify(descriptor),
-        now,
-      );
-    }
-  });
+  conn.transaction(() => insertEnvironments(conn, environments, now));
 }
 
 /**
  * Records `environments` as the ones `worktreeId` keys its projects with now:
  * each descriptor under its hash, each project's hash, and no row for a
- * project the worktree no longer reads. A store not opened by `openStore` (a
- * test's fake) stores none.
+ * project the worktree no longer reads. A test's fake or `Proxy` of a store
+ * stores none.
  */
 export function recordWorktreeEnvironments(
   store: Store,
@@ -87,8 +75,7 @@ export function recordWorktreeEnvironments(
   const conn = openedConnection(store);
   if (conn === null) return;
   conn.transaction(() => {
-    putEnvironments(store, environments, now);
-    ensureTables(conn);
+    insertEnvironments(conn, environments, now);
     for (const { hash, descriptor } of environments) {
       conn.run(
         `INSERT INTO worktree_environment_hashes (worktree_id, project, hash, recorded_at)
@@ -112,16 +99,16 @@ export function recordWorktreeEnvironments(
 
 /** The descriptor stored under `hash`, or `null`. */
 export function readEnvironment(store: Store, hash: EnvironmentHash): EnvironmentDescriptor | null {
-  const conn = connectionOf(store);
-  if (!hasTables(conn)) return null;
+  const conn = openedConnection(store);
+  if (conn === null || !hasTables(conn)) return null;
   const row = conn.get("SELECT descriptor FROM environments WHERE hash = ?", hash);
   return row === null ? null : parseDescriptor(row.descriptor);
 }
 
 /** The environment of each project `worktreeId` keys, by project name; empty before any record. */
 export function worktreeEnvironments(store: Store, worktreeId: WorktreeId): StoredEnvironment[] {
-  const conn = connectionOf(store);
-  if (!hasTables(conn)) return [];
+  const conn = openedConnection(store);
+  if (conn === null || !hasTables(conn)) return [];
   return conn
     .all(
       `SELECT w.project, w.hash, w.recorded_at, e.descriptor
@@ -138,8 +125,8 @@ export function worktreeEnvironment(
   worktreeId: WorktreeId,
   project: ProjectName,
 ): StoredEnvironment | null {
-  const conn = connectionOf(store);
-  if (!hasTables(conn)) return null;
+  const conn = openedConnection(store);
+  if (conn === null || !hasTables(conn)) return null;
   const row = conn.get(
     `SELECT w.project, w.hash, w.recorded_at, e.descriptor
      FROM worktree_environment_hashes w LEFT JOIN environments e ON e.hash = w.hash
@@ -196,6 +183,24 @@ function parseDescriptor(text: unknown): EnvironmentDescriptor | null {
     Array.isArray(d.files) &&
     typeof d.ci === "boolean";
   return sound ? (value as EnvironmentDescriptor) : null;
+}
+
+/** Inserts each descriptor under its hash, after the tables; the caller holds the transaction. */
+function insertEnvironments(
+  conn: Connection,
+  environments: readonly EnvironmentRecord[],
+  now: EpochMs,
+): void {
+  ensureTables(conn);
+  for (const { hash, descriptor } of environments) {
+    conn.run(
+      `INSERT INTO environments (hash, descriptor, recorded_at) VALUES (?, ?, ?)
+       ON CONFLICT (hash) DO NOTHING`,
+      hash,
+      JSON.stringify(descriptor),
+      now,
+    );
+  }
 }
 
 /** `store`'s connection, or `null` for a test's fake or `Proxy` of a store, which has none of its own. */

@@ -57,20 +57,15 @@ export function describeEnvironment(
     installedDependencies: core.installedDependencies,
     env: { names: env.map(([name]) => name), hash: digest(JSON.stringify(env)) },
     config: configFields(runner.resolvedConfig),
-    files: files.map(([path, hash]) => [path, hash] as const),
+    files,
     ci,
   };
 }
 
 /** One hash per top-level field of a resolved config; runners give canonical JSON, so equal values serialize equally. */
 function configFields(resolvedConfig: string): Record<string, string> {
-  const fields: Record<string, string> = {};
-  for (const [name, value] of Object.entries(configObject(resolvedConfig)).sort(([a], [b]) =>
-    compare(a, b),
-  )) {
-    fields[name] = digest(JSON.stringify(value));
-  }
-  return fields;
+  const fields = Object.entries(configObject(resolvedConfig)).sort(([a], [b]) => compare(a, b));
+  return Object.fromEntries(fields.map(([name, value]) => [name, digest(JSON.stringify(value))]));
 }
 
 /** The resolved config as an object; anything but a JSON object is one field, `WHOLE_CONFIG`. */
@@ -213,11 +208,13 @@ function installedText(a: EnvironmentDescriptor, b: EnvironmentDescriptor): stri
 function envDifference(a: readonly string[], b: readonly string[]): Difference {
   const ours = new Set(b);
   const theirs = new Set(a);
-  const apart = [...new Set([...a, ...b])].filter((n) => !ours.has(n) || !theirs.has(n));
+  const apart = [...new Set([...a, ...b])]
+    .filter((n) => !ours.has(n) || !theirs.has(n))
+    .sort(compare);
   if (apart.length > 0) {
     return {
       part: "env",
-      names: apart.sort(compare),
+      names: apart,
       text: `allow-listed variables differ (names: ${listed(apart)})`,
     };
   }
