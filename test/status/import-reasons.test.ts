@@ -4,6 +4,7 @@ import { recoveryProvenance } from "../../src/core/delivery/provenance.js";
 import type { EnvironmentDescriptor } from "../../src/core/keys/environment-descriptor.js";
 import { KEY_FORMAT_VERSION } from "../../src/core/keys/key-format.js";
 import { observedMetaKey } from "../../src/core/keys/observed.js";
+import { compareEnvironment, comparisonText } from "../../src/core/status/import-environment.js";
 import { importDefaultLines, importLines } from "../../src/core/status/import-lines.js";
 import { readImports } from "../../src/core/status/imports.js";
 import { recordWorktreeEnvironments } from "../../src/core/store/environments.js";
@@ -204,6 +205,19 @@ describe("status names why imported files are not current (018 D5)", () => {
     expect(readImports(store, HERE, store.testFileKeys.list(HERE), [])).toEqual([]);
     importResults(store, bundle({}), { importId: "imp", fileHash: "h", now: 5 });
     expect(readImports(store, "fedcba9876543210", [], [])).toEqual([]);
+  });
+});
+
+describe("squeal import's environment line (018 D3)", () => {
+  it("names each difference, and the project when it has a name", () => {
+    const exported = { hash: "env-ci", descriptor: descriptor("web", { nodeVersion: "v26.13.0" }) };
+    const local = { project: "web", hash: "env-dev", descriptor: descriptor("web"), recordedAt: 1 };
+    expect(comparisonText("web", compareEnvironment(exported, local))).toBe(
+      'Environment of project "web": differs from this worktree\'s: Node v26.13.0 in the export, v24.22.1 here',
+    );
+    expect(comparisonText("", compareEnvironment(exported, { ...local, hash: "env-ci" }))).toBe(
+      "Environment: equal to this worktree's",
+    );
   });
 });
 

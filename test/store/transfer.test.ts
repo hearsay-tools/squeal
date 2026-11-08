@@ -5,7 +5,12 @@ import { describe, expect, it } from "vitest";
 import { KEY_FORMAT_VERSION } from "../../src/core/keys/key-format.js";
 import { observedMetaKey } from "../../src/core/keys/observed.js";
 import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
-import { exportResults, importRefusal, importResults } from "../../src/core/store/transfer.js";
+import {
+  AbsolutePathError,
+  exportResults,
+  importRefusal,
+  importResults,
+} from "../../src/core/store/transfer.js";
 import { encodeBundle } from "../../src/core/store/transfer-bundle.js";
 import type { KnownState } from "../../src/core/types/state.js";
 import type { Store } from "../../src/core/types/store.js";
@@ -24,6 +29,7 @@ const RESULTS = 2 * COUNT;
 const LOOKUP_ONLY = { baseline: { onStart: "lookup-only" as const } };
 const SLOW = { timeout: 60_000 } as const;
 const COMMIT = "c0ffee".padEnd(40, "0");
+const METHOD = "static imports plus declared inputs" as const;
 const HEADER = {
   squealVersion: "0.0.0-test",
   keyFormat: KEY_FORMAT_VERSION,
@@ -161,6 +167,16 @@ describe("squeal export and import between two stores (018 D2, D3)", SLOW, () =>
       `the export's key format is ${KEY_FORMAT_VERSION - 1}; this Squeal's is ${KEY_FORMAT_VERSION}`,
     );
     expect(importRefusal(bundle)).toBeNull();
+  });
+
+  it("refuses to export an absolute path", async () => {
+    const { a } = await exported();
+    const testFile = { project: "", path: fileName(0) };
+    const closure = { testFile, paths: ["/etc/passwd"], complete: true, method: METHOD };
+    a.store.testFiles.put({ testFile, closure, updatedAt: 1, updatedBy: a.worktreeId });
+    expect(() => exportResults(a.store, a.worktreeId, HEADER)).toThrow(
+      new AbsolutePathError("/etc/passwd"),
+    );
   });
 
   it("the file holds no absolute path, no failure text and no worktree id", async () => {
