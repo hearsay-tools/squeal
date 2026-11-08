@@ -1958,7 +1958,7 @@ Spec `specifications/018-ci-and-shared-results/spec.md` (stage: build; **0.1.417
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 018-08 trial: CI export imported into a fresh cezar clone | planned (approved with the cezar workflow file, the human 2026-11-08; 0.1.417 has `export`; draft `tasks/018-08-squeal-results-trial.yml`; the human 2026-11-08: "Open and run it"; PR hearsay-tools/cezarion#3018 at `1ca7023` green (CI 42478180476), ready, no open threads; waits for the owner's merge) | Spec D7: one dispatched non-gating job in cezar exports; a fresh clone at that SHA imports and counts current files and D5 reasons. Read-only on cezar apart from the approved workflow file. | `research/import-trial.md` committed with the counts, the reasons, the CI job time and the Squeal version. |
+| 018-08 trial: CI export imported into a fresh cezar clone | running (hearsay-tools/cezarion#3018 merged by the human 2026-11-08 as `bed82fd`; trial run 42482427002 dispatched at that SHA, Node 24.22.1, `squeal--v0.1.417`; the counting researcher starts when it ends, brief `tasks/wave-3.md`) | Spec D7: one dispatched non-gating job in cezar exports; a fresh clone at that SHA imports and counts current files and D5 reasons; a second clone with a copy of cezar's store counts what inheriting already gives. | `research/import-trial.md` committed with the counts, the reasons, the CI job time and the Squeal version. |
 
 ## Feature 019: run triggers
 
