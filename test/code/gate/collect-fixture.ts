@@ -26,6 +26,12 @@ export const ADAPTERS: GateAdapters = {
   nodeTest: createNodeTestAdapter,
 };
 
+/** Adapters that throw when started: a case that must start none. */
+export const NO_ADAPTERS: GateAdapters = {
+  vitest: () => Promise.reject(new Error("the Vitest adapter started")),
+  nodeTest: () => Promise.reject(new Error("a node:test adapter started")),
+};
+
 /** Each case starts real Vitest instances and node:test processes; a loaded host needs headroom. */
 export const SLOW = { timeout: 120_000 } as const;
 
