@@ -1,0 +1,139 @@
+## v4: out-v4-none.json -> out-v4-ci.json
+projects.browser (chromium).allowOnly: true -> false
+projects.browser (chromium).browser.headless: false -> true
+projects.browser (chromium).browser.ui: true -> false
+projects.browser (chromium).includeTaskLocation: true -> undefined
+projects.browser (chromium).snapshotOptions.updateSnapshot: "new" -> "none"
+projects.browser (chromium).watch: undefined -> false
+projects.node.allowOnly: true -> false
+projects.node.browser.headless: false -> true
+projects.node.browser.screenshotFailures: false -> true
+projects.node.browser.ui: true -> false
+projects.node.snapshotOptions.updateSnapshot: "new" -> "none"
+projects.node.watch: undefined -> false
+root.open: true -> false
+
+## v4: out-v4-none.json -> out-v4-gha.json
+projects.browser (chromium).allowOnly: true -> false
+projects.browser (chromium).browser.headless: false -> true
+projects.browser (chromium).browser.ui: true -> false
+projects.browser (chromium).includeTaskLocation: true -> undefined
+projects.browser (chromium).snapshotOptions.updateSnapshot: "new" -> "none"
+projects.browser (chromium).watch: undefined -> false
+projects.node.allowOnly: true -> false
+projects.node.browser.headless: false -> true
+projects.node.browser.screenshotFailures: false -> true
+projects.node.browser.ui: true -> false
+projects.node.snapshotOptions.updateSnapshot: "new" -> "none"
+projects.node.watch: undefined -> false
+root.open: true -> false
+root.reporters.1: undefined -> "github-actions"
+
+## v4: sq-v4-none.json -> sq-v4-both.json
+projects.browser (chromium).allowOnly: true -> false
+projects.browser (chromium).browser.headless: false -> true
+projects.browser (chromium).browser.ui: true -> false
+projects.browser (chromium).watch: undefined -> false
+projects.node.allowOnly: true -> false
+projects.node.browser.headless: false -> true
+projects.node.browser.screenshotFailures: false -> true
+projects.node.browser.ui: true -> false
+projects.node.watch: undefined -> false
+root.open: true -> false
+
+## v4: sq-v4-none.json -> sq-v4-agent.json
+projects.browser (chromium).isAgent: false -> true
+projects.node.isAgent: false -> true
+
+## v4: sq-v4-none.json -> sq-v4-shard.json
+
+## v4: sq-v4-none.json -> pl-v4-cezarlike.json
+projects.browser (chromium).allowOnly: true -> false
+projects.browser (chromium).browser.headless: false -> true
+projects.browser (chromium).browser.ui: true -> false
+projects.browser (chromium).includeTaskLocation: true -> undefined
+projects.browser (chromium).watch: undefined -> false
+projects.node.allowOnly: true -> false
+projects.node.browser.headless: false -> true
+projects.node.browser.screenshotFailures: false -> true
+projects.node.browser.ui: true -> false
+projects.node.includeTaskLocation: true -> undefined
+projects.node.watch: undefined -> false
+root.open: true -> false
+root.reporters.0: "Object" -> "default"
+root.reporters.1: undefined -> "github-actions"
+
+## v5: out-v5-none.json -> out-v5-ci.json
+projects.browser (chromium).allowOnly: true -> false
+projects.browser (chromium).browser.headless: false -> true
+projects.browser (chromium).browser.ui: true -> false
+projects.browser (chromium).includeTaskLocation: true -> undefined
+projects.browser (chromium).snapshotOptions.updateSnapshot: "new" -> "none"
+projects.browser (chromium).watch: undefined -> false
+projects.node.allowOnly: true -> false
+projects.node.browser.headless: false -> true
+projects.node.browser.screenshotFailures: false -> true
+projects.node.browser.ui: true -> false
+projects.node.snapshotOptions.updateSnapshot: "new" -> "none"
+projects.node.watch: undefined -> false
+root.open: true -> false
+
+## v5: out-v5-none.json -> out-v5-gha.json
+projects.browser (chromium).allowOnly: true -> false
+projects.browser (chromium).browser.headless: false -> true
+projects.browser (chromium).browser.ui: true -> false
+projects.browser (chromium).includeTaskLocation: true -> undefined
+projects.browser (chromium).snapshotOptions.updateSnapshot: "new" -> "none"
+projects.browser (chromium).watch: undefined -> false
+projects.node.allowOnly: true -> false
+projects.node.browser.headless: false -> true
+projects.node.browser.screenshotFailures: false -> true
+projects.node.browser.ui: true -> false
+projects.node.snapshotOptions.updateSnapshot: "new" -> "none"
+projects.node.watch: undefined -> false
+root.open: true -> false
+root.reporters.1: undefined -> "github-actions"
+
+## v5: sq-v5-none.json -> sq-v5-both.json
+projects.browser (chromium).allowOnly: true -> false
+projects.browser (chromium).browser.headless: false -> true
+projects.browser (chromium).browser.ui: true -> false
+projects.browser (chromium).watch: undefined -> false
+projects.node.allowOnly: true -> false
+projects.node.browser.headless: false -> true
+projects.node.browser.screenshotFailures: false -> true
+projects.node.browser.ui: true -> false
+projects.node.watch: undefined -> false
+root.open: true -> false
+
+## v5: sq-v5-none.json -> sq-v5-agent.json
+projects.browser (chromium).disableColors: false -> true
+projects.node.disableColors: false -> true
+
+## v5: sq-v5-none.json -> sq-v5-shard.json
+projects.browser (chromium).coverage.coverageFilesDirectory: "<probe>/v5/coverage/.tmp" -> "<probe>/v5/coverage/.tmp-1-4"
+projects.node.coverage.coverageFilesDirectory: "<probe>/v5/coverage/.tmp" -> "<probe>/v5/coverage/.tmp-1-4"
+
+## v5: sq-v5-none.json -> pl-v5-cezarlike.json
+projects.browser (chromium).allowOnly: true -> false
+projects.browser (chromium).browser.headless: false -> true
+projects.browser (chromium).browser.ui: true -> false
+projects.browser (chromium).coverage.coverageFilesDirectory: "<probe>/v5/coverage/.tmp" -> "<probe>/v5/coverage/.tmp-1-4"
+projects.browser (chromium).includeTaskLocation: true -> undefined
+projects.browser (chromium).maxWorkers: undefined -> 4
+projects.browser (chromium).watch: undefined -> false
+projects.node.allowOnly: true -> false
+projects.node.browser.headless: false -> true
+projects.node.browser.screenshotFailures: false -> true
+projects.node.browser.ui: true -> false
+projects.node.coverage.coverageFilesDirectory: "<probe>/v5/coverage/.tmp" -> "<probe>/v5/coverage/.tmp-1-4"
+projects.node.includeTaskLocation: true -> undefined
+projects.node.maxWorkers: undefined -> 4
+projects.node.watch: undefined -> false
+root.open: true -> false
+root.reporters.0: "Object" -> "default"
+root.reporters.1: undefined -> "github-actions"
+
+## v5 Squeal options, no TTY -> TTY
+projects.browser (chromium).watch: undefined -> true
+projects.node.watch: undefined -> true
