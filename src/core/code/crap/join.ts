@@ -1,15 +1,12 @@
 import type { CoverageSource } from "../coverage/types.js";
+import { contains, entrySpan, matchEntries, type Span, spanOf, type V8Entry } from "./match.js";
 
 /*
  * Spec 015 D9, the join: the coverage of one source's functions from the
  * records of the test files that load it, by position, never by name
- * (`complexity-and-crap.md` 4). The counter's ranges are 1-based lines and
- * columns with an exclusive end; a record's functions are 1-based lines,
- * 0-based columns and an inclusive end, mapped back through the transform's
- * source map, which moves an arrow's start to the name before it. So a V8
- * function joins the counter's function that ends where it ends, on the
- * same line or the one after its start. A function V8 never compiled has
- * no V8 function: it ran only when its own body says so.
+ * (`complexity-and-crap.md` 4). `matchEntries` gives each counted function
+ * its record's V8 function. A function V8 never compiled has no V8
+ * function: it ran only when its own body says so.
  */
 
 /** What the join reads of a counted function. */
@@ -42,32 +39,6 @@ export interface JoinedFunction {
   readonly coverage: number;
 }
 
-/** A record's function: start line, start column, end line, end column, hit. */
-type V8Entry = CoverageSource["functions"][number];
-
-/** How far a joined V8 function's end column may sit from the counter's. */
-const END_SLACK = 2;
-
-interface Span {
-  readonly startLine: number;
-  readonly startColumn: number;
-  readonly endLine: number;
-  /** 0-based and inclusive, as a record's. */
-  readonly endColumn: number;
-}
-
-const spanOf = ({ range }: JoinFunction): Span => ({
-  startLine: range.startLine,
-  startColumn: range.startColumn - 1,
-  endLine: range.endLine,
-  endColumn: range.endColumn - 2,
-});
-
-const before = (a: number, b: number, c: number, d: number) => a < c || (a === c && b <= d);
-const contains = (outer: Span, inner: Span) =>
-  before(outer.startLine, outer.startColumn, inner.startLine, inner.startColumn) &&
-  before(inner.endLine, inner.endColumn, outer.endLine, outer.endColumn);
-
 /**
  * Each function's own lines: every line of its range but those strictly
  * inside a function nested in it. A line a nested function starts or ends
@@ -86,44 +57,6 @@ function ownLines(spans: readonly Span[]): number[][] {
     }
     return lines;
   });
-}
-
-const entrySpan = ([startLine, startColumn, endLine, endColumn]: V8Entry): Span => ({
-  startLine,
-  startColumn,
-  endLine,
-  endColumn,
-});
-
-/**
- * The record's function each counted function joins, one to one: same end
- * line, an end column within `END_SLACK`, a start on the same line or the
- * one before; the nearest end first, then the nearest start. An entry that
- * holds a counted function outside the one it would join is another
- * function's, as a class's field initializer is (review 0.1.297 B4).
- */
-function matchEntries(spans: readonly Span[], entries: readonly V8Entry[]): (V8Entry | null)[] {
-  const pairs: { fn: number; entry: number; score: readonly number[] }[] = [];
-  spans.forEach((span, fn) => {
-    entries.forEach((e, entry) => {
-      const [startLine, startColumn, endLine, endColumn] = e;
-      const endOff = Math.abs(endColumn - span.endColumn);
-      const lineOff = span.startLine - startLine;
-      if (endLine !== span.endLine || endOff > END_SLACK || lineOff < 0 || lineOff > 1) return;
-      const outer = entrySpan(e);
-      if (spans.some((other) => contains(outer, other) && !contains(span, other))) return;
-      pairs.push({ fn, entry, score: [endOff, lineOff, Math.abs(startColumn - span.startColumn)] });
-    });
-  });
-  pairs.sort((a, b) => a.score.reduce((d, s, i) => d || s - (b.score[i] ?? 0), 0));
-  const joined: (V8Entry | null)[] = spans.map(() => null);
-  const used = new Set<number>();
-  for (const { fn, entry } of pairs) {
-    if (joined[fn] !== null || used.has(entry)) continue;
-    joined[fn] = entries[entry] ?? null;
-    used.add(entry);
-  }
-  return joined;
 }
 
 /** A record's base64 bitset; bit `n - 1` is line `n`. */
