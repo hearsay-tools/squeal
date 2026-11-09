@@ -45,7 +45,7 @@ export function outcomeAt(complexity: number, threshold: number): CodeOutcome {
  * touches, as at a missing closing brace; a function that starts at that
  * point is not in it (review 0.1.283 B3).
  */
-function overlaps(a: CodeRange, b: CodeRange): boolean {
+export function overlaps(a: CodeRange, b: CodeRange): boolean {
   if (b.startLine === b.endLine && b.startColumn === b.endColumn) {
     return (
       before(a.startLine, a.startColumn, b.startLine, b.startColumn) &&
