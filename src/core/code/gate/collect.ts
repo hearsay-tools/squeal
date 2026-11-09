@@ -1,15 +1,13 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createNodeTestAdapter } from "../../../runners/node-test/adapter.js";
-import { createVitestAdapter } from "../../../runners/vitest/index.js";
 import { readPolicy } from "../../daemon/policy.js";
 import { vitestDetected } from "../../daemon/runner.js";
 import { findWorktreeRoot } from "../../fs/git-layout.js";
 import { readObjectFormat } from "../../hash/git-index.js";
 import type { AbsolutePath, RelativePath } from "../../types/common.js";
 import type { TestFileRef } from "../../types/keys.js";
-import type { Policy } from "../../types/policy.js";
+import type { NodeTestProject, Policy, PolicyInputs } from "../../types/policy.js";
 import type { RunnerAdapter, RunReport } from "../../types/runner.js";
 import { mapHere } from "../coverage/mapper.js";
 import { type BlobCache, decodeRecord } from "../coverage/record.js";
@@ -26,11 +24,49 @@ import type { ChangedSet, Evidence, TestFileEvidence } from "./types.js";
  * file's payload to its record before the adapter closes, which deletes it.
  */
 
+/**
+ * The two adapters' constructors, `createVitestAdapter` and
+ * `createNodeTestAdapter`, given by the caller: no file under
+ * `src/core/code` imports a runner's folder (row 016-36). Typed by what the
+ * collector passes, so each constructor fits as it is.
+ */
+export interface GateAdapters {
+  readonly vitest: (options: {
+    readonly root: AbsolutePath;
+    readonly note: (text: string) => void;
+    readonly excludeProjects: () => readonly string[];
+    readonly exclude: () => readonly string[];
+    /** D3.5: no results cache written into the project. */
+    readonly cache: false;
+    readonly coverage: {
+      readonly enabled: () => boolean;
+      readonly provider: AbsolutePath;
+      readonly tempDir: AbsolutePath;
+      readonly collected: (run: CoverageRun) => void;
+    };
+  }) => Promise<RunnerAdapter>;
+  readonly nodeTest: (
+    project: NodeTestProject,
+    options: {
+      readonly root: AbsolutePath;
+      readonly note: (text: string) => void;
+      readonly concurrency: () => number;
+      readonly inputs: () => PolicyInputs;
+      readonly tempDir: AbsolutePath;
+      readonly coverage: {
+        readonly enabled: () => boolean;
+        readonly collected: (run: CoverageRun) => void;
+      };
+    },
+  ) => Promise<RunnerAdapter>;
+}
+
 export interface CollectOptions {
   /** `--test` files, relative to the worktree root (D3.1). */
   readonly tests: readonly RelativePath[];
   /** The one deadline over every run, from the call (D3.4). */
   readonly budgetSeconds: number;
+  readonly adapters: GateAdapters;
   /** The adapters' notes, such as a file run with coverage off; dropped when absent. */
   readonly note?: (text: string) => void;
 }
@@ -72,7 +108,7 @@ export async function collectEvidence(
   const temp = mkdtempSync(join(tmpdir(), "squeal-gate-"));
   const runners: Runner[] = [];
   try {
-    await openRunners(root, readPolicy(root), provider, temp, note, runners);
+    await openRunners(options.adapters, root, readPolicy(root), { provider, temp, note }, runners);
     const sources = [...new Set(changed.functions.map((f) => f.path))].sort();
     const selected = await select(runners, sources, options.tests);
     const blobs: BlobCache = new Map();
@@ -110,21 +146,25 @@ export async function collectEvidence(
  * adapter opened is pushed at once, so a later failure still closes it.
  */
 async function openRunners(
+  adapters: GateAdapters,
   root: AbsolutePath,
   policy: Policy,
-  provider: AbsolutePath,
-  temp: AbsolutePath,
-  note: (text: string) => void,
+  {
+    provider,
+    temp,
+    note,
+  }: { provider: AbsolutePath; temp: AbsolutePath; note: (text: string) => void },
   runners: Runner[],
 ): Promise<void> {
   if (policy.nodeTest.length + policy.pytest.length === 0 || vitestDetected(root)) {
     const covered: CoveredFile[] = [];
     const collected = (run: CoverageRun) => covered.push(...run.files);
-    const adapter = await createVitestAdapter({
+    const adapter = await adapters.vitest({
       root,
       note,
       excludeProjects: () => policy.vitest.excludeProjects,
       exclude: () => policy.vitest.exclude,
+      cache: false,
       coverage: { enabled: () => true, provider, tempDir: temp, collected },
     });
     runners.push({ kind: "vitest", adapter, covered });
@@ -132,7 +172,7 @@ async function openRunners(
   for (const project of policy.nodeTest) {
     const covered: CoveredFile[] = [];
     const collected = (run: CoverageRun) => covered.push(...run.files);
-    const adapter = await createNodeTestAdapter(project, {
+    const adapter = await adapters.nodeTest(project, {
       root,
       note,
       // One process per file, `runner.tierSize` at once, as the daemon's edit tiers run.
@@ -242,7 +282,10 @@ function byPath(a: TestFileRef, b: TestFileRef): number {
   return a.path < b.path ? -1 : a.path > b.path ? 1 : a.project < b.project ? -1 : 1;
 }
 
+/** Vitest first, then node:test, as they run; by path within each. */
+const RUNNER_ORDER: readonly TestFileEvidence["runner"][] = ["vitest", "node-test"];
+
 function byRunnerAndPath(a: TestFileEvidence, b: TestFileEvidence): number {
-  if (a.runner !== b.runner) return a.runner < b.runner ? 1 : -1;
-  return a.path < b.path ? -1 : a.path > b.path ? 1 : 0;
+  const runner = RUNNER_ORDER.indexOf(a.runner) - RUNNER_ORDER.indexOf(b.runner);
+  return runner !== 0 ? runner : a.path < b.path ? -1 : a.path > b.path ? 1 : 0;
 }

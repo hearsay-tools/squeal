@@ -4,8 +4,11 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach } from "vitest";
 import { countFile } from "../../../src/core/code/count/index.js";
+import type { GateAdapters } from "../../../src/core/code/gate/collect.js";
 import type { ChangedSet, CountedPath } from "../../../src/core/code/gate/types.js";
 import { blobHash } from "../../../src/core/hash/blob.js";
+import { createNodeTestAdapter } from "../../../src/runners/node-test/adapter.js";
+import { createVitestAdapter } from "../../../src/runners/vitest/index.js";
 import { git, initRepo } from "../../hash/git-repo.js";
 
 /*
@@ -16,6 +19,12 @@ import { git, initRepo } from "../../hash/git-repo.js";
 
 const FIXTURES = resolve(import.meta.dirname, "../../fixtures/code/gate");
 const SCRATCH = join(FIXTURES, ".tmp");
+
+/** The adapters as the CLI gives them (row 020-05). */
+export const ADAPTERS: GateAdapters = {
+  vitest: createVitestAdapter,
+  nodeTest: createNodeTestAdapter,
+};
 
 /** Each case starts real Vitest instances and node:test processes; a loaded host needs headroom. */
 export const SLOW = { timeout: 120_000 } as const;
