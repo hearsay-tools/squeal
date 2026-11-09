@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.418";
+  if (true) return "0.1.419";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -26515,6 +26515,42 @@ var init_record2 = __esm({
   }
 });
 
+// src/core/scheduler/request-progress.ts
+var RequestProgress;
+var init_request_progress = __esm({
+  "src/core/scheduler/request-progress.ts"() {
+    "use strict";
+    RequestProgress = class {
+      /** By `FileState.id`: the asked files still queued or running. */
+      #open = /* @__PURE__ */ new Map();
+      #ended = 0;
+      /** A request queued: the files of `ledger` that `asked` selects and are queued or running. */
+      ask(ledger, asked) {
+        for (const file of ledger.files.values()) {
+          if (file.phase !== null && asked(file)) this.#open.set(file.id, file);
+        }
+      }
+      /**
+       * Counts the asked files that ended since the last call and returns the
+       * running count. A file the ledger dropped did not end; with no ledger,
+       * the count as it stands.
+       */
+      ended(ledger) {
+        if (ledger === null) return this.#ended;
+        for (const [id, file] of this.#open) {
+          if (ledger.files.get(id) !== file) {
+            this.#open.delete(id);
+          } else if (file.phase === null) {
+            this.#open.delete(id);
+            this.#ended += 1;
+          }
+        }
+        return this.#ended;
+      }
+    };
+  }
+});
+
 // src/core/keys/resolution.ts
 import { posix as posix12 } from "node:path";
 function closuresToReresolve(changes, index, isDeclaredInput) {
@@ -28087,6 +28123,7 @@ var init_scheduler2 = __esm({
     init_queue();
     init_quiet();
     init_record2();
+    init_request_progress();
     init_rerun();
     init_retries();
     init_revision();
@@ -28226,6 +28263,8 @@ var init_scheduler2 = __esm({
       #recheck = false;
       /** A `run --all` with `observeIgnored` (task 001-307). */
       #warmUp = new WarmUp();
+      /** Row 018-12: the files explicit requests queued, whose ends are activity. */
+      #requests = new RequestProgress();
       /** The records of the runs that ended (row 011-131). */
       #records;
       /** Something the pump waits for happened: a tier ended, runner work drained, a batch or request came. */
@@ -28581,6 +28620,7 @@ var init_scheduler2 = __esm({
           const { policy } = this.#started().context;
           const only2 = lane === void 0 ? void 0 : { lane, isSlow: slowView(policy).isSlow };
           const record2 = queueFullSuite(ledger, force, warmUp2, only2);
+          this.#requests.ask(ledger, (file) => ledger.checkpoints.covers([file.ref], false));
           this.#quiet.end(this.#started().context.now());
           if (warmUp2) this.#warmUp.start(this.#started().context, ledger, record2);
           return record2;
@@ -28628,7 +28668,8 @@ var init_scheduler2 = __esm({
         const request = await this.#lock.run(() => {
           const { context, ledger } = this.#started();
           const revision = ledger.revision.number;
-          const resolved2 = groupView(context.policy).groups.find((g2) => g2.name === group);
+          const view = groupView(context.policy);
+          const resolved2 = view.groups.find((g2) => g2.name === group);
           if (resolved2 === void 0) return null;
           if (this.#awaitingInstall || this.#reinstalled) return { revision, queued: 0 };
           if (resolved2.select.kind === "lint") {
@@ -28637,7 +28678,9 @@ var init_scheduler2 = __esm({
           }
           this.#groups.lanes(context.policy);
           this.#groups.get(group)?.request();
-          return { revision, queued: queueGroup(context, ledger, group) };
+          const queued = queueGroup(context, ledger, group);
+          this.#requests.ask(ledger, (file) => view.of(file.ref).name === group);
+          return { revision, queued };
         }, `taking a squeal run ${group} request`);
         if (lint2) void this.options.passes?.pass().catch(() => {
         });
@@ -28671,7 +28714,9 @@ var init_scheduler2 = __esm({
               narrow: narrowAnswer(context, ledger, group, selection, waiting2)
             };
           }
-          const { queued, asks } = queueNarrow(ledger, selection.selected.get(group) ?? /* @__PURE__ */ new Set());
+          const selected2 = selection.selected.get(group) ?? /* @__PURE__ */ new Set();
+          const { queued, asks } = queueNarrow(ledger, selected2);
+          this.#requests.ask(ledger, (file) => selected2.has(file.id));
           this.#groups.lanes(context.policy);
           const lane = this.#groups.get(group);
           lane?.narrow.add(asks, ledger);
@@ -28687,6 +28732,7 @@ var init_scheduler2 = __esm({
         await this.#lock.run(() => {
           const { context, ledger } = this.#started();
           if (takeRetries(context, ledger)) ledger.commit();
+          this.#requests.ask(ledger, (file) => file.retryKey !== null);
         }, "taking squeal retry requests");
         this.#pump();
       }
@@ -28792,6 +28838,9 @@ var init_scheduler2 = __esm({
         if (this.#closed || !this.#ledger) return 0;
         const { queue } = this.#ledger;
         return queue.fastSize + queue.slowSize;
+      }
+      requestProgress() {
+        return this.#requests.ended(this.#closed ? null : this.#ledger);
       }
       slowPending() {
         if (this.#closed || !this.#ledger || this.#onHold()) return false;
@@ -80870,6 +80919,7 @@ function startTimers(context) {
         ["consumer expiry", () => expireConsumers(store, now(), { locksDir })]
       ]);
     }
+    attempt("request progress", () => progress2(at2));
     attempt("idle check", () => {
       if (presence.lastPresentAt !== null || !countPresence(at2)) return;
       if (at2 - context.lastActive() >= idleMs) {
@@ -80881,6 +80931,14 @@ function startTimers(context) {
     });
     attempt("unused check", () => unused(at2));
     attempt("idle GC", () => context.idleGc?.());
+  };
+  let seenEnded = 0;
+  const progress2 = (at2) => {
+    const ended3 = context.requestProgress?.() ?? null;
+    if (ended3 === null || ended3 === seenEnded) return;
+    seenEnded = ended3;
+    context.active(at2);
+    context.used?.(at2);
   };
   let seenRevision = null;
   const unused = (at2) => {
@@ -81248,6 +81306,8 @@ var Daemon = class {
         inUse: this.#loop.scheduler.inUse(),
         queued: this.#loop.scheduler.queued()
       },
+      // Row 018-12: each end of a file an explicit request queued is activity for the idle exit.
+      requestProgress: () => this.#loop === null || this.#phase === "stopping" ? null : this.#loop.scheduler.requestProgress?.() ?? null,
       // Task 003-26: queued runner work, never activity; until the scheduler takes it, asked again.
       observedChanged: () => this.#loop !== null && this.#phase !== "stopping" && this.#loop.scheduler.refreshObserved(),
       observedSeen: this.#observedSeen,
