@@ -58,7 +58,10 @@ export function fn(
 /** A base64 bitset of 1-based lines, as a record holds them. */
 export function bitset(lines: readonly number[]): string {
   const bytes = new Uint8Array(Math.ceil(Math.max(0, ...lines) / 8));
-  for (const line of lines) bytes[(line - 1) >> 3] |= 1 << ((line - 1) & 7);
+  for (const line of lines) {
+    const at = (line - 1) >> 3;
+    bytes[at] = (bytes[at] ?? 0) | (1 << ((line - 1) & 7));
+  }
   return Buffer.from(bytes).toString("base64");
 }
 
@@ -121,6 +124,8 @@ export interface PathInput {
   readonly path: string;
   readonly functions: readonly FunctionCount[];
   readonly changed: readonly string[];
+  /** Of `changed` and `inErrors`, the ones added; the others are edited. */
+  readonly added?: readonly string[];
   readonly inErrors?: readonly string[];
   readonly blob?: string;
 }
@@ -132,7 +137,12 @@ export function changedSet(
   const pick = (p: PathInput, names: readonly string[]): ChangedFunction[] =>
     p.functions
       .filter((f) => names.includes(f.qualifiedName))
-      .map((count) => ({ path: p.path, blob: p.blob ?? BLOB, change: "edited", count }));
+      .map((count) => ({
+        path: p.path,
+        blob: p.blob ?? BLOB,
+        change: p.added?.includes(count.qualifiedName) ? "added" : "edited",
+        count,
+      }));
   const counted: CountedPath[] = paths.map((p) => ({
     path: p.path,
     blob: p.blob ?? BLOB,
