@@ -101,10 +101,12 @@ describe("Codex runtime build (spec 002 D1, D5, D8)", () => {
     // The recorder is CommonJS, the first --require of a test process (003-28).
     // dist/observe/ holds the runtime-input recorder, copied verbatim the same way (001-132),
     // and dist/coverage/ the coverage provider Vitest loads by path (015-11).
+    // dist/ci/ holds `squeal ci record`'s hook in the project's Vitest CLI process (018-16).
     const verbatim = (f: string) =>
-      ["node-test/", "observe/", "coverage/"].some((d) => f.startsWith(d));
+      ["node-test/", "observe/", "coverage/", "ci/"].some((d) => f.startsWith(d));
     const runtime = files.filter(verbatim).sort();
     expect(runtime).toEqual([
+      "ci/vitest-ci.cjs",
       "coverage/provider.mjs",
       "node-test/recorder.cjs",
       "node-test/reporter.mjs",

@@ -10,9 +10,9 @@ import type { AbsolutePath, ProjectName } from "../../core/types/common.js";
 import type { TestFileRef } from "../../core/types/keys.js";
 import { observedInputs } from "../observe/inputs.js";
 import type { RecordedFile } from "../observe/read.js";
+import { RECORDER_VERSION } from "../observe/runtime.js";
 import type { RecordedRun } from "./ci-record.js";
 import { canonicalConfig } from "./environment.js";
-import { observingAdapterVersion } from "./observe.js";
 import { diagnosticDuration } from "./reporter.js";
 import { checkNames, compareRefs, refKey, runOutcome } from "./results.js";
 import { VITEST_ADAPTER_VERSION } from "./version.js";
@@ -196,8 +196,9 @@ function partProject(project: RawProject, run: RawRun, context: RunContext): Par
     project: project.name,
     runnerName: "vitest",
     runnerVersion: run.vitest,
+    // As `VitestObserver.adapterVersion` gives it; `test/runners/vitest/ci-record.test.ts` holds them equal.
     adapterVersion: context.observing
-      ? observingAdapterVersion(VITEST_ADAPTER_VERSION)
+      ? `${VITEST_ADAPTER_VERSION}+observe.${RECORDER_VERSION}`
       : VITEST_ADAPTER_VERSION,
     resolvedConfig: canonicalConfig(configured, context.paths),
     files: [],

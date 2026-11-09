@@ -34,17 +34,9 @@ export interface ObserveSettings {
 const CANDIDATES = ["../observe/", "./observe/", "./"] as const;
 
 export function observeRecorder(module: URL = new URL(import.meta.url)): AbsolutePath | null {
-  return observeRuntimeFile("recorder.cjs", module);
-}
-
-/** A file of this directory, found as `observeRecorder` finds the recorder: `squeal ci record`'s hook too. */
-export function observeRuntimeFile(
-  name: string,
-  module: URL = new URL(import.meta.url),
-): AbsolutePath | null {
   for (const candidate of CANDIDATES) {
-    const file = fileURLToPath(new URL(`${candidate}${name}`, module));
-    if (existsSync(file)) return file;
+    const recorder = fileURLToPath(new URL(`${candidate}recorder.cjs`, module));
+    if (existsSync(recorder)) return recorder;
   }
   return null;
 }

@@ -44,6 +44,14 @@ export const OBSERVE_RUNTIME = "src/runners/observe";
 export const COVERAGE_RUNTIME = "src/core/code/coverage";
 
 /**
+ * Spec 018 D8 (row 018-16): `squeal ci record`'s hook in the project's own
+ * Vitest CLI process, a dependency-free `.cjs` the bundled CLI finds at
+ * `<plugin>/dist/ci/` (`ciHook`). Apart from the recorder's directory: it
+ * changes no key, so the recorder's version does not answer for it.
+ */
+export const CI_RUNTIME = "src/runners/vitest/ci-runtime";
+
+/**
  * Spec 007 D4 and D6: what the bundled CLI finds at `<plugin>/dist/pytest/`:
  * the dependency-free `squeal_pytest.py` reporter, the vendored
  * tree-sitter-python grammar and web-tree-sitter's own runtime `.wasm`.
@@ -215,6 +223,15 @@ export function copyObserveRuntime(
   for (const file of files) copyFileSync(join(from, file), join(outdir, "observe", file));
 }
 
+/** Copies the `.cjs` files of `from`, by default `CI_RUNTIME`, into `<outdir>/ci/`, replaced as a whole. */
+export function copyCiRuntime(outdir: string, from: string = join(REPO_ROOT, CI_RUNTIME)): void {
+  const files = existsSync(from) ? readdirSync(from).filter((f) => f.endsWith(".cjs")) : [];
+  if (files.length === 0) return;
+  rmSync(join(outdir, "ci"), { recursive: true, force: true });
+  mkdirSync(join(outdir, "ci"), { recursive: true });
+  for (const file of files) copyFileSync(join(from, file), join(outdir, "ci", file));
+}
+
 /** Copies the `.mjs` files of `from`, by default `COVERAGE_RUNTIME`, into `<outdir>/coverage/`. */
 export function copyCoverageRuntime(
   outdir: string,
@@ -278,6 +295,7 @@ export async function buildDist(
   const { metafile } = await build({ ...bundleOptions(plugin, outdir, version), metafile: true });
   copyNodeTestRuntime(outdir);
   copyObserveRuntime(outdir);
+  copyCiRuntime(outdir);
   copyCoverageRuntime(outdir);
   copyPytestRuntime(outdir);
   copyCodeGrammar(outdir);
