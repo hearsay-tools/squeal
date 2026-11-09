@@ -22,7 +22,10 @@ For each exported file, with the export commit's blobs from `git ls-tree -r <com
 1. Proof: `keyFromSegments(exported env hash, file, segments of the export's own closure list over the commit, keyParts.dependencies, keyParts.runtime)` must equal the exported key. Absent `keyParts` means both empty.
 2. This worktree's environment hash for the project, when the hashes are equal or `importDifferences` is empty.
 3. This worktree's list: the stored `test_files` list (after the import's add-only lists) plus the `observed.<project>` entry, through `assembleClosure`.
-4. Key here = same parts, local environment hash, that list over the commit.
+4. Coverage (repair R1, review wave-5 B1): this worktree's list must hold every path of the export's list, observed files and listings included. A list that lacks one keeps the results at the exported key: a key without that input would stay equal when it changes here. The import never widens the shared observed set or moves a local key to make a file fit.
+5. Key here = same parts, local environment hash, that list over the commit.
+
+D10 (repair R1, review wave-5 B2): `allowOnly` is tolerated only when the export's hash is `configFieldHash(false)` and this worktree's is `configFieldHash(true)`; the other direction, an absent field and any other value stay keyed. `watch` stays tolerated both ways (Vitest reads it in a worker only to keep an inspector open, `research/ci-step.md` 3). `configFieldHash` is the one function that hashes a config field; test descriptors that fake `allowOnly` with strings such as `"f"` are unknown values now, so use it.
 
 Any step that fails leaves the file's results at the exported key (D3). Segments over the commit: a file by its blob id, none when absent; a listing by `namesHash` of the tree's entry names, `ABSENT_LISTING` for a directory the tree lacks; `.git` is absent at a commit, so a file whose list names `.git` misses (sound).
 
