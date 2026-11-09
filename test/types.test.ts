@@ -57,6 +57,8 @@ describe("core types", () => {
         blocking: false,
         tools: ["eslint", "oxlint"],
       },
+      // Spec 018 D14; its key's own tests are test/shared/policy.test.ts.
+      shared: { ref: null },
     });
   });
 });

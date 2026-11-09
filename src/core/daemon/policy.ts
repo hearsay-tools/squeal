@@ -18,6 +18,7 @@ import { LINT_SHAPE } from "./policy-lint.js";
 import { compiles, nodeTestProjects } from "./policy-node-test.js";
 import { pytestProjects } from "./policy-pytest.js";
 import { runtimeFiles } from "./policy-runtime.js";
+import { SHARED_SHAPE } from "./policy-shared.js";
 import { slowInclude } from "./policy-slow.js";
 
 export { describeProblems };
@@ -101,6 +102,7 @@ const SHAPE: Shape = {
   store: { retentionDays: atLeastZero, maxSizeMb: orNull(aboveZero) },
   ...CODE_SHAPE,
   ...LINT_SHAPE,
+  ...SHARED_SHAPE,
 };
 
 /**
