@@ -14,7 +14,6 @@ import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import type { AbsolutePath } from "../../../src/core/types/common.js";
 import type { NodeTestProject } from "../../../src/core/types/policy.js";
 import {
-  type NodeProbe,
   probeNode,
   projectEnvironment,
 } from "../../../src/runners/node-test/adapter-environment.js";
@@ -62,19 +61,13 @@ function samePathElsewhere(): string {
   return dir;
 }
 
-/** A directory whose `node` runs this Node's binary with another `process.config`. */
-function otherBuildOfThisVersion(): string {
-  const dir = mkdtempSync(join(scratch, "build-"));
-  const patch = join(dir, "other-build.cjs");
-  // A small-icu build of the same version (Node's BUILDING.md, "Trimmed: small-icu").
+/** A directory whose `node` runs this Node's binary with `property` of `process` replaced. */
+function patched(property: string, value: string): string {
+  const dir = mkdtempSync(join(scratch, `${property}-`));
+  const patch = join(dir, "patch.cjs");
   writeFileSync(
     patch,
-    [
-      "const c = process.config;",
-      "const variables = { ...c.variables, icu_small: !c.variables.icu_small };",
-      'Object.defineProperty(process, "config", { value: { ...c, variables }, enumerable: true });',
-      "",
-    ].join("\n"),
+    `Object.defineProperty(process, ${JSON.stringify(property)}, { value: ${value}, enumerable: true });\n`,
   );
   const node = join(dir, "node");
   writeFileSync(
@@ -85,8 +78,21 @@ function otherBuildOfThisVersion(): string {
   return dir;
 }
 
+/** Other builds of this version, each as `process` reports it. */
+const OTHER_BUILDS: readonly (readonly [string, string, string])[] = [
+  // Node's BUILDING.md, "Trimmed: small-icu": the configure options differ.
+  [
+    "a small-icu build",
+    "config",
+    "{ ...process.config, variables: { ...process.config.variables, icu_small: !process.config.variables.icu_small } }",
+  ],
+  ["a build on another OpenSSL", "versions", '{ ...process.versions, openssl: "0.0.0-other" }'],
+  ["a build for another platform", "platform", '"aix"'],
+  ["a build for another arch", "arch", '"s390x"'],
+];
+
 describe("the node:test environment of the project's Node (018 D12)", () => {
-  it("is equal for one build at two paths", SLOW, async () => {
+  it("is equal for one build at two paths, and names neither", SLOW, async () => {
     const elsewhere = samePathElsewhere();
     // The copy names its own path, which keyed it apart until D12.
     expect(
@@ -95,51 +101,25 @@ describe("the node:test environment of the project's Node (018 D12)", () => {
     const here = await environmentWith(dirname(process.execPath));
     const there = await environmentWith(elsewhere);
     expect(there).toEqual(here);
+    expect(here.runnerVersion).toBe(process.version);
+    expect(JSON.parse(here.resolvedConfig)).toMatchObject({
+      nodeBuild: expect.stringMatching(/^[0-9a-f]{64}$/),
+    });
     expect(here.resolvedConfig).not.toContain(dirname(process.execPath));
+    expect(here.resolvedConfig).not.toContain(elsewhere);
   });
 
-  it("differs for two builds of one version", SLOW, async () => {
+  it.each(OTHER_BUILDS)("differs for %s of one version", SLOW, async (_, property, value) => {
     const here = await environmentWith(dirname(process.execPath));
-    const other = await environmentWith(otherBuildOfThisVersion());
-    expect(other.runnerVersion).toBe(process.version);
+    const other = await environmentWith(patched(property, value));
     expect(other.runnerVersion).toBe(here.runnerVersion);
     expect(other.resolvedConfig).not.toBe(here.resolvedConfig);
   });
 
-  it("names the project's Node's own versions, platform and arch", SLOW, async () => {
-    const environment = await environmentWith(dirname(process.execPath));
-    expect(JSON.parse(environment.resolvedConfig)).toMatchObject({
-      nodeVersions: { ...process.versions },
-      nodeConfig: expect.stringMatching(/^[0-9a-f]{64}$/),
-      nodePlatform: process.platform,
-      nodeArch: process.arch,
-    });
-  });
-
-  it("keys each of the build's fields", () => {
-    const probe: NodeProbe = {
-      ok: true,
-      version: "v24.22.1",
-      versions: { node: "24.22.1", openssl: "3.5.4" },
-      config: "a".repeat(64),
-      platform: "linux",
-      arch: "x64",
-    };
-    const keyOf = (p: NodeProbe) => {
-      const e = projectEnvironment(root, project, p, [], "1");
-      return `${e.runnerVersion} ${e.resolvedConfig}`;
-    };
-    const base = keyOf(probe);
-    const others: NodeProbe[] = [
-      { ...probe, version: "v24.22.2" },
-      { ...probe, versions: { ...probe.versions, openssl: "3.5.5" } },
-      { ...probe, config: "b".repeat(64) },
-      { ...probe, platform: "darwin" },
-      { ...probe, arch: "arm64" },
-    ];
-    for (const other of others) expect(keyOf(other)).not.toBe(base);
-    // The order Node lists its versions in keys nothing.
-    const reordered = { openssl: "3.5.4", node: "24.22.1" };
-    expect(keyOf({ ...probe, versions: reordered })).toBe(base);
+  it("is equal whatever order the build lists its configure options in", SLOW, async () => {
+    const reversed = "Object.fromEntries(Object.entries(process.config).reverse())";
+    expect(Object.keys(process.config).length).toBeGreaterThan(1);
+    const here = await environmentWith(dirname(process.execPath));
+    expect(await environmentWith(patched("config", reversed))).toEqual(here);
   });
 });
