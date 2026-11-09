@@ -23,4 +23,5 @@ Read `docs/vision.md` first, with its decision filter. Two of its lines frame th
 - [typeof-import-brief](typeof-import-brief.md) (015-25): the `typeof import` misparse in a type argument, an upstream fix or an offset-keeping rewrite, measured against ESLint. Findings go to `typeof-import.md`.
 - [progress-updates-brief](progress-updates-brief.md) (015-26): the human's idea of a subscription to updates on a failing function. Findings go to `progress-updates.md`.
 - [mutation-planning-brief](mutation-planning-brief.md) (015-125): whether Squeal's coverage records can plan a StrykerJS run (what to mutate, which test files to run), how many false survivors that causes, and what an in-place mutation run does to a live daemon. Findings go to `mutation-planning.md`.
+- [quality-gate-brief](quality-gate-brief.md) (015-126): one engine and one pass/fail evaluator for the daemon, a one-shot pre-PR command and CI (#167). Findings go to `quality-gate.md`.
 - R3 in `../tasks/wave-2.md` (open question 3): the functions only a child-process test reaches, for D9's "no test runs it". Findings go to `child-processes.md`.
