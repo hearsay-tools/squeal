@@ -43,8 +43,8 @@ export interface CiExportInput {
   readonly worktreeId: WorktreeId;
   /** An empty store of the job's own, removed after the export. */
   readonly store: Store;
-  /** The runner adapter the daemon builds for this checkout. */
-  readonly runner: RunnerAdapter;
+  /** Opens the runner adapter the daemon builds for this checkout; called once the parts pass, closed at the end. */
+  readonly runner: () => Promise<RunnerAdapter>;
   readonly policy: Policy;
   readonly squealVersion: string;
   /** Allow-listed variables are read from here, as the daemon reads its own. */
@@ -75,9 +75,18 @@ export type CiExport =
  * Writes the observed entries and environments into `input.store` only.
  */
 export async function ciExport(input: CiExportInput): Promise<CiExport> {
-  const { worktreeId, store, runner, parts, header } = input;
-  const refused = partsRefusal(parts, header.commit);
+  const refused = partsRefusal(input.parts, input.header.commit);
   if (refused !== null) return { refused };
+  const runner = await input.runner();
+  try {
+    return await exportWith(input, runner);
+  } finally {
+    await runner.close();
+  }
+}
+
+async function exportWith(input: CiExportInput, runner: RunnerAdapter): Promise<CiExport> {
+  const { worktreeId, store, parts, header } = input;
   const keys = await openKeys(input);
   const environments = await runner.environment();
   await keys.setEnvironments(environments);
@@ -86,7 +95,7 @@ export async function ciExport(input: CiExportInput): Promise<CiExport> {
 
   const files = parts.flatMap((p) => p.part.testFiles);
   const passed = files.filter((file) => file.outcome !== "fail");
-  const { closures, report } = await keyFiles(input, keys, passed);
+  const { closures, report } = await keyFiles(input.root, runner, keys, passed);
   const parted = await keyPartsOf(input, keys, environments, closures);
   const provenance: Provenance = {
     worktreeId,
@@ -128,11 +137,11 @@ export async function ciExport(input: CiExportInput): Promise<CiExport> {
  * neither.
  */
 async function keyFiles(
-  input: CiExportInput,
+  root: AbsolutePath,
+  runner: RunnerAdapter,
   keys: WorktreeKeys,
   passed: readonly PartFile[],
 ): Promise<{ closures: Map<string, RunnerClosure>; report: RunReport }> {
-  const { root, runner } = input;
   const listed = new Set((await runner.testFiles()).map(testFileId));
   const closures = new Map<string, RunnerClosure>();
   for (const file of passed) {

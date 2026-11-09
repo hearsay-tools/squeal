@@ -9,10 +9,12 @@ import { WorktreePaths } from "../core/fs/worktree-paths.js";
 import { KEY_FORMAT_VERSION } from "../core/keys/key-format.js";
 import type { AbsolutePath } from "../core/types/common.js";
 import { type RecordedRun, startRecording, vitestResolves } from "../runners/vitest/ci-record.js";
+import { ciExportCommand, EXPORT_USAGE } from "./ci-export.js";
 import { sourceOf } from "./export.js";
 import type { CliIo } from "./main.js";
 
-const USAGE = "usage: squeal ci record [--out <dir>] -- <command> [args...]\n";
+const RECORD_USAGE = "usage: squeal ci record [--out <dir>] -- <command> [args...]\n";
+const USAGE = `${RECORD_USAGE}${EXPORT_USAGE}`;
 
 /** The directory `--out` defaults to, in the working directory. */
 export const DEFAULT_PARTS_DIR = "squeal-parts";
@@ -28,6 +30,8 @@ export interface CiDeps {
  * command, also writes one part per Vitest process into `--out` (default
  * `squeal-parts/`). Exit 2 on a usage error; otherwise the command's code,
  * whatever Squeal could record, since nothing in CI gates on Squeal (D16).
+ * `export` (D9): the parts as one export, keyed in this checkout
+ * (`ciExportCommand`).
  */
 export async function ciCommand(
   args: readonly string[],
@@ -35,13 +39,14 @@ export async function ciCommand(
   deps: CiDeps = {},
 ): Promise<number> {
   const [sub, ...rest] = args;
+  if (sub === "export") return ciExportCommand(rest, io, deps.tempDir);
   if (sub !== "record") {
     io.stderr(`squeal ci: ${sub === undefined ? "no subcommand" : `unknown "${sub}"`}\n${USAGE}`);
     return 2;
   }
   const parsed = parseRecord(rest);
   if ("error" in parsed) {
-    io.stderr(`squeal ci record: ${parsed.error}\n${USAGE}`);
+    io.stderr(`squeal ci record: ${parsed.error}\n${RECORD_USAGE}`);
     return 2;
   }
   return record(parsed, io, deps);

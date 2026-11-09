@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { ciCommand } from "../../src/cli/ci.js";
@@ -13,7 +13,7 @@ import { encodeSegment, keyFromSegments } from "../../src/core/keys/check-key.js
 import { KEY_FORMAT_VERSION } from "../../src/core/keys/key-format.js";
 import type { ExportHeader } from "../../src/core/store/imports.js";
 import { exportResults } from "../../src/core/store/transfer.js";
-import type { ResultsBundle } from "../../src/core/store/transfer-bundle.js";
+import { decodeBundle, type ResultsBundle } from "../../src/core/store/transfer-bundle.js";
 import type { AbsolutePath, WorktreeId } from "../../src/core/types/common.js";
 import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 import { createVitestAdapter } from "../../src/runners/vitest/index.js";
@@ -123,13 +123,11 @@ async function partsExport(origin: string, out: string): Promise<CiExport & { ro
     return { file: name, part };
   });
   const store = openRepoStore(join(scratch("ci-export-store"), "common"));
-  const runner = await createVitestAdapter({ root, observe: () => true });
-  onCleanUp(() => runner.close());
   const exported = await ciExport({
     root,
     worktreeId: worktreeIdFor(root),
     store,
-    runner,
+    runner: () => createVitestAdapter({ root, observe: () => true }),
     policy: { ...DEFAULT_POLICY, observe: { runtimeInputs: true } },
     squealVersion: SQUEAL,
     env: process.env,
@@ -190,5 +188,19 @@ describe("squeal ci export (spec 018 D9)", () => {
       daemon.environments.map((e) => e.hash),
     );
     expect(ci.bundle.header.commit).toBe(daemon.header.commit);
+
+    // The command: the same parts, keyed with this Squeal's version and policy, written gzipped.
+    const written = join(dirname(origin), "results.json.gz");
+    let said = "";
+    const add = (text: string) => {
+      said += text;
+    };
+    const io = { stdout: add, stderr: add, cwd: ci.root, env: process.env };
+    expect(await ciCommand(["export", "--parts", out, "--out", written], io)).toBe(0);
+    expect(said).toContain(`Exported 4 test files, 12 results, to ${written}.`);
+    const decoded = decodeBundle(readFileSync(written));
+    if (typeof decoded === "string") throw new Error(decoded);
+    expect(decoded.testFiles.map((f) => f.path)).toEqual(daemon.testFiles.map((f) => f.path));
+    expect(await proven(ci.root, decoded)).toEqual([true, true, true, true]);
   });
 });
