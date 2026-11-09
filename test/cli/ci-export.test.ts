@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { ciCommand } from "../../src/cli/ci.js";
-import type { CliIo } from "../../src/cli/main.js";
+import { type CliIo, main } from "../../src/cli/main.js";
 import { PART_FORMAT, type Part, writePart } from "../../src/core/ci/parts.js";
 import { KEY_FORMAT_VERSION } from "../../src/core/keys/key-format.js";
 
@@ -83,6 +83,12 @@ describe("squeal ci export", () => {
     expect(await ciCommand(args, io)).toBe(2);
     expect(said()).toContain(text);
     expect(said()).toContain("usage: squeal ci export --parts <dir>... [--out <file>]");
+  });
+
+  it("is in the CLI's help", async () => {
+    const { io, text } = capture(BASE);
+    expect(await main(["ci", "--help"], io)).toBe(0);
+    expect(text()).toContain("squeal ci export --parts <dir>... [--out <file>]");
   });
 
   it("names both subcommands when none is given", async () => {

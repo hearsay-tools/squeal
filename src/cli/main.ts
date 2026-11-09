@@ -184,6 +184,10 @@ Usage:
                                 process into --out (default squeal-parts/): each test
                                 file's outcome, checks, duration and observed reads,
                                 and each project's environment; other runners only run
+  squeal ci export --parts <dir>... [--out <file>]
+                                In CI, after the shards: write the parts as one export
+                                (default squeal-results-<commit8>.json.gz), keyed as a
+                                daemon in this checkout of their commit keys
   squeal ps [--repo] [--full] [--json]
                                 Every Squeal daemon of this user on this host, with its
                                 test processes, their CPU and memory over 2 s, the host's
