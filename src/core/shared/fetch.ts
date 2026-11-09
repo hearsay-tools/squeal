@@ -1,4 +1,3 @@
-import type { ChildProcess } from "node:child_process";
 import type { AbsolutePath } from "../types/common.js";
 import { failureOf, gitCall } from "./git.js";
 import { EXPORT_NAME } from "./refs.js";
@@ -13,7 +12,8 @@ import { EXPORT_NAME } from "./refs.js";
 export interface FetchCall {
   readonly timeoutMs: number;
   readonly env: Readonly<Record<string, string>>;
-  readonly started?: (child: ChildProcess) => void;
+  /** The owner's stop: no git starts after it, and the one running is killed. */
+  readonly signal?: AbortSignal;
 }
 
 export type Fetched = Buffer | { readonly failed: string; readonly timedOut: boolean };
@@ -52,6 +52,7 @@ export async function fetchExport(
   }
   const blob = await gitCall(root, ["cat-file", "blob", `${oid}:${EXPORT_NAME}`], {
     timeoutMs: call.timeoutMs,
+    ...(call.signal === undefined ? {} : { signal: call.signal }),
   });
   if (blob.code === 0) return blob.stdout;
   return { failed: `${ref} holds no ${EXPORT_NAME} at ${oid.slice(0, 8)}`, timedOut: false };

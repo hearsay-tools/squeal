@@ -1,5 +1,5 @@
 import type { AbsolutePath } from "../types/common.js";
-import { type GitAnswer, gitCall } from "./git.js";
+import { type GitAnswer, type GitCall, gitCall } from "./git.js";
 
 /*
  * Spec 018 D13, D14: one ref per main commit, `<prefix>/<sha>`, each a
@@ -36,13 +36,9 @@ export async function remoteExports(
   root: AbsolutePath,
   remote: string,
   prefix: string,
-  call: { readonly timeoutMs: number; readonly env: Readonly<Record<string, string>> },
-  started?: Parameters<typeof gitCall>[2]["started"],
+  call: Pick<GitCall, "timeoutMs" | "env" | "signal">,
 ): Promise<RemoteExports | GitAnswer> {
-  const answer = await gitCall(root, ["ls-remote", remote, `${prefix}/*`], {
-    ...call,
-    ...(started === undefined ? {} : { started }),
-  });
+  const answer = await gitCall(root, ["ls-remote", remote, `${prefix}/*`], call);
   if (answer.code !== 0) return answer;
   const exports = new Map<string, string>();
   for (const line of answer.stdout.toString("utf8").split("\n")) {
