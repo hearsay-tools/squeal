@@ -1,0 +1,50 @@
+{
+  "testsPassed": true,
+  "visibleInTest": "\"/tmp/qg/cases/child-v8\"",
+  "payloads": 2,
+  "payloadsNamingWorktree": 2,
+  "truncated": "coverage-2726409-1794261594649-0.json",
+  "skipped": [
+    {
+      "file": "coverage-2726409-1794261594649-0.json",
+      "error": "SyntaxError: Expected ':' after property name in JSON at position 339152 (line 1 column 339153)"
+    }
+  ],
+  "records": [
+    {
+      "sources": [
+        "bin/run-plain.mjs",
+        "src/plain.mjs"
+      ],
+      "unread": []
+    }
+  ],
+  "work": [
+    {
+      "fn": "work",
+      "cc": 3,
+      "ran": false,
+      "cov": 0,
+      "crap": 12,
+      "childRecords": 0
+    },
+    {
+      "fn": "unused",
+      "cc": 2,
+      "ran": false,
+      "cov": 0,
+      "crap": 6,
+      "childRecords": 0
+    }
+  ],
+  "plain": [
+    {
+      "fn": "plain",
+      "cc": 2,
+      "ran": true,
+      "cov": 1,
+      "crap": 2,
+      "childRecords": 1
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "end": "completed",
+  "completed": 30,
+  "failed": 0,
+  "records": 30,
+  "sources": 410,
+  "functions": 5145,
+  "ranInProcess": 1386,
+  "ranNone": 3484,
+  "overCc": 16,
+  "overCrap": 450,
+  "unreadSources": 0,
+  "ms": {
+    "total": 11817,
+    "run": 9292,
+    "map": 612,
+    "join": 848
+  },
+  "mainProcessCpuMs": 9360,
+  "sampleRows": [
+    {
+      "path": "src/core/code/count/index.ts",
+      "name": "countFile",
+      "line": 28,
+      "cc": 3,
+      "cov": 1,
+      "crap": 3
+    },
+    {
+      "path": "src/core/code/count/index.ts",
+      "name": "countFile.<withCodeTree>",
+      "line": 35,
+      "cc": 1,
+      "cov": 1,
+      "crap": 1
+    },
+    {
+      "path": "src/core/code/count/parser.ts",
+      "name": "counterReady",
+      "line": 20,
+      "cc": 2,
+      "cov": 1,
+      "crap": 2
+    },
+    {
+      "path": "src/core/code/count/parser.ts",
+      "name": "counterReady.<anonymous>",
+      "line": 21,
+      "cc": 1,
+      "cov": 1,
+      "crap": 1
+    },
+    {
+      "path": "src/core/code/count/parser.ts",
+      "name": "counterReady.<catch>",
+      "line": 27,
+      "cc": 1,
+      "cov": 1,
+      "crap": 1
+    }
+  ]
+}

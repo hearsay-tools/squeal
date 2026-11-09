@@ -1,0 +1,2760 @@
+{
+  "countMs": 521,
+  "counted": 69,
+  "results": [
+    {
+      "range": "7b726e2a29ab0cfa93c1c61918ae7ffd2e468138^1..7b726e2a29ab0cfa93c1c61918ae7ffd2e468138",
+      "files": 0,
+      "testFiles": 0,
+      "tally": {
+        "unchanged": 0,
+        "shifted": 0,
+        "edited": 0,
+        "moved": 0,
+        "added": 0
+      },
+      "changed": 0,
+      "changedInTests": 0,
+      "over20": [],
+      "shifted": [],
+      "changedFunctions": []
+    },
+    {
+      "range": "b7c17fed2de276ca81645a94a17d61e223d8a1ba^1..b7c17fed2de276ca81645a94a17d61e223d8a1ba",
+      "files": 22,
+      "testFiles": 9,
+      "tally": {
+        "unchanged": 195,
+        "shifted": 1,
+        "edited": 30,
+        "moved": 22,
+        "added": 171
+      },
+      "changed": 201,
+      "changedInTests": 122,
+      "over20": [],
+      "shifted": [
+        {
+          "path": "scripts/release-identity.test.mjs",
+          "name": "<test>.<map>",
+          "line": 200
+        }
+      ],
+      "changedFunctions": [
+        {
+          "path": ".github/scripts/pr-snapshot.cjs",
+          "name": "validateForwardingArchive",
+          "line": 83,
+          "cc": 7,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": ".github/scripts/pr-snapshot.cjs",
+          "name": "validateForwardingArchive.same",
+          "line": 84,
+          "cc": 3,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": ".github/scripts/pr-snapshot.cjs",
+          "name": "validateForwardingArchive.<map>",
+          "line": 86,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": ".github/scripts/pr-snapshot.cjs",
+          "name": "validateArchives",
+          "line": 97,
+          "cc": 17,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": ".github/scripts/pr-snapshot.cjs",
+          "name": "validateArchives.<map>",
+          "line": 103,
+          "cc": 16,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": ".github/scripts/release-packages.cjs",
+          "name": "releasePackages",
+          "line": 13,
+          "cc": 4,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": ".github/scripts/release-packages.cjs",
+          "name": "packChecks",
+          "line": 25,
+          "cc": 5,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": ".github/scripts/release-packages.cjs",
+          "name": "packChecks.<withCompatibilityPackages>",
+          "line": 35,
+          "cc": 2,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": ".github/scripts/release-packages.cjs",
+          "name": "cleanupTags",
+          "line": 40,
+          "cc": 10,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": ".github/scripts/release-packages.cjs",
+          "name": "cleanupTags.<filter>",
+          "line": 44,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/discovery.ts",
+          "name": "discoverForwardingPackage",
+          "line": 111,
+          "cc": 9,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/discovery.ts",
+          "name": "discoverForwardingPackage.<find>",
+          "line": 120,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/discovery.ts",
+          "name": "discoverInstallation",
+          "line": 134,
+          "cc": 6,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/first-forwarding-release.test.ts",
+          "name": "<mock>",
+          "line": 20,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/first-forwarding-release.test.ts",
+          "name": "<afterEach>",
+          "line": 27,
+          "cc": 4,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/first-forwarding-release.test.ts",
+          "name": "serverCode",
+          "line": 40,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/first-forwarding-release.test.ts",
+          "name": "copy",
+          "line": 53,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/first-forwarding-release.test.ts",
+          "name": "fixture",
+          "line": 59,
+          "cc": 13,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/first-forwarding-release.test.ts",
+          "name": "fixture.<withCompatibilityPackages>",
+          "line": 76,
+          "cc": 2,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/first-forwarding-release.test.ts",
+          "name": "fixture.install",
+          "line": 83,
+          "cc": 4,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/first-forwarding-release.test.ts",
+          "name": "fixture.<map>",
+          "line": 105,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/first-forwarding-release.test.ts",
+          "name": "fixture.<fn>",
+          "line": 107,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/first-forwarding-release.test.ts",
+          "name": "fixture.targetVersion",
+          "line": 118,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/first-forwarding-release.test.ts",
+          "name": "fixture.record",
+          "line": 119,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/first-forwarding-release.test.ts",
+          "name": "fixture.plan",
+          "line": 120,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/first-forwarding-release.test.ts",
+          "name": "unusedPort",
+          "line": 125,
+          "cc": 2,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/first-forwarding-release.test.ts",
+          "name": "unusedPort.<new Promise>",
+          "line": 128,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/first-forwarding-release.test.ts",
+          "name": "unusedPort.<new Promise>.<close>",
+          "line": 128,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/first-forwarding-release.test.ts",
+          "name": "<anonymous>",
+          "line": 134,
+          "cc": 5,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/first-forwarding-release.test.ts",
+          "name": "<anonymous>.<mockImplementation>",
+          "line": 148,
+          "cc": 2,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/first-forwarding-release.test.ts",
+          "name": "<anonymous>.<map>",
+          "line": 156,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/first-forwarding-release.test.ts",
+          "name": "damage",
+          "line": 174,
+          "cc": 9,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/first-forwarding-release.test.ts",
+          "name": "<anonymous>",
+          "line": 195,
+          "cc": 2,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/first-forwarding-release.test.ts",
+          "name": "<anonymous>.<mockImplementationOnce>",
+          "line": 200,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/first-forwarding-release.test.ts",
+          "name": "<anonymous>",
+          "line": 216,
+          "cc": 10,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/first-forwarding-release.test.ts",
+          "name": "<anonymous>.<map>",
+          "line": 243,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/first-forwarding-release.test.ts",
+          "name": "<anonymous>.<map>",
+          "line": 245,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/first-forwarding-release.test.ts",
+          "name": "<it>",
+          "line": 249,
+          "cc": 4,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/first-forwarding-release.test.ts",
+          "name": "<it>.<mockImplementation>",
+          "line": 258,
+          "cc": 6,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/first-forwarding-release.test.ts",
+          "name": "<it>.<filter>",
+          "line": 273,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/first-forwarding-release.test.ts",
+          "name": "<it>",
+          "line": 286,
+          "cc": 5,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/first-forwarding-release.test.ts",
+          "name": "<it>",
+          "line": 320,
+          "cc": 2,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/first-forwarding-release.test.ts",
+          "name": "<it>.<map>",
+          "line": 327,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/first-forwarding-release.test.ts",
+          "name": "<it>.<map>",
+          "line": 329,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/forwarding-layout.test.ts",
+          "name": "<afterEach>",
+          "line": 11,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/forwarding-layout.test.ts",
+          "name": "<afterEach>.<forEach>",
+          "line": 11,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/forwarding-layout.test.ts",
+          "name": "packageAt",
+          "line": 13,
+          "cc": 2,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/forwarding-layout.test.ts",
+          "name": "fixture",
+          "line": 20,
+          "cc": 9,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/forwarding-layout.test.ts",
+          "name": "fixture.<fn>",
+          "line": 33,
+          "cc": 5,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/forwarding-layout.test.ts",
+          "name": "fixture.targetVersion",
+          "line": 43,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/forwarding-layout.test.ts",
+          "name": "fixture.helper",
+          "line": 44,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/forwarding-layout.test.ts",
+          "name": "fixture.next",
+          "line": 47,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/forwarding-layout.test.ts",
+          "name": "<it>",
+          "line": 51,
+          "cc": 3,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/forwarding-layout.test.ts",
+          "name": "<anonymous>",
+          "line": 80,
+          "cc": 6,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/forwarding-layout.test.ts",
+          "name": "<anonymous>",
+          "line": 103,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/forwarding-layout.test.ts",
+          "name": "<it>",
+          "line": 120,
+          "cc": 2,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/helper.ts",
+          "name": "runRestartWorkflow",
+          "line": 92,
+          "cc": 19,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/helper.ts",
+          "name": "validateOriginal",
+          "line": 141,
+          "cc": 11,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/helper.ts",
+          "name": "restoreOriginal",
+          "line": 256,
+          "cc": 17,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/helper.ts",
+          "name": "restoreOriginal.<filter>",
+          "line": 285,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/helper.ts",
+          "name": "restoreOriginal.<map>",
+          "line": 285,
+          "cc": 2,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/helper.ts",
+          "name": "runHelper",
+          "line": 305,
+          "cc": 1,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/helper.ts",
+          "name": "runHelper.reportFailure",
+          "line": 329,
+          "cc": 4,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/hoisted-recovery.test.ts",
+          "name": "<it>",
+          "line": 140,
+          "cc": 1,
+          "kind": "edited",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/legacy-entry-paths.test.ts",
+          "name": "<beforeAll>",
+          "line": 22,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/legacy-entry-paths.test.ts",
+          "name": "<beforeAll>.<withCompatibilityPackages>",
+          "line": 27,
+          "cc": 2,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/legacy-entry-paths.test.ts",
+          "name": "<afterAll>",
+          "line": 47,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/legacy-entry-paths.test.ts",
+          "name": "copyPackage",
+          "line": 49,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/legacy-entry-paths.test.ts",
+          "name": "installTrees",
+          "line": 54,
+          "cc": 5,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/legacy-entry-paths.test.ts",
+          "name": "<it>",
+          "line": 70,
+          "cc": 7,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/legacy-entry-paths.test.ts",
+          "name": "<it>.targetVersion",
+          "line": 80,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/legacy-entry-paths.test.ts",
+          "name": "<it>.runNpm",
+          "line": 80,
+          "cc": 2,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/legacy-entry-paths.test.ts",
+          "name": "<it>.unexpected",
+          "line": 89,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/legacy-entry-paths.test.ts",
+          "name": "<it>.promote",
+          "line": 90,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/legacy-entry-paths.test.ts",
+          "name": "<it>.validateOriginal",
+          "line": 91,
+          "cc": 2,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/legacy-entry-paths.test.ts",
+          "name": "<it>.launch",
+          "line": 92,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/legacy-entry-paths.test.ts",
+          "name": "<it>.verifyHealth",
+          "line": 93,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/legacy-entry-paths.test.ts",
+          "name": "<it>.reportSuccess",
+          "line": 93,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/legacy-entry-paths.testkit.ts",
+          "name": "fixtureText",
+          "line": 16,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/legacy-entry-paths.testkit.ts",
+          "name": "frozenUpdater",
+          "line": 19,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/legacy-entry-paths.testkit.ts",
+          "name": "frozenUpdater.setup",
+          "line": 23,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/legacy-entry-paths.testkit.ts",
+          "name": "frozenUpdater.setup.<onLoad>",
+          "line": 24,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/legacy-entry-paths.testkit.ts",
+          "name": "modulesAt",
+          "line": 33,
+          "cc": 4,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/legacy-entry-paths.testkit.ts",
+          "name": "oldInstallation",
+          "line": 38,
+          "cc": 15,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/legacy-entry-paths.testkit.ts",
+          "name": "oldInstallation.<map>",
+          "line": 58,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/legacy-entry-paths.testkit.ts",
+          "name": "capturePlans",
+          "line": 74,
+          "cc": 2,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/legacy-entry-paths.testkit.ts",
+          "name": "capturePlans.armRestart",
+          "line": 84,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/legacy-entry-paths.testkit.ts",
+          "name": "launchOriginalEntries",
+          "line": 95,
+          "cc": 5,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/runtime-layout.ts",
+          "name": "manifest",
+          "line": 7,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/runtime-layout.ts",
+          "name": "installationModules",
+          "line": 9,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/runtime-layout.ts",
+          "name": "installationModules.<map>",
+          "line": 10,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/runtime-layout.ts",
+          "name": "assertCanonicalPath",
+          "line": 14,
+          "cc": 7,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/runtime-layout.ts",
+          "name": "dependencyPath",
+          "line": 26,
+          "cc": 2,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/runtime-layout.ts",
+          "name": "validateLegacyScoped",
+          "line": 34,
+          "cc": 10,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/runtime-layout.ts",
+          "name": "validateLegacyScoped.<find>",
+          "line": 42,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/runtime-layout.ts",
+          "name": "installedRuntime",
+          "line": 49,
+          "cc": 15,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/runtime-layout.ts",
+          "name": "originalRuntimeName",
+          "line": 69,
+          "cc": 2,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/runtime-layout.ts",
+          "name": "originalRuntimeName.<find>",
+          "line": 73,
+          "cc": 2,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/runtime-layout.ts",
+          "name": "hoistedRuntime",
+          "line": 79,
+          "cc": 3,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/scoped-recovery.test.ts",
+          "name": "<mock>",
+          "line": 8,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/scoped-recovery.test.ts",
+          "name": "<afterEach>",
+          "line": 14,
+          "cc": 2,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/scoped-recovery.test.ts",
+          "name": "fixture",
+          "line": 16,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/scoped-recovery.test.ts",
+          "name": "fixture.<map>",
+          "line": 18,
+          "cc": 2,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/scoped-recovery.test.ts",
+          "name": "fixture.versions",
+          "line": 25,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/scoped-recovery.test.ts",
+          "name": "fixture.versions.<map>",
+          "line": 25,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/scoped-recovery.test.ts",
+          "name": "<it>",
+          "line": 28,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/scoped-recovery.test.ts",
+          "name": "<it>",
+          "line": 36,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/scoped-recovery.test.ts",
+          "name": "<it>",
+          "line": 45,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/scoped-recovery.test.ts",
+          "name": "<it>",
+          "line": 52,
+          "cc": 2,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/scoped-recovery.test.ts",
+          "name": "<it>.<fn>",
+          "line": 56,
+          "cc": 3,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/scoped-recovery.test.ts",
+          "name": "<it>.<catch>",
+          "line": 59,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/scoped-recovery.test.ts",
+          "name": "<it>",
+          "line": 72,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/scoped-recovery.test.ts",
+          "name": "<it>.<restorePackageTrees>",
+          "line": 74,
+          "cc": 2,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/scoped-recovery.test.ts",
+          "name": "<it>",
+          "line": 84,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/scoped-recovery.test.ts",
+          "name": "<it>.<mockImplementation>",
+          "line": 87,
+          "cc": 2,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/scoped-recovery.test.ts",
+          "name": "<it>.<restorePackageTrees>",
+          "line": 92,
+          "cc": 2,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/scoped-recovery.test.ts",
+          "name": "<it>.<catch>",
+          "line": 94,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/application-update/scoped-recovery.ts",
+          "name": "canonicalRecoverySlot",
+          "line": 11,
+          "cc": 2,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/scoped-recovery.ts",
+          "name": "validateScopedRecovery",
+          "line": 18,
+          "cc": 8,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/scoped-recovery.ts",
+          "name": "scopedRecoveryTarget",
+          "line": 31,
+          "cc": 10,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/scoped-recovery.ts",
+          "name": "validateBackupRuntime",
+          "line": 45,
+          "cc": 5,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/scoped-recovery.ts",
+          "name": "validateRecoveryLayout",
+          "line": 53,
+          "cc": 14,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/scoped-recovery.ts",
+          "name": "recoveryDestinations",
+          "line": 76,
+          "cc": 8,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/scoped-recovery.ts",
+          "name": "recoveryDestinations.<filter>",
+          "line": 85,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/scoped-recovery.ts",
+          "name": "recoveryDestinations.<map>",
+          "line": 85,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/scoped-recovery.ts",
+          "name": "validKeptRoot",
+          "line": 94,
+          "cc": 8,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/scoped-recovery.ts",
+          "name": "validRecoveryMessage",
+          "line": 109,
+          "cc": 3,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/scoped-recovery.ts",
+          "name": "validRecoveryMessage.<every>",
+          "line": 115,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/scoped-recovery.ts",
+          "name": "PackageRecoveryError.constructor",
+          "line": 121,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/scoped-recovery.ts",
+          "name": "PackageRecoveryError.constructor.<map>",
+          "line": 122,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/scoped-recovery.ts",
+          "name": "undoTrees",
+          "line": 127,
+          "cc": 4,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/scoped-recovery.ts",
+          "name": "restorePackageTrees",
+          "line": 135,
+          "cc": 12,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/scoped-recovery.ts",
+          "name": "restorePackageTrees.checkOwned",
+          "line": 139,
+          "cc": 2,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/scoped-recovery.ts",
+          "name": "restorePackageTrees.filter",
+          "line": 151,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/scoped-recovery.ts",
+          "name": "restorePackageTrees.<map>",
+          "line": 166,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/scoped-recovery.ts",
+          "name": "restorePackageTrees.<filter>",
+          "line": 167,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/service.ts",
+          "name": "stagedRuntime",
+          "line": 139,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/service.ts",
+          "name": "ApplicationUpdateService.constructor",
+          "line": 159,
+          "cc": 6,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/service.ts",
+          "name": "ApplicationUpdateService.recordStateInvalid",
+          "line": 178,
+          "cc": 8,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/service.ts",
+          "name": "ApplicationUpdateService.refreshReadyRecord",
+          "line": 212,
+          "cc": 17,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/service.ts",
+          "name": "ApplicationUpdateService.clearPrepareDirs",
+          "line": 309,
+          "cc": 2,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/service.ts",
+          "name": "ApplicationUpdateService.installStagedRelease",
+          "line": 320,
+          "cc": 4,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/application-update/service.ts",
+          "name": "ApplicationUpdateService.snapshotPrepareRecovery",
+          "line": 337,
+          "cc": 7,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/home/command.test.ts",
+          "name": "<anonymous>",
+          "line": 5,
+          "cc": 6,
+          "kind": "edited",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/home/command.ts",
+          "name": "invokedCommand",
+          "line": 5,
+          "cc": 9,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/release/compatibility.test.ts",
+          "name": "<it>",
+          "line": 8,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/release/compatibility.test.ts",
+          "name": "<it>.<withCompatibilityPackages>",
+          "line": 10,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/release/compatibility.test.ts",
+          "name": "<it>",
+          "line": 12,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/release/compatibility.test.ts",
+          "name": "<it>.<withCompatibilityPackages>",
+          "line": 13,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/release/compatibility.test.ts",
+          "name": "<anonymous>",
+          "line": 15,
+          "cc": 2,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/release/compatibility.test.ts",
+          "name": "<anonymous>.run",
+          "line": 23,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/release/compatibility.test.ts",
+          "name": "<anonymous>.run.<withCompatibilityPackages>",
+          "line": 23,
+          "cc": 5,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/release/compatibility.test.ts",
+          "name": "<anonymous>.run.<withCompatibilityPackages>.<map>",
+          "line": 24,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/release/compatibility.test.ts",
+          "name": "<anonymous>.<every>",
+          "line": 36,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/release/compatibility.ts",
+          "name": "compatibilityEntry",
+          "line": 8,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/release/compatibility.ts",
+          "name": "compatibilityManifests",
+          "line": 17,
+          "cc": 4,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/release/compatibility.ts",
+          "name": "withCompatibilityPackages",
+          "line": 39,
+          "cc": 3,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/release/compatibility.ts",
+          "name": "withCompatibilityPackages.<map>",
+          "line": 46,
+          "cc": 2,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/test/e2e/compatibility-packages.test.ts",
+          "name": "cacheArchives",
+          "line": 27,
+          "cc": 4,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/test/e2e/compatibility-packages.test.ts",
+          "name": "dependencyRoot",
+          "line": 51,
+          "cc": 4,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/test/e2e/compatibility-packages.test.ts",
+          "name": "bundle",
+          "line": 62,
+          "cc": 11,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/test/e2e/compatibility-packages.test.ts",
+          "name": "bundle.filter",
+          "line": 65,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/test/e2e/compatibility-packages.test.ts",
+          "name": "pack",
+          "line": 82,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/test/e2e/compatibility-packages.test.ts",
+          "name": "packRuntime",
+          "line": 87,
+          "cc": 4,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/test/e2e/compatibility-packages.test.ts",
+          "name": "upgradeOldLayout",
+          "line": 106,
+          "cc": 8,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/test/e2e/compatibility-packages.test.ts",
+          "name": "upgradeOldLayout.targetVersion",
+          "line": 114,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/test/e2e/compatibility-packages.test.ts",
+          "name": "upgradeOldLayout.runNpm",
+          "line": 115,
+          "cc": 2,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/test/e2e/compatibility-packages.test.ts",
+          "name": "upgradeOldLayout.<map>",
+          "line": 127,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/test/e2e/compatibility-packages.test.ts",
+          "name": "upgradeOldLayout.unexpected",
+          "line": 131,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/test/e2e/compatibility-packages.test.ts",
+          "name": "upgradeOldLayout.promote",
+          "line": 132,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/test/e2e/compatibility-packages.test.ts",
+          "name": "upgradeOldLayout.validateOriginal",
+          "line": 133,
+          "cc": 2,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/test/e2e/compatibility-packages.test.ts",
+          "name": "upgradeOldLayout.launch",
+          "line": 136,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/test/e2e/compatibility-packages.test.ts",
+          "name": "upgradeOldLayout.verifyHealth",
+          "line": 137,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/test/e2e/compatibility-packages.test.ts",
+          "name": "upgradeOldLayout.reportSuccess",
+          "line": 137,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/test/e2e/compatibility-packages.test.ts",
+          "name": "verifyCommands",
+          "line": 147,
+          "cc": 7,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/test/e2e/compatibility-packages.test.ts",
+          "name": "verifyCommands.<rejects>",
+          "line": 158,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/test/e2e/compatibility-packages.test.ts",
+          "name": "verifyInstalled",
+          "line": 160,
+          "cc": 5,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/test/e2e/compatibility-packages.test.ts",
+          "name": "<test>",
+          "line": 185,
+          "cc": 7,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/test/e2e/compatibility-packages.test.ts",
+          "name": "<test>.<createServer>",
+          "line": 189,
+          "cc": 2,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/test/e2e/compatibility-packages.test.ts",
+          "name": "<test>.<withCompatibilityPackages>",
+          "line": 199,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/test/e2e/compatibility-packages.test.ts",
+          "name": "<test>.<withCompatibilityPackages>.<map>",
+          "line": 199,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/test/e2e/compatibility-packages.test.ts",
+          "name": "<test>.<filter>",
+          "line": 209,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/test/e2e/compatibility-packages.test.ts",
+          "name": "<test>.<test>",
+          "line": 216,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "scripts/release-identity.test.mjs",
+          "name": "fixture",
+          "line": 17,
+          "cc": 8,
+          "kind": "edited",
+          "test": true
+        },
+        {
+          "path": "scripts/release-identity.test.mjs",
+          "name": "<test>",
+          "line": 96,
+          "cc": 11,
+          "kind": "edited",
+          "test": true
+        },
+        {
+          "path": "scripts/release-identity.test.mjs",
+          "name": "<test>.<map>",
+          "line": 125,
+          "cc": 4,
+          "kind": "edited",
+          "test": true
+        },
+        {
+          "path": "scripts/release-identity.test.mjs",
+          "name": "<test>",
+          "line": 171,
+          "cc": 4,
+          "kind": "edited",
+          "test": true
+        },
+        {
+          "path": "scripts/release-identity.test.mjs",
+          "name": "<test>.pack",
+          "line": 178,
+          "cc": 5,
+          "kind": "edited",
+          "test": true
+        },
+        {
+          "path": "scripts/release-identity.test.mjs",
+          "name": "<test>.<map>",
+          "line": 195,
+          "cc": 1,
+          "kind": "edited",
+          "test": true
+        },
+        {
+          "path": "scripts/release-identity.test.mjs",
+          "name": "<test>.<filter>",
+          "line": 200,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "scripts/release-identity.test.mjs",
+          "name": "<test>.<map>",
+          "line": 200,
+          "cc": 1,
+          "kind": "edited",
+          "test": true
+        },
+        {
+          "path": "scripts/release-identity.test.mjs",
+          "name": "<test>.<map>",
+          "line": 208,
+          "cc": 1,
+          "kind": "edited",
+          "test": true
+        },
+        {
+          "path": "scripts/release-identity.test.mjs",
+          "name": "<test>",
+          "line": 220,
+          "cc": 4,
+          "kind": "edited",
+          "test": true
+        },
+        {
+          "path": "scripts/release-identity.test.mjs",
+          "name": "<test>",
+          "line": 233,
+          "cc": 9,
+          "kind": "edited",
+          "test": true
+        },
+        {
+          "path": "scripts/release-snapshot.mjs",
+          "name": "<withCompatibilityPackages>",
+          "line": 119,
+          "cc": 5,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "scripts/release-snapshot.mjs",
+          "name": "<withCompatibilityPackages>.<map>",
+          "line": 121,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "scripts/release-snapshot.mjs",
+          "name": "<withCompatibilityPackages>.<map>",
+          "line": 122,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "scripts/release-snapshot.mjs",
+          "name": "<withCompatibilityPackages>.<withPublicationPackage>",
+          "line": 139,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "scripts/release.mjs",
+          "name": "<withCompatibilityPackages>",
+          "line": 137,
+          "cc": 9,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "scripts/release.mjs",
+          "name": "<withCompatibilityPackages>.<map>",
+          "line": 139,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "scripts/release.mjs",
+          "name": "<withCompatibilityPackages>.<map>",
+          "line": 140,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        }
+      ]
+    },
+    {
+      "range": "da5921db4f86b20d0fd241ab7329b40e49d5d65e^1..da5921db4f86b20d0fd241ab7329b40e49d5d65e",
+      "files": 1,
+      "testFiles": 1,
+      "tally": {
+        "unchanged": 71,
+        "shifted": 0,
+        "edited": 2,
+        "moved": 0,
+        "added": 0
+      },
+      "changed": 2,
+      "changedInTests": 2,
+      "over20": [],
+      "shifted": [],
+      "changedFunctions": [
+        {
+          "path": "packages/web/e2e/github-sidebar.e2e.ts",
+          "name": "<describe>",
+          "line": 216,
+          "cc": 1,
+          "kind": "edited",
+          "test": true
+        },
+        {
+          "path": "packages/web/e2e/github-sidebar.e2e.ts",
+          "name": "<describe>.<it>",
+          "line": 399,
+          "cc": 1,
+          "kind": "edited",
+          "test": true
+        }
+      ]
+    },
+    {
+      "range": "0f16c3acc8935116842672561cb91e29c5aad0b0^1..0f16c3acc8935116842672561cb91e29c5aad0b0",
+      "files": 1,
+      "testFiles": 1,
+      "tally": {
+        "unchanged": 3,
+        "shifted": 0,
+        "edited": 3,
+        "moved": 1,
+        "added": 0
+      },
+      "changed": 3,
+      "changedInTests": 3,
+      "over20": [],
+      "shifted": [],
+      "changedFunctions": [
+        {
+          "path": "scripts/mock-publish.test.mjs",
+          "name": "<test>",
+          "line": 9,
+          "cc": 2,
+          "kind": "edited",
+          "test": true
+        },
+        {
+          "path": "scripts/mock-publish.test.mjs",
+          "name": "<test>.writeFileSync",
+          "line": 18,
+          "cc": 3,
+          "kind": "edited",
+          "test": true
+        },
+        {
+          "path": "scripts/mock-publish.test.mjs",
+          "name": "<test>.renameSync",
+          "line": 26,
+          "cc": 1,
+          "kind": "edited",
+          "test": true
+        }
+      ]
+    },
+    {
+      "range": "d22e8c0f1f6f6528c5d0a52ed34a9d76f59ced00^1..d22e8c0f1f6f6528c5d0a52ed34a9d76f59ced00",
+      "files": 1,
+      "testFiles": 1,
+      "tally": {
+        "unchanged": 15,
+        "shifted": 0,
+        "edited": 2,
+        "moved": 0,
+        "added": 3
+      },
+      "changed": 5,
+      "changedInTests": 5,
+      "over20": [],
+      "shifted": [],
+      "changedFunctions": [
+        {
+          "path": "packages/web/e2e/touch-targets.e2e.ts",
+          "name": "traceSidebarClick",
+          "line": 468,
+          "cc": 2,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/web/e2e/touch-targets.e2e.ts",
+          "name": "traceSidebarClick.<anonymous>",
+          "line": 507,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/web/e2e/touch-targets.e2e.ts",
+          "name": "traceSidebarClick.<anonymous>",
+          "line": 509,
+          "cc": 3,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/web/e2e/touch-targets.e2e.ts",
+          "name": "<describe>",
+          "line": 524,
+          "cc": 2,
+          "kind": "edited",
+          "test": true
+        },
+        {
+          "path": "packages/web/e2e/touch-targets.e2e.ts",
+          "name": "<describe>.<it>",
+          "line": 526,
+          "cc": 2,
+          "kind": "edited",
+          "test": true
+        }
+      ]
+    },
+    {
+      "range": "87b52af96a93f466ee29dc5bee7a62a383cf1c38^1..87b52af96a93f466ee29dc5bee7a62a383cf1c38",
+      "files": 5,
+      "testFiles": 1,
+      "tally": {
+        "unchanged": 416,
+        "shifted": 2,
+        "edited": 6,
+        "moved": 3,
+        "added": 19
+      },
+      "changed": 25,
+      "changedInTests": 18,
+      "over20": [],
+      "shifted": [
+        {
+          "path": "packages/cezar/src/core/native-failure-control.test.ts",
+          "name": "<anonymous>",
+          "line": 102
+        },
+        {
+          "path": "packages/cezar/src/core/native-failure-control.test.ts",
+          "name": "<anonymous>",
+          "line": 212
+        }
+      ],
+      "changedFunctions": [
+        {
+          "path": "packages/cezar/scripts/mock-codex-app-server.mjs",
+          "name": "emit",
+          "line": 36,
+          "cc": 17,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/scripts/mock-omp-rpc.mjs",
+          "name": "endTurn",
+          "line": 200,
+          "cc": 16,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/scripts/mock-omp-rpc.mjs",
+          "name": "providerFailure",
+          "line": 424,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/scripts/mock-omp-rpc.mjs",
+          "name": "providerError",
+          "line": 430,
+          "cc": 1,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/scripts/mock-opencode-serve.mjs",
+          "name": "sendProviderFailure",
+          "line": 923,
+          "cc": 1,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/scripts/mock-pi-rpc.mjs",
+          "name": "sendNow",
+          "line": 42,
+          "cc": 20,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/scripts/mock-pi-rpc.mjs",
+          "name": "replaySteer",
+          "line": 70,
+          "cc": 3,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/cezar/src/core/native-failure-control.test.ts",
+          "name": "<anonymous>",
+          "line": 42,
+          "cc": 1,
+          "kind": "edited",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/core/native-failure-control.test.ts",
+          "name": "<anonymous>.<anonymous>",
+          "line": 43,
+          "cc": 7,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/core/native-failure-control.test.ts",
+          "name": "<anonymous>.<anonymous>.onAgentInputConsumed",
+          "line": 54,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/core/native-failure-control.test.ts",
+          "name": "<anonymous>.<anonymous>.whileOpen",
+          "line": 55,
+          "cc": 2,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/core/native-failure-control.test.ts",
+          "name": "<anonymous>.<anonymous>.whileOpen.<waitFor>",
+          "line": 59,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/core/native-failure-control.test.ts",
+          "name": "<anonymous>.<anonymous>.whileOpen.<waitFor>",
+          "line": 65,
+          "cc": 3,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/core/native-failure-control.test.ts",
+          "name": "<anonymous>.<anonymous>.<filter>",
+          "line": 72,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/core/native-failure-control.test.ts",
+          "name": "<anonymous>.<anonymous>.<map>",
+          "line": 72,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/core/native-failure-control.test.ts",
+          "name": "expectFailedDrain",
+          "line": 82,
+          "cc": 2,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/core/native-failure-control.test.ts",
+          "name": "expectFailedDrain.<map>",
+          "line": 83,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/core/native-failure-control.test.ts",
+          "name": "expectFailedDrain.<filter>",
+          "line": 86,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/core/native-failure-control.test.ts",
+          "name": "expectFailedDrain.<map>",
+          "line": 86,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/core/native-failure-control.test.ts",
+          "name": "expectFailedDrain.<findIndex>",
+          "line": 92,
+          "cc": 5,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/core/native-failure-control.test.ts",
+          "name": "expectFailedDrain.<findIndex>.<some>",
+          "line": 92,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/core/native-failure-control.test.ts",
+          "name": "expectFailedDrain.<some>",
+          "line": 94,
+          "cc": 3,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/core/native-failure-control.test.ts",
+          "name": "expectFailedDrain.<filter>",
+          "line": 96,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/core/native-failure-control.test.ts",
+          "name": "expectFailedDrain.<map>",
+          "line": 97,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/core/native-failure-control.test.ts",
+          "name": "expectFailedDrain.<map>",
+          "line": 98,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        }
+      ]
+    },
+    {
+      "range": "721c19b004d5f4453488d2b4e859fd6a6256f97b^1..721c19b004d5f4453488d2b4e859fd6a6256f97b",
+      "files": 3,
+      "testFiles": 2,
+      "tally": {
+        "unchanged": 15,
+        "shifted": 0,
+        "edited": 5,
+        "moved": 4,
+        "added": 17
+      },
+      "changed": 22,
+      "changedInTests": 17,
+      "over20": [],
+      "shifted": [],
+      "changedFunctions": [
+        {
+          "path": "packages/web/src/lib/cez-idle.delivery.test.tsx",
+          "name": "<afterEach>",
+          "line": 7,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/web/src/lib/cez-idle.delivery.test.tsx",
+          "name": "<it>",
+          "line": 12,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/web/src/lib/cez-idle.delivery.test.tsx",
+          "name": "<it>.<new Promise>",
+          "line": 17,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/web/src/lib/cez-idle.delivery.test.tsx",
+          "name": "<it>.Result",
+          "line": 18,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/web/src/lib/cez-idle.delivery.test.tsx",
+          "name": "<it>.<act>",
+          "line": 31,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/web/src/lib/cez-idle.test.ts",
+          "name": "<afterEach>",
+          "line": 6,
+          "cc": 1,
+          "kind": "edited",
+          "test": true
+        },
+        {
+          "path": "packages/web/src/lib/cez-idle.test.ts",
+          "name": "<describe>",
+          "line": 13,
+          "cc": 1,
+          "kind": "edited",
+          "test": true
+        },
+        {
+          "path": "packages/web/src/lib/cez-idle.test.ts",
+          "name": "<describe>.<it>",
+          "line": 14,
+          "cc": 1,
+          "kind": "edited",
+          "test": true
+        },
+        {
+          "path": "packages/web/src/lib/cez-idle.test.ts",
+          "name": "<describe>",
+          "line": 59,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/web/src/lib/cez-idle.test.ts",
+          "name": "<describe>.<it>",
+          "line": 60,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/web/src/lib/cez-idle.test.ts",
+          "name": "<describe>.<it>.queryFn",
+          "line": 64,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/web/src/lib/cez-idle.test.ts",
+          "name": "<describe>.<it>.<new Promise>",
+          "line": 66,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/web/src/lib/cez-idle.test.ts",
+          "name": "<describe>.<it>.<new Promise>.release",
+          "line": 66,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/web/src/lib/cez-idle.test.ts",
+          "name": "<describe>.<it>",
+          "line": 78,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/web/src/lib/cez-idle.test.ts",
+          "name": "<describe>.<it>.queryFn",
+          "line": 82,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/web/src/lib/cez-idle.test.ts",
+          "name": "<describe>.<it>.<new Promise>",
+          "line": 86,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/web/src/lib/cez-idle.test.ts",
+          "name": "<describe>.<it>.<new Promise>.release",
+          "line": 86,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/web/src/lib/cez-idle.ts",
+          "name": "attachQueryIdle",
+          "line": 53,
+          "cc": 1,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "packages/web/src/lib/cez-idle.ts",
+          "name": "attachQueryIdle.sync",
+          "line": 57,
+          "cc": 2,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "packages/web/src/lib/cez-idle.ts",
+          "name": "attachQueryIdle.sync.<schedule>",
+          "line": 63,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/web/src/lib/cez-idle.ts",
+          "name": "attachQueryIdle.sync.<schedule>.<schedule>",
+          "line": 64,
+          "cc": 4,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "packages/web/src/lib/cez-idle.ts",
+          "name": "attachQueryIdle.<anonymous>",
+          "line": 72,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        }
+      ]
+    },
+    {
+      "range": "f0203ea5730ef5614a4c47b67e67188b8cc178b3^1..f0203ea5730ef5614a4c47b67e67188b8cc178b3",
+      "files": 1,
+      "testFiles": 1,
+      "tally": {
+        "unchanged": 117,
+        "shifted": 9,
+        "edited": 11,
+        "moved": 3,
+        "added": 2
+      },
+      "changed": 13,
+      "changedInTests": 13,
+      "over20": [],
+      "shifted": [
+        {
+          "path": "packages/web/e2e/quick-list.e2e.ts",
+          "name": "<describe>.<it>.<waitForValue>",
+          "line": 1409
+        },
+        {
+          "path": "packages/web/e2e/quick-list.e2e.ts",
+          "name": "<describe>.<it>.<waitForValue>",
+          "line": 1503
+        },
+        {
+          "path": "packages/web/e2e/quick-list.e2e.ts",
+          "name": "<describe>.<it>.<waitForValue>",
+          "line": 1505
+        },
+        {
+          "path": "packages/web/e2e/quick-list.e2e.ts",
+          "name": "<describe>.<it>.<waitForValue>",
+          "line": 1529
+        },
+        {
+          "path": "packages/web/e2e/quick-list.e2e.ts",
+          "name": "<describe>.<it>.<waitForValue>",
+          "line": 1567
+        },
+        {
+          "path": "packages/web/e2e/quick-list.e2e.ts",
+          "name": "<describe>.<it>.<waitForValue>",
+          "line": 1578
+        },
+        {
+          "path": "packages/web/e2e/quick-list.e2e.ts",
+          "name": "<describe>.<it>.<waitForValue>",
+          "line": 1592
+        },
+        {
+          "path": "packages/web/e2e/quick-list.e2e.ts",
+          "name": "<describe>.<it>.<waitForValue>",
+          "line": 1595
+        },
+        {
+          "path": "packages/web/e2e/quick-list.e2e.ts",
+          "name": "<describe>.<it>.<waitForValue>",
+          "line": 1608
+        }
+      ],
+      "changedFunctions": [
+        {
+          "path": "packages/web/e2e/quick-list.e2e.ts",
+          "name": "<describe>",
+          "line": 193,
+          "cc": 1,
+          "kind": "edited",
+          "test": true
+        },
+        {
+          "path": "packages/web/e2e/quick-list.e2e.ts",
+          "name": "<describe>.<it>",
+          "line": 284,
+          "cc": 1,
+          "kind": "edited",
+          "test": true
+        },
+        {
+          "path": "packages/web/e2e/quick-list.e2e.ts",
+          "name": "<describe>.<it>",
+          "line": 308,
+          "cc": 1,
+          "kind": "edited",
+          "test": true
+        },
+        {
+          "path": "packages/web/e2e/quick-list.e2e.ts",
+          "name": "<describe>",
+          "line": 374,
+          "cc": 1,
+          "kind": "edited",
+          "test": true
+        },
+        {
+          "path": "packages/web/e2e/quick-list.e2e.ts",
+          "name": "<describe>.<it>",
+          "line": 436,
+          "cc": 1,
+          "kind": "edited",
+          "test": true
+        },
+        {
+          "path": "packages/web/e2e/quick-list.e2e.ts",
+          "name": "<describe>.<it>.<waitForValue>",
+          "line": 440,
+          "cc": 1,
+          "kind": "edited",
+          "test": true
+        },
+        {
+          "path": "packages/web/e2e/quick-list.e2e.ts",
+          "name": "<describe>.<it>.<waitForValue>.<filter>",
+          "line": 440,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/web/e2e/quick-list.e2e.ts",
+          "name": "<describe>.<it>",
+          "line": 473,
+          "cc": 1,
+          "kind": "edited",
+          "test": true
+        },
+        {
+          "path": "packages/web/e2e/quick-list.e2e.ts",
+          "name": "<describe>.<it>.<waitForValue>",
+          "line": 480,
+          "cc": 1,
+          "kind": "edited",
+          "test": true
+        },
+        {
+          "path": "packages/web/e2e/quick-list.e2e.ts",
+          "name": "<describe>.<it>.<waitForValue>.<filter>",
+          "line": 480,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "packages/web/e2e/quick-list.e2e.ts",
+          "name": "<describe>.<it>",
+          "line": 491,
+          "cc": 1,
+          "kind": "edited",
+          "test": true
+        },
+        {
+          "path": "packages/web/e2e/quick-list.e2e.ts",
+          "name": "<describe>.<it>.<waitForValue>",
+          "line": 502,
+          "cc": 1,
+          "kind": "edited",
+          "test": true
+        },
+        {
+          "path": "packages/web/e2e/quick-list.e2e.ts",
+          "name": "<describe>.<it>",
+          "line": 530,
+          "cc": 4,
+          "kind": "edited",
+          "test": true
+        }
+      ]
+    },
+    {
+      "range": "f70d4988cefcd9cf2a286829dca67bf4a9c79b2e^1..f70d4988cefcd9cf2a286829dca67bf4a9c79b2e",
+      "files": 1,
+      "testFiles": 1,
+      "tally": {
+        "unchanged": 76,
+        "shifted": 0,
+        "edited": 2,
+        "moved": 0,
+        "added": 0
+      },
+      "changed": 2,
+      "changedInTests": 2,
+      "over20": [],
+      "shifted": [],
+      "changedFunctions": [
+        {
+          "path": "packages/cezar/src/runs/store-import.test.ts",
+          "name": "<describe>",
+          "line": 345,
+          "cc": 2,
+          "kind": "edited",
+          "test": true
+        },
+        {
+          "path": "packages/cezar/src/runs/store-import.test.ts",
+          "name": "<describe>.<it>",
+          "line": 403,
+          "cc": 1,
+          "kind": "edited",
+          "test": true
+        }
+      ]
+    },
+    {
+      "range": "2e8a90d622adc6daff1a1f2a0b7fe02a985a2415^1..2e8a90d622adc6daff1a1f2a0b7fe02a985a2415",
+      "files": 6,
+      "testFiles": 2,
+      "tally": {
+        "unchanged": 111,
+        "shifted": 0,
+        "edited": 5,
+        "moved": 1,
+        "added": 36
+      },
+      "changed": 41,
+      "changedInTests": 29,
+      "over20": [],
+      "shifted": [],
+      "changedFunctions": [
+        {
+          "path": ".github/scripts/coderabbit-admission.cjs",
+          "name": "admissionResult",
+          "line": 86,
+          "cc": 9,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": ".github/scripts/merge-queue-admission.cjs",
+          "name": "mergeQueueAdmission",
+          "line": 126,
+          "cc": 17,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": ".github/scripts/merge-queue-admission.test.cjs",
+          "name": "<test>",
+          "line": 160,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": ".github/scripts/merge-queue-admission.test.cjs",
+          "name": "<test>.now",
+          "line": 162,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": ".github/scripts/merge-queue-admission.test.cjs",
+          "name": "<test>",
+          "line": 165,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": ".github/scripts/merge-queue-admission.test.cjs",
+          "name": "<test>",
+          "line": 169,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": ".github/scripts/merge-queue-admission.test.cjs",
+          "name": "<test>",
+          "line": 172,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": ".github/scripts/merge-queue-admission.test.cjs",
+          "name": "<test>.<filter>",
+          "line": 177,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": ".github/scripts/merge-queue-admission.test.cjs",
+          "name": "<test>",
+          "line": 179,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": ".github/scripts/merge-queue-admission.test.cjs",
+          "name": "<test>",
+          "line": 184,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": ".github/scripts/merge-queue-admission.test.cjs",
+          "name": "<test>",
+          "line": 193,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": ".github/scripts/merge-queue-admission.test.cjs",
+          "name": "<test>.now",
+          "line": 195,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": ".github/scripts/merge-queue-admission.test.cjs",
+          "name": "<test>",
+          "line": 198,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": ".github/scripts/merge-queue-admission.test.cjs",
+          "name": "<test>",
+          "line": 205,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": ".github/scripts/merge-queue.testkit.cjs",
+          "name": "graphqlResponse",
+          "line": 10,
+          "cc": 8,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": ".github/scripts/merge-queue.testkit.cjs",
+          "name": "fixture",
+          "line": 23,
+          "cc": 3,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": ".github/scripts/merge-queue.testkit.cjs",
+          "name": "fixture.request",
+          "line": 40,
+          "cc": 14,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": ".github/scripts/merge-queue.testkit.cjs",
+          "name": "fixture.run",
+          "line": 55,
+          "cc": 2,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": ".github/scripts/queue-coderabbit-admission.cjs",
+          "name": "timestamp",
+          "line": 19,
+          "cc": 3,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": ".github/scripts/queue-coderabbit-admission.cjs",
+          "name": "firstReady",
+          "line": 22,
+          "cc": 13,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": ".github/scripts/queue-coderabbit-admission.cjs",
+          "name": "readQueueCodeRabbitAdmission",
+          "line": 30,
+          "cc": 17,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": ".github/scripts/queue-coderabbit-admission.cjs",
+          "name": "readQueueCodeRabbitAdmission.blocked",
+          "line": 39,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": ".github/scripts/queue-coderabbit-admission.cjs",
+          "name": "settledReview",
+          "line": 48,
+          "cc": 5,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": ".github/scripts/queue-coderabbit-admission.cjs",
+          "name": "settledReview.blocked",
+          "line": 49,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": ".github/scripts/queue-coderabbit-admission.test.cjs",
+          "name": "read",
+          "line": 6,
+          "cc": 2,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": ".github/scripts/queue-coderabbit-admission.test.cjs",
+          "name": "<test>",
+          "line": 14,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": ".github/scripts/queue-coderabbit-admission.test.cjs",
+          "name": "<test>.request",
+          "line": 16,
+          "cc": 2,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": ".github/scripts/queue-coderabbit-admission.test.cjs",
+          "name": "<test>.<rejects>",
+          "line": 17,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": ".github/scripts/queue-coderabbit-admission.test.cjs",
+          "name": "<test>",
+          "line": 19,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": ".github/scripts/queue-coderabbit-admission.test.cjs",
+          "name": "<test>",
+          "line": 23,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": ".github/scripts/queue-coderabbit-admission.test.cjs",
+          "name": "<test>.onRead",
+          "line": 25,
+          "cc": 3,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": ".github/scripts/queue-coderabbit-admission.test.cjs",
+          "name": "<test>.<rejects>",
+          "line": 28,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": ".github/scripts/queue-coderabbit-admission.test.cjs",
+          "name": "<test>",
+          "line": 30,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": ".github/scripts/queue-coderabbit-admission.test.cjs",
+          "name": "<test>",
+          "line": 35,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": ".github/scripts/queue-coderabbit-admission.test.cjs",
+          "name": "<test>",
+          "line": 39,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": ".github/scripts/queue-coderabbit-admission.test.cjs",
+          "name": "<test>.onRead",
+          "line": 41,
+          "cc": 3,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": ".github/scripts/queue-coderabbit-admission.test.cjs",
+          "name": "<test>",
+          "line": 46,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": ".github/scripts/queue-coderabbit-admission.test.cjs",
+          "name": "<test>.onRead",
+          "line": 49,
+          "cc": 2,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": ".github/scripts/queue-coderabbit-admission.test.cjs",
+          "name": "<test>",
+          "line": 53,
+          "cc": 2,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": ".github/scripts/queue-coderabbit-admission.test.cjs",
+          "name": "<test>.<read>",
+          "line": 56,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": ".github/scripts/queue-coderabbit-admission.test.cjs",
+          "name": "<test>",
+          "line": 60,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "repo": "/home/agent/projects/cezar",
+  "rev": "7b726e2a2",
+  "sum": {
+    "test": {
+      "files": 1842,
+      "functions": 54724,
+      "over20": 6,
+      "ms": 8238
+    },
+    "other": {
+      "files": 1602,
+      "functions": 28688,
+      "over20": 0,
+      "ms": 4991
+    }
+  },
+  "testOver": [
+    {
+      "path": "packages/cezar/src/server-install/platforms/ubuntu-vps.test.ts",
+      "name": "<describe>.redeployContext.capture",
+      "cc": 25
+    },
+    {
+      "path": "packages/web/src/routes/new-task-project.test.tsx",
+      "name": "serve.<fn>",
+      "cc": 23
+    },
+    {
+      "path": "packages/web/src/routes/settings/accounts-defaults.test.tsx",
+      "name": "serve.<fn>",
+      "cc": 25
+    },
+    {
+      "path": "packages/web/src/routes/settings/accounts-section.test.tsx",
+      "name": "serve.<fn>",
+      "cc": 39
+    },
+    {
+      "path": "packages/web/src/routes/settings/agents-section.test.tsx",
+      "name": "serve.<fn>",
+      "cc": 49
+    },
+    {
+      "path": "packages/web/src/routes/settings/projects-section.test.tsx",
+      "name": "serve.<fn>",
+      "cc": 34
+    }
+  ]
+}

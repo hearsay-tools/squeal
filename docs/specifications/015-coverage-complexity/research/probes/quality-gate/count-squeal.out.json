@@ -1,0 +1,35 @@
+{
+  "repo": "/tmp/qg/repo",
+  "rev": "fc58af3da",
+  "sum": {
+    "test": {
+      "files": 1724,
+      "functions": 29689,
+      "over20": 3,
+      "ms": 4638
+    },
+    "other": {
+      "files": 2569,
+      "functions": 27049,
+      "over20": 111,
+      "ms": 4699
+    }
+  },
+  "testOver": [
+    {
+      "path": "test/harness/latency.test.ts",
+      "name": "<describe>.<it>",
+      "cc": 25
+    },
+    {
+      "path": "test/lint/oxlint/replay.test.ts",
+      "name": "replay",
+      "cc": 33
+    },
+    {
+      "path": "test/presence/presence.test.ts",
+      "name": "<describe>.<anonymous>",
+      "cc": 24
+    }
+  ]
+}

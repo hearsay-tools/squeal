@@ -1,0 +1,2023 @@
+{
+  "countMs": 266,
+  "counted": 58,
+  "results": [
+    {
+      "range": "fc58af3da5ebb5978737eb6e1cfb2d9ee02ec300^1..fc58af3da5ebb5978737eb6e1cfb2d9ee02ec300",
+      "files": 0,
+      "testFiles": 0,
+      "tally": {
+        "unchanged": 0,
+        "shifted": 0,
+        "edited": 0,
+        "moved": 0,
+        "added": 0
+      },
+      "changed": 0,
+      "changedInTests": 0,
+      "over20": [],
+      "changedFunctions": []
+    },
+    {
+      "range": "4da045ecf626f63c8af1772ea309f92c5565e61c^1..4da045ecf626f63c8af1772ea309f92c5565e61c",
+      "files": 0,
+      "testFiles": 0,
+      "tally": {
+        "unchanged": 0,
+        "shifted": 0,
+        "edited": 0,
+        "moved": 0,
+        "added": 0
+      },
+      "changed": 0,
+      "changedInTests": 0,
+      "over20": [],
+      "changedFunctions": []
+    },
+    {
+      "range": "5be725a8ef5730a48d299a5010fcc21606891f75^1..5be725a8ef5730a48d299a5010fcc21606891f75",
+      "files": 0,
+      "testFiles": 0,
+      "tally": {
+        "unchanged": 0,
+        "shifted": 0,
+        "edited": 0,
+        "moved": 0,
+        "added": 0
+      },
+      "changed": 0,
+      "changedInTests": 0,
+      "over20": [],
+      "changedFunctions": []
+    },
+    {
+      "range": "fd8dd89411fa1ff170803755b61e0bceefcebe8f^1..fd8dd89411fa1ff170803755b61e0bceefcebe8f",
+      "files": 0,
+      "testFiles": 0,
+      "tally": {
+        "unchanged": 0,
+        "shifted": 0,
+        "edited": 0,
+        "moved": 0,
+        "added": 0
+      },
+      "changed": 0,
+      "changedInTests": 0,
+      "over20": [],
+      "changedFunctions": []
+    },
+    {
+      "range": "f44f6676006e0249946780ed5e76e91af473b3d9^1..f44f6676006e0249946780ed5e76e91af473b3d9",
+      "files": 0,
+      "testFiles": 0,
+      "tally": {
+        "unchanged": 0,
+        "shifted": 0,
+        "edited": 0,
+        "moved": 0,
+        "added": 0
+      },
+      "changed": 0,
+      "changedInTests": 0,
+      "over20": [],
+      "changedFunctions": []
+    },
+    {
+      "range": "54d7b523766d164dccd1a82334c6bd5be93feb3a^1..54d7b523766d164dccd1a82334c6bd5be93feb3a",
+      "files": 0,
+      "testFiles": 0,
+      "tally": {
+        "unchanged": 0,
+        "shifted": 0,
+        "edited": 0,
+        "moved": 0,
+        "added": 0
+      },
+      "changed": 0,
+      "changedInTests": 0,
+      "over20": [],
+      "changedFunctions": []
+    },
+    {
+      "range": "bb12c3950cee9ff5942fd9ad0f89155bf17b323b^1..bb12c3950cee9ff5942fd9ad0f89155bf17b323b",
+      "files": 6,
+      "testFiles": 1,
+      "tally": {
+        "unchanged": 17,
+        "shifted": 0,
+        "edited": 16,
+        "moved": 1,
+        "added": 29
+      },
+      "changed": 45,
+      "changedInTests": 16,
+      "over20": [],
+      "changedFunctions": [
+        {
+          "path": "src/core/shared/choose.ts",
+          "name": "local",
+          "line": 14,
+          "cc": 2,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/choose.ts",
+          "name": "upstreamOf",
+          "line": 32,
+          "cc": 6,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/choose.ts",
+          "name": "startPoint",
+          "line": 51,
+          "cc": 3,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/choose.ts",
+          "name": "firstParents",
+          "line": 63,
+          "cc": 2,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/choose.ts",
+          "name": "onFirstParentLine",
+          "line": 79,
+          "cc": 2,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/fetch.ts",
+          "name": "fetchExport",
+          "line": 26,
+          "cc": 4,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/git.ts",
+          "name": "gitCall",
+          "line": 48,
+          "cc": 4,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/git.ts",
+          "name": "gitCall.<new Promise>",
+          "line": 64,
+          "cc": 3,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/git.ts",
+          "name": "gitCall.<new Promise>.settle",
+          "line": 70,
+          "cc": 3,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/git.ts",
+          "name": "gitCall.<new Promise>.kill",
+          "line": 78,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/git.ts",
+          "name": "gitCall.<new Promise>.stop",
+          "line": 84,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/git.ts",
+          "name": "gitCall.<new Promise>.<setTimeout>",
+          "line": 85,
+          "cc": 1,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/git.ts",
+          "name": "networkEnv",
+          "line": 129,
+          "cc": 8,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/reader.ts",
+          "name": "Reader.nudge",
+          "line": 79,
+          "cc": 4,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/reader.ts",
+          "name": "Reader.close",
+          "line": 94,
+          "cc": 1,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/reader.ts",
+          "name": "Reader.#loop",
+          "line": 98,
+          "cc": 6,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/reader.ts",
+          "name": "Reader.#live",
+          "line": 111,
+          "cc": 3,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/reader.ts",
+          "name": "Reader.#pass",
+          "line": 119,
+          "cc": 14,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/reader.ts",
+          "name": "Reader.#pass.<#live>",
+          "line": 123,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/reader.ts",
+          "name": "Reader.#pass.<#live>",
+          "line": 125,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/reader.ts",
+          "name": "Reader.#pass.<#live>",
+          "line": 136,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/reader.ts",
+          "name": "Reader.#pass.<#live>",
+          "line": 140,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/reader.ts",
+          "name": "Reader.#pass.<#live>",
+          "line": 146,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/reader.ts",
+          "name": "Reader.#pass.<#live>",
+          "line": 148,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/reader.ts",
+          "name": "Reader.#pass.<#live>",
+          "line": 161,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/reader.ts",
+          "name": "Reader.#take",
+          "line": 176,
+          "cc": 12,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/reader.ts",
+          "name": "Reader.#take.<#live>",
+          "line": 184,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/reader.ts",
+          "name": "Reader.#take.<#live>",
+          "line": 205,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/refs.ts",
+          "name": "remoteExports",
+          "line": 35,
+          "cc": 8,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "test/shared/reader-lifecycle.test.ts",
+          "name": "spyGit",
+          "line": 33,
+          "cc": 3,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/shared/reader-lifecycle.test.ts",
+          "name": "spyGit.<onTestFinished>",
+          "line": 52,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/shared/reader-lifecycle.test.ts",
+          "name": "spyGit.calls",
+          "line": 57,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/shared/reader-lifecycle.test.ts",
+          "name": "spyGit.held",
+          "line": 58,
+          "cc": 3,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/shared/reader-lifecycle.test.ts",
+          "name": "spyGit.held.<new Promise>",
+          "line": 61,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/shared/reader-lifecycle.test.ts",
+          "name": "spyGit.release",
+          "line": 64,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/shared/reader-lifecycle.test.ts",
+          "name": "spyGit.mark",
+          "line": 65,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/shared/reader-lifecycle.test.ts",
+          "name": "callsAfter",
+          "line": 70,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/shared/reader-lifecycle.test.ts",
+          "name": "publishedClone",
+          "line": 73,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/shared/reader-lifecycle.test.ts",
+          "name": "<describe>",
+          "line": 80,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/shared/reader-lifecycle.test.ts",
+          "name": "<describe>.<it>",
+          "line": 81,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/shared/reader-lifecycle.test.ts",
+          "name": "<describe>.<it>",
+          "line": 93,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/shared/reader-lifecycle.test.ts",
+          "name": "<describe>.<it>.<some>",
+          "line": 105,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/shared/reader-lifecycle.test.ts",
+          "name": "<describe>.<it>",
+          "line": 110,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/shared/reader-lifecycle.test.ts",
+          "name": "<describe>",
+          "line": 129,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/shared/reader-lifecycle.test.ts",
+          "name": "<describe>.<it>",
+          "line": 130,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        }
+      ]
+    },
+    {
+      "range": "9e762cba479cfee40c452c50ff657c8cd5259db0^1..9e762cba479cfee40c452c50ff657c8cd5259db0",
+      "files": 2,
+      "testFiles": 1,
+      "tally": {
+        "unchanged": 8,
+        "shifted": 0,
+        "edited": 0,
+        "moved": 12,
+        "added": 4
+      },
+      "changed": 4,
+      "changedInTests": 0,
+      "over20": [],
+      "changedFunctions": [
+        {
+          "path": "test/shared/reader-kit.ts",
+          "name": "scratch",
+          "line": 19,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "test/shared/reader-kit.ts",
+          "name": "publish",
+          "line": 31,
+          "cc": 3,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "test/shared/reader-kit.ts",
+          "name": "storeOf",
+          "line": 47,
+          "cc": 2,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "test/shared/reader-kit.ts",
+          "name": "readerOf",
+          "line": 55,
+          "cc": 3,
+          "kind": "added",
+          "test": false
+        }
+      ]
+    },
+    {
+      "range": "d254291dcfa023f9803d96a4b5b3b15e9d854f79^1..d254291dcfa023f9803d96a4b5b3b15e9d854f79",
+      "files": 0,
+      "testFiles": 0,
+      "tally": {
+        "unchanged": 0,
+        "shifted": 0,
+        "edited": 0,
+        "moved": 0,
+        "added": 0
+      },
+      "changed": 0,
+      "changedInTests": 0,
+      "over20": [],
+      "changedFunctions": []
+    },
+    {
+      "range": "abe7bc509ad7766913518e74b80f862dc33e3f56^1..abe7bc509ad7766913518e74b80f862dc33e3f56",
+      "files": 0,
+      "testFiles": 0,
+      "tally": {
+        "unchanged": 0,
+        "shifted": 0,
+        "edited": 0,
+        "moved": 0,
+        "added": 0
+      },
+      "changed": 0,
+      "changedInTests": 0,
+      "over20": [],
+      "changedFunctions": []
+    },
+    {
+      "range": "e909034498e0f1713c271a6372f921f55e6d01b2^1..e909034498e0f1713c271a6372f921f55e6d01b2",
+      "files": 2,
+      "testFiles": 0,
+      "tally": {
+        "unchanged": 0,
+        "shifted": 0,
+        "edited": 0,
+        "moved": 0,
+        "added": 2
+      },
+      "changed": 2,
+      "changedInTests": 0,
+      "over20": [],
+      "changedFunctions": [
+        {
+          "path": "test/keys/validity/cases/assemble/shared-ref.ts",
+          "name": "files",
+          "line": 12,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "test/keys/validity/cases/assemble/shared-ref.ts",
+          "name": "<map>",
+          "line": 27,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        }
+      ]
+    },
+    {
+      "range": "44d49ee595720a3d5eee72cc863680c0814b74b2^1..44d49ee595720a3d5eee72cc863680c0814b74b2",
+      "files": 0,
+      "testFiles": 0,
+      "tally": {
+        "unchanged": 0,
+        "shifted": 0,
+        "edited": 0,
+        "moved": 0,
+        "added": 0
+      },
+      "changed": 0,
+      "changedInTests": 0,
+      "over20": [],
+      "changedFunctions": []
+    },
+    {
+      "range": "abe90902c7a6240569fc2c51d306a9cf1ef8e54c^1..abe90902c7a6240569fc2c51d306a9cf1ef8e54c",
+      "files": 0,
+      "testFiles": 0,
+      "tally": {
+        "unchanged": 0,
+        "shifted": 0,
+        "edited": 0,
+        "moved": 0,
+        "added": 0
+      },
+      "changed": 0,
+      "changedInTests": 0,
+      "over20": [],
+      "changedFunctions": []
+    },
+    {
+      "range": "72b6c45791367c1cb5030832d0d9f18d1ef8bbfa^1..72b6c45791367c1cb5030832d0d9f18d1ef8bbfa",
+      "files": 1,
+      "testFiles": 1,
+      "tally": {
+        "unchanged": 11,
+        "shifted": 0,
+        "edited": 1,
+        "moved": 0,
+        "added": 0
+      },
+      "changed": 1,
+      "changedInTests": 1,
+      "over20": [],
+      "changedFunctions": [
+        {
+          "path": "test/cli/ci-usage.test.ts",
+          "name": "<describe>",
+          "line": 57,
+          "cc": 1,
+          "kind": "edited",
+          "test": true
+        }
+      ]
+    },
+    {
+      "range": "728d5e279a88b06e2643da5b57265861c7747ed5^1..728d5e279a88b06e2643da5b57265861c7747ed5",
+      "files": 1,
+      "testFiles": 0,
+      "tally": {
+        "unchanged": 157,
+        "shifted": 0,
+        "edited": 2,
+        "moved": 0,
+        "added": 1
+      },
+      "changed": 3,
+      "changedInTests": 0,
+      "over20": [],
+      "changedFunctions": [
+        {
+          "path": "src/core/daemon/daemon.ts",
+          "name": "Daemon.#run",
+          "line": 487,
+          "cc": 19,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "src/core/daemon/daemon.ts",
+          "name": "Daemon.#run.imported",
+          "line": 841,
+          "cc": 1,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "src/core/daemon/daemon.ts",
+          "name": "Daemon.#run.imported.<catch>",
+          "line": 842,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        }
+      ]
+    },
+    {
+      "range": "7fe8af72b3fa5887c869c0e86fe3bb294c7088c3^1..7fe8af72b3fa5887c869c0e86fe3bb294c7088c3",
+      "files": 2,
+      "testFiles": 1,
+      "tally": {
+        "unchanged": 21,
+        "shifted": 0,
+        "edited": 2,
+        "moved": 0,
+        "added": 0
+      },
+      "changed": 2,
+      "changedInTests": 2,
+      "over20": [],
+      "changedFunctions": [
+        {
+          "path": "test/cli/ci-publish.test.ts",
+          "name": "<describe>",
+          "line": 34,
+          "cc": 1,
+          "kind": "edited",
+          "test": true
+        },
+        {
+          "path": "test/cli/ci-publish.test.ts",
+          "name": "<describe>.<it>",
+          "line": 48,
+          "cc": 1,
+          "kind": "edited",
+          "test": true
+        }
+      ]
+    },
+    {
+      "range": "42520561260f72dcb5709efce9c0bda6ae1464c6^1..42520561260f72dcb5709efce9c0bda6ae1464c6",
+      "files": 2,
+      "testFiles": 1,
+      "tally": {
+        "unchanged": 151,
+        "shifted": 0,
+        "edited": 4,
+        "moved": 3,
+        "added": 11
+      },
+      "changed": 15,
+      "changedInTests": 9,
+      "over20": [],
+      "changedFunctions": [
+        {
+          "path": "src/core/daemon/daemon.ts",
+          "name": "Daemon.#run",
+          "line": 487,
+          "cc": 18,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "src/core/daemon/daemon.ts",
+          "name": "Daemon.#run.afterBatch",
+          "line": 818,
+          "cc": 2,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "src/core/daemon/daemon.ts",
+          "name": "Daemon.#run.imported",
+          "line": 841,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/daemon/daemon.ts",
+          "name": "Daemon.#run.step",
+          "line": 842,
+          "cc": 2,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/daemon/daemon.ts",
+          "name": "Daemon.#shutdown",
+          "line": 1101,
+          "cc": 2,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "src/core/daemon/daemon.ts",
+          "name": "Daemon.#shutdown.<anonymous>",
+          "line": 1102,
+          "cc": 2,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "test/daemon/shared-reader-daemon.test.ts",
+          "name": "<describe>",
+          "line": 20,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/daemon/shared-reader-daemon.test.ts",
+          "name": "<describe>.<it>",
+          "line": 21,
+          "cc": 2,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/daemon/shared-reader-daemon.test.ts",
+          "name": "<describe>.<it>.<onTestFinished>",
+          "line": 47,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/daemon/shared-reader-daemon.test.ts",
+          "name": "<describe>.<it>.imported",
+          "line": 49,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/daemon/shared-reader-daemon.test.ts",
+          "name": "<describe>.<it>.imported.<withStore>",
+          "line": 49,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/daemon/shared-reader-daemon.test.ts",
+          "name": "<describe>.<it>.<until>",
+          "line": 50,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/daemon/shared-reader-daemon.test.ts",
+          "name": "<describe>.<it>.<map>",
+          "line": 52,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/daemon/shared-reader-daemon.test.ts",
+          "name": "<describe>.<it>.<withStore>",
+          "line": 53,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/daemon/shared-reader-daemon.test.ts",
+          "name": "<describe>.<it>.<filter>",
+          "line": 54,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        }
+      ]
+    },
+    {
+      "range": "09ea7fc7bb05162a73f2be49f2f8a5214336a714^1..09ea7fc7bb05162a73f2be49f2f8a5214336a714",
+      "files": 6,
+      "testFiles": 1,
+      "tally": {
+        "unchanged": 16,
+        "shifted": 0,
+        "edited": 4,
+        "moved": 1,
+        "added": 44
+      },
+      "changed": 48,
+      "changedInTests": 24,
+      "over20": [],
+      "changedFunctions": [
+        {
+          "path": "src/core/shared/choose.ts",
+          "name": "upstreamOf",
+          "line": 28,
+          "cc": 6,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/choose.ts",
+          "name": "upstreamOf.<filter>",
+          "line": 31,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/choose.ts",
+          "name": "startPoint",
+          "line": 42,
+          "cc": 3,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/choose.ts",
+          "name": "firstParents",
+          "line": 52,
+          "cc": 3,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/choose.ts",
+          "name": "onFirstParentLine",
+          "line": 68,
+          "cc": 2,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/fetch.ts",
+          "name": "fetchExport",
+          "line": 26,
+          "cc": 3,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/git.ts",
+          "name": "gitCall",
+          "line": 44,
+          "cc": 2,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/git.ts",
+          "name": "gitCall.<new Promise>",
+          "line": 51,
+          "cc": 3,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/git.ts",
+          "name": "gitCall.<new Promise>.<setTimeout>",
+          "line": 65,
+          "cc": 1,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/git.ts",
+          "name": "failureOf",
+          "line": 96,
+          "cc": 5,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/reader.ts",
+          "name": "createSharedReader",
+          "line": 59,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/reader.ts",
+          "name": "Reader.constructor",
+          "line": 73,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/reader.ts",
+          "name": "Reader.nudge",
+          "line": 75,
+          "cc": 4,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/reader.ts",
+          "name": "Reader.nudge.<finally>",
+          "line": 81,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/reader.ts",
+          "name": "Reader.idle",
+          "line": 86,
+          "cc": 2,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/reader.ts",
+          "name": "Reader.close",
+          "line": 90,
+          "cc": 2,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/reader.ts",
+          "name": "Reader.#loop",
+          "line": 95,
+          "cc": 5,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/reader.ts",
+          "name": "Reader.#pass",
+          "line": 106,
+          "cc": 16,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/reader.ts",
+          "name": "Reader.#pass.<map>",
+          "line": 128,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/reader.ts",
+          "name": "Reader.#pass.<findIndex>",
+          "line": 129,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/reader.ts",
+          "name": "Reader.#track",
+          "line": 164,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/reader.ts",
+          "name": "Reader.#take",
+          "line": 169,
+          "cc": 14,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/reader.ts",
+          "name": "Reader.#take.<catch>",
+          "line": 200,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "test/shared/reader.test.ts",
+          "name": "<afterEach>",
+          "line": 32,
+          "cc": 2,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/shared/reader.test.ts",
+          "name": "scratch",
+          "line": 36,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/shared/reader.test.ts",
+          "name": "shared",
+          "line": 42,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/shared/reader.test.ts",
+          "name": "shared.<anonymous>",
+          "line": 44,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/shared/reader.test.ts",
+          "name": "publish",
+          "line": 47,
+          "cc": 3,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/shared/reader.test.ts",
+          "name": "storeOf",
+          "line": 59,
+          "cc": 2,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/shared/reader.test.ts",
+          "name": "storeOf.<push>",
+          "line": 62,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/shared/reader.test.ts",
+          "name": "readerOf",
+          "line": 67,
+          "cc": 3,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/shared/reader.test.ts",
+          "name": "readerOf.now",
+          "line": 76,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/shared/reader.test.ts",
+          "name": "readerOf.note",
+          "line": 77,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/shared/reader.test.ts",
+          "name": "readerOf.imported",
+          "line": 79,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/shared/reader.test.ts",
+          "name": "readerOf.<push>",
+          "line": 84,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/shared/reader.test.ts",
+          "name": "readerOf.run",
+          "line": 85,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/shared/reader.test.ts",
+          "name": "readerOf.commits",
+          "line": 89,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/shared/reader.test.ts",
+          "name": "readerOf.commits.<map>",
+          "line": 89,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/shared/reader.test.ts",
+          "name": "readerOf.imported",
+          "line": 90,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/shared/reader.test.ts",
+          "name": "<describe>",
+          "line": 93,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/shared/reader.test.ts",
+          "name": "<describe>.<it>",
+          "line": 94,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/shared/reader.test.ts",
+          "name": "<describe>.<it>",
+          "line": 134,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/shared/reader.test.ts",
+          "name": "<describe>.<it>",
+          "line": 157,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/shared/reader.test.ts",
+          "name": "<describe>.<it>",
+          "line": 187,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/shared/reader.test.ts",
+          "name": "<describe>.<it>",
+          "line": 200,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/shared/reader.test.ts",
+          "name": "<describe>.<it>",
+          "line": 218,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/shared/reader.test.ts",
+          "name": "<describe>.<it>",
+          "line": 240,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/shared/remote.ts",
+          "name": "cloneOf",
+          "line": 71,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        }
+      ]
+    },
+    {
+      "range": "991d00d3e44f9c98e75bea483f6a1a4e96f32178^1..991d00d3e44f9c98e75bea483f6a1a4e96f32178",
+      "files": 14,
+      "testFiles": 5,
+      "tally": {
+        "unchanged": 48,
+        "shifted": 0,
+        "edited": 5,
+        "moved": 1,
+        "added": 66
+      },
+      "changed": 71,
+      "changedInTests": 29,
+      "over20": [],
+      "changedFunctions": [
+        {
+          "path": "src/cli/ci-publish.ts",
+          "name": "ciPublishCommand",
+          "line": 30,
+          "cc": 7,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/cli/ci-publish.ts",
+          "name": "ciPublishCommand.say",
+          "line": 36,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/cli/ci-publish.ts",
+          "name": "parsePublish",
+          "line": 61,
+          "cc": 10,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/cli/ci-publish.ts",
+          "name": "publishedText",
+          "line": 80,
+          "cc": 6,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/cli/ci.ts",
+          "name": "ciCommand",
+          "line": 40,
+          "cc": 7,
+          "kind": "edited",
+          "test": false
+        },
+        {
+          "path": "src/core/ci/publish.ts",
+          "name": "publishExport",
+          "line": 55,
+          "cc": 12,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/ci/publish.ts",
+          "name": "publishExport.local",
+          "line": 61,
+          "cc": 2,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/ci/publish.ts",
+          "name": "publishExport.<map>",
+          "line": 80,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/ci/publish.ts",
+          "name": "publishExport.<sort>",
+          "line": 88,
+          "cc": 3,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/ci/publish.ts",
+          "name": "publishExport.<map>",
+          "line": 99,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/ci/publish.ts",
+          "name": "publishExport.<filter>",
+          "line": 109,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/ci/publish.ts",
+          "name": "publishExport.<filter>",
+          "line": 110,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/ci/publish.ts",
+          "name": "resultCommit",
+          "line": 121,
+          "cc": 4,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/ci/publish.ts",
+          "name": "resultCommit.call",
+          "line": 127,
+          "cc": 2,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/ci/publish.ts",
+          "name": "porcelain",
+          "line": 156,
+          "cc": 5,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/daemon/policy-shared.ts",
+          "name": "isSharedRef",
+          "line": 17,
+          "cc": 4,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/daemon/policy-shared.ts",
+          "name": "isSharedRef.<some>",
+          "line": 20,
+          "cc": 2,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/daemon/policy-shared.ts",
+          "name": "isSharedRef.<every>",
+          "line": 23,
+          "cc": 3,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/daemon/policy-shared.ts",
+          "name": "ref",
+          "line": 26,
+          "cc": 4,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/git.ts",
+          "name": "gitCall",
+          "line": 44,
+          "cc": 2,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/git.ts",
+          "name": "gitCall.<new Promise>",
+          "line": 51,
+          "cc": 3,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/git.ts",
+          "name": "gitCall.<new Promise>.settle",
+          "line": 58,
+          "cc": 2,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/git.ts",
+          "name": "gitCall.<new Promise>.<setTimeout>",
+          "line": 64,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/git.ts",
+          "name": "gitCall.<new Promise>.<on>",
+          "line": 68,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/git.ts",
+          "name": "gitCall.<new Promise>.<on>",
+          "line": 69,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/git.ts",
+          "name": "gitCall.<new Promise>.<on>",
+          "line": 70,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/git.ts",
+          "name": "gitCall.<new Promise>.<on>",
+          "line": 73,
+          "cc": 2,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/git.ts",
+          "name": "gitCall.<new Promise>.<on>",
+          "line": 81,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/git.ts",
+          "name": "textOf",
+          "line": 87,
+          "cc": 2,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/git.ts",
+          "name": "failureOf",
+          "line": 92,
+          "cc": 4,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/git.ts",
+          "name": "failureOf.<find>",
+          "line": 94,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/git.ts",
+          "name": "networkEnv",
+          "line": 105,
+          "cc": 7,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/refs.ts",
+          "name": "isSha",
+          "line": 18,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/refs.ts",
+          "name": "refOf",
+          "line": 23,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "src/core/shared/refs.ts",
+          "name": "remoteExports",
+          "line": 35,
+          "cc": 9,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "test/ci/publish.test.ts",
+          "name": "<afterEach>",
+          "line": 22,
+          "cc": 2,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/ci/publish.test.ts",
+          "name": "setup",
+          "line": 26,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/ci/publish.test.ts",
+          "name": "<describe>",
+          "line": 34,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/ci/publish.test.ts",
+          "name": "<describe>.<it>",
+          "line": 35,
+          "cc": 2,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/ci/publish.test.ts",
+          "name": "<describe>.<it>",
+          "line": 54,
+          "cc": 3,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/ci/publish.test.ts",
+          "name": "<describe>.<it>",
+          "line": 74,
+          "cc": 2,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/ci/publish.test.ts",
+          "name": "<describe>.<it>",
+          "line": 84,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/ci/publish.test.ts",
+          "name": "<describe>.<it>",
+          "line": 96,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/cli/ci-publish.test.ts",
+          "name": "<afterEach>",
+          "line": 16,
+          "cc": 2,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/cli/ci-publish.test.ts",
+          "name": "capture",
+          "line": 20,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/cli/ci-publish.test.ts",
+          "name": "capture.add",
+          "line": 22,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/cli/ci-publish.test.ts",
+          "name": "capture.text",
+          "line": 25,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/cli/ci-publish.test.ts",
+          "name": "setup",
+          "line": 28,
+          "cc": 2,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/cli/ci-publish.test.ts",
+          "name": "<describe>",
+          "line": 34,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/cli/ci-publish.test.ts",
+          "name": "<describe>.<anonymous>",
+          "line": 41,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/cli/ci-publish.test.ts",
+          "name": "<describe>.<it>",
+          "line": 48,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/cli/ci-publish.test.ts",
+          "name": "<describe>",
+          "line": 55,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/cli/ci-publish.test.ts",
+          "name": "<describe>.<it>",
+          "line": 56,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/cli/ci-publish.test.ts",
+          "name": "<describe>.<it>",
+          "line": 72,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/cli/ci-publish.test.ts",
+          "name": "<describe>.<it>",
+          "line": 85,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/daemon/policy.test.ts",
+          "name": "<describe>",
+          "line": 24,
+          "cc": 3,
+          "kind": "edited",
+          "test": true
+        },
+        {
+          "path": "test/daemon/policy.test.ts",
+          "name": "<describe>.<it>",
+          "line": 39,
+          "cc": 1,
+          "kind": "edited",
+          "test": true
+        },
+        {
+          "path": "test/shared/policy.test.ts",
+          "name": "load",
+          "line": 15,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/shared/policy.test.ts",
+          "name": "<describe>",
+          "line": 22,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/shared/policy.test.ts",
+          "name": "<describe>.<it>",
+          "line": 23,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/shared/policy.test.ts",
+          "name": "<describe>.<it>",
+          "line": 30,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/shared/policy.test.ts",
+          "name": "<describe>.<anonymous>",
+          "line": 50,
+          "cc": 1,
+          "kind": "added",
+          "test": true
+        },
+        {
+          "path": "test/shared/remote.ts",
+          "name": "git",
+          "line": 23,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "test/shared/remote.ts",
+          "name": "scratchRemote",
+          "line": 35,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "test/shared/remote.ts",
+          "name": "scratchRemote.cleanup",
+          "line": 39,
+          "cc": 1,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "test/shared/remote.ts",
+          "name": "cloneWith",
+          "line": 46,
+          "cc": 4,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "test/shared/remote.ts",
+          "name": "exportOf",
+          "line": 71,
+          "cc": 2,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "test/shared/remote.ts",
+          "name": "remoteRefs",
+          "line": 99,
+          "cc": 3,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "test/shared/remote.ts",
+          "name": "untouched",
+          "line": 105,
+          "cc": 2,
+          "kind": "added",
+          "test": false
+        },
+        {
+          "path": "test/types.test.ts",
+          "name": "<describe>",
+          "line": 4,
+          "cc": 1,
+          "kind": "edited",
+          "test": true
+        },
+        {
+          "path": "test/types.test.ts",
+          "name": "<describe>.<it>",
+          "line": 5,
+          "cc": 1,
+          "kind": "edited",
+          "test": true
+        }
+      ]
+    },
+    {
+      "range": "cc174547e6525176e423d5359b7dc7a53bd6f53c^1..cc174547e6525176e423d5359b7dc7a53bd6f53c",
+      "files": 0,
+      "testFiles": 0,
+      "tally": {
+        "unchanged": 0,
+        "shifted": 0,
+        "edited": 0,
+        "moved": 0,
+        "added": 0
+      },
+      "changed": 0,
+      "changedInTests": 0,
+      "over20": [],
+      "changedFunctions": []
+    },
+    {
+      "range": "4826b74817b7304d8c5737cf7a9d58a9d7badab2^1..4826b74817b7304d8c5737cf7a9d58a9d7badab2",
+      "files": 1,
+      "testFiles": 0,
+      "tally": {
+        "unchanged": 0,
+        "shifted": 0,
+        "edited": 0,
+        "moved": 0,
+        "added": 0
+      },
+      "changed": 0,
+      "changedInTests": 0,
+      "over20": [],
+      "changedFunctions": []
+    },
+    {
+      "range": "5a20b4f6d49b711c30b1098b2895cd8ac81401d4^1..5a20b4f6d49b711c30b1098b2895cd8ac81401d4",
+      "files": 0,
+      "testFiles": 0,
+      "tally": {
+        "unchanged": 0,
+        "shifted": 0,
+        "edited": 0,
+        "moved": 0,
+        "added": 0
+      },
+      "changed": 0,
+      "changedInTests": 0,
+      "over20": [],
+      "changedFunctions": []
+    },
+    {
+      "range": "8a64114a6784d67489cc676eb9d740ce8379ccce^1..8a64114a6784d67489cc676eb9d740ce8379ccce",
+      "files": 0,
+      "testFiles": 0,
+      "tally": {
+        "unchanged": 0,
+        "shifted": 0,
+        "edited": 0,
+        "moved": 0,
+        "added": 0
+      },
+      "changed": 0,
+      "changedInTests": 0,
+      "over20": [],
+      "changedFunctions": []
+    },
+    {
+      "range": "1beaa667c330da6e58bfc15a91aee94cd411c038^1..1beaa667c330da6e58bfc15a91aee94cd411c038",
+      "files": 0,
+      "testFiles": 0,
+      "tally": {
+        "unchanged": 0,
+        "shifted": 0,
+        "edited": 0,
+        "moved": 0,
+        "added": 0
+      },
+      "changed": 0,
+      "changedInTests": 0,
+      "over20": [],
+      "changedFunctions": []
+    },
+    {
+      "range": "f4c9d649bb6a03cb2b9f937896c65a8ee85401fe^1..f4c9d649bb6a03cb2b9f937896c65a8ee85401fe",
+      "files": 1,
+      "testFiles": 0,
+      "tally": {
+        "unchanged": 11,
+        "shifted": 0,
+        "edited": 0,
+        "moved": 0,
+        "added": 0
+      },
+      "changed": 0,
+      "changedInTests": 0,
+      "over20": [],
+      "changedFunctions": []
+    },
+    {
+      "range": "4eacdb8058c98b4769968eb0993c1e413745714b^1..4eacdb8058c98b4769968eb0993c1e413745714b",
+      "files": 0,
+      "testFiles": 0,
+      "tally": {
+        "unchanged": 0,
+        "shifted": 0,
+        "edited": 0,
+        "moved": 0,
+        "added": 0
+      },
+      "changed": 0,
+      "changedInTests": 0,
+      "over20": [],
+      "changedFunctions": []
+    },
+    {
+      "range": "83921fd518ea3dd231a35c47a6fc1a2cc8cc5d08^1..83921fd518ea3dd231a35c47a6fc1a2cc8cc5d08",
+      "files": 0,
+      "testFiles": 0,
+      "tally": {
+        "unchanged": 0,
+        "shifted": 0,
+        "edited": 0,
+        "moved": 0,
+        "added": 0
+      },
+      "changed": 0,
+      "changedInTests": 0,
+      "over20": [],
+      "changedFunctions": []
+    },
+    {
+      "range": "3fa3f9189d86d8e51c23abb311554f5e4bb06e2c^1..3fa3f9189d86d8e51c23abb311554f5e4bb06e2c",
+      "files": 0,
+      "testFiles": 0,
+      "tally": {
+        "unchanged": 0,
+        "shifted": 0,
+        "edited": 0,
+        "moved": 0,
+        "added": 0
+      },
+      "changed": 0,
+      "changedInTests": 0,
+      "over20": [],
+      "changedFunctions": []
+    },
+    {
+      "range": "39aba2ec5399b4c89a71d06ea4b2a59e24ac5955^1..39aba2ec5399b4c89a71d06ea4b2a59e24ac5955",
+      "files": 0,
+      "testFiles": 0,
+      "tally": {
+        "unchanged": 0,
+        "shifted": 0,
+        "edited": 0,
+        "moved": 0,
+        "added": 0
+      },
+      "changed": 0,
+      "changedInTests": 0,
+      "over20": [],
+      "changedFunctions": []
+    },
+    {
+      "range": "1bf74d7b0bb1c8b9434b69a0a83cb2ca3dd23e25^1..1bf74d7b0bb1c8b9434b69a0a83cb2ca3dd23e25",
+      "files": 0,
+      "testFiles": 0,
+      "tally": {
+        "unchanged": 0,
+        "shifted": 0,
+        "edited": 0,
+        "moved": 0,
+        "added": 0
+      },
+      "changed": 0,
+      "changedInTests": 0,
+      "over20": [],
+      "changedFunctions": []
+    }
+  ]
+}

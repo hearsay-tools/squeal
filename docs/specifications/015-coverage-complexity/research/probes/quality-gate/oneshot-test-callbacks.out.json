@@ -1,0 +1,63 @@
+{
+  "end": "completed",
+  "completed": 2,
+  "failed": 0,
+  "records": 2,
+  "sources": 3,
+  "testFilesInOwnRecord": 2,
+  "functions": 27,
+  "ranInProcess": 27,
+  "ranNone": 0,
+  "overCc": 0,
+  "overCrap": 0,
+  "unreadSources": 0,
+  "ms": {
+    "total": 2910,
+    "run": 931,
+    "map": 21,
+    "join": 45
+  },
+  "mainProcessCpuMs": 4337,
+  "sampleRows": [
+    {
+      "path": "test/code/crap/join.test.ts",
+      "name": "joined",
+      "line": 14,
+      "cc": 1,
+      "cov": 1,
+      "crap": 1
+    },
+    {
+      "path": "test/code/crap/join.test.ts",
+      "name": "joined.<map>",
+      "line": 17,
+      "cc": 1,
+      "cov": 1,
+      "crap": 1
+    },
+    {
+      "path": "test/code/crap/join.test.ts",
+      "name": "<describe>",
+      "line": 20,
+      "cc": 1,
+      "cov": 1,
+      "crap": 1
+    },
+    {
+      "path": "test/code/crap/join.test.ts",
+      "name": "<describe>.<it>",
+      "line": 21,
+      "cc": 1,
+      "cov": 1,
+      "crap": 1
+    },
+    {
+      "path": "test/code/crap/join.test.ts",
+      "name": "<describe>.<it>.<flatMap>",
+      "line": 23,
+      "cc": 3,
+      "cov": 1,
+      "crap": 3
+    }
+  ]
+}

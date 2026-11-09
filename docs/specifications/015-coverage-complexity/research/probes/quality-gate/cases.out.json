@@ -1,0 +1,1238 @@
+{
+  "arrows": {
+    "reports": {
+      "vitest": {
+        "end": "completed",
+        "completed": [
+          "test/shapes.test.ts"
+        ],
+        "failure": null,
+        "fails": []
+      }
+    },
+    "runMs": 1257,
+    "records": [
+      {
+        "test": "test/shapes.test.ts",
+        "record": {
+          "v": 1,
+          "sources": [
+            {
+              "path": "src/shapes.ts",
+              "blob": "4b27c06ace5fb6d9064281e5d3a7ec5c8d2cc59f",
+              "lines": "/QE=",
+              "covered": "/QE=",
+              "functions": [
+                [
+                  3,
+                  13,
+                  3,
+                  47,
+                  1
+                ],
+                [
+                  4,
+                  13,
+                  4,
+                  104,
+                  1
+                ],
+                [
+                  4,
+                  22,
+                  4,
+                  104,
+                  1
+                ],
+                [
+                  4,
+                  57,
+                  4,
+                  72,
+                  1
+                ],
+                [
+                  4,
+                  75,
+                  4,
+                  93,
+                  1
+                ],
+                [
+                  5,
+                  13,
+                  7,
+                  27,
+                  1
+                ],
+                [
+                  5,
+                  22,
+                  7,
+                  27,
+                  1
+                ],
+                [
+                  6,
+                  3,
+                  7,
+                  27,
+                  1
+                ],
+                [
+                  8,
+                  13,
+                  8,
+                  36,
+                  1
+                ],
+                [
+                  9,
+                  13,
+                  9,
+                  50,
+                  0
+                ]
+              ]
+            },
+            {
+              "path": "test/shapes.test.ts",
+              "blob": "767dbdb8b9b7cf329babb2edc362330765acc2d6",
+              "lines": "fz8=",
+              "covered": "fz8=",
+              "functions": [
+                [
+                  4,
+                  8,
+                  4,
+                  45,
+                  1
+                ],
+                [
+                  4,
+                  31,
+                  4,
+                  42,
+                  1
+                ],
+                [
+                  5,
+                  19,
+                  8,
+                  0,
+                  1
+                ],
+                [
+                  7,
+                  20,
+                  7,
+                  36,
+                  1
+                ],
+                [
+                  9,
+                  9,
+                  15,
+                  0,
+                  1
+                ],
+                [
+                  10,
+                  5,
+                  10,
+                  52,
+                  1
+                ],
+                [
+                  11,
+                  5,
+                  11,
+                  58,
+                  1
+                ],
+                [
+                  12,
+                  5,
+                  12,
+                  49,
+                  1
+                ],
+                [
+                  13,
+                  5,
+                  13,
+                  43,
+                  1
+                ],
+                [
+                  14,
+                  5,
+                  14,
+                  44,
+                  1
+                ]
+              ]
+            }
+          ],
+          "unread": []
+        }
+      }
+    ],
+    "src": [
+      {
+        "fn": "pick:3",
+        "cc": 1,
+        "ran": null,
+        "cov": 0,
+        "crap": 2,
+        "records": 1
+      },
+      {
+        "fn": "chain:4",
+        "cc": 1,
+        "ran": true,
+        "cov": 1,
+        "crap": 1,
+        "records": 1
+      },
+      {
+        "fn": "chain.<anonymous>:4",
+        "cc": 1,
+        "ran": null,
+        "cov": 0,
+        "crap": 2,
+        "records": 1
+      },
+      {
+        "fn": "chain.<anonymous>.<map>:4",
+        "cc": 1,
+        "ran": true,
+        "cov": 1,
+        "crap": 1,
+        "records": 1
+      },
+      {
+        "fn": "chain.<anonymous>.<filter>:4",
+        "cc": 1,
+        "ran": true,
+        "cov": 1,
+        "crap": 1,
+        "records": 1
+      },
+      {
+        "fn": "three:5",
+        "cc": 1,
+        "ran": true,
+        "cov": 1,
+        "crap": 1,
+        "records": 1
+      },
+      {
+        "fn": "three.<anonymous>:6",
+        "cc": 1,
+        "ran": true,
+        "cov": 1,
+        "crap": 1,
+        "records": 1
+      },
+      {
+        "fn": "three.<anonymous>.<anonymous>:7",
+        "cc": 1,
+        "ran": null,
+        "cov": 0,
+        "crap": 2,
+        "records": 1
+      },
+      {
+        "fn": "viaDep:8",
+        "cc": 1,
+        "ran": true,
+        "cov": 1,
+        "crap": 1,
+        "records": 1
+      },
+      {
+        "fn": "never:9",
+        "cc": 2,
+        "ran": false,
+        "cov": 0,
+        "crap": 6,
+        "records": 1
+      }
+    ],
+    "test": [
+      {
+        "fn": "<mock>:4",
+        "cc": 1,
+        "ran": true,
+        "cov": 1,
+        "crap": 1,
+        "records": 1
+      },
+      {
+        "fn": "<mock>.dep:4",
+        "cc": 1,
+        "ran": true,
+        "cov": 1,
+        "crap": 1,
+        "records": 1
+      },
+      {
+        "fn": "<mock>:5",
+        "cc": 1,
+        "ran": true,
+        "cov": 1,
+        "crap": 1,
+        "records": 1
+      },
+      {
+        "fn": "<mock>.hostname:7",
+        "cc": 1,
+        "ran": true,
+        "cov": 1,
+        "crap": 1,
+        "records": 1
+      },
+      {
+        "fn": "<describe>:9",
+        "cc": 1,
+        "ran": true,
+        "cov": 1,
+        "crap": 1,
+        "records": 1
+      },
+      {
+        "fn": "<describe>.<it>:10",
+        "cc": 1,
+        "ran": true,
+        "cov": 1,
+        "crap": 1,
+        "records": 1
+      },
+      {
+        "fn": "<describe>.<it>:11",
+        "cc": 1,
+        "ran": true,
+        "cov": 1,
+        "crap": 1,
+        "records": 1
+      },
+      {
+        "fn": "<describe>.<it>:12",
+        "cc": 1,
+        "ran": true,
+        "cov": 1,
+        "crap": 1,
+        "records": 1
+      },
+      {
+        "fn": "<describe>.<it>:13",
+        "cc": 1,
+        "ran": true,
+        "cov": 1,
+        "crap": 1,
+        "records": 1
+      },
+      {
+        "fn": "<describe>.<it>:14",
+        "cc": 1,
+        "ran": true,
+        "cov": 1,
+        "crap": 1,
+        "records": 1
+      }
+    ],
+    "counterRanges": [
+      [
+        "pick",
+        {
+          "startLine": 3,
+          "startColumn": 21,
+          "endLine": 3,
+          "endColumn": 53
+        }
+      ],
+      [
+        "chain",
+        {
+          "startLine": 4,
+          "startColumn": 22,
+          "endLine": 4,
+          "endColumn": 106
+        }
+      ],
+      [
+        "chain.<anonymous>",
+        {
+          "startLine": 4,
+          "startColumn": 37,
+          "endLine": 4,
+          "endColumn": 106
+        }
+      ],
+      [
+        "chain.<anonymous>.<map>",
+        {
+          "startLine": 4,
+          "startColumn": 62,
+          "endLine": 4,
+          "endColumn": 74
+        }
+      ],
+      [
+        "chain.<anonymous>.<filter>",
+        {
+          "startLine": 4,
+          "startColumn": 83,
+          "endLine": 4,
+          "endColumn": 95
+        }
+      ],
+      [
+        "three",
+        {
+          "startLine": 5,
+          "startColumn": 22,
+          "endLine": 7,
+          "endColumn": 29
+        }
+      ],
+      [
+        "three.<anonymous>",
+        {
+          "startLine": 6,
+          "startColumn": 3,
+          "endLine": 7,
+          "endColumn": 29
+        }
+      ],
+      [
+        "three.<anonymous>.<anonymous>",
+        {
+          "startLine": 7,
+          "startColumn": 5,
+          "endLine": 7,
+          "endColumn": 29
+        }
+      ],
+      [
+        "viaDep",
+        {
+          "startLine": 8,
+          "startColumn": 23,
+          "endLine": 8,
+          "endColumn": 38
+        }
+      ],
+      [
+        "never",
+        {
+          "startLine": 9,
+          "startColumn": 22,
+          "endLine": 9,
+          "endColumn": 53
+        }
+      ]
+    ],
+    "v8Functions": [
+      [
+        3,
+        13,
+        3,
+        47,
+        1
+      ],
+      [
+        4,
+        13,
+        4,
+        104,
+        1
+      ],
+      [
+        4,
+        22,
+        4,
+        104,
+        1
+      ],
+      [
+        4,
+        57,
+        4,
+        72,
+        1
+      ],
+      [
+        4,
+        75,
+        4,
+        93,
+        1
+      ],
+      [
+        5,
+        13,
+        7,
+        27,
+        1
+      ],
+      [
+        5,
+        22,
+        7,
+        27,
+        1
+      ],
+      [
+        6,
+        3,
+        7,
+        27,
+        1
+      ],
+      [
+        8,
+        13,
+        8,
+        36,
+        1
+      ],
+      [
+        9,
+        13,
+        9,
+        50,
+        0
+      ]
+    ]
+  },
+  "nodeNative": {
+    "reports": {
+      "node": {
+        "end": "completed",
+        "completed": [
+          "node/native.test.ts"
+        ],
+        "failure": null,
+        "notes": [],
+        "fails": 0
+      }
+    },
+    "runMs": 350,
+    "records": [
+      {
+        "test": "node/native.test.ts",
+        "record": {
+          "v": 1,
+          "sources": [
+            {
+              "path": "node/native.test.ts",
+              "blob": "15a4c3431717db88489f5811c17d4ba7f6b1185f",
+              "lines": "Dw==",
+              "covered": "Dw==",
+              "functions": [
+                [
+                  1,
+                  0,
+                  5,
+                  61,
+                  1
+                ],
+                [
+                  4,
+                  13,
+                  4,
+                  51,
+                  1
+                ]
+              ]
+            },
+            {
+              "path": "src/shared.ts",
+              "blob": "047a23e41a8a91b2d6a087c9978f8319ab7de41d",
+              "lines": "dwE=",
+              "covered": "MQE=",
+              "functions": [
+                [
+                  1,
+                  0,
+                  10,
+                  55,
+                  1
+                ],
+                [
+                  1,
+                  7,
+                  4,
+                  0,
+                  0
+                ],
+                [
+                  5,
+                  7,
+                  8,
+                  0,
+                  1
+                ],
+                [
+                  9,
+                  25,
+                  9,
+                  50,
+                  0
+                ]
+              ]
+            }
+          ],
+          "unread": []
+        }
+      }
+    ],
+    "src": [
+      {
+        "fn": "fromVitest:1",
+        "cc": 2,
+        "ran": false,
+        "cov": 0,
+        "crap": 6,
+        "records": 1
+      },
+      {
+        "fn": "fromNode:5",
+        "cc": 2,
+        "ran": true,
+        "cov": 0.67,
+        "crap": 2.15,
+        "records": 1
+      },
+      {
+        "fn": "untouched:9",
+        "cc": 2,
+        "ran": false,
+        "cov": 0,
+        "crap": 6,
+        "records": 1
+      }
+    ]
+  },
+  "nodeTsx": {
+    "reports": {
+      "node": {
+        "end": "completed",
+        "completed": [
+          "node/tsx.test.ts"
+        ],
+        "failure": null,
+        "notes": [],
+        "fails": 0
+      }
+    },
+    "runMs": 406,
+    "records": [
+      {
+        "test": "node/tsx.test.ts",
+        "record": {
+          "v": 1,
+          "sources": [
+            {
+              "path": "node/tsx.test.ts",
+              "blob": "d2b424a707739c92df84bd32e547ed7384452028",
+              "lines": "Dw==",
+              "covered": "Dw==",
+              "functions": [
+                [
+                  4,
+                  13,
+                  4,
+                  51,
+                  1
+                ]
+              ]
+            },
+            {
+              "path": "src/shared.ts",
+              "blob": "047a23e41a8a91b2d6a087c9978f8319ab7de41d",
+              "lines": "dwE=",
+              "covered": "MQE=",
+              "functions": [
+                [
+                  1,
+                  7,
+                  1,
+                  7,
+                  1
+                ],
+                [
+                  1,
+                  7,
+                  4,
+                  0,
+                  0
+                ],
+                [
+                  5,
+                  7,
+                  8,
+                  0,
+                  1
+                ],
+                [
+                  9,
+                  26,
+                  9,
+                  49,
+                  0
+                ]
+              ]
+            }
+          ],
+          "unread": []
+        }
+      }
+    ],
+    "src": [
+      {
+        "fn": "fromVitest:1",
+        "cc": 2,
+        "ran": false,
+        "cov": 0,
+        "crap": 6,
+        "records": 1
+      },
+      {
+        "fn": "fromNode:5",
+        "cc": 2,
+        "ran": true,
+        "cov": 0.67,
+        "crap": 2.15,
+        "records": 1
+      },
+      {
+        "fn": "untouched:9",
+        "cc": 2,
+        "ran": false,
+        "cov": 0,
+        "crap": 6,
+        "records": 1
+      }
+    ],
+    "test": [
+      {
+        "fn": "<test>:4",
+        "cc": 1,
+        "ran": true,
+        "cov": 1,
+        "crap": 1,
+        "records": 1
+      }
+    ]
+  },
+  "mixed": {
+    "reports": {
+      "vitest": {
+        "end": "completed",
+        "completed": [
+          "test/shared.vt.test.ts"
+        ],
+        "failure": null,
+        "fails": []
+      },
+      "node": {
+        "end": "completed",
+        "completed": [
+          "node/tsx.test.ts"
+        ],
+        "failure": null,
+        "notes": [],
+        "fails": 0
+      }
+    },
+    "runMs": 835,
+    "records": [
+      {
+        "test": "test/shared.vt.test.ts",
+        "record": {
+          "v": 1,
+          "sources": [
+            {
+              "path": "src/shared.ts",
+              "blob": "047a23e41a8a91b2d6a087c9978f8319ab7de41d",
+              "lines": "dwE=",
+              "covered": "AwE=",
+              "functions": [
+                [
+                  1,
+                  7,
+                  4,
+                  0,
+                  1
+                ],
+                [
+                  5,
+                  7,
+                  8,
+                  0,
+                  0
+                ],
+                [
+                  9,
+                  13,
+                  9,
+                  49,
+                  0
+                ]
+              ]
+            },
+            {
+              "path": "test/shared.vt.test.ts",
+              "blob": "a752af0cf8bbe9dc5ce8cd79ef6a00eb4e4d08e8",
+              "lines": "Bw==",
+              "covered": "Bw==",
+              "functions": [
+                [
+                  3,
+                  3,
+                  3,
+                  42,
+                  1
+                ]
+              ]
+            }
+          ],
+          "unread": []
+        }
+      },
+      {
+        "test": "node/tsx.test.ts",
+        "record": {
+          "v": 1,
+          "sources": [
+            {
+              "path": "node/tsx.test.ts",
+              "blob": "d2b424a707739c92df84bd32e547ed7384452028",
+              "lines": "Dw==",
+              "covered": "Dw==",
+              "functions": [
+                [
+                  4,
+                  13,
+                  4,
+                  51,
+                  1
+                ]
+              ]
+            },
+            {
+              "path": "src/shared.ts",
+              "blob": "047a23e41a8a91b2d6a087c9978f8319ab7de41d",
+              "lines": "dwE=",
+              "covered": "MQE=",
+              "functions": [
+                [
+                  1,
+                  7,
+                  1,
+                  7,
+                  1
+                ],
+                [
+                  1,
+                  7,
+                  4,
+                  0,
+                  0
+                ],
+                [
+                  5,
+                  7,
+                  8,
+                  0,
+                  1
+                ],
+                [
+                  9,
+                  26,
+                  9,
+                  49,
+                  0
+                ]
+              ]
+            }
+          ],
+          "unread": []
+        }
+      }
+    ],
+    "src": [
+      {
+        "fn": "fromVitest:1",
+        "cc": 2,
+        "ran": true,
+        "cov": 0.67,
+        "crap": 2.15,
+        "records": 2
+      },
+      {
+        "fn": "fromNode:5",
+        "cc": 2,
+        "ran": true,
+        "cov": 0.67,
+        "crap": 2.15,
+        "records": 2
+      },
+      {
+        "fn": "untouched:9",
+        "cc": 2,
+        "ran": false,
+        "cov": 0,
+        "crap": 6,
+        "records": 2
+      }
+    ]
+  },
+  "truncated": {
+    "reports": {
+      "vitest": {
+        "end": "completed",
+        "completed": [
+          "test/shared.vt.test.ts"
+        ],
+        "failure": null,
+        "fails": []
+      },
+      "node": {
+        "end": "completed",
+        "completed": [
+          "node/tsx.test.ts"
+        ],
+        "failure": null,
+        "notes": [],
+        "fails": 0
+      }
+    },
+    "runMs": 898,
+    "records": [
+      {
+        "test": "test/shared.vt.test.ts",
+        "record": {
+          "v": 1,
+          "sources": [
+            {
+              "path": "src/shared.ts",
+              "blob": "047a23e41a8a91b2d6a087c9978f8319ab7de41d",
+              "lines": "dwE=",
+              "covered": "AwE=",
+              "functions": [
+                [
+                  1,
+                  7,
+                  4,
+                  0,
+                  1
+                ],
+                [
+                  5,
+                  7,
+                  8,
+                  0,
+                  0
+                ],
+                [
+                  9,
+                  13,
+                  9,
+                  49,
+                  0
+                ]
+              ]
+            },
+            {
+              "path": "test/shared.vt.test.ts",
+              "blob": "a752af0cf8bbe9dc5ce8cd79ef6a00eb4e4d08e8",
+              "lines": "Bw==",
+              "covered": "Bw==",
+              "functions": [
+                [
+                  3,
+                  3,
+                  3,
+                  42,
+                  1
+                ]
+              ]
+            }
+          ],
+          "unread": []
+        }
+      },
+      {
+        "test": "node/tsx.test.ts",
+        "error": "SyntaxError: Unterminated string in JSON at position 409707 (line 1 column 409708)"
+      }
+    ],
+    "src": [
+      {
+        "fn": "fromVitest:1",
+        "cc": 2,
+        "ran": true,
+        "cov": 0.67,
+        "crap": 2.15,
+        "records": 1
+      },
+      {
+        "fn": "fromNode:5",
+        "cc": 2,
+        "ran": false,
+        "cov": 0,
+        "crap": 6,
+        "records": 1
+      },
+      {
+        "fn": "untouched:9",
+        "cc": 2,
+        "ran": false,
+        "cov": 0,
+        "crap": 6,
+        "records": 1
+      }
+    ]
+  },
+  "testTimeoutFloor": {
+    "reports": {
+      "vitest": {
+        "end": "completed",
+        "completed": [
+          "test/fast.test.ts",
+          "test/slow.test.ts"
+        ],
+        "failure": null,
+        "fails": []
+      }
+    },
+    "runMs": 7251,
+    "records": [
+      {
+        "test": "test/fast.test.ts",
+        "record": {
+          "v": 1,
+          "sources": [
+            {
+              "path": "src/a.ts",
+              "blob": "b7dadaaa05d4d02484f9c7116e055509350c0542",
+              "lines": "Aw==",
+              "covered": "Aw==",
+              "functions": [
+                [
+                  1,
+                  13,
+                  1,
+                  48,
+                  1
+                ],
+                [
+                  2,
+                  13,
+                  2,
+                  48,
+                  0
+                ]
+              ]
+            },
+            {
+              "path": "test/fast.test.ts",
+              "blob": "b43d8a6c513f8145d32f8cd5a92831a4159bcf8a",
+              "lines": "Bw==",
+              "covered": "Bw==",
+              "functions": [
+                [
+                  3,
+                  3,
+                  3,
+                  39,
+                  1
+                ]
+              ]
+            }
+          ],
+          "unread": []
+        }
+      },
+      {
+        "test": "test/slow.test.ts",
+        "record": {
+          "v": 1,
+          "sources": [
+            {
+              "path": "src/a.ts",
+              "blob": "b7dadaaa05d4d02484f9c7116e055509350c0542",
+              "lines": "Aw==",
+              "covered": "Aw==",
+              "functions": [
+                [
+                  1,
+                  13,
+                  1,
+                  48,
+                  0
+                ],
+                [
+                  2,
+                  13,
+                  2,
+                  48,
+                  1
+                ]
+              ]
+            },
+            {
+              "path": "test/slow.test.ts",
+              "blob": "70dffb68cc9a75838ef05dc379528aea5ee95080",
+              "lines": "Bw==",
+              "covered": "Bw==",
+              "functions": [
+                [
+                  3,
+                  11,
+                  3,
+                  98,
+                  1
+                ],
+                [
+                  3,
+                  35,
+                  3,
+                  69,
+                  1
+                ]
+              ]
+            }
+          ],
+          "unread": []
+        }
+      }
+    ],
+    "src": [
+      {
+        "fn": "fast:1",
+        "cc": 2,
+        "ran": true,
+        "cov": 1,
+        "crap": 2,
+        "records": 2
+      },
+      {
+        "fn": "slow:2",
+        "cc": 2,
+        "ran": true,
+        "cov": 1,
+        "crap": 2,
+        "records": 2
+      }
+    ]
+  },
+  "deadline": {
+    "reports": {
+      "vitest": {
+        "end": "timed-out",
+        "completed": [
+          "test/fast.test.ts"
+        ],
+        "failure": "run exceeded timeoutMs (3000 ms)",
+        "fails": []
+      }
+    },
+    "runMs": 3048,
+    "records": [
+      {
+        "test": "test/fast.test.ts",
+        "record": {
+          "v": 1,
+          "sources": [
+            {
+              "path": "src/a.ts",
+              "blob": "b7dadaaa05d4d02484f9c7116e055509350c0542",
+              "lines": "Aw==",
+              "covered": "Aw==",
+              "functions": [
+                [
+                  1,
+                  13,
+                  1,
+                  48,
+                  1
+                ],
+                [
+                  2,
+                  13,
+                  2,
+                  48,
+                  0
+                ]
+              ]
+            },
+            {
+              "path": "test/fast.test.ts",
+              "blob": "b43d8a6c513f8145d32f8cd5a92831a4159bcf8a",
+              "lines": "Bw==",
+              "covered": "Bw==",
+              "functions": [
+                [
+                  3,
+                  3,
+                  3,
+                  39,
+                  1
+                ]
+              ]
+            }
+          ],
+          "unread": []
+        }
+      }
+    ],
+    "src": [
+      {
+        "fn": "fast:1",
+        "cc": 2,
+        "ran": true,
+        "cov": 1,
+        "crap": 2,
+        "records": 1
+      },
+      {
+        "fn": "slow:2",
+        "cc": 2,
+        "ran": false,
+        "cov": 0,
+        "crap": 6,
+        "records": 1
+      }
+    ]
+  },
+  "selection": {
+    "affectedShared": {
+      "direct": [
+        {
+          "project": "",
+          "path": "test/shared.vt.test.ts"
+        }
+      ],
+      "transitive": []
+    },
+    "affectedOrphan": {
+      "direct": [],
+      "transitive": []
+    },
+    "orphan": [
+      {
+        "fn": "orphan:1",
+        "cc": 3,
+        "ran": false,
+        "cov": 0,
+        "crap": 12,
+        "records": 0
+      }
+    ]
+  }
+}
