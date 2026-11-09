@@ -1,0 +1,11 @@
+vitest run                         -> SHIM vitest
+npx vitest run                     -> LOCAL vitest
+npm exec vitest run                -> LOCAL vitest
+pnpm exec vitest run               -> LOCAL vitest
+pnpm vitest run                    -> LOCAL vitest
+npm test                           -> LOCAL vitest
+npm run test:unit                  -> LOCAL vitest
+pnpm test                          -> LOCAL vitest
+pnpm run test:unit                 -> LOCAL vitest
+./node_modules/.bin/vitest run     -> LOCAL vitest
+node_modules/.bin/vitest run       -> LOCAL vitest

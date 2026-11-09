@@ -1,0 +1,90 @@
+## vitest run
+  root.snapshotOptions.updateSnapshot: "none" (squeal) -> "new"
+  root.includeTaskLocation: true (squeal) -> undefined
+## vitest 
+  root.snapshotOptions.updateSnapshot: "none" (squeal) -> "new"
+  root.watch: false (squeal) -> undefined
+  root.includeTaskLocation: true (squeal) -> undefined
+  $root.watch: false (squeal) -> undefined
+## vitest run test/a.test.js
+  root.snapshotOptions.updateSnapshot: "none" (squeal) -> "new"
+  root.includeTaskLocation: true (squeal) -> undefined
+  $root.filters: "[]" (squeal) -> undefined
+  $root.filters.0: undefined (squeal) -> "test/a.test.js"
+## vitest run -t a
+  root.snapshotOptions.updateSnapshot: "none" (squeal) -> "new"
+  root.includeTaskLocation: true (squeal) -> undefined
+  $root.testNamePattern: "" (squeal) -> "/a/"
+  root.testNamePattern: undefined (squeal) -> "/a/"
+## vitest run -u
+  root.snapshotOptions.updateSnapshot: "none" (squeal) -> "all"
+  root.includeTaskLocation: true (squeal) -> undefined
+## vitest run --coverage
+  root.coverage.enabled: false (squeal) -> true
+  root.snapshotOptions.updateSnapshot: "none" (squeal) -> "new"
+  root.includeTaskLocation: true (squeal) -> undefined
+  root.coverage.htmlDir: undefined (squeal) -> "<fixture>/coverage"
+## vitest run --bail 1
+  root.snapshotOptions.updateSnapshot: "none" (squeal) -> "new"
+  root.includeTaskLocation: true (squeal) -> undefined
+  $root.bail: undefined (squeal) -> 1
+  root.bail: undefined (squeal) -> 1
+## vitest run --reporter=dot
+  root.snapshotOptions.updateSnapshot: "none" (squeal) -> "new"
+  root.includeTaskLocation: true (squeal) -> undefined
+## vitest run --silent
+  root.snapshotOptions.updateSnapshot: "none" (squeal) -> "new"
+  root.includeTaskLocation: true (squeal) -> undefined
+## vitest run --shard 1/2
+  root.coverage.coverageFilesDirectory: "<fixture>/coverage/.tmp" (squeal) -> "<fixture>/coverage/.tmp-1-2"
+  root.snapshotOptions.updateSnapshot: "none" (squeal) -> "new"
+  root.includeTaskLocation: true (squeal) -> undefined
+## vitest run --no-isolate
+  root.isolate: true (squeal) -> false
+  root.snapshotOptions.updateSnapshot: "none" (squeal) -> "new"
+  root.includeTaskLocation: true (squeal) -> undefined
+## vitest run --pool threads
+  root.pool: "forks" (squeal) -> "threads"
+  root.snapshotOptions.updateSnapshot: "none" (squeal) -> "new"
+  root.includeTaskLocation: true (squeal) -> undefined
+## vitest run --maxWorkers 2
+  root.snapshotOptions.updateSnapshot: "none" (squeal) -> "new"
+  root.includeTaskLocation: true (squeal) -> undefined
+## vitest run --changed
+  root.snapshotOptions.updateSnapshot: "none" (squeal) -> "new"
+  root.includeTaskLocation: true (squeal) -> undefined
+  root.passWithNoTests: undefined (squeal) -> true
+## vitest run --allowOnly=false
+  root.allowOnly: true (squeal) -> false
+  root.snapshotOptions.updateSnapshot: "none" (squeal) -> "new"
+  root.includeTaskLocation: true (squeal) -> undefined
+## vitest run --passWithNoTests
+  root.snapshotOptions.updateSnapshot: "none" (squeal) -> "new"
+  root.includeTaskLocation: true (squeal) -> undefined
+  root.passWithNoTests: undefined (squeal) -> true
+## vitest run --retry 2
+  root.snapshotOptions.updateSnapshot: "none" (squeal) -> "new"
+  root.includeTaskLocation: true (squeal) -> undefined
+  root.retry: undefined (squeal) -> 2
+## vitest run --testTimeout 1000
+  root.testTimeout: 5000 (squeal) -> 1000
+  root.snapshotOptions.updateSnapshot: "none" (squeal) -> "new"
+  root.includeTaskLocation: true (squeal) -> undefined
+## vitest run --sequence.shuffle
+  root.snapshotOptions.updateSnapshot: "none" (squeal) -> "new"
+  root.includeTaskLocation: true (squeal) -> undefined
+  root.sequence.shuffle: undefined (squeal) -> true
+## vitest run --disableConsoleIntercept
+  root.disableConsoleIntercept: false (squeal) -> true
+  root.snapshotOptions.updateSnapshot: "none" (squeal) -> "new"
+  root.includeTaskLocation: true (squeal) -> undefined
+## vitest run --outputFile=x.json
+  root.snapshotOptions.updateSnapshot: "none" (squeal) -> "new"
+  root.includeTaskLocation: true (squeal) -> undefined
+## vitest run --globals
+  root.globals: false (squeal) -> true
+  root.snapshotOptions.updateSnapshot: "none" (squeal) -> "new"
+  root.includeTaskLocation: true (squeal) -> undefined
+## vitest run --silent=passed-only
+  root.snapshotOptions.updateSnapshot: "none" (squeal) -> "new"
+  root.includeTaskLocation: true (squeal) -> undefined
