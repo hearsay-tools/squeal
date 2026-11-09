@@ -49,3 +49,21 @@ Owns: `src/runners/node-test/`, its tests, the node:test validity case if the ke
 Leave alone: every other runner and the core key inputs: Vitest and pytest keys must not move (`test/keys/key-format.test.ts` shows it). No `pnpm run build`.
 
 Done when: the two tests pass; the key-format alarm moves only node:test cases; `squeal status --wait 60000 <changed paths>` current and passing; lint and typecheck clean.
+
+## 018-17 `squeal ci export --parts`
+
+Use /worker. Shape: slice. Starts from the coordinator's branch with 018-16, 018-18 and 018-19 integrated (release 0.1.420 in review).
+
+Outcome: `squeal ci export --parts <dir>... [--out <file>]`, run in a fresh checkout of the same SHA after the shards, writes the D2 export (passes and skips) whose keys equal what a daemon computes for that content, with each file's `keyParts`.
+
+Read: `spec.md` D9, D2, D11 (with the 2026-11-09 `keyParts` line); `tasks/018-16/notes.md` (part format `squeal-ci-part/1`, `src/core/ci/parts.ts` `readPart`); `tasks/018-18/notes.md` (re-key rule, key parts, seams).
+
+Starting seam: a failing test first: run `squeal ci record` on a two-shard fixture, export the parts, and compare with `squeal export` from a daemon that ran the same fixture (equal keys and results per file; `keyParts` present). First edit offered as a lead: a `src/core/ci/export.ts` that builds closures with the daemon's own closure and key code (static graph plus the parts' observed reads), not a copy of it.
+
+Refuse with a named reason: parts whose environment descriptors differ for one project; a part made with `updateSnapshot` other than `none`; a part that did not complete; a test file in two parts; parts from different commits.
+
+Owns: `src/core/ci/export.ts` (new), `src/cli/ci.ts` (add the `export` subcommand), their tests.
+
+Leave alone: `src/core/store/transfer*.ts` except through their exports; the daemon's keying code except to export a function; key inputs. No `pnpm run build`.
+
+Done when: the comparison test passes; each refusal has a test; `squeal status --wait 60000 <changed paths>` read once (report pending as pending); lint and typecheck clean.
