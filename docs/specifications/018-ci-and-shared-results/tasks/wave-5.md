@@ -127,3 +127,23 @@ Owns: `src/core/ci/` except `publish.ts`, `src/runners/vitest/ci-runtime/` and t
 Leave alone: `src/core/ci/publish.ts`, `src/core/shared/` (018-20 runs beside you); key inputs; the daemon's naming. No `pnpm run build`.
 
 Done when: each reproduction fails before and passes after; the comparison test still passes; lint and typecheck clean; `squeal status` read once without `--wait`.
+
+## 018-17 R2: one owner for input evidence (the human, 2026-11-09: "A: one owner, repair")
+
+Use /worker. Shape: repair, on candidate `cand/0.1.421`. This is the last round the human authorized; keep it narrow.
+
+Outcome: the export certifies an input only by evidence taken while the run read it; a write during the run cancels that input's evidence; an input the run did not read, or whose absence the run did not observe, is never certified, so its test file is left out.
+
+Read: `reviews/wave-5-0.1.421-r2.md` (B1, the three wrapper reproductions, "Required fix and decision boundary"); `reviews/wave-5-0.1.421.md` B1; the R1 section above; `tasks/018-17/notes.md` R1 section; `tasks/018-16/notes.md`.
+
+The rule: in the CI path only, each process records, at the moment a file is read (including module loads through `fs`), its content hash; at the moment a directory is listed, its names hash; at the moment an absent path is probed, its absence. Any write, rename, delete or create of a path during the run marks that path written, which cancels its evidence for the whole run, even if the content is restored. The export keys a file only when every closure input has read-time evidence from that shard, none of it cancelled, and the export checkout matches it. Remove both endpoint shortcuts (clean-shard commit blob, inferred absence) and post-run hashing.
+
+Seam: the CI hook layer (`src/runners/vitest/ci-runtime/`, loaded only by `squeal ci record`), not the daemon's recorder runtime: a change under the daemon's recorder files moves the key-format alarm for every user. If the evidence needs the recorder's own hooks, wrap them from the CI layer. Raise the part format version.
+
+Starting seam: the review's three wrapper reproductions as failing tests first; keep every earlier B1 to B4 test passing.
+
+Owns: `src/runners/vitest/ci-runtime/`, the part writer, `src/core/ci/` except `publish.ts`, `src/cli/ci-export.ts`, their tests.
+
+Leave alone: the daemon's recorder runtime and key inputs (`test/keys/key-format.test.ts` must pass unchanged); `src/core/ci/publish.ts`, `src/core/shared/`. No `pnpm run build`.
+
+Done when: the three reproductions fail before and pass after; the two-shard comparison test still exports the files a clean run proves; report how many fixture files the stricter rule leaves out and why; lint and typecheck clean; `squeal status` read once without `--wait`.
