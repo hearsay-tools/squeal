@@ -16,7 +16,9 @@ import { ci, committed, scratchDir, VITEST, writeFiles } from "./fixture.js";
  * that content holds no result of it, and still holds the file the wrapper
  * did not touch. The wrapper changes the files itself, where the evidence
  * sees the writes, or through `sh`, where only the content the run read
- * tells them apart.
+ * tells them apart. In D (repair R3) the test itself reads `GOOD`, has `sh`
+ * write `BAD`, and reads again in the same turn: the path had two contents
+ * in the run, so it has no evidence.
  */
 
 const SLOW = { timeout: 300_000 };
@@ -55,6 +57,10 @@ const CHANGED = {
   ],
   B: ["test/module.test.ts", IMPORTS("../src/value.js")],
   C: ["test/generated.test.ts", IMPORTS("../src/generated.js")],
+  D: [
+    "test/reread.test.ts",
+    `import { spawnSync } from "node:child_process";\nimport { readFileSync } from "node:fs";\nimport { fileURLToPath } from "node:url";\nimport { expect, it } from "vitest";\nconst file = new URL("../data/value.txt", import.meta.url);\nit("input", () => {\n  const first = readFileSync(file, "utf8");\n  spawnSync("sh", ["-c", 'printf BAD > "$1"', "sh", fileURLToPath(file)]);\n  readFileSync(file, "utf8");\n  expect(first).toBe("GOOD");\n});\nit("other", () => {});\n`,
+  ],
 } as const;
 
 const dirs: string[] = [];
@@ -63,12 +69,12 @@ afterAll(() => {
 });
 
 /** Records the fixture through the wrapper in `mode`, then exports the parts where it left the content. */
-async function wrapped(mode: "A" | "B" | "C", writer: "node" | "sh") {
+async function wrapped(mode: keyof typeof CHANGED, writer: "node" | "sh") {
   const dir = scratchDir(`ci-wrapper-${mode}-${writer}`);
   dirs.push(dir);
   const [changed, test] = CHANGED[mode];
   const root = committed(dir, { ...FILES, [changed]: test });
-  if (mode === "A") writeFiles(root, { "data/value.txt": "GOOD" });
+  if (mode === "A" || mode === "D") writeFiles(root, { "data/value.txt": "GOOD" });
   const wrapper = join(dir, "wrapper.mjs");
   writeFileSync(wrapper, WRAPPER);
   const out = join(dir, "parts");
@@ -100,6 +106,7 @@ describe("ci export takes no evidence from a command's endpoints (review of 0.1.
     ["A", "sh", "a hash taken after the run"],
     ["B", "sh", "a clean checkout before and after the run"],
     ["C", "sh", "absence before and after the run"],
+    ["D", "sh", "the last of two contents read in one turn"],
   ] as const)("%s, written by %s: no result certified by %s", SLOW, async (mode, writer, _what) => {
     const { root, changed, recorded, exported, bundle } = await wrapped(mode, writer);
     expect(recorded.code, recorded.said).toBe(0);
