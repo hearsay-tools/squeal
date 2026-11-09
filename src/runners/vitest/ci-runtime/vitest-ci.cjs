@@ -45,22 +45,20 @@ function readSettings() {
 /** The `vitest` package whose `bin` this process runs, or `null`. */
 function vitestPackage(main) {
   if (typeof main !== "string" || !path.basename(main).startsWith("vitest")) return null;
-  let file;
-  try {
-    file = fs.realpathSync(main);
-  } catch {
-    return null;
-  }
-  for (let dir = path.dirname(file); dir !== path.dirname(dir); dir = path.dirname(dir)) {
-    let manifest;
+  const file = fs.realpathSync(main);
+  const found = nearestManifest(path.dirname(file));
+  if (found === null || found.manifest.name !== "vitest") return null;
+  const { bin } = found.manifest;
+  const own = typeof bin === "string" ? bin : bin?.vitest;
+  return typeof own === "string" && path.resolve(found.dir, own) === file ? found.dir : null;
+}
+
+/** The nearest `package.json` at or above `start` that parses, and its directory. */
+function nearestManifest(start) {
+  for (let dir = start; dir !== path.dirname(dir); dir = path.dirname(dir)) {
     try {
-      manifest = JSON.parse(fs.readFileSync(path.join(dir, "package.json"), "utf8"));
-    } catch {
-      continue;
-    }
-    if (manifest.name !== "vitest") return null;
-    const bin = typeof manifest.bin === "string" ? manifest.bin : manifest.bin?.vitest;
-    return typeof bin === "string" && path.resolve(dir, bin) === file ? dir : null;
+      return { dir, manifest: JSON.parse(fs.readFileSync(path.join(dir, "package.json"), "utf8")) };
+    } catch {}
   }
   return null;
 }
