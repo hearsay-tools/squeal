@@ -188,7 +188,7 @@ The import does not need the exported key to equal the local one. For each expor
 
 ### D12. node:test keyed without a path
 
-node:test's environment drops `execPath` and keys the project's Node by `process.version`, `process.versions`, a hash of `process.config`, and its `platform` and `arch` (`key-rules.md` 1). This also covers two builds of one version, which the path covered only by accident. Cost: a raise of the node:test adapter version only, so node:test results re-run once per store (cezar: 126 files, about 10 min summed); Vitest and pytest keys do not move.
+node:test's environment drops `execPath` and keys the project's Node by `process.version`, `process.versions`, a hash of `process.config`, and its `platform` and `arch` (`key-rules.md` 1). This also covers two builds of one version, which the path covered only by accident. The build is keyed as one hash, `nodeBuild`, in place of `execPath`. Cost: every node:test key moves once, so node:test results re-run once per store (cezar: 126 files, about 10 min summed); no adapter version raise is needed (2026-11-09, row 018-19); Vitest and pytest keys do not move.
 
 ### D13. The ref and its writer
 
