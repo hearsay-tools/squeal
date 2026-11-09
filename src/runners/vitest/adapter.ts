@@ -154,6 +154,8 @@ export class VitestAdapter implements RunnerAdapter {
   #excludedFile: (path: RelativePath) => boolean = () => false;
   /** Spec 015 D8: coverage in the runs Squeal makes anyway; absent, never. */
   readonly #coverage: VitestCoverage | undefined;
+  /** Spec 020 D3.5: `false`, Vitest writes no results cache; absent, the config's own. */
+  readonly #cache: false | undefined;
   /** Whether the current instance started with coverage on, as policy had it then. */
   #coverageOn = false;
   /** The current instance's coverage; `null` with coverage off. */
@@ -177,7 +179,8 @@ export class VitestAdapter implements RunnerAdapter {
    * `vitest.excludeProjects`, read at each start (task 001-349);
    * `excludeFiles` is policy `vitest.exclude`, read at each start too (spec
    * 004 D7, task 004-81). `coverage` collects coverage in each run while it
-   * is enabled (spec 015 D8, row 015-11).
+   * is enabled (spec 015 D8, row 015-11). `cache` false writes no results
+   * cache into the project (spec 020 D3.5, row 020-03).
    */
   constructor(
     readonly paths: WorktreePaths,
@@ -190,8 +193,10 @@ export class VitestAdapter implements RunnerAdapter {
     exclude: () => readonly string[] = () => [],
     excludeFiles: () => readonly string[] = () => [],
     coverage?: VitestCoverage,
+    cache?: false,
   ) {
     this.#coverage = coverage;
+    this.#cache = cache;
     this.#exclude = exclude;
     this.#excludeFiles = excludeFiles;
     this.#node = vitest;
@@ -235,6 +240,7 @@ export class VitestAdapter implements RunnerAdapter {
       // reports and print to the daemon's output. A CLI option wins over the config.
       // Row 015-11: with the policy on, Squeal's own provider instead (spec 015 D8).
       coverage: coverage === null ? { enabled: false } : coverage.options(),
+      ...(this.#cache === false ? { cache: false as const } : {}),
       ...(Object.keys(env).length === 0 ? {} : { env }),
       ...(project === undefined ? {} : { project }),
     });

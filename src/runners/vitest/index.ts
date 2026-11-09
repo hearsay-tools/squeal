@@ -59,6 +59,12 @@ export interface VitestAdapterOptions {
    * read at each start; a change recreates the instance. Absent: never.
    */
   readonly coverage?: VitestCoverage;
+  /**
+   * Spec 020 D3.5 (row 020-03): `false`, Vitest writes no results cache
+   * (`node_modules/.vite/vitest/<hash>/results.json`), so a one-shot run
+   * writes nothing into the project. Absent: Vitest's own, as the daemon runs.
+   */
+  readonly cache?: false;
 }
 
 /**
@@ -79,6 +85,7 @@ export async function createVitestAdapter(options: VitestAdapterOptions): Promis
     options.excludeProjects,
     options.exclude,
     options.coverage,
+    options.cache,
   );
   await adapter.open();
   return adapter;
@@ -103,6 +110,7 @@ class SizedVitestAdapter extends VitestAdapter {
     exclude?: () => readonly string[],
     excludeFiles?: () => readonly string[],
     coverage?: VitestCoverage,
+    cache?: false,
   ) {
     super(
       paths,
@@ -115,6 +123,7 @@ class SizedVitestAdapter extends VitestAdapter {
       exclude,
       excludeFiles,
       coverage,
+      cache,
     );
     this.#widths = widths;
   }
