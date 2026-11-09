@@ -39,6 +39,7 @@ Started: 2026-10-31
 - 2026-11-09, re-review of `cand/0.1.419` (`48f46f3fc`, `reviews/wave-3.6-r2.md`): FAIL, second round on 018-12. B1, B3, the original B2, an empty fast request and a retry at start now pass. New proven blocker B2-R1: `Ledger.applyResults` calls the new `ends` hook even when the checkpoint rejects an older run's result, so a forced `run --all` that overlaps a running baseline file is credited by the baseline's end and its own end adds nothing. By process step 6 this goes to the human; no third repair without the human's word.
 - 2026-11-09, the human: "A: one owner, repair". Repair R2 of 018-12: a request's file end is counted exactly where that request's own record accepts the completion (the decision that computes its verdict), no second tracker. Not chosen: releasing with the gap, or holding the fix for a cezar workflow loop.
 - 2026-11-09, repair R2 of 018-12 (worker 9a4bfe4d): `Ledger.#ended` is the one place that decides a request's file end; it counts only when the open checkpoint accepts the result (`Checkpoints.done` now returns whether it did) and no retry is pending for the file. Release 0.1.419 also carries row 011-310 (issue #166, approved by the human 2026-11-09).
+- 2026-11-09, re-review of `cand/0.1.419` at `21adaff51` (`reviews/wave-3.6-r3.md`): PASS for 018-12 R2 and row 011-310, with nonblocking note N1 (a lapsed retry's ask counts one later end at a new key, delaying an idle exit by at most one period). Candidate CI 42593079334 green. 0.1.419 landed on main.
 
 ## Open questions
 
