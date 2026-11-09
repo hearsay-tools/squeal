@@ -70,6 +70,12 @@ function environmentFiles(
   return [...files].sort(compare);
 }
 
+/** What `canonicalConfig` reads of a project: a `TestProject`, or one `squeal ci record` kept. */
+export interface ConfiguredProject {
+  readonly serializedConfig: TestProject["serializedConfig"];
+  readonly config: Pick<TestProject["config"], "globalSetup">;
+}
+
 /**
  * Canonical JSON of the config tests receive (`serializedConfig`), plus
  * `globalSetup`, which runs in the main process and is not serialized.
@@ -89,7 +95,7 @@ function environmentFiles(
  * result is (row 015-11).
  */
 export function canonicalConfig(
-  project: TestProject,
+  project: ConfiguredProject,
   paths: WorktreePaths,
   injected: Readonly<Record<string, string>> = {},
   coverage?: AbsolutePath,

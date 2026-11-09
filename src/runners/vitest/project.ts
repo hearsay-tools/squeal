@@ -86,7 +86,9 @@ export async function recreateTriggers(vitest: Vitest): Promise<Set<AbsolutePath
 }
 
 /** Resolved `globalSetup` entries; Vitest types them as a string or a list. */
-export function globalSetupFiles(project: TestProject): AbsolutePath[] {
+export function globalSetupFiles(project: {
+  readonly config: Pick<TestProject["config"], "globalSetup">;
+}): AbsolutePath[] {
   const entries = project.config.globalSetup;
   return typeof entries === "string" ? [entries] : [...entries];
 }
