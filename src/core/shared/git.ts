@@ -61,9 +61,13 @@ export function gitCall(
       clearTimeout(timer);
       resolve(answer);
     };
+    // A child git started (ssh, a transport helper) can hold the pipes: release them and answer.
     const timer = setTimeout(() => {
       timedOut = true;
       child.kill("SIGKILL");
+      child.stdout.destroy();
+      child.stderr.destroy();
+      settle({ code: null, stdout: Buffer.concat(stdout), stderr: "", timedOut });
     }, call.timeoutMs);
     child.stdout.on("data", (chunk: Buffer) => stdout.push(chunk));
     child.stderr.on("data", (chunk: Buffer) => stderr.push(chunk));
@@ -90,7 +94,9 @@ export function textOf(answer: GitAnswer): string | null {
 
 /** What a failed call says, in one line: git's first error line, or the timeout. */
 export function failureOf(answer: GitAnswer, timeoutMs: number): string {
-  if (answer.timedOut) return `stopped after ${Math.round(timeoutMs / 1000)} s`;
+  if (answer.timedOut) {
+    return `stopped after ${timeoutMs < 1000 ? `${timeoutMs} ms` : `${Math.round(timeoutMs / 1000)} s`}`;
+  }
   const line = answer.stderr.split("\n").find((l) => l.trim() !== "") ?? "";
   return line === "" ? `git exited ${answer.code}` : line.replace(/^fatal: /, "");
 }

@@ -67,6 +67,13 @@ export function cloneWith(
   return { root, commits: made };
 }
 
+/** A developer's clone of `scratch.remote`: `origin/HEAD` set, nothing else configured. */
+export function cloneOf(scratch: Scratch, name: string): AbsolutePath {
+  const root = join(scratch.dir, name);
+  execFileSync("git", ["clone", "-q", scratch.remote, root]);
+  return root;
+}
+
 /** An export of `commit` with no test file, as `squeal ci export` writes one. */
 export function exportOf(commit: string, overrides: Partial<ResultsBundle> = {}): Buffer {
   const bundle: ResultsBundle = {
