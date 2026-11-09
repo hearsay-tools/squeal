@@ -1,10 +1,10 @@
-# 020 One quality gate: a one-shot check of changed functions
+# 020 One quality gate: `squeal code --base`, a one-shot check of changed functions
 
-Stage: draft, for the human's review (2026-11-09). Issue [#167](https://github.com/hearsay-tools/squeal/issues/167). Research: `../015-coverage-complexity/research/quality-gate.md` (row 015-126) and `research/issue-167.md`.
+Stage: approved by the human 2026-11-09 (first slice; name `squeal code --base <ref>`; unmeasurable code through `coverage.exclude`). Issue [#167](https://github.com/hearsay-tools/squeal/issues/167). Research: `../015-coverage-complexity/research/quality-gate.md` (row 015-126) and `research/issue-167.md`.
 
 ## Problem
 
-Cezar has its own pre-PR quality check. It has its own complexity counter, coverage matcher and CRAP score, separate from Squeal's. It refuses several kinds of change that it cannot measure. In 13 runs, agents lost about 9.8 hours to it (hearsay-tools/cezarion#3096). Squeal already counts complexity and measures coverage per function (spec 015). But it has no command that gives a pass/fail verdict. `squeal code` reads only what the daemon stored, judges against the agent session and needs a daemon.
+Cezar has its own pre-PR quality check. It has its own complexity counter, coverage matcher and CRAP score, separate from Squeal's. It refuses several kinds of change that it cannot measure. In 13 runs, agents lost about 9.8 hours to it (hearsay-tools/cezarion#3096). Squeal already counts complexity and measures coverage per function (spec 015). But it has no command that gives a pass/fail verdict. `squeal code` reads only what the daemon stored, and it judges against the agent session. It also needs a daemon.
 
 The human accepted these product rules in #167:
 
@@ -20,7 +20,7 @@ The human also accepted that one engine and one evaluator serve the daemon, a lo
 
 First slice (this spec's rows 020-01 to 020-05):
 
-1. `squeal quality --base <ref>` runs with no daemon, no agent session and no store. It measures every JS/TS function that changed between the merge base of `<ref>` and `HEAD` and the working tree, and exits with one verdict: pass, violations or incomplete (D1, D6).
+1. `squeal code --base <ref>` runs with no daemon, no agent session and no store. It measures every JS/TS function that changed between the merge base of `<ref>` and `HEAD` and the working tree, and exits with one verdict: pass, violations or incomplete (D1, D6).
 2. A moved function with the same body is not a change. A test callback whose position number moved because a same-named function was added before it is not a change (D2).
 3. Changed functions in test files are measured, and so are nested functions (D2).
 4. The command selects test files from the import graph and from `--test <file>...`. It runs them under Vitest and node:test with Squeal's coverage provider, inside one total budget, 600 s by default. It keeps every completed file's record when the budget ends and names the files that did not finish (D3).
@@ -33,7 +33,7 @@ First slice (this spec's rows 020-01 to 020-05):
 
 These are later slices of this spec. Each one needs the human's approval before its rows start (the research's slice table):
 
-- The daemon calling the evaluator, and the gate reusing the daemon's current records (slice 2, 3 rows). Until then the daemon keeps 015's rules: test files are not counted, and a file with no loader reads from 0%. Spec 015 D1 and D9 are unchanged outside this command.
+- The daemon calling the evaluator, and the gate reusing the daemon's current records (slice 2, 3 rows). Until then the daemon keeps 015's rules: test files are not counted, and a file with no loader reads from 0%. Spec 015 D1 and D9 are unchanged outside `--base`.
 - CI evidence: `ci record` adding Squeal's provider and the gate reading its parts (slice 3, 4 rows). This reverses 018's non-goal "Squeal's coverage provider in CI" and D8.
 - Exceptions: inherited debt and owner-approved growth (slice 4, 2 rows).
 - Coverage from child processes (slice 5, 2 rows; reverses 015's non-goal). Browser-mode coverage (not researched).
@@ -46,13 +46,17 @@ These are later slices of this spec. Each one needs the human's approval before 
 ### D1. The command
 
 ```
-squeal quality --base <ref> [--test <file>...] [--timeout <seconds>] [--json]
+squeal code --base <ref> [<path>...] [--test <file>...] [--timeout <seconds>] [--json]
 ```
 
-- `<ref>` is the PR target, for example `origin/main`. The base is `git merge-base <ref> HEAD`. The head is the working tree; the report records `HEAD` and whether the tree was dirty (as 018's export does).
+The human chose this name on 2026-11-09, over a separate `squeal quality`. `squeal code` already lists functions with their complexity, coverage and CRAP, so the gate is the same list with another scope and a verdict.
+
+- `<ref>` is the PR target, for example `origin/main`. The base is `git merge-base <ref> HEAD`. The head is the working tree. The report records `HEAD` and whether the tree was dirty, as 018's export does. Paths narrow the changed functions to those files or directories.
+- `--base` cannot be combined with `--changed` or `--told`, because they choose functions in other ways. Using them together is a usage error.
+- Without `--base`, `squeal code` is unchanged: it reads the stores and runs nothing. With `--base`, it can run tests for up to the budget (D3). The help text says so on the first line of its entry.
 - It needs neither `complexity.enabled` nor `coverage.enabled`, because it is an explicit command. It reads the runner settings from `squeal.config.json` in the usual way.
 - It starts no daemon. If a daemon runs, the command neither talks to it nor uses its store (that is slice 2).
-- Exit codes: `0` pass, `1` violations, `3` incomplete, `2` usage or setup error. A CI step can therefore tell "fix the code" apart from "evidence is missing".
+- Exit codes, as `squeal run <group> --wait` uses them: `0` pass, `1` violations, `3` incomplete, `2` usage or setup error. A CI step can therefore tell "fix the code" apart from "evidence is missing".
 - Without `--json` it prints the verdict line, then the functions that are not pass, one per line with their gap or measure, then the command for the JSON report.
 
 ### D2. Changed functions
@@ -85,7 +89,7 @@ The repair matches nested functions that share an end by nesting depth and start
 
 ### D5. The evaluator
 
-`evaluate(functions, evidence, policy) → report` is a pure function in `src/core/quality/`. It has no I/O.
+`evaluate(functions, evidence, policy) → report` is a pure function in `src/core/code/gate/`. It has no I/O.
 
 A changed function's evidence is **complete** when all of these are true:
 
@@ -97,23 +101,30 @@ A changed function's evidence is **complete** when all of these are true:
 
 Then:
 
+- **skipped**: the function's file matches `coverage.exclude` (D6) and its CC ≤ max. It needs no coverage evidence, gets no CRAP, and is named in the report. It is never counted as pass, and it does not block the verdict.
 - **pass**: complete, CC ≤ max, CRAP ≤ max. A pass may also be proven from a subset of the loading files, by 015 D9's bound: the CRAP from the records in hand is an upper bound. It is still not a pass while a selected test failed.
 - **violation**: complete, and CC > max or CRAP > max. CC alone needs only the count. A function over the CC limit is a violation whatever its coverage.
 - **incomplete**: every other case. Each one names its gap: `not-counted`, `no-loader`, `not-finished`, `no-record`, `not-joined`, `test-failed`.
 
-The verdict is `violations` when any function is a violation. Otherwise it is `incomplete` when any function is incomplete, and `pass` when all pass. Equality passes. Measured rows are kept in every case.
+The verdict is `violations` when any function is a violation. Otherwise it is `incomplete` when any function is incomplete, and `pass` when every function is pass or skipped. Equality passes. Measured rows are kept in every case.
 
 ### D6. Policy
 
-The limits are `quality.maxComplexity` (default 20) and `quality.maxCrap` (default 30) in `squeal.config.json`. They are read **at the base commit**, so a branch cannot loosen its own gate. The 95% CRAP cutoff and 015's own-line coverage are fixed. `QUALITY_POLICY_VERSION = 1` names these rules, and any change of their meaning raises it.
+The gate uses 015's keys in `squeal.config.json`, so the daemon and the gate share one policy:
+
+- `complexity.threshold` (default 20) and `crap.threshold` (default 30). Equality passes.
+- `complexity.include`, `complexity.exclude` and `complexity.maxFileBytes`. The gate counts test files (D2), unlike the daemon.
+- `coverage.exclude`, the project's skip list (the human, 2026-11-09). It names files that Squeal cannot measure yet, such as scripts that tests only start as a separate process, or browser specs. A matched file keeps its CC check and gets no coverage or CRAP: its functions read `skipped` (D5). This is the key's 015 meaning. A project that sets `test/**` there, as this repository does, exempts its test callbacks from CRAP in the gate too.
+
+All of these are read **at the base commit**, so a branch cannot loosen its own gate. The `enabled` keys are not read (D1). The 95% CRAP cutoff and 015's own-line coverage are fixed. `QUALITY_POLICY_VERSION = 1` names these rules, and any change of their meaning raises it.
 
 ### D7. The report
 
-`--json` writes one object, `format: "squeal-quality/1"`:
+`--json` with `--base` writes one object, `format: "squeal-code-gate/1"`. The JSON of `squeal code` without `--base` is unchanged.
 
 - `versions`: the Squeal version, `COUNTER_VERSION`, `COVERAGE_PROVIDER_VERSION`, `COVERAGE_RECORD_VERSION`, `QUALITY_POLICY_VERSION`.
-- `base`: the ref, the merge-base commit and the policy values read there. `head`: the commit, whether the tree was dirty, and each changed path with its blob hash.
-- `functions`: per changed function, the identity, the body hash, the change kind (`edited`/`added`), CC, own-line coverage, CRAP, the state, the gap, and the loading test files expected and measured.
+- `base`: the ref, the merge-base commit and the policy values read there, `coverage.exclude` included. `head`: the commit, whether the tree was dirty, and each changed path with its blob hash.
+- `functions`: per changed function, the identity, the body hash, the change kind (`edited`/`added`), CC, own-line coverage, CRAP, the state (`pass`, `violation`, `incomplete`, `skipped`), the gap, and the loading test files expected and measured.
 - `runs`: per runner, the test files selected, completed and not finished, and the failed tests.
 - `verdict` and the counts of each state.
 
@@ -121,15 +132,15 @@ The report contains no times other than `createdAt` and run durations, so the go
 
 ## Testing
 
-- Evaluator golden tests (020-01): limits and equality for CC and CRAP, CC over limit with no coverage, pass from a subset, violation that needs every loader, every gap, a failed test, verdict precedence. The same input twice gives the same report.
+- Evaluator golden tests (020-01): limits and equality for CC and CRAP, CC over limit with no coverage, a skipped function under and over the CC limit, pass from a subset, violation that needs every loader, every gap, a failed test, verdict precedence. The same input twice gives the same report.
 - Inventory (020-02): fixture repositories under `test/` with edited, added, moved, shifted, moved-and-edited and removed functions, test callbacks, and a file over `maxFileBytes`.
 - Collection (020-03): fixture projects for `vi.mock` factories, node:test `.ts`, mixed Vitest and node:test, a file no test loads, and a short-budget fixture where one file finishes and one does not (a deterministic sleep, not host load).
 - Join (020-04): the three arrow shapes from the research's `cases.mts`, plus regressions that every function joined today still joins to the same range.
-- CLI (020-05): an end-to-end run in a temporary git repository for each exit code, with no daemon, `HOME` and `TMPDIR` set to a temporary directory.
+- CLI (020-05): an end-to-end run in a temporary git repository for each exit code, with no daemon, `HOME` and `TMPDIR` set to a temporary directory. A branch that raises `crap.threshold` in its own config is still judged by the base value. `squeal code` without `--base` gives the same output as before.
 
 ## Open questions
 
-1. **Functions Squeal cannot measure in slice 1** (the human). Examples are code that tests reach only through a child process (cezar: 14 of 314 changed functions in its last 10 PRs, in 2 PRs), and browser-mode test specs (20 of 314). Under D5 these read `incomplete` and block the verdict until slice 5 or later. The alternative is a project-level list in `squeal.config.json`, read at the base, of paths the gate does not measure. The report would name those paths, and they would never count as pass.
+1. Decided 2026-11-09 (the human, "Project skip list"): code Squeal cannot measure yet goes in `coverage.exclude` and reads `skipped` (D5, D6).
 2. **Slice 2 timing** (the coordinator, after slice 1's dogfood): whether the daemon's `squeal code` moves to the evaluator at once or keeps 015's session view beside it.
 
 ## References

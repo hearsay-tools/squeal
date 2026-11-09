@@ -2116,17 +2116,17 @@ Spec `specifications/019-run-triggers/` (stage: shipped in 0.1.402, 2026-11-04; 
 
 ## Feature 020: one quality gate
 
-Spec `specifications/020-quality-gate/spec.md` (draft, 2026-11-09; issue #167; research `specifications/015-coverage-complexity/research/quality-gate.md`). No row is authorized until the human approves the spec.
+Spec `specifications/020-quality-gate/spec.md` (approved by the human 2026-11-09: name `squeal code --base <ref>`, first slice, unmeasurable code through `coverage.exclude`; issue #167; research `specifications/015-coverage-complexity/research/quality-gate.md`). Coordinator 31e1d860.
 
-### Wave 1: the first slice (planned; needs the human's approval of the spec)
+### Wave 1: the first slice (brief `specifications/020-quality-gate/tasks/wave-1.md`; 020-01 to 020-04 in parallel, 020-05 after 020-01 to 020-03; contract `src/core/code/gate/types.ts`)
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 020-01 the evaluator and the versioned report | planned (needs approval) | D5, D6, D7: pure `evaluate()` in `src/core/quality/`, completeness rules, verdict, `squeal-quality/1`, `QUALITY_POLICY_VERSION`. | Golden tests for limits, equality, every gap, subset pass, failed test and verdict precedence; the same input gives the same report. |
-| 020-02 changed functions against a base | planned (needs approval) | D2: merge base, base and head counts with 015's counter, test files included; moves and shifts by body hash. | Fixture repositories cover edited, added, moved, shifted, moved-and-edited, removed and uncounted functions. |
-| 020-03 the one-shot collector | planned (needs approval) | D3: selection by `affected()`, changed tests and `--test`; Vitest and node:test runs with Squeal's provider; loaders from `closure()`; one total budget; records kept at the deadline. | Fixture projects for `vi.mock`, node:test `.ts`, mixed runners, no loader, and a deterministic short budget. |
-| 020-04 join the three missing arrow shapes | planned (needs approval) | D4, in `src/core/code/crap/join.ts`; the daemon uses it too. | The three shapes join; every function joined today joins to the same range. |
-| 020-05 `squeal quality`: CLI, exit codes, docs | planned (after 020-01 to 020-03) | D1: command, text and JSON output, exit codes 0/1/2/3, docs. | End-to-end runs in a temporary repository for each exit code, with no daemon. |
+| 020-01 the evaluator and the versioned report | planned (approved 2026-11-09) | D5, D6, D7: pure `evaluate()` in `src/core/code/gate/`, completeness rules, `skipped` from `coverage.exclude`, verdict, `squeal-code-gate/1`, `QUALITY_POLICY_VERSION`. | Golden tests for limits, equality, every gap, subset pass, failed test and verdict precedence; the same input gives the same report. |
+| 020-02 changed functions against a base | planned (approved 2026-11-09) | D2: merge base, base and head counts with 015's counter, test files included; moves and shifts by body hash. | Fixture repositories cover edited, added, moved, shifted, moved-and-edited, removed and uncounted functions. |
+| 020-03 the one-shot collector | planned (approved 2026-11-09) | D3: selection by `affected()`, changed tests and `--test`; Vitest and node:test runs with Squeal's provider; loaders from `closure()`; one total budget; records kept at the deadline. | Fixture projects for `vi.mock`, node:test `.ts`, mixed runners, no loader, and a deterministic short budget. |
+| 020-04 join the three missing arrow shapes | planned (approved 2026-11-09) | D4, in `src/core/code/crap/join.ts`; the daemon uses it too. | The three shapes join; every function joined today joins to the same range. |
+| 020-05 `squeal code --base`: CLI, exit codes, docs | planned (approved 2026-11-09; after 020-01 to 020-03) | D1: `--base` on `squeal code`, text and JSON output, exit codes 0/1/2/3, docs; without `--base` unchanged. | End-to-end runs in a temporary repository for each exit code, with no daemon. |
 
 ## Later
 
