@@ -191,7 +191,7 @@ function differences(
       { hash, descriptor: readEnvironment(store, hash) },
       local.get(project) ?? null,
     );
-    if (comparison.kind !== "differs") return [];
+    if (comparison.kind === "equal" || comparison.kind === "unknown") return [];
     const named =
       comparison.differences.length === 0 ? ["parts not recorded"] : comparison.differences;
     return exported.size === 1 ? named : named.map((d) => `${project || "(default)"}: ${d}`);
