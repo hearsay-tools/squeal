@@ -1,0 +1,531 @@
+530
+41320384908 2026-11-01T15:16:35Z 793d4e89d feat/html-report-reader feat(web): open HTML reports in a sandboxed reader
+41318286579 2026-11-01T14:51:52Z dee9d7c93 feat/html-report-reader feat(web): open HTML reports in a sandboxed reader
+41316723508 2026-11-01T14:32:45Z af54eda0b feat/html-report-reader feat(web): open HTML reports in a sandboxed reader
+41316351048 2026-11-01T14:28:17Z f9ea227a4 cez/8e233bfe-pr-queue-reuse perf(ci): reuse attested PR tests in single-entry queues
+41315317689 2026-11-01T14:15:52Z 1e636aebc cez/8e233bfe-pr-queue-reuse perf(ci): reuse attested PR tests in single-entry queues
+41315155616 2026-11-01T14:13:57Z c523f1630 feat/html-report-reader feat(web): open HTML reports in a sandboxed reader
+41314435187 2026-11-01T14:05:36Z 5957571fb cez/8e233bfe-pr-queue-reuse perf(ci): reuse attested PR tests in single-entry queues
+41313487598 2026-11-01T13:54:09Z 3e47f512d feat/html-report-reader feat(web): open HTML reports in a sandboxed reader
+41310042112 2026-11-01T13:11:18Z e0c550b98 cez/592bbf56 docs(skills): generalize campaign orchestration
+41307544885 2026-11-01T12:39:38Z f5c183ffa cez/592bbf56 docs(skills): generalize campaign orchestration
+41306482245 2026-11-01T12:26:13Z 202327ea9 cez/592bbf56 docs(skills): generalize campaign orchestration
+41306403951 2026-11-01T12:25:14Z 85542b422 feat/html-report-reader feat(web): open HTML reports in a sandboxed reader
+41302129566 2026-11-01T11:29:54Z 4a46f27b7 feat/html-report-reader feat(web): open HTML reports in a sandboxed reader
+41301107429 2026-11-01T11:15:53Z 9e966bee7 feat/html-report-reader feat(web): open HTML reports in a sandboxed reader
+41299853363 2026-11-01T10:59:23Z 12209b46e cez/592bbf56 docs(skills): generalize campaign orchestration
+41299004314 2026-11-01T10:47:19Z f91a54f6e feat/html-report-reader feat(web): open HTML reports in a sandboxed reader
+41298672610 2026-11-01T10:42:39Z 8fd1b2b86 cez/592bbf56 docs(skills): generalize campaign orchestration
+41296594441 2026-11-01T10:14:20Z 04b9da1e2 cez/592bbf56 docs(skills): generalize campaign orchestration
+41296190545 2026-11-01T10:09:03Z 2bc34f8fe refactor/drop-cursor-acp-transport refactor(cursor)!: drop the ACP session transport
+41295574682 2026-11-01T10:00:56Z 97eb0905f refactor/drop-cursor-acp-transport refactor(cursor)!: drop the ACP session transport
+41291126758 2026-11-01T09:59:30Z cc4ec1c81 test/kill-contract-schema-mutants test(contract): kill surviving schema mutants in delegation 
+41289734800 2026-11-01T09:38:48Z 904415ce0 test/kill-contract-schema-mutants test(contract): kill surviving schema mutants in delegation 
+41288176002 2026-11-01T09:16:38Z 2e59ffa8a test/kill-contract-schema-mutants test(contract): kill surviving schema mutants in delegation 
+41284683000 2026-11-01T07:24:52Z 77f147cbe feat/preview-ultra-pixel-density feat(preview): add an Ultra mode at the viewer's pixel densi
+41283167134 2026-11-01T07:02:23Z 52025ded1 feat/preview-ultra-pixel-density feat(preview): add an Ultra mode at the viewer's pixel densi
+41251745335 2026-10-31T23:15:21Z 2c3d6d099 feat/preview-ultra-pixel-density feat(preview): add an Ultra mode at the viewer's pixel densi
+41246353788 2026-10-31T22:02:37Z 5f4864e3d feat/preview-ultra-pixel-density feat(preview): add an Ultra mode at the viewer's pixel densi
+41238629369 2026-10-31T20:22:47Z 48dfce477 cez/6d088e5f feat(ci): measure and count static mutants in whole-file run
+41201327295 2026-10-31T12:29:24Z ad7373b54 cez/3c36db2f test(preview): kill surviving mutants in session and browser
+41199614793 2026-10-31T12:06:15Z 62749dc2c cez/2d7b5442 feat(ci): let an equivalent entry name its mutant site
+41198212954 2026-10-31T11:46:03Z 00f3f5454 cez/9dcd14ff test(preview): kill surviving mutants in preview host
+41197622354 2026-10-31T11:37:25Z 02518e342 cez/92517d36 test(task-cli): kill surviving mutants in the task commands
+41196704504 2026-10-31T11:24:07Z 34140e7e0 perf/decode-cold-run-once-per-reconcile perf(runs): decode each cold run once per family reconcile p
+41195944056 2026-10-31T11:13:11Z 34ac43ded perf/decode-cold-run-once-per-reconcile perf(runs): decode each cold run once per family reconcile p
+41195080932 2026-10-31T11:01:02Z 216b98a05 cez/9dcd14ff test(preview): kill surviving mutants in preview host
+41194201986 2026-10-31T10:47:53Z 211ab22bf fix/continuation-patched-agent-inputs fix(cezar): append continuation delivery to the staged agent
+41194123599 2026-10-31T10:46:42Z 106bdafab fix/explicit-project-send-cache fix(web): refresh the run project after explicit-project sen
+41193534672 2026-10-31T10:37:47Z dde3377df fix/continuation-patched-agent-inputs fix(cezar): append continuation delivery to the staged agent
+41193201196 2026-10-31T10:32:58Z 238a7fd34 fix/explicit-project-send-cache fix(web): refresh the run project after explicit-project sen
+41192429701 2026-10-31T10:21:36Z 57e682d5c fix/continuation-patched-agent-inputs fix(cezar): append continuation delivery to the staged agent
+41192318760 2026-10-31T10:20:04Z caa5fd301 fix/completion-action-clear-on-every-wri fix(runs): clear retired completion actions on debounced wri
+41192303917 2026-10-31T10:19:51Z 1131d1924 fix/isolate-mutation-runs fix(ci): isolate mutation runs from the live cockpit and rep
+41192205385 2026-10-31T10:18:24Z 67d8fef90 fix/explicit-project-send-cache fix(web): refresh the run project after explicit-project sen
+41191835029 2026-10-31T10:12:57Z f4d62871e fix/completion-action-clear-on-every-wri fix(runs): clear retired completion actions on debounced wri
+41191798830 2026-10-31T10:12:23Z 9a7863c7a fix/redaction-opt-out-session-secrets fix(runs): scrub session secrets from patches under the reda
+41191225692 2026-10-31T10:04:08Z ed174eede fix/durable-task-edit-refs fix(runs): resolve edited-task references on the durable wri
+41191007957 2026-10-31T10:01:07Z 92264cc45 refactor/one-stale-resume-rule refactor(runs): apply one stale-resume rule on every write p
+41190885298 2026-10-31T09:59:25Z 7e1fa439c fix/isolate-mutation-runs fix(ci): isolate mutation runs from the live cockpit and rep
+41189462655 2026-10-31T09:37:37Z f2e44b4df fix/isolate-mutation-runs fix(ci): isolate mutation runs from the live cockpit and rep
+41189124253 2026-10-31T09:32:42Z 91f530221 fix/single-project-context-discovery fix(server): keep every startServer registry reader inside s
+41188672660 2026-10-31T09:25:59Z b3a17f884 fix/unify-project-context-failures fix(server): answer project context failures the same on HTT
+41187997142 2026-10-31T09:16:08Z c60fcf4ef fix/retention-cold-decoded-check fix(runs): re-check the decoded record when retention archiv
+41187840448 2026-10-31T09:13:55Z 10ca0bc1d fix/isolate-mutation-runs fix(ci): isolate mutation runs from the live cockpit and rep
+41187297620 2026-10-31T09:06:19Z 344c1f8a6 fix/isolate-mutation-runs fix(ci): isolate mutation runs from the live cockpit and rep
+41177580250 2026-10-31T06:40:37Z 682499c8a cez/5c110590 test(cockpit): kill surviving mutants in update and boot con
+41174725626 2026-10-31T05:59:20Z e3c78a19a cez/34840953 test(task-thread): kill surviving mutants in thread cards
+41174594961 2026-10-31T05:57:12Z ce0cb24b8 cez/999c5fa6 fix(ci): report module-level mutants honestly in whole-file 
+41174560573 2026-10-31T05:56:37Z 3a68f2890 cez/2ba2684b test(task-cli): kill surviving mutants in the flag table and
+41173925952 2026-10-31T05:46:36Z 6f91d9a9f cez/999c5fa6 fix(ci): report module-level mutants honestly in whole-file 
+41171991535 2026-10-31T05:17:26Z 24f3e0f70 cez/9f5d60a0 test(contract): kill surviving wait and delegation mutants
+41169977507 2026-10-31T04:47:24Z 030c5019b cez/be710082 refactor(cezar): finish branch reads through ForgeDriver
+41169615170 2026-10-31T04:41:50Z 1a1f2bd86 cez/987e94f7 test(preview): kill surviving mutants in task views
+41168731893 2026-10-31T04:28:52Z 6c38ab0ab cez/be710082 refactor(cezar): finish branch reads through ForgeDriver
+41168009287 2026-10-31T04:18:14Z 4ae8b1d9c cez/f108cd50 test(git): kill surviving mutants in branch list and task ch
+41165441966 2026-10-31T03:41:19Z 4571a1d17 cez/f224c0cf test(branches): kill surviving mutants in branch classificat
+41164078931 2026-10-31T03:22:13Z 3c13302a1 cez/f224c0cf test(branches): kill surviving mutants in branch classificat
+41161911850 2026-10-31T02:52:32Z 40d351d6c cez/f1d21e9a test(web): kill surviving mutants in preview state and conve
+41157357236 2026-10-31T01:52:04Z 6509f10c9 cez/630e4aa3 test(preview): kill surviving mutants in pane transport
+41152891386 2026-10-31T00:57:08Z aafb66714 cez/d7550735 refactor(cezar): route GitHub operations through forge drive
+41151461910 2026-10-31T00:40:45Z a4456a073 cez/7c93d286 test(branches): kill surviving mutants in deletion guards
+41151072871 2026-10-31T00:36:18Z f71dfa7b7 cez/2eab1b28 refactor(cezar): share worktree checks and reverse history r
+41150314037 2026-10-31T00:28:02Z 9d12caf87 cez/d95d2fae test(automations): kill surviving mutants in GitHub poller
+41149572203 2026-10-31T00:19:50Z a92f57875 cez/7090acc7 refactor(cezar): share checkout progress line splitter
+41149400244 2026-10-31T00:17:57Z ce3c3974e cez/fdc25581 refactor(cezar): share cockpit resolution across CLIs
+41149339242 2026-10-31T00:17:16Z 0b196453c cez/5d15ccc0 refactor(web): share checkout progress between project dialo
+41147547231 2026-10-30T23:58:22Z b03d7ef16 cez/4614abb3 refactor(cezar): stage record write rules on both paths
+41147223114 2026-10-30T23:54:47Z 3398a1571 cez/2eee2212 refactor(cezar): share CI tool authentication and revocation
+41147204367 2026-10-30T23:54:34Z 852ea65f9 cez/b0967cc6 refactor(contract): share per-runner optional string schema
+41147156545 2026-10-30T23:54:04Z b9bd9ddca cez/1eb1f8a4 refactor(web): share the commit diff panel
+41145899772 2026-10-30T23:40:56Z eed215929 cez/6b645597 refactor(web): centralize run addresses and cache writes
+41145841455 2026-10-30T23:40:19Z 871c5a2c6 cez/4614abb3 refactor(cezar): stage record write rules on both paths
+41142851809 2026-10-30T23:10:35Z 1f03d4e6d cez/347f23e9 refactor(cezar): centralize workspace project resolution
+41142431148 2026-10-30T23:06:40Z 116e2138a cez/86b72783 refactor(cezar): colocate run predicates and SQL prefilters
+41142398634 2026-10-30T23:06:20Z e832a82a4 cez/c3ffaad4 refactor(cezar): move worker destroy lifecycle into cleanup 
+41142210686 2026-10-30T23:04:36Z 9af4992aa cez/066e12c1 test(automations): kill surviving mutants in scheduler
+41129857859 2026-10-30T21:17:02Z 5dbbf0d3c cez/c2f2db53 feat(ci): measure whole-file mutants with targets and equiva
+41119300853 2026-10-30T19:56:26Z 9441c44d6 fix/review-ci-context-run-status fix(ci): accept a live caller run that reads as queued in re
+41116449533 2026-10-30T19:35:11Z fe0a4cc62 feat/allow-native-subagents feat(delegation): allow native subagents and keep task messa
+41116371807 2026-10-30T19:34:37Z 5d32fe650 cez/0bbd5c89 feat(ci): leave listed equivalent mutants out of mutation re
+41115750763 2026-10-30T19:30:07Z e6a7fd367 feat/allow-native-subagents feat(delegation): allow native subagents and keep task messa
+41115371759 2026-10-30T19:27:14Z 9c3ae62e0 cez/0bbd5c89 feat(ci): leave listed equivalent mutants out of mutation re
+41114196038 2026-10-30T19:18:42Z 90cd813ab cez/0bbd5c89 feat(ci): leave listed equivalent mutants out of mutation re
+41112807827 2026-10-30T19:08:47Z 6de434bcb cez/ed1e2930-spec-names docs(specs): qualify class methods in the mutation arc guard
+41110959450 2026-10-30T18:55:13Z 690a2bba0 cez/0bbd5c89 feat(ci): leave listed equivalent mutants out of mutation re
+41109993473 2026-10-30T18:48:11Z d8beef09a cez/ed1e2930 docs(specs): plan the mutation cleanup arc
+41105728832 2026-10-30T18:18:00Z a773c30d9 feat/desktop-remote feat(desktop): port native app, isolated remote connections 
+41102534012 2026-10-30T17:56:06Z ec396388d codex/mobile-companion feat(mobile): add personal-install iOS and Android apps
+41099642338 2026-10-30T17:32:01Z d52681d82 feat/desktop-remote feat(desktop): port native app, isolated remote connections 
+41098771820 2026-10-30T17:26:00Z 27acebae2 codex/mobile-companion feat(mobile): add personal-install iOS and Android apps
+41097982058 2026-10-30T17:20:36Z 3e534219f feat/desktop-remote feat(desktop): port native app, isolated remote connections 
+41096348606 2026-10-30T17:09:35Z 38bf47b05 codex/mobile-companion feat(mobile): add personal-install iOS and Android apps
+41095734489 2026-10-30T17:05:26Z c25394b14 feat/desktop-remote feat(desktop): port native app, isolated remote connections 
+41095497505 2026-10-30T17:03:52Z 1fc527d9c codex/mobile-companion feat(mobile): add personal-install iOS and Android apps
+41094430736 2026-10-30T16:56:46Z 7baaae6fb codex/mobile-companion feat(mobile): add personal-install iOS and Android apps
+41092151289 2026-10-30T16:41:20Z 9c76e10ca feat/desktop-remote feat(desktop): port native app, isolated remote connections 
+41092135618 2026-10-30T16:41:14Z 9c9828831 codex/mobile-companion feat(mobile): add personal-install iOS and Android apps
+41089164662 2026-10-30T16:21:39Z 405806c58 codex/mobile-companion feat(mobile): add personal-install iOS and Android apps
+41058782492 2026-10-30T12:53:27Z 9bd058790 cez/c1abe429 feat(web): show "N of M" on sidebar sections the row budget 
+41056396324 2026-10-30T12:34:44Z 7123f6d64 cez/c1abe429 feat(web): show "N of M" on sidebar sections the row budget 
+41048442613 2026-10-30T11:29:29Z 219726a2f cez/4bf97df7 refactor(cli): split serve into measurable boot steps
+41047959922 2026-10-30T11:25:17Z 6aa80ad94 cez/e07dc344 refactor(web): split not-landed row into private blocks
+41041900782 2026-10-30T10:35:49Z 60338eb47 cez/2b222437 feat(skills): add cleanup-campaign skill for behavior-neutra
+41041043683 2026-10-30T10:28:47Z 65eb62461 cez/2b222437 feat(skills): add cleanup-campaign skill for behavior-neutra
+41040261548 2026-10-30T10:22:26Z a63f62693 cez/2b222437 feat(skills): add cleanup-campaign skill for behavior-neutra
+41039062790 2026-10-30T10:12:43Z bedf6154a cez/2b222437 feat(skills): add cleanup-campaign skill for behavior-neutra
+41035991566 2026-10-30T09:47:28Z b6627fa83 feat/sweep-merged-local-branches feat(branches): sweep merged local branches after worktree r
+41034752037 2026-10-30T09:37:12Z e3490091b feat/sweep-merged-local-branches feat(branches): sweep merged local branches after worktree r
+41031720323 2026-10-30T09:12:21Z 65478faf2 fix/refresh-git-detection fix(workflows): rediscover Git for a project opened before i
+41008204128 2026-10-30T05:23:48Z 51868b116 cez/8e233bfe-vitest-four perf(ci): balance Vitest across four shards
+41001583023 2026-10-30T04:12:18Z 749c3d4c1 cez/6fd08577 refactor(workflows): move run composition into compose modul
+40999674707 2026-10-30T03:51:23Z 8fba5c4da cez/6fd08577 refactor(workflows): move run composition into compose modul
+40996690409 2026-10-30T03:19:05Z d9992cc69 cez/822f786b refactor(workflows): move remaining guard and recovery bodie
+40994943040 2026-10-30T03:00:51Z a09c45b85 cez/822f786b refactor(workflows): move remaining guard and recovery bodie
+40994694413 2026-10-30T02:58:09Z 96d9a9da5 cez/8dc015cf refactor(workflows): move facade input and launch bodies int
+40993113612 2026-10-30T02:41:04Z 108267864 cez/8dc015cf refactor(workflows): move facade input and launch bodies int
+40992668837 2026-10-30T02:36:26Z fca4f4fb9 cez/732cc229 refactor(workflows): move Stop into run-cancel
+40990448661 2026-10-30T02:13:43Z 1b41482f4 cez/6926d233 refactor(workflows): move run start into run module
+40990371028 2026-10-30T02:12:55Z 49446339b cez/732cc229 refactor(workflows): move Stop into run-cancel
+40988088303 2026-10-30T01:49:21Z 77044c96d cez/076203fa refactor(workflows): move Finish into run module
+40988026975 2026-10-30T01:48:41Z 65981d928 cez/6926d233 refactor(workflows): move run start into run module
+40985485586 2026-10-30T01:22:43Z fd09a864c cez/076203fa refactor(workflows): move Finish into run module
+40985308302 2026-10-30T01:20:58Z 9e0eba025 cez/79d95135 refactor(workflows): move launch skills and autosave test se
+40983015577 2026-10-30T00:58:35Z 25bb8447a cez/79d95135 refactor(workflows): move launch skills and autosave test se
+40982055492 2026-10-30T00:49:06Z 9f3b21124 cez/acf4c5c4 refactor(workflows): move worker and settlement test seams
+40978203029 2026-10-30T00:12:24Z 7f3ba4ef0 cez/9ee938bd refactor(workflows): move input tests off RunManager
+40973945310 2026-10-29T23:33:28Z 8671426de cez/94563ab1 refactor(workflows): move turn test seams off RunManager
+40970033002 2026-10-29T23:00:16Z 8c5e52ce4 cez/c471d74c refactor(workflows): move run-line test seams off RunManager
+40966542737 2026-10-29T22:31:42Z f2391d0b4 cez/c471d74c refactor(workflows): move run-line test seams off RunManager
+40966402888 2026-10-29T22:30:37Z 4248bea26 cez/c471d74c refactor(workflows): move run-line test seams off RunManager
+40965670134 2026-10-29T22:24:49Z ac57b2309 cez/fadaf4da refactor(workflows): move wait and wake seams off RunManager
+40965567295 2026-10-29T22:24:01Z aba2046b9 cez/c471d74c refactor(workflows): move run-line test seams off RunManager
+40965491605 2026-10-29T22:23:26Z ae76211ce cez/fadaf4da refactor(workflows): move wait and wake seams off RunManager
+40959679738 2026-10-29T21:39:52Z bbe8e8a86 cez/5a99526f refactor(workflows): track owned work without fixture wrappe
+40959320861 2026-10-29T21:37:14Z 185a53b2e cez/0a9533b6 refactor(workflows): make stepLeftOpen a pure read
+40956614310 2026-10-29T21:18:09Z 253c447e5 cez/5a99526f refactor(workflows): track owned work without fixture wrappe
+40954741874 2026-10-29T21:05:24Z bbd05d33e cez/c40a89c6 test(workflows): cover six input receipt boundaries
+40954698217 2026-10-29T21:05:07Z 470cecf43 cez/5fcf46ec refactor(workflows): move constants and delete uncalled dele
+40954644305 2026-10-29T21:04:46Z 141a7c8fa cez/49414fed test(workflows): pin turn settler intermediate orders
+40954002001 2026-10-29T21:00:28Z 99bd1f232 cez/8cdec02d refactor: narrow delegation and automation manager ports
+40952989961 2026-10-29T20:53:21Z bcad6b067 docs/run-ts-phase5-spec docs(specs): record Phase 4 result and Phase 5 plan for run.
+40951020413 2026-10-29T20:39:45Z 19c0f6dfd cez/b77fd4d8 docs(sdlc): put test-fix evidence in the PR, not in code com
+40950196448 2026-10-29T20:34:13Z 4fd6ceaaf cez/b77fd4d8 docs(sdlc): put test-fix evidence in the PR, not in code com
+40949221087 2026-10-29T20:27:39Z 1e9e12e7d cez/b77fd4d8 docs(sdlc): put test-fix evidence in the PR, not in code com
+40946117761 2026-10-29T20:06:57Z ae16fc9d8 cez/5cb2105d refactor(workflows): move continuation launch into run modul
+40941944527 2026-10-29T19:38:40Z c5b5af4a0 cez/0e3b8078 refactor(workflows): move Continue acceptance into run modul
+40940815453 2026-10-29T19:31:13Z 164c9092a cez/0e3b8078 refactor(workflows): move Continue acceptance into run modul
+40938700849 2026-10-29T19:17:12Z 0a542d7de cez/07ff0e38 refactor(workflows): move restart recovery into run module
+40935115689 2026-10-29T18:54:02Z b5b3b8651 cez/f530b749 refactor(workflows): move workflow step loop into run module
+40934217446 2026-10-29T18:48:10Z 0fe957d74 cez/4267a739 test: TEMPORARY PROBE — NEVER MERGE — review-first CI retry
+40933541460 2026-10-29T18:43:48Z 717b13fbf cez/07ff0e38 refactor(workflows): move restart recovery into run module
+40932072113 2026-10-29T18:34:21Z 56a90b08a cez/8e233bfe fix(ci): recognize skipped matrix job names
+40930739587 2026-10-29T18:25:56Z 807aef67e cez/07ff0e38 refactor(workflows): move restart recovery into run module
+40930131662 2026-10-29T18:22:06Z b4ef3802a cez/4267a739 test: TEMPORARY PROBE — NEVER MERGE — review-first CI retry
+40929778508 2026-10-29T18:19:55Z 99a052920 cez/c3efb8e0 refactor(workflows): move fresh step session into run module
+40928164058 2026-10-29T18:09:42Z 6ac7d0dec cez/c3efb8e0 refactor(workflows): move fresh step session into run module
+40926579048 2026-10-29T17:59:43Z bbe2021e8 cez/14d01263 refactor(workflows): move turn settlement into module
+40924422074 2026-10-29T17:45:54Z e20b77036 cez/14d01263 refactor(workflows): move turn settlement into module
+40923071796 2026-10-29T17:37:18Z bbee5810d cez/6c5b45e1 refactor(workflows): move run settlement into module
+40918934375 2026-10-29T17:11:33Z 5b4cfa300 cez/e630d1c0 refactor(workflows): move wake admission into run module
+40916906056 2026-10-29T16:59:11Z 58238f44e cez/3c7c3028 refactor(workflows): split idle boundary question re-park
+40916718344 2026-10-29T16:58:00Z f80f5efe7 cez/e630d1c0 refactor(workflows): move wake admission into run module
+40916543252 2026-10-29T16:56:54Z 7f3e4ee2d cez/8e233bfe ci: run automated review before heavy verification
+40915151369 2026-10-29T16:48:18Z 4f0982951 cez/63c92f92 refactor(workflows): move turn nudges into run module
+40912953544 2026-10-29T16:34:42Z f1f8be5d2 cez/63c92f92 refactor(workflows): move turn nudges into run module
+40911410389 2026-10-29T16:25:22Z 3bd0c5cb7 cez/e920a66a test(workflows): pin launch disposal routes
+40911318831 2026-10-29T16:24:50Z 925574de3 cez/57714a7c refactor(workflows): move input delivery into run module
+40911222505 2026-10-29T16:24:15Z 95bd83403 cez/8e233bfe ci: run automated review before heavy verification
+40910905019 2026-10-29T16:22:20Z 6cd1a40ed cez/57714a7c refactor(workflows): move input delivery into run module
+40909666698 2026-10-29T16:14:53Z 08da11bcd cez/e920a66a test(workflows): pin launch disposal routes
+40908588298 2026-10-29T16:08:22Z f5c260cb0 cez/57714a7c refactor(workflows): move input delivery into run module
+40908549443 2026-10-29T16:08:07Z 7a4fea51c cez/c03219d9 test(workflows): use stored unanswered ask in wait registrat
+40907904676 2026-10-29T16:04:18Z e2c3a0729 cez/5ef1751f refactor(workflows): move wake retries into run module
+40903817619 2026-10-29T15:39:41Z d6e163fb5 cez/2ab6c685 docs(specs): update the run.ts decomposition spec for Phase 
+40900280938 2026-10-29T15:18:51Z 5962bbde9 cez/6231720d refactor(workflows): share session event handling
+40900221095 2026-10-29T15:18:29Z 411628383 cez/db2a970f feat(preview): use available host GPU acceleration
+40894410174 2026-10-29T14:43:57Z 05fedc079 cez/694eaf44 refactor(workflows): move worker questions into run module
+40889208044 2026-10-29T14:12:39Z 05c5dabfb cez/694eaf44 refactor(workflows): move worker questions into run module
+40887163572 2026-10-29T14:00:07Z 6836c30c2 cez/21d3c02d refactor(workflows): move completion gate reads into run mod
+40884084402 2026-10-29T13:40:22Z 0f5f87bf8 cez/21d3c02d refactor(workflows): move completion gate reads into run mod
+40883874939 2026-10-29T13:39:00Z cccda2bf7 cez/f358a885 refactor(workflows): move family reconciliation into module
+40880719151 2026-10-29T13:18:25Z c83a133d8 cez/f358a885 refactor(workflows): move family reconciliation into module
+40880392681 2026-10-29T13:16:15Z ba9351ab3 cez/698cc0e7 refactor(workflows): move delegation waits into registry
+40876818155 2026-10-29T12:51:53Z 1d59f10b7 cez/e1a1f41e test(runners): wait for Codex startup before shutdown probes
+40874848738 2026-10-29T12:37:53Z ee5fe0844 cez/698cc0e7 refactor(workflows): move delegation waits into registry
+40873567130 2026-10-29T12:28:40Z 8d439e5c2 cez/be9e551b refactor(workflows): move queued-run revival into run module
+40871738630 2026-10-29T12:15:13Z bbb4e7409 cez/be9e551b refactor(workflows): move queued-run revival into run module
+40870319244 2026-10-29T12:04:36Z ed2731e60 cez/57fdb745 refactor(workflows): move wait registration into registry
+40870254707 2026-10-29T12:04:06Z c62409c84 fix/stale-worker-test-env-leases fix(delegation): reclaim exited test environment leases
+40869447211 2026-10-29T11:58:01Z 10d3863f4 fix/publish-resumed-worker-delivery fix(conversations): publish resumed worker delivery on accep
+40869274379 2026-10-29T11:56:39Z b0c423b4e cez/57fdb745 refactor(workflows): move wait registration into registry
+40869067443 2026-10-29T11:55:03Z 41ad79c95 fix/stale-worker-test-env-leases fix(delegation): reclaim exited test environment leases
+40867848980 2026-10-29T11:45:32Z 1ff143fef fix/stale-worker-test-env-leases fix(delegation): reclaim exited test environment leases
+40867595667 2026-10-29T11:43:35Z d9733fa35 cez/2c28190f refactor(workflows): move scheduling into run line
+40867590138 2026-10-29T11:43:32Z e45e2b616 fix/clone-pair-token-ratchet fix(ci): compare inherited clones by file-pair token totals
+40865140027 2026-10-29T11:24:24Z dbd7b7d28 cez/aad66db3 fix(ci): guard Vitest reads of every docs-only file
+40864980621 2026-10-29T11:23:10Z 9b052deab cez/7c628567 docs(agents): move the agent config rules to their area doc
+40864929682 2026-10-29T11:22:47Z 376f886cb refactor/scheduler-line-owner refactor(workflows): give scheduler line one owner
+40864927142 2026-10-29T11:22:46Z 5a701c70d fix/stale-worker-test-env-leases fix(delegation): reclaim exited test environment leases
+40861739925 2026-10-29T10:58:31Z 74051faad refactor/scheduler-line-owner refactor(workflows): give scheduler line one owner
+40861545718 2026-10-29T10:56:58Z c31cc59ea fix/stale-worker-test-env-leases fix(delegation): reclaim exited test environment leases
+40861441427 2026-10-29T10:56:08Z 985602db4 cez/aad66db3 fix(ci): guard Vitest reads of every docs-only file
+40860529963 2026-10-29T10:49:02Z 1a48d77c8 cez/b4f9e266 fix(docs): restore agent instructions byte budget
+40859989653 2026-10-29T10:44:56Z c13657e07 cez/7c628567 docs(agents): move the agent config rules to their area doc
+40859442140 2026-10-29T10:40:41Z 4ca08b1c3 fix/clone-pair-token-ratchet fix(ci): compare inherited clones by file-pair token totals
+40859421293 2026-10-29T10:40:31Z 035321890 fix/stale-worker-test-env-leases fix(delegation): reclaim exited test environment leases
+40858169118 2026-10-29T10:31:00Z 74062474c refactor/scheduler-line-owner refactor(workflows): give scheduler line one owner
+40857917351 2026-10-29T10:29:06Z 4b5cde4e9 cez/cc152317 refactor(workflows): move wait watches into run module
+40856720519 2026-10-29T10:20:02Z 93f07bdfa feat/ratchet-baseline-merge-driver feat(ci): merge ratchet baselines with a local Git driver
+40856285530 2026-10-29T10:16:44Z dd7b89fde docs/squeal-quality-fallback docs(quality): use Squeal measurements with complete fallbac
+40856147905 2026-10-29T10:15:42Z 29f3daa41 docs/saved-client-state-cases docs: require saved-client-state restore cases
+40855772156 2026-10-29T10:12:58Z 30dec3ac5 fix/clone-pair-token-ratchet fix(ci): compare inherited clones by file-pair token totals
+40855464830 2026-10-29T10:10:40Z 1aea57a16 docs/both-ends-case-table docs: require both-ends cases for cross-run changes
+40855126915 2026-10-29T10:08:12Z a037c82de docs/pre-push-ratchet-checks docs(sdlc): require pre-push ratchet results
+40852176575 2026-10-29T09:45:49Z 12cddf33d refactor/extract-human-waits refactor(workflows): extract human wait handling
+40842849722 2026-10-29T08:32:20Z 7c100c7ba refactor/usage-limit-auto-resume refactor(workflows): extract usage-limit auto-resume schedul
+40840564905 2026-10-29T08:13:07Z 61afd4cee refactor/usage-limit-auto-resume refactor(workflows): extract usage-limit auto-resume schedul
+40840478985 2026-10-29T08:12:23Z 8e93ea111 refactor/worktree-autosave refactor(runs): extract worktree autosave owner
+40840327021 2026-10-29T08:11:04Z 9fa5a0fda cez/9bc60fd4 fix(tests): hold OpenCode busy input acknowledgements
+40838114905 2026-10-29T07:51:24Z 1d6418bf9 cez/9bc60fd4 fix(tests): hold OpenCode busy input acknowledgements
+40834617751 2026-10-29T07:18:44Z ba6361ba6 refactor/2107-input-receipts refactor(workflows): extract input receipt commits
+40833836621 2026-10-29T07:11:28Z 0e4d1a824 refactor/2107-input-receipts refactor(workflows): extract input receipt commits
+40832441122 2026-10-29T06:58:15Z 014659764 refactor/2107-input-receipts refactor(workflows): extract input receipt commits
+40831723895 2026-10-29T06:51:10Z 9c6a56078 refactor/2106-run-skills refactor(workflows): extract run skill loading and provision
+40827681195 2026-10-29T06:11:02Z 060592a46 cez/8d438d7b test(web): settle reader scrolls before checking Activity fo
+40826126441 2026-10-29T05:55:06Z e89858158 refactor/inbox-claims-owner refactor(workflows): move inbox claims into state owner
+40822511659 2026-10-29T05:17:16Z 71a4638cd refactor/launch-context refactor(workflows): extract launch context functions
+40822486868 2026-10-29T05:17:01Z da3dfce23 cez/e78224f9 fix(web): preserve cleared search across delayed URL updates
+40820116022 2026-10-29T04:51:54Z aaa769c0d refactor/2103-queued-input refactor(workflows): extract queued input handling
+40818480970 2026-10-29T04:34:12Z dd5717a1d refactor/2103-queued-input refactor(workflows): extract queued input handling
+40817902118 2026-10-29T04:28:02Z 903c66357 cez/87560de6 refactor(workflows): extract worker execution tracking
+40813164977 2026-10-29T03:37:13Z 8ca2fe282 refactor/2100-worker-orphans refactor(workflows): extract worker orphan reaping
+40811530769 2026-10-29T03:19:54Z d7c68046b refactor/2100-worker-orphans refactor(workflows): extract worker orphan reaping
+40811062157 2026-10-29T03:15:01Z 1c2a903a5 refactor/turn-bookkeeping refactor(workflows): extract turn bookkeeping and run naming
+40807859679 2026-10-29T02:41:35Z a77e07a03 cez/e78224f9 fix(web): preserve cleared search across delayed URL updates
+40806986707 2026-10-29T02:32:46Z be13e8689 refactor/extract-cezar-tools refactor(run): extract cezar and preview tools
+40799902292 2026-10-29T01:21:13Z f41f770e5 refactor/repo-root-lease refactor(workflows): move repository-root lease into run mod
+40797604856 2026-10-29T00:59:30Z 792635a7a refactor/2097-attachment-writer refactor(workflows): extract attachment writer
+40795455600 2026-10-29T00:39:16Z 1817c55c3 fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40794531329 2026-10-29T00:30:43Z cd3b0a0ad refactor/maintenance-claims refactor(workflows): move maintenance claims
+40791662798 2026-10-29T00:04:52Z a226c9ca4 fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40789107275 2026-10-28T23:41:40Z 5ac059737 fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40788762132 2026-10-28T23:38:31Z d7c6359b5 refactor/step-close-decisions refactor(workflows): extract step and close decisions
+40783552570 2026-10-28T22:55:03Z 62c40866b fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40783309147 2026-10-28T22:53:02Z d34b47d98 refactor/run-launch-settings-workspace-o refactor(workflows): extract launch settings, workspaces and
+40780859875 2026-10-28T22:33:22Z 0617a0e1c refactor/2059-pure-run-reads refactor(workflows): extract wake ask and position reads
+40779291824 2026-10-28T22:21:07Z 516788b88 fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40777764149 2026-10-28T22:09:32Z 7e5416076 fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40777351424 2026-10-28T22:06:24Z 85043ccc0 refactor/usage-accounting refactor(workflows): move usage accounting into run module
+40775306336 2026-10-28T21:50:59Z 3b5f9a4de fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40774279607 2026-10-28T21:43:22Z 97bda99a1 fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40774141712 2026-10-28T21:42:20Z 89ed7316d refactor/usage-accounting refactor(workflows): move usage accounting into run module
+40773892686 2026-10-28T21:40:29Z b6c240e0b refactor/delegation-execution-settings refactor(delegation): extract settings and worker identity
+40773821338 2026-10-28T21:39:59Z dc426673b cez/075bd108 ci: refresh unit shard weights from current main timings
+40772436154 2026-10-28T21:29:59Z 931687283 fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40770868980 2026-10-28T21:18:38Z d326c0222 refactor/usage-accounting refactor(workflows): move usage accounting into run module
+40769025173 2026-10-28T21:05:43Z 71b1f25ca feat/remember-preview-state feat(preview): remember each task's preview pane across visi
+40768804382 2026-10-28T21:04:13Z fa11e3925 fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40767080337 2026-10-28T20:52:11Z d31e4a100 refactor/name-root-finish-self-wake-guar refactor: name root finish and self wake guards
+40766681231 2026-10-28T20:49:26Z 37e9b1ac2 refactor/name-root-finish-self-wake-guar refactor: name root finish and self wake guards
+40765134642 2026-10-28T20:38:50Z 9c14cbbcf feat/remember-preview-state feat(preview): remember each task's preview pane across visi
+40764526404 2026-10-28T20:34:41Z dcdae7630 fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40763734274 2026-10-28T20:29:24Z dc5ce76da refactor/move-run-prompt-step-title-help refactor: move run prompt and step helpers
+40762821620 2026-10-28T20:23:19Z be73d4c3f fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40760798051 2026-10-28T20:09:55Z a73c514bb feat/remember-preview-state feat(preview): remember each task's preview pane across visi
+40760528428 2026-10-28T20:08:05Z a198333b6 fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40759620519 2026-10-28T20:02:03Z 76d01ff04 cez/049c0db8 test: avoid Node shutdown deadlock in ownership fixture
+40758951673 2026-10-28T19:57:35Z 61a3c7a05 fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40758673529 2026-10-28T19:55:41Z 331d760d4 refactor/turn-markers refactor: move turn marker readers into module
+40757621272 2026-10-28T19:48:39Z 533d9df0d fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40756426473 2026-10-28T19:40:37Z 424191a5e fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40755525489 2026-10-28T19:34:33Z 468b0a197 refactor/turn-markers refactor: move turn marker readers into module
+40755416460 2026-10-28T19:33:49Z 2d333d569 refactor/input-timers-and-batch refactor(workflows): move input timers and batch helpers
+40754619820 2026-10-28T19:28:31Z 0fa873473 fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40752401917 2026-10-28T19:13:49Z d9554a083 cez/8d045e5e test(skills): count Codex install input identity across retr
+40744216428 2026-10-28T18:20:38Z bc5e2fc08 refactor/2054-run-shared-types refactor(workflows): move RunManager shared types into run m
+40743675677 2026-10-28T18:17:12Z b9370d38c refactor/2054-run-shared-types refactor(workflows): move RunManager shared types into run m
+40743616693 2026-10-28T18:16:49Z 1063309ea feat/preview-quality-modes feat(preview): add Normal and High stream quality modes
+40740962973 2026-10-28T17:59:56Z 9e3c4fa22 refactor/2054-run-shared-types refactor(workflows): move RunManager shared types into run m
+40740370334 2026-10-28T17:56:01Z fd6fe6ec6 test/extend-run-guards test: extend run guards to modules
+40740154946 2026-10-28T17:54:37Z 52e4b4533 fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40739129608 2026-10-28T17:48:02Z 549cf8eb0 fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40732950968 2026-10-28T17:09:13Z bda87ce4d docs/record-runmanager-facade-plan docs(workflows): record the RunManager facade plan in a spec
+40729736594 2026-10-28T16:49:25Z 3cb111283 fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40727109161 2026-10-28T16:33:21Z bda594c12 fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40724637538 2026-10-28T16:18:17Z 22174104f refactor/split-drop-active refactor(workflows): split active resource teardown
+40723699558 2026-10-28T16:12:41Z 7422370bf fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40719919930 2026-10-28T15:49:55Z 96500f57e fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40718614864 2026-10-28T15:42:08Z cfb6cbbbe refactor/split-flush-agent-inputs refactor(workflows): split agent input flushing
+40714874124 2026-10-28T15:20:05Z fd5e5b001 refactor/conversation-send-stages refactor(delegation): split conversation send stages
+40712006695 2026-10-28T15:03:02Z fef53de24 cez/2f77435a refactor(test): extract delegation fixture cleanup
+40711723319 2026-10-28T15:01:20Z c740e28e0 cez/96612840 refactor(workflows): split agent input submission
+40711556813 2026-10-28T15:00:24Z b231a15a5 cez/e1299d14 refactor(repo-branches): split deletion verdicts and claims
+40710282623 2026-10-28T14:52:42Z 7c516c339 cez/89649ebe refactor(runs): split worker deletion evidence checks
+40708710520 2026-10-28T14:43:10Z 5041c2750 cez/0125fbc6 refactor(delegation): split worker destroy stages
+40708362846 2026-10-28T14:41:01Z 3f6ad595b cez/eb8495ae refactor(repo-branches): split PR state classification
+40707512197 2026-10-28T14:35:52Z 20a36172e cez/7afdec9c refactor(web): split update action decisions
+40707302475 2026-10-28T14:34:38Z 04857a636 cez/89649ebe refactor(runs): split worker deletion evidence checks
+40707135871 2026-10-28T14:33:38Z 1ac707d5f cez/b1b4d59c refactor(delegation): extract delivery projection
+40698799634 2026-10-28T13:41:46Z 3f8397f21 fix/bound-branch-scan-git-spawns fix(repo-branches): bound the branch scan's git processes on
+40698522869 2026-10-28T13:39:59Z 16ecfc014 docs/protocol-compatibility-sweep docs(protocol): complete communication compatibility sweep
+40697810946 2026-10-28T13:35:21Z 4cba04ae5 fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40693962507 2026-10-28T13:10:03Z 89474f17c feat/peer-wait-and-request-kind feat(waits): add the peer wait and the cezar_wait request ki
+40689959365 2026-10-28T12:41:57Z 09af1dc1a feat/peer-wait-and-request-kind feat(waits): add the peer wait and the cezar_wait request ki
+40687549871 2026-10-28T12:24:32Z e3de123ba feat/peer-wait-and-request-kind feat(waits): add the peer wait and the cezar_wait request ki
+40687468272 2026-10-28T12:23:56Z 351e1f2b8 fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40686481770 2026-10-28T12:16:37Z 718ce3c14 fix/bound-branch-scan-git-spawns fix(repo-branches): bound the branch scan's git processes on
+40685868127 2026-10-28T12:12:04Z 3c3332dec docs/protocol-compatibility-sweep docs(protocol): complete communication compatibility sweep
+40684332950 2026-10-28T12:00:31Z 5789a4b1e feat/peer-wait-and-request-kind feat(waits): add the peer wait and the cezar_wait request ki
+40682337659 2026-10-28T11:44:52Z 726c3f6a2 feat/peer-wait-and-request-kind feat(waits): add the peer wait and the cezar_wait request ki
+40681760328 2026-10-28T11:40:19Z 21cf0fc1d cez/5e7272b4 feat(runners): refuse native cross-session messages at shipp
+40681618838 2026-10-28T11:39:12Z fd11b9d36 fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40681367336 2026-10-28T11:37:13Z 5670928eb fix/bound-branch-scan-git-spawns fix(repo-branches): bound the branch scan's git processes on
+40680737803 2026-10-28T11:32:25Z 342098557 feat/peer-wait-and-request-kind feat(waits): add the peer wait and the cezar_wait request ki
+40679591760 2026-10-28T11:23:35Z a622da676 cez/5e7272b4 feat(runners): refuse native cross-session messages at shipp
+40677870780 2026-10-28T11:10:22Z c2f725bc1 fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40677342318 2026-10-28T11:06:19Z 0ca0abddb cez/10b08df7 feat(workflows): gate root completion on request obligations
+40675771161 2026-10-28T10:54:16Z b403441e1 cez/5e7272b4 feat(runners): refuse native cross-session messages at shipp
+40675631960 2026-10-28T10:53:11Z 7b28ec288 fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40674904447 2026-10-28T10:47:33Z 0d7482c64 cez/10b08df7 feat(workflows): gate root completion on request obligations
+40673677228 2026-10-28T10:38:06Z 96f6416ef fix/human-answer-wake-budget fix(runs): commit human answer accounting atomically
+40672366836 2026-10-28T10:28:13Z ccb228c30 fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40671497775 2026-10-28T10:21:41Z ae7116509 cez/b05832fe feat(messaging): add task message CLI and peer discovery
+40670967331 2026-10-28T10:17:41Z 5bd7fd5fd fix/human-answer-wake-budget fix(runs): commit human answer accounting atomically
+40669784977 2026-10-28T10:08:51Z 099565a52 fix/separate-test-env-inputs fix(e2e): separate browser test inputs from runtime instance
+40669389145 2026-10-28T10:05:52Z 084f1f291 fix/human-answer-wake-budget fix(runs): commit human answer accounting atomically
+40668764377 2026-10-28T10:01:08Z 6c07dbda2 cez/9339a8f7 fix(workflows): retry completion nudges after transport read
+40668453934 2026-10-28T09:58:49Z d2c0d7eea fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40667886132 2026-10-28T09:54:20Z 3aa2513bb cez/b05832fe feat(messaging): add task message CLI and peer discovery
+40666587633 2026-10-28T09:44:22Z 1b5d4b129 cez/9339a8f7 fix(workflows): retry completion nudges after transport read
+40666557388 2026-10-28T09:44:08Z 2ccce4c52 fix/separate-test-env-inputs fix(e2e): separate browser test inputs from runtime instance
+40664905876 2026-10-28T09:31:29Z 04f6b20bc fix/human-answer-wake-budget fix(runs): commit human answer accounting atomically
+40663189984 2026-10-28T09:18:17Z 5c1d9263e cez/b05832fe feat(messaging): add task message CLI and peer discovery
+40662779548 2026-10-28T09:15:07Z f5dececb4 cez/9339a8f7 fix(workflows): retry completion nudges after transport read
+40660385565 2026-10-28T08:56:15Z 16eda1386 fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40659723420 2026-10-28T08:50:45Z 22bb0c489 cez/10b08df7 feat(workflows): gate root completion on request obligations
+40659621967 2026-10-28T08:49:57Z 5d0713fe4 cez/b05832fe feat(messaging): add task message CLI and peer discovery
+40659585761 2026-10-28T08:49:39Z 1fa297b8c cez/10b08df7 feat(workflows): gate root completion on request obligations
+40658124093 2026-10-28T08:37:26Z bd875b54d cez/b05832fe feat(messaging): add task message CLI and peer discovery
+40657914261 2026-10-28T08:35:40Z 467ce230b cez/10b08df7 feat(workflows): gate root completion on request obligations
+40657697677 2026-10-28T08:33:53Z 1ea3bd461 cez/10b08df7 feat(workflows): gate root completion on request obligations
+40657448169 2026-10-28T08:31:51Z 4d4df6ee7 fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40657021249 2026-10-28T08:28:23Z 90d5a00a7 docs/reduce-compatibility-policy docs: reduce compatibility policy to four rules
+40656140958 2026-10-28T08:21:00Z 65d98c450 cez/b05832fe feat(messaging): add task message CLI and peer discovery
+40654188653 2026-10-28T08:04:15Z 917b6f6b5 cez/10b08df7 feat(workflows): gate root completion on request obligations
+40653441050 2026-10-28T07:57:39Z bfe3afea4 refactor/1955-pi-output-loop refactor(runners): share the Pi-family dispatch and exit set
+40652684128 2026-10-28T07:50:35Z 90930aedf cez/b05832fe feat(messaging): add task message CLI and peer discovery
+40652669523 2026-10-28T07:50:27Z 29b33416d cez/72bd9596 feat(web): show peer task messages in the cockpit thread
+40651594383 2026-10-28T07:40:23Z 297571f89 cez/10b08df7 feat(workflows): gate root completion on request obligations
+40650611155 2026-10-28T07:31:17Z 1aeda8490 cez/72bd9596 feat(web): show peer task messages in the cockpit thread
+40649859606 2026-10-28T07:24:24Z 80d41315b cez/b05832fe feat(messaging): add task message CLI and peer discovery
+40649699723 2026-10-28T07:22:56Z c8ad845c0 cez/10b08df7 feat(workflows): gate root completion on request obligations
+40649061595 2026-10-28T07:16:58Z 4074fd7df refactor/2006-pi-family-session-core refactor(runners): share the Pi-family RPC session core betw
+40648871790 2026-10-28T07:15:13Z f189494fa cez/72bd9596 feat(web): show peer task messages in the cockpit thread
+40648130431 2026-10-28T07:08:08Z 3884bc657 cez/b05832fe feat(messaging): add task message CLI and peer discovery
+40648111705 2026-10-28T07:07:57Z 866a073e8 cez/5e7272b4 feat(runners): refuse native cross-session messages at shipp
+40646431695 2026-10-28T06:51:37Z 045e31609 cez/5e7272b4 feat(runners): refuse native cross-session messages at shipp
+40641734627 2026-10-28T06:05:17Z ccc1d7c45 cez/1b463cde feat(delegation): let root tasks in one project message each
+40638639784 2026-10-28T05:33:01Z 778d9f72c cez/1b463cde feat(delegation): let root tasks in one project message each
+40635877370 2026-10-28T05:04:43Z f67c8c0f8 cez/1b463cde feat(delegation): let root tasks in one project message each
+40630137750 2026-10-28T04:03:26Z b220c934e cez/1b463cde feat(delegation): let root tasks in one project message each
+40629815058 2026-10-28T04:00:07Z 5fa719ac6 cez/1b463cde feat(delegation): let root tasks in one project message each
+40626933004 2026-10-28T03:29:01Z 4ba80ce83 cez/1b463cde feat(delegation): let root tasks in one project message each
+40626524318 2026-10-28T03:24:41Z c5afcd60c cez/1b463cde feat(delegation): let root tasks in one project message each
+40623674315 2026-10-28T02:54:48Z 83e5a3674 cez/1b463cde feat(delegation): let root tasks in one project message each
+40620785843 2026-10-28T02:24:54Z 885aff60b cez/1b463cde feat(delegation): let root tasks in one project message each
+40619129336 2026-10-28T02:08:04Z 58e879403 cez/1b463cde feat(delegation): let root tasks in one project message each
+40615390193 2026-10-28T01:29:51Z 6f404f21c cez/1b463cde feat(delegation): let root tasks in one project message each
+40611482771 2026-10-28T00:52:00Z 96bd082db cez/1b463cde feat(delegation): let root tasks in one project message each
+40609608941 2026-10-28T00:34:23Z a310f9ffa cez/1b463cde feat(delegation): let root tasks in one project message each
+40606891436 2026-10-28T00:09:03Z 115bafaed cez/1b463cde feat(delegation): let root tasks in one project message each
+40605260398 2026-10-27T23:54:15Z 1d9e41c3f docs/reduce-compatibility-policy docs: reduce compatibility policy to four rules
+40603372155 2026-10-27T23:37:16Z f50885026 fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40601633712 2026-10-27T23:22:01Z 355a68f99 cez/1b463cde feat(delegation): let root tasks in one project message each
+40601523523 2026-10-27T23:21:04Z ad2ac00dc fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40600673344 2026-10-27T23:13:53Z bf3aaef7c fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40599324572 2026-10-27T23:02:55Z b40e3179d cez/1b463cde feat(delegation): let root tasks in one project message each
+40596401464 2026-10-27T22:38:51Z 5da0fa190 refactor/1955-pi-output-loop refactor(runners): share the Pi-family dispatch and exit set
+40596283760 2026-10-27T22:37:53Z 764ddaba2 cez/1b463cde feat(delegation): let root tasks in one project message each
+40596139936 2026-10-27T22:36:43Z d8050d071 fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40595827860 2026-10-27T22:34:17Z 72a688ffe refactor/claude-output-settlement-loop refactor(claude): split the native output and settlement loo
+40595467273 2026-10-27T22:31:27Z 19e549835 cez/7c5a36a7 fix(task): refuse agent task sends
+40594799480 2026-10-27T22:26:10Z 49cc1678c fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40594462221 2026-10-27T22:23:36Z 9caeb0e93 refactor/1955-pi-output-loop refactor(runners): share the Pi-family dispatch and exit set
+40593809568 2026-10-27T22:18:34Z aafe74198 fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40593416219 2026-10-27T22:15:34Z 45df1a700 refactor/codex-native-output-reader refactor(codex): split the native output reader into named s
+40593306301 2026-10-27T22:14:46Z e40cbd505 cez/7c5a36a7 fix(task): refuse agent task sends
+40592804227 2026-10-27T22:10:59Z b8ac9b572 fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40592754018 2026-10-27T22:10:36Z 6336efec3 cez/7c5a36a7 fix(task): refuse agent task sends
+40592431018 2026-10-27T22:08:14Z c60336f53 refactor/claude-output-settlement-loop refactor(claude): split the native output and settlement loo
+40592335272 2026-10-27T22:07:30Z 226f8f567 cez/2387af9c test(e2e): wait for Tools metadata before creating a project
+40591439826 2026-10-27T22:00:50Z 279b0ece1 fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40590025564 2026-10-27T21:50:03Z eca80d9f3 refactor/1955-pi-output-loop refactor(runners): share the Pi-family dispatch and exit set
+40589817414 2026-10-27T21:48:27Z 489c2fa40 refactor/codex-native-output-reader refactor(codex): split the native output reader into named s
+40589436784 2026-10-27T21:45:36Z 32eae6dbc fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40588600449 2026-10-27T21:39:32Z b7c1c8f85 docs/task-communication-protocol docs(spec): link the task protocol follow-up issues
+40585853981 2026-10-27T21:19:50Z 9cb8f0f0b fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40585733442 2026-10-27T21:19:00Z 19bbd7f96 docs/task-communication-protocol docs(spec): define the task communication protocol
+40585039493 2026-10-27T21:14:09Z 1062a2a79 fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40584022179 2026-10-27T21:07:04Z 44075cc57 fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40583736857 2026-10-27T21:05:10Z bf3724b98 docs/task-communication-protocol docs(spec): define the task communication protocol
+40583314725 2026-10-27T21:02:20Z b7498939e fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40582059295 2026-10-27T20:53:41Z a5830f109 fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40581726279 2026-10-27T20:51:23Z e7c553e71 fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40581035087 2026-10-27T20:46:35Z 8b75307c2 fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40580420955 2026-10-27T20:42:24Z 410aaa8cd fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40579913838 2026-10-27T20:38:55Z f765ca0de fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40579348812 2026-10-27T20:35:04Z c946f037e fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40579080253 2026-10-27T20:33:17Z 3081ff9aa fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40578581188 2026-10-27T20:30:02Z a5409223a fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40578256741 2026-10-27T20:27:46Z b8be6cbad fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40577998770 2026-10-27T20:26:00Z d75888748 fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40577748872 2026-10-27T20:24:22Z 9de0c7c36 fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40562469313 2026-10-27T18:42:34Z 1f86349e5 cez/8f4f1bb1 fix(web): preserve drawer focus and wait for sidebar section
+40549445123 2026-10-27T17:19:13Z 2ce8c3dc2 fix/search-params-writer-inflight fix(web): preserve in-flight writes when an intermediate nav
+40543288376 2026-10-27T16:40:51Z 08dce4fcb fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40542139174 2026-10-27T16:33:52Z ed8f0cbe4 fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40540514954 2026-10-27T16:23:57Z c4081539f fix/search-params-writer-inflight fix(web): preserve in-flight writes when an intermediate nav
+40538134171 2026-10-27T16:09:31Z 0743f8b8a fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40536401823 2026-10-27T15:59:06Z 8cca0f45d fix/search-params-writer-inflight fix(web): preserve in-flight writes when an intermediate nav
+40532004624 2026-10-27T15:32:34Z 51ef4c3e8 fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40531319722 2026-10-27T15:28:26Z 7802e0f2e fix/search-params-writer-inflight fix(web): preserve in-flight writes when an intermediate nav
+40527823487 2026-10-27T15:07:20Z 02dc64792 fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40524036796 2026-10-27T14:44:29Z deb3e49cb fix/block-claude-peer-messaging fix(claude): block native peer messaging in governed runs
+40523603735 2026-10-27T14:41:52Z 5af610fa8 fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40522683632 2026-10-27T14:36:11Z 822aadf76 cez/fedf8c0a fix(process): retain zombie leaders with live threads
+40522434236 2026-10-27T14:34:40Z e628eb00b fix/partial-owned-worktree-cleanup fix(workspaces): finish interrupted worker destruction
+40522395215 2026-10-27T14:34:26Z 16dc6f886 cez/92bff2a9 fix(delegation): bind parent attachment reads to file identi
+40519145561 2026-10-27T14:13:59Z a73252133 release/v0.17.0 chore(release): v0.17.0
+40504917392 2026-10-27T12:35:07Z f33b5d3a2 fix/automation-unhandled-items fix(automations): count only unhandled items in poll batches
+40504881737 2026-10-27T12:34:52Z 5ed5b4fe6 fix/stable-question-scroll fix(web): keep questions stable when Activity restores
+40501827030 2026-10-27T12:11:31Z beb5cf69a fix/automation-unhandled-items fix(automations): count only unhandled items in poll batches
+40498692612 2026-10-27T11:46:46Z ac9ed9efc fix/automation-unhandled-items fix(automations): count only unhandled items in poll batches
+40497423051 2026-10-27T11:36:32Z 53faa08a2 fix/pi-late-exit-attribution fix(runners): distinguish EOF cleanup evidence and intent
+40495821297 2026-10-27T11:23:46Z e25c614a1 fix/automation-unhandled-items fix(automations): count only unhandled items in poll batches
+40491433092 2026-10-27T10:49:20Z 3bbd4b7fb cez/a5298eac test(workflows): wait for native Codex park commit
+40489553974 2026-10-27T10:34:39Z 7d01771db test/worker-wake-capacity test(workflows): hold worker wake response while checking ca
+40489437531 2026-10-27T10:33:45Z 1d23b3eea fix/pi-late-exit-attribution fix(runners): distinguish EOF cleanup evidence and intent
+40487480302 2026-10-27T10:18:48Z 5072c84a6 cez/a5298eac test(workflows): wait for native Codex park commit
+40486078402 2026-10-27T10:07:44Z 1887fef50 ci/collect-coverage-in-vitest-shards ci: collect coverage in the required Vitest shards
+40485650779 2026-10-27T10:04:30Z 50110aa43 fix/pi-late-exit-attribution fix(runners): distinguish EOF cleanup evidence and intent
+40485645330 2026-10-27T10:04:27Z e21b3a6df test/1510-session-footer-focus test(web): document proven footer focus race
+40484827860 2026-10-27T09:58:10Z 649b8d4d8 cez/8850bc41 test(workflows): pin late acknowledgement in timer parity
+40484583459 2026-10-27T09:56:12Z 4916ca94a fix/pi-late-exit-attribution fix(runners): distinguish EOF cleanup evidence and intent
+40481268474 2026-10-27T09:30:15Z 5f3bc93b5 cez/d046a483 test(web): isolate page error polling from process startup
+40478549463 2026-10-27T09:08:40Z 6321c1987 cez/ebddb988 chore(squeal): run missing tests at startup
+40460871062 2026-10-27T06:24:02Z a0563273c cez/b0b33b98 refactor(delegation): split owned workspace cleanup phases
+40447669524 2026-10-27T04:04:09Z e232dc49a cez/b6bcb5f5 refactor(workflows): split continuation admission checks
+40442894946 2026-10-27T03:12:46Z 49965e08c cez/ac5d41e3 refactor(workflows): extract messaging and question delivery
+40440490782 2026-10-27T02:47:39Z aad7a669e fix/worker-e2e-server-cleanup fix(worker): stop idle test apps before cleanup
+40438891882 2026-10-27T02:31:09Z ac5f06fb9 fix/worker-e2e-server-cleanup fix(worker): stop idle test apps before cleanup
+40438266849 2026-10-27T02:24:48Z 7dff1e6c1 fix/worker-e2e-server-cleanup fix(worker): stop idle test apps before cleanup
+40437560908 2026-10-27T02:17:21Z 8784660e0 ci/blacksmith-typecheck-c5aea4a8 ci: run PR typecheck on the smallest Blacksmith runner
+40436740201 2026-10-27T02:08:58Z 5f6bc9e1d ci/blacksmith-typecheck-c5aea4a8 ci: run PR typecheck on the smallest Blacksmith runner
+40434993956 2026-10-27T01:51:09Z 1897ad57d fix/worker-e2e-server-cleanup fix(worker): stop idle test apps before cleanup
+40434427653 2026-10-27T01:45:16Z 5dbe13d1f fix/worker-e2e-server-cleanup fix(worker): stop idle test apps before cleanup
+40434050113 2026-10-27T01:41:25Z b52da043f cez/c11f0752 refactor(runs): name loaded-run healing rules
+40433222594 2026-10-27T01:33:00Z 5cd39bd02 cez/5757e101 refactor(test): split autonomous parity assertions
+40431991441 2026-10-27T01:20:30Z 8b30a4072 cez/c5aea4a8 ci: trial lowest Ubicloud tier for browser E2E
+40431137235 2026-10-27T01:11:56Z a5947243b cez/c11f0752 refactor(runs): name loaded-run healing rules
+40431028757 2026-10-27T01:10:52Z b0c02967c cez/562df977 refactor(workflows): split scheduling and Stop paths
+40430538274 2026-10-27T01:06:04Z e6dc1c64c fix/worker-e2e-server-cleanup fix(worker): stop idle test apps before cleanup
+40428894774 2026-10-27T00:50:11Z 81b79f5cc cez/de15e8bb fix(review): report consequential defect classes in one comp
+40427269999 2026-10-27T00:34:29Z 975bbb2cf cez/d1ea284b refactor(preview): split target dispatch and cockpit renderi
+40427218870 2026-10-27T00:34:00Z ae58e0caf fix/worker-e2e-server-cleanup fix(worker): stop idle test apps before cleanup
+40427174499 2026-10-27T00:33:35Z fee9c02dc cez/562df977 refactor(workflows): split scheduling and Stop paths
+40426243022 2026-10-27T00:24:57Z b47863810 cez/c5aea4a8 ci: trial lowest Ubicloud tier for browser E2E
+40426078502 2026-10-27T00:23:24Z e2b349688 cez/8a5b04d3 refactor(server): extract run open-in target handlers
+40425907085 2026-10-27T00:21:48Z 9ed77f08c cez/73e91eae refactor(runs): split event history context trackers
+40424262398 2026-10-27T00:06:46Z 022f654e5 cez/c5aea4a8 ci: trial lowest Ubicloud tier for browser E2E
+40421944457 2026-10-26T23:45:47Z 0bd6d8d7e fix/worker-e2e-server-cleanup fix(worker): stop idle test apps before cleanup
+40421223912 2026-10-26T23:39:24Z 6aa5cfe2f fix/worker-e2e-server-cleanup fix(worker): stop idle test apps before cleanup
+40420865581 2026-10-26T23:36:10Z 62cb9f818 cez/e34d250d refactor(web): split changes view rendering
+40420678120 2026-10-26T23:34:27Z 2463e56ae refactor/claude-args-cursor-bootstrap refactor(runners): split Claude arguments and Cursor bootstr
+40420419159 2026-10-26T23:32:09Z 8d563085a refactor/shared-tool-display-attention refactor(contract): split tool display and attention decisio
+40416066753 2026-10-26T22:55:16Z 2e07e19c7 fix/worker-e2e-server-cleanup fix(worker): stop idle test apps before cleanup
+40415351216 2026-10-26T22:49:22Z f08b58078 fix/worker-e2e-server-cleanup fix(worker): stop idle test apps before cleanup
+40390507592 2026-10-26T19:51:47Z ec62450e0 feat/agent-drives-preview-browser feat(preview): let the agent drive the task's preview browse
+40385191712 2026-10-26T19:16:03Z 468cc82b1 feat/agent-drives-preview-browser feat(preview): let the agent drive the task's preview browse
+40382027579 2026-10-26T18:55:14Z 8976ee7f2 feat/agent-drives-preview-browser feat(preview): let the agent drive the task's preview browse
+40378801329 2026-10-26T18:33:36Z 4e6c994ec feat/agent-drives-preview-browser feat(preview): let the agent drive the task's preview browse
+40375345078 2026-10-26T18:10:18Z 4946ec400 feat/agent-drives-preview-browser feat(preview): let the agent drive the task's preview browse
+40371214390 2026-10-26T17:43:01Z 938d13530 feat/agent-drives-preview-browser feat(preview): let the agent drive the task's preview browse
+40367405820 2026-10-26T17:18:39Z e7567345c feat/agent-drives-preview-browser feat(preview): let the agent drive the task's preview browse
+40363188024 2026-10-26T16:51:55Z 6b04baf37 feat/agent-drives-preview-browser feat(preview): let the agent drive the task's preview browse
+40360538699 2026-10-26T16:35:14Z 6fc69e78e feat/agent-drives-preview-browser feat(preview): let the agent drive the task's preview browse
+40345898547 2026-10-26T15:05:38Z 98ad41850 fix/test-temp-dir-leaks fix: stop test sandboxes and cez-agent fallbacks leaking int
+40341423807 2026-10-26T14:38:05Z 919c3eaff fix/test-temp-dir-leaks fix: stop test sandboxes and cez-agent fallbacks leaking int
+40339848020 2026-10-26T14:27:40Z 03e8b0bb6 test/cockpit-wait-scan-timeout test(web): give the cockpit whole-tree wait scan a hang-guar
+40337796146 2026-10-26T14:14:30Z d2b1edd67 fix/test-temp-dir-leaks fix: stop test sandboxes and cez-agent fallbacks leaking int
+40333751757 2026-10-26T13:47:53Z 50fb429d7 test/fix-non-core-unit-test-waits-and-po test: fix the non-core baselined unit-test waits and add the
+40333462835 2026-10-26T13:45:56Z c1af83165 fix/test-temp-dir-leaks fix: stop test sandboxes and cez-agent fallbacks leaking int
+40332213933 2026-10-26T13:37:29Z e84101232 fix/test-temp-dir-leaks fix: stop test sandboxes and cez-agent fallbacks leaking int
+40330599513 2026-10-26T13:26:35Z 85457e578 refactor/declare-run-states-table refactor(runs): declare run states and their exits in one ta
+40326061838 2026-10-26T12:53:46Z 375e8c104 fix/restyle-dark-mode fix(web): soften dark theme surfaces and message cards
+40325240424 2026-10-26T12:47:26Z 466bc40a0 test/fix-non-core-unit-test-waits-and-po test: fix the non-core baselined unit-test waits and add the
+40323394853 2026-10-26T12:33:05Z 755ca98a8 fix/restyle-dark-mode fix(web): soften dark theme surfaces and message cards
+40320483187 2026-10-26T12:10:19Z c6cbfc0ec test/fix-non-core-unit-test-waits-and-po test: fix the non-core baselined unit-test waits and add the
+40313224385 2026-10-26T11:11:42Z 688ca04d2 upstream-scan/2026-10-26 chore(upstream): scan 2026-10-26 — 77 new upstream commits
+40313123503 2026-10-26T11:10:55Z 56177b35a test/fix-non-core-unit-test-waits-and-po test: fix the non-core baselined unit-test waits and add the
+40308165203 2026-10-26T10:32:08Z e2d2b529e test/fix-non-core-unit-test-waits-and-po test: fix the non-core baselined unit-test waits and add the
+40302747515 2026-10-26T09:51:00Z 523e570c8 test/fix-non-core-unit-test-waits-and-po test: fix the non-core baselined unit-test waits and add the
+40297258531 2026-10-26T09:08:22Z a67f09519 test/fix-non-core-unit-test-waits-and-po test: fix the non-core baselined unit-test waits and add the
+40293860873 2026-10-26T08:40:07Z 6dbb18a55 test/core-unit-wait-discipline test(core): replace baselined runner waits with signals and 
+40292658690 2026-10-26T08:29:53Z f20f60d00 test/fix-non-core-unit-test-waits-and-po test: fix the non-core baselined unit-test waits and add the
+40290766276 2026-10-26T08:13:24Z 0008bc0af test/core-unit-wait-discipline test(core): replace baselined runner waits with signals and 
+40290435840 2026-10-26T08:10:28Z 7b83fe53f fix/commit-outcome-with-dependencies fix(runs): commit each outcome with what it depends on in on
+40290039034 2026-10-26T08:06:52Z ab0270f40 test/fix-non-core-unit-test-waits-and-po test: fix the non-core baselined unit-test waits and add the
+40288662203 2026-10-26T07:54:16Z e6ede4cc9 test/core-unit-wait-discipline test(core): replace baselined runner waits with signals and 
+40287857035 2026-10-26T07:46:28Z 18f1a7b9a test/fix-non-core-unit-test-waits-and-po test: fix the non-core baselined unit-test waits and add the
+40287473244 2026-10-26T07:42:49Z 3c6787efa fix/commit-outcome-with-dependencies fix(runs): commit each outcome with what it depends on in on
+40286169325 2026-10-26T07:30:10Z 0eac4d0a3 test/core-unit-wait-discipline test(core): replace baselined runner waits with signals and 
+40278729963 2026-10-26T06:15:12Z 9257da409 test/typed-factories-and-enum-literal-ru test: build test data from typed factories and refuse new en
+40276964873 2026-10-26T05:56:28Z 0c292086b test/typed-factories-and-enum-literal-ru test: build test data from typed factories and refuse new en
+40275122233 2026-10-26T05:36:23Z 357d42825 test/typed-factories-and-enum-literal-ru test: build test data from typed factories and refuse new en
+40272912550 2026-10-26T05:11:41Z e3baf0b78 cez/bb52f842 ci: report surviving mutants in changed lines on each pull r
+40271223956 2026-10-26T04:51:48Z f398bfadc cez/bb52f842 ci: report surviving mutants in changed lines on each pull r
+40268434222 2026-10-26T04:18:58Z 101e71470 cez/bb52f842 ci: report surviving mutants in changed lines on each pull r
+40266286353 2026-10-26T03:53:42Z 1357660c7 cez/bb52f842 ci: report surviving mutants in changed lines on each pull r
+40264634922 2026-10-26T03:33:11Z eb3eeb68b cez/bb52f842 ci: report surviving mutants in changed lines on each pull r
+40263829918 2026-10-26T03:23:19Z fdf9c44b4 cez/bb52f842 ci: report surviving mutants in changed lines on each pull r

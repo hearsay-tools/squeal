@@ -1,0 +1,2 @@
+{ "name": "q5-scratch", "private": true, "type": "module",
+  "devDependencies": { "vitest": "4.1.10", "@stryker-mutator/core": "10.1.1", "@stryker-mutator/vitest-runner": "10.1.1", "typescript": "5.9.3" } }

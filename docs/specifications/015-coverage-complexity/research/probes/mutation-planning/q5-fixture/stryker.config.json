@@ -1,0 +1,3 @@
+{ "testRunner": "vitest", "plugins": ["@stryker-mutator/vitest-runner"], "vitest": { "configFile": "vitest.config.ts", "pool": "forks" },
+  "inPlace": true, "coverageAnalysis": "perTest", "ignoreStatic": true, "mutate": ["src/calc.ts"], "concurrency": 2,
+  "reporters": ["json", "clear-text"], "jsonReporter": { "fileName": "reports/mutation/mutation.json" }, "cleanTempDir": true }

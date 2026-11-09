@@ -1,0 +1,4 @@
+A-web-dry start=2026-11-09T13:47:12Z load1=31.98..40.45 wall,user,sys=588.23 452.34 58.52
+B-web-full dry-run wall=246.810164015 cpu=212.2 load1=38.22
+B-web-full start=2026-11-09T13:57:39Z load1=41.13..28.55 wall,user,sys=899.08 1699.81 167.97
+C-web-full dry-run wall=319.959402152 cpu=315.3 load1=39.23
