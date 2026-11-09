@@ -191,6 +191,11 @@ Usage:
                                 In CI, after the shards: write the parts as one export
                                 (default squeal-results-<commit8>.json.gz), keyed as a
                                 daemon in this checkout of their commit keys
+  squeal ci publish <export> [--keep <n>]
+                                In CI, in the export job: push the export as
+                                <shared.ref>/<commit> (default refs/squeal) to origin
+                                and delete refs beyond the newest n main commits
+                                (default 100)
   squeal ps [--repo] [--full] [--json]
                                 Every Squeal daemon of this user on this host, with its
                                 test processes, their CPU and memory over 2 s, the host's
