@@ -107,6 +107,30 @@ Not judged:
 
 `squeal status` counts them in one line under the test lines, `Complexity: 62 functions over 20, 2 since this session started; squeal code lists them.`, and `--json` adds them as `code`. In a shell that names no session, the line counts since the oldest session registered in the worktree, and says so.
 
+## squeal code --base
+
+`squeal code --base <ref> [<path>...] [--test <file>...] [--timeout <seconds>] [--json]` is a one-shot check of the code a branch changed, before a pull request or in CI. Unlike `squeal code` without `--base`, it runs tests: with no daemon, no session and no store, for up to `--timeout` seconds in all, whole seconds, default 600. A daemon that runs is not asked and its store is not read. It needs neither `complexity.enabled` nor `coverage.enabled`.
+
+It judges every JS/TS function that changed between `git merge-base <ref> HEAD` and the working tree: untracked files, nested functions and test callbacks included. A function moved with the same body is not a change, nor is a test callback whose occurrence number moved because a same-named one was added before it. Removed functions are not judged. It runs, with Squeal's coverage, the test files that load a changed file, the changed test files and the `--test` files; `--test` takes the files after it, so paths go before it. The limits are `complexity.threshold` and `crap.threshold` in `squeal.config.json` as it is at the merge base, so a branch cannot loosen its own check, and equality passes. Paths keep the functions in those files or directories.
+
+Each changed function reads one state:
+
+- `pass`: CC and CRAP at or under the limits, from a coverage record of every test file that loads its file. A pass can also be proven from some of them, since more coverage only lowers CRAP.
+- `violation`: CC over the limit, whatever its coverage, or CRAP over it.
+- `skipped`: its file matches `coverage.exclude` (see `policy.md`) and CC is at or under the limit. It gets no CRAP, never counts as pass, and does not block.
+- `incomplete`, with its gap: `not-counted` (in code that does not parse), `no-loader` (no test loads its file), `not-finished` (a test file that loads it did not finish in the budget), `no-record` (no coverage record of its file's bytes now), `not-joined` (its coverage could not be matched to it), or `test-failed` (a selected test failed). A function never gets a CRAP from 0% coverage because no test loads it.
+
+```text
+Code gate: violations. 3 changed functions against origin/main (merge base 1f097649): 1 violation, 1 incomplete, 1 pass.
+  src/math.ts:5  deep  CC 21 over 20, coverage 0%, CRAP 462 over 30: violation
+  src/orphan.ts:1  lonely  CC 1: incomplete: no test loads its file
+JSON report: squeal code --base origin/main --json
+```
+
+The verdict line comes first, then each function that is not `pass` with its gap or measure, then each changed file that could not be counted (over `complexity.maxFileBytes`, not parsed, or not a regular file), each test file with failed tests and each test file that did not finish, and last the command for the JSON report. The verdict is `violations` when one function is a violation; else `incomplete` when one is incomplete, a changed file was not counted or a selected test failed; else `pass`. The exit code follows it: 0 pass, 1 violations, 3 incomplete, and 2 on a usage or setup error, such as a ref that names no commit, a `--test` file no runner lists, or `--changed` or `--told` with `--base`. So a CI step can tell "fix the code" from "the evidence is missing". Problems in `squeal.config.json` and the runners' notes go to stderr, never to stdout. CRAP is rounded in the text only.
+
+`--json` gives the `squeal-code-gate/1` report: `versions` (Squeal, the counter, the coverage provider and record, the quality policy); `base`, with the ref, the merge-base commit and the `policy` read there; `head`, with the commit, whether the tree was `dirty` and each changed path with its blob; `budget`; `functions`, each with `path`, `qualifiedName`, `occurrence`, `line`, `bodyHash`, `change` (`edited` or `added`), `complexity`, `coverage`, `crap`, `state`, `gap` and `loaders` (the test files that load it, `expected` and `measured`); `uncounted`; `runs`, per runner the test files `selected`, `completed` and `notFinished`, the `failed` tests and `durationMs`; `verdict` and `counts`. Its only times are `createdAt` and the run durations, so the same inputs give the same report.
+
 ## squeal reach
 
 `squeal reach` says what one edit of each file re-runs, from the stores. You ask for it; no message pushes it. It needs no daemon, runs no test, and writes nothing. Use it when you want to know why an edit re-runs much of the suite, or which change would cut that. Every number is relative to this repository's own suite, recorded seconds and edits.
