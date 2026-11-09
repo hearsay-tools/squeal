@@ -17,6 +17,11 @@ import {
 } from "../observe/runtime.js";
 import { ownNodeOptions } from "../process/recorders.js";
 
+/** The adapter version of a Vitest run the recorder observes (spec 001 D3, task 001-132). */
+export function observingAdapterVersion(base: string): string {
+  return `${base}+observe.${RECORDER_VERSION}`;
+}
+
 /**
  * The recorder in one Vitest instance's workers (spec 001 D4; task 001-132;
  * research observed-runtime-inputs F1). Delivered through `createVitest`'s
@@ -65,7 +70,7 @@ export class VitestObserver {
 
   /** The adapter version the environment hash carries: an observing instance's differs. */
   adapterVersion(base: string): string {
-    return this.active ? `${base}+observe.${RECORDER_VERSION}` : base;
+    return this.active ? observingAdapterVersion(base) : base;
   }
 
   /** What the recorder added to, or took out of, `project`'s env: left out of its environment hash. */
