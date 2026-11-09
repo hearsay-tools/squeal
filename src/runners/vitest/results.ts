@@ -14,6 +14,18 @@ const OUTCOMES: Record<string, RunOutcome | undefined> = {
   skipped: "skip",
 };
 
+/** The run outcome of a Vitest test state; `undefined` for a test that did not run (`pending`). */
+export function runOutcome(state: string): RunOutcome | undefined {
+  return Object.hasOwn(OUTCOMES, state) ? OUTCOMES[state] : undefined;
+}
+
+/** What `checkNames` reads of a test: a `TestCase`, or one `squeal ci record` kept. */
+export interface NamedTest {
+  readonly id: string;
+  readonly fullName: string;
+  readonly location?: { readonly line: number } | null | undefined;
+}
+
 /** Research Q4: "Failure location: `errors[0].stacks[0]`", narrowed to the first project frame. */
 export function toCheckError(error: SerializedError, paths: WorktreePaths): CheckError {
   const frame = error.stacks?.find((f) => paths.isProjectFile(f.file));
@@ -87,7 +99,7 @@ export function withLoad(error: CheckError, load: () => number | null = currentL
  * later ones carry their source line as a suffix." Duplicates on one line
  * (`test.each` with equal names) add an ordinal: `name (line 5, 2)`.
  */
-export function checkNames(tests: Iterable<TestCase>): Map<string, string> {
+export function checkNames(tests: Iterable<NamedTest>): Map<string, string> {
   const names = new Map<string, string>();
   const used = new Set<string>();
   for (const test of tests) {
@@ -129,7 +141,7 @@ export function toCheckRunResult(
   fullName: string,
 ): CheckRunResult | null {
   const result = testCase.result();
-  const outcome = OUTCOMES[result.state];
+  const outcome = runOutcome(result.state);
   if (!outcome) return null;
   const location = testCase.location;
   return {
