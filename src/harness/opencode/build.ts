@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { type BuildOptions, build, type Metafile } from "esbuild";
 import {
   bundleOptions,
+  copyCiRuntime,
   copyCodeGrammar,
   copyCoverageRuntime,
   copyNodeTestRuntime,
@@ -85,6 +86,7 @@ export async function buildOpencodeDist(outdir: string): Promise<Metafile> {
   const plugin = await build({ ...pluginBundleOptions(outdir), metafile: true });
   copyNodeTestRuntime(outdir);
   copyObserveRuntime(outdir);
+  copyCiRuntime(outdir);
   copyCoverageRuntime(outdir);
   copyPytestRuntime(outdir);
   copyCodeGrammar(outdir);

@@ -1,7 +1,8 @@
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join, sep } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { PartEnd, PartFile, PartProject } from "../../core/ci/parts.js";
 import type { WorktreePaths } from "../../core/fs/worktree-paths.js";
 import type { AbsolutePath } from "../../core/types/common.js";
@@ -10,7 +11,6 @@ import {
   OBSERVE_VARIABLE,
   observeEnv,
   observeRecorder,
-  observeRuntimeFile,
   recorderOption,
   unobservedEnv,
 } from "../observe/runtime.js";
@@ -70,10 +70,26 @@ export function vitestResolves(root: AbsolutePath): boolean {
   }
 }
 
+/**
+ * Where the hook sits relative to `module`, the running code's own file: from
+ * a bundled CLI at `<plugin>/dist/cli/`, the plugin's `dist/ci/`
+ * (`src/harness/build.ts` `CI_RUNTIME`); from the sources, `ci-runtime/`
+ * beside this file. `null` when neither holds it.
+ */
+const HOOK_CANDIDATES = ["../ci/", "./ci/", "./ci-runtime/"] as const;
+
+export function ciHook(module: URL = new URL(import.meta.url)): AbsolutePath | null {
+  for (const candidate of HOOK_CANDIDATES) {
+    const hook = fileURLToPath(new URL(`${candidate}vitest-ci.cjs`, module));
+    if (existsSync(hook)) return hook;
+  }
+  return null;
+}
+
 /** The recording around one command; why not when this Squeal lacks its hook file. */
 export function startRecording(options: RecordingOptions): VitestRecording | string {
-  const hook = observeRuntimeFile("vitest-ci.cjs");
-  if (hook === null) return "this Squeal has no vitest-ci.cjs beside its recorder";
+  const hook = ciHook();
+  if (hook === null) return "this Squeal has no vitest-ci.cjs (dist/ci/)";
   const recorder = options.observe ? observeRecorder() : null;
   const temp = mkdtempSync(join(options.tempDir ?? tmpdir(), "squeal-ci-"));
   const raw = join(temp, "raw");
