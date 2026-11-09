@@ -92,3 +92,55 @@ Rule 2 exists because Vitest's static closure holds paths no worker reads (the c
 - `vitest-ci.cjs` changed: `dist/ci/` needs the coordinator's rebuild (no `pnpm run build` here).
 - `ciExport`'s success value has `uncertified` (files and inputs); `CiExportCounts` has `uncertified` and `ambiguous`. Publish only after exit 0, as before.
 - `tasks/018-16/notes.md` still describes format 1; this section supersedes its part fields.
+
+## Repair R2 (second review of 0.1.421, B1; the human, 2026-11-09: "A: one owner, repair")
+
+Worker a4580a6b, 2026-11-09. Part format `squeal-ci-part/3`; formats 1 and 2 are refused by `readPart`. This section supersedes R1's rule (B1) and its "Inputs are hashed after the command" decision; R1's B2, B3, B4 and S1 are unchanged.
+
+### Where things are now
+
+| Part | File |
+|---|---|
+| Evidence at each access: content, listing names, absence, writes | `src/runners/vitest/ci-runtime/evidence.cjs` (`createEvidence`) |
+| Which calls take it: `fs`, `fs.promises`, module resolve, entry point, flush | `src/runners/vitest/ci-runtime/evidence-hooks.cjs` (`installEvidence`) |
+| Loaded first in every process and thread of the command | `vitest-ci.cjs` (`readEvidence`, before it requires `vitest/node`) |
+| Settings (`SQUEAL_CI_RECORD.evidence`: `out`, `root`, `skip`, `format`) | `src/runners/vitest/ci-record.ts` (`startRecording`) |
+| The command's evidence, writes applied | `src/core/ci/inputs.ts` (`readEvidence`) |
+| The rule | `src/core/ci/inputs.ts` (`uncertified`), `export-inputs.ts` (`certifier`) |
+| One evidence map per command, in each of its parts | `src/cli/ci.ts` `writeParts`; `Part.evidence` |
+
+Removed: `withInputs`, `readCheckout`, `joinCheckouts`, `CheckoutState`, `PartHeader.clean`, `PartHeader.untracked`, `PartFile.inputs`, the export's `committedBlobs`.
+
+### The rule (B1)
+
+1. At each access the daemon's recorder counts as a read (`fs` read, stat, lstat, exists, access, realpath, a read-only open, a copy's source, a module Node resolves, the entry point), the hook records the path's git blob at that moment (`hashFile`'s rules: a symlink as its target text, no file `null`), and its kept symlink target's. A failed resolve records the exact path it names. At each listing: the names on disk (`namesHash`), and each directory's below a recursive one.
+2. Before each write, create, rename, delete, copy target, link or `mkdir` (and after `mkdtemp`, once it names the directory), the hook records the path as written, with everything below for a delete, rename, copy or `mkdir`, and its directory's listing when the path appears or goes. Written paths are appended at once, before the call; evidence once per event-loop turn, before `process.send` and at exit.
+3. `readEvidence` keeps a path only with one value in every process of the command and no write to it or above it. A path read with two contents has none.
+4. The export certifies an input only when the evidence holds it and it equals the checkout's content (`here`: stat cache, `.git` kind, names on disk). No commit blob, clean checkout or unreported path stands for evidence.
+
+### Decisions the brief did not settle
+
+- **A probe that finds a file records its content** (stat, exists, access, realpath), not only a read. Vite 8 bundles `vitest.config.ts` with rolldown in native code; the only Node access is Vitest's `existsSync`. With reads only, the config had no evidence in a probe, and every file's closure holds it, so the export held nothing. Asked the parent (request 2abc53fc); default kept.
+- **An open that can write marks the path written at the open**, so no descriptor is tracked; `r+` without a write still cancels.
+- **A content write to an existing file does not mark its directory's listing**; a create, delete or rename does. Existence is asked with `readlink`, which the daemon's recorder does not observe.
+- **The hook's own calls never add to the daemon's observations**: it opens, lists or stats only a path the run is accessing in that call, and uses `readlink` for written paths. `test/runners/vitest/ci-evidence.test.ts` compares the recorder's output with and without the hook.
+- **Per process cache**: a file is re-read only when its stat (`dev`, `ino`, `size`, `mtimeMs`, `ctimeMs`) changed since its last hash in that process.
+
+### Limits
+
+- A process without the hook takes no evidence and its writes are not seen: a non-Node program (`sh`, `git`), native code (rolldown, esbuild), a child started with an env that drops `NODE_OPTIONS` or `SQUEAL_CI_RECORD`. Its reads only leave files out. Its writes are caught when the run reads the path afterwards (two contents) or the export's content differs; a write between a recorded read and an unrecorded one, restored before the export, is not.
+- A path probed by Node and then read by native code is certified by the probe's hash; a non-Node change between the two is a race the evidence does not see.
+- Worker threads take evidence when Node gives them the `NODE_OPTIONS` preloads; a thread ended by `terminate()` may lose its last turn's evidence (only leaves files out).
+- Cost per process: one open, fstat and close, plus a realpath, per access under the root outside `node_modules`; a read and hash per new file version; one extra listing per listing (a recursive one again whole).
+
+### Fixture files the stricter rule leaves out
+
+- `test/ci/export.test.ts` (two real shards, four files): 0 left out; keys, closures and results equal the daemon's.
+- `test/ci/export-evidence.test.ts`: both reading files exported at `GOOD`, left out at `BAD` or absent (content differs); the two shared-name files left out by B4, not by evidence.
+- `test/ci/export-wrapper.test.ts` (the review's A, B, C, each with a Node and an `sh` writer): the changed file left out in all six; `test/plain.test.ts` exported in all six. With the Node writer the write cancels the evidence; with `sh` the read-time content differs from the export's. In C, Squeal's resolution candidates for `../src/generated.js` that Vite never probed have no evidence either.
+
+### For the coordinator
+
+- `dist/ci/` gains `evidence.cjs` and `evidence-hooks.cjs` (copied by `copyCiRuntime`, all `.cjs`); `plugins/codex-runtime/runtime.json` and the bundles need the rebuild (no `pnpm run build` here). `test/harness/codex/packaging/runtime.test.ts` lists the two files.
+- `test/keys/key-format.test.ts` passes unchanged; no file under `src/runners/observe/` changed.
+- `spec.md` D8/D9 and `tasks/018-16/notes.md` still describe the post-run hashes and checkout state.
