@@ -1,23 +1,9 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
-import { publishExport } from "../../src/core/ci/publish.js";
-import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
+import { describe, expect, it } from "vitest";
 import { fetchExport } from "../../src/core/shared/fetch.js";
-import { createSharedReader, type SharedReaderOptions } from "../../src/core/shared/reader.js";
-import { listImports } from "../../src/core/store/imports.js";
-import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
-import { DEFAULT_POLICY, type Policy } from "../../src/core/types/policy.js";
-import type { Store } from "../../src/core/types/store.js";
-import {
-  cloneOf,
-  cloneWith,
-  exportOf,
-  git,
-  type Scratch,
-  scratchRemote,
-  untouched,
-} from "./remote.js";
+import { publish, readerOf, scratch, shared } from "./reader-kit.js";
+import { cloneOf, cloneWith, git, untouched } from "./remote.js";
 
 /*
  * Spec 018 D14 (row 018-20): the reader against a scratch bare repository as
@@ -27,68 +13,6 @@ import {
  * or slow fetch, and writes nothing to the clone's config, refs or
  * `FETCH_HEAD`.
  */
-
-const cleanups: (() => void)[] = [];
-afterEach(() => {
-  for (const cleanup of cleanups.splice(0).reverse()) cleanup();
-});
-
-function scratch(): Scratch {
-  const s = scratchRemote();
-  cleanups.push(s.cleanup);
-  return s;
-}
-
-const shared = (ref: string | null): (() => Policy) => {
-  const policy = { ...DEFAULT_POLICY, shared: { ref } };
-  return () => policy;
-};
-
-async function publish(ci: string, commit: string, bytes = exportOf(commit)): Promise<string> {
-  const done = await publishExport({
-    root: ci,
-    bytes,
-    keep: 100,
-    remote: "origin",
-    prefix: "refs/squeal",
-  });
-  if ("refused" in done) throw new Error(done.refused);
-  return done.result;
-}
-
-function storeOf(root: string): Store {
-  const store = openStore(join(root, ".git"), { busyTimeoutMs: 10_000 });
-  if (isStoreOpenFailure(store)) throw new Error(JSON.stringify(store));
-  cleanups.push(() => store.close());
-  return store;
-}
-
-/** A reader of `root` with `shared.ref` `refs/squeal` unless `options` say otherwise. */
-function readerOf(root: string, options: Partial<SharedReaderOptions> = {}) {
-  const notes: string[] = [];
-  let imported = 0;
-  const store = options.store ?? storeOf(root);
-  const reader = createSharedReader({
-    root,
-    worktreeId: worktreeIdFor(root),
-    store,
-    policy: shared("refs/squeal"),
-    now: () => 1_762_100_000_000,
-    note: (text) => notes.push(text),
-    log: () => {},
-    imported: () => {
-      imported += 1;
-    },
-    ...options,
-  });
-  cleanups.push(() => reader.close());
-  const run = async () => {
-    reader.nudge();
-    await reader.idle();
-  };
-  const commits = () => listImports(store).map((i) => i.header.commit);
-  return { reader, run, notes, store, commits, imported: () => imported };
-}
 
 describe("the shared results reader (018 D14)", () => {
   it("imports the nearest main commit's export and writes nothing to config, refs or FETCH_HEAD", async () => {
