@@ -29,6 +29,20 @@ export interface ChangedFunction {
   readonly count: FunctionCount;
 }
 
+/**
+ * D2: a changed path counted at the head bytes, with every function, changed
+ * or not; the join reads them all (015 D9: own lines exclude nested
+ * functions, and a V8 entry that holds another counted function is not
+ * that function's).
+ */
+export interface CountedPath {
+  readonly path: RelativePath;
+  /** The head bytes' blob id. */
+  readonly blob: FileHash;
+  /** The head count's functions, in the count's order. */
+  readonly functions: readonly FunctionCount[];
+}
+
 /** D2: a changed path the counter could not count, with why. */
 export interface UncountedPath {
   readonly path: RelativePath;
@@ -44,6 +58,11 @@ export interface ChangedSet {
   readonly headCommit: string;
   readonly dirty: boolean;
   readonly functions: readonly ChangedFunction[];
+  /**
+   * Every changed path counted at the head, including paths whose functions
+   * all moved or shifted; sorted by path.
+   */
+  readonly counted: readonly CountedPath[];
   /** Functions inside a parse-error range; judged `not-counted`. */
   readonly inErrors: readonly ChangedFunction[];
   readonly uncounted: readonly UncountedPath[];
