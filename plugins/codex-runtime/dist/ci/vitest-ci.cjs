@@ -13,8 +13,14 @@
 // configs and the variables the settings name. `squeal ci record` reads it, turns it into a
 // part and removes it; config and variable values never reach the part.
 //
+// In every process and thread of the command, first, it takes the input
+// evidence (`evidence-hooks.cjs`; spec 018 D9 as amended 2026-11-09) when the
+// settings name its directory, so Vitest and what it loads see the wrapped
+// `fs` from their start.
+//
 // Settings, `SQUEAL_CI_RECORD`, JSON: `raw` the directory, `variables` the
-// names whose values the file keeps. Before it can attach, the hook writes the
+// names whose values the file keeps, `evidence` the evidence's settings
+// (`out`, `root`, `skip`, `format`). Before it can attach, the hook writes the
 // file with `state: "started"`, so a Vitest process that ends without a run
 // end is known. CommonJS with Node built-ins only; `require` of the project's
 // `vitest/node` (an ES module without top-level await) is synchronous, so the
@@ -185,6 +191,22 @@ function install(settings, root) {
     fail(error);
   }
 }
+
+/** The evidence's settings in `SQUEAL_CI_RECORD`, or `null`. */
+function readEvidence() {
+  try {
+    const value = JSON.parse(process.env[VARIABLE] ?? "")?.evidence;
+    if (typeof value?.out !== "string" || typeof value.root !== "string") return null;
+    const skip = Array.isArray(value.skip) ? value.skip.filter((s) => typeof s === "string") : [];
+    return { out: value.out, root: value.root, skip, format: value.format };
+  } catch {
+    return null;
+  }
+}
+
+try {
+  require("./evidence-hooks.cjs").installEvidence(readEvidence());
+} catch {}
 
 const settings = readSettings();
 if (settings !== null && isMainThread && !globalThis.__squealCiRecord) {
