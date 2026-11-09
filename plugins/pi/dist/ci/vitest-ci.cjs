@@ -9,8 +9,8 @@
 //
 // The reporter keeps what each test module ended with and, at the end of the
 // run, writes one JSON file per process into the private directory the
-// settings name: the run's outcomes, its projects' serialized configs and the
-// variables the settings name. `squeal ci record` reads it, turns it into a
+// settings name: the run's outcomes, its shard, its projects' serialized
+// configs and the variables the settings name. `squeal ci record` reads it, turns it into a
 // part and removes it; config and variable values never reach the part.
 //
 // Settings, `SQUEAL_CI_RECORD`, JSON: `raw` the directory, `variables` the
@@ -130,9 +130,11 @@ function reporterFor(vitest, file, settings, fail) {
       for (const name of settings.variables) {
         if (process.env[name] !== undefined) env[name] = process.env[name];
       }
+      const shard = vitest.config?.shard;
       writeRaw(file, {
         state: "ended",
         vitest: vitest.version,
+        shard: shard ? { index: shard.index, count: shard.count } : null,
         node: { version: process.version, platform: process.platform, arch: process.arch },
         reason,
         unhandled: unhandledErrors.map((error) =>
