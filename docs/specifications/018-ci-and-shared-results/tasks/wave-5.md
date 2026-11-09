@@ -169,3 +169,23 @@ Owns: `src/runners/vitest/ci-runtime/`, `src/core/ci/` except `publish.ts`, thei
 Leave alone: the daemon's recorder runtime and key inputs (`test/keys/key-format.test.ts` unchanged). No `pnpm run build`.
 
 Done when: the new tests fail before and pass after; the two-shard comparison still exports its 4 files; lint and typecheck clean; `squeal status` read once without `--wait`.
+
+## 018-20 R1: repair after review FAIL (`reviews/wave-5-0.1.422.md`)
+
+Use /worker. Shape: repair, on candidate `cand/0.1.422`.
+
+Outcome: a stop at any point of the reader's work starts no fetch afterwards, and the reader reacts to a new nearest main commit whether `HEAD` or the remote's default branch moved.
+
+Read: `reviews/wave-5-0.1.422.md` B1 and B2 with their reproductions; `spec.md` D14; `tasks/018-20/notes.md`.
+
+Rules:
+- B1: one cancellation state for the reader; every awaited step (listing, first-parent check, fetch, import) checks it before and after, and a stop kills any child it started. No fetch or import starts after a stop.
+- B2: the reader's cache key is the nearest main commit it would choose (from `merge-base(HEAD, <remote>/<default branch>)`), not `HEAD`; recompute it at start and after each batch, cheaply (local git only).
+
+Starting seam: the two reproductions as failing tests first.
+
+Owns: `src/core/shared/`, the reader's daemon call site, their tests.
+
+Leave alone: `src/core/ci/`, key inputs. No `pnpm run build`.
+
+Done when: both reproductions fail before and pass after; earlier reader tests pass; lint and typecheck clean; `squeal status` read once without `--wait`.
