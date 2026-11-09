@@ -67,3 +67,24 @@ Owns: `src/core/ci/export.ts` (new), `src/cli/ci.ts` (add the `export` subcomman
 Leave alone: `src/core/store/transfer*.ts` except through their exports; the daemon's keying code except to export a function; key inputs. No `pnpm run build`.
 
 Done when: the comparison test passes; each refusal has a test; `squeal status --wait 60000 <changed paths>` read once (report pending as pending); lint and typecheck clean.
+
+## 018-18 R1 and 018-16 S1: repair after review FAIL (`reviews/wave-5.md`)
+
+Use /worker. Shape: repair, on candidate `cand/0.1.420`.
+
+Outcome: an import never makes a pass current where a local run could fail: a re-key keeps every input the exported run read, and `allowOnly` is tolerated only in the safe direction.
+
+Read: `reviews/wave-5.md` B1, B2, S1 with their reproductions and "Worker-sized fix" lines; `spec.md` D10, D11; `tasks/018-18/notes.md`.
+
+Rules:
+- B1: re-key a file only when the destination closure (this worktree's list plus the shared observed entries) contains every path of the exported closure, observed files and directory listings included. If one is missing, keep the results at the exported key (D3). Never widen the shared observed set or move a local key.
+- B2: tolerate an unequal `allowOnly` only when the export ran with `allowOnly: false` (the CI side, which rejects `.only`) and this worktree's value is `true`. Keep true-to-false, unknown and unrecognized values keyed. Compare known boolean hashes; store no config value. Apply the same one-direction rule to `watch` if the reproduction shows the same shape, and say so.
+- S1: make `test/cli/ci-usage.test.ts`'s unsupported-runner test run in a real child process or an explicit resolution seam; keep its exit code, named note and unchanged-tree assertions.
+
+Starting seam: the review's two probes as failing tests first.
+
+Owns: `src/core/store/transfer-rekey.ts`, `transfer-import.ts`, `src/core/keys/environment-descriptor.ts` (the `importDifferences` rule), `test/store/transfer-rekey.test.ts`, the D10 tests, `test/cli/ci-usage.test.ts`.
+
+Leave alone: `src/core/ci/`, `src/cli/ci.ts` (018-17 runs beside you); key inputs. No `pnpm run build`.
+
+Done when: both probes fail before and pass after; S1's test passes alone and with `ci-record.test.ts`; lint and typecheck clean; `squeal status` read once (pending stated as pending).
