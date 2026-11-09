@@ -2628,6 +2628,15 @@ function normalizeRelativePath(path) {
   }
   return normalized;
 }
+function isClosurePath(path) {
+  if (listedDirectory(path) !== null) return true;
+  try {
+    normalizeRelativePath(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
 function createDeclaredInputs(inputs2, files3) {
   const known3 = [...files3];
   const select = (globs4) => {
@@ -15290,15 +15299,22 @@ var init_checkpoints = __esm({
         this.#add(testFiles2, strict);
         this.#settle();
       }
-      /** `ref` got a result, attributed to checkpoint `by` (`StateProvenance.checkpointId`). */
+      /**
+       * `ref` got a result, attributed to checkpoint `by` (`StateProvenance.checkpointId`).
+       * Returns `false` when the open checkpoint refuses it: a forced request's
+       * file still waiting for its own run, whose result came from another run
+       * (task 001-217). Row 018-12 (review wave 3.6-r2, B2-R1): the ledger's
+       * `ends` hear only what this accepts.
+       */
       done(ref2, by) {
         const active = this.#active;
-        if (active === null) return;
         const id = testFileId(ref2);
-        if (active.strict.has(id) && by !== active.record.id) return;
-        if (!active.remaining.delete(id)) return;
+        if (!active?.remaining.has(id)) return true;
+        if (active.strict.has(id) && by !== active.record.id) return false;
+        active.remaining.delete(id);
         this.#laneDone(active, id, false);
         this.#settle();
+        return true;
       }
       /** `ref` crashed or timed out: the checkpoint cannot complete. */
       failed(ref2) {
@@ -17589,10 +17605,7 @@ var init_ledger = __esm({
               this.#discharge(file);
             this.queue.remove(ref2);
             this.#syncPhase(file);
-            if (classify2(file) === "current") {
-              this.checkpoints.done(ref2, null);
-              this.ends?.ended(file);
-            }
+            if (classify2(file) === "current") this.#ended(file, this.checkpoints.done(ref2, null));
             continue;
           }
           const { hits, mayWait } = held3 || strict ? UNPROBED : this.probe(key3);
@@ -17700,8 +17713,17 @@ var init_ledger = __esm({
         if (key3 === file.key) this.#discharge(file);
         if (!this.queue.isForced(file.ref)) this.queue.remove(file.ref);
         this.#syncPhase(file);
-        this.checkpoints.done(file.ref, checkpointId);
-        this.ends?.ended(file);
+        this.#ended(file, this.checkpoints.done(file.ref, checkpointId));
+      }
+      /**
+       * Row 018-12 (review wave 3.6-r2, B2-R1): `file` ended for the requests
+       * that asked for it once their own records accepted the end: the open
+       * checkpoint's verdict (`accepted`, from `Checkpoints.done`; `failed`
+       * always accepts) and its retry's, which only a forced run at its key, or
+       * that key's crash, ends (`endRetry` clears `retryKey` before this).
+       */
+      #ended(file, accepted) {
+        if (accepted && file.retryKey === null) this.ends?.ended(file);
       }
       /**
        * Review wave 13i, B1: queues the files another worktree's heal left held
@@ -17777,7 +17799,7 @@ var init_ledger = __esm({
           if (file.key === key3 && !this.queue.isForced(file.ref)) this.queue.remove(file.ref);
           this.#syncPhase(file);
           this.checkpoints.failed(file.ref);
-          this.ends?.ended(file);
+          this.#ended(file, true);
         }
         this.#unknown.push({ testFiles: entries3.map((e) => e.file.ref), reason: reason2, runId });
       }
@@ -25177,6 +25199,49 @@ var init_lockfiles = __esm({
   }
 });
 
+// src/core/scheduler/refused-observed.ts
+function refusedNote(ref2, refused) {
+  const paths = refused.map((path) => `"${path}"`).join(", ");
+  const one = refused.length === 1;
+  const what = one ? "path" : "paths";
+  const is = one ? "is not a worktree-relative path" : "are not worktree-relative paths";
+  return `observed ${what} left out of ${ref2.project}:${ref2.path}: ${paths} ${is}; the file's key marks its closure incomplete, so no result stored before the ${what} ${one ? "was" : "were"} observed is reused`;
+}
+var REFUSED_OBSERVED, RefusedObserved;
+var init_refused_observed = __esm({
+  "src/core/scheduler/refused-observed.ts"() {
+    "use strict";
+    init_closure();
+    init_reverse_index();
+    REFUSED_OBSERVED = "squeal-refused-observed/1";
+    RefusedObserved = class {
+      constructor(note, persisted) {
+        this.note = note;
+        this.persisted = persisted;
+      }
+      note;
+      persisted;
+      /** Per test file, the note last given; `null` once its refused paths are gone. */
+      #noted = /* @__PURE__ */ new Map();
+      /** The key's runtime part `runtime`, with the paths of `raw` refused for `ref`; as given when none is. */
+      keyed(ref2, raw, runtime) {
+        const refused = raw.filter((path) => !isClosurePath(path));
+        this.#noteOnce(ref2, refused);
+        if (refused.length === 0) return runtime;
+        return JSON.stringify([REFUSED_OBSERVED, refused, runtime]);
+      }
+      #noteOnce(ref2, refused) {
+        const id = testFileId(ref2);
+        const text3 = refused.length === 0 ? null : refusedNote(ref2, refused);
+        if ((this.#noted.get(id) ?? null) === text3) return;
+        const first = !this.#noted.has(id);
+        this.#noted.set(id, text3);
+        if (text3 !== null && !(first && this.persisted(text3))) this.note(text3);
+      }
+    };
+  }
+});
+
 // src/core/scheduler/keying.ts
 import { createHash as createHash28 } from "node:crypto";
 var PROVISIONAL_ENVIRONMENT, WorktreeKeys;
@@ -25206,6 +25271,7 @@ var init_keying = __esm({
     init_linked_files();
     init_lockfiles();
     init_notes2();
+    init_refused_observed();
     PROVISIONAL_ENVIRONMENT = "squeal-provisional-environment/1";
     WorktreeKeys = class {
       constructor(options) {
@@ -25225,6 +25291,10 @@ var init_keying = __esm({
           (text3) => persistedNoteTexts(options.store, options.worktreeId).has(text3)
         );
         this.#observed = new ObservedSets(options.store);
+        this.#refused = new RefusedObserved(
+          (text3) => options.note?.(text3),
+          (text3) => persistedNoteTexts(options.store, options.worktreeId).has(text3)
+        );
         this.#modules = new ModuleSets(options.store);
         this.#startup = new StartupSets(options.store);
         this.index = new KeyIndex(
@@ -25302,6 +25372,8 @@ var init_keying = __esm({
       #runtime;
       #saved = /* @__PURE__ */ new Set();
       #staged = /* @__PURE__ */ new Set();
+      /** Stored observed paths closure assembly cannot take (row 011-310, issue #166). */
+      #refused;
       /**
        * Brings the stat cache up to date at daemon start. Cached paths are
        * reconciled, so what changed while no daemon ran becomes a revision.
@@ -25557,11 +25629,17 @@ var init_keying = __esm({
         this.#runnerClosures.set(testFileId(runner.testFile), runner);
         if (saved) this.#saved.add(testFileId(runner.testFile));
         else this.#saved.delete(testFileId(runner.testFile));
-        const observed2 = this.observes(runner.testFile.project) ? this.effectiveObserved(runner.testFile, this.#observed.of(runner.testFile)) : [];
+        const observes = this.observes(runner.testFile.project);
+        const raw = observes ? this.#observed.of(runner.testFile) : [];
+        const observed2 = observes ? this.effectiveObserved(runner.testFile, raw) : [];
         const update = this.index.setClosure(
           assembleClosure(runner, this.#declared.for(runner.testFile.path), observed2),
           this.#dependencySegment(runner),
-          runtimeIdentity(this.runtimeApplication(runner.testFile).paths),
+          this.#refused.keyed(
+            runner.testFile,
+            raw,
+            runtimeIdentity(this.runtimeApplication(runner.testFile).paths)
+          ),
           !saved || !this.runtimeSelected(runner.testFile)
         );
         for (const path of update.untracked) this.#untracked.add(path);
@@ -25667,8 +25745,14 @@ var init_keying = __esm({
           runner !== void 0 && !this.#saved.has(testFileId(ref2)) && this.#environments.has(ref2.project)
         );
       }
+      /**
+       * The observed paths among `raw` that key `ref`: those closure assembly
+       * takes (`isClosurePath`; row 011-310, issue #166), less the runtime files
+       * applied to it. Closures, their record-time growth and the release of
+       * inherited paths all read the shared set through it.
+       */
       effectiveObserved(ref2, raw) {
-        return this.#runtime.effective(raw, this.runtimeApplication(ref2));
+        return this.#runtime.effective(raw.filter(isClosurePath), this.runtimeApplication(ref2));
       }
       runtimeIdentity(ref2) {
         return runtimeIdentity(this.runtimeApplication(ref2).paths);
@@ -26543,9 +26627,10 @@ var init_request_progress = __esm({
         for (const file of files3) if (file.phase !== null) this.#open.set(file.id, file);
       }
       /**
-       * `file` got a result, from a run or a lookup, or was marked `unknown`:
-       * an asked file ends, once, as the checkpoint counts it (spec 001 D7: a
-       * result at any key). What queues it again after is not the request's.
+       * `file` got a result, from a run or a lookup, or was marked `unknown`,
+       * and the requests' own records accepted it (`FileEnds.ended`; spec 001
+       * D7: a result at any key, a forced request's only from its own run): an
+       * asked file ends, once. What queues it again after is not the request's.
        */
       ended(file) {
         if (this.#open.get(file.id) !== file) return;
