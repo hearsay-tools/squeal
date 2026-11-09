@@ -32,8 +32,11 @@ import {
  * environment hash where D10 finds the two equal, and the key's two other
  * segments as the export gives them (`keyParts`). Re-keying needs proof: the
  * exported key must come out of the export's own list over the same commit
- * with the export's environment hash and those segments. A daemon at the
- * same content then computes the same key; at other content it does not.
+ * with the export's environment hash and those segments. This worktree's
+ * list must also hold every path of the export's list (review wave-5 B1):
+ * a key here that left out a file or listing the exported run read would
+ * stay equal when that input changes. A daemon at the same content then
+ * computes the same key; at other content it does not.
  */
 
 /** What re-keying reads beside the store: the export commit's files (018 D11). */
@@ -103,6 +106,7 @@ export function rekeyFiles(
       [],
       (observed.observed ?? []).filter(isClosurePath),
     ).paths;
+    if (!holdsEvery(closure, file.closure?.paths ?? [])) continue;
     const key = keyOver(here, ref, closure, at, file.keyParts ?? NO_PARTS);
     out.set(testFileId(ref), { key, environment: here, closure, observed });
   }
@@ -118,6 +122,12 @@ function proven(
   if (file.closure === null) return false;
   const parts = file.keyParts ?? NO_PARTS;
   return keyOver(environment.hash, file, file.closure.paths, at, parts) === file.key;
+}
+
+/** Whether `here` holds every path of `exported`: a re-key may add inputs to a key, never drop one (review wave-5 B1). */
+function holdsEvery(here: readonly RelativePath[], exported: readonly RelativePath[]): boolean {
+  const held = new Set(here);
+  return exported.every((path) => held.has(path));
 }
 
 /**
