@@ -6,7 +6,15 @@ import {
   FILE_ERROR,
 } from "../../../src/core/code/gate/collect.js";
 import { gitHashObject } from "../../hash/git-repo.js";
-import { ADAPTERS, changedSet, ownTmpdir, project, SLOW, status } from "./collect-fixture.js";
+import {
+  ADAPTERS,
+  changedSet,
+  NO_ADAPTERS,
+  ownTmpdir,
+  project,
+  SLOW,
+  status,
+} from "./collect-fixture.js";
 
 /*
  * Spec 020 D3 (row 020-03): the one-shot collector selects the test files
@@ -97,6 +105,18 @@ describe("collectEvidence: failures (spec 020 D3, D5 test-failed)", () => {
     );
     expect(summary(evidence.testFiles)).toEqual([["vitest", "test/broken.test.ts", true]]);
     expect(evidence.testFiles[0]?.failed).toEqual([FILE_ERROR]);
+  });
+});
+
+describe("collectEvidence: nothing to run", () => {
+  it("starts no adapter with no changed function and no --test file", async () => {
+    const changed = await changedSet(project("selection"), []);
+    const evidence = await collectEvidence("/nowhere", changed, {
+      tests: [],
+      budgetSeconds: 600,
+      adapters: NO_ADAPTERS,
+    });
+    expect(evidence).toEqual({ testFiles: [], timedOut: false, budgetSeconds: 600 });
   });
 });
 
