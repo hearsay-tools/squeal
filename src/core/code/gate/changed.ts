@@ -6,14 +6,10 @@ import { runGit, splitNul } from "../../fs/git.js";
 import { blobHash, type ObjectFormat } from "../../hash/blob.js";
 import { readObjectFormat } from "../../hash/git-index.js";
 import { createInputMatcher } from "../../keys/glob.js";
-import {
-  CODE_EXTENSIONS,
-  type CodeLanguage,
-  type CodeRange,
-  type FileCount,
-} from "../../types/code.js";
+import { CODE_EXTENSIONS, type CodeLanguage, type FileCount } from "../../types/code.js";
 import type { AbsolutePath, RelativePath } from "../../types/common.js";
 import { countFile } from "../count/index.js";
+import { overlaps } from "../pass/counted.js";
 import type { BasePolicy } from "./policy.js";
 import type { ChangedFunction, ChangedSet, CountedPath, UncountedPath } from "./types.js";
 
@@ -75,28 +71,36 @@ export async function changedFunctions(
   ]);
   if (head.head === null) throw new BaseRefError("HEAD names no commit");
   const bases = await countsAtBase(cwd, baseCommit, paths, policy.maxFileBytes);
-  const atBase = new Set([...bases.values()].flatMap((c) => c.functions.map((f) => f.bodyHash)));
-  const functions: ChangedFunction[] = [];
-  const inErrors: ChangedFunction[] = [];
-  const counted: CountedPath[] = [];
+  const heads = new Map<RelativePath, FileCount>();
   const uncounted: UncountedPath[] = [];
   for (const [path, language] of paths) {
     const now = await countAtHead(join(cwd, path), language, format, policy.maxFileBytes);
-    if (now === null) continue;
-    if (typeof now === "string") {
-      uncounted.push({ path, reason: now });
-      continue;
-    }
+    if (typeof now === "string") uncounted.push({ path, reason: now });
+    else if (now !== null) heads.set(path, now);
+  }
+  const atBase = bodies(bases.values());
+  const atHead = bodies(heads.values());
+  const functions: ChangedFunction[] = [];
+  const inErrors: ChangedFunction[] = [];
+  const counted: CountedPath[] = [];
+  for (const [path, now] of heads) {
     counted.push({ path, blob: now.blob, functions: now.functions });
     if (now.errors.length > 0) uncounted.push({ path, reason: "parse-error" });
-    const before = new Set(bases.get(path)?.functions.map(identity));
+    // An identity whose base body is gone from the head was edited; one whose body lives on shifted or moved.
+    const edited = new Set(
+      bases
+        .get(path)
+        ?.functions.filter((f) => !atHead.has(f.bodyHash))
+        .map(identity),
+    );
     for (const count of now.functions) {
       if (atBase.has(count.bodyHash)) continue;
-      const change = before.has(identity(count)) ? "edited" : "added";
+      const change = edited.has(identity(count)) ? "edited" : "added";
       const into = now.errors.some((e) => overlaps(count.range, e)) ? inErrors : functions;
       into.push({ path, blob: now.blob, change, count });
     }
   }
+  uncounted.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
   return {
     ref,
     baseCommit,
@@ -195,14 +199,7 @@ function identity(f: { readonly qualifiedName: string; readonly occurrence: numb
   return `${f.qualifiedName}\0${f.occurrence}`;
 }
 
-/** The two ranges share at least one character. */
-function overlaps(a: CodeRange, b: CodeRange): boolean {
-  return (
-    before(a.startLine, a.startColumn, b.endLine, b.endColumn) &&
-    before(b.startLine, b.startColumn, a.endLine, a.endColumn)
-  );
-}
-
-function before(line: number, column: number, endLine: number, endColumn: number): boolean {
-  return line < endLine || (line === endLine && column < endColumn);
+/** The body hashes of every function of `counts`. */
+function bodies(counts: Iterable<FileCount>): Set<string> {
+  return new Set([...counts].flatMap((c) => c.functions.map((f) => f.bodyHash)));
 }
