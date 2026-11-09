@@ -12,7 +12,7 @@
       "mode": 493
     },
     "dist/ci/vitest-ci.cjs": {
-      "sha256": "66a887d895b9385aa1b29abd549b65cb659073ebd0266b2df0d6f9364777a833",
+      "sha256": "4f1ab9c21e79fe6a9df5292f3474754ad9a065f2e4fa373689ba823db329a303",
       "mode": 420
     },
     "dist/cli/coverage-map.mjs": {
@@ -32,7 +32,7 @@
       "mode": 493
     },
     "dist/cli/squeal.mjs": {
-      "sha256": "e7501ab11505f4e53073a4f76e49a5ed6f37980a2126d37fe32b25ceb274eba0",
+      "sha256": "417d85a7575904c48892bdb7066aa8961f2e58b3726af022f1df3ef692a7842a",
       "mode": 493
     },
     "dist/code/tree-sitter-tsx.wasm": {
