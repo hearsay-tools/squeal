@@ -1,0 +1,327 @@
+{
+ "unkilledByCalled": [
+  {
+   "pr": "cez/c1abe429",
+   "where": "packages/web/src/lib/task-groups.ts:387:10 LogicalOperator Killed",
+   "killers": [
+    "packages/web/src/routes/tasks-overview.test.tsx"
+   ],
+   "inRecords": [
+    "no record naming the file"
+   ],
+   "coveredBy": 7
+  },
+  {
+   "pr": "cez/c1abe429",
+   "where": "packages/web/src/lib/task-groups.ts:387:45 ConditionalExpression Killed",
+   "killers": [
+    "packages/web/src/routes/tasks-overview.test.tsx"
+   ],
+   "inRecords": [
+    "no record naming the file"
+   ],
+   "coveredBy": 7
+  },
+  {
+   "pr": "cez/c1abe429",
+   "where": "packages/web/src/lib/task-groups.ts:386:80 BlockStatement Killed",
+   "killers": [
+    "packages/web/src/routes/tasks-overview.test.tsx"
+   ],
+   "inRecords": [
+    "no record naming the file"
+   ],
+   "coveredBy": 7
+  },
+  {
+   "pr": "cez/c1abe429",
+   "where": "packages/web/src/lib/task-groups.ts:387:45 EqualityOperator Killed",
+   "killers": [
+    "packages/web/src/routes/tasks-overview.test.tsx"
+   ],
+   "inRecords": [
+    "no record naming the file"
+   ],
+   "coveredBy": 7
+  },
+  {
+   "pr": "cez/c1abe429",
+   "where": "packages/web/src/lib/task-groups.ts:387:32 ArrowFunction Killed",
+   "killers": [
+    "packages/web/src/routes/tasks-overview.test.tsx"
+   ],
+   "inRecords": [
+    "no record naming the file"
+   ],
+   "coveredBy": 7
+  },
+  {
+   "pr": "cez/c1abe429",
+   "where": "packages/web/src/lib/task-groups.ts:387:45 ConditionalExpression Killed",
+   "killers": [
+    "packages/web/src/routes/tasks-overview.test.tsx"
+   ],
+   "inRecords": [
+    "no record naming the file"
+   ],
+   "coveredBy": 7
+  },
+  {
+   "pr": "cez/c1abe429",
+   "where": "packages/web/src/lib/use-task-list-folds.ts:55:11 ArrowFunction Killed",
+   "killers": [
+    "packages/web/src/routes/tasks-overview.test.tsx"
+   ],
+   "inRecords": [
+    "no record naming the file"
+   ],
+   "coveredBy": 2
+  },
+  {
+   "pr": "cez/c1abe429",
+   "where": "packages/web/src/lib/use-task-list-folds.ts:56:10 ObjectLiteral Killed",
+   "killers": [
+    "packages/web/src/routes/tasks-overview.test.tsx"
+   ],
+   "inRecords": [
+    "no record naming the file"
+   ],
+   "coveredBy": 7
+  },
+  {
+   "pr": "cez/c1abe429",
+   "where": "packages/web/src/lib/use-task-list-folds.ts:83:6 ArrayDeclaration Killed",
+   "killers": [
+    "packages/web/src/routes/tasks-overview.test.tsx"
+   ],
+   "inRecords": [
+    "no record naming the file"
+   ],
+   "coveredBy": 6
+  }
+ ],
+ "coveredNotCalled": {
+  "packages/web/src/routes/tasks-overview.test.tsx -> packages/web/src/lib/use-search-params-writer.ts": {
+   "pairs": 37,
+   "record": "no record naming the file",
+   "pr": "fix/search-params-writer-inflight"
+  },
+  "packages/web/src/routes.test.tsx -> packages/web/src/routes/task-thread/conversation-card.tsx": {
+   "pairs": 1,
+   "record": "loaded only",
+   "pr": "cez/72bd9596"
+  },
+  "packages/web/src/routes/cross-project-task-navigation.test.tsx -> packages/web/src/routes/task-thread/conversation-card.tsx": {
+   "pairs": 1,
+   "record": "loaded only",
+   "pr": "cez/72bd9596"
+  },
+  "packages/web/src/routes/tasks-overview.test.tsx -> packages/web/src/lib/task-groups.ts": {
+   "pairs": 6,
+   "record": "no record naming the file",
+   "pr": "cez/c1abe429"
+  },
+  "packages/web/src/routes/tasks-overview.test.tsx -> packages/web/src/lib/use-task-list-folds.ts": {
+   "pairs": 23,
+   "record": "no record naming the file",
+   "pr": "cez/c1abe429"
+  },
+  "packages/web/src/routes/tasks-overview.test.tsx -> packages/web/src/api/run-address.ts": {
+   "pairs": 6,
+   "record": "no record naming the file",
+   "pr": "cez/6b645597"
+  },
+  "packages/web/src/routes/tasks-overview.test.tsx -> packages/web/src/api/use-run-cache-writer.ts": {
+   "pairs": 3,
+   "record": "no record naming the file",
+   "pr": "cez/6b645597"
+  },
+  "packages/web/src/routes/tasks-overview.test.tsx -> packages/web/src/components/sidebar-archive.ts": {
+   "pairs": 3,
+   "record": "no record naming the file",
+   "pr": "cez/6b645597"
+  },
+  "packages/web/src/routes/tasks-overview.test.tsx -> packages/web/src/api/run-cache.ts": {
+   "pairs": 7,
+   "record": "no record naming the file",
+   "pr": "fix/explicit-project-send-cache"
+  },
+  "packages/web/src/routes/repo-git/repo-git.test.tsx -> packages/web/src/routes/task-thread/file-links.ts": {
+   "pairs": 12,
+   "record": "loaded only",
+   "pr": "feat/html-report-reader"
+  },
+  "packages/web/src/components/diff/diff.test.tsx -> packages/web/src/routes/task-thread/file-links.ts": {
+   "pairs": 12,
+   "record": "loaded only",
+   "pr": "feat/html-report-reader"
+  },
+  "packages/web/src/components/diff/diff-virtualize.test.tsx -> packages/web/src/routes/task-thread/file-links.ts": {
+   "pairs": 12,
+   "record": "loaded only",
+   "pr": "feat/html-report-reader"
+  }
+ },
+ "noCovButLine": [
+  {
+   "pr": "cez/72bd9596",
+   "where": "packages/web/src/routes/task-thread/conversation-card.tsx:80:64 ObjectLiteral NoCoverage",
+   "end": "80:98",
+   "replacement": "{}",
+   "lineCoveredBy": 4,
+   "inRelated": 3
+  },
+  {
+   "pr": "cez/72bd9596",
+   "where": "packages/web/src/routes/task-thread/conversation-card.tsx:90:44 OptionalChaining NoCoverage",
+   "end": "90:67",
+   "replacement": "soleMessage.recordedAt",
+   "lineCoveredBy": 4,
+   "inRelated": 3
+  },
+  {
+   "pr": "cez/72bd9596",
+   "where": "packages/web/src/routes/task-thread/conversation-card.tsx:173:142 StringLiteral NoCoverage",
+   "end": "173:144",
+   "replacement": "\"Stryker was here!\"",
+   "lineCoveredBy": 3,
+   "inRelated": 2
+  },
+  {
+   "pr": "cez/72bd9596",
+   "where": "packages/web/src/routes/task-thread/conversation-card.tsx:291:38 ObjectLiteral NoCoverage",
+   "end": "291:145",
+   "replacement": "{}",
+   "lineCoveredBy": 4,
+   "inRelated": 3
+  },
+  {
+   "pr": "cez/72bd9596",
+   "where": "packages/web/src/routes/task-thread/conversation-card.tsx:291:65 StringLiteral NoCoverage",
+   "end": "291:89",
+   "replacement": "\"\"",
+   "lineCoveredBy": 4,
+   "inRelated": 3
+  },
+  {
+   "pr": "cez/72bd9596",
+   "where": "packages/web/src/routes/task-thread/conversation-card.tsx:291:92 StringLiteral NoCoverage",
+   "end": "291:115",
+   "replacement": "\"\"",
+   "lineCoveredBy": 4,
+   "inRelated": 3
+  },
+  {
+   "pr": "cez/72bd9596",
+   "where": "packages/web/src/routes/task-thread/conversation-card.tsx:293:34 ObjectLiteral NoCoverage",
+   "end": "293:111",
+   "replacement": "{}",
+   "lineCoveredBy": 4,
+   "inRelated": 3
+  },
+  {
+   "pr": "cez/72bd9596",
+   "where": "packages/web/src/routes/task-thread/conversation-card.tsx:293:43 StringLiteral NoCoverage",
+   "end": "293:57",
+   "replacement": "\"\"",
+   "lineCoveredBy": 4,
+   "inRelated": 3
+  },
+  {
+   "pr": "cez/72bd9596",
+   "where": "packages/web/src/routes/task-thread/conversation-card.tsx:293:66 StringLiteral NoCoverage",
+   "end": "293:109",
+   "replacement": "\"\"",
+   "lineCoveredBy": 4,
+   "inRelated": 3
+  },
+  {
+   "pr": "cez/72bd9596",
+   "where": "packages/web/src/routes/task-thread/conversation-card.tsx:294:35 ObjectLiteral NoCoverage",
+   "end": "294:81",
+   "replacement": "{}",
+   "lineCoveredBy": 4,
+   "inRelated": 3
+  },
+  {
+   "pr": "cez/72bd9596",
+   "where": "packages/web/src/routes/task-thread/conversation-card.tsx:294:44 StringLiteral NoCoverage",
+   "end": "294:54",
+   "replacement": "\"\"",
+   "lineCoveredBy": 4,
+   "inRelated": 3
+  },
+  {
+   "pr": "feat/remember-preview-state",
+   "where": "packages/web/src/routes/task-thread/preview/preview-state.ts:210:109 ObjectLiteral NoCoverage",
+   "end": "210:124",
+   "replacement": "{}",
+   "lineCoveredBy": 4,
+   "inRelated": 2
+  },
+  {
+   "pr": "feat/remember-preview-state",
+   "where": "packages/web/src/routes/task-thread/preview/preview-state.ts:210:118 BooleanLiteral NoCoverage",
+   "end": "210:122",
+   "replacement": "false",
+   "lineCoveredBy": 4,
+   "inRelated": 2
+  },
+  {
+   "pr": "cez/6b645597",
+   "where": "packages/web/src/lib/project-switch.ts:77:40 StringLiteral NoCoverage",
+   "end": "77:42",
+   "replacement": "\"Stryker was here!\"",
+   "lineCoveredBy": 4,
+   "inRelated": 4
+  },
+  {
+   "pr": "cez/1eb1f8a4",
+   "where": "packages/web/src/components/diff/commit-diff-panel.tsx:59:39 StringLiteral NoCoverage",
+   "end": "59:47",
+   "replacement": "\"\"",
+   "lineCoveredBy": 1,
+   "inRelated": 1
+  },
+  {
+   "pr": "cez/1eb1f8a4",
+   "where": "packages/web/src/components/diff/commit-diff-panel.tsx:61:49 StringLiteral NoCoverage",
+   "end": "61:76",
+   "replacement": "\"\"",
+   "lineCoveredBy": 1,
+   "inRelated": 1
+  },
+  {
+   "pr": "fix/unify-project-context-failures",
+   "where": "packages/cezar/src/server/live-routes.ts:46:36 CallExpression NoCoverage",
+   "end": "46:127",
+   "replacement": ";",
+   "lineCoveredBy": 2,
+   "inRelated": 2
+  },
+  {
+   "pr": "feat/preview-ultra-pixel-density",
+   "where": "packages/cezar/src/preview/density.ts:53:36 StringLiteral NoCoverage",
+   "end": "53:55",
+   "replacement": "\"\"",
+   "lineCoveredBy": 3,
+   "inRelated": 3
+  },
+  {
+   "pr": "feat/preview-ultra-pixel-density",
+   "where": "packages/web/src/routes/task-thread/preview/preview-quality.ts:25:135 StringLiteral NoCoverage",
+   "end": "25:143",
+   "replacement": "\"\"",
+   "lineCoveredBy": 4,
+   "inRelated": 4
+  },
+  {
+   "pr": "feat/html-report-reader",
+   "where": "packages/web/src/routes/task-thread/file-links.ts:16:88 StringLiteral NoCoverage",
+   "end": "16:90",
+   "replacement": "\"Stryker was here!\"",
+   "lineCoveredBy": 5,
+   "inRelated": 3
+  }
+ ]
+}

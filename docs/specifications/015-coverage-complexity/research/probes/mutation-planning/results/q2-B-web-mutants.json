@@ -1,0 +1,543 @@
+{
+ "testFiles": 25,
+ "mutants": [
+  {
+   "id": "0",
+   "at": "29:98",
+   "mutator": "BlockStatement",
+   "status": "Killed",
+   "static": false,
+   "coveredByTests": 527,
+   "coveredByFiles": 25,
+   "killedBy": [
+    "packages/web/src/routes/github/github-paging-search.test.tsx"
+   ]
+  },
+  {
+   "id": "4",
+   "at": "40:31",
+   "mutator": "BlockStatement",
+   "status": "Killed",
+   "static": false,
+   "coveredByTests": 527,
+   "coveredByFiles": 25,
+   "killedBy": [
+    "packages/web/src/routes/tasks-overview-route.test.tsx"
+   ]
+  },
+  {
+   "id": "5",
+   "at": "41:9",
+   "mutator": "ConditionalExpression",
+   "status": "Killed",
+   "static": false,
+   "coveredByTests": 527,
+   "coveredByFiles": 25,
+   "killedBy": [
+    "packages/web/src/routes/tasks-overview-route.test.tsx"
+   ]
+  },
+  {
+   "id": "3",
+   "at": "40:3",
+   "mutator": "CallExpression",
+   "status": "Killed",
+   "static": false,
+   "coveredByTests": 527,
+   "coveredByFiles": 25,
+   "killedBy": [
+    "packages/web/src/routes/tasks-overview-route.test.tsx"
+   ]
+  },
+  {
+   "id": "7",
+   "at": "41:9",
+   "mutator": "EqualityOperator",
+   "status": "Killed",
+   "static": false,
+   "coveredByTests": 527,
+   "coveredByFiles": 25,
+   "killedBy": [
+    "packages/web/src/routes/tasks-overview-route.test.tsx"
+   ]
+  },
+  {
+   "id": "8",
+   "at": "43:23",
+   "mutator": "ConditionalExpression",
+   "status": "Killed",
+   "static": false,
+   "coveredByTests": 527,
+   "coveredByFiles": 25,
+   "killedBy": [
+    "packages/web/src/routes/tasks-overview-route.test.tsx"
+   ]
+  },
+  {
+   "id": "1",
+   "at": "39:32",
+   "mutator": "ObjectLiteral",
+   "status": "Killed",
+   "static": false,
+   "coveredByTests": 527,
+   "coveredByFiles": 25,
+   "killedBy": [
+    "packages/web/src/lib/use-search-params-writer.test.tsx"
+   ]
+  },
+  {
+   "id": "2",
+   "at": "39:47",
+   "mutator": "StringLiteral",
+   "status": "Survived",
+   "static": false,
+   "coveredByTests": 527,
+   "coveredByFiles": 25,
+   "killedBy": []
+  },
+  {
+   "id": "10",
+   "at": "43:23",
+   "mutator": "EqualityOperator",
+   "status": "Killed",
+   "static": false,
+   "coveredByTests": 527,
+   "coveredByFiles": 25,
+   "killedBy": [
+    "packages/web/src/lib/use-search-params-writer.test.tsx"
+   ]
+  },
+  {
+   "id": "12",
+   "at": "44:9",
+   "mutator": "ConditionalExpression",
+   "status": "Killed",
+   "static": false,
+   "coveredByTests": 527,
+   "coveredByFiles": 25,
+   "killedBy": [
+    "packages/web/src/lib/use-search-params-writer.test.tsx"
+   ]
+  },
+  {
+   "id": "11",
+   "at": "43:23",
+   "mutator": "OptionalChaining",
+   "status": "Killed",
+   "static": false,
+   "coveredByTests": 527,
+   "coveredByFiles": 25,
+   "killedBy": [
+    "packages/web/src/routes/github/github-paging-search.test.tsx"
+   ]
+  },
+  {
+   "id": "13",
+   "at": "44:9",
+   "mutator": "ConditionalExpression",
+   "status": "Killed",
+   "static": false,
+   "coveredByTests": 527,
+   "coveredByFiles": 25,
+   "killedBy": [
+    "packages/web/src/lib/use-search-params-writer.test.tsx"
+   ]
+  },
+  {
+   "id": "15",
+   "at": "44:9",
+   "mutator": "ConditionalExpression",
+   "status": "Killed",
+   "static": false,
+   "coveredByTests": 527,
+   "coveredByFiles": 25,
+   "killedBy": [
+    "packages/web/src/lib/use-search-params-writer.test.tsx"
+   ]
+  },
+  {
+   "id": "16",
+   "at": "44:9",
+   "mutator": "LogicalOperator",
+   "status": "Killed",
+   "static": false,
+   "coveredByTests": 527,
+   "coveredByFiles": 25,
+   "killedBy": [
+    "packages/web/src/lib/use-search-params-writer.test.tsx"
+   ]
+  },
+  {
+   "id": "17",
+   "at": "44:9",
+   "mutator": "ConditionalExpression",
+   "status": "Killed",
+   "static": false,
+   "coveredByTests": 527,
+   "coveredByFiles": 25,
+   "killedBy": [
+    "packages/web/src/lib/use-search-params-writer.test.tsx"
+   ]
+  },
+  {
+   "id": "18",
+   "at": "44:9",
+   "mutator": "EqualityOperator",
+   "status": "Killed",
+   "static": false,
+   "coveredByTests": 527,
+   "coveredByFiles": 25,
+   "killedBy": [
+    "packages/web/src/lib/use-search-params-writer.test.tsx"
+   ]
+  },
+  {
+   "id": "19",
+   "at": "44:28",
+   "mutator": "StringLiteral",
+   "status": "Killed",
+   "static": false,
+   "coveredByTests": 527,
+   "coveredByFiles": 25,
+   "killedBy": [
+    "packages/web/src/lib/use-search-params-writer.test.tsx"
+   ]
+  },
+  {
+   "id": "20",
+   "at": "44:41",
+   "mutator": "ConditionalExpression",
+   "status": "Survived",
+   "static": false,
+   "coveredByTests": 89,
+   "coveredByFiles": 11,
+   "killedBy": []
+  },
+  {
+   "id": "6",
+   "at": "41:9",
+   "mutator": "ConditionalExpression",
+   "status": "Survived",
+   "static": false,
+   "coveredByTests": 527,
+   "coveredByFiles": 25,
+   "killedBy": []
+  },
+  {
+   "id": "21",
+   "at": "44:41",
+   "mutator": "EqualityOperator",
+   "status": "Killed",
+   "static": false,
+   "coveredByTests": 89,
+   "coveredByFiles": 11,
+   "killedBy": [
+    "packages/web/src/lib/use-search-params-writer.test.tsx"
+   ]
+  },
+  {
+   "id": "22",
+   "at": "44:68",
+   "mutator": "ConditionalExpression",
+   "status": "Killed",
+   "static": false,
+   "coveredByTests": 49,
+   "coveredByFiles": 8,
+   "killedBy": [
+    "packages/web/src/lib/use-search-params-writer.test.tsx"
+   ]
+  },
+  {
+   "id": "24",
+   "at": "44:68",
+   "mutator": "EqualityOperator",
+   "status": "Killed",
+   "static": false,
+   "coveredByTests": 49,
+   "coveredByFiles": 8,
+   "killedBy": [
+    "packages/web/src/lib/use-search-params-writer.test.tsx"
+   ]
+  },
+  {
+   "id": "9",
+   "at": "43:23",
+   "mutator": "ConditionalExpression",
+   "status": "Killed",
+   "static": false,
+   "coveredByTests": 527,
+   "coveredByFiles": 25,
+   "killedBy": [
+    "packages/web/src/lib/use-search-params-writer.test.tsx"
+   ]
+  },
+  {
+   "id": "26",
+   "at": "47:11",
+   "mutator": "ConditionalExpression",
+   "status": "Killed",
+   "static": false,
+   "coveredByTests": 48,
+   "coveredByFiles": 8,
+   "killedBy": [
+    "packages/web/src/lib/use-search-params-writer.test.tsx"
+   ]
+  },
+  {
+   "id": "23",
+   "at": "44:68",
+   "mutator": "EqualityOperator",
+   "status": "Survived",
+   "static": false,
+   "coveredByTests": 49,
+   "coveredByFiles": 8,
+   "killedBy": []
+  },
+  {
+   "id": "25",
+   "at": "44:108",
+   "mutator": "BlockStatement",
+   "status": "Survived",
+   "static": false,
+   "coveredByTests": 48,
+   "coveredByFiles": 8,
+   "killedBy": []
+  },
+  {
+   "id": "27",
+   "at": "47:11",
+   "mutator": "ConditionalExpression",
+   "status": "Survived",
+   "static": false,
+   "coveredByTests": 48,
+   "coveredByFiles": 8,
+   "killedBy": []
+  },
+  {
+   "id": "28",
+   "at": "47:11",
+   "mutator": "EqualityOperator",
+   "status": "Killed",
+   "static": false,
+   "coveredByTests": 48,
+   "coveredByFiles": 8,
+   "killedBy": [
+    "packages/web/src/lib/use-search-params-writer.test.tsx"
+   ]
+  },
+  {
+   "id": "31",
+   "at": "54:25",
+   "mutator": "ObjectLiteral",
+   "status": "Killed",
+   "static": false,
+   "coveredByTests": 527,
+   "coveredByFiles": 25,
+   "killedBy": [
+    "packages/web/src/lib/use-search-params-writer.test.tsx"
+   ]
+  },
+  {
+   "id": "32",
+   "at": "56:6",
+   "mutator": "ArrayDeclaration",
+   "status": "Killed",
+   "static": false,
+   "coveredByTests": 527,
+   "coveredByFiles": 25,
+   "killedBy": [
+    "packages/web/src/lib/use-search-params-writer.test.tsx"
+   ]
+  },
+  {
+   "id": "33",
+   "at": "57:67",
+   "mutator": "BlockStatement",
+   "status": "Killed",
+   "static": false,
+   "coveredByTests": 57,
+   "coveredByFiles": 8,
+   "killedBy": [
+    "packages/web/src/lib/use-search-params-writer.test.tsx"
+   ]
+  },
+  {
+   "id": "34",
+   "at": "61:9",
+   "mutator": "ConditionalExpression",
+   "status": "Killed",
+   "static": false,
+   "coveredByTests": 57,
+   "coveredByFiles": 8,
+   "killedBy": [
+    "packages/web/src/lib/use-search-params-writer.test.tsx"
+   ]
+  },
+  {
+   "id": "35",
+   "at": "61:9",
+   "mutator": "ConditionalExpression",
+   "status": "Killed",
+   "static": false,
+   "coveredByTests": 57,
+   "coveredByFiles": 8,
+   "killedBy": [
+    "packages/web/src/lib/use-search-params-writer.test.tsx"
+   ]
+  },
+  {
+   "id": "36",
+   "at": "61:9",
+   "mutator": "EqualityOperator",
+   "status": "Killed",
+   "static": false,
+   "coveredByTests": 57,
+   "coveredByFiles": 8,
+   "killedBy": [
+    "packages/web/src/lib/use-search-params-writer.test.tsx"
+   ]
+  },
+  {
+   "id": "37",
+   "at": "62:17",
+   "mutator": "ArithmeticOperator",
+   "status": "Killed",
+   "static": false,
+   "coveredByTests": 54,
+   "coveredByFiles": 8,
+   "killedBy": [
+    "packages/web/src/lib/use-search-params-writer.test.tsx"
+   ]
+  },
+  {
+   "id": "29",
+   "at": "47:52",
+   "mutator": "BlockStatement",
+   "status": "Survived",
+   "static": false,
+   "coveredByTests": 48,
+   "coveredByFiles": 8,
+   "killedBy": []
+  },
+  {
+   "id": "38",
+   "at": "63:23",
+   "mutator": "ObjectLiteral",
+   "status": "Killed",
+   "static": false,
+   "coveredByTests": 54,
+   "coveredByFiles": 8,
+   "killedBy": [
+    "packages/web/src/lib/use-search-params-writer.test.tsx"
+   ]
+  },
+  {
+   "id": "40",
+   "at": "64:29",
+   "mutator": "StringLiteral",
+   "status": "Killed",
+   "static": false,
+   "coveredByTests": 54,
+   "coveredByFiles": 8,
+   "killedBy": [
+    "packages/web/src/lib/use-search-params-writer.test.tsx"
+   ]
+  },
+  {
+   "id": "41",
+   "at": "64:43",
+   "mutator": "ObjectLiteral",
+   "status": "Killed",
+   "static": false,
+   "coveredByTests": 54,
+   "coveredByFiles": 8,
+   "killedBy": [
+    "packages/web/src/lib/use-search-params-writer.test.tsx"
+   ]
+  },
+  {
+   "id": "42",
+   "at": "64:54",
+   "mutator": "BooleanLiteral",
+   "status": "Killed",
+   "static": false,
+   "coveredByTests": 54,
+   "coveredByFiles": 8,
+   "killedBy": [
+    "packages/web/src/lib/use-search-params-writer.test.tsx"
+   ]
+  },
+  {
+   "id": "39",
+   "at": "64:19",
+   "mutator": "ObjectLiteral",
+   "status": "Killed",
+   "static": false,
+   "coveredByTests": 54,
+   "coveredByFiles": 8,
+   "killedBy": [
+    "packages/web/src/routes/global-tasks.test.tsx"
+   ]
+  },
+  {
+   "id": "43",
+   "at": "64:67",
+   "mutator": "ObjectLiteral",
+   "status": "Killed",
+   "static": false,
+   "coveredByTests": 54,
+   "coveredByFiles": 8,
+   "killedBy": [
+    "packages/web/src/lib/use-search-params-writer.test.tsx"
+   ]
+  },
+  {
+   "id": "45",
+   "at": "66:10",
+   "mutator": "ArrayDeclaration",
+   "status": "Killed",
+   "static": false,
+   "coveredByTests": 527,
+   "coveredByFiles": 25,
+   "killedBy": [
+    "packages/web/src/lib/use-search-params-writer.test.tsx"
+   ]
+  },
+  {
+   "id": "14",
+   "at": "44:9",
+   "mutator": "LogicalOperator",
+   "status": "Killed",
+   "static": false,
+   "coveredByTests": 527,
+   "coveredByFiles": 25,
+   "killedBy": [
+    "packages/web/src/lib/use-search-params-writer.test.tsx"
+   ]
+  },
+  {
+   "id": "30",
+   "at": "52:12",
+   "mutator": "BlockStatement",
+   "status": "Killed",
+   "static": false,
+   "coveredByTests": 527,
+   "coveredByFiles": 25,
+   "killedBy": [
+    "packages/web/src/routes/tasks-overview-route.test.tsx"
+   ]
+  },
+  {
+   "id": "44",
+   "at": "65:6",
+   "mutator": "ArrayDeclaration",
+   "status": "Killed",
+   "static": false,
+   "coveredByTests": 527,
+   "coveredByFiles": 25,
+   "killedBy": [
+    "packages/web/src/routes/github/github-sidebar-filters.test.tsx"
+   ]
+  }
+ ]
+}

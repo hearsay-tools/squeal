@@ -1,0 +1,62 @@
+{
+ "config": {
+  "testRunner": "vitest",
+  "plugins": [
+   "@stryker-mutator/vitest-runner"
+  ],
+  "vitest": {
+   "configFile": "vitest.config.ts",
+   "pool": "forks",
+   "related": false
+  },
+  "inPlace": false,
+  "coverageAnalysis": "perTest",
+  "ignoreStatic": true,
+  "mutate": [
+   "src/calc.ts"
+  ],
+  "concurrency": 2,
+  "reporters": [
+   "json",
+   "clear-text"
+  ],
+  "jsonReporter": {
+   "fileName": "/tmp/mp125/q5/out/fallback.json"
+  },
+  "cleanTempDir": true,
+  "testFiles": [
+   "src/other.test.ts"
+  ]
+ },
+ "statuses": {
+  "Survived": 26
+ },
+ "testsCompletedPerMutant": [
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1
+ ]
+}
