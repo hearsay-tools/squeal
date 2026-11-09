@@ -443,8 +443,8 @@ export class Listings {
   }
 }
 
-/** The hash of a listing's entry names, sorted. */
-function namesHash(names: string[]): FileHash {
+/** The hash of a listing's entry names, sorted; an import hashes a commit's listings with it (018 D11). */
+export function namesHash(names: string[]): FileHash {
   return createHash("sha1").update(names.sort(compare).join("\0")).digest("hex");
 }
 
