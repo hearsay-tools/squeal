@@ -19,3 +19,21 @@ Owns: `src/core/daemon/lifecycle.ts`, `src/core/daemon/daemon.ts`, `src/core/dae
 Leave alone: key inputs; the departure and drain paths except where they share the activity hook (say so). No `pnpm run build`.
 
 Done when: the new test fails before and passes after; the existing lifecycle and drain tests still pass; `squeal status --wait 60000 <changed paths>` current and passing; lint and typecheck clean; the final message names what counts as activity now.
+
+## 018-12 R1 repair after review FAIL (`reviews/wave-3.6.md`, B1 to B3)
+
+Use /worker. Shape: repair, on candidate `cand/0.1.419`.
+
+Outcome: the idle exit sees every file end of an open explicit request, and only those, so a request in progress never lets the daemon stop and background work never keeps it up.
+
+Read: `reviews/wave-3.6.md` B1, B2 and B3 with their reproductions and "Fix sized for one worker" lines; the 018-12 section above; `src/core/scheduler/request-progress.ts`.
+
+One rule for all three (the coordinator's direction): record a request's file end at the scheduler boundary where that file's result is stored or its run ends, as an event, never reconstructed from the phase when the lifecycle polls (B2). Register for each request exactly the files it selected, with its lane restriction, not the whole checkpoint it joined (B1). Register retry work where a retry is actually claimed and queued, shared by the direct request, interval reconciliation and startup; waiting at a closed load gate stays no progress (B3).
+
+Starting seam: the three reproductions as failing tests first (`test/scheduler/request-progress.test.ts`, `test/scheduler/retry-fixture.ts`), plus the review's extra cases: an empty fast request while a slow baseline stays open; a completion followed by a re-queue before a read, with no end added for the finished request by the later background run; a pending retry at startup.
+
+Owns: `src/core/scheduler/request-progress.ts`, `src/core/scheduler/scheduler.ts`, the retry and reconciliation paths it needs, `src/core/daemon/lifecycle.ts` and `daemon.ts` only if the reading changes, their tests.
+
+Leave alone: key inputs; checkpoint joining and the baseline's own result attribution. No `pnpm run build`.
+
+Done when: each new test fails before its fix and passes after; the existing request-progress, lifecycle, drain, retry and narrow-run tests pass; `squeal status --wait 60000 <changed paths>` current and passing; lint and typecheck clean.
