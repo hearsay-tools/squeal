@@ -1,0 +1,108 @@
+{
+  "host": {
+    "at": "2026-11-09T20:07:00.500Z",
+    "load": [
+      3.46,
+      7.9,
+      10.86
+    ],
+    "cpus": 24
+  },
+  "version": "0.1.420",
+  "node": "v24.22.1",
+  "commit": "674ffbc690fc78775a7432e42aa5c5ca43d31546",
+  "condition": {
+    "state": "ready",
+    "loaders": [],
+    "set": "da39a3ee5e6b4b0d"
+  },
+  "notListed": {
+    "state": "pending",
+    "reason": "run",
+    "waiting": 0,
+    "ready": []
+  },
+  "joined": [
+    {
+      "lines": 0,
+      "covered": 0,
+      "ran": false,
+      "runBy": [],
+      "coverage": 0
+    }
+  ],
+  "crapAtZeroCC7": 56,
+  "crapAt95CC7": 7,
+  "cli": [
+    {
+      "command": [
+        "pnpm",
+        "exec",
+        "tsx",
+        "src/cli/index.ts",
+        "code",
+        "--help"
+      ],
+      "before": {
+        "at": "2026-11-09T20:07:00.501Z",
+        "load": [
+          3.46,
+          7.9,
+          10.86
+        ],
+        "cpus": 24
+      },
+      "exit": 0,
+      "signal": null,
+      "stdout": "Usage:\n  squeal code [<path>...] [--changed | --told] [--json]\n                                With complexity.enabled: every function over the\n                                complexity threshold, newest first, with its location,\n                                complexity, decision points by kind and the revision it\n                                went over; paths list every function in those files or\n                                directories; --changed keeps those whose state changed\n                                since this session registered, --told those over that\n                                this session was told about and the files it changed\n                                that are not judged; files not counted follow, with why\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "pnpm",
+        "exec",
+        "tsx",
+        "src/cli/index.ts",
+        "quality",
+        "--json"
+      ],
+      "before": {
+        "at": "2026-11-09T20:07:02.388Z",
+        "load": [
+          3.98,
+          7.94,
+          10.86
+        ],
+        "cpus": 24
+      },
+      "exit": 2,
+      "signal": null,
+      "stdout": "",
+      "stderr": "squeal: unknown command \"quality\""
+    },
+    {
+      "command": [
+        "pnpm",
+        "exec",
+        "tsx",
+        "src/cli/index.ts",
+        "code",
+        "src/core/code/crap/score.ts",
+        "--json"
+      ],
+      "before": {
+        "at": "2026-11-09T20:07:03.024Z",
+        "load": [
+          3.98,
+          7.94,
+          10.86
+        ],
+        "cpus": 24
+      },
+      "exit": 0,
+      "signal": null,
+      "stdout": "{\n  \"v\": 1,\n  \"available\": true,\n  \"threshold\": 20,\n  \"maxFileBytes\": 524288,\n  \"paths\": [\n    \"src/core/code/crap/score.ts\"\n  ],\n  \"functions\": [\n    {\n      \"path\": \"src/core/code/crap/score.ts\",\n      \"qualifiedName\": \"crapScore\",\n      \"occurrence\": 0,\n      \"line\": 10,\n      \"outcome\": \"pass\",\n      \"complexity\": 2,\n      \"threshold\": 20,\n      \"decisions\": {\n        \"if\": 1\n      },\n      \"changedAt\": 0,\n      \"coverage\": {\n        \"crap\": {\n          \"outcome\": \"pass\",\n          \"value\": 2.032\n        },\n        \"uncovered\": \"pass\",\n        \"lines\": 5,\n        \"covered\": 4,\n        \"testFiles\": 33,\n        \"first\": [\n          \"test/code/coverage/daemon.test.ts\",\n          \"test/code/coverage/pace-shared.test.ts\",\n          \"test/code/crap/blocking.test.ts\"\n        ]\n      }\n    }\n  ],\n  \"files\": []\n}\n",
+      "stderr": ""
+    }
+  ]
+}
