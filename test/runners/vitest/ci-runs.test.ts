@@ -54,6 +54,7 @@ function module(name: string, overrides: Partial<RawRun["modules"][number]> = {}
 function run(overrides: Partial<RawRun> = {}): RawRun {
   return {
     vitest: "5.0.3",
+    shard: null,
     node: { version: "v24.0.0", platform: "linux", arch: "x64" },
     reason: "passed",
     unhandled: [],
@@ -163,6 +164,18 @@ describe("recordedRun", () => {
     }));
     const body = recordedRun(run({ modules: [module("a", { tests })] }), context);
     expect(body.testFiles[0]?.checks.map((c) => c.fullName)).toEqual(["same", "same (line 20)"]);
+    // The project's run collects no location: the export leaves such a file out (D9, B4).
+    expect(body.testFiles[0]?.sharedNames).toEqual(["same"]);
+    expect(recordedRun(run(), context).testFiles[0]?.sharedNames).toBeUndefined();
+  });
+
+  it("records the run's shard, 1/1 without one, and its snapshot options but the update mode", () => {
+    expect(recordedRun(run(), context).shard).toEqual({ index: 1, count: 1 });
+    const sharded = recordedRun(run({ shard: { index: 2, count: 3 } }), context);
+    expect(sharded.shard).toEqual({ index: 2, count: 3 });
+    const [project] = recordedRun(run(), context).projects;
+    expect(project?.updateSnapshot).toBe("new");
+    expect(project?.snapshotOptions).toEqual({});
   });
 
   it("hashes allow-listed variables the Vitest process saw, never their values", () => {

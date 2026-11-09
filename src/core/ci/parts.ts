@@ -1,21 +1,25 @@
 import { randomUUID } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { EnvironmentDescriptor } from "../keys/environment-descriptor.js";
+import { configFieldHash, type EnvironmentDescriptor } from "../keys/environment-descriptor.js";
 import type { ExportSource } from "../store/imports.js";
 import type { AbsolutePath, EpochMs, ProjectName, RelativePath } from "../types/common.js";
+import type { FileHash } from "../types/keys.js";
 import type { ObservedInputs } from "../types/runner.js";
 
 /*
  * Spec 018 D8 (row 018-16): what `squeal ci record` writes, one part file per
  * Vitest process, for `squeal ci export` (D9, row 018-17) to read. JSON, one
- * object, `format: "squeal-ci-part/1"`. No key is in it: the export job
- * computes keys in a fresh checkout of the same commit. Never in it: failure
- * text, run logs, environment or config values (only their hashes),
- * absolute paths.
+ * object, `format: "squeal-ci-part/2"`. No key is in it: the export job
+ * computes keys in a fresh checkout of the same commit, and keys a file only
+ * when the content the part records for its inputs is that checkout's (D9 as
+ * amended 2026-11-09, review of 0.1.421). Never in it: failure text, run
+ * logs, environment or config values (only their hashes), absolute paths.
+ * Format 2 added the shard, the checkout's state, the input hashes, the
+ * snapshot options per field and the shared check names.
  */
 
-export const PART_FORMAT = "squeal-ci-part/1";
+export const PART_FORMAT = "squeal-ci-part/2";
 
 /** The file name prefix of a part; the rest is a UUID, so parts of every shard can share one directory. */
 export const PART_PREFIX = "squeal-part-";
@@ -29,6 +33,12 @@ export const PART_PREFIX = "squeal-part-";
  */
 export type PartEnd = "completed" | "crashed" | "interrupted";
 
+/** The run's `--shard`; `1/1` for a run without one. */
+export interface PartShard {
+  readonly index: number;
+  readonly count: number;
+}
+
 export interface PartHeader {
   readonly squealVersion: string;
   readonly keyFormat: number;
@@ -36,7 +46,21 @@ export interface PartHeader {
   readonly runnerVersion: string;
   /** `HEAD` of the checkout the command ran in; `null` before the first commit. */
   readonly commit: string | null;
+  /** Provenance: git status reported any change, untracked files included. */
   readonly dirty: boolean;
+  /**
+   * No tracked file differed from `commit`, staged or not, before the
+   * command and after it: each tracked input the run read was the commit's.
+   */
+  readonly clean: boolean;
+  /**
+   * The untracked and ignored entries git status reported before the
+   * command or after it (`--ignored=matching`), sorted; a directory ends in
+   * `/` and stands for everything below it. A path absent from `commit` and
+   * below none of them was absent from the checkout.
+   */
+  readonly untracked: readonly RelativePath[];
+  readonly shard: PartShard;
   readonly createdAt: EpochMs;
   /** As the export header records it (spec 018 D2). */
   readonly source: ExportSource;
@@ -59,6 +83,8 @@ export interface PartProject {
   readonly descriptor: RunDescriptor;
   /** The run's `snapshotOptions.updateSnapshot`: D9 takes a part only with `none`. */
   readonly updateSnapshot: string;
+  /** Each other field of the run's resolved `snapshotOptions`, hashed (`snapshotFields`): D9 compares them. */
+  readonly snapshotOptions: Readonly<Record<string, string>>;
 }
 
 /** Observed reads of one test file: `ObservedInputs` without its file. */
@@ -86,6 +112,19 @@ export interface PartFile {
   readonly checks: readonly PartCheck[];
   /** Absent: the recorder saw no read, or did not run (`PartHeader.observing`). */
   readonly observed?: PartObserved;
+  /**
+   * The content of each input in `observed` after the run: a file path's git
+   * blob id (`null`: none there), a listing path's names hash
+   * (`listingHash`), one for each directory below a recursive listing too.
+   * Absent with `observed`.
+   */
+  readonly inputs?: Readonly<Record<RelativePath, FileHash | null>>;
+  /**
+   * Full names two or more of the file's checks share. Without the run's
+   * test locations the part cannot name them as the daemon does, so D9
+   * leaves the file out. Absent: none.
+   */
+  readonly sharedNames?: readonly string[];
 }
 
 export interface Part {
@@ -94,6 +133,33 @@ export interface Part {
   readonly projects: readonly PartProject[];
   /** Sorted by project, then path. */
   readonly testFiles: readonly PartFile[];
+}
+
+/** The field of `snapshotOptions` D9 asks to be `none` and compares no further. */
+const UPDATE_SNAPSHOT = "updateSnapshot";
+
+/**
+ * Each field of the resolved `snapshotOptions` in `resolvedConfig`, a
+ * runner's canonical config JSON, hashed as a descriptor hashes a config
+ * field, `updateSnapshot` aside (D9; review of 0.1.421 B2): `snapshotFormat`
+ * and every other option change what a snapshot assertion compares.
+ * Options that are not an object hash as one field, `(snapshotOptions)`.
+ */
+export function snapshotFields(resolvedConfig: string): Record<string, string> {
+  let options: unknown;
+  try {
+    options = (JSON.parse(resolvedConfig) as { snapshotOptions?: unknown } | null)?.snapshotOptions;
+  } catch {
+    options = resolvedConfig;
+  }
+  if (typeof options !== "object" || options === null || Array.isArray(options)) {
+    return { "(snapshotOptions)": configFieldHash(options ?? null) };
+  }
+  return Object.fromEntries(
+    Object.entries(options)
+      .filter(([name]) => name !== UPDATE_SNAPSHOT)
+      .map(([name, value]) => [name, configFieldHash(value)]),
+  );
 }
 
 /** Writes `part` into `dir` under a new name; returns the file. */

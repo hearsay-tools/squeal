@@ -1,7 +1,12 @@
 import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { type CiExportCounts, ciExport } from "../core/ci/export.js";
+import {
+  type CiExport,
+  type CiExportCounts,
+  ciExport,
+  type UncertifiedFile,
+} from "../core/ci/export.js";
 import type { NamedPart } from "../core/ci/export-check.js";
 import { PART_PREFIX, readPart } from "../core/ci/parts.js";
 import { coverageOn, coverageProvider } from "../core/code/coverage/runtime.js";
@@ -20,6 +25,9 @@ import { vitestResolves } from "../runners/vitest/ci-record.js";
 import { createVitestAdapter } from "../runners/vitest/index.js";
 import { sourceOf } from "./export.js";
 import type { CliIo } from "./main.js";
+
+/** An export that refused nothing. */
+type Exported = Exclude<CiExport, { readonly refused: unknown }>;
 
 export const EXPORT_USAGE = "usage: squeal ci export --parts <dir>... [--out <file>]\n";
 
@@ -83,14 +91,8 @@ export async function ciExportCommand(
       now: io.now ?? Date.now,
     });
     if ("refused" in exported) return fail(say, `refused: ${exported.refused.text}`);
-    if (exported.counts.testFiles === 0) {
-      return fail(say, `no test file that passed in the parts could be keyed here`);
-    }
     const commit8 = header.commit === null ? "unborn" : header.commit.slice(0, 8);
-    const file = resolve(cwd, parsed.out ?? `squeal-results-${commit8}.json.gz`);
-    writeFileSync(file, encodeBundle(exported.bundle));
-    io.stdout(`${countsText(exported.counts, file)}\n`);
-    return 0;
+    return write(exported, resolve(cwd, parsed.out ?? `squeal-results-${commit8}.json.gz`), io);
   } catch (error) {
     if (!(error instanceof AbsolutePathError)) throw error;
     return fail(say, error.message);
@@ -98,6 +100,23 @@ export async function ciExportCommand(
     if (!isStoreOpenFailure(store)) store.close();
     rmSync(temp, { recursive: true, force: true });
   }
+}
+
+/**
+ * Writes `exported` to `file` unless it holds no test file; first names the
+ * inputs that left the first few files out (`uncertifiedLines`).
+ */
+function write(exported: Exported, file: AbsolutePath, io: CliIo): number {
+  for (const line of uncertifiedLines(exported.uncertified)) {
+    io.stderr(`squeal ci export: ${line}\n`);
+  }
+  if (exported.counts.testFiles === 0) {
+    io.stderr(`squeal ci export: ${nothingText(exported.counts)}; wrote nothing\n`);
+    return 1;
+  }
+  writeFileSync(file, encodeBundle(exported.bundle));
+  io.stdout(`${countsText(exported.counts, file)}\n`);
+  return 0;
 }
 
 function fail(say: (text: string) => void, text: string): number {
@@ -130,12 +149,16 @@ function parseExport(args: readonly string[]): ExportArgs | { readonly error: st
   return { parts, out };
 }
 
-/** The parts in `dirs`, or why there is none to export. */
+/**
+ * The parts in `dirs`, or why there is none to export: a directory named
+ * without a part in it is a shard's missing upload (review of 0.1.421 B3).
+ */
 function readParts(dirs: readonly AbsolutePath[]): NamedPart[] | string {
   const parts: NamedPart[] = [];
   for (const dir of dirs) {
     if (!existsSync(dir)) return `no directory ${dir}`;
     const names = readdirSync(dir).filter((n) => n.startsWith(PART_PREFIX) && n.endsWith(".json"));
+    if (names.length === 0) return `no part (${PART_PREFIX}*.json) in ${dir}`;
     for (const name of names.sort()) {
       const file = join(dir, name);
       const part = readPart(file);
@@ -143,7 +166,7 @@ function readParts(dirs: readonly AbsolutePath[]): NamedPart[] | string {
       parts.push({ file, part });
     }
   }
-  return parts.length > 0 ? parts : `no part (${PART_PREFIX}*.json) in ${dirs.join(", ")}`;
+  return parts;
 }
 
 /**
@@ -174,10 +197,40 @@ const files = (n: number) => `${n} test file${n === 1 ? "" : "s"}`;
 /** What the export wrote, and the files left out by reason. */
 export function countsText(counts: CiExportCounts, file: string): string {
   const results = `${counts.results} result${counts.results === 1 ? "" : "s"}`;
-  const left = [
+  const left = leftOut(counts);
+  const leftText = left.length === 0 ? "" : `\nLeft out: ${left}.`;
+  return `Exported ${files(counts.testFiles)}, ${results}, to ${file}.${leftText}`;
+}
+
+/** Files named in the lines `uncertifiedLines` gives; the count says the rest. */
+const NAMED_FILES = 3;
+
+/** For the first few files left out uncertified, the inputs whose content here is not their shard's. */
+function uncertifiedLines(files: readonly UncertifiedFile[]): string[] {
+  return files.slice(0, NAMED_FILES).map(({ testFile, inputs }) => {
+    const name = `${testFile.project === "" ? "" : `${testFile.project}:`}${testFile.path}`;
+    const shown = inputs.slice(0, NAMED_FILES).join(", ");
+    const more = inputs.length > NAMED_FILES ? ` and ${inputs.length - NAMED_FILES} more` : "";
+    return `left out ${name}: its shard recorded other content, or none, for ${shown}${more}`;
+  });
+}
+
+/** Why the export holds no file. */
+function nothingText(counts: CiExportCounts): string {
+  const left = leftOut(counts);
+  return `no test file to export${left.length === 0 ? "" : `; left out: ${left}`}`;
+}
+
+/** The files left out, by reason; empty when none. */
+function leftOut(counts: CiExportCounts): string {
+  return [
     counts.failed > 0 ? `${files(counts.failed)} that failed in a shard` : null,
     counts.unkeyed > 0 ? `${files(counts.unkeyed)} this checkout could not key` : null,
-  ].filter((part) => part !== null);
-  const leftText = left.length === 0 ? "" : `\nLeft out: ${left.join(", ")}.`;
-  return `Exported ${files(counts.testFiles)}, ${results}, to ${file}.${leftText}`;
+    counts.uncertified > 0
+      ? `${files(counts.uncertified)} whose inputs here are not what their shard read`
+      : null,
+    counts.ambiguous > 0 ? `${files(counts.ambiguous)} with two checks of one name` : null,
+  ]
+    .filter((part) => part !== null)
+    .join(", ");
 }

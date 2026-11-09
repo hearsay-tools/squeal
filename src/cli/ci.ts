@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 import { type NotStarted, runCommand } from "../core/ci/command.js";
+import { type CheckoutState, joinCheckouts, readCheckout } from "../core/ci/inputs.js";
 import { PART_FORMAT, type PartHeader, writePart } from "../core/ci/parts.js";
 import { readPolicy } from "../core/daemon/policy.js";
 import { squealVersion } from "../core/daemon/version.js";
@@ -99,13 +100,14 @@ async function record(args: RecordArgs, io: CliIo, deps: CiDeps): Promise<number
   });
   if (typeof recording === "string") return unchanged(recording);
   try {
+    const before = await readCheckout(root);
     const exit = exitOf(await runCommand(args.command, cwd, recording.env), say);
     try {
-      const { runs, notes } = recording.finish();
+      const { runs, notes } = await recording.finish();
       for (const note of notes) say(note);
       if (runs.length > 0) {
         const out = resolve(cwd, args.out ?? DEFAULT_PARTS_DIR);
-        say(await writeParts(runs, out, root, env, io));
+        say(await writeParts(runs, out, root, env, io, before));
       }
     } catch (error) {
       say(`no part written: ${error instanceof Error ? (error.stack ?? error.message) : error}`);
@@ -128,6 +130,7 @@ async function writeParts(
   root: AbsolutePath,
   env: NodeJS.ProcessEnv,
   io: CliIo,
+  before: CheckoutState,
 ): Promise<string> {
   const head = await readHead(root);
   const base = {
@@ -136,12 +139,13 @@ async function writeParts(
     runner: "vitest" as const,
     commit: head.head,
     dirty: head.dirty,
+    ...joinCheckouts(before, await readCheckout(root)),
     createdAt: (io.now ?? Date.now)(),
     source: sourceOf(env),
   };
   let files = 0;
-  for (const { projects, testFiles, end, runnerVersion, observing } of runs) {
-    const header: PartHeader = { ...base, runnerVersion, end, observing };
+  for (const { projects, testFiles, end, runnerVersion, shard, observing } of runs) {
+    const header: PartHeader = { ...base, runnerVersion, shard, end, observing };
     writePart(out, { format: PART_FORMAT, header, projects, testFiles });
     files += testFiles.length;
   }

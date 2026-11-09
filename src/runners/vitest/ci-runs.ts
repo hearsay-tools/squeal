@@ -1,7 +1,15 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { TestProject } from "vitest/node";
-import type { PartEnd, PartFile, PartProject, RunDescriptor } from "../../core/ci/parts.js";
+import {
+  type PartEnd,
+  type PartFile,
+  type PartProject,
+  type PartShard,
+  type RunDescriptor,
+  snapshotFields,
+} from "../../core/ci/parts.js";
+import { compare } from "../../core/fs/compare.js";
 import type { WorktreePaths } from "../../core/fs/worktree-paths.js";
 import { coreEnvironmentInputs } from "../../core/keys/environment.js";
 import { describeEnvironment, sawCi } from "../../core/keys/environment-descriptor.js";
@@ -53,6 +61,8 @@ interface RawProject {
 /** One Vitest process's run, as `vitest-ci.cjs` wrote it at the run's end. */
 export interface RawRun {
   readonly vitest: string;
+  /** The run's `--shard`; `null` without one. */
+  readonly shard: PartShard | null;
   readonly node: { readonly version: string; readonly platform: string; readonly arch: string };
   readonly reason: string;
   /** Per unhandled error, the test file it names, or `null`. */
@@ -108,6 +118,7 @@ export function recordedRun(run: RawRun, context: RunContext): RecordedRun {
   return {
     end,
     runnerVersion: run.vitest,
+    shard: run.shard ?? { index: 1, count: 1 },
     observing: context.observing,
     projects: run.projects.map((project) => partProject(project, run, context)),
     testFiles: end === "completed" ? testFiles(run, context) : [],
@@ -154,8 +165,9 @@ function testFiles(run: RawRun, context: RunContext): PartFile[] {
 function outcomes(
   module: RawModule,
   namedByError: boolean,
-): Pick<PartFile, "outcome" | "durationMs" | "checks"> {
+): Pick<PartFile, "outcome" | "durationMs" | "checks" | "sharedNames"> {
   const names = checkNames(module.tests);
+  const shared = sharedNames(module.tests);
   const checks = module.tests.flatMap((test) => {
     const outcome = runOutcome(test.state);
     if (outcome === undefined) return [];
@@ -168,7 +180,24 @@ function outcomes(
     namedByError ||
     checks.some((check) => check.outcome === "fail");
   const outcome = failed ? "fail" : module.state === "skipped" ? "skip" : "pass";
-  return { outcome, durationMs: diagnosticDuration(module.diagnostic), checks };
+  const durationMs = diagnosticDuration(module.diagnostic);
+  return { outcome, durationMs, checks, ...(shared.length > 0 ? { sharedNames: shared } : {}) };
+}
+
+/**
+ * The full names two or more of `tests` share, sorted. `checkNames` names
+ * the later ones by their line, which the project's own run does not
+ * collect, so the part cannot give the daemon's names (D9; review of
+ * 0.1.421 B4).
+ */
+function sharedNames(tests: readonly RawTest[]): string[] {
+  const seen = new Set<string>();
+  const shared = new Set<string>();
+  for (const { fullName } of tests) {
+    if (seen.has(fullName)) shared.add(fullName);
+    seen.add(fullName);
+  }
+  return [...shared].sort(compare);
 }
 
 /**
@@ -209,5 +238,6 @@ function partProject(project: RawProject, run: RawRun, context: RunContext): Par
   return {
     descriptor: descriptor satisfies RunDescriptor,
     updateSnapshot: String(snapshot?.updateSnapshot ?? "unknown"),
+    snapshotOptions: snapshotFields(runner.resolvedConfig),
   };
 }
