@@ -1,42 +1,57 @@
 import type { FileState } from "./files.js";
-import type { Ledger } from "./ledger.js";
 
 /**
  * Row 018-12 (spec 018 wave 3.6, the human 2026-11-09): the test files that
- * explicit requests queued (`run --all`, `run --fast`, `run <group>`,
- * `squeal retry`) and that have not ended, and how many that were asked have
- * ended. Each end is activity for the idle exit (`startTimers`), so a daemon
- * with no consumer serves a request that keeps making progress. Only ends
- * count: a file that never ends keeps no daemon. The scheduler's own work (a
- * baseline, catch-up, a re-run) asks nothing.
+ * explicit requests asked for (`run --all`, `run --fast`, `run <group>`, a
+ * narrow run, a claimed `squeal retry`) and that have not ended, and how
+ * many ends of them there were. Each end is activity for the idle exit
+ * (`startTimers`), so a daemon with no consumer serves a request that keeps
+ * making progress. Only ends count: a file that never ends keeps no daemon.
+ * The scheduler's own work (a baseline, catch-up, an edit's run, a re-run)
+ * asks nothing.
+ *
+ * Review wave 3.6, B2: an end is the ledger's event (`Ledger.ends`), heard
+ * where the file got a result or was marked `unknown`, never read later
+ * from its phase. A file that leaves the queue otherwise (unkeyed, blocked,
+ * withdrawn, gone) leaves its ask at the next commit with no end, so a later
+ * run of it, the scheduler's own, cannot stand for the request.
  */
 export class RequestProgress {
   /** By `FileState.id`: the asked files still queued or running. */
   readonly #open = new Map<string, FileState>();
   #ended = 0;
 
-  /** A request queued: the files of `ledger` that `asked` selects and are queued or running. */
-  ask(ledger: Ledger, asked: (file: FileState) => boolean): void {
-    for (const file of ledger.files.values()) {
-      if (file.phase !== null && asked(file)) this.#open.set(file.id, file);
-    }
+  /** How many ends of asked files there were, a running count. */
+  get count(): number {
+    return this.#ended;
+  }
+
+  /** A request asked for `files`: those queued or running are asked until they end. */
+  ask(files: Iterable<FileState>): void {
+    for (const file of files) if (file.phase !== null) this.#open.set(file.id, file);
   }
 
   /**
-   * Counts the asked files that ended since the last call and returns the
-   * running count. A file the ledger dropped did not end; with no ledger,
-   * the count as it stands.
+   * `file` got a result, from a run or a lookup, or was marked `unknown`.
+   * An asked file's end counts; it stays asked while it is still queued or
+   * running for the request (a forced one a lookup did not count for, one
+   * left `unknown` at a key it no longer has).
    */
-  ended(ledger: Ledger | null): number {
-    if (ledger === null) return this.#ended;
+  ended(file: FileState): void {
+    if (this.#open.get(file.id) !== file) return;
+    this.#ended += 1;
+    if (file.phase === null) this.#open.delete(file.id);
+  }
+
+  /**
+   * A commit closed a round of the ledger's work: an asked file neither
+   * queued nor running, or gone from `files`, left with no end. Within the
+   * round a run's end may put its file back in the queue (a discard, a
+   * split), which is the request's work still.
+   */
+  committed(files: ReadonlyMap<string, FileState>): void {
     for (const [id, file] of this.#open) {
-      if (ledger.files.get(id) !== file) {
-        this.#open.delete(id);
-      } else if (file.phase === null) {
-        this.#open.delete(id);
-        this.#ended += 1;
-      }
+      if (files.get(id) !== file || file.phase === null) this.#open.delete(id);
     }
-    return this.#ended;
   }
 }

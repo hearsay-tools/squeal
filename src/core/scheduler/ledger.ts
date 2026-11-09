@@ -112,6 +112,18 @@ export interface SettleOptions {
 }
 
 /**
+ * Row 018-12 (review wave 3.6, B2): what hears each file's end as it
+ * happens, where the open checkpoint hears it, and each commit
+ * (`RequestProgress`).
+ */
+export interface FileEnds {
+  /** `file` got a result, from a run or a lookup, or was marked `unknown`. */
+  ended(file: FileState): void;
+  /** A commit closes a round of work on `files`. */
+  committed(files: ReadonlyMap<string, FileState>): void;
+}
+
+/**
  * Every test file of the worktree, the run queue and the open checkpoint, plus
  * the writes they owe the store and the state sink.
  *
@@ -150,6 +162,8 @@ export class Ledger {
   backlogPaused = false;
   /** Row 011-72: `ref`'s key names an unmerged path, so it takes no stored result (the merge hold). */
   holds: (ref: TestFileRef) => boolean = () => false;
+  /** Row 018-12: hears each file's end and each commit; `null`: none does. */
+  ends: FileEnds | null = null;
   /** Global setups that failed to start a run, and their outcomes owed to the sink (task 001-382). */
   readonly setups = new SetupFailures();
 
@@ -332,7 +346,10 @@ export class Ledger {
         this.queue.remove(ref);
         this.#syncPhase(file);
         // Row 011-118: back at the key its results stand under, it is current by lookup.
-        if (classify(file) === "current") this.checkpoints.done(ref, null);
+        if (classify(file) === "current") {
+          this.checkpoints.done(ref, null);
+          this.ends?.ended(file);
+        }
         continue;
       }
       const { hits, mayWait } = held || strict ? UNPROBED : this.probe(key);
@@ -458,6 +475,7 @@ export class Ledger {
     if (!this.queue.isForced(file.ref)) this.queue.remove(file.ref);
     this.#syncPhase(file);
     this.checkpoints.done(file.ref, checkpointId);
+    this.ends?.ended(file);
   }
 
   /**
@@ -555,6 +573,7 @@ export class Ledger {
       if (file.key === key && !this.queue.isForced(file.ref)) this.queue.remove(file.ref);
       this.#syncPhase(file);
       this.checkpoints.failed(file.ref);
+      this.ends?.ended(file);
     }
     this.#unknown.push({ testFiles: entries.map((e) => e.file.ref), reason, runId });
   }
@@ -635,6 +654,7 @@ export class Ledger {
    * recorded there too (`listingMetaKey`, row 015-52).
    */
   commit(options: CommitOptions = {}): void {
+    this.ends?.committed(this.files);
     const drained = this.#drain();
     try {
       this.#write(drained, options);

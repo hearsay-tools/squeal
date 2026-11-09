@@ -38,9 +38,14 @@ export function loadOf(context: SchedulerContext) {
 /**
  * Under the lock: claims and queues the pending requests at this worktree's
  * keys that may run now, and drops a queued retry whose request was
- * withdrawn. Returns whether the queue changed.
+ * withdrawn. `claimed` hears each file it claims and queues (row 018-12).
+ * Returns whether the queue changed.
  */
-export function takeRetries(context: SchedulerContext, ledger: Ledger): boolean {
+export function takeRetries(
+  context: SchedulerContext,
+  ledger: Ledger,
+  claimed: (file: FileState) => void = () => {},
+): boolean {
   const { store, worktreeId } = context;
   const pending = readRetries(store).filter((r) => r.end === null);
   // An earlier daemon's claim on a file no longer at its key here, gone or re-keyed while no daemon ran, goes back (S1).
@@ -51,7 +56,7 @@ export function takeRetries(context: SchedulerContext, ledger: Ledger): boolean 
     releaseRetries(store, request.testFile, worktreeId, file?.key ?? null);
   }
   const dropped = dropWithdrawn(ledger, pending);
-  return queueDue(context, ledger, pending) || dropped;
+  return queueDue(context, ledger, pending, claimed) || dropped;
 }
 
 /** A queued retry whose request was withdrawn leaves the queue, unless its 001-171 re-run is still to come. */
@@ -96,6 +101,7 @@ function queueDue(
   context: SchedulerContext,
   ledger: Ledger,
   pending: readonly RetryRecord[],
+  claimed: (file: FileState) => void,
 ): boolean {
   const { store, worktreeId } = context;
   const due = dueOf(ledger, pending);
@@ -111,6 +117,7 @@ function queueDue(
     if (!claimRetries(store, file.ref, key, worktreeId, at, live)) continue;
     file.retryKey = key;
     ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED), true);
+    claimed(file);
     if (bounded) context.note(loadRetryNoteText(file.ref.path, perCpu(load) ?? 0));
     changed = true;
   }

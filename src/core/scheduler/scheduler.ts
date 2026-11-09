@@ -355,6 +355,8 @@ class TierScheduler implements Scheduler {
       ledger.backlogPaused = this.#backlogPaused;
       // Row 011-72: a key that names an unmerged path takes no stored result.
       ledger.holds = (ref) => this.#hold.holding && this.#hold.names(keys.stabilityPaths(ref));
+      // Row 018-12: an asked file's end is heard where it happens (review wave 3.6, B2).
+      ledger.ends = this.#requests;
       // Notes written during the baseline carry its revision.
       this.#ledger = ledger;
       // A daemon starts on hold when git lists an unmerged path or a `squeal hold` holds (011 C9).
@@ -368,7 +370,7 @@ class TierScheduler implements Scheduler {
       if (missing !== null) startWaiting(context, ledger, missing);
       else await this.#baseline(context, ledger);
       // A retry an earlier daemon or another worktree's session asked for (001-368).
-      if (missing === null && takeRetries(context, ledger)) ledger.commit();
+      if (missing === null && this.#takeRetries(context, ledger)) ledger.commit();
       this.#context = context;
     }, "starting the scheduler");
     this.#pump();
@@ -426,7 +428,7 @@ class TierScheduler implements Scheduler {
     // Another worktree's heal may have left a file held here (review wave 13i, B1).
     if (ledger.confirmHeld()) ledger.commit();
     // Each pass looks again for a load retry's load, and another worktree's requests (001-368).
-    if (batch.trigger === "interval" && takeRetries(context, ledger)) ledger.commit();
+    if (batch.trigger === "interval" && this.#takeRetries(context, ledger)) ledger.commit();
     this.#adopt(context, ledger);
     const { applied, touched } = await reconcileBatch(context, ledger, batch);
     // Every reconciliation pass looks too: a workspace's `node_modules` is not watched (D5).
@@ -641,7 +643,8 @@ class TierScheduler implements Scheduler {
       const { policy } = this.#started().context;
       const only = lane === undefined ? undefined : { lane, isSlow: slowView(policy).isSlow };
       const record = queueFullSuite(ledger, force, warmUp, only);
-      this.#requests.ask(ledger, (file) => ledger.checkpoints.covers([file.ref], false));
+      // Review wave 3.6, B1: its own files, never the rest of a checkpoint it joined.
+      this.#requests.ask(record.testFiles.flatMap((ref) => ledger.file(ref) ?? []));
       // Row 011-82: the caller asked for the backlog; it starts at the next tier boundary.
       this.#quiet.end(this.#started().context.now());
       if (warmUp) this.#warmUp.start(this.#started().context, ledger, record);
@@ -708,7 +711,7 @@ class TierScheduler implements Scheduler {
       this.#groups.lanes(context.policy);
       this.#groups.get(group)?.request();
       const queued = queueGroup(context, ledger, group);
-      this.#requests.ask(ledger, (file) => view.of(file.ref).name === group);
+      this.#requests.ask([...ledger.files.values()].filter((f) => view.of(f.ref).name === group));
       return { revision, queued };
     }, `taking a squeal run ${group} request`);
     if (lint) void this.options.passes?.pass().catch(() => {});
@@ -753,7 +756,7 @@ class TierScheduler implements Scheduler {
       }
       const selected = selection.selected.get(group) ?? new Set<string>();
       const { queued, asks } = queueNarrow(ledger, selected);
-      this.#requests.ask(ledger, (file) => selected.has(file.id));
+      this.#requests.ask([...selected].flatMap((id) => ledger.files.get(id) ?? []));
       this.#groups.lanes(context.policy);
       const lane = this.#groups.get(group);
       lane?.narrow.add(asks, ledger);
@@ -769,10 +772,18 @@ class TierScheduler implements Scheduler {
     if (this.#closed || this.#reinstalled || this.#awaitingInstall || !this.#context) return;
     await this.#lock.run(() => {
       const { context, ledger } = this.#started();
-      if (takeRetries(context, ledger)) ledger.commit();
-      this.#requests.ask(ledger, (file) => file.retryKey !== null);
+      if (this.#takeRetries(context, ledger)) ledger.commit();
     }, "taking squeal retry requests");
     this.#pump();
+  }
+
+  /**
+   * `takeRetries`, each retry it claims and queues asked (row 018-12): at
+   * `squeal retry`, in a reconciliation pass, at start (review wave 3.6,
+   * B3). One that waits at the closed load gate asks nothing yet.
+   */
+  #takeRetries(context: SchedulerContext, ledger: Ledger): boolean {
+    return takeRetries(context, ledger, (file) => this.#requests.ask([file]));
   }
 
   /**
@@ -897,7 +908,7 @@ class TierScheduler implements Scheduler {
   }
 
   requestProgress(): number {
-    return this.#requests.ended(this.#closed ? null : this.#ledger);
+    return this.#requests.count;
   }
 
   slowPending(): boolean {
