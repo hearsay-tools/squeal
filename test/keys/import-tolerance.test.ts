@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  configFieldHash,
   describeDifferences,
   type EnvironmentDescriptor,
   importDifferences,
@@ -10,9 +11,12 @@ import type { RunnerEnvironment } from "../../src/core/types/runner.js";
 
 /*
  * Spec 018 D10: for an imported pass, the resolved Vitest fields `CI=true`
- * sets (`allowOnly`, `watch`, `browser` while the browser is disabled) and
- * the coverage options compare as equal; every other part must be equal. A
- * browser-mode project keeps `browser` keyed (`research/ci-step.md` 3).
+ * sets (`allowOnly` from an export made with `false`, `watch`, `browser`
+ * while the browser is disabled) and the coverage options compare as equal;
+ * every other part must be equal. A browser-mode project keeps `browser`
+ * keyed (`research/ci-step.md` 3). `allowOnly` the other way stays keyed:
+ * a file with `it.only` passes with `true` and fails with `false` (review
+ * wave-5 B2).
  */
 
 const CORE: CoreEnvironmentInputs = {
@@ -68,7 +72,7 @@ describe("import tolerance (018 D10)", () => {
   });
 
   for (const [name, fields] of [
-    ["allowOnly", { allowOnly: CI.allowOnly }],
+    ["allowOnly, false in the export", { allowOnly: CI.allowOnly }],
     ["watch", { watch: true }],
     ["browser, disabled on both sides", { browser: CI.browser }],
     ["coverage", { coverage: CI.coverage }],
@@ -79,6 +83,42 @@ describe("import tolerance (018 D10)", () => {
       expect(importDifferences(exported, descriptor(HERE))).toEqual([]);
     });
   }
+
+  it("a pass made with allowOnly true stays keyed where focused tests fail (review wave-5 B2)", () => {
+    const focus = descriptor({ ...HERE, allowOnly: true });
+    const strict = descriptor({ ...HERE, allowOnly: false });
+    expect(importDifferences(focus, strict)).toMatchObject([
+      { part: "config", names: ["allowOnly"] },
+    ]);
+    expect(importDifferences(strict, focus)).toEqual([]);
+  });
+
+  for (const [name, exported] of [
+    ["absent from the export", { ...HERE, allowOnly: undefined }],
+    ["not a boolean in the export", { ...HERE, allowOnly: "false" }],
+  ] as const) {
+    it(`an allowOnly ${name} stays keyed`, () => {
+      expect(importDifferences(descriptor(exported), descriptor(HERE))).toMatchObject([
+        { part: "config", names: ["allowOnly"] },
+      ]);
+    });
+  }
+
+  it("allowOnly compares the hashes of false and true, no config value", () => {
+    expect(descriptor(CI).config.allowOnly).toBe(configFieldHash(false));
+    expect(descriptor(HERE).config.allowOnly).toBe(configFieldHash(true));
+    expect(configFieldHash(false)).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  // Vitest reads `watch` in a worker only to keep an inspector open, so a
+  // pass with either value implies the same pass with the other
+  // (`research/ci-step.md` 3, field table): no one-way rule.
+  it("watch compares as equal in both directions", () => {
+    const on = descriptor({ ...HERE, watch: true });
+    const off = descriptor({ ...HERE, watch: false });
+    expect(importDifferences(on, off)).toEqual([]);
+    expect(importDifferences(off, on)).toEqual([]);
+  });
 
   it("CI's whole resolved config compares as equal to a developer's", () => {
     expect(importDifferences(descriptor(CI), descriptor(HERE))).toEqual([]);

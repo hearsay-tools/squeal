@@ -73,7 +73,12 @@ export function describeEnvironment(
 /** One hash per top-level field of a resolved config; runners give canonical JSON, so equal values serialize equally. */
 function configFields(config: object): Record<string, string> {
   const fields = Object.entries(config).sort(([a], [b]) => compare(a, b));
-  return Object.fromEntries(fields.map(([name, value]) => [name, digest(JSON.stringify(value))]));
+  return Object.fromEntries(fields.map(([name, value]) => [name, configFieldHash(value)]));
+}
+
+/** The hash a descriptor holds for a config field resolved to `value`. */
+export function configFieldHash(value: unknown): string {
+  return digest(JSON.stringify(value));
 }
 
 /** Whether a resolved config's `browser.enabled` is `true`. */
@@ -211,18 +216,26 @@ export function describeDifferences(
   return differences;
 }
 
-/** Spec 018 D10: the resolved Vitest fields an imported pass may differ in, `browser` aside. */
-const CI_FIELDS: readonly string[] = ["allowOnly", "watch", "coverage"];
+/** Spec 018 D10: the resolved Vitest fields an imported pass may differ in either way, `allowOnly` and `browser` aside. */
+const CI_FIELDS: readonly string[] = ["watch", "coverage"];
+
+/** `allowOnly` as a descriptor holds it: focused tests rejected (CI's value), and allowed. */
+const ONLY_REJECTED = configFieldHash(false);
+const ONLY_ALLOWED = configFieldHash(true);
 
 /**
  * Spec 018 D10: `describeDifferences` for an imported pass, with the
- * resolved Vitest fields `CI=true` sets compared as equal: `allowOnly`,
- * `watch`, the coverage options (CI runs without Squeal's provider), and
+ * resolved Vitest fields `CI=true` sets compared as equal: `watch`, the
+ * coverage options (CI runs without Squeal's provider), `allowOnly` when
+ * the export rejected focused tests and this worktree allows them, and
  * `browser` when both sides record the browser as disabled. Every other part
- * must be equal. A pass with `allowOnly` false and no watch implies the same
- * pass here; `headless` and `ui` change a browser project's run
- * (`research/ci-step.md` 3). Failures never import, so only passes and
- * skips are compared this way.
+ * must be equal. A pass with `allowOnly` false implies the same pass here;
+ * one with `true` does not, since a file with `it.only` fails where focused
+ * tests are rejected (review wave-5 B2), so that direction, an absent field
+ * and any other value stay keyed. Vitest reads `watch` in a worker only to
+ * keep an inspector open, so it compares equal both ways; `headless` and
+ * `ui` change a browser project's run (`research/ci-step.md` 3). Failures
+ * never import, so only passes and skips are compared this way.
  */
 export function importDifferences(
   exported: EnvironmentDescriptor,
@@ -233,6 +246,9 @@ export function importDifferences(
   }
   const tolerated = new Set(CI_FIELDS);
   if (exported.browser === false && local.browser === false) tolerated.add("browser");
+  if (exported.config.allowOnly === ONLY_REJECTED && local.config.allowOnly === ONLY_ALLOWED) {
+    tolerated.add("allowOnly");
+  }
   const keyed = (d: EnvironmentDescriptor): EnvironmentDescriptor => ({
     ...d,
     config: Object.fromEntries(Object.entries(d.config).filter(([name]) => !tolerated.has(name))),
