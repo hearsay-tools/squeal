@@ -1,0 +1,289 @@
+{
+ "base": "721c19b004d5f4453488d2b4e859fd6a6256f97b",
+ "rows": [
+  {
+   "commit": "87b52af96",
+   "distance": 1,
+   "eqE": 1459,
+   "eqL": 1438,
+   "exposure": 21
+  },
+  {
+   "commit": "d22e8c0f1",
+   "distance": 2,
+   "eqE": 1455,
+   "eqL": 1433,
+   "exposure": 22
+  },
+  {
+   "commit": "0f16c3acc",
+   "distance": 3,
+   "eqE": 1455,
+   "eqL": 1433,
+   "exposure": 22
+  },
+  {
+   "commit": "da5921db4",
+   "distance": 4,
+   "eqE": 1455,
+   "eqL": 1433,
+   "exposure": 22
+  },
+  {
+   "commit": "b7c17fed2",
+   "distance": 5,
+   "eqE": 1153,
+   "eqL": 1137,
+   "exposure": 16
+  },
+  {
+   "commit": "7b726e2a2",
+   "distance": 6,
+   "eqE": 1153,
+   "eqL": 1137,
+   "exposure": 16
+  },
+  {
+   "commit": "f0203ea57",
+   "distance": 1,
+   "eqE": 1553,
+   "eqL": 1547,
+   "exposure": 6
+  },
+  {
+   "commit": "f70d4988c",
+   "distance": 2,
+   "eqE": 1550,
+   "eqL": 1544,
+   "exposure": 6
+  },
+  {
+   "commit": "2e8a90d62",
+   "distance": 3,
+   "eqE": 1545,
+   "eqL": 1536,
+   "exposure": 9
+  },
+  {
+   "commit": "00e0c8433",
+   "distance": 4,
+   "eqE": 1458,
+   "eqL": 1449,
+   "exposure": 9
+  },
+  {
+   "commit": "526c4d8ed",
+   "distance": 5,
+   "eqE": 574,
+   "eqL": 566,
+   "exposure": 8
+  },
+  {
+   "commit": "35d8a2aa5",
+   "distance": 6,
+   "eqE": 574,
+   "eqL": 566,
+   "exposure": 8
+  },
+  {
+   "commit": "a84ae8327",
+   "distance": 7,
+   "eqE": 532,
+   "eqL": 524,
+   "exposure": 8
+  },
+  {
+   "commit": "0c579734e",
+   "distance": 8,
+   "eqE": 532,
+   "eqL": 524,
+   "exposure": 8
+  },
+  {
+   "commit": "a1fa55f7e",
+   "distance": 9,
+   "eqE": 531,
+   "eqL": 523,
+   "exposure": 8
+  },
+  {
+   "commit": "1c5dd054c",
+   "distance": 10,
+   "eqE": 530,
+   "eqL": 522,
+   "exposure": 8
+  },
+  {
+   "commit": "dd5503125",
+   "distance": 11,
+   "eqE": 529,
+   "eqL": 521,
+   "exposure": 8
+  },
+  {
+   "commit": "328bcfc6a",
+   "distance": 12,
+   "eqE": 529,
+   "eqL": 521,
+   "exposure": 8
+  },
+  {
+   "commit": "57aa5cd5f",
+   "distance": 13,
+   "eqE": 529,
+   "eqL": 521,
+   "exposure": 8
+  },
+  {
+   "commit": "6f552e553",
+   "distance": 14,
+   "eqE": 528,
+   "eqL": 520,
+   "exposure": 8
+  },
+  {
+   "commit": "5093004f5",
+   "distance": 15,
+   "eqE": 528,
+   "eqL": 520,
+   "exposure": 8
+  },
+  {
+   "commit": "a791314a6",
+   "distance": 16,
+   "eqE": 500,
+   "eqL": 492,
+   "exposure": 8
+  },
+  {
+   "commit": "bf453d215",
+   "distance": 17,
+   "eqE": 498,
+   "eqL": 490,
+   "exposure": 8
+  },
+  {
+   "commit": "12d7e74b5",
+   "distance": 18,
+   "eqE": 499,
+   "eqL": 491,
+   "exposure": 8
+  },
+  {
+   "commit": "9a8552601",
+   "distance": 19,
+   "eqE": 383,
+   "eqL": 375,
+   "exposure": 8
+  },
+  {
+   "commit": "e629c612c",
+   "distance": 20,
+   "eqE": 383,
+   "eqL": 375,
+   "exposure": 8
+  }
+ ],
+ "top": [
+  [
+   "packages/web/src/lib/",
+   98
+  ],
+  [
+   "packages/web/src/lib/cez-idle.ts",
+   98
+  ],
+  [
+   "packages/cezar/src/application-update/",
+   90
+  ],
+  [
+   "packages/cezar/src/application-update/discovery.ts",
+   90
+  ],
+  [
+   "packages/cezar/src/application-update/helper.ts",
+   90
+  ],
+  [
+   "packages/cezar/src/application-update/launcher.ts",
+   90
+  ],
+  [
+   "packages/cezar/src/application-update/service.ts",
+   90
+  ],
+  [
+   "packages/cezar/scripts/mock-codex-app-server.mjs",
+   80
+  ],
+  [
+   "packages/web/src/lib/cez-idle.test.ts",
+   78
+  ],
+  [
+   "packages/cezar/src/install-as-command.ts",
+   78
+  ],
+  [
+   "packages/cezar/src/self-update/",
+   78
+  ],
+  [
+   "packages/cezar/src/update-check.ts",
+   78
+  ],
+  [
+   "packages/cezar/scripts/mock-omp-rpc.mjs",
+   76
+  ],
+  [
+   "packages/cezar/scripts/mock-opencode-serve.mjs",
+   72
+  ],
+  [
+   "packages/cezar/scripts/mock-pi-rpc.mjs",
+   72
+  ],
+  [
+   "packages/cezar/src/runs/store-import.test.ts",
+   72
+  ],
+  [
+   "packages/cezar/src/core/",
+   68
+  ],
+  [
+   "packages/cezar/src/core/agent-runner.ts",
+   68
+  ],
+  [
+   "packages/cezar/src/core/claude-cli-runner.ts",
+   68
+  ],
+  [
+   "packages/cezar/src/core/codex-app-server-runner.ts",
+   68
+  ],
+  [
+   "packages/cezar/src/core/cursor-print-runner.ts",
+   68
+  ],
+  [
+   "packages/cezar/src/core/cursor-runner.ts",
+   68
+  ],
+  [
+   "packages/cezar/src/core/omp-runner.ts",
+   68
+  ],
+  [
+   "packages/cezar/src/core/opencode-server-runner.ts",
+   68
+  ],
+  [
+   "packages/cezar/src/core/pi-runner.ts",
+   68
+  ]
+ ]
+}

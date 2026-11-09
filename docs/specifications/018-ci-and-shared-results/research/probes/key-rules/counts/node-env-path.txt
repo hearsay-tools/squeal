@@ -1,0 +1,50 @@
+[
+ {
+  "node": "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+  "runnerVersion": "v24.22.1",
+  "resolvedConfig": {
+   "node": "node",
+   "execPath": "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+   "argv": [],
+   "env": [],
+   "cwd": "",
+   "include": [
+    "test/**/*.test.mjs"
+   ],
+   "exclude": []
+  },
+  "versions": "0083ccd6a12e10d7",
+  "config": "aed52b3eb0958b6f",
+  "platform": "linux",
+  "arch": "x64",
+  "release": "node",
+  "openssl": "3.5.9",
+  "icu": "78.3",
+  "tz": "2026e"
+ },
+ {
+  "node": "/home/agent/projects/squeal/.ai/cezar/t/bc47fd69/node-alt/opt/hostedtoolcache/node/24.22.1/x64/bin/node",
+  "runnerVersion": "v24.22.1",
+  "resolvedConfig": {
+   "node": "node",
+   "execPath": "/home/agent/projects/squeal/.ai/cezar/t/bc47fd69/node-alt/opt/hostedtoolcache/node/24.22.1/x64/bin/node",
+   "argv": [],
+   "env": [],
+   "cwd": "",
+   "include": [
+    "test/**/*.test.mjs"
+   ],
+   "exclude": []
+  },
+  "versions": "0083ccd6a12e10d7",
+  "config": "aed52b3eb0958b6f",
+  "platform": "linux",
+  "arch": "x64",
+  "release": "node",
+  "openssl": "3.5.9",
+  "icu": "78.3",
+  "tz": "2026e"
+ }
+]
+config fields that differ: [ 'execPath' ]
+process.versions equal: true process.config equal: true

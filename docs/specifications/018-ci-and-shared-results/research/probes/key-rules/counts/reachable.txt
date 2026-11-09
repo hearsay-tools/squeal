@@ -1,0 +1,22 @@
+{
+  pairs: 10530,
+  named: 1613,
+  unnamed: 8917,
+  filesWithANamedExtra: 230,
+  filesAllExtrasUnnamed: 6
+}
+{"file":".github/scripts/pr-snapshot.test.cjs","x":"packages/cezar/src/home/identity.ts","namedIn":".github/scripts/test-env-windows.test.mjs"}
+{"file":"packages/cezar/src/artifacts/cli.test.ts","x":"packages/cezar/src/workflows/run-states.ts","namedIn":"packages/cezar/src/runs/run-exits.ts"}
+{"file":"packages/cezar/src/artifacts/lifecycle.test.ts","x":"packages/cezar/src/runs/transcript-facts-worker.ts","namedIn":"packages/cezar/src/runs/transcript-facts-queue.ts"}
+{"file":"packages/cezar/src/automations/schedule-runner.test.ts","x":"packages/cezar/src/runs/transcript-facts-worker.ts","namedIn":"packages/cezar/src/runs/transcript-facts-queue.ts"}
+{"file":"packages/cezar/src/automations/task-template.test.ts","x":"packages/cezar/src/runs/transcript-facts-worker.ts","namedIn":"packages/cezar/src/runs/transcript-facts-queue.ts"}
+{"file":"packages/cezar/src/contract-import-boundaries.test.ts","x":"packages/cezar/src/agent-config/catalog.ts","namedIn":"packages/contract/src/agent-config.ts"}
+{"file":"packages/cezar/src/contract-import-boundaries.test.ts","x":"packages/cezar/src/agent-config/files.ts","namedIn":"packages/api-client/package.json"}
+{"file":"packages/cezar/src/contract-import-boundaries.test.ts","x":"packages/cezar/src/agent-config/model-settings/claude.ts","namedIn":"packages/api-client/src/protocol/ui-events.ts"}
+{"file":"packages/cezar/src/contract-import-boundaries.test.ts","x":"packages/cezar/src/agent-config/model-settings/codex.ts","namedIn":"packages/api-client/src/protocol/ui-events.ts"}
+{"file":"packages/cezar/src/contract-import-boundaries.test.ts","x":"packages/cezar/src/agent-config/model-settings/opencode.ts","namedIn":"packages/api-client/src/protocol/ui-events.ts"}
+{"file":"packages/cezar/src/contract-import-boundaries.test.ts","x":"packages/cezar/src/agent-config/model-settings/pi.ts","namedIn":"package.json"}
+{"file":"packages/cezar/src/contract-import-boundaries.test.ts","x":"packages/cezar/src/agent-config/model-settings/shared.ts","namedIn":"packages/api-client/package.json"}
+{"file":"packages/cezar/src/contract-import-boundaries.test.ts","x":"packages/cezar/src/agent-config/model-settings/types.ts","namedIn":"package.json"}
+{"file":"packages/cezar/src/contract-import-boundaries.test.ts","x":"packages/cezar/src/agent-config/models.ts","namedIn":"packages/api-client/src/utils/project-scope.ts"}
+{"file":"packages/cezar/src/contract-import-boundaries.test.ts","x":"packages/cezar/src/agent-config/seed.ts","namedIn":"packages/contract/src/agent-config.ts"}
