@@ -17,6 +17,7 @@ import { DECLARED } from "./assemble/declared.js";
 import { DESCRIBED } from "./assemble/described.js";
 import { ELSEWHERE } from "./assemble/elsewhere.js";
 import { INHERITED } from "./assemble/inherited.js";
+import { REFUSED_OBSERVED } from "./assemble/refused.js";
 import { REWRITTEN } from "./assemble/rewritten.js";
 import { RUNTIME_FILES } from "./assemble/runtime.js";
 import { GOLDEN_KEYS } from "./key/golden.js";
@@ -60,6 +61,7 @@ export const CASES: readonly Case[] = [
   ...INHERITED,
   ...REWRITTEN,
   ...ELSEWHERE,
+  ...REFUSED_OBSERVED,
   ...DESCRIBED,
   ...IGNORED_LISTING,
   ...STORE_TIERS,
