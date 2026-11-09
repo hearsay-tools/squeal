@@ -1,0 +1,50 @@
+{
+  "testsPassed": true,
+  "visibleInTest": "\"/tmp/qg/cases/child-v8\"",
+  "payloads": 2,
+  "payloadsNamingWorktree": 2,
+  "truncated": "coverage-2726005-1794261593613-0.json",
+  "skipped": [
+    {
+      "file": "coverage-2726005-1794261593613-0.json",
+      "error": "SyntaxError: Unterminated string in JSON at position 50889 (line 1 column 50890)"
+    }
+  ],
+  "records": [
+    {
+      "sources": [
+        "bin/run-ts.ts",
+        "src/work.ts"
+      ],
+      "unread": []
+    }
+  ],
+  "work": [
+    {
+      "fn": "work",
+      "cc": 3,
+      "ran": true,
+      "cov": 0.5,
+      "crap": 4.13,
+      "childRecords": 1
+    },
+    {
+      "fn": "unused",
+      "cc": 2,
+      "ran": false,
+      "cov": 0,
+      "crap": 6,
+      "childRecords": 1
+    }
+  ],
+  "plain": [
+    {
+      "fn": "plain",
+      "cc": 2,
+      "ran": false,
+      "cov": 0,
+      "crap": 6,
+      "childRecords": 0
+    }
+  ]
+}
