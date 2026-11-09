@@ -249,7 +249,8 @@ var DEFAULT_POLICY = {
     exclude: [],
     blocking: false,
     tools: ["eslint", "oxlint"]
-  }
+  },
+  shared: { ref: null }
 };
 
 // src/core/daemon/config-file.ts
@@ -952,6 +953,18 @@ var runtimeFiles = (value) => {
   return { kept, problems };
 };
 
+// src/core/daemon/policy-shared.ts
+var RESERVED = ["refs/heads", "refs/tags", "refs/remotes"];
+var COMPONENT = /^[A-Za-z0-9_-][A-Za-z0-9._-]*$/;
+function isSharedRef(prefix) {
+  const parts = prefix.split("/");
+  if (parts[0] !== "refs" || parts.length < 2) return false;
+  if (RESERVED.some((r) => prefix === r || prefix.startsWith(`${r}/`))) return false;
+  return parts.slice(1).every((p) => COMPONENT.test(p) && !p.includes("..") && !p.endsWith(".lock"));
+}
+var ref = (v) => v === null || typeof v === "string" && isSharedRef(v) ? null : 'a ref prefix outside refs/heads, refs/tags and refs/remotes, such as "refs/squeal", or null';
+var SHARED_SHAPE = { shared: { ref } };
+
 // src/core/daemon/policy-slow.ts
 function slowInclude(value) {
   if (!Array.isArray(value) || !value.every((glob) => typeof glob === "string")) {
@@ -1028,7 +1041,8 @@ var SHAPE = {
   daemon: { idleExitMinutes: aboveZero3, unusedExitMinutes: aboveZero3 },
   store: { retentionDays: atLeastZero2, maxSizeMb: orNull(aboveZero3) },
   ...CODE_SHAPE,
-  ...LINT_SHAPE
+  ...LINT_SHAPE,
+  ...SHARED_SHAPE
 };
 function loadPolicy(root) {
   const loaded = loadConfigFile(join(root, POLICY_FILE), SHAPE, DEFAULT_POLICY);
@@ -1841,8 +1855,8 @@ function newsView(p, told) {
 }
 
 // src/core/keys/reverse-index.ts
-function testFileId(ref) {
-  return `${ref.project}\0${ref.path}`;
+function testFileId(ref2) {
+  return `${ref2.project}\0${ref2.path}`;
 }
 
 // src/core/types/state.ts
@@ -2071,8 +2085,8 @@ function pendingAt(testFile, key) {
 function isRecord2(value) {
   if (typeof value !== "object" || value === null) return false;
   const v = value;
-  const ref = v.testFile;
-  return typeof v.id === "string" && typeof ref === "object" && ref !== null && typeof ref.project === "string" && typeof ref.path === "string" && typeof v.key === "string" && typeof v.session === "string" && RETRY_REASONS.includes(v.reason) && typeof v.askedAt === "number" && typeof v.askedIn === "string" && (v.claim === null || typeof v.claim === "object") && (v.end === null || typeof v.end === "object");
+  const ref2 = v.testFile;
+  return typeof v.id === "string" && typeof ref2 === "object" && ref2 !== null && typeof ref2.project === "string" && typeof ref2.path === "string" && typeof v.key === "string" && typeof v.session === "string" && RETRY_REASONS.includes(v.reason) && typeof v.askedAt === "number" && typeof v.askedIn === "string" && (v.claim === null || typeof v.claim === "object") && (v.end === null || typeof v.end === "object");
 }
 
 // src/core/retry/gate.ts
@@ -2256,13 +2270,13 @@ function openRuns(store, worktree, daemon) {
   if (worktree === null || startedAt === null) return [];
   return store.runs.inFlight(worktree.id, startedAt);
 }
-function claimantOf(store, worktreeId, ref, key, now) {
+function claimantOf(store, worktreeId, ref2, key, now) {
   if (!store.testFileKeys.claimed(worktreeId, key, claimLiveness(now))) return null;
-  const id = testFileId(ref);
+  const id = testFileId(ref2);
   for (const worktree of store.worktrees.list()) {
     if (worktree.id === worktreeId || worktree.daemon === null) continue;
     if (!heartbeatFresh(worktree.daemon, now)) continue;
-    const row = store.testFileKeys.list(worktree.id, [ref])[0];
+    const row = store.testFileKeys.list(worktree.id, [ref2])[0];
     if (row?.key !== key || row.pending !== "running") continue;
     const runs = store.runs.inFlight(worktree.id, worktree.daemon.startedAt);
     const run2 = runs.find((r) => r.testFiles.some((f) => testFileId(f) === id)) ?? null;
@@ -2318,7 +2332,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.421";
+  if (true) return "0.1.422";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -2471,16 +2485,16 @@ function readGitHead(root) {
   let value = read(join5(gitDir, "HEAD"));
   for (let depth = 0; depth < MAX_REF_DEPTH && value !== null; depth++) {
     if (SHA.test(value)) return value;
-    const ref = /^ref:\s*(\S+)$/.exec(value)?.[1];
-    if (ref === void 0) return null;
-    value = read(join5(gitDir, ref)) ?? read(join5(commonDir, ref)) ?? packed(commonDir, ref);
+    const ref2 = /^ref:\s*(\S+)$/.exec(value)?.[1];
+    if (ref2 === void 0) return null;
+    value = read(join5(gitDir, ref2)) ?? read(join5(commonDir, ref2)) ?? packed(commonDir, ref2);
   }
   return null;
 }
-function packed(commonDir, ref) {
+function packed(commonDir, ref2) {
   for (const line of (read(join5(commonDir, "packed-refs")) ?? "").split("\n")) {
     const [sha, name2] = line.split(" ");
-    if (name2 === ref && sha !== void 0 && SHA.test(sha)) return sha;
+    if (name2 === ref2 && sha !== void 0 && SHA.test(sha)) return sha;
   }
   return null;
 }
@@ -2940,11 +2954,11 @@ function same(a, b) {
   return a.length === b.length && a.every((word, i) => word === b[i]);
 }
 function nodeTestFiles(command, listing) {
-  const own = listing.files.filter((ref) => ref.project === command.project);
+  const own = listing.files.filter((ref2) => ref2.project === command.project);
   if (command.files === null) return own.length === 0 ? null : own;
-  const byPath = new Map(own.map((ref) => [ref.path, ref]));
+  const byPath = new Map(own.map((ref2) => [ref2.path, ref2]));
   const files = command.files.map((file) => byPath.get(listing.pathOf(file) ?? ""));
-  return files.every((ref) => ref !== void 0) ? [...new Set(files)] : null;
+  return files.every((ref2) => ref2 !== void 0) ? [...new Set(files)] : null;
 }
 
 // src/runners/pytest/describe.ts
@@ -3112,10 +3126,10 @@ function invocation(words, dir, env) {
 }
 function pytestFiles(command, listing) {
   if (command.paths === null) return null;
-  const own = listing.files.filter((ref) => ref.project === command.project);
+  const own = listing.files.filter((ref2) => ref2.project === command.project);
   const named3 = new Set(command.paths.map((path) => listing.pathOf(path)));
-  if (![...named3].every((rel) => own.some((ref) => ref.path === rel))) return null;
-  return own.filter((ref) => named3.has(ref.path));
+  if (![...named3].every((rel) => own.some((ref2) => ref2.path === rel))) return null;
+  return own.filter((ref2) => named3.has(ref2.path));
 }
 
 // src/runners/vitest/describe.ts
@@ -3233,16 +3247,16 @@ function npmCommand(words, { scripts }, split) {
 function vitestFiles(command, listing) {
   const { root, configured } = listing;
   if (listing.omitted !== 0) return null;
-  const vitest = listing.files.filter((ref) => !configured.has(ref.project));
-  if (new Set(vitest.map((ref) => ref.project)).size !== 1) return null;
+  const vitest = listing.files.filter((ref2) => !configured.has(ref2.project));
+  if (new Set(vitest.map((ref2) => ref2.project)).size !== 1) return null;
   if (command.filters.length === 0) return vitest;
   const selected = /* @__PURE__ */ new Set();
   for (const filter of command.filters) {
-    const hits = vitest.filter((ref) => matchesFilter(join10(root, ref.path), filter, root));
+    const hits = vitest.filter((ref2) => matchesFilter(join10(root, ref2.path), filter, root));
     if (hits.length === 0) return null;
-    for (const ref of hits) selected.add(ref);
+    for (const ref2 of hits) selected.add(ref2);
   }
-  return vitest.filter((ref) => selected.has(ref));
+  return vitest.filter((ref2) => selected.has(ref2));
 }
 function matchesFilter(file, filter, root) {
   if (isAbsolute6(filter) && file.startsWith(filter)) return true;
@@ -3511,11 +3525,11 @@ function groupView(policy) {
   if (view === void 0) {
     const groups = resolveGroups(policy);
     const owners = /* @__PURE__ */ new Map();
-    const of = (ref) => {
-      const id = testFileId(ref);
+    const of = (ref2) => {
+      const id = testFileId(ref2);
       let owner = owners.get(id);
       if (owner === void 0) {
-        const check = { kind: "test", runner: runnerOf(policy, ref.project), ...ref };
+        const check = { kind: "test", runner: runnerOf(policy, ref2.project), ...ref2 };
         owner = groupOf(groups, check) ?? fallback(groups);
         owners.set(id, owner);
       }
@@ -3543,7 +3557,7 @@ function slowView(policy) {
     const globs4 = slowGlobs(policy, policy.nodeTest);
     const groups = groupView(policy);
     view = {
-      isSlow: (ref) => groups.of(ref).name !== TESTS_GROUP,
+      isSlow: (ref2) => groups.of(ref2).name !== TESTS_GROUP,
       globs: globs4,
       declared: globs4.length > 0
     };
@@ -3551,8 +3565,8 @@ function slowView(policy) {
   }
   return view;
 }
-function laneFor(policy, ref, runnerLane) {
-  return groupLane(groupView(policy).of(ref).name, runnerLane);
+function laneFor(policy, ref2, runnerLane) {
+  return groupLane(groupView(policy).of(ref2).name, runnerLane);
 }
 
 // src/core/types/common.ts
@@ -3650,7 +3664,7 @@ function slowPolicyView(policy) {
   if (globs4.length === 0) return null;
   const groups = groupView(policy);
   return {
-    isSlow: policy.checks.length === 0 ? slowFiles(policy, policy.nodeTest) : (ref) => groups.of(ref).name === SLOW_GROUP,
+    isSlow: policy.checks.length === 0 ? slowFiles(policy, policy.nodeTest) : (ref2) => groups.of(ref2).name === SLOW_GROUP,
     slowGlobs: globs4,
     stopWaitMs: stopSlowWaitMs(policy),
     maxHolds: Math.max(1, policy.stop.maxHolds),
@@ -3676,9 +3690,9 @@ function classifySlowFiles(states, keys, isSlow) {
 function laneChecks(states, inLane) {
   const checks = /* @__PURE__ */ new Map();
   for (const state of states) {
-    const ref = testFileOf(state.check);
-    if (!inLane(ref)) continue;
-    const id = testFileId(ref);
+    const ref2 = testFileOf(state.check);
+    if (!inLane(ref2)) continue;
+    const id = testFileId(ref2);
     checks.set(id, [...checks.get(id) ?? [], state]);
   }
   return checks;
@@ -3755,7 +3769,7 @@ function readGroupTiers(store, worktreeId, states, keys, policy) {
   const waitMs = stopWaitBoundMs(policy);
   return view.groups.flatMap((group) => {
     if (group.index === null || group.select.kind !== "tests") return [];
-    const inLane = (ref) => view.of(ref) === group;
+    const inLane = (ref2) => view.of(ref2) === group;
     return [
       {
         name: group.name,
@@ -3784,7 +3798,7 @@ function classifyGroupFiles(states, keys, inLane) {
 }
 function inGroupLane(policy) {
   const view = groupView(policy);
-  return (ref) => view.of(ref).name !== TESTS_GROUP;
+  return (ref2) => view.of(ref2).name !== TESTS_GROUP;
 }
 function readCommitLine(store, worktreeId) {
   const report = newestCommitReport(store.meta, worktreeId);
@@ -3905,10 +3919,10 @@ function countSlowPending(states, keys, isSlow) {
   const files = /* @__PURE__ */ new Map();
   let checks = 0;
   for (const state of states) {
-    const ref = testFileOf(state.check);
-    if (state.validity !== "pending" || !isSlow(ref)) continue;
+    const ref2 = testFileOf(state.check);
+    if (state.validity !== "pending" || !isSlow(ref2)) continue;
     checks++;
-    files.set(testFileKeyOf(state.check), ref);
+    files.set(testFileKeyOf(state.check), ref2);
   }
   let testFilesWithoutChecks = 0;
   for (const row of keys) {
@@ -8789,7 +8803,7 @@ function readDependencyLine(reader, entry3, indent, [key, value]) {
 }
 function lockfileOf({ version, importers, integrity, snapshots }) {
   for (const declared of importers.values()) {
-    for (const ref of declared.values()) if (ref === "") return null;
+    for (const ref2 of declared.values()) if (ref2 === "") return null;
   }
   return version && importers.has(".") ? { importers, integrity, snapshots } : null;
 }
@@ -8955,8 +8969,8 @@ var PnpmGraph = class {
   }
   /** Node's walk from snapshot `id`'s folder: its edges, pnpm's private hoisting, then the root. */
   *#fromFolder(id, name2) {
-    const ref = this.lockfile.snapshots.get(id)?.get(name2);
-    yield ref === void 0 ? void 0 : childOf(name2, ref);
+    const ref2 = this.lockfile.snapshots.get(id)?.get(name2);
+    yield ref2 === void 0 ? void 0 : childOf(name2, ref2);
     yield this.privateHoisted.get(name2);
     yield* this.#fromImporters("", name2);
   }
@@ -8966,9 +8980,9 @@ var PnpmGraph = class {
    */
   *#fromImporters(from, name2) {
     for (let dir = from; ; dir = parent(dir)) {
-      const ref = this.lockfile.importers.get(dir === "" ? "." : dir)?.get(name2);
-      if (ref?.startsWith("link:")) yield workspace(dir, ref);
-      else if (ref !== void 0) yield childOf(name2, ref);
+      const ref2 = this.lockfile.importers.get(dir === "" ? "." : dir)?.get(name2);
+      if (ref2?.startsWith("link:")) yield workspace(dir, ref2);
+      else if (ref2 !== void 0) yield childOf(name2, ref2);
       if (dir === "") {
         yield this.publicHoisted.get(name2);
         return;
@@ -8980,7 +8994,7 @@ var PnpmGraph = class {
     const base = this.#base(id);
     if (!base.startsWith(`${id}#`)) return base;
     const edges = [...this.lockfile.snapshots.get(id) ?? []].map(
-      ([name2, ref]) => this.#typesOnly(childOf(name2, ref)) ? `${name2}@types-only` : `${name2}@${ref}`
+      ([name2, ref2]) => this.#typesOnly(childOf(name2, ref2)) ? `${name2}@types-only` : `${name2}@${ref2}`
     );
     return edges.length === 0 ? base : `${base}>${edges.sort(compare).join(",")}`;
   }
@@ -9039,12 +9053,12 @@ function isMarker(target) {
 function nameOf(id) {
   return id.slice(0, id.indexOf("@", 1));
 }
-function childOf(name2, ref) {
-  if (ref.startsWith("link:")) return workspace("", ref);
-  return ref.replace(/\(.*$/, "").indexOf("@", 1) > 0 ? ref : `${name2}@${ref}`;
+function childOf(name2, ref2) {
+  if (ref2.startsWith("link:")) return workspace("", ref2);
+  return ref2.replace(/\(.*$/, "").indexOf("@", 1) > 0 ? ref2 : `${name2}@${ref2}`;
 }
-function workspace(dir, ref) {
-  return `workspace:${posix6.normalize(posix6.join(dir, ref.slice("link:".length)))}`;
+function workspace(dir, ref2) {
+  return `workspace:${posix6.normalize(posix6.join(dir, ref2.slice("link:".length)))}`;
 }
 
 // src/core/keys/pnpm-install.ts
@@ -9106,9 +9120,9 @@ function checkVirtualStore(dir, graph, lockTime, stale) {
     const stat = lstatSync3(join19(dir, path), { throwIfNoEntry: false });
     if (stat === void 0) stale.missing.push(path);
     else if (stat.mtimeMs > lockTime) stale.newer.push(path);
-    for (const [name2, ref] of graph.lockfile.snapshots.get(id) ?? []) {
+    for (const [name2, ref2] of graph.lockfile.snapshots.get(id) ?? []) {
       const edge = `${modules}/${name2}`;
-      expectLink(graph, stale, edge, childOf(name2, ref), exists(dir, edge));
+      expectLink(graph, stale, edge, childOf(name2, ref2), exists(dir, edge));
     }
   }
   for (const [alias, id] of graph.privateHoisted) {
@@ -9126,7 +9140,7 @@ function checkImporters(dir, graph, lockTime, stale) {
         stale.unlisted.push(path);
       } else if (lstatSync3(join19(dir, path)).mtimeMs > lockTime) stale.newer.push(path);
     }
-    const links = new Map([...declared].map(([name2, ref]) => [name2, childOf(name2, ref)]));
+    const links = new Map([...declared].map(([name2, ref2]) => [name2, childOf(name2, ref2)]));
     for (const [alias, id] of importer === "." ? graph.publicHoisted : []) {
       const own = links.get(alias);
       if (own === void 0 || graph.skipped.has(own)) links.set(alias, id);
@@ -9310,13 +9324,13 @@ function beforeEditsFor(store, worktreeId, slot2, since) {
 // src/core/delivery/closure.ts
 function closureTrust(store, worktreeId) {
   const keys = /* @__PURE__ */ new Map();
-  const keyOf = (id, ref) => {
+  const keyOf = (id, ref2) => {
     let byFile = keys.get(id);
     if (byFile === void 0) {
       byFile = new Map(store.testFileKeys.list(id).map((r) => [testFileId(r.testFile), r.key]));
       keys.set(id, byFile);
     }
-    return byFile.get(testFileId(ref)) ?? null;
+    return byFile.get(testFileId(ref2)) ?? null;
   };
   return (record) => {
     if (record.updatedBy === worktreeId) return true;
@@ -9326,8 +9340,8 @@ function closureTrust(store, worktreeId) {
 }
 function closureFor(store, worktreeId) {
   const trusts = closureTrust(store, worktreeId);
-  return (ref) => {
-    const record = store.testFiles.get(ref);
+  return (ref2) => {
+    const record = store.testFiles.get(ref2);
     return record !== null && trusts(record) ? record.closure.paths : void 0;
   };
 }
@@ -11827,16 +11841,16 @@ function lintStatusOf(store, worktreeId, at, shell) {
 
 // src/core/retry/waits.ts
 var UNKNOWN = { kind: "unknown" };
-function retryWaitOf(ref, reads) {
+function retryWaitOf(ref2, reads) {
   const { isSlow, activity, runs, groupOf: groupOf2 } = reads;
-  const id = testFileId(ref);
+  const id = testFileId(ref2);
   const own = runs.find((run2) => run2.testFiles.some((f) => testFileId(f) === id));
   if (own !== void 0) return { kind: "running", since: own.startedAt };
-  const group = groupOf2?.(ref) ?? null;
+  const group = groupOf2?.(ref2) ?? null;
   if (group !== null) return groupWaitOf(group);
   const fastFile = (f) => !isSlow(f) && (groupOf2?.(f) ?? null) === null;
-  if (!isSlow(ref)) {
-    const since = earliest2(runs, (f) => f.project === ref.project && fastFile(f));
+  if (!isSlow(ref2)) {
+    const since = earliest2(runs, (f) => f.project === ref2.project && fastFile(f));
     return since === null ? UNKNOWN : { kind: "tier", since };
   }
   const fast = earliest2(runs, fastFile);
@@ -11856,7 +11870,7 @@ function groupWaitOf({ name: name2, at, after, activity }) {
 }
 function groupLanesOf(tiers, ownerOf) {
   const byName = new Map((tiers ?? []).map((tier) => [tier.name, tier]));
-  return (ref) => byName.get(ownerOf(ref)) ?? null;
+  return (ref2) => byName.get(ownerOf(ref2)) ?? null;
 }
 
 // src/core/scheduler/claims.ts
@@ -12256,7 +12270,7 @@ function retriedRuns(store, worktreeId) {
     (r) => r.end === null && r.claim?.worktreeId === worktreeId
   );
   if (records.length === 0) return () => false;
-  return (ref, key) => key !== null && records.some(pendingAt(ref, key));
+  return (ref2, key) => key !== null && records.some(pendingAt(ref2, key));
 }
 
 // src/core/daemon/user-config.ts
@@ -12542,16 +12556,16 @@ function withYieldFacts(pending, lane, run2, { row, startedAt, laneOf: laneOf2 }
   };
 }
 var UNREPORTED_SHOWN = 3;
-function endOf(ref, pending, run2, { row }) {
+function endOf(ref2, pending, run2, { row }) {
   if (pending.kind !== "running" || run2 === void 0) return {};
-  const end = fileEndOf(ref, run2, row);
+  const end = fileEndOf(ref2, run2, row);
   return end === void 0 ? {} : { end };
 }
-function fileEndOf(ref, run2, row) {
+function fileEndOf(ref2, run2, row) {
   const named3 = row.endedFiles.get(run2.id);
   if (named3 === void 0 || row.at === void 0) return void 0;
   const ended = new Set(named3.map(testFileId));
-  if (!ended.has(testFileId(ref))) return void 0;
+  if (!ended.has(testFileId(ref2))) return void 0;
   const unreported = run2.testFiles.filter((f) => !ended.has(testFileId(f)));
   return {
     revision: run2.revision,
@@ -12568,7 +12582,7 @@ function lastIn(row, lane, runId, laneOf2) {
 }
 function firstTier(row, lane, run2, laneOf2) {
   if (run2.testFiles.length < 2 || isSlowLane(lane) || row.last !== null) return false;
-  return ![...row.lanes.values()].some((ref) => laneOf2(ref) === lane);
+  return ![...row.lanes.values()].some((ref2) => laneOf2(ref2) === lane);
 }
 
 // src/core/status/standing.ts
@@ -12582,8 +12596,8 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
   const startedAt = liveStartedAt(worktree, daemon);
   const runs = reads?.runs ?? openRuns(store, worktree, daemon);
   const promoted = startedAt === null ? /* @__PURE__ */ new Map() : publishedBatches(store, worktreeId, startedAt, now);
-  const batchOf = (ref) => {
-    const place = promoted.get(testFileId(ref));
+  const batchOf = (ref2) => {
+    const place = promoted.get(testFileId(ref2));
     return place === null || place === void 0 ? {} : { batch: place };
   };
   const row = liveYieldRow(store, worktreeId, startedAt);
@@ -12621,13 +12635,13 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
       ).length
     )
   };
-  return (files) => files.map((ref) => {
-    const row2 = rows.get(testFileId(ref));
-    const own = checks.get(testFileId(ref)) ?? [];
+  return (files) => files.map((ref2) => {
+    const row2 = rows.get(testFileId(ref2));
+    const own = checks.get(testFileId(ref2)) ?? [];
     const state = fileClassOf(row2, own);
-    if (state === "current") return { testFile: ref, state, ...verdictOf(own) };
+    if (state === "current") return { testFile: ref2, state, ...verdictOf(own) };
     const key = row2?.key ?? null;
-    const claimant = state === "pending" || key === null ? null : claimantOf(store, worktreeId, ref, key, now);
+    const claimant = state === "pending" || key === null ? null : claimantOf(store, worktreeId, ref2, key, now);
     const claim = claimant === null ? null : { kind: "claim", worktree: claimant.worktree.root, until: claimBound(policy, now) };
     if (state === "stale") {
       const verdict = verdictOf(own);
@@ -12637,80 +12651,80 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
         lookupOnly: facts.lookupOnly,
         notCurrent: facts.notCurrent()
       };
-      return { testFile: ref, state, ...verdict, standing: standing3 };
+      return { testFile: ref2, state, ...verdict, standing: standing3 };
     }
     if (state === "unknown") {
-      if (row2 === void 0) return { testFile: ref, state };
+      if (row2 === void 0) return { testFile: ref2, state };
       const unknown = reasons.of(row2, own);
       return {
-        testFile: ref,
+        testFile: ref2,
         state,
         unknown,
         standing: claim ?? unknownStanding(unknown, facts)
       };
     }
     const running = row2?.pending === "running" || own.some((s) => s.pendingPhase === "running");
-    const lane = laneFor(policy, ref, runnerLaneOf(policy, ref.project));
-    const run2 = running ? runOf(runs, ref) : void 0;
-    const setup = isGroupLane(lane) ? setups.get(ref.project) : void 0;
+    const lane = laneFor(policy, ref2, runnerLaneOf(policy, ref2.project));
+    const run2 = running ? runOf(runs, ref2) : void 0;
+    const setup = isGroupLane(lane) ? setups.get(ref2.project) : void 0;
     const base = running ? {
       kind: "running",
       lane,
       since: run2?.startedAt ?? null,
       ...run2 === void 0 ? {} : { files: run2.testFiles.length },
       ...setup === void 0 ? {} : { setup }
-    } : unlisted2 ?? queuedReason(store, worktreeId, ref, key, lane, runs, policy, now);
+    } : unlisted2 ?? queuedReason(store, worktreeId, ref2, key, lane, runs, policy, now);
     const told = yieldFacts(base, lane, run2);
-    const asRetry = told.kind === "queued" && !promoted.has(testFileId(ref)) && retried(ref, key);
-    const pending = told.kind === "running" ? { ...told, ...batchOf(ref) } : asRetry ? { ...told, retried: true } : told;
+    const asRetry = told.kind === "queued" && !promoted.has(testFileId(ref2)) && retried(ref2, key);
+    const pending = told.kind === "running" ? { ...told, ...batchOf(ref2) } : asRetry ? { ...told, retried: true } : told;
     if (hold !== void 0 && (pending.kind === "queued" || pending.kind === "slow")) {
       const held = { kind: "on-hold", hold };
-      return { testFile: ref, state, pending: held, standing: held };
+      return { testFile: ref2, state, pending: held, standing: held };
     }
     const wait = pending.kind === "queued" ? quietWait(quiet, pending.lane) : void 0;
     if (pending.kind === "queued" && pending.behind === null && wait !== void 0) {
-      if (!promoted.has(testFileId(ref))) {
+      if (!promoted.has(testFileId(ref2))) {
         const held = { ...pending, ...wait };
-        return { testFile: ref, state, pending: held, standing: held };
+        return { testFile: ref2, state, pending: held, standing: held };
       }
     }
     const refused = pending.kind === "queued" ? pool?.get(pending.lane) : void 0;
     if (pending.kind === "queued" && pending.behind === null && refused !== void 0) {
-      if (!promoted.has(testFileId(ref))) {
+      if (!promoted.has(testFileId(ref2))) {
         const held = { ...pending, pool: refused };
-        return { testFile: ref, state, pending: held, standing: held };
+        return { testFile: ref2, state, pending: held, standing: held };
       }
     }
-    if (pending.kind === "queued" && promoted.has(testFileId(ref))) {
+    if (pending.kind === "queued" && promoted.has(testFileId(ref2))) {
       const tier = pending.behind === null ? void 0 : yieldIn(runs, lane, policy, yields);
       const promotedReason = {
         ...pending,
         promoted: true,
         ...tier === void 0 ? {} : { yields: tier },
-        ...batchOf(ref)
+        ...batchOf(ref2)
       };
-      return { testFile: ref, state, pending: promotedReason, standing: promotedReason };
+      return { testFile: ref2, state, pending: promotedReason, standing: promotedReason };
     }
     if (pending.kind === "slow") {
       const held = slotOf(pending, slot2);
       if (held !== void 0) {
         const waiting = { ...pending, slot: held };
-        return { testFile: ref, state, pending: waiting, standing: waiting };
+        return { testFile: ref2, state, pending: waiting, standing: waiting };
       }
     }
-    if (pending.kind === "unlisted" && promoted.has(testFileId(ref))) {
+    if (pending.kind === "unlisted" && promoted.has(testFileId(ref2))) {
       const run3 = yieldIn(runs, lane, policy, yields);
       if (run3?.kind === "yields") {
         const yielding = { ...pending, yields: run3 };
-        return { testFile: ref, state, pending: yielding, standing: yielding };
+        return { testFile: ref2, state, pending: yielding, standing: yielding };
       }
     }
     return {
-      testFile: ref,
+      testFile: ref2,
       state,
       pending,
       standing: pending,
-      ...endOf(ref, pending, run2, yieldReads)
+      ...endOf(ref2, pending, run2, yieldReads)
     };
   });
 }
@@ -12741,8 +12755,8 @@ function runnerLaneOf(policy, project) {
   if (policy.pytest.some((p) => p.name === project)) return "pytest";
   return "vitest";
 }
-function queuedReason(store, worktreeId, ref, key, lane, runs, policy, now) {
-  const claimant = key === null ? null : claimantOf(store, worktreeId, ref, key, now);
+function queuedReason(store, worktreeId, ref2, key, lane, runs, policy, now) {
+  const claimant = key === null ? null : claimantOf(store, worktreeId, ref2, key, now);
   if (claimant !== null && store.results.byKey(key, 0).length === 0) {
     return { kind: "claim", worktree: claimant.worktree.root, until: claimBound(policy, now) };
   }
@@ -12750,11 +12764,11 @@ function queuedReason(store, worktreeId, ref, key, lane, runs, policy, now) {
   if (tier !== void 0) {
     return { kind: "queued", lane, behind: tier.startedAt, files: tier.testFiles.length };
   }
-  const group = groupView(policy).of(ref);
+  const group = groupView(policy).of(ref2);
   if (group.name !== SLOW_GROUP && group.name !== TESTS_GROUP) {
     return { kind: "slow", group: { name: group.name, at: group.at } };
   }
-  if (slowView(policy).isSlow(ref)) {
+  if (slowView(policy).isSlow(ref2)) {
     return policy.slow.trigger === "idle" ? { kind: "slow", pausesOnly: true } : { kind: "slow" };
   }
   return { kind: "queued", lane, behind: null };
@@ -12765,8 +12779,8 @@ function unlistedReason(header, policy) {
   const callBoundMs = runnerPartBoundMs(policy.runner.timeoutMs);
   return { kind: "unlisted", revision: header.revision, callBoundMs };
 }
-function runOf(runs, ref) {
-  const id = testFileId(ref);
+function runOf(runs, ref2) {
+  const id = testFileId(ref2);
   return runs.find((run2) => run2.testFiles.some((f) => testFileId(f) === id));
 }
 function verdictOf(own) {
@@ -12860,14 +12874,14 @@ function outstandingOf(store, worktreeId, root, reads, now, load) {
   const refs = reads.keys.map((row) => row.testFile).sort((a, b) => testFileId(a).localeCompare(testFileId(b)));
   const files = standingsOf(store, worktreeId, root, daemon, now, load, reads)(refs);
   const groups = /* @__PURE__ */ new Map();
-  const add = (standing3, ref) => {
+  const add = (standing3, ref2) => {
     const id = groupId(standing3) + waitsId(standing3);
     const group = groups.get(id);
     if (group === void 0) {
-      groups.set(id, { standing: standing3, files: ref === null ? [] : [ref] });
+      groups.set(id, { standing: standing3, files: ref2 === null ? [] : [ref2] });
       return;
     }
-    if (ref !== null) group.files.push(ref);
+    if (ref2 !== null) group.files.push(ref2);
     group.standing = widest(group.standing, standing3);
   };
   for (const file of files) {
@@ -12908,7 +12922,7 @@ function retryStandings(reads, worktreeId, policy) {
     isSlow: slowView(policy).isSlow,
     activity: header.slowTier?.activity ?? null,
     runs,
-    groupOf: groupLanesOf(header.groupTiers, (ref) => groups.of(ref).name)
+    groupOf: groupLanesOf(header.groupTiers, (ref2) => groups.of(ref2).name)
   };
   const retries = /* @__PURE__ */ new Map();
   for (const r of reads.pendingRetries?.retries ?? []) {
