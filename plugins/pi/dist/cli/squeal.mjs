@@ -21271,7 +21271,10 @@ function describeEnvironment(format2, core, runner, files3, ci) {
 }
 function configFields(config) {
   const fields = Object.entries(config).sort(([a], [b]) => compare(a, b));
-  return Object.fromEntries(fields.map(([name3, value]) => [name3, digest(JSON.stringify(value))]));
+  return Object.fromEntries(fields.map(([name3, value]) => [name3, configFieldHash(value)]));
+}
+function configFieldHash(value) {
+  return digest(JSON.stringify(value));
 }
 function browserEnabled(config) {
   return config.browser?.enabled === true;
@@ -21337,6 +21340,9 @@ function importDifferences(exported, local) {
   }
   const tolerated = new Set(CI_FIELDS);
   if (exported.browser === false && local.browser === false) tolerated.add("browser");
+  if (exported.config.allowOnly === ONLY_REJECTED && local.config.allowOnly === ONLY_ALLOWED) {
+    tolerated.add("allowOnly");
+  }
   const keyed = (d) => ({
     ...d,
     config: Object.fromEntries(Object.entries(d.config).filter(([name3]) => !tolerated.has(name3)))
@@ -21373,7 +21379,7 @@ function listed4(names5) {
   const shown = names5.slice(0, SHOWN).join(", ");
   return names5.length > SHOWN ? `${shown} and ${names5.length - SHOWN} more` : shown;
 }
-var WHOLE_CONFIG, CI_SERVICE_VARIABLES, PLAIN, SHOWN, CI_FIELDS;
+var WHOLE_CONFIG, CI_SERVICE_VARIABLES, PLAIN, SHOWN, CI_FIELDS, ONLY_REJECTED, ONLY_ALLOWED;
 var init_environment_descriptor = __esm({
   "src/core/keys/environment-descriptor.ts"() {
     "use strict";
@@ -21401,7 +21407,9 @@ var init_environment_descriptor = __esm({
       ["arch", "arch"]
     ];
     SHOWN = 5;
-    CI_FIELDS = ["allowOnly", "watch", "coverage"];
+    CI_FIELDS = ["watch", "coverage"];
+    ONLY_REJECTED = configFieldHash(false);
+    ONLY_ALLOWED = configFieldHash(true);
   }
 });
 
@@ -84364,6 +84372,7 @@ function rekeyFiles(store, bundle, rekeying) {
       [],
       (observed2.observed ?? []).filter(isClosurePath)
     ).paths;
+    if (!holdsEvery(closure, file.closure?.paths ?? [])) continue;
     const key3 = keyOver(here, ref2, closure, at2, file.keyParts ?? NO_PARTS);
     out2.set(testFileId(ref2), { key: key3, environment: here, closure, observed: observed2 });
   }
@@ -84373,6 +84382,10 @@ function proven(file, environment, at2) {
   if (file.closure === null) return false;
   const parts3 = file.keyParts ?? NO_PARTS;
   return keyOver(environment.hash, file, file.closure.paths, at2, parts3) === file.key;
+}
+function holdsEvery(here, exported) {
+  const held3 = new Set(here);
+  return exported.every((path) => held3.has(path));
 }
 function localHash(store, worktreeId, exported) {
   const here = worktreeEnvironment(store, worktreeId, exported.project);
