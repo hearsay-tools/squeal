@@ -31,6 +31,22 @@ export function normalizeRelativePath(path: string): RelativePath {
 }
 
 /**
+ * Whether `assembleClosure` takes `path` as an observed path: a listing path,
+ * or a path `normalizeRelativePath` accepts. A stored observed path can fail
+ * it (issue #166): a test that fakes win32 reads `\home\...`, a file name on
+ * POSIX that normalizes to an absolute path.
+ */
+export function isClosurePath(path: string): boolean {
+  if (listedDirectory(path) !== null) return true;
+  try {
+    normalizeRelativePath(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Policy `inputs` resolved against the files of a worktree, answered per test
  * file. Spec 001 D3: the closure includes "any policy-declared `inputs` globs
  * that match"; D11 as amended: a list applies to every test file, a map
