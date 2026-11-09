@@ -1961,11 +1961,17 @@ Spec `specifications/018-ci-and-shared-results/spec.md` (stage: build; **0.1.417
 | 018-10 coverage provider takes Node built-ins past test mocks | done (0.1.418, workers 5b3f4110 and c19e673e; record version 4, key version 3; reviews `wave-3.5.md` FAIL, `wave-3.5-r2.md` PASS at `2b7ae252c`) | `src/core/code/coverage/provider.mjs` imports `node:path` through the module runner, so cezar's `vi.mock('node:path')` test made it write a `\tmp\squeal-...` file into the checkout root (trial run 42482427002 had no verdict) and lose that file's coverage. Spec 015's provider. | A test that mocks `node:path` writes nothing outside the reports directory and keeps its coverage record. |
 | 018-11 the fast-lane verdict uses the checkpoint's own files | done (0.1.418, worker d41f7441; verdict calls the daemon's lane rule; review `wave-3.5-r2.md` PASS) | Daemon (`scheduler/slow.ts`: any group but `tests` is slow) and command (`state/slow.ts`: only `slow`) disagree, so `run --fast --wait` never ends with a verdict when `checks` has another group (cezar's manual `browser`). | A `run --fast --wait` test with a manual group ends with a verdict over the checkpoint's files. |
 
+### Wave 3.6: a running request keeps the daemon awake (brief `tasks/wave-3.6.md`)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 018-12 progress on an explicit request counts as activity for the idle exit | running (approved by the human 2026-11-09, "A: fix Squeal") | A daemon with no consumer stopped after `daemon.idleExitMinutes` with 332 files of a `run tests` request still queued (trial run 42530503204), because only new requests count as activity. | A no-consumer daemon with an open request that keeps making progress stays up until the request ends, then stops one idle period later. |
+
 ### Wave 3: the trial (after the release with 018-07; needs the human's approval of the cezar CI file, spec D7)
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 018-08 trial: CI export imported into a fresh cezar clone | running (researcher a9fd78c8; #3018 merged `bed82fd`; run 42482427002 had no verdict: a `vi.mock('node:path')` test made the coverage provider write into the checkout (row 018-10); fix PR hearsay-tools/cezarion#3029 (exclude backslash names, fast lane) approved by the human 2026-11-08, awaits merge; counts follow) | Spec D7: one dispatched non-gating job in cezar exports; a fresh clone at that SHA imports and counts current files and D5 reasons; a second clone with a copy of cezar's store counts what inheriting already gives. | `research/import-trial.md` committed with the counts, the reasons, the CI job time and the Squeal version. |
+| 018-08 trial: CI export imported into a fresh cezar clone | running (researcher a9fd78c8; run 42482427002 no verdict: coverage file in the checkout (018-10, cezarion#3029); run 42530503204 at `6f552e5` on 0.1.418 stopped after 60 min by the idle exit with 1,414 of 1,746 files done (018-12); rerun on 0.1.419 with no cezar change) | Spec D7: one dispatched non-gating job in cezar exports; a fresh clone at that SHA imports and counts current files and D5 reasons; a second clone with a copy of cezar's store counts what inheriting already gives. | `research/import-trial.md` committed with the counts, the reasons, the CI job time and the Squeal version. |
 
 ## Feature 019: run triggers
 

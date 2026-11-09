@@ -31,6 +31,8 @@ Started: 2026-10-31
 - 2026-11-08, row 018-11 (worker d41f7441), deviation accepted: the verdict calls the daemon's lane rule (`slowView(...).isSlow`, the function `requestFullSuite` uses), not the checkpoint's recorded file list, because a checkpoint records only the files it queued. Follow-ups, not rows yet: `state/groups.ts` `inGroupLane` and `queue.ts` `#isSlow` repeat the same rule; `laneText` still says only "slow test files are not in it" when a manual group is also left out.
 - 2026-11-08, re-review of `cand/0.1.418` at `2b7ae252c` (`reviews/wave-3.5-r2.md`): PASS, B1 and S1 resolved, 018-11 proven. Candidate CI 42494177395 green on that SHA. 0.1.418 landed on main with rows 018-10 and 018-11.
 - 2026-11-08, the coordinator: 0.1.418 released (tag `squeal--v0.1.418` at `2b7ae252c`, hub `f0dd6b0`, GitHub latest release with `install.sh` and both Codex runtime assets; exact-commit CI 42494177395 green). No issue to close. The trial runs on 0.1.418 next.
+- 2026-11-08, hearsay-tools/cezarion#3029 merged by the human (18:21Z). Trial run 42530503204 (cezar `6f552e5`, Squeal 0.1.418) ran 61 min and stopped by the idle exit: cezar sets `daemon.idleExitMinutes: 60`, a daemon with no consumer counts only new requests as activity, so 332 queued files of `run tests` got no result (researcher a9fd78c8, read in source and reproduced in a fixture). `squeal export` would have exported the 1,413 passing files correctly; the workflow's guard uploaded nothing, as designed.
+- 2026-11-09, the human: "A: fix Squeal" (row 018-12), then rerun the trial on 0.1.419 with no further cezar change. Not chosen: a cezar workflow loop that repeats the request every 30 min.
 
 ## Open questions
 
