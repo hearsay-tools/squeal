@@ -1,11 +1,12 @@
-import { type ChildProcess, spawn } from "node:child_process";
+import { spawn } from "node:child_process";
 import type { AbsolutePath } from "../types/common.js";
 
 /*
  * Spec 018 D13, D14: git for the shared results ref, with bytes in and out
  * (an export is gzip) and git's network set so it never waits for a person:
  * no terminal prompt, ssh in batch mode with a connect timeout, and a kill
- * timer of the caller's (`transport.md` Q3).
+ * timer of the caller's (`transport.md` Q3). The caller's stop starts no git
+ * once given and kills the one running (R1 of row 018-20).
  */
 
 /** Variables that would point git at another repository than `cwd`. */
@@ -27,8 +28,8 @@ export interface GitCall {
   readonly timeoutMs: number;
   /** Set over the process environment. */
   readonly env?: Readonly<Record<string, string>>;
-  /** Told the child once it runs, so a closing owner can kill it. */
-  readonly started?: (child: ChildProcess) => void;
+  /** The owner's stop: once aborted, no git starts, and one running is killed. */
+  readonly signal?: AbortSignal;
 }
 
 export interface GitAnswer {
@@ -40,17 +41,28 @@ export interface GitAnswer {
   readonly timedOut: boolean;
 }
 
+/** What a call answers when its owner stopped. */
+const STOPPED = "stopped";
+
 /** Runs git in `cwd`; never rejects. Takes no optional locks. */
 export function gitCall(
   cwd: AbsolutePath,
   args: readonly string[],
   call: GitCall,
 ): Promise<GitAnswer> {
+  const { signal } = call;
+  if (signal?.aborted) {
+    return Promise.resolve({
+      code: null,
+      stdout: Buffer.alloc(0),
+      stderr: STOPPED,
+      timedOut: false,
+    });
+  }
   const env: NodeJS.ProcessEnv = { ...process.env, GIT_OPTIONAL_LOCKS: "0", ...call.env };
   for (const name of REPOSITORY_VARIABLES) delete env[name];
   return new Promise((resolve) => {
     const child = spawn("git", args, { cwd, env, stdio: ["pipe", "pipe", "pipe"] });
-    call.started?.(child);
     const stdout: Buffer[] = [];
     const stderr: Buffer[] = [];
     let timedOut = false;
@@ -59,16 +71,22 @@ export function gitCall(
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      signal?.removeEventListener("abort", stop);
       resolve(answer);
     };
     // A child git started (ssh, a transport helper) can hold the pipes: release them and answer.
-    const timer = setTimeout(() => {
-      timedOut = true;
+    const kill = (why: string) => {
       child.kill("SIGKILL");
       child.stdout.destroy();
       child.stderr.destroy();
-      settle({ code: null, stdout: Buffer.concat(stdout), stderr: "", timedOut });
+      settle({ code: null, stdout: Buffer.concat(stdout), stderr: why, timedOut });
+    };
+    const stop = () => kill(STOPPED);
+    const timer = setTimeout(() => {
+      timedOut = true;
+      kill("");
     }, call.timeoutMs);
+    signal?.addEventListener("abort", stop, { once: true });
     child.stdout.on("data", (chunk: Buffer) => stdout.push(chunk));
     child.stderr.on("data", (chunk: Buffer) => stderr.push(chunk));
     child.on("error", (error) =>
@@ -108,13 +126,19 @@ export function failureOf(answer: GitAnswer, timeoutMs: number): string {
  * options appended; `GIT_SSH` alone names a program that may take no
  * options, so it is left as it is and the kill timer bounds it.
  */
-export async function networkEnv(cwd: AbsolutePath): Promise<Record<string, string>> {
+export async function networkEnv(
+  cwd: AbsolutePath,
+  signal?: AbortSignal,
+): Promise<Record<string, string>> {
   const env: Record<string, string> = { GIT_TERMINAL_PROMPT: "0" };
   const own = process.env.GIT_SSH_COMMAND;
   if (own !== undefined && own !== "") return { ...env, GIT_SSH_COMMAND: `${own} ${SSH_BATCH}` };
   if (process.env.GIT_SSH !== undefined && process.env.GIT_SSH !== "") return env;
   const configured = textOf(
-    await gitCall(cwd, ["config", "--get", "core.sshCommand"], { timeoutMs: 5_000 }),
+    await gitCall(cwd, ["config", "--get", "core.sshCommand"], {
+      timeoutMs: 5_000,
+      ...(signal === undefined ? {} : { signal }),
+    }),
   );
   const ssh = configured === null || configured === "" ? "ssh" : configured;
   return { ...env, GIT_SSH_COMMAND: `${ssh} ${SSH_BATCH}` };
