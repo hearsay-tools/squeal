@@ -9,6 +9,7 @@ import {
   createDeclaredInputs,
   type DeclaredInputs,
   inputGlobs,
+  isClosurePath,
   sameInputs,
   type UnmatchedInputs,
   unmatchedInputs,
@@ -49,6 +50,7 @@ import { checkIgnored } from "../watcher/git.js";
 import { linkedFiles } from "../watcher/linked-files.js";
 import { Lockfiles } from "./lockfiles.js";
 import { persistedNoteTexts } from "./notes.js";
+import { RefusedObserved } from "./refused-observed.js";
 
 export interface KeyingOptions {
   readonly root: AbsolutePath;
@@ -148,6 +150,8 @@ export class WorktreeKeys {
   #runtime: RuntimeFiles;
   readonly #saved = new Set<string>();
   readonly #staged = new Set<RelativePath>();
+  /** Stored observed paths closure assembly cannot take (row 011-310, issue #166). */
+  readonly #refused: RefusedObserved;
 
   constructor(private readonly options: KeyingOptions) {
     this.#listings = new Listings(() => this.#listedFiles(), options.root);
@@ -165,6 +169,10 @@ export class WorktreeKeys {
       (text) => persistedNoteTexts(options.store, options.worktreeId).has(text),
     );
     this.#observed = new ObservedSets(options.store);
+    this.#refused = new RefusedObserved(
+      (text) => options.note?.(text),
+      (text) => persistedNoteTexts(options.store, options.worktreeId).has(text),
+    );
     this.#modules = new ModuleSets(options.store);
     this.#startup = new StartupSets(options.store);
     this.index = new KeyIndex(
@@ -459,13 +467,17 @@ export class WorktreeKeys {
     this.#runnerClosures.set(testFileId(runner.testFile), runner);
     if (saved) this.#saved.add(testFileId(runner.testFile));
     else this.#saved.delete(testFileId(runner.testFile));
-    const observed = this.observes(runner.testFile.project)
-      ? this.effectiveObserved(runner.testFile, this.#observed.of(runner.testFile))
-      : [];
+    const observes = this.observes(runner.testFile.project);
+    const raw = observes ? this.#observed.of(runner.testFile) : [];
+    const observed = observes ? this.effectiveObserved(runner.testFile, raw) : [];
     const update = this.index.setClosure(
       assembleClosure(runner, this.#declared.for(runner.testFile.path), observed),
       this.#dependencySegment(runner),
-      runtimeIdentity(this.runtimeApplication(runner.testFile).paths),
+      this.#refused.keyed(
+        runner.testFile,
+        raw,
+        runtimeIdentity(this.runtimeApplication(runner.testFile).paths),
+      ),
       !saved || !this.runtimeSelected(runner.testFile),
     );
     for (const path of update.untracked) this.#untracked.add(path);
@@ -601,8 +613,14 @@ export class WorktreeKeys {
     );
   }
 
+  /**
+   * The observed paths among `raw` that key `ref`: those closure assembly
+   * takes (`isClosurePath`; row 011-310, issue #166), less the runtime files
+   * applied to it. Closures, their record-time growth and the release of
+   * inherited paths all read the shared set through it.
+   */
   effectiveObserved(ref: TestFileRef, raw: readonly RelativePath[]): RelativePath[] {
-    return this.#runtime.effective(raw, this.runtimeApplication(ref));
+    return this.#runtime.effective(raw.filter(isClosurePath), this.runtimeApplication(ref));
   }
 
   runtimeIdentity(ref: TestFileRef): string {
