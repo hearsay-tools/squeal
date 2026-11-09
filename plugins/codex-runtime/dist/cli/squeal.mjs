@@ -20322,10 +20322,10 @@ var init_packages = __esm({
         const found3 = /* @__PURE__ */ new Set();
         const starts = /* @__PURE__ */ new Set();
         for (const { from, name: name3, manifest } of imports) {
-          const local = this.#local(from);
-          const location2 = local === null ? null : this.#resolve(local, name3);
+          const local2 = this.#local(from);
+          const location2 = local2 === null ? null : this.#resolve(local2, name3);
           const entry4 = location2 === null ? void 0 : this.#packages[location2];
-          if (location2 === null) found3.add(absent(local ?? from, name3));
+          if (location2 === null) found3.add(absent(local2 ?? from, name3));
           else if (manifest === true && entry4 !== void 0 && isInstalled(location2)) {
             found3.add(identityOf(location2, entry4));
           } else starts.add(location2);
@@ -20674,9 +20674,9 @@ var init_pnpm_graph = __esm({
         const found3 = /* @__PURE__ */ new Set();
         const starts = /* @__PURE__ */ new Set();
         for (const { from, name: name3, manifest } of imports) {
-          const local = this.#local(from);
-          const targets = local === null ? [] : this.#resolve(local, name3);
-          if (targets.length === 0) found3.add(`absent:${local ?? from}>${name3}`);
+          const local2 = this.#local(from);
+          const targets = local2 === null ? [] : this.#resolve(local2, name3);
+          if (targets.length === 0) found3.add(`absent:${local2 ?? from}>${name3}`);
           for (const target of targets) {
             if (isMarker(target)) found3.add(target);
             else if (manifest === true) found3.add(this.#identity(target));
@@ -21557,20 +21557,20 @@ function describeDifferences(a, b) {
   }
   return differences2;
 }
-function importDifferences(exported2, local) {
-  if (exported2.runnerName !== "vitest" || local.runnerName !== "vitest") {
-    return describeDifferences(exported2, local);
+function importDifferences(exported2, local2) {
+  if (exported2.runnerName !== "vitest" || local2.runnerName !== "vitest") {
+    return describeDifferences(exported2, local2);
   }
   const tolerated = new Set(CI_FIELDS);
-  if (exported2.browser === false && local.browser === false) tolerated.add("browser");
-  if (exported2.config.allowOnly === ONLY_REJECTED && local.config.allowOnly === ONLY_ALLOWED) {
+  if (exported2.browser === false && local2.browser === false) tolerated.add("browser");
+  if (exported2.config.allowOnly === ONLY_REJECTED && local2.config.allowOnly === ONLY_ALLOWED) {
     tolerated.add("allowOnly");
   }
   const keyed = (d) => ({
     ...d,
     config: Object.fromEntries(Object.entries(d.config).filter(([name3]) => !tolerated.has(name3)))
   });
-  return describeDifferences(keyed(exported2), keyed(local));
+  return describeDifferences(keyed(exported2), keyed(local2));
 }
 function installedText(a, b) {
   if (a.installedDependencies === "none") return "no installed dependencies in the export";
@@ -27725,11 +27725,19 @@ var init_events = __esm({
 // src/core/shared/git.ts
 import { spawn as spawn4 } from "node:child_process";
 function gitCall(cwd, args2, call) {
+  const { signal: signal2 } = call;
+  if (signal2?.aborted) {
+    return Promise.resolve({
+      code: null,
+      stdout: Buffer.alloc(0),
+      stderr: STOPPED,
+      timedOut: false
+    });
+  }
   const env = { ...process.env, GIT_OPTIONAL_LOCKS: "0", ...call.env };
   for (const name3 of REPOSITORY_VARIABLES2) delete env[name3];
   return new Promise((resolve40) => {
     const child = spawn4("git", args2, { cwd, env, stdio: ["pipe", "pipe", "pipe"] });
-    call.started?.(child);
     const stdout = [];
     const stderr = [];
     let timedOut = false;
@@ -27738,15 +27746,21 @@ function gitCall(cwd, args2, call) {
       if (settled2) return;
       settled2 = true;
       clearTimeout(timer);
+      signal2?.removeEventListener("abort", stop2);
       resolve40(answer4);
     };
-    const timer = setTimeout(() => {
-      timedOut = true;
+    const kill = (why2) => {
       child.kill("SIGKILL");
       child.stdout.destroy();
       child.stderr.destroy();
-      settle({ code: null, stdout: Buffer.concat(stdout), stderr: "", timedOut });
+      settle({ code: null, stdout: Buffer.concat(stdout), stderr: why2, timedOut });
+    };
+    const stop2 = () => kill(STOPPED);
+    const timer = setTimeout(() => {
+      timedOut = true;
+      kill("");
     }, call.timeoutMs);
+    signal2?.addEventListener("abort", stop2, { once: true });
     child.stdout.on("data", (chunk) => stdout.push(chunk));
     child.stderr.on("data", (chunk) => stderr.push(chunk));
     child.on(
@@ -27777,18 +27791,21 @@ function failureOf(answer4, timeoutMs) {
   const line = answer4.stderr.split("\n").find((l) => l.trim() !== "") ?? "";
   return line === "" ? `git exited ${answer4.code}` : line.replace(/^fatal: /, "");
 }
-async function networkEnv(cwd) {
+async function networkEnv(cwd, signal2) {
   const env = { GIT_TERMINAL_PROMPT: "0" };
   const own = process.env.GIT_SSH_COMMAND;
   if (own !== void 0 && own !== "") return { ...env, GIT_SSH_COMMAND: `${own} ${SSH_BATCH}` };
   if (process.env.GIT_SSH !== void 0 && process.env.GIT_SSH !== "") return env;
   const configured = textOf(
-    await gitCall(cwd, ["config", "--get", "core.sshCommand"], { timeoutMs: 5e3 })
+    await gitCall(cwd, ["config", "--get", "core.sshCommand"], {
+      timeoutMs: 5e3,
+      ...signal2 === void 0 ? {} : { signal: signal2 }
+    })
   );
   const ssh = configured === null || configured === "" ? "ssh" : configured;
   return { ...env, GIT_SSH_COMMAND: `${ssh} ${SSH_BATCH}` };
 }
-var REPOSITORY_VARIABLES2, SSH_BATCH;
+var REPOSITORY_VARIABLES2, SSH_BATCH, STOPPED;
 var init_git3 = __esm({
   "src/core/shared/git.ts"() {
     "use strict";
@@ -27800,6 +27817,7 @@ var init_git3 = __esm({
       "GIT_OBJECT_DIRECTORY"
     ];
     SSH_BATCH = "-o BatchMode=yes -o ConnectTimeout=3";
+    STOPPED = "stopped";
   }
 });
 
@@ -27810,11 +27828,8 @@ function isSha(text3) {
 function refOf3(prefix, commit) {
   return `${prefix}/${commit}`;
 }
-async function remoteExports(root, remote, prefix, call, started2) {
-  const answer4 = await gitCall(root, ["ls-remote", remote, `${prefix}/*`], {
-    ...call,
-    ...started2 === void 0 ? {} : { started: started2 }
-  });
+async function remoteExports(root, remote, prefix, call) {
+  const answer4 = await gitCall(root, ["ls-remote", remote, `${prefix}/*`], call);
   if (answer4.code !== 0) return answer4;
   const exports = /* @__PURE__ */ new Map();
   for (const line of answer4.stdout.toString("utf8").split("\n")) {
@@ -60037,9 +60052,9 @@ function enumerateSource2(source2, testFile, names5 = {}) {
       if (!unittest && body2.defs.has("__init__")) return;
       const inherited = /* @__PURE__ */ new Map();
       for (const base of bases3(definition(def))) {
-        const local = topClasses.get(base);
-        if (local !== void 0 && local !== def) {
-          for (const [name3, d] of scope(definition(local).childForFieldName("body")).defs)
+        const local2 = topClasses.get(base);
+        if (local2 !== void 0 && local2 !== def) {
+          for (const [name3, d] of scope(definition(local2).childForFieldName("body")).defs)
             inherited.set(name3, d);
         }
       }
@@ -67991,7 +68006,7 @@ function rekeyFiles(store, bundle, rekeying) {
   if (rekeying.blobs === null) return out2;
   const at2 = commitSegments(rekeying.blobs);
   const exported2 = new Map(bundle.environments.map((e) => [e.project, e]));
-  const local = /* @__PURE__ */ new Map();
+  const local2 = /* @__PURE__ */ new Map();
   const entries3 = /* @__PURE__ */ new Map();
   const shared2 = (map, project) => {
     const key3 = MAP_KEY4[map](project);
@@ -68002,10 +68017,10 @@ function rekeyFiles(store, bundle, rekeying) {
   for (const file of bundle.testFiles) {
     const environment = exported2.get(file.project);
     if (environment === void 0 || !proven(file, environment, at2)) continue;
-    if (!local.has(file.project)) {
-      local.set(file.project, localHash(store, rekeying.worktreeId, environment));
+    if (!local2.has(file.project)) {
+      local2.set(file.project, localHash(store, rekeying.worktreeId, environment));
     }
-    const here = local.get(file.project) ?? null;
+    const here = local2.get(file.project) ?? null;
     const stored3 = store.testFiles.get(file)?.closure.paths;
     if (here === null || stored3 === void 0) continue;
     const observed2 = {};
@@ -68274,36 +68289,38 @@ var init_transfer_import = __esm({
 });
 
 // src/core/shared/choose.ts
-async function upstreamOf(root) {
-  const names5 = (textOf(await gitCall(root, ["remote"], LOCAL)) ?? "").split("\n").filter(Boolean);
+async function upstreamOf(root, signal2) {
+  const names5 = (textOf(await gitCall(root, ["remote"], local(signal2))) ?? "").split("\n").filter(Boolean);
   const ordered2 = names5.includes("origin") ? ["origin", ...names5.filter((n) => n !== "origin")] : names5;
   for (const remote of ordered2) {
     const args2 = ["symbolic-ref", "-q", `refs/remotes/${remote}/HEAD`];
-    const branch = textOf(await gitCall(root, args2, LOCAL));
+    const branch = textOf(await gitCall(root, args2, local(signal2)));
     if (branch !== null && branch !== "") return { remote, branch };
   }
   return null;
 }
-async function startPoint(root, head2, upstream) {
-  const base = textOf(await gitCall(root, ["merge-base", head2, upstream.branch], LOCAL));
+async function startPoint(root, head2, upstream, signal2) {
+  const args2 = ["merge-base", head2, upstream.branch];
+  const base = textOf(await gitCall(root, args2, local(signal2)));
   return base === null || base === "" ? null : base;
 }
-async function firstParents(root, from, max = SEARCH_DEPTH) {
-  const args2 = ["rev-list", "--first-parent", `--max-count=${max}`, from];
-  return (textOf(await gitCall(root, args2, LOCAL)) ?? "").split("\n").filter(Boolean);
+async function firstParents(root, from, signal2) {
+  const args2 = ["rev-list", "--first-parent", `--max-count=${SEARCH_DEPTH}`, from];
+  return (textOf(await gitCall(root, args2, local(signal2))) ?? "").split("\n").filter(Boolean);
 }
-async function onFirstParentLine(root, branch, commit) {
+async function onFirstParentLine(root, branch, commit, signal2) {
   const args2 = ["rev-list", "--first-parent", branch, "--not", `${commit}^@`];
-  const walked = textOf(await gitCall(root, args2, LOCAL));
+  const walked = textOf(await gitCall(root, args2, local(signal2)));
   if (walked === null) return false;
   return walked.split("\n").filter(Boolean).at(-1) === commit;
 }
-var LOCAL, SEARCH_DEPTH;
+var LOCAL_TIMEOUT_MS2, local, SEARCH_DEPTH;
 var init_choose = __esm({
   "src/core/shared/choose.ts"() {
     "use strict";
     init_git3();
-    LOCAL = { timeoutMs: 3e4 };
+    LOCAL_TIMEOUT_MS2 = 3e4;
+    local = (signal2) => signal2 === void 0 ? { timeoutMs: LOCAL_TIMEOUT_MS2 } : { timeoutMs: LOCAL_TIMEOUT_MS2, signal: signal2 };
     SEARCH_DEPTH = 1e3;
   }
 });
@@ -68331,7 +68348,8 @@ async function fetchExport(root, remote, ref3, oid, call) {
     return { failed: failureOf(fetched, call.timeoutMs), timedOut: fetched.timedOut };
   }
   const blob = await gitCall(root, ["cat-file", "blob", `${oid}:${EXPORT_NAME}`], {
-    timeoutMs: call.timeoutMs
+    timeoutMs: call.timeoutMs,
+    ...call.signal === void 0 ? {} : { signal: call.signal }
   });
   if (blob.code === 0) return blob.stdout;
   return { failed: `${ref3} holds no ${EXPORT_NAME} at ${oid.slice(0, 8)}`, timedOut: false };
@@ -68356,7 +68374,7 @@ import { createHash as createHash39 } from "node:crypto";
 function createSharedReader(options) {
   return new Reader(options);
 }
-var LIST_TIMEOUT_MS, FETCH_TIMEOUT_MS, IMPORT_STEP, Reader;
+var LIST_TIMEOUT_MS, FETCH_TIMEOUT_MS, IMPORT_STEP, STOPPED2, Reader;
 var init_reader = __esm({
   "src/core/shared/reader.ts"() {
     "use strict";
@@ -68372,21 +68390,20 @@ var init_reader = __esm({
     LIST_TIMEOUT_MS = 5e3;
     FETCH_TIMEOUT_MS = 1e4;
     IMPORT_STEP = "importing CI results";
+    STOPPED2 = /* @__PURE__ */ Symbol("stopped");
     Reader = class {
       constructor(o) {
         this.o = o;
       }
       o;
-      /** The `shared.ref` and `HEAD` of the last pass, so an unmoved worktree spawns nothing. */
-      #head = null;
       /** The `shared.ref` and start point last handled: one export per start point. */
       #start = null;
       #running = null;
       #again = false;
-      #closed = false;
-      #child = null;
+      /** The reader's one stop: each step checks it, and each git call it starts is killed by it. */
+      #stop = new AbortController();
       nudge() {
-        if (this.#closed || this.o.policy().shared.ref === null) return;
+        if (this.#stop.signal.aborted || this.o.policy().shared.ref === null) return;
         if (this.#running !== null) {
           this.#again = true;
           return;
@@ -68399,8 +68416,7 @@ var init_reader = __esm({
         while (this.#running !== null) await this.#running;
       }
       close() {
-        this.#closed = true;
-        this.#child?.kill("SIGKILL");
+        this.#stop.abort();
       }
       async #loop() {
         do {
@@ -68408,18 +68424,26 @@ var init_reader = __esm({
           try {
             await this.#pass();
           } catch (error) {
+            if (error === STOPPED2) return;
             this.o.log(`CI results: ${error instanceof Error ? error.message : String(error)}`);
           }
-        } while (this.#again && !this.#closed);
+        } while (this.#again && !this.#stop.signal.aborted);
+      }
+      /** One awaited step of a pass: none starts after the stop, and none goes on past it. */
+      async #live(work) {
+        const { signal: signal2 } = this.#stop;
+        if (signal2.aborted) throw STOPPED2;
+        const value = await work(signal2);
+        if (signal2.aborted) throw STOPPED2;
+        return value;
       }
       async #pass() {
         const prefix = this.o.policy().shared.ref;
         const { root } = this.o;
         if (prefix === null) return;
-        const head2 = await gitHead(root);
-        if (head2 === null || `${prefix} ${head2}` === this.#head) return;
-        this.#head = `${prefix} ${head2}`;
-        const upstream = await upstreamOf(root);
+        const head2 = await this.#live(() => gitHead(root));
+        if (head2 === null) return;
+        const upstream = await this.#live((signal2) => upstreamOf(root, signal2));
         if (upstream === null) {
           if (this.#start !== "no upstream") {
             this.#start = "no upstream";
@@ -68429,24 +68453,19 @@ var init_reader = __esm({
           }
           return;
         }
-        const start2 = await startPoint(root, head2, upstream);
+        const start2 = await this.#live((signal2) => startPoint(root, head2, upstream, signal2));
         if (start2 === null || `${prefix} ${start2}` === this.#start) return;
         this.#start = `${prefix} ${start2}`;
-        const candidates = await firstParents(root, start2);
+        const candidates = await this.#live((signal2) => firstParents(root, start2, signal2));
         const held3 = new Set(listImports(this.o.store).map((i3) => i3.header.commit));
         const nearestHeld = candidates.findIndex((c) => held3.has(c));
         if (nearestHeld === 0) return;
         const reach2 = nearestHeld === -1 ? candidates.length : nearestHeld;
-        const env = await networkEnv(root);
+        const env = await this.#live((signal2) => networkEnv(root, signal2));
         const listMs = this.o.listTimeoutMs ?? LIST_TIMEOUT_MS;
-        const listed7 = await remoteExports(
-          root,
-          upstream.remote,
-          prefix,
-          { timeoutMs: listMs, env },
-          this.#track
+        const listed7 = await this.#live(
+          (signal2) => remoteExports(root, upstream.remote, prefix, { timeoutMs: listMs, env, signal: signal2 })
         );
-        if (this.#closed) return;
         if ("timedOut" in listed7) {
           this.o.note(
             `CI results: could not list ${prefix} on ${upstream.remote} (${failureOf(listed7, listMs)}); tests run here as before`
@@ -68457,7 +68476,10 @@ var init_reader = __esm({
           const oid = listed7.get(commit);
           if (oid === void 0) continue;
           const ref3 = refOf3(prefix, commit);
-          if (!await onFirstParentLine(root, upstream.branch, commit)) {
+          const onLine = await this.#live(
+            (signal2) => onFirstParentLine(root, upstream.branch, commit, signal2)
+          );
+          if (!onLine) {
             this.o.note(
               `CI results: refused ${ref3}: its commit is not on ${upstream.branch}'s first-parent line`
             );
@@ -68467,18 +68489,12 @@ var init_reader = __esm({
           return;
         }
       }
-      #track = (child) => {
-        this.#child = child;
-      };
       /** Fetches, checks and imports the export of `commit`. */
       async #take(remote, ref3, commit, oid, env) {
         const timeoutMs = this.o.fetchTimeoutMs ?? FETCH_TIMEOUT_MS;
-        const bytes2 = await fetchExport(this.o.root, remote, ref3, oid, {
-          timeoutMs,
-          env,
-          started: this.#track
-        });
-        if (this.#closed) return;
+        const bytes2 = await this.#live(
+          (signal2) => fetchExport(this.o.root, remote, ref3, oid, { timeoutMs, env, signal: signal2 })
+        );
         if (!Buffer.isBuffer(bytes2)) {
           const what = bytes2.timedOut ? "took too long and was stopped" : `failed (${bytes2.failed})`;
           this.o.note(`CI results: fetching ${ref3} from ${remote} ${what}; tests run here as before`);
@@ -68491,8 +68507,7 @@ var init_reader = __esm({
           return;
         }
         const fileHash = createHash39("sha256").update(bytes2).digest("hex");
-        const blobs = await committedBlobs(this.o.root, commit).catch(() => null);
-        if (this.#closed) return;
+        const blobs = await this.#live(() => committedBlobs(this.o.root, commit).catch(() => null));
         this.o.step?.(IMPORT_STEP, true);
         let added;
         try {
@@ -68504,7 +68519,6 @@ var init_reader = __esm({
           }).results;
         } catch (error) {
           this.#start = null;
-          this.#head = null;
           throw error;
         } finally {
           this.o.step?.(IMPORT_STEP, false);
@@ -72740,14 +72754,14 @@ init_state();
 
 // src/core/status/import-environment.ts
 init_environment_descriptor();
-function compareEnvironment(exported2, local) {
-  if (local === null) return { kind: "unknown" };
-  if (local.hash === exported2.hash) return { kind: "equal" };
-  if (exported2.descriptor === null || local.descriptor === null) {
+function compareEnvironment(exported2, local2) {
+  if (local2 === null) return { kind: "unknown" };
+  if (local2.hash === exported2.hash) return { kind: "equal" };
+  if (exported2.descriptor === null || local2.descriptor === null) {
     return { kind: "differs", differences: [] };
   }
-  const differences2 = describeDifferences(exported2.descriptor, local.descriptor).map((d) => d.text);
-  const passes = importDifferences(exported2.descriptor, local.descriptor).length === 0;
+  const differences2 = describeDifferences(exported2.descriptor, local2.descriptor).map((d) => d.text);
+  const passes = importDifferences(exported2.descriptor, local2.descriptor).length === 0;
   return { kind: passes ? "passes" : "differs", differences: differences2 };
 }
 function comparisonText(project, comparison) {
@@ -72872,11 +72886,11 @@ function hereOf(store, worktreeId, keys, states) {
 }
 function differences(store, worktreeId, files4) {
   const exported2 = new Map(files4.map((f) => [f.project, f.environment]));
-  const local = new Map(worktreeEnvironments(store, worktreeId).map((e) => [e.project, e]));
+  const local2 = new Map(worktreeEnvironments(store, worktreeId).map((e) => [e.project, e]));
   return [...exported2].flatMap(([project, hash4]) => {
     const comparison = compareEnvironment(
       { hash: hash4, descriptor: readEnvironment(store, hash4) },
-      local.get(project) ?? null
+      local2.get(project) ?? null
     );
     if (comparison.kind === "equal" || comparison.kind === "unknown") return [];
     const named3 = comparison.differences.length === 0 ? ["parts not recorded"] : comparison.differences;
@@ -78697,8 +78711,8 @@ async function publishExport(input) {
   if (typeof bundle === "string") return { refused: bundle };
   const commit = bundle.header.commit;
   if (commit === null) return { refused: "the export names no commit (an unborn HEAD)" };
-  const local = (args2, input2) => gitCall(root, args2, { timeoutMs: LOCAL_TIMEOUT_MS, ...input2 === void 0 ? {} : { input: input2 } });
-  if ((await local(["cat-file", "-e", `${commit}^{commit}`])).code !== 0) {
+  const local2 = (args2, input2) => gitCall(root, args2, { timeoutMs: LOCAL_TIMEOUT_MS, ...input2 === void 0 ? {} : { input: input2 } });
+  if ((await local2(["cat-file", "-e", `${commit}^{commit}`])).code !== 0) {
     return {
       refused: `this checkout does not hold commit ${commit}; publish from a checkout of it`
     };
@@ -78712,7 +78726,7 @@ async function publishExport(input) {
     return { refused: `cannot list ${remote}'s results refs: ${failureOf(existing, timeoutMs)}` };
   }
   const line = textOf(
-    await local(["rev-list", "--first-parent", `--max-count=${WALK_LIMIT}`, commit])
+    await local2(["rev-list", "--first-parent", `--max-count=${WALK_LIMIT}`, commit])
   );
   const position2 = new Map((line ?? "").split("\n").map((sha, i3) => [sha, i3]));
   const deleted = [];
@@ -78738,7 +78752,7 @@ async function publishExport(input) {
   );
   const updates = porcelain(push.stdout.toString("utf8"));
   if (!updates.get(ref3)) return { refused: `cannot push ${ref3}: ${failureOf(push, timeoutMs)}` };
-  const shallow = textOf(await local(["rev-parse", "--is-shallow-repository"])) === "true";
+  const shallow = textOf(await local2(["rev-parse", "--is-shallow-repository"])) === "true";
   return {
     ref: ref3,
     result,
