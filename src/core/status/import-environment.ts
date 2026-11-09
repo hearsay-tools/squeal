@@ -1,4 +1,4 @@
-import { describeDifferences } from "../keys/environment-descriptor.js";
+import { describeDifferences, importDifferences } from "../keys/environment-descriptor.js";
 import type { StoredEnvironment } from "../store/environments.js";
 import type { ExportedEnvironment } from "../store/transfer-bundle.js";
 import type { ProjectName } from "../types/common.js";
@@ -7,11 +7,13 @@ import type { ProjectName } from "../types/common.js";
  * Spec 018 D3 and D5: how one project's environment in an export compares
  * with the one this worktree keys it with now (D1). `unknown` before this
  * worktree's daemon recorded one; `differs` names each part when both sides
- * hold a descriptor.
+ * hold a descriptor; `passes` when they differ only in the fields an
+ * imported pass may differ in (D10), named too.
  */
 export type EnvironmentComparison =
   | { readonly kind: "equal" }
   | { readonly kind: "unknown" }
+  | { readonly kind: "passes"; readonly differences: readonly string[] }
   | { readonly kind: "differs"; readonly differences: readonly string[] };
 
 export function compareEnvironment(
@@ -20,11 +22,12 @@ export function compareEnvironment(
 ): EnvironmentComparison {
   if (local === null) return { kind: "unknown" };
   if (local.hash === exported.hash) return { kind: "equal" };
-  const differences =
-    exported.descriptor === null || local.descriptor === null
-      ? []
-      : describeDifferences(exported.descriptor, local.descriptor).map((d) => d.text);
-  return { kind: "differs", differences };
+  if (exported.descriptor === null || local.descriptor === null) {
+    return { kind: "differs", differences: [] };
+  }
+  const differences = describeDifferences(exported.descriptor, local.descriptor).map((d) => d.text);
+  const passes = importDifferences(exported.descriptor, local.descriptor).length === 0;
+  return { kind: passes ? "passes" : "differs", differences };
 }
 
 /** One line per comparison, as `squeal import` prints it; a named project is named. */
@@ -33,6 +36,8 @@ export function comparisonText(project: ProjectName, comparison: EnvironmentComp
   switch (comparison.kind) {
     case "equal":
       return `${name}: equal to this worktree's`;
+    case "passes":
+      return `${name}: equal to this worktree's for imported passes; ${comparison.differences.join("; ")}`;
     case "unknown":
       return `${name}: none recorded for this worktree yet; squeal status --full compares them once its daemon keyed the files`;
     case "differs":

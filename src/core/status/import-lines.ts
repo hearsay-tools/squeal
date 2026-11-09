@@ -2,9 +2,10 @@ import { plural } from "../text.js";
 import type { ImportNotCurrent, ImportStatus, StatusSnapshot } from "../types/status.js";
 
 /*
- * Spec 018 D4 and D5: what `squeal status` says about imports. `--full` gives
- * each import with a test file this worktree lists: its files and results
- * current from it, and the rest by reason. The default text adds one line
+ * Spec 018 D4, D5 and D15: what `squeal status` says about imports. `--full`
+ * gives each import with a test file this worktree lists: its files and
+ * results current from it, the rest by reason, and, when any is current,
+ * that imported files have no coverage record. The default text adds one line
  * only when none of an import's files is current from it and the environment
  * differs for every one of them, with its first two differences; silence
  * otherwise (principle 1), also for a mix of reasons (review wave-1-2 N1).
@@ -21,6 +22,9 @@ const REASONS: readonly (readonly [keyof ImportNotCurrent, string])[] = [
   ["noKey", "no local key yet"],
 ];
 
+/** D15: CI runs without Squeal's coverage provider, so an imported result brings no record. */
+const NO_COVERAGE = "  Imported files have no coverage record until they run here";
+
 /** Differences the default line names before it counts the rest. */
 const DEFAULT_SHOWN = 2;
 
@@ -34,7 +38,11 @@ export function importLines(s: StatusSnapshot): string[] {
       const named = reason === "environment" ? environmentText(i, Infinity) : "";
       return [`${n} ${words}${named}`];
     });
-    return reasons.length === 0 ? [head] : [head, `  Not current: ${reasons.join(", ")}`];
+    return [
+      head,
+      ...(reasons.length === 0 ? [] : [`  Not current: ${reasons.join(", ")}`]),
+      ...(i.currentFiles === 0 ? [] : [NO_COVERAGE]),
+    ];
   });
 }
 

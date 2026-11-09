@@ -78,8 +78,14 @@ async function ciExport(): Promise<{ file: string; repo: string }> {
 }
 
 /**
- * A clone of `repo` with a store of its own, whose observed union names
- * `EXTRA` for the first test file, resolved to `config`; `edit` changes
+ * What the clone's observed union adds to the first test file's list: a
+ * file, the listing of a directory the commit holds and of one it does not.
+ */
+const UNION = [EXTRA, "src/", "test/", "gen/"];
+
+/**
+ * A clone of `repo` with a store of its own, whose observed union holds
+ * `UNION` for the first test file, resolved to `config`; `edit` changes
  * files before its daemon starts. The daemon keyed its files and ran none.
  */
 async function developer(
@@ -95,7 +101,7 @@ async function developer(
   }
   const dev = vitest(side(main, { count: COUNT, policy: LOOKUP_ONLY }), options.config ?? HERE);
   dev.store.transaction(() =>
-    addMissingEntries(dev.store, observedMetaKey(""), { [fileName(0)]: [EXTRA] }),
+    addMissingEntries(dev.store, observedMetaKey(""), { [fileName(0)]: UNION }),
   );
   await dev.scheduler.start();
   await dev.scheduler.idle();
@@ -118,6 +124,9 @@ describe("squeal import re-keys a CI export (018 D10, D11)", SLOW, () => {
     const before = dev.keyOf(fileName(0));
     const out = await imported(dev, file);
     expect(out).toContain("Re-keyed 3 of 3 test files");
+    expect(out).toContain(
+      "Environment: equal to this worktree's for imported passes; config fields allowOnly, browser, coverage, watch differ",
+    );
     expect(dev.passing()).toBe(COUNT);
     expect(dev.runner.runs).toEqual([]);
     expect(dev.keyOf(fileName(0))).toBe(before);
@@ -126,15 +135,20 @@ describe("squeal import re-keys a CI export (018 D10, D11)", SLOW, () => {
     });
   });
 
-  it("leaves a file not current where a path of its list differs from the export's commit", async () => {
-    const { file, repo } = await ciExport();
-    const dev = await developer(repo, { edit: { [EXTRA]: "export const extra = 2;\n" } });
-    await imported(dev, file);
-    expect(dev.passing()).toBe(COUNT - 1);
-    expect(readStatus(dev.root)).toMatchObject({
-      imports: [{ currentFiles: 2, notCurrent: { content: 1 } }],
+  for (const [name, edit] of [
+    ["a file", { [EXTRA]: "export const extra = 2;\n" }],
+    ["a listed directory", { "src/added.ts": "export {};\n" }],
+  ] as const) {
+    it(`leaves a file not current where ${name} of its list differs from the export's commit`, async () => {
+      const { file, repo } = await ciExport();
+      const dev = await developer(repo, { edit });
+      await imported(dev, file);
+      expect(dev.passing()).toBe(COUNT - 1);
+      expect(readStatus(dev.root)).toMatchObject({
+        imports: [{ currentFiles: 2, notCurrent: { content: 1 } }],
+      });
     });
-  });
+  }
 
   it("keeps another config field keyed: nothing is re-keyed", async () => {
     const { file, repo } = await ciExport();

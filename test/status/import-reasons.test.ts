@@ -241,6 +241,7 @@ describe("status names why imported files are not current (018 D5)", () => {
     expect(importLines({ imports } as unknown as StatusSnapshot)).toEqual([
       `Imported: 1 of 6 test files current from ${SOURCE} (1 current result)`,
       "  Not current: 1 environment differs (other: Node v26.13.0 in the export, v24.22.1 here), 1 closure list differs, 1 observed set differs, 1 content differs, 1 no local key yet",
+      "  Imported files have no coverage record until they run here",
     ]);
     // An import with a current file adds no line to the default text.
     expect(importDefaultLines({ imports } as unknown as StatusSnapshot)).toEqual([]);
