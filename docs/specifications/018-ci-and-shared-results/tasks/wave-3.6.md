@@ -37,3 +37,21 @@ Owns: `src/core/scheduler/request-progress.ts`, `src/core/scheduler/scheduler.ts
 Leave alone: key inputs; checkpoint joining and the baseline's own result attribution. No `pnpm run build`.
 
 Done when: each new test fails before its fix and passes after; the existing request-progress, lifecycle, drain, retry and narrow-run tests pass; `squeal status --wait 60000 <changed paths>` current and passing; lint and typecheck clean.
+
+## 018-12 R2: one owner for a request's ends (the human, 2026-11-09: "A: one owner, repair")
+
+Use /worker. Shape: repair, on candidate `cand/0.1.419`. This is the last round the human authorized; keep it narrow.
+
+Outcome: the idle exit's activity count is derived from the same decision that computes each request's verdict, so the two cannot disagree.
+
+Read: `reviews/wave-3.6-r2.md` B2-R1 with its one-file forced-overlap reproduction; the R1 section above; `src/core/scheduler/ledger.ts` (`applyResults`, the `ends` hook) and `src/core/scheduler/checkpoints.ts` around line 235 (where a forced checkpoint rejects an older run's result).
+
+The rule: a request's file counts as ended exactly when that request's own record accepts the file's completion (the checkpoint's `done` for `run --all`/`--fast`; the matching acceptance for group, narrow and retry requests). No second judgement in `request-progress.ts`: it records what the acceptance reports, or is replaced by reading the requests' own done counts. A rejected older result counts nothing; the forced run's own end counts once.
+
+Starting seam: the review's one-file forced-overlap test first (count 0 after the old baseline end while the forced run is held; 1 after its own end). Then every R1 test (`request-progress*.test.ts`, `request-progress-timers.test.ts`) and the review's other cases must still pass unchanged.
+
+Owns: `src/core/scheduler/ledger.ts`, `checkpoints.ts`, `request-progress.ts`, `scheduler.ts`, `retries.ts` as needed, their tests.
+
+Leave alone: what a request's verdict counts (only how activity reads it); key inputs. No `pnpm run build`.
+
+Done when: the forced-overlap test fails before and passes after; all earlier request-progress, lifecycle, drain, retry, narrow-run and checkpoint tests pass; `squeal status --wait 60000 <changed paths>` current and passing; lint and typecheck clean; the final message names the one place that decides a request's file end.

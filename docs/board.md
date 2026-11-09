@@ -1965,7 +1965,7 @@ Spec `specifications/018-ci-and-shared-results/spec.md` (stage: build; **0.1.417
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 018-12 progress on an explicit request counts as activity for the idle exit | review FAIL at `38a156cab` (`reviews/wave-3.6.md`: B1 joined fast request counts slow baseline ends, B2 polling loses an end across a re-queue, B3 a load-delayed retry is never registered); repair R1 running | A daemon with no consumer stopped after `daemon.idleExitMinutes` with 332 files of a `run tests` request still queued (trial run 42530503204), because only new requests count as activity. | A no-consumer daemon with an open request that keeps making progress stays up until the request ends, then stops one idle period later. |
+| 018-12 progress on an explicit request counts as activity for the idle exit | review FAIL twice (`wave-3.6.md` B1-B3 at `38a156cab`; `wave-3.6-r2.md` B2-R1 at `48f46f3fc`); the human 2026-11-09 chose a single-owner repair R2 (ends counted where the request's own record accepts them), running | A daemon with no consumer stopped after `daemon.idleExitMinutes` with 332 files of a `run tests` request still queued (trial run 42530503204), because only new requests count as activity. | A no-consumer daemon with an open request that keeps making progress stays up until the request ends, then stops one idle period later. |
 
 ### Wave 3: the trial (after the release with 018-07; needs the human's approval of the cezar CI file, spec D7)
 
