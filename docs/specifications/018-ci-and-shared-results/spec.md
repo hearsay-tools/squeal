@@ -147,7 +147,7 @@ Not chosen: the steps inside cezar's merge-group test job (it touches the gating
 
 # Second slice: results from the CI run the project already does
 
-Stage: proposed 2026-11-09, awaiting the human's approval. Written from `research/import-trial.md`, `ci-step.md`, `transport.md` and `key-rules.md`.
+Stage: approved by the human 2026-11-09 (fetch only with `shared.ref`; trust bound is push access; cezar pins the latest Node 26.x). Written from `research/import-trial.md`, `ci-step.md`, `transport.md` and `key-rules.md`.
 
 ## Problem
 
@@ -220,6 +220,5 @@ D8 and D9 on a fixture with two shards: the union, a refused environment mismatc
 
 ## Open questions
 
-1. The fetch is network I/O the daemon starts by itself (principle 8). Proposed: on only when the project sets `shared.ref`. Owner: the human.
-2. Is "anyone with write access can write results" acceptable as the trust bound? Owner: the human.
-3. The real CPU and wall cost of D8 in cezar's shards, and whether cezar's read sets vary between runs at equal content. Owner: the D17 measurement row.
+1. Decided 2026-11-09: fetch only when the project sets `shared.ref`; push access is the trust bound.
+2. The real CPU and wall cost of D8 in cezar's shards, and whether cezar's read sets vary between runs at equal content. Owner: the D17 measurement row.
