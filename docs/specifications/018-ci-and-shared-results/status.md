@@ -66,6 +66,7 @@ Started: 2026-10-31
 - 2026-11-09, 0.1.421 released (tag `squeal--v0.1.421` at `8a64114a6`, hub `0c04ee1`, GitHub latest release with `install.sh`, both Codex runtime assets and the stated condition in its notes; main CI 42689952428 green).
 - 2026-11-09, review of `cand/0.1.422` (`c15abc2d5`, `reviews/wave-5-0.1.422.md`): FAIL. B1: a stop during the awaited first-parent check still started a fetch afterwards. B2: the reader cached by `HEAD`, so an updated remote main with `HEAD` unchanged left the older import. Writer, pruning, flags and no git metadata writes passed. Repair R1: one cancellation state checked around every step; the cache key is the chosen main commit.
 - 2026-11-09, repair R1 of 018-20 (worker 52266e3d): one stop flag checked around every awaited step; git calls take the stop signal and are killed at once; the cache key is the start point (merge base of `HEAD` and the remote's default branch), recomputed with local git at each nudge. Not added: a nudge when only `.git` changes (the watcher ignores `.git`); a fetched main is taken at the next batch or daemon start.
+- 2026-11-09, narrow re-review of `cand/0.1.422` at `f44f66760` (`reviews/wave-5-0.1.422-r2.md`): PASS, B1 and B2 resolved; N1 (two local git calls survive a stop; the `gitHead` fallback has no timeout) moved to row 018-23. Candidate CI 42693381714 green. 0.1.422 landed on main with row 018-20. `test/daemon/socket-handover.test.ts` failed once in Squeal at load 48 on 24 CPUs and passed 3 of 3 directly; a load retry is queued.
 
 ## Open questions
 
