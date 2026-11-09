@@ -1,8 +1,9 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { readPolicy } from "../../daemon/policy.js";
+import { loadPolicy, POLICY_FILE } from "../../daemon/policy.js";
 import { vitestDetected } from "../../daemon/runner.js";
+import { compare } from "../../fs/compare.js";
 import { findWorktreeRoot } from "../../fs/git-layout.js";
 import { readObjectFormat } from "../../hash/git-index.js";
 import type { AbsolutePath, RelativePath } from "../../types/common.js";
@@ -89,9 +90,12 @@ interface Runner {
 /**
  * The evidence of `changed`'s functions: per selected test file, whether it
  * completed before the deadline, its failed tests, the sources its closure
- * loads and its record. The runs go one runner after another, each given
- * what is left of the budget; a runner reached after the deadline runs
- * nothing. A project's own `testTimeout` is never lowered.
+ * loads and its record. The budget counts from the call, the adapters'
+ * start included. The runs go one runner after another, each given what is
+ * left of it; a runner reached after the deadline runs nothing. A project's
+ * own `testTimeout` is never lowered. With no changed function and no
+ * `--test` file, no adapter starts. Rejects when Vitest is configured but
+ * cannot start, or when Squeal's provider is missing: a setup error (D1).
  */
 export async function collectEvidence(
   cwd: AbsolutePath,
@@ -99,6 +103,10 @@ export async function collectEvidence(
   options: CollectOptions,
 ): Promise<Evidence> {
   const deadline = performance.now() + options.budgetSeconds * 1000;
+  const sources = [...new Set(changed.functions.map((f) => f.path))].sort(compare);
+  if (sources.length === 0 && options.tests.length === 0) {
+    return { testFiles: [], timedOut: false, budgetSeconds: options.budgetSeconds };
+  }
   const root = findWorktreeRoot(cwd);
   if (root === null) throw new Error(`${cwd} is not inside a git worktree`);
   const provider = coverageProvider();
@@ -108,8 +116,9 @@ export async function collectEvidence(
   const temp = mkdtempSync(join(tmpdir(), "squeal-gate-"));
   const runners: Runner[] = [];
   try {
-    await openRunners(options.adapters, root, readPolicy(root), { provider, temp, note }, runners);
-    const sources = [...new Set(changed.functions.map((f) => f.path))].sort();
+    const { policy, problems } = loadPolicy(root);
+    for (const problem of problems) note(`${POLICY_FILE}: ${problem}`);
+    await openRunners(options.adapters, root, policy, { provider, temp, note }, runners);
     const selected = await select(runners, sources, options.tests);
     const blobs: BlobCache = new Map();
     const testFiles: TestFileEvidence[] = [];
@@ -124,6 +133,7 @@ export async function collectEvidence(
           ? await runner.adapter.run(files, { runId: `gate-${i}`, logDir, timeoutMs: left })
           : null;
       timedOut ||= report === null || report.end === "timed-out";
+      if (report?.failure != null) note(`${runner.kind} run: ${report.failure}`);
       const records = recordsOf(runner.covered.splice(0), format, blobs, provider, note);
       for (const ref of files) {
         testFiles.push(await evidenceOf(runner, ref, report, records));
@@ -267,7 +277,7 @@ async function evidenceOf(
           .map((r) => r.check.fullName),
       ];
   const loads = await runner.adapter.closure(ref).then(
-    (closure) => [...closure.paths].sort(),
+    (closure) => [...closure.paths].sort(compare),
     () => null,
   );
   const record = completed ? (records.get(key) ?? null) : null;
@@ -279,7 +289,7 @@ function refKey(ref: TestFileRef): string {
 }
 
 function byPath(a: TestFileRef, b: TestFileRef): number {
-  return a.path < b.path ? -1 : a.path > b.path ? 1 : a.project < b.project ? -1 : 1;
+  return compare(a.path, b.path) || compare(a.project, b.project);
 }
 
 /** Vitest first, then node:test, as they run; by path within each. */
@@ -287,5 +297,5 @@ const RUNNER_ORDER: readonly TestFileEvidence["runner"][] = ["vitest", "node-tes
 
 function byRunnerAndPath(a: TestFileEvidence, b: TestFileEvidence): number {
   const runner = RUNNER_ORDER.indexOf(a.runner) - RUNNER_ORDER.indexOf(b.runner);
-  return runner !== 0 ? runner : a.path < b.path ? -1 : a.path > b.path ? 1 : 0;
+  return runner || compare(a.path, b.path);
 }
