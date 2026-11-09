@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
+import type { Case, CaseOutput } from "./case.js";
 import { CASES } from "./cases/index.js";
-import { failures, reportedChanges, wordingChanges } from "./verdict.js";
+import type { Comparison } from "./compare.js";
+import { GLOBAL } from "./components.js";
+import {
+  failures,
+  reportedChanges,
+  threwAsExpected,
+  verdictOf,
+  wordingChanges,
+} from "./verdict.js";
 // The validity path's entries and the harness, statically: esbuild reads them in a process no
 // recorder sees (011 C12), so this import is what re-runs this file when one of them changes.
 import "./driver.js";
@@ -37,7 +46,12 @@ describe("the candidate against the last release", FULL, () => {
     const cases = pythonsReady() ? CASES : CASES.filter((c) => c.kind !== "adapter:pytest");
     const result = await compare({ ...reworded(), ...adapters }, cases, tree());
     expect(result.fired).toBe(true);
-    const thrown = result.cases.flatMap((c) =>
+    // Row 011-310: the error a case names in `lastThrows` is the last release's, and expected.
+    const named = new Map(cases.map((c) => [c.name, c]));
+    const unexpected = result.cases.filter(
+      (c) => !threwAsExpected(named.get(c.name) ?? {}, c.baseline, c.candidate),
+    );
+    const thrown = unexpected.flatMap((c) =>
       [c.baseline.error, c.candidate.error].flatMap((e) =>
         e === undefined ? [] : [`${c.name}: ${e}`],
       ),
@@ -258,5 +272,53 @@ describe("the comparison, under a change unmade", SLOW, () => {
       unrunIn("PYTEST_ADAPTER_VERSION"),
       unrunIn("RECORDER_VERSION"),
     ]);
+  });
+});
+
+describe("a case whose input the last release could not key (row 011-310)", () => {
+  const thrown = String.raw`squeal: closure of :t.ts: expected a worktree-relative path, got "\x"`;
+  const refused: Case = {
+    kind: "assemble",
+    name: "refused",
+    why: "a self-test",
+    lastThrows: "expected a worktree-relative path",
+    input: { files: {}, closures: [] },
+  };
+  const comparison = (baseline: CaseOutput, candidate: CaseOutput): Comparison => ({
+    alarms: [
+      {
+        component: GLOBAL,
+        versions: { baseline: "1", candidate: "1" },
+        fired: true,
+        dependencies: null,
+        uncovered: [],
+      },
+    ],
+    fired: true,
+    installed: false,
+    readAsOne: [],
+    uncovered: [],
+    cases: [verdictOf(refused, baseline, candidate)],
+  });
+
+  it("is reported, not failed, when the last release threw the named error and the candidate keyed", () => {
+    const result = comparison({ error: thrown }, { keys: ["key"] });
+    expect(failures(result, "the release")).toEqual([]);
+    expect(reportedChanges(result)).toEqual([
+      `assemble case "refused": throws at the last release only, as the case expects: ${thrown}`,
+    ]);
+  });
+
+  it("still asks a raise for another error at the last release, or when the candidate throws", () => {
+    const sides: readonly [CaseOutput, CaseOutput][] = [
+      [{ error: "another error" }, { keys: ["key"] }],
+      [{ error: thrown }, { error: "the candidate's error" }],
+      [{ keys: ["key"] }, { error: thrown }],
+    ];
+    for (const [baseline, candidate] of sides) {
+      expect(failures(comparison(baseline, candidate), "the release")).toEqual([
+        expect.stringMatching(/^assemble case "refused": throws at .*; raise KEY_FORMAT_VERSION/),
+      ]);
+    }
   });
 });

@@ -181,7 +181,35 @@ function directionOf(read: Direction, baseline: CaseOutput, candidate: CaseOutpu
   return { raise, reported };
 }
 
+/**
+ * Whether the last release threw the error `c.lastThrows` names and the
+ * candidate threw nothing (row 011-310): an input the last release could not
+ * key, so it stored nothing a key of it finds. Any other throw at one tree
+ * only still differs.
+ */
+export function threwAsExpected(
+  c: Pick<Case, "lastThrows">,
+  baseline: CaseOutput,
+  candidate: CaseOutput,
+): boolean {
+  if (c.lastThrows === undefined || candidate.error !== undefined) return false;
+  return baseline.error?.includes(c.lastThrows) === true;
+}
+
 export function verdictOf(c: Case, baseline: CaseOutput, candidate: CaseOutput): CaseVerdict {
+  if (threwAsExpected(c, baseline, candidate)) {
+    return {
+      name: c.name,
+      kind: c.kind,
+      keysEqual: false,
+      outputsEqual: true,
+      wordingEqual: same(baseline.wording, candidate.wording),
+      reported: [`throws at the last release only, as the case expects: ${baseline.error}`],
+      raised: [],
+      baseline,
+      candidate,
+    };
+  }
   // A case that throws at one tree only differs whatever its keys.
   const errorsEqual = same(baseline.error, candidate.error);
   const keysEqual = errorsEqual && same(baseline.keys, candidate.keys);

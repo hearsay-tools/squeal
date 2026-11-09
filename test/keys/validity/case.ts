@@ -371,7 +371,17 @@ export interface NodeTestInput {
   readonly coverage?: true | "off";
 }
 
-export type Case = { readonly name: string; readonly why: string } & (
+export type Case = {
+  readonly name: string;
+  readonly why: string;
+  /**
+   * Text of the error the last release throws on this input before it keys
+   * anything (row 011-310): such a release stored nothing a key of the input
+   * can find, so the verdict reports the case instead of asking a raise,
+   * while the candidate throws nothing. Inert once the last release keys it.
+   */
+  readonly lastThrows?: string;
+} & (
   | { readonly kind: "key"; readonly input: KeyInput }
   | { readonly kind: "rows"; readonly input: RowsInput }
   | { readonly kind: "observe"; readonly input: ObserveInput }
