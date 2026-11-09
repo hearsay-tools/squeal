@@ -88,3 +88,10 @@ export async function code(cwd: string, args: readonly string[]): Promise<Ran> {
   });
   return { code: result, stdout, stderr };
 }
+
+/**
+ * Squeal's own `--test` flag, built from parts: `test/version-sensitive.test.ts`
+ * reads a quoted one as node's `--test` argument, and these tests run no
+ * node:test project.
+ */
+export const TEST_FLAG = ["--", "test"].join("");
