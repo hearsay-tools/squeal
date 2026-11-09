@@ -88,3 +88,19 @@ Owns: `src/core/store/transfer-rekey.ts`, `transfer-import.ts`, `src/core/keys/e
 Leave alone: `src/core/ci/`, `src/cli/ci.ts` (018-17 runs beside you); key inputs. No `pnpm run build`.
 
 Done when: both probes fail before and pass after; S1's test passes alone and with `ci-record.test.ts`; lint and typecheck clean; `squeal status` read once (pending stated as pending).
+
+## 018-20 `squeal ci publish` and the reader
+
+Use /worker. Shape: slice. Starts from the coordinator's branch with 018-17 (release 0.1.421 in review).
+
+Outcome: CI publishes each main commit's export as `refs/squeal/<sha>` and prunes old ones; a daemon in a project with `shared.ref` fetches the right export in the background and imports it, never blocking a hook and never touching the user's git config.
+
+Read: `spec.md` D13, D14, D15, D16; `research/transport.md` (all of it: ref shape, writer, flags, choice of export, trust); `tasks/018-17/notes.md`; `tasks/018-18/notes.md`.
+
+Starting seam: a scratch bare repository under `$TMPDIR` as the remote in a failing test first: `squeal ci publish` writes `refs/squeal/<sha>` as a parentless commit whose tree holds the export, and deletes refs beyond `--keep` in the same push. Then the reader: the policy key `shared.ref` (policy schema), and a daemon step at start and when the worktree's nearest main commit changes: pick the nearest first-parent ancestor of `merge-base(HEAD, <remote>/<default branch>)` that has a ref (`git ls-remote` of that one ref is enough), fetch that one ref with `--no-write-fetch-head --no-auto-maintenance`, `GIT_TERMINAL_PROMPT=0`, ssh `BatchMode`, a kill timer of a few seconds, read the blob without writing a local ref, refuse unless the commit is on the default branch's first-parent line and the header names it, then import (existing D3/D11 code). One status note on a failed or slow fetch. Import one export per start point.
+
+Owns: `src/cli/ci.ts` (the `publish` subcommand), `src/core/ci/publish.ts` (new), `src/core/shared/` (new, the reader), the policy schema entry for `shared.ref`, the daemon hook that calls the reader (one call site), their tests.
+
+Leave alone: `src/core/store/transfer*.ts` except through exports; key inputs. Network I/O only in the reader, only with `shared.ref` set. No `pnpm run build`.
+
+Done when: publish, prune, fetch, offline, a ref off the default branch refused, nothing written to the user's config or refs, and a daemon with `shared.ref` importing at start are each tested; lint and typecheck clean; `squeal status` read once without `--wait` (pending stated as pending).
