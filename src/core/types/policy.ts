@@ -197,6 +197,16 @@ export interface Policy {
     /** D11: the tools `enabled` runs, each when the project has it installed. Default `["eslint", "oxlint"]`. */
     readonly tools: readonly LintTool[];
   };
+  /** Spec 018 D14: the results CI publishes on git refs, one per main commit. */
+  readonly shared: {
+    /**
+     * The ref prefix CI publishes under (`squeal ci publish`), for example
+     * `"refs/squeal"`. Set, the daemon fetches the export of the worktree's
+     * nearest main commit in the background and imports it. Default `null`:
+     * nothing is fetched (decision filter 5: the project opts in).
+     */
+    readonly ref: string | null;
+  };
 }
 
 /**
@@ -395,6 +405,7 @@ export const DEFAULT_POLICY: Policy = {
     blocking: false,
     tools: ["eslint", "oxlint"],
   },
+  shared: { ref: null },
 };
 
 /**
