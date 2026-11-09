@@ -14,6 +14,7 @@ import { clearRecord, markExit, recordRegistration } from "../presence/events.js
 import { resumesRest } from "../presence/facts.js";
 import { clearStartMark } from "../presence/lock-events.js";
 import { readCommandHolds } from "../scheduler/hold-rows.js";
+import type { SharedReader } from "../shared/reader.js";
 import { slowSlotDir } from "../slow/slot.js";
 import { recordOptimizerOff } from "../state/optimizer-note.js";
 import { BUSY_SLICE_MS, BusyWaits } from "../store/busy.js";
@@ -210,6 +211,8 @@ class Daemon {
   readonly #lints = new Map<LintTool, LintPass>();
   /** Spec 015 D8 (row 015-11): stores each run's coverage records; opens nothing while coverage is off. */
   #coverage: CoverageWriter | null = null;
+  /** Spec 018 D14 (row 018-20): CI's export of the nearest main commit; fetches only with `shared.ref`. */
+  #shared: SharedReader | null = null;
   /**
    * What its tests leave running, stopped after each tier and at exit (D12).
    * Their mark is the registration's token, which `squeal stop` reads to
@@ -815,6 +818,7 @@ class Daemon {
         afterBatch: () => {
           code.nudge();
           lint();
+          this.#shared?.nudge();
         },
         // Row 015-52: a file the pass held for its revision's listing is counted once it is listed.
         onListed: () => {
@@ -824,6 +828,20 @@ class Daemon {
       });
       this.#loop = loop;
       await loop.start();
+      // Spec 018 D14 (row 018-20): at start and when the nearest main commit changes (each batch
+      // looks), CI's export of that commit, fetched and imported in the background.
+      this.#shared = (await import("../shared/reader.js")).createSharedReader({
+        root,
+        worktreeId,
+        store,
+        policy: () => this.#policy,
+        now: this.#now,
+        note: (text) => this.#note(text),
+        log: this.#log,
+        imported: () => void this.#requestRetries(),
+        step: (operation, running) => this.#desk?.step(operation, running),
+      });
+      this.#shared.nudge();
       // The first count, or what the revisions stored while no daemon ran changed.
       code.nudge();
       lint();
@@ -1084,6 +1102,7 @@ class Daemon {
     this.#exit ??= (async () => {
       this.#setPhase("stopping");
       this.#stopTimers();
+      this.#shared?.close();
       this.#markExit();
       this.#note(text, undefined, this.#incarnation());
       await this.#starting.catch(() => {});
