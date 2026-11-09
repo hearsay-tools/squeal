@@ -13,6 +13,7 @@ import type { DecisionKind } from "../core/types/code.js";
 import type { AbsolutePath, EpochMs, RelativePath } from "../core/types/common.js";
 import type { StatusUnavailable } from "../core/types/status.js";
 import { coverageLines, coverageWords } from "./code-coverage.js";
+import { codeGateCommand, isGate } from "./code-gate.js";
 import { type CodeReport, type CodeReportFile, readCodeReport } from "./code-report.js";
 import type { CliIo } from "./main.js";
 import { statusCommand } from "./status-command.js";
@@ -205,6 +206,8 @@ export function codeCommand(
   io: CliIo,
   options: CodeCommandOptions = {},
 ): number | Promise<number> {
+  // Spec 020 D1: with `--base`, the one-shot gate, which reads no store.
+  if (isGate(args)) return codeGateCommand(args, io);
   const json = args.includes("--json");
   const changed = args.includes("--changed");
   const told = args.includes("--told");
