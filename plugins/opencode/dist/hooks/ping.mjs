@@ -433,6 +433,18 @@ var runtimeFiles = (value) => {
   return { kept, problems };
 };
 
+// src/core/daemon/policy-shared.ts
+var RESERVED = ["refs/heads", "refs/tags", "refs/remotes"];
+var COMPONENT = /^[A-Za-z0-9_-][A-Za-z0-9._-]*$/;
+function isSharedRef(prefix) {
+  const parts = prefix.split("/");
+  if (parts[0] !== "refs" || parts.length < 2) return false;
+  if (RESERVED.some((r) => prefix === r || prefix.startsWith(`${r}/`))) return false;
+  return parts.slice(1).every((p) => COMPONENT.test(p) && !p.includes("..") && !p.endsWith(".lock"));
+}
+var ref = (v) => v === null || typeof v === "string" && isSharedRef(v) ? null : 'a ref prefix outside refs/heads, refs/tags and refs/remotes, such as "refs/squeal", or null';
+var SHARED_SHAPE = { shared: { ref } };
+
 // src/core/daemon/policy-slow.ts
 function slowInclude(value) {
   if (!Array.isArray(value) || !value.every((glob) => typeof glob === "string")) {
@@ -508,7 +520,8 @@ var SHAPE = {
   daemon: { idleExitMinutes: aboveZero3, unusedExitMinutes: aboveZero3 },
   store: { retentionDays: atLeastZero2, maxSizeMb: orNull(aboveZero3) },
   ...CODE_SHAPE,
-  ...LINT_SHAPE
+  ...LINT_SHAPE,
+  ...SHARED_SHAPE
 };
 function isNumber2(value) {
   return typeof value === "number" && Number.isFinite(value);
@@ -649,11 +662,11 @@ function same(a, b) {
   return a.length === b.length && a.every((word, i) => word === b[i]);
 }
 function nodeTestFiles(command, listing) {
-  const own = listing.files.filter((ref) => ref.project === command.project);
+  const own = listing.files.filter((ref2) => ref2.project === command.project);
   if (command.files === null) return own.length === 0 ? null : own;
-  const byPath = new Map(own.map((ref) => [ref.path, ref]));
+  const byPath = new Map(own.map((ref2) => [ref2.path, ref2]));
   const files = command.files.map((file) => byPath.get(listing.pathOf(file) ?? ""));
-  return files.every((ref) => ref !== void 0) ? [...new Set(files)] : null;
+  return files.every((ref2) => ref2 !== void 0) ? [...new Set(files)] : null;
 }
 
 // src/runners/pytest/describe.ts
@@ -821,10 +834,10 @@ function invocation(words, dir, env) {
 }
 function pytestFiles(command, listing) {
   if (command.paths === null) return null;
-  const own = listing.files.filter((ref) => ref.project === command.project);
+  const own = listing.files.filter((ref2) => ref2.project === command.project);
   const named3 = new Set(command.paths.map((path) => listing.pathOf(path)));
-  if (![...named3].every((rel) => own.some((ref) => ref.path === rel))) return null;
-  return own.filter((ref) => named3.has(ref.path));
+  if (![...named3].every((rel) => own.some((ref2) => ref2.path === rel))) return null;
+  return own.filter((ref2) => named3.has(ref2.path));
 }
 
 // src/runners/vitest/describe.ts
@@ -942,16 +955,16 @@ function npmCommand(words, { scripts }, split) {
 function vitestFiles(command, listing) {
   const { root, configured } = listing;
   if (listing.omitted !== 0) return null;
-  const vitest = listing.files.filter((ref) => !configured.has(ref.project));
-  if (new Set(vitest.map((ref) => ref.project)).size !== 1) return null;
+  const vitest = listing.files.filter((ref2) => !configured.has(ref2.project));
+  if (new Set(vitest.map((ref2) => ref2.project)).size !== 1) return null;
   if (command.filters.length === 0) return vitest;
   const selected = /* @__PURE__ */ new Set();
   for (const filter of command.filters) {
-    const hits = vitest.filter((ref) => matchesFilter(join5(root, ref.path), filter, root));
+    const hits = vitest.filter((ref2) => matchesFilter(join5(root, ref2.path), filter, root));
     if (hits.length === 0) return null;
-    for (const ref of hits) selected.add(ref);
+    for (const ref2 of hits) selected.add(ref2);
   }
-  return vitest.filter((ref) => selected.has(ref));
+  return vitest.filter((ref2) => selected.has(ref2));
 }
 function matchesFilter(file, filter, root) {
   if (isAbsolute5(filter) && file.startsWith(filter)) return true;

@@ -2930,7 +2930,8 @@ var DEFAULT_POLICY = {
     exclude: [],
     blocking: false,
     tools: ["eslint", "oxlint"]
-  }
+  },
+  shared: { ref: null }
 };
 
 // src/core/keys/glob.ts
@@ -3423,6 +3424,18 @@ var runtimeFiles = (value) => {
   return { kept, problems };
 };
 
+// src/core/daemon/policy-shared.ts
+var RESERVED = ["refs/heads", "refs/tags", "refs/remotes"];
+var COMPONENT = /^[A-Za-z0-9_-][A-Za-z0-9._-]*$/;
+function isSharedRef(prefix) {
+  const parts = prefix.split("/");
+  if (parts[0] !== "refs" || parts.length < 2) return false;
+  if (RESERVED.some((r) => prefix === r || prefix.startsWith(`${r}/`))) return false;
+  return parts.slice(1).every((p) => COMPONENT.test(p) && !p.includes("..") && !p.endsWith(".lock"));
+}
+var ref = (v) => v === null || typeof v === "string" && isSharedRef(v) ? null : 'a ref prefix outside refs/heads, refs/tags and refs/remotes, such as "refs/squeal", or null';
+var SHARED_SHAPE = { shared: { ref } };
+
 // src/core/daemon/policy-slow.ts
 function slowInclude(value) {
   if (!Array.isArray(value) || !value.every((glob) => typeof glob === "string")) {
@@ -3499,7 +3512,8 @@ var SHAPE = {
   daemon: { idleExitMinutes: aboveZero3, unusedExitMinutes: aboveZero3 },
   store: { retentionDays: atLeastZero2, maxSizeMb: orNull(aboveZero3) },
   ...CODE_SHAPE,
-  ...LINT_SHAPE
+  ...LINT_SHAPE,
+  ...SHARED_SHAPE
 };
 function loadPolicy(root) {
   const loaded = loadConfigFile(join18(root, POLICY_FILE), SHAPE, DEFAULT_POLICY);
