@@ -97,7 +97,7 @@ function verdictLine(report: GateReport): string {
   const parts = [...states, ...uncounted];
   const what =
     judged === 0
-      ? `no function changed ${against}`
+      ? `No function changed ${against}`
       : `${plural(judged, "changed function")} ${against}`;
   return `Code gate: ${report.verdict}. ${what}${parts.length === 0 ? "" : `: ${parts.join(", ")}`}.`;
 }
