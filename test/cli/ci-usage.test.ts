@@ -57,7 +57,7 @@ function cli(args: readonly string[], cwd: string): { code: number | null; text:
 describe("squeal ci", () => {
   it.each([
     [[], "no subcommand"],
-    [["publish"], 'unknown "publish"'],
+    [["fetch"], 'unknown "fetch"'],
     [["record"], "no command: put it after --"],
     [["record", "--out"], "--out names no directory"],
     [["record", "--keep", "1", "--", "true"], 'unknown argument "--keep"'],
