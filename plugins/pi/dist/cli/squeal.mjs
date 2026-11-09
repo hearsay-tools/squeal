@@ -17067,7 +17067,8 @@ var init_rerun = __esm({
 function loadOf(context) {
   return (context.hostLoad ?? hostLoad)();
 }
-function takeRetries(context, ledger) {
+function takeRetries(context, ledger, claimed = () => {
+}) {
   const { store, worktreeId } = context;
   const pending = readRetries(store).filter((r) => r.end === null);
   for (const request of pending) {
@@ -17077,7 +17078,7 @@ function takeRetries(context, ledger) {
     releaseRetries(store, request.testFile, worktreeId, file?.key ?? null);
   }
   const dropped = dropWithdrawn(ledger, pending);
-  return queueDue(context, ledger, pending) || dropped;
+  return queueDue(context, ledger, pending, claimed) || dropped;
 }
 function dropWithdrawn(ledger, pending) {
   let changed2 = false;
@@ -17101,7 +17102,7 @@ function dueOf(ledger, pending) {
   }
   return due;
 }
-function queueDue(context, ledger, pending) {
+function queueDue(context, ledger, pending, claimed) {
   const { store, worktreeId } = context;
   const due = dueOf(ledger, pending);
   if (due.size === 0) return false;
@@ -17116,6 +17117,7 @@ function queueDue(context, ledger, pending) {
     if (!claimRetries(store, file.ref, key3, worktreeId, at2, live)) continue;
     file.retryKey = key3;
     ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED), true);
+    claimed(file);
     if (bounded2) context.note(loadRetryNoteText(file.ref.path, perCpu(load) ?? 0));
     changed2 = true;
   }
@@ -17447,6 +17449,8 @@ var init_ledger = __esm({
       backlogPaused = false;
       /** Row 011-72: `ref`'s key names an unmerged path, so it takes no stored result (the merge hold). */
       holds = () => false;
+      /** Row 018-12: hears each file's end and each commit; `null`: none does. */
+      ends = null;
       /** Global setups that failed to start a run, and their outcomes owed to the sink (task 001-382). */
       setups = new SetupFailures();
       #dirty = /* @__PURE__ */ new Set();
@@ -17585,7 +17589,10 @@ var init_ledger = __esm({
               this.#discharge(file);
             this.queue.remove(ref2);
             this.#syncPhase(file);
-            if (classify2(file) === "current") this.checkpoints.done(ref2, null);
+            if (classify2(file) === "current") {
+              this.checkpoints.done(ref2, null);
+              this.ends?.ended(file);
+            }
             continue;
           }
           const { hits, mayWait } = held3 || strict ? UNPROBED : this.probe(key3);
@@ -17694,6 +17701,7 @@ var init_ledger = __esm({
         if (!this.queue.isForced(file.ref)) this.queue.remove(file.ref);
         this.#syncPhase(file);
         this.checkpoints.done(file.ref, checkpointId);
+        this.ends?.ended(file);
       }
       /**
        * Review wave 13i, B1: queues the files another worktree's heal left held
@@ -17769,6 +17777,7 @@ var init_ledger = __esm({
           if (file.key === key3 && !this.queue.isForced(file.ref)) this.queue.remove(file.ref);
           this.#syncPhase(file);
           this.checkpoints.failed(file.ref);
+          this.ends?.ended(file);
         }
         this.#unknown.push({ testFiles: entries3.map((e) => e.file.ref), reason: reason2, runId });
       }
@@ -17835,6 +17844,7 @@ var init_ledger = __esm({
        * recorded there too (`listingMetaKey`, row 015-52).
        */
       commit(options = {}) {
+        this.ends?.committed(this.files);
         const drained = this.#drain();
         try {
           this.#write(drained, options);
@@ -26524,28 +26534,34 @@ var init_request_progress = __esm({
       /** By `FileState.id`: the asked files still queued or running. */
       #open = /* @__PURE__ */ new Map();
       #ended = 0;
-      /** A request queued: the files of `ledger` that `asked` selects and are queued or running. */
-      ask(ledger, asked) {
-        for (const file of ledger.files.values()) {
-          if (file.phase !== null && asked(file)) this.#open.set(file.id, file);
-        }
+      /** How many ends of asked files there were, a running count. */
+      get count() {
+        return this.#ended;
+      }
+      /** A request asked for `files`: those queued or running are asked until they end. */
+      ask(files3) {
+        for (const file of files3) if (file.phase !== null) this.#open.set(file.id, file);
       }
       /**
-       * Counts the asked files that ended since the last call and returns the
-       * running count. A file the ledger dropped did not end; with no ledger,
-       * the count as it stands.
+       * `file` got a result, from a run or a lookup, or was marked `unknown`:
+       * an asked file ends, once, as the checkpoint counts it (spec 001 D7: a
+       * result at any key). What queues it again after is not the request's.
        */
-      ended(ledger) {
-        if (ledger === null) return this.#ended;
+      ended(file) {
+        if (this.#open.get(file.id) !== file) return;
+        this.#open.delete(file.id);
+        this.#ended += 1;
+      }
+      /**
+       * A commit closed a round of the ledger's work: an asked file neither
+       * queued nor running, or gone from `files`, left with no end. Within the
+       * round a run's end may put its file back in the queue (a discard, a
+       * split), which is the request's work still.
+       */
+      committed(files3) {
         for (const [id, file] of this.#open) {
-          if (ledger.files.get(id) !== file) {
-            this.#open.delete(id);
-          } else if (file.phase === null) {
-            this.#open.delete(id);
-            this.#ended += 1;
-          }
+          if (files3.get(id) !== file || file.phase === null) this.#open.delete(id);
         }
-        return this.#ended;
       }
     };
   }
@@ -28371,6 +28387,7 @@ var init_scheduler2 = __esm({
           });
           ledger.backlogPaused = this.#backlogPaused;
           ledger.holds = (ref2) => this.#hold.holding && this.#hold.names(keys.stabilityPaths(ref2));
+          ledger.ends = this.#requests;
           this.#ledger = ledger;
           await this.#hold.check(true);
           this.#commandHold.check();
@@ -28380,7 +28397,7 @@ var init_scheduler2 = __esm({
           this.#awaitingInstall = missing2 !== null;
           if (missing2 !== null) startWaiting(context, ledger, missing2);
           else await this.#baseline(context, ledger);
-          if (missing2 === null && takeRetries(context, ledger)) ledger.commit();
+          if (missing2 === null && this.#takeRetries(context, ledger)) ledger.commit();
           this.#context = context;
         }, "starting the scheduler");
         this.#pump();
@@ -28430,7 +28447,7 @@ var init_scheduler2 = __esm({
       /** `handleBatch` once the scheduler takes edits: the revision, then its runner work. */
       async #pass(context, ledger, batch) {
         if (ledger.confirmHeld()) ledger.commit();
-        if (batch.trigger === "interval" && takeRetries(context, ledger)) ledger.commit();
+        if (batch.trigger === "interval" && this.#takeRetries(context, ledger)) ledger.commit();
         this.#adopt(context, ledger);
         const { applied, touched } = await reconcileBatch(context, ledger, batch);
         const install = applied?.revision.changes.some((change2) => touchesInstall(change2.path));
@@ -28620,7 +28637,7 @@ var init_scheduler2 = __esm({
           const { policy } = this.#started().context;
           const only2 = lane === void 0 ? void 0 : { lane, isSlow: slowView(policy).isSlow };
           const record2 = queueFullSuite(ledger, force, warmUp2, only2);
-          this.#requests.ask(ledger, (file) => ledger.checkpoints.covers([file.ref], false));
+          this.#requests.ask(record2.testFiles.flatMap((ref2) => ledger.file(ref2) ?? []));
           this.#quiet.end(this.#started().context.now());
           if (warmUp2) this.#warmUp.start(this.#started().context, ledger, record2);
           return record2;
@@ -28679,7 +28696,7 @@ var init_scheduler2 = __esm({
           this.#groups.lanes(context.policy);
           this.#groups.get(group)?.request();
           const queued = queueGroup(context, ledger, group);
-          this.#requests.ask(ledger, (file) => view.of(file.ref).name === group);
+          this.#requests.ask([...ledger.files.values()].filter((f) => view.of(f.ref).name === group));
           return { revision, queued };
         }, `taking a squeal run ${group} request`);
         if (lint2) void this.options.passes?.pass().catch(() => {
@@ -28716,7 +28733,7 @@ var init_scheduler2 = __esm({
           }
           const selected2 = selection.selected.get(group) ?? /* @__PURE__ */ new Set();
           const { queued, asks } = queueNarrow(ledger, selected2);
-          this.#requests.ask(ledger, (file) => selected2.has(file.id));
+          this.#requests.ask([...selected2].flatMap((id) => ledger.files.get(id) ?? []));
           this.#groups.lanes(context.policy);
           const lane = this.#groups.get(group);
           lane?.narrow.add(asks, ledger);
@@ -28731,10 +28748,17 @@ var init_scheduler2 = __esm({
         if (this.#closed || this.#reinstalled || this.#awaitingInstall || !this.#context) return;
         await this.#lock.run(() => {
           const { context, ledger } = this.#started();
-          if (takeRetries(context, ledger)) ledger.commit();
-          this.#requests.ask(ledger, (file) => file.retryKey !== null);
+          if (this.#takeRetries(context, ledger)) ledger.commit();
         }, "taking squeal retry requests");
         this.#pump();
+      }
+      /**
+       * `takeRetries`, each retry it claims and queues asked (row 018-12): at
+       * `squeal retry`, in a reconciliation pass, at start (review wave 3.6,
+       * B3). One that waits at the closed load gate asks nothing yet.
+       */
+      #takeRetries(context, ledger) {
+        return takeRetries(context, ledger, (file) => this.#requests.ask([file]));
       }
       /**
        * Spec 011 C15: a named wait promotes `testFiles` for `withinMs` on this
@@ -28840,7 +28864,7 @@ var init_scheduler2 = __esm({
         return queue.fastSize + queue.slowSize;
       }
       requestProgress() {
-        return this.#requests.ended(this.#closed ? null : this.#ledger);
+        return this.#requests.count;
       }
       slowPending() {
         if (this.#closed || !this.#ledger || this.#onHold()) return false;
