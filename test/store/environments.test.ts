@@ -128,6 +128,24 @@ describe("environment records (018 D1)", () => {
     expect(readEnvironment(store, "h1")?.ci).toBe(false);
   });
 
+  it("a descriptor recorded before the browser part gains it, once (018 D10)", () => {
+    const store = open(fakeCommonDir());
+    putEnvironments(store, [{ hash: "h1", descriptor: descriptor("v24.22.1") }], 1000);
+    const newer = { ...descriptor("v24.22.1"), browser: false };
+    putEnvironments(store, [{ hash: "h1", descriptor: { ...newer, ci: true } }], 2000);
+    expect(readEnvironment(store, "h1")).toEqual({ ...newer, ci: true });
+    putEnvironments(store, [{ hash: "h1", descriptor: newer }], 3000);
+    putEnvironments(store, [{ hash: "h1", descriptor: descriptor("v24.22.1") }], 4000);
+    expect(readEnvironment(store, "h1")).toEqual({ ...newer, ci: true });
+  });
+
+  it("reads a descriptor with a part it does not know, as 0.1.419 does", () => {
+    const store = open(fakeCommonDir());
+    const later = { ...descriptor("v24.22.1"), browser: true, unknownPart: "x" };
+    putEnvironments(store, [{ hash: "h1", descriptor: later }], 1000);
+    expect(readEnvironment(store, "h1")).toEqual(later);
+  });
+
   it("reads a descriptor of another shape as none", () => {
     const store = open(fakeCommonDir());
     recordWorktreeEnvironments(
