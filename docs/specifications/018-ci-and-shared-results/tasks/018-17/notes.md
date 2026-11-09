@@ -45,3 +45,50 @@ The adapter is the daemon's (`daemonVitest` in the command): observing per polic
 ## Checks
 
 `test/ci/export.test.ts` (two real shards with `CI=true`, a daemon in its own clone, the export in a third; then the command end to end), `test/ci/export-check.test.ts` (each refusal), `test/ci/export-keys.test.ts` (counts, the job's environment refused, a project the job lacks), `test/cli/ci-export.test.ts` (usage, exit 1 cases, a refusal before Vitest starts, the help line).
+
+## Repair R1 (review of 0.1.421, B1 to B4, S1)
+
+Worker 52197e72, 2026-11-09. Part format `squeal-ci-part/2`; a format 1 part is refused by `readPart`.
+
+### Where things are now
+
+| Part | File |
+|---|---|
+| Hashing what a file read; the checkout's state; the certification rule | `src/core/ci/inputs.ts` (`withInputs`, `readCheckout`, `uncertified`) |
+| The rule over a keyed file's closure in the job | `src/core/ci/export-inputs.ts` (`certifier`) |
+| Shard set, snapshot options by field | `src/core/ci/export-check.ts` (`shardRefusal`, `runDifferences(RunView, RunView)`) |
+| Snapshot options hashed by field | `src/core/ci/parts.ts` (`snapshotFields`) |
+| Shard, shared names in the part body | `src/runners/vitest/ci-runs.ts`; the hook writes `shard` (`vitest-ci.cjs`) |
+| Inputs hashed at the end of the recording | `src/runners/vitest/ci-record.ts` (`finish` is async now) |
+| Checkout read before and after the command | `src/cli/ci.ts` `record`, `writeParts` (three lines) |
+
+### The rule (B1)
+
+For each input of a keyed file's closure in the job (static and observed):
+
+1. Recorded by the part (`PartFile.inputs`): certified only when equal to the job's hash. Files are hashed as the stat cache hashes them (`createFsHasher`); listings as the names on disk on both sides (`listingHash`), not the key's tracked-names hash, since the run saw the names on disk; `.git` by kind.
+2. Not recorded, shard `clean` (no tracked change before and after the command): a path the commit tracks must hash here to the commit's blob; a path the commit lacks must be absent here and below no untracked or ignored entry of the shard (`git status --ignored=matching`, before and after the command).
+3. Anything else (a dirty shard, an unrecorded listing or `.git`, a path git reported as untracked or ignored and the part did not hash) is not certified: the file is left out, counted, and the first three files are named with their inputs.
+
+Rule 2 exists because Vitest's static closure holds paths no worker reads (the config, `package.json`, a snapshot path whether or not it exists). Without it every file would be left out. The real two-shard comparison still exports all four files.
+
+### Decisions the brief did not settle
+
+- Inputs are hashed after the command exits, not at each read. A file the run changed then reads as its end content and is left out.
+- `clean` ignores untracked files; `dirty` stays as provenance in the header.
+- B4 leaves the file out (`ambiguous` count), not the whole export. The recorder names the shared full names (`sharedNames`); daemon naming is unchanged.
+- B3: exactly one completed part per shard index of one count. A shard whose command starts two Vitest processes is refused (kind `shards`); conservative, as the brief allows.
+- B2: a snapshot option difference is refused as kind `environment`, named `snapshotOptions.<field>`.
+- `readCheckout` never throws, since it runs before the project's command (D16): a failed git reads as not clean with no entries, which certifies only hashed inputs.
+
+### Limits
+
+- A path inside a submodule is neither a commit blob nor in git status (`--ignore-submodules=all`): unrecorded, it counts as absent. It is certified only when absent here too.
+- Reads in Vitest's main process (its transform of imported modules) are not attributed to a test file. An ignored generated module a test imports is therefore not recorded, and the file is left out (rule 3).
+- Cost per shard: each read file hashed once, each recursive listing walked (`.git` and `node_modules` skipped), two `git status` calls.
+
+### For the coordinator and 018-20
+
+- `vitest-ci.cjs` changed: `dist/ci/` needs the coordinator's rebuild (no `pnpm run build` here).
+- `ciExport`'s success value has `uncertified` (files and inputs); `CiExportCounts` has `uncertified` and `ambiguous`. Publish only after exit 0, as before.
+- `tasks/018-16/notes.md` still describes format 1; this section supersedes its part fields.
