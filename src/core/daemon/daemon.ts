@@ -838,9 +838,14 @@ class Daemon {
         now: this.#now,
         note: (text) => this.#note(text),
         log: this.#log,
-        imported: () => void this.#requestRetries(),
+        imported: () =>
+          void this.#requestRetries().catch((error: unknown) =>
+            this.#log(`CI results: ${message(error)}`),
+          ),
         step: (operation, running) => this.#desk?.step(operation, running),
       });
+      // A stop during the start closed nothing yet made: no fetch starts.
+      if (this.#exit !== null) this.#shared.close();
       this.#shared.nudge();
       // The first count, or what the revisions stored while no daemon ran changed.
       code.nudge();
