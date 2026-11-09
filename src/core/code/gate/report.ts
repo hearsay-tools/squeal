@@ -1,0 +1,184 @@
+import { compare } from "../../fs/compare.js";
+import type { RelativePath } from "../../types/common.js";
+import type { FileHash } from "../../types/keys.js";
+import type {
+  ChangeKind,
+  Evidence,
+  GATE_REPORT_FORMAT,
+  GateGap,
+  GatePolicy,
+  GateState,
+  GateVerdict,
+  TestFileEvidence,
+  UncountedPath,
+} from "./types.js";
+
+/*
+ * Spec 020 D7: the report of `squeal code --base --json`, format
+ * `squeal-code-gate/1`. Every list is sorted, so the same inputs give the
+ * same report; its only times are `createdAt` and the runs' durations,
+ * which the caller passes in.
+ */
+
+export type GateRunner = TestFileEvidence["runner"];
+
+/** The versions the inventory, collector and Squeal ran at, as the caller gives them. */
+export interface EngineVersions {
+  readonly squeal: string;
+  /** `COUNTER_VERSION`. */
+  readonly counter: number;
+  /** `COVERAGE_PROVIDER_VERSION`. */
+  readonly coverageProvider: number;
+  /** `COVERAGE_RECORD_VERSION`. */
+  readonly coverageRecord: number;
+}
+
+/** D7's `versions`: the engine's, and the evaluator's own `QUALITY_POLICY_VERSION`. */
+export interface GateVersions extends EngineVersions {
+  readonly qualityPolicy: number;
+}
+
+/** The report's only times, read by the caller so the evaluator reads no clock. */
+export interface GateTimes {
+  /** ISO 8601. */
+  readonly createdAt: string;
+  /** Each runner's run, in ms; a runner absent here reads `null`. */
+  readonly durationsMs: Readonly<Partial<Record<GateRunner, number>>>;
+}
+
+/** A function's own-line coverage (015 D9's join). */
+export interface GateCoverage {
+  /** Its own lines that can run; every own line when measured from a subset. */
+  readonly lines: number;
+  readonly covered: number;
+  /** 0 to 1. */
+  readonly share: number;
+}
+
+/** D7: one changed function. */
+export interface GateFunctionReport {
+  readonly path: RelativePath;
+  readonly qualifiedName: string;
+  readonly occurrence: number;
+  /** Where it starts at the head, 1-based. */
+  readonly line: number;
+  readonly bodyHash: string;
+  readonly change: ChangeKind;
+  readonly complexity: number;
+  /**
+   * From the loaders measured; `null` when no record joined it or none is
+   * wanted (`skipped`). From a subset of the loaders it is a lower bound.
+   */
+  readonly coverage: GateCoverage | null;
+  /** From `coverage`; an upper bound when it is from a subset. */
+  readonly crap: number | null;
+  readonly state: GateState;
+  /** Set when, and only when, the state is `incomplete`. */
+  readonly gap: GateGap | null;
+  readonly loaders: {
+    /** The selected test files that load its source, or may: their closure is not known. */
+    readonly expected: readonly RelativePath[];
+    /** Of those, the ones whose whole record at the head bytes was read. */
+    readonly measured: readonly RelativePath[];
+  };
+}
+
+/** D2: a changed path the counter could not count; the verdict is at least incomplete. */
+export interface GatePathReport {
+  readonly path: RelativePath;
+  readonly reason: UncountedPath["reason"];
+  readonly gap: "not-counted";
+}
+
+/** D7: one runner's run. */
+export interface GateRunReport {
+  readonly runner: GateRunner;
+  readonly selected: readonly RelativePath[];
+  readonly completed: readonly RelativePath[];
+  readonly notFinished: readonly RelativePath[];
+  readonly failed: readonly { readonly path: RelativePath; readonly tests: readonly string[] }[];
+  readonly durationMs: number | null;
+}
+
+export interface GateReport {
+  readonly format: typeof GATE_REPORT_FORMAT;
+  readonly createdAt: string;
+  readonly versions: GateVersions;
+  /** The merge base and the policy read there (D6). */
+  readonly base: { readonly ref: string; readonly commit: string; readonly policy: GatePolicy };
+  readonly head: {
+    readonly commit: string;
+    readonly dirty: boolean;
+    /** Each changed path counted at the head, with its blob. */
+    readonly paths: readonly { readonly path: RelativePath; readonly blob: FileHash }[];
+  };
+  readonly budget: { readonly seconds: number; readonly timedOut: boolean };
+  readonly functions: readonly GateFunctionReport[];
+  readonly uncounted: readonly GatePathReport[];
+  readonly runs: readonly GateRunReport[];
+  readonly verdict: GateVerdict;
+  /** The functions in each state. */
+  readonly counts: Readonly<Record<GateState, number>>;
+}
+
+/**
+ * D5: `violations` when one function is a violation; else `incomplete`
+ * when one is incomplete, a changed path was not counted or a selected
+ * test failed; else `pass`.
+ */
+export function verdictOf(
+  functions: readonly Pick<GateFunctionReport, "state">[],
+  uncounted: readonly unknown[],
+  failed: boolean,
+): GateVerdict {
+  if (functions.some((f) => f.state === "violation")) return "violations";
+  if (failed || uncounted.length > 0 || functions.some((f) => f.state === "incomplete")) {
+    return "incomplete";
+  }
+  return "pass";
+}
+
+export function countStates(
+  functions: readonly Pick<GateFunctionReport, "state">[],
+): Record<GateState, number> {
+  const counts: Record<GateState, number> = { pass: 0, violation: 0, incomplete: 0, skipped: 0 };
+  for (const f of functions) counts[f.state] += 1;
+  return counts;
+}
+
+const RUNNERS: readonly GateRunner[] = ["vitest", "node-test"];
+
+const sorted = (paths: Iterable<RelativePath>) => [...new Set(paths)].sort(compare);
+
+/** D7's `runs`: each runner that selected a file or ran, in a fixed order. */
+export function runsOf(evidence: Evidence, durationsMs: GateTimes["durationsMs"]): GateRunReport[] {
+  return RUNNERS.flatMap((runner) => {
+    const files = evidence.testFiles.filter((f) => f.runner === runner);
+    const durationMs = durationsMs[runner] ?? null;
+    if (files.length === 0 && durationMs === null) return [];
+    const failed = files
+      .filter((f) => f.failed.length > 0)
+      .map((f) => ({ path: f.path, tests: [...f.failed].sort(compare) }))
+      .sort((a, b) => compare(a.path, b.path));
+    return [
+      {
+        runner,
+        selected: sorted(files.map((f) => f.path)),
+        completed: sorted(files.filter((f) => f.completed).map((f) => f.path)),
+        notFinished: sorted(files.filter((f) => !f.completed).map((f) => f.path)),
+        failed,
+        durationMs,
+      },
+    ];
+  });
+}
+
+/** The report's order of functions: by path, then where each starts, then identity. */
+export function byPosition(a: GateFunctionReport, b: GateFunctionReport): number {
+  return (
+    compare(a.path, b.path) ||
+    a.line - b.line ||
+    compare(a.qualifiedName, b.qualifiedName) ||
+    a.occurrence - b.occurrence
+  );
+}
