@@ -1925,7 +1925,7 @@ Human authorized 2026-10-26; coordinator 474cc4f5. Brief: `specifications/017-li
 
 ## Feature 018: CI and shared results
 
-Spec `specifications/018-ci-and-shared-results/spec.md` (stage: first slice done, next slice awaits the human; **0.1.417 released** 2026-11-08 (tag at `ea776c75c`, hub `7645044`, CI 42463506305) with 018-06/07/09; **0.1.418 released** 2026-11-08 (tag at `2b7ae252c`, hub `f0dd6b0`, CI 42494177395) with 018-10/11; next the trial 018-08 (cezar PR hearsay-tools/cezarion#3018); spec, rows 018-06 to 018-08 and the cezar workflow file approved by the human 2026-11-08; coordinator 3739e45a). Reopened by the human 2026-11-08 (task 7d611fc4) with a new goal: less test load on developers' machines by reusing what CI on main already ran, without adding CI wall time. First slice, approved in outline the same day ("Yes, start it"): `squeal export`/`import`, `status` naming environment differences, one trial in cezar. Earlier: research parked 2026-10-31 and 2026-11-01; the four wave-0 findings stand. 
+Spec `specifications/018-ci-and-shared-results/spec.md` (stage: second slice research, wave 4 (the human 2026-11-09: "A: spec the useful form", trial workflow kept in cezar); **0.1.417 released** 2026-11-08 (tag at `ea776c75c`, hub `7645044`, CI 42463506305) with 018-06/07/09; **0.1.418 released** 2026-11-08 (tag at `2b7ae252c`, hub `f0dd6b0`, CI 42494177395) with 018-10/11; next the trial 018-08 (cezar PR hearsay-tools/cezarion#3018); spec, rows 018-06 to 018-08 and the cezar workflow file approved by the human 2026-11-08; coordinator 3739e45a). Reopened by the human 2026-11-08 (task 7d611fc4) with a new goal: less test load on developers' machines by reusing what CI on main already ran, without adding CI wall time. First slice, approved in outline the same day ("Yes, start it"): `squeal export`/`import`, `status` naming environment differences, one trial in cezar. Earlier: research parked 2026-10-31 and 2026-11-01; the four wave-0 findings stand. 
 
 ### Wave 0: research
 
@@ -1967,6 +1967,14 @@ Spec `specifications/018-ci-and-shared-results/spec.md` (stage: first slice done
 | Task | Status | Scope | Done when |
 |---|---|---|---|
 | 018-12 progress on an explicit request counts as activity for the idle exit | done (0.1.419; workers a7ca9dd2, 08faf115, 9a4bfe4d; `Ledger.#ended` is the one owner of a request's file end; reviews `wave-3.6.md` FAIL, `wave-3.6-r2.md` FAIL, `wave-3.6-r3.md` PASS at `21adaff51` with note N1) | A daemon with no consumer stopped after `daemon.idleExitMinutes` with 332 files of a `run tests` request still queued (trial run 42530503204), because only new requests count as activity. | A no-consumer daemon with an open request that keeps making progress stays up until the request ends, then stops one idle period later. |
+
+### Wave 4: research for the second slice (the human 2026-11-09, "A: spec the useful form"; brief `specifications/018-ci-and-shared-results/tasks/wave-4.md`)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 018-13 research: export from the existing CI test step | running | Topic `ci-step`: where the export is made without extra wall time, shards, `CI=true` field tolerance, Node pinning, merge-group attribution. | `research/ci-step.md` committed. |
+| 018-14 research: transport on a git ref | running | Topic `transport`: CI writes a ref per main commit, retention, the reader at daemon start and after a pull, trust from git alone. | `research/transport.md` committed. |
+| 018-15 research: key rules that cost matches | running | Topic `key-rules`: node:test `execPath` in the key; the observed-set union against one run's set, measured on a copy of cezar's store. | `research/key-rules.md` committed. |
 
 ### Wave 3: the trial (after the release with 018-07; needs the human's approval of the cezar CI file, spec D7)
 
