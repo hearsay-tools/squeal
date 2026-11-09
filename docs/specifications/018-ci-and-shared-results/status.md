@@ -33,6 +33,7 @@ Started: 2026-10-31
 - 2026-11-08, the coordinator: 0.1.418 released (tag `squeal--v0.1.418` at `2b7ae252c`, hub `f0dd6b0`, GitHub latest release with `install.sh` and both Codex runtime assets; exact-commit CI 42494177395 green). No issue to close. The trial runs on 0.1.418 next.
 - 2026-11-08, hearsay-tools/cezarion#3029 merged by the human (18:21Z). Trial run 42530503204 (cezar `6f552e5`, Squeal 0.1.418) ran 61 min and stopped by the idle exit: cezar sets `daemon.idleExitMinutes: 60`, a daemon with no consumer counts only new requests as activity, so 332 queued files of `run tests` got no result (researcher a9fd78c8, read in source and reproduced in a fixture). `squeal export` would have exported the 1,413 passing files correctly; the workflow's guard uploaded nothing, as designed.
 - 2026-11-09, the human: "A: fix Squeal" (row 018-12), then rerun the trial on 0.1.419 with no further cezar change. Not chosen: a cezar workflow loop that repeats the request every 30 min.
+- 2026-11-09, row 018-12 (worker a7ca9dd2): each end of a test file an explicit request queued (`run --all`, `--fast`, `run <group>`, a narrow run, `retry`) is activity for the idle exit; the daemon's own work, waits and `ping` are not. Accepted beyond the brief: the same count is use for the 30-minute stop of a daemon with a registered session (001-415), since a request already counted as both; the departure and drain paths do not read it. A new optional `Scheduler.requestProgress()` in `src/core/types/scheduler.ts`.
 
 ## Open questions
 
