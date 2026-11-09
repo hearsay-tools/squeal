@@ -1,0 +1,1 @@
+squeal runs priced 300, unpriced 93 (no test path matched); files 3557; est. test seconds 16559; wall of priced runs 6412 s; ratio 2.58; per run p50 7.1 s, p90 86.7 s

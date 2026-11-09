@@ -1,0 +1,31 @@
+window 2026-11-02 to 2026-11-09 (7 days)
+
+## squeal
+sessions with a shell command: 221 (131 Claude Code, 90 Codex); with a test run: 84
+runs: 477 (68 a day); by harness: claude-code 372; codex 105; subagent files: 0
+by runner and scope: vitest files 399; vitest pattern 77; vitest full 1
+by form: pnpm exec vitest 424; node_modules/.bin/vitest 53
+traits: pipe/chain/redirect 404; name pattern 77; --update 2; line filter 0; --coverage 0; another directory 18; watch-form 0
+outcome read: pass 223, fail 91, unknown 163
+wall s: 12118 (28.9 min a day); Vitest summary parsed in 1 runs, summed worker parts / wall = 12.46
+estimated test seconds (parts where parsed, node:test wall, else wall x ratio): 151024 (21575 a day)
+recognized by Squeal's deny recognizer, whole command: 0; the test segment alone (timeout and 2>&1 removed): 0
+plain Vitest runs (no name pattern, update, line filter, coverage or other directory): 383; of them with a pipe/chain/redirect 320
+other flags seen: --maxWorkers 77, --config 69, --disableConsoleIntercept 13, --root 3, -rln 2, --include 2, --project 2, --globals 1, --bail 1, --outputFile 1
+
+## cezar
+sessions with a shell command: 1623 (862 Claude Code, 761 Codex); with a test run: 276
+runs: 2485 (355 a day); by harness: codex 1282; claude-code 1203; subagent files: 19
+by runner and scope: npm-script files 1556; npm-script pattern 418; node:test files 300; npm-script full 155; vitest files 24; vitest pattern 23; vitest full 9
+by form: npm script 2129; node --test 300; npx vitest 52; pnpm exec vitest 3; vitest (bare) 1
+traits: pipe/chain/redirect 2360; name pattern 441; --update 0; line filter 0; --coverage 12; another directory 189; watch-form 14
+outcome read: pass 491, fail 153, unknown 1841
+wall s: 119518 (284.6 min a day); Vitest summary parsed in 357 runs, summed worker parts / wall = 3.08
+estimated test seconds (parts where parsed, node:test wall, else wall x ratio): 355280 (50754 a day)
+recognized by Squeal's deny recognizer, whole command: 0; the test segment alone (timeout and 2>&1 removed): 20
+plain Vitest runs (no name pattern, update, line filter, coverage or other directory): 1614; of them with a pipe/chain/redirect 1508
+other flags seen: --maxWorkers 340, --project 158, --config 112, --passWithNoTests 107, -name-pattern 52, --outputFile 33, --plan 24, --force-rebuild 21, -w 14, --sequence.shuffle 13, --sequence.seed 13, --testTimeout 12, --coverage.reportsDirectory 12, --help 7
+cezar vitest runs 1784 wall 41251 parsed 342 parts 13604 ratio 3.41 est 137525 per day 19646
+node:test runs 300 wall 3820
+other npm scripts 401 wall 74447
+squeal wall 12118 sessions w runs
