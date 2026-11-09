@@ -75,8 +75,13 @@ export async function changedFunctions(
   const uncounted: UncountedPath[] = [];
   for (const [path, language] of paths) {
     const now = await countAtHead(join(cwd, path), language, format, policy.maxFileBytes);
-    if (typeof now === "string") uncounted.push({ path, reason: now });
-    else if (now !== null) heads.set(path, now);
+    if (now === null) continue;
+    if (typeof now === "string") {
+      uncounted.push({ path, reason: now });
+      continue;
+    }
+    heads.set(path, now);
+    if (now.errors.length > 0) uncounted.push({ path, reason: "parse-error" });
   }
   const atBase = bodies(bases.values());
   const atHead = bodies(heads.values());
@@ -85,7 +90,6 @@ export async function changedFunctions(
   const counted: CountedPath[] = [];
   for (const [path, now] of heads) {
     counted.push({ path, blob: now.blob, functions: now.functions });
-    if (now.errors.length > 0) uncounted.push({ path, reason: "parse-error" });
     // An identity whose base body is gone from the head was edited; one whose body lives on shifted or moved.
     const edited = new Set(
       bases
@@ -100,7 +104,6 @@ export async function changedFunctions(
       into.push({ path, blob: now.blob, change, count });
     }
   }
-  uncounted.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
   return {
     ref,
     baseCommit,
