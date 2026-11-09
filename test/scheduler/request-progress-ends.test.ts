@@ -25,6 +25,7 @@ import type { ResultRecord } from "../../src/core/types/store-records.js";
 
 const WORKTREE = "wt-018-12" as WorktreeId;
 const KEY = "k".repeat(64) as CheckKey;
+const EDITED = "e".repeat(64) as CheckKey;
 const REF: TestFileRef = { project: "", path: "test/f.test.ts" };
 const dirs: string[] = [];
 const closes: (() => void)[] = [];
@@ -68,19 +69,19 @@ function queue(ledger: Ledger, file: FileState): void {
   ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED));
 }
 
-/** A tier takes `file`, as `startTier` does. */
+/** A tier takes `file` at its key, as `startTier` does. */
 function start(ledger: Ledger, file: FileState): void {
   ledger.queue.remove(file.ref);
-  ledger.setRunning(file, KEY);
+  ledger.setRunning(file, file.key);
   ledger.commit();
 }
 
-function passed(): ResultRecord[] {
+function passed(key: CheckKey = KEY): ResultRecord[] {
   const provenance = { worktreeId: WORKTREE, revision: 1, commit: null, dirty: false };
   return [
     {
       check: { kind: "test", project: "", testPath: REF.path, fullName: "t0" },
-      key: KEY,
+      key,
       outcome: "pass",
       durationMs: 1,
       location: null,
@@ -112,6 +113,21 @@ describe("RequestProgress on the ledger's ends (row 018-12)", () => {
     start(ledger, file);
     ledger.setRunning(file, null);
     ledger.applyResults(file, KEY, passed(), null);
+    expect(progress.count).toBe(1);
+  });
+
+  it("ends once at an unknown while an edit queued it at another key; the edit's run counts nothing", () => {
+    const { ledger, progress, file } = asked();
+    start(ledger, file);
+    file.key = EDITED;
+    queue(ledger, file);
+    ledger.setRunning(file, null);
+    ledger.markUnknown([{ file, key: KEY }], "run timed out", { ran: true });
+    ledger.commit();
+    expect(progress.count).toBe(1);
+    start(ledger, file);
+    ledger.setRunning(file, null);
+    ledger.applyResults(file, EDITED, passed(EDITED), null);
     expect(progress.count).toBe(1);
   });
 
