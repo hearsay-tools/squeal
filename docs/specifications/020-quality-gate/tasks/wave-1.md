@@ -70,6 +70,31 @@ Leave alone: `src/core/code/gate/`, `src/core/code/count/`, the coverage provide
 
 Done when: the three shapes join with the right `ran` and coverage. A regression test shows that the joins of this repository's own records for at least 20 source files are unchanged. Build them in the test from fixtures, not from a live store.
 
-## 020-05 `squeal code --base`: CLI, exit codes, docs (after 020-01 to 020-03)
+## 020-05 `squeal code --base`: CLI, exit codes, docs
 
-The coordinator writes this brief when the three land, against their final exports.
+Use /worker. Shape: finish.
+
+Outcome: `squeal code --base <ref> [<path>...] [--test <file>...] [--timeout <seconds>] [--json]` wires 020-02, 020-03 and 020-01 together with no daemon. Without `--base`, `squeal code` behaves exactly as before.
+
+Read: spec D1 and D7 (the whole spec once); `src/cli/code.ts` (`codeCommand`, `CODE_USAGE`, `OPTIONS`); `src/cli/ci-export.ts` (how a CLI builds a Vitest adapter with no daemon); the exports of the landed rows, all on your baseline:
+- `src/core/code/gate/changed.ts`: `mergeBase`, `changedFunctions(cwd, ref, policy: CountPolicy)`, `BaseRefError`. `cwd` must be the worktree top.
+- `src/core/code/gate/policy.ts`: `loadBasePolicy(cwd, baseCommit)` (async; `{ policy, problems }`).
+- `src/core/code/gate/collect.ts`: `collectEvidence(cwd, changed, { tests, budgetSeconds, adapters, note })`, `GateAdapters`, `CollectUsageError`. Pass `{ vitest: createVitestAdapter, nodeTest: createNodeTestAdapter }`.
+- `src/core/code/gate/evaluate.ts` and `report.ts`: `evaluate(changed, evidence, policy, versions: EngineVersions, times: GateTimes)`.
+
+Starting seam: `codeCommand` branches on `--base` before any store read, into a new `src/cli/code-gate.ts`. A first failing test: a temporary git repository (`HOME`, `TMPDIR` set to temp dirs, no daemon) where one changed function passes, so the exit code is 0. Then cover exit 1 (CC over the base threshold), exit 3 (a changed file no test loads), and exit 2 (an unknown ref, a `--test` path no runner lists, and `--base` with `--changed` or `--told`).
+
+Details:
+- Paths narrow `functions`, `inErrors`, `counted` and `uncounted` to those files or directories before collection.
+- `--timeout` is whole seconds above 0. The default is 600.
+- Policy `problems` and collector notes go to stderr, never to stdout.
+- Text output follows D1. CRAP is rounded for display only.
+- The JSON is `evaluate`'s report, unchanged.
+- `main.ts` help: add a `squeal code --base` entry. Its first line says it runs tests, with no daemon.
+- Docs: the `squeal code` section of `plugins/claude-code/skills/squeal/references/commands.md` and its copies, kept as the repository's tests require. Also `policy.md` for `coverage.exclude`, which now also means "skipped" in the gate.
+
+Owns: `src/cli/code.ts`, `src/cli/code-gate.ts` (new), `src/cli/main.ts` (help), the two skill reference files and their copies, `test/cli/code-gate*.test.ts`.
+
+Leave alone: `src/core/code/gate/*` and `src/core/code/crap/*`. If one of them needs a change, ask your parent with the exact change. Do not edit the bundles and do not run `pnpm run build`; the coordinator builds at integration. The 4 bundle-drift test failures (Claude Code, Codex, OpenCode, Pi packaging) are expected.
+
+Done when: the five exit-code cases above pass end to end. The existing `test/cli/code*.test.ts` files pass unchanged. `squeal status --wait 60000 <changed paths>` shows no failure except the bundle drift. Lint and typecheck are clean.

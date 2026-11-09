@@ -69,23 +69,28 @@ The human chose this name on 2026-11-09, over a separate `squeal quality`. `sque
    - Shifted: inside one `(path, qualified name)` group, a head function whose body hash equals a base function of that group. It is not a change.
    - Every other head function is changed (edited or added). Moved and edited reads as added and is measured. That is the safe side.
 4. Removed functions are not checked.
+5. A changed path the counter cannot count is listed in `uncounted` with its reason: `too-large`, `parse-error`, or `unsupported` (not a regular file at the head). A `parse-error` path is also in `counted`, with all its head functions, so the join sees them. Its changed functions that overlap an error range are in `inErrors`. Every head function of each counted path is in `counted`, changed or not, because a function's own lines leave out the functions nested in it (amended 2026-11-09, rows 020-01 and 020-02).
 
 ### D3. Collection
 
 1. Selection: for each changed source, the test files whose import closure loads it (each runner adapter's `affected()`), plus every changed test file, plus `--test` files. A path given with `--test` that matches no runner is a usage error.
-2. Runs: one adapter run per runner (Vitest, node:test), with Squeal's coverage provider, as 015 D8 runs them. Records are mapped before `adapter.close()`.
+2. Runs: one adapter run per runner (Vitest, node:test), with Squeal's coverage provider, as 015 D8 runs them. Records are mapped before `adapter.close()`. The collector takes the adapter factories as arguments, and the CLI passes them, because nothing under `src/core/code` may import a runner (`test/runners/boundaries.test.ts`, row 016-36). Vitest runs with `cache: false`, so it writes no results cache into the project (amended 2026-11-09, row 020-03).
 3. Loaders: from each run's `closure()`, not from a store.
 4. Budget: one deadline over all runs, 600 s by default, `--timeout` to change it. At the deadline, the running file is stopped. Every completed file keeps its record. The report names each file that did not finish. The command does not lower a project's own `testTimeout`.
 5. Nothing is written to the project or a store. Temporary files go under `$TMPDIR` and are removed.
 
 ### D4. The join repair
 
-`src/core/code/crap/join.ts` matches V8 function ranges to counted functions by their end column, with a 2-column slack. Three shapes fail (research Q5):
+`src/core/code/crap/join.ts` matched V8 function ranges to counted functions by their end column, with a 2-column slack. It missed every arrow whose last token is longer than the slack. The cause is not the cast: `coverage/map.ts` maps a V8 function's end to the start of the source-map segment that holds its last character, so the record's end is the start of the last token (amended 2026-11-10, row 020-04; the research had read it as the cast). `r => r.consumer`, a string or template tail, and `(x as Box).field` all missed. Curried arrows that end at one column joined only the outer one, and that outer one often took the inner arrow's V8 function.
 
-- A cast: V8 sees the cast in the end column, and the counter does not (end 47 against 52).
-- Two or three nested arrows that end at the same column: only the outer one joins.
+The repair, in `src/core/code/crap/match.ts` (row 020-04):
 
-The repair matches nested functions that share an end by nesting depth and start. A cast-expression arrow matches by its start. A function the repair cannot match stays `ran: null` (unknown), as today. It is never matched to a wrong range. The daemon uses the same join, so some functions that read unknown today get a measure. That is the only daemon change in this slice.
+- **End rule:** among V8 functions with the same end, one that does not start after the function's start wins.
+- **Parent's V8 function:** a nested function never takes a V8 function of its parent that a removed type cut short.
+- **Start rule:** a function the end rule leaves unjoined joins the one V8 function left that starts on its line or the line before, not after its start, and ends inside it. It joins only when no other function fits that V8 function, and the step repeats until nothing more joins.
+- Every other case stays `ran: null` (unknown). It is never matched to a wrong range.
+
+On this repository's code store (37,948 records), 168,646 joins were gained, 424k results went from unknown to known, and 780 results flipped, all of them fixes of wrong old joins. Join time did not change. The daemon uses the same join. It does not judge a file again on upgrade: a file's states change at its next judgement, and a state that leaves `unknown` is told silently, as a count (`judge.ts` `kindOf`, `delivery/code-delta.ts` `toldKind`). So the upgrade sends no message per function. Files nobody edits keep their old unknown states until a test of theirs runs again.
 
 ### D5. The evaluator
 
@@ -106,7 +111,9 @@ Then:
 - **violation**: complete, and CC > max or CRAP > max. CC alone needs only the count. A function over the CC limit is a violation whatever its coverage.
 - **incomplete**: every other case. Each one names its gap: `not-counted`, `no-loader`, `not-finished`, `no-record`, `not-joined`, `test-failed`.
 
-The verdict is `violations` when any function is a violation. Otherwise it is `incomplete` when any function is incomplete, and `pass` when every function is pass or skipped. Equality passes. Measured rows are kept in every case.
+Every `uncounted` path is a report row with the gap `not-counted`, and it makes the verdict at least `incomplete`, even when no function of it is named (amended 2026-11-09). So is a failed test.
+
+The verdict is `violations` when any function is a violation. Otherwise it is `incomplete` when any function or path is incomplete or a test failed, and `pass` when every function is pass or skipped. Equality passes. Measured rows are kept in every case.
 
 ### D6. Policy
 
