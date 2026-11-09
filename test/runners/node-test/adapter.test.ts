@@ -116,7 +116,11 @@ describe("createNodeTestAdapter", () => {
     });
     expect(JSON.parse(env?.resolvedConfig ?? "")).toEqual({
       node: process.execPath,
-      execPath: process.execPath,
+      // 018 D12: the build of the project's Node, never the path it runs from.
+      nodeVersions: { ...process.versions },
+      nodeConfig: expect.stringMatching(/^[0-9a-f]{64}$/),
+      nodePlatform: process.platform,
+      nodeArch: process.arch,
       argv: ["--import", "../../scripts/preload.mjs", "--import", "tsx"],
       env: [["EXPECTED_TMP", tempDir]],
       cwd: "packages/demo",
