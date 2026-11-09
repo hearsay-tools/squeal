@@ -1,0 +1,89 @@
+{
+ "summary": {
+  "api-client": {
+   "exported": 2,
+   "unionAddsAny": 0,
+   "unionAddsKeyMoving": 0,
+   "todayKeyEqual": 2,
+   "optionA_superset": 2,
+   "optionB_ownRun": 2,
+   "ciReadUnionLacks": 0,
+   "storedListEqual": 2,
+   "storedListSuperset": 2
+  },
+  "contract": {
+   "exported": 31,
+   "unionAddsAny": 0,
+   "unionAddsKeyMoving": 0,
+   "todayKeyEqual": 31,
+   "optionA_superset": 31,
+   "optionB_ownRun": 31,
+   "ciReadUnionLacks": 0,
+   "storedListEqual": 31,
+   "storedListSuperset": 31
+  },
+  "root:test:unit": {
+   "exported": 116,
+   "unionAddsAny": 1,
+   "unionAddsKeyMoving": 1,
+   "todayKeyEqual": 115,
+   "optionA_superset": 116,
+   "optionB_ownRun": 116,
+   "ciReadUnionLacks": 0,
+   "storedListEqual": 113,
+   "storedListSuperset": 115
+  },
+  "server": {
+   "exported": 1166,
+   "unionAddsAny": 257,
+   "unionAddsKeyMoving": 231,
+   "todayKeyEqual": 935,
+   "optionA_superset": 1166,
+   "optionB_ownRun": 1166,
+   "ciReadUnionLacks": 0,
+   "storedListEqual": 383,
+   "storedListSuperset": 1166
+  },
+  "test:unit": {
+   "exported": 11,
+   "unionAddsAny": 4,
+   "unionAddsKeyMoving": 4,
+   "todayKeyEqual": 7,
+   "optionA_superset": 11,
+   "optionB_ownRun": 11,
+   "ciReadUnionLacks": 0,
+   "storedListEqual": 7,
+   "storedListSuperset": 11
+  },
+  "web": {
+   "exported": 390,
+   "unionAddsAny": 9,
+   "unionAddsKeyMoving": 5,
+   "todayKeyEqual": 385,
+   "optionA_superset": 390,
+   "optionB_ownRun": 390,
+   "ciReadUnionLacks": 0,
+   "storedListEqual": 377,
+   "storedListSuperset": 386
+  },
+  "all": {
+   "exported": 1716,
+   "unionAddsAny": 271,
+   "unionAddsKeyMoving": 241,
+   "todayKeyEqual": 1475,
+   "optionA_superset": 1716,
+   "optionB_ownRun": 1716,
+   "ciReadUnionLacks": 0,
+   "storedListEqual": 913,
+   "storedListSuperset": 1711
+  }
+ },
+ "byKind": {
+  "tracked-file": 10530,
+  "untracked-other": 1887,
+  "untracked-build-or-ai": 170,
+  "untracked-uuid-name": 51,
+  "listing-tracked-dir": 363,
+  "listing-other-dir": 18
+ }
+}
