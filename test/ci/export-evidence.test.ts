@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -100,9 +101,9 @@ describe("ci export certifies each result by its shard's evidence (review of 0.1
       expect(good.bundle?.testFiles.every((f) => f.closure?.paths.includes("data/value.txt"))).toBe(
         true,
       );
-      const { header } = parts()[0]?.part ?? {};
-      expect(header?.clean).toBe(true);
-      expect(header?.untracked).toContain("data/");
+      // Each shard took the ignored file's content as its tests read it, the blob of `GOOD`.
+      const blob = execFileSync("git", ["hash-object", "--stdin"], { input: "GOOD" }).toString();
+      for (const { part } of parts()) expect(part.evidence["data/value.txt"]).toBe(blob.trim());
     },
   );
 

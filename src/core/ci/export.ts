@@ -1,4 +1,3 @@
-import { committedBlobs } from "../commit/tree.js";
 import { readHead } from "../daemon-loop/head.js";
 import { readObjectFormat } from "../hash/git-index.js";
 import { createFsHasher } from "../hash/hasher.js";
@@ -43,9 +42,9 @@ import { type PartFile, snapshotFields } from "./parts.js";
  * path's `observedGrowth` and `addObserved`. Its results are the rows a
  * daemon's record makes of them (`recordsForFile`) at that key, written as
  * the D2 export (`bundleOf`), with each file's `keyParts` (D11). A file
- * goes in only when its part certifies the content of every input of its
- * closure here (`certifier`), and its checks have a name each (2026-11-09,
- * review of 0.1.421 B1, B4).
+ * goes in only when its shard's read-time evidence certifies the content of
+ * every input of its closure here (`certifier`), and its checks have a name
+ * each (2026-11-09, reviews of 0.1.421 B1, B4).
  */
 
 export interface CiExportInput {
@@ -73,13 +72,13 @@ export interface CiExportCounts {
   readonly failed: number;
   /** Files left out: this job did not list them, or could not key them. */
   readonly unkeyed: number;
-  /** Files left out: an input's content here is not what their part records for it, or it records none. */
+  /** Files left out: an input's content here is not what their shard read, or the shard holds no evidence of it. */
   readonly uncertified: number;
   /** Files left out: two of their checks share a name, which a part cannot name as the daemon does. */
   readonly ambiguous: number;
 }
 
-/** A file left out because its part does not certify these inputs' content here. */
+/** A file left out because its shard's evidence does not certify these inputs' content here. */
 export interface UncertifiedFile {
   readonly testFile: TestFileRef;
   readonly inputs: readonly RelativePath[];
@@ -122,9 +121,7 @@ async function exportWith(input: CiExportInput, runner: RunnerAdapter): Promise<
   const named = passed.filter((file) => (file.sharedNames ?? []).length === 0);
   const { closures, report } = await keyFiles(input.root, runner, keys, named);
   const parted = await keyPartsOf(input, keys, environments, closures);
-  const blobs =
-    header.commit === null ? new Map() : await committedBlobs(input.root, header.commit);
-  const certify = certifier(input.root, keys, parts, blobs);
+  const certify = certifier(input.root, keys, parts);
   const uncertified: UncertifiedFile[] = [];
   const provenance: Provenance = {
     worktreeId,

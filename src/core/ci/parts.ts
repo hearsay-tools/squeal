@@ -4,22 +4,23 @@ import { join } from "node:path";
 import { configFieldHash, type EnvironmentDescriptor } from "../keys/environment-descriptor.js";
 import type { ExportSource } from "../store/imports.js";
 import type { AbsolutePath, EpochMs, ProjectName, RelativePath } from "../types/common.js";
-import type { FileHash } from "../types/keys.js";
 import type { ObservedInputs } from "../types/runner.js";
+import type { InputEvidence } from "./inputs.js";
 
 /*
  * Spec 018 D8 (row 018-16): what `squeal ci record` writes, one part file per
  * Vitest process, for `squeal ci export` (D9, row 018-17) to read. JSON, one
- * object, `format: "squeal-ci-part/2"`. No key is in it: the export job
+ * object, `format: "squeal-ci-part/3"`. No key is in it: the export job
  * computes keys in a fresh checkout of the same commit, and keys a file only
- * when the content the part records for its inputs is that checkout's (D9 as
- * amended 2026-11-09, review of 0.1.421). Never in it: failure text, run
- * logs, environment or config values (only their hashes), absolute paths.
- * Format 2 added the shard, the checkout's state, the input hashes, the
- * snapshot options per field and the shared check names.
+ * when the evidence the run took as it read each input is that checkout's
+ * content (D9 as amended 2026-11-09, reviews of 0.1.421). Never in it:
+ * failure text, run logs, environment or config values (only their hashes),
+ * absolute paths. Format 2 added the shard, the snapshot options per field
+ * and the shared check names; format 3 the read-time evidence, in place of
+ * format 2's input hashes after the run and checkout state.
  */
 
-export const PART_FORMAT = "squeal-ci-part/2";
+export const PART_FORMAT = "squeal-ci-part/3";
 
 /** The file name prefix of a part; the rest is a UUID, so parts of every shard can share one directory. */
 export const PART_PREFIX = "squeal-part-";
@@ -48,18 +49,6 @@ export interface PartHeader {
   readonly commit: string | null;
   /** Provenance: git status reported any change, untracked files included. */
   readonly dirty: boolean;
-  /**
-   * No tracked file differed from `commit`, staged or not, before the
-   * command and after it: each tracked input the run read was the commit's.
-   */
-  readonly clean: boolean;
-  /**
-   * The untracked and ignored entries git status reported before the
-   * command or after it (`--ignored=matching`), sorted; a directory ends in
-   * `/` and stands for everything below it. A path absent from `commit` and
-   * below none of them was absent from the checkout.
-   */
-  readonly untracked: readonly RelativePath[];
   readonly shard: PartShard;
   readonly createdAt: EpochMs;
   /** As the export header records it (spec 018 D2). */
@@ -113,13 +102,6 @@ export interface PartFile {
   /** Absent: the recorder saw no read, or did not run (`PartHeader.observing`). */
   readonly observed?: PartObserved;
   /**
-   * The content of each input in `observed` after the run: a file path's git
-   * blob id (`null`: none there), a listing path's names hash
-   * (`listingHash`), one for each directory below a recursive listing too.
-   * Absent with `observed`.
-   */
-  readonly inputs?: Readonly<Record<RelativePath, FileHash | null>>;
-  /**
    * Full names two or more of the file's checks share. Without the run's
    * test locations the part cannot name them as the daemon does, so D9
    * leaves the file out. Absent: none.
@@ -133,6 +115,13 @@ export interface Part {
   readonly projects: readonly PartProject[];
   /** Sorted by project, then path. */
   readonly testFiles: readonly PartFile[];
+  /**
+   * What the command's processes read, listed or probed, each at the moment
+   * it did (`readEvidence`): a file's git blob id, `null` for no file, a
+   * listing path's names hash. A path written during the command, or read
+   * with two contents, is not here. Every part of one command holds the same.
+   */
+  readonly evidence: InputEvidence;
 }
 
 /** The field of `snapshotOptions` D9 asks to be `none` and compares no further. */
@@ -186,6 +175,9 @@ export function readPart(file: AbsolutePath): Part | string {
   const part = value as Partial<Part>;
   if (!Array.isArray(part.projects) || !Array.isArray(part.testFiles) || !part.header) {
     return `${file}: a part without header, projects or testFiles`;
+  }
+  if (typeof part.evidence !== "object" || part.evidence === null) {
+    return `${file}: a part without evidence`;
   }
   return value as Part;
 }

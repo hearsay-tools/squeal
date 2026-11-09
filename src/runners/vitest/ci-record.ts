@@ -3,11 +3,10 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { withInputs } from "../../core/ci/inputs.js";
+import { type InputEvidence, readEvidence } from "../../core/ci/inputs.js";
 import type { PartEnd, PartFile, PartProject, PartShard } from "../../core/ci/parts.js";
 import type { WorktreePaths } from "../../core/fs/worktree-paths.js";
-import { readObjectFormat } from "../../core/hash/git-index.js";
-import { createFsHasher } from "../../core/hash/hasher.js";
+import type { ObjectFormat } from "../../core/hash/blob.js";
 import type { AbsolutePath } from "../../core/types/common.js";
 import { takeRecorded } from "../observe/read.js";
 import {
@@ -24,9 +23,11 @@ import { readRawRuns, recordedRun } from "./ci-runs.js";
  * Spec 018 D8 (row 018-16): `squeal ci record` around the project's own
  * Vitest command. No instance of Squeal's: the command's own Vitest runs,
  * with the recorder (`recorder.cjs`) in its workers and a hook
- * (`vitest-ci.cjs`) in its CLI process, both through `NODE_OPTIONS`. The hook
- * writes each process's run into a private temp directory; `finish` turns
- * each into a part's body. No daemon, no store, no key.
+ * (`vitest-ci.cjs`) in every process, both through `NODE_OPTIONS`. The hook
+ * writes each Vitest process's run into a private temp directory, and in
+ * every process the evidence of what it read as it read it (`evidence.cjs`,
+ * D9 as amended 2026-11-09); `finish` turns each run into a part's body. No
+ * daemon, no store, no key.
  */
 
 /** The env variable carrying the hook's settings (`vitest-ci.cjs`). */
@@ -53,17 +54,23 @@ export interface RecordingOptions {
   readonly squealVersion: string;
   /** Where the private directory goes; default the OS temp directory. */
   readonly tempDir?: AbsolutePath;
+  /** The repository's object format: the evidence hashes files as git does. */
+  readonly objectFormat: ObjectFormat;
 }
 
 export interface VitestRecording {
   /** The env the command runs with: the recorder and the hook in `NODE_OPTIONS`. */
   readonly env: NodeJS.ProcessEnv;
   /**
-   * After the command exited: each Vitest process's run, each test file with
-   * the content of what it read now (`withInputs`), and a note for each
-   * process that left none.
+   * After the command exited: each Vitest process's run, a note for each
+   * process that left none, and the command's read-time evidence
+   * (`readEvidence`).
    */
-  finish(): Promise<{ readonly runs: RecordedRun[]; readonly notes: string[] }>;
+  finish(): {
+    readonly runs: RecordedRun[];
+    readonly notes: string[];
+    readonly evidence: InputEvidence;
+  };
   /** Removes the private directory. */
   close(): void;
 }
@@ -102,28 +109,27 @@ export function startRecording(options: RecordingOptions): VitestRecording | str
   const temp = mkdtempSync(join(options.tempDir ?? tmpdir(), "squeal-ci-"));
   const raw = join(temp, "raw");
   const observed = join(temp, "observe");
-  mkdirSync(raw);
-  mkdirSync(observed);
-  const env = { ...options.env, ...commandEnv(options, hook, recorder, temp, observed) };
-  env[CI_RECORD_VARIABLE] = JSON.stringify({ raw, variables: [...options.allowlist] });
+  const evidence = join(temp, "evidence");
+  for (const dir of [raw, observed, evidence]) mkdirSync(dir);
+  const { env: commandVariables, skip } = commandEnv(options, hook, recorder, temp, observed);
+  const env = { ...options.env, ...commandVariables };
+  const root = options.paths.root;
+  env[CI_RECORD_VARIABLE] = JSON.stringify({
+    raw,
+    variables: [...options.allowlist],
+    evidence: { out: evidence, root, skip, format: options.objectFormat },
+  });
   return {
     env,
-    finish: async () => {
+    finish: () => {
       const recorded = recorder === null ? null : takeRecorded(observed);
       const { runs, notes } = readRawRuns(raw);
       const context = { ...options, observing: recorder !== null, recorded };
       const none = runs.length === 0 && notes.length === 0;
-      const root = options.paths.root;
-      const hasher = createFsHasher(root, await readObjectFormat(root));
-      const seen = new Map();
-      const bodies: RecordedRun[] = [];
-      for (const run of runs) {
-        const body = recordedRun(run, context);
-        bodies.push({ ...body, testFiles: await withInputs(root, hasher, body.testFiles, seen) });
-      }
       return {
-        runs: bodies,
+        runs: runs.map((run) => recordedRun(run, context)),
         notes: none ? ["no Vitest run in this command: nothing recorded"] : notes,
+        evidence: readEvidence(evidence),
       };
     },
     close: () => rmSync(temp, { recursive: true, force: true }),
@@ -133,9 +139,9 @@ export function startRecording(options: RecordingOptions): VitestRecording | str
 /**
  * `NODE_OPTIONS` with the recorder first, as the daemon's workers get it
  * (`observeEnv`), then the hook; without the recorder, another Squeal's is
- * left out (`unobservedEnv`). The recorder skips the OS temp directory unless
- * the worktree lies in it, as `VitestObserver` does, and this run's own
- * directory always.
+ * left out (`unobservedEnv`). `skip`: what the recorder and the evidence
+ * never record, the OS temp directory unless the worktree lies in it, as
+ * `VitestObserver` skips it, and this run's own directory always.
  */
 function commandEnv(
   options: RecordingOptions,
@@ -143,19 +149,23 @@ function commandEnv(
   recorder: AbsolutePath | null,
   temp: AbsolutePath,
   observed: AbsolutePath,
-): Record<string, string> {
+): { env: Record<string, string>; skip: AbsolutePath[] } {
   const inherited = options.env.NODE_OPTIONS;
   const own = (inherited === undefined ? undefined : ownNodeOptions(inherited))?.trim() ?? "";
   const hookOption = recorderOption(hook, own);
   const withHook = own === "" ? hookOption : `${hookOption} ${own}`;
-  if (recorder === null) return { ...unobservedEnv(options.env), NODE_OPTIONS: withHook };
   const root = options.paths.root;
   const system = tmpdir();
-  const contains = `${root}${sep}`.startsWith(`${system}${sep}`);
-  const settings = { out: observed, root, skip: contains ? [temp] : [system, temp] };
-  const env = observeEnv(recorder, settings, withHook);
+  const skip = `${root}${sep}`.startsWith(`${system}${sep}`) ? [temp] : [system, temp];
+  if (recorder === null) {
+    return { env: { ...unobservedEnv(options.env), NODE_OPTIONS: withHook }, skip };
+  }
+  const env = observeEnv(recorder, { out: observed, root, skip }, withHook);
   return {
-    NODE_OPTIONS: env.NODE_OPTIONS ?? withHook,
-    [OBSERVE_VARIABLE]: env[OBSERVE_VARIABLE] ?? "",
+    env: {
+      NODE_OPTIONS: env.NODE_OPTIONS ?? withHook,
+      [OBSERVE_VARIABLE]: env[OBSERVE_VARIABLE] ?? "",
+    },
+    skip,
   };
 }

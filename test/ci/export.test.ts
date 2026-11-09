@@ -132,7 +132,7 @@ describe("squeal ci export (spec 018 D9)", () => {
     const daemon = await daemonExport(origin);
     const job = await partsExport(origin, out);
     if (!("bundle" in job)) throw new Error(job.refused.text);
-    expect(job.counts).toEqual({
+    expect(job.counts, JSON.stringify(job.uncertified)).toEqual({
       testFiles: 4,
       results: 12,
       failed: 0,

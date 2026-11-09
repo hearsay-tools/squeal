@@ -58,8 +58,6 @@ function part(commit: string): Part {
       runnerVersion: "5.0.3",
       commit,
       dirty: false,
-      clean: true,
-      untracked: [],
       shard: { index: 1, count: 1 },
       createdAt: 0,
       source: { kind: "local" },
@@ -70,6 +68,7 @@ function part(commit: string): Part {
     testFiles: [
       { project: "", path: "test/a.test.ts", outcome: "pass", durationMs: 1, checks: [] },
     ],
+    evidence: {},
   };
 }
 

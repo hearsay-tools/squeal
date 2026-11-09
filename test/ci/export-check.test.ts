@@ -77,8 +77,6 @@ function part(
       runnerVersion: "5.0.3",
       commit: COMMIT,
       dirty: false,
-      clean: true,
-      untracked: [],
       shard: { index: 1, count: 1 },
       createdAt: 0,
       source: { kind: "local" },
@@ -94,6 +92,7 @@ function part(
       },
     ],
     testFiles: files.map(file),
+    evidence: {},
   };
 }
 

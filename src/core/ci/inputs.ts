@@ -1,37 +1,26 @@
 import { createHash } from "node:crypto";
-import { type Dirent, readdirSync, statSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { compare } from "../fs/compare.js";
-import { runGit, splitNul } from "../fs/git.js";
-import type { Hasher } from "../hash/hasher.js";
-import {
-  ABSENT_LISTING,
-  GIT_ENTRY,
-  listedDirectory,
-  listingPath,
-  namesHash,
-} from "../keys/observed.js";
+import { ABSENT_LISTING, GIT_ENTRY, namesHash } from "../keys/observed.js";
 import type { AbsolutePath, RelativePath } from "../types/common.js";
 import type { FileHash } from "../types/keys.js";
-import type { PartFile, PartObserved } from "./parts.js";
 
 /*
- * Spec 018 D8 and D9 (2026-11-09, review of 0.1.421 B1): the evidence that
- * ties a shard's result to content. `squeal ci record` hashes, after the
- * run, every input each test file read, and records the checkout's state;
- * `squeal ci export` keys a file only when every input of its closure has,
- * in the export's checkout, the content the part certifies for it. A shared
- * commit alone certifies no ignored or untracked file.
+ * Spec 018 D8 and D9 (2026-11-09, review of 0.1.421 second round B1, "one
+ * owner for input evidence"): the evidence that ties a shard's results to
+ * content. While `squeal ci record` runs the command, every process records
+ * the content of each input at the moment it read it, a listing's names at
+ * the moment it listed, a path's absence at the moment it probed, and each
+ * path it wrote (`src/runners/vitest/ci-runtime/evidence.cjs`). `squeal ci
+ * export` keys a file only when every input of its closure has such
+ * evidence, none of it cancelled by a write, equal to the export's checkout.
+ * Nothing is hashed after the command, and neither a clean checkout nor a
+ * path git did not report stands for evidence.
  */
 
-/** Per input path, its content: a file's blob id (`null`: none), a listing path's `listingHash`. */
-export type InputHashes = Readonly<Record<RelativePath, FileHash | null>>;
-
-/** What a part says about its checkout beside the commit (`PartHeader`). */
-export interface CheckoutState {
-  readonly clean: boolean;
-  readonly untracked: readonly RelativePath[];
-}
+/** Per input path the run read, listed or probed: a file's blob id (`null`: none), a listing path's names hash. */
+export type InputEvidence = Readonly<Record<RelativePath, FileHash | null>>;
 
 /** The names `directory` holds on disk, hashed; a marker when it is absent. */
 export function listingHash(root: AbsolutePath, directory: RelativePath): FileHash {
@@ -50,165 +39,90 @@ export function gitEntryHash(root: AbsolutePath): FileHash | null {
   return createHash("sha1").update(`.git ${kind}`).digest("hex");
 }
 
-/**
- * `files` with each one's `inputs`: every path it read and every directory
- * it listed, hashed in `root` now, as the stat cache hashes a file
- * (`hasher`). A recursive listing hashes each directory below it too, as
- * the export keys it. `seen` holds the hashes across files.
- */
-export async function withInputs(
-  root: AbsolutePath,
-  hasher: Hasher,
-  files: readonly PartFile[],
-  seen: Map<RelativePath, FileHash | null> = new Map(),
-): Promise<PartFile[]> {
-  const out: PartFile[] = [];
-  for (const file of files) {
-    if (file.observed === undefined) out.push(file);
-    else out.push({ ...file, inputs: await inputsOf(root, hasher, file.observed, seen) });
-  }
-  return out;
+interface EvidenceLine {
+  readonly e?: Record<string, unknown>;
+  readonly w?: readonly unknown[];
+  readonly t?: readonly unknown[];
 }
-
-async function inputsOf(
-  root: AbsolutePath,
-  hasher: Hasher,
-  observed: PartObserved,
-  seen: Map<RelativePath, FileHash | null>,
-): Promise<InputHashes> {
-  const listings = new Set(observed.directories.map(listingPath));
-  for (const directory of observed.recursive ?? []) {
-    for (const below of directoriesBelow(root, directory)) listings.add(listingPath(below));
-  }
-  const inputs: Record<RelativePath, FileHash | null> = {};
-  for (const path of [...observed.paths, ...listings]) {
-    let hash = seen.get(path);
-    if (hash === undefined) {
-      hash = await hashInput(root, hasher, path);
-      seen.set(path, hash);
-    }
-    inputs[path] = hash;
-  }
-  return inputs;
-}
-
-async function hashInput(
-  root: AbsolutePath,
-  hasher: Hasher,
-  path: RelativePath,
-): Promise<FileHash | null> {
-  const directory = listedDirectory(path);
-  if (directory !== null) return listingHash(root, directory);
-  if (path === GIT_ENTRY) return gitEntryHash(root);
-  return (await hasher.stat(path)) === null ? null : hasher.hash(path);
-}
-
-/** Every directory on disk below `directory`, `.git` and `node_modules` aside. */
-function directoriesBelow(root: AbsolutePath, directory: RelativePath): RelativePath[] {
-  const out: RelativePath[] = [];
-  const walk = (dir: RelativePath) => {
-    let entries: Dirent[];
-    try {
-      entries = readdirSync(join(root, dir), { withFileTypes: true });
-    } catch {
-      return;
-    }
-    for (const entry of entries) {
-      if (!entry.isDirectory() || entry.name === ".git" || entry.name === "node_modules") continue;
-      const below = dir === "" ? entry.name : `${dir}/${entry.name}`;
-      out.push(below);
-      walk(below);
-    }
-  };
-  walk(directory);
-  return out;
-}
-
-/** A checkout git could not read: it certifies no input the part did not hash. */
-const UNREAD: CheckoutState = { clean: false, untracked: [] };
 
 /**
- * The checkout's state now: whether a tracked file differs from `HEAD`,
- * staged or not, and the untracked and ignored entries git reports, sorted,
- * an ignored or untracked directory once (`--ignored=matching`). Never
- * throws, since the project's command runs whatever Squeal reads (D16): a
- * failed git reads as `UNREAD`.
+ * The command's evidence from the files `evidence.cjs` appended to `dir`,
+ * one per process and thread: each path's one value. A path with two values
+ * (it changed while the run read it), or written, or below a path written
+ * with everything below it, has none. Sorted by path. A line that does not
+ * parse is skipped; the evidence in it is lost, which only leaves files out.
  */
-export async function readCheckout(root: AbsolutePath): Promise<CheckoutState> {
-  let status: string;
+export function readEvidence(dir: AbsolutePath): InputEvidence {
+  const values = new Map<RelativePath, FileHash | null>();
+  const conflicting = new Set<RelativePath>();
+  const written = new Set<RelativePath>();
+  const trees = new Set<RelativePath>();
+  for (const line of evidenceLines(dir)) {
+    for (const [path, value] of Object.entries(line.e ?? {})) {
+      if (typeof value !== "string" && value !== null) continue;
+      const known = values.get(path);
+      if (known === undefined) values.set(path, value);
+      else if (known !== value) conflicting.add(path);
+    }
+    for (const path of line.w ?? []) if (typeof path === "string") written.add(path);
+    for (const path of line.t ?? []) if (typeof path === "string") trees.add(path);
+  }
+  const below = writtenBelow(trees);
+  const kept = [...values].filter(
+    ([path]) => !conflicting.has(path) && !written.has(path) && !below(path),
+  );
+  return Object.fromEntries(kept.sort(([a], [b]) => compare(a, b)));
+}
+
+function evidenceLines(dir: AbsolutePath): EvidenceLine[] {
+  let names: string[];
   try {
-    status = await runGit(root, [
-      "--no-optional-locks",
-      "status",
-      "--porcelain=v1",
-      "-z",
-      "--untracked-files=normal",
-      "--ignored=matching",
-      "--ignore-submodules=all",
-    ]);
+    names = readdirSync(dir).sort(compare);
   } catch {
-    return UNREAD;
+    return [];
   }
-  const entries = splitNul(status);
-  let clean = true;
-  const untracked: RelativePath[] = [];
-  for (let i = 0; i < entries.length; i++) {
-    const entry = entries[i] ?? "";
-    const code = entry.slice(0, 2);
-    if (code === "??" || code === "!!") untracked.push(entry.slice(3));
-    else {
-      clean = false;
-      // A rename or copy's source follows it as a field of its own.
-      if (/[RC]/.test(code)) i += 1;
+  const lines: EvidenceLine[] = [];
+  for (const name of names) {
+    for (const text of readFileSync(join(dir, name), "utf8").split("\n")) {
+      if (text === "") continue;
+      try {
+        const value: unknown = JSON.parse(text);
+        if (typeof value === "object" && value !== null) lines.push(value as EvidenceLine);
+      } catch {
+        // a line cut short by a process stopped mid-write
+      }
     }
   }
-  return { clean, untracked: untracked.sort(compare) };
+  return lines;
 }
 
-/** `a` and `b` as one state: clean when both are, every entry of either. */
-export function joinCheckouts(a: CheckoutState, b: CheckoutState): CheckoutState {
-  return {
-    clean: a.clean && b.clean,
-    untracked: [...new Set([...a.untracked, ...b.untracked])].sort(compare),
+/** Whether a path, a file or a listing path, is one of `trees` or below one. */
+function writtenBelow(trees: ReadonlySet<RelativePath>): (path: RelativePath) => boolean {
+  return (path) => {
+    const bare = path.endsWith("/") ? path.slice(0, -1) : path;
+    if (trees.has(bare)) return true;
+    for (let at = bare.indexOf("/"); at >= 0; at = bare.indexOf("/", at + 1)) {
+      if (trees.has(bare.slice(0, at))) return true;
+    }
+    return false;
   };
 }
 
 /**
- * Spec 018 D9: the inputs among `paths`, a keyed file's closure, whose
- * content `here` (this checkout's, as its key holds it) the part does not
- * certify. A recorded input must equal; an unrecorded one counts only in a
- * clean checkout, as the commit's blob when the commit tracks it, else as no
- * file when no untracked or ignored entry covers it. A listing or `.git`
- * not recorded is never certified. Empty: the file's result is of this
+ * Spec 018 D9: the inputs among `paths`, a keyed file's closure, the shard's
+ * `evidence` does not certify at `here` (this checkout's content, as its key
+ * holds it; `undefined` unknown). Certified: the run's read-time evidence
+ * holds the path and equals `here`. Empty: the file's result is of this
  * content.
  */
 export function uncertified(
   paths: readonly RelativePath[],
-  recorded: InputHashes | undefined,
-  checkout: CheckoutState,
-  committed: ReadonlyMap<RelativePath, FileHash>,
+  evidence: InputEvidence,
   here: (path: RelativePath) => FileHash | null | undefined,
 ): RelativePath[] {
-  const covered = coveredBy(checkout.untracked);
   return paths.filter((path) => {
+    if (!Object.hasOwn(evidence, path)) return true;
     const now = here(path);
-    if (now === undefined) return true;
-    if (recorded !== undefined && Object.hasOwn(recorded, path)) return recorded[path] !== now;
-    if (!checkout.clean || listedDirectory(path) !== null || path === GIT_ENTRY) return true;
-    const blob = committed.get(path);
-    if (blob !== undefined) return blob !== now;
-    return covered(path) || now !== null;
+    return now === undefined || evidence[path] !== now;
   });
-}
-
-/** Whether a path is one of `entries` or below one of its directories. */
-function coveredBy(entries: readonly RelativePath[]): (path: RelativePath) => boolean {
-  const exact = new Set(entries);
-  return (path) => {
-    if (exact.has(path)) return true;
-    for (let at = path.indexOf("/"); at >= 0; at = path.indexOf("/", at + 1)) {
-      if (exact.has(path.slice(0, at + 1))) return true;
-    }
-    return false;
-  };
 }
