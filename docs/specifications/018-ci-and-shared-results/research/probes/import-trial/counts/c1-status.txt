@@ -1,0 +1,11 @@
+Revision: 0
+Known failures: 0; not current: 228 of 1817 test files (228 unknown)
+Affected checks: 27863 passed (26274 tests, 1589 test files loaded), 0 running, 0 queued, 14 skipped (14 tests)
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+browser: 100 test files; 100 not run at revision 0. Squeal has not queued them; `squeal run browser --wait 60000` runs them now and waits for their results.
+Outstanding:
+  128 test files never run at their inputs, nothing queued them (the baseline is lookup-only): root:test:unit: .ai/skills/check-code-quality/scripts/changed-functions.test.mjs, root:test:unit: .ai/skills/check-code-quality/scripts/complexity-gate.test.mjs, root:test:unit: .ai/skills/check-code-quality/scripts/istanbul-merge.test.mjs and 125 more; `squeal retry <test file>...` runs each once, `squeal run --all --wait` runs all 228 test files not current here
+Complexity: 0 functions over 20; squeal code lists them.
+Coverage: 41 functions over CRAP 30, 370 untested; 95 files wait for test runs, which squeal run --all makes; 1514 files unknown (1479 from a test file with no coverage record, 35 from a skipped test); squeal code lists them.
+Lint: 0 files with findings; squeal lint lists them.
+More: `squeal status --full` adds the worktree and daemon, the 228 test files without a result one by one and 5 notes

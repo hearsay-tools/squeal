@@ -1,0 +1,2145 @@
+{
+  "schemaVersion": 1,
+  "available": true,
+  "worktreeId": "190d1869c9a211a0",
+  "worktreeRoot": "/home/agent/projects/squeal/.ai/cezar/t/a9fd78c8/cez-1",
+  "revision": 0,
+  "counts": {
+    "current": 27877,
+    "pending": 0,
+    "stale": 0,
+    "unknown": 0
+  },
+  "fileLevelCounts": {
+    "current": 1589,
+    "pending": 0,
+    "stale": 0,
+    "unknown": 0
+  },
+  "testFilesWithoutChecks": {
+    "pending": 0,
+    "unknown": 228
+  },
+  "testFileCounts": {
+    "current": 1589,
+    "pending": 0,
+    "stale": 0,
+    "unknown": 228
+  },
+  "testFilesByPhase": {
+    "running": 0,
+    "queued": 0
+  },
+  "testsByPhase": {
+    "running": 0,
+    "queued": 0
+  },
+  "fullSuite": {
+    "atCurrentRevision": false,
+    "lastCompletedRevision": null
+  },
+  "testFilesListed": true,
+  "inheritedCount": 0,
+  "inheritedFileLevelCount": 0,
+  "importedCount": 27877,
+  "refinedRevision": 0,
+  "runnerPartPending": false,
+  "slowPending": {
+    "testFiles": 0,
+    "checks": 0,
+    "testFilesWithoutChecks": 0
+  },
+  "groupTiers": [
+    {
+      "name": "browser",
+      "at": "manual",
+      "after": [],
+      "quietMs": 0,
+      "testFiles": 100,
+      "current": 0,
+      "pending": 0,
+      "notRun": 100,
+      "currentAt": null,
+      "activity": null
+    }
+  ],
+  "lanePending": {
+    "testFiles": 0,
+    "checks": 0,
+    "testFilesWithoutChecks": 0
+  },
+  "head": "721c19b004d5f4453488d2b4e859fd6a6256f97b",
+  "dirty": null,
+  "dirtyObservedAt": null,
+  "daemon": {
+    "state": "alive",
+    "lastHeartbeatAt": 1794224320277
+  },
+  "knownFailures": [],
+  "knownFailureCounts": {
+    "current": 0,
+    "pending": 0,
+    "stale": 0
+  },
+  "inherited": {
+    "count": 0,
+    "sources": []
+  },
+  "imports": [
+    {
+      "importId": "ad9bf119b0637910",
+      "source": "CI run 42596322864 on hearsay-tools/cezarion at 721c19b0",
+      "commit": "721c19b004d5f4453488d2b4e859fd6a6256f97b",
+      "importedAt": 1794224127270,
+      "currentResults": 27877,
+      "testFiles": 1716,
+      "currentFiles": 1589,
+      "notCurrent": {
+        "sameKeyKept": 0,
+        "sameKeyNotAdopted": 0,
+        "environment": 127,
+        "closure": 0,
+        "observed": 0,
+        "content": 0,
+        "noKey": 0
+      },
+      "environmentDifferences": [
+        "root:test:unit: config fields execPath differ",
+        "test:unit: config fields execPath differ"
+      ]
+    }
+  ],
+  "breakdown": {
+    "currentByOutcome": {
+      "pass": 27863,
+      "fail": 0,
+      "skip": 14,
+      "unknown": 0
+    },
+    "pendingByPhase": {
+      "queued": 0,
+      "running": 0
+    },
+    "fileLevelByOutcome": {
+      "pass": 1589,
+      "fail": 0,
+      "skip": 0,
+      "unknown": 0
+    },
+    "fileLevelByPhase": {
+      "queued": 0,
+      "running": 0
+    },
+    "testFiles": 1817,
+    "testFilesWithoutChecks": 228,
+    "testFilesWithoutChecksRunning": 0
+  },
+  "closureMethod": "static imports plus declared inputs",
+  "storeSchemaVersion": 1,
+  "notes": [
+    "no revision recorded for this worktree yet"
+  ],
+  "daemonNotes": [
+    {
+      "at": 1794224128996,
+      "revision": null,
+      "text": "node-test project \"root:test:unit\": preload \"scripts/test-home-env.mjs\" imports node:module through \"scripts/check-workspace-resolution.mjs\" and may register module hooks; Squeal does not record in Node's loader thread, so what the hooks load enters no key; declare it in inputs; resolving with Node's own rules"
+    },
+    {
+      "at": 1794224128997,
+      "revision": null,
+      "text": "node-test project \"root:test:unit\": 14 test file(s) with an incomplete static closure, keyed by what their runs load: .ai/skills/check-code-quality/scripts/istanbul-merge.test.mjs (import() with a computed specifier at .ai/skills/check-code-quality/scripts/vitest-coverage.mjs:49:34), .ai/skills/check-code-quality/scripts/metrics.test.mjs (import() with a computed specifier at .ai/skills/check-code-quality/scripts/vitest-coverage.mjs:49:34), .ai/skills/check-code-quality/scripts/quality-check.test.mjs (import() with a computed specifier at .ai/skills/check-code-quality/scripts/vitest-coverage.mjs:49:34), ...",
+      "topic": "node-test-closure:root:test:unit"
+    },
+    {
+      "at": 1794224128999,
+      "revision": null,
+      "text": "node-test project \"test:unit\": preload \"scripts/test-home-env.mjs\" imports node:module through \"scripts/check-workspace-resolution.mjs\" and may register module hooks; Squeal does not record in Node's loader thread, so what the hooks load enters no key; declare it in inputs; resolving with tsx's rules"
+    },
+    {
+      "at": 1794224128999,
+      "revision": null,
+      "text": "node-test project \"test:unit\": 1 test file(s) with an incomplete static closure, keyed by what their runs load: packages/cezar/test/unit/resolve-browser-launch.test.ts (import() with a computed specifier at packages/cezar/test/unit/resolve-browser-launch.test.ts:16:11; import() with a computed specifier at packages/cezar/test/unit/resolve-browser-launch.test.ts:226:26)",
+      "topic": "node-test-closure:test:unit"
+    }
+  ],
+  "runtimeFiles": {
+    "pending": false,
+    "readers": [
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/activity.e2e.ts"
+        },
+        "key": "0d4128b57ca269f6534b88f2e1c23e06f8aff8138f99076bb03a58c0ad309a9e",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/agent-browser-tabs.e2e.ts"
+        },
+        "key": "7d38b662806c69878d95c7ce6997791e5cc8976fa7bea9a2130f7a8c5a70ea1d",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/agents-dock.e2e.ts"
+        },
+        "key": "696163aa98d197f9c805708a097e225f75f7c2ba4ea7f1370c5042597d71850e",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/application-update.e2e.ts"
+        },
+        "key": "80eee939ab14ec52462a5c8255b23534570d4600b5a2f27724e3570bf91157b6",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/artifact-project-links.e2e.ts"
+        },
+        "key": "6c37080c51e697d297fb4909cc372417505d6bdf32431cacaaced8bc03b680ec",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/assistant-line-breaks.e2e.ts"
+        },
+        "key": "28e35c9410e3a4d7a8d4d959929f3df6fd0a49ca759d0edadbb9ec2f36e10eb7",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/assistant-reply-copy.e2e.ts"
+        },
+        "key": "a6460681c40f67a9fafcbd3108e44933ae0767c8a837e15eda40d221a70d7396",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/automations-disabled.e2e.ts"
+        },
+        "key": "c75a138b634db79228916620a223dd4eea83a9d61e318be476cfe5538ec2ee17",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/automations-github.e2e.ts"
+        },
+        "key": "5726f2e76b9cccfd9a83a300f087bb2be53beb9b2031a7e6a17095a2d2f1e510",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/automations.e2e.ts"
+        },
+        "key": "aa4234f12cc8ba19d9f7add8e2ce81a03114bd7175c19ed9d4e8116c78334d16",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/chat-code-fence.e2e.ts"
+        },
+        "key": "3f78d65514186e000c2b001343b5beecfb0c0b68cad207fd3bf3d5e62a893893",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/command-palette.e2e.ts"
+        },
+        "key": "36645bc8e0956750b288187da09f7c67d85307550f458d1bba538b158f34c09c",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/commit-list.e2e.ts"
+        },
+        "key": "dd7c48c2aabcee61c090547bce1ad68b6748c8d7116df7e9e095d949cb6f01a6",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/completion-controls.e2e.ts"
+        },
+        "key": "0633aa3ff7f88c51040c5cb29dce24c9d70896818a86a1b0384f896d7f6d4a85",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/composer-defaults.e2e.ts"
+        },
+        "key": "109e054502a59df77e0fb81aec7c3cd98cd09cb5aa3598cf164333f98d23e275",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/composer.e2e.ts"
+        },
+        "key": "435c7bf20ff59c5addf5c82fb9e2ce7a74dca4cc989737494e188874700210ef",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/create-project.e2e.ts"
+        },
+        "key": "940b7ff7033411451e00067441f8448f4f9ecfa571e14c49b2e9124b52851ac7",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/diff-scroll.e2e.ts"
+        },
+        "key": "8c678660973d6f4051cae25a66110b89d2fce714cb4f51495b72f1f90dd8a95d",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/empty-states.e2e.ts"
+        },
+        "key": "700aedd19594b24d3b8d9855206c507374ab4c4941b7eac62f5d2b39d13e7f92",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/fixture-home-isolation.e2e.ts"
+        },
+        "key": "cd5af7fe47912d5edd38ae6734b3d5436b64a9f56753ec56c859330a07d5899a",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/git-sidebar.e2e.ts"
+        },
+        "key": "1c699b9de2aef6179213574c3162427e1ddc87ee4b8ebe5ecaed3d26858d6e01",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/github-core.e2e.ts"
+        },
+        "key": "0428abd4a207cfed55b63a1d2259001e92994dad7dffc73b90871ce0fbab897e",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/github-layout.e2e.ts"
+        },
+        "key": "bab4c955064acef4480e0dc126a0f3b43c74ef0cb4ec5e472a7292184f4bb710",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/github-paging.e2e.ts"
+        },
+        "key": "14b7fa940c163c49b3347c149970fa49ee38058b4ba2e998fd4d2f35f66f77b3",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/github-pr-review.e2e.ts"
+        },
+        "key": "d3a07d5deaa84035fa776f6cba26eb6a919e2c7ae0a28310a4a31d92f2662327",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/github-sidebar.e2e.ts"
+        },
+        "key": "2c0ef16ed00e0e8eac4ec226f4a009eab95db648463ce90f0149235828e10161",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/github-states.e2e.ts"
+        },
+        "key": "d095c26ccbd1a3be34b8ffd1d1e426fa5f4a8e84ecf7e7509d13c0a3d6c36549",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/good-css.e2e.ts"
+        },
+        "key": "d89d8a156938e867178ee67793b1f6f14706474b7442460e5182f0e649a6efd8",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/home-recovery.e2e.ts"
+        },
+        "key": "14135bb2b7db6a94e27c2c2c8f8bfa6d002ae01440804ff4eda78b19ff2d4725",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/html-report-cards.e2e.ts"
+        },
+        "key": "09534e48e6f80c02841e213ed8b4b09a1329d221338ad849ce1f48a8bcb92193",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/html-report-reader.e2e.ts"
+        },
+        "key": "b45ea16ce2d1d850f2f3533fe67f82a8527623dbbab5b8e3c1065d219417da60",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/inbox.e2e.ts"
+        },
+        "key": "6754867d1f992b6c929c3b8a74cb4ca2cc315949b666ab31e0546c22ca10035d",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/index-workload.e2e.ts"
+        },
+        "key": "fa18348b49f3534b5837568e9a5da44bc46be31701e6e685198d881f11ba67d0",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/ios-sweep.e2e.ts"
+        },
+        "key": "8933611967a086789d9472aa848e2b11b24e5e49b630b641e9d858c257907fb5",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/issue-linked-tasks.e2e.ts"
+        },
+        "key": "dabe34facd123a6f8f9f3018611f2dff177d4a763a049fd456d51b618d2d47a2",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/live-preview.e2e.ts"
+        },
+        "key": "f05168029770c1eccd19531e8eafaec3beb8963350830bfcda95d524784b7259",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/markdown-preview.e2e.ts"
+        },
+        "key": "3ff572c25aa6833da73b415404836fdd67bfc32390f8b28e57ac393cdf483de0",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/mobile-projects.e2e.ts"
+        },
+        "key": "b19540bdf8a8a6c606fcfc91b988ee51fea4b3c8fba860a154880791aabd6cea",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/mobile-tab-bar.e2e.ts"
+        },
+        "key": "e3c959bb0b2fbeed021b464601b4b85faed8e3539d0364d9279c06122f0d6d30",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/mobile-task-controls.e2e.ts"
+        },
+        "key": "5fccd8d845b4cc01dcb68eda2fc489444bc0132bd65be2cf3ab92329f9aa6dd7",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/new-task-hierarchy.e2e.ts"
+        },
+        "key": "eb1d14583e9acf1bda9ba1ec56cde8d09f7881b450bfe2994d19e7b4bfe858ce",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/new-task-picker-layout.e2e.ts"
+        },
+        "key": "33bb409ee8b98702437ee1c27de22acc8452a47787154f7b03533651343e9dc9",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/new-task.e2e.ts"
+        },
+        "key": "cd5c1ee679df705f0391af8f65dc64ce08c2ad594dd6ad911ace9b90b3a09e1a",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/page-headings.e2e.ts"
+        },
+        "key": "33d92f64f326294b59b11d8ae5072be45ebb1aec9a3d738f1bf9d62a0231d876",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/peer-conversation.e2e.ts"
+        },
+        "key": "a97e1c23c2f905dc1befae207edd2f0a5021f8262dfa6c53c7a689d9645a182e",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/pending-question.e2e.ts"
+        },
+        "key": "91a91ab5f8bf7f0b0c2b249a28b612586af352d6e6c5e7656313e8782d700d29",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/plan-mode.e2e.ts"
+        },
+        "key": "de7c49d670d05340badd7cef25e84c0545dd8947bf7ee9babb8a6c46a88cb96a",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/progressive-history.e2e.ts"
+        },
+        "key": "16b9c80869325ec718dd7cbd03fca9cddd41b9d12efa649672720a7187c8008e",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/project-order.e2e.ts"
+        },
+        "key": "186a4fd2e6461362a82b6861efb6d0c3d7c65b96dc5656598f210f7d45180e31",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/project-rail.e2e.ts"
+        },
+        "key": "91d2d4906a73a1a138cc25f4b90a7ac6950979e165071a75a66fe8fda7d898f9",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/project-sidebar.e2e.ts"
+        },
+        "key": "831059dc6229c360e0e66b5dd893c716e0dccf2096bef5f03a42e40afcd58cc2",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/queued-stack.e2e.ts"
+        },
+        "key": "f0ece446384f56663b94b1ea136a821ca1665c6e5a2b60922a912fba599b89f4",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/quick-list.e2e.ts"
+        },
+        "key": "ef0d796dd12d930a4a6824147f251e683f1c94bb7cba5df68abaf8a1619983ef",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/remote-settings-admin.e2e.ts"
+        },
+        "key": "c2adda81ce618969c08debc3ee76a1d039f202afdd22b545236edd08adbb4bde",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/repo-git-diff.e2e.ts"
+        },
+        "key": "0c59b591b51ef66d5d02bbd8de218e93a9c78122046ecf2b64688432b571dc07",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/repo-git.e2e.ts"
+        },
+        "key": "a98dee14585dc1436ee2af1841dd5aacc68b61a0174081b69389f90cb87b2ad3",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/reports-workload.e2e.ts"
+        },
+        "key": "df591333de28667581fc0e1f8df5837188d00cdb1d8396dbb67b80f728658aa2",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/reports.e2e.ts"
+        },
+        "key": "ba5b1f4241cb261c2fc6eed8deff80f7227bcc6e5fea3691b0cdd69a51035453",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/review-gate.e2e.ts"
+        },
+        "key": "942c8f17d5eae761e8fdb6d9c01515f29d96d728934d95f184be11ebbe9ce884",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/run-header-ci-wait.e2e.ts"
+        },
+        "key": "b04c8e5ca3b44ee5719d46ef14937d5efd1836c29c40beae4eddd55103a40e83",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/screenshot-element.e2e.ts"
+        },
+        "key": "836373aab82cb382c0a7c2ef8ed03d97865fc6d37c580d0f31f3595288ccff19",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/search-focus.e2e.ts"
+        },
+        "key": "f1c9ac4b8e3c6800f3386c88fb557bd7eb93cce4d754fac607b63967c81243a9",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/selection-states.e2e.ts"
+        },
+        "key": "3e5679aa1f6ec7331edecd42f475b24e310d921db2f58b458be2841128efa308",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/session-footer.e2e.ts"
+        },
+        "key": "8b71dad7d04508a04fc46ee39ef402f8acd6a3c8969e0f638c3811a3f150a04e",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/settings-agent-config.e2e.ts"
+        },
+        "key": "0ce17be89183877085cd18d9d38762ee230915fb1093c18a5794a37528aae00e",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/settings-agents.e2e.ts"
+        },
+        "key": "94126cdce872fd4248bd89ee7c4f996c8a1ff2cf03bb83dc33400fb107588d71",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/settings-appearance.e2e.ts"
+        },
+        "key": "18c622e0a5245897d1c9a85ffbe9dd621596d817f6c4909627ba53975def0d0a",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/settings-bookmarklets.e2e.ts"
+        },
+        "key": "6c77cf730e6e8c02de100f8b01b78a0a3478bc45f1235fe7e711d1f4021089f3",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/settings-monitoring.e2e.ts"
+        },
+        "key": "5aee213f27251420d710fbcfdcb178ec570bf5ff9c87a3338b8de988f99ddaa7",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/settings-resources.e2e.ts"
+        },
+        "key": "d71ce8e372cd2bea16bc9159b06e5557abd827b60b2f63ddbd092da1762c3389",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/settings-sidebar.e2e.ts"
+        },
+        "key": "c0fe2c41762d4862edab8294c9864ac43451e0206ec1af9fe4ac282aad94295c",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/settings-skills.e2e.ts"
+        },
+        "key": "e8157972f55c8d43819bd0054a863a50e09d98ec04406f509922ff39ffd9b82b",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/settings-task-archiving.e2e.ts"
+        },
+        "key": "5215071d491a92b80e7109ef6f3863d6a07346d3770561c14bae1ed42ce5802f",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/sidebar-ellipsis-click.e2e.ts"
+        },
+        "key": "48e12e25e4cfb89927b6a528f86f51c576625651b2c2d33af0c78bd54ac0a2c3",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/sidebar-limits.e2e.ts"
+        },
+        "key": "9ba442aecad36c052a8618196d9ff65cafbf44d46c842f33243e54b280394432",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/sidebar-project-header.e2e.ts"
+        },
+        "key": "2237046ec26b88476b85b6728f824c378c1ee9473fd14da656e64ea8f8b81cdc",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/sidebar-reference-status.e2e.ts"
+        },
+        "key": "94f017f6e82b189fd4007a546fa585e9b6f101c6f07cb1b9a6816171fbb28d1a",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/skill-search-ranking.e2e.ts"
+        },
+        "key": "24c30609d56aab2b264980476a8c094eb231e9e0039e151bdcdc4cbdbf97417e",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/smoke.e2e.ts"
+        },
+        "key": "601deeb3847bd1c4510935ef750f410e031161da3a6432571f66874fdf04c7ae",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/tab-coordination.e2e.ts"
+        },
+        "key": "2e5e273ff8ba2f2d6aa3f86a1b92d4a5587b23dae192edc7a9858aacd6829add",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/task-changes.e2e.ts"
+        },
+        "key": "76eba4f593931a7265f510739ecc97093ede604eaa500040bde526119ee4f650",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/task-files.e2e.ts"
+        },
+        "key": "f93091ebae124955ceb59344a156f5582c336af5bac4344858aca6190143c361",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/task-github-items.e2e.ts"
+        },
+        "key": "5db71741a2fef17458190a12e38f060a527d1d529f555da2530f84aa2386f8fe",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/task-handoff.e2e.ts"
+        },
+        "key": "f4efe024dac53cc2e7203684b0eaa0bd38712c7fc9f6c0745d12c33d0fbc6b7a",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/task-list-virtualization.e2e.ts"
+        },
+        "key": "ec7af7c60742d6be392c015e6b6d488517a56cac4e9489f70b40d55542e2fa97",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/task-list-workload.e2e.ts"
+        },
+        "key": "2775785b4e202b2efa21329eb6848541c54a55c50e33a9bab1eb533913e33c31",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/task-pr-collection.e2e.ts"
+        },
+        "key": "20262cf5b14d0771c69bcd5404d44dafdb460c847941432160f41b69f08505ec",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/task-status-groups.e2e.ts"
+        },
+        "key": "ee94124a5ae2a55181a23bd882c273e0e41e960b4ed066ee5618bba0e80a7d78",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/task-thread-layout.e2e.ts"
+        },
+        "key": "c0b3bb845c869983c69b02f79a291cffaf06bd754374069f656593a72827d4c7",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/task-thread-session.e2e.ts"
+        },
+        "key": "d99dbadacd192710cd4bae2d1f210c04b102aa1d51cf5853312cabeb4747ceb6",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/task-thread-transcript.e2e.ts"
+        },
+        "key": "bbf017a16e2a5c996b6e2db00784c2c735964bc3770130a7814c7f933468cc65",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/task-views-layout.e2e.ts"
+        },
+        "key": "ec476e7a59dd291783bd20f6fceee8900ff8678c026690e5a331e2b88402d424",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/thread-scroll.e2e.ts"
+        },
+        "key": "bf6a717b6867161dae1d46dc880a57d4a7f80db48df7c5a7293c66ef2afc30dd",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/tools-menu.e2e.ts"
+        },
+        "key": "55220a030e9645c0b012738e0ec8db5696a3e77698db02f3911c5a99bb6d5b9f",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/touch-targets.e2e.ts"
+        },
+        "key": "6dffdf04af3c5ce59443f7fa801fa61cfda6752161ae1d62a2604daf047c1783",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/voice.e2e.ts"
+        },
+        "key": "1e614dd3f0275ef29dc2304a15514a157b4cbcf82830d5c52c6c680f7063dca8",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/worker-conversation.e2e.ts"
+        },
+        "key": "e942e9cdf44bc9fb9d6fb831a653d3363e2701597a642d03d81133af1d66f340",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/worker-relationships.e2e.ts"
+        },
+        "key": "3c67f27def904cf956f1c813ed3b20e3f5ecc812378b7a90816639a83324f836",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/workflows.e2e.ts"
+        },
+        "key": "d51de588f2d62216a73d5737f0745e275280a7db885f1a040af19f04f9b80357",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/worktree-setup.e2e.ts"
+        },
+        "key": "4262e622248340c79eee13ad3b40536ce689cf7e870e47e5861ebc24bf03c278",
+        "paths": [
+          ".ai/qa/test-env.json"
+        ],
+        "conflicts": [],
+        "verified": true
+      }
+    ],
+    "notes": []
+  },
+  "unknownTestFiles": {
+    "total": 228,
+    "files": [
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/activity.e2e.ts"
+        },
+        "ran": false,
+        "samples": [],
+        "reason": "never run at this key: the baseline is lookup-only, so nothing queued it",
+        "cause": "never-run"
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/agent-browser-tabs.e2e.ts"
+        },
+        "ran": false,
+        "samples": [],
+        "reason": "never run at this key: the baseline is lookup-only, so nothing queued it",
+        "cause": "never-run"
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/agents-dock.e2e.ts"
+        },
+        "ran": false,
+        "samples": [],
+        "reason": "never run at this key: the baseline is lookup-only, so nothing queued it",
+        "cause": "never-run"
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/application-update.e2e.ts"
+        },
+        "ran": false,
+        "samples": [],
+        "reason": "never run at this key: the baseline is lookup-only, so nothing queued it",
+        "cause": "never-run"
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/artifact-project-links.e2e.ts"
+        },
+        "ran": false,
+        "samples": [],
+        "reason": "never run at this key: the baseline is lookup-only, so nothing queued it",
+        "cause": "never-run"
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/assistant-line-breaks.e2e.ts"
+        },
+        "ran": false,
+        "samples": [],
+        "reason": "never run at this key: the baseline is lookup-only, so nothing queued it",
+        "cause": "never-run"
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/assistant-reply-copy.e2e.ts"
+        },
+        "ran": false,
+        "samples": [],
+        "reason": "never run at this key: the baseline is lookup-only, so nothing queued it",
+        "cause": "never-run"
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/automations-disabled.e2e.ts"
+        },
+        "ran": false,
+        "samples": [],
+        "reason": "never run at this key: the baseline is lookup-only, so nothing queued it",
+        "cause": "never-run"
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/automations-github.e2e.ts"
+        },
+        "ran": false,
+        "samples": [],
+        "reason": "never run at this key: the baseline is lookup-only, so nothing queued it",
+        "cause": "never-run"
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/automations.e2e.ts"
+        },
+        "ran": false,
+        "samples": [],
+        "reason": "never run at this key: the baseline is lookup-only, so nothing queued it",
+        "cause": "never-run"
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/chat-code-fence.e2e.ts"
+        },
+        "ran": false,
+        "samples": [],
+        "reason": "never run at this key: the baseline is lookup-only, so nothing queued it",
+        "cause": "never-run"
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/command-palette.e2e.ts"
+        },
+        "ran": false,
+        "samples": [],
+        "reason": "never run at this key: the baseline is lookup-only, so nothing queued it",
+        "cause": "never-run"
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/commit-list.e2e.ts"
+        },
+        "ran": false,
+        "samples": [],
+        "reason": "never run at this key: the baseline is lookup-only, so nothing queued it",
+        "cause": "never-run"
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/completion-controls.e2e.ts"
+        },
+        "ran": false,
+        "samples": [],
+        "reason": "never run at this key: the baseline is lookup-only, so nothing queued it",
+        "cause": "never-run"
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/composer-defaults.e2e.ts"
+        },
+        "ran": false,
+        "samples": [],
+        "reason": "never run at this key: the baseline is lookup-only, so nothing queued it",
+        "cause": "never-run"
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/composer.e2e.ts"
+        },
+        "ran": false,
+        "samples": [],
+        "reason": "never run at this key: the baseline is lookup-only, so nothing queued it",
+        "cause": "never-run"
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/create-project.e2e.ts"
+        },
+        "ran": false,
+        "samples": [],
+        "reason": "never run at this key: the baseline is lookup-only, so nothing queued it",
+        "cause": "never-run"
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/diff-scroll.e2e.ts"
+        },
+        "ran": false,
+        "samples": [],
+        "reason": "never run at this key: the baseline is lookup-only, so nothing queued it",
+        "cause": "never-run"
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/empty-states.e2e.ts"
+        },
+        "ran": false,
+        "samples": [],
+        "reason": "never run at this key: the baseline is lookup-only, so nothing queued it",
+        "cause": "never-run"
+      },
+      {
+        "testFile": {
+          "project": "e2e",
+          "path": "packages/web/e2e/fixture-home-isolation.e2e.ts"
+        },
+        "ran": false,
+        "samples": [],
+        "reason": "never run at this key: the baseline is lookup-only, so nothing queued it",
+        "cause": "never-run"
+      }
+    ]
+  },
+  "runsOpen": 0,
+  "outstanding": [
+    {
+      "standing": {
+        "kind": "never-run",
+        "lookupOnly": true,
+        "notCurrent": 228
+      },
+      "files": [
+        {
+          "project": "root:test:unit",
+          "path": ".ai/skills/check-code-quality/scripts/changed-functions.test.mjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".ai/skills/check-code-quality/scripts/complexity-gate.test.mjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".ai/skills/check-code-quality/scripts/istanbul-merge.test.mjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".ai/skills/check-code-quality/scripts/metrics.test.mjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".ai/skills/check-code-quality/scripts/quality-check.test.mjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".ai/skills/check-code-quality/scripts/restart-wrapper.test.mjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/agents-md-budget.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/apply-friction-intake.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/apply-issue-intake.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/auto-merge-admission.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/baseline-growth.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/change-coupling.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/change-surface-readers.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/change-surface.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/check-citations.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/check-clones.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/ci-coverage.workflow.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/ci-dispatch.workflow.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/ci-package-manager.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/ci-sweep-api.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/ci-sweep-collect.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/ci-sweep-patterns.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/ci-sweep-report.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/ci-sweep-workflow.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/ci-test-sequencer.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/ci-typecheck.workflow.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/ci.workflow.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/cockpit-test-sequencer.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/coderabbit-admission.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/coderabbit-reconcile.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/coderabbit-wait.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/coderabbit.workflow.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/count-test-ci-failures.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/e2e-fetch.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/e2e-runner.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/e2e-spec-map.workflow.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/failure-diagnostics.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/failure-issue-writer.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/failure-workflow.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/fetch-ci-results.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/friction-inbox.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/friction-intake.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/friction-intake.workflow.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/issue-intake-candidates.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/issue-intake.workflow.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/issue-template.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/jev-intake-replay.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/jev-issue-intake.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/main-ci-repair-automation.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/main-ci-summary.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/merge-queue-admission.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/merge-queue.workflow.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/merge-vitest-coverage.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/missing-patches.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/mutants-comment.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/mutants-equivalent.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/mutants-file-static.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/mutants-file.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/mutants-functions.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/mutants-related.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/mutants-report.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/mutants-run.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/mutants-scope.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/mutants-weekly.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/mutants-weekly.workflow.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/mutation-report.workflow.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/nightly.workflow.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/node-floor-reporter.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/pr-readiness.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/pr-snapshot.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/pr-test-input.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/pr-test-proof.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/pr-test-reuse.workflow.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/queue-ci-proof.deadline.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/queue-ci-proof.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/queue-coderabbit-admission.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/queue-metrics.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/release-bump-pr.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/release-ci.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/release-finalization.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/release.workflow.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/report-workflow-failure.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/require-e2e-passed.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/review-gate.workflow.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/sweep-ci-failures.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/transcript-facts-responsiveness.workflow.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/transcript-facts-timing.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/upstream-ledger.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/upstream-scan.workflow.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/upstream-targets.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/vitest-actions-report.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/vitest-coverage-tests.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/vitest-file-duration.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/vitest-worker-count.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": ".github/scripts/workaround-expiry.test.cjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": "scripts/active-run-owner-rules.test.mjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": "scripts/check-workspace-resolution.test.mjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": "scripts/e2e-affected.test.mjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": "scripts/e2e-lanes.test.mjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": "scripts/merge-ratchet-baselines.test.mjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": "scripts/metrics.test.mjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": "scripts/mock-publish.test.mjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": "scripts/product-env-dev.test.mjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": "scripts/product-env-raw.test.mjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": "scripts/product-env-workflows.test.mjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": "scripts/qa-fixture.test.mjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": "scripts/readme-screenshots.test.mjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": "scripts/release-identity.test.mjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": "scripts/squeal-browser.test.mjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": "scripts/test-changed.test.mjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": "scripts/test-env-inputs.test.mjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": "scripts/test-home-env.test.mjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": "scripts/test-home-setup.test.mjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": "scripts/test-install-marker.test.mjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": "scripts/test-package.test.mjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": "scripts/test-parity.test.mjs"
+        },
+        {
+          "project": "root:test:unit",
+          "path": "scripts/test-sandbox.test.mjs"
+        },
+        {
+          "project": "test:unit",
+          "path": "packages/cezar/test/unit/codex-reasoning-summary.test.ts"
+        },
+        {
+          "project": "test:unit",
+          "path": "packages/cezar/test/unit/cursor-hang-stdin.test.ts"
+        },
+        {
+          "project": "test:unit",
+          "path": "packages/cezar/test/unit/message-docs.test.ts"
+        },
+        {
+          "project": "test:unit",
+          "path": "packages/cezar/test/unit/planner.test.ts"
+        },
+        {
+          "project": "test:unit",
+          "path": "packages/cezar/test/unit/resolve-browser-launch.test.ts"
+        },
+        {
+          "project": "test:unit",
+          "path": "packages/cezar/test/unit/skill-dirs.test.ts"
+        },
+        {
+          "project": "test:unit",
+          "path": "packages/cezar/test/unit/skills-remote.test.ts"
+        },
+        {
+          "project": "test:unit",
+          "path": "packages/cezar/test/unit/test-env-launcher.test.ts"
+        },
+        {
+          "project": "test:unit",
+          "path": "packages/cezar/test/unit/test-env-lease.test.ts"
+        },
+        {
+          "project": "test:unit",
+          "path": "packages/cezar/test/unit/web-typecheck.test.ts"
+        },
+        {
+          "project": "test:unit",
+          "path": "packages/cezar/test/unit/workflow-types.test.ts"
+        }
+      ]
+    }
+  ],
+  "pendingTestFiles": {
+    "running": {
+      "files": [],
+      "omitted": 0
+    },
+    "queued": {
+      "files": [],
+      "omitted": 0
+    }
+  },
+  "code": {
+    "v": 1,
+    "threshold": 20,
+    "over": 0,
+    "sinceRegistration": 0,
+    "since": null,
+    "pending": 0,
+    "files": 1647,
+    "unknown": 0,
+    "coverage": {
+      "v": 1,
+      "threshold": 30,
+      "crap": 41,
+      "uncovered": 370,
+      "files": 1647,
+      "waitingForRuns": 95,
+      "waitingForRecords": 0,
+      "unknown": {
+        "no-record": 1479,
+        "skipped": 35
+      }
+    }
+  },
+  "lint": {
+    "v": 1,
+    "files": 3184,
+    "failing": 0,
+    "pending": 0,
+    "stale": 0,
+    "unknown": 0,
+    "reasons": [],
+    "sinceRegistration": 0,
+    "since": null
+  }
+}

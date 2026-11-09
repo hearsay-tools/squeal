@@ -1,0 +1,98 @@
+{
+  "root": "/home/agent/projects/squeal/.ai/cezar/t/a9fd78c8/cez-2",
+  "worktreeId": "eabbd2a06edad63a",
+  "listed": 1817,
+  "perProject": {
+    "api-client": {
+      "listed": 2,
+      "classes": {
+        "current": 2,
+        "noState": 0,
+        "notCurrent": 0,
+        "keyNull": 0
+      },
+      "currentByOrigin": {
+        "inherited": 2
+      },
+      "imports": []
+    },
+    "contract": {
+      "listed": 31,
+      "classes": {
+        "current": 31,
+        "noState": 0,
+        "notCurrent": 0,
+        "keyNull": 0
+      },
+      "currentByOrigin": {
+        "inherited": 31
+      },
+      "imports": []
+    },
+    "e2e": {
+      "listed": 100,
+      "classes": {
+        "current": 0,
+        "noState": 100,
+        "notCurrent": 0,
+        "keyNull": 0
+      },
+      "currentByOrigin": {},
+      "imports": []
+    },
+    "root:test:unit": {
+      "listed": 117,
+      "classes": {
+        "current": 117,
+        "noState": 0,
+        "notCurrent": 0,
+        "keyNull": 0
+      },
+      "currentByOrigin": {
+        "inherited": 116,
+        "own": 1
+      },
+      "imports": []
+    },
+    "server": {
+      "listed": 1166,
+      "classes": {
+        "current": 1166,
+        "noState": 0,
+        "notCurrent": 0,
+        "keyNull": 0
+      },
+      "currentByOrigin": {
+        "inherited": 1166
+      },
+      "imports": []
+    },
+    "test:unit": {
+      "listed": 11,
+      "classes": {
+        "current": 11,
+        "noState": 0,
+        "notCurrent": 0,
+        "keyNull": 0
+      },
+      "currentByOrigin": {
+        "inherited": 11
+      },
+      "imports": []
+    },
+    "web": {
+      "listed": 390,
+      "classes": {
+        "current": 390,
+        "noState": 0,
+        "notCurrent": 0,
+        "keyNull": 0
+      },
+      "currentByOrigin": {
+        "inherited": 390
+      },
+      "imports": []
+    }
+  },
+  "all": []
+}

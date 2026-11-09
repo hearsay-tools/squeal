@@ -1,0 +1,8 @@
+Imported 29953 results of 1716 test files from CI run 42596322864 on hearsay-tools/cezarion at 721c19b0.
+Added where the store had none: 1716 closure lists, 1563 observed entries.
+Environment of project "api-client": none recorded for this worktree yet; squeal status --full compares them once its daemon keyed the files
+Environment of project "contract": none recorded for this worktree yet; squeal status --full compares them once its daemon keyed the files
+Environment of project "root:test:unit": none recorded for this worktree yet; squeal status --full compares them once its daemon keyed the files
+Environment of project "server": none recorded for this worktree yet; squeal status --full compares them once its daemon keyed the files
+Environment of project "test:unit": none recorded for this worktree yet; squeal status --full compares them once its daemon keyed the files
+Environment of project "web": none recorded for this worktree yet; squeal status --full compares them once its daemon keyed the files

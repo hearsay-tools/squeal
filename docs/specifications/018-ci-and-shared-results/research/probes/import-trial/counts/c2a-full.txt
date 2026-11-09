@@ -1,0 +1,175 @@
+Revision: 0
+Known failures: 1 (1 test); not current: 100 of 1817 test files (100 unknown)
+  FAIL  [root:test:unit] scripts/mock-publish.test.mjs > mock publication exposes complete values during creation and replacement
+        Expected values to be strictly equal:
+        at scripts/mock-publish.test.mjs:29:12, observed at revision 0, current
+        no pass at these inputs is on record before this failure: look first at the changed files it reads; recorded 3 min ago in this worktree at revision 0, load 0.11 per CPU when it ran; retry asked (load) at these inputs: it failed again
+Affected checks: 29941 passed (28224 tests, 1717 test files loaded), 0 running, 0 queued, 14 skipped (14 tests)
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+browser: 100 test files; 100 not run at revision 0. Squeal has not queued them; `squeal run browser --wait 60000` runs them now and waits for their results.
+Complexity: 0 functions over 20; squeal code lists them.
+Coverage: 41 functions over CRAP 30, 370 untested; 1609 files unknown (1574 from a test file with no coverage record, 35 from a skipped test); squeal code lists them.
+Lint: 0 files with findings; squeal lint lists them.
+
+Worktree: /home/agent/projects/squeal/.ai/cezar/t/a9fd78c8/cez-2 (HEAD 721c19b, dirty state not known: no revision recorded yet)
+Daemon: running, last heartbeat 1 s ago
+Inherited from other worktrees: 29953 current results (28237 tests, 1716 test files loaded)
+  14634 (13768 tests, 866 test files loaded) from /home/agent/projects/cezar at 00e0c84
+  4741 (4479 tests, 262 test files loaded) from /home/agent/projects/cezar/.ai/cezar/worktrees/60bd0288-790a-4098-a819-e6a72d290757 at 00e0c84
+  4475 (4314 tests, 161 test files loaded) from 695853876f885bd6 at 00e0c84
+  2424 (2225 tests, 199 test files loaded) from /home/agent/projects/cezar/.ai/cezar/worktrees/60bd0288-790a-4098-a819-e6a72d290757 at 2e8a90d
+  833 (786 tests, 47 test files loaded) from /home/agent/projects/cezar/.ai/cezar/worktrees/60bd0288-790a-4098-a819-e6a72d290757 at f70d498
+  445 (416 tests, 29 test files loaded) from a14bf2fac9631a48 at 00e0c84
+  324 (291 tests, 33 test files loaded) from /home/agent/projects/cezar/.ai/cezar/worktrees/9436728b-6548-46ad-9d19-37165f7283c2 at 00e0c84
+  310 (291 tests, 19 test files loaded) from d04eba1931333cc2 at 5f7c94c
+  307 (289 tests, 18 test files loaded) from 258f7dfb0d5f2708 at 9d6c9cc
+  254 (246 tests, 8 test files loaded) from 2b085f7dfa50c7f0 at 00e0c84
+  203 (192 tests, 11 test files loaded) from 38334a34bdfa1703 at 0363f11
+  170 (161 tests, 9 test files loaded) from /home/agent/projects/cezar/.ai/cezar/worktrees/b5c07127-179f-4b32-8a27-9f32606db634 at 2e8a90d
+  165 (155 tests, 10 test files loaded) from b017b2a7e0be6964 at a359ae1
+  157 (146 tests, 11 test files loaded) from 38334a34bdfa1703 at 2e8a90d
+  108 (105 tests, 3 test files loaded) from 024aa2061eb2a749 at 00e0c84
+  89 (81 tests, 8 test files loaded) from /home/agent/projects/cezar/.ai/cezar/worktrees/60bd0288-790a-4098-a819-e6a72d290757 at 721c19b
+  77 (70 tests, 7 test files loaded) from 7905c8357b9e9cad at 2e8a90d
+  75 (70 tests, 5 test files loaded) from 38334a34bdfa1703 at d36ab42
+  73 (72 tests, 1 test file loaded) from 7510fbd49e2adcf9 at 4e1fbe8
+  26 (25 tests, 1 test file loaded) from a1449fae3dbbf103 at 686b758
+  16 (15 tests, 1 test file loaded) from f35513c2c003b8aa at f7edfaf
+  13 (12 tests, 1 test file loaded) from /home/agent/projects/cezar/.ai/cezar/worktrees/0406f574-3959-4bef-a5cd-2e7cd04e29a8 at 28541c8
+  10 (9 tests, 1 test file loaded) from bb7b921957b00c3c at 3433c88
+  9 (8 tests, 1 test file loaded) from bb7b921957b00c3c at a66c5e7
+  8 (6 tests, 2 test files loaded) from /home/agent/projects/cezar/.ai/cezar/worktrees/0406f574-3959-4bef-a5cd-2e7cd04e29a8 at 0d0df2d
+  4 (3 tests, 1 test file loaded) from 8e9a9edaacec1f29 at 84e1fd9
+  3 (2 tests, 1 test file loaded) from 70497851ad3cb34d at a85d4f1
+Test files without checks: 0 pending, 100 unknown
+Test files without a result: 100 (nothing current at their inputs, none queued)
+  e2e: packages/web/e2e/activity.e2e.ts: no result: never run at this key: the baseline is lookup-only, so nothing queued it
+  e2e: packages/web/e2e/agent-browser-tabs.e2e.ts: no result: never run at this key: the baseline is lookup-only, so nothing queued it
+  e2e: packages/web/e2e/agents-dock.e2e.ts: no result: never run at this key: the baseline is lookup-only, so nothing queued it
+  e2e: packages/web/e2e/application-update.e2e.ts: no result: never run at this key: the baseline is lookup-only, so nothing queued it
+  e2e: packages/web/e2e/artifact-project-links.e2e.ts: no result: never run at this key: the baseline is lookup-only, so nothing queued it
+  e2e: packages/web/e2e/assistant-line-breaks.e2e.ts: no result: never run at this key: the baseline is lookup-only, so nothing queued it
+  e2e: packages/web/e2e/assistant-reply-copy.e2e.ts: no result: never run at this key: the baseline is lookup-only, so nothing queued it
+  e2e: packages/web/e2e/automations-disabled.e2e.ts: no result: never run at this key: the baseline is lookup-only, so nothing queued it
+  e2e: packages/web/e2e/automations-github.e2e.ts: no result: never run at this key: the baseline is lookup-only, so nothing queued it
+  e2e: packages/web/e2e/automations.e2e.ts: no result: never run at this key: the baseline is lookup-only, so nothing queued it
+  e2e: packages/web/e2e/chat-code-fence.e2e.ts: no result: never run at this key: the baseline is lookup-only, so nothing queued it
+  e2e: packages/web/e2e/command-palette.e2e.ts: no result: never run at this key: the baseline is lookup-only, so nothing queued it
+  e2e: packages/web/e2e/commit-list.e2e.ts: no result: never run at this key: the baseline is lookup-only, so nothing queued it
+  e2e: packages/web/e2e/completion-controls.e2e.ts: no result: never run at this key: the baseline is lookup-only, so nothing queued it
+  e2e: packages/web/e2e/composer-defaults.e2e.ts: no result: never run at this key: the baseline is lookup-only, so nothing queued it
+  e2e: packages/web/e2e/composer.e2e.ts: no result: never run at this key: the baseline is lookup-only, so nothing queued it
+  e2e: packages/web/e2e/create-project.e2e.ts: no result: never run at this key: the baseline is lookup-only, so nothing queued it
+  e2e: packages/web/e2e/diff-scroll.e2e.ts: no result: never run at this key: the baseline is lookup-only, so nothing queued it
+  e2e: packages/web/e2e/empty-states.e2e.ts: no result: never run at this key: the baseline is lookup-only, so nothing queued it
+  e2e: packages/web/e2e/fixture-home-isolation.e2e.ts: no result: never run at this key: the baseline is lookup-only, so nothing queued it
+  and 80 more test files
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/activity.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/agent-browser-tabs.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/agents-dock.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/application-update.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/artifact-project-links.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/assistant-line-breaks.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/assistant-reply-copy.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/automations-disabled.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/automations-github.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/automations.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/chat-code-fence.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/command-palette.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/commit-list.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/completion-controls.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/composer-defaults.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/composer.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/create-project.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/diff-scroll.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/empty-states.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/fixture-home-isolation.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/git-sidebar.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/github-core.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/github-layout.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/github-paging.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/github-pr-review.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/github-sidebar.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/github-states.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/good-css.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/home-recovery.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/html-report-cards.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/html-report-reader.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/inbox.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/index-workload.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/ios-sweep.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/issue-linked-tasks.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/live-preview.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/markdown-preview.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/mobile-projects.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/mobile-tab-bar.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/mobile-task-controls.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/new-task-hierarchy.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/new-task-picker-layout.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/new-task.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/page-headings.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/peer-conversation.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/pending-question.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/plan-mode.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/progressive-history.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/project-order.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/project-rail.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/project-sidebar.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/queued-stack.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/quick-list.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/remote-settings-admin.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/repo-git-diff.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/repo-git.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/reports-workload.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/reports.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/review-gate.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/run-header-ci-wait.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/screenshot-element.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/search-focus.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/selection-states.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/session-footer.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/settings-agent-config.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/settings-agents.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/settings-appearance.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/settings-bookmarklets.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/settings-monitoring.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/settings-resources.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/settings-sidebar.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/settings-skills.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/settings-task-archiving.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/sidebar-ellipsis-click.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/sidebar-limits.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/sidebar-project-header.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/sidebar-reference-status.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/skill-search-ranking.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/smoke.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/tab-coordination.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/task-changes.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/task-files.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/task-github-items.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/task-handoff.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/task-list-virtualization.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/task-list-workload.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/task-pr-collection.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/task-status-groups.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/task-thread-layout.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/task-thread-session.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/task-thread-transcript.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/task-views-layout.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/thread-scroll.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/tools-menu.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/touch-targets.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/voice.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/worker-conversation.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/worker-relationships.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/workflows.e2e.ts]
+Runtime file: .ai/qa/test-env.json (observed bytes excluded by policy) [e2e:packages/web/e2e/worktree-setup.e2e.ts]
+Cached test results do not prove a runtime server is alive.
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  no revision recorded for this worktree yet
+  2026-11-09T11:41:12.671Z: node-test project "root:test:unit": preload "scripts/test-home-env.mjs" imports node:module through "scripts/check-workspace-resolution.mjs" and may register module hooks; Squeal does not record in Node's loader thread, so what the hooks load enters no key; declare it in inputs; resolving with Node's own rules
+  2026-11-09T11:41:12.672Z: node-test project "root:test:unit": 14 test file(s) with an incomplete static closure, keyed by what their runs load: .ai/skills/check-code-quality/scripts/istanbul-merge.test.mjs (import() with a computed specifier at .ai/skills/check-code-quality/scripts/vitest-coverage.mjs:49:34), .ai/skills/check-code-quality/scripts/metrics.test.mjs (import() with a computed specifier at .ai/skills/check-code-quality/scripts/vitest-coverage.mjs:49:34), .ai/skills/check-code-quality/scripts/quality-check.test.mjs (import() with a computed specifier at .ai/skills/check-code-quality/scripts/vitest-coverage.mjs:49:34), ...
+  2026-11-09T11:41:12.673Z: node-test project "test:unit": preload "scripts/test-home-env.mjs" imports node:module through "scripts/check-workspace-resolution.mjs" and may register module hooks; Squeal does not record in Node's loader thread, so what the hooks load enters no key; declare it in inputs; resolving with tsx's rules
+  2026-11-09T11:41:12.673Z: node-test project "test:unit": 1 test file(s) with an incomplete static closure, keyed by what their runs load: packages/cezar/test/unit/resolve-browser-launch.test.ts (import() with a computed specifier at packages/cezar/test/unit/resolve-browser-launch.test.ts:16:11; import() with a computed specifier at packages/cezar/test/unit/resolve-browser-launch.test.ts:226:26)
