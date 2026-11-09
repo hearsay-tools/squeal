@@ -73,7 +73,7 @@ export function rekeyFiles(
 ): Map<string, Rekeyed> {
   const out = new Map<string, Rekeyed>();
   if (rekeying.blobs === null) return out;
-  const at = commitHashes(rekeying.blobs);
+  const at = commitSegments(rekeying.blobs);
   const exported = new Map(bundle.environments.map((e) => [e.project, e]));
   const local = new Map<ProjectName, EnvironmentHash | null>();
   const entries = new Map<string, Record<string, RelativePath[]>>();
@@ -113,7 +113,7 @@ export function rekeyFiles(
 function proven(
   file: ExportedTestFile,
   environment: ExportedEnvironment,
-  at: (path: RelativePath) => FileHash | null,
+  at: (path: RelativePath) => string,
 ): boolean {
   if (file.closure === null) return false;
   const parts = file.keyParts ?? NO_PARTS;
@@ -137,33 +137,43 @@ function localHash(
   return importDifferences(exported.descriptor, here.descriptor).length === 0 ? here.hash : null;
 }
 
-/** The check key over `paths`, hashed as the commit holds them (`checkKey`'s encoding). */
+/** The check key over `paths`, each `at` the commit (`checkKey`'s encoding). */
 function keyOver(
   environment: EnvironmentHash,
   testFile: TestFileRef,
   paths: readonly RelativePath[],
-  at: (path: RelativePath) => FileHash | null,
+  at: (path: RelativePath) => string,
   parts: KeyParts,
 ): CheckKey {
-  const segments = paths.map((path) => encodeSegment(path, at(path)));
+  const segments = paths.map(at);
   return keyFromSegments(environment, testFile, segments, parts.dependencies, parts.runtime);
 }
 
 /**
- * The hash of each path as a daemon at the commit's content has it: a file's
- * blob id, `null` when the commit holds none; a listing's entry names from
- * the commit's tree, `ABSENT_LISTING` for a directory it does not hold.
+ * Each path's key segment as a daemon at the commit's content encodes it
+ * (`encodeSegment`), once per path: a file by its blob id, none when the
+ * commit holds no file there; a listing by the entry names of the commit's
+ * tree, `ABSENT_LISTING` for a directory it does not hold.
  */
-function commitHashes(
+function commitSegments(
   blobs: ReadonlyMap<RelativePath, FileHash>,
-): (path: RelativePath) => FileHash | null {
+): (path: RelativePath) => string {
   let names: Map<RelativePath, Set<string>> | null = null;
-  return (path) => {
+  const segments = new Map<RelativePath, string>();
+  const hashOf = (path: RelativePath): FileHash | null => {
     const directory = listedDirectory(path);
     if (directory === null) return blobs.get(path) ?? null;
     names ??= entryNames(blobs.keys());
     const held = names.get(directory);
     return held === undefined ? ABSENT_LISTING : namesHash([...held]);
+  };
+  return (path) => {
+    let segment = segments.get(path);
+    if (segment === undefined) {
+      segment = encodeSegment(path, hashOf(path));
+      segments.set(path, segment);
+    }
+    return segment;
   };
 }
 
