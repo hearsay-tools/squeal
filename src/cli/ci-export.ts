@@ -61,7 +61,8 @@ export async function ciExportCommand(
     squealVersion: squealVersion(),
     keyFormat: KEY_FORMAT_VERSION,
     commit: head.head,
-    dirty: head.dirty,
+    // Provenance: a shard's checkout counts too (git status, untracked files included).
+    dirty: head.dirty || parts.some(({ part }) => part.header.dirty),
     createdAt: (io.now ?? Date.now)(),
     source: sourceOf(io.env ?? process.env),
   };
