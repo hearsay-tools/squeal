@@ -347,6 +347,11 @@ class Daemon {
               inUse: this.#loop.scheduler.inUse(),
               queued: this.#loop.scheduler.queued(),
             },
+      // Row 018-12: each end of a file an explicit request queued is activity for the idle exit.
+      requestProgress: () =>
+        this.#loop === null || this.#phase === "stopping"
+          ? null
+          : (this.#loop.scheduler.requestProgress?.() ?? null),
       // Task 003-26: queued runner work, never activity; until the scheduler takes it, asked again.
       observedChanged: () =>
         this.#loop !== null && this.#phase !== "stopping" && this.#loop.scheduler.refreshObserved(),
