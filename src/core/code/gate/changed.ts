@@ -156,10 +156,8 @@ async function countsAtBase(
   const check = await runGit(
     cwd,
     ["cat-file", "--batch-check=%(objectname) %(objecttype) %(objectsize)"],
-    {
-      // `./`: relative to `cwd`, which may sit below the repository's top.
-      input: asked.map(([path]) => `${baseCommit}:./${path}\n`).join(""),
-    },
+    // `cwd` is the worktree's top, so git's paths are relative to it.
+    { input: asked.map(([path]) => `${baseCommit}:${path}\n`).join("") },
   );
   const lines = check.split("\n");
   for (const [i, [path, language]] of asked.entries()) {
