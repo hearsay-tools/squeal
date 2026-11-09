@@ -1455,6 +1455,17 @@ function endInOrder(items, end, undo) {
 // src/core/status/open.ts
 var SLEEP = new Int32Array(new SharedArrayBuffer(4));
 
+// src/core/keys/environment-descriptor.ts
+import { createHash as createHash2 } from "node:crypto";
+function configFieldHash(value) {
+  return digest(JSON.stringify(value));
+}
+function digest(text) {
+  return createHash2("sha256").update(text).digest("hex");
+}
+var ONLY_REJECTED = configFieldHash(false);
+var ONLY_ALLOWED = configFieldHash(true);
+
 // src/core/slow/slot-files.ts
 var SLOT_WAITER_FRESH_MS = 3e4;
 
