@@ -20,6 +20,7 @@ import { INHERITED } from "./assemble/inherited.js";
 import { REFUSED_OBSERVED } from "./assemble/refused.js";
 import { REWRITTEN } from "./assemble/rewritten.js";
 import { RUNTIME_FILES } from "./assemble/runtime.js";
+import { SHARED_REF } from "./assemble/shared-ref.js";
 import { GOLDEN_KEYS } from "./key/golden.js";
 import { INSTALLED_KEYS } from "./key/installed.js";
 import { PNPM_KEYS } from "./key/pnpm.js";
@@ -57,6 +58,7 @@ export const CASES: readonly Case[] = [
   ...ABSENT,
   ...DECLARED,
   ...CHECK_GROUPS,
+  ...SHARED_REF,
   ...RUNTIME_FILES,
   ...INHERITED,
   ...REWRITTEN,
