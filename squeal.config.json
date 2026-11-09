@@ -1,7 +1,10 @@
 {
   "vitest": { "exclude": ["test/e2e/**"] },
   "baseline": { "onStart": "lookup-only" },
-  "coverage": { "enabled": true, "exclude": ["test/**", "src/runners/node-test/runtime/**", "src/runners/vitest/ci-runtime/**"] },
+  "coverage": {
+    "enabled": true,
+    "exclude": ["test/**", "src/runners/node-test/runtime/**", "src/runners/vitest/ci-runtime/**"]
+  },
   "complexity": {
     "enabled": true,
     "exclude": ["**/dist/**", "**/build/**", "**/vendor/**", "**/*.min.js", "docs/**"]
