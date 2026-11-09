@@ -13,9 +13,10 @@ import { connectionOf } from "./store.js";
  *
  * - `imports`: by import id, the export's header as JSON, the file's hash
  *   and when it was imported.
- * - `import_files`: by import and test file, the exported key, the
- *   environment hash of its project, and one hash each of its closure list
- *   and observed entries, as the export held them (D5's reasons).
+ * - `import_files`: by import and test file, the key its results went at
+ *   (the exported key, or the key here, D11), the environment hash, and one
+ *   hash each of the closure list and observed entries that key was computed
+ *   from (D5's reasons).
  */
 export const IMPORT_TABLES: Readonly<Record<string, string>> = {
   imports: `
@@ -77,9 +78,13 @@ export interface ImportFileRecord {
   readonly path: RelativePath;
   readonly key: CheckKey;
   readonly environment: EnvironmentHash;
-  /** The hash of the export's closure list (`listHash`), `""` when it held none. */
+  /**
+   * The hash of the closure list the key was computed over, less its
+   * observed paths (`staticListHash`, 018 D15); `""` when the export held
+   * none. A row stored before row 018-18 hashes the whole list (`listHash`).
+   */
   readonly closure: string;
-  /** The hash of the export's observed entries (`listHash`). */
+  /** The hash of the observed entries the key took (`observedHash`). */
   readonly observed: string;
 }
 

@@ -8,6 +8,8 @@ import {
   OBSERVED_MAPS,
   type ObservedEntries,
   observedHash,
+  STATIC_LIST,
+  staticListHash,
 } from "../store/transfer-bundle.js";
 import type { ProjectName, WorktreeId } from "../types/common.js";
 import type { CheckKey } from "../types/keys.js";
@@ -25,7 +27,9 @@ import { compareEnvironment } from "./import-environment.js";
  * differs (equal environment and lists: the file's bytes or a closure file's
  * differ), no local key yet. A file is current from an import only by the
  * known states the daemon adopted, never by an equal key alone (D5 as
- * amended, review wave-1-2 B1).
+ * amended, review wave-1-2 B1). The closure lists compare less the observed
+ * paths they took, so a list that differs only by them reads "observed set
+ * differs" (D15); a row stored before row 018-18 compares whole lists.
  */
 
 const MAP_KEY = {
@@ -159,7 +163,9 @@ function hereOf(
     environments: new Map(worktreeEnvironments(store, worktreeId).map((e) => [e.project, e.hash])),
     closure: (file) => {
       const record = store.testFiles.get(file);
-      return record === null ? null : listHash(record.closure.paths);
+      if (record === null) return null;
+      if (!file.closure.startsWith(STATIC_LIST)) return listHash(record.closure.paths);
+      return staticListHash(record.closure.paths, entries("observed", file.project)[file.path]);
     },
     observed: (file) => {
       const observed: { -readonly [M in keyof ObservedEntries]: ObservedEntries[M] } = {};
