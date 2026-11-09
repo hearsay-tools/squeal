@@ -147,3 +147,25 @@ Owns: `src/runners/vitest/ci-runtime/`, the part writer, `src/core/ci/` except `
 Leave alone: the daemon's recorder runtime and key inputs (`test/keys/key-format.test.ts` must pass unchanged); `src/core/ci/publish.ts`, `src/core/shared/`. No `pnpm run build`.
 
 Done when: the three reproductions fail before and pass after; the two-shard comparison test still exports the files a clean run proves; report how many fixture files the stricter rule leaves out and why; lint and typecheck clean; `squeal status` read once without `--wait`.
+
+## 018-17 R3: one path, one content per run (the human, 2026-11-09: "A: one more repair")
+
+Use /worker. Shape: repair, on candidate `cand/0.1.421`. Narrow.
+
+Outcome: a path whose evidence shows more than one content (or content and absence) within a run has no evidence, and the export leaves its test files out; writes through every file API cancel evidence.
+
+Read: `status.md` line of 2026-11-09 on the third review (the case: a test reads a file, a writer outside Node changes it, the test reads it again in the same turn; the evidence object kept only the last hash); the R2 section above; `tasks/018-17/notes.md`; `src/runners/vitest/ci-runtime/evidence*.cjs`.
+
+Rules:
+1. Evidence per path is a set across the whole run and every process and thread of the shard, not the last value: two different hashes, a hash and an absence, or two different listings for one path cancel that path.
+2. Writes cancel evidence through every route: `fs.write`/`writeSync` on a descriptor opened for writing, `FileHandle` writes, write streams, `truncate`/`ftruncate`, `copyFile`, `cp`, `appendFile`, `rm`/`rmdir`/`unlink`, `rename`, `symlink`/`link`, `mkdir`, `utimes` are not content but count as touched only if trivial to add. A descriptor opened for writing marks its path at open.
+3. Symbolic links: evidence and writes are keyed by the real path; a write through a link cancels the target; a read through a link records the target.
+4. Recursive listings record every directory listed.
+
+Starting seam: failing tests first for rule 1 (read, outside-Node rewrite, read again in one turn), a descriptor write, a write stream, and a write through a symbolic link; keep every earlier export test passing.
+
+Owns: `src/runners/vitest/ci-runtime/`, `src/core/ci/` except `publish.ts`, their tests.
+
+Leave alone: the daemon's recorder runtime and key inputs (`test/keys/key-format.test.ts` unchanged). No `pnpm run build`.
+
+Done when: the new tests fail before and pass after; the two-shard comparison still exports its 4 files; lint and typecheck clean; `squeal status` read once without `--wait`.
