@@ -167,6 +167,8 @@ Worker bf3ddf1c, 2026-11-09. Part format stays `squeal-ci-part/3`: the evidence 
 
 Before the fix the rule 1, rule 3 and `utimes` checks and wrapper D failed; the descriptor, handle and stream checks passed already.
 
+Squeal's keys for `test/ci/export*.test.ts` and `test/cli/ci-record.test.ts` do not hold `ci-runtime/*.cjs`: the hook loads only in the recorded command's child processes. After a hook change Squeal keeps their earlier results current (here wrapper D's failure from before the fix), so run those files directly.
+
 ### Limits that remain
 
 - A writer outside Node between the last hooked read and an unhooked read (native code, `sh`), with the content restored before the export, is still unseen (R2 limit).
