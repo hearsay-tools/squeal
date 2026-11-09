@@ -11,8 +11,8 @@ import {
   type GateAdapters,
 } from "../core/code/gate/collect.js";
 import { evaluate } from "../core/code/gate/evaluate.js";
-import { loadBasePolicy } from "../core/code/gate/policy.js";
-import type { EngineVersions, GateRunner, GateTimes } from "../core/code/gate/report.js";
+import { type BasePolicy, loadBasePolicy } from "../core/code/gate/policy.js";
+import type { EngineVersions, GateRunner } from "../core/code/gate/report.js";
 import type { ChangedSet, GateVerdict } from "../core/code/gate/types.js";
 import { POLICY_FILE } from "../core/daemon/policy.js";
 import { squealVersion } from "../core/daemon/version.js";
@@ -62,54 +62,80 @@ function split(arg: string): [string, string | undefined] {
   return arg.startsWith("--") && eq > 0 ? [arg.slice(0, eq), arg.slice(eq + 1)] : [arg, undefined];
 }
 
+/** The arguments read so far. */
+interface Draft {
+  ref: string | null;
+  budget: number | null;
+  json: boolean;
+  readonly paths: string[];
+  readonly tests: string[];
+}
+
+/** The options that take one value: each stores it, or says why it cannot. */
+const VALUED: Readonly<Record<string, (value: string, into: Draft) => string | null>> = {
+  "--base": (value, into) => {
+    if (value === "") return "--base names no ref";
+    if (into.ref !== null) return "--base is given twice";
+    into.ref = value;
+    return null;
+  },
+  "--timeout": (value, into) => {
+    if (!/^[1-9][0-9]*$/.test(value)) return "--timeout takes whole seconds above 0";
+    into.budget = Number(value);
+    return null;
+  },
+};
+
+/** Squeal's `--test`, which takes the arguments after it up to the next option. */
+const TEST = "--test";
+
+/** The values after `args[i]` up to the next option, at most `most`; and the index of the last. */
+function valuesAfter(args: readonly string[], i: number, most: number) {
+  let at = i;
+  while (at - i < most && at + 1 < args.length && !(args[at + 1] as string).startsWith("--")) at++;
+  return { values: args.slice(i + 1, at + 1), at };
+}
+
 /**
  * D1's arguments. `--test` takes every argument after it up to the next
  * option, as `ci export --parts` does, so paths go before it; it may also
  * repeat. `--changed` and `--told` are usage errors with `--base`.
  */
 export function parseGateArgs(args: readonly string[]): GateArgs | { readonly error: string } {
-  let ref: string | null = null;
-  let budget: number | null = null;
-  let json = false;
-  const paths: string[] = [];
-  const tests: string[] = [];
-  const takeValue = (i: number, inline: string | undefined) => {
-    const next = args[i + 1];
-    if (inline !== undefined) return { value: inline, at: i };
-    return next === undefined || next.startsWith("--")
-      ? { value: "", at: i }
-      : { value: next, at: i + 1 };
-  };
+  const draft: Draft = { ref: null, budget: null, json: false, paths: [], tests: [] };
   for (let i = 0; i < args.length; i++) {
-    const [flag, inline] = split(args[i] as string);
-    if (flag === "--json" && inline === undefined) json = true;
-    else if (flag === "--changed" || flag === "--told") {
+    const arg = args[i] as string;
+    const [flag, inline] = split(arg);
+    const valued = VALUED[flag];
+    if (flag === "--changed" || flag === "--told") {
       return {
         error: `--base does not combine with ${flag}: each chooses the functions another way`,
       };
-    } else if (flag === "--base") {
-      const { value, at } = takeValue(i, inline);
-      if (value === "") return { error: "--base names no ref" };
-      if (ref !== null) return { error: "--base is given twice" };
-      ref = value;
-      i = at;
-    } else if (flag === "--timeout") {
-      const { value, at } = takeValue(i, inline);
-      if (!/^[1-9][0-9]*$/.test(value)) return { error: "--timeout takes whole seconds above 0" };
-      budget = Number(value);
-      i = at;
-    } else if (flag === "--test") {
-      const before = tests.length;
-      if (inline !== undefined) tests.push(inline);
-      else
-        while (i + 1 < args.length && !(args[i + 1] as string).startsWith("--"))
-          tests.push(args[++i] as string);
-      if (tests.length === before || tests.includes("")) return { error: "--test names no file" };
-    } else if (flag.startsWith("--")) return { error: `unknown option "${args[i]}"` };
-    else paths.push(flag);
+    } else if (arg === "--json") draft.json = true;
+    else if (valued !== undefined || flag === TEST) {
+      const taken =
+        inline === undefined
+          ? valuesAfter(args, i, valued === undefined ? Infinity : 1)
+          : { values: [inline], at: i };
+      const error =
+        valued === undefined
+          ? testFiles(taken.values, draft)
+          : valued(taken.values[0] ?? "", draft);
+      if (error !== null) return { error };
+      i = taken.at;
+    } else if (arg.startsWith("--")) return { error: `unknown option "${arg}"` };
+    else draft.paths.push(arg);
   }
+  const { ref, budget, json, paths, tests } = draft;
   if (ref === null) return { error: "--base names no ref" };
   return { ref, paths, tests, budgetSeconds: budget ?? DEFAULT_BUDGET_SECONDS, json };
+}
+
+/** Stores `--test`'s files, or says why it cannot. */
+function testFiles(files: readonly string[], into: Draft): string | null {
+  if (files.length === 0 || files.includes("")) return "--test names no file";
+  into.tests.push(...files);
+  return null;
 }
 
 /** Each path relative to `root`, or the first that is outside it. */
@@ -198,36 +224,51 @@ export async function codeGateCommand(
   const root = findWorktreeRoot(cwd);
   if (root === null) return fail(`${cwd} is not inside a git worktree`);
   const paths = underRoot(root, cwd, parsed.paths);
+  if ("outside" in paths) return fail(`"${paths.outside}" is outside the worktree ${root}`, true);
   const tests = underRoot(root, cwd, parsed.tests);
-  for (const named of [paths, tests]) {
-    if ("outside" in named) return fail(`"${named.outside}" is outside the worktree ${root}`, true);
-  }
-  let changed: ChangedSet;
-  let policy: Awaited<ReturnType<typeof loadBasePolicy>>["policy"];
-  try {
-    const baseCommit = await mergeBase(root, parsed.ref);
-    const loaded = await loadBasePolicy(root, baseCommit);
-    policy = loaded.policy;
-    for (const problem of loaded.problems) {
-      io.stderr(`squeal code: ${POLICY_FILE} at ${baseCommit.slice(0, 8)}: ${problem}\n`);
-    }
-    changed = narrow(await changedFunctions(root, parsed.ref, policy), paths as RelativePath[]);
-  } catch (error) {
-    if (error instanceof BaseRefError) return fail(`--base ${error.message}`);
-    throw error;
-  }
-  const durationsMs: GateTimes["durationsMs"] & Partial<Record<GateRunner, number>> = {};
+  if ("outside" in tests) return fail(`"${tests.outside}" is outside the worktree ${root}`, true);
+  const inventory = await inventoryOf(root, parsed.ref, paths, io);
+  if ("error" in inventory) return fail(inventory.error);
+  const { changed, policy } = inventory;
+  const durationsMs: Partial<Record<GateRunner, number>> = {};
   const evidence = await collectEvidence(root, changed, {
-    tests: tests as RelativePath[],
+    tests,
     budgetSeconds: parsed.budgetSeconds,
     adapters: timed(adapters, durationsMs),
     note: (text) => io.stderr(`squeal code: ${text}\n`),
   }).catch((error: unknown) => (error instanceof Error ? error : new Error(String(error))));
-  if (evidence instanceof Error)
+  // D1: a configured runner that cannot start, or no coverage provider, is a setup error.
+  if (evidence instanceof Error) {
     return fail(evidence.message, evidence instanceof CollectUsageError);
+  }
   const createdAt = new Date((io.now ?? Date.now)()).toISOString();
   const report = evaluate(changed, evidence, policy, versions(), { createdAt, durationsMs });
   const json = `${statusCommand(io.env ?? process.env)} code ${[...args.map(quoted), "--json"].join(" ")}`;
   io.stdout(parsed.json ? `${JSON.stringify(report, null, 2)}\n` : formatGateReport(report, json));
   return EXIT[report.verdict];
+}
+
+/**
+ * D2 and D6: the policy at the merge base, its problems told on stderr, and
+ * the changed functions narrowed to `paths`; or why `ref` gives none.
+ */
+async function inventoryOf(
+  root: AbsolutePath,
+  ref: string,
+  paths: readonly RelativePath[],
+  io: CliIo,
+): Promise<
+  { readonly changed: ChangedSet; readonly policy: BasePolicy } | { readonly error: string }
+> {
+  try {
+    const baseCommit = await mergeBase(root, ref);
+    const { policy, problems } = await loadBasePolicy(root, baseCommit);
+    for (const problem of problems) {
+      io.stderr(`squeal code: ${POLICY_FILE} at ${baseCommit.slice(0, 8)}: ${problem}\n`);
+    }
+    return { changed: narrow(await changedFunctions(root, ref, policy), paths), policy };
+  } catch (error) {
+    if (error instanceof BaseRefError) return { error: `--base ${error.message}` };
+    throw error;
+  }
 }
