@@ -2,7 +2,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { ciCommand } from "../../src/cli/ci.js";
-import type { CliIo } from "../../src/cli/main.js";
+import { type CliIo, main } from "../../src/cli/main.js";
 import { cloneWith, exportOf, remoteRefs, type Scratch, scratchRemote } from "../shared/remote.js";
 
 /*
@@ -45,10 +45,13 @@ describe("squeal ci publish's usage (018 D13)", () => {
     expect(said()).toContain("usage: squeal ci publish <export> [--keep <n>]");
   });
 
-  it("is in ci's own usage", async () => {
+  it("is in ci's own usage and in the CLI help", async () => {
     const { io, text } = capture("/");
     expect(await ciCommand([], io)).toBe(2);
     expect(text()).toContain("usage: squeal ci publish");
+    const help = capture("/");
+    expect(await main(["ci", "--help"], help.io)).toBe(0);
+    expect(help.text()).toContain("squeal ci publish <export> [--keep <n>]");
   });
 });
 
