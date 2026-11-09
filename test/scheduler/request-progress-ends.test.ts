@@ -7,6 +7,7 @@ import type { FileState } from "../../src/core/scheduler/files.js";
 import { Ledger } from "../../src/core/scheduler/ledger.js";
 import { priorityOf } from "../../src/core/scheduler/queue.js";
 import { RequestProgress } from "../../src/core/scheduler/request-progress.js";
+import { endRetry } from "../../src/core/scheduler/retries.js";
 import { createStateSink } from "../../src/core/state/sink.js";
 import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
 import type { WorktreeId } from "../../src/core/types/common.js";
@@ -36,7 +37,12 @@ afterEach(() => {
 });
 
 /** A real ledger whose one file is queued at `KEY` and asked by a request. */
-function asked(): { ledger: Ledger; progress: RequestProgress; file: FileState } {
+function asked(): {
+  ledger: Ledger;
+  progress: RequestProgress;
+  file: FileState;
+  context: SchedulerContext;
+} {
   const dir = mkdtempSync(join(tmpdir(), "sq-018-12-"));
   dirs.push(dir);
   const store = openStore(dir, { busyTimeoutMs: 10_000 });
@@ -62,7 +68,7 @@ function asked(): { ledger: Ledger; progress: RequestProgress; file: FileState }
   queue(ledger, file);
   ledger.commit();
   progress.ask([file]);
-  return { ledger, progress, file };
+  return { ledger, progress, file, context };
 }
 
 function queue(ledger: Ledger, file: FileState): void {
@@ -153,6 +159,25 @@ describe("RequestProgress on the ledger's ends (row 018-12)", () => {
     ledger.setRunning(file, null);
     ledger.applyResults(file, KEY, passed(), null);
     expect(progress.count).toBe(0);
+  });
+
+  // Review wave 3.6-r2, B2-R1: a retry ends only at a forced run at its key (`endRetry`).
+  it("keeps a retry's ask past another run's result; the retry's own run ends it once", () => {
+    const { ledger, progress, file, context } = asked();
+    start(ledger, file);
+    // `squeal retry` claims it while that run is in flight, as `takeRetries` does.
+    file.retryKey = KEY;
+    ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED), true);
+    ledger.setRunning(file, null);
+    ledger.applyResults(file, KEY, passed(), null);
+    ledger.commit();
+    expect(progress.count).toBe(0);
+    start(ledger, file);
+    ledger.setRunning(file, null);
+    const records = passed();
+    endRetry(context, file, KEY, records, "run-018-12");
+    ledger.applyResults(file, KEY, records, null);
+    expect(progress.count).toBe(1);
   });
 
   it("drops the ask of a file the ledger forgot", () => {

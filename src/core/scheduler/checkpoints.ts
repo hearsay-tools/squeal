@@ -226,15 +226,22 @@ export class Checkpoints {
     this.#settle();
   }
 
-  /** `ref` got a result, attributed to checkpoint `by` (`StateProvenance.checkpointId`). */
-  done(ref: TestFileRef, by: string | null): void {
+  /**
+   * `ref` got a result, attributed to checkpoint `by` (`StateProvenance.checkpointId`).
+   * Returns `false` when the open checkpoint refuses it: a forced request's
+   * file still waiting for its own run, whose result came from another run
+   * (task 001-217). Row 018-12 (review wave 3.6-r2, B2-R1): the ledger's
+   * `ends` hear only what this accepts.
+   */
+  done(ref: TestFileRef, by: string | null): boolean {
     const active = this.#active;
-    if (active === null) return;
     const id = testFileId(ref);
-    if (active.strict.has(id) && by !== active.record.id) return;
-    if (!active.remaining.delete(id)) return;
+    if (!active?.remaining.has(id)) return true;
+    if (active.strict.has(id) && by !== active.record.id) return false;
+    active.remaining.delete(id);
     this.#laneDone(active, id, false);
     this.#settle();
+    return true;
   }
 
   /** `ref` crashed or timed out: the checkpoint cannot complete. */
