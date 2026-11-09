@@ -10,7 +10,11 @@
 // directory's below it for a recursive listing, `ABSENT_LISTING` when there
 // is none. `write(p, how)`: `p` written, before the call that writes it, and
 // its directory's listing when `p` appears or goes; the export certifies no
-// written path for the whole run, even when its content is restored.
+// written path for the whole run, even when its content is restored. A write
+// through a symbolic link marks the path it reaches as well.
+//
+// Each value a path shows goes out, two in one turn too: the reader drops a
+// path with two contents, or content and absence, in the run (repair R3).
 //
 // The calls it makes itself only read paths the run is reading at that
 // moment, as the run does, so the daemon's recorder in the same process
@@ -58,12 +62,17 @@ function originals() {
   };
 }
 
+/** A file changed this recently may change again with the same stat (coarse file times). */
+const SETTLED_MS = 2000;
+
 /**
  * What git stores for a path now (`hashFile`): `null` no file; `undefined`
  * unknown. A file whose stat is the one it had at its last hash in this
- * process is not read again.
+ * process is not read again, unless it had changed within `SETTLED_MS` of
+ * that hash.
  */
 function contents(original, format) {
+  const now = Date.now;
   const blob = (bytes) =>
     crypto.createHash(format).update(`blob ${bytes.byteLength}\0`).update(bytes).digest("hex");
   const hashed = new Map();
@@ -91,6 +100,7 @@ function contents(original, format) {
       }
     }
     try {
+      const at = now();
       const stat = original.fstatSync(fd);
       if (!stat.isFile()) return null;
       const signature = `${stat.dev}:${stat.ino}:${stat.size}:${stat.mtimeMs}:${stat.ctimeMs}`;
@@ -98,7 +108,9 @@ function contents(original, format) {
       if (known?.signature === signature) return known.hash;
       const bytes = bytesOf(fd, stat.size);
       const hash = bytes === undefined ? undefined : blob(bytes);
-      hashed.set(abs, { signature, hash });
+      if (at - Math.max(stat.mtimeMs, stat.ctimeMs) > SETTLED_MS) {
+        hashed.set(abs, { signature, hash });
+      } else hashed.delete(abs);
       return hash;
     } catch {
       return undefined;
@@ -159,6 +171,13 @@ function pathsOf(settings, original) {
     !abs.includes(nodeModules) &&
     !skip.some((prefix) => abs.startsWith(prefix) || `${abs}${path.sep}` === prefix);
   const relative = (abs) => abs.slice(root.length).split(path.sep).join("/");
+  /** A symlink's target, in the root's own spelling. */
+  const target = (abs) => {
+    const real = original.realpath(abs);
+    return realRoot !== root && real.startsWith(realRoot)
+      ? root + real.slice(realRoot.length)
+      : real;
+  };
   return {
     root,
     toPath,
@@ -172,12 +191,30 @@ function pathsOf(settings, original) {
       if (`${abs}${path.sep}` === root) return "";
       return kept(abs) ? relative(abs) : null;
     },
-    /** A symlink's target, in the root's own spelling. */
-    target: (abs) => {
-      const target = original.realpath(abs);
-      return realRoot !== root && target.startsWith(realRoot)
-        ? root + target.slice(realRoot.length)
-        : target;
+    target,
+    /**
+     * The path a write to `abs` reaches, each symbolic link on its way
+     * followed, a dangling last one too; by `realpath` and `readlink`, which
+     * no recorder observes.
+     */
+    reached: (abs) => {
+      let at = abs;
+      for (let hops = 0; hops < 40; hops += 1) {
+        const parent = path.dirname(at);
+        let dir;
+        try {
+          dir = `${parent}${path.sep}` === root ? parent : target(parent);
+        } catch {
+          return at;
+        }
+        const here = path.join(dir, path.basename(at));
+        try {
+          at = path.resolve(dir, original.readlinkSync(here));
+        } catch {
+          return here;
+        }
+      }
+      return at;
     },
   };
 }
@@ -213,6 +250,8 @@ function outputOf(settings, original) {
     flush,
     evidence: (rel, value) => {
       if (value === undefined || last.get(rel) === value) return;
+      // Another value in the same turn goes out beside the first, not over it.
+      if (Object.hasOwn(pending, rel)) flush();
       last.set(rel, value);
       pending[rel] = value;
       any = true;
@@ -281,13 +320,14 @@ function createEvidence(settings) {
     } catch {}
   };
   /**
-   * `p` written; its directory's listing too when `p` does not exist yet or
-   * the call is `structural` (a create, delete or rename). `tree`: all below
-   * `p` too. `parents`: each missing directory above, as `mkdir -p` makes.
+   * `abs` written; its directory's listing too when `abs` does not exist yet
+   * or the call is `structural` (a create, delete or rename). `tree`: all
+   * below `abs` too. `parents`: each missing directory above, as `mkdir -p`
+   * makes.
    */
-  const write = (p, { structural = false, tree = false, parents = false } = {}) => {
+  const mark = (abs, { structural = false, tree = false, parents = false }) => {
     try {
-      const rel = paths.scoped(p);
+      const rel = paths.scoped(abs);
       if (rel === null || rel === "") return;
       const exact = [];
       const trees = [];
@@ -300,6 +340,16 @@ function createEvidence(settings) {
         exact.push(parentListing(above));
       }
       out.written(exact, trees);
+    } catch {}
+  };
+  /** `p` written, and the path it reaches through symbolic links (`mark`). */
+  const write = (p, how = {}) => {
+    try {
+      const abs = paths.toPath(p);
+      if (abs === null) return;
+      mark(abs, how);
+      const real = paths.reached(abs);
+      if (real !== abs) mark(real, how);
     } catch {}
   };
   /** The listing of a directory a call creates an entry in (`mkdtemp`'s prefix). */

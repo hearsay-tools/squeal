@@ -4,8 +4,10 @@
 // reads (`f`), listings (`l`, `r`) and writes (`w`) in `observe/fs.cjs`,
 // wrapped again from this CI layer, so the recorder's own runtime is not
 // changed. An open is a read when it only reads, else a write of its path,
-// so no descriptor needs tracking. Each wrapper takes the evidence, then
-// calls the original with the caller's own arguments.
+// so no descriptor, file handle or stream (`WriteStream` opens through
+// `fs.open`) needs tracking. A time change counts as a write; a hard link
+// writes both its names, which share content. Each wrapper takes the
+// evidence, then calls the original with the caller's own arguments.
 "use strict";
 const fs = require("node:fs");
 const path = require("node:path");
@@ -104,6 +106,10 @@ const WRITES = [
   "createWriteStream",
   "truncate",
   "truncateSync",
+  "utimes",
+  "utimesSync",
+  "lutimes",
+  "lutimesSync",
 ];
 const REMOVES = ["rm", "rmSync", "rmdir", "rmdirSync", "unlink", "unlinkSync"];
 
@@ -140,8 +146,14 @@ function wrapFs(evidence) {
         evidence.write(args[1], tree);
       });
     }
-    for (const name of ["symlink", "symlinkSync", "link", "linkSync"]) {
+    for (const name of ["symlink", "symlinkSync"]) {
       around(target, name, (args) => evidence.write(args[1], { structural: true }));
+    }
+    for (const name of ["link", "linkSync"]) {
+      around(target, name, (args) => {
+        evidence.write(args[0]);
+        evidence.write(args[1], { structural: true });
+      });
     }
   }
   module_.syncBuiltinESMExports();
