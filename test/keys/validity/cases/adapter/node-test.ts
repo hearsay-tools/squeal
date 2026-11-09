@@ -128,7 +128,7 @@ export const NODE_TEST_RUNS: readonly Case[] = [
   {
     kind: "adapter:node-test",
     name: "a run with coverage off keeps the last release's keys and outputs (row 015-86)",
-    why: "015 D8 Keys: with coverage off a node:test key is byte-identical to 0.1.354's, and no run takes coverage",
+    why: "015 D8 Keys: with coverage off a node:test key holds no coverage marker and no run takes coverage, so keys and outputs stay the last release's unless a change moves every node:test key (018 D12 did once: the Node's build in place of its path)",
     input: { files: COVERED, coverage: "off", runs: COVERED_RUN },
   },
   {
