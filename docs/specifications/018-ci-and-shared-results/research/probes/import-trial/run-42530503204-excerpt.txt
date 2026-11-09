@@ -1,0 +1,35 @@
+2026-11-08T22:30:16.6926639Z Squeal daemon spawned for /home/runner/work/cezarion/cezarion
+2026-11-08T22:30:16.6927100Z 
+2026-11-08T22:30:16.6940987Z Revision: 0
+2026-11-08T22:30:16.6941564Z Known failures: 0; the daemon has not listed this worktree's test files yet
+2026-11-08T22:30:16.6958244Z Affected checks: none counted; the daemon has not listed this worktree's test files yet
+2026-11-08T22:30:16.6959429Z Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+2026-11-08T22:30:16.6960572Z Slow tier: no slow test files listed yet; Squeal runs them after the fast tests.
+2026-11-08T22:30:16.6961119Z Outstanding:
+2026-11-08T22:30:16.6962333Z   the daemon is still listing this worktree's test files; `squeal status --wait 60000` waits for it
+2026-11-08T22:30:16.6963030Z Complexity: no file counted yet.
+2026-11-08T22:30:16.6963445Z Lint: linting has not started.
+2026-11-08T22:30:16.6964029Z More: `squeal status --full` adds the worktree and daemon and 1 note
+2026-11-08T23:31:43.2809227Z Group tests has no verdict: the daemon stopped before the group's test files had results
+2026-11-08T23:31:43.2810133Z Group tests requested at revision 0: 1746 test files queued; they run now.
+2026-11-08T23:31:43.2810683Z 
+2026-11-08T23:31:43.2810814Z Revision: 0
+2026-11-08T23:31:43.2811413Z Known failures: 1 (1 test); not current: 432 of 1846 test files (332 queued, 100 unknown)
+2026-11-08T23:31:43.2812455Z   FAIL  [root:test:unit] scripts/mock-publish.test.mjs > mock publication exposes complete values during creation and replacement
+2026-11-08T23:31:43.2814600Z         Expected values to be strictly equal:
+2026-11-08T23:31:43.2815176Z         at scripts/mock-publish.test.mjs:29:12, observed at revision 0, current
+2026-11-08T23:31:43.2816995Z         no pass at these inputs is on record before this failure: look first at the changed files it reads; recorded 40 min ago in this worktree at revision 0, load 1.14 per CPU when it ran; no retry asked at these inputs; if the changed files are not the cause, `squeal retry scripts/mock-publish.test.mjs --reason load` runs it once more when the one-minute load averag
+2026-11-08T23:31:43.2818985Z Affected checks: 23782 passed (22368 tests, 1414 test files loaded), 0 running, 0 queued, 14 skipped (14 tests)
+2026-11-08T23:31:43.2820080Z Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+2026-11-08T23:31:43.2822004Z browser: 100 test files; 100 not run at revision 0. Squeal has not queued them; `squeal run browser --wait 60000` runs them now and waits for their results.
+2026-11-08T23:31:43.2824362Z Queued: 332 test files: server: packages/cezar/src/artifacts/cli.test.ts, server: packages/cezar/src/artifacts/store.test.ts, server: packages/cezar/src/ast-grep-rules.test.ts, server: packages/cezar/src/automations/store.test.ts, server: packages/cezar/src/ci-wait/controller.test.ts and 327 more
+2026-11-08T23:31:43.2825888Z Outstanding:
+2026-11-08T23:31:43.2826561Z   no daemon has validated since 2026-11-08T23:30:55.268Z; results are as of revision 0; `squeal start` starts one
+2026-11-08T23:31:43.2827343Z Complexity: 0 functions over 20; squeal code lists them.
+2026-11-08T23:31:43.2828563Z Coverage: 60 functions over CRAP 30, 653 untested; 1466 files wait for test runs, which squeal run --all makes; 35 files unknown (35 from a skipped test); squeal code lists them.
+2026-11-08T23:31:43.2829554Z Lint: 0 files with findings; squeal lint lists them.
+2026-11-08T23:31:43.2830368Z More: `squeal status --full` adds the worktree and daemon, the 100 test files without a result one by one and 13 notes
+2026-11-08T23:31:43.2831464Z squeal run tests exit: 3 (0 pass, 1 known failures, 3 no verdict)
+2026-11-08T23:31:43.6323147Z No daemon running for /home/runner/work/cezarion/cezarion; `squeal stop --until-start` keeps it stopped through edits and Git operations
+2026-11-08T23:31:43.6392217Z ##[error]squeal run tests reached no completed verdict (exit 3); no export uploaded
+2026-11-08T23:31:43.6399735Z ##[error]Process completed with exit code 1.

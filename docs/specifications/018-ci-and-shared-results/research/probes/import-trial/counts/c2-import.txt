@@ -1,0 +1,7 @@
+Imported 5592 results of 1716 test files from CI run 42596322864 on hearsay-tools/cezarion at 721c19b0; 24361 the store held at their keys already were left as they were.
+Environment of project "api-client": equal to this worktree's
+Environment of project "contract": equal to this worktree's
+Environment of project "root:test:unit": differs from this worktree's: config fields execPath differ
+Environment of project "server": equal to this worktree's
+Environment of project "test:unit": differs from this worktree's: config fields execPath differ
+Environment of project "web": equal to this worktree's
