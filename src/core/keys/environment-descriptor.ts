@@ -31,6 +31,12 @@ export interface EnvironmentDescriptor {
   readonly files: readonly (readonly [RelativePath, FileHash | null])[];
   /** Whether the process saw a CI environment. A hint for the difference text; in no hash. */
   readonly ci: boolean;
+  /**
+   * Whether the resolved config runs its tests in a browser (Vitest's
+   * `browser.enabled`), so D10 knows whether `browser` may differ; absent in
+   * a descriptor recorded before row 018-18, which keeps `browser` keyed.
+   */
+  readonly browser?: boolean;
 }
 
 /** The config field name of a resolved config that is not a JSON object. */
@@ -45,6 +51,7 @@ export function describeEnvironment(
   ci: boolean,
 ): EnvironmentDescriptor {
   const env = Object.entries(core.env).sort(([a], [b]) => compare(a, b));
+  const config = configObject(runner.resolvedConfig);
   return {
     keyFormat: format,
     project: runner.project,
@@ -56,16 +63,22 @@ export function describeEnvironment(
     arch: core.arch,
     installedDependencies: core.installedDependencies,
     env: { names: env.map(([name]) => name), hash: digest(JSON.stringify(env)) },
-    config: configFields(runner.resolvedConfig),
+    config: configFields(config),
     files,
     ci,
+    browser: browserEnabled(config),
   };
 }
 
 /** One hash per top-level field of a resolved config; runners give canonical JSON, so equal values serialize equally. */
-function configFields(resolvedConfig: string): Record<string, string> {
-  const fields = Object.entries(configObject(resolvedConfig)).sort(([a], [b]) => compare(a, b));
+function configFields(config: object): Record<string, string> {
+  const fields = Object.entries(config).sort(([a], [b]) => compare(a, b));
   return Object.fromEntries(fields.map(([name, value]) => [name, digest(JSON.stringify(value))]));
+}
+
+/** Whether a resolved config's `browser.enabled` is `true`. */
+function browserEnabled(config: object): boolean {
+  return (config as { browser?: { enabled?: unknown } | null }).browser?.enabled === true;
 }
 
 /** The resolved config as an object; anything but a JSON object is one field, `WHOLE_CONFIG`. */
@@ -196,6 +209,35 @@ export function describeDifferences(
     });
   }
   return differences;
+}
+
+/** Spec 018 D10: the resolved Vitest fields an imported pass may differ in, `browser` aside. */
+const CI_FIELDS: readonly string[] = ["allowOnly", "watch", "coverage"];
+
+/**
+ * Spec 018 D10: `describeDifferences` for an imported pass, with the
+ * resolved Vitest fields `CI=true` sets compared as equal: `allowOnly`,
+ * `watch`, the coverage options (CI runs without Squeal's provider), and
+ * `browser` when both sides record the browser as disabled. Every other part
+ * must be equal. A pass with `allowOnly` false and no watch implies the same
+ * pass here; `headless` and `ui` change a browser project's run
+ * (`research/ci-step.md` 3). Failures never import, so only passes and
+ * skips are compared this way.
+ */
+export function importDifferences(
+  exported: EnvironmentDescriptor,
+  local: EnvironmentDescriptor,
+): Difference[] {
+  if (exported.runnerName !== "vitest" || local.runnerName !== "vitest") {
+    return describeDifferences(exported, local);
+  }
+  const tolerated = new Set(CI_FIELDS);
+  if (exported.browser === false && local.browser === false) tolerated.add("browser");
+  const keyed = (d: EnvironmentDescriptor): EnvironmentDescriptor => ({
+    ...d,
+    config: Object.fromEntries(Object.entries(d.config).filter(([name]) => !tolerated.has(name))),
+  });
+  return describeDifferences(keyed(exported), keyed(local));
 }
 
 function installedText(a: EnvironmentDescriptor, b: EnvironmentDescriptor): string {
