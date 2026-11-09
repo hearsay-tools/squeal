@@ -1,6 +1,6 @@
 # 018 CI and shared results: status
 
-Stage: build; rows 018-06, 018-07, 018-09 released in 0.1.417; next the trial 018-08 (spec approved by the human 2026-11-08). Research was parked 2026-11-01 and reopened 2026-11-08.
+Stage: first slice done (0.1.417 to 0.1.419 released, trial 018-08 measured); the next slice awaits the human (spec approved by the human 2026-11-08). Research was parked 2026-11-01 and reopened 2026-11-08.
 Started: 2026-10-31
 
 ## Decisions so far
@@ -40,6 +40,8 @@ Started: 2026-10-31
 - 2026-11-09, the human: "A: one owner, repair". Repair R2 of 018-12: a request's file end is counted exactly where that request's own record accepts the completion (the decision that computes its verdict), no second tracker. Not chosen: releasing with the gap, or holding the fix for a cezar workflow loop.
 - 2026-11-09, repair R2 of 018-12 (worker 9a4bfe4d): `Ledger.#ended` is the one place that decides a request's file end; it counts only when the open checkpoint accepts the result (`Checkpoints.done` now returns whether it did) and no retry is pending for the file. Release 0.1.419 also carries row 011-310 (issue #166, approved by the human 2026-11-09).
 - 2026-11-09, re-review of `cand/0.1.419` at `21adaff51` (`reviews/wave-3.6-r3.md`): PASS for 018-12 R2 and row 011-310, with nonblocking note N1 (a lapsed retry's ask counts one later end at a new key, delaying an idle exit by at most one period). Candidate CI 42593079334 green. 0.1.419 landed on main.
+- 2026-11-09, 0.1.419 released (tag `squeal--v0.1.419` at `21adaff51`, hub `78ee499`, CI 42593079334); issue #166 closed. Trial run 42596322864 (cezar `721c19b`, Squeal 0.1.419) completed in 82 min (1,717 files, one known failure) and uploaded a 2.1 MB export.
+- 2026-11-09, row 018-08 done (`research/import-trial.md`): in a fresh cezar clone the import alone made 1,589 of 1,817 test files current (87%; 93% of the exported files); every Vitest project matched fully once `CI` and `GITHUB_ACTIONS` were removed; both node:test projects (127 files) missed only on `execPath` (the absolute Node binary path is in their environment). In a clone with a copy of cezar's shared store, 1,716 files were already current by inheritance and the import added none; 236 of them differed by closure list, because the shared observed sets are a union across worktrees and CI's lists are a subset. Imported files carry no coverage record. Spec open questions 1 (CI=true), 2 (observed-set rule), 3 (transport) and 5 (cost in the CI step) now have evidence for the next slice.
 
 ## Open questions
 
