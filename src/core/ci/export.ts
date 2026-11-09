@@ -1,3 +1,4 @@
+import { committedBlobs } from "../commit/tree.js";
 import { readHead } from "../daemon-loop/head.js";
 import { readObjectFormat } from "../hash/git-index.js";
 import { createFsHasher } from "../hash/hasher.js";
@@ -9,10 +10,15 @@ import { describeFailure } from "../state/fingerprint.js";
 import { worktreeEnvironment } from "../store/environments.js";
 import type { ExportHeader } from "../store/imports.js";
 import type { ResultsBundle } from "../store/transfer-bundle.js";
-import type { AbsolutePath, EpochMs, WorktreeId } from "../types/common.js";
+import type { AbsolutePath, EpochMs, RelativePath, WorktreeId } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { Policy } from "../types/policy.js";
-import type { RunnerAdapter, RunnerClosure, RunReport } from "../types/runner.js";
+import type {
+  RunnerAdapter,
+  RunnerClosure,
+  RunnerEnvironment,
+  RunReport,
+} from "../types/runner.js";
 import type { Store } from "../types/store.js";
 import type { Provenance } from "../types/store-records.js";
 import { bundleOf, type KeyedFile } from "./export-bundle.js";
@@ -23,9 +29,10 @@ import {
   type Refusal,
   runDifferences,
 } from "./export-check.js";
+import { certifier } from "./export-inputs.js";
 import { keyPartsOf } from "./export-parts.js";
 import { partsReport } from "./export-report.js";
-import type { PartFile } from "./parts.js";
+import { type PartFile, snapshotFields } from "./parts.js";
 
 /*
  * Spec 018 D9 (row 018-17): `squeal ci export`'s keys and results. In a
@@ -35,7 +42,10 @@ import type { PartFile } from "./parts.js";
  * closure from the runner, then what its shard observed, through the record
  * path's `observedGrowth` and `addObserved`. Its results are the rows a
  * daemon's record makes of them (`recordsForFile`) at that key, written as
- * the D2 export (`bundleOf`), with each file's `keyParts` (D11).
+ * the D2 export (`bundleOf`), with each file's `keyParts` (D11). A file
+ * goes in only when its part certifies the content of every input of its
+ * closure here (`certifier`), and its checks have a name each (2026-11-09,
+ * review of 0.1.421 B1, B4).
  */
 
 export interface CiExportInput {
@@ -63,11 +73,25 @@ export interface CiExportCounts {
   readonly failed: number;
   /** Files left out: this job did not list them, or could not key them. */
   readonly unkeyed: number;
+  /** Files left out: an input's content here is not what their part records for it, or it records none. */
+  readonly uncertified: number;
+  /** Files left out: two of their checks share a name, which a part cannot name as the daemon does. */
+  readonly ambiguous: number;
+}
+
+/** A file left out because its part does not certify these inputs' content here. */
+export interface UncertifiedFile {
+  readonly testFile: TestFileRef;
+  readonly inputs: readonly RelativePath[];
 }
 
 export type CiExport =
   | { readonly refused: Refusal }
-  | { readonly bundle: ResultsBundle; readonly counts: CiExportCounts };
+  | {
+      readonly bundle: ResultsBundle;
+      readonly counts: CiExportCounts;
+      readonly uncertified: readonly UncertifiedFile[];
+    };
 
 /**
  * The D2 export of `input.parts` at this checkout, or the first reason the
@@ -90,13 +114,18 @@ async function exportWith(input: CiExportInput, runner: RunnerAdapter): Promise<
   const keys = await openKeys(input);
   const environments = await runner.environment();
   await keys.setEnvironments(environments);
-  const environment = environmentRefusal(input);
+  const environment = environmentRefusal(input, environments);
   if (environment !== null) return { refused: environment };
 
   const files = parts.flatMap((p) => p.part.testFiles);
   const passed = files.filter((file) => file.outcome !== "fail");
-  const { closures, report } = await keyFiles(input.root, runner, keys, passed);
+  const named = passed.filter((file) => (file.sharedNames ?? []).length === 0);
+  const { closures, report } = await keyFiles(input.root, runner, keys, named);
   const parted = await keyPartsOf(input, keys, environments, closures);
+  const blobs =
+    header.commit === null ? new Map() : await committedBlobs(input.root, header.commit);
+  const certify = certifier(input.root, keys, parts, blobs);
+  const uncertified: UncertifiedFile[] = [];
   const provenance: Provenance = {
     worktreeId,
     revision: 0,
@@ -111,6 +140,11 @@ async function exportWith(input: CiExportInput, runner: RunnerAdapter): Promise<
     const keyParts = parted(ref);
     if (key === null || closure === undefined || keyParts === null) return [];
     const { paths, complete, method } = closure;
+    const inputs = certify(ref, paths);
+    if (inputs.length > 0) {
+      uncertified.push({ testFile: ref, inputs });
+      return [];
+    }
     const describe = describeFailure;
     const records = recordsForFile({ ref, key, report, previousChecks: [], provenance, describe });
     return [{ file: { ...ref, key, closure: { paths, complete, method }, keyParts }, records }];
@@ -123,8 +157,11 @@ async function exportWith(input: CiExportInput, runner: RunnerAdapter): Promise<
       testFiles,
       results: bundle.results.length,
       failed: files.length - passed.length,
-      unkeyed: passed.length - testFiles,
+      unkeyed: named.length - testFiles - uncertified.length,
+      uncertified: uncertified.length,
+      ambiguous: passed.length - named.length,
     },
+    uncertified,
   };
 }
 
@@ -189,17 +226,23 @@ async function openKeys(input: CiExportInput): Promise<WorktreeKeys> {
 }
 
 /** A project of the parts the job has no environment of, or ran in another environment. */
-function environmentRefusal(input: CiExportInput): Refusal | null {
+function environmentRefusal(
+  input: CiExportInput,
+  environments: readonly RunnerEnvironment[],
+): Refusal | null {
   const { store, worktreeId, parts } = input;
   for (const { part } of parts) {
-    for (const { descriptor } of part.projects) {
-      const job = worktreeEnvironment(store, worktreeId, descriptor.project);
-      if (job?.descriptor === null || job === null) {
-        const text = `this checkout's Vitest has no project ${JSON.stringify(descriptor.project)}, which the parts ran`;
+    for (const run of part.projects) {
+      const { project } = run.descriptor;
+      const job = worktreeEnvironment(store, worktreeId, project);
+      const resolved = environments.find((e) => e.project === project)?.resolvedConfig;
+      if (job?.descriptor === null || job === null || resolved === undefined) {
+        const text = `this checkout's Vitest has no project ${JSON.stringify(project)}, which the parts ran`;
         return { kind: "environment", text };
       }
-      const differences = runDifferences(descriptor, job.descriptor);
-      if (differences.length > 0) return jobRefusal(descriptor.project, differences);
+      const view = { descriptor: job.descriptor, snapshotOptions: snapshotFields(resolved) };
+      const differences = runDifferences(run, view);
+      if (differences.length > 0) return jobRefusal(project, differences);
     }
   }
   return null;

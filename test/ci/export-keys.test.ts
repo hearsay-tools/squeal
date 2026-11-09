@@ -8,7 +8,9 @@ import {
   PART_FORMAT,
   type Part,
   type PartFile,
+  type PartHeader,
   type RunDescriptor,
+  snapshotFields,
 } from "../../src/core/ci/parts.js";
 import { readHead } from "../../src/core/daemon-loop/head.js";
 import { coreEnvironmentInputs } from "../../src/core/keys/environment.js";
@@ -26,6 +28,8 @@ import type { RunnerAdapter, RunnerEnvironment } from "../../src/core/types/runn
  * shard is left out whole (D2); one the job's runner does not list is not
  * keyed; a project the job has no environment of, or one the shards ran in
  * another environment, is refused, since the export's keys hold the job's.
+ * A file whose part does not certify an input's content here, or whose
+ * checks share a name, is left out and counted (review of 0.1.421 B1, B4).
  */
 
 const BASE = existsSync("/tmp") ? "/tmp" : tmpdir();
@@ -97,6 +101,7 @@ async function exported(
   commit: string,
   run: RunDescriptor,
   files: readonly PartFile[],
+  change: Partial<PartHeader> = {},
 ): Promise<CiExport> {
   const store = openStore(join(root, ".git"));
   if (isStoreOpenFailure(store)) throw new Error(JSON.stringify(store));
@@ -109,12 +114,22 @@ async function exported(
       runnerVersion: "5.0.3",
       commit,
       dirty: false,
+      clean: true,
+      untracked: [],
+      shard: { index: 1, count: 1 },
       createdAt: 0,
       source: { kind: "local" },
       end: "completed",
       observing: true,
+      ...change,
     },
-    projects: [{ descriptor: run, updateSnapshot: "none" }],
+    projects: [
+      {
+        descriptor: run,
+        updateSnapshot: "none",
+        snapshotOptions: snapshotFields(ENVIRONMENT.resolvedConfig),
+      },
+    ],
     testFiles: files,
   };
   const { squealVersion, keyFormat, dirty, createdAt, source } = part.header;
@@ -147,7 +162,14 @@ describe("ci export's keys (spec 018 D9)", () => {
     ];
     const result = await exported(root, commit, descriptor(), files);
     if ("refused" in result) throw new Error(result.refused.text);
-    expect(result.counts).toEqual({ testFiles: 1, results: 2, failed: 1, unkeyed: 1 });
+    expect(result.counts).toEqual({
+      testFiles: 1,
+      results: 2,
+      failed: 1,
+      unkeyed: 1,
+      uncertified: 0,
+      ambiguous: 0,
+    });
     const [only] = result.bundle.testFiles;
     expect(only?.path).toBe("test/a.test.ts");
     expect(only?.closure?.paths).toEqual(["src/x.ts", "test/a.test.ts"]);
@@ -180,5 +202,24 @@ describe("ci export's keys (spec 018 D9)", () => {
     expect("refused" in result && result.refused.text).toContain(
       `this checkout's Vitest has no project "web"`,
     );
+  });
+
+  it("leaves out a file whose checks share a name, and one whose input content it cannot certify", async () => {
+    const { root, commit } = await repository();
+    const shared = { ...file("test/a.test.ts", "pass"), sharedNames: ["runs twice"] };
+    // `src/x.ts` here is `// src/x.ts\n`, not the content the part records.
+    const wrong = { ...file("test/b.test.ts", "pass"), inputs: { "src/x.ts": "0".repeat(40) } };
+    const result = await exported(root, commit, descriptor(), [shared, wrong]);
+    if ("refused" in result) throw new Error(result.refused.text);
+    expect(result.counts).toMatchObject({ testFiles: 0, ambiguous: 1, uncertified: 1, unkeyed: 0 });
+  });
+
+  it("leaves out every file of a shard whose tracked files differed from the commit", async () => {
+    const { root, commit } = await repository();
+    const files = [file("test/a.test.ts", "pass")];
+    const dirty = await exported(root, commit, descriptor(), files, { clean: false });
+    expect("counts" in dirty && dirty.counts).toMatchObject({ testFiles: 0, uncertified: 1 });
+    const clean = await exported(root, commit, descriptor(), files);
+    expect("counts" in clean && clean.counts).toMatchObject({ testFiles: 1, uncertified: 0 });
   });
 });

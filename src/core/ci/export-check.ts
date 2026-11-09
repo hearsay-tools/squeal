@@ -6,13 +6,14 @@ import {
 } from "../keys/environment-descriptor.js";
 import { KEY_FORMAT_VERSION } from "../keys/key-format.js";
 import type { ProjectName } from "../types/common.js";
-import type { Part, RunDescriptor } from "./parts.js";
+import type { Part, PartProject } from "./parts.js";
 
 /*
  * Spec 018 D9 (row 018-17): the parts `squeal ci export` refuses, each with
  * a named reason. One export holds one commit's passes in one environment
  * per project, so every part must come from that commit, have completed, and
- * hold each test file once.
+ * hold each test file once, and the parts must be every shard of one run
+ * (2026-11-09, review of 0.1.421 B3).
  */
 
 /** Why a set of parts makes no export. */
@@ -22,6 +23,7 @@ export type RefusalKind =
   | "no-commit"
   | "commits"
   | "checkout"
+  | "shards"
   | "snapshot"
   | "duplicate"
   | "environment";
@@ -38,11 +40,17 @@ export interface NamedPart {
   readonly part: Part;
 }
 
+/** What the comparisons read of a project's run: its descriptor and its snapshot options by field. */
+export type RunView = Pick<PartProject, "descriptor" | "snapshotOptions">;
+
 /**
  * Resolved Vitest fields Squeal's own instance sets for itself and a run of
- * the project's command does not (`adapter.ts`, `#start`): `includeTaskLocation`
- * and the snapshot options (`update: "none"`). A part's descriptor is the
- * run's, so they differ from the job's by design (018-16 notes).
+ * the project's command does not (`adapter.ts`, `#start`): `includeTaskLocation`,
+ * and `snapshotOptions.updateSnapshot` (`update: "none"`), which a part
+ * holds apart (`updateSnapshot`, refused unless `none`). The other snapshot
+ * options are compared field by field (`RunView.snapshotOptions`; review of
+ * 0.1.421 B2). A part's descriptor is the run's, so these differ from the
+ * job's by design (018-16 notes).
  */
 const SQUEAL_FIELDS: readonly string[] = ["includeTaskLocation", "snapshotOptions"];
 
@@ -76,7 +84,46 @@ export function partsRefusal(parts: readonly NamedPart[], head: string | null): 
     const text = `the parts are of commit ${commit}, and this checkout is at ${here}: run the export in a checkout of the parts' commit`;
     return { kind: "checkout", text };
   }
-  return snapshotRefusal(parts) ?? duplicateRefusal(parts) ?? environmentRefusal(parts);
+  return (
+    shardRefusal(parts) ??
+    snapshotRefusal(parts) ??
+    duplicateRefusal(parts) ??
+    environmentRefusal(parts)
+  );
+}
+
+/**
+ * Parts that are not each shard of one run once: shards of different
+ * counts, a missing shard, or two parts of one shard (two Vitest processes
+ * in one shard's command, or a shard run twice). The union of a partial set
+ * would pass for the whole suite.
+ */
+function shardRefusal(parts: readonly NamedPart[]): Refusal | null {
+  if (parts.length === 0) return { kind: "shards", text: "no part to export" };
+  const counts = [...new Set(parts.map((p) => p.part.header.shard.count))].sort((a, b) => a - b);
+  if (counts.length > 1) {
+    return { kind: "shards", text: `the parts come from runs of ${counts.join(", ")} shards` };
+  }
+  const count = counts[0] as number;
+  const byIndex = new Map<number, string[]>();
+  for (const { file, part } of parts) {
+    const { index } = part.header.shard;
+    byIndex.set(index, [...(byIndex.get(index) ?? []), file]);
+  }
+  for (const [index, files] of [...byIndex].sort(([a], [b]) => a - b)) {
+    if (index < 1 || index > count) {
+      return { kind: "shards", text: `${files.join(", ")} names shard ${index}/${count}` };
+    }
+    if (files.length > 1) {
+      const text = `shard ${index}/${count} has ${files.length} parts: ${files.join(", ")}; export takes one per shard`;
+      return { kind: "shards", text };
+    }
+  }
+  const missing = Array.from({ length: count }, (_, i) => i + 1).filter((i) => !byIndex.has(i));
+  if (missing.length === 0) return null;
+  const named = missing.map((i) => `${i}/${count}`).join(", ");
+  const text = `no part of shard ${named}: export the parts of every shard, after all of them passed`;
+  return { kind: "shards", text };
 }
 
 /** A part whose run could write snapshots: its passes may be of snapshots it wrote (D9). */
@@ -113,15 +160,16 @@ function duplicateRefusal(parts: readonly NamedPart[]): Refusal | null {
 
 /** Two parts that ran one project in environments an imported pass may not share (D9, D10). */
 function environmentRefusal(parts: readonly NamedPart[]): Refusal | null {
-  const first = new Map<ProjectName, { file: string; descriptor: RunDescriptor }>();
+  const first = new Map<ProjectName, { file: string; run: RunView }>();
   for (const { file, part } of parts) {
-    for (const { descriptor } of part.projects) {
+    for (const run of part.projects) {
+      const { descriptor } = run;
       const held = first.get(descriptor.project);
       if (held === undefined) {
-        first.set(descriptor.project, { file, descriptor });
+        first.set(descriptor.project, { file, run });
         continue;
       }
-      const differences = runDifferences(held.descriptor, descriptor);
+      const differences = runDifferences(held.run, run);
       if (differences.length === 0) continue;
       const text = `${held.file} and ${file} ran project ${JSON.stringify(descriptor.project)} in different environments: ${texts(differences)} (the export as the first, here as the second)`;
       return { kind: "environment", text };
@@ -131,21 +179,27 @@ function environmentRefusal(parts: readonly NamedPart[]): Refusal | null {
 }
 
 /**
- * The parts descriptors `a` and `b` differ in beyond what an imported pass
- * may (D10) and what Squeal's instance sets for itself: `importDifferences`
- * over what a part's descriptor holds, neither files nor installed
- * dependencies. Between a shard's and the job's (as the daemon computes it),
- * a refusal when not empty: the export's keys hold the job's environment, so
- * it must be the shards' too.
+ * The parts runs `a` and `b` differ in beyond what an imported pass may
+ * (D10) and what Squeal's instance sets for itself: `importDifferences` over
+ * what a part's descriptor holds, neither files nor installed dependencies,
+ * with each snapshot option but `updateSnapshot` as a config field of its
+ * own, `snapshotOptions.<name>`. Between a shard's and the job's (as the
+ * daemon computes it), a refusal when not empty: the export's keys hold the
+ * job's environment, so it must be the shards' too.
  */
-export function runDifferences(a: RunDescriptor, b: RunDescriptor): Difference[] {
-  const comparable = (d: RunDescriptor): EnvironmentDescriptor => ({
-    ...d,
+export function runDifferences(a: RunView, b: RunView): Difference[] {
+  const comparable = ({ descriptor, snapshotOptions }: RunView): EnvironmentDescriptor => ({
+    ...descriptor,
     installedDependencies: "",
     files: [],
-    config: Object.fromEntries(
-      Object.entries(d.config).filter(([name]) => !SQUEAL_FIELDS.includes(name)),
-    ),
+    config: {
+      ...Object.fromEntries(
+        Object.entries(descriptor.config).filter(([name]) => !SQUEAL_FIELDS.includes(name)),
+      ),
+      ...Object.fromEntries(
+        Object.entries(snapshotOptions).map(([name, hash]) => [`snapshotOptions.${name}`, hash]),
+      ),
+    },
   });
   return importDifferences(comparable(a), comparable(b));
 }

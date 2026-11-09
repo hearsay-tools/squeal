@@ -3,8 +3,11 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { PartEnd, PartFile, PartProject } from "../../core/ci/parts.js";
+import { withInputs } from "../../core/ci/inputs.js";
+import type { PartEnd, PartFile, PartProject, PartShard } from "../../core/ci/parts.js";
 import type { WorktreePaths } from "../../core/fs/worktree-paths.js";
+import { readObjectFormat } from "../../core/hash/git-index.js";
+import { createFsHasher } from "../../core/hash/hasher.js";
 import type { AbsolutePath } from "../../core/types/common.js";
 import { takeRecorded } from "../observe/read.js";
 import {
@@ -33,6 +36,7 @@ export const CI_RECORD_VARIABLE = "SQUEAL_CI_RECORD";
 export interface RecordedRun {
   readonly end: PartEnd;
   readonly runnerVersion: string;
+  readonly shard: PartShard;
   readonly observing: boolean;
   readonly projects: readonly PartProject[];
   readonly testFiles: readonly PartFile[];
@@ -54,8 +58,12 @@ export interface RecordingOptions {
 export interface VitestRecording {
   /** The env the command runs with: the recorder and the hook in `NODE_OPTIONS`. */
   readonly env: NodeJS.ProcessEnv;
-  /** After the command exited: each Vitest process's run, and a note for each that left none. */
-  finish(): { readonly runs: RecordedRun[]; readonly notes: string[] };
+  /**
+   * After the command exited: each Vitest process's run, each test file with
+   * the content of what it read now (`withInputs`), and a note for each
+   * process that left none.
+   */
+  finish(): Promise<{ readonly runs: RecordedRun[]; readonly notes: string[] }>;
   /** Removes the private directory. */
   close(): void;
 }
@@ -100,13 +108,21 @@ export function startRecording(options: RecordingOptions): VitestRecording | str
   env[CI_RECORD_VARIABLE] = JSON.stringify({ raw, variables: [...options.allowlist] });
   return {
     env,
-    finish: () => {
+    finish: async () => {
       const recorded = recorder === null ? null : takeRecorded(observed);
       const { runs, notes } = readRawRuns(raw);
       const context = { ...options, observing: recorder !== null, recorded };
       const none = runs.length === 0 && notes.length === 0;
+      const root = options.paths.root;
+      const hasher = createFsHasher(root, await readObjectFormat(root));
+      const seen = new Map();
+      const bodies: RecordedRun[] = [];
+      for (const run of runs) {
+        const body = recordedRun(run, context);
+        bodies.push({ ...body, testFiles: await withInputs(root, hasher, body.testFiles, seen) });
+      }
       return {
-        runs: runs.map((run) => recordedRun(run, context)),
+        runs: bodies,
         notes: none ? ["no Vitest run in this command: nothing recorded"] : notes,
       };
     },

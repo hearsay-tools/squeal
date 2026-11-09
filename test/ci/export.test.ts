@@ -1,9 +1,6 @@
-import { execFileSync } from "node:child_process";
-import { randomUUID } from "node:crypto";
-import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { readdirSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { ciCommand } from "../../src/cli/ci.js";
 import { type CiExport, ciExport } from "../../src/core/ci/export.js";
 import { readPart } from "../../src/core/ci/parts.js";
 import { committedBlobs } from "../../src/core/commit/tree.js";
@@ -14,12 +11,12 @@ import { KEY_FORMAT_VERSION } from "../../src/core/keys/key-format.js";
 import type { ExportHeader } from "../../src/core/store/imports.js";
 import { exportResults } from "../../src/core/store/transfer.js";
 import { decodeBundle, type ResultsBundle } from "../../src/core/store/transfer-bundle.js";
-import type { AbsolutePath, WorktreeId } from "../../src/core/types/common.js";
+import type { WorktreeId } from "../../src/core/types/common.js";
 import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 import { createVitestAdapter } from "../../src/runners/vitest/index.js";
-import { onCleanUp } from "../scheduler/cleanup.js";
 import { openRepoStore } from "../scheduler/repo.js";
 import { openHarness } from "../scheduler/vitest-harness.js";
+import { ci, cloneOf, committed, recordVitest, scratch } from "./fixture.js";
 
 /*
  * Spec 018 D9 (row 018-17): `squeal ci export` in a fresh checkout of the
@@ -31,24 +28,12 @@ import { openHarness } from "../scheduler/vitest-harness.js";
  * its Vitest resolves from the repository's `node_modules`.
  */
 
-const REPO = resolve(import.meta.dirname, "../..");
-const VITEST = join(REPO, "node_modules/vitest/vitest.mjs");
-const SCRATCH = join(REPO, "test/fixtures/vitest/.tmp");
 const NAMES = ["a", "b", "c", "d"];
 const SQUEAL = "0.0.0-test";
 
-/** A directory under the fixtures' scratch, removed after the test. */
-function scratch(name: string): string {
-  const dir = join(SCRATCH, `${name}-${randomUUID()}`);
-  mkdirSync(dir, { recursive: true });
-  onCleanUp(() => rmSync(dir, { recursive: true, force: true }));
-  return dir;
-}
-
 /** Four test files, each reading its own data file and importing one source file. */
 function fixture(dir: string): string {
-  const root = join(dir, "origin");
-  const files: Record<string, string> = {
+  return committed(dir, {
     "package.json": JSON.stringify({ name: "ci-export-fixture", private: true, type: "module" }),
     "vitest.config.ts": `import { defineConfig } from "vitest/config";\nexport default defineConfig({ test: { include: ["test/**/*.test.ts"] } });\n`,
     "src/upper.ts": "export const upper = (text: string): string => text.toUpperCase();\n",
@@ -61,33 +46,14 @@ function fixture(dir: string): string {
         ],
       ]),
     ),
-  };
-  for (const [path, content] of Object.entries(files)) {
-    mkdirSync(dirname(join(root, path)), { recursive: true });
-    writeFileSync(join(root, path), content);
-  }
-  execFileSync("git", ["init", "-q"], { cwd: root });
-  execFileSync("git", ["add", "."], { cwd: root });
-  execFileSync("git", ["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "f"], {
-    cwd: root,
   });
-  return root;
-}
-
-/** A fresh clone of `origin` beside it, as a CI job's checkout of the same commit. */
-function cloneOf(origin: string, name: string): AbsolutePath {
-  const root = join(dirname(origin), name);
-  execFileSync("git", ["clone", "-q", origin, root]);
-  return root;
 }
 
 /** The parts of two shards of `root`, recorded as in CI. */
 async function recordShards(root: string, out: string): Promise<void> {
-  const env = { ...process.env, CI: "true" };
   for (const shard of ["1/2", "2/2"]) {
-    const io = { stdout: () => {}, stderr: () => {}, cwd: root, env };
-    const command = [process.execPath, VITEST, "run", `--shard=${shard}`];
-    expect(await ciCommand(["record", "--out", out, "--", ...command], io)).toBe(0);
+    const recorded = await recordVitest(root, out, [`--shard=${shard}`]);
+    expect(recorded.code, recorded.said).toBe(0);
   }
 }
 
@@ -164,43 +130,46 @@ describe("squeal ci export (spec 018 D9)", () => {
     expect(readdirSync(out)).toHaveLength(2);
 
     const daemon = await daemonExport(origin);
-    const ci = await partsExport(origin, out);
-    if (!("bundle" in ci)) throw new Error(ci.refused.text);
-    expect(ci.counts).toEqual({ testFiles: 4, results: 12, failed: 0, unkeyed: 0 });
+    const job = await partsExport(origin, out);
+    if (!("bundle" in job)) throw new Error(job.refused.text);
+    expect(job.counts).toEqual({
+      testFiles: 4,
+      results: 12,
+      failed: 0,
+      unkeyed: 0,
+      uncertified: 0,
+      ambiguous: 0,
+    });
 
     const files = (bundle: ResultsBundle) =>
       bundle.testFiles.map(({ keyParts: _parts, ...file }) => file);
     expect(daemon.testFiles.map((f) => f.path)).toEqual(NAMES.map((n) => `test/${n}.test.ts`));
-    expect(files(ci.bundle)).toEqual(files(daemon));
-    for (const file of ci.bundle.testFiles) {
+    expect(files(job.bundle)).toEqual(files(daemon));
+    for (const file of job.bundle.testFiles) {
       expect(file.closure?.paths).toContain(`data/${file.path.slice(5, 6)}.txt`);
       expect(file.closure?.paths).toContain("src/upper.ts");
       expect(file.keyParts).toEqual({ dependencies: expect.any(String), runtime: "" });
     }
-    expect(await proven(ci.root, ci.bundle)).toEqual([true, true, true, true]);
+    expect(await proven(job.root, job.bundle)).toEqual([true, true, true, true]);
 
     // The project's own run collects no test location (Squeal's instance sets `includeTaskLocation`).
     const results = (bundle: ResultsBundle) =>
       bundle.results.map(({ durationMs: _ms, location: _at, ...result }) => result);
-    expect(results(ci.bundle)).toEqual(results(daemon));
-    expect(ci.bundle.results.filter((r) => r.location !== null)).toEqual([]);
-    expect(ci.bundle.environments.map((e) => e.hash)).toEqual(
+    expect(results(job.bundle)).toEqual(results(daemon));
+    expect(job.bundle.results.filter((r) => r.location !== null)).toEqual([]);
+    expect(job.bundle.environments.map((e) => e.hash)).toEqual(
       daemon.environments.map((e) => e.hash),
     );
-    expect(ci.bundle.header.commit).toBe(daemon.header.commit);
+    expect(job.bundle.header.commit).toBe(daemon.header.commit);
 
     // The command: the same parts, keyed with this Squeal's version and policy, written gzipped.
     const written = join(dirname(origin), "results.json.gz");
-    let said = "";
-    const add = (text: string) => {
-      said += text;
-    };
-    const io = { stdout: add, stderr: add, cwd: ci.root, env: process.env };
-    expect(await ciCommand(["export", "--parts", out, "--out", written], io)).toBe(0);
-    expect(said).toContain(`Exported 4 test files, 12 results, to ${written}.`);
+    const command = await ci(["export", "--parts", out, "--out", written], job.root);
+    expect(command.code, command.said).toBe(0);
+    expect(command.said).toContain(`Exported 4 test files, 12 results, to ${written}.`);
     const decoded = decodeBundle(readFileSync(written));
     if (typeof decoded === "string") throw new Error(decoded);
     expect(decoded.testFiles.map((f) => f.path)).toEqual(daemon.testFiles.map((f) => f.path));
-    expect(await proven(ci.root, decoded)).toEqual([true, true, true, true]);
+    expect(await proven(job.root, decoded)).toEqual([true, true, true, true]);
   });
 });
