@@ -5,13 +5,9 @@ import { describe, expect, it } from "vitest";
 import { KEY_FORMAT_VERSION } from "../../src/core/keys/key-format.js";
 import { observedMetaKey } from "../../src/core/keys/observed.js";
 import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
-import {
-  AbsolutePathError,
-  exportResults,
-  importRefusal,
-  importResults,
-} from "../../src/core/store/transfer.js";
+import { AbsolutePathError, exportResults } from "../../src/core/store/transfer.js";
 import { encodeBundle } from "../../src/core/store/transfer-bundle.js";
+import { importRefusal, importResults } from "../../src/core/store/transfer-import.js";
 import type { KnownState } from "../../src/core/types/state.js";
 import type { Store } from "../../src/core/types/store.js";
 import { claimRepo, fileName, type Side, side } from "../scheduler/claims-fixture.js";

@@ -20,6 +20,17 @@ export const OBSERVED_MAPS = ["observed", "observedDirect", "observedModules"] a
 export type ObservedMap = (typeof OBSERVED_MAPS)[number];
 export type ObservedEntries = Partial<Record<ObservedMap, readonly RelativePath[]>>;
 
+/**
+ * The two segments of a check key beside its environment hash and closure
+ * (`keyFromSegments`): the installed-dependency segment (task 001-105) and
+ * the runtime segment. A store does not keep them, so only an exporter that
+ * computes keys gives them (018 D11); absent, both are empty.
+ */
+export interface KeyParts {
+  readonly dependencies: string;
+  readonly runtime: string;
+}
+
 /** One exported test file: its key, closure list and observed entries. */
 export interface ExportedTestFile {
   readonly project: ProjectName;
@@ -33,6 +44,8 @@ export interface ExportedTestFile {
   } | null;
   /** The file's entry in each observed map that has one. */
   readonly observed: ObservedEntries;
+  /** The key's other segments, for re-keying at import (018 D11); absent, both empty. */
+  readonly keyParts?: KeyParts;
 }
 
 /** One exported result: a pass or skip at its file's key. */
@@ -118,6 +131,22 @@ export function listHash(paths: readonly string[]): string {
   return createHash("sha256").update(JSON.stringify(sorted)).digest("hex").slice(0, 32);
 }
 
+/** The prefix of a stored closure hash over the static list (018 D15); older rows hash the whole list. */
+export const STATIC_LIST = "static:";
+
+/**
+ * The hash of a closure list less the observed paths it took, as an import
+ * stores it for D5 and D15: the lists of two stores then compare equal when
+ * only their observed sets differ.
+ */
+export function staticListHash(
+  paths: readonly RelativePath[],
+  observed: readonly RelativePath[] = [],
+): string {
+  const taken = new Set(observed);
+  return `${STATIC_LIST}${listHash(paths.filter((p) => !taken.has(p)))}`;
+}
+
 /** The hash of a file's observed entries as an import stores it for D5. */
 export function observedHash(observed: ObservedEntries): string {
   return listHash(OBSERVED_MAPS.flatMap((map) => (observed[map] ?? []).map((p) => `${map}:${p}`)));
@@ -171,7 +200,11 @@ function isTestFile(value: unknown): boolean {
         typeof closure.method === "string")) &&
     Object.entries(value.observed).every(
       ([map, paths]) => (OBSERVED_MAPS as readonly string[]).includes(map) && isStrings(paths),
-    )
+    ) &&
+    (value.keyParts === undefined ||
+      (isObject(value.keyParts) &&
+        typeof value.keyParts.dependencies === "string" &&
+        typeof value.keyParts.runtime === "string"))
   );
 }
 

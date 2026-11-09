@@ -1,14 +1,16 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { committedBlobs } from "../core/commit/tree.js";
 import { resolveCommonDir, worktreeIdFor } from "../core/fs/git-layout.js";
 import { compareEnvironment, comparisonText } from "../core/status/import-environment.js";
 import { worktreeEnvironment } from "../core/store/environments.js";
 import { sourceLabel } from "../core/store/imports.js";
 import { isStoreOpenFailure, openStore } from "../core/store/open.js";
-import { type ImportCounts, importRefusal, importResults } from "../core/store/transfer.js";
 import { decodeBundle, type ResultsBundle } from "../core/store/transfer-bundle.js";
-import type { AbsolutePath } from "../core/types/common.js";
+import { type ImportCounts, importRefusal, importResults } from "../core/store/transfer-import.js";
+import type { AbsolutePath, RelativePath } from "../core/types/common.js";
+import type { FileHash } from "../core/types/keys.js";
 import type { Store } from "../core/types/store.js";
 import { askDaemon, CLI_SOCKET_TIMEOUT_MS, worktreeRoot } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
@@ -53,8 +55,16 @@ export async function importCommand(args: readonly string[], io: CliIo): Promise
     return 1;
   }
   const fileHash = createHash("sha256").update(bytes).digest("hex");
+  const blobs = await commitBlobs(root, bundle.header.commit);
+  const rekeying = { worktreeId: worktreeIdFor(root), blobs };
   const now = (io.now ?? Date.now)();
-  const options = { importId: fileHash.slice(0, 16), fileHash, now, dryRun: parsed.dryRun };
+  const options = {
+    importId: fileHash.slice(0, 16),
+    fileHash,
+    now,
+    dryRun: parsed.dryRun,
+    rekeying,
+  };
   try {
     const counts = whileBusy(store, now + BUSY_BOUND_MS, () =>
       importResults(store, bundle, options),
@@ -66,6 +76,7 @@ export async function importCommand(args: readonly string[], io: CliIo): Promise
       return 1;
     }
     io.stdout(`${addedText(bundle, counts, parsed.dryRun)}\n`);
+    io.stdout(rekeyText(bundle, counts, blobs !== null));
     io.stdout(`${environmentLines(store, bundle, worktreeIdFor(root))}\n`);
   } finally {
     store.close();
@@ -109,6 +120,30 @@ function addedText(bundle: ResultsBundle, counts: ImportCounts, dryRun: boolean)
   ].filter((part) => part !== null);
   const added = lists.length === 0 ? "" : `\nAdded where the store had none: ${lists.join(", ")}.`;
   return `${verb} ${counts.results} results of ${n} test file${n === 1 ? "" : "s"} from ${source}${kept}.${added}`;
+}
+
+/** The blob ids of `commit`'s files, or `null` when this repository does not hold it (018 D11). */
+async function commitBlobs(
+  root: AbsolutePath,
+  commit: string | null,
+): Promise<ReadonlyMap<RelativePath, FileHash> | null> {
+  if (commit === null) return null;
+  try {
+    return await committedBlobs(root, commit);
+  } catch {
+    return null;
+  }
+}
+
+/** How many files went at their key here (D11), or why none could: one line, or none. */
+function rekeyText(bundle: ResultsBundle, counts: ImportCounts, commitHere: boolean): string {
+  const at = bundle.header.commit?.slice(0, 8) ?? "an unborn commit";
+  if (!commitHere) {
+    return `Kept at the exported keys: this repository does not hold commit ${at}; fetch it and import again.\n`;
+  }
+  if (counts.rekeyed === 0) return "";
+  const n = bundle.testFiles.length;
+  return `Re-keyed ${counts.rekeyed} of ${n} test file${n === 1 ? "" : "s"} to this worktree's closure lists and environment at ${at}.\n`;
 }
 
 /** Per exported project, whether its environment equals this worktree's (D1), differences named. */
