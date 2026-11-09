@@ -117,7 +117,10 @@ export interface SettleOptions {
  * (`RequestProgress`).
  */
 export interface FileEnds {
-  /** `file` got a result, from a run or a lookup, or was marked `unknown`. */
+  /**
+   * `file` got a result, from a run or a lookup, or was marked `unknown`, and
+   * the records of the requests that asked for it accepted it (`#ended`).
+   */
   ended(file: FileState): void;
   /** A commit closes a round of work on `files`. */
   committed(files: ReadonlyMap<string, FileState>): void;
@@ -346,10 +349,7 @@ export class Ledger {
         this.queue.remove(ref);
         this.#syncPhase(file);
         // Row 011-118: back at the key its results stand under, it is current by lookup.
-        if (classify(file) === "current") {
-          this.checkpoints.done(ref, null);
-          this.ends?.ended(file);
-        }
+        if (classify(file) === "current") this.#ended(file, this.checkpoints.done(ref, null));
         continue;
       }
       const { hits, mayWait } = held || strict ? UNPROBED : this.probe(key);
@@ -474,8 +474,18 @@ export class Ledger {
     if (key === file.key) this.#discharge(file);
     if (!this.queue.isForced(file.ref)) this.queue.remove(file.ref);
     this.#syncPhase(file);
-    this.checkpoints.done(file.ref, checkpointId);
-    this.ends?.ended(file);
+    this.#ended(file, this.checkpoints.done(file.ref, checkpointId));
+  }
+
+  /**
+   * Row 018-12 (review wave 3.6-r2, B2-R1): `file` ended for the requests
+   * that asked for it once their own records accepted the end: the open
+   * checkpoint's verdict (`accepted`, from `Checkpoints.done`; `failed`
+   * always accepts) and its retry's, which only a forced run at its key, or
+   * that key's crash, ends (`endRetry` clears `retryKey` before this).
+   */
+  #ended(file: FileState, accepted: boolean): void {
+    if (accepted && file.retryKey === null) this.ends?.ended(file);
   }
 
   /**
@@ -573,7 +583,7 @@ export class Ledger {
       if (file.key === key && !this.queue.isForced(file.ref)) this.queue.remove(file.ref);
       this.#syncPhase(file);
       this.checkpoints.failed(file.ref);
-      this.ends?.ended(file);
+      this.#ended(file, true);
     }
     this.#unknown.push({ testFiles: entries.map((e) => e.file.ref), reason, runId });
   }
