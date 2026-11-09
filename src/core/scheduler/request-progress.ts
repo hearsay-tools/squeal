@@ -12,9 +12,9 @@ import type { FileState } from "./files.js";
  *
  * Review wave 3.6, B2: an end is the ledger's event (`Ledger.ends`), heard
  * where the file got a result or was marked `unknown`, never read later
- * from its phase. A file that leaves the queue otherwise (unkeyed, blocked,
- * withdrawn, gone) leaves its ask at the next commit with no end, so a later
- * run of it, the scheduler's own, cannot stand for the request.
+ * from its phase. A file that leaves the queue otherwise (unkeyed,
+ * withdrawn, gone) leaves its ask at the next commit with no end, so a
+ * later run of it, the scheduler's own, cannot stand for the request.
  */
 export class RequestProgress {
   /** By `FileState.id`: the asked files still queued or running. */
@@ -32,15 +32,14 @@ export class RequestProgress {
   }
 
   /**
-   * `file` got a result, from a run or a lookup, or was marked `unknown`.
-   * An asked file's end counts; it stays asked while it is still queued or
-   * running for the request (a forced one a lookup did not count for, one
-   * left `unknown` at a key it no longer has).
+   * `file` got a result, from a run or a lookup, or was marked `unknown`:
+   * an asked file ends, once, as the checkpoint counts it (spec 001 D7: a
+   * result at any key). What queues it again after is not the request's.
    */
   ended(file: FileState): void {
     if (this.#open.get(file.id) !== file) return;
+    this.#open.delete(file.id);
     this.#ended += 1;
-    if (file.phase === null) this.#open.delete(file.id);
   }
 
   /**
