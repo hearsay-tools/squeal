@@ -6,6 +6,7 @@ import { CLI_READ_RETRY_MS } from "../core/status/open.js";
 import { readStatus } from "../core/status/snapshot.js";
 import { readWhy } from "../core/status/why.js";
 import type { EpochMs } from "../core/types/common.js";
+import { ciCommand } from "./ci.js";
 import { codeCommand } from "./code.js";
 import { codexRuntimeCommand } from "./codex/runtime.js";
 import { codexStatusLine } from "./codex/status.js";
@@ -177,6 +178,12 @@ Usage:
                                 the export's; prints the results added and each
                                 difference of the export's environment from this
                                 worktree's; --dry-run writes nothing
+  squeal ci record [--out <dir>] -- <command> [args...]
+                                In CI: run the project's Vitest command unchanged and
+                                exit with its code; also write one part per Vitest
+                                process into --out (default squeal-parts/): each test
+                                file's outcome, checks, duration and observed reads,
+                                and each project's environment; other runners only run
   squeal ps [--repo] [--full] [--json]
                                 Every Squeal daemon of this user on this host, with its
                                 test processes, their CPU and memory over 2 s, the host's
@@ -261,6 +268,7 @@ const COMMANDS: Readonly<Record<string, Command>> = {
   retry: retryCommand,
   export: exportCommand,
   import: importCommand,
+  ci: ciCommand,
   ps: psCommand,
   stop: stopCommand,
   hold: holdCommand,

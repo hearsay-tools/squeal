@@ -288,7 +288,20 @@ function suiteErrors(module: TestModule): { name: string; errors: readonly Seria
  * N1). `null` when Vitest has no diagnostic for it or a part is not a number.
  */
 function moduleDuration(module: TestModule): number | null {
-  const d = module.diagnostic();
+  return diagnosticDuration(module.diagnostic());
+}
+
+/** `moduleDuration` of a module's diagnostic, as `squeal ci record` kept it (spec 018 D8). */
+export function diagnosticDuration(
+  d: Pick<
+    ReturnType<TestModule["diagnostic"]>,
+    | "environmentSetupDuration"
+    | "prepareDuration"
+    | "collectDuration"
+    | "setupDuration"
+    | "duration"
+  >,
+): number | null {
   const parts = [
     d.environmentSetupDuration,
     d.prepareDuration,
