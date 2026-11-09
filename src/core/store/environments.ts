@@ -48,8 +48,10 @@ export interface StoredEnvironment {
 }
 
 /**
- * Adds each descriptor under its hash; a hash already stored keeps its row.
- * In a transaction of its own, or a savepoint of the caller's.
+ * Adds each descriptor under its hash; a hash already stored keeps its row,
+ * unless the row lacks the `browser` part and the new descriptor has it
+ * (018 D10): equal hashes have equal parts, so only the part is new. In a
+ * transaction of its own, or a savepoint of the caller's.
  */
 export function putEnvironments(
   store: Store,
@@ -195,7 +197,9 @@ function insertEnvironments(
   for (const { hash, descriptor } of environments) {
     conn.run(
       `INSERT INTO environments (hash, descriptor, recorded_at) VALUES (?, ?, ?)
-       ON CONFLICT (hash) DO NOTHING`,
+       ON CONFLICT (hash) DO UPDATE SET descriptor = excluded.descriptor, recorded_at = excluded.recorded_at
+       WHERE json_type(environments.descriptor, '$.browser') IS NULL
+         AND json_type(excluded.descriptor, '$.browser') IS NOT NULL`,
       hash,
       JSON.stringify(descriptor),
       now,
