@@ -112,3 +112,4 @@ See `spec.md`, section Open questions.
 - ADRs: `../../decisions/0001-typescript-vitest-claude-code.md`, `../../decisions/0002-content-keyed-shared-store.md`, `../../decisions/0004-codex-and-node-test-next.md`
 - Spec 001 D3, D4, D5, the rules this runner must satisfy: `../001-core-loop/spec.md`
 - Prior findings on affected-test selection: `../001-core-loop/research/result-fingerprinting-prior-art.md`, `../001-core-loop/research/vitest-internals.md`
+- 2026-11-09, spec 018 row 018-19 (coordinator 3739e45a): the node:test environment no longer holds the Node binary's path (`execPath`); it holds `nodeBuild`, one hash of the probe's `process.versions`, `process.config`, `platform` and `arch`. Amends D1. One build at two paths now keys equal; two builds of one version differ.
