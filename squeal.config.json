@@ -1,6 +1,10 @@
 {
-  "vitest": { "exclude": ["test/e2e/**"] },
-  "baseline": { "onStart": "lookup-only" },
+  "vitest": {
+    "exclude": ["test/e2e/**"]
+  },
+  "baseline": {
+    "onStart": "lookup-only"
+  },
   "coverage": {
     "enabled": true,
     "exclude": ["test/**", "src/runners/node-test/runtime/**", "src/runners/vitest/ci-runtime/**"]
@@ -51,6 +55,19 @@
       "src/runners/pytest/runtime/**",
       "test/keys/validity/python/pyproject.toml",
       "test/keys/validity/python/uv.lock"
-    ]
+    ],
+    "test/ci/export-check.test.ts": ["src/runners/vitest/ci-runtime/**"],
+    "test/ci/export-evidence.test.ts": ["src/runners/vitest/ci-runtime/**"],
+    "test/ci/export-keys.test.ts": ["src/runners/vitest/ci-runtime/**"],
+    "test/ci/export-snapshot.test.ts": ["src/runners/vitest/ci-runtime/**"],
+    "test/ci/export-wrapper.test.ts": ["src/runners/vitest/ci-runtime/**"],
+    "test/ci/export.test.ts": ["src/runners/vitest/ci-runtime/**"],
+    "test/cli/ci-export.test.ts": ["src/runners/vitest/ci-runtime/**"],
+    "test/cli/ci-record.test.ts": ["src/runners/vitest/ci-runtime/**"],
+    "test/cli/ci-usage.test.ts": ["src/runners/vitest/ci-runtime/**"],
+    "test/runners/vitest/ci-evidence-writes.test.ts": ["src/runners/vitest/ci-runtime/**"],
+    "test/runners/vitest/ci-evidence.test.ts": ["src/runners/vitest/ci-runtime/**"],
+    "test/runners/vitest/ci-record.test.ts": ["src/runners/vitest/ci-runtime/**"],
+    "test/runners/vitest/ci-runs.test.ts": ["src/runners/vitest/ci-runtime/**"]
   }
 }
