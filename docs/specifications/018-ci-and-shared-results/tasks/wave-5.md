@@ -104,3 +104,26 @@ Owns: `src/cli/ci.ts` (the `publish` subcommand), `src/core/ci/publish.ts` (new)
 Leave alone: `src/core/store/transfer*.ts` except through exports; key inputs. Network I/O only in the reader, only with `shared.ref` set. No `pnpm run build`.
 
 Done when: publish, prune, fetch, offline, a ref off the default branch refused, nothing written to the user's config or refs, and a daemon with `shared.ref` importing at start are each tested; lint and typecheck clean; `squeal status` read once without `--wait` (pending stated as pending).
+
+## 018-17 R1: repair after review FAIL (`reviews/wave-5-0.1.421.md`)
+
+Use /worker. Shape: repair, on candidate `cand/0.1.421`.
+
+Outcome: `squeal ci export` writes a result only when it can prove the result belongs to that content and that the part set is complete; otherwise it refuses with a named reason. Conservative refusals are enough for this repair.
+
+Read: `reviews/wave-5-0.1.421.md` B1 to B4 and S1 with their reproductions and "Worker-sized fix" lines; `spec.md` D8, D9; `tasks/018-16/notes.md`, `tasks/018-17/notes.md`.
+
+Rules:
+- B1: a part records, per test file, the content hash of every input the run read (git blob id of the bytes on disk; for a directory listing, its names hash), and the run's commit and whether its tree was clean. The export keys a file only when every closure input's hash in its own checkout equals the recorded one; any input missing from the record, or different, drops the file with a counted reason. An input git does not track (ignored or untracked) counts as different unless recorded and equal. Never just omit an input from a key.
+- B2: compare `snapshotOptions` between part and export job field by field; only `updateSnapshot` (which must be `none`) is exempt; `snapshotFormat` and every other option must be equal, else refuse.
+- B3: a part records its shard (`index/count`, or `1/1` without `--shard`); the export refuses unless it has exactly one completed part for every shard index of one count, and refuses an empty `--parts` directory.
+- B4: when two checks of one test file share a full name (different lines or `test.each`), refuse that file with a named reason; do not guess locations or change daemon naming.
+- S1: fix the tolerance test's hashes to real ones and the expected direction (export `false`, local `true`).
+
+Starting seam: the review's reproductions as failing tests first.
+
+Owns: `src/core/ci/` except `publish.ts`, `src/runners/vitest/ci-runtime/` and the part writer, `src/cli/ci-export.ts`, the part format version (raise it), their tests and the S1 test.
+
+Leave alone: `src/core/ci/publish.ts`, `src/core/shared/` (018-20 runs beside you); key inputs; the daemon's naming. No `pnpm run build`.
+
+Done when: each reproduction fails before and passes after; the comparison test still passes; lint and typecheck clean; `squeal status` read once without `--wait`.
