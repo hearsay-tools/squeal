@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { EnvironmentDescriptor } from "../../src/core/keys/environment-descriptor.js";
+import {
+  configFieldHash,
+  type EnvironmentDescriptor,
+} from "../../src/core/keys/environment-descriptor.js";
 import { KEY_FORMAT_VERSION } from "../../src/core/keys/key-format.js";
 import { observedMetaKey } from "../../src/core/keys/observed.js";
 import { compareEnvironment, comparisonText } from "../../src/core/status/import-environment.js";
@@ -38,7 +41,7 @@ function descriptor(parts: Partial<EnvironmentDescriptor> = {}): EnvironmentDesc
     arch: "x64",
     installedDependencies: "deps",
     env: { names: [], hash: "none" },
-    config: { allowOnly: "t", root: "r" },
+    config: { allowOnly: configFieldHash(true), root: "r" },
     files: [],
     ci: false,
     browser: false,
@@ -107,11 +110,20 @@ describe("status beside an import (018 D15)", () => {
   });
 
   it("says an environment that differs only in CI's fields is equal for imported passes", () => {
-    const ci = descriptor({ config: { allowOnly: "f", root: "r" }, ci: true });
+    const ci = descriptor({ config: { allowOnly: configFieldHash(false), root: "r" }, ci: true });
     const local = { project: "", hash: "env", descriptor: descriptor(), recordedAt: 1 };
     expect(comparisonText("", compareEnvironment({ hash: "env-ci", descriptor: ci }, local))).toBe(
       "Environment: equal to this worktree's for imported passes; config fields allowOnly differ (the export ran with CI set)",
     );
+  });
+
+  it("says an export that allowed focused tests differs where they are rejected (review wave-5 B2)", () => {
+    const focus = descriptor({ config: { allowOnly: configFieldHash(true), root: "r" } });
+    const strict = descriptor({ config: { allowOnly: configFieldHash(false), root: "r" } });
+    const local = { project: "", hash: "env", descriptor: strict, recordedAt: 1 };
+    expect(
+      comparisonText("", compareEnvironment({ hash: "env-ci", descriptor: focus }, local)),
+    ).toBe("Environment: differs from this worktree's: config fields allowOnly differ");
   });
 
   it("--full says imported files have no coverage record, once any is current", () => {
