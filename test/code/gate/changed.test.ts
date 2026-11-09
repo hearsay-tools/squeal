@@ -264,6 +264,23 @@ describe("changedFunctions: what is counted", () => {
     ]);
   });
 
+  it("lists uncounted paths in path order, whatever their reason", async () => {
+    const { root, write } = repo({ "README.md": "x\n" });
+    write({
+      "src/a.ts": lines("export function a() { return 1 +* 2; }"),
+      "src/b.ts": lines(TWO, `// ${"x".repeat(200)}`),
+      "src/c.ts": lines("export function c() { return 3 +* 4; }"),
+    });
+
+    const changed = await changedFunctions(root, "base", { ...POLICY, maxFileBytes: 120 });
+
+    expect(changed.uncounted).toEqual([
+      { path: "src/a.ts", reason: "parse-error" },
+      { path: "src/b.ts", reason: "too-large" },
+      { path: "src/c.ts", reason: "parse-error" },
+    ]);
+  });
+
   it("names a symlink unsupported and keeps it out of counted", async () => {
     const { root } = repo({ "src/a.ts": lines(ONE) });
     symlinkSync("a.ts", join(root, "src/link.ts"));
