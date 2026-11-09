@@ -1,0 +1,22 @@
+# Research brief 015-126: one quality gate for the daemon, pre-PR and CI (#167)
+
+Use /researcher. Shape: research. Outcome: the evidence a spec needs for one Squeal-owned measurement engine and one pass/fail evaluator. The daemon, a one-shot local pre-PR command and CI call that same engine and evaluator ([#167](https://github.com/hearsay-tools/squeal/issues/167)). Follow the rules in `README.md`, with the exceptions below. Answer and recommend; do not write the spec.
+
+Read first: `docs/vision.md` ("What Squeal is not", "Policy-driven checkpoints"); issue #167 (`gh issue view 167`), whose product rules the human has already accepted: changed JS/TS functions against the PR target, test callbacks included, CC ≤20, CRAP ≤30, equality passes, missing/partial evidence never passes, 600 s default budget, and verified exceptions that keep the measured scores; `research/issue-167.md` (triage); this spec's D1 to D9 and Non-goals; `research/child-processes.md`, `issue-144.md`, `issue-165.md`, `node-test-coverage.md`; spec 018 D8 (`squeal ci record`) and its Non-goals. In `~/projects/cezar`: `.ai/skills/check-code-quality/` (scripts and `references/tool.md`) and hearsay-tools/cezarion#3096.
+
+Questions:
+
+1. **One-shot collection.** Can the existing counter, coverage provider (in Vitest workers and node:test), own-line join and CRAP score run in one process with no daemon and no live store, over a named set of test files? Name the code paths that already do part of it (`ci record`, `run`, the code pass) and what is missing. On a sample of this repository (at most 30 test files), compare CPU and wall time with plain `vitest run` and with `ci record`.
+2. **Reuse of CI's own test run.** What would `ci record` parts need to carry so a gate reads CI's existing run with no second run? Say what conflicts with 018's non-goal "no coverage records in exports".
+3. **Changed functions against a base.** How do D2's identities map to "changed against the PR target", with moves and renames? Count test-file functions over CC 20 in this repository and in cezar, and the extra cost of counting test files.
+4. **Complete evidence.** Define when a function's required evidence is complete. Cover no loader (today: ready, CRAP from 0% coverage), failed tests, stale records and child processes. Is collecting child-process coverage visible to tests in a one-shot gate? That visibility is the reason for today's non-goal. How many of cezar's changed functions in its last 10 merged PRs are reached only through a child process?
+5. **Cezar's collection cases.** In a scratch copy, run each case of #167's "Collection cases" list against Squeal's primitives: the three arrow shapes, node:test `.ts`, mixed Vitest and node:test, a deadline with partial merge, a truncated child V8 file, the `testTimeout` floor, `--node-import tsx`, and import-graph selection with no mapping. For each case, give the verdict "works", "gap" or "not applicable", with evidence.
+6. **Exceptions.** What do cezar's scripts do with deferrals and owner approvals today? Propose the input boundary: the consumer verifies trust, and Squeal applies the policy.
+7. **Provenance and delivery.** Which version stamps already exist (counter, coverage provider, coverage record, key format)? How could CI pin and verify a runtime with what ships today (`install.sh`, release assets, the Codex runtime manifest, the tag clone that 018-08 used)?
+8. **Slices.** Propose a first slice that is useful on its own, and the later slices. Give a row count and cost estimate for each, and name the 015 and 018 decisions each slice reverses.
+
+Exceptions to the README: this research needs no daemon. Run the one-shot probes in scratch copies under `/tmp` with `HOME`, `XDG_RUNTIME_DIR`, `XDG_CONFIG_HOME` and `TMPDIR` set there. Call `node_modules/.bin/vitest` directly, not through `pnpm exec`. Read cezar only, or copy it to `/tmp`; never write to `~/projects/cezar`. Skip a live probe when the one-minute load is above 24, and say so. Budget: about three hours and at most 60 CPU-minutes of test runs. After that, write what you have. Delete the scratch copies and show that nothing of them is left.
+
+Own `quality-gate.md` and `probes/quality-gate/`. Edit no board, spec, status, test or product file, in squeal or in cezar.
+
+Done when every numbered question has a tagged answer, every collection case has a verdict, and the recommendation names its first slice with its limits; commit.
