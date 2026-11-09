@@ -1,6 +1,6 @@
 # 018 CI and shared results: status
 
-Stage: second slice, research (wave 4); first slice done (0.1.417 to 0.1.419, trial 018-08) (spec approved by the human 2026-11-08). Research was parked 2026-11-01 and reopened 2026-11-08.
+Stage: second slice designed (spec D8 to D17), awaiting the human's approval; first slice done (0.1.417 to 0.1.419, trial 018-08) (spec approved by the human 2026-11-08). Research was parked 2026-11-01 and reopened 2026-11-08.
 Started: 2026-10-31
 
 ## Decisions so far
@@ -43,6 +43,7 @@ Started: 2026-10-31
 - 2026-11-09, 0.1.419 released (tag `squeal--v0.1.419` at `21adaff51`, hub `78ee499`, CI 42593079334); issue #166 closed. Trial run 42596322864 (cezar `721c19b`, Squeal 0.1.419) completed in 82 min (1,717 files, one known failure) and uploaded a 2.1 MB export.
 - 2026-11-09, row 018-08 done (`research/import-trial.md`): in a fresh cezar clone the import alone made 1,589 of 1,817 test files current (87%; 93% of the exported files); every Vitest project matched fully once `CI` and `GITHUB_ACTIONS` were removed; both node:test projects (127 files) missed only on `execPath` (the absolute Node binary path is in their environment). In a clone with a copy of cezar's shared store, 1,716 files were already current by inheritance and the import added none; 236 of them differed by closure list, because the shared observed sets are a union across worktrees and CI's lists are a subset. Imported files carry no coverage record. Spec open questions 1 (CI=true), 2 (observed-set rule), 3 (transport) and 5 (cost in the CI step) now have evidence for the next slice.
 - 2026-11-09, the human: "A: spec the useful form" (the export from the test run CI already does, a git-ref transport, automatic import, the key fixes; a short research step first) and "Keep it" for cezar's manual trial workflow. Wave 4: three researchers in parallel, topics `ci-step`, `transport`, `key-rules` (rows 018-13 to 018-15).
+- 2026-11-09, wave 4 landed (`research/ci-step.md`, `transport.md`, `key-rules.md`). The coordinator wrote the second slice, spec D8 to D17, and proposed rows 018-16 to 018-21. Choices for the human: the export from a recorder in the project's own test step plus a job after the shards; `refs/squeal/<sha>` written by that job; the daemon fetches only when the project sets `shared.ref`; trust bound is repository write access; `CI` fields tolerated for passes; node:test keyed without `execPath` (node:test adapter raise only); imports re-keyed under the local list at the export commit's blob ids, the union kept.
 
 ## Open questions
 
