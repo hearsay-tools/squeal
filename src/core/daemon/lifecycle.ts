@@ -96,7 +96,7 @@ export interface TimerContext {
   readonly timings: Partial<DaemonTimings>;
   readonly heartbeatMs: number;
   readonly presence: Presence;
-  /** Last nudge, request or registered consumer. */
+  /** Last nudge, request, registered consumer or end of a request's file (row 018-12). */
   readonly lastActive: () => EpochMs;
   readonly active: (at: EpochMs) => void;
   /**
@@ -116,6 +116,12 @@ export interface TimerContext {
     readonly inUse: boolean;
     readonly queued?: number;
   } | null;
+  /**
+   * Row 018-12: how many test files that explicit requests queued have
+   * ended, a running count (`Scheduler.requestProgress`); `null` before
+   * the scheduler starts. A change is activity and use. Absent: none.
+   */
+  readonly requestProgress?: () => number | null;
   /**
    * A module-load or runtime-policy project's evidence changed since the last call that
    * returned true: queue a runner-only refinement. False while nothing takes
@@ -201,6 +207,15 @@ export interface TimerContext {
  * The shutdown lets a tier in flight finish and store its results (D5). Each
  * heartbeat first drops the consumers whose recorded harness process is gone.
  *
+ * Row 018-12 (the human, 2026-11-09): each end of a test file that an
+ * explicit request queued (`run --all`, `run --fast`, `run <group>`,
+ * `squeal retry`) is activity, so a daemon that never had a consumer serves
+ * a request that keeps making progress and stops the idle period after the
+ * request's last end; one that stops making progress keeps no daemon. Its
+ * own work (a baseline, catch-up, a re-run) is still no activity. The ends
+ * are use for the unused stop too; the departure and its drain do not read
+ * them.
+ *
  * Task 001-415 (the human, 2026-10-15): a daemon whose worktree has a
  * consumer registered and that saw no edit, no wait, no request and no work
  * they caused queued or running (`Scheduler.inUse`; the backlog is no use,
@@ -263,6 +278,7 @@ export function startTimers(context: TimerContext): () => void {
         ["consumer expiry", () => expireConsumers(store, now(), { locksDir })],
       ]);
     }
+    attempt("request progress", () => progress(at));
     attempt("idle check", () => {
       if (presence.lastPresentAt !== null || !countPresence(at)) return;
       if (at - context.lastActive() >= idleMs) {
@@ -274,6 +290,15 @@ export function startTimers(context: TimerContext): () => void {
     });
     attempt("unused check", () => unused(at));
     attempt("idle GC", () => context.idleGc?.());
+  };
+  /** Row 018-12: the count of a request's ended files the last check saw. */
+  let seenEnded = 0;
+  const progress = (at: EpochMs) => {
+    const ended = context.requestProgress?.() ?? null;
+    if (ended === null || ended === seenEnded) return;
+    seenEnded = ended;
+    context.active(at);
+    context.used?.(at);
   };
   /** The revision the last unused check saw: a new one is an edit. */
   let seenRevision: number | null = null;

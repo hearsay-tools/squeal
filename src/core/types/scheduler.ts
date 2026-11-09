@@ -567,6 +567,13 @@ export interface Scheduler {
   /** Test files queued, fast and slow: what an unused stop leaves to the next daemon (row 011-92). */
   queued(): number;
   /**
+   * Row 018-12: how many test files that explicit requests queued (`run
+   * --all`, `run --fast`, `run <group>`, `squeal retry`) have ended, a
+   * running count. Each end is activity for the idle exit; the scheduler's
+   * own work counts nothing. Absent on a scheduler before it.
+   */
+  requestProgress?(): number;
+  /**
    * A departure drain runs only its session's work (011 C9 as amended
    * 2026-10-21, row 011-93): with `true` the backlog stays queued for the
    * next daemon and the slow tier yields the slot to another worktree's

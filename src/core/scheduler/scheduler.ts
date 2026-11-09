@@ -73,6 +73,7 @@ import { answeredOf } from "./promoted-tier.js";
 import { priorityOf } from "./queue.js";
 import { BacklogQuiet, publishQuiet, quietSleepMs } from "./quiet.js";
 import { TierRecords } from "./record.js";
+import { RequestProgress } from "./request-progress.js";
 import { RERUN_CAP } from "./rerun.js";
 import { takeRetries } from "./retries.js";
 import { retryRunner } from "./revision.js";
@@ -152,6 +153,8 @@ class TierScheduler implements Scheduler {
   #recheck = false;
   /** A `run --all` with `observeIgnored` (task 001-307). */
   readonly #warmUp = new WarmUp();
+  /** Row 018-12: the files explicit requests queued, whose ends are activity. */
+  readonly #requests = new RequestProgress();
   /** The records of the runs that ended (row 011-131). */
   readonly #records: TierRecords;
   /** Something the pump waits for happened: a tier ended, runner work drained, a batch or request came. */
@@ -638,6 +641,7 @@ class TierScheduler implements Scheduler {
       const { policy } = this.#started().context;
       const only = lane === undefined ? undefined : { lane, isSlow: slowView(policy).isSlow };
       const record = queueFullSuite(ledger, force, warmUp, only);
+      this.#requests.ask(ledger, (file) => ledger.checkpoints.covers([file.ref], false));
       // Row 011-82: the caller asked for the backlog; it starts at the next tier boundary.
       this.#quiet.end(this.#started().context.now());
       if (warmUp) this.#warmUp.start(this.#started().context, ledger, record);
@@ -693,7 +697,8 @@ class TierScheduler implements Scheduler {
     const request = await this.#lock.run(() => {
       const { context, ledger } = this.#started();
       const revision = ledger.revision.number;
-      const resolved = groupView(context.policy).groups.find((g) => g.name === group);
+      const view = groupView(context.policy);
+      const resolved = view.groups.find((g) => g.name === group);
       if (resolved === undefined) return null;
       if (this.#awaitingInstall || this.#reinstalled) return { revision, queued: 0 };
       if (resolved.select.kind === "lint") {
@@ -702,7 +707,9 @@ class TierScheduler implements Scheduler {
       }
       this.#groups.lanes(context.policy);
       this.#groups.get(group)?.request();
-      return { revision, queued: queueGroup(context, ledger, group) };
+      const queued = queueGroup(context, ledger, group);
+      this.#requests.ask(ledger, (file) => view.of(file.ref).name === group);
+      return { revision, queued };
     }, `taking a squeal run ${group} request`);
     if (lint) void this.options.passes?.pass().catch(() => {});
     this.#pump();
@@ -744,7 +751,9 @@ class TierScheduler implements Scheduler {
           narrow: narrowAnswer(context, ledger, group, selection, waiting),
         };
       }
-      const { queued, asks } = queueNarrow(ledger, selection.selected.get(group) ?? new Set());
+      const selected = selection.selected.get(group) ?? new Set<string>();
+      const { queued, asks } = queueNarrow(ledger, selected);
+      this.#requests.ask(ledger, (file) => selected.has(file.id));
       this.#groups.lanes(context.policy);
       const lane = this.#groups.get(group);
       lane?.narrow.add(asks, ledger);
@@ -761,6 +770,7 @@ class TierScheduler implements Scheduler {
     await this.#lock.run(() => {
       const { context, ledger } = this.#started();
       if (takeRetries(context, ledger)) ledger.commit();
+      this.#requests.ask(ledger, (file) => file.retryKey !== null);
     }, "taking squeal retry requests");
     this.#pump();
   }
@@ -884,6 +894,10 @@ class TierScheduler implements Scheduler {
     if (this.#closed || !this.#ledger) return 0;
     const { queue } = this.#ledger;
     return queue.fastSize + queue.slowSize;
+  }
+
+  requestProgress(): number {
+    return this.#requests.ended(this.#closed ? null : this.#ledger);
   }
 
   slowPending(): boolean {
