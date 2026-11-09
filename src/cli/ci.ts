@@ -1,12 +1,13 @@
 import { resolve } from "node:path";
 import { type NotStarted, runCommand } from "../core/ci/command.js";
-import { type CheckoutState, joinCheckouts, readCheckout } from "../core/ci/inputs.js";
+import type { InputEvidence } from "../core/ci/inputs.js";
 import { PART_FORMAT, type PartHeader, writePart } from "../core/ci/parts.js";
 import { readPolicy } from "../core/daemon/policy.js";
 import { squealVersion } from "../core/daemon/version.js";
 import { readHead } from "../core/daemon-loop/head.js";
 import { findWorktreeRoot } from "../core/fs/git-layout.js";
 import { WorktreePaths } from "../core/fs/worktree-paths.js";
+import { readObjectFormat } from "../core/hash/git-index.js";
 import { KEY_FORMAT_VERSION } from "../core/keys/key-format.js";
 import type { AbsolutePath } from "../core/types/common.js";
 import { type RecordedRun, startRecording, vitestResolves } from "../runners/vitest/ci-record.js";
@@ -96,18 +97,18 @@ async function record(args: RecordArgs, io: CliIo, deps: CiDeps): Promise<number
     observe: policy.observe.runtimeInputs,
     allowlist: policy.env.allowlist,
     squealVersion: squealVersion(),
+    objectFormat: await readObjectFormat(root),
     ...(deps.tempDir === undefined ? {} : { tempDir: deps.tempDir }),
   });
   if (typeof recording === "string") return unchanged(recording);
   try {
-    const before = await readCheckout(root);
     const exit = exitOf(await runCommand(args.command, cwd, recording.env), say);
     try {
-      const { runs, notes } = await recording.finish();
+      const { runs, notes, evidence } = recording.finish();
       for (const note of notes) say(note);
       if (runs.length > 0) {
         const out = resolve(cwd, args.out ?? DEFAULT_PARTS_DIR);
-        say(await writeParts(runs, out, root, env, io, before));
+        say(await writeParts(runs, out, root, env, io, evidence));
       }
     } catch (error) {
       say(`no part written: ${error instanceof Error ? (error.stack ?? error.message) : error}`);
@@ -130,7 +131,7 @@ async function writeParts(
   root: AbsolutePath,
   env: NodeJS.ProcessEnv,
   io: CliIo,
-  before: CheckoutState,
+  evidence: InputEvidence,
 ): Promise<string> {
   const head = await readHead(root);
   const base = {
@@ -139,14 +140,13 @@ async function writeParts(
     runner: "vitest" as const,
     commit: head.head,
     dirty: head.dirty,
-    ...joinCheckouts(before, await readCheckout(root)),
     createdAt: (io.now ?? Date.now)(),
     source: sourceOf(env),
   };
   let files = 0;
   for (const { projects, testFiles, end, runnerVersion, shard, observing } of runs) {
     const header: PartHeader = { ...base, runnerVersion, shard, end, observing };
-    writePart(out, { format: PART_FORMAT, header, projects, testFiles });
+    writePart(out, { format: PART_FORMAT, header, projects, testFiles, evidence });
     files += testFiles.length;
   }
   const ended = runs.filter((run) => run.end !== "completed").map((run) => run.end);

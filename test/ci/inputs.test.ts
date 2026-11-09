@@ -1,26 +1,17 @@
-import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import {
-  type CheckoutState,
-  joinCheckouts,
-  listingHash,
-  readCheckout,
-  uncertified,
-  withInputs,
-} from "../../src/core/ci/inputs.js";
-import type { PartFile } from "../../src/core/ci/parts.js";
-import { createFsHasher } from "../../src/core/hash/hasher.js";
+import { listingHash, readEvidence, uncertified } from "../../src/core/ci/inputs.js";
 import { ABSENT_LISTING } from "../../src/core/keys/observed.js";
 
 /*
- * Spec 018 D8 and D9 (review of 0.1.421 B1): what a part certifies about the
- * content of a file's inputs, and what the export compares it with. A
- * recorded input must be equal; an unrecorded one counts only from a clean
- * shard, as the commit's blob, or as no file where git reported no
- * untracked or ignored entry. Never an unrecorded listing.
+ * Spec 018 D8 and D9 (2026-11-09, reviews of 0.1.421 B1, "one owner for
+ * input evidence"): the evidence a command's processes took as they read,
+ * and what the export compares it with. A path has evidence only with one
+ * value and no write during the command; an input is certified only by
+ * evidence equal to the export's content. No commit blob, clean checkout or
+ * unreported path stands for evidence.
  */
 
 const temps: string[] = [];
@@ -28,127 +19,95 @@ afterEach(() => {
   for (const dir of temps.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
 
-function repository(files: Record<string, string>): string {
-  const root = realpathSync(mkdtempSync(join(tmpdir(), "squeal-ci-inputs-")));
-  temps.push(root);
-  for (const [path, content] of Object.entries(files)) {
-    mkdirSync(dirname(join(root, path)), { recursive: true });
-    writeFileSync(join(root, path), content);
-  }
-  execFileSync("git", ["init", "-q"], { cwd: root });
-  return root;
+function temp(): string {
+  const dir = mkdtempSync(join(tmpdir(), "squeal-ci-inputs-"));
+  temps.push(dir);
+  return dir;
 }
 
-const CLEAN: CheckoutState = { clean: true, untracked: ["data/", "src/gen.ts"] };
-const COMMITTED = new Map([["src/a.ts", "blob-a"]]);
+/** `lines` as the files `evidence.cjs` appends, one per process. */
+function evidenceDir(files: Record<string, readonly unknown[]>): string {
+  const dir = temp();
+  for (const [name, lines] of Object.entries(files)) {
+    writeFileSync(join(dir, name), lines.map((line) => `${JSON.stringify(line)}\n`).join(""));
+  }
+  return dir;
+}
+
+describe("readEvidence", () => {
+  it("keeps each path's one value across processes, sorted", () => {
+    const dir = evidenceDir({
+      "1-0.ndjson": [{ e: { "src/b.ts": "b", "gone.txt": null } }, { e: { "data/": "names" } }],
+      "2-0.ndjson": [{ e: { "src/b.ts": "b", "src/a.ts": "a" } }],
+    });
+    expect(Object.entries(readEvidence(dir))).toEqual([
+      ["data/", "names"],
+      ["gone.txt", null],
+      ["src/a.ts", "a"],
+      ["src/b.ts", "b"],
+    ]);
+  });
+
+  it("drops a path read with two contents, and one written, even when restored", () => {
+    const dir = evidenceDir({
+      "1-0.ndjson": [{ e: { "a.txt": "one", "b.txt": "same", "c.txt": "c" } }],
+      "2-0.ndjson": [
+        { e: { "a.txt": "two" } },
+        { w: ["b.txt"], t: [] },
+        { e: { "b.txt": "same" } },
+      ],
+    });
+    expect(readEvidence(dir)).toEqual({ "c.txt": "c" });
+  });
+
+  it("drops every path and listing below a path written with all below it", () => {
+    const dir = evidenceDir({
+      "1-0.ndjson": [
+        { e: { "out/x.txt": "x", "out/": "names", "out/deep/": "deep", "outer.txt": "o" } },
+        { w: ["./"], t: ["out"] },
+      ],
+    });
+    expect(readEvidence(dir)).toEqual({ "outer.txt": "o" });
+  });
+
+  it("skips a line cut short, and reads a missing directory as no evidence", () => {
+    const dir = temp();
+    writeFileSync(join(dir, "1-0.ndjson"), `${JSON.stringify({ e: { "a.txt": "a" } })}\n{"e":{"b`);
+    expect(readEvidence(dir)).toEqual({ "a.txt": "a" });
+    expect(readEvidence(join(dir, "missing"))).toEqual({});
+  });
+});
 
 describe("uncertified (spec 018 D9)", () => {
   const here = (hashes: Record<string, string | null>) => (path: string) => hashes[path];
 
-  it("takes a recorded input only at the recorded content", () => {
-    const recorded = { "data/v.txt": "good", "data/": "names", "gone.txt": null };
-    const now = { "data/v.txt": "good", "data/": "names", "gone.txt": null };
-    const paths = Object.keys(recorded);
-    expect(uncertified(paths, recorded, CLEAN, COMMITTED, here(now))).toEqual([]);
-    const bad = { ...now, "data/v.txt": "bad", "gone.txt": "back" };
-    expect(uncertified(paths, recorded, CLEAN, COMMITTED, here(bad))).toEqual([
-      "data/v.txt",
-      "gone.txt",
-    ]);
+  it("certifies an input only by read-time evidence equal to this checkout's content", () => {
+    const evidence = { "data/v.txt": "good", "data/": "names", "gone.txt": null };
+    const paths = Object.keys(evidence);
+    expect(uncertified(paths, evidence, here({ ...evidence }))).toEqual([]);
+    const changed = here({ ...evidence, "data/v.txt": "bad", "gone.txt": "back" });
+    expect(uncertified(paths, evidence, changed)).toEqual(["data/v.txt", "gone.txt"]);
   });
 
-  it("takes an unrecorded tracked input from a clean shard as the commit's blob", () => {
-    const paths = ["src/a.ts"];
-    expect(uncertified(paths, {}, CLEAN, COMMITTED, here({ "src/a.ts": "blob-a" }))).toEqual([]);
-    expect(uncertified(paths, {}, CLEAN, COMMITTED, here({ "src/a.ts": "other" }))).toEqual(paths);
-    const dirty = { ...CLEAN, clean: false };
-    expect(uncertified(paths, {}, dirty, COMMITTED, here({ "src/a.ts": "blob-a" }))).toEqual(paths);
-  });
-
-  it("takes an unrecorded path the commit lacks only as no file, below no untracked entry", () => {
-    const absent = here({ "test/__snapshots__/a.snap": null, "src/gen.ts": null, "data/x": null });
-    expect(uncertified(["test/__snapshots__/a.snap"], undefined, CLEAN, COMMITTED, absent)).toEqual(
-      [],
-    );
-    // The shard may have held either: git reported it, or a directory above it, as ignored.
-    expect(uncertified(["src/gen.ts", "data/x"], undefined, CLEAN, COMMITTED, absent)).toEqual([
-      "src/gen.ts",
-      "data/x",
-    ]);
-    const present = here({ "test/__snapshots__/a.snap": "made" });
-    expect(uncertified(["test/__snapshots__/a.snap"], {}, CLEAN, COMMITTED, present)).toEqual([
-      "test/__snapshots__/a.snap",
-    ]);
-  });
-
-  it("never takes an unrecorded listing, `.git`, or a path this checkout has no hash of", () => {
-    const now = here({ "src/": "names", ".git": "kind" });
-    expect(uncertified(["src/", ".git", "src/b.ts"], {}, CLEAN, COMMITTED, now)).toEqual([
-      "src/",
-      ".git",
-      "src/b.ts",
-    ]);
+  it("never certifies an input without evidence, nor one this checkout has no hash of", () => {
+    // A commit's file or an absent path is not taken as read: the run's evidence must hold it.
+    const now = here({
+      "src/a.ts": "blob-a",
+      "test/__snapshots__/a.snap": null,
+      "data/v.txt": "v",
+    });
+    const paths = ["src/a.ts", "test/__snapshots__/a.snap", "data/v.txt"];
+    expect(uncertified(paths, { "data/v.txt": "v" }, now)).toEqual(paths.slice(0, 2));
+    expect(uncertified(["unknown.ts"], { "unknown.ts": "u" }, now)).toEqual(["unknown.ts"]);
   });
 });
 
-describe("the checkout a part records", () => {
-  it("is clean while no tracked file changed, and lists untracked and ignored entries", async () => {
-    const root = repository({ ".gitignore": "data/\n", "tracked.txt": "t\n" });
-    execFileSync("git", ["add", "."], { cwd: root });
-    execFileSync("git", ["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "f"], {
-      cwd: root,
-    });
-    mkdirSync(join(root, "data"));
-    writeFileSync(join(root, "data/v.txt"), "GOOD\n");
-    mkdirSync(join(root, "gen"));
-    writeFileSync(join(root, "gen/new.ts"), "x\n");
-    const before = await readCheckout(root);
-    expect(before).toEqual({ clean: true, untracked: ["data/", "gen/"] });
-    writeFileSync(join(root, "tracked.txt"), "changed\n");
-    const after = await readCheckout(root);
-    expect(after.clean).toBe(false);
-    expect(joinCheckouts(before, { clean: true, untracked: ["b.txt"] })).toEqual({
-      clean: true,
-      untracked: ["b.txt", "data/", "gen/"],
-    });
-    expect(joinCheckouts(before, after).clean).toBe(false);
-    // A checkout git cannot read certifies nothing, and never throws before the command.
-    expect(await readCheckout(join(root, "missing"))).toEqual({ clean: false, untracked: [] });
-  });
-});
-
-describe("withInputs", () => {
-  it("hashes each read as git does, each listing and each directory below a recursive one", async () => {
-    const root = repository({ "data/v.txt": "GOOD\n", "fix/a/b/c.txt": "c\n" });
-    const file: PartFile = {
-      project: "",
-      path: "test/a.test.ts",
-      outcome: "pass",
-      durationMs: 1,
-      checks: [],
-      observed: {
-        paths: ["data/v.txt", "missing.txt"],
-        directories: ["fix", "none"],
-        recursive: ["fix"],
-      },
-    };
-    const { observed: _observed, ...unobserved } = file;
-    const plain: PartFile = { ...unobserved, path: "test/b.test.ts" };
-    const hasher = createFsHasher(root, "sha1");
-    const [read, untouched] = await withInputs(root, hasher, [file, plain]);
-    const blob = execFileSync("git", ["hash-object", "data/v.txt"], {
-      cwd: root,
-      encoding: "utf8",
-    });
-    expect(read?.inputs).toEqual({
-      "data/v.txt": blob.trim(),
-      "missing.txt": null,
-      "fix/": listingHash(root, "fix"),
-      "none/": ABSENT_LISTING,
-      "fix/a/": listingHash(root, "fix/a"),
-      "fix/a/b/": listingHash(root, "fix/a/b"),
-    });
-    expect(untouched?.inputs).toBeUndefined();
+describe("listingHash", () => {
+  it("hashes the names on disk, a marker for a directory that is not there", () => {
+    const root = temp();
+    mkdirSync(join(root, "fix/a"), { recursive: true });
+    writeFileSync(join(root, "fix/b.txt"), "b");
     expect(listingHash(root, "fix")).not.toBe(listingHash(root, "fix/a"));
+    expect(listingHash(root, "none")).toBe(ABSENT_LISTING);
   });
 });
