@@ -2318,7 +2318,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.419";
+  if (true) return "0.1.420";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -11503,6 +11503,11 @@ function listHash(paths) {
   const sorted = [...new Set(paths)].sort(compare);
   return createHash7("sha256").update(JSON.stringify(sorted)).digest("hex").slice(0, 32);
 }
+var STATIC_LIST = "static:";
+function staticListHash(paths, observed = []) {
+  const taken = new Set(observed);
+  return `${STATIC_LIST}${listHash(paths.filter((p) => !taken.has(p)))}`;
+}
 function observedHash(observed) {
   return listHash(OBSERVED_MAPS.flatMap((map) => (observed[map] ?? []).map((p) => `${map}:${p}`)));
 }
@@ -11558,6 +11563,19 @@ function describeDifferences(a, b) {
   }
   return differences2;
 }
+var CI_FIELDS = ["allowOnly", "watch", "coverage"];
+function importDifferences(exported, local) {
+  if (exported.runnerName !== "vitest" || local.runnerName !== "vitest") {
+    return describeDifferences(exported, local);
+  }
+  const tolerated = new Set(CI_FIELDS);
+  if (exported.browser === false && local.browser === false) tolerated.add("browser");
+  const keyed = (d) => ({
+    ...d,
+    config: Object.fromEntries(Object.entries(d.config).filter(([name2]) => !tolerated.has(name2)))
+  });
+  return describeDifferences(keyed(exported), keyed(local));
+}
 function installedText(a, b) {
   if (a.installedDependencies === "none") return "no installed dependencies in the export";
   if (b.installedDependencies === "none") return "no installed dependencies here";
@@ -11593,8 +11611,12 @@ function listed(names2) {
 function compareEnvironment(exported, local) {
   if (local === null) return { kind: "unknown" };
   if (local.hash === exported.hash) return { kind: "equal" };
-  const differences2 = exported.descriptor === null || local.descriptor === null ? [] : describeDifferences(exported.descriptor, local.descriptor).map((d) => d.text);
-  return { kind: "differs", differences: differences2 };
+  if (exported.descriptor === null || local.descriptor === null) {
+    return { kind: "differs", differences: [] };
+  }
+  const differences2 = describeDifferences(exported.descriptor, local.descriptor).map((d) => d.text);
+  const passes = importDifferences(exported.descriptor, local.descriptor).length === 0;
+  return { kind: passes ? "passes" : "differs", differences: differences2 };
 }
 
 // src/core/status/imports.ts
@@ -11689,7 +11711,9 @@ function hereOf(store, worktreeId, keys, states) {
     environments: new Map(worktreeEnvironments(store, worktreeId).map((e) => [e.project, e.hash])),
     closure: (file) => {
       const record = store.testFiles.get(file);
-      return record === null ? null : listHash(record.closure.paths);
+      if (record === null) return null;
+      if (!file.closure.startsWith(STATIC_LIST)) return listHash(record.closure.paths);
+      return staticListHash(record.closure.paths, entries("observed", file.project)[file.path]);
     },
     observed: (file) => {
       const observed = {};
@@ -11709,7 +11733,7 @@ function differences(store, worktreeId, files) {
       { hash: hash2, descriptor: readEnvironment(store, hash2) },
       local.get(project) ?? null
     );
-    if (comparison.kind !== "differs") return [];
+    if (comparison.kind === "equal" || comparison.kind === "unknown") return [];
     const named3 = comparison.differences.length === 0 ? ["parts not recorded"] : comparison.differences;
     return exported.size === 1 ? named3 : named3.map((d) => `${project || "(default)"}: ${d}`);
   });
