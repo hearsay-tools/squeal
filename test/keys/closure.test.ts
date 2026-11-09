@@ -3,6 +3,7 @@ import {
   assembleClosure,
   createDeclaredInputs,
   inputGlobs,
+  isClosurePath,
   normalizeRelativePath,
   sameInputs,
   selectDeclaredInputs,
@@ -24,6 +25,22 @@ describe("normalizeRelativePath", () => {
     expect(() => normalizeRelativePath("C:\\abs\\a.ts")).toThrow("C:\\abs\\a.ts");
     expect(() => normalizeRelativePath("../outside.ts")).toThrow("../outside.ts");
     expect(() => normalizeRelativePath("")).toThrow();
+  });
+});
+
+describe("isClosurePath (row 011-310, issue #166)", () => {
+  it("takes what assembleClosure takes as an observed path", () => {
+    for (const path of ["src/a.ts", "src\\util\\b.ts", "./src//a.ts", "data/", "./"]) {
+      expect(isClosurePath(path), path).toBe(true);
+    }
+  });
+
+  it("refuses an absolute path, one leaving the worktree, and a win32 path read on POSIX", () => {
+    const refused = ["/abs/a.ts", "C:\\abs", "../outside.ts", "", String.raw`\home\agent\cache`];
+    for (const path of refused) {
+      expect(isClosurePath(path), path).toBe(false);
+      expect(() => assembleClosure({ testFile, paths: [] }, [], [path])).toThrow();
+    }
   });
 });
 
