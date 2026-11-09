@@ -142,3 +142,84 @@ Not chosen: the steps inside cezar's merge-group test job (it touches the gating
 - `research/main-results.md`, `result-import.md`, `remote-store.md`, `ci-run.md`, `ci-reuse.md`.
 - `docs/decisions/0002-content-keyed-shared-store.md`.
 - Spec 011 C4 and row 011-159 (held failures, lookup-only), spec 015 (coverage provider in the key).
+
+---
+
+# Second slice: results from the CI run the project already does
+
+Stage: proposed 2026-11-09, awaiting the human's approval. Written from `research/import-trial.md`, `ci-step.md`, `transport.md` and `key-rules.md`.
+
+## Problem
+
+The first slice works: a CI export made 1,589 of 1,817 cezar files current in a fresh clone (`import-trial.md`). But the export came from a separate 83-minute job, a person had to pass the file by hand, and three rules cost matches: CI's `CI=true` Vitest fields (the trial removed the variables), node:test's absolute `execPath` (127 files), and the shared observed union (236 files in a clone with a busy store).
+
+## Goals
+
+1. The export comes from the test step the project already runs, with the project's runner unchanged, at about +3% CPU per shard, and a short job after the shards; no added wait for a merge.
+2. CI publishes one export per main commit on a git ref, `refs/squeal/<sha>`; Squeal fetches and imports the right one in the background, without a command and without blocking a hook.
+3. An export made with `CI=true` matches a developer's key for passes; node:test keys no absolute Node path; an import matches at the export's commit whatever the local observed union holds, with no new wrong-pass exposure.
+4. Works for any project and CI; no number tuned to this host.
+
+## Non-goals
+
+- Squeal scheduling the suite in CI (`ci-step.md` option A: about 1.9 times the runner time).
+- Squeal's coverage provider in CI; imported files keep "no coverage" until a local run.
+- Failures in exports; exports for main commits whose merge group reused a PR run (none now; `ci-step.md` open question 3).
+- Attestations or signatures (`transport.md` 5): an opt-in later.
+- Any change to the observed union or a `KEY_FORMAT_VERSION` raise.
+
+## Design
+
+### D8. Recording in the project's test step
+
+`squeal ci record [--out <dir>] -- <the project's test command>` runs the command unchanged and returns its exit code. It adds two things through the runner adapter: Squeal's observed-read recorder (the one the daemon already uses) and a results writer. Each test file's outcome, checks, duration and observed reads, plus each project's environment descriptor (D1), go to one part file per process in `<dir>` (default `squeal-parts/`). No daemon, no store, no keys. Vitest first; other runners say "not supported" and change nothing. No coverage provider is added.
+
+### D9. The export job after the shards
+
+`squeal ci export --parts <dir>... [--out <file>]` runs in a fresh checkout of the same SHA after every shard has passed. It takes the union of the parts (each test file is in exactly one shard), refuses parts whose environment descriptors differ for one project, computes closures from the static graph plus the recorded observed sets, computes keys as the daemon does, and writes the export of D2 (passes and skips only). It also refuses parts made with `snapshotOptions.updateSnapshot` other than `none`. The job is not in the merge's required checks.
+
+### D10. CI fields equal for imported passes
+
+For an imported pass, the import compares environment descriptors with these resolved Vitest fields treated as equal: `allowOnly`, `watch`, and `browser.*` when `browser.enabled` is false; and coverage options (CI runs without Squeal's provider). A browser-mode project keeps `browser.*` keyed. Every other field must be equal. Reason, from `ci-step.md` 3: a pass with `allowOnly: false` and no watch implies the same pass locally; `headless` and `ui` change a browser project's run. Failures never import (D2), so the direction is only CI to local.
+
+### D11. Re-keying at import
+
+The import does not need the exported key to equal the local one. For each exported file it computes, with the local daemon's own rules, the key that file has under this worktree's closure list and environment, but with the file blob ids of the export's commit (Squeal's file hashes are git blob ids; `git ls-tree` of that commit gives them), and with D10's fields taken from the local environment. It stores the exported results at that key. A local daemon at a commit with the same content then computes the same key and finds them; at other content it does not. This is `key-rules.md` option d: it matches all 1,589 Vitest files at the export's commit in a fresh clone and in a busy store, and keeps today's exposure, because the union still enters every key. A file whose closure the export's commit lacks (a path absent there) is not imported.
+
+### D12. node:test keyed without a path
+
+node:test's environment drops `execPath` and keys the project's Node by `process.version`, `process.versions`, a hash of `process.config`, and its `platform` and `arch` (`key-rules.md` 1). This also covers two builds of one version, which the path covered only by accident. Cost: a raise of the node:test adapter version only, so node:test results re-run once per store (cezar: 126 files, about 10 min summed); Vitest and pytest keys do not move.
+
+### D13. The ref and its writer
+
+`squeal ci publish <export> [--keep 100]` writes a parentless commit whose tree holds the export, pushes it as `refs/squeal/<sha>` (one ref per main commit, so writers never conflict), and deletes refs beyond the newest K main commits in the same push (`transport.md` 1, 2). It runs in the export job, which alone has `contents: write`; the test jobs keep `contents: read` and run no publish. For a merge queue, the SHA is `merge_group.head_sha` (`ci-step.md` 5); D14 only takes it once that SHA is on main.
+
+### D14. The reader
+
+When a project's `squeal.config.json` sets `shared.ref` (for example `"refs/squeal"`), the daemon, at start and when the worktree's nearest main commit changes, picks the nearest first-parent ancestor of `merge-base(HEAD, <remote>/<default branch>)` that has a ref, fetches that one ref in the background with `--no-write-fetch-head --no-auto-maintenance`, `GIT_TERMINAL_PROMPT=0`, ssh `BatchMode` and a kill timer of a few seconds, and imports it (D3, D11). It never edits the user's git config, writes no local ref and no `FETCH_HEAD`, and imports only an export whose commit is on the default branch's first-parent line and whose header names that commit. A failed or slow fetch means local runs, with one status note. One export per start point; no gap filling from older exports. A project without `shared.ref` fetches nothing: the project opts in by policy (decision filter 5), not each developer.
+
+### D15. What the agent and the human see
+
+Imported results keep D4's origin, now `CI run <id> at <commit8>`. Status names a fetch failure once, "observed set differs" when the static lists agree but the observed sets do not, and that imported files have no coverage record. Default status stays silent when an import works (principle 1).
+
+### D16. Principle 5 and trust
+
+CI's own runner runs the project's own command; Squeal adds a recorder and reads what it wrote, and nothing in CI gates on Squeal. Trust is repository write access: anyone who can push to the repository can write `refs/squeal/*` (rulesets cannot protect such refs). A forged export can only lie about an outcome at a true key, which a local run of a changed file corrects (D6).
+
+### D17. Proof in cezar (proposal; each cezar change needs the human)
+
+1. Node: one exact version in a file (`.node-version`) read by `setup-node` in the Vitest shards and by developers. Today cezar's shards run `lts/*` (26.13.0) and developers 24.22.1; which version to pin is cezar's call.
+2. The four Vitest shards run `squeal ci record -- <their current command>` and upload the parts as an artifact.
+3. A new job after the shards, outside the required checks, with `contents: write`: download the parts, `squeal ci export`, `squeal ci publish --keep 100`.
+4. `shared.ref` in cezar's `squeal.config.json`.
+Then one measurement row: CPU and wall time of the shards against the same SHA's earlier run, and the share of files current in new worktrees from the fetched export over one day.
+
+## Testing
+
+D8 and D9 on a fixture with two shards: the union, a refused environment mismatch, a refused snapshot update, exit codes passed through. D10: each tolerated field equal for a pass, a browser project still keyed, any other field still keyed. D11: an import into a store whose union holds extra paths makes the file current at the export's content and not at other content. D12: a node:test environment at two paths with one build is equal; two builds of one version differ. D13 and D14 on a scratch bare repository: publish, prune, fetch of one ref, offline, a ref off the default branch refused, nothing written to the user's config. Key-format alarm unchanged except the node:test adapter case.
+
+## Open questions
+
+1. The fetch is network I/O the daemon starts by itself (principle 8). Proposed: on only when the project sets `shared.ref`. Owner: the human.
+2. Is "anyone with write access can write results" acceptable as the trust bound? Owner: the human.
+3. The real CPU and wall cost of D8 in cezar's shards, and whether cezar's read sets vary between runs at equal content. Owner: the D17 measurement row.

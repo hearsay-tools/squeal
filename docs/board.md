@@ -1925,7 +1925,7 @@ Human authorized 2026-10-26; coordinator 474cc4f5. Brief: `specifications/017-li
 
 ## Feature 018: CI and shared results
 
-Spec `specifications/018-ci-and-shared-results/spec.md` (stage: second slice research, wave 4 (the human 2026-11-09: "A: spec the useful form", trial workflow kept in cezar); **0.1.417 released** 2026-11-08 (tag at `ea776c75c`, hub `7645044`, CI 42463506305) with 018-06/07/09; **0.1.418 released** 2026-11-08 (tag at `2b7ae252c`, hub `f0dd6b0`, CI 42494177395) with 018-10/11; next the trial 018-08 (cezar PR hearsay-tools/cezarion#3018); spec, rows 018-06 to 018-08 and the cezar workflow file approved by the human 2026-11-08; coordinator 3739e45a). Reopened by the human 2026-11-08 (task 7d611fc4) with a new goal: less test load on developers' machines by reusing what CI on main already ran, without adding CI wall time. First slice, approved in outline the same day ("Yes, start it"): `squeal export`/`import`, `status` naming environment differences, one trial in cezar. Earlier: research parked 2026-10-31 and 2026-11-01; the four wave-0 findings stand. 
+Spec `specifications/018-ci-and-shared-results/spec.md` (stage: second slice designed (spec D8 to D17), awaiting the human's approval; research wave 4 done (the human 2026-11-09: "A: spec the useful form", trial workflow kept in cezar); **0.1.417 released** 2026-11-08 (tag at `ea776c75c`, hub `7645044`, CI 42463506305) with 018-06/07/09; **0.1.418 released** 2026-11-08 (tag at `2b7ae252c`, hub `f0dd6b0`, CI 42494177395) with 018-10/11; next the trial 018-08 (cezar PR hearsay-tools/cezarion#3018); spec, rows 018-06 to 018-08 and the cezar workflow file approved by the human 2026-11-08; coordinator 3739e45a). Reopened by the human 2026-11-08 (task 7d611fc4) with a new goal: less test load on developers' machines by reusing what CI on main already ran, without adding CI wall time. First slice, approved in outline the same day ("Yes, start it"): `squeal export`/`import`, `status` naming environment differences, one trial in cezar. Earlier: research parked 2026-10-31 and 2026-11-01; the four wave-0 findings stand. 
 
 ### Wave 0: research
 
@@ -1972,9 +1972,20 @@ Spec `specifications/018-ci-and-shared-results/spec.md` (stage: second slice res
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 018-13 research: export from the existing CI test step | running | Topic `ci-step`: where the export is made without extra wall time, shards, `CI=true` field tolerance, Node pinning, merge-group attribution. | `research/ci-step.md` committed. |
-| 018-14 research: transport on a git ref | running | Topic `transport`: CI writes a ref per main commit, retention, the reader at daemon start and after a pull, trust from git alone. | `research/transport.md` committed. |
-| 018-15 research: key rules that cost matches | running | Topic `key-rules`: node:test `execPath` in the key; the observed-set union against one run's set, measured on a copy of cezar's store. | `research/key-rules.md` committed. |
+| 018-13 research: export from the existing CI test step | done (researcher f68c7c37, `research/ci-step.md`: keep Vitest in the step, add recorder and results writer (about +3% CPU, estimated), keys and export in a job after the shards; `CI=true` fields equal for passes except browser mode; pin one exact Node; export at the merge group's SHA once on main) | Topic `ci-step`: where the export is made without extra wall time, shards, `CI=true` field tolerance, Node pinning, merge-group attribution. | `research/ci-step.md` committed. |
+| 018-14 research: transport on a git ref | done (researcher c3d2a5c6, `research/transport.md`: one ref per main commit `refs/squeal/<sha>`, writer job with `contents: write`, keep about 100; reader fetches one ref in the background, about 1.3 to 2.5 s; git proves the commit, not the writer) | Topic `transport`: CI writes a ref per main commit, retention, the reader at daemon start and after a pull, trust from git alone. | `research/transport.md` committed. |
+| 018-15 research: key rules that cost matches | done (researcher bc47fd69, `research/key-rules.md`: node:test keyed by Node version, versions and config hash, not `execPath`; keep the union; re-key the import under the local list at the export commit's blob ids, which matches all 1,589 at that commit with today's exposure) | Topic `key-rules`: node:test `execPath` in the key; the observed-set union against one run's set, measured on a copy of cezar's store. | `research/key-rules.md` committed. |
+
+### Wave 5: the second slice (proposed 2026-11-09; awaits the human's approval of spec D8 to D17)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 018-16 `squeal ci record` | proposed | D8: the project's test command unchanged, plus the recorder and a part file per process (Vitest). | Fixture with two shards writes disjoint parts; exit codes pass through; no coverage provider, daemon or store. |
+| 018-17 `squeal ci export --parts` | proposed (after 018-16's part format) | D9: union, refusals, keys and the D2 export in a later job. | Fixture export equals a daemon-made export of the same content. |
+| 018-18 import tolerance and re-key | proposed | D10, D11, D15: CI fields equal for passes, re-key under the local list at the export commit's blob ids, status reasons. | D10 and D11 tests; the trial's export made current in a store with a busy union. |
+| 018-19 node:test keyed without a path | proposed | D12; node:test adapter version raise only. | Two paths of one build equal, two builds of one version differ; Vitest keys unchanged. |
+| 018-20 `squeal ci publish` and the reader | proposed (after 018-17) | D13, D14: ref per main commit, prune, background fetch and import on `shared.ref`. | Scratch bare repository tests of D13 and D14. |
+| 018-21 proof in cezar | proposed (after release; needs the human's approval of each cezar change) | D17. | `research/shared-proof.md` with the cost and one day's share of files current from fetched exports. |
 
 ### Wave 3: the trial (after the release with 018-07; needs the human's approval of the cezar CI file, spec D7)
 
