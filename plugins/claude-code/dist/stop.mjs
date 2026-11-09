@@ -11000,8 +11000,8 @@ function pnpmFolderName(id, max) {
   let name2 = id.replace(/[\\/:*?"<>|#]/g, "+");
   if (name2.includes("(")) name2 = name2.replace(/\)$/, "").replace(/\)\(|\(|\)/g, "_");
   if (name2.length > max || name2 !== name2.toLowerCase() && !name2.startsWith("file+")) {
-    const digest = createHash7("sha256").update(name2).digest("hex");
-    return `${name2.slice(0, max - 33)}_${digest.slice(0, 32)}`;
+    const digest2 = createHash7("sha256").update(name2).digest("hex");
+    return `${name2.slice(0, max - 33)}_${digest2.slice(0, 32)}`;
   }
   return name2;
 }
@@ -13527,6 +13527,13 @@ function observedHash(observed) {
 }
 
 // src/core/keys/environment-descriptor.ts
+import { createHash as createHash10 } from "node:crypto";
+function configFieldHash(value) {
+  return digest(JSON.stringify(value));
+}
+function digest(text2) {
+  return createHash10("sha256").update(text2).digest("hex");
+}
 var PLAIN = [
   ["keyFormat", "key format"],
   ["project", "project"],
@@ -13577,13 +13584,18 @@ function describeDifferences(a, b) {
   }
   return differences2;
 }
-var CI_FIELDS = ["allowOnly", "watch", "coverage"];
+var CI_FIELDS = ["watch", "coverage"];
+var ONLY_REJECTED = configFieldHash(false);
+var ONLY_ALLOWED = configFieldHash(true);
 function importDifferences(exported, local) {
   if (exported.runnerName !== "vitest" || local.runnerName !== "vitest") {
     return describeDifferences(exported, local);
   }
   const tolerated = new Set(CI_FIELDS);
   if (exported.browser === false && local.browser === false) tolerated.add("browser");
+  if (exported.config.allowOnly === ONLY_REJECTED && local.config.allowOnly === ONLY_ALLOWED) {
+    tolerated.add("allowOnly");
+  }
   const keyed = (d) => ({
     ...d,
     config: Object.fromEntries(Object.entries(d.config).filter(([name2]) => !tolerated.has(name2)))
@@ -13898,11 +13910,11 @@ function runnerPartBoundMs(timeoutMs) {
 }
 
 // src/core/slow/slot-files.ts
-import { createHash as createHash11 } from "node:crypto";
+import { createHash as createHash12 } from "node:crypto";
 import { basename as basename5, join as join25 } from "node:path";
 
 // src/core/daemon/scratch.ts
-import { createHash as createHash10, randomBytes } from "node:crypto";
+import { createHash as createHash11, randomBytes } from "node:crypto";
 import {
   linkSync,
   lstatSync as lstatSync5,
@@ -13952,7 +13964,7 @@ function slotFiles(group = SLOW_GROUP2, scope = DEFAULT_GROUP_SLOT_SCOPE) {
   return { dir, permit: (i) => `group.${group}.${i}.lock`, waiterPrefix: `group.${group}.wait.` };
 }
 function hash(text2) {
-  return createHash11("sha256").update(text2).digest("hex").slice(0, 16);
+  return createHash12("sha256").update(text2).digest("hex").slice(0, 16);
 }
 var SLOT_WAITER_FRESH_MS = 3e4;
 
@@ -16099,7 +16111,7 @@ async function writeThenCommit(handOff, outputs, boundMs = HAND_OFF_BOUND_MS) {
 }
 
 // src/harness/shared/session-root.ts
-import { createHash as createHash12 } from "node:crypto";
+import { createHash as createHash13 } from "node:crypto";
 import {
   existsSync as existsSync12,
   lstatSync as lstatSync6,
@@ -16178,7 +16190,7 @@ function keyFile(key) {
   return agent.length === 0 ? own : `${own}-${hash2(agent.join(AGENT_SEPARATOR))}`;
 }
 function hash2(text2) {
-  return createHash12("sha256").update(text2).digest("hex").slice(0, 32);
+  return createHash13("sha256").update(text2).digest("hex").slice(0, 32);
 }
 function readKept(file) {
   const stat = lstatSync6(file, { throwIfNoEntry: false });
