@@ -9,8 +9,8 @@ import { compareEnvironment, comparisonText } from "../../src/core/status/import
 import { importDefaultLines, importLines } from "../../src/core/status/import-lines.js";
 import { readImports } from "../../src/core/status/imports.js";
 import { recordWorktreeEnvironments } from "../../src/core/store/environments.js";
-import { importResults } from "../../src/core/store/transfer.js";
 import type { ExportedTestFile, ResultsBundle } from "../../src/core/store/transfer-bundle.js";
+import { importResults } from "../../src/core/store/transfer-import.js";
 import type { TransitionEntry } from "../../src/core/types/delivery.js";
 import type { KnownState } from "../../src/core/types/state.js";
 import type { ImportStatus, StatusHeader, StatusSnapshot } from "../../src/core/types/status.js";
