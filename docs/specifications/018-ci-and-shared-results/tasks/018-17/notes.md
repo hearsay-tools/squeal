@@ -144,3 +144,33 @@ Removed: `withInputs`, `readCheckout`, `joinCheckouts`, `CheckoutState`, `PartHe
 - `dist/ci/` gains `evidence.cjs` and `evidence-hooks.cjs` (copied by `copyCiRuntime`, all `.cjs`); `plugins/codex-runtime/runtime.json` and the bundles need the rebuild (no `pnpm run build` here). `test/harness/codex/packaging/runtime.test.ts` lists the two files.
 - `test/keys/key-format.test.ts` passes unchanged; no file under `src/runners/observe/` changed.
 - `spec.md` D8/D9 and `tasks/018-16/notes.md` still describe the post-run hashes and checkout state.
+
+## Repair R3 (third review of 0.1.421, B1; the human, 2026-11-09: "A: one more repair")
+
+Worker bf3ddf1c, 2026-11-09. Part format stays `squeal-ci-part/3`: the evidence lines are unchanged, and no part from R2's hook was released. This section amends R2's rule 1 and its limits.
+
+### What changed
+
+| Rule | Where | Change |
+|---|---|---|
+| 1, one content per path | `evidence.cjs` `outputOf().evidence` | A second value for a path in one event-loop turn flushes the first, so both reach the reader; `readEvidence` (unchanged) drops a path with two values across lines, processes and threads. Before: the turn's object kept only the last value. |
+| 1, the hash cache | `evidence.cjs` `contents` | A file whose `mtime` or `ctime` is within 2 s of the hash is not cached, so a same-size rewrite inside one file-time tick is hashed again. `Date.now` is taken at load, before fake timers. |
+| 2, every write route | `evidence-hooks.cjs` | `utimes`, `lutimes` count as writes; `link` marks its source too (hard links share content). Descriptors, file handles, `createWriteStream` and `new WriteStream` were already marked at the open (`WriteStream` opens through `fs.open`); the tests now pin them. |
+| 3, links | `evidence.cjs` `pathsOf().reached`, `write` | A write marks the path given and the path it reaches: each link on the way followed with `realpath` and `readlink` (the recorder observes neither), a dangling last link too, a path not yet there by its directory's real path. Reads already recorded the target. |
+| 4, recursive listings | unchanged | `list` already recorded each directory below a recursive listing (`ci-evidence.test.ts`). |
+
+### Tests
+
+- `test/runners/vitest/ci-evidence-writes.test.ts` (new): rule 1 (file, listing, content then absence, each changed by `sh` between two reads in one turn), rule 2 (fd `r+`, numeric `O_WRONLY`, file handle, `createWriteStream`, `new WriteStream`, append, truncate, `copyFile`, `cp`, `utimes`, hard link; content unchanged), rule 3 (writes through a file link, a directory link by descriptor and by stream; reads through both).
+- `test/ci/export-wrapper.test.ts` mode D: the review's case end to end; the test reads `GOOD`, `sh` writes `BAD`, the test reads again in the same turn. Before: the export held the file at `BAD`. After: left out.
+- `test/runners/vitest/ci-evidence-kit.ts`: the script runner both evidence tests share.
+
+Before the fix the rule 1, rule 3 and `utimes` checks and wrapper D failed; the descriptor, handle and stream checks passed already.
+
+### Limits that remain
+
+- A writer outside Node between the last hooked read and an unhooked read (native code, `sh`), with the content restored before the export, is still unseen (R2 limit).
+- A symbolic link inside the root to a path outside it: a write to the outside path directly is not seen; the outside path is no key input either.
+- A write through a hard link made before the run (not by `fs.link`) marks only the name used.
+- `rm` or `rename` of a link also marks its target; this only leaves files out.
+- `evidence.cjs` is about 370 lines: a new runtime file would change the packaging test and `runtime.json`, outside this row.
