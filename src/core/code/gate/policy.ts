@@ -9,7 +9,8 @@ import type { GatePolicy } from "./types.js";
 /*
  * Spec 020 D6: the gate's policy is read at the base commit, so a branch
  * cannot loosen its own gate. The keys are 015's; the `enabled` keys are not
- * read (D1).
+ * read (D1). D12.1: so is `coverage.children`, so a branch cannot change how
+ * its own evidence is collected.
  */
 
 /** D6: the gate's policy and the keys D2 counts by, all read at the base commit. */
@@ -20,6 +21,12 @@ export interface BasePolicy extends GatePolicy {
   readonly exclude: readonly string[];
   /** `complexity.maxFileBytes`: a larger file is not counted. */
   readonly maxFileBytes: number;
+  /**
+   * D12.1: `coverage.children`, the coverage of the processes and threads
+   * the tests start is collected too. Read without `coverage.enabled`, which
+   * the gate does not read: it always collects coverage (D1).
+   */
+  readonly children: boolean;
 }
 
 /** The policy at the base and the loader's problems with that file (001 D11). */
@@ -54,6 +61,7 @@ export async function loadBasePolicy(
         include: complexity.include,
         exclude: complexity.exclude,
         maxFileBytes: complexity.maxFileBytes,
+        children: coverage.children,
       },
       problems,
     };
