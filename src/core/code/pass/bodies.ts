@@ -20,9 +20,8 @@ export function languagesOf(
 }
 
 /**
- * The body hash of each of `states`, by `checkKey`. A path with no row,
- * gone while its removals waited (row 015-52), is read in the language of
- * its extension.
+ * The body hash of each of `states`, by `checkKey`. A path with no row is
+ * read in the language of its extension.
  */
 export function bodiesOf(
   store: CodeStore,
