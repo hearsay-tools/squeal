@@ -1,0 +1,8 @@
+strict-2000 squeal never-run pairs whose content stayed final in the worktree and had no later daemon run there: 81; distinct worktree x file 71; file-seconds 288 (48 a day)
+strict-2000 cezar never-run pairs whose content stayed final in the worktree and had no later daemon run there: 554; distinct worktree x file 405; file-seconds 3330 (555 a day)
+strict-30000 squeal never-run pairs whose content stayed final in the worktree and had no later daemon run there: 85; distinct worktree x file 74; file-seconds 292 (49 a day)
+strict-30000 cezar never-run pairs whose content stayed final in the worktree and had no later daemon run there: 558; distinct worktree x file 408; file-seconds 3339 (556 a day)
+ignore-2000 squeal never-run pairs whose content stayed final in the worktree and had no later daemon run there: 235; distinct worktree x file 180; file-seconds 395 (66 a day)
+ignore-2000 cezar never-run pairs whose content stayed final in the worktree and had no later daemon run there: 2489; distinct worktree x file 1255; file-seconds 8924 (1487 a day)
+ignore-30000 squeal never-run pairs whose content stayed final in the worktree and had no later daemon run there: 244; distinct worktree x file 188; file-seconds 402 (67 a day)
+ignore-30000 cezar never-run pairs whose content stayed final in the worktree and had no later daemon run there: 2543; distinct worktree x file 1271; file-seconds 8982 (1497 a day)
