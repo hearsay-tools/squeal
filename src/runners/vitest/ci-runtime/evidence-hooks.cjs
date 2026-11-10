@@ -220,7 +220,7 @@ function installEvidence(settings) {
     const evidence = createEvidence(settings);
     wrapFs(evidence);
     wrapDescriptors(evidence, replace);
-    wrapChildren(replace);
+    wrapChildren(replace, evidence);
     module_.syncBuiltinESMExports();
     wrapModules(evidence);
     wrapProcess(evidence);
