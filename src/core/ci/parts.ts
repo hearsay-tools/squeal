@@ -21,7 +21,8 @@ import type { InputEvidence } from "./inputs.js";
  * format 2's input hashes after the run and checkout state; format 4 (spec
  * 020 D13, row 020-08a) Squeal's coverage provider in the run and each test
  * file's coverage record, or why it has none. A format 3 part reads as a
- * part with no records.
+ * part with no records. A part may also hold what recording cost (row
+ * 018-29, `RecordingCost`), which no key, export or refusal reads.
  */
 
 export const PART_FORMAT = "squeal-ci-part/4";
@@ -67,6 +68,28 @@ export interface PartHeader {
   readonly observing: boolean;
   /** Format 4: whether the run had Squeal's coverage provider. Absent in format 3: no record. */
   readonly coverage?: PartCoverage;
+  /** Row 018-29: what recording cost the command; absent in a part of an older Squeal. */
+  readonly cost?: RecordingCost;
+}
+
+/**
+ * Row 018-29 (spec 018 D8): what recording cost one `squeal ci record`
+ * command, so each run states it. Every part of the command holds the same.
+ * Informational: no key, export or refusal reads it.
+ */
+export interface RecordingCost {
+  /** A random ID of the command, which its parts share, so a reader counts it once. */
+  readonly command: string;
+  /**
+   * Time inside Squeal's hooks (`clock.cjs`), summed over the command's
+   * processes and threads, in ms: the evidence, the hook's reporter and the
+   * coverage provider's work in the Vitest process and its records' worker.
+   */
+  readonly hooksMs: number;
+  /** The processes and threads that reported a time. */
+  readonly threads: number;
+  /** `ci record`'s own time after the command, reading what the hooks wrote, before writing the parts, in ms. */
+  readonly afterMs: number;
 }
 
 /**

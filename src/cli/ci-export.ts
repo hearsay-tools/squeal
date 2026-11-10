@@ -1,6 +1,7 @@
 import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { costOf, costText } from "../core/ci/cost.js";
 import {
   type CiExport,
   type CiExportCounts,
@@ -60,6 +61,9 @@ export async function ciExportCommand(
   if (root === null) return fail(say, `${cwd} is not inside a git worktree`);
   const parts = readParts(parsed.parts.map((dir) => resolve(cwd, dir)));
   if (typeof parts === "string") return fail(say, parts);
+  // Row 018-29: what recording cost the shards, whatever the export does with their parts.
+  const cost = costOf(parts.map(({ part }) => part));
+  if (cost !== null) io.stderr(`squeal ci export: ${costText(cost)}\n`);
   if (!vitestResolves(root)) {
     return fail(say, `only Vitest is supported, and vitest does not resolve from ${root}`);
   }

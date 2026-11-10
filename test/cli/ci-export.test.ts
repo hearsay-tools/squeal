@@ -128,5 +128,22 @@ describe("squeal ci export", () => {
     expect(text()).toContain(`refused: the parts are of commit ${"b".repeat(40)}`);
     expect(text()).toContain("wrote nothing");
     expect(existsSync(out)).toBe(false);
+    // Row 018-29: a part of an older Squeal holds no cost, and the export says none.
+    expect(text()).not.toContain("Squeal's recording took");
+  });
+
+  it("names what recording cost the shards, whatever it does with their parts (row 018-29)", async () => {
+    const root = repository();
+    const older = part("b".repeat(40));
+    const cost = { command: "c1", hooksMs: 250, threads: 3, afterMs: 40 };
+    const testFiles = older.testFiles.map((file) => ({ ...file, durationMs: 1000 }));
+    writePart(join(root, "parts"), { ...older, header: { ...older.header, cost }, testFiles });
+    writePart(join(root, "parts"), older);
+    const { io, text } = capture(root);
+    expect(await ciCommand(["export", "--parts", "parts"], io)).toBe(1);
+    expect(text()).toContain(
+      "squeal ci export: Squeal's recording took 0.25 s in 3 processes and threads, 25.0% of the test time (1.00 s); 0.04 s more after the command; 1 of 2 parts hold no cost (an older Squeal made them)\n",
+    );
+    expect(text()).toContain("refused: the parts are of commit");
   });
 });
