@@ -17,7 +17,7 @@ import {
 } from "../../process/node-options.js";
 import { projectEnv } from "../recorders.js";
 import { type NodeTestRuntime, nodeTestRuntime } from "../runtime.js";
-import { coverageDir, coverageEnv } from "./coverage.js";
+import { type Covering, coverageDir, coverageEnv } from "./coverage.js";
 import { parseEvents } from "./events.js";
 import { type ObservedClosure, observedClosure } from "./observed.js";
 import { NodeTestReads } from "./reads.js";
@@ -44,9 +44,10 @@ export interface NodeTestRunOptions {
   readonly signal?: AbortSignal;
   /**
    * Spec 015 D8 (row 015-86): the files whose process takes V8 coverage,
-   * in `coverageDir(logDir, i)` (`coveragePayloads` reads them); default none.
+   * in `coverageDir(logDir, i)` (`coveragePayloads` reads them), and those
+   * whose children take theirs too (020 D12); default none.
    */
-  readonly covered?: (testFile: TestFileRef) => boolean;
+  readonly covered?: (testFile: TestFileRef) => Covering;
 }
 
 /** A tier's report and, for each completed file, what its process loaded. */
@@ -68,6 +69,8 @@ interface FileRun {
   readonly args: readonly string[];
   /** Where its process writes V8 coverage; `null` without. */
   readonly coverage: AbsolutePath | null;
+  /** What it takes there (020 D12). */
+  readonly covering: Covering;
   exit: ProcessExit | null;
   stream: FileReport | null;
   /**
@@ -122,8 +125,8 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
       `--test-reporter-destination=${join(options.logDir, `events-${index}.ndjson`)}`,
       arg,
     ];
-    const coverage =
-      options.covered?.(testFile) === true ? coverageDir(options.logDir, index) : null;
+    const covering = options.covered?.(testFile) ?? false;
+    const coverage = covering === false ? null : coverageDir(options.logDir, index);
     return {
       index,
       testFile,
@@ -131,6 +134,7 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
       arg,
       args,
       coverage,
+      covering,
       exit: null,
       stream: null,
       signalled: false,
@@ -182,7 +186,7 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
         cwd,
         env: {
           ...(reads === null ? env : reads.env(env, run.absolute)),
-          ...(run.coverage === null ? {} : coverageEnv(run.coverage)),
+          ...(run.coverage === null ? {} : coverageEnv(run.coverage, run.covering)),
           SQUEAL_NODE_TEST_GRAPH: join(options.logDir, `graph-${run.index}`),
         },
         stdout: join(options.logDir, `stdout-${run.index}.log`),
