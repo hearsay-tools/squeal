@@ -10,10 +10,10 @@ import type { AbsolutePath, RelativePath } from "../../types/common.js";
 import type { TestFileRef } from "../../types/keys.js";
 import type { NodeTestProject, Policy, PolicyInputs } from "../../types/policy.js";
 import type { RunnerAdapter, RunReport } from "../../types/runner.js";
-import { mapHere } from "../coverage/mapper.js";
-import { type BlobCache, decodeRecord } from "../coverage/record.js";
+import type { BlobCache } from "../coverage/record.js";
 import { coverageProvider, PROVIDER_MISSING_NOTE } from "../coverage/runtime.js";
-import type { CoverageRecord, CoverageRun, CoveredFile } from "../coverage/types.js";
+import type { CoverageRun, CoveredFile } from "../coverage/types.js";
+import { type Mapped, mapPayloads, refKey } from "./records.js";
 import type { ChangedSet, Evidence, TestFileEvidence } from "./types.js";
 
 /*
@@ -23,6 +23,8 @@ import type { ChangedSet, Evidence, TestFileEvidence } from "./types.js";
  * test files that load a changed path, every changed test file and the
  * `--test` files; runs them under one deadline; and maps each completed
  * file's payload to its record before the adapter closes, which deletes it.
+ * D12 (row 020-10b): with `coverage.children` at the base, the runners
+ * collect the coverage of the processes and threads the tests start too.
  */
 
 /**
@@ -41,6 +43,8 @@ export interface GateAdapters {
     readonly cache: false;
     readonly coverage: {
       readonly enabled: () => boolean;
+      /** D12: `coverage.children` at the base. */
+      readonly children: () => boolean;
       readonly provider: AbsolutePath;
       readonly tempDir: AbsolutePath;
       readonly collected: (run: CoverageRun) => void;
@@ -56,6 +60,8 @@ export interface GateAdapters {
       readonly tempDir: AbsolutePath;
       readonly coverage: {
         readonly enabled: () => boolean;
+        /** D12: `coverage.children` at the base. */
+        readonly children: () => boolean;
         readonly collected: (run: CoverageRun) => void;
       };
     },
@@ -72,6 +78,11 @@ export interface CollectOptions {
   readonly note?: (text: string) => void;
   /** D11.7: the evidence the stores hold of a runner's selected files; those do not run. */
   readonly stored?: StoredEvidence;
+  /**
+   * D12.1: `coverage.children` read at the base: the runs collect the
+   * coverage of the processes and threads the tests start. Absent, off.
+   */
+  readonly children?: boolean;
 }
 
 /**
@@ -127,13 +138,15 @@ export async function collectEvidence(
   const provider = coverageProvider();
   if (provider === null) throw new Error(PROVIDER_MISSING_NOTE);
   const note = options.note ?? (() => {});
+  const children = options.children === true;
   const format = await readObjectFormat(root);
   const temp = mkdtempSync(join(tmpdir(), "squeal-gate-"));
   const runners: Runner[] = [];
   try {
     const { policy, problems } = loadPolicy(root);
     for (const problem of problems) note(`${POLICY_FILE}: ${problem}`);
-    await openRunners(options.adapters, root, policy, { provider, temp, note }, runners);
+    const opening = { provider, temp, note, children };
+    await openRunners(options.adapters, root, policy, opening, runners);
     const selected = await select(runners, paths, options.tests);
     const blobs: BlobCache = new Map();
     const testFiles: TestFileEvidence[] = [];
@@ -153,9 +166,10 @@ export async function collectEvidence(
           : null;
       timedOut ||= report === null || report.end === "timed-out";
       if (report?.failure != null) note(`${runner.kind} run: ${report.failure}`);
-      const records = recordsOf(runner.covered.splice(0), format, blobs, provider, note);
+      const mapping = { format, blobs, provider, children, note };
+      const records = mapPayloads(runner.covered.splice(0), mapping);
       for (const ref of files) {
-        testFiles.push(await evidenceOf(runner, ref, report, records));
+        testFiles.push(await evidenceOf(runner, ref, report, records, children));
       }
     }
     return {
@@ -182,7 +196,13 @@ async function openRunners(
     provider,
     temp,
     note,
-  }: { provider: AbsolutePath; temp: AbsolutePath; note: (text: string) => void },
+    children,
+  }: {
+    provider: AbsolutePath;
+    temp: AbsolutePath;
+    note: (text: string) => void;
+    children: boolean;
+  },
   runners: Runner[],
 ): Promise<void> {
   if (policy.nodeTest.length + policy.pytest.length === 0 || vitestDetected(root)) {
@@ -194,7 +214,13 @@ async function openRunners(
       excludeProjects: () => policy.vitest.excludeProjects,
       exclude: () => policy.vitest.exclude,
       cache: false,
-      coverage: { enabled: () => true, provider, tempDir: temp, collected },
+      coverage: {
+        enabled: () => true,
+        children: () => children,
+        provider,
+        tempDir: temp,
+        collected,
+      },
     });
     runners.push({ kind: "vitest", adapter, covered });
   }
@@ -208,7 +234,7 @@ async function openRunners(
       concurrency: () => policy.runner.tierSize,
       inputs: () => policy.inputs,
       tempDir: temp,
-      coverage: { enabled: () => true, collected },
+      coverage: { enabled: () => true, children: () => children, collected },
     });
     runners.push({ kind: "node-test", adapter, covered });
   }
@@ -250,42 +276,17 @@ async function select(
 }
 
 /**
- * Each payload's record, by test file, mapped here before the adapter's
- * close deletes the payload; a payload that cannot be mapped gives none,
- * with a note.
- */
-function recordsOf(
-  files: readonly CoveredFile[],
-  format: Awaited<ReturnType<typeof readObjectFormat>>,
-  blobs: BlobCache,
-  provider: AbsolutePath,
-  note: (text: string) => void,
-): Map<string, CoverageRecord> {
-  const records = new Map<string, CoverageRecord>();
-  for (const file of files) {
-    try {
-      records.set(
-        refKey(file.testFile),
-        decodeRecord(mapHere(file, format, blobs, (path) => path === provider)),
-      );
-    } catch (error) {
-      const why = error instanceof Error ? error.message : String(error);
-      note(`no coverage record for ${file.testFile.path}: its payload could not be mapped: ${why}`);
-    }
-  }
-  return records;
-}
-
-/**
  * One selected file's evidence; a file that did not complete keeps no
  * failure, no skip and no record. A skipped test is D11.3's: its record
- * proves a pass and never a violation.
+ * proves a pass and never a violation. With `children`, its child files
+ * are counted, none when it has no record.
  */
 async function evidenceOf(
   runner: Runner,
   ref: TestFileRef,
   report: RunReport | null,
-  records: ReadonlyMap<string, CoverageRecord>,
+  records: ReadonlyMap<string, Mapped>,
+  children: boolean,
 ): Promise<TestFileEvidence> {
   const key = refKey(ref);
   const completed = report?.completedFiles.some((done) => refKey(done) === key) === true;
@@ -304,12 +305,19 @@ async function evidenceOf(
     (closure) => [...closure.paths].sort(compare),
     () => null,
   );
-  const record = completed ? (records.get(key) ?? null) : null;
-  return { runner: runner.kind, path: ref.path, completed, failed, skipped, loads, record };
-}
-
-function refKey(ref: TestFileRef): string {
-  return `${ref.project}\0${ref.path}`;
+  const mapped = completed ? records.get(key) : undefined;
+  const record = mapped?.record ?? null;
+  const counts = children ? { children: mapped?.children ?? { read: 0, dropped: 0 } } : {};
+  return {
+    runner: runner.kind,
+    path: ref.path,
+    completed,
+    failed,
+    skipped,
+    loads,
+    record,
+    ...counts,
+  };
 }
 
 function byPath(a: TestFileRef, b: TestFileRef): number {

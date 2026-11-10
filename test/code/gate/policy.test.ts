@@ -20,6 +20,7 @@ const DEFAULTS = {
   include: DEFAULT_POLICY.complexity.include,
   exclude: DEFAULT_POLICY.complexity.exclude,
   maxFileBytes: 524_288,
+  children: false,
 };
 
 /** A repository whose first commit holds `config` as `squeal.config.json` (none when `null`); returns it and that commit. */
@@ -77,7 +78,23 @@ describe("readBasePolicy", () => {
       include: ["src/**"],
       exclude: ["src/gen/**"],
       maxFileBytes: 900,
+      children: false,
     });
+  });
+
+  it("reads coverage.children at the base, with coverage.enabled off too (D12.1)", async () => {
+    const { root, base } = repo(JSON.stringify({ coverage: { enabled: false, children: true } }));
+
+    expect(await readBasePolicy(root, base)).toEqual({ ...DEFAULTS, children: true });
+  });
+
+  it("does not read coverage.children a branch turns on, committed or in the working tree", async () => {
+    const { root, base, commit } = repo(null);
+    const on = JSON.stringify({ coverage: { children: true } });
+    commit(on);
+    writeFileSync(join(root, "squeal.config.json"), on);
+
+    expect((await readBasePolicy(root, base)).children).toBe(false);
   });
 
   it("does not read a branch's looser config, committed or in the working tree", async () => {
