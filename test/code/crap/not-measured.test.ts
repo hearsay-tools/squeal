@@ -106,15 +106,16 @@ describe("a pytest-only source after the session start (row 015-75, e-order)", (
       { threshold: 20, maxFileBytes: 524_288 },
       { paths: null, changed: false, shell: null },
     );
-    // `hot` in src/a.ts, which no test file loads, is not measured either (spec 020 D11.5).
+    // `hot` in src/a.ts, which no test file loads, is not measured either (spec 020 D11.5). The
+    // pytest test file is counted and is its own loader, so it is not measured too (D11.6).
     expect(all.coverage).toMatchObject({
       uncovered: 0,
       notJudged: 0,
-      notMeasured: { files: 1, runners: ["pytest"] },
+      notMeasured: { files: 2, runners: ["pytest"] },
       notLoaded: 1,
     });
     expect(formatCodeReport(all)).toContain(
-      "  1 file not measured: pytest gives no coverage\n  1 file not measured: no test Squeal runs loads them\n",
+      "  2 files not measured: pytest gives no coverage\n  1 file not measured: no test Squeal runs loads them\n",
     );
   });
 });
