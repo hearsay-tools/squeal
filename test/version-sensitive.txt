@@ -15,10 +15,14 @@
 # and when no entry selects:
 # - a test file that reads the Node version;
 # - a test file that names a node:test project or the node:test adapter, or
-#   passes `--test` (`nodeTest`, `NodeTestProject`, `createNodeTestAdapter`,
-#   `"--test"`), unless the exemptions below name it;
+#   passes node's `--test` (`nodeTest`, `NodeTestProject`, `createNodeTestAdapter`,
+#   `"--test"` in an array whose earlier elements are all node's own: node,
+#   an option, `--import` or `--require` with its value, a spread), unless
+#   the exemptions below name it. Another element before it, such as
+#   `["code", "--base", "main", "--test", "x"]`, makes it another program's
+#   flag;
 # - a test file importing, directly or through other helpers, a helper under
-#   `test/` that holds a node:test project or passes `--test` itself
+#   `test/` that holds a node:test project or passes node's `--test` itself
 #   (`test/scheduler/preload-worktrees.ts`, `test/scheduler/warm-up-repo.ts`,
 #   `test/runners/node-test/graph-observed.ts`), unless exempted.
 # It also fails when a helper below or a file that imports it is missing from
