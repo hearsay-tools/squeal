@@ -14,6 +14,9 @@
 // settings name: the run's outcomes, its shard, its projects' serialized
 // configs and the variables the settings name. `squeal ci record` reads it, turns it into a
 // part and removes it; config and variable values never reach the part.
+// Spec 020 D13 (row 020-08a): before the original `start`, the wrap adds
+// Squeal's coverage provider (`coverage.cjs`); the file then holds whether
+// it did, and each module's coverage record or why it has none.
 //
 // In every process and thread of the command, first, it takes the input
 // evidence (`evidence-hooks.cjs`; spec 018 D9 as amended 2026-11-09) when the
@@ -22,12 +25,13 @@
 //
 // Settings, `SQUEAL_CI_RECORD`, JSON: `raw` the directory, `variables` the
 // names whose values the file keeps, `evidence` the evidence's settings
-// (`out`, `root`, `skip`, `format`), `nested` when a Vitest run or one of its
-// test workers started this process. Such a run is a test's own, not the
-// project's: it takes the evidence and writes no file (row 018-27). Every
-// child of a Vitest CLI process gets `nested` (`children.cjs`). Before it can
-// attach, the hook writes the file with `state: "started"`, so a Vitest
-// process that ends without a run end is known. CommonJS with Node built-ins only; `require` of the project's
+// (`out`, `root`, `skip`, `format`), `coverage` the provider's
+// (`coverage.cjs`), `nested` when a Vitest run or one of its test workers
+// started this process. Such a run is a test's own, not the project's: it
+// takes the evidence and writes no file (row 018-27). Every child of a Vitest
+// CLI process gets `nested` (`children.cjs`). Before it can attach, the hook
+// writes the file with `state: "started"`, so a Vitest process that ends
+// without a run end is known. CommonJS with Node built-ins only; `require` of the project's
 // `vitest/node` (an ES module without top-level await) is synchronous, so the
 // wrap is in place before the CLI starts its run. Any error of its own is
 // written to the file as `failed`, never thrown into the run.
@@ -36,6 +40,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { createRequire } = require("node:module");
 const { isMainThread } = require("node:worker_threads");
+const { failedCoverage, startCoverage } = require("./coverage.cjs");
 
 const VARIABLE = "SQUEAL_CI_RECORD";
 const REGEXP = "squeal:regexp";
@@ -47,7 +52,8 @@ function readSettings() {
     const variables = Array.isArray(value.variables)
       ? value.variables.filter((v) => typeof v === "string")
       : [];
-    return { raw: value.raw, variables, nested: value.nested === true };
+    const coverage = typeof value.coverage === "object" ? value.coverage : null;
+    return { raw: value.raw, variables, nested: value.nested === true, coverage };
   } catch {
     return null;
   }
@@ -120,7 +126,7 @@ function projectOf(project) {
   };
 }
 
-function reporterFor(vitest, file, settings, fail) {
+function reporterFor(vitest, file, settings, fail, coverage) {
   const modules = new Map();
   // A reporter that throws fails the run: every error goes to the file instead.
   const safe =
@@ -132,30 +138,50 @@ function reporterFor(vitest, file, settings, fail) {
         fail(error);
       }
     };
+  const write = safe((unhandledErrors, reason, covered) => {
+    const env = {};
+    for (const name of settings.variables) {
+      if (process.env[name] !== undefined) env[name] = process.env[name];
+    }
+    const shard = vitest.config?.shard;
+    writeRaw(file, {
+      state: "ended",
+      vitest: vitest.version,
+      shard: shard ? { index: shard.index, count: shard.count } : null,
+      node: { version: process.version, platform: process.platform, arch: process.arch },
+      reason,
+      unhandled: unhandledErrors.map((error) =>
+        typeof error?.VITEST_TEST_PATH === "string" ? error.VITEST_TEST_PATH : null,
+      ),
+      projects: vitest.projects.map(projectOf),
+      modules: [...modules].map(([key, module]) => {
+        const record = covered.files.get(key);
+        return record === undefined ? module : { ...module, coverage: record };
+      }),
+      coverage: covered.header,
+      env,
+    });
+  });
   return {
+    onTestRunStart: safe((specifications) => coverage.runStart(specifications)),
     onTestModuleEnd: safe((module) => {
       modules.set(`${module.project.name}\0${module.moduleId}`, moduleOf(module));
+      coverage.take();
     }),
-    onTestRunEnd: safe((_modules, unhandledErrors, reason) => {
-      const env = {};
-      for (const name of settings.variables) {
-        if (process.env[name] !== undefined) env[name] = process.env[name];
+    // Awaited by Vitest: the records are mapped before the file is written.
+    onTestRunEnd(_modules, unhandledErrors, reason) {
+      let covered;
+      try {
+        const ended = [...modules.values()].map((m) => ({
+          project: m.project,
+          moduleId: m.moduleId,
+        }));
+        covered = coverage.end(ended).catch(failedCoverage);
+      } catch (error) {
+        covered = Promise.resolve(failedCoverage(error));
       }
-      const shard = vitest.config?.shard;
-      writeRaw(file, {
-        state: "ended",
-        vitest: vitest.version,
-        shard: shard ? { index: shard.index, count: shard.count } : null,
-        node: { version: process.version, platform: process.platform, arch: process.arch },
-        reason,
-        unhandled: unhandledErrors.map((error) =>
-          typeof error?.VITEST_TEST_PATH === "string" ? error.VITEST_TEST_PATH : null,
-        ),
-        projects: vitest.projects.map(projectOf),
-        modules: [...modules.values()],
-        env,
-      });
-    }),
+      return covered.then((c) => write(unhandledErrors, reason, c));
+    },
   };
 }
 
@@ -176,7 +202,11 @@ function install(settings, root) {
       try {
         // Again at each start: a restart builds the instance's reporters anew.
         if (!Array.isArray(this.reporters)) throw new Error("the Vitest instance has no reporters");
-        if (!reporters.has(this)) reporters.set(this, reporterFor(this, file, settings, fail));
+        if (!reporters.has(this)) {
+          // Spec 020 D13: before the original `start`, which starts the coverage provider.
+          const coverage = startCoverage(this, settings.coverage);
+          reporters.set(this, reporterFor(this, file, settings, fail, coverage));
+        }
         const reporter = reporters.get(this);
         if (!this.reporters.includes(reporter)) this.reporters.push(reporter);
       } catch (error) {
