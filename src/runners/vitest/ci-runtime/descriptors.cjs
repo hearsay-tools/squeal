@@ -1,16 +1,18 @@
 // Reads and time changes through a descriptor, a file handle or a directory
-// handle the run opened read-only (spec 018 D9; row 018-23, review
-// `wave-5-0.1.421-r3.md` B1 and N2). The open hashes its path
-// (`evidence-hooks.cjs`), but a read through the descriptor later consumes
-// what the file holds then. So each such read hashes the file again through
-// the descriptor itself, once the read is done and before its caller sees
-// the bytes: a second content is two contents for the path, which leaves it
-// without evidence, and a hash that cannot be taken cancels the path. A
-// directory handle lists its directory again when its reads end, when it
-// closes and at the end of an iteration. A time change through a descriptor or file handle writes its
-// path, as `utimes` does. An open that can write is already a write of its
-// path, so only read-only opens are tracked, by descriptor number until it
-// is closed, and by file handle or directory handle object.
+// handle the run opened read-only (spec 018 D9; row 018-23, reviews
+// `wave-5-0.1.421-r3.md` B1, N2 and `018-23-0.1.424.md` B1). The open hashes
+// its path (`evidence-hooks.cjs`), but a read through the descriptor later
+// consumes what the file holds then. So each such read hashes the file again
+// through the descriptor itself, with positional reads that leave its offset
+// as it was, once the read is done and before its caller sees the bytes: a
+// second content is two contents for the path, which leaves it without
+// evidence, and a hash that cannot be taken cancels the path. A directory
+// handle lists its directory again when its reads end, when it closes and at
+// the end of an iteration. A time change through a descriptor or file handle
+// writes its path, as `utimes` does. An open that can write is already a
+// write of its path, so only read-only opens are tracked: by descriptor
+// number, a file handle's own number too, until it is closed or opened again;
+// a directory handle by its object.
 "use strict";
 const fs = require("node:fs");
 
@@ -72,40 +74,59 @@ function consumer(replace, target, name, of, after) {
 /** Takes `evidence` (`createEvidence`) at reads and time changes through what the run opened. */
 function wrapDescriptors(evidence, replace) {
   const promises = fs.promises;
-  /** Descriptor number to `{ fd, real }`; file handle to `{ handle, real }`; directory handle to its listing. */
+  /**
+   * The one owner of what the run opened: descriptor number to `{ fd, real }`,
+   * for a numeric open and a file handle's `fd` alike (review of 0.1.424,
+   * B1). Every open sets or clears its number, so a reused number never
+   * names the file of an earlier open; every close clears it.
+   */
   const fds = new Map();
-  const handles = new WeakMap();
   const dirs = new WeakMap();
   const throughFd = ({ fd, real }) => evidence.through(fd, real);
-  const throughHandle = ({ handle, real }) => evidence.through(handle.fd, real);
   const relist = ({ dir, deep }) => evidence.list(dir, deep);
+  const register = (fd, real) => {
+    if (typeof fd !== "number" || fd < 0) return;
+    if (real === null) fds.delete(fd);
+    else fds.set(fd, { fd, real });
+  };
+  const ofHandle = (handle) =>
+    handle !== null && typeof handle === "object" && typeof handle.fd === "number"
+      ? fds.get(handle.fd)
+      : undefined;
 
   let handlesWrapped = false;
   const wrapHandles = (proto) => {
     handlesWrapped = true;
-    const of = (self) => handles.get(self);
+    const of = (self) => ofHandle(self);
     // `createReadStream`, `readLines` and `readableWebStream` read through `read`.
     for (const name of ["read", "readv", "readFile", "stat"]) {
-      consumer(replace, proto, name, of, throughHandle);
+      consumer(replace, proto, name, of, throughFd);
     }
     replace(
       proto,
       "utimes",
       (fn) =>
         function (...args) {
-          const tracked = handles.get(this);
+          const tracked = ofHandle(this);
           if (tracked !== undefined) evidence.write(tracked.real);
           return fn.apply(this, args);
         },
     );
+    replace(
+      proto,
+      "close",
+      (fn) =>
+        function (...args) {
+          if (ofHandle(this) !== undefined) fds.delete(this.fd);
+          return fn.apply(this, args);
+        },
+    );
   };
-  /** What an open gave: a descriptor or file handle on `real`, or `null` for one that can write. */
+  /** What an open gave, a descriptor or a file handle: on `real`, or `null` for one that can write. */
   const track = (opened, real) => {
-    if (typeof opened === "number") {
-      if (real === null) fds.delete(opened);
-      else fds.set(opened, { fd: opened, real });
-    } else if (real !== null && opened !== null && typeof opened === "object") {
-      handles.set(opened, { handle: opened, real });
+    if (typeof opened === "number") register(opened, real);
+    else if (opened !== null && typeof opened === "object") {
+      register(opened.fd, real);
       if (!handlesWrapped) wrapHandles(Object.getPrototypeOf(opened));
     }
   };
@@ -144,7 +165,7 @@ function wrapDescriptors(evidence, replace) {
   const ofFd = (_self, args) => (typeof args[0] === "number" ? fds.get(args[0]) : undefined);
   const reads = ["read", "readSync", "readv", "readvSync", "readFile", "readFileSync"];
   for (const name of [...reads, "fstat", "fstatSync"]) consumer(replace, fs, name, ofFd, throughFd);
-  consumer(replace, promises, "readFile", (_self, args) => handles.get(args[0]), throughHandle);
+  consumer(replace, promises, "readFile", (_self, args) => ofHandle(args[0]), throughFd);
   for (const name of ["futimes", "futimesSync"]) {
     replace(
       fs,
