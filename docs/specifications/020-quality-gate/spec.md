@@ -73,10 +73,10 @@ The human chose this name on 2026-11-09, over a separate `squeal quality`. `sque
 
 ### D3. Collection
 
-1. Selection: for each changed source, the test files whose import closure loads it (each runner adapter's `affected()`), plus every changed test file, plus `--test` files. A path given with `--test` that matches no runner is a usage error.
+1. Selection: for every changed path of the diff, after path narrowing, the test files whose import closure loads it (each runner adapter's `affected()`), plus every changed path a runner lists as a test file, plus `--test` files. A path given with `--test` that matches no runner is a usage error. A changed path counts here whether or not a function of it changed: a top-level edit of a test or a source file selects too (amended 2026-11-10, review 0.1.423 B1).
 2. Runs: one adapter run per runner (Vitest, node:test), with Squeal's coverage provider, as 015 D8 runs them. Records are mapped before `adapter.close()`. The collector takes the adapter factories as arguments, and the CLI passes them, because nothing under `src/core/code` may import a runner (`test/runners/boundaries.test.ts`, row 016-36). Vitest runs with `cache: false`, so it writes no results cache into the project (amended 2026-11-09, row 020-03).
 3. Loaders: from each run's `closure()`, not from a store.
-4. Budget: one deadline over all runs, 600 s by default, `--timeout` to change it. At the deadline, the running file is stopped. Every completed file keeps its record. The report names each file that did not finish. The command does not lower a project's own `testTimeout`.
+4. Budget: one deadline over all runs, 600 s by default, `--timeout` to change it. At the deadline, the running file is stopped. Every completed file keeps its record. The report names each file that did not finish. The command does not lower a project's own `testTimeout`. Any selected file that did not finish makes the verdict at least `incomplete`: a test in it may have failed or may not have run (amended 2026-11-10, review 0.1.423 B2). Failures a runner already reported for an unfinished file are kept in the report when the adapter gives them; the verdict does not depend on it.
 5. Nothing is written to the project or a store. Temporary files go under `$TMPDIR` and are removed.
 
 ### D4. The join repair
@@ -107,7 +107,7 @@ A changed function's evidence is **complete** when all of these are true:
 Then:
 
 - **skipped**: the function's file matches `coverage.exclude` (D6) and its CC ≤ max. It needs no coverage evidence, gets no CRAP, and is named in the report. It is never counted as pass, and it does not block the verdict.
-- **pass**: complete, CC ≤ max, CRAP ≤ max. A pass may also be proven from a subset of the loading files, by 015 D9's bound: the CRAP from the records in hand is an upper bound. It is still not a pass while a selected test failed.
+- **pass**: complete, CC ≤ max, CRAP ≤ max. A pass may also be proven from a subset of the loading files, by 015 D9's bound: the CRAP from the records in hand is an upper bound. Only loading files that **completed** may be left out of that subset, for example one that completed with no record. A loading file that did not finish rules out a pass, and the function reads `incomplete` with the gap `not-finished` (amended 2026-11-10, review 0.1.423 B2). It is still not a pass while a selected test failed.
 - **violation**: complete, and CC > max or CRAP > max. CC alone needs only the count. A function over the CC limit is a violation whatever its coverage.
 - **incomplete**: every other case. Each one names its gap: `not-counted`, `no-loader`, `not-finished`, `no-record`, `not-joined`, `test-failed`.
 
@@ -130,7 +130,7 @@ All of these are read **at the base commit**, so a branch cannot loosen its own 
 `--json` with `--base` writes one object, `format: "squeal-code-gate/1"`. The JSON of `squeal code` without `--base` is unchanged.
 
 - `versions`: the Squeal version, `COUNTER_VERSION`, `COVERAGE_PROVIDER_VERSION`, `COVERAGE_RECORD_VERSION`, `QUALITY_POLICY_VERSION`.
-- `base`: the ref, the merge-base commit and the policy values read there, `coverage.exclude` included. `head`: the commit, whether the tree was dirty, and each changed path with its blob hash.
+- `base`: the ref, the merge-base commit and the policy values read there: both thresholds, `coverage.exclude`, and the counting keys `complexity.include`, `complexity.exclude` and `complexity.maxFileBytes`. `head`: the commit, whether the tree was dirty, and each changed path with its blob hash, uncounted regular files included (amended 2026-11-10, review 0.1.423 S1).
 - `functions`: per changed function, the identity, the body hash, the change kind (`edited`/`added`), CC, own-line coverage, CRAP, the state (`pass`, `violation`, `incomplete`, `skipped`), the gap, and the loading test files expected and measured.
 - `runs`: per runner, the test files selected, completed and not finished, and the failed tests.
 - `verdict` and the counts of each state.
