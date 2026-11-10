@@ -1,19 +1,25 @@
 // The CI hook in each child process and Worker the run starts with an
-// environment of its own (spec 018 D9; row 018-23, review
-// `wave-5-0.1.421-r3.md` N1). The hook (`vitest-ci.cjs`) rides in
-// `NODE_OPTIONS` and its settings in `SQUEAL_CI_RECORD`; an `env` that drops
-// them would start a Node the evidence never sees, whose writes could leave
-// the parent's evidence of a path standing. So at every spawn, sync or async,
-// and every Worker, both go back into the env the caller passed (`env: {}`
-// too), as the daemon's recorder does for itself (`observe/spawn.cjs`). That
-// recorder loads first, so its wrappers run inside these and still put its
-// own preload first. The hook is an `--import` of its `file:` URL, or a
-// `--require` where that env already runs a `--require`, as `squeal ci
-// record` chose for the command (`recorderOption`). An env whose settings
-// are another recording's (a test that runs `squeal ci record` itself) is
-// left to it; a `SHARE_ENV` Worker shares this process's env as it is. A
-// call Node would reject passes through untouched, so Node's own validation
-// runs.
+// environment of its own (spec 018 D9; row 018-23, reviews
+// `wave-5-0.1.421-r3.md` N1 and `018-23-0.1.424.md` B2). The hook
+// (`vitest-ci.cjs`) rides in `NODE_OPTIONS` and its settings in
+// `SQUEAL_CI_RECORD`; an `env` that drops them would start a Node the
+// evidence never sees, whose writes could leave the parent's evidence of a
+// path standing. So at every spawn, sync or async, and every Worker, both go
+// back into the env the caller passed (`env: {}` too), as the daemon's
+// recorder does for itself (`observe/spawn.cjs`). That recorder loads first,
+// so its wrappers run inside these and still put its own preload first. The
+// hook is an `--import` of its `file:` URL, or a `--require` where that env
+// already runs a `--require`, as `squeal ci record` chose for the command
+// (`recorderOption`).
+//
+// An env whose `SQUEAL_CI_RECORD` is another value (a test that runs
+// `squeal ci record` itself) keeps it, and the hook cannot follow that
+// child: its writes never reach this run's evidence. So this process
+// withholds its current test file from the export (`evidence.withhold`):
+// Vitest's, else the one the daemon's recorder carries, else, with none
+// known, every file. A `SHARE_ENV` Worker shares this process's env, so the
+// same holds when that env has another value. A call Node would reject
+// passes through untouched, so Node's own validation runs.
 "use strict";
 const childProcess = require("node:child_process");
 const path = require("node:path");
@@ -21,6 +27,8 @@ const workerThreads = require("node:worker_threads");
 const { pathToFileURL } = require("node:url");
 
 const VARIABLE = "SQUEAL_CI_RECORD";
+/** The daemon's recorder's settings (`OBSERVE_VARIABLE`), which name its current test file. */
+const OBSERVE = "SQUEAL_OBSERVE";
 const HOOK = path.join(__dirname, "vitest-ci.cjs");
 /** A `--require` or `-r` token in `NODE_OPTIONS`. */
 const REQUIRE = /(^|\s)(-r|--require)(=|\s|$)/;
@@ -53,19 +61,45 @@ function optionsAt(name, args) {
   return isOptions(second) ? 1 : -1;
 }
 
-/** Puts the hook and this process's `SQUEAL_CI_RECORD` into the env of every child and Worker. */
-function wrapChildren(replace) {
+/** The test file this process or thread runs now, absolute; `null` when none is known. */
+function currentTestFile() {
+  const vitest = globalThis.__vitest_worker__?.filepath;
+  if (typeof vitest === "string") return vitest;
+  try {
+    const file = JSON.parse(process.env[OBSERVE] ?? "")?.file;
+    return typeof file === "string" ? file : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Puts the hook and this process's `SQUEAL_CI_RECORD` into the env of every
+ * child and Worker; withholds the current test file (`evidence.withhold`)
+ * for one the hook cannot follow.
+ */
+function wrapChildren(replace, evidence) {
   const settings = process.env[VARIABLE];
   if (typeof settings !== "string") return;
   const url = pathToFileURL(HOOK).href;
+  /** Whether `env` names another recording, whose child this run cannot follow. */
+  const foreign = (env) => {
+    const own = env[VARIABLE];
+    return own !== undefined && own !== settings;
+  };
+  const withhold = () => evidence.withhold(currentTestFile());
   /**
    * `env` with the hook and its settings, as a copy: what Node reads of it,
    * its prototype's keys too for a spawn (`inherited`), its own for a
-   * Worker. `env` itself when it has both, or another recording's settings.
+   * Worker. `env` itself when it has both; with another recording's
+   * settings, `env` itself, and the current test file withheld.
    */
   const carried = (env, inherited) => {
     const own = env[VARIABLE];
-    if (own !== undefined && own !== settings) return env;
+    if (foreign(env)) {
+      withhold();
+      return env;
+    }
     const options = typeof env.NODE_OPTIONS === "string" ? env.NODE_OPTIONS : "";
     const loads = options.includes(HOOK) || options.includes(url);
     if (loads && own === settings) return env;
@@ -143,7 +177,7 @@ function wrapChildren(replace) {
           const from = env ?? process.env;
           const env_ = carried(from, false);
           if (env_ !== from) next = [withOwn(options, "env", env_), ...rest.slice(1)];
-        }
+        } else if (env === workerThreads.SHARE_ENV && foreign(process.env)) withhold();
       } catch {
         next = rest;
       }
