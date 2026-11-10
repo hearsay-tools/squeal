@@ -11,6 +11,7 @@ import {
   partsDir,
   type Recorded,
   recorded,
+  recordInto,
   SLOW,
   sameApartFromSource,
 } from "./code-gate-parts-kit.js";
@@ -240,6 +241,58 @@ describe("squeal code --base --parts: the part's environment (spec 020 D13.2)", 
 
     expect(ran.ran).toEqual(["test/risky.test.ts"]);
     expect([ran.code, crap(ran)]).toEqual([0, [["risky", "pass", 6]]]);
-    expect(ran.stderr).toContain(`holds no environment of the project`);
+    expect(ran.stderr).toContain(`holds no environment of project ""`);
+  });
+});
+
+/**
+ * Review 0.1.427-r2 B1: a test whose coverage of `risky` hangs on Vitest's
+ * snapshot update mode, and passes in every mode.
+ */
+const UPDATES: Readonly<Record<string, string>> = {
+  ...PROBE,
+  "squeal.config.json": JSON.stringify({ coverage: { enabled: true, exclude: ["test/**"] } }),
+  "test/risky.test.ts": `import { expect, it } from "vitest";\nimport { risky } from "../src/risky";\n\nit("conditional coverage", () => {\n  expect(typeof risky).toBe("function");\n  if (expect.getState().snapshotState.snapshotUpdateState === "all") for (let n = 0; n < 7; n++) risky(n);\n});\n`,
+};
+
+describe("squeal code --base --parts: the part's snapshot update mode (018 D9, 020 D13.2)", () => {
+  let none: Recorded;
+  let updated: string;
+  let updateDir: string;
+  const crap = (g: Awaited<ReturnType<typeof gate>>) =>
+    g.report.functions.map((f) => [f.qualifiedName, f.state, f.crap]);
+
+  beforeAll(async () => {
+    updateDir = scratchDir("gate-parts-update");
+    none = await recorded(UPDATES, { "src/risky.ts": RISKY }, updateDir);
+    updated = await recordInto(none.root, "parts-update", ["--update"]);
+  }, SLOW.timeout);
+
+  afterAll(() => rmSync(updateDir, { recursive: true, force: true }));
+
+  it(
+    "runs a file whose part ran with snapshot updates, as a gate with no parts does",
+    SLOW,
+    async () => {
+      expect(onlyPart(updated).projects.map((p) => p.updateSnapshot)).toEqual(["all"]);
+
+      const fromParts = await gate(none.root, ["src/risky.ts", "--parts", updated]);
+      const fresh = await gate(none.root, ["src/risky.ts"]);
+
+      expect(fromParts.ran).toEqual(["test/risky.test.ts"]);
+      expect([fromParts.code, crap(fromParts)]).toEqual([1, [["risky", "violation", 42]]]);
+      expect(sameApartFromSource(fromParts.report)).toEqual(sameApartFromSource(fresh.report));
+      expect(fromParts.stderr).toContain('ran project "" with snapshot update "all"');
+    },
+  );
+
+  it("takes a file whose part wrote no snapshot", SLOW, async () => {
+    expect(onlyPart(none.parts).projects.map((p) => p.updateSnapshot)).toEqual(["none"]);
+
+    const ran = await gate(none.root, ["src/risky.ts", "--parts", none.parts]);
+
+    expect(ran.ran).toEqual([]);
+    expect(ran.report.runs[0]?.from).toEqual({ "test/risky.test.ts": "parts" });
+    expect([ran.code, crap(ran)]).toEqual([1, [["risky", "violation", 42]]]);
   });
 });

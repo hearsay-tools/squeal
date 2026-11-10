@@ -9,7 +9,13 @@ import { describeFailure } from "../state/fingerprint.js";
 import { worktreeEnvironment } from "../store/environments.js";
 import type { ExportHeader } from "../store/imports.js";
 import type { ResultsBundle } from "../store/transfer-bundle.js";
-import type { AbsolutePath, EpochMs, RelativePath, WorktreeId } from "../types/common.js";
+import type {
+  AbsolutePath,
+  EpochMs,
+  ProjectName,
+  RelativePath,
+  WorktreeId,
+} from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { Policy } from "../types/policy.js";
 import type {
@@ -22,11 +28,11 @@ import type { Store } from "../types/store.js";
 import type { Provenance } from "../types/store-records.js";
 import { bundleOf, type KeyedFile } from "./export-bundle.js";
 import {
-  jobRefusal,
   type NamedPart,
   partsRefusal,
   type Refusal,
-  runDifferences,
+  type RunView,
+  reuseRefusal,
 } from "./export-check.js";
 import { certifier } from "./export-inputs.js";
 import { keyPartsOf } from "./export-parts.js";
@@ -231,25 +237,25 @@ async function openKeys(input: CiExportInput): Promise<WorktreeKeys> {
   return keys;
 }
 
-/** A project of the parts the job has no environment of, or ran in another environment. */
+/**
+ * The first part whose runs are no evidence in this job (`reuseRefusal`): a
+ * project the job has no environment of, or ran in another environment.
+ */
 function environmentRefusal(
   input: CiExportInput,
   environments: readonly RunnerEnvironment[],
 ): Refusal | null {
   const { store, worktreeId, parts } = input;
-  for (const { part } of parts) {
-    for (const run of part.projects) {
-      const { project } = run.descriptor;
-      const job = worktreeEnvironment(store, worktreeId, project);
-      const resolved = environments.find((e) => e.project === project)?.resolvedConfig;
-      if (job?.descriptor === null || job === null || resolved === undefined) {
-        const text = `this checkout's Vitest has no project ${JSON.stringify(project)}, which the parts ran`;
-        return { kind: "environment", text };
-      }
-      const view = { descriptor: job.descriptor, snapshotOptions: snapshotFields(resolved) };
-      const differences = runDifferences(run, view);
-      if (differences.length > 0) return jobRefusal(project, differences);
-    }
+  const runs = new Map<ProjectName, RunView>();
+  for (const { project, resolvedConfig } of environments) {
+    const descriptor = worktreeEnvironment(store, worktreeId, project)?.descriptor ?? null;
+    if (descriptor === null) continue;
+    runs.set(project, { descriptor, snapshotOptions: snapshotFields(resolvedConfig) });
+  }
+  const here = { name: "this job's", runner: "this checkout's Vitest", runs };
+  for (const named of parts) {
+    const refused = reuseRefusal(named, here);
+    if (refused !== null) return refused;
   }
   return null;
 }
