@@ -136,6 +136,11 @@ export interface GateRunReport {
   readonly completed: readonly RelativePath[];
   readonly notFinished: readonly RelativePath[];
   readonly failed: readonly { readonly path: RelativePath; readonly tests: readonly string[] }[];
+  /**
+   * D11.7: the selected files read from the stores at their key, not run;
+   * present only when there is one.
+   */
+  readonly fromStore?: readonly RelativePath[];
   readonly durationMs: number | null;
 }
 
@@ -242,6 +247,7 @@ export function runsOf(evidence: Evidence, durationsMs: GateTimes["durationsMs"]
       .filter((f) => f.failed.length > 0)
       .map((f) => ({ path: f.path, tests: [...f.failed].sort(compare) }))
       .sort((a, b) => compare(a.path, b.path));
+    const fromStore = sorted(files.filter((f) => f.fromStore === true).map((f) => f.path));
     return [
       {
         runner,
@@ -249,6 +255,7 @@ export function runsOf(evidence: Evidence, durationsMs: GateTimes["durationsMs"]
         completed: sorted(files.filter((f) => f.completed).map((f) => f.path)),
         notFinished: sorted(files.filter((f) => !f.completed).map((f) => f.path)),
         failed,
+        ...(fromStore.length === 0 ? {} : { fromStore }),
         durationMs,
       },
     ];
