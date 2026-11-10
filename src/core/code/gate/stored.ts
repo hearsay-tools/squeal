@@ -237,10 +237,7 @@ async function openKeyer(options: StoredOptions, main: Store): Promise<Keyer> {
     if (isStoreOpenFailure(opened)) throw new Error(`no scratch store: ${opened.reason}`);
     scratch = opened;
     for (const project of new Set(environments.map((e) => e.project))) {
-      for (const row of OBSERVED_ROWS) {
-        const value = main.meta.get(row(project));
-        if (value !== null) opened.meta.set(row(project), value);
-      }
+      for (const row of OBSERVED_ROWS) copyMeta(main, opened, row(project));
     }
     const keys = await openKeys(options, opened);
     await keys.setEnvironments(environments);
@@ -253,6 +250,12 @@ async function openKeyer(options: StoredOptions, main: Store): Promise<Keyer> {
     await close();
     throw error;
   }
+}
+
+/** Copies the meta row `key` of `from` into `to`, when `from` has one. */
+function copyMeta(from: Store, to: Store, key: string): void {
+  const value = from.meta.get(key);
+  if (value !== null) to.meta.set(key, value);
 }
 
 /** The daemon's `WorktreeKeys` of this worktree over `store`, bootstrapped as at its start. */
