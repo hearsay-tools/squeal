@@ -1,5 +1,14 @@
 import { createHash } from "node:crypto";
-import { mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -102,6 +111,7 @@ interface Gate {
   readonly report: GateReport;
   readonly stderr: string;
   readonly ran: readonly string[];
+  readonly leftInTmp: readonly string[];
 }
 
 async function gate(repo: FixtureRepo, args: readonly string[]): Promise<Gate> {
@@ -118,8 +128,20 @@ async function gate(repo: FixtureRepo, args: readonly string[]): Promise<Gate> {
     cwd: repo.root,
     env: repo.env,
   };
-  const code = await codeGateCommand(["--base", "main", ...args, "--json"], io, watched(ran));
-  return { code, report: JSON.parse(stdout) as GateReport, stderr, ran };
+  // D3.5: a `TMPDIR` of the command's own, which it must leave empty.
+  const temp = mkdtempSync(join(tmpdir(), "squeal-gate-stored-"));
+  const saved = process.env.TMPDIR;
+  process.env.TMPDIR = temp;
+  let code: number;
+  try {
+    code = await codeGateCommand(["--base", "main", ...args, "--json"], io, watched(ran));
+  } finally {
+    if (saved === undefined) delete process.env.TMPDIR;
+    else process.env.TMPDIR = saved;
+  }
+  const leftInTmp = readdirSync(temp);
+  rmSync(temp, { recursive: true, force: true });
+  return { code, report: JSON.parse(stdout) as GateReport, stderr, ran, leftInTmp };
 }
 
 describe("squeal code --base reads the stores (spec 020 D11.7)", () => {
@@ -192,6 +214,7 @@ describe("squeal code --base reads the stores (spec 020 D11.7)", () => {
         ["add", "pass", 1],
       ]);
       expect(functions[0]?.loaders.measured).toEqual(["test/math.test.ts"]);
+      expect(ran.leftInTmp).toEqual([]);
       expect(snapshot(repo)).toEqual(before);
     },
   );
