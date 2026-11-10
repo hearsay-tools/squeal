@@ -127,13 +127,13 @@ async function record(args: RecordArgs, io: CliIo, deps: CiDeps): Promise<number
   if (typeof recording === "string") return unchanged(recording);
   try {
     const exit = exitOf(await runCommand(args.command, cwd, recording.env), say);
-    const ended = performance.now();
+    const commandEnd = performance.now();
     try {
       const { runs, notes, evidence, hooks } = recording.finish();
       for (const note of notes) say(note);
       if (runs.length > 0) {
         const out = resolve(cwd, args.out ?? DEFAULT_PARTS_DIR);
-        say(await writeParts(runs, out, root, env, io, evidence, { hooks, ended }));
+        say(await writeParts(runs, out, root, env, io, evidence, { hooks, commandEnd }));
       }
     } catch (error) {
       say(`no part written: ${error instanceof Error ? (error.stack ?? error.message) : error}`);
@@ -164,7 +164,7 @@ function exitOf(result: number | NotStarted, say: (text: string) => void): numbe
 /** Row 018-29: the hooks' time, and when the command ended (`performance.now`). */
 interface Spent {
   readonly hooks: HooksTime;
-  readonly ended: number;
+  readonly commandEnd: number;
 }
 
 async function writeParts(
@@ -181,7 +181,7 @@ async function writeParts(
     command: randomUUID(),
     hooksMs: Math.round(spent.hooks.ms),
     threads: spent.hooks.threads,
-    afterMs: Math.round(performance.now() - spent.ended),
+    afterMs: Math.round(performance.now() - spent.commandEnd),
   };
   const base = {
     squealVersion: squealVersion(),
@@ -212,9 +212,9 @@ async function writeParts(
   const untrusted = ended.length === 0 ? "" : ` (no test file from a run that ${ended.join(", ")})`;
   const parts = `${runs.length} part${runs.length === 1 ? "" : "s"}`;
   const wrote = `wrote ${parts} with ${files} test file${files === 1 ? "" : "s"} to ${out}${untrusted}`;
-  const spentLine = costOf(runs.map((run) => ({ header: { cost }, testFiles: run.testFiles })));
+  const summary = costOf(runs.map((run) => ({ header: { cost }, testFiles: run.testFiles })));
   const lines = [wrote, ...runs.flatMap(coverageLine)];
-  if (spentLine !== null) lines.push(costText(spentLine));
+  if (summary !== null) lines.push(costText(summary));
   return lines.join("\nsqueal ci record: ");
 }
 
