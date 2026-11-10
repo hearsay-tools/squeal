@@ -5,11 +5,7 @@ import {
   COVERAGE_RECORD_VERSION,
 } from "../core/code/coverage/record.js";
 import { BaseRefError, changedFunctions, mergeBase } from "../core/code/gate/changed.js";
-import {
-  CollectUsageError,
-  collectEvidence,
-  type GateAdapters,
-} from "../core/code/gate/collect.js";
+import { CollectUsageError, type GateAdapters } from "../core/code/gate/collect.js";
 import { evaluate } from "../core/code/gate/evaluate.js";
 import { type BasePolicy, loadBasePolicy } from "../core/code/gate/policy.js";
 import type { EngineVersions, GateRunner } from "../core/code/gate/report.js";
@@ -22,6 +18,7 @@ import type { RunnerAdapter } from "../core/types/runner.js";
 import { createNodeTestAdapter } from "../runners/node-test/adapter.js";
 import { createVitestAdapter } from "../runners/vitest/index.js";
 import { exceptionsOf } from "./code-gate-exceptions.js";
+import { collectWithStores } from "./code-gate-stored.js";
 import { formatGateReport } from "./code-gate-text.js";
 import type { CliIo } from "./main.js";
 import { statusCommand } from "./status-command.js";
@@ -29,8 +26,9 @@ import { statusCommand } from "./status-command.js";
 /*
  * Spec 020 D1 (row 020-05): `squeal code --base <ref>`, the one-shot gate.
  * It wires the inventory (D2), the collector (D3) and the evaluator (D5 to
- * D7) with no daemon and no store, and exits with the verdict: 0 pass, 1
- * violations, 3 incomplete, 2 on a usage or setup error.
+ * D7) with no daemon; it reads the stores and never writes them (D11.7). It
+ * exits with the verdict: 0 pass, 1 violations, 3 incomplete, 2 on a usage
+ * or setup error.
  */
 
 export const CODE_GATE_USAGE =
@@ -229,8 +227,9 @@ const quoted = (arg: string) =>
 /**
  * `squeal code --base <ref> [<path>...] [--test <file>...] [--timeout
  * <seconds>] [--exceptions <file>] [--json]` (spec 020 D1, D8). Runs tests,
- * with no daemon, for up to the budget. Policy problems and the runners'
- * notes go to stderr; stdout holds the report alone.
+ * with no daemon, for up to the budget; a file with results and a record at
+ * its key in the stores does not run (D11.7). Policy problems and the
+ * runners' notes go to stderr; stdout holds the report alone.
  */
 export async function codeGateCommand(
   args: readonly string[],
@@ -256,7 +255,7 @@ export async function codeGateCommand(
   if ("error" in inventory) return fail(inventory.error);
   const { changed, policy } = inventory;
   const durationsMs: Partial<Record<GateRunner, number>> = {};
-  const evidence = await collectEvidence(root, changed, {
+  const evidence = await collectWithStores(root, io.env ?? process.env, changed, {
     tests,
     budgetSeconds: parsed.budgetSeconds,
     adapters: timed(adapters, durationsMs),
