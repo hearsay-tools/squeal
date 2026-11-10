@@ -5,6 +5,7 @@ import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { ciCommand } from "../../../src/cli/ci.js";
 import { type Part, readPart } from "../../../src/core/ci/parts.js";
+import { TS_WORKER } from "../../code/coverage/payloads.js";
 import { SLOW } from "./helpers.js";
 
 /*
@@ -12,7 +13,9 @@ import { SLOW } from "./helpers.js";
  * whose `vitest/node` exports no `Logger` and no `Vitest` class at run time
  * (cezar merge-group run 42799552999: no shard recorded). The stub package
  * `vitest-4.1/vitest` has that shape; the hook finds the class in the chunk
- * `vitest/node` imports it from.
+ * `vitest/node` imports it from. The stub has no `configOverride`, so Squeal's
+ * coverage provider cannot be added (spec 020 D13): the part says so, and the
+ * run is as before.
  */
 
 const FIXTURE = resolve(import.meta.dirname, "../../fixtures/vitest/vitest-4.1");
@@ -43,12 +46,11 @@ async function record(root: string): Promise<{ exit: number; text: string; parts
     text += chunk;
   };
   const command = [process.execPath, join(root, "node_modules/vitest/vitest.mjs"), "run"];
-  const exit = await ciCommand(["record", "--out", out, "--", ...command], {
-    stdout: add,
-    stderr: add,
-    cwd: root,
-    env: process.env,
-  });
+  const exit = await ciCommand(
+    ["record", "--out", out, "--", ...command],
+    { stdout: add, stderr: add, cwd: root, env: process.env },
+    { mapWorker: TS_WORKER },
+  );
   const names = text.includes("wrote ") ? readdirSync(out) : [];
   const parts = names.map((name) => {
     const part = readPart(join(out, name));
@@ -72,7 +74,16 @@ describe("squeal ci record on Vitest 4.1", () => {
       shard: { index: 1, count: 1 },
       end: "completed",
       dirty: false,
+      coverage: { off: "failed", note: "the Vitest instance has no configOverride" },
     });
+    expect(part.coverage).toBeUndefined();
+    expect(part.testFiles.map((f) => [f.record, f.noRecord])).toEqual([
+      [undefined, undefined],
+      [undefined, undefined],
+    ]);
+    expect(run.text).toContain(
+      "no coverage records: Squeal's provider failed (the Vitest instance has no configOverride)",
+    );
     expect(part.projects.map((p) => [p.descriptor.runnerVersion, p.updateSnapshot])).toEqual([
       ["4.1.10", "none"],
     ]);
