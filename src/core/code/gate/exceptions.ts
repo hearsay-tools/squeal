@@ -29,9 +29,12 @@ export interface Judged {
   readonly evidence: Pick<GateFunctionReport, "state" | "gap">;
 }
 
-/** What `applyExceptions` reads besides the functions. */
+/**
+ * What `applyExceptions` reads besides the functions. The CRAP limit is in
+ * each function's evidence already: a CRAP over it reads a violation there.
+ */
 export interface ExceptionRules {
-  readonly policy: Pick<BasePolicy, "complexityThreshold" | "crapThreshold">;
+  readonly policy: Pick<BasePolicy, "complexityThreshold">;
   readonly baseCommit: string;
 }
 
@@ -51,17 +54,21 @@ function byEntry(a: ExceptionEntry, b: ExceptionEntry): number {
   );
 }
 
+/** The head's value of `entry`'s measure; a CRAP not measured reads as over any value. */
+const headValue = (entry: ExceptionEntry, row: GateFunctionReport) =>
+  entry.measure === "complexity" ? row.complexity : (row.crap ?? Number.POSITIVE_INFINITY);
+
 /** D8: what an inherited entry's rule says, from the CC at the base. */
 function inherited(
   entry: ExceptionEntry,
   row: GateFunctionReport,
   base: FunctionCount | null,
-  limit: number,
+  ccLimit: number,
 ): GateExceptionOutcome {
   if (base === null) return "not-at-base";
-  if (entry.measure === "complexity" && base.complexity <= limit) return "not-over-at-base";
+  if (entry.measure === "complexity" && base.complexity <= ccLimit) return "not-over-at-base";
   if (row.complexity > base.complexity) return "worse-than-base";
-  const at = entry.measure === "complexity" ? base.complexity : (row.crap as number);
+  const at = entry.measure === "complexity" ? base.complexity : headValue(entry, row);
   return at > entry.value ? "over-value" : "covers";
 }
 
@@ -76,22 +83,16 @@ function outcomeOf(
   base: FunctionCount | null,
   rules: ExceptionRules,
 ): GateExceptionOutcome {
-  const { complexityThreshold, crapThreshold } = rules.policy;
+  const ccLimit = rules.policy.complexityThreshold;
   if (entry.measure === "complexity") {
-    if (row.complexity <= complexityThreshold) return "not-needed";
+    if (row.complexity <= ccLimit) return "not-needed";
   } else {
     if (evidence.state === "incomplete") return "incomplete";
     if (evidence.state !== "violation") return "not-needed";
   }
-  if (entry.kind === "inherited") {
-    return inherited(entry, row, base, measureLimit(entry, complexityThreshold, crapThreshold));
-  }
-  const head = entry.measure === "complexity" ? row.complexity : (row.crap as number);
-  return head > entry.value ? "over-value" : "covers";
+  if (entry.kind === "inherited") return inherited(entry, row, base, ccLimit);
+  return headValue(entry, row) > entry.value ? "over-value" : "covers";
 }
-
-const measureLimit = (entry: ExceptionEntry, cc: number, crap: number) =>
-  entry.measure === "complexity" ? cc : crap;
 
 /**
  * D8: the state once the entries are read. CC over the limit with no entry
