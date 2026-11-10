@@ -28,7 +28,10 @@
 // appended to `<out>/<pid>-<thread>-<time>.ndjson`: `e` evidence, `w` paths
 // written, `t` paths written with everything below them (`""` the root: every
 // path, a withheld run). Paths are relative to the root with `/`; a listing
-// path ends in `/` (`./` the root's).
+// path ends in `/` (`./` the root's). Each line also holds `o`, the time
+// this thread's clock (`clock.cjs`) had at that line, in milliseconds; a line
+// with `o` alone goes out when the clock moved `DUE_MS` without a line, and
+// on `flush` (row 018-29).
 // Evidence goes out once per event-loop turn, and on `flush`; a write before
 // the call that makes it, so a process stopped at any point never leaves a
 // write out. A lost read only leaves its test file out.
@@ -38,6 +41,7 @@ const path = require("node:path");
 const crypto = require("node:crypto");
 const workerThreads = require("node:worker_threads");
 const { fileURLToPath } = require("node:url");
+const clock = require("./clock.cjs");
 
 const OPEN_FLAGS =
   fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW ?? 0) | (fs.constants.O_NONBLOCK ?? 0);
@@ -65,6 +69,9 @@ function originals() {
     realpath: fs.realpathSync.native,
   };
 }
+
+/** Time on the clock without a line that makes a line of its own: what a stopped process can lose. */
+const DUE_MS = 20;
 
 /** A file changed this recently may change again with the same stat (coarse file times). */
 const SETTLED_MS = 2000;
@@ -247,39 +254,54 @@ function outputOf(settings, original) {
   const gone = new Set();
   const goneTrees = new Set();
   const realSetImmediate = setImmediate;
+  /** The clock's time at the last line. */
+  let told = 0;
   const append = (value) => {
+    told = clock.spent();
     try {
-      original.appendFileSync(file, `${JSON.stringify(value)}\n`);
+      const o = Math.round(told * 1000) / 1000;
+      original.appendFileSync(file, `${JSON.stringify({ ...value, o })}\n`);
     } catch {}
   };
-  const flush = () => {
-    scheduled = false;
+  const flushEvidence = () => {
     if (!any) return;
     const e = pending;
     pending = {};
     any = false;
     append({ e });
   };
+  /** The evidence of this turn, or the clock alone when it moved since the last line. */
+  const flush = clock.timed(() => {
+    scheduled = false;
+    if (any) flushEvidence();
+    else if (clock.spent() > told) append({});
+  });
+  const schedule = () => {
+    if (scheduled) return;
+    scheduled = true;
+    realSetImmediate(flush).unref();
+  };
   return {
     flush,
+    /** A line soon when the clock moved `DUE_MS` since the last. */
+    due: () => {
+      if (!scheduled && clock.spent() - told >= DUE_MS) schedule();
+    },
     evidence: (rel, value) => {
       if (value === undefined || last.get(rel) === value) return;
       // Another value in the same turn goes out beside the first, not over it.
-      if (Object.hasOwn(pending, rel)) flush();
+      if (Object.hasOwn(pending, rel)) flushEvidence();
       last.set(rel, value);
       pending[rel] = value;
       any = true;
-      if (!scheduled) {
-        scheduled = true;
-        realSetImmediate(flush).unref();
-      }
+      schedule();
     },
     written: (exact, trees) => {
       if (exact.length === 0 && trees.length === 0) return;
       for (const rel of [...exact, ...trees]) last.delete(rel);
       for (const rel of exact) gone.add(rel);
       for (const rel of trees) goneTrees.add(rel);
-      flush();
+      flushEvidence();
       append({ w: exact, t: trees });
     },
     gone: (rel) => {
@@ -425,15 +447,24 @@ function createEvidence(settings) {
       if (rel !== null && rel !== "") out.written([], [rel]);
     } catch {}
   };
+  /** `fn` on the clock, and a line of its own when the clock is due one (`DUE_MS`). */
+  const timed = (fn) => {
+    const onClock = clock.timed(fn);
+    return (...args) => {
+      const value = onClock(...args);
+      out.due();
+      return value;
+    };
+  };
   return {
-    read,
-    list,
-    write,
-    entering,
-    made,
-    opened,
-    through,
-    withhold,
+    read: timed(read),
+    list: timed(list),
+    write: timed(write),
+    entering: timed(entering),
+    made: timed(made),
+    opened: timed(opened),
+    through: timed(through),
+    withhold: timed(withhold),
     flush: out.flush,
     toPath: paths.toPath,
   };
