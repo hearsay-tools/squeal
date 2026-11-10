@@ -259,7 +259,11 @@ function recordsOf(
   return records;
 }
 
-/** One selected file's evidence; a file that did not complete keeps no failure and no record. */
+/**
+ * One selected file's evidence; a file that did not complete keeps no
+ * failure, no skip and no record. A skipped test is D11.3's: its record
+ * proves a pass and never a violation.
+ */
 async function evidenceOf(
   runner: Runner,
   ref: TestFileRef,
@@ -269,21 +273,22 @@ async function evidenceOf(
   const key = refKey(ref);
   const completed = report?.completedFiles.some((done) => refKey(done) === key) === true;
   const own = (r: { testFile: TestFileRef }) => refKey(r.testFile) === key;
-  const failed = !completed
+  const results = !completed
     ? []
-    : [
-        ...(report?.fileErrors.some(own) === true ? [FILE_ERROR] : []),
-        ...(report?.results ?? [])
-          .filter((r) => r.outcome === "fail" && r.check.project === ref.project)
-          .filter((r) => r.check.testPath === ref.path)
-          .map((r) => r.check.fullName),
-      ];
+    : (report?.results ?? []).filter(
+        (r) => r.check.project === ref.project && r.check.testPath === ref.path,
+      );
+  const failed = [
+    ...(completed && report?.fileErrors.some(own) === true ? [FILE_ERROR] : []),
+    ...results.filter((r) => r.outcome === "fail").map((r) => r.check.fullName),
+  ];
+  const skipped = results.some((r) => r.outcome === "skip");
   const loads = await runner.adapter.closure(ref).then(
     (closure) => [...closure.paths].sort(compare),
     () => null,
   );
   const record = completed ? (records.get(key) ?? null) : null;
-  return { runner: runner.kind, path: ref.path, completed, failed, loads, record };
+  return { runner: runner.kind, path: ref.path, completed, failed, skipped, loads, record };
 }
 
 function refKey(ref: TestFileRef): string {
