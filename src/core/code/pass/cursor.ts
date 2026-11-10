@@ -4,9 +4,18 @@ import type { CodeMetaRepo } from "../store/types.js";
 import type { RecountReason, RecountRecord } from "./types.js";
 
 /**
+ * Which files a pass counts, beside the policy's keys: 1, every included
+ * file but test files (015 D1); 2, test files too (spec 020 D11.6). A cursor
+ * at another version, or one written before the field, is an `include`
+ * recount: one summary line, never a line per function (015 D6).
+ */
+export const COUNTING_RULES_VERSION = 2;
+
+/**
  * Code meta `pass:<worktreeId>`: the revision a worktree's states are
- * counted at, and the policy and counter they were judged by. A pass
- * follows the revisions after it; a change of anything else is a recount.
+ * counted at, and the policy, counting rules and counter they were judged
+ * by. A pass follows the revisions after it; a change of anything else is a
+ * recount.
  */
 export interface PassCursor {
   readonly revision: RevisionNumber;
@@ -14,6 +23,8 @@ export interface PassCursor {
   readonly include: readonly string[];
   readonly exclude: readonly string[];
   readonly maxFileBytes: number;
+  /** `COUNTING_RULES_VERSION`; absent in a cursor written before it. */
+  readonly rules?: number;
   readonly counterVersion: number;
 }
 
@@ -28,7 +39,8 @@ export function cursorOf(
   counterVersion: number,
 ): PassCursor {
   const { threshold, include, exclude, maxFileBytes } = complexity;
-  return { revision, threshold, include, exclude, maxFileBytes, counterVersion };
+  const rules = COUNTING_RULES_VERSION;
+  return { revision, threshold, include, exclude, maxFileBytes, rules, counterVersion };
 }
 
 /** `null` when none was written, or it does not read: the next pass is a first count. */
@@ -82,7 +94,8 @@ export function writeRecount(
 /**
  * Why the states are rebuilt rather than followed, or `null` for `edit`:
  * `first` with no cursor or one past the newest revision (a new main store);
- * else what changed, `threshold` before `include` before `counter`.
+ * else what changed, `threshold` before `include` before `counter`. Other
+ * counting rules (`rules`) are an `include` change.
  */
 export function recountReason(cursor: PassCursor | null, now: PassCursor): RecountReason | null {
   if (cursor === null || cursor.revision > now.revision) return "first";
@@ -92,7 +105,8 @@ export function recountReason(cursor: PassCursor | null, now: PassCursor): Recou
   if (
     !same(cursor.include, now.include) ||
     !same(cursor.exclude, now.exclude) ||
-    cursor.maxFileBytes !== now.maxFileBytes
+    cursor.maxFileBytes !== now.maxFileBytes ||
+    cursor.rules !== now.rules
   ) {
     return "include";
   }
