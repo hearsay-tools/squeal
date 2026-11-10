@@ -2,11 +2,11 @@ import { readFileSync } from "node:fs";
 import { parentPort, workerData } from "node:worker_threads";
 import type { ObjectFormat } from "../../hash/blob.js";
 import type { AbsolutePath } from "../../types/common.js";
-import type { FromWorker, ToWorker } from "./mapper.js";
+import { type FromWorker, type ToWorker, withChildren } from "./mapper.js";
 import { ownRecord } from "./own.js";
 import { shareRecord } from "./parts.js";
 import { type BlobCache, buildRecord, COVERAGE_RECORD_VERSION, scriptPath } from "./record.js";
-import type { ExecutedSource, V8Payload, V8Script } from "./types.js";
+import type { CoverageRecord, ExecutedSource, V8Payload, V8Script } from "./types.js";
 
 /*
  * Row 015-42: the records' writer's worker thread. It reads, parses and
@@ -16,7 +16,8 @@ import type { ExecutedSource, V8Payload, V8Script } from "./types.js";
  * The main thread deletes each payload once this worker answered for it, so
  * a job this worker did not finish is mapped there (review 0.1.305 B2). It
  * also hashes and compresses each record's parts (row 015-85), so the main
- * thread only stores them.
+ * thread only stores them. A job's child files (spec 020 D12) are mapped here
+ * too, and removed by the main thread with its payload.
  */
 
 const KEEP = 2;
@@ -63,8 +64,7 @@ function runOf(id: number): Run {
 function take(job: Extract<ToWorker, { type: "job" }>): void {
   const payload = JSON.parse(readFileSync(job.payload, "utf8")) as V8Payload;
   if (job.ownRoot !== undefined) {
-    const record = ownRecord(job.ownRoot, payload, format);
-    send({ type: "record", id: job.id, record: shareRecord(record, COVERAGE_RECORD_VERSION) });
+    answer(job, ownRecord(job.ownRoot, payload, format));
     return;
   }
   const scripts = [...payload.result];
@@ -91,9 +91,16 @@ function finish(): void {
   const { job, scripts } = held;
   held = null;
   const file = { testFile: job.testFile, payload: job.payload, sources: runOf(job.sources).given };
+  answer(job, buildRecord(file, scripts, format, blobs));
+}
+
+/** The job's record with its children's, and why each child file dropped alone was. */
+function answer(job: Extract<ToWorker, { type: "job" }>, own: CoverageRecord): void {
+  const { record, dropped } = withChildren(own, job.children, format);
   send({
     type: "record",
     id: job.id,
-    record: shareRecord(buildRecord(file, scripts, format, blobs), COVERAGE_RECORD_VERSION),
+    record: shareRecord(record, COVERAGE_RECORD_VERSION),
+    ...(dropped.length === 0 ? {} : { dropped }),
   });
 }

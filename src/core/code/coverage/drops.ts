@@ -9,6 +9,8 @@ const CAUSES = {
   "store-error": "the code store refused the write",
   busy: "the code store stayed locked past the retry budget",
   closed: "the writer closed first",
+  // Spec 020 D12: not a test file without a record, one child's file within one.
+  child: "a child process's coverage file did not map or was over 64 MiB, so it alone was dropped",
 } as const;
 
 export type DropCause = keyof typeof CAUSES;
@@ -46,9 +48,17 @@ export class Drops {
     if (this.#total === this.#noted) return;
     this.#noted = this.#total;
     const counts = [...this.#counts].map(([cause, n]) => `${n} ${cause} (${CAUSES[cause]})`);
-    const files = this.#total === 1 ? "file" : "files";
+    const children = this.#counts.get("child") ?? 0;
+    const records = this.#total - children;
+    const what = [
+      records > 0 && `${records} completed test ${records === 1 ? "file" : "files"} got no record`,
+      children > 0 &&
+        (children === 1
+          ? "1 coverage file of a child process was dropped"
+          : `${children} coverage files of child processes were dropped`),
+    ].filter((part) => part !== false);
     this.#note?.(
-      `coverage: ${this.#total} completed test ${files} got no record since this daemon started: ` +
+      `coverage: ${what.join(" and ")} since this daemon started: ` +
         `${counts.join(", ")}; the last: ${this.#last}`,
       DROPPED_TOPIC,
     );
