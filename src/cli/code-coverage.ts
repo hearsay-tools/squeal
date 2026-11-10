@@ -9,7 +9,7 @@ import {
   readSummary,
 } from "../core/code/crap/summary.js";
 import type { CodeStore } from "../core/code/store/types.js";
-import { UNMEASURED } from "../core/delivery/code-coverage.js";
+import { LOWER_BOUND, UNMEASURED } from "../core/delivery/code-coverage.js";
 import { lastTransition } from "../core/delivery/code-deliver.js";
 import { type CodeBound, isOwn } from "../core/delivery/code-delta.js";
 import { functionName, toldOverWords } from "../core/delivery/code-format.js";
@@ -29,12 +29,23 @@ import { type CrapShown, crapFor } from "./code-crap-reason.js";
  * that the session was told of in full (row 015-40). Row 015-64: only the
  * checks judged, and a file `coverage.exclude` leaves out says so. Row
  * 015-80: a part that shows a failing function says what Squeal does not
- * measure.
+ * measure. Spec 020 D12.7 (row 020-10b): where the states were judged with
+ * `coverage.children`, the words count the processes and threads a test
+ * starts, as a lower bound.
  */
 
 /** Row 015-64 (D9 as amended 2026-10-26, 2026-10-27): what a function `uncovered` reads as. */
 const UNTESTED = "untested: no test runs it in the test's own thread";
 const TESTED = "a test runs it in its own thread";
+
+/** Spec 020 D12.7: the same with `coverage.children`. */
+const UNTESTED_CHILDREN =
+  "untested: no test runs it, in the test's own thread or in a process or thread the test starts";
+const TESTED_CHILDREN =
+  "a test runs it, in the test's own thread or in a process or thread the test starts";
+
+const untested = (children: true | undefined) => (children ? UNTESTED_CHILDREN : UNTESTED);
+const tested = (children: true | undefined) => (children ? TESTED_CHILDREN : TESTED);
 
 /**
  * Spec 020 D11.5 (row 020-07a): a file no test Squeal runs loads is not
@@ -46,6 +57,9 @@ const NOT_LOADED_FILES = "no test Squeal runs loads them";
 
 /** Row 015-80 (D9, amended 2026-10-27): so a failing state does not read as "no test runs it". */
 const MEASURED = `  Coverage counts what ran in the test's own thread. ${UNMEASURED}`;
+
+/** Spec 020 D12.7 (request 7f914e71): `MEASURED` with `coverage.children`. */
+const MEASURED_CHILDREN = `  Coverage counts what ran in the test's own thread and in the processes and threads it started. ${LOWER_BOUND}`;
 
 /**
  * One function's coverage states and evidence. Row 015-64: `crap` and
@@ -77,6 +91,8 @@ export interface CodeReportCoverageOf {
   readonly covered?: number;
   readonly testFiles?: number;
   readonly first?: readonly RelativePath[];
+  /** Spec 020 D12.7: judged with `coverage.children`; absent, without. */
+  readonly children?: true;
 }
 
 /** One function the coverage part lists without paths. */
@@ -109,6 +125,8 @@ export interface CodeReportCoverage {
   readonly notLoaded?: number;
   /** Row 015-64: the checks judged; absent when both are. */
   readonly checks?: readonly CoverageMeasure[];
+  /** Spec 020 D12.7: the states were judged with `coverage.children`; absent, without. */
+  readonly children?: true;
 }
 
 /** Row 015-64: whether the summary's `coverage.exclude` leaves `path` out. */
@@ -232,6 +250,7 @@ export function coverageByFunction(
     const states = {
       ...(crap === null ? {} : { crap }),
       ...(m.uncovered === undefined ? {} : { uncovered: m.uncovered.outcome }),
+      ...(summary.children === true ? { children: true as const } : {}),
     };
     out.set(id, withEvidence(states, evidence.get(path)?.functions[functionKey(any.check)]));
   }
@@ -305,6 +324,7 @@ export function coverageReport(
       : { notMeasured: { files: notMeasured, runners: [...new Set(unmeasured)].sort() } }),
     ...(unloaded === 0 ? {} : { notLoaded: unloaded }),
     ...(summary.checks === undefined ? {} : { checks: summary.checks }),
+    ...(summary.children === true ? { children: true as const } : {}),
   };
 }
 
@@ -332,14 +352,14 @@ export function coverageWords(c: CodeReportCoverageOf | undefined): string {
   const ran =
     c.testFiles === undefined || c.lines === undefined || c.covered === undefined
       ? c.uncovered === "pass"
-        ? TESTED
+        ? tested(c.children)
         : null
       : `${c.lines === 0 ? 100 : Math.round((c.covered / c.lines) * 100)}% of its lines ran${c.testFiles === 0 ? "" : ` in ${plural(c.testFiles, "test file")}`}`;
   const words = [
     ...(c.crap === undefined
       ? []
       : [`CRAP ${score(c.crap.value)}${c.crap.outcome === "fail" ? ", over" : ""}`]),
-    ...(c.uncovered === "fail" ? [UNTESTED] : ran === null ? [] : [ran]),
+    ...(c.uncovered === "fail" ? [untested(c.children)] : ran === null ? [] : [ran]),
   ];
   return words.map((w) => `; ${w}`).join("");
 }
@@ -409,11 +429,11 @@ export function coverageLines(
         f.measure === "crap"
           ? `CRAP ${score(f.value)}, ${f.outcome}`
           : f.outcome === "fail"
-            ? UNTESTED
-            : TESTED;
+            ? untested(c.children)
+            : tested(c.children);
       return `  ${f.path}  ${name}  ${what}, since revision ${f.changedAt}`;
     }),
-    ...(failing ? [MEASURED] : []),
+    ...(failing ? [c.children ? MEASURED_CHILDREN : MEASURED] : []),
     ...wait,
     ...unmeasured,
     ...unloaded,
