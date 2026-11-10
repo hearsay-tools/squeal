@@ -21,7 +21,7 @@ const ONE: Entry = { name: "one", cwd: "one" };
 const FILES = { "one/a.test.mjs": { name: "a" }, "one/b.test.mjs": { name: "b" } };
 /** Not the default 20: `pick`, of complexity 4, is over it. */
 const COMPLEXITY = { threshold: 3 };
-/** Complexity 4 and no test loads it: CRAP 4² + 4 = 20, and no test runs it. */
+/** Complexity 4; `LOADS_PICK` runs every line of it: CRAP 4. */
 const PICK = `export function pick(x) {
   if (x === 1) return "a";
   if (x === 2) return "b";
@@ -29,8 +29,21 @@ const PICK = `export function pick(x) {
   return "d";
 }
 `;
+/**
+ * A test file of the project that loads `pick` and runs it, so its record
+ * judges it: a file no test loads reads unknown (spec 020 D11.5). It logs
+ * nothing, so `ran` counts `a` and `b` only.
+ */
+const LOADS_PICK = `import assert from "node:assert/strict";
+import test from "node:test";
+import { pick } from "../lib/pick.mjs";
+
+test("pick", () => {
+  assert.deepEqual([1, 2, 3, 4].map(pick), ["a", "b", "c", "d"]);
+});
+`;
 const COMPLEX = ["complexity", "fail", 4, 3];
-const UNTESTED = ["uncovered", "fail", null, null];
+const TESTED = ["uncovered", "pass", null, null];
 
 type Settings = Readonly<Record<string, unknown>>;
 
@@ -106,12 +119,12 @@ const CASES: readonly [string, Settings, readonly unknown[][]][] = [
   [
     "coverage on and a CRAP threshold of 15",
     { complexity: COMPLEXITY, coverage: { enabled: true }, crap: { threshold: 15 } },
-    [COMPLEX, ["crap", "fail", 20, 15], UNTESTED],
+    [COMPLEX, ["crap", "pass", 4, 15], TESTED],
   ],
   [
     "coverage on and CRAP off",
     { complexity: COMPLEXITY, coverage: { enabled: true }, crap: { enabled: false } },
-    [COMPLEX, UNTESTED],
+    [COMPLEX, TESTED],
   ],
   ["coverage off", { complexity: COMPLEXITY, coverage: { enabled: false } }, [COMPLEX]],
 ];
@@ -123,6 +136,7 @@ describe("a config that does not parse keeps the code settings (row 015-87)", SL
       const repo = await reloadRepo([ONE], FILES, settings);
       await repo.ran("the baseline", 2);
       repo.write("lib/pick.mjs", PICK);
+      repo.write("one/c.test.mjs", LOADS_PICK);
       const judged = (s: CodeStore) => JSON.stringify(picked(repo, s)) === JSON.stringify(states);
       await repo.until("pick judged", () => code(repo, judged) === true);
       const good = await counted(repo);
