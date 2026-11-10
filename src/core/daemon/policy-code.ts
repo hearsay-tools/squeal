@@ -7,7 +7,8 @@ import { compiles } from "./policy-node-test.js";
  * D11), as in every other section. D1's "`coverage.enabled` needs
  * `complexity.enabled`" is applied where coverage turns on (wave 2), not
  * here: the loader is on the key-validity path, and a rule there needs a
- * validity case (`test/keys/key-format.test.ts`).
+ * validity case (`test/keys/key-format.test.ts`). So is 020 D12's
+ * "`coverage.children` needs `coverage.enabled`".
  */
 
 const boolean: Leaf = (v) => (typeof v === "boolean" ? null : "true or false");
@@ -28,6 +29,6 @@ export const CODE_SHAPE: Shape = {
     maxFileBytes: positiveInteger,
     blocking: boolean,
   },
-  coverage: { enabled: boolean, untested: boolean, exclude: globs },
+  coverage: { enabled: boolean, untested: boolean, exclude: globs, children: boolean },
   crap: { enabled: boolean, threshold: aboveZero },
 };
