@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildRecord,
   COVERAGE_PROVIDER_VERSION,
@@ -18,6 +18,19 @@ import { openFixture, ref, SLOW } from "./helpers.js";
  * Squeal's own provider, and none for a file whose closure or project setup
  * imports `node:inspector`, which still passes.
  */
+
+/*
+ * Spec 020 D12: under a daemon with `coverage.children`, this file's worker
+ * sees `NODE_V8_COVERAGE`, and the fixture's workers would inherit it. V8
+ * then counts calls from their start, and `self-coverage.test.ts` reads
+ * precise coverage itself, so its fixtures run without the variable.
+ */
+beforeEach(() => {
+  vi.stubEnv("NODE_V8_COVERAGE", undefined);
+});
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 function payload(path: string): V8Script[] {
   return (JSON.parse(readFileSync(path, "utf8")) as { result: V8Script[] }).result;
