@@ -101,5 +101,5 @@ Worker 87ebb386, 2026-11-10, on `cez/87ebb386` from `w3/int` `b6e47b925`. The hu
 
 ### For whoever continues
 
-- The user docs (`commands.md`, "squeal code --base", item 1, in the claude-code, codex-runtime and pi copies) name the environment condition but not the snapshot one. Not this row's files; the coordinator was asked (request fe2330d5).
+- The user docs (`commands.md`, "squeal code --base", item 1, in the claude-code, codex-runtime and pi copies) name the snapshot condition, by the coordinator's agreement (request fe2330d5). `plugins/codex/seed` was left alone.
 - A part recorded on a developer's machine without `CI` gives no evidence: its runs could write new snapshots.
