@@ -1,12 +1,19 @@
+import type { NamedPart } from "../core/ci/export-check.js";
 import { coverageOn, coverageProvider } from "../core/code/coverage/runtime.js";
-import { type CollectOptions, collectEvidence } from "../core/code/gate/collect.js";
+import {
+  type CollectOptions,
+  collectEvidence,
+  type StoredEvidence,
+} from "../core/code/gate/collect.js";
+import { partsEvidence } from "../core/code/gate/parts.js";
 import { openStored, type StoredFiles } from "../core/code/gate/stored.js";
-import type { ChangedSet, Evidence } from "../core/code/gate/types.js";
+import type { ChangedSet, Evidence, TestFileEvidence } from "../core/code/gate/types.js";
 import { readPolicy } from "../core/daemon/policy.js";
 import { vitestDetected } from "../core/daemon/runner.js";
 import { squealVersion } from "../core/daemon/version.js";
 import { resolveCommonDir } from "../core/fs/git-layout.js";
 import type { AbsolutePath } from "../core/types/common.js";
+import type { TestFileRef } from "../core/types/keys.js";
 import type { Policy } from "../core/types/policy.js";
 import type { RunnerAdapter } from "../core/types/runner.js";
 import { createNodeTestAdapter } from "../runners/node-test/adapter.js";
@@ -14,40 +21,71 @@ import { createVitestAdapter } from "../runners/vitest/index.js";
 
 /*
  * Spec 020 D11.7 (row 020-07c): what `squeal code --base` reads of the
- * stores, keyed by the adapters a daemon builds in this worktree
- * (`daemon.ts`). They are not the gate's own run adapters: a daemon's Vitest
- * observes runtime inputs, and its adapter version, which keys every file,
- * says so.
+ * stores, after what it takes from `--parts` (D13.2, row 020-08b). The
+ * stores are keyed by the adapters a daemon builds in this worktree
+ * (`daemon.ts`). They are not the gate's own run adapters: a daemon's
+ * Vitest observes runtime inputs, and its adapter version, which keys
+ * every file, says so.
  */
 
 /**
- * D3's evidence of `changed`, each selected file with results and a record
- * at its key read from the stores instead of run; how many were is told
- * through `options.note`. The keys hold `options.children`, the base's
- * `coverage.children`, so a record collected otherwise is never read. The
- * stores close before it resolves.
+ * D3's evidence of `changed`: each selected file `parts` certify taken
+ * from them (D13.2), then each with results and a record at its
+ * key read from the stores (D11.7), and every other file run; how many
+ * came from each is told through `options.note`. The keys hold
+ * `options.children`, the base's `coverage.children`, so a record
+ * collected otherwise is never read. The stores close before it resolves.
  */
 export async function collectWithStores(
   root: AbsolutePath,
   env: NodeJS.ProcessEnv,
   changed: ChangedSet,
   options: CollectOptions,
+  parts: readonly NamedPart[] = [],
 ): Promise<Evidence> {
   const note = options.note ?? (() => {});
-  const stored = storedFiles(root, env, note, options.children === true);
+  const children = options.children === true;
+  const fromParts =
+    parts.length === 0
+      ? undefined
+      : partsEvidence({ root, parts, changed: changed.paths, children, note });
+  const stored = storedFiles(root, env, note, children);
   try {
+    const known = inOrder([fromParts, stored?.stored]);
     const evidence = await collectEvidence(root, changed, {
       ...options,
-      ...(stored === null ? {} : { stored: stored.stored }),
+      ...(known === null ? {} : { stored: known }),
     });
-    const fromStore = evidence.testFiles.filter((f) => f.from === "store").length;
-    if (fromStore > 0) {
-      note(`${fromStore} of ${evidence.testFiles.length} selected test files read from the stores`);
+    const selected = evidence.testFiles.length;
+    for (const [from, where] of [
+      ["parts", "the parts"],
+      ["store", "the stores"],
+    ] as const) {
+      const read = evidence.testFiles.filter((f) => f.from === from).length;
+      if (read > 0) note(`${read} of ${selected} selected test files read from ${where}`);
     }
     return evidence;
   } finally {
     await stored?.close();
   }
+}
+
+/**
+ * D13.2's order: each file from the first of `sources` that gives its
+ * evidence, the parts before the stores; `null` when none is given.
+ */
+function inOrder(sources: readonly (StoredEvidence | undefined)[]): StoredEvidence | null {
+  const given = sources.filter((s): s is StoredEvidence => s !== undefined);
+  if (given.length === 0) return null;
+  return async (runner, files, closure) => {
+    const found = new Map<TestFileRef, TestFileEvidence>();
+    for (const source of given) {
+      const left = files.filter((ref) => !found.has(ref));
+      if (left.length === 0) break;
+      for (const [ref, evidence] of await source(runner, left, closure)) found.set(ref, evidence);
+    }
+    return found;
+  };
 }
 
 /**
