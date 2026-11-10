@@ -79299,6 +79299,7 @@ import { relative as relative13, resolve as resolve22 } from "node:path";
 
 // src/core/code/gate/changed.ts
 init_head();
+init_compare();
 init_errors();
 init_git();
 init_blob();
@@ -79322,11 +79323,12 @@ async function mergeBase(cwd, ref3) {
 }
 async function changedFunctions(cwd, ref3, policy) {
   const baseCommit = await mergeBase(cwd, ref3);
-  const [head2, format2, paths] = await Promise.all([
+  const [head2, format2, all2] = await Promise.all([
     readHead(cwd),
     readObjectFormat(cwd),
-    changedPaths(cwd, baseCommit, policy)
+    changedPaths(cwd, baseCommit)
   ]);
+  const paths = countedPaths(all2, policy);
   if (head2.head === null) throw new BaseRefError("HEAD names no commit");
   const bases4 = await countsAtBase(cwd, baseCommit, paths, policy.maxFileBytes);
   const heads = /* @__PURE__ */ new Map();
@@ -79334,12 +79336,16 @@ async function changedFunctions(cwd, ref3, policy) {
   for (const [path, language] of paths) {
     const now = await countAtHead(join63(cwd, path), language, format2, policy.maxFileBytes);
     if (now === null) continue;
-    if (typeof now === "string") {
+    if (now === "unsupported") {
       uncounted.push({ path, reason: now });
       continue;
     }
+    if ("tooLarge" in now) {
+      uncounted.push({ path, reason: "too-large", blob: now.tooLarge });
+      continue;
+    }
     heads.set(path, now);
-    if (now.errors.length > 0) uncounted.push({ path, reason: "parse-error" });
+    if (now.errors.length > 0) uncounted.push({ path, reason: "parse-error", blob: now.blob });
   }
   const atBase = bodies(bases4.values());
   const atHead = bodies(heads.values());
@@ -79363,13 +79369,14 @@ async function changedFunctions(cwd, ref3, policy) {
     baseCommit,
     headCommit: head2.head,
     dirty: head2.dirty,
+    paths: all2,
     functions,
     counted: counted3,
     inErrors,
     uncounted
   };
 }
-async function changedPaths(cwd, baseCommit, policy) {
+async function changedPaths(cwd, baseCommit) {
   const [diff, untracked] = await Promise.all([
     runGit(cwd, [
       "diff",
@@ -79381,16 +79388,19 @@ async function changedPaths(cwd, baseCommit, policy) {
     ]),
     runGit(cwd, ["ls-files", "--others", "--exclude-standard", "-z"])
   ]);
+  return [.../* @__PURE__ */ new Set([...splitNul(diff), ...splitNul(untracked)])].sort(compare);
+}
+function countedPaths(paths, policy) {
   const include = createInputMatcher(policy.include);
   const exclude = createInputMatcher(policy.exclude);
-  const paths = /* @__PURE__ */ new Map();
-  for (const path of [.../* @__PURE__ */ new Set([...splitNul(diff), ...splitNul(untracked)])].sort()) {
+  const counted3 = /* @__PURE__ */ new Map();
+  for (const path of paths) {
     const language = CODE_EXTENSIONS[extname2(path)];
     if (language === void 0 || language === "python") continue;
     if (path.startsWith("node_modules/") || path.includes("/node_modules/")) continue;
-    if (include(path) && !exclude(path)) paths.set(path, language);
+    if (include(path) && !exclude(path)) counted3.set(path, language);
   }
-  return paths;
+  return counted3;
 }
 async function countsAtBase(cwd, baseCommit, paths, maxFileBytes) {
   const asked = [...paths].filter(([path]) => !path.includes("\n"));
@@ -79416,10 +79426,10 @@ async function countAtHead(file, language, format2, maxFileBytes) {
   try {
     const stat9 = await lstat6(file);
     if (!stat9.isFile()) return "unsupported";
-    if (stat9.size > maxFileBytes) return "too-large";
     const bytes2 = await readFile7(file);
-    if (bytes2.byteLength > maxFileBytes) return "too-large";
-    return await countFile(bytes2.toString("utf8"), language, blobHash(bytes2, format2));
+    const blob = blobHash(bytes2, format2);
+    if (bytes2.byteLength > maxFileBytes) return { tooLarge: blob };
+    return await countFile(bytes2.toString("utf8"), language, blob);
   } catch (error) {
     if (isMissing(error)) return null;
     throw error;
@@ -79450,8 +79460,8 @@ var CollectUsageError = class extends Error {
 var FILE_ERROR = "(file-level error)";
 async function collectEvidence(cwd, changed2, options) {
   const deadline = performance.now() + options.budgetSeconds * 1e3;
-  const sources = [...new Set(changed2.functions.map((f) => f.path))].sort(compare);
-  if (sources.length === 0 && options.tests.length === 0) {
+  const { paths } = changed2;
+  if (paths.length === 0 && options.tests.length === 0) {
     return { testFiles: [], timedOut: false, budgetSeconds: options.budgetSeconds };
   }
   const root = findWorktreeRoot(cwd);
@@ -79467,7 +79477,7 @@ async function collectEvidence(cwd, changed2, options) {
     const { policy, problems } = loadPolicy(root);
     for (const problem of problems) note(`${POLICY_FILE}: ${problem}`);
     await openRunners(options.adapters, root, policy, { provider, temp, note }, runners2);
-    const selected2 = await select(runners2, sources, options.tests);
+    const selected2 = await select(runners2, paths, options.tests);
     const blobs = /* @__PURE__ */ new Map();
     const testFiles4 = [];
     let timedOut = false;
@@ -79527,8 +79537,8 @@ async function openRunners(adapters, root, policy, {
     runners2.push({ kind: "node-test", adapter, covered });
   }
 }
-async function select(runners2, sources, tests2) {
-  const named3 = /* @__PURE__ */ new Set([...sources, ...tests2]);
+async function select(runners2, paths, tests2) {
+  const named3 = /* @__PURE__ */ new Set([...paths, ...tests2]);
   const matched = /* @__PURE__ */ new Set();
   const selected2 = [];
   for (const { adapter } of runners2) {
@@ -79538,8 +79548,8 @@ async function select(runners2, sources, tests2) {
       if (named3.has(ref3.path)) add3(ref3);
       matched.add(ref3.path);
     }
-    if (sources.length > 0) {
-      const affected2 = await adapter.affected(sources);
+    if (paths.length > 0) {
+      const affected2 = await adapter.affected(paths);
       for (const ref3 of [...affected2.direct, ...affected2.transitive]) add3(ref3);
     }
     selected2.push([...chosen.values()].sort(byPath));
@@ -79602,9 +79612,9 @@ init_score();
 
 // src/core/code/gate/report.ts
 init_compare();
-function verdictOf2(functions, uncounted, failed6) {
+function verdictOf2(functions, uncounted, runs) {
   if (functions.some((f) => f.state === "violation")) return "violations";
-  if (failed6 || uncounted.length > 0 || functions.some((f) => f.state === "incomplete")) {
+  if (runs.failed || runs.unfinished || uncounted.length > 0 || functions.some((f) => f.state === "incomplete")) {
     return "incomplete";
   }
   return "pass";
@@ -79707,6 +79717,7 @@ function measuresOf2(fn, ev, ctx) {
 function judgementOf(complexity, m, ev, ctx) {
   if (complexity > ctx.policy.complexityThreshold) return VIOLATION;
   if (ev.expected.length === 0) return gapOf("no-loader");
+  if (ev.missing === "not-finished") return gapOf("not-finished");
   const underCrap = m.crap !== null && m.crap <= ctx.policy.crapThreshold;
   if (ev.missing !== null) return underCrap && !ctx.failed ? PASS : gapOf(ev.missing);
   if (m.crap === null) return gapOf("not-joined");
@@ -79721,6 +79732,13 @@ function judge(fn, ctx) {
   const ev = ctx.evidenceOf(fn);
   const measures = measuresOf2(fn, ev, ctx);
   return report2(fn, measures, judgementOf(fn.count.complexity, measures, ev, ctx));
+}
+function headPaths(changed2) {
+  const blobs = /* @__PURE__ */ new Map();
+  for (const { path, blob } of [...changed2.counted, ...changed2.uncounted]) {
+    if (blob !== void 0) blobs.set(path, blob);
+  }
+  return [...blobs].map(([path, blob]) => ({ path, blob })).sort((a, b) => compare(a.path, b.path));
 }
 function evaluate(changed2, evidence, policy, versions2, times) {
   const counted3 = new Map(changed2.counted.map((c) => [c.path, c]));
@@ -79754,19 +79772,21 @@ function evaluate(changed2, evidence, policy, versions2, times) {
       policy: {
         complexityThreshold: policy.complexityThreshold,
         crapThreshold: policy.crapThreshold,
-        coverageExclude: [...policy.coverageExclude]
+        coverageExclude: [...policy.coverageExclude],
+        complexityInclude: [...policy.include],
+        complexityExclude: [...policy.exclude],
+        complexityMaxFileBytes: policy.maxFileBytes
       }
     },
-    head: {
-      commit: changed2.headCommit,
-      dirty: changed2.dirty,
-      paths: changed2.counted.map((c) => ({ path: c.path, blob: c.blob })).sort((a, b) => compare(a.path, b.path))
-    },
+    head: { commit: changed2.headCommit, dirty: changed2.dirty, paths: headPaths(changed2) },
     budget: { seconds: evidence.budgetSeconds, timedOut: evidence.timedOut },
     functions,
     uncounted,
     runs: runsOf(evidence, times.durationsMs),
-    verdict: verdictOf2(functions, uncounted, ctx.failed),
+    verdict: verdictOf2(functions, uncounted, {
+      failed: ctx.failed,
+      unfinished: evidence.testFiles.some((f) => !f.completed)
+    }),
     counts: countStates2(functions)
   };
 }
@@ -79952,9 +79972,11 @@ function underRoot(root, cwd, paths) {
 }
 function narrow(changed2, paths) {
   if (paths.length === 0) return changed2;
-  const within2 = ({ path }) => paths.some((p) => p === "" || path === p || path.startsWith(`${p}/`));
+  const inside = (path) => paths.some((p) => p === "" || path === p || path.startsWith(`${p}/`));
+  const within2 = ({ path }) => inside(path);
   return {
     ...changed2,
+    paths: changed2.paths.filter(inside),
     functions: changed2.functions.filter(within2),
     counted: changed2.counted.filter(within2),
     inErrors: changed2.inErrors.filter(within2),
