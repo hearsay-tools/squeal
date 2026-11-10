@@ -24,6 +24,9 @@ import type {
 
 export type GateRunner = TestFileEvidence["runner"];
 
+/** Where a selected test file's evidence came from (D7, D11.7, D13.2). */
+export type GateEvidenceSource = "run" | NonNullable<TestFileEvidence["from"]>;
+
 /** The versions the inventory, collector and Squeal ran at, as the caller gives them. */
 export interface EngineVersions {
   readonly squeal: string;
@@ -138,10 +141,12 @@ export interface GateRunReport {
   readonly notFinished: readonly RelativePath[];
   readonly failed: readonly { readonly path: RelativePath; readonly tests: readonly string[] }[];
   /**
-   * D11.7: the selected files read from the stores at their key, not run;
-   * present only when there is one.
+   * Where each selected file's evidence came from: `run`, this command ran
+   * it; `store`, the stores at its key (D11.7); `parts`, `squeal ci
+   * record`'s parts (D13.2). Present only when one file did not run here,
+   * so a report whose every file ran is as before. By path.
    */
-  readonly fromStore?: readonly RelativePath[];
+  readonly from?: Readonly<Record<RelativePath, GateEvidenceSource>>;
   /**
    * D12.7: with `coverage.children`, the child coverage files this run
    * read and dropped, over its files; absent with the key off.
@@ -258,7 +263,7 @@ export function runsOf(evidence: Evidence, durationsMs: GateTimes["durationsMs"]
       .filter((f) => f.failed.length > 0)
       .map((f) => ({ path: f.path, tests: [...f.failed].sort(compare) }))
       .sort((a, b) => compare(a.path, b.path));
-    const fromStore = sorted(files.filter((f) => f.fromStore === true).map((f) => f.path));
+    const from = sourcesOf(files);
     const children = childFilesOf(files);
     return [
       {
@@ -267,12 +272,21 @@ export function runsOf(evidence: Evidence, durationsMs: GateTimes["durationsMs"]
         completed: sorted(files.filter((f) => f.completed).map((f) => f.path)),
         notFinished: sorted(files.filter((f) => !f.completed).map((f) => f.path)),
         failed,
-        ...(fromStore.length === 0 ? {} : { fromStore }),
+        ...(from === null ? {} : { from }),
         ...(children === null ? {} : { children }),
         durationMs,
       },
     ];
   });
+}
+
+/** Each file's evidence source, by path; `null` when this command ran every one. */
+function sourcesOf(
+  files: readonly TestFileEvidence[],
+): Record<RelativePath, GateEvidenceSource> | null {
+  if (files.every((f) => f.from === undefined)) return null;
+  const byPath = [...files].sort((a, b) => compare(a.path, b.path));
+  return Object.fromEntries(byPath.map((f) => [f.path, f.from ?? "run"]));
 }
 
 /** D12.7: the sum of the files' child coverage files; `null` when none counts them. */

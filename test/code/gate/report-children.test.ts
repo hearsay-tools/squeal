@@ -34,7 +34,7 @@ describe("the gate report with coverage.children (020 D12.7)", () => {
         { ...loaded("test/a.test.ts"), children: { read: 2, dropped: 0 } },
         { ...loaded("test/b.test.ts"), children: { read: 1, dropped: 1 } },
         // Read from the stores: its record holds its children, and this command read none.
-        { ...loaded("test/c.test.ts"), fromStore: true },
+        { ...loaded("test/c.test.ts"), from: "store" },
         { ...loaded("test/n.test.mjs", "node-test"), children: { read: 0, dropped: 0 } },
       ],
       { ...POLICY, children: true },
