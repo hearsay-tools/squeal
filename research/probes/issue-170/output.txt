@@ -1,0 +1,7 @@
+{"time":"2026-11-10T13:11:36.815Z","version":"0.1.425","node":"v24.22.1","oneMinuteLoad":6.05,"cpuCount":24}
+{"case":"policy-disabled","storedStates":0,"lint":null,"commitText":"Commit c9d85ae: 0 known failures","status":[]}
+{"case":"provider-off-empty","storedStates":0,"lint":{"findings":0,"notDetermined":0,"running":0},"commitText":"Commit c9d85ae: 0 known failures; lint 0 findings","status":["Lint: off: the oxlint run failed 3 times; timed out after 5 s."]}
+{"case":"provider-off-unknown","storedStates":25,"lint":{"findings":0,"notDetermined":25,"running":0},"commitText":"Commit c9d85ae: 0 known failures; lint 0 findings, 25 files not determined","status":["Lint: off: the oxlint run failed 3 times; timed out after 5 s."]}
+{"case":"unknown","storedStates":25,"lint":{"findings":0,"notDetermined":25,"running":0},"commitText":"Commit c9d85ae: 0 known failures; lint 0 findings, 25 files not determined","status":["Lint: 0 files with findings, 25 unknown; squeal lint lists them.","Lint: unknown: 25 files: timed out after 5 s."]}
+{"case":"complete-pass","storedStates":25,"lint":{"findings":0,"notDetermined":0,"running":0},"commitText":"Commit c9d85ae: 0 known failures; lint 0 findings","status":["Lint: 0 files with findings; squeal lint lists them."]}
+PASS: all five observed-behaviour controls matched
