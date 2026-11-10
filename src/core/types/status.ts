@@ -385,6 +385,13 @@ export interface StatusHeader {
    */
   readonly runnerPartPending?: boolean;
   /**
+   * Row 011-311: the runners that list the revision's test files, as text
+   * names them (`Vitest`, `node:test`, `pytest`), by the daemon's rule for
+   * building them (spec 003 D7). Set by `readHeader` while
+   * `runnerPartPending`; absent otherwise.
+   */
+  readonly listingRunners?: readonly string[];
+  /**
    * The pending work of slow test files (spec 004 D9). Set by `readHeader`
    * when its caller passes which files are slow or the worktree's policy
    * declares slow files; absent reads as none.
@@ -474,7 +481,7 @@ export type DaemonLiveness =
       readonly stopping?: DaemonStopping;
       /** Row 011-140: it registered older than the handoff claim it ended. */
       readonly short?: DaemonShort;
-      /** Row 011-200: its change feed is late (`Presence.late`); edits since may not be seen yet. */
+      /** Row 011-200: its change feed is late (`Presence.late`); edits since are not read yet. */
       readonly late?: FeedLate;
     }
   | {

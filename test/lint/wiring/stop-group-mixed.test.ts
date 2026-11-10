@@ -34,7 +34,7 @@ const BLOCKING =
 const UNIT_KEY = "unit-new";
 /** A hold naming the unit group open, which the agent answers with `squeal run unit --wait`. */
 const UNIT_OPEN =
-  /checks puts the unit group at stop and (1 unit test file is not current|the runner part of revision \d+ is still pending)/;
+  /checks puts the unit group at stop and (1 unit test file is not current|Vitest has not yet listed the test files of revision \d+)/;
 
 /** How the unit group is not settled at Stop. */
 type Open = "queued" | "lookup-only" | "runner part";
@@ -169,7 +169,7 @@ describe.each(HARNESSES)(
           // The 2 s entry holds first naming the unit group, then for the lint failure.
           expect(first).toMatch(
             open === "runner part"
-              ? /runner part of revision \d+ is still pending/
+              ? /Vitest has not yet listed the test files of revision \d+/
               : /unit test file is not current/,
           );
           expect(blocking, "the holds left after the tests").toHaveLength(maxHolds - 1);

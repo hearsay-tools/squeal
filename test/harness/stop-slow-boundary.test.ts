@@ -103,7 +103,7 @@ describe.each(HARNESSES)("the waiting Stop at its read boundaries, $name (13am)"
     expect(out.quick).toEqual({});
     expect(out.waiting.decision).toBe("block");
     expect(out.waiting.reason).toMatch(
-      /^Squeal policy stop.requireSlowSuite is on and after 0.4 s the runner part of revision 1 is still pending: slow test files it adds are not listed yet\. `.*squeal.* run --slow --wait` waits for their results\.\n\n/,
+      /^Squeal policy stop.requireSlowSuite is on and after 0.4 s Vitest has not yet listed the test files of revision 1, so new slow test files are not counted\. `.*squeal.* run --slow --wait` waits for their results\.\n\n/,
     );
     expect(turnOf(r)).toBe("in-turn");
   });

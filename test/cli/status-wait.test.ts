@@ -199,7 +199,7 @@ describe("squeal status --wait <ms>", WAITS, () => {
 
     expect(code).toBe(0);
     expect(last(stdout)).toMatch(
-      /^Returned on timeout after \d+\.\d s: 0 checks and the runner part of revision 3 pending at revision 3\. Worktree: /,
+      /^Returned on timeout after \d+\.\d s: 0 checks pending at revision 3; Vitest has not yet listed the test files of revision 3, so new test files are not counted\. Worktree: /,
     );
   });
 
