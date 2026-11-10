@@ -14,15 +14,7 @@ import { languagesOf, oldBodies } from "./bodies.js";
 import { cursorOf, readCursor, recountReason } from "./cursor.js";
 import { type EditFile, type EditPlan, editEnd, judgedFiles } from "./edit.js";
 import { dueRetries, type FailedCounts, readUncountable, spentFailure } from "./failed.js";
-import {
-  changesFrom,
-  committedWithHeld,
-  type Listing,
-  listingMoved,
-  nextRecord,
-  readListing,
-  writeListed,
-} from "./listed.js";
+import { committedPaths } from "./head.js";
 import { quietPaths, workEntries } from "./plan.js";
 import { partFiles, quietEnd } from "./stage.js";
 import { stagedEditEnd } from "./stage-edit.js";
@@ -64,44 +56,30 @@ export interface PassContext {
  * so does an edit pass over more than one part, its transitions and edits
  * too (row 015-55). Before the last, a
  * revision that moved `HEAD` asks git which files are the committed ones
- * (015-19), and the last records them (015-38). D1 (row 015-52): a file
- * never counted that a revision after the listed one changed waits for its
- * listing, the removals of the pass wait with it (D2, review 0.1.315 B1),
- * a recount waits for it, and a pass runs at each listing; a counted file
- * that a runner now lists leaves quietly.
+ * (015-19), and the last records them (015-38). Spec 020 D11.6: a test
+ * file is counted as any file is, so nothing waits for a runner listing.
  */
 export async function runPass(ctx: PassContext): Promise<PassReport | null> {
   const { store, source, worktreeId } = ctx;
   const latest = source.latestRevision();
-  const listing = readListing(store, worktreeId, source, latest);
   const cursor = readCursor(store.meta, worktreeId);
   const current = cursorOf(latest, ctx.complexity, ctx.counter.version);
   const reason = ctx.switchedOn ? "first" : recountReason(cursor, current);
   const started = ctx.now();
   const failed = readUncountable(store.meta, worktreeId);
   const due = retriesDue(ctx, failed, started);
-  const idle =
-    reason === null && cursor?.revision === latest && ctx.retry.size === 0 && due.length === 0;
-  if (idle && !listingMoved(listing)) return null;
-  const since = reason === null && cursor !== null ? cursor.revision : null;
-  const work = workEntries(ctx, since, latest, due, listing);
-  if (work === null) return null;
-  const { entries, held, waiting } = work;
-  // The listing moved and left nothing to read: no pass, so no coverage step either.
-  if (idle && entries.length === 0) {
-    writeListed(store.meta, worktreeId, nextRecord(listing, since, held, []));
+  if (reason === null && cursor?.revision === latest && ctx.retry.size === 0 && due.length === 0) {
     return null;
   }
+  const since = reason === null && cursor !== null ? cursor.revision : null;
+  const entries = workEntries(ctx, since, latest, due);
   ctx.retry.clear();
   // Row 015-55: an edit pass over more than one part reads its bodies in its parts.
   const parted = reason === null && entries.length > partFiles(ctx);
   const old = readOld(ctx, entries, reason === null, parted);
   // 015-39: each too-big file's last edit, kept apart from the rows a recount writes at its revision.
-  // A held file's is older than the cursor (row 015-52).
   const edits =
-    reason === "first" || cursor === null
-      ? null
-      : source.lastChanges(changesFrom(listing, cursor.revision), latest);
+    reason === "first" || cursor === null ? null : source.lastChanges(cursor.revision, latest);
 
   store.transaction(() => {
     writeTooBigEdits(store, worktreeId, edits, entries);
@@ -119,13 +97,10 @@ export async function runPass(ctx: PassContext): Promise<PassReport | null> {
     edits,
   });
   const end = { latest, reason, current, counted, failed };
-  if (reason !== null) {
-    const listed = nextRecord(listing, since, held, []);
-    return quietEnd(ctx, { ...end, reason, listed }, entries, { skipped, links });
-  }
-  const seeds = quietPaths(entries, failed, listing);
+  if (reason !== null) return quietEnd(ctx, { ...end, reason }, entries, { skipped, links });
+  const seeds = quietPaths(entries, failed);
   const files = judgedFiles(ctx, entries, { skipped, links, failed, seeds });
-  const committed = await committedOf(ctx, { listing, since, latest, waiting }, entries, files);
+  const committed = await committedOf(ctx, { since, latest }, entries, files);
   const plan: EditPlan = {
     files,
     paths: new Set(files.map((f) => f.path)),
@@ -133,9 +108,7 @@ export async function runPass(ctx: PassContext): Promise<PassReport | null> {
     links,
     committed,
     seeds,
-    held,
     entries: entries.length,
-    listed: (deferred) => nextRecord(listing, since, held, deferred),
   };
   return parted ? stagedEditEnd(ctx, end, plan) : editEnd(ctx, end, plan, old.bodies);
 }
@@ -143,27 +116,17 @@ export async function runPass(ctx: PassContext): Promise<PassReport | null> {
 /** 015-19: the paths of `files` whose blob git brought since the cursor; none at a first pass. */
 async function committedOf(
   ctx: PassContext,
-  {
-    listing,
-    since,
-    latest,
-    waiting,
-  }: {
-    readonly listing: Listing;
-    readonly since: RevisionNumber | null;
-    readonly latest: RevisionNumber;
-    readonly waiting: ReadonlySet<RelativePath>;
-  },
+  { since, latest }: { readonly since: RevisionNumber | null; readonly latest: RevisionNumber },
   entries: readonly Entry[],
   files: readonly EditFile[],
 ): Promise<Set<RelativePath>> {
   if (since === null) return new Set();
   const blobs = new Map(entries.map((e) => [e.path, e.kind === "gone" ? null : e.file.hash]));
-  return committedWithHeld(
+  return committedPaths(
     ctx,
-    { since, held: changesFrom(listing, since), upTo: latest },
+    since,
+    latest,
     files.map((f) => ({ path: f.path, blob: blobs.get(f.path) ?? null })),
-    waiting,
   );
 }
 

@@ -50,8 +50,6 @@ export interface RunnerWorkHost {
   backgroundError(subject: string, error: unknown): void;
   /** A runner part was applied and committed, under the lock: what it queued may cancel a backlog tier. */
   applied(): void;
-  /** The commit recorded a listing (`SchedulerOptions.onListed`, row 015-52). */
-  listed(): void;
 }
 
 /** The runner work of one scheduler, applied by its pump beside the tiers in flight (task 001-140). */
@@ -266,7 +264,6 @@ export class RunnerWork {
             ...(listed === null ? {} : { listed }),
           });
           this.host.applied();
-          if (listed !== null) this.host.listed();
         },
         refined === null ? "applying observed paths" : `applying revision ${refined}`,
       );
