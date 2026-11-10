@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { evaluate } from "../../../src/core/code/gate/evaluate.js";
-import type { GatePolicy, UncountedPath } from "../../../src/core/code/gate/types.js";
+import type { BasePolicy } from "../../../src/core/code/gate/policy.js";
+import type { UncountedPath } from "../../../src/core/code/gate/types.js";
 import {
   changedSet,
   evidence,
@@ -23,7 +24,7 @@ import {
 function judged(
   paths: readonly PathInput[],
   files: Parameters<typeof evidence>[0],
-  opts: { readonly policy?: GatePolicy; readonly uncounted?: readonly UncountedPath[] } = {},
+  opts: { readonly policy?: BasePolicy; readonly uncounted?: readonly UncountedPath[] } = {},
 ) {
   const changed = changedSet(paths, opts.uncounted);
   const report = evaluate(changed, evidence(files), opts.policy ?? POLICY, VERSIONS, TIMES);
@@ -31,7 +32,7 @@ function judged(
   return { report, by };
 }
 
-const SKIP_TESTS: GatePolicy = { ...POLICY, coverageExclude: ["test/**"] };
+const SKIP_TESTS: BasePolicy = { ...POLICY, coverageExclude: ["test/**"] };
 
 describe("evaluate: skipped", () => {
   it("skips a function of an excluded file under the CC limit, with no evidence wanted", () => {

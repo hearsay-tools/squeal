@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { FILE_ERROR } from "../../src/core/code/gate/collect.js";
 import type { GateReport } from "../../src/core/code/gate/report.js";
+import { gitHashObject } from "../hash/git-repo.js";
 import { BASE, code, edit, ownHomeAndTmp, repo, SLOW, TEST_FLAG } from "./code-gate-fixture.js";
 
 /*
@@ -246,4 +247,37 @@ describe("squeal code --base: an unfinished loading file never passes (spec 020 
     ]);
     expect(report.verdict).toBe("incomplete");
   });
+});
+
+describe("squeal code --base: provenance (spec 020 D7, review 0.1.423 S1)", () => {
+  it(
+    "reports the counting keys read at the base, and the blob of a file over maxFileBytes",
+    SLOW,
+    async () => {
+      ownHomeAndTmp();
+      const policy = { complexity: { maxFileBytes: 300, exclude: ["src/generated/**"] } };
+      const root = repo({ ...BASE, "squeal.config.json": JSON.stringify(policy) });
+      edit(root, {
+        "src/math.ts": "export function double(x: number): number {\n  return x + x;\n}\n",
+        "src/big.ts": `export const big = 1;\n// ${"x".repeat(400)}\n`,
+      });
+
+      const ran = await code(root, ["--base", "main", "--json"]);
+
+      expect(ran.code).toBe(3);
+      const report = JSON.parse(ran.stdout) as GateReport;
+      expect(report.base.policy).toMatchObject({
+        complexityExclude: ["src/generated/**"],
+        complexityMaxFileBytes: 300,
+      });
+      expect(report.base.policy.complexityInclude.length).toBeGreaterThan(0);
+      expect(report.uncounted).toEqual([
+        { path: "src/big.ts", reason: "too-large", gap: "not-counted" },
+      ]);
+      expect(report.head.paths).toEqual([
+        { path: "src/big.ts", blob: gitHashObject(root, "src/big.ts") },
+        { path: "src/math.ts", blob: gitHashObject(root, "src/math.ts") },
+      ]);
+    },
+  );
 });

@@ -127,7 +127,14 @@ const REPORT: GateReport = {
   base: {
     ref: "origin/main",
     commit: "0123456789abcdef",
-    policy: { complexityThreshold: 20, crapThreshold: 30, coverageExclude: ["scripts/**"] },
+    policy: {
+      complexityThreshold: 20,
+      crapThreshold: 30,
+      coverageExclude: ["scripts/**"],
+      complexityInclude: ["**/*.ts"],
+      complexityExclude: [],
+      complexityMaxFileBytes: 524_288,
+    },
   },
   head: { commit: "fedcba", dirty: true, paths: [] },
   budget: { seconds: 600, timedOut: true },

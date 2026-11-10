@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { evaluate } from "../../../src/core/code/gate/evaluate.js";
+import type { BasePolicy } from "../../../src/core/code/gate/policy.js";
 import type { GateReport } from "../../../src/core/code/gate/report.js";
-import type { ChangedSet, Evidence, GatePolicy } from "../../../src/core/code/gate/types.js";
+import type { ChangedSet, Evidence } from "../../../src/core/code/gate/types.js";
 import {
   changedSet,
   evidence,
@@ -22,6 +23,7 @@ const A = "1".repeat(40);
 const B = "2".repeat(40);
 const C = "3".repeat(40);
 const T = "4".repeat(40);
+const H = "5".repeat(40);
 
 const parse = fn("parse", [1, 5], 4);
 const render = fn("render", [10, 20], 13);
@@ -43,7 +45,10 @@ const CHANGED: ChangedSet = changedSet(
     { path: "src/c.ts", blob: C, functions: [orphan], changed: ["orphan"] },
     { path: "test/a.test.ts", blob: T, functions: [callback], changed: ["<callback>"] },
   ],
-  [{ path: "src/huge.ts", reason: "too-large" }],
+  [
+    { path: "src/huge.ts", reason: "too-large", blob: H },
+    { path: "src/link.ts", reason: "unsupported" },
+  ],
 );
 
 // `render`'s own lines are 10 to 20 but `render.<map>`'s 13: 5 of those 10 ran.
@@ -68,7 +73,14 @@ const EVIDENCE: Evidence = evidence(
   true,
 );
 
-const SKIP_TESTS: GatePolicy = { ...POLICY, coverageExclude: ["test/**"] };
+/** A counting policy other than the defaults: the report carries what the base read (S1). */
+const SKIP_TESTS: BasePolicy = {
+  ...POLICY,
+  coverageExclude: ["test/**"],
+  include: ["src/**", "test/**"],
+  exclude: ["src/generated/**"],
+  maxFileBytes: 65_536,
+};
 const DURATIONS = { ...TIMES, durationsMs: { vitest: 1200, "node-test": 598_800 } };
 
 const loaders = (expected: string[], measured: string[]) => ({ expected, measured });
@@ -86,7 +98,14 @@ const GOLDEN: GateReport = {
   base: {
     ref: "origin/main",
     commit: "c".repeat(40),
-    policy: { complexityThreshold: 20, crapThreshold: 30, coverageExclude: ["test/**"] },
+    policy: {
+      complexityThreshold: 20,
+      crapThreshold: 30,
+      coverageExclude: ["test/**"],
+      complexityInclude: ["src/**", "test/**"],
+      complexityExclude: ["src/generated/**"],
+      complexityMaxFileBytes: 65_536,
+    },
   },
   head: {
     commit: "d".repeat(40),
@@ -95,6 +114,7 @@ const GOLDEN: GateReport = {
       { path: "src/a.ts", blob: A },
       { path: "src/b.ts", blob: B },
       { path: "src/c.ts", blob: C },
+      { path: "src/huge.ts", blob: H },
       { path: "test/a.test.ts", blob: T },
     ],
   },
@@ -185,7 +205,10 @@ const GOLDEN: GateReport = {
       loaders: loaders([], []),
     },
   ],
-  uncounted: [{ path: "src/huge.ts", reason: "too-large", gap: "not-counted" }],
+  uncounted: [
+    { path: "src/huge.ts", reason: "too-large", gap: "not-counted" },
+    { path: "src/link.ts", reason: "unsupported", gap: "not-counted" },
+  ],
   runs: [
     {
       runner: "vitest",

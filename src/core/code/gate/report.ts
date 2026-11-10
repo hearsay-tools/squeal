@@ -100,16 +100,37 @@ export interface GateRunReport {
   readonly durationMs: number | null;
 }
 
+/**
+ * D7: every policy value read at the base (D6): the gate's limits and skip
+ * list, and the keys D2 counted by, each named after its 015 key.
+ */
+export interface GateReportPolicy extends GatePolicy {
+  /** `complexity.include`. */
+  readonly complexityInclude: readonly string[];
+  /** `complexity.exclude`. */
+  readonly complexityExclude: readonly string[];
+  /** `complexity.maxFileBytes`. */
+  readonly complexityMaxFileBytes: number;
+}
+
 export interface GateReport {
   readonly format: typeof GATE_REPORT_FORMAT;
   readonly createdAt: string;
   readonly versions: GateVersions;
   /** The merge base and the policy read there (D6). */
-  readonly base: { readonly ref: string; readonly commit: string; readonly policy: GatePolicy };
+  readonly base: {
+    readonly ref: string;
+    readonly commit: string;
+    readonly policy: GateReportPolicy;
+  };
   readonly head: {
     readonly commit: string;
     readonly dirty: boolean;
-    /** Each changed path counted at the head, with its blob. */
+    /**
+     * Each changed path the gate counted, or could not count, with its blob
+     * at the head; a path that is not a regular file there has none and is
+     * left out (amended 2026-11-10, review 0.1.423 S1).
+     */
     readonly paths: readonly { readonly path: RelativePath; readonly blob: FileHash }[];
   };
   readonly budget: { readonly seconds: number; readonly timedOut: boolean };

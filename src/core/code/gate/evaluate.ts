@@ -5,6 +5,7 @@ import type { FileHash } from "../../types/keys.js";
 import type { CoverageSource } from "../coverage/types.js";
 import { type JoinedFunction, joinCoverage } from "../crap/join.js";
 import { crapScore } from "../crap/score.js";
+import type { BasePolicy } from "./policy.js";
 import {
   byPosition,
   countStates,
@@ -23,7 +24,6 @@ import {
   type Evidence,
   GATE_REPORT_FORMAT,
   type GateGap,
-  type GatePolicy,
   QUALITY_POLICY_VERSION,
   type TestFileEvidence,
 } from "./types.js";
@@ -95,7 +95,7 @@ function pathEvidence(
 }
 
 interface Context {
-  readonly policy: GatePolicy;
+  readonly policy: BasePolicy;
   readonly excluded: (path: RelativePath) => boolean;
   /** A selected test failed (D5.5). */
   readonly failed: boolean;
@@ -176,14 +176,26 @@ function judge(fn: ChangedFunction, ctx: Context): GateFunctionReport {
 }
 
 /**
+ * D7's `head.paths`: each counted path and each uncounted regular file with
+ * its head blob, once (a parse-error path is both), sorted.
+ */
+function headPaths(changed: ChangedSet): GateReport["head"]["paths"] {
+  const blobs = new Map<RelativePath, FileHash>();
+  for (const { path, blob } of [...changed.counted, ...changed.uncounted]) {
+    if (blob !== undefined) blobs.set(path, blob);
+  }
+  return [...blobs].map(([path, blob]) => ({ path, blob })).sort((a, b) => compare(a.path, b.path));
+}
+
+/**
  * Spec 020 D5 to D7: the report of `changed` judged with `evidence` under
- * `policy`. `versions` and `times` are the caller's, so the same inputs
+ * `policy`, read at the base with its counting keys. `versions` and `times` are the caller's, so the same inputs
  * give the same report.
  */
 export function evaluate(
   changed: ChangedSet,
   evidence: Evidence,
-  policy: GatePolicy,
+  policy: BasePolicy,
   versions: EngineVersions,
   times: GateTimes,
 ): GateReport {
@@ -221,15 +233,12 @@ export function evaluate(
         complexityThreshold: policy.complexityThreshold,
         crapThreshold: policy.crapThreshold,
         coverageExclude: [...policy.coverageExclude],
+        complexityInclude: [...policy.include],
+        complexityExclude: [...policy.exclude],
+        complexityMaxFileBytes: policy.maxFileBytes,
       },
     },
-    head: {
-      commit: changed.headCommit,
-      dirty: changed.dirty,
-      paths: changed.counted
-        .map((c) => ({ path: c.path, blob: c.blob }))
-        .sort((a, b) => compare(a.path, b.path)),
-    },
+    head: { commit: changed.headCommit, dirty: changed.dirty, paths: headPaths(changed) },
     budget: { seconds: evidence.budgetSeconds, timedOut: evidence.timedOut },
     functions,
     uncounted,

@@ -1,11 +1,11 @@
 import type { CoverageSource } from "../../../src/core/code/coverage/types.js";
+import type { BasePolicy } from "../../../src/core/code/gate/policy.js";
 import type { EngineVersions, GateTimes } from "../../../src/core/code/gate/report.js";
 import type {
   ChangedFunction,
   ChangedSet,
   CountedPath,
   Evidence,
-  GatePolicy,
   TestFileEvidence,
   UncountedPath,
 } from "../../../src/core/code/gate/types.js";
@@ -20,10 +20,14 @@ import type { FunctionCount } from "../../../src/core/types/code.js";
 export const BLOB = "b".repeat(40);
 export const OLD_BLOB = "a".repeat(40);
 
-export const POLICY: GatePolicy = {
+/** The defaults of 015's keys, read at the base (D6). */
+export const POLICY: BasePolicy = {
   complexityThreshold: 20,
   crapThreshold: 30,
   coverageExclude: [],
+  include: ["**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,py}"],
+  exclude: ["**/dist/**", "**/build/**", "**/vendor/**", "**/*.min.js"],
+  maxFileBytes: 524_288,
 };
 
 export const VERSIONS: EngineVersions = {

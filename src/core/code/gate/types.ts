@@ -47,6 +47,11 @@ export interface CountedPath {
 export interface UncountedPath {
   readonly path: RelativePath;
   readonly reason: "too-large" | "parse-error" | "unsupported";
+  /**
+   * The head bytes' blob id, for D7's `head.paths`; absent when the head is
+   * not a regular file (`unsupported`) (amended 2026-11-10, review 0.1.423 S1).
+   */
+  readonly blob?: FileHash;
 }
 
 /** D2: what the inventory gives the evaluator. */

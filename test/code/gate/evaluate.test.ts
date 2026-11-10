@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { evaluate } from "../../../src/core/code/gate/evaluate.js";
-import type { GatePolicy } from "../../../src/core/code/gate/types.js";
+import type { BasePolicy } from "../../../src/core/code/gate/policy.js";
 import {
   changedSet,
   evidence,
@@ -20,7 +20,7 @@ import {
 function judged(
   paths: readonly PathInput[],
   files: Parameters<typeof evidence>[0],
-  policy: GatePolicy = POLICY,
+  policy: BasePolicy = POLICY,
 ) {
   const report = evaluate(changedSet(paths), evidence(files), policy, VERSIONS, TIMES);
   const by = Object.fromEntries(report.functions.map((f) => [f.qualifiedName, f]));
