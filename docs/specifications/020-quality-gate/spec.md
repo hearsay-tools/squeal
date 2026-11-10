@@ -217,8 +217,10 @@ Rows: 020-10a (items 1 to 5) now, beside wave 2. 020-10b (items 6 and 7) waits f
    - Exports (`squeal-results/1`), keys and `KEY_FORMAT_VERSION` do not change. Every published export stays importable. Imported files keep no coverage; records travel in parts only.
    - Format 4 part readers accept format 3, and a gate given format 3 parts runs every selected file.
    - The runtime asset and the tag clone both hold `dist/coverage/provider.mjs` and `dist/cli/coverage-map.mjs`.
-4. **Spec 018 changes** (approved through row 020-08 by the human, 2026-11-10): D8's "No coverage provider is added" and the non-goal "Squeal's coverage provider in CI" are reversed. `ci record --help` says when the provider is added and when it is not. D10's coverage tolerance stays.
-5. **Cost:** +22% CPU on 30 short files at load 24 to 35, against 015's +8%. A real shard measurement is row 020-08c, a cezar proposal that needs the human's approval.
+4. **Export of `node:inspector` files** (decided by 018's coordinator 3739e45a, 2026-11-10; a coordinator decision for 018, not the human's): when a shard ran with the provider, `ci export` leaves out a test file whose closure imports `node:inspector`. D10 of 018 lets an imported pass cross a coverage difference. A test that uses `node:inspector` itself is the one case where the provider can change the outcome. Such files are rare.
+5. **Kept from 018-23:** the read-time evidence rules in `vitest-ci.cjs`, `descriptors.cjs` and `children.cjs` stay as they are, for example "a foreign `SQUEAL_CI_RECORD` child withholds every path".
+6. **Spec 018 changes** (approved through row 020-08 by the human, 2026-11-10): D8's "No coverage provider is added" and the non-goal "Squeal's coverage provider in CI" are reversed. `ci record --help` says when the provider is added and when it is not. D10's coverage tolerance stays.
+7. **Cost:** +22% CPU on 30 short files at load 24 to 35, against 015's +8%. A real shard measurement is row 020-08c, a cezar proposal that needs the human's approval.
 
 Rows: 020-08a, then 020-08b after 020-07c, because both use the gate's known-evidence seam. 020-08c is the cezar proof, a proposal for the human.
 

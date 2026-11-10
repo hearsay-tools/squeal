@@ -148,3 +148,37 @@ Done when:
 - the gate test passes with the key on and off as described;
 - a daemon test shows a function only a child runs reads covered with the key on;
 - the default-off output is unchanged.
+
+## 020-08a coverage records in `ci record` parts
+
+Use /worker. Shape: slice. Agreed with spec 018's coordinator (3739e45a) on 2026-11-10. It gets the candidate diff before review.
+
+Outcome: spec D13 items 1 and 3 to 6. `ci record` adds Squeal's provider and writes records into `squeal-ci-part/4`, and `ci export` stays byte-compatible for exports.
+
+Read:
+- spec D13;
+- `research/ci-evidence.md`: its row split and probes;
+- spec 018 D8 to D16 and its `status.md` lines for 018-23 and 018-26.
+
+Starting seam: the survey's first test. On the real Vitest 4.1 fixture (`test/fixtures/vitest/vitest-4.1`) and on Vitest 5, the records in a part equal the gate collector's records for the same fixture. Then:
+- `ci-runtime/coverage.cjs` (new): the override, the allow rules, stamps, batches, the worker map, the yield to a project's own `--coverage`, drops;
+- `vitest-ci.cjs` wires it in;
+- `vitest/ci-runs.ts` and `cli/ci.ts` put the records into the part;
+- `core/ci/parts.ts`: format 4, with `readPart` accepting 3 and 4;
+- `ci export` leaves out a `node:inspector` closure when the shard ran with the provider;
+- `main.ts` help: say when the provider is added and when it is not.
+
+Owns: those files, `harness/build.ts` only if the worker path needs it, and their tests.
+
+Leave alone:
+- 018-23's read-time evidence rules in `vitest-ci.cjs`, `descriptors.cjs` and `children.cjs`: do not change them;
+- `src/core/code/gate/`;
+- `src/core/code/coverage/`, which 020-10a changed on another branch. Import from it; don't edit it.
+
+Done when:
+- the records equal the collector's;
+- `--coverage` yields, with exit code 1 kept and the project's report written;
+- `isolate: false`, `-t` and `node:inspector` give no record;
+- an error of the hook gives a part reason and leaves the exit code unchanged;
+- `ci export` of format 3 and format 4 parts gives the same bundle;
+- spec 018's text (D8 and the non-goal) is amended in your commit, quoting D13.
