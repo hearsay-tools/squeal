@@ -15659,7 +15659,7 @@ function stoppedByRequest(header) {
 function requiredStep(context, required, read5, options) {
   if (unchangedSinceRegistration(context)) return null;
   const open = requiredOpen(context, required, read5);
-  if (isOpen(open)) return stoppedByRequest(read5.header) ? null : { kind: "open", open };
+  if (isOpen(open) && !stoppedByRequest(read5.header)) return { kind: "open", open };
   const failing = failingLines(context, required, read5, options);
   return failing.reasons.length === 0 ? null : { kind: "failing", failing };
 }
