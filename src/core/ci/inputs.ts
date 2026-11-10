@@ -43,6 +43,19 @@ interface EvidenceLine {
   readonly e?: Record<string, unknown>;
   readonly w?: readonly unknown[];
   readonly t?: readonly unknown[];
+  /** The time on its thread's clock at this line (`clock.cjs`), in ms. */
+  readonly o?: unknown;
+}
+
+/**
+ * Row 018-29: the time Squeal's hooks took in the command, from the clock
+ * each process and thread wrote beside its evidence: its last time, summed.
+ * Informational: no evidence, key or refusal reads it.
+ */
+export interface HooksTime {
+  readonly ms: number;
+  /** The processes and threads whose evidence file holds a time. */
+  readonly threads: number;
 }
 
 /**
@@ -53,11 +66,20 @@ interface EvidenceLine {
  * parse is skipped; the evidence in it is lost, which only leaves files out.
  */
 export function readEvidence(dir: AbsolutePath): InputEvidence {
+  return readRecorded(dir).evidence;
+}
+
+/** `readEvidence`, and the time the hooks took (`HooksTime`), from one read of `dir`. */
+export function readRecorded(dir: AbsolutePath): {
+  readonly evidence: InputEvidence;
+  readonly hooks: HooksTime;
+} {
   const values = new Map<RelativePath, FileHash | null>();
   const conflicting = new Set<RelativePath>();
   const written = new Set<RelativePath>();
   const trees = new Set<RelativePath>();
-  for (const line of evidenceLines(dir)) {
+  const { lines, hooks } = evidenceLines(dir);
+  for (const line of lines) {
     for (const [path, value] of Object.entries(line.e ?? {})) {
       if (typeof value !== "string" && value !== null) continue;
       const known = values.get(path);
@@ -71,29 +93,42 @@ export function readEvidence(dir: AbsolutePath): InputEvidence {
   const kept = [...values].filter(
     ([path]) => !conflicting.has(path) && !written.has(path) && !below(path),
   );
-  return Object.fromEntries(kept.sort(([a], [b]) => compare(a, b)));
+  return { evidence: Object.fromEntries(kept.sort(([a], [b]) => compare(a, b))), hooks };
 }
 
-function evidenceLines(dir: AbsolutePath): EvidenceLine[] {
+/** Every line in `dir`'s files, and per file the latest time its clock wrote, summed. */
+function evidenceLines(dir: AbsolutePath): { lines: EvidenceLine[]; hooks: HooksTime } {
   let names: string[];
   try {
     names = readdirSync(dir).sort(compare);
   } catch {
-    return [];
+    return { lines: [], hooks: { ms: 0, threads: 0 } };
   }
   const lines: EvidenceLine[] = [];
+  let ms = 0;
+  let threads = 0;
   for (const name of names) {
+    // The clock only grows: a file's latest time is its largest.
+    let latest: number | null = null;
     for (const text of readFileSync(join(dir, name), "utf8").split("\n")) {
       if (text === "") continue;
       try {
         const value: unknown = JSON.parse(text);
-        if (typeof value === "object" && value !== null) lines.push(value as EvidenceLine);
+        if (typeof value !== "object" || value === null) continue;
+        lines.push(value as EvidenceLine);
+        const { o } = value as EvidenceLine;
+        if (typeof o === "number" && Number.isFinite(o) && o >= 0)
+          latest = Math.max(latest ?? 0, o);
       } catch {
         // a line cut short by a process stopped mid-write
       }
     }
+    if (latest !== null) {
+      ms += latest;
+      threads += 1;
+    }
   }
-  return lines;
+  return { lines, hooks: { ms, threads } };
 }
 
 /** Whether a path, a file or a listing path, is one of `trees` or below one. */
