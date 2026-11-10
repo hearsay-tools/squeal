@@ -41,6 +41,7 @@ const ROWS = [
   ["moved", 22, null, true],
   ["risky", 6, 6, false],
   ["riskier", 7, 6, false],
+  ["drifted", 6, 6, false],
   ["untested", 6, null, false],
   ["approved", 6, null, false],
   ["both", 22, 22, false],
@@ -102,6 +103,7 @@ const ENTRIES: readonly ExceptionEntry[] = [
   entry("moved", "complexity", "inherited", 22),
   entry("risky", "crap", "inherited", 42),
   entry("riskier", "crap", "inherited", 60),
+  entry("drifted", "crap", "inherited", 40),
   entry("untested", "crap", "approved", 40),
   entry("approved", "crap", "approved", 42),
   entry("both", "complexity", "inherited", 22),
@@ -136,6 +138,8 @@ describe("exceptions: each D8 rule (spec 020 D8)", () => {
       // Inherited CRAP: head CRAP 42 ≤ value 42 and head CC 6 ≤ base CC 6.
       ["risky", "accepted", 42, ["covers"]],
       ["riskier", "violation", 56, ["worse-than-base"]],
+      // Inherited CRAP needs head CRAP ≤ value: 42 is over the recorded 40.
+      ["drifted", "violation", 42, ["over-value"]],
       ["untested", "violation", 42, ["over-value"]],
       ["approved", "accepted", 42, ["covers"]],
       // CC covered, CRAP 506 over 30 with no CRAP entry: still a violation.
@@ -145,7 +149,7 @@ describe("exceptions: each D8 rule (spec 020 D8)", () => {
     ]);
     expect(report.counts).toEqual({
       pass: 1,
-      violation: 8,
+      violation: 9,
       incomplete: 0,
       skipped: 0,
       accepted: 5,
