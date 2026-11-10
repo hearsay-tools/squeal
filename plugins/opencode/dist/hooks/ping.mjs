@@ -335,7 +335,7 @@ var CODE_SHAPE = {
     maxFileBytes: positiveInteger,
     blocking: boolean2
   },
-  coverage: { enabled: boolean2, untested: boolean2, exclude: globs2 },
+  coverage: { enabled: boolean2, untested: boolean2, exclude: globs2, children: boolean2 },
   crap: { enabled: boolean2, threshold: aboveZero2 }
 };
 
