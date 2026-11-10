@@ -79,6 +79,7 @@ Started: 2026-10-31
 - 2026-11-10, review `reviews/0.1.425.md`: 018-26 PASS (real Vitest 4.1.10 and 5.0.3); 018-23 FAIL, B2 continuing: a child with another recording's settings withheld only the current test file, a rule from the coordinator's repair brief, narrower than D9. Coordinator fix: withhold every path. The human: "0.1.425: A: one narrow check" (third and last round on 018-23).
 - 2026-11-10, final check PASS on cand/0.1.425 60a013342 (`reviews/0.1.425.md`, "Final check"); candidate CI 42813553213 green; 0.1.425 landed with rows 018-23 and 018-26.
 - 2026-11-10, 0.1.425 released (tag squeal--v0.1.425 at 084372ae0, hub f6a44cb, GitHub release with install.sh and the Codex runtime). cezar pin PR hearsay-tools/cezarion#3157 opened (approved: "Squeal fix: Yes, both").
+- 2026-11-10, cezarion#3157 (pin 0.1.425) merged at 13:19Z. Merge-group run 42821041101: every shard recorded on Vitest 4.1.10 (shard 1: 404 files), but shard 1 also recorded four Vitest runs that cezar tests start themselves, one ended early, so `ci export` refused and nothing was published. The human: "Inner runs: Yes, both" (row 018-27, then another pin PR).
 
 ## Open questions
 
