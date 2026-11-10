@@ -124,9 +124,11 @@ export function earlierFailuresLines({ pending, stale }: KnownFailureCounts): st
  * queued, 60 stale)`. File-level checks count as their test files (005 D1),
  * each part only when it is not zero. `all N test files current` only with a
  * live daemon, the test files listed and the revision's runner part done;
- * otherwise the clause says which of those is missing, the down daemon by
- * `as of revision N`, since the header's sentence says why. Empty when the
- * header counts no test files by class.
+ * otherwise the clause says which of those is missing, the down daemon and a
+ * late change feed by `N test files current` without `all`, since the
+ * header's sentence says why and names the revision the counts cover (row
+ * 011-311: no "current as of revision N"). Empty when the header counts no
+ * test files by class.
  */
 export function notCurrentText(header: StatusHeader): string {
   const files = header.testFileCounts;
@@ -153,11 +155,10 @@ function filesText(header: StatusHeader, files: ValidityCounts, unlisted: boolea
     return `not current: ${total - files.current} of ${plural(total, "test file")} (${fileParts})${tests}`;
   }
   if (total === 0) return "the daemon listed no test files";
-  if (unlisted) return `${plural(total, "test file")} current`;
   // Row 011-200: nor while the live daemon's change feed is late.
   const live = header.daemon?.state === "alive" && header.daemon.late === undefined;
-  if (!live || header.awaitingInstall === true) {
-    return `${plural(total, "test file")} current as of revision ${header.revision}`;
+  if (unlisted || !live || header.awaitingInstall === true) {
+    return `${plural(total, "test file")} current`;
   }
   return `all ${plural(total, "test file")} current`;
 }
