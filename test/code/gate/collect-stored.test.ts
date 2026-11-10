@@ -15,7 +15,7 @@ import { ADAPTERS, changedSet, ownTmpdir, project, SLOW } from "./collect-fixtur
  * the files it leaves out. The stored evidence is kept as given.
  */
 
-/** The adapters, each run's files appended to `ran`. */
+/** The adapters, each Vitest run's files appended to `ran`; the fixture has no other runner. */
 function watched(ran: string[]): GateAdapters {
   const wrap = (adapter: RunnerAdapter): RunnerAdapter =>
     new Proxy(adapter, {
@@ -30,10 +30,7 @@ function watched(ran: string[]): GateAdapters {
         };
       },
     });
-  return {
-    vitest: async (options) => wrap(await ADAPTERS.vitest(options)),
-    nodeTest: async (p, options) => wrap(await ADAPTERS.nodeTest(p, options)),
-  };
+  return { ...ADAPTERS, vitest: async (options) => wrap(await ADAPTERS.vitest(options)) };
 }
 
 const STORED = (path: string): TestFileEvidence => ({
