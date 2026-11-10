@@ -104,7 +104,7 @@ export function testFile(
   path: string,
   loads: readonly string[] | null,
   sources: readonly CoverageSource[],
-  opts: Partial<Pick<TestFileEvidence, "runner" | "completed" | "failed">> & {
+  opts: Partial<Pick<TestFileEvidence, "runner" | "completed" | "failed" | "skipped">> & {
     readonly record?: null;
     readonly unread?: readonly string[];
   } = {},
@@ -114,6 +114,7 @@ export function testFile(
     path,
     completed: opts.completed ?? true,
     failed: opts.failed ?? [],
+    skipped: opts.skipped ?? false,
     loads,
     record: opts.record === null ? null : { v: 1, sources, unread: [...(opts.unread ?? [])] },
   };

@@ -7,9 +7,9 @@ import type {
   CodeTransitionKind,
   FileCount,
 } from "../../types/code.js";
+import { judgeFunction, type MissingGap } from "../gate/rule.js";
 import type { CodeEdit } from "../store/types.js";
 import type { FunctionCoverage } from "./file.js";
-import { crapScore } from "./score.js";
 import { type CoverageMeasure, EVIDENCE_FILES, type FileEvidence, functionKey } from "./summary.js";
 
 /*
@@ -43,6 +43,8 @@ export interface Judged {
   readonly file: CodeFile;
   readonly count: FileCount;
   readonly coverage: readonly FunctionCoverage[];
+  /** The ready loaders whose records `coverage` is from; at least one (spec 020 D11.5). */
+  readonly loaders: number;
   /** A recount's judgement: no crossing from a judged state (review 0.1.297 B2). */
   readonly quiet?: true;
   /**
@@ -50,6 +52,8 @@ export interface Judged {
    * only the failures they prove pass; every other state stays as last judged.
    */
   readonly early?: true;
+  /** With `early`: the file is `pending`, or `unknown` with a record that cannot come. */
+  readonly missing?: DaemonMissing;
   /**
    * Row 015-75: an early judgement of an unknown file whose loader set its
    * states were not judged with: every state it does not pass goes `unknown`.
@@ -97,7 +101,7 @@ export function judgeFiles(
       if (cov === undefined) return;
       const edit = j.quiet === true ? undefined : ctx.edits.get(id);
       const named = { check: checkOf(j.file.path, fn), id, edit };
-      for (const m of measuresOf(fn.complexity, cov, ctx.threshold)) {
+      for (const m of measuresOf(fn.complexity, cov, j, ctx.threshold)) {
         if (ctx.measures?.includes(m.measure) !== false) judgeMeasure(ctx, j, named, m, out);
       }
     });
@@ -170,27 +174,50 @@ const besideSkip = ({ skipped, drop }: Judged, was: CodeKnownState | undefined, 
   was?.outcome !== "fail" &&
   (was?.outcome !== "pass" || drop === true);
 
-/** A function's `crap` and `uncovered` outcomes; both `unknown` when the join cannot tell. */
-function measuresOf(complexity: number, cov: FunctionCoverage, threshold: number) {
-  if (cov.unresolved === true) {
-    return (["crap", "uncovered"] as const).map((measure) => ({
-      measure,
-      outcome: "unknown" as CodeOutcome,
-      value: null,
-      threshold: null,
-    }));
-  }
-  const crap = crapScore(complexity, cov.coverage);
+/** Why an early judgement's records are not all in hand. */
+type DaemonMissing = Extract<MissingGap, "pending" | "unknown">;
+
+/**
+ * A function's `crap` and `uncovered` outcomes by spec 020 D11's rule
+ * (`judgeFunction`): `pass` or `fail` where its evidence proves it, else
+ * `unknown`, as when the join cannot tell, or `pending`. Failed tests are
+ * told as test transitions, so they are no input here (D11.2). An early
+ * judgement's records are a subset: they prove passes only.
+ */
+function measuresOf(complexity: number, cov: FunctionCoverage, j: Judged, threshold: number) {
+  const out = judgeFunction<DaemonMissing>(
+    {
+      complexity,
+      excluded: false,
+      loaders: { expected: j.loaders, measured: j.loaders },
+      missing: j.early === true ? (j.missing ?? "unknown") : null,
+      coverage:
+        cov.unresolved === true
+          ? null
+          : {
+              lines: cov.lines,
+              covered: cov.covered,
+              share: cov.coverage,
+              ran: cov.runBy.length > 0,
+            },
+      failed: false,
+      skipped: j.skipped === true,
+    },
+    // The complexity pass judges CC (015 D5); here only the coverage measures are read.
+    { complexityThreshold: Number.POSITIVE_INFINITY, crapThreshold: threshold },
+  );
+  const judged = (outcome: CodeOutcome) => outcome === "pass" || outcome === "fail";
+  const { crap, uncovered } = out.measures;
   return [
     {
       measure: "crap" as const,
-      outcome: (crap > threshold ? "fail" : "pass") as CodeOutcome,
-      value: crap as number | null,
-      threshold: threshold as number | null,
+      outcome: crap as CodeOutcome,
+      value: judged(crap) ? out.crap : null,
+      threshold: judged(crap) ? (threshold as number | null) : null,
     },
     {
       measure: "uncovered" as const,
-      outcome: (cov.runBy.length === 0 ? "fail" : "pass") as CodeOutcome,
+      outcome: uncovered as CodeOutcome,
       value: null,
       threshold: null,
     },

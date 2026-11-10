@@ -55,11 +55,15 @@ const REASONS: readonly PendingReason[] = ["imports", "run", "record"];
 
 /**
  * Pending until every loader has a current result with a record; unknown
- * while one cannot have one (D9). A source no test file loads is ready
- * with no loader, once the worktree has test files listed.
+ * while one cannot have one (D9). A source no test file loads is unknown,
+ * `no-loader`, once the worktree has test files listed: never 0% (spec 020
+ * D11.5, which reverses 015 D9's ready with no loader).
  */
 export function fileCondition(loaders: readonly Loader[], listed: boolean): FileCondition {
   if (!listed) return { state: "pending", reason: "run", waiting: 0, ready: [] };
+  if (loaders.length === 0) {
+    return { state: "unknown", cause: "no-loader", ready: [], set: loaderSet(loaders) };
+  }
   const ready = loaders.flatMap((l) =>
     l.condition.kind === "ready"
       ? [{ testFile: l.testFile, key: l.condition.key, storedAt: l.condition.storedAt }]
@@ -83,6 +87,14 @@ export function fileCondition(loaders: readonly Loader[], listed: boolean): File
 }
 
 /**
+ * Spec 020 D11.5: the set of no test file, a marker of its own. States an
+ * older Squeal judged at 0% with no loader stand for the hash of the empty
+ * list, so the first step after the upgrade drops them once (row 015-75's
+ * drop), and the marker keeps them dropped.
+ */
+export const NO_LOADER_SET = "no-loader";
+
+/**
  * Row 015-75: the test files that load a source, hashed short, so a
  * summary can keep the set its states were judged with. A test file whose
  * closure is not known yet may load any source and is left out.
@@ -92,6 +104,7 @@ export function loaderSet(loaders: readonly Pick<Loader, "testFile" | "condition
     .filter((l) => l.condition.kind !== "pending" || l.condition.reason !== "imports")
     .map((l) => `${l.testFile.project}\0${l.testFile.path}`)
     .sort(compare);
+  if (files.length === 0) return NO_LOADER_SET;
   return createHash("sha1").update(files.join("\n")).digest("hex").slice(0, 16);
 }
 
