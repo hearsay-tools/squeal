@@ -95,8 +95,9 @@ interface Runner {
  * counts from the call, the adapters' start included. The runs go one
  * runner after another, each given what is left of it; a runner reached
  * after the deadline runs nothing. A project's own `testTimeout` is never
- * lowered. With no changed path and no `--test` file, no adapter starts. Rejects when Vitest is configured but
- * cannot start, or when Squeal's provider is missing: a setup error (D1).
+ * lowered. With no changed path and no `--test` file, no adapter starts.
+ * Rejects when Vitest is configured but cannot start, or when Squeal's
+ * provider is missing: a setup error (D1).
  */
 export async function collectEvidence(
   cwd: AbsolutePath,
