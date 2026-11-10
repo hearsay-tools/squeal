@@ -6,7 +6,6 @@ import type { Entry } from "./blobs.js";
 import { type End, report, writeEnd } from "./end.js";
 import type { FailedCounts } from "./failed.js";
 import { type FileAfter, judge } from "./judge.js";
-import { holdRemovals, type ListedRecord } from "./listed.js";
 import type { PassContext } from "./pass.js";
 import { writePulled } from "./pulled.js";
 import type { PassReport } from "./types.js";
@@ -30,10 +29,7 @@ export interface EditPlan {
   readonly committed: ReadonlySet<RelativePath>;
   /** Paths judged with no transition (`quietPaths`). */
   readonly seeds: ReadonlySet<RelativePath>;
-  /** Files still waiting for their listing: the removals wait too (row 015-52). */
-  readonly held: number;
   readonly entries: number;
-  readonly listed: (deferred: readonly RelativePath[]) => ListedRecord;
 }
 
 /**
@@ -82,7 +78,7 @@ export function judgedFiles(
  */
 export function editEnd(
   ctx: PassContext,
-  end: Omit<End, "listed">,
+  end: End,
   plan: EditPlan,
   bodies: ReadonlyMap<string, string>,
 ): PassReport {
@@ -93,20 +89,16 @@ export function editEnd(
     store.files.removeMany(worktreeId, [...plan.links]);
     const before = store.states.list(worktreeId, { measure: "complexity", paths: [...plan.paths] });
     const at = ctx.now();
-    const { judged, deferred } = holdRemovals(
-      judge({
-        worktreeId,
-        revision: latest,
-        threshold: ctx.complexity.threshold,
-        at,
-        quiet: false,
-        before,
-        bodies,
-        after,
-      }),
-      plan.held > 0,
-      plan.seeds,
-    );
+    const judged = judge({
+      worktreeId,
+      revision: latest,
+      threshold: ctx.complexity.threshold,
+      at,
+      quiet: false,
+      before,
+      bodies,
+      after,
+    });
     moveChecks(store, worktreeId, judged.moves, ctx.coverageExcluded);
     // D9's measures go with the function, a failing one resolved (row 015-12).
     const told = judged.removed.filter((check) => !plan.seeds.has(check.path));
@@ -123,7 +115,7 @@ export function editEnd(
     );
     // 015-38: the files git changed last, whose PASS or RESOLVED a session told by count is not told.
     writePulled(store.meta, worktreeId, latest, plan.paths, plan.committed);
-    writeEnd(ctx, { ...end, listed: plan.listed(deferred) });
+    writeEnd(ctx, end);
     return report(latest, null, plan.entries, end.counted, { ...judged, edited });
   });
 }

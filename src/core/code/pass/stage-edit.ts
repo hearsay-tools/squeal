@@ -19,7 +19,6 @@ import {
   type Sides,
   sidesOf,
 } from "./judge.js";
-import { holdRemovals } from "./listed.js";
 import { inCheckOrder } from "./order.js";
 import type { PassContext } from "./pass.js";
 import { writePulled } from "./pulled.js";
@@ -49,7 +48,7 @@ interface Part {
  */
 export async function stagedEditEnd(
   ctx: PassContext,
-  end: Omit<End, "listed">,
+  end: End,
   plan: EditPlan,
 ): Promise<PassReport> {
   const { store, worktreeId } = ctx;
@@ -77,11 +76,7 @@ export async function stagedEditEnd(
     bodies,
   );
   const prior = priorOf(moves, gone);
-  const { judged: removal, deferred } = holdRemovals(
-    { moves, states: [], edited: [], ...judgeGone(input, quiet, gone, moves) },
-    plan.held > 0,
-    plan.seeds,
-  );
+  const removal = judgeGone(input, quiet, gone, moves);
   // D9's measures go with the function, a failing one resolved (row 015-12).
   const told = removal.removed.filter((check) => !plan.seeds.has(check.path));
   const failures = removedFailures(store, worktreeId, told, end.latest, at);
@@ -99,7 +94,7 @@ export async function stagedEditEnd(
     if (copied !== transitions.length) store.transitions.append(transitions);
     // 015-38: the files git changed last, whose PASS or RESOLVED a session told by count is not told.
     writePulled(store.meta, worktreeId, end.latest, plan.paths, plan.committed);
-    writeEnd(ctx, { ...end, listed: plan.listed(deferred) });
+    writeEnd(ctx, end);
     return report(end.latest, null, plan.entries, end.counted, {
       moves,
       removed: removal.removed,
@@ -112,11 +107,7 @@ export async function stagedEditEnd(
 }
 
 /** Each part's states, bodies and counts, read; and its sides. */
-async function readParts(
-  ctx: PassContext,
-  end: Omit<End, "listed">,
-  plan: EditPlan,
-): Promise<Part[]> {
+async function readParts(ctx: PassContext, end: End, plan: EditPlan): Promise<Part[]> {
   const { store, worktreeId } = ctx;
   const parts: Part[] = [];
   await inParts(ctx, plan.files, partFiles(ctx), (files) => {
