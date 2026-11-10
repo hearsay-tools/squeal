@@ -188,7 +188,16 @@ function daemonVitest(
     exclude: () => policy.vitest.exclude,
     ...(provider === null
       ? {}
-      : { coverage: { enabled: () => true, provider, tempDir: temp, collected: () => {} } }),
+      : {
+          coverage: {
+            enabled: () => true,
+            // Spec 020 D12.5: the coverage marker holds `coverage.children`, as the daemon keys it.
+            children: () => policy.coverage.children,
+            provider,
+            tempDir: temp,
+            collected: () => {},
+          },
+        }),
   });
 }
 
