@@ -4,7 +4,7 @@ import { open } from "../helpers.js";
 import { fakeCounter, pass, policyOn, worktree } from "./helpers.js";
 
 describe("the code pass's included set (015 D1)", () => {
-  it("counts only included files: no test file, node_modules, ignored file, excluded glob or other extension", async () => {
+  it("counts only included files, test files too: no node_modules, ignored file, excluded glob or other extension", async () => {
     const tree = worktree();
     const store = open(tree.commonDir);
     tree
@@ -16,15 +16,16 @@ describe("the code pass's included set (015 D1)", () => {
       .write("tools/x.py", "x 2 X\n")
       .write("README.md", "r 2 R\n")
       .revise();
-    tree.testFiles.push("src/a.test.ts");
     tree.ignored.push("src/gen.ts");
     const counter = fakeCounter();
     await pass(tree, store, counter);
+    // Spec 020 D11.6: a test file is counted like any other.
     expect(store.files.list(tree.id).map((f) => `${f.path} ${f.language}`)).toEqual([
+      "src/a.test.ts typescript",
       "src/a.ts typescript",
       "tools/x.py python",
     ]);
-    expect(counter.calls).toHaveLength(2);
+    expect(counter.calls).toHaveLength(3);
   });
 
   it("counts a symlink's target at its own path, never the link, and does not read it again", async () => {
@@ -67,18 +68,6 @@ describe("the code pass's included set (015 D1)", () => {
     await pass(tree, store, fakeCounter(), { policy });
     expect(store.states.list(tree.id)).toEqual([]);
     expect(store.files.list(tree.id)[0]?.tooBig).toBe(true);
-  });
-
-  it("drops the states of a file once a runner lists it as a test file", async () => {
-    const tree = worktree();
-    const store = open(tree.commonDir);
-    tree.write("src/new.test.ts", "t 23 T\n").revise();
-    await pass(tree, store, fakeCounter());
-    tree.testFiles.push("src/new.test.ts");
-    tree.write("src/a.ts", "a 2 A\n").revise();
-    await pass(tree, store, fakeCounter());
-    expect(store.files.list(tree.id).map((f) => f.path)).toEqual(["src/a.ts"]);
-    expect(store.states.list(tree.id).map((s) => s.check.path)).toEqual(["src/a.ts"]);
   });
 });
 

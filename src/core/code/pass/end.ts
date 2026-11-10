@@ -2,7 +2,6 @@ import type { RevisionNumber } from "../../types/common.js";
 import { type cursorOf, takeAwaited, writeCursor, writeRecount } from "./cursor.js";
 import { type FailedCounts, writeUncountable } from "./failed.js";
 import type { Judged } from "./judge.js";
-import { type ListedRecord, writeListed } from "./listed.js";
 import type { PassContext } from "./pass.js";
 import type { PassReport, RecountReason } from "./types.js";
 
@@ -15,12 +14,11 @@ export interface End {
   readonly current: ReturnType<typeof cursorOf>;
   readonly counted: number;
   readonly failed: FailedCounts;
-  readonly listed: ListedRecord;
 }
 
 /**
- * The last transaction's meta: the cursor, the listing's record, the failed
- * counts, and a recount's record. The coordinator's contract with 015-07: a
+ * The last transaction's meta: the cursor, the failed counts, and a
+ * recount's record. The coordinator's contract with 015-07: a
  * first pass over inherited counts writes none, unless a consumer
  * registered before it and was told counting (015-35).
  */
@@ -28,7 +26,6 @@ export function writeEnd(ctx: PassContext, end: End): void {
   const { store, worktreeId } = ctx;
   const { latest, reason, counted } = end;
   writeCursor(store.meta, worktreeId, end.current);
-  writeListed(store.meta, worktreeId, end.listed);
   writeUncountable(store.meta, worktreeId, end.failed);
   const awaited = reason === "first" && takeAwaited(store.meta, worktreeId);
   if (reason !== null && (reason !== "first" || counted > 0 || ctx.switchedOn || awaited)) {

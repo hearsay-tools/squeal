@@ -1,11 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { headAfterMove, mainStoreSource } from "../../../src/core/code/pass/source.js";
 import type { CommitSha } from "../../../src/core/types/common.js";
-import {
-  headMoveMetaKey,
-  listingMetaKey,
-  refinedMetaKey,
-} from "../../../src/core/types/scheduler.js";
+import { headMoveMetaKey } from "../../../src/core/types/scheduler.js";
 import { freshStore, WT } from "../../state/helpers.js";
 
 /**
@@ -101,34 +97,5 @@ describe("headAfterMove", () => {
     expect(headAfterMove(undefined, ["a", "a"])).toBe("a");
     expect(headAfterMove(undefined, [null])).toBeNull();
     expect(headAfterMove(undefined, [])).toBeNull();
-  });
-});
-
-describe("the runners' last listing, from the main store (row 015-52; review 0.1.315 B2)", () => {
-  const store = (listing: string | null) => {
-    const main = freshStore();
-    for (let i = 1; i <= 3; i++) {
-      main.revisions.append({
-        worktreeId: WT,
-        createdAt: i,
-        head: "a",
-        dirty: false,
-        trigger: "watch",
-        changes: [{ path: "src/a.ts", oldHash: null, newHash: `h${i}` }],
-      });
-    }
-    // The refined revision is no listing: a refinement whose listing failed records it too.
-    main.meta.set(refinedMetaKey(WT), "3");
-    if (listing !== null) main.meta.set(listingMetaKey(WT), listing);
-    return mainStoreSource(main, WT, () => []);
-  };
-
-  it("gives the scheduler's record", () => {
-    expect(store('{"revision":2,"count":4}').listing()).toEqual({ revision: 2, count: 4 });
-  });
-
-  it("gives none when no listing is recorded, or the record does not read", () => {
-    expect(store(null).listing()).toBeNull();
-    expect(store("2").listing()).toBeNull();
   });
 });

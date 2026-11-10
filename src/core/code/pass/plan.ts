@@ -3,110 +3,67 @@ import type { RelativePath, RevisionNumber } from "../../types/common.js";
 import type { Entry } from "./blobs.js";
 import { type FailedCounts, seedsQuietly } from "./failed.js";
 import { includedSet } from "./included.js";
-import { holdUnlisted, type Listing, waitingPaths } from "./listed.js";
 import type { PassContext } from "./pass.js";
 
 /*
  * Spec 015 D1 and D4: what one pass reads, each path classified by D1, and
- * the paths it judges with no transition.
+ * the paths it judges with no transition. Spec 020 D11.6: a test file is
+ * counted like any other, so no file waits for a runner listing (the 015-52
+ * hold is gone).
  */
 
 /**
- * `plan`'s entries without the files that wait for their listing, and
- * what waited after the last pass, which this one reads again (row 015-52).
- * `null` when a recount would hold a file: it waits for that listing, so
- * its summary counts the file, and `onListed` runs it again.
+ * The pass's entries: with `since`, the edit pass's paths, else every file
+ * Squeal sees and every stored row.
  */
 export function workEntries(
   ctx: PassContext,
   since: RevisionNumber | null,
   latest: RevisionNumber,
   due: readonly RelativePath[],
-  listing: Listing,
-) {
-  const { store, source, worktreeId } = ctx;
-  const waiting = new Set(waitingPaths(store, worktreeId, source, listing.seen, latest));
-  const paths = since === null ? null : workSet(ctx, since, latest, due, listing.tests, waiting);
-  const planned = plan(ctx, listing.tests, paths, new Set(listing.seen?.deferred));
-  const work = holdUnlisted(store, worktreeId, source, planned, listing, latest);
-  return since === null && work.held > 0 ? null : { ...work, waiting };
+): Entry[] {
+  return plan(ctx, since === null ? null : workSet(ctx, since, latest, due));
 }
 
-/**
- * The edit pass's paths: the revisions' changes, the retries, the failed
- * counts due again (`due`), counted files a runner now lists, and what
- * waited for a listing after the last pass (row 015-52).
- */
+/** The edit pass's paths: the revisions' changes, the retries and the failed counts due again (`due`). */
 function workSet(
   ctx: PassContext,
   after: RevisionNumber,
   upTo: RevisionNumber,
   due: readonly RelativePath[],
-  tests: readonly RelativePath[],
-  waiting: ReadonlySet<RelativePath>,
 ): RelativePath[] {
-  const counted = ctx.store.files.list(ctx.worktreeId, tests);
-  return [
-    ...new Set([
-      ...ctx.source.changedPaths(after, upTo),
-      ...ctx.retry,
-      ...due,
-      ...counted.map((f) => f.path),
-      ...waiting,
-    ]),
-  ];
+  return [...new Set([...ctx.source.changedPaths(after, upTo), ...ctx.retry, ...due])];
 }
 
 /**
- * The paths judged with no transition: B1, a count a first count or
- * recount failed on, seeds as that count would have; row 015-52, a counted
- * file that a runner now lists leaves quietly.
+ * The paths judged with no transition (B1): a count a first count or
+ * recount failed on seeds as that count would have.
  */
-export function quietPaths(
-  entries: readonly Entry[],
-  failed: FailedCounts,
-  { tests }: Listing,
-): Set<RelativePath> {
-  const listed = new Set(tests);
+export function quietPaths(entries: readonly Entry[], failed: FailedCounts): Set<RelativePath> {
   return new Set(
-    entries.flatMap((e) => {
-      if (e.kind === "gone") return listed.has(e.path) ? [e.path] : [];
-      return e.kind === "count" && seedsQuietly(failed, e.path, e.file.hash) ? [e.path] : [];
-    }),
+    entries.flatMap((e) =>
+      e.kind === "count" && seedsQuietly(failed, e.path, e.file.hash) ? [e.path] : [],
+    ),
   );
 }
 
-/**
- * Each path classified by D1; `paths` `null` for every file Squeal sees,
- * every stored row and every `deferred` path.
- */
-function plan(
-  ctx: PassContext,
-  tests: readonly RelativePath[],
-  paths: readonly RelativePath[] | null,
-  deferred: ReadonlySet<RelativePath>,
-): Entry[] {
+/** Each path classified by D1; `paths` `null` for every file Squeal sees and every stored row. */
+function plan(ctx: PassContext, paths: readonly RelativePath[] | null): Entry[] {
   const { store, source, worktreeId, complexity } = ctx;
-  const included = includedSet(complexity, tests, source.ignored());
+  const included = includedSet(complexity, source.ignored());
   const all = paths === null ? new Map(source.files().map((f) => [f.path, f])) : null;
   const listed =
     all === null
       ? (paths ?? [])
-      : [
-          ...new Set([
-            ...all.keys(),
-            ...store.files.list(worktreeId).map((f) => f.path),
-            ...deferred,
-          ]),
-        ];
+      : [...new Set([...all.keys(), ...store.files.list(worktreeId).map((f) => f.path)])];
   const entries = [...listed].sort(compare).map((path): Entry => {
     const language = included(path);
     const file = language === null ? null : all === null ? source.file(path) : all.get(path);
     if (language === null || file === null || file === undefined) return { kind: "gone", path };
     return { kind: file.size > complexity.maxFileBytes ? "big" : "count", path, file, language };
   });
-  // A gone path the store never counted is nothing to remove; a deferred one still has states.
+  // A gone path the store never counted is nothing to remove.
   const gone = entries.filter((e) => e.kind === "gone").map((e) => e.path);
   const stored = new Set(store.files.list(worktreeId, gone).map((f) => f.path));
-  return entries.filter((e) => e.kind !== "gone" || stored.has(e.path) || deferred.has(e.path));
+  return entries.filter((e) => e.kind !== "gone" || stored.has(e.path));
 }
