@@ -81,10 +81,15 @@ describe("the code pass behind the daemon loop (015 D4)", SLOW, () => {
       createRepo(),
     );
     try {
-      // Test files and the gitignored generated file are never counted (D1).
+      // The gitignored generated file is never counted (D1); test files are (spec 020 D11.6).
       expect(codeStore.files.list(worktreeId).map((f) => f.path)).toEqual([
         "src/math.ts",
         "src/strings.ts",
+        "test/gen.test.ts",
+        "test/math.test.ts",
+        "test/plain.test.ts",
+        "test/strings.test.ts",
+        "test/upper.test.ts",
         "vitest.config.ts",
       ]);
 

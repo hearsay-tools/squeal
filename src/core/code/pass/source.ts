@@ -1,21 +1,15 @@
 import type { CommitSha, RelativePath, RevisionNumber, WorktreeId } from "../../types/common.js";
-import {
-  headMoveMetaKey,
-  listingMetaKey,
-  parseHeadMove,
-  parseListing,
-} from "../../types/scheduler.js";
+import { headMoveMetaKey, parseHeadMove } from "../../types/scheduler.js";
 import type { Store } from "../../types/store.js";
 import type { PassSource } from "./types.js";
 
 /**
- * The pass's reads of a worktree's main store: revisions (011 C2), the stat
- * cache's blob ids and sizes (C3), the test files the runners list and the
- * scheduler's record of their last listing (`listingMetaKey`, row 015-52).
- * `ignored` is the scheduler's extra files, which git ignores.
+ * The pass's reads of a worktree's main store: revisions (011 C2) and the
+ * stat cache's blob ids and sizes (C3). `ignored` is the scheduler's extra
+ * files, which git ignores.
  */
 export function mainStoreSource(
-  store: Pick<Store, "revisions" | "fileHashes" | "testFileKeys" | "meta">,
+  store: Pick<Store, "revisions" | "fileHashes" | "meta">,
   worktreeId: WorktreeId,
   ignored: () => readonly RelativePath[],
 ): PassSource {
@@ -55,8 +49,6 @@ export function mainStoreSource(
       store.fileHashes
         .list(worktreeId)
         .map((record) => ({ path: record.path, hash: record.hash, size: record.size })),
-    listing: () => parseListing(store.meta.get(listingMetaKey(worktreeId))),
-    testFiles: () => store.testFileKeys.list(worktreeId).map((row) => row.testFile.path),
     ignored,
   };
 }
