@@ -159,6 +159,23 @@ describe("the shared results reader's local git stopped and bounded (018-23, rev
     expect(notes).toEqual([]);
   });
 
+  it("kills the ask for the remote's default branch at a stop (row 018-28)", async () => {
+    const s = scratch();
+    const { dev } = await publishedClone(s);
+    git(dev, ["remote", "set-head", "origin", "-d"]);
+    const { reader, commits, notes } = readerOf(dev, { listTimeoutMs: 20_000 });
+    const spy = spyGit(s, `"ls-remote --symref origin HEAD"`);
+    reader.nudge();
+    await spy.held();
+    reader.close();
+    spy.mark("closed");
+    expect(await idleWithin(reader, 2_000)).toBe(true);
+    spy.release();
+    expect(callsAfter(spy.calls(), "closed")).toEqual([]);
+    expect(commits()).toEqual([]);
+    expect(notes).toEqual([]);
+  });
+
   it("starts no git to read an unborn HEAD", async () => {
     const s = scratch();
     const { dev } = await publishedClone(s);
