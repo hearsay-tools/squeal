@@ -52,12 +52,12 @@ async function shards(root: string, out: string, provider: boolean): Promise<Par
   return readdirSync(out).map((name) => readPart(join(out, name)) as Part);
 }
 
-/** Each part in `out` as format 3 wrote it: no coverage header, records or reasons. */
+/** Each part in `out` as format 3 wrote it: no coverage header, records or reasons, and no cost (row 018-29). */
 function asFormat3(out: string): void {
   for (const name of readdirSync(out)) {
     const file = join(out, name);
     const part = JSON.parse(readFileSync(file, "utf8")) as Part;
-    const { coverage: _header, ...header } = part.header;
+    const { coverage: _header, cost: _cost, ...header } = part.header;
     const { coverage: _records, ...rest } = part;
     const testFiles = part.testFiles.map(({ record: _r, noRecord: _n, ...f }) => f);
     writeFileSync(file, JSON.stringify({ ...rest, format: "squeal-ci-part/3", header, testFiles }));
@@ -97,7 +97,9 @@ async function exportOf(origin: string, out: string, name: string): Promise<Resu
 }
 
 describe("squeal ci export of format 3 and format 4 parts (spec 020 D13.3)", () => {
-  it("gives the same bundle", { timeout: 300_000 }, async () => {
+  it("gives the same bundle, with or without each part's cost (row 018-29)", {
+    timeout: 300_000,
+  }, async () => {
     const origin = fixture(scratch("ci-formats"));
     const four = join(dirname(origin), "parts-4");
     const three = join(dirname(origin), "parts-3");
@@ -109,6 +111,8 @@ describe("squeal ci export of format 3 and format 4 parts (spec 020 D13.3)", () 
       true,
       true,
     ]);
+    // Row 018-29: what recording cost, the provider's work included, beside the records.
+    for (const part of recorded) expect(part.header.cost?.hooksMs).toBeGreaterThan(0);
     await shards(origin, three, false);
     asFormat3(three);
     expect(readdirSync(three).map((n) => (readPart(join(three, n)) as Part).format)).toEqual([
