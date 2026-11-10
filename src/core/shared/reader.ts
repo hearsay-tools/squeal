@@ -1,6 +1,4 @@
 import { createHash } from "node:crypto";
-import { committedBlobs } from "../commit/tree.js";
-import { gitHead } from "../status/git-head.js";
 import { listImports, sourceLabel } from "../store/imports.js";
 import { decodeBundle } from "../store/transfer-bundle.js";
 import { importRefusal, importResults } from "../store/transfer-import.js";
@@ -10,6 +8,7 @@ import type { Store } from "../types/store.js";
 import { firstParents, onFirstParentLine, startPoint, upstreamOf } from "./choose.js";
 import { fetchExport } from "./fetch.js";
 import { failureOf, networkEnv } from "./git.js";
+import { blobsAt, HEAD_TIMEOUT_MS, headOf } from "./local.js";
 import { refOf, remoteExports } from "./refs.js";
 
 /*
@@ -21,7 +20,8 @@ import { refOf, remoteExports } from "./refs.js";
  *
  * Row 018-20 R1: each nudge computes the start point again from local git,
  * since a `git fetch` moves it while `HEAD` stays; and one stop ends every
- * step, so no git starts after `close()`.
+ * step, so no git starts after `close()`. Row 018-23: the stop kills every
+ * git the reader starts, the `HEAD` read and the commit's listing too.
  */
 
 /** The kill timer of the listing (`transport.md` Q3: 0.45 to 0.6 s to GitHub). */
@@ -48,6 +48,8 @@ export interface SharedReaderOptions {
   readonly step?: (operation: string, running: boolean) => void;
   readonly listTimeoutMs?: number;
   readonly fetchTimeoutMs?: number;
+  /** The kill timer of `HEAD` read through git (`HEAD_TIMEOUT_MS`). */
+  readonly headTimeoutMs?: number;
 }
 
 export interface SharedReader {
@@ -55,7 +57,7 @@ export interface SharedReader {
   nudge(): void;
   /** Resolves once no pass runs or is due; for tests and shutdown. */
   idle(): Promise<void>;
-  /** Kills the git in flight; no git, fetch or import starts after. */
+  /** Kills every git in flight; no git, fetch or import starts after. */
   close(): void;
 }
 
@@ -120,7 +122,8 @@ class Reader implements SharedReader {
     const prefix = this.o.policy().shared.ref;
     const { root } = this.o;
     if (prefix === null) return;
-    const head = await this.#live(() => gitHead(root));
+    const timeoutMs = this.o.headTimeoutMs ?? HEAD_TIMEOUT_MS;
+    const head = await this.#live((signal) => headOf(root, { timeoutMs, signal }));
     if (head === null) return;
     const upstream = await this.#live((signal) => upstreamOf(root, signal));
     if (upstream === null) {
@@ -201,8 +204,7 @@ class Reader implements SharedReader {
       return;
     }
     const fileHash = createHash("sha256").update(bytes).digest("hex");
-    // Local `ls-tree` under its own timer; the stop is checked when it answers.
-    const blobs = await this.#live(() => committedBlobs(this.o.root, commit).catch(() => null));
+    const blobs = await this.#live((signal) => blobsAt(this.o.root, commit, signal));
     this.o.step?.(IMPORT_STEP, true);
     let added: number;
     try {
