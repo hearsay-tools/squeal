@@ -3194,7 +3194,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.427";
+  if (true) return "0.1.429";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -11516,15 +11516,20 @@ function parkedMetaKey(worktreeId) {
   return worktreeMetaKey("registeredLeft", worktreeId);
 }
 var isNumber3 = (value) => typeof value === "number";
+var isString = (value) => typeof value === "string";
 var isGap = (value) => Array.isArray(value) && value.length === 2 && value.every(isNumber3);
 function toRegistration(value) {
   if (isNumber3(value)) return { since: value, gaps: [] };
   if (!isRecord(value) || !isNumber3(value.since) || !Array.isArray(value.gaps)) return null;
   if (!value.gaps.every(isGap)) return null;
-  const r = { since: value.since, gaps: value.gaps };
-  return isNumber3(value.scanned) ? { ...r, scanned: value.scanned } : r;
+  return {
+    since: value.since,
+    gaps: value.gaps,
+    ...isNumber3(value.scanned) ? { scanned: value.scanned } : {},
+    ...isString(value.head) ? { head: value.head } : {}
+  };
 }
-var stored2 = (r) => r.gaps.length === 0 && r.scanned === void 0 ? r.since : r;
+var stored2 = (r) => r.gaps.length === 0 && r.scanned === void 0 && r.head === void 0 ? r.since : r;
 function registration(store, consumer) {
   return toRegistration(readSlot(store, registeredMetaKey(consumer.worktreeId), consumer));
 }
@@ -11534,13 +11539,24 @@ function scannedDaemon(store, worktreeId, alive) {
   const marker = store.meta.get(bootstrappedMetaKey(worktreeId));
   return marker !== null && Number(marker) === daemon.startedAt ? daemon.startedAt : null;
 }
+function registrationHead(root) {
+  try {
+    return readGitHead(root);
+  } catch {
+    return null;
+  }
+}
 function seesEveryChange(store, worktreeId, r) {
   const daemon = store.worktrees.get(worktreeId)?.daemon ?? null;
   return r.scanned !== void 0 && daemon?.startedAt === r.scanned;
 }
-function tellRegistered(store, consumer, revision, { at, scanned }) {
+function tellRegistered(store, consumer, revision, {
+  at,
+  scanned,
+  head = null
+}) {
   const parked = unpark(store, consumer, at);
-  const next = parked === null ? fresh(revision, scanned) : back(parked, revision, scanned);
+  const next = parked === null ? fresh(revision, scanned, head) : back(parked, revision, scanned);
   writeSlot(store, registeredMetaKey(consumer.worktreeId), consumer, stored2(next));
   recordRegisteredKeys(store, consumer.worktreeId, slot(consumer), {
     resumed: parked !== null,
@@ -11555,14 +11571,20 @@ function registeredSlots(store, worktreeId, at) {
   }
   return slots;
 }
-function fresh(since, scanned) {
-  return scanned === null ? { since, gaps: [] } : { since, gaps: [], scanned };
+function fresh(since, scanned, head) {
+  return {
+    since,
+    gaps: [],
+    ...scanned === null ? {} : { scanned },
+    ...head === null ? {} : { head }
+  };
 }
 function back(parked, revision, scanned) {
   const away = [parked.leftAt, revision];
   const r = {
     since: parked.since,
-    gaps: revision >= parked.leftAt ? [...parked.gaps, away] : parked.gaps
+    gaps: revision >= parked.leftAt ? [...parked.gaps, away] : parked.gaps,
+    ...parked.head === void 0 ? {} : { head: parked.head }
   };
   return scanned !== null && parked.scanned === scanned ? { ...r, scanned } : r;
 }
@@ -13204,7 +13226,8 @@ function createDelivery(store, options) {
           const alive = atStart && header.daemon?.state === "alive";
           const resumed = tellRegistered(store, consumer, header.revision, {
             at,
-            scanned: scannedDaemon(store, consumer.worktreeId, alive)
+            scanned: scannedDaemon(store, consumer.worktreeId, alive),
+            head: options.root === void 0 ? null : registrationHead(options.root)
           });
           startEdits(store, consumer, header.revision, resumed?.said === true);
           if (resumed !== null) recordUncoveredTold(store, consumer, resumed.uncovered);
@@ -15389,7 +15412,9 @@ function openContext(input, location2, options = {}) {
       ...options.squealVersion === void 0 ? {} : { squealVersion: options.squealVersion },
       code,
       lint: lint2,
-      ...prepare === void 0 ? {} : { prepare }
+      ...prepare === void 0 ? {} : { prepare },
+      // Row 011-312: a registration records the commit `HEAD` names here.
+      root: location2.root
     });
     const close = () => store.close();
     const prepared = prepare === void 0 ? {} : { prepared: prepare.reports };

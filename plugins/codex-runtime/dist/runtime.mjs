@@ -7996,7 +7996,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.427";
+  if (true) return "0.1.429";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -9280,6 +9280,103 @@ function loaderCounts(store, worktreeId) {
   };
 }
 
+// src/core/status/git-head.ts
+import { readFileSync as readFileSync13 } from "node:fs";
+import { join as join19 } from "node:path";
+
+// src/core/fs/git-layout.ts
+import { createHash as createHash6 } from "node:crypto";
+import { existsSync as existsSync8, lstatSync as lstatSync3, readFileSync as readFileSync12, realpathSync as realpathSync3 } from "node:fs";
+import { dirname as dirname5, isAbsolute as isAbsolute7, join as join18, resolve as resolve5 } from "node:path";
+var GITDIR_LINE = /^gitdir:\s*(.+?)\s*$/m;
+function findWorktreeRoot(path) {
+  let dir = resolve5(path);
+  if (existsSync8(dir)) dir = realpathSync3(dir);
+  for (; ; ) {
+    if (existsSync8(join18(dir, ".git"))) return dir;
+    const parent2 = dirname5(dir);
+    if (parent2 === dir) return null;
+    dir = parent2;
+  }
+}
+function worktreeIdFor(root) {
+  return worktreeIdOfRealPath(realpathSync3(root));
+}
+function worktreeIdOfRealPath(realPath3) {
+  return createHash6("sha256").update(realPath3).digest("hex").slice(0, 16);
+}
+function gitDirOf(root) {
+  return dotGit(root)?.gitDir ?? null;
+}
+function resolveCommonDir(root) {
+  const entry3 = dotGit(root);
+  if (entry3 === null) return null;
+  if (!entry3.isFile) return realpathSync3(entry3.gitDir);
+  const { gitDir } = entry3;
+  if (lstatOrNull(gitDir) === null) return null;
+  const commondirFile = join18(gitDir, "commondir");
+  if (lstatOrNull(commondirFile) === null) return realpathSync3(gitDir);
+  const commondir = readFileSync12(commondirFile, "utf8").trim();
+  const common = isAbsolute7(commondir) ? commondir : resolve5(gitDir, commondir);
+  return lstatOrNull(common) === null ? null : realpathSync3(common);
+}
+function lstatOrNull(path) {
+  try {
+    return lstatSync3(path);
+  } catch (error) {
+    if (isMissing(error)) return null;
+    throw error;
+  }
+}
+function dotGit(root) {
+  const path = join18(root, ".git");
+  const stat = lstatOrNull(path);
+  if (stat === null) return null;
+  if (stat.isDirectory()) return { gitDir: path, isFile: false };
+  if (!stat.isFile()) return null;
+  const match = GITDIR_LINE.exec(readFileSync12(path, "utf8"));
+  return match?.[1] ? { gitDir: resolve5(root, match[1]), isFile: true } : null;
+}
+
+// src/core/status/git-head.ts
+var SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
+var MAX_REF_DEPTH = 5;
+function readGitHead(root) {
+  const gitDir = gitDirOf(root);
+  const commonDir = resolveCommonDir(root);
+  if (gitDir === null || commonDir === null) return null;
+  let value = read3(join19(gitDir, "HEAD"));
+  for (let depth = 0; depth < MAX_REF_DEPTH && value !== null; depth++) {
+    if (SHA.test(value)) return value;
+    const ref2 = /^ref:\s*(\S+)$/.exec(value)?.[1];
+    if (ref2 === void 0) return null;
+    value = read3(join19(gitDir, ref2)) ?? read3(join19(commonDir, ref2)) ?? packed(commonDir, ref2);
+  }
+  return null;
+}
+async function gitHead(root, options = {}) {
+  const head = readGitHead(root);
+  if (head !== null) return head;
+  const verify = ["rev-parse", "--verify", "-q", "HEAD"];
+  const out = await runGit(root, verify, { ...options, okCodes: [0, 1] });
+  return out.trim() || null;
+}
+function packed(commonDir, ref2) {
+  for (const line of (read3(join19(commonDir, "packed-refs")) ?? "").split("\n")) {
+    const [sha, name2] = line.split(" ");
+    if (name2 === ref2 && sha !== void 0 && SHA.test(sha)) return sha;
+  }
+  return null;
+}
+function read3(path) {
+  try {
+    return readFileSync13(path, "utf8").trim();
+  } catch (error) {
+    if (isMissing(error)) return null;
+    throw error;
+  }
+}
+
 // src/core/delivery/registered.ts
 function registeredMetaKey(worktreeId) {
   return worktreeMetaKey("registered", worktreeId);
@@ -9288,15 +9385,20 @@ function parkedMetaKey(worktreeId) {
   return worktreeMetaKey("registeredLeft", worktreeId);
 }
 var isNumber3 = (value) => typeof value === "number";
+var isString = (value) => typeof value === "string";
 var isGap = (value) => Array.isArray(value) && value.length === 2 && value.every(isNumber3);
 function toRegistration(value) {
   if (isNumber3(value)) return { since: value, gaps: [] };
   if (!isRecord(value) || !isNumber3(value.since) || !Array.isArray(value.gaps)) return null;
   if (!value.gaps.every(isGap)) return null;
-  const r = { since: value.since, gaps: value.gaps };
-  return isNumber3(value.scanned) ? { ...r, scanned: value.scanned } : r;
+  return {
+    since: value.since,
+    gaps: value.gaps,
+    ...isNumber3(value.scanned) ? { scanned: value.scanned } : {},
+    ...isString(value.head) ? { head: value.head } : {}
+  };
 }
-var stored2 = (r) => r.gaps.length === 0 && r.scanned === void 0 ? r.since : r;
+var stored2 = (r) => r.gaps.length === 0 && r.scanned === void 0 && r.head === void 0 ? r.since : r;
 function registration(store, consumer) {
   return toRegistration(readSlot(store, registeredMetaKey(consumer.worktreeId), consumer));
 }
@@ -9306,13 +9408,24 @@ function scannedDaemon(store, worktreeId, alive2) {
   const marker = store.meta.get(bootstrappedMetaKey(worktreeId));
   return marker !== null && Number(marker) === daemon.startedAt ? daemon.startedAt : null;
 }
+function registrationHead(root) {
+  try {
+    return readGitHead(root);
+  } catch {
+    return null;
+  }
+}
 function seesEveryChange(store, worktreeId, r) {
   const daemon = store.worktrees.get(worktreeId)?.daemon ?? null;
   return r.scanned !== void 0 && daemon?.startedAt === r.scanned;
 }
-function tellRegistered(store, consumer, revision, { at, scanned }) {
+function tellRegistered(store, consumer, revision, {
+  at,
+  scanned,
+  head = null
+}) {
   const parked = unpark(store, consumer, at);
-  const next = parked === null ? fresh(revision, scanned) : back(parked, revision, scanned);
+  const next = parked === null ? fresh(revision, scanned, head) : back(parked, revision, scanned);
   writeSlot(store, registeredMetaKey(consumer.worktreeId), consumer, stored2(next));
   recordRegisteredKeys(store, consumer.worktreeId, slot(consumer), {
     resumed: parked !== null,
@@ -9327,14 +9440,20 @@ function registeredSlots(store, worktreeId, at) {
   }
   return slots;
 }
-function fresh(since, scanned) {
-  return scanned === null ? { since, gaps: [] } : { since, gaps: [], scanned };
+function fresh(since, scanned, head) {
+  return {
+    since,
+    gaps: [],
+    ...scanned === null ? {} : { scanned },
+    ...head === null ? {} : { head }
+  };
 }
 function back(parked, revision, scanned) {
   const away = [parked.leftAt, revision];
   const r = {
     since: parked.since,
-    gaps: revision >= parked.leftAt ? [...parked.gaps, away] : parked.gaps
+    gaps: revision >= parked.leftAt ? [...parked.gaps, away] : parked.gaps,
+    ...parked.head === void 0 ? {} : { head: parked.head }
   };
   return scanned !== null && parked.scanned === scanned ? { ...r, scanned } : r;
 }
@@ -10505,17 +10624,17 @@ function settled2(since, rekeyed, states) {
 }
 
 // src/core/waiter-lock/waiter-lock.ts
-import { createHash as createHash6 } from "node:crypto";
-import { existsSync as existsSync8, mkdirSync as mkdirSync5, rmSync as rmSync3 } from "node:fs";
-import { join as join18 } from "node:path";
+import { createHash as createHash7 } from "node:crypto";
+import { existsSync as existsSync9, mkdirSync as mkdirSync5, rmSync as rmSync3 } from "node:fs";
+import { join as join20 } from "node:path";
 import { DatabaseSync as DatabaseSync5 } from "node:sqlite";
 function waiterLockPath(locksDir, consumer) {
-  const id = createHash6("sha256").update(JSON.stringify([consumer.worktreeId, consumer.sessionId, consumer.agentId])).digest("hex").slice(0, 16);
-  return join18(locksDir, `waiter-${id}.sqlite`);
+  const id = createHash7("sha256").update(JSON.stringify([consumer.worktreeId, consumer.sessionId, consumer.agentId])).digest("hex").slice(0, 16);
+  return join20(locksDir, `waiter-${id}.sqlite`);
 }
 function removeWaiterLock(locksDir, consumer) {
   const path = waiterLockPath(locksDir, consumer);
-  if (!existsSync8(path)) return;
+  if (!existsSync9(path)) return;
   const db = lock(path);
   if (db === null) return;
   try {
@@ -10538,11 +10657,11 @@ function lock(path) {
 }
 
 // src/core/delivery/harness-process.ts
-import { readFileSync as readFileSync12, readlinkSync as readlinkSync3 } from "node:fs";
+import { readFileSync as readFileSync14, readlinkSync as readlinkSync3 } from "node:fs";
 function readProcStat(pid) {
   let text2;
   try {
-    text2 = readFileSync12(`/proc/${pid}/stat`, "utf8");
+    text2 = readFileSync14(`/proc/${pid}/stat`, "utf8");
   } catch (error) {
     if (error.code === "ENOENT") return null;
     throw error;
@@ -11491,7 +11610,8 @@ function createDelivery(store, options) {
           const alive2 = atStart && header.daemon?.state === "alive";
           const resumed = tellRegistered(store, consumer, header.revision, {
             at,
-            scanned: scannedDaemon(store, consumer.worktreeId, alive2)
+            scanned: scannedDaemon(store, consumer.worktreeId, alive2),
+            head: options.root === void 0 ? null : registrationHead(options.root)
           });
           startEdits(store, consumer, header.revision, resumed?.said === true);
           if (resumed !== null) recordUncoveredTold(store, consumer, resumed.uncovered);
@@ -11582,60 +11702,6 @@ function createDelivery(store, options) {
   };
 }
 
-// src/core/fs/git-layout.ts
-import { createHash as createHash7 } from "node:crypto";
-import { existsSync as existsSync9, lstatSync as lstatSync3, readFileSync as readFileSync13, realpathSync as realpathSync3 } from "node:fs";
-import { dirname as dirname5, isAbsolute as isAbsolute7, join as join19, resolve as resolve5 } from "node:path";
-var GITDIR_LINE = /^gitdir:\s*(.+?)\s*$/m;
-function findWorktreeRoot(path) {
-  let dir = resolve5(path);
-  if (existsSync9(dir)) dir = realpathSync3(dir);
-  for (; ; ) {
-    if (existsSync9(join19(dir, ".git"))) return dir;
-    const parent2 = dirname5(dir);
-    if (parent2 === dir) return null;
-    dir = parent2;
-  }
-}
-function worktreeIdFor(root) {
-  return worktreeIdOfRealPath(realpathSync3(root));
-}
-function worktreeIdOfRealPath(realPath3) {
-  return createHash7("sha256").update(realPath3).digest("hex").slice(0, 16);
-}
-function gitDirOf(root) {
-  return dotGit(root)?.gitDir ?? null;
-}
-function resolveCommonDir(root) {
-  const entry3 = dotGit(root);
-  if (entry3 === null) return null;
-  if (!entry3.isFile) return realpathSync3(entry3.gitDir);
-  const { gitDir } = entry3;
-  if (lstatOrNull(gitDir) === null) return null;
-  const commondirFile = join19(gitDir, "commondir");
-  if (lstatOrNull(commondirFile) === null) return realpathSync3(gitDir);
-  const commondir = readFileSync13(commondirFile, "utf8").trim();
-  const common = isAbsolute7(commondir) ? commondir : resolve5(gitDir, commondir);
-  return lstatOrNull(common) === null ? null : realpathSync3(common);
-}
-function lstatOrNull(path) {
-  try {
-    return lstatSync3(path);
-  } catch (error) {
-    if (isMissing(error)) return null;
-    throw error;
-  }
-}
-function dotGit(root) {
-  const path = join19(root, ".git");
-  const stat = lstatOrNull(path);
-  if (stat === null) return null;
-  if (stat.isDirectory()) return { gitDir: path, isFile: false };
-  if (!stat.isFile()) return null;
-  const match = GITDIR_LINE.exec(readFileSync13(path, "utf8"));
-  return match?.[1] ? { gitDir: resolve5(root, match[1]), isFile: true } : null;
-}
-
 // src/core/status/open.ts
 var STATUS_BUSY_TIMEOUT_MS = 1e3;
 function unavailable(reason, detail) {
@@ -11696,8 +11762,8 @@ function entry2(records) {
 }
 
 // src/core/status/code-status.ts
-import { readFileSync as readFileSync14 } from "node:fs";
-import { join as join20 } from "node:path";
+import { readFileSync as readFileSync15 } from "node:fs";
+import { join as join21 } from "node:path";
 
 // src/core/code/crap/checks.ts
 function coverageChecks(policy) {
@@ -11798,7 +11864,7 @@ function codeStatusOf(store, worktreeId, at, shell) {
 function setWithoutCoverage(root) {
   let config;
   try {
-    config = JSON.parse(readFileSync14(join20(root, POLICY_FILE), "utf8"));
+    config = JSON.parse(readFileSync15(join21(root, POLICY_FILE), "utf8"));
   } catch {
     return [];
   }
@@ -11952,47 +12018,6 @@ function countsOf3(outcomes) {
   const { pass, fail, skip } = outcomes;
   const whole = (n) => Number.isInteger(n) && n >= 0;
   return whole(pass) && whole(fail) && whole(skip) ? { outcomes: { pass, fail, skip } } : null;
-}
-
-// src/core/status/git-head.ts
-import { readFileSync as readFileSync15 } from "node:fs";
-import { join as join21 } from "node:path";
-var SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
-var MAX_REF_DEPTH = 5;
-function readGitHead(root) {
-  const gitDir = gitDirOf(root);
-  const commonDir = resolveCommonDir(root);
-  if (gitDir === null || commonDir === null) return null;
-  let value = read3(join21(gitDir, "HEAD"));
-  for (let depth = 0; depth < MAX_REF_DEPTH && value !== null; depth++) {
-    if (SHA.test(value)) return value;
-    const ref2 = /^ref:\s*(\S+)$/.exec(value)?.[1];
-    if (ref2 === void 0) return null;
-    value = read3(join21(gitDir, ref2)) ?? read3(join21(commonDir, ref2)) ?? packed(commonDir, ref2);
-  }
-  return null;
-}
-async function gitHead(root, options = {}) {
-  const head = readGitHead(root);
-  if (head !== null) return head;
-  const verify = ["rev-parse", "--verify", "-q", "HEAD"];
-  const out = await runGit(root, verify, { ...options, okCodes: [0, 1] });
-  return out.trim() || null;
-}
-function packed(commonDir, ref2) {
-  for (const line of (read3(join21(commonDir, "packed-refs")) ?? "").split("\n")) {
-    const [sha, name2] = line.split(" ");
-    if (name2 === ref2 && sha !== void 0 && SHA.test(sha)) return sha;
-  }
-  return null;
-}
-function read3(path) {
-  try {
-    return readFileSync15(path, "utf8").trim();
-  } catch (error) {
-    if (isMissing(error)) return null;
-    throw error;
-  }
 }
 
 // src/core/status/identity.ts
@@ -14311,7 +14336,9 @@ function openContext(input, location2, options = {}) {
       ...options.squealVersion === void 0 ? {} : { squealVersion: options.squealVersion },
       code,
       lint: lint2,
-      ...prepare === void 0 ? {} : { prepare }
+      ...prepare === void 0 ? {} : { prepare },
+      // Row 011-312: a registration records the commit `HEAD` names here.
+      root: location2.root
     });
     const close = () => store.close();
     const prepared = prepare === void 0 ? {} : { prepared: prepare.reports };
@@ -16264,9 +16291,6 @@ async function endSession(input, locations, deps) {
 // src/harness/shared/stop.ts
 import { setTimeout as sleep5 } from "node:timers/promises";
 
-// src/harness/shared/stop-decide.ts
-import { setTimeout as sleep4 } from "node:timers/promises";
-
 // src/core/lint/pass/commit-news.ts
 function waitsToLint(state) {
   return state.outcome === "pending" || state.stale;
@@ -16330,6 +16354,44 @@ function pendingBefore(states, keys, required, group, open) {
     return pending2 > 0 ? [{ group: name2, pending: pending2 }] : [];
   });
 }
+
+// src/harness/shared/no-edit.ts
+var trees = /* @__PURE__ */ new WeakMap();
+var NO_EDIT_GIT_TIMEOUT_MS = 1e3;
+function unchangedSinceRegistration(context) {
+  const { store, consumer } = context;
+  const r = registration(store, consumer);
+  if (r === null) return false;
+  if ((store.revisions.latest(consumer.worktreeId)?.number ?? 0) !== r.since) return false;
+  if (seesEveryChange(store, consumer.worktreeId, r)) return true;
+  const tree = trees.get(context);
+  return r.head !== void 0 && tree?.clean === true && tree.head === r.head;
+}
+async function readTree(context, timeoutMs = NO_EDIT_GIT_TIMEOUT_MS) {
+  if (trees.has(context) || timeoutMs <= 0) return;
+  const { store, consumer } = context;
+  const needed = readTransaction(store, () => {
+    const r = registration(store, consumer);
+    if (r?.head === void 0 || seesEveryChange(store, consumer.worktreeId, r)) return false;
+    return (store.revisions.latest(consumer.worktreeId)?.number ?? 0) === r.since;
+  });
+  if (needed) trees.set(context, await treeNow(context.root, Math.round(timeoutMs)));
+}
+async function treeNow(root, timeoutMs) {
+  try {
+    const status = await runGit(
+      root,
+      ["status", "--porcelain=v1", "-z", "--untracked-files=all", "--ignore-submodules=all"],
+      { timeoutMs }
+    );
+    return { head: registrationHead(root), clean: status === "" };
+  } catch {
+    return null;
+  }
+}
+
+// src/harness/shared/stop-decide.ts
+import { setTimeout as sleep4 } from "node:timers/promises";
 
 // src/harness/shared/stop-code.ts
 function measureWords(s) {
@@ -16560,13 +16622,6 @@ function requiredLintHold(context, required, { revision, at, command }) {
   return { reasons, groups: blocking.length === 0 ? groups : required.lintGroups };
 }
 
-// src/harness/shared/no-edit.ts
-function unchangedSinceRegistration(store, consumer) {
-  const r = registration(store, consumer);
-  if (r === null || !seesEveryChange(store, consumer.worktreeId, r)) return false;
-  return (store.revisions.latest(consumer.worktreeId)?.number ?? 0) === r.since;
-}
-
 // src/harness/shared/stop-required.ts
 function requiredOpen(context, required, read5) {
   return {
@@ -16581,11 +16636,13 @@ function isOpen(open) {
 function openGroupsOf(open) {
   return [.../* @__PURE__ */ new Set([...openGroups(open.tests), ...open.lint.map((check) => check.group)])];
 }
+function stoppedByRequest(header) {
+  return header.daemon?.state === "down" && header.daemon.stopped === true;
+}
 function requiredStep(context, required, read5, options) {
-  const { store, consumer } = context;
-  if (consumer.agentId === MAIN_AGENT && unchangedSinceRegistration(store, consumer)) return null;
+  if (unchangedSinceRegistration(context)) return null;
   const open = requiredOpen(context, required, read5);
-  if (isOpen(open)) return { kind: "open", open };
+  if (isOpen(open)) return stoppedByRequest(read5.header) ? null : { kind: "open", open };
   const failing = failingLines(context, required, read5, options);
   return failing.reasons.length === 0 ? null : { kind: "failing", failing };
 }
@@ -16638,6 +16695,38 @@ function stepReason(step, required, read5, hold2) {
   const lint2 = open.lint.length === 0 ? [] : [lintOpenReason(revision, open.lint, command, waitedMs)];
   const groups = [.../* @__PURE__ */ new Set([...unlisted3 ? required.groups : [], ...openGroupsOf(open)])];
   return withLastHold([...tests2, ...lint2].join("\n"), groups, command, last);
+}
+function stoppedText2(context, required, at, command = SQUEAL_COMMAND) {
+  const { store, consumer } = context;
+  const read5 = readTransaction(store, () => {
+    const states = store.knownStates.list(consumer.worktreeId);
+    const keys = store.testFileKeys.list(consumer.worktreeId);
+    const header2 = readLiveHeader(store, consumer.worktreeId, at, states, null, keys);
+    if (!stoppedByRequest(header2) || unchangedSinceRegistration(context)) return null;
+    return { header: header2, open: requiredOpen(context, required, { states, keys, header: header2 }) };
+  });
+  if (read5 === null || !isOpen(read5.open)) return null;
+  const { header, open } = read5;
+  const { revision } = header;
+  const lint2 = open.lint.map(
+    ({ tool, path }) => lintSubject(tool === "eslint" ? { path } : { path, tool })
+  );
+  const parts = [
+    ...open.tests.length === 0 ? [] : [
+      openPart(
+        open.tests.map((f) => f.ref.path),
+        "test file",
+        "current"
+      )
+    ],
+    ...lint2.length === 0 ? [] : [openPart(lint2, "lint check", "linted")]
+  ];
+  const what = parts.length === 0 ? `the test files of revision ${revision} are not all listed` : parts.join("; ");
+  return `Squeal: the daemon is stopped by request, so Stop does not hold for the checks it requires: at revision ${revision}, ${what}. \`${command} start\` starts a daemon, which runs them.`;
+}
+function openPart(names2, noun, state) {
+  const verb = names2.length === 1 ? "is" : "are";
+  return `${plural(names2.length, noun)} ${verb} not ${state}: ${listNames(names2)}`;
 }
 
 // src/harness/shared/stop-decide.ts
@@ -16761,6 +16850,7 @@ function stopTurn(input, location2, deps) {
     async (context) => {
       if ((!main || quiet) && !isRegistered(context)) return null;
       const recordBy = performance.now() + STOP_RECORD_WAIT_MS;
+      const gitBy = performance.now() + HOOK_TIMEOUT_MS - STOP_MARGIN_MS - STOP_RECORD_WAIT_MS;
       const at = (deps.now ?? Date.now)();
       if (!main) leaving(context, at);
       const starting = quiet ? {} : startingAfter(await ensureIfStale(context, deps), at);
@@ -16772,6 +16862,9 @@ function stopTurn(input, location2, deps) {
         read: () => stopRules(context, project, input, deps),
         recorded: () => waitingEntryRecorded(context, input.harness, deps, recordBy)
       };
+      if (rules.read().required !== null) {
+        await readTree(context, Math.min(NO_EDIT_GIT_TIMEOUT_MS, gitBy - performance.now()));
+      }
       if (!quiet && holdsNow(context, rules.read())) await rules.recorded();
       const news = quiet ? null : await newsText(context, starting, deps.command);
       return decideTurn(context, project, news, rules, deps);
@@ -16792,11 +16885,12 @@ async function decideTurn(context, project, news, turnRules, deps) {
       decided = decide(context, project, now(), rules, deps.command);
     }
     const { header, failures, reasons, held } = decided;
+    const stopped = () => stoppedLine(context, project, now(), deps.command);
     if (reasons.length > 0) {
       if (!main) leaving(context, null);
       else if (held) hold(context);
       const text2 = news ?? statusText(header, failures, deps.command);
-      return { block: `${reasons.join("\n")}
+      return { block: `${[...reasons, ...stopped()].join("\n")}
 
 ${text2}` };
     }
@@ -16817,8 +16911,13 @@ ${text2}` };
       }
       await nudgeSlow(context, header);
     }
-    return news === null ? null : { news };
+    return news === null ? null : { news: [news, ...stopped()].join("\n") };
   }
+}
+function stoppedLine(context, project, at, command) {
+  const required = stopRequired(project);
+  const text2 = required === null ? null : stoppedText2(context, required, at, command);
+  return text2 === null ? [] : [text2];
 }
 function hold(context) {
   context.store.transaction(() => countStopHold(context.store, context.consumer));
@@ -16895,7 +16994,8 @@ async function stopSlow(input, location2, deps) {
     const { store, consumer } = context;
     if (readStopHolds(store, consumer) >= required.maxHolds) return null;
     if (!await handedOver(context, deps, poll)) return null;
-    if (readTransaction(store, () => unchangedSinceRegistration(store, consumer))) return null;
+    await readTree(context);
+    if (readTransaction(store, () => unchangedSinceRegistration(context))) return null;
     const block4 = await waitForRequired(context, required, deps, poll);
     if (block4 === null) return null;
     const { header, failures, reason } = block4;
@@ -16961,7 +17061,7 @@ async function waitForRequired(context, required, deps, poll) {
     downSince = last.header.daemon?.state === "down" ? downSince ?? now : null;
     const down = downSince !== null && now - downSince >= STOP_SLOW_DOWN_MS;
     const left = started + bound - now;
-    const over = left <= 0 || down;
+    const over = left <= 0 || down || stoppedByRequest(last.header);
     if (!isOpen(last.open) || over) {
       const waitedMs = Math.min(bound, Math.round(now - started));
       const options = { over, waitedMs, command: deps.command };
