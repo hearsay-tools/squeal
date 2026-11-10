@@ -1,6 +1,6 @@
 # 020 One quality gate: status
 
-Stage: approved (2026-11-09); wave 1 building.
+Stage: approved (2026-11-09); wave 1 in review (cand/0.1.423 FAIL, repair 020-06 running).
 Started: 2026-11-09
 Issue: [#167](https://github.com/hearsay-tools/squeal/issues/167)
 
@@ -14,3 +14,10 @@ Issue: [#167](https://github.com/hearsay-tools/squeal/issues/167)
 - 2026-11-09, the coordinator, during wave 1. Contract change for 020-01: `ChangedSet.counted` lists every head function of a changed path, because the join needs the nested ones. 020-02: `BasePolicy` stays in `policy.ts`, so the contract does not change. A parse-error path goes in `counted`, `inErrors` and `uncounted`. The daemon's `overlaps` in `pass/counted.ts` is now exported and reused. 020-03: the collector takes the runner adapters as arguments because of the boundary test, Vitest runs with `cache: false`, and two node:test files are listed in `test/version-sensitive.txt`. The spec's D2, D3 and D5 were amended.
 - 2026-11-10, row 020-04: the join missed every arrow whose last token is longer than its 2-column slack, not only casts. The reason is that `coverage/map.ts` puts a function's end at the start of its last token. The coordinator accepted the general start rule: on this repository's store, 424k results go from unknown to known and 780 wrong old joins are fixed. The upgrade sends no message per function, because a state that leaves unknown is told silently and files are not judged again on upgrade. D4 was rewritten. A known limit: `test/keys/validity/compare.test.ts` has a `\x` inside `String.raw` that the counter's grammar reads as a parse error, so a branch that changes it gets `incomplete`. That is a 015 counter defect and becomes a follow-up row.
 - 2026-11-10, the coordinator: rows 020-01 to 020-04 integrated on `cez/31e1d860`; lint and typecheck clean. 020-05 brief written against their exports.
+- 2026-11-10, review of `cand/0.1.423` (`56adf47e5`, reviewer a287eeef, codex gpt-6.1-sol high, `reviews/0.1.423.md`): FAIL. Two blockers, both proven with the packaged CLI:
+  - B1: a test file changed only at top level was never selected, so the check exited 0 with no run.
+  - B2: a loading file that failed an assertion and then ran past `--timeout` read as not finished with no failure, and a subset pass gave exit 0.
+
+  There was also one should-fix, S1: the report omits the base counting keys and the blobs of uncounted files. And one nit, N1: the board and status were out of date.
+
+  The coordinator accepted all four. Repair row 020-06 works on the candidate. D3.1, D3.4, D5 and D7 were amended. Deviation from the review's B2 advice: the review asked to keep the subset pass beside an unfinished file and to carry the failures seen in it. The coordinator instead rules out a pass whenever a loading file did not finish. The issue's accepted rule is that partial evidence never passes, and a file that did not finish is partial evidence: its later tests never ran. Failures seen before the stop are still reported when the adapter gives them. One narrow re-review follows.
