@@ -123,9 +123,9 @@ export function recordOf(
 /**
  * Spec 020 D12: a test file's record with its child processes', per path.
  * Where every record holds a path at one blob, its lines and covered lines
- * are each an OR, and its functions a union, as `joinCoverage` reads separate
- * records: a function ran when one record ran it. A path at two blobs, or
- * `unread` in any record, reads `unread`. With no other record, `own`.
+ * are each an OR, and its functions are merged by span (`mergeFunctions`):
+ * a function ran when one record ran it. A path at two blobs, or `unread`
+ * in any record, reads `unread`. With no other record, `own`.
  */
 export function mergeRecords(
   own: CoverageRecord,
@@ -153,15 +153,47 @@ export function mergeRecords(
 /** One path's entries at one blob, as one entry. */
 function mergeSource(first: CoverageSource, entries: readonly CoverageSource[]): CoverageSource {
   if (entries.length === 1) return first;
-  const functions = new Map<string, CoverageSource["functions"][number]>();
-  for (const fn of entries.flatMap((entry) => entry.functions)) functions.set(fn.join(), fn);
   return {
     path: first.path,
     blob: first.blob,
     lines: orBits(entries.map((entry) => entry.lines)),
     covered: orBits(entries.map((entry) => entry.covered)),
-    functions: [...functions.values()].sort(byFunction),
+    functions: mergeFunctions(entries),
   };
+}
+
+type RecordFunction = CoverageSource["functions"][number];
+
+/**
+ * The entries' functions, one per span where each entry has one function
+ * there, with the hits ORed: one function in two processes ran when one ran
+ * it (row 020-10b, request 7665085b). An entry with two functions at one
+ * span, which V8 gives a class's field initializer and its only arrow field
+ * (review 0.1.297 B4), keeps every hit seen there as an entry of its own,
+ * so no hit moves from one of them to the other.
+ */
+function mergeFunctions(entries: readonly CoverageSource[]): RecordFunction[] {
+  const spans = new Map<string, { hits: Set<0 | 1>; split: boolean; fn: RecordFunction }>();
+  for (const entry of entries) {
+    const own = new Map<string, Set<0 | 1>>();
+    for (const fn of entry.functions) {
+      const span = fn.slice(0, 4).join();
+      own.set(span, (own.get(span) ?? new Set()).add(fn[4]));
+      if (!spans.has(span)) spans.set(span, { hits: new Set(), split: false, fn });
+    }
+    for (const [span, hits] of own) {
+      const known = spans.get(span) as { hits: Set<0 | 1>; split: boolean };
+      known.split ||= hits.size > 1;
+      for (const hit of hits) known.hits.add(hit);
+    }
+  }
+  const functions: RecordFunction[] = [];
+  for (const { hits, split, fn } of spans.values()) {
+    const [startLine, startColumn, endLine, endColumn] = fn;
+    const kept: readonly (0 | 1)[] = split ? [...hits] : [hits.has(1) ? 1 : 0];
+    for (const hit of kept) functions.push([startLine, startColumn, endLine, endColumn, hit]);
+  }
+  return functions.sort(byFunction);
 }
 
 function orBits(bitsets: readonly string[]): string {
