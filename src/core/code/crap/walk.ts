@@ -102,7 +102,8 @@ export function walk(at: Walk, files: readonly CodeFile[]) {
       continue;
     }
     next[file.path] = { state: "judged", blob: file.blob, signature, loaders: set };
-    judged.add({ file, count, coverage, ...(recounted ? { quiet: true } : {}) });
+    const ready = condition.loaders.length;
+    judged.add({ file, count, coverage, loaders: ready, ...(recounted ? { quiet: true } : {}) });
     quiet.delete(file.path);
     cache.judged(file.path);
   }
@@ -156,7 +157,15 @@ function judgeEarly(
   const coverage = coverageOf(file, count.functions, ready, record, true);
   if (coverage === "unread") return kept;
   const marks = marksOf(w.quiet.has(file.path), drop, skipped);
-  w.judged.add({ file, count, coverage, early: true, ...marks });
+  w.judged.add({
+    file,
+    count,
+    coverage,
+    loaders: ready.length,
+    early: true,
+    missing: kept.state,
+    ...marks,
+  });
   // It may pass every failure the file had.
   cache.judged(file.path);
   return { ...kept, early: signature };

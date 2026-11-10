@@ -8,7 +8,7 @@ import type {
   GateFunctionReport,
   GateReport,
 } from "../../src/core/code/gate/report.js";
-import type { ExceptionEntry } from "../../src/core/code/gate/types.js";
+import { type ExceptionEntry, QUALITY_POLICY_VERSION } from "../../src/core/code/gate/types.js";
 import { git } from "../hash/git-repo.js";
 import { BASE, code, edit, ownHomeAndTmp, repo, SLOW } from "./code-gate-fixture.js";
 
@@ -89,7 +89,7 @@ describe("squeal code --base --exceptions (spec 020 D8)", () => {
       1,
       { unused: [] },
     ]);
-    expect(report.versions.qualityPolicy).toBe(2);
+    expect(report.versions.qualityPolicy).toBe(QUALITY_POLICY_VERSION);
   });
 
   it("exits 1 when the function got worse than at the base", SLOW, async () => {

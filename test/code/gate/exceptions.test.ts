@@ -194,10 +194,10 @@ describe("exceptions: each D8 rule (spec 020 D8)", () => {
     });
   });
 
-  it("reads exactly as before with no entries file, and raises the policy version to 2", () => {
-    expect(QUALITY_POLICY_VERSION).toBe(2);
+  it("reads exactly as before with no entries file, at a policy version D8 raised to 2 or later", () => {
+    expect(QUALITY_POLICY_VERSION).toBeGreaterThanOrEqual(2);
     const without = evaluate(CHANGED, EVIDENCE, POLICY, VERSIONS, TIMES);
-    expect(without.versions.qualityPolicy).toBe(2);
+    expect(without.versions.qualityPolicy).toBe(QUALITY_POLICY_VERSION);
     expect("exceptions" in without).toBe(false);
     expect(without.functions.some((f) => "exceptions" in f)).toBe(false);
     expect(without.counts.accepted).toBe(0);
