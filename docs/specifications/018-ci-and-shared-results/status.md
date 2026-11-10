@@ -84,6 +84,7 @@ Started: 2026-10-31
 - 2026-11-10, 0.1.426 released (tag squeal--v0.1.426 at f20fd5f33, hub 6f678c5, GitHub release with install.sh and the Codex runtime). cezar pin PR hearsay-tools/cezarion#3171 opened (approved: "Inner runs: Yes, both").
 - 2026-11-10, cezarion#3171 (pin 0.1.426) merged at 15:41Z. Merge-group run 42843943744: every shard recorded once (nested runs ignored); `ci export` exported 1432 test files, 23662 results. The publish job was skipped: its condition lacked a status function, so GitHub's implicit success() failed on a skipped job further up (a mistake in cezarion#3151). The human: "Publish fix: Yes, open and merge"; cezarion#3176 opened.
 - 2026-11-10, cezarion#3176 merged at 17:14Z. Its merge-group run 42859836676 recorded, exported and published `refs/squeal/ef0c1ff0136d42e6b90d849d265c13bc73cd5471` (the main commit of #3176); 0 refs pruned. The CI side of row 018-21 now works end to end. Found while checking: this host has no Node 26.13.0 (installed: 22.19.0, 22.23.3, 24.15.0, 24.21.0, 24.22.1), and the main cezar checkout predates `.node-version`, so local cezar daemons run Node 24.22.1 and no fetched result can match yet (D1).
+- 2026-11-10, the human: "Install node 26 as a default. It's probably good to use the latest LTS anyway". Done: nvm default Node 26.13.0 (the current LTS and cezar CI's pin), global tools reinstalled at their versions; the cockpit's sessions move to it when the cockpit restarts. Measurement brief for row 018-21: `tasks/wave-9.md`.
 
 ## Open questions
 
