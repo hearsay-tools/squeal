@@ -19,6 +19,12 @@ import type { TestFileRef } from "../../core/types/keys.js";
 import { observedInputs } from "../observe/inputs.js";
 import type { RecordedFile } from "../observe/read.js";
 import { RECORDER_VERSION } from "../observe/runtime.js";
+import {
+  PartRecordTable,
+  partCoverage,
+  type RawCoverage,
+  type RawFileCoverage,
+} from "./ci-coverage.js";
 import type { RecordedRun } from "./ci-record.js";
 import { canonicalConfig } from "./environment.js";
 import { diagnosticDuration } from "./reporter.js";
@@ -50,6 +56,8 @@ interface RawModule {
   readonly diagnostic: Parameters<typeof diagnosticDuration>[0];
   readonly errors: number;
   readonly tests: readonly RawTest[];
+  /** Spec 020 D13: its record, or why none; absent without the provider. */
+  readonly coverage?: RawFileCoverage;
 }
 
 interface RawProject {
@@ -71,6 +79,8 @@ export interface RawRun {
   readonly modules: readonly RawModule[];
   /** The allow-listed variables the process saw, with their values. */
   readonly env: Readonly<Record<string, string>>;
+  /** Spec 020 D13: whether `coverage.cjs` added the provider. */
+  readonly coverage?: RawCoverage;
 }
 
 /** Each ended run in `dir`, and a note for each process that ended none. */
@@ -115,13 +125,20 @@ interface RunContext {
 /** The part body of `run`: no test file unless the run ended without a cancel or an unowned error. */
 export function recordedRun(run: RawRun, context: RunContext): RecordedRun {
   const end = endOf(run);
+  const coverage = partCoverage(run.coverage, context.paths);
+  // Spec 020 D13: each file's record, or why none, when the provider was in the run.
+  const table = coverage !== undefined && "provider" in coverage ? new PartRecordTable() : null;
+  const files = end === "completed" ? testFiles(run, context, table) : [];
+  const records = table?.records();
   return {
     end,
     runnerVersion: run.vitest,
     shard: run.shard ?? { index: 1, count: 1 },
     observing: context.observing,
     projects: run.projects.map((project) => partProject(project, run, context)),
-    testFiles: end === "completed" ? testFiles(run, context) : [],
+    testFiles: files,
+    ...(coverage === undefined ? {} : { coverage }),
+    ...(records === undefined ? {} : { records }),
   };
 }
 
@@ -133,7 +150,7 @@ function endOf(run: RawRun): PartEnd {
 /** Module states of a module that ran to its end. */
 const ENDED = new Set(["passed", "failed", "skipped"]);
 
-function testFiles(run: RawRun, context: RunContext): PartFile[] {
+function testFiles(run: RawRun, context: RunContext, table: PartRecordTable | null): PartFile[] {
   const { paths } = context;
   // Every project that ran the file: an unhandled error names a path, no project.
   const named = new Set(
@@ -144,7 +161,8 @@ function testFiles(run: RawRun, context: RunContext): PartFile[] {
     const path = paths.toRelative(module.moduleId);
     if (path === null || !ENDED.has(module.state)) continue;
     const ref = { project: module.project, path };
-    files.push({ ref, file: { ...ref, ...outcomes(module, named.has(path)) } });
+    const coverage = table === null ? {} : table.fileCoverage(module.coverage);
+    files.push({ ref, file: { ...ref, ...outcomes(module, named.has(path)), ...coverage } });
   }
   files.sort((a, b) => compareRefs(a.ref, b.ref));
   const observed = new Map(
