@@ -90,13 +90,11 @@ describe("untested and CRAP lines (row 015-65)", () => {
     ]);
   });
 
-  it("says when no test Squeal runs loads the file", async () => {
+  it("tells nothing of a file no test Squeal runs loads: it is not measured (spec 020 D11.5)", async () => {
     const rig = await judged();
     await rig.edit({ "src/b.ts": "lone 2 l1\n" });
     rig.step();
-    expect(code(await rig.told(S1))).toEqual([
-      "FAIL untested: lone (src/b.ts:1): no test Squeal runs loads this file (complexity 2, CRAP 6). Squeal does not measure worker threads or child processes.",
-    ]);
+    expect(code(await rig.told(S1))).toEqual([]);
   });
 
   it("adds the process sentence when the file loads and none of its functions ran, and names coverage.exclude once", async () => {
@@ -232,15 +230,6 @@ describe("the thread limit (row 015-80)", () => {
     const untested = { ...entry("uncovered", null, e, lint, 90), fileLoaders: { count: 1 } };
     expect(codeLines(news([untested]), "squeal")).toEqual([
       `FAIL untested: EslintSession.lint (src/core/lint/provider/session.ts:90): no test runs it in the test's own thread; 1 test file loads this file (complexity 3, CRAP 12). ${LIMIT}`,
-    ]);
-  });
-
-  it("states the limit when no test Squeal runs loads the file a worker thread runs from a bundle", () => {
-    // `test/lint/provider/helpers.ts` bundles `worker.ts` and runs the bundle in the thread.
-    const e = { complexity: 13, lines: 40, covered: 0, testFiles: 0, first: [], crap: 182 };
-    const untested = { ...entry("uncovered", null, e, lint, 207), fileLoaders: { count: 0 } };
-    expect(codeLines(news([untested]), "squeal")).toEqual([
-      `FAIL untested: EslintSession.lint (src/core/lint/provider/session.ts:207): no test Squeal runs loads this file (complexity 13, CRAP 182). ${LIMIT}`,
     ]);
   });
 
