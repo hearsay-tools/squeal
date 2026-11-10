@@ -13,11 +13,12 @@ import { countTree } from "./walk.js";
  */
 
 /**
- * Moves when a counting rule, a naming rule, the body hash or a grammar
- * changes, so that a stored count is never read across a change of meaning
- * (D3).
+ * Moves when a counting rule, a naming rule, the body hash, a grammar or
+ * its parse input changes, so that a stored count is never read across a
+ * change of meaning (D3). 4: an escape a tagged template allows parses
+ * (row 020-12).
  */
-export const COUNTER_VERSION = 3;
+export const COUNTER_VERSION = 4;
 
 /**
  * Counts `text` as `language`. `blob` is the key the count is stored under
