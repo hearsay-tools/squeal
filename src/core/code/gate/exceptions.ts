@@ -9,7 +9,7 @@ import type {
   GateFunctionReport,
   GateUnusedException,
 } from "./report.js";
-import { type CountedPath, EXCEPTIONS_FORMAT, type ExceptionEntry } from "./types.js";
+import { type CountedPath, EXCEPTIONS_FORMAT, type ExceptionEntry, type GateGap } from "./types.js";
 
 /*
  * Spec 020 D8 (row 020-09): exceptions. The consumer verified the entries;
@@ -27,6 +27,13 @@ export interface Judged {
    * a file that wants no coverage.
    */
   readonly evidence: Pick<GateFunctionReport, "state" | "gap">;
+  /**
+   * D5's completeness: the gap of the first condition of complete evidence
+   * that does not hold, `null` when all do or the file wants no coverage.
+   * A pass from a subset of the loaders (015 D9's bound) has one, so no
+   * exception accepts it (review 0.1.424 B1).
+   */
+  readonly gap: GateGap | null;
 }
 
 /**
@@ -97,18 +104,21 @@ function outcomeOf(
 /**
  * D8: the state once the entries are read. CC over the limit with no entry
  * that covers it stays a violation on the count alone; an incomplete one
- * stays incomplete; a CRAP over the limit needs its own entry.
+ * stays incomplete; a CRAP over the limit needs its own entry. A covered
+ * violation reads `accepted` only on complete evidence (D5); a subset's
+ * pass reads its gap instead.
  */
 function stateOf(judged: Judged, uses: readonly GateExceptionUse[], cc: number): Judgement {
-  const { row, evidence } = judged;
+  const { row, evidence, gap } = judged;
   if (row.state === "incomplete") return row;
   const covers = (measure: ExceptionEntry["measure"]) =>
     uses.some((u) => u.entry.measure === measure && u.outcome === "covers");
   const ccOver = row.complexity > cc;
   if (ccOver && !covers("complexity")) return VIOLATION;
   if (evidence.state === "incomplete") return evidence;
-  if (evidence.state === "violation") return covers("crap") ? ACCEPTED : VIOLATION;
-  return ccOver ? ACCEPTED : evidence;
+  const accepted: Judgement = gap === null ? ACCEPTED : { state: "incomplete", gap };
+  if (evidence.state === "violation") return covers("crap") ? accepted : VIOLATION;
+  return ccOver ? accepted : evidence;
 }
 
 /** The base function of an `edited` row: its identity at the base; `null` otherwise. */
