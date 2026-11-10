@@ -166,6 +166,7 @@ Squeal could not judge an incomplete function: its evidence is missing or partia
 - `no-loader`: no selected test file loads its file. Add a test that imports it, or add a test file that loads it to the run with `--test <file>`. Code that tests reach only through a child process or a browser is not measured yet; list such files in `coverage.exclude` on the target branch, and their functions read `skipped` and keep their CC check.
 - `not-finished`: a test file that loads it did not finish in the budget. Make that file faster, or raise `--timeout`.
 - `test-failed`: a selected test failed. The report's `runs[].failed` names it; fix it.
+- `skipped`: a test file that loads it skipped a test, so its coverage can prove a pass but never a violation. Run the skipped test, or remove the skip.
 - `not-counted`: its file does not parse, or is over `complexity.maxFileBytes`. The report's `uncounted` names the file.
 - `no-record`: a test file that loads it finished, but gave no coverage of the file's current bytes, for example because the file changed during the run. Run the check again.
 - `not-joined`: Squeal could not match the coverage it has to the function. That is a limit of Squeal's; report it at https://github.com/hearsay-tools/squeal/issues with the JSON report.
