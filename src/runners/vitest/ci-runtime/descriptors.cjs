@@ -6,8 +6,8 @@
 // the descriptor itself, once the read is done and before its caller sees
 // the bytes: a second content is two contents for the path, which leaves it
 // without evidence, and a hash that cannot be taken cancels the path. A
-// directory handle lists its directory again at each read and at the end of
-// an iteration. A time change through a descriptor or file handle writes its
+// directory handle lists its directory again when its reads end, when it
+// closes and at the end of an iteration. A time change through a descriptor or file handle writes its
 // path, as `utimes` does. An open that can write is already a write of its
 // path, so only read-only opens are tracked, by descriptor number until it
 // is closed, and by file handle or directory handle object.
@@ -55,7 +55,7 @@ function afterCall(fn, self, args, after) {
   return result;
 }
 
-/** Wraps `target[name]` so a call on a tracked `of(this, args)` runs `after` once it is done. */
+/** Wraps `target[name]` so a call on a tracked `of(this, args)` runs `after(tracked, value)` once it is done. */
 function consumer(replace, target, name, of, after) {
   replace(
     target,
@@ -64,7 +64,7 @@ function consumer(replace, target, name, of, after) {
       function (...args) {
         const tracked = of(this, args);
         if (tracked === undefined) return fn.apply(this, args);
-        return afterCall(fn, this, args, () => after(tracked));
+        return afterCall(fn, this, args, (value) => after(tracked, value));
       },
   );
 }
@@ -169,9 +169,27 @@ function wrapDescriptors(evidence, replace) {
     );
   }
 
+  // A directory handle lists again when its reads end or it closes: the two
+  // listings bracket every entry it gave.
   const proto = fs.Dir?.prototype;
   const ofDir = (self) => dirs.get(self);
-  for (const name of ["read", "readSync"]) consumer(replace, proto, name, ofDir, relist);
+  for (const name of ["read", "readSync"]) {
+    consumer(replace, proto, name, ofDir, (listing, entry) => {
+      if (entry === null) relist(listing);
+    });
+  }
+  for (const name of ["close", "closeSync"]) {
+    replace(
+      proto,
+      name,
+      (fn) =>
+        function (...args) {
+          const listing = dirs.get(this);
+          if (listing !== undefined) relist(listing);
+          return fn.apply(this, args);
+        },
+    );
+  }
   for (const name of ["entries", Symbol.asyncIterator]) {
     replace(
       proto,
