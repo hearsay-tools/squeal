@@ -3,7 +3,8 @@
 // a module's transform, the modules that import `node:inspector` (spec 015
 // D8 Fidelity: their tests can see V8 coverage), the files a payload ran,
 // and the filters under which no file runs whole (015 D8 keeps a record
-// only for a file run whole). CommonJS with Node built-ins only.
+// only for a file run whole); and `settle`, each file's record or why it
+// has none. CommonJS with Node built-ins only.
 "use strict";
 const fs = require("node:fs");
 const path = require("node:path");
@@ -28,6 +29,24 @@ function transformOf(module) {
   if (module?.transformResult) return module.transformResult;
   const state = module?.invalidationState;
   return typeof state === "object" && state !== null ? state : null;
+}
+
+/** One file's record, or why none, the inspector rule first. */
+async function settle(result, vitest, projectName, inspector, root) {
+  if (result === undefined) {
+    const project = vitest.projects.find((p) => p.name === projectName);
+    const isolate = project?.serializedConfig?.isolate ?? project?.config?.isolate;
+    return { none: isolate === false ? "isolate-false" : "unmapped" };
+  }
+  const mapped = result.mapped === undefined ? null : await result.mapped;
+  const ids = inspectorIds(result.environment, inspector, root);
+  if (ids.size > 0) {
+    const ran = mapped?.record
+      ? mapped.record.paths.map((p) => path.join(root, p))
+      : payloadFiles(result.payload);
+    if (ran.some((file) => ids.has(file))) return { none: "inspector" };
+  }
+  return mapped ?? { none: result.none };
 }
 
 /** The project files of `environment` whose transform imports `node:inspector`, once per environment. */
@@ -73,4 +92,4 @@ function isFiltered(vitest, project) {
   );
 }
 
-module.exports = { inspectorIds, isFiltered, payloadFiles, projectFile, transformOf };
+module.exports = { isFiltered, projectFile, settle, transformOf };
