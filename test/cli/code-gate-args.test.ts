@@ -57,8 +57,25 @@ describe("parseGateArgs (spec 020 D1)", () => {
     [["--base", "main", "--test="], "--test names no file"],
     [["--base", "main", "--json=yes"], 'unknown option "--json=yes"'],
     [["--base", "main", "--all"], 'unknown option "--all"'],
+    [["--base", "main", "--exceptions"], "--exceptions names no file"],
+    [["--base", "main", "--exceptions="], "--exceptions names no file"],
+    [["--base", "main", "--exceptions", "a", "--exceptions", "b"], "--exceptions is given twice"],
   ])("refuses %j", (args, error) => {
     expect(parseGateArgs(args)).toEqual({ error: expect.stringContaining(error) });
+  });
+
+  it("takes an exceptions file, which only --exceptions adds (spec 020 D8)", () => {
+    expect(parseGateArgs(["--base", "main", "--exceptions", "/tmp/x.json", "--json"])).toEqual({
+      ref: "main",
+      paths: [],
+      tests: [],
+      budgetSeconds: DEFAULT_BUDGET_SECONDS,
+      json: true,
+      exceptions: "/tmp/x.json",
+    });
+    expect(parseGateArgs(["--base", "main", "--exceptions=e.json"])).toMatchObject({
+      exceptions: "e.json",
+    });
   });
 });
 
@@ -74,6 +91,10 @@ describe("narrow (spec 020 D1: paths narrow the changed functions)", () => {
     counted: [{ path: "src/a.ts", blob: "x", functions: [] }],
     inErrors: [fn("lib/c.ts")],
     uncounted: [{ path: "src/big.ts", reason: "too-large" }],
+    baseCounted: [
+      { path: "src/a.ts", blob: "y", functions: [] },
+      { path: "src2/b.ts", blob: "z", functions: [] },
+    ],
   } as ChangedSet;
 
   it("keeps the files under each directory and each file named", () => {
@@ -83,6 +104,7 @@ describe("narrow (spec 020 D1: paths narrow the changed functions)", () => {
     expect(narrowed.counted.map((c) => c.path)).toEqual(["src/a.ts"]);
     expect(narrowed.inErrors.map((f) => f.path)).toEqual(["lib/c.ts"]);
     expect(narrowed.uncounted.map((u) => u.path)).toEqual(["src/big.ts"]);
+    expect(narrowed.baseCounted?.map((c) => c.path)).toEqual(["src/a.ts"]);
   });
 
   it("keeps every path with none named, or with the worktree's top named", () => {
@@ -168,7 +190,7 @@ const REPORT: GateReport = {
     },
   ],
   verdict: "incomplete",
-  counts: { pass: 1, violation: 0, incomplete: 2, skipped: 1 },
+  counts: { pass: 1, violation: 0, incomplete: 2, skipped: 1, accepted: 0 },
 };
 
 describe("formatGateReport (spec 020 D1)", () => {
@@ -193,7 +215,7 @@ describe("formatGateReport (spec 020 D1)", () => {
       uncounted: [],
       runs: [],
       verdict: "pass",
-      counts: { pass: 0, violation: 0, incomplete: 0, skipped: 0 },
+      counts: { pass: 0, violation: 0, incomplete: 0, skipped: 0, accepted: 0 },
     } as const;
     expect(formatGateReport(empty, "squeal code --base main --json")).toBe(
       "Code gate: pass. No function changed against origin/main (merge base 01234567).\nJSON report: squeal code --base main --json\n",
