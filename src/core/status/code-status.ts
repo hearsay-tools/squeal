@@ -132,11 +132,14 @@ export function codeStatusLines(s: StatusSnapshot, command: string): string[] {
 
 const waits = (n: number) => (n === 1 ? "waits" : "wait");
 
+/** Why files read unknown, after their count. */
 const CAUSES: Readonly<Record<keyof CodeCoverageStatus["unknown"], string>> = {
-  "no-record": "a test file with no coverage record",
-  skipped: "a skipped test",
-  unkeyed: "a test file Squeal cannot key",
-  unread: "a record that cannot vouch for their bytes",
+  "no-record": "from a test file with no coverage record",
+  skipped: "from a skipped test",
+  unkeyed: "from a test file Squeal cannot key",
+  unread: "from a record that cannot vouch for their bytes",
+  // Spec 020 D11.5 (row 020-07a).
+  "no-loader": "because no test Squeal runs loads them",
 };
 
 /**
@@ -187,7 +190,7 @@ export function coverageStatusLines(s: StatusSnapshot, command: string): string[
   }
   const unknown = Object.entries(c.unknown) as [keyof typeof CAUSES, number][];
   if (unknown.length > 0) {
-    const why = unknown.map(([cause, n]) => `${n} from ${CAUSES[cause]}`).join(", ");
+    const why = unknown.map(([cause, n]) => `${n} ${CAUSES[cause]}`).join(", ");
     parts.push(
       `${plural(
         unknown.reduce((n, [, k]) => n + k, 0),
