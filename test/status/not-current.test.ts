@@ -325,7 +325,8 @@ describe("all N test files current only with a live daemon, the files listed and
 
   it("not while no daemon validates", async () => {
     const w = current(null);
-    const line = "Known failures: 0; 2 test files current as of revision 26";
+    // Row 011-311: no "current as of revision N"; the header's sentence names the revision.
+    const line = "Known failures: 0; 2 test files current";
     expect(knownLine(formatStatus(snapshotOf(w), NOW))).toBe(line);
     expect(knownLine(await registrationText(w))).toBe(line);
   });
