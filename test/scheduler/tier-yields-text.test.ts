@@ -131,7 +131,7 @@ describe("the wait says whether the tier yields (spec 011 C15 as amended 2026-10
       yields: { kind: "yields" },
     });
     expect(unlisted.reason).toBe(
-      "revision 5 not listed yet, because the runner part waits for the run in flight, each of its calls bounded at 666 s; the run yields",
+      "the test runner has not listed revision 5's test files yet; it waits for the run in flight, each of its calls bounded at 666 s; the run yields",
     );
     // An older daemon publishes nothing: the wording stays as it was.
     expect(nextStep({ kind: "queued", lane: "vitest", behind: 0, promoted: true }).step).toEqual({
