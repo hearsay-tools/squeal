@@ -21,6 +21,7 @@ import type { AbsolutePath, RelativePath } from "../core/types/common.js";
 import type { RunnerAdapter } from "../core/types/runner.js";
 import { createNodeTestAdapter } from "../runners/node-test/adapter.js";
 import { createVitestAdapter } from "../runners/vitest/index.js";
+import { exceptionsOf } from "./code-gate-exceptions.js";
 import { formatGateReport } from "./code-gate-text.js";
 import type { CliIo } from "./main.js";
 import { statusCommand } from "./status-command.js";
@@ -33,7 +34,7 @@ import { statusCommand } from "./status-command.js";
  */
 
 export const CODE_GATE_USAGE =
-  "squeal code --base <ref> [<path>...] [--test <file>...] [--timeout <seconds>] [--json]";
+  "squeal code --base <ref> [<path>...] [--test <file>...] [--timeout <seconds>] [--exceptions <file>] [--json]";
 
 /** D3.4: the one budget over every run, in seconds. */
 export const DEFAULT_BUDGET_SECONDS = 600;
@@ -50,6 +51,8 @@ export interface GateArgs {
   readonly tests: readonly string[];
   readonly budgetSeconds: number;
   readonly json: boolean;
+  /** D8: the exceptions file, as given; absent without `--exceptions`. */
+  readonly exceptions?: string;
 }
 
 /** `squeal code` runs the gate when `--base` is among its arguments. */
@@ -66,6 +69,7 @@ function split(arg: string): [string, string | undefined] {
 interface Draft {
   ref: string | null;
   budget: number | null;
+  exceptions: string | null;
   json: boolean;
   readonly paths: string[];
   readonly tests: string[];
@@ -82,6 +86,12 @@ const VALUED: Readonly<Record<string, (value: string, into: Draft) => string | n
   "--timeout": (value, into) => {
     if (!/^[1-9][0-9]*$/.test(value)) return "--timeout takes whole seconds above 0";
     into.budget = Number(value);
+    return null;
+  },
+  "--exceptions": (value, into) => {
+    if (value === "") return "--exceptions names no file";
+    if (into.exceptions !== null) return "--exceptions is given twice";
+    into.exceptions = value;
     return null;
   },
 };
@@ -102,7 +112,14 @@ function valuesAfter(args: readonly string[], i: number, most: number) {
  * repeat. `--changed` and `--told` are usage errors with `--base`.
  */
 export function parseGateArgs(args: readonly string[]): GateArgs | { readonly error: string } {
-  const draft: Draft = { ref: null, budget: null, json: false, paths: [], tests: [] };
+  const draft: Draft = {
+    ref: null,
+    budget: null,
+    exceptions: null,
+    json: false,
+    paths: [],
+    tests: [],
+  };
   for (let i = 0; i < args.length; i++) {
     const arg = args[i] as string;
     const [flag, inline] = split(arg);
@@ -126,9 +143,10 @@ export function parseGateArgs(args: readonly string[]): GateArgs | { readonly er
     } else if (arg.startsWith("--")) return { error: `unknown option "${arg}"` };
     else draft.paths.push(arg);
   }
-  const { ref, budget, json, paths, tests } = draft;
+  const { ref, budget, exceptions, json, paths, tests } = draft;
   if (ref === null) return { error: "--base names no ref" };
-  return { ref, paths, tests, budgetSeconds: budget ?? DEFAULT_BUDGET_SECONDS, json };
+  const budgetSeconds = budget ?? DEFAULT_BUDGET_SECONDS;
+  return { ref, paths, tests, budgetSeconds, json, ...(exceptions === null ? {} : { exceptions }) };
 }
 
 /** Stores `--test`'s files, or says why it cannot. */
@@ -162,6 +180,9 @@ export function narrow(changed: ChangedSet, paths: readonly RelativePath[]): Cha
     counted: changed.counted.filter(within),
     inErrors: changed.inErrors.filter(within),
     uncounted: changed.uncounted.filter(within),
+    ...(changed.baseCounted === undefined
+      ? {}
+      : { baseCounted: changed.baseCounted.filter(within) }),
   };
 }
 
@@ -207,9 +228,9 @@ const quoted = (arg: string) =>
 
 /**
  * `squeal code --base <ref> [<path>...] [--test <file>...] [--timeout
- * <seconds>] [--json]` (spec 020 D1). Runs tests, with no daemon, for up to
- * the budget. Policy problems and the runners' notes go to stderr; stdout
- * holds the report alone.
+ * <seconds>] [--exceptions <file>] [--json]` (spec 020 D1, D8). Runs tests,
+ * with no daemon, for up to the budget. Policy problems and the runners'
+ * notes go to stderr; stdout holds the report alone.
  */
 export async function codeGateCommand(
   args: readonly string[],
@@ -229,6 +250,8 @@ export async function codeGateCommand(
   if ("outside" in paths) return fail(`"${paths.outside}" is outside the worktree ${root}`, true);
   const tests = underRoot(root, cwd, parsed.tests);
   if ("outside" in tests) return fail(`"${tests.outside}" is outside the worktree ${root}`, true);
+  const exceptions = await exceptionsOf(cwd, parsed.exceptions);
+  if (exceptions !== undefined && "error" in exceptions) return fail(exceptions.error);
   const inventory = await inventoryOf(root, parsed.ref, paths, io);
   if ("error" in inventory) return fail(inventory.error);
   const { changed, policy } = inventory;
@@ -244,7 +267,8 @@ export async function codeGateCommand(
     return fail(evidence.message, evidence instanceof CollectUsageError);
   }
   const createdAt = new Date((io.now ?? Date.now)()).toISOString();
-  const report = evaluate(changed, evidence, policy, versions(), { createdAt, durationsMs });
+  const times = { createdAt, durationsMs };
+  const report = evaluate(changed, evidence, policy, versions(), times, exceptions);
   const json = `${statusCommand(io.env ?? process.env)} code ${[...args.map(quoted), "--json"].join(" ")}`;
   io.stdout(parsed.json ? `${JSON.stringify(report, null, 2)}\n` : formatGateReport(report, json));
   return EXIT[report.verdict];

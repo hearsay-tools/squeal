@@ -1,18 +1,21 @@
 import type {
+  GateExceptionUse,
   GateFunctionReport,
   GatePathReport,
   GateReport,
   GateRunReport,
+  GateUnusedException,
 } from "../core/code/gate/report.js";
-import type { GateGap, GateState } from "../core/code/gate/types.js";
+import type { ExceptionEntry, GateGap, GateState } from "../core/code/gate/types.js";
 import { functionName } from "../core/delivery/code-format.js";
 import { plural } from "../core/text.js";
 
 /*
  * Spec 020 D1 (row 020-05): the text of `squeal code --base`. The verdict
  * line, then each function that is not pass with its gap or measure, the
- * paths not counted, the failed tests and the files that did not finish,
- * then the command for the JSON report. CRAP is rounded here only; the
+ * paths not counted, the exceptions that applied to no function, the
+ * failed tests and the files that did not finish, then the command for the
+ * JSON report. CRAP is rounded here only; the
  * JSON keeps the score.
  */
 
@@ -32,8 +35,15 @@ const UNCOUNTED_WORDS: Readonly<Record<GatePathReport["reason"], string>> = {
   unsupported: "not a regular file, not counted",
 };
 
+/** D8: why an entry applied to no function, in words. */
+const UNUSED_WORDS: Readonly<Record<GateUnusedException["why"], string>> = {
+  "base-commit": "its base commit is not the merge base",
+  "body-hash": "the changed function of that name has another body hash",
+  "no-function": "no changed function has that path and name",
+};
+
 /** The order of the verdict line's counts. */
-const STATES: readonly GateState[] = ["violation", "incomplete", "skipped", "pass"];
+const STATES: readonly GateState[] = ["violation", "incomplete", "skipped", "accepted", "pass"];
 
 /** How many failed test names a file's line shows; the count says the rest. */
 const NAMED_TESTS = 3;
@@ -61,15 +71,59 @@ function measureText(f: GateFunctionReport, report: GateReport): string {
   return `${cc}, coverage ${percent(f.coverage.share)}, CRAP ${crapText(f.crap, crapLimit)}${over}`;
 }
 
-function stateText(f: GateFunctionReport): string {
+const entryText = (e: ExceptionEntry) => `${e.kind} ${e.measure} exception`;
+
+/** D8: why an entry does not cover its function, in words; `null` when it covers or is not needed. */
+function missText(u: GateExceptionUse, ccLimit: number): string | null {
+  const { entry, baseComplexity: base } = u;
+  const measure = entry.measure === "complexity" ? "CC" : "CRAP";
+  switch (u.outcome) {
+    case "over-value":
+      return entry.kind === "inherited" && entry.measure === "complexity"
+        ? `CC ${base} at the base is over its value ${entry.value}`
+        : `${measure} is over its value ${entry.value}`;
+    case "worse-than-base":
+      return `CC is over the base's ${base}`;
+    case "not-over-at-base":
+      return `CC ${base} at the base is not over ${ccLimit}`;
+    case "not-at-base":
+      return "the function is not at the base";
+    default:
+      return null;
+  }
+}
+
+/** D8: the entries that cover an accepted function, or the ones that do not cover a violation. */
+function exceptionsText(f: GateFunctionReport, ccLimit: number): string {
+  const uses = f.exceptions ?? [];
+  if (f.state === "accepted") {
+    const covering = uses.filter((u) => u.outcome === "covers");
+    return `: ${covering.map((u) => `${entryText(u.entry)}, ${u.entry.issue}`).join("; ")}`;
+  }
+  if (f.state !== "violation") return "";
+  const missed = uses.flatMap((u) => {
+    const why = missText(u, ccLimit);
+    return why === null ? [] : [`${entryText(u.entry)} does not cover it: ${why}`];
+  });
+  return missed.length === 0 ? "" : `; ${missed.join("; ")}`;
+}
+
+function stateText(f: GateFunctionReport, ccLimit: number): string {
   if (f.state === "incomplete") return `incomplete: ${f.gap === null ? "" : GAP_WORDS[f.gap]}`;
   if (f.state === "skipped") return "skipped: its file is in coverage.exclude";
-  return f.state;
+  return `${f.state}${exceptionsText(f, ccLimit)}`;
 }
 
 function functionLine(f: GateFunctionReport, report: GateReport): string {
   const name = functionName({ kind: "code", ...f });
-  return `  ${f.path}:${f.line}  ${name}  ${measureText(f, report)}: ${stateText(f)}`;
+  const state = stateText(f, report.base.policy.complexityThreshold);
+  return `  ${f.path}:${f.line}  ${name}  ${measureText(f, report)}: ${state}`;
+}
+
+/** D8: an entry that applied to no function. */
+function unusedLine({ entry, why }: GateUnusedException): string {
+  const name = `${entry.path} ${entry.qualifiedName}`;
+  return `  ${entryText(entry)} for ${name}: unused: ${UNUSED_WORDS[why]}`;
 }
 
 function runLines(run: GateRunReport, budgetSeconds: number): string[] {
@@ -94,7 +148,9 @@ function verdictLine(report: GateReport): string {
   );
   const uncounted =
     report.uncounted.length === 0 ? [] : [`${plural(report.uncounted.length, "path")} not counted`];
-  const parts = [...states, ...uncounted];
+  const unused = report.exceptions?.unused.length ?? 0;
+  const unusedText = unused === 0 ? [] : [`${plural(unused, "exception")} unused`];
+  const parts = [...states, ...uncounted, ...unusedText];
   const what =
     judged === 0
       ? `No function changed ${against}`
@@ -108,7 +164,15 @@ export function formatGateReport(report: GateReport, json: string): string {
     .filter((f) => f.state !== "pass")
     .map((f) => functionLine(f, report));
   const paths = report.uncounted.map((u) => `  ${u.path}: ${UNCOUNTED_WORDS[u.reason]}`);
+  const unused = (report.exceptions?.unused ?? []).map(unusedLine);
   const runs = report.runs.flatMap((run) => runLines(run, report.budget.seconds));
-  const lines = [verdictLine(report), ...functions, ...paths, ...runs, `JSON report: ${json}`];
+  const lines = [
+    verdictLine(report),
+    ...functions,
+    ...paths,
+    ...unused,
+    ...runs,
+    `JSON report: ${json}`,
+  ];
   return `${lines.join("\n")}\n`;
 }
