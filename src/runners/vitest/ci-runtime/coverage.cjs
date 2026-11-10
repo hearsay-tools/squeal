@@ -21,13 +21,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { createHash } = require("node:crypto");
-const {
-  inspectorIds,
-  isFiltered,
-  payloadFiles,
-  projectFile,
-  transformOf,
-} = require("./coverage-drops.cjs");
+const { isFiltered, projectFile, settle, transformOf } = require("./coverage-drops.cjs");
 const { startMapper } = require("./map-client.cjs");
 
 const message = (error) => String(error?.message ?? error);
@@ -252,27 +246,47 @@ function runCoverage(vitest, settings, stamps) {
   };
 }
 
-/** One file's record, or why none, the inspector rule first. */
-async function settle(result, vitest, projectName, inspector, root) {
-  if (result === undefined) {
-    const project = vitest.projects.find((p) => p.name === projectName);
-    const isolate = project?.serializedConfig?.isolate ?? project?.config?.isolate;
-    return { none: isolate === false ? "isolate-false" : "unmapped" };
-  }
-  const mapped = result.mapped === undefined ? null : await result.mapped;
-  const ids = inspectorIds(result.environment, inspector, root);
-  if (ids.size > 0) {
-    const ran = mapped?.record
-      ? mapped.record.paths.map((p) => path.join(root, p))
-      : payloadFiles(result.payload);
-    if (ran.some((file) => ids.has(file))) return { none: "inspector" };
-  }
-  return mapped ?? { none: result.none };
-}
-
 /** The coverage header of a run whose coverage threw outside `end`. */
 function failedCoverage(error) {
   return { header: { off: "failed", note: message(error) }, files: new Map() };
 }
 
-module.exports = { startCoverage, failedCoverage };
+/**
+ * `vitest-ci.cjs`'s reporter with `coverage`'s hooks: the specifications at
+ * the run's start, the batches as each module ends, and at the run's end
+ * the records, which Vitest awaits and the reporter's `onTestRunEnd` gets
+ * as its fourth argument. Never throws, never rejects.
+ */
+function coveredReporter(reporter, coverage, modules) {
+  return {
+    ...reporter,
+    onTestRunStart: (specifications) => coverage.runStart(specifications),
+    onTestModuleEnd(module) {
+      reporter.onTestModuleEnd(module);
+      coverage.take();
+    },
+    onTestRunEnd(...args) {
+      let covered;
+      try {
+        const ended = [...modules.values()].map((m) => ({
+          project: m.project,
+          moduleId: m.moduleId,
+        }));
+        covered = coverage.end(ended).catch(failedCoverage);
+      } catch (error) {
+        covered = Promise.resolve(failedCoverage(error));
+      }
+      return covered.then((c) => reporter.onTestRunEnd(...args.slice(0, 3), c));
+    },
+  };
+}
+
+/** The run file's modules, each with its record or why it has none, by `project\0moduleId`. */
+function coveredModules(modules, covered) {
+  return [...modules].map(([key, module]) => {
+    const record = covered.files.get(key);
+    return record === undefined ? module : { ...module, coverage: record };
+  });
+}
+
+module.exports = { coveredModules, coveredReporter, startCoverage };
