@@ -1,6 +1,6 @@
 # 020 One quality gate: status
 
-Stage: in-progress. The first slice shipped in 0.1.423 (released 2026-11-10). Later slices are proposed rows 020-07 to 020-11.
+Stage: in-progress. Slices 1 to 6 shipped (0.1.423, 0.1.424, 0.1.427). Open: 020-08c (the cezar trial, needs the human) and the proposed rows 020-14, gh-172 and gh-174.
 Started: 2026-11-09
 Issue: [#167](https://github.com/hearsay-tools/squeal/issues/167)
 
@@ -31,3 +31,4 @@ Issue: [#167](https://github.com/hearsay-tools/squeal/issues/167)
 - 2026-11-10, narrow re-review of `cand/0.1.427-r2` (`d2b4148e3`, reviewer a4b25db6, `reviews/0.1.427-r2.md`): FAIL. The variable case of B1 is fixed, but a part recorded with `--update` (`updateSnapshot: all`) is still reused: exit 0 and CRAP 6, where a fresh run gives exit 1 and CRAP 42. The cause: `runDifferences` normalizes `updateSnapshot`, and `ci export` pairs that with `snapshotRefusal`, which `--parts` lacks. This is the second failing review on 020-08b, so the repair loop ends. The decision goes to the human. The underlying cause is two owners of one rule: when CI evidence may be reused (`ci export` and `gate/parts.ts`).
 - 2026-11-10, the human, after the second failed review of 020-08b: "A: one shared rule, one more review". Repair 020-08b R2 gives `ci export` and `--parts` one owner of the reuse rule, including `snapshotRefusal`. One narrow review follows. If it fails, 0.1.427 ships with `--parts` switched off (option B).
 - 2026-11-10, narrow review of `cand/0.1.427-r3b` (`49dcfbf04`, reviewer 5e1b199d, `reviews/0.1.427-r3.md`): PASS with zero findings. The `--update` part is refused, and a `none`-mode part is reused. One shared rule in `core/ci/export-check.ts` now decides reuse for both `ci export` and `--parts`. A test race in `code-gate-stored.test.ts` (its setup waited for 3 of 5 records) failed candidate CI 42857094227. The coordinator fixed it (test only) in the reviewed commit. 0.1.427 landed on main at `5ff9609cf` with rows 020-07, 020-08 (a and b) and 020-10 (a and b). 020-08c, the cezar trial, needs the human.
+- 2026-11-10, the coordinator (31e1d860): 0.1.427 released. The tag `squeal--v0.1.427` is at `5ff9609cf` and the hub at `71805df`. The GitHub latest release has `install.sh` and both Codex runtime assets. Exact-commit main CI 42886770759 is green. Peer 3739e45a raised no objection.
