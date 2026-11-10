@@ -68,6 +68,8 @@ Squeal covers no test of a build output it does not produce, such as an end-to-e
 - `3` incomplete: Squeal could not measure a changed function, or a selected test failed. Each such function names its gap (see below).
 - `2` a usage or setup error, for example a `<ref>` that does not resolve, or a project whose own Vitest does not resolve.
 
+Code that the tests reach only through a process they start, such as a CLI script, is measured when `coverage.children` is `true` in `squeal.config.json` at the merge base (see the [policy reference](plugins/claude-code/skills/squeal/references/policy.md)). Squeal then counts what those processes and the worker threads the tests start run, as a lower bound: a process that is killed, outlives its test file or gets an environment without `NODE_V8_COVERAGE` is not counted. The JSON report says so in `base.policy.coverageChildren` and in each run's `children`. The daemon measures them too, by the worktree's own `squeal.config.json`: a file that only a child runs is judged from the test file that starts it while `observe.runtimeInputs` is on (the default); with it off, it reads not measured.
+
 Squeal needs Node 22.19 or later, and the project's own dependencies installed: it runs the project's Vitest, and the node:test projects `squeal.config.json` lists under `nodeTest`.
 
 ### Pin one release
@@ -163,7 +165,7 @@ The CLI is then `plugins/claude-code/dist/cli/squeal.mjs` in the clone, in place
 
 Squeal could not judge an incomplete function: its evidence is missing or partial, or a selected test failed, and that never passes. The JSON report's `gap` names why, and the text says it in words:
 
-- `no-loader`: no selected test file loads its file. Add a test that imports it, or add a test file that loads it to the run with `--test <file>`. Code that tests reach only through a child process or a browser is not measured yet; list such files in `coverage.exclude` on the target branch, and their functions read `skipped` and keep their CC check.
+- `no-loader`: no selected test file loads its file. Add a test that imports it, or add a test file that loads it to the run with `--test <file>`. For a script that tests only start as a separate process, set `coverage.children` to `true` on the target branch and name the test that starts it with `--test <file>`. Code that tests reach only through a browser is not measured yet; list such files in `coverage.exclude` on the target branch, and their functions read `skipped` and keep their CC check.
 - `not-finished`: a test file that loads it did not finish in the budget. Make that file faster, or raise `--timeout`.
 - `test-failed`: a selected test failed. The report's `runs[].failed` names it; fix it.
 - `skipped`: a test file that loads it skipped a test, so its coverage can prove a pass but never a violation. Run the skipped test, or remove the skip.
