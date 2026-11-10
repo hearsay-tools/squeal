@@ -88,10 +88,16 @@ export function sourceEntry(
     blob,
     lines: bitset(mapped.lines),
     covered: bitset(mapped.covered),
-    functions: [...mapped.functions.values()].sort(
-      (a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2] || a[3] - b[3] || a[4] - b[4],
-    ),
+    functions: [...mapped.functions.values()].sort(byFunction),
   };
+}
+
+/** A record's function order: by start, then end, then hit. */
+function byFunction(
+  a: CoverageSource["functions"][number],
+  b: CoverageSource["functions"][number],
+) {
+  return a[0] - b[0] || a[1] - b[1] || a[2] - b[2] || a[3] - b[3] || a[4] - b[4];
 }
 
 /** The record of `sources` and `unread`, each sorted by path. */
@@ -101,6 +107,57 @@ export function recordOf(
 ): CoverageRecord {
   sources.sort((a, b) => compare(a.path, b.path));
   return { v: 1, sources, unread: [...new Set(unread)].sort(compare) };
+}
+
+/**
+ * Spec 020 D12: a test file's record with its child processes', per path.
+ * Where every record holds a path at one blob, its lines and covered lines
+ * are each an OR, and its functions a union, as `joinCoverage` reads separate
+ * records: a function ran when one record ran it. A path at two blobs, or
+ * `unread` in any record, reads `unread`. With no other record, `own`.
+ */
+export function mergeRecords(
+  own: CoverageRecord,
+  others: readonly CoverageRecord[],
+): CoverageRecord {
+  if (others.length === 0) return own;
+  const records = [own, ...others];
+  const unread = new Set(records.flatMap((record) => record.unread));
+  const byPath = new Map<RelativePath, CoverageSource[]>();
+  for (const source of records.flatMap((record) => record.sources)) {
+    const known = byPath.get(source.path);
+    if (known === undefined) byPath.set(source.path, [source]);
+    else known.push(source);
+  }
+  const sources: CoverageSource[] = [];
+  for (const [path, entries] of byPath) {
+    if (unread.has(path)) continue;
+    const [first] = entries as [CoverageSource, ...CoverageSource[]];
+    if (entries.some((entry) => entry.blob !== first.blob)) unread.add(path);
+    else sources.push(mergeSource(first, entries));
+  }
+  return recordOf(sources, [...unread]);
+}
+
+/** One path's entries at one blob, as one entry. */
+function mergeSource(first: CoverageSource, entries: readonly CoverageSource[]): CoverageSource {
+  if (entries.length === 1) return first;
+  const functions = new Map<string, CoverageSource["functions"][number]>();
+  for (const fn of entries.flatMap((entry) => entry.functions)) functions.set(fn.join(), fn);
+  return {
+    path: first.path,
+    blob: first.blob,
+    lines: orBits(entries.map((entry) => entry.lines)),
+    covered: orBits(entries.map((entry) => entry.covered)),
+    functions: [...functions.values()].sort(byFunction),
+  };
+}
+
+function orBits(bitsets: readonly string[]): string {
+  const all = bitsets.map((bits) => Buffer.from(bits, "base64"));
+  const bytes = Buffer.alloc(Math.max(...all.map((b) => b.length)));
+  for (const b of all) for (let i = 0; i < b.length; i++) bytes[i] = (bytes[i] ?? 0) | (b[i] ?? 0);
+  return bytes.toString("base64");
 }
 
 /** The record as stored: deflated JSON. */
