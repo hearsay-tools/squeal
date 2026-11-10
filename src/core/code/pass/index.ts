@@ -179,7 +179,6 @@ export function createCodePass(options: CodePassOptions): CodePass {
       coverageExcluded: checksOf(policy).excluded,
       ...(options.sliceFiles === undefined ? {} : { sliceFiles: options.sliceFiles }),
     });
-    // A recount that waits for a listing (row 015-52) is still the switch-on's first count.
     if (report !== null) {
       wasOff = false;
       options.onPass?.(report);
