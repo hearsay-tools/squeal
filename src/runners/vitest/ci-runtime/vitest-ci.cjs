@@ -40,7 +40,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { createRequire } = require("node:module");
 const { isMainThread } = require("node:worker_threads");
-const { failedCoverage, startCoverage } = require("./coverage.cjs");
+const { coveredModules, coveredReporter, startCoverage } = require("./coverage.cjs");
 
 const VARIABLE = "SQUEAL_CI_RECORD";
 const REGEXP = "squeal:regexp";
@@ -126,8 +126,7 @@ function projectOf(project) {
   };
 }
 
-function reporterFor(vitest, file, settings, fail, coverage) {
-  const modules = new Map();
+function reporterFor(vitest, file, settings, fail, modules) {
   // A reporter that throws fails the run: every error goes to the file instead.
   const safe =
     (fn) =>
@@ -138,50 +137,32 @@ function reporterFor(vitest, file, settings, fail, coverage) {
         fail(error);
       }
     };
-  const write = safe((unhandledErrors, reason, covered) => {
-    const env = {};
-    for (const name of settings.variables) {
-      if (process.env[name] !== undefined) env[name] = process.env[name];
-    }
-    const shard = vitest.config?.shard;
-    writeRaw(file, {
-      state: "ended",
-      vitest: vitest.version,
-      shard: shard ? { index: shard.index, count: shard.count } : null,
-      node: { version: process.version, platform: process.platform, arch: process.arch },
-      reason,
-      unhandled: unhandledErrors.map((error) =>
-        typeof error?.VITEST_TEST_PATH === "string" ? error.VITEST_TEST_PATH : null,
-      ),
-      projects: vitest.projects.map(projectOf),
-      modules: [...modules].map(([key, module]) => {
-        const record = covered.files.get(key);
-        return record === undefined ? module : { ...module, coverage: record };
-      }),
-      coverage: covered.header,
-      env,
-    });
-  });
   return {
-    onTestRunStart: safe((specifications) => coverage.runStart(specifications)),
     onTestModuleEnd: safe((module) => {
       modules.set(`${module.project.name}\0${module.moduleId}`, moduleOf(module));
-      coverage.take();
     }),
-    // Awaited by Vitest: the records are mapped before the file is written.
-    onTestRunEnd(_modules, unhandledErrors, reason) {
-      let covered;
-      try {
-        const ended = [...modules.values()].map((m) => ({
-          project: m.project,
-          moduleId: m.moduleId,
-        }));
-        covered = coverage.end(ended).catch(failedCoverage);
-      } catch (error) {
-        covered = Promise.resolve(failedCoverage(error));
+    // `covered`: the coverage `coveredReporter` waited for (spec 020 D13).
+    onTestRunEnd: safe((_modules, unhandledErrors, reason, covered) => {
+      const env = {};
+      for (const name of settings.variables) {
+        if (process.env[name] !== undefined) env[name] = process.env[name];
       }
-      return covered.then((c) => write(unhandledErrors, reason, c));
-    },
+      const shard = vitest.config?.shard;
+      writeRaw(file, {
+        state: "ended",
+        vitest: vitest.version,
+        shard: shard ? { index: shard.index, count: shard.count } : null,
+        node: { version: process.version, platform: process.platform, arch: process.arch },
+        reason,
+        unhandled: unhandledErrors.map((error) =>
+          typeof error?.VITEST_TEST_PATH === "string" ? error.VITEST_TEST_PATH : null,
+        ),
+        projects: vitest.projects.map(projectOf),
+        modules: coveredModules(modules, covered),
+        coverage: covered.header,
+        env,
+      });
+    }),
   };
 }
 
@@ -205,7 +186,9 @@ function install(settings, root) {
         if (!reporters.has(this)) {
           // Spec 020 D13: before the original `start`, which starts the coverage provider.
           const coverage = startCoverage(this, settings.coverage);
-          reporters.set(this, reporterFor(this, file, settings, fail, coverage));
+          const modules = new Map();
+          const reporter = reporterFor(this, file, settings, fail, modules);
+          reporters.set(this, coveredReporter(reporter, coverage, modules));
         }
         const reporter = reporters.get(this);
         if (!this.reporters.includes(reporter)) this.reporters.push(reporter);
