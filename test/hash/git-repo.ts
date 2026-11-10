@@ -27,8 +27,18 @@ const gitEnv = (): NodeJS.ProcessEnv => {
   return env;
 };
 
-export function git(cwd: string, args: readonly string[], input?: Buffer | string): string {
-  return execFileSync("git", args, { cwd, env: gitEnv(), input, encoding: "utf8" });
+export function git(
+  cwd: string,
+  args: readonly string[],
+  input?: Buffer | string,
+  extraEnv: Readonly<Record<string, string>> = {},
+): string {
+  return execFileSync("git", args, {
+    cwd,
+    env: { ...gitEnv(), ...extraEnv },
+    input,
+    encoding: "utf8",
+  });
 }
 
 /** A throwaway directory removed by `cleanup`. */
