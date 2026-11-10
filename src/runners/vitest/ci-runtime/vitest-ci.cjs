@@ -2,10 +2,12 @@
 // 018-16). Loaded through `NODE_OPTIONS` beside the recorder, in every process
 // the command starts; it acts only in a Vitest CLI process (its main script is
 // the `bin` of the `vitest` package), on the main thread. There it wraps
-// `Logger.prototype.setVitest` of the project's `vitest/node`, which each
-// Vitest instance calls once as it is built, and adds one reporter to the
-// instance after Vitest built its own (`onAfterSetServer`), so the run's own
-// reporters, config and exit code stay as they are.
+// `Vitest.prototype.start`, which the CLI calls for each run after the
+// instance built its own reporters, and adds one reporter to the instance
+// before the run starts, so the run's own reporters, config and exit code stay
+// as they are. Vitest 4.1 and 5 export the `Vitest` class only as a type;
+// `vitest/node` imports it from one of its own modules for its `version`, so
+// the hook looks there (row 018-26: Vitest 4.1 has no `Logger.setVitest`).
 //
 // The reporter keeps what each test module ended with and, at the end of the
 // run, writes one JSON file per process into the private directory the
@@ -24,7 +26,7 @@
 // file with `state: "started"`, so a Vitest process that ends without a run
 // end is known. CommonJS with Node built-ins only; `require` of the project's
 // `vitest/node` (an ES module without top-level await) is synchronous, so the
-// wrap is in place before the CLI builds its instance. Any error of its own is
+// wrap is in place before the CLI starts its run. Any error of its own is
 // written to the file as `failed`, never thrown into the run.
 "use strict";
 const fs = require("node:fs");
@@ -163,33 +165,57 @@ function install(settings, root) {
     } catch {}
   };
   try {
-    const node = createRequire(path.join(root, "package.json"))("vitest/node");
-    const original = node.Logger?.prototype?.setVitest;
-    if (typeof original !== "function") throw new Error("vitest/node has no Logger.setVitest");
-    const attached = new WeakSet();
-    node.Logger.prototype.setVitest = function setVitest(vitest, ...rest) {
-      const result = original.call(this, vitest, ...rest);
-      if (vitest && !attached.has(vitest)) {
-        attached.add(vitest);
-        try {
-          if (typeof vitest.onAfterSetServer !== "function") {
-            throw new Error("the Vitest instance has no onAfterSetServer");
-          }
-          const reporter = reporterFor(vitest, file, settings, fail);
-          vitest.onAfterSetServer(() => {
-            if (Array.isArray(vitest.reporters) && !vitest.reporters.includes(reporter)) {
-              vitest.reporters.push(reporter);
-            }
-          });
-        } catch (error) {
-          fail(error);
-        }
+    const Vitest = vitestClass(createRequire(path.join(root, "package.json")));
+    if (Vitest === null) throw new Error("vitest/node imports no Vitest class with start");
+    const original = Vitest.prototype.start;
+    const reporters = new WeakMap();
+    Vitest.prototype.start = function start(...args) {
+      try {
+        // Again at each start: a restart builds the instance's reporters anew.
+        if (!Array.isArray(this.reporters)) throw new Error("the Vitest instance has no reporters");
+        if (!reporters.has(this)) reporters.set(this, reporterFor(this, file, settings, fail));
+        const reporter = reporters.get(this);
+        if (!this.reporters.includes(reporter)) this.reporters.push(reporter);
+      } catch (error) {
+        fail(error);
       }
-      return result;
+      return original.apply(this, args);
     };
   } catch (error) {
     fail(error);
   }
+}
+
+/**
+ * The project's `Vitest` class, or `null`: an export of `vitest/node` or of a
+ * module it imports by a relative path, whose static `version` is
+ * `vitest/node`'s and whose prototype has `start`. Those modules are loaded
+ * already, so `require` only returns them; one that does not load is passed
+ * over.
+ */
+function vitestClass(load) {
+  const file = load.resolve("vitest/node");
+  const node = load(file);
+  if (typeof node.version !== "string") return null;
+  const modules = [node];
+  const source = fs.readFileSync(file, "utf8");
+  for (const [, specifier] of source.matchAll(/\bfrom\s*["'](\.\.?\/[^"']+)["']/g)) {
+    try {
+      modules.push(load(path.resolve(path.dirname(file), specifier)));
+    } catch {}
+  }
+  for (const module of modules) {
+    for (const value of Object.values(module)) {
+      if (
+        typeof value === "function" &&
+        value.version === node.version &&
+        typeof value.prototype?.start === "function"
+      ) {
+        return value;
+      }
+    }
+  }
+  return null;
 }
 
 /** The evidence's settings in `SQUEAL_CI_RECORD`, or `null`. */

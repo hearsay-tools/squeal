@@ -1,0 +1,10 @@
+{
+  "name": "vitest",
+  "version": "4.1.10",
+  "type": "module",
+  "bin": { "vitest": "./vitest.mjs" },
+  "exports": {
+    "./node": { "default": "./lib/node.js" },
+    "./package.json": "./package.json"
+  }
+}
