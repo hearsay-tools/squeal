@@ -12,7 +12,7 @@ import { describeFailure } from "../state/fingerprint.js";
 import { isBusy, withBusySlice } from "../store/connection.js";
 import { plural } from "../text.js";
 import type { ResolvedGroup } from "../types/check-groups.js";
-import type { EpochMs, RelativePath } from "../types/common.js";
+import type { EpochMs, ProjectName, RelativePath } from "../types/common.js";
 import type { SyncAnswer } from "../types/daemon.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { Revision } from "../types/revision.js";
@@ -828,8 +828,10 @@ class TierScheduler implements Scheduler {
     return this.#updateCommit();
   }
 
-  refreshObserved(): boolean {
+  refreshObserved(projects: readonly ProjectName[] = []): boolean {
     if (this.#closed || this.#reinstalled || this.#awaitingInstall || !this.#context) return false;
+    // Row 018-28: the files whose set grew wait for the refinement's regrow, as another worktree's do.
+    if (projects.length > 0) this.#context.keys.refreshObserved(projects);
     this.#runnerWork.queueObserved();
     this.#pump();
     return true;
