@@ -107,3 +107,20 @@ Done when:
 - every test above passes;
 - the existing coverage and adapter tests pass unchanged with the key off;
 - the marker change is in the validity cases if `test/keys/key-format.test.ts` asks for one.
+
+## 020-07a I: integrate 020-07a and 020-10a onto 0.1.424
+
+Use /worker. Shape: finish.
+
+Outcome: one branch with the 0.1.424 candidate, then 020-07a (local branch `hold/020-07a`, commits `c9a834af2^..c1606000e`), then 020-10a (`hold/020-10a`, commits from `ea397680c` up to `af09043a1`), with every check green. The later wave 3 rows start from it.
+
+The known conflict is in `src/core/code/gate/evaluate.ts`. 020-09 R1 (review 0.1.424 B1, `reviews/0.1.424.md`) added a completeness gap beside D5's subset judgement, so an exception accepts only complete head evidence. 020-07a moved the per-function decision into `judgeFunction` (`gate/rule.ts`). Keep both intents: `judgeFunction`'s output carries the completeness gap (the first unmet D5 condition, `null` when complete) apart from its subset judgement, and `exceptions.ts` keeps requiring it. The tests in `test/code/gate/exceptions-complete.test.ts` and `test/code/gate/parity.test.ts` must both pass unchanged.
+
+Owns: conflict resolution in the files the two holds touch; `gate/rule.ts` and `gate/exceptions.ts` for the carried gap.
+
+Leave alone: new behaviour. This row is an integration.
+
+Done when:
+- `git cherry-pick -x` of both holds is complete, with conflicts resolved and the resolution in its own commit;
+- lint and typecheck are clean;
+- `squeal status --wait 60000` on the changed paths is current, apart from bundle drift.
