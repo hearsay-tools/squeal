@@ -230,6 +230,9 @@ function leftOut(counts: CiExportCounts): string {
       ? `${files(counts.uncertified)} whose inputs here are not what their shard read`
       : null,
     counts.ambiguous > 0 ? `${files(counts.ambiguous)} with two checks of one name` : null,
+    counts.inspector > 0
+      ? `${files(counts.inspector)} that ran node:inspector beside Squeal's coverage provider`
+      : null,
   ]
     .filter((part) => part !== null)
     .join(", ");
