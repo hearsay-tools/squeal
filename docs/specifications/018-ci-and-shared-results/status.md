@@ -72,6 +72,7 @@ Started: 2026-10-31
 - 2026-11-10, row 018-24 landed on main (review PASS; candidate CI 42726516283 green after one rerun: `test/evals/retry-knobs.test.ts` failed with a blank service port, as in runs 42635292959 and 42488454322, and passed on retry).
 - 2026-11-10, the human: "cezar proof: Yes, all four" (row 018-21: one cezar PR with the Node 26.x pin, `squeal ci record` in the Vitest jobs, an export and publish job, `shared.ref`; then a one-day measurement), "Row 018-23: Yes, now", "Capture: Yes, measure" (row 018-25).
 - 2026-11-10, row 018-21: draft PR hearsay-tools/cezarion#3151 (`.node-version` 26.13.0 for the Vitest job; merge-group shards under `squeal ci record` with parts in `$RUNNER_TEMP`; `squeal-export` read-only job and `squeal-publish` the only `contents: write` job with no repository code and the token only in the publish step; neither gates a merge; `shared.ref`; Squeal pinned to `squeal--v0.1.423`). Coordinator 31e1d860 holds spec 020's change to `ci record` (020-08) until 0.1.424 (018-23) is released.
+- 2026-11-10, row 018-25 landed (`research/capture-saving.md`): of agents' own storable Vitest runs, 55 to 93% (squeal) and 73 to 82% (cezar) of file-runs tested content the daemon had not run, but the daemon later ran that same content only 283 to 430 and 1,354 to 1,596 times: at most 0.32% and 1.7% of its own file-seconds. Recommendation: no-go for the capture reporter as a CPU saving; do not reopen without new evidence.
 
 ## Open questions
 
