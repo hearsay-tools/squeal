@@ -10,6 +10,7 @@ import type { CodeStore, CodeStoreOpenFailure } from "../store/types.js";
 import { type DropCause, Drops } from "./drops.js";
 import {
   type Mapper,
+  type MapperOptions,
   type MapWorker,
   mapWorkerScript,
   threadMapper,
@@ -124,7 +125,16 @@ export function createCoverageWriter(options: CoverageWriterOptions): CoverageWr
   let worker: MapWorker | null =
     options.worker === undefined ? (script === null ? null : { script }) : options.worker;
   let mapper: Mapper | null = null;
-  const mapping = { format: options.format, skip: options.skip ?? (() => false), pace };
+  const mapping: MapperOptions = {
+    format: options.format,
+    skip: options.skip ?? (() => false),
+    pace,
+    // Spec 020 D12: a child's file dropped alone; its test file keeps its record.
+    childDropped: (testFile, why) => {
+      options.log(`coverage: ${testFile.path}: a child process's file was dropped: ${why}`);
+      drops.count("child", testFile.path, why, closed);
+    },
+  };
   const mapperNow = (): Mapper => {
     if (mapper !== null) return mapper;
     const thread = worker;
