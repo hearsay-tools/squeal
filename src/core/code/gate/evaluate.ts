@@ -277,6 +277,7 @@ export function evaluate(
         complexityInclude: [...policy.include],
         complexityExclude: [...policy.exclude],
         complexityMaxFileBytes: policy.maxFileBytes,
+        ...(policy.children ? { coverageChildren: true as const } : {}),
       },
     },
     head: { commit: changed.headCommit, dirty: changed.dirty, paths: headPaths(changed) },
