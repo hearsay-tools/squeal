@@ -2,9 +2,12 @@
 // `coverage-map.mjs` in a plugin's `dist/cli/` (row 015-42), with
 // `workerMapper`'s protocol (`src/core/code/coverage/mapper.ts`): the
 // worker reads and maps a payload, and this side gives the sources it asks
-// for. CommonJS with Node built-ins only.
+// for. Both sides' time is Squeal's (`clock.cjs`, row 018-29): this side's
+// answers on the clock, the worker's busy time added when it closes.
+// CommonJS with Node built-ins only.
 "use strict";
 const { Worker } = require("node:worker_threads");
+const clock = require("./clock.cjs");
 
 /**
  * The records' worker, `workerMapper`'s protocol: a job, the sources it
@@ -29,29 +32,38 @@ function startMapper(settings, failed) {
     for (const job of jobs.values()) job.reject(error);
     jobs.clear();
   };
-  worker.on("message", (answer) => {
-    const job = jobs.get(answer.id);
-    if (job === undefined) return;
-    try {
-      if (answer.type === "need") {
-        const given = [];
-        const absent = [];
-        for (const file of answer.paths) {
-          const source = job.source(file);
-          if (source === null) absent.push(file);
-          else given.push([file, source]);
+  worker.on(
+    "message",
+    clock.timed((answer) => {
+      const job = jobs.get(answer.id);
+      if (job === undefined) return;
+      try {
+        if (answer.type === "need") {
+          const given = [];
+          const absent = [];
+          for (const file of answer.paths) {
+            const source = job.source(file);
+            if (source === null) absent.push(file);
+            else given.push([file, source]);
+          }
+          worker.postMessage({
+            type: "sources",
+            id: answer.id,
+            sources: job.sources,
+            given,
+            absent,
+          });
+          return;
         }
-        worker.postMessage({ type: "sources", id: answer.id, sources: job.sources, given, absent });
-        return;
+        jobs.delete(answer.id);
+        if (answer.type === "record") job.resolve(shared(answer.record));
+        else job.reject(new Error(answer.message));
+      } catch (error) {
+        jobs.delete(answer.id);
+        job.reject(error);
       }
-      jobs.delete(answer.id);
-      if (answer.type === "record") job.resolve(shared(answer.record));
-      else job.reject(new Error(answer.message));
-    } catch (error) {
-      jobs.delete(answer.id);
-      job.reject(error);
-    }
-  });
+    }),
+  );
   worker.on("error", fail);
   worker.on("exit", (code) => fail(new Error(`the coverage worker exited with code ${code}`)));
   const run = (job) =>
@@ -71,6 +83,10 @@ function startMapper(settings, failed) {
     async close() {
       await queue;
       broken ??= new Error("closed");
+      try {
+        // The time its event loop was busy: the mapping (its own evidence time is in it too, a little).
+        clock.add(worker.performance.eventLoopUtilization().active);
+      } catch {}
       await worker.terminate();
     },
   };

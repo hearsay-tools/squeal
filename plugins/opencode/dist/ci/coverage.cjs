@@ -21,6 +21,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { createHash } = require("node:crypto");
+const clock = require("./clock.cjs");
 const { isFiltered, projectFile, settle, transformOf } = require("./coverage-drops.cjs");
 const { startMapper } = require("./map-client.cjs");
 
@@ -110,15 +111,14 @@ function attachStamps(vitest, root, stamps) {
     const reads = new Map();
     stamps.set(container, reads);
     const load = container.load.bind(container);
+    // Row 018-29: the hash is on the clock; the read, which waits, is not.
+    const stamp = clock.timed((id, bytes) => {
+      reads.set(id, createHash("sha1").update(bytes).digest("hex"));
+    });
     container.load = async (id, ...rest) => {
       if (projectFile(id, root) !== null) {
         try {
-          reads.set(
-            id,
-            createHash("sha1")
-              .update(await fs.promises.readFile(id))
-              .digest("hex"),
-          );
+          stamp(id, await fs.promises.readFile(id));
         } catch {
           reads.delete(id);
         }
@@ -159,13 +159,13 @@ function runCoverage(vitest, settings, stamps) {
       sha1: stamps.get(environment.pluginContainer)?.get(file),
     };
   };
-  const take = () => {
+  const take = clock.timed(() => {
     try {
       for (const batch of vitest.coverageProvider?.takeBatches?.() ?? []) submit(batch);
     } catch (error) {
       failed(error);
     }
-  };
+  });
   const submit = (batch) => {
     const project = vitest.projects.find((p) => p.name === batch.projectName);
     const environment = project?.vite.environments[batch.environment];
@@ -208,7 +208,7 @@ function runCoverage(vitest, settings, stamps) {
   };
   return {
     /** The files a filter runs only part of (Vitest 4.1 and 5 `TestSpecification`). */
-    runStart(specifications) {
+    runStart: clock.timed((specifications) => {
       try {
         for (const spec of specifications ?? []) {
           const partial =
@@ -221,7 +221,7 @@ function runCoverage(vitest, settings, stamps) {
       } catch (error) {
         failed(error);
       }
-    },
+    }),
     take,
     /** After the run: each of `modules`' records or why it has none, and the header. */
     async end(modules) {
