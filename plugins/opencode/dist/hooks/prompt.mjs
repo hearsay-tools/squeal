@@ -1625,8 +1625,36 @@ var WATCHER_TIMINGS = {
 
 // src/core/status/feed-late.ts
 var FEED_LATE_MS = 2 * WATCHER_TIMINGS.reconcileIntervalMs;
+function runnersHave(runners, start) {
+  if (runners === void 0 || runners.length === 0) {
+    return `${start ? "The" : "the"} test runner has`;
+  }
+  const last = runners.at(-1);
+  if (runners.length === 1) return `${last} has`;
+  return `${runners.slice(0, -1).join(", ")} and ${last} have`;
+}
+function unlisted({ revision, runners, files: files2 = "test files" }, start) {
+  return `${runnersHave(runners, start)} not yet listed the test files of revision ${revision}, so new ${files2} are not counted`;
+}
+function unlistedText(what) {
+  return `${unlisted(what, true)}.`;
+}
 function lateText(late, revision) {
-  return `Edits since ${timeText(late.since)} may not be seen yet; results are current as of revision ${revision}.`;
+  return `Squeal has not yet read edits made after ${timeText(late.since)}; these counts cover revision ${revision} and earlier.`;
+}
+function behindText(late, revision, runners) {
+  return `Squeal is behind: it has not read edits made after ${timeText(late.since)}, and ${runnersHave(runners, false)} not listed revision ${revision}'s test files yet, so new test files are not counted.`;
+}
+function delaysText(header, late) {
+  const { revision } = header;
+  const pending = header.runnerPartPending === true;
+  if (late === void 0) {
+    return pending ? unlistedText({ revision, runners: header.listingRunners }) : null;
+  }
+  return pending ? behindText(late, revision, header.listingRunners) : lateText(late, revision);
+}
+function lateOf(daemon) {
+  return daemon?.state === "alive" ? daemon.late : void 0;
 }
 
 // src/core/presence/findings.ts
@@ -1701,7 +1729,7 @@ function shortOf(facts, record, shutDown, heartbeat) {
   const { of, version, claimed, at: since } = mark;
   return { of, version, claimed, since };
 }
-function lateOf(facts, record, heartbeat, stopping, at) {
+function lateOf2(facts, record, heartbeat, stopping, at) {
   if (heartbeat.state !== "alive" || record === null || stopping() !== null) return null;
   const since = facts.feedDelivered();
   if (since === null || since < record.startedAt || at - since <= FEED_LATE_MS) return null;
@@ -1732,7 +1760,7 @@ function decidePresence(facts, at) {
   });
   const rest = once(() => restOf(facts, at));
   const short = once(() => shortOf(facts, record(), shutDown, heartbeat()));
-  const late = once(() => lateOf(facts, record(), heartbeat(), stopping, at));
+  const late = once(() => lateOf2(facts, record(), heartbeat(), stopping, at));
   const heartbeatLate = once(() => {
     const daemon = record();
     if (!down() || daemon === null || shutDown() || start() !== null || stopped()) return null;
@@ -2476,10 +2504,10 @@ function notCurrentText(header) {
   if (header.testFilesListed === false) {
     return "; the daemon has not listed this worktree's test files yet";
   }
-  const unlisted2 = header.runnerPartPending === true ? [`revision ${header.revision} is not listed yet, so test files it adds are not counted`] : [];
-  return `; ${[filesText2(header, files2, unlisted2.length > 0), ...unlisted2].join("; ")}`;
+  const unlisted3 = header.runnerPartPending === true ? [`revision ${header.revision} is not listed yet, so test files it adds are not counted`] : [];
+  return `; ${[filesText2(header, files2, unlisted3.length > 0), ...unlisted3].join("; ")}`;
 }
-function filesText2(header, files2, unlisted2) {
+function filesText2(header, files2, unlisted3) {
   const total = files2.current + files2.pending + files2.stale + files2.unknown;
   if (total > files2.current) {
     const fileParts = partsText({
@@ -2491,10 +2519,9 @@ function filesText2(header, files2, unlisted2) {
     return `not current: ${total - files2.current} of ${plural(total, "test file")} (${fileParts})${tests2}`;
   }
   if (total === 0) return "the daemon listed no test files";
-  if (unlisted2) return `${plural(total, "test file")} current`;
   const live = header.daemon?.state === "alive" && header.daemon.late === void 0;
-  if (!live || header.awaitingInstall === true) {
-    return `${plural(total, "test file")} current as of revision ${header.revision}`;
+  if (unlisted3 || !live || header.awaitingInstall === true) {
+    return `${plural(total, "test file")} current`;
   }
   return `all ${plural(total, "test file")} current`;
 }
@@ -2780,7 +2807,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.423";
+  if (true) return "0.1.424";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -5020,6 +5047,7 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
   const view = policy === null ? null : slowPolicyView(policy);
   const slow = isSlow ?? view?.isSlow;
   const optimizerOff = readOptimizerOff(store, worktreeId);
+  const runnerPartPending = refinedRevision !== null && refinedRevision < revision;
   return {
     revision,
     ...commit === void 0 ? {} : { commit },
@@ -5037,7 +5065,8 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
     inheritedFileLevelCount,
     ...importedCount === 0 ? {} : { importedCount },
     refinedRevision,
-    runnerPartPending: refinedRevision !== null && refinedRevision < revision,
+    runnerPartPending,
+    ...listingRunnersField(runnerPartPending, root, policy),
     ...slow === void 0 ? {} : { slowPending: countSlowPending(states, keys, slow) },
     ...slowTierField(store, worktreeId, states, keys, policy, view),
     ...policy !== null && groupTextsShown(policy) ? groupFields(store, worktreeId, states, keys, policy) : {},
@@ -5075,8 +5104,16 @@ function readRefined(store, worktreeId) {
   const value = raw === null ? Number.NaN : Number(raw);
   return Number.isInteger(value) ? value : null;
 }
-function runnerPartText(revision) {
-  return `the runner part of revision ${revision}`;
+function listingRunnersField(pending, root, policy) {
+  if (!pending || root === void 0 || policy === null) return {};
+  const others = policy.nodeTest.length + policy.pytest.length;
+  return {
+    listingRunners: [
+      ...others === 0 || vitestDetected(root) ? ["Vitest"] : [],
+      ...policy.nodeTest.length > 0 ? ["node:test"] : [],
+      ...policy.pytest.length > 0 ? ["pytest"] : []
+    ]
+  };
 }
 function fullSuiteText({ revision, fullSuite }, command) {
   if (fullSuite.atCurrentRevision) return `completed at revision ${revision}`;
@@ -5140,7 +5177,6 @@ function toKnownFailure(state, revision) {
 // src/core/delivery/header.ts
 var NOT_LISTED_SENTENCE = "The daemon has not listed this worktree's test files yet; these counts are not complete.";
 var CHANGED_PATHS_SHOWN = 3;
-var capitalize2 = (text2) => `${text2.charAt(0).toUpperCase()}${text2.slice(1)}`;
 function awaitingInstallText(header) {
   if (header.awaitingInstall !== true || header.daemon?.state === "down") return null;
   return awaitingInstallSentence(header.missingInstalls ?? [], header.installCommand);
@@ -5155,8 +5191,9 @@ function changedText(header) {
 }
 function incompleteText(header) {
   const listed4 = header.testFilesListed === false ? ` ${NOT_LISTED_SENTENCE}` : "";
-  const runnerPart = header.runnerPartPending === true ? ` ${capitalize2(runnerPartText(header.revision))} is pending; test files it adds are not counted yet.` : "";
-  return `${listed4}${runnerPart}`;
+  const late = header.daemon?.stopping === void 0 ? lateOf(header.daemon) : void 0;
+  const delays = delaysText(header, late);
+  return `${listed4}${delays === null ? "" : ` ${delays}`}`;
 }
 function daemonText(header, command) {
   const awaiting2 = awaitingInstallText(header);
@@ -5216,8 +5253,7 @@ function livenessSentence(daemon, revision, command) {
     return ` The daemon is ${stoppingText(daemon.stopping, command)}; results are as of revision ${revision}.`;
   }
   if (daemon.state === "alive") {
-    const short = daemon.short === void 0 ? "" : ` The daemon is up: ${shortText(daemon.short, command)}.`;
-    return daemon.late === void 0 ? short : `${short} ${lateText(daemon.late, revision)}`;
+    return daemon.short === void 0 ? "" : ` The daemon is up: ${shortText(daemon.short, command)}.`;
   }
   const stop = stopOf(daemon);
   if (stop === "until-start") {
@@ -5248,7 +5284,7 @@ var statusPointer = (command) => `\`${command} status\` lists every known failur
 var partsText2 = (checks, fileLevel) => checkPartsText(countChecks(checks), fileLevel);
 var fileLevelWord = (shown) => shown === "fail" ? "that did not load" : "loaded";
 var upper2 = (outcome) => outcome.toUpperCase();
-var capitalize3 = (text2) => `${text2.charAt(0).toUpperCase()}${text2.slice(1)}`;
+var capitalize2 = (text2) => `${text2.charAt(0).toUpperCase()}${text2.slice(1)}`;
 function whyLine(check, command) {
   return `Full output: ${command} why ${shellWord(checkName(check))}`;
 }
@@ -5266,7 +5302,7 @@ function entryBlock(entry3, revision, flaky) {
       entry3.location === null ? null : atText(entry3.location, entry3.testFileFrame),
       ...failed2 ? [touchesLine(entry3), loadLine(entry3)] : [recoveryProvenance(entry3, revision)],
       ...flaky(entry3.flaky),
-      entry3.retry === void 0 ? null : capitalize3(retryText(entry3.retry))
+      entry3.retry === void 0 ? null : capitalize2(retryText(entry3.retry))
     ],
     [{ check: entry3.check, shown: entry3.to }]
   );
@@ -5517,9 +5553,9 @@ function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQ
         f.summary === "" ? null : cap(f.summary, SUMMARY_MAX_CHARS),
         f.location === null ? null : atText(f.location, f.testFileFrame),
         f.validity === "current" ? null : `${f.validity}, observed at revision ${f.observedAt}`,
-        f.recorded === void 0 ? f.recordedUnknown === true ? capitalize3(RECORDED_UNKNOWN_TEXT) : null : (
+        f.recorded === void 0 ? f.recordedUnknown === true ? capitalize2(RECORDED_UNKNOWN_TEXT) : null : (
           // Row 011-67 (gh-52): a failure recorded under load names its load retry.
-          capitalize3(
+          capitalize2(
             recordedText(f.recorded, registration2.consumer.worktreeId, now, {
               command,
               path: f.check.testPath
@@ -9934,13 +9970,13 @@ function staleHiddenLockfile(dir, lockfile) {
   const lockTime = lstatSync2(join15(dir, HIDDEN_LOCKFILE)).mtimeMs;
   const folders = packageFolders(dir, workspaces(listed4));
   const seen = new Set(folders.map((folder) => folder.path));
-  const unlisted2 = folders.filter((folder) => !Object.hasOwn(listed4, folder.path)).map((folder) => folder.path);
+  const unlisted3 = folders.filter((folder) => !Object.hasOwn(listed4, folder.path)).map((folder) => folder.path);
   const newer = folders.filter(
     (folder) => Object.hasOwn(listed4, folder.path) && folder.mtimeMs > lockTime
   );
   const missing = Object.keys(listed4).filter((path) => isInstalledFolder(path) && !seen.has(path));
   const parts = [
-    ["not listed in it", unlisted2],
+    ["not listed in it", unlisted3],
     ["newer than it", newer.map((folder) => folder.path)],
     ["missing", missing]
   ];
@@ -14240,7 +14276,7 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
   const quiet = startedAt === null ? null : publishedWaits(store, worktreeId, startedAt, now);
   const pool = startedAt === null ? null : publishedPoolWaits(store, worktreeId, startedAt, now);
   const header = reads?.header ?? readHeader(store, worktreeId, states, keys);
-  const unlisted2 = unlistedReason(header, policy);
+  const unlisted3 = unlistedReason(header, policy);
   const reasons = unknownReasons(store, worktreeId, states, root, now);
   const setups = setupsOf(states);
   const retried = retriedRuns(store, worktreeId);
@@ -14308,7 +14344,7 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
       since: run2?.startedAt ?? null,
       ...run2 === void 0 ? {} : { files: run2.testFiles.length },
       ...setup === void 0 ? {} : { setup }
-    } : unlisted2 ?? queuedReason(store, worktreeId, ref2, key, lane, runs, policy, now);
+    } : unlisted3 ?? queuedReason(store, worktreeId, ref2, key, lane, runs, policy, now);
     const told = yieldFacts(base, lane, run2);
     const asRetry = told.kind === "queued" && !promoted.has(testFileId(ref2)) && retried(ref2, key);
     const pending = told.kind === "running" ? { ...told, ...batchOf(ref2) } : asRetry ? { ...told, retried: true } : told;
@@ -14412,7 +14448,13 @@ function unlistedReason(header, policy) {
   const refined2 = header.refinedRevision;
   if (header.runnerPartPending !== true || refined2 === null || refined2 === void 0) return null;
   const callBoundMs = runnerPartBoundMs(policy.runner.timeoutMs);
-  return { kind: "unlisted", revision: header.revision, callBoundMs };
+  const runners = header.listingRunners;
+  return {
+    kind: "unlisted",
+    revision: header.revision,
+    callBoundMs,
+    ...runners === void 0 ? {} : { runners }
+  };
 }
 function runOf(runs, ref2) {
   const id = testFileId(ref2);
@@ -14532,7 +14574,7 @@ function outstandingOf(store, worktreeId, root, reads, now, load) {
     add(standing3, file.testFile);
   }
   const said = [...groups.values()].some((g) => g.standing.kind === "unlisted");
-  if (header.runnerPartPending === true && !said) add(unlisted(header, policy), null);
+  if (header.runnerPartPending === true && !said) add(unlisted2(header, policy), null);
   if (reads.checkpoint !== void 0 && !reads.checkpoint.owed) {
     add({ kind: "checkpoint" }, null);
   }
@@ -14543,11 +14585,13 @@ function outstandingOf(store, worktreeId, root, reads, now, load) {
 function waitsId(standing3) {
   return standing3.kind === "retry" && standing3.waits !== void 0 ? ` ${JSON.stringify(standing3.waits)}` : "";
 }
-function unlisted(header, policy) {
+function unlisted2(header, policy) {
+  const runners = header.listingRunners;
   return {
     kind: "unlisted",
     revision: header.revision,
-    callBoundMs: runnerPartBoundMs(policy.runner.timeoutMs)
+    callBoundMs: runnerPartBoundMs(policy.runner.timeoutMs),
+    ...runners === void 0 ? {} : { runners }
   };
 }
 function retryStandings(reads, worktreeId, policy) {
