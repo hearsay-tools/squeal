@@ -148,46 +148,56 @@ function measuresOf(fn: ChangedFunction, ev: PathEvidence, ctx: Context): Measur
   };
 }
 
+/** D5.2 to D5.5: the gap of the first condition of complete evidence that does not hold; `null` when all do. */
+function completeness(m: Measures, ev: PathEvidence, ctx: Context): GateGap | null {
+  if (ev.expected.length === 0) return "no-loader";
+  if (ev.missing !== null) return ev.missing;
+  if (m.crap === null) return "not-joined";
+  if (ctx.failed) return "test-failed";
+  return null;
+}
+
 /**
- * D5 without the CC rule (`judge` applies it): the first missing condition
- * names the gap. A loader that did not finish rules out a pass: its later
- * tests never ran (amended 2026-11-10, review 0.1.423 B2). The records in
- * hand of a source whose missing loaders all completed prove a pass by 015
- * D9's bound, never a violation.
+ * D5 without the CC rule (`judge` applies it), from the completeness `gap`.
+ * A loader that did not finish rules out a pass: its later tests never ran
+ * (amended 2026-11-10, review 0.1.423 B2). The records in hand of a source
+ * whose missing loaders all completed prove a pass by 015 D9's bound, never
+ * a violation.
  */
-function evidenceJudgement(m: Measures, ev: PathEvidence, ctx: Context): Judgement {
-  if (ev.expected.length === 0) return gapOf("no-loader");
-  if (ev.missing === "not-finished") return gapOf("not-finished");
+function evidenceJudgement(m: Measures, gap: GateGap | null, ctx: Context): Judgement {
   const underCrap = m.crap !== null && m.crap <= ctx.policy.crapThreshold;
-  if (ev.missing !== null) return underCrap && !ctx.failed ? PASS : gapOf(ev.missing);
-  if (m.crap === null) return gapOf("not-joined");
-  if (ctx.failed) return gapOf("test-failed");
-  return underCrap ? PASS : VIOLATION;
+  if (gap === null) return underCrap ? PASS : VIOLATION;
+  return gap === "no-record" && underCrap && !ctx.failed ? PASS : gapOf(gap);
 }
 
 const SKIPPED: Judgement = { state: "skipped", gap: null };
 
 /**
- * D5: one changed function counted outside a parse error, and what its
- * evidence alone says (D8 reads it). Over the CC limit is a violation on
- * the count alone, whatever the evidence; a `coverage.exclude` file wants
- * none.
+ * D5: one changed function counted outside a parse error, what its
+ * evidence alone says, and whether that evidence is complete (D8 reads
+ * both). Over the CC limit is a violation on the count alone, whatever the
+ * evidence; a `coverage.exclude` file wants none.
  */
 function judge(fn: ChangedFunction, ctx: Context): Judged {
   const over = fn.count.complexity > ctx.policy.complexityThreshold;
   if (ctx.excluded(fn.path)) {
-    return { row: report(fn, UNMEASURED, over ? VIOLATION : SKIPPED), evidence: SKIPPED };
+    return {
+      row: report(fn, UNMEASURED, over ? VIOLATION : SKIPPED),
+      evidence: SKIPPED,
+      gap: null,
+    };
   }
   const ev = ctx.evidenceOf(fn);
   const measures = measuresOf(fn, ev, ctx);
-  const evidence = evidenceJudgement(measures, ev, ctx);
-  return { row: report(fn, measures, over ? VIOLATION : evidence), evidence };
+  const gap = completeness(measures, ev, ctx);
+  const evidence = evidenceJudgement(measures, gap, ctx);
+  return { row: report(fn, measures, over ? VIOLATION : evidence), evidence, gap };
 }
 
 /** D2.5: a changed function inside a parse error is not counted. */
 function inError(fn: ChangedFunction): Judged {
   const notCounted = gapOf("not-counted");
-  return { row: report(fn, UNMEASURED, notCounted), evidence: notCounted };
+  return { row: report(fn, UNMEASURED, notCounted), evidence: notCounted, gap: "not-counted" };
 }
 
 /**
