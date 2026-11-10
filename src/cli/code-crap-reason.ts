@@ -28,6 +28,7 @@ const UNKNOWN: Readonly<Record<UnknownCause, string>> = {
   skipped: "a test file that loads this file skipped a test",
   unkeyed: "Squeal cannot key a test file that loads this file",
   unread: "a coverage record cannot confirm this file's bytes",
+  "no-loader": "no test Squeal runs loads this file",
 };
 
 /** Review 0.1.297 B4: none ran the function, and a record cannot tell whether it ran. */
