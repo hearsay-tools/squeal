@@ -79899,7 +79899,8 @@ async function collectEvidence(cwd, changed2, options) {
       const chosen = selected2[i3] ?? [];
       if (chosen.length === 0) continue;
       const closure = (ref3) => runner.adapter.closure(ref3).catch(() => null);
-      const stored3 = await options.stored?.(runner.kind, chosen, closure) ?? /* @__PURE__ */ new Map();
+      const environment = () => runner.adapter.environment();
+      const stored3 = await options.stored?.(runner.kind, chosen, closure, environment) ?? /* @__PURE__ */ new Map();
       testFiles3.push(...stored3.values());
       const files4 = chosen.filter((ref3) => !stored3.has(ref3));
       if (files4.length === 0) continue;
@@ -80406,6 +80407,62 @@ init_reverse_index();
 init_observed2();
 init_git2();
 init_record();
+
+// src/core/code/gate/parts-environment.ts
+init_environment();
+init_environment_descriptor();
+init_key_format();
+async function environmentCheck(runners2, gate) {
+  const here = await gateViews(runners2, gate);
+  if (typeof here === "string") return () => here;
+  const told2 = /* @__PURE__ */ new Map();
+  return (part2, project) => {
+    const held3 = told2.get(part2) ?? /* @__PURE__ */ new Map();
+    told2.set(part2, held3);
+    if (!held3.has(project)) held3.set(project, compared(part2, project, here));
+    return held3.get(project) ?? null;
+  };
+}
+async function gateViews(runners2, gate) {
+  if (runners2 === void 0) return "the gate's runner gave no environment to compare";
+  let environments2;
+  try {
+    environments2 = await runners2();
+  } catch (error) {
+    return `the gate's runner gave no environment (${error instanceof Error ? error.message : String(error)})`;
+  }
+  const core = coreEnvironmentInputs({
+    squealVersion: "",
+    installedDependencies: "none",
+    allowlist: gate.allowlist,
+    env: gate.env
+  });
+  const ci = sawCi(gate.env);
+  const views2 = /* @__PURE__ */ new Map();
+  for (const runner of environments2) {
+    const observed2 = {
+      ...runner,
+      adapterVersion: `${runner.adapterVersion}+observe.${gate.recorderVersion}`
+    };
+    views2.set(runner.project, {
+      descriptor: describeEnvironment(KEY_FORMAT_VERSION, core, observed2, [], ci),
+      snapshotOptions: snapshotFields(runner.resolvedConfig)
+    });
+  }
+  return views2;
+}
+function compared(part2, project, here) {
+  const run6 = part2.projects.find((p) => p.descriptor.project === project);
+  if (run6 === void 0) return "it holds no environment of the project";
+  const view = here.get(project);
+  if (view === void 0) return "the gate's Vitest has no such project";
+  const differences2 = runDifferences(run6, view);
+  if (differences2.length === 0) return null;
+  const texts2 = differences2.map((d) => d.text).join("; ");
+  return `its run had another environment than this gate's: ${texts2} (the part as the export)`;
+}
+
+// src/core/code/gate/parts.ts
 function readPartsIn(dirs) {
   const parts3 = [];
   for (const dir2 of dirs) {
@@ -80441,7 +80498,7 @@ function partsEvidence(options) {
   for (const { file: name3, part: part2 } of options.parts) {
     for (const file of part2.testFiles) {
       const id = testFileId(file);
-      owners.set(id, [...owners.get(id) ?? [], { part: part2, file }]);
+      owners.set(id, [...owners.get(id) ?? [], { name: name3, part: part2, file }]);
     }
     const reason2 = options.children ? "coverage.children is on at the base, and ci record collects no child process's coverage" : unusable(part2);
     if (reason2 !== null) why2.set(reason2, [...why2.get(reason2) ?? [], name3]);
@@ -80454,14 +80511,28 @@ function partsEvidence(options) {
   const unused = new Set([...why2.values()].flat());
   const usable2 = new Set(options.parts.filter((p) => !unused.has(p.file)).map((p) => p.part));
   let here = null;
-  return async (runner, files4, closure) => {
+  const told2 = /* @__PURE__ */ new Set();
+  const tell = (text3) => {
+    if (!told2.has(text3)) options.note?.(text3);
+    told2.add(text3);
+  };
+  return async (runner, files4, closure, environment) => {
     const found3 = /* @__PURE__ */ new Map();
     if (runner !== "vitest" || usable2.size === 0) return found3;
-    here ??= readObjectFormat(options.root).then((format2) => hereOf2(options.root, format2));
+    const certify = await environmentCheck(environment, options.environment);
     for (const ref3 of files4) {
       const owned = owners.get(testFileId(ref3)) ?? [];
       const [only2] = owned;
       if (owned.length !== 1 || only2 === void 0 || !usable2.has(only2.part)) continue;
+      const differs = certify(only2.part, ref3.project);
+      if (differs !== null) {
+        const project = JSON.stringify(ref3.project);
+        tell(
+          `${only2.name} gives no evidence of project ${project}, so its test files run: ${differs}`
+        );
+        continue;
+      }
+      here ??= readObjectFormat(options.root).then((format2) => hereOf2(options.root, format2));
       const evidence = await taken(options, only2, await closure?.(ref3) ?? null, await here);
       if (evidence !== null) found3.set(ref3, evidence);
     }
@@ -80892,12 +80963,25 @@ init_runner2();
 init_version();
 init_git_layout();
 init_adapter2();
+init_runtime2();
 init_vitest();
 async function collectWithStores(root, env, changed2, options, parts3 = []) {
   const note = options.note ?? (() => {
   });
   const children = options.children === true;
-  const fromParts = parts3.length === 0 ? void 0 : partsEvidence({ root, parts: parts3, changed: changed2.paths, children, note });
+  const fromParts = parts3.length === 0 ? void 0 : partsEvidence({
+    root,
+    parts: parts3,
+    changed: changed2.paths,
+    children,
+    // D13.2: the gate's runs see `env`; the allow-list is this worktree's, as `ci record` reads it.
+    environment: {
+      env,
+      allowlist: readPolicy(root).env.allowlist,
+      recorderVersion: RECORDER_VERSION
+    },
+    note
+  });
   const stored3 = storedFiles(root, env, note, children);
   try {
     const known3 = inOrder([fromParts, stored3?.stored]);
@@ -80921,12 +81005,13 @@ async function collectWithStores(root, env, changed2, options, parts3 = []) {
 function inOrder(sources) {
   const given = sources.filter((s) => s !== void 0);
   if (given.length === 0) return null;
-  return async (runner, files4, closure) => {
+  return async (runner, files4, closure, environment) => {
     const found3 = /* @__PURE__ */ new Map();
     for (const source2 of given) {
       const left = files4.filter((ref3) => !found3.has(ref3));
       if (left.length === 0) break;
-      for (const [ref3, evidence] of await source2(runner, left, closure)) found3.set(ref3, evidence);
+      const known3 = await source2(runner, left, closure, environment);
+      for (const [ref3, evidence] of known3) found3.set(ref3, evidence);
     }
     return found3;
   };
