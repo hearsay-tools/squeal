@@ -126,6 +126,81 @@ describe("the shared results reader stopped (018 D14, R1 B1)", () => {
   });
 });
 
+/** Whether the reader went idle within `ms`, without waiting longer. */
+async function idleWithin(reader: { idle: () => Promise<void> }, ms: number): Promise<boolean> {
+  const late = new Promise<false>((resolve) => setTimeout(resolve, ms, false));
+  return Promise.race([reader.idle().then(() => true as const), late]);
+}
+
+/**
+ * A clone whose refs the git dir cannot resolve, as in a reftable
+ * repository: git 2.43 makes none, so its `reftable/` directory and an
+ * unresolved `HEAD` stand in for one.
+ */
+function reftableLike(dev: string): void {
+  git(dev, ["checkout", "-q", "--orphan", "unborn"]);
+  mkdirSync(join(dev, ".git", "reftable"));
+}
+
+describe("the shared results reader's local git stopped and bounded (018-23, review 0.1.422-r2 N1)", () => {
+  it("kills the commit listing in flight at a stop", async () => {
+    const s = scratch();
+    const { dev } = await publishedClone(s);
+    const { reader, commits, notes } = readerOf(dev);
+    const spy = spyGit(s, `"ls-tree "*`);
+    reader.nudge();
+    await spy.held();
+    reader.close();
+    spy.mark("closed");
+    expect(await idleWithin(reader, 2_000)).toBe(true);
+    spy.release();
+    expect(callsAfter(spy.calls(), "closed")).toEqual([]);
+    expect(commits()).toEqual([]);
+    expect(notes).toEqual([]);
+  });
+
+  it("starts no git to read an unborn HEAD", async () => {
+    const s = scratch();
+    const { dev } = await publishedClone(s);
+    git(dev, ["checkout", "-q", "--orphan", "unborn"]);
+    const { run, commits } = readerOf(dev);
+    const spy = spyGit(s, null);
+    await run();
+    expect(spy.calls()).toEqual([]);
+    expect(commits()).toEqual([]);
+  });
+
+  it("kills the HEAD read through git at a stop", async () => {
+    const s = scratch();
+    const { dev } = await publishedClone(s);
+    reftableLike(dev);
+    const { reader, commits } = readerOf(dev);
+    const spy = spyGit(s, `"rev-parse --verify -q HEAD"`);
+    reader.nudge();
+    await spy.held();
+    reader.close();
+    spy.mark("closed");
+    expect(await idleWithin(reader, 2_000)).toBe(true);
+    spy.release();
+    expect(callsAfter(spy.calls(), "closed")).toEqual([]);
+    expect(commits()).toEqual([]);
+  });
+
+  it("bounds the HEAD read through git with its own timer", async () => {
+    const s = scratch();
+    const { dev } = await publishedClone(s);
+    reftableLike(dev);
+    const { reader, commits } = readerOf(dev, { headTimeoutMs: 200 });
+    const spy = spyGit(s, `"rev-parse --verify -q HEAD"`);
+    reader.nudge();
+    await spy.held();
+    expect(await idleWithin(reader, 2_000)).toBe(true);
+    spy.release();
+    expect(spy.calls()).toEqual(["rev-parse --verify -q HEAD"]);
+    expect(commits()).toEqual([]);
+  });
+});
+
 describe("the shared results reader's start point (018 D14, R1 B2)", () => {
   it("takes the new nearest main commit when main moved and HEAD did not", async () => {
     const s = scratch();
