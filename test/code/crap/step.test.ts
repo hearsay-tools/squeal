@@ -52,13 +52,14 @@ describe("the coverage step", () => {
     expect(rig.transitions("src/a.ts", ["hot", "cold", "tiny"])).toEqual([]);
   });
 
-  it("judges a source no test file loads as run by none", async () => {
+  it("reads a source no test file loads as unknown, never as run by none (spec 020 D11.5)", async () => {
     const rig = coverageRig();
     await rig.edit({ "src/a.ts": A, "scripts/x.ts": "tool 3 x1\n" });
     rig.loader("test/a.test.ts", { closure: ["src/a.ts"], record: ranHotAndTiny(rig) });
     rig.step();
-    expect(rig.states("uncovered")).toContain("tool fail -");
-    expect(rig.states("crap")).toContain(`tool pass ${crapScore(3, 0)}`);
+    expect(fileState(rig, "scripts/x.ts")).toMatchObject({ state: "unknown", cause: "no-loader" });
+    expect(rig.states("uncovered")).toContain("tool unknown -");
+    expect(rig.states("crap")).toContain("tool unknown -");
   });
 
   it("judges nothing before the worktree's test files are listed", async () => {

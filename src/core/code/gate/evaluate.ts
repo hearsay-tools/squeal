@@ -4,7 +4,6 @@ import type { RelativePath } from "../../types/common.js";
 import type { FileHash } from "../../types/keys.js";
 import type { CoverageSource } from "../coverage/types.js";
 import { type JoinedFunction, joinCoverage } from "../crap/join.js";
-import { crapScore } from "../crap/score.js";
 import { applyExceptions, type Judged } from "./exceptions.js";
 import type { BasePolicy } from "./policy.js";
 import {
@@ -18,6 +17,7 @@ import {
   runsOf,
   verdictOf,
 } from "./report.js";
+import { judgeFunction, type MissingGap, type RuleCoverage } from "./rule.js";
 import {
   type ChangedFunction,
   type ChangedSet,
@@ -43,8 +43,11 @@ type Standing =
   /** Its whole record, at the head bytes: the source's entry, or `null` when it ran none of it. */
   | { readonly kind: "measured"; readonly source: CoverageSource | null }
   /** It loads the source, or may, and gives no record of these bytes. */
-  | { readonly kind: "missing"; readonly gap: "not-finished" | "no-record" }
+  | { readonly kind: "missing"; readonly gap: GateMissing }
   | { readonly kind: "none" };
+
+/** The gate's missing gaps (D5): a loader that did not finish, or one with no record of these bytes. */
+type GateMissing = Extract<MissingGap, "not-finished" | "no-record">;
 
 function standing(file: TestFileEvidence, path: RelativePath, blob: FileHash): Standing {
   const loads = file.loads === null ? null : file.loads.includes(path);
@@ -68,7 +71,9 @@ interface PathEvidence {
   readonly expected: readonly RelativePath[];
   readonly measured: readonly RelativePath[];
   /** The first gap of a loader with no record of these bytes; `null` when every one has. */
-  readonly missing: "not-finished" | "no-record" | null;
+  readonly missing: GateMissing | null;
+  /** A loader skipped a test (D11.3). */
+  readonly skipped: boolean;
   /** The join over every counted function of the path; `null` with no record in hand. */
   readonly joined: readonly JoinedFunction[] | null;
 }
@@ -86,6 +91,7 @@ function pathEvidence(
   const expected = [...new Set([...measured, ...paths("missing")])].sort(compare);
   const gaps = standings.flatMap((s) => (s.at.kind === "missing" ? [s.at.gap] : []));
   const missing = gaps.includes("not-finished") ? "not-finished" : (gaps[0] ?? null);
+  const skipped = standings.some((s) => s.at.kind !== "none" && s.file.skipped);
   const sources = standings.flatMap((s) =>
     s.at.kind === "measured" && s.at.source !== null ? [s.at.source] : [],
   );
@@ -93,7 +99,7 @@ function pathEvidence(
     counted === undefined || measured.length === 0
       ? null
       : joinCoverage(counted.functions, sources, missing !== null);
-  return { expected, measured, missing, joined };
+  return { expected, measured, missing, skipped, joined };
 }
 
 interface Context {
@@ -128,24 +134,19 @@ const UNMEASURED: Measures = {
   crap: null,
   loaders: { expected: [], measured: [] },
 };
-const PASS: Judgement = { state: "pass", gap: null };
-const VIOLATION: Judgement = { state: "violation", gap: null };
 const gapOf = (gap: GateGap): Judgement => ({ state: "incomplete", gap });
+const stateOf = ({ state, gap }: Judgement): Judgement => ({ state, gap });
 
-/** The function's coverage and CRAP from the records in hand, when the join resolved it. */
-function measuresOf(fn: ChangedFunction, ev: PathEvidence, ctx: Context): Measures {
-  const loaders = { expected: ev.expected, measured: ev.measured };
+/** The function's coverage from the records in hand, when the join resolved it. */
+function coverageOf(fn: ChangedFunction, ev: PathEvidence, ctx: Context): RuleCoverage | null {
   const { qualifiedName, occurrence } = fn.count;
   const index = ctx
     .counted(fn.path)
     ?.functions.findIndex((f) => f.qualifiedName === qualifiedName && f.occurrence === occurrence);
   const joined = index === undefined || index < 0 ? undefined : ev.joined?.[index];
-  if (joined === undefined || joined.ran === null) return { ...UNMEASURED, loaders };
-  return {
-    coverage: { lines: joined.lines, covered: joined.covered, share: joined.coverage },
-    crap: crapScore(fn.count.complexity, joined.coverage),
-    loaders,
-  };
+  if (joined === undefined || joined.ran === null) return null;
+  const { lines, covered, coverage: share, ran } = joined;
+  return { lines, covered, share, ran };
 }
 
 /** D5.2 to D5.5: the gap of the first condition of complete evidence that does not hold; `null` when all do. */
@@ -158,40 +159,50 @@ function completeness(m: Measures, ev: PathEvidence, ctx: Context): GateGap | nu
 }
 
 /**
- * D5 without the CC rule (`judge` applies it), from the completeness `gap`.
- * A loader that did not finish rules out a pass: its later tests never ran
- * (amended 2026-11-10, review 0.1.423 B2). The records in hand of a source
- * whose missing loaders all completed prove a pass by 015 D9's bound, never
- * a violation.
- */
-function evidenceJudgement(m: Measures, gap: GateGap | null, ctx: Context): Judgement {
-  const underCrap = m.crap !== null && m.crap <= ctx.policy.crapThreshold;
-  if (gap === null) return underCrap ? PASS : VIOLATION;
-  return gap === "no-record" && underCrap && !ctx.failed ? PASS : gapOf(gap);
-}
-
-const SKIPPED: Judgement = { state: "skipped", gap: null };
-
-/**
- * D5: one changed function counted outside a parse error, what its
- * evidence alone says, and whether that evidence is complete (D8 reads
- * both). Over the CC limit is a violation on the count alone, whatever the
- * evidence; a `coverage.exclude` file wants none.
+ * D5 by D11's rule (`judgeFunction`): one changed function counted outside
+ * a parse error, and what its evidence alone says (D8 reads it). A
+ * `coverage.exclude` file wants no evidence.
  */
 function judge(fn: ChangedFunction, ctx: Context): Judged {
-  const over = fn.count.complexity > ctx.policy.complexityThreshold;
+  const { complexity } = fn.count;
   if (ctx.excluded(fn.path)) {
-    return {
-      row: report(fn, UNMEASURED, over ? VIOLATION : SKIPPED),
-      evidence: SKIPPED,
-      gap: null,
-    };
+    const out = judgeFunction<GateMissing>(
+      {
+        complexity,
+        excluded: true,
+        loaders: { expected: 0, measured: 0 },
+        missing: null,
+        coverage: null,
+        failed: ctx.failed,
+        skipped: false,
+      },
+      ctx.policy,
+    );
+    return { row: report(fn, UNMEASURED, stateOf(out)), evidence: out.evidence };
   }
   const ev = ctx.evidenceOf(fn);
-  const measures = measuresOf(fn, ev, ctx);
-  const gap = completeness(measures, ev, ctx);
-  const evidence = evidenceJudgement(measures, gap, ctx);
-  return { row: report(fn, measures, over ? VIOLATION : evidence), evidence, gap };
+  const coverage = coverageOf(fn, ev, ctx);
+  const out = judgeFunction(
+    {
+      complexity,
+      excluded: false,
+      loaders: { expected: ev.expected.length, measured: ev.measured.length },
+      missing: ev.missing,
+      coverage,
+      failed: ctx.failed,
+      skipped: ev.skipped,
+    },
+    ctx.policy,
+  );
+  const measures: Measures = {
+    coverage:
+      coverage === null
+        ? null
+        : { lines: coverage.lines, covered: coverage.covered, share: coverage.share },
+    crap: out.crap,
+    loaders: { expected: ev.expected, measured: ev.measured },
+  };
+  return { row: report(fn, measures, stateOf(out)), evidence: out.evidence };
 }
 
 /** D2.5: a changed function inside a parse error is not counted. */
