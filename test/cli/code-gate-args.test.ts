@@ -4,7 +4,6 @@ import { crapText, formatGateReport } from "../../src/cli/code-gate-text.js";
 import { main } from "../../src/cli/main.js";
 import type { GateFunctionReport, GateReport } from "../../src/core/code/gate/report.js";
 import type { ChangedSet } from "../../src/core/code/gate/types.js";
-import { TEST_FLAG } from "./code-gate-fixture.js";
 
 /*
  * Spec 020 D1 (row 020-05): the arguments of `squeal code --base`, the
@@ -27,12 +26,12 @@ describe("parseGateArgs (spec 020 D1)", () => {
         "src",
         "lib/a.ts",
         "--base=main",
-        TEST_FLAG,
+        "--test",
         "test/a.test.ts",
         "test/b.test.ts",
         "--timeout",
         "90",
-        `${TEST_FLAG}=test/c.test.ts`,
+        "--test=test/c.test.ts",
         "--json",
       ]),
     ).toEqual({
@@ -54,8 +53,8 @@ describe("parseGateArgs (spec 020 D1)", () => {
     [["--base", "main", "--timeout", "1.5"], "--timeout takes whole seconds above 0"],
     [["--base", "main", "--timeout", "-5"], "--timeout takes whole seconds above 0"],
     [["--base", "main", "--timeout"], "--timeout takes whole seconds above 0"],
-    [["--base", "main", TEST_FLAG], "--test names no file"],
-    [["--base", "main", `${TEST_FLAG}=`], "--test names no file"],
+    [["--base", "main", "--test"], "--test names no file"],
+    [["--base", "main", "--test="], "--test names no file"],
     [["--base", "main", "--json=yes"], 'unknown option "--json=yes"'],
     [["--base", "main", "--all"], 'unknown option "--all"'],
   ])("refuses %j", (args, error) => {
