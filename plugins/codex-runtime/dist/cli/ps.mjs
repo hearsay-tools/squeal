@@ -2922,7 +2922,7 @@ var DEFAULT_POLICY = {
     maxFileBytes: 524288,
     blocking: false
   },
-  coverage: { enabled: true, untested: true, exclude: [] },
+  coverage: { enabled: true, untested: true, exclude: [], children: false },
   crap: { enabled: true, threshold: 30 },
   lint: {
     enabled: false,
@@ -3326,7 +3326,7 @@ var CODE_SHAPE = {
     maxFileBytes: positiveInteger,
     blocking: boolean2
   },
-  coverage: { enabled: boolean2, untested: boolean2, exclude: globs2 },
+  coverage: { enabled: boolean2, untested: boolean2, exclude: globs2, children: boolean2 },
   crap: { enabled: boolean2, threshold: aboveZero2 }
 };
 
