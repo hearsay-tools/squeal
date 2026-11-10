@@ -1,0 +1,6 @@
+select key,value from meta where key like 'pulled:%'
+('pulled:b99615b5699b0d1b', '[["src/a.js",1]]')
+select measure,outcome,value,changed_at,edited_revision,edited_at from states order by measure
+('complexity', 'pass', 8.0, 0, None, None)
+('crap', 'fail', 72.0, 1, None, None)
+('uncovered', 'fail', None, 0, None, None)
