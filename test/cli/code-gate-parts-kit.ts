@@ -1,6 +1,7 @@
-import { readdirSync, statSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { codeGateCommand } from "../../src/cli/code-gate.js";
+import { PART_PREFIX, type Part } from "../../src/core/ci/parts.js";
 import type { GateAdapters } from "../../src/core/code/gate/collect.js";
 import type { GateReport, GateRunReport } from "../../src/core/code/gate/report.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
@@ -31,14 +32,16 @@ export interface Recorded {
 }
 
 /**
- * The fixture, with `files` written over `MATH_FILES` before the commit
- * and `edits` written after it, and `ci record`'s parts of the working tree.
+ * The fixture in `dir`, with `files` written over `MATH_FILES` before the
+ * commit and `edits` written after it, and `ci record`'s parts of the
+ * working tree.
  */
 export async function recorded(
   files: Readonly<Record<string, string>> = {},
   edits: Readonly<Record<string, string>> = {},
+  dir: string = scratch("gate-parts"),
 ): Promise<Recorded> {
-  const root = committed(scratch("gate-parts"), { ...BASE, ...files });
+  const root = committed(dir, { ...BASE, ...files });
   writeFiles(root, { "src/math.ts": MATH_FILES["src/math.ts"] as string, ...edits });
   const parts = join(dirname(root), "parts");
   const run = await recordCovered(root, parts);
@@ -105,4 +108,21 @@ export function listing(dir: string): string[] {
       const stat = statSync(join(dir, name));
       return `${name} ${stat.size} ${stat.mtimeMs}`;
     });
+}
+
+/** The one part in `parts`, as JSON. */
+export function onlyPart(parts: string): Part {
+  const [name, ...more] = readdirSync(parts).filter((n) => n.startsWith(PART_PREFIX));
+  if (name === undefined || more.length > 0) throw new Error(`not one part in ${parts}`);
+  return JSON.parse(readFileSync(join(parts, name), "utf8")) as Part;
+}
+
+/** A new directory beside `root` holding `parts`, each as a part file; returns it. */
+export function partsDir(root: string, name: string, parts: readonly unknown[]): string {
+  const dir = join(dirname(root), name);
+  mkdirSync(dir);
+  for (const [i, part] of parts.entries()) {
+    writeFileSync(join(dir, `${PART_PREFIX}${i}.json`), `${JSON.stringify(part)}\n`);
+  }
+  return dir;
 }
