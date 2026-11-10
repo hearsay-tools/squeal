@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Throwaway issue-168 probe. Uses only a private temporary Git repository."""
 import json, os, pathlib, shlex, subprocess, tempfile, time
-REPO = pathlib.Path(__file__).resolve().parents[3]
+REPO = pathlib.Path(__file__).resolve().parents[6]
 RUNTIME = pathlib.Path('/home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.422')
 NODE = '/home/agent/.nvm/versions/node/v24.22.1/bin/node'
 slow_lint = os.environ.get('ISSUE168_SLOW_LINT') == '1'
