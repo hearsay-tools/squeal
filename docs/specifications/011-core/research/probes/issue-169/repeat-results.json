@@ -1,0 +1,146 @@
+{
+  "cwd": "/home/agent/projects/squeal/.ai/cezar/worktrees/9ebda6fe-cae9-475d-9500-2ea711d81fd6",
+  "cpus": 24,
+  "paths": {
+    "test/cli/named-file": {
+      "exists": false
+    },
+    "test/commit": {
+      "is_directory": true
+    }
+  },
+  "commands": [
+    {
+      "argv": [
+        "git",
+        "rev-parse",
+        "HEAD"
+      ],
+      "utc": "2026-11-10T04:14:24.122966+00:00",
+      "load_1m": 3.083984375,
+      "exit_code": 0,
+      "stdout": "db3224c0f8203bf92363cfbbd87f89f191a8fdfe\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal",
+        "--version"
+      ],
+      "utc": "2026-11-10T04:14:24.254592+00:00",
+      "load_1m": 3.083984375,
+      "exit_code": 0,
+      "stdout": "0.1.423\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "pnpm",
+        "exec",
+        "vitest",
+        "--version"
+      ],
+      "utc": "2026-11-10T04:14:24.431885+00:00",
+      "load_1m": 3.083984375,
+      "exit_code": 0,
+      "stdout": "vitest/5.0.3 linux-x64 node-v24.22.1\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "pnpm",
+        "exec",
+        "vitest",
+        "list",
+        "--filesOnly",
+        "test/cli/named-file"
+      ],
+      "utc": "2026-11-10T04:14:24.814593+00:00",
+      "load_1m": 3.083984375,
+      "exit_code": 0,
+      "stdout": "test/cli/named-file-end.test.ts\ntest/cli/named-file-lines.test.ts\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal",
+        "status",
+        "test/cli/named-file"
+      ],
+      "utc": "2026-11-10T04:14:26.319270+00:00",
+      "load_1m": 3.083984375,
+      "exit_code": 3,
+      "stdout": "Revision: 6 \u00b7 db3224c0 + 6, dirty\nSelected: \nNamed test files have no verdict: results are as of revision 6; the daemon has not stored its pass over the latest edits; no test file's closure holds test/cli/named-file. Worktree: known failures 0; all 1562 test files current. A later pass is not reported. A failure arrives with a later tool call. For the verdict, wait: `/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 test/cli/named-file`\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "pnpm",
+        "exec",
+        "vitest",
+        "list",
+        "--filesOnly",
+        "test/cli/named-file-lines.test.ts",
+        "test/cli/named-file-end.test.ts"
+      ],
+      "utc": "2026-11-10T04:14:26.697746+00:00",
+      "load_1m": 3.083984375,
+      "exit_code": 0,
+      "stdout": "test/cli/named-file-end.test.ts\ntest/cli/named-file-lines.test.ts\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal",
+        "status",
+        "test/cli/named-file-lines.test.ts",
+        "test/cli/named-file-end.test.ts"
+      ],
+      "utc": "2026-11-10T04:14:28.077621+00:00",
+      "load_1m": 3.083984375,
+      "exit_code": 3,
+      "stdout": "Revision: 6 \u00b7 db3224c0 + 6, dirty\nSelected: test/cli/named-file-lines.test.ts, test/cli/named-file-end.test.ts\nCurrent (2):\n  2 pass: test/cli/named-file-lines.test.ts, test/cli/named-file-end.test.ts\nNamed test files have no verdict: 2 test files passed at revision 6; the daemon has not stored its pass over the latest edits, so these results may not cover them. Worktree: known failures 0; all 1562 test files current. A later pass is not reported. A failure arrives with a later tool call. For the verdict, wait: `/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 test/cli/named-file-lines.test.ts test/cli/named-file-end.test.ts`\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "pnpm",
+        "exec",
+        "vitest",
+        "list",
+        "--filesOnly",
+        "test/commit"
+      ],
+      "utc": "2026-11-10T04:14:28.458037+00:00",
+      "load_1m": 3.083984375,
+      "exit_code": 0,
+      "stdout": "test/commit/boundary-daemon.test.ts\ntest/commit/boundary.test.ts\ntest/commit/compute.test.ts\ntest/commit/lint-told-daemon.test.ts\ntest/commit/lint.test.ts\ntest/commit/stop-told-daemon.test.ts\ntest/commit/store.test.ts\ntest/commit/stored-stall.test.ts\ntest/commit/stored.test.ts\ntest/commit/text.test.ts\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal",
+        "status",
+        "test/commit"
+      ],
+      "utc": "2026-11-10T04:14:29.969801+00:00",
+      "load_1m": 3.0771484375,
+      "exit_code": 3,
+      "stdout": "Revision: 6 \u00b7 db3224c0 + 6, dirty\nSelected: \nNamed test files have no verdict: results are as of revision 6; the daemon has not stored its pass over the latest edits; no test file's closure holds test/commit. Worktree: known failures 0; all 1562 test files current. A later pass is not reported. A failure arrives with a later tool call. For the verdict, wait: `/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 test/commit`\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal",
+        "status",
+        "test/cli/named-file",
+        "test/cli/named-file-lines.test.ts"
+      ],
+      "utc": "2026-11-10T04:14:31.447922+00:00",
+      "load_1m": 3.0771484375,
+      "exit_code": 3,
+      "stdout": "Revision: 6 \u00b7 db3224c0 + 6, dirty\nSelected: test/cli/named-file-lines.test.ts\nCurrent (1):\n  1 pass: test/cli/named-file-lines.test.ts\nNamed test files have no verdict: 1 test file passed at revision 6; the daemon has not stored its pass over the latest edits, so this result may not cover them; no test file's closure holds test/cli/named-file. Worktree: known failures 0; all 1562 test files current. A later pass is not reported. A failure arrives with a later tool call. For the verdict, wait: `/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 test/cli/named-file test/cli/named-file-lines.test.ts`\n",
+      "stderr": ""
+    }
+  ]
+}
