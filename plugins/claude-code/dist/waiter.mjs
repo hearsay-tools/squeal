@@ -1909,7 +1909,7 @@ var DEFAULT_POLICY = {
     maxFileBytes: 524288,
     blocking: false
   },
-  coverage: { enabled: true, untested: true, exclude: [] },
+  coverage: { enabled: true, untested: true, exclude: [], children: false },
   crap: { enabled: true, threshold: 30 },
   lint: {
     enabled: false,
@@ -2443,7 +2443,7 @@ var CODE_SHAPE = {
     maxFileBytes: positiveInteger,
     blocking: boolean2
   },
-  coverage: { enabled: boolean2, untested: boolean2, exclude: globs2 },
+  coverage: { enabled: boolean2, untested: boolean2, exclude: globs2, children: boolean2 },
   crap: { enabled: boolean2, threshold: aboveZero2 }
 };
 
@@ -2685,7 +2685,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.426";
+  if (true) return "0.1.427";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -3208,21 +3208,26 @@ function evidenceOf(store, worktreeId, entry3) {
   );
   if (counted === void 0) return {};
   const [lines, covered, testFiles2, ...first] = fn;
-  return { evidence: { complexity: counted.complexity, lines, covered, testFiles: testFiles2, first } };
+  const children = readSummary(store.meta, worktreeId)?.children === true ? { children: true } : {};
+  return {
+    evidence: { complexity: counted.complexity, lines, covered, testFiles: testFiles2, first, ...children }
+  };
 }
 var NOT_RUN = "no test runs it in the test's own thread";
-var NOT_LOADED = "no test Squeal runs loads this file";
+var NOT_RUN_CHILDREN = "no test runs it, in the test's own thread or in a process or thread the test starts";
 var UNMEASURED = "Squeal does not measure worker threads or child processes.";
+var LOWER_BOUND = "Squeal counts what the processes and threads a test starts run as a lower bound: a process that is killed, outlives its test file or gets an environment without NODE_V8_COVERAGE is not counted.";
+var withChildren = (e) => e?.children === true;
 function fileLoadersOf(entry3) {
   if (entry3.fileLoaders !== void 0) return entry3.fileLoaders;
   const e = entry3.evidence;
   if (e?.loaders === void 0) return void 0;
   return e.processes === true ? { count: e.loaders, processes: true } : { count: e.loaders };
 }
-function notRun(file, after) {
-  if (file === void 0) return `${NOT_RUN}${after}`;
-  if (file.count === 0) return `${NOT_LOADED}${after}`;
-  return `${NOT_RUN}${after}; ${plural(file.count, "test file")} ${file.count === 1 ? "loads" : "load"} this file`;
+function notRun(file, after, children) {
+  const reason = `${children ? NOT_RUN_CHILDREN : NOT_RUN}${after}`;
+  if (file === void 0 || file.count === 0) return reason;
+  return `${reason}; ${plural(file.count, "test file")} ${file.count === 1 ? "loads" : "load"} this file`;
 }
 var EXCLUDE_HINT = "To stop checking such files, add them to coverage.exclude in squeal.config.json.";
 var labelOf = (measure2) => measure2 === "crap" ? "CRAP" : measure2 === "uncovered" ? "untested" : measure2;
@@ -3240,13 +3245,14 @@ function crapEvidence(entry3, others) {
   const e = entry3.evidence;
   if (e === void 0) return "";
   const why = e.testFiles === 0 && !shows(others, "uncovered");
+  const children = withChildren(e);
   const parts = [
     ...shows(others, "complexity") ? [] : [`complexity ${e.complexity}`],
     ...e.testFiles > 0 ? [`${share(e)} in ${testFiles(e)}`] : [],
-    ...why ? [notRun(fileLoadersOf(entry3), "")] : []
+    ...why ? [notRun(fileLoadersOf(entry3), "", children)] : []
   ];
   if (parts.length === 0) return "";
-  return ` (${parts.join("; ")})${why ? `. ${UNMEASURED}` : ""}`;
+  return ` (${parts.join("; ")})${why ? `. ${children ? LOWER_BOUND : UNMEASURED}` : ""}`;
 }
 function untestedEvidence(e, others) {
   const parts = [
@@ -3258,15 +3264,24 @@ function untestedEvidence(e, others) {
 function untestedWhy(entry3, after, block3) {
   const file = fileLoadersOf(entry3);
   const e = entry3.evidence;
-  const why = `${notRun(file, after)}${e === void 0 ? "" : untestedEvidence(e, block3.others)}`;
-  if (file?.processes !== true) return `${why}. ${UNMEASURED}`;
-  const may = file.count === 1 ? "The test file may run it in a worker thread or a process it starts" : "They may run it in a worker thread or a process they start";
+  const children = withChildren(e);
+  const evidence = e === void 0 ? "" : untestedEvidence(e, block3.others);
+  const why = `${notRun(file, after, children)}${evidence}`;
+  if (file?.processes !== true) return `${why}. ${children ? LOWER_BOUND : UNMEASURED}`;
   const hint = block3.hint() ? ` ${EXCLUDE_HINT}` : "";
-  return `${why}. ${may}, which Squeal does not measure.${hint}`;
+  return `${why}. ${children ? missedWords(file.count) : unmeasuredWords(file.count)}${hint}`;
+}
+function unmeasuredWords(count2) {
+  const may = count2 === 1 ? "The test file may run it in a worker thread or a process it starts" : "They may run it in a worker thread or a process they start";
+  return `${may}, which Squeal does not measure.`;
+}
+function missedWords(count2) {
+  const may = count2 === 1 ? "The test file may run it in a process it starts that Squeal misses" : "They may run it in a process they start that Squeal misses";
+  return `${may}: one that is killed, outlives its test file or gets an environment without NODE_V8_COVERAGE.`;
 }
 var then = (text2, rest) => `${text2}${text2.endsWith(".") ? " " : "; "}${rest}`;
 function quietHint(entry3, command) {
-  const until = entry3.measure === "uncovered" ? "a test runs it in its own thread" : `it is at or under ${entry3.threshold}`;
+  const until = entry3.measure !== "uncovered" ? `it is at or under ${entry3.threshold}` : withChildren(entry3.evidence) ? "a test runs it" : "a test runs it in its own thread";
   const shows2 = entry3.measure === "uncovered" ? "its coverage" : "its CRAP";
   return `Squeal stays quiet about it until ${until}, and ${command} code ${entry3.check.path} shows ${shows2}.`;
 }
@@ -3280,7 +3295,11 @@ function stillFailLine(entry3, at, command, block3) {
   return `STILL FAIL ${labelOf(entry3.measure)}: ${named(at, ": ")}${then(what, quietHint(entry3, command))}`;
 }
 function runsIt(e) {
-  if (e === void 0 || e.testFiles === 0) return "a test runs it in its own thread";
+  const children = withChildren(e);
+  if (e === void 0 || e.testFiles === 0) {
+    return children ? "a test runs it" : "a test runs it in its own thread";
+  }
+  if (children) return `${testFiles(e)} ${e.testFiles === 1 ? "runs" : "run"} it`;
   return e.testFiles === 1 ? `${testFiles(e)} runs it in its own thread` : `${testFiles(e)} run it in their own threads`;
 }
 function coverageEntryLine(entry3, at, command, block3) {
@@ -12471,7 +12490,8 @@ function coverageChecks(policy) {
   return {
     measures: COVERAGE_MEASURES.filter((m) => on[m]),
     exclude: policy.coverage.exclude,
-    excluded: createInputMatcher(policy.coverage.exclude)
+    excluded: createInputMatcher(policy.coverage.exclude),
+    children: policy.coverage.children
   };
 }
 function checksField(measures) {
