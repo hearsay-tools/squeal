@@ -2,8 +2,12 @@ import { createRequire as __squealCreateRequire } from "node:module";
 const require = __squealCreateRequire(import.meta.url);
 
 // src/core/code/coverage/map-worker.ts
-import { readFileSync as readFileSync3 } from "node:fs";
+import { readFileSync as readFileSync4 } from "node:fs";
 import { parentPort, workerData } from "node:worker_threads";
+
+// src/core/code/coverage/mapper.ts
+import { existsSync, readdirSync, readFileSync as readFileSync3, rmSync, statSync } from "node:fs";
+import { join } from "node:path";
 
 // src/core/code/coverage/own.ts
 import { readFileSync as readFileSync2 } from "node:fs";
@@ -375,14 +379,73 @@ function sourceEntry(script, executed, blob) {
     blob,
     lines: bitset(mapped.lines),
     covered: bitset(mapped.covered),
-    functions: [...mapped.functions.values()].sort(
-      (a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2] || a[3] - b[3] || a[4] - b[4]
-    )
+    functions: [...mapped.functions.values()].sort(byFunction)
   };
+}
+function byFunction(a, b) {
+  return a[0] - b[0] || a[1] - b[1] || a[2] - b[2] || a[3] - b[3] || a[4] - b[4];
 }
 function recordOf(sources, unread) {
   sources.sort((a, b) => compare(a.path, b.path));
   return { v: 1, sources, unread: [...new Set(unread)].sort(compare) };
+}
+function mergeRecords(own, others) {
+  if (others.length === 0) return own;
+  const records = [own, ...others];
+  const unread = new Set(records.flatMap((record) => record.unread));
+  const byPath = /* @__PURE__ */ new Map();
+  for (const source of records.flatMap((record) => record.sources)) {
+    const known = byPath.get(source.path);
+    if (known === void 0) byPath.set(source.path, [source]);
+    else known.push(source);
+  }
+  const sources = [];
+  for (const [path, entries] of byPath) {
+    if (unread.has(path)) continue;
+    const [first] = entries;
+    if (entries.some((entry) => entry.blob !== first.blob)) unread.add(path);
+    else sources.push(mergeSource(first, entries));
+  }
+  return recordOf(sources, [...unread]);
+}
+function mergeSource(first, entries) {
+  if (entries.length === 1) return first;
+  return {
+    path: first.path,
+    blob: first.blob,
+    lines: orBits(entries.map((entry) => entry.lines)),
+    covered: orBits(entries.map((entry) => entry.covered)),
+    functions: mergeFunctions(entries)
+  };
+}
+function mergeFunctions(entries) {
+  const spans = /* @__PURE__ */ new Map();
+  for (const entry of entries) {
+    const own = /* @__PURE__ */ new Map();
+    for (const fn of entry.functions) {
+      const span = fn.slice(0, 4).join();
+      own.set(span, (own.get(span) ?? /* @__PURE__ */ new Set()).add(fn[4]));
+      if (!spans.has(span)) spans.set(span, { hits: /* @__PURE__ */ new Set(), split: false, fn });
+    }
+    for (const [span, hits] of own) {
+      const known = spans.get(span);
+      known.split ||= hits.size > 1;
+      for (const hit of hits) known.hits.add(hit);
+    }
+  }
+  const functions = [];
+  for (const { hits, split, fn } of spans.values()) {
+    const [startLine, startColumn, endLine, endColumn] = fn;
+    const kept = split ? [...hits] : [hits.has(1) ? 1 : 0];
+    for (const hit of kept) functions.push([startLine, startColumn, endLine, endColumn, hit]);
+  }
+  return functions.sort(byFunction);
+}
+function orBits(bitsets) {
+  const all = bitsets.map((bits) => Buffer.from(bits, "base64"));
+  const bytes = Buffer.alloc(Math.max(...all.map((b) => b.length)));
+  for (const b of all) for (let i = 0; i < b.length; i++) bytes[i] = (bytes[i] ?? 0) | (b[i] ?? 0);
+  return bytes.toString("base64");
 }
 function bitset(lines) {
   const bytes = new Uint8Array(lines.size === 0 ? 0 : (Math.max(...lines) >> 3) + 1);
@@ -516,6 +579,29 @@ function stored(text, last = false) {
   return Buffer.concat(blocks);
 }
 
+// src/core/code/coverage/mapper.ts
+var CHILD_FILE_LIMIT = 64 * 1024 * 1024;
+function withChildren(own, children, format2, skip = () => false) {
+  if (children === void 0 || !existsSync(children.dir)) return { record: own, dropped: [] };
+  const records = [];
+  const dropped = [];
+  for (const name of readdirSync(children.dir).sort()) {
+    const path = join(children.dir, name);
+    try {
+      const { size } = statSync(path);
+      if (size > CHILD_FILE_LIMIT) {
+        dropped.push(`${name}: over 64 MiB (${size} bytes)`);
+        continue;
+      }
+      const payload = JSON.parse(readFileSync3(path, "utf8"));
+      records.push(ownRecord(children.root, payload, format2, skip));
+    } catch (error) {
+      dropped.push(`${name}: ${String(error)}`);
+    }
+  }
+  return { record: mergeRecords(own, records), dropped };
+}
+
 // src/core/code/coverage/map-worker.ts
 var KEEP = 2;
 var port = parentPort;
@@ -545,10 +631,9 @@ function runOf(id) {
   return run;
 }
 function take(job) {
-  const payload = JSON.parse(readFileSync3(job.payload, "utf8"));
+  const payload = JSON.parse(readFileSync4(job.payload, "utf8"));
   if (job.ownRoot !== void 0) {
-    const record = ownRecord(job.ownRoot, payload, format);
-    send({ type: "record", id: job.id, record: shareRecord(record, COVERAGE_RECORD_VERSION) });
+    answer(job, ownRecord(job.ownRoot, payload, format));
     return;
   }
   const scripts = [...payload.result];
@@ -562,10 +647,10 @@ function take(job) {
   if (paths.size > 0) send({ type: "need", id: job.id, paths: [...paths] });
   else finish();
 }
-function given(answer) {
-  const run = runOf(answer.sources);
-  for (const [path, source] of answer.given) run.given.set(path, source);
-  for (const path of answer.absent) run.absent.add(path);
+function given(answer2) {
+  const run = runOf(answer2.sources);
+  for (const [path, source] of answer2.given) run.given.set(path, source);
+  for (const path of answer2.absent) run.absent.add(path);
   finish();
 }
 function finish() {
@@ -573,9 +658,14 @@ function finish() {
   const { job, scripts } = held;
   held = null;
   const file = { testFile: job.testFile, payload: job.payload, sources: runOf(job.sources).given };
+  answer(job, buildRecord(file, scripts, format, blobs));
+}
+function answer(job, own) {
+  const { record, dropped } = withChildren(own, job.children, format);
   send({
     type: "record",
     id: job.id,
-    record: shareRecord(buildRecord(file, scripts, format, blobs), COVERAGE_RECORD_VERSION)
+    record: shareRecord(record, COVERAGE_RECORD_VERSION),
+    ...dropped.length === 0 ? {} : { dropped }
   });
 }

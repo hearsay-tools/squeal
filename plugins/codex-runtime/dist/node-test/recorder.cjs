@@ -38,6 +38,9 @@
 // stays: only Squeal's directory is deleted. `NODE_V8_COVERAGE` goes as the main script loads, after
 // every preload: a loader that reads it as it starts keeps the text it read in its maps, as tsx does
 // (review 0.1.358 B1). Where the main script cannot be seen, it goes now, and such maps are `unread`.
+// Spec 020 D12: with `SQUEAL_NODE_TEST_CHILDREN` (`coverage.children`), it points at `children/` in
+// that directory instead, at the same moment, so the processes and threads the test starts write
+// theirs there; the process's own file stays where it was.
 //
 // Directory creates and removes (spec 016 D4, the written-directory bound). `mkdir`, `mkdtemp`,
 // `rm`, `rmdir` and both ends of `rename`, sync, callback and promise forms, append one
@@ -54,15 +57,18 @@ const { isInternalThread, isMainThread } = require("node:worker_threads");
 const { appendFileSync } = fs;
 
 const coverage = process.env.NODE_TEST_CONTEXT && process.env.SQUEAL_NODE_TEST_COVERAGE;
+const children = coverage && process.env.SQUEAL_NODE_TEST_CHILDREN === "1";
 if (coverage && !isInternalThread) {
   delete process.env.SQUEAL_NODE_TEST_COVERAGE;
+  delete process.env.SQUEAL_NODE_TEST_CHILDREN;
   // A write that fails leaves no pid named, so the file gets no record; never the test's failure.
   if (isMainThread) fs.writeFile(`${coverage}/own-${process.pid}`, "", () => {});
 }
 const hideCoverage = () => {
-  if (coverage && !isInternalThread && process.env.NODE_V8_COVERAGE === coverage) {
-    delete process.env.NODE_V8_COVERAGE;
-  }
+  if (!coverage || isInternalThread || process.env.NODE_V8_COVERAGE !== coverage) return;
+  // Node makes the directory when a process or thread writes there.
+  if (children) process.env.NODE_V8_COVERAGE = `${coverage}/children`;
+  else delete process.env.NODE_V8_COVERAGE;
 };
 
 const prefix = process.env.SQUEAL_NODE_TEST_GRAPH;
