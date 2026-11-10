@@ -60,3 +60,26 @@ Checked at `5e08d7159` (before items 1 to 3) with the new test files copied in.
 ## Type changes
 
 Additive only: `SharedReaderOptions.headTimeoutMs?: number`. New exports: `src/core/shared/local.ts` (`HEAD_TIMEOUT_MS`, `LocalCall`, `headOf`, `blobsAt`), `src/core/commit/tree.ts` (`lsTreeArgs`, `blobsOfTree`).
+
+## Repair R1 (review `018-23-0.1.424.md`, B1 and B2)
+
+Worker 746e42e2, 2026-11-10. This section amends rules 1, 3 and 4 above and the limits.
+
+- **B1, one descriptor registry.** `descriptors.cjs` keeps one map by descriptor number for numeric opens and file handles alike: a handle registers its own `fd`. So `readSync`, `read`, `readv`, `readFile(Sync)`, `fstat`, streams and `futimes` on `handle.fd` hash or cancel as on any tracked descriptor, and the handle's own methods look the same map up by `handle.fd`. Every open sets its number, or clears it when the open can write or is outside the root; `close`, `closeSync` and `FileHandle.close` clear it. Hashes stay positional, so read offsets are unchanged.
+- **B2, withhold where the hook cannot follow.** A spawn, sync call or Worker whose env holds another `SQUEAL_CI_RECORD` value keeps that value (a nested `squeal ci record` stays its own), and this process withholds its current test file: `evidence.withhold(file)` marks that file's own path written, so no closure holding it is certified. The file is Vitest's `__vitest_worker__.filepath`, else the `file` in the daemon's recorder's settings (`SQUEAL_OBSERVE`). With none known, or a file outside the root, it writes the root as a tree (`t: [""]`), which `readEvidence` reads as every path: the whole command is withheld. A `SHARE_ENV` Worker withholds when this process's own env holds another value.
+- **Coordinator decision (2026-11-10):** the conservative route for B2, withholding instead of following a second recording.
+- **Help and D8.** The help states the broad requirement without saying the risk is only within one read or native code. Spec D8 lists what is covered now and what remains.
+
+### Tests, each failing before (revision 29)
+
+- `ci-evidence-descriptors.test.ts`: `readSync`, `read`, `readFileSync`, `fstatSync` and a stream through `handle.fd`; `futimesSync` and `futimes` on `handle.fd`; an unchanged `handle.fd` read kept; a reused descriptor number reads its own file (a guard; it passed before).
+- `export-wrapper.test.ts` mode G: the review's complete false export through `readSync(handle.fd)`. Before: `Exported 2 test files, 5 results` with the test; after: left out.
+- `ci-evidence-children.test.ts`: a child and a Worker with another recording's settings withhold the current test file named by Vitest; the recorder's file outside Vitest; every path when none is known, for a child and a Worker. The old expectation that kept `foreign.txt` is gone.
+- `test/ci/inputs.test.ts`: a root tree write drops every path.
+
+### Limits after R1
+
+- A child or Worker with another recording's settings withholds only the current test file when one is known. Another test file of the shard that read a path such a child wrote keeps its evidence; a hooked read after the change still sees it.
+- A descriptor opened before the hook loaded, or by Node internals, is not tracked. A `FileHandle` closed by garbage collection keeps its number until the next open of that number.
+- The other limits above stand: another program's change that no read through Node sees (between a hash and its read, or in a file only native code or that program reads), a Node process the hook does not reach, and a path read whose hash cannot be taken.
+
