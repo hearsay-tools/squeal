@@ -237,7 +237,7 @@ describe("squeal --help (spec 020 D1)", () => {
     expect(gate).toBeGreaterThan(
       lines.indexOf("  squeal code [<path>...] [--changed | --told] [--json]"),
     );
-    expect(lines[gate + 1]?.trim()).toBe("[--json]");
+    expect(lines[gate + 1]?.trim()).toBe("[--exceptions <file>] [--json]");
     expect(lines[gate + 2]?.trim()).toMatch(/^Runs tests, with no daemon,/);
   });
 });

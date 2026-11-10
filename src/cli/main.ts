@@ -94,7 +94,7 @@ Usage:
                                 this session was told about and the files it changed
                                 that are not judged; files not counted follow, with why
   squeal code --base <ref> [<path>...] [--test <file>...] [--timeout <seconds>]
-              [--json]
+              [--exceptions <file>] [--json]
                                 Runs tests, with no daemon, for up to --timeout
                                 seconds (default 600) in all: judges every JS/TS
                                 function changed since git merge-base <ref> HEAD, test
@@ -104,7 +104,10 @@ Usage:
                                 --test files run with coverage; paths keep the
                                 functions in those files or directories. Prints the
                                 verdict and each function not pass with its gap or
-                                measure; --json: the squeal-code-gate/1 report; exit 0
+                                measure; --exceptions <file>: a
+                                squeal-code-exceptions/1 file of verified entries; a
+                                violation an entry covers reads accepted and does not
+                                block; --json: the squeal-code-gate/1 report; exit 0
                                 pass, 1 violations, 3 incomplete, 2 on a usage or
                                 setup error
   squeal reach [<path>...] [--limit <n>] [--json]
