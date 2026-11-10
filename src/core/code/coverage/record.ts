@@ -33,6 +33,17 @@ import type {
 export const COVERAGE_PROVIDER_VERSION = 3;
 
 /**
+ * What a runner's key holds of Squeal's coverage (spec 015 D8): the
+ * provider's name and version, and `children` while the processes a test
+ * starts are measured (020 D12), since its tests can then see
+ * `NODE_V8_COVERAGE` and their outcome can differ.
+ */
+export function coverageMarker(children: boolean) {
+  const marker = { provider: "squeal", version: COVERAGE_PROVIDER_VERSION };
+  return children ? { ...marker, children: true } : marker;
+}
+
+/**
  * Record versions: 3 and before, the provider version's. 4: a test file
  * that mocks `node:url` is mapped with its evaluator's wrapper offset
  * (row 018-10; review wave-3.5 B1), so its earlier records hold the wrong
