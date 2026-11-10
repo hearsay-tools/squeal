@@ -242,6 +242,9 @@ function outputOf(settings, original) {
   let any = false;
   let scheduled = false;
   const last = new Map();
+  /** Paths this process wrote, and trees: their evidence is cancelled for the run. */
+  const gone = new Set();
+  const goneTrees = new Set();
   const realSetImmediate = setImmediate;
   const append = (value) => {
     try {
@@ -273,8 +276,17 @@ function outputOf(settings, original) {
     written: (exact, trees) => {
       if (exact.length === 0 && trees.length === 0) return;
       for (const rel of [...exact, ...trees]) last.delete(rel);
+      for (const rel of exact) gone.add(rel);
+      for (const rel of trees) goneTrees.add(rel);
       flush();
       append({ w: exact, t: trees });
+    },
+    gone: (rel) => {
+      if (gone.has(rel)) return true;
+      for (let at = rel.indexOf("/"); at !== -1; at = rel.indexOf("/", at + 1)) {
+        if (goneTrees.has(rel.slice(0, at))) return true;
+      }
+      return goneTrees.has(rel);
     },
   };
 }
@@ -383,6 +395,8 @@ function createEvidence(settings) {
   const through = (fd, real) => {
     try {
       const rel = paths.relative(real);
+      // Written here already: no evidence to keep, so no hash at each chunk of a stream.
+      if (out.gone(rel)) return;
       const value = content.ofOpen(fd, real);
       if (value === undefined) out.written([rel], []);
       else out.evidence(rel, value);
