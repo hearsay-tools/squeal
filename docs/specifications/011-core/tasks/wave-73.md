@@ -19,3 +19,15 @@ Stopped on purpose (a stop mark, `squeal stop` or `--until-start`): open lint an
 Owns: `src/harness/shared/no-edit.ts`, `stop-required.ts`, `stop-slow.ts`, `stop.ts`, `stop-lint.ts`, `src/core/delivery/registered.ts`, their tests, spec 011 C8 and 019 D4 sentences on this rule. Ask first before touching other files, and before changing any key or store format.
 
 Done when: the row's done-when holds; lint and typecheck pass; affected results read through `squeal status --wait 60000 <paths>`; `tasks/011-312/notes.md` lists deviations and the limit for edits to Git-ignored files Squeal tracks.
+
+## R1: review of cand/0.1.429
+
+Use /reviewer. Shape: review. Pinned to `cand/0.1.429` at `d8bac243f28a68808c3a59776cf2869f7c3ed8b6`; range `bf320db00..d8bac243f` (worker commits, the 004 D9 amendment, version and bundles).
+
+Outcome: a PASS or FAIL verdict on row 011-312, written to `docs/specifications/011-core/reviews/0.1.429.md` and committed on your branch.
+
+Read: board row 011-312; W1 above; `tasks/011-312/notes.md`; spec 011 C8, 019 D4, 004 D9; `research/issue-153.md` section 1.
+
+Check first: an edit no daemon observed (before the start scan, while stopped, across a daemon replacement) can never read as "changed nothing"; Git is read only when it can decide, bounded, and its failure means "not proven"; the stopped-on-purpose rule never hides a failure already found, and a crashed daemon is unchanged; subagent exemption is sound when the main agent edited; older registration values without `head` read; the waiting entry returns at once under a stop mark.
+
+Owns: only the review file. Do not run a full suite or `pnpm run build`; read affected results with `squeal status --wait 60000 <paths>`.
