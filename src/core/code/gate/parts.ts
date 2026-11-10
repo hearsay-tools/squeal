@@ -133,7 +133,10 @@ export function partsEvidence(options: PartsOptions): StoredEvidence {
 /** The content of a path here, as a key holds it: `null` none, `undefined` unknown. */
 type Here = (path: RelativePath) => Promise<FileHash | null | undefined>;
 
-/** A file's blob id, a listing path's names, `.git` by its kind: as `ci export`'s `certifier` reads them. */
+/**
+ * A file's blob id, a listing path's names, `.git` by its kind: as `ci
+ * export`'s `certifier` reads them.
+ */
 function hereOf(root: AbsolutePath, format: ObjectFormat): Here {
   const known = new Map<RelativePath, Promise<FileHash | null | undefined>>();
   return (path) => {
