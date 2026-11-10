@@ -70,6 +70,7 @@ Started: 2026-10-31
 - 2026-11-09, 0.1.422 released (tag `squeal--v0.1.422` at `5be725a8e`, hub `2341617`, GitHub latest release with `install.sh` and both Codex runtime assets; main CI 42696581670 green). The second slice's Squeal side (D8 to D16) is shipped; D17, the proof in cezar (row 018-21), waits for the human.
 - 2026-11-10, row 018-24 (filed by coordinator 31e1d860 after main CI 42708522212 failed on `test/cli/transfer.test.ts`): the export and import fixtures were two `claimRepo` repositories whose commits differed when made in different seconds, so the re-key at import (D11) could not find the export's commit. Fix in the fixture: `claimRepo` commits with a fixed author and committer date; `test/hash/git-repo.ts` `git` takes optional extra environment. Product unchanged.
 - 2026-11-10, row 018-24 landed on main (review PASS; candidate CI 42726516283 green after one rerun: `test/evals/retry-knobs.test.ts` failed with a blank service port, as in runs 42635292959 and 42488454322, and passed on retry).
+- 2026-11-10, the human: "cezar proof: Yes, all four" (row 018-21: one cezar PR with the Node 26.x pin, `squeal ci record` in the Vitest jobs, an export and publish job, `shared.ref`; then a one-day measurement), "Row 018-23: Yes, now", "Capture: Yes, measure" (row 018-25).
 
 ## Open questions
 
