@@ -154,7 +154,7 @@ The report contains no times other than `createdAt` and run durations, so the go
 - An entry applies only when its `path`, `qualifiedName` and `bodyHash` match a changed function at the head, and its `baseCommit` is the run's merge base. Any other entry is reported as `unused`, with why. It never applies to another function.
 - `inherited`: the function was already over at the base, and the change did not make it worse. Squeal counts the base itself. For `complexity`, the base CC must be over the limit, and the head CC ≤ the base CC ≤ `value`. For `crap`, the head CRAP must be ≤ `value`, and the head CC ≤ the base CC. Squeal does not run the base's tests in this slice, so the base CRAP is the consumer's recorded `value`.
 - `approved`: covers a new or worse finding. The head value must be ≤ `value`.
-- An exception needs complete head evidence (D5). An `incomplete` function stays incomplete; no exception covers missing evidence.
+- An exception needs complete head evidence (D5). An `incomplete` function stays incomplete; no exception covers missing evidence. A D5 subset pass is not complete evidence for an exception: every loading test file needs its record (amended 2026-11-10, review 0.1.424 B1). A loading test file that skipped a test is a gap for an exception too (the coordinator, 2026-11-10, row 020-07a I).
 - A covered violation reads `accepted`, with the measured scores and the entry. It does not block. A function over an entry's `value` stays a `violation` and names the entry.
 
 The verdict counts `accepted` beside `pass`. A file that does not parse, or has an unknown format, is a usage error (exit 2). `QUALITY_POLICY_VERSION` rises to 2.
