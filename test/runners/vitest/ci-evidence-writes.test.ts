@@ -1,8 +1,5 @@
-import { symlinkSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { readEvidence } from "../../../src/core/ci/inputs.js";
-import { blob, fill, run, temp } from "./ci-evidence-kit.js";
+import { blob, evidenceOf } from "./ci-evidence-kit.js";
 
 /*
  * Spec 018 D9 (the human, 2026-11-09, repair R3 of 018-17: "one path, one
@@ -16,20 +13,6 @@ import { blob, fill, run, temp } from "./ci-evidence-kit.js";
  */
 
 const GOOD = "GOOD";
-
-/** `script` run in a new root holding `files`; the evidence its process took. */
-function evidenceOf(
-  script: string,
-  files: Record<string, string>,
-  links: Record<string, string> = {},
-) {
-  const root = join(temp(), "root");
-  fill(root, { ...files, "script.mjs": script });
-  for (const [link, target] of Object.entries(links)) symlinkSync(target, join(root, link));
-  const evidence = temp();
-  run(root, { evidence });
-  return readEvidence(evidence);
-}
 
 describe("evidence per path is one content for the whole run (rule 1)", () => {
   it("drops a path a writer outside Node changed between two reads in one turn", () => {
