@@ -20,8 +20,19 @@ export const SEARCH_DEPTH = 1_000;
 /** Where main lives: the remote, and its default branch's remote-tracking ref. */
 export interface Upstream {
   readonly remote: string;
-  /** For example `refs/remotes/origin/main`, from `refs/remotes/<remote>/HEAD`. */
+  /**
+   * For example `refs/remotes/origin/main`, from `refs/remotes/<remote>/HEAD`
+   * or the remote's advertised `HEAD` (`advertisedUpstream`).
+   */
   readonly branch: string;
+}
+
+/** The clone's remotes, `origin` first, then the others in git's order. */
+async function remotesOf(root: AbsolutePath, signal: AbortSignal | undefined): Promise<string[]> {
+  const names = (textOf(await gitCall(root, ["remote"], local(signal))) ?? "")
+    .split("\n")
+    .filter(Boolean);
+  return names.includes("origin") ? ["origin", ...names.filter((n) => n !== "origin")] : names;
 }
 
 /**
@@ -33,18 +44,39 @@ export async function upstreamOf(
   root: AbsolutePath,
   signal?: AbortSignal,
 ): Promise<Upstream | null> {
-  const names = (textOf(await gitCall(root, ["remote"], local(signal))) ?? "")
-    .split("\n")
-    .filter(Boolean);
-  const ordered = names.includes("origin")
-    ? ["origin", ...names.filter((n) => n !== "origin")]
-    : names;
-  for (const remote of ordered) {
+  for (const remote of await remotesOf(root, signal)) {
     const args = ["symbolic-ref", "-q", `refs/remotes/${remote}/HEAD`];
     const branch = textOf(await gitCall(root, args, local(signal)));
     if (branch !== null && branch !== "") return { remote, branch };
   }
   return null;
+}
+
+/** `git ls-remote --symref`'s line for the remote's `HEAD`: the branch it names. */
+const ADVERTISED_HEAD = /^ref: refs\/heads\/(\S+)\tHEAD$/m;
+
+/**
+ * Row 018-28 (`research/shared-proof.md` Q3): without a local
+ * `refs/remotes/<remote>/HEAD` (a remote removed and added again has none,
+ * and a fetch never makes it), the default branch the remote itself
+ * advertises, `git ls-remote --symref <remote> HEAD`, for `origin`, else the
+ * first remote. `null` when that remote names none, cannot be reached within
+ * the caller's timer or stop, or the clone holds no remote-tracking ref of
+ * that branch. Writes nothing: no `git remote set-head`.
+ */
+export async function advertisedUpstream(
+  root: AbsolutePath,
+  call: Pick<GitCall, "timeoutMs" | "env" | "signal">,
+): Promise<Upstream | null> {
+  const [remote] = await remotesOf(root, call.signal);
+  if (remote === undefined) return null;
+  const answer = await gitCall(root, ["ls-remote", "--symref", remote, "HEAD"], call);
+  const name = ADVERTISED_HEAD.exec(textOf(answer) ?? "")?.[1];
+  if (name === undefined) return null;
+  const branch = `refs/remotes/${remote}/${name}`;
+  const args = ["rev-parse", "--verify", "-q", `${branch}^{commit}`];
+  const held = textOf(await gitCall(root, args, local(call.signal)));
+  return held === null || held === "" ? null : { remote, branch };
 }
 
 /** M: `git merge-base <head> <branch>`; `null` when they share no history. */
