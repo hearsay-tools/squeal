@@ -70,7 +70,19 @@ export interface CollectOptions {
   readonly adapters: GateAdapters;
   /** The adapters' notes, such as a file run with coverage off; dropped when absent. */
   readonly note?: (text: string) => void;
+  /** D11.7: the evidence the stores hold of a runner's selected files; those do not run. */
+  readonly stored?: StoredEvidence;
 }
+
+/**
+ * The evidence of each of `files` read from the stores, by the ref given;
+ * a file it leaves out runs. Called once per runner with a selected file,
+ * before its run and within the budget.
+ */
+export type StoredEvidence = (
+  runner: TestFileEvidence["runner"],
+  files: readonly TestFileRef[],
+) => Promise<ReadonlyMap<TestFileRef, TestFileEvidence>>;
 
 /** D3.1: a `--test` path that no runner lists as a test file; a usage error (D1, exit 2). */
 export class CollectUsageError extends Error {
@@ -96,6 +108,7 @@ interface Runner {
  * runner after another, each given what is left of it; a runner reached
  * after the deadline runs nothing. A project's own `testTimeout` is never
  * lowered. With no changed path and no `--test` file, no adapter starts.
+ * A selected file `options.stored` gives evidence of does not run (D11.7).
  * Rejects when Vitest is configured but cannot start, or when Squeal's
  * provider is missing: a setup error (D1).
  */
@@ -126,7 +139,11 @@ export async function collectEvidence(
     const testFiles: TestFileEvidence[] = [];
     let timedOut = false;
     for (const [i, runner] of runners.entries()) {
-      const files = selected[i] ?? [];
+      const chosen = selected[i] ?? [];
+      if (chosen.length === 0) continue;
+      const stored = (await options.stored?.(runner.kind, chosen)) ?? new Map();
+      testFiles.push(...stored.values());
+      const files = chosen.filter((ref) => !stored.has(ref));
       if (files.length === 0) continue;
       const left = Math.ceil(deadline - performance.now());
       const logDir = join(temp, "runs", String(i));
