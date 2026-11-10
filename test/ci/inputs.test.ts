@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { listingHash, readEvidence, uncertified } from "../../src/core/ci/inputs.js";
+import { listingHash, readEvidence, readRecorded, uncertified } from "../../src/core/ci/inputs.js";
 import { ABSENT_LISTING } from "../../src/core/keys/observed.js";
 
 /*
@@ -82,6 +82,29 @@ describe("readEvidence", () => {
     writeFileSync(join(dir, "1-0.ndjson"), `${JSON.stringify({ e: { "a.txt": "a" } })}\n{"e":{"b`);
     expect(readEvidence(dir)).toEqual({ "a.txt": "a" });
     expect(readEvidence(join(dir, "missing"))).toEqual({});
+  });
+});
+
+describe("readRecorded (row 018-29)", () => {
+  it("sums each process's latest clock time, counts the processes that wrote one, and keeps the evidence", () => {
+    const lines: Record<string, readonly Record<string, unknown>[]> = {
+      "1-0.ndjson": [{ e: { "a.txt": "a" }, o: 1.5 }, { w: ["b.txt"], t: [], o: 4 }, { o: 6.25 }],
+      "2-0.ndjson": [{ e: { "c.txt": "c" }, o: 2 }, { o: 1 }],
+      "3-0.ndjson": [{ e: { "d.txt": "d" } }],
+      "4-0.ndjson": [{ o: "7" }, { o: -1 }, { o: null }],
+    };
+    const recorded = readRecorded(evidenceDir(lines));
+    expect(recorded.hooks).toEqual({ ms: 8.25, threads: 2 });
+    // The time is beside the evidence, never in it: the same paths as without it.
+    const plain = Object.fromEntries(
+      Object.entries(lines).map(([name, file]) => [
+        name,
+        file.map(({ o: _o, ...line }) => line).filter((line) => Object.keys(line).length > 0),
+      ]),
+    );
+    expect(recorded.evidence).toEqual(readEvidence(evidenceDir(plain)));
+    expect(recorded.evidence).toEqual({ "a.txt": "a", "c.txt": "c", "d.txt": "d" });
+    expect(readRecorded(join(temp(), "missing")).hooks).toEqual({ ms: 0, threads: 0 });
   });
 });
 
