@@ -1,7 +1,7 @@
 import { RECORDED_UNKNOWN_TEXT, recordedText } from "../retry/text.js";
 import { formatCheck } from "../state/check-name.js";
 import { groupTierLines } from "../state/group-text.js";
-import { fullSuiteText, runnerPartText } from "../state/header.js";
+import { fullSuiteText } from "../state/header.js";
 import { slowAffectedText, slowTierText } from "../state/slow-text.js";
 import { excludedFilesText, excludedProjectsText, plural } from "../text.js";
 import type { EpochMs } from "../types/common.js";
@@ -17,7 +17,7 @@ import {
 import { codeStatusLines, coverageStatusLines } from "./code-status.js";
 import { commitLines } from "./commit-lines.js";
 import { configProblemsLine } from "./config-problems.js";
-import { lateLines } from "./feed-late.js";
+import { delaysLines } from "./feed-late.js";
 import { focusedLines } from "./focused.js";
 import { holdLines } from "./holds.js";
 import { statusRevisionText } from "./identity.js";
@@ -69,8 +69,9 @@ export function formatStatus(
     `Revision: ${statusRevisionText(result)}`,
     // Row 011-73 (C6 as amended 2026-10-21): a hold qualifies everything below it.
     ...holdLines(result.holds, command),
-    // Row 011-200 (C6): a late change feed qualifies everything below it, as a hold does.
-    ...lateLines(result.daemon, result.revision),
+    // Row 011-200 (C6): a late change feed qualifies everything below it, as a hold does; row
+    // 011-311: so does the revision's listing, in the same sentence when both apply.
+    ...delaysLines(result),
     // Spec 011 C6 as amended (gh-34): only current failures are counted; (gh-45) then what is not current.
     `Known failures: ${failureCountText(splitByValidity(result.knownFailures).current.map((f) => f.check))}${notCurrentText(result)}`,
     ...earlierFailuresLines(knownFailureCounts(result.knownFailures)),
@@ -187,8 +188,8 @@ export function formatUnavailable(result: StatusUnavailable, command = "squeal")
  * when there are any, each count naming its tests and file-level checks
  * apart (spec 005 D1). Before the daemon listed the test files, zero counts would
  * read as complete, so none are printed (D7 as amended). While the runner
- * part of the revision is pending, the counts say what they leave out (D2 as
- * amended, review wave 4.5 S1).
+ * part of the revision is pending, the line after the revision line says what
+ * the counts leave out (D2 as amended, review wave 4.5 S1; row 011-311).
  */
 function affected(s: StatusSnapshot, command: string): string {
   if (s.testFilesListed === false) {
@@ -213,12 +214,7 @@ function affected(s: StatusSnapshot, command: string): string {
   for (const [count, label, fileLevel] of optional) {
     if (count > 0) parts.push(countedText(count, label, fileLevel));
   }
-  const fresh = freshText(s);
-  const runnerPart =
-    s.runnerPartPending === true
-      ? `; ${runnerPartText(s.revision)} is pending, so test files it adds are not counted yet`
-      : "";
-  return `${parts.join(", ")}${slowAffectedText(s.slowPending, command)}${fresh}${runnerPart}`;
+  return `${parts.join(", ")}${slowAffectedText(s.slowPending, command)}${freshText(s)}`;
 }
 
 /**
