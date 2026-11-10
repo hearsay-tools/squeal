@@ -82,7 +82,7 @@ describe("squeal ci record on Vitest 4.1", () => {
       [undefined, undefined],
     ]);
     expect(run.text).toContain(
-      "no coverage records: Squeal's provider failed (the Vitest instance has no configOverride)",
+      "no coverage records: Squeal's provider failed: the Vitest instance has no configOverride",
     );
     expect(part.projects.map((p) => [p.descriptor.runnerVersion, p.updateSnapshot])).toEqual([
       ["4.1.10", "none"],
