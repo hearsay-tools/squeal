@@ -36,6 +36,14 @@ import { type CrapShown, crapFor } from "./code-crap-reason.js";
 const UNTESTED = "untested: no test runs it in the test's own thread";
 const TESTED = "a test runs it in its own thread";
 
+/**
+ * Spec 020 D11.5 (row 020-07a): a file no test Squeal runs loads is not
+ * measured, never untested. A fact about the tests Squeal runs (row
+ * 015-103): a test outside its runners can load it.
+ */
+const NOT_LOADED = "no test Squeal runs loads this file";
+const NOT_LOADED_FILES = "no test Squeal runs loads them";
+
 /** Row 015-80 (D9, amended 2026-10-27): so a failing state does not read as "no test runs it". */
 const MEASURED = `  Coverage counts what ran in the test's own thread. ${UNMEASURED}`;
 
@@ -59,6 +67,11 @@ export interface CodeReportCoverageOf {
    * states (review 0.1.354 B1); then nothing else is set.
    */
   readonly notMeasured?: readonly string[];
+  /**
+   * Spec 020 D11.5: the file is unknown since no test file Squeal runs
+   * loads it, and no state proved this function's; then nothing else is set.
+   */
+  readonly notLoaded?: true;
   /** At the file's last judgement; absent while it has none. */
   readonly lines?: number;
   readonly covered?: number;
@@ -89,6 +102,11 @@ export interface CodeReportCoverage {
   readonly notJudged: number;
   /** Row 015-75: the files not measured, out of `notJudged`, and the runners that give them no record; absent, none. */
   readonly notMeasured?: { readonly files: number; readonly runners: readonly string[] };
+  /**
+   * Spec 020 D11.5: the files with a counted function that no test file
+   * loads, so not measured; absent, none. No such file is in `notJudged`.
+   */
+  readonly notLoaded?: number;
   /** Row 015-64: the checks judged; absent when both are. */
   readonly checks?: readonly CoverageMeasure[];
 }
@@ -106,12 +124,34 @@ function notMeasuredBy(summary: CoverageSummary, path: RelativePath): string[] |
   return file.runners.map(runnerName);
 }
 
+/** Spec 020 D11.5: no test file Squeal runs loads the file. */
+const notLoaded = (summary: CoverageSummary, path: RelativePath) => {
+  const file = summary.files[path];
+  return file?.state === "unknown" && file.cause === "no-loader";
+};
+
 /**
  * Review 0.1.354 B1: a state a current record proved. A function, or a
  * file, with one reads its states and evidence, not "not measured", beside
  * a loader whose runner gives no record (D9, A pass proven early).
  */
 const measured = (s: CodeKnownState | undefined) => s?.outcome === "pass" || s?.outcome === "fail";
+
+/**
+ * A function whose file is not measured, while no state proved it:
+ * runners that give no record load the file (row 015-75), or no test file
+ * does (spec 020 D11.5); `null` otherwise.
+ */
+function unmeasuredOf(
+  summary: CoverageSummary,
+  path: RelativePath,
+  m: Partial<Record<CodeMeasure, CodeKnownState>>,
+): CodeReportCoverageOf | null {
+  if (measured(m.crap) || measured(m.uncovered)) return null;
+  const notMeasured = notMeasuredBy(summary, path);
+  if (notMeasured !== null) return { notMeasured };
+  return notLoaded(summary, path) ? { notLoaded: true } : null;
+}
 
 /** A function's states with its evidence at the file's last judgement, when it has some. */
 function withEvidence(
@@ -184,9 +224,9 @@ export function coverageByFunction(
     // Row 015-104: with a complexity and no CRAP state yet, CRAP pending with its wait.
     const crap = crapFor(m, summary.files[path], blobs.get(path), crapOn, options.command);
     if (crap === null && m.uncovered === undefined) continue;
-    const notMeasured = notMeasuredBy(summary, path);
-    if (notMeasured !== null && !measured(m.crap) && !measured(m.uncovered)) {
-      out.set(id, { notMeasured });
+    const unmeasured = unmeasuredOf(summary, path, m);
+    if (unmeasured !== null) {
+      out.set(id, unmeasured);
       continue;
     }
     const states = {
@@ -196,6 +236,13 @@ export function coverageByFunction(
     out.set(id, withEvidence(states, evidence.get(path)?.functions[functionKey(any.check)]));
   }
   return out;
+}
+
+/** How many of `paths` hold a counted function: a file with none is not worth a line. */
+function withFunctions(code: CodeStore, worktreeId: WorktreeId, paths: readonly RelativePath[]) {
+  if (paths.length === 0) return 0;
+  const counted = code.states.list(worktreeId, { paths, measure: "complexity" });
+  return new Set(counted.map((s) => s.check.path)).size;
 }
 
 /**
@@ -246,14 +293,17 @@ export function coverageReport(
     proved.has(path) ? null : notMeasuredBy(summary, path);
   const unmeasured = waiting.flatMap((path) => unmeasuredBy(path) ?? []);
   const notMeasured = waiting.filter((path) => unmeasuredBy(path) !== null).length;
+  const loaderless = waiting.filter((path) => !proved.has(path) && notLoaded(summary, path));
+  const unloaded = withFunctions(code, worktreeId, loaderless);
   return {
     threshold: crap?.threshold ?? null,
     functions,
     uncovered: states.filter((s) => s.measure === "uncovered" && s.outcome === "fail").length,
-    notJudged: waiting.length - notMeasured,
+    notJudged: waiting.length - notMeasured - loaderless.length,
     ...(notMeasured === 0
       ? {}
       : { notMeasured: { files: notMeasured, runners: [...new Set(unmeasured)].sort() } }),
+    ...(unloaded === 0 ? {} : { notLoaded: unloaded }),
     ...(summary.checks === undefined ? {} : { checks: summary.checks }),
   };
 }
@@ -261,11 +311,18 @@ export function coverageReport(
 const score = (value: number | null) =>
   value === null ? "not judged" : Number.isInteger(value) ? `${value}` : value.toFixed(1);
 
+/** Why a function is not measured, as its line ends; `null` when it is. */
+function notMeasuredWords(c: CodeReportCoverageOf): string | null {
+  if (c.notMeasured !== undefined) return `; not measured: ${noCoverageWords(c.notMeasured)}`;
+  return c.notLoaded === true ? `; not measured: ${NOT_LOADED}` : null;
+}
+
 /** The words a function's line ends with for its coverage, with paths; only for the checks judged. */
 export function coverageWords(c: CodeReportCoverageOf | undefined): string {
   if (c === undefined) return "";
   if (c.excluded === true) return "; coverage not checked (coverage.exclude)";
-  if (c.notMeasured !== undefined) return `; not measured: ${noCoverageWords(c.notMeasured)}`;
+  const unmeasured = notMeasuredWords(c);
+  if (unmeasured !== null) return unmeasured;
   const waits = (outcome: CodeOutcome | undefined) =>
     outcome === "pending" || outcome === "unknown";
   if (waits(c.crap?.outcome)) {
@@ -339,6 +396,10 @@ export function coverageLines(
       : [
           `  ${plural(c.notMeasured.files, "file")} not measured: ${noCoverageWords(c.notMeasured.runners)}`,
         ];
+  const unloaded =
+    c.notLoaded === undefined
+      ? []
+      : [`  ${plural(c.notLoaded, "file")} not measured: ${NOT_LOADED_FILES}`];
   const failing = c.uncovered > 0 || c.functions.some((f) => f.outcome === "fail");
   return [
     head,
@@ -355,5 +416,6 @@ export function coverageLines(
     ...(failing ? [MEASURED] : []),
     ...wait,
     ...unmeasured,
+    ...unloaded,
   ];
 }
