@@ -11,6 +11,7 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { countsText } from "../../src/cli/ci-export.js";
 import { type CiExport, ciExport } from "../../src/core/ci/export.js";
 import type { InputEvidence } from "../../src/core/ci/inputs.js";
 import {
@@ -186,6 +187,7 @@ describe("ci export's keys (spec 018 D9)", () => {
       unkeyed: 1,
       uncertified: 0,
       ambiguous: 0,
+      inspector: 0,
     });
     const [only] = result.bundle.testFiles;
     expect(only?.path).toBe("test/a.test.ts");
@@ -233,6 +235,19 @@ describe("ci export's keys (spec 018 D9)", () => {
     expect(result.uncertified).toEqual([
       { testFile: { project: "", path: "test/b.test.ts" }, inputs: ["src/x.ts"] },
     ]);
+  });
+
+  it("leaves out a file whose worker ran node:inspector beside Squeal's provider (spec 020 D13.4)", async () => {
+    const { root, commit } = await repository();
+    const inspected = { ...file("test/a.test.ts", "pass"), noRecord: "inspector" as const };
+    const other = { ...file("test/b.test.ts", "pass"), noRecord: "unmapped" as const };
+    const result = await exported(root, commit, descriptor(), [inspected, other]);
+    if ("refused" in result) throw new Error(result.refused.text);
+    expect(result.counts).toMatchObject({ testFiles: 1, inspector: 1, unkeyed: 0, failed: 0 });
+    expect(result.bundle.testFiles.map((f) => f.path)).toEqual(["test/b.test.ts"]);
+    expect(countsText(result.counts, "x.json.gz")).toContain(
+      "1 test file that ran node:inspector beside Squeal's coverage provider",
+    );
   });
 
   it("leaves out a file an input of which its shard holds no evidence of, a commit's file too", async () => {
