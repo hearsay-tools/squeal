@@ -31,12 +31,12 @@ creating the fixture. The final ordinary-lint run measured **2.91/24** at
 These are 02:43:47 and 02:43:07 Europe/Warsaw.
 
 Commands, fixture and full transcripts are in
-[`research/probes/issue-168/`](../../../../research/probes/issue-168/README.md):
+[`research/probes/issue-168/`](probes/issue-168/README.md):
 
 ```sh
-python3 research/probes/issue-168/probe.py
-ISSUE168_SLOW_LINT=1 python3 research/probes/issue-168/probe.py
-python3 research/probes/issue-168/inspect-store.py <printed PRIVATE_ROOT>
+python3 docs/specifications/011-core/research/probes/issue-168/probe.py
+ISSUE168_SLOW_LINT=1 python3 docs/specifications/011-core/research/probes/issue-168/probe.py
+python3 docs/specifications/011-core/research/probes/issue-168/inspect-store.py <printed PRIVATE_ROOT>
 ```
 
 The fixture owns a private Git repository, store and XDG directories. It runs one

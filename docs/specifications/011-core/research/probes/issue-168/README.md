@@ -8,9 +8,9 @@ ESLint 10.13.0; it installs nothing. Node is 24.22.1. No external suite runs.
 Run from this checkout:
 
 ```sh
-python3 research/probes/issue-168/probe.py
-ISSUE168_SLOW_LINT=1 python3 research/probes/issue-168/probe.py
-python3 research/probes/issue-168/inspect-store.py <PRIVATE_ROOT printed by probe>
+python3 docs/specifications/011-core/research/probes/issue-168/probe.py
+ISSUE168_SLOW_LINT=1 python3 docs/specifications/011-core/research/probes/issue-168/probe.py
+python3 docs/specifications/011-core/research/probes/issue-168/inspect-store.py <PRIVATE_ROOT printed by probe>
 ```
 
 The script skips when one-minute load exceeds `nproc`. It uses the installed
