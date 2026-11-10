@@ -126,6 +126,8 @@ export function openContext(
       code,
       lint,
       ...(prepare === undefined ? {} : { prepare }),
+      // Row 011-312: a registration records the commit `HEAD` names here.
+      root: location.root,
     });
     const close = () => store.close();
     const prepared = prepare === undefined ? {} : { prepared: prepare.reports };
