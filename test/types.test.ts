@@ -47,7 +47,7 @@ describe("core types", () => {
         maxFileBytes: 524_288,
         blocking: false,
       },
-      coverage: { enabled: true, untested: true, exclude: [] },
+      coverage: { enabled: true, untested: true, exclude: [], children: false },
       crap: { enabled: true, threshold: 30 },
       // Spec 017 D1; its keys' own tests are test/lint/policy.test.ts.
       lint: {
