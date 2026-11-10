@@ -79733,14 +79733,15 @@ function outcomeOf(entry4, { row: row2, evidence }, base, rules) {
   return headValue(entry4, row2) > entry4.value ? "over-value" : "covers";
 }
 function stateOf(judged2, uses, cc) {
-  const { row: row2, evidence } = judged2;
+  const { row: row2, evidence, gap } = judged2;
   if (row2.state === "incomplete") return row2;
   const covers = (measure2) => uses.some((u) => u.entry.measure === measure2 && u.outcome === "covers");
   const ccOver = row2.complexity > cc;
   if (ccOver && !covers("complexity")) return VIOLATION;
   if (evidence.state === "incomplete") return evidence;
-  if (evidence.state === "violation") return covers("crap") ? ACCEPTED : VIOLATION;
-  return ccOver ? ACCEPTED : evidence;
+  const accepted = gap === null ? ACCEPTED : { state: "incomplete", gap };
+  if (evidence.state === "violation") return covers("crap") ? accepted : VIOLATION;
+  return ccOver ? accepted : evidence;
 }
 function baseOf2(row2, bases4) {
   if (row2.change !== "edited") return null;
@@ -79933,29 +79934,37 @@ function measuresOf2(fn, ev, ctx) {
     loaders
   };
 }
-function evidenceJudgement(m, ev, ctx) {
-  if (ev.expected.length === 0) return gapOf("no-loader");
-  if (ev.missing === "not-finished") return gapOf("not-finished");
+function completeness(m, ev, ctx) {
+  if (ev.expected.length === 0) return "no-loader";
+  if (ev.missing !== null) return ev.missing;
+  if (m.crap === null) return "not-joined";
+  if (ctx.failed) return "test-failed";
+  return null;
+}
+function evidenceJudgement(m, gap, ctx) {
   const underCrap = m.crap !== null && m.crap <= ctx.policy.crapThreshold;
-  if (ev.missing !== null) return underCrap && !ctx.failed ? PASS : gapOf(ev.missing);
-  if (m.crap === null) return gapOf("not-joined");
-  if (ctx.failed) return gapOf("test-failed");
-  return underCrap ? PASS : VIOLATION2;
+  if (gap === null) return underCrap ? PASS : VIOLATION2;
+  return gap === "no-record" && underCrap && !ctx.failed ? PASS : gapOf(gap);
 }
 var SKIPPED = { state: "skipped", gap: null };
 function judge(fn, ctx) {
   const over = fn.count.complexity > ctx.policy.complexityThreshold;
   if (ctx.excluded(fn.path)) {
-    return { row: report2(fn, UNMEASURED2, over ? VIOLATION2 : SKIPPED), evidence: SKIPPED };
+    return {
+      row: report2(fn, UNMEASURED2, over ? VIOLATION2 : SKIPPED),
+      evidence: SKIPPED,
+      gap: null
+    };
   }
   const ev = ctx.evidenceOf(fn);
   const measures = measuresOf2(fn, ev, ctx);
-  const evidence = evidenceJudgement(measures, ev, ctx);
-  return { row: report2(fn, measures, over ? VIOLATION2 : evidence), evidence };
+  const gap = completeness(measures, ev, ctx);
+  const evidence = evidenceJudgement(measures, gap, ctx);
+  return { row: report2(fn, measures, over ? VIOLATION2 : evidence), evidence, gap };
 }
 function inError(fn) {
   const notCounted = gapOf("not-counted");
-  return { row: report2(fn, UNMEASURED2, notCounted), evidence: notCounted };
+  return { row: report2(fn, UNMEASURED2, notCounted), evidence: notCounted, gap: "not-counted" };
 }
 function headPaths(changed2) {
   const blobs = /* @__PURE__ */ new Map();
