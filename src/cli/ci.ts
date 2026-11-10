@@ -140,9 +140,9 @@ function recordingCoverage(deps: CiDeps): RecordingCoverage {
   if (provider === null) return { missing: "this Squeal has no coverage/provider.mjs" };
   const script = mapWorkerScript();
   const worker = deps.mapWorker ?? (script === null ? null : { script });
-  if (worker === null)
-    return { missing: "this Squeal has no records' worker (cli/coverage-map.mjs)" };
-  return { provider, worker };
+  return worker === null
+    ? { missing: "this Squeal has no records' worker (cli/coverage-map.mjs)" }
+    : { provider, worker };
 }
 
 function exitOf(result: number | NotStarted, say: (text: string) => void): number {
@@ -170,8 +170,8 @@ async function writeParts(
     source: sourceOf(env),
   };
   let files = 0;
-  for (const { projects, testFiles, end, runnerVersion, shard, observing, ...run } of runs) {
-    const { coverage, records } = run;
+  for (const run of runs) {
+    const { projects, testFiles, end, runnerVersion, shard, observing, coverage, records } = run;
     const header: PartHeader = {
       ...base,
       runnerVersion,
