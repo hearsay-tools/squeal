@@ -1,6 +1,13 @@
 import { isRecord } from "../fs/json.js";
 import { recordRegisteredKeys } from "../state/before-edits.js";
-import type { EpochMs, RelativePath, RevisionNumber, WorktreeId } from "../types/common.js";
+import { readGitHead } from "../status/git-head.js";
+import type {
+  AbsolutePath,
+  EpochMs,
+  RelativePath,
+  RevisionNumber,
+  WorktreeId,
+} from "../types/common.js";
 import { bootstrappedMetaKey } from "../types/daemon.js";
 import type { Consumer } from "../types/delivery.js";
 import { type Store, worktreeMetaKey } from "../types/store.js";
@@ -33,6 +40,12 @@ export interface Registration {
    * when the consumer registered; absent when none was.
    */
   readonly scanned?: EpochMs;
+  /**
+   * Row 011-312: the commit `HEAD` named when the consumer first registered
+   * (`registrationHead`); absent when Git's files could not tell, or for a
+   * registration from before it.
+   */
+  readonly head?: string;
 }
 
 /** A registration of a consumer that left, kept until `leftTime + CONSUMER_EXPIRY_MS`. */
@@ -63,6 +76,7 @@ function parkedMetaKey(worktreeId: WorktreeId): string {
 }
 
 const isNumber = (value: unknown): value is number => typeof value === "number";
+const isString = (value: unknown): value is string => typeof value === "string";
 const isGap = (value: unknown): value is Gap =>
   Array.isArray(value) && value.length === 2 && value.every(isNumber);
 
@@ -70,13 +84,17 @@ function toRegistration(value: unknown): Registration | null {
   if (isNumber(value)) return { since: value, gaps: [] };
   if (!isRecord(value) || !isNumber(value.since) || !Array.isArray(value.gaps)) return null;
   if (!value.gaps.every(isGap)) return null;
-  const r = { since: value.since, gaps: value.gaps };
-  return isNumber(value.scanned) ? { ...r, scanned: value.scanned } : r;
+  return {
+    since: value.since,
+    gaps: value.gaps,
+    ...(isNumber(value.scanned) ? { scanned: value.scanned } : {}),
+    ...(isString(value.head) ? { head: value.head } : {}),
+  };
 }
 
 /** A bare number when nothing else is kept: the form 0.1.10 hooks read. */
 const stored = (r: Registration): unknown =>
-  r.gaps.length === 0 && r.scanned === undefined ? r.since : r;
+  r.gaps.length === 0 && r.scanned === undefined && r.head === undefined ? r.since : r;
 
 /** `consumer`'s registration; `null` when none was recorded (0.1.9 or older, or 0.1.12 before the start scan). */
 export function registration(store: Store, consumer: Consumer): Registration | null {
@@ -96,6 +114,21 @@ export function scannedDaemon(
 }
 
 /**
+ * Row 011-312: the commit `HEAD` names in the worktree at `root`, as a
+ * registration records it: read from the git dir without spawning git
+ * (`readGitHead`), a linked worktree's and a detached `HEAD` included;
+ * `null` when it is unborn or its files cannot be read, and then the
+ * registration records none.
+ */
+export function registrationHead(root: AbsolutePath): string | null {
+  try {
+    return readGitHead(root);
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Whether every change since `r` registered is in a revision. A daemon's
  * start scan hashes the files it has no hash for without a revision (a new
  * worktree's every file, a file created while no daemon ran), so an agent
@@ -111,7 +144,8 @@ export function seesEveryChange(store: Store, worktreeId: WorktreeId, r: Registr
 /**
  * Records where a newly registered `consumer`'s changes start: after
  * `revision`, or after its parked registration with `(leftAt, revision]`
- * left out, with `scanned` (`scannedDaemon`). Call inside the registration's
+ * left out, with `scanned` (`scannedDaemon`) and `head`
+ * (`registrationHead`, row 011-312). Call inside the registration's
  * transaction, and only for a consumer not registered before. Returns what
  * a parked registration brings back, `null` when none was kept.
  */
@@ -119,10 +153,18 @@ export function tellRegistered(
   store: Store,
   consumer: Consumer,
   revision: RevisionNumber,
-  { at, scanned }: { readonly at: EpochMs; readonly scanned: EpochMs | null },
+  {
+    at,
+    scanned,
+    head = null,
+  }: {
+    readonly at: EpochMs;
+    readonly scanned: EpochMs | null;
+    readonly head?: string | null;
+  },
 ): Resumed | null {
   const parked = unpark(store, consumer, at);
-  const next = parked === null ? fresh(revision, scanned) : back(parked, revision, scanned);
+  const next = parked === null ? fresh(revision, scanned, head) : back(parked, revision, scanned);
   writeSlot(store, registeredMetaKey(consumer.worktreeId), consumer, stored(next));
   // 011-18: the keys a first-seen failure's baseline is looked up at.
   recordRegisteredKeys(store, consumer.worktreeId, slot(consumer), {
@@ -141,8 +183,13 @@ function registeredSlots(store: Store, worktreeId: WorktreeId, at: EpochMs): Rea
   return slots;
 }
 
-function fresh(since: RevisionNumber, scanned: EpochMs | null): Registration {
-  return scanned === null ? { since, gaps: [] } : { since, gaps: [], scanned };
+function fresh(since: RevisionNumber, scanned: EpochMs | null, head: string | null): Registration {
+  return {
+    since,
+    gaps: [],
+    ...(scanned === null ? {} : { scanned }),
+    ...(head === null ? {} : { head }),
+  };
 }
 
 /**
@@ -150,13 +197,15 @@ function fresh(since: RevisionNumber, scanned: EpochMs | null): Registration {
  * away is left out, and where it came back is kept, the gap empty when
  * nothing changed (`codeSeenUpTo` reads it). It keeps `scanned` only when
  * the same daemon is live and scanned now: another one's start scan may
- * have seeded an edit.
+ * have seeded an edit. It keeps the first registration's `head`, as it
+ * keeps its `since` (row 011-312).
  */
 function back(parked: Parked, revision: RevisionNumber, scanned: EpochMs | null): Registration {
   const away: Gap = [parked.leftAt, revision];
   const r = {
     since: parked.since,
     gaps: revision >= parked.leftAt ? [...parked.gaps, away] : parked.gaps,
+    ...(parked.head === undefined ? {} : { head: parked.head }),
   };
   return scanned !== null && parked.scanned === scanned ? { ...r, scanned } : r;
 }

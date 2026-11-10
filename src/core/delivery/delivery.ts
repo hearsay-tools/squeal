@@ -15,7 +15,12 @@ import { ignoredConfigAt } from "../status/ignored-config.js";
 import { importSourceOf } from "../store/imports.js";
 import { type ChangeMarker, changeMarker } from "../store/store.js";
 import type { CodeNews } from "../types/code-delivery.js";
-import { type EpochMs, PAYLOAD_SCHEMA_VERSION, type RevisionNumber } from "../types/common.js";
+import {
+  type AbsolutePath,
+  type EpochMs,
+  PAYLOAD_SCHEMA_VERSION,
+  type RevisionNumber,
+} from "../types/common.js";
 import type {
   Consumer,
   Delta,
@@ -62,7 +67,7 @@ import {
 } from "./liveness.js";
 import { ownEditUnknown } from "./own-edit.js";
 import { type Prepare, startHold } from "./prepared.js";
-import { scannedDaemon, tellRegistered } from "./registered.js";
+import { registrationHead, scannedDaemon, tellRegistered } from "./registered.js";
 import { groupTiersChanged, slowTierChanged, tellGroupTiers, tellSlowTier } from "./slow-told.js";
 import { toldAtStop } from "./stop-news.js";
 import {
@@ -105,6 +110,11 @@ export interface DeliveryOptions {
    * Default: none, so every delivery commits before it returns.
    */
   readonly prepare?: Prepare;
+  /**
+   * Row 011-312: the worktree's root, where a registration reads the commit
+   * `HEAD` names (`registrationHead`). Default: none, so it records none.
+   */
+  readonly root?: AbsolutePath;
 }
 
 /**
@@ -456,6 +466,7 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
           const resumed = tellRegistered(store, consumer, header.revision, {
             at,
             scanned: scannedDaemon(store, consumer.worktreeId, alive),
+            head: options.root === undefined ? null : registrationHead(options.root),
           });
           // Tasks 001-223 and 001-224: edits count from here; a resumed session was told once (B2).
           startEdits(store, consumer, header.revision, resumed?.said === true);
