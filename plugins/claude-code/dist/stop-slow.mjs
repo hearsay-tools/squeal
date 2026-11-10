@@ -1058,7 +1058,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.423";
+  if (true) return "0.1.424";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -1118,13 +1118,13 @@ function staleHiddenLockfile(dir, lockfile) {
   const lockTime = lstatSync(join4(dir, HIDDEN_LOCKFILE)).mtimeMs;
   const folders = packageFolders(dir, workspaces(listed3));
   const seen = new Set(folders.map((folder) => folder.path));
-  const unlisted2 = folders.filter((folder) => !Object.hasOwn(listed3, folder.path)).map((folder) => folder.path);
+  const unlisted3 = folders.filter((folder) => !Object.hasOwn(listed3, folder.path)).map((folder) => folder.path);
   const newer = folders.filter(
     (folder) => Object.hasOwn(listed3, folder.path) && folder.mtimeMs > lockTime
   );
   const missing = Object.keys(listed3).filter((path) => isInstalledFolder(path) && !seen.has(path));
   const parts = [
-    ["not listed in it", unlisted2],
+    ["not listed in it", unlisted3],
     ["newer than it", newer.map((folder) => folder.path)],
     ["missing", missing]
   ];
@@ -2494,8 +2494,39 @@ var WATCHER_TIMINGS = {
 
 // src/core/status/feed-late.ts
 var FEED_LATE_MS = 2 * WATCHER_TIMINGS.reconcileIntervalMs;
+function runnersHave(runners, start) {
+  if (runners === void 0 || runners.length === 0) {
+    return `${start ? "The" : "the"} test runner has`;
+  }
+  const last = runners.at(-1);
+  if (runners.length === 1) return `${last} has`;
+  return `${runners.slice(0, -1).join(", ")} and ${last} have`;
+}
+function unlisted({ revision, runners, files: files2 = "test files" }, start) {
+  return `${runnersHave(runners, start)} not yet listed the test files of revision ${revision}, so new ${files2} are not counted`;
+}
+function unlistedText(what) {
+  return `${unlisted(what, true)}.`;
+}
+function unlistedClause(what) {
+  return unlisted(what, false);
+}
 function lateText(late, revision) {
-  return `Edits since ${timeText(late.since)} may not be seen yet; results are current as of revision ${revision}.`;
+  return `Squeal has not yet read edits made after ${timeText(late.since)}; these counts cover revision ${revision} and earlier.`;
+}
+function behindText(late, revision, runners) {
+  return `Squeal is behind: it has not read edits made after ${timeText(late.since)}, and ${runnersHave(runners, false)} not listed revision ${revision}'s test files yet, so new test files are not counted.`;
+}
+function delaysText(header, late) {
+  const { revision } = header;
+  const pending = header.runnerPartPending === true;
+  if (late === void 0) {
+    return pending ? unlistedText({ revision, runners: header.listingRunners }) : null;
+  }
+  return pending ? behindText(late, revision, header.listingRunners) : lateText(late, revision);
+}
+function lateOf(daemon) {
+  return daemon?.state === "alive" ? daemon.late : void 0;
 }
 
 // src/core/presence/findings.ts
@@ -2562,7 +2593,7 @@ function shortOf(facts, record, shutDown, heartbeat) {
   const { of, version, claimed, at: since } = mark;
   return { of, version, claimed, since };
 }
-function lateOf(facts, record, heartbeat, stopping, at) {
+function lateOf2(facts, record, heartbeat, stopping, at) {
   if (heartbeat.state !== "alive" || record === null || stopping() !== null) return null;
   const since = facts.feedDelivered();
   if (since === null || since < record.startedAt || at - since <= FEED_LATE_MS) return null;
@@ -2593,7 +2624,7 @@ function decidePresence(facts, at) {
   });
   const rest = once(() => restOf(facts, at));
   const short = once(() => shortOf(facts, record(), shutDown, heartbeat()));
-  const late = once(() => lateOf(facts, record(), heartbeat(), stopping, at));
+  const late = once(() => lateOf2(facts, record(), heartbeat(), stopping, at));
   const heartbeatLate = once(() => {
     const daemon = record();
     if (!down() || daemon === null || shutDown() || start() !== null || stopped()) return null;
@@ -2806,6 +2837,35 @@ function newsView(p, told) {
   if (start !== null) return withStart(stopped, start);
   const stopping = p.stopping;
   return stopping === null ? stopped : { ...stopped, stopping };
+}
+
+// src/core/daemon/runner.ts
+import { readdirSync as readdirSync6, readFileSync as readFileSync8 } from "node:fs";
+import { join as join10, posix as posix5 } from "node:path";
+var VITEST_CONFIG = /^(vitest\.(config|workspace|projects)|vite\.config)\.[cm]?[jt]s$/;
+function vitestDetected(root) {
+  let names2;
+  try {
+    names2 = readdirSync6(root);
+  } catch {
+    return false;
+  }
+  if (names2.some((name2) => VITEST_CONFIG.test(name2))) return true;
+  return listsVitest(readManifest(join10(root, "package.json")));
+}
+function listsVitest(manifest) {
+  if (!isRecord(manifest)) return false;
+  return ["dependencies", "devDependencies"].some((field) => {
+    const deps = manifest[field];
+    return isRecord(deps) && Object.hasOwn(deps, "vitest");
+  });
+}
+function readManifest(path) {
+  try {
+    return JSON.parse(readFileSync8(path, "utf8"));
+  } catch {
+    return null;
+  }
 }
 
 // src/core/types/state.ts
@@ -3160,7 +3220,7 @@ function commitLine(report) {
 }
 
 // src/core/slow/classify.ts
-import { posix as posix5 } from "node:path";
+import { posix as posix6 } from "node:path";
 function slowFiles(policy, projects2) {
   const matches2 = createInputMatcher(policy.slow.include);
   const slowProjects = new Set(
@@ -3172,7 +3232,7 @@ function slowGlobs(policy, projects2) {
   const globs4 = [...policy.slow.include];
   for (const project of marked(policy, projects2)) {
     const cwd = project.cwd ?? ".";
-    for (const glob of project.include) globs4.push(posix5.join(cwd, glob));
+    for (const glob of project.include) globs4.push(posix6.join(cwd, glob));
   }
   return globs4;
 }
@@ -3664,6 +3724,7 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
   const view = policy === null ? null : slowPolicyView(policy);
   const slow = isSlow ?? view?.isSlow;
   const optimizerOff = readOptimizerOff(store, worktreeId);
+  const runnerPartPending = refinedRevision !== null && refinedRevision < revision;
   return {
     revision,
     ...commit === void 0 ? {} : { commit },
@@ -3681,7 +3742,8 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
     inheritedFileLevelCount,
     ...importedCount === 0 ? {} : { importedCount },
     refinedRevision,
-    runnerPartPending: refinedRevision !== null && refinedRevision < revision,
+    runnerPartPending,
+    ...listingRunnersField(runnerPartPending, root, policy),
     ...slow === void 0 ? {} : { slowPending: countSlowPending(states, keys, slow) },
     ...slowTierField(store, worktreeId, states, keys, policy, view),
     ...policy !== null && groupTextsShown(policy) ? groupFields(store, worktreeId, states, keys, policy) : {},
@@ -3719,8 +3781,16 @@ function readRefined(store, worktreeId) {
   const value = raw === null ? Number.NaN : Number(raw);
   return Number.isInteger(value) ? value : null;
 }
-function runnerPartText(revision) {
-  return `the runner part of revision ${revision}`;
+function listingRunnersField(pending, root, policy) {
+  if (!pending || root === void 0 || policy === null) return {};
+  const others = policy.nodeTest.length + policy.pytest.length;
+  return {
+    listingRunners: [
+      ...others === 0 || vitestDetected(root) ? ["Vitest"] : [],
+      ...policy.nodeTest.length > 0 ? ["node:test"] : [],
+      ...policy.pytest.length > 0 ? ["pytest"] : []
+    ]
+  };
 }
 function fullSuiteText({ revision, fullSuite }, command) {
   if (fullSuite.atCurrentRevision) return `completed at revision ${revision}`;
@@ -3782,11 +3852,11 @@ function toKnownFailure(state, revision) {
 }
 
 // src/core/delivery/harness-process.ts
-import { readFileSync as readFileSync8, readlinkSync as readlinkSync3 } from "node:fs";
+import { readFileSync as readFileSync9, readlinkSync as readlinkSync3 } from "node:fs";
 function readProcStat(pid) {
   let text2;
   try {
-    text2 = readFileSync8(`/proc/${pid}/stat`, "utf8");
+    text2 = readFileSync9(`/proc/${pid}/stat`, "utf8");
   } catch (error) {
     if (error.code === "ENOENT") return null;
     throw error;
@@ -4257,12 +4327,12 @@ function readHeld(meta, scope) {
 
 // src/core/lint/store/open.ts
 import { existsSync as existsSync4, mkdirSync as mkdirSync3 } from "node:fs";
-import { join as join12 } from "node:path";
+import { join as join13 } from "node:path";
 import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
 
 // src/core/store/open.ts
-import { existsSync as existsSync3, mkdirSync as mkdirSync2, readFileSync as readFileSync9, renameSync, rmSync as rmSync2, writeFileSync } from "node:fs";
-import { join as join11 } from "node:path";
+import { existsSync as existsSync3, mkdirSync as mkdirSync2, readFileSync as readFileSync10, renameSync, rmSync as rmSync2, writeFileSync } from "node:fs";
+import { join as join12 } from "node:path";
 import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
 
 // src/core/store/schema.ts
@@ -4586,7 +4656,7 @@ function flag(value) {
 
 // src/core/store/prune.ts
 import { existsSync as existsSync2, rmSync } from "node:fs";
-import { join as join10, resolve, sep as sep2 } from "node:path";
+import { join as join11, resolve, sep as sep2 } from "node:path";
 
 // src/core/store/repos/meta-list.ts
 function readMetaList(conn, key, guard) {
@@ -4769,7 +4839,7 @@ function prune(conn, worktrees, paths, options) {
   const cutoff = options.now - options.retentionDays * DAY_MS;
   let worktreesRemoved = 0;
   for (const worktree of worktrees.list()) {
-    if (existsSync2(join10(worktree.root, ".git"))) continue;
+    if (existsSync2(join11(worktree.root, ".git"))) continue;
     worktrees.remove(worktree.id);
     worktreesRemoved++;
   }
@@ -6041,7 +6111,7 @@ function markPath(database) {
 function readMark(path) {
   let text2;
   try {
-    text2 = readFileSync9(path, "utf8");
+    text2 = readFileSync10(path, "utf8");
   } catch (error) {
     if (error.code === "ENOENT") return null;
     throw error;
@@ -6132,7 +6202,7 @@ function isCorruption(error) {
 }
 function recover(paths, options) {
   mkdirSync2(paths.locksDir, { recursive: true });
-  const lock = new DatabaseSync2(join11(paths.locksDir, "store-recovery.sqlite"));
+  const lock = new DatabaseSync2(join12(paths.locksDir, "store-recovery.sqlite"));
   try {
     lock.exec(`PRAGMA busy_timeout = ${Math.max(busyTimeout(options), 1e4)}`);
     lock.exec("BEGIN EXCLUSIVE");
@@ -6580,7 +6650,7 @@ function createMetaRepo2(conn) {
 
 // src/core/lint/store/open.ts
 function lintStorePath(commonDir) {
-  return join12(storePaths(commonDir).dir, "lint.sqlite");
+  return join13(storePaths(commonDir).dir, "lint.sqlite");
 }
 function isLintStoreOpenFailure(value) {
   return "reason" in value;
@@ -6739,7 +6809,7 @@ var WAITERLESS_EXPIRY_MS = 10 * 60 * 1e3;
 
 // src/core/code/store/open.ts
 import { existsSync as existsSync5, mkdirSync as mkdirSync4 } from "node:fs";
-import { join as join13 } from "node:path";
+import { join as join14 } from "node:path";
 import { DatabaseSync as DatabaseSync4 } from "node:sqlite";
 
 // src/core/code/store/schema.ts
@@ -6974,7 +7044,7 @@ function manifestBytes(record, ids) {
 function isManifest(bytes) {
   return bytes.length > MANIFEST_HEAD.length && Buffer.from(bytes.buffer, bytes.byteOffset, MANIFEST_HEAD.length).equals(MANIFEST_HEAD);
 }
-function readManifest(bytes) {
+function readManifest2(bytes) {
   let read5;
   try {
     read5 = JSON.parse(inflateRawSync(bytes).toString("utf8"));
@@ -7073,7 +7143,7 @@ function markParts(conn, bound) {
     );
     const bytes = row?.record;
     if (!(bytes instanceof Uint8Array) || !isManifest(bytes)) continue;
-    for (const part of readManifest(bytes)?.parts ?? []) marked2.add(part.id);
+    for (const part of readManifest2(bytes)?.parts ?? []) marked2.add(part.id);
   }
   return marked2;
 }
@@ -7144,7 +7214,7 @@ function createCoverageRepo(conn) {
         const record = row?.record;
         if (!(record instanceof Uint8Array)) return null;
         if (!isManifest(record)) return record;
-        const manifest = readManifest(record);
+        const manifest = readManifest2(record);
         return manifest === null ? null : assemble(manifest, partsOf(manifest.parts.map((p) => p.id)));
       });
     },
@@ -7726,7 +7796,7 @@ function createMetaRepo3(conn) {
 
 // src/core/code/store/open.ts
 function codeStorePath(commonDir) {
-  return join13(storePaths(commonDir).dir, "code.sqlite");
+  return join14(storePaths(commonDir).dir, "code.sqlite");
 }
 function isCodeStoreOpenFailure(value) {
   return "reason" in value;
@@ -7831,11 +7901,11 @@ function nodeTestFiles(command, listing) {
 
 // src/runners/pytest/describe.ts
 import { realpathSync as realpathSync2 } from "node:fs";
-import { join as join15, resolve as resolve3 } from "node:path";
+import { join as join16, resolve as resolve3 } from "node:path";
 
 // src/runners/pytest/environment/discover.ts
-import { existsSync as existsSync6, readdirSync as readdirSync6, readFileSync as readFileSync10, statSync as statSync3 } from "node:fs";
-import { basename as basename2, dirname as dirname4, isAbsolute as isAbsolute5, join as join14, relative as relative2, resolve as resolve2 } from "node:path";
+import { existsSync as existsSync6, readdirSync as readdirSync7, readFileSync as readFileSync11, statSync as statSync3 } from "node:fs";
+import { basename as basename2, dirname as dirname4, isAbsolute as isAbsolute5, join as join15, relative as relative2, resolve as resolve2 } from "node:path";
 function projectDir(root, project) {
   return project.cwd === void 0 ? root : toAbsolute(root, project.cwd);
 }
@@ -7843,16 +7913,16 @@ function discoverEnvironment(root, project) {
   const cwd = projectDir(root, project);
   if (project.python !== void 0) {
     const declared = resolve2(cwd, project.python);
-    if (isDirectory(declared)) return found("declared", declared, join14(declared, "bin", "python"));
+    if (isDirectory(declared)) return found("declared", declared, join15(declared, "bin", "python"));
     if (existsSync6(declared)) return found("declared", dirname4(dirname4(declared)), declared);
     const target = basename2(declared).startsWith("python") ? dirname4(dirname4(declared)) : declared;
     return none(root, cwd, [declared], target);
   }
-  const venv = join14(cwd, ".venv");
-  if (existsSync6(join14(venv, "pyvenv.cfg"))) return found("venv", venv, join14(venv, "bin", "python"));
+  const venv = join15(cwd, ".venv");
+  if (existsSync6(join15(venv, "pyvenv.cfg"))) return found("venv", venv, join15(venv, "bin", "python"));
   const pdm = pdmPython(root, cwd);
   if (pdm !== null) return found("pdm-python", dirname4(dirname4(pdm)), pdm);
-  return none(root, cwd, [venv, join14(cwd, ".pdm-python")], venv);
+  return none(root, cwd, [venv, join15(cwd, ".pdm-python")], venv);
 }
 function found(source, env, python) {
   return { kind: "found", source, env, python };
@@ -7860,7 +7930,7 @@ function found(source, env, python) {
 function pdmPython(root, cwd) {
   let text2;
   try {
-    text2 = readFileSync10(join14(cwd, ".pdm-python"), "utf8").trim();
+    text2 = readFileSync11(join15(cwd, ".pdm-python"), "utf8").trim();
   } catch (error) {
     if (isMissing(error)) return null;
     throw error;
@@ -7882,12 +7952,12 @@ function none(root, cwd, looked, target) {
     if (toRelative(root, dir) === null) break;
   }
   for (const dir of dirs) {
-    const hit = LOCKFILES2.find(([file]) => existsSync6(join14(dir, file)));
+    const hit = LOCKFILES2.find(([file]) => existsSync6(join15(dir, file)));
     if (hit !== void 0)
-      return { kind: "none", looked, command: hit[1], from: join14(dir, hit[0]) };
+      return { kind: "none", looked, command: hit[1], from: join15(dir, hit[0]) };
   }
   for (const dir of dirs) {
-    const files2 = requirementsIn(dir).map((file) => join14(dir, file));
+    const files2 = requirementsIn(dir).map((file) => join15(dir, file));
     if (files2.length === 0) continue;
     const install = files2.map((file) => `-r ${relative2(cwd, file)}`).join(" ");
     const command = `python -m venv ${venv} && ${venv}/bin/pip install ${install}`;
@@ -7898,7 +7968,7 @@ function none(root, cwd, looked, target) {
 function requirementsIn(dir) {
   let names2;
   try {
-    names2 = readdirSync6(dir);
+    names2 = readdirSync7(dir);
   } catch (error) {
     if (isMissing(error)) return [];
     throw error;
@@ -7973,7 +8043,7 @@ function pytestCommand(words, here) {
 }
 function invocation(words, dir, env) {
   const [first, second, third] = words;
-  const inEnv = (name2) => env !== null && first?.includes("/") === true && resolve3(dir, first) === join15(env, "bin", name2);
+  const inEnv = (name2) => env !== null && first?.includes("/") === true && resolve3(dir, first) === join16(env, "bin", name2);
   if (first === "pytest" || inEnv("pytest")) return 1;
   if (first === "uv" && second === "run" && third === "pytest") return 3;
   if ((first === "python" || inEnv("python")) && second === "-m" && third === "pytest") return 3;
@@ -7990,37 +8060,6 @@ function pytestFiles(command, listing) {
 // src/runners/vitest/describe.ts
 import { existsSync as existsSync7, readFileSync as readFileSync12 } from "node:fs";
 import { isAbsolute as isAbsolute6, join as join17, relative as relative3, resolve as resolve4 } from "node:path";
-
-// src/core/daemon/runner.ts
-import { readdirSync as readdirSync7, readFileSync as readFileSync11 } from "node:fs";
-import { join as join16, posix as posix6 } from "node:path";
-var VITEST_CONFIG = /^(vitest\.(config|workspace|projects)|vite\.config)\.[cm]?[jt]s$/;
-function vitestDetected(root) {
-  let names2;
-  try {
-    names2 = readdirSync7(root);
-  } catch {
-    return false;
-  }
-  if (names2.some((name2) => VITEST_CONFIG.test(name2))) return true;
-  return listsVitest(readManifest2(join16(root, "package.json")));
-}
-function listsVitest(manifest) {
-  if (!isRecord(manifest)) return false;
-  return ["dependencies", "devDependencies"].some((field) => {
-    const deps = manifest[field];
-    return isRecord(deps) && Object.hasOwn(deps, "vitest");
-  });
-}
-function readManifest2(path) {
-  try {
-    return JSON.parse(readFileSync11(path, "utf8"));
-  } catch {
-    return null;
-  }
-}
-
-// src/runners/vitest/describe.ts
 var UNCONFIGURED2 = { vitest: true, vitestConfig: null };
 var CONFIG_NAMES = ["vitest.config", "vite.config"];
 var CONFIG_EXTENSIONS = [".ts", ".mts", ".cts", ".js", ".mjs", ".cjs"];
@@ -9154,10 +9193,10 @@ function notCurrentText(header) {
   if (header.testFilesListed === false) {
     return "; the daemon has not listed this worktree's test files yet";
   }
-  const unlisted2 = header.runnerPartPending === true ? [`revision ${header.revision} is not listed yet, so test files it adds are not counted`] : [];
-  return `; ${[filesText(header, files2, unlisted2.length > 0), ...unlisted2].join("; ")}`;
+  const unlisted3 = header.runnerPartPending === true ? [`revision ${header.revision} is not listed yet, so test files it adds are not counted`] : [];
+  return `; ${[filesText(header, files2, unlisted3.length > 0), ...unlisted3].join("; ")}`;
 }
-function filesText(header, files2, unlisted2) {
+function filesText(header, files2, unlisted3) {
   const total = files2.current + files2.pending + files2.stale + files2.unknown;
   if (total > files2.current) {
     const fileParts = partsText({
@@ -9169,10 +9208,9 @@ function filesText(header, files2, unlisted2) {
     return `not current: ${total - files2.current} of ${plural(total, "test file")} (${fileParts})${tests2}`;
   }
   if (total === 0) return "the daemon listed no test files";
-  if (unlisted2) return `${plural(total, "test file")} current`;
   const live = header.daemon?.state === "alive" && header.daemon.late === void 0;
-  if (!live || header.awaitingInstall === true) {
-    return `${plural(total, "test file")} current as of revision ${header.revision}`;
+  if (unlisted3 || !live || header.awaitingInstall === true) {
+    return `${plural(total, "test file")} current`;
   }
   return `all ${plural(total, "test file")} current`;
 }
@@ -13315,7 +13353,7 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
   const quiet = startedAt === null ? null : publishedWaits(store, worktreeId, startedAt, now);
   const pool = startedAt === null ? null : publishedPoolWaits(store, worktreeId, startedAt, now);
   const header = reads?.header ?? readHeader(store, worktreeId, states, keys);
-  const unlisted2 = unlistedReason(header, policy);
+  const unlisted3 = unlistedReason(header, policy);
   const reasons = unknownReasons(store, worktreeId, states, root, now);
   const setups = setupsOf(states);
   const retried = retriedRuns(store, worktreeId);
@@ -13383,7 +13421,7 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
       since: run2?.startedAt ?? null,
       ...run2 === void 0 ? {} : { files: run2.testFiles.length },
       ...setup === void 0 ? {} : { setup }
-    } : unlisted2 ?? queuedReason(store, worktreeId, ref2, key, lane, runs, policy, now);
+    } : unlisted3 ?? queuedReason(store, worktreeId, ref2, key, lane, runs, policy, now);
     const told = yieldFacts(base, lane, run2);
     const asRetry = told.kind === "queued" && !promoted.has(testFileId(ref2)) && retried(ref2, key);
     const pending = told.kind === "running" ? { ...told, ...batchOf(ref2) } : asRetry ? { ...told, retried: true } : told;
@@ -13487,7 +13525,13 @@ function unlistedReason(header, policy) {
   const refined2 = header.refinedRevision;
   if (header.runnerPartPending !== true || refined2 === null || refined2 === void 0) return null;
   const callBoundMs = runnerPartBoundMs(policy.runner.timeoutMs);
-  return { kind: "unlisted", revision: header.revision, callBoundMs };
+  const runners = header.listingRunners;
+  return {
+    kind: "unlisted",
+    revision: header.revision,
+    callBoundMs,
+    ...runners === void 0 ? {} : { runners }
+  };
 }
 function runOf(runs, ref2) {
   const id = testFileId(ref2);
@@ -13607,7 +13651,7 @@ function outstandingOf(store, worktreeId, root, reads, now, load) {
     add(standing3, file.testFile);
   }
   const said = [...groups.values()].some((g) => g.standing.kind === "unlisted");
-  if (header.runnerPartPending === true && !said) add(unlisted(header, policy), null);
+  if (header.runnerPartPending === true && !said) add(unlisted2(header, policy), null);
   if (reads.checkpoint !== void 0 && !reads.checkpoint.owed) {
     add({ kind: "checkpoint" }, null);
   }
@@ -13618,11 +13662,13 @@ function outstandingOf(store, worktreeId, root, reads, now, load) {
 function waitsId(standing3) {
   return standing3.kind === "retry" && standing3.waits !== void 0 ? ` ${JSON.stringify(standing3.waits)}` : "";
 }
-function unlisted(header, policy) {
+function unlisted2(header, policy) {
+  const runners = header.listingRunners;
   return {
     kind: "unlisted",
     revision: header.revision,
-    callBoundMs: runnerPartBoundMs(policy.runner.timeoutMs)
+    callBoundMs: runnerPartBoundMs(policy.runner.timeoutMs),
+    ...runners === void 0 ? {} : { runners }
   };
 }
 function retryStandings(reads, worktreeId, policy) {
@@ -14530,7 +14576,6 @@ function awaitingInstallSentence(missing, command) {
 // src/core/delivery/header.ts
 var NOT_LISTED_SENTENCE = "The daemon has not listed this worktree's test files yet; these counts are not complete.";
 var CHANGED_PATHS_SHOWN = 3;
-var capitalize2 = (text2) => `${text2.charAt(0).toUpperCase()}${text2.slice(1)}`;
 function awaitingInstallText(header) {
   if (header.awaitingInstall !== true || header.daemon?.state === "down") return null;
   return awaitingInstallSentence(header.missingInstalls ?? [], header.installCommand);
@@ -14545,8 +14590,9 @@ function changedText(header) {
 }
 function incompleteText(header) {
   const listed3 = header.testFilesListed === false ? ` ${NOT_LISTED_SENTENCE}` : "";
-  const runnerPart = header.runnerPartPending === true ? ` ${capitalize2(runnerPartText(header.revision))} is pending; test files it adds are not counted yet.` : "";
-  return `${listed3}${runnerPart}`;
+  const late = header.daemon?.stopping === void 0 ? lateOf(header.daemon) : void 0;
+  const delays = delaysText(header, late);
+  return `${listed3}${delays === null ? "" : ` ${delays}`}`;
 }
 function daemonText(header, command) {
   const awaiting2 = awaitingInstallText(header);
@@ -14606,8 +14652,7 @@ function livenessSentence(daemon, revision, command) {
     return ` The daemon is ${stoppingText(daemon.stopping, command)}; results are as of revision ${revision}.`;
   }
   if (daemon.state === "alive") {
-    const short = daemon.short === void 0 ? "" : ` The daemon is up: ${shortText(daemon.short, command)}.`;
-    return daemon.late === void 0 ? short : `${short} ${lateText(daemon.late, revision)}`;
+    return daemon.short === void 0 ? "" : ` The daemon is up: ${shortText(daemon.short, command)}.`;
   }
   const stop = stopOf(daemon);
   if (stop === "until-start") {
@@ -14638,7 +14683,7 @@ var statusPointer = (command) => `\`${command} status\` lists every known failur
 var partsText2 = (checks, fileLevel) => checkPartsText(countChecks(checks), fileLevel);
 var fileLevelWord = (shown) => shown === "fail" ? "that did not load" : "loaded";
 var upper2 = (outcome) => outcome.toUpperCase();
-var capitalize3 = (text2) => `${text2.charAt(0).toUpperCase()}${text2.slice(1)}`;
+var capitalize2 = (text2) => `${text2.charAt(0).toUpperCase()}${text2.slice(1)}`;
 function whyLine(check, command) {
   return `Full output: ${command} why ${shellWord(checkName(check))}`;
 }
@@ -14656,7 +14701,7 @@ function entryBlock(entry3, revision, flaky) {
       entry3.location === null ? null : atText(entry3.location, entry3.testFileFrame),
       ...failed2 ? [touchesLine(entry3), loadLine(entry3)] : [recoveryProvenance(entry3, revision)],
       ...flaky(entry3.flaky),
-      entry3.retry === void 0 ? null : capitalize3(retryText(entry3.retry))
+      entry3.retry === void 0 ? null : capitalize2(retryText(entry3.retry))
     ],
     [{ check: entry3.check, shown: entry3.to }]
   );
@@ -14907,9 +14952,9 @@ function formatRegistration(registration2, max = MESSAGE_CAP_CHARS, command = SQ
         f.summary === "" ? null : cap(f.summary, SUMMARY_MAX_CHARS),
         f.location === null ? null : atText(f.location, f.testFileFrame),
         f.validity === "current" ? null : `${f.validity}, observed at revision ${f.observedAt}`,
-        f.recorded === void 0 ? f.recordedUnknown === true ? capitalize3(RECORDED_UNKNOWN_TEXT) : null : (
+        f.recorded === void 0 ? f.recordedUnknown === true ? capitalize2(RECORDED_UNKNOWN_TEXT) : null : (
           // Row 011-67 (gh-52): a failure recorded under load names its load retry.
-          capitalize3(
+          capitalize2(
             recordedText(f.recorded, registration2.consumer.worktreeId, now, {
               command,
               path: f.check.testPath
@@ -14986,14 +15031,14 @@ function slowSuiteReason(revision, files2, command = SQUEAL_COMMAND, group = SLO
   const verb = files2.length === 1 ? "is" : "are";
   return `${words.policy} and ${plural(files2.length, words.file)} ${verb} not current at revision ${revision}: ${listNames(files2.map((f) => f.path))}. ${words.run} runs them and waits for their results.`;
 }
-function slowWaitReason(revision, files2, waitedMs, command = SQUEAL_COMMAND, refining = false, group = SLOW_GROUP, before = []) {
+function slowWaitReason(revision, files2, waitedMs, command = SQUEAL_COMMAND, refining = false, group = SLOW_GROUP, before = [], runners) {
   const words = stopGroupWords(group, command);
   const after = `${words.policy} and after ${seconds(waitedMs)} `;
   const wait = `${words.run} waits for their results.`;
-  const unlisted2 = `${runnerPartText(revision)} is still pending: ${words.file}s it adds are not listed yet.`;
-  if (files2.length === 0) return `${after}${unlisted2} ${wait}`;
+  const unlisted3 = { revision, runners, files: `${words.file}s` };
+  if (files2.length === 0) return `${after}${unlistedClause(unlisted3)}. ${wait}`;
   const verb = files2.length === 1 ? "is" : "are";
-  const more = refining ? ` ${unlisted2.charAt(0).toUpperCase()}${unlisted2.slice(1)}` : "";
+  const more = refining ? ` ${unlistedText(unlisted3)}` : "";
   return `${after}${plural(files2.length, words.file)} ${verb} still not current at revision ${revision}: ${listNames(files2.map((f) => f.path))}.${notStartedText(before)}${more} ${wait}`;
 }
 function notStartedText(before) {
@@ -15029,10 +15074,11 @@ function slowFailuresReason(revision, failures, group = SLOW_GROUP) {
 function requiredSuiteReason(revision, open, command) {
   return openGroups(open).map((group) => slowSuiteReason(revision, filesOf(open, group), command, group)).join("\n");
 }
-function requiredUnlistedReason(revision, groups, command = SQUEAL_COMMAND) {
+function requiredUnlistedReason(revision, groups, command = SQUEAL_COMMAND, runners) {
   return groups.map((group) => {
     const words = stopGroupWords(group, command);
-    return `${words.policy} and ${runnerPartText(revision)} is still pending: ${words.file}s it adds are not listed yet. ${words.run} runs them and waits for their results.`;
+    const unlisted3 = unlistedClause({ revision, runners, files: `${words.file}s` });
+    return `${words.policy} and ${unlisted3}. ${words.run} runs them and waits for their results.`;
   }).join("\n");
 }
 function requiredWaitReason(revision, open, groups, wait) {
@@ -15044,7 +15090,8 @@ function requiredWaitReason(revision, open, groups, wait) {
       wait.command,
       wait.refining,
       group,
-      wait.before?.(group)
+      wait.before?.(group),
+      wait.runners
     )
   ).join("\n");
 }
@@ -15199,15 +15246,15 @@ function stepReason(step, required, read5, hold) {
     return withLastHold(step.failing.reasons.join("\n"), step.failing.groups, command, last);
   }
   const { open } = step;
-  const { revision } = read5.header;
-  const unlisted2 = open.tests.length === 0 && open.refining;
+  const { revision, listingRunners: runners } = read5.header;
+  const unlisted3 = open.tests.length === 0 && open.refining;
   const tests2 = (() => {
     if (open.tests.length === 0 && !open.refining) return [];
     if (waitedMs === void 0) {
-      return unlisted2 ? [requiredUnlistedReason(revision, required.groups, command)] : [requiredSuiteReason(revision, open.tests, command)];
+      return unlisted3 ? [requiredUnlistedReason(revision, required.groups, command, runners)] : [requiredSuiteReason(revision, open.tests, command)];
     }
     const before = (group) => pendingBefore(read5.states, read5.keys, required, group, open.tests);
-    const wait = { waitedMs, command, refining: open.refining };
+    const wait = { waitedMs, command, refining: open.refining, runners };
     return [
       requiredWaitReason(revision, open.tests, required.groups, {
         ...wait,
@@ -15216,7 +15263,7 @@ function stepReason(step, required, read5, hold) {
     ];
   })();
   const lint2 = open.lint.length === 0 ? [] : [lintOpenReason(revision, open.lint, command, waitedMs)];
-  const groups = [.../* @__PURE__ */ new Set([...unlisted2 ? required.groups : [], ...openGroupsOf(open)])];
+  const groups = [.../* @__PURE__ */ new Set([...unlisted3 ? required.groups : [], ...openGroupsOf(open)])];
   return withLastHold([...tests2, ...lint2].join("\n"), groups, command, last);
 }
 
