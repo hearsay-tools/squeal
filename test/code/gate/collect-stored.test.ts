@@ -41,7 +41,7 @@ const STORED = (path: string): TestFileEvidence => ({
   skipped: false,
   loads: [path, "src/changed.ts"],
   record: null,
-  fromStore: true,
+  from: "store",
 });
 
 describe("collectEvidence: stored evidence (spec 020 D11.7)", () => {
@@ -87,10 +87,10 @@ describe("collectEvidence: stored evidence (spec 020 D11.7)", () => {
     );
 
     expect(ran).toEqual(["test/loads.test.ts"]);
-    const summary = evidence.testFiles.map((f) => [f.path, f.completed, f.fromStore ?? false]);
+    const summary = evidence.testFiles.map((f) => [f.path, f.completed, f.from ?? "run"]);
     expect(summary).toEqual([
-      ["test/fails.test.ts", true, true],
-      ["test/loads.test.ts", true, false],
+      ["test/fails.test.ts", true, "store"],
+      ["test/loads.test.ts", true, "run"],
     ]);
   });
 });
