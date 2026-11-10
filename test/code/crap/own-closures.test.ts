@@ -71,8 +71,8 @@ describe("the coverage step's loaders are this worktree's own (review 0.1.297 B3
     rig.loader("test/a.test.ts", { closure: ["src/a.ts"], key: "this-branch", pending: "queued" });
     otherBranch(rig);
     rig.step();
-    expect(fileState(rig, "src/other.ts")).toMatchObject({ state: "judged" });
-    expect(rig.states("uncovered")).toEqual(["cold pending -", "far fail -"]);
+    expect(fileState(rig, "src/other.ts")).toMatchObject({ state: "unknown", cause: "no-loader" });
+    expect(rig.states("uncovered")).toEqual(["cold pending -", "far unknown -"]);
   });
 
   it("waits while the row holds another key than the index made", async () => {

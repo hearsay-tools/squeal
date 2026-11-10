@@ -25,7 +25,9 @@ export type UnknownCause =
   /** It has no key: its closure or its project's environment is not known. */
   | "unkeyed"
   /** Its record names the source among those whose bytes it could not confirm. */
-  | "unread";
+  | "unread"
+  /** Spec 020 D11.5: no listed test file loads the source, so nothing measures it. */
+  | "no-loader";
 
 /**
  * Why a loader is not ready yet: `imports`, its closure is not known here,

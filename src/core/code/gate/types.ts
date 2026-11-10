@@ -13,9 +13,10 @@ import type { CoverageRecord } from "../coverage/types.js";
 
 /**
  * `QUALITY_POLICY_VERSION` (D6): raised when a rule of D5, D6 or D8 changes
- * meaning. 2: D8's exceptions (row 020-09).
+ * meaning. 2: D8's exceptions (row 020-09). 3: a loader that skipped a test
+ * proves a pass and never a violation (D11.3, row 020-07a).
  */
-export const QUALITY_POLICY_VERSION = 2;
+export const QUALITY_POLICY_VERSION = 3;
 
 /** D7: the format of `squeal code --base --json`. */
 export const GATE_REPORT_FORMAT = "squeal-code-gate/1";
@@ -101,6 +102,11 @@ export interface TestFileEvidence {
   readonly completed: boolean;
   /** Full names of its failed tests; empty when none failed. */
   readonly failed: readonly string[];
+  /**
+   * A test of it was skipped, so its record cannot show what that test
+   * runs: it proves a pass and never a violation (D11.3).
+   */
+  readonly skipped: boolean;
   /** The sources its closure loads; `null` when the closure is not known. */
   readonly loads: readonly RelativePath[] | null;
   /** Its record at the current provider and record versions; `null` when none. */
@@ -133,7 +139,9 @@ export type GateGap =
   | "not-finished"
   | "no-record"
   | "not-joined"
-  | "test-failed";
+  | "test-failed"
+  /** D11.3: a loader skipped a test, and the records in hand do not prove a pass. */
+  | "skipped";
 
 /** D7: the verdict and its exit code (D1). */
 export type GateVerdict = "pass" | "violations" | "incomplete";
