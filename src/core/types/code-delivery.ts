@@ -252,7 +252,7 @@ export interface CodeCoverageStatus {
   readonly waitingForImports?: { readonly files: number; readonly testFiles: number };
   /** Files by why a loader can have no record. */
   readonly unknown: Readonly<
-    Partial<Record<"no-record" | "skipped" | "unkeyed" | "unread", number>>
+    Partial<Record<"no-record" | "skipped" | "unkeyed" | "unread" | "no-loader", number>>
   >;
   /** `vitest.exclude` globs and `vitest.excludeProjects` names: their test files are not read. */
   readonly notRead?: readonly string[];
