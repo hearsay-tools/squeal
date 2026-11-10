@@ -14,12 +14,13 @@
 //
 // An env whose `SQUEAL_CI_RECORD` is another value (a test that runs
 // `squeal ci record` itself) keeps it, and the hook cannot follow that
-// child: its writes never reach this run's evidence. So this process
-// withholds its current test file from the export (`evidence.withhold`):
-// Vitest's, else the one the daemon's recorder carries, else, with none
-// known, every file. A `SHARE_ENV` Worker shares this process's env, so the
-// same holds when that env has another value. A call Node would reject
-// passes through untouched, so Node's own validation runs.
+// child: its writes never reach this run's evidence, and it can write any
+// test's input. So this process withholds every path (`evidence.withhold`),
+// which leaves this command's whole part out of the export (spec 018 D9;
+// review `018-23-0.1.424.md` B2 and its re-review). A `SHARE_ENV` Worker
+// shares this process's env, so the same holds when that env has another
+// value. A call Node would reject passes through untouched, so Node's own
+// validation runs.
 "use strict";
 const childProcess = require("node:child_process");
 const path = require("node:path");
@@ -27,8 +28,6 @@ const workerThreads = require("node:worker_threads");
 const { pathToFileURL } = require("node:url");
 
 const VARIABLE = "SQUEAL_CI_RECORD";
-/** The daemon's recorder's settings (`OBSERVE_VARIABLE`), which name its current test file. */
-const OBSERVE = "SQUEAL_OBSERVE";
 const HOOK = path.join(__dirname, "vitest-ci.cjs");
 /** A `--require` or `-r` token in `NODE_OPTIONS`. */
 const REQUIRE = /(^|\s)(-r|--require)(=|\s|$)/;
@@ -61,22 +60,10 @@ function optionsAt(name, args) {
   return isOptions(second) ? 1 : -1;
 }
 
-/** The test file this process or thread runs now, absolute; `null` when none is known. */
-function currentTestFile() {
-  const vitest = globalThis.__vitest_worker__?.filepath;
-  if (typeof vitest === "string") return vitest;
-  try {
-    const file = JSON.parse(process.env[OBSERVE] ?? "")?.file;
-    return typeof file === "string" ? file : null;
-  } catch {
-    return null;
-  }
-}
-
 /**
  * Puts the hook and this process's `SQUEAL_CI_RECORD` into the env of every
- * child and Worker; withholds the current test file (`evidence.withhold`)
- * for one the hook cannot follow.
+ * child and Worker; withholds every path (`evidence.withhold`) for one the
+ * hook cannot follow.
  */
 function wrapChildren(replace, evidence) {
   const settings = process.env[VARIABLE];
@@ -87,12 +74,12 @@ function wrapChildren(replace, evidence) {
     const own = env[VARIABLE];
     return own !== undefined && own !== settings;
   };
-  const withhold = () => evidence.withhold(currentTestFile());
+  const withhold = () => evidence.withhold(null);
   /**
    * `env` with the hook and its settings, as a copy: what Node reads of it,
    * its prototype's keys too for a spawn (`inherited`), its own for a
    * Worker. `env` itself when it has both; with another recording's
-   * settings, `env` itself, and the current test file withheld.
+   * settings, `env` itself, and every path withheld.
    */
   const carried = (env, inherited) => {
     const own = env[VARIABLE];
