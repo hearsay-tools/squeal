@@ -28,6 +28,7 @@ export const POLICY: BasePolicy = {
   include: ["**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,py}"],
   exclude: ["**/dist/**", "**/build/**", "**/vendor/**", "**/*.min.js"],
   maxFileBytes: 524_288,
+  children: false,
 };
 
 export const VERSIONS: EngineVersions = {
