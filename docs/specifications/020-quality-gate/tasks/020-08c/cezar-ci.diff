@@ -1,0 +1,650 @@
+diff --git a/.github/scripts/ci-coverage.workflow.test.cjs b/.github/scripts/ci-coverage.workflow.test.cjs
+index 941094a02..12ae870dd 100644
+--- a/.github/scripts/ci-coverage.workflow.test.cjs
++++ b/.github/scripts/ci-coverage.workflow.test.cjs
+@@ -22,9 +22,10 @@ function expression(raw, context) {
+   return runInNewContext(code, context);
+ }
+ 
+-function context(event, { surface = 'full-matrix', bump = 'false', verified = 'false', shards = 'success', cancelled = false } = {}) {
++function context(event, { surface = 'full-matrix', bump = 'false', verified = 'false', shards = 'success', cancelled = false, trial = false, pr = '' } = {}) {
+   return {
+     github: { event_name: event },
++    inputs: { pr_number: pr, squeal_gate_trial: trial },
+     needs: {
+       'queue-proof': { result: 'success', outputs: { verified } },
+       'pr-test-input': { result: 'success', outputs: { sha: '' } },
+@@ -51,21 +52,33 @@ test('the required shards run once, with coverage only on PRs and dispatches', (
+   }
+ });
+ 
+-test('coverage publication follows eligible shards, including failures, but never main or the merge queue', () => {
++test('coverage publication follows eligible shards, including failures, but never main, the merge queue or a Squeal gate trial', () => {
+   const { jobs } = ci();
+   const merge = jobs['vitest-coverage-merge'].if;
+   const upload = named(jobs.vitest, 'Upload shard coverage').if;
++  const missing = named(jobs.vitest, 'Report a missing shard coverage report').if;
++  const shardContext = (event, options) => ({ ...context(event, options), steps: { collect: { outcome: 'skipped' }, upload: { outcome: 'skipped' } }, always: () => true });
+   for (const event of ['pull_request_target', 'workflow_dispatch']) {
+     assert.equal(expression(upload, context(event)), true);
+     assert.equal(expression(merge, context(event)), true);
+     assert.equal(expression(merge, context(event, { shards: 'failure' })), true);
+     assert.equal(expression(merge, context(event, { shards: 'skipped' })), false);
++    assert.equal(expression(missing, shardContext(event)), true);
+   }
+   for (const event of ['merge_group', 'push']) {
+     assert.equal(expression(upload, context(event)), false);
+     assert.equal(expression(merge, context(event)), false);
+   }
+   assert.equal(expression(merge, context('pull_request_target', { cancelled: true })), false);
++  // A Squeal gate trial dispatch records Squeal's coverage in place of V8's (ci-squeal-gate-trial.workflow.test.cjs),
++  // so it has no V8 report to upload, merge or miss. A release PR dispatch takes no trial and keeps coverage.
++  const trial = { trial: true };
++  assert.equal(expression(upload, context('workflow_dispatch', trial)), false);
++  assert.equal(expression(merge, context('workflow_dispatch', trial)), false);
++  assert.equal(expression(missing, shardContext('workflow_dispatch', trial)), false);
++  const release = { trial: true, pr: '42' };
++  assert.equal(expression(upload, context('workflow_dispatch', release)), true);
++  assert.equal(expression(merge, context('workflow_dispatch', release)), true);
+ });
+ 
+ test('no coverage job is a required check, a verify dependency or a merge-queue roster entry', () => {
+diff --git a/.github/scripts/ci-squeal-gate-trial.workflow.test.cjs b/.github/scripts/ci-squeal-gate-trial.workflow.test.cjs
+new file mode 100644
+index 000000000..5eedcc199
+--- /dev/null
++++ b/.github/scripts/ci-squeal-gate-trial.workflow.test.cjs
+@@ -0,0 +1,178 @@
++'use strict';
++
++// Guards the Squeal quality gate trial (hearsay-tools/squeal spec 020 D13, row 020-08c): only a
++// dispatch with squeal_gate_trial and no pr_number records Squeal's coverage in the Vitest shards
++// (ci-squeal-results.workflow.test.cjs), and squeal-gate-trial runs `squeal code --base origin/main
++// --parts` on the parts. It reports in its job summary and never fails the run.
++const assert = require('node:assert/strict');
++const { spawnSync } = require('node:child_process');
++const fs = require('node:fs');
++const os = require('node:os');
++const path = require('node:path');
++const test = require('node:test');
++const { runInNewContext } = require('node:vm');
++const yaml = require('yaml');
++
++const repoRoot = path.join(__dirname, '..', '..');
++const ci = () => yaml.parse(fs.readFileSync(path.join(repoRoot, '.github', 'workflows', 'ci.yml'), 'utf8'));
++const trialJob = () => ci().jobs['squeal-gate-trial'];
++const step = (job, name) => job.steps.find((s) => s.id === name || s.name === name);
++
++function expression(raw, context) {
++  const code = String(raw).replace(/^\$\{\{\s*|\s*\}\}$/g, '').replace(/needs\.([\w]+-[\w-]+)/g, "needs['$1']");
++  return runInNewContext(code, context);
++}
++
++function context(event, { trial = false, pr = '', vitest = 'success', cancelled = false } = {}) {
++  return { github: { event_name: event }, inputs: { pr_number: pr, squeal_gate_trial: trial },
++    needs: { vitest: { result: vitest } }, cancelled: () => cancelled };
++}
++
++function sandbox(t) {
++  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'ci-squeal-gate-trial-'));
++  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
++  return directory;
++}
++
++function runStep(directory, run, env) {
++  const summary = path.join(directory, 'summary.md');
++  fs.writeFileSync(summary, '');
++  const result = spawnSync('bash', ['-e', '-c', run], { cwd: directory, encoding: 'utf8',
++    env: { PATH: process.env.PATH, RUNNER_TEMP: directory, GITHUB_STEP_SUMMARY: summary, ...env } });
++  return { ...result, summary: fs.readFileSync(summary, 'utf8') };
++}
++
++test('only a squeal_gate_trial dispatch without pr_number runs the trial, after the shards pass or fail', () => {
++  const job = trialJob();
++  assert.deepEqual(job.needs, ['vitest']);
++  // jobs further up (pr-test-input, pr-test-proof) are skipped in a dispatch; GitHub's implied success() would skip this one.
++  assert.match(String(job.if), /^\$\{\{ !cancelled\(\) && /);
++  const at = (event, options) => expression(job.if, context(event, options));
++  assert.equal(at('workflow_dispatch', { trial: true }), true);
++  assert.equal(at('workflow_dispatch', { trial: true, vitest: 'failure' }), true, 'failed shards still wrote their parts');
++  for (const vitest of ['skipped', 'cancelled']) assert.equal(at('workflow_dispatch', { trial: true, vitest }), false, vitest);
++  assert.equal(at('workflow_dispatch', { trial: true, cancelled: true }), false);
++  assert.equal(at('workflow_dispatch'), false, 'a bare dispatch, the proof of a ci.yml change, stays as it was');
++  assert.equal(at('workflow_dispatch', { trial: true, pr: '42' }), false, 'a release PR dispatch takes no trial');
++  assert.equal(at('workflow_dispatch', { trial: 'true' }), false, 'only the boolean input');
++  for (const event of ['pull_request_target', 'merge_group', 'push']) assert.equal(at(event, { trial: true }), false, event);
++});
++
++test('the trial reads only, holds no token, never fails its job, and checks out the dispatched commit with main', () => {
++  const { jobs } = ci();
++  const job = jobs['squeal-gate-trial'];
++  assert.deepEqual(job.permissions, { contents: 'read' });
++  assert.doesNotMatch(JSON.stringify(job), /secrets\.|github\.token/);
++  assert.equal(job['continue-on-error'], true, 'a timeout does not fail the run');
++  for (const s of job.steps) assert.equal(s['continue-on-error'], true, `"${s.name}" must set continue-on-error`);
++  for (const name of ['Report the trial', 'Upload the trial report']) assert.equal(step(job, name).if, 'always()', name);
++  const checkout = job.steps.find((s) => s.uses?.startsWith('actions/checkout@'));
++  // A bare dispatch's shards test github.sha (ci.workflow.test.cjs); the gate runs at the same commit.
++  assert.deepEqual(checkout.with, { ref: '${{ github.sha }}', 'persist-credentials': false, 'fetch-depth': 1 });
++  const history = (id) => step(jobs[id], 'Fetch the history the gate compares').run;
++  assert.equal(history('squeal-gate-trial'), history('complexity-gate'), 'this commit and main, never every branch');
++  const download = step(job, 'Download Squeal parts');
++  assert.deepEqual(download.with, { pattern: 'squeal-parts-shard-*', path: '${{ runner.temp }}/squeal-parts' });
++  const upload = step(job, 'Upload the trial report');
++  assert.equal(upload.with.name, 'squeal-gate-trial');
++  assert.equal(upload.with.path, '${{ runner.temp }}/squeal-gate-trial/');
++  const runs = job.steps.map((s) => s.run).filter(Boolean);
++  assert.ok(runs.includes('pnpm install --frozen-lockfile'));
++  assert.ok(runs.includes('npm run build:server'), 'the gate checks the built server modules the shards read');
++});
++
++test('the gate step runs squeal code on every shard\'s parts and keeps its exit code, time and stderr', (t) => {
++  const { run } = step(trialJob(), 'gate');
++  const directory = sandbox(t);
++  const bin = path.join(directory, 'bin');
++  fs.mkdirSync(bin);
++  for (const shard of [1, 2]) fs.mkdirSync(path.join(directory, 'squeal-parts', `squeal-parts-shard-${shard}`), { recursive: true });
++  const out = (file) => fs.readFileSync(path.join(directory, 'squeal-gate-trial', file), 'utf8');
++  for (const code of [0, 1, 3, 2]) {
++    fs.writeFileSync(path.join(bin, 'node'), `#!/bin/sh\necho "$*"\necho "squeal code: a note" >&2\nexit ${code}\n`, { mode: 0o755 });
++    const result = runStep(directory, run, { PATH: `${bin}:/usr/bin:/bin` });
++    assert.equal(result.status, 0, `exit ${code}: the verdict never fails the step`);
++    assert.equal(out('exit-code'), `${code}\n`);
++    assert.match(out('seconds'), /^\d+\n$/);
++    assert.equal(out('stderr.txt'), 'squeal code: a note\n');
++    assert.match(result.stderr, /squeal code: a note/, 'the log shows the gate\'s notes');
++  }
++  const parts = path.join(directory, 'squeal-parts');
++  assert.equal(out('report.json'), `${directory}/squeal/plugins/claude-code/dist/cli/squeal.mjs code --base origin/main --json `
++    + `--parts ${parts}/squeal-parts-shard-1 ${parts}/squeal-parts-shard-2\n`);
++});
++
++const REPORT = {
++  format: 'squeal-code-gate/1', createdAt: '2026-11-10T00:00:00.000Z', verdict: 'pass',
++  base: { ref: 'origin/main', commit: 'b'.repeat(40), policy: {} },
++  head: { commit: 'c'.repeat(40), dirty: false, paths: [] },
++  budget: { seconds: 600, timedOut: false },
++  functions: [{ state: 'pass' }, { state: 'pass' }, { state: 'skipped' }],
++  uncounted: [],
++  runs: [
++    { runner: 'vitest', selected: ['a.test.ts', 'b.test.ts', 'c.test.ts'], completed: ['c.test.ts'], notFinished: [], failed: [],
++      from: { 'a.test.ts': 'parts', 'b.test.ts': 'store', 'c.test.ts': 'run' }, durationMs: 4200 },
++    { runner: 'node-test', selected: ['d.test.cjs'], completed: ['d.test.cjs'], notFinished: [], failed: [], durationMs: 900 },
++  ],
++  counts: { pass: 2, violation: 0, incomplete: 0, skipped: 1, accepted: 0 },
++};
++const PROVIDER = { provider: 'squeal', providerVersion: 1, recordVersion: 2 };
++const part = (header, testFiles) => ({ format: 'squeal-ci-part/4', header, projects: [], testFiles, evidence: {} });
++
++function writeParts(directory, shard, parts) {
++  const dir = path.join(directory, 'squeal-parts', `squeal-parts-shard-${shard}`);
++  fs.mkdirSync(dir, { recursive: true });
++  parts.forEach((content, i) => fs.writeFileSync(path.join(dir, `squeal-part-${i}.json`), typeof content === 'string' ? content : JSON.stringify(content)));
++}
++
++test('the summary names the verdict, where each selected file\'s evidence came from, and each shard\'s recording cost', (t) => {
++  const { run } = step(trialJob(), 'Report the trial');
++  const directory = sandbox(t);
++  const out = path.join(directory, 'squeal-gate-trial');
++  fs.mkdirSync(out);
++  fs.writeFileSync(path.join(out, 'report.json'), JSON.stringify(REPORT));
++  fs.writeFileSync(path.join(out, 'exit-code'), '0\n');
++  fs.writeFileSync(path.join(out, 'seconds'), '75\n');
++  // Shard 1: the provider and 018-29's cost. 2: an older Squeal, and the project's own coverage. 3: a part that
++  // does not read. 4: two parts of one command, whose cost counts once.
++  writeParts(directory, 1, [part({ coverage: PROVIDER, cost: { command: 'u1', hooksMs: 12345, threads: 9, afterMs: 420 } },
++    [{ durationMs: 100000, record: 0 }, { durationMs: 100000, noRecord: 'inspector' }, { durationMs: null, record: 1 }])]);
++  writeParts(directory, 2, [part({ coverage: { off: 'project-coverage', note: 'n' } }, [{ durationMs: 5 }])]);
++  writeParts(directory, 3, ['{']);
++  const cost = { command: 'u4', hooksMs: 1000, threads: 3, afterMs: 260 };
++  writeParts(directory, 4, [part({ coverage: PROVIDER, cost }, [{ durationMs: 10000 }]), part({ coverage: PROVIDER, cost }, [{ durationMs: 10000 }])]);
++  const result = runStep(directory, run, { SHARDS_RESULT: 'success', GATE: 'success' });
++  assert.equal(result.status, 0, result.stderr);
++  const lines = result.summary.split('\n');
++  for (const line of [
++    'A trial: this job gates nothing and never fails the run. Vitest shards: success.',
++    'Verdict: **pass** (exit 0) in 75 s. Base `origin/main`, merge base bbbbbbbbbbbb; head cccccccccccc.',
++    'Changed functions: 3 (pass 2, violation 0, incomplete 0, skipped 1, accepted 0). Paths not counted: 0. Budget 600 s, timed out: false.',
++    '| 4 | 1 | 1 | 2 |',
++    '- vitest: 3 selected, 1 completed, 0 not finished, 0 with a failed test; run time 4 s.',
++    '- node-test: 1 selected, 1 completed, 0 not finished, 0 with a failed test; run time 1 s.',
++    '| 1 | 1 | 3 | 2 | squeal, provider 1, record 2 | 12.3 s in 9 processes and threads | 6.2% of 200 s | 0.42 s |',
++    '| 2 | 1 | 1 | 0 | off: project-coverage | not in the parts | | |',
++    '| 3 | the parts do not read | | | | | | |',
++    '| 4 | 2 | 2 | 0 | squeal, provider 1, record 2 | 1 s in 3 processes and threads | 5% of 20 s | 0.26 s |',
++  ]) assert.ok(lines.includes(line), `missing: ${line}\n${result.summary}`);
++});
++
++test('without a report the summary names the exit code and the gate\'s last stderr lines, or that it did not run', (t) => {
++  const { run } = step(trialJob(), 'Report the trial');
++  const directory = sandbox(t);
++  const notRun = runStep(directory, run, { SHARDS_RESULT: 'failure', GATE: 'skipped' });
++  assert.equal(notRun.status, 0, notRun.stderr);
++  assert.match(notRun.summary, /^No report: the gate did not run \(gate step: skipped\)\.$/m);
++  assert.match(notRun.summary, /^No shard parts were downloaded\.$/m);
++  const out = path.join(directory, 'squeal-gate-trial');
++  fs.mkdirSync(out);
++  fs.writeFileSync(path.join(out, 'report.json'), '');
++  fs.writeFileSync(path.join(out, 'exit-code'), '2\n');
++  fs.writeFileSync(path.join(out, 'seconds'), '3\n');
++  fs.writeFileSync(path.join(out, 'stderr.txt'), 'squeal code: no directory /runner/temp/squeal-parts/squeal-parts-shard-*\n');
++  const setup = runStep(directory, run, { SHARDS_RESULT: 'success', GATE: 'success' });
++  assert.equal(setup.status, 0, setup.stderr);
++  assert.match(setup.summary, /^No report: exit 2, a setup or usage error after 3 s\. The gate's last stderr lines:$/m);
++  assert.match(setup.summary, /^```\nsqueal code: no directory \/runner\/temp\/squeal-parts\/squeal-parts-shard-\*\n```$/m);
++});
+diff --git a/.github/scripts/ci-squeal-results.workflow.test.cjs b/.github/scripts/ci-squeal-results.workflow.test.cjs
+index d10ecf2ef..009b38a1a 100644
+--- a/.github/scripts/ci-squeal-results.workflow.test.cjs
++++ b/.github/scripts/ci-squeal-results.workflow.test.cjs
+@@ -2,6 +2,7 @@
+ 
+ // Guards Squeal shared results (hearsay-tools/squeal spec 018 D17): merge-group Vitest shards run
+ // their unchanged command under `squeal ci record`, and an optional job publishes refs/squeal/<sha>.
++// A Squeal gate trial dispatch records too (ci-squeal-gate-trial.workflow.test.cjs).
+ const assert = require('node:assert/strict');
+ const { spawnSync } = require('node:child_process');
+ const fs = require('node:fs');
+@@ -21,9 +22,10 @@ function expression(raw, context) {
+   return runInNewContext(code, context);
+ }
+ 
+-function context(event, { vitest = 'success', proof = 'success', verified = 'false', exported = 'success' } = {}) {
++function context(event, { vitest = 'success', proof = 'success', verified = 'false', exported = 'success', trial = false, pr = '' } = {}) {
+   return {
+     github: { event_name: event },
++    inputs: { pr_number: pr, squeal_gate_trial: trial },
+     needs: {
+       vitest: { result: vitest },
+       'pr-test-proof': { result: proof, outputs: { verified } },
+@@ -48,7 +50,7 @@ test('the Vitest shards and the Squeal jobs read one exact Node version from .no
+   const { jobs } = ci();
+   const readers = Object.entries(jobs).filter(([, job]) => (job.steps ?? []).some((s) => s.with?.['node-version-file']))
+     .map(([id]) => id);
+-  assert.deepEqual(readers.sort(), ['squeal-export', 'squeal-publish', 'vitest'], 'other jobs keep their own Node setting');
++  assert.deepEqual(readers.sort(), ['squeal-export', 'squeal-gate-trial', 'squeal-publish', 'vitest'], 'other jobs keep their own Node setting');
+   for (const id of readers) {
+     const setup = jobs[id].steps.find((s) => s.uses?.startsWith('actions/setup-node@'));
+     assert.equal(setup.with['node-version-file'], '.node-version', id);
+@@ -56,25 +58,33 @@ test('the Vitest shards and the Squeal jobs read one exact Node version from .no
+   }
+ });
+ 
+-test('only merge groups run the shard under squeal ci record; every other event runs it as before', () => {
++test('merge groups and Squeal gate trial dispatches run the shard under squeal ci record; every other run as before', () => {
+   const vitest = ci().jobs.vitest;
+   const collect = step(vitest, 'collect');
+   const record = step(vitest, 'record');
+   const recorded = ['squeal', 'record', 'Upload Squeal parts'].map((id) => step(vitest, id));
+-  for (const event of EVENTS) {
++  // [event, inputs, recorded]: only a dispatch with squeal_gate_trial and no pr_number takes the trial.
++  const runs = [...EVENTS.map((event) => [event, {}, event === 'merge_group']),
++    ['workflow_dispatch', { trial: true }, true], ['workflow_dispatch', { trial: true, pr: '42' }, false],
++    ['workflow_dispatch', { trial: 'true' }, false], ['pull_request_target', { trial: true }, false]];
++  for (const [event, inputs, recording] of runs) {
+     for (const [proof, verified] of [['success', 'false'], ['failure', ''], ['success', 'true']]) {
+-      const ctx = context(event, { proof, verified });
++      const ctx = context(event, { proof, verified, ...inputs });
+       const reused = proof === 'success' && verified === 'true';
+-      assert.equal(expression(collect.if, ctx), !reused && event !== 'merge_group', `${event} collect`);
+-      for (const s of recorded) assert.equal(expression(s.if, ctx), !reused && event === 'merge_group', `${event} ${s.name}`);
++      const name = `${event} ${JSON.stringify(inputs)}`;
++      assert.equal(expression(collect.if, ctx), !reused && !recording, `${name} collect`);
++      for (const s of recorded) assert.equal(expression(s.if, ctx), !reused && recording, `${name} ${s.name}`);
+     }
+   }
+   assert.equal(record.env.VITEST_FILE_DURATION_CAP, collect.env.VITEST_FILE_DURATION_CAP);
+   assert.equal(record['continue-on-error'], undefined, 'test failures must block');
+   assert.equal(step(vitest, 'squeal')['continue-on-error'], true, 'a failed fetch must not fail the shard');
+-  // The recorded command is the unchanged shard command, expressions included.
++  // The recorded command is the shard command without its own V8 coverage, which only the plain
++  // command adds: Squeal's provider yields to a project's coverage (squeal spec 020 D13.1).
+   const command = record.run.split('\n')[0];
+-  assert.equal(command, `set -- ${collect.run}`);
++  const COVERAGE = " ${{ (github.event_name == 'pull_request_target' || github.event_name == 'workflow_dispatch') && '--coverage.enabled' || '' }}";
++  assert.equal(command, 'set -- npm test -- --shard=${{ matrix.shard }}/4 --maxWorkers=4');
++  assert.equal(`set -- ${collect.run}`, `${command}${COVERAGE}`);
+   const upload = step(vitest, 'Upload Squeal parts');
+   assert.equal(upload['continue-on-error'], true);
+   assert.equal(upload.with.name, 'squeal-parts-shard-${{ matrix.shard }}');
+@@ -103,12 +113,17 @@ test('the merge-group step returns the test command\'s exit code and output, rec
+     assert.equal(plain.status, 3);
+     assert.match(plain.stdout, /::warning title=Squeal release not fetched::Shard 2\/4/);
+     assert.match(plain.stdout, /^npm test -- --shard=2\/4 --maxWorkers=4$/m);
++    // A trial dispatch records the same command, with no --coverage.enabled for Squeal's provider to yield to.
++    const trial = spawnSync('bash', ['-e', '-c', script(record.run, 'workflow_dispatch', 2)], {
++      encoding: 'utf8', env: { PATH: `${bin}:/usr/bin:/bin`, RUNNER_TEMP: '/runner/temp', SQUEAL_FETCHED: 'success' },
++    });
++    assert.equal(trial.stdout, recorded.stdout);
+   } finally {
+     fs.rmSync(temp, { recursive: true, force: true });
+   }
+ });
+ 
+-const SQUEAL_JOBS = ['squeal-export', 'squeal-publish'];
++const SQUEAL_JOBS = ['squeal-export', 'squeal-publish', 'squeal-gate-trial'];
+ 
+ test('squeal-export runs after passing merge-group shards and only reads', () => {
+   const { jobs, permissions } = ci();
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index 829f0357e..9310929e3 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -21,6 +21,13 @@ on:
+         description: Release PR number (omit for full verification of the dispatched SHA)
+         required: false
+         type: string
++      # The Squeal quality gate trial (§ Squeal quality gate trial in docs/sdlc/ci.md):
++      # only a dispatch without pr_number takes it; it never gates anything.
++      squeal_gate_trial:
++        description: Record Squeal coverage in the Vitest shards and run the Squeal quality gate trial (no pr_number)
++        required: false
++        type: boolean
++        default: false
+ 
+ permissions:
+   contents: read
+@@ -779,14 +786,16 @@ jobs:
+         env:
+           VITEST_FILE_DURATION_CAP: '1'
+         run: npm test -- --shard=${{ matrix.shard }}/4 --maxWorkers=4 ${{ (github.event_name == 'pull_request_target' || github.event_name == 'workflow_dispatch') && '--coverage.enabled' || '' }}
+-        if: (needs.pr-test-proof.result != 'success' || needs.pr-test-proof.outputs.verified != 'true') && github.event_name != 'merge_group'
++        if: (needs.pr-test-proof.result != 'success' || needs.pr-test-proof.outputs.verified != 'true') && github.event_name != 'merge_group' && !(github.event_name == 'workflow_dispatch' && inputs.squeal_gate_trial == true && inputs.pr_number == '')
+ 
+       # Merge groups (the run whose SHA becomes main) run the same command under
+       # `squeal ci record`, which returns the command's exit code and output and writes
+       # part files for the squeal-export job. See docs/sdlc/ci.md § Squeal shared results.
++      # A squeal_gate_trial dispatch records too, without its own V8 coverage, so Squeal's
++      # provider writes coverage records into the parts for squeal-gate-trial.
+       - name: Fetch the Squeal release
+         id: squeal
+-        if: (needs.pr-test-proof.result != 'success' || needs.pr-test-proof.outputs.verified != 'true') && github.event_name == 'merge_group'
++        if: (needs.pr-test-proof.result != 'success' || needs.pr-test-proof.outputs.verified != 'true') && (github.event_name == 'merge_group' || (github.event_name == 'workflow_dispatch' && inputs.squeal_gate_trial == true && inputs.pr_number == ''))
+         continue-on-error: true
+         env: &squeal-release
+           SQUEAL_TAG: squeal--v0.1.426
+@@ -801,16 +810,16 @@ jobs:
+           VITEST_FILE_DURATION_CAP: '1'
+           SQUEAL_FETCHED: ${{ steps.squeal.outcome }}
+         run: |
+-          set -- npm test -- --shard=${{ matrix.shard }}/4 --maxWorkers=4 ${{ (github.event_name == 'pull_request_target' || github.event_name == 'workflow_dispatch') && '--coverage.enabled' || '' }}
++          set -- npm test -- --shard=${{ matrix.shard }}/4 --maxWorkers=4
+           if [ "$SQUEAL_FETCHED" = success ]; then
+             exec node "$RUNNER_TEMP/squeal/plugins/claude-code/dist/cli/squeal.mjs" ci record --out "$RUNNER_TEMP/squeal-parts" -- "$@"
+           fi
+           echo "::warning title=Squeal release not fetched::Shard ${{ matrix.shard }}/4 runs its tests without recording Squeal results."
+           exec "$@"
+-        if: (needs.pr-test-proof.result != 'success' || needs.pr-test-proof.outputs.verified != 'true') && github.event_name == 'merge_group'
++        if: (needs.pr-test-proof.result != 'success' || needs.pr-test-proof.outputs.verified != 'true') && (github.event_name == 'merge_group' || (github.event_name == 'workflow_dispatch' && inputs.squeal_gate_trial == true && inputs.pr_number == ''))
+ 
+       - name: Upload Squeal parts
+-        if: (needs.pr-test-proof.result != 'success' || needs.pr-test-proof.outputs.verified != 'true') && github.event_name == 'merge_group' && steps.squeal.outcome == 'success'
++        if: (needs.pr-test-proof.result != 'success' || needs.pr-test-proof.outputs.verified != 'true') && (github.event_name == 'merge_group' || (github.event_name == 'workflow_dispatch' && inputs.squeal_gate_trial == true && inputs.pr_number == '')) && steps.squeal.outcome == 'success'
+         continue-on-error: true
+         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+         with:
+@@ -822,7 +831,7 @@ jobs:
+ 
+       - name: Upload shard coverage
+         id: upload
+-        if: (needs.pr-test-proof.result != 'success' || needs.pr-test-proof.outputs.verified != 'true') && (!cancelled() && (github.event_name == 'pull_request_target' || github.event_name == 'workflow_dispatch'))
++        if: (needs.pr-test-proof.result != 'success' || needs.pr-test-proof.outputs.verified != 'true') && (!cancelled() && (github.event_name == 'pull_request_target' || github.event_name == 'workflow_dispatch')) && !(github.event_name == 'workflow_dispatch' && inputs.squeal_gate_trial == true && inputs.pr_number == '')
+         continue-on-error: true
+         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+         with:
+@@ -833,7 +842,7 @@ jobs:
+           overwrite: true
+ 
+       - name: Report a missing shard coverage report
+-        if: always() && (github.event_name == 'pull_request_target' || github.event_name == 'workflow_dispatch') && (steps.collect.outcome != 'success' || steps.upload.outcome != 'success') && (needs.pr-test-proof.result != 'success' || needs.pr-test-proof.outputs.verified != 'true')
++        if: always() && (github.event_name == 'pull_request_target' || github.event_name == 'workflow_dispatch') && (steps.collect.outcome != 'success' || steps.upload.outcome != 'success') && (needs.pr-test-proof.result != 'success' || needs.pr-test-proof.outputs.verified != 'true') && !(github.event_name == 'workflow_dispatch' && inputs.squeal_gate_trial == true && inputs.pr_number == '')
+         continue-on-error: true
+         env:
+           SHARD: ${{ matrix.shard }}
+@@ -962,12 +971,178 @@ jobs:
+           GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.https://github.com/.extraheader GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $basic" \
+             node "$RUNNER_TEMP/squeal/plugins/claude-code/dist/cli/squeal.mjs" ci publish "$RUNNER_TEMP/squeal-results/squeal-results.json.gz" --keep 100
+ 
++  # Squeal quality gate trial (hearsay-tools/squeal spec 020 D13, row 020-08c). Only a manual
++  # dispatch with squeal_gate_trial and no pr_number runs it. Its Vitest shards record under
++  # `squeal ci record` without their own V8 coverage, so Squeal's provider writes coverage
++  # records into the parts; this job runs `squeal code --base origin/main --parts` on them and
++  # reports in its job summary and the squeal-gate-trial artifact. It never fails the run:
++  # every step continues on error, and it is outside verify.needs and the queue roster.
++  # See docs/sdlc/ci.md § Squeal quality gate trial.
++  squeal-gate-trial:
++    name: Squeal quality gate trial
++    needs: [vitest]
++    # A status function in the condition: without one GitHub adds success(), which is false
++    # here because jobs further up (pr-test-input, pr-test-proof) are skipped in a dispatch.
++    if: ${{ !cancelled() && github.event_name == 'workflow_dispatch' && inputs.squeal_gate_trial == true && inputs.pr_number == '' && (needs.vitest.result == 'success' || needs.vitest.result == 'failure') }}
++    runs-on: ubuntu-24.04
++    timeout-minutes: 30
++    continue-on-error: true
++
++    # Runs the dispatched code (install, server build, the gate's own test runs), so it only reads.
++    permissions:
++      contents: read
++
++    steps:
++      - name: Check out the dispatched commit
++        continue-on-error: true
++        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
++        with:
++          ref: ${{ github.sha }}
++          persist-credentials: false
++          fetch-depth: 1
++
++      # The gate compares with the merge base of origin/main, so it fetches this commit's
++      # history and main only, as complexity-gate does for a bare dispatch.
++      - name: Fetch the history the gate compares
++        continue-on-error: true
++        run: git fetch --no-tags --unshallow origin +refs/heads/main:refs/remotes/origin/main
++
++      - name: Set up pnpm
++        continue-on-error: true
++        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
++        with:
++          version: '12.11.2'
++
++      # The shards' Node: a part's evidence counts only where the environment matches.
++      - name: Set up Node.js
++        continue-on-error: true
++        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
++        with:
++          node-version-file: .node-version
++          cache: pnpm
++          cache-dependency-path: pnpm-lock.yaml
++
++      - name: Install pnpm dependencies
++        continue-on-error: true
++        run: pnpm install --frozen-lockfile
++
++      # The shards' tests read the built server modules; the gate checks them and runs tests.
++      - name: Build server dependencies
++        continue-on-error: true
++        run: npm run build:server
++
++      - name: Fetch the Squeal release
++        continue-on-error: true
++        env: *squeal-release
++        run: *fetch-squeal
++
++      - name: Download Squeal parts
++        continue-on-error: true
++        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
++        with:
++          pattern: squeal-parts-shard-*
++          path: ${{ runner.temp }}/squeal-parts
++
++      # The gate's exit code is its verdict: 0 pass, 1 violations, 3 incomplete, 2 a setup or
++      # usage error. The step keeps it, with the gate's time and stderr, and exits 0.
++      - name: Run the Squeal quality gate on the shard parts
++        id: gate
++        continue-on-error: true
++        run: |
++          out="$RUNNER_TEMP/squeal-gate-trial"
++          mkdir -p "$out"
++          started="$(date +%s)"
++          code=0
++          node "$RUNNER_TEMP/squeal/plugins/claude-code/dist/cli/squeal.mjs" code --base origin/main --json \
++            --parts "$RUNNER_TEMP"/squeal-parts/squeal-parts-shard-* > "$out/report.json" 2> "$out/stderr.txt" || code=$?
++          echo "$code" > "$out/exit-code"
++          echo "$(( $(date +%s) - started ))" > "$out/seconds"
++          cat "$out/stderr.txt" >&2
++
++      - name: Report the trial
++        if: always()
++        continue-on-error: true
++        env:
++          SHARDS_RESULT: ${{ needs.vitest.result }}
++          GATE: ${{ steps.gate.outcome }}
++        run: |
++          report_filter='
++            ([.runs[] | (.from // {}) as $from | .selected[] | ($from[.] // "run")]) as $sources
++            | "Verdict: **\(.verdict)** (exit \($code)) in \($seconds) s. Base `\(.base.ref)`, merge base \(.base.commit[0:12]); head \(.head.commit[0:12]).",
++              "",
++              "Changed functions: \(.functions | length) (\(.counts | to_entries | map("\(.key) \(.value)") | join(", "))). Paths not counted: \(.uncounted | length). Budget \(.budget.seconds) s, timed out: \(.budget.timedOut).",
++              "",
++              "| Selected test files | From the parts | From the stores | Run by the gate |",
++              "|---:|---:|---:|---:|",
++              "| \($sources | length) | \([$sources[] | select(. == "parts")] | length) | \([$sources[] | select(. == "store")] | length) | \([$sources[] | select(. == "run")] | length) |",
++              "",
++              (.runs[] | "- \(.runner): \(.selected | length) selected, \(.completed | length) completed, \(.notFinished | length) not finished, \(.failed | length) with a failed test; run time \(if .durationMs == null then "none" else "\(.durationMs / 1000 | round) s" end).")'
++          shard_filter='
++            def secs: (if . < 10000 then (. / 10 | round) / 100 else (. / 100 | round) / 10 end) | tostring + " s";
++            (map(.testFiles | length) | add) as $files
++            | (map([.testFiles[] | select(.record != null)] | length) | add) as $records
++            | (map(.header.coverage | if . == null then "none (format 3)" elif has("off") then "off: \(.off)" else "\(.provider), provider \(.providerVersion), record \(.recordVersion)" end) | unique | join("; ")) as $provider
++            | (map(.header.cost // empty) | unique_by(.command)) as $costs
++            | (map(select(.header.cost != null) | .testFiles[] | .durationMs // 0) | add // 0) as $testMs
++            | ($costs | map(.hooksMs) | add // 0) as $hooks
++            | "| \($shard) | \(length) | \($files) | \($records) | \($provider) | "
++              + (if ($costs | length) == 0 then "not in the parts | | |"
++                 else "\($hooks | secs) in \($costs | map(.threads) | add) processes and threads | "
++                   + (if $testMs > 0 then "\((1000 * $hooks / $testMs | round) / 10)% of \($testMs | secs)" else "no test time" end)
++                   + " | \($costs | map(.afterMs) | add | secs) |" end)'
++          out="$RUNNER_TEMP/squeal-gate-trial"
++          code="$(cat "$out/exit-code" 2> /dev/null || echo none)"
++          seconds="$(cat "$out/seconds" 2> /dev/null || echo unknown)"
++          {
++            echo "## Squeal quality gate trial"
++            echo
++            echo "A trial: this job gates nothing and never fails the run. Vitest shards: $SHARDS_RESULT."
++            echo
++            if jq -e '.format == "squeal-code-gate/1"' "$out/report.json" > /dev/null 2>&1; then
++              jq -r --arg code "$code" --arg seconds "$seconds" "$report_filter" "$out/report.json"
++            elif [ "$code" = none ]; then
++              echo "No report: the gate did not run (gate step: ${GATE:-skipped})."
++            else
++              echo "No report: exit $code$([ "$code" = 2 ] && echo ', a setup or usage error') after $seconds s. The gate's last stderr lines:"
++              echo
++              echo '```'
++              tail -n 20 "$out/stderr.txt" 2> /dev/null || true
++              echo '```'
++            fi
++            echo
++            echo "### Squeal's recording cost, from each shard's parts"
++            echo
++            found=0
++            for dir in "$RUNNER_TEMP"/squeal-parts/squeal-parts-shard-*; do
++              [ -d "$dir" ] || continue
++              if [ "$found" = 0 ]; then
++                echo "| Shard | Parts | Test files | With a record | Coverage provider | Squeal's own time | Share of the test time | After the command |"
++                echo "|---|---:|---:|---:|---|---|---|---:|"
++                found=1
++              fi
++              jq -s -r --arg shard "${dir##*-}" "$shard_filter" "$dir"/squeal-part-*.json 2> /dev/null \
++                || echo "| ${dir##*-} | the parts do not read | | | | | | |"
++            done
++            [ "$found" = 1 ] || echo "No shard parts were downloaded."
++          } >> "$GITHUB_STEP_SUMMARY"
++
++      - name: Upload the trial report
++        if: always()
++        continue-on-error: true
++        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
++        with:
++          name: squeal-gate-trial
++          path: ${{ runner.temp }}/squeal-gate-trial/
++          if-no-files-found: warn
++          retention-days: 14
++          overwrite: true
++
+   # Merges the four shard reports into one repo-relative Istanbul `coverage-final.json` and
+   # uploads it as `vitest-coverage-<head SHA>`. See docs/sdlc/ci.md § Vitest coverage artifact.
+   vitest-coverage-merge:
+     name: Merge Vitest coverage
+     needs: [vitest]
+-    if: ${{ !cancelled() && (github.event_name == 'pull_request_target' || github.event_name == 'workflow_dispatch') && needs.vitest.result != 'skipped' }}
++    if: ${{ !cancelled() && (github.event_name == 'pull_request_target' || github.event_name == 'workflow_dispatch') && needs.vitest.result != 'skipped' && !(github.event_name == 'workflow_dispatch' && inputs.squeal_gate_trial == true && inputs.pr_number == '') }}
+     runs-on: ubuntu-24.04
+     timeout-minutes: 10
+ 
+diff --git a/docs/sdlc/ci.md b/docs/sdlc/ci.md
+index 23e36bcdf..1ff350a95 100644
+--- a/docs/sdlc/ci.md
++++ b/docs/sdlc/ci.md
+@@ -180,7 +180,7 @@ preflight and run beside the protected review result; `verify` requires both. Ot
+ `.node-version`, the four cockpit browser shards the current Node LTS; typecheck and build/package use
+ exactly the `engines.node` minimum (Node 24.21.0):
+ 
+-- Four Vitest shards on `ubuntu-24.04` each install dependencies, build the server, and run `npm test -- --shard=N/4 --maxWorkers=4` for N=1..4. In merge groups the same command runs under `squeal ci record` (§ Squeal shared results).
++- Four Vitest shards on `ubuntu-24.04` each install dependencies, build the server, and run `npm test -- --shard=N/4 --maxWorkers=4` for N=1..4. In merge groups the same command runs under `squeal ci record` (§ Squeal shared results), and in a Squeal gate trial dispatch without `--coverage.enabled` (§ Squeal quality gate trial).
+ - The required typecheck job uses `blacksmith-2vcpu-ubuntu-2404` (2 vCPU, 8 GB) for PRs and manual dispatches, and `ubuntu-24.04` for pushes and merge groups. It runs pinned workflow lint, issue-citation checking and `npm run typecheck` for all change surfaces, including docs, infrastructure and release bumps. It keeps the minimum-Node setup and its bounded retry.
+ - The build/package job on `ubuntu-24.04` runs on exactly Node 24.21.0. It builds server declarations, then runs Node unit tests, the full application build, packaged CLI E2E typecheck and tests, and release-package dry-run packing. The explicit server build preserves the preparation that typecheck supplied before the split. The packaged tests install the tarball, start the CLI and exercise the SQLite run store on the minimum supported Node version.
+ - Four cockpit browser E2E shards on GitHub-hosted `ubuntu-latest` each provision the `agent-browser` provider, build and start their own test environment, and run `npm run test:e2e -- --allow-skip --shard=N/4`. Every shard rejects skipped or failed `TEST_E2E_STATUS` logs.
+@@ -434,7 +434,8 @@ dispatch proves the job too.
+ ### Vitest coverage artifact
+ 
+ Eligible pull request runs and manual dispatches collect V8 coverage in the four required
+-`Vitest shard N/4` jobs (hearsay-tools/cezarion#1958). Each shard runs its tests once, with
++`Vitest shard N/4` jobs (hearsay-tools/cezarion#1958). A Squeal gate trial dispatch collects
++Squeal's coverage instead and has no V8 artifact (§ Squeal quality gate trial). Each shard runs its tests once, with
+ `--coverage.enabled`; there is no separate coverage test matrix. Main pushes and merge groups
+ keep the command without coverage. Docs-only, infra-only, verified queue-proof and bump-PR
+ runs keep their existing skips.
+@@ -502,6 +503,43 @@ and their absence from required checks.
+ To move to another Squeal release, change `SQUEAL_TAG` and `SQUEAL_COMMIT` in the vitest job's
+ `Fetch the Squeal release` step; both Squeal jobs reuse it.
+ 
++### Squeal quality gate trial
++
++A manual trial measures Squeal's one-shot quality gate on the shards' own evidence, before
++any check depends on it (hearsay-tools/squeal spec 020 D13, row 020-08c;
++hearsay-tools/cezarion#3096). It runs only on request:
++
++```bash
++gh workflow run ci.yml --ref <branch> -f squeal_gate_trial=true
++```
++
++- Only a dispatch with `squeal_gate_trial` and no `pr_number` takes the trial. Every other
++  dispatch, including the bare proof of a `ci.yml` change (§ Proving a `ci.yml` change) and
++  its V8 coverage artifact, is unchanged. Dispatches of one branch share a concurrency group
++  and cancel each other, so start the trial after the bare proof ends.
++- Each `Vitest shard N/4` runs `npm test -- --shard=N/4 --maxWorkers=4` under
++  `squeal ci record`, as in a merge group, but without `--coverage.enabled`: Squeal's coverage
++  provider yields to a project's own coverage, so only then does it write coverage records
++  into the parts. The shard's output and exit code stay its own. The parts upload as
++  `squeal-parts-shard-N`; the run collects and merges no V8 coverage.
++- The `Squeal quality gate trial` job (`squeal-gate-trial`) runs after the shards pass or
++  fail. It checks out the dispatched commit with the history of main, installs dependencies,
++  builds the server, fetches the pinned Squeal release, downloads the parts and runs
++  `squeal code --base origin/main --json --parts <shard directories>`. A selected test file
++  whose part certifies its inputs here comes from the parts; the gate runs the others itself,
++  for up to 600 seconds.
++- Its job summary gives the verdict and exit code, the changed functions by state, how many
++  selected test files came from the parts, from the stores and from the gate's own runs, and
++  for each shard the recording cost Squeal writes into its parts: Squeal's own time, its share
++  of the test time and its time after the command. The `squeal-gate-trial` artifact holds
++  `report.json` (`squeal-code-gate/1`), the gate's stderr, exit code and time, kept 14 days.
++- Nothing depends on it. The job is outside `verify.needs` and the merge-queue roster, only a
++  manual dispatch runs it, every step continues on error and the job sets
++  `continue-on-error`. The verdict is reported, not enforced.
++
++`.github/scripts/ci-squeal-gate-trial.workflow.test.cjs` pins the trigger, the job's
++permissions, its gate command and its summary.
++
+ ### Upstream scan PRs
+ 
+ The weekly upstream scan also creates PRs with the repository's existing release
