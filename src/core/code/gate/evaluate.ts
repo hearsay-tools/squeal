@@ -5,6 +5,7 @@ import type { FileHash } from "../../types/keys.js";
 import type { CoverageSource } from "../coverage/types.js";
 import { type JoinedFunction, joinCoverage } from "../crap/join.js";
 import { crapScore } from "../crap/score.js";
+import { applyExceptions, type Judged } from "./exceptions.js";
 import type { BasePolicy } from "./policy.js";
 import {
   byPosition,
@@ -22,6 +23,7 @@ import {
   type ChangedSet,
   type CountedPath,
   type Evidence,
+  type ExceptionEntry,
   GATE_REPORT_FORMAT,
   type GateGap,
   QUALITY_POLICY_VERSION,
@@ -147,14 +149,13 @@ function measuresOf(fn: ChangedFunction, ev: PathEvidence, ctx: Context): Measur
 }
 
 /**
- * D5: over the CC limit is a violation on the count alone; otherwise the
- * first missing condition names the gap. A loader that did not finish rules
- * out a pass: its later tests never ran (amended 2026-11-10, review 0.1.423
- * B2). The records in hand of a source whose missing loaders all completed
- * prove a pass by 015 D9's bound, never a violation.
+ * D5 without the CC rule (`judge` applies it): the first missing condition
+ * names the gap. A loader that did not finish rules out a pass: its later
+ * tests never ran (amended 2026-11-10, review 0.1.423 B2). The records in
+ * hand of a source whose missing loaders all completed prove a pass by 015
+ * D9's bound, never a violation.
  */
-function judgementOf(complexity: number, m: Measures, ev: PathEvidence, ctx: Context): Judgement {
-  if (complexity > ctx.policy.complexityThreshold) return VIOLATION;
+function evidenceJudgement(m: Measures, ev: PathEvidence, ctx: Context): Judgement {
   if (ev.expected.length === 0) return gapOf("no-loader");
   if (ev.missing === "not-finished") return gapOf("not-finished");
   const underCrap = m.crap !== null && m.crap <= ctx.policy.crapThreshold;
@@ -164,15 +165,29 @@ function judgementOf(complexity: number, m: Measures, ev: PathEvidence, ctx: Con
   return underCrap ? PASS : VIOLATION;
 }
 
-/** D5: one changed function counted outside a parse error. */
-function judge(fn: ChangedFunction, ctx: Context): GateFunctionReport {
+const SKIPPED: Judgement = { state: "skipped", gap: null };
+
+/**
+ * D5: one changed function counted outside a parse error, and what its
+ * evidence alone says (D8 reads it). Over the CC limit is a violation on
+ * the count alone, whatever the evidence; a `coverage.exclude` file wants
+ * none.
+ */
+function judge(fn: ChangedFunction, ctx: Context): Judged {
+  const over = fn.count.complexity > ctx.policy.complexityThreshold;
   if (ctx.excluded(fn.path)) {
-    const over = fn.count.complexity > ctx.policy.complexityThreshold;
-    return report(fn, UNMEASURED, over ? VIOLATION : { state: "skipped", gap: null });
+    return { row: report(fn, UNMEASURED, over ? VIOLATION : SKIPPED), evidence: SKIPPED };
   }
   const ev = ctx.evidenceOf(fn);
   const measures = measuresOf(fn, ev, ctx);
-  return report(fn, measures, judgementOf(fn.count.complexity, measures, ev, ctx));
+  const evidence = evidenceJudgement(measures, ev, ctx);
+  return { row: report(fn, measures, over ? VIOLATION : evidence), evidence };
+}
+
+/** D2.5: a changed function inside a parse error is not counted. */
+function inError(fn: ChangedFunction): Judged {
+  const notCounted = gapOf("not-counted");
+  return { row: report(fn, UNMEASURED, notCounted), evidence: notCounted };
 }
 
 /**
@@ -188,9 +203,10 @@ function headPaths(changed: ChangedSet): GateReport["head"]["paths"] {
 }
 
 /**
- * Spec 020 D5 to D7: the report of `changed` judged with `evidence` under
- * `policy`, read at the base with its counting keys. `versions` and
- * `times` are the caller's, so the same inputs give the same report.
+ * Spec 020 D5 to D8: the report of `changed` judged with `evidence` under
+ * `policy`, read at the base with its counting keys, and the `exceptions`
+ * entries when a file gave them. `versions` and `times` are the caller's,
+ * so the same inputs give the same report.
  */
 export function evaluate(
   changed: ChangedSet,
@@ -198,6 +214,7 @@ export function evaluate(
   policy: BasePolicy,
   versions: EngineVersions,
   times: GateTimes,
+  exceptions?: readonly ExceptionEntry[],
 ): GateReport {
   const counted = new Map(changed.counted.map((c) => [c.path, c]));
   const cache = new Map<string, PathEvidence>();
@@ -215,10 +232,18 @@ export function evaluate(
       return ev;
     },
   };
-  const functions = [
+  const judged = [
     ...changed.functions.map((fn) => judge(fn, ctx)),
-    ...changed.inErrors.map((fn) => report(fn, UNMEASURED, gapOf("not-counted"))),
-  ].sort(byPosition);
+    ...changed.inErrors.map(inError),
+  ];
+  const applied =
+    exceptions === undefined
+      ? null
+      : applyExceptions(judged, exceptions, changed.baseCounted ?? [], {
+          policy,
+          baseCommit: changed.baseCommit,
+        });
+  const functions = (applied?.functions ?? judged.map((j) => j.row)).sort(byPosition);
   const uncounted: GatePathReport[] = changed.uncounted
     .map((u) => ({ path: u.path, reason: u.reason, gap: "not-counted" as const }))
     .sort((a, b) => compare(a.path, b.path) || compare(a.reason, b.reason));
@@ -242,6 +267,7 @@ export function evaluate(
     budget: { seconds: evidence.budgetSeconds, timedOut: evidence.timedOut },
     functions,
     uncounted,
+    ...(applied === null ? {} : { exceptions: { unused: applied.unused } }),
     runs: runsOf(evidence, times.durationsMs),
     verdict: verdictOf(functions, uncounted, {
       failed: ctx.failed,

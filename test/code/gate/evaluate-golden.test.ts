@@ -93,7 +93,7 @@ const GOLDEN: GateReport = {
     counter: 3,
     coverageProvider: 3,
     coverageRecord: 4,
-    qualityPolicy: 1,
+    qualityPolicy: 2,
   },
   base: {
     ref: "origin/main",
@@ -228,7 +228,7 @@ const GOLDEN: GateReport = {
     },
   ],
   verdict: "violations",
-  counts: { pass: 2, violation: 1, incomplete: 2, skipped: 1 },
+  counts: { pass: 2, violation: 1, incomplete: 2, skipped: 1, accepted: 0 },
 };
 
 const reversed = <T>(list: readonly T[]) => [...list].reverse();
