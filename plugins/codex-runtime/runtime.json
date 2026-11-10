@@ -60,7 +60,7 @@
       "mode": 493
     },
     "dist/cli/squeal.mjs": {
-      "sha256": "6d10462f3d36075e554f1d161156199486231454daf08244a2af5785565bd016",
+      "sha256": "c0027731824d1e85c47ed07614d16e283476ca8c482e6b73b1d1638f70374484",
       "mode": 493
     },
     "dist/code/tree-sitter-tsx.wasm": {
@@ -164,7 +164,7 @@
       "mode": 420
     },
     "skills/squeal/references/commands.md": {
-      "sha256": "d2cbc669a7ed8513a097b621794ed2546e71619fc9ec3ce9654fd2e3998899ec",
+      "sha256": "fc334bcff900ae8bd66825320b6afd947078496ca7fb2489417752b46d054974",
       "mode": 420
     },
     "skills/squeal/references/policy.md": {
