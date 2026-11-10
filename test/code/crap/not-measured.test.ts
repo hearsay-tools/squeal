@@ -65,12 +65,10 @@ describe("a pytest-only source after the session start (row 015-75, e-order)", (
     expect(codeLine(await rig.register(S1))).toEqual([
       `Complexity: 0 functions over 20; squeal code lists them. ${SENTENCE("pytest")}`,
     ]);
-    // The agent writes the helper first: no test loads it, so it is untested, and told so.
+    // The agent writes the helper first: no test loads it, so it is not measured, and nothing is told (spec 020 D11.5).
     await rig.edit({ "scripts/helper.ts": "classify 4 h1\n" });
     rig.step();
-    expect(aboutCoverage(await rig.told(S1))).toEqual([
-      "FAIL untested: classify (scripts/helper.ts:1): no test Squeal runs loads this file (complexity 4, CRAP 20). Squeal does not measure worker threads or child processes.",
-    ]);
+    expect(aboutCoverage(await rig.told(S1))).toEqual([]);
     // Then its pytest test file.
     await rig.edit({ "scripts/helper.test.ts": "it\n" });
     rig.loader("scripts/helper.test.ts", { closure: ["scripts/helper.ts"] });
@@ -108,13 +106,16 @@ describe("a pytest-only source after the session start (row 015-75, e-order)", (
       { threshold: 20, maxFileBytes: 524_288 },
       { paths: null, changed: false, shell: null },
     );
-    // `hot` in src/a.ts, which no test file loads, is untested.
+    // `hot` in src/a.ts, which no test file loads, is not measured either (spec 020 D11.5).
     expect(all.coverage).toMatchObject({
-      uncovered: 1,
+      uncovered: 0,
       notJudged: 0,
       notMeasured: { files: 1, runners: ["pytest"] },
+      notLoaded: 1,
     });
-    expect(formatCodeReport(all)).toContain("  1 file not measured: pytest gives no coverage\n");
+    expect(formatCodeReport(all)).toContain(
+      "  1 file not measured: pytest gives no coverage\n  1 file not measured: no test Squeal runs loads them\n",
+    );
   });
 });
 
