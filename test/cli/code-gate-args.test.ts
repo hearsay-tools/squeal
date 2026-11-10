@@ -60,6 +60,9 @@ describe("parseGateArgs (spec 020 D1)", () => {
     [["--base", "main", "--exceptions"], "--exceptions names no file"],
     [["--base", "main", "--exceptions="], "--exceptions names no file"],
     [["--base", "main", "--exceptions", "a", "--exceptions", "b"], "--exceptions is given twice"],
+    [["--base", "main", "--parts"], "--parts names no directory"],
+    [["--base", "main", "--parts", "--json"], "--parts names no directory"],
+    [["--base", "main", "--parts="], "--parts names no directory"],
   ])("refuses %j", (args, error) => {
     expect(parseGateArgs(args)).toEqual({ error: expect.stringContaining(error) });
   });
@@ -75,6 +78,18 @@ describe("parseGateArgs (spec 020 D1)", () => {
     });
     expect(parseGateArgs(["--base", "main", "--exceptions=e.json"])).toMatchObject({
       exceptions: "e.json",
+    });
+  });
+
+  it("takes the parts' directories, which only --parts adds (spec 020 D13.2)", () => {
+    const args = ["src", "--base", "main", "--parts", "p/1", "p/2", "--parts=p/3", "--json"];
+    expect(parseGateArgs(args)).toEqual({
+      ref: "main",
+      paths: ["src"],
+      tests: [],
+      budgetSeconds: DEFAULT_BUDGET_SECONDS,
+      json: true,
+      parts: ["p/1", "p/2", "p/3"],
     });
   });
 });
@@ -237,7 +252,7 @@ describe("squeal --help (spec 020 D1)", () => {
     expect(gate).toBeGreaterThan(
       lines.indexOf("  squeal code [<path>...] [--changed | --told] [--json]"),
     );
-    expect(lines[gate + 1]?.trim()).toBe("[--exceptions <file>] [--json]");
+    expect(lines[gate + 1]?.trim()).toBe("[--parts <dir>...] [--exceptions <file>] [--json]");
     expect(lines[gate + 2]?.trim()).toMatch(/^Runs tests, with no daemon,/);
   });
 });
