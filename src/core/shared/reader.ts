@@ -5,7 +5,14 @@ import { importRefusal, importResults } from "../store/transfer-import.js";
 import type { AbsolutePath, WorktreeId } from "../types/common.js";
 import type { Policy } from "../types/policy.js";
 import type { Store } from "../types/store.js";
-import { firstParents, onFirstParentLine, startPoint, upstreamOf } from "./choose.js";
+import {
+  advertisedUpstream,
+  firstParents,
+  onFirstParentLine,
+  startPoint,
+  type Upstream,
+  upstreamOf,
+} from "./choose.js";
 import { fetchExport } from "./fetch.js";
 import { failureOf, networkEnv } from "./git.js";
 import { blobsAt, HEAD_TIMEOUT_MS, headOf } from "./local.js";
@@ -22,6 +29,8 @@ import { refOf, remoteExports } from "./refs.js";
  * since a `git fetch` moves it while `HEAD` stays; and one stop ends every
  * step, so no git starts after `close()`. Row 018-23: the stop kills every
  * git the reader starts, the `HEAD` read and the commit's listing too.
+ * Row 018-28: a clone without `refs/remotes/origin/HEAD` takes the default
+ * branch the remote advertises, under the listing's kill timer.
  */
 
 /** The kill timer of the listing (`transport.md` Q3: 0.45 to 0.6 s to GitHub). */
@@ -73,6 +82,8 @@ class Reader implements SharedReader {
   #start: string | null = null;
   #running: Promise<void> | null = null;
   #again = false;
+  /** Row 018-28: the remote's advertised default branch, or the `HEAD` at which asking found none. */
+  #asked: Upstream | { readonly missedAt: string } | null = null;
   /** The reader's one stop: each step checks it, and each git call it starts is killed by it. */
   readonly #stop = new AbortController();
 
@@ -125,7 +136,8 @@ class Reader implements SharedReader {
     const timeoutMs = this.o.headTimeoutMs ?? HEAD_TIMEOUT_MS;
     const head = await this.#live((signal) => headOf(root, { timeoutMs, signal }));
     if (head === null) return;
-    const upstream = await this.#live((signal) => upstreamOf(root, signal));
+    const upstream =
+      (await this.#live((signal) => upstreamOf(root, signal))) ?? (await this.#advertised(head));
     if (upstream === null) {
       if (this.#start !== "no upstream") {
         this.#start = "no upstream";
@@ -173,6 +185,26 @@ class Reader implements SharedReader {
       await this.#take(upstream.remote, ref, commit, oid, env);
       return;
     }
+  }
+
+  /**
+   * Row 018-28: the default branch the remote advertises, when no local
+   * `refs/remotes/<remote>/HEAD` names one. Found once for the reader's
+   * life; a miss is asked again only once `HEAD` moved, so a batch reaches
+   * no remote for it.
+   */
+  async #advertised(head: string): Promise<Upstream | null> {
+    const asked = this.#asked;
+    if (asked !== null && "remote" in asked) return asked;
+    if (asked !== null && asked.missedAt === head) return null;
+    const { root } = this.o;
+    const env = await this.#live((signal) => networkEnv(root, signal));
+    const timeoutMs = this.o.listTimeoutMs ?? LIST_TIMEOUT_MS;
+    const found = await this.#live((signal) =>
+      advertisedUpstream(root, { timeoutMs, env, signal }),
+    );
+    this.#asked = found ?? { missedAt: head };
+    return found;
   }
 
   /** Fetches, checks and imports the export of `commit`. */
