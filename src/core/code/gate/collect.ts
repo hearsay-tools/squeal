@@ -9,7 +9,7 @@ import { readObjectFormat } from "../../hash/git-index.js";
 import type { AbsolutePath, RelativePath } from "../../types/common.js";
 import type { TestFileRef } from "../../types/keys.js";
 import type { NodeTestProject, Policy, PolicyInputs } from "../../types/policy.js";
-import type { RunnerAdapter, RunReport } from "../../types/runner.js";
+import type { RunnerAdapter, RunnerClosure, RunReport } from "../../types/runner.js";
 import type { BlobCache } from "../coverage/record.js";
 import { coverageProvider, PROVIDER_MISSING_NOTE } from "../coverage/runtime.js";
 import type { CoverageRun, CoveredFile } from "../coverage/types.js";
@@ -76,7 +76,7 @@ export interface CollectOptions {
   readonly adapters: GateAdapters;
   /** The adapters' notes, such as a file run with coverage off; dropped when absent. */
   readonly note?: (text: string) => void;
-  /** D11.7: the evidence the stores hold of a runner's selected files; those do not run. */
+  /** D11.7, D13.2: the evidence known of a runner's selected files without a run; those do not run. */
   readonly stored?: StoredEvidence;
   /**
    * D12.1: `coverage.children` read at the base: the runs collect the
@@ -86,13 +86,16 @@ export interface CollectOptions {
 }
 
 /**
- * The evidence of each of `files` read from the stores, by the ref given;
- * a file it leaves out runs. Called once per runner with a selected file,
- * before its run and within the budget.
+ * The evidence of each of `files` known without a run, from the stores
+ * (D11.7) or `ci record`'s parts (D13.2), by the ref given; a file it
+ * leaves out runs. Called once per runner with a selected file, before its
+ * run and within the budget. `closure`, which the collector always gives,
+ * is the runner's closure of a file here, `null` when it cannot give one.
  */
 export type StoredEvidence = (
   runner: TestFileEvidence["runner"],
   files: readonly TestFileRef[],
+  closure?: (ref: TestFileRef) => Promise<RunnerClosure | null>,
 ) => Promise<ReadonlyMap<TestFileRef, TestFileEvidence>>;
 
 /** D3.1: a `--test` path that no runner lists as a test file; a usage error (D1, exit 2). */
@@ -154,7 +157,8 @@ export async function collectEvidence(
     for (const [i, runner] of runners.entries()) {
       const chosen = selected[i] ?? [];
       if (chosen.length === 0) continue;
-      const stored = (await options.stored?.(runner.kind, chosen)) ?? new Map();
+      const closure = (ref: TestFileRef) => runner.adapter.closure(ref).catch(() => null);
+      const stored = (await options.stored?.(runner.kind, chosen, closure)) ?? new Map();
       testFiles.push(...stored.values());
       const files = chosen.filter((ref) => !stored.has(ref));
       if (files.length === 0) continue;
