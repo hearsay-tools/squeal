@@ -139,6 +139,7 @@ describe("squeal ci export (spec 018 D9)", () => {
       unkeyed: 0,
       uncertified: 0,
       ambiguous: 0,
+      inspector: 0,
     });
 
     const files = (bundle: ResultsBundle) =>
