@@ -1,0 +1,37 @@
+{
+  "load1Before": "27.62",
+  "testFiles": 1563,
+  "counted": 1562,
+  "tooBig": 0,
+  "missing": 1,
+  "unsupported": 0,
+  "withErrors": 1,
+  "functions": 29029,
+  "over20": [
+    {
+      "path": "test/harness/latency.test.ts",
+      "name": "<describe>.<it>",
+      "cc": 25
+    },
+    {
+      "path": "test/lint/oxlint/replay.test.ts",
+      "name": "replay",
+      "cc": 33
+    },
+    {
+      "path": "test/presence/presence.test.ts",
+      "name": "<describe>.<anonymous>",
+      "cc": 24
+    }
+  ],
+  "ccHistogram": {
+    "1-5": 28680,
+    "6-10": 302,
+    "11-20": 44,
+    ">20": 3
+  },
+  "bytes": 10132197,
+  "cpuMs": 4986,
+  "wallMs": 4661,
+  "load1After": "27.62"
+}
