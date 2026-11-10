@@ -1,0 +1,161 @@
+## Per shard job, by group (seconds)
+
+mg-plain: 108 runs, 425 shard jobs, created 2026-11-08T00:02:17Z .. 2026-11-10T03:41:17Z
+  jobS      n=425 median 683.0 IQR 587.0-778.0 mean 683.2 sd 115.9 (cv 17.0%)
+  stepS     n=425 median 653.0 IQR 558.0-744.0 mean 652.4 sd 114.4 (cv 17.5%)
+  durationS n=425 median 651.3 IQR 557.1-743.4 mean 651.6 sd 114.3 (cv 17.5%)
+  phaseSumS n=425 median 2551.3 IQR 2189.2-2914.7 mean 2554.1 sd 447.6 (cv 17.5%)
+  testsS    n=425 median 2152.2 IQR 1876.8-2447.3 mean 2157.2 sd 377.0 (cv 17.5%)
+  files     n=425 median 402.0 IQR 400.0-404.0 mean 401.6 sd 3.0 (cv 0.7%)
+  shard 1: step n=107 median 641.0 IQR 549.0-758.5 mean 648.2 sd 118.8 (cv 18.3%); phase sum median 2514.6
+  shard 2: step n=107 median 650.0 IQR 556.0-743.0 mean 653.6 sd 113.8 (cv 17.4%); phase sum median 2555.3
+  shard 3: step n=107 median 638.0 IQR 536.0-708.5 mean 625.3 sd 101.4 (cv 16.2%); phase sum median 2500.2
+  shard 4: step n=104 median 679.0 IQR 591.5-797.3 mean 683.5 sd 117.0 (cv 17.1%); phase sum median 2663.8
+
+mg-record-0.1.426: 17 runs, 62 shard jobs, created 2026-11-10T15:24:12Z .. 2026-11-10T19:36:27Z
+  jobS      n=62 median 745.5 IQR 656.3-842.0 mean 737.1 sd 110.7 (cv 15.0%)
+  stepS     n=62 median 704.5 IQR 620.0-800.0 mean 695.5 sd 109.0 (cv 15.7%)
+  durationS n=62 median 702.2 IQR 617.4-796.8 mean 692.9 sd 108.9 (cv 15.7%)
+  phaseSumS n=62 median 2728.5 IQR 2412.9-3103.5 mean 2701.5 sd 424.0 (cv 15.7%)
+  testsS    n=62 median 2286.2 IQR 2033.0-2584.4 mean 2262.5 sd 349.3 (cv 15.4%)
+  files     n=62 median 406.0 IQR 406.0-407.0 mean 406.3 sd 0.8 (cv 0.2%)
+  shard 1: step n=17 median 655.0 IQR 556.0-709.0 mean 629.5 sd 86.1 (cv 13.7%); phase sum median 2535.7
+  shard 2: step n=12 median 714.0 IQR 619.5-819.0 mean 713.1 sd 116.7 (cv 16.4%); phase sum median 2776.3
+  shard 3: step n=17 median 785.0 IQR 622.0-800.0 mean 709.3 sd 111.4 (cv 15.7%); phase sum median 3043.2
+  shard 4: step n=16 median 741.5 IQR 659.5-825.0 mean 737.9 sd 99.5 (cv 13.5%); phase sum median 2886.7
+
+mg-record-squeal--v0.1.423: 1 runs, 4 shard jobs, created 2026-11-10T10:29:19Z .. 2026-11-10T10:29:19Z
+  jobS      n=4 median 765.0 IQR 637.8-849.8 mean 722.5 sd 165.6 (cv 22.9%)
+  stepS     n=4 median 727.5 IQR 600.5-812.3 mean 685.3 sd 164.3 (cv 24.0%)
+  durationS n=4 median 725.2 IQR 598.0-810.3 mean 683.1 sd 164.1 (cv 24.0%)
+  phaseSumS n=4 median 2830.8 IQR 2336.0-3160.4 mean 2665.6 sd 639.0 (cv 24.0%)
+  testsS    n=4 median 2383.1 IQR 1982.7-2636.6 mean 2236.2 sd 520.9 (cv 23.3%)
+  files     n=4 median 404.0 IQR 403.8-404.0 mean 403.8 sd 0.5 (cv 0.1%)
+  shard 1: step n=1 median 470.0 IQR 470.0-470.0 mean 470.0 sd - (cv -%); phase sum median 1828.3
+  shard 2: step n=1 median 811.0 IQR 811.0-811.0 mean 811.0 sd - (cv -%); phase sum median 3156.3
+  shard 3: step n=1 median 644.0 IQR 644.0-644.0 mean 644.0 sd - (cv -%); phase sum median 2505.3
+  shard 4: step n=1 median 816.0 IQR 816.0-816.0 mean 816.0 sd - (cv -%); phase sum median 3172.8
+
+mg-record-squeal--v0.1.425: 8 runs, 31 shard jobs, created 2026-11-10T13:03:26Z .. 2026-11-10T15:19:17Z
+  jobS      n=31 median 722.0 IQR 685.0-755.0 mean 722.4 sd 72.8 (cv 10.1%)
+  stepS     n=31 median 680.0 IQR 640.5-717.5 mean 680.7 sd 71.5 (cv 10.5%)
+  durationS n=31 median 677.7 IQR 637.8-714.2 mean 678.0 sd 71.5 (cv 10.6%)
+  phaseSumS n=31 median 2649.9 IQR 2484.7-2787.6 mean 2644.2 sd 278.2 (cv 10.5%)
+  testsS    n=31 median 2228.7 IQR 2064.5-2302.7 mean 2213.3 sd 232.0 (cv 10.5%)
+  files     n=31 median 405.0 IQR 405.0-406.0 mean 405.2 sd 0.8 (cv 0.2%)
+  shard 1: step n=8 median 702.0 IQR 669.5-713.8 mean 690.5 sd 34.8 (cv 5.0%); phase sum median 2719.1
+  shard 2: step n=8 median 642.0 IQR 588.0-657.0 mean 615.1 sd 64.2 (cv 10.4%); phase sum median 2494.9
+  shard 3: step n=8 median 716.5 IQR 618.3-769.3 mean 699.9 sd 82.4 (cv 11.8%); phase sum median 2783.3
+  shard 4: step n=7 median 703.0 IQR 690.5-730.0 mean 722.4 sd 55.2 (cv 7.6%); phase sum median 2733.1
+
+push-plain: 6 runs, 23 shard jobs, created 2026-11-09T11:32:32Z .. 2026-11-10T18:35:18Z
+  jobS      n=23 median 649.0 IQR 549.0-696.5 mean 632.2 sd 107.1 (cv 16.9%)
+  stepS     n=23 median 598.0 IQR 519.5-660.5 mean 599.1 sd 106.6 (cv 17.8%)
+  durationS n=23 median 597.8 IQR 518.8-659.9 mean 598.4 sd 106.7 (cv 17.8%)
+  phaseSumS n=23 median 2345.5 IQR 2032.0-2576.8 mean 2342.1 sd 416.1 (cv 17.8%)
+  testsS    n=23 median 1983.4 IQR 1703.7-2110.6 mean 1950.1 sd 336.9 (cv 17.3%)
+  files     n=23 median 405.0 IQR 404.0-406.0 mean 403.9 sd 2.9 (cv 0.7%)
+  shard 1: step n=6 median 528.5 IQR 457.8-621.8 mean 539.2 sd 91.7 (cv 17.0%); phase sum median 2065.8
+  shard 2: step n=5 median 624.0 IQR 598.0-654.0 mean 618.6 sd 104.5 (cv 16.9%); phase sum median 2446.0
+  shard 3: step n=6 median 616.5 IQR 558.8-660.8 mean 605.3 sd 96.5 (cv 15.9%); phase sum median 2408.6
+  shard 4: step n=6 median 661.0 IQR 555.3-749.5 mean 636.7 sd 130.9 (cv 20.6%); phase sum median 2588.9
+
+## Per run (four shards complete, one attempt each)
+
+mg-plain: 101 runs
+  stepSum    n=101 median 2651.0 IQR 2433.0-2831.0 mean 2620.3 sd 265.3 (cv 10.1%)
+  phaseSum   n=101 median 10385.8 IQR 9542.6-11087.1 mean 10257.1 sd 1044.6 (cv 10.2%)
+  slowest    n=101 median 795.0 IQR 703.0-827.0 mean 765.0 sd 74.0 (cv 9.7%)
+  slowestJob n=101 median 824.0 IQR 736.0-858.0 mean 797.0 sd 73.8 (cv 9.3%)
+
+mg-record-0.1.426: 11 runs
+  stepSum    n=11 median 2729.0 IQR 2633.5-2879.5 mean 2744.5 sd 180.8 (cv 6.6%)
+  phaseSum   n=11 median 10608.5 IQR 10229.5-11183.2 mean 10662.2 sd 701.6 (cv 6.6%)
+  slowest    n=11 median 819.0 IQR 793.0-836.0 mean 811.3 sd 40.4 (cv 5.0%)
+  slowestJob n=11 median 864.0 IQR 832.5-878.0 mean 853.6 sd 40.3 (cv 4.7%)
+
+mg-record-squeal--v0.1.423: 1 runs
+  stepSum    n=1 median 2741.0 IQR 2741.0-2741.0 mean 2741.0 sd - (cv -%)
+  phaseSum   n=1 median 10662.6 IQR 10662.6-10662.6 mean 10662.6 sd - (cv -%)
+  slowest    n=1 median 816.0 IQR 816.0-816.0 mean 816.0 sd - (cv -%)
+  slowestJob n=1 median 855.0 IQR 855.0-855.0 mean 855.0 sd - (cv -%)
+
+mg-record-squeal--v0.1.425: 7 runs
+  stepSum    n=7 median 2724.0 IQR 2690.0-2778.0 mean 2727.9 sd 75.7 (cv 2.8%)
+  phaseSum   n=7 median 10587.4 IQR 10456.3-10786.8 mean 10598.2 sd 295.3 (cv 2.8%)
+  slowest    n=7 median 751.0 IQR 711.0-774.5 mean 751.4 sd 49.2 (cv 6.6%)
+  slowestJob n=7 median 800.0 IQR 752.5-820.0 mean 794.0 sd 49.9 (cv 6.3%)
+
+push-plain: 5 runs
+  stepSum    n=5 median 2269.0 IQR 2198.0-2643.0 mean 2386.6 sd 273.6 (cv 11.5%)
+  phaseSum   n=5 median 8866.7 IQR 8599.1-10345.1 mean 9330.9 sd 1061.6 (cv 11.4%)
+  slowest    n=5 median 753.0 IQR 739.0-753.0 mean 724.6 sd 56.6 (cv 7.8%)
+  slowestJob n=5 median 781.0 IQR 770.0-782.0 mean 754.8 sd 54.9 (cv 7.3%)
+
+## Same-SHA pairs: merge-group shard / push shard, same shard index (ratio)
+
+mg-plain vs push-plain: 4 shard pairs over 1 commits
+  stepS     ratio n=4 median 0.8 IQR 0.7-0.9 mean 0.8 sd 0.2 (cv 19.4%)
+  durationS ratio n=4 median 0.8 IQR 0.7-0.9 mean 0.8 sd 0.2 (cv 19.4%)
+  phaseSumS ratio n=4 median 0.8 IQR 0.7-0.9 mean 0.8 sd 0.2 (cv 19.3%)
+
+mg-record-0.1.426 vs push-plain: 4 shard pairs over 1 commits
+  stepS     ratio n=4 median 1.4 IQR 1.3-1.5 mean 1.4 sd 0.2 (cv 15.5%)
+  durationS ratio n=4 median 1.4 IQR 1.3-1.5 mean 1.4 sd 0.2 (cv 15.6%)
+  phaseSumS ratio n=4 median 1.4 IQR 1.3-1.5 mean 1.4 sd 0.2 (cv 15.5%)
+
+mg-record-squeal--v0.1.423 vs push-plain: 4 shard pairs over 1 commits
+  stepS     ratio n=4 median 1.1 IQR 1.1-1.3 mean 1.3 sd 0.4 (cv 28.9%)
+  durationS ratio n=4 median 1.1 IQR 1.1-1.3 mean 1.3 sd 0.4 (cv 28.9%)
+  phaseSumS ratio n=4 median 1.1 IQR 1.1-1.3 mean 1.3 sd 0.4 (cv 28.7%)
+
+mg-record-squeal--v0.1.425 vs push-plain: 11 shard pairs over 3 commits
+  stepS     ratio n=11 median 1.1 IQR 0.9-1.3 mean 1.1 sd 0.2 (cv 20.7%)
+  durationS ratio n=11 median 1.1 IQR 0.9-1.3 mean 1.1 sd 0.2 (cv 20.8%)
+  phaseSumS ratio n=11 median 1.0 IQR 0.9-1.3 mean 1.1 sd 0.2 (cv 20.6%)
+
+## Export and publish jobs (seconds)
+Export Squeal shared results: 42886954003:success:83 42883978163:success:68 42883187158:success:80 42873763583:success:64 42864434332:success:82 42863202047:success:76 42860288509:success:83 42859836676:success:66 42852482643:success:77 42848997242:success:84 42843943744:success:94 42843103350:failure:40 42839102928:failure:41 42836442721:failure:42 42832873309:failure:40 42831139314:failure:47 42821717751:failure:36 42821041101:failure:47 42799552999:failure:38 42862887754:cancelled:-1 42846083832:cancelled:0 42833842854:cancelled:0 42823441717:cancelled:-1
+  success n=11 median 80.0 IQR 72.0-83.0 mean 77.9 sd 9.0 (cv 11.5%)
+Publish Squeal shared results: 42886954003:success:36 42883978163:success:38 42883187158:success:31 42873763583:success:34 42864434332:success:31 42863202047:success:30 42860288509:success:31 42859836676:success:88 42862887754:cancelled:-1 42846083832:cancelled:0 42833842854:cancelled:0 42823441717:cancelled:0
+  success n=8 median 32.5 IQR 31.0-36.5 mean 39.9 sd 19.7 (cv 49.3%)
+
+## Merge-group runs since cezarion#3176 (2026-11-10T16:57Z): shards ran or reused
+42886956964 3b02393d failure shards-ran=3 no export/publish
+42886954003 b3ac65b0 success shards-ran=4 Export:success,Publish:success
+42886859076 5b57f96c failure shards-ran=3 no export/publish
+42884002318 9068d7ac failure shards-ran=3 no export/publish
+42883978163 13582fdd success shards-ran=4 Export:success,Publish:success
+42883187158 655a388a failure shards-ran=4 Export:success,Publish:success
+42881156640 d433c9a2 failure shards-ran=3 no export/publish
+42878072781 cc3e5208 failure shards-ran=3 no export/publish
+42873763583 afd1b777 success shards-ran=4 Export:success,Publish:success
+42872131290 efcfb0e3 success shards-ran=0 no export/publish
+42864434332 9dd2ca62 success shards-ran=4 Export:success,Publish:success
+42863202047 a015077a success shards-ran=4 Export:success,Publish:success
+42860288509 f4e3fbb6 success shards-ran=4 Export:success,Publish:success
+42859836676 ef0c1ff0 success shards-ran=4 Export:success,Publish:success
+
+## Effect of recording, per run (recording = 0.1.425 + 0.1.426 runs)
+
+vs all plain merge-group runs: plain n=101, recording n=18
+  stepSum   plain mean 2620.3, recording mean 2738.1: +117.8 s (4.5%), 95% CI 43.7 to 198.9 s (1.7% to 7.6%)
+  phaseSum  plain mean 10257.1, recording mean 10637.3: +380.2 s (3.7%), 95% CI 89.6 to 703.5 s (0.9% to 6.9%)
+  slowest   plain mean 765.0, recording mean 788.0: +23.0 s (3.0%), 95% CI -2.0 to 48.3 s (-0.3% to 6.3%)
+  jobSum    plain mean 2743.4, recording mean 2905.3: +161.9 s (5.9%), 95% CI 87.0 to 244.9 s (3.2% to 8.9%)
+  stepSum/file plain 1.630, recording 1.687: 3.5%, 95% CI 0.7% to 6.5%
+  phaseSum/file plain 6.382, recording 6.554: 2.7%, 95% CI -0.1% to 5.7%
+  test files per run: plain mean 1606.5, recording 1622.9
+
+vs plain runs of the last day before #3151: plain n=31, recording n=18
+  stepSum   plain mean 2359.1, recording mean 2738.1: +379.0 s (16.1%), 95% CI 286.4 to 474.2 s (12.1% to 20.1%)
+  phaseSum  plain mean 9213.5, recording mean 10637.3: +1423.8 s (15.5%), 95% CI 1060.1 to 1792.7 s (11.5% to 19.5%)
+  slowest   plain mean 684.2, recording mean 788.0: +103.8 s (15.2%), 95% CI 75.8 to 135.0 s (11.1% to 19.7%)
+  jobSum    plain mean 2484.6, recording mean 2905.3: +420.6 s (16.9%), 95% CI 326.2 to 517.8 s (13.1% to 20.8%)
+  stepSum/file plain 1.481, recording 1.687: 13.9%, 95% CI 10.0% to 17.9%
+  phaseSum/file plain 5.785, recording 6.554: 13.3%, 95% CI 9.4% to 17.2%
+  test files per run: plain mean 1592.8, recording 1622.9
+
+## Added shard steps (recording runs)
+Fetch the Squeal release: n=104 median 7.0 IQR 6.0-9.0 mean 7.3 sd 2.8 (cv 38.5%)
+Upload Squeal parts: n=97 median 1.0 IQR 1.0-2.0 mean 1.7 sd 3.7 (cv 219.4%)

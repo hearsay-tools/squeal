@@ -1,0 +1,11 @@
+Revision: 0
+Known failures: 0; not current: 387 of 1864 test files (387 unknown)
+Affected checks: 24561 passed (23084 tests, 1477 test files loaded), 0 running, 0 queued, 3 skipped (3 tests)
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+browser: 100 test files; 100 not run at revision 0. Squeal has not queued them; `squeal run browser --wait 60000` runs them now and waits for their results.
+Outstanding:
+  287 test files never run at their inputs, nothing queued them (the baseline is lookup-only): contract: packages/contract/src/attention.test.ts, contract: packages/contract/src/tool-display.test.ts, root:test:unit: .ai/skills/check-code-quality/scripts/changed-functions.test.mjs and 284 more; `squeal retry <test file>...` runs each once, `squeal run --all --wait` runs all 387 test files not current here
+Complexity: 0 functions over 20; squeal code lists them.
+Coverage: 42 functions over CRAP 30, 379 untested; 1700 files wait for the imports of 1864 test files; squeal code lists them.
+Lint: linting, 800 of 3267 files.
+More: `squeal status --full` adds the worktree and daemon, the 387 test files without a result one by one and 8 notes

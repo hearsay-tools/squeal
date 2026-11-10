@@ -1,0 +1,71 @@
+recorded test files: 1628  with two checks of one name (by fullName): 0
+
+1 files: present in run, not tracked at commit
+  server:packages/cezar/src/server-install/platforms/macosx-migration.test.ts <- packages/cezar/dist/hsq.js
+
+77 files: no evidence
+  server:packages/cezar/src/test-home-runners.test.ts <- .ai/qa/home-runner-26DdyE/package.json, .ai/qa/package.json
+  server:packages/cezar/src/test-task-env.test.ts <- .ai/qa/unit-env-9ApES1/sandboxes.log, .ai/qa/unit-env-9ApES1/sandboxes/cez-vitest-tmp-H16Zd6, .ai/qa/unit-env-9ApES1/sandboxes/cez-vitest-tmp-ih2fhY
+  server:packages/cezar/src/core/ci-tools-definitions-validation.test.ts <- packages/cezar/scripts/mock-cursor-print.mjs, packages/cezar/scripts/pi-retry-degraded-service.mjs
+  server:packages/cezar/src/core/cursor-print-runner.test.ts <- packages/cezar/scripts/mock-cursor-print.mjs
+  server:packages/cezar/src/core/dry-run-backends.test.ts <- packages/cezar/scripts/mock-cursor-print.mjs
+  server:packages/cezar/src/core/harness-autosave-settlement-cancel.test.ts <- packages/cezar/scripts/mock-cursor-print.mjs, packages/cezar/scripts/pi-default-tools.mjs, packages/cezar/scripts/pi-retry-degraded-service.mjs
+
+most common paths:
+46 no evidence packages/cezar/scripts/pi-retry-degraded-service.mjs
+39 no evidence packages/cezar/scripts/mock-cursor-print.mjs
+38 no evidence packages/cezar/scripts/pi-default-tools.mjs
+26 no evidence packages/cezar/scripts/pi-project-skills.mjs
+2 no evidence sgconfig.yml
+1 present in run, not tracked at commit packages/cezar/dist/hsq.js
+1 no evidence .ai/qa/home-runner-26DdyE/package.json
+1 no evidence .ai/qa/package.json
+1 no evidence .ai/qa/unit-env-9ApES1/sandboxes.log
+1 no evidence .ai/qa/unit-env-9ApES1/sandboxes/cez-vitest-tmp-H16Zd6
+1 no evidence .ai/qa/unit-env-9ApES1/sandboxes/cez-vitest-tmp-ih2fhY
+1 no evidence packages/contract/tsconfig.json
+
+files with a listing whose evidence is not the commit tree's names: 0
+
+files by reason set:
+75 input with no evidence
+3 recursive listing
+2 input with no evidence + wrote a path
+1 sharedNames ["tool display input boundaries > preserves the display for 
+1 sharedNames ["rejects incomplete or malformed workflow data instead of a
+1 sharedNames ["Cursor parameterized discovery > rejects malformed or over
+1 sharedNames ["pi RPC → v2 golden fixture > does not synthesize a turn fo
+1 input other than commit + sharedNames ["macOS launchd migration > proves launcher ownership for [ 
+1 sharedNames ["shared contract toolDisplay through server and browser sub
+1 sharedNames ["task file links > opens a project-scoped publication of ow
+1 sharedNames ["workflow step summaries > shows the title and summary for 
+1 sharedNames ["OmpRunner session over the mock > checks only the startup 
+1 sharedNames ["cez task > argument contract
+1 sharedNames ["rejects invalid or unavailable backups: \"restore\""]
+1 sharedNames ["planMotion > plays request-closed, and its timers remove a
+1 sharedNames ["does not restore a stale board selection after refresh ret
+1 sharedNames ["shows worker wake details only for a worker with an owed u
+1 sharedNames ["installed package validation > rejects an invalid manifest
+1 sharedNames ["scheduler durable outcomes > keeps 'current' cursor with c
+1 sharedNames ["reads product settings by presence
+1 sharedNames ["provider auth parsers > does not guess from OpenCode outpu
+1 sharedNames ["rejects invalid recovery arguments \"--resolve-legacy\" be
+1 sharedNames ["PreviewHost browser lifecycle > reports exact browser fail
+1 sharedNames ["does not salvage unscoped or mixed errors: [ { type: 'NOT_
+1 sharedNames ["artifact uses task context without reading the cockpit hom
+1 sharedNames ["report shelf fence > reconciles changed state counters on 
+1 sharedNames ["omits absent or finished completion work"]
+1 sharedNames ["rung ids > reads needs-you with the label \"needs you\""]
+1 sharedNames ["bundled worker CLI > rejects invalid arguments \"inspect\"
+1 sharedNames ["cez discover > rejects invalid usage \"models\""]
+1 sharedNames ["native build identity command > prints one JSON object for
+1 sharedNames ["keeps sidebar glyphs separate from archive authority: {}"]
+1 sharedNames ["project checkout pull > rejects empty or oversized branch 
+1 sharedNames ["rejects invalid legacy CLI arguments \"ignore\"","rejects 
+1 sharedNames ["shellRoute > undefined
+
+written paths (top):
+2 .ai/qa
+1 .ai/qa/home-runner-*
+1 .ai/qa/unit-env-*
+1 .ai/qa/unit-env-*/san*
