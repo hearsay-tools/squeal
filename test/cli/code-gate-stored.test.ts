@@ -164,7 +164,13 @@ describe("squeal code --base reads the stores (spec 020 D11.7)", () => {
       keys = await waitFor(
         () => {
           const found = daemonKeys(repo);
-          const paths = ["test/math.test.ts", "test/reads.test.ts", "test/upper.test.ts"];
+          const paths = [
+            "test/math.test.ts",
+            "test/reads.test.ts",
+            "test/upper.test.ts",
+            "test/fail.test.ts",
+            "test/strings.test.ts",
+          ];
           return found !== null &&
             paths.every((path) => hasRecord(repo, found.get(path) as CheckKey))
             ? found
