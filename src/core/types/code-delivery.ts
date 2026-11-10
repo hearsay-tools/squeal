@@ -70,6 +70,12 @@ export interface CodeCoverageEvidence {
   readonly processes?: true;
   /** Row 015-65: its CRAP now, for an `uncovered` line; absent while none is judged. */
   readonly crap?: number;
+  /**
+   * Spec 020 D12.7 (row 020-10b): its file was judged with
+   * `coverage.children`, so the line says what ran in the processes and
+   * threads the tests start counts, as a lower bound; absent, without.
+   */
+  readonly children?: true;
 }
 
 /** Row 015-81 (D9 Delivery): what one delivery read of the test files that load a source file. */
