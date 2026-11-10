@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { FILE_ERROR } from "../../src/core/code/gate/collect.js";
 import type { GateReport } from "../../src/core/code/gate/report.js";
 import { gitHashObject } from "../hash/git-repo.js";
-import { BASE, code, edit, ownHomeAndTmp, repo, SLOW, TEST_FLAG } from "./code-gate-fixture.js";
+import { BASE, code, edit, ownHomeAndTmp, repo, SLOW } from "./code-gate-fixture.js";
 
 /*
  * Spec 020 D1 (row 020-05): `squeal code --base <ref>` end to end, in a
@@ -134,7 +134,7 @@ describe("squeal code --base: usage and setup errors (spec 020 D1, exit 2)", () 
   it("exits 2 for a --test path no runner lists", SLOW, async () => {
     const leftInTmp = ownHomeAndTmp();
     const root = repo();
-    const ran = await code(root, ["--base", "main", TEST_FLAG, "test/nope.test.ts"]);
+    const ran = await code(root, ["--base", "main", "--test", "test/nope.test.ts"]);
     expect(ran.code).toBe(2);
     expect(ran.stdout).toBe("");
     expect(ran.stderr).toContain(
