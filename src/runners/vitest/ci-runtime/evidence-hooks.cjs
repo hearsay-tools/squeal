@@ -8,12 +8,14 @@
 // opens through `fs.open`) needs tracking; reads through one opened to read
 // are `descriptors.cjs`'. A time change counts as a write; a hard link
 // writes both its names, which share content. Each wrapper takes the
-// evidence, then calls the original with the caller's own arguments.
+// evidence, then calls the original with the caller's own arguments. A child
+// or Worker started with an env of its own gets the hook (`children.cjs`).
 "use strict";
 const fs = require("node:fs");
 const path = require("node:path");
 const module_ = require("node:module");
 const workerThreads = require("node:worker_threads");
+const { wrapChildren } = require("./children.cjs");
 const { opensToWrite, wrapDescriptors } = require("./descriptors.cjs");
 const { createEvidence } = require("./evidence.cjs");
 
@@ -218,6 +220,7 @@ function installEvidence(settings) {
     const evidence = createEvidence(settings);
     wrapFs(evidence);
     wrapDescriptors(evidence, replace);
+    wrapChildren(replace);
     module_.syncBuiltinESMExports();
     wrapModules(evidence);
     wrapProcess(evidence);
