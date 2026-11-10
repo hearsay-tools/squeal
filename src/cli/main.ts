@@ -94,14 +94,17 @@ Usage:
                                 this session was told about and the files it changed
                                 that are not judged; files not counted follow, with why
   squeal code --base <ref> [<path>...] [--test <file>...] [--timeout <seconds>]
-              [--exceptions <file>] [--json]
+              [--parts <dir>...] [--exceptions <file>] [--json]
                                 Runs tests, with no daemon, for up to --timeout
                                 seconds (default 600) in all: judges every JS/TS
                                 function changed since git merge-base <ref> HEAD, test
                                 callbacks included, against the CC and CRAP limits in
                                 squeal.config.json at that commit; the test files that
                                 load a changed file, the changed test files and the
-                                --test files run with coverage; paths keep the
+                                --test files run with coverage, except a file whose
+                                results and coverage for these bytes are in the parts
+                                squeal ci record wrote to a --parts <dir>, or in the
+                                repository's stores, both only read; paths keep the
                                 functions in those files or directories. Prints the
                                 verdict and each function not pass with its gap or
                                 measure; --exceptions <file>: a
