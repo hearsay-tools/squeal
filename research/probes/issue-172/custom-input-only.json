@@ -1,0 +1,114 @@
+{
+  "label": "custom-input-only",
+  "load": 23.01,
+  "command": [
+    "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+    "--disable-warning=ExperimentalWarning",
+    "/home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.426/dist/cli/squeal.mjs",
+    "code",
+    "--base",
+    "HEAD",
+    "--timeout",
+    "30",
+    "--json"
+  ],
+  "exit": 0,
+  "signal": null,
+  "marker": "",
+  "beforeMarker": null,
+  "stderr": "",
+  "report": {
+    "format": "squeal-code-gate/1",
+    "createdAt": "2026-11-10T16:12:12.981Z",
+    "versions": {
+      "squeal": "0.1.426",
+      "counter": 4,
+      "coverageProvider": 3,
+      "coverageRecord": 4,
+      "qualityPolicy": 2
+    },
+    "base": {
+      "ref": "HEAD",
+      "commit": "7e21ac10c2d5cb264c82829dfcc1a4db02c19d7c",
+      "policy": {
+        "complexityThreshold": 20,
+        "crapThreshold": 30,
+        "coverageExclude": [],
+        "complexityInclude": [
+          "**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,py}"
+        ],
+        "complexityExclude": [
+          "**/dist/**",
+          "**/build/**",
+          "**/vendor/**",
+          "**/*.min.js"
+        ],
+        "complexityMaxFileBytes": 524288
+      }
+    },
+    "head": {
+      "commit": "7e21ac10c2d5cb264c82829dfcc1a4db02c19d7c",
+      "dirty": true,
+      "paths": [
+        {
+          "path": "src/math.ts",
+          "blob": "7b3447fed6d66dfbde038977381e249dbcc2da31"
+        }
+      ]
+    },
+    "budget": {
+      "seconds": 30,
+      "timedOut": false
+    },
+    "functions": [
+      {
+        "path": "src/math.ts",
+        "qualifiedName": "double",
+        "occurrence": 0,
+        "line": 1,
+        "bodyHash": "af38bf17f3e71b91",
+        "change": "edited",
+        "complexity": 1,
+        "coverage": {
+          "lines": 2,
+          "covered": 2,
+          "share": 1
+        },
+        "crap": 1,
+        "loaders": {
+          "expected": [
+            "test/server.test.ts"
+          ],
+          "measured": [
+            "test/server.test.ts"
+          ]
+        },
+        "state": "pass",
+        "gap": null
+      }
+    ],
+    "uncounted": [],
+    "runs": [
+      {
+        "runner": "vitest",
+        "selected": [
+          "test/server.test.ts"
+        ],
+        "completed": [
+          "test/server.test.ts"
+        ],
+        "notFinished": [],
+        "failed": [],
+        "durationMs": 561
+      }
+    ],
+    "verdict": "pass",
+    "counts": {
+      "pass": 1,
+      "violation": 0,
+      "incomplete": 0,
+      "skipped": 0,
+      "accepted": 0
+    }
+  }
+}
