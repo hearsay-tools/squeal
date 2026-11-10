@@ -147,6 +147,27 @@ describe("squeal ci record", () => {
         ]);
         expect(file.observed?.paths).toContain(`data/${name}.txt`);
       }
+
+      // Row 018-29: each command states what Squeal's hooks took, in its parts and its output.
+      const costs = parts.map((p) => p.header.cost);
+      for (const cost of costs) {
+        expect(cost?.command).toMatch(/^[0-9a-f-]{36}$/);
+        expect(cost?.hooksMs).toBeGreaterThan(0);
+        // The Vitest process and at least one test worker.
+        expect(cost?.threads).toBeGreaterThanOrEqual(2);
+        expect(cost?.afterMs).toBeGreaterThanOrEqual(0);
+      }
+      expect(costs[0]?.command).not.toBe(costs[1]?.command);
+      const said =
+        /Squeal's recording took \d+\.\d+ s in \d+ processes and threads, \d+\.\d% of the test time \(\d+\.\d+ s\); \d+\.\d+ s more after the command\n/;
+      expect(first.text).toMatch(said);
+      expect(second.text).toMatch(said);
+      const exported = io(root);
+      const results = join(scratch("ci-record-export"), "results.json.gz");
+      await ciCommand(["export", "--parts", out, "--out", results], exported.io);
+      expect(exported.out()).toMatch(
+        /squeal ci export: Squeal's recording took \d+\.\d+ s in \d+ processes and threads of 2 commands, \d+\.\d% of the test time/,
+      );
     },
   );
 
