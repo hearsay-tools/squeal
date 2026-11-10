@@ -199,12 +199,8 @@ async function writeParts(
 function coverageLine({ coverage, testFiles }: RecordedRun): string[] {
   if (coverage === undefined) return [];
   if ("off" in coverage) {
-    const why = {
-      "project-coverage": "the run has coverage of its own, so Squeal's provider was not added",
-      "no-provider": "Squeal's provider was not added",
-      failed: "Squeal's provider failed",
-    }[coverage.off];
-    return [`no coverage records: ${why} (${coverage.note})`];
+    const what = coverage.off === "failed" ? "failed" : "was not added";
+    return [`no coverage records: Squeal's provider ${what}: ${coverage.note}`];
   }
   const recorded = testFiles.filter((file) => file.record !== undefined).length;
   const lost = coverage.note === undefined ? "" : `; ${coverage.note}`;
