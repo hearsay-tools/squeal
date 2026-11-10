@@ -1,0 +1,72 @@
+
+## squeal (6 days, 2026-11-04 to 2026-11-10)
+edit-to-revision lag (tool edits in registered worktrees): n 15, p50 324 ms, p90 1396 ms; DELTA 30000 ms; GLOBAL strict
+manual Vitest runs: 442; storable shape: 292; not storable: {"keyed or untested flag":4,"name filter (-t)":67,"end unknown (background)":7,"other config or directory":72}
+storable runs with --project: 0; full-suite (no path filter): 0; filters matching no test file: 34
+storable runs by worktree record: store revisions 31, transcript edits 261
+file-runs (run x test file): 2073
+  all: changed during the run: 82
+  all: daemon finished it during the run: 37
+  all: daemon never ran that content here: 1362
+  all: daemon ran it after the run: 528
+  all: daemon ran it before the run: 29
+  all: daemon started it during the run, ended after: 16
+  all: no daemon runs in this worktree: 19
+  store: changed during the run: 68
+  store: daemon finished it during the run: 4
+  store: daemon never ran that content here: 69
+  store: daemon ran it after the run: 9
+  store: daemon ran it before the run: 8
+  store: no daemon runs in this worktree: 3
+  transcript: changed during the run: 14
+  transcript: daemon finished it during the run: 33
+  transcript: daemon never ran that content here: 1293
+  transcript: daemon ran it after the run: 519
+  transcript: daemon ran it before the run: 21
+  transcript: daemon started it during the run, ended after: 16
+  transcript: no daemon runs in this worktree: 16
+file-seconds of the manual file-runs (store mean per file) by class: daemon never ran that content here 5620; daemon ran it after the run 979; daemon started it during the run, ended after 39; daemon ran it before the run 495; daemon finished it during the run 196; changed during the run 701; no daemon runs in this worktree 24; total 8054
+runs by class: {"at least one file not yet run by the run's end":235,"every file already run by the run's end":7,"only changed-during files otherwise":16}
+daemon runs a capture would have saved (distinct file x daemon run): 430, file-seconds 907 (151 a day), exact durations 425; daemon outcome there: {"pass":425,"row replaced":5}, file-seconds of the passes 904; daemon start after the manual run ended: p50 164 s, p90 548 s
+validation in registered worktrees (store mode vs transcript mode on the same pairs): same 75, differ 86
+  changed during the run | transcript: daemon ran it after the run: 13
+  changed during the run | transcript: daemon never ran that content here: 51
+  daemon ran it after the run | transcript: daemon never ran that content here: 5
+  changed during the run | transcript: daemon finished it during the run: 2
+  changed during the run | transcript: daemon started it during the run, ended after: 2
+  daemon finished it during the run | transcript: daemon never ran that content here: 4
+  daemon ran it before the run | transcript: daemon never ran that content here: 8
+  daemon never ran that content here | transcript: daemon ran it after the run: 1
+
+## cezar (6 days, 2026-11-04 to 2026-11-10)
+edit-to-revision lag (tool edits in registered worktrees): n 12, p50 16102 ms, p90 42265 ms; DELTA 30000 ms; GLOBAL strict
+manual Vitest runs: 1535; storable shape: 716; not storable: {"no daemon run in the store within 2 h":332,"end unknown (background)":5,"other config or directory":183,"name filter (-t)":249,"coverage":2,"keyed or untested flag":46,"watch":2}
+storable runs with --project: 105; full-suite (no path filter): 0; filters matching no test file: 37
+storable runs by worktree record: store revisions 9, transcript edits 707
+file-runs (run x test file): 16294
+  all: changed during the run: 68
+  all: daemon finished it during the run: 1130
+  all: daemon never ran that content here: 10807
+  all: daemon ran it after the run: 2002
+  all: daemon ran it before the run: 1764
+  all: daemon started it during the run, ended after: 110
+  all: no daemon runs in this worktree: 413
+  store: changed during the run: 7
+  store: daemon never ran that content here: 12
+  store: daemon ran it after the run: 5
+  transcript: changed during the run: 61
+  transcript: daemon finished it during the run: 1130
+  transcript: daemon never ran that content here: 10795
+  transcript: daemon ran it after the run: 1997
+  transcript: daemon ran it before the run: 1764
+  transcript: daemon started it during the run, ended after: 110
+  transcript: no daemon runs in this worktree: 413
+file-seconds of the manual file-runs (store mean per file) by class: changed during the run 961; daemon ran it after the run 20774; no daemon runs in this worktree 1919; daemon ran it before the run 8797; daemon never ran that content here 91353; daemon finished it during the run 6606; daemon started it during the run, ended after 1279; total 131688
+runs by class: {"only changed-during files otherwise":20,"at least one file not yet run by the run's end":615,"every file already run by the run's end":44}
+daemon runs a capture would have saved (distinct file x daemon run): 1408, file-seconds 14444 (2407 a day), exact durations 1320; daemon outcome there: {"pass":1320,"row replaced":88}, file-seconds of the passes 14078; daemon start after the manual run ended: p50 543 s, p90 2057 s
+validation in registered worktrees (store mode vs transcript mode on the same pairs): same 8, differ 16
+  changed during the run | transcript: daemon never ran that content here: 2
+  daemon ran it after the run | transcript: daemon never ran that content here: 5
+  daemon never ran that content here | transcript: daemon ran it after the run: 4
+  changed during the run | transcript: daemon ran it after the run: 2
+  changed during the run | transcript: daemon ran it before the run: 3
