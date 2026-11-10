@@ -29,6 +29,13 @@ export interface CoverageChecks {
   readonly exclude: readonly string[];
   /** Whether `coverage.exclude` leaves `path` out. */
   readonly excluded: (path: RelativePath) => boolean;
+  /**
+   * Spec 020 D12.7 (row 020-10b): `coverage.children`, so the summary says
+   * the states were judged with the coverage of the processes and threads
+   * the tests start, and the words say so. A change does not step at once:
+   * it re-keys every test file, whose runs then step.
+   */
+  readonly children: boolean;
 }
 
 export function coverageChecks(policy: Pick<Policy, "coverage" | "crap">): CoverageChecks {
@@ -40,6 +47,7 @@ export function coverageChecks(policy: Pick<Policy, "coverage" | "crap">): Cover
     measures: COVERAGE_MEASURES.filter((m) => on[m]),
     exclude: policy.coverage.exclude,
     excluded: createInputMatcher(policy.coverage.exclude),
+    children: policy.coverage.children,
   };
 }
 
@@ -48,6 +56,7 @@ export const ALL_CHECKS: CoverageChecks = {
   measures: COVERAGE_MEASURES,
   exclude: [],
   excluded: () => false,
+  children: false,
 };
 
 /** `CoverageSummary.checks` for `measures`: absent for both, as an older Squeal wrote it. */
