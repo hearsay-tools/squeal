@@ -70,6 +70,7 @@ describe("narrow (spec 020 D1: paths narrow the changed functions)", () => {
     baseCommit: "b",
     headCommit: "h",
     dirty: false,
+    paths: ["README.md", "lib/c.ts", "src/a.ts", "src/big.ts", "src/notes.md", "src2/b.ts"],
     functions: [fn("src/a.ts"), fn("src2/b.ts"), fn("lib/c.ts")],
     counted: [{ path: "src/a.ts", blob: "x", functions: [] }],
     inErrors: [fn("lib/c.ts")],
@@ -78,6 +79,7 @@ describe("narrow (spec 020 D1: paths narrow the changed functions)", () => {
 
   it("keeps the files under each directory and each file named", () => {
     const narrowed = narrow(changed, ["src", "lib/c.ts"]);
+    expect(narrowed.paths).toEqual(["lib/c.ts", "src/a.ts", "src/big.ts", "src/notes.md"]);
     expect(narrowed.functions.map((f) => f.path)).toEqual(["src/a.ts", "lib/c.ts"]);
     expect(narrowed.counted.map((c) => c.path)).toEqual(["src/a.ts"]);
     expect(narrowed.inErrors.map((f) => f.path)).toEqual(["lib/c.ts"]);

@@ -153,6 +153,7 @@ export function changedSet(
     baseCommit: "c".repeat(40),
     headCommit: "d".repeat(40),
     dirty: false,
+    paths: [...paths.map((p) => p.path), ...uncounted.map((u) => u.path)].sort(),
     functions: paths.flatMap((p) => pick(p, p.changed)),
     counted,
     inErrors: paths.flatMap((p) => pick(p, p.inErrors ?? [])),

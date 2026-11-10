@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { FILE_ERROR } from "../../src/core/code/gate/collect.js";
 import type { GateReport } from "../../src/core/code/gate/report.js";
 import { BASE, code, edit, ownHomeAndTmp, repo, SLOW, TEST_FLAG } from "./code-gate-fixture.js";
 
@@ -150,5 +151,99 @@ describe("squeal code --base: usage and setup errors (spec 020 D1, exit 2)", () 
     expect(ran.stderr).toContain(
       "Usage: squeal code --base <ref> [<path>...] [--test <file>...] [--timeout <seconds>] [--json]",
     );
+  });
+});
+
+/*
+ * Review 0.1.423 B1 (spec 020 D3.1, amended 2026-11-10): a changed test
+ * file is selected whether or not a function of it changed.
+ */
+describe("squeal code --base: a changed test file always runs (spec 020 D3.1)", () => {
+  it("runs a test file changed only at top level, and its failure exits 3", SLOW, async () => {
+    ownHomeAndTmp();
+    const root = repo();
+    edit(root, {
+      "test/math.test.ts": `${BASE["test/math.test.ts"]}throw new Error("changed test fails at top level");\n`,
+    });
+
+    const ran = await code(root, ["--base", "main", "--json"]);
+
+    expect(ran.code).toBe(3);
+    const report = JSON.parse(ran.stdout) as GateReport;
+    expect(report.verdict).toBe("incomplete");
+    expect(report.functions).toEqual([]);
+    expect(report.runs.map((r) => [r.runner, r.selected, r.failed])).toEqual([
+      ["vitest", ["test/math.test.ts"], [{ path: "test/math.test.ts", tests: [FILE_ERROR] }]],
+    ]);
+  });
+
+  it("runs a test file whose callbacks only moved, and its failure exits 3", SLOW, async () => {
+    ownHomeAndTmp();
+    const sets = `it("sets", () => {\n  n = 1;\n});\n`;
+    const reads = `it("reads", () => {\n  expect(n).toBe(1);\n});\n`;
+    const head = `import { expect, it } from "vitest";\n\nlet n = 0;\n`;
+    const root = repo({ ...BASE, "test/order.test.ts": `${head}${sets}${reads}` });
+    // The same callbacks, swapped: no function changed, but "reads" now runs first and fails.
+    edit(root, { "test/order.test.ts": `${head}${reads}${sets}` });
+
+    const ran = await code(root, ["--base", "main", "--json"]);
+
+    expect(ran.code).toBe(3);
+    const report = JSON.parse(ran.stdout) as GateReport;
+    expect(report.functions).toEqual([]);
+    expect(report.runs.map((r) => [r.selected, r.completed, r.failed])).toEqual([
+      [
+        ["test/order.test.ts"],
+        ["test/order.test.ts"],
+        [{ path: "test/order.test.ts", tests: ["reads"] }],
+      ],
+    ]);
+  });
+});
+
+/** Room for a loaded host to start Vitest and complete `test/math.test.ts` in the budget. */
+const BUDGET = "15";
+
+/**
+ * Review 0.1.423 B2: `test/math.test.ts` completes; `test/slow.test.ts` runs
+ * `first`, then sleeps past the budget. The project's own `testTimeout` is
+ * longer than the budget, so only the budget stops it.
+ */
+function slowRepo(first: string): string {
+  const root = repo({
+    ...BASE,
+    "vitest.config.ts": `import { defineConfig } from "vitest/config";\n\nexport default defineConfig({ test: { include: ["test/**/*.test.ts"], testTimeout: 600_000, maxWorkers: 2 } });\n`,
+    "test/slow.test.ts": `import { expect, it } from "vitest";\nimport { double } from "../src/math";\n\nit("first", () => ${first});\nit("sleeps", () => new Promise((done) => setTimeout(done, 600_000)));\n`,
+  });
+  edit(root, {
+    "src/math.ts": "export function double(x: number): number {\n  return x + x;\n}\n",
+  });
+  return root;
+}
+
+/*
+ * Spec 020 D3.4 and D5 (amended 2026-11-10): a loading file that did not
+ * finish rules out a pass, whether or not a test of it failed first.
+ */
+describe("squeal code --base: an unfinished loading file never passes (spec 020 D5)", () => {
+  it.each([
+    ["a test of it failed before the budget ended", "expect(double(2)).toBe(9)"],
+    ["no test of it failed", "expect(double(2)).toBe(4)"],
+  ])("exits 3 when %s", { timeout: 180_000 }, async (_, first) => {
+    ownHomeAndTmp();
+    const root = slowRepo(first);
+
+    const ran = await code(root, ["--base", "main", "--json", "--timeout", BUDGET]);
+
+    expect(ran.code).toBe(3);
+    const report = JSON.parse(ran.stdout) as GateReport;
+    // The case under test: one loader completed and one did not.
+    expect(report.runs.map((r) => [r.completed, r.notFinished])).toEqual([
+      [["test/math.test.ts"], ["test/slow.test.ts"]],
+    ]);
+    expect(report.functions.map((f) => [f.qualifiedName, f.state, f.gap])).toEqual([
+      ["double", "incomplete", "not-finished"],
+    ]);
+    expect(report.verdict).toBe("incomplete");
   });
 });

@@ -20,7 +20,7 @@ import type { ChangedSet, Evidence, TestFileEvidence } from "./types.js";
  * Spec 020 D3 (row 020-03): the one-shot collector. It opens the project's
  * own Vitest and node:test adapters with Squeal's coverage provider, as the
  * daemon builds them (015 D8), with no daemon and no store; selects the
- * test files that load a changed source, every changed test file and the
+ * test files that load a changed path, every changed test file and the
  * `--test` files; runs them under one deadline; and maps each completed
  * file's payload to its record before the adapter closes, which deletes it.
  */
@@ -90,11 +90,12 @@ interface Runner {
 /**
  * The evidence of `changed`'s functions: per selected test file, whether it
  * completed before the deadline, its failed tests, the sources its closure
- * loads and its record. The budget counts from the call, the adapters'
- * start included. The runs go one runner after another, each given what is
- * left of it; a runner reached after the deadline runs nothing. A project's
- * own `testTimeout` is never lowered. With no changed function and no
- * `--test` file, no adapter starts. Rejects when Vitest is configured but
+ * loads and its record. The test files are selected from `changed.paths`,
+ * every changed path, not from the changed functions (D3.1). The budget
+ * counts from the call, the adapters' start included. The runs go one
+ * runner after another, each given what is left of it; a runner reached
+ * after the deadline runs nothing. A project's own `testTimeout` is never
+ * lowered. With no changed path and no `--test` file, no adapter starts. Rejects when Vitest is configured but
  * cannot start, or when Squeal's provider is missing: a setup error (D1).
  */
 export async function collectEvidence(
@@ -103,8 +104,8 @@ export async function collectEvidence(
   options: CollectOptions,
 ): Promise<Evidence> {
   const deadline = performance.now() + options.budgetSeconds * 1000;
-  const sources = [...new Set(changed.functions.map((f) => f.path))].sort(compare);
-  if (sources.length === 0 && options.tests.length === 0) {
+  const { paths } = changed;
+  if (paths.length === 0 && options.tests.length === 0) {
     return { testFiles: [], timedOut: false, budgetSeconds: options.budgetSeconds };
   }
   const root = findWorktreeRoot(cwd);
@@ -119,7 +120,7 @@ export async function collectEvidence(
     const { policy, problems } = loadPolicy(root);
     for (const problem of problems) note(`${POLICY_FILE}: ${problem}`);
     await openRunners(options.adapters, root, policy, { provider, temp, note }, runners);
-    const selected = await select(runners, sources, options.tests);
+    const selected = await select(runners, paths, options.tests);
     const blobs: BlobCache = new Map();
     const testFiles: TestFileEvidence[] = [];
     let timedOut = false;
@@ -197,15 +198,15 @@ async function openRunners(
 
 /**
  * D3.1, per runner: the test files `affected()` gives for the changed
- * sources, its test files among them, and the `--test` files it lists.
+ * paths, its test files among them, and the `--test` files it lists.
  * Throws `CollectUsageError` for a `--test` file no runner lists.
  */
 async function select(
   runners: readonly Runner[],
-  sources: readonly RelativePath[],
+  paths: readonly RelativePath[],
   tests: readonly RelativePath[],
 ): Promise<TestFileRef[][]> {
-  const named = new Set([...sources, ...tests]);
+  const named = new Set([...paths, ...tests]);
   const matched = new Set<RelativePath>();
   const selected: TestFileRef[][] = [];
   for (const { adapter } of runners) {
@@ -215,8 +216,8 @@ async function select(
       if (named.has(ref.path)) add(ref);
       matched.add(ref.path);
     }
-    if (sources.length > 0) {
-      const affected = await adapter.affected(sources);
+    if (paths.length > 0) {
+      const affected = await adapter.affected(paths);
       for (const ref of [...affected.direct, ...affected.transitive]) add(ref);
     }
     selected.push([...chosen.values()].sort(byPath));

@@ -148,13 +148,15 @@ function measuresOf(fn: ChangedFunction, ev: PathEvidence, ctx: Context): Measur
 
 /**
  * D5: over the CC limit is a violation on the count alone; otherwise the
- * first missing condition names the gap. The records in hand of a source
- * with loaders still missing prove a pass by 015 D9's bound, never a
- * violation.
+ * first missing condition names the gap. A loader that did not finish rules
+ * out a pass: its later tests never ran (amended 2026-11-10, review 0.1.423
+ * B2). The records in hand of a source whose missing loaders all completed
+ * prove a pass by 015 D9's bound, never a violation.
  */
 function judgementOf(complexity: number, m: Measures, ev: PathEvidence, ctx: Context): Judgement {
   if (complexity > ctx.policy.complexityThreshold) return VIOLATION;
   if (ev.expected.length === 0) return gapOf("no-loader");
+  if (ev.missing === "not-finished") return gapOf("not-finished");
   const underCrap = m.crap !== null && m.crap <= ctx.policy.crapThreshold;
   if (ev.missing !== null) return underCrap && !ctx.failed ? PASS : gapOf(ev.missing);
   if (m.crap === null) return gapOf("not-joined");
@@ -232,7 +234,10 @@ export function evaluate(
     functions,
     uncounted,
     runs: runsOf(evidence, times.durationsMs),
-    verdict: verdictOf(functions, uncounted, ctx.failed),
+    verdict: verdictOf(functions, uncounted, {
+      failed: ctx.failed,
+      unfinished: evidence.testFiles.some((f) => !f.completed),
+    }),
     counts: countStates(functions),
   };
 }

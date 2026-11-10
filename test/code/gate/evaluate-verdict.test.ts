@@ -15,8 +15,9 @@ import {
 
 /*
  * Spec 020 D5 (row 020-01): `skipped` from `coverage.exclude`, a pass from
- * a subset of the loaders by 015 D9's bound, failed tests, uncounted paths
- * and the verdict's precedence.
+ * a subset of the completed loaders by 015 D9's bound, never beside a loader
+ * that did not finish (review 0.1.423 B2), failed tests, uncounted paths and
+ * the verdict's precedence.
  */
 
 function judged(
@@ -75,13 +76,13 @@ describe("evaluate: skipped", () => {
 describe("evaluate: a pass from a subset of the loaders", () => {
   const a = fn("a", [1, 5], 3);
   const path: PathInput = { path: "src/a.ts", functions: [a], changed: ["a"] };
+  const measured = testFile("test/a.test.ts", ["src/a.ts"], [source("src/a.ts", [a])]);
+  /** A loader that completed and left no record: the subset may leave it out (D5). */
+  const unrecorded = testFile("test/b.test.ts", ["src/a.ts"], [], { record: null });
   const stopped = testFile("test/b.test.ts", ["src/a.ts"], [], { completed: false });
 
-  it("passes on the records in hand while another loader did not finish", () => {
-    const { report, by } = judged(
-      [path],
-      [testFile("test/a.test.ts", ["src/a.ts"], [source("src/a.ts", [a])]), stopped],
-    );
+  it("passes on the records in hand while another loader completed with no record", () => {
+    const { report, by } = judged([path], [measured, unrecorded]);
     expect(by.a).toMatchObject({
       state: "pass",
       gap: null,
@@ -90,6 +91,17 @@ describe("evaluate: a pass from a subset of the loaders", () => {
       loaders: { expected: ["test/a.test.ts", "test/b.test.ts"], measured: ["test/a.test.ts"] },
     });
     expect(report.verdict).toBe("pass");
+  });
+
+  it("never passes while a loader did not finish, though the records in hand would (review 0.1.423 B2)", () => {
+    const { report, by } = judged([path], [measured, stopped]);
+    expect(by.a).toMatchObject({
+      state: "incomplete",
+      gap: "not-finished",
+      crap: 3,
+      loaders: { expected: ["test/a.test.ts", "test/b.test.ts"], measured: ["test/a.test.ts"] },
+    });
+    expect(report.verdict).toBe("incomplete");
   });
 
   it("counts every own line from a subset, so it proves only the bound", () => {
@@ -103,12 +115,12 @@ describe("evaluate: a pass from a subset of the loaders", () => {
       [bPath],
       [
         testFile("test/a.test.ts", ["src/b.ts"], [record]),
-        testFile("test/b.test.ts", ["src/b.ts"], [], { completed: false }),
+        testFile("test/b.test.ts", ["src/b.ts"], [], { record: null }),
       ],
     );
     expect(subset.by.b).toMatchObject({
       state: "incomplete",
-      gap: "not-finished",
+      gap: "no-record",
       coverage: { lines: 10, covered: 3 },
     });
     expect(subset.by.b?.crap).toBeCloseTo(44.3, 10);
@@ -141,13 +153,10 @@ describe("evaluate: a pass from a subset of the loaders", () => {
     expect(none.by.a).toMatchObject({ state: "incomplete", gap: "not-finished", crap: null });
     const failed = judged(
       [path],
-      [
-        testFile("test/a.test.ts", ["src/a.ts"], [source("src/a.ts", [a])]),
-        stopped,
-        testFile("test/c.test.ts", [], [], { failed: ["c > breaks"] }),
-      ],
+      [measured, unrecorded, testFile("test/c.test.ts", [], [], { failed: ["c > breaks"] })],
     );
-    expect(failed.by.a).toMatchObject({ state: "incomplete", gap: "not-finished", crap: 3 });
+    expect(failed.by.a).toMatchObject({ state: "incomplete", gap: "no-record", crap: 3 });
+    expect(failed.report.verdict).toBe("incomplete");
   });
 });
 
@@ -214,6 +223,15 @@ describe("evaluate: the verdict", () => {
     expect(judged([], []).report.verdict).toBe("pass");
     const failed = judged([], [testFile("test/a.test.ts", [], [], { failed: ["a > breaks"] })]);
     expect(failed.report.verdict).toBe("incomplete");
+  });
+
+  it("is incomplete when a selected file that loads no changed function did not finish (D3.4)", () => {
+    const stopped = testFile("test/a.test.ts", [], [], { completed: false });
+    const alone = judged([], [stopped]);
+    expect(alone.report.verdict).toBe("incomplete");
+    const beside = judged([path("ok")], [loaded("ok"), { ...stopped, path: "test/b.test.ts" }]);
+    expect(beside.by.ok).toMatchObject({ state: "pass", crap: 3 });
+    expect(beside.report.verdict).toBe("incomplete");
   });
 });
 
