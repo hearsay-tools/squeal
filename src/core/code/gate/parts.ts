@@ -93,7 +93,6 @@ export function unusable(part: Part): string | null {
 
 /** `CollectOptions.stored` over `options.parts`: Vitest files only, since `ci record` records Vitest alone. */
 export function partsEvidence(options: PartsOptions): StoredEvidence {
-  const note = options.note ?? (() => {});
   const owners = new Map<string, { part: Part; file: PartFile }[]>();
   const why = new Map<string, string[]>();
   for (const { file: name, part } of options.parts) {
@@ -109,7 +108,7 @@ export function partsEvidence(options: PartsOptions): StoredEvidence {
   for (const [reason, names] of why) {
     const count = names.length === 1 ? "1 part gives" : `${names.length} parts give`;
     const first = `${names[0]}${names.length > 1 ? ", …" : ""}`;
-    note(`${count} no evidence, so its test files run: ${reason} (${first})`);
+    options.note?.(`${count} no evidence, so its test files run: ${reason} (${first})`);
   }
   const unused = new Set([...why.values()].flat());
   const usable = new Set(options.parts.filter((p) => !unused.has(p.file)).map((p) => p.part));
