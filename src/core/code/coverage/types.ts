@@ -64,6 +64,22 @@ export interface CoveredFile {
    * path, and outside `node_modules` (`ownRecord`).
    */
   readonly ownRoot?: AbsolutePath;
+  /** Spec 020 D12: with `coverage.children`, the coverage of the processes the test file started. */
+  readonly children?: ChildCoverage;
+}
+
+/**
+ * Spec 020 D12 (row 020-10a): where the processes a test file started wrote
+ * their `NODE_V8_COVERAGE` files. Each file is mapped as `ownRecord` maps a
+ * node:test file's own process, and merged into the test file's record
+ * (`mergeRecords`). A file that does not parse, or is over
+ * `CHILD_FILE_LIMIT`, is dropped alone. The directory is read when the
+ * payload is mapped, and removed with it.
+ */
+export interface ChildCoverage {
+  /** The worktree root: a child's script under it, outside `node_modules`, is a source. */
+  readonly root: AbsolutePath;
+  readonly dir: AbsolutePath;
 }
 
 /** Row 015-86: one entry of Node's `source-map-cache`, by script URL, in a `NODE_V8_COVERAGE` file. */
