@@ -10,8 +10,11 @@ import { blob, fill, run, temp } from "./ci-evidence-kit.js";
  * drops `NODE_OPTIONS` and the hook's settings, still takes evidence: the
  * hook and its settings ride in the env the caller passed, as the daemon's
  * recorder rides for itself. So the child's write of an input the parent
- * read cancels its evidence, content unchanged. A child whose env names
- * another recording's settings is that recording's.
+ * read cancels its evidence, content unchanged. A child or Worker whose env
+ * names another recording's settings keeps them, and the hook cannot follow
+ * it: its process withholds the current test file (review of 0.1.424, B2),
+ * by cancelling that file's own evidence, or every path when no test file is
+ * known there.
  */
 
 const GOOD = "GOOD";
@@ -26,7 +29,7 @@ const SCRIPT = `import { execFileSync, execSync, fork, spawn, spawnSync } from "
 import { once } from "node:events";
 import { readFileSync } from "node:fs";
 import { Worker } from "node:worker_threads";
-const NAMES = ["execFileSync", "spawnSync", "execSync", "spawn", "fork", "worker", "options", "foreign"];
+const NAMES = ["execFileSync", "spawnSync", "execSync", "spawn", "fork", "worker", "options"];
 for (const name of NAMES) readFileSync(\`\${name}.txt\`);
 readFileSync("kept.txt");
 const node = process.execPath;
@@ -37,14 +40,13 @@ await once(spawn(node, ["writer.cjs", "spawn.txt"], { env: {} }), "exit");
 await once(fork("writer.cjs", ["fork.txt"], { env: {} }), "exit");
 await once(new Worker(new URL("./writer.cjs", import.meta.url), { env: {}, workerData: "worker.txt" }), "exit");
 execFileSync(node, ["writer.cjs", "options.txt"], { env: { NODE_OPTIONS: "--no-warnings" } });
-execFileSync(node, ["writer.cjs", "foreign.txt"], { env: { SQUEAL_CI_RECORD: "{}" } });
 `;
 
 const NAMES = ["execFileSync", "spawnSync", "execSync", "spawn", "fork", "worker", "options"];
 
 /** `SCRIPT` in `root`, filled again; the evidence and the recorder's observations as `out` asks. */
 function runScript(out: { evidence?: boolean; observed?: boolean }, root = join(temp(), "root")) {
-  const files = Object.fromEntries([...NAMES, "foreign", "kept"].map((n) => [`${n}.txt`, GOOD]));
+  const files = Object.fromEntries([...NAMES, "kept"].map((n) => [`${n}.txt`, GOOD]));
   fill(root, { ...files, "writer.cjs": WRITER, "script.mjs": SCRIPT });
   const evidence = out.evidence ? temp() : undefined;
   const observed = out.observed ? temp() : undefined;
@@ -65,7 +67,6 @@ describe("children and Workers with an environment of their own (018-23, review 
   ])("cancels what a child or Worker started with a replaced env writes, %s", (_how, observed) => {
     const { evidence } = runScript({ evidence: true, observed });
     expect(evidence).toEqual({
-      "foreign.txt": blob(GOOD),
       "kept.txt": blob(GOOD),
       "script.mjs": blob(SCRIPT),
       "writer.cjs": blob(WRITER),
@@ -78,4 +79,72 @@ describe("children and Workers with an environment of their own (018-23, review 
     expect(alone.length).toBe(1);
     expect(runScript({ observed: true, evidence: true }, root).observed).toEqual(alone);
   });
+});
+
+/** Starts the writer on `input.txt` with another recording's settings, as a child or a Worker. */
+const STARTS = {
+  child: `execFileSync(process.execPath, ["writer.cjs", "input.txt"], { env });`,
+  Worker: `await once(new Worker(new URL("./writer.cjs", import.meta.url), { env, workerData: "input.txt" }), "exit");`,
+};
+
+/** The current test file as a Vitest worker names it, or none. */
+const CURRENT = {
+  vitest: `globalThis.__vitest_worker__ = { filepath: fileURLToPath(new URL("./test/a.test.ts", import.meta.url)) };`,
+  none: "",
+};
+
+const FOREIGN = (
+  start: keyof typeof STARTS,
+  current: keyof typeof CURRENT,
+) => `import { execFileSync } from "node:child_process";
+import { once } from "node:events";
+import { mkdtempSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { Worker } from "node:worker_threads";
+${CURRENT[current]}
+readFileSync("test/a.test.ts");
+readFileSync("input.txt");
+const out = mkdtempSync(join(tmpdir(), "squeal-ci-nested-"));
+const env = { SQUEAL_CI_RECORD: JSON.stringify({ raw: out, evidence: { out, root: process.cwd() } }) };
+${STARTS[start]}
+`;
+
+/** `FOREIGN` run in a new root; its evidence. */
+function foreignEvidence(
+  start: keyof typeof STARTS,
+  current: keyof typeof CURRENT,
+  observed = false,
+) {
+  const root = join(temp(), "root");
+  const script = FOREIGN(start, current);
+  const files = { "test/a.test.ts": "it", "input.txt": GOOD, "writer.cjs": WRITER };
+  fill(root, { ...files, "script.mjs": script });
+  const evidence = temp();
+  run(root, observed ? { evidence, observed: temp() } : { evidence });
+  return { script, evidence: readEvidence(evidence) };
+}
+
+describe("a child or Worker with another recording's settings (018-23, review of 0.1.424 B2)", () => {
+  it.each([["child"], ["Worker"]] as const)(
+    "withholds the current test file when a %s starts with them",
+    (start) => {
+      const { script, evidence } = foreignEvidence(start, "vitest");
+      expect(evidence).toEqual({ "input.txt": blob(GOOD), "script.mjs": blob(script) });
+    },
+  );
+
+  it("takes the current test file from the daemon's recorder outside a Vitest worker", () => {
+    // The kit's recorder settings name `test/a.test.ts`.
+    const { script, evidence } = foreignEvidence("child", "none", true);
+    expect(evidence).toEqual({ "input.txt": blob(GOOD), "script.mjs": blob(script) });
+  });
+
+  it.each([["child"], ["Worker"]] as const)(
+    "withholds every path when no test file is known where a %s starts with them",
+    (start) => {
+      expect(foreignEvidence(start, "none").evidence).toEqual({});
+    },
+  );
 });
