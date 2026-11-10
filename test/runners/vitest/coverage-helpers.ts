@@ -55,7 +55,12 @@ function loggingProvider(dir: string, log: string): string {
 }
 
 export function covering(
-  options: { on?: () => boolean; collected?: (run: CoverageRun) => void } = {},
+  options: {
+    on?: () => boolean;
+    collected?: (run: CoverageRun) => void;
+    /** Spec 020 D12: `coverage.children`. */
+    children?: () => boolean;
+  } = {},
 ): Covering {
   const tempDir = mkdtempSync(join(tmpdir(), "sq-own-provider-"));
   const logDir = mkdtempSync(join(tmpdir(), "sq-own-provider-log-"));
@@ -77,7 +82,13 @@ export function covering(
       createVitestAdapter({
         root,
         note: (text) => notes.push(text),
-        coverage: { enabled: options.on ?? (() => true), provider, tempDir, collected },
+        coverage: {
+          enabled: options.on ?? (() => true),
+          provider,
+          tempDir,
+          collected,
+          ...(options.children === undefined ? {} : { children: options.children }),
+        },
       }),
   };
 }
