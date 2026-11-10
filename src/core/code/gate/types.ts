@@ -112,10 +112,11 @@ export interface TestFileEvidence {
   /** Its record at the current provider and record versions; `null` when none. */
   readonly record: CoverageRecord | null;
   /**
-   * D11.7: read from the stores at the key a daemon gives it, not run;
-   * absent when this command ran it.
+   * Where its evidence came from when this command did not run it: `store`,
+   * read from the stores at the key a daemon gives it (D11.7); `parts`, from
+   * `squeal ci record`'s parts (D13.2). Absent when this command ran it.
    */
-  readonly fromStore?: true;
+  readonly from?: "store" | "parts";
   /**
    * D12.7: with `coverage.children` at the base, the coverage files of the
    * processes and threads its tests started that this command read; absent

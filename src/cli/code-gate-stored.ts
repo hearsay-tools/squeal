@@ -40,7 +40,7 @@ export async function collectWithStores(
       ...options,
       ...(stored === null ? {} : { stored: stored.stored }),
     });
-    const fromStore = evidence.testFiles.filter((f) => f.fromStore === true).length;
+    const fromStore = evidence.testFiles.filter((f) => f.from === "store").length;
     if (fromStore > 0) {
       note(`${fromStore} of ${evidence.testFiles.length} selected test files read from the stores`);
     }
