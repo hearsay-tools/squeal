@@ -228,3 +228,28 @@ Done when:
 - a missing descriptor is pinned;
 - every existing parts case stays green;
 - lint and typecheck are clean.
+
+## 020-08b R2 one owner for "may this CI run's evidence be reused" (the human, 2026-11-10: option A)
+
+Use /worker. Shape: repair, on `w3/int` (head `b6e47b925`).
+
+Outcome: one function in `src/core/ci/export-check.ts` (or a new `src/core/ci/reuse.ts`) decides whether a part's project run is reusable evidence. It covers every refusal `ci export` makes today, `snapshotRefusal` (`updateSnapshot` must be `none`) included, plus the environment comparison (`runDifferences`). `ci export` and `gate/parts.ts` (`parts-environment.ts`) both call it. Neither keeps its own partial copy.
+
+Read:
+- `reviews/0.1.427-r2.md` B1, with its reproduction and done-when;
+- `reviews/0.1.427.md` B1;
+- `tasks/020-08b/notes.md` and the R1 notes;
+- `src/core/ci/export-check.ts`: `partsRefusal`, `snapshotRefusal`, `runDifferences`, `jobRefusal`.
+
+Starting seam: the re-review's `--update` reproduction as a failing end-to-end test in `test/cli/code-gate-parts-cases.test.ts`, using a real `ci record` run with `--update`. Then extract the shared function and switch both callers to it. Any refusal reason gives no evidence for that project's files, which then go to the stores, then to a run. Add a unit test that lists every refusal the shared function makes, so a future refusal added for export applies to the gate too.
+
+Owns: `src/core/ci/export-check.ts` (or the new shared file), `src/core/ci/export.ts` (the call site only), `src/core/code/gate/parts.ts`, `parts-environment.ts`, and their tests.
+
+Leave alone: keys, `KEY_FORMAT_VERSION`, the export and part formats, `src/runners/`. Do not run `pnpm run build`.
+
+Done when:
+- the `--update` part is not reused, and the gate gives exit 1 with CRAP 42, equal to a fresh run;
+- a `none`-mode part still reuses;
+- the R1 cases (variable, missing descriptor, recorder version) stay green;
+- `ci export`'s existing tests pass unchanged;
+- lint and typecheck are clean.
