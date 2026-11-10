@@ -58,3 +58,116 @@ Squeal covers no test of a build output it does not produce, such as an end-to-e
 ```
 
 `vitest.exclude` lists globs, relative to the worktree root, of Vitest test files Squeal never lists, runs, keys or counts. `squeal status`, `squeal setup --check` and the session's first message name them as not covered. For a node:test or pytest project, its entry's own `exclude` does the same.
+
+## The quality check in CI
+
+`squeal code --base <ref>` checks every JS/TS function that changed since `git merge-base <ref> HEAD`, test callbacks included. It counts each changed function's complexity (CC), runs the test files that load the changed files with Squeal's coverage, and judges each function against `complexity.threshold` (default 20) and `crap.threshold` (default 30) as `squeal.config.json` sets them at the merge base, so a branch cannot loosen its own check. Equality passes. It needs no daemon, no harness and no agent session, writes nothing into the project, and stops its tests after `--timeout` seconds in all (default 600). Its exit code is the verdict:
+
+- `0` pass: every changed function is within both limits, or is skipped because its file is in `coverage.exclude`.
+- `1` violations: a changed function is over a limit, even when others are incomplete. Simplify it, or test more of it to lower its CRAP score.
+- `3` incomplete: Squeal could not measure a changed function, or a selected test failed. Each such function names its gap (see below).
+- `2` a usage or setup error, for example a `<ref>` that does not resolve, or a project whose own Vitest does not resolve.
+
+Squeal needs Node 22.19 or later, and the project's own dependencies installed: it runs the project's Vitest, and the node:test projects `squeal.config.json` lists under `nodeTest`.
+
+### Pin one release
+
+A CI job runs one Squeal release that it pins and verifies, with no harness. Each release `squeal--v<version>` has Squeal's runtime as the asset `squeal-codex-runtime.json.gz`, and a descriptor, `squeal-codex-runtime.json`, that names the asset's SHA-256 and the release commit. Read both once, when you choose the version, and write them into the job:
+
+```sh
+curl -fsSL https://github.com/hearsay-tools/squeal/releases/download/squeal--v0.1.423/squeal-codex-runtime.json
+```
+
+Do not read the descriptor inside the job: a SHA-256 read from the release at run time proves only that the download is whole, not that it is the release you chose. The asset is gzip-compressed JSON, not an archive. The job's `Install Squeal` step checks its SHA-256 and refuses it on a mismatch before it writes anything, then unpacks it with Node into a new directory. The CLI is `dist/cli/squeal.mjs` there. The job caches the downloaded asset under a key that holds both the version and the SHA-256, and checks the SHA-256 again on every run, so a stale or wrong cache entry is refused, never used.
+
+### A GitHub Actions job
+
+```yaml
+name: Quality check
+
+on: pull_request
+
+permissions:
+  contents: read
+
+jobs:
+  squeal-code:
+    runs-on: ubuntu-24.04
+    env:
+      SQUEAL_VERSION: 0.1.423
+      SQUEAL_SHA256: 6592435a2d62a3e17f619723f5e1f6098a734320de4192b308a79bf9bd97d651
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the merge base must be in the clone
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/squeal
+          key: squeal-runtime-${{ env.SQUEAL_VERSION }}-${{ env.SQUEAL_SHA256 }}
+      - name: Install Squeal
+        run: |
+          file="$HOME/.cache/squeal/squeal-codex-runtime-$SQUEAL_VERSION.json.gz"
+          if [ ! -f "$file" ]; then
+            mkdir -p "$HOME/.cache/squeal"
+            curl -fsSL -o "$file" "https://github.com/hearsay-tools/squeal/releases/download/squeal--v$SQUEAL_VERSION/squeal-codex-runtime.json.gz"
+          fi
+          node -e '
+          const fs = require("node:fs"), path = require("node:path");
+          const [file, sha256, out] = process.argv.slice(1);
+          const bytes = fs.readFileSync(file);
+          const actual = require("node:crypto").createHash("sha256").update(bytes).digest("hex");
+          if (actual !== sha256) {
+            console.error(`${file} has SHA-256 ${actual}, not ${sha256}: refused`);
+            process.exit(1);
+          }
+          fs.mkdirSync(out);
+          for (const f of JSON.parse(require("node:zlib").gunzipSync(bytes)).files) {
+            fs.mkdirSync(path.dirname(path.join(out, f.path)), { recursive: true });
+            fs.writeFileSync(path.join(out, f.path), Buffer.from(f.data, "base64"), { mode: f.mode });
+          }
+          ' "$file" "$SQUEAL_SHA256" "$RUNNER_TEMP/squeal"
+          node "$RUNNER_TEMP/squeal/dist/cli/squeal.mjs" --version
+      - name: Check the changed functions
+        run: |
+          status=0
+          node "$RUNNER_TEMP/squeal/dist/cli/squeal.mjs" code --base "origin/$GITHUB_BASE_REF" --json > "$RUNNER_TEMP/squeal-code-gate.json" || status=$?
+          jq -r '"Code gate: \(.verdict)", (.functions[] | select(.state != "pass") | "  \(.path):\(.line) \(.qualifiedName) CC \(.complexity) CRAP \(.crap // "none"): \(.state) \(.gap // "")")' "$RUNNER_TEMP/squeal-code-gate.json" || true
+          exit "$status"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: squeal-code-gate
+          path: ${{ runner.temp }}/squeal-code-gate.json
+```
+
+On `pull_request`, `actions/checkout` checks out the merge of the pull request into its target, so the check judges the change as it would land. The step prints the verdict and each function that is not pass; the uploaded report also names the paths not counted, the failed tests and the test files that did not finish. Use your project's own install command in place of `npm ci`. The cache key matches only the same version and SHA-256, so a new version downloads its own asset. Outside GitHub Actions, the `Install Squeal` script runs as it is in any shell, with `SQUEAL_VERSION`, `SQUEAL_SHA256` and `RUNNER_TEMP` set; the directory `$RUNNER_TEMP/squeal` must not exist yet.
+
+To pin the release's source instead, clone its tag and check the commit that the descriptor names as `releaseCommit`. The clone is about 300 MB and takes about 12 s; the asset is about 5 MB. Cache the clone under a key that holds both the version and the commit:
+
+```sh
+SQUEAL_VERSION=0.1.423
+SQUEAL_COMMIT=2b2ed97ed4ec4c0200f7a537e26e353131c21ce7
+git -c advice.detachedHead=false clone --quiet --depth 1 --branch "squeal--v$SQUEAL_VERSION" https://github.com/hearsay-tools/squeal.git "$RUNNER_TEMP/squeal-source"
+head=$(git -C "$RUNNER_TEMP/squeal-source" rev-parse HEAD)
+[ "$head" = "$SQUEAL_COMMIT" ] || { echo "squeal--v$SQUEAL_VERSION is at $head, not $SQUEAL_COMMIT: refused" >&2; exit 1; }
+node "$RUNNER_TEMP/squeal-source/plugins/claude-code/dist/cli/squeal.mjs" --version
+```
+
+The CLI is then `plugins/claude-code/dist/cli/squeal.mjs` in the clone, in place of `dist/cli/squeal.mjs` in the asset's directory.
+
+### When the check says incomplete
+
+Squeal could not judge an incomplete function: its evidence is missing or partial, or a selected test failed, and that never passes. The JSON report's `gap` names why, and the text says it in words:
+
+- `no-loader`: no selected test file loads its file. Add a test that imports it, or add a test file that loads it to the run with `--test <file>`. Code that tests reach only through a child process or a browser is not measured yet; list such files in `coverage.exclude` on the target branch, and their functions read `skipped` and keep their CC check.
+- `not-finished`: a test file that loads it did not finish in the budget. Make that file faster, or raise `--timeout`.
+- `test-failed`: a selected test failed. The report's `runs[].failed` names it; fix it.
+- `not-counted`: its file does not parse, or is over `complexity.maxFileBytes`. The report's `uncounted` names the file.
+- `no-record`: a test file that loads it finished, but gave no coverage of the file's current bytes, for example because the file changed during the run. Run the check again.
+- `not-joined`: Squeal could not match the coverage it has to the function. That is a limit of Squeal's; report it at https://github.com/hearsay-tools/squeal/issues with the JSON report.
+
+No agent session is needed for any of these. Run the same command on your machine, `squeal code --base origin/main`, or the pinned CLI as above, to see the same verdict with each function that is not pass on a line of its own; `--json` prints the report.
