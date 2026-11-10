@@ -28,7 +28,7 @@ The fixture uses Squeal's real SQLite store, `readLintCounts`,
 synthetic state and compares results with assertions. It neither starts a
 daemon nor invokes oxlint. The commit label is synthetic, not the original
 reporter's commit. The full commands and raw output are preserved under
-[`research/probes/issue-170`](../../../../research/probes/issue-170/README.md).
+[`research/probes/issue-170`](probes/issue-170/README.md).
 
 ## Questions and evidence
 
@@ -137,3 +137,12 @@ The last command returned no diff. Primary sources are the fetched issue above,
 [0.1.425 source](https://github.com/hearsay-tools/squeal/tree/241b0112a81174f5c40dd0ca7b33ba181d9aadf8/src/core),
 [017 D2/D8/D9/D11](../spec.md), [017 decisions](../status.md),
 [011 C6](../../011-core/spec.md), and the probe paths linked above.
+
+## Coordinator integration note
+
+The probe was moved under this spec’s `research/probes/issue-170/` as required
+by the triage brief. Import paths and repeat commands were adjusted. The command
+paths above preserve the researcher’s original execution record. After the
+recorded status snapshot, two further tests in `test/lint/integration/install.test.ts`
+reported the same missing `eslint-config-hoisted` module (three observed test
+failures in total); pending checks remained. No suite pass is claimed.
