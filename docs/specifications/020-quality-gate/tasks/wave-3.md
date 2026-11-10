@@ -204,3 +204,27 @@ Done when:
 - each of these makes that file run: an edited input, another record version, a duplicate file in two parts, a format 3 part;
 - a `fail` check reads `test-failed` without a run, and a `skip` check reads `skipped`;
 - nothing is written to the parts directory.
+
+## 020-08b R1 repair of review 0.1.427 B1: parts evidence needs the same environment
+
+Use /worker. Shape: repair, on the wave 3 candidate branch `w3/int`.
+
+Outcome: `squeal code --base --parts` takes a file's evidence from a part only when the part's project environment matches the current gate runner's environment. Otherwise that file runs.
+
+Read: `reviews/0.1.427.md` B1, with its reproduction and acceptance; spec D13.2; `tasks/020-08b/notes.md`, its "Environment" decision; `core/ci/export.ts` `runDifferences` and `core/keys/environment-descriptor.ts` `describeDifferences` (the lead).
+
+Starting seam: the review's fixture, an allow-listed `PROBE_COVER`, as a failing end-to-end test in `test/cli/code-gate-parts-cases.test.ts`. Then, in `gate/parts.ts`, before a file is taken:
+- certify the part's project descriptor against the gate runner's current descriptor;
+- compare allow-listed variables and the runner, config, runtime and dependency inputs the descriptors hold;
+- normalize only the fields Squeal owns, as 018 D10 does;
+- on a mismatch, or with no descriptor, give no evidence for that file.
+
+Owns: `src/core/code/gate/parts.ts`, `gate/collect.ts` (the seam only, if needed), `src/cli/code-gate-stored.ts`, and their tests.
+
+Leave alone: exports, keys and `KEY_FORMAT_VERSION`, `src/core/ci/`, `src/runners/`. Do not run `pnpm run build`.
+
+Done when:
+- the review's acceptance holds: reuse at the same environment; after the variable changes, the file runs and gives exit 1 with CRAP 42, equal to the fresh gate;
+- a missing descriptor is pinned;
+- every existing parts case stays green;
+- lint and typecheck are clean.

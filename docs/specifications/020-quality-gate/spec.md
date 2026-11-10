@@ -212,7 +212,7 @@ Rows: 020-10a (items 1 to 5) now, beside wave 2. 020-10b (items 6 and 7) waits f
    - It adds nothing when the run's resolved config already has `coverage.enabled`, or when Node lacks `process.getBuiltinModule`. The part names why.
    - It never changes the exit code. An error of its own is recorded as a reason in the part.
    - A file gets no record with `isolate: false`, with a test name filter, inside a batch of several files, when unfinished, or when its closure imports `node:inspector`.
-2. **The gate reads parts (020-08b).** `squeal code --base <ref> --parts <dir>...` takes a selected file's evidence from the parts only when the tested input, the blob and the record and provider versions all match. It runs every other file. Each test file in the report says where its evidence came from. Nothing is written to the parts directory.
+2. **The gate reads parts (020-08b).** `squeal code --base <ref> --parts <dir>...` takes a selected file's evidence from the parts only when the tested input, the blob and the record and provider versions all match, and the part's project environment matches the gate runner's, as `ci export` compares environments (amended 2026-11-10, review 0.1.427 B1). It runs every other file. Each test file in the report says where its evidence came from. Nothing is written to the parts directory.
 3. **Compatibility.**
    - Exports (`squeal-results/1`), keys and `KEY_FORMAT_VERSION` do not change. Every published export stays importable. Imported files keep no coverage; records travel in parts only.
    - Format 4 part readers accept format 3, and a gate given format 3 parts runs every selected file.
