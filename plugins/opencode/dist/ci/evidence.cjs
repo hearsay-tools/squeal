@@ -11,7 +11,10 @@
 // is none. `write(p, how)`: `p` written, before the call that writes it, and
 // its directory's listing when `p` appears or goes; the export certifies no
 // written path for the whole run, even when its content is restored. A write
-// through a symbolic link marks the path it reaches as well.
+// through a symbolic link marks the path it reaches as well. `through(fd,
+// real)`: a read through a descriptor the run opened read-only on `real`
+// (`opened`), the content its file holds now, hashed through that descriptor
+// (`descriptors.cjs`; row 018-23).
 //
 // Each value a path shows goes out, two in one turn too: the reader drops a
 // path with two contents, or content and absence, in the run (repair R3).
@@ -23,8 +26,9 @@
 //
 // Output: lines `{"e":{path:hash|null}}` and `{"w":[path],"t":[path]}`
 // appended to `<out>/<pid>-<thread>-<time>.ndjson`: `e` evidence, `w` paths
-// written, `t` paths written with everything below them. Paths are relative
-// to the root with `/`; a listing path ends in `/` (`./` the root's).
+// written, `t` paths written with everything below them (`""` the root: every
+// path, a withheld run). Paths are relative to the root with `/`; a listing
+// path ends in `/` (`./` the root's).
 // Evidence goes out once per event-loop turn, and on `flush`; a write before
 // the call that makes it, so a process stopped at any point never leaves a
 // write out. A lost read only leaves its test file out.
@@ -66,10 +70,11 @@ function originals() {
 const SETTLED_MS = 2000;
 
 /**
- * What git stores for a path now (`hashFile`): `null` no file; `undefined`
- * unknown. A file whose stat is the one it had at its last hash in this
- * process is not read again, unless it had changed within `SETTLED_MS` of
- * that hash.
+ * What git stores for a path now (`hashFile`): `ofPath(abs)`, and through an
+ * open descriptor `ofOpen(fd, abs)` with positional reads, which leave its
+ * offset as it was. `null` no file; `undefined` unknown. A file whose stat is
+ * the one it had at its last hash in this process is not read again, unless
+ * it had changed within `SETTLED_MS` of that hash.
  */
 function contents(original, format) {
   const now = Date.now;
@@ -86,19 +91,7 @@ function contents(original, format) {
     // A file that grew since the stat is being written: no evidence.
     return original.readSync(fd, Buffer.alloc(1), 0, 1, size) === 0 ? bytes : undefined;
   };
-  return (abs) => {
-    let fd;
-    try {
-      fd = original.openSync(abs, OPEN_FLAGS);
-    } catch (error) {
-      if (MISSING.has(error?.code)) return null;
-      if (error?.code !== "ELOOP") return undefined;
-      try {
-        return blob(original.readlinkSync(abs, { encoding: "buffer" }));
-      } catch (again) {
-        return MISSING.has(again?.code) ? null : undefined;
-      }
-    }
+  const ofOpen = (fd, abs) => {
     try {
       const at = now();
       const stat = original.fstatSync(fd);
@@ -114,12 +107,30 @@ function contents(original, format) {
       return hash;
     } catch {
       return undefined;
+    }
+  };
+  const ofPath = (abs) => {
+    let fd;
+    try {
+      fd = original.openSync(abs, OPEN_FLAGS);
+    } catch (error) {
+      if (MISSING.has(error?.code)) return null;
+      if (error?.code !== "ELOOP") return undefined;
+      try {
+        return blob(original.readlinkSync(abs, { encoding: "buffer" }));
+      } catch (again) {
+        return MISSING.has(again?.code) ? null : undefined;
+      }
+    }
+    try {
+      return ofOpen(fd, abs);
     } finally {
       try {
         original.closeSync(fd);
       } catch {}
     }
   };
+  return { ofPath, ofOpen };
 }
 
 /** The worktree's `.git` by its kind, as `gitEntryHash` keys it. */
@@ -232,6 +243,9 @@ function outputOf(settings, original) {
   let any = false;
   let scheduled = false;
   const last = new Map();
+  /** Paths this process wrote, and trees: their evidence is cancelled for the run. */
+  const gone = new Set();
+  const goneTrees = new Set();
   const realSetImmediate = setImmediate;
   const append = (value) => {
     try {
@@ -263,8 +277,17 @@ function outputOf(settings, original) {
     written: (exact, trees) => {
       if (exact.length === 0 && trees.length === 0) return;
       for (const rel of [...exact, ...trees]) last.delete(rel);
+      for (const rel of exact) gone.add(rel);
+      for (const rel of trees) goneTrees.add(rel);
       flush();
       append({ w: exact, t: trees });
+    },
+    gone: (rel) => {
+      if (gone.has(rel) || goneTrees.has("")) return true;
+      for (let at = rel.indexOf("/"); at !== -1; at = rel.indexOf("/", at + 1)) {
+        if (goneTrees.has(rel.slice(0, at))) return true;
+      }
+      return goneTrees.has(rel);
     },
   };
 }
@@ -290,10 +313,10 @@ function createEvidence(settings) {
       if (abs === null) return;
       if (abs === `${paths.root}.git`) return out.evidence(".git", gitKindOf(original, abs));
       if (!paths.kept(abs)) return;
-      out.evidence(paths.relative(abs), content(abs));
+      out.evidence(paths.relative(abs), content.ofPath(abs));
       const target = paths.target(abs);
       if (target !== abs && paths.kept(target)) {
-        out.evidence(paths.relative(target), content(target));
+        out.evidence(paths.relative(target), content.ofPath(target));
       }
     } catch {}
   };
@@ -359,6 +382,42 @@ function createEvidence(settings) {
       if (rel !== null) out.written([listing(rel)], []);
     } catch {}
   };
+  /** The kept path a read-only open of `p` reads, links followed, for `through`; else `null`. */
+  const opened = (p) => {
+    try {
+      const abs = paths.toPath(p);
+      const real = abs === null ? null : paths.target(abs);
+      return real !== null && paths.kept(real) && real !== `${paths.root}.git` ? real : null;
+    } catch {
+      return null;
+    }
+  };
+  /** A read through `fd`, opened on `real` (`opened`): the content it holds now; unknown cancels. */
+  const through = (fd, real) => {
+    try {
+      const rel = paths.relative(real);
+      // Written here already: no evidence to keep, so no hash at each chunk of a stream.
+      if (out.gone(rel)) return;
+      const value = content.ofOpen(fd, real);
+      if (value === undefined) out.written([rel], []);
+      else out.evidence(rel, value);
+    } catch {}
+  };
+  /**
+   * Test file `file` withheld from the export: its own path written, so no
+   * closure holding it is certified; with `file` `null` or outside the root,
+   * every path (row 018-23, review of 0.1.424, B2).
+   */
+  const withhold = (file) => {
+    let rel = null;
+    try {
+      rel = file === null ? null : paths.scoped(file);
+    } catch {}
+    try {
+      if (rel === null || rel === "") out.written([], [""]);
+      else out.written([rel], []);
+    } catch {}
+  };
   /** A path created, with all below it. */
   const made = (p) => {
     try {
@@ -366,7 +425,18 @@ function createEvidence(settings) {
       if (rel !== null && rel !== "") out.written([], [rel]);
     } catch {}
   };
-  return { read, list, write, entering, made, flush: out.flush };
+  return {
+    read,
+    list,
+    write,
+    entering,
+    made,
+    opened,
+    through,
+    withhold,
+    flush: out.flush,
+    toPath: paths.toPath,
+  };
 }
 
 module.exports = { createEvidence };
