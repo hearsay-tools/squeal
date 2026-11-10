@@ -18,6 +18,7 @@ import { namesHash } from "../../../src/core/keys/observed.js";
 import type { TestFileRef } from "../../../src/core/types/keys.js";
 import type { RunnerClosure } from "../../../src/core/types/runner.js";
 import { initRepo, writeFile } from "../../hash/git-repo.js";
+import { ENVIRONMENT, GATE, partProject } from "./parts-fixture.js";
 
 /*
  * Spec 020 D13.2 (row 020-08b; research `ci-evidence.md` Q3, rule 3): the
@@ -101,7 +102,7 @@ function part(files: readonly PartFile[] = [file()], overrides: Partial<Part> = 
         recordVersion: COVERAGE_RECORD_VERSION,
       },
     },
-    projects: [],
+    projects: [partProject()],
     testFiles: files,
     evidence: EVIDENCE,
     coverage: {
@@ -128,10 +129,11 @@ async function taken(root: string, parts: readonly Part[], options: Partial<Part
     parts: parts.map((p, i) => ({ file: `part-${i}.json`, part: p })),
     changed: ["src/a.ts"],
     children: false,
+    environment: GATE,
     note: (text) => notes.push(text),
     ...options,
   });
-  const found = await evidence("vitest", [REF], CLOSURE);
+  const found = await evidence("vitest", [REF], CLOSURE, ENVIRONMENT);
   return { evidence: found.get(REF) ?? null, notes };
 }
 
@@ -158,8 +160,9 @@ describe("partsEvidence: a certified file (spec 020 D13.2)", () => {
       parts: [{ file: "p.json", part: part() }],
       changed: [],
       children: false,
+      environment: GATE,
     });
-    expect(await evidence("node-test", [REF], CLOSURE)).toEqual(new Map());
+    expect(await evidence("node-test", [REF], CLOSURE, ENVIRONMENT)).toEqual(new Map());
   });
 
   it("is taken with no record when it failed, a file-level error by name", async () => {
@@ -203,6 +206,15 @@ describe("partsEvidence: what makes a file run (spec 020 D13.2)", () => {
     expect(evidence).toBeNull();
     expect(notes).toEqual([
       "1 part gives no evidence, so its test files run: its run did not record what its tests read (part-0.json)",
+    ]);
+  });
+
+  it("runs a file whose part ran in another environment, with a note (review 0.1.427 B1)", async () => {
+    const other = { ...GATE, env: { PROBE: "no" } };
+    const { evidence, notes } = await taken(repo(), [part()], { environment: other });
+    expect(evidence).toBeNull();
+    expect(notes).toEqual([
+      `part-0.json gives no evidence of project "", so its test files run: its run had another environment than this gate's: allow-listed variables differ (values: PROBE) (the part as the export)`,
     ]);
   });
 

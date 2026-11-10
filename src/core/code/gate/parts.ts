@@ -24,6 +24,7 @@ import type { RunnerClosure } from "../../types/runner.js";
 import { checkIgnored } from "../../watcher/git.js";
 import { COVERAGE_PROVIDER_VERSION, COVERAGE_RECORD_VERSION } from "../coverage/record.js";
 import { FILE_ERROR, type StoredEvidence } from "./collect.js";
+import { environmentCheck, type GateEnvironment } from "./parts-environment.js";
 import type { TestFileEvidence } from "./types.js";
 
 /*
@@ -32,6 +33,8 @@ import type { TestFileEvidence } from "./types.js";
  * running it (research `ci-evidence.md` Q3, rule 3). A file is taken when it
  * is in exactly one part; that part's run had Squeal's provider at this
  * Squeal's provider and record versions and recorded what its tests read;
+ * the part's project ran in the environment the gate's runner has here
+ * (`parts-environment.ts`; review 0.1.427 B1);
  * the part's read-time evidence certifies the content here of every input
  * of the file's closure and of what it read (`uncertified`, as `ci export`
  * certifies, 018 D9); and its record's sources are the bytes here. A file
@@ -50,6 +53,8 @@ export interface PartsOptions {
    * process's coverage, so with it on no record is taken.
    */
   readonly children: boolean;
+  /** D13.2: what the gate's environment holds beside its runner's; a part's project must match it. */
+  readonly environment: GateEnvironment;
   /** Why parts give no evidence, told once per reason. */
   readonly note?: (text: string) => void;
 }
@@ -93,12 +98,12 @@ export function unusable(part: Part): string | null {
 
 /** `CollectOptions.stored` over `options.parts`: Vitest files only, since `ci record` records Vitest alone. */
 export function partsEvidence(options: PartsOptions): StoredEvidence {
-  const owners = new Map<string, { part: Part; file: PartFile }[]>();
+  const owners = new Map<string, Owner[]>();
   const why = new Map<string, string[]>();
   for (const { file: name, part } of options.parts) {
     for (const file of part.testFiles) {
       const id = testFileId(file);
-      owners.set(id, [...(owners.get(id) ?? []), { part, file }]);
+      owners.set(id, [...(owners.get(id) ?? []), { name, part, file }]);
     }
     const reason = options.children
       ? "coverage.children is on at the base, and ci record collects no child process's coverage"
@@ -113,20 +118,41 @@ export function partsEvidence(options: PartsOptions): StoredEvidence {
   const unused = new Set([...why.values()].flat());
   const usable = new Set(options.parts.filter((p) => !unused.has(p.file)).map((p) => p.part));
   let here: Promise<Here> | null = null;
-  return async (runner, files, closure) => {
+  const told = new Set<string>();
+  const tell = (text: string) => {
+    if (!told.has(text)) options.note?.(text);
+    told.add(text);
+  };
+  return async (runner, files, closure, environment) => {
     const found = new Map<TestFileRef, TestFileEvidence>();
     if (runner !== "vitest" || usable.size === 0) return found;
-    here ??= readObjectFormat(options.root).then((format) => hereOf(options.root, format));
+    const certify = await environmentCheck(environment, options.environment);
     for (const ref of files) {
       const owned = owners.get(testFileId(ref)) ?? [];
       // A file in two parts, two runs of it, is taken from neither.
       const [only] = owned;
       if (owned.length !== 1 || only === undefined || !usable.has(only.part)) continue;
+      const differs = certify(only.part, ref.project);
+      if (differs !== null) {
+        const project = JSON.stringify(ref.project);
+        tell(
+          `${only.name} gives no evidence of project ${project}, so its test files run: ${differs}`,
+        );
+        continue;
+      }
+      here ??= readObjectFormat(options.root).then((format) => hereOf(options.root, format));
       const evidence = await taken(options, only, (await closure?.(ref)) ?? null, await here);
       if (evidence !== null) found.set(ref, evidence);
     }
     return found;
   };
+}
+
+/** A test file in a part, and the part's file name. */
+interface Owner {
+  readonly name: string;
+  readonly part: Part;
+  readonly file: PartFile;
 }
 
 /** The content of a path here, as a key holds it: `null` none, `undefined` unknown. */
@@ -154,7 +180,7 @@ function hereOf(root: AbsolutePath, format: ObjectFormat): Here {
 /** `file`'s evidence from `part`, or `null` when it must run. */
 async function taken(
   options: PartsOptions,
-  { part, file }: { part: Part; file: PartFile },
+  { part, file }: Owner,
   closure: RunnerClosure | null,
   here: Here,
 ): Promise<TestFileEvidence | null> {
