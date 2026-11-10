@@ -54,8 +54,7 @@ const { isAbsolute, resolve } = require("node:path");
 const { fileURLToPath } = require("node:url");
 const { isInternalThread, isMainThread } = require("node:worker_threads");
 
-// Taken before `recordDirectories` wraps them: Squeal's own directory is no write of the run.
-const { appendFileSync, mkdirSync } = fs;
+const { appendFileSync } = fs;
 
 const coverage = process.env.NODE_TEST_CONTEXT && process.env.SQUEAL_NODE_TEST_COVERAGE;
 const children = coverage && process.env.SQUEAL_NODE_TEST_CHILDREN === "1";
@@ -67,16 +66,9 @@ if (coverage && !isInternalThread) {
 }
 const hideCoverage = () => {
   if (!coverage || isInternalThread || process.env.NODE_V8_COVERAGE !== coverage) return;
-  if (!children) {
-    delete process.env.NODE_V8_COVERAGE;
-    return;
-  }
-  const dir = `${coverage}/children`;
-  // Node makes the directory when it writes, too; a failed make is never the test's failure.
-  try {
-    mkdirSync(dir, { recursive: true });
-  } catch {}
-  process.env.NODE_V8_COVERAGE = dir;
+  // Node makes the directory when a process or thread writes there.
+  if (children) process.env.NODE_V8_COVERAGE = `${coverage}/children`;
+  else delete process.env.NODE_V8_COVERAGE;
 };
 
 const prefix = process.env.SQUEAL_NODE_TEST_GRAPH;
