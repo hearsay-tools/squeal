@@ -22,12 +22,20 @@ const fileState = (rig: CoverageRig, path: string) => readSummary(rig.store.meta
 const blobOf = (rig: CoverageRig, path: string) => rig.store.files.list(WT, [path])[0]?.blob ?? "";
 const both = (rig: CoverageRig) => [...rig.states("crap"), ...rig.states("uncovered")];
 
-/** `scripts/helper.ts`, judged untested while no test file loads it. */
+/**
+ * `scripts/helper.ts`, judged untested: a Vitest test file of another
+ * project loads it and runs none of it. A source no test file loads reads
+ * unknown, never untested (spec 020 D11.5).
+ */
 async function judgedUntested(runner: string | null) {
   const rig = coverageRig();
   if (runner !== null) rig.closures.setEnvironment({ runner, files: [] });
   await rig.edit({ "scripts/helper.ts": HELPER });
-  rig.loader("scripts/other.test.ts", { closure: [] });
+  rig.loader("scripts/other.test.ts", {
+    project: "web",
+    closure: ["scripts/helper.ts"],
+    record: [sourceOf("scripts/helper.ts", blobOf(rig, "scripts/helper.ts"), 1, [])],
+  });
   rig.step();
   expect(rig.states("uncovered")).toEqual(UNTESTED);
   expect(rig.states("crap")).toEqual([`classify pass ${crapScore(4, 0)}`]);
@@ -156,9 +164,12 @@ describe("a module only a project's environment loads (rows 015-75 part 2, 015-8
     expect(rig.states("uncovered")).toEqual(["onlyPreload pass -", "classify fail -"]);
   });
 
-  it("is not loaded by a Vitest project's test files", async () => {
+  it("is not loaded by a Vitest project's test files, so it reads unknown (spec 020 D11.5)", async () => {
     const rig = await preloaded("vitest");
-    expect(fileState(rig, "scripts/only.ts")).toMatchObject({ state: "judged" });
-    expect(rig.states("uncovered")).toContain("onlyPreload fail -");
+    expect(fileState(rig, "scripts/only.ts")).toMatchObject({
+      state: "unknown",
+      cause: "no-loader",
+    });
+    expect(rig.states("uncovered")).toEqual(["onlyPreload unknown -", "classify unknown -"]);
   });
 });
