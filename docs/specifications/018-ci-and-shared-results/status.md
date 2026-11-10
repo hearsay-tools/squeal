@@ -76,6 +76,7 @@ Started: 2026-10-31
 - 2026-11-10, the human on how to merge cezarion#3151 (CI green at c444aac): "You merge it". Added to cezar's merge queue at 10:29Z.
 - 2026-11-10, cezarion#3151 merged at 10:46Z (5621be91). Its first merge-group run (42799552999) published nothing: in every shard `squeal ci record` could not attach ("vitest/node has no Logger.setVitest"); cezar runs Vitest 4.1.10 and the hook knew only Vitest 5. The tests ran and passed; only the export job failed, and it does not block merges. The human: "Squeal fix: Yes, both" (row 018-26, then a cezar PR that moves the pinned Squeal version) and "Red step: A: leave it red" until then.
 - 2026-11-10, peer 31e1d860 takes 0.1.424; row 018-23 moves to 0.1.425.
+- 2026-11-10, review `reviews/0.1.425.md`: 018-26 PASS (real Vitest 4.1.10 and 5.0.3); 018-23 FAIL, B2 continuing: a child with another recording's settings withheld only the current test file, a rule from the coordinator's repair brief, narrower than D9. Coordinator fix: withhold every path. The human: "0.1.425: A: one narrow check" (third and last round on 018-23).
 
 ## Open questions
 
