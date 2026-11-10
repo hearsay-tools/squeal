@@ -4,7 +4,15 @@ import { tmpdir } from "node:os";
 import { join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { type InputEvidence, readEvidence } from "../../core/ci/inputs.js";
-import type { PartEnd, PartFile, PartProject, PartShard } from "../../core/ci/parts.js";
+import type {
+  PartCoverage,
+  PartEnd,
+  PartFile,
+  PartProject,
+  PartRecords,
+  PartShard,
+} from "../../core/ci/parts.js";
+import type { MapWorker } from "../../core/code/coverage/mapper.js";
 import type { WorktreePaths } from "../../core/fs/worktree-paths.js";
 import type { ObjectFormat } from "../../core/hash/blob.js";
 import type { AbsolutePath } from "../../core/types/common.js";
@@ -41,7 +49,19 @@ export interface RecordedRun {
   readonly observing: boolean;
   readonly projects: readonly PartProject[];
   readonly testFiles: readonly PartFile[];
+  /** Spec 020 D13: whether the provider was in the run; absent when the hook said nothing of it. */
+  readonly coverage?: PartCoverage;
+  /** The records `testFiles` name; absent when none was made. */
+  readonly records?: PartRecords;
 }
+
+/**
+ * Spec 020 D13: Squeal's coverage provider and the records' worker the hook
+ * adds to the run, or why this Squeal has none.
+ */
+export type RecordingCoverage =
+  | { readonly provider: AbsolutePath; readonly worker: MapWorker }
+  | { readonly missing: string };
 
 export interface RecordingOptions {
   readonly paths: WorktreePaths;
@@ -56,6 +76,7 @@ export interface RecordingOptions {
   readonly tempDir?: AbsolutePath;
   /** The repository's object format: the evidence hashes files as git does. */
   readonly objectFormat: ObjectFormat;
+  readonly coverage: RecordingCoverage;
 }
 
 export interface VitestRecording {
@@ -118,6 +139,7 @@ export function startRecording(options: RecordingOptions): VitestRecording | str
     raw,
     variables: [...options.allowlist],
     evidence: { out: evidence, root, skip, format: options.objectFormat },
+    coverage: coverageSettings(options, join(temp, "coverage")),
   });
   return {
     env,
@@ -134,6 +156,16 @@ export function startRecording(options: RecordingOptions): VitestRecording | str
     },
     close: () => rmSync(temp, { recursive: true, force: true }),
   };
+}
+
+/** `coverage.cjs`'s settings: the provider, the worker, where payloads go, the root records are relative to. */
+function coverageSettings(options: RecordingOptions, dir: AbsolutePath) {
+  const { coverage } = options;
+  if ("missing" in coverage) return { off: "no-provider", note: coverage.missing };
+  const { script, execArgv } = coverage.worker;
+  const worker = execArgv === undefined ? { script } : { script, execArgv: [...execArgv] };
+  const root = options.paths.root;
+  return { provider: coverage.provider, worker, dir, root, format: options.objectFormat };
 }
 
 /**
