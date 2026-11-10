@@ -27,6 +27,7 @@ const GAP_WORDS: Readonly<Record<GateGap, string>> = {
   "no-record": "no coverage record of its file's bytes now",
   "not-joined": "its coverage could not be matched to it",
   "test-failed": "a selected test failed",
+  skipped: "a test file that loads it skipped a test",
 };
 
 const UNCOUNTED_WORDS: Readonly<Record<GatePathReport["reason"], string>> = {
