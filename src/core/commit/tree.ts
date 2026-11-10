@@ -16,8 +16,21 @@ export async function committedBlobs(
   root: AbsolutePath,
   commit: string,
 ): Promise<Map<RelativePath, FileHash>> {
-  const args = ["ls-tree", "-r", "-z", "--full-tree", commit];
-  const out = await runGit(root, args, { timeoutMs: LS_TREE_TIMEOUT_MS });
+  const out = await runGit(root, lsTreeArgs(commit), { timeoutMs: LS_TREE_TIMEOUT_MS });
+  return blobsOfTree(out);
+}
+
+/** The arguments of `committedBlobs`' git call, for a caller that runs git its own way. */
+export const lsTreeArgs = (commit: string): string[] => [
+  "ls-tree",
+  "-r",
+  "-z",
+  "--full-tree",
+  commit,
+];
+
+/** `committedBlobs` of the output of `git` with `lsTreeArgs`. */
+export function blobsOfTree(out: string): Map<RelativePath, FileHash> {
   const blobs = new Map<RelativePath, FileHash>();
   for (const entry of splitNul(out)) {
     // `<mode> SP <type> SP <object> TAB <path>`
