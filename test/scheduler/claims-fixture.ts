@@ -26,6 +26,11 @@ import { RecordingSink } from "./recording-sink.js";
  * plain files; each one's closure is itself, so equal bytes are equal keys.
  */
 
+const FIXTURE_DATES = {
+  GIT_AUTHOR_DATE: "2026-01-01T00:00:00Z",
+  GIT_COMMITTER_DATE: "2026-01-01T00:00:00Z",
+};
+
 export const fileName = (i: number) => `test/f${String(i).padStart(2, "0")}.test.ts`;
 
 /** A repository of `count` test files and `extra`, and `linked` worktrees beside it, `other` first. */
@@ -45,7 +50,9 @@ export function claimRepo(
   }
   git(main, ["init", "-q", "-b", "main"]);
   git(main, ["add", "-A"]);
-  git(main, ["commit", "-qm", "fixture"]);
+  // A fixed date makes every claimRepo with equal files the same commit, so a
+  // repository can name another's commit (018-18's re-key at import reads it).
+  git(main, ["commit", "-qm", "fixture"], undefined, FIXTURE_DATES);
   const others = Array.from({ length: linked }, (_, i) =>
     join(dir, i === 0 ? "other" : `other${i}`),
   );
