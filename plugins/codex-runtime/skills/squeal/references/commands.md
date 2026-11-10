@@ -119,7 +119,7 @@ Each changed function reads one state:
 - `violation`: CC over the limit, whatever its coverage, or CRAP over it.
 - `skipped`: its file matches `coverage.exclude` (see `policy.md`) and CC is at or under the limit. It gets no CRAP, never counts as pass, and does not block.
 - `accepted`: a violation an entry of `--exceptions` covers. It keeps its measured scores, names the entry, and does not block.
-- `incomplete`, with its gap: `not-counted` (in code that does not parse), `no-loader` (no test loads its file), `not-finished` (a test file that loads it did not finish in the budget), `no-record` (no coverage record of its file's bytes now), `not-joined` (its coverage could not be matched to it), or `test-failed` (a selected test failed). A function never gets a CRAP from 0% coverage because no test loads it.
+- `incomplete`, with its gap: `not-counted` (in code that does not parse), `no-loader` (no test loads its file), `not-finished` (a test file that loads it did not finish in the budget), `no-record` (no coverage record of its file's bytes now), `not-joined` (its coverage could not be matched to it), `test-failed` (a selected test failed), or `skipped` (a test file that loads it skipped a test). A function never gets a CRAP from 0% coverage because no test loads it.
 
 ```text
 Code gate: violations. 3 changed functions against origin/main (merge base 1f097649): 1 violation, 1 incomplete, 1 pass.
