@@ -62,6 +62,8 @@ export async function mergeBase(cwd: AbsolutePath, ref: string): Promise<string>
  *   added unless their bodies are elsewhere at the base.
  * - Each `uncounted` regular file carries its head blob, for the report's
  *   provenance (D7); an `unsupported` path has none.
+ * - `baseCounted`: each counted path as the base holds it, for D8's
+ *   inherited exceptions (row 020-09).
  */
 export async function changedFunctions(
   cwd: AbsolutePath,
@@ -124,6 +126,9 @@ export async function changedFunctions(
     counted,
     inErrors,
     uncounted,
+    baseCounted: [...bases]
+      .map(([path, c]) => ({ path, blob: c.blob, functions: c.functions }))
+      .sort((a, b) => compare(a.path, b.path)),
   };
 }
 
@@ -182,7 +187,7 @@ async function countsAtBase(
     const [oid, type, size] = (lines[i] ?? "").split(" ");
     if (oid === undefined || type !== "blob" || Number(size) > maxFileBytes) continue;
     const text = await runGit(cwd, ["cat-file", "blob", oid]);
-    counts.set(path, await countFile(text, language));
+    counts.set(path, await countFile(text, language, oid));
   }
   return counts;
 }

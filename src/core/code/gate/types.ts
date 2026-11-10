@@ -11,11 +11,17 @@ import type { CoverageRecord } from "../coverage/types.js";
  * written against these types only.
  */
 
-/** `QUALITY_POLICY_VERSION` (D6): raised when a rule of D5 or D6 changes meaning. */
-export const QUALITY_POLICY_VERSION = 1;
+/**
+ * `QUALITY_POLICY_VERSION` (D6): raised when a rule of D5, D6 or D8 changes
+ * meaning. 2: D8's exceptions (row 020-09).
+ */
+export const QUALITY_POLICY_VERSION = 2;
 
 /** D7: the format of `squeal code --base --json`. */
 export const GATE_REPORT_FORMAT = "squeal-code-gate/1";
+
+/** D8: the format of the file `--exceptions` reads. */
+export const EXCEPTIONS_FORMAT = "squeal-code-exceptions/1";
 
 /** D2: why a function is judged; moved, shifted and unchanged ones are not. */
 export type ChangeKind = "edited" | "added";
@@ -37,7 +43,7 @@ export interface ChangedFunction {
  */
 export interface CountedPath {
   readonly path: RelativePath;
-  /** The head bytes' blob id. */
+  /** The counted bytes' blob id: the head's in `counted`, the base's in `baseCounted`. */
   readonly blob: FileHash;
   /** The head count's functions, in the count's order. */
   readonly functions: readonly FunctionCount[];
@@ -78,6 +84,13 @@ export interface ChangedSet {
   /** Functions inside a parse-error range; judged `not-counted`. */
   readonly inErrors: readonly ChangedFunction[];
   readonly uncounted: readonly UncountedPath[];
+  /**
+   * D8: each changed path counted at the merge base, where it is a blob
+   * within `maxFileBytes`; sorted by path. An `edited` function's base CC is
+   * that of its identity here. Absent when the inventory gave none: then no
+   * inherited exception holds (row 020-09).
+   */
+  readonly baseCounted?: readonly CountedPath[];
 }
 
 /** D3: one test file of the runs. */
@@ -110,8 +123,8 @@ export interface GatePolicy {
   readonly coverageExclude: readonly string[];
 }
 
-/** D5: a function's state. */
-export type GateState = "pass" | "violation" | "incomplete" | "skipped";
+/** D5: a function's state; D8: `accepted`, a violation an exception covers. */
+export type GateState = "pass" | "violation" | "incomplete" | "skipped" | "accepted";
 
 /** D5: why a function is incomplete. */
 export type GateGap =
@@ -124,3 +137,24 @@ export type GateGap =
 
 /** D7: the verdict and its exit code (D1). */
 export type GateVerdict = "pass" | "violations" | "incomplete";
+
+/**
+ * D8: one entry of the exceptions file, as the consumer verified it. It
+ * names a changed function at the head and the merge base it was accepted
+ * against. Squeal applies it; it does not decide who may approve.
+ */
+export interface ExceptionEntry {
+  readonly path: RelativePath;
+  readonly qualifiedName: string;
+  readonly bodyHash: string;
+  readonly measure: "complexity" | "crap";
+  /** `inherited`: over at the base and not worse; `approved`: a new or worse finding. */
+  readonly kind: "inherited" | "approved";
+  /** The highest accepted value of `measure`. */
+  readonly value: number;
+  /** A URL. */
+  readonly issue: string;
+  /** Who accepted it, as the consumer verified. */
+  readonly approver: string;
+  readonly baseCommit: string;
+}
