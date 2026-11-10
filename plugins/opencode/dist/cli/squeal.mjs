@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.427";
+  if (true) return "0.1.429";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -9078,6 +9078,131 @@ var init_discover = __esm({
   }
 });
 
+// src/core/fs/git-layout.ts
+import { createHash as createHash6 } from "node:crypto";
+import { existsSync as existsSync7, lstatSync, readFileSync as readFileSync8, realpathSync as realpathSync3 } from "node:fs";
+import { lstat } from "node:fs/promises";
+import { dirname as dirname4, isAbsolute as isAbsolute6, join as join14, resolve as resolve5 } from "node:path";
+function findWorktreeRoot(path) {
+  let dir2 = resolve5(path);
+  if (existsSync7(dir2)) dir2 = realpathSync3(dir2);
+  for (; ; ) {
+    if (existsSync7(join14(dir2, ".git"))) return dir2;
+    const parent2 = dirname4(dir2);
+    if (parent2 === dir2) return null;
+    dir2 = parent2;
+  }
+}
+async function hasGitEntry(dir2) {
+  try {
+    await lstat(join14(dir2, ".git"));
+    return true;
+  } catch (error) {
+    if (isMissing(error)) return false;
+    throw error;
+  }
+}
+function worktreeIdFor(root) {
+  return worktreeIdOfRealPath(realpathSync3(root));
+}
+function worktreeIdOfRealPath(realPath2) {
+  return createHash6("sha256").update(realPath2).digest("hex").slice(0, 16);
+}
+function gitDirOf(root) {
+  return dotGit(root)?.gitDir ?? null;
+}
+function linkedWorktreeDir(root) {
+  const entry4 = dotGit(root);
+  return entry4?.isFile ? entry4.gitDir : null;
+}
+function resolveCommonDir(root) {
+  const entry4 = dotGit(root);
+  if (entry4 === null) return null;
+  if (!entry4.isFile) return realpathSync3(entry4.gitDir);
+  const { gitDir } = entry4;
+  if (lstatOrNull(gitDir) === null) return null;
+  const commondirFile = join14(gitDir, "commondir");
+  if (lstatOrNull(commondirFile) === null) return realpathSync3(gitDir);
+  const commondir = readFileSync8(commondirFile, "utf8").trim();
+  const common = isAbsolute6(commondir) ? commondir : resolve5(gitDir, commondir);
+  return lstatOrNull(common) === null ? null : realpathSync3(common);
+}
+function lstatOrNull(path) {
+  try {
+    return lstatSync(path);
+  } catch (error) {
+    if (isMissing(error)) return null;
+    throw error;
+  }
+}
+function dotGit(root) {
+  const path = join14(root, ".git");
+  const stat9 = lstatOrNull(path);
+  if (stat9 === null) return null;
+  if (stat9.isDirectory()) return { gitDir: path, isFile: false };
+  if (!stat9.isFile()) return null;
+  const match2 = GITDIR_LINE.exec(readFileSync8(path, "utf8"));
+  return match2?.[1] ? { gitDir: resolve5(root, match2[1]), isFile: true } : null;
+}
+var GITDIR_LINE;
+var init_git_layout = __esm({
+  "src/core/fs/git-layout.ts"() {
+    "use strict";
+    init_errors();
+    GITDIR_LINE = /^gitdir:\s*(.+?)\s*$/m;
+  }
+});
+
+// src/core/status/git-head.ts
+import { readFileSync as readFileSync9 } from "node:fs";
+import { join as join15 } from "node:path";
+function readGitHead(root) {
+  const gitDir = gitDirOf(root);
+  const commonDir = resolveCommonDir(root);
+  if (gitDir === null || commonDir === null) return null;
+  let value = read(join15(gitDir, "HEAD"));
+  for (let depth = 0; depth < MAX_REF_DEPTH && value !== null; depth++) {
+    if (SHA.test(value)) return value;
+    const ref3 = /^ref:\s*(\S+)$/.exec(value)?.[1];
+    if (ref3 === void 0) return null;
+    value = read(join15(gitDir, ref3)) ?? read(join15(commonDir, ref3)) ?? packed(commonDir, ref3);
+  }
+  return null;
+}
+async function gitHead(root, options = {}) {
+  const head2 = readGitHead(root);
+  if (head2 !== null) return head2;
+  const verify = ["rev-parse", "--verify", "-q", "HEAD"];
+  const out2 = await runGit(root, verify, { ...options, okCodes: [0, 1] });
+  return out2.trim() || null;
+}
+function packed(commonDir, ref3) {
+  for (const line of (read(join15(commonDir, "packed-refs")) ?? "").split("\n")) {
+    const [sha, name3] = line.split(" ");
+    if (name3 === ref3 && sha !== void 0 && SHA.test(sha)) return sha;
+  }
+  return null;
+}
+function read(path) {
+  try {
+    return readFileSync9(path, "utf8").trim();
+  } catch (error) {
+    if (isMissing(error)) return null;
+    throw error;
+  }
+}
+var SHA, MAX_REF_DEPTH;
+var init_git_head = __esm({
+  "src/core/status/git-head.ts"() {
+    "use strict";
+    init_errors();
+    init_git();
+    init_git_layout();
+    SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
+    MAX_REF_DEPTH = 5;
+  }
+});
+
 // src/core/types/daemon.ts
 function daemonIncarnation(daemon) {
   if (daemon?.token === void 0) return null;
@@ -9109,81 +9234,6 @@ var init_store_records = __esm({
     HOOK_TIMEOUT_MS = 2e3;
     LEAVING_GRACE_MS = 5 * HOOK_TIMEOUT_MS;
     WAITERLESS_EXPIRY_MS = 10 * 60 * 1e3;
-  }
-});
-
-// src/core/fs/git-layout.ts
-import { createHash as createHash6 } from "node:crypto";
-import { existsSync as existsSync7, lstatSync, readFileSync as readFileSync9, realpathSync as realpathSync3 } from "node:fs";
-import { lstat } from "node:fs/promises";
-import { dirname as dirname4, isAbsolute as isAbsolute6, join as join15, resolve as resolve5 } from "node:path";
-function findWorktreeRoot(path) {
-  let dir2 = resolve5(path);
-  if (existsSync7(dir2)) dir2 = realpathSync3(dir2);
-  for (; ; ) {
-    if (existsSync7(join15(dir2, ".git"))) return dir2;
-    const parent2 = dirname4(dir2);
-    if (parent2 === dir2) return null;
-    dir2 = parent2;
-  }
-}
-async function hasGitEntry(dir2) {
-  try {
-    await lstat(join15(dir2, ".git"));
-    return true;
-  } catch (error) {
-    if (isMissing(error)) return false;
-    throw error;
-  }
-}
-function worktreeIdFor(root) {
-  return worktreeIdOfRealPath(realpathSync3(root));
-}
-function worktreeIdOfRealPath(realPath2) {
-  return createHash6("sha256").update(realPath2).digest("hex").slice(0, 16);
-}
-function gitDirOf(root) {
-  return dotGit(root)?.gitDir ?? null;
-}
-function linkedWorktreeDir(root) {
-  const entry4 = dotGit(root);
-  return entry4?.isFile ? entry4.gitDir : null;
-}
-function resolveCommonDir(root) {
-  const entry4 = dotGit(root);
-  if (entry4 === null) return null;
-  if (!entry4.isFile) return realpathSync3(entry4.gitDir);
-  const { gitDir } = entry4;
-  if (lstatOrNull(gitDir) === null) return null;
-  const commondirFile = join15(gitDir, "commondir");
-  if (lstatOrNull(commondirFile) === null) return realpathSync3(gitDir);
-  const commondir = readFileSync9(commondirFile, "utf8").trim();
-  const common = isAbsolute6(commondir) ? commondir : resolve5(gitDir, commondir);
-  return lstatOrNull(common) === null ? null : realpathSync3(common);
-}
-function lstatOrNull(path) {
-  try {
-    return lstatSync(path);
-  } catch (error) {
-    if (isMissing(error)) return null;
-    throw error;
-  }
-}
-function dotGit(root) {
-  const path = join15(root, ".git");
-  const stat9 = lstatOrNull(path);
-  if (stat9 === null) return null;
-  if (stat9.isDirectory()) return { gitDir: path, isFile: false };
-  if (!stat9.isFile()) return null;
-  const match2 = GITDIR_LINE.exec(readFileSync9(path, "utf8"));
-  return match2?.[1] ? { gitDir: resolve5(root, match2[1]), isFile: true } : null;
-}
-var GITDIR_LINE;
-var init_git_layout = __esm({
-  "src/core/fs/git-layout.ts"() {
-    "use strict";
-    init_errors();
-    GITDIR_LINE = /^gitdir:\s*(.+?)\s*$/m;
   }
 });
 
@@ -9310,11 +9360,11 @@ var init_focused_row = __esm({
 });
 
 // src/core/delivery/harness-process.ts
-import { readFileSync as readFileSync10, readlinkSync } from "node:fs";
+import { readFileSync as readFileSync11, readlinkSync } from "node:fs";
 function readProcStat(pid) {
   let text3;
   try {
-    text3 = readFileSync10(`/proc/${pid}/stat`, "utf8");
+    text3 = readFileSync11(`/proc/${pid}/stat`, "utf8");
   } catch (error) {
     if (error.code === "ENOENT") return null;
     throw error;
@@ -9518,56 +9568,6 @@ var init_heartbeat = __esm({
     "use strict";
     HEARTBEAT_GRACE_INTERVALS = 2;
     DAEMON_START_GRACE_MS = 1e4;
-  }
-});
-
-// src/core/status/git-head.ts
-import { readFileSync as readFileSync11 } from "node:fs";
-import { join as join16 } from "node:path";
-function readGitHead(root) {
-  const gitDir = gitDirOf(root);
-  const commonDir = resolveCommonDir(root);
-  if (gitDir === null || commonDir === null) return null;
-  let value = read(join16(gitDir, "HEAD"));
-  for (let depth = 0; depth < MAX_REF_DEPTH && value !== null; depth++) {
-    if (SHA.test(value)) return value;
-    const ref3 = /^ref:\s*(\S+)$/.exec(value)?.[1];
-    if (ref3 === void 0) return null;
-    value = read(join16(gitDir, ref3)) ?? read(join16(commonDir, ref3)) ?? packed(commonDir, ref3);
-  }
-  return null;
-}
-async function gitHead(root, options = {}) {
-  const head2 = readGitHead(root);
-  if (head2 !== null) return head2;
-  const verify = ["rev-parse", "--verify", "-q", "HEAD"];
-  const out2 = await runGit(root, verify, { ...options, okCodes: [0, 1] });
-  return out2.trim() || null;
-}
-function packed(commonDir, ref3) {
-  for (const line of (read(join16(commonDir, "packed-refs")) ?? "").split("\n")) {
-    const [sha, name3] = line.split(" ");
-    if (name3 === ref3 && sha !== void 0 && SHA.test(sha)) return sha;
-  }
-  return null;
-}
-function read(path) {
-  try {
-    return readFileSync11(path, "utf8").trim();
-  } catch (error) {
-    if (isMissing(error)) return null;
-    throw error;
-  }
-}
-var SHA, MAX_REF_DEPTH;
-var init_git_head = __esm({
-  "src/core/status/git-head.ts"() {
-    "use strict";
-    init_errors();
-    init_git();
-    init_git_layout();
-    SHA = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/;
-    MAX_REF_DEPTH = 5;
   }
 });
 
@@ -68908,8 +68908,8 @@ function partsText(parts3) {
 
 // src/core/status/code-status.ts
 init_runtime();
-import { readFileSync as readFileSync8 } from "node:fs";
-import { join as join14 } from "node:path";
+import { readFileSync as readFileSync10 } from "node:fs";
+import { join as join16 } from "node:path";
 
 // src/core/code/crap/status.ts
 init_checks();
@@ -69486,6 +69486,7 @@ init_store();
 init_derive();
 
 // src/core/delivery/registered.ts
+init_git_head();
 init_daemon();
 init_store();
 init_store_records();
@@ -69497,13 +69498,18 @@ function parkedMetaKey(worktreeId) {
   return worktreeMetaKey("registeredLeft", worktreeId);
 }
 var isNumber3 = (value) => typeof value === "number";
+var isString = (value) => typeof value === "string";
 var isGap = (value) => Array.isArray(value) && value.length === 2 && value.every(isNumber3);
 function toRegistration(value) {
   if (isNumber3(value)) return { since: value, gaps: [] };
   if (!isRecord(value) || !isNumber3(value.since) || !Array.isArray(value.gaps)) return null;
   if (!value.gaps.every(isGap)) return null;
-  const r = { since: value.since, gaps: value.gaps };
-  return isNumber3(value.scanned) ? { ...r, scanned: value.scanned } : r;
+  return {
+    since: value.since,
+    gaps: value.gaps,
+    ...isNumber3(value.scanned) ? { scanned: value.scanned } : {},
+    ...isString(value.head) ? { head: value.head } : {}
+  };
 }
 function registration(store, consumer) {
   return toRegistration(readSlot(store, registeredMetaKey(consumer.worktreeId), consumer));
@@ -69657,7 +69663,7 @@ function codeStatusOf(store, worktreeId, at2, shell) {
 function setWithoutCoverage(root) {
   let config;
   try {
-    config = JSON.parse(readFileSync8(join14(root, POLICY_FILE), "utf8"));
+    config = JSON.parse(readFileSync10(join16(root, POLICY_FILE), "utf8"));
   } catch {
     return [];
   }
