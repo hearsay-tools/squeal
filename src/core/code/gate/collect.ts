@@ -9,7 +9,12 @@ import { readObjectFormat } from "../../hash/git-index.js";
 import type { AbsolutePath, RelativePath } from "../../types/common.js";
 import type { TestFileRef } from "../../types/keys.js";
 import type { NodeTestProject, Policy, PolicyInputs } from "../../types/policy.js";
-import type { RunnerAdapter, RunnerClosure, RunReport } from "../../types/runner.js";
+import type {
+  RunnerAdapter,
+  RunnerClosure,
+  RunnerEnvironment,
+  RunReport,
+} from "../../types/runner.js";
 import type { BlobCache } from "../coverage/record.js";
 import { coverageProvider, PROVIDER_MISSING_NOTE } from "../coverage/runtime.js";
 import type { CoverageRun, CoveredFile } from "../coverage/types.js";
@@ -91,11 +96,15 @@ export interface CollectOptions {
  * leaves out runs. Called once per runner with a selected file, before its
  * run and within the budget. `closure`, which the collector always gives,
  * is the runner's closure of a file here, `null` when it cannot give one.
+ * `environment`, which it always gives too, is the runner's environment of
+ * each project here, as the runs would have it; it rejects when the runner
+ * cannot give one.
  */
 export type StoredEvidence = (
   runner: TestFileEvidence["runner"],
   files: readonly TestFileRef[],
   closure?: (ref: TestFileRef) => Promise<RunnerClosure | null>,
+  environment?: () => Promise<readonly RunnerEnvironment[]>,
 ) => Promise<ReadonlyMap<TestFileRef, TestFileEvidence>>;
 
 /** D3.1: a `--test` path that no runner lists as a test file; a usage error (D1, exit 2). */
@@ -158,7 +167,9 @@ export async function collectEvidence(
       const chosen = selected[i] ?? [];
       if (chosen.length === 0) continue;
       const closure = (ref: TestFileRef) => runner.adapter.closure(ref).catch(() => null);
-      const stored = (await options.stored?.(runner.kind, chosen, closure)) ?? new Map();
+      const environment = () => runner.adapter.environment();
+      const stored =
+        (await options.stored?.(runner.kind, chosen, closure, environment)) ?? new Map();
       testFiles.push(...stored.values());
       const files = chosen.filter((ref) => !stored.has(ref));
       if (files.length === 0) continue;

@@ -17,6 +17,7 @@ import type { TestFileRef } from "../core/types/keys.js";
 import type { Policy } from "../core/types/policy.js";
 import type { RunnerAdapter } from "../core/types/runner.js";
 import { createNodeTestAdapter } from "../runners/node-test/adapter.js";
+import { RECORDER_VERSION } from "../runners/observe/runtime.js";
 import { createVitestAdapter } from "../runners/vitest/index.js";
 
 /*
@@ -30,9 +31,10 @@ import { createVitestAdapter } from "../runners/vitest/index.js";
 
 /**
  * D3's evidence of `changed`: each selected file `parts` certify taken
- * from them (D13.2), then each with results and a record at its
- * key read from the stores (D11.7), and every other file run; how many
- * came from each is told through `options.note`. The keys hold
+ * from them, in the environment the gate's runner has (D13.2), then each
+ * with results and a record at its key read from the stores (D11.7), and
+ * every other file run; how many came from each is told through
+ * `options.note`. The keys hold
  * `options.children`, the base's `coverage.children`, so a record
  * collected otherwise is never read. The stores close before it resolves.
  */
@@ -48,7 +50,19 @@ export async function collectWithStores(
   const fromParts =
     parts.length === 0
       ? undefined
-      : partsEvidence({ root, parts, changed: changed.paths, children, note });
+      : partsEvidence({
+          root,
+          parts,
+          changed: changed.paths,
+          children,
+          // D13.2: the gate's runs see `env`; the allow-list is this worktree's, as `ci record` reads it.
+          environment: {
+            env,
+            allowlist: readPolicy(root).env.allowlist,
+            recorderVersion: RECORDER_VERSION,
+          },
+          note,
+        });
   const stored = storedFiles(root, env, note, children);
   try {
     const known = inOrder([fromParts, stored?.stored]);
@@ -77,12 +91,13 @@ export async function collectWithStores(
 function inOrder(sources: readonly (StoredEvidence | undefined)[]): StoredEvidence | null {
   const given = sources.filter((s): s is StoredEvidence => s !== undefined);
   if (given.length === 0) return null;
-  return async (runner, files, closure) => {
+  return async (runner, files, closure, environment) => {
     const found = new Map<TestFileRef, TestFileEvidence>();
     for (const source of given) {
       const left = files.filter((ref) => !found.has(ref));
       if (left.length === 0) break;
-      for (const [ref, evidence] of await source(runner, left, closure)) found.set(ref, evidence);
+      const known = await source(runner, left, closure, environment);
+      for (const [ref, evidence] of known) found.set(ref, evidence);
     }
     return found;
   };
