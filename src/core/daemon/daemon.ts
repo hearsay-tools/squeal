@@ -14,6 +14,7 @@ import { clearRecord, markExit, recordRegistration } from "../presence/events.js
 import { resumesRest } from "../presence/facts.js";
 import { clearStartMark } from "../presence/lock-events.js";
 import { readCommandHolds } from "../scheduler/hold-rows.js";
+import { ImportsSeen } from "../shared/imports-seen.js";
 import type { SharedReader } from "../shared/reader.js";
 import { slowSlotDir } from "../slow/slot.js";
 import { recordOptimizerOff } from "../state/optimizer-note.js";
@@ -213,6 +214,8 @@ class Daemon {
   #coverage: CoverageWriter | null = null;
   /** Spec 018 D14 (row 018-20): CI's export of the nearest main commit; fetches only with `shared.ref`. */
   #shared: SharedReader | null = null;
+  /** Row 018-28: the imports whose observed entries this daemon's keys read. */
+  #imports: ImportsSeen | null = null;
   /**
    * What its tests leave running, stopped after each tier and at exit (D12).
    * Their mark is the registration's token, which `squeal stop` reads to
@@ -824,6 +827,8 @@ class Daemon {
         },
       });
       this.#loop = loop;
+      // Row 018-28: an import after this point is read again at the retry request that follows it.
+      this.#imports = new ImportsSeen(store);
       await loop.start();
       // Spec 018 D14 (row 018-20): at start and when the nearest main commit changes (each batch
       // looks), CI's export of that commit, fetched and imported in the background.
@@ -943,7 +948,10 @@ class Daemon {
   async #requestRetries(): Promise<void> {
     await this.#starting;
     if (this.#loop === null || this.#phase === "stopping") return;
-    await this.#loop.scheduler.requestRetries();
+    const { scheduler } = this.#loop;
+    // Row 018-28: an import's observed entries key this worktree's files now, as a start would.
+    this.#imports?.take((projects) => scheduler.refreshObserved(projects));
+    await scheduler.requestRetries();
   }
 
   /** Spec 011 C15: a named wait promotes its test files for `withinMs`. */
