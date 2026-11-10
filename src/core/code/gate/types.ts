@@ -111,6 +111,11 @@ export interface TestFileEvidence {
   readonly loads: readonly RelativePath[] | null;
   /** Its record at the current provider and record versions; `null` when none. */
   readonly record: CoverageRecord | null;
+  /**
+   * D11.7: read from the stores at the key a daemon gives it, not run;
+   * absent when this command ran it.
+   */
+  readonly fromStore?: true;
 }
 
 /** D3: what the collector gives the evaluator. */
