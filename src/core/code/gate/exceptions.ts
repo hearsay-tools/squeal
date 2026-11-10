@@ -186,7 +186,7 @@ const TEXTS = ["path", "qualifiedName", "bodyHash", "issue", "approver", "baseCo
 
 /** One entry of the file, or why it is not one. */
 function entryOf(raw: unknown): ExceptionEntry | string {
-  if (!isRecord(raw)) return "is not a JSON object";
+  if (!isRecord(raw)) return "not a JSON object";
   for (const key of TEXTS) {
     if (typeof raw[key] !== "string" || raw[key] === "") return `${key} is not a non-empty string`;
   }
@@ -223,13 +223,13 @@ export function parseExceptions(
   try {
     data = JSON.parse(text);
   } catch (error) {
-    return { error: `does not parse as JSON: ${(error as Error).message}` };
+    return { error: `not JSON: ${(error as Error).message}` };
   }
-  if (!isRecord(data)) return { error: "is not a JSON object" };
+  if (!isRecord(data)) return { error: "not a JSON object" };
   if (data.format !== EXCEPTIONS_FORMAT) {
-    return { error: `its format is ${JSON.stringify(data.format)}, not "${EXCEPTIONS_FORMAT}"` };
+    return { error: `format is ${JSON.stringify(data.format)}, not "${EXCEPTIONS_FORMAT}"` };
   }
-  if (!Array.isArray(data.entries)) return { error: "its entries is not a list" };
+  if (!Array.isArray(data.entries)) return { error: "entries is not a list" };
   const entries: ExceptionEntry[] = [];
   for (const [i, raw] of (data.entries as unknown[]).entries()) {
     const entry = entryOf(raw);
