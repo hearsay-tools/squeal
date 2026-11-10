@@ -1,0 +1,6 @@
+== stdout
+CHILD inherit line
+{"report":"only this on stdout?"}
+== stderr
+IN_PROCESS console.log line
+IN_PROCESS relays piped: CHILD piped line

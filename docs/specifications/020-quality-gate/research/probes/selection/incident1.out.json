@@ -1,0 +1,701 @@
+{
+ "commit": "e831c2c67",
+ "changed": [
+  "packages/cezar/src/automations/project-files.test.ts",
+  "packages/cezar/src/automations/store.ts",
+  "packages/cezar/src/ci-wait/contract.test.ts",
+  "packages/cezar/src/ci-wait/errors.ts",
+  "packages/cezar/src/ci-wait/tools.ts",
+  "packages/cezar/src/cli-dispatch.test.ts",
+  "packages/cezar/src/cli-dispatch.ts",
+  "packages/cezar/src/core/harness-parity-cells.testkit.ts",
+  "packages/cezar/src/home/entry-points.test.ts",
+  "packages/cezar/src/home/migration-boot.ts",
+  "packages/cezar/src/home/migration-cli.test.ts",
+  "packages/cezar/src/home/migration-rollback-boot.test.ts",
+  "packages/cezar/src/jobs/cli.ts",
+  "packages/cezar/src/jobs/command.ts",
+  "packages/cezar/src/jobs/job.test.ts",
+  "packages/cezar/src/jobs/job.ts",
+  "packages/cezar/src/project-commands.ts",
+  "packages/cezar/src/project-migration/auto.ts",
+  "packages/cezar/src/project-migration/engine.test.ts",
+  "packages/cezar/src/project-migration/fresh.ts",
+  "packages/cezar/src/project-migration/live.ts",
+  "packages/cezar/src/project-migration/migrate-project.test.ts",
+  "packages/cezar/src/project-migration/plan.ts",
+  "packages/cezar/src/project-paths-switch.test.ts",
+  "packages/cezar/src/project-paths.ts",
+  "packages/cezar/src/server-install/group-migrate.test.ts",
+  "packages/cezar/src/server-install/group-migrate.ts",
+  "packages/cezar/src/server-install/migrate-cli.ts",
+  "packages/cezar/src/server-install/platforms/ubuntu-vps-migration.ts",
+  "packages/cezar/src/server-install/server-migrate-switch.test.ts",
+  "packages/cezar/src/server-install/state.ts",
+  "packages/cezar/src/server-install/strategies.ts",
+  "packages/cezar/src/server/run-checkout.test.ts",
+  "packages/cezar/src/server/run-checkout.ts",
+  "packages/cezar/src/server/server.ts",
+  "packages/cezar/src/subcommands.ts",
+  "packages/cezar/src/workflows/ci-wait-conflict-parity.testkit.ts",
+  "packages/cezar/src/workflows/ci-wait-registration.test.ts",
+  "packages/cezar/src/workflows/launch-system-prompt.test.ts",
+  "packages/cezar/src/workflows/pr-merge-wait-parity.test.ts",
+  "packages/cezar/src/workflows/process-waits.test.ts",
+  "packages/cezar/src/workflows/run.ts",
+  "packages/cezar/src/workflows/run/boundary-family-reconciliation.test.ts",
+  "packages/cezar/src/workflows/run/boundary-order.testkit.ts",
+  "packages/cezar/src/workflows/run/children-encapsulation.test.ts",
+  "packages/cezar/src/workflows/run/completion-wait-capacity.test.ts",
+  "packages/cezar/src/workflows/run/compose.ts",
+  "packages/cezar/src/workflows/run/family-reconciler.ts",
+  "packages/cezar/src/workflows/run/human-waits.ts",
+  "packages/cezar/src/workflows/run/input-delivery.ts",
+  "packages/cezar/src/workflows/run/run-cancel.ts",
+  "packages/cezar/src/workflows/run/run-finish.ts",
+  "packages/cezar/src/workflows/run/run-recovery.ts",
+  "packages/cezar/src/workflows/run/session-events.ts",
+  "packages/cezar/src/workflows/run/step-loop.ts",
+  "packages/cezar/src/workflows/run/subagent-waits.ts",
+  "packages/cezar/src/workflows/run/turn-settler.test.ts",
+  "packages/cezar/src/workflows/run/turn-settler.ts",
+  "packages/cezar/src/workflows/run/wait-cancellation.ts",
+  "packages/cezar/src/workflows/run/wait-engine.test.ts",
+  "packages/cezar/src/workflows/run/wait-engine.ts",
+  "packages/cezar/src/workflows/run/wait-kinds.ts",
+  "packages/cezar/src/workflows/run/wait-registry.ts",
+  "packages/cezar/src/workflows/run/wait-resolve.ts",
+  "packages/cezar/src/workflows/run/wake-admission.ts",
+  "packages/cezar/src/workflows/subagent-waits.test.ts",
+  "packages/cezar/src/workflows/system-prompt.test.ts",
+  "packages/cezar/src/workflows/wait-scope.ts",
+  "packages/cezar/src/workflows/waits.test.ts",
+  "packages/cezar/src/workflows/worker-wait-capacity-finish-retry.test.ts",
+  "packages/cezar/src/workspace/backups-home-files.test.ts",
+  "packages/cezar/src/workspace/backups.ts",
+  "packages/cezar/test/e2e/job-cli.test.ts"
+ ],
+ "closures": {
+  "packages/web/e2e/environment.ts": {
+   "size": 42,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "scripts/test-browser-home-env.mjs": {
+   "size": 6,
+   "holds": []
+  },
+  "packages/web/e2e/fetch-setup.mjs": {
+   "size": 1,
+   "holds": []
+  },
+  "packages/web/e2e/failure-setup.ts": {
+   "size": 39,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/activity.e2e.ts": {
+   "size": 43,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/agent-browser-tabs.e2e.ts": {
+   "size": 41,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/agents-dock.e2e.ts": {
+   "size": 44,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/application-update.e2e.ts": {
+   "size": 39,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/artifact-project-links.e2e.ts": {
+   "size": 42,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/assistant-line-breaks.e2e.ts": {
+   "size": 44,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/assistant-reply-copy.e2e.ts": {
+   "size": 45,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/automations-disabled.e2e.ts": {
+   "size": 41,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/automations-github.e2e.ts": {
+   "size": 41,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/automations.e2e.ts": {
+   "size": 42,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/chat-code-fence.e2e.ts": {
+   "size": 45,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/command-palette.e2e.ts": {
+   "size": 39,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/commit-list.e2e.ts": {
+   "size": 43,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/completion-controls.e2e.ts": {
+   "size": 42,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/composer-defaults.e2e.ts": {
+   "size": 41,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/composer.e2e.ts": {
+   "size": 41,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/create-project.e2e.ts": {
+   "size": 41,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/diff-scroll.e2e.ts": {
+   "size": 41,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/empty-states.e2e.ts": {
+   "size": 41,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/fixture-home-isolation.e2e.ts": {
+   "size": 41,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/git-sidebar.e2e.ts": {
+   "size": 44,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/github-core.e2e.ts": {
+   "size": 41,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/github-layout.e2e.ts": {
+   "size": 41,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/github-paging.e2e.ts": {
+   "size": 41,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/github-pr-review.e2e.ts": {
+   "size": 41,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/github-sidebar.e2e.ts": {
+   "size": 45,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/github-states.e2e.ts": {
+   "size": 41,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/good-css.e2e.ts": {
+   "size": 42,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/home-recovery.e2e.ts": {
+   "size": 65,
+   "holds": [
+    "packages/cezar/src/project-paths.ts",
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/html-report-cards.e2e.ts": {
+   "size": 44,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/html-report-reader.e2e.ts": {
+   "size": 42,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/inbox.e2e.ts": {
+   "size": 39,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/index-workload.e2e.ts": {
+   "size": 43,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/ios-sweep.e2e.ts": {
+   "size": 40,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/issue-linked-tasks.e2e.ts": {
+   "size": 41,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/live-preview.e2e.ts": {
+   "size": 41,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/markdown-preview.e2e.ts": {
+   "size": 42,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/mobile-projects.e2e.ts": {
+   "size": 42,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/mobile-tab-bar.e2e.ts": {
+   "size": 43,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/mobile-task-controls.e2e.ts": {
+   "size": 43,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/new-task-hierarchy.e2e.ts": {
+   "size": 42,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/new-task-picker-layout.e2e.ts": {
+   "size": 41,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/new-task.e2e.ts": {
+   "size": 42,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/page-headings.e2e.ts": {
+   "size": 39,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/peer-conversation.e2e.ts": {
+   "size": 45,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/pending-question.e2e.ts": {
+   "size": 44,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/plan-mode.e2e.ts": {
+   "size": 41,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/progressive-history.e2e.ts": {
+   "size": 47,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/project-order.e2e.ts": {
+   "size": 42,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/project-rail.e2e.ts": {
+   "size": 43,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/project-sidebar.e2e.ts": {
+   "size": 40,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/queued-stack.e2e.ts": {
+   "size": 42,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/quick-list.e2e.ts": {
+   "size": 43,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/remote-settings-admin.e2e.ts": {
+   "size": 41,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/repo-git-diff.e2e.ts": {
+   "size": 42,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/repo-git.e2e.ts": {
+   "size": 42,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/reports-workload.e2e.ts": {
+   "size": 43,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/reports.e2e.ts": {
+   "size": 44,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/review-gate.e2e.ts": {
+   "size": 42,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/run-header-ci-wait.e2e.ts": {
+   "size": 42,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/screenshot-element.e2e.ts": {
+   "size": 39,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/search-focus.e2e.ts": {
+   "size": 42,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/selection-states.e2e.ts": {
+   "size": 43,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/session-footer.e2e.ts": {
+   "size": 46,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/settings-agent-config.e2e.ts": {
+   "size": 40,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/settings-agents.e2e.ts": {
+   "size": 41,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/settings-appearance.e2e.ts": {
+   "size": 42,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/settings-bookmarklets.e2e.ts": {
+   "size": 39,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/settings-monitoring.e2e.ts": {
+   "size": 41,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/settings-resources.e2e.ts": {
+   "size": 40,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/settings-sidebar.e2e.ts": {
+   "size": 39,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/settings-skills.e2e.ts": {
+   "size": 41,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/settings-task-archiving.e2e.ts": {
+   "size": 40,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/sidebar-ellipsis-click.e2e.ts": {
+   "size": 42,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/sidebar-limits.e2e.ts": {
+   "size": 43,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/sidebar-project-header.e2e.ts": {
+   "size": 43,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/sidebar-reference-status.e2e.ts": {
+   "size": 44,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/skill-search-ranking.e2e.ts": {
+   "size": 41,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/smoke.e2e.ts": {
+   "size": 41,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/tab-coordination.e2e.ts": {
+   "size": 42,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/task-changes.e2e.ts": {
+   "size": 41,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/task-files.e2e.ts": {
+   "size": 42,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/task-github-items.e2e.ts": {
+   "size": 43,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/task-handoff.e2e.ts": {
+   "size": 43,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/task-list-virtualization.e2e.ts": {
+   "size": 42,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/task-list-workload.e2e.ts": {
+   "size": 43,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/task-pr-collection.e2e.ts": {
+   "size": 43,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/task-status-groups.e2e.ts": {
+   "size": 43,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/task-thread-layout.e2e.ts": {
+   "size": 48,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/task-thread-session.e2e.ts": {
+   "size": 47,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/task-thread-transcript.e2e.ts": {
+   "size": 47,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/task-views-layout.e2e.ts": {
+   "size": 44,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/thread-scroll.e2e.ts": {
+   "size": 46,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/tools-menu.e2e.ts": {
+   "size": 39,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/touch-targets.e2e.ts": {
+   "size": 44,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/voice.e2e.ts": {
+   "size": 41,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/worker-conversation.e2e.ts": {
+   "size": 47,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/worker-relationships.e2e.ts": {
+   "size": 45,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/workflows.e2e.ts": {
+   "size": 40,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  },
+  "packages/web/e2e/worktree-setup.e2e.ts": {
+   "size": 41,
+   "holds": [
+    "packages/cezar/src/workspace/backups.ts"
+   ]
+  }
+ }
+}
