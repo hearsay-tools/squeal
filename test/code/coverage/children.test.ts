@@ -71,7 +71,7 @@ const linesOf = (text: string) =>
     .map((l) => l + 1);
 
 describe("mergeRecords (020 D12)", () => {
-  it("ORs lines and covered lines and unions functions per path at one blob; two blobs or unread read unread", () => {
+  it("ORs lines, covered lines and each function's hit per path at one blob; two blobs or unread read unread", () => {
     const own: CoverageRecord = {
       v: 1,
       sources: [
@@ -120,9 +120,9 @@ describe("mergeRecords (020 D12)", () => {
           "a1",
           [1, 2, 3, 5, 12],
           [1, 2, 5, 12],
+          // One function at 5:0-5:10 in each record: it ran in the child, so it ran (020-10b).
           [
             [1, 0, 3, 1, 1],
-            [5, 0, 5, 10, 0],
             [5, 0, 5, 10, 1],
           ],
         ),
@@ -132,6 +132,39 @@ describe("mergeRecords (020 D12)", () => {
       unread: ["dist/cli.mjs", "src/d.ts", "src/e.ts"],
     });
     // The order of the records does not matter.
+    expect(mergeRecords(child, [own])).toEqual(merged);
+  });
+
+  it("keeps two functions at one span of one record apart, with every hit seen there (review 0.1.297 B4)", () => {
+    // A class's field initializer ran in the test's process; its arrow field ran nowhere.
+    const own: CoverageRecord = {
+      v: 1,
+      sources: [
+        source(
+          "src/a.ts",
+          "a1",
+          [2],
+          [2],
+          [
+            [2, 2, 2, 20, 0],
+            [2, 2, 2, 20, 1],
+          ],
+        ),
+      ],
+      unread: [],
+    };
+    const child: CoverageRecord = {
+      v: 1,
+      sources: [source("src/a.ts", "a1", [2], [], [[2, 2, 2, 20, 0]])],
+      unread: [],
+    };
+
+    const merged = mergeRecords(own, [child]);
+
+    expect(merged.sources[0]?.functions).toEqual([
+      [2, 2, 2, 20, 0],
+      [2, 2, 2, 20, 1],
+    ]);
     expect(mergeRecords(child, [own])).toEqual(merged);
   });
 
