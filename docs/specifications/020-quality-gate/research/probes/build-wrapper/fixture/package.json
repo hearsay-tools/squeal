@@ -1,0 +1,9 @@
+{
+  "name": "build-wrapper-fixture",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test:package": "node scripts/wrap.mjs"
+  }
+}
