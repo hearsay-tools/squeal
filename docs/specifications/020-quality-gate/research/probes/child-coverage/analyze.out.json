@@ -1,0 +1,521 @@
+{
+  "forks": {
+    "testFiles": 2,
+    "perFile": {
+      "test/b.test.ts": {
+        "workerPid": 2419286,
+        "children": [
+          {
+            "file": "coverage-2419405-1794303973779-0.json",
+            "bytes": 485794,
+            "scripts": 146,
+            "cpuMs": 5.3,
+            "wallMs": 5.1,
+            "sources": [
+              "bin/run-plain.mjs",
+              "src/plain.mjs"
+            ],
+            "unread": []
+          }
+        ],
+        "measured": {
+          "src/work.ts": [
+            {
+              "fn": "work",
+              "cc": 3,
+              "ran": false,
+              "coverage": 0,
+              "crap": 12,
+              "childRecords": 0
+            },
+            {
+              "fn": "unused",
+              "cc": 2,
+              "ran": false,
+              "coverage": 0,
+              "crap": 6,
+              "childRecords": 0
+            }
+          ],
+          "src/plain.mjs": [
+            {
+              "fn": "plain",
+              "cc": 2,
+              "ran": true,
+              "coverage": 1,
+              "crap": 2,
+              "childRecords": 1
+            }
+          ],
+          "src/lib.ts": [
+            {
+              "fn": "lib",
+              "cc": 2,
+              "ran": false,
+              "coverage": 0,
+              "crap": 6,
+              "childRecords": 0
+            }
+          ],
+          "src/killed.mjs": [
+            {
+              "fn": "killedFn",
+              "cc": 1,
+              "ran": false,
+              "coverage": 0,
+              "crap": 2,
+              "childRecords": 0
+            }
+          ],
+          "src/late.mjs": [
+            {
+              "fn": "lateFn",
+              "cc": 1,
+              "ran": false,
+              "coverage": 0,
+              "crap": 2,
+              "childRecords": 0
+            }
+          ]
+        }
+      },
+      "test/a.test.ts": {
+        "workerPid": 2419281,
+        "children": [
+          {
+            "file": "coverage-2419414-1794303973988-1.json",
+            "bytes": 728196,
+            "scripts": 183,
+            "cpuMs": 16.2,
+            "wallMs": 5.1,
+            "sources": [],
+            "unread": []
+          },
+          {
+            "file": "coverage-2419414-1794303974012-0.json",
+            "bytes": 735504,
+            "scripts": 196,
+            "cpuMs": 24.6,
+            "wallMs": 8.3,
+            "sources": [
+              "bin/run-ts.ts",
+              "src/work.ts"
+            ],
+            "unread": []
+          },
+          {
+            "file": "coverage-2419566-1794303974092-0.json",
+            "bytes": 101849,
+            "scripts": 72,
+            "cpuMs": 5.2,
+            "wallMs": 1.6,
+            "sources": [
+              "bin/run-plain.mjs",
+              "src/plain.mjs"
+            ],
+            "unread": []
+          },
+          {
+            "file": "coverage-2419588-1794303974183-0.json",
+            "bytes": 488494,
+            "scripts": 146,
+            "cpuMs": 9.7,
+            "wallMs": 3.8,
+            "sources": [],
+            "unread": [
+              "dist/cli.mjs"
+            ]
+          },
+          {
+            "file": "coverage-2419719-1794303975934-0.json",
+            "bytes": 485348,
+            "scripts": 153,
+            "cpuMs": 9.1,
+            "wallMs": 3.4,
+            "sources": [
+              "bin/late.mjs",
+              "src/late.mjs"
+            ],
+            "unread": []
+          }
+        ],
+        "measured": {
+          "src/work.ts": [
+            {
+              "fn": "work",
+              "cc": 3,
+              "ran": true,
+              "coverage": 0.5,
+              "crap": 4.13,
+              "childRecords": 1
+            },
+            {
+              "fn": "unused",
+              "cc": 2,
+              "ran": false,
+              "coverage": 0,
+              "crap": 6,
+              "childRecords": 1
+            }
+          ],
+          "src/plain.mjs": [
+            {
+              "fn": "plain",
+              "cc": 2,
+              "ran": true,
+              "coverage": 0.67,
+              "crap": 2.15,
+              "childRecords": 1
+            }
+          ],
+          "src/lib.ts": [
+            {
+              "fn": "lib",
+              "cc": 2,
+              "ran": false,
+              "coverage": 0,
+              "crap": 6,
+              "childRecords": 0
+            }
+          ],
+          "src/killed.mjs": [
+            {
+              "fn": "killedFn",
+              "cc": 1,
+              "ran": false,
+              "coverage": 0,
+              "crap": 2,
+              "childRecords": 0
+            }
+          ],
+          "src/late.mjs": [
+            {
+              "fn": "lateFn",
+              "cc": 1,
+              "ran": true,
+              "coverage": 1,
+              "crap": 1,
+              "childRecords": 1
+            }
+          ]
+        }
+      }
+    }
+  },
+  "threads": {
+    "testFiles": 2,
+    "perFile": {
+      "test/b.test.ts": {
+        "workerPid": 2420860,
+        "children": [
+          {
+            "file": "coverage-2421245-1794303977807-0.json",
+            "bytes": 485794,
+            "scripts": 146,
+            "cpuMs": 11.6,
+            "wallMs": 3.6,
+            "sources": [
+              "bin/run-plain.mjs",
+              "src/plain.mjs"
+            ],
+            "unread": []
+          }
+        ],
+        "measured": {
+          "src/work.ts": [
+            {
+              "fn": "work",
+              "cc": 3,
+              "ran": false,
+              "coverage": 0,
+              "crap": 12,
+              "childRecords": 0
+            },
+            {
+              "fn": "unused",
+              "cc": 2,
+              "ran": false,
+              "coverage": 0,
+              "crap": 6,
+              "childRecords": 0
+            }
+          ],
+          "src/plain.mjs": [
+            {
+              "fn": "plain",
+              "cc": 2,
+              "ran": true,
+              "coverage": 1,
+              "crap": 2,
+              "childRecords": 1
+            }
+          ],
+          "src/lib.ts": [
+            {
+              "fn": "lib",
+              "cc": 2,
+              "ran": false,
+              "coverage": 0,
+              "crap": 6,
+              "childRecords": 0
+            }
+          ],
+          "src/killed.mjs": [
+            {
+              "fn": "killedFn",
+              "cc": 1,
+              "ran": false,
+              "coverage": 0,
+              "crap": 2,
+              "childRecords": 0
+            }
+          ],
+          "src/late.mjs": [
+            {
+              "fn": "lateFn",
+              "cc": 1,
+              "ran": false,
+              "coverage": 0,
+              "crap": 2,
+              "childRecords": 0
+            }
+          ]
+        }
+      },
+      "test/a.test.ts": {
+        "workerPid": 2420860,
+        "children": [
+          {
+            "file": "coverage-2421250-1794303977897-0.json",
+            "bytes": 708411,
+            "scripts": 193,
+            "cpuMs": 18.3,
+            "wallMs": 6,
+            "sources": [
+              "bin/run-ts.ts",
+              "src/work.ts"
+            ],
+            "unread": []
+          },
+          {
+            "file": "coverage-2421324-1794303977987-0.json",
+            "bytes": 101849,
+            "scripts": 72,
+            "cpuMs": 2.9,
+            "wallMs": 1.1,
+            "sources": [
+              "bin/run-plain.mjs",
+              "src/plain.mjs"
+            ],
+            "unread": []
+          },
+          {
+            "file": "coverage-2421357-1794303978103-0.json",
+            "bytes": 488496,
+            "scripts": 146,
+            "cpuMs": 11.7,
+            "wallMs": 5.8,
+            "sources": [],
+            "unread": [
+              "dist/cli.mjs"
+            ]
+          },
+          {
+            "file": "coverage-2421455-1794303979869-0.json",
+            "bytes": 485348,
+            "scripts": 153,
+            "cpuMs": 7.7,
+            "wallMs": 2.9,
+            "sources": [
+              "bin/late.mjs",
+              "src/late.mjs"
+            ],
+            "unread": []
+          }
+        ],
+        "measured": {
+          "src/work.ts": [
+            {
+              "fn": "work",
+              "cc": 3,
+              "ran": true,
+              "coverage": 0.5,
+              "crap": 4.13,
+              "childRecords": 1
+            },
+            {
+              "fn": "unused",
+              "cc": 2,
+              "ran": false,
+              "coverage": 0,
+              "crap": 6,
+              "childRecords": 1
+            }
+          ],
+          "src/plain.mjs": [
+            {
+              "fn": "plain",
+              "cc": 2,
+              "ran": true,
+              "coverage": 0.67,
+              "crap": 2.15,
+              "childRecords": 1
+            }
+          ],
+          "src/lib.ts": [
+            {
+              "fn": "lib",
+              "cc": 2,
+              "ran": false,
+              "coverage": 0,
+              "crap": 6,
+              "childRecords": 0
+            }
+          ],
+          "src/killed.mjs": [
+            {
+              "fn": "killedFn",
+              "cc": 1,
+              "ran": false,
+              "coverage": 0,
+              "crap": 2,
+              "childRecords": 0
+            }
+          ],
+          "src/late.mjs": [
+            {
+              "fn": "lateFn",
+              "cc": 1,
+              "ran": true,
+              "coverage": 1,
+              "crap": 1,
+              "childRecords": 1
+            }
+          ]
+        }
+      }
+    }
+  },
+  "nodeTest": {
+    "ownPid": "2422285",
+    "ownFiles": [
+      {
+        "file": "coverage-2422285-1794303981174-0.json",
+        "bytes": 638233,
+        "scripts": 193,
+        "cpuMs": 4.3,
+        "wallMs": 3.6,
+        "sources": [
+          "children.cjs",
+          "test/n.test.mjs"
+        ],
+        "unread": []
+      }
+    ],
+    "children": [
+      {
+        "file": "coverage-2422360-1794303980828-0.json",
+        "bytes": 485794,
+        "scripts": 146,
+        "cpuMs": 5.1,
+        "wallMs": 2.7,
+        "sources": [
+          "bin/run-plain.mjs",
+          "src/plain.mjs"
+        ],
+        "unread": []
+      },
+      {
+        "file": "coverage-2422419-1794303981108-0.json",
+        "bytes": 708459,
+        "scripts": 193,
+        "cpuMs": 4.6,
+        "wallMs": 4.6,
+        "sources": [
+          "bin/run-ts.ts",
+          "src/work.ts"
+        ],
+        "unread": []
+      }
+    ],
+    "measured": {
+      "src/work.ts": [
+        {
+          "fn": "work",
+          "cc": 3,
+          "ran": true,
+          "coverage": 0.75,
+          "crap": 3.14,
+          "childRecords": 1
+        },
+        {
+          "fn": "unused",
+          "cc": 2,
+          "ran": false,
+          "coverage": 0,
+          "crap": 6,
+          "childRecords": 1
+        }
+      ],
+      "src/plain.mjs": [
+        {
+          "fn": "plain",
+          "cc": 2,
+          "ran": true,
+          "coverage": 1,
+          "crap": 2,
+          "childRecords": 1
+        }
+      ],
+      "src/lib.ts": [
+        {
+          "fn": "lib",
+          "cc": 2,
+          "ran": false,
+          "coverage": 0,
+          "crap": 6,
+          "childRecords": 0
+        }
+      ],
+      "src/killed.mjs": [
+        {
+          "fn": "killedFn",
+          "cc": 1,
+          "ran": false,
+          "coverage": 0,
+          "crap": 2,
+          "childRecords": 0
+        }
+      ],
+      "src/late.mjs": [
+        {
+          "fn": "lateFn",
+          "cc": 1,
+          "ran": false,
+          "coverage": 0,
+          "crap": 2,
+          "childRecords": 0
+        }
+      ]
+    }
+  },
+  "truncated": {
+    "file": "truncated.json",
+    "bytes": 367752,
+    "error": "SyntaxError: Unterminated string in JSON at position 367752 (line 1 column 367753)"
+  },
+  "mapCost": {
+    "childFiles": 11,
+    "medianBytes": 485794,
+    "maxBytes": 735504,
+    "medianCpuMs": 9.7,
+    "maxCpuMs": 24.6,
+    "totalCpuMs": 122
+  },
+  "lateFile": 1,
+  "load": [
+    "26.52",
+    "32.39",
+    "24.33"
+  ]
+}

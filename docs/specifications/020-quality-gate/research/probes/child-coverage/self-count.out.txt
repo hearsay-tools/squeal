@@ -1,0 +1,4 @@
+$ node self-count.mjs
+{"env":null,"count":1}
+$ NODE_V8_COVERAGE=<dir> node self-count.mjs
+{"env":"<dir>","count":2}

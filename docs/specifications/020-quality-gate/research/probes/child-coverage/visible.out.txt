@@ -1,0 +1,34 @@
+18 files of visible.files.txt, --maxWorkers=3, visible.setup.ts on; one-minute load 21.28 before, 26.79 after
+     × leaves one payload per test file, none for one that reads V8 coverage, which passes 1221ms
+     × takes none in a project whose setup file imports node:inspector, and names each file (review 0.1.295 B2) 592ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  test/runners/vitest/own-provider.test.ts > vitest adapter: Squeal's coverage provider > leaves one payload per test file, none for one that reads V8 coverage, which passes
+ FAIL  test/runners/vitest/own-provider.test.ts > vitest adapter: Squeal's coverage provider > takes none in a project whose setup file imports node:inspector, and names each file (review 0.1.295 B2)
+ Test Files  1 failed | 17 passed (18)
+      Tests  2 failed | 155 passed (157)
+wall 31.21 s, user 51.35 s, sys 17.84 s
+
+own-provider.test.ts alone, setup file off; load 26.65
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+wall 3.29 s, user 3.38 s, sys 2.62 s
+
+raw child files per test file (count, size):
+43 12M test__runners__observe__recorder.test.ts
+29 5.0M test__runners__observe__reach.test.ts
+26 9.8M test__harness__opencode__bundle.test.ts
+15 2.7M test__harness__opencode__bridge-client.test.ts
+13 9.8M test__lint__provider__nested.test.ts
+12 7.2M test__runners__node-test__coverage.test.ts
+11 1.6M test__harness__opencode__lifecycle.test.ts
+9 1.4M test__harness__opencode__plugin.test.ts
+7 5.0M test__code__coverage__own.test.ts
+2 944K test__code__gate__collect-mixed.test.ts
+2 7.3M test__lint__provider__provider.test.ts
+0 0 test__runners__vitest__own-provider.test.ts
+0 0 test__runners__vitest__own-coverage.test.ts
+0 0 test__runners__node-test__recorders.test.ts
+0 0 test__runners__node-test__coverage-entry.test.ts
+0 0 test__lint__provider__errors.test.ts
+0 0 test__keys__environment.test.ts
+0 0 test__code__gate__collect.test.ts
