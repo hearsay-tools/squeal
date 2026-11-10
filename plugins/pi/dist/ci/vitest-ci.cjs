@@ -22,9 +22,12 @@
 //
 // Settings, `SQUEAL_CI_RECORD`, JSON: `raw` the directory, `variables` the
 // names whose values the file keeps, `evidence` the evidence's settings
-// (`out`, `root`, `skip`, `format`). Before it can attach, the hook writes the
-// file with `state: "started"`, so a Vitest process that ends without a run
-// end is known. CommonJS with Node built-ins only; `require` of the project's
+// (`out`, `root`, `skip`, `format`), `nested` when a Vitest run or one of its
+// test workers started this process. Such a run is a test's own, not the
+// project's: it takes the evidence and writes no file (row 018-27). Every
+// child of a Vitest CLI process gets `nested` (`children.cjs`). Before it can
+// attach, the hook writes the file with `state: "started"`, so a Vitest
+// process that ends without a run end is known. CommonJS with Node built-ins only; `require` of the project's
 // `vitest/node` (an ES module without top-level await) is synchronous, so the
 // wrap is in place before the CLI starts its run. Any error of its own is
 // written to the file as `failed`, never thrown into the run.
@@ -44,7 +47,7 @@ function readSettings() {
     const variables = Array.isArray(value.variables)
       ? value.variables.filter((v) => typeof v === "string")
       : [];
-    return { raw: value.raw, variables };
+    return { raw: value.raw, variables, nested: value.nested === true };
   } catch {
     return null;
   }
@@ -239,6 +242,9 @@ if (settings !== null && isMainThread && !globalThis.__squealCiRecord) {
   globalThis.__squealCiRecord = true;
   try {
     const root = vitestPackage(process.argv[1]);
-    if (root !== null) install(settings, root);
+    if (root !== null) {
+      require("./children.cjs").markNested();
+      if (!settings.nested) install(settings, root);
+    }
   } catch {}
 }
