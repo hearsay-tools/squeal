@@ -170,6 +170,7 @@ export function runCoverageStep(given: CoverageStepInput): CoverageStepReport | 
       ...(brought.size === 0 ? {} : { brought: Object.fromEntries(brought) }),
       ...checksField(checks.measures),
       ...(checks.exclude.length === 0 ? {} : { exclude: checks.exclude }),
+      ...(checks.children ? { children: true as const } : {}),
     };
     if (start || JSON.stringify(written) !== JSON.stringify(summary)) {
       writeSummary(store.meta, worktreeId, written);
