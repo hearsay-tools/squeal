@@ -260,6 +260,8 @@ export async function codeGateCommand(
     budgetSeconds: parsed.budgetSeconds,
     adapters: timed(adapters, durationsMs),
     note: (text) => io.stderr(`squeal code: ${text}\n`),
+    // D12.1: how the runs collect is the base's, as the limits are.
+    children: policy.children,
   }).catch((error: unknown) => (error instanceof Error ? error : new Error(String(error))));
   // D1: a configured runner that cannot start, or no coverage provider, is a setup error.
   if (evidence instanceof Error) {
