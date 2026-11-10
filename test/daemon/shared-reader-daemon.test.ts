@@ -1,8 +1,9 @@
 import { execFileSync } from "node:child_process";
-import { realpathSync } from "node:fs";
+import { realpathSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { describe, expect, it, onTestFinished } from "vitest";
+import { importCommand } from "../../src/cli/import.js";
 import { publishExport } from "../../src/core/ci/publish.js";
 import { requestDaemon } from "../../src/core/daemon/client.js";
 import { type RunningDaemon, startDaemon } from "../../src/core/daemon/daemon.js";
@@ -192,5 +193,23 @@ describe("a daemon's first start with a published export (row 018-28)", SLOW, ()
     ]);
     expect(notesOf(root).filter((text) => text.startsWith("CI results"))).toEqual([]);
     expect(untouched(root)).toBe(before);
+
+    // `squeal import` of the same export into a running daemon of a clone with no remote, which
+    // fetches nothing: the same retry request re-keys at once.
+    const lone = join(dirname(ci.root), "lone");
+    execFileSync("git", ["clone", "-q", remote, lone]);
+    git(lone, ["remote", "remove", "origin"]);
+    const loneRoot = realpathSync(lone);
+    await started(loneRoot, ci.env);
+    expect(importsOf(loneRoot) ?? []).toEqual([]);
+    const file = join(dirname(ci.root), "results.json.gz");
+    writeFileSync(file, encodeBundle(bundle));
+    const io = { cwd: loneRoot, env: ci.env, stdout: () => {}, stderr: () => {} };
+    expect(await importCommand([file], io)).toBe(0);
+    await eventually(
+      () => importsOf(loneRoot)?.[0]?.currentFiles === FILES,
+      60_000,
+      "squeal import",
+    );
   });
 });
