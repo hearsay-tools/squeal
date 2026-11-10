@@ -1,4 +1,5 @@
-import { existsSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Worker } from "node:worker_threads";
 import type { ObjectFormat } from "../../hash/blob.js";
@@ -7,8 +8,20 @@ import type { TestFileRef } from "../../types/keys.js";
 import { ownRecord } from "./own.js";
 import type { Pace } from "./pace.js";
 import { type SharedRecord, shareRecord } from "./parts.js";
-import { type BlobCache, buildRecord, COVERAGE_RECORD_VERSION, encodeRecord } from "./record.js";
-import type { CoverageRecord, CoveredFile, ExecutedSource, V8Payload } from "./types.js";
+import {
+  type BlobCache,
+  buildRecord,
+  COVERAGE_RECORD_VERSION,
+  encodeRecord,
+  mergeRecords,
+} from "./record.js";
+import type {
+  ChildCoverage,
+  CoverageRecord,
+  CoveredFile,
+  ExecutedSource,
+  V8Payload,
+} from "./types.js";
 
 /**
  * Maps a test file's payload to its record as parts, hashed and compressed
@@ -26,6 +39,8 @@ export interface MapperOptions {
   readonly skip: (path: AbsolutePath) => boolean;
   /** Counts the main thread's share of each map. */
   readonly pace: Pace;
+  /** Spec 020 D12: a child file of `testFile` was dropped alone, and why. */
+  readonly childDropped?: (testFile: TestFileRef, why: string) => void;
 }
 
 /** The worker script and the Node options that load it. */
@@ -45,6 +60,8 @@ export type ToWorker =
       readonly payload: AbsolutePath;
       /** Row 015-86: `CoveredFile.ownRoot`; the worker then asks for no source. */
       readonly ownRoot?: AbsolutePath;
+      /** Spec 020 D12: `CoveredFile.children`, read by the worker and removed by the main thread. */
+      readonly children?: ChildCoverage;
     }
   | {
       readonly type: "sources";
@@ -57,7 +74,13 @@ export type ToWorker =
 /** From the worker: the sources a payload needs, then its record or why it has none. */
 export type FromWorker =
   | { readonly type: "need"; readonly id: number; readonly paths: readonly AbsolutePath[] }
-  | { readonly type: "record"; readonly id: number; readonly record: SharedRecord }
+  | {
+      readonly type: "record";
+      readonly id: number;
+      readonly record: SharedRecord;
+      /** Spec 020 D12: why each child file dropped alone was. */
+      readonly dropped?: readonly string[];
+    }
   | { readonly type: "error"; readonly id: number; readonly message: string };
 
 /**
@@ -74,23 +97,30 @@ export function mapWorkerScript(module: URL = new URL(import.meta.url)): string 
   return null;
 }
 
-/** Row 015-11's mapping, on this thread, encoded whole: the payload's read, parse and map are its own. */
+/**
+ * Row 015-11's mapping, on this thread, encoded whole: the payload's read,
+ * parse and map are its own, and its children's (spec 020 D12), each
+ * dropped one told to `dropped`.
+ */
 export function mapHere(
   file: CoveredFile,
   format: ObjectFormat,
   blobs: BlobCache,
   skip: (path: AbsolutePath) => boolean,
+  dropped?: (why: string) => void,
 ): Uint8Array {
-  return encodeRecord(recordHere(file, format, blobs, skip));
+  return encodeRecord(recordHere(file, format, blobs, skip, dropped));
 }
 
 /** On the main thread, each map, its parts' hashes and compression one unit of `pace`. */
 export function threadMapper(options: MapperOptions, blobs: BlobCache): Mapper {
   return {
     map: async (file) =>
-      options.pace.measure(() =>
-        shareRecord(recordHere(file, options.format, blobs, options.skip), COVERAGE_RECORD_VERSION),
-      ),
+      options.pace.measure(() => {
+        const dropped = (why: string) => options.childDropped?.(file.testFile, why);
+        const record = recordHere(file, options.format, blobs, options.skip, dropped);
+        return shareRecord(record, COVERAGE_RECORD_VERSION);
+      }),
     close: () => Promise.resolve(),
   };
 }
@@ -100,16 +130,60 @@ function recordHere(
   format: ObjectFormat,
   blobs: BlobCache,
   skip: (path: AbsolutePath) => boolean,
+  dropped: ((why: string) => void) | undefined,
 ): CoverageRecord {
-  let payload: V8Payload;
   try {
-    payload = JSON.parse(readFileSync(file.payload, "utf8")) as V8Payload;
+    const payload = JSON.parse(readFileSync(file.payload, "utf8")) as V8Payload;
+    const own =
+      file.ownRoot === undefined
+        ? buildRecord(file, payload.result, format, blobs, skip)
+        : ownRecord(file.ownRoot, payload, format, skip);
+    const merged = withChildren(own, file.children, format, skip);
+    for (const why of merged.dropped) dropped?.(why);
+    return merged.record;
   } finally {
-    rmSync(file.payload, { force: true });
+    removePayload(file);
   }
-  return file.ownRoot === undefined
-    ? buildRecord(file, payload.result, format, blobs, skip)
-    : ownRecord(file.ownRoot, payload, format, skip);
+}
+
+/** Spec 020 D12: a larger child file is dropped unread (the coordinator's cap; V8's is ~512 MB). */
+export const CHILD_FILE_LIMIT = 64 * 1024 * 1024;
+
+/**
+ * Spec 020 D12: `own` merged with each child file's record (`ownRecord`). A
+ * file over the limit, or one that does not parse or map, is dropped alone,
+ * with its reason: lost children only lower coverage.
+ */
+export function withChildren(
+  own: CoverageRecord,
+  children: ChildCoverage | undefined,
+  format: ObjectFormat,
+  skip: (path: AbsolutePath) => boolean = () => false,
+): { readonly record: CoverageRecord; readonly dropped: readonly string[] } {
+  if (children === undefined || !existsSync(children.dir)) return { record: own, dropped: [] };
+  const records: CoverageRecord[] = [];
+  const dropped: string[] = [];
+  for (const name of readdirSync(children.dir).sort()) {
+    const path = join(children.dir, name);
+    try {
+      const { size } = statSync(path);
+      if (size > CHILD_FILE_LIMIT) {
+        dropped.push(`${name}: over 64 MiB (${size} bytes)`);
+        continue;
+      }
+      const payload = JSON.parse(readFileSync(path, "utf8")) as V8Payload;
+      records.push(ownRecord(children.root, payload, format, skip));
+    } catch (error) {
+      dropped.push(`${name}: ${String(error)}`);
+    }
+  }
+  return { record: mergeRecords(own, records), dropped };
+}
+
+/** Deletes a mapped file's payload and its children's directory. */
+function removePayload(file: CoveredFile): void {
+  rmSync(file.payload, { force: true });
+  if (file.children !== undefined) rmSync(file.children.dir, { recursive: true, force: true });
 }
 
 /**
@@ -164,9 +238,13 @@ export function workerMapper(
       return;
     }
     jobs.delete(message.id);
-    rmSync(job.file.payload, { force: true });
-    if (message.type === "record") job.resolve(message.record);
-    else job.reject(new Error(message.message));
+    removePayload(job.file);
+    if (message.type === "error") {
+      job.reject(new Error(message.message));
+      return;
+    }
+    for (const why of message.dropped ?? []) options.childDropped?.(job.file.testFile, why);
+    job.resolve(message.record);
   };
   const post = (message: ToWorker) => thread.postMessage(message);
   thread.on("message", (message: FromWorker) => {
@@ -198,6 +276,7 @@ export function workerMapper(
             testFile: file.testFile,
             payload: file.payload,
             ...(file.ownRoot === undefined ? {} : { ownRoot: file.ownRoot }),
+            ...(file.children === undefined ? {} : { children: file.children }),
           }),
         );
       });
