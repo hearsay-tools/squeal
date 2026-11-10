@@ -5,22 +5,22 @@ import type { RelativePath } from "../../types/common.js";
 import type { Policy } from "../../types/policy.js";
 
 /**
- * Spec 015 D1: the language a path is counted as, or `null` when it is not
- * included: an extension the counter does not read, outside `include`,
- * inside `exclude`, under `node_modules`, a test file or a file git ignores.
- * The size limit is not applied here: a file over it is still included, and
- * named as too big (D6).
+ * Spec 015 D1, with 020 D11.6: the language a path is counted as, or `null`
+ * when it is not included: an extension the counter does not read, outside
+ * `include`, inside `exclude`, under `node_modules` or a file git ignores. A
+ * test file is counted like any other file (020 D11.6 reverses 015 D1's
+ * "test files are never counted"). The size limit is not applied here: a
+ * file over it is still included, and named as too big (D6).
  */
 export type Included = (path: RelativePath) => CodeLanguage | null;
 
 export function includedSet(
   complexity: Policy["complexity"],
-  testFiles: readonly RelativePath[],
   ignored: readonly RelativePath[],
 ): Included {
   const include = createInputMatcher(complexity.include);
   const exclude = createInputMatcher(complexity.exclude);
-  const never = new Set([...testFiles, ...ignored]);
+  const never = new Set(ignored);
   return (path) => {
     const language = CODE_EXTENSIONS[extname(path)];
     if (language === undefined || never.has(path)) return null;

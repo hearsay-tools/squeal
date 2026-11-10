@@ -822,11 +822,6 @@ class Daemon {
           lint();
           this.#shared?.nudge();
         },
-        // Row 015-52: a file the pass held for its revision's listing is counted once it is listed.
-        onListed: () => {
-          code.nudge();
-          lint();
-        },
       });
       this.#loop = loop;
       await loop.start();

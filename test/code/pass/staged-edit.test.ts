@@ -56,11 +56,9 @@ const AFTER: Record<string, string | null> = {
 
 /**
  * A worktree through `BEFORE`, D9's failures and a view; then `AFTER`, one
- * pass due. A runner lists `src/n.ts` now, so it leaves quietly, and
- * `src/m.ts` is a symlink. With `held`, `src/o.ts` is new and its revision
- * is not listed yet: it waits, and the removals wait with it (row 015-52).
+ * pass due. `src/m.ts` is a symlink.
  */
-async function scenario({ held = false } = {}) {
+async function scenario() {
   const tree = worktree("w1");
   const store = open(tree.commonDir);
   for (const [path, text] of Object.entries(BEFORE)) tree.write(path, text);
@@ -94,11 +92,6 @@ async function scenario({ held = false } = {}) {
     else tree.write(path, text);
   }
   tree.link("src/m.ts", "c.ts");
-  tree.testFiles.push("src/n.ts");
-  if (held) {
-    tree.write("src/o.ts", "o 30 O1\n");
-    tree.listed = tree.source.latestRevision();
-  }
   tree.commit("src/l.ts");
   tree.revise();
   return { tree, store };
@@ -184,9 +177,9 @@ async function expected() {
 }
 
 /** The scenario's pass in one transaction and in parts of 2 files: its report and rows, each way. */
-async function bothWays(options: { held?: boolean } = {}) {
+async function bothWays() {
   const run = async (partFiles?: number) => {
-    const { tree, store } = await scenario(options);
+    const { tree, store } = await scenario();
     const adopt = vi.spyOn(store.transitions, "adopt");
     const report = await pass(tree, store, fakeCounter(), {
       policy: POLICY,
@@ -220,22 +213,10 @@ describe("an edit pass in parts (row 015-55)", () => {
         "k complexity removed",
       ],
     );
-    // The view and the D9 state follow `mover` to `src/c.ts` (D2); `n` leaves with nothing told.
+    // The view and the D9 state follow `mover` to `src/c.ts` (D2).
     expect(whole.rows.views).toMatchObject([{ path: "src/c.ts", qualified_name: "moved" }]);
     expect(whole.rows.states).toContainEqual(
       expect.objectContaining({ path: "src/c.ts", qualified_name: "moved", measure: "crap" }),
-    );
-    expect(whole.rows.states).not.toContainEqual(expect.objectContaining({ path: "src/n.ts" }));
-    expect(parted).toEqual(whole);
-  });
-
-  it("holds the removals with a file that waits for its listing, as the one-transaction pass does", async () => {
-    const { whole, parted } = await bothWays({ held: true });
-    // `src/g.ts` and `src/j.ts` are new too, so they wait with `src/o.ts`.
-    expect(whole.report).toMatchObject({ mode: "edit", moved: 2, transitions: 3 });
-    expect(whole.rows.transitions.map((t) => t.kind)).not.toContain("removed");
-    expect(whole.rows.states).toContainEqual(
-      expect.objectContaining({ path: "src/e.ts", qualified_name: "gone" }),
     );
     expect(parted).toEqual(whole);
   });
