@@ -5,7 +5,7 @@ import { cpus, loadavg } from "node:os";
 import { join, resolve } from "node:path";
 
 const here = import.meta.dirname;
-const repo = resolve(here, "../../..");
+const repo = resolve(here, "../../../../../..");
 const runtime =
   process.argv[2] ??
   "/home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.426/dist/cli/squeal.mjs";

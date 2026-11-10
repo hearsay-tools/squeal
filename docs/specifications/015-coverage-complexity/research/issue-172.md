@@ -131,3 +131,14 @@ research selects no flag design and changes no existing policy.
   version from `node_modules/vitest/package.json`; package reference
   <https://www.npmjs.com/package/vitest/v/5.0.3>. The package URL is identification;
   the source read was the installed file, not a fetched web page.
+
+## Integration note
+
+The coordinator moved the probe from repository-root `research/probes/issue-172/`
+to this spec’s `research/probes/issue-172/` after the recorded run, and adjusted
+its repository-root lookup. Commands above are the historical commands actually
+run. The README gives the current command. No live case was repeated.
+
+Ownership: spec 020 D1/D3/D5/D7 owns the one-shot command; 019 D1/D6
+and 015 D8/D9 supply the related group and coverage contracts. Evidence remains
+here at its original triage location.

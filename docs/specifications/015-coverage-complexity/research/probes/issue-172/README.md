@@ -10,7 +10,7 @@ committed. No dependencies are installed by the probe.
 Run from the Squeal worktree:
 
 ```sh
-node research/probes/issue-172/probe.mjs
+node docs/specifications/015-coverage-complexity/research/probes/issue-172/probe.mjs
 ```
 
 The default CLI is the pinned installed 0.1.426 runtime. A first argument may name
