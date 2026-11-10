@@ -1,8 +1,8 @@
 import { SQUEAL_COMMAND } from "../../core/delivery/format.js";
 import { formatCheck } from "../../core/state/check-name.js";
-import { runnerPartText } from "../../core/state/header.js";
 import type { PendingBefore } from "../../core/state/required.js";
 import { openGroups, type RequiredFile } from "../../core/state/required.js";
+import { unlistedClause, unlistedText } from "../../core/status/feed-late.js";
 import { plural } from "../../core/text.js";
 import type { TestFileRef } from "../../core/types/keys.js";
 import { SLOW_GROUP } from "../../core/types/scheduler.js";
@@ -76,6 +76,8 @@ export function slowSuiteReason(
  * `waitedMs` for its slow files and found `files` still not current, or
  * with `refining` the runner part of `revision` still pending (task 001-295).
  * Spec 019 D4: the same for a configured `group` at `stop` (row 019-23).
+ * Row 011-311: `runners`, the header's `listingRunners`, are named as the
+ * ones that have not listed the revision's test files.
  */
 export function slowWaitReason(
   revision: number,
@@ -85,15 +87,16 @@ export function slowWaitReason(
   refining = false,
   group: string = SLOW_GROUP,
   before: readonly PendingBefore[] = [],
+  runners?: readonly string[],
 ): string {
   const words = stopGroupWords(group, command);
   const after = `${words.policy} and after ${seconds(waitedMs)} `;
   const wait = `${words.run} waits for their results.`;
   // Task 001-295 (review wave 13am, B2): an unfinished listing may still add the group's files.
-  const unlisted = `${runnerPartText(revision)} is still pending: ${words.file}s it adds are not listed yet.`;
-  if (files.length === 0) return `${after}${unlisted} ${wait}`;
+  const unlisted = { revision, runners, files: `${words.file}s` };
+  if (files.length === 0) return `${after}${unlistedClause(unlisted)}. ${wait}`;
   const verb = files.length === 1 ? "is" : "are";
-  const more = refining ? ` ${unlisted.charAt(0).toUpperCase()}${unlisted.slice(1)}` : "";
+  const more = refining ? ` ${unlistedText(unlisted)}` : "";
   return (
     `${after}${plural(files.length, words.file)} ${verb} still not current at revision ${revision}: ` +
     `${listNames(files.map((f) => f.path))}.${notStartedText(before)}${more} ${wait}`
@@ -192,20 +195,20 @@ export function requiredSuiteReason(
 /**
  * Review 0.1.406-r2 B2-R1: the 2 s entry's hold while the runner part of
  * `revision` is pending and no required file is open, a line per group Stop
- * waits for (`groups`): it may add files to any of them.
+ * waits for (`groups`): it may add files to any of them. Row 011-311:
+ * `runners` are named as the ones that have not listed them.
  */
 export function requiredUnlistedReason(
   revision: number,
   groups: readonly string[],
   command: string = SQUEAL_COMMAND,
+  runners?: readonly string[],
 ): string {
   return groups
     .map((group) => {
       const words = stopGroupWords(group, command);
-      return (
-        `${words.policy} and ${runnerPartText(revision)} is still pending: ` +
-        `${words.file}s it adds are not listed yet. ${words.run} runs them and waits for their results.`
-      );
+      const unlisted = unlistedClause({ revision, runners, files: `${words.file}s` });
+      return `${words.policy} and ${unlisted}. ${words.run} runs them and waits for their results.`;
     })
     .join("\n");
 }
@@ -225,6 +228,8 @@ export function requiredWaitReason(
     readonly refining: boolean;
     /** Row 019-30: the groups a group follows that have files pending (`pendingBefore`). */
     readonly before?: (group: string) => readonly PendingBefore[];
+    /** Row 011-311: the runners that have not listed the revision (`listingRunners`). */
+    readonly runners?: readonly string[] | undefined;
   },
 ): string {
   return (open.length === 0 ? groups : openGroups(open))
@@ -237,6 +242,7 @@ export function requiredWaitReason(
         wait.refining,
         group,
         wait.before?.(group),
+        wait.runners,
       ),
     )
     .join("\n");

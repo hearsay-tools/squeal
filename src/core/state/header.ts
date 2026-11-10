@@ -1,4 +1,5 @@
 import { readPolicy } from "../daemon/policy.js";
+import { vitestDetected } from "../daemon/runner.js";
 import { testFileId } from "../keys/reverse-index.js";
 import type { RevisionNumber, WorktreeId } from "../types/common.js";
 import type { CheckKey, TestFileRef } from "../types/keys.js";
@@ -113,6 +114,7 @@ export function readHeader(
   const view = policy === null ? null : slowPolicyView(policy);
   const slow = isSlow ?? view?.isSlow;
   const optimizerOff = readOptimizerOff(store, worktreeId);
+  const runnerPartPending = refinedRevision !== null && refinedRevision < revision;
   return {
     revision,
     ...(commit === undefined ? {} : { commit }),
@@ -130,7 +132,8 @@ export function readHeader(
     inheritedFileLevelCount,
     ...(importedCount === 0 ? {} : { importedCount }),
     refinedRevision,
-    runnerPartPending: refinedRevision !== null && refinedRevision < revision,
+    runnerPartPending,
+    ...listingRunnersField(runnerPartPending, root, policy),
     ...(slow === undefined ? {} : { slowPending: countSlowPending(states, keys, slow) }),
     ...slowTierField(store, worktreeId, states, keys, policy, view),
     ...(policy !== null && groupTextsShown(policy)
@@ -235,9 +238,26 @@ export function isFastPending(header: StatusHeader): boolean {
   return checks + files > 0 || header.runnerPartPending === true;
 }
 
-/** Spec 001 D2 as amended: names the runner part of a revision in headers, status and waits. */
-export function runnerPartText(revision: RevisionNumber): string {
-  return `the runner part of revision ${revision}`;
+/**
+ * Row 011-311: while the runner part is `pending`, the runners that list a revision's test
+ * files, as headers name them (`listingRunners`). The daemon builds Vitest when it is detected
+ * or no other runner is configured (spec 003 D7, `vitestDetected`), and a runner per configured
+ * `nodeTest` or `pytest` project.
+ */
+function listingRunnersField(
+  pending: boolean,
+  root: string | undefined,
+  policy: Policy | null,
+): { listingRunners?: readonly string[] } {
+  if (!pending || root === undefined || policy === null) return {};
+  const others = policy.nodeTest.length + policy.pytest.length;
+  return {
+    listingRunners: [
+      ...(others === 0 || vitestDetected(root) ? ["Vitest"] : []),
+      ...(policy.nodeTest.length > 0 ? ["node:test"] : []),
+      ...(policy.pytest.length > 0 ? ["pytest"] : []),
+    ],
+  };
 }
 
 /**

@@ -1,6 +1,5 @@
 import { HANDOFF_BOUND_MS } from "../core/presence/stored.js";
 import type { DownReason } from "../core/presence/wait.js";
-import { runnerPartText } from "../core/state/header.js";
 import { slowWaitText } from "../core/state/slow-text.js";
 import {
   countedText,
@@ -8,6 +7,7 @@ import {
   notCurrentText,
   splitByValidity,
 } from "../core/status/checks.js";
+import { unlistedClause } from "../core/status/feed-late.js";
 import { formatStatus, type StatusFormatOptions } from "../core/status/format-status.js";
 import { holdLines, holdVerdictLine } from "../core/status/holds.js";
 import { statusRevisionText } from "../core/status/identity.js";
@@ -84,7 +84,7 @@ function ownLine(wait: EndedWait, command: string): string {
     case "no-daemon":
       return `Returned without a daemon: ${noDaemonText(snapshot.daemon, wait.down, command)}; results are as of revision ${snapshot.revision}`;
     case "timeout":
-      return `Returned on timeout ${after}: ${pendingText(snapshot)} ${at}`;
+      return `Returned on timeout ${after}: ${pendingText(snapshot)} ${at}${unlistedText(snapshot)}`;
     case "on-hold":
       return `Returned on hold ${at} ${after}`;
   }
@@ -516,10 +516,19 @@ function pendingText(snapshot: StatusSnapshot): string {
   const checks = snapshot.counts.pending;
   const files = snapshot.testFilesWithoutChecks.pending;
   const word = checks === 1 ? "check" : "checks";
-  const parts = [countedText(checks, word, snapshot.fileLevelCounts?.pending)];
-  if (files > 0) parts.push(`${plural(files, "test file")} without checks`);
-  if (snapshot.runnerPartPending === true) parts.push(runnerPartText(snapshot.revision));
-  return parts.length === 1
-    ? `${parts[0]} pending`
-    : `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)} pending`;
+  const counted = countedText(checks, word, snapshot.fileLevelCounts?.pending);
+  return files > 0
+    ? `${counted} and ${plural(files, "test file")} without checks pending`
+    : `${counted} pending`;
+}
+
+/**
+ * Row 011-311: while the runner part is pending, a timed-out wait's line says that the runner
+ * has not listed the revision's test files: `; Vitest has not yet listed the test files of
+ * revision 5, so new test files are not counted`.
+ */
+function unlistedText({ revision, runnerPartPending, listingRunners }: StatusSnapshot): string {
+  return runnerPartPending === true
+    ? `; ${unlistedClause({ revision, runners: listingRunners })}`
+    : "";
 }

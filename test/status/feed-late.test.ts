@@ -1,3 +1,5 @@
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createDelivery } from "../../src/core/delivery/delivery.js";
 import { formatRegistration } from "../../src/core/delivery/format.js";
@@ -20,9 +22,9 @@ import { appendRevisions, check, type FakeRepo, fakeRepo, seedStore, state } fro
 
 /*
  * Row 011-200 (C6, C8; the human, 2026-10-25): while the last batch the live daemon's change feed
- * delivered started more than 60 s ago, status, Stop and the hook headers say that edits since
- * may not be seen yet and that results are current as of the revision. A feed on time changes no
- * byte of them.
+ * delivered started more than 60 s ago, status, Stop and the hook headers say that Squeal has not
+ * read the edits made since, and which revision the counts cover (worded by row 011-311). A feed
+ * on time changes no byte of them.
  */
 
 const NOW = Date.UTC(2026, 9, 25, 1, 5, 0);
@@ -99,7 +101,8 @@ describe("a late change feed is said (011-200)", () => {
     const since = NOW - FEED_LATE_MS - 1_000;
     delivered(w, since);
     const out = await outputs(w);
-    const sentence = `Edits since ${timeText(since)} may not be seen yet; results are current as of revision ${HEAD}.`;
+    // Row 011-311: the human's words, and no "current" for the revision the counts cover.
+    const sentence = `Squeal has not yet read edits made after ${timeText(since)}; these counts cover revision ${HEAD} and earlier.`;
     expect(out.status.split("\n")[1]).toBe(sentence);
     expect(out.status).toContain("Known failures: 0; 2 test files current\n");
     expect(out.daemon).toEqual({
@@ -137,6 +140,84 @@ describe("a late change feed is said (011-200)", () => {
     const w = worktree(down);
     delivered(w, NOW - 40 * 60_000);
     expect(await outputs(w)).toEqual(before);
+  });
+});
+
+/*
+ * Row 011-311 (the human, 2026-11-10): a cezar hook message named both delays in two sentences,
+ * "The runner part of revision 5 is pending; test files it adds are not counted yet. Edits since
+ * 00:29:56 may not be seen yet; results are current as of revision 5.", and read as contradictory.
+ * Each output now says both in one sentence that names the project's runner, and says it once.
+ */
+describe("a late feed and an unlisted revision are one sentence (011-311)", () => {
+  const behind = (since: number, runners: string) =>
+    `Squeal is behind: it has not read edits made after ${timeText(since)}, and ${runners} not listed revision ${HEAD}'s test files yet, so new test files are not counted.`;
+  const unlisted = (w: Seeded) => w.store.meta.set(refinedMetaKey(w.wt), String(HEAD - 1));
+  const occurrences = (text: string, part: string) => text.split(part).length - 1;
+
+  it("status, Stop, the registration and a news header say both delays once", async () => {
+    const w = worktree();
+    const since = NOW - FEED_LATE_MS - 1_000;
+    delivered(w, since);
+    unlisted(w);
+    const out = await outputs(w);
+    const sentence = behind(since, "Vitest has");
+    expect(out.status.split("\n")[1]).toBe(sentence);
+    for (const text of [out.status, out.stop, out.registration, out.news]) {
+      expect(occurrences(text, sentence)).toBe(1);
+      expect(text).not.toMatch(/runner part|may not be seen|current as of revision/);
+    }
+    expect(out.news).toBe(
+      `Revision ${HEAD} (changed src/a.ts): no check pending, stale or unknown. ${sentence}`,
+    );
+  });
+
+  it("names the project's runners: pytest alone, then beside Vitest", async () => {
+    const since = NOW - FEED_LATE_MS - 1_000;
+    const pytest = { pytest: [{ name: "unit", include: ["tests/**/test_*.py"] }] };
+    const cases = [
+      [pytest, null, "pytest has"],
+      [pytest, { devDependencies: { vitest: "^3.0.0" } }, "Vitest and pytest have"],
+    ] as const;
+    for (const [config, manifest, runners] of cases) {
+      const w = worktree();
+      writeFileSync(join(w.repo.main, "squeal.config.json"), JSON.stringify(config));
+      if (manifest !== null) {
+        writeFileSync(join(w.repo.main, "package.json"), JSON.stringify(manifest));
+      }
+      delivered(w, since);
+      unlisted(w);
+      const out = await outputs(w);
+      for (const text of [out.status, out.stop, out.registration, out.news]) {
+        expect(occurrences(text, behind(since, runners))).toBe(1);
+      }
+    }
+  });
+
+  it("each delay alone has its own sentence", async () => {
+    const since = NOW - FEED_LATE_MS - 1_000;
+    const late = worktree();
+    delivered(late, since);
+    const lateOut = await outputs(late);
+    const lateSentence = `Squeal has not yet read edits made after ${timeText(since)}; these counts cover revision ${HEAD} and earlier.`;
+    expect(lateOut.status.split("\n")[1]).toBe(lateSentence);
+    expect(lateOut.news).toBe(
+      `Revision ${HEAD} (changed src/a.ts): no check pending, stale or unknown. ${lateSentence}`,
+    );
+    const listing = worktree();
+    unlisted(listing);
+    const listingOut = await outputs(listing);
+    const listingSentence = `Vitest has not yet listed the test files of revision ${HEAD}, so new test files are not counted.`;
+    expect(listingOut.status.split("\n")[1]).toBe(listingSentence);
+    for (const [out, sentence] of [
+      [lateOut, lateSentence],
+      [listingOut, listingSentence],
+    ] as const) {
+      for (const text of [out.status, out.stop, out.registration, out.news]) {
+        expect(occurrences(text, sentence)).toBe(1);
+        expect(text).not.toMatch(/runner part|may not be seen|current as of revision/);
+      }
+    }
   });
 });
 

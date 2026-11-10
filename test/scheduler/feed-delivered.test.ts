@@ -135,7 +135,7 @@ describe("the feed's last delivery, stored by the daemon loop (011-200)", SLOW, 
       // Held: no batch for more than 60 s since the stored one.
       clock = since + 61_000;
       alive();
-      const sentence = `Edits since ${timeText(since)} may not be seen yet; results are current as of revision ${loop.scheduler.status().revision}.`;
+      const sentence = `Squeal has not yet read edits made after ${timeText(since)}; these counts cover revision ${loop.scheduler.status().revision} and earlier.`;
       const held = outputs();
       expect(held.status.split("\n")).toContain(sentence);
       expect(held.stop).toContain(` ${sentence}`);
