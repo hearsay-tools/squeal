@@ -81,6 +81,12 @@ export interface CoverageSummary {
   readonly checks?: readonly CoverageMeasure[];
   /** Row 015-64: `coverage.exclude` the files were judged under; absent, `[]`. */
   readonly exclude?: readonly string[];
+  /**
+   * Spec 020 D12.7 (row 020-10b): the states were judged with
+   * `coverage.children`, the coverage of the processes and threads the
+   * tests start, a lower bound; absent, without.
+   */
+  readonly children?: true;
 }
 
 /** One of D9's checks, by the measure its states keep. */
