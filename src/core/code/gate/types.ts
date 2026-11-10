@@ -116,6 +116,23 @@ export interface TestFileEvidence {
    * absent when this command ran it.
    */
   readonly fromStore?: true;
+  /**
+   * D12.7: with `coverage.children` at the base, the coverage files of the
+   * processes and threads its tests started that this command read; absent
+   * with the key off, and for a file read from the stores.
+   */
+  readonly children?: ChildFiles;
+}
+
+/**
+ * D12.7: coverage files of child processes and threads. Each process
+ * writes one file per thread it ran, so this counts files, not processes.
+ */
+export interface ChildFiles {
+  /** Mapped into the test file's record. */
+  readonly read: number;
+  /** Dropped alone, over 64 MiB or not parsed (D12.4); each one only lowers coverage. */
+  readonly dropped: number;
 }
 
 /** D3: what the collector gives the evaluator. */
