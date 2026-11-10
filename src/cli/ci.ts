@@ -1,7 +1,9 @@
 import { resolve } from "node:path";
 import { type NotStarted, runCommand } from "../core/ci/command.js";
 import type { InputEvidence } from "../core/ci/inputs.js";
-import { PART_FORMAT, type PartHeader, writePart } from "../core/ci/parts.js";
+import { PART_FORMAT, type Part, type PartHeader, writePart } from "../core/ci/parts.js";
+import { type MapWorker, mapWorkerScript } from "../core/code/coverage/mapper.js";
+import { coverageProvider } from "../core/code/coverage/runtime.js";
 import { readPolicy } from "../core/daemon/policy.js";
 import { squealVersion } from "../core/daemon/version.js";
 import { readHead } from "../core/daemon-loop/head.js";
@@ -10,7 +12,12 @@ import { WorktreePaths } from "../core/fs/worktree-paths.js";
 import { readObjectFormat } from "../core/hash/git-index.js";
 import { KEY_FORMAT_VERSION } from "../core/keys/key-format.js";
 import type { AbsolutePath } from "../core/types/common.js";
-import { type RecordedRun, startRecording, vitestResolves } from "../runners/vitest/ci-record.js";
+import {
+  type RecordedRun,
+  type RecordingCoverage,
+  startRecording,
+  vitestResolves,
+} from "../runners/vitest/ci-record.js";
 import { ciExportCommand, EXPORT_USAGE } from "./ci-export.js";
 import { ciPublishCommand, PUBLISH_USAGE } from "./ci-publish.js";
 import { sourceOf } from "./export.js";
@@ -25,6 +32,8 @@ export const DEFAULT_PARTS_DIR = "squeal-parts";
 export interface CiDeps {
   /** Where the private directory goes; default the OS temp directory. */
   readonly tempDir?: AbsolutePath;
+  /** The records' worker; default `coverage-map.mjs` beside the bundled CLI (`mapWorkerScript`). */
+  readonly mapWorker?: MapWorker;
 }
 
 /**
@@ -33,6 +42,8 @@ export interface CiDeps {
  * command, also writes one part per Vitest process into `--out` (default
  * `squeal-parts/`). Exit 2 on a usage error; otherwise the command's code,
  * whatever Squeal could record, since nothing in CI gates on Squeal (D16).
+ * Spec 020 D13: the parts also hold each test file's coverage record, from
+ * Squeal's provider, which `record` adds unless the run has coverage of its own.
  * `export` (D9): the parts as one export, keyed in this checkout
  * (`ciExportCommand`). `publish` (D13): the export as a results ref on
  * `origin`, older refs pruned (`ciPublishCommand`).
@@ -101,6 +112,7 @@ async function record(args: RecordArgs, io: CliIo, deps: CiDeps): Promise<number
     allowlist: policy.env.allowlist,
     squealVersion: squealVersion(),
     objectFormat: await readObjectFormat(root),
+    coverage: recordingCoverage(deps),
     ...(deps.tempDir === undefined ? {} : { tempDir: deps.tempDir }),
   });
   if (typeof recording === "string") return unchanged(recording);
@@ -120,6 +132,17 @@ async function record(args: RecordArgs, io: CliIo, deps: CiDeps): Promise<number
   } finally {
     recording.close();
   }
+}
+
+/** Spec 020 D13: the provider and the records' worker beside this Squeal, or which is missing. */
+function recordingCoverage(deps: CiDeps): RecordingCoverage {
+  const provider = coverageProvider();
+  if (provider === null) return { missing: "this Squeal has no coverage/provider.mjs" };
+  const script = mapWorkerScript();
+  const worker = deps.mapWorker ?? (script === null ? null : { script });
+  if (worker === null)
+    return { missing: "this Squeal has no records' worker (cli/coverage-map.mjs)" };
+  return { provider, worker };
 }
 
 function exitOf(result: number | NotStarted, say: (text: string) => void): number {
@@ -147,13 +170,43 @@ async function writeParts(
     source: sourceOf(env),
   };
   let files = 0;
-  for (const { projects, testFiles, end, runnerVersion, shard, observing } of runs) {
-    const header: PartHeader = { ...base, runnerVersion, shard, end, observing };
-    writePart(out, { format: PART_FORMAT, header, projects, testFiles, evidence });
+  for (const { projects, testFiles, end, runnerVersion, shard, observing, ...run } of runs) {
+    const { coverage, records } = run;
+    const header: PartHeader = {
+      ...base,
+      runnerVersion,
+      shard,
+      end,
+      observing,
+      ...(coverage === undefined ? {} : { coverage }),
+    };
+    const part: Part = { format: PART_FORMAT, header, projects, testFiles, evidence };
+    writePart(out, records === undefined ? part : { ...part, coverage: records });
     files += testFiles.length;
   }
   const ended = runs.filter((run) => run.end !== "completed").map((run) => run.end);
   const untrusted = ended.length === 0 ? "" : ` (no test file from a run that ${ended.join(", ")})`;
   const parts = `${runs.length} part${runs.length === 1 ? "" : "s"}`;
-  return `wrote ${parts} with ${files} test file${files === 1 ? "" : "s"} to ${out}${untrusted}`;
+  const wrote = `wrote ${parts} with ${files} test file${files === 1 ? "" : "s"} to ${out}${untrusted}`;
+  return [wrote, ...runs.flatMap(coverageLine)].join("\nsqueal ci record: ");
+}
+
+/**
+ * Spec 020 D13: one line per run on its coverage records: how many files
+ * have one, or why the provider was not in the run, and an error that cost
+ * records.
+ */
+function coverageLine({ coverage, testFiles }: RecordedRun): string[] {
+  if (coverage === undefined) return [];
+  if ("off" in coverage) {
+    const why = {
+      "project-coverage": "the run has coverage of its own, so Squeal's provider was not added",
+      "no-provider": "Squeal's provider was not added",
+      failed: "Squeal's provider failed",
+    }[coverage.off];
+    return [`no coverage records: ${why} (${coverage.note})`];
+  }
+  const recorded = testFiles.filter((file) => file.record !== undefined).length;
+  const lost = coverage.note === undefined ? "" : `; ${coverage.note}`;
+  return [`coverage records for ${recorded} of ${testFiles.length} test files${lost}`];
 }

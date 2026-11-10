@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import type { CoverageRecord, CoverageSource } from "../code/coverage/types.js";
 import { configFieldHash, type EnvironmentDescriptor } from "../keys/environment-descriptor.js";
 import type { ExportSource } from "../store/imports.js";
 import type { AbsolutePath, EpochMs, ProjectName, RelativePath } from "../types/common.js";
@@ -17,10 +18,18 @@ import type { InputEvidence } from "./inputs.js";
  * failure text, run logs, environment or config values (only their hashes),
  * absolute paths. Format 2 added the shard, the snapshot options per field
  * and the shared check names; format 3 the read-time evidence, in place of
- * format 2's input hashes after the run and checkout state.
+ * format 2's input hashes after the run and checkout state; format 4 (spec
+ * 020 D13, row 020-08a) Squeal's coverage provider in the run and each test
+ * file's coverage record, or why it has none. A format 3 part reads as a
+ * part with no records.
  */
 
-export const PART_FORMAT = "squeal-ci-part/3";
+export const PART_FORMAT = "squeal-ci-part/4";
+
+/** The formats `readPart` reads: this one, and format 3, which holds no record. */
+export const PART_FORMATS = ["squeal-ci-part/3", PART_FORMAT] as const;
+
+export type PartFormat = (typeof PART_FORMATS)[number];
 
 /** The file name prefix of a part; the rest is a UUID, so parts of every shard can share one directory. */
 export const PART_PREFIX = "squeal-part-";
@@ -56,6 +65,53 @@ export interface PartHeader {
   readonly end: PartEnd;
   /** The recorder ran in the run's workers: each file's `observed` is what it read. */
   readonly observing: boolean;
+  /** Format 4: whether the run had Squeal's coverage provider. Absent in format 3: no record. */
+  readonly coverage?: PartCoverage;
+}
+
+/**
+ * Spec 020 D13: Squeal's provider was in the run, with the versions its
+ * records were made at, or why `ci record` did not add it. `note` on the
+ * first form names an error that cost records after it was added.
+ */
+export type PartCoverage =
+  | {
+      readonly provider: "squeal";
+      readonly providerVersion: number;
+      readonly recordVersion: number;
+      readonly note?: string;
+    }
+  | { readonly off: CoverageOff; readonly note: string };
+
+/**
+ * `project-coverage`: the run's resolved config has `coverage.enabled`, and
+ * a Vitest run takes one provider. `no-provider`: this Squeal or the run's
+ * Node cannot give it. `failed`: an error of `ci record`'s own.
+ */
+export type CoverageOff = "project-coverage" | "no-provider" | "failed";
+
+/**
+ * Why a test file of a run with the provider has no record (D13.1), in this
+ * order when several hold. `inspector`: a file its worker ran imports
+ * `node:inspector`, so its tests could see V8 coverage. `filtered`: a test
+ * name, tag, line or id filter ran part of it. `not-whole`: its worker ran
+ * other test files too. `isolate-false`: its project runs with `isolate:
+ * false`, where the provider takes none. `unmapped`: no payload, or one
+ * that could not be mapped.
+ */
+export type NoRecord = "inspector" | "filtered" | "not-whole" | "isolate-false" | "unmapped";
+
+/**
+ * Format 4: the part's coverage records, each source entry stored once.
+ * A record is its `sources` (indices into `sources`, sorted by path) and
+ * its `unread` paths: `CoverageRecord` without its sources inline.
+ */
+export interface PartRecords {
+  readonly sources: readonly CoverageSource[];
+  readonly records: readonly {
+    readonly sources: readonly number[];
+    readonly unread: readonly RelativePath[];
+  }[];
 }
 
 /**
@@ -107,10 +163,15 @@ export interface PartFile {
    * leaves the file out. Absent: none.
    */
   readonly sharedNames?: readonly string[];
+  /** Format 4: its record, an index into `Part.coverage.records`. */
+  readonly record?: number;
+  /** Format 4, with the provider in the run: why the file has no record. */
+  readonly noRecord?: NoRecord;
 }
 
 export interface Part {
-  readonly format: typeof PART_FORMAT;
+  /** `PART_FORMAT` as written; format 3 as read. */
+  readonly format: PartFormat;
   readonly header: PartHeader;
   readonly projects: readonly PartProject[];
   /** Sorted by project, then path. */
@@ -122,6 +183,8 @@ export interface Part {
    * with two contents, is not here. Every part of one command holds the same.
    */
   readonly evidence: InputEvidence;
+  /** Format 4: the records `PartFile.record` names; absent when none was made. */
+  readonly coverage?: PartRecords;
 }
 
 /** The field of `snapshotOptions` D9 asks to be `none` and compares no further. */
@@ -169,8 +232,9 @@ export function readPart(file: AbsolutePath): Part | string {
   }
   if (typeof value !== "object" || value === null) return `${file}: not a part`;
   const format = (value as { format?: unknown }).format;
-  if (format !== PART_FORMAT) {
-    return `${file}: format ${JSON.stringify(format)}, not ${JSON.stringify(PART_FORMAT)}`;
+  if (!PART_FORMATS.some((known) => known === format)) {
+    const known = PART_FORMATS.map((f) => JSON.stringify(f)).join(" or ");
+    return `${file}: format ${JSON.stringify(format)}, not ${known}`;
   }
   const part = value as Partial<Part>;
   if (!Array.isArray(part.projects) || !Array.isArray(part.testFiles) || !part.header) {
@@ -180,4 +244,21 @@ export function readPart(file: AbsolutePath): Part | string {
     return `${file}: a part without evidence`;
   }
   return value as Part;
+}
+
+/**
+ * The coverage record of `file` in `part`, as the daemon and the gate hold
+ * one (`buildRecord`); `null` when the part holds none for it, or names one
+ * it does not hold.
+ */
+export function partRecord(part: Part, file: PartFile): CoverageRecord | null {
+  const record = file.record === undefined ? undefined : part.coverage?.records[file.record];
+  if (record === undefined || part.coverage === undefined) return null;
+  const sources: CoverageSource[] = [];
+  for (const at of record.sources) {
+    const source = part.coverage.sources[at];
+    if (source === undefined) return null;
+    sources.push(source);
+  }
+  return { v: 1, sources, unread: record.unread };
 }
