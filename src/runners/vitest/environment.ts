@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url";
 import type { TestProject } from "vitest/node";
-import { COVERAGE_PROVIDER_VERSION } from "../../core/code/coverage/record.js";
+import { coverageMarker } from "../../core/code/coverage/record.js";
 import { compare } from "../../core/fs/compare.js";
 import type { WorktreePaths } from "../../core/fs/worktree-paths.js";
 import type { AbsolutePath, RelativePath } from "../../core/types/common.js";
@@ -23,6 +23,8 @@ export interface EnvironmentContext {
    * D8, row 015-11): its coverage options are keyed as a stable marker.
    */
   readonly coverage?: AbsolutePath;
+  /** Spec 020 D12: the instance measures the processes its tests start; the marker says so. */
+  readonly children?: boolean;
 }
 
 /**
@@ -45,7 +47,13 @@ export function projectEnvironment(
     runnerName: "vitest",
     runnerVersion: context.runnerVersion,
     adapterVersion: context.adapterVersion,
-    resolvedConfig: canonicalConfig(project, paths, context.injected, context.coverage),
+    resolvedConfig: canonicalConfig(
+      project,
+      paths,
+      context.injected,
+      context.coverage,
+      context.children,
+    ),
     files: environmentFiles(inputs.configFiles, inputs, paths),
   };
 }
@@ -92,13 +100,15 @@ export interface ConfiguredProject {
  * Squeal's own coverage provider (`coverage`, spec 015 D8) the coverage
  * options are its name and version alone: its reports directory is a temp
  * directory of each instance, and a record is current exactly when its
- * result is (row 015-11).
+ * result is (row 015-11). With `children` the marker says so (020 D12): its
+ * tests can see `NODE_V8_COVERAGE`.
  */
 export function canonicalConfig(
   project: ConfiguredProject,
   paths: WorktreePaths,
   injected: Readonly<Record<string, string>> = {},
   coverage?: AbsolutePath,
+  children = false,
 ): string {
   const {
     sequence,
@@ -116,7 +126,7 @@ export function canonicalConfig(
         ...config,
         coverage:
           coverage !== undefined && covering.customProviderModule === coverage
-            ? { provider: "squeal", version: COVERAGE_PROVIDER_VERSION }
+            ? coverageMarker(children)
             : covering,
         ...(env === undefined ? {} : { env: withoutInjected(env, injected) }),
         sequence: stableSequence,
