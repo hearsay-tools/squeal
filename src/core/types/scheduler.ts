@@ -533,8 +533,11 @@ export interface Scheduler {
    * False when nothing took it: before the baseline ends, while waiting for
    * the install, or once closed (004 review wave 2.5, B3); the caller asks
    * again.
+   *
+   * Row 018-28: `projects` are read again first, whatever their runner, so
+   * the observed entries an import added key their files as a start would.
    */
-  refreshObserved(): boolean;
+  refreshObserved(projects?: readonly ProjectName[]): boolean;
   status(): SchedulerStatus;
   /**
    * Row 011-234 (005 D2 as amended): a named wait's sync, its revision and,
