@@ -214,8 +214,8 @@ describe("changedFunctions: what is counted", () => {
     expect(names(changed.functions)).toEqual(["src/z.ts added#0 added"]);
   });
 
-  it("names a head file over maxFileBytes too-large and keeps it out of counted", async () => {
-    const { root, write } = repo({ "src/a.ts": lines(ONE), "src/big.ts": lines(TWO) });
+  it("names a head file over maxFileBytes too-large with its blob, and keeps it out of counted", async () => {
+    const { root, git, write } = repo({ "src/a.ts": lines(ONE), "src/big.ts": lines(TWO) });
     write({
       "src/a.ts": lines(ONE.replace("return 2", "return 5")),
       "src/big.ts": lines(TWO, `// ${"x".repeat(200)}`),
@@ -223,7 +223,9 @@ describe("changedFunctions: what is counted", () => {
 
     const changed = await changedFunctions(root, "base", { ...POLICY, maxFileBytes: 120 });
 
-    expect(changed.uncounted).toEqual([{ path: "src/big.ts", reason: "too-large" }]);
+    expect(changed.uncounted).toEqual([
+      { path: "src/big.ts", reason: "too-large", blob: git("hash-object", "src/big.ts") },
+    ]);
     expect(changed.counted.map((c) => c.path)).toEqual(["src/a.ts"]);
     expect(names(changed.functions)).toEqual(["src/a.ts one#0 edited"]);
   });
@@ -258,14 +260,16 @@ describe("changedFunctions: what is counted", () => {
 
     expect(names(changed.functions)).toEqual(["src/a.ts ok#0 edited"]);
     expect(names(changed.inErrors)).toEqual(["src/a.ts broken#0 edited"]);
-    expect(changed.uncounted).toEqual([{ path: "src/a.ts", reason: "parse-error" }]);
+    expect(changed.uncounted).toEqual([
+      { path: "src/a.ts", reason: "parse-error", blob: changed.counted[0]?.blob },
+    ]);
     expect(changed.counted.map((c) => c.functions.map((f) => f.qualifiedName))).toEqual([
       ["ok", "broken", "after"],
     ]);
   });
 
   it("lists uncounted paths in path order, whatever their reason", async () => {
-    const { root, write } = repo({ "README.md": "x\n" });
+    const { root, git, write } = repo({ "README.md": "x\n" });
     write({
       "src/a.ts": lines("export function a() { return 1 +* 2; }"),
       "src/b.ts": lines(TWO, `// ${"x".repeat(200)}`),
@@ -274,10 +278,11 @@ describe("changedFunctions: what is counted", () => {
 
     const changed = await changedFunctions(root, "base", { ...POLICY, maxFileBytes: 120 });
 
+    const blob = (path: string) => git("hash-object", path);
     expect(changed.uncounted).toEqual([
-      { path: "src/a.ts", reason: "parse-error" },
-      { path: "src/b.ts", reason: "too-large" },
-      { path: "src/c.ts", reason: "parse-error" },
+      { path: "src/a.ts", reason: "parse-error", blob: blob("src/a.ts") },
+      { path: "src/b.ts", reason: "too-large", blob: blob("src/b.ts") },
+      { path: "src/c.ts", reason: "parse-error", blob: blob("src/c.ts") },
     ]);
   });
 

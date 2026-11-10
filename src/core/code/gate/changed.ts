@@ -9,6 +9,7 @@ import { readObjectFormat } from "../../hash/git-index.js";
 import { createInputMatcher } from "../../keys/glob.js";
 import { CODE_EXTENSIONS, type CodeLanguage, type FileCount } from "../../types/code.js";
 import type { AbsolutePath, RelativePath } from "../../types/common.js";
+import type { FileHash } from "../../types/keys.js";
 import { countFile } from "../count/index.js";
 import { overlaps } from "../pass/counted.js";
 import type { BasePolicy } from "./policy.js";
@@ -59,6 +60,8 @@ export async function mergeBase(cwd: AbsolutePath, ref: string): Promise<string>
  *   regular file (a symlink) is `unsupported`; neither is in `counted`. A
  *   base file over the limit is not counted, so its head functions read as
  *   added unless their bodies are elsewhere at the base.
+ * - Each `uncounted` regular file carries its head blob, for the report's
+ *   provenance (D7); an `unsupported` path has none.
  */
 export async function changedFunctions(
   cwd: AbsolutePath,
@@ -79,12 +82,16 @@ export async function changedFunctions(
   for (const [path, language] of paths) {
     const now = await countAtHead(join(cwd, path), language, format, policy.maxFileBytes);
     if (now === null) continue;
-    if (typeof now === "string") {
+    if (now === "unsupported") {
       uncounted.push({ path, reason: now });
       continue;
     }
+    if ("tooLarge" in now) {
+      uncounted.push({ path, reason: "too-large", blob: now.tooLarge });
+      continue;
+    }
     heads.set(path, now);
-    if (now.errors.length > 0) uncounted.push({ path, reason: "parse-error" });
+    if (now.errors.length > 0) uncounted.push({ path, reason: "parse-error", blob: now.blob });
   }
   const atBase = bodies(bases.values());
   const atHead = bodies(heads.values());
@@ -182,21 +189,22 @@ async function countsAtBase(
 
 /**
  * The count of the file at `file` as it is on disk; `null` when it is gone
- * (removed), or why it is not counted.
+ * (removed); the blob of a file over `maxFileBytes`, which is read but not
+ * counted; or `unsupported` for one that is not a regular file.
  */
 async function countAtHead(
   file: AbsolutePath,
   language: CodeLanguage,
   format: ObjectFormat,
   maxFileBytes: number,
-): Promise<FileCount | "too-large" | "unsupported" | null> {
+): Promise<FileCount | { readonly tooLarge: FileHash } | "unsupported" | null> {
   try {
     const stat = await lstat(file);
     if (!stat.isFile()) return "unsupported";
-    if (stat.size > maxFileBytes) return "too-large";
     const bytes = await readFile(file);
-    if (bytes.byteLength > maxFileBytes) return "too-large";
-    return await countFile(bytes.toString("utf8"), language, blobHash(bytes, format));
+    const blob = blobHash(bytes, format);
+    if (bytes.byteLength > maxFileBytes) return { tooLarge: blob };
+    return await countFile(bytes.toString("utf8"), language, blob);
   } catch (error) {
     if (isMissing(error)) return null;
     throw error;
