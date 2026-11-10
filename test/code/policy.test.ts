@@ -37,7 +37,13 @@ describe("policy complexity, coverage and crap (015 D1)", () => {
       maxFileBytes: 524_288,
       blocking: false,
     });
-    expect(policy.coverage).toEqual({ enabled: true, untested: true, exclude: [] });
+    // Spec 020 D12: child processes' coverage is opt-in.
+    expect(policy.coverage).toEqual({
+      enabled: true,
+      untested: true,
+      exclude: [],
+      children: false,
+    });
     expect(policy.crap).toEqual({ enabled: true, threshold: 30 });
     expect(policy).toEqual(DEFAULT_POLICY);
     // With no config at all, the same.
@@ -56,7 +62,12 @@ describe("policy complexity, coverage and crap (015 D1)", () => {
   it("preserves the explicit coverage opt-out and the check defaults", () => {
     const { policy, problems } = load({ coverage: { enabled: false } });
     expect(problems).toEqual([]);
-    expect(policy.coverage).toEqual({ enabled: false, untested: true, exclude: [] });
+    expect(policy.coverage).toEqual({
+      enabled: false,
+      untested: true,
+      exclude: [],
+      children: false,
+    });
     expect(policy.crap).toEqual({ enabled: true, threshold: 30 });
   });
 
@@ -81,7 +92,7 @@ describe("policy complexity, coverage and crap (015 D1)", () => {
         maxFileBytes: 1_000,
         blocking: true,
       },
-      coverage: { enabled: true, untested: false, exclude: ["test/**"] },
+      coverage: { enabled: true, untested: false, exclude: ["test/**"], children: true },
       crap: { enabled: false, threshold: 12.5 },
     };
     const { policy, problems } = load(written);
@@ -122,6 +133,7 @@ describe("policy complexity, coverage and crap (015 D1)", () => {
       { coverage: { exclude: "test/**" } },
       `"coverage.exclude" must be an array of strings, got "test/**"`,
     ],
+    [{ coverage: { children: "yes" } }, `"coverage.children" must be true or false, got "yes"`],
     [{ crap: { enabled: "no" } }, `"crap.enabled" must be true or false, got "no"`],
     [{ crap: { threshold: 0 } }, `"crap.threshold" must be a number > 0, got 0`],
     [{ crap: { threshold: "30" } }, `"crap.threshold" must be a number > 0, got "30"`],
@@ -153,5 +165,12 @@ describe("policy complexity, coverage and crap (015 D1)", () => {
     expect(problems).toEqual([]);
     expect(policy.coverage.enabled).toBe(true);
     expect(policy.complexity.enabled).toBe(false);
+  });
+
+  it("leaves coverage.children as written while coverage is off (020 D12)", () => {
+    // The same rule: "needs coverage.enabled" is applied where children are collected.
+    const { policy, problems } = load({ coverage: { enabled: false, children: true } });
+    expect(problems).toEqual([]);
+    expect(policy.coverage).toMatchObject({ enabled: false, children: true });
   });
 });

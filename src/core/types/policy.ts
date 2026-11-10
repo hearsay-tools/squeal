@@ -176,6 +176,11 @@ export interface Policy {
     readonly untested: boolean;
     /** Globs of files that keep their complexity but get no `crap` or `untested` state. Default `[]`. */
     readonly exclude: readonly string[];
+    /**
+     * Spec 020 D12: coverage of the processes a test starts, too. Needs
+     * `enabled`. Default `false`: the tests can then see `NODE_V8_COVERAGE`.
+     */
+    readonly children: boolean;
   };
   /** Spec 015 D9 (wave 2): CRAP per function. */
   readonly crap: {
@@ -396,7 +401,7 @@ export const DEFAULT_POLICY: Policy = {
     maxFileBytes: 524_288,
     blocking: false,
   },
-  coverage: { enabled: true, untested: true, exclude: [] },
+  coverage: { enabled: true, untested: true, exclude: [], children: false },
   crap: { enabled: true, threshold: 30 },
   lint: {
     enabled: false,
