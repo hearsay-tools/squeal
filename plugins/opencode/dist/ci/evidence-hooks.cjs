@@ -4,20 +4,20 @@
 // reads (`f`), listings (`l`, `r`) and writes (`w`) in `observe/fs.cjs`,
 // wrapped again from this CI layer, so the recorder's own runtime is not
 // changed. An open is a read when it only reads, else a write of its path,
-// so no descriptor, file handle or stream (`WriteStream` opens through
-// `fs.open`) needs tracking. A time change counts as a write; a hard link
+// so no descriptor, file handle or stream opened to write (`WriteStream`
+// opens through `fs.open`) needs tracking; reads through one opened to read
+// are `descriptors.cjs`'. A time change counts as a write; a hard link
 // writes both its names, which share content. Each wrapper takes the
-// evidence, then calls the original with the caller's own arguments.
+// evidence, then calls the original with the caller's own arguments. A child
+// or Worker started with an env of its own gets the hook (`children.cjs`).
 "use strict";
 const fs = require("node:fs");
 const path = require("node:path");
 const module_ = require("node:module");
 const workerThreads = require("node:worker_threads");
+const { wrapChildren } = require("./children.cjs");
+const { opensToWrite, wrapDescriptors } = require("./descriptors.cjs");
 const { createEvidence } = require("./evidence.cjs");
-
-const { O_RDONLY, O_CREAT, O_TRUNC, O_APPEND } = fs.constants;
-/** Node's string flags that can write (`stringToFlags`): `w`, `a` or `+`. */
-const WRITING = /[wa+]/;
 
 function replace(target, name, make) {
   const fn = target?.[name];
@@ -42,14 +42,6 @@ function around(target, name, before) {
 
 const recursive = (options) =>
   options !== null && typeof options === "object" && options.recursive === true;
-
-/** Whether an open with `flags` can change the file: anything but read-only. */
-function opensToWrite(flags) {
-  if (typeof flags === "number") {
-    return (flags & 3) !== O_RDONLY || (flags & (O_CREAT | O_TRUNC | O_APPEND)) !== 0;
-  }
-  return typeof flags === "string" && WRITING.test(flags);
-}
 
 /** `mkdtemp`: its prefix's directory listing before the call, the directory it made after. */
 function wrapMkdtemp(target, name, evidence, promises) {
@@ -156,7 +148,6 @@ function wrapFs(evidence) {
       });
     }
   }
-  module_.syncBuiltinESMExports();
 }
 
 /** The exact path a `file:` or relative specifier names, as the recorder takes it; null for a bare one. */
@@ -228,6 +219,9 @@ function installEvidence(settings) {
   try {
     const evidence = createEvidence(settings);
     wrapFs(evidence);
+    wrapDescriptors(evidence, replace);
+    wrapChildren(replace, evidence);
+    module_.syncBuiltinESMExports();
     wrapModules(evidence);
     wrapProcess(evidence);
   } catch {}
