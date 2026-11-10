@@ -2,7 +2,7 @@ import type { CoverageRun } from "../../core/code/coverage/types.js";
 import type { AbsolutePath, RelativePath } from "../../core/types/common.js";
 import type { TestFileRef } from "../../core/types/keys.js";
 import type { NodeTestGraph } from "./graph/index.js";
-import type { CoveragePayload } from "./run/coverage.js";
+import type { CoveragePayload, Covering } from "./run/coverage.js";
 
 /**
  * Spec 015 D8 (row 015-86): what the daemon gives a node:test adapter to
@@ -12,6 +12,8 @@ import type { CoveragePayload } from "./run/coverage.js";
 export interface NodeTestCoverage {
   /** Policy `coverage.enabled` with `complexity.enabled` (D1), read at each `environment`. */
   readonly enabled: () => boolean;
+  /** Spec 020 D12: policy `coverage.children`, read with `enabled`; absent, never. */
+  readonly children?: () => boolean;
   /** One run's payloads, handed over after its report is built; never awaited by the run. */
   readonly collected: (run: CoverageRun) => void;
 }
@@ -21,17 +23,18 @@ const INSPECTOR = "inspector";
 
 /**
  * One project's coverage. Its key holds Squeal's marker exactly while its
- * runs take coverage: `keyed` is what the last `environment` gave, and a
- * run takes coverage only then, so a record is stored only under a key
- * that names it. A policy change shows at the next `invalidate`, which
- * recreates the project so its checks re-key once. A project that runs its
+ * runs take coverage, with `children` exactly while their children's too
+ * (020 D12): `keyed` is what the last `environment` gave, and a run takes
+ * coverage only then, so a record is stored only under a key that names
+ * it. A policy change shows at the next `invalidate`, which recreates the
+ * project so its checks re-key once. A project that runs its
  * test files in the `node --test` process (`--test-isolation=none`) takes
  * none, as a Vitest `isolate: false` project: there no process of the test
  * file's own deletes the variable, so a spawned child's coverage would mix
  * in.
  */
 export class ProjectCoverage {
-  #keyed: boolean;
+  #keyed: Covering;
   readonly #noted = new Set<string>();
 
   constructor(
@@ -43,8 +46,8 @@ export class ProjectCoverage {
     this.#keyed = this.#wanted();
   }
 
-  /** For `environment`: whether the key holds the marker, kept for the next runs. */
-  key(): boolean {
+  /** For `environment`: what the key's marker names, kept for the next runs. */
+  key(): Covering {
     this.#keyed = this.#wanted();
     if (this.coverage?.enabled() === true && sharesProcess(this.argv)) {
       this.#once(
@@ -54,21 +57,22 @@ export class ProjectCoverage {
     return this.#keyed;
   }
 
-  /** For `invalidate`: the policy turned coverage on or off since the last `environment`. */
+  /** For `invalidate`: the policy turned coverage, or its children's, on or off since the last `environment`. */
   changed(): boolean {
     return this.#wanted() !== this.#keyed;
   }
 
   /**
-   * For a run: the files whose process takes coverage, `undefined` while
-   * the key holds none. A file whose closure, or whose project's preloads,
-   * import the inspector runs without, noted once (D8 Fidelity).
+   * For a run: what each file's process takes, `undefined` while the key
+   * holds none. A file whose closure, or whose project's preloads, import
+   * the inspector runs without, noted once (D8 Fidelity).
    */
   covered(
     graph: NodeTestGraph,
     files: readonly RelativePath[],
-  ): ((testFile: TestFileRef) => boolean) | undefined {
-    if (!this.#keyed) return undefined;
+  ): ((testFile: TestFileRef) => Covering) | undefined {
+    const keyed = this.#keyed;
+    if (keyed === false) return undefined;
     const preloads = graph.environmentPackages().builtins.includes(INSPECTOR);
     const listed = new Set(files);
     return (testFile) => {
@@ -81,24 +85,26 @@ export class ProjectCoverage {
           `coverage is off for ${testFile.path}: ${imports}, so its tests can see V8 coverage (spec 015 D8)`,
         );
       }
-      return own === false;
+      return own === false && keyed;
     };
   }
 
   /** After a run: each completed file's payload, to the records' writer. */
   collect(runId: string, payloads: readonly CoveragePayload[], root: AbsolutePath): void {
     if (this.coverage === undefined || payloads.length === 0) return;
-    const files = payloads.map(({ testFile, payload }) => ({
+    const files = payloads.map(({ testFile, payload, children }) => ({
       testFile,
       payload,
       sources: new Map(),
       ownRoot: root,
+      ...(children === undefined ? {} : { children: { root, dir: children } }),
     }));
     this.coverage.collected({ runId, files });
   }
 
-  #wanted(): boolean {
-    return this.coverage?.enabled() === true && !sharesProcess(this.argv);
+  #wanted(): Covering {
+    if (this.coverage?.enabled() !== true || sharesProcess(this.argv)) return false;
+    return this.coverage.children?.() === true ? "children" : true;
   }
 
   #once(text: string): void {
