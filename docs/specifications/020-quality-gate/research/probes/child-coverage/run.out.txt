@@ -1,0 +1,112 @@
+== vitest --pool=forks
+ Test Files  2 passed (2)
+      Tests  7 passed (7)
+-- seen by tests
+{"file":"b","k":"NODE_V8_COVERAGE","v":"<scratch>/out-forks/children/4d2a8656-02f5-4aad-8c8c-63d465708ab8","pid":2419286}
+{"file":"a","k":"NODE_V8_COVERAGE","v":"<scratch>/out-forks/children/832c4457-caa5-47da-aabe-578a85852b92","pid":2419281}
+-- batches (provider-children.mjs)
+{"testFile":"<scratch>/fx/test/b.test.ts","pid":2419286,"payload":"<scratch>/out-forks/reports/.tmp/coverage-b2426191-fa63-4aaa-80c3-372afc9b02f2.json","children":"<scratch>/out-forks/children/4d2a8656-02f5-4aad-8c8c-63d465708ab8","at":1794303973802}
+{"testFile":"<scratch>/fx/test/a.test.ts","pid":2419281,"payload":"<scratch>/out-forks/reports/.tmp/coverage-44920f4a-9273-49cd-ab42-92cd0a7b4550.json","children":"<scratch>/out-forks/children/832c4457-caa5-47da-aabe-578a85852b92","at":1794303974302}
+-- child files when the run ended
+<scratch>/out-forks/children:
+4d2a8656-02f5-4aad-8c8c-63d465708ab8
+8113a45f-5d4e-4ee0-9d39-9df11cbcc534
+832c4457-caa5-47da-aabe-578a85852b92
+ceb007dc-7927-4375-9366-e6ddb4a49736
+
+<scratch>/out-forks/children/4d2a8656-02f5-4aad-8c8c-63d465708ab8:
+coverage-2419405-1794303973779-0.json
+
+<scratch>/out-forks/children/8113a45f-5d4e-4ee0-9d39-9df11cbcc534:
+
+<scratch>/out-forks/children/832c4457-caa5-47da-aabe-578a85852b92:
+coverage-2419414-1794303973988-1.json
+coverage-2419414-1794303974012-0.json
+coverage-2419566-1794303974092-0.json
+coverage-2419588-1794303974183-0.json
+
+<scratch>/out-forks/children/ceb007dc-7927-4375-9366-e6ddb4a49736:
+-- 2 s later
+<scratch>/out-forks/children:
+4d2a8656-02f5-4aad-8c8c-63d465708ab8
+8113a45f-5d4e-4ee0-9d39-9df11cbcc534
+832c4457-caa5-47da-aabe-578a85852b92
+ceb007dc-7927-4375-9366-e6ddb4a49736
+
+<scratch>/out-forks/children/4d2a8656-02f5-4aad-8c8c-63d465708ab8:
+coverage-2419405-1794303973779-0.json
+
+<scratch>/out-forks/children/8113a45f-5d4e-4ee0-9d39-9df11cbcc534:
+
+<scratch>/out-forks/children/832c4457-caa5-47da-aabe-578a85852b92:
+coverage-2419414-1794303973988-1.json
+coverage-2419414-1794303974012-0.json
+coverage-2419566-1794303974092-0.json
+coverage-2419588-1794303974183-0.json
+coverage-2419719-1794303975934-0.json
+
+<scratch>/out-forks/children/ceb007dc-7927-4375-9366-e6ddb4a49736:
+== vitest --pool=threads
+ Test Files  2 passed (2)
+      Tests  7 passed (7)
+-- seen by tests
+{"file":"b","k":"NODE_V8_COVERAGE","v":"<scratch>/out-threads/children/c6dd52cc-b70a-4f5c-95c8-88de4be91c5c","pid":2420860}
+{"file":"a","k":"NODE_V8_COVERAGE","v":"<scratch>/out-threads/children/d27ee5a9-d9e9-4255-96df-2debfa894d72","pid":2420860}
+-- batches (provider-children.mjs)
+{"testFile":"<scratch>/fx/test/b.test.ts","pid":2420860,"payload":"<scratch>/out-threads/reports/.tmp/coverage-b2061840-e7d3-4f7d-846e-a43483de7752.json","children":"<scratch>/out-threads/children/c6dd52cc-b70a-4f5c-95c8-88de4be91c5c","at":1794303977840}
+{"testFile":"<scratch>/fx/test/a.test.ts","pid":2420860,"payload":"<scratch>/out-threads/reports/.tmp/coverage-51a5ad98-393e-4d83-ab7b-c99a401be3a3.json","children":"<scratch>/out-threads/children/d27ee5a9-d9e9-4255-96df-2debfa894d72","at":1794303978277}
+-- child files when the run ended
+<scratch>/out-threads/children:
+715b238b-be92-4f8f-80d8-7e33d0efd76d
+7eba8485-254c-41d8-810c-9a6273426233
+c6dd52cc-b70a-4f5c-95c8-88de4be91c5c
+d27ee5a9-d9e9-4255-96df-2debfa894d72
+
+<scratch>/out-threads/children/715b238b-be92-4f8f-80d8-7e33d0efd76d:
+
+<scratch>/out-threads/children/7eba8485-254c-41d8-810c-9a6273426233:
+
+<scratch>/out-threads/children/c6dd52cc-b70a-4f5c-95c8-88de4be91c5c:
+coverage-2421245-1794303977807-0.json
+
+<scratch>/out-threads/children/d27ee5a9-d9e9-4255-96df-2debfa894d72:
+coverage-2421250-1794303977897-0.json
+coverage-2421324-1794303977987-0.json
+coverage-2421357-1794303978103-0.json
+-- 2 s later
+<scratch>/out-threads/children:
+715b238b-be92-4f8f-80d8-7e33d0efd76d
+7eba8485-254c-41d8-810c-9a6273426233
+c6dd52cc-b70a-4f5c-95c8-88de4be91c5c
+d27ee5a9-d9e9-4255-96df-2debfa894d72
+
+<scratch>/out-threads/children/715b238b-be92-4f8f-80d8-7e33d0efd76d:
+
+<scratch>/out-threads/children/7eba8485-254c-41d8-810c-9a6273426233:
+
+<scratch>/out-threads/children/c6dd52cc-b70a-4f5c-95c8-88de4be91c5c:
+coverage-2421245-1794303977807-0.json
+
+<scratch>/out-threads/children/d27ee5a9-d9e9-4255-96df-2debfa894d72:
+coverage-2421250-1794303977897-0.json
+coverage-2421324-1794303977987-0.json
+coverage-2421357-1794303978103-0.json
+coverage-2421455-1794303979869-0.json
+== node --test
+✔ node:test children (421.019273ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 617.946803
+<scratch>/out-node/cov:
+children
+coverage-2422285-1794303981174-0.json
+own-2422285
+
+<scratch>/out-node/cov/children:
+coverage-2422360-1794303980828-0.json
+coverage-2422419-1794303981108-0.json
