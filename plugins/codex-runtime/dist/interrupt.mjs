@@ -7353,6 +7353,7 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
   const view = policy === null ? null : slowPolicyView(policy);
   const slow = isSlow ?? view?.isSlow;
   const optimizerOff = readOptimizerOff(store, worktreeId);
+  const runnerPartPending = refinedRevision !== null && refinedRevision < revision;
   return {
     revision,
     ...commit === void 0 ? {} : { commit },
@@ -7370,7 +7371,8 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
     inheritedFileLevelCount,
     ...importedCount === 0 ? {} : { importedCount },
     refinedRevision,
-    runnerPartPending: refinedRevision !== null && refinedRevision < revision,
+    runnerPartPending,
+    ...listingRunnersField(runnerPartPending, root, policy),
     ...slow === void 0 ? {} : { slowPending: countSlowPending(states, keys, slow) },
     ...slowTierField(store, worktreeId, states, keys, policy, view),
     ...policy !== null && groupTextsShown(policy) ? groupFields(store, worktreeId, states, keys, policy) : {},
@@ -7407,6 +7409,17 @@ function readRefined(store, worktreeId) {
   const raw = store.meta.get(refinedMetaKey(worktreeId));
   const value = raw === null ? Number.NaN : Number(raw);
   return Number.isInteger(value) ? value : null;
+}
+function listingRunnersField(pending, root, policy) {
+  if (!pending || root === void 0 || policy === null) return {};
+  const others = policy.nodeTest.length + policy.pytest.length;
+  return {
+    listingRunners: [
+      ...others === 0 || vitestDetected(root) ? ["Vitest"] : [],
+      ...policy.nodeTest.length > 0 ? ["node:test"] : [],
+      ...policy.pytest.length > 0 ? ["pytest"] : []
+    ]
+  };
 }
 function countFilesWithoutChecks(states, keys) {
   const withChecks = new Set(states.map((s) => testFileKeyOf(s.check)));
@@ -7640,7 +7653,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.423";
+  if (true) return "0.1.424";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -12812,7 +12825,13 @@ function unlistedReason(header, policy) {
   const refined2 = header.refinedRevision;
   if (header.runnerPartPending !== true || refined2 === null || refined2 === void 0) return null;
   const callBoundMs = runnerPartBoundMs(policy.runner.timeoutMs);
-  return { kind: "unlisted", revision: header.revision, callBoundMs };
+  const runners = header.listingRunners;
+  return {
+    kind: "unlisted",
+    revision: header.revision,
+    callBoundMs,
+    ...runners === void 0 ? {} : { runners }
+  };
 }
 function runOf(runs, ref2) {
   const id = testFileId(ref2);
@@ -12944,10 +12963,12 @@ function waitsId(standing3) {
   return standing3.kind === "retry" && standing3.waits !== void 0 ? ` ${JSON.stringify(standing3.waits)}` : "";
 }
 function unlisted(header, policy) {
+  const runners = header.listingRunners;
   return {
     kind: "unlisted",
     revision: header.revision,
-    callBoundMs: runnerPartBoundMs(policy.runner.timeoutMs)
+    callBoundMs: runnerPartBoundMs(policy.runner.timeoutMs),
+    ...runners === void 0 ? {} : { runners }
   };
 }
 function retryStandings(reads, worktreeId, policy) {
