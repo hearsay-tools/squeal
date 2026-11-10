@@ -207,8 +207,8 @@ describe("squeal code --base reads the stores (spec 020 D11.7)", () => {
       expect(ran.stderr).toBe("squeal code: 1 of 1 selected test files read from the stores\n");
       const { verdict, functions, runs } = ran.report;
       expect(verdict).toBe("pass");
-      expect(runs.map((r) => [r.runner, r.completed, r.fromStore])).toEqual([
-        ["vitest", ["test/math.test.ts"], ["test/math.test.ts"]],
+      expect(runs.map((r) => [r.runner, r.completed, r.from])).toEqual([
+        ["vitest", ["test/math.test.ts"], { "test/math.test.ts": "store" }],
       ]);
       expect(functions.map((f) => [f.qualifiedName, f.state, f.coverage?.share])).toEqual([
         ["add", "pass", 1],
@@ -229,11 +229,11 @@ describe("squeal code --base reads the stores (spec 020 D11.7)", () => {
     expect(ran.code).toBe(3);
     const { verdict, runs } = ran.report;
     expect(verdict).toBe("incomplete");
-    expect(runs[0]?.fromStore).toEqual([
-      "test/fail.test.ts",
-      "test/strings.test.ts",
-      "test/upper.test.ts",
-    ]);
+    expect(runs[0]?.from).toEqual({
+      "test/fail.test.ts": "store",
+      "test/strings.test.ts": "store",
+      "test/upper.test.ts": "store",
+    });
     expect(runs[0]?.failed).toEqual([{ path: "test/fail.test.ts", tests: ["fails"] }]);
     expect(snapshot(repo)).toEqual(before);
   });
@@ -251,7 +251,7 @@ describe("squeal code --base reads the stores (spec 020 D11.7)", () => {
     expect(ran.ran).toEqual(["test/math.test.ts"]);
     expect(ran.code).toBe(0);
     expect(ran.stderr).toBe("");
-    expect(ran.report.runs.map((r) => [r.completed, r.fromStore])).toEqual([
+    expect(ran.report.runs.map((r) => [r.completed, r.from])).toEqual([
       [["test/math.test.ts"], undefined],
     ]);
     expect(snapshot(repo)).toEqual(before);
@@ -323,7 +323,7 @@ describe("squeal code --base keys the stores with the base's coverage.children",
 
       expect(ran.ran).toEqual(["test/math.test.ts"]);
       expect(ran.report.base.policy).not.toHaveProperty("coverageChildren");
-      expect(ran.report.runs.map((r) => [r.completed, r.fromStore])).toEqual([
+      expect(ran.report.runs.map((r) => [r.completed, r.from])).toEqual([
         [["test/math.test.ts"], undefined],
       ]);
       expect(ran.code).toBe(0);
