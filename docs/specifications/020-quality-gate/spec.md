@@ -178,6 +178,18 @@ Each is designed from a design survey run first (`tasks/wave-2.md`, "Surveys for
 - **020-08:** `ci record` adds Squeal's coverage provider and writes coverage records into its parts, and `--base` reads parts instead of running tests. This reverses 018 D8 and its non-goal "Squeal's coverage provider in CI". A project's own `--coverage` report cannot share that Vitest run.
 - **020-10:** with `coverage.children: true` (default off), coverage of child processes is collected and mapped, for the gate and the daemon. This reverses 015's non-goal. Tests can see `NODE_V8_COVERAGE`, which is why it is opt-in.
 
+### D11. Daemon parity (row 020-07, designed 2026-11-10 from `research/daemon-parity.md`)
+
+1. **One rule, not one report.** A pure `judgeFunction(input, policy)` in `src/core/code/gate/rule.ts` decides one function's state from its evidence. It takes: complexity, whether `coverage.exclude` matches, the loaders expected and measured, the first missing gap, the joined coverage, whether a selected test failed, and whether a loader skipped a test. It gives the gate state and gap, CRAP, and the per-measure outcomes `crap` and `uncovered`. `evaluate()` calls it per function, and its 020-01 golden tests must not change. The daemon's `crap/judge.ts` calls it too: the daemon maps `pass`/`violation` to `pass`/`fail` per measure, and `incomplete` to `unknown` or `pending`. Transitions, the early pass (015-57), the drop (015-75), the pass beside a skip (015-78) and the views stay outside the rule, so deliveries keep 015 D6.
+2. **Failed tests stay a gate input.** The daemon passes `failed: false`, because test failures are told as test transitions (the coordinator, 2026-11-10; the survey's Q2.1 (a)).
+3. **Skipped tests.** The gate adopts 015 D9: a loader with a skipped test can prove a pass and never a violation. It reads `incomplete` with the gap `skipped`. `TestFileEvidence` gains `skipped`. `QUALITY_POLICY_VERSION` rises by one (Q2.2).
+4. **`uncovered`** stays a daemon measure that the same rule computes. The gate report does not show it (Q2.3).
+5. **No loader reads unknown.** `fileCondition([], true)` is `unknown`, with the cause `no-loader`, in both paths. A state judged with no loader is dropped once, through a marker of its own in `loaderSet`. Text reads `not measured: no test Squeal runs loads this file`. The delivery wording `NOT_LOADED` is removed, because it can no longer occur. This reverses 015 D9 and resolves #165 for files no runner loads.
+6. **Test files are counted in the daemon,** and each test file is its own loader. The 015-52 listing hold is removed. An upgrade starts one `include` recount with one summary line, never one delivery per function. This reverses 015 D1's "test files are never counted".
+7. **`--base` reuses the stores.** For each selected test file, it computes the key as a daemon would, with no store write. It reads the results and the coverage record at that key, read-only, and runs only the files with neither. The report marks stored files `fromStore`. Counts are not reused, because counting costs about 3 ms a file. D1's "neither talks to it nor uses its store" changes to "reads its stores, never writes them".
+
+Rows: 020-07a (items 1 to 5), then 020-07b (item 6) and 020-07c (item 7) in parallel.
+
 ## Testing
 
 - Evaluator golden tests (020-01): limits and equality for CC and CRAP, CC over limit with no coverage, a skipped function under and over the CC limit, pass from a subset, violation that needs every loader, every gap, a failed test, verdict precedence. The same input twice gives the same report.
