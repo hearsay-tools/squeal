@@ -111,14 +111,14 @@ describe("the lines of a yield kept, a tier's ended files and the run an unliste
       nextStep({ kind: "unlisted", revision: 5, callBoundMs: 666_000, ...(run ? { run } : {}) })
         .reason;
     expect(unlisted({ lane: "vitest", since: START, files: 4, ended: 1 })).toBe(
-      `revision 5 not listed yet, because the runner part waits for the run in flight (the vitest tier of 4 test files running since ${T(START)}, 1 of them ended), each of its calls bounded at 666 s`,
+      `the test runner has not listed revision 5's test files yet; it waits for the run in flight (the vitest tier of 4 test files running since ${T(START)}, 1 of them ended), each of its calls bounded at 666 s`,
     );
     expect(unlisted({ lane: "vitest", since: START, files: 1 })).toBe(
-      `revision 5 not listed yet, because the runner part waits for the run in flight (running since ${T(START)} in the vitest lane), each of its calls bounded at 666 s`,
+      `the test runner has not listed revision 5's test files yet; it waits for the run in flight (running since ${T(START)} in the vitest lane), each of its calls bounded at 666 s`,
     );
     // None open in the file's lane: the line as before.
     expect(unlisted()).toBe(
-      "revision 5 not listed yet, because the runner part waits for the run in flight, each of its calls bounded at 666 s",
+      "the test runner has not listed revision 5's test files yet; it waits for the run in flight, each of its calls bounded at 666 s",
     );
   });
 });

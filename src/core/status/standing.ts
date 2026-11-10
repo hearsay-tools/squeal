@@ -461,7 +461,13 @@ function unlistedReason(
   // and the store keeps no call's start: the bound is said per call, never as a
   // countdown from the revision's age (review wave-1.11 B3).
   const callBoundMs = runnerPartBoundMs(policy.runner.timeoutMs);
-  return { kind: "unlisted", revision: header.revision, callBoundMs };
+  const runners = header.listingRunners;
+  return {
+    kind: "unlisted",
+    revision: header.revision,
+    callBoundMs,
+    ...(runners === undefined ? {} : { runners }),
+  };
 }
 
 function runOf(runs: readonly RunRecord[], ref: TestFileRef): RunRecord | undefined {

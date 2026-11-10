@@ -24,7 +24,7 @@ export type DelayFields = Pick<StatusHeader, "revision" | "runnerPartPending" | 
  * `Vitest has`, `Vitest and pytest have`: the runners that list a revision's test files
  * (`StatusHeader.listingRunners`) as a subject; `the test runner has` when none is known.
  */
-function runnersHave(runners: readonly string[] | undefined, start: boolean): string {
+export function runnersHave(runners: readonly string[] | undefined, start: boolean): string {
   if (runners === undefined || runners.length === 0) {
     return `${start ? "The" : "the"} test runner has`;
   }

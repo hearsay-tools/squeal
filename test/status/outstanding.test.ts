@@ -131,7 +131,7 @@ describe("each outstanding group names what advances it (011-29, design section 
     expect(outstanding(repo.main)).toEqual([
       expect.stringMatching(
         new RegExp(
-          `^ {2}1 test file queued, revision 4 not listed yet, because the runner part waits for the run in flight, each of its calls bounded at \\d+ s: ${B}; \`squeal status --wait 60000\` waits for it$`,
+          `^ {2}1 test file queued, Vitest has not listed revision 4's test files yet; it waits for the run in flight, each of its calls bounded at \\d+ s: ${B}; \`squeal status --wait 60000\` waits for it$`,
         ),
       ),
     ]);
