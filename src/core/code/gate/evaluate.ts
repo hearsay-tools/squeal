@@ -149,19 +149,10 @@ function coverageOf(fn: ChangedFunction, ev: PathEvidence, ctx: Context): RuleCo
   return { lines, covered, share, ran };
 }
 
-/** D5.2 to D5.5: the gap of the first condition of complete evidence that does not hold; `null` when all do. */
-function completeness(m: Measures, ev: PathEvidence, ctx: Context): GateGap | null {
-  if (ev.expected.length === 0) return "no-loader";
-  if (ev.missing !== null) return ev.missing;
-  if (m.crap === null) return "not-joined";
-  if (ctx.failed) return "test-failed";
-  return null;
-}
-
 /**
  * D5 by D11's rule (`judgeFunction`): one changed function counted outside
- * a parse error, and what its evidence alone says (D8 reads it). A
- * `coverage.exclude` file wants no evidence.
+ * a parse error, what its evidence alone says, and whether that evidence is
+ * complete (D8 reads both). A `coverage.exclude` file wants no evidence.
  */
 function judge(fn: ChangedFunction, ctx: Context): Judged {
   const { complexity } = fn.count;
@@ -178,7 +169,11 @@ function judge(fn: ChangedFunction, ctx: Context): Judged {
       },
       ctx.policy,
     );
-    return { row: report(fn, UNMEASURED, stateOf(out)), evidence: out.evidence };
+    return {
+      row: report(fn, UNMEASURED, stateOf(out)),
+      evidence: out.evidence,
+      gap: out.completeness,
+    };
   }
   const ev = ctx.evidenceOf(fn);
   const coverage = coverageOf(fn, ev, ctx);
@@ -202,7 +197,7 @@ function judge(fn: ChangedFunction, ctx: Context): Judged {
     crap: out.crap,
     loaders: { expected: ev.expected, measured: ev.measured },
   };
-  return { row: report(fn, measures, stateOf(out)), evidence: out.evidence };
+  return { row: report(fn, measures, stateOf(out)), evidence: out.evidence, gap: out.completeness };
 }
 
 /** D2.5: a changed function inside a parse error is not counted. */
