@@ -198,6 +198,8 @@ describe("a SubagentStop keeps one hold whatever stop.maxHolds says (004 D7)", (
             deps,
           );
     await start();
+    // Row 011-312: a revision since the subagent registered, so it changed something.
+    edit(r);
     expect(decision(await stop()).decision).toBe("block");
     expect(decision(await stop(ACTIVE)).decision).toBeUndefined();
     expect(holds(r)).toBe(0);
