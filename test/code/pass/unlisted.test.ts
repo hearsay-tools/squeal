@@ -18,12 +18,11 @@ const SEED = "test/seed.test.ts";
 /** A test file's functions, one over 20. */
 const SEED_TEXT = "seeds.<it> 2 s1\nseeds 25 s2\nseeds.<it> 3 s3\n";
 const S1 = consumer("s1");
-/** The transitions of `seeds` from its count as source; a removal adds none. */
-const COUNTED_AS_SOURCE = [
-  "complexity first-seen-fail",
-  "crap first-seen-fail",
-  "uncovered first-seen-fail",
-];
+/**
+ * The transitions of `seeds` from its count as source; a removal adds none.
+ * No test file loads it, so it has no coverage state (spec 020 D11.5).
+ */
+const COUNTED_AS_SOURCE = ["complexity first-seen-fail"];
 
 /** `src/a.ts` counted and loaded by `test/a.test.ts`, under the daemon's pass, with S1 registered. */
 async function counted(policy = () => COVERED) {
@@ -90,9 +89,9 @@ describe("a test file and its runner listing (015 D1, row 015-52)", () => {
     expect(of(rig, SEED)).toEqual({ states: [], transitions: [] });
     const told = await rig.told(S1);
     expect(naming(told, SEED)).toEqual([]);
-    expect(naming(told, "src/b.ts")).toEqual(
-      expect.arrayContaining(["b (src/b.ts:1):", "- FAIL complexity: 25, over 20 (ESLint rule)"]),
-    );
+    expect(naming(told, "src/b.ts")).toEqual([
+      "FAIL complexity: b (src/b.ts:1) is 25, over 20 (ESLint rule)",
+    ]);
   });
 
   it("counts a held source file at the next daemon's pass once its revision is listed", async () => {
@@ -111,9 +110,9 @@ describe("a test file and its runner listing (015 D1, row 015-52)", () => {
     });
     await settle(rig, next);
     expect(rows(rig)).toEqual(["src/a.ts", "src/b.ts"]);
-    expect(naming(await rig.told(S1), "src/b.ts")).toEqual(
-      expect.arrayContaining(["b (src/b.ts:1):", "- FAIL complexity: 25, over 20 (ESLint rule)"]),
-    );
+    expect(naming(await rig.told(S1), "src/b.ts")).toEqual([
+      "FAIL complexity: b (src/b.ts:1) is 25, over 20 (ESLint rule)",
+    ]);
     await next.code.close();
   });
 
@@ -193,17 +192,14 @@ describe("a test file and its runner listing (015 D1, row 015-52)", () => {
 
 /**
  * Revision 2 brings the test file while its listing reads as done, as
- * 0.1.309's did after a refinement that threw: it is counted as source,
- * told, and fails `uncovered`.
+ * 0.1.309's did after a refinement that threw: it is counted as source and
+ * told. No test file loads it, so it gets no coverage state (spec 020 D11.5).
  */
 async function countedAsSource(rig: CoverageRig, run: ReturnType<typeof daemonPass>) {
   rig.tree.write(SEED, SEED_TEXT).revise();
   await settle(rig, run);
-  expect(of(rig, SEED).states).toEqual(expect.arrayContaining(["complexity", "uncovered"]));
-  expect(naming(await rig.told(S1), SEED)).toEqual(
-    expect.arrayContaining([
-      "seeds (test/seed.test.ts:2):",
-      "- FAIL complexity: 25, over 20 (ESLint rule)",
-    ]),
-  );
+  expect(of(rig, SEED).states).toEqual(expect.arrayContaining(["complexity"]));
+  expect(naming(await rig.told(S1), SEED)).toEqual([
+    "FAIL complexity: seeds (test/seed.test.ts:2) is 25, over 20 (ESLint rule)",
+  ]);
 }
