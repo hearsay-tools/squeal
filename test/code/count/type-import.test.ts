@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 import { countFile } from "../../../src/core/code/count/index.js";
 import type { FileCount } from "../../../src/core/types/code.js";
@@ -123,5 +124,58 @@ describe("`import(…)` text across two tokens (review 0.1.295 B1)", () => {
   ])("leaves %s as written", async (_form, text) => {
     const count = await countFile(text, "typescript");
     expect({ errors: count.errors, cc: cc(count) }).toEqual({ errors: [], cc: [["hidden", 2]] });
+  });
+});
+
+/*
+ * Row 020-14: the grammar reads `import("x")` and `import("x").T` as a
+ * type, but not followed by `[]`, `<…>` or `["k"]`, and not after `keyof`.
+ * `let entries: import("node:fs").Dirent[]` read as a parse error. Each CC
+ * below is ESLint's `complexity` for the same text.
+ */
+describe("`import(…)` in any type position (row 020-14)", () => {
+  it("parses `import(…).T[]` in a variable's type", async () => {
+    const last = "export const f = (a) => a ?? 1;";
+    const text = ['let x: import("m").T[];', last].join("\n");
+    const count = await countFile(text, "typescript");
+    expect({ errors: count.errors, cc: cc(count) }).toEqual({ errors: [], cc: [["f", 2]] });
+    expect(count.functions[0]?.range).toEqual({
+      startLine: 2,
+      startColumn: last.indexOf("(a)") + 1,
+      endLine: 2,
+      endColumn: last.length,
+    });
+  });
+
+  it('parses it before `[]`, `<…>`, `.` and `["k"]`, after `keyof`, `|` and `as`', async () => {
+    // The error after `b` reads `c`'s `import(…)` as JSX text, until `b` is rewritten.
+    const text = [
+      'interface I { a: import("m").T[]; b?: import("m").T<U>; c: import("m").T.U["k"] }',
+      'type A = keyof import("m").T | readonly import("m").T[];',
+      'type F<T = import("m").T[]> = (a: import("m").T[]) => import("m").T<T>;',
+      'class C { x: import("m").T[] = []; m(a?: number): import("m").T[] { return a ?? []; } }',
+      'const g = (b): import("m").T[] => (b as import("m").T[]) || [];',
+      'function h(c): c is import("m").T[] { return c && true; }',
+      'const m = { [`k`]: (d) => import("./x.js").then((e) => e.f ?? d) };',
+    ].join("\n");
+    const count = await countFile(text, "typescript");
+    expect({ errors: count.errors, cc: cc(count) }).toEqual({
+      errors: [],
+      cc: [
+        ["C.m", 2],
+        ["g", 2],
+        ["h", 2],
+        ["[`k`]", 1],
+        ["[`k`].<then>", 2],
+      ],
+    });
+  });
+
+  it("counts `src/core/lint/provider/oxlint/configs.ts` with no error range", async () => {
+    const text = await readFile(
+      new URL("../../../src/core/lint/provider/oxlint/configs.ts", import.meta.url),
+      "utf8",
+    );
+    expect((await countFile(text, "typescript")).errors).toEqual([]);
   });
 });

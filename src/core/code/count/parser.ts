@@ -44,8 +44,7 @@ export function withCodeTree<T>(language: CodeLanguage, text: string, fn: (root:
 }
 
 /** `import("x")` with one plain string: no line break, backslash, `$` or backtick in it. */
-const IMPORT_LITERAL = String.raw`import[ \t]*\([ \t]*('[^'\n\\$\x60]*'|"[^"\n\\$\x60]*")[ \t]*\)`;
-const TYPE_IMPORT = new RegExp(String.raw`(?<=\btypeof\s+|[<,]\s*)${IMPORT_LITERAL}`, "g");
+const IMPORT_LITERAL = /import[ \t]*\([ \t]*('[^'\n\\$\x60]*'|"[^"\n\\$\x60]*")[ \t]*\)/g;
 
 /**
  * A backslash and the character after it. The group holds the `x` or `u` of
@@ -126,29 +125,39 @@ function isTaggedEscape(root: Node, at: number): boolean {
 
 /**
  * It reads `f<typeof import("x")>()` and `f<import("x").T>()` as comparisons
- * (row 015-29): an identifier of underscores in place of the `import(…)`
- * makes them type arguments again.
+ * (row 015-29), and `import("x").T` before `[]`, `<…>` or `["k"]`, or after
+ * `keyof`, as an error (row 020-14). An identifier of underscores in place
+ * of each `import(…)` makes it a type in every position. The same in code,
+ * as in `await import("x")`, holds no function and no decision point either
+ * way, and `calleeName` reads `then` from `import("x").then(cb)` either way.
+ * An error can hide a later `import(…)` in what it reads as JSX text, so the
+ * new parse is read again until it shows no further one.
  */
 function withTypeImports(parser: Parser, parsed: Parse): Parse {
-  const { input, tree } = parsed;
-  if (!input.includes("import")) return parsed;
-  let changed = false;
-  const rewritten = input.replace(TYPE_IMPORT, (match: string, literal: string, at: number) => {
-    if (!isImportSyntax(tree.rootNode, match, literal, at)) return match;
-    changed = true;
-    return "_".repeat(match.length);
-  });
-  if (!changed) return parsed;
-  tree.delete();
-  return { input: rewritten, tree: parser.parse(rewritten) as Tree };
+  if (!parsed.input.includes("import")) return parsed;
+  let current = parsed;
+  for (;;) {
+    const { input, tree } = current;
+    let changed = false;
+    const rewritten = input.replace(
+      IMPORT_LITERAL,
+      (match: string, literal: string, at: number) => {
+        if (!isImportSyntax(tree.rootNode, match, literal, at)) return match;
+        changed = true;
+        return "_".repeat(match.length);
+      },
+    );
+    if (!changed) return current;
+    tree.delete();
+    current = { input: rewritten, tree: parser.parse(rewritten) as Tree };
+  }
 }
 
 /**
- * Whether the parse of the unrewritten text reads a match at `at` as an
- * `import` keyword and one string, the match's own literal. A match can
- * start inside a string, a comment, a template or a regular expression and
- * end inside another: its underscores would erase the code between them
- * (review 0.1.295 B1).
+ * Whether the current parse reads a match at `at` as an `import` keyword and
+ * one string, the match's own literal. A match can start inside a string, a
+ * comment, a template or a regular expression and end inside another: its
+ * underscores would erase the code between them (review 0.1.295 B1).
  */
 function isImportSyntax(root: Node, match: string, literal: string, at: number): boolean {
   const from = at + match.indexOf(literal);
