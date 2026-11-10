@@ -189,8 +189,8 @@ function headPaths(changed: ChangedSet): GateReport["head"]["paths"] {
 
 /**
  * Spec 020 D5 to D7: the report of `changed` judged with `evidence` under
- * `policy`, read at the base with its counting keys. `versions` and `times` are the caller's, so the same inputs
- * give the same report.
+ * `policy`, read at the base with its counting keys. `versions` and
+ * `times` are the caller's, so the same inputs give the same report.
  */
 export function evaluate(
   changed: ChangedSet,
