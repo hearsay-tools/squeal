@@ -1,0 +1,415 @@
+{
+  "timestamp": "2026-11-10T17:03:21.628Z",
+  "node": "v24.22.1",
+  "cli": "/home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.426/dist/cli/squeal.mjs",
+  "cases": [
+    {
+      "mode": "attached",
+      "gate": {
+        "at": "2026-11-10T17:03:21.644Z",
+        "load": 8.03,
+        "cpus": 24
+      },
+      "version": {
+        "args": [
+          "--version"
+        ],
+        "exit": 0,
+        "stdout": "0.1.426\n",
+        "stderr": ""
+      },
+      "status": {
+        "args": [
+          "status",
+          "--json"
+        ],
+        "exit": 0,
+        "stderr": "",
+        "payload": {
+          "revision": 0,
+          "knownFailures": [
+            {
+              "check": {
+                "kind": "setup",
+                "project": "tiny",
+                "testPath": "setup.js"
+              },
+              "outcome": "fail",
+              "validity": "current",
+              "observedAt": 0,
+              "summary": "setup failed: Fixture bootstrap failed; cause: Command failed: node child.cjs (1)",
+              "fingerprint": "Error: Fixture bootstrap failed @ setup.js:6:8",
+              "location": {
+                "path": "setup.js",
+                "line": 6,
+                "column": 8
+              }
+            }
+          ],
+          "knownFailureCounts": {
+            "current": 1,
+            "pending": 0,
+            "stale": 0
+          },
+          "testFileCounts": {
+            "current": 0,
+            "pending": 0,
+            "stale": 0,
+            "unknown": 1
+          },
+          "testFilesWithoutChecks": {
+            "pending": 0,
+            "unknown": 1
+          }
+        }
+      },
+      "why": {
+        "args": [
+          "why",
+          "setup.js",
+          "--include-logs"
+        ],
+        "exit": 0,
+        "stdout": "Check: [tiny] setup.js (global setup)\nWorktree: <repo>/docs/specifications/011-core/research/probes/issue-173/.scratch/1794330201628/attached\nRevision: none recorded\n\nKnown state: FAIL, current, observed at revision 0, commit c1c18bc\n  Summary: setup failed: Fixture bootstrap failed; cause: Command failed: node child.cjs (1)\n  Location: setup.js:6:8\n  Fingerprint: Error: Fixture bootstrap failed @ setup.js:6:8\n\nHistory (1 transition, oldest first):\n  revision 0  2026-11-10T17:03:22.552Z  first seen FAIL\n\nResults: none stored\n\nRun log: unknown, no stored result, or several, fit the known state\n",
+        "stderr": ""
+      },
+      "whyJson": {
+        "args": [
+          "why",
+          "setup.js",
+          "--include-logs",
+          "--json"
+        ],
+        "exit": 0,
+        "stderr": "",
+        "payload": {
+          "schemaVersion": 1,
+          "available": true,
+          "found": true,
+          "worktreeId": "714af31a603a5462",
+          "worktreeRoot": "<repo>/docs/specifications/011-core/research/probes/issue-173/.scratch/1794330201628/attached",
+          "revision": null,
+          "check": {
+            "kind": "setup",
+            "project": "tiny",
+            "testPath": "setup.js"
+          },
+          "worktreeRoots": {
+            "714af31a603a5462": "<repo>/docs/specifications/011-core/research/probes/issue-173/.scratch/1794330201628/attached"
+          },
+          "knownState": {
+            "worktreeId": "714af31a603a5462",
+            "check": {
+              "kind": "setup",
+              "project": "tiny",
+              "testPath": "setup.js"
+            },
+            "outcome": "fail",
+            "validity": "current",
+            "pendingPhase": null,
+            "observedAt": 0,
+            "commit": "c1c18bc8d884b010d090891eb6ff9184daa59870",
+            "origin": {
+              "kind": "own"
+            },
+            "durationMs": null,
+            "location": {
+              "path": "setup.js",
+              "line": 6,
+              "column": 8
+            },
+            "summary": "setup failed: Fixture bootstrap failed; cause: Command failed: node child.cjs (1)",
+            "fingerprint": "Error: Fixture bootstrap failed @ setup.js:6:8"
+          },
+          "history": [
+            {
+              "worktreeId": "714af31a603a5462",
+              "check": {
+                "kind": "setup",
+                "project": "tiny",
+                "testPath": "setup.js"
+              },
+              "kind": "first-seen-fail",
+              "from": null,
+              "to": "fail",
+              "fromFingerprint": null,
+              "toFingerprint": "Error: Fixture bootstrap failed @ setup.js:6:8",
+              "revision": 0,
+              "at": 1794330202552
+            }
+          ],
+          "results": [],
+          "durations": null,
+          "runLog": null,
+          "runLogUnavailable": "unidentified"
+        }
+      },
+      "daemonExit": {
+        "code": 0,
+        "signal": null
+      },
+      "daemonLog": "SETUP_CONSOLE_173\nsqueal daemon: serving <repo>/docs/specifications/011-core/research/probes/issue-173/.scratch/1794330201628/attached on /tmp/i173-jkKyYS/squeal-714af31a603a5462.sock\nsqueal daemon: full integrity check: ok\nsqueal daemon: daemon stopped: SIGTERM while it ran in systemd unit cezar.service; the next Squeal hook starts a new daemon, or `squeal start` starts one now\nsqueal daemon: daemon stopped: SIGTERM while it ran in systemd unit cezar.service; the next Squeal hook starts a new daemon, or `squeal start` starts one now\n",
+      "counts": {
+        "results": 0,
+        "runs": 1
+      },
+      "runs": [
+        {
+          "id": "6c163db2-b2e6-4e4e-84dd-98a0d8d8345f",
+          "worktree_id": "714af31a603a5462",
+          "revision": 0,
+          "test_files": "[{\"project\":\"tiny\",\"path\":\"tiny.test.js\"}]",
+          "checkpoint_id": "20beac86-ce07-40a7-8950-e4f73ed467b1",
+          "log_dir": "<repo>/docs/specifications/011-core/research/probes/issue-173/.scratch/1794330201628/attached/.git/squeal/runs/6c163db2-b2e6-4e4e-84dd-98a0d8d8345f",
+          "started_at": 1794330202379,
+          "ended_at": 1794330202548,
+          "end_state": "crashed"
+        }
+      ],
+      "logs": [
+        {
+          "path": "<repo>/docs/specifications/011-core/research/probes/issue-173/.scratch/1794330201628/attached/.git/squeal/runs/6c163db2-b2e6-4e4e-84dd-98a0d8d8345f/report.json",
+          "text": "{\"runId\":\"6c163db2-b2e6-4e4e-84dd-98a0d8d8345f\",\"report\":{\"end\":\"crashed\",\"failure\":\"global setup setup.js failed: Fixture bootstrap failed; cause: Command failed: node child.cjs (1)\",\"durationMs\":111,\"fileDurations\":[],\"completedFiles\":[],\"fileErrors\":[]}}\n"
+        },
+        {
+          "path": "<repo>/docs/specifications/011-core/research/probes/issue-173/.scratch/1794330201628/attached/.git/squeal/runs/6c163db2-b2e6-4e4e-84dd-98a0d8d8345f/vitest.log",
+          "text": "squeal vitest run 6c163db2-b2e6-4e4e-84dd-98a0d8d8345f\nend: crashed (global setup setup.js failed: Fixture bootstrap failed; cause: Command failed: node child.cjs (1)), 111 ms\n\nRUN END failed, 0 unhandled error(s)\n"
+        }
+      ]
+    },
+    {
+      "mode": "discarded",
+      "gate": {
+        "at": "2026-11-10T17:03:23.422Z",
+        "load": 8.19,
+        "cpus": 24
+      },
+      "version": {
+        "args": [
+          "--version"
+        ],
+        "exit": 0,
+        "stdout": "0.1.426\n",
+        "stderr": ""
+      },
+      "status": {
+        "args": [
+          "status",
+          "--json"
+        ],
+        "exit": 0,
+        "stderr": "",
+        "payload": {
+          "revision": 0,
+          "knownFailures": [
+            {
+              "check": {
+                "kind": "setup",
+                "project": "tiny",
+                "testPath": "setup.js"
+              },
+              "outcome": "fail",
+              "validity": "current",
+              "observedAt": 0,
+              "summary": "setup failed: Fixture bootstrap failed; cause: Command failed: node child.cjs (1)",
+              "fingerprint": "Error: Fixture bootstrap failed @ setup.js:6:8",
+              "location": {
+                "path": "setup.js",
+                "line": 6,
+                "column": 8
+              }
+            }
+          ],
+          "knownFailureCounts": {
+            "current": 1,
+            "pending": 0,
+            "stale": 0
+          },
+          "testFileCounts": {
+            "current": 0,
+            "pending": 0,
+            "stale": 0,
+            "unknown": 1
+          },
+          "testFilesWithoutChecks": {
+            "pending": 0,
+            "unknown": 1
+          }
+        }
+      },
+      "why": {
+        "args": [
+          "why",
+          "setup.js",
+          "--include-logs"
+        ],
+        "exit": 0,
+        "stdout": "Check: [tiny] setup.js (global setup)\nWorktree: <repo>/docs/specifications/011-core/research/probes/issue-173/.scratch/1794330201628/discarded\nRevision: none recorded\n\nKnown state: FAIL, current, observed at revision 0, commit 9242c8c\n  Summary: setup failed: Fixture bootstrap failed; cause: Command failed: node child.cjs (1)\n  Location: setup.js:6:8\n  Fingerprint: Error: Fixture bootstrap failed @ setup.js:6:8\n\nHistory (1 transition, oldest first):\n  revision 0  2026-11-10T17:03:24.378Z  first seen FAIL\n\nResults: none stored\n\nRun log: unknown, no stored result, or several, fit the known state\n",
+        "stderr": ""
+      },
+      "whyJson": {
+        "args": [
+          "why",
+          "setup.js",
+          "--include-logs",
+          "--json"
+        ],
+        "exit": 0,
+        "stderr": "",
+        "payload": {
+          "schemaVersion": 1,
+          "available": true,
+          "found": true,
+          "worktreeId": "c08dbed4f7d3418b",
+          "worktreeRoot": "<repo>/docs/specifications/011-core/research/probes/issue-173/.scratch/1794330201628/discarded",
+          "revision": null,
+          "check": {
+            "kind": "setup",
+            "project": "tiny",
+            "testPath": "setup.js"
+          },
+          "worktreeRoots": {
+            "c08dbed4f7d3418b": "<repo>/docs/specifications/011-core/research/probes/issue-173/.scratch/1794330201628/discarded"
+          },
+          "knownState": {
+            "worktreeId": "c08dbed4f7d3418b",
+            "check": {
+              "kind": "setup",
+              "project": "tiny",
+              "testPath": "setup.js"
+            },
+            "outcome": "fail",
+            "validity": "current",
+            "pendingPhase": null,
+            "observedAt": 0,
+            "commit": "9242c8c7c1e80bc7539c3ecc9d0cb7a9eda4fe73",
+            "origin": {
+              "kind": "own"
+            },
+            "durationMs": null,
+            "location": {
+              "path": "setup.js",
+              "line": 6,
+              "column": 8
+            },
+            "summary": "setup failed: Fixture bootstrap failed; cause: Command failed: node child.cjs (1)",
+            "fingerprint": "Error: Fixture bootstrap failed @ setup.js:6:8"
+          },
+          "history": [
+            {
+              "worktreeId": "c08dbed4f7d3418b",
+              "check": {
+                "kind": "setup",
+                "project": "tiny",
+                "testPath": "setup.js"
+              },
+              "kind": "first-seen-fail",
+              "from": null,
+              "to": "fail",
+              "fromFingerprint": null,
+              "toFingerprint": "Error: Fixture bootstrap failed @ setup.js:6:8",
+              "revision": 0,
+              "at": 1794330204378
+            }
+          ],
+          "results": [],
+          "durations": null,
+          "runLog": null,
+          "runLogUnavailable": "unidentified"
+        }
+      },
+      "daemonExit": {
+        "code": 0,
+        "signal": null
+      },
+      "daemonLog": "SETUP_CONSOLE_173\nsqueal daemon: serving <repo>/docs/specifications/011-core/research/probes/issue-173/.scratch/1794330201628/discarded on /tmp/i173-wLY0aB/squeal-c08dbed4f7d3418b.sock\nsqueal daemon: full integrity check: ok\nsqueal daemon: daemon stopped: SIGTERM while it ran in systemd unit cezar.service; the next Squeal hook starts a new daemon, or `squeal start` starts one now\nsqueal daemon: daemon stopped: SIGTERM while it ran in systemd unit cezar.service; the next Squeal hook starts a new daemon, or `squeal start` starts one now\n",
+      "counts": {
+        "results": 0,
+        "runs": 1
+      },
+      "runs": [
+        {
+          "id": "2331b686-d2d7-4ef9-ae77-ecb78b20be82",
+          "worktree_id": "c08dbed4f7d3418b",
+          "revision": 0,
+          "test_files": "[{\"project\":\"tiny\",\"path\":\"tiny.test.js\"}]",
+          "checkpoint_id": "bf8eda54-320d-49fb-b9f4-961b13f1a9f8",
+          "log_dir": "<repo>/docs/specifications/011-core/research/probes/issue-173/.scratch/1794330201628/discarded/.git/squeal/runs/2331b686-d2d7-4ef9-ae77-ecb78b20be82",
+          "started_at": 1794330204200,
+          "ended_at": 1794330204374,
+          "end_state": "crashed"
+        }
+      ],
+      "logs": [
+        {
+          "path": "<repo>/docs/specifications/011-core/research/probes/issue-173/.scratch/1794330201628/discarded/.git/squeal/runs/2331b686-d2d7-4ef9-ae77-ecb78b20be82/report.json",
+          "text": "{\"runId\":\"2331b686-d2d7-4ef9-ae77-ecb78b20be82\",\"report\":{\"end\":\"crashed\",\"failure\":\"global setup setup.js failed: Fixture bootstrap failed; cause: Command failed: node child.cjs (1)\",\"durationMs\":114,\"fileDurations\":[],\"completedFiles\":[],\"fileErrors\":[]}}\n"
+        },
+        {
+          "path": "<repo>/docs/specifications/011-core/research/probes/issue-173/.scratch/1794330201628/discarded/.git/squeal/runs/2331b686-d2d7-4ef9-ae77-ecb78b20be82/vitest.log",
+          "text": "squeal vitest run 2331b686-d2d7-4ef9-ae77-ecb78b20be82\nend: crashed (global setup setup.js failed: Fixture bootstrap failed; cause: Command failed: node child.cjs (1)), 114 ms\n\nRUN END failed, 0 unhandled error(s)\n"
+        }
+      ]
+    }
+  ],
+  "vitestApi": [
+    {
+      "mode": "attached",
+      "gate": {
+        "at": "2026-11-10T17:04:23.930Z",
+        "load": 8.86,
+        "cpus": 24
+      },
+      "version": "5.0.3",
+      "processStdoutMarker": "SETUP_CONSOLE_173",
+      "rejection": {
+        "name": "Error",
+        "message": "Fixture bootstrap failed",
+        "stack": [
+          "Error: Fixture bootstrap failed",
+          "    at Object.setup (<repo>/docs/specifications/011-core/research/probes/issue-173/.scratch/1794330201628/attached/setup.js:6:8)"
+        ],
+        "cause": {
+          "name": "Error",
+          "message": "Command failed: node child.cjs",
+          "code": 1,
+          "stdout": "CHILD_STDOUT_173\n",
+          "stderr": "CHILD_STDERR_173\n",
+          "stack": [
+            "Error: Command failed: node child.cjs",
+            "    at Object.setup (<repo>/docs/specifications/011-core/research/probes/issue-173/.scratch/1794330201628/attached/setup.js:5:30)"
+          ]
+        },
+        "consoleLogs": []
+      }
+    },
+    {
+      "mode": "discarded",
+      "gate": {
+        "at": "2026-11-10T17:04:48.134Z",
+        "load": 9.32,
+        "cpus": 24
+      },
+      "version": "5.0.3",
+      "processStdoutMarker": "SETUP_CONSOLE_173",
+      "rejection": {
+        "name": "Error",
+        "message": "Fixture bootstrap failed",
+        "stack": [
+          "Error: Fixture bootstrap failed",
+          "    at Object.setup (<repo>/docs/specifications/011-core/research/probes/issue-173/.scratch/1794330201628/discarded/setup.js:6:8)"
+        ],
+        "cause": {
+          "name": "Error",
+          "message": "Command failed: node child.cjs",
+          "code": 1,
+          "stack": [
+            "Error: Command failed: node child.cjs",
+            "    at Object.setup (<repo>/docs/specifications/011-core/research/probes/issue-173/.scratch/1794330201628/discarded/setup.js:5:30)"
+          ]
+        },
+        "consoleLogs": []
+      }
+    }
+  ]
+}
