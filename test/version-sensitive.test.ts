@@ -34,18 +34,33 @@ const EXEMPT = (/^# Exempt:[^\n]*\n((?:#[^\n]*\n)*?)#\n/m.exec(`${HEADER}\n`)?.[
 
 // Built from parts so this file does not read as one that uses them.
 const READS_VERSION = new RegExp(["process", "\\.versions?\\b"].join(""));
-const QUOTED_TEST = ["[\"']--", "test[\"']"].join("");
-/** A test file's own sign of node:test: a project, the adapter, or a `--test` argument. */
+const QUOTE = "[\"'`]";
+/** An element of node's own argument list: node, an option, `--import` or `--require` with its value, a spread. */
+const NODE_OWN = [
+  "process\\.execPath",
+  "[\"']node[\"']",
+  `${QUOTE}--(?:import|require)${QUOTE}\\s*,\\s*(?:${QUOTE}[^"'\`\\n]*${QUOTE}|[\\w$.]+)`,
+  `${QUOTE}-[^"'\`\\n]*${QUOTE}`,
+  "\\.\\.\\.[\\w$.]+",
+].join("|");
+/**
+ * Node's own `--test` argument (row 020-13): a quoted `--test` in an array
+ * literal whose earlier elements are all node's own. Any other element
+ * before it, such as `"code"`, `"main"` or a script, makes it that program's
+ * flag: `squeal code --base main --test <file>` is not node:test.
+ */
+const NODE_TEST_ARG = `\\[\\s*(?:(?:${NODE_OWN})\\s*,\\s*)*["']--${"test"}["']`;
+/** A test file's own sign of node:test: a project, the adapter, or node's `--test` argument. */
 const NAMES_NODE_TEST = new RegExp(
   [
     ["\\bnode", "Test\\b"].join(""),
     ["NodeTest", "Project"].join(""),
     ["createNodeTest", "Adapter"].join(""),
-    QUOTED_TEST,
+    NODE_TEST_ARG,
   ].join("|"),
 );
-/** A helper's sign of running node:test itself: a project it holds, or a `--test` argument. */
-const RUNS_NODE_TEST = new RegExp([["NodeTest", "Project\\s*="].join(""), QUOTED_TEST].join("|"));
+/** A helper's sign of running node:test itself: a project it holds, or node's `--test` argument. */
+const RUNS_NODE_TEST = new RegExp([["NodeTest", "Project\\s*="].join(""), NODE_TEST_ARG].join("|"));
 const IMPORT_FROM = /from\s+["'](\.[^"']+)["']/g;
 
 const listDir = (dir: string): Dirent[] => readdirSync(dir, { withFileTypes: true });
@@ -132,6 +147,28 @@ describe("the version-sensitive list (spec 010 D4)", () => {
     expect(EXEMPT.length).toBeGreaterThan(0);
     const stale = EXEMPT.filter((path) => !NODE_TEST_CALLERS.includes(path) || selected(path));
     expect(stale).toEqual([]);
+  });
+
+  it("reads a quoted --test as node's only in a node argument list (row 020-13)", () => {
+    const withFlag = (code: string): string => code.replaceAll("FLAG", ["--", "test"].join(""));
+    const passesNodeFlag = (code: string): boolean => new RegExp(NODE_TEST_ARG).test(code);
+    const node = [
+      'spawn(node, ["FLAG", file])',
+      'run(process.execPath, ["FLAG", "--test-reporter=tap", "scripts/changelog.test.mjs"])',
+      'spawnSync(process.execPath, ["--import", recorder, ...argv, "FLAG", file])',
+      'const args = [\n  "--enable-source-maps",\n  ...argv,\n  "FLAG",\n  ...files,\n];',
+      '[process.execPath, "--require", "./scripts/leader.cjs", "FLAG", "a.test.cjs"]',
+      "execFile('node', ['FLAG'])",
+    ];
+    const other = [
+      'code(root, ["code", "--base", "main", "FLAG", "x"])',
+      'parseGateArgs(["src", "--base=main", "FLAG", "test/a.test.ts"])',
+      '[["--base", "main", "FLAG"], "--test names no file"]',
+      'execFileSync(process.execPath, [script, "FLAG"])',
+      'spawn(node, ["FLAG-reporter=tap", file])',
+    ];
+    expect(node.map(withFlag).filter((code) => !passesNodeFlag(code))).toEqual([]);
+    expect(other.map(withFlag).filter(passesNodeFlag)).toEqual([]);
   });
 
   it("has no entry that selects no test file", () => {
