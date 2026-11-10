@@ -50,7 +50,13 @@ describe("evaluate: skipped", () => {
       loaders: { expected: [], measured: [] },
     });
     expect(report.verdict).toBe("pass");
-    expect(report.counts).toEqual({ pass: 0, violation: 0, incomplete: 0, skipped: 1 });
+    expect(report.counts).toEqual({
+      pass: 0,
+      violation: 0,
+      incomplete: 0,
+      skipped: 1,
+      accepted: 0,
+    });
   });
 
   it("keeps the CC check of an excluded file: over the limit is a violation", () => {
@@ -180,7 +186,13 @@ describe("evaluate: the verdict", () => {
     // `lost` has no V8 entry and none of its lines are code: the join cannot tell.
     const incomplete = judged([path("ok", "lost")], [loaded("ok")]);
     expect(incomplete.by.lost).toMatchObject({ state: "incomplete", gap: "not-joined" });
-    expect(incomplete.report.counts).toEqual({ pass: 1, violation: 0, incomplete: 1, skipped: 0 });
+    expect(incomplete.report.counts).toEqual({
+      pass: 1,
+      violation: 0,
+      incomplete: 1,
+      skipped: 0,
+      accepted: 0,
+    });
     expect(incomplete.report.verdict).toBe("incomplete");
     const withSkipped = judged(
       [
@@ -190,7 +202,13 @@ describe("evaluate: the verdict", () => {
       [loaded("ok")],
       { policy: SKIP_TESTS },
     );
-    expect(withSkipped.report.counts).toEqual({ pass: 1, violation: 0, incomplete: 0, skipped: 1 });
+    expect(withSkipped.report.counts).toEqual({
+      pass: 1,
+      violation: 0,
+      incomplete: 0,
+      skipped: 1,
+      accepted: 0,
+    });
     expect(withSkipped.report.verdict).toBe("pass");
   });
 

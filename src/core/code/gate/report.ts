@@ -4,6 +4,7 @@ import type { FileHash } from "../../types/keys.js";
 import type {
   ChangeKind,
   Evidence,
+  ExceptionEntry,
   GATE_REPORT_FORMAT,
   GateGap,
   GatePolicy,
@@ -81,6 +82,44 @@ export interface GateFunctionReport {
     /** Of those, the ones whose whole record at the head bytes was read. */
     readonly measured: readonly RelativePath[];
   };
+  /** D8: the entries that name it, each with what it did; present only when one does. */
+  readonly exceptions?: readonly GateExceptionUse[];
+}
+
+/**
+ * D8: what one entry did for the function it names. `covers`: it covers
+ * its measure's finding. `not-needed`: the measure is within its limit.
+ * `incomplete`: the function's evidence is not complete, which no exception
+ * covers. Otherwise why it does not cover: `over-value`, the head value, or
+ * an inherited CC's base value, is over the entry's; `worse-than-base`, the
+ * head CC is over the base CC; `not-over-at-base`, an inherited CC was
+ * within the limit at the base; `not-at-base`, an inherited entry's
+ * function is not at the base (added, or the base was not counted).
+ */
+export type GateExceptionOutcome =
+  | "covers"
+  | "not-needed"
+  | "incomplete"
+  | "over-value"
+  | "worse-than-base"
+  | "not-over-at-base"
+  | "not-at-base";
+
+export interface GateExceptionUse {
+  readonly entry: ExceptionEntry;
+  readonly outcome: GateExceptionOutcome;
+  /** The function's CC at the merge base, as Squeal counted it; `null` when it is not there. */
+  readonly baseComplexity: number | null;
+}
+
+/**
+ * D8: why an entry names no changed function of this run: `base-commit`,
+ * its base commit is not the merge base; `body-hash`, a changed function
+ * has its path and name but another body; `no-function`, none has both.
+ */
+export interface GateUnusedException {
+  readonly entry: ExceptionEntry;
+  readonly why: "base-commit" | "body-hash" | "no-function";
 }
 
 /** D2: a changed path the counter could not count; the verdict is at least incomplete. */
@@ -136,6 +175,8 @@ export interface GateReport {
   readonly budget: { readonly seconds: number; readonly timedOut: boolean };
   readonly functions: readonly GateFunctionReport[];
   readonly uncounted: readonly GatePathReport[];
+  /** D8: present when an exceptions file was given: its entries that applied to no function. */
+  readonly exceptions?: { readonly unused: readonly GateUnusedException[] };
   readonly runs: readonly GateRunReport[];
   readonly verdict: GateVerdict;
   /** The functions in each state. */
@@ -153,7 +194,8 @@ export interface RunsStanding {
 /**
  * D5: `violations` when one function is a violation; else `incomplete`
  * when one is incomplete, a changed path was not counted, a selected test
- * failed or a selected test file did not finish; else `pass`.
+ * failed or a selected test file did not finish; else `pass`. D8:
+ * `accepted` counts beside `pass`.
  */
 export function verdictOf(
   functions: readonly Pick<GateFunctionReport, "state">[],
@@ -175,7 +217,13 @@ export function verdictOf(
 export function countStates(
   functions: readonly Pick<GateFunctionReport, "state">[],
 ): Record<GateState, number> {
-  const counts: Record<GateState, number> = { pass: 0, violation: 0, incomplete: 0, skipped: 0 };
+  const counts: Record<GateState, number> = {
+    pass: 0,
+    violation: 0,
+    incomplete: 0,
+    skipped: 0,
+    accepted: 0,
+  };
   for (const f of functions) counts[f.state] += 1;
   return counts;
 }
