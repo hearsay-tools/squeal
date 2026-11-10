@@ -31,3 +31,7 @@ Read: board row 011-312; W1 above; `tasks/011-312/notes.md`; spec 011 C8, 019 D4
 Check first: an edit no daemon observed (before the start scan, while stopped, across a daemon replacement) can never read as "changed nothing"; Git is read only when it can decide, bounded, and its failure means "not proven"; the stopped-on-purpose rule never hides a failure already found, and a crashed daemon is unchanged; subagent exemption is sound when the main agent edited; older registration values without `head` read; the waiting entry returns at once under a stop mark.
 
 Owns: only the review file. Do not run a full suite or `pnpm run build`; read affected results with `squeal status --wait 60000 <paths>`.
+
+## R2: narrow re-review of cand/0.1.429
+
+Use /reviewer, same reviewer (c35253da). Pinned to `cand/0.1.429` at `ba8cf4ec78cbab12c07f702a406b781c3a00cce4`. New since R1: the B1 repair `8985e9c9c` (cherry-picked from worker commit `5ed473458`) and its bundles; the rest was rebased onto docs-only main commits. Verify B1 closed (both harnesses, both entries, controls kept; the new cases fail without the fix), that the open-first order for a live or crashed daemon is unchanged, and nothing else regressed in the diff `d8bac243f..ba8cf4ec7` restricted to `src`, `test` and `plugins`. Write `reviews/0.1.429-r2.md`, PASS or FAIL, and commit it. Same host policy as R1.
