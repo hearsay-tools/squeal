@@ -201,6 +201,13 @@ Usage:
                                 process into --out (default squeal-parts/): each test
                                 file's outcome, checks, duration and observed reads,
                                 and each project's environment; other runners only run.
+                                It adds Squeal's coverage provider to the run, and the
+                                part holds each test file's coverage record; it adds
+                                none when the run has coverage of its own
+                                (coverage.enabled, --coverage) or Node lacks
+                                process.getBuiltinModule. No record for a file run with
+                                a test name filter, with isolate: false or beside
+                                node:inspector. The exit code stays the command's.
                                 Requires that no other program changes the tests' input
                                 files while the command runs: Squeal sees the reads and
                                 writes of the command's Node processes, not every change
