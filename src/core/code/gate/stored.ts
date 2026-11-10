@@ -151,7 +151,7 @@ function evidenceAt(
     skipped: results.some((r) => r.outcome === "skip"),
     loads,
     record: decodeRecord(bytes),
-    fromStore: true,
+    from: "store",
   };
 }
 
