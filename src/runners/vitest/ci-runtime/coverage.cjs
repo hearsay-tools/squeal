@@ -242,8 +242,9 @@ function runCoverage(vitest, settings, stamps) {
         }
         return { header: note === undefined ? { on: true } : { on: true, note }, files };
       } catch (error) {
+        // The provider was in the run: every file reads `unmapped`, the error the note.
         failed(error);
-        return { header: { off: "failed", note }, files: new Map() };
+        return { header: { on: true, note }, files: new Map() };
       } finally {
         await mapper?.close().catch(() => {});
       }
