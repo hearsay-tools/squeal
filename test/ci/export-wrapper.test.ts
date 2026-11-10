@@ -18,24 +18,65 @@ import { ci, committed, scratchDir, VITEST, writeFiles } from "./fixture.js";
  * sees the writes, or through `sh`, where only the content the run read
  * tells them apart. In D (repair R3) the test itself reads `GOOD`, has `sh`
  * write `BAD`, and reads again in the same turn: the path had two contents
- * in the run, so it has no evidence.
+ * in the run, so it has no evidence. In E and F (row 018-23, review of
+ * 0.1.421 r3, B1) the test opens the file read-only at `BAD!`, marks that it
+ * is ready, and reads through the open descriptor (E) or file handle (F)
+ * until it sees `GOOD`, which the wrapper writes when it sees the mark and
+ * replaces with `BAD!` after the run.
  */
 
 const SLOW = { timeout: 300_000 };
 
-const WRAPPER = `import { spawnSync } from "node:child_process";
-import { rmSync, writeFileSync } from "node:fs";
+const WRAPPER = `import { spawn, spawnSync } from "node:child_process";
+import { existsSync, rmSync, writeFileSync } from "node:fs";
 const [mode, writer, vitest] = process.argv.slice(2);
 const sh = (script, ...args) => spawnSync("sh", ["-c", script, "sh", ...args], { stdio: "inherit" });
 const put = (file, text) => (writer === "sh" ? sh('printf "%s" "$1" > "$2"', text, file) : writeFileSync(file, text));
 const remove = (file) => (writer === "sh" ? sh('rm "$1"', file) : rmSync(file));
-if (mode === "B") put("src/value.ts", 'export const value = "GOOD";');
-if (mode === "C") put("src/generated.ts", 'export const value = "GOOD";');
-const run = spawnSync(process.execPath, [vitest, "run"], { env: process.env, stdio: "inherit" });
-if (mode === "A") put("data/value.txt", "BAD");
-if (mode === "B") put("src/value.ts", 'export const value = "BAD";\\n');
-if (mode === "C") remove("src/generated.ts");
-process.exitCode = run.status ?? 1;
+if (mode === "E" || mode === "F") {
+  const run = spawn(process.execPath, [vitest, "run"], { env: process.env, stdio: "inherit" });
+  const ready = setInterval(() => {
+    if (!existsSync("data/ready")) return;
+    clearInterval(ready);
+    put("data/value.txt", "GOOD");
+  }, 5);
+  run.on("exit", (code) => {
+    clearInterval(ready);
+    put("data/value.txt", "BAD!");
+    process.exitCode = code ?? 1;
+  });
+} else {
+  if (mode === "B") put("src/value.ts", 'export const value = "GOOD";');
+  if (mode === "C") put("src/generated.ts", 'export const value = "GOOD";');
+  const run = spawnSync(process.execPath, [vitest, "run"], { env: process.env, stdio: "inherit" });
+  if (mode === "A") put("data/value.txt", "BAD");
+  if (mode === "B") put("src/value.ts", 'export const value = "BAD";\\n');
+  if (mode === "C") remove("src/generated.ts");
+  process.exitCode = run.status ?? 1;
+}
+`;
+
+/** A test that opens the input read-only and reads through it, by `read`, until it holds `GOOD`. */
+const THROUGH = (
+  opening: string,
+  read: string,
+) => `import { openSync, readSync, writeFileSync } from "node:fs";
+import { open } from "node:fs/promises";
+import { expect, it } from "vitest";
+const file = new URL("../data/value.txt", import.meta.url);
+it("input", async () => {
+  ${opening}
+  const bytes = Buffer.alloc(4);
+  ${read}
+  expect(bytes.toString()).toBe("BAD!");
+  writeFileSync(new URL("../data/ready", import.meta.url), "");
+  for (const until = Date.now() + 1500; bytes.toString() !== "GOOD" && Date.now() < until; ) {
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    ${read}
+  }
+  expect(bytes.toString()).toBe("GOOD");
+});
+it("other", () => {});
 `;
 
 const IMPORTS = (from: string) =>
@@ -61,6 +102,14 @@ const CHANGED = {
     "test/reread.test.ts",
     `import { spawnSync } from "node:child_process";\nimport { readFileSync } from "node:fs";\nimport { fileURLToPath } from "node:url";\nimport { expect, it } from "vitest";\nconst file = new URL("../data/value.txt", import.meta.url);\nit("input", () => {\n  const first = readFileSync(file, "utf8");\n  spawnSync("sh", ["-c", 'printf BAD > "$1"', "sh", fileURLToPath(file)]);\n  readFileSync(file, "utf8");\n  expect(first).toBe("GOOD");\n});\nit("other", () => {});\n`,
   ],
+  E: [
+    "test/descriptor.test.ts",
+    THROUGH(`const fd = openSync(file, "r");`, "readSync(fd, bytes, 0, 4, 0);"),
+  ],
+  F: [
+    "test/handle.test.ts",
+    THROUGH(`const handle = await open(file, "r");`, "await handle.read(bytes, 0, 4, 0);"),
+  ],
 } as const;
 
 const dirs: string[] = [];
@@ -75,6 +124,7 @@ async function wrapped(mode: keyof typeof CHANGED, writer: "node" | "sh") {
   const [changed, test] = CHANGED[mode];
   const root = committed(dir, { ...FILES, [changed]: test });
   if (mode === "A" || mode === "D") writeFiles(root, { "data/value.txt": "GOOD" });
+  if (mode === "E" || mode === "F") writeFiles(root, { "data/value.txt": "BAD!" });
   const wrapper = join(dir, "wrapper.mjs");
   writeFileSync(wrapper, WRAPPER);
   const out = join(dir, "parts");
@@ -107,6 +157,8 @@ describe("ci export takes no evidence from a command's endpoints (review of 0.1.
     ["B", "sh", "a clean checkout before and after the run"],
     ["C", "sh", "absence before and after the run"],
     ["D", "sh", "the last of two contents read in one turn"],
+    ["E", "sh", "the hash of a read-only open read through later"],
+    ["F", "sh", "the hash of a read-only file handle read through later"],
   ] as const)("%s, written by %s: no result certified by %s", SLOW, async (mode, writer, _what) => {
     const { root, changed, recorded, exported, bundle } = await wrapped(mode, writer);
     expect(recorded.code, recorded.said).toBe(0);

@@ -13,14 +13,20 @@ import { blob, fill as fillWith, run, temp } from "./ci-evidence-kit.js";
  * loads, and one it fails to find. A path written, even with the content it
  * had, and a listing an entry was added to, have none. Beside the daemon's
  * recorder, the hook makes it observe nothing it would not observe alone, so
- * no key changes.
+ * no key changes, reads through a descriptor or file handle included.
  */
 
-const SCRIPT = `import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
-import { readFile } from "node:fs/promises";
+const SCRIPT = `import { closeSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, statSync, writeFileSync } from "node:fs";
+import { open, readFile } from "node:fs/promises";
 readdirSync(".");
 readFileSync("data/a.txt");
 await readFile("data/b.txt", "utf8");
+const fd = openSync("data/a.txt", "r");
+readSync(fd, Buffer.alloc(2), 0, 2, 0);
+closeSync(fd);
+const handle = await open("data/b.txt", "r");
+await handle.readFile();
+await handle.close();
 existsSync("missing.txt");
 statSync("present.txt");
 readdirSync("dir");
