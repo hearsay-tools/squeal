@@ -70,6 +70,13 @@ describe("readEvidence", () => {
     expect(readEvidence(dir)).toEqual({ "outer.txt": "o" });
   });
 
+  it("drops every path when the root is written with all below it (a withheld run)", () => {
+    const dir = evidenceDir({
+      "1-0.ndjson": [{ e: { "a.txt": "a", "./": "names", "src/b.ts": "b" } }, { w: [], t: [""] }],
+    });
+    expect(readEvidence(dir)).toEqual({});
+  });
+
   it("skips a line cut short, and reads a missing directory as no evidence", () => {
     const dir = temp();
     writeFileSync(join(dir, "1-0.ndjson"), `${JSON.stringify({ e: { "a.txt": "a" } })}\n{"e":{"b`);

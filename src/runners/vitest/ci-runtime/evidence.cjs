@@ -26,8 +26,9 @@
 //
 // Output: lines `{"e":{path:hash|null}}` and `{"w":[path],"t":[path]}`
 // appended to `<out>/<pid>-<thread>-<time>.ndjson`: `e` evidence, `w` paths
-// written, `t` paths written with everything below them. Paths are relative
-// to the root with `/`; a listing path ends in `/` (`./` the root's).
+// written, `t` paths written with everything below them (`""` the root: every
+// path, a withheld run). Paths are relative to the root with `/`; a listing
+// path ends in `/` (`./` the root's).
 // Evidence goes out once per event-loop turn, and on `flush`; a write before
 // the call that makes it, so a process stopped at any point never leaves a
 // write out. A lost read only leaves its test file out.
@@ -282,7 +283,7 @@ function outputOf(settings, original) {
       append({ w: exact, t: trees });
     },
     gone: (rel) => {
-      if (gone.has(rel)) return true;
+      if (gone.has(rel) || goneTrees.has("")) return true;
       for (let at = rel.indexOf("/"); at !== -1; at = rel.indexOf("/", at + 1)) {
         if (goneTrees.has(rel.slice(0, at))) return true;
       }
@@ -402,6 +403,21 @@ function createEvidence(settings) {
       else out.evidence(rel, value);
     } catch {}
   };
+  /**
+   * Test file `file` withheld from the export: its own path written, so no
+   * closure holding it is certified; with `file` `null` or outside the root,
+   * every path (row 018-23, review of 0.1.424, B2).
+   */
+  const withhold = (file) => {
+    let rel = null;
+    try {
+      rel = file === null ? null : paths.scoped(file);
+    } catch {}
+    try {
+      if (rel === null || rel === "") out.written([], [""]);
+      else out.written([rel], []);
+    } catch {}
+  };
   /** A path created, with all below it. */
   const made = (p) => {
     try {
@@ -417,6 +433,7 @@ function createEvidence(settings) {
     made,
     opened,
     through,
+    withhold,
     flush: out.flush,
     toPath: paths.toPath,
   };

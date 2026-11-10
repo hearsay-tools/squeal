@@ -98,6 +98,8 @@ function evidenceLines(dir: AbsolutePath): EvidenceLine[] {
 
 /** Whether a path, a file or a listing path, is one of `trees` or below one. */
 function writtenBelow(trees: ReadonlySet<RelativePath>): (path: RelativePath) => boolean {
+  // `""`: the root, every path below it (a process withheld the whole run).
+  if (trees.has("")) return () => true;
   return (path) => {
     const bare = path.endsWith("/") ? path.slice(0, -1) : path;
     if (trees.has(bare)) return true;
