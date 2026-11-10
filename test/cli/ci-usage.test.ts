@@ -73,6 +73,12 @@ describe("squeal ci", () => {
     const { io, text } = capture(BASE);
     expect(await main(["ci", "--help"], io)).toBe(0);
     expect(text()).toContain("squeal ci record [--out <dir>] -- <command>");
+    // Spec 020 D13.6: when the provider is added, and when it is not.
+    const said = text().replace(/\s+/g, " ");
+    expect(said).toContain("It adds Squeal's coverage provider to the run");
+    expect(said).toContain(
+      "it adds none when the run has coverage of its own (coverage.enabled, --coverage) or Node lacks process.getBuiltinModule",
+    );
   });
 
   it("runs a command outside a git worktree unchanged, with its code", async () => {
