@@ -161,3 +161,29 @@ Questions:
 Start from `015-coverage-complexity/research/child-processes.md` and `issue-144.md`.
 
 Findings go to `research/child-coverage.md`.
+
+## 020-09 R1 repair of review 0.1.424 B1: an exception needs complete evidence
+
+Use /worker. Shape: repair, on the candidate branch.
+
+Outcome: an exception never makes a function `accepted` unless its head evidence is complete under D5, with every loading test file's record. A D5 subset pass is not complete. The review's reproduction reads `incomplete` with the gap `no-record`. The scores stay, and the entry is marked `incomplete`.
+
+Read: `docs/specifications/020-quality-gate/reviews/0.1.424.md`, B1 and its reproduction; spec D5 and D8.
+
+Starting seam: the reproduction as a failing test in `test/code/gate/exceptions.test.ts`. Then carry the completeness gap beside D5's subset judgement across the `Judged` seam, in `evaluate.ts` `evidenceJudgement` and `judge`, and require it in `exceptions.ts` before `accepted`.
+
+Add:
+- regressions for an approved and an inherited CC entry, each with one completed loader lacking a record;
+- complete and unfinished controls.
+
+Ordinary subset passes without exceptions, and `coverage.exclude`, behave as before.
+
+Owns: `src/core/code/gate/{evaluate,exceptions}.ts` and their tests under `test/code/gate/`.
+
+Leave alone: everything else. Do not run `pnpm run build`.
+
+Done when:
+- the reproduction and the new regressions pass;
+- the 020-01 and 020-09 golden tests are unchanged, except where an entry now reads `incomplete` as intended;
+- lint and typecheck are clean;
+- `squeal status --wait 60000 <changed paths>` is current.
