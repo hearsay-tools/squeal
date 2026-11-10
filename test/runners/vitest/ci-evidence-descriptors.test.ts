@@ -69,7 +69,7 @@ for await (const c of fs.createReadStream("b.txt")) {}
     });
   });
 
-  it("drops a directory listed through an open directory handle after its names changed", () => {
+  it("drops a directory listed through an open directory handle after its names changed, read to its end or closed", () => {
     const root = temp();
     fill(root, { "kept/a.txt": "a" });
     const kept = listingHash(root, "kept");
@@ -77,9 +77,15 @@ for await (const c of fs.createReadStream("b.txt")) {}
 const add = (file) => execFileSync("sh", ["-c", 'touch "$1"', "sh", file]);
 { const d = fs.opendirSync("sync"); add("sync/new.txt"); while (d.readSync() !== null) {} d.closeSync(); }
 { const d = await opendir("iterated"); add("iterated/new.txt"); for await (const e of d) {} }
+{ const d = fs.opendirSync("closed"); add("closed/new.txt"); d.readSync(); d.closeSync(); }
 { const d = fs.opendirSync("kept"); while (d.readSync() !== null) {} d.closeSync(); }
 `;
-    const files = { "sync/a.txt": "a", "iterated/a.txt": "a", "kept/a.txt": "a" };
+    const files = {
+      "sync/a.txt": "a",
+      "iterated/a.txt": "a",
+      "closed/a.txt": "a",
+      "kept/a.txt": "a",
+    };
     expect(evidenceOf(script, files)).toEqual({
       "kept/": kept,
       "script.mjs": blob(script),
