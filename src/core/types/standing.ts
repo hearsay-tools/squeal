@@ -150,6 +150,8 @@ export type Standing =
       readonly yields?: TierYield;
       /** The run the runner part waits for (row 011-209); absent with none open in the file's lane. */
       readonly run?: WaitedRun;
+      /** Row 011-311: the runners that list the revision (`StatusHeader.listingRunners`). */
+      readonly runners?: readonly string[];
     }
   | ({
       readonly kind: "stale";

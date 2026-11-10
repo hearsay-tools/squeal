@@ -63,7 +63,7 @@ describe("an unlisted revision's line names the run its runner part waits for (r
     if (wait.outcome === "unavailable") throw new Error("unavailable");
 
     expect(namedText(wait, NOW)).toContain(
-      `  1 revision 5 not listed yet, because the runner part waits for the run in flight (the vitest tier of 2 test files running since ${clock(STARTED)}, 1 of them ended), each of its calls bounded at 666 s: ${A}\n`,
+      `  1 Vitest has not listed revision 5's test files yet; it waits for the run in flight (the vitest tier of 2 test files running since ${clock(STARTED)}, 1 of them ended), each of its calls bounded at 666 s: ${A}\n`,
     );
     expect(wait.files[0]?.standing).toMatchObject({
       kind: "unlisted",

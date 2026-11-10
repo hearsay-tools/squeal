@@ -123,10 +123,12 @@ function unlisted(
   header: WorktreeReads["header"],
   policy: ReturnType<typeof readPolicy>,
 ): OutstandingStanding {
+  const runners = header.listingRunners;
   return {
     kind: "unlisted",
     revision: header.revision,
     callBoundMs: runnerPartBoundMs(policy.runner.timeoutMs),
+    ...(runners === undefined ? {} : { runners }),
   };
 }
 

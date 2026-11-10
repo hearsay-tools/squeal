@@ -6,6 +6,7 @@ import type { CheckMoment } from "../types/check-groups.js";
 import { isSlowLane } from "../types/runner.js";
 import { isGroupLane, laneGroup } from "../types/scheduler.js";
 import type { BatchPlace, Standing, TierYield } from "../types/standing.js";
+import { runnersHave } from "./feed-late.js";
 import { onHoldText } from "./holds.js";
 import { slotHoldersText } from "./slot-holders.js";
 import { keptYieldText, laneText, noKeptYieldText, runText, waitedRunText } from "./tier-text.js";
@@ -270,13 +271,18 @@ function lookupOnly(on: boolean): string {
   return on ? " (the baseline is lookup-only)" : "";
 }
 
-/** `revision 5 not listed yet, because the runner part waits for the run in flight (…), …`. */
+/**
+ * `Vitest has not listed revision 5's test files yet; it waits for the run in flight (…), …`.
+ * Row 011-311: the runner is named, "the test runner" when the standing names none, never
+ * "the runner part".
+ */
 function unlistedText(s: Extract<Standing, { kind: "unlisted" }>): string {
   // Row 011-209: the run it waits for, its lane, start and ended count, when one is open.
   const run = s.run === undefined ? "" : ` (${waitedRunText(s.run)})`;
   const bound = `each of its calls bounded at ${Math.ceil(s.callBoundMs / 1_000)} s`;
   const yielded = s.yields === undefined ? "" : yieldText(s.yields, "run");
-  return `revision ${s.revision} not listed yet, because the runner part waits for the run in flight${run}, ${bound}${yielded}`;
+  const runners = runnersHave(s.runners, false);
+  return `${runners} not listed revision ${s.revision}'s test files yet; it waits for the run in flight${run}, ${bound}${yielded}`;
 }
 
 /** Row 011-209 (F2, F3): a queued line names the last yield in its lane; the verdict line does not. */
