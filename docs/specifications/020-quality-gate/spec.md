@@ -190,6 +190,21 @@ Each is designed from a design survey run first (`tasks/wave-2.md`, "Surveys for
 
 Rows: 020-07a (items 1 to 5), then 020-07b (item 6) and 020-07c (item 7) in parallel.
 
+### D12. Child-process coverage (row 020-10, designed 2026-11-10 from `research/child-coverage.md`)
+
+1. **Key.** `coverage.children` (default `false`) needs `coverage.enabled`. The gate reads it at the base, like D6's other keys.
+2. **Vitest.** With the key on, the provider's worker side points `NODE_V8_COVERAGE` at a new `children-<uuid>` directory per test file, and the payload names that directory. It leaves an existing variable alone, with a note. It takes nothing where it takes no coverage today: `isolate: false` and inspector files.
+3. **node:test.** The recorder points the variable at `<dir>/children` at the point where it deletes it today, and `coveragePayloads` returns the own file plus every child file.
+4. **Record.** The mapper maps each child file with `ownRecord` and merges it with the own record per path when the blobs are equal: an OR of lines and covered lines, and a union of functions. A path with different blobs reads `unread`.
+   - A child file that does not parse, or is over 64 MiB, is dropped alone and counted under a new `Drops` cause. This cap is the coordinator's choice; V8's limit is far above it.
+   - A known dropped child gives a note, not a gap. Lost children only lower coverage. CRAP then rises, so a pass stays proven, and a lost child cannot cause a false pass.
+5. **Keys.** The coverage marker in both runners gains `children: true`. Results from runs where tests could see the variable never share a key with runs where they could not.
+6. **Loaders.** In the daemon, with the key on, a test file whose observed set holds a path is also a loader of that path. The gate keeps import-graph selection and `--test`.
+7. **Words.** The texts say children are measured, as a lower bound, when the key is on. D7 adds `coverage.children` to `base`, and child counts per run. Bundled children read `unread`; mapping a bundle with several sources is out of scope.
+8. **Cost:** +26% CPU per child process, plus about 19 ms per MB mapped. It applies only to projects that opt in.
+
+Rows: 020-10a (items 1 to 5) now, beside wave 2. 020-10b (items 6 and 7) waits for 020-07a and 020-09.
+
 ## Testing
 
 - Evaluator golden tests (020-01): limits and equality for CC and CRAP, CC over limit with no coverage, a skipped function under and over the CC limit, pass from a subset, violation that needs every loader, every gap, a failed test, verdict precedence. The same input twice gives the same report.
