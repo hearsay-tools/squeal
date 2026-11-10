@@ -30,8 +30,9 @@ export interface Judged {
   /**
    * D5's completeness: the gap of the first condition of complete evidence
    * that does not hold, `null` when all do or the file wants no coverage.
-   * A pass from a subset of the loaders (015 D9's bound) has one, so no
-   * exception accepts it (review 0.1.424 B1).
+   * A pass by 015 D9's bound, from a subset of the loaders or beside a
+   * skipped test (D11.3), has one, so no exception accepts it (review
+   * 0.1.424 B1). The rule (`judgeFunction`) gives it.
    */
   readonly gap: GateGap | null;
 }

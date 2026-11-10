@@ -68,6 +68,13 @@ export interface RuleOutput<M extends MissingGap = MissingGap> {
     readonly state: Exclude<GateState, "accepted">;
     readonly gap: RuleGap<M> | null;
   };
+  /**
+   * D5's completeness: the gap of the first condition of complete evidence
+   * that does not hold, `null` when all do or the function wants no
+   * coverage. A pass by 015 D9's bound, with a record missing or beside a
+   * skipped test, has one, so no D8 exception accepts it (review 0.1.424 B1).
+   */
+  readonly completeness: RuleGap<M> | null;
   /** From the records in hand; an upper bound while one is missing. */
   readonly crap: number | null;
   /** The daemon's measures: `crap` on CRAP alone, `uncovered` whether a test ran it (D11.4). */
@@ -82,25 +89,38 @@ const SKIPPED = { state: "skipped", gap: null } as const;
 const incomplete = <G extends string>(gap: G) => ({ state: "incomplete" as const, gap });
 
 /**
- * D5 and D11 without the CC rule: the first missing condition names the
- * gap. A loader that did not finish rules out a pass: its later tests never
- * ran (review 0.1.423 B2). With a record missing, or beside a skipped
- * test, the records in hand prove a pass by 015 D9's bound, never a
- * violation; a failed test rules out the pass.
+ * D5.2 to D5.5 and D11.3: the gap of the first condition of complete
+ * evidence that does not hold; `null` when all do.
+ */
+function completenessOf<M extends MissingGap>(
+  input: RuleInput<M>,
+  crap: number | null,
+): RuleGap<M> | null {
+  if (input.loaders.expected === 0) return "no-loader";
+  if (input.missing !== null) return input.missing;
+  if (crap === null) return "not-joined";
+  if (input.failed) return "test-failed";
+  if (input.skipped) return "skipped";
+  return null;
+}
+
+/**
+ * D5 and D11 without the CC rule, from the completeness `gap`. A loader
+ * that did not finish rules out a pass: its later tests never ran (review
+ * 0.1.423 B2). With a record missing, or beside a skipped test, the
+ * records in hand prove a pass by 015 D9's bound, never a violation; a
+ * failed test rules out the pass.
  */
 function evidenceOf<M extends MissingGap>(
   input: RuleInput<M>,
+  gap: RuleGap<M> | null,
   crap: number | null,
   policy: RulePolicy,
 ): Evidence<M> {
-  if (input.loaders.expected === 0) return incomplete("no-loader");
-  if (input.missing === "not-finished") return incomplete(input.missing);
   const under = crap !== null && crap <= policy.crapThreshold;
-  if (input.missing !== null) return under && !input.failed ? PASS : incomplete(input.missing);
-  if (crap === null) return incomplete("not-joined");
-  if (input.failed) return incomplete("test-failed");
-  if (input.skipped) return under ? PASS : incomplete("skipped");
-  return under ? PASS : VIOLATION;
+  if (gap === null) return under ? PASS : VIOLATION;
+  const bound = gap === "skipped" || (gap === input.missing && gap !== "not-finished");
+  return bound && under && !input.failed ? PASS : incomplete(gap);
 }
 
 /** An outcome not proven: `pending` while a record may still come, else `unknown`. */
@@ -130,12 +150,14 @@ export function judgeFunction<M extends MissingGap>(
     return {
       ...state,
       evidence: SKIPPED,
+      completeness: null,
       crap: null,
       measures: { crap: "unknown", uncovered: "unknown" },
     };
   }
   const crap = input.coverage === null ? null : crapScore(input.complexity, input.coverage.share);
-  const evidence = evidenceOf(input, crap, policy);
+  const completeness = completenessOf(input, crap);
+  const evidence = evidenceOf(input, completeness, crap, policy);
   const measures = {
     crap:
       evidence.state === "pass"
@@ -145,5 +167,5 @@ export function judgeFunction<M extends MissingGap>(
           : unproven(evidence.gap),
     uncovered: uncoveredOf(input, evidence),
   };
-  return { ...(over ? VIOLATION : evidence), evidence, crap, measures };
+  return { ...(over ? VIOLATION : evidence), evidence, completeness, crap, measures };
 }
