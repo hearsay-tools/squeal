@@ -1,10 +1,16 @@
 import { describe, expect, it } from "vitest";
+import { readPolicy } from "../../src/core/daemon/policy.js";
+import { createDelivery } from "../../src/core/delivery/delivery.js";
 import { readStopHolds } from "../../src/core/delivery/turn.js";
+import { releaseLintGroup } from "../../src/core/lint/pass/commit-entry.js";
 import { markStopped } from "../../src/core/presence/events.js";
 import type { EpochMs } from "../../src/core/types/common.js";
+import { fixedStatus } from "../delivery/fakes.js";
+import { hookedRepo } from "../lint/wiring/rig.js";
 import type { SquealRepo } from "./helpers.js";
 import { committedRepo, LINT_AT_STOP, pendingLint } from "./stop-no-edit-helpers.js";
 import {
+  decision,
   HARNESSES,
   type Harness,
   mainConsumer,
@@ -18,7 +24,8 @@ import {
  * stop`, `--until-start`), no daemon can run the checks Stop requires, so
  * they hold nothing. A Stop that speaks anyway says so in one line naming
  * `squeal start`, never a command that needs a daemon; one with nothing
- * else to say stays silent. A daemon that died holds as before.
+ * else to say stays silent. A daemon that died holds as before. Review
+ * 0.1.429 B1: a failure already found still holds beside an open check.
  */
 
 const INFO =
@@ -93,3 +100,72 @@ describe.each(HARNESSES)("a daemon that died, $name (011-312)", (harness) => {
     expect(out.waiting.reason).not.toContain("stopped by request");
   });
 });
+
+const BLOCKING =
+  "Squeal policy lint.blocking is on and 1 file went to fail lint since this session started: src/a.js (1 finding).";
+
+/** The main agent's holds this turn. */
+const holds = (r: SquealRepo): number => readStopHolds(r.store, mainConsumer(r));
+
+/**
+ * Review 0.1.429 B1: a lint group at `stop` with `lint.blocking`. After the
+ * agent registered, its edit made `src/a.js` fail lint, and the group linted
+ * it, so the failure is current and its own. `pending`: an untouched check
+ * waits to lint too. Then the daemon is stopped by request.
+ */
+async function failing(harness: Harness, pending: boolean): Promise<SquealRepo> {
+  const policy = { checks: [{ name: "lint", lint: true, at: "stop" }], stop: { slowWaitMs: 400 } };
+  const hooked = await hookedRepo(
+    { "src/a.js": "ok\n" },
+    { enabled: true, blocking: true },
+    policy,
+  );
+  const { r, tree } = hooked;
+  await harness.startTurn(r);
+  markStopWait(r, harness.name);
+  await hooked.edit({ "src/a.js": "bad no-undef\n" });
+  const blobOf = (path: string) => tree.source.file(path)?.hash ?? null;
+  releaseLintGroup(r.repo.commonDir, readPolicy(r.root), r.worktreeId, "lint", blobOf);
+  await hooked.settle();
+  if (pending) pendingLint(r);
+  stopByRequest(r, true);
+  return r;
+}
+
+describe.each(HARNESSES)(
+  "a failure already found, daemon stopped by request, $name (review 0.1.429 B1)",
+  (harness) => {
+    it.each([false, true])(
+      "the 2 s entry holds for it once; an untouched check pending (%s) changes nothing",
+      async (pending) => {
+        const r = await failing(harness, pending);
+        const first = await stopBoth(harness, r);
+        expect(first.quick.decision).toBe("block");
+        expect(first.quick.reason).toContain(BLOCKING);
+        expect(first.quick.reason?.includes("Stop does not hold for the checks it requires")).toBe(
+          pending,
+        );
+        expect(holds(r)).toBe(1);
+        const again = await stopBoth(harness, r, () => {}, 300, { stop_hook_active: true });
+        expect(again).toMatchObject({ quick: {}, waiting: {} });
+        expect(holds(r)).toBe(1);
+      },
+    );
+
+    it.each([false, true])(
+      "the waiting entry holds for it once the 2 s entry ended the turn; untouched check pending: %s",
+      async (pending) => {
+        const r = await failing(harness, pending);
+        const ended = await createDelivery(r.store, { status: fixedStatus() }).endTurn(
+          mainConsumer(r),
+          { handoff: true },
+        );
+        expect(ended).toBe(true);
+        const waiting = decision(await harness.stopSlow(r));
+        expect(waiting.decision).toBe("block");
+        expect(waiting.reason).toContain(BLOCKING);
+        expect(holds(r)).toBe(1);
+      },
+    );
+  },
+);
