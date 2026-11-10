@@ -8,6 +8,7 @@ import { worktreeLiveness } from "../../core/presence/heartbeat.js";
 import { slowView } from "../../core/scheduler/slow.js";
 import type { StopWaitHarness } from "../../core/slow/stop-wait.js";
 import { isFastPending, readHeader } from "../../core/state/header.js";
+import { stopRequired } from "../../core/state/required.js";
 import { readHolds } from "../../core/status/holds.js";
 import { STATUS_BUSY_TIMEOUT_MS } from "../../core/status/open.js";
 import { storePaths } from "../../core/store/paths.js";
@@ -22,6 +23,7 @@ import { removeWaiterLock } from "../../core/waiter-lock/waiter-lock.js";
 import type { ConsumerInput, HookContext, HookLocation } from "./context.js";
 import { ensureIfStale, SOCKET_TIMEOUT_MS, startingAfter } from "./ensure.js";
 import { type HookDeps, isRegistered, withContext } from "./hook.js";
+import { NO_EDIT_GIT_TIMEOUT_MS, readTree } from "./no-edit.js";
 import {
   decide,
   holdsNow,
@@ -30,6 +32,7 @@ import {
   stopRules,
   waitingEntryRecorded,
 } from "./stop-decide.js";
+import { stoppedText } from "./stop-required.js";
 import { knownFailuresLine, statusText } from "./text.js";
 
 /**
@@ -77,9 +80,14 @@ export type StopOutcome = { readonly block: string } | { readonly news: string }
  * (`waitingEntryRecorded`, row 019-30), and does so before it prepares its
  * news (`holdsNow`, row 019-36): the news's writes stay in a transaction
  * open until the hand-off, the record cannot land while it is open, and so
- * a first Stop with news held at once (lessons P10). Neither holds a main
- * agent whose worktree had no revision since it registered
- * (`unchangedSinceRegistration`, task 004-67); a SubagentStop still blocks.
+ * a first Stop with news held at once (lessons P10). Neither holds a
+ * session that changed nothing (`unchangedSinceRegistration`, task 004-67),
+ * main agent or subagent (row 011-312); where this entry decides the checks
+ * Stop requires, it reads Git for that once before deciding (`readTree`),
+ * within what is left of its budget after the wait for the waiting entry's
+ * record. Row 011-312: while the daemon is stopped by request, the open
+ * checks Stop requires hold nothing, and a Stop that speaks anyway says so
+ * in one line (`stoppedText`); one with nothing else to say stays silent.
  *
  * Stop context is not passive: Claude Code continues the turn so the model
  * can read it (2.1.288 counts it toward its consecutive-block cap). So Stop
@@ -133,6 +141,8 @@ export function stopTurn(
     async (context) => {
       if ((!main || quiet) && !isRegistered(context)) return null;
       const recordBy = performance.now() + STOP_RECORD_WAIT_MS;
+      // Row 011-312: Git for the no-edit proof leaves the wait for the record its time.
+      const gitBy = performance.now() + HOOK_TIMEOUT_MS - STOP_MARGIN_MS - STOP_RECORD_WAIT_MS;
       const at = (deps.now ?? Date.now)();
       // Task 001-416: before the wait, so a SubagentStop its timeout kills still ends the registration.
       if (!main) leaving(context, at);
@@ -145,6 +155,9 @@ export function stopTurn(
         read: () => stopRules(context, project, input, deps),
         recorded: () => waitingEntryRecorded(context, input.harness, deps, recordBy),
       };
+      if (rules.read().required !== null) {
+        await readTree(context, Math.min(NO_EDIT_GIT_TIMEOUT_MS, gitBy - performance.now()));
+      }
       // Row 019-36: the news's prepared writes would keep the record from landing in the wait.
       if (!quiet && holdsNow(context, rules.read())) await rules.recorded();
       const news = quiet ? null : await newsText(context, starting, deps.command);
@@ -190,11 +203,12 @@ async function decideTurn(
       decided = decide(context, project, now(), rules, deps.command);
     }
     const { header, failures, reasons, held } = decided;
+    const stopped = () => stoppedLine(context, project, now(), deps.command);
     if (reasons.length > 0) {
       if (!main) leaving(context, null);
       else if (held) hold(context);
       const text = news ?? statusText(header, failures, deps.command);
-      return { block: `${reasons.join("\n")}\n\n${text}` };
+      return { block: `${[...reasons, ...stopped()].join("\n")}\n\n${text}` };
     }
     if (!main) await finishSubagent(context);
     else if (news === null) {
@@ -212,8 +226,20 @@ async function decideTurn(
       }
       await nudgeSlow(context, header);
     }
-    return news === null ? null : { news };
+    return news === null ? null : { news: [news, ...stopped()].join("\n") };
   }
+}
+
+/** Row 011-312: `stoppedText` for the checks `project` makes Stop require, as lines. */
+function stoppedLine(
+  context: HookContext,
+  project: Policy,
+  at: EpochMs,
+  command: string | undefined,
+): string[] {
+  const required = stopRequired(project);
+  const text = required === null ? null : stoppedText(context, required, at, command);
+  return text === null ? [] : [text];
 }
 
 /** Counts a hold of the main agent for required checks (spec 019 D4 step 3). */

@@ -12,7 +12,7 @@ import type { KnownFailure, StatusHeader } from "../../core/types/status.js";
 import { HOOK_TIMEOUT_MS } from "../../core/types/store-records.js";
 import type { ConsumerInput, HookContext, HookLocation } from "./context.js";
 import { type HookDeps, isRegistered, withContext } from "./hook.js";
-import { unchangedSinceRegistration } from "./no-edit.js";
+import { readTree, unchangedSinceRegistration } from "./no-edit.js";
 import { newsText } from "./stop.js";
 import {
   isOpen,
@@ -22,6 +22,7 @@ import {
   requiredOpen,
   requiredStep,
   stepReason,
+  stoppedByRequest,
 } from "./stop-required.js";
 import { statusText } from "./text.js";
 
@@ -86,15 +87,17 @@ export const STOP_SLOW_POLL_MS = 250;
  * pending with no such file asks nothing (review 0.1.395, S1). The request's
  * socket time is part of the wait (S2).
  *
- * A worktree with no revision since the consumer registered
- * (`unchangedSinceRegistration`, task 004-67, issue 19) is a session that
- * changed nothing: it is not held, and this entry returns `null` once the
- * handoff came, without waiting.
+ * A session that changed nothing (`unchangedSinceRegistration`, task
+ * 004-67, issue 19; row 011-312: with Git read once after the handoff,
+ * `readTree`) is not held, and this entry returns `null` once the handoff
+ * came, without waiting.
  *
  * Then it polls until no required check is open (`requiredOpen`: no test
  * file pending or not run, the runner part of the revision applied, no lint
- * check waiting to lint), the bound passes,
- * or the daemon has been down for `STOP_SLOW_DOWN_MS`, and decides from a
+ * check waiting to lint), the bound passes, the daemon is stopped by request
+ * (`stoppedByRequest`, row 011-312: no daemon runs them, so open checks hold
+ * nothing and it returns at once), or the daemon has been down for
+ * `STOP_SLOW_DOWN_MS`, and decides from a
  * read in a write transaction (`decide`, review wave 13am B2): what a poll
  * saw may be a snapshot the daemon has moved past, and the decision holds
  * only for the live revision. Not complete before the bound: it polls
@@ -134,7 +137,8 @@ export async function stopSlow(
     const { store, consumer } = context;
     if (readStopHolds(store, consumer) >= required.maxHolds) return null;
     if (!(await handedOver(context, deps, poll))) return null;
-    if (readTransaction(store, () => unchangedSinceRegistration(store, consumer))) return null;
+    await readTree(context);
+    if (readTransaction(store, () => unchangedSinceRegistration(context))) return null;
     const block = await waitForRequired(context, required, deps, poll);
     if (block === null) return null;
     const { header, failures, reason } = block;
@@ -210,8 +214,9 @@ interface Block {
 }
 
 /**
- * Polls until no required check is open, `required.waitMs` passed,
- * or the daemon has been down for `STOP_SLOW_DOWN_MS`, then decides at the
+ * Polls until no required check is open, `required.waitMs` passed, the
+ * daemon is stopped by request (row 011-312), or the daemon has been down
+ * for `STOP_SLOW_DOWN_MS`, then decides at the
  * live revision; polls again when that decision found them not complete
  * before the bound. Each group with a file not current is asked to run once,
  * with the time left (`requestGroups`). The block, or `null` for silence
@@ -245,7 +250,7 @@ async function waitForRequired(
     downSince = last.header.daemon?.state === "down" ? (downSince ?? now) : null;
     const down = downSince !== null && now - downSince >= STOP_SLOW_DOWN_MS;
     const left = started + bound - now;
-    const over = left <= 0 || down;
+    const over = left <= 0 || down || stoppedByRequest(last.header);
     if (!isOpen(last.open) || over) {
       const waitedMs = Math.min(bound, Math.round(now - started));
       const options = { over, waitedMs, command: deps.command };

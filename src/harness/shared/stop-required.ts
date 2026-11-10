@@ -1,3 +1,6 @@
+import { SQUEAL_COMMAND } from "../../core/delivery/format.js";
+import { readLiveHeader } from "../../core/delivery/liveness.js";
+import { lintSubject } from "../../core/lint/surface/format.js";
 import { checkIdentity, testFileOf } from "../../core/state/derive.js";
 import { sameFingerprint } from "../../core/state/fingerprint.js";
 import {
@@ -9,8 +12,10 @@ import {
   requiredNotCurrent,
   type StopRequired,
 } from "../../core/state/required.js";
+import { readTransaction } from "../../core/store/store.js";
+import { plural } from "../../core/text.js";
 import type { EpochMs } from "../../core/types/common.js";
-import { MAIN_AGENT, type ViewEntry } from "../../core/types/delivery.js";
+import type { ViewEntry } from "../../core/types/delivery.js";
 import type { KnownState } from "../../core/types/state.js";
 import type { KnownFailure, StatusHeader } from "../../core/types/status.js";
 import type { TestFileKeyRecord } from "../../core/types/store-records.js";
@@ -29,6 +34,7 @@ import {
   requiredWaitReason,
   withLastHold,
 } from "./stop-text.js";
+import { listNames } from "./text.js";
 
 /*
  * Review 0.1.406-r2 B2-R1 (spec 019 D4): the one owner of what Stop holds a
@@ -95,14 +101,26 @@ export type RequiredStep =
   | { readonly kind: "failing"; readonly failing: HoldLines };
 
 /**
+ * Row 011-312: the daemon is stopped by request (a stop mark, `squeal stop`
+ * or `--until-start`, 011 C9), so no check Stop requires that is open can
+ * turn current before a `squeal start` or, without `--until-start`, an
+ * edit. A daemon that died is not stopped by request.
+ */
+export function stoppedByRequest(header: Pick<StatusHeader, "daemon">): boolean {
+  return header.daemon?.state === "down" && header.daemon.stopped === true;
+}
+
+/**
  * What Stop holds the consumer for, for the checks `required`, from `read`
- * (inside its transaction); `null` for nothing, and always for a main agent
- * whose worktree had no revision since it registered (task 004-67).
+ * (inside its transaction); `null` for nothing, and always for a session
+ * that changed nothing (`unchangedSinceRegistration`, task 004-67, row
+ * 011-312), main agent or subagent.
  *
  * 1. Open: test files not current or the runner part pending (019 D4 step
  *    1), and lint checks not linted (row 019-45). The waiting entry asks for
  *    and waits for them all at once; the 2 s entry alone names them in one
- *    hold, tests' first.
+ *    hold, tests' first. Row 011-312: never while the daemon is stopped by
+ *    request (`stoppedByRequest`); `stoppedText` tells them instead.
  * 2. Failing, only once none is open: with `untold` (the waiting entry,
  *    the consumer's view), the required test failures and lint findings not
  *    told; with `lint.blocking`, the required tools' files gone to fail
@@ -119,10 +137,9 @@ export function requiredStep(
     readonly command: string | undefined;
   },
 ): RequiredStep | null {
-  const { store, consumer } = context;
-  if (consumer.agentId === MAIN_AGENT && unchangedSinceRegistration(store, consumer)) return null;
+  if (unchangedSinceRegistration(context)) return null;
   const open = requiredOpen(context, required, read);
-  if (isOpen(open)) return { kind: "open", open };
+  if (isOpen(open)) return stoppedByRequest(read.header) ? null : { kind: "open", open };
   const failing = failingLines(context, required, read, options);
   return failing.reasons.length === 0 ? null : { kind: "failing", failing };
 }
@@ -214,4 +231,60 @@ export function stepReason(
     open.lint.length === 0 ? [] : [lintOpenReason(revision, open.lint, command, waitedMs)];
   const groups = [...new Set([...(unlisted ? required.groups : []), ...openGroupsOf(open)])];
   return withLastHold([...tests, ...lint].join("\n"), groups, command, last);
+}
+
+/**
+ * Row 011-312: the information line for the checks `required` that are open
+ * while the daemon is stopped by request, for a session that changed
+ * something, from one read at `at`; `null` otherwise. It holds nothing and names no command
+ * that needs a daemon: "Squeal: the daemon is stopped by request, so Stop
+ * does not hold for the checks it requires: at revision 0, 1 lint check is
+ * not linted: untouched.js. `squeal start` starts a daemon, which runs them."
+ */
+export function stoppedText(
+  context: HookContext,
+  required: StopRequired,
+  at: EpochMs,
+  command: string = SQUEAL_COMMAND,
+): string | null {
+  const { store, consumer } = context;
+  const read = readTransaction(store, () => {
+    const states = store.knownStates.list(consumer.worktreeId);
+    const keys = store.testFileKeys.list(consumer.worktreeId);
+    const header = readLiveHeader(store, consumer.worktreeId, at, states, null, keys);
+    if (!stoppedByRequest(header) || unchangedSinceRegistration(context)) return null;
+    return { header, open: requiredOpen(context, required, { states, keys, header }) };
+  });
+  if (read === null || !isOpen(read.open)) return null;
+  const { header, open } = read;
+  const { revision } = header;
+  const lint = open.lint.map(({ tool, path }) =>
+    lintSubject(tool === "eslint" ? { path } : { path, tool }),
+  );
+  const parts = [
+    ...(open.tests.length === 0
+      ? []
+      : [
+          openPart(
+            open.tests.map((f) => f.ref.path),
+            "test file",
+            "current",
+          ),
+        ]),
+    ...(lint.length === 0 ? [] : [openPart(lint, "lint check", "linted")]),
+  ];
+  const what =
+    parts.length === 0
+      ? `the test files of revision ${revision} are not all listed`
+      : parts.join("; ");
+  return (
+    `Squeal: the daemon is stopped by request, so Stop does not hold for the checks it requires: ` +
+    `at revision ${revision}, ${what}. \`${command} start\` starts a daemon, which runs them.`
+  );
+}
+
+/** `1 lint check is not linted: untouched.js`. */
+function openPart(names: readonly string[], noun: string, state: string): string {
+  const verb = names.length === 1 ? "is" : "are";
+  return `${plural(names.length, noun)} ${verb} not ${state}: ${listNames(names)}`;
 }
