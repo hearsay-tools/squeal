@@ -4,22 +4,19 @@ import type { CodeMeasure } from "../../../src/core/types/code.js";
 import type { CodeDeltaEntry, CodeDeltaKind } from "../../../src/core/types/code-delivery.js";
 
 /*
- * Row 015-103 (spec 015 D9 Delivery): a line whose file no test Squeal runs
- * loads says so as a fact about the tests Squeal runs, never as a claim
- * that no test loads it. In eval run `20261101T092538Z-135e02` the
- * node:test file `scripts/changelog.test.mjs`, which Squeal does not run,
- * loaded `scripts/changelog.mjs`, and the line said "no test file loads
- * this file". Each form that composes the reason is pinned here.
+ * Spec 020 D11.5 (row 020-07a): a file no test Squeal runs loads reads not
+ * measured, so its functions have no failing state, and no line says "no
+ * test Squeal runs loads this file" (row 015-103's words are gone). A line
+ * whose loader count reads none, as a state judged before the upgrade
+ * drops can give, claims no count: it says only that no test runs it.
  */
 
 const LIMIT = "Squeal does not measure worker threads or child processes.";
 const QUIET =
   "Squeal stays quiet about it until a test runs it in its own thread, and squeal code scripts/changelog.mjs shows its coverage.";
-const QUIET_CRAP =
-  "Squeal stays quiet about it until it is at or under 30, and squeal code scripts/changelog.mjs shows its CRAP.";
 const AT = "renderRelease (scripts/changelog.mjs:12)";
 
-/** `renderRelease`'s change of `measure`: complexity 6, CRAP 42, no line ran, no loader. */
+/** `renderRelease`'s change of `measure`: complexity 6, CRAP 42, no line ran, no loader read. */
 const entry = (measure: CodeMeasure, kind: CodeDeltaKind): CodeDeltaEntry => ({
   check: {
     kind: "code",
@@ -38,41 +35,21 @@ const entry = (measure: CodeMeasure, kind: CodeDeltaKind): CodeDeltaEntry => ({
 });
 const lines = (...entries: CodeDeltaEntry[]) => codeLines({ v: 1, entries, more: 0 }, "squeal");
 
-describe("the line of a file no test Squeal runs loads (row 015-103)", () => {
-  it("says so on a FAIL line of its own", () => {
+describe("a line whose file's loader count reads none (spec 020 D11.5)", () => {
+  it("says no test runs it, with no count, on a FAIL line", () => {
     expect(lines(entry("uncovered", "first-seen-fail"))).toEqual([
-      `FAIL untested: ${AT}: no test Squeal runs loads this file (complexity 6, CRAP 42). ${LIMIT}`,
+      `FAIL untested: ${AT}: no test runs it in the test's own thread (complexity 6, CRAP 42). ${LIMIT}`,
     ]);
     expect(lines(entry("crap", "first-seen-fail"))).toEqual([
-      `FAIL CRAP: ${AT}: 42, over 30 (complexity 6; no test Squeal runs loads this file). ${LIMIT}`,
+      `FAIL CRAP: ${AT}: 42, over 30 (complexity 6; no test runs it in the test's own thread). ${LIMIT}`,
     ]);
   });
 
-  it("says so in a function's block, on the untested line only", () => {
-    expect(lines(entry("crap", "first-seen-fail"), entry("uncovered", "first-seen-fail"))).toEqual([
-      `${AT}:`,
-      `- FAIL untested: no test Squeal runs loads this file. ${LIMIT}`,
-      "- FAIL CRAP: 42, over 30 (complexity 6)",
+  it("says so after an edit too, and never that no test Squeal runs loads the file", () => {
+    const after = lines(entry("uncovered", "edited"));
+    expect(after).toEqual([
+      `STILL FAIL untested: ${AT}: no test runs it in the test's own thread after the edit, nor did one before it (complexity 6, CRAP 42). ${LIMIT} ${QUIET}`,
     ]);
-  });
-
-  it("says so after an edit, and that none loaded it before the edit either", () => {
-    expect(lines(entry("uncovered", "edited-after-fail"))).toEqual([
-      `STILL FAIL untested: ${AT}: no test Squeal runs loads this file after the edit (complexity 6, CRAP 42). ${LIMIT} ${QUIET}`,
-    ]);
-    expect(lines(entry("uncovered", "edited"))).toEqual([
-      `STILL FAIL untested: ${AT}: no test Squeal runs loads this file after the edit, nor did one before it (complexity 6, CRAP 42). ${LIMIT} ${QUIET}`,
-    ]);
-    expect(lines(entry("crap", "edited"))).toEqual([
-      `STILL FAIL CRAP: ${AT}: 42 after the edit; it was already over 30 before it (complexity 6; no test Squeal runs loads this file). ${LIMIT} ${QUIET_CRAP}`,
-    ]);
-  });
-
-  it("says so in a STILL FAIL block", () => {
-    expect(lines(entry("crap", "edited"), entry("uncovered", "edited"))).toEqual([
-      `${AT}:`,
-      `- STILL FAIL untested: no test Squeal runs loads this file after the edit, nor did one before it. ${LIMIT} ${QUIET}`,
-      `- STILL FAIL CRAP: 42 after the edit; it was already over 30 before it (complexity 6); ${QUIET_CRAP}`,
-    ]);
+    expect(after.join("\n")).not.toContain("no test Squeal runs loads");
   });
 });

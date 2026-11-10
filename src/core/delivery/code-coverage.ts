@@ -61,17 +61,13 @@ export function evidenceOf(
 
 /** Row 015-65 (D9 Delivery, amended 2026-10-26): the reason an `untested` line leads with. */
 const NOT_RUN = "no test runs it in the test's own thread";
-/**
- * Row 015-103: a fact about the tests Squeal runs, never a claim that no
- * test loads the file. A test outside Squeal's runners, such as an
- * uncovered node:test file, can load it.
- */
-const NOT_LOADED = "no test Squeal runs loads this file";
 
 /**
- * Row 015-80: what a line that says `NOT_RUN` or `NOT_LOADED` also says, so
- * it does not read as "no test runs it". A test can run a file it does not
- * load in a worker thread, from a bundle (`test/lint/provider/helpers.ts`).
+ * Row 015-80: what a line that says `NOT_RUN` also says, so it does not
+ * read as "no test runs it". A test can run a file it does not load in a
+ * worker thread, from a bundle (`test/lint/provider/helpers.ts`). Spec 020
+ * D11.5 (row 020-07a): a file no test Squeal runs loads reads not
+ * measured, so no line says so (row 015-103's words are gone).
  */
 export const UNMEASURED = "Squeal does not measure worker threads or child processes.";
 
@@ -87,10 +83,13 @@ function fileLoadersOf(entry: CodeDeltaEntry): CodeFileLoaders | undefined {
   return e.processes === true ? { count: e.loaders, processes: true } : { count: e.loaders };
 }
 
-/** Why no test runs it, `after` the reason, then how many test files load its file when read. */
+/**
+ * Why no test runs it, `after` the reason, then how many test files load
+ * its file when read. A count of none claims nothing: a judged state has a
+ * loader (spec 020 D11.5).
+ */
 function notRun(file: CodeFileLoaders | undefined, after: string): string {
-  if (file === undefined) return `${NOT_RUN}${after}`;
-  if (file.count === 0) return `${NOT_LOADED}${after}`;
+  if (file === undefined || file.count === 0) return `${NOT_RUN}${after}`;
   return `${NOT_RUN}${after}; ${plural(file.count, "test file")} ${file.count === 1 ? "loads" : "load"} this file`;
 }
 
