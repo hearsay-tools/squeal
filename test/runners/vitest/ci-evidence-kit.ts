@@ -1,9 +1,10 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { afterEach } from "vitest";
+import { readEvidence } from "../../../src/core/ci/inputs.js";
 import { OBSERVE_VARIABLE, observeRecorder } from "../../../src/runners/observe/runtime.js";
 import { CI_RECORD_VARIABLE, ciHook } from "../../../src/runners/vitest/ci-record.js";
 
@@ -57,3 +58,17 @@ export function run(root: string, out: { evidence?: string; observed?: string })
 /** Git's blob id of `text`. */
 export const blob = (text: string) =>
   execFileSync("git", ["hash-object", "--stdin"], { input: text }).toString().trim();
+
+/** `script` run in a new root holding `files` and `links`; the evidence its process took. */
+export function evidenceOf(
+  script: string,
+  files: Record<string, string>,
+  links: Record<string, string> = {},
+) {
+  const root = join(temp(), "root");
+  fill(root, { ...files, "script.mjs": script });
+  for (const [link, target] of Object.entries(links)) symlinkSync(target, join(root, link));
+  const evidence = temp();
+  run(root, { evidence });
+  return readEvidence(evidence);
+}
