@@ -49,7 +49,7 @@ describe("squeal ci record: the run's own coverage and errors (spec 020 D13.1)",
       ]);
       expect(part?.coverage).toBeUndefined();
       expect(run.said).toContain(
-        "no coverage records: the run has coverage of its own, so Squeal's provider was not added",
+        "no coverage records: Squeal's provider was not added: the run has coverage of its own",
       );
     },
   );

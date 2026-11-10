@@ -42,6 +42,11 @@ describe("squeal ci record: files without a record (spec 020 D13.1)", () => {
     ]);
     expect(run.parts[0]?.coverage).toBeUndefined();
     expect(run.said).toContain("coverage records for 0 of 2 test files");
+
+    // A location filter runs part of the one file it names.
+    const lines = await recordCovered(root, join(dirname(root), "lines"), ["test/add.test.ts:3"]);
+    expect(lines.code, lines.said).toBe(0);
+    expect(reasons(lines.parts[0])).toEqual([["test/add.test.ts", null, "filtered"]]);
   });
 
   it("gives a project run with isolate: false no record", SLOW, async () => {
