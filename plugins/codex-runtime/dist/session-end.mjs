@@ -237,7 +237,7 @@ var DEFAULT_POLICY = {
     maxFileBytes: 524288,
     blocking: false
   },
-  coverage: { enabled: true, untested: true, exclude: [] },
+  coverage: { enabled: true, untested: true, exclude: [], children: false },
   crap: { enabled: true, threshold: 30 },
   lint: {
     enabled: false,
@@ -817,7 +817,7 @@ var CODE_SHAPE = {
     maxFileBytes: positiveInteger,
     blocking: boolean2
   },
-  coverage: { enabled: boolean2, untested: boolean2, exclude: globs2 },
+  coverage: { enabled: boolean2, untested: boolean2, exclude: globs2, children: boolean2 },
   crap: { enabled: boolean2, threshold: aboveZero2 }
 };
 
@@ -7667,7 +7667,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.426";
+  if (true) return "0.1.427";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -9311,7 +9311,10 @@ function evidenceOf(store, worktreeId, entry3) {
   );
   if (counted === void 0) return {};
   const [lines, covered, testFiles, ...first] = fn;
-  return { evidence: { complexity: counted.complexity, lines, covered, testFiles, first } };
+  const children = readSummary(store.meta, worktreeId)?.children === true ? { children: true } : {};
+  return {
+    evidence: { complexity: counted.complexity, lines, covered, testFiles, first, ...children }
+  };
 }
 var isCoverage = (entry3) => entry3.measure !== "complexity";
 
@@ -11098,7 +11101,8 @@ function coverageChecks(policy) {
   return {
     measures: COVERAGE_MEASURES.filter((m) => on[m]),
     exclude: policy.coverage.exclude,
-    excluded: createInputMatcher(policy.coverage.exclude)
+    excluded: createInputMatcher(policy.coverage.exclude),
+    children: policy.coverage.children
   };
 }
 function checksField(measures) {
