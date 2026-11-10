@@ -12,9 +12,8 @@ import { blob, fill, run, temp } from "./ci-evidence-kit.js";
  * recorder rides for itself. So the child's write of an input the parent
  * read cancels its evidence, content unchanged. A child or Worker whose env
  * names another recording's settings keeps them, and the hook cannot follow
- * it: its process withholds the current test file (review of 0.1.424, B2),
- * by cancelling that file's own evidence, or every path when no test file is
- * known there.
+ * it, and it can write any test's input: its process withholds every path
+ * (review of 0.1.424, B2, and its re-review), whatever test file it runs.
  */
 
 const GOOD = "GOOD";
@@ -127,24 +126,19 @@ function foreignEvidence(
 }
 
 describe("a child or Worker with another recording's settings (018-23, review of 0.1.424 B2)", () => {
-  it.each([["child"], ["Worker"]] as const)(
-    "withholds the current test file when a %s starts with them",
-    (start) => {
-      const { script, evidence } = foreignEvidence(start, "vitest");
-      expect(evidence).toEqual({ "input.txt": blob(GOOD), "script.mjs": blob(script) });
+  it.each([
+    ["child", "vitest"],
+    ["Worker", "vitest"],
+    ["child", "none"],
+    ["Worker", "none"],
+  ] as const)(
+    "withholds every path when a %s starts with them (current test file: %s)",
+    (start, current) => {
+      expect(foreignEvidence(start, current).evidence).toEqual({});
     },
   );
 
-  it("takes the current test file from the daemon's recorder outside a Vitest worker", () => {
-    // The kit's recorder settings name `test/a.test.ts`.
-    const { script, evidence } = foreignEvidence("child", "none", true);
-    expect(evidence).toEqual({ "input.txt": blob(GOOD), "script.mjs": blob(script) });
+  it("withholds every path outside a Vitest worker too, where the daemon's recorder names the file", () => {
+    expect(foreignEvidence("child", "none", true).evidence).toEqual({});
   });
-
-  it.each([["child"], ["Worker"]] as const)(
-    "withholds every path when no test file is known where a %s starts with them",
-    (start) => {
-      expect(foreignEvidence(start, "none").evidence).toEqual({});
-    },
-  );
 });
