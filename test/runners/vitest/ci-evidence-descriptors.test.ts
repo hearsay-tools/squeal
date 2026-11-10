@@ -33,6 +33,12 @@ const CONSUMERS: Record<string, string> = {
   handleLines: `{ const h = await open("handleLines.txt", "r"); sh("handleLines.txt"); for await (const l of h.readLines()) {} }`,
   handleWeb: `{ const h = await open("handleWeb.txt", "r"); sh("handleWeb.txt"); for await (const c of h.readableWebStream()) {} await h.close(); }`,
   handleStat: `{ const h = await open("handleStat.txt", "r"); sh("handleStat.txt"); await h.stat(); await h.close(); }`,
+  // A file handle's numeric descriptor, read through the numeric APIs (review of 0.1.424, B1).
+  handleFdReadSync: `{ const h = await open("handleFdReadSync.txt", "r"); sh("handleFdReadSync.txt"); fs.readSync(h.fd, bytes, 0, 4, 0); await h.close(); }`,
+  handleFdRead: `{ const h = await open("handleFdRead.txt", "r"); sh("handleFdRead.txt"); await new Promise((r) => fs.read(h.fd, bytes, 0, 4, 0, r)); await h.close(); }`,
+  handleFdReadFileSync: `{ const h = await open("handleFdReadFileSync.txt", "r"); sh("handleFdReadFileSync.txt"); fs.readFileSync(h.fd); await h.close(); }`,
+  handleFdFstat: `{ const h = await open("handleFdFstat.txt", "r"); sh("handleFdFstat.txt"); fs.fstatSync(h.fd); await h.close(); }`,
+  handleFdStream: `{ const h = await open("handleFdStream.txt", "r"); sh("handleFdStream.txt"); for await (const c of fs.createReadStream(null, { fd: h.fd, autoClose: false, start: 0 })) {} await h.close(); }`,
 };
 
 const PRELUDE = `import * as fs from "node:fs";
@@ -61,10 +67,28 @@ describe("reads through an open descriptor or handle (018-23, review 0.1.421-r3 
     const script = `${PRELUDE}
 { const fd = fs.openSync("a.txt", "r"); fs.readSync(fd, bytes, 0, 4, 0); fs.readFileSync(fd); fs.closeSync(fd); }
 for await (const c of fs.createReadStream("b.txt")) {}
+{ const h = await open("c.txt", "r"); fs.readSync(h.fd, bytes, 0, 4, 0); await h.read(bytes, 0, 4, 0); await h.close(); }
 `;
-    expect(evidenceOf(script, { "a.txt": GOOD, "b.txt": BAD })).toEqual({
+    expect(evidenceOf(script, { "a.txt": GOOD, "b.txt": BAD, "c.txt": GOOD })).toEqual({
       "a.txt": blob(GOOD),
       "b.txt": blob(BAD),
+      "c.txt": blob(GOOD),
+      "script.mjs": blob(script),
+    });
+  });
+
+  it("forgets a closed descriptor, so a new open of its number reads its own file", () => {
+    // A closed handle's number taken by a numeric open, and a closed number by a handle.
+    const script = `${PRELUDE}
+{ const h = await open("a.txt", "r"); await h.close(); sh("a.txt"); const fd = fs.openSync("b.txt", "r"); fs.readSync(fd, bytes, 0, 4, 0); fs.closeSync(fd); }
+{ const fd = fs.openSync("c.txt", "r"); fs.closeSync(fd); sh("c.txt"); const h = await open("d.txt", "r"); fs.readSync(h.fd, bytes, 0, 4, 0); await h.read(bytes, 0, 4, 0); await h.close(); }
+`;
+    const files = { "a.txt": GOOD, "b.txt": GOOD, "c.txt": GOOD, "d.txt": GOOD };
+    expect(evidenceOf(script, files)).toEqual({
+      "a.txt": blob(GOOD),
+      "b.txt": blob(GOOD),
+      "c.txt": blob(GOOD),
+      "d.txt": blob(GOOD),
       "script.mjs": blob(script),
     });
   });
@@ -94,14 +118,16 @@ const add = (file) => execFileSync("sh", ["-c", 'touch "$1"', "sh", file]);
 });
 
 describe("a time change through a descriptor or handle is a write (018-23, review 0.1.421-r3 N2)", () => {
-  it("cancels a path whose times changed through `futimes` or `FileHandle.utimes`", () => {
+  it("cancels a path whose times changed through `futimes`, also of a handle's descriptor, or `FileHandle.utimes`", () => {
     const script = `${PRELUDE}
 { const fd = fs.openSync("futimesSync.txt", "r"); fs.futimesSync(fd, 1, 1); fs.closeSync(fd); }
 { const fd = fs.openSync("futimes.txt", "r"); await new Promise((r) => fs.futimes(fd, 1, 1, r)); fs.closeSync(fd); }
 { const h = await open("handle.txt", "r"); await h.utimes(1, 1); await h.close(); }
+{ const h = await open("handleFdSync.txt", "r"); fs.futimesSync(h.fd, 1, 1); await h.close(); }
+{ const h = await open("handleFd.txt", "r"); await new Promise((r) => fs.futimes(h.fd, 1, 1, r)); await h.close(); }
 fs.readFileSync("kept.txt");
 `;
-    const names = ["futimesSync", "futimes", "handle", "kept"];
+    const names = ["futimesSync", "futimes", "handle", "handleFdSync", "handleFd", "kept"];
     const files = Object.fromEntries(names.map((name) => [`${name}.txt`, GOOD]));
     expect(evidenceOf(script, files)).toEqual({
       "kept.txt": blob(GOOD),

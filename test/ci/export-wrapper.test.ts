@@ -22,7 +22,8 @@ import { ci, committed, scratchDir, VITEST, writeFiles } from "./fixture.js";
  * 0.1.421 r3, B1) the test opens the file read-only at `BAD!`, marks that it
  * is ready, and reads through the open descriptor (E) or file handle (F)
  * until it sees `GOOD`, which the wrapper writes when it sees the mark and
- * replaces with `BAD!` after the run.
+ * replaces with `BAD!` after the run. In G (review of 0.1.424, B1) the test
+ * opens a file handle and reads through its numeric descriptor.
  */
 
 const SLOW = { timeout: 300_000 };
@@ -33,7 +34,7 @@ const [mode, writer, vitest] = process.argv.slice(2);
 const sh = (script, ...args) => spawnSync("sh", ["-c", script, "sh", ...args], { stdio: "inherit" });
 const put = (file, text) => (writer === "sh" ? sh('printf "%s" "$1" > "$2"', text, file) : writeFileSync(file, text));
 const remove = (file) => (writer === "sh" ? sh('rm "$1"', file) : rmSync(file));
-if (mode === "E" || mode === "F") {
+if (mode === "E" || mode === "F" || mode === "G") {
   const run = spawn(process.execPath, [vitest, "run"], { env: process.env, stdio: "inherit" });
   const ready = setInterval(() => {
     if (!existsSync("data/ready")) return;
@@ -110,6 +111,10 @@ const CHANGED = {
     "test/handle.test.ts",
     THROUGH(`const handle = await open(file, "r");`, "await handle.read(bytes, 0, 4, 0);"),
   ],
+  G: [
+    "test/handle-fd.test.ts",
+    THROUGH(`const handle = await open(file, "r");`, "readSync(handle.fd, bytes, 0, 4, 0);"),
+  ],
 } as const;
 
 const dirs: string[] = [];
@@ -124,7 +129,7 @@ async function wrapped(mode: keyof typeof CHANGED, writer: "node" | "sh") {
   const [changed, test] = CHANGED[mode];
   const root = committed(dir, { ...FILES, [changed]: test });
   if (mode === "A" || mode === "D") writeFiles(root, { "data/value.txt": "GOOD" });
-  if (mode === "E" || mode === "F") writeFiles(root, { "data/value.txt": "BAD!" });
+  if (mode === "E" || mode === "F" || mode === "G") writeFiles(root, { "data/value.txt": "BAD!" });
   const wrapper = join(dir, "wrapper.mjs");
   writeFileSync(wrapper, WRAPPER);
   const out = join(dir, "parts");
@@ -159,6 +164,7 @@ describe("ci export takes no evidence from a command's endpoints (review of 0.1.
     ["D", "sh", "the last of two contents read in one turn"],
     ["E", "sh", "the hash of a read-only open read through later"],
     ["F", "sh", "the hash of a read-only file handle read through later"],
+    ["G", "sh", "the hash of a file handle read through its numeric descriptor"],
   ] as const)("%s, written by %s: no result certified by %s", SLOW, async (mode, writer, _what) => {
     const { root, changed, recorded, exported, bundle } = await wrapped(mode, writer);
     expect(recorded.code, recorded.said).toBe(0);
