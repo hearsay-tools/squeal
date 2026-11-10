@@ -76,6 +76,12 @@ export interface CiExportCounts {
   readonly uncertified: number;
   /** Files left out: two of their checks share a name, which a part cannot name as the daemon does. */
   readonly ambiguous: number;
+  /**
+   * Files left out: their worker ran an import of `node:inspector` beside
+   * Squeal's coverage provider, so the provider could change their outcome
+   * (spec 020 D13.4).
+   */
+  readonly inspector: number;
 }
 
 /** A file left out because its shard's evidence does not certify these inputs' content here. */
@@ -119,7 +125,9 @@ async function exportWith(input: CiExportInput, runner: RunnerAdapter): Promise<
   const files = parts.flatMap((p) => p.part.testFiles);
   const passed = files.filter((file) => file.outcome !== "fail");
   const named = passed.filter((file) => (file.sharedNames ?? []).length === 0);
-  const { closures, report } = await keyFiles(input.root, runner, keys, named);
+  // Spec 020 D13.4 (018's coordinator, 2026-11-10): the part marks such a file only beside the provider.
+  const kept = named.filter((file) => file.noRecord !== "inspector");
+  const { closures, report } = await keyFiles(input.root, runner, keys, kept);
   const parted = await keyPartsOf(input, keys, environments, closures);
   const certify = certifier(input.root, keys, parts);
   const uncertified: UncertifiedFile[] = [];
@@ -154,9 +162,10 @@ async function exportWith(input: CiExportInput, runner: RunnerAdapter): Promise<
       testFiles,
       results: bundle.results.length,
       failed: files.length - passed.length,
-      unkeyed: named.length - testFiles - uncertified.length,
+      unkeyed: kept.length - testFiles - uncertified.length,
       uncertified: uncertified.length,
       ambiguous: passed.length - named.length,
+      inspector: named.length - kept.length,
     },
     uncertified,
   };
