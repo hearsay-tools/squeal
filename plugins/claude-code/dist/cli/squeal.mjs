@@ -75019,16 +75019,12 @@ init_environment_descriptor();
 init_key_format();
 var SQUEAL_FIELDS = ["includeTaskLocation", "snapshotOptions"];
 function partsRefusal(parts3, head2) {
-  for (const { file, part: part2 } of parts3) {
-    const { keyFormat, end, commit: commit2 } = part2.header;
-    if (keyFormat !== KEY_FORMAT_VERSION) {
-      const text3 = `${file} was made with key format ${keyFormat}; this Squeal keys with ${KEY_FORMAT_VERSION}`;
-      return { kind: "key-format", text: text3 };
+  for (const named3 of parts3) {
+    const refused = reuseRefusal(named3);
+    if (refused !== null) return refused;
+    if (named3.part.header.commit === null) {
+      return { kind: "no-commit", text: `${named3.file} names no commit` };
     }
-    if (end !== "completed") {
-      return { kind: "incomplete", text: `${file} is of a run that did not complete (${end})` };
-    }
-    if (commit2 === null) return { kind: "no-commit", text: `${file} names no commit` };
   }
   const commits = [...new Set(parts3.map((p) => p.part.header.commit))].sort(compare);
   if (commits.length > 1) {
@@ -75043,7 +75039,49 @@ function partsRefusal(parts3, head2) {
     const text3 = `the parts are of commit ${commit}, and this checkout is at ${here}: run the export in a checkout of the parts' commit`;
     return { kind: "checkout", text: text3 };
   }
-  return shardRefusal(parts3) ?? snapshotRefusal(parts3) ?? duplicateRefusal(parts3) ?? environmentRefusal(parts3);
+  return shardRefusal(parts3) ?? duplicateRefusal(parts3) ?? environmentRefusal(parts3);
+}
+function reuseRefusal(named3, here, project) {
+  const { file, part: part2 } = named3;
+  const { keyFormat, end } = part2.header;
+  if (keyFormat !== KEY_FORMAT_VERSION) {
+    const text3 = `${file} was made with key format ${keyFormat}; this Squeal keys with ${KEY_FORMAT_VERSION}`;
+    return { kind: "key-format", text: text3 };
+  }
+  if (end !== "completed") {
+    return { kind: "incomplete", text: `${file} is of a run that did not complete (${end})` };
+  }
+  const runs = part2.projects.filter(
+    (r) => project === void 0 || r.descriptor.project === project
+  );
+  if (project !== void 0 && runs.length === 0) {
+    const text3 = `${file} holds no environment of project ${JSON.stringify(project)}`;
+    return { kind: "environment", text: text3 };
+  }
+  for (const run6 of runs) {
+    const refused = runRefusal(file, run6, here);
+    if (refused !== null) return refused;
+  }
+  return null;
+}
+function runRefusal(file, run6, here) {
+  const project = JSON.stringify(run6.descriptor.project);
+  if (run6.updateSnapshot !== "none") {
+    const text4 = `${file} ran project ${project} with snapshot update "${run6.updateSnapshot}"; only a run that writes no snapshot ("none", as in CI) gives evidence`;
+    return { kind: "snapshot", text: text4 };
+  }
+  if (here === void 0) return null;
+  const there = here.runs.get(run6.descriptor.project);
+  if (there === void 0) {
+    return {
+      kind: "environment",
+      text: `${here.runner} has no project ${project}, which ${file} ran`
+    };
+  }
+  const differences2 = runDifferences(run6, there);
+  if (differences2.length === 0) return null;
+  const text3 = `${file} ran project ${project} in another environment than ${here.name}: ${texts(differences2)} (the export as ${file}'s, here as ${here.name})`;
+  return { kind: "environment", text: text3 };
 }
 function shardRefusal(parts3) {
   if (parts3.length === 0) return { kind: "shards", text: "no part to export" };
@@ -75071,16 +75109,6 @@ function shardRefusal(parts3) {
   const named3 = missing2.map((i3) => `${i3}/${count3}`).join(", ");
   const text3 = `no part of shard ${named3}: export the parts of every shard, after all of them passed`;
   return { kind: "shards", text: text3 };
-}
-function snapshotRefusal(parts3) {
-  for (const { file, part: part2 } of parts3) {
-    for (const { descriptor, updateSnapshot } of part2.projects) {
-      if (updateSnapshot === "none") continue;
-      const text3 = `${file} ran project ${JSON.stringify(descriptor.project)} with snapshot update "${updateSnapshot}"; only runs that write no snapshot ("none", as in CI) are exported`;
-      return { kind: "snapshot", text: text3 };
-    }
-  }
-  return null;
 }
 function duplicateRefusal(parts3) {
   const seen = /* @__PURE__ */ new Map();
@@ -75133,10 +75161,6 @@ function runDifferences(a, b) {
     }
   });
   return importDifferences(comparable(a), comparable(b));
-}
-function jobRefusal(project, differences2) {
-  const text3 = `the shards ran project ${JSON.stringify(project)} in another environment than this job's: ${texts(differences2)} (the export as the shards', here as this job's)`;
-  return { kind: "environment", text: text3 };
 }
 function texts(differences2) {
   return differences2.map((d) => d.text).join("; ");
@@ -75327,19 +75351,16 @@ async function openKeys(input) {
 }
 function environmentRefusal2(input, environments2) {
   const { store, worktreeId, parts: parts3 } = input;
-  for (const { part: part2 } of parts3) {
-    for (const run6 of part2.projects) {
-      const { project } = run6.descriptor;
-      const job = worktreeEnvironment(store, worktreeId, project);
-      const resolved2 = environments2.find((e) => e.project === project)?.resolvedConfig;
-      if (job?.descriptor === null || job === null || resolved2 === void 0) {
-        const text3 = `this checkout's Vitest has no project ${JSON.stringify(project)}, which the parts ran`;
-        return { kind: "environment", text: text3 };
-      }
-      const view = { descriptor: job.descriptor, snapshotOptions: snapshotFields(resolved2) };
-      const differences2 = runDifferences(run6, view);
-      if (differences2.length > 0) return jobRefusal(project, differences2);
-    }
+  const runs = /* @__PURE__ */ new Map();
+  for (const { project, resolvedConfig } of environments2) {
+    const descriptor = worktreeEnvironment(store, worktreeId, project)?.descriptor ?? null;
+    if (descriptor === null) continue;
+    runs.set(project, { descriptor, snapshotOptions: snapshotFields(resolvedConfig) });
+  }
+  const here = { name: "this job's", runner: "this checkout's Vitest", runs };
+  for (const named3 of parts3) {
+    const refused = reuseRefusal(named3, here);
+    if (refused !== null) return refused;
   }
   return null;
 }
@@ -80413,17 +80434,17 @@ init_environment();
 init_environment_descriptor();
 init_key_format();
 async function environmentCheck(runners2, gate) {
-  const here = await gateViews(runners2, gate);
+  const here = await gatePlace(runners2, gate);
   if (typeof here === "string") return () => here;
   const told2 = /* @__PURE__ */ new Map();
-  return (part2, project) => {
-    const held3 = told2.get(part2) ?? /* @__PURE__ */ new Map();
-    told2.set(part2, held3);
-    if (!held3.has(project)) held3.set(project, compared(part2, project, here));
+  return (named3, project) => {
+    const held3 = told2.get(named3.part) ?? /* @__PURE__ */ new Map();
+    told2.set(named3.part, held3);
+    if (!held3.has(project)) held3.set(project, reuseRefusal(named3, here, project)?.text ?? null);
     return held3.get(project) ?? null;
   };
 }
-async function gateViews(runners2, gate) {
+async function gatePlace(runners2, gate) {
   if (runners2 === void 0) return "the gate's runner gave no environment to compare";
   let environments2;
   try {
@@ -80438,28 +80459,18 @@ async function gateViews(runners2, gate) {
     env: gate.env
   });
   const ci = sawCi(gate.env);
-  const views2 = /* @__PURE__ */ new Map();
+  const runs = /* @__PURE__ */ new Map();
   for (const runner of environments2) {
     const observed2 = {
       ...runner,
       adapterVersion: `${runner.adapterVersion}+observe.${gate.recorderVersion}`
     };
-    views2.set(runner.project, {
+    runs.set(runner.project, {
       descriptor: describeEnvironment(KEY_FORMAT_VERSION, core, observed2, [], ci),
       snapshotOptions: snapshotFields(runner.resolvedConfig)
     });
   }
-  return views2;
-}
-function compared(part2, project, here) {
-  const run6 = part2.projects.find((p) => p.descriptor.project === project);
-  if (run6 === void 0) return "it holds no environment of the project";
-  const view = here.get(project);
-  if (view === void 0) return "the gate's Vitest has no such project";
-  const differences2 = runDifferences(run6, view);
-  if (differences2.length === 0) return null;
-  const texts2 = differences2.map((d) => d.text).join("; ");
-  return `its run had another environment than this gate's: ${texts2} (the part as the export)`;
+  return { name: "this gate's", runner: "the gate's Vitest", runs };
 }
 
 // src/core/code/gate/parts.ts
@@ -80479,8 +80490,7 @@ function readPartsIn(dirs) {
   return parts3;
 }
 function unusable(part2) {
-  const { coverage, end, observing } = part2.header;
-  if (end !== "completed") return `its run did not complete (${end})`;
+  const { coverage, observing } = part2.header;
   if (coverage === void 0) return `${part2.format} holds no coverage record`;
   if ("off" in coverage) return `ci record added no coverage provider (${coverage.off})`;
   const { providerVersion, recordVersion: recordVersion2 } = coverage;
@@ -80524,7 +80534,7 @@ function partsEvidence(options) {
       const owned = owners.get(testFileId(ref3)) ?? [];
       const [only2] = owned;
       if (owned.length !== 1 || only2 === void 0 || !usable2.has(only2.part)) continue;
-      const differs = certify(only2.part, ref3.project);
+      const differs = certify({ file: only2.name, part: only2.part }, ref3.project);
       if (differs !== null) {
         const project = JSON.stringify(ref3.project);
         tell(
