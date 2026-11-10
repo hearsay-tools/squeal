@@ -14,19 +14,27 @@ import type { Part, PartProject } from "./parts.js";
  * per project, so every part must come from that commit, have completed, and
  * hold each test file once, and the parts must be every shard of one run
  * (2026-11-09, review of 0.1.421 B3).
+ *
+ * Whether one part's run of a project is evidence somewhere else has one
+ * owner, `reuseRefusal`, which `squeal code --base --parts` applies too
+ * (020 D13.2; the human, 2026-11-10, after review 0.1.427-r2 B1). A new
+ * refusal of one run goes there, so that both commands make it.
  */
 
-/** Why a set of parts makes no export. */
+/** Why one part's run of a project is no evidence elsewhere: the kinds `reuseRefusal` gives. */
+export type RunRefusalKind = "key-format" | "incomplete" | "snapshot" | "environment";
+
+/**
+ * Why a set of parts makes no export: a run that is no evidence, or parts
+ * that are not every shard of one run of this checkout's commit.
+ */
 export type RefusalKind =
-  | "key-format"
-  | "incomplete"
+  | RunRefusalKind
   | "no-commit"
   | "commits"
   | "checkout"
   | "shards"
-  | "snapshot"
-  | "duplicate"
-  | "environment";
+  | "duplicate";
 
 export interface Refusal {
   readonly kind: RefusalKind;
@@ -47,29 +55,27 @@ export type RunView = Pick<PartProject, "descriptor" | "snapshotOptions">;
  * Resolved Vitest fields Squeal's own instance sets for itself and a run of
  * the project's command does not (`adapter.ts`, `#start`): `includeTaskLocation`,
  * and `snapshotOptions.updateSnapshot` (`update: "none"`), which a part
- * holds apart (`updateSnapshot`, refused unless `none`). The other snapshot
- * options are compared field by field (`RunView.snapshotOptions`; review of
- * 0.1.421 B2). A part's descriptor is the run's, so these differ from the
- * job's by design (018-16 notes).
+ * holds apart (`updateSnapshot`, which `reuseRefusal` refuses unless `none`
+ * before it compares). The other snapshot options are compared field by
+ * field (`RunView.snapshotOptions`; review of 0.1.421 B2). A part's
+ * descriptor is the run's, so these differ from the job's by design (018-16
+ * notes).
  */
 const SQUEAL_FIELDS: readonly string[] = ["includeTaskLocation", "snapshotOptions"];
 
 /**
  * The first reason `parts` make no export at `head`, the commit of the
- * checkout the job runs in; `null` when they make one. The environment of
- * the job itself is checked once it is read (`runDifferences`).
+ * checkout the job runs in; `null` when they make one. Each part's runs
+ * are refused as `reuseRefusal` refuses them; their environment is compared
+ * with the job's once it is read (`export.ts`).
  */
 export function partsRefusal(parts: readonly NamedPart[], head: string | null): Refusal | null {
-  for (const { file, part } of parts) {
-    const { keyFormat, end, commit } = part.header;
-    if (keyFormat !== KEY_FORMAT_VERSION) {
-      const text = `${file} was made with key format ${keyFormat}; this Squeal keys with ${KEY_FORMAT_VERSION}`;
-      return { kind: "key-format", text };
+  for (const named of parts) {
+    const refused = reuseRefusal(named);
+    if (refused !== null) return refused;
+    if (named.part.header.commit === null) {
+      return { kind: "no-commit", text: `${named.file} names no commit` };
     }
-    if (end !== "completed") {
-      return { kind: "incomplete", text: `${file} is of a run that did not complete (${end})` };
-    }
-    if (commit === null) return { kind: "no-commit", text: `${file} names no commit` };
   }
   const commits = [...new Set(parts.map((p) => p.part.header.commit as string))].sort(compare);
   if (commits.length > 1) {
@@ -84,12 +90,80 @@ export function partsRefusal(parts: readonly NamedPart[], head: string | null): 
     const text = `the parts are of commit ${commit}, and this checkout is at ${here}: run the export in a checkout of the parts' commit`;
     return { kind: "checkout", text };
   }
-  return (
-    shardRefusal(parts) ??
-    snapshotRefusal(parts) ??
-    duplicateRefusal(parts) ??
-    environmentRefusal(parts)
+  return shardRefusal(parts) ?? duplicateRefusal(parts) ?? environmentRefusal(parts);
+}
+
+/** Where a part's run would be evidence: the runs there, as `reuseRefusal` names and compares them. */
+export interface Place {
+  /** The runs there, as a refusal names them: `this job's`. */
+  readonly name: string;
+  /** The runner there, as a refusal names it: `this checkout's Vitest`. */
+  readonly runner: string;
+  /** Each project's run there; a project it lacks has none. */
+  readonly runs: ReadonlyMap<ProjectName, RunView>;
+}
+
+/**
+ * The first reason `named`'s run of `project` is no evidence at `here`, or
+ * `null` when it is: the one rule of `ci export` and `squeal code --base
+ * --parts` (018 D9, D10; 020 D13.2). The run must be of this key format,
+ * have completed, and have written no snapshot, so that no pass is of a
+ * snapshot it wrote: `updateSnapshot` must be `none`, as in CI, which
+ * `runDifferences` therefore leaves out. Its environment must be the run's
+ * at `here` (`runDifferences`). Without `project`, every project the part
+ * ran; without `here`, all but the comparison, which `partsRefusal` makes
+ * before the job's runner is open.
+ */
+export function reuseRefusal(
+  named: NamedPart,
+  here?: Place,
+  project?: ProjectName,
+): RunRefusal | null {
+  const { file, part } = named;
+  const { keyFormat, end } = part.header;
+  if (keyFormat !== KEY_FORMAT_VERSION) {
+    const text = `${file} was made with key format ${keyFormat}; this Squeal keys with ${KEY_FORMAT_VERSION}`;
+    return { kind: "key-format", text };
+  }
+  if (end !== "completed") {
+    return { kind: "incomplete", text: `${file} is of a run that did not complete (${end})` };
+  }
+  const runs = part.projects.filter(
+    (r) => project === undefined || r.descriptor.project === project,
   );
+  if (project !== undefined && runs.length === 0) {
+    const text = `${file} holds no environment of project ${JSON.stringify(project)}`;
+    return { kind: "environment", text };
+  }
+  for (const run of runs) {
+    const refused = runRefusal(file, run, here);
+    if (refused !== null) return refused;
+  }
+  return null;
+}
+
+/** A refusal `reuseRefusal` makes. */
+export type RunRefusal = Refusal & { readonly kind: RunRefusalKind };
+
+/** `reuseRefusal` of one project's run in the part `file`. */
+function runRefusal(file: string, run: PartProject, here: Place | undefined): RunRefusal | null {
+  const project = JSON.stringify(run.descriptor.project);
+  if (run.updateSnapshot !== "none") {
+    const text = `${file} ran project ${project} with snapshot update "${run.updateSnapshot}"; only a run that writes no snapshot ("none", as in CI) gives evidence`;
+    return { kind: "snapshot", text };
+  }
+  if (here === undefined) return null;
+  const there = here.runs.get(run.descriptor.project);
+  if (there === undefined) {
+    return {
+      kind: "environment",
+      text: `${here.runner} has no project ${project}, which ${file} ran`,
+    };
+  }
+  const differences = runDifferences(run, there);
+  if (differences.length === 0) return null;
+  const text = `${file} ran project ${project} in another environment than ${here.name}: ${texts(differences)} (the export as ${file}'s, here as ${here.name})`;
+  return { kind: "environment", text };
 }
 
 /**
@@ -124,18 +198,6 @@ function shardRefusal(parts: readonly NamedPart[]): Refusal | null {
   const named = missing.map((i) => `${i}/${count}`).join(", ");
   const text = `no part of shard ${named}: export the parts of every shard, after all of them passed`;
   return { kind: "shards", text };
-}
-
-/** A part whose run could write snapshots: its passes may be of snapshots it wrote (D9). */
-function snapshotRefusal(parts: readonly NamedPart[]): Refusal | null {
-  for (const { file, part } of parts) {
-    for (const { descriptor, updateSnapshot } of part.projects) {
-      if (updateSnapshot === "none") continue;
-      const text = `${file} ran project ${JSON.stringify(descriptor.project)} with snapshot update "${updateSnapshot}"; only runs that write no snapshot ("none", as in CI) are exported`;
-      return { kind: "snapshot", text };
-    }
-  }
-  return null;
 }
 
 /** A test file two parts hold: the shards overlapped, so neither result is the one. */
@@ -185,7 +247,9 @@ function environmentRefusal(parts: readonly NamedPart[]): Refusal | null {
  * with each snapshot option but `updateSnapshot` as a config field of its
  * own, `snapshotOptions.<name>`. Between a shard's and the job's (as the
  * daemon computes it), a refusal when not empty: the export's keys hold the
- * job's environment, so it must be the shards' too.
+ * job's environment, so it must be the shards' too. Alone it lets a run
+ * that wrote snapshots pass: compare through `reuseRefusal` (review
+ * 0.1.427-r2 B1).
  */
 export function runDifferences(a: RunView, b: RunView): Difference[] {
   const comparable = ({ descriptor, snapshotOptions }: RunView): EnvironmentDescriptor => ({
@@ -202,12 +266,6 @@ export function runDifferences(a: RunView, b: RunView): Difference[] {
     },
   });
   return importDifferences(comparable(a), comparable(b));
-}
-
-/** The refusal of a project whose shards' environment is not the job's. */
-export function jobRefusal(project: ProjectName, differences: readonly Difference[]): Refusal {
-  const text = `the shards ran project ${JSON.stringify(project)} in another environment than this job's: ${texts(differences)} (the export as the shards', here as this job's)`;
-  return { kind: "environment", text };
 }
 
 function texts(differences: readonly Difference[]): string {

@@ -14,6 +14,7 @@ import {
   readPartsIn,
 } from "../../../src/core/code/gate/parts.js";
 import { blobHash } from "../../../src/core/hash/blob.js";
+import { KEY_FORMAT_VERSION } from "../../../src/core/keys/key-format.js";
 import { namesHash } from "../../../src/core/keys/observed.js";
 import type { TestFileRef } from "../../../src/core/types/keys.js";
 import type { RunnerClosure } from "../../../src/core/types/runner.js";
@@ -86,7 +87,7 @@ function part(files: readonly PartFile[] = [file()], overrides: Partial<Part> = 
     format: "squeal-ci-part/4",
     header: {
       squealVersion: "0.0.0-test",
-      keyFormat: 1,
+      keyFormat: KEY_FORMAT_VERSION,
       runner: "vitest",
       runnerVersion: "5.0.3",
       commit: null,
@@ -214,7 +215,7 @@ describe("partsEvidence: what makes a file run (spec 020 D13.2)", () => {
     const { evidence, notes } = await taken(repo(), [part()], { environment: other });
     expect(evidence).toBeNull();
     expect(notes).toEqual([
-      `part-0.json gives no evidence of project "", so its test files run: its run had another environment than this gate's: allow-listed variables differ (values: PROBE) (the part as the export)`,
+      `part-0.json gives no evidence of project "", so its test files run: part-0.json ran project "" in another environment than this gate's: allow-listed variables differ (values: PROBE) (the export as part-0.json's, here as this gate's)`,
     ]);
   });
 

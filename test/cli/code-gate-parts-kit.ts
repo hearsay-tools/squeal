@@ -43,10 +43,24 @@ export async function recorded(
 ): Promise<Recorded> {
   const root = committed(dir, { ...BASE, ...files });
   writeFiles(root, { "src/math.ts": MATH_FILES["src/math.ts"] as string, ...edits });
-  const parts = join(dirname(root), "parts");
-  const run = await recordCovered(root, parts);
+  return { root, parts: await recordInto(root, "parts") };
+}
+
+/**
+ * The directory `name` beside `root`, with the part of `ci record` over
+ * `vitest run <args>` in `root`. `CI` is set, as in a CI job: Vitest then
+ * writes no snapshot (`updateSnapshot: "none"`) unless `args` asks it to,
+ * and a part of a run that could write one gives no evidence (018 D9).
+ */
+export async function recordInto(
+  root: string,
+  name: string,
+  args: readonly string[] = [],
+): Promise<string> {
+  const parts = join(dirname(root), name);
+  const run = await recordCovered(root, parts, args, undefined, { ...process.env, CI: "true" });
   if (run.parts.length !== 1) throw new Error(`ci record wrote no part: ${run.said}`);
-  return { root, parts };
+  return parts;
 }
 
 /** The adapters, each Vitest run's files appended to `ran`. */

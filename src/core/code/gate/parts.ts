@@ -33,8 +33,9 @@ import type { TestFileEvidence } from "./types.js";
  * running it (research `ci-evidence.md` Q3, rule 3). A file is taken when it
  * is in exactly one part; that part's run had Squeal's provider at this
  * Squeal's provider and record versions and recorded what its tests read;
- * the part's project ran in the environment the gate's runner has here
- * (`parts-environment.ts`; review 0.1.427 B1);
+ * the part's run of the file's project is evidence at the gate's runner by
+ * `ci export`'s rule (`reuseRefusal` in `parts-environment.ts`; reviews
+ * 0.1.427 B1, 0.1.427-r2 B1);
  * the part's read-time evidence certifies the content here of every input
  * of the file's closure and of what it read (`uncertified`, as `ci export`
  * certifies, 018 D9); and its record's sources are the bytes here. A file
@@ -80,10 +81,12 @@ export function readPartsIn(dirs: readonly AbsolutePath[]): NamedPart[] | string
   return parts;
 }
 
-/** Why a part's files give no evidence here; `null` when they may. */
+/**
+ * Why a part's files give no coverage evidence here; `null` when they may.
+ * Whether its runs are evidence at all is `reuseRefusal`'s, per project.
+ */
 export function unusable(part: Part): string | null {
-  const { coverage, end, observing } = part.header;
-  if (end !== "completed") return `its run did not complete (${end})`;
+  const { coverage, observing } = part.header;
   if (coverage === undefined) return `${part.format} holds no coverage record`;
   if ("off" in coverage) return `ci record added no coverage provider (${coverage.off})`;
   const { providerVersion, recordVersion } = coverage;
@@ -132,7 +135,7 @@ export function partsEvidence(options: PartsOptions): StoredEvidence {
       // A file in two parts, two runs of it, is taken from neither.
       const [only] = owned;
       if (owned.length !== 1 || only === undefined || !usable.has(only.part)) continue;
-      const differs = certify(only.part, ref.project);
+      const differs = certify({ file: only.name, part: only.part }, ref.project);
       if (differs !== null) {
         const project = JSON.stringify(ref.project);
         tell(
