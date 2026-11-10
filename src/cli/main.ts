@@ -201,9 +201,10 @@ Usage:
                                 process into --out (default squeal-parts/): each test
                                 file's outcome, checks, duration and observed reads,
                                 and each project's environment; other runners only run.
-                                Requires that nothing changes the tests' input files
-                                while the command runs: a file another program changes
-                                mid-run can be exported at content the test did not see
+                                Requires that no other program changes the tests' input
+                                files while the command runs: a change inside one read,
+                                or in a file only native code reads, can be exported at
+                                content the test did not see
   squeal ci export --parts <dir>... [--out <file>]
                                 In CI, after the shards: write the parts as one export
                                 (default squeal-results-<commit8>.json.gz), keyed as a
