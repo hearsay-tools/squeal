@@ -102,13 +102,14 @@ describe("Codex runtime build (spec 002 D1, D5, D8)", () => {
     // dist/observe/ holds the runtime-input recorder, copied verbatim the same way (001-132),
     // and dist/coverage/ the coverage provider Vitest loads by path (015-11).
     // dist/ci/ holds `squeal ci record`'s hook in the project's Vitest CLI process (018-16),
-    // the input evidence it takes in every process of the command (018-17, 018-23) and
-    // Squeal's coverage provider in that run (020-08a).
+    // the input evidence it takes in every process of the command (018-17, 018-23),
+    // Squeal's coverage provider in that run (020-08a) and the clock of its own time (018-29).
     const verbatim = (f: string) =>
       ["node-test/", "observe/", "coverage/", "ci/"].some((d) => f.startsWith(d));
     const runtime = files.filter(verbatim).sort();
     expect(runtime).toEqual([
       "ci/children.cjs",
+      "ci/clock.cjs",
       "ci/coverage-drops.cjs",
       "ci/coverage.cjs",
       "ci/descriptors.cjs",
