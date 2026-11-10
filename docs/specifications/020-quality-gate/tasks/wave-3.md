@@ -182,3 +182,25 @@ Done when:
 - an error of the hook gives a part reason and leaves the exit code unchanged;
 - `ci export` of format 3 and format 4 parts gives the same bundle;
 - spec 018's text (D8 and the non-goal) is amended in your commit, quoting D13.
+
+## 020-08b `squeal code --base --parts` (after 020-07c and 020-08a)
+
+Use /worker. Shape: slice.
+
+Outcome: spec D13 item 2.
+
+Read: spec D13 and D11.7; `research/ci-evidence.md` Q3 (rule 3) and its row split; `tasks/020-07c/notes.md`. The `CollectOptions.stored` seam is the one to reuse.
+
+Starting seam: a failing test in which a gate run from parts equals a gate run that executes the tests on one fixture, apart from where the evidence came from and the times. The parts come from `squeal ci record` (020-08a). Then:
+- `src/core/code/gate/parts.ts` (new) reads `squeal-ci-part/4` parts and gives `StoredEvidence` through the same seam;
+- `--parts <dir>...` in `cli/code-gate.ts`;
+- the report's per-file evidence source (`from`: `run`, `store` or `parts`).
+
+Owns: `gate/parts.ts` (new), `gate/collect.ts` (the seam only, if it needs a change), `gate/report.ts`, `cli/code-gate*.ts`, help in `cli/main.ts`, the `squeal code --base` section of `commands.md` with its copies, their tests.
+
+Leave alone: `src/core/ci/` (020-08a), `gate/stored.ts` (020-07c).
+
+Done when:
+- each of these makes that file run: an edited input, another record version, a duplicate file in two parts, a format 3 part;
+- a `fail` check reads `test-failed` without a run, and a `skip` check reads `skipped`;
+- nothing is written to the parts directory.
