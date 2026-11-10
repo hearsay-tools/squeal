@@ -101,7 +101,7 @@ describe("a late change feed is said (011-200)", () => {
     const out = await outputs(w);
     const sentence = `Edits since ${timeText(since)} may not be seen yet; results are current as of revision ${HEAD}.`;
     expect(out.status.split("\n")[1]).toBe(sentence);
-    expect(out.status).toContain("Known failures: 0; 2 test files current as of revision 23\n");
+    expect(out.status).toContain("Known failures: 0; 2 test files current\n");
     expect(out.daemon).toEqual({
       state: "alive",
       lastHeartbeatAt: LIVE.heartbeatAt,
