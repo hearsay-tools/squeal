@@ -23,7 +23,9 @@ import { createVitestAdapter } from "../runners/vitest/index.js";
 /**
  * D3's evidence of `changed`, each selected file with results and a record
  * at its key read from the stores instead of run; how many were is told
- * through `options.note`. The stores close before it resolves.
+ * through `options.note`. The keys hold `options.children`, the base's
+ * `coverage.children`, so a record collected otherwise is never read. The
+ * stores close before it resolves.
  */
 export async function collectWithStores(
   root: AbsolutePath,
@@ -32,7 +34,7 @@ export async function collectWithStores(
   options: CollectOptions,
 ): Promise<Evidence> {
   const note = options.note ?? (() => {});
-  const stored = storedFiles(root, env, note);
+  const stored = storedFiles(root, env, note, options.children === true);
   try {
     const evidence = await collectEvidence(root, changed, {
       ...options,
@@ -49,19 +51,24 @@ export async function collectWithStores(
 }
 
 /**
- * The stores of `root`'s repository, read-only, keyed as its daemon keys;
- * `null` when there is none, or when the worktree's policy has coverage off,
- * so no daemon here stored a record.
+ * The stores of `root`'s repository, read-only, keyed as its daemon keys
+ * with `coverage.children` as `children` says; `null` when there is none,
+ * or when the worktree's policy has coverage off, so no daemon here stored
+ * a record. Spec 020 D12.5: the key's coverage marker holds the key, so a
+ * branch that turns children on in its own config cannot have its records
+ * read where the base keeps them off (the coordinator, request 35b31f66).
  */
 export function storedFiles(
   root: AbsolutePath,
   env: NodeJS.ProcessEnv,
   note: (text: string) => void,
+  children = false,
 ): StoredFiles | null {
   const commonDir = resolveCommonDir(root);
   if (commonDir === null) return null;
-  const policy = readPolicy(root);
-  if (!coverageOn(policy)) return null;
+  const worktree = readPolicy(root);
+  if (!coverageOn(worktree)) return null;
+  const policy: Policy = { ...worktree, coverage: { ...worktree.coverage, children } };
   return openStored({
     root,
     commonDir,
