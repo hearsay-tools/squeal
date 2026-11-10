@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_BUDGET_SECONDS, isGate, narrow, parseGateArgs } from "../../src/cli/code-gate.js";
+import { isGate, narrow } from "../../src/cli/code-gate.js";
+import { DEFAULT_BUDGET_SECONDS, parseGateArgs } from "../../src/cli/code-gate-args.js";
 import { crapText, formatGateReport } from "../../src/cli/code-gate-text.js";
 import { main } from "../../src/cli/main.js";
 import type { GateFunctionReport, GateReport } from "../../src/core/code/gate/report.js";
