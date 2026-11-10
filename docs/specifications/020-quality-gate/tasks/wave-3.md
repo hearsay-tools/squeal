@@ -75,3 +75,35 @@ Done when:
 - a file with results and no record runs;
 - a stored failure makes the verdict `incomplete`;
 - the store's bytes and mtime are unchanged after the command.
+
+## 020-10a collect and map child-process coverage
+
+Use /worker. Shape: slice.
+
+Outcome: spec D12 items 1 to 5. The default-off behaviour does not change by a byte.
+
+Read: spec D12; `research/child-coverage.md` and its probes; spec 015 D8.
+
+Starting seam: the survey's row split. Its first failing tests:
+- one children directory per test file, in forks and in threads;
+- a project's own `NODE_V8_COVERAGE` is kept;
+- the recorder's `children/` directory exists and the own file is still found;
+- a golden merge of an own record and a child record;
+- a cut child file is dropped alone, and so is a file over 64 MiB;
+- the coverage marker differs with the key on and off.
+
+Fix `test/runners/vitest/own-provider.test.ts`, which the survey found reads the variable.
+
+Owns:
+- the files in the survey's 020-10a row: `core/types/policy.ts` and `core/daemon/policy-code.ts` for the key only;
+- `core/code/coverage/{provider.mjs,types.ts,mapper.ts,map-worker.ts,record.ts,drops.ts}`;
+- `runners/vitest/{coverage,environment}.ts`;
+- `runners/node-test/runtime/recorder.cjs`, `runners/node-test/run/{coverage,run}.ts`, `runners/node-test/{coverage,adapter-environment}.ts`;
+- their tests.
+
+Leave alone: `src/core/code/gate/`, `src/core/code/crap/`, the `ci record` files (`runners/vitest/ci-record.ts`, `ci-runtime/`, `core/ci/`; spec 018 is changing them).
+
+Done when:
+- every test above passes;
+- the existing coverage and adapter tests pass unchanged with the key off;
+- the marker change is in the validity cases if `test/keys/key-format.test.ts` asks for one.
