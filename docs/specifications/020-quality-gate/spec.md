@@ -137,6 +137,47 @@ All of these are read **at the base commit**, so a branch cannot loosen its own 
 
 The report contains no times other than `createdAt` and run durations, so the golden test can compare everything else.
 
+### D8. Exceptions (slice 4, row 020-09; approved by the human 2026-11-10)
+
+`squeal code --base <ref> --exceptions <file>` reads one JSON file, `format: "squeal-code-exceptions/1"`, whose `entries` each name:
+
+- `path`, `qualifiedName`, `bodyHash`: the head function;
+- `measure`: `complexity` or `crap`;
+- `kind`: `inherited` or `approved`;
+- `value`: the highest accepted value of that measure;
+- `issue`: a URL;
+- `approver`: who accepted it, as the consumer verified;
+- `baseCommit`: the base it was accepted against.
+
+**Trust is the consumer's.** Squeal does not decide who may approve. The consumer, for example cezar's CI running trusted base-commit code, builds the file from evidence it verified, never from a file or label on the candidate branch alone, and passes it. Squeal applies the rules:
+
+- An entry applies only when its `path`, `qualifiedName` and `bodyHash` match a changed function at the head, and its `baseCommit` is the run's merge base. Any other entry is reported as `unused`, with why. It never applies to another function.
+- `inherited`: the function was already over at the base, and the change did not make it worse. Squeal counts the base itself. For `complexity`, the base CC must be over the limit, and the head CC ≤ the base CC ≤ `value`. For `crap`, the head CRAP must be ≤ `value`, and the head CC ≤ the base CC. Squeal does not run the base's tests in this slice, so the base CRAP is the consumer's recorded `value`.
+- `approved`: covers a new or worse finding. The head value must be ≤ `value`.
+- An exception needs complete head evidence (D5). An `incomplete` function stays incomplete; no exception covers missing evidence.
+- A covered violation reads `accepted`, with the measured scores and the entry. It does not block. A function over an entry's `value` stays a `violation` and names the entry.
+
+The verdict counts `accepted` beside `pass`. A file that does not parse, or has an unknown format, is a usage error (exit 2). `QUALITY_POLICY_VERSION` rises to 2.
+
+### D9. A pinned runtime for CI (slice 6, row 020-11)
+
+The README gains a section, "The quality check in CI". It covers:
+
+- installing a pinned Squeal with no harness, from the release's runtime asset (`squeal-codex-runtime.json.gz`, checked against its published SHA-256) or from the tag clone checked against its commit;
+- a cache key that holds the version and the SHA-256, so a stale or wrong cache is never used;
+- a minimal GitHub Actions job running `squeal code --base origin/<target> --json` with its exit codes;
+- what each verdict means, and how to recover from `incomplete` with no agent session.
+
+If no supported command can start the CLI from the runtime asset without a harness, the row adds the smallest one, `squeal-runtime/bin` or an equivalent, and says so.
+
+### D10. Daemon parity (slice 2, row 020-07), CI evidence (slice 3, row 020-08) and child-process coverage (slice 5, row 020-10)
+
+Each is designed from a design survey run first (`tasks/wave-2.md`, "Surveys for wave 3"; findings `research/daemon-parity.md`, `research/ci-evidence.md`, `research/child-coverage.md`), then written here before its build rows start. The fixed points:
+
+- **020-07:** the daemon's code states and `--base` use one evaluator. A file with no loader reads unknown, never 0% (this reverses 015 D9 and overlaps #165). The gate reuses current daemon records and counts, and runs only what is missing. Deliveries keep 015 D6's rules: no burst per function.
+- **020-08:** `ci record` adds Squeal's coverage provider and writes coverage records into its parts, and `--base` reads parts instead of running tests. This reverses 018 D8 and its non-goal "Squeal's coverage provider in CI". A project's own `--coverage` report cannot share that Vitest run.
+- **020-10:** with `coverage.children: true` (default off), coverage of child processes is collected and mapped, for the gate and the daemon. This reverses 015's non-goal. Tests can see `NODE_V8_COVERAGE`, which is why it is opt-in.
+
 ## Testing
 
 - Evaluator golden tests (020-01): limits and equality for CC and CRAP, CC over limit with no coverage, a skipped function under and over the CC limit, pass from a subset, violation that needs every loader, every gap, a failed test, verdict precedence. The same input twice gives the same report.
