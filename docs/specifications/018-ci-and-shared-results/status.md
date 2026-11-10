@@ -82,6 +82,7 @@ Started: 2026-10-31
 - 2026-11-10, cezarion#3157 (pin 0.1.425) merged at 13:19Z. Merge-group run 42821041101: every shard recorded on Vitest 4.1.10 (shard 1: 404 files), but shard 1 also recorded four Vitest runs that cezar tests start themselves, one ended early, so `ci export` refused and nothing was published. The human: "Inner runs: Yes, both" (row 018-27, then another pin PR).
 - 2026-11-10, review `reviews/018-27-0.1.426.md` PASS on cand/0.1.426 fdd0f33e9 (no findings); candidate CI 42828835616 green; 0.1.426 landed with row 018-27.
 - 2026-11-10, 0.1.426 released (tag squeal--v0.1.426 at f20fd5f33, hub 6f678c5, GitHub release with install.sh and the Codex runtime). cezar pin PR hearsay-tools/cezarion#3171 opened (approved: "Inner runs: Yes, both").
+- 2026-11-10, cezarion#3171 (pin 0.1.426) merged at 15:41Z. Merge-group run 42843943744: every shard recorded once (nested runs ignored); `ci export` exported 1432 test files, 23662 results. The publish job was skipped: its condition lacked a status function, so GitHub's implicit success() failed on a skipped job further up (a mistake in cezarion#3151). The human: "Publish fix: Yes, open and merge"; cezarion#3176 opened.
 
 ## Open questions
 
