@@ -20,8 +20,9 @@ import { markStopWait } from "./stop-slow-helpers.js";
  * first such block first waits up to 500 ms for that entry's record
  * (`stop-first-last.test.ts`).
  * A subagent's SubagentStop still blocks at once while a slow file is not
- * current, naming it and `run --slow --wait`. Off, the default, slow files
- * never hold a Stop.
+ * current, naming it and `run --slow --wait`, after a revision since it
+ * registered; one that changed nothing is not held (row 011-312). Off, the
+ * default, slow files never hold a Stop.
  */
 
 const deps: HookDeps = { env: {}, ensureDaemon: async () => "alive" };
@@ -58,11 +59,18 @@ const HARNESSES: readonly Harness[] = [
 ];
 
 /**
- * `include` marks slow files; the agent is in a turn; revision 1, its edit
- * after it registered, passes `math > adds`. `edited` false: revision 1
- * came before the registration, so the session changed nothing (004-67).
+ * `include` marks slow files; the agent is in a turn, and `registered` has
+ * run; revision 1, its edit after it registered, passes `math > adds`.
+ * `edited` false: revision 1 came before the registration, so the session
+ * changed nothing (004-67).
  */
-async function repo(harness: Harness, include: readonly string[], require: boolean, edited = true) {
+async function repo(
+  harness: Harness,
+  include: readonly string[],
+  require: boolean,
+  edited = true,
+  registered: (r: SquealRepo) => Promise<unknown> = async () => {},
+) {
   const r = squealRepo();
   if (!edited) r.apply(r.pass());
   r.policy({
@@ -70,6 +78,7 @@ async function repo(harness: Harness, include: readonly string[], require: boole
     stop: { waitMs: WAIT_MS, requireSlowSuite: require },
   });
   await harness.startTurn(r);
+  await registered(r);
   if (edited) r.apply(r.pass());
   return r;
 }
@@ -145,11 +154,14 @@ describe("stop.requireSlowSuite at a SubagentStop, claude-code (spec 004 D7)", (
   const subagentStop = (r: SquealRepo, overrides: object = {}) =>
     runHook("stop", recorded("subagent-stop", r.root, overrides), deps);
 
+  const subagentStart = (r: SquealRepo) =>
+    runHook("session-start", recorded("subagent-start", r.root), deps);
+
+  /** A subagent registered before revision 1, so that edit is its session's (row 011-312). */
   async function subagent(pending: "queued" | null) {
     const [harness] = HARNESSES;
     if (harness === undefined) throw new Error("no harness");
-    const r = await repo(harness, [SLOW_FILE.path], true);
-    await runHook("session-start", recorded("subagent-start", r.root), deps);
+    const r = await repo(harness, [SLOW_FILE.path], true, true, subagentStart);
     slowKey(r, pending);
     return r;
   }
@@ -169,13 +181,13 @@ describe("stop.requireSlowSuite at a SubagentStop, claude-code (spec 004 D7)", (
     },
   );
 
-  it("blocks a subagent that changed nothing too: 004-67 exempts only the main agent", async () => {
+  it("does not block a subagent that changed nothing (row 011-312)", async () => {
     const [harness] = HARNESSES;
     if (harness === undefined) throw new Error("no harness");
     const r = await repo(harness, [SLOW_FILE.path], true, false);
     slowKey(r, "queued");
-    await runHook("session-start", recorded("subagent-start", r.root), deps);
-    expect(decision((await subagentStop(r)).stdout).decision).toBe("block");
+    await subagentStart(r);
+    expect(decision((await subagentStop(r)).stdout).decision).toBeUndefined();
   });
 
   it("never blocks again while an earlier block keeps the agent going (stop_hook_active)", async () => {

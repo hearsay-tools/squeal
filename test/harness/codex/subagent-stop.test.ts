@@ -7,7 +7,7 @@ import type { HookDeps } from "../../../src/harness/shared/hook.js";
 import { rootKey, sessionRootFiles } from "../../../src/harness/shared/session-root.js";
 import { tempDir } from "../../store/helpers.js";
 import type { SquealRepo } from "../helpers.js";
-import { decision, deps, HARNESSES, landSlow, repo } from "../stop-slow-helpers.js";
+import { decision, deps, edit, HARNESSES, landSlow, repo } from "../stop-slow-helpers.js";
 import { codexInput, codexRecorded } from "./helpers.js";
 
 /*
@@ -16,13 +16,15 @@ import { codexInput, codexRecorded } from "./helpers.js";
  * to `stop.waitMs` for pending fast checks, blocks once while a required
  * check is not current, never again with `stop_hook_active`, and otherwise
  * unregisters the subagent and says nothing. A block keeps the subagent's
- * root for its next hooks (spec 001 D9, task 001-415).
+ * root for its next hooks (spec 001 D9, task 001-415). Row 011-312: only
+ * after a revision since the subagent registered; one that changed nothing
+ * is not held.
  */
 
 const CODEX = HARNESSES.find((h) => h.name === "codex");
 const SILENT = { stdout: "", stderr: "" };
 const SLOW_REASON =
-  /^Squeal policy stop.requireSlowSuite is on and 1 slow test file is not current at revision 1: test\/e2e\/slow.test.ts. `.*squeal.* run --slow --wait` runs them and waits for their results.\n\n/;
+  /^Squeal policy stop.requireSlowSuite is on and 1 slow test file is not current at revision 2: test\/e2e\/slow.test.ts. `.*squeal.* run --slow --wait` runs them and waits for their results.\n\n/;
 const START = codexInput("exec", "subagent-start", "/");
 
 function consumer(r: SquealRepo, agentId: string): Consumer {
@@ -44,22 +46,28 @@ const subagentStop = (r: SquealRepo, overrides: object = {}, hookDeps: HookDeps 
     hookDeps,
   );
 
-/** The main agent in a turn at revision 1, the slow file queued there, and a registered subagent. */
+/**
+ * The main agent in a turn at revision 1, the slow file queued there, and a
+ * registered subagent; `edited`: revision 2, after it registered, is its
+ * edit, with the slow file queued again (row 011-312).
+ */
 async function withSubagent(
   stop: NonNullable<PolicyFile["stop"]>,
   hookDeps: HookDeps = deps,
+  edited = false,
 ): Promise<SquealRepo> {
   if (CODEX === undefined) throw new Error("no codex harness");
   const r = await repo(CODEX, stop, false);
   await runCodexHook("subagent-start", codexRecorded("exec", "subagent-start", r.root), hookDeps);
   expect(r.store.consumers.get(subagent(r))).not.toBeNull();
+  if (edited) edit(r);
   return r;
 }
 
 describe("Codex SubagentStop under stop.requireSlowSuite (row 019-05, spec 004 D7)", () => {
   it("blocks once while a slow file is not current, then ends the subagent", async () => {
     const { roots, deps: hookDeps } = rooted();
-    const r = await withSubagent({ requireSlowSuite: true }, hookDeps);
+    const r = await withSubagent({ requireSlowSuite: true }, hookDeps, true);
     expect(roots.get(KEY)?.root).toBe(r.root);
     const out = decision(await subagentStop(r, {}, hookDeps));
     expect(out.decision).toBe("block");
@@ -84,8 +92,14 @@ describe("Codex SubagentStop under stop.requireSlowSuite (row 019-05, spec 004 D
     expect(r.store.consumers.get(consumer(r, MAIN_AGENT))).not.toBeNull();
   });
 
+  it("does not block a subagent that changed nothing, and ends it (row 011-312)", async () => {
+    const r = await withSubagent({ requireSlowSuite: true });
+    expect(await subagentStop(r)).toEqual(SILENT);
+    expect(r.store.consumers.get(subagent(r))).toBeNull();
+  });
+
   it("waits up to stop.waitMs for pending fast work before it decides", async () => {
-    const r = await withSubagent({ requireSlowSuite: true, waitMs: 1_000 });
+    const r = await withSubagent({ requireSlowSuite: true, waitMs: 1_000 }, deps, true);
     const revision = r.store.revisions.latest(r.worktreeId)?.number ?? 0;
     // The runner has not looked at this revision yet, so fast work is pending.
     r.store.meta.set(refinedMetaKey(r.worktreeId), String(revision - 1));
