@@ -4,7 +4,7 @@ Worker e7435c73, 2026-11-10. For 020-07b, 020-07c, 020-10b and a reviewer.
 
 ## Seam map
 
-- `src/core/code/gate/rule.ts` `judgeFunction(input, policy)` is the one rule (D11.1). It is generic over the missing gaps a caller passes: the gate passes `not-finished` | `no-record`, the daemon `pending` | `unknown`. Output: `state`/`gap` (CC rule applied), `evidence` (D5 without the CC rule, for D8's exceptions), `crap`, and `measures.crap`/`measures.uncovered`.
+- `src/core/code/gate/rule.ts` `judgeFunction(input, policy)` is the one rule (D11.1). It is generic over the missing gaps a caller passes: the gate passes `not-finished` | `no-record`, the daemon `pending` | `unknown`. Output: `state`/`gap` (CC rule applied), `evidence` (D5 without the CC rule, for D8's exceptions), `completeness` (added in the integration, see below), `crap`, and `measures.crap`/`measures.uncovered`.
 - Gate: `evaluate.ts` `judge()` builds the input from `pathEvidence()`; `skipped` is true when any loader that is not `none` for the path skipped a test. The excluded branch calls the rule with `excluded: true`.
 - Daemon: `crap/judge.ts` `measuresOf()` calls the rule. `Judged` gained `loaders` (ready loaders, required) and `missing` (with `early`, the file's `pending`/`unknown`). The daemon passes `complexityThreshold: Infinity`: the complexity pass judges CC (015 D5), and it reads only `measures`. Early-judgement filtering (015-57, 015-78) and `kindOf` are unchanged; a subset now gives `unknown` instead of `fail`, which the early filter dropped anyway.
 - No loader: `crap/file.ts` `fileCondition([], true)` is `unknown`, cause `no-loader`; `loaderSet([])` is the marker `NO_LOADER_SET` (`"no-loader"`), so `walk.ts`'s existing 015-75 drop (`kept.loaders !== before.loaders`) drops states judged at the old empty hash once. No change in `walk.ts` was needed for the drop itself. A file seen for the first time at no loader also passes through the drop, with nothing to drop.
@@ -24,3 +24,10 @@ Worker e7435c73, 2026-11-10. For 020-07b, 020-07c, 020-10b and a reviewer.
 ## For 020-07c
 
 - `TestFileEvidence.skipped` is required. A stored result with an outcome `skip` at the key must set it.
+
+## Integration onto 0.1.424 (row 020-07a I, worker 8aabb766)
+
+- 020-09 R1 (review 0.1.424 B1) had put D5's completeness gap beside the subset judgement in `evaluate.ts`. The pick of `c9a834af2` took this row's side of the conflict; commit `9fd9b6d7e` moves R1's intent into the rule.
+- `judgeFunction` gives `completeness`: the gap of the first unmet D5 condition, in the gap order above, `skipped` last; `null` when complete or excluded. `evidenceOf` reads that gap, with the same results as before. `evaluate.ts` passes it to `exceptions.ts` as `Judged.gap`; `stateOf` reads `accepted` only when it is `null`.
+- A loader that skipped a test is a completeness gap for D8: the bound proves a pass, and no exception accepts on it (parent, 2026-11-10, request 0183325c; pinned by `test/code/gate/exceptions-skipped.test.ts`).
+- The daemon's `crap/judge.ts` does not read `completeness`.
