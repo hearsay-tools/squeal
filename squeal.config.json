@@ -65,8 +65,12 @@
     "test/cli/ci-export.test.ts": ["src/runners/vitest/ci-runtime/**"],
     "test/cli/ci-record.test.ts": ["src/runners/vitest/ci-runtime/**"],
     "test/cli/ci-usage.test.ts": ["src/runners/vitest/ci-runtime/**"],
+    "test/runners/vitest/ci-evidence-children.test.ts": ["src/runners/vitest/ci-runtime/**"],
+    "test/runners/vitest/ci-evidence-descriptors.test.ts": ["src/runners/vitest/ci-runtime/**"],
     "test/runners/vitest/ci-evidence-writes.test.ts": ["src/runners/vitest/ci-runtime/**"],
     "test/runners/vitest/ci-evidence.test.ts": ["src/runners/vitest/ci-runtime/**"],
+    "test/runners/vitest/ci-record-nested.test.ts": ["src/runners/vitest/ci-runtime/**"],
+    "test/runners/vitest/ci-record-vitest4.test.ts": ["src/runners/vitest/ci-runtime/**"],
     "test/runners/vitest/ci-record.test.ts": ["src/runners/vitest/ci-runtime/**"],
     "test/runners/vitest/ci-runs.test.ts": ["src/runners/vitest/ci-runtime/**"]
   }
