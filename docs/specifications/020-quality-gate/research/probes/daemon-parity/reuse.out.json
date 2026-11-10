@@ -1,0 +1,50 @@
+[
+  {
+    "worktree": "72b72a160688bbde",
+    "testFiles": 1562,
+    "unkeyed": 0,
+    "pending": 0,
+    "withResult": 1562,
+    "withFail": 0,
+    "withSkip": 10,
+    "withRecord": 1215,
+    "resultAndRecord": 1215,
+    "recordBytes": 2663855
+  },
+  {
+    "worktree": "5644f6f4bf38d407",
+    "testFiles": 1562,
+    "unkeyed": 0,
+    "pending": 0,
+    "withResult": 1562,
+    "withFail": 0,
+    "withSkip": 10,
+    "withRecord": 1215,
+    "resultAndRecord": 1215,
+    "recordBytes": 2663873
+  },
+  {
+    "worktree": "ea9b1bcbb0fd4139",
+    "testFiles": 1563,
+    "unkeyed": 0,
+    "pending": 316,
+    "withResult": 1247,
+    "withFail": 3,
+    "withSkip": 9,
+    "withRecord": 884,
+    "resultAndRecord": 884,
+    "recordBytes": 1727107
+  },
+  {
+    "worktree": "dabd2fa9168de306",
+    "testFiles": 1562,
+    "unkeyed": 0,
+    "pending": 0,
+    "withResult": 1562,
+    "withFail": 0,
+    "withSkip": 10,
+    "withRecord": 1215,
+    "resultAndRecord": 1215,
+    "recordBytes": 2663873
+  }
+]

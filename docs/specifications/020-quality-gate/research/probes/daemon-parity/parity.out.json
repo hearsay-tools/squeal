@@ -1,0 +1,32 @@
+[
+  {
+    "case": "A no loader, CC 3",
+    "daemon": "crap pass 12, uncovered fail",
+    "gate": "incomplete (no-loader); verdict incomplete"
+  },
+  {
+    "case": "A no loader, CC 7",
+    "daemon": "crap fail 56, uncovered fail",
+    "gate": "incomplete (no-loader); verdict incomplete"
+  },
+  {
+    "case": "B loader ran it, a test failed",
+    "daemon": "crap pass 7, uncovered pass",
+    "gate": "incomplete (test-failed), CRAP 7; verdict incomplete"
+  },
+  {
+    "case": "C loader ran it, a test skipped",
+    "daemon": "unknown (skipped): states kept or unknown, no CRAP",
+    "gate": "pass, CRAP 7; verdict pass"
+  },
+  {
+    "case": "C2 loader ran none of it, a test skipped",
+    "daemon": "unknown (skipped): states kept or unknown, no CRAP",
+    "gate": "violation, CRAP 56; verdict violations"
+  },
+  {
+    "case": "E loader ran none of it",
+    "daemon": "crap fail 56, uncovered fail",
+    "gate": "violation, CRAP 56; verdict violations"
+  }
+]

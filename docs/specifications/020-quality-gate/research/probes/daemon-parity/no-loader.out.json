@@ -1,0 +1,21 @@
+{
+  "worktreeId": "ea9b1bcbb0fd4139",
+  "listedTestFiles": 1563,
+  "testFilesWithoutClosure": 0,
+  "countedFiles": 1701,
+  "countedTestFiles": 0,
+  "noLoader": {
+    "files": 95,
+    "byLanguage": {
+      "typescript": 81,
+      "javascript": 8,
+      "python": 6
+    },
+    "functions": 111,
+    "crap": {},
+    "uncovered": {},
+    "excludedFiles": 84,
+    "judgedFunctionsOutsideExclude": 0
+  },
+  "examples": []
+}
