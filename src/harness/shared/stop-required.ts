@@ -191,18 +191,18 @@ export function stepReason(
     return withLastHold(step.failing.reasons.join("\n"), step.failing.groups, command, last);
   }
   const { open } = step;
-  const { revision } = read.header;
+  const { revision, listingRunners: runners } = read.header;
   const unlisted = open.tests.length === 0 && open.refining;
   const tests = (() => {
     if (open.tests.length === 0 && !open.refining) return [];
     if (waitedMs === undefined) {
       return unlisted
-        ? [requiredUnlistedReason(revision, required.groups, command)]
+        ? [requiredUnlistedReason(revision, required.groups, command, runners)]
         : [requiredSuiteReason(revision, open.tests, command)];
     }
     const before = (group: string) =>
       pendingBefore(read.states, read.keys, required, group, open.tests);
-    const wait = { waitedMs, command, refining: open.refining };
+    const wait = { waitedMs, command, refining: open.refining, runners };
     return [
       requiredWaitReason(revision, open.tests, required.groups, {
         ...wait,

@@ -1,12 +1,12 @@
 import { stopOf } from "../presence/views.js";
 import { awaitingInstallSentence } from "../scheduler/awaiting-install.js";
 import { groupTierLines } from "../state/group-text.js";
-import { fullSuiteText, runnerPartText } from "../state/header.js";
+import { fullSuiteText } from "../state/header.js";
 import { revisionText } from "../state/revision-commit.js";
 import { slowTierText } from "../state/slow-text.js";
 import { countedText, partsSuffix } from "../status/checks.js";
 import { DEATH_CAUSE, deathText } from "../status/died.js";
-import { lateText } from "../status/feed-late.js";
+import { delaysText, lateOf } from "../status/feed-late.js";
 import { holdLine } from "../status/holds.js";
 import {
   holdAcrossEditsText,
@@ -36,8 +36,6 @@ const NOT_LISTED_SENTENCE =
 /** Paths a header names before the rest is counted (task 001-85). */
 const CHANGED_PATHS_SHOWN = 3;
 
-const capitalize = (text: string) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
-
 /**
  * The install wait's sentence (`awaitingInstallSentence`). `null` when not
  * waiting, and when no daemon is live: a daemon killed while waiting left
@@ -65,14 +63,16 @@ function changedText(header: StatusHeader): string {
   return ` (changed ${shown}${more > 0 ? ` and ${more} more` : ""})`;
 }
 
-/** What the counts leave out: the listing not done, the runner part pending. */
+/**
+ * What the counts leave out: the listing not done; then, in one sentence (row 011-311), the
+ * revision's test files not listed yet, the edits a late change feed has not read, or both. A
+ * stopping daemon's own sentence says what it does instead (`livenessSentence`).
+ */
 function incompleteText(header: StatusHeader): string {
   const listed = header.testFilesListed === false ? ` ${NOT_LISTED_SENTENCE}` : "";
-  const runnerPart =
-    header.runnerPartPending === true
-      ? ` ${capitalize(runnerPartText(header.revision))} is pending; test files it adds are not counted yet.`
-      : "";
-  return `${listed}${runnerPart}`;
+  const late = header.daemon?.stopping === undefined ? lateOf(header.daemon) : undefined;
+  const delays = delaysText(header, late);
+  return `${listed}${delays === null ? "" : ` ${delays}`}`;
 }
 
 /** What both forms end with: daemon liveness, then the install wait or the install sentences. */
@@ -224,12 +224,12 @@ function livenessSentence(
   if (daemon.stopping !== undefined) {
     return ` The daemon is ${stoppingText(daemon.stopping, command)}; results are as of revision ${revision}.`;
   }
-  // Row 011-140: a daemon that ended its handoff short validates, at its own version.
-  // Row 011-200: a late change feed may not have seen the latest edits.
+  // Row 011-140: a daemon that ended its handoff short validates, at its own version. Row
+  // 011-311: a late change feed is said after the counts, with the revision's listing.
   if (daemon.state === "alive") {
-    const short =
-      daemon.short === undefined ? "" : ` The daemon is up: ${shortText(daemon.short, command)}.`;
-    return daemon.late === undefined ? short : `${short} ${lateText(daemon.late, revision)}`;
+    return daemon.short === undefined
+      ? ""
+      : ` The daemon is up: ${shortText(daemon.short, command)}.`;
   }
   // Row 011-254: `squeal stop --until-start` holds until `squeal start` alone; review 0.1.357
   // B1: a current start wins over either stop (`stopOf`).

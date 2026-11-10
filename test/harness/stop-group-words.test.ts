@@ -106,8 +106,8 @@ describe.each(HARNESSES)("Stop's words for a configured group, $name (019 D4, D6
     const out = await stopThenWait(harness, r);
     expect(out.waiting.reason).toMatch(
       new RegExp(
-        "^Squeal policy checks puts the e2e group at stop and after 0\\.4 s the runner part " +
-          "of revision 1 is still pending: e2e test files it adds are not listed yet\\. " +
+        "^Squeal policy checks puts the e2e group at stop and after 0\\.4 s Vitest has not yet " +
+          "listed the test files of revision 1, so new e2e test files are not counted\\. " +
           `${CLI} run e2e --wait\` waits for their results\\.\n`,
       ),
     );

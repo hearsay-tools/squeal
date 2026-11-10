@@ -21,6 +21,15 @@ const NOW = Date.UTC(2026, 9, 6, 12, 0, 0);
 function worktreeAt(revision: number, refined: number | null) {
   const repo = fakeRepo();
   const store = seedStore(repo);
+  // Row 011-311: the row's root is where the header reads which runners list the revision.
+  store.worktrees.upsert({
+    id: repo.mainId,
+    root: repo.main,
+    commonDir: repo.commonDir,
+    isMain: true,
+    registeredAt: 1,
+    daemon: null,
+  });
   appendRevisions(store, repo.mainId, revision, { head: null, dirty: false });
   store.knownStates.upsertMany([state(repo.mainId, check("src/a.test.ts", "adds"))]);
   store.testFileKeys.upsertMany([
@@ -79,9 +88,11 @@ describe("refined-revision marker (review wave 4.5, S1)", () => {
       knownFailures: [],
     });
 
+    // Row 011-311: the runner is named, and "runner part" is not.
     expect(text).toContain(
-      "The runner part of revision 3 is pending; test files it adds are not counted yet.",
+      "Vitest has not yet listed the test files of revision 3, so new test files are not counted.",
     );
+    expect(text).not.toContain("runner part");
   });
 
   it("says so in squeal status, in the payload and the human rendering", () => {
@@ -90,10 +101,16 @@ describe("refined-revision marker (review wave 4.5, S1)", () => {
 
     const status = readStatus(repo.main, { now: () => NOW }) as StatusSnapshot;
 
-    expect(status).toMatchObject({ refinedRevision: 2, runnerPartPending: true });
-    expect(formatStatus(status, NOW)).toContain(
-      "Affected checks: 1 passed (1 test), 0 running, 0 queued; the runner part of revision 3 is pending, " +
-        "so test files it adds are not counted yet\n",
+    expect(status).toMatchObject({
+      refinedRevision: 2,
+      runnerPartPending: true,
+      listingRunners: ["Vitest"],
+    });
+    // Row 011-311: the line after the revision line says it, as a late change feed's does.
+    const lines = formatStatus(status, NOW).split("\n");
+    expect(lines[1]).toBe(
+      "Vitest has not yet listed the test files of revision 3, so new test files are not counted.",
     );
+    expect(lines).toContain("Affected checks: 1 passed (1 test), 0 running, 0 queued");
   });
 });

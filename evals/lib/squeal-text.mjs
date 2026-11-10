@@ -374,9 +374,11 @@ function countsOf(t) {
   }
   // Counts that leave out test files not listed yet, a runner part still to come, or edits a
   // named wait's deadline came before the daemon stored (row 006-55), or that a snapshot's
-  // daemon did not answer for (row 011-243).
+  // daemon did not answer for (row 011-243). Row 011-311 names the runner part by its runner:
+  // `Vitest has not yet listed the test files of revision 5`, `Vitest and pytest have not listed
+  // revision 5's test files yet`.
   if (
-    /has not listed this worktree's test files|test files it adds|has not listed the test files of revision|has not stored its pass|the daemon's pass is at revision|did not answer its sync/.test(
+    /has not listed this worktree's test files|test files it adds|ha(?:s|ve) not (?:yet )?listed (?:the test files of revision|revision \d+'s test files)|has not stored its pass|the daemon's pass is at revision|did not answer its sync/.test(
       t,
     )
   )
