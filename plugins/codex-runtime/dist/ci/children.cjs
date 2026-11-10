@@ -21,6 +21,14 @@
 // shares this process's env, so the same holds when that env has another
 // value. A call Node would reject passes through untouched, so Node's own
 // validation runs.
+//
+// Below a Vitest run, in its CLI process (`markNested`) and in its test
+// workers (`__vitest_worker__`), the settings each child gets say `nested`:
+// a Vitest run that a test starts is not the project's, so its hook takes
+// the evidence and writes no run (row 018-27). The mark rides in the
+// settings, so it passes through a shell, a package manager and an env of
+// the caller's own; a child's `VITEST_WORKER_ID` cannot tell it, since a
+// command `squeal ci record` runs from a Vitest test inherits one too.
 "use strict";
 const childProcess = require("node:child_process");
 const path = require("node:path");
@@ -31,6 +39,26 @@ const VARIABLE = "SQUEAL_CI_RECORD";
 const HOOK = path.join(__dirname, "vitest-ci.cjs");
 /** A `--require` or `-r` token in `NODE_OPTIONS`. */
 const REQUIRE = /(^|\s)(-r|--require)(=|\s|$)/;
+/** Vitest's own name for a test worker's state on `globalThis`. */
+const WORKER_STATE = "__vitest_worker__";
+
+/** Whether this process is a Vitest CLI process of the recording (`vitest-ci.cjs`). */
+let inVitest = false;
+/** Marks every child this process starts from now on as below a Vitest run. */
+const markNested = () => {
+  inVitest = true;
+};
+
+/** `settings` with `nested: true`; `settings` itself when it has it or does not parse. */
+function nestedOf(settings) {
+  try {
+    const value = JSON.parse(settings);
+    if (value === null || typeof value !== "object" || value.nested === true) return settings;
+    return JSON.stringify({ ...value, nested: true });
+  } catch {
+    return settings;
+  }
+}
 
 /** A value as `NODE_OPTIONS` reads it (`quoteNodeOption`). */
 const quote = (value) => `"${value.replace(/["\\]/g, "\\$&")}"`;
@@ -61,19 +89,23 @@ function optionsAt(name, args) {
 }
 
 /**
- * Puts the hook and this process's `SQUEAL_CI_RECORD` into the env of every
- * child and Worker; withholds every path (`evidence.withhold`) for one the
+ * Puts the hook and this process's `SQUEAL_CI_RECORD`, `nested` below a
+ * Vitest run, into the env of every child and Worker; withholds every path (`evidence.withhold`) for one the
  * hook cannot follow.
  */
 function wrapChildren(replace, evidence) {
   const settings = process.env[VARIABLE];
   if (typeof settings !== "string") return;
+  const nested = nestedOf(settings);
   const url = pathToFileURL(HOOK).href;
   /** Whether `env` names another recording, whose child this run cannot follow. */
   const foreign = (env) => {
     const own = env[VARIABLE];
-    return own !== undefined && own !== settings;
+    return own !== undefined && own !== settings && own !== nested;
   };
+  /** The settings for a child with `env`: nested below a Vitest run, and never un-nested. */
+  const settingsFor = (env) =>
+    inVitest || globalThis[WORKER_STATE] != null || env[VARIABLE] === nested ? nested : settings;
   const withhold = () => evidence.withhold(null);
   /**
    * `env` with the hook and its settings, as a copy: what Node reads of it,
@@ -87,12 +119,13 @@ function wrapChildren(replace, evidence) {
       withhold();
       return env;
     }
+    const want = settingsFor(env);
     const options = typeof env.NODE_OPTIONS === "string" ? env.NODE_OPTIONS : "";
     const loads = options.includes(HOOK) || options.includes(url);
-    if (loads && own === settings) return env;
+    if (loads && own === want) return env;
     const out = inherited ? {} : { ...env };
     if (inherited) for (const key in env) out[key] = env[key];
-    out[VARIABLE] = settings;
+    out[VARIABLE] = want;
     if (!loads) {
       const option = REQUIRE.test(options) ? `--require ${quote(HOOK)}` : `--import ${quote(url)}`;
       out.NODE_OPTIONS = options.trim() === "" ? option : `${option} ${options}`;
@@ -174,4 +207,4 @@ function wrapChildren(replace, evidence) {
   Object.defineProperty(workerThreads.Worker, "name", { value: "Worker" });
 }
 
-module.exports = { wrapChildren };
+module.exports = { markNested, wrapChildren };
