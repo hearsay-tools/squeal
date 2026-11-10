@@ -7,6 +7,7 @@ import {
 import { BaseRefError, changedFunctions, mergeBase } from "../core/code/gate/changed.js";
 import { CollectUsageError, type GateAdapters } from "../core/code/gate/collect.js";
 import { evaluate } from "../core/code/gate/evaluate.js";
+import { readPartsIn } from "../core/code/gate/parts.js";
 import { type BasePolicy, loadBasePolicy } from "../core/code/gate/policy.js";
 import type { EngineVersions, GateRunner } from "../core/code/gate/report.js";
 import type { ChangedSet, GateVerdict } from "../core/code/gate/types.js";
@@ -32,7 +33,7 @@ import { statusCommand } from "./status-command.js";
  */
 
 export const CODE_GATE_USAGE =
-  "squeal code --base <ref> [<path>...] [--test <file>...] [--timeout <seconds>] [--exceptions <file>] [--json]";
+  "squeal code --base <ref> [<path>...] [--test <file>...] [--parts <dir>...] [--timeout <seconds>] [--exceptions <file>] [--json]";
 
 /** D3.4: the one budget over every run, in seconds. */
 export const DEFAULT_BUDGET_SECONDS = 600;
@@ -51,6 +52,8 @@ export interface GateArgs {
   readonly json: boolean;
   /** D8: the exceptions file, as given; absent without `--exceptions`. */
   readonly exceptions?: string;
+  /** D13.2: the directories of `ci record`'s parts, as given; absent without `--parts`. */
+  readonly parts?: readonly string[];
 }
 
 /** `squeal code` runs the gate when `--base` is among its arguments. */
@@ -71,6 +74,7 @@ interface Draft {
   json: boolean;
   readonly paths: string[];
   readonly tests: string[];
+  readonly parts: string[];
 }
 
 /** The options that take one value: each stores it, or says why it cannot. */
@@ -94,8 +98,24 @@ const VALUED: Readonly<Record<string, (value: string, into: Draft) => string | n
   },
 };
 
-/** Squeal's `--test`, which takes the arguments after it up to the next option. */
-const TEST = "--test";
+/**
+ * The options that take the arguments after them up to the next option:
+ * `--test`'s files (D3.1) and `--parts`'s directories (D13.2). Each stores
+ * them, or says why it cannot.
+ */
+const LISTED: Readonly<Record<string, (values: readonly string[], into: Draft) => string | null>> =
+  {
+    "--test": (files, into) => {
+      if (files.length === 0 || files.includes("")) return "--test names no file";
+      into.tests.push(...files);
+      return null;
+    },
+    "--parts": (dirs, into) => {
+      if (dirs.length === 0 || dirs.includes("")) return "--parts names no directory";
+      into.parts.push(...dirs);
+      return null;
+    },
+  };
 
 /** The values after `args[i]` up to the next option, at most `most`; and the index of the last. */
 function valuesAfter(args: readonly string[], i: number, most: number) {
@@ -105,9 +125,10 @@ function valuesAfter(args: readonly string[], i: number, most: number) {
 }
 
 /**
- * D1's arguments. `--test` takes every argument after it up to the next
- * option, as `ci export --parts` does, so paths go before it; it may also
- * repeat. `--changed` and `--told` are usage errors with `--base`.
+ * D1's arguments. `--test` and `--parts` take every argument after them up
+ * to the next option, as `ci export --parts` does, so paths go before them;
+ * they may also repeat. `--changed` and `--told` are usage errors with
+ * `--base`.
  */
 export function parseGateArgs(args: readonly string[]): GateArgs | { readonly error: string } {
   const draft: Draft = {
@@ -117,41 +138,44 @@ export function parseGateArgs(args: readonly string[]): GateArgs | { readonly er
     json: false,
     paths: [],
     tests: [],
+    parts: [],
   };
   for (let i = 0; i < args.length; i++) {
     const arg = args[i] as string;
     const [flag, inline] = split(arg);
     const valued = VALUED[flag];
+    const take =
+      valued === undefined
+        ? LISTED[flag]
+        : (values: readonly string[], into: Draft) => valued(values[0] ?? "", into);
     if (flag === "--changed" || flag === "--told") {
       return {
         error: `--base does not combine with ${flag}: each chooses the functions another way`,
       };
     } else if (arg === "--json") draft.json = true;
-    else if (valued !== undefined || flag === TEST) {
+    else if (take !== undefined) {
       const taken =
         inline === undefined
           ? valuesAfter(args, i, valued === undefined ? Infinity : 1)
           : { values: [inline], at: i };
-      const error =
-        valued === undefined
-          ? testFiles(taken.values, draft)
-          : valued(taken.values[0] ?? "", draft);
+      const error = take(taken.values, draft);
       if (error !== null) return { error };
       i = taken.at;
     } else if (arg.startsWith("--")) return { error: `unknown option "${arg}"` };
     else draft.paths.push(arg);
   }
-  const { ref, budget, exceptions, json, paths, tests } = draft;
+  const { ref, budget, exceptions, json, paths, tests, parts } = draft;
   if (ref === null) return { error: "--base names no ref" };
   const budgetSeconds = budget ?? DEFAULT_BUDGET_SECONDS;
-  return { ref, paths, tests, budgetSeconds, json, ...(exceptions === null ? {} : { exceptions }) };
-}
-
-/** Stores `--test`'s files, or says why it cannot. */
-function testFiles(files: readonly string[], into: Draft): string | null {
-  if (files.length === 0 || files.includes("")) return "--test names no file";
-  into.tests.push(...files);
-  return null;
+  return {
+    ref,
+    paths,
+    tests,
+    budgetSeconds,
+    json,
+    ...(exceptions === null ? {} : { exceptions }),
+    ...(parts.length === 0 ? {} : { parts }),
+  };
 }
 
 /** Each path relative to `root`, or the first that is outside it. */
@@ -225,11 +249,12 @@ const quoted = (arg: string) =>
   /^[\w@%+=:,./-]+$/.test(arg) ? arg : `'${arg.replaceAll("'", `'\\''`)}'`;
 
 /**
- * `squeal code --base <ref> [<path>...] [--test <file>...] [--timeout
- * <seconds>] [--exceptions <file>] [--json]` (spec 020 D1, D8). Runs tests,
- * with no daemon, for up to the budget; a file with results and a record at
- * its key in the stores does not run (D11.7). Policy problems and the
- * runners' notes go to stderr; stdout holds the report alone.
+ * `squeal code --base <ref> [<path>...] [--test <file>...] [--parts
+ * <dir>...] [--timeout <seconds>] [--exceptions <file>] [--json]` (spec 020
+ * D1, D8). Runs tests, with no daemon, for up to the budget; a file whose
+ * evidence `ci record`'s parts certify here (D13.2), or with results and a
+ * record at its key in the stores (D11.7), does not run. Policy problems
+ * and the runners' notes go to stderr; stdout holds the report alone.
  */
 export async function codeGateCommand(
   args: readonly string[],
@@ -251,18 +276,27 @@ export async function codeGateCommand(
   if ("outside" in tests) return fail(`"${tests.outside}" is outside the worktree ${root}`, true);
   const exceptions = await exceptionsOf(cwd, parsed.exceptions);
   if (exceptions !== undefined && "error" in exceptions) return fail(exceptions.error);
+  // D13.2: a parts directory that is missing, empty or holds a part that does not read is a setup error.
+  const parts = readPartsIn((parsed.parts ?? []).map((dir) => resolve(cwd, dir)));
+  if (typeof parts === "string") return fail(parts);
   const inventory = await inventoryOf(root, parsed.ref, paths, io);
   if ("error" in inventory) return fail(inventory.error);
   const { changed, policy } = inventory;
   const durationsMs: Partial<Record<GateRunner, number>> = {};
-  const evidence = await collectWithStores(root, io.env ?? process.env, changed, {
-    tests,
-    budgetSeconds: parsed.budgetSeconds,
-    adapters: timed(adapters, durationsMs),
-    note: (text) => io.stderr(`squeal code: ${text}\n`),
-    // D12.1: how the runs collect is the base's, as the limits are.
-    children: policy.children,
-  }).catch((error: unknown) => (error instanceof Error ? error : new Error(String(error))));
+  const evidence = await collectWithStores(
+    root,
+    io.env ?? process.env,
+    changed,
+    {
+      tests,
+      budgetSeconds: parsed.budgetSeconds,
+      adapters: timed(adapters, durationsMs),
+      note: (text) => io.stderr(`squeal code: ${text}\n`),
+      // D12.1: how the runs collect is the base's, as the limits are.
+      children: policy.children,
+    },
+    parts,
+  ).catch((error: unknown) => (error instanceof Error ? error : new Error(String(error))));
   // D1: a configured runner that cannot start, or no coverage provider, is a setup error.
   if (evidence instanceof Error) {
     return fail(evidence.message, evidence instanceof CollectUsageError);
