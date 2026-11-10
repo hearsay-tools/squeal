@@ -1,5 +1,5 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { basename, dirname, join, resolve } from "node:path";
 import type { Vitest } from "vitest/node";
 import type { CoverageRun, CoveredFile, ExecutedSource } from "../../core/code/coverage/types.js";
 import type { WorktreePaths } from "../../core/fs/worktree-paths.js";
@@ -27,6 +27,8 @@ export interface VitestCoverage {
   readonly tempDir: AbsolutePath;
   /** One run's payloads, handed over after its report is built; never awaited by the run. */
   readonly collected: (run: CoverageRun) => void;
+  /** Spec 020 D12: policy `coverage.children`, read with `enabled` at each start; absent, never. */
+  readonly children?: () => boolean;
 }
 
 /** One worker batch as Squeal's provider keeps it (`provider.mjs`, `onAfterSuiteRun`). */
@@ -50,6 +52,11 @@ const failed = new WeakSet<VitestCoverage>();
 /** Whether the next instance starts with coverage on: policy, unless the provider failed. */
 export function coverageWanted(coverage: VitestCoverage | undefined): boolean {
   return coverage !== undefined && !failed.has(coverage) && coverage.enabled();
+}
+
+/** Spec 020 D12: whether the next instance also measures the processes its tests start. */
+export function childrenWanted(coverage: VitestCoverage | undefined): boolean {
+  return coverageWanted(coverage) && coverage?.children?.() === true;
 }
 
 export function providerFailed(coverage: VitestCoverage | undefined): boolean {
@@ -97,16 +104,25 @@ export function recordProviderFailure(
   return { failure, note: first ? failure : null };
 }
 
-/** Coverage for one Vitest instance: its reports directory under the daemon's temp directory. */
+/** Coverage for one Vitest instance: its reports directory under the daemon's temp directory, with 020 D12's flag. */
 export class InstanceCoverage {
   private constructor(
     readonly dir: AbsolutePath,
     readonly provider: AbsolutePath,
+    readonly children: boolean,
   ) {}
 
-  static start({ tempDir, provider }: VitestCoverage): InstanceCoverage {
-    mkdirSync(tempDir, { recursive: true });
-    return new InstanceCoverage(mkdtempSync(join(tempDir, "coverage-")), provider);
+  static start(coverage: VitestCoverage): InstanceCoverage {
+    mkdirSync(coverage.tempDir, { recursive: true });
+    const dir = mkdtempSync(join(coverage.tempDir, "coverage-"));
+    const children = childrenWanted(coverage);
+    if (children) writeFileSync(join(dir, "children"), "");
+    return new InstanceCoverage(dir, coverage.provider, children);
+  }
+
+  /** Spec 020 D12: a worker found `NODE_V8_COVERAGE` set and left it, so its tests' children went unread. */
+  kept(): boolean {
+    return this.children && existsSync(join(this.dir, "kept"));
   }
 
   /** D8's `createVitest` option: Squeal's provider, no report, payloads in `dir`. */
@@ -209,11 +225,21 @@ export function inspectorNote({ ref, through }: InspectorFile): string {
   return `coverage is off for ${ref.path}: ${imports}, so its tests can see V8 coverage (spec 015 D8)`;
 }
 
+/** Spec 020 D12's note when a worker left a variable already set (`InstanceCoverage.kept`). */
+export const KEPT_NOTE =
+  "coverage of child processes is off in a test worker that already had NODE_V8_COVERAGE set: Squeal leaves it to the tests, so their children's coverage is not read (spec 020 D12)";
+
+/** Spec 020 D12: the children of `coverage-<id>.json`'s test file write to `children-<id>` (`provider.mjs`). */
+function childrenOf(payload: string): AbsolutePath {
+  return join(dirname(payload), basename(payload, ".json").replace(/^coverage-/, "children-"));
+}
+
 /**
  * The completed files' payloads with what the run executed, read at the
- * run's end, before an edit drops a transform. A batch of several files
- * (`isolate: false` gives none) or of a file not completed or not wanted is
- * dropped with its payload.
+ * run's end, before an edit drops a transform, and with `children` their
+ * children's directories (020 D12). A batch of several files (`isolate:
+ * false` gives none) or of a file not completed or not wanted is dropped
+ * with its payload.
  */
 export function coveredFiles(
   vitest: Vitest,
@@ -221,6 +247,7 @@ export function coveredFiles(
   wanted: (ref: TestFileRef) => boolean,
   stamps: SourceStamps,
   paths: WorktreePaths,
+  children = false,
 ): CoveredFile[] {
   const executed = new Map<Environment, ReadonlyMap<AbsolutePath, ExecutedSource>>();
   const files: CoveredFile[] = [];
@@ -235,7 +262,7 @@ export function coveredFiles(
         : paths.toRelative(resolve(project.config.root, file));
     const ref = path === null ? null : { project: batch.projectName, path };
     if (more.length > 0 || environment === undefined || ref === null || !wanted(ref)) {
-      rmSync(batch.coverage, { force: true });
+      dropPayloads([batch]);
       continue;
     }
     let sources = executed.get(environment);
@@ -243,14 +270,20 @@ export function coveredFiles(
       sources = executedSources(environment, stamps, paths);
       executed.set(environment, sources);
     }
-    files.push({ testFile: ref, payload: batch.coverage, sources });
+    const child = children
+      ? { children: { root: paths.root, dir: childrenOf(batch.coverage) } }
+      : {};
+    files.push({ testFile: ref, payload: batch.coverage, sources, ...child });
   }
   return files;
 }
 
-/** Deletes each batch's payload: a hung, crashed or rejected run keeps no record (D8). */
+/** Deletes each batch's payload and its children's: a hung, crashed or rejected run keeps no record (D8). */
 export function dropPayloads(batches: readonly CoverageBatch[]): void {
-  for (const batch of batches) rmSync(batch.coverage, { force: true });
+  for (const batch of batches) {
+    rmSync(batch.coverage, { force: true });
+    rmSync(childrenOf(batch.coverage), { recursive: true, force: true });
+  }
 }
 
 /** Each project file with a transform in `environment`, by module ID: its code, map and stamp. */

@@ -16,12 +16,20 @@
 // `node:inspector`). The main side keeps each worker batch's payload for
 // the adapter (`takeBatches`) and writes no report.
 //
+// Spec 020 D12 (row 020-10a): with the daemon's flag `children` beside `skip.json`
+// (`coverage.children`), a worker that takes coverage points `NODE_V8_COVERAGE` at
+// `children-<id>` beside the payload it writes next, `coverage-<id>.json`, whose name so
+// names it, and at a new one after each payload: the processes and threads each test
+// file starts write their coverage there. Node makes the directory when one writes. A
+// variable already set (a project's own, or inherited) is left alone, and the file
+// `kept` beside the flag tells the adapter.
+//
 // Vitest 5 passes the worker side `reportsDirectory` and
 // `coverageFilesDirectory`. Vitest 4.1.10 passes neither (row 013-09):
 // `reportsDirectory` is then read from the worker's config, and the payload
 // goes where Vitest 5 puts it, `<reportsDirectory>/.tmp`.
 const { randomUUID } = process.getBuiltinModule("node:crypto");
-const { mkdirSync, readFileSync, writeFileSync } = process.getBuiltinModule("node:fs");
+const { existsSync, mkdirSync, readFileSync, writeFileSync } = process.getBuiltinModule("node:fs");
 const inspector = process.getBuiltinModule("node:inspector/promises");
 const { join } = process.getBuiltinModule("node:path");
 const { fileURLToPath } = process.getBuiltinModule("node:url");
@@ -30,6 +38,8 @@ const { fileURLToPath } = process.getBuiltinModule("node:url");
 // (015-01's probe: `takeCoverage` found no session), so the session lives
 // on the process.
 const SESSION = Symbol.for("squeal.coverage.session");
+/** The id of the next payload, whose children's directory the variable names (020 D12). */
+const CHILDREN = Symbol.for("squeal.coverage.children");
 
 /** The test files of this worker's run (`globalThis.__vitest_worker__`, Vitest 4 and 5). */
 function workerFiles() {
@@ -60,6 +70,23 @@ function skipped(reportsDirectory) {
   return workerFiles().some((file) => skip.has(file));
 }
 
+/** Spec 020 D12: the next payload's id, and the variable at its children's directory. */
+function pointChildren(directory) {
+  const id = randomUUID();
+  process.env.NODE_V8_COVERAGE = join(directory, `children-${id}`);
+  globalThis[CHILDREN] = id;
+}
+
+/** Spec 020 D12: with the daemon's flag, children of this worker's tests write their coverage. */
+function startChildren(reportsDirectory) {
+  if (!existsSync(join(reportsDirectory, "children"))) return;
+  if (process.env.NODE_V8_COVERAGE !== undefined) {
+    writeFileSync(join(reportsDirectory, "kept"), "");
+    return;
+  }
+  pointChildren(filesDirectory() ?? join(reportsDirectory, ".tmp"));
+}
+
 /** A script of a file outside `node_modules`: what a record can hold. */
 function kept(script) {
   return script.url.startsWith("file://") && !script.url.includes("/node_modules/");
@@ -74,6 +101,7 @@ export default {
     await session.post("Profiler.enable");
     await session.post("Profiler.startPreciseCoverage", { callCount: true, detailed: true });
     globalThis[SESSION] = session;
+    startChildren(reportsDirectory);
   },
 
   async takeCoverage({ moduleExecutionInfo, coverageFilesDirectory = filesDirectory() } = {}) {
@@ -88,8 +116,10 @@ export default {
       scripts.push({ ...script, startOffset: info?.startOffset ?? 0 });
     }
     mkdirSync(coverageFilesDirectory, { recursive: true });
-    const file = join(coverageFilesDirectory, `coverage-${randomUUID()}.json`);
+    const children = globalThis[CHILDREN];
+    const file = join(coverageFilesDirectory, `coverage-${children ?? randomUUID()}.json`);
     writeFileSync(file, JSON.stringify({ result: scripts }));
+    if (children !== undefined) pointChildren(coverageFilesDirectory);
     return file;
   },
 
