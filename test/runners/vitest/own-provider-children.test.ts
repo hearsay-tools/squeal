@@ -1,7 +1,7 @@
 import { existsSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mapHere } from "../../../src/core/code/coverage/mapper.js";
 import { COVERAGE_PROVIDER_VERSION, decodeRecord } from "../../../src/core/code/coverage/record.js";
 import { KEPT_NOTE } from "../../../src/runners/vitest/coverage.js";
@@ -16,7 +16,12 @@ import { openFixture, ref, SLOW } from "./helpers.js";
  */
 
 const temps: string[] = [];
+// Under a daemon that measures this file's children, its fixture's workers would inherit the variable.
+beforeEach(() => {
+  vi.stubEnv("NODE_V8_COVERAGE", undefined);
+});
 afterEach(() => {
+  vi.unstubAllEnvs();
   for (const dir of temps.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
 
