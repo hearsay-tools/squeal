@@ -1,13 +1,14 @@
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { relative, sep } from "node:path";
-import { COVERAGE_PROVIDER_VERSION } from "../../core/code/coverage/record.js";
+import { coverageMarker } from "../../core/code/coverage/record.js";
 import { compare } from "../../core/fs/compare.js";
 import type { AbsolutePath, RelativePath } from "../../core/types/common.js";
 import type { NodeTestProject } from "../../core/types/policy.js";
 import type { RunnerEnvironment, RunnerPackages } from "../../core/types/runner.js";
 import { projectCwd } from "./adapter-files.js";
 import { projectEnv } from "./recorders.js";
+import type { Covering } from "./run/coverage.js";
 
 /**
  * What the project's Node said about itself, or why it could not run.
@@ -74,7 +75,9 @@ export const NODE_UNAVAILABLE = "unavailable";
  * `packages` the graph's environment packages (task 003-22), absent for a
  * project whose graph did not build, which keys by the whole fingerprint.
  * With `coverage` the config holds Squeal's coverage marker; without, it
- * holds no coverage field (row 015-86).
+ * holds no coverage field (row 015-86). With `"children"` the marker says
+ * so (020 D12): tests that can see `NODE_V8_COVERAGE` never share a key
+ * with tests that cannot.
  */
 export function projectEnvironment(
   root: AbsolutePath,
@@ -83,7 +86,7 @@ export function projectEnvironment(
   preloads: readonly RelativePath[],
   adapterVersion: string,
   packages?: RunnerPackages,
-  coverage = false,
+  coverage: Covering = false,
 ): RunnerEnvironment {
   const cwd = slashes(relative(root, projectCwd(root, project)));
   const config = {
@@ -94,8 +97,8 @@ export function projectEnvironment(
     cwd,
     include: project.include,
     exclude: project.exclude ?? [],
-    // Spec 015 D8 (row 015-86): Squeal's provider name and version alone, as Vitest's key holds them.
-    ...(coverage ? { coverage: { provider: "squeal", version: COVERAGE_PROVIDER_VERSION } } : {}),
+    // Spec 015 D8 (row 015-86): Squeal's provider name and version, and 020 D12's children, as Vitest's key holds them.
+    ...(coverage === false ? {} : { coverage: coverageMarker(coverage === "children") }),
   };
   return {
     project: project.name,
