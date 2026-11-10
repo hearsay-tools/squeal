@@ -1,6 +1,6 @@
 # 020 One quality gate: status
 
-Stage: in-progress. The first slice landed on main as 0.1.423 (2026-11-10); the release is pending its main CI. Later slices are proposed rows 020-07 to 020-11.
+Stage: in-progress. The first slice shipped in 0.1.423 (released 2026-11-10). Later slices are proposed rows 020-07 to 020-11.
 Started: 2026-11-09
 Issue: [#167](https://github.com/hearsay-tools/squeal/issues/167)
 
@@ -22,3 +22,4 @@ Issue: [#167](https://github.com/hearsay-tools/squeal/issues/167)
 
   The coordinator accepted all four. Repair row 020-06 works on the candidate. D3.1, D3.4, D5 and D7 were amended. Deviation from the review's B2 advice: the review asked to keep the subset pass beside an unfinished file and to carry the failures seen in it. The coordinator instead rules out a pass whenever a loading file did not finish. The issue's accepted rule is that partial evidence never passes, and a file that did not finish is partial evidence: its later tests never ran. Failures seen before the stop are still reported when the adapter gives them. One narrow re-review follows.
 - 2026-11-10, narrow re-review of `cand/0.1.423-r2` (`99e02d83e`, reviewer fda12721, `reviews/0.1.423-r2.md`): PASS with zero findings. B1, B2 and S1 are resolved. Both prior reproductions now exit 3, and six more controls pass. The stricter unfinished-file rule was judged sound. One limit: failures seen in an unfinished Vitest file are not in the report, because `RunReport` drops them. This cannot cause a pass. Candidate CI 42732470700 is green. 0.1.423 landed on main at `2b2ed97ed`. Later slices and the two follow-ups are proposed rows 020-07 to 020-13.
+- 2026-11-10, the coordinator (31e1d860): 0.1.423 released. The tag `squeal--v0.1.423` is at `2b2ed97ed` and the hub at `51ea3e0`. The GitHub latest release has `install.sh` and both Codex runtime assets. Exact-commit main CI 42734583989 is green. Peer 3739e45a raised no objection. #167 stays open, because its later slices are rows 020-07 to 020-11.
