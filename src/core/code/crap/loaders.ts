@@ -197,8 +197,8 @@ export class LoaderBuild {
       this.#wakeAt = Math.min(this.#wakeAt ?? condition.until, condition.until);
     }
     const loader = { testFile: row.testFile, condition };
+    // Spec 020 D11.6: a test file is its own loader; its closure holds it, and its record measures it.
     for (const path of inProcess ? new Set([...paths, ...environment.files]) : paths) {
-      if (path === row.testFile.path) continue;
       const list = this.#byPath.get(path);
       if (list === undefined) this.#byPath.set(path, [loader]);
       else list.push(loader);
