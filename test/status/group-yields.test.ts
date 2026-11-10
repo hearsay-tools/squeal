@@ -46,14 +46,15 @@ describe("a status group shows each file's yield (011-57)", () => {
       JSON.stringify({ at: NOW - 1_000, tiers: { "run-c": { kind: "yields" } } }),
     );
 
-    const lines = outstanding(repo.main).filter((l) => l.includes("not listed yet"));
+    // Row 011-311: the runner is named, never "the runner part".
+    const lines = outstanding(repo.main).filter((l) => l.includes("not listed revision 4's"));
 
     expect(lines).toHaveLength(2);
     expect(lines[0]).toMatch(
-      /^ {2}1 test file queued, revision 4 not listed yet, .*; the run yields: src\/a\.test\.ts/,
+      /^ {2}1 test file queued, Vitest has not listed revision 4's test files yet; it waits for the run in flight.*; the run yields: src\/a\.test\.ts/,
     );
     expect(lines[1]).toMatch(
-      /^ {2}1 test file queued, revision 4 not listed yet, [^;]*: src\/b\.test\.ts/,
+      /^ {2}1 test file queued, Vitest has not listed revision 4's test files yet; it waits for the run in flight[^;]*: src\/b\.test\.ts/,
     );
   });
 
