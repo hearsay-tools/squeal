@@ -1,0 +1,7 @@
+13582fdd 2026-11-10T19:13:40+00:00 fix(automations): keep automation state when a project moves at start (#3192)
+afd1b777 2026-11-10T18:17:37+00:00 refactor(server): centralize open checkout access (#3182)
+efcfb0e3 2026-11-10T18:08:10+00:00 fix(home): keep server migration explicit and dry runs read-only (#3177)
+9dd2ca62 2026-11-10T17:23:15+00:00 test(automations): keep the compaction paging test fast (#3181)
+a015077a 2026-11-10T17:15:56+00:00 fix(projects): start fresh switch-on projects in squawk (#3178)
+f4e3fbb6 2026-11-10T16:59:26+00:00 refactor(server): centralize publish and remove checkout admission (#3180)
+ef0c1ff0 2026-11-10T16:56:51+00:00 ci: run the Squeal publish job after a successful merge-group export (#3176)

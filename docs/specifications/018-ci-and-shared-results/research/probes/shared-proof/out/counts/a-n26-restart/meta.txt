@@ -1,0 +1,9 @@
+label: a-n26-restart
+clone: /home/agent/projects/squeal/.ai/cezar/t/c5546f90/sp/cez-a
+HEAD: afd1b7771e98233a7231f5afa07d4091818c5807
+merge-base with origin/main: afd1b7771e98233a7231f5afa07d4091818c5807
+node: v26.13.0 at /home/agent/.nvm/versions/node/v26.13.0/bin/node
+squeal: 0.1.426
+start (UTC): 2026-11-10T19:28:47Z
+one-minute load: 5.03
+end (UTC): 2026-11-10T19:29:52Z, one-minute load: 4.12

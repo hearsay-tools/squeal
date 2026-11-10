@@ -1,0 +1,12 @@
+Revision: 0
+Known failures: 0; not current: 1862 of 1862 test files (1862 unknown)
+Affected checks: 0 passed, 0 running, 0 queued
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+Imported results from CI run 42873763583 on hearsay-tools/cezarion at afd1b777: none current here, the environment differs (api-client: Node v26.13.0 in the export, v24.22.1 here; api-client: config fields allowOnly, browser, watch differ; 6 more in squeal status --full)
+browser: 100 test files; 100 not run at revision 0. Squeal has not queued them; `squeal run browser --wait 60000` runs them now and waits for their results.
+Outstanding:
+  1762 test files never run at their inputs, nothing queued them (the baseline is lookup-only): api-client: packages/api-client/src/protocol/tool-display.test.ts, api-client: packages/api-client/src/utils/project-scope.test.ts, contract: packages/contract/src/activity.test.ts and 1759 more; `squeal retry <test file>...` runs each once, `squeal run --all --wait` runs all 1862 test files not current here
+Complexity: 0 functions over 20; squeal code lists them.
+Coverage: 42 functions over CRAP 30, 379 untested; 1658 files wait for test runs, which squeal run --all makes; squeal code lists them.
+Lint: linting, 1184 of 3265 files.
+More: `squeal status --full` adds the worktree and daemon, the 1862 test files without a result one by one and 5 notes

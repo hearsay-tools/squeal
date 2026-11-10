@@ -1,0 +1,9 @@
+label: a-n24-restart
+clone: /home/agent/projects/squeal/.ai/cezar/t/c5546f90/sp/cez-a
+HEAD: afd1b7771e98233a7231f5afa07d4091818c5807
+merge-base with origin/main: afd1b7771e98233a7231f5afa07d4091818c5807
+node: v24.22.1 at /home/agent/.nvm/versions/node/v24.22.1/bin/node
+squeal: 0.1.426
+start (UTC): 2026-11-10T19:32:21Z
+one-minute load: 6.14
+end (UTC): 2026-11-10T19:33:25Z, one-minute load: 5.45
