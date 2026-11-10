@@ -74,8 +74,16 @@ export interface Gated {
   readonly ran: readonly string[];
 }
 
-/** `squeal code --base HEAD <args> --json` in `root`. */
-export async function gate(root: string, args: readonly string[] = []): Promise<Gated> {
+/**
+ * `squeal code --base HEAD <args> --json` in `root`, with `env` as the
+ * command's environment. The gate's Vitest runs in this process, so its
+ * tests see `process.env`: a case that varies a variable sets both.
+ */
+export async function gate(
+  root: string,
+  args: readonly string[] = [],
+  env: NodeJS.ProcessEnv = {},
+): Promise<Gated> {
   const ran: string[] = [];
   let stdout = "";
   let stderr = "";
@@ -87,7 +95,7 @@ export async function gate(root: string, args: readonly string[] = []): Promise<
       stderr += text;
     },
     cwd: root,
-    env: {},
+    env,
   };
   const code = await codeGateCommand(["--base", "HEAD", ...args, "--json"], io, watched(ran));
   if (stdout === "") throw new Error(`squeal code exited ${code}: ${stderr}`);
