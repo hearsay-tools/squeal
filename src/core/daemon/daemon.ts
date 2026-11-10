@@ -553,6 +553,7 @@ class Daemon {
           : {
               coverage: {
                 enabled: () => coverage.coverageOn(this.#policy),
+                children: () => this.#policy.coverage.children,
                 provider,
                 tempDir: this.opened.scratch.tempDir,
                 collected: (run: Parameters<CoverageWriter["collected"]>[0]) =>
@@ -643,6 +644,7 @@ class Daemon {
         // Row 015-86 (agreed with the coordinator): node:test runs hand their coverage over too.
         coverage: {
           enabled: () => coverage.coverageOn(this.#policy),
+          children: () => this.#policy.coverage.children,
           collected: (run) => this.#coverage?.collected(run),
         },
       });
