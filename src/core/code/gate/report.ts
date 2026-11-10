@@ -3,6 +3,7 @@ import type { RelativePath } from "../../types/common.js";
 import type { FileHash } from "../../types/keys.js";
 import type {
   ChangeKind,
+  ChildFiles,
   Evidence,
   ExceptionEntry,
   GATE_REPORT_FORMAT,
@@ -141,6 +142,11 @@ export interface GateRunReport {
    * present only when there is one.
    */
   readonly fromStore?: readonly RelativePath[];
+  /**
+   * D12.7: with `coverage.children`, the child coverage files this run
+   * read and dropped, over its files; absent with the key off.
+   */
+  readonly children?: ChildFiles;
   readonly durationMs: number | null;
 }
 
@@ -155,6 +161,11 @@ export interface GateReportPolicy extends GatePolicy {
   readonly complexityExclude: readonly string[];
   /** `complexity.maxFileBytes`. */
   readonly complexityMaxFileBytes: number;
+  /**
+   * D12.7: `coverage.children`, present only when it is on, so a report
+   * with the key off is byte for byte as before.
+   */
+  readonly coverageChildren?: true;
 }
 
 export interface GateReport {
@@ -248,6 +259,7 @@ export function runsOf(evidence: Evidence, durationsMs: GateTimes["durationsMs"]
       .map((f) => ({ path: f.path, tests: [...f.failed].sort(compare) }))
       .sort((a, b) => compare(a.path, b.path));
     const fromStore = sorted(files.filter((f) => f.fromStore === true).map((f) => f.path));
+    const children = childFilesOf(files);
     return [
       {
         runner,
@@ -256,10 +268,21 @@ export function runsOf(evidence: Evidence, durationsMs: GateTimes["durationsMs"]
         notFinished: sorted(files.filter((f) => !f.completed).map((f) => f.path)),
         failed,
         ...(fromStore.length === 0 ? {} : { fromStore }),
+        ...(children === null ? {} : { children }),
         durationMs,
       },
     ];
   });
+}
+
+/** D12.7: the sum of the files' child coverage files; `null` when none counts them. */
+function childFilesOf(files: readonly TestFileEvidence[]): ChildFiles | null {
+  const counted = files.flatMap((f) => (f.children === undefined ? [] : [f.children]));
+  if (counted.length === 0) return null;
+  return {
+    read: counted.reduce((sum, c) => sum + c.read, 0),
+    dropped: counted.reduce((sum, c) => sum + c.dropped, 0),
+  };
 }
 
 /** The report's order of functions: by path, then where each starts, then identity. */
