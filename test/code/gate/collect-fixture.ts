@@ -87,6 +87,7 @@ export async function changedSet(root: string, paths: readonly string[]): Promis
     baseCommit: head,
     headCommit: head,
     dirty: false,
+    paths: counted.map((c) => c.path),
     functions: counted.flatMap(({ path, blob, functions }) =>
       functions.map((count) => ({ path, blob, change: "edited" as const, count })),
     ),

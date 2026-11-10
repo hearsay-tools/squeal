@@ -57,6 +57,13 @@ export interface ChangedSet {
   readonly baseCommit: string;
   readonly headCommit: string;
   readonly dirty: boolean;
+  /**
+   * Every changed path of the diff, untracked ones and removed ones
+   * included, whatever its extension or `complexity.include`; sorted. D3.1
+   * selects from these, so a test file changed only at top level, or whose
+   * functions only moved, still runs (amended 2026-11-10, review 0.1.423 B1).
+   */
+  readonly paths: readonly RelativePath[];
   readonly functions: readonly ChangedFunction[];
   /**
    * Every changed path counted at the head, including paths whose functions

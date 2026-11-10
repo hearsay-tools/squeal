@@ -306,6 +306,28 @@ describe("changedFunctions: what is counted", () => {
 
     expect(names(changed.functions)).toEqual(["src/a.mjs js#0 added"]);
   });
+
+  it("lists every changed path in paths, uncounted and removed ones included (D3.1)", async () => {
+    const { root, write, remove } = repo({ "README.md": "x\n", "src/gone.ts": lines(ONE) });
+    write({
+      "README.md": "y\n",
+      "lib/b.ts": lines("export function lib() { return 1; }"),
+      "src/e.py": "def py():\n    return 1\n",
+      "test/a.test.ts": lines(ONE),
+    });
+    remove("src/gone.ts");
+
+    const changed = await changedFunctions(root, "base", { ...POLICY, include: ["src/**"] });
+
+    expect(changed.paths).toEqual([
+      "README.md",
+      "lib/b.ts",
+      "src/e.py",
+      "src/gone.ts",
+      "test/a.test.ts",
+    ]);
+    expect(changed.counted).toEqual([]);
+  });
 });
 
 describe("mergeBase", () => {

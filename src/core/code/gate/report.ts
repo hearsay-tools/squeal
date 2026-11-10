@@ -121,18 +121,31 @@ export interface GateReport {
   readonly counts: Readonly<Record<GateState, number>>;
 }
 
+/** What the runs say of the verdict, whatever function they load. */
+export interface RunsStanding {
+  /** A selected test failed (D5.5). */
+  readonly failed: boolean;
+  /** A selected test file did not finish (D3.4). */
+  readonly unfinished: boolean;
+}
+
 /**
  * D5: `violations` when one function is a violation; else `incomplete`
- * when one is incomplete, a changed path was not counted or a selected
- * test failed; else `pass`.
+ * when one is incomplete, a changed path was not counted, a selected test
+ * failed or a selected test file did not finish; else `pass`.
  */
 export function verdictOf(
   functions: readonly Pick<GateFunctionReport, "state">[],
   uncounted: readonly unknown[],
-  failed: boolean,
+  runs: RunsStanding,
 ): GateVerdict {
   if (functions.some((f) => f.state === "violation")) return "violations";
-  if (failed || uncounted.length > 0 || functions.some((f) => f.state === "incomplete")) {
+  if (
+    runs.failed ||
+    runs.unfinished ||
+    uncounted.length > 0 ||
+    functions.some((f) => f.state === "incomplete")
+  ) {
     return "incomplete";
   }
   return "pass";

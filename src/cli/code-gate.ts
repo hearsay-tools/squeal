@@ -152,10 +152,12 @@ function underRoot(
 /** D1: the paths narrow the changed set to those files or directories; none keeps all. */
 export function narrow(changed: ChangedSet, paths: readonly RelativePath[]): ChangedSet {
   if (paths.length === 0) return changed;
-  const within = ({ path }: { readonly path: RelativePath }) =>
+  const inside = (path: RelativePath) =>
     paths.some((p) => p === "" || path === p || path.startsWith(`${p}/`));
+  const within = ({ path }: { readonly path: RelativePath }) => inside(path);
   return {
     ...changed,
+    paths: changed.paths.filter(inside),
     functions: changed.functions.filter(within),
     counted: changed.counted.filter(within),
     inErrors: changed.inErrors.filter(within),

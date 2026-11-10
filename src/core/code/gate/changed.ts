@@ -1,6 +1,7 @@
 import { lstat, readFile } from "node:fs/promises";
 import { extname, join } from "node:path";
 import { readHead } from "../../daemon-loop/head.js";
+import { compare } from "../../fs/compare.js";
 import { isMissing } from "../../fs/errors.js";
 import { runGit, splitNul } from "../../fs/git.js";
 import { blobHash, type ObjectFormat } from "../../hash/blob.js";
@@ -40,11 +41,12 @@ export async function mergeBase(cwd: AbsolutePath, ref: string): Promise<string>
  * and the working tree, untracked files and test files included. `cwd` is
  * the worktree root; paths are relative to it. `policy` is read at the base.
  *
- * - Paths: `git diff --name-only <base>` (renames as a removal and an
- *   addition) plus untracked files git does not ignore, with an extension
- *   of the TS grammar, inside `include`, outside `exclude` and outside
- *   `node_modules`.
- * - A head function whose body hash a base function of any of those paths
+ * - `paths`: `git diff --name-only <base>` (renames as a removal and an
+ *   addition) plus untracked files git does not ignore, every one of them
+ *   (D3.1 selects tests from them). The paths counted are those with an
+ *   extension of the TS grammar, inside `include`, outside `exclude` and
+ *   outside `node_modules`.
+ * - A head function whose body hash a base function of any counted path
  *   has is unchanged, moved or shifted, and is not returned. Every other one
  *   is `edited` when its identity is at the base in its path, else `added`;
  *   moved and edited reads as added. Removed functions are not returned.
@@ -64,11 +66,12 @@ export async function changedFunctions(
   policy: CountPolicy,
 ): Promise<ChangedSet> {
   const baseCommit = await mergeBase(cwd, ref);
-  const [head, format, paths] = await Promise.all([
+  const [head, format, all] = await Promise.all([
     readHead(cwd),
     readObjectFormat(cwd),
-    changedPaths(cwd, baseCommit, policy),
+    changedPaths(cwd, baseCommit),
   ]);
+  const paths = countedPaths(all, policy);
   if (head.head === null) throw new BaseRefError("HEAD names no commit");
   const bases = await countsAtBase(cwd, baseCommit, paths, policy.maxFileBytes);
   const heads = new Map<RelativePath, FileCount>();
@@ -109,6 +112,7 @@ export async function changedFunctions(
     baseCommit,
     headCommit: head.head,
     dirty: head.dirty,
+    paths: all,
     functions,
     counted,
     inErrors,
@@ -116,12 +120,8 @@ export async function changedFunctions(
   };
 }
 
-/** D2.1: the changed and untracked paths the gate counts, sorted, with their language. */
-async function changedPaths(
-  cwd: AbsolutePath,
-  baseCommit: string,
-  policy: CountPolicy,
-): Promise<Map<RelativePath, CodeLanguage>> {
+/** D2.1 and D3.1: every changed and untracked path, removed ones included, sorted. */
+async function changedPaths(cwd: AbsolutePath, baseCommit: string): Promise<RelativePath[]> {
   const [diff, untracked] = await Promise.all([
     runGit(cwd, [
       "diff",
@@ -133,16 +133,24 @@ async function changedPaths(
     ]),
     runGit(cwd, ["ls-files", "--others", "--exclude-standard", "-z"]),
   ]);
+  return [...new Set([...splitNul(diff), ...splitNul(untracked)])].sort(compare);
+}
+
+/** D2.1: of `paths`, the ones the gate counts, with their language. */
+function countedPaths(
+  paths: readonly RelativePath[],
+  policy: CountPolicy,
+): Map<RelativePath, CodeLanguage> {
   const include = createInputMatcher(policy.include);
   const exclude = createInputMatcher(policy.exclude);
-  const paths = new Map<RelativePath, CodeLanguage>();
-  for (const path of [...new Set([...splitNul(diff), ...splitNul(untracked)])].sort()) {
+  const counted = new Map<RelativePath, CodeLanguage>();
+  for (const path of paths) {
     const language = CODE_EXTENSIONS[extname(path)];
     if (language === undefined || language === "python") continue;
     if (path.startsWith("node_modules/") || path.includes("/node_modules/")) continue;
-    if (include(path) && !exclude(path)) paths.set(path, language);
+    if (include(path) && !exclude(path)) counted.set(path, language);
   }
-  return paths;
+  return counted;
 }
 
 /** Each path's count at `baseCommit`; absent when it is not there, over `maxFileBytes` or not a blob. */
