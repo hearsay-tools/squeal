@@ -3,19 +3,19 @@ import assert from "node:assert/strict";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { cpus, loadavg, tmpdir } from "node:os";
 import { join } from "node:path";
-import { readLintCounts } from "../../../src/core/commit/lint.js";
-import { commitReportText } from "../../../src/core/commit/text.js";
+import { readLintCounts } from "../../../../../../src/core/commit/lint.js";
+import { commitReportText } from "../../../../../../src/core/commit/text.js";
 import {
   lintScope,
   writeCursor,
   writeInputs,
   writeOff,
-} from "../../../src/core/lint/pass/records.js";
-import { isLintStoreOpenFailure, openLintStore } from "../../../src/core/lint/store/open.js";
-import { lintStatusLines } from "../../../src/core/lint/surface/format.js";
-import { countsOf, reasonsOf } from "../../../src/core/lint/surface/snapshot.js";
-import type { LintKnownState } from "../../../src/core/types/lint.js";
-import { DEFAULT_POLICY } from "../../../src/core/types/policy.js";
+} from "../../../../../../src/core/lint/pass/records.js";
+import { isLintStoreOpenFailure, openLintStore } from "../../../../../../src/core/lint/store/open.js";
+import { lintStatusLines } from "../../../../../../src/core/lint/surface/format.js";
+import { countsOf, reasonsOf } from "../../../../../../src/core/lint/surface/snapshot.js";
+import type { LintKnownState } from "../../../../../../src/core/types/lint.js";
+import { DEFAULT_POLICY } from "../../../../../../src/core/types/policy.js";
 
 const load = loadavg()[0];
 const cpuCount = cpus().length;

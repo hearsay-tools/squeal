@@ -6,7 +6,7 @@ runs in the probe. It imports the real store reader and formatters from source.
 `node_modules` must stay outside git. Run from the repository root:
 
 ```sh
-timeout 30s pnpm --config.verifyDepsBeforeRun=false exec tsx research/probes/issue-170/probe.ts
+timeout 30s pnpm --config.verifyDepsBeforeRun=false exec tsx docs/specifications/017-lint-checks/research/probes/issue-170/probe.ts
 ```
 
 The probe checks one-minute host load against logical CPU count before making
@@ -30,11 +30,11 @@ set -e
 probe_root=$(mktemp -d /tmp/squeal-170-tag-XXXXXX)
 trap 'rm -rf "$probe_root"' EXIT
 git archive squeal--v0.1.424 src package.json | tar -x -C "$probe_root"
-mkdir -p "$probe_root/research/probes/issue-170"
-cp research/probes/issue-170/probe.ts "$probe_root/research/probes/issue-170/probe.ts"
+mkdir -p "$probe_root/docs/specifications/017-lint-checks/research/probes/issue-170"
+cp docs/specifications/017-lint-checks/research/probes/issue-170/probe.ts "$probe_root/docs/specifications/017-lint-checks/research/probes/issue-170/probe.ts"
 ln -s "$PWD/node_modules" "$probe_root/node_modules"
-probe_output="$PWD/research/probes/issue-170/output-0.1.424-clean.txt"
-(cd "$probe_root" && timeout 30s pnpm --config.verifyDepsBeforeRun=false exec tsx research/probes/issue-170/probe.ts) > "$probe_output" 2>&1
+probe_output="$PWD/docs/specifications/017-lint-checks/research/probes/issue-170/output-0.1.424-clean.txt"
+(cd "$probe_root" && timeout 30s pnpm --config.verifyDepsBeforeRun=false exec tsx docs/specifications/017-lint-checks/research/probes/issue-170/probe.ts) > "$probe_output" 2>&1
 cat "$probe_output"
 ```
 
