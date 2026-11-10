@@ -1,0 +1,80 @@
+# Runs for ci-evidence.md, 2026-11-10T12:57:35Z, load1 24.61
+
+## Q1 v4: ci record + probe hook (mode provider), vitest run
+     RUN  v4.1.10 /tmp/ce/fx-v4
+          Coverage enabled with squeal
+     Test Files  2 passed (2)
+          Tests  4 passed | 1 skipped (5)
+       Start at  13:57:36
+       Duration  343ms (transform 49ms, setup 0ms, import 101ms, tests 11ms, environment 0ms)
+    squeal ci record: wrote 1 part with 2 test files to /tmp/ce/r-v4-parts
+    exit 0
+    event {"kind":"start","vitest":"4.1.10","ownCoverage":{"enabled":false,"provider":"v8"},"providerBefore":false,"workersStarted":false}
+    event {"kind":"provider","name":"squeal","batches":2}
+    event {"kind":"end","wallMs":5.4,"cpuMs":6.3,"mapMs":4.4}
+    event {"kind":"file","file":"test/grade.test.ts","payloadBytes":12265,"recordBytes":244,,["b18cf35daa64",175]],"sources":2,"unread":0,"coveredLines":9,"sourcesMs":0.12,"mapMs":3.31,"mapped":true}
+    event {"kind":"file","file":"test/add.test.ts","payloadBytes":12015,"recordBytes":228,,["c81855ffd6c4",159]],"sources":2,"unread":0,"coveredLines":8,"sourcesMs":0.01,"mapMs":0.95,"mapped":true}
+
+## Q1 v5: ci record + probe hook (mode provider), vitest run
+     RUN  v5.0.3 /tmp/ce/fx-v5
+          Coverage enabled with squeal
+     Test Files  2 passed (2)
+          Tests  4 passed | 1 skipped (5)
+       Start at  13:57:37
+       Duration  252ms (worker 40%, transform 33%, import 16%, tests 11%)
+    squeal ci record: wrote 1 part with 2 test files to /tmp/ce/r-v5-parts
+    exit 0
+    event {"kind":"start","vitest":"5.0.3","ownCoverage":{"enabled":false,"provider":"v8"},"providerBefore":false,"workersStarted":false}
+    event {"kind":"provider","name":"squeal","batches":2}
+    event {"kind":"end","wallMs":5.1,"cpuMs":5.8,"mapMs":4.1}
+    event {"kind":"file","file":"test/add.test.ts","payloadBytes":11924,"recordBytes":228,,["c81855ffd6c4",159]],"sources":2,"unread":0,"coveredLines":8,"sourcesMs":0.13,"mapMs":3.02,"mapped":true}
+    event {"kind":"file","file":"test/grade.test.ts","payloadBytes":12174,"recordBytes":244,,["b18cf35daa64",175]],"sources":2,"unread":0,"coveredLines":9,"sourcesMs":0.01,"mapMs":0.96,"mapped":true}
+
+## Q4 v4 with @vitest/coverage-v8 4.1.10: vitest run --coverage --coverage.thresholds.lines=95 --coverage.reporter=json-summary, probe mode: none
+          Coverage enabled with v8
+     Test Files  2 passed (2)
+    ERROR: Coverage for lines (57.14%) does not meet global threshold (95%)
+    exit 1
+    coverage/ holds: coverage-summary.json 
+    records: 0
+
+## Q4 v4 with @vitest/coverage-v8 4.1.10: vitest run --coverage --coverage.thresholds.lines=95 --coverage.reporter=json-summary, probe mode: provider
+          Coverage enabled with squeal
+     Test Files  2 passed (2)
+    exit 0
+    coverage/ holds: 
+    records: 2
+    event {"kind":"start","vitest":"4.1.10","ownCoverage":{"enabled":true,"provider":"v8"},"providerBefore":false,"workersStarted":false}
+
+## Q4 v4 with @vitest/coverage-v8 4.1.10: vitest run --coverage --coverage.thresholds.lines=95 --coverage.reporter=json-summary, probe mode: yield
+          Coverage enabled with v8
+     Test Files  2 passed (2)
+    ERROR: Coverage for lines (57.14%) does not meet global threshold (95%)
+    exit 1
+    coverage/ holds: coverage-summary.json 
+    records: 0
+    event {"kind":"start","vitest":"4.1.10","ownCoverage":{"enabled":true,"provider":"v8"},"providerBefore":false,"workersStarted":false}
+    event {"kind":"yield","text":"the run has coverage of its own: no records"}
+
+## Q3: ci export of fx-v5 parts recorded with CI=true, provider (yield mode, no own coverage) vs without; then after edits
+   (first attempt: the probe's event directory did not exist, the probe hook threw inside start, and the run wrote no part)
+    with provider: squeal ci record: wrote 1 part with 2 test files to /tmp/ce/x-a
+    without:       squeal ci record: wrote 1 part with 2 test files to /tmp/ce/x-b
+    with provider: Exported 2 test files, 7 results, to /tmp/ce/x-a.json.
+    without:       Exported 2 test files, 7 results, to /tmp/ce/x-b.json.
+    export format squeal-results/1 ; same files and keys with and without the provider: true
+    part format squeal-ci-part/3 ; part bytes with/without provider 5968 5969 ; descriptor config.coverage hash differs: true
+    src/math.ts edited: squeal ci export: left out test/add.test.ts: its shard recorded other content, or none, for src/math.ts
+    src/math.ts edited: squeal ci export: left out test/grade.test.ts: its shard recorded other content, or none, for src/math.ts
+    src/math.ts edited: squeal ci export: no test file to export; left out: 2 test files whose inputs here are not what their shard read; wrote nothing
+    test/add.test.ts edited: squeal ci export: left out test/add.test.ts: its shard recorded other content, or none, for test/add.test.ts
+    test/add.test.ts edited: Exported 1 test file, 4 results, to /tmp/ce/x-d.json.
+    test/add.test.ts edited: Left out: 1 test file whose inputs here are not what their shard read.
+
+## Q2 fidelity: fx-insp, a test that starts, takes and stops its own precise coverage
+    plain:  Test Files  2 passed (2)
+    plain:       Tests  3 passed (3)
+    provider:  Test Files  2 passed (2)
+    provider:       Tests  3 passed (3)
+    record test__add.test.ts.json sources: ["src/math.ts","test/add.test.ts"]
+    record test__inspect.test.ts.json sources: ["test/inspect.test.ts"]

@@ -1,0 +1,73 @@
+# 30 files of sample.txt, Vitest 5.0.3: hook under ci record (out2) vs gate collector (gate2)
+{
+ "files": 30,
+ "equal": 28,
+ "differ": [
+  {
+   "file": "test__code__crap__lazy.test.ts.json",
+   "equal": false,
+   "why": "src/runners/process/node-options.ts: covered,functions; src/runners/process/recorders.ts: covered,functions; src/runners/vitest/observe.ts: covered,functions"
+  },
+  {
+   "file": "test__hash__stat-cache.test.ts.json",
+   "equal": false,
+   "why": "src/core/fs/git.ts: functions"
+  }
+ ]
+}
+
+# lazy.test.ts and stat-cache.test.ts: gate run twice (ga, gb), hook run twice without ci record (ha, hb)
+## gate a vs gate b
+{
+ "files": 2,
+ "equal": 2,
+ "differ": []
+}
+## hook a vs hook b
+{
+ "files": 2,
+ "equal": 1,
+ "differ": [
+  {
+   "file": "test__hash__stat-cache.test.ts.json",
+   "equal": false,
+   "why": "src/core/fs/git.ts: functions"
+  }
+ ]
+}
+## hook a vs gate a
+{
+ "files": 2,
+ "equal": 0,
+ "differ": [
+  {
+   "file": "test__code__crap__lazy.test.ts.json",
+   "equal": false,
+   "why": "src/runners/process/node-options.ts: covered,functions; src/runners/process/recorders.ts: covered,functions"
+  },
+  {
+   "file": "test__hash__stat-cache.test.ts.json",
+   "equal": false,
+   "why": "src/core/fs/git.ts: functions"
+  }
+ ]
+}
+## the one differing function of stat-cache.test.ts, src/core/fs/git.ts: [startLine, startCol, endLine, endCol, hit]
+ha vs hb : only ha ["75,19,75,35,0"] only hb ["75,19,75,35,1"]
+ha vs ga : only ha ["75,19,75,35,0"] only ga ["75,19,75,35,1"]
+hb vs ga : only hb [] only ga []
+   (git.ts:75 is child.stdin.on('error', () => {}): runs only when the child closes stdin first)
+
+# fixture, Vitest 4.1.10 (cezar's install) and 5.0.3: hook under ci record vs gate collector
+## v4
+{
+ "files": 2,
+ "equal": 2,
+ "differ": []
+}
+## v5
+{
+ "files": 2,
+ "equal": 2,
+ "differ": []
+}
