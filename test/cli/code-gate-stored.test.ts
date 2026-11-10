@@ -257,3 +257,77 @@ describe("squeal code --base reads the stores (spec 020 D11.7)", () => {
     expect(snapshot(repo)).toEqual(before);
   });
 });
+
+/*
+ * Spec 020 D12.5 (row 020-10b, request 35b31f66): the key holds
+ * `coverage.children`, and the gate keys with the base's value. A branch
+ * that turns children on in its own config has its daemon's records,
+ * collected with children, at keys the gate does not read.
+ */
+describe("squeal code --base keys the stores with the base's coverage.children", () => {
+  let repo: FixtureRepo;
+  let key: CheckKey;
+
+  beforeAll(async () => {
+    repo = createFixtureRepo({ files: { "squeal.config.json": POLICY } });
+    git(repo.root, ["checkout", "-q", "-b", "feature"]);
+    const policy = JSON.parse(POLICY) as { coverage: Record<string, unknown> };
+    policy.coverage.children = true;
+    writeFileSync(join(repo.root, "squeal.config.json"), `${JSON.stringify(policy)}\n`);
+    writeFileSync(join(repo.root, "src/math.ts"), FEATURE["src/math.ts"] as string);
+    git(repo.root, ["commit", "-qam", "feature: children on"]);
+    const daemon = await startDaemon({ root: repo.root, env: repo.env });
+    if ("reason" in daemon) throw new Error(daemon.message);
+    try {
+      await daemon.ready;
+      key = await waitFor(
+        () =>
+          withStore(repo, (store) => {
+            const row = store.testFileKeys
+              .list(repo.worktreeId)
+              .find((r) => r.testFile.path === "test/math.test.ts");
+            if (row?.key == null || store.results.byKey(row.key, 0).length === 0) return null;
+            return hasRecord(repo, row.key) ? row.key : null;
+          }),
+        180_000,
+        "a result and a record at test/math.test.ts's key",
+      );
+    } finally {
+      await daemon.stop("stop-requested");
+    }
+  }, SLOW.timeout);
+
+  afterAll(() => repo?.cleanup());
+
+  it("finds the daemon's key with children on, and another with them off", SLOW, async () => {
+    const math = ref("test/math.test.ts");
+    const keyed = async (children: boolean) => {
+      const stored = storedFiles(repo.root, repo.env, () => {}, children);
+      try {
+        return (await stored?.keys([math]))?.get(math);
+      } finally {
+        await stored?.close();
+      }
+    };
+    expect(await keyed(true)).toBe(key);
+    expect(await keyed(false)).not.toBe(key);
+  });
+
+  it(
+    "runs the file the daemon stored with children, where the base keeps them off",
+    SLOW,
+    async () => {
+      const before = snapshot(repo);
+
+      const ran = await gate(repo, ["src/math.ts"]);
+
+      expect(ran.ran).toEqual(["test/math.test.ts"]);
+      expect(ran.report.base.policy).not.toHaveProperty("coverageChildren");
+      expect(ran.report.runs.map((r) => [r.completed, r.fromStore])).toEqual([
+        [["test/math.test.ts"], undefined],
+      ]);
+      expect(ran.code).toBe(0);
+      expect(snapshot(repo)).toEqual(before);
+    },
+  );
+});
