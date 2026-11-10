@@ -13,6 +13,16 @@ Worker b231b178, 2026-11-10. Spec text: 011 C8 (amendment of 2026-11-10) and 019
 - `stop-slow.ts`: the waiting entry reads Git after the hand-off. A stop mark counts as the end of the wait, so it decides at once and does not wait for the 10 s down bound or the policy bound.
 - `stop.ts`: the 2 s entry reads Git before `holdsNow` when it decides the checks Stop requires itself (`rules.required !== null`). Its time is at most 1 s, and within `HOOK_TIMEOUT_MS - STOP_MARGIN_MS - STOP_RECORD_WAIT_MS` from the callback's start, so the wait for the waiting entry's record keeps its time. The information line is appended to a block's reasons or to the news. It is never output on its own.
 
+## Repair: review 0.1.429 B1
+
+- **Defect.** With a stop mark, `requiredStep` returned `null` whenever any required check was open. It never reached the failure decision. So a current required failure the session had already found (for example a `lint.blocking` file) did not hold if another check was open beside it, such as an untouched file waiting to lint.
+- **Fix.** While the daemon is stopped by request, open checks still hold nothing, and `requiredStep` goes on to the failure decision (`failingLines`). With a live or crashed daemon, the open-first order is as before. The no-edit exemption and the per-turn hold budget are unchanged.
+- **Tests.** `test/harness/stop-stopped-daemon.test.ts`, "a failure already found", cover both harnesses and both entries:
+  - The 2 s entry holds once for the `lint.blocking` file, and the information line rides on that hold.
+  - The waiting entry holds once after a hand-off.
+  - Each case runs with and without an untouched pending check. The four cases with a pending check were red before the fix; the four controls passed before and after.
+- **Open point, not changed (B1 only).** The failure hold still says "This is Stop's last hold this turn: ... `squeal run lint --wait` runs it" while the daemon is stopped, as it did before row 011-312 without an open check. That command exits 3 without a daemon. The coordinator decides whether the last-hold line drops the run command while the daemon is stopped by request.
+
 ## Deviations, each approved by coordinator d64f8c13 (reply to request 43235c63)
 
 1. **Files outside the brief's ownership.** `src/harness/shared/context.ts` passes `root: location.root` to `createDelivery`. `src/core/delivery/delivery.ts` adds an optional `DeliveryOptions.root` and passes `head: registrationHead(root)` to `tellRegistered`. Reason: the worktree row has no root for a fresh linked worktree until its daemon registers, and that is the #153 case. This is in its own commit, with the agreement in its subject.
@@ -38,7 +48,7 @@ Worker b231b178, 2026-11-10. Spec text: 011 C8 (amendment of 2026-11-10) and 019
 - **Submodules.** `--ignore-submodules=all`, as in the stop mark's print: Git reports no change inside a submodule and no move of its commit.
 - **reftable repositories and an unborn `HEAD`.** No `head` is recorded, so only the first proof applies, as before.
 - **Git's time.** A `git status` past its bound fails the second proof, and Stop holds as before.
-- **Failures with a stopped daemon.** An untold required failure still holds once. `lint.blocking` can still hold once per turn (up to `stop.maxHolds`) for a file that went to fail. After `squeal stop --until-start` no daemon re-lints that file, so the hold repeats each turn until `squeal start`. This is outside the brief ("holds for failures already found stay").
+- **Failures with a stopped daemon.** An untold required failure still holds once, also beside an open check (review 0.1.429 B1). `lint.blocking` can still hold once per turn (up to `stop.maxHolds`) for a file that went to fail. After `squeal stop --until-start` no daemon re-lints that file, so the hold repeats each turn until `squeal start`. This is outside the brief ("holds for failures already found stay").
 - **Other text.** The Stop text in the lint case names no `--wait` command (tested). I did not audit the status and header lines outside these files for `run ... --wait` while the daemon is stopped.
 
 ## Tests

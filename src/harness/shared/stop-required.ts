@@ -120,9 +120,12 @@ export function stoppedByRequest(header: Pick<StatusHeader, "daemon">): boolean 
  *    1), and lint checks not linted (row 019-45). The waiting entry asks for
  *    and waits for them all at once; the 2 s entry alone names them in one
  *    hold, tests' first. Row 011-312: never while the daemon is stopped by
- *    request (`stoppedByRequest`); `stoppedText` tells them instead.
- * 2. Failing, only once none is open: with `untold` (the waiting entry,
- *    the consumer's view), the required test failures and lint findings not
+ *    request (`stoppedByRequest`): no daemon runs them, so they hold
+ *    nothing, and `stoppedText` tells them instead.
+ * 2. Failing, only once none is open, or while the daemon is stopped by
+ *    request whether or not one is (review 0.1.429 B1: a stop never hides a
+ *    failure already found): with `untold` (the waiting entry, the
+ *    consumer's view), the required test failures and lint findings not
  *    told; with `lint.blocking`, the required tools' files gone to fail
  *    (017 D8). The 2 s entry passes `null`: its news tells the untold ones
  *    in the same continuation, so only `lint.blocking` holds there.
@@ -139,7 +142,7 @@ export function requiredStep(
 ): RequiredStep | null {
   if (unchangedSinceRegistration(context)) return null;
   const open = requiredOpen(context, required, read);
-  if (isOpen(open)) return stoppedByRequest(read.header) ? null : { kind: "open", open };
+  if (isOpen(open) && !stoppedByRequest(read.header)) return { kind: "open", open };
   const failing = failingLines(context, required, read, options);
   return failing.reasons.length === 0 ? null : { kind: "failing", failing };
 }
