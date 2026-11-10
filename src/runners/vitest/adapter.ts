@@ -33,12 +33,14 @@ import {
 import { ConfigStamps } from "./config-stamps.js";
 import {
   type CoverageBatch,
+  childrenWanted,
   coverageWanted,
   coveredFiles,
   dropPayloads,
   InstanceCoverage,
   inspectorFiles,
   inspectorNote,
+  KEPT_NOTE,
   providerFailed,
   recordProviderFailure,
   type VitestCoverage,
@@ -443,8 +445,10 @@ export class VitestAdapter implements RunnerAdapter {
       // Tasks 001-349, 004-81: a revision that moved `vitest.excludeProjects`
       // or `vitest.exclude` reloaded the policy first; the recreate relists.
       const exclusion = excludedStamp(this.#exclude(), this.#excludeFiles()) !== this.#excluded;
-      // Row 015-11: so is one that turned coverage on or off (spec 015 D8).
-      const coverage = coverageWanted(this.#coverage) !== this.#coverageOn;
+      // Row 015-11: so is one that turned coverage on or off (spec 015 D8), or its children's (020 D12).
+      const coverage =
+        coverageWanted(this.#coverage) !== this.#coverageOn ||
+        childrenWanted(this.#coverage) !== (this.#instanceCoverage?.children === true);
       if (exclusion || coverage || abs.some((p) => triggers.has(p.abs) || lockfiles.has(p.abs))) {
         const before = vitest.projects.map((p) => p.name);
         // A run in flight uses the instance: the recreate waits for it, and the next run for the recreate.
@@ -554,7 +558,12 @@ export class VitestAdapter implements RunnerAdapter {
         paths: this.paths,
         runnerVersion: this.#node.version,
         adapterVersion: this.#observer.adapterVersion(this.adapterVersion),
-        ...(this.#instanceCoverage === null ? {} : { coverage: this.#instanceCoverage.provider }),
+        ...(this.#instanceCoverage === null
+          ? {}
+          : {
+              coverage: this.#instanceCoverage.provider,
+              children: this.#instanceCoverage.children,
+            }),
       };
       const envs: RunnerEnvironment[] = [];
       for (const project of vitest.projects) {
@@ -773,7 +782,10 @@ export class VitestAdapter implements RunnerAdapter {
     const completed = new Set(report.completedFiles.map(fileKey));
     const wanted = (ref: TestFileRef) =>
       completed.has(fileKey(ref)) && !uncovered.has(fileKey(ref));
-    const files = coveredFiles(vitest, batches, wanted, this.#sources, this.paths);
+    // Spec 020 D12: the run's instance is the current one; a recreate waits for the run.
+    const children = this.#instanceCoverage?.children === true;
+    const files = coveredFiles(vitest, batches, wanted, this.#sources, this.paths, children);
+    if (this.#instanceCoverage?.kept() === true) noteOnce(this.paths.root, KEPT_NOTE, this.#note);
     if (files.length > 0) this.#coverage?.collected({ runId, files });
   }
 
