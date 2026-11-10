@@ -124,3 +124,27 @@ Done when:
 - `git cherry-pick -x` of both holds is complete, with conflicts resolved and the resolution in its own commit;
 - lint and typecheck are clean;
 - `squeal status --wait 60000` on the changed paths is current, apart from bundle drift.
+
+## 020-10b using child-process coverage in the gate and the daemon (after 020-07b and 020-07c)
+
+Use /worker. Shape: slice.
+
+Outcome: spec D12 items 6 and 7, on top of 020-10a's collection, 020-07a's rule, 020-07b's own-file loaders and 020-07c's stored evidence.
+
+Read: spec D12; `research/child-coverage.md` (row split 020-10b); `tasks/020-10a/notes.md` (the seam map).
+
+Starting seam: a gate end-to-end test. A changed script that only a spawned child runs, selected with `--test`, passes with `coverage.children: true` at the base. With the key off, the same script reads a violation or `incomplete`. Then:
+- the gate reads `coverage.children` at the base (`gate/policy.ts`) and passes it to the runners (`gate/collect.ts`);
+- in the daemon, with the key on, a test file whose observed set holds a path is also a loader of that path (`crap/loaders.ts`). Prove it with a daemon test before relying on it; the survey only read it.
+- the texts say children are measured, as a lower bound (`cli/code-coverage.ts`, `delivery/code-coverage.ts`);
+- the report adds `coverage.children` to `base` and child counts per run;
+- README and `commands.md` document the key.
+
+Owns: `src/core/code/gate/{collect,policy,report,types}.ts` (additive), `src/core/code/crap/loaders.ts`, `src/cli/code-coverage.ts`, `src/core/delivery/code-coverage.ts`, README and `commands.md` with its copies, their tests.
+
+Leave alone: `src/core/code/coverage/` (020-10a), `src/runners/`, `gate/rule.ts`.
+
+Done when:
+- the gate test passes with the key on and off as described;
+- a daemon test shows a function only a child runs reads covered with the key on;
+- the default-off output is unchanged.
