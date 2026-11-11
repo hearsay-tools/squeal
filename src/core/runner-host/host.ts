@@ -34,7 +34,7 @@ export interface HostedAdapter extends RunnerAdapter {
 /** What the adapter's options call, which the host turns into events and policy reads. */
 export interface AdapterHooks {
   readonly policy: () => HostPolicy;
-  readonly note: (text: string) => void;
+  readonly note: (text: string, topic?: string) => void;
   readonly optimizer: (projects: readonly string[]) => void;
   readonly coverage: (run: CoverageRun) => void;
 }
@@ -127,7 +127,7 @@ export async function serveRunnerHost(options: ServeOptions): Promise<void> {
       if (policy === null) throw new Error("runner host: no policy before start");
       return policy;
     },
-    note: (text) => send({ ev: "note", text }),
+    note: (text, topic) => send({ ev: "note", text, ...(topic === undefined ? {} : { topic }) }),
     optimizer: (projects) => send({ ev: "optimizer", projects }),
     coverage: (run) => send({ ev: "coverage", run: encodeCoverageRun(run) }),
   };

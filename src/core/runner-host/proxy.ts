@@ -74,7 +74,7 @@ export interface HostProxyOptions {
   readonly options: HostAdapterOptions;
   /** Read before each request; sent when it changed. */
   readonly policy: () => HostPolicy;
-  readonly note?: (text: string) => void;
+  readonly note?: (text: string, topic?: string) => void;
   readonly optimizer?: (projects: readonly string[]) => void;
   /** Coverage's `collected`: each run's payloads. */
   readonly coverage?: (run: CoverageRun) => void;
@@ -296,7 +296,7 @@ class HostProxy implements RunnerAdapter {
   #event(message: HostEvent): void {
     switch (message.ev) {
       case "note":
-        this.#options.note?.(message.text);
+        this.#options.note?.(message.text, message.topic);
         return;
       case "optimizer":
         this.#options.optimizer?.(message.projects);
