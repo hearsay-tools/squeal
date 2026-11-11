@@ -3,11 +3,8 @@ import { dirname, join } from "node:path";
 import { codeGateCommand } from "../../src/cli/code-gate.js";
 import { PART_PREFIX, type Part } from "../../src/core/ci/parts.js";
 import type { GateReport, GateRunReport } from "../../src/core/code/gate/report.js";
-import type { GateAdapters } from "../../src/core/code/gate/runners.js";
-import type { TestFileRef } from "../../src/core/types/keys.js";
-import type { RunnerAdapter } from "../../src/core/types/runner.js";
 import { committed, scratch, writeFiles } from "../ci/fixture.js";
-import { ADAPTERS } from "../code/gate/collect-fixture.js";
+import { watched } from "../code/gate/collect-fixture.js";
 import { MATH_FILES, recordCovered } from "../runners/vitest/ci-coverage-kit.js";
 
 /*
@@ -61,23 +58,6 @@ export async function recordInto(
   const run = await recordCovered(root, parts, args, undefined, { ...process.env, CI: "true" });
   if (run.parts.length !== 1) throw new Error(`ci record wrote no part: ${run.said}`);
   return parts;
-}
-
-/** The adapters, each Vitest run's files appended to `ran`. */
-function watched(ran: string[]): GateAdapters {
-  const wrap = (adapter: RunnerAdapter): RunnerAdapter =>
-    new Proxy(adapter, {
-      get(target, key) {
-        const value: unknown = Reflect.get(target, key, target);
-        if (typeof value !== "function") return value;
-        if (key !== "run") return value.bind(target);
-        return (files: readonly TestFileRef[], ...rest: unknown[]) => {
-          ran.push(...files.map((f) => f.path));
-          return (value as (...args: unknown[]) => unknown).call(target, files, ...rest);
-        };
-      },
-    });
-  return { ...ADAPTERS, vitest: async (options) => wrap(await ADAPTERS.vitest(options)) };
 }
 
 export interface Gated {
