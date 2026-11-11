@@ -3,7 +3,7 @@ import { mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { loadBasePolicy, readBasePolicy } from "../../../src/core/code/gate/policy.js";
+import { loadBasePolicy } from "../../../src/core/code/gate/policy.js";
 import { readScope } from "../../../src/core/code/gate/scope.js";
 import { DEFAULT_POLICY } from "../../../src/core/types/policy.js";
 
@@ -51,7 +51,7 @@ function repo(config: string | null): {
   return { root, base: git("rev-parse", "HEAD"), commit };
 }
 
-describe("readBasePolicy", () => {
+describe("loadBasePolicy", () => {
   it("reads the defaults when the base has no squeal.config.json", async () => {
     const { root, base } = repo(null);
 
@@ -73,7 +73,7 @@ describe("readBasePolicy", () => {
       }),
     );
 
-    expect(await readBasePolicy(root, base)).toEqual({
+    expect((await loadBasePolicy(root, base)).policy).toEqual({
       complexityThreshold: 12,
       crapThreshold: 25,
       coverageExclude: ["test/**"],
@@ -88,7 +88,7 @@ describe("readBasePolicy", () => {
   it("reads coverage.children at the base, with coverage.enabled off too (D12.1)", async () => {
     const { root, base } = repo(JSON.stringify({ coverage: { enabled: false, children: true } }));
 
-    expect(await readBasePolicy(root, base)).toEqual({ ...DEFAULTS, children: true });
+    expect((await loadBasePolicy(root, base)).policy).toEqual({ ...DEFAULTS, children: true });
   });
 
   it("does not read coverage.children a branch turns on, committed or in the working tree", async () => {
@@ -97,7 +97,7 @@ describe("readBasePolicy", () => {
     commit(on);
     writeFileSync(join(root, "squeal.config.json"), on);
 
-    expect((await readBasePolicy(root, base)).children).toBe(false);
+    expect((await loadBasePolicy(root, base)).policy.children).toBe(false);
   });
 
   it("does not read a branch's looser config, committed or in the working tree", async () => {
@@ -111,7 +111,7 @@ describe("readBasePolicy", () => {
     commit(loose);
     writeFileSync(join(root, "squeal.config.json"), loose);
 
-    expect(await readBasePolicy(root, base)).toEqual({
+    expect((await loadBasePolicy(root, base)).policy).toEqual({
       ...DEFAULTS,
       complexityThreshold: 10,
       crapThreshold: 15,
@@ -166,7 +166,7 @@ describe("readBasePolicy", () => {
       readdirSync(tmpdir()).filter((name) => name.startsWith("squeal-gate-policy-"));
     const before = scratch();
 
-    await readBasePolicy(root, base);
+    await loadBasePolicy(root, base);
 
     expect(scratch()).toEqual(before);
   });
