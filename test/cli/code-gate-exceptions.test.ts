@@ -80,7 +80,7 @@ describe("squeal code --base --exceptions (spec 020 D8)", () => {
 
     const ran = await code(root, ["--base", "main", "--exceptions", file, "--json"]);
 
-    expect(ran.stderr).toBe("");
+    expect(ran.stderr).toBe("squeal code: Vitest: 1 test file to run (tests 1)\n");
     expect(ran.code).toBe(0);
     expect(functionsOf(ran.stdout)).toEqual([["deep", 21, 21, "accepted", [["covers", 21]]]]);
     const report = JSON.parse(ran.stdout) as GateReport;

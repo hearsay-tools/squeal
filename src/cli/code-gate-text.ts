@@ -23,7 +23,7 @@ import { plural } from "../core/text.js";
 /** D5: why a function is incomplete, in words. */
 const GAP_WORDS: Readonly<Record<GateGap, string>> = {
   "not-counted": "not counted: it is inside code that does not parse",
-  "no-loader": "no test loads its file",
+  "no-loader": "no test Squeal runs loads its file",
   "not-finished": "a test file that loads it did not finish in the budget",
   "no-record": "no coverage record of its file's bytes now",
   "not-joined": "its coverage could not be matched to it",
