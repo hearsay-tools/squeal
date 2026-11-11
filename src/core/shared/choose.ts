@@ -39,15 +39,20 @@ async function remotesOf(root: AbsolutePath, signal: AbortSignal | undefined): P
  * The remote whose `refs/remotes/<remote>/HEAD` names its default branch:
  * `origin` first, then each other remote in git's order; `null` when none
  * does (a clone sets it; `git remote set-head <remote> --auto` does too).
+ * Row 018-28 R2: a `HEAD` naming a branch the clone does not hold names
+ * none; a default branch renamed on the remote leaves one after
+ * `git fetch --prune`, and `git merge-base` then fails with no note.
  */
 export async function upstreamOf(
   root: AbsolutePath,
   signal?: AbortSignal,
 ): Promise<Upstream | null> {
   for (const remote of await remotesOf(root, signal)) {
-    const args = ["symbolic-ref", "-q", `refs/remotes/${remote}/HEAD`];
+    const head = `refs/remotes/${remote}/HEAD`;
+    // The branch `HEAD` names, only when the clone holds it; `HEAD` itself when it names none.
+    const args = ["rev-parse", "--verify", "-q", "--symbolic-full-name", head];
     const branch = textOf(await gitCall(root, args, local(signal)));
-    if (branch !== null && branch !== "") return { remote, branch };
+    if (branch !== null && branch !== "" && branch !== head) return { remote, branch };
   }
   return null;
 }
@@ -58,7 +63,8 @@ const ADVERTISED_HEAD = /^ref: refs\/heads\/(\S+)\tHEAD$/m;
 /**
  * Row 018-28 (`research/shared-proof.md` Q3): without a local
  * `refs/remotes/<remote>/HEAD` (a remote removed and added again has none,
- * and a fetch never makes it), the default branch the remote itself
+ * and a fetch before git 2.48 never makes it) or with one naming a branch
+ * the clone does not hold, the default branch the remote itself
  * advertises, `git ls-remote --symref <remote> HEAD`, for `origin`, else the
  * first remote. `null` when that remote names none, cannot be reached within
  * the caller's timer or stop, or the clone holds no remote-tracking ref of
