@@ -13,6 +13,9 @@ Worker ca906185, wave 1 (`../wave-1.md`), base `235de8076`, 2026-11-11. Spec D2.
 | `b77b708b3` | R1: the worker-thread lock holder shared by the daemon's busy tests |
 | `2d91c885c` | R1, review 0.1.434 B2: `scheduler.ts` by agreement (request 7cf4a17d): a socket request's write stage retried (`#transact`, `#request`) |
 | `9c4aad93a` | R1, B2: the daemon's free-lock probe (`#writable`, `DaemonWrites.writable`) removed |
+| `c00c847c1` | R2: the busy-store test helpers in `test/helpers/busy-store.ts`, with the event-loop gap |
+| `d30dee5f3` | R2, re-review of 0.1.434 B2: `keying.ts` writes repeatable after a busy refusal |
+| `c5ab4b2a8` | R2, B2: `run --all`'s runner recovery split into runner calls, retried keying, and a store stage in the checkpoint's transaction |
 
 ## The retried path
 
@@ -34,7 +37,7 @@ A busy store refuses `BEGIN IMMEDIATE` before the transaction writes. What a ref
 
 - **A refinement is retried in place, not pushed back on the queue.** It keeps its place, so later revisions still apply in order, and its fetched runner part is reused. Only a busy refusal is retried. Another error keeps today's note and "counted refined": a deterministic error would loop.
 - **A refused refinement during the scheduler's close returns quietly.** The revision stays unrefined, and the next daemon's start reads its paths as edits (task 001-113), instead of a note and a refined mark.
-- **Socket requests: the write lock first, then the change** (R1, review 0.1.434 B2; the first round's free-lock probe reserved nothing). A request changes scheduler memory before its commit (a full suite creates a checkpoint, a retry claims and queues), so it must never run twice: its stage takes the store's transaction before it changes anything, and only a refusal at that start is retried. A request still refused once the daemon stops answers `<operation>: the store was still busy when the daemon stopped`. A lint group's release writes the code store, so it stays outside the store's transaction (D3). `retryRunner`'s own writes, on the runner-failure path before a full suite, are not retried. `promote` and `focus` are unchanged: their one write, the yields row, is tried once with no wait and skipped when busy (`yields.ts`, `withBusySliceSync(0, …)`).
+- **Socket requests: the write lock first, then the change** (R1, review 0.1.434 B2; the first round's free-lock probe reserved nothing). A request changes scheduler memory before its commit (a full suite creates a checkpoint, a retry claims and queues), so it must never run twice: its stage takes the store's transaction before it changes anything, and only a refusal at that start is retried. A request still refused once the daemon stops answers `<operation>: the store was still busy when the daemon stopped`. A lint group's release writes the code store, so it stays outside the store's transaction (D3). The runner recovery before a full suite while a runner failure is outstanding (R2): `fetchRunnerRetry` asks the runner and writes nothing; `keyRunnerRetry` keys its answers and is tried again with them kept, the lagging files touched again; `storeRunnerRetry` (import graph, listing and its omitted count, closures, settle) runs inside the checkpoint's transaction. `promote` and `focus` are unchanged: their one write, the yields row, is tried once with no wait and skipped when busy (`yields.ts`, `withBusySliceSync(0, …)`).
 - **`run --all` in a daemon waits** behind a reconciliation pass started after the request (row 011-198), which the feed retries; its held-lock test is at the scheduler (`test/scheduler/busy-requests.test.ts`), where no such pass runs.
 - **Bounds.** Start writes keep the start's 120 s total; shutdown writes keep 5 s each. Everything else retries until it lands or its scheduler or daemon stops.
 
@@ -42,7 +45,7 @@ A busy store refuses `BEGIN IMMEDIATE` before the transaction writes. What a ref
 
 - CI import (`transfer-import.ts`): spec 018's, by the brief.
 - `install-stamp.ts` `refreshInstall`: its only write is `ledger.commit()`, which owes its writes after a refusal; the pump's next commit writes them. Not changed.
-- `keying.ts` `trackUntracked` clears `#untracked` before `track`; a refused `#seed` flush loses the paths' ignore check (`checkIgnored` never runs for them). The refinement's retry sets every closure of its runner part again, which refreshes their hashes (`KeyIndex.setClosure` re-acquires shared entries), so keys are right; only the extra-file watch of such a path can be missed. Fix belongs to `keying.ts`.
+- `keying.ts` after a refused write (fixed in R2): `setEnvironments` keeps the observed-before state until a call completes, `track` hashes and writes again the paths a refused flush left unstored and judges their ignore status, `trackUntracked` puts its paths back, and `#release` writes its drop before it forgets the paths.
 - `scan()` at start writes revisions with the start's long wait. D2 does not list it.
 
 ## Tests
@@ -54,5 +57,6 @@ A busy store refuses `BEGIN IMMEDIATE` before the transaction writes. What a ref
 | `test/daemon/busy-writes.test.ts` | second process, 1.5 s; daemon's serving wait mocked to 200 ms | yes: retry rejected `database is locked`; shutdown mark missing |
 | `test/daemon/busy-requests.test.ts` (R1) | worker thread, taken when `squeal run tests` takes the scheduler's lock (its `held` callback), after where the probe ran | yes: event loop stopped 1,606 ms; a request refused at the stop failed with a bare `database is locked` |
 | `test/scheduler/busy-requests.test.ts` (R1) | second process, 1.5 s, store's own wait 100 ms | yes: retry and run --all rejected `database is locked` |
+| `test/scheduler/busy-requests.test.ts` (R2), runner recovery | worker thread, taken after the runner's environment answers, 500 ms, store's own wait 100 ms | yes: `database is locked` at `recordWorktreeEnvironments`; now one checkpoint, event loop never stopped 400 ms; also run under Node 22.19 |
 | `test/daemon/busy-start.test.ts` | worker thread, taken at the baseline's last commit, 1.5 s | yes: no ping answered during the hold |
 | `test/store/retry-while-busy.test.ts` | none (unit) | new helper |
