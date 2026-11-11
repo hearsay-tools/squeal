@@ -7,6 +7,7 @@ import type { CheckId } from "../types/check.js";
 import type { EpochMs, ProjectName } from "../types/common.js";
 import type { CheckKey } from "../types/keys.js";
 import { importMark } from "../types/state.js";
+import type { SquealBuild } from "../types/status.js";
 import type { Store } from "../types/store.js";
 import type { ResultRecord } from "../types/store-records.js";
 import { putEnvironments } from "./environments.js";
@@ -33,9 +34,18 @@ const MAP_KEY: Readonly<Record<ObservedMap, (project: ProjectName) => string>> =
  * `null`. A result at another format's key could never be current here.
  */
 export function importRefusal(bundle: ResultsBundle): string | null {
-  const theirs = bundle.header.keyFormat;
-  if (theirs === KEY_FORMAT_VERSION) return null;
-  return `the export's key format is ${theirs}; this Squeal's is ${KEY_FORMAT_VERSION}`;
+  const theirs = otherKeyFormat(bundle);
+  if (theirs === null) return null;
+  return `the export's key format is ${theirs.keyFormat}; this Squeal's is ${KEY_FORMAT_VERSION}`;
+}
+
+/**
+ * Spec 018 D21: the Squeal that wrote `bundle` and its key format, when that
+ * format is not this Squeal's (`importRefusal`); else `null`.
+ */
+export function otherKeyFormat(bundle: ResultsBundle): SquealBuild | null {
+  const { squealVersion, keyFormat } = bundle.header;
+  return keyFormat === KEY_FORMAT_VERSION ? null : { version: squealVersion, keyFormat };
 }
 
 /** What an import added (018 D3). */
