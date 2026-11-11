@@ -112,6 +112,8 @@ class HostProxy implements RunnerAdapter {
   #widths: Widths | null = null;
   #policy = "";
   #closed: Promise<void> | null = null;
+  /** A host lost before its start answered is the start's error, noted as the runner's failure. */
+  #started = false;
 
   constructor(options: HostProxyOptions) {
     this.#options = options;
@@ -123,7 +125,7 @@ class HostProxy implements RunnerAdapter {
       event: (message) => this.#event(message),
       lost: (error) => {
         gone.add(this);
-        options.note?.(`${error.message}; a new one starts at the next call`);
+        if (this.#started) options.note?.(`${error.message}; a new one starts at the next call`);
       },
     });
   }
@@ -158,6 +160,7 @@ class HostProxy implements RunnerAdapter {
       this.globalSetups = () =>
         this.#call("globalSetups", []) as Promise<readonly GlobalSetupEntry[]>;
     this.#take(started.values);
+    this.#started = true;
   }
 
   invalidate(paths: readonly InvalidatedPath[]): Promise<InvalidateResult> {
