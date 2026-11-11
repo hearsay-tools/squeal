@@ -61,6 +61,21 @@ describe("pinnedNode (018 D18)", () => {
     });
   });
 
+  it("gives up on a candidate that ignores SIGTERM within its time limit (review 018-30-0.1.436 B1)", () => {
+    const { home, env } = fakeHome();
+    const binary = nvmNode(home, PINNED);
+    fakeNode(binary, PINNED);
+    // A candidate that never answers and ignores SIGTERM, as a broken shim can.
+    writeFileSync(binary, "#!/bin/sh\ntrap '' TERM\nexec /bin/sleep 30\n");
+    chmodSync(binary, 0o755);
+    const started = Date.now();
+    expect(pinnedNode(rootWith({ ".node-version": PINNED }), env)).toEqual({
+      reason: "missing",
+      wanted: PINNED,
+    });
+    expect(Date.now() - started).toBeLessThan(10_000);
+  }, 20_000);
+
   it("does not use a pin below Squeal's minimum Node: `too-old`, with the pin's text", () => {
     const { home, env } = fakeHome();
     fakeNode(nvmNode(home, "20.11.0"), "20.11.0");
