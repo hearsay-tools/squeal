@@ -144,7 +144,7 @@ export const endTurn: OcHandler<"endTurn"> = async (request, deps) => {
     deps,
     async (context) =>
       request.continued === true
-        ? endContinued(context)
+        ? context.write(() => endContinued(context))
         : context.delivery.endTurn(context.consumer),
   );
   return { ended: ended ?? false };
