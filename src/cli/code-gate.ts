@@ -5,11 +5,12 @@ import {
   COVERAGE_RECORD_VERSION,
 } from "../core/code/coverage/record.js";
 import { BaseRefError, changedFunctions, mergeBase } from "../core/code/gate/changed.js";
-import { CollectUsageError, type GateAdapters } from "../core/code/gate/collect.js";
+import { CollectUsageError } from "../core/code/gate/collect.js";
 import { evaluate } from "../core/code/gate/evaluate.js";
 import { readPartsIn } from "../core/code/gate/parts.js";
 import { type BasePolicy, loadBasePolicy } from "../core/code/gate/policy.js";
 import type { EngineVersions, GateRunner } from "../core/code/gate/report.js";
+import type { GateAdapters } from "../core/code/gate/runners.js";
 import { resolveScope } from "../core/code/gate/scope.js";
 import type { ChangedSet, GateVerdict } from "../core/code/gate/types.js";
 import { POLICY_FILE } from "../core/daemon/policy.js";
