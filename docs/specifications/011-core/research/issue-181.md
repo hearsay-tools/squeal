@@ -2,14 +2,14 @@
 
 The cezarion incident is **not reproduced**. In a small fixture on Squeal 0.1.429, a named new test file was listed at once and was not held by revision discovery. It still got no verdict for 61 s, while a direct Vitest run of it returned in 0.5 s. Two other things held it: a running tier of another file, and its own first-failure re-run, which waited behind a 30 s re-run of that file. This is a synthetic blocker. It does not prove what caused the incident.
 
-2026-11-11, 01:21–01:35 UTC. Research baseline `1ac649d40` (0.1.430 released). Documentation and throwaway probes only. No product code, board, spec, status or skill was changed. No other session's daemon, socket or store was touched.
+2026-11-11, 01:21–01:28 UTC. Research baseline `1ac649d40` (0.1.430 released). Documentation and throwaway probes only. No product code, board, spec, status or skill was changed. No other session's daemon, socket or store was touched.
 
 ## Answers
 
 | # | Question | Answer and evidence tag | Version |
 | --- | --- | --- | --- |
 | 1 | Can a named new unit regression wait remain behind revision discovery while a focused direct run returns in seconds? | **Not in this probe.** The new file's revision was listed within about 1 s (`refinedRevision: 2`, `runnerPartPending: false`, `testFilesListed: true`). The wait still had no verdict after 15 s, exit 3, while the direct run failed in 509 ms. What held it was a running tier, then a first-failure re-run behind another file. **verified by experiment** | 0.1.429, Vitest 5.0.3 |
-| 2 | Is the cezarion incident reproduced? | **Not reproduced, because** the issue gives no store, daemon log or trace, the cezarion workload (1,868 test files, 112 pending) was not replayed, and its key signs did not appear in the probe: the daemon stayed at revision 1 after later edits, its heartbeat was late for 111 s, and oxlint timed out 3 times. In the probe the revision advanced at once and the heartbeat was on time. **inferred** from the issue's JSON | incident 0.1.429 |
+| 2 | Is the cezarion incident reproduced? | **Not reproduced, because** the issue gives no store, daemon log or trace, the cezarion workload (1,869 test files: 33 current, 137 pending and 1,699 unknown in the recorded revision-6 JSON) was not replayed. The issue reports pending discovery, intermittent late heartbeats, a locked stop write and three oxlint timeouts. These combined conditions were not recreated. In the probe the revision advanced at once and the heartbeat was on time. **inferred** from the issue's JSON | incident 0.1.429 |
 | 3 | Installed runtime against the reported 0.1.429 | Installed CLI and plugin: **0.1.430**. Retained 0.1.429 exists and was the CLI the probes used. The difference from 0.1.429 to 0.1.430 is only 020-14 (`import("x")` types in the counter); no scheduler or status change. **read in source code** (`git log squeal--v0.1.429..squeal--v0.1.430`) | 0.1.429, 0.1.430 |
 | 4 | Host load before live work | 14.19 at the start on 24 CPUs. 14.12 before the blocked run, 16.78 before the control run. All below the CPU count, so live probes ran. **verified by experiment** | n/a |
 
@@ -85,7 +85,7 @@ F3. **verified by experiment, 0.1.429.** The new file's first failure was re-run
 
 F4. **inferred, 0.1.429.** The named wait seems to count a file queued for its first-failure re-run as pending, and the re-run seems to lose the promotion once the first result is current (C15 "Lifetime": a file stays in its batch "until its result is current at its key"). The store order supports this: an unpromoted `fast.test.ts` ran before the re-run. The source path was not read to confirm it. In the control the re-run came at once, so the effect is invisible without other queued work.
 
-F5. **inferred, incident.** The issue's JSON points to a different blocker than F1 to F4. `revision: 1` after later source edits means the daemon did not record those edits as revisions. The daemon block reads `late` with `since` 111.2 s before `lastHeartbeatAt` (1794357305536 − 1794357194338); the field's exact meaning was not read in source. A late heartbeat and oxlint timeouts of 5 s together suggest a busy daemon or host, not a queue order. The status text the incident showed was not recorded, so its reason line is unknown.
+F5. **inferred, incident 0.1.429.** The issue's recorded JSON is revision 6, with `runnerPartPending: true`, listing runners Vitest and node:test, 137 queued files and no running files. It records a 12,321 ms late-heartbeat age with daemon state `down` after stop; the earlier named wait at revision 4 reports a 21 s stale heartbeat while the socket answered. The incident includes the named status reason text quoted in the issue. These observations do not establish which operation or lock caused the delay. The probe did not reproduce these combined conditions.
 
 ## Comparison with earlier research
 
@@ -97,8 +97,8 @@ F5. **inferred, incident.** The issue's JSON points to a different blocker than 
 
 Keep #181 open as an incident not reproduced. Do not record discovery as its cause. Two cheap follow-ups decide more than a longer probe:
 
-1. Ask for the incident's `squeal status blocked-switch.test.ts` text, or the cezarion daemon log near 1794357194338, to see its reason line and why the heartbeat was late.
-2. A row may confirm F4 in source: whether the first-failure re-run of a named file keeps its promotion, and whether the named verdict must wait for it. The issue's own wording, "four intended failures before the source fix", is exactly this case: a new failing file.
+1. Obtain the incident daemon log and operation/lock timing around the reported named wait for `packages/cezar/src/workflows/removed-project-root.test.ts`. The issue already includes its pending-discovery reason line; the concrete blocking operation remains unknown.
+2. A row may confirm F4 in source: whether the first-failure re-run of a named file keeps its promotion, and whether the named verdict must wait for it. The issue reports two intended regression failures in newly added tests; this makes the new-failure control relevant without proving a shared cause.
 
 ## Limits
 
