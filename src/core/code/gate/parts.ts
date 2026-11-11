@@ -11,7 +11,8 @@ import type { AbsolutePath, RelativePath } from "../../types/common.js";
 import type { FileHash, TestFileRef } from "../../types/keys.js";
 import type { RunnerClosure } from "../../types/runner.js";
 import { COVERAGE_PROVIDER_VERSION, COVERAGE_RECORD_VERSION } from "../coverage/record.js";
-import { FILE_ERROR, type StoredEvidence } from "./collect.js";
+import type { StoredEvidence } from "./collect.js";
+import { FILE_ERROR } from "./evidence.js";
 import { environmentCheck, type GateEnvironment } from "./parts-environment.js";
 import type { TestFileEvidence } from "./types.js";
 
