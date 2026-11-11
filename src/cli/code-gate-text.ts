@@ -176,9 +176,16 @@ function leftOutText(report: GateReport): string {
     .join("");
 }
 
+/** D16.3: how many changed functions D2 left out; nothing when none. */
+function omittedText(report: GateReport): string {
+  const omitted = report.omitted?.length ?? 0;
+  return omitted === 0 ? "" : ` ${omitted} left out as moved or unchanged; --json lists them.`;
+}
+
 /**
  * D1's verdict line: the verdict, what was judged against what, the count
- * of each state, and what the scope left out (D14.3).
+ * of each state, what the scope left out (D14.3), and how many changed
+ * functions were not judged (D16.3).
  */
 function verdictLine(report: GateReport): string {
   const { counts, base } = report;
@@ -197,7 +204,7 @@ function verdictLine(report: GateReport): string {
       ? `No function changed ${against}`
       : `${plural(judged, "changed function")} ${against}`;
   const tally = parts.length === 0 ? "" : `: ${parts.join(", ")}`;
-  return `Code gate: ${report.verdict}. ${what}${tally}.${leftOutText(report)}`;
+  return `Code gate: ${report.verdict}. ${what}${tally}.${leftOutText(report)}${omittedText(report)}`;
 }
 
 /** The human rendering of a gate report; `json` is the command that prints it as JSON. */
