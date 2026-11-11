@@ -1,9 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
+import { afterEach, describe, expect, it } from "vitest";
 import { Keeper } from "../../../src/core/code/gate/keep.js";
 import { refKey } from "../../../src/core/code/gate/records.js";
 import type { Hasher } from "../../../src/core/hash/hasher.js";
 import { StatCache } from "../../../src/core/hash/stat-cache.js";
 import type { WorktreeKeys } from "../../../src/core/scheduler/keying.js";
+import { isStoreOpenFailure, openStore } from "../../../src/core/store/open.js";
+import { storePaths } from "../../../src/core/store/paths.js";
 import type { CheckKey, TestFileRef } from "../../../src/core/types/keys.js";
 import { DEFAULT_POLICY } from "../../../src/core/types/policy.js";
 import type { RunReport } from "../../../src/core/types/runner.js";
@@ -12,7 +18,9 @@ import type { RunReport } from "../../../src/core/types/runner.js";
  * Spec 020 D17.3 (row 020-17c): what the keeper writes is the CLI cases'
  * (`test/cli/code-gate-keep*.test.ts`). Here: it never reaches the write
  * for a file that did not complete or has no record, and a failure while
- * keeping costs only the write, told once, and never fails the gate.
+ * keeping costs only the write, told once, and never fails the gate. A
+ * store whose write lock another connection holds is retried in busy
+ * slices until a bound; a file still not written then is told as not kept.
  */
 
 const REF: TestFileRef = { project: "", path: "test/a.test.ts" };
@@ -84,7 +92,7 @@ describe("Keeper (spec 020 D17.3)", () => {
 
     // The root does not exist, so the write fails at its first step; it is told once.
     expect(notes).toHaveLength(1);
-    expect(notes[0]).toMatch(/^the gate kept no more results in the stores: /);
+    expect(notes[0]).toMatch(/^the test files this run completed were not kept in the stores: /);
   });
 
   it("writes nothing of a file whose run loaded an environment file its keys lack", async () => {
@@ -110,5 +118,83 @@ describe("Keeper (spec 020 D17.3)", () => {
     await keep.ran({ ...run([REF], RECORD), runner: "node-test" });
 
     expect(notes).toEqual([]);
+  });
+});
+
+describe("Keeper on a store another connection holds (spec 020 D17.3)", () => {
+  const dirs: string[] = [];
+  afterEach(() => {
+    for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+  });
+
+  /** A worktree root, a common directory with a store, and a connection holding its write lock. */
+  function lockedStore() {
+    const root = mkdtempSync(join(tmpdir(), "squeal-keep-"));
+    dirs.push(root);
+    const commonDir = join(root, ".git");
+    mkdirSync(commonDir);
+    const store = openStore(commonDir);
+    if (isStoreOpenFailure(store)) throw new Error(store.reason);
+    store.close();
+    const holder = new DatabaseSync(storePaths(commonDir).database);
+    holder.exec("BEGIN IMMEDIATE");
+    const release = () => {
+      if (!holder.isOpen) return;
+      holder.exec("ROLLBACK");
+      holder.close();
+    };
+    return { root, commonDir, release };
+  }
+
+  function keeperAt(at: { root: string; commonDir: string }, notes: string[], busyBoundMs: number) {
+    const keep = new Keeper({
+      root: at.root,
+      commonDir: at.commonDir,
+      policy: { ...DEFAULT_POLICY, complexity: { ...DEFAULT_POLICY.complexity, enabled: true } },
+      head: async () => ({ head: "a".repeat(40), dirty: false }),
+      note: (text) => notes.push(text),
+      busyBoundMs,
+    });
+    keep.expect("vitest", KEYS, HASHER, new Map([[REF, KEY]]));
+    return keep;
+  }
+
+  /** The results stored at `KEY`, read once the lock is free. */
+  function resultsAt(commonDir: string): number {
+    const db = new DatabaseSync(storePaths(commonDir).database, { readOnly: true });
+    try {
+      const row = db.prepare("SELECT count(*) AS n FROM results WHERE key = ?").get(KEY);
+      return Number(row?.n);
+    } finally {
+      db.close();
+    }
+  }
+
+  it("keeps the file once the lock is freed within the bound", async () => {
+    const locked = lockedStore();
+    const notes: string[] = [];
+    const freed = setTimeout(locked.release, 400);
+    try {
+      await keeperAt(locked, notes, 5_000).ran(run([REF], RECORD));
+    } finally {
+      clearTimeout(freed);
+      locked.release();
+    }
+    expect(notes).toEqual([]);
+    expect(resultsAt(locked.commonDir)).toBe(1);
+  });
+
+  it("keeps nothing while the lock outlasts the bound, and says the file was not kept", async () => {
+    const locked = lockedStore();
+    const notes: string[] = [];
+    try {
+      await keeperAt(locked, notes, 600).ran(run([REF], RECORD));
+    } finally {
+      locked.release();
+    }
+    expect(notes).toEqual([
+      "1 completed test file was not kept in the stores: the store stayed busy for 0.6 s (another connection held its write lock)",
+    ]);
+    expect(resultsAt(locked.commonDir)).toBe(0);
   });
 });
