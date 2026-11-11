@@ -7,12 +7,12 @@ import {
   type DaemonMessage,
   encodeLine,
   errorOf,
+  frameOf,
   type HostMessage,
   type HostPolicy,
   type HostStart,
   type HostStarted,
   type HostValues,
-  MARKER,
   RUNNER_HOST_PROTOCOL,
   type WireRunOptions,
 } from "./protocol.js";
@@ -260,10 +260,11 @@ export async function serveRunnerHost(options: ServeOptions): Promise<void> {
 
   const lines = createInterface({ input: options.input, crlfDelay: Number.POSITIVE_INFINITY });
   lines.on("line", (line) => {
-    if (!line.startsWith(MARKER)) return;
+    const frame = frameOf(line);
+    if (frame === null) return;
     let message: DaemonMessage;
     try {
-      message = JSON.parse(line.slice(MARKER.length)) as DaemonMessage;
+      message = JSON.parse(frame) as DaemonMessage;
     } catch {
       process.stderr.write(`runner host: a line that does not parse: ${line.slice(0, 200)}\n`);
       return;
