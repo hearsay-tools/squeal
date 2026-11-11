@@ -147,6 +147,18 @@ describe("collectEvidence: a node:test entry's prepare (spec 020 D15)", () => {
     },
   );
 
+  it("does not run a prepare when no file of its entry is selected", SLOW, async () => {
+    const root = project("prepare");
+    const changed = await changedSet(root, [UNIT]);
+    const { evidence, notes } = await collect(root, changed, {
+      prepares: prepares(["node", "scripts/build.mjs"]),
+    });
+    expect(notes).toEqual([]);
+    expect(evidence.prepares).toBeUndefined();
+    expect(evidence.testFiles.map((f) => [f.path, f.completed])).toEqual([[UNIT, true]]);
+    expect(existsSync(join(root, "dist"))).toBe(false);
+  });
+
   it(
     "does not run a prepare that only the head declares, and says to land it first",
     SLOW,
