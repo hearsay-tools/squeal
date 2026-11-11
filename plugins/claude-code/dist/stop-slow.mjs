@@ -249,6 +249,7 @@ var DEFAULT_POLICY = {
     blocking: false,
     tools: ["eslint", "oxlint"]
   },
+  gate: { groups: null },
   shared: { ref: null }
 };
 
@@ -517,8 +518,8 @@ function resolveEntry(group, index) {
   };
 }
 var DEFER_DEFAULTS = { maxLoadPerCpu: 1, maxDeferMs: 6e5 };
-function groupOf(groups, check) {
-  return groups.find((group) => selects(group.select, check)) ?? null;
+function groupOf(groups2, check) {
+  return groups2.find((group) => selects(group.select, check)) ?? null;
 }
 function selects(selector, check) {
   switch (selector.kind) {
@@ -565,6 +566,28 @@ var insideRoot = (v) => {
   const normal = posix.normalize(v.replaceAll("\\", "/"));
   return isAbsolute(v) || normal === ".." || normal.startsWith("../") ? "a path inside the worktree, relative to its root" : null;
 };
+var PREPARE_SHAPE = "{ command: [executable, ...arguments], timeoutSeconds?: seconds }";
+var prepare = (v) => {
+  if (!isRecord(v)) return PREPARE_SHAPE;
+  const unknown = Object.keys(v).find((key) => key !== "command" && key !== "timeoutSeconds");
+  if (unknown !== void 0) {
+    return { problem: `has an unknown key "${unknown}"; it takes ${PREPARE_SHAPE}` };
+  }
+  const { command, timeoutSeconds } = v;
+  const list = Array.isArray(command) && command.every((s) => typeof s === "string");
+  if (!list || command.length === 0 || command[0] === "") {
+    return {
+      problem: `has a command that is not a list with an executable first: ${JSON.stringify(command)}; it takes ${PREPARE_SHAPE}`
+    };
+  }
+  const positive = typeof timeoutSeconds === "number" && Number.isFinite(timeoutSeconds) && timeoutSeconds > 0;
+  if (timeoutSeconds !== void 0 && !positive) {
+    return {
+      problem: `has a timeoutSeconds that is not a positive number: ${JSON.stringify(timeoutSeconds)}`
+    };
+  }
+  return null;
+};
 var FIELDS = {
   name: nonEmptyString,
   cwd: insideRoot,
@@ -573,7 +596,8 @@ var FIELDS = {
   env: variables,
   include: globs,
   exclude: globs,
-  slow: boolean
+  slow: boolean,
+  prepare
 };
 var REQUIRED = /* @__PURE__ */ new Set(["name", "include"]);
 function nodeTestProjects(value, path) {
@@ -815,6 +839,10 @@ var CODE_SHAPE = {
   crap: { enabled: boolean2, threshold: aboveZero2 }
 };
 
+// src/core/daemon/policy-gate.ts
+var groups = (v) => v === null || Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of check-group names, or null";
+var GATE_SHAPE = { gate: { groups } };
+
 // src/core/daemon/policy-lint.ts
 var boolean3 = (v) => typeof v === "boolean" ? null : "true or false";
 var globs3 = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? compiles(v) : "an array of strings";
@@ -1032,7 +1060,8 @@ var SHAPE = {
   store: { retentionDays: atLeastZero2, maxSizeMb: orNull(aboveZero3) },
   ...CODE_SHAPE,
   ...LINT_SHAPE,
-  ...SHARED_SHAPE
+  ...SHARED_SHAPE,
+  ...GATE_SHAPE
 };
 function loadPolicy(root) {
   const loaded = loadConfigFile(join(root, POLICY_FILE), SHAPE, DEFAULT_POLICY);
@@ -1058,7 +1087,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.430";
+  if (true) return "0.1.432";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -3295,25 +3324,25 @@ var groupViews = /* @__PURE__ */ new WeakMap();
 function groupView(policy) {
   let view = groupViews.get(policy);
   if (view === void 0) {
-    const groups = resolveGroups(policy);
+    const groups2 = resolveGroups(policy);
     const owners = /* @__PURE__ */ new Map();
     const of = (ref2) => {
       const id = testFileId(ref2);
       let owner = owners.get(id);
       if (owner === void 0) {
         const check = { kind: "test", runner: runnerOf(policy, ref2.project), ...ref2 };
-        owner = groupOf(groups, check) ?? fallback(groups);
+        owner = groupOf(groups2, check) ?? fallback(groups2);
         owners.set(id, owner);
       }
       return owner;
     };
-    view = { groups, of };
+    view = { groups: groups2, of };
     groupViews.set(policy, view);
   }
   return view;
 }
-function fallback(groups) {
-  const tests2 = groups.find((group) => group.index === null && group.name === TESTS_GROUP);
+function fallback(groups2) {
+  const tests2 = groups2.find((group) => group.index === null && group.name === TESTS_GROUP);
   if (tests2 === void 0) throw new Error("the default tests group is missing");
   return tests2;
 }
@@ -3327,9 +3356,9 @@ function slowView(policy) {
   let view = views.get(policy);
   if (view === void 0) {
     const globs4 = slowGlobs(policy, policy.nodeTest);
-    const groups = groupView(policy);
+    const groups2 = groupView(policy);
     view = {
-      isSlow: (ref2) => groups.of(ref2).name !== TESTS_GROUP,
+      isSlow: (ref2) => groups2.of(ref2).name !== TESTS_GROUP,
       globs: globs4,
       declared: globs4.length > 0
     };
@@ -3450,12 +3479,12 @@ function writeSlot(store, key, consumer, value) {
 // src/core/slow/stop-wait.ts
 var STOP_SLOW_WAIT_CAP_MS = 354e4;
 var STOP_SLOW_REQUEST_MS = 2e3;
-async function requestGroups(store, worktreeId, groups, budgetMs) {
+async function requestGroups(store, worktreeId, groups2, budgetMs) {
   const budget = Math.min(STOP_SLOW_REQUEST_MS, Math.floor(budgetMs));
-  if (budget <= 0 || groups.length === 0) return;
+  if (budget <= 0 || groups2.length === 0) return;
   const record = store.worktrees.get(worktreeId)?.daemon ?? null;
   if (record === null) return;
-  await Promise.all(groups.map((group) => requestGroup(record.socketPath, group, budget)));
+  await Promise.all(groups2.map((group) => requestGroup(record.socketPath, group, budget)));
 }
 async function requestGroup(socketPath, group, budget) {
   if (group === SLOW_GROUP) {
@@ -3567,9 +3596,9 @@ function readFailureKeys(store, worktreeId) {
 function slowPolicyView(policy) {
   const globs4 = slowGlobs(policy, policy.nodeTest);
   if (globs4.length === 0) return null;
-  const groups = groupView(policy);
+  const groups2 = groupView(policy);
   return {
-    isSlow: policy.checks.length === 0 ? slowFiles(policy, policy.nodeTest) : (ref2) => groups.of(ref2).name === SLOW_GROUP,
+    isSlow: policy.checks.length === 0 ? slowFiles(policy, policy.nodeTest) : (ref2) => groups2.of(ref2).name === SLOW_GROUP,
     slowGlobs: globs4,
     stopWaitMs: stopSlowWaitMs(policy),
     maxHolds: Math.max(1, policy.stop.maxHolds),
@@ -6795,16 +6824,16 @@ var readOrNull = (read5) => "read" in read5 ? read5.read : null;
 // src/core/state/required.ts
 function stopRequired(policy) {
   const view = groupView(policy);
-  const groups = view.groups.filter((group) => group.stopRequires && group.select.kind !== "lint").map((group) => group.name);
+  const groups2 = view.groups.filter((group) => group.stopRequires && group.select.kind !== "lint").map((group) => group.name);
   const lint2 = /* @__PURE__ */ new Map();
   for (const tool of policy.lint.enabled ? policy.lint.tools : []) {
     const group = lintGroupOf(policy, tool);
     if (group?.stopRequires === true) lint2.set(tool, group.name);
   }
   const lintGroups = [...new Set(lint2.values())];
-  if (groups.length === 0 && lintGroups.length === 0) return null;
+  if (groups2.length === 0 && lintGroups.length === 0) return null;
   return {
-    groups,
+    groups: groups2,
     lintGroups,
     lintGroupOf: (tool) => lint2.get(tool) ?? null,
     groupOf: (ref2) => {
@@ -11023,16 +11052,16 @@ function tellSlowTier(store, consumer, tier) {
 function groupsToldMetaKey(worktreeId) {
   return worktreeMetaKey("groupTiersTold", worktreeId);
 }
-function groupTiersState(groups) {
-  if (groups === void 0) return null;
-  return JSON.stringify(groups.map((group) => [group.name, slowTierState(group)]));
+function groupTiersState(groups2) {
+  if (groups2 === void 0) return null;
+  return JSON.stringify(groups2.map((group) => [group.name, slowTierState(group)]));
 }
-function groupTiersChanged(store, consumer, groups) {
-  const state = groupTiersState(groups);
+function groupTiersChanged(store, consumer, groups2) {
+  const state = groupTiersState(groups2);
   return state !== null && readSlot(store, groupsToldMetaKey(consumer.worktreeId), consumer) !== state;
 }
-function tellGroupTiers(store, consumer, groups) {
-  writeSlot(store, groupsToldMetaKey(consumer.worktreeId), consumer, groupTiersState(groups));
+function tellGroupTiers(store, consumer, groups2) {
+  writeSlot(store, groupsToldMetaKey(consumer.worktreeId), consumer, groupTiersState(groups2));
 }
 
 // src/core/delivery/uncovered.ts
@@ -11160,10 +11189,10 @@ var NO_HOLD = {
     return report;
   }
 };
-function startHold(prepare) {
-  if (prepare === void 0) return NO_HOLD;
-  const held = prepare.connection.hold();
-  if (held === null && !prepare.connection.held) return NO_HOLD;
+function startHold(prepare2) {
+  if (prepare2 === void 0) return NO_HOLD;
+  const held = prepare2.connection.hold();
+  if (held === null && !prepare2.connection.held) return NO_HOLD;
   const code = [];
   let acknowledge = null;
   let ended = false;
@@ -11187,7 +11216,7 @@ function startHold(prepare) {
     commitHolds(code);
     settled3();
   };
-  prepare.reports.add({
+  prepare2.reports.add({
     commit,
     abandon,
     get open() {
@@ -13135,11 +13164,11 @@ function slowSlotOf(store, worktreeId, root, header, alive, now) {
   } catch {
     return void 0;
   }
-  const groups = /* @__PURE__ */ new Map();
+  const groups2 = /* @__PURE__ */ new Map();
   for (const { record } of held) {
     const id = record.kind === "holder" ? `${record.pid}\0${record.worktreeId}` : `\0${record.kind}`;
-    const group = groups.get(id);
-    if (group === void 0) groups.set(id, { record, permits: 1 });
+    const group = groups2.get(id);
+    if (group === void 0) groups2.set(id, { record, permits: 1 });
     else {
       group.permits++;
       if (record.kind === "holder" && group.record.kind === "holder") {
@@ -13147,7 +13176,7 @@ function slowSlotOf(store, worktreeId, root, header, alive, now) {
       }
     }
   }
-  const holders2 = [...groups.values()].map(
+  const holders2 = [...groups2.values()].map(
     ({ record, permits: n }) => holderOf(store, worktreeId, record, n, now)
   );
   return { permits, holders: holders2.sort(longestFirst) };
@@ -13722,12 +13751,12 @@ function outstandingOf(store, worktreeId, root, reads, now, load) {
   const retries = retryStandings(reads, worktreeId, policy);
   const refs = reads.keys.map((row) => row.testFile).sort((a, b) => testFileId(a).localeCompare(testFileId(b)));
   const files2 = standingsOf(store, worktreeId, root, daemon, now, load, reads)(refs);
-  const groups = /* @__PURE__ */ new Map();
+  const groups2 = /* @__PURE__ */ new Map();
   const add = (standing3, ref2) => {
     const id = groupId(standing3) + waitsId(standing3);
-    const group = groups.get(id);
+    const group = groups2.get(id);
     if (group === void 0) {
-      groups.set(id, { standing: standing3, files: ref2 === null ? [] : [ref2] });
+      groups2.set(id, { standing: standing3, files: ref2 === null ? [] : [ref2] });
       return;
     }
     if (ref2 !== null) group.files.push(ref2);
@@ -13745,12 +13774,12 @@ function outstandingOf(store, worktreeId, root, reads, now, load) {
     if (slow.isSlow(file.testFile) && !held) continue;
     add(standing3, file.testFile);
   }
-  const said = [...groups.values()].some((g) => g.standing.kind === "unlisted");
+  const said = [...groups2.values()].some((g) => g.standing.kind === "unlisted");
   if (header.runnerPartPending === true && !said) add(unlisted2(header, policy), null);
   if (reads.checkpoint !== void 0 && !reads.checkpoint.owed) {
     add({ kind: "checkpoint" }, null);
   }
-  return [...groups.values()].sort(
+  return [...groups2.values()].sort(
     (a, b) => ORDER.indexOf(a.standing.kind) - ORDER.indexOf(b.standing.kind)
   );
 }
@@ -13768,12 +13797,12 @@ function unlisted2(header, policy) {
 }
 function retryStandings(reads, worktreeId, policy) {
   const { header, runs } = reads;
-  const groups = groupView(policy);
+  const groups2 = groupView(policy);
   const queue = {
     isSlow: slowView(policy).isSlow,
     activity: header.slowTier?.activity ?? null,
     runs,
-    groupOf: groupLanesOf(header.groupTiers, (ref2) => groups.of(ref2).name)
+    groupOf: groupLanesOf(header.groupTiers, (ref2) => groups2.of(ref2).name)
   };
   const retries = /* @__PURE__ */ new Map();
   for (const r of reads.pendingRetries?.retries ?? []) {
@@ -14008,13 +14037,13 @@ function importsOf(store, worktreeId, keys, states) {
   return imports.length === 0 ? {} : { imports };
 }
 function inheritedSources(store, states) {
-  const groups = /* @__PURE__ */ new Map();
+  const groups2 = /* @__PURE__ */ new Map();
   let count2 = 0;
   for (const s of states) {
     if (s.validity !== "current" || s.origin?.kind !== "inherited") continue;
     count2++;
     const id = JSON.stringify([s.origin.worktreeId, s.origin.commit]);
-    const group = groups.get(id) ?? {
+    const group = groups2.get(id) ?? {
       worktreeId: s.origin.worktreeId,
       commit: s.origin.commit,
       count: 0,
@@ -14022,9 +14051,9 @@ function inheritedSources(store, states) {
     };
     group.count++;
     if (s.check.kind === "file") group.fileLevelCount++;
-    groups.set(id, group);
+    groups2.set(id, group);
   }
-  const sources = [...groups.values()].map((g) => ({ ...g, worktreeRoot: store.worktrees.get(g.worktreeId)?.root ?? null })).sort(
+  const sources = [...groups2.values()].map((g) => ({ ...g, worktreeRoot: store.worktrees.get(g.worktreeId)?.root ?? null })).sort(
     (a, b) => b.count - a.count || a.worktreeId.localeCompare(b.worktreeId) || String(a.commit).localeCompare(String(b.commit))
   ).map(({ worktreeId, worktreeRoot, commit, count: count3, fileLevelCount }) => ({
     worktreeId,
@@ -14113,7 +14142,7 @@ function openContext(input, location2, options = {}) {
     };
     const now = options.now ?? Date.now;
     const connection = holding?.made() ?? null;
-    const prepare = connection === null ? void 0 : { connection, reports: new PreparedReports() };
+    const prepare2 = connection === null ? void 0 : { connection, reports: new PreparedReports() };
     const code = codeSource(location2.commonDir, location2.root, {
       busyTimeoutMs: options.busyTimeoutMs ?? STATUS_BUSY_TIMEOUT_MS,
       holding: connection !== null
@@ -14129,12 +14158,12 @@ function openContext(input, location2, options = {}) {
       ...options.squealVersion === void 0 ? {} : { squealVersion: options.squealVersion },
       code,
       lint: lint2,
-      ...prepare === void 0 ? {} : { prepare },
+      ...prepare2 === void 0 ? {} : { prepare: prepare2 },
       // Row 011-312: a registration records the commit `HEAD` names here.
       root: location2.root
     });
     const close = () => store.close();
-    const prepared = prepare === void 0 ? {} : { prepared: prepare.reports };
+    const prepared = prepare2 === void 0 ? {} : { prepared: prepare2.reports };
     return { ...location2, store, delivery, consumer, code, lint: lint2, ...prepared, close };
   } catch (error) {
     store.close();
@@ -14624,7 +14653,7 @@ function groupKey(entry3, revision) {
 }
 function failureGroups(failures, revision) {
   const byKey = /* @__PURE__ */ new Map();
-  const groups = [];
+  const groups2 = [];
   for (const failure2 of failures) {
     const key = groupKey(failure2, revision);
     const group = key === null ? void 0 : byKey.get(key);
@@ -14634,9 +14663,9 @@ function failureGroups(failures, revision) {
     }
     const fresh2 = [failure2];
     if (key !== null) byKey.set(key, fresh2);
-    groups.push(fresh2);
+    groups2.push(fresh2);
   }
-  return groups;
+  return groups2;
 }
 function shared(group, line) {
   const lines = group.map(line);
@@ -14759,12 +14788,12 @@ function countsText(counts, fileLevel) {
 function headerLines(header, command, form = "full", told = {}) {
   const line = form === "full" ? fullLine(header, command, told.countsOwed) : newsLine(header, command, told.countsOwed);
   const slow = form === "full" || told.slowTierChanged ? slowTierText(header, command) : null;
-  const groups = form === "full" || told.groupTiersChanged ? groupTierLines(header, command) : [];
+  const groups2 = form === "full" || told.groupTiersChanged ? groupTierLines(header, command) : [];
   const commit = told.commitChanged === true ? header.commitLine?.text : void 0;
   return [
     line,
     ...slow === null ? [] : [slow],
-    ...groups,
+    ...groups2,
     ...commit === void 0 ? [] : [commit]
   ];
 }
@@ -15174,15 +15203,15 @@ function notStartedText(before) {
   const which = before.length === 1 ? "which has" : "which have";
   return ` They have not started: they run after ${groupsText(names2)}, ${which} ${andList2(counts)} ${files2} pending.`;
 }
-function lastHoldText(groups, command = SQUEAL_COMMAND) {
-  const words = groups.map((group) => stopGroupWords(group, command));
+function lastHoldText(groups2, command = SQUEAL_COMMAND) {
+  const words = groups2.map((group) => stopGroupWords(group, command));
   const one = words.length === 1;
   const runs = `${andList2(words.map((w) => w.run))} ${one ? "runs it" : "run them"}`;
   return `This is Stop's last hold this turn: no later Stop in it waits for ${andList2(words.map((w) => w.ran))}, and ${runs} and ${one ? "waits" : "wait"} for ${one ? "its" : "their"} results.`;
 }
-function withLastHold(reason, groups, command, last) {
+function withLastHold(reason, groups2, command, last) {
   return last ? `${reason}
-${lastHoldText(groups, command)}` : reason;
+${lastHoldText(groups2, command)}` : reason;
 }
 function groupsText(names2) {
   return `the ${andList2(names2)} ${names2.length === 1 ? "group" : "groups"}`;
@@ -15199,15 +15228,15 @@ function slowFailuresReason(revision, failures, group = SLOW_GROUP) {
 function requiredSuiteReason(revision, open, command) {
   return openGroups(open).map((group) => slowSuiteReason(revision, filesOf(open, group), command, group)).join("\n");
 }
-function requiredUnlistedReason(revision, groups, command = SQUEAL_COMMAND, runners) {
-  return groups.map((group) => {
+function requiredUnlistedReason(revision, groups2, command = SQUEAL_COMMAND, runners) {
+  return groups2.map((group) => {
     const words = stopGroupWords(group, command);
     const unlisted3 = unlistedClause({ revision, runners, files: `${words.file}s` });
     return `${words.policy} and ${unlisted3}. ${words.run} runs them and waits for their results.`;
   }).join("\n");
 }
-function requiredWaitReason(revision, open, groups, wait) {
-  return (open.length === 0 ? groups : openGroups(open)).map(
+function requiredWaitReason(revision, open, groups2, wait) {
+  return (open.length === 0 ? groups2 : openGroups(open)).map(
     (group) => slowWaitReason(
       revision,
       filesOf(open, group),
@@ -15315,8 +15344,8 @@ function requiredLintHold(context, required, { revision, at, command }) {
     ...fails.length === 0 ? [] : [lintFindingsReason(revision, fails)],
     ...blocking
   ];
-  const groups = fails.map((f) => f.group);
-  return { reasons, groups: blocking.length === 0 ? groups : required.lintGroups };
+  const groups2 = fails.map((f) => f.group);
+  return { reasons, groups: blocking.length === 0 ? groups2 : required.lintGroups };
 }
 
 // src/harness/shared/stop-required.ts
@@ -15390,8 +15419,8 @@ function stepReason(step, required, read5, hold) {
     ];
   })();
   const lint2 = open.lint.length === 0 ? [] : [lintOpenReason(revision, open.lint, command, waitedMs)];
-  const groups = [.../* @__PURE__ */ new Set([...unlisted3 ? required.groups : [], ...openGroupsOf(open)])];
-  return withLastHold([...tests2, ...lint2].join("\n"), groups, command, last);
+  const groups2 = [.../* @__PURE__ */ new Set([...unlisted3 ? required.groups : [], ...openGroupsOf(open)])];
+  return withLastHold([...tests2, ...lint2].join("\n"), groups2, command, last);
 }
 
 // src/harness/shared/stop.ts
