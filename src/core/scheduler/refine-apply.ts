@@ -127,7 +127,7 @@ export async function recordRefined(
  * (spec 021 D2): a refused apply keyed them in memory and never settled
  * them, and the runner part of its next try may not name them.
  */
-function lagging(context: SchedulerContext, ledger: Ledger): TestFileRef[] {
+export function lagging(context: SchedulerContext, ledger: Ledger): TestFileRef[] {
   const { index } = context.keys;
   return [...ledger.files.values()]
     .filter((file) => index.key(file.ref) !== file.key)
