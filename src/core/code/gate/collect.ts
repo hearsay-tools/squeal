@@ -19,14 +19,9 @@ import type { BlobCache } from "../coverage/record.js";
 import { coverageProvider, PROVIDER_MISSING_NOTE } from "../coverage/runtime.js";
 import type { CoverageRun, CoveredFile } from "../coverage/types.js";
 import { type BasePrepares, type PrepareRun, prepareEntry } from "./prepare.js";
+import { type Picked, type SelectionSummary, tellSelection } from "./prerun.js";
 import { type Mapped, mapPayloads, refKey } from "./records.js";
-import {
-  type GateScope,
-  type LeftOutFile,
-  type LeftOutRef,
-  type ScopeTally,
-  tallyScope,
-} from "./scope.js";
+import { type GateScope, type LeftOutFile, type ScopeTally, tallyScope } from "./scope.js";
 import type { ChangedSet, Evidence, TestFileEvidence } from "./types.js";
 
 /*
@@ -106,6 +101,13 @@ export interface CollectOptions {
   readonly prepares?: BasePrepares;
   /** D15.3: a `prepare` command's output, as it comes, for stderr; dropped when absent. */
   readonly output?: (text: string) => void;
+  /**
+   * D14.4: told the selection once, after it and before the first run, so
+   * before any setup runs. Not called when no runner opens.
+   */
+  readonly selected?: (summary: SelectionSummary) => void;
+  /** D6: `coverage.exclude` at the base; `selected` looks for no loader of a path it matches. */
+  readonly excluded?: (path: RelativePath) => boolean;
 }
 
 /**
@@ -182,14 +184,13 @@ export async function collectEvidence(
     for (const problem of problems) note(`${POLICY_FILE}: ${problem}`);
     const opening = { provider, temp, note, children };
     await openRunners(options.adapters, root, policy, opening, runners);
-    const leftOut: LeftOutRef[][] = [];
-    const selected = await select(runners, paths, options.tests, { tally, leftOut });
+    const picked = await select(runners, paths, options.tests, tally);
+    await tellSelection(options.selected, picked, changed, { ...options, tally });
     const blobs: BlobCache = new Map();
     const testFiles: TestFileEvidence[] = [];
     const prepares: PrepareRun[] = [];
     let timedOut = false;
-    for (const [i, runner] of runners.entries()) {
-      const chosen = selected[i] ?? [];
+    for (const [i, { runner, run: chosen }] of picked.entries()) {
       if (chosen.length === 0) continue;
       const before = await knownBefore(runner, chosen, { root, deadline, note, options, children });
       prepares.push(...before.prepares);
@@ -215,7 +216,7 @@ export async function collectEvidence(
       testFiles: testFiles.sort(byRunnerAndPath),
       timedOut,
       budgetSeconds: options.budgetSeconds,
-      ...scoped(await leftOutFiles(runners, leftOut)),
+      ...scoped(await leftOutFiles(picked)),
       ...(prepares.length === 0 ? {} : { prepares }),
     };
   } finally {
@@ -285,18 +286,20 @@ async function openRunners(
  * D3.1, per runner: the test files `affected()` gives for the changed
  * paths, its test files among them, and the `--test` files it lists.
  * Throws `CollectUsageError` for a `--test` file no runner lists. D14.2:
- * with a scope's `tally`, the files it leaves out go to `leftOut` instead.
+ * with a scope's `tally`, the files it leaves out are the pick's `leftOut`
+ * instead of its `run`.
  */
 async function select(
   runners: readonly Runner[],
   paths: readonly RelativePath[],
   tests: readonly RelativePath[],
-  scope: { readonly tally: ScopeTally | null; readonly leftOut: LeftOutRef[][] },
-): Promise<TestFileRef[][]> {
+  tally: ScopeTally | null,
+): Promise<(Picked & { readonly runner: Runner })[]> {
   const named = new Set([...paths, ...tests]);
   const matched = new Set<RelativePath>();
-  const selected: TestFileRef[][] = [];
-  for (const { kind, adapter } of runners) {
+  const picked: (Picked & { readonly runner: Runner })[] = [];
+  for (const runner of runners) {
+    const { kind, adapter } = runner;
     const chosen = new Map<string, TestFileRef>();
     const add = (ref: TestFileRef) => chosen.set(refKey(ref), ref);
     const listed = await adapter.testFiles();
@@ -309,9 +312,9 @@ async function select(
       for (const ref of [...affected.direct, ...affected.transitive]) add(ref);
     }
     const all = [...chosen.values()].sort(byPath);
-    const split = scope.tally?.split(kind, listed, all, new Set(tests));
-    selected.push(split?.run ?? all);
-    scope.leftOut.push(split?.leftOut ?? []);
+    const split = tally?.split(kind, listed, all, new Set(tests));
+    const [run, leftOut] = [split?.run ?? all, split?.leftOut ?? []];
+    picked.push({ runner, kind, adapter, listed, run, leftOut });
   }
   const unknown = tests.filter((path) => !matched.has(path));
   if (unknown.length > 0) {
@@ -319,7 +322,7 @@ async function select(
       `--test ${unknown.join(", ")}: no Vitest or node:test project lists ${unknown.length === 1 ? "it" : "them"} as a test file`,
     );
   }
-  return selected;
+  return picked;
 }
 
 /**
@@ -371,13 +374,10 @@ async function evidenceOf(
  * D14.2: each file the scope left out with its closure, read with no run
  * and no setup; `null` when the runner cannot give it. None with no scope.
  */
-async function leftOutFiles(
-  runners: readonly Runner[],
-  leftOut: readonly LeftOutRef[][],
-): Promise<LeftOutFile[]> {
+async function leftOutFiles(picked: readonly Picked[]): Promise<LeftOutFile[]> {
   const files: LeftOutFile[] = [];
-  for (const [i, { kind, adapter }] of runners.entries()) {
-    for (const { ref, group } of leftOut[i] ?? []) {
+  for (const { kind, adapter, leftOut } of picked) {
+    for (const { ref, group } of leftOut) {
       const loads = await adapter.closure(ref).then(
         (closure) => [...closure.paths].sort(compare),
         () => null,
