@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { createRecoveringRunner } from "../../src/core/daemon/runner.js";
 import { runnerHostGone, startHostProxy } from "../../src/core/runner-host/proxy.js";
 import type { RunReport } from "../../src/core/types/runner.js";
-import { fakeAdapter, inProcessHost, POLICY } from "./fake-channel.js";
+import { fakeAdapter, inProcessHost, POLICY, REPORT } from "./fake-channel.js";
 
 /*
  * Spec 021 D7, D13 (row 021-11): every request has a deadline the daemon
@@ -78,6 +79,83 @@ describe("a lost runner host", () => {
     });
     expect(host.killed()).toBe(true);
     expect(runnerHostGone(adapter)).toBe(true);
+    await adapter.close();
+  });
+
+  it("ends a run without a test timeout timed-out once it ends no file within the watchdog", async () => {
+    const host = inProcessHost(async () => fakeAdapter({ run: never }));
+    const { adapter } = await proxyOf(host, { runIdleMs: 50 });
+    const report = await adapter.run([A], runOptions(null));
+    expect(report).toMatchObject({
+      end: "timed-out",
+      completedFiles: [],
+      results: [],
+      fileErrors: [],
+      failure:
+        "the vitest runner host did not answer run, nor end a file of it, within 50 ms; Squeal stopped it",
+    });
+    expect(host.killed()).toBe(true);
+    expect(runnerHostGone(adapter)).toBe(true);
+    await adapter.close();
+  });
+
+  it("keeps a run without a test timeout while it ends a file within each watchdog", async () => {
+    const B = { project: "", path: "test/b.test.ts" };
+    const host = inProcessHost(async () =>
+      fakeAdapter({
+        run: async (files, run) => {
+          for (let i = 0; i < 8; i++) {
+            await new Promise((resolve) => setTimeout(resolve, 40));
+            run.fileEnded?.(files[i % files.length] ?? A);
+          }
+          return { ...REPORT, completedFiles: [...files] };
+        },
+      }),
+    );
+    // 8 files 40 ms apart: 320 ms in all, past one watchdog of 200 ms, never past one between files.
+    const { adapter } = await proxyOf(host, { runIdleMs: 200 });
+    const report = await adapter.run([A, B], runOptions(null));
+    expect(report).toMatchObject({ end: "completed", completedFiles: [A, B] });
+    expect(runnerHostGone(adapter)).toBe(false);
+    await adapter.close();
+  });
+
+  it("lets the recovering runner replace a host its watchdog stopped", async () => {
+    const hosts: ReturnType<typeof inProcessHost>[] = [];
+    const runner = createRecoveringRunner({
+      name: "vitest",
+      adapterVersion: "fake-1",
+      create: async () => {
+        const host = inProcessHost(async () => fakeAdapter({ run: never }));
+        hosts.push(host);
+        return (await proxyOf(host, { runIdleMs: 50 })).adapter;
+      },
+      onFailure: () => {},
+      gone: runnerHostGone,
+    });
+    expect((await runner.run([A], runOptions(null))).end).toBe("timed-out");
+    expect(await runner.closure(A)).toEqual({ testFile: A, paths: [A.path] });
+    expect(hosts.map((host) => host.killed())).toEqual([true, false]);
+    await runner.close();
+  });
+
+  it("does not extend a run's own timeout when it ends files", async () => {
+    const host = inProcessHost(async () =>
+      fakeAdapter({
+        run: async (files, run) => {
+          for (;;) {
+            await new Promise((resolve) => setTimeout(resolve, 10));
+            run.fileEnded?.(files[0] ?? A);
+          }
+        },
+      }),
+    );
+    const { adapter } = await proxyOf(host, { runMarginMs: 40 });
+    const report = await adapter.run([A], runOptions(10));
+    expect(report).toMatchObject({
+      end: "timed-out",
+      failure: "the vitest runner host did not answer run within 50 ms; Squeal stopped it",
+    });
     await adapter.close();
   });
 
