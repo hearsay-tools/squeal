@@ -268,8 +268,6 @@ describe("the default status text (018 D5, D19)", () => {
     const status = text(w, "refs/squeal");
     expect(status).not.toContain("Shared results need");
     expect(status).not.toContain("CI run 5");
-    expect(status).toContain(
-      "\nImported results from CI run 6 on o/r at cccccccc: 0 of 2 test files match this worktree\n",
-    );
+    expect(status).not.toContain("Imported results from");
   });
 });
