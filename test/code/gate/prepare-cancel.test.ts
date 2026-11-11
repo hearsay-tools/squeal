@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { afterEach, describe, expect, it } from "vitest";
-import { type CancelSignals, runCommand } from "../../../src/core/code/gate/prepare.js";
+import { type CancelSignals, runCommand } from "../../../src/core/code/gate/command.js";
 import { alive, beats, gone, PREPARE_SCRIPT, pidsOf } from "./prepare-cancel-kit.js";
 
 /*
