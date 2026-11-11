@@ -149,7 +149,8 @@ var WORKTREE_META_ROWS = {
   ignoredReads: { prefix: "ignored-reads:", owner: "scheduler/ignored-reads" },
   omittedTestFiles: { prefix: "omitted-test-files:", owner: "scheduler/omitted-test-files" },
   unknownFiles: { prefix: "unknown-files:", owner: "scheduler/unknown-files" },
-  importRewalk: { prefix: "import-rewalk:", owner: "scheduler/import-rewalk" }
+  importRewalk: { prefix: "import-rewalk:", owner: "scheduler/import-rewalk" },
+  importsWaiting: { prefix: "imports-waiting:", owner: "scheduler/imports-waiting" }
 };
 function worktreeMetaKey(row, worktreeId) {
   return `${WORKTREE_META_ROWS[row].prefix}${worktreeId}`;
@@ -3194,7 +3195,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.430";
+  if (true) return "0.1.431";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -13621,6 +13622,21 @@ function observedModulesMetaKey(project) {
   return `observedModules.${project}`;
 }
 
+// src/core/scheduler/imports-waiting.ts
+function importsWaitingMetaKey(worktreeId) {
+  return worktreeMetaKey("importsWaiting", worktreeId);
+}
+function importsWaiting(store, worktreeId) {
+  const value = store.meta.get(importsWaitingMetaKey(worktreeId));
+  if (value === null) return [];
+  try {
+    const ids = JSON.parse(value);
+    return Array.isArray(ids) ? ids.filter((id) => typeof id === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
 // src/core/store/environments.ts
 var ENVIRONMENT_TABLES = {
   environments: `
@@ -13858,6 +13874,7 @@ function readImports(store, worktreeId, keys, states) {
       closure: 0,
       observed: 0,
       content: 0,
+      keysPending: 0,
       noKey: 0
     };
     let currentFiles = 0;
@@ -13892,7 +13909,8 @@ function reasonOf(file, here) {
   const closure = here.closure(file);
   if (closure !== null && file.closure !== "" && closure !== file.closure) return "closure";
   if (here.observed(file) !== file.observed) return "observed";
-  return key?.key === null || key?.key === void 0 ? "noKey" : "content";
+  if (key?.key === null || key?.key === void 0) return "noKey";
+  return here.waiting.has(file.importId) ? "keysPending" : "content";
 }
 function adoption(file, here) {
   const current2 = here.current.get(testFileId(file)) ?? [];
@@ -13928,6 +13946,7 @@ function hereOf(store, worktreeId, keys, states) {
     current: currentByFile(states),
     stored: (importId, key) => store.results.byKey(key, 0).some((r) => importIdOf(r.provenance.worktreeId) === importId),
     environments: new Map(worktreeEnvironments(store, worktreeId).map((e) => [e.project, e.hash])),
+    waiting: new Set(importsWaiting(store, worktreeId)),
     closure: (file) => {
       const record = store.testFiles.get(file);
       if (record === null) return null;

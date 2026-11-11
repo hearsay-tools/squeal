@@ -40,6 +40,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { createRequire } = require("node:module");
 const { isMainThread } = require("node:worker_threads");
+const clock = require("./clock.cjs");
 const { coveredModules, coveredReporter, startCoverage } = require("./coverage.cjs");
 
 const VARIABLE = "SQUEAL_CI_RECORD";
@@ -128,15 +129,15 @@ function projectOf(project) {
 
 function reporterFor(vitest, file, settings, fail, modules) {
   // A reporter that throws fails the run: every error goes to the file instead.
-  const safe =
-    (fn) =>
-    (...args) => {
+  // Its time is Squeal's (`clock.cjs`, row 018-29).
+  const safe = (fn) =>
+    clock.timed((...args) => {
       try {
         fn(...args);
       } catch (error) {
         fail(error);
       }
-    };
+    });
   return {
     onTestModuleEnd: safe((module) => {
       modules.set(`${module.project.name}\0${module.moduleId}`, moduleOf(module));
