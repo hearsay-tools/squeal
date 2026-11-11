@@ -93,7 +93,8 @@ describe("squeal code --base with coverage.children (spec 020 D12)", () => {
   it("passes a script only a child runs, and a function only a child calls", SLOW, async () => {
     const { ran, report, states, leftInTmp } = await gate({ coverage: { children: true } });
 
-    expect(ran.stderr).toBe("");
+    // D14.4: with coverage.children no path is named unloaded: a child may run it.
+    expect(ran.stderr).toBe("squeal code: Vitest: 2 test files to run (tests 2)\n");
     expect(states).toEqual(["classify pass 2", "grade pass 6"]);
     expect(ran.code).toBe(0);
     expect(report.base.policy.coverageChildren).toBe(true);

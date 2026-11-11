@@ -38,7 +38,9 @@ export interface SelectionSummary {
   /**
    * Each path of a changed function that no runner lists as a test file
    * and no selected test file loads, so its functions will read
-   * `no-loader`; sorted. A path `excluded` matches is not looked for.
+   * `no-loader`; sorted. A path `excluded` matches is not looked for. None
+   * with `coverage.children`: a process a test starts may run any path,
+   * and its record then measures it (D12).
    */
   readonly unloaded: readonly RelativePath[];
 }
@@ -67,12 +69,15 @@ export async function tellSelection(
     readonly scope?: GateScope | undefined;
     readonly tally: ScopeTally | null;
     readonly excluded?: ((path: RelativePath) => boolean) | undefined;
+    readonly children?: boolean | undefined;
   },
 ): Promise<void> {
   if (tell === undefined) return;
   const { scope, tally, excluded = () => false } = context;
   const leftOut = tally?.evidence([]).leftOut ?? [];
-  tell(await summarize(picked, changed, { scope, leftOut, excluded }));
+  // D12: with children, a path no closure holds may still be run and measured.
+  const looked = context.children === true ? () => true : excluded;
+  tell(await summarize(picked, changed, { scope, leftOut, excluded: looked }));
 }
 
 /**
