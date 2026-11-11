@@ -4,8 +4,9 @@ import type { WireCoverageRun } from "./coverage-wire.js";
 
 /*
  * Spec 021 D6 (row 021-11): the runner host's protocol. One JSON object per
- * line, in both directions, each line starting with `MARKER`, so output a
- * library writes to the host's stdout is never read as a message. The daemon
+ * line, in both directions, each after `MARKER`, so output a library writes
+ * to the host's stdout is never read as a message. A frame may follow such
+ * output on its line, when that lacked a newline (review 0.1.434 S1). The daemon
  * sends requests, each with an `id` its one reply names, and notices
  * without one. The host sends replies and events.
  */
@@ -159,8 +160,18 @@ export function encodeLine(message: DaemonMessage | HostMessage): string {
 }
 
 /**
- * Splits a stream's text into lines and yields the payload of each protocol
- * line; a line without the marker is someone else's output and is skipped.
+ * The frame's JSON text in `line`: what follows the marker. What precedes it
+ * is someone else's output that lacked a newline. `null`: no frame.
+ */
+export function frameOf(line: string): string | null {
+  const at = line.indexOf(MARKER);
+  return at < 0 ? null : line.slice(at + MARKER.length);
+}
+
+/**
+ * Splits a stream's text into lines and yields the payload of each frame
+ * (`frameOf`); a line without the marker is someone else's output and is
+ * skipped.
  */
 export class LineReader {
   #rest = "";
@@ -172,8 +183,8 @@ export class LineReader {
     this.#rest = lines.pop() ?? "";
     const messages: unknown[] = [];
     for (const line of lines) {
-      if (!line.startsWith(MARKER)) continue;
-      messages.push(JSON.parse(line.slice(MARKER.length)));
+      const frame = frameOf(line);
+      if (frame !== null) messages.push(JSON.parse(frame));
     }
     return messages;
   }
