@@ -1,6 +1,7 @@
 import { join } from "node:path";
+import { backgroundCeiling, DEFAULT_BACKGROUND_SHARE } from "../capacity/background.js";
 import { loadConfigFile, positiveInteger } from "../daemon/config-file.js";
-import { defaultHostSlots } from "../daemon/user-config.js";
+import { backgroundShare, defaultHostSlots } from "../daemon/user-config.js";
 import { isRepositorySlotDir } from "../slow/slot-files.js";
 import type { AbsolutePath } from "../types/common.js";
 import type { HostTotals, PsPlaces, ReadPool, Sample } from "./model.js";
@@ -81,7 +82,7 @@ export const readPool: ReadPool = (
   readings = [source.locks()],
   cpus = source.host().cpus,
 ) => {
-  const slots = hostSlotsOf(places.userConfig, cpus);
+  const { slots, ceiling } = capacityOf(places.userConfig, cpus);
   const holders = new Map<string, Set<number>>();
   for (const locks of readings)
     for (const [file, pids] of holdersOf(locks ?? [])) holders.set(file, pids);
@@ -99,8 +100,8 @@ export const readPool: ReadPool = (
     }
   }
   if (readings.some((locks) => locks === null))
-    return { pool: { slots, held: null }, permits: new Map(), foreign };
-  return { pool: { slots, held }, permits, foreign };
+    return { pool: { slots, held: null, ceiling }, permits: new Map(), foreign };
+  return { pool: { slots, held, ceiling }, permits, foreign };
 };
 
 /** The processes that hold each locked file: its write locks, not the requests blocked behind them. */
@@ -115,14 +116,18 @@ function holdersOf(locks: readonly LockEntry[]): Map<string, Set<number>> {
 }
 
 /**
- * `capacity.hostSlots` of the file at `path`, else the CPUs less one, by the
- * loader that never throws (011 C10). `ps` reads no other key, and notes no
- * problem: the daemons note theirs.
+ * `capacity.hostSlots` of the file at `path`, else the CPUs less one, and
+ * the background ceiling, `capacity.backgroundShare` of the CPUs (spec 021
+ * D18), by the loader that never throws (011 C10). `ps` reads no other key,
+ * and notes no problem: the daemons note theirs.
  */
-function hostSlotsOf(path: AbsolutePath, cpus: number): number {
-  const shape = { capacity: { hostSlots: positiveInteger, projects: () => null } };
-  const defaults = { capacity: { hostSlots: defaultHostSlots(cpus) } };
-  return loadConfigFile(path, shape, defaults).value.capacity.hostSlots;
+function capacityOf(path: AbsolutePath, cpus: number): { slots: number; ceiling: number } {
+  const shape = { capacity: { hostSlots: positiveInteger, backgroundShare, projects: () => null } };
+  const defaults = {
+    capacity: { hostSlots: defaultHostSlots(cpus), backgroundShare: DEFAULT_BACKGROUND_SHARE },
+  };
+  const { capacity } = loadConfigFile(path, shape, defaults).value;
+  return { slots: capacity.hostSlots, ceiling: backgroundCeiling(capacity.backgroundShare, cpus) };
 }
 
 /**

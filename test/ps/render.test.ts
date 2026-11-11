@@ -32,6 +32,20 @@ describe("the D8 layout", () => {
     ]);
   });
 
+  test("the host line names the background ceiling when the pool read it (spec 021 D18)", () => {
+    const base = exampleSnapshot();
+    const s = exampleSnapshot({
+      squeal: { ...base.squeal, pool: { slots: 12, held: 3, ceiling: 18 } },
+    });
+    expect(lines(brief(s))[1]).toBe(
+      "Host    load 36.8 41.3 51.1 on 24 CPUs · background ceiling 18 busy CPUs · CPU pressure 45% · memory pressure 0.6% (0.5% full) · memory 32.7 of 47.0 GiB used, swap 4.0 of 4.0 GiB",
+    );
+    const odd = exampleSnapshot({
+      squeal: { ...base.squeal, pool: { slots: 5, held: 0, ceiling: 4.5 } },
+    });
+    expect(lines(brief(odd))[1]).toContain(" · background ceiling 4.5 busy CPUs · ");
+  });
+
   test("the first line says no flags, and names a repeated flag once with its count", () => {
     expect(lines(brief(exampleSnapshot({ files: [], flags: 0 })))[0]).toBe(
       "squeal ps · 3 daemons, 1 test process · no flags",
