@@ -87,11 +87,6 @@ export async function loadBasePolicy(
   }
 }
 
-/** `loadBasePolicy`'s policy alone. */
-export async function readBasePolicy(cwd: AbsolutePath, baseCommit: string): Promise<BasePolicy> {
-  return (await loadBasePolicy(cwd, baseCommit)).policy;
-}
-
 /** The text of `path` at `commit`, or `null` when no file is there. */
 async function fileAt(cwd: AbsolutePath, commit: string, path: string): Promise<string | null> {
   // `./`: relative to `cwd`, which may sit below the repository's top.
