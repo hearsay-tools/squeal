@@ -41,7 +41,6 @@ var WORKTREE_META_ROWS = {
   leaving: { prefix: "leaving:", owner: "delivery/leaving" },
   notes: { prefix: "notes.", owner: "types/scheduler" },
   refined: { prefix: "refined.", owner: "types/scheduler" },
-  listing: { prefix: "listing.", owner: "types/scheduler" },
   awaitingInstall: { prefix: "awaiting-install.", owner: "types/scheduler" },
   installCommand: { prefix: "install-command.", owner: "types/scheduler" },
   checkpoint: { prefix: "checkpoint.", owner: "types/scheduler" },
@@ -2369,7 +2368,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.436";
+  if (true) return "0.1.438";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -2778,6 +2777,10 @@ function uncountableFiles(store, worktreeId, files) {
   return spent;
 }
 
+// src/core/code/gate/rule.ts
+var UNRUN_GAPS = ["not-prepared", "not-finished"];
+var UNRUN = new Set(UNRUN_GAPS);
+
 // src/core/code/crap/summary.ts
 var summaryKey = (worktreeId) => `coverage:${worktreeId}`;
 var crapRecountKey = (worktreeId) => `crapRecount:${worktreeId}`;
@@ -2821,6 +2824,16 @@ function readEvidence(meta, worktreeId, path) {
 
 // src/core/code/crap/seed.ts
 var COVERAGE_MEASURES = ["crap", "uncovered"];
+
+// src/core/delivery/code-coverage-words.ts
+var NOT_RUN = "no test runs it in the test's own thread";
+var NOT_RUN_CHILDREN = "no test runs it, in the test's own thread or in a process or thread the test starts";
+var UNMEASURED = "Squeal does not measure worker threads or child processes.";
+var LOWER_BOUND = "Squeal counts what the processes and threads a test starts run as a lower bound: a process that is killed, outlives its test file or gets an environment without NODE_V8_COVERAGE is not counted.";
+var UNTESTED = `untested: ${NOT_RUN}`;
+var UNTESTED_CHILDREN = `untested: ${NOT_RUN_CHILDREN}`;
+var MEASURED = `  Coverage counts what ran in the test's own thread. ${UNMEASURED}`;
+var MEASURED_CHILDREN = `  Coverage counts what ran in the test's own thread and in the processes and threads it started. ${LOWER_BOUND}`;
 
 // src/core/delivery/code-coverage.ts
 function coverageMeasures(store, worktreeId) {
@@ -3189,6 +3202,9 @@ function vitestDetected(root) {
   }
   if (names2.some((name2) => VITEST_CONFIG.test(name2))) return true;
   return listsVitest(readManifest(join9(root, "package.json")));
+}
+function runsVitest(root, policy) {
+  return policy.nodeTest.length + policy.pytest.length === 0 || vitestDetected(root);
 }
 function listsVitest(manifest) {
   if (!isRecord(manifest)) return false;
@@ -3948,10 +3964,9 @@ function readRefined(store, worktreeId) {
 }
 function listingRunnersField(pending, root, policy) {
   if (!pending || root === void 0 || policy === null) return {};
-  const others = policy.nodeTest.length + policy.pytest.length;
   return {
     listingRunners: [
-      ...others === 0 || vitestDetected(root) ? ["Vitest"] : [],
+      ...runsVitest(root, policy) ? ["Vitest"] : [],
       ...policy.nodeTest.length > 0 ? ["node:test"] : [],
       ...policy.pytest.length > 0 ? ["pytest"] : []
     ]
