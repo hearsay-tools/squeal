@@ -6,15 +6,22 @@ import type { HostRunner } from "./protocol.js";
 /*
  * Spec 021 D8 (row 021-11): a local runner host is a child of the daemon,
  * `node <cli> runner-host <root> --runner <name>`, with the daemon's Node,
- * environment and working directory, never the root (spec 001 D10): the
+ * its arguments, environment and working directory, never the root (spec 001 D10): the
  * host enters the root for each call (`runner-split.md` Q2). It stays in the
  * daemon's process group, carries no mark (`stopMarked` would stop it), and
  * exits when its input ends.
  */
 
-/** How the daemon starts a runner host: the Node and the `squeal` CLI script it runs. */
+/**
+ * How the daemon starts a runner host: its own Node, the arguments Node
+ * runs it with and the `squeal` CLI script, so a host runs as the daemon
+ * does. A daemon from the sources needs its loader (`--import tsx`) in the
+ * host too (review 0.1.434 B6); a bundle's is none.
+ */
 export interface RunnerHostLaunch {
   readonly execPath: string;
+  /** Node's own arguments before the script: `process.execArgv`. */
+  readonly execArgv: readonly string[];
   readonly cli: string;
 }
 
@@ -48,7 +55,8 @@ export function spawnRunnerHost(
   runner: HostRunner,
   env: NodeJS.ProcessEnv = process.env,
 ): HostChannel {
-  const child = spawn(launch.execPath, [launch.cli, "runner-host", root, "--runner", runner], {
+  const args = [...launch.execArgv, launch.cli, "runner-host", root, "--runner", runner];
+  const child = spawn(launch.execPath, args, {
     env,
     stdio: ["pipe", "pipe", "pipe"],
   });
