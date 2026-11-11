@@ -6,6 +6,7 @@ import { userConfigPath } from "../core/daemon/user-config.js";
 import { findWorktreeRoot, resolveCommonDir } from "../core/fs/git-layout.js";
 import { createDarwinSource } from "../core/ps/darwin.js";
 import { flag } from "../core/ps/flags.js";
+import { readLocks, renderLocks } from "../core/ps/locks.js";
 import type { Flag, PsPlaces } from "../core/ps/model.js";
 import { createProcSource } from "../core/ps/proc.js";
 import { render } from "../core/ps/render.js";
@@ -25,7 +26,12 @@ import type { CliIo } from "./main.js";
  * than Linux and macOS (D10) or when no snapshot could be taken.
  */
 
-const USAGE = "usage: squeal ps [--repo] [--full] [--json]\n";
+/*
+ * Spec 021 D5: `squeal ps --locks [--repo] [--json]` lists instead who holds
+ * or waits for each store's write lock, on Linux only; it takes no snapshot.
+ */
+
+const USAGE = "usage: squeal ps [--repo] [--full] [--json] [--locks]\n";
 
 /** The source of each platform `ps` covers (D10). */
 const SOURCES: Partial<Record<NodeJS.Platform, () => PsSource>> = {
@@ -51,6 +57,7 @@ interface PsArgs {
   readonly repo: boolean;
   readonly full: boolean;
   readonly json: boolean;
+  readonly locks: boolean;
 }
 
 export async function psCommand(
@@ -75,6 +82,7 @@ export async function psCommand(
     io.stderr(`squeal ps --repo: ${resolve(cwd)} is not inside a git repository\n\n${USAGE}`);
     return 2;
   }
+  if (parsed.locks) return locksCommand(parsed, io, { platform, source, commonDir, options });
   let shape: PsSnapshot;
   try {
     shape = await takeSnapshot({
@@ -99,14 +107,51 @@ export async function psCommand(
 }
 
 function parseArgs(args: readonly string[]): PsArgs | string {
-  const known = new Set(["--repo", "--full", "--json"]);
+  const known = new Set(["--repo", "--full", "--json", "--locks"]);
   const unknown = args.find((a) => !known.has(a));
   if (unknown !== undefined) return `unknown option "${unknown}"`;
+  if (args.includes("--locks") && args.includes("--full"))
+    return "--full does not apply to --locks";
   return {
     repo: args.includes("--repo"),
     full: args.includes("--full"),
     json: args.includes("--json"),
+    locks: args.includes("--locks"),
   };
+}
+
+/** Spec 021 D5: the write-lock holders of each store, from `/proc/locks`; exit 3 without it. */
+function locksCommand(
+  parsed: PsArgs,
+  io: CliIo,
+  at: {
+    readonly platform: NodeJS.Platform;
+    readonly source: PsSource;
+    readonly commonDir: AbsolutePath | null;
+    readonly options: PsCommandOptions;
+  },
+): number {
+  if (at.platform !== "linux") {
+    io.stderr(
+      `squeal ps --locks: ${at.platform} has no /proc/locks; lock holders are read on Linux only\n`,
+    );
+    return 3;
+  }
+  const cwd = resolve(io.cwd ?? process.cwd());
+  try {
+    const locks = readLocks(
+      at.source,
+      placesOf(io.env ?? process.env, at.commonDir, at.options),
+      parsed.repo,
+    );
+    io.stdout(parsed.json ? `${JSON.stringify(locks)}\n` : renderLocks(locks, cwd));
+    return 0;
+  } catch (error) {
+    io.stderr(
+      `squeal ps --locks: no answer: ${error instanceof Error ? error.message : String(error)}\n`,
+    );
+    return 3;
+  }
 }
 
 /** The git common dir of the worktree around `cwd`; `null` outside one (D1). */
