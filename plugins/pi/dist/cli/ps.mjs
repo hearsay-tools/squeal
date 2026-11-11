@@ -2931,6 +2931,7 @@ var DEFAULT_POLICY = {
     blocking: false,
     tools: ["eslint", "oxlint"]
   },
+  gate: { groups: null },
   shared: { ref: null }
 };
 
@@ -3080,6 +3081,28 @@ var insideRoot = (v) => {
   const normal = posix.normalize(v.replaceAll("\\", "/"));
   return isAbsolute6(v) || normal === ".." || normal.startsWith("../") ? "a path inside the worktree, relative to its root" : null;
 };
+var PREPARE_SHAPE = "{ command: [executable, ...arguments], timeoutSeconds?: seconds }";
+var prepare = (v) => {
+  if (!isRecord(v)) return PREPARE_SHAPE;
+  const unknown = Object.keys(v).find((key) => key !== "command" && key !== "timeoutSeconds");
+  if (unknown !== void 0) {
+    return { problem: `has an unknown key "${unknown}"; it takes ${PREPARE_SHAPE}` };
+  }
+  const { command: command2, timeoutSeconds } = v;
+  const list = Array.isArray(command2) && command2.every((s) => typeof s === "string");
+  if (!list || command2.length === 0 || command2[0] === "") {
+    return {
+      problem: `has a command that is not a list with an executable first: ${JSON.stringify(command2)}; it takes ${PREPARE_SHAPE}`
+    };
+  }
+  const positive = typeof timeoutSeconds === "number" && Number.isFinite(timeoutSeconds) && timeoutSeconds > 0;
+  if (timeoutSeconds !== void 0 && !positive) {
+    return {
+      problem: `has a timeoutSeconds that is not a positive number: ${JSON.stringify(timeoutSeconds)}`
+    };
+  }
+  return null;
+};
 var FIELDS = {
   name: nonEmptyString,
   cwd: insideRoot,
@@ -3088,7 +3111,8 @@ var FIELDS = {
   env: variables,
   include: globs,
   exclude: globs,
-  slow: boolean
+  slow: boolean,
+  prepare
 };
 var REQUIRED = /* @__PURE__ */ new Set(["name", "include"]);
 function nodeTestProjects(value, path) {
@@ -3330,6 +3354,10 @@ var CODE_SHAPE = {
   crap: { enabled: boolean2, threshold: aboveZero2 }
 };
 
+// src/core/daemon/policy-gate.ts
+var groups = (v) => v === null || Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of check-group names, or null";
+var GATE_SHAPE = { gate: { groups } };
+
 // src/core/daemon/policy-lint.ts
 var boolean3 = (v) => typeof v === "boolean" ? null : "true or false";
 var globs3 = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? compiles(v) : "an array of strings";
@@ -3513,7 +3541,8 @@ var SHAPE = {
   store: { retentionDays: atLeastZero2, maxSizeMb: orNull(aboveZero3) },
   ...CODE_SHAPE,
   ...LINT_SHAPE,
-  ...SHARED_SHAPE
+  ...SHARED_SHAPE,
+  ...GATE_SHAPE
 };
 function loadPolicy(root) {
   const loaded = loadConfigFile(join18(root, POLICY_FILE), SHAPE, DEFAULT_POLICY);

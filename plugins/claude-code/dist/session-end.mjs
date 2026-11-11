@@ -3351,6 +3351,7 @@ var DEFAULT_POLICY = {
     blocking: false,
     tools: ["eslint", "oxlint"]
   },
+  gate: { groups: null },
   shared: { ref: null }
 };
 
@@ -3616,8 +3617,8 @@ function resolveEntry(group, index) {
   };
 }
 var DEFER_DEFAULTS = { maxLoadPerCpu: 1, maxDeferMs: 6e5 };
-function groupOf(groups, check) {
-  return groups.find((group) => selects(group.select, check)) ?? null;
+function groupOf(groups2, check) {
+  return groups2.find((group) => selects(group.select, check)) ?? null;
 }
 function selects(selector, check) {
   switch (selector.kind) {
@@ -3664,6 +3665,28 @@ var insideRoot = (v) => {
   const normal = posix.normalize(v.replaceAll("\\", "/"));
   return isAbsolute(v) || normal === ".." || normal.startsWith("../") ? "a path inside the worktree, relative to its root" : null;
 };
+var PREPARE_SHAPE = "{ command: [executable, ...arguments], timeoutSeconds?: seconds }";
+var prepare = (v) => {
+  if (!isRecord(v)) return PREPARE_SHAPE;
+  const unknown = Object.keys(v).find((key) => key !== "command" && key !== "timeoutSeconds");
+  if (unknown !== void 0) {
+    return { problem: `has an unknown key "${unknown}"; it takes ${PREPARE_SHAPE}` };
+  }
+  const { command, timeoutSeconds } = v;
+  const list = Array.isArray(command) && command.every((s) => typeof s === "string");
+  if (!list || command.length === 0 || command[0] === "") {
+    return {
+      problem: `has a command that is not a list with an executable first: ${JSON.stringify(command)}; it takes ${PREPARE_SHAPE}`
+    };
+  }
+  const positive = typeof timeoutSeconds === "number" && Number.isFinite(timeoutSeconds) && timeoutSeconds > 0;
+  if (timeoutSeconds !== void 0 && !positive) {
+    return {
+      problem: `has a timeoutSeconds that is not a positive number: ${JSON.stringify(timeoutSeconds)}`
+    };
+  }
+  return null;
+};
 var FIELDS = {
   name: nonEmptyString,
   cwd: insideRoot,
@@ -3672,7 +3695,8 @@ var FIELDS = {
   env: variables,
   include: globs,
   exclude: globs,
-  slow: boolean
+  slow: boolean,
+  prepare
 };
 var REQUIRED = /* @__PURE__ */ new Set(["name", "include"]);
 function nodeTestProjects(value, path) {
@@ -3914,6 +3938,10 @@ var CODE_SHAPE = {
   crap: { enabled: boolean2, threshold: aboveZero2 }
 };
 
+// src/core/daemon/policy-gate.ts
+var groups = (v) => v === null || Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of check-group names, or null";
+var GATE_SHAPE = { gate: { groups } };
+
 // src/core/daemon/policy-lint.ts
 var boolean3 = (v) => typeof v === "boolean" ? null : "true or false";
 var globs3 = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? compiles(v) : "an array of strings";
@@ -4126,7 +4154,8 @@ var SHAPE = {
   store: { retentionDays: atLeastZero2, maxSizeMb: orNull(aboveZero3) },
   ...CODE_SHAPE,
   ...LINT_SHAPE,
-  ...SHARED_SHAPE
+  ...SHARED_SHAPE,
+  ...GATE_SHAPE
 };
 function loadPolicy(root) {
   const loaded = loadConfigFile(join5(root, POLICY_FILE), SHAPE, DEFAULT_POLICY);
@@ -5113,25 +5142,25 @@ var groupViews = /* @__PURE__ */ new WeakMap();
 function groupView(policy) {
   let view = groupViews.get(policy);
   if (view === void 0) {
-    const groups = resolveGroups(policy);
+    const groups2 = resolveGroups(policy);
     const owners = /* @__PURE__ */ new Map();
     const of = (ref2) => {
       const id = testFileId(ref2);
       let owner = owners.get(id);
       if (owner === void 0) {
         const check = { kind: "test", runner: runnerOf(policy, ref2.project), ...ref2 };
-        owner = groupOf(groups, check) ?? fallback(groups);
+        owner = groupOf(groups2, check) ?? fallback(groups2);
         owners.set(id, owner);
       }
       return owner;
     };
-    view = { groups, of };
+    view = { groups: groups2, of };
     groupViews.set(policy, view);
   }
   return view;
 }
-function fallback(groups) {
-  const tests2 = groups.find((group) => group.index === null && group.name === TESTS_GROUP);
+function fallback(groups2) {
+  const tests2 = groups2.find((group) => group.index === null && group.name === TESTS_GROUP);
   if (tests2 === void 0) throw new Error("the default tests group is missing");
   return tests2;
 }
@@ -5145,9 +5174,9 @@ function slowView(policy) {
   let view = views.get(policy);
   if (view === void 0) {
     const globs4 = slowGlobs(policy, policy.nodeTest);
-    const groups = groupView(policy);
+    const groups2 = groupView(policy);
     view = {
-      isSlow: (ref2) => groups.of(ref2).name !== TESTS_GROUP,
+      isSlow: (ref2) => groups2.of(ref2).name !== TESTS_GROUP,
       globs: globs4,
       declared: globs4.length > 0
     };
@@ -7098,9 +7127,9 @@ function forgetStopWait(store, consumer) {
 function slowPolicyView(policy) {
   const globs4 = slowGlobs(policy, policy.nodeTest);
   if (globs4.length === 0) return null;
-  const groups = groupView(policy);
+  const groups2 = groupView(policy);
   return {
-    isSlow: policy.checks.length === 0 ? slowFiles(policy, policy.nodeTest) : (ref2) => groups.of(ref2).name === SLOW_GROUP,
+    isSlow: policy.checks.length === 0 ? slowFiles(policy, policy.nodeTest) : (ref2) => groups2.of(ref2).name === SLOW_GROUP,
     slowGlobs: globs4,
     stopWaitMs: stopSlowWaitMs(policy),
     maxHolds: Math.max(1, policy.stop.maxHolds),
@@ -7600,7 +7629,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.430";
+  if (true) return "0.1.432";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -10406,16 +10435,16 @@ function tellSlowTier(store, consumer, tier) {
 function groupsToldMetaKey(worktreeId) {
   return worktreeMetaKey("groupTiersTold", worktreeId);
 }
-function groupTiersState(groups) {
-  if (groups === void 0) return null;
-  return JSON.stringify(groups.map((group) => [group.name, slowTierState(group)]));
+function groupTiersState(groups2) {
+  if (groups2 === void 0) return null;
+  return JSON.stringify(groups2.map((group) => [group.name, slowTierState(group)]));
 }
-function groupTiersChanged(store, consumer, groups) {
-  const state = groupTiersState(groups);
+function groupTiersChanged(store, consumer, groups2) {
+  const state = groupTiersState(groups2);
   return state !== null && readSlot(store, groupsToldMetaKey(consumer.worktreeId), consumer) !== state;
 }
-function tellGroupTiers(store, consumer, groups) {
-  writeSlot(store, groupsToldMetaKey(consumer.worktreeId), consumer, groupTiersState(groups));
+function tellGroupTiers(store, consumer, groups2) {
+  writeSlot(store, groupsToldMetaKey(consumer.worktreeId), consumer, groupTiersState(groups2));
 }
 
 // src/core/delivery/turn.ts
@@ -10661,10 +10690,10 @@ var NO_HOLD = {
     return report;
   }
 };
-function startHold(prepare) {
-  if (prepare === void 0) return NO_HOLD;
-  const held = prepare.connection.hold();
-  if (held === null && !prepare.connection.held) return NO_HOLD;
+function startHold(prepare2) {
+  if (prepare2 === void 0) return NO_HOLD;
+  const held = prepare2.connection.hold();
+  if (held === null && !prepare2.connection.held) return NO_HOLD;
   const code = [];
   let acknowledge = null;
   let ended = false;
@@ -10688,7 +10717,7 @@ function startHold(prepare) {
     commitHolds(code);
     settled3();
   };
-  prepare.reports.add({
+  prepare2.reports.add({
     commit,
     abandon,
     get open() {
@@ -12349,11 +12378,11 @@ function slowSlotOf(store, worktreeId, root, header, alive, now) {
   } catch {
     return void 0;
   }
-  const groups = /* @__PURE__ */ new Map();
+  const groups2 = /* @__PURE__ */ new Map();
   for (const { record } of held) {
     const id = record.kind === "holder" ? `${record.pid}\0${record.worktreeId}` : `\0${record.kind}`;
-    const group = groups.get(id);
-    if (group === void 0) groups.set(id, { record, permits: 1 });
+    const group = groups2.get(id);
+    if (group === void 0) groups2.set(id, { record, permits: 1 });
     else {
       group.permits++;
       if (record.kind === "holder" && group.record.kind === "holder") {
@@ -12361,7 +12390,7 @@ function slowSlotOf(store, worktreeId, root, header, alive, now) {
       }
     }
   }
-  const holders2 = [...groups.values()].map(
+  const holders2 = [...groups2.values()].map(
     ({ record, permits: n }) => holderOf(store, worktreeId, record, n, now)
   );
   return { permits, holders: holders2.sort(longestFirst) };
@@ -12936,12 +12965,12 @@ function outstandingOf(store, worktreeId, root, reads, now, load) {
   const retries = retryStandings(reads, worktreeId, policy);
   const refs = reads.keys.map((row) => row.testFile).sort((a, b) => testFileId(a).localeCompare(testFileId(b)));
   const files = standingsOf(store, worktreeId, root, daemon, now, load, reads)(refs);
-  const groups = /* @__PURE__ */ new Map();
+  const groups2 = /* @__PURE__ */ new Map();
   const add = (standing3, ref2) => {
     const id = groupId(standing3) + waitsId(standing3);
-    const group = groups.get(id);
+    const group = groups2.get(id);
     if (group === void 0) {
-      groups.set(id, { standing: standing3, files: ref2 === null ? [] : [ref2] });
+      groups2.set(id, { standing: standing3, files: ref2 === null ? [] : [ref2] });
       return;
     }
     if (ref2 !== null) group.files.push(ref2);
@@ -12959,12 +12988,12 @@ function outstandingOf(store, worktreeId, root, reads, now, load) {
     if (slow.isSlow(file.testFile) && !held) continue;
     add(standing3, file.testFile);
   }
-  const said = [...groups.values()].some((g) => g.standing.kind === "unlisted");
+  const said = [...groups2.values()].some((g) => g.standing.kind === "unlisted");
   if (header.runnerPartPending === true && !said) add(unlisted(header, policy), null);
   if (reads.checkpoint !== void 0 && !reads.checkpoint.owed) {
     add({ kind: "checkpoint" }, null);
   }
-  return [...groups.values()].sort(
+  return [...groups2.values()].sort(
     (a, b) => ORDER.indexOf(a.standing.kind) - ORDER.indexOf(b.standing.kind)
   );
 }
@@ -12982,12 +13011,12 @@ function unlisted(header, policy) {
 }
 function retryStandings(reads, worktreeId, policy) {
   const { header, runs } = reads;
-  const groups = groupView(policy);
+  const groups2 = groupView(policy);
   const queue = {
     isSlow: slowView(policy).isSlow,
     activity: header.slowTier?.activity ?? null,
     runs,
-    groupOf: groupLanesOf(header.groupTiers, (ref2) => groups.of(ref2).name)
+    groupOf: groupLanesOf(header.groupTiers, (ref2) => groups2.of(ref2).name)
   };
   const retries = /* @__PURE__ */ new Map();
   for (const r of reads.pendingRetries?.retries ?? []) {
@@ -13222,13 +13251,13 @@ function importsOf(store, worktreeId, keys, states) {
   return imports.length === 0 ? {} : { imports };
 }
 function inheritedSources(store, states) {
-  const groups = /* @__PURE__ */ new Map();
+  const groups2 = /* @__PURE__ */ new Map();
   let count2 = 0;
   for (const s of states) {
     if (s.validity !== "current" || s.origin?.kind !== "inherited") continue;
     count2++;
     const id = JSON.stringify([s.origin.worktreeId, s.origin.commit]);
-    const group = groups.get(id) ?? {
+    const group = groups2.get(id) ?? {
       worktreeId: s.origin.worktreeId,
       commit: s.origin.commit,
       count: 0,
@@ -13236,9 +13265,9 @@ function inheritedSources(store, states) {
     };
     group.count++;
     if (s.check.kind === "file") group.fileLevelCount++;
-    groups.set(id, group);
+    groups2.set(id, group);
   }
-  const sources = [...groups.values()].map((g) => ({ ...g, worktreeRoot: store.worktrees.get(g.worktreeId)?.root ?? null })).sort(
+  const sources = [...groups2.values()].map((g) => ({ ...g, worktreeRoot: store.worktrees.get(g.worktreeId)?.root ?? null })).sort(
     (a, b) => b.count - a.count || a.worktreeId.localeCompare(b.worktreeId) || String(a.commit).localeCompare(String(b.commit))
   ).map(({ worktreeId, worktreeRoot, commit, count: count3, fileLevelCount }) => ({
     worktreeId,
@@ -13327,7 +13356,7 @@ function openContext(input, location2, options = {}) {
     };
     const now = options.now ?? Date.now;
     const connection = holding?.made() ?? null;
-    const prepare = connection === null ? void 0 : { connection, reports: new PreparedReports() };
+    const prepare2 = connection === null ? void 0 : { connection, reports: new PreparedReports() };
     const code = codeSource(location2.commonDir, location2.root, {
       busyTimeoutMs: options.busyTimeoutMs ?? STATUS_BUSY_TIMEOUT_MS,
       holding: connection !== null
@@ -13343,12 +13372,12 @@ function openContext(input, location2, options = {}) {
       ...options.squealVersion === void 0 ? {} : { squealVersion: options.squealVersion },
       code,
       lint: lint2,
-      ...prepare === void 0 ? {} : { prepare },
+      ...prepare2 === void 0 ? {} : { prepare: prepare2 },
       // Row 011-312: a registration records the commit `HEAD` names here.
       root: location2.root
     });
     const close = () => store.close();
-    const prepared = prepare === void 0 ? {} : { prepared: prepare.reports };
+    const prepared = prepare2 === void 0 ? {} : { prepared: prepare2.reports };
     return { ...location2, store, delivery, consumer, code, lint: lint2, ...prepared, close };
   } catch (error) {
     store.close();
@@ -13443,9 +13472,9 @@ var PRIMER_OPENING = "Squeal runs this repository's ";
 var REVISION = "A revision is Squeal's number for each saved change to this worktree's files; every result names the revision it ran at, and a header names the files its revision changed.";
 function primer(command = SQUEAL_COMMAND, coverage = DEFAULT_COVERAGE) {
   const names2 = runnersOf(coverage).map((runner) => runner.name);
-  const groups = coverage.groups;
-  const when = groups === void 0 ? " after each edit" : "";
-  const quiet = groups?.noTestsAtEdit === true;
+  const groups2 = coverage.groups;
+  const when = groups2 === void 0 ? " after each edit" : "";
+  const quiet = groups2?.noTestsAtEdit === true;
   const arrivals = quiet ? [
     ", but no test group runs after each edit, so silence between edits is not a pass; a SQUEAL message with your next tool call means a check changed;",
     ", but not after each edit, so silence between edits is not a pass; a SQUEAL message means a check changed;"
@@ -13460,7 +13489,7 @@ function primer(command = SQUEAL_COMMAND, coverage = DEFAULT_COVERAGE) {
   for (const arrival of arrivals) {
     const sentences = (covers, naming, wait) => [
       `${PRIMER_OPENING}${listed3(names2, "and")} tests in the background${arrival} do not run ${listed3(names2, "or")} to learn whether your edits broke something.`,
-      ...groups === void 0 ? [] : [momentsSentence(command, naming, groups)],
+      ...groups2 === void 0 ? [] : [momentsSentence(command, naming, groups2)],
       waitSentence(command, naming, wait, quiet),
       ...coverage.slow === null ? [] : slowSentences(command, naming, coverage.slow),
       "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
@@ -13514,9 +13543,9 @@ var AT = {
   stop: "at Stop, and Stop waits for them",
   commit: "when you commit"
 };
-function momentsSentence(command, naming, groups) {
+function momentsSentence(command, naming, groups2) {
   const cli = (sub) => naming === "every" && command === SQUEAL_COMMAND ? `\`${command} ${sub}\`` : `the CLI's \`${sub}\``;
-  const clauses = groups.moments.map(({ at, names: names2 }) => {
+  const clauses = groups2.moments.map(({ at, names: names2 }) => {
     const named3 = listed3(
       names2.map((name2) => name2 === "tests" ? "tests (the test files no group selects)" : name2),
       "and"
