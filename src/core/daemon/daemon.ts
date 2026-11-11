@@ -551,9 +551,18 @@ class Daemon {
         this.options.lintProviders === undefined ? null : import("../lint/pass/idle.js"),
       ]);
       const { storePaths } = await import("../store/paths.js");
-      const around = this.options.ownsProcess
-        ? inRootWhileRunning(root, this.opened.scratch)
-        : undefined;
+      // Spec 021 D8 (row 021-11): each Vitest instance in a local runner host when `squeal
+      // daemon` gives one, whose working directory is the root, so the daemon stays out of it;
+      // a host gone is replaced (D7).
+      const vitest = (await import("../runner-host/vitest-host.js")).vitestInstances(
+        this.options.runnerHost,
+        this.#version,
+        createVitestAdapter,
+      );
+      const around =
+        this.options.ownsProcess && !vitest.hosted
+          ? inRootWhileRunning(root, this.opened.scratch)
+          : undefined;
       // Spec 003 D7: one runner per configured or detected runner. Vitest is
       // built when detected, or when nothing else is configured, so a project
       // with neither keeps the "project without Vitest" failure note (001 D11).
@@ -582,7 +591,7 @@ class Daemon {
             };
       // Each Vitest instance's workers carry the mark of its lane (001 D12, task 004-18).
       const vitestInstance = (lane: string, maxWorkers?: number) => () =>
-        createVitestAdapter({
+        vitest.create({
           root,
           note: (text) => this.#note(text),
           optimizer: (projects) => this.#optimizerOff(projects),
@@ -607,6 +616,7 @@ class Daemon {
                 ),
               onRecovered: () => this.#note("Vitest started after the config changed"),
               around,
+              ...vitest.recovery,
             })
           : null;
       // Spec 003 D7 as amended 2026-10-22 (row 005-79): a Vitest below the root that
@@ -641,6 +651,7 @@ class Daemon {
           create: vitestInstance(lane, workers),
           onFailure: (text) => this.#note(`${whose} ${text}`),
           around,
+          ...vitest.recovery,
         });
       };
       // Spec 011 C4 step 5 (row 011-269): a second fast instance for a tier beside a named wait's
@@ -652,6 +663,7 @@ class Daemon {
           create: vitestInstance(`${BESIDE_LANE_PREFIX}vitest`, this.#policy.runner.tierSize),
           onFailure: (text) => this.#note(`the tier beside a named wait's batch: ${text}`),
           around,
+          ...vitest.recovery,
         });
       // Row 011-78 (011 C10, *Projects at a reload*): the sets read the live entries.
       const nodeTestRunners = nodeTest.createNodeTestRunnerSet(() => this.#policy.nodeTest, {
