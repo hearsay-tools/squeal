@@ -1,8 +1,9 @@
 import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { cpSync, mkdirSync, rmSync } from "node:fs";
+import { createRequire } from "node:module";
 import { join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { afterAll, describe, expect, it } from "vitest";
 import { ReportersMap } from "vitest/node";
@@ -22,7 +23,8 @@ import { SLOW } from "./helpers.js";
  */
 
 const execFileAsync = promisify(execFile);
-const register = fileURLToPath(new URL("../../store/child/register-ts.mjs", import.meta.url));
+/** The sources use parameter properties, which Node's type stripping rejects; Node 26 has no `--experimental-transform-types` (row 018-36). */
+const TSX = pathToFileURL(createRequire(import.meta.url).resolve("tsx")).href;
 const child = fileURLToPath(new URL("./child/environment.ts", import.meta.url));
 const fixturesDir = resolve(import.meta.dirname, "../../fixtures/vitest");
 const scratch = join(fixturesDir, ".tmp", `harness-${randomUUID()}`);
@@ -62,14 +64,7 @@ async function probe(extra: Readonly<Record<string, string>>): Promise<Probe> {
   for (const name of DETECTED) delete env[name];
   const { stdout } = await execFileAsync(
     process.execPath,
-    [
-      "--experimental-transform-types",
-      "--disable-warning=ExperimentalWarning",
-      "--import",
-      register,
-      child,
-      scratch,
-    ],
+    ["--disable-warning=ExperimentalWarning", "--import", TSX, child, scratch],
     { env: { ...env, ...extra }, maxBuffer: 64 * 1024 * 1024 },
   );
   return JSON.parse(stdout) as Probe;
