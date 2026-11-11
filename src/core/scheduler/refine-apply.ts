@@ -66,12 +66,7 @@ export async function applyRefinement(
     const tried =
       n === 0 ? part : { ...part, reresolved: [...part.reresolved, ...lagging(context, ledger)] };
     carry(await applyRunnerPart(context, ledger, tried, changedMeanwhile, refined ?? undefined));
-    // Row 015-52: the listing holds the revision's test files unless the last one failed.
-    const listed = ledger.listingFailed ? null : (refined ?? part.revision.number);
-    ledger.commit({
-      ...(refined === null ? {} : { refined }),
-      ...(listed === null ? {} : { listed }),
-    });
+    ledger.commit(refined === null ? {} : { refined });
     committed = true;
     ledger.refineChanges = null;
     host.applied();
