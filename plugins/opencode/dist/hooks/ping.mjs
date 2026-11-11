@@ -1240,7 +1240,7 @@ var FAILING_AT = `SELECT r.*, ${CHECK_COLUMNS}, f.summary, f.errors FROM results
   JOIN checks c ON c.id = r.check_id LEFT JOIN failure_texts f ON f.id = r.failure_id
   WHERE r.key = ? AND r.outcome = 'fail'`;
 
-// src/core/store/prune.ts
+// src/core/store/prune-rules.ts
 var DAY_MS = 24 * 60 * 60 * 1e3;
 var LIVE_KEYS = `SELECT k.key FROM test_file_keys k JOIN worktrees w ON w.id = k.worktree_id
   WHERE k.key IS NOT NULL`;
@@ -1268,6 +1268,9 @@ var NEWEST_OF_FILE = `${SELECT_RESULTS}
 
 // src/core/store/repos/states.ts
 var SELECT_STATES = `SELECT s.*, ${CHECK_COLUMNS} FROM known_states s JOIN checks c ON c.id = s.check_id`;
+
+// src/core/store/open.ts
+var JOURNAL_SIZE_LIMIT_BYTES = 64 * 1024 * 1024;
 
 // src/core/code/store/schema.ts
 var V12 = `

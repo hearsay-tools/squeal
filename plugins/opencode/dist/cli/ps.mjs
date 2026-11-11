@@ -600,11 +600,11 @@ function readManifest(root) {
 }
 function checkRoot(root, expected, node) {
   const { manifest } = readManifest(root);
-  const named = pluginVersion(root);
-  if (named !== manifest.version) {
+  const named2 = pluginVersion(root);
+  if (named2 !== manifest.version) {
     throw invalid(
       root,
-      `${PLUGIN_MANIFEST} names ${named}, ${RUNTIME_MANIFEST} ${manifest.version}`
+      `${PLUGIN_MANIFEST} names ${named2}, ${RUNTIME_MANIFEST} ${manifest.version}`
     );
   }
   if (expected !== null && manifest.version !== expected) {
@@ -1327,11 +1327,11 @@ var ONE_READING = "one of the window's two /proc/locks readings cannot be read, 
 var NO_MARKS = "the source reads no marks (D10)";
 var flag = (model) => {
   const unknown = [];
-  const named = /* @__PURE__ */ new Set();
+  const named2 = /* @__PURE__ */ new Set();
   const name2 = (what, why) => {
-    if (named.has(`${what}
+    if (named2.has(`${what}
 ${why}`)) return;
-    named.add(`${what}
+    named2.add(`${what}
 ${why}`);
     unknown.push({ what, why });
   };
@@ -1622,6 +1622,14 @@ function within(path, dir) {
   return path.startsWith(dir.endsWith("/") ? dir : `${dir}/`);
 }
 
+// src/core/ps/locks.ts
+import { existsSync as existsSync5 } from "node:fs";
+import { join as join17 } from "node:path";
+
+// src/core/store/lock-holders.ts
+import { existsSync as existsSync4 } from "node:fs";
+import { basename as basename4 } from "node:path";
+
 // src/core/ps/proc.ts
 import { readdirSync as readdirSync7, readFileSync as readFileSync9, readlinkSync, statSync as statSync2 } from "node:fs";
 import { availableParallelism as availableParallelism3 } from "node:os";
@@ -1878,17 +1886,20 @@ var ProcSource = class {
     if (text2 === null) return null;
     const locks = [];
     for (const line of text2.split("\n")) {
-      const m = /^\s*\d+:\s+((?:->\s*)+)?(\S+)\s+\S+\s+(READ|WRITE)\s+(-?\d+)\s+([0-9a-f]+):([0-9a-f]+):(\d+)\s/i.exec(
+      const m = /^\s*\d+:\s+((?:->\s*)+)?(\S+)\s+\S+\s+(READ|WRITE)\s+(-?\d+)\s+([0-9a-f]+):([0-9a-f]+):(\d+)\s(?:\s*(\d+)\s+(\d+|EOF)\b)?/i.exec(
         line
       );
       if (m === null) continue;
       const [, arrow, kind = "", access = "", pid = "", major = "", minor = "", inode = ""] = m;
+      const [start, end] = [m[8], m[9]];
       locks.push({
         kind,
         access: access.toUpperCase() === "WRITE" ? "write" : "read",
         pid: Number(pid) > 0 ? Number(pid) : null,
         file: `${hex(BigInt(`0x${major}`))}:${hex(BigInt(`0x${minor}`))}:${inode}`,
-        blocked: arrow !== void 0
+        blocked: arrow !== void 0,
+        // Spec 021 D5: the byte range, which names SQLite's WAL write lock (byte 120 of `-shm`).
+        ...start === void 0 ? {} : { start: Number(start), end: end === "EOF" ? null : Number(end) }
       });
     }
     return locks;
@@ -2031,6 +2042,108 @@ function cpuTime3(text2) {
   return { busy: total - (ticks[3] ?? 0) - (ticks[4] ?? 0), total };
 }
 
+// src/core/store/lock-holders.ts
+var WRITE_LOCK_BYTE = 120;
+var COMMAND_CHARS3 = 160;
+var NO_COMMAND = "command unknown";
+function holdersFrom(source, databasePath) {
+  try {
+    const shm = `${databasePath}-shm`;
+    const key = source.fileKey(shm);
+    if (key === null) return existsSync4(shm) ? void 0 : [];
+    const locks = source.locks();
+    if (locks === null) return void 0;
+    const entries = onWriteLock(locks, key);
+    const held = entries.filter((e) => !e.blocked && e.access === "write");
+    const waiting = entries.filter((e) => e.blocked);
+    return [...named(source, held, false), ...named(source, waiting, true)];
+  } catch {
+    return void 0;
+  }
+}
+function onWriteLock(locks, key) {
+  const inode = inodeOf(key);
+  const onByte = locks.filter(
+    (e) => e.kind === "POSIX" && e.pid !== null && e.start !== void 0 && e.start <= WRITE_LOCK_BYTE && (e.end === null || e.end !== void 0 && e.end >= WRITE_LOCK_BYTE) && inodeOf(e.file) === inode
+  );
+  const exact = onByte.filter((e) => e.file === key);
+  return exact.length > 0 ? exact : onByte;
+}
+function inodeOf(key) {
+  return key.slice(key.lastIndexOf(":") + 1);
+}
+function named(source, entries, waiting) {
+  const holders = [];
+  for (const { pid } of entries) {
+    if (pid === null || holders.some((h) => h.pid === pid)) continue;
+    const args = source.cmdline(pid);
+    holders.push({ pid, command: args === null ? NO_COMMAND : shortCommand(args), waiting });
+  }
+  return holders;
+}
+function shortCommand(args) {
+  const words = args.map(
+    (arg, at) => arg.startsWith("/") && (at === 0 || /\.[cm]?[jt]s$/.test(arg)) ? basename4(arg) : arg
+  );
+  const line = words.join(" ").replace(/\s+/g, " ").trim();
+  if (line === "") return NO_COMMAND;
+  return line.length > COMMAND_CHARS3 ? `${line.slice(0, COMMAND_CHARS3 - 3)}...` : line;
+}
+function describeHolders(holders) {
+  const holder = holders?.find((entry) => !entry.waiting);
+  return holder === void 0 ? "the holder is not known" : `held by pid ${holder.pid} (${holder.command})`;
+}
+
+// src/core/ps/locks.ts
+var PS_LOCKS_VERSION = 1;
+function readLocks(source, places, repo) {
+  const others = repo ? [] : discover(source, source.processTable(), places).daemons.flatMap((d) => d.commonDir === null ? [] : [d.commonDir]).filter((dir) => dir !== places.commonDir);
+  const current = places.commonDir === null ? [] : [places.commonDir];
+  const repositories = [...current, ...[...new Set(others)].sort()].map((commonDir) => ({
+    commonDir,
+    current: commonDir === places.commonDir,
+    store: lockedFile(source, storePaths(commonDir).database),
+    codeStore: lockedFile(source, codeStoreOf(commonDir))
+  }));
+  return { version: PS_LOCKS_VERSION, repositories };
+}
+function codeStoreOf(commonDir) {
+  return join17(storePaths(commonDir).dir, "code.sqlite");
+}
+function lockedFile(source, path) {
+  return { path, exists: existsSync5(path), holders: holdersFrom(source, path) ?? null };
+}
+function renderLocks(locks, cwd) {
+  if (locks.repositories.length === 0) {
+    return `No Squeal store to show: no daemon of this user runs, and ${cwd} is not inside a git repository.
+`;
+  }
+  const lines = ["Write locks of each Squeal store, from /proc/locks:", ""];
+  for (const r of locks.repositories) {
+    lines.push(`${join17(r.commonDir, "squeal")}${r.current ? " (this repository)" : ""}`);
+    lines.push(...fileLines("store.sqlite", r.store), ...fileLines("code.sqlite", r.codeStore));
+  }
+  const files = locks.repositories.flatMap((r) => [r.store, r.codeStore]);
+  if (files.every((f) => f.holders !== null && f.holders.length === 0)) {
+    lines.push("", "No process holds or waits for a store's write lock.");
+  }
+  return `${lines.join("\n")}
+`;
+}
+var NAME_WIDTH = "store.sqlite".length + 2;
+function fileLines(name2, file) {
+  const label = `  ${name2.padEnd(NAME_WIDTH)}`;
+  const indent = " ".repeat(label.length);
+  if (!file.exists) return [`${label}no file`];
+  if (file.holders === null) return [`${label}holders unknown: /proc/locks cannot be read`];
+  if (file.holders.length === 0) return [`${label}not held`];
+  const clauses = file.holders.map(
+    (h) => h.waiting ? `pid ${h.pid} waits (${h.command})` : describeHolders([h])
+  );
+  if (file.holders.every((h) => h.waiting)) clauses.unshift("not held");
+  return clauses.map((clause, at) => `${at === 0 ? label : indent}${clause}`);
+}
+
 // src/core/ps/render.ts
 var STATE_WIDTH = 19;
 var DETAIL = "      ";
@@ -2045,7 +2158,7 @@ var render = (snapshot, { full }) => {
   }
   if (snapshot.files.length > 0) {
     lines.push("", "Files no live process uses");
-    for (const file of snapshot.files) lines.push(...fileLines(file));
+    for (const file of snapshot.files) lines.push(...fileLines2(file));
   }
   if (snapshot.unflaggedFiles !== null) {
     const counts = snapshot.unflaggedFiles.map((f) => `${f.kind} ${thousands(f.count)}`);
@@ -2197,7 +2310,7 @@ function orphanLines(o, at) {
     `${DETAIL}ends it: ${f.command ?? "none"}`
   ]);
 }
-function fileLines(f) {
+function fileLines2(f) {
   return [`  ! ${f.flag}  ${f.path} (${f.reason})`, `${DETAIL}ends it: ${f.command}`];
 }
 function flagLines(flags) {
@@ -2243,7 +2356,7 @@ function clip(text2, width) {
 }
 
 // src/core/ps/host.ts
-import { join as join17 } from "node:path";
+import { join as join18 } from "node:path";
 var hostTotals = (first, second) => {
   const a = first.cpuTime;
   const b = second.cpuTime;
@@ -2314,12 +2427,12 @@ function hostSlotsOf(path, cpus3) {
 function permitFiles(places) {
   const files = [];
   const add = (dir, permit) => {
-    for (const name2 of names(dir)) if (permit.test(name2)) files.push(join17(dir, name2));
+    for (const name2 of names(dir)) if (permit.test(name2)) files.push(join18(dir, name2));
   };
   for (const base of poolDirs(places)) {
     add(base, PERMIT2);
     for (const name2 of names(base)) {
-      const dir = join17(base, name2);
+      const dir = join18(base, name2);
       if (isRepositorySlotDir(dir)) add(dir, REPOSITORY_PERMIT);
     }
   }
@@ -2573,19 +2686,19 @@ function filesOf(args) {
 }
 
 // src/core/ps/snapshot-shape.ts
-import { basename as basename4 } from "node:path";
+import { basename as basename5 } from "node:path";
 
 // src/core/ps/shape.ts
 var PS_SHAPE_VERSION = 1;
 
 // src/core/ps/snapshot-unknown.ts
 var LISTED = 10;
-function unknownOf({ shape, named, costs }) {
+function unknownOf({ shape, named: named2, costs }) {
   const all2 = /* @__PURE__ */ new Map();
   const name2 = (what, why) => {
     if (!all2.has(what)) all2.set(what, { what, why });
   };
-  for (const u of named) name2(u.what, u.why);
+  for (const u of named2) name2(u.what, u.why);
   const { host, squeal } = shape;
   if (host.load === null) name2("host load", "the source cannot read it on this host");
   if (host.cpuPressure === null || host.memoryPressure === null)
@@ -2816,9 +2929,9 @@ function shapeOf(r, findings, o) {
     unflaggedFiles: o.full ? findings.unflagged : null,
     flags: daemons.reduce((n, d) => n + d.flags.length, 0) + processes.reduce((n, p) => n + p.flags.length, 0) + orphans2.reduce((n, p) => n + p.flags.length, 0) + files.length
   };
-  const named = [...r.unknown, ...findings.unknown].filter((u) => !o.repo || ofKept(u.what, kept));
+  const named2 = [...r.unknown, ...findings.unknown].filter((u) => !o.repo || ofKept(u.what, kept));
   const covered = new Map(pids3.map((pid) => [pid, costs.get(pid) ?? null]));
-  return { ...shape, unknown: unknownOf({ shape, named, costs: covered }) };
+  return { ...shape, unknown: unknownOf({ shape, named: named2, costs: covered }) };
 }
 function costOf(cost) {
   if (cost === void 0) return { cpuPct: null, cpuMs: null, privateBytes: null, swapBytes: null };
@@ -2845,7 +2958,7 @@ function worktreeIdsOf(commonDir) {
   return new Set(locks.flatMap((n) => lockFileWorktreeId(n) ?? []));
 }
 function socketIdOf(path) {
-  return socketWorktreeId(basename4(path)) ?? "";
+  return socketWorktreeId(basename5(path)) ?? "";
 }
 function ofKept(what, kept) {
   const pid = /^(?:daemon|process) (\d+)\b/.exec(what)?.[1];
@@ -2853,7 +2966,7 @@ function ofKept(what, kept) {
 }
 
 // src/core/ps/work.ts
-import { existsSync as existsSync4, statSync as statSync3 } from "node:fs";
+import { existsSync as existsSync6, statSync as statSync3 } from "node:fs";
 import { DatabaseSync as DatabaseSync3 } from "node:sqlite";
 
 // src/core/daemon/last-use.ts
@@ -2878,7 +2991,7 @@ function isEpochMs(value) {
 }
 
 // src/core/daemon/policy.ts
-import { join as join18 } from "node:path";
+import { join as join19 } from "node:path";
 
 // src/core/types/policy.ts
 var DEFAULT_POLICY = {
@@ -3137,8 +3250,8 @@ function projectEntries(value, path, fields, required, withDefaults3, check) {
 function entryProblem(entry, at, kept, fields, required, check) {
   if (!isRecord(entry))
     return `"${at}" must be an object, got ${JSON.stringify(entry)}; it is skipped`;
-  const named = nonEmptyString(entry.name) === null ? entry.name : null;
-  const skipped = named === null ? "it is skipped" : `project ${JSON.stringify(named)} is skipped`;
+  const named2 = nonEmptyString(entry.name) === null ? entry.name : null;
+  const skipped = named2 === null ? "it is skipped" : `project ${JSON.stringify(named2)} is skipped`;
   for (const key of Object.keys(entry)) {
     if (!Object.hasOwn(fields, key)) return `unknown key "${at}.${key}"; ${skipped}`;
   }
@@ -3152,8 +3265,8 @@ function entryProblem(entry, at, kept, fields, required, check) {
   }
   const across = check?.(entry) ?? null;
   if (across !== null) return `"${at}.${across.key}" ${across.problem}; ${skipped}`;
-  if (kept.some((project) => project.name === named)) {
-    return `"${at}.name" repeats ${JSON.stringify(named)} of an earlier project; it is skipped`;
+  if (kept.some((project) => project.name === named2)) {
+    return `"${at}.name" repeats ${JSON.stringify(named2)} of an earlier project; it is skipped`;
   }
   return null;
 }
@@ -3310,11 +3423,11 @@ function keyProblem(policy, group) {
 }
 function afterProblem(group, byName, defaults, all2) {
   for (const name2 of group.after ?? []) {
-    const named = byName.get(name2);
-    if (named !== void 0 && "lint" in named) {
+    const named2 = byName.get(name2);
+    if (named2 !== void 0 && "lint" in named2) {
       return `"after" names "${name2}", a lint group; a group follows test groups only`;
     }
-    const at = named?.at ?? defaults.get(name2);
+    const at = named2?.at ?? defaults.get(name2);
     if (at === void 0) {
       return all2.some((other) => other.name === name2) ? `"after" names "${name2}", a group that is left out` : `"after" names no group "${name2}"`;
     }
@@ -3546,7 +3659,7 @@ var SHAPE = {
   ...GATE_SHAPE
 };
 function loadPolicy(root) {
-  const loaded = loadConfigFile(join18(root, POLICY_FILE), SHAPE, DEFAULT_POLICY);
+  const loaded = loadConfigFile(join19(root, POLICY_FILE), SHAPE, DEFAULT_POLICY);
   const settled = settleChecks(loaded.value);
   return {
     policy: settled.problems.length === 0 ? loaded.value : { ...loaded.value, checks: settled.checks },
@@ -3630,7 +3743,7 @@ var readWork = (source, table, daemons) => {
     }
     const { db, file } = store;
     const read = /* @__PURE__ */ new Map();
-    const named = [];
+    const named2 = [];
     let runs;
     const runsOf = (id) => {
       runs ??= openRuns(db);
@@ -3640,10 +3753,10 @@ var readWork = (source, table, daemons) => {
       db.exec("BEGIN");
       for (const d of group) {
         try {
-          read.set(d.row.pid, readOne(db, d, runsOf, table, namespace, ownStart, named));
+          read.set(d.row.pid, readOne(db, d, runsOf, table, namespace, ownStart, named2));
         } catch (error) {
           const why = `its store ${path} cannot be read: ${message(error)}`;
-          named.push({ what: `daemon ${d.row.pid} work`, why });
+          named2.push({ what: `daemon ${d.row.pid} work`, why });
         }
       }
       db.exec("COMMIT");
@@ -3656,7 +3769,7 @@ var readWork = (source, table, daemons) => {
       continue;
     }
     for (const [pid, w] of read) work.set(pid, w);
-    unknown.push(...named);
+    unknown.push(...named2);
   }
   return { work, unknown };
 };
@@ -3673,7 +3786,7 @@ function openReadOnly(path) {
   try {
     const file = statSync3(path, { bigint: true });
     const wal = statSync3(`${path}-wal`, { throwIfNoEntry: false });
-    const held = wal !== void 0 && existsSync4(`${path}-shm`);
+    const held = wal !== void 0 && existsSync6(`${path}-shm`);
     if (!held && (wal?.size ?? 0) > 0)
       return `its store ${path} has a WAL whose commits cannot be read without creating its -shm`;
     db = new DatabaseSync3(held ? path : immutableUrl(path), { readOnly: true });
@@ -3975,7 +4088,7 @@ function only(table, pids3) {
 }
 
 // src/cli/ps.ts
-var USAGE = "usage: squeal ps [--repo] [--full] [--json]\n";
+var USAGE = "usage: squeal ps [--repo] [--full] [--json] [--locks]\n";
 var SOURCES = {
   linux: () => createProcSource(),
   // Built untested: nobody has run it on a Mac (the human, 2026-10-21).
@@ -4004,6 +4117,7 @@ ${USAGE}`);
 ${USAGE}`);
     return 2;
   }
+  if (parsed2.locks) return locksCommand(parsed2, io, { platform, source, commonDir, options });
   let shape;
   try {
     shape = await takeSnapshot({
@@ -4028,14 +4142,43 @@ ${USAGE}`);
   return shape.flags === 0 ? 0 : 1;
 }
 function parseArgs(args) {
-  const known = /* @__PURE__ */ new Set(["--repo", "--full", "--json"]);
+  const known = /* @__PURE__ */ new Set(["--repo", "--full", "--json", "--locks"]);
   const unknown = args.find((a) => !known.has(a));
   if (unknown !== void 0) return `unknown option "${unknown}"`;
+  if (args.includes("--locks") && args.includes("--full"))
+    return "--full does not apply to --locks";
   return {
     repo: args.includes("--repo"),
     full: args.includes("--full"),
-    json: args.includes("--json")
+    json: args.includes("--json"),
+    locks: args.includes("--locks")
   };
+}
+function locksCommand(parsed2, io, at) {
+  if (at.platform !== "linux") {
+    io.stderr(
+      `squeal ps --locks: ${at.platform} has no /proc/locks; lock holders are read on Linux only
+`
+    );
+    return 3;
+  }
+  const cwd = resolve3(io.cwd ?? process.cwd());
+  try {
+    const locks = readLocks(
+      at.source,
+      placesOf(io.env ?? process.env, at.commonDir, at.options),
+      parsed2.repo
+    );
+    io.stdout(parsed2.json ? `${JSON.stringify(locks)}
+` : renderLocks(locks, cwd));
+    return 0;
+  } catch (error) {
+    io.stderr(
+      `squeal ps --locks: no answer: ${error instanceof Error ? error.message : String(error)}
+`
+    );
+    return 3;
+  }
 }
 function commonDirOf(cwd) {
   try {
