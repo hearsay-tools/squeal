@@ -1,4 +1,4 @@
-import { mkdtempSync, readdirSync, rmSync } from "node:fs";
+import { mkdtempSync, readdirSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -253,6 +253,22 @@ describe("partsEvidence: the inputs a part certifies (spec 020 D13.2, 016 D4)", 
 
     writeFile(root, "fixtures/two/deep/three.txt", "3\n");
     expect((await taken(root, [listed])).evidence).toBeNull();
+  });
+
+  it("certifies a path read through a directory link with its target, as the record keys it", async () => {
+    const root = repo();
+    symlinkSync("data", join(root, "linked"));
+    const observed = { paths: ["linked/x.txt"], directories: [] };
+    const through = { ...EVIDENCE, "linked/x.txt": blob("x\n") };
+    expect(
+      (await taken(root, [part([file({ observed })], { evidence: through })])).evidence,
+    ).not.toBeNull();
+
+    // A read of an absent file leaves no evidence of its target: the file runs.
+    const { "data/x.txt": _target, ...lacking } = through;
+    expect(
+      (await taken(root, [part([file({ observed })], { evidence: lacking })])).evidence,
+    ).toBeNull();
   });
 
   it("certifies the listing of a directory below that holds untracked files only, as the daemon lists files", async () => {
