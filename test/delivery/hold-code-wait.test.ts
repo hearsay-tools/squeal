@@ -1,8 +1,14 @@
 import { spawn } from "node:child_process";
+import { mkdirSync } from "node:fs";
+import { dirname } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { codeStorePath } from "../../src/core/code/store/open.js";
+import { codeSource, withCode } from "../../src/core/delivery/code-source.js";
+import { HoldingConnection } from "../../src/core/delivery/held-connection.js";
 import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
+import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
 import { storePaths } from "../../src/core/store/paths.js";
 import type { Delta } from "../../src/core/types/delivery.js";
 import { openContext } from "../../src/harness/shared/context.js";
@@ -16,9 +22,11 @@ import {
   putCursor,
   putFile,
   TIERS,
+  writePolicy,
 } from "../code/delivery/helpers.js";
+import { commonDir } from "../code/helpers.js";
 import { setKey } from "../state/helpers.js";
-import { open } from "../store/helpers.js";
+import { fakeCommonDir, open } from "../store/helpers.js";
 
 /*
  * Spec 021 D3 (row 021-09): a hook's delivery waits for a busy code store
@@ -40,7 +48,11 @@ interface Probes {
 }
 
 /** The daemon of `code-holder.ts`; `done` resolves with its probes once it committed. */
-async function holdCode(dir: string, holdMs: number): Promise<{ done: Promise<Probes> }> {
+async function holdCode(
+  dir: string,
+  holdMs: number,
+  mode: "init" | "" = "",
+): Promise<{ done: Promise<Probes> }> {
   const child = spawn(
     process.execPath,
     [
@@ -52,6 +64,7 @@ async function holdCode(dir: string, holdMs: number): Promise<{ done: Promise<Pr
       storePaths(dir).database,
       String(holdMs),
       String(PROBE_MS),
+      mode,
     ],
     { stdio: ["ignore", "pipe", "inherit"] },
   );
@@ -91,9 +104,12 @@ async function owedCodeNews(): Promise<CodeRepo> {
   return repo;
 }
 
+/** Where a hook runs: the git common dir and the worktree root. */
+type Repo = Pick<CodeRepo, "dir" | "root">;
+
 /** One hook process: its context, `fn`, then the hand-off's commit. */
 async function hook<T>(
-  repo: CodeRepo,
+  repo: Repo,
   busyTimeoutMs: number,
   fn: (context: NonNullable<ReturnType<typeof openContext>>) => Promise<T>,
 ): Promise<T> {
@@ -112,7 +128,7 @@ async function hook<T>(
   }
 }
 
-const boundary = (repo: CodeRepo, busyTimeoutMs: number): Promise<Delta | null> =>
+const boundary = (repo: Repo, busyTimeoutMs: number): Promise<Delta | null> =>
   hook(repo, busyTimeoutMs, (context) => context.delivery.onToolBoundary(context.consumer));
 
 describe("a hook beside a daemon that holds the code store (spec 021 D3)", () => {
@@ -139,5 +155,64 @@ describe("a hook beside a daemon that holds the code store (spec 021 D3)", () =>
     expect(probes.busy).toBe(0);
     const later = await boundary(repo, 300);
     expect(later?.code?.entries.map((e) => e.check.qualifiedName)).toEqual(["selectTier"]);
+  });
+
+  it("waits for a daemon that initializes a new code store holding no store lock (review 0.1.434, B5)", async () => {
+    const dir = commonDir();
+    const repo = { dir, root: dirname(dir) };
+    writePolicy(repo.root, { enabled: true });
+    open(dir);
+    await hook(repo, 10_000, (context) => context.delivery.register(context.consumer));
+    const daemon = await holdCode(dir, 1_500, "init");
+    const delta = await boundary(repo, 300);
+    expect(delta?.code ?? null).toBeNull();
+    const probes = await daemon.done;
+    expect(probes.busy).toBe(0);
+    expect(probes.free).toBeGreaterThan(0);
+  });
+});
+
+/** A main store on a `HoldingConnection`, held as a delivery holds it. */
+function mainHold() {
+  let connection: HoldingConnection | null = null;
+  const store = openStore(fakeCommonDir(), {
+    connection: (db) => {
+      connection = new HoldingConnection(db);
+      return connection;
+    },
+  });
+  if (isStoreOpenFailure(store) || connection === null) throw new Error("open failed");
+  const held = (connection as HoldingConnection).hold();
+  return {
+    end: () => {
+      held?.rollback();
+      store.close();
+    },
+  };
+}
+
+describe("opening a code store a daemon still initializes, inside a main hold (review 0.1.434, B5)", () => {
+  it.each([
+    ["switches it into WAL", "delete"],
+    ["migrates it from schema 0", "wal"],
+  ])("never waits where the open %s, and opens it once nothing is held", (_, journal) => {
+    const dir = commonDir();
+    const root = dirname(dir);
+    writePolicy(root, { enabled: true });
+    mkdirSync(dirname(codeStorePath(dir)), { recursive: true });
+    const daemon = new DatabaseSync(codeStorePath(dir));
+    daemon.exec(`PRAGMA journal_mode = ${journal}`);
+    daemon.exec("BEGIN IMMEDIATE");
+    daemon.exec("CREATE TABLE initializing (x)");
+    const source = codeSource(dir, root, { busyTimeoutMs: 3_000, holding: true });
+    const main = mainHold();
+    const started = performance.now();
+    // A wait would be the 3 s busy timeout, holding the main store's lock all along.
+    expect(withCode(source, () => "opened")).toBeNull();
+    expect(performance.now() - started).toBeLessThan(1_500);
+    main.end();
+    daemon.exec("COMMIT");
+    daemon.close();
+    expect(withCode(source, () => "opened")).toBe("opened");
   });
 });
