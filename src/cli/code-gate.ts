@@ -74,6 +74,7 @@ export function narrow(changed: ChangedSet, paths: readonly RelativePath[]): Cha
     ...(changed.baseCounted === undefined
       ? {}
       : { baseCounted: changed.baseCounted.filter(within) }),
+    ...(changed.omitted === undefined ? {} : { omitted: changed.omitted.filter(within) }),
   };
 }
 

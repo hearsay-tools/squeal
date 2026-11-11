@@ -126,6 +126,10 @@ describe("narrow (spec 020 D1: paths narrow the changed functions)", () => {
       { path: "src/a.ts", blob: "y", functions: [] },
       { path: "src2/b.ts", blob: "z", functions: [] },
     ],
+    omitted: [
+      { path: "src/a.ts", qualifiedName: "a", occurrence: 0, line: 1, reason: "unchanged" },
+      { path: "src2/b.ts", qualifiedName: "b", occurrence: 0, line: 1, reason: "unchanged" },
+    ],
   } as ChangedSet;
 
   it("keeps the files under each directory and each file named", () => {
@@ -136,6 +140,8 @@ describe("narrow (spec 020 D1: paths narrow the changed functions)", () => {
     expect(narrowed.inErrors.map((f) => f.path)).toEqual(["lib/c.ts"]);
     expect(narrowed.uncounted.map((u) => u.path)).toEqual(["src/big.ts"]);
     expect(narrowed.baseCounted?.map((c) => c.path)).toEqual(["src/a.ts"]);
+    // Spec 020 D16 (row 020-18): only the left-out functions inside the paths.
+    expect(narrowed.omitted?.map((o) => o.path)).toEqual(["src/a.ts"]);
   });
 
   it("keeps every path with none named, or with the worktree's top named", () => {
