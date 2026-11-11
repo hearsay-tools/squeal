@@ -77,7 +77,7 @@ The human chose this name on 2026-11-09, over a separate `squeal quality`. `sque
 2. Runs: one adapter run per runner (Vitest, node:test), with Squeal's coverage provider, as 015 D8 runs them. Records are mapped before `adapter.close()`. The collector takes the adapter factories as arguments, and the CLI passes them, because nothing under `src/core/code` may import a runner (`test/runners/boundaries.test.ts`, row 016-36). Vitest runs with `cache: false`, so it writes no results cache into the project (amended 2026-11-09, row 020-03).
 3. Loaders: from each run's `closure()`, not from a store.
 4. Budget: one deadline over all runs, 600 s by default, `--timeout` to change it. At the deadline, the running file is stopped. Every completed file keeps its record. The report names each file that did not finish. The command does not lower a project's own `testTimeout`. Any selected file that did not finish makes the verdict at least `incomplete`: a test in it may have failed or may not have run (amended 2026-11-10, review 0.1.423 B2). Failures a runner already reported for an unfinished file are kept in the report when the adapter gives them; the verdict does not depend on it.
-5. Nothing is written to the project or a store. Temporary files go under `$TMPDIR` and are removed.
+5. Nothing is written to the project or a store. Temporary files go under `$TMPDIR` and are removed. Amended 2026-11-11 (D15): Squeal writes nothing to the project; a declared `prepare` writes what it writes.
 
 ### D4. The join repair
 
@@ -223,6 +223,35 @@ Rows: 020-10a (items 1 to 5) now, beside wave 2. 020-10b (items 6 and 7) waits f
 7. **Cost:** +22% CPU on 30 short files at load 24 to 35, against 015's +8%. A real shard measurement is row 020-08c, a cezar proposal that needs the human's approval.
 
 Rows: 020-08a, then 020-08b after 020-07c, because both use the gate's known-evidence seam. 020-08c is the cezar proof, a proposal for the human.
+
+### D14. Scope by check group (row 020-15, designed 2026-11-11 from `research/selection.md`)
+
+The human, 2026-11-11: "should squeal guess what quality checks the project wants? This could make a good default but should be configurable after all."
+
+1. **Scope.** The gate runs a selected test file only when its check group (spec 019 D1), resolved from `checks` at the merge base, is in scope. By default every test group whose moment is not `manual` is in scope. A project sets its own scope with `gate.groups`, a list of group names read at the base like D6's keys (the default groups `tests` and `slow` count). `gate.groups` replaces the default. An unknown name or a lint group in it is a policy problem on stderr and is dropped. `--group <name>...` adds groups for one run, `manual` ones included. On the command line, an unknown name or a lint group is a usage error (exit 2). `--test` files always run. A repository with no `checks` and no `gate.groups` behaves as before: `tests` and `slow` are never `manual`.
+2. **Left out.** A selected file outside the scope does not run. Its `closure()` is still read, with no setup, so each function knows its left-out loaders.
+   - A function whose in-scope evidence is complete and passes reads `pass`. Its row lists the left-out loaders in `loaders.leftOut`.
+   - A CRAP over the limit with a left-out loader reads `incomplete` with the gap `left-out`, because more coverage could lower it. A CC over the limit stays a `violation`.
+   - A changed test file in a left-out group does not run. Its functions read `left-out`, or `skipped` when `coverage.exclude` matches them.
+   - D8: an exception needs complete in-scope evidence. A left-out loader is outside the project's declared scope and does not block it.
+3. **Report.** D7 gains `scope`: the groups in scope and where each came from (default, `gate.groups`, `--group`), and per left-out group its moment, its file count, how many of them load changed code, and the command that adds it. `base` gains `gate.groups`. The text verdict line names what did not run, for example `browser (manual) did not run: 100 test files load changed code; add --group browser to run them`. It never says "all tests".
+4. **Before the run** (row 020-15b, which also carries 020-16a). After selection and before the first run, stderr gets: one line per runner with its file count by group; one line per left-out group; the projects whose global setup will run, the root's when it has one; and each changed path that no runner can load, with the ways out (give it to a runner, with `prepare` when it needs a build, or name it in `coverage.exclude` at the base). With `--json`, in-process stdout writes go to stderr during collection. A child that inherits stdout can still write there (#182, a separate decision).
+5. **Not chosen:** `--project`, a mode that replaces automatic selection, and leaving out a browser-mode project before Vitest opens it.
+6. The daemon has no scope: it never sees `left-out`.
+
+### D15. A `prepare` command for node:test entries (row 020-16, designed 2026-11-11 from `research/build-wrapper.md`)
+
+Approved by the human, 2026-11-11 ("#174 prepare: Yes").
+
+1. **Key.** `nodeTest[].prepare: { command: string[], timeoutSeconds?: number }`. `command` is an argument list, never a shell string.
+2. **Read at the base.** The gate runs the `prepare` of the base's entry with the same name, so a branch cannot add a command and run it in the same change. When a head entry has a `prepare` the base lacks, its files do not run and read `incomplete` with the gap `not-prepared`, and a note says to land the declaration first. The entry's other keys stay read at the head, as D1 says.
+3. **Run.** Once, before the entry's first selected file, in the entry's directory, inside D3.4's one budget; `timeoutSeconds` caps it too. It does not run when no file of the entry is selected. A failure or a timeout means no file of the entry runs, and they read `not-prepared`. Its exit code and duration go in `runs[].prepare` (D7). Its output goes to stderr.
+4. **Evidence.** Outcomes come from Squeal's own node:test run and coverage from Squeal's record. The `prepare` command's own success is never evidence.
+5. **D3.5** becomes: "Squeal writes nothing to the project; a declared `prepare` writes what it writes."
+6. **The daemon** does not open an entry that has `prepare` and notes this once; only `squeal code --base` runs it. Explicit daemon runs of such an entry are a later row (020-16c), not approved.
+7. Spec 011's "It never runs arbitrary commands" gains this one exception (the human, 2026-11-11).
+
+The gaps `left-out` (D14) and `not-prepared` (D15) are new rules: `QUALITY_POLICY_VERSION` is 4 with both.
 
 ## Testing
 
