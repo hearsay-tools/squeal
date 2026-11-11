@@ -120,9 +120,15 @@ it("runs Node with its own --require where package.json is not JSON", () => {
       ]);
     };
 
+    // Node 26 prints two more loader frames, so its 10 end before the preload frame: the
+    // failure is left unnamed there, since a module's own load can print the same cut stack
+    // (row 018-36, review 0.1.441 B1; spec 001 D11: a missing name, never a wrong one).
+    const cut = Number(process.versions.node.split(".")[0]) >= 26;
     expect(await signatures(true)).toEqual([
       ["fail", "Node before 18.18 rejects its --import", true],
-      ["fail", expect.stringContaining("ERR_INVALID_PACKAGE_CONFIG"), true],
+      cut
+        ? ["fail", undefined, false]
+        : ["fail", expect.stringContaining("ERR_INVALID_PACKAGE_CONFIG"), true],
     ]);
     // Without its recorder the old Node starts; the project's own --require fails as before,
     // unnamed. So under another Squeal's recorder, as when Squeal runs this test (task 001-431).
