@@ -2,35 +2,24 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { loadPolicy, POLICY_FILE } from "../../daemon/policy.js";
-import { vitestDetected } from "../../daemon/runner.js";
 import { compare } from "../../fs/compare.js";
 import { findWorktreeRoot } from "../../fs/git-layout.js";
 import { readObjectFormat } from "../../hash/git-index.js";
 import { testFileId } from "../../keys/reverse-index.js";
 import type { AbsolutePath, RelativePath } from "../../types/common.js";
 import type { TestFileRef } from "../../types/keys.js";
-import type { NodeTestProject, Policy, PolicyInputs } from "../../types/policy.js";
-import type {
-  RunnerAdapter,
-  RunnerClosure,
-  RunnerEnvironment,
-  RunReport,
-} from "../../types/runner.js";
+import type { RunnerClosure, RunnerEnvironment, RunReport } from "../../types/runner.js";
 import type { BlobCache } from "../coverage/record.js";
 import { coverageProvider, PROVIDER_MISSING_NOTE } from "../coverage/runtime.js";
-import type {
-  CoverageRun,
-  CoveredFile,
-  RunnerCoverageOptions,
-  VitestCoverageOptions,
-} from "../coverage/types.js";
 import type { RunEstimate } from "./estimate.js";
-import { FILE_ERROR } from "./evidence.js";
+import { evidenceOf, leftOutFiles } from "./evidence.js";
 import { inLoaderOrder, orderRuns } from "./plan.js";
-import { type BasePrepares, declaresPrepare, type PrepareRun, prepareEntry } from "./prepare.js";
-import { type KnownEvidence, type Picked, type SelectionSummary, tellSelection } from "./prerun.js";
+import type { BasePrepares, PrepareRun } from "./prepare.js";
+import { type Picked, type SelectionSummary, tellSelection } from "./prerun.js";
 import { type Mapped, mapPayloads } from "./records.js";
+import { type GateAdapters, openRunners, type Runner } from "./runners.js";
 import { type GateScope, type LeftOutFile, type ScopeTally, tallyScope } from "./scope.js";
+import { preparedBefore, storedOf, tellEstimates, tellRan } from "./steps.js";
 import { type ChangedSet, type Evidence, GATE_RUNNERS, type TestFileEvidence } from "./types.js";
 
 /*
@@ -43,39 +32,6 @@ import { type ChangedSet, type Evidence, GATE_RUNNERS, type TestFileEvidence } f
  * D12 (row 020-10b): with `coverage.children` at the base, the runners
  * collect the coverage of the processes and threads the tests start too.
  */
-
-/**
- * The two adapters' constructors, `createVitestAdapter` and
- * `createNodeTestAdapter`, given by the caller: no file under
- * `src/core/code` imports a runner's folder (row 016-36). Typed by what the
- * collector passes, so each constructor fits as it is.
- */
-export interface GateAdapters {
-  readonly vitest: (options: {
-    readonly root: AbsolutePath;
-    readonly note: (text: string) => void;
-    readonly excludeProjects: () => readonly string[];
-    readonly exclude: () => readonly string[];
-    /** D3.5: no results cache written into the project. */
-    readonly cache: false;
-    /** D17.3: the workers record runtime reads, as a daemon's do, when the runs may be kept. */
-    readonly observe?: () => boolean;
-    /** Always on; D12: `children` is `coverage.children` at the base. */
-    readonly coverage: VitestCoverageOptions;
-  }) => Promise<RunnerAdapter>;
-  readonly nodeTest: (
-    project: NodeTestProject,
-    options: {
-      readonly root: AbsolutePath;
-      readonly note: (text: string) => void;
-      readonly concurrency: () => number;
-      readonly inputs: () => PolicyInputs;
-      readonly tempDir: AbsolutePath;
-      /** Always on; D12: `children` is `coverage.children` at the base. */
-      readonly coverage: RunnerCoverageOptions;
-    },
-  ) => Promise<RunnerAdapter>;
-}
 
 export interface CollectOptions {
   /** `--test` files, relative to the worktree root (D3.1). */
@@ -156,15 +112,6 @@ export type StoredEvidence = (
 /** D3.1: a `--test` path that no runner lists as a test file; a usage error (D1, exit 2). */
 export class CollectUsageError extends Error {
   override readonly name = "CollectUsageError";
-}
-
-/** One opened adapter and the payloads its runs handed over. */
-interface Runner {
-  readonly kind: TestFileEvidence["runner"];
-  readonly adapter: RunnerAdapter;
-  readonly covered: CoveredFile[];
-  /** A node:test runner's entry, for its `prepare` (D15). */
-  readonly project?: NodeTestProject;
 }
 
 /**
@@ -263,91 +210,6 @@ export async function collectEvidence(
 }
 
 /**
- * D17.1: `estimates`, in the order the runners run, told to `estimated`
- * with the whole seconds left of the budget before the first run or
- * `prepare`; Evidence's field, absent when no file is to run.
- */
-function tellEstimates(
-  estimated: CollectOptions["estimated"],
-  estimates: readonly RunEstimate[],
-  deadline: number,
-): Pick<Evidence, "estimates"> {
-  if (estimates.length === 0) return {};
-  estimated?.(estimates, Math.max(0, Math.floor((deadline - performance.now()) / 1000)));
-  return { estimates };
-}
-
-/** D17.3: a run that ended, to `ran`; none when the budget ended before it started. */
-async function tellRan(
-  ran: CollectOptions["ran"],
-  run: Omit<GateRun, "report"> & { readonly report: RunReport | null },
-): Promise<void> {
-  const { report } = run;
-  if (ran !== undefined && report !== null) await ran({ ...run, report });
-}
-
-/**
- * Vitest when the daemon would run it (`vitestDetected`, or no other runner
- * configured), then each `nodeTest` project, in the policy's order. Each
- * adapter opened is pushed at once, so a later failure still closes it.
- */
-async function openRunners(
-  adapters: GateAdapters,
-  root: AbsolutePath,
-  policy: Policy,
-  {
-    provider,
-    temp,
-    note,
-    children,
-    keeping,
-  }: {
-    provider: AbsolutePath;
-    temp: AbsolutePath;
-    note: (text: string) => void;
-    children: boolean;
-    /** D17.3: the runs may be kept, so Vitest records runtime reads as policy says. */
-    keeping: boolean;
-  },
-  runners: Runner[],
-): Promise<void> {
-  if (policy.nodeTest.length + policy.pytest.length === 0 || vitestDetected(root)) {
-    const covered: CoveredFile[] = [];
-    const collected = (run: CoverageRun) => covered.push(...run.files);
-    const adapter = await adapters.vitest({
-      root,
-      note,
-      excludeProjects: () => policy.vitest.excludeProjects,
-      exclude: () => policy.vitest.exclude,
-      cache: false,
-      observe: () => keeping && policy.observe.runtimeInputs,
-      coverage: {
-        enabled: () => true,
-        children: () => children,
-        provider,
-        tempDir: temp,
-        collected,
-      },
-    });
-    runners.push({ kind: "vitest", adapter, covered });
-  }
-  for (const project of policy.nodeTest) {
-    const covered: CoveredFile[] = [];
-    const collected = (run: CoverageRun) => covered.push(...run.files);
-    const adapter = await adapters.nodeTest(project, {
-      root,
-      note,
-      // One process per file, `runner.tierSize` at once, as the daemon's edit tiers run.
-      concurrency: () => policy.runner.tierSize,
-      inputs: () => policy.inputs,
-      tempDir: temp,
-      coverage: { enabled: () => true, children: () => children, collected },
-    });
-    runners.push({ kind: "node-test", adapter, covered, project });
-  }
-}
-
-/**
  * D3.1, per runner: the test files `affected()` gives for the changed
  * paths, its test files among them, and the `--test` files it lists.
  * Throws `CollectUsageError` for a `--test` file no runner lists. D14.2:
@@ -388,140 +250,6 @@ async function select(
     );
   }
   return picked;
-}
-
-/**
- * One selected file's evidence; a file that did not complete keeps no
- * failure, no skip and no record. A skipped test is D11.3's: its record
- * proves a pass and never a violation. With `children`, its child files
- * are counted, none when it has no record.
- */
-async function evidenceOf(
-  runner: Runner,
-  ref: TestFileRef,
-  report: RunReport | null,
-  records: ReadonlyMap<string, Mapped>,
-  children: boolean,
-): Promise<TestFileEvidence> {
-  const key = testFileId(ref);
-  const completed = report?.completedFiles.some((done) => testFileId(done) === key) === true;
-  const own = (r: { testFile: TestFileRef }) => testFileId(r.testFile) === key;
-  const results = !completed
-    ? []
-    : (report?.results ?? []).filter(
-        (r) => r.check.project === ref.project && r.check.testPath === ref.path,
-      );
-  const failed = [
-    ...(completed && report?.fileErrors.some(own) === true ? [FILE_ERROR] : []),
-    ...results.filter((r) => r.outcome === "fail").map((r) => r.check.fullName),
-  ];
-  const skipped = results.some((r) => r.outcome === "skip");
-  const loads = await runner.adapter.closure(ref).then(
-    (closure) => [...closure.paths].sort(compare),
-    () => null,
-  );
-  const mapped = completed ? records.get(key) : undefined;
-  const record = mapped?.record ?? null;
-  const counts = children ? { children: mapped?.children ?? { read: 0, dropped: 0 } } : {};
-  return {
-    runner: runner.kind,
-    path: ref.path,
-    completed,
-    failed,
-    skipped,
-    loads,
-    record,
-    ...counts,
-  };
-}
-
-/**
- * D14.2: each file the scope left out with its closure, read with no run
- * and no setup; `null` when the runner cannot give it. None with no scope.
- */
-async function leftOutFiles(picked: readonly Picked[]): Promise<LeftOutFile[]> {
-  const files: LeftOutFile[] = [];
-  for (const { kind, adapter, leftOut } of picked) {
-    for (const { ref, group } of leftOut) {
-      const loads = await adapter.closure(ref).then(
-        (closure) => [...closure.paths].sort(compare),
-        () => null,
-      );
-      files.push({ runner: kind, path: ref.path, group, loads });
-    }
-  }
-  return files;
-}
-
-/**
- * D11.7, D13.2: the evidence `options.stored` knows of each runner's
- * selected files, asked once per runner with one, before the selection is
- * told and before any setup, `prepare` or run. A node:test entry with a
- * `prepare` (D15) takes none: its files run when the command passes.
- */
-async function storedOf(
-  picked: readonly (Picked & { readonly runner: Runner })[],
-  options: CollectOptions,
-): Promise<KnownEvidence> {
-  const known = new Map<TestFileRef, TestFileEvidence>();
-  if (options.stored === undefined) return known;
-  for (const { runner, run: chosen } of picked) {
-    if (chosen.length === 0) continue;
-    if (runner.project !== undefined && declaresPrepare(runner.project, options.prepares)) continue;
-    const closure = (ref: TestFileRef) => runner.adapter.closure(ref).catch(() => null);
-    const environment = () => runner.adapter.environment();
-    for (const [ref, evidence] of await options.stored(runner.kind, chosen, closure, environment)) {
-      known.set(ref, evidence);
-    }
-  }
-  return known;
-}
-
-/** What `preparedBefore` gives one runner's selected files. */
-interface Before {
-  /** The files' evidence known without a run; those do not run. */
-  readonly known: ReadonlyMap<TestFileRef, TestFileEvidence>;
-  /** D15.3: its entry's `prepare`, when it had one. */
-  readonly prepares: readonly PrepareRun[];
-  /** The budget ended in the `prepare`. */
-  readonly budgetEnded: boolean;
-}
-
-/**
- * D15: a node:test entry's `prepare`, after the selection is told and
- * before its run. When the base's command passed, every file runs; when
- * it did not, or only the head declares it, none does, and each reads not
- * prepared, its closure read with no run. Nothing for another runner.
- */
-async function preparedBefore(
-  runner: Runner,
-  chosen: readonly TestFileRef[],
-  at: {
-    readonly root: AbsolutePath;
-    readonly deadline: number;
-    readonly note: (text: string) => void;
-    readonly options: CollectOptions;
-    readonly children: boolean;
-  },
-): Promise<Before> {
-  const { options } = at;
-  const prepared =
-    runner.project === undefined
-      ? null
-      : await prepareEntry(
-          runner.project,
-          chosen.map((ref) => ref.path),
-          { ...at, base: options.prepares, output: options.output ?? (() => {}) },
-        );
-  if (prepared === null) return { known: new Map(), prepares: [], budgetEnded: false };
-  const known = new Map<TestFileRef, TestFileEvidence>();
-  if (prepared.run.outcome !== "passed") {
-    for (const ref of chosen) {
-      const evidence = await evidenceOf(runner, ref, null, new Map(), at.children);
-      known.set(ref, { ...evidence, notPrepared: true });
-    }
-  }
-  return { known, prepares: [prepared.run], budgetEnded: prepared.budgetEnded };
 }
 
 function byPath(a: TestFileRef, b: TestFileRef): number {

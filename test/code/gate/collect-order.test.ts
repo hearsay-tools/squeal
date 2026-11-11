@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { collectEvidence, type GateAdapters } from "../../../src/core/code/gate/collect.js";
+import { collectEvidence } from "../../../src/core/code/gate/collect.js";
 import type { RunEstimate } from "../../../src/core/code/gate/estimate.js";
 import { evaluate } from "../../../src/core/code/gate/evaluate.js";
 import { loadBasePolicy } from "../../../src/core/code/gate/policy.js";
+import type { GateAdapters } from "../../../src/core/code/gate/runners.js";
 import { compare } from "../../../src/core/fs/compare.js";
 import type { AbsolutePath } from "../../../src/core/types/common.js";
 import type { TestFileRef } from "../../../src/core/types/keys.js";

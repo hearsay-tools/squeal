@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach } from "vitest";
 import { countFile } from "../../../src/core/code/count/index.js";
-import type { GateAdapters } from "../../../src/core/code/gate/collect.js";
+import type { GateAdapters } from "../../../src/core/code/gate/runners.js";
 import type { ChangedSet, CountedPath } from "../../../src/core/code/gate/types.js";
 import { blobHash } from "../../../src/core/hash/blob.js";
 import { createNodeTestAdapter } from "../../../src/runners/node-test/adapter.js";

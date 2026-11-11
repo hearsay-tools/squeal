@@ -2,8 +2,8 @@ import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "n
 import { dirname, join } from "node:path";
 import { codeGateCommand } from "../../src/cli/code-gate.js";
 import { PART_PREFIX, type Part } from "../../src/core/ci/parts.js";
-import type { GateAdapters } from "../../src/core/code/gate/collect.js";
 import type { GateReport, GateRunReport } from "../../src/core/code/gate/report.js";
+import type { GateAdapters } from "../../src/core/code/gate/runners.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import type { RunnerAdapter } from "../../src/core/types/runner.js";
 import { committed, scratch, writeFiles } from "../ci/fixture.js";

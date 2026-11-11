@@ -1,14 +1,11 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import {
-  type CollectOptions,
-  collectEvidence,
-  type GateAdapters,
-} from "../../../src/core/code/gate/collect.js";
+import { type CollectOptions, collectEvidence } from "../../../src/core/code/gate/collect.js";
 import { evaluate } from "../../../src/core/code/gate/evaluate.js";
 import { loadBasePolicy } from "../../../src/core/code/gate/policy.js";
 import type { BasePrepares } from "../../../src/core/code/gate/prepare.js";
+import type { GateAdapters } from "../../../src/core/code/gate/runners.js";
 import type { ChangedSet, Evidence } from "../../../src/core/code/gate/types.js";
 import type { AbsolutePath } from "../../../src/core/types/common.js";
 import { ADAPTERS, changedSet, ownTmpdir, project, SLOW, status } from "./collect-fixture.js";

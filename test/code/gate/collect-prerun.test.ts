@@ -1,10 +1,7 @@
 import { describe, expect, it } from "vitest";
-import {
-  type CollectOptions,
-  collectEvidence,
-  type GateAdapters,
-} from "../../../src/core/code/gate/collect.js";
+import { type CollectOptions, collectEvidence } from "../../../src/core/code/gate/collect.js";
 import type { SelectionSummary } from "../../../src/core/code/gate/prerun.js";
+import type { GateAdapters } from "../../../src/core/code/gate/runners.js";
 import { resolveScope } from "../../../src/core/code/gate/scope.js";
 import type { Evidence, TestFileEvidence } from "../../../src/core/code/gate/types.js";
 import type { TestFileRef } from "../../../src/core/types/keys.js";
