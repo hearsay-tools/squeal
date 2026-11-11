@@ -128,15 +128,16 @@ export function writeWithin<T>(
       if (store.reason === "missing") return NO_STORE;
       return { not: "none", why: `its Squeal store could not be opened (${store.reason})` };
     }
+    const deadline = (started + boundMs) as EpochMs;
+    let answer: { readonly wrote: T } | Busy;
     try {
-      const deadline = (started + boundMs) as EpochMs;
-      const answer = whileBusy(store, deadline, () => ({
-        wrote: write(store, worktreeIdFor(root)),
-      }));
-      return "wrote" in answer ? answer : { not: "busy", why: busyText(commonDir, answer) };
+      answer = whileBusy(store, deadline, () => ({ wrote: write(store, worktreeIdFor(root)) }));
     } finally {
       store.close();
     }
+    // The holder is named once this process holds no connection to the store (row 021-09's rule:
+    // a descriptor of its files closed beside a connection drops that connection's locks).
+    return "wrote" in answer ? answer : { not: "busy", why: busyText(commonDir, answer) };
   } catch (error) {
     if (commonDir !== null && isBusy(error)) {
       return { not: "busy", why: busyText(commonDir, { busyMs: Date.now() - started }) };
