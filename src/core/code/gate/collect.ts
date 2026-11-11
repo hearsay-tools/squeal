@@ -6,6 +6,7 @@ import { vitestDetected } from "../../daemon/runner.js";
 import { compare } from "../../fs/compare.js";
 import { findWorktreeRoot } from "../../fs/git-layout.js";
 import { readObjectFormat } from "../../hash/git-index.js";
+import { testFileId } from "../../keys/reverse-index.js";
 import type { AbsolutePath, RelativePath } from "../../types/common.js";
 import type { TestFileRef } from "../../types/keys.js";
 import type { NodeTestProject, Policy, PolicyInputs } from "../../types/policy.js";
@@ -22,7 +23,7 @@ import type { RunEstimate } from "./estimate.js";
 import { inLoaderOrder, orderRuns } from "./plan.js";
 import { type BasePrepares, declaresPrepare, type PrepareRun, prepareEntry } from "./prepare.js";
 import { type KnownEvidence, type Picked, type SelectionSummary, tellSelection } from "./prerun.js";
-import { type Mapped, mapPayloads, refKey } from "./records.js";
+import { type Mapped, mapPayloads } from "./records.js";
 import { type GateScope, type LeftOutFile, type ScopeTally, tallyScope } from "./scope.js";
 import type { ChangedSet, Evidence, TestFileEvidence } from "./types.js";
 
@@ -131,7 +132,7 @@ export interface CollectOptions {
   readonly ran?: (run: GateRun) => Promise<void>;
 }
 
-/** D17.3: one runner's run, its report and each completed file's mapped record, by `refKey`. */
+/** D17.3: one runner's run, its report and each completed file's mapped record, by `testFileId`. */
 export interface GateRun {
   readonly runner: TestFileEvidence["runner"];
   readonly files: readonly TestFileRef[];
@@ -372,7 +373,7 @@ async function select(
   for (const runner of runners) {
     const { kind, adapter } = runner;
     const chosen = new Map<string, TestFileRef>();
-    const add = (ref: TestFileRef) => chosen.set(refKey(ref), ref);
+    const add = (ref: TestFileRef) => chosen.set(testFileId(ref), ref);
     const listed = await adapter.testFiles();
     for (const ref of listed) {
       if (named.has(ref.path)) add(ref);
@@ -409,9 +410,9 @@ async function evidenceOf(
   records: ReadonlyMap<string, Mapped>,
   children: boolean,
 ): Promise<TestFileEvidence> {
-  const key = refKey(ref);
-  const completed = report?.completedFiles.some((done) => refKey(done) === key) === true;
-  const own = (r: { testFile: TestFileRef }) => refKey(r.testFile) === key;
+  const key = testFileId(ref);
+  const completed = report?.completedFiles.some((done) => testFileId(done) === key) === true;
+  const own = (r: { testFile: TestFileRef }) => testFileId(r.testFile) === key;
   const results = !completed
     ? []
     : (report?.results ?? []).filter(
