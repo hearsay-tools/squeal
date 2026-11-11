@@ -46,6 +46,15 @@ export type IntegrityCheck = "quick";
 export const DEFAULT_BUSY_TIMEOUT_MS = 1_000;
 
 /**
+ * Spec 021 D4: the WAL file is cut back to this size each time it restarts,
+ * where SQLite's default keeps it at its largest. On 2026-11-11 the live WAL
+ * of this host's two busiest stores peaked at 6,037 frames (24 MB) in two
+ * minutes and restarted many times, while their files stood at 66 and
+ * 422 MB. Per connection, so every opener sets it.
+ */
+export const JOURNAL_SIZE_LIMIT_BYTES = 64 * 1024 * 1024;
+
+/**
  * `meta` key written into a fresh store that replaced a corrupt one. Value:
  * JSON `{ at, movedTo, reason }`. Spec 001 D12: "status says the baseline was
  * lost."
@@ -105,9 +114,9 @@ export function isStoreOpenFailure(value: Store | StoreOpenFailure): value is St
 
 /**
  * Opens `<commonDir>/squeal/store.sqlite` (spec 001 D1, D8): WAL,
- * `synchronous=NORMAL`, a busy timeout, and migrations up to
- * `SCHEMA_VERSION`. A newer `user_version` is refused without touching the
- * file.
+ * `synchronous=NORMAL`, a busy timeout, a WAL size limit (spec 021 D4),
+ * and migrations up to `SCHEMA_VERSION`. A newer `user_version` is refused
+ * without touching the file.
  */
 export function openStore(
   commonDir: AbsolutePath,
@@ -154,6 +163,7 @@ function connect(paths: StorePaths, options: OpenStoreOptions): Connected {
     if (pragmaNumber(db, "page_count") === 0) db.exec("PRAGMA auto_vacuum = INCREMENTAL");
     switchToWal(db, busyTimeout(options));
     db.exec("PRAGMA synchronous = NORMAL");
+    db.exec(`PRAGMA journal_size_limit = ${JOURNAL_SIZE_LIMIT_BYTES}`);
     const version = migrate(db);
     return createStore(options.connection?.(db) ?? new Connection(db), version, paths);
   } catch (error) {
