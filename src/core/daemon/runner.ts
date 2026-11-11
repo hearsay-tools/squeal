@@ -26,6 +26,13 @@ export interface RecoveringRunnerOptions {
   readonly focuses?: true;
   /** Wraps every call that reaches the adapter, creation included (the working directory, D10). */
   readonly around?: (<T>(call: () => Promise<T>) => Promise<T>) | undefined;
+  /**
+   * Spec 021 D7 (row 021-11): whether the adapter can answer no more, as a
+   * runner host that exited or missed a deadline. Such an adapter is closed
+   * and dropped; the next call creates a new one, and the next `invalidate`
+   * reports every project recreated. Absent: an adapter lives until `close`.
+   */
+  readonly gone?: (adapter: RunnerAdapter) => boolean;
 }
 
 /** A runner whose creation may fail and be retried. */
@@ -60,7 +67,20 @@ export function createRecoveringRunner(options: RecoveringRunnerOptions): Recove
   let retry = false;
   let creating: Promise<RunnerAdapter> | null = null;
   let closed = false;
+  // Spec 021 D7: a gone adapter was dropped, and no `invalidate` has re-keyed since.
+  let replaced = false;
   const around = options.around ?? ((call) => call());
+
+  /** `inner`, unless it is gone: then it is closed and dropped. */
+  const live = (): RunnerAdapter | null => {
+    if (inner !== null && options.gone?.(inner) === true) {
+      const dead = inner;
+      inner = null;
+      replaced = true;
+      dead.close().catch(() => {});
+    }
+    return inner;
+  };
 
   const attempt = (): Promise<RunnerAdapter> => {
     retry = false;
@@ -92,7 +112,8 @@ export function createRecoveringRunner(options: RecoveringRunnerOptions): Recove
 
   const adapter = async (): Promise<RunnerAdapter> => {
     if (closed) throw new Error(`${options.name} adapter: closed`);
-    if (inner !== null) return inner;
+    const current = live();
+    if (current !== null) return current;
     if (creating !== null || retry || error === null) return attempt();
     throw error;
   };
@@ -114,17 +135,22 @@ export function createRecoveringRunner(options: RecoveringRunnerOptions): Recove
     },
     invalidate: (paths: readonly InvalidatedPath[]) =>
       around(async (): Promise<InvalidateResult> => {
-        if (inner !== null || closed) return (await adapter()).invalidate(paths);
-        retry = true;
+        const current = live();
+        if (closed || (current !== null && !replaced)) return (await adapter()).invalidate(paths);
+        // A failed creation retries at each batch. A new adapter, made here or since a gone one
+        // was dropped (spec 021 D7), is a new instance: every project is recreated.
+        if (current === null) retry = true;
+        replaced = false;
         const fresh = await adapter();
-        const projects = new Set((await fresh.environment()).map((e) => e.project));
-        return { recreatedProjects: [...projects].sort() };
+        if (current !== null) await fresh.invalidate(paths);
+        return { recreatedProjects: await projectsOf(fresh) };
       }),
     // Task 007-26: a recheck is no batch, so it never retries a failed creation.
     recheck: () =>
       around(async (): Promise<InvalidateResult> => {
-        if (inner === null || closed) return { recreatedProjects: [] };
-        return (await inner.recheck?.()) ?? { recreatedProjects: [] };
+        const current = live();
+        if (current === null || closed) return { recreatedProjects: [] };
+        return (await current.recheck?.()) ?? { recreatedProjects: [] };
       }),
     affected: (changedPaths) => around(async () => (await adapter()).affected(changedPaths)),
     closure: (testFile: TestFileRef) => around(async () => (await adapter()).closure(testFile)),
@@ -149,6 +175,11 @@ export function createRecoveringRunner(options: RecoveringRunnerOptions): Recove
         await inner?.close();
       }),
   };
+}
+
+/** Every project of `adapter`, sorted: what a new instance reports recreated. */
+async function projectsOf(adapter: RunnerAdapter): Promise<string[]> {
+  return [...new Set((await adapter.environment()).map((e) => e.project))].sort();
 }
 
 /** Vite's config bundler colours its errors, and notes are plain text. */
