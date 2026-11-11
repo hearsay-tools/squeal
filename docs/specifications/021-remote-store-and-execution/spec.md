@@ -150,14 +150,15 @@ From `research/cpu-budget.md` (row 021-06), a replay of 2026-11-04 to 2026-11-11
 
 **What a budget does, measured by replay.** The human asked whether a ceiling would finish work sooner because runs stop competing. For CPU, yes: Squeal spends 9.5% less CPU, because each background file costs 7% less on a quieter host and 2.5% of background work need not run once a later revision or a removed worktree overtakes it. Agents' own test runs get 8.8% faster and edit tiers 6.4% faster; host time above 20 busy vCPUs halves (13.2% to 6.7%). For background results, no: every budget delivers them later on this host, a median 9 s and a p90 2.4 min per tier, backlog p90 30 to 47 min. Other load alone sat at 12 cores or more in 106 of 107 samples above 20 busy, so background's own work rate still rose with each core it took. A budget finishes background work sooner only where Squeal's background alone pushes a machine past its throughput peak, such as a quiet laptop (`cpu-budget.md` Q1, Q4).
 
-**The budget.** The adaptive own-slowdown controller of `../011-core/research/background-backoff.md`, not a fixed ceiling, as first written (2026-11-11: the human is open to a machine-derived ceiling; see status):
+**The budget (the human, 2026-11-11: "75% cpu can be a default, but it needs to be configurable. I'd keep it simple").** A ceiling on the host's busy CPUs for background work, taken from the machine itself:
 
-- Signal: the pooled median ratio of each recent file run's duration to that file's own fast reference, across the user's daemons on the machine. It needs no core count and sees a container's CPU quota.
-- Control: halve the background budget after two 60 s windows in a row above θ = 1.25; add one permit after a window at or below it; never above `hostSlots`.
-- Scope: one budget per user and machine, in the pool directory, across every daemon and repository. It governs backlog tiers and baselines. Edit tiers, named waits and agents' runs stay outside it and feed the signal. The `grants < hostSlots / 2` term in `src/core/capacity/cores.ts` goes.
-- Floor: one permit for the oldest waiter, so background work never stops. Without it, edit tiers gain 11.2% instead of 6.4% and backlog p90 grows to 59 min (`cpu-budget.md` Q6 item 3).
-- A remote runner host (Part 3) counts against its own machine's budget, with its own per-file references (`cpu-budget.md` Q5).
-- The daemon log records each budget step (time, budget, signal, record count). A row after it ships measures on this host and one other machine: CPU per file against its reference, background tier finish, edit-tier wall, and whether background alone passes the peak there.
+- Ceiling: a share of the CPUs the machine reports (`os.availableParallelism()`), default 75%, set per user in the existing capacity settings beside `capacity.hostSlots` as `capacity.backgroundShare` (a number from 0 to 1). On this 24-CPU host the default is 18.
+- Rule: a backlog tier or baseline takes a permit only while the host's busy CPUs, as the pool already reads them (row 011-182), are below the ceiling. The `grants < hostSlots / 2` term in `src/core/capacity/cores.ts` goes. Edit tiers, named waits, checkpoints and agents' own runs stay outside it.
+- Floor: when no background tier of the user's daemons runs, the oldest waiting one takes one permit, so background work never stops.
+- Scope: one ceiling per user and machine, as the pool already is. A remote runner host (Part 3) counts against its own machine.
+- The daemon log records each refusal by the ceiling with the busy CPUs read; `squeal ps` shows the ceiling.
+- On this week's replay a ceiling of 18 gave Squeal CPU −9.4%, edit-tier wall −7.2%, agents' test runs −9.3%, background tier p50 17 s and backlog p90 40 min (`cpu-budget.md` Q1). The adaptive slowdown controller of `background-backoff.md` is not built; it stays the next step if containers or unusual CPUs show the share is wrong.
+- Row 021-19 measures it after a week on this host and on one other machine.
 
 The budget is sold as protection for foreground work and less CPU, not as faster background results.
 
@@ -178,7 +179,7 @@ Each row ships and works alone.
 | 021-15 | 3 | proof on a real second machine: this repository over a real network (cost: a machine the team has, or a boat.dev sandbox; the human's choice) |
 | 021-16 | 4 | D15, writes through the daemon |
 | 021-17 | 5 | D16, the measurement |
-| 021-18 | budget | D18, the adaptive background budget, with its log line |
+| 021-18 | budget | D18, the background ceiling (75% of CPUs by default, `capacity.backgroundShare`), floor and log line |
 | 021-19 | budget | D18's measurement on this host and one other machine, after a week |
 
 021-07 to 021-10 touch disjoint files and can run in parallel. 021-11 can run beside them. The holder lookup of D5 has a contract file, `src/core/store/lock-holders.ts`, committed before wave 1 so 021-07 and 021-10 can build against it. 021-13 and 021-14 follow 021-11. 021-18 can run beside Part 1.
@@ -193,7 +194,7 @@ Each row ships and works alone.
 ## Open questions
 
 1. **Where the SSH target lives (D9).** A user-level file per repository is proposed; the name and format are the first row's choice, reviewed in its candidate.
-2. **D18's floor**: one permit (proposed) or none, a product value (`cpu-budget.md` Q6 item 3).
+2. **D18**: settled 2026-11-11 (a configurable share, default 75%, one-permit floor).
 3. **The real-network proof (021-15):** a team machine or a boat.dev sandbox ($20 minimum a month by its docs). The human chooses when the row starts.
 4. **Coverage on a remote lane**: a later row, after 021-14.
 
