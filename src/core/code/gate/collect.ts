@@ -19,7 +19,7 @@ import type { BlobCache } from "../coverage/record.js";
 import { coverageProvider, PROVIDER_MISSING_NOTE } from "../coverage/runtime.js";
 import type { CoverageRun, CoveredFile } from "../coverage/types.js";
 import type { RunEstimate } from "./estimate.js";
-import { planRuns } from "./plan.js";
+import { inLoaderOrder, orderRuns } from "./plan.js";
 import { type BasePrepares, declaresPrepare, type PrepareRun, prepareEntry } from "./prepare.js";
 import { type KnownEvidence, type Picked, type SelectionSummary, tellSelection } from "./prerun.js";
 import { type Mapped, mapPayloads, refKey } from "./records.js";
@@ -179,8 +179,9 @@ interface Runner {
  * loads and its record. The test files are selected from `changed.paths`,
  * every changed path, not from the changed functions (D3.1). The budget
  * counts from the call, the adapters' start included. The runs go one
- * runner after another, each given what is left of it; a runner reached
- * after the deadline runs nothing. A project's own `testTimeout` is never
+ * runner after another, the one with the smaller estimate first (D18),
+ * each given what is left of it; a runner reached after the deadline runs
+ * nothing. A project's own `testTimeout` is never
  * lowered. With no changed path and no `--test` file, no adapter starts.
  * A selected file `options.stored` gives evidence of does not run (D11.7).
  * Rejects when Vitest is configured but cannot start, or when Squeal's
@@ -217,25 +218,26 @@ export async function collectEvidence(
     const at = { root, deadline, note, options, children };
     // Review 0.1.432 B2: the stores and the parts first, so the print names only what runs.
     const known = await storedOf(picked, options);
-    await tellSelection(options.selected, picked, changed, { ...options, tally, known });
-    const planned = await plan(picked, known, {
-      paths,
-      options,
-      tierSize: policy.runner.tierSize,
-      deadline,
-    });
+    // D18: the runners in the order they run, which the print follows (D18.4); no closure read.
+    const { durations } = options;
+    const order = orderRuns(picked, known, { durations, tierSize: policy.runner.tierSize });
+    const inOrder = order.runs.map((run) => run.pick);
+    await tellSelection(options.selected, inOrder, changed, { ...options, tally, known });
+    const runs = await inLoaderOrder(order.runs, { changed: paths, durations });
+    const estimates = tellEstimates(options.estimated, order.estimates, deadline);
     const blobs: BlobCache = new Map();
     const testFiles: TestFileEvidence[] = [];
     const prepares: PrepareRun[] = [];
     let timedOut = false;
-    for (const [i, { runner, run: chosen }] of picked.entries()) {
+    for (const { pick, index: i, files: toRun } of runs) {
+      const { runner, run: chosen } = pick;
       if (chosen.length === 0) continue;
       const before = await preparedBefore(runner, chosen, at);
       prepares.push(...before.prepares);
       timedOut ||= before.budgetEnded;
       testFiles.push(...chosen.flatMap((ref) => before.known.get(ref) ?? known.get(ref) ?? []));
       // D17.2: the files left to run, in loader order.
-      const files = (planned.files[i] ?? []).filter((ref) => !before.known.has(ref));
+      const files = toRun.filter((ref) => !before.known.has(ref));
       if (files.length === 0) continue;
       const left = Math.ceil(deadline - performance.now());
       const logDir = join(temp, "runs", String(i));
@@ -258,12 +260,27 @@ export async function collectEvidence(
       budgetSeconds: options.budgetSeconds,
       ...scoped(await leftOutFiles(picked)),
       ...(prepares.length === 0 ? {} : { prepares }),
-      ...planned.estimates,
+      ...estimates,
     };
   } finally {
     await Promise.allSettled(runners.map((r) => r.adapter.close()));
     rmSync(temp, { recursive: true, force: true });
   }
+}
+
+/**
+ * D17.1: `estimates`, in the order the runners run, told to `estimated`
+ * with the whole seconds left of the budget before the first run or
+ * `prepare`; Evidence's field, absent when no file is to run.
+ */
+function tellEstimates(
+  estimated: CollectOptions["estimated"],
+  estimates: readonly RunEstimate[],
+  deadline: number,
+): Pick<Evidence, "estimates"> {
+  if (estimates.length === 0) return {};
+  estimated?.(estimates, Math.max(0, Math.floor((deadline - performance.now()) / 1000)));
+  return { estimates };
 }
 
 /** D17.3: a run that ended, to `ran`; none when the budget ended before it started. */
@@ -477,41 +494,6 @@ interface Before {
 }
 
 /**
- * D17, after the selection is told and before the first run or `prepare`:
- * each runner's files left to run, its selected files less those `known`
- * gives, in loader order (D17.2), and their estimate, told with the whole
- * seconds left of the budget (D17.1). `files` is by `picked`'s index;
- * `estimates` is Evidence's field, absent when no file is to run.
- */
-async function plan(
-  picked: readonly (Picked & { readonly runner: Runner })[],
-  known: KnownEvidence,
-  context: {
-    readonly paths: readonly RelativePath[];
-    readonly options: CollectOptions;
-    readonly tierSize: number;
-    readonly deadline: number;
-  },
-): Promise<{
-  readonly files: readonly (readonly TestFileRef[])[];
-  readonly estimates: Pick<Evidence, "estimates">;
-}> {
-  const toRun = picked.map(({ runner, run }) => {
-    const files = run.filter((ref) => !known.has(ref));
-    return { kind: runner.kind, adapter: runner.adapter, files };
-  });
-  const { durations, estimated } = context.options;
-  const { files, estimates } = await planRuns(toRun, {
-    changed: context.paths,
-    durations,
-    tierSize: context.tierSize,
-  });
-  const left = Math.max(0, Math.floor((context.deadline - performance.now()) / 1000));
-  if (estimates.length > 0) estimated?.(estimates, left);
-  return { files, estimates: estimates.length === 0 ? {} : { estimates } };
-}
-
-/**
  * D15: a node:test entry's `prepare`, after the selection is told and
  * before its run. When the base's command passed, every file runs; when
  * it did not, or only the head declares it, none does, and each reads not
@@ -552,7 +534,7 @@ function byPath(a: TestFileRef, b: TestFileRef): number {
   return compare(a.path, b.path) || compare(a.project, b.project);
 }
 
-/** Vitest first, then node:test, as they run; by path within each. */
+/** Vitest first, then node:test, whatever order they ran in (D18); by path within each. */
 const RUNNER_ORDER: readonly TestFileEvidence["runner"][] = ["vitest", "node-test"];
 
 function byRunnerAndPath(a: TestFileEvidence, b: TestFileEvidence): number {
