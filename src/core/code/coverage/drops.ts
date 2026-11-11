@@ -1,3 +1,5 @@
+import { CHILD_FILE_LIMIT_TEXT } from "./mapper.js";
+
 /** The topic of the writer's one note on the test files that got no record (row 015-79). */
 export const DROPPED_TOPIC = "coverage:no-record";
 
@@ -10,7 +12,7 @@ const CAUSES = {
   busy: "the code store stayed locked past the retry budget",
   closed: "the writer closed first",
   // Spec 020 D12: not a test file without a record, one child's file within one.
-  child: "a child process's coverage file did not map or was over 64 MiB, so it alone was dropped",
+  child: `a child process's coverage file did not map or was over ${CHILD_FILE_LIMIT_TEXT}, so it alone was dropped`,
 } as const;
 
 export type DropCause = keyof typeof CAUSES;
