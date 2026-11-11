@@ -1,7 +1,7 @@
 import { existsSync, readdirSync } from "node:fs";
 import type { readObjectFormat } from "../../hash/git-index.js";
+import { testFileId } from "../../keys/reverse-index.js";
 import type { AbsolutePath } from "../../types/common.js";
-import type { TestFileRef } from "../../types/keys.js";
 import { mapHere } from "../coverage/mapper.js";
 import { type BlobCache, decodeRecord } from "../coverage/record.js";
 import type { CoverageRecord, CoveredFile } from "../coverage/types.js";
@@ -33,11 +33,6 @@ export interface MapOptions {
   readonly note: (text: string) => void;
 }
 
-/** The ref's key in the maps the collector keeps. */
-export function refKey(ref: TestFileRef): string {
-  return `${ref.project}\0${ref.path}`;
-}
-
 /**
  * Each payload's record, by test file. A payload that cannot be mapped
  * gives none, with a note, and its child files count as dropped. A child
@@ -67,7 +62,7 @@ export function mapPayloads(
       dropped = found;
     }
     const counts = { read: found - dropped, dropped };
-    mapped.set(refKey(file.testFile), { record, ...(children ? { children: counts } : {}) });
+    mapped.set(testFileId(file.testFile), { record, ...(children ? { children: counts } : {}) });
   }
   return mapped;
 }

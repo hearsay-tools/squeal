@@ -4,9 +4,9 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it } from "vitest";
 import { Keeper } from "../../../src/core/code/gate/keep.js";
-import { refKey } from "../../../src/core/code/gate/records.js";
 import type { Hasher } from "../../../src/core/hash/hasher.js";
 import { StatCache } from "../../../src/core/hash/stat-cache.js";
+import { testFileId } from "../../../src/core/keys/reverse-index.js";
 import type { WorktreeKeys } from "../../../src/core/scheduler/keying.js";
 import { isStoreOpenFailure, openStore } from "../../../src/core/store/open.js";
 import { storePaths } from "../../../src/core/store/paths.js";
@@ -66,7 +66,7 @@ const run = (completed: readonly TestFileRef[], record: unknown) => ({
   runner: "vitest" as const,
   files: [REF],
   report: report(completed),
-  records: new Map([[refKey(REF), { record: record as never }]]),
+  records: new Map([[testFileId(REF), { record: record as never }]]),
 });
 
 describe("Keeper (spec 020 D17.3)", () => {
@@ -139,7 +139,7 @@ describe("Keeper (spec 020 D17.3)", () => {
       runner: "node-test" as const,
       files: [ref],
       report: report([ref]),
-      records: new Map([[refKey(ref), { record: RECORD }]]),
+      records: new Map([[testFileId(ref), { record: RECORD }]]),
     });
     for (const one of [a, b, c]) keep.expect("node-test", keys, HASHER, new Map([[one, KEY]]));
     keep.expect("node-test", keys, HASHER, new Map());
