@@ -1,18 +1,12 @@
-import { execFileSync } from "node:child_process";
-import { mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { loadBasePolicy } from "../../../src/core/code/gate/policy.js";
 import { readScope } from "../../../src/core/code/gate/scope.js";
 import { DEFAULT_POLICY } from "../../../src/core/types/policy.js";
+import { repo as changedRepo } from "./changed-fixture.js";
 
 /* Spec 020 D6: the gate's policy is `squeal.config.json` at the base commit. */
-
-const roots: string[] = [];
-afterEach(() => {
-  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
-});
 
 const DEFAULTS = {
   complexityThreshold: 20,
@@ -29,26 +23,19 @@ const DEFAULTS = {
 function repo(config: string | null): {
   root: string;
   base: string;
+  /** Commits `text` as the branch's config. */
   commit: (text: string) => void;
+  /** Writes `text` as the config in the working tree. */
+  write: (text: string) => void;
 } {
-  const root = mkdtempSync(join(tmpdir(), "squeal-gate-base-"));
-  roots.push(root);
-  const git = (...args: string[]) =>
-    execFileSync("git", ["-c", "user.name=t", "-c", "user.email=t@t", ...args], {
-      cwd: root,
-      encoding: "utf8",
-    }).trim();
-  writeFileSync(join(root, "a.ts"), "export const a = 1;\n");
-  if (config !== null) writeFileSync(join(root, "squeal.config.json"), config);
-  git("init", "-q");
-  git("add", ".");
-  git("commit", "-qm", "base");
-  const commit = (text: string) => {
-    writeFileSync(join(root, "squeal.config.json"), text);
-    git("add", ".");
-    git("commit", "-qm", "branch");
+  const files = config === null ? {} : { "squeal.config.json": config };
+  const made = changedRepo({ "a.ts": "export const a = 1;\n", ...files });
+  return {
+    root: made.root,
+    base: made.git("rev-parse", "HEAD"),
+    commit: (text) => made.commit({ "squeal.config.json": text }, "branch"),
+    write: (text) => made.write({ "squeal.config.json": text }),
   };
-  return { root, base: git("rev-parse", "HEAD"), commit };
 }
 
 describe("loadBasePolicy", () => {
@@ -92,24 +79,24 @@ describe("loadBasePolicy", () => {
   });
 
   it("does not read coverage.children a branch turns on, committed or in the working tree", async () => {
-    const { root, base, commit } = repo(null);
+    const { root, base, commit, write } = repo(null);
     const on = JSON.stringify({ coverage: { children: true } });
     commit(on);
-    writeFileSync(join(root, "squeal.config.json"), on);
+    write(on);
 
     expect((await loadBasePolicy(root, base)).policy.children).toBe(false);
   });
 
   it("does not read a branch's looser config, committed or in the working tree", async () => {
     const strict = { complexity: { threshold: 10 }, crap: { threshold: 15 } };
-    const { root, base, commit } = repo(JSON.stringify(strict));
+    const { root, base, commit, write } = repo(JSON.stringify(strict));
     const loose = JSON.stringify({
       complexity: { threshold: 99 },
       crap: { threshold: 999 },
       coverage: { exclude: ["**"] },
     });
     commit(loose);
-    writeFileSync(join(root, "squeal.config.json"), loose);
+    write(loose);
 
     expect((await loadBasePolicy(root, base)).policy).toEqual({
       ...DEFAULTS,

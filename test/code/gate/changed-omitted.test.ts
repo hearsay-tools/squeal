@@ -1,55 +1,13 @@
-import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { changedFunctions } from "../../../src/core/code/gate/changed.js";
 import type { ChangedSet } from "../../../src/core/code/gate/types.js";
-import { DEFAULT_POLICY } from "../../../src/core/types/policy.js";
+import { lines, names, POLICY, repo } from "./changed-fixture.js";
 
 /*
  * Spec 020 D16 (row 020-18, #177): the head functions the diff's changed
  * lines touch and D2 does not judge, each with its reason. The first case
  * is the fixture of `research/probes/issue-177/fixture.sh`.
  */
-
-const roots: string[] = [];
-afterEach(() => {
-  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
-});
-
-const POLICY = {
-  include: DEFAULT_POLICY.complexity.include,
-  exclude: DEFAULT_POLICY.complexity.exclude,
-  maxFileBytes: DEFAULT_POLICY.complexity.maxFileBytes,
-};
-
-type Files = Readonly<Record<string, string>>;
-
-/** A repository whose one commit holds `files` on branch `base`, with `head` written over it. */
-function repo(files: Files, head: Files): { root: string; git: (...a: string[]) => string } {
-  const root = mkdtempSync(join(tmpdir(), "squeal-gate-omitted-"));
-  roots.push(root);
-  const git = (...args: string[]) =>
-    execFileSync("git", ["-c", "user.name=t", "-c", "user.email=t@t", ...args], {
-      cwd: root,
-      encoding: "utf8",
-    }).trim();
-  const write = (more: Files) => {
-    for (const [path, text] of Object.entries(more)) {
-      mkdirSync(dirname(join(root, path)), { recursive: true });
-      writeFileSync(join(root, path), text);
-    }
-  };
-  git("init", "-q", "-b", "base");
-  write(files);
-  git("add", "-A");
-  git("commit", "-qm", "base");
-  write(head);
-  return { root, git };
-}
-
-const lines = (...text: string[]) => `${text.join("\n")}\n`;
 
 /** Each left-out function as `path name#occurrence line reason [<- base path name#occurrence]`. */
 function omitted(changed: ChangedSet): string[] {
@@ -60,10 +18,7 @@ function omitted(changed: ChangedSet): string[] {
   });
 }
 
-const judged = (changed: ChangedSet) =>
-  changed.functions.map(
-    (f) => `${f.path} ${f.count.qualifiedName}#${f.count.occurrence} ${f.change}`,
-  );
+const judged = (changed: ChangedSet) => names(changed.functions);
 
 const OLD = lines(
   "export function clamp(x: number): number {",
@@ -177,12 +132,9 @@ const C = lines("export function c(x: number) {", "  return x - 3;", "}");
 
 describe("changedFunctions: a function no changed line touches is not left out", () => {
   it("lists none for unchanged functions between edits, whatever diff.interHunkContext says", async () => {
-    const { root, git } = repo({ "src/m.ts": `${A}${B}${C}` }, {});
+    const { root, git, write } = repo({ "src/m.ts": `${A}${B}${C}` });
     git("config", "diff.interHunkContext", "10");
-    writeFileSync(
-      join(root, "src/m.ts"),
-      `${A.replace("+ 1", "+ 2")}${B}${C.replace("- 3", "- 4")}`,
-    );
+    write({ "src/m.ts": `${A.replace("+ 1", "+ 2")}${B}${C.replace("- 3", "- 4")}` });
 
     const changed = await changedFunctions(root, "base", POLICY);
 
