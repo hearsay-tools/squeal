@@ -9,8 +9,9 @@ import { partsEvidence } from "../core/code/gate/parts.js";
 import { openStored, type StoredFiles } from "../core/code/gate/stored.js";
 import type { ChangedSet, Evidence, TestFileEvidence } from "../core/code/gate/types.js";
 import { readPolicy } from "../core/daemon/policy.js";
-import { vitestDetected } from "../core/daemon/runner.js";
+import { runsVitest } from "../core/daemon/runner.js";
 import { squealVersion } from "../core/daemon/version.js";
+import { daemonVitestOptions } from "../core/daemon/vitest-options.js";
 import { resolveCommonDir } from "../core/fs/git-layout.js";
 import type { AbsolutePath } from "../core/types/common.js";
 import type { TestFileRef } from "../core/types/keys.js";
@@ -138,16 +139,15 @@ export function storedFiles(
 
 /**
  * The adapters a daemon builds in `root` under `policy`, as far as they key:
- * Vitest's when it would run Vitest, observing as policy says, with Squeal's
- * coverage provider; then one per `nodeTest` project. Neither runs a test
- * here, and Vitest writes no results cache.
+ * Vitest's when it would run Vitest (`runsVitest`), with the daemon's options;
+ * then one per `nodeTest` project. Neither runs a test here, and Vitest writes
+ * no results cache.
  */
 export async function daemonAdapters(
   root: AbsolutePath,
   policy: Policy,
   tempDir: AbsolutePath,
 ): Promise<RunnerAdapter[]> {
-  const provider = coverageProvider();
   const coverage = {
     enabled: () => coverageOn(policy),
     children: () => policy.coverage.children,
@@ -155,16 +155,14 @@ export async function daemonAdapters(
   };
   const adapters: RunnerAdapter[] = [];
   try {
-    if (policy.nodeTest.length + policy.pytest.length === 0 || vitestDetected(root)) {
-      const vitest = await createVitestAdapter({
+    if (runsVitest(root, policy)) {
+      const options = daemonVitestOptions({
         root,
-        observe: () => policy.observe.runtimeInputs,
-        excludeProjects: () => policy.vitest.excludeProjects,
-        exclude: () => policy.vitest.exclude,
-        cache: false,
-        ...(provider === null ? {} : { coverage: { ...coverage, provider, tempDir } }),
+        policy: () => policy,
+        provider: coverageProvider(),
+        tempDir,
       });
-      adapters.push(vitest);
+      adapters.push(await createVitestAdapter({ ...options, cache: false }));
     }
     for (const project of policy.nodeTest) {
       const nodeTest = await createNodeTestAdapter(project, {

@@ -1,7 +1,7 @@
 import { statSync } from "node:fs";
 import { join, posix } from "node:path";
 import { readPolicy } from "../core/daemon/policy.js";
-import { vitestDetected } from "../core/daemon/runner.js";
+import { runsVitest } from "../core/daemon/runner.js";
 import { createInputMatcher } from "../core/keys/glob.js";
 import { readHeader } from "../core/state/header.js";
 import { shellWord } from "../core/text.js";
@@ -128,8 +128,7 @@ function mayList(root: AbsolutePath, rel: string, policy: Policy): boolean {
   const selects = (project: (typeof others)[number]) =>
     includes(project, rel) && !createInputMatcher(project.exclude ?? [])(projectPath(project, rel));
   if (others.some(selects)) return true;
-  const vitest = others.length === 0 || vitestDetected(root);
-  return vitest && !createInputMatcher(policy.vitest.exclude)(rel);
+  return runsVitest(root, policy) && !createInputMatcher(policy.vitest.exclude)(rel);
 }
 
 /**
@@ -148,7 +147,7 @@ const VITEST_INCLUDE = ["**/*.{test,spec}.{,c,m}{j,t}s{,x}"];
 function testFileName(root: AbsolutePath, rel: string, policy: Policy): boolean {
   const others = [...policy.nodeTest, ...policy.pytest];
   if (others.some((project) => includes(project, rel))) return true;
-  if (others.length > 0 && !vitestDetected(root)) return false;
+  if (!runsVitest(root, policy)) return false;
   return createInputMatcher([...VITEST_INCLUDE, ...policy.vitest.exclude])(rel);
 }
 

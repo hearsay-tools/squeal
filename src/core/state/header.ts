@@ -1,5 +1,5 @@
 import { readPolicy } from "../daemon/policy.js";
-import { vitestDetected } from "../daemon/runner.js";
+import { runsVitest } from "../daemon/runner.js";
 import { testFileId } from "../keys/reverse-index.js";
 import type { RevisionNumber, WorktreeId } from "../types/common.js";
 import type { CheckKey, TestFileRef } from "../types/keys.js";
@@ -240,9 +240,8 @@ export function isFastPending(header: StatusHeader): boolean {
 
 /**
  * Row 011-311: while the runner part is `pending`, the runners that list a revision's test
- * files, as headers name them (`listingRunners`). The daemon builds Vitest when it is detected
- * or no other runner is configured (spec 003 D7, `vitestDetected`), and a runner per configured
- * `nodeTest` or `pytest` project.
+ * files, as headers name them (`listingRunners`). The daemon builds Vitest when `runsVitest`
+ * holds (spec 003 D7), and a runner per configured `nodeTest` or `pytest` project.
  */
 function listingRunnersField(
   pending: boolean,
@@ -250,10 +249,9 @@ function listingRunnersField(
   policy: Policy | null,
 ): { listingRunners?: readonly string[] } {
   if (!pending || root === undefined || policy === null) return {};
-  const others = policy.nodeTest.length + policy.pytest.length;
   return {
     listingRunners: [
-      ...(others === 0 || vitestDetected(root) ? ["Vitest"] : []),
+      ...(runsVitest(root, policy) ? ["Vitest"] : []),
       ...(policy.nodeTest.length > 0 ? ["node:test"] : []),
       ...(policy.pytest.length > 0 ? ["pytest"] : []),
     ],
