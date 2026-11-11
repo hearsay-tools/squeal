@@ -1,18 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { evaluate } from "../../../src/core/code/gate/evaluate.js";
 import type { BasePolicy } from "../../../src/core/code/gate/policy.js";
-import type { UncountedPath } from "../../../src/core/code/gate/types.js";
-import {
-  changedSet,
-  evidence,
-  fn,
-  type PathInput,
-  POLICY,
-  source,
-  TIMES,
-  testFile,
-  VERSIONS,
-} from "./evaluate-fixture.js";
+import { fn, judged, type PathInput, POLICY, source, testFile } from "./evaluate-fixture.js";
 
 /*
  * Spec 020 D5 (row 020-01): `skipped` from `coverage.exclude`, a pass from
@@ -20,17 +8,6 @@ import {
  * that did not finish (review 0.1.423 B2), failed tests, uncounted paths and
  * the verdict's precedence.
  */
-
-function judged(
-  paths: readonly PathInput[],
-  files: Parameters<typeof evidence>[0],
-  opts: { readonly policy?: BasePolicy; readonly uncounted?: readonly UncountedPath[] } = {},
-) {
-  const changed = changedSet(paths, opts.uncounted);
-  const report = evaluate(changed, evidence(files), opts.policy ?? POLICY, VERSIONS, TIMES);
-  const by = Object.fromEntries(report.functions.map((f) => [f.qualifiedName, f]));
-  return { report, by };
-}
 
 const SKIP_TESTS: BasePolicy = { ...POLICY, coverageExclude: ["test/**"] };
 

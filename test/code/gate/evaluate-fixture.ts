@@ -1,11 +1,14 @@
 import type { CoverageSource } from "../../../src/core/code/coverage/types.js";
+import { evaluate } from "../../../src/core/code/gate/evaluate.js";
 import type { BasePolicy } from "../../../src/core/code/gate/policy.js";
 import type { EngineVersions, GateTimes } from "../../../src/core/code/gate/report.js";
+import type { ScopeEvidence } from "../../../src/core/code/gate/scope.js";
 import type {
   ChangedFunction,
   ChangedSet,
   CountedPath,
   Evidence,
+  ExceptionEntry,
   TestFileEvidence,
   UncountedPath,
 } from "../../../src/core/code/gate/types.js";
@@ -165,4 +168,30 @@ export function changedSet(
     inErrors: paths.flatMap((p) => pick(p, p.inErrors ?? [])),
     uncounted,
   };
+}
+
+export interface JudgedOptions {
+  /** `POLICY` when not given. */
+  readonly policy?: BasePolicy;
+  readonly uncounted?: readonly UncountedPath[];
+  /** The scope's evidence of the run (D14). */
+  readonly scope?: ScopeEvidence;
+  readonly exceptions?: readonly ExceptionEntry[];
+}
+
+/** `evaluate` of `files`' evidence over the changed `paths`: the report, and its functions by name. */
+export function judged(
+  paths: readonly PathInput[],
+  files: readonly TestFileEvidence[],
+  options: JudgedOptions = {},
+) {
+  const run = {
+    ...evidence(files),
+    ...(options.scope === undefined ? {} : { scope: options.scope }),
+  };
+  const changed = changedSet(paths, options.uncounted);
+  const policy = options.policy ?? POLICY;
+  const report = evaluate(changed, run, policy, VERSIONS, TIMES, options.exceptions);
+  const by = Object.fromEntries(report.functions.map((f) => [f.qualifiedName, f]));
+  return { report, by };
 }
