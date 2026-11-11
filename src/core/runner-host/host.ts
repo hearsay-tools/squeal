@@ -66,6 +66,8 @@ export async function serveRunnerHost(options: ServeOptions): Promise<void> {
   const around: RunAround = options.around ?? ((_, run) => run());
   const within = options.within ?? ((call) => call());
   let adapter: HostedAdapter | null = null;
+  /** The adapter `start` is building; the input's end closes it once built (review 0.1.434 B4). */
+  let building: Promise<HostedAdapter> | null = null;
   let policy: HostPolicy | null = null;
   let sent = "";
   const runs = new Map<number, { signal: AbortController; stop: AbortController }>();
@@ -90,7 +92,16 @@ export async function serveRunnerHost(options: ServeOptions): Promise<void> {
     send({ ev: "values", values });
   };
 
-  /** Stops every run and closes the adapter, within `closeMs`. */
+  /** The adapter, or the one being built once it is: never served once the input ended. */
+  const closeAdapter = async (): Promise<void> => {
+    const current = adapter ?? (await building?.catch(() => null)) ?? null;
+    if (current !== null) await within(() => current.close()).catch(() => {});
+  };
+
+  /**
+   * Stops every run and closes the adapter, one still being built included,
+   * waiting at most `closeMs`; a close past it still runs.
+   */
   let stopping: Promise<void> | null = null;
   const stopAll = (): Promise<void> => {
     ending = true;
@@ -100,8 +111,7 @@ export async function serveRunnerHost(options: ServeOptions): Promise<void> {
         run.stop.abort("stop");
       }
       for (const done of forced.values()) done();
-      const current = adapter;
-      const closing = current === null ? undefined : within(() => current.close()).catch(() => {});
+      const closing = closeAdapter();
       let timer: NodeJS.Timeout | undefined;
       const bound = new Promise((resolve) => {
         timer = setTimeout(resolve, options.closeMs ?? CLOSE_MS);
@@ -128,10 +138,21 @@ export async function serveRunnerHost(options: ServeOptions): Promise<void> {
         `runner host of Squeal ${options.version} (protocol ${RUNNER_HOST_PROTOCOL}) refuses a daemon of Squeal ${args.version} (protocol ${args.protocol})`,
       );
     }
-    if (adapter !== null) throw new Error("runner host: started already");
+    if (adapter !== null || building !== null) throw new Error("runner host: started already");
+    if (ending) throw new Error("runner host: its input ended before the start");
     policy = args.policy;
-    const built = await options.build(args, hooks);
+    building = options.build(args, hooks);
+    let built: HostedAdapter;
+    try {
+      built = await building;
+    } catch (error) {
+      building = null;
+      throw error;
+    }
+    // The input ended meanwhile: `stopAll` closes it, and it is never served.
+    if (ending) throw new Error("runner host: its input ended during the start");
     adapter = built;
+    building = null;
     const values = valuesOf(built);
     sent = JSON.stringify(values);
     return {
