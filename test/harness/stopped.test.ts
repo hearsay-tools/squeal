@@ -29,10 +29,12 @@ async function stopped(): Promise<SquealRepo> {
   r.apply(r.pass());
   await runHook("session-start", recorded("session-start", r.root), recording("alive").deps);
   r.store.worktrees.setDaemon(r.worktreeId, null);
-  expect(
-    leaveStoppedMark(r.root as AbsolutePath, Date.now() + 1, await stopTree(r.root as AbsolutePath))
-      .error,
-  ).toBeNull();
+  const left = await leaveStoppedMark(
+    r.root as AbsolutePath,
+    Date.now() + 1,
+    await stopTree(r.root as AbsolutePath),
+  );
+  expect(left.error).toBeNull();
   return r;
 }
 
@@ -62,13 +64,12 @@ describe("a hook boundary after `squeal stop` (task 011-08)", () => {
     r.apply(r.pass());
     const linked = repo.addWorktree("linked");
     expect(r.store.worktrees.get(linked.id)).toBeNull();
-    expect(
-      leaveStoppedMark(
-        linked.root as AbsolutePath,
-        Date.now() + 1,
-        await stopTree(linked.root as AbsolutePath),
-      ).error,
-    ).toBeNull();
+    const left = await leaveStoppedMark(
+      linked.root as AbsolutePath,
+      Date.now() + 1,
+      await stopTree(linked.root as AbsolutePath),
+    );
+    expect(left.error).toBeNull();
     const { calls, deps } = recording();
 
     const start = await runHook("session-start", recorded("session-start", linked.root), deps);
@@ -106,7 +107,7 @@ describe("a hook boundary after `squeal stop` (task 011-08)", () => {
       ...deps,
       ensureDaemon: async (root, options) => {
         // `squeal stop` leaves its mark after the socket went: after this hook found none.
-        expect(leaveStoppedMark(root, Date.now() + 1, tree).error).toBeNull();
+        expect((await leaveStoppedMark(root, Date.now() + 1, tree)).error).toBeNull();
         return deps.ensureDaemon?.(root, options) ?? "spawned";
       },
     };
@@ -143,7 +144,7 @@ describe("a hook boundary after `squeal stop` (task 011-08)", () => {
     r.apply(r.pass());
     await runHook("session-start", recorded("session-start", r.root), recording("alive").deps);
     r.store.worktrees.setDaemon(r.worktreeId, null);
-    expect(leaveStoppedMark(r.root as AbsolutePath, Date.now() + 1, null).error).toBeNull();
+    expect((await leaveStoppedMark(r.root as AbsolutePath, Date.now() + 1, null)).error).toBeNull();
     const { calls, deps } = recording();
 
     // Git answers again: its first print is the mark's own, not an edit.
@@ -162,12 +163,12 @@ describe("a hook boundary after `squeal stop` (task 011-08)", () => {
     r.apply(r.pass());
     await runHook("session-start", recorded("session-start", r.root), recording("alive").deps);
     r.store.worktrees.setDaemon(r.worktreeId, null);
-    expect(leaveStoppedMark(r.root as AbsolutePath, Date.now() + 1, null).error).toBeNull();
+    expect((await leaveStoppedMark(r.root as AbsolutePath, Date.now() + 1, null)).error).toBeNull();
     const { stop } = readPresence(r.store, r.worktreeId, Date.now() as EpochMs);
 
     // stopHolds awaits git; the start's clear lands in between.
     const holds = stopHolds(r.store, { id: r.worktreeId, root: r.root as AbsolutePath }, stop);
-    expect(clearStoppedMark(r.root as AbsolutePath)).toBeNull();
+    expect(await clearStoppedMark(r.root as AbsolutePath)).toBeNull();
 
     expect(await holds).toBe(false);
     expect(r.store.meta.get(stoppedMetaKey(r.worktreeId))).toBeNull();
@@ -177,7 +178,7 @@ describe("a hook boundary after `squeal stop` (task 011-08)", () => {
     const r = squealRepo(gitRepo(cleanups));
     writeFileSync(join(r.root, "a.txt"), "first\n");
     r.store.worktrees.setDaemon(r.worktreeId, null);
-    leaveStoppedMark(
+    await leaveStoppedMark(
       r.root as AbsolutePath,
       Date.now() + 1,
       await stopTree(r.root as AbsolutePath),
@@ -196,7 +197,7 @@ describe("a hook boundary after `squeal stop` (task 011-08)", () => {
     const r = await stopped();
     const { calls, deps } = recording();
 
-    expect(clearStoppedMark(r.root as AbsolutePath)).toBeNull();
+    expect(await clearStoppedMark(r.root as AbsolutePath)).toBeNull();
     await hook(r, "stop", deps);
 
     expect(r.store.meta.get(stoppedMetaKey(r.worktreeId))).toBeNull();
@@ -206,7 +207,11 @@ describe("a hook boundary after `squeal stop` (task 011-08)", () => {
   it("is void once a daemon heartbeats after it", async () => {
     const r = await stopped();
     const now = Date.now();
-    leaveStoppedMark(r.root as AbsolutePath, now - 60_000, await stopTree(r.root as AbsolutePath));
+    await leaveStoppedMark(
+      r.root as AbsolutePath,
+      now - 60_000,
+      await stopTree(r.root as AbsolutePath),
+    );
     r.daemon("stale", now - 30_000);
     const { calls, deps } = recording();
 

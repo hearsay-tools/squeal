@@ -188,7 +188,7 @@ describe("squeal hold (row 011-74)", { timeout: 30_000 }, () => {
     const gone = { ...live.identity, startTime: live.identity.startTime + 1 };
     hold(side, gone, { command: "npm test", wrapper: gone });
 
-    expect(endCommandHolds(repo.main as AbsolutePath)).toEqual([
+    expect(await endCommandHolds(repo.main as AbsolutePath)).toEqual([
       `Ended the hold for \`npm run gate\` (pid ${live.identity.pid}); the command still runs\n`,
     ]);
     expect(holds()).toEqual([]);

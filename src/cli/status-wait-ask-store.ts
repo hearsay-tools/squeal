@@ -6,9 +6,8 @@ import { type AskedRun, type AskFile, askableState } from "./status-wait-ask.js"
 import {
   BUSY_BOUND_MS,
   isBusyAnswer,
-  openForWrites,
+  openCommandStore,
   tellDaemonRetries,
-  whileBusy,
 } from "./store-writes.js";
 
 /*
@@ -41,12 +40,15 @@ function stillAskable(store: Store, worktreeId: WorktreeId, file: AskFile, now: 
  * Stores one request per file as `askNamedRun` decides, each within the
  * busy bound or what is left of the wait, then tells the daemon as `retry`
  * does, so the run need not wait for its next pass. A worktree without a
- * store asks nothing.
+ * store asks nothing. Spec 021 D15: while a daemon serves, the requests go
+ * to it, which writes them.
  */
 export const askNamedRuns: AskNamed = async (root, files, asker, withinMs, now) => {
-  const store = openForWrites(root);
-  if (store === null) return [];
-  const deadline = (Date.now() + Math.max(1, Math.min(BUSY_BOUND_MS, withinMs))) as EpochMs;
+  const boundMs = Math.max(1, Math.min(BUSY_BOUND_MS, withinMs));
+  const opened = openCommandStore(root, { boundMs });
+  if ("not" in opened) return [];
+  const { store } = opened;
+  const deadline = (Date.now() + boundMs) as EpochMs;
   const worktreeId = worktreeIdFor(root);
   const runs: AskedRun[] = [];
   try {
@@ -54,10 +56,12 @@ export const askNamedRuns: AskNamed = async (root, files, asker, withinMs, now) 
       // Its run starts at once whatever the reason; the record keeps one for older readers.
       const ask = { ...file, session: asker, reason: "environment" as const, worktreeId };
       // Each try reads the file again under the write lock.
-      const answer = whileBusy(store, deadline, () =>
-        askNamedRun(store, { ...ask, at: Date.now() as EpochMs }, () =>
-          stillAskable(store, worktreeId, file, now()),
-        ),
+      const answer = await opened.write(
+        () =>
+          askNamedRun(store, { ...ask, at: Date.now() as EpochMs }, () =>
+            stillAskable(store, worktreeId, file, now()),
+          ),
+        deadline,
       );
       runs.push(
         isBusyAnswer(answer)

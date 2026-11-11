@@ -108,7 +108,9 @@ describe("`squeal stop --until-start` (row 011-254)", () => {
     const r = squealRepo(gitRepo(cleanups));
     const root = r.root as AbsolutePath;
     const now = Date.now();
-    expect(leaveStoppedMark(root, now - 60_000, await stopTree(root), true).error).toBeNull();
+    expect(
+      (await leaveStoppedMark(root, now - 60_000, await stopTree(root), true)).error,
+    ).toBeNull();
     // A daemon a racing hook spawned (row 011-20) heartbeat after the mark, then stopped.
     r.daemon("stale", now - 30_000);
     const { calls, deps } = recording();
@@ -129,7 +131,7 @@ describe("`squeal stop --until-start` (row 011-254)", () => {
     await hook(r, "post-tool-batch", deps);
     expect(calls).toEqual([]);
 
-    expect(clearStoppedMark(r.root as AbsolutePath)).toBeNull();
+    expect(await clearStoppedMark(r.root as AbsolutePath)).toBeNull();
     await hook(r, "post-tool-batch", deps);
 
     expect(mark(r)).toBeNull();
@@ -155,7 +157,7 @@ describe("`squeal stop --until-start` (row 011-254)", () => {
 
     // The other worktree's own mode, and this one's start: only this one ensures.
     expect((await cli(["stop", "--until-start"], other.root)).code).toBe(0);
-    expect(clearStoppedMark(r.root as AbsolutePath)).toBeNull();
+    expect(await clearStoppedMark(r.root as AbsolutePath)).toBeNull();
     writeFileSync(join(other.root, "a.txt"), "edited\n");
     await hook(r, "post-tool-batch", deps, other.root);
     await hook(r, "post-tool-batch", deps);

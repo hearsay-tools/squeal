@@ -92,7 +92,7 @@ export async function holdCommand(
   const begun =
     root === null
       ? ({ not: "none", why: `${cwd} is not inside a git worktree` } as const)
-      : begin(root, parsed, now(), bound.boundMs);
+      : await begin(root, parsed, now(), bound.boundMs);
   if ("not" in begun) {
     if (begun.not !== "none") {
       const command = parsed.command.join(" ");
@@ -112,22 +112,29 @@ export async function holdCommand(
     );
   }
   const held = "not" in begun ? null : begun;
+  let childSet: Promise<void> = Promise.resolve();
   const ended = await run(parsed.command, cwd, (child) => {
     if (root === null || held === null) return;
     const identity = child.pid === undefined ? null : processIdentity(child.pid);
-    const set = withStore(
+    childSet = withStore(
       root,
       (store, id) => setCommandHoldChild(store, id, held.token, identity),
       bound,
-    );
-    if ("not" in set) {
+    ).then((set) => {
+      if (!("not" in set)) return;
       const why = `could not record \`${held.command}\`'s process in its hold: ${set.why}`;
       io.stderr(`squeal hold: ${why}; the hold ends with this wrapper\n`);
-    }
+    });
   });
   if (typeof ended !== "number") io.stderr(`squeal hold: ${ended.failed}\n`);
+  // The child's record lands before its hold is removed, never after (spec 021 D15: it is async).
+  await childSet;
   if (root !== null && held !== null) {
-    const left = withStore(root, (store, id) => removeCommandHold(store, id, held.token), bound);
+    const left = await withStore(
+      root,
+      (store, id) => removeCommandHold(store, id, held.token),
+      bound,
+    );
     // Its heartbeat removes an entry left here, once the command is gone too.
     if ("not" in left) {
       io.stderr(
@@ -145,8 +152,11 @@ export async function holdCommand(
  * worktree at `root`, as it clears a stopped mark. Returns a line for each
  * whose command still runs; the commands run on.
  */
-export function endCommandHolds(root: AbsolutePath, busyBoundMs?: number): string[] | NotWritten {
-  const ended = withStore(root, (store, id) => clearCommandHolds(store, id), {
+export async function endCommandHolds(
+  root: AbsolutePath,
+  busyBoundMs?: number,
+): Promise<string[] | NotWritten> {
+  const ended = await withStore(root, (store, id) => clearCommandHolds(store, id), {
     boundMs: busyBoundMs,
   });
   if ("not" in ended) return ended.not === "none" ? [] : ended;
@@ -194,12 +204,12 @@ interface Begun {
 }
 
 /** Adds the entry; without a store, which a hold never creates, why nothing is on hold. */
-function begin(
+async function begin(
   root: AbsolutePath,
   parsed: Parsed,
   since: number,
   boundMs: number | undefined,
-): Begun | NotWritten {
+): Promise<Begun | NotWritten> {
   const held = {
     token: randomUUID(),
     since,
@@ -207,7 +217,7 @@ function begin(
     command: parsed.command.join(" "),
   };
   const wrapper = processIdentity(process.pid);
-  const added = withStore(
+  const added = await withStore(
     root,
     (store, id) => addCommandHold(store, id, { ...held, wrapper, child: null }),
     { boundMs },
@@ -292,16 +302,17 @@ function run(
 }
 
 /**
- * `writeWithin` (spec 021 D1): `fn` over the worktree's store, closed after,
- * asked again while it is busy. A hold never creates a store; a write that
- * threw says so in the words of `nothing is on hold`.
+ * `writeWithin` (spec 021 D1, D15): `fn` over the worktree's store, closed
+ * after, through the serving daemon or asked again while it is busy. A hold
+ * never creates a store; a write that threw says so in the words of
+ * `nothing is on hold`.
  */
-function withStore<T>(
+async function withStore<T>(
   root: AbsolutePath,
   fn: (store: Store, id: WorktreeId) => T,
   options: WriteWithinOptions,
-): Written<T> {
-  const written = writeWithin(root, fn, options);
+): Promise<Written<T>> {
+  const written = await writeWithin(root, fn, options);
   if (!("not" in written) || written.not !== "failed") return written;
   return { not: "failed", why: `its Squeal store could not be written (${written.why})` };
 }
