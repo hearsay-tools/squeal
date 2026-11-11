@@ -6,7 +6,7 @@ import type { RunnerAdapter } from "../../core/types/runner.js";
 import { VitestAdapter } from "./adapter.js";
 import type { VitestCoverage } from "./coverage.js";
 import { loadVitest, type VitestNode } from "./load.js";
-import { VitestWidths } from "./width.js";
+import { VitestWidths, type WidthTable } from "./width.js";
 
 export type { VitestCoverage } from "./coverage.js";
 
@@ -72,7 +72,9 @@ export interface VitestAdapterOptions {
  * Starts the Vitest instance before resolving, so a missing Vitest or a
  * broken config rejects here.
  */
-export async function createVitestAdapter(options: VitestAdapterOptions): Promise<RunnerAdapter> {
+export async function createVitestAdapter(
+  options: VitestAdapterOptions,
+): Promise<RunnerAdapter & WidthValues> {
   const root = realpathSync(options.root);
   const adapter = new SizedVitestAdapter(
     new VitestWidths(options.maxWorkers),
@@ -91,12 +93,18 @@ export async function createVitestAdapter(options: VitestAdapterOptions): Promis
   return adapter;
 }
 
+/** What a runner host sends for `slowWidth` and `tierWidth` (spec 021 D6, row 021-11). */
+export interface WidthValues {
+  /** The widths of the instance started last; `null` before the first start. */
+  widthValues(): WidthTable | null;
+}
+
 /**
  * The adapter, the scheduler's width questions answered from its hints
  * (task 011-37 section 5, row 011-40): width changes nothing a check
  * stores, so `adapter.ts` holds none of it.
  */
-class SizedVitestAdapter extends VitestAdapter {
+class SizedVitestAdapter extends VitestAdapter implements WidthValues {
   readonly #widths: VitestWidths;
 
   constructor(
@@ -134,5 +142,9 @@ class SizedVitestAdapter extends VitestAdapter {
 
   tierWidth(testFile: TestFileRef, grant: number): number {
     return this.#widths.tierWidth(testFile, grant);
+  }
+
+  widthValues(): WidthTable | null {
+    return this.#widths.table();
   }
 }
