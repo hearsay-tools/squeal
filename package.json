@@ -35,6 +35,7 @@
     "@earendil-works/pi-coding-agent": "1.0.4",
     "@opencode-ai/plugin": "1.18.35",
     "@types/node": "^22.20.5",
+    "@vitest/coverage-v8": "5.0.3",
     "esbuild": "^0.28.2",
     "eslint": "10.13.0",
     "eslint9": "npm:eslint@9.39.5",
