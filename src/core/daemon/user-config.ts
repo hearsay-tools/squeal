@@ -1,6 +1,7 @@
 import { readFileSync, realpathSync } from "node:fs";
 import { availableParallelism, homedir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
+import { DEFAULT_BACKGROUND_SHARE, isBackgroundShare } from "../capacity/background.js";
 import { gitDirOf } from "../fs/git-layout.js";
 import { isRecord } from "../fs/json.js";
 import { DEFAULT_GROUP_SLOT_SCOPE, GROUP_SLOT_SCOPES } from "../slow/slot-files.js";
@@ -53,6 +54,7 @@ export function loadUserConfig(
       hostSlots: defaultHostSlots(cpus),
       projects: {},
       groupSlotScope: DEFAULT_GROUP_SLOT_SCOPE,
+      backgroundShare: DEFAULT_BACKGROUND_SHARE,
     },
   };
   const { value, problems } = loadConfigFile(path, SHAPE, defaults);
@@ -74,7 +76,7 @@ export function loadUserConfig(
 export function resolveCapacity(
   config: { readonly capacity: Pick<UserConfig["capacity"], "hostSlots" | "projects"> },
   repositoryRoot: AbsolutePath,
-): Omit<Capacity, "groupSlotScope"> {
+): Omit<Capacity, "groupSlotScope" | "backgroundShare"> {
   const { hostSlots, projects } = config.capacity;
   const project = projects[normalize(repositoryRoot)];
   return project === undefined
@@ -88,7 +90,8 @@ export function resolveCapacity(
  * per distinct problem set, none when the newest note about the file already
  * says the same. The daemon calls it when it starts and sizes its pool from
  * that reading, so an edit applies to daemons started after (D11 as amended);
- * so does `capacity.groupSlotScope`, which it gives its groups' slots.
+ * so do `capacity.groupSlotScope`, which it gives its groups' slots, and
+ * `capacity.backgroundShare`, which it gives its pool (spec 021 D18).
  */
 export function capacityReader(options: {
   readonly repositoryRoot: AbsolutePath;
@@ -108,8 +111,8 @@ export function capacityReader(options: {
     const text = said.length > 0 ? `${path}: ${said.join("; ")}` : null;
     if (text !== null && text !== told && options.lastNote(path) !== text) options.note(text);
     told = text;
-    const { groupSlotScope } = config.capacity;
-    return { ...resolveCapacity(config, options.repositoryRoot), groupSlotScope };
+    const { groupSlotScope, backgroundShare } = config.capacity;
+    return { ...resolveCapacity(config, options.repositoryRoot), groupSlotScope, backgroundShare };
   };
 }
 
@@ -218,6 +221,9 @@ const groupSlotScope: Leaf = (v) =>
     ? null
     : `one of ${GROUP_SLOT_SCOPES.map((s) => `"${s}"`).join(", ")}`;
 
+/** `capacity.backgroundShare` (spec 021 D18): a number from 0 to 1; another value keeps the default. */
+export const backgroundShare: Leaf = (v) => (isBackgroundShare(v) ? null : "a number from 0 to 1");
+
 const SHAPE: Shape = {
-  capacity: { hostSlots: positiveInteger, projects, groupSlotScope },
+  capacity: { hostSlots: positiveInteger, projects, groupSlotScope, backgroundShare },
 };
