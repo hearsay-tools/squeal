@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { loadPolicy, POLICY_FILE } from "../../daemon/policy.js";
 import { runGit } from "../../fs/git.js";
 import type { AbsolutePath } from "../../types/common.js";
+import { type BasePrepares, preparesOf } from "./prepare.js";
 import { readScope, type ScopeBase } from "./scope.js";
 import type { GatePolicy } from "./types.js";
 
@@ -33,6 +34,12 @@ export interface BasePolicy extends GatePolicy {
    * resolves from; absent, the default groups with no `gate.groups`.
    */
   readonly scope?: ScopeBase;
+  /**
+   * D15.2: the `prepare` of each `nodeTest` entry, by name, so a branch
+   * cannot add a command and run it in the same change. Absent when no
+   * entry has one.
+   */
+  readonly prepares?: BasePrepares;
 }
 
 /** The policy at the base and the loader's problems with that file (001 D11). */
@@ -60,6 +67,7 @@ export async function loadBasePolicy(
     const { policy, problems } = loadPolicy(scratch);
     const { complexity, coverage, crap } = policy;
     const scope = readScope(policy);
+    const prepares = preparesOf(policy.nodeTest);
     return {
       policy: {
         complexityThreshold: complexity.threshold,
@@ -70,6 +78,7 @@ export async function loadBasePolicy(
         maxFileBytes: complexity.maxFileBytes,
         children: coverage.children,
         scope: scope.base,
+        ...(prepares.size === 0 ? {} : { prepares }),
       },
       problems: [...problems, ...scope.problems],
     };

@@ -1,6 +1,7 @@
 import { compare } from "../../fs/compare.js";
 import type { RelativePath } from "../../types/common.js";
 import type { FileHash } from "../../types/keys.js";
+import type { PrepareRun } from "./prepare.js";
 import type { LeftOutGroup, ScopeGroup } from "./scope.js";
 import type {
   ChangeKind,
@@ -158,6 +159,12 @@ export interface GateRunReport {
    * read and dropped, over its files; absent with the key off.
    */
   readonly children?: ChildFiles;
+  /**
+   * D15.3: node:test only, each entry's `prepare` that its selected files
+   * waited for, by entry; absent when none. The files it kept from running
+   * are its `notRun`, not in `notFinished`.
+   */
+  readonly prepare?: readonly PrepareRun[];
   readonly durationMs: number | null;
 }
 
@@ -278,19 +285,33 @@ export function runsOf(evidence: Evidence, durationsMs: GateTimes["durationsMs"]
       .sort((a, b) => compare(a.path, b.path));
     const from = sourcesOf(files);
     const children = childFilesOf(files);
+    const prepare = runner === "node-test" ? preparesOf(evidence) : null;
     return [
       {
         runner,
         selected: sorted(files.map((f) => f.path)),
         completed: sorted(files.filter((f) => f.completed).map((f) => f.path)),
-        notFinished: sorted(files.filter((f) => !f.completed).map((f) => f.path)),
+        notFinished: sorted(files.filter(unfinished).map((f) => f.path)),
         failed,
         ...(from === null ? {} : { from }),
         ...(children === null ? {} : { children }),
+        ...(prepare === null ? {} : { prepare }),
         durationMs,
       },
     ];
   });
+}
+
+/** A file that started and did not finish; one its `prepare` kept from running is not (D15.3). */
+const unfinished = (f: TestFileEvidence) => !f.completed && f.notPrepared !== true;
+
+/** D15.3: the `prepare` runs, by entry; `null` when none. */
+function preparesOf(evidence: Evidence): PrepareRun[] | null {
+  const runs = evidence.prepares ?? [];
+  if (runs.length === 0) return null;
+  return [...runs]
+    .map((run) => ({ ...run, notRun: [...run.notRun].sort(compare) }))
+    .sort((a, b) => compare(a.project, b.project));
 }
 
 /** Each file's evidence source, by path; `null` when this command ran every one. */

@@ -18,6 +18,7 @@ import type {
 import type { BlobCache } from "../coverage/record.js";
 import { coverageProvider, PROVIDER_MISSING_NOTE } from "../coverage/runtime.js";
 import type { CoverageRun, CoveredFile } from "../coverage/types.js";
+import { type BasePrepares, type PrepareRun, prepareEntry } from "./prepare.js";
 import { type Mapped, mapPayloads, refKey } from "./records.js";
 import {
   type GateScope,
@@ -101,6 +102,10 @@ export interface CollectOptions {
    * selected file runs, as before.
    */
   readonly scope?: GateScope;
+  /** D15.2: the base's `prepare` of each node:test entry, by name; absent, the base declares none. */
+  readonly prepares?: BasePrepares;
+  /** D15.3: a `prepare` command's output, as it comes, for stderr; dropped when absent. */
+  readonly output?: (text: string) => void;
 }
 
 /**
@@ -133,6 +138,8 @@ interface Runner {
   readonly kind: TestFileEvidence["runner"];
   readonly adapter: RunnerAdapter;
   readonly covered: CoveredFile[];
+  /** A node:test runner's entry, for its `prepare` (D15). */
+  readonly project?: NodeTestProject;
 }
 
 /**
@@ -179,16 +186,16 @@ export async function collectEvidence(
     const selected = await select(runners, paths, options.tests, { tally, leftOut });
     const blobs: BlobCache = new Map();
     const testFiles: TestFileEvidence[] = [];
+    const prepares: PrepareRun[] = [];
     let timedOut = false;
     for (const [i, runner] of runners.entries()) {
       const chosen = selected[i] ?? [];
       if (chosen.length === 0) continue;
-      const closure = (ref: TestFileRef) => runner.adapter.closure(ref).catch(() => null);
-      const environment = () => runner.adapter.environment();
-      const stored =
-        (await options.stored?.(runner.kind, chosen, closure, environment)) ?? new Map();
-      testFiles.push(...stored.values());
-      const files = chosen.filter((ref) => !stored.has(ref));
+      const before = await knownBefore(runner, chosen, { root, deadline, note, options, children });
+      prepares.push(...before.prepares);
+      timedOut ||= before.budgetEnded;
+      testFiles.push(...before.known.values());
+      const files = chosen.filter((ref) => !before.known.has(ref));
       if (files.length === 0) continue;
       const left = Math.ceil(deadline - performance.now());
       const logDir = join(temp, "runs", String(i));
@@ -209,6 +216,7 @@ export async function collectEvidence(
       timedOut,
       budgetSeconds: options.budgetSeconds,
       ...scoped(await leftOutFiles(runners, leftOut)),
+      ...(prepares.length === 0 ? {} : { prepares }),
     };
   } finally {
     await Promise.allSettled(runners.map((r) => r.adapter.close()));
@@ -269,7 +277,7 @@ async function openRunners(
       tempDir: temp,
       coverage: { enabled: () => true, children: () => children, collected },
     });
-    runners.push({ kind: "node-test", adapter, covered });
+    runners.push({ kind: "node-test", adapter, covered, project });
   }
 }
 
@@ -378,6 +386,59 @@ async function leftOutFiles(
     }
   }
   return files;
+}
+
+/** What `knownBefore` gives one runner's selected files. */
+interface Before {
+  /** The files' evidence known without a run; those do not run. */
+  readonly known: ReadonlyMap<TestFileRef, TestFileEvidence>;
+  /** D15.3: its entry's `prepare`, when it had one. */
+  readonly prepares: readonly PrepareRun[];
+  /** The budget ended in the `prepare`. */
+  readonly budgetEnded: boolean;
+}
+
+/**
+ * The evidence of a runner's `chosen` files known before its run. A
+ * node:test entry with a `prepare` (D15) takes no stored evidence: when the
+ * base's command passed, every file runs; when it did not, or only the head
+ * declares it, none does, and each reads not prepared, its closure read
+ * with no run. Any other runner's comes from `options.stored` (D11.7, D13.2).
+ */
+async function knownBefore(
+  runner: Runner,
+  chosen: readonly TestFileRef[],
+  at: {
+    readonly root: AbsolutePath;
+    readonly deadline: number;
+    readonly note: (text: string) => void;
+    readonly options: CollectOptions;
+    readonly children: boolean;
+  },
+): Promise<Before> {
+  const { options } = at;
+  const prepared =
+    runner.project === undefined
+      ? null
+      : await prepareEntry(
+          runner.project,
+          chosen.map((ref) => ref.path),
+          { ...at, base: options.prepares, output: options.output ?? (() => {}) },
+        );
+  if (prepared === null) {
+    const closure = (ref: TestFileRef) => runner.adapter.closure(ref).catch(() => null);
+    const environment = () => runner.adapter.environment();
+    const stored = await options.stored?.(runner.kind, chosen, closure, environment);
+    return { known: stored ?? new Map(), prepares: [], budgetEnded: false };
+  }
+  const known = new Map<TestFileRef, TestFileEvidence>();
+  if (prepared.run.outcome !== "passed") {
+    for (const ref of chosen) {
+      const evidence = await evidenceOf(runner, ref, null, new Map(), at.children);
+      known.set(ref, { ...evidence, notPrepared: true });
+    }
+  }
+  return { known, prepares: [prepared.run], budgetEnded: prepared.budgetEnded };
 }
 
 function byPath(a: TestFileRef, b: TestFileRef): number {

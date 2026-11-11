@@ -40,6 +40,36 @@ export const insideRoot: Field = (v) => {
     : null;
 };
 
+const PREPARE_SHAPE = "{ command: [executable, ...arguments], timeoutSeconds?: seconds }";
+
+/**
+ * Spec 020 D15.1: `{ command: string[], timeoutSeconds?: number }`. The
+ * command is an argument list with an executable first, never a shell
+ * string; `timeoutSeconds` is a positive number.
+ */
+export const prepare: Field = (v) => {
+  if (!isRecord(v)) return PREPARE_SHAPE;
+  const unknown = Object.keys(v).find((key) => key !== "command" && key !== "timeoutSeconds");
+  if (unknown !== undefined) {
+    return { problem: `has an unknown key "${unknown}"; it takes ${PREPARE_SHAPE}` };
+  }
+  const { command, timeoutSeconds } = v;
+  const list = Array.isArray(command) && command.every((s) => typeof s === "string");
+  if (!list || command.length === 0 || command[0] === "") {
+    return {
+      problem: `has a command that is not a list with an executable first: ${JSON.stringify(command)}; it takes ${PREPARE_SHAPE}`,
+    };
+  }
+  const positive =
+    typeof timeoutSeconds === "number" && Number.isFinite(timeoutSeconds) && timeoutSeconds > 0;
+  if (timeoutSeconds !== undefined && !positive) {
+    return {
+      problem: `has a timeoutSeconds that is not a positive number: ${JSON.stringify(timeoutSeconds)}`,
+    };
+  }
+  return null;
+};
+
 /** Every key of `NodeTestProject`; `name` and `include` are required. */
 const FIELDS: Readonly<Record<keyof NodeTestProject, Field>> = {
   name: nonEmptyString,
@@ -50,6 +80,7 @@ const FIELDS: Readonly<Record<keyof NodeTestProject, Field>> = {
   include: globs,
   exclude: globs,
   slow: boolean,
+  prepare,
 };
 const REQUIRED: ReadonlySet<string> = new Set(["name", "include"]);
 
