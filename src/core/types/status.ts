@@ -771,12 +771,35 @@ export interface NodeMismatch {
   readonly imports: number;
 }
 
-/** Spec 018 D14 and D19: the shared results the project opted into. */
+/** A Squeal release and the key format it records results in (spec 018 D21). */
+export interface SquealBuild {
+  readonly version: string;
+  readonly keyFormat: number;
+}
+
+/**
+ * Spec 018 D21: the export the shared reader last refused because CI ran a
+ * Squeal with another key format. One per worktree: a later refusal
+ * replaces it, the next import clears it.
+ */
+export interface SquealMismatch {
+  /** CI's Squeal, from the export's header. */
+  readonly ci: SquealBuild;
+  /** The Squeal of the daemon that refused it. */
+  readonly here: SquealBuild;
+  /** The commit the refused export is of. */
+  readonly commit: string;
+  readonly at: EpochMs;
+}
+
+/** Spec 018 D14, D19 and D21: the shared results the project opted into. */
 export interface SharedStatus {
   /** The project's `shared.ref`. */
   readonly ref: string;
   /** D19's line; absent when the newest import's Node is the daemon's, or there is no import. */
   readonly node?: NodeMismatch;
+  /** D21's line; absent when no export of another key format than this Squeal's is refused. */
+  readonly squeal?: SquealMismatch;
 }
 
 /**

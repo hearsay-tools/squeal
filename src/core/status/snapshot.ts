@@ -52,6 +52,7 @@ import { outstandingOf } from "./outstanding.js";
 import { pendingPhasesOf, pendingTestFilesOf } from "./phase-files.js";
 import { runtimeFilesStatus } from "./runtime-files.js";
 import { slowSlotOf } from "./slot-holders.js";
+import { squealMismatchOf } from "./squeal-mismatch.js";
 import { once } from "./standing-facts.js";
 import { unknownTestFilesOf } from "./unknown-files.js";
 
@@ -269,7 +270,8 @@ function openCheckpoint(
 
 /**
  * Spec 018 D5: the imports with a test file this worktree lists; nothing
- * when none has. D19: with `shared.ref` set, the Node the newest one needs.
+ * when none has. D19: with `shared.ref` set, the Node the newest one needs;
+ * D21: and CI's export refused for another key format.
  */
 function importsOf(
   store: Store,
@@ -279,9 +281,12 @@ function importsOf(
   root: AbsolutePath,
 ): Pick<StatusSnapshot, "imports" | "shared"> {
   const imports = readImports(store, worktreeId, keys, states);
+  const { shared } = sharedOf(readPolicy(root).shared.ref, imports, () => pinnedNode(root));
   return {
     ...(imports.length === 0 ? {} : { imports }),
-    ...sharedOf(readPolicy(root).shared.ref, imports, () => pinnedNode(root)),
+    ...(shared === undefined
+      ? {}
+      : { shared: { ...shared, ...squealMismatchOf(store, worktreeId) } }),
   };
 }
 
