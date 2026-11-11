@@ -64,6 +64,7 @@
 #   test/cli/setup/setup-exclude.test.ts
 #   test/code/gate/prepare.test.ts
 #   test/daemon/composite-reconcile.test.ts
+#   test/daemon/node-test-prepare.test.ts
 #   test/daemon/observed-timer.test.ts
 #   test/daemon/policy.test.ts
 #   test/evals/claim-grades.test.ts
