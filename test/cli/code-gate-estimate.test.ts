@@ -1,12 +1,18 @@
-import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { codeCommand } from "../../src/cli/code.js";
 import type { GateReport } from "../../src/core/code/gate/report.js";
 import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
 import type { AbsolutePath } from "../../src/core/types/common.js";
 import { result } from "../store/helpers.js";
-import { BASE, edit, ownHomeAndTmp, repo, SLOW, VITEST_WIDTH } from "./code-gate-fixture.js";
+import {
+  BASE,
+  edit,
+  ownHomeAndTmp,
+  repo,
+  SLOW,
+  toldBefore,
+  VITEST_WIDTH,
+} from "./code-gate-fixture.js";
 
 /*
  * Spec 020 D17.1 (row 020-17a): `squeal code --base` tells each runner's
@@ -39,23 +45,7 @@ function seed(root: string, seconds: number): void {
 }
 
 /** `squeal code <args>` in `root`: each stderr line, and whether the marker was there when it came. */
-async function gate(root: string, args: readonly string[]) {
-  let stdout = "";
-  const told: { readonly line: string; readonly afterMarker: boolean }[] = [];
-  const code = await codeCommand(args, {
-    stdout: (text) => {
-      stdout += text;
-    },
-    stderr: (text) => {
-      const afterMarker = existsSync(join(root, MARKER));
-      for (const line of text.split("\n").filter((l) => l !== "")) told.push({ line, afterMarker });
-    },
-    cwd: root,
-    env: {},
-  });
-  const before = told.filter((t) => !t.afterMarker).map((t) => t.line);
-  return { code, stdout, lines: told.map((t) => t.line), before };
-}
+const gate = (root: string, args: readonly string[]) => toldBefore(root, args, MARKER);
 
 const LINE = `squeal code: Vitest: 1 test file to run here, up to ${VITEST_WIDTH} at once: about 42 s from its stored duration`;
 

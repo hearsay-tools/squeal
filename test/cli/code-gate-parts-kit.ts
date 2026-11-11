@@ -1,11 +1,11 @@
 import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { codeGateCommand } from "../../src/cli/code-gate.js";
 import { PART_PREFIX, type Part } from "../../src/core/ci/parts.js";
 import type { GateReport, GateRunReport } from "../../src/core/code/gate/report.js";
 import { committed, scratch, writeFiles } from "../ci/fixture.js";
 import { watched } from "../code/gate/collect-fixture.js";
 import { MATH_FILES, recordCovered } from "../runners/vitest/ci-coverage-kit.js";
+import { code } from "./code-gate-fixture.js";
 
 /*
  * Spec 020 D13.2 (row 020-08b): a repository whose working tree changes
@@ -79,21 +79,11 @@ export async function gate(
   env: NodeJS.ProcessEnv = {},
 ): Promise<Gated> {
   const ran: string[] = [];
-  let stdout = "";
-  let stderr = "";
-  const io = {
-    stdout: (text: string) => {
-      stdout += text;
-    },
-    stderr: (text: string) => {
-      stderr += text;
-    },
-    cwd: root,
-    env,
-  };
-  const code = await codeGateCommand(["--base", "HEAD", ...args, "--json"], io, watched(ran));
-  if (stdout === "") throw new Error(`squeal code exited ${code}: ${stderr}`);
-  return { code, report: JSON.parse(stdout) as GateReport, stderr, ran };
+  const options = { env, adapters: watched(ran) };
+  const result = await code(root, ["--base", "HEAD", ...args, "--json"], options);
+  const { stdout, stderr } = result;
+  if (stdout === "") throw new Error(`squeal code exited ${result.code}: ${stderr}`);
+  return { code: result.code, report: JSON.parse(stdout) as GateReport, stderr, ran };
 }
 
 /**
