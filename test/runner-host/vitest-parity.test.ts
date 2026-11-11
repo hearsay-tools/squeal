@@ -1,6 +1,10 @@
-import { basename } from "node:path";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { basename, join, relative } from "node:path";
 import { stripVTControlCharacters } from "node:util";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, onTestFinished } from "vitest";
+import { coverageProvider } from "../../src/core/code/coverage/runtime.js";
+import type { CoverageRun } from "../../src/core/code/coverage/types.js";
 import { squealVersion } from "../../src/core/daemon/version.js";
 import { createHostedVitest } from "../../src/core/runner-host/vitest-host.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
@@ -94,6 +98,46 @@ describe("the Vitest adapter through a runner host", DAEMON_SLOW, () => {
     );
     expect(remote).toEqual(local);
     expect((local.report as RunReport).end).toBe("completed");
+  });
+
+  it("hands over the same coverage payloads, sources by path", async () => {
+    const provider = coverageProvider();
+    if (provider === null) throw new Error("no coverage provider beside the sources");
+    const tempDir = mkdtempSync(join(tmpdir(), "sq-host-coverage-"));
+    onTestFinished(() => rmSync(tempDir, { recursive: true, force: true }));
+    const runs: CoverageRun[] = [];
+    const { local, remote } = await both(
+      async (project) => {
+        runs.length = 0;
+        const report = await project.adapter.run(refs, project.runOptions());
+        await expect.poll(() => runs.length).toBe(1);
+        return {
+          report: steady(report),
+          covered: runs.flatMap((run) =>
+            run.files.map((file) => ({
+              testFile: file.testFile,
+              payload: existsSync(file.payload),
+              sources: [...file.sources]
+                .map(([path, source]) => [relative(project.root, path), source.path, source.sha1])
+                .sort(),
+            })),
+          ),
+        };
+      },
+      "basic",
+      {},
+      {
+        coverage: {
+          enabled: () => true,
+          provider,
+          tempDir,
+          collected: (run) => runs.push(run),
+        },
+      },
+    );
+    expect(remote).toEqual(local);
+    expect(local.covered.length).toBeGreaterThan(0);
+    expect(local.covered.every((file) => file.payload && file.sources.length > 0)).toBe(true);
   });
 
   it("finds the same affected files after an edit, and runs a failing edit the same", async () => {

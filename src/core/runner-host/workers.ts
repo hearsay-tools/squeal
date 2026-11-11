@@ -15,7 +15,7 @@ import type { RunOptions, RunReport } from "../types/runner.js";
  * left behind (001 D12).
  */
 
-/** Runs `run` with its workers handled; the host's own process is `self`. */
+/** Runs `run` with its workers handled. */
 export type RunAround = (options: RunOptions, run: () => Promise<RunReport>) => Promise<RunReport>;
 
 /** A run's mark, `<token>:<lane>`, as `EscapedChildren.envFor` makes it. */
@@ -26,7 +26,10 @@ function markOf(options: RunOptions): { token: string; lane: string } | null {
   return colon < 0 ? null : { token: value.slice(0, colon), lane: value.slice(colon + 1) };
 }
 
-/** The host's `RunAround` on Linux; elsewhere each run as it is, as the daemon does. */
+/**
+ * The host's `RunAround` on Linux, `self` its own process; elsewhere each run
+ * as it is, as the daemon does.
+ */
 export function hostWorkers(self: number = process.pid): RunAround {
   const children = new Map<string, EscapedChildren>();
   return async (options, run) => {
