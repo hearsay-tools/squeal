@@ -29,6 +29,11 @@ describe("squeal code --base --parts (spec 020 D13.2)", () => {
         { "test/add.test.ts": "parts", "test/grade.test.ts": "parts" },
       ]);
       expect(fromRuns.report.runs.map((r) => r.from)).toEqual([undefined]);
+      // Review 0.1.432 B2: before any setup, the selection and the run are counted apart.
+      expect(fromParts.stderr).toContain(
+        "squeal code: Vitest: 2 test files selected (tests 2): none to run, 2 read from the parts\n",
+      );
+      expect(fromRuns.stderr).toContain("squeal code: Vitest: 2 test files to run (tests 2)\n");
       expect(fromParts.stderr).toContain("2 of 2 selected test files read from the parts");
       expect(listing(parts)).toEqual(before);
     },

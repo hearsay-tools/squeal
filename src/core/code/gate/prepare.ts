@@ -46,6 +46,10 @@ export function preparesOf(projects: readonly NodeTestProject[]): BasePrepares {
   );
 }
 
+/** D15.2: whether `prepareEntry` handles `project`: the base or the head declares its `prepare`. */
+export const declaresPrepare = (project: NodeTestProject, base: BasePrepares | undefined) =>
+  base?.has(project.name) === true || project.prepare !== undefined;
+
 export interface PrepareContext {
   readonly root: AbsolutePath;
   /** The gate's one deadline, a `performance.now()` time (D3.4). */

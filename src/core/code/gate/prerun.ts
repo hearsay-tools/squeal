@@ -15,15 +15,24 @@ import type { ChangedSet, TestFileEvidence } from "./types.js";
  * Spec 020 D14.4 (row 020-15b, which carries 020-16a): what one run of the
  * gate will do, told after selection and before the first run, so before
  * any global setup, `setupFiles` or `prepare` runs. It reads only what the
- * selection already gave and the runners' static graphs: no test runs.
+ * selection already gave, the evidence known without a run, and the
+ * runners' static graphs: no test runs. Review 0.1.432 B2: a file known
+ * from the stores or the parts does not run, so it starts no setup.
  */
 
-/** One runner's files to run, by check group. */
+/** One runner's selected files, by check group, and how many of them run. */
 export interface RunnerSelection {
   readonly runner: TestFileEvidence["runner"];
   /** The selected files the scope runs, `--test` files among them. */
   readonly files: number;
-  /** By group, in the groups' ownership order; empty when the run has no scope. */
+  /**
+   * Of `files`, those the runner runs: the ones with no evidence known
+   * without a run. A node:test entry's run still waits for its `prepare`.
+   */
+  readonly run: number;
+  /** Of `files`, those whose evidence is read from the stores (D11.7) or the parts (D13.2). */
+  readonly known: { readonly store: number; readonly parts: number };
+  /** The selected files by group, in the groups' ownership order; empty when the run has no scope. */
   readonly groups: readonly { readonly name: string; readonly files: number }[];
 }
 
@@ -33,7 +42,10 @@ export interface SelectionSummary {
   readonly runners: readonly RunnerSelection[];
   /** D14.3: the test groups out of scope; empty when the run has no scope. */
   readonly leftOut: readonly LeftOutGroup[];
-  /** The global setups that run: the root project's, and those of projects with a file to run. */
+  /**
+   * The global setups that run: those of projects with a file the runner
+   * runs, and the root project's when the runner runs any file.
+   */
   readonly setups: readonly GlobalSetupEntry[];
   /**
    * Each path of a changed function that no runner lists as a test file
@@ -57,9 +69,13 @@ export interface Picked {
   readonly leftOut: readonly LeftOutRef[];
 }
 
+/** The evidence of selected files known without a run (D11.7, D13.2), by the selection's refs. */
+export type KnownEvidence = ReadonlyMap<TestFileRef, TestFileEvidence>;
+
 /**
  * D14.4: tells `tell` the summary of `picked`, the runners' selection,
- * with the left-out groups of `tally`; nothing when `tell` is absent.
+ * with the left-out groups of `tally` and the files `known` keeps from
+ * running; nothing when `tell` is absent.
  */
 export async function tellSelection(
   tell: ((summary: SelectionSummary) => void) | undefined,
@@ -68,22 +84,24 @@ export async function tellSelection(
   context: {
     readonly scope?: GateScope | undefined;
     readonly tally: ScopeTally | null;
+    readonly known: KnownEvidence;
     readonly excluded?: ((path: RelativePath) => boolean) | undefined;
     readonly children?: boolean | undefined;
   },
 ): Promise<void> {
   if (tell === undefined) return;
-  const { scope, tally, excluded = () => false } = context;
+  const { scope, tally, known, excluded = () => false } = context;
   const leftOut = tally?.evidence([]).leftOut ?? [];
   // D12: with children, a path no closure holds may still be run and measured.
   const looked = context.children === true ? () => true : excluded;
-  tell(await summarize(picked, changed, { scope, leftOut, excluded: looked }));
+  tell(await summarize(picked, changed, { scope, leftOut, known, excluded: looked }));
 }
 
 /**
  * The summary of `picked`: the counts, the left-out groups `leftOut`, the
- * setups the runners give, and the paths of `changed`'s functions that no
- * selected file loads. A path `excluded` matches needs no loader (D6).
+ * setups of the files that run, those `known` holds left out, and the
+ * paths of `changed`'s functions that no selected file loads. A path
+ * `excluded` matches needs no loader (D6).
  */
 export async function summarize(
   picked: readonly Picked[],
@@ -91,15 +109,26 @@ export async function summarize(
   context: {
     readonly scope: GateScope | undefined;
     readonly leftOut: readonly LeftOutGroup[];
+    readonly known: KnownEvidence;
     readonly excluded: (path: RelativePath) => boolean;
   },
 ): Promise<SelectionSummary> {
+  const { known } = context;
   const kinds = [...new Set(picked.map((p) => p.kind))];
   const runners = kinds.map((runner) => {
-    const run = picked.filter((p) => p.kind === runner).flatMap((p) => p.run);
-    return { runner, files: run.length, groups: byGroup(context.scope, runner, run) };
+    const selected = picked.filter((p) => p.kind === runner).flatMap((p) => p.run);
+    const from = (where: TestFileEvidence["from"]) =>
+      selected.filter((ref) => known.get(ref)?.from === where).length;
+    return {
+      runner,
+      files: selected.length,
+      run: selected.filter((ref) => !known.has(ref)).length,
+      known: { store: from("store"), parts: from("parts") },
+      groups: byGroup(context.scope, runner, selected),
+    };
   });
-  const setups = (await Promise.all(picked.map(setupsOf))).flat();
+  const runs = picked.map((p) => ({ ...p, run: p.run.filter((ref) => !known.has(ref)) }));
+  const setups = (await Promise.all(runs.map(setupsOf))).flat();
   const candidates = [...new Set(changed.functions.map((f) => f.path))].filter(
     (path) => !context.excluded(path),
   );
@@ -126,9 +155,9 @@ function byGroup(
 }
 
 /**
- * The global setups a runner's run starts (Vitest runs the root project's
- * with any selection): none when no file of it runs, or when the runner
- * has no global setup.
+ * The global setups a runner's run of `picked.run` starts (Vitest runs the
+ * root project's with any file): none when no file of it runs, or when the
+ * runner has no global setup.
  */
 async function setupsOf(picked: Picked): Promise<readonly GlobalSetupEntry[]> {
   if (picked.run.length === 0 || picked.adapter.globalSetups === undefined) return [];

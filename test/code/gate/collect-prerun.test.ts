@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { collectEvidence, type GateAdapters } from "../../../src/core/code/gate/collect.js";
+import {
+  type CollectOptions,
+  collectEvidence,
+  type GateAdapters,
+} from "../../../src/core/code/gate/collect.js";
 import type { SelectionSummary } from "../../../src/core/code/gate/prerun.js";
 import { resolveScope } from "../../../src/core/code/gate/scope.js";
+import type { Evidence, TestFileEvidence } from "../../../src/core/code/gate/types.js";
 import type { TestFileRef } from "../../../src/core/types/keys.js";
 import type { GlobalSetupEntry, RunnerAdapter, RunReport } from "../../../src/core/types/runner.js";
 import { changedSet, NO_ADAPTERS, project } from "./collect-fixture.js";
@@ -10,7 +15,10 @@ import { changedSet, NO_ADAPTERS, project } from "./collect-fixture.js";
  * Spec 020 D14.4 (row 020-15b, with 020-16a): the collector tells the
  * selection once, after it and before the first run: the files to run by
  * runner and group, the setups that will run, and each changed path no
- * selected file loads. Fake adapters on the `selection` fixture.
+ * selected file loads. Fake adapters on the `selection` fixture. Review
+ * 0.1.432 B2: a file known from the stores or the parts does not run, so
+ * the selection and the run are counted apart, and only the setups of the
+ * files that run are named.
  */
 
 const LOADS: TestFileRef = { project: "server", path: "test/loads.test.ts" };
@@ -32,7 +40,7 @@ interface Fake {
   readonly listed?: readonly TestFileRef[];
   readonly closures?: Readonly<Record<string, readonly string[] | null>>;
   readonly setups?: readonly GlobalSetupEntry[];
-  /** Each call, in order: `told`, `run`. */
+  /** Each call, in order: `told`, `run <paths>`. */
   readonly calls: string[];
 }
 
@@ -46,8 +54,8 @@ function fake({ listed = [LOADS], closures = {}, setups, calls }: Fake): RunnerA
       if (paths === null || paths === undefined) throw new Error("no closure");
       return { testFile: ref, paths: [...paths] } as Awaited<ReturnType<RunnerAdapter["closure"]>>;
     },
-    run: async () => {
-      calls.push("run");
+    run: async (files) => {
+      calls.push(`run ${files.map((f) => f.path).join(" ")}`);
       return EMPTY_REPORT;
     },
     close: async () => {},
@@ -60,13 +68,14 @@ async function told(
   adapters: GateAdapters,
   paths: readonly string[],
   excluded: (path: string) => boolean = () => false,
-): Promise<{ summary: SelectionSummary | null; calls: string[] }> {
+  stored?: CollectOptions["stored"],
+): Promise<{ summary: SelectionSummary | null; calls: string[]; evidence: Evidence }> {
   const root = project("selection");
   const scope = resolveScope(undefined, []);
   if ("error" in scope) throw new Error(scope.error);
   let summary: SelectionSummary | null = null;
   const calls: string[] = [];
-  await collectEvidence(root, await changedSet(root, paths), {
+  const evidence = await collectEvidence(root, await changedSet(root, paths), {
     tests: [],
     budgetSeconds: 600,
     adapters,
@@ -76,9 +85,34 @@ async function told(
       summary = s;
     },
     excluded,
+    ...(stored === undefined ? {} : { stored }),
   });
-  return { summary, calls };
+  return { summary, calls, evidence };
 }
+
+/** Completed evidence of `ref` read from `from`, as the stores or the parts give it. */
+const known = (ref: TestFileRef, from: "store" | "parts"): TestFileEvidence => ({
+  runner: "vitest",
+  path: ref.path,
+  completed: true,
+  failed: [],
+  skipped: false,
+  loads: [ref.path, "src/changed.ts"],
+  record: null,
+  from,
+});
+
+/** A `stored` that gives the evidence of each selected file `from` names, read from there. */
+const knownFrom =
+  (from: Readonly<Record<string, "store" | "parts">>): CollectOptions["stored"] =>
+  async (_runner, files) => {
+    const found = new Map<TestFileRef, TestFileEvidence>();
+    for (const ref of files) {
+      const where = from[ref.path];
+      if (where !== undefined) found.set(ref, known(ref, where));
+    }
+    return found;
+  };
 
 describe("collectEvidence: the selection told before the first run (spec 020 D14.4)", () => {
   it("tells the files to run by group, and the setups of the root and of projects that run, before any run", async () => {
@@ -92,9 +126,17 @@ describe("collectEvidence: the selection told before the first run (spec 020 D14
       "src/changed.ts",
     ]);
 
-    expect([...order, ...calls]).toEqual(["told", "run"]);
+    expect([...order, ...calls]).toEqual(["told", "run test/loads.test.ts"]);
     expect(summary).toEqual({
-      runners: [{ runner: "vitest", files: 1, groups: [{ name: "tests", files: 1 }] }],
+      runners: [
+        {
+          runner: "vitest",
+          files: 1,
+          run: 1,
+          known: { store: 0, parts: 0 },
+          groups: [{ name: "tests", files: 1 }],
+        },
+      ],
       leftOut: [],
       setups: [SETUPS[0], SETUPS[1]],
       unloaded: [],
@@ -123,6 +165,78 @@ describe("collectEvidence: the selection told before the first run (spec 020 D14
     ]);
 
     expect(summary?.unloaded).toEqual([]);
+  });
+
+  for (const from of ["store", "parts"] as const) {
+    it(`names no setup when every selected file is read from the ${from === "store" ? "stores" : "parts"}, and runs none`, async () => {
+      const calls: string[] = [];
+      const closures = { [LOADS.path]: [LOADS.path, "src/changed.ts"] };
+      const vitest = fake({ setups: SETUPS, closures, calls });
+      const {
+        summary,
+        calls: order,
+        evidence,
+      } = await told(
+        { ...NO_ADAPTERS, vitest: async () => vitest },
+        ["src/changed.ts"],
+        () => false,
+        knownFrom({ [LOADS.path]: from }),
+      );
+
+      expect([...order, ...calls]).toEqual(["told"]);
+      expect(summary).toEqual({
+        runners: [
+          {
+            runner: "vitest",
+            files: 1,
+            run: 0,
+            known: { store: from === "store" ? 1 : 0, parts: from === "parts" ? 1 : 0 },
+            groups: [{ name: "tests", files: 1 }],
+          },
+        ],
+        leftOut: [],
+        setups: [],
+        unloaded: [],
+      });
+      expect(evidence.testFiles).toEqual([known(LOADS, from)]);
+    });
+  }
+
+  it("names the root's setup and those of projects that run, not of a project read only from the stores", async () => {
+    const calls: string[] = [];
+    const served: TestFileRef = { project: "server", path: "test/other.test.ts" };
+    const runs: TestFileRef = { project: "browser", path: "test/loads.test.ts" };
+    const parted: TestFileRef = { project: "browser", path: "test/fails.test.ts" };
+    const vitest = fake({ listed: [served, runs, parted], setups: SETUPS, calls });
+    const stored = knownFrom({ [served.path]: "store", [parted.path]: "parts" });
+
+    const {
+      summary,
+      calls: order,
+      evidence,
+    } = await told(
+      { ...NO_ADAPTERS, vitest: async () => vitest },
+      ["src/changed.ts"],
+      () => false,
+      stored,
+    );
+
+    expect([...order, ...calls]).toEqual(["told", "run test/loads.test.ts"]);
+    expect(summary?.runners).toEqual([
+      {
+        runner: "vitest",
+        files: 3,
+        run: 1,
+        known: { store: 1, parts: 1 },
+        groups: [{ name: "tests", files: 3 }],
+      },
+    ]);
+    expect(summary?.setups).toEqual([SETUPS[0], SETUPS[2]]);
+    expect(evidence.testFiles.map((f) => [f.path, f.from])).toEqual([
+      [parted.path, "parts"],
+      [runs.path, undefined],
+      [served.path, "store"],
+    ]);
   });
 
   it("is not called when no runner opens", async () => {

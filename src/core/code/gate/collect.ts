@@ -18,8 +18,8 @@ import type {
 import type { BlobCache } from "../coverage/record.js";
 import { coverageProvider, PROVIDER_MISSING_NOTE } from "../coverage/runtime.js";
 import type { CoverageRun, CoveredFile } from "../coverage/types.js";
-import { type BasePrepares, type PrepareRun, prepareEntry } from "./prepare.js";
-import { type Picked, type SelectionSummary, tellSelection } from "./prerun.js";
+import { type BasePrepares, declaresPrepare, type PrepareRun, prepareEntry } from "./prepare.js";
+import { type KnownEvidence, type Picked, type SelectionSummary, tellSelection } from "./prerun.js";
 import { type Mapped, mapPayloads, refKey } from "./records.js";
 import { type GateScope, type LeftOutFile, type ScopeTally, tallyScope } from "./scope.js";
 import type { ChangedSet, Evidence, TestFileEvidence } from "./types.js";
@@ -113,8 +113,8 @@ export interface CollectOptions {
 /**
  * The evidence of each of `files` known without a run, from the stores
  * (D11.7) or `ci record`'s parts (D13.2), by the ref given; a file it
- * leaves out runs. Called once per runner with a selected file, before its
- * run and within the budget. `closure`, which the collector always gives,
+ * leaves out runs. Called once per runner with a selected file, within the
+ * budget, before the selection is told (D14.4) and before any run. `closure`, which the collector always gives,
  * is the runner's closure of a file here, `null` when it cannot give one.
  * `environment`, which it always gives too, is the runner's environment of
  * each project here, as the runs would have it; it rejects when the runner
@@ -185,18 +185,21 @@ export async function collectEvidence(
     const opening = { provider, temp, note, children };
     await openRunners(options.adapters, root, policy, opening, runners);
     const picked = await select(runners, paths, options.tests, tally);
-    await tellSelection(options.selected, picked, changed, { ...options, tally });
+    const at = { root, deadline, note, options, children };
+    // Review 0.1.432 B2: the stores and the parts first, so the print names only what runs.
+    const known = await storedOf(picked, options);
+    await tellSelection(options.selected, picked, changed, { ...options, tally, known });
     const blobs: BlobCache = new Map();
     const testFiles: TestFileEvidence[] = [];
     const prepares: PrepareRun[] = [];
     let timedOut = false;
     for (const [i, { runner, run: chosen }] of picked.entries()) {
       if (chosen.length === 0) continue;
-      const before = await knownBefore(runner, chosen, { root, deadline, note, options, children });
+      const before = await preparedBefore(runner, chosen, at);
       prepares.push(...before.prepares);
       timedOut ||= before.budgetEnded;
-      testFiles.push(...before.known.values());
-      const files = chosen.filter((ref) => !before.known.has(ref));
+      testFiles.push(...chosen.flatMap((ref) => before.known.get(ref) ?? known.get(ref) ?? []));
+      const files = chosen.filter((ref) => !before.known.has(ref) && !known.has(ref));
       if (files.length === 0) continue;
       const left = Math.ceil(deadline - performance.now());
       const logDir = join(temp, "runs", String(i));
@@ -388,7 +391,31 @@ async function leftOutFiles(picked: readonly Picked[]): Promise<LeftOutFile[]> {
   return files;
 }
 
-/** What `knownBefore` gives one runner's selected files. */
+/**
+ * D11.7, D13.2: the evidence `options.stored` knows of each runner's
+ * selected files, asked once per runner with one, before the selection is
+ * told and before any setup, `prepare` or run. A node:test entry with a
+ * `prepare` (D15) takes none: its files run when the command passes.
+ */
+async function storedOf(
+  picked: readonly (Picked & { readonly runner: Runner })[],
+  options: CollectOptions,
+): Promise<KnownEvidence> {
+  const known = new Map<TestFileRef, TestFileEvidence>();
+  if (options.stored === undefined) return known;
+  for (const { runner, run: chosen } of picked) {
+    if (chosen.length === 0) continue;
+    if (runner.project !== undefined && declaresPrepare(runner.project, options.prepares)) continue;
+    const closure = (ref: TestFileRef) => runner.adapter.closure(ref).catch(() => null);
+    const environment = () => runner.adapter.environment();
+    for (const [ref, evidence] of await options.stored(runner.kind, chosen, closure, environment)) {
+      known.set(ref, evidence);
+    }
+  }
+  return known;
+}
+
+/** What `preparedBefore` gives one runner's selected files. */
 interface Before {
   /** The files' evidence known without a run; those do not run. */
   readonly known: ReadonlyMap<TestFileRef, TestFileEvidence>;
@@ -399,13 +426,12 @@ interface Before {
 }
 
 /**
- * The evidence of a runner's `chosen` files known before its run. A
- * node:test entry with a `prepare` (D15) takes no stored evidence: when the
- * base's command passed, every file runs; when it did not, or only the head
- * declares it, none does, and each reads not prepared, its closure read
- * with no run. Any other runner's comes from `options.stored` (D11.7, D13.2).
+ * D15: a node:test entry's `prepare`, after the selection is told and
+ * before its run. When the base's command passed, every file runs; when
+ * it did not, or only the head declares it, none does, and each reads not
+ * prepared, its closure read with no run. Nothing for another runner.
  */
-async function knownBefore(
+async function preparedBefore(
   runner: Runner,
   chosen: readonly TestFileRef[],
   at: {
@@ -425,12 +451,7 @@ async function knownBefore(
           chosen.map((ref) => ref.path),
           { ...at, base: options.prepares, output: options.output ?? (() => {}) },
         );
-  if (prepared === null) {
-    const closure = (ref: TestFileRef) => runner.adapter.closure(ref).catch(() => null);
-    const environment = () => runner.adapter.environment();
-    const stored = await options.stored?.(runner.kind, chosen, closure, environment);
-    return { known: stored ?? new Map(), prepares: [], budgetEnded: false };
-  }
+  if (prepared === null) return { known: new Map(), prepares: [], budgetEnded: false };
   const known = new Map<TestFileRef, TestFileEvidence>();
   if (prepared.run.outcome !== "passed") {
     for (const ref of chosen) {
