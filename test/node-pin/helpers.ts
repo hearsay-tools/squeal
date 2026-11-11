@@ -32,11 +32,23 @@ export function fakeHome(path: string = tempDir("squeal-node-pin-bin-")): FakeHo
   return { home, env };
 }
 
-/** `env` with every version manager variable but those `env` sets removed from `base`. */
-export function withoutManagers(base: NodeJS.ProcessEnv, env: NodeJS.ProcessEnv) {
-  const next: NodeJS.ProcessEnv = { ...base };
-  for (const name of MANAGER_VARIABLES) delete next[name];
-  return { ...next, ...env };
+/**
+ * Sets `env` in `process.env` in place and removes every other version
+ * manager variable; returns the restore. In place, since from Node 26 a
+ * child spawned without `env` no longer sees a replaced `process.env`
+ * object, only the keys set on it.
+ */
+export function setProcessEnv(env: Readonly<Record<string, string>>): () => void {
+  const names = [...new Set([...MANAGER_VARIABLES, ...Object.keys(env)])];
+  const before = new Map(names.map((name) => [name, process.env[name]]));
+  for (const name of MANAGER_VARIABLES) delete process.env[name];
+  Object.assign(process.env, env);
+  return () => {
+    for (const [name, value] of before) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+  };
 }
 
 /**
