@@ -34,3 +34,20 @@ Tests: `test/shared/reader-upstream.test.ts` (removed and added remote, offline 
 
 - The key-parts note of D11 is unchanged: a project whose policy has `observe.runtimeInputs` off keys no observed paths, but the import's re-key (`transfer-rekey.ts`) adds the shared observed entries anyway, so its files would not match. Not seen in cezar (runtime inputs on).
 - Bundles are not rebuilt (brief: no build); the coordinator's build carries `daemon.ts`, `scheduler.ts`, `choose.ts`, `reader.ts` and `imports-seen.ts` into `plugins/*/dist`.
+
+## Repair R1 (review of 0.1.428): status names the pending re-key; the records' worker counted once
+
+Worker 02b58941, 2026-11-11. Review `reviews/0.1.428.md` B1 and B2.
+
+B1. The window is real (the reviewer held the runner's next invalidation: `content=3` until the re-key applied). The daemon now publishes which imports its keys have not taken, in a worktree row (`importsWaiting`, `src/core/scheduler/imports-waiting.ts`):
+
+- `ImportsSeen.take` hands the fresh import ids beside the projects; `Scheduler.refreshObserved(projects, imports)` (additive parameter) marks them in the same synchronous step that puts the grown files in `#grownElsewhere`.
+- `RunnerWork.#refine` reads the marked ids when its apply takes the lock, before `applyRunnerPart` (whose `regrowObserved` consumes those files), and removes them after `ledger.commit`. A mark added while the apply awaits stays until the next refinement (`queueObserved` queued one): status may say "waiting" a moment too long, never "content differs" too early. A refinement that throws leaves the mark for the next one.
+- `Scheduler.start` empties the row: a start keys every import the store holds.
+- Status (`src/core/status/imports.ts`): a file that would read "content differs" reads `keysPending`, "waiting for keys after the import", while its import is marked. A new D5 reason: the spec's list needs the coordinator's amendment.
+
+Still possible: the moment between an import's commit and the daemon's `take` (the same process for the reader, one socket message for `squeal import`) reads "content differs"; closing it would need the import's own transaction to write the mark.
+
+Tests: `test/shared/import-rekey.test.ts` "names the keys it waits for ..." (red before: `content: 3`), `test/scheduler/imports-waiting.test.ts`.
+
+B2. `map-client.cjs` adds the records' worker's event-loop busy time (which holds its evidence time; ESM top-level code too, measured) to the Vitest process's clock at close, and the worker's own evidence file carried its own clock. The worker now starts with `COUNTED_OUTSIDE` in its `workerData`, and `clock.cjs` in such a thread reads 0: the thread is still counted, its time once. Test: `test/runners/vitest/ci-map-client-clock.test.ts`, a 300 ms evidence-only job in the worker under the real hook (red before: 584 ms; now within 1.4x).
