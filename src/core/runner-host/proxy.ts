@@ -79,6 +79,18 @@ export interface HostProxyOptions {
   /** Coverage's `collected`: each run's payloads. */
   readonly coverage?: (run: CoverageRun) => void;
   readonly deadlines?: Partial<HostDeadlines>;
+  /**
+   * Spec 021 D10 (row 021-13): requests before `start`, such as a remote
+   * host's tree and install. The `HostRequests` it gets stay usable after.
+   */
+  readonly prepare?: (requests: HostRequests) => Promise<void>;
+  /** Spec 021 D10: what rides on each `invalidate`, a remote's changed files; `undefined`, nothing. */
+  readonly invalidateWith?: (paths: readonly InvalidatedPath[]) => Promise<unknown>;
+}
+
+/** Requests to a host beside the adapter's members (spec 021 D10). */
+export interface HostRequests {
+  request(m: HostMethod, a: readonly unknown[], deadlineMs: number): Promise<unknown>;
 }
 
 const gone = new WeakSet<RunnerAdapter>();
@@ -138,6 +150,9 @@ class HostProxy implements RunnerAdapter {
   }
 
   async start(): Promise<void> {
+    await this.#options.prepare?.({
+      request: (m, a, deadlineMs) => this.#connection.request(m, a, deadlineMs),
+    });
     const policy = this.#options.policy();
     this.#policy = JSON.stringify(policy);
     const started = (await this.#connection.request(
@@ -170,8 +185,10 @@ class HostProxy implements RunnerAdapter {
     this.#started = true;
   }
 
-  invalidate(paths: readonly InvalidatedPath[]): Promise<InvalidateResult> {
-    return this.#call("invalidate", [paths]) as Promise<InvalidateResult>;
+  async invalidate(paths: readonly InvalidatedPath[]): Promise<InvalidateResult> {
+    const riding = await this.#options.invalidateWith?.(paths);
+    const args = riding === undefined ? [paths] : [paths, riding];
+    return (await this.#call("invalidate", args)) as InvalidateResult;
   }
 
   affected(changedPaths: readonly string[]): Promise<AffectedTestFiles> {

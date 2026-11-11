@@ -16,6 +16,8 @@ import {
   RUNNER_HOST_PROTOCOL,
   type WireRunOptions,
 } from "./protocol.js";
+import type { TreeHost } from "./remote/tree-host.js";
+import type { TreeEntry, TreeWrite } from "./remote/tree-wire.js";
 import type { RunAround } from "./workers.js";
 
 /*
@@ -56,6 +58,13 @@ export interface ServeOptions {
   readonly within?: <T>(call: () => Promise<T>) => Promise<T>;
   /** How long `close` and the input's end wait for the adapter to close. */
   readonly closeMs?: number;
+  /**
+   * Spec 021 D10 (row 021-13): the tree a remote host keeps, written by the
+   * daemon's `tree`, `write` and `invalidate` messages; its runs log in its
+   * own directories and send the files back. Absent, a local host: it writes
+   * nothing into the root and refuses those messages.
+   */
+  readonly tree?: TreeHost;
 }
 
 const CLOSE_MS = 5_000;
@@ -180,12 +189,15 @@ export async function serveRunnerHost(options: ServeOptions): Promise<void> {
   const run = async (id: number, args: readonly unknown[]): Promise<RunReport> => {
     const current = started();
     const [files, wire] = args as [RunReportFiles, WireRunOptions];
+    const { beforeForce, ...data } = wire;
+    // A remote host logs in a directory of its own: the daemon's `logDir` is on another machine.
+    const logDir = await options.tree?.runDir(data.runId);
     const signal = new AbortController();
     const stop = new AbortController();
     runs.set(id, { signal, stop });
-    const { beforeForce, ...data } = wire;
     const runOptions: RunOptions = {
       ...data,
+      ...(logDir === undefined ? {} : { logDir }),
       signal: signal.signal,
       stop: stop.signal,
       fileEnded: (testFile) => send({ ev: "fileEnded", run: id, testFile }),
@@ -201,7 +213,9 @@ export async function serveRunnerHost(options: ServeOptions): Promise<void> {
         : {}),
     };
     try {
-      return await around(runOptions, () => current.run(files, runOptions));
+      const report = await around(runOptions, () => current.run(files, runOptions));
+      if (options.tree === undefined || logDir === undefined) return report;
+      return { ...report, logs: await options.tree.logs(logDir) } as RunReport;
     } finally {
       runs.delete(id);
       forced.get(id)?.();
@@ -229,9 +243,26 @@ export async function serveRunnerHost(options: ServeOptions): Promise<void> {
       case "close":
         await stopAll();
         return true;
+      case "tree":
+        return treeOf().tree(args[0] as readonly TreeEntry[]);
+      case "write":
+        return treeOf().write(args[0] as TreeWrite);
+      case "blobs":
+        return treeOf().blobs(args[0] as readonly string[]);
+      case "install":
+        return treeOf().install();
+      case "invalidate":
+        // A remote's changed files ride on the revision's invalidate (spec 021 D10).
+        if (args[1] !== undefined) await treeOf().write(args[1] as TreeWrite);
+        return call(started(), method, args);
       default:
         return call(started(), method, args);
     }
+  };
+
+  const treeOf = (): TreeHost => {
+    if (options.tree === undefined) throw new Error("runner host: this host keeps no tree");
+    return options.tree;
   };
 
   const handle = (message: DaemonMessage) => {
