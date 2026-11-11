@@ -12,6 +12,11 @@ import { cloneOf, cloneWith, git, type Scratch, untouched } from "./remote.js";
  * branch". It now takes the default branch the remote advertises, under the
  * listing's kill timer and the reader's stop, and writes nothing. The note
  * stays, naming `git remote set-head origin --auto`, when that fails too.
+ *
+ * R2 (CI of 0.1.431): an `origin/HEAD` that names a branch the clone does not
+ * hold, as a default branch renamed on the remote leaves it after
+ * `git fetch --prune`, named no default branch either; the pass then ended
+ * with no note and no import. It now counts as no `origin/HEAD`.
  */
 
 const NO_DEFAULT =
@@ -93,13 +98,37 @@ describe("the shared results reader without origin/HEAD (row 018-28)", () => {
     expect(notes).toEqual([NO_DEFAULT]);
   });
 
-  it("notes when the advertised branch has no remote-tracking ref here", async () => {
+  it("takes the advertised branch when origin/HEAD names a branch the clone lacks", async () => {
     const s = scratch();
-    const { dev } = await readdedClone(s);
-    git(dev, ["update-ref", "-d", "refs/remotes/origin/main"]);
+    const ci = cloneWith(s, "ci", 1);
+    const [c0] = ci.commits as [string];
+    await publish(ci.root, c0);
+    const dev = cloneOf(s, "dev");
+    // The remote's `master` renamed to `main`, and `origin/master` pruned: origin/HEAD dangles.
+    git(dev, ["symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/master"]);
+    const before = untouched(dev);
     const { run, commits, notes } = readerOf(dev);
     await run();
-    expect(commits()).toEqual([]);
-    expect(notes).toEqual([NO_DEFAULT]);
+    expect(commits()).toEqual([c0]);
+    expect(notes).toEqual([]);
+    expect(untouched(dev)).toBe(before);
   });
+
+  it.each([
+    ["no origin/HEAD", false],
+    ["an origin/HEAD that dangles", true],
+  ])(
+    "notes when the advertised branch has no remote-tracking ref here, with %s",
+    async (_, dangling) => {
+      const s = scratch();
+      const { dev } = await readdedClone(s);
+      if (dangling)
+        git(dev, ["symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main"]);
+      git(dev, ["update-ref", "--no-deref", "-d", "refs/remotes/origin/main"]);
+      const { run, commits, notes } = readerOf(dev);
+      await run();
+      expect(commits()).toEqual([]);
+      expect(notes).toEqual([NO_DEFAULT]);
+    },
+  );
 });

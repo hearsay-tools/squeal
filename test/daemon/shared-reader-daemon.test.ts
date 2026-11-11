@@ -31,6 +31,11 @@ import { createFixtureRepo, SLOW, withStore } from "./helpers.js";
  * exported file is current from the import, the files whose runs read a file
  * beyond their imports (observed entries) too, and in a clone whose remote
  * was removed and added again, which has no `refs/remotes/origin/HEAD`.
+ *
+ * R2 (CI of 0.1.431, git 2.56): from git 2.48 that fetch makes
+ * `origin/HEAD`, and `git update-ref -d` of it deleted `origin/main`, the
+ * branch it names, so the reader met an `origin/HEAD` naming a branch the
+ * clone lacked. The symbolic ref itself is deleted now, on every git.
  */
 
 const INPUT = "data/input.txt";
@@ -169,7 +174,10 @@ describe("a daemon's first start with a published export (row 018-28)", SLOW, ()
     git(dev, ["remote", "remove", "origin"]);
     git(dev, ["remote", "add", "origin", remote]);
     git(dev, ["fetch", "-q", "origin"]);
-    execFileSync("git", ["update-ref", "-d", "refs/remotes/origin/HEAD"], { cwd: dev });
+    git(dev, ["update-ref", "--no-deref", "-d", "refs/remotes/origin/HEAD"]);
+    expect(git(dev, ["for-each-ref", "--format=%(refname)", "refs/remotes"])).toBe(
+      "refs/remotes/origin/main",
+    );
     const root = realpathSync(dev);
     const before = untouched(root);
 

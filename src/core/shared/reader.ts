@@ -29,8 +29,9 @@ import { refOf, remoteExports } from "./refs.js";
  * since a `git fetch` moves it while `HEAD` stays; and one stop ends every
  * step, so no git starts after `close()`. Row 018-23: the stop kills every
  * git the reader starts, the `HEAD` read and the commit's listing too.
- * Row 018-28: a clone without `refs/remotes/origin/HEAD` takes the default
- * branch the remote advertises, under the listing's kill timer.
+ * Row 018-28: a clone without `refs/remotes/origin/HEAD`, or whose one names
+ * a branch the clone does not hold (R2), takes the default branch the remote
+ * advertises, under the listing's kill timer.
  */
 
 /** The kill timer of the listing (`transport.md` Q3: 0.45 to 0.6 s to GitHub). */
