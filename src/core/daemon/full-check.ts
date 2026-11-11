@@ -1,11 +1,9 @@
 import { spawn } from "node:child_process";
 import { setPriority } from "node:os";
-import { setTimeout as sleep } from "node:timers/promises";
 import { argv0For, storeCheckLabel } from "../process-label.js";
-import { BUSY_SLICE_MS, busyBackoffMs } from "../store/busy.js";
-import { isBusy, withBusySliceSync } from "../store/connection.js";
 import { isCorruption, META_FULL_CHECK, markStore, type StoreMark } from "../store/open.js";
 import { storePaths } from "../store/paths.js";
+import { slicedWrite } from "../store/sliced-write.js";
 import type { AbsolutePath, EpochMs } from "../types/common.js";
 import type { Store } from "../types/store.js";
 import { TEST_NICE } from "./low-priority.js";
@@ -197,7 +195,7 @@ class FullCheckOwner {
     const { store, commonDir, now, log } = this.#context;
     let claim: Claim | null | undefined;
     try {
-      claim = await sliced(
+      claim = await slicedWrite(
         () => claimFullCheck(store, now()),
         () => this.#stopped,
       );
@@ -233,7 +231,7 @@ class FullCheckOwner {
     const { store, log } = this.#context;
     const deadline = performance.now() + RELEASE_WITHIN_MS;
     try {
-      const done = await sliced(
+      const done = await slicedWrite(
         () => {
           releaseClaim(store, claim);
           return true;
@@ -248,24 +246,6 @@ class FullCheckOwner {
     } catch (error) {
       log(`full integrity check claim not given back: ${String(error)}`);
     }
-  }
-}
-
-/**
- * Spec 011 C8's busy writes, for one write: each try waits at most
- * `BUSY_SLICE_MS` for a busy store, and the next follows `busyBackoffMs`
- * later, so the event loop runs between them. `undefined` once `giveUp`
- * says so before a try; any error but busy is thrown.
- */
-async function sliced<T>(write: () => T, giveUp: () => boolean): Promise<T | undefined> {
-  for (let attempt = 0; ; attempt++) {
-    if (giveUp()) return undefined;
-    try {
-      return withBusySliceSync(BUSY_SLICE_MS, write);
-    } catch (error) {
-      if (!isBusy(error)) throw error;
-    }
-    await sleep(busyBackoffMs(attempt));
   }
 }
 
