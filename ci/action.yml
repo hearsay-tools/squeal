@@ -4,8 +4,9 @@
 # GitHub checks out this repository at the tag, where the released bundles
 # are committed, so the action downloads nothing. Every release moves `v0`
 # while this file's inputs, the commands it provides and their arguments stay
-# compatible. It never fails the job: when Squeal cannot run, `squeal` passes
-# through (ci/bin/squeal, ci/lib.sh).
+# compatible. No Squeal failure fails the job: when Squeal cannot run,
+# `squeal` passes through, and a refusal or a crash of `squeal ci export` or
+# `squeal ci publish` is a warning (ci/bin/squeal, ci/lib.sh).
 name: Squeal CI
 description: Puts squeal on the PATH for squeal ci record, export and publish. Never fails the job.
 author: Hearsay

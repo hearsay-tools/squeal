@@ -78,6 +78,55 @@ squeal_ci_warn() {
   fi
 }
 
+# The line of the error output in file $1 that states the error: a refusal's
+# "wrote nothing" or "published nothing", else a thrown error's "...Error: ...",
+# else the first line that is not empty; nothing when there is none.
+squeal_ci_error_line() {
+  squeal_ci_refusal=
+  squeal_ci_thrown=
+  squeal_ci_first=
+  while IFS= read -r squeal_ci_l || [ -n "$squeal_ci_l" ]; do
+    case $squeal_ci_l in
+      *"wrote nothing" | *"published nothing") : "${squeal_ci_refusal:=$squeal_ci_l}" ;;
+      *Error:*) : "${squeal_ci_thrown:=$squeal_ci_l}" ;;
+    esac
+    case $squeal_ci_l in
+      *[![:space:]]*) : "${squeal_ci_first:=$squeal_ci_l}" ;;
+    esac
+  done <"$1"
+  printf '%s' "${squeal_ci_refusal:-${squeal_ci_thrown:-$squeal_ci_first}}"
+}
+
+# Squeal runs `squeal ci export` or `squeal ci publish` ("$@"). A refusal or a
+# crash (any exit but 0 and 2) warns with the command and its error line, and
+# exits 0: the run's result stays as it would be without Squeal (the
+# coordinator for the human, 2026-11-11). A usage error, exit 2, is a mistake
+# in the CI file and fails. Its output streams as it comes; a copy of the
+# error output goes to a file under $RUNNER_TEMP, removed afterwards.
+squeal_ci_shared() {
+  squeal_ci_err=${RUNNER_TEMP:-${TMPDIR:-/tmp}}/squeal-ci-$$.err
+  {
+    {
+      node --disable-warning=ExperimentalWarning "$squeal_ci_cli" "$@" 2>&1 1>&3 3>&-
+      echo $? >"$squeal_ci_err.code"
+    } | tee "$squeal_ci_err" >&2
+  } 3>&1
+  squeal_ci_code=1
+  read -r squeal_ci_code <"$squeal_ci_err.code"
+  squeal_ci_said=$(squeal_ci_error_line "$squeal_ci_err")
+  rm -f "$squeal_ci_err" "$squeal_ci_err.code"
+  case $squeal_ci_code in
+    0 | 2) exit "$squeal_ci_code" ;;
+  esac
+  if [ -n "$squeal_ci_said" ]; then
+    squeal_ci_said=": $squeal_ci_said"
+  else
+    squeal_ci_said=" with no error output"
+  fi
+  squeal_ci_warn "squeal $1 $2 failed (exit $squeal_ci_code)$squeal_ci_said. The run's result stays as it is; it shares no Squeal results."
+  exit 0
+}
+
 # Squeal cannot run (squeal_ci_problem says why): `squeal ci record -- <command>`
 # runs the command in this process, so its exit code and signals are the
 # step's; `squeal ci export` and `squeal ci publish` exit 0. Any other command
