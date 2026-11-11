@@ -13,6 +13,7 @@ import type {
   GatePolicy,
   GateState,
   GateVerdict,
+  OmittedFunction,
   TestFileEvidence,
   UncountedPath,
 } from "./types.js";
@@ -215,6 +216,12 @@ export interface GateReport {
     readonly leftOut: readonly LeftOutGroup[];
   };
   readonly functions: readonly GateFunctionReport[];
+  /**
+   * D16: the head functions a changed line touches that D2 does not
+   * judge, with why; sorted by path, name and occurrence. Absent when the
+   * inventory gave none (row 020-18).
+   */
+  readonly omitted?: readonly OmittedFunction[];
   readonly uncounted: readonly GatePathReport[];
   /** D8: present when an exceptions file was given: its entries that applied to no function. */
   readonly exceptions?: { readonly unused: readonly GateUnusedException[] };
