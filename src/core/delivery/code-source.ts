@@ -106,6 +106,19 @@ export function withCode<T>(
 }
 
 /**
+ * Spec 021 D3: waits, at most the source's busy timeout, until no other
+ * connection holds the code store's write lock, and keeps no lock after it.
+ * A delivery calls it before it holds the main store (`Prepare.beforeHold`),
+ * so its code write there, which never waits, rarely meets a busy code
+ * store. Nothing is opened while the policy is off or the store is missing;
+ * a store still busy at the bound is left to that write, which then costs
+ * the report its code part only, owed to the next boundary.
+ */
+export function codeLockFree(source: CodeSource | undefined): void {
+  withCode(source, (access) => access.store.transaction(() => undefined));
+}
+
+/**
  * Row 011-288: `fn` in `access.store.transaction`, or, given `holds` and a
  * holding connection, in a transaction left open and added to `holds`, so
  * the code a report tells is recorded as told only with the report. The
