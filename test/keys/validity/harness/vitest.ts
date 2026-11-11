@@ -90,6 +90,20 @@ async function closuresOf(
   return out;
 }
 
+/**
+ * Once open: each project's environment files when the case asks, as its
+ * keys (row 011-88). Row 020-15b: its global setups read too; they enter no
+ * key, so reading them must leave every output as it was.
+ */
+async function openedReads(adapter: VitestAdapter, input: VitestInput): Promise<unknown> {
+  const environments =
+    input.environment === true
+      ? (await adapter.environment()).map((e) => [e.project, e.files])
+      : undefined;
+  if (input.globalSetups === true) await adapter.globalSetups?.();
+  return environments;
+}
+
 /** The case's keys: the environments and the closures it read, when it read any. */
 function keysOf(environments: unknown, closures: unknown): { readonly keys?: object } {
   const keys = {
@@ -206,9 +220,7 @@ export async function vitestCase(input: VitestInput, scratch: string): Promise<C
   let closures: unknown[] | undefined;
   try {
     await withTmpDir(tmp, () => adapter.open());
-    if (input.environment === true) {
-      environments = (await adapter.environment()).map((e) => [e.project, e.files]);
-    }
+    environments = await openedReads(adapter, input);
     closures = await closuresOf(adapter, input.closures);
     for (const [at, run] of input.runs.entries()) {
       writeFileSync(hold, "");

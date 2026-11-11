@@ -198,6 +198,8 @@ test/code/gate/collect-budget.test.ts
 test/code/gate/collect-prepare.test.ts
 test/code/gate/collect-scope-prepare.test.ts
 test/cli/code-gate-prepare.test.ts
+# Spec 020 D14.4 (row 020-15b): the pre-run print before a real `node --test` run.
+test/cli/code-gate-prerun.test.ts
 # The kit (spec 016 D1): a real `node --test` through the node:test adapter,
 # so the same identity path.
 test/kit/node-test

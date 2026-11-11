@@ -30,4 +30,24 @@ export const VITEST_ENVIRONMENT: readonly Case[] = [
       runs: [],
     },
   },
+  {
+    kind: "adapter:vitest",
+    name: "two projects and a root global setup, its setups read",
+    why: "020-15b: reading the global setups, the root's beside two projects, keys nothing",
+    input: {
+      environment: true,
+      globalSetups: true,
+      files: {
+        "package.json": '{ "name": "validity-setups", "private": true, "type": "module" }\n',
+        "vitest.config.ts":
+          'export default { test: { globalSetup: ["./setup.ts"], projects: ["a/vitest.config.ts", "b/vitest.config.ts"] } };\n',
+        "setup.ts": "export default function setup() {}\n",
+        "a/vitest.config.ts": config("a"),
+        "a/a.test.ts": test("a"),
+        "b/vitest.config.ts": config("b"),
+        "b/b.test.ts": test("b"),
+      },
+      runs: [],
+    },
+  },
 ];
