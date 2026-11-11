@@ -68558,9 +68558,10 @@ async function remotesOf(root, signal2) {
 }
 async function upstreamOf(root, signal2) {
   for (const remote of await remotesOf(root, signal2)) {
-    const args2 = ["symbolic-ref", "-q", `refs/remotes/${remote}/HEAD`];
+    const head2 = `refs/remotes/${remote}/HEAD`;
+    const args2 = ["rev-parse", "--verify", "-q", "--symbolic-full-name", head2];
     const branch = textOf(await gitCall(root, args2, local(signal2)));
-    if (branch !== null && branch !== "") return { remote, branch };
+    if (branch !== null && branch !== "" && branch !== head2) return { remote, branch };
   }
   return null;
 }
