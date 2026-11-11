@@ -104,6 +104,32 @@ export interface CoverageRun {
 }
 
 /**
+ * Spec 015 D8, 020 D12: what a runner adapter is given to collect coverage
+ * in its runs, by the daemon or by the gate (`GateAdapters`). Absent, or
+ * `enabled` false, no run takes coverage.
+ */
+export interface RunnerCoverageOptions {
+  /**
+   * Whether a run takes coverage, read as the adapter sets its runs up
+   * (Vitest at each start, node:test at each `environment`). The daemon's
+   * is policy `coverage.enabled` with `complexity.enabled` (015 D1).
+   */
+  readonly enabled: () => boolean;
+  /** Spec 020 D12: policy `coverage.children`, read with `enabled`; absent, never. */
+  readonly children?: () => boolean;
+  /** One run's payloads, handed over after its report is built; never awaited by the run. */
+  readonly collected: (run: CoverageRun) => void;
+}
+
+/** A Vitest adapter's coverage options: also Squeal's provider and the payloads' directory. */
+export interface VitestCoverageOptions extends RunnerCoverageOptions {
+  /** Squeal's provider, `provider.mjs`, which Vitest loads by path. */
+  readonly provider: AbsolutePath;
+  /** Where each instance keeps its workers' payloads: the daemon's or the gate's temp directory. */
+  readonly tempDir: AbsolutePath;
+}
+
+/**
  * Spec 015 D8: one source a test file loaded, in its coverage record. Lines
  * are 1-based; bit `n - 1` of a bitset is line `n`, little-endian in each
  * byte, base64.
