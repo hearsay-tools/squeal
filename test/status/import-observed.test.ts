@@ -142,6 +142,7 @@ describe("status beside an import (018 D15)", () => {
         closure: 0,
         observed: 0,
         content: 1 - currentFiles,
+        keysPending: 0,
         noKey: 0,
       },
       environmentDifferences: [],

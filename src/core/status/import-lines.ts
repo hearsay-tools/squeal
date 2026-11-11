@@ -18,6 +18,7 @@ const REASONS: readonly (readonly [keyof ImportNotCurrent, string])[] = [
   ["environment", "environment differs"],
   ["closure", "closure list differs"],
   ["observed", "observed set differs"],
+  ["keysPending", "waiting for keys after the import"],
   ["content", "content differs"],
   ["noKey", "no local key yet"],
 ];

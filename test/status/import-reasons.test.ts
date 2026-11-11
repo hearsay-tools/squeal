@@ -209,6 +209,7 @@ const NONE = {
   closure: 0,
   observed: 0,
   content: 0,
+  keysPending: 0,
   noKey: 0,
 };
 const counts = (imports: readonly ImportStatus[]) =>

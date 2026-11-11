@@ -536,8 +536,10 @@ export interface Scheduler {
    *
    * Row 018-28: `projects` are read again first, whatever their runner, so
    * the observed entries an import added key their files as a start would.
+   * `imports` names those imports for status until their keys are applied
+   * (`imports-waiting.ts`; review of 0.1.428, B1).
    */
-  refreshObserved(projects?: readonly ProjectName[]): boolean;
+  refreshObserved(projects?: readonly ProjectName[], imports?: readonly string[]): boolean;
   status(): SchedulerStatus;
   /**
    * Row 011-234 (005 D2 as amended): a named wait's sync, its revision and,
