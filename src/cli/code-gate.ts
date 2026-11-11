@@ -15,6 +15,7 @@ import type { ChangedSet, GateVerdict } from "../core/code/gate/types.js";
 import { POLICY_FILE } from "../core/daemon/policy.js";
 import { squealVersion } from "../core/daemon/version.js";
 import { findWorktreeRoot } from "../core/fs/git-layout.js";
+import { shellWord } from "../core/text.js";
 import type { AbsolutePath, RelativePath } from "../core/types/common.js";
 import type { RunnerAdapter } from "../core/types/runner.js";
 import { createNodeTestAdapter } from "../runners/node-test/adapter.js";
@@ -115,10 +116,6 @@ const versions = (): EngineVersions => ({
   coverageRecord: COVERAGE_RECORD_VERSION,
 });
 
-/** An argument as a POSIX shell reads it back. */
-const quoted = (arg: string) =>
-  /^[\w@%+=:,./-]+$/.test(arg) ? arg : `'${arg.replaceAll("'", `'\\''`)}'`;
-
 /**
  * `squeal code --base <ref> [<path>...] [--test <file>...] [--parts
  * <dir>...] [--timeout <seconds>] [--exceptions <file>] [--json]` (spec 020
@@ -213,7 +210,7 @@ async function gate(args: readonly string[], io: CliIo, adapters: GateAdapters):
   const createdAt = new Date((io.now ?? Date.now)()).toISOString();
   const times = { createdAt, durationsMs };
   const report = evaluate(changed, evidence, policy, versions(), times, exceptions);
-  const json = `${statusCommand(io.env ?? process.env)} code ${[...args.map(quoted), "--json"].join(" ")}`;
+  const json = `${statusCommand(io.env ?? process.env)} code ${[...args.map(shellWord), "--json"].join(" ")}`;
   io.stdout(parsed.json ? `${JSON.stringify(report, null, 2)}\n` : formatGateReport(report, json));
   return EXIT[report.verdict];
 }
