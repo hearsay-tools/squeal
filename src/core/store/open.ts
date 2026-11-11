@@ -265,6 +265,25 @@ function moveAside(database: string, at: EpochMs): string {
 }
 
 /**
+ * The database at `path` opened read-only, so no statement can write it and
+ * closing it checkpoints nothing: `"missing"` when there is no file, `null`
+ * when it cannot be read or is at another schema version than `version`.
+ */
+export function openReadOnly(path: AbsolutePath, version: number): DatabaseSync | "missing" | null {
+  if (!existsSync(path)) return "missing";
+  let db: DatabaseSync | undefined;
+  try {
+    db = new DatabaseSync(path, { readOnly: true });
+    db.exec(`PRAGMA busy_timeout = ${DEFAULT_BUSY_TIMEOUT_MS}`);
+    if (userVersion(db) === version) return db;
+  } catch {
+    // An unreadable store is no store to its reader.
+  }
+  db?.close();
+  return null;
+}
+
+/**
  * Changes the busy timeout of an open store's connection: a daemon waits
  * longer while it starts than once it serves (task 001-161).
  */
