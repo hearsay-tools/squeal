@@ -1,13 +1,10 @@
-import { writeFileSync } from "node:fs";
-import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { storedFiles } from "../../src/cli/code-gate-stored.js";
 import { codeStorePath } from "../../src/core/code/store/open.js";
 import { startDaemon } from "../../src/core/daemon/daemon.js";
 import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
-import { createFixtureRepo, type FixtureRepo, waitFor, withStore } from "../daemon/helpers.js";
-import { git } from "../hash/git-repo.js";
+import { type FixtureRepo, waitFor, withStore } from "../daemon/helpers.js";
 import { featureRepo, gate, hasRecord, keepPolicy, snapshot } from "./code-gate-keep-kit.js";
 
 /*
@@ -187,13 +184,12 @@ describe("squeal code --base keys the stores with the base's coverage.children",
   let key: CheckKey;
 
   beforeAll(async () => {
-    repo = createFixtureRepo({ files: { "squeal.config.json": POLICY } });
-    git(repo.root, ["checkout", "-q", "-b", "feature"]);
     const policy = JSON.parse(POLICY) as { coverage: Record<string, unknown> };
     policy.coverage.children = true;
-    writeFileSync(join(repo.root, "squeal.config.json"), `${JSON.stringify(policy)}\n`);
-    writeFileSync(join(repo.root, "src/math.ts"), FEATURE["src/math.ts"] as string);
-    git(repo.root, ["commit", "-qam", "feature: children on"]);
+    repo = featureRepo(POLICY, {
+      "squeal.config.json": `${JSON.stringify(policy)}\n`,
+      "src/math.ts": FEATURE["src/math.ts"] as string,
+    });
     const daemon = await startDaemon({ root: repo.root, env: repo.env });
     if ("reason" in daemon) throw new Error(daemon.message);
     try {
