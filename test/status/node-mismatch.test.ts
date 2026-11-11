@@ -19,7 +19,8 @@ import { fakeRepo, seedStore } from "./helpers.js";
  * Spec 018 D19: with `shared.ref` set, status says once that the newest
  * import's results need another Node than the daemon runs, why the daemon
  * does not run the project's pin (D18), and what to do; an import that
- * differs only in Node gets no D5 line of its own. Silent when Node matches.
+ * differs only in Node gets no D5 line of its own, another names no Node
+ * there (row 018-32). Silent when Node matches.
  */
 
 const COMMIT = "c".repeat(40);
@@ -221,7 +222,8 @@ describe("status says a Node mismatch of shared results once (018 D19)", () => {
 });
 
 describe("the default status text (018 D5, D19)", () => {
-  const D5_LINE = "Imported results from CI run 5 on o/r at cccccccc: none current here";
+  const D5_LINE =
+    "Imported results from CI run 5 on o/r at cccccccc: 0 of 2 test files match this worktree";
 
   /** The default text, with the snapshot's `shared` part as status builds it for `ref`. */
   function text(w: ReturnType<typeof worktree>, ref: string | null): string {
@@ -235,15 +237,18 @@ describe("the default status text (018 D5, D19)", () => {
     w.imported("env-ci", { nodeVersion: CI_NODE }, 5);
     const status = text(w, "refs/squeal");
     expect(status).toContain(`\n${HEAD} The project pins no Node version`);
-    expect(status).not.toContain(D5_LINE);
+    expect(status).not.toContain("Imported results from");
   });
 
-  it("Node and another part: the Node line and the import's own line", () => {
+  it("Node and another part: the Node line, and the import's own line without Node (row 018-32)", () => {
     const w = worktree();
     w.imported("env-ci", { nodeVersion: CI_NODE, platform: "darwin" }, 5);
     const status = text(w, "refs/squeal");
     expect(status).toContain(HEAD);
-    expect(status).toContain(`${D5_LINE}, the environment differs (Node ${CI_NODE} in the export`);
+    expect(status).toContain(
+      `\n${D5_LINE}; the environment differs for 2 (platform darwin in the export, linux here)\n`,
+    );
+    expect(status.split(`Node ${CI_NODE} in the export`)).toHaveLength(1);
   });
 
   it("without shared.ref the import's own line stays and Node is not said apart", () => {
@@ -251,17 +256,20 @@ describe("the default status text (018 D5, D19)", () => {
     w.imported("env-ci", { nodeVersion: CI_NODE }, 5);
     const status = text(w, null);
     expect(status).toContain(
-      `${D5_LINE}, the environment differs (Node ${CI_NODE} in the export, ${HERE_NODE} here)`,
+      `${D5_LINE}; the environment differs for 2 (Node ${CI_NODE} in the export, ${HERE_NODE} here)`,
     );
     expect(status).not.toContain("Shared results need");
   });
 
-  it("an older import on another Node says nothing once the newest is on the daemon's", () => {
+  it("an older import on another Node is not named once the newest is on the daemon's", () => {
     const w = worktree();
     w.imported("env-ci", { nodeVersion: CI_NODE }, 5);
     w.imported("env-dev", {}, 6);
     const status = text(w, "refs/squeal");
     expect(status).not.toContain("Shared results need");
-    expect(status).not.toContain("Imported results from");
+    expect(status).not.toContain("CI run 5");
+    expect(status).toContain(
+      "\nImported results from CI run 6 on o/r at cccccccc: 0 of 2 test files match this worktree\n",
+    );
   });
 });

@@ -2,7 +2,11 @@ import { observedModulesMetaKey } from "../keys/modules.js";
 import { observedDirectMetaKey, observedMetaKey, readSharedEntries } from "../keys/observed.js";
 import { testFileId } from "../keys/reverse-index.js";
 import { importsWaiting } from "../scheduler/imports-waiting.js";
-import { readEnvironment, worktreeEnvironments } from "../store/environments.js";
+import {
+  readEnvironment,
+  type StoredEnvironment,
+  worktreeEnvironments,
+} from "../store/environments.js";
 import { type ImportFileRecord, importFiles, listImports, sourceLabel } from "../store/imports.js";
 import {
   listHash,
@@ -13,12 +17,12 @@ import {
   staticListHash,
 } from "../store/transfer-bundle.js";
 import type { ProjectName, WorktreeId } from "../types/common.js";
-import type { CheckKey } from "../types/keys.js";
+import type { CheckKey, EnvironmentHash } from "../types/keys.js";
 import { importIdOf, type KnownState } from "../types/state.js";
 import type { ImportNotCurrent, ImportStatus } from "../types/status.js";
 import type { Store } from "../types/store.js";
 import type { TestFileKeyRecord } from "../types/store-records.js";
-import { compareEnvironment, type NodeGap, nodeGap } from "./import-environment.js";
+import { blockingDifferences, type NodeGap, nodeGap } from "./import-environment.js";
 
 /*
  * Spec 018 D5: per import that has an exported file this worktree lists, how
@@ -60,7 +64,11 @@ interface Here {
   observed(file: ImportFileRecord): string;
 }
 
-/** Each import with a file `worktreeId` lists, newest first; empty before the first import. */
+/**
+ * Each import with a file `worktreeId` lists, newest first by import time
+ * (`listImports`); empty before the first import. Default status names the
+ * first only (row 018-32).
+ */
 export function readImports(
   store: Store,
   worktreeId: WorktreeId,
@@ -191,30 +199,36 @@ function hereOf(
 }
 
 /**
- * D1's named differences of each project whose environment differs, the
- * project named when more than one, and D19's Node: the first differing
- * Node, and whether Node is all that differs in every such project.
+ * D1's named differences of each project whose environment differs for a
+ * file, less the fields D10 accepts for an imported pass (row 018-32), the
+ * project named when the import's files here span more than one, and D19's
+ * Node: the first differing Node, and whether Node is all that differs in
+ * every such project. A project D10 finds equal names nothing. Only files
+ * whose recorded environment is not this worktree's are compared: a file the
+ * import re-keyed records this worktree's (D11), its others the export's.
  */
 function environmentOf(
   store: Store,
   worktreeId: WorktreeId,
   files: readonly ImportFileRecord[],
 ): Pick<ImportStatus, "environmentDifferences" | "node"> {
-  const exported = new Map(files.map((f) => [f.project, f.environment]));
   const local = new Map(worktreeEnvironments(store, worktreeId).map((e) => [e.project, e]));
+  const projects = new Set(files.map((f) => f.project)).size;
+  const differing = new Map<ProjectName, readonly [EnvironmentHash, StoredEnvironment]>();
+  for (const f of files) {
+    const ours = local.get(f.project);
+    if (ours !== undefined && ours.hash !== f.environment) {
+      differing.set(f.project, [f.environment, ours]);
+    }
+  }
   const named: string[] = [];
   const gaps: NodeGap[] = [];
-  for (const [project, hash] of exported) {
-    const theirs = { hash, descriptor: readEnvironment(store, hash) };
-    const ours = local.get(project) ?? null;
-    const comparison = compareEnvironment(theirs, ours);
-    if (comparison.kind === "equal" || comparison.kind === "unknown") continue;
-    gaps.push(nodeGap(theirs.descriptor, ours?.descriptor ?? null));
-    const texts =
-      comparison.differences.length === 0 ? ["parts not recorded"] : comparison.differences;
-    named.push(
-      ...(exported.size === 1 ? texts : texts.map((d) => `${project || "(default)"}: ${d}`)),
-    );
+  for (const [project, [hash, ours]] of differing) {
+    const theirs = readEnvironment(store, hash);
+    const texts = blockingDifferences(theirs, ours.descriptor);
+    if (texts.length === 0) continue;
+    gaps.push(nodeGap(theirs, ours.descriptor));
+    named.push(...(projects === 1 ? texts : texts.map((d) => `${project || "(default)"}: ${d}`)));
   }
   const versions = gaps.find((g) => g.versions !== null)?.versions;
   if (versions === undefined || versions === null) return { environmentDifferences: named };

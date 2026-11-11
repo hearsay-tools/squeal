@@ -34,6 +34,20 @@ export function compareEnvironment(
   return { kind: passes ? "passes" : "differs", differences };
 }
 
+/**
+ * Spec 018 D5 with D10 (row 018-32): the named differences that keep an
+ * imported pass of `exported` from keying as `local`, by `importDifferences`,
+ * so a field D10 accepts is never named; empty when D10 accepts every one.
+ * Without both descriptors the parts are not known, and that is named.
+ */
+export function blockingDifferences(
+  exported: EnvironmentDescriptor | null,
+  local: EnvironmentDescriptor | null,
+): string[] {
+  if (exported === null || local === null) return ["parts not recorded"];
+  return importDifferences(exported, local).map((d) => d.text);
+}
+
 /** node:test's config field that holds the build of Node it runs (row 018-19). */
 const NODE_BUILD = "nodeBuild";
 

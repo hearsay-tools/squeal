@@ -23,7 +23,8 @@ import { fakeCommonDir, open } from "../store/helpers.js";
  * adopted yet, environment, closure list, observed set, content, no local
  * key); a file is current from an import only by the states the daemon
  * adopted (review wave-1-2 B1); D4's texts in `status --full`, the default
- * status line, the hook header and a recovery's provenance.
+ * status line (row 018-32, `import-newest.test.ts`), the hook header and a
+ * recovery's provenance.
  */
 
 const HERE = "0123456789abcdef";
@@ -245,8 +246,10 @@ describe("status names why imported files are not current (018 D5)", () => {
       "  Not current: 1 environment differs (other: Node v26.13.0 in the export, v24.22.1 here), 1 closure list differs, 1 observed set differs, 1 content differs, 1 no local key yet",
       "  Imported files have no coverage record until they run here",
     ]);
-    // An import with a current file adds no line to the default text.
-    expect(importDefaultLines({ imports } as unknown as StatusSnapshot)).toEqual([]);
+    // Row 018-32: the default line counts the matching files and the environment's.
+    expect(importDefaultLines({ imports } as unknown as StatusSnapshot)).toEqual([
+      `Imported results from ${SOURCE}: 1 of 6 test files matches this worktree; the environment differs for 1 (other: Node v26.13.0 in the export, v24.22.1 here)`,
+    ]);
   });
 
   it.each(["fail", "pass"] as const)(
@@ -311,18 +314,18 @@ describe("status names why imported files are not current (018 D5)", () => {
     ]);
   });
 
-  it("the default text adds one line when the environment keeps every file from being current", () => {
+  it("the default line names the environment's first two differences when it keeps every file apart", () => {
     const store = here();
     const ci = { nodeVersion: "v26.13.0", platform: "darwin", config: { allowOnly: "b" } };
     importResults(store, bundle(ci), { importId: "imp", fileHash: "h", now: 5 });
     const keys = store.testFileKeys.list(HERE).filter((k) => k.testFile.project === "other");
     const imports = readImports(store, HERE, keys, []);
     expect(importDefaultLines({ imports } as unknown as StatusSnapshot)).toEqual([
-      `Imported results from ${SOURCE}: none current here, the environment differs (Node v26.13.0 in the export, v24.22.1 here; platform darwin in the export, linux here; 1 more in squeal status --full)`,
+      `Imported results from ${SOURCE}: 0 of 1 test file match this worktree; the environment differs for 1 (Node v26.13.0 in the export, v24.22.1 here; platform darwin in the export, linux here; 1 more in squeal status --full)`,
     ]);
   });
 
-  it("the default text says nothing when the environment is one reason among others (review N1)", () => {
+  it("with the environment one reason among others, the default line counts its files (review N1)", () => {
     const store = here();
     importResults(store, bundle({ nodeVersion: "v26.13.0" }), {
       importId: "imp",
@@ -331,7 +334,9 @@ describe("status names why imported files are not current (018 D5)", () => {
     });
     const imports = readOf(store, ["t/env.test.ts", "t/content.test.ts"], []);
     expect(counts(imports)[0]?.notCurrent).toEqual({ ...NONE, environment: 1, content: 1 });
-    expect(importDefaultLines({ imports } as unknown as StatusSnapshot)).toEqual([]);
+    expect(importDefaultLines({ imports } as unknown as StatusSnapshot)).toEqual([
+      `Imported results from ${SOURCE}: 0 of 2 test files match this worktree; the environment differs for 1 (other: Node v26.13.0 in the export, v24.22.1 here)`,
+    ]);
   });
 
   it("no import, or none with a file this worktree lists, says nothing", () => {
