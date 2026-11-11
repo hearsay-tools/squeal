@@ -68708,7 +68708,8 @@ var init_idle = __esm({
 // src/core/runner-host/channel.ts
 import { spawn as spawn10 } from "node:child_process";
 function spawnRunnerHost(launch, root, runner, env = process.env) {
-  const args2 = [...launch.execArgv, launch.cli, "runner-host", root, "--runner", runner];
+  const quiet = launch.execArgv.some((arg) => arg.startsWith("--disable-warning")) ? [] : ["--disable-warning=ExperimentalWarning"];
+  const args2 = [...quiet, ...launch.execArgv, launch.cli, "runner-host", root, "--runner", runner];
   const child = spawn10(launch.execPath, args2, {
     env,
     stdio: ["pipe", "pipe", "pipe"]
