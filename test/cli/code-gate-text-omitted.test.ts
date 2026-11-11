@@ -2,26 +2,15 @@ import { describe, expect, it } from "vitest";
 import { formatGateReport } from "../../src/cli/code-gate-text.js";
 import type { GateReport } from "../../src/core/code/gate/report.js";
 import type { OmittedFunction } from "../../src/core/code/gate/types.js";
+import { functionRow, gateReport } from "./code-gate-text-kit.js";
 
 /*
  * Spec 020 D16.3 (row 020-18, #177): the verdict line ends with how many
  * changed functions D2 left out, and says nothing when none was.
  */
 
-const pass = (name: string, line: number): GateReport["functions"][number] => ({
-  path: "src/old.ts",
-  qualifiedName: name,
-  occurrence: 0,
-  line,
-  bodyHash: `h:${name}`,
-  change: "edited",
-  complexity: 1,
-  coverage: { lines: 2, covered: 2, share: 1 },
-  crap: 1,
-  state: "pass",
-  gap: null,
-  loaders: { expected: ["test/old.test.ts"], measured: ["test/old.test.ts"] },
-});
+const pass = (name: string, line: number) =>
+  functionRow({ path: "src/old.ts", qualifiedName: name, line, bodyHash: `h:${name}` });
 
 const moved = (name: string): OmittedFunction => ({
   path: "src/helpers.ts",
@@ -32,31 +21,13 @@ const moved = (name: string): OmittedFunction => ({
   base: { path: "src/old.ts", qualifiedName: name, occurrence: 0 },
 });
 
-const report = (omitted: readonly OmittedFunction[] | undefined): GateReport => ({
-  format: "squeal-code-gate/1",
-  createdAt: "2026-11-11T00:00:00.000Z",
-  versions: { squeal: "0", counter: 5, coverageProvider: 3, coverageRecord: 4, qualityPolicy: 4 },
-  base: {
-    ref: "HEAD",
-    commit: "8b1af5bc0123",
-    policy: {
-      complexityThreshold: 20,
-      crapThreshold: 30,
-      coverageExclude: [],
-      complexityInclude: ["**/*.ts"],
-      complexityExclude: [],
-      complexityMaxFileBytes: 524_288,
-    },
-  },
-  head: { commit: "fedcba", dirty: true, paths: [] },
-  budget: { seconds: 600, timedOut: false },
-  functions: [pass("main", 2), pass("other", 9), pass("third", 14)],
-  ...(omitted === undefined ? {} : { omitted }),
-  uncounted: [],
-  runs: [],
-  verdict: "pass",
-  counts: { pass: 3, violation: 0, incomplete: 0, skipped: 0, accepted: 0 },
-});
+const report = (omitted: readonly OmittedFunction[] | undefined): GateReport =>
+  gateReport({
+    base: { ref: "HEAD", commit: "8b1af5bc0123" },
+    functions: [pass("main", 2), pass("other", 9), pass("third", 14)],
+    ...(omitted === undefined ? {} : { omitted }),
+    counts: { pass: 3, violation: 0, incomplete: 0, skipped: 0, accepted: 0 },
+  });
 
 const JSON_HINT = "squeal code --base HEAD --json";
 
