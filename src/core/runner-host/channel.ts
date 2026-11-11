@@ -5,11 +5,11 @@ import type { HostRunner } from "./protocol.js";
 
 /*
  * Spec 021 D8 (row 021-11): a local runner host is a child of the daemon,
- * `node <cli> runner-host <root> --runner <name>`, with the daemon's Node
- * and environment, which came from the worktree's hook (D11), and the root
- * as its working directory (`runner-split.md` Q2). It stays in the daemon's
- * process group, carries no mark (`stopMarked` would stop it), and exits
- * when its input ends.
+ * `node <cli> runner-host <root> --runner <name>`, with the daemon's Node,
+ * environment and working directory, never the root (spec 001 D10): the
+ * host enters the root for each call (`runner-split.md` Q2). It stays in the
+ * daemon's process group, carries no mark (`stopMarked` would stop it), and
+ * exits when its input ends.
  */
 
 /** How the daemon starts a runner host: the Node and the `squeal` CLI script it runs. */
@@ -49,7 +49,6 @@ export function spawnRunnerHost(
   env: NodeJS.ProcessEnv = process.env,
 ): HostChannel {
   const child = spawn(launch.execPath, [launch.cli, "runner-host", root, "--runner", runner], {
-    cwd: root,
     env,
     stdio: ["pipe", "pipe", "pipe"],
   });

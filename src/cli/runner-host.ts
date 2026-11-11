@@ -23,9 +23,10 @@ export interface RunnerHostCommandOptions {
  * `squeal runner-host <root> --runner <name>` (spec 021 D6, row 021-11): the
  * project's own adapter for one runner over one root, in a process of its
  * own, answering the daemon's requests on stdin and stdout. It never opens
- * the store. Its working directory is the root; its own stdout and every
- * library's go to stderr. It exits once the daemon closes it or its input
- * ends. Exit code 0, or 2 on a usage error or a root it cannot read.
+ * the store. Its working directory is the root while a call is in flight,
+ * else the one it started in; its own stdout and every library's go to
+ * stderr. It exits once the daemon closes it or its input ends. Exit code
+ * 0, or 2 on a usage error or a root it cannot read.
  */
 export async function runnerHostCommand(
   args: readonly string[],
@@ -45,7 +46,6 @@ export async function runnerHostCommand(
     return 2;
   }
   const owned = options.write === undefined;
-  if (owned) process.chdir(root);
   const write = options.write ?? takeStdout();
   await serveRunnerHost({
     input: options.input ?? process.stdin,
@@ -58,10 +58,42 @@ export async function runnerHostCommand(
     },
     version: squealVersion(),
     around: hostWorkers(),
+    ...(owned ? { within: inRootWhileAnswering(root, process.cwd()) } : {}),
   });
   // The adapter closed or its bound passed; a handle a dependency left open must not keep the host.
   if (owned) setTimeout(() => process.exit(0), 500).unref();
   return 0;
+}
+
+/**
+ * Runs calls with `root` as the working directory, and returns to `away`
+ * once none is in flight, as the daemon did for its in-process runner
+ * (`inRootWhileRunning`): Vite names paths from the working directory
+ * (`runner-split.md` Q2), and between calls nothing of Squeal's is held
+ * inside the root, so a harness can remove the worktree (spec 001 D10,
+ * lessons defect 13). A directory that is gone is left to the call to fail
+ * on, and to the daemon to end the host.
+ */
+function inRootWhileAnswering(
+  root: AbsolutePath,
+  away: string,
+): <T>(call: () => Promise<T>) => Promise<T> {
+  let inFlight = 0;
+  const move = (dir: string) => {
+    try {
+      process.chdir(dir);
+    } catch {
+      // Left where it was.
+    }
+  };
+  return async (call) => {
+    if (inFlight++ === 0) move(root);
+    try {
+      return await call();
+    } finally {
+      if (--inFlight === 0) move(away);
+    }
+  };
 }
 
 function parse(args: readonly string[]): { root: string; runner: HostRunner } | null {
