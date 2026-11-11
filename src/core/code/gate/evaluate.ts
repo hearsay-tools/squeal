@@ -18,7 +18,7 @@ import {
   runsOf,
   verdictOf,
 } from "./report.js";
-import { judgeFunction, type MissingGap, type RuleCoverage } from "./rule.js";
+import { judgeFunction, type MissingGap, type RuleCoverage, UNRUN_GAPS } from "./rule.js";
 import { leftOutLoaders } from "./scope.js";
 import {
   type ChangedFunction,
@@ -53,9 +53,6 @@ type Standing =
  * record of these bytes, or one its `prepare` kept from running (D15.3).
  */
 type GateMissing = Extract<MissingGap, "not-finished" | "no-record" | "not-prepared">;
-
-/** The gaps that rule out a pass, first when a function has several: a loader that did not run whole. */
-const UNRUN: readonly GateMissing[] = ["not-prepared", "not-finished"];
 
 function standing(file: TestFileEvidence, path: RelativePath, blob: FileHash): Standing {
   const loads = file.loads === null ? null : file.loads.includes(path);
@@ -99,7 +96,8 @@ function pathEvidence(
   const measured = paths("measured");
   const expected = [...new Set([...measured, ...paths("missing")])].sort(compare);
   const gaps = standings.flatMap((s) => (s.at.kind === "missing" ? [s.at.gap] : []));
-  const missing = UNRUN.find((gap) => gaps.includes(gap)) ?? gaps[0] ?? null;
+  // The gaps that rule out a pass come first: a loader that did not run whole.
+  const missing = UNRUN_GAPS.find((gap) => gaps.includes(gap)) ?? gaps[0] ?? null;
   const skipped = standings.some((s) => s.at.kind !== "none" && s.file.skipped);
   const sources = standings.flatMap((s) =>
     s.at.kind === "measured" && s.at.source !== null ? [s.at.source] : [],
