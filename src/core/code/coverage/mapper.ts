@@ -149,6 +149,9 @@ function recordHere(
 /** Spec 020 D12: a larger child file is dropped unread (the coordinator's cap; V8's is ~512 MB). */
 export const CHILD_FILE_LIMIT = 64 * 1024 * 1024;
 
+/** `CHILD_FILE_LIMIT` as the drop reasons and the note say it. */
+export const CHILD_FILE_LIMIT_TEXT = `${CHILD_FILE_LIMIT / 1024 / 1024} MiB`;
+
 /**
  * Spec 020 D12: `own` merged with each child file's record (`ownRecord`). A
  * file over the limit, or one that does not parse or map, is dropped alone,
@@ -168,7 +171,7 @@ export function withChildren(
     try {
       const { size } = statSync(path);
       if (size > CHILD_FILE_LIMIT) {
-        dropped.push(`${name}: over 64 MiB (${size} bytes)`);
+        dropped.push(`${name}: over ${CHILD_FILE_LIMIT_TEXT} (${size} bytes)`);
         continue;
       }
       const payload = JSON.parse(readFileSync(path, "utf8")) as V8Payload;
