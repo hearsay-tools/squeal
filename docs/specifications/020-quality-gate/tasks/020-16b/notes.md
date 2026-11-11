@@ -33,7 +33,7 @@ Worker 26adafd0, 2026-11-11. Spec D15, on the gate as of `dcafbc887`. For a revi
 
 ## For whoever continues
 
-- `commands.md` line 130 lists the gate's gaps; it lacks `not-prepared`. That is the `squeal code --base` section that 020-15a owns.
+- `commands.md` lists `not-prepared` among the gate's gaps and `runs[].prepare` in the JSON report since the merge with 020-15a (row 020-15a+16b I); see 020-15a's notes for how the two rows meet.
 - No row adds `inputs` in `squeal.config.json` for `test/code/gate/*` over `test/fixtures/code/gate/**`. An edit of a fixture file alone does not re-run its test.
 - Other daemon paths still read `policy.nodeTest` whole: the header's runner list, check groups (`squeal run <group>` on such an entry finds no file), and the slow classification. Explicit daemon runs are 020-16c.
 - Not measured: the cost on cezar (`research/probes/build-wrapper/cezar-cost.sh`); the load stayed above 24.
