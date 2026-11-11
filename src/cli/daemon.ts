@@ -44,8 +44,12 @@ export async function daemonCommand(args: readonly string[], io: CliIo): Promise
         oxlint: (projectRoot) => oxlintProvider({ root: projectRoot }),
       },
       ...(awaitLockMs === undefined ? {} : { awaitLockMs }),
-      // Spec 021 D8: Vitest runs in a runner host, this script under this Node.
-      ...(script === undefined ? {} : { runnerHost: { execPath: process.execPath, cli: script } }),
+      // Spec 021 D8: Vitest runs in a runner host, this script under this Node and its arguments.
+      ...(script === undefined
+        ? {}
+        : {
+            runnerHost: { execPath: process.execPath, execArgv: process.execArgv, cli: script },
+          }),
     });
     if ("reason" in daemon) {
       log(daemon.message);
