@@ -190,10 +190,13 @@ describe("the pytest adapter through a runner host", () => {
         environment: await adapter.environment(),
         closures: await Promise.all(testFiles.map((f) => adapter.closure(f))),
         checks: await Promise.all(testFiles.map((f) => adapter.enumerate(f))),
+        // Its quiet-pass check of the environment (task 007-26), a member the host reports.
+        recheck: await adapter.recheck?.(),
         notes: [...notes],
       };
     });
     expect(remote).toEqual(local);
+    expect(local.recheck).toEqual({ recreatedProjects: [] });
     expect(local.testFiles).toContainEqual(ref(WHERE));
     // The environment is the root's: its `pyvenv.cfg` is a file the core hashes.
     expect(local.environment[0]?.files).toContain(".venv/pyvenv.cfg");
