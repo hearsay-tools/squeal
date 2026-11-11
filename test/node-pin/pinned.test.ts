@@ -61,6 +61,23 @@ describe("pinnedNode (018 D18)", () => {
     });
   });
 
+  it("does not use a pin below Squeal's minimum Node: `too-old`, with the pin's text", () => {
+    const { home, env } = fakeHome();
+    fakeNode(nvmNode(home, "20.11.0"), "20.11.0");
+    fakeNode(nvmNode(home, "22.18.9"), "22.18.9");
+    const binary = fakeNode(nvmNode(home, "22.19.0"), "22.19.0");
+    for (const pin of ["v20.11.0", "22.18.9"]) {
+      expect(pinnedNode(rootWith({ ".node-version": pin }), env)).toEqual({
+        reason: "too-old",
+        wanted: pin,
+      });
+    }
+    expect(pinnedNode(rootWith({ ".node-version": "22.19.0" }), env)).toEqual({
+      binary,
+      version: "22.19.0",
+    });
+  });
+
   it("checks a candidate by running it: another version or no execute bit is not the pin", () => {
     const { home, env } = fakeHome();
     const binary = fakeNode(nvmNode(home, PINNED), "99.0.0");
