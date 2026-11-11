@@ -10,8 +10,12 @@ import type { PsPlaces } from "./model.js";
  * not there, as every read of the source does (D11).
  */
 
-/** D2 step 1: Node 24 names its main thread `MainThread`; older Node, `node`. */
-export const NODE_COMMS: ReadonlySet<string> = new Set(["MainThread", "node"]);
+/**
+ * D2 step 1: the names of a Node main thread. Node 26 names it
+ * `node-MainThread`, Node 24 `MainThread`, older Node `node` (row 018-30:
+ * the project's pinned Node can be newer than the session's).
+ */
+export const NODE_COMMS: ReadonlySet<string> = new Set(["node-MainThread", "MainThread", "node"]);
 
 /** The names in `dir`, sorted; none when it is missing or cannot be read. */
 export function names(dir: AbsolutePath): string[] {
