@@ -1,15 +1,15 @@
 import { rmSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { listingsBelowHere, observedInputs } from "../../src/core/scheduler/observed.js";
+import { inputsOfReadsHere, listingsBelowHere } from "../../src/core/ci/inputs.js";
 import { initRepo, tempDir, writeFile } from "../hash/git-repo.js";
 
 /*
- * Row 020-20: `observedInputs`, the one rule for the inputs of a run-time
+ * Row 020-20: `inputsOfReads`, the one rule for the inputs of a run-time
  * read beyond its closure, which the daemon's record and the gate's
- * `--parts` both key by. With no `below`, a recursive listing reads the
- * listings of the files git does not ignore now, as the daemon's keys list
- * them.
+ * `--parts` both key by. The gate's `inputsOfReadsHere` lists a recursive
+ * listing's directories from the files git does not ignore now, as the
+ * daemon's keys list them.
  */
 
 const cleanups: (() => void)[] = [];
@@ -47,7 +47,7 @@ describe("listingsBelowHere (row 020-20)", () => {
   });
 });
 
-describe("observedInputs (row 020-20)", () => {
+describe("inputsOfReadsHere (row 020-20)", () => {
   it("adds a link's target, a recursive listing's directories below, and leaves out the closure and the run's scratch", async () => {
     const root = repo();
     symlinkSync("data", join(root, "linked"));
@@ -58,7 +58,7 @@ describe("observedInputs (row 020-20)", () => {
       written: ["out"],
     };
 
-    const { inputs } = await observedInputs(root, [{ closure: new Set(["src/a.ts"]), observed }]);
+    const inputs = await inputsOfReadsHere(root, [{ closure: new Set(["src/a.ts"]), observed }]);
 
     expect([...(inputs[0] ?? [])].sort()).toEqual([
       "data/x.txt",

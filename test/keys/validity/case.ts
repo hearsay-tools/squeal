@@ -116,6 +116,10 @@ export interface AssembleInput {
       readonly path: string;
       readonly paths: readonly string[];
       readonly modules?: readonly string[];
+      /** Directories it listed, those listed recursively and those it wrote (`ObservedInputs`); absent: none. */
+      readonly directories?: readonly string[];
+      readonly recursive?: readonly string[];
+      readonly written?: readonly string[];
     }[];
     readonly observed?: readonly {
       readonly path: string;

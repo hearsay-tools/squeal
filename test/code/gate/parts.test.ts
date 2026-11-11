@@ -259,7 +259,7 @@ describe("partsEvidence: the inputs a part certifies (spec 020 D13.2, 016 D4)", 
     const root = repo();
     symlinkSync("data", join(root, "linked"));
     const observed = { paths: ["linked/x.txt"], directories: [] };
-    const through = { ...EVIDENCE, "linked/x.txt": blob("x\n") };
+    const through: Record<string, string> = { ...EVIDENCE, "linked/x.txt": blob("x\n") };
     expect(
       (await taken(root, [part([file({ observed })], { evidence: through })])).evidence,
     ).not.toBeNull();
