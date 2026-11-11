@@ -19,8 +19,14 @@ import type { GateGap, GateState } from "./types.js";
  */
 export type MissingGap = "not-finished" | "no-record" | "pending" | "unknown" | "not-prepared";
 
-/** A loader whose tests did not all run: it rules out a pass (review 0.1.423 B2, D15.3). */
-const UNRUN: ReadonlySet<string> = new Set(["not-finished", "not-prepared"]);
+/**
+ * A loader whose tests did not all run: it rules out a pass (review 0.1.423
+ * B2, D15.3). Ordered: when a function has several gaps, the gate names
+ * the first of these it has.
+ */
+export const UNRUN_GAPS = ["not-prepared", "not-finished"] as const satisfies readonly MissingGap[];
+
+const UNRUN: ReadonlySet<string> = new Set(UNRUN_GAPS);
 
 /** The join over the records in hand, when it resolved the function. */
 export interface RuleCoverage {
