@@ -1,15 +1,19 @@
 import { plural } from "../text.js";
-import type { ImportNotCurrent, ImportStatus, StatusSnapshot } from "../types/status.js";
+import type {
+  ImportNode,
+  ImportNotCurrent,
+  ImportStatus,
+  StatusSnapshot,
+} from "../types/status.js";
 
 /*
  * Spec 018 D4, D5 and D15: what `squeal status` says about imports. `--full`
  * gives each import with a test file this worktree lists: its files and
  * results current from it, the rest by reason, and, when any is current,
- * that imported files have no coverage record. The default text adds one line
- * only when none of an import's files is current from it and the environment
- * differs for every one of them, with its first two differences; silence
- * otherwise (principle 1), also for a mix of reasons (review wave-1-2 N1).
- * D19: with `shared.ref` set, Node is said once for all imports.
+ * that imported files have no coverage record. The default text says one
+ * line about the newest import only (row 018-32). Only the environment
+ * differences that keep an imported pass apart are named (D10). D19: with
+ * `shared.ref` set, Node is said once for all imports.
  */
 
 /** D5's reasons, in order, with the words that name each. */
@@ -27,6 +31,14 @@ const REASONS: readonly (readonly [keyof ImportNotCurrent, string])[] = [
 /** D15: CI runs without Squeal's coverage provider, so an imported result brings no record. */
 const NO_COVERAGE = "  Imported files have no coverage record until they run here";
 
+/**
+ * Row 018-32: files whose environment differs only in fields D10 accepts
+ * for an imported pass; the import stored them at the export's keys, since
+ * it could not re-key them (D11), or it predates the re-key.
+ */
+const ONLY_ACCEPTED =
+  " (only in fields an imported pass may differ in, but the import kept the export's keys)";
+
 /** Differences the default line names before it counts the rest. */
 const DEFAULT_SHOWN = 2;
 
@@ -37,7 +49,7 @@ export function importLines(s: StatusSnapshot): string[] {
     const reasons = REASONS.flatMap(([reason, words]) => {
       const n = i.notCurrent[reason];
       if (n === 0) return [];
-      const named = reason === "environment" ? environmentText(i, Infinity) : "";
+      const named = reason === "environment" ? environmentText(i) : "";
       return [`${n} ${words}${named}`];
     });
     return [
@@ -49,25 +61,52 @@ export function importLines(s: StatusSnapshot): string[] {
 }
 
 /**
- * The default text's one line per import, or none (D5). With `shared.ref`
- * set, an import that differs from here only in Node has none: D19's one
- * Node line counts it (`node-mismatch.ts`).
+ * The default text's line about imports, or none (D5 as amended by row
+ * 018-32). It names the newest import with a test file here, newest by
+ * import time (`readImports`' order), never an older one, and how many of
+ * its files match this worktree: the files whose key here equals the
+ * import's, current from it, another result kept there, or not adopted yet.
+ * Silent when every file matches (D15). It counts the files whose
+ * environment differs and names the differences that keep an imported pass
+ * apart, so a mix of reasons is not read as the environment's alone (review
+ * wave-1-2 N1). With `shared.ref` set, D19's line says Node
+ * (`node-mismatch.ts`): an import that differs from here only in Node gets
+ * no line, another names no Node.
  */
 export function importDefaultLines(s: StatusSnapshot): string[] {
-  return (s.imports ?? []).flatMap((i) => {
-    if (i.currentFiles > 0 || i.notCurrent.environment < i.testFiles) return [];
-    if (s.shared !== undefined && i.node?.only === true) return [];
-    return [
-      `Imported results from ${i.source}: none current here, the environment differs${environmentText(i, DEFAULT_SHOWN)}`,
-    ];
-  });
+  const i = s.imports?.[0];
+  if (i === undefined) return [];
+  const { sameKeyKept, sameKeyNotAdopted } = i.notCurrent;
+  const matching = i.currentFiles + sameKeyKept + sameKeyNotAdopted;
+  if (matching === i.testFiles) return [];
+  const node = s.shared?.node === undefined ? undefined : i.node;
+  if (node?.only === true) return [];
+  const named = i.environmentDifferences.filter((d) => node === undefined || !isNode(d, node));
+  const verb = matching === 1 ? "matches" : "match";
+  const environment =
+    named.length === 0
+      ? ""
+      : `; the environment differs for ${i.notCurrent.environment}${listed(named)}`;
+  return [
+    `Imported results from ${i.source}: ${matching} of ${plural(i.testFiles, "test file")} ${verb} this worktree${environment}`,
+  ];
 }
 
-/** ` (a; b)` with at most `shown` differences and how many more; empty when none is named. */
-function environmentText(i: ImportStatus, shown: number): string {
+/** `--full`'s text after "environment differs": every difference named, or why none is. */
+function environmentText(i: ImportStatus): string {
   const named = i.environmentDifferences;
-  if (named.length === 0) return "";
-  const more = named.length - shown;
-  const listed = named.slice(0, shown).join("; ");
-  return ` (${listed}${more > 0 ? `; ${more} more in squeal status --full` : ""})`;
+  return named.length === 0 ? ONLY_ACCEPTED : ` (${named.join("; ")})`;
+}
+
+/** ` (a; b)` with at most `DEFAULT_SHOWN` differences and how many more. */
+function listed(named: readonly string[]): string {
+  const more = named.length - DEFAULT_SHOWN;
+  const shown = named.slice(0, DEFAULT_SHOWN).join("; ");
+  return ` (${shown}${more > 0 ? `; ${more} more in squeal status --full` : ""})`;
+}
+
+/** Whether `difference` is the Node difference D19's line names (`describeDifferences`' text). */
+function isNode(difference: string, node: ImportNode): boolean {
+  const text = `Node ${node.exported} in the export, ${node.here} here`;
+  return difference === text || difference.endsWith(`: ${text}`);
 }
