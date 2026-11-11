@@ -1,34 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { collectEvidence, type StoredEvidence } from "../../../src/core/code/gate/collect.js";
-import type { GateAdapters } from "../../../src/core/code/gate/runners.js";
 import type { TestFileEvidence } from "../../../src/core/code/gate/types.js";
-import type { TestFileRef } from "../../../src/core/types/keys.js";
-import type { RunnerAdapter } from "../../../src/core/types/runner.js";
-import { ADAPTERS, changedSet, ownTmpdir, project, SLOW } from "./collect-fixture.js";
+import { changedSet, ownTmpdir, project, SLOW, watched } from "./collect-fixture.js";
 
 /*
  * Spec 020 D11.7 (row 020-07c): the collector asks `stored` for the
  * evidence the stores hold of each runner's selected files, and runs only
  * the files it leaves out. The stored evidence is kept as given.
  */
-
-/** The adapters, each Vitest run's files appended to `ran`; the fixture has no other runner. */
-function watched(ran: string[]): GateAdapters {
-  const wrap = (adapter: RunnerAdapter): RunnerAdapter =>
-    new Proxy(adapter, {
-      get(target, key) {
-        const value: unknown = Reflect.get(target, key, target);
-        if (key !== "run" || typeof value !== "function") {
-          return typeof value === "function" ? value.bind(target) : value;
-        }
-        return (files: readonly TestFileRef[], ...rest: unknown[]) => {
-          ran.push(...files.map((f) => f.path));
-          return (value as (...args: unknown[]) => unknown).call(target, files, ...rest);
-        };
-      },
-    });
-  return { ...ADAPTERS, vitest: async (options) => wrap(await ADAPTERS.vitest(options)) };
-}
 
 const STORED = (path: string): TestFileEvidence => ({
   runner: "vitest",
