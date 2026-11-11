@@ -69868,8 +69868,12 @@ var init_reader = __esm({
         const candidates = await this.#live((signal2) => firstParents(root, start2, signal2));
         const held3 = new Set(listImports(this.o.store).map((i3) => i3.header.commit));
         const nearestHeld = candidates.findIndex((c) => held3.has(c));
-        if (nearestHeld === 0) return;
         const reach2 = nearestHeld === -1 ? candidates.length : nearestHeld;
+        const refused = readSquealMismatch(this.o.store, this.o.worktreeId);
+        if (refused !== null && !candidates.slice(0, reach2).includes(refused.commit)) {
+          writeSquealMismatch(this.o.store, this.o.worktreeId, null);
+        }
+        if (nearestHeld === 0) return;
         const env = await this.#live((signal2) => networkEnv(root, signal2));
         const listMs = this.o.listTimeoutMs ?? LIST_TIMEOUT_MS;
         const listed8 = await this.#live(
