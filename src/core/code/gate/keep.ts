@@ -29,7 +29,6 @@ import { isCodeStoreOpenFailure, openCodeStore } from "../store/open.js";
 import type { CodeStore } from "../store/types.js";
 import type { GateRun } from "./collect.js";
 import { Expectations, type Expected, type Pending } from "./keep-expected.js";
-import { refKey } from "./records.js";
 
 /*
  * Spec 020 D17.3 (row 020-17c): the gate keeps each test file it ran to
@@ -132,7 +131,7 @@ export class Keeper {
     const completed = new Set(report.completedFiles.map(testFileId));
     const candidates: Kept[] = [];
     for (const [id, file] of pending.files) {
-      const record = run.records.get(refKey(file.ref))?.record ?? null;
+      const record = run.records.get(testFileId(file.ref))?.record ?? null;
       if (completed.has(id) && record !== null) candidates.push({ ...file, record });
     }
     if (candidates.length === 0) return [];
