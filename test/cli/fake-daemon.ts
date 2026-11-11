@@ -11,6 +11,9 @@ export type Answer = Record<string, unknown>;
 
 const servers: Server[] = [];
 
+/** The requests that send writes (spec 021 D15). */
+const WRITE_REQUESTS = new Set(["lease", "write", "write-status", "release"]);
+
 /** Every request the stand-ins got since the last `closeFakeDaemons`, as parsed. */
 export const received: Answer[] = [];
 
@@ -30,6 +33,12 @@ export function fakeDaemon(
       socket.on("error", clientGone);
       socket.once("data", (data) => {
         const request = JSON.parse(data.toString()) as { type: string };
+        // Spec 021 D15: a client asks for the write lease before it writes; a stand-in not told
+        // to take writes refuses it, as a daemon before them does, and does not record it.
+        if (WRITE_REQUESTS.has(request.type) && answers[request.type] === undefined) {
+          socket.end(`${JSON.stringify({ ok: false, error: "unknown request type" })}\n`);
+          return;
+        }
         received.push(request);
         seen.push(request.type);
         onRequest(request.type);
