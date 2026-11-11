@@ -1,10 +1,9 @@
-import { GIT_ENTRY, listedDirectory } from "../keys/observed.js";
 import { testFileId } from "../keys/reverse-index.js";
 import type { WorktreeKeys } from "../scheduler/keying.js";
 import type { AbsolutePath, RelativePath } from "../types/common.js";
-import type { FileHash, TestFileRef } from "../types/keys.js";
+import type { TestFileRef } from "../types/keys.js";
 import type { NamedPart } from "./export-check.js";
-import { gitEntryHash, type InputEvidence, listingHash, uncertified } from "./inputs.js";
+import { hereOf, type InputEvidence, uncertified } from "./inputs.js";
 
 /*
  * Spec 018 D9 (2026-11-09, reviews of 0.1.421 B1): whether a keyed file's
@@ -24,12 +23,7 @@ export function certifier(
   for (const { part } of parts) {
     for (const file of part.testFiles) owners.set(testFileId(file), part.evidence);
   }
-  const here = (path: RelativePath): FileHash | null | undefined => {
-    const directory = listedDirectory(path);
-    if (directory !== null) return listingHash(root, directory);
-    if (path === GIT_ENTRY) return gitEntryHash(root);
-    return keys.cache.hashOf(path);
-  };
+  const here = hereOf(root, (path) => keys.cache.hashOf(path));
   return (ref, paths) => {
     const evidence = owners.get(testFileId(ref));
     return evidence === undefined ? [...paths] : uncertified(paths, evidence, here);

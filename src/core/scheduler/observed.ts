@@ -1,8 +1,9 @@
-import { GIT_ENTRY, listedDirectory, listingPath } from "../keys/observed.js";
+import { runGit, splitNul } from "../fs/git.js";
+import { GIT_ENTRY, Listings, listedDirectory, listingPath } from "../keys/observed.js";
 import { testFileId } from "../keys/reverse-index.js";
-import type { RelativePath } from "../types/common.js";
+import type { AbsolutePath, RelativePath } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
-import type { RunReport } from "../types/runner.js";
+import type { ObservedInputs, RunReport } from "../types/runner.js";
 import { checkIgnored } from "../watcher/git.js";
 import type { SchedulerContext } from "./context.js";
 import type { EnvironmentGrowth } from "./environment-growth.js";
@@ -30,14 +31,10 @@ export interface ObservedGrowth {
 
 /**
  * Prepares a tier's observations for `recordTier`, outside the lock: per
- * completed file (by `testFileId`), the paths the runner observed beyond the
- * file's closure, with what other worktrees stored meanwhile (D3, D5 as
- * amended; research observed-runtime-inputs F3, F4), a recursive listing as
- * the listing of each directory below it, and a path read through a directory
- * link with its target (`linkTargets`). A path git ignores is kept, and
- * watched as an extra file, unless the run wrote, created or removed one of
- * its ancestor directories (`ObservedInputs.written`; 016 D4, the
- * written-directory bound): those are the run's own scratch. Every file path
+ * completed file (by `testFileId`), the inputs the runner observed beyond the
+ * file's closure (`observedInputs`), with what other worktrees stored
+ * meanwhile (D3, D5 as amended). A path git ignores is kept, and watched as
+ * an extra file, unless it is the run's own scratch. Every file path
  * is hashed into the stat cache, so the keys `recordTier` computes have no
  * untracked path; a path hashed only now, after its read and after run `run`
  * (`WorktreeKeys.beginRun`) began, is `firstSeen`, except `.git`, which keys
@@ -60,34 +57,19 @@ export async function observedGrowth(
   const reported = (report.observed ?? []).filter((o) => keys.observes(o.testFile.project));
   if (reported.length === 0) return out;
   keys.refreshObserved(reported.map((o) => o.testFile.project));
-  const candidates = new Set<RelativePath>();
-  const seen = [];
-  for (const observed of reported) {
-    // Row 016-24: the names a listed ignored directory holds now are this run's own.
-    keys.listedByRun(observed.testFile, observed.directories);
-    const closure = new Set(keys.index.closure(observed.testFile)?.paths ?? []);
-    const listed = new Set(observed.directories.map(listingPath));
-    // A recursive listing returned names from every directory below it (B5, task 001-134).
-    for (const root of observed.recursive ?? []) {
-      for (const path of keys.listingsBelow(root)) listed.add(path);
-    }
-    const read = observed.paths.filter((path) => !closure.has(path));
-    const targets = await linkTargets(context.root, read);
-    const fresh = [...new Set([...read, ...targets, ...listed])].filter(
-      (path) => !closure.has(path),
-    );
-    for (const path of fresh) candidates.add(listedDirectory(path) ?? path);
-    seen.push({ observed, closure, fresh });
-  }
-  const ignored = await checkIgnored(
-    context.root,
-    [...candidates].filter((p) => p !== ""),
+  // Row 016-24: the names a listed ignored directory holds now are this run's own.
+  for (const observed of reported) keys.listedByRun(observed.testFile, observed.directories);
+  const reads = reported.map((observed) => ({
+    closure: new Set(keys.index.closure(observed.testFile)?.paths ?? []),
+    observed,
+  }));
+  const { inputs, ignored } = await observedInputs(context.root, reads, (directory) =>
+    keys.listingsBelow(directory),
   );
   const tracked: RelativePath[] = [];
   const grown: { testFile: TestFileRef; add: RelativePath[]; growth: RelativePath[] }[] = [];
-  for (const { observed, closure, fresh } of seen) {
-    const scratch = scratchOf(observed.written ?? [], ignored);
-    const add = fresh.filter((path) => !scratch(listedDirectory(path) ?? path));
+  for (const [at, { observed, closure }] of reads.entries()) {
+    const add = inputs[at] ?? [];
     const kept = new Set([...closure, ...add]);
     keys.markDirect(
       observed.testFile,
@@ -129,6 +111,85 @@ function ignoredListings(
     const directory = listedDirectory(path);
     return directory !== null && ignored.has(directory);
   });
+}
+
+/** One completed file's run-time read, and its closure, whose paths are no input of the read. */
+export interface ObservedRead {
+  readonly closure: ReadonlySet<RelativePath>;
+  readonly observed: Omit<ObservedInputs, "testFile">;
+}
+
+/** The listing paths a recursive listing of `directory` reads (`Listings.below`). */
+export type ListingsBelow = (directory: RelativePath) => readonly RelativePath[];
+
+/**
+ * The inputs of each of `reads` beyond its closure, as the record keys them
+ * (D3, D5 as amended; research observed-runtime-inputs F3, F4): each path it
+ * read, with its target when it was read through a directory link
+ * (`linkTargets`, task 001-148); each listing, a recursive listing as the
+ * listing of each directory below it (`below`; B5, task 001-134); and none
+ * of the run's own scratch, a git-ignored path below a directory it wrote,
+ * created or removed (`scratchOf`, 016 D4). `below` absent: the listings of
+ * the files git does not ignore now (`listingsBelowHere`), for a caller with
+ * no worktree keys, the gate's `--parts` (spec 020 D13.2, row 020-20). Reads
+ * links and asks git once for all of `reads`; changes nothing. `ignored`:
+ * the inputs git ignores, a listing by its directory.
+ */
+export async function observedInputs(
+  root: AbsolutePath,
+  reads: readonly ObservedRead[],
+  below?: ListingsBelow,
+): Promise<{
+  readonly inputs: readonly RelativePath[][];
+  readonly ignored: ReadonlySet<RelativePath>;
+}> {
+  const recursive = reads.flatMap((r) => r.observed.recursive ?? []);
+  const listings = below ?? (await listingsBelowHere(root, recursive));
+  const candidates = new Set<RelativePath>();
+  const fresh: RelativePath[][] = [];
+  for (const { closure, observed } of reads) {
+    const listed = new Set(observed.directories.map(listingPath));
+    for (const directory of observed.recursive ?? []) {
+      for (const path of listings(directory)) listed.add(path);
+    }
+    const read = observed.paths.filter((path) => !closure.has(path));
+    const targets = await linkTargets(root, read);
+    const paths = [...new Set([...read, ...targets, ...listed])].filter(
+      (path) => !closure.has(path),
+    );
+    for (const path of paths) candidates.add(listedDirectory(path) ?? path);
+    fresh.push(paths);
+  }
+  const ignored = await checkIgnored(
+    root,
+    [...candidates].filter((p) => p !== ""),
+  );
+  const inputs = reads.map(({ observed }, at) => {
+    const scratch = scratchOf(observed.written ?? [], ignored);
+    return (fresh[at] ?? []).filter((path) => !scratch(listedDirectory(path) ?? path));
+  });
+  return { inputs, ignored };
+}
+
+/**
+ * `ListingsBelow` over the files git does not ignore below `directories`,
+ * as the daemon's keys list files (`WorktreeKeys.bootstrap`): tracked and
+ * untracked, a deleted one not. No git call when `directories` is empty.
+ */
+export async function listingsBelowHere(
+  root: AbsolutePath,
+  directories: readonly RelativePath[],
+): Promise<ListingsBelow> {
+  if (directories.length === 0) return (directory) => [listingPath(directory)];
+  const specs = ["--", ...new Set(directories.map((d) => (d === "" ? "." : d)))];
+  const [listed, deleted] = await Promise.all([
+    runGit(root, ["ls-files", "-z", "--cached", "--others", "--exclude-standard", ...specs]),
+    runGit(root, ["ls-files", "-z", "--deleted", ...specs]),
+  ]);
+  const gone = new Set(splitNul(deleted));
+  const files = splitNul(listed).filter((path) => !gone.has(path));
+  const listings = new Listings(() => files, root);
+  return (directory) => listings.below(directory);
 }
 
 /**
