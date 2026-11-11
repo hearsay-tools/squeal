@@ -684,6 +684,12 @@ export interface ImportNotCurrent {
   readonly observed: number;
   /** Equal environment and lists, another key: the bytes of the file or of a closure file differ. */
   readonly content: number;
+  /**
+   * Equal environment and lists, another key, and the daemon's keys have not
+   * taken the import's observed entries yet (review of 0.1.428, B1): the
+   * running daemon recomputes them at its next refinement.
+   */
+  readonly keysPending: number;
   /** This worktree has no key for the file yet. */
   readonly noKey: number;
 }

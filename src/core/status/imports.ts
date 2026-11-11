@@ -1,6 +1,7 @@
 import { observedModulesMetaKey } from "../keys/modules.js";
 import { observedDirectMetaKey, observedMetaKey, readSharedEntries } from "../keys/observed.js";
 import { testFileId } from "../keys/reverse-index.js";
+import { importsWaiting } from "../scheduler/imports-waiting.js";
 import { readEnvironment, worktreeEnvironments } from "../store/environments.js";
 import { type ImportFileRecord, importFiles, listImports, sourceLabel } from "../store/imports.js";
 import {
@@ -30,6 +31,11 @@ import { compareEnvironment } from "./import-environment.js";
  * amended, review wave-1-2 B1). The closure lists compare less the observed
  * paths they took, so a list that differs only by them reads "observed set
  * differs" (D15); a row stored before row 018-18 compares whole lists.
+ *
+ * Review of 0.1.428, B1: while the running daemon's keys have not taken an
+ * import's observed entries (`imports-waiting.ts`), a file of that import
+ * that would read "content differs" reads "waiting for keys" instead: its
+ * key is the one from before the import, and the next refinement moves it.
  */
 
 const MAP_KEY = {
@@ -48,6 +54,8 @@ interface Here {
   /** Whether the store holds a result import `importId` stored at `key`. */
   stored(importId: string, key: CheckKey): boolean;
   readonly environments: ReadonlyMap<ProjectName, string>;
+  /** The imports whose observed entries the daemon's keys have not taken yet. */
+  readonly waiting: ReadonlySet<string>;
   closure(file: ImportFileRecord): string | null;
   observed(file: ImportFileRecord): string;
 }
@@ -72,6 +80,7 @@ export function readImports(
       closure: 0,
       observed: 0,
       content: 0,
+      keysPending: 0,
       noKey: 0,
     };
     let currentFiles = 0;
@@ -108,7 +117,8 @@ function reasonOf(file: ImportFileRecord, here: Here): Reason {
   const closure = here.closure(file);
   if (closure !== null && file.closure !== "" && closure !== file.closure) return "closure";
   if (here.observed(file) !== file.observed) return "observed";
-  return key?.key === null || key?.key === undefined ? "noKey" : "content";
+  if (key?.key === null || key?.key === undefined) return "noKey";
+  return here.waiting.has(file.importId) ? "keysPending" : "content";
 }
 
 /**
@@ -161,6 +171,7 @@ function hereOf(
     stored: (importId, key) =>
       store.results.byKey(key, 0).some((r) => importIdOf(r.provenance.worktreeId) === importId),
     environments: new Map(worktreeEnvironments(store, worktreeId).map((e) => [e.project, e.hash])),
+    waiting: new Set(importsWaiting(store, worktreeId)),
     closure: (file) => {
       const record = store.testFiles.get(file);
       if (record === null) return null;

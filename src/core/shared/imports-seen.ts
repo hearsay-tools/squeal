@@ -21,16 +21,18 @@ export class ImportsSeen {
   }
 
   /**
-   * Hands `reread` the projects of the imports not seen yet, and sees them
-   * when it takes them; when it does not, the next call hands them again.
+   * Hands `reread` the projects of the imports not seen yet, and their ids,
+   * and sees them when it takes them; when it does not, the next call hands
+   * them again.
    */
-  take(reread: (projects: readonly ProjectName[]) => boolean): void {
+  take(reread: (projects: readonly ProjectName[], imports: readonly string[]) => boolean): void {
     const fresh = listImports(this.store).filter((i) => !this.#seen.has(i.id));
     if (fresh.length === 0) return;
     const projects = new Set(
       fresh.flatMap((i) => importFiles(this.store, i.id).map((f) => f.project)),
     );
-    if (projects.size > 0 && !reread([...projects].sort())) return;
+    const ids = fresh.map((i) => i.id);
+    if (projects.size > 0 && !reread([...projects].sort(), ids)) return;
     for (const i of fresh) this.#seen.add(i.id);
   }
 }
