@@ -1,0 +1,4 @@
+# conflict.sh, 2026-11-11
+one-way-safe: local a.txt=local-edit; local files=a.txt ; remote a.txt+files=remote-edit a.txt gen.txt ; 1 conflict(s)
+one-way-replica: local a.txt=local-edit; local files=a.txt ; remote a.txt+files=local-edit a.txt ; 0 conflict(s)
+two-way-safe: local a.txt=local-edit; local files=a.txt gen.txt ; remote a.txt+files=remote-edit a.txt gen.txt ; 1 conflict(s)

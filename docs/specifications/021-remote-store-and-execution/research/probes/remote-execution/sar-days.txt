@@ -1,0 +1,9 @@
+2026-11-03 samples 143  busy mean 12.09  nice mean  3.63 (30.0% of busy)  >16 busy  25.2%  >=95% busy   0.0%
+2026-11-04 samples 143  busy mean 11.91  nice mean  3.69 (30.9% of busy)  >16 busy  23.1%  >=95% busy   0.0%
+2026-11-05 samples 135  busy mean 10.82  nice mean  3.14 (29.0% of busy)  >16 busy  24.4%  >=95% busy   4.4%
+2026-11-06 samples 143  busy mean 13.02  nice mean  3.72 (28.5% of busy)  >16 busy  43.4%  >=95% busy   2.8%
+2026-11-07 samples 143  busy mean 10.21  nice mean  3.15 (30.8% of busy)  >16 busy  14.0%  >=95% busy   0.0%
+2026-11-08 samples  90  busy mean  9.17  nice mean  0.81 ( 8.9% of busy)  >16 busy  10.0%  >=95% busy   0.0%
+2026-11-09 samples 142  busy mean  8.89  nice mean  2.38 (26.8% of busy)  >16 busy  27.5%  >=95% busy   2.1%
+2026-11-10 samples 143  busy mean 12.85  nice mean  3.50 (27.2% of busy)  >16 busy  33.6%  >=95% busy   2.1%
+2026-11-11 samples  80  busy mean  7.85  nice mean  2.46 (31.3% of busy)  >16 busy  12.5%  >=95% busy   0.0%
