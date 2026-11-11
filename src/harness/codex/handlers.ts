@@ -80,7 +80,7 @@ export const preToolUse: CodexHandler = (input, location, deps) => {
       })) ??
       (testCommand === null
         ? null
-        : denyCurrentTestCommand(context, testCommand, (deps.now ?? Date.now)()));
+        : await denyCurrentTestCommand(context, testCommand, (deps.now ?? Date.now)()));
     return reason === null ? null : deny(reason, deps.command);
   });
 };
