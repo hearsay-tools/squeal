@@ -81,6 +81,23 @@ describe("a lost runner host", () => {
     await adapter.close();
   });
 
+  it("leaves a host lost during its start to the start's error, with no note of its own", async () => {
+    const host = inProcessHost(never);
+    const notes: string[] = [];
+    const starting = startHostProxy({
+      channel: host.channel,
+      runner: "vitest",
+      version: "0.0.0-test",
+      options: { childEnv: {} },
+      policy: () => POLICY,
+      note: (text) => notes.push(text),
+    });
+    await expect.poll(() => host.sent.length).toBe(1);
+    host.channel.kill();
+    await expect(starting).rejects.toThrow("the vitest runner host exited (signal SIGKILL)");
+    expect(notes).toEqual([]);
+  });
+
   it("is gone after close, and its end there is no note", async () => {
     const host = inProcessHost(async () => fakeAdapter());
     const { adapter, notes } = await proxyOf(host);
