@@ -529,7 +529,13 @@ class TierScheduler implements Scheduler {
     stopWaiting(context);
     const unseen = this.#waitChanges;
     this.#waitChanges = [];
-    await baseline(context, ledger, unseen, this.options.resumesRest === true);
+    // Spec 021 D2: its last commit waits a slice and is tried again, as the pump's writes are.
+    const waits = this.options.busyWaits;
+    const retry =
+      waits === undefined
+        ? undefined
+        : { sliceMs: this.options.busySliceMs, waits, stopped: () => this.#closed };
+    await baseline(context, ledger, unseen, this.options.resumesRest === true, retry);
   }
 
   /**
