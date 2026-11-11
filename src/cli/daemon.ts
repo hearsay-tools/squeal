@@ -25,6 +25,7 @@ export async function daemonCommand(args: readonly string[], io: CliIo): Promise
     return 2;
   }
   const log = (line: string) => io.stderr(`squeal daemon: ${line}\n`);
+  const script = process.argv[1];
   // Row 011-250: the note names the signal and the unit, read once, at the signal.
   let signalled: string | null = null;
   let stop = (note: string) => {
@@ -43,6 +44,8 @@ export async function daemonCommand(args: readonly string[], io: CliIo): Promise
         oxlint: (projectRoot) => oxlintProvider({ root: projectRoot }),
       },
       ...(awaitLockMs === undefined ? {} : { awaitLockMs }),
+      // Spec 021 D8: Vitest runs in a runner host, this script under this Node.
+      ...(script === undefined ? {} : { runnerHost: { execPath: process.execPath, cli: script } }),
     });
     if ("reason" in daemon) {
       log(daemon.message);
