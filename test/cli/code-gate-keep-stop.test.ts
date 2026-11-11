@@ -1,15 +1,14 @@
 import { spawn } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { storedFiles } from "../../src/cli/code-gate-stored.js";
 import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
-import { createFixtureRepo, type FixtureRepo, waitFor } from "../daemon/helpers.js";
-import { git } from "../hash/git-repo.js";
-import { hasRecord, runIdsAt } from "./code-gate-keep-kit.js";
+import { type FixtureRepo, waitFor } from "../daemon/helpers.js";
+import { featureRepo, hasRecord, keepPolicy, runIdsAt } from "./code-gate-keep-kit.js";
 
 /*
  * Spec 020 D17.3 (row 020-17c): the gate writes a file only after its
@@ -24,12 +23,6 @@ const SLOW = { timeout: 240_000 } as const;
 
 const TSX = pathToFileURL(createRequire(import.meta.url).resolve("tsx")).href;
 const CLI = resolve(import.meta.dirname, "../../src/cli/index.ts");
-
-const POLICY = `${JSON.stringify({
-  complexity: { enabled: true },
-  coverage: { enabled: true },
-  baseline: { onStart: "lookup-only" },
-})}\n`;
 
 /** Each test writes a mark into `$GATE_MARKS` once it ran; `late` then sleeps past any wait here. */
 const mark = (name: string) =>
@@ -49,15 +42,8 @@ describe("squeal code --base stopped mid-run (spec 020 D17.3)", () => {
   let scratch: string;
 
   beforeAll(() => {
-    repo = createFixtureRepo({ files: { "squeal.config.json": POLICY } });
+    repo = featureRepo(keepPolicy("lookup-only"), FEATURE);
     scratch = mkdtempSync(join(tmpdir(), "squeal-gate-stop-"));
-    git(repo.root, ["checkout", "-q", "-b", "feature"]);
-    for (const [path, text] of Object.entries(FEATURE)) {
-      mkdirSync(dirname(join(repo.root, path)), { recursive: true });
-      writeFileSync(join(repo.root, path), text);
-    }
-    git(repo.root, ["add", "-A"]);
-    git(repo.root, ["commit", "-qm", "feature"]);
   });
 
   afterAll(() => {
