@@ -52,7 +52,7 @@ export async function denyOnRegression(
   },
 ): Promise<string | null> {
   if (!call.edit || !policy.interrupt.onRegression) {
-    resumeTurn(context.store, context.consumer);
+    await context.write(() => resumeTurn(context.store, context.consumer));
     return null;
   }
   const delta = await context.delivery.peek(context.consumer, { kinds: DENIED_KINDS });
@@ -98,54 +98,58 @@ function realPath(path: string): string | null {
  * no daemon is validating, the worktree is not listed, the runner part of
  * the revision is pending, the command does not resolve completely (the
  * listing left out a file the command runs, task 005-26), or one file is
- * pending, stale, unknown or without checks.
+ * pending, stale, unknown or without checks. Spec 021 D15: with a daemon
+ * serving, the transaction runs under the worktree's write lease and its
+ * write goes to the daemon (`HookContext.write`).
  */
 export function denyCurrentTestCommand(
   context: HookContext,
   command: TestCommand,
   now: EpochMs,
-): string | null {
+): Promise<string | null> {
   const { store, consumer } = context;
-  return store.transaction(() => {
-    if (store.consumers.get(consumer) === null || testCommandDenied(store, consumer)) return null;
-    const states = store.knownStates.list(consumer.worktreeId);
-    const keys = store.testFileKeys.list(consumer.worktreeId);
-    const header = readLiveHeader(store, consumer.worktreeId, now, states, null, keys);
-    if (header.daemon?.state !== "alive" || header.testFilesListed === false) return null;
-    if (header.runnerPartPending === true || header.awaitingInstall === true) return null;
-    // Read live, so a policy change since the last listing counts too (review 004 wave-12 B2). Its
-    // configured projects name the listing's files that are not the fallback runner's (003 D7).
-    const live = readPolicy(context.root);
-    if (!describing(command).resolves(live)) return null;
-    const configured = new Set(configuredProjects(live).map((p) => p.name));
-    const files = resolveTestFiles(
-      command,
-      keys.map((k) => k.testFile),
-      context.root,
-      configured,
-      readOmittedTestFiles(store, consumer.worktreeId),
-    );
-    if (files === null) return null;
-    const rows = new Map(keys.map((row) => [testFileId(row.testFile), row]));
-    const byFile = new Map<string, KnownState[]>();
-    for (const state of states) {
-      const id = testFileKeyOf(state.check);
-      byFile.set(id, [...(byFile.get(id) ?? []), state]);
-    }
-    const answered: KnownState[] = [];
-    for (const file of files) {
-      const row = rows.get(testFileId(file));
-      const own = byFile.get(testFileId(file)) ?? [];
-      if (row === undefined || row.key === null || row.pending !== null) return null;
-      if (own.length === 0 || own.some((s) => s.validity !== "current")) return null;
-      answered.push(...own);
-    }
-    recordTestCommandDenied(store, consumer, header.revision);
-    return testCommandReason({
-      revision: header.revision,
-      files,
-      states: answered,
-      rootOf: (id) => store.worktrees.get(id)?.root ?? null,
-    });
-  });
+  return context.write(() =>
+    store.transaction(() => {
+      if (store.consumers.get(consumer) === null || testCommandDenied(store, consumer)) return null;
+      const states = store.knownStates.list(consumer.worktreeId);
+      const keys = store.testFileKeys.list(consumer.worktreeId);
+      const header = readLiveHeader(store, consumer.worktreeId, now, states, null, keys);
+      if (header.daemon?.state !== "alive" || header.testFilesListed === false) return null;
+      if (header.runnerPartPending === true || header.awaitingInstall === true) return null;
+      // Read live, so a policy change since the last listing counts too (review 004 wave-12 B2). Its
+      // configured projects name the listing's files that are not the fallback runner's (003 D7).
+      const live = readPolicy(context.root);
+      if (!describing(command).resolves(live)) return null;
+      const configured = new Set(configuredProjects(live).map((p) => p.name));
+      const files = resolveTestFiles(
+        command,
+        keys.map((k) => k.testFile),
+        context.root,
+        configured,
+        readOmittedTestFiles(store, consumer.worktreeId),
+      );
+      if (files === null) return null;
+      const rows = new Map(keys.map((row) => [testFileId(row.testFile), row]));
+      const byFile = new Map<string, KnownState[]>();
+      for (const state of states) {
+        const id = testFileKeyOf(state.check);
+        byFile.set(id, [...(byFile.get(id) ?? []), state]);
+      }
+      const answered: KnownState[] = [];
+      for (const file of files) {
+        const row = rows.get(testFileId(file));
+        const own = byFile.get(testFileId(file)) ?? [];
+        if (row === undefined || row.key === null || row.pending !== null) return null;
+        if (own.length === 0 || own.some((s) => s.validity !== "current")) return null;
+        answered.push(...own);
+      }
+      recordTestCommandDenied(store, consumer, header.revision);
+      return testCommandReason({
+        revision: header.revision,
+        files,
+        states: answered,
+        rootOf: (id) => store.worktrees.get(id)?.root ?? null,
+      });
+    }),
+  );
 }

@@ -73,6 +73,9 @@ function preparing(r: SquealRepo): HookContext {
     consumer: mainConsumer(r),
     delivery: createDelivery(r.store, { status }),
     prepared,
+    // No daemon serves this context: its writes are made here (spec 021 D15).
+    write: async (work) => work(),
+    sent: async () => {},
     close: () => {},
   };
 }

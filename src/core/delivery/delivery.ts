@@ -28,6 +28,7 @@ import type {
   EndTurnOptions,
   HarnessDelivery,
   RegisterOptions,
+  Registration,
   ToolBoundaryOptions,
   TurnState,
   ViewEntry,
@@ -418,139 +419,72 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
    */
   const free = () => holdFree(options.prepare?.connection, HOOK_TIMEOUT_MS);
 
+  /**
+   * Spec 021 D15 (row 021-16): one method's work, whose writes go to the
+   * serving daemon under the worktree's write lease and are written before
+   * it resolves (`Prepare.unit`); a delivery that tells keeps the lease
+   * until its hand-off. Each waits first for a hold of this thread (`free`).
+   */
+  const unit = <T>(work: () => T): Promise<T> => {
+    const freed = async () => {
+      const wait = free();
+      if (wait !== null) await wait;
+      return work();
+    };
+    return options.prepare?.unit?.(freed) ?? freed();
+  };
+
   return {
-    register: async (
-      consumer,
-      { inTurn = false, atStart = false, startingSince }: RegisterOptions = {},
-    ) => {
-      const wait = free();
-      if (wait !== null) await wait;
-      return store.transaction(() => {
-        const at = now();
-        // Review wave 10b, B1: a consumer still registered keeps the revision its changes start at.
-        const registered = store.consumers.get(consumer) !== null;
-        store.consumers.register(consumer, at);
-        // Review wave 13ba, B1: the waiting Stop entry's evidence is this registration's alone.
-        forgetStopWait(store, consumer);
-        // Review 001-423, B1: a mark left by an earlier SubagentStop is not this registration's.
-        markLeaving(store, consumer, null);
-        const states = store.knownStates.list(consumer.worktreeId);
-        store.views.writeMany(
-          consumer,
-          states.map((s) => toView(s, at)),
-        );
-        // Task 001-156: a daemon this hook spawned and that has not heartbeat yet is starting.
-        const told = startingSince === undefined ? null : { startingSince };
-        const read = readLiveHeader(store, consumer.worktreeId, at, states);
-        const live = told === null ? read : withTold(read, told, at);
-        const knownFailures = withRecorded(store, consumer.worktreeId, states, live.revision);
-        const header = withDependencies(
-          store,
-          consumer.worktreeId,
-          live,
-          knownFailures.map((f) => f.check),
-        );
-        const starting =
-          header.daemon?.state === "down" && header.daemon.startingSince !== undefined;
-        const daemon = header.daemon === undefined ? null : toldOf(header.daemon);
-        tellLiveness(store, consumer, starting ? told : daemon);
-        tellRevision(store, consumer, header.revision);
-        tellSlowTier(store, consumer, header.slowTier);
-        tellGroupTiers(store, consumer, header.groupTiers);
-        tellCommit(store, consumer, header.commitLine);
-        oweCounts(store, consumer, header);
-        tellHolds(store, consumer, heldNow(store, consumer.worktreeId, at));
-        if (!registered) {
-          // Review wave 10d, S2: after tool calls the registration revision may hold their edits.
-          const alive = atStart && header.daemon?.state === "alive";
-          const resumed = tellRegistered(store, consumer, header.revision, {
-            at,
-            scanned: scannedDaemon(store, consumer.worktreeId, alive),
-            head: options.root === undefined ? null : registrationHead(options.root),
-          });
-          // Tasks 001-223 and 001-224: edits count from here; a resumed session was told once (B2).
-          startEdits(store, consumer, header.revision, resumed?.said === true);
-          // Review wave 13as, B2: a path told before it left is not told again.
-          if (resumed !== null) recordUncoveredTold(store, consumer, resumed.uncovered);
-        }
-        if (inTurn) startTurn(store, consumer);
-        else writeTurn(store, consumer, null);
-        recordHarness(store, consumer, options.harnessProcess?.() ?? null);
-        recordVersion(store, consumer, options.squealVersion ?? null);
-        const code = registerCode(options.code, consumer, at);
-        const lint = registerLint(options.lint, consumer, at);
-        return {
-          schemaVersion: PAYLOAD_SCHEMA_VERSION,
-          consumer,
-          header,
-          // 011-18: a resumed session's failures name the closure paths changed since it started.
-          knownFailures: withClosureChanges(store, consumer, knownFailures, header.revision),
-          ...(code === undefined ? {} : { code }),
-          ...(lint === undefined ? {} : { lint }),
-          // Row 011-275 (gh-120): the session's first notice names the keys a runtime here leaves out.
-          ...ignoredConfigAt(store.worktrees.get(consumer.worktreeId), header.daemon),
-        };
-      });
-    },
+    register: (consumer, registerOptions: RegisterOptions = {}) =>
+      unit(() => registerNow(consumer, registerOptions)),
 
-    unregister: async (consumer) => {
-      const wait = free();
-      if (wait !== null) await wait;
-      store.transaction(() => drop(store, consumer, now()));
-    },
+    unregister: (consumer) => unit(() => store.transaction(() => drop(store, consumer, now()))),
 
-    onToolBoundary: async (consumer, { stop = false, atRevision }: ToolBoundaryOptions = {}) => {
-      const wait = free();
-      if (wait !== null) await wait;
-      return deliver(consumer, {
-        heardFrom: true,
-        liveness: true,
-        stop,
-        ...(atRevision === undefined ? {} : { atRevision }),
-      });
-    },
+    onToolBoundary: (consumer, { stop = false, atRevision }: ToolBoundaryOptions = {}) =>
+      unit(() =>
+        deliver(consumer, {
+          heardFrom: true,
+          liveness: true,
+          stop,
+          ...(atRevision === undefined ? {} : { atRevision }),
+        }),
+      ),
 
-    peek: async (consumer, { kinds }) => {
-      const wait = free();
-      if (wait !== null) await wait;
+    peek: (consumer, { kinds }) => {
       const only = new Set(kinds);
-      return deliver(consumer, { heardFrom: true, keep: (e) => only.has(e.kind) });
+      return unit(() => deliver(consumer, { heardFrom: true, keep: (e) => only.has(e.kind) }));
     },
 
-    startTurn: async (consumer) => {
-      const wait = free();
-      if (wait !== null) await wait;
-      // Spec 019 D4 step 3 (row 019-14): a prompt starts the turn Stop's holds count in.
-      promptTurn(store, consumer);
-      return deliver(consumer, { heardFrom: true, liveness: true });
-    },
+    startTurn: (consumer) =>
+      unit(() => {
+        // Spec 019 D4 step 3 (row 019-14): a prompt starts the turn Stop's holds count in.
+        promptTurn(store, consumer);
+        return deliver(consumer, { heardFrom: true, liveness: true });
+      }),
 
-    endTurn: async (consumer, { atRevision, handoff = false }: EndTurnOptions = {}) => {
-      const wait = free();
-      if (wait !== null) await wait;
-      return store.transaction(() => {
-        if (store.consumers.get(consumer) === null) return true;
-        if (!atLatest(consumer, atRevision)) return false;
-        const states = store.knownStates.list(consumer.worktreeId);
-        const at = now();
-        endTurn(
-          store,
-          consumer,
-          states,
-          plan(consumer, states, at, null).entries,
-          handoff ? at : null,
-        );
-        return true;
-      });
-    },
+    endTurn: (consumer, { atRevision, handoff = false }: EndTurnOptions = {}) =>
+      unit(() =>
+        store.transaction(() => {
+          if (store.consumers.get(consumer) === null) return true;
+          if (!atLatest(consumer, atRevision)) return false;
+          const states = store.knownStates.list(consumer.worktreeId);
+          const at = now();
+          endTurn(
+            store,
+            consumer,
+            states,
+            plan(consumer, states, at, null).entries,
+            handoff ? at : null,
+          );
+          return true;
+        }),
+      ),
 
     waitForDelta: async (consumer, { timeoutMs, signal }) => {
       const deadline = performance.now() + timeoutMs;
       for (;;) {
         if (signal?.aborted) return null;
-        const wait = free();
-        if (wait !== null) await wait;
-        const delta = deliverIdle(consumer);
+        const delta = await unit(() => deliverIdle(consumer));
         if (delta !== null) return delta;
         const left = deadline - performance.now();
         if (left <= 0) return null;
@@ -565,4 +499,75 @@ export function createDelivery(store: Store, options: DeliveryOptions): HarnessD
 
     status: async (worktreeId) => options.status.build(worktreeId),
   };
+
+  function registerNow(
+    consumer: Consumer,
+    { inTurn = false, atStart = false, startingSince }: RegisterOptions,
+  ): Registration {
+    return store.transaction(() => {
+      const at = now();
+      // Review wave 10b, B1: a consumer still registered keeps the revision its changes start at.
+      const registered = store.consumers.get(consumer) !== null;
+      store.consumers.register(consumer, at);
+      // Review wave 13ba, B1: the waiting Stop entry's evidence is this registration's alone.
+      forgetStopWait(store, consumer);
+      // Review 001-423, B1: a mark left by an earlier SubagentStop is not this registration's.
+      markLeaving(store, consumer, null);
+      const states = store.knownStates.list(consumer.worktreeId);
+      store.views.writeMany(
+        consumer,
+        states.map((s) => toView(s, at)),
+      );
+      // Task 001-156: a daemon this hook spawned and that has not heartbeat yet is starting.
+      const told = startingSince === undefined ? null : { startingSince };
+      const read = readLiveHeader(store, consumer.worktreeId, at, states);
+      const live = told === null ? read : withTold(read, told, at);
+      const knownFailures = withRecorded(store, consumer.worktreeId, states, live.revision);
+      const header = withDependencies(
+        store,
+        consumer.worktreeId,
+        live,
+        knownFailures.map((f) => f.check),
+      );
+      const starting = header.daemon?.state === "down" && header.daemon.startingSince !== undefined;
+      const daemon = header.daemon === undefined ? null : toldOf(header.daemon);
+      tellLiveness(store, consumer, starting ? told : daemon);
+      tellRevision(store, consumer, header.revision);
+      tellSlowTier(store, consumer, header.slowTier);
+      tellGroupTiers(store, consumer, header.groupTiers);
+      tellCommit(store, consumer, header.commitLine);
+      oweCounts(store, consumer, header);
+      tellHolds(store, consumer, heldNow(store, consumer.worktreeId, at));
+      if (!registered) {
+        // Review wave 10d, S2: after tool calls the registration revision may hold their edits.
+        const alive = atStart && header.daemon?.state === "alive";
+        const resumed = tellRegistered(store, consumer, header.revision, {
+          at,
+          scanned: scannedDaemon(store, consumer.worktreeId, alive),
+          head: options.root === undefined ? null : registrationHead(options.root),
+        });
+        // Tasks 001-223 and 001-224: edits count from here; a resumed session was told once (B2).
+        startEdits(store, consumer, header.revision, resumed?.said === true);
+        // Review wave 13as, B2: a path told before it left is not told again.
+        if (resumed !== null) recordUncoveredTold(store, consumer, resumed.uncovered);
+      }
+      if (inTurn) startTurn(store, consumer);
+      else writeTurn(store, consumer, null);
+      recordHarness(store, consumer, options.harnessProcess?.() ?? null);
+      recordVersion(store, consumer, options.squealVersion ?? null);
+      const code = registerCode(options.code, consumer, at);
+      const lint = registerLint(options.lint, consumer, at);
+      return {
+        schemaVersion: PAYLOAD_SCHEMA_VERSION,
+        consumer,
+        header,
+        // 011-18: a resumed session's failures name the closure paths changed since it started.
+        knownFailures: withClosureChanges(store, consumer, knownFailures, header.revision),
+        ...(code === undefined ? {} : { code }),
+        ...(lint === undefined ? {} : { lint }),
+        // Row 011-275 (gh-120): the session's first notice names the keys a runtime here leaves out.
+        ...ignoredConfigAt(store.worktrees.get(consumer.worktreeId), header.daemon),
+      };
+    });
+  }
 }

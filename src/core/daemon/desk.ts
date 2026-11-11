@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { Worker } from "node:worker_threads";
 import type { RelativePath } from "../types/common.js";
 import type { DaemonPhase, SyncAnswer } from "../types/daemon.js";
+import type { SentBatch } from "../types/daemon-writes.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { FullSuiteCheckpoint, FullSuiteRequest } from "../types/scheduler.js";
 import type { DeskIdentity, FromDesk, ToDesk } from "./desk-messages.js";
@@ -66,6 +67,12 @@ export interface DeskEvents {
   readonly requestHold?: () => Promise<boolean>;
   /** `squeal hold` ended, or `squeal start`: the command holds read again. */
   readonly requestResume?: () => Promise<void>;
+  /**
+   * Spec 021 D15 (row 021-16): writes a batch a hook or command sent, in
+   * the retried path; rejects with why not. Absent, or without
+   * `DeskIdentity.storeSchema`: the daemon answers that it takes no writes.
+   */
+  readonly requestWrite?: (batch: SentBatch) => Promise<void>;
   /** The worker died after it started listening. */
   readonly onFailure: (error: Error) => void;
   /**
@@ -181,6 +188,7 @@ export function guarded(events: DeskEvents): DeskEvents {
     requestGroup,
     requestHold,
     requestResume,
+    requestWrite,
   } = events;
   return {
     onActivity: safe(events.onActivity),
@@ -194,12 +202,15 @@ export function guarded(events: DeskEvents): DeskEvents {
     requestSync: asked(events.requestSync),
     ...(requestHold === undefined ? {} : { requestHold: asked(requestHold) }),
     ...(requestResume === undefined ? {} : { requestResume: asked(requestResume) }),
+    ...(requestWrite === undefined ? {} : { requestWrite: asked(requestWrite) }),
     onStop: safe(events.onStop),
     onStepDown: safe(events.onStepDown),
     onFailure: safe(events.onFailure),
     onError: caught,
   };
 }
+
+const NO_WRITES = "this daemon takes no writes";
 
 async function inWorker(
   worker: Worker,
@@ -307,6 +318,17 @@ async function inWorker(
         case "resume":
           events.requestResume?.().catch(() => {});
           return;
+        case "write":
+          (events.requestWrite?.(message.batch) ?? Promise.reject(new Error(NO_WRITES))).then(
+            () => post({ type: "write-result", id: message.id, error: null }),
+            (error: unknown) =>
+              post({
+                type: "write-result",
+                id: message.id,
+                error: error instanceof Error ? error.message : String(error),
+              }),
+          );
+          return;
         case "stop":
           events.onStop();
           return;
@@ -377,6 +399,9 @@ async function inThread(identity: DeskIdentity, events: DeskEvents): Promise<Fro
       ...(events.requestFocus === undefined ? {} : { requestFocus: events.requestFocus }),
       onStop: events.onStop,
       onStepDown: events.onStepDown,
+      ...(events.requestWrite === undefined || identity.storeSchema === undefined
+        ? {}
+        : { requestWrite: events.requestWrite, storeSchema: identity.storeSchema }),
     }),
   );
   return {

@@ -9,6 +9,7 @@ import {
   type HookContext,
   type HookLocation,
   openContext,
+  type WriterFor,
 } from "./context.js";
 import type { HandOff } from "./hand-off.js";
 import { findHarnessProcess } from "./harness-process.js";
@@ -74,6 +75,11 @@ export interface HookDeps {
    * it, they commit when the hook's function returns.
    */
   readonly handOff?: HandOff;
+  /**
+   * Spec 021 D15 (row 021-16): where the writes go while a daemon serves
+   * the worktree. Default: that daemon (`DaemonWriter`); a test gives its own.
+   */
+  readonly writer?: WriterFor;
 }
 
 /**
@@ -95,6 +101,7 @@ export async function withContext<T>(
     harnessProcess: deps.harnessProcess ?? (() => findHarnessProcess()),
     squealVersion: deps.squealVersion ?? squealVersion(),
     prepare: true,
+    ...(deps.writer === undefined ? {} : { writer: deps.writer }),
     ...overrides,
   };
   const context = openContext(input, location, options);
@@ -103,12 +110,18 @@ export async function withContext<T>(
   try {
     const result = await fn(context);
     if (deps.handOff !== undefined && context.prepared?.pending === true) {
-      deps.handOff.take(context.prepared, context.close);
+      deps.handOff.take(context.prepared, context.close, context.sent);
       handed = true;
-    } else context.prepared?.commit();
+    } else {
+      context.prepared?.commit();
+      // Spec 021 D15: a report's writes went to the daemon; it returns once they are written.
+      await context.sent();
+    }
     return result;
   } catch (error) {
+    if (process.env.SQUEAL_DEBUG_CONTEXT) console.error("DEBUG withContext", error);
     context.prepared?.abandon();
+    await context.sent().catch(() => {});
     throw error;
   } finally {
     if (!handed) context.close();

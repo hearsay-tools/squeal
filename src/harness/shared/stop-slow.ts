@@ -133,7 +133,9 @@ export async function stopSlow(
   const poll = deps.pollIntervalMs ?? STOP_SLOW_POLL_MS;
   return withContext(input, location, deps, async (context) => {
     const version = deps.squealVersion ?? squealVersion();
-    recordStopWait(context.store, context.consumer, input.harness, version);
+    await context.write(() =>
+      recordStopWait(context.store, context.consumer, input.harness, version),
+    );
     const { store, consumer } = context;
     if (readStopHolds(store, consumer) >= required.maxHolds) return null;
     if (!(await handedOver(context, deps, poll))) return null;
@@ -254,7 +256,7 @@ async function waitForRequired(
     if (!isOpen(last.open) || over) {
       const waitedMs = Math.min(bound, Math.round(now - started));
       const options = { over, waitedMs, command: deps.command };
-      const decided = decide(context, required, clock(), options);
+      const decided = await context.write(() => decide(context, required, clock(), options));
       if (decided !== "again") return decided;
     }
     await sleep(Math.min(poll, Math.max(0, left)));

@@ -4,7 +4,7 @@ import { createServer, type Server, type Socket } from "node:net";
 import { basename, dirname, join } from "node:path";
 import type { AbsolutePath } from "../types/common.js";
 import type { DaemonRequest, DaemonResponse } from "../types/daemon.js";
-import { errorResponse, MAX_LINE_BYTES, parseRequest } from "./protocol.js";
+import { errorResponse, lineLimit, parseRequest } from "./protocol.js";
 
 /** Synchronous by design: an answer never waits for scheduler work (spec 001 D9 budget). */
 export type DaemonHandler = (request: DaemonRequest) => DaemonResponse;
@@ -109,7 +109,7 @@ function serve(socket: Socket, handle: DaemonHandler): void {
     buffer += chunk;
     const end = buffer.indexOf("\n");
     if (end < 0) {
-      if (buffer.length > MAX_LINE_BYTES) answer(socket, errorResponse("request too long"));
+      if (buffer.length > lineLimit(buffer)) answer(socket, errorResponse("request too long"));
       return;
     }
     const request = parseRequest(buffer.slice(0, end));

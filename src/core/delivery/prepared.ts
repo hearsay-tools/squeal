@@ -88,6 +88,12 @@ export interface Prepare {
    * the hold never waits. Absent: none.
    */
   readonly beforeHold?: () => void;
+  /**
+   * Spec 021 D15 (row 021-16): runs a delivery's work, whose writes go to
+   * the serving daemon under the worktree's write lease
+   * (`SendingConnection.unit`). Absent: the work runs as it is.
+   */
+  readonly unit?: <T>(work: () => T | Promise<T>) => Promise<T>;
 }
 
 /** A code-store write a delivery holds beside its own (`TellCodeOptions.holds`). */

@@ -18,6 +18,7 @@ import {
   type SyncReaders,
   type SyncResponse,
 } from "../types/daemon.js";
+import type { SentBatch } from "../types/daemon-writes.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { FullSuiteCheckpoint, FullSuiteRequest } from "../types/scheduler.js";
 import { errorResponse } from "./protocol.js";
@@ -25,6 +26,8 @@ import { type GroupRequested, groupRequests, type Held, type MainStep } from "./
 import { SLOW_NOT_SUPPORTED, type SlowSuiteRequested } from "./run-slow.js";
 import type { DaemonHandler } from "./server.js";
 import { isNewerVersion } from "./version.js";
+import { WriteDesk } from "./write-desk.js";
+import { isWriteRequest } from "./write-protocol.js";
 
 /**
  * `run-all`, `run-slow`, `run-group` and `sync` requests remembered for
@@ -121,6 +124,14 @@ export interface HandlerContext {
   readonly requestHold?: () => Promise<boolean>;
   /** `squeal hold` removed its entry, or `squeal start` all: the scheduler reads them again. Never awaited. */
   readonly requestResume?: () => Promise<void>;
+  /**
+   * Spec 021 D15 (row 021-16): writes a batch a hook or command sent, in
+   * the daemon's retried path, with `storeSchema` the `user_version` of its
+   * store. Both absent: this daemon answers that it takes no writes, and
+   * the client writes the store itself.
+   */
+  readonly requestWrite?: (batch: SentBatch) => Promise<void>;
+  readonly storeSchema?: number;
 }
 
 interface RunAllState {
@@ -155,6 +166,11 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
   const groups = groupRequests(context.requestGroup, MAX_REQUESTS, context.mainStep);
   const syncRequests = new Map<string, SyncState>();
   const holdRequests = new Map<string, HoldState>();
+  const { requestWrite, storeSchema } = context;
+  const writes =
+    requestWrite === undefined || storeSchema === undefined
+      ? null
+      : new WriteDesk({ worktreeId: context.worktreeId, storeSchema, requestWrite });
   const runAll = (requestId: string, state: RunAllState): RunAllResponse => {
     const answer = {
       schemaVersion: PAYLOAD_SCHEMA_VERSION,
@@ -197,6 +213,9 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
   });
 
   return (request): DaemonResponse => {
+    if (isWriteRequest(request)) {
+      return writes?.answer(request, context.phase()) ?? errorResponse(NO_WRITES);
+    }
     switch (request.type) {
       case "ping":
         return {
@@ -358,6 +377,8 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
     }
   };
 }
+
+const NO_WRITES = "this daemon takes no writes";
 
 /** Remembers `requestId`; the oldest are dropped past `MAX_REQUESTS`. */
 function remember<T>(requests: Map<string, T>, requestId: string, state: T): void {

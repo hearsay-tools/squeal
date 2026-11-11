@@ -6,6 +6,15 @@ import type {
   RevisionNumber,
   WorktreeId,
 } from "./common.js";
+import type {
+  LeaseRequest,
+  LeaseResponse,
+  ReleaseRequest,
+  ReleaseResponse,
+  WriteRequest,
+  WriteResponse,
+  WriteStatusRequest,
+} from "./daemon-writes.js";
 import type { TestFileRef } from "./keys.js";
 import type { NarrowRun } from "./scheduler.js";
 import { worktreeMetaKey } from "./store.js";
@@ -237,7 +246,11 @@ export type DaemonRequest =
   | StepDownRequest
   | HoldRequest
   | HoldStatusRequest
-  | ResumeRequest;
+  | ResumeRequest
+  | LeaseRequest
+  | ReleaseRequest
+  | WriteRequest
+  | WriteStatusRequest;
 
 /** Where a daemon is in its life. `starting`: socket bound, scheduler not started yet. */
 export type DaemonPhase = "starting" | "ready" | "stopping";
@@ -506,6 +519,9 @@ export type DaemonResponse =
   | StepDownResponse
   | HoldResponse
   | ResumeResponse
+  | LeaseResponse
+  | ReleaseResponse
+  | WriteResponse
   | DaemonErrorResponse;
 
 /**

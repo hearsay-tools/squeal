@@ -41,6 +41,7 @@ export async function stopHolds(
   store: Store,
   at: { readonly id: WorktreeId; readonly root: AbsolutePath },
   mark: StopMark | null,
+  write: <T>(work: () => T) => Promise<T> = async (work) => work(),
 ): Promise<boolean> {
   if (mark === null) return false;
   if (mark.untilStart === true) return true;
@@ -48,17 +49,20 @@ export async function stopHolds(
   if (tree === null || tree === mark.tree) return true;
   // Re-read after git answered: a `squeal start` that cleared the mark, or a
   // new stop that replaced it, meanwhile wins (review wave-1.10 R2).
-  return store.transaction(() => {
-    const now = readStop(store, at.id);
-    if (now === null) return false;
-    if (now.at !== mark.at || now.tree !== mark.tree || now.untilStart === true) return true;
-    if (mark.tree === null) {
-      markStopped(store, at.id, mark.at, tree);
-      return true;
-    }
-    clearStopped(store, at.id);
-    return false;
-  });
+  // Spec 021 D15: with a daemon serving, under the worktree's write lease (`HookContext.write`).
+  return write(() =>
+    store.transaction(() => {
+      const now = readStop(store, at.id);
+      if (now === null) return false;
+      if (now.at !== mark.at || now.tree !== mark.tree || now.untilStart === true) return true;
+      if (mark.tree === null) {
+        markStopped(store, at.id, mark.at, tree);
+        return true;
+      }
+      clearStopped(store, at.id);
+      return false;
+    }),
+  );
 }
 
 /**

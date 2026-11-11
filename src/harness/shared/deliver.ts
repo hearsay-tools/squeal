@@ -78,7 +78,7 @@ export async function deliver(
   }
   const delta = await context.delivery.onToolBoundary(context.consumer);
   const down = edited && ensured === "unavailable" ? notValidated(context, deps) : null;
-  const line = down ?? (edited ? uncoveredEditLine(context) : null);
+  const line = down ?? (edited ? await context.write(() => uncoveredEditLine(context)) : null);
   const room = MESSAGE_CAP_CHARS - (line === null ? 0 : line.length + 1);
   const text = delta === null ? null : formatDelta(delta, deps.command, room);
   if (line === null) return text;
