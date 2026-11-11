@@ -26,19 +26,11 @@ export interface RecorderUse {
  * resolves the preload from the cwd (`trySelf`), called from its preload loop,
  * an unnamed frame of the CommonJS loader on Node 24 and `loadPreloadModules`
  * on 22 (probe, review 001-401). A module's own load names `Object..js` or a
- * `require` instead. Node 26 puts two frames above `trySelf`, so its 10 end
- * inside the loader, before either (probe, row 018-36): such a cut stack is
- * the preload only where the text also names a `--require` or `-r` option, as
- * the failed command line does; a module's own `require` under one still reads
- * as a preload there.
+ * `require` instead.
  */
 const PACKAGE = /ERR_INVALID_PACKAGE_CONFIG|Invalid package config /;
 const PRELOAD =
   /\bat trySelf \(node:[^\n]*(?:\n[ \t]+at (?!require \()[^\n]*)*?\n[ \t]+at (?:node:internal\/modules\/cjs\/loader:\d|loadPreloadModules \()/;
-/** `trySelf`, then only named frames of Node's own until the stack ends. */
-const CUT_PRELOAD =
-  /\bat trySelf \(node:[^\n]*(?:\n[ \t]+at (?!require \()[^\n(]*\(node:internal\/[^\n]*)*(?:\n(?![ \t]+at )|$)/;
-const REQUIRE_OPTION = /(?:^|\s)(?:--require|-r)[=\s]/m;
 /** Node 16 and 18 before 18.18 (probe, task 001-390). */
 const OLD_NODE = /--import is not allowed in NODE_OPTIONS|bad option: --import\b/;
 
@@ -48,7 +40,7 @@ export function recorderSignature(error: CheckError, use: RecorderUse): string |
   const text = [error.message, error.stack ?? "", ...(error.causes ?? []).map((c) => c.message)]
     .join("\n")
     .concat(error.code === undefined ? "" : `\n${error.code}`);
-  if (use.inNodeOptions && PACKAGE.test(text) && preloaded(text)) {
+  if (use.inNodeOptions && PACKAGE.test(text) && PRELOAD.test(text)) {
     return "a --require preload makes Node parse the nearest package.json (ERR_INVALID_PACKAGE_CONFIG)";
   }
   if (use.inNodeOptions && OLD_NODE.test(text)) return "Node before 18.18 rejects its --import";
@@ -57,11 +49,6 @@ export function recorderSignature(error: CheckError, use: RecorderUse): string |
   return spellings.some((s) => text.includes(`Cannot find module '${s}'`))
     ? "its file is missing"
     : undefined;
-}
-
-/** Whether `text`'s stack failed at a `--require` preload (`PRELOAD`). */
-function preloaded(text: string): boolean {
-  return PRELOAD.test(text) || (CUT_PRELOAD.test(text) && REQUIRE_OPTION.test(text));
 }
 
 /** `report` with `CheckError.recorder` set on each error that carries a signature of `use`. */
