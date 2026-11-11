@@ -1,6 +1,11 @@
-import { createNodeTestAdapter } from "../../runners/node-test/adapter.js";
+import {
+  createNodeTestAdapter,
+  type NodeTestAdapterOptions,
+} from "../../runners/node-test/adapter.js";
 import type { NodeTestCoverage } from "../../runners/node-test/coverage.js";
 import { NODE_TEST_ADAPTER_VERSION } from "../../runners/node-test/version.js";
+import { createHostedNodeTest, type ProcessHost } from "../runner-host/process-host.js";
+import { runnerHostGone } from "../runner-host/proxy.js";
 import type { AbsolutePath } from "../types/common.js";
 import type { NodeTestProject, PolicyInputs } from "../types/policy.js";
 import { createRecoveringRunner, type RecoveringRunner } from "./runner.js";
@@ -19,6 +24,8 @@ export interface NodeTestRunnersOptions {
   readonly note: (text: string, topic?: string) => void;
   /** Spec 015 D8 (row 015-86): coverage in the runs the projects make anyway; absent, none. */
   readonly coverage?: NodeTestCoverage;
+  /** Spec 021 D8 (row 021-12): each project's adapter in a runner host; absent, in this process. */
+  readonly host?: ProcessHost | undefined;
 }
 
 /**
@@ -72,19 +79,25 @@ function nodeTestRunner(
   project: NodeTestProject,
   options: NodeTestRunnersOptions,
 ): RecoveringRunner {
+  const adapterOptions: NodeTestAdapterOptions = {
+    root: options.root,
+    note: options.note,
+    concurrency: options.tierSize,
+    tempDir: options.tempDir,
+    ...(options.inputs === undefined ? {} : { inputs: options.inputs }),
+    ...(options.childEnv === undefined ? {} : { childEnv: options.childEnv }),
+    ...(options.coverage === undefined ? {} : { coverage: options.coverage }),
+  };
+  const { host } = options;
   return createRecoveringRunner({
     name: "node-test",
     adapterVersion: NODE_TEST_ADAPTER_VERSION,
     create: () =>
-      createNodeTestAdapter(project, {
-        root: options.root,
-        note: options.note,
-        concurrency: options.tierSize,
-        tempDir: options.tempDir,
-        ...(options.inputs === undefined ? {} : { inputs: options.inputs }),
-        ...(options.childEnv === undefined ? {} : { childEnv: options.childEnv }),
-        ...(options.coverage === undefined ? {} : { coverage: options.coverage }),
-      }),
+      host === undefined
+        ? createNodeTestAdapter(project, adapterOptions)
+        : createHostedNodeTest(host, project, adapterOptions),
+    // Spec 021 D7: a host that exited or missed a deadline is replaced.
+    ...(host === undefined ? {} : { gone: runnerHostGone }),
     // A run starts `runner.tierSize` files at once whatever its grant (task 001-366).
     tierWidth: () => options.tierSize(),
     // It cannot cancel a run: an edit's tier starts beside a backlog tier (task 011-21).
