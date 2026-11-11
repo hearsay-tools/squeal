@@ -740,12 +740,13 @@ export interface ImportNode {
 /**
  * Spec 018 D18 for one worktree: `pinned` when the daemon starts on the
  * project's pinned Node, else why it keeps the Node of the session: the
- * project pins none, its pin is a range or alias, the pinned version is not
- * installed, or `squeal.config.json` sets `node: "session"`.
+ * project pins none, its pin is a range or alias, it pins a version older
+ * than Squeal supports, the pinned version is not installed, or
+ * `squeal.config.json` sets `node: "session"`.
  */
 export interface NodePin {
-  readonly state: "pinned" | "none" | "range" | "missing" | "session";
-  /** The pin as the project wrote it (`range`, `missing`), or the pinned version (`pinned`). */
+  readonly state: "pinned" | "none" | "range" | "too-old" | "missing" | "session";
+  /** The pin as the project wrote it (`range`, `too-old`, `missing`), or the pinned version (`pinned`). */
   readonly wanted?: string;
 }
 
