@@ -1,13 +1,12 @@
 import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import type { NamedPart } from "../../ci/export-check.js";
-import { hereOf, uncertified } from "../../ci/inputs.js";
+import { hereOf, inputsOfReadsHere, uncertified } from "../../ci/inputs.js";
 import { PART_PREFIX, type Part, type PartFile, partRecord, readPart } from "../../ci/parts.js";
 import { compare } from "../../fs/compare.js";
 import { hashFile, type ObjectFormat } from "../../hash/blob.js";
 import { readObjectFormat } from "../../hash/git-index.js";
 import { testFileId } from "../../keys/reverse-index.js";
-import { observedInputs } from "../../scheduler/observed.js";
 import type { AbsolutePath, RelativePath } from "../../types/common.js";
 import type { FileHash, TestFileRef } from "../../types/keys.js";
 import type { RunnerClosure } from "../../types/runner.js";
@@ -27,7 +26,7 @@ import type { TestFileEvidence } from "./types.js";
  * 0.1.427 B1, 0.1.427-r2 B1);
  * the part's read-time evidence certifies the content here of every input
  * of the file's closure and of what it read, as the daemon's record keys
- * them (`observedInputs`, row 020-20), each as `ci export` certifies it
+ * them (`inputsOfReads`, row 020-20), each as `ci export` certifies it
  * (`uncertified`, `hereOf`; 018 D9); and its record's sources are the bytes
  * here. A file
  * with no record is taken only when it failed: its failure makes the
@@ -182,7 +181,7 @@ function contentHere(root: AbsolutePath, format: ObjectFormat): Here {
 
 /**
  * The inputs each candidate's part must certify: its closure here, and what
- * the file read beyond it, as the daemon's record keys it (`observedInputs`).
+ * the file read beyond it, as the daemon's record keys it (`inputsOfReads`).
  */
 async function inputsOf(
   root: AbsolutePath,
@@ -192,7 +191,7 @@ async function inputsOf(
     closure: new Set(closure.paths),
     observed: owner.file.observed ?? { paths: [], directories: [] },
   }));
-  const { inputs } = await observedInputs(root, reads);
+  const inputs = await inputsOfReadsHere(root, reads);
   return candidates.map(({ closure }, at) => [...new Set(closure.paths), ...(inputs[at] ?? [])]);
 }
 

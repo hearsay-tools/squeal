@@ -9,7 +9,7 @@ import { gate, recordInto, SLOW } from "./code-gate-parts-kit.js";
 
 /*
  * Spec 020 D13.2, row 020-20: `--parts` certifies the inputs of a part's
- * file as the daemon's record keys them (`observedInputs`). A test that
+ * file as the daemon's record keys them (`inputsOfReads`). A test that
  * reads `data.json`, a link to `fixtures/data.json`, or `linked/data.json`,
  * where `linked` is a link to `fixtures`, has `fixtures/data.json` among
  * them, the link's target: when the target changes after `ci record`, the
