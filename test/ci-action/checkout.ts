@@ -32,8 +32,10 @@ export const FLOOR = (
 
 /**
  * A stub CLI: it logs its arguments to `STUB_LOG`, prints 9.9.9 for
- * `--version`, runs `ci record`'s command and exits with its code, and
- * exits with `STUB_EXIT` (default 0) for anything else.
+ * `--version`, runs `ci record`'s command and exits with its code. For
+ * anything else it prints `STUB_OUT` and `STUB_ERR`, then throws
+ * `STUB_THROW`, kills itself with `STUB_SIGNAL`, or exits with `STUB_EXIT`
+ * (default 0).
  */
 export const STUB_CLI = `import { spawnSync } from "node:child_process";
 import { appendFileSync } from "node:fs";
@@ -48,6 +50,10 @@ if (args[0] === "ci" && args[1] === "record") {
   const run = spawnSync(args[at + 1], args.slice(at + 2), { stdio: "inherit" });
   process.exit(run.status ?? 1);
 }
+if (process.env.STUB_OUT) process.stdout.write(process.env.STUB_OUT);
+if (process.env.STUB_ERR) process.stderr.write(process.env.STUB_ERR);
+if (process.env.STUB_THROW) throw new Error(process.env.STUB_THROW);
+if (process.env.STUB_SIGNAL) process.kill(process.pid, process.env.STUB_SIGNAL);
 process.exit(Number(process.env.STUB_EXIT ?? "0"));
 `;
 

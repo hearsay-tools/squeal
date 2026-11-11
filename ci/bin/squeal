@@ -6,12 +6,17 @@
 # run here, it never fails the step: `squeal ci record -- <command>` runs the
 # command and exits with its code, `squeal ci export` and `squeal ci publish`
 # exit 0, and each warns in the job log and the step summary (ci/lib.sh).
+# When Squeal runs, a refusal or a crash of `squeal ci export` or
+# `squeal ci publish` warns the same way and exits 0; a usage error fails.
 case $0 in
   */*) squeal_ci_root=${0%/*}/../.. ;;
   *) squeal_ci_root=../.. ;;
 esac
 . "$squeal_ci_root/ci/lib.sh"
 if squeal_ci_ready; then
+  case ${1-}:${2-} in
+    ci:export | ci:publish) squeal_ci_shared "$@" ;;
+  esac
   exec node --disable-warning=ExperimentalWarning "$squeal_ci_cli" "$@"
 fi
 squeal_ci_pass_through "$@"
