@@ -44,6 +44,11 @@ export interface RuleInput<M extends MissingGap = MissingGap> {
   readonly failed: boolean;
   /** A loader skipped a test, so its record cannot prove a violation (015 D9, D11.3). */
   readonly skipped: boolean;
+  /**
+   * D14.2: how many test files that load its source the gate's scope left
+   * out; they did not run. Absent, none: the daemon has no scope (D14.6).
+   */
+  readonly leftOut?: number;
 }
 
 /** The limits read at the base (D6), or the daemon's policy. */
@@ -96,7 +101,7 @@ function completenessOf<M extends MissingGap>(
   input: RuleInput<M>,
   crap: number | null,
 ): RuleGap<M> | null {
-  if (input.loaders.expected === 0) return "no-loader";
+  if (input.loaders.expected === 0) return (input.leftOut ?? 0) > 0 ? "left-out" : "no-loader";
   if (input.missing !== null) return input.missing;
   if (crap === null) return "not-joined";
   if (input.failed) return "test-failed";
@@ -139,6 +144,16 @@ function uncoveredOf<M extends MissingGap>(input: RuleInput<M>, ev: Evidence<M>)
   return complete ? "fail" : unproven(input.missing);
 }
 
+/**
+ * D14.2: the state of complete in-scope evidence that reads a violation by
+ * CRAP while a left-out loader did not run: more coverage could lower it.
+ * The evidence keeps the violation, so a D8 exception can cover it: a
+ * left-out loader does not block one.
+ */
+function leftOutOf<M extends MissingGap>(input: RuleInput<M>, ev: Evidence<M>): Evidence<M> {
+  return ev.state === "violation" && (input.leftOut ?? 0) > 0 ? incomplete("left-out") : ev;
+}
+
 /** D11.1: one function's state, gap, CRAP and daemon measures from its evidence. */
 export function judgeFunction<M extends MissingGap>(
   input: RuleInput<M>,
@@ -167,5 +182,6 @@ export function judgeFunction<M extends MissingGap>(
           : unproven(evidence.gap),
     uncovered: uncoveredOf(input, evidence),
   };
-  return { ...(over ? VIOLATION : evidence), evidence, completeness, crap, measures };
+  const state = over ? VIOLATION : leftOutOf(input, evidence);
+  return { ...state, evidence, completeness, crap, measures };
 }

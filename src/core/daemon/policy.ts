@@ -14,6 +14,7 @@ import {
 import { checkGroups } from "./policy-checks.js";
 import { settleChecks } from "./policy-checks-settle.js";
 import { CODE_SHAPE } from "./policy-code.js";
+import { GATE_SHAPE } from "./policy-gate.js";
 import { LINT_SHAPE } from "./policy-lint.js";
 import { compiles, nodeTestProjects } from "./policy-node-test.js";
 import { pytestProjects } from "./policy-pytest.js";
@@ -103,6 +104,7 @@ const SHAPE: Shape = {
   ...CODE_SHAPE,
   ...LINT_SHAPE,
   ...SHARED_SHAPE,
+  ...GATE_SHAPE,
 };
 
 /**

@@ -95,6 +95,8 @@ describe("loadPolicy (spec 001 D11)", () => {
       crap: DEFAULT_POLICY.crap,
       // Spec 017 D1; its keys' own tests are test/lint/policy.test.ts.
       lint: DEFAULT_POLICY.lint,
+      // Spec 020 D14; its key's own tests are test/code/gate/policy.test.ts.
+      gate: DEFAULT_POLICY.gate,
       // Spec 018 D14; its key's own tests are test/shared/policy.test.ts.
       shared: DEFAULT_POLICY.shared,
     });

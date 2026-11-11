@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { loadBasePolicy, readBasePolicy } from "../../../src/core/code/gate/policy.js";
+import { readScope } from "../../../src/core/code/gate/scope.js";
 import { DEFAULT_POLICY } from "../../../src/core/types/policy.js";
 
 /* Spec 020 D6: the gate's policy is `squeal.config.json` at the base commit. */
@@ -21,6 +22,7 @@ const DEFAULTS = {
   exclude: DEFAULT_POLICY.complexity.exclude,
   maxFileBytes: 524_288,
   children: false,
+  scope: readScope(DEFAULT_POLICY).base,
 };
 
 /** A repository whose first commit holds `config` as `squeal.config.json` (none when `null`); returns it and that commit. */
@@ -79,6 +81,7 @@ describe("readBasePolicy", () => {
       exclude: ["src/gen/**"],
       maxFileBytes: 900,
       children: false,
+      scope: DEFAULTS.scope,
     });
   });
 
@@ -126,6 +129,35 @@ describe("readBasePolicy", () => {
     expect(fromBroken.problems).toEqual([expect.stringContaining("not valid JSON")]);
     expect(fromWrong.policy).toEqual(DEFAULTS);
     expect(fromWrong.problems).toEqual([expect.stringContaining("crap.threshold")]);
+  });
+
+  it("reads checks and gate.groups at the base, a name no test group has a problem (D14.1)", async () => {
+    const checks = [{ name: "browser", runner: "vitest", project: "browser", at: "manual" }];
+    const { root, base, commit } = repo(
+      JSON.stringify({ checks, gate: { groups: ["tests", "browserr"] } }),
+    );
+    commit(JSON.stringify({ checks: [{ ...checks[0], at: "edit" }] }));
+
+    const { policy, problems } = await loadBasePolicy(root, base);
+
+    expect(policy.scope?.configured).toEqual(["tests"]);
+    expect(policy.scope?.groups.map((g) => [g.name, g.at])).toEqual([
+      ["browser", "manual"],
+      ["tests", "edit"],
+      ["slow", "edit"],
+    ]);
+    expect(problems).toEqual([
+      expect.stringMatching(/^gate\.groups: "browserr" names no test group/),
+    ]);
+  });
+
+  it("reports a gate.groups that is not a list as a problem, and reads it unset", async () => {
+    const { root, base } = repo(JSON.stringify({ gate: { groups: "browser" } }));
+
+    const { policy, problems } = await loadBasePolicy(root, base);
+
+    expect(policy.scope?.configured).toBeNull();
+    expect(problems).toEqual([expect.stringContaining("gate.groups")]);
   });
 
   it("leaves no scratch file under $TMPDIR", async () => {
