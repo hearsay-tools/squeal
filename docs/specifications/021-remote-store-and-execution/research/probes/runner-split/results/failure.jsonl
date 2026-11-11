@@ -1,0 +1,11 @@
+{"scenario":"drop","load1":59.88,"step":"during run","remote":["18 1 144 sshd: root@notty","417 18 3 node --import tsx /opt/rs/host.mts /work/fixture","490 417 2 /usr/local/bin/node --experimental-import-meta-resolve --require /work/fixture/node_modules/.pnpm/vitest@5.0.3_vite@8.3.5/node_mod"]}
+{"scenario":"drop","load1":59.88,"step":"driver saw","error":"connection closed (ssh exit SIGKILL) with the request open","ms":2143,"sshExited":{"code":null,"signal":"SIGKILL"}}
+{"scenario":"drop","load1":59.88,"step":"remote 1.5 s later","remote":["18 1 146 sshd: root@notty"]}
+{"scenario":"drop","load1":58.87,"step":"remote 9.5 s later","remote":["18 1 154 sshd: root@notty"]}
+{"scenario":"hang","load1":58.87,"step":"during run","remote":["18 1 156 sshd: root@notty","515 18 2 node --import tsx /opt/rs/host.mts /work/fixture","588 515 1 /usr/local/bin/node --experimental-import-meta-resolve --require /work/fixture/node_modules/.pnpm/vitest@5.0.3_vite@8.3.5/node_mod"]}
+{"scenario":"hang","load1":56.46,"step":"driver saw","error":"deadline 10000 ms passed on run","ms":10003,"sshExited":null}
+{"scenario":"hang","load1":56.67,"step":"remote 1.5 s later","remote":["18 1 169 sshd: root@notty"]}
+{"scenario":"hang","load1":55.41,"step":"remote 9.5 s later","remote":["18 1 177 sshd: root@notty"]}
+{"scenario":"noinstall","load1":55.41,"step":"open","error":"vitest/node does not resolve from /work/noinstall (Cannot find module 'vitest/node'); Squeal runs only the project's own Vitest","ms":7}
+{"scenario":"node2421","load1":49.13,"step":"remote on another Node","remoteNode":"v24.21.0","localNode":"v24.22.1","runnerEnvironmentHoldsNode":false,"end":"completed","outcomes":["pass"],"failure":null}
+{"scenario":"snapshot","load1":25.73,"step":"new snapshot on the remote","outcomes":["fail"],"error":"Snapshot `snap 1` mismatched","observedPaths":["test/__snapshots__/snap.test.ts.snap"],"written":null,"differ":[]}

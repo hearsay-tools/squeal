@@ -1,0 +1,2 @@
+notty: after killing the local group, remote marker processes: 1
+tty: after killing the local group, remote marker processes: 0
