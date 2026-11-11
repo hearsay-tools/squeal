@@ -258,7 +258,10 @@ describe("squeal code --base reads the stores (spec 020 D11.7)", () => {
 
     expect(ran.ran).toEqual(["test/math.test.ts"]);
     expect(ran.code).toBe(0);
-    expect(ran.stderr).toBe("squeal code: Vitest: 1 test file to run (tests 1)\n");
+    // D17.1: the store holds the file's duration, so the estimate line gives a time.
+    expect(ran.stderr).toMatch(
+      /^squeal code: Vitest: 1 test file to run \(tests 1\)\nsqueal code: Vitest: 1 test file to run here, up to \d+ at once: about \d+ s from its stored duration\n$/,
+    );
     expect(ran.report.runs.map((r) => [r.completed, r.from])).toEqual([
       [["test/math.test.ts"], undefined],
     ]);
