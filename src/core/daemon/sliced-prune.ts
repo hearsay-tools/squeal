@@ -4,13 +4,14 @@ import { isBusy, withBusySliceSync } from "../store/connection.js";
 import type { PruneSlice } from "../store/prune.js";
 
 /**
- * Spec 021 D3 (row 021-09): the pause between two prune slices, with the
- * store's write lock free. SQLite's busy handler tries again at most every
- * 100 ms, so a process that waits for the lock takes it in this pause; a
+ * Spec 021 D3 (row 021-09): the least pause after a prune slice, with the
+ * store's write lock free. The pause is as long as the slice held the lock,
+ * so the prune holds it at most half the time, and a process whose busy
+ * handler tries every 1 to 100 ms finds it free in about half its tries; a
  * prune that took it back at once kept it from them (`store-contention.md`
  * Q3: two holders with 10 ms gaps failed a 10 s wait 4 times in 20).
  */
-export const PRUNE_GAP_MS = 100;
+export const MIN_PRUNE_GAP_MS = 10;
 
 /** The busy-wait key, as the daemon's note names the prune. */
 const PRUNING = "pruning";
@@ -21,8 +22,9 @@ interface SlicedPruneContext {
 }
 
 /**
- * The daemon's prune, one slice per turn of the event loop, `PRUNE_GAP_MS`
- * apart, so its socket and heartbeat run between them. A slice waits at most
+ * The daemon's prune, one slice per turn of the event loop, each followed by
+ * a pause as long as it took and at least `MIN_PRUNE_GAP_MS`, so its socket
+ * and heartbeat run between them. A slice waits at most
  * `BUSY_SLICE_MS` for a busy store and is tried again after
  * `busyBackoffMs`; what waited goes to `busyWaits`. One prune runs at a
  * time, and `stop` ends it between slices.
@@ -51,10 +53,13 @@ export class SlicedPrune {
         if (this.#stopped) return;
         const next = iterator.next();
         if (next.done === true) break;
+        let took = 0;
         for (let attempt = 0; ; attempt++) {
           if (this.#stopped) return;
+          const started = performance.now();
           try {
             withBusySliceSync(BUSY_SLICE_MS, next.value);
+            took = performance.now() - started;
             break;
           } catch (error) {
             if (!isBusy(error)) throw error;
@@ -63,7 +68,7 @@ export class SlicedPrune {
             await delay(busyBackoffMs(attempt), undefined, { ref: false });
           }
         }
-        await delay(PRUNE_GAP_MS, undefined, { ref: false });
+        await delay(Math.max(MIN_PRUNE_GAP_MS, Math.ceil(took)), undefined, { ref: false });
       }
     } catch (error) {
       this.#context.log(`prune failed: ${String(error)}`);
