@@ -5,6 +5,7 @@ import type { ShellSession } from "../delivery/code-since.js";
 import { resolveCommonDir, worktreeIdFor } from "../fs/git-layout.js";
 import { CLOSURE_METHOD } from "../keys/closure.js";
 import { testFileId } from "../keys/reverse-index.js";
+import { pinnedNode } from "../node-pin.js";
 import { readDaemonNotes } from "../notes.js";
 import { readPresence } from "../presence/decide.js";
 import { statusView } from "../presence/views.js";
@@ -44,6 +45,7 @@ import { statusIdentity } from "./identity.js";
 import { ignoredConfigOf, liveDaemonVersion } from "./ignored-config.js";
 import { readImports } from "./imports.js";
 import { lintStatusOf } from "./lint-status.js";
+import { sharedOf } from "./node-mismatch.js";
 import { type StatusStoreOptions, unavailable, withStatusStore } from "./open.js";
 import { openRuns } from "./open-runs.js";
 import { outstandingOf } from "./outstanding.js";
@@ -189,7 +191,7 @@ function snapshot(
     knownFailures,
     knownFailureCounts: knownFailureCounts(knownFailures),
     inherited: inheritedSources(store, states),
-    ...importsOf(store, worktreeId, keys, states),
+    ...importsOf(store, worktreeId, keys, states, at),
     breakdown: breakdown(states, keys, held),
     closureMethod: CLOSURE_METHOD,
     storeSchemaVersion: store.schemaVersion,
@@ -265,15 +267,22 @@ function openCheckpoint(
   return { checkpoint: { ...rest, owed: false } };
 }
 
-/** Spec 018 D5: the imports with a test file this worktree lists; nothing when none has. */
+/**
+ * Spec 018 D5: the imports with a test file this worktree lists; nothing
+ * when none has. D19: with `shared.ref` set, the Node the newest one needs.
+ */
 function importsOf(
   store: Store,
   worktreeId: WorktreeId,
   keys: readonly TestFileKeyRecord[],
   states: readonly KnownState[],
-): Pick<StatusSnapshot, "imports"> {
+  root: AbsolutePath,
+): Pick<StatusSnapshot, "imports" | "shared"> {
   const imports = readImports(store, worktreeId, keys, states);
-  return imports.length === 0 ? {} : { imports };
+  return {
+    ...(imports.length === 0 ? {} : { imports }),
+    ...sharedOf(readPolicy(root).shared.ref, imports, () => pinnedNode(root)),
+  };
 }
 
 /** Current inherited results grouped by source worktree and commit, largest group first. */
