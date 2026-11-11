@@ -75,10 +75,11 @@ import { answeredOf } from "./promoted-tier.js";
 import { priorityOf } from "./queue.js";
 import { BacklogQuiet, publishQuiet, quietSleepMs } from "./quiet.js";
 import { TierRecords } from "./record.js";
+import { lagging } from "./refine-apply.js";
 import { RequestProgress } from "./request-progress.js";
 import { RERUN_CAP } from "./rerun.js";
 import { takeRetries } from "./retries.js";
-import { retryRunner } from "./revision.js";
+import { fetchRunnerRetry, keyRunnerRetry, storeRunnerRetry } from "./revision.js";
 import { RunnerWork } from "./runner-work.js";
 import { busyLanes } from "./slots.js";
 import { groupView, slowView } from "./slow.js";
@@ -683,10 +684,22 @@ class TierScheduler implements Scheduler {
       (await this.#runnerWork.afterTier(async () => {
         const { context, ledger } = this.#started();
         const abandon = this.#awaitingInstall || this.#reinstalled;
-        if (!abandon) await retryRunner(context, ledger);
+        // Re-review of 0.1.434, B2: the runner is asked once; what it said is keyed, then stored
+        // with the checkpoint, each tried again on a busy store with the answers kept.
+        const retry = abandon ? null : await fetchRunnerRetry(context, ledger);
+        const touched =
+          retry === null
+            ? []
+            : await this.#request(operation, (n) =>
+                keyRunnerRetry(context, retry, n === 0 ? [] : lagging(context, ledger)),
+              );
         // Under the lock already: a refused stage is tried again without giving the lock up.
         return this.#request(operation, async () =>
-          this.#transact((_, held) => (abandon ? abandonFullSuite(held) : queue(held))),
+          this.#transact((_, held) => {
+            if (abandon) return abandonFullSuite(held);
+            if (retry !== null) storeRunnerRetry(context, held, retry, touched);
+            return queue(held);
+          }),
         );
       }, `${operation} after the runner work`));
     this.#pump();
@@ -1369,15 +1382,15 @@ class TierScheduler implements Scheduler {
   }
 
   /**
-   * `once`, a socket request's write (`#transact`, or its pass), tried again
-   * while a busy store refuses it, a slice per try (spec 021 D2), with
-   * `busyWaits`; once without. A refusal once the scheduler closes or its
+   * `once`, a socket request's write (`#transact`, its pass, or a runner
+   * retry's keys), tried again while a busy store refuses it, a slice per
+   * try (spec 021 D2), with `busyWaits`; once without. `n` counts the tries. A refusal once the scheduler closes or its
    * daemon stops answers the request with an error that says the store was
    * busy, so no request waits past the daemon.
    */
-  async #request<T>(operation: string, once: () => Promise<T>): Promise<T> {
+  async #request<T>(operation: string, once: (n: number) => Promise<T>): Promise<T> {
     const waits = this.options.busyWaits;
-    if (waits === undefined || this.#busy === null) return once();
+    if (waits === undefined || this.#busy === null) return once(0);
     try {
       return await retryWhileBusy(once, {
         sliceMs: this.options.busySliceMs,
