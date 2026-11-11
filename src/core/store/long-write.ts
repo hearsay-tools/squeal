@@ -1,5 +1,6 @@
 import { basename } from "node:path";
 import type { DatabaseSync, StatementSync } from "node:sqlite";
+import { observeWrites, type WriteEnd } from "./connection.js";
 
 /*
  * Spec 021 D3: a write transaction that holds a store's write lock longer
@@ -36,38 +37,37 @@ type Sink = (write: LongWrite) => void;
 /** Per thread, since each worker thread loads its own copy of this module. */
 let sink: Sink | null = null;
 
-/** Sends this thread's long writes to `to` (the daemon's log) until the returned function runs. */
+/**
+ * Sends this thread's long writes to `to` (the daemon's log) until the
+ * returned function runs: it observes the store's write transactions
+ * (`observeWrites`) while a sink is set.
+ */
 export function logLongWrites(to: Sink): () => void {
   sink = to;
+  observeWrites(startWrite);
   return () => {
-    if (sink === to) sink = null;
+    if (sink !== to) return;
+    sink = null;
+    observeWrites(null);
   };
 }
 
-/** A write transaction's start, for `endWrite`; `null` while no sink is set. */
-export interface WriteStart {
-  readonly db: DatabaseSync;
-  readonly at: number;
-  readonly changes: number;
-}
-
-/** Called once `db`'s `BEGIN IMMEDIATE` returned, so the lock is held. */
-export function startWrite(db: DatabaseSync): WriteStart | null {
+/** Told once `db`'s `BEGIN IMMEDIATE` returned, so the lock is held; what it returns, at the end. */
+function startWrite(db: DatabaseSync): WriteEnd | null {
   if (sink === null) return null;
-  return { db, at: performance.now(), changes: totalChanges(db) };
-}
-
-/** Called once the transaction `start` began ended; past `LONG_WRITE_MS`, tells the sink. */
-export function endWrite(start: WriteStart | null): void {
-  if (start === null || sink === null) return;
-  const ms = performance.now() - start.at;
-  if (ms <= LONG_WRITE_MS) return;
-  sink({
-    database: basename(fileOf(start.db)),
-    operation: operationOf(new Error().stack ?? ""),
-    ms: Math.round(ms),
-    rows: totalChanges(start.db) - start.changes,
-  });
+  const at = performance.now();
+  const changes = totalChanges(db);
+  // Named: the stack it reads skips its own frame (`STORE_FRAME`).
+  return function endWrite() {
+    const ms = performance.now() - at;
+    if (sink === null || ms <= LONG_WRITE_MS) return;
+    sink({
+      database: basename(fileOf(db)),
+      operation: operationOf(new Error().stack ?? ""),
+      ms: Math.round(ms),
+      rows: totalChanges(db) - changes,
+    });
+  };
 }
 
 /** The daemon log's line for `write`. */
