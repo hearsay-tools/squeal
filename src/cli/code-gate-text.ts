@@ -163,6 +163,16 @@ function prepareLine(p: PrepareRun): string[] {
 }
 
 /**
+ * D14.3, D14.4: what `selected` test files of a group the scope left out
+ * do, and the flag that runs them, after the words that count them; the
+ * verdict line and the pre-run print both say it.
+ */
+export function loadsChangedText(selected: number, add: string): string {
+  const one = selected === 1;
+  return `${one ? "loads" : "load"} changed code; add ${add} to run ${one ? "it" : "them"}`;
+}
+
+/**
  * D14.3: each group the scope left out that held a selected file, and the
  * flag that runs it; never "all tests".
  */
@@ -170,9 +180,8 @@ function leftOutText(report: GateReport): string {
   const groups = (report.scope?.leftOut ?? []).filter((g) => g.selected > 0);
   return groups
     .map(({ name, at, selected, add }) => {
-      const one = selected === 1;
-      const files = `${plural(selected, "test file")} ${one ? "loads" : "load"} changed code`;
-      return ` ${name} (${at}) did not run: ${files}; add ${add} to run ${one ? "it" : "them"}.`;
+      const files = `${plural(selected, "test file")} ${loadsChangedText(selected, add)}`;
+      return ` ${name} (${at}) did not run: ${files}.`;
     })
     .join("");
 }
