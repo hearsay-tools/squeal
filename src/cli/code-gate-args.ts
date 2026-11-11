@@ -1,10 +1,11 @@
 /*
  * Spec 020 D1 (row 020-05): the arguments of `squeal code --base`. D8 adds
- * `--exceptions` (row 020-09), D13.2 `--parts` (row 020-08b).
+ * `--exceptions` (row 020-09), D13.2 `--parts` (row 020-08b), D14.1
+ * `--group` (row 020-15a).
  */
 
 export const CODE_GATE_USAGE =
-  "squeal code --base <ref> [<path>...] [--test <file>...] [--parts <dir>...] [--timeout <seconds>] [--exceptions <file>] [--json]";
+  "squeal code --base <ref> [<path>...] [--test <file>...] [--group <name>...] [--parts <dir>...] [--timeout <seconds>] [--exceptions <file>] [--json]";
 
 /** D3.4: the one budget over every run, in seconds. */
 export const DEFAULT_BUDGET_SECONDS = 600;
@@ -19,6 +20,8 @@ export interface GateArgs {
   readonly exceptions?: string;
   /** D13.2: the directories of `ci record`'s parts, as given; absent without `--parts`. */
   readonly parts?: readonly string[];
+  /** D14.1: the check groups `--group` adds to the scope; absent without `--group`. */
+  readonly groups?: readonly string[];
 }
 
 /** `--flag=value` as the flag and its value; any other argument as itself. */
@@ -36,6 +39,7 @@ interface Draft {
   readonly paths: string[];
   readonly tests: string[];
   readonly parts: string[];
+  readonly groups: string[];
 }
 
 /** The options that take one value: each stores it, or says why it cannot. */
@@ -61,8 +65,8 @@ const VALUED: Readonly<Record<string, (value: string, into: Draft) => string | n
 
 /**
  * The options that take the arguments after them up to the next option:
- * `--test`'s files (D3.1) and `--parts`'s directories (D13.2). Each stores
- * them, or says why it cannot.
+ * `--test`'s files (D3.1), `--parts`'s directories (D13.2) and `--group`'s
+ * check groups (D14.1). Each stores them, or says why it cannot.
  */
 const LISTED: Readonly<Record<string, (values: readonly string[], into: Draft) => string | null>> =
   {
@@ -76,6 +80,11 @@ const LISTED: Readonly<Record<string, (values: readonly string[], into: Draft) =
       into.parts.push(...dirs);
       return null;
     },
+    "--group": (names, into) => {
+      if (names.length === 0 || names.includes("")) return "--group names no check group";
+      into.groups.push(...names);
+      return null;
+    },
   };
 
 /** The values after `args[i]` up to the next option, at most `most`; and the index of the last. */
@@ -86,10 +95,10 @@ function valuesAfter(args: readonly string[], i: number, most: number) {
 }
 
 /**
- * D1's arguments. `--test` and `--parts` take every argument after them up
- * to the next option, as `ci export --parts` does, so paths go before them;
- * they may also repeat. `--changed` and `--told` are usage errors with
- * `--base`.
+ * D1's arguments. `--test`, `--parts` and `--group` take every argument
+ * after them up to the next option, as `ci export --parts` does, so paths
+ * go before them; they may also repeat. `--changed` and `--told` are usage
+ * errors with `--base`.
  */
 export function parseGateArgs(args: readonly string[]): GateArgs | { readonly error: string } {
   const draft: Draft = {
@@ -100,6 +109,7 @@ export function parseGateArgs(args: readonly string[]): GateArgs | { readonly er
     paths: [],
     tests: [],
     parts: [],
+    groups: [],
   };
   for (let i = 0; i < args.length; i++) {
     const arg = args[i] as string;
@@ -125,7 +135,7 @@ export function parseGateArgs(args: readonly string[]): GateArgs | { readonly er
     } else if (arg.startsWith("--")) return { error: `unknown option "${arg}"` };
     else draft.paths.push(arg);
   }
-  const { ref, budget, exceptions, json, paths, tests, parts } = draft;
+  const { ref, budget, exceptions, json, paths, tests, parts, groups } = draft;
   if (ref === null) return { error: "--base names no ref" };
   const budgetSeconds = budget ?? DEFAULT_BUDGET_SECONDS;
   return {
@@ -136,5 +146,6 @@ export function parseGateArgs(args: readonly string[]): GateArgs | { readonly er
     json,
     ...(exceptions === null ? {} : { exceptions }),
     ...(parts.length === 0 ? {} : { parts }),
+    ...(groups.length === 0 ? {} : { groups }),
   };
 }

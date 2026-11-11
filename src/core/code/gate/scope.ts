@@ -3,7 +3,7 @@ import { compare } from "../../fs/compare.js";
 import type { CheckMoment, CheckRunner, ResolvedGroup } from "../../types/check-groups.js";
 import type { RelativePath } from "../../types/common.js";
 import type { TestFileRef } from "../../types/keys.js";
-import type { Policy } from "../../types/policy.js";
+import { DEFAULT_POLICY, type Policy } from "../../types/policy.js";
 import type { TestFileEvidence } from "./types.js";
 
 /*
@@ -104,13 +104,15 @@ export function readScope(policy: Policy): {
 }
 
 /**
- * D14.1: the scope at `base` with the `--group` names `added`; or the usage
- * error of a name that is not a test group there (D1, exit 2).
+ * D14.1: the scope at `given` with the `--group` names `added`; or the
+ * usage error of a name that is not a test group there (D1, exit 2). With
+ * no `given`, the default groups with no `gate.groups`.
  */
 export function resolveScope(
-  base: ScopeBase,
+  given: ScopeBase | undefined,
   added: readonly string[],
 ): GateScope | { readonly error: string } {
+  const base = given ?? readScope(DEFAULT_POLICY).base;
   const tests = base.groups.filter(isTestGroup);
   for (const name of added) {
     const group = base.groups.find((g) => g.name === name);
@@ -173,4 +175,76 @@ export function leftOutLoaders(
     (f) => f.path === path || f.loads === null || f.loads.includes(path),
   );
   return [...new Set(loading.map((f) => f.path))].sort(compare);
+}
+
+/** A selected file the scope leaves out, and its group. */
+export interface LeftOutRef {
+  readonly ref: TestFileRef;
+  readonly group: string;
+}
+
+/** D14.2, D14.3: one run's split of each runner's selection by the scope, and its counts. */
+export interface ScopeTally {
+  /**
+   * The files of `chosen` the scope runs, `--test` files (`tests`) always
+   * among them, and the ones it leaves out; `listed` are every test file
+   * of the runner, which the left-out groups' counts read.
+   */
+  split(
+    runner: TestFileEvidence["runner"],
+    listed: readonly TestFileRef[],
+    chosen: readonly TestFileRef[],
+    tests: ReadonlySet<RelativePath>,
+  ): { readonly run: TestFileRef[]; readonly leftOut: LeftOutRef[] };
+  /** The scope evidence once the left-out files' closures are read. */
+  evidence(files: readonly LeftOutFile[]): ScopeEvidence;
+}
+
+/** A tally of `scope` over the runners' selections, in the order they are split. */
+export function tallyScope(scope: GateScope): ScopeTally {
+  const counts = new Map<string, { at: CheckMoment; files: number; selected: number }>();
+  const count = (place: ReturnType<typeof placeFile>) => {
+    let tally = counts.get(place.group);
+    if (tally === undefined) {
+      tally = { at: place.at, files: 0, selected: 0 };
+      counts.set(place.group, tally);
+    }
+    return tally;
+  };
+  return {
+    split(runner, listed, chosen, tests) {
+      for (const ref of listed) {
+        const place = placeFile(scope, runner, ref);
+        if (!place.inScope) count(place).files += 1;
+      }
+      const run: TestFileRef[] = [];
+      const leftOut: LeftOutRef[] = [];
+      for (const ref of chosen) {
+        const place = placeFile(scope, runner, ref);
+        if (place.inScope || tests.has(ref.path)) run.push(ref);
+        else {
+          leftOut.push({ ref, group: place.group });
+          count(place).selected += 1;
+        }
+      }
+      return { run, leftOut };
+    },
+    evidence(files) {
+      const order = scope.groups.map((g) => g.name);
+      const leftOut = [...counts]
+        .sort(([a], [b]) => order.indexOf(a) - order.indexOf(b))
+        .map(([name, t]) => ({
+          name,
+          at: t.at,
+          files: t.files,
+          selected: t.selected,
+          add: addGroup(name),
+        }));
+      const byRunner = (f: LeftOutFile) => (f.runner === "vitest" ? 0 : 1);
+      const sorted = [...files].sort(
+        (a, b) => byRunner(a) - byRunner(b) || compare(a.path, b.path),
+      );
+      return { inScope: scope.inScope, leftOut, files: sorted };
+    },
+  };
 }
