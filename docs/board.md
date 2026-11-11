@@ -2226,6 +2226,7 @@ Spec folder `specifications/021-remote-store-and-execution/` (stage: research; t
 | 021-17 the gate for one daemon per clone | planned | Spec D16, a week after 021-07 to 021-16. | Lock watch and main-thread sampling repeated; findings file. |
 | 021-18 the background ceiling | running (worker b7f5103c, claude opus xhigh; `tasks/wave-2.md`) | Spec D18 as amended 2026-11-11: background tiers admitted only while busy CPUs are below `capacity.backgroundShare` of the CPUs (default 75%), a one-permit floor, a log line per refusal. | Tests for refusal, floor, edit tiers untouched, the setting; review PASS. |
 | 021-19 the budget measured | planned | Spec D18, a week after 021-18, this host and one other machine. | Findings file. |
+| 021-20 import and the code gate's kept results as daemon requests | proposed (from 021-16, 2026-11-11; with spec 018 and 020 coordinators) | `squeal import` and the gate keeper (`src/core/code/gate/keep.ts`) write the store themselves: their transactions create check rows and read the ids back, import creates its tables, and a bundle can be tens of MB, none of which a sent statement batch carries. A daemon-side request runs them in the daemon's retried path; import in slices (spec 021 D3, left to 018). | Both write through the daemon when one serves; import sliced; reviews PASS. |
 
 ## Later
 
