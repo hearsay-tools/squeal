@@ -1,0 +1,52 @@
+{
+  "format": "squeal-code-gate/1",
+  "createdAt": "2026-11-11T02:24:59.138Z",
+  "versions": {
+    "squeal": "0.1.430",
+    "counter": 5,
+    "coverageProvider": 3,
+    "coverageRecord": 4,
+    "qualityPolicy": 3
+  },
+  "base": {
+    "ref": "main",
+    "commit": "2ea20463ef75232d085305ddd0b3dee7ddeef3a2",
+    "policy": {
+      "complexityThreshold": 20,
+      "crapThreshold": 30,
+      "coverageExclude": [
+        "**/*.test.ts"
+      ],
+      "complexityInclude": [
+        "**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,py}"
+      ],
+      "complexityExclude": [
+        "**/dist/**",
+        "**/build/**",
+        "**/vendor/**",
+        "**/*.min.js"
+      ],
+      "complexityMaxFileBytes": 524288
+    }
+  },
+  "head": {
+    "commit": "2ea20463ef75232d085305ddd0b3dee7ddeef3a2",
+    "dirty": true,
+    "paths": []
+  },
+  "budget": {
+    "seconds": 30,
+    "timedOut": false
+  },
+  "functions": [],
+  "uncounted": [],
+  "runs": [],
+  "verdict": "pass",
+  "counts": {
+    "pass": 0,
+    "violation": 0,
+    "incomplete": 0,
+    "skipped": 0,
+    "accepted": 0
+  }
+}

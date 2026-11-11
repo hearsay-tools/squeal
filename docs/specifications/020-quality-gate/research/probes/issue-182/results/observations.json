@@ -1,0 +1,152 @@
+[
+  {
+    "mode": "unchanged",
+    "at": "2026-11-11T02:24:58.589Z",
+    "load": 7.53,
+    "cpuCount": 24,
+    "availableCpuCount": 24,
+    "root": "/home/agent/projects/squeal/.ai/cezar/t/ee94335b/squeal-issue-182-2Yj9zh",
+    "command": [
+      "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+      "--disable-warning=ExperimentalWarning",
+      "/home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.430/dist/cli/squeal.mjs",
+      "code",
+      "--base",
+      "main",
+      "--json",
+      "--timeout",
+      "30"
+    ],
+    "envOverride": {
+      "ISSUE182_QUIET": "0"
+    },
+    "elapsedMs": 614,
+    "exit": 0,
+    "signal": null,
+    "stdoutBytes": 1064,
+    "stderrBytes": 0,
+    "parsed": true,
+    "prefixBytes": 0,
+    "report": {
+      "format": "squeal-code-gate/1",
+      "versions": {
+        "squeal": "0.1.430",
+        "counter": 5,
+        "coverageProvider": 3,
+        "coverageRecord": 4,
+        "qualityPolicy": 3
+      },
+      "verdict": "pass",
+      "runs": []
+    }
+  },
+  {
+    "mode": "changed",
+    "at": "2026-11-11T02:24:59.207Z",
+    "load": 8.13,
+    "cpuCount": 24,
+    "availableCpuCount": 24,
+    "root": "/home/agent/projects/squeal/.ai/cezar/t/ee94335b/squeal-issue-182-2Yj9zh",
+    "command": [
+      "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+      "--disable-warning=ExperimentalWarning",
+      "/home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.430/dist/cli/squeal.mjs",
+      "code",
+      "--base",
+      "main",
+      "--json",
+      "--timeout",
+      "30"
+    ],
+    "envOverride": {
+      "ISSUE182_QUIET": "0"
+    },
+    "elapsedMs": 1030,
+    "exit": 0,
+    "signal": null,
+    "stdoutBytes": 1938,
+    "stderrBytes": 65,
+    "parsed": false,
+    "parseError": "Unexpected token 'T', \"TEST_ENV_S\"... is not valid JSON",
+    "prefixBytes": 175,
+    "report": {
+      "format": "squeal-code-gate/1",
+      "versions": {
+        "squeal": "0.1.430",
+        "counter": 5,
+        "coverageProvider": 3,
+        "coverageRecord": 4,
+        "qualityPolicy": 3
+      },
+      "verdict": "pass",
+      "runs": [
+        {
+          "runner": "vitest",
+          "selected": [
+            "small.test.ts"
+          ],
+          "completed": [
+            "small.test.ts"
+          ],
+          "notFinished": [],
+          "failed": [],
+          "durationMs": 241
+        }
+      ]
+    }
+  },
+  {
+    "mode": "changed-quiet",
+    "at": "2026-11-11T02:25:00.240Z",
+    "load": 8.13,
+    "cpuCount": 24,
+    "availableCpuCount": 24,
+    "root": "/home/agent/projects/squeal/.ai/cezar/t/ee94335b/squeal-issue-182-2Yj9zh",
+    "command": [
+      "/home/agent/.nvm/versions/node/v24.22.1/bin/node",
+      "--disable-warning=ExperimentalWarning",
+      "/home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.430/dist/cli/squeal.mjs",
+      "code",
+      "--base",
+      "main",
+      "--json",
+      "--timeout",
+      "30"
+    ],
+    "envOverride": {
+      "ISSUE182_QUIET": "1"
+    },
+    "elapsedMs": 792,
+    "exit": 0,
+    "signal": null,
+    "stdoutBytes": 1763,
+    "stderrBytes": 0,
+    "parsed": true,
+    "prefixBytes": 0,
+    "report": {
+      "format": "squeal-code-gate/1",
+      "versions": {
+        "squeal": "0.1.430",
+        "counter": 5,
+        "coverageProvider": 3,
+        "coverageRecord": 4,
+        "qualityPolicy": 3
+      },
+      "verdict": "pass",
+      "runs": [
+        {
+          "runner": "vitest",
+          "selected": [
+            "small.test.ts"
+          ],
+          "completed": [
+            "small.test.ts"
+          ],
+          "notFinished": [],
+          "failed": [],
+          "durationMs": 207
+        }
+      ]
+    }
+  }
+]

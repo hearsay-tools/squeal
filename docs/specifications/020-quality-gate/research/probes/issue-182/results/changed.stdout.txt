@@ -1,0 +1,94 @@
+TEST_ENV_STATUS=running
+TEST_ENV_BASE_URL=http://127.0.0.1:54227
+TEST_ENV_DESCRIPTOR=.ai/qa/test-env.json
+TEST_ENV_REUSED=0
+BROWSER_PROVIDER=agent-browser
+BROWSER_INSTALLED=1
+{
+  "format": "squeal-code-gate/1",
+  "createdAt": "2026-11-11T02:25:00.208Z",
+  "versions": {
+    "squeal": "0.1.430",
+    "counter": 5,
+    "coverageProvider": 3,
+    "coverageRecord": 4,
+    "qualityPolicy": 3
+  },
+  "base": {
+    "ref": "main",
+    "commit": "2ea20463ef75232d085305ddd0b3dee7ddeef3a2",
+    "policy": {
+      "complexityThreshold": 20,
+      "crapThreshold": 30,
+      "coverageExclude": [
+        "**/*.test.ts"
+      ],
+      "complexityInclude": [
+        "**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,py}"
+      ],
+      "complexityExclude": [
+        "**/dist/**",
+        "**/build/**",
+        "**/vendor/**",
+        "**/*.min.js"
+      ],
+      "complexityMaxFileBytes": 524288
+    }
+  },
+  "head": {
+    "commit": "2ea20463ef75232d085305ddd0b3dee7ddeef3a2",
+    "dirty": true,
+    "paths": [
+      {
+        "path": "small.test.ts",
+        "blob": "71d7acedc5a8adb247c4912a7098f8c9230945cd"
+      }
+    ]
+  },
+  "budget": {
+    "seconds": 30,
+    "timedOut": false
+  },
+  "functions": [
+    {
+      "path": "small.test.ts",
+      "qualifiedName": "<test>",
+      "occurrence": 0,
+      "line": 2,
+      "bodyHash": "a9fd2efde5c5d894",
+      "change": "edited",
+      "complexity": 1,
+      "coverage": null,
+      "crap": null,
+      "loaders": {
+        "expected": [],
+        "measured": []
+      },
+      "state": "skipped",
+      "gap": null
+    }
+  ],
+  "uncounted": [],
+  "runs": [
+    {
+      "runner": "vitest",
+      "selected": [
+        "small.test.ts"
+      ],
+      "completed": [
+        "small.test.ts"
+      ],
+      "notFinished": [],
+      "failed": [],
+      "durationMs": 241
+    }
+  ],
+  "verdict": "pass",
+  "counts": {
+    "pass": 0,
+    "violation": 0,
+    "incomplete": 0,
+    "skipped": 1,
+    "accepted": 0
+  }
+}
