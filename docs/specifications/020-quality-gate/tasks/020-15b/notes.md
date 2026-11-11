@@ -31,6 +31,7 @@ Worker aaa57b1a, 2026-11-11. Spec D14.4, on the integrated 020-15a and 020-16b b
 - `test/cli/code-gate-relaunch.test.ts` (`node -e` children): the args, the mark and the exit code; no frame and a cut frame give exit 3 with an empty stdout; SIGTERM is forwarded (through a test emitter, not a real signal to the worker); a marked process writes its frame to the marked descriptor and does not relaunch; text mode stays in process.
 - `test/cli/code-gate-json-stdout.test.ts` (the real `src/cli/index.ts` through tsx, two processes): `research/issue-182.md`'s probe. A global setup writes `console.log` and starts `execFileSync(..., { stdio: "inherit" })` that writes to stdout. stdout parses whole; both texts are on stderr, after the selection and setup lines.
 - Updated: five tests that expected an empty stderr now expect the selection line (`code-gate`, `code-gate-exceptions`, `code-gate-children`, `code-gate-stored` twice).
+- Key validity (agreed, request 69009078): `test/keys/key-format.test.ts` asked a case for the new adapter lines. `VitestInput.globalSetups` makes `harness/vitest.ts` call `globalSetups()` once open (in `openedReads`, which keeps `vitestCase` at CC 18); its answer is no output, and the last release skips the call. The case in `cases/adapter/environment.ts`: a root global setup beside two projects. The keys equal the last release's; no version moved. `test/cli/code-gate-prerun.test.ts` is on `test/version-sensitive.txt`.
 
 ## For whoever continues
 
