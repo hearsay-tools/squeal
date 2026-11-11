@@ -48,7 +48,7 @@ export async function nodeTestCase(input: NodeTestInput, scratch: string): Promi
       name: PROJECT,
       node: process.execPath,
       argv: [...(input.argv ?? [])],
-      env: {},
+      env: { ...input.env },
       include: input.include ?? ["test/*.test.mjs"],
     },
     {

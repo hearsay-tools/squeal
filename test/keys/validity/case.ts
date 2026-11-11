@@ -415,6 +415,12 @@ export interface NodeTestInput {
   /** The project's flags before `--test`; default none. */
   readonly argv?: readonly string[];
   /**
+   * The project's environment; default none. A `--require` in its
+   * `NODE_OPTIONS` puts the recorder first there too (task 001-390), so a
+   * run's failures are read for its signatures (row 018-36).
+   */
+  readonly env?: Readonly<Record<string, string>>;
+  /**
    * The adapter's `concurrency` (task 004-37): the files a run in the
    * adapter's own lane starts at once. A group lane's run starts every
    * file. Default none: every run starts every file.
