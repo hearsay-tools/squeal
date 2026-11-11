@@ -1,0 +1,12 @@
+store /home/agent/projects/squeal/.ai/cezar/t/6b0d8161/stores/squeal/store.sqlite; window 7 d to 2026-11-11T12:14:16.416Z; main commits known: 9207
+
+A. local results recorded in the window, by commit class (rows = check results; one row per check and key)
+  main_clean    rows    117968 (12.9%)  check-seconds   186800 (18.3%)  fails 9
+  main_dirty    rows    113119 (12.4%)  check-seconds    79576 (7.8%)  fails 716
+  branch_clean  rows    271230 (29.7%)  check-seconds   314165 (30.8%)  fails 137
+  branch_dirty  rows    410431 (45.0%)  check-seconds   438759 (43.0%)  fails 1556
+  no_commit     rows         0 (0.0%)  check-seconds        0 (0.0%)  fails 0
+  fails total 2418; at clean main commits 9
+
+B. current known states (all worktrees): own 40350, inherited 187155 (82.3%)
+  inherited from a run at a main commit 79859 (42.7%), at a branch commit 107296 (57.3%), no commit 0

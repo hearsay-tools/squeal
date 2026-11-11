@@ -1,0 +1,34 @@
+store /home/agent/projects/squeal/.ai/cezar/t/6b0d8161/stores/cezar/store.sqlite; window 7 d to 2026-11-11T12:16:50.669Z; main commits known: 1995
+
+A. local results recorded in the window, by commit class (rows = check results; one row per check and key)
+  main_clean    rows    414396 (12.9%)  check-seconds   485001 (14.9%)  fails 2
+  main_dirty    rows    450713 (14.0%)  check-seconds   361122 (11.1%)  fails 2132
+  branch_clean  rows   1098600 (34.1%)  check-seconds  1139567 (35.1%)  fails 345
+  branch_dirty  rows   1258368 (39.1%)  check-seconds  1263784 (38.9%)  fails 2420
+  no_commit     rows         0 (0.0%)  check-seconds        0 (0.0%)  fails 0
+  fails total 4899; at clean main commits 2
+
+B. current known states (all worktrees): own 169855, inherited 739288 (81.3%)
+  inherited from a run at a main commit 384825 (52.1%), at a branch commit 354463 (47.9%), no commit 0
+
+C. imports: commit, landed (committer time), export created, imported; minutes after landing
+  b3f058b7 landed 20:46:39 export +14.9 min, first import +62.7 min
+  13582fdd landed 19:13:40 export +21.8 min, first import +155.7 min
+  816d95e4 landed 19:38:25 export +49.4 min, first import +131.2 min
+  afd1b777 landed 18:17:37 export +17.7 min, first import +217.2 min
+  1ed7d04f landed 21:32:28 export +15.1 min, first import +22.4 min
+  a47289f9 landed 21:35:48 export +29.4 min, first import +32.0 min
+  b0567e71 landed 22:18:10 export +16.2 min, first import +24.1 min
+  7e0883a4 landed 23:52:36 export +17.1 min, first import +21.9 min
+  8df80218 landed 00:05:12 export +18.6 min, first import +33.7 min
+  3c814d6f landed 00:26:23 export +15.4 min, first import +41.3 min
+  c692ef01 landed 02:25:30 export +33.5 min, first import +53.7 min
+  c9fb4e00 landed 03:02:12 export +16.3 min, first import +19.6 min
+  bea86e3e landed 03:50:26 export +16.5 min, first import +179.0 min
+  6807e009 landed 09:08:04 export +17.0 min, first import +18.5 min
+  9c218872 landed 09:08:08 export +32.6 min, first import +56.7 min
+  c36457c3 landed 10:12:41 export +24.1 min, first import +63.4 min
+  3f2785cc landed 10:58:55 export +16.8 min, first import +31.1 min
+  9cea6f73 landed 11:36:06 export +17.7 min, first import +25.9 min
+  main commits landed from 24 h before the first import to the window end: 60; imports 18
+  known states with an imported origin now: 0; worktree keys equal to an imported key: 0; worktree environments by Node: [{"v":"v24.22.1","n":477}]
