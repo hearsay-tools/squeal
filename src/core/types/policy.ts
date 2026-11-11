@@ -321,6 +321,20 @@ export interface NodeTestProject {
   readonly exclude?: readonly string[];
   /** Spec 004 D1: every file `include` lists is a slow file. Absent means `false`. */
   readonly slow?: boolean;
+  /**
+   * Spec 020 D15 (row 020-16b): a command `squeal code --base` runs before
+   * the entry's first selected file, as the base declares it. The daemon
+   * does not open an entry that has one. Absent means none.
+   */
+  readonly prepare?: NodeTestPrepare;
+}
+
+/** Spec 020 D15.1: a node:test entry's `prepare` command. */
+export interface NodeTestPrepare {
+  /** An argument list, never a shell string: the executable, then its arguments. */
+  readonly command: readonly string[];
+  /** Caps the command inside the gate's one budget (D3.4); absent, the budget alone caps it. */
+  readonly timeoutSeconds?: number;
 }
 
 /**

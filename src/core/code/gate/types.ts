@@ -2,6 +2,7 @@ import type { FunctionCount } from "../../types/code.js";
 import type { RelativePath } from "../../types/common.js";
 import type { FileHash } from "../../types/keys.js";
 import type { CoverageRecord } from "../coverage/types.js";
+import type { PrepareRun } from "./prepare.js";
 import type { ScopeEvidence } from "./scope.js";
 
 /*
@@ -125,6 +126,11 @@ export interface TestFileEvidence {
    * with the key off, and for a file read from the stores.
    */
   readonly children?: ChildFiles;
+  /**
+   * D15.3: its node:test entry's `prepare` failed, timed out, or is declared
+   * only at the head, so it did not run; `completed` is `false`.
+   */
+  readonly notPrepared?: true;
 }
 
 /**
@@ -146,6 +152,8 @@ export interface Evidence {
   readonly budgetSeconds: number;
   /** D14: the scope and the selected files it left out; absent when the caller gave no scope. */
   readonly scope?: ScopeEvidence;
+  /** D15.3: each node:test entry's `prepare` that a selected file waited for; absent when none. */
+  readonly prepares?: readonly PrepareRun[];
 }
 
 /** D6: the policy, read at the base commit. */
@@ -170,7 +178,9 @@ export type GateGap =
   /** D11.3: a loader skipped a test, and the records in hand do not prove a pass. */
   | "skipped"
   /** D14.2: a loader the scope left out did not run, and the records in hand do not prove a pass. */
-  | "left-out";
+  | "left-out"
+  /** D15.3: a loader did not run, because its node:test entry's `prepare` did not pass. */
+  | "not-prepared";
 
 /** D7: the verdict and its exit code (D1). */
 export type GateVerdict = "pass" | "violations" | "incomplete";
