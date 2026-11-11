@@ -5,6 +5,7 @@ import type { Revision } from "../types/revision.js";
 import type { RunnerClosure } from "../types/runner.js";
 import { refinedMetaKey } from "../types/scheduler.js";
 import type { SchedulerContext } from "./context.js";
+import { importsKeyed, importsWaiting } from "./imports-waiting.js";
 import type { Ledger } from "./ledger.js";
 import type { Mutex } from "./mutex.js";
 import { applyRunnerPart, fetchRunnerPart, recheckRunner } from "./refinement.js";
@@ -249,6 +250,8 @@ export class RunnerWork {
         async () => {
           const changedMeanwhile = ledger.refineChanges ?? new Set<RelativePath>();
           ledger.refineChanges = null;
+          // Review of 0.1.428, B1: the imports marked by now have their observed paths in the regrow below.
+          const imports = importsWaiting(context.store, context.worktreeId);
           const stale = await applyRunnerPart(
             context,
             ledger,
@@ -263,6 +266,7 @@ export class RunnerWork {
             ...(refined === null ? {} : { refined }),
             ...(listed === null ? {} : { listed }),
           });
+          importsKeyed(context.store, context.worktreeId, imports);
           this.host.applied();
         },
         refined === null ? "applying observed paths" : `applying revision ${refined}`,

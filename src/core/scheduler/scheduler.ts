@@ -52,6 +52,7 @@ import { updateCommitReport } from "./head-move.js";
 import { MergeHold } from "./hold.js";
 import { IgnoredMarks } from "./ignored-marks.js";
 import { ImportRewalk } from "./import-rewalk.js";
+import { clearImportsWaiting, markImportsWaiting } from "./imports-waiting.js";
 import {
   AWAITING_INSTALL_REASON,
   missingInstall,
@@ -293,6 +294,8 @@ class TierScheduler implements Scheduler {
     await this.#lock.run(async () => {
       if (this.#context) throw new Error("squeal scheduler: started twice");
       const { options } = this;
+      // Its keys read every import the store holds; an earlier daemon's wait is over.
+      clearImportsWaiting(options.store, options.worktreeId);
       const objectFormat = await readObjectFormat(options.root);
       const hasher = options.hasher ?? createFsHasher(options.root, objectFormat);
       const marks = new IgnoredMarks(
@@ -828,10 +831,12 @@ class TierScheduler implements Scheduler {
     return this.#updateCommit();
   }
 
-  refreshObserved(projects: readonly ProjectName[] = []): boolean {
+  refreshObserved(projects: readonly ProjectName[] = [], imports: readonly string[] = []): boolean {
     if (this.#closed || this.#reinstalled || this.#awaitingInstall || !this.#context) return false;
     // Row 018-28: the files whose set grew wait for the refinement's regrow, as another worktree's do.
     if (projects.length > 0) this.#context.keys.refreshObserved(projects);
+    // Review of 0.1.428, B1: until that regrow is applied, status names the imports it waits for.
+    markImportsWaiting(this.#context.store, this.#context.worktreeId, imports);
     this.#runnerWork.queueObserved();
     this.#pump();
     return true;
