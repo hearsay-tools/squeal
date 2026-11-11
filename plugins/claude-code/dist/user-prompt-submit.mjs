@@ -13008,6 +13008,8 @@ function probe(binary, args, options) {
       env: options.env,
       stdio: ["ignore", "pipe", "ignore"],
       timeout: PROBE_TIMEOUT_MS,
+      // SIGTERM can be ignored, and then the call never returns (review 018-30-0.1.436 B1).
+      killSignal: "SIGKILL",
       ...options.cwd === void 0 ? {} : { cwd: options.cwd }
     });
   } catch {
