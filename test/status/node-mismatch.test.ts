@@ -123,6 +123,11 @@ const PINS: readonly (readonly [string, PinnedNode, string])[] = [
     'The project\'s Node pin "lts/*" is not one exact version: pin 26.13.0 in .node-version or .nvmrc, then restart the daemon (`squeal stop`, then `squeal start`).',
   ],
   [
+    "a version older than Squeal supports",
+    { reason: "too-old", wanted: "v20.11.0" },
+    "The project pins Node 20.11.0, older than Squeal supports, so the daemon runs the session's Node: pin 26.13.0 in .node-version or .nvmrc, then restart the daemon (`squeal stop`, then `squeal start`).",
+  ],
+  [
     "a version not installed",
     { reason: "missing", wanted: "v26.13.0" },
     "The project pins Node 26.13.0, which is not installed here: install it, then restart the daemon (`squeal stop`, then `squeal start`).",
