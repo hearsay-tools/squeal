@@ -25,6 +25,7 @@ import { ignoredConfigLines } from "./ignored-config.js";
 import { importDefaultLines } from "./import-lines.js";
 import { lintStatusPart } from "./lint-status.js";
 import { fromBase } from "./next-step-text.js";
+import { nodeMismatchLines } from "./node-mismatch.js";
 import { outstandingLines } from "./outstanding-text.js";
 import { phaseLines } from "./phase-files.js";
 import { slowSlotLines } from "./slot-holders.js";
@@ -98,6 +99,8 @@ export function formatStatus(
     `Full-suite checkpoint: ${fullSuiteText(result, command)}`,
     // Spec 018 D5: an import none of whose results is current because the environment differs.
     ...importDefaultLines(result),
+    // Spec 018 D19: shared results recorded on another Node than the daemon runs, said once.
+    ...nodeMismatchLines(result.shared, command),
     ...owedLine(result),
     ...slowLine(result, command),
     // Spec 019 D5, D6 (row 019-16), with a `checks` key only: each group not all current, the commit.
