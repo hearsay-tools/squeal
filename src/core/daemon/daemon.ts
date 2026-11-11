@@ -250,7 +250,7 @@ class Daemon {
   readonly #observedSeen: ObservedSeen = {};
   /** What waits for a busy store, the pass's, the pump's and the timers' writes (task 001-422). */
   readonly #busyWaits: BusyWaits;
-  /** Spec 021 D2: the registration, the start's mark, writing requests and shutdown, retried. */
+  /** Spec 021 D2: the registration, the start's mark and the shutdown's writes, retried. */
   readonly #writes: DaemonWrites;
   /** Spec 011 C9 (row 011-69): one last-resort GC once no tier ran for 60 s. */
   readonly #idleGc: IdleGc;
@@ -278,7 +278,7 @@ class Daemon {
       now: this.#now,
       note: (text) => this.#note(text, undefined, undefined, BUSY_TOPIC),
     });
-    this.#writes = new DaemonWrites(opened.store, this.#busyWaits);
+    this.#writes = new DaemonWrites(this.#busyWaits);
     this.#idleGc = new IdleGc({
       now: this.#now,
       note: (text) => this.#note(text),
@@ -974,25 +974,13 @@ class Daemon {
     }
     // A runner that never started gets another chance before the checkpoint is planned.
     this.#vitest?.retry();
-    await this.#writable("a squeal run --all request");
     return this.#loop.scheduler.requestFullSuite(request);
-  }
-
-  /**
-   * Spec 021 D2: a socket request that writes waits until the store's write
-   * lock is free, a slice per try, the socket served between tries
-   * (`DaemonWrites.writable`). Its promote and focus do not wait: their one
-   * write, the yields row, is tried once with no wait (`TierYields`).
-   */
-  #writable(what: string): Promise<void> {
-    return this.#writes.writable(what, () => this.#phase === "stopping");
   }
 
   /** `squeal retry` (001-368): the stored requests that may run now are queued. */
   async #requestRetries(): Promise<void> {
     await this.#starting;
     if (this.#loop === null || this.#phase === "stopping") return;
-    await this.#writable("a squeal retry request");
     const { scheduler } = this.#loop;
     // Row 018-28: an import's observed entries key this worktree's files now, as a start would.
     this.#imports?.take((projects, imports) => scheduler.refreshObserved(projects, imports));
@@ -1043,7 +1031,6 @@ class Daemon {
     if (this.#loop === null || this.#phase === "stopping") {
       throw new Error("the daemon is not running a scheduler");
     }
-    await this.#writable("a squeal run slow request");
     return requestSlowSuite(this.#loop.scheduler);
   }
 
@@ -1063,7 +1050,6 @@ class Daemon {
     if (this.#loop === null || this.#phase === "stopping") {
       throw new Error("the daemon is not running a scheduler");
     }
-    await this.#writable(`a squeal run ${group} request`);
     return requestGroup(this.#loop.scheduler, group, held, paths);
   }
 
