@@ -47,8 +47,9 @@ const FORWARDED = ["SIGINT", "SIGTERM", "SIGHUP"] as const;
 
 /**
  * Spec 021 D1: the wrapper's own failure, the code `env`, `nice` and
- * `timeout` exit with when they did not start the command: its entry could
- * not be written within the bound, so the command did not run.
+ * `timeout` exit with when they did not start the command: the store refused
+ * its entry, busy past the bound or for any other reason, so the command did
+ * not run (review 0.1.434 B1).
  */
 export const HOLD_NOT_STARTED = 125;
 
@@ -65,10 +66,12 @@ export interface HoldDeps {
  * for the tiers it cancels, runs the command with the inherited stdio, and
  * removes the entry when it exits; the last removal asks the daemon to
  * resume. Exits with the command's code, `128 + n` for signal `n`, 127 or
- * 126 when it cannot start, 2 on a usage error. Without a store it runs the
- * command and says that nothing is on hold. Spec 021 D1 (#162): each write
- * asks a busy store again until the bound; an entry not written by then
- * starts no command, names the lock's holder and exits `HOLD_NOT_STARTED`.
+ * 126 when it cannot start, 2 on a usage error. Without a store, or with
+ * one it cannot open, it runs the command and says that nothing is on hold.
+ * Spec 021 D1 (#162): each write asks a busy store again until the bound;
+ * an entry the store refused, busy by then (naming the lock's holder) or
+ * for another reason (review 0.1.434 B1), starts no command and exits
+ * `HOLD_NOT_STARTED`.
  */
 export async function holdCommand(
   args: readonly string[],
@@ -91,10 +94,11 @@ export async function holdCommand(
       ? ({ not: "none", why: `${cwd} is not inside a git worktree` } as const)
       : begin(root, parsed, now(), bound.boundMs);
   if ("not" in begun) {
-    if (begun.not === "busy") {
+    if (begun.not !== "none") {
       const command = parsed.command.join(" ");
+      const again = begun.not === "busy" ? "; run it again" : "";
       io.stderr(
-        `squeal hold: nothing is on hold and \`${command}\` did not start: ${begun.why}; run it again\n`,
+        `squeal hold: nothing is on hold and \`${command}\` did not start: ${begun.why}${again}\n`,
       );
       return HOLD_NOT_STARTED;
     }

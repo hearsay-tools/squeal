@@ -168,3 +168,28 @@ describe("squeal hold beside a store another process holds (spec 021 D1)", {
     ]);
   });
 });
+
+describe("squeal hold when its entry's write fails (review 0.1.434 B1)", () => {
+  it("does not start the command, exits 125 and says why, as for a busy store", async () => {
+    const repo = fakeRepo();
+    const store = seedStore(repo);
+    // Any write the store refuses that is not a busy lock, as a full disk refuses it.
+    const db = new DatabaseSync(storePaths(repo.commonDir).database);
+    db.exec(
+      "CREATE TRIGGER reject_meta BEFORE INSERT ON meta BEGIN SELECT RAISE(ABORT, 'write rejected'); END",
+    );
+    db.close();
+    const ran = join(repo.main, "ran");
+
+    const out = await hold(["--", "touch", ran], repo.main);
+
+    expect(out.code).toBe(HOLD_NOT_STARTED);
+    expect(out.stderr).toBe(
+      `squeal hold: nothing is on hold and \`touch ${ran}\` did not start: ` +
+        "its Squeal store could not be written (write rejected)\n",
+    );
+    expect(existsSync(ran)).toBe(false);
+    expect(out.asked).toEqual([]);
+    expect(readCommandHolds(store, repo.mainId)).toEqual([]);
+  });
+});
