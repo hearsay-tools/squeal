@@ -165,6 +165,18 @@ export interface TestFileEvidence {
 }
 
 /**
+ * The gate's runners in the fixed order its report and its text list
+ * them. D18 changes the order they run in, not this one.
+ */
+export const GATE_RUNNERS: readonly TestFileEvidence["runner"][] = ["vitest", "node-test"];
+
+/** Each runner's name in the gate's text. */
+export const RUNNER_NAMES: Readonly<Record<TestFileEvidence["runner"], string>> = {
+  vitest: "Vitest",
+  "node-test": "node:test",
+};
+
+/**
  * D12.7: coverage files of child processes and threads. Each process
  * writes one file per thread it ran, so this counts files, not processes.
  */

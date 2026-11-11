@@ -25,7 +25,7 @@ import { type BasePrepares, declaresPrepare, type PrepareRun, prepareEntry } fro
 import { type KnownEvidence, type Picked, type SelectionSummary, tellSelection } from "./prerun.js";
 import { type Mapped, mapPayloads } from "./records.js";
 import { type GateScope, type LeftOutFile, type ScopeTally, tallyScope } from "./scope.js";
-import type { ChangedSet, Evidence, TestFileEvidence } from "./types.js";
+import { type ChangedSet, type Evidence, GATE_RUNNERS, type TestFileEvidence } from "./types.js";
 
 /*
  * Spec 020 D3 (row 020-03): the one-shot collector. It opens the project's
@@ -535,10 +535,8 @@ function byPath(a: TestFileRef, b: TestFileRef): number {
   return compare(a.path, b.path) || compare(a.project, b.project);
 }
 
-/** Vitest first, then node:test, whatever order they ran in (D18); by path within each. */
-const RUNNER_ORDER: readonly TestFileEvidence["runner"][] = ["vitest", "node-test"];
-
+/** In `GATE_RUNNERS`' order, whatever order they ran in (D18); by path within each. */
 function byRunnerAndPath(a: TestFileEvidence, b: TestFileEvidence): number {
-  const runner = RUNNER_ORDER.indexOf(a.runner) - RUNNER_ORDER.indexOf(b.runner);
+  const runner = GATE_RUNNERS.indexOf(a.runner) - GATE_RUNNERS.indexOf(b.runner);
   return runner || compare(a.path, b.path);
 }
