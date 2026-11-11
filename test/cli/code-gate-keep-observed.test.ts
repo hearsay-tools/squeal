@@ -161,3 +161,55 @@ describe("squeal code --base keeps a file at the key its daemon gives it, reads 
     },
   );
 });
+
+/*
+ * D17.3 keeps a file as a daemon stores one: only when its inputs held
+ * still for the whole run (spec 001 D5's stability check). A test that
+ * rewrites the source it loads is not kept, at the key it ran under or at
+ * the one its source has now; a steady test of the same run is.
+ */
+describe("squeal code --base keeps no file whose inputs changed during its run", () => {
+  let repo: FixtureRepo;
+  const STEADY: TestFileRef = { project: "", path: "test/steady.test.ts" };
+  const MUTATES: TestFileRef = { project: "", path: "test/mutates.test.ts" };
+
+  beforeAll(() => {
+    repo = createFixtureRepo({ files: { "squeal.config.json": POLICY("lookup-only") } });
+    git(repo.root, ["checkout", "-q", "-b", "feature"]);
+    write(repo, {
+      "src/steady.ts": "export const steady = (x: number) => x + 1;\n",
+      "src/mut.ts": "export const mut = (x: number) => x + 2;\n",
+      [STEADY.path]: `import { expect, it } from "vitest";\nimport { steady } from "../src/steady.ts";\n\nit("steady", () => {\n  expect(steady(1)).toBe(2);\n});\n`,
+      [MUTATES.path]: `import { appendFileSync } from "node:fs";\nimport { expect, it } from "vitest";\nimport { mut } from "../src/mut.ts";\n\nit("mutates", () => {\n  expect(mut(1)).toBe(3);\n  appendFileSync(new URL("../src/mut.ts", import.meta.url), "// touched by its test\\n");\n});\n`,
+    });
+    git(repo.root, ["add", "-A"]);
+    git(repo.root, ["commit", "-qm", "feature"]);
+  });
+
+  afterAll(() => repo?.cleanup());
+
+  it("keeps the steady file and not the one that rewrote its source", SLOW, async () => {
+    const keysOf = async () => {
+      const stored = storedFiles(repo.root, repo.env, () => {});
+      try {
+        const keys = await stored?.keys([STEADY, MUTATES]);
+        return [keys?.get(STEADY), keys?.get(MUTATES)] as CheckKey[];
+      } finally {
+        await stored?.close();
+      }
+    };
+    const [steady, before] = await keysOf();
+
+    const ran = await gate(repo, []);
+
+    expect([...ran.ran].sort()).toEqual([MUTATES.path, STEADY.path]);
+    expect(ran.report.runs[0]?.completed).toEqual([MUTATES.path, STEADY.path]);
+    const [, after] = await keysOf();
+    expect(after).not.toBe(before);
+    expect(runIdsAt(repo, steady as CheckKey)).toHaveLength(1);
+    expect([runIdsAt(repo, before as CheckKey), runIdsAt(repo, after as CheckKey)]).toEqual([
+      [],
+      [],
+    ]);
+  });
+});
