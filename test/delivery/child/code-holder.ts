@@ -4,19 +4,23 @@
  * main store's write lock every 10 ms with a `probeMs` busy timeout and
  * counts the tries that met a holder longer than that.
  *
- *   code-holder <code.sqlite> <store.sqlite> <holdMs> <probeMs>
+ *   code-holder <code.sqlite> <store.sqlite> <holdMs> <probeMs> [init]
  *
- * Prints `held` once the code lock is taken, then `{"free":n,"busy":n}`
- * before it commits, and exits 0.
+ * With `init` it makes the code store first, a new WAL file at schema 0,
+ * and holds the lock as a daemon that initializes it does, an uncommitted
+ * table written (review 0.1.434, B5). Prints `held` once the code lock is
+ * taken, then `{"free":n,"busy":n}` before it commits, and exits 0.
  */
 import { DatabaseSync } from "node:sqlite";
 
-const [code, store, hold, probe] = process.argv.slice(2);
+const [code, store, hold, probe, mode] = process.argv.slice(2);
 if (code === undefined || store === undefined || hold === undefined || probe === undefined) {
-  throw new Error("usage: code-holder <code.sqlite> <store.sqlite> <holdMs> <probeMs>");
+  throw new Error("usage: code-holder <code.sqlite> <store.sqlite> <holdMs> <probeMs> [init]");
 }
 const held = new DatabaseSync(code);
+if (mode === "init") held.exec("PRAGMA journal_mode = WAL");
 held.exec("BEGIN IMMEDIATE");
+if (mode === "init") held.exec("CREATE TABLE initializing (x)");
 const main = new DatabaseSync(store);
 main.exec(`PRAGMA busy_timeout = ${Number(probe)}`);
 console.log("held");
