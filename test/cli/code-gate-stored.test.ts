@@ -211,7 +211,7 @@ describe("squeal code --base reads the stores (spec 020 D11.7)", () => {
       expect(ran.ran).toEqual([]);
       expect(ran.code).toBe(0);
       expect(ran.stderr).toBe(
-        "squeal code: Vitest: 1 test file to run (tests 1)\nsqueal code: 1 of 1 selected test files read from the stores\n",
+        "squeal code: Vitest: 1 test file selected (tests 1): none to run, 1 read from the stores\nsqueal code: 1 of 1 selected test files read from the stores\n",
       );
       const { verdict, functions, runs } = ran.report;
       expect(verdict).toBe("pass");
