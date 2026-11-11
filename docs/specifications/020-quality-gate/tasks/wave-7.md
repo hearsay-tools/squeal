@@ -25,3 +25,19 @@ Stretch: spec 020 from its draft (`90158d0f1`) to release 0.1.433 (`53cd6aae4`):
 Known leads to confirm or drop: `src/core/code/gate/collect.ts` is 561 lines (the 020-17 integration notes name `plan`, `storedOf` and `preparedBefore` as parts to move out); `listingMetaKey` may be unread since 020-07b; `src/core/code/gate/stored.ts` may duplicate `openKeys` from `src/core/ci/export.ts`; `test/cli/code-gate-parts-cases.test.ts` is 319 lines.
 
 Write `docs/specifications/020-quality-gate/quality/2026-11.md`. No evals (the human, 2026-11-11). Do not run a full suite or `pnpm run build`.
+
+## 020-20 the gate certifies a part's inputs as the record path keys them
+
+Use /worker. Shape: repair. Baseline: main.
+
+Outcome: `--parts` takes a part only when every input the daemon would key is unchanged, symlink targets included, through one shared rule.
+
+Read: `quality/2026-11.md`, row `proposed-gate-parts-inputs`; spec D13.2; `src/core/code/gate/parts.ts` (`inputsOf`, `listingsBelow`, `hereOf`), `src/core/scheduler/observed.ts` (`observedGrowth`, `linkTargets`), `src/core/ci/export-inputs.ts` (`certifier`, `here`).
+
+Starting seam: a failing test first: a part whose test reads `data.json` through a symlink; after `ci record`, change the target; `--parts` must not take it, and the file runs. Then one pure "inputs of an observed read" in `scheduler/observed.ts` (closure, read paths, link targets, listings, minus scratch), called by `observedGrowth` and `inputsOf`; move `here` to `src/core/ci/inputs.ts` with the file hash as an argument.
+
+Owns: `gate/parts.ts`, `scheduler/observed.ts`, `ci/export-inputs.ts`, `ci/inputs.ts`, their tests.
+
+Leave alone: `collect.ts`, `order.ts`, `prerun.ts` (020-19); `scheduler/runner-work.ts` and `batch.ts` (spec 021).
+
+Done when: the symlink case is refused and the unchanged part is taken; `parts.ts` has no listing or `.git` branch of its own; the existing parts, export and observed tests pass; `test/keys/key-format.test.ts` passes with keys unchanged; lint and typecheck are clean. Do not run `pnpm run build` or a full suite.
