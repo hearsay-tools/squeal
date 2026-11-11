@@ -111,13 +111,17 @@ export class Keeper {
     const pending = this.#pending.get(run.runner);
     if (pending === undefined) return;
     this.#pending.delete(run.runner);
-    let kept: readonly Kept[];
     try {
-      kept = await this.#keepable(pending, run);
-    } finally {
-      pending.keys.endRun();
+      let kept: readonly Kept[];
+      try {
+        kept = await this.#keepable(pending, run);
+      } finally {
+        pending.keys.endRun();
+      }
+      if (kept.length > 0) await this.#write(kept, run.report, pending.keys);
+    } catch (error) {
+      this.#tell(`the gate kept no more results in the stores: ${messageOf(error)}`);
     }
-    if (kept.length > 0) await this.#write(kept, run.report, pending.keys);
   }
 
   /**
@@ -189,8 +193,7 @@ export class Keeper {
       };
       for (const file of files) keepFile(store, code, keys, { file, report, provenance, now });
     } catch (error) {
-      const why = error instanceof Error ? error.message : String(error);
-      this.#tell(`the gate kept no more results in the stores: ${why}`);
+      this.#tell(`the gate kept no more results in the stores: ${messageOf(error)}`);
     } finally {
       code?.close();
       store?.close();
@@ -234,4 +237,8 @@ function keepFile(
   });
   const context = { store, keys, worktreeId: provenance.worktreeId, now };
   storeResults(context, records, healsUnheld(store, file.paths));
+}
+
+function messageOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
