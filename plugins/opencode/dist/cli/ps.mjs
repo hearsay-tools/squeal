@@ -24,6 +24,15 @@ function currentUid() {
 import { availableParallelism, homedir } from "node:os";
 import { dirname as dirname4, isAbsolute as isAbsolute3, join as join5, resolve as resolve2 } from "node:path";
 
+// src/core/capacity/background.ts
+var DEFAULT_BACKGROUND_SHARE = 0.75;
+function isBackgroundShare(value) {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 1;
+}
+function backgroundCeiling(share2, cpus3) {
+  return Math.round(share2 * cpus3 * 100) / 100;
+}
+
 // src/core/fs/git-layout.ts
 import { createHash } from "node:crypto";
 import { existsSync, lstatSync, readFileSync, realpathSync } from "node:fs";
@@ -197,6 +206,7 @@ function userConfigPath(env = process.env) {
 function defaultHostSlots(cpus3 = availableParallelism()) {
   return Math.max(1, cpus3 - 1);
 }
+var backgroundShare = (v) => isBackgroundShare(v) ? null : "a number from 0 to 1";
 
 // src/core/ps/darwin.ts
 import { availableParallelism as availableParallelism2, cpus, loadavg, totalmem, uptime } from "node:os";
@@ -2148,7 +2158,11 @@ function fileLines(name2, file) {
 var STATE_WIDTH = 19;
 var DETAIL = "      ";
 var render = (snapshot, { full }) => {
-  const lines = [firstLine(snapshot), hostLine(snapshot.host), squealLine(snapshot)];
+  const lines = [
+    firstLine(snapshot),
+    hostLine(snapshot.host, snapshot.squeal.pool),
+    squealLine(snapshot)
+  ];
   if (snapshot.repositories.length === 0) lines.push("", "No Squeal daemon runs.");
   for (const repository of snapshot.repositories)
     lines.push("", ...repositoryBlock(repository, snapshot, full));
@@ -2190,13 +2204,15 @@ function firstLine(s) {
   const processes = count(s.squeal.testProcesses, "test process", "test processes");
   return `squeal ps \xB7 ${count(s.squeal.daemons, "daemon")}, ${processes} \xB7 ${flags}`;
 }
-function hostLine(h) {
+function hostLine(h, pool) {
   const load = h.load === null ? "load unknown" : `load ${h.load.map((l) => l.toFixed(1)).join(" ")}`;
+  const ceiling = pool.ceiling === void 0 ? [] : [`background ceiling ${Math.round(pool.ceiling * 10) / 10} busy CPUs`];
   const pressure2 = h.memoryPressure === null ? "memory pressure unknown" : `memory pressure ${share(h.memoryPressure.some)} (${share(h.memoryPressure.full)} full)`;
   const used = h.memTotal === null || h.memAvailable === null ? null : h.memTotal - h.memAvailable;
   const swap = h.swapUsed === null || h.swapTotal === null ? "swap unknown" : `swap ${ofGib(h.swapUsed, h.swapTotal)}`;
   return [
     `Host    ${load} on ${count(h.cpus, "CPU")}`,
+    ...ceiling,
     `CPU pressure ${h.cpuPressure === null ? "unknown" : share(h.cpuPressure)}`,
     pressure2,
     `${used === null || h.memTotal === null ? "memory unknown" : `memory ${ofGib(used, h.memTotal)} used`}, ${swap}`
@@ -2243,6 +2259,7 @@ function repositoryBlock(r, s, full) {
   ];
   for (const d of r.daemons) {
     lines.push(...daemonLines(d, s.at));
+    for (const h of d.hosts ?? []) lines.push(runnerHostLine(h, s.at));
     for (const p of d.processes) lines.push(...processLines(p, s.at, full));
   }
   return lines;
@@ -2267,6 +2284,19 @@ function daemonLines(d, at) {
     }),
     ...flagLines(d.flags)
   ];
+}
+function runnerHostLine(h, at) {
+  return row("  ", {
+    state: `  host ${h.runner ?? "runner"}`,
+    pid: String(h.pid),
+    detail: h.target === null ? "local" : `remote ${h.target} (ssh)`,
+    up: age(h.startedAt, at),
+    cpu: percent(h.cpuPct),
+    time: cpuTime2(h.cpuMs),
+    memory: bytes(h.privateBytes, true),
+    swap: bytes(h.swapBytes, true),
+    work: ""
+  });
 }
 function processLines(p, at, full) {
   const d = p.descendants;
@@ -2389,7 +2419,7 @@ function memoryShare(privateBytes, host) {
 var PERMIT2 = /^(pool\.\d+|slow(\.\d+)?|group\.[A-Za-z0-9][A-Za-z0-9_-]*\.\d+)\.lock$/;
 var REPOSITORY_PERMIT = /^(slow(\.\d+)?|group\.[A-Za-z0-9][A-Za-z0-9_-]*\.\d+)\.lock$/;
 var readPool = (source, places, daemons, readings = [source.locks()], cpus3 = source.host().cpus) => {
-  const slots = hostSlotsOf(places.userConfig, cpus3);
+  const { slots, ceiling } = capacityOf(places.userConfig, cpus3);
   const holders = /* @__PURE__ */ new Map();
   for (const locks of readings)
     for (const [file, pids3] of holdersOf(locks ?? [])) holders.set(file, pids3);
@@ -2407,8 +2437,8 @@ var readPool = (source, places, daemons, readings = [source.locks()], cpus3 = so
     }
   }
   if (readings.some((locks) => locks === null))
-    return { pool: { slots, held: null }, permits: /* @__PURE__ */ new Map(), foreign };
-  return { pool: { slots, held }, permits, foreign };
+    return { pool: { slots, held: null, ceiling }, permits: /* @__PURE__ */ new Map(), foreign };
+  return { pool: { slots, held, ceiling }, permits, foreign };
 };
 function holdersOf(locks) {
   const holders = /* @__PURE__ */ new Map();
@@ -2419,10 +2449,13 @@ function holdersOf(locks) {
   }
   return holders;
 }
-function hostSlotsOf(path, cpus3) {
-  const shape = { capacity: { hostSlots: positiveInteger, projects: () => null } };
-  const defaults = { capacity: { hostSlots: defaultHostSlots(cpus3) } };
-  return loadConfigFile(path, shape, defaults).value.capacity.hostSlots;
+function capacityOf(path, cpus3) {
+  const shape = { capacity: { hostSlots: positiveInteger, backgroundShare, projects: () => null } };
+  const defaults = {
+    capacity: { hostSlots: defaultHostSlots(cpus3), backgroundShare: DEFAULT_BACKGROUND_SHARE }
+  };
+  const { capacity } = loadConfigFile(path, shape, defaults).value;
+  return { slots: capacity.hostSlots, ceiling: backgroundCeiling(capacity.backgroundShare, cpus3) };
 }
 function permitFiles(places) {
   const files = [];
@@ -2601,8 +2634,10 @@ var attribute = (source, table, owners) => {
       if (mark !== null) marks.set(pid, mark);
     }
   }
+  const hosts = runnerHosts(source, table, owner, marks);
+  const hostPids = new Set(hosts.map((h) => h.pid));
   const isHead = (pid) => {
-    if (owner.has(pid)) return false;
+    if (owner.has(pid) || hostPids.has(pid)) return false;
     const parent = table.get(pid)?.ppid;
     if (!source.readsMarks) return parent !== void 0 && owner.has(parent);
     if (!marks.has(pid)) return false;
@@ -2647,8 +2682,29 @@ var attribute = (source, table, owners) => {
       descendants: descendants.get(head) ?? []
     });
   }
-  return { processes, unowned };
+  return { processes, unowned, ...hosts.length === 0 ? {} : { hosts } };
 };
+function runnerHosts(source, table, owner, marks) {
+  const hosts = [];
+  if (!source.readsMarks) return hosts;
+  for (const [pid, row2] of table) {
+    if (!owner.has(row2.ppid) || owner.has(pid) || marks.has(pid)) continue;
+    const args = source.cmdline(pid);
+    const host = args === null ? null : hostOf(args);
+    if (host !== null) hosts.push({ pid, daemonPid: row2.ppid, ...host });
+  }
+  return hosts;
+}
+function hostOf(args) {
+  const at = args.indexOf("runner-host");
+  if (at > 0 && !/(^|\/)ssh$/.test(args[0] ?? "")) {
+    const flag3 = args.indexOf("--runner", at);
+    return { runner: flag3 < 0 ? null : args[flag3 + 1] ?? null, target: null };
+  }
+  const command2 = args.at(-1) ?? "";
+  if (!/(^|\/)ssh$/.test(args[0] ?? "") || !/ runner-host /.test(command2)) return null;
+  return { runner: /--runner (\S+)/.exec(command2)?.[1] ?? null, target: args.at(-2) ?? null };
+}
 function nearest(table, pid, is) {
   for (let at = pid, steps = 0; at !== void 0 && steps <= table.size; steps++) {
     if (is(at)) return at;
@@ -2870,13 +2926,31 @@ function shapeOf(r, findings, o) {
         version: c.version
       })),
       processes: first.attribution.processes.filter((p) => p.daemonPid === pid).map(processOf),
-      flags: findings.daemons.get(pid) ?? []
+      flags: findings.daemons.get(pid) ?? [],
+      ...hostsOf(pid)
+    };
+  };
+  const hostsOf = (pid) => {
+    const hosts = (first.attribution.hosts ?? []).filter((h) => h.daemonPid === pid);
+    if (hosts.length === 0) return {};
+    return {
+      hosts: hosts.map((h) => {
+        const row2 = table.get(h.pid);
+        return {
+          pid: h.pid,
+          runner: h.runner,
+          target: h.target,
+          startedAt: row2 === void 0 ? null : startOf(row2.startTicks),
+          ...costOf(costs.get(h.pid))
+        };
+      })
     };
   };
   const below2 = new Map(first.attribution.processes.map((p) => [p.pid, p.descendants]));
   const pidsOf = (daemons2) => [
     ...daemons2.map((d) => d.pid),
-    ...daemons2.flatMap((d) => d.processes).flatMap((p) => [p.pid, ...below2.get(p.pid) ?? []])
+    ...daemons2.flatMap((d) => d.processes).flatMap((p) => [p.pid, ...below2.get(p.pid) ?? []]),
+    ...daemons2.flatMap((d) => d.hosts ?? []).map((h) => h.pid)
   ];
   const totalOf = (daemons2) => sumCosts(pidsOf(daemons2).flatMap((pid) => costs.get(pid) ?? []));
   const current = model.places.commonDir;
@@ -3047,7 +3121,8 @@ var DEFAULT_POLICY = {
   },
   gate: { groups: null },
   shared: { ref: null },
-  node: "project"
+  node: "project",
+  remote: { allowed: true }
 };
 
 // src/core/keys/glob.ts
@@ -3520,6 +3595,10 @@ var pythonInsideRoot = (entry) => {
   };
 };
 
+// src/core/daemon/policy-remote.ts
+var boolean4 = (v) => typeof v === "boolean" ? null : "true or false";
+var REMOTE_SHAPE = { remote: { allowed: boolean4 } };
+
 // src/core/keys/observed.ts
 import { createHash as createHash2 } from "node:crypto";
 var ABSENT_LISTING = createHash2("sha1").update("\0absent").digest("hex");
@@ -3600,7 +3679,7 @@ function slowInclude(value) {
 
 // src/core/daemon/policy.ts
 var POLICY_FILE = "squeal.config.json";
-var boolean4 = (v) => typeof v === "boolean" ? null : "true or false";
+var boolean5 = (v) => typeof v === "boolean" ? null : "true or false";
 var strings2 = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
 var inputs = (v) => {
   const isList = strings2(v) === null;
@@ -3618,23 +3697,23 @@ var orNull = (leaf) => (v) => {
 };
 var oneOf2 = (...values) => (v) => values.includes(v) ? null : `one of ${values.map((s) => `"${s}"`).join(", ")}`;
 var SHAPE = {
-  interrupt: { onRegression: boolean4 },
+  interrupt: { onRegression: boolean5 },
   stop: {
-    blockOnKnownFailures: boolean4,
-    requireFullSuite: boolean4,
+    blockOnKnownFailures: boolean5,
+    requireFullSuite: boolean5,
     waitMs: atLeastZero2,
-    requireSlowSuite: boolean4,
+    requireSlowSuite: boolean5,
     slowWaitMs: atLeastZero2,
     // Spec 019 D4 step 3.
     maxHolds: positiveInteger
   },
   // Spec 019 D1.
   checks: checkGroups,
-  testCommand: { denyWhenCurrent: boolean4 },
+  testCommand: { denyWhenCurrent: boolean5 },
   baseline: { onStart: oneOf2("lookup-then-run-missing", "lookup-only") },
   inputs,
   runtimeFiles,
-  observe: { runtimeInputs: boolean4 },
+  observe: { runtimeInputs: boolean5 },
   env: { allowlist: strings2 },
   runner: {
     tierSize: positiveInteger,
@@ -3655,12 +3734,13 @@ var SHAPE = {
     trigger: oneOf2("continuous", "idle"),
     quietMs: atLeastZero2
   },
-  delivery: { uncoveredEdits: boolean4 },
+  delivery: { uncoveredEdits: boolean5 },
   daemon: { idleExitMinutes: aboveZero3, unusedExitMinutes: aboveZero3 },
   store: { retentionDays: atLeastZero2, maxSizeMb: orNull(aboveZero3) },
   ...CODE_SHAPE,
   ...LINT_SHAPE,
   ...SHARED_SHAPE,
+  ...REMOTE_SHAPE,
   ...GATE_SHAPE,
   ...NODE_SHAPE
 };
@@ -4074,7 +4154,9 @@ function ownersOf(daemons, work) {
 function measured(discovery, attribution) {
   return [
     ...discovery.daemons.map((d) => d.row.pid),
-    ...attribution.processes.flatMap((p) => [p.pid, ...p.descendants])
+    ...attribution.processes.flatMap((p) => [p.pid, ...p.descendants]),
+    // Spec 021 D17: a daemon's runner hosts, local, or the ssh that reaches a remote one.
+    ...(attribution.hosts ?? []).map((h) => h.pid)
   ];
 }
 function followed(discovery, work, attribution) {

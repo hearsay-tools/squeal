@@ -2,11 +2,11 @@ import { createRequire as __squealCreateRequire } from "node:module";
 const require = __squealCreateRequire(import.meta.url);
 
 // src/core/daemon/front-desk.ts
-import { randomUUID as randomUUID3 } from "node:crypto";
+import { randomUUID as randomUUID4 } from "node:crypto";
 import { parentPort } from "node:worker_threads";
 
 // src/core/daemon/handlers.ts
-import { randomUUID as randomUUID2 } from "node:crypto";
+import { randomUUID as randomUUID3 } from "node:crypto";
 
 // src/core/types/common.ts
 var PAYLOAD_SCHEMA_VERSION = 1;
@@ -17,8 +17,217 @@ function daemonIncarnation(daemon) {
   return `${daemon.squealVersion}@${daemon.startedAt}#${daemon.token}`;
 }
 
+// src/core/store/codec.ts
+var CHECK_COLUMNS = "c.project AS check_project, c.test_path AS check_test_path, c.kind AS check_kind, c.full_name AS check_full_name";
+
+// src/core/store/repos/replaced.ts
+var FAILING_AT = `SELECT r.*, ${CHECK_COLUMNS}, f.summary, f.errors FROM results r
+  JOIN checks c ON c.id = r.check_id LEFT JOIN failure_texts f ON f.id = r.failure_id
+  WHERE r.key = ? AND r.outcome = 'fail'`;
+
+// src/core/store/prune-rules.ts
+var DAY_MS = 24 * 60 * 60 * 1e3;
+var LIVE_KEYS = `SELECT k.key FROM test_file_keys k JOIN worktrees w ON w.id = k.worktree_id
+  WHERE k.key IS NOT NULL`;
+var MAIN = "SELECT id FROM worktrees WHERE is_main = 1";
+var UNPROTECTED = `key NOT IN (${LIVE_KEYS})
+  AND NOT (worktree_id IN (${MAIN}) AND NOT EXISTS (
+    SELECT 1 FROM results n
+    WHERE n.check_id = results.check_id AND n.worktree_id IN (${MAIN})
+      AND (n.recorded_at > results.recorded_at
+           OR (n.recorded_at = results.recorded_at AND n.rowid > results.rowid))))`;
+var PRUNABLE = `${UNPROTECTED} AND recorded_at < ?`;
+
+// src/core/store/repos/results.ts
+var SELECT_RESULTS = `
+  SELECT r.*, ${CHECK_COLUMNS}, f.summary, f.errors
+  FROM results r
+  JOIN checks c ON c.id = r.check_id
+  LEFT JOIN failure_texts f ON f.id = r.failure_id`;
+var NEWEST_OF_FILE = `${SELECT_RESULTS}
+  WHERE c.project = ? AND c.test_path = ? AND r.key = (
+    SELECT r2.key FROM checks c2 JOIN results r2 ON r2.check_id = c2.id
+    WHERE c2.project = ? AND c2.test_path = ?
+    ORDER BY r2.recorded_at DESC, r2.rowid DESC LIMIT 1)
+  ORDER BY c.kind, c.full_name`;
+
+// src/core/store/repos/states.ts
+var SELECT_STATES = `SELECT s.*, ${CHECK_COLUMNS} FROM known_states s JOIN checks c ON c.id = s.check_id`;
+
+// src/core/daemon/write-batch.ts
+function parseBatch(value) {
+  if (typeof value !== "object" || value === null) return '"batch" must be an object';
+  const { sqls, rows } = value;
+  if (!Array.isArray(sqls) || !sqls.every((s) => typeof s === "string")) {
+    return '"batch.sqls" must be a list of strings';
+  }
+  for (const sql of sqls) {
+    const refused = refusedStatement(sql);
+    if (refused !== null) return refused;
+  }
+  if (!Array.isArray(rows)) return '"batch.rows" must be a list';
+  for (const row of rows) {
+    if (!Array.isArray(row) || !isIndex(row[0], sqls.length) || !row.slice(1).every(isParam)) {
+      return '"batch.rows" must hold [statement index, ...parameters]';
+    }
+  }
+  return { sqls, rows };
+}
+function isIndex(value, length) {
+  return Number.isInteger(value) && value >= 0 && value < length;
+}
+function isParam(value) {
+  if (value === null || typeof value === "string") return true;
+  if (typeof value === "number") return Number.isFinite(value);
+  if (typeof value !== "object") return false;
+  const keys = Object.keys(value);
+  const record = value;
+  if (keys.length !== 1) return false;
+  if (keys[0] === "bigint")
+    return typeof record.bigint === "string" && /^-?\d+$/.test(record.bigint);
+  return keys[0] === "bytes" && typeof record.bytes === "string";
+}
+var WRITES = /* @__PURE__ */ new Set(["INSERT", "REPLACE", "UPDATE", "DELETE"]);
+var CONFLICTS = /* @__PURE__ */ new Set(["ROLLBACK", "ABORT", "REPLACE", "FAIL", "IGNORE"]);
+function refusedStatement(sql) {
+  const tokens = tokenize(sql);
+  if (tokens === null) return "a statement has an unterminated quote or comment";
+  const first = tokens[0];
+  if (first?.kind !== "word" || !WRITES.has(first.upper)) {
+    return `only INSERT, REPLACE, UPDATE and DELETE are written, not ${JSON.stringify(sql.trim().slice(0, 40))}`;
+  }
+  const end = tokens.findIndex((t) => t.kind === "end");
+  if (end >= 0 && tokens.slice(end + 1).some((t) => t.kind !== "end")) {
+    return "one statement per entry: a statement follows the first";
+  }
+  const table = targetOf(tokens);
+  if (table === null) return `no table named in ${JSON.stringify(sql.trim().slice(0, 40))}`;
+  if (table.qualified) return `a table named with its schema is not written: ${table.name}`;
+  if (table.name.toLowerCase().startsWith("sqlite_")) {
+    return `SQLite's own table ${table.name} is not written`;
+  }
+  return null;
+}
+function targetOf(tokens) {
+  const upper = (i) => tokens[i]?.kind === "word" ? tokens[i]?.upper ?? "" : "";
+  const verb = upper(0);
+  let at = 1;
+  if ((verb === "INSERT" || verb === "UPDATE") && upper(at) === "OR" && CONFLICTS.has(upper(2))) {
+    at += 2;
+  }
+  if (verb === "INSERT" || verb === "REPLACE") {
+    if (upper(at) !== "INTO") return null;
+    at++;
+  }
+  if (verb === "DELETE") {
+    if (upper(at) !== "FROM") return null;
+    at++;
+  }
+  const name = tokens[at];
+  if (name === void 0 || name.kind !== "word" && name.kind !== "name") return null;
+  return { name: name.text, qualified: tokens[at + 1]?.kind === "dot" };
+}
+function tokenize(sql) {
+  const tokens = [];
+  const push = (kind, text) => tokens.push({ kind, text, upper: text.toUpperCase() });
+  let i = 0;
+  while (i < sql.length) {
+    const c = sql[i];
+    if (/\s/.test(c)) i++;
+    else if (sql.startsWith("--", i)) {
+      const nl = sql.indexOf("\n", i);
+      i = nl < 0 ? sql.length : nl + 1;
+    } else if (sql.startsWith("/*", i)) {
+      const close = sql.indexOf("*/", i + 2);
+      if (close < 0) return null;
+      i = close + 2;
+    } else if (c === "'" || c === '"' || c === "`" || c === "[") {
+      const end = quoteEnd(sql, i);
+      if (end < 0) return null;
+      push(c === "'" ? "other" : "name", sql.slice(i + 1, end - 1));
+      i = end;
+    } else if (/[A-Za-z_]/.test(c)) {
+      const word = /^[A-Za-z_][A-Za-z0-9_$]*/.exec(sql.slice(i))?.[0] ?? c;
+      push("word", word);
+      i += word.length;
+    } else {
+      push(c === ";" ? "end" : c === "." ? "dot" : "other", c);
+      i++;
+    }
+  }
+  return tokens;
+}
+function quoteEnd(sql, start) {
+  const closer = sql[start] === "[" ? "]" : sql[start];
+  let from = start + 1;
+  for (; ; ) {
+    const k = sql.indexOf(closer, from);
+    if (k < 0) return -1;
+    if (closer === "]" || sql[k + 1] !== closer) return k + 1;
+    from = k + 2;
+  }
+}
+
+// src/core/daemon/write-protocol.ts
+var TYPES = /* @__PURE__ */ new Set(["lease", "release", "write", "write-status"]);
+function isWriteRequest(request) {
+  return TYPES.has(request.type);
+}
+function parseWriteRequest(request) {
+  switch (request.type) {
+    case "lease":
+      if (!isText(request.worktreeId)) return '"worktreeId" must be a non-empty string';
+      if (typeof request.holder !== "string") return '"holder" must be a string';
+      return {
+        type: "lease",
+        worktreeId: request.worktreeId,
+        holder: request.holder
+      };
+    case "release":
+      if (!isText(request.worktreeId)) return '"worktreeId" must be a non-empty string';
+      if (!isText(request.token)) return '"token" must be a non-empty string';
+      return {
+        type: "release",
+        worktreeId: request.worktreeId,
+        token: request.token
+      };
+    case "write":
+      return parseWrite(request);
+    case "write-status":
+      if (typeof request.requestId !== "string") return '"requestId" must be a string';
+      return { type: "write-status", requestId: request.requestId };
+    default:
+      return void 0;
+  }
+}
+function parseWrite(request) {
+  const { worktreeId, storeSchema, token, release } = request;
+  if (!isText(worktreeId)) return '"worktreeId" must be a non-empty string';
+  if (!Number.isInteger(storeSchema)) return '"storeSchema" must be an integer';
+  if (token !== null && !isText(token)) return '"token" must be a non-empty string or null';
+  if (typeof release !== "boolean") return '"release" must be true or false';
+  const batch = parseBatch(request.batch);
+  if (typeof batch === "string") return batch;
+  return {
+    type: "write",
+    worktreeId,
+    storeSchema,
+    token,
+    release,
+    batch
+  };
+}
+function isText(value) {
+  return typeof value === "string" && value.length > 0;
+}
+
 // src/core/daemon/protocol.ts
 var MAX_LINE_BYTES = 64 * 1024;
+var MAX_WRITE_LINE_BYTES = 32 * 1024 * 1024;
+var WRITE_LINE_START = '{"type":"write",';
+function lineLimit(start) {
+  return start.startsWith(WRITE_LINE_START) ? MAX_WRITE_LINE_BYTES : MAX_LINE_BYTES;
+}
 function parseRequest(line) {
   let value;
   try {
@@ -66,7 +275,7 @@ function parseRequest(line) {
       if (typeof request.requestId !== "string") return '"requestId" must be a string';
       return { type: "run-slow-status", requestId: request.requestId };
     case "run-group":
-      if (!isText(request.group)) return '"group" must be a non-empty string';
+      if (!isText2(request.group)) return '"group" must be a non-empty string';
       return { type: "run-group", group: request.group };
     case "run-group-paths":
       return parseGroupPaths(request.group, request.paths);
@@ -95,7 +304,7 @@ function parseRequest(line) {
       if (!Array.isArray(testFiles) || !testFiles.every(isTestFileRef)) {
         return '"testFiles" must be a list of { project, path } strings';
       }
-      if (!Array.isArray(texts) || texts.length === 0 || !texts.every(isText)) {
+      if (!Array.isArray(texts) || texts.length === 0 || !texts.every(isText2)) {
         return '"texts" must be a list of non-empty strings';
       }
       if (typeof withinMs !== "number" || !Number.isFinite(withinMs) || withinMs < 0) {
@@ -105,19 +314,19 @@ function parseRequest(line) {
       return { type: "focus", testFiles: refs, texts: [...texts], withinMs };
     }
     default:
-      return `unknown request type ${JSON.stringify(request.type)}`;
+      return parseWriteRequest(request) ?? `unknown request type ${JSON.stringify(request.type)}`;
   }
 }
 function parseSync(paths) {
   if (paths === void 0) return { type: "sync" };
-  if (!Array.isArray(paths) || !paths.every(isText)) {
+  if (!Array.isArray(paths) || !paths.every(isText2)) {
     return '"paths" must be a list of non-empty strings';
   }
   return { type: "sync", paths: [...paths] };
 }
 function parseGroupPaths(group, paths) {
-  if (!isText(group)) return '"group" must be a non-empty string';
-  if (!Array.isArray(paths) || paths.length === 0 || !paths.every(isText)) {
+  if (!isText2(group)) return '"group" must be a non-empty string';
+  if (!Array.isArray(paths) || paths.length === 0 || !paths.every(isText2)) {
     return '"paths" must be a non-empty list of non-empty strings';
   }
   return { type: "run-group-paths", group, paths: [...paths] };
@@ -127,7 +336,7 @@ function isTestFileRef(value) {
   const { project, path } = value;
   return typeof project === "string" && typeof path === "string";
 }
-function isText(value) {
+function isText2(value) {
   return typeof value === "string" && value.length > 0;
 }
 function errorResponse(error) {
@@ -240,6 +449,145 @@ function versionParts(version) {
   return match === null ? null : match.slice(1).map(Number);
 }
 
+// src/core/daemon/write-desk.ts
+import { randomUUID as randomUUID2 } from "node:crypto";
+var LEASE_TTL_MS = 5e3;
+var STOPPING = "daemon is stopping";
+var REMEMBERED = 64;
+var WriteDesk = class {
+  #context;
+  #lease = null;
+  #issued = /* @__PURE__ */ new Set();
+  #writes = /* @__PURE__ */ new Map();
+  constructor(context) {
+    this.#context = context;
+  }
+  /** The answer to `request`. A stopping daemon takes no new lease or write: its client writes itself. */
+  answer(request, phase2) {
+    switch (request.type) {
+      case "lease":
+        return phase2 === "stopping" ? errorResponse(STOPPING) : this.lease(request);
+      case "write":
+        return phase2 === "stopping" ? errorResponse(STOPPING) : this.write(request);
+      case "release":
+        return this.release(request);
+      case "write-status":
+        return this.status(request);
+    }
+  }
+  lease(request) {
+    const other = this.#otherWorktree(request.worktreeId);
+    if (other !== null) return other;
+    const current = this.#current();
+    if (current !== null) return this.#leaseAnswer(null, current.holder);
+    const token = randomUUID2();
+    this.#lease = {
+      token,
+      holder: request.holder,
+      until: this.#now() + LEASE_TTL_MS,
+      pending: 0,
+      releasing: false
+    };
+    remember(this.#issued, token);
+    return this.#leaseAnswer(token, null);
+  }
+  release(request) {
+    const refused = this.#otherWorktree(request.worktreeId) ?? this.#unknownToken(request.token);
+    if (refused !== null) return refused;
+    const lease = this.#lease;
+    if (lease?.token === request.token) {
+      if (lease.pending > 0) lease.releasing = true;
+      else this.#lease = null;
+    }
+    return { schemaVersion: PAYLOAD_SCHEMA_VERSION, ok: true, type: "release" };
+  }
+  write(request) {
+    const refused = this.#otherWorktree(request.worktreeId) ?? (request.token === null ? null : this.#unknownToken(request.token));
+    if (refused !== null) return refused;
+    if (request.storeSchema !== this.#context.storeSchema) {
+      return errorResponse(
+        `the daemon's store is at schema ${this.#context.storeSchema}, not ${request.storeSchema}`
+      );
+    }
+    const lease = this.#lease?.token === request.token ? this.#lease : null;
+    if (lease !== null) {
+      lease.until = this.#now() + LEASE_TTL_MS;
+      lease.pending++;
+      if (request.release) lease.releasing = true;
+    }
+    const requestId = randomUUID2();
+    const state = { written: null, error: null };
+    this.#writes.set(requestId, state);
+    for (const old of this.#writes.keys()) {
+      if (this.#writes.size <= REMEMBERED) break;
+      this.#writes.delete(old);
+    }
+    const settle = (error) => {
+      state.written = error === null;
+      state.error = error;
+      if (lease === null) return;
+      lease.pending--;
+      lease.until = this.#now() + LEASE_TTL_MS;
+      if (lease.releasing && lease.pending === 0 && this.#lease === lease) this.#lease = null;
+    };
+    this.#context.requestWrite(request.batch).then(
+      () => settle(null),
+      (error) => settle(error instanceof Error ? error.message : String(error))
+    );
+    return writeAnswer(requestId, state);
+  }
+  status(request) {
+    const state = this.#writes.get(request.requestId);
+    if (state === void 0) return errorResponse(`unknown request id ${request.requestId}`);
+    return writeAnswer(request.requestId, state);
+  }
+  /** The lease in force; one past its time with no write waiting has ended. */
+  #current() {
+    const lease = this.#lease;
+    if (lease !== null && lease.pending === 0 && this.#now() >= lease.until) this.#lease = null;
+    return this.#lease;
+  }
+  #otherWorktree(worktreeId) {
+    if (worktreeId === this.#context.worktreeId) return null;
+    return errorResponse(
+      `this daemon serves worktree ${this.#context.worktreeId}, not ${worktreeId}`
+    );
+  }
+  #unknownToken(token) {
+    return this.#issued.has(token) ? null : errorResponse("unknown lease token");
+  }
+  #leaseAnswer(token, holder) {
+    return {
+      schemaVersion: PAYLOAD_SCHEMA_VERSION,
+      ok: true,
+      type: "lease",
+      token,
+      ttlMs: LEASE_TTL_MS,
+      holder
+    };
+  }
+  #now() {
+    return (this.#context.now ?? Date.now)();
+  }
+};
+function writeAnswer(requestId, state) {
+  return {
+    schemaVersion: PAYLOAD_SCHEMA_VERSION,
+    ok: true,
+    type: "write",
+    requestId,
+    written: state.written,
+    error: state.error
+  };
+}
+function remember(set, value) {
+  set.add(value);
+  for (const old of set) {
+    if (set.size <= REMEMBERED) break;
+    set.delete(old);
+  }
+}
+
 // src/core/daemon/handlers.ts
 var MAX_REQUESTS = 32;
 function createHandlers(context) {
@@ -248,6 +596,8 @@ function createHandlers(context) {
   const groups = groupRequests(context.requestGroup, MAX_REQUESTS, context.mainStep);
   const syncRequests = /* @__PURE__ */ new Map();
   const holdRequests = /* @__PURE__ */ new Map();
+  const { requestWrite, storeSchema } = context;
+  const writes = requestWrite === void 0 || storeSchema === void 0 ? null : new WriteDesk({ worktreeId: context.worktreeId, storeSchema, requestWrite });
   const runAll = (requestId, state) => {
     const answer2 = {
       schemaVersion: PAYLOAD_SCHEMA_VERSION,
@@ -289,6 +639,9 @@ function createHandlers(context) {
     error: state.error
   });
   return (request) => {
+    if (isWriteRequest(request)) {
+      return writes?.answer(request, context.phase()) ?? errorResponse(NO_WRITES);
+    }
     switch (request.type) {
       case "ping":
         return {
@@ -314,9 +667,9 @@ function createHandlers(context) {
       case "run-all": {
         if (context.phase() === "stopping") return errorResponse("daemon is stopping");
         context.onActivity();
-        const requestId = randomUUID2();
+        const requestId = randomUUID3();
         const state = { checkpoint: null, error: null };
-        remember(requests, requestId, state);
+        remember2(requests, requestId, state);
         const full = {
           force: request.force === true,
           observeIgnored: request.observeIgnored === true,
@@ -340,9 +693,9 @@ function createHandlers(context) {
       case "run-slow": {
         if (context.phase() === "stopping") return errorResponse("daemon is stopping");
         context.onActivity();
-        const requestId = randomUUID2();
+        const requestId = randomUUID3();
         const state = { requested: null, error: null };
-        remember(slowRequests, requestId, state);
+        remember2(slowRequests, requestId, state);
         const request2 = context.requestSlowSuite?.() ?? Promise.reject(new Error(SLOW_NOT_SUPPORTED));
         request2.then(
           (requested) => {
@@ -373,9 +726,9 @@ function createHandlers(context) {
         if (context.phase() === "stopping") return errorResponse("daemon is stopping");
         if (context.requestSync === void 0) return errorResponse("this daemon cannot sync");
         context.onActivity();
-        const requestId = randomUUID2();
+        const requestId = randomUUID3();
         const state = { revision: null, readers: null, error: null };
-        remember(syncRequests, requestId, state);
+        remember2(syncRequests, requestId, state);
         context.requestSync(request.paths).then(
           (answer2) => {
             state.revision = answer2.revision;
@@ -395,9 +748,9 @@ function createHandlers(context) {
       case "hold": {
         if (context.phase() === "stopping") return errorResponse("daemon is stopping");
         if (context.requestHold === void 0) return errorResponse("this daemon cannot hold");
-        const requestId = randomUUID2();
+        const requestId = randomUUID3();
         const state = { holding: null, error: null };
-        remember(holdRequests, requestId, state);
+        remember2(holdRequests, requestId, state);
         context.requestHold().then(
           (holding) => {
             state.holding = holding;
@@ -448,7 +801,8 @@ function createHandlers(context) {
     }
   };
 }
-function remember(requests, requestId, state) {
+var NO_WRITES = "this daemon takes no writes";
+function remember2(requests, requestId, state) {
   requests.set(requestId, state);
   for (const old of requests.keys()) {
     if (requests.size <= MAX_REQUESTS) break;
@@ -524,7 +878,7 @@ function serve(socket, handle) {
     buffer += chunk;
     const end = buffer.indexOf("\n");
     if (end < 0) {
-      if (buffer.length > MAX_LINE_BYTES) answer(socket, errorResponse("request too long"));
+      if (buffer.length > lineLimit(buffer)) answer(socket, errorResponse("request too long"));
       return;
     }
     const request = parseRequest(buffer.slice(0, end));
@@ -559,6 +913,7 @@ var waitingGroup = /* @__PURE__ */ new Map();
 var steps = new MainSteps();
 var waitingSync = /* @__PURE__ */ new Map();
 var waitingHold = /* @__PURE__ */ new Map();
+var waitingWrite = /* @__PURE__ */ new Map();
 var server = null;
 function bind(identity) {
   const handle = createHandlers({
@@ -569,28 +924,28 @@ function bind(identity) {
     token: identity.token,
     phase: () => phase,
     requestFullSuite: (request) => new Promise((resolve, reject) => {
-      const id = randomUUID3();
+      const id = randomUUID4();
       waiting.set(id, { resolve, reject });
       post({ type: "run-all", id, request });
     }),
     requestSlowSuite: () => new Promise((resolve, reject) => {
-      const id = randomUUID3();
+      const id = randomUUID4();
       waitingSlow.set(id, { resolve, reject });
       post({ type: "run-slow", id });
     }),
     requestGroup: (group, held, paths) => new Promise((resolve, reject) => {
-      const id = randomUUID3();
+      const id = randomUUID4();
       waitingGroup.set(id, { resolve, reject, held });
       post({ type: "run-group", id, group, ...paths === void 0 ? {} : { paths } });
     }),
     mainStep: () => steps.current(),
     requestSync: (paths) => new Promise((resolve, reject) => {
-      const id = randomUUID3();
+      const id = randomUUID4();
       waitingSync.set(id, { resolve, reject });
       post({ type: "sync", id, ...paths === void 0 ? {} : { paths } });
     }),
     requestHold: () => new Promise((resolve, reject) => {
-      const id = randomUUID3();
+      const id = randomUUID4();
       waitingHold.set(id, { resolve, reject });
       post({ type: "hold", id });
     }),
@@ -601,7 +956,15 @@ function bind(identity) {
     requestPromotion: async (testFiles, withinMs) => post({ type: "promote", testFiles, withinMs }),
     requestFocus: async (testFiles, texts, withinMs) => post({ type: "focus", testFiles, texts, withinMs }),
     onStop: () => post({ type: "stop" }),
-    onStepDown: (version) => post({ type: "step-down", version })
+    onStepDown: (version) => post({ type: "step-down", version }),
+    ...identity.storeSchema === void 0 ? {} : {
+      storeSchema: identity.storeSchema,
+      requestWrite: (batch) => new Promise((resolve, reject) => {
+        const id = randomUUID4();
+        waitingWrite.set(id, { resolve, reject });
+        post({ type: "write", id, batch });
+      })
+    }
   });
   createDaemonServer(identity.socketPath, handle).then(
     (bound) => {
@@ -665,6 +1028,13 @@ function receive(message) {
       waitingHold.delete(message.id);
       if (message.holding !== null) entry?.resolve(message.holding);
       else entry?.reject(new Error(message.error ?? "hold failed"));
+      return;
+    }
+    case "write-result": {
+      const entry = waitingWrite.get(message.id);
+      waitingWrite.delete(message.id);
+      if (message.error === null) entry?.resolve();
+      else entry?.reject(new Error(message.error));
       return;
     }
     case "close":
