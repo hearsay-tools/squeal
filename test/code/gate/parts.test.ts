@@ -254,6 +254,20 @@ describe("partsEvidence: the inputs a part certifies (spec 020 D13.2, 016 D4)", 
     writeFile(root, "fixtures/two/deep/three.txt", "3\n");
     expect((await taken(root, [listed])).evidence).toBeNull();
   });
+
+  it("certifies the listing of a directory below that holds untracked files only, as the daemon lists files", async () => {
+    const root = repo();
+    writeFile(root, "fixtures/new/a.txt", "a\n");
+    const names = (dir: string) => namesHash(readdirSync(join(root, dir)));
+    const below = ["fixtures", "fixtures/new", "fixtures/one", "fixtures/two", "fixtures/two/deep"];
+    const listings = Object.fromEntries(below.map((dir) => [`${dir}/`, names(dir)]));
+    const observed = { paths: [], directories: ["fixtures"], recursive: ["fixtures"] };
+    const listed = part([file({ observed })], { evidence: { ...EVIDENCE, ...listings } });
+    expect((await taken(root, [listed])).evidence).not.toBeNull();
+
+    writeFile(root, "fixtures/new/b.txt", "b\n");
+    expect((await taken(root, [listed])).evidence).toBeNull();
+  });
 });
 
 describe("readPartsIn (spec 020 D13.2)", () => {
