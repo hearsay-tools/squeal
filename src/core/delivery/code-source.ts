@@ -4,7 +4,7 @@ import { readPolicy } from "../daemon/policy.js";
 import type { AbsolutePath } from "../types/common.js";
 import type { Policy } from "../types/policy.js";
 import { notMeasuredNames } from "./code-runners.js";
-import { HoldingConnection } from "./held-connection.js";
+import { HoldingConnection, holdingAny } from "./held-connection.js";
 import type { CodeHolds } from "./prepared.js";
 
 /*
@@ -39,7 +39,11 @@ export interface CodeSource {
  * worktree at `root`; `busyTimeoutMs` as the caller's main store, so a hook
  * keeps its budget. With `holding`, each store opens on a
  * `HoldingConnection`, so a delivery can hold its code write until its
- * report's verdict (row 011-288).
+ * report's verdict (row 011-288). Spec 021 D3 (review 0.1.434, B5): opened
+ * while this thread holds a database, the store waits for no lock at all,
+ * in its WAL switch, its migration and every statement after, so a file a
+ * daemon still initializes fails the open at once and the code part stays
+ * owed.
  */
 export function codeSource(
   commonDir: AbsolutePath,
@@ -60,12 +64,13 @@ export function codeSource(
       const complexity = policy();
       if (complexity === null) return null;
       let connection: HoldingConnection | undefined;
+      const wait = holdingAny() ? 0 : busyTimeoutMs;
       const store = openCodeStore(
         commonDir,
         { complexity },
         {
           create: false,
-          ...(busyTimeoutMs === undefined ? {} : { busyTimeoutMs }),
+          ...(wait === undefined ? {} : { busyTimeoutMs: wait }),
           ...(holding ? { connection: (db) => (connection = new HoldingConnection(db)) } : {}),
         },
       );
