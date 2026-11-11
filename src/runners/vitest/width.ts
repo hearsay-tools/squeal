@@ -31,14 +31,6 @@ function batches(project: TestProject): boolean {
   return isolate === false && pool !== "vmThreads" && pool !== "vmForks";
 }
 
-/**
- * The width of one instance's runs. Vitest reads `maxWorkers` from the
- * resolved configs at each run (`resolveMaxWorkers`: the project's, then the
- * root's, then its CPU default), so a warm instance is resized by writing it
- * there before the run (probe P1, `tasks/001-378/notes.md`). The values the
- * configs resolved to at the start are each project's own ceiling, and a run
- * that wants nothing gets them back.
- */
 /** Vitest types `maxWorkers` as a number; it is `undefined` unless a config, the CLI or the env set it. */
 type Sized = { maxWorkers: number | undefined };
 
@@ -51,27 +43,44 @@ type Sized = { maxWorkers: number | undefined };
  */
 type Group = number | "sequential";
 
-export class Widths {
-  readonly #root: number | undefined;
-  /** Each project's own `maxWorkers`, written in place of the config's for a run. */
-  readonly #projects: ReadonlyMap<TestProject, number | undefined>;
-  /** By project name: its own ceiling, else the root's, its floor and its group. */
-  readonly #byName: ReadonlyMap<
-    string,
-    { ceiling: number | undefined; floor: number; group: Group }
-  >;
+/** One project's line of a `WidthTable`. */
+export interface WidthEntry {
+  readonly project: string;
+  /** Its own `maxWorkers`, else the root's; `null` when neither set one. */
+  readonly ceiling: number | null;
+  readonly floor: number;
+  readonly group: Group;
+}
 
-  constructor(vitest: Vitest) {
-    this.#root = vitest.config.maxWorkers;
-    this.#projects = new Map(vitest.projects.map((p) => [p, p.config.maxWorkers]));
-    this.#byName = new Map(
-      vitest.projects.map((p) => {
-        const own = p.config.maxWorkers;
-        const order = p.config.sequence.groupOrder;
-        const group = p.config.isolate && order === 0 && own === 1 ? "sequential" : order;
-        return [p.name, { ceiling: own ?? this.#root, floor: batches(p) ? 2 : 1, group }];
-      }),
-    );
+/**
+ * The widths of one started instance as plain data (spec 021 D6, row
+ * 021-11): what `slowWidth` and `tierWidth` answer from, so a runner host
+ * can send it to the daemon, whose proxy answers them at once.
+ */
+export interface WidthTable {
+  readonly projects: readonly WidthEntry[];
+}
+
+/** The table of `vitest`'s projects, as their configs resolved at its start. */
+export function widthTable(vitest: Vitest): WidthTable {
+  const root = vitest.config.maxWorkers;
+  return {
+    projects: vitest.projects.map((p) => {
+      const own = p.config.maxWorkers;
+      const order = p.config.sequence.groupOrder;
+      const group = p.config.isolate && order === 0 && own === 1 ? "sequential" : order;
+      return { project: p.name, ceiling: own ?? root ?? null, floor: batches(p) ? 2 : 1, group };
+    }),
+  };
+}
+
+/** A `WidthTable`'s answers to the scheduler's width questions. */
+export class WidthAnswers {
+  /** By project name: its own ceiling, else the root's, its floor and its group. */
+  readonly #byName: ReadonlyMap<string, WidthEntry>;
+
+  constructor(table: WidthTable) {
+    this.#byName = new Map(table.projects.map((entry) => [entry.project, entry]));
   }
 
   /**
@@ -84,7 +93,8 @@ export class Widths {
   atOnce(testFiles: readonly TestFileRef[]): number {
     const first = testFiles[0] === undefined ? undefined : this.#byName.get(testFiles[0].project);
     if (first === undefined) return testFiles.length;
-    const width = tierWidth(testFiles.length, first.ceiling, first.floor) ?? testFiles.length;
+    const width =
+      tierWidth(testFiles.length, first.ceiling ?? undefined, first.floor) ?? testFiles.length;
     let count = 0;
     for (const { project } of testFiles) {
       if (count >= width || this.#byName.get(project)?.group !== first.group) break;
@@ -100,7 +110,30 @@ export class Widths {
    */
   of(project: string, grant: number): number {
     const known = this.#byName.get(project);
-    return tierWidth(grant, known?.ceiling, known?.floor) ?? Math.max(1, grant);
+    return tierWidth(grant, known?.ceiling ?? undefined, known?.floor) ?? Math.max(1, grant);
+  }
+}
+
+/**
+ * The width of one instance's runs. Vitest reads `maxWorkers` from the
+ * resolved configs at each run (`resolveMaxWorkers`: the project's, then the
+ * root's, then its CPU default), so a warm instance is resized by writing it
+ * there before the run (probe P1, `tasks/001-378/notes.md`). The values the
+ * configs resolved to at the start are each project's own ceiling, and a run
+ * that wants nothing gets them back.
+ */
+export class Widths extends WidthAnswers {
+  readonly #root: number | undefined;
+  /** Each project's own `maxWorkers`, written in place of the config's for a run. */
+  readonly #projects: ReadonlyMap<TestProject, number | undefined>;
+  readonly table: WidthTable;
+
+  constructor(vitest: Vitest) {
+    const table = widthTable(vitest);
+    super(table);
+    this.table = table;
+    this.#root = vitest.config.maxWorkers;
+    this.#projects = new Map(vitest.projects.map((p) => [p, p.config.maxWorkers]));
   }
 
   /**
@@ -159,5 +192,10 @@ export class VitestWidths implements VitestHints {
    */
   tierWidth(testFile: TestFileRef, grant: number): number {
     return this.#widths?.of(testFile.project, grant) ?? grant;
+  }
+
+  /** The table both answer from, sent by a runner host (spec 021 D6); `null` before a start. */
+  table(): WidthTable | null {
+    return this.#widths?.table ?? null;
   }
 }
