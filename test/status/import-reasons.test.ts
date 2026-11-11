@@ -237,6 +237,7 @@ describe("status names why imported files are not current (018 D5)", () => {
         currentFiles: 1,
         notCurrent: { ...NONE, environment: 1, closure: 1, observed: 1, content: 1, noKey: 1 },
         environmentDifferences: ["other: Node v26.13.0 in the export, v24.22.1 here"],
+        node: { exported: "v26.13.0", here: "v24.22.1", only: true },
       },
     ]);
     expect(importLines({ imports } as unknown as StatusSnapshot)).toEqual([

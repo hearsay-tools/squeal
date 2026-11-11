@@ -9,6 +9,7 @@ import type { ImportNotCurrent, ImportStatus, StatusSnapshot } from "../types/st
  * only when none of an import's files is current from it and the environment
  * differs for every one of them, with its first two differences; silence
  * otherwise (principle 1), also for a mix of reasons (review wave-1-2 N1).
+ * D19: with `shared.ref` set, Node is said once for all imports.
  */
 
 /** D5's reasons, in order, with the words that name each. */
@@ -47,10 +48,15 @@ export function importLines(s: StatusSnapshot): string[] {
   });
 }
 
-/** The default text's one line, or none (D5). */
+/**
+ * The default text's one line per import, or none (D5). With `shared.ref`
+ * set, an import that differs from here only in Node has none: D19's one
+ * Node line counts it (`node-mismatch.ts`).
+ */
 export function importDefaultLines(s: StatusSnapshot): string[] {
   return (s.imports ?? []).flatMap((i) => {
     if (i.currentFiles > 0 || i.notCurrent.environment < i.testFiles) return [];
+    if (s.shared !== undefined && i.node?.only === true) return [];
     return [
       `Imported results from ${i.source}: none current here, the environment differs${environmentText(i, DEFAULT_SHOWN)}`,
     ];
