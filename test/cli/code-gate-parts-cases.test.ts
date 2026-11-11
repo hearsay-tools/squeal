@@ -3,6 +3,8 @@ import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { Part } from "../../src/core/ci/parts.js";
 import { COVERAGE_RECORD_VERSION } from "../../src/core/code/coverage/record.js";
+import { resolveCommonDir } from "../../src/core/fs/git-layout.js";
+import { storePaths } from "../../src/core/store/paths.js";
 import { scratchDir } from "../ci/fixture.js";
 import {
   gate,
@@ -56,6 +58,12 @@ beforeAll(async () => {
 }, SLOW.timeout);
 
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
+
+// D17.3 (row 020-17c): the gate keeps the files it runs in the repository's stores; each case reads the parts only.
+afterEach(() => {
+  const common = fixture === undefined ? null : resolveCommonDir(fixture.root);
+  if (common !== null) rmSync(storePaths(common).dir, { recursive: true, force: true });
+});
 
 describe("squeal code --base --parts: what the parts give (spec 020 D13.2)", () => {
   it("takes every certified file, a runtime read included", SLOW, async () => {
