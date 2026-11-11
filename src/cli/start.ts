@@ -22,6 +22,7 @@ import { served, spawnedFailed } from "./start-ready.js";
 import { statusCommand } from "./status-command.js";
 import { lockFreed, STOP_BOUNDS, type StopBounds } from "./stop.js";
 import { clearStoppedMark } from "./stopped-mark.js";
+import { type NotWritten, writeWithin } from "./store-writes.js";
 
 /**
  * `squeal start [root]`: clears the mark `squeal stop` left (task 011-08)
@@ -35,12 +36,16 @@ import { clearStoppedMark } from "./stopped-mark.js";
  * (`finishHandoff`, row 011-34), within `bounds`, as long as `squeal stop`
  * waits. Row 011-140: a daemon older
  * than this CLI that ended its handoff short, which no hook replaces, is
- * asked to step down first (`replaceShort`).
+ * asked to step down first (`replaceShort`). Spec 021 D1 (#108): the mark
+ * clear, the holds' end and the handoff claim ask a busy store again until
+ * `busyBoundMs` (default `BUSY_BOUND_MS`); one not written by then exits 1
+ * and names the lock's holder, with nothing started.
  */
 export async function startCommand(
   args: readonly string[],
   io: CliIo,
   bounds: StopBounds = STOP_BOUNDS,
+  busyBoundMs?: number,
 ): Promise<number> {
   if (args.length > 1 || args[0]?.startsWith("-")) {
     io.stderr("usage: squeal start [root]\n");
@@ -48,9 +53,7 @@ export async function startCommand(
   }
   const root = worktreeRoot(args[0], io);
   if (root === null) return 1;
-  const cleared = clearStoppedMark(root);
-  if (cleared !== null) io.stderr(`squeal: could not clear the stop mark: ${cleared}\n`);
-  for (const line of endCommandHolds(root)) io.stdout(line);
+  if (!endStops(root, io, busyBoundMs)) return 1;
   // This CLI's own script is the daemon to spawn (review wave 3, B1), or its kept copy when
   // it runs from Codex's plugin cache or seed (rows 005-77, 002-36); `SQUEAL_CLI` overrides it.
   const script = process.argv[1];
@@ -71,7 +74,7 @@ export async function startCommand(
   }
   const now = io.now ?? Date.now;
   const stopping = (await stoppingDaemon(root, now)) ?? (await replaceShort(root));
-  if (stopping !== null) return finishHandoff(root, cli, stopping, io, bounds);
+  if (stopping !== null) return finishHandoff(root, cli, stopping, io, { ...bounds, busyBoundMs });
   const { result, pid, ended } = await ensureDaemonProcess(root, cli === undefined ? {} : { cli });
   if (result === "unavailable") {
     io.stderr(`squeal: no daemon could be reached or started for ${root}\n`);
@@ -88,6 +91,27 @@ export async function startCommand(
   io.stdout(`Squeal daemon ${startedWord(result, status)} for ${root}\n\n`);
   io.stdout(formatStatus(status, now(), statusCommand(io.env ?? process.env)));
   return 0;
+}
+
+/**
+ * Clears the stopped mark and ends every command hold, and prints a line for
+ * each whose command still runs. Spec 021 D1 (#108): with either still in the
+ * store past `busyBoundMs`, says why and that nothing started, and `false`.
+ */
+function endStops(root: AbsolutePath, io: CliIo, busyBoundMs: number | undefined): boolean {
+  const again = `nothing started: run \`${statusCommand(io.env ?? process.env)} start\` again`;
+  const cleared = clearStoppedMark(root, busyBoundMs);
+  if (cleared !== null) {
+    io.stderr(`squeal: could not clear the stop mark: ${cleared}; ${again}\n`);
+    return false;
+  }
+  const holds = endCommandHolds(root, busyBoundMs);
+  if (!Array.isArray(holds)) {
+    io.stderr(`squeal: could not end the command holds: ${holds.why}; ${again}\n`);
+    return false;
+  }
+  for (const line of holds) io.stdout(line);
+  return true;
 }
 
 /**
@@ -201,7 +225,7 @@ async function finishHandoff(
   cli: string | undefined,
   stopping: Stopping,
   io: CliIo,
-  bounds: StopBounds,
+  bounds: StopBounds & { readonly busyBoundMs: number | undefined },
 ): Promise<number> {
   const now = io.now ?? Date.now;
   const began = performance.now();
@@ -210,7 +234,16 @@ async function finishHandoff(
   const marks = ping === null ? null : marksOf(ping.pid, tokenOf(ping, record));
   if (ping !== null) await stopAt(stopping).catch(() => null);
   const old = ping?.startedAt ?? record?.startedAt ?? null;
-  if (claims(root, old, now)) {
+  const claim = claims(root, old, now, bounds.busyBoundMs);
+  if (typeof claim !== "boolean") {
+    const command = statusCommand(io.env ?? process.env);
+    io.stderr(
+      `squeal: could not claim the handoff from the stopping daemon for ${root}: ${claim.why}; ` +
+        `no daemon started: run \`${command} start\` again\n`,
+    );
+    return 1;
+  }
+  if (claim) {
     await ensureDaemon(root, {
       ...(cli === undefined ? {} : { cli }),
       awaitLockMs: SUCCESSOR_LOCK_WAIT_MS,
@@ -257,18 +290,21 @@ function follows(ping: PingResponse, old: number | null, own: string): boolean {
  * record and the claim's end in one. A record of another start than `old`'s
  * is a daemon that registered after the stopping one, the claim's successor
  * or another, which ended the handoff: `start` claims nothing and spawns
- * nothing that waits for the lock beside it.
+ * nothing that waits for the lock beside it. Spec 021 D1: a busy store is
+ * asked again until `busyBoundMs`; past it, why (`writeWithin`), and `start`
+ * spawns nothing, where a second successor could wait beside the claim's.
  */
-function claims(root: AbsolutePath, old: number | null, now: () => number): boolean {
-  try {
-    const commonDir = resolveCommonDir(root);
-    if (commonDir === null) return true;
-    const store = openStore(commonDir, { create: false, busyTimeoutMs: STATUS_BUSY_TIMEOUT_MS });
-    if (isStoreOpenFailure(store)) return true;
-    try {
-      const id = worktreeIdFor(root);
-      const at = now() as EpochMs;
-      return store.transaction(() => {
+function claims(
+  root: AbsolutePath,
+  old: number | null,
+  now: () => number,
+  busyBoundMs: number | undefined,
+): boolean | NotWritten {
+  const at = now() as EpochMs;
+  const claimed = writeWithin(
+    root,
+    (store, id) =>
+      store.transaction(() => {
         const record = store.worktrees.get(id)?.daemon ?? null;
         if (record === null) {
           const claim = readHandoff(store, id);
@@ -277,13 +313,11 @@ function claims(root: AbsolutePath, old: number | null, now: () => number): bool
         if (record.startedAt !== old) return false;
         const from = handoffFrom(record);
         return claimHandoff(store, id, { from, to: squealVersion(), at }) !== null;
-      });
-    } finally {
-      store.close();
-    }
-  } catch {
-    return true;
-  }
+      }),
+    { boundMs: busyBoundMs },
+  );
+  if (!("not" in claimed)) return claimed.wrote;
+  return claimed.not === "busy" ? claimed : true;
 }
 
 /**
