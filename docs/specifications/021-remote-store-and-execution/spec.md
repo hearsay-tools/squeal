@@ -1,6 +1,6 @@
 # Store contention and runner hosts, local and over SSH
 
-Stage: draft, for the human's approval. Written 2026-11-11 from `research/store-contention.md`, `research/runner-split.md` and `research/daemon-model.md`, after the human's "Spec all five steps". The CPU budget (D18) waits for `research/cpu-budget.md` (row 021-06).
+Stage: draft, for the human's approval. Written 2026-11-11 from `research/store-contention.md`, `research/runner-split.md`, `research/daemon-model.md` and `research/cpu-budget.md`, after the human's "Spec all five steps".
 
 ## Problem
 
@@ -148,7 +148,20 @@ After Parts 1 to 4 have shipped and run for a week, a research row repeats `stor
 
 ### D18. A CPU budget for background runs
 
-Waits for `research/cpu-budget.md` (row 021-06): whether a budget finishes the same work sooner because runs stop competing, and a signal that works on any machine. A fixed ceiling stays rejected (the human, 2026-11-07). Written after the findings land.
+From `research/cpu-budget.md` (row 021-06), a replay of 2026-11-04 to 2026-11-11 on recorded runs and sar history.
+
+**What a budget does, measured by replay.** The human asked whether a ceiling would finish work sooner because runs stop competing. For CPU, yes: Squeal spends 9.5% less CPU, because each background file costs 7% less on a quieter host and 2.5% of background work need not run once a later revision or a removed worktree overtakes it. Agents' own test runs get 8.8% faster and edit tiers 6.4% faster; host time above 20 busy vCPUs halves (13.2% to 6.7%). For background results, no: every budget delivers them later on this host, a median 9 s and a p90 2.4 min per tier, backlog p90 30 to 47 min. Other load alone sat at 12 cores or more in 106 of 107 samples above 20 busy, so background's own work rate still rose with each core it took. A budget finishes background work sooner only where Squeal's background alone pushes a machine past its throughput peak, such as a quiet laptop (`cpu-budget.md` Q1, Q4).
+
+**The budget.** The adaptive own-slowdown controller of `../011-core/research/background-backoff.md`, not a fixed ceiling (the human, 2026-11-07):
+
+- Signal: the pooled median ratio of each recent file run's duration to that file's own fast reference, across the user's daemons on the machine. It needs no core count and sees a container's CPU quota.
+- Control: halve the background budget after two 60 s windows in a row above θ = 1.25; add one permit after a window at or below it; never above `hostSlots`.
+- Scope: one budget per user and machine, in the pool directory, across every daemon and repository. It governs backlog tiers and baselines. Edit tiers, named waits and agents' runs stay outside it and feed the signal. The `grants < hostSlots / 2` term in `src/core/capacity/cores.ts` goes.
+- Floor: one permit for the oldest waiter, so background work never stops. Without it, edit tiers gain 11.2% instead of 6.4% and backlog p90 grows to 59 min (`cpu-budget.md` Q6 item 3).
+- A remote runner host (Part 3) counts against its own machine's budget, with its own per-file references (`cpu-budget.md` Q5).
+- The daemon log records each budget step (time, budget, signal, record count). A row after it ships measures on this host and one other machine: CPU per file against its reference, background tier finish, edit-tier wall, and whether background alone passes the peak there.
+
+The budget is sold as protection for foreground work and less CPU, not as faster background results.
 
 ## Slices
 
@@ -167,9 +180,10 @@ Each row ships and works alone.
 | 021-15 | 3 | proof on a real second machine: this repository over a real network (cost: a machine the team has, or a boat.dev sandbox; the human's choice) |
 | 021-16 | 4 | D15, writes through the daemon |
 | 021-17 | 5 | D16, the measurement |
-| later | | D18, after row 021-06 |
+| 021-18 | budget | D18, the adaptive background budget, with its log line |
+| 021-19 | budget | D18's measurement on this host and one other machine, after a week |
 
-021-07 to 021-10 touch disjoint files and can run in parallel. 021-11 can run beside them. 021-13 and 021-14 follow 021-11.
+021-07 to 021-10 touch disjoint files and can run in parallel. 021-11 can run beside them. 021-13 and 021-14 follow 021-11. 021-18 can run beside Part 1.
 
 ## Testing
 
@@ -181,13 +195,14 @@ Each row ships and works alone.
 ## Open questions
 
 1. **Where the SSH target lives (D9).** A user-level file per repository is proposed; the name and format are the first row's choice, reviewed in its candidate.
-2. **The CPU budget (D18)**, after row 021-06.
+2. **D18's floor**: one permit (proposed) or none, a product value (`cpu-budget.md` Q6 item 3).
 3. **The real-network proof (021-15):** a team machine or a boat.dev sandbox ($20 minimum a month by its docs). The human chooses when the row starts.
 4. **Coverage on a remote lane**: a later row, after 021-14.
 
 ## References
 
 - Research: `research/store-contention.md` (021-03), `research/runner-split.md` (021-04), `research/daemon-model.md` (021-05), `research/remote-execution.md` (021-02), `research/store-service.md` (021-01).
+- `research/cpu-budget.md` (021-06).
 - Earlier: `../019-run-triggers/research/remote-runner.md` (019-04), `../011-core/research/daemon-scope.md` (011-52), `../011-core/research/load-slowdown.md`, `../011-core/research/background-backoff.md`.
 - Decisions: `docs/decisions/0002-content-keyed-shared-store.md`; spec 018 D1 (environment descriptor), D14 (the git-ref reader).
 - Issues: #1, #8, #86, #108, #138, #158, #162, #176, #186; rows 001-422, 011-104, 011-212, 011-288.
