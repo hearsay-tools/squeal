@@ -1094,61 +1094,6 @@ import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
 
 // src/core/store/connection.ts
 import { AsyncLocalStorage } from "node:async_hooks";
-
-// src/core/store/long-write.ts
-import { basename } from "node:path";
-var LONG_WRITE_MS = 250;
-var sink = null;
-function startWrite(db) {
-  if (sink === null) return null;
-  return { db, at: performance.now(), changes: totalChanges(db) };
-}
-function endWrite(start) {
-  if (start === null || sink === null) return;
-  const ms = performance.now() - start.at;
-  if (ms <= LONG_WRITE_MS) return;
-  sink({
-    database: basename(fileOf(start.db)),
-    operation: operationOf(new Error().stack ?? ""),
-    ms: Math.round(ms),
-    rows: totalChanges(start.db) - start.changes
-  });
-}
-var STORE_FRAME = /^(?:\w*Connection\d*\.|Object\.transaction$|transaction$|endWrite$)/;
-function operationOf(stack) {
-  const names2 = stack.split("\n").slice(1).map(frameName).filter((name2) => name2 !== null && !STORE_FRAME.test(name2));
-  return names2.slice(0, 3).join(" < ") || "unknown";
-}
-function frameName(line) {
-  const match = /^\s*at (?:async )?(.+?)(?: \((.+)\))?$/.exec(line);
-  if (match === null) return null;
-  const [, name2 = "", location2] = match;
-  if (location2 !== void 0) return name2;
-  const place = /([^/\\]+):(\d+):\d+$/.exec(name2);
-  return place === null ? name2 : `${place[1]}:${place[2]}`;
-}
-var files = /* @__PURE__ */ new WeakMap();
-function fileOf(db) {
-  let file = files.get(db);
-  if (file === void 0) {
-    const rows = db.prepare("PRAGMA database_list").all();
-    const main = rows.find((row) => row.name === "main")?.file;
-    file = typeof main === "string" ? main : "";
-    files.set(db, file);
-  }
-  return file;
-}
-var counters = /* @__PURE__ */ new WeakMap();
-function totalChanges(db) {
-  let statement = counters.get(db);
-  if (statement === void 0) {
-    statement = db.prepare("SELECT total_changes() AS n");
-    counters.set(db, statement);
-  }
-  return Number(statement.get()?.n);
-}
-
-// src/core/store/connection.ts
 var Connection = class {
   #statements = /* @__PURE__ */ new Map();
   #depth = 0;
@@ -1174,14 +1119,15 @@ var Connection = class {
    * is already open. Spec 001 D8: "short `BEGIN IMMEDIATE` write
    * transactions": the write lock is taken up front, so a writer waits on the
    * busy timeout instead of failing to upgrade a read snapshot. Spec 021
-   * D3: one held past `LONG_WRITE_MS` tells the daemon's log (`long-write.ts`).
+   * D3: the thread's write observer (`observeWrites`), when set, is told once
+   * the lock is held and again at the end.
    */
   transaction(fn) {
     const savepoint = this.#depth > 0 ? `squeal_${this.#depth}` : null;
-    let write2 = null;
+    let ended = null;
     if (savepoint === null) {
       this.#withinSlice(() => this.db.exec("BEGIN IMMEDIATE"));
-      write2 = startWrite(this.db);
+      ended = observer?.(this.db) ?? null;
     } else this.db.exec(`SAVEPOINT ${savepoint}`);
     this.#depth++;
     try {
@@ -1194,7 +1140,7 @@ var Connection = class {
       throw error;
     } finally {
       this.#depth--;
-      endWrite(write2);
+      ended?.();
     }
   }
   /**
@@ -1252,6 +1198,7 @@ var Connection = class {
     return statement;
   }
 };
+var observer = null;
 var slices = new AsyncLocalStorage();
 function rollback(db) {
   if (db.isTransaction) db.exec("ROLLBACK");
@@ -1267,7 +1214,7 @@ import { join as join4 } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 // src/core/store/paths.ts
-import { basename as basename2, dirname, join as join2 } from "node:path";
+import { basename, dirname, join as join2 } from "node:path";
 function storePaths(commonDir) {
   const dir = join2(commonDir, "squeal");
   return {
@@ -1573,12 +1520,12 @@ function toResult(row) {
 }
 var CHECK_WHERE = "project = ? AND test_path = ? AND kind = ? AND full_name = ?";
 var CHECK_COLUMNS = "c.project AS check_project, c.test_path AS check_test_path, c.kind AS check_kind, c.full_name AS check_full_name";
-function inTestFiles(column, files2) {
-  if (files2.length === 0) return { sql: "0", params: [] };
-  const values = files2.map(() => "(?, ?)").join(", ");
+function inTestFiles(column, files) {
+  if (files.length === 0) return { sql: "0", params: [] };
+  const values = files.map(() => "(?, ?)").join(", ");
   return {
     sql: `${column} IN (SELECT id FROM checks WHERE (project, test_path) IN (VALUES ${values}))`,
-    params: files2.flatMap((f) => [f.project, f.path])
+    params: files.flatMap((f) => [f.project, f.path])
   };
 }
 function findCheckId(conn, check) {
@@ -2198,8 +2145,8 @@ function toConsumer(row) {
 }
 function createViewRepo(conn) {
   return {
-    list: (consumer, files2) => {
-      const only = files2 === void 0 ? null : inTestFiles("v.check_id", files2);
+    list: (consumer, files) => {
+      const only = files === void 0 ? null : inTestFiles("v.check_id", files);
       return conn.all(
         `SELECT v.*, ${CHECK_COLUMNS} FROM consumer_views v JOIN checks c ON c.id = v.check_id
            WHERE v.worktree_id = ? AND v.session_id = ? AND v.agent_id = ?
@@ -2609,8 +2556,8 @@ var KINDS = [
 var SELECT_STATES = `SELECT s.*, ${CHECK_COLUMNS} FROM known_states s JOIN checks c ON c.id = s.check_id`;
 function createKnownStateRepo(conn) {
   return {
-    list: (worktreeId, files2) => {
-      const only = files2 === void 0 ? null : inTestFiles("s.check_id", files2);
+    list: (worktreeId, files) => {
+      const only = files === void 0 ? null : inTestFiles("s.check_id", files);
       return conn.all(
         `${SELECT_STATES} WHERE s.worktree_id = ? ${only === null ? "" : `AND ${only.sql}`}
            ORDER BY c.project, c.test_path, c.kind, c.full_name`,
@@ -2812,13 +2759,13 @@ function toTestFile(row) {
 }
 function createTestFileKeyRepo(conn) {
   return {
-    list: (worktreeId, files2) => {
-      if (files2?.length === 0) return [];
-      const only = files2 === void 0 ? "" : `AND (project, path) IN (VALUES ${files2.map(() => "(?, ?)").join(", ")})`;
+    list: (worktreeId, files) => {
+      if (files?.length === 0) return [];
+      const only = files === void 0 ? "" : `AND (project, path) IN (VALUES ${files.map(() => "(?, ?)").join(", ")})`;
       return conn.all(
         `SELECT * FROM test_file_keys WHERE worktree_id = ? ${only} ORDER BY project, path`,
         worktreeId,
-        ...(files2 ?? []).flatMap((f) => [f.project, f.path])
+        ...(files ?? []).flatMap((f) => [f.project, f.path])
       ).map(toTestFileKey);
     },
     withKey: (key) => conn.all("SELECT * FROM test_file_keys WHERE key = ? ORDER BY worktree_id, project, path", key).map(toTestFileKey),
@@ -3412,9 +3359,9 @@ function createFileRepo(conn) {
         worktreeId
       ).map(toFile);
     },
-    upsertMany(worktreeId, files2) {
+    upsertMany(worktreeId, files) {
       conn.transaction(() => {
-        for (const file of files2) {
+        for (const file of files) {
           conn.run(
             `INSERT INTO files (worktree_id, path, blob, language, counter_version, size, revision,
                too_big) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -4336,8 +4283,8 @@ function nodeTestFiles(command, listing) {
   const own = listing.files.filter((ref2) => ref2.project === command.project);
   if (command.files === null) return own.length === 0 ? null : own;
   const byPath = new Map(own.map((ref2) => [ref2.path, ref2]));
-  const files2 = command.files.map((file) => byPath.get(listing.pathOf(file) ?? ""));
-  return files2.every((ref2) => ref2 !== void 0) ? [...new Set(files2)] : null;
+  const files = command.files.map((file) => byPath.get(listing.pathOf(file) ?? ""));
+  return files.every((ref2) => ref2 !== void 0) ? [...new Set(files)] : null;
 }
 
 // src/runners/pytest/describe.ts
@@ -4346,7 +4293,7 @@ import { join as join8, resolve as resolve3 } from "node:path";
 
 // src/runners/pytest/environment/discover.ts
 import { existsSync as existsSync4, readdirSync, readFileSync as readFileSync3, statSync } from "node:fs";
-import { basename as basename3, dirname as dirname2, isAbsolute as isAbsolute4, join as join7, relative as relative2, resolve as resolve2 } from "node:path";
+import { basename as basename2, dirname as dirname2, isAbsolute as isAbsolute4, join as join7, relative as relative2, resolve as resolve2 } from "node:path";
 
 // src/core/fs/paths.ts
 import { isAbsolute as isAbsolute3, join as join6, relative, sep as sep2 } from "node:path";
@@ -4369,7 +4316,7 @@ function discoverEnvironment(root, project) {
     const declared = resolve2(cwd, project.python);
     if (isDirectory(declared)) return found("declared", declared, join7(declared, "bin", "python"));
     if (existsSync4(declared)) return found("declared", dirname2(dirname2(declared)), declared);
-    const target = basename3(declared).startsWith("python") ? dirname2(dirname2(declared)) : declared;
+    const target = basename2(declared).startsWith("python") ? dirname2(dirname2(declared)) : declared;
     return none(root, cwd, [declared], target);
   }
   const venv = join7(cwd, ".venv");
@@ -4411,11 +4358,11 @@ function none(root, cwd, looked, target) {
       return { kind: "none", looked, command: hit[1], from: join7(dir, hit[0]) };
   }
   for (const dir of dirs) {
-    const files2 = requirementsIn(dir).map((file) => join7(dir, file));
-    if (files2.length === 0) continue;
-    const install = files2.map((file) => `-r ${relative2(cwd, file)}`).join(" ");
+    const files = requirementsIn(dir).map((file) => join7(dir, file));
+    if (files.length === 0) continue;
+    const install = files.map((file) => `-r ${relative2(cwd, file)}`).join(" ");
     const command = `python -m venv ${venv} && ${venv}/bin/pip install ${install}`;
-    return { kind: "none", looked, command, from: files2[0] };
+    return { kind: "none", looked, command, from: files[0] };
   }
   return { kind: "none", looked, command: `python -m venv ${venv}`, from: null };
 }
@@ -4696,7 +4643,7 @@ var HoldingConnection = class extends Connection {
   #file;
   constructor(db) {
     super(db);
-    this.#file = fileOf2(db);
+    this.#file = fileOf(db);
   }
   /** Whether a held transaction is open. */
   get held() {
@@ -4820,7 +4767,7 @@ function release(file, holder) {
   waiters = waiters.filter((w) => w.file !== file);
   for (const waiter of ready) waiter.resolve();
 }
-function fileOf2(db) {
+function fileOf(db) {
   const rows = db.prepare("PRAGMA database_list").all();
   const file = rows.find((row) => row.name === "main")?.file;
   return typeof file === "string" ? file : "";
@@ -5392,7 +5339,7 @@ function countsOf(states) {
     pending: states.filter((s) => s.outcome === "pending").length,
     stale: states.filter((s) => s.stale).length,
     unknown: states.filter((s) => s.outcome === "unknown").length,
-    reasons: [...reasons].map(([reason, files2]) => ({ reason, files: files2 })).sort((a, b) => b.files - a.files || a.reason.localeCompare(b.reason))
+    reasons: [...reasons].map(([reason, files]) => ({ reason, files })).sort((a, b) => b.files - a.files || a.reason.localeCompare(b.reason))
   };
 }
 var scopes = (worktreeId) => TOOLS.map((tool) => [tool, lintScope(worktreeId, tool)]);
@@ -7095,7 +7042,7 @@ function parseCommitReport(raw) {
   const waiting = waitingOf(value.waiting);
   const { from } = value;
   const { untracked, unanswered, notDeterminedFiles } = value.tests;
-  const files2 = notDeterminedOf(notDeterminedFiles);
+  const files = notDeterminedOf(notDeterminedFiles);
   return {
     ...base,
     ...typeof from === "string" ? { from } : {},
@@ -7103,7 +7050,7 @@ function parseCommitReport(raw) {
       ...pick(tests2, TEST_KEYS),
       ...isCount(untracked) && untracked > 0 ? { untracked } : {},
       ...isCount(unanswered) && unanswered > 0 ? { unanswered } : {},
-      ...files2.length > 0 ? { notDeterminedFiles: files2 } : {}
+      ...files.length > 0 ? { notDeterminedFiles: files } : {}
     },
     ...lint2 === void 0 ? {} : { lint: pick(lint2, LINT_KEYS) },
     ...waiting === null ? {} : { waiting },
@@ -7204,8 +7151,8 @@ function commitReportText(report) {
 function commitLine(report) {
   const line = { commit: report.commit, text: commitReportText(report) };
   if (isFailedReport(report)) return line;
-  const { notDetermined: count2, notDeterminedFiles: files2 = [] } = report.tests;
-  return count2 > 0 && files2.length > 0 ? { ...line, notDetermined: { count: count2, files: files2 } } : line;
+  const { notDetermined: count2, notDeterminedFiles: files = [] } = report.tests;
+  return count2 > 0 && files.length > 0 ? { ...line, notDetermined: { count: count2, files } } : line;
 }
 
 // src/core/daemon/client.ts
@@ -7339,15 +7286,15 @@ function worktreeSlowView(store, worktreeId) {
 }
 function classifySlowFiles(states, keys, isSlow) {
   const checks = laneChecks(states, isSlow);
-  const files2 = /* @__PURE__ */ new Map();
+  const files = /* @__PURE__ */ new Map();
   for (const row of keys) {
     if (!isSlow(row.testFile)) continue;
     const id = testFileId(row.testFile);
     const own = checks.get(id) ?? [];
     const cls = own.length === 0 ? row.key !== null && row.pending !== null ? "pending" : "notRun" : own.some((s) => s.validity === "pending") ? "pending" : own.every((s) => s.validity === "current") ? "current" : "notRun";
-    files2.set(id, { ref: row.testFile, class: cls });
+    files.set(id, { ref: row.testFile, class: cls });
   }
-  return files2;
+  return files;
 }
 function laneChecks(states, inLane) {
   const checks = /* @__PURE__ */ new Map();
@@ -7368,20 +7315,20 @@ function readSlowTier(store, worktreeId, states, keys, view) {
   };
 }
 function readLane(store, worktreeId, states, keys, inLane, group, classify2 = classifySlowFiles) {
-  const files2 = classify2(states, keys, inLane);
+  const files = classify2(states, keys, inLane);
   const counts = { current: 0, pending: 0, notRun: 0 };
-  for (const { class: cls } of files2.values()) counts[cls]++;
+  for (const { class: cls } of files.values()) counts[cls]++;
   let currentAt = null;
   let currentUpTo = null;
   for (const state of states) {
     if (state.validity !== "current" || state.observedAt === null) continue;
     const id = testFileId(testFileOf(state.check));
-    if (files2.get(id)?.class !== "current") continue;
+    if (files.get(id)?.class !== "current") continue;
     currentAt = currentAt === null ? state.observedAt : Math.min(currentAt, state.observedAt);
     currentUpTo = Math.max(currentUpTo ?? state.observedAt, state.observedAt);
   }
   return {
-    testFiles: files2.size,
+    testFiles: files.size,
     ...counts,
     currentAt,
     ...currentUpTo !== null && currentUpTo !== currentAt ? { currentUpTo } : {},
@@ -7446,17 +7393,17 @@ function readGroupTiers(store, worktreeId, states, keys, policy) {
 }
 function classifyGroupFiles(states, keys, inLane) {
   const checks = laneChecks(states, inLane);
-  const files2 = /* @__PURE__ */ new Map();
+  const files = /* @__PURE__ */ new Map();
   for (const row of keys) {
     if (!inLane(row.testFile)) continue;
     const id = testFileId(row.testFile);
     const cls = fileClassOf(row, checks.get(id) ?? []);
-    files2.set(id, {
+    files.set(id, {
       ref: row.testFile,
       class: cls === "current" || cls === "pending" ? cls : "notRun"
     });
   }
-  return files2;
+  return files;
 }
 function inGroupLane(policy) {
   const view = groupView(policy);
@@ -7606,13 +7553,13 @@ function countFilesWithoutChecks(states, keys) {
 var SLOW_FILES_NAMED = 3;
 function countSlowPending(states, keys, isSlow) {
   const withChecks = new Set(states.map((s) => testFileKeyOf(s.check)));
-  const files2 = /* @__PURE__ */ new Map();
+  const files = /* @__PURE__ */ new Map();
   let checks = 0;
   for (const state of states) {
     const ref2 = testFileOf(state.check);
     if (state.validity !== "pending" || !isSlow(ref2)) continue;
     checks++;
-    files2.set(testFileKeyOf(state.check), ref2);
+    files.set(testFileKeyOf(state.check), ref2);
   }
   let testFilesWithoutChecks = 0;
   for (const row of keys) {
@@ -7621,11 +7568,11 @@ function countSlowPending(states, keys, isSlow) {
       continue;
     }
     testFilesWithoutChecks++;
-    files2.set(id, row.testFile);
+    files.set(id, row.testFile);
   }
-  const named3 = [...files2.values()].sort((a, b) => a.path.localeCompare(b.path) || a.project.localeCompare(b.project)).slice(0, SLOW_FILES_NAMED);
+  const named3 = [...files.values()].sort((a, b) => a.path.localeCompare(b.path) || a.project.localeCompare(b.project)).slice(0, SLOW_FILES_NAMED);
   return {
-    testFiles: files2.size,
+    testFiles: files.size,
     checks,
     testFilesWithoutChecks,
     ...named3.length === 0 ? {} : { files: named3 }
@@ -9373,9 +9320,9 @@ function withClosureChanges(store, consumer, failures, revision) {
   });
 }
 function dependenciesInstalled(store, worktreeId) {
-  const files2 = store.fileHashes.list(worktreeId);
-  if (files2.length === 0) return void 0;
-  return files2.some((f) => isInstalledLockfile(f.path));
+  const files = store.fileHashes.list(worktreeId);
+  if (files.length === 0) return void 0;
+  return files.some((f) => isInstalledLockfile(f.path));
 }
 function annotate(store, consumer, entries, header, states) {
   return {
@@ -9499,11 +9446,11 @@ function spentFailure(failed2, file) {
   const f = failed2.get(file.path);
   return f !== void 0 && f.blob === file.blob && f.retryAt === null ? f : null;
 }
-function uncountableFiles(store, worktreeId, files2) {
+function uncountableFiles(store, worktreeId, files) {
   const failed2 = readUncountable(store.meta, worktreeId);
   const spent = /* @__PURE__ */ new Map();
   if (failed2.size === 0) return spent;
-  for (const file of files2) {
+  for (const file of files) {
     const f = spentFailure(failed2, file);
     if (f === null) continue;
     if (store.counts.get(file.blob, file.language, file.counterVersion) === null)
@@ -9611,9 +9558,9 @@ function changedNotJudged(store, worktreeId, bounds) {
     ...[...failed2].flatMap(([path, f]) => own(f.editedAt) ? [path] : [])
   ];
   if (paths.length === 0) return [];
-  const files2 = store.files.list(worktreeId, paths);
-  const spent = uncountableFiles(store, worktreeId, files2);
-  return files2.flatMap((file) => {
+  const files = store.files.list(worktreeId, paths);
+  const spent = uncountableFiles(store, worktreeId, files);
+  return files.flatMap((file) => {
     if (file.tooBig === true) {
       const revision = big.get(file.path);
       return own(revision) ? [{ file, revision, failure: null }] : [];
@@ -9657,7 +9604,7 @@ function standing2(store, consumer, { threshold, maxFileBytes }, since) {
   const changed = changedNotJudged(store, worktreeId, since === null ? [] : [since]);
   if (over.length === 0 && changed.length === 0) return null;
   const told = over.length === 0 ? null : toldOf2(over, threshold);
-  const files2 = changed.map(({ file, failure: failure2 }) => [
+  const files = changed.map(({ file, failure: failure2 }) => [
     file.path,
     failure2 === null ? `over ${maxFileBytes}` : "could not count"
   ]).sort(([a], [b]) => compare(a, b));
@@ -9666,7 +9613,7 @@ function standing2(store, consumer, { threshold, maxFileBytes }, since) {
       ...told === null ? {} : { toldOver: told },
       ...changed.length === 0 ? {} : { notJudged: notJudgedOf(changed, maxFileBytes) }
     },
-    signature: JSON.stringify({ told, files: files2 })
+    signature: JSON.stringify({ told, files })
   };
 }
 function summaryChanged(store, consumer, policy, since) {
@@ -9702,18 +9649,18 @@ function crapOf(store, consumer, entry3) {
 function withUntested(store, consumer, news, loaders) {
   if (news === null || loaders === void 0 || !news.entries.some(saysWhy)) return news;
   const count2 = loaders();
-  const files2 = /* @__PURE__ */ new Map();
-  const fileOf3 = (path) => {
-    const known = files2.get(path);
+  const files = /* @__PURE__ */ new Map();
+  const fileOf2 = (path) => {
+    const known = files.get(path);
     if (known !== void 0) return known;
     const n = count2(path);
     const facts = n > 0 && noneRan(store, consumer, path) ? { count: n, processes: true } : { count: n };
-    files2.set(path, facts);
+    files.set(path, facts);
     return facts;
   };
   const entries = news.entries.map((e) => {
     if (!saysWhy(e)) return e;
-    const fileLoaders = fileOf3(e.check.path);
+    const fileLoaders = fileOf2(e.check.path);
     const own = e.measure === "uncovered" && e.evidence !== void 0;
     const crap = own ? crapOf(store, consumer, e) : void 0;
     return {
@@ -9767,10 +9714,10 @@ function isTooBig(file) {
   return file.tooBig === true;
 }
 function countingOf(store, worktreeId) {
-  const files2 = store.files.list(worktreeId).filter((f) => !isTooBig(f));
-  const spent = uncountableFiles(store, worktreeId, files2);
+  const files = store.files.list(worktreeId).filter((f) => !isTooBig(f));
+  const spent = uncountableFiles(store, worktreeId, files);
   const pending = store.files.uncounted(worktreeId).filter((f) => !spent.has(f.path)).length;
-  const total = files2.length - spent.size;
+  const total = files.length - spent.size;
   return { done: total - pending, total, uncountable: spent.size };
 }
 function lastTransition(store, worktreeId, check, measure2 = MEASURE) {
@@ -9825,10 +9772,10 @@ function newTooBig(store, consumer, since, limit, write2) {
   const own = [...edits].flatMap(([path, revision]) => isOwn(since, revision) ? [path] : []);
   if (own.length === 0) return [];
   const told = toldTooBig(store, consumer);
-  const files2 = store.files.list(consumer.worktreeId, own).filter((f) => isTooBig(f) && !told.has(f.path));
-  if (files2.length === 0) return [];
-  if (write2) writeJson(store, tooBigToldKey(consumer), [...told, ...files2.map((f) => f.path)]);
-  return files2.map((f) => ({ path: f.path, size: f.size, limit }));
+  const files = store.files.list(consumer.worktreeId, own).filter((f) => isTooBig(f) && !told.has(f.path));
+  if (files.length === 0) return [];
+  if (write2) writeJson(store, tooBigToldKey(consumer), [...told, ...files.map((f) => f.path)]);
+  return files.map((f) => ({ path: f.path, size: f.size, limit }));
 }
 function lineOf(store, worktreeId, check) {
   const [file] = store.files.list(worktreeId, [check.path]);
@@ -10611,13 +10558,13 @@ var IN_TURN = { turn: "in-turn" };
 function parse4(value) {
   if (!isRecord(value)) return START_IDLE;
   if (value.turn === "in-turn") return IN_TURN;
-  const files2 = Array.isArray(value.testFiles) ? value.testFiles : [];
+  const files = Array.isArray(value.testFiles) ? value.testFiles : [];
   const keys = isRecord(value.keys) ? Object.entries(value.keys).filter(
     (e) => typeof e[1] === "string" || e[1] === null
   ) : null;
   return {
     turn: "idle",
-    testFiles: files2.filter((f) => typeof f === "string"),
+    testFiles: files.filter((f) => typeof f === "string"),
     newTestFiles: value.newTestFiles === true,
     ...keys === null ? {} : { keys: Object.fromEntries(keys) },
     ...typeof value.revision === "number" ? { revision: value.revision } : {},
@@ -10655,13 +10602,13 @@ function currentKeys(keys) {
 }
 function endTurn(store, consumer, states, undelivered, handoffAt = null) {
   const keys = store.testFileKeys.list(consumer.worktreeId);
-  const files2 = /* @__PURE__ */ new Set();
-  for (const s of states) if (s.validity === "pending") files2.add(testFileKeyOf(s.check));
-  for (const k of keys) if (k.key !== null && k.pending !== null) files2.add(testFileId(k.testFile));
-  for (const e of undelivered) files2.add(testFileKeyOf(e.check));
+  const files = /* @__PURE__ */ new Set();
+  for (const s of states) if (s.validity === "pending") files.add(testFileKeyOf(s.check));
+  for (const k of keys) if (k.key !== null && k.pending !== null) files.add(testFileId(k.testFile));
+  for (const e of undelivered) files.add(testFileKeyOf(e.check));
   const header = readHeader(store, consumer.worktreeId, states, keys);
   const current2 = currentKeys(keys);
-  const testFiles = [...files2].sort();
+  const testFiles = [...files].sort();
   const owed2 = Object.fromEntries(testFiles.map((f) => [f, current2.get(f) ?? null]));
   const newTestFiles = header.runnerPartPending === true;
   const { revision } = header;
@@ -10683,14 +10630,14 @@ function owedScope(store, consumer) {
   if (state.turn !== "idle" || state.testFiles.length === 0 && !state.newTestFiles) {
     return "nothing";
   }
-  const files2 = state.testFiles.map(fromTestFileId);
-  const owed2 = files2.length === 0 ? [] : store.knownStates.list(consumer.worktreeId, files2);
+  const files = state.testFiles.map(fromTestFileId);
+  const owed2 = files.length === 0 ? [] : store.knownStates.list(consumer.worktreeId, files);
   const untold = state.newTestFiles ? store.knownStates.untold(consumer) : [];
   const seen = new Set(owed2.map((s) => checkIdentity(s.check)));
   return {
     states: [...owed2, ...untold.filter((s) => !seen.has(checkIdentity(s.check)))],
-    view: files2.length === 0 ? [] : store.views.list(consumer, files2),
-    keys: files2.length === 0 ? [] : store.testFileKeys.list(consumer.worktreeId, files2)
+    view: files.length === 0 ? [] : store.views.list(consumer, files),
+    keys: files.length === 0 ? [] : store.testFileKeys.list(consumer.worktreeId, files)
   };
 }
 function fromTestFileId(id) {
@@ -11291,17 +11238,17 @@ function coverageStatusOf(store, worktreeId, policy) {
   const summary = readSummary(store.meta, worktreeId);
   if (summary === null) return void 0;
   const fails = (measure2) => store.states.list(worktreeId, { measure: measure2, outcome: "fail" }).length;
-  const files2 = Object.values(summary.files);
-  const waiting = (reason) => files2.filter((f) => f.state === "pending" && f.reason === reason).length;
+  const files = Object.values(summary.files);
+  const waiting = (reason) => files.filter((f) => f.state === "pending" && f.reason === reason).length;
   const causes = {};
-  for (const f of files2) if (f.state === "unknown") causes[f.cause] = (causes[f.cause] ?? 0) + 1;
+  for (const f of files) if (f.state === "unknown") causes[f.cause] = (causes[f.cause] ?? 0) + 1;
   const notRead = [...policy.vitest.exclude, ...policy.vitest.excludeProjects];
   return {
     v: 1,
     threshold: policy.crap.threshold,
     crap: fails("crap"),
     uncovered: fails("uncovered"),
-    files: files2.length,
+    files: files.length,
     waitingForRuns: waiting("run"),
     waitingForRecords: waiting("record"),
     ...waiting("imports") === 0 ? {} : {
@@ -11397,15 +11344,15 @@ function publishedBatches(store, worktreeId, daemonStartedAt, now) {
   for (const p of row.entries) {
     const position = batches.indexOf(p) + 1;
     if (position === 0 && (p.batch !== void 0 || p.until <= now)) continue;
-    const files2 = strings4(position === 0 ? p.files : p.batch?.files);
+    const files = strings4(position === 0 ? p.files : p.batch?.files);
     const end = p.batch?.estimatedEnd;
     const place = position === 0 ? null : {
       position,
       of: batches.length,
-      files: files2.length,
+      files: files.length,
       estimatedEnd: typeof end === "number" ? end : null
     };
-    for (const f of files2) if (!places.has(f)) places.set(f, place);
+    for (const f of files) if (!places.has(f)) places.set(f, place);
   }
   return places;
 }
@@ -11463,9 +11410,9 @@ function formatCheck(check) {
 }
 
 // src/core/status/focused.ts
-function readFocusedFiles(store, worktreeId, files2) {
+function readFocusedFiles(store, worktreeId, files) {
   const runs = readFocused(store, worktreeId);
-  const refs = files2 ?? runs.map((run2) => run2.testFile);
+  const refs = files ?? runs.map((run2) => run2.testFile);
   if (refs.length === 0) return [];
   const keys = new Map(
     store.testFileKeys.list(worktreeId, refs).map((row) => [testFileId(row.testFile), row.key])
@@ -11693,9 +11640,9 @@ function describeDifferences(a, b) {
     new Map(Object.entries(a.config)),
     new Map(Object.entries(b.config))
   );
-  const files2 = differingNames(new Map(a.files), new Map(b.files));
+  const files = differingNames(new Map(a.files), new Map(b.files));
   if (fields.length > 0) {
-    const onlyFields = differences2.length === 0 && files2.length === 0;
+    const onlyFields = differences2.length === 0 && files.length === 0;
     const ci = a.ci && !b.ci && onlyFields ? " (the export ran with CI set)" : "";
     differences2.push({
       part: "config",
@@ -11703,11 +11650,11 @@ function describeDifferences(a, b) {
       text: `config fields ${listed(fields)} differ${ci}`
     });
   }
-  if (files2.length > 0) {
+  if (files.length > 0) {
     differences2.push({
       part: "files",
-      names: files2,
-      text: `config and setup files differ: ${listed(files2)}`
+      names: files,
+      text: `config and setup files differ: ${listed(files)}`
     });
   }
   return differences2;
@@ -11784,8 +11731,8 @@ function readImports(store, worktreeId, keys, states) {
   if (imports.length === 0) return [];
   const here = hereOf(store, worktreeId, keys, states);
   return imports.flatMap((record) => {
-    const files2 = importFiles(store, record.id).filter((f) => here.keys.has(testFileId(f)));
-    if (files2.length === 0) return [];
+    const files = importFiles(store, record.id).filter((f) => here.keys.has(testFileId(f)));
+    if (files.length === 0) return [];
     const notCurrent = {
       sameKeyKept: 0,
       sameKeyNotAdopted: 0,
@@ -11798,7 +11745,7 @@ function readImports(store, worktreeId, keys, states) {
     };
     let currentFiles = 0;
     let currentResults = 0;
-    for (const file of files2) {
+    for (const file of files) {
       const reason = reasonOf(file, here);
       if (reason === "current") currentFiles++;
       else notCurrent[reason]++;
@@ -11812,10 +11759,10 @@ function readImports(store, worktreeId, keys, states) {
         commit: record.header.commit,
         importedAt: record.importedAt,
         currentResults,
-        testFiles: files2.length,
+        testFiles: files.length,
         currentFiles,
         notCurrent,
-        environmentDifferences: notCurrent.environment === 0 ? [] : differences(store, worktreeId, files2)
+        environmentDifferences: notCurrent.environment === 0 ? [] : differences(store, worktreeId, files)
       }
     ];
   });
@@ -11882,8 +11829,8 @@ function hereOf(store, worktreeId, keys, states) {
     }
   };
 }
-function differences(store, worktreeId, files2) {
-  const exported = new Map(files2.map((f) => [f.project, f.environment]));
+function differences(store, worktreeId, files) {
+  const exported = new Map(files.map((f) => [f.project, f.environment]));
   const local = new Map(worktreeEnvironments(store, worktreeId).map((e) => [e.project, e]));
   return [...exported].flatMap(([project, hash3]) => {
     const comparison = compareEnvironment(
@@ -12019,7 +11966,7 @@ function runnerPartBoundMs(timeoutMs) {
 
 // src/core/slow/slot-files.ts
 import { createHash as createHash10 } from "node:crypto";
-import { basename as basename5, join as join23 } from "node:path";
+import { basename as basename4, join as join23 } from "node:path";
 
 // src/core/daemon/scratch.ts
 import { createHash as createHash9, randomBytes } from "node:crypto";
@@ -12035,7 +11982,7 @@ import {
   unlinkSync,
   writeFileSync as writeFileSync2
 } from "node:fs";
-import { basename as basename4, dirname as dirname7, join as join22 } from "node:path";
+import { basename as basename3, dirname as dirname7, join as join22 } from "node:path";
 
 // src/core/daemon/paths.ts
 import { chmodSync, lstatSync as lstatSync4, mkdirSync as mkdirSync5 } from "node:fs";
@@ -12138,12 +12085,12 @@ function slowSlotDir(env = process.env, userDir = userTmpDir()) {
 }
 function heldPermits(request) {
   const { dir } = request;
-  const files2 = slotFiles(request.group);
+  const files = slotFiles(request.group);
   if (!existsSync9(dir)) return [];
   checkPrivateDir(dir, request.uid ?? currentUid(), "slow slot directory");
   const held = [];
   for (let i = 0; i < Math.max(1, request.permits ?? 1); i++) {
-    const file = files2.permit(i);
+    const file = files.permit(i);
     const path = join24(dir, file);
     if (!existsSync9(path)) continue;
     let free;
@@ -12794,8 +12741,8 @@ function unknownTestFilesOf(store, worktreeId, states, keys, root, now = Date.no
   });
   if (unknown.length === 0) return {};
   const reasons = unknownReasons(store, worktreeId, states, root, now);
-  const files2 = unknown.sort((a, b) => testFileId(a.testFile).localeCompare(testFileId(b.testFile))).slice(0, UNKNOWN_FILES_LISTED).map((row) => reasons.of(row, checks.get(testFileId(row.testFile)) ?? []));
-  return { unknownTestFiles: { total: unknown.length, files: files2 } };
+  const files = unknown.sort((a, b) => testFileId(a.testFile).localeCompare(testFileId(b.testFile))).slice(0, UNKNOWN_FILES_LISTED).map((row) => reasons.of(row, checks.get(testFileId(row.testFile)) ?? []));
+  return { unknownTestFiles: { total: unknown.length, files } };
 }
 function checksByFile(states) {
   const checks = /* @__PURE__ */ new Map();
@@ -12904,7 +12851,7 @@ function standingsOf(store, worktreeId, root, daemon, now, load = hostLoad, read
       ).length
     )
   };
-  return (files2) => files2.map((ref2) => {
+  return (files) => files.map((ref2) => {
     const row2 = rows.get(testFileId(ref2));
     const own = checks.get(testFileId(ref2)) ?? [];
     const state = fileClassOf(row2, own);
@@ -13147,7 +13094,7 @@ function outstandingOf(store, worktreeId, root, reads, now, load) {
   const slow = slowView(policy);
   const retries = retryStandings(reads, worktreeId, policy);
   const refs = reads.keys.map((row) => row.testFile).sort((a, b) => testFileId(a).localeCompare(testFileId(b)));
-  const files2 = standingsOf(store, worktreeId, root, daemon, now, load, reads)(refs);
+  const files = standingsOf(store, worktreeId, root, daemon, now, load, reads)(refs);
   const groups2 = /* @__PURE__ */ new Map();
   const add = (standing3, ref2) => {
     const id = groupId(standing3) + waitsId(standing3);
@@ -13159,7 +13106,7 @@ function outstandingOf(store, worktreeId, root, reads, now, load) {
     if (ref2 !== null) group.files.push(ref2);
     group.standing = widest(group.standing, standing3);
   };
-  for (const file of files2) {
+  for (const file of files) {
     const retry = retries.get(testFileId(file.testFile));
     if (retry !== void 0) {
       add(retry, file.testFile);
@@ -13246,8 +13193,8 @@ function pendingTestFilesOf(phases) {
   }
   return { running: listed2(running), queued: listed2(queued) };
 }
-function listed2(files2) {
-  const sorted = files2.sort((a, b) => testFileId(a).localeCompare(testFileId(b)));
+function listed2(files) {
+  const sorted = files.sort((a, b) => testFileId(a).localeCompare(testFileId(b)));
   return {
     files: sorted.slice(0, PHASE_FILES_LISTED),
     omitted: Math.max(0, sorted.length - PHASE_FILES_LISTED)
@@ -13592,13 +13539,13 @@ import { spawn } from "node:child_process";
 import { existsSync as existsSync10, mkdirSync as mkdirSync7 } from "node:fs";
 
 // src/core/process-label.ts
-import { basename as basename6, delimiter, dirname as dirname10, resolve as resolve7 } from "node:path";
+import { basename as basename5, delimiter, dirname as dirname10, resolve as resolve7 } from "node:path";
 var PROJECT_MAX = 32;
 function argv0For(label, platform = process.platform) {
   return label !== null && platform === "linux" ? label : void 0;
 }
 function worktreeLabel(role, root, commonDir, id) {
-  const project = projectComponent(projectOf(commonDir) ?? basename6(root));
+  const project = projectComponent(projectOf(commonDir) ?? basename5(root));
   return id === null ? `squeal ${project} ${role}` : `squeal ${project} ${role} @${id.slice(0, 8)}`;
 }
 function displayId(root) {
@@ -13609,7 +13556,7 @@ function displayId(root) {
   }
 }
 function projectOf(commonDir) {
-  return commonDir !== null && basename6(commonDir) === ".git" ? basename6(dirname10(commonDir)) : null;
+  return commonDir !== null && basename5(commonDir) === ".git" ? basename5(dirname10(commonDir)) : null;
 }
 function projectComponent(name2) {
   const safe = name2.replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "");
@@ -13879,8 +13826,8 @@ function coversSentence(coverage, node) {
   const suites = runnersOf(coverage).map(
     (runner) => suite(runner.name, runner.covered(coverage), node)
   );
-  const files2 = coverage.slow?.files;
-  const slow = coverage.slow === null ? "" : files2 === null || files2 === void 0 ? ", with slow test files not counted yet" : `, with ${files2} slow test ${files2 === 1 ? "file" : "files"} at the daemon's last listing`;
+  const files = coverage.slow?.files;
+  const slow = coverage.slow === null ? "" : files === null || files === void 0 ? ", with slow test files not counted yet" : `, with ${files} slow test ${files === 1 ? "file" : "files"} at the daemon's last listing`;
   return `Squeal covers ${listed3(suites, "and")}${slow}.`;
 }
 function suite(runner, covered, shown) {
@@ -13900,8 +13847,8 @@ function excluded(entries) {
   return `; its ${text2} ${plural2 ? "are" : "is"} not run, excluded by squeal.config.json`;
 }
 function notCovered(coverage) {
-  const files2 = DESCRIPTIONS.flatMap((runner) => runner.excluded(coverage) ?? []);
-  const what = files2.length === 0 ? "typecheck, build" : `typecheck, build, the ${files2.join(", the ")}, which squeal.config.json excludes,`;
+  const files = DESCRIPTIONS.flatMap((runner) => runner.excluded(coverage) ?? []);
+  const what = files.length === 0 ? "typecheck, build" : `typecheck, build, the ${files.join(", the ")}, which squeal.config.json excludes,`;
   return `Squeal does not cover ${what} or any other test suite: run those yourself.`;
 }
 function named2(noun, entries, shown) {
@@ -13948,7 +13895,7 @@ import {
   rmSync as rmSync5,
   statSync as statSync4
 } from "node:fs";
-import { basename as basename7, dirname as dirname12, isAbsolute as isAbsolute11, join as join27, resolve as resolve8 } from "node:path";
+import { basename as basename6, dirname as dirname12, isAbsolute as isAbsolute11, join as join27, resolve as resolve8 } from "node:path";
 
 // src/harness/codex/adapter/layout.ts
 import {
@@ -14079,7 +14026,7 @@ function keptCli(data, version) {
 }
 function dataOfCopy(cli) {
   const versions = dirname12(dirname12(dirname12(dirname12(cli))));
-  return cli.endsWith(`/${CLI}`) && basename7(versions) === "versions" ? dirname12(versions) : null;
+  return cli.endsWith(`/${CLI}`) && basename6(versions) === "versions" ? dirname12(versions) : null;
 }
 function keepVersion({ root, data, version }) {
   const dir = copyOf(data, version);
