@@ -8,6 +8,7 @@ import { markRest, recordHeartbeat } from "../presence/events.js";
 import type { BusyWaits } from "../store/busy.js";
 import { logLongWrites, longWriteLine } from "../store/long-write.js";
 import { storePaths } from "../store/paths.js";
+import { noneRemoved, pruneSlices } from "../store/prune.js";
 import { connectionOf } from "../store/store.js";
 import { listPaths, plural } from "../text.js";
 import type { AbsolutePath, EpochMs, WorktreeId } from "../types/common.js";
@@ -17,6 +18,7 @@ import type { SlowWaiting } from "../types/scheduler.js";
 import type { Store } from "../types/store.js";
 import { CHECKPOINT_BUSY_MS, IdleCheckpoint, truncateWal } from "./idle-checkpoint.js";
 import { recordDaemonUsed } from "./last-use.js";
+import { SlicedPrune } from "./sliced-prune.js";
 import { SlicedWrites } from "./sliced-writes.js";
 import { type StoreFile, storeCondemned } from "./store-file.js";
 
@@ -426,21 +428,32 @@ export function startTimers(context: TimerContext): () => void {
       const read = readObserved();
       if (read !== seen.snapshot && context.observedChanged?.() === true) seen.snapshot = read;
     });
+  // Spec 021 D3 (row 021-09): the main store's prune in slices, the lock free between them.
+  const pruning = new SlicedPrune(context);
   const prune = () =>
-    retries.run("pruning", [
-      [
-        "prune",
-        () =>
-          store.prune({
+    void pruning.run(
+      () =>
+        pruneSlices(
+          connectionOf(store),
+          store.worktrees,
+          storePaths(context.commonDir),
+          {
             now: now(),
             retentionDays: context.policy.store.retentionDays,
             maxSizeMb: context.policy.store.maxSizeMb,
-          }),
-      ],
+          },
+          noneRemoved(),
+        ),
       // Spec 015 D4 and D8 (row 015-11, agreed with the coordinator): the code store
       // after the main store, while it exists and the policy is on.
-      ["code prune", () => pruneCodeStoreAfter(store, context.commonDir, context.policy, now())],
-    ]);
+      () =>
+        retries.run("pruning", [
+          [
+            "code prune",
+            () => pruneCodeStoreAfter(store, context.commonDir, context.policy, now()),
+          ],
+        ]),
+    );
 
   const timers = [
     setInterval(heartbeat, context.heartbeatMs),
@@ -458,6 +471,7 @@ export function startTimers(context: TimerContext): () => void {
     for (const timer of timers) clearInterval(timer);
     clearTimeout(first);
     retries.stop();
+    pruning.stop();
     unlog();
   };
 }
