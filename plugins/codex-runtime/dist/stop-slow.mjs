@@ -78,7 +78,8 @@ var WORKTREE_META_ROWS = {
   omittedTestFiles: { prefix: "omitted-test-files:", owner: "scheduler/omitted-test-files" },
   unknownFiles: { prefix: "unknown-files:", owner: "scheduler/unknown-files" },
   importRewalk: { prefix: "import-rewalk:", owner: "scheduler/import-rewalk" },
-  importsWaiting: { prefix: "imports-waiting:", owner: "scheduler/imports-waiting" }
+  importsWaiting: { prefix: "imports-waiting:", owner: "scheduler/imports-waiting" },
+  sharedRefused: { prefix: "shared-refused:", owner: "shared/refused" }
 };
 function worktreeMetaKey(row, worktreeId) {
   return `${WORKTREE_META_ROWS[row].prefix}${worktreeId}`;
@@ -8020,7 +8021,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.439";
+  if (true) return "0.1.440";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -12320,15 +12321,9 @@ function listed(names2) {
 }
 
 // src/core/status/import-environment.ts
-function compareEnvironment(exported, local) {
-  if (local === null) return { kind: "unknown" };
-  if (local.hash === exported.hash) return { kind: "equal" };
-  if (exported.descriptor === null || local.descriptor === null) {
-    return { kind: "differs", differences: [] };
-  }
-  const differences = describeDifferences(exported.descriptor, local.descriptor).map((d) => d.text);
-  const passes = importDifferences(exported.descriptor, local.descriptor).length === 0;
-  return { kind: passes ? "passes" : "differs", differences };
+function blockingDifferences(exported, local) {
+  if (exported === null || local === null) return ["parts not recorded"];
+  return importDifferences(exported, local).map((d) => d.text);
 }
 var NODE_BUILD = "nodeBuild";
 function nodeGap(exported, local) {
@@ -12453,20 +12448,23 @@ function hereOf(store, worktreeId, keys, states) {
   };
 }
 function environmentOf(store, worktreeId, files2) {
-  const exported = new Map(files2.map((f) => [f.project, f.environment]));
   const local = new Map(worktreeEnvironments(store, worktreeId).map((e) => [e.project, e]));
+  const projects2 = new Set(files2.map((f) => f.project)).size;
+  const differing = /* @__PURE__ */ new Map();
+  for (const f of files2) {
+    const ours = local.get(f.project);
+    if (ours !== void 0 && ours.hash !== f.environment) {
+      differing.set(f.project, [f.environment, ours]);
+    }
+  }
   const named3 = [];
   const gaps = [];
-  for (const [project, hash3] of exported) {
-    const theirs = { hash: hash3, descriptor: readEnvironment(store, hash3) };
-    const ours = local.get(project) ?? null;
-    const comparison = compareEnvironment(theirs, ours);
-    if (comparison.kind === "equal" || comparison.kind === "unknown") continue;
-    gaps.push(nodeGap(theirs.descriptor, ours?.descriptor ?? null));
-    const texts = comparison.differences.length === 0 ? ["parts not recorded"] : comparison.differences;
-    named3.push(
-      ...exported.size === 1 ? texts : texts.map((d) => `${project || "(default)"}: ${d}`)
-    );
+  for (const [project, [hash3, ours]] of differing) {
+    const theirs = readEnvironment(store, hash3);
+    const texts = blockingDifferences(theirs, ours.descriptor);
+    if (texts.length === 0) continue;
+    gaps.push(nodeGap(theirs, ours.descriptor));
+    named3.push(...projects2 === 1 ? texts : texts.map((d) => `${project || "(default)"}: ${d}`));
   }
   const versions = gaps.find((g) => g.versions !== null)?.versions;
   if (versions === void 0 || versions === null) return { environmentDifferences: named3 };
@@ -14184,6 +14182,44 @@ function runtimeFilesStatus(store, worktreeId, root) {
   };
 }
 
+// src/core/keys/key-format.ts
+var KEY_FORMAT_VERSION = 21;
+
+// src/core/shared/refused.ts
+function sharedRefusedMetaKey(worktreeId) {
+  return worktreeMetaKey("sharedRefused", worktreeId);
+}
+function readSquealMismatch(store, worktreeId) {
+  const raw = store.meta.get(sharedRefusedMetaKey(worktreeId));
+  if (raw === null) return null;
+  let value;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (!isRecord(value)) return null;
+  const { ci, here, commit, at } = value;
+  const ciBuild = buildOf(ci);
+  const hereBuild = buildOf(here);
+  if (ciBuild === null || hereBuild === null) return null;
+  if (typeof commit !== "string" || typeof at !== "number") return null;
+  return { ci: ciBuild, here: hereBuild, commit, at };
+}
+function buildOf(value) {
+  if (!isRecord(value)) return null;
+  const { version, keyFormat } = value;
+  return typeof version === "string" && typeof keyFormat === "number" ? { version, keyFormat } : null;
+}
+
+// src/core/status/squeal-mismatch.ts
+function squealMismatchOf(store, worktreeId) {
+  const m = readSquealMismatch(store, worktreeId);
+  if (m === null) return {};
+  if (m.here.keyFormat !== KEY_FORMAT_VERSION || m.ci.keyFormat === KEY_FORMAT_VERSION) return {};
+  return { squeal: m };
+}
+
 // src/core/status/snapshot.ts
 function createStatusBuilder(store, options = {}) {
   const now = options.now ?? Date.now;
@@ -14319,9 +14355,10 @@ function openCheckpoint(store, worktreeId, daemon) {
 }
 function importsOf(store, worktreeId, keys, states, root) {
   const imports = readImports(store, worktreeId, keys, states);
+  const { shared: shared2 } = sharedOf(readPolicy(root).shared.ref, imports, () => pinnedNode(root));
   return {
     ...imports.length === 0 ? {} : { imports },
-    ...sharedOf(readPolicy(root).shared.ref, imports, () => pinnedNode(root))
+    ...shared2 === void 0 ? {} : { shared: { ...shared2, ...squealMismatchOf(store, worktreeId) } }
   };
 }
 function inheritedSources(store, states) {
