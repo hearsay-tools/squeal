@@ -1,7 +1,6 @@
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { DatabaseSync } from "node:sqlite";
 import { readHead } from "../../daemon-loop/head.js";
 import { compare } from "../../fs/compare.js";
 import { worktreeIdFor } from "../../fs/git-layout.js";
@@ -11,9 +10,9 @@ import { testFileId } from "../../keys/reverse-index.js";
 import { openDaemonKeys } from "../../scheduler/daemon-keys.js";
 import type { WorktreeKeys } from "../../scheduler/keying.js";
 import { Connection } from "../../store/connection.js";
-import { DEFAULT_BUSY_TIMEOUT_MS, isStoreOpenFailure, openStore } from "../../store/open.js";
+import { isStoreOpenFailure, openReadOnly, openStore } from "../../store/open.js";
 import { storePaths } from "../../store/paths.js";
-import { SCHEMA_VERSION, userVersion } from "../../store/schema.js";
+import { SCHEMA_VERSION } from "../../store/schema.js";
 import { createStore } from "../../store/store.js";
 import type { AbsolutePath, RelativePath } from "../../types/common.js";
 import type { CheckKey, TestFileRef } from "../../types/keys.js";
@@ -185,8 +184,9 @@ interface Stores {
 function readStores(commonDir: AbsolutePath): (Partial<Stores> & Pick<Stores, "close">) | null {
   const paths = storePaths(commonDir);
   const codePath = codeStorePath(commonDir);
-  const mainDb = readOnly(paths.database, SCHEMA_VERSION);
-  const codeDb = readOnly(codePath, CODE_SCHEMA_VERSION);
+  // An unreadable store is no store: every file runs.
+  const mainDb = openReadOnly(paths.database, SCHEMA_VERSION);
+  const codeDb = openReadOnly(codePath, CODE_SCHEMA_VERSION);
   if (mainDb === null || codeDb === null) {
     if (mainDb !== null && mainDb !== "missing") mainDb.close();
     if (codeDb !== null && codeDb !== "missing") codeDb.close();
@@ -206,25 +206,6 @@ function readStores(commonDir: AbsolutePath): (Partial<Stores> & Pick<Stores, "c
       code?.close();
     },
   };
-}
-
-/**
- * `path` opened read-only, so no statement can write it and closing it
- * checkpoints nothing; `"missing"` when there is no file; `null` when it
- * cannot be read or is at another schema version.
- */
-function readOnly(path: AbsolutePath, version: number): DatabaseSync | "missing" | null {
-  if (!existsSync(path)) return "missing";
-  let db: DatabaseSync | undefined;
-  try {
-    db = new DatabaseSync(path, { readOnly: true });
-    db.exec(`PRAGMA busy_timeout = ${DEFAULT_BUSY_TIMEOUT_MS}`);
-    if (userVersion(db) === version) return db;
-  } catch {
-    // An unreadable store is no store: every file runs.
-  }
-  db?.close();
-  return null;
 }
 
 interface Keyer {
