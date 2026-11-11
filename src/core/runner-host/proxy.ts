@@ -13,7 +13,7 @@ import type {
   RunReport,
 } from "../types/runner.js";
 import type { HostChannel } from "./channel.js";
-import { HostConnection, HostLost } from "./connection.js";
+import { type Deadline, HostConnection, HostLost } from "./connection.js";
 import { decodeCoverageRun } from "./coverage-wire.js";
 import type {
   HostAdapterOptions,
@@ -44,8 +44,14 @@ export interface HostDeadlines {
   readonly startMs: number;
   /** Every other request but `run`; an instance may restart inside one. */
   readonly callMs: number;
-  /** A run's beyond its own `timeoutMs`; a run without one has no deadline. */
+  /** A run's beyond its own `timeoutMs`. */
   readonly runMarginMs: number;
+  /**
+   * A run without a `timeoutMs` (policy `runner.timeoutMs: null`): the
+   * longest the host may go without answering it or ending one of its files.
+   * The host's liveness, not a test timeout (review 0.1.434 B3).
+   */
+  readonly runIdleMs: number;
   readonly cancelMs: number;
   /** `close`, then the exit after it. */
   readonly closeMs: number;
@@ -55,6 +61,7 @@ export const HOST_DEADLINES: HostDeadlines = {
   startMs: 300_000,
   callMs: 300_000,
   runMarginMs: 300_000,
+  runIdleMs: 1_800_000,
   cancelMs: 60_000,
   closeMs: 30_000,
 };
@@ -216,8 +223,10 @@ class HostProxy implements RunnerAdapter {
     };
     const onSignal = () => cancel("signal", signal?.reason)();
     const onStop = () => cancel("stop", stop?.reason)();
-    const deadline =
-      options.timeoutMs === null ? null : options.timeoutMs + this.#deadlines.runMarginMs;
+    const deadline: Deadline =
+      options.timeoutMs === null
+        ? { ms: this.#deadlines.runIdleMs, renewable: { progress: "end a file of it" } }
+        : { ms: options.timeoutMs + this.#deadlines.runMarginMs };
     try {
       this.#sendPolicy();
       const reply = this.#connection.request("run", [testFiles, wire], deadline, id);
@@ -296,6 +305,7 @@ class HostProxy implements RunnerAdapter {
         this.#take(message.values);
         return;
       case "fileEnded":
+        this.#connection.renew(message.run);
         this.#runs.get(message.run)?.fileEnded?.(message.testFile);
         return;
       case "beforeForce": {
