@@ -508,8 +508,8 @@ var RuntimeError = class extends Error {
 };
 var invalid = (root, detail) => new RuntimeError("invalid-runtime", `${root} is no valid Squeal runtime: ${detail}`);
 var isObject2 = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
-function meetsFloor(node, floor) {
-  const have = node.split(".").map(Number);
+function meetsFloor(node2, floor) {
+  const have = node2.split(".").map(Number);
   const need = floor.split(".").map(Number);
   for (let i = 0; i < 3; i++) {
     const a = have[i] ?? 0;
@@ -598,7 +598,7 @@ function readManifest(root) {
   }
   return { manifest: parseManifest(root, text2), text: text2 };
 }
-function checkRoot(root, expected, node) {
+function checkRoot(root, expected, node2) {
   const { manifest } = readManifest(root);
   const named = pluginVersion(root);
   if (named !== manifest.version) {
@@ -610,10 +610,10 @@ function checkRoot(root, expected, node) {
   if (expected !== null && manifest.version !== expected) {
     throw invalid(root, `it holds runtime ${manifest.version}, not ${expected}`);
   }
-  if (!meetsFloor(node, manifest.nodeFloor)) {
+  if (!meetsFloor(node2, manifest.nodeFloor)) {
     throw new RuntimeError(
       "unsupported-node",
-      `Squeal runtime ${manifest.version} needs Node ${manifest.nodeFloor} or later; this hook runs Node ${node}.`
+      `Squeal runtime ${manifest.version} needs Node ${manifest.nodeFloor} or later; this hook runs Node ${node2}.`
     );
   }
   for (const entry of REQUIRED_ENTRIES) {
@@ -639,10 +639,10 @@ var errorText = (error) => error instanceof Error ? error.message : String(error
 var SEED = "seed";
 function runtimeReadiness(options) {
   const { pluginRoot, data } = options;
-  const node = options.node ?? process.versions.node;
+  const node2 = options.node ?? process.versions.node;
   const state = (root, expected) => {
     try {
-      return { version: checkRoot(root, expected, node).version, ready: true, problem: null };
+      return { version: checkRoot(root, expected, node2).version, ready: true, problem: null };
     } catch (error) {
       return { version: expected, ready: false, problem: errorText(error) };
     }
@@ -873,7 +873,7 @@ function immutableUrl(path) {
 }
 
 // src/core/ps/reads.ts
-var NODE_COMMS = /* @__PURE__ */ new Set(["MainThread", "node"]);
+var NODE_COMMS = /* @__PURE__ */ new Set(["node-MainThread", "MainThread", "node"]);
 function names(dir) {
   try {
     return readdirSync4(dir).sort();
@@ -2933,7 +2933,8 @@ var DEFAULT_POLICY = {
     tools: ["eslint", "oxlint"]
   },
   gate: { groups: null },
-  shared: { ref: null }
+  shared: { ref: null },
+  node: "project"
 };
 
 // src/core/keys/glob.ts
@@ -3368,6 +3369,10 @@ var LINT_SHAPE = {
   lint: { enabled: boolean3, include: globs3, exclude: globs3, blocking: boolean3, tools }
 };
 
+// src/core/daemon/policy-node.ts
+var node = (v) => v === "project" || v === "session" ? null : '"project" or "session"';
+var NODE_SHAPE = { node };
+
 // src/core/daemon/policy-pytest.ts
 import { isAbsolute as isAbsolute7, posix as posix2 } from "node:path";
 var FIELDS2 = {
@@ -3543,7 +3548,8 @@ var SHAPE = {
   ...CODE_SHAPE,
   ...LINT_SHAPE,
   ...SHARED_SHAPE,
-  ...GATE_SHAPE
+  ...GATE_SHAPE,
+  ...NODE_SHAPE
 };
 function loadPolicy(root) {
   const loaded = loadConfigFile(join18(root, POLICY_FILE), SHAPE, DEFAULT_POLICY);

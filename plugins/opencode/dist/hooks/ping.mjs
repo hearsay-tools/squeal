@@ -375,6 +375,10 @@ var LINT_SHAPE = {
   lint: { enabled: boolean3, include: globs3, exclude: globs3, blocking: boolean3, tools }
 };
 
+// src/core/daemon/policy-node.ts
+var node = (v) => v === "project" || v === "session" ? null : '"project" or "session"';
+var NODE_SHAPE = { node };
+
 // src/core/daemon/policy-pytest.ts
 import { isAbsolute as isAbsolute2, posix as posix2 } from "node:path";
 var FIELDS2 = {
@@ -549,7 +553,8 @@ var SHAPE = {
   ...CODE_SHAPE,
   ...LINT_SHAPE,
   ...SHARED_SHAPE,
-  ...GATE_SHAPE
+  ...GATE_SHAPE,
+  ...NODE_SHAPE
 };
 function isNumber2(value) {
   return typeof value === "number" && Number.isFinite(value);
@@ -1828,15 +1833,15 @@ function primer(command = SQUEAL_COMMAND, coverage = DEFAULT_COVERAGE) {
 function folded(sentences, coverage, most) {
   let text = "";
   for (const naming of ["every", "first", "none"]) {
-    for (let node = most; node >= 0; node--) {
-      text = sentences(coversSentence(coverage, node), naming, "plain");
+    for (let node2 = most; node2 >= 0; node2--) {
+      text = sentences(coversSentence(coverage, node2), naming, "plain");
       if (text.length > PRIMER_CAP_CHARS) continue;
-      const paths = sentences(coversSentence(coverage, node), naming, "paths");
+      const paths = sentences(coversSentence(coverage, node2), naming, "paths");
       return paths.length <= PRIMER_CAP_CHARS ? paths : text;
     }
     if (naming !== "first") continue;
-    for (let node = most; node >= 0; node--) {
-      text = sentences(coversSentence(coverage, node), naming, "short");
+    for (let node2 = most; node2 >= 0; node2--) {
+      text = sentences(coversSentence(coverage, node2), naming, "short");
       if (text.length <= PRIMER_CAP_CHARS) return text;
     }
   }
@@ -1893,9 +1898,9 @@ function listed(words, conjunction) {
   if (words.length <= 2) return words.join(` ${conjunction} `);
   return `${words.slice(0, -1).join(", ")} ${conjunction} ${words.at(-1)}`;
 }
-function coversSentence(coverage, node) {
+function coversSentence(coverage, node2) {
   const suites = runnersOf(coverage).map(
-    (runner) => suite(runner.name, runner.covered(coverage), node)
+    (runner) => suite(runner.name, runner.covered(coverage), node2)
   );
   const files = coverage.slow?.files;
   const slow = coverage.slow === null ? "" : files === null || files === void 0 ? ", with slow test files not counted yet" : `, with ${files} slow test ${files === 1 ? "file" : "files"} at the daemon's last listing`;
@@ -1970,8 +1975,8 @@ function awaitSignal(boundMs) {
 }
 
 // src/harness/opencode/bridge.ts
-function opencodeCommand(cli, node = process.execPath) {
-  return `${shellWord(node)} --disable-warning=ExperimentalWarning ${shellWord(cli)}`;
+function opencodeCommand(cli, node2 = process.execPath) {
+  return `${shellWord(node2)} --disable-warning=ExperimentalWarning ${shellWord(cli)}`;
 }
 function bridgeDeps(module, host) {
   const cli = fileURLToPath(new URL("../cli/squeal.mjs", module));
