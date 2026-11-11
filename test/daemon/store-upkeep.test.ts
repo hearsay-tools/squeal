@@ -160,7 +160,7 @@ describe("the daemon's log of long writes (spec 021 D3)", () => {
     slowWrite();
     expect(state.logged).toHaveLength(1);
     expect(state.logged[0]).toMatch(
-      /^long write: store\.sqlite write lock held \d+ ms by slowWrite\b.*; \d+ WAL frames? written$/,
+      /^long write: store\.sqlite write lock held \d+ ms by slowWrite\b.*; 1 row written$/,
     );
     stop();
     slowWrite();
