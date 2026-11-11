@@ -16,6 +16,7 @@ import { CHECK_GROUPS } from "./assemble/check-groups.js";
 import { DECLARED } from "./assemble/declared.js";
 import { DESCRIBED } from "./assemble/described.js";
 import { ELSEWHERE } from "./assemble/elsewhere.js";
+import { GATE_GROUPS } from "./assemble/gate-groups.js";
 import { INHERITED } from "./assemble/inherited.js";
 import { PREPARE } from "./assemble/prepare.js";
 import { REFUSED_OBSERVED } from "./assemble/refused.js";
@@ -60,6 +61,7 @@ export const CASES: readonly Case[] = [
   ...DECLARED,
   ...CHECK_GROUPS,
   ...PREPARE,
+  ...GATE_GROUPS,
   ...SHARED_REF,
   ...RUNTIME_FILES,
   ...INHERITED,
