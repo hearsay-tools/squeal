@@ -1,0 +1,47 @@
+# Research brief for spec 021: remote store and remote execution
+
+Read `docs/vision.md` (principles 2, 5 and 8 most of all), `docs/styleguide.md`, `docs/process.md`, `docs/decisions/0002-content-keyed-shared-store.md` and `../status.md` first.
+
+The human, 2026-11-11, two topics:
+
+1. "remote store (alternative way to share results and potentially introduce a more performant store than SQLite for the remote path)"
+2. "remote test execution (including potentially using mutagen or similar solution to handle code sync) via SSH to a remote host at first, potentially followed up with something like boat.dev to spin up VMs / containers on demand"
+
+Both were researched before, and both answered "not now". Read the earlier file of your topic in full and extend it; do not repeat it. Cite its numbers where they still hold. Say plainly where the earlier finding still stands, where it changed since, and why. Where the honest answer is again "no", say so with the evidence.
+
+Each topic is one researcher task. Write your findings to `research/<topic>.md` in this folder. Commit when done.
+
+## Rules for findings documents
+
+- Length: 1 to 4 pages. Structure: Questions answered (a table), Findings per question, Recommendation, Open questions for the human, Sources.
+- Mark every finding `verified by experiment`, `read in official docs`, `read in source code` or `inferred`. Name the commit you read source at and, for outside tools, the version and the retrieval date.
+- Sources: official docs and source repositories of the tools this brief names. Do not search the open web beyond them. Where a named product's own site does not answer a question, the answer is "not determined, because".
+- No outside actions: no accounts, sign-ups, cloud spend, pushes, CI runs or GitHub settings. A trial that needs any of these is proposed as a later row with its cost, not run.
+- Experiments on this host: in a fresh clone or fixture under your own `$TMPDIR`, never in the main checkout or another worktree. A remote host is a throwaway container on this host (`docker` is installed; if you cannot use it, say so and fall back to a second directory). SSH keys, `known_hosts` and every tool's state directory live under `$TMPDIR`: run tools with `HOME` set to a directory there, so nothing reaches the real HOME, `~/.ssh` or `~/.mutagen`. Download a tool's release binary into its own empty directory and verify its checksum. Stop every daemon you start (`squeal stop`, `mutagen daemon stop`), remove every container and clone before you finish. No full test suite, no `squeal run --all` in this repository's worktrees. Never run agent CLIs (Claude, Codex, Pi, OpenCode) against your real HOME.
+- Load: this host is shared with other coordinators. Make no load on purpose. Skip any timing measurement when the one-minute load average is above the CPU count (24), retry it later in your session, and if it never drops, report the timing as not measured with the load you saw. Report the load during every timing you keep.
+- Throwaway scripts live under `research/probes/<topic>/` with a README that says they are throwaway. `node_modules` stays out of git.
+- Do not design the feature. Answer, measure, recommend; the coordinator writes the spec.
+- Touch nothing outside `docs/specifications/021-remote-store-and-execution/research/`.
+
+## Topic: store-service
+
+Earlier file: `../../018-ci-and-shared-results/research/remote-store.md` (row 018-03). Also read `result-import.md`, `transport.md` and `shared-proof.md` in that folder: the git-ref route it recommended has shipped (`squeal ci record`, `ci export`, `refs/squeal/<sha>`, import at daemon start) and was measured in cezar.
+
+1. What the git-ref route leaves unserved, measured. From `shared-proof.md`, `transport.md` and the store: results shared between developers, results of pull-request and branch commits, the delay from a main merge to its import, a commit with no export of its own, failures and flaky history, closures for a fresh clone. For each, how often it matters (numbers from cezar's or this repository's stores, copied to `$TMPDIR`, read-only) and whether a live store would close it.
+2. Sharing model for a live store. Who writes (CI on main, CI on pull requests, developers) and who reads; poisoning (Nx CVE-2025-36852, "first to cache wins") and how per-branch isolation answers it; how a reader is told where a result came from. Keep 018-03 Q2's rule that the daemon's lookup never leaves the local store unless you measure a reason to break it.
+3. "A more performant store than SQLite for the remote path." First name the operation that must be fast: bulk import of one commit's results, a batched lookup of one worktree's keys, concurrent writes from many CI shards, or retention and pruning. Then compare, for that operation: PostgreSQL; libSQL/sqld (Turso, embedded replicas); Litestream or LiteFS; S3-compatible object storage with content-addressed objects and a manifest; Redis or Valkey; and an existing remote-cache server reused as is: `bazel-remote` or another REAPI action-cache plus CAS server, and a Turborepo remote-cache server such as `ducktors/turborepo-remote-cache`. For each: batch support, write-once or overwrite, auth, what the user must run or pay for, the client a Node CLI must ship (native modules, size), and behaviour when slow or down. Measure the batched lookup and the bulk import against two or three candidates in containers on loopback, with the round trip added by arithmetic as 018-03 did.
+4. Is SQLite a bottleneck anywhere today? From existing measurements (`../../011-core/research/load-slowdown.md`, the store sizes in 018-03 Q2, `src/core/store/`): does any local store operation cost enough to matter? Keep the answer to evidence; the local store is not this topic's to replace.
+5. An existing protocol. Could Squeal speak the REAPI action cache and CAS, or the Turborepo API, so a team reuses a server it already runs? Map a Squeal result (check identity, key, outcome, duration, failure text, closure) onto it and name what does not fit.
+6. Fit and scope: vision principle 8, secrets in failure text, what a team pays. Does a live store belong in Squeal, in a Hearsay service, or nowhere? Recommend the smallest useful form beyond the git-ref route, or say the git-ref route is enough and why.
+
+## Topic: remote-execution
+
+Earlier file: `../../019-run-triggers/research/remote-runner.md` (row 019-04): the Vitest instance lives in the daemon, so moving runs moves the whole runner adapter; a remote toolchain that differs gives a wrong hit under today's keys; rsync, git-tree and install timings. Also read `../../018-ci-and-shared-results/research/result-import.md` (key inputs that depend on the machine).
+
+1. The case for it now. 019-04 found this host no longer saturated on 2026-11-02. Read `../../011-core/research/load-slowdown.md` and the host-load findings it cites: what share of this host's busy CPU is test runs, and what would moving them to another machine free? Say whether the case is this host, users' laptops, or both, with evidence.
+2. Two shapes, compared. (a) The agent and the code stay local, and the runner adapter runs on the remote host (019-04's shape). (b) The whole workspace, agent and daemon included, runs on the remote host, and the user's machine is only a terminal or editor (VS Code Remote-SSH, dev containers, an agent's own cloud sandbox). For each: what Squeal must change, what the user must set up, and the time from edit to verdict.
+3. Code sync with Mutagen. From Mutagen's docs and a probe against a container over SSH: its sync modes, how it detects changes on each side, ignore rules (VCS directories, `node_modules`), conflict handling, the delay from a local save to the file on the remote, and how a client knows a sync has finished (`mutagen sync flush`). The key question: can Squeal prove that the remote tree equals revision N before it accepts a result for N? Squeal already holds a content hash per file (`src/core/keys/`); compare Mutagen with rsync and the git-tree route of 019-04 on this. Name Mutagen's license and maintainer status at the version you read. Unison and `lsyncd` one paragraph each.
+4. The environment on the remote. Node version, platform, `node_modules` installed from the lockfile, `CI` and other variables, line endings. How the remote reports its environment, and how a result made in a different one is refused rather than stored under the local key (019-04 Q3).
+5. Machines on demand. Read boat.dev's own site and docs and say what it is and what its API offers; if they do not answer a question, say "not determined". Then compare one paragraph each from official docs: Fly Machines, E2B, Daytona, Modal sandboxes, Namespace, and devcontainers on a cloud host. For each: start time as documented, whether a disk or snapshot persists between starts (a warm `node_modules`, a warm Vite cache), SSH access, price model, and whether the code leaves the user's machine. Is SSH the common surface that lets one Squeal design cover a fixed host first and on-demand machines later?
+6. Failure and policy. The remote is slow, busy, unreachable, or drops mid-run: what the agent is told, and whether the run falls back to local (019-04 open question 2). Credentials, what code leaves the machine, and principle 8.
+7. Recommendation: the smallest useful form, or none, with its cost to a user. Name the first experiment a later row would run on a real second machine, with its cost.
