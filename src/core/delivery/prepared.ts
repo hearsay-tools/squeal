@@ -1,4 +1,4 @@
-import type { HeldTransaction, HoldingConnection } from "./held-connection.js";
+import { type HeldTransaction, type HoldingConnection, holdingAny } from "./held-connection.js";
 
 /**
  * Row 011-288: a report a delivery prepared. Its writes, and with them every
@@ -81,6 +81,13 @@ export interface Prepare {
   /** The store's connection, made by `openStore`'s `connection` option. */
   readonly connection: HoldingConnection;
   readonly reports: PreparedReports;
+  /**
+   * Spec 021 D3: runs before a hold starts, while this thread holds no
+   * database, to wait within its own bound for the other databases the
+   * delivery may write in the hold (`codeLockFree`); a write there inside
+   * the hold never waits. Absent: none.
+   */
+  readonly beforeHold?: () => void;
 }
 
 /** A code-store write a delivery holds beside its own (`TellCodeOptions.holds`). */
@@ -127,10 +134,12 @@ const NO_HOLD: ReportHold = {
  * `settle`, so the writes of a silent boundary (seen, turn state) are never
  * held. Inside a hold already open, only the code-store writes and the lint
  * acknowledgement wait, for that hold's verdict. Without `prepare`,
- * nothing is held and `settle` acknowledges at once.
+ * nothing is held and `settle` acknowledges at once. `prepare.beforeHold`
+ * runs first, only while nothing is held (spec 021 D3).
  */
 export function startHold(prepare: Prepare | undefined): ReportHold {
   if (prepare === undefined) return NO_HOLD;
+  if (!prepare.connection.db.isTransaction && !holdingAny()) prepare.beforeHold?.();
   const held = prepare.connection.hold();
   if (held === null && !prepare.connection.held) return NO_HOLD;
   const code: CodeHolds = [];

@@ -68,11 +68,14 @@ export class HoldingConnection extends Connection {
   /**
    * Opens a `BEGIN IMMEDIATE` transaction and leaves it open; `null` when one
    * is already open, held or not, so the caller writes in that one instead.
+   * Spec 021 D3: opened while this thread holds another database, it never
+   * waits, since the wait would keep that one's lock: a busy database fails
+   * it at once.
    */
   hold(): HeldTransaction | null {
     if (this.#held || this.#inside > 0) return null;
     this.#notBlocked();
-    this.db.exec("BEGIN IMMEDIATE");
+    this.#begin();
     this.#held = true;
     holders.set(this.#file, this);
     let open = true;
@@ -127,6 +130,21 @@ export class HoldingConnection extends Connection {
     if (other !== undefined && other !== this) throw threadBusy();
   }
 
+  /** `BEGIN IMMEDIATE`, with no busy wait while this thread holds another database. */
+  #begin(): void {
+    if (![...holders.keys()].some((file) => file !== this.#file)) {
+      this.db.exec("BEGIN IMMEDIATE");
+      return;
+    }
+    const own = Number(Object.values(this.db.prepare("PRAGMA busy_timeout").get() ?? {})[0]);
+    this.db.exec("PRAGMA busy_timeout = 0");
+    try {
+      this.db.exec("BEGIN IMMEDIATE");
+    } finally {
+      this.db.exec(`PRAGMA busy_timeout = ${own}`);
+    }
+  }
+
   #plain<T>(fn: () => T): T {
     this.#inside++;
     try {
@@ -167,6 +185,11 @@ function threadBusy(): Error {
     code: "ERR_SQLITE_ERROR",
     errcode: 5,
   });
+}
+
+/** Whether a connection of this thread holds a database (spec 021 D3: nothing waits then). */
+export function holdingAny(): boolean {
+  return holders.size > 0;
 }
 
 /**
