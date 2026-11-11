@@ -4,6 +4,7 @@ import { isBusy } from "../core/store/connection.js";
 import { describeHolders, lockHolders } from "../core/store/lock-holders.js";
 import { isStoreOpenFailure, openStore, setBusyTimeout } from "../core/store/open.js";
 import { storePaths } from "../core/store/paths.js";
+import { BUSY_BOUND_MS } from "../core/store/sliced-write.js";
 import type { AbsolutePath, EpochMs, WorktreeId } from "../core/types/common.js";
 import type { Store } from "../core/types/store.js";
 import { askDaemon, CLI_SOCKET_TIMEOUT_MS, daemonSocket } from "./daemon-access.js";
@@ -15,11 +16,8 @@ import { waitConsumer } from "./status-wait.js";
  * and, row 011-207 (011 C15), a named wait's one run of a file it names.
  */
 
-/**
- * How long a command keeps asking a busy store to take its requests before
- * it says another process holds it (row 011-212, gh-86, 011 C13).
- */
-export const BUSY_BOUND_MS = 10_000;
+/** How long a command keeps asking a busy store to take its requests (row 011-212, gh-86, 011 C13). */
+export { BUSY_BOUND_MS };
 
 /** The shared store of `root`'s worktree, open for the command's writes; `null` when it has none. */
 export function openForWrites(root: AbsolutePath): Store | null {
