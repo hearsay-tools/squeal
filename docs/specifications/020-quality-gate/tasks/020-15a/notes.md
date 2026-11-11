@@ -26,3 +26,11 @@ Worker 34dd50e3, 2026-11-11. Spec D14.1 to D14.3. For a reviewer, the coordinato
 
 - The pre-run print's data is already in `select()`'s result: the tally knows each runner's in-scope files by group only through `placeFile`. A `selected(summary)` callback after `select()` can call `placeFile` on `selected[i]` for the per-group counts, and read `tally.evidence([])` for the left-out groups before closures are read.
 - `collect.ts` is about 395 lines (348 before this row).
+
+## Integration with 020-16b (row 020-15a+16b I, 2026-11-11)
+
+- Both rows' fields sit side by side: `BasePolicy.scope` and `.prepares`, `CollectOptions.scope` and `.prepares`/`.output`, `Evidence.scope` and `.prepares`, gaps `left-out` and `not-prepared`. `QUALITY_POLICY_VERSION` stays 4, with one comment naming both.
+- Order in `collectEvidence`: `select()` splits the selection by scope first; `knownBefore()` (020-16b) gets only the in-scope files and `--test` files. So a left-out file never makes its entry's `prepare` run, and a `prepare` runs only when an in-scope or `--test` file of its entry is selected. A left-out file's closure is still read after the runs, with no `prepare`. Test: `test/code/gate/collect-scope-prepare.test.ts`.
+- When a function has both a `not-prepared` loader and a left-out one, it reads `not-prepared`: a missing gap comes before `leftOutOf`, which only turns a CRAP violation into `left-out`.
+- `gate.groups` is on the key validity path (`policy-gate.ts` through `daemon/policy.ts`), so it has its cases in `test/keys/validity/cases/assemble/gate-groups.ts`; the keys equal the last release's.
+- `collect.ts` is 454 lines after the merge, over the styleguide's 300. `knownBefore` and `leftOutFiles` are the parts to move out; both use `Runner` and `evidenceOf`, so a move needs those shared first. Left for 020-15b or a quality scan.
