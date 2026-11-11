@@ -12,11 +12,15 @@ import type { GateGap, GateState } from "./types.js";
 
 /**
  * Why a loader's record is not in hand. The gate's: a loader that did not
- * finish, or one that finished with no record of these bytes. The
- * daemon's: a file still `pending`, or `unknown` with a record that cannot
- * come.
+ * finish, one that finished with no record of these bytes, or one that did
+ * not run because its node:test entry's `prepare` did not pass (D15.3).
+ * The daemon's: a file still `pending`, or `unknown` with a record that
+ * cannot come.
  */
-export type MissingGap = "not-finished" | "no-record" | "pending" | "unknown";
+export type MissingGap = "not-finished" | "no-record" | "pending" | "unknown" | "not-prepared";
+
+/** A loader whose tests did not all run: it rules out a pass (review 0.1.423 B2, D15.3). */
+const UNRUN: ReadonlySet<string> = new Set(["not-finished", "not-prepared"]);
 
 /** The join over the records in hand, when it resolved the function. */
 export interface RuleCoverage {
@@ -124,7 +128,7 @@ function evidenceOf<M extends MissingGap>(
 ): Evidence<M> {
   const under = crap !== null && crap <= policy.crapThreshold;
   if (gap === null) return under ? PASS : VIOLATION;
-  const bound = gap === "skipped" || (gap === input.missing && gap !== "not-finished");
+  const bound = gap === "skipped" || (gap === input.missing && !UNRUN.has(gap));
   return bound && under && !input.failed ? PASS : incomplete(gap);
 }
 
