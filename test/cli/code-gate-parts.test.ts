@@ -18,7 +18,8 @@ import {
  * import graph: the part's observed reads certify it.
  */
 
-const TESTS = ["--test", "test/reads.test.ts"];
+/** In its `=` form: spec 010 D4's rule reads a list that starts with a bare `--test` as node's. */
+const TESTS = ["--test=test/reads.test.ts"];
 
 describe("squeal code --base --parts (spec 020 D13.2)", () => {
   it(
