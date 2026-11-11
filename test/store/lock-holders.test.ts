@@ -1,4 +1,4 @@
-import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process";
+import { type ChildProcessWithoutNullStreams, spawn, spawnSync } from "node:child_process";
 import { once } from "node:events";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -30,6 +30,16 @@ db.exec("INSERT INTO t VALUES (1)");
 process.stdout.write("held\\n");
 process.stdin.on("end", () => { db.exec("COMMIT"); db.close(); });
 process.stdin.resume();
+`;
+
+/** Tries the write lock of the database at argv[1] once, without waiting; prints `free` or the error. */
+const TRY_WRITE = `
+const { DatabaseSync } = require("node:sqlite");
+const db = new DatabaseSync(process.argv[1]);
+db.exec("PRAGMA busy_timeout = 0");
+try { db.exec("BEGIN IMMEDIATE"); db.exec("ROLLBACK"); process.stdout.write("free"); }
+catch (error) { process.stdout.write(error.message); }
+db.close();
 `;
 
 const children: ChildProcessWithoutNullStreams[] = [];
@@ -78,6 +88,26 @@ describe.runIf(process.platform === "linux")("on Linux, against a real holder", 
     child.stdin.end();
     await once(child, "exit");
     reader.close();
+  });
+
+  // Closing any descriptor of a file drops every POSIX lock this process holds on it (021-09).
+  test("keeps this process's own locks on the store while it reads the holders", () => {
+    const { path, reader } = walDatabase();
+    reader.exec("BEGIN IMMEDIATE");
+    reader.exec("INSERT INTO t VALUES (2)");
+
+    expect(lockHolders(path)).toEqual([
+      { pid: process.pid, command: expect.any(String), waiting: false },
+    ]);
+    const tried = spawnSync(
+      process.execPath,
+      ["--disable-warning=ExperimentalWarning", "-e", TRY_WRITE, path],
+      { encoding: "utf8" },
+    );
+    reader.exec("COMMIT");
+    reader.close();
+
+    expect(tried.stdout).toMatch(/database is locked/);
   });
 
   test("once the holder commits, nobody holds it", async () => {
