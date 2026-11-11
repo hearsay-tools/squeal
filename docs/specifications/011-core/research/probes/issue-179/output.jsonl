@@ -1,0 +1,8 @@
+{"event":"environment","at":"2026-11-11T01:24:50.362Z","node":"v24.22.1","load":14.09,"cpus":24,"defaultBoundMs":606000,"noTimeoutBoundMs":600000}
+{"event":"owner-sweep","total":849,"running":200,"queued":649,"held":"test/f00.test.ts","unclaimed":"test/f200.test.ts"}
+{"event":"promoted-while-owner-live","elapsedMs":2230,"heldLocalRuns":0,"queuedLocalRuns":1,"reason":{"kind":"claim","worktree":"/home/agent/projects/squeal/.ai/cezar/worktrees/629488d9-73c4-4eb9-8835-cf14fbf57c56/docs/specifications/011-core/research/probes/issue-179/.scratch/squeal-claims-Y8qWZM/main","until":1794360898580},"readAt":1794360292580}
+{"event":"bound-clock-probe","timeoutMs":1000,"heldAtMs":7000,"releasedAtMs":7001,"realTimeWaited":false}
+{"event":"owner-stop","recoveryMs":128,"heldLocalRuns":1,"outcome":"pass","validity":"current"}
+{"event":"takeover-load","load":14.09,"cpus":24}
+{"event":"live-owner-takeover","takeoverMs":7535,"requesterTimeoutMs":1000,"ownerActive":1,"passing":1}
+{"event":"complete","elapsedMs":10323}

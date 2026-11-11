@@ -1,0 +1,286 @@
+// Throwaway adaptation of test/scheduler/claims-fixture.ts at 1ac649d.
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+const cleanup: (() => unknown)[] = [];
+function onTestFinished(fn: () => unknown): void { cleanup.push(fn); }
+export async function clean(): Promise<void> { for (const fn of cleanup.reverse()) await fn(); }
+import { readHead } from "../../../../../../src/core/daemon-loop/head.js";
+import { worktreeIdFor } from "../../../../../../src/core/fs/git-layout.js";
+import { createFsHasher } from "../../../../../../src/core/hash/hasher.js";
+import { statCandidates } from "../../../../../../src/core/revision/reconcile.js";
+import type { SchedulerOptions } from "../../../../../../src/core/scheduler/options.js";
+import { createScheduler } from "../../../../../../src/core/scheduler/scheduler.js";
+import { isStoreOpenFailure, openStore } from "../../../../../../src/core/store/open.js";
+import { storePaths } from "../../../../../../src/core/store/paths.js";
+import type { EpochMs } from "../../../../../../src/core/types/common.js";
+import type { TestFileRef } from "../../../../../../src/core/types/keys.js";
+import { DEFAULT_POLICY, type Policy } from "../../../../../../src/core/types/policy.js";
+import type { RunEnd, RunnerAdapter, RunReport } from "../../../../../../src/core/types/runner.js";
+import type { Scheduler } from "../../../../../../src/core/types/scheduler.js";
+import type { Store } from "../../../../../../src/core/types/store.js";
+import { git } from "../../../../../../test/hash/git-repo.js";
+import { RecordingSink } from "../../../../../../test/scheduler/recording-sink.js";
+
+/*
+ * Task 001-205: two schedulers over worktrees of one repository and one real
+ * store, each with a fake runner whose runs a test can hold. Test files are
+ * plain files; each one's closure is itself, so equal bytes are equal keys.
+ */
+
+const FIXTURE_DATES = {
+  GIT_AUTHOR_DATE: "2026-01-01T00:00:00Z",
+  GIT_COMMITTER_DATE: "2026-01-01T00:00:00Z",
+};
+
+export const fileName = (i: number) => `test/f${String(i).padStart(2, "0")}.test.ts`;
+
+/** A repository of `count` test files and `extra`, and `linked` worktrees beside it, `other` first. */
+export function claimRepo(
+  count: number,
+  extra: Readonly<Record<string, string>> = {},
+  linked = 1,
+): { main: string; other: string; others: string[] } {
+  const dir = realpathSync(mkdtempSync(join(import.meta.dirname, ".scratch", "squeal-claims-")));
+  onTestFinished(() => rmSync(dir, { recursive: true, force: true }));
+  const main = join(dir, "main");
+  mkdirSync(join(main, "test"), { recursive: true });
+  for (let i = 0; i < count; i++) writeFileSync(join(main, fileName(i)), `// file ${i}\n`);
+  for (const [path, text] of Object.entries(extra)) {
+    mkdirSync(dirname(join(main, path)), { recursive: true });
+    writeFileSync(join(main, path), text);
+  }
+  git(main, ["init", "-q", "-b", "main"]);
+  git(main, ["add", "-A"]);
+  // A fixed date makes every claimRepo with equal files the same commit, so a
+  // repository can name another's commit (018-18's re-key at import reads it).
+  git(main, ["commit", "-qm", "fixture"], undefined, FIXTURE_DATES);
+  const others = Array.from({ length: linked }, (_, i) =>
+    join(dir, i === 0 ? "other" : `other${i}`),
+  );
+  for (const [i, root] of others.entries()) {
+    git(main, ["worktree", "add", "-q", "-b", `other${i}`, root]);
+  }
+  return { main, other: join(dir, "other"), others };
+}
+
+function gate(): { shut: Promise<void>; open: () => void } {
+  let open = () => {};
+  const shut = new Promise<void>((resolve) => {
+    open = resolve;
+  });
+  return { shut, open };
+}
+
+/** A runner whose runs a test can hold, end otherwise, and fail per path. */
+export class FakeRunner implements RunnerAdapter {
+  readonly name = "fake";
+  readonly adapterVersion = "1";
+  /** The files of every run, in start order. */
+  readonly runs: TestFileRef[][] = [];
+  /** Runs in flight. */
+  active = 0;
+  end: RunEnd = "completed";
+  /** Runs end `completed` with no file completed, as a cancelled run reports. */
+  cancelled = false;
+  readonly failing = new Set<string>();
+  /** Called with a run's files while it is in flight. */
+  during: ((files: readonly TestFileRef[]) => void | Promise<void>) | null = null;
+  #gate: { shut: Promise<void>; open: () => void } | null = null;
+
+  constructor(
+    private readonly files: readonly TestFileRef[],
+    private readonly runMs = 20,
+  ) {}
+
+  /** Later runs wait until `release`. */
+  hold(): void {
+    this.#gate ??= gate();
+  }
+
+  release(): void {
+    this.#gate?.open();
+    this.#gate = null;
+  }
+
+  /** How many runs ran `path`. */
+  ran(path: string): number {
+    return this.runs.filter((files) => files.some((f) => f.path === path)).length;
+  }
+
+  invalidate = async () => ({ recreatedProjects: [] });
+  affected = async () => ({ direct: [], transitive: [] });
+  closure = async (testFile: TestFileRef) => ({ testFile, paths: [testFile.path] });
+  enumerate = async () => [];
+  testFiles = async () => this.files;
+  environment = async () => [
+    {
+      project: "",
+      runnerName: "fake",
+      runnerVersion: "1",
+      adapterVersion: "1",
+      resolvedConfig: "{}",
+      files: [],
+    },
+  ];
+  close = async () => {};
+
+  async run(files: readonly TestFileRef[]): Promise<RunReport> {
+    this.runs.push([...files]);
+    this.active += 1;
+    // The gate held when the run started (row 011-99): a `release` then `hold` within its
+    // `runMs` ends it, and holds only later runs.
+    const gate = this.#gate;
+    try {
+      await this.during?.(files);
+      await new Promise((resolve) => setTimeout(resolve, this.runMs));
+      await gate?.shut;
+    } finally {
+      this.active -= 1;
+    }
+    const completed = this.end === "completed" && !this.cancelled;
+    return {
+      end: this.end,
+      durationMs: this.runMs,
+      completedFiles: completed ? files : [],
+      results: completed
+        ? files.map((testFile) => ({
+            check: {
+              kind: "test" as const,
+              project: testFile.project,
+              testPath: testFile.path,
+              fullName: "passes",
+            },
+            outcome: this.failing.has(testFile.path) ? ("fail" as const) : ("pass" as const),
+            durationMs: 1,
+            location: null,
+            errors: this.failing.has(testFile.path)
+              ? [{ name: "Error", message: "no", stack: null, location: null, diff: null }]
+              : [],
+          }))
+        : [],
+      fileErrors: [],
+      failure: this.end === "completed" ? null : `run ${this.end}`,
+    };
+  }
+}
+
+export interface Side {
+  /** This side's own connection to the shared store, as a daemon's. */
+  readonly store: Store;
+  readonly root: string;
+  readonly worktreeId: string;
+  readonly runner: FakeRunner;
+  readonly scheduler: Scheduler;
+  /** Stops this side's heartbeat, as a killed daemon's. */
+  stopBeat(): void;
+  /** Hands the scheduler a watch batch for `paths`. */
+  batch(...paths: string[]): Promise<void>;
+  /** The phase of `path`'s row. */
+  phase(path: string): string | null | undefined;
+  keyOf(path: string): string | null | undefined;
+  /** How many of its files have a passing current result. */
+  passing(): number;
+}
+
+export interface SideOptions {
+  readonly count: number;
+  readonly tierSize?: number;
+  readonly backlogTierSize?: number;
+  readonly timeoutMs?: number | null;
+  readonly heartbeatMs?: number;
+  readonly policy?: Partial<Policy>;
+  readonly now?: () => EpochMs;
+  readonly runMs?: number;
+  /** `SchedulerOptions.slow` (spec 004). */
+  readonly slow?: SchedulerOptions["slow"];
+  /** `SchedulerOptions.capacity` (001 D11 Capacity): a pool in a temporary directory. Default none. */
+  readonly capacity?: SchedulerOptions["capacity"];
+  /** `SchedulerOptions.rerunCap` (task 001-171). */
+  readonly rerunCap?: number;
+  /** Wraps the store the scheduler is given. */
+  readonly wrap?: (store: Store) => Store;
+}
+
+/** A scheduler of the worktree at `root`, its daemon live in the store while it beats. */
+export function side(root: string, options: SideOptions): Side {
+  const commonDir = realpathSync(join(root, "..", "main", ".git"));
+  const opened = openStore(commonDir, { busyTimeoutMs: 10_000 });
+  if (isStoreOpenFailure(opened)) throw new Error(`store: ${JSON.stringify(opened)}`);
+  const store: Store = opened;
+  const worktreeId = worktreeIdFor(root);
+  const now = options.now ?? Date.now;
+  const interval = options.heartbeatMs ?? 60_000;
+  store.worktrees.upsert({
+    id: worktreeId,
+    root,
+    commonDir: join(root, ".git"),
+    isMain: false,
+    registeredAt: now(),
+    daemon: {
+      socketPath: `/tmp/squeal-claims-${worktreeId}.sock`,
+      startedAt: now(),
+      heartbeatAt: now(),
+      heartbeatIntervalMs: interval,
+      squealVersion: "0.0.0-test",
+    },
+  });
+  const beat = setInterval(() => store.worktrees.heartbeat(worktreeId, now()), interval / 5);
+  const files = Array.from({ length: options.count }, (_, i) => ({
+    project: "",
+    path: fileName(i),
+  }));
+  const runner = new FakeRunner(files, options.runMs);
+  const tierSize = options.tierSize ?? 4;
+  const policy: Policy = {
+    ...DEFAULT_POLICY,
+    ...options.policy,
+    runner: {
+      ...DEFAULT_POLICY.runner,
+      tierSize,
+      backlogTierSize: options.backlogTierSize ?? tierSize,
+      ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
+    },
+  };
+  const scheduler = createScheduler({
+    root,
+    worktreeId,
+    store: options.wrap?.(store) ?? store,
+    runner,
+    sink: new RecordingSink(store, worktreeId),
+    policy,
+    squealVersion: "0.0.0-test",
+    runsDir: storePaths(commonDir).runsDir,
+    head: () => readHead(root),
+    now,
+    ...(options.rerunCap === undefined ? {} : { rerunCap: options.rerunCap }),
+    ...(options.slow === undefined ? {} : { slow: options.slow }),
+    ...(options.capacity === undefined ? {} : { capacity: options.capacity }),
+  });
+  onTestFinished(async () => {
+    clearInterval(beat);
+    runner.release();
+    await scheduler.close();
+    store.close();
+  });
+  const row = (path: string) =>
+    store.testFileKeys.list(worktreeId).find((r) => r.testFile.path === path);
+  const hasher = createFsHasher(root, "sha1");
+  return {
+    store,
+    root,
+    worktreeId,
+    runner,
+    scheduler,
+    stopBeat: () => clearInterval(beat),
+    async batch(...paths) {
+      await scheduler.handleBatch({ trigger: "watch", paths: await statCandidates(paths, hasher) });
+    },
+    phase: (path) => row(path)?.pending,
+    keyOf: (path) => row(path)?.key,
+    passing: () =>
+      store.knownStates
+        .list(worktreeId)
+        .filter((s) => s.check.kind === "test" && s.outcome === "pass" && s.validity === "current")
+        .length,
+  };
+}
