@@ -307,6 +307,12 @@ class Daemon {
     };
   }
 
+  /** Spec 021 D8: how node:test and pytest reach a local runner host, when the daemon has one. */
+  #processHost(): { readonly launch: RunnerHostLaunch; readonly version: string } | undefined {
+    const launch = this.options.runnerHost;
+    return launch === undefined ? undefined : { launch, version: this.#version };
+  }
+
   async start(desk: PreparedDesk): Promise<RunningDaemon | DaemonExit> {
     const { root, worktreeId } = this.opened;
     try {
@@ -658,10 +664,7 @@ class Daemon {
           ...vitest.recovery,
         });
       // Spec 021 D8 (row 021-12): node:test and pytest in local runner hosts, as Vitest.
-      const host =
-        this.options.runnerHost === undefined
-          ? undefined
-          : { launch: this.options.runnerHost, version: this.#version };
+      const host = this.#processHost();
       // Row 011-78 (011 C10, *Projects at a reload*): the sets read the live entries.
       const nodeTestRunners = nodeTest.createNodeTestRunnerSet(() => this.#policy.nodeTest, {
         root,
