@@ -581,6 +581,7 @@ function stored(text, last = false) {
 
 // src/core/code/coverage/mapper.ts
 var CHILD_FILE_LIMIT = 64 * 1024 * 1024;
+var CHILD_FILE_LIMIT_TEXT = `${CHILD_FILE_LIMIT / 1024 / 1024} MiB`;
 function withChildren(own, children, format2, skip = () => false) {
   if (children === void 0 || !existsSync(children.dir)) return { record: own, dropped: [] };
   const records = [];
@@ -590,7 +591,7 @@ function withChildren(own, children, format2, skip = () => false) {
     try {
       const { size } = statSync(path);
       if (size > CHILD_FILE_LIMIT) {
-        dropped.push(`${name}: over 64 MiB (${size} bytes)`);
+        dropped.push(`${name}: over ${CHILD_FILE_LIMIT_TEXT} (${size} bytes)`);
         continue;
       }
       const payload = JSON.parse(readFileSync3(path, "utf8"));

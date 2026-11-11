@@ -653,6 +653,20 @@ function pidNamespace() {
 // src/core/status/stopping.ts
 var BOUND_S = Math.round(HANDOFF_BOUND_MS / 1e3);
 
+// src/core/code/gate/rule.ts
+var UNRUN_GAPS = ["not-prepared", "not-finished"];
+var UNRUN = new Set(UNRUN_GAPS);
+
+// src/core/delivery/code-coverage-words.ts
+var NOT_RUN = "no test runs it in the test's own thread";
+var NOT_RUN_CHILDREN = "no test runs it, in the test's own thread or in a process or thread the test starts";
+var UNMEASURED = "Squeal does not measure worker threads or child processes.";
+var LOWER_BOUND = "Squeal counts what the processes and threads a test starts run as a lower bound: a process that is killed, outlives its test file or gets an environment without NODE_V8_COVERAGE is not counted.";
+var UNTESTED = `untested: ${NOT_RUN}`;
+var UNTESTED_CHILDREN = `untested: ${NOT_RUN_CHILDREN}`;
+var MEASURED = `  Coverage counts what ran in the test's own thread. ${UNMEASURED}`;
+var MEASURED_CHILDREN = `  Coverage counts what ran in the test's own thread and in the processes and threads it started. ${LOWER_BOUND}`;
+
 // src/runners/node-test/describe.ts
 var UNCONFIGURED = { nodeTest: [] };
 var NODE_TEST = {
