@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { testFileId } from "../keys/reverse-index.js";
+import { type BusyRetry, retryWhileBusy } from "../store/busy.js";
 import { isBusy } from "../store/connection.js";
 import type { CheckId } from "../types/check.js";
 import type { RelativePath, RevisionNumber, WorktreeId } from "../types/common.js";
@@ -128,6 +129,7 @@ export async function baseline(
   ledger: Ledger,
   unseen: UnseenChanges = [],
   resumesRest = false,
+  retry?: StartRetry,
 ): Promise<void> {
   const { store, keys, worktreeId, policy } = context;
   const bound = runnerPartBound(context);
@@ -280,7 +282,7 @@ export async function baseline(
   if (failures.size > 0) block(ledger, failures);
   const { number } = ledger.revision;
   // One listing per start: the first commit recorded it (row 015-52).
-  ledger.commit(early ? { refined: number } : listedAt(number));
+  await commitLast(ledger, early ? { refined: number } : listedAt(number), retry);
   const persisted = persistedNoteTexts(store, worktreeId);
   const testFiles = testFilePaths(ledger);
   for (const text of unmatchedInputNotes(keys.unmatchedInputs(testFiles), testFiles.length)) {
@@ -320,6 +322,31 @@ function commitFirst(
       ledger.touch(file);
     }
   }
+}
+
+/**
+ * How the baseline's last commit is tried again on a busy store (spec 021
+ * D2): each try waits at most `sliceMs`, so the start's long wait never
+ * holds the event loop, and the wait is told to `waits`. Absent: one wait.
+ */
+export type StartRetry = Pick<BusyRetry, "sliceMs" | "waits" | "stopped">;
+
+/**
+ * The baseline's last commit. A busy store refuses it before it writes,
+ * and the ledger owes it all again (row 011-126), so with `retry` it is
+ * tried again until it lands or the scheduler closes (spec 021 D2).
+ */
+async function commitLast(
+  ledger: Ledger,
+  options: Parameters<Ledger["commit"]>[0],
+  retry: StartRetry | undefined,
+): Promise<void> {
+  if (retry === undefined) return ledger.commit(options);
+  await retryWhileBusy(async () => ledger.commit(options), {
+    ...retry,
+    key: "scheduler:baseline",
+    what: "the start's lookup",
+  });
 }
 
 /** `files` without those in `others`. */
