@@ -90,3 +90,22 @@ Start from `research/issue-175.md`. Questions:
 5. How do D14's scope and `gate.groups` change the count?
 
 Rules: skip a live probe while the one-minute load is above 24, and record the load beside every timing. Do not start a 25-minute gate run. Write nothing in `~/projects/cezar`. Own only `research/wide-import.md` and `research/probes/wide-import/`.
+
+## 020-15a+16b I: integrate 020-16b onto 020-15a
+
+Use /worker. Shape: finish. Baseline: local branch `w5/int`, which is main plus 020-15a's five commits (`738f6e489..25effeddc`, cherry-picked).
+
+Outcome: one branch with both rows, where each keeps its intent: D14's scope and gap `left-out`, and D15's `prepare` and gap `not-prepared`.
+
+Start: `git cherry-pick -x c84d79c27^..8cf21227f` (020-16b's ten commits, on `cez/26adafd0`). The first commit conflicts in `code-gate-text.ts`, `collect.ts`, `gate/policy.ts`, `report.ts` and `types.ts`. Keep both sides. `QUALITY_POLICY_VERSION` stays 4, with one comment naming both gaps. In `collect.ts`, the left-out files of 020-15a are never prepared or run; a `prepare` runs only for selected in-scope files.
+
+Read: spec D14 and D15; `tasks/020-15a/notes.md`; 020-16b's notes under `tasks/020-16b/`.
+
+Owns: every file the two rows touched.
+
+Done when:
+- every test both rows added passes, with `test/code/gate/`, `test/cli/code-gate*`, the policy and daemon tests they touched, `test/keys/key-format.test.ts` and `test/version-sensitive.test.ts`;
+- one new test where a scope leaves out a node:test entry's file and its `prepare` does not run;
+- if `gate.groups` sits on the key validity path as `prepare` did, it gets its own case in `test/keys/validity/cases/`;
+- lint and typecheck are clean; `squeal status --wait 60000 <changed paths>` shows only bundle drift, or load retries you name;
+- no `pnpm run build`.
