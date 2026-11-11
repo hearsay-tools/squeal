@@ -47,14 +47,21 @@ type Standing =
   | { readonly kind: "missing"; readonly gap: GateMissing }
   | { readonly kind: "none" };
 
-/** The gate's missing gaps (D5): a loader that did not finish, or one with no record of these bytes. */
-type GateMissing = Extract<MissingGap, "not-finished" | "no-record">;
+/**
+ * The gate's missing gaps (D5): a loader that did not finish, one with no
+ * record of these bytes, or one its `prepare` kept from running (D15.3).
+ */
+type GateMissing = Extract<MissingGap, "not-finished" | "no-record" | "not-prepared">;
+
+/** The gaps that rule out a pass, first when a function has several: a loader that did not run whole. */
+const UNRUN: readonly GateMissing[] = ["not-prepared", "not-finished"];
 
 function standing(file: TestFileEvidence, path: RelativePath, blob: FileHash): Standing {
   const loads = file.loads === null ? null : file.loads.includes(path);
   const record = file.completed ? file.record : null;
   if (record === null) {
     if (loads === false) return { kind: "none" };
+    if (file.notPrepared === true) return { kind: "missing", gap: "not-prepared" };
     return { kind: "missing", gap: file.completed ? "no-record" : "not-finished" };
   }
   if (record.unread.includes(path)) return { kind: "missing", gap: "no-record" };
@@ -91,7 +98,7 @@ function pathEvidence(
   const measured = paths("measured");
   const expected = [...new Set([...measured, ...paths("missing")])].sort(compare);
   const gaps = standings.flatMap((s) => (s.at.kind === "missing" ? [s.at.gap] : []));
-  const missing = gaps.includes("not-finished") ? "not-finished" : (gaps[0] ?? null);
+  const missing = UNRUN.find((gap) => gaps.includes(gap)) ?? gaps[0] ?? null;
   const skipped = standings.some((s) => s.at.kind !== "none" && s.file.skipped);
   const sources = standings.flatMap((s) =>
     s.at.kind === "measured" && s.at.source !== null ? [s.at.source] : [],
