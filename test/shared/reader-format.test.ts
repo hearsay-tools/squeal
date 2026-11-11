@@ -71,4 +71,69 @@ describe("the reader and an export of another key format (018 D21)", () => {
     expect(commits()).toEqual([c2]);
     expect(readSquealMismatch(store, worktreeIdFor(dev))).toBeNull();
   });
+
+  it("clears a refusal when another worktree imported the compatible start commit (review 0.1.440 B1)", async () => {
+    const s = scratch();
+    const ci = cloneWith(s, "ci", 1);
+    const [c0] = ci.commits as [string];
+    await publish(ci.root, c0, exportAs(c0, "99.0.0", KEY_FORMAT_VERSION + 1));
+    const dev = cloneOf(s, "dev");
+    const { run, store, commits } = readerOf(dev);
+    await run();
+    expect(readSquealMismatch(store, worktreeIdFor(dev))?.commit).toBe(c0);
+
+    git(ci.root, ["commit", "-q", "--allow-empty", "-m", "compatible"]);
+    git(ci.root, ["push", "-q", "origin", "main"]);
+    const c1 = git(ci.root, ["rev-parse", "HEAD"]);
+    await publish(ci.root, c1);
+    git(dev, ["pull", "-q", "--ff-only"]);
+    const other = `${s.dir}/other-worktree`;
+    git(dev, ["worktree", "add", "-q", "--detach", other, c1]);
+    await readerOf(other, { store }).run();
+    expect(commits()).toEqual([c1]);
+    await run();
+    expect(readSquealMismatch(store, worktreeIdFor(dev))).toBeNull();
+  });
+
+  it("clears a refusal on a return to a commit whose compatible import is held (review 0.1.440 B1)", async () => {
+    const s = scratch();
+    const ci = cloneWith(s, "ci", 1);
+    const [c0] = ci.commits as [string];
+    await publish(ci.root, c0);
+    const dev = cloneOf(s, "dev");
+    const { run, store, commits } = readerOf(dev);
+    await run();
+    expect(commits()).toEqual([c0]);
+
+    git(ci.root, ["commit", "-q", "--allow-empty", "-m", "c1"]);
+    git(ci.root, ["push", "-q", "origin", "main"]);
+    const c1 = git(ci.root, ["rev-parse", "HEAD"]);
+    await publish(ci.root, c1, exportAs(c1, "99.0.0", KEY_FORMAT_VERSION + 1));
+    git(dev, ["pull", "-q", "--ff-only"]);
+    await run();
+    expect(readSquealMismatch(store, worktreeIdFor(dev))?.commit).toBe(c1);
+
+    git(dev, ["checkout", "-q", "--detach", c0]);
+    await run();
+    expect(readSquealMismatch(store, worktreeIdFor(dev))).toBeNull();
+  });
+
+  it("keeps a refusal that is nearer than every held import", async () => {
+    const s = scratch();
+    const ci = cloneWith(s, "ci", 1);
+    const [c0] = ci.commits as [string];
+    await publish(ci.root, c0);
+    const dev = cloneOf(s, "dev");
+    const { run, store } = readerOf(dev);
+    await run();
+    git(ci.root, ["commit", "-q", "--allow-empty", "-m", "c1"]);
+    git(ci.root, ["push", "-q", "origin", "main"]);
+    const c1 = git(ci.root, ["rev-parse", "HEAD"]);
+    await publish(ci.root, c1, exportAs(c1, "99.0.0", KEY_FORMAT_VERSION + 1));
+    git(dev, ["pull", "-q", "--ff-only"]);
+    await run();
+    git(dev, ["commit", "-q", "--allow-empty", "-m", "local"]);
+    await run();
+    expect(readSquealMismatch(store, worktreeIdFor(dev))?.commit).toBe(c1);
+  });
 });
