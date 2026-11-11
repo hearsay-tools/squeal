@@ -21,7 +21,8 @@ describe("squeal code --base: pass (spec 020 D1, exit 0)", () => {
 
     const ran = await code(root, ["--base", "main", "--json"]);
 
-    expect(ran.stderr).toBe("");
+    // D14.4: the selection, before the run; nothing else.
+    expect(ran.stderr).toBe("squeal code: Vitest: 1 test file to run (tests 1)\n");
     expect(ran.code).toBe(0);
     const report = JSON.parse(ran.stdout) as GateReport;
     expect(report.format).toBe("squeal-code-gate/1");
@@ -102,7 +103,7 @@ describe("squeal code --base: incomplete (spec 020 D1, D5, exit 3)", () => {
       /^Code gate: incomplete\. 2 changed functions against main .*: 1 incomplete, 1 pass\.$/,
     );
     expect(lines.slice(1)).toEqual([
-      "  src/orphan.ts:1  lonely  CC 1: incomplete: no test loads its file",
+      "  src/orphan.ts:1  lonely  CC 1: incomplete: no test Squeal runs loads its file",
       "JSON report: squeal code --base main --json",
     ]);
     // D1: policy problems go to stderr, never into the report.

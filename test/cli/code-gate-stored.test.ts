@@ -210,7 +210,9 @@ describe("squeal code --base reads the stores (spec 020 D11.7)", () => {
 
       expect(ran.ran).toEqual([]);
       expect(ran.code).toBe(0);
-      expect(ran.stderr).toBe("squeal code: 1 of 1 selected test files read from the stores\n");
+      expect(ran.stderr).toBe(
+        "squeal code: Vitest: 1 test file to run (tests 1)\nsqueal code: 1 of 1 selected test files read from the stores\n",
+      );
       const { verdict, functions, runs } = ran.report;
       expect(verdict).toBe("pass");
       expect(runs.map((r) => [r.runner, r.completed, r.from])).toEqual([
@@ -256,7 +258,7 @@ describe("squeal code --base reads the stores (spec 020 D11.7)", () => {
 
     expect(ran.ran).toEqual(["test/math.test.ts"]);
     expect(ran.code).toBe(0);
-    expect(ran.stderr).toBe("");
+    expect(ran.stderr).toBe("squeal code: Vitest: 1 test file to run (tests 1)\n");
     expect(ran.report.runs.map((r) => [r.completed, r.from])).toEqual([
       [["test/math.test.ts"], undefined],
     ]);
