@@ -112,7 +112,7 @@ describe("squeal code --base keeps no file whose input moved during its run (rev
   it("is not read as current by a daemon started afterwards", SLOW, async () => {
     const daemon = await startDaemon({ root: repo.root, env: repo.env });
     if ("reason" in daemon) throw new Error(daemon.message);
-    let input: { validity: string; outcome: string }[];
+    let input: readonly { readonly validity: string }[];
     try {
       await daemon.ready;
       await waitFor(
