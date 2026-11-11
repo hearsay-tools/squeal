@@ -1,0 +1,7 @@
+{"holders":1,"holdMs":1500,"gapMs":1500,"load":"23.52","results":{"1000ms":{"ok":"18/20","p50":0,"max":635},"2000ms":{"ok":"20/20","p50":0,"max":1533},"10000ms":{"ok":"20/20","p50":0,"max":1441}},"loadAfter":"25.43"}
+{"skipped":"load","load":25.43}
+{"skipped":"load","load":25.43}
+{"skipped":"load","load":25.43}
+{"holders":3,"holdMs":300,"gapMs":20,"load":"21.23","results":{"1000ms":{"ok":"9/20","p50":103,"max":530},"2000ms":{"ok":"18/20","p50":630,"max":2005},"10000ms":{"ok":"20/20","p50":429,"max":6445}},"loadAfter":"19.95"}
+{"holders":2,"holdMs":1000,"gapMs":10,"load":"20.52","results":{"1000ms":{"ok":"2/20","p50":79,"max":79},"2000ms":{"ok":"1/20","p50":1131,"max":1131},"10000ms":{"ok":"16/20","p50":3840,"max":9869}},"loadAfter":"27.71"}
+{"skipped":"load","load":27.71}

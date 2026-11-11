@@ -1,0 +1,31 @@
+notes 997 in 81 keys, 2026-10-14T23:07 .. 2026-11-11T14:20
+busy episodes 146; seconds p50 0.5 p90 6.9 max 1853.8
+  >= 1 s: 51
+  >= 2 s: 28
+  >= 5 s: 16
+  >= 10 s: 14
+  >= 30 s: 8
+  >= 60 s: 6
+what waited: the heartbeat 129; consumer expiry 18; the next tier 11; pruning 9; the results of N file 5; a reconciliation pass 1; revision N 1; the results of N files 1
+longest 8:
+  2026-11-11T12:27 51.6 s: pruning, the heartbeat, consumer expiry
+  2026-11-11T12:15 55.3 s: pruning, the heartbeat, consumer expiry
+  2026-11-09T12:14 92.2 s: pruning, the heartbeat
+  2026-11-11T14:15 95.7 s: the next tier, consumer expiry, the heartbeat, the results of 4 files
+  2026-11-10T13:35 185 s: pruning, the heartbeat, consumer expiry
+  2026-11-09T12:16 205.8 s: pruning, the heartbeat, consumer expiry
+  2026-11-07T10:12 274.3 s: pruning, the heartbeat
+  2026-11-11T08:32 1853.8 s: pruning, the heartbeat, consumer expiry
+other lock/busy notes 46:
+  18 x (last 2026-11-11T14:20) coverage: N completed test files got no record since this daemon started: N busy (the code store sta
+  11 x (last 2026-11-11T13:56) coverage: N completed test files got no record since this daemon started: N no-result (its run's res
+  5 x (last 2026-11-11T14:19) could not apply revision N: Error: database is locked
+  3 x (last 2026-11-11T12:19) could not check the tiers in flight: Error: database is locked
+  2 x (last 2026-10-15T19:32) daemon error: database is locked
+  1 x (last 2026-10-15T19:32) daemon error: squeal scheduler: could not persist a note (scheduler stopped running tiers: Error: da
+  1 x (last 2026-10-26T14:45) could not clear the slow tier's activity: Error: database is locked
+  1 x (last 2026-10-27T20:23) squeal: could not record the merge hold: Error: database is locked
+  1 x (last 2026-11-11T13:05) could not record revision N as refined: Error: database is locked
+  1 x (last 2026-11-11T13:09) daemon error: squeal scheduler: could not persist a note (could not apply revision N: Error: databas
+  1 x (last 2026-11-11T13:50) runner testFiles failed: database is locked
+  1 x (last 2026-11-11T14:18) coverage: N completed test file got no record since this daemon started: N busy (the code store stay

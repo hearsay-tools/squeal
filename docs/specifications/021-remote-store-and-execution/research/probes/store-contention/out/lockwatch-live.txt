@@ -1,0 +1,58 @@
+# lock-watch.mjs 1500 20, 2026-11-11 14:34:23Z to 14:59:23Z (live, via /proc/locks only)
+== cezar/.git/squeal/store.sqlite: 760 holds over 1500 s; lock held 24.0% of the time; loads 12.69-35.76
+  daemon                       holds   686  share  19.4%  max 3428 ms  >=1s 54  >=2s 6  >=5s 0  frames 180602
+  hook post-tool-batch         holds    41  share   2.8%  max 1975 ms  >=1s 18  >=2s 0  >=5s 0  frames 2898
+  hook stop                    holds    18  share   1.0%  max 1930 ms  >=1s 5  >=2s 0  >=5s 0  frames 7039
+  hook user-prompt-submit      holds     6  share   0.4%  max 1611 ms  >=1s 2  >=2s 0  >=5s 0  frames 528
+  hook session-start           holds     5  share   0.3%  max 1181 ms  >=1s 3  >=2s 0  >=5s 0  frames 0
+  hook pre-tool-use            holds     1  share   0.0%  max 695 ms  >=1s 0  >=2s 0  >=5s 0  frames 1
+  hook session-end             holds     3  share   0.0%  max 120 ms  >=1s 0  >=2s 0  >=5s 0  frames 3277
+   top 14:49:11 3428 ms daemon 6daaae57-bdd2-44fd-8dfd-e36b42ef9075 frames 3450
+   top 14:49:15 3084 ms daemon 6daaae57-bdd2-44fd-8dfd-e36b42ef9075 frames 376
+   top 14:57:37 2614 ms daemon 01fa4534-4d1b-4c77-9ee7-3d87cba13609 frames 76
+   top 14:50:00 2336 ms daemon 6daaae57-bdd2-44fd-8dfd-e36b42ef9075 frames 424
+   top 14:49:49 2290 ms daemon 6daaae57-bdd2-44fd-8dfd-e36b42ef9075 frames 6882
+   top 14:56:39 2017 ms daemon 01fa4534-4d1b-4c77-9ee7-3d87cba13609 frames 2263
+== cezar/.git/squeal/code.sqlite: 4917 holds over 1496 s; lock held 43.0% of the time; loads 13.96-35.76
+  daemon                       holds  4903  share  42.5%  max 116095 ms  >=1s 28  >=2s 26  >=5s 10  frames 261588
+  hook post-tool-batch         holds     7  share   0.3%  max 1097 ms  >=1s 2  >=2s 0  >=5s 0  frames 30
+  hook stop                    holds     5  share   0.2%  max 711 ms  >=1s 0  >=2s 0  >=5s 0  frames 125
+  hook session-start           holds     1  share   0.0%  max 244 ms  >=1s 0  >=2s 0  >=5s 0  frames 0
+  hook user-prompt-submit      holds     1  share   0.0%  max 205 ms  >=1s 0  >=2s 0  >=5s 0  frames 11
+   top 14:35:36 116095 ms daemon 4d2e4314-cd9c-4cad-99e0-07c9ca2b70d0 frames -677
+   top 14:37:32 78844 ms daemon 4d2e4314-cd9c-4cad-99e0-07c9ca2b70d0 frames 175
+   top 14:39:22 59072 ms daemon 77e9034b-fe7c-4ce7-9f48-18452c3f740b frames -5137
+   top 14:35:01 35458 ms daemon 4d2e4314-cd9c-4cad-99e0-07c9ca2b70d0 frames 430
+   top 14:34:24 13938 ms daemon 4d2e4314-cd9c-4cad-99e0-07c9ca2b70d0 frames 148
+   top 14:40:27 13488 ms daemon 77e9034b-fe7c-4ce7-9f48-18452c3f740b frames 90
+== squeal/.git/squeal/store.sqlite: 1182 holds over 1497 s; lock held 17.4% of the time; loads 12.69-35.76
+  hook post-tool-batch         holds   336  share   6.3%  max 1326 ms  >=1s 13  >=2s 0  >=5s 0  frames 2899
+  daemon                       holds   517  share   6.3%  max 2052 ms  >=1s 13  >=2s 1  >=5s 0  frames 223732
+  hook stop                    holds   110  share   1.7%  max 1181 ms  >=1s 6  >=2s 0  >=5s 0  frames 2839
+  hook post-tool-use           holds    91  share   1.6%  max 689 ms  >=1s 0  >=2s 0  >=5s 0  frames 671
+  hook user-prompt-submit      holds    44  share   0.8%  max 709 ms  >=1s 0  >=2s 0  >=5s 0  frames 319
+  hook session-start           holds    29  share   0.5%  max 912 ms  >=1s 0  >=2s 0  >=5s 0  frames 6077
+  hook pre-tool-use            holds    29  share   0.3%  max 261 ms  >=1s 0  >=2s 0  >=5s 0  frames 39
+  hook session-end             holds    23  share   0.0%  max 41 ms  >=1s 0  >=2s 0  >=5s 0  frames 5807
+  node --disable-warning=ExperimentalWarning -e sque holds     3  share   0.0%  max 100 ms  >=1s 0  >=2s 0  >=5s 0  frames 634
+   top 14:43:58 2052 ms daemon 045344f9-b041-43b5-a560-14f1fbe036fc frames 7151
+   top 14:53:36 1900 ms daemon 3739e45a-f70e-49c0-b549-4bc800275de9 frames 428
+   top 14:53:59 1792 ms daemon 3e446e4c-785d-41c6-bb4f-5405099daca6 frames 212
+   top 14:53:49 1620 ms daemon dde9273e-a82b-41a9-8fa6-fd0afe71b6be frames 4595
+   top 14:52:05 1483 ms daemon fc234d55-b025-409b-8f81-420d1d5c553f frames 190
+   top 14:44:14 1472 ms daemon fc234d55-b025-409b-8f81-420d1d5c553f frames 5793
+
+# per 5-minute window: share of time the cezar store's write lock was held
+cezar/.git/squeal/store.sqlite 14:30: 8% (load 14.22-16.87); 14:35: 49% (load 12.69-18.91); 14:40: 11% (load 15.23-29.51); 14:45: 20% (load 19.95-28.32); 14:50: 20% (load 26.33-33.95); 14:55: 13% (load 24.86-35.76)
+squeal/.git/squeal/store.sqlite 14:30: 2% (load 14.22-16.87); 14:35: 14% (load 12.69-18.91); 14:40: 19% (load 15.18-30.4); 14:45: 17% (load 20.47-28.45); 14:50: 21% (load 26.33-33.95); 14:55: 14% (load 24.86-35.76)
+cezar/.git/squeal/code.sqlite 14:30: 13% (load 14.22-16.87); 14:35: 105% (load 13.96-15.74); 14:40: 30% (load 15.18-30.4); 14:45: 25% (load 19.95-28.45); 14:50: 21% (load 26.33-33.1); 14:55: 21% (load 24.86-35.76)
+
+# 60 s at 3 ms polls, 14:39Z
+== cezar/.git/squeal/store.sqlite: 17 holds over 58 s; lock held 3.9% of the time; loads 15.23-17.13
+  daemon                       holds    17  share   3.9%  max 314 ms  >=1s 0  >=2s 0  >=5s 0  frames 2172
+   top 14:39:26 314 ms daemon 13bd9249-d2c4-40a2-b684-445c11fcf618 frames 216
+   top 14:39:51 284 ms daemon 01fa4534-4d1b-4c77-9ee7-3d87cba13609 frames 799
+   top 14:39:37 273 ms daemon 13bd9249-d2c4-40a2-b684-445c11fcf618 frames 218
+   top 14:40:02 259 ms daemon 13bd9249-d2c4-40a2-b684-445c11fcf618 frames 222
+   top 14:39:49 240 ms daemon 13bd9249-d2c4-40a2-b684-445c11fcf618 frames 188
+   top 14:39:38 139 ms daemon 13bd9249-d2c4-40a2-b684-445c11fcf618 frames 28

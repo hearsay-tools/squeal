@@ -1,0 +1,22 @@
+notes 2397 in 370 keys, 2026-10-04T13:54 .. 2026-11-11T14:22
+busy episodes 56; seconds p50 0.2 p90 1.2 max 238.5
+  >= 1 s: 9
+  >= 2 s: 4
+  >= 5 s: 2
+  >= 10 s: 1
+  >= 30 s: 1
+  >= 60 s: 1
+what waited: the heartbeat 50; consumer expiry 6; the next tier 2; revision N 2; pruning 2; the results of N files 1
+longest 8:
+  2026-11-11T13:39 1.2 s: the heartbeat
+  2026-11-11T14:20 1.2 s: the heartbeat
+  2026-11-11T14:22 1.2 s: the heartbeat
+  2026-11-11T01:28 1.4 s: the heartbeat
+  2026-11-11T14:20 2.6 s: the heartbeat
+  2026-10-28T22:05 3 s: the heartbeat, revision 1
+  2026-11-11T01:21 7 s: pruning, the heartbeat
+  2026-11-11T02:26 238.5 s: pruning, the heartbeat
+other lock/busy notes 15:
+  12 x (last 2026-10-09T12:45) daemon error: database is locked
+  2 x (last 2026-10-09T06:06) scheduler stopped running tiers: Error: database is locked
+  1 x (last 2026-10-07T22:48) could not apply revision N: Error: database is locked
