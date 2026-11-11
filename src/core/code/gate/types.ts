@@ -64,6 +64,30 @@ export interface UncountedPath {
   readonly blob?: FileHash;
 }
 
+/**
+ * D16: why D2 does not judge a head function. `unchanged`: its body hash is
+ * that of its identity at the base (a new test title, a reindent).
+ * `moved`: the hash is at another identity of a changed path at the base
+ * (a moved, renamed or copied body).
+ */
+export type OmitReason = "unchanged" | "moved";
+
+/** D16: a head function the diff's changed lines touch and D2 does not judge. */
+export interface OmittedFunction {
+  readonly path: RelativePath;
+  readonly qualifiedName: string;
+  readonly occurrence: number;
+  /** Where it starts at the head, 1-based. */
+  readonly line: number;
+  readonly reason: OmitReason;
+  /** `moved` only: the base function with its body hash, the first by path, name and occurrence. */
+  readonly base?: {
+    readonly path: RelativePath;
+    readonly qualifiedName: string;
+    readonly occurrence: number;
+  };
+}
+
 /** D2: what the inventory gives the evaluator. */
 export interface ChangedSet {
   /** The `--base` value as given. */
@@ -95,6 +119,12 @@ export interface ChangedSet {
    * inherited exception holds (row 020-09).
    */
   readonly baseCounted?: readonly CountedPath[];
+  /**
+   * D16: the head functions the diff's changed lines touch that are not in
+   * `functions` or `inErrors`, with why; sorted by path, name and
+   * occurrence. Absent when the inventory gave none (row 020-18).
+   */
+  readonly omitted?: readonly OmittedFunction[];
 }
 
 /** D3: one test file of the runs. */
