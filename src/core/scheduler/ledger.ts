@@ -5,13 +5,7 @@ import { isBusy } from "../store/connection.js";
 import type { CheckId } from "../types/check.js";
 import type { CommitSha, RelativePath, RevisionNumber } from "../types/common.js";
 import type { CheckKey, TestFileRef } from "../types/keys.js";
-import {
-  type ListingFact,
-  listingMetaKey,
-  parseListing,
-  refinedMetaKey,
-  SLOW_GROUP,
-} from "../types/scheduler.js";
+import { refinedMetaKey, SLOW_GROUP } from "../types/scheduler.js";
 import type { SetupOutcome } from "../types/state.js";
 import type { MarkedUnknown, ResultRecord, TestFileKeyRecord } from "../types/store-records.js";
 import { acceptedAt, currentChecks, type ReadAsOne } from "./accept.js";
@@ -50,13 +44,12 @@ interface Applied {
   readonly checkpointId: string | null;
 }
 
-/** What `commit` takes from the ledger: put back when its transaction gives up on a busy store (row 011-126). */
-/** `Ledger.commit`'s revisions: the refined one, and the one a listing holds (row 015-52). */
+/** `Ledger.commit`'s revision: the refined one. */
 interface CommitOptions {
   readonly refined?: RevisionNumber;
-  readonly listed?: RevisionNumber;
 }
 
+/** What `commit` takes from the ledger: put back when its transaction gives up on a busy store (row 011-126). */
 interface Drained {
   readonly dirty: readonly string[];
   readonly removed: readonly TestFileRef[];
@@ -659,9 +652,7 @@ export class Ledger {
    * transaction. `refined` is the revision whose runner part this commit
    * applies; it becomes the worktree's refined revision (`refinedMetaKey`,
    * spec 001 D2 as amended), so headers stop counting that runner part as
-   * pending in the same transaction that applies it. `listed`, the revision
-   * through which a listing that did not fail holds every test file, is
-   * recorded there too (`listingMetaKey`, row 015-52).
+   * pending in the same transaction that applies it.
    */
   commit(options: CommitOptions = {}): void {
     this.ends?.committed(this.files);
@@ -701,7 +692,6 @@ export class Ledger {
     const quiet =
       this.#adopted &&
       options.refined === undefined &&
-      options.listed === undefined &&
       [rows, removed, rekeyed, applied, unknown, unknownFiles, retired, setups].every(
         (list) => list.length === 0,
       );
@@ -749,11 +739,6 @@ export class Ledger {
       }
       if (options.refined !== undefined) {
         store.meta.set(refinedMetaKey(worktreeId), String(options.refined));
-      }
-      if (options.listed !== undefined) {
-        const count = parseListing(store.meta.get(listingMetaKey(worktreeId)))?.count ?? 0;
-        const fact: ListingFact = { revision: options.listed, count: count + 1 };
-        store.meta.set(listingMetaKey(worktreeId), JSON.stringify(fact));
       }
     });
     this.#adopted = true;
