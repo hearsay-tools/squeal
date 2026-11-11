@@ -20,6 +20,10 @@ import {
  * environment or with snapshot updates, as a gate with no parts does.
  */
 
+/** Each changed function's name, state and CRAP. */
+const crap = (g: Awaited<ReturnType<typeof gate>>) =>
+  g.report.functions.map((f) => [f.qualifiedName, f.state, f.crap]);
+
 /**
  * Review 0.1.427 B1: a test whose coverage of `risky` hangs on an
  * allow-listed variable, and passes either way.
@@ -36,8 +40,6 @@ const PROBE: Readonly<Record<string, string>> = {
 describe("squeal code --base --parts: the part's environment (spec 020 D13.2)", () => {
   let probe: Recorded;
   let probeDir: string;
-  const crap = (g: Awaited<ReturnType<typeof gate>>) =>
-    g.report.functions.map((f) => [f.qualifiedName, f.state, f.crap]);
   /** The gate with `PROBE_COVER` at `value`, for its own tests and as the command's environment. */
   const gateAt = (value: string, args: readonly string[]) => {
     vi.stubEnv("PROBE_COVER", value);
@@ -111,8 +113,6 @@ describe("squeal code --base --parts: the part's snapshot update mode (018 D9, 0
   let none: Recorded;
   let updated: string;
   let updateDir: string;
-  const crap = (g: Awaited<ReturnType<typeof gate>>) =>
-    g.report.functions.map((f) => [f.qualifiedName, f.state, f.crap]);
 
   beforeAll(async () => {
     updateDir = scratchDir("gate-parts-update");
