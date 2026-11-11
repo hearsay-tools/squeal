@@ -116,9 +116,14 @@ export async function gate(
   return { code, report: JSON.parse(stdout) as GateReport, stderr, ran };
 }
 
-/** The report apart from its times and where each file's evidence came from (D7, D13.2). */
+/**
+ * The report apart from its times, where each file's evidence came from
+ * (D7, D13.2), and the estimate of the files left to run here (D17.1).
+ */
 export function sameApartFromSource(report: GateReport): unknown {
-  const runs = report.runs.map(({ from: _from, durationMs: _ms, ...run }: GateRunReport) => run);
+  const runs = report.runs.map(
+    ({ from: _from, durationMs: _ms, estimate: _estimate, ...run }: GateRunReport) => run,
+  );
   return { ...report, createdAt: "", runs };
 }
 
