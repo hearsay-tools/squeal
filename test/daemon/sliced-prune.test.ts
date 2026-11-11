@@ -1,7 +1,7 @@
 import { rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { PRUNE_GAP_MS, SlicedPrune } from "../../src/core/daemon/sliced-prune.js";
+import { MIN_PRUNE_GAP_MS, SlicedPrune } from "../../src/core/daemon/sliced-prune.js";
 import { BusyWaits } from "../../src/core/store/busy.js";
 import { storePaths } from "../../src/core/store/paths.js";
 import { noneRemoved, type PruneSlice, pruneSlices } from "../../src/core/store/prune.js";
@@ -21,7 +21,7 @@ import {
 /*
  * Spec 021 D3 (row 021-09): the daemon prunes in slices, one write
  * transaction each, with the store's write lock free and the event loop
- * running for `PRUNE_GAP_MS` between them.
+ * running between them, for as long as the slice before held the lock.
  */
 
 const NOW = 100 * DAY_MS;
@@ -99,17 +99,23 @@ describe("the daemon's prune in slices (spec 021 D3)", () => {
     expect(store.knownStates.list("removed")).toEqual([]);
   });
 
-  it("runs each slice once, in order, `PRUNE_GAP_MS` apart", async () => {
-    const store = open(fakeCommonDir());
+  it("runs each slice once, in order, each followed by a pause as long as it held the lock", async () => {
+    const commonDir = fakeCommonDir();
+    const store = open(commonDir);
     const ran: string[] = [];
+    const writer = probe(commonDir);
     const started = performance.now();
     await new SlicedPrune({ log: () => {} }).run(() => [
-      holding(store, ran, "a"),
-      holding(store, ran, "b"),
-      holding(store, ran, "c"),
+      holding(store, ran, "a", 60),
+      holding(store, ran, "b", 60),
+      holding(store, ran, "c", 0),
     ]);
+    writer.stop();
     expect(ran).toEqual(["a", "b", "c"]);
-    expect(performance.now() - started).toBeGreaterThanOrEqual(3 * PRUNE_GAP_MS - 5);
+    expect(performance.now() - started).toBeGreaterThanOrEqual(2 * 60 * 2 + MIN_PRUNE_GAP_MS - 5);
+    // The writer's tries run only in the pauses, where the lock is free.
+    expect(writer.seen).toMatchObject({ busy: 0 });
+    expect(writer.seen.free).toBeGreaterThan(0);
   });
 
   it("tries a slice that met a busy store again, and the wait is told", async () => {
