@@ -8,7 +8,15 @@ import type { BasePrepares } from "../../../src/core/code/gate/prepare.js";
 import type { GateAdapters } from "../../../src/core/code/gate/runners.js";
 import type { ChangedSet, Evidence } from "../../../src/core/code/gate/types.js";
 import type { AbsolutePath } from "../../../src/core/types/common.js";
-import { ADAPTERS, changedSet, ownTmpdir, project, SLOW, status } from "./collect-fixture.js";
+import {
+  ADAPTERS,
+  changedSet,
+  onRun,
+  ownTmpdir,
+  project,
+  SLOW,
+  status,
+} from "./collect-fixture.js";
 import { TIMES, VERSIONS } from "./evaluate-fixture.js";
 
 /*
@@ -199,20 +207,11 @@ describe("collectEvidence: a node:test entry's prepare (spec 020 D15)", () => {
     const timeouts: number[] = [];
     const adapters: GateAdapters = {
       ...ADAPTERS,
-      nodeTest: async (project, options) => {
-        const adapter = await ADAPTERS.nodeTest(project, options);
-        return new Proxy(adapter, {
-          get(target, key) {
-            const value: unknown = Reflect.get(target, key, target);
-            if (typeof value !== "function") return value;
-            if (key !== "run") return value.bind(target);
-            return (...args: Parameters<typeof target.run>) => {
-              timeouts.push(args[1].timeoutMs ?? Infinity);
-              return target.run(...args);
-            };
-          },
-        });
-      },
+      nodeTest: async (project, options) =>
+        onRun(await ADAPTERS.nodeTest(project, options), (files, run) => {
+          timeouts.push(run.timeoutMs ?? Infinity);
+          return files;
+        }),
     };
     const budgetMs = 120_000;
     const passed = await collect(root, changed, {

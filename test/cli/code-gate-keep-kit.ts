@@ -6,13 +6,10 @@ import { DatabaseSync } from "node:sqlite";
 import { codeGateCommand } from "../../src/cli/code-gate.js";
 import { COVERAGE_RECORD_VERSION } from "../../src/core/code/coverage/record.js";
 import type { GateReport } from "../../src/core/code/gate/report.js";
-import type { GateAdapters } from "../../src/core/code/gate/runners.js";
 import { codeStorePath } from "../../src/core/code/store/open.js";
 import { storePaths } from "../../src/core/store/paths.js";
-import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
-import type { RunnerAdapter } from "../../src/core/types/runner.js";
-import { createVitestAdapter } from "../../src/runners/vitest/index.js";
-import { ADAPTERS } from "../code/gate/collect-fixture.js";
+import type { CheckKey } from "../../src/core/types/keys.js";
+import { watched } from "../code/gate/collect-fixture.js";
 import { type FixtureRepo, withStore } from "../daemon/helpers.js";
 
 /*
@@ -64,23 +61,6 @@ export function daemonRuns(repo: FixtureRepo): string[] {
   } finally {
     db.close();
   }
-}
-
-/** The CLI's adapters, each Vitest run's files appended to `ran`. */
-function watched(ran: string[]): GateAdapters {
-  const wrap = (adapter: RunnerAdapter): RunnerAdapter =>
-    new Proxy(adapter, {
-      get(target, key) {
-        const value: unknown = Reflect.get(target, key, target);
-        if (typeof value !== "function") return value;
-        if (key !== "run") return value.bind(target);
-        return (files: readonly TestFileRef[], ...rest: unknown[]) => {
-          ran.push(...files.map((f) => f.path));
-          return (value as (...args: unknown[]) => unknown).call(target, files, ...rest);
-        };
-      },
-    });
-  return { ...ADAPTERS, vitest: async (options) => wrap(await createVitestAdapter(options)) };
 }
 
 export interface Gate {
