@@ -101,12 +101,18 @@ export async function prepareEntry(
   const own = base.timeoutSeconds === undefined ? Infinity : base.timeoutSeconds * 1000;
   const left = Math.max(0, Math.floor(context.deadline - performance.now()));
   context.note(`${entryName(project)}: prepare: ${base.command.join(" ")}`);
+  let last = "\n";
   const ended = await runCommand(base.command, {
     cwd: join(context.root, project.cwd ?? "."),
     env: { ...process.env, ...project.env },
     timeoutMs: Math.min(own, left),
-    output: context.output,
+    output: (text) => {
+      if (text.length > 0) last = text;
+      context.output(text);
+    },
   });
+  // The notes that follow start on a line of their own.
+  if (!last.endsWith("\n")) context.output("\n");
   const outcome = ended.timedOut ? "timed-out" : ended.code === 0 ? "passed" : "failed";
   const budgetEnded = ended.timedOut && left <= own;
   if (outcome !== "passed") {
