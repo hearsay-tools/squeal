@@ -8,8 +8,7 @@ import type { PassContext } from "./pass.js";
 /*
  * Spec 015 D1 and D4: what one pass reads, each path classified by D1, and
  * the paths it judges with no transition. Spec 020 D11.6: a test file is
- * counted like any other, so no file waits for a runner listing (the 015-52
- * hold is gone).
+ * counted like any other, so no file waits for a runner listing.
  */
 
 /**

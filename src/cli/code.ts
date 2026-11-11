@@ -206,7 +206,8 @@ export function codeCommand(
   io: CliIo,
   options: CodeCommandOptions = {},
 ): number | Promise<number> {
-  // Spec 020 D1: with `--base`, the one-shot gate, which reads no store.
+  // Spec 020 D1: with `--base`, the one-shot gate. It needs no daemon; it reads the
+  // stores (D11.7) and writes the runs it keeps to them (D17.3).
   if (isGate(args)) return codeGateCommand(args, io);
   const json = args.includes("--json");
   const changed = args.includes("--changed");
