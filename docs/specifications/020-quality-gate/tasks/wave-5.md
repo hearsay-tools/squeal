@@ -62,7 +62,7 @@ Starts after 020-15a and 020-16b are integrated. The coordinator writes its base
 
 Use /worker. Shape: slice.
 
-Outcome: D14.4. Before the first run, stderr shows the selection by runner and group, the left-out groups, the setups that will run, and each changed path that no runner can load, with the ways out. With `--json`, in-process stdout goes to stderr while tests run.
+Outcome: D14.4. Before the first run, stderr shows the selection by runner and group, the left-out groups, the setups that will run, and each changed path that no runner can load, with the ways out. With `--json`, stdout holds only the JSON object: every other write to standard output, by Squeal, a test setup or a child that inherits standard output, goes to stderr (#182, folded in by the human 2026-11-11). Lead for #182: run collection in a child process whose standard output is the parent's stderr, and return the report on an extra pipe; `research/issue-182.md` has the probe.
 
 Read: spec D14.4; `research/selection.md` Q3, Q4 and row 020-15b; `research/build-wrapper.md` Q3 and row 020-16a.
 
@@ -72,7 +72,7 @@ Owns: `collect.ts` (the callback), `src/cli/code-gate.ts`, `code-gate-text.ts`, 
 
 Done when:
 - the tests of rows 020-15b and 020-16a in the two findings files pass;
-- `--json` stdout parses whole when a global setup writes to stdout in process.
+- `--json` stdout parses whole when a global setup writes to stdout in process, and when it starts a child with `stdio: "inherit"` that writes to stdout (`research/issue-182.md`'s probe as a test); that output appears on stderr.
 
 ## gh-175 study: complete evidence for a widely imported file
 
@@ -109,3 +109,23 @@ Done when:
 - if `gate.groups` sits on the key validity path as `prepare` did, it gets its own case in `test/keys/validity/cases/`;
 - lint and typecheck are clean; `squeal status --wait 60000 <changed paths>` shows only bundle drift, or load retries you name;
 - no `pnpm run build`.
+
+## 020-18 say which changed functions were left out (#177)
+
+Starts with 020-15b, after the integration above. Baseline: the integrated branch.
+
+Use /worker. Shape: slice.
+
+Outcome: spec D16. The report lists the touched functions that D2 does not judge, each with its reason, and the text verdict line counts them. Selection does not change.
+
+Read: spec D2 and D16; `research/issue-177.md` and its probe `probes/issue-177/fixture.sh`.
+
+Starting seam: `changedFunctions` in `src/core/code/gate/changed.ts`, at the `atBase.has(count.bodyHash)` skip. Collect what it skips, with the reason, into an additive `ChangedSet.omitted`. First failing test: the probe's fixture in `test/code/gate/changed*.test.ts`, with its seven left-out functions and their reasons.
+
+Owns: `changed.ts`, an additive field in `types.ts`, the `omitted` field in `report.ts` and its pass-through in `evaluate.ts`, the verdict line in `code-gate-text.ts`, their tests, the report fields in `commands.md` (with copies). 020-15b also edits `code-gate-text.ts`; keep your edit to the verdict line.
+
+Done when:
+- the fixture reports 3 judged and 7 left out, each with the right reason;
+- a function no changed line touches is not listed;
+- the JSON golden test shows `omitted`; the text shows the count only when it is above 0;
+- `QUALITY_POLICY_VERSION` is unchanged.

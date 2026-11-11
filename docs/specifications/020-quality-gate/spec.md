@@ -235,7 +235,7 @@ The human, 2026-11-11: "should squeal guess what quality checks the project want
    - A changed test file in a left-out group does not run. Its functions read `left-out`, or `skipped` when `coverage.exclude` matches them.
    - D8: an exception needs complete in-scope evidence. A left-out loader is outside the project's declared scope and does not block it.
 3. **Report.** D7 gains `scope`: the groups in scope and where each came from (default, `gate.groups`, `--group`), and per left-out group its moment, its file count, how many of them load changed code, and the command that adds it. `base` gains `gate.groups`. The text verdict line names what did not run, for example `browser (manual) did not run: 100 test files load changed code; add --group browser to run them`. It never says "all tests".
-4. **Before the run** (row 020-15b, which also carries 020-16a). After selection and before the first run, stderr gets: one line per runner with its file count by group; one line per left-out group; the projects whose global setup will run, the root's when it has one; and each changed path that no runner can load, with the ways out (give it to a runner, with `prepare` when it needs a build, or name it in `coverage.exclude` at the base). With `--json`, in-process stdout writes go to stderr during collection. A child that inherits stdout can still write there (#182, a separate decision).
+4. **Before the run** (row 020-15b, which also carries 020-16a). After selection and before the first run, stderr gets: one line per runner with its file count by group; one line per left-out group; the projects whose global setup will run, the root's when it has one; and each changed path that no runner can load, with the ways out (give it to a runner, with `prepare` when it needs a build, or name it in `coverage.exclude` at the base). With `--json`, stdout holds exactly one JSON object and nothing else: every write to standard output during collection, by Squeal's process, by a test setup or by any process they start that inherits standard output, goes to stderr (the human, 2026-11-11, #182: "Yes, fold it in").
 5. **Not chosen:** `--project`, a mode that replaces automatic selection, and leaving out a browser-mode project before Vitest opens it.
 6. The daemon has no scope: it never sees `left-out`.
 
@@ -252,6 +252,16 @@ Approved by the human, 2026-11-11 ("#174 prepare: Yes").
 7. Spec 011's "It never runs arbitrary commands" gains this one exception (the human, 2026-11-11).
 
 The gaps `left-out` (D14) and `not-prepared` (D15) are new rules: `QUALITY_POLICY_VERSION` is 4 with both.
+
+### D16. Functions left out (row 020-18, #177; the human, 2026-11-11, "Count and list")
+
+D2.3's selection stays as it is: moved, renamed and reindented functions, and test callbacks whose own text did not change, are not judged. The report now says so.
+
+1. A head function is **left out** when the diff's changed lines touch it and D2 does not judge it. Its reason is `unchanged` (its body hash equals that of the same identity at the base, for example a new test title or a reindent) or `moved` (its body hash exists at another identity of a changed path at the base, for example a moved, renamed or copied body).
+2. D7 gains `omitted`: per left-out function, the path, the qualified name, the reason and, for `moved`, the base path and name it matches. It is sorted by path and name.
+3. The text verdict line ends with the count, for example `7 left out as moved or unchanged; --json lists them`. With none, it says nothing.
+4. No rule changes, so `QUALITY_POLICY_VERSION` stays. The JSON format keeps `squeal-code-gate/1`, because the field is additive.
+5. Not decided here: whether a copied body at a new identity should be judged. It is the one case where a real edit can be left out (the "keeps" callback of `research/issue-177.md`). That needs its own decision.
 
 ## Testing
 
