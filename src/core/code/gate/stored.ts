@@ -127,6 +127,7 @@ export function openStored(options: StoredOptions): StoredFiles | null {
     }
   };
   const close = async () => {
+    keeper.close();
     try {
       await keyer?.then(
         (k) => k.close(),
