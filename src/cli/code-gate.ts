@@ -21,6 +21,7 @@ import { createNodeTestAdapter } from "../runners/node-test/adapter.js";
 import { createVitestAdapter } from "../runners/vitest/index.js";
 import { CODE_GATE_USAGE, parseGateArgs } from "./code-gate-args.js";
 import { exceptionsOf } from "./code-gate-exceptions.js";
+import { preRunOptions } from "./code-gate-prerun.js";
 import { collectWithStores } from "./code-gate-stored.js";
 import { formatGateReport } from "./code-gate-text.js";
 import type { CliIo } from "./main.js";
@@ -168,6 +169,8 @@ export async function codeGateCommand(
       // D15: the base's node:test `prepare` commands; their output goes to stderr.
       ...(policy.prepares === undefined ? {} : { prepares: policy.prepares }),
       output: io.stderr,
+      // D14.4: the selection on stderr, after it and before the first run.
+      ...preRunOptions(changed, policy, io.stderr),
     },
     parts,
   ).catch((error: unknown) => (error instanceof Error ? error : new Error(String(error))));
