@@ -6,7 +6,7 @@ Worker adeb251f, 2026-11-11. Spec 018 D19. Commit `442996680`.
 
 - `readImports` (`src/core/status/imports.ts`, `environmentOf`): an import whose environment differs gets `node: { exported, here, only }` when its export ran on another Node than this worktree's daemon. `only` is true when, for every differing project, the export would key as here with this worktree's Node: `nodeGap` (`import-environment.ts`) copies the local `nodeVersion`, and for node:test the local `nodeBuild` config field, into the exported descriptor and asks `importDifferences` (so D10's tolerated fields stay tolerated).
 - `sharedOf(ref, imports, pin)` (`src/core/status/node-mismatch.ts`): nothing without `shared.ref`; `{ shared: { ref } }` when the newest import with a file here (imports are newest first) has no Node difference; else `shared.node` = needed Node, the daemon's Node, the pin state, the newest import's files with a differing environment, and the number of imports that differ only in Node. `pin` runs only in the last case, since 018-30's `pinnedNode` may start Node binaries.
-- `nodeMismatchLines` (default status text, after D5's import line): one line, both versions and a reason with what to do, for `none`, `range`, `missing`, `session`, and `pinned` (the pin's version equals the daemon's Node: CI ran another version; it differs: the daemon started before the pin was installed, restart it).
+- `nodeMismatchLines` (default status text, after D5's import line): one line, both versions and a reason with what to do, for `none`, `range`, `too-old` (added 2026-11-11 by the coordinator's contract change with 018-30: an exact pin below Squeal's Node floor), `missing`, `session`, and `pinned` (the pin's version equals the daemon's Node: CI ran another version; it differs: the daemon started before the pin was installed, restart it).
 - `importDefaultLines`: with `shared.ref` set, an import that differs only in Node gets no line of its own. An import that differs in Node and another part keeps its D5 line beside the Node line.
 
 ## Decisions the spec did not settle
@@ -15,6 +15,7 @@ Worker adeb251f, 2026-11-11. Spec 018 D19. Commit `442996680`.
 2. "Only Node" uses D10's tolerance: Node plus `watch` or `coverage` counts as Node only, since those alone would not stop an imported pass.
 3. The daemon's Node is the local descriptor's `nodeVersion` (the Node the daemon keys with), not the live process.
 4. Restart advice is `squeal stop`, then `squeal start`.
+5. The `too-old` text does not name the floor (`22.19`): core code has no runtime constant for it (only `nodeFloor` in `src/harness/build.ts` reads `engines.node` at build time), and a second copy in a text would drift when the floor rises. If 018-30 exports its floor, the text can name it.
 
 ## Type changes (additive, `src/core/types/status.ts`)
 
