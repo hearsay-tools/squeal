@@ -88,7 +88,7 @@ describe.runIf(process.platform === "linux")("a daemon with a runner host", SLOW
       env: repo.env,
       log: () => {},
       timings: { checkMs: 50 },
-      runnerHost: { execPath: process.execPath, cli: built().cli },
+      runnerHost: { execPath: process.execPath, execArgv: [], cli: built().cli },
     });
     if ("reason" in daemon) throw new Error(daemon.message);
     running = daemon;
