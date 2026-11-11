@@ -33,9 +33,9 @@ import { statusCommand } from "./status-command.js";
  * Spec 020 D1 (row 020-05): `squeal code --base <ref>`, the one-shot gate.
  * It wires the inventory (D2), the collector (D3) and the evaluator (D5 to
  * D7) with no daemon; it reads `ci record`'s parts (D13.2) and the stores
- * (D11.7) and never writes them. It exits with the verdict: 0 pass, 1
- * violations, 3 incomplete, 2 on a usage or setup error. Its arguments are
- * `code-gate-args.ts`'s.
+ * (D11.7), and keeps each test file it runs to completion in the stores
+ * (D17.3). It exits with the verdict: 0 pass, 1 violations, 3 incomplete,
+ * 2 on a usage or setup error. Its arguments are `code-gate-args.ts`'s.
  */
 
 /** `squeal code` runs the gate when `--base` is among its arguments. */
