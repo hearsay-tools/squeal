@@ -1,7 +1,7 @@
 import type { CollectOptions } from "../core/code/gate/collect.js";
 import type { BasePolicy } from "../core/code/gate/policy.js";
 import type { SelectionSummary } from "../core/code/gate/prerun.js";
-import type { ChangedSet, TestFileEvidence } from "../core/code/gate/types.js";
+import { type ChangedSet, RUNNER_NAMES } from "../core/code/gate/types.js";
 import { createInputMatcher } from "../core/keys/glob.js";
 import { plural } from "../core/text.js";
 import type { GlobalSetupEntry } from "../core/types/runner.js";
@@ -15,11 +15,6 @@ import { loadsChangedText } from "./code-gate-text.js";
  * group the scope left out, the projects whose global setup runs, and
  * each changed path no test Squeal runs loads, with the ways out.
  */
-
-const RUNNER_NAMES: Readonly<Record<TestFileEvidence["runner"], string>> = {
-  vitest: "Vitest",
-  "node-test": "node:test",
-};
 
 /**
  * One runner's line: its selected files by group, and, when the stores or

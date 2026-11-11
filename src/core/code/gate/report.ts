@@ -4,19 +4,20 @@ import type { FileHash } from "../../types/keys.js";
 import type { RunEstimate } from "./estimate.js";
 import type { PrepareRun } from "./prepare.js";
 import type { LeftOutGroup, ScopeGroup } from "./scope.js";
-import type {
-  ChangeKind,
-  ChildFiles,
-  Evidence,
-  ExceptionEntry,
-  GATE_REPORT_FORMAT,
-  GateGap,
-  GatePolicy,
-  GateState,
-  GateVerdict,
-  OmittedFunction,
-  TestFileEvidence,
-  UncountedPath,
+import {
+  type ChangeKind,
+  type ChildFiles,
+  type Evidence,
+  type ExceptionEntry,
+  type GATE_REPORT_FORMAT,
+  GATE_RUNNERS,
+  type GateGap,
+  type GatePolicy,
+  type GateState,
+  type GateVerdict,
+  type OmittedFunction,
+  type TestFileEvidence,
+  type UncountedPath,
 } from "./types.js";
 
 /*
@@ -283,13 +284,11 @@ export function countStates(
   return counts;
 }
 
-const RUNNERS: readonly GateRunner[] = ["vitest", "node-test"];
-
 const sorted = (paths: Iterable<RelativePath>) => [...new Set(paths)].sort(compare);
 
 /** D7's `runs`: each runner that selected a file or ran, in a fixed order. */
 export function runsOf(evidence: Evidence, durationsMs: GateTimes["durationsMs"]): GateRunReport[] {
-  return RUNNERS.flatMap((runner) => {
+  return GATE_RUNNERS.flatMap((runner) => {
     const files = evidence.testFiles.filter((f) => f.runner === runner);
     const durationMs = durationsMs[runner] ?? null;
     if (files.length === 0 && durationMs === null) return [];
