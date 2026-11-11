@@ -32,7 +32,7 @@ export function createNodeTestRunners(
   projects: readonly NodeTestProject[],
   options: NodeTestRunnersOptions,
 ): RecoveringRunner[] {
-  return projects.map((project) => nodeTestRunner(project, options));
+  return opened(() => projects, options.note)().map((project) => nodeTestRunner(project, options));
 }
 
 /** The runners of the live `nodeTest` entries, which a reload reconciles (011 C10, row 011-78). */
@@ -40,7 +40,32 @@ export function createNodeTestRunnerSet(
   projects: () => readonly NodeTestProject[],
   options: NodeTestRunnersOptions,
 ): RunnerSet<RecoveringRunner> {
-  return createRunnerSet(projects, (project) => nodeTestRunner(project, options));
+  return createRunnerSet(opened(projects, options.note), (project) =>
+    nodeTestRunner(project, options),
+  );
+}
+
+/**
+ * Spec 020 D15.6 (row 020-16b): the entries the daemon opens. One with a
+ * `prepare` is left out, so none of its files is listed or run, and is
+ * noted once per entry name: only `squeal code --base` runs its command.
+ */
+function opened(
+  projects: () => readonly NodeTestProject[],
+  note: (text: string) => void,
+): () => readonly NodeTestProject[] {
+  const noted = new Set<string>();
+  return () =>
+    projects().filter((project) => {
+      if (project.prepare === undefined) return true;
+      if (!noted.has(project.name)) {
+        noted.add(project.name);
+        note(
+          `node-test project ${JSON.stringify(project.name)} has a prepare command, so Squeal does not run its tests in the background; squeal code --base runs the prepare, then them`,
+        );
+      }
+      return false;
+    });
 }
 
 function nodeTestRunner(
