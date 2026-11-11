@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { codeCommand } from "../../src/cli/code.js";
 import type { GateReport } from "../../src/core/code/gate/report.js";
-import { BASE, edit, ownHomeAndTmp, repo, SLOW } from "./code-gate-fixture.js";
+import { BASE, edit, noEstimate, ownHomeAndTmp, repo, SLOW } from "./code-gate-fixture.js";
 
 /*
  * Spec 020 D14.4 (row 020-15b, which carries 020-16a): `squeal code --base`
@@ -93,6 +93,8 @@ describe("squeal code --base: the selection before the first run (spec 020 D14.4
         "squeal code: Vitest: 1 test file to run (tests 1)",
         "squeal code: browser (manual) is left out: 1 of its 1 test file loads changed code; add --group browser to run it",
         "squeal code: global setup runs for: the root project (any selection)",
+        // D17.1: no store, so the time is unknown.
+        noEstimate("Vitest", 1).trimEnd(),
       ]);
       expect(ran.lines).toEqual(ran.before);
       const report = JSON.parse(ran.stdout) as GateReport;
@@ -116,6 +118,7 @@ describe("squeal code --base: the selection before the first run (spec 020 D14.4
       expect(ran.before).toEqual([
         "squeal code: node:test: 1 test file to run (tests 1)",
         UNLOADED,
+        noEstimate("node:test", 1).trimEnd(),
       ]);
       expect(ran.stdout).toContain(
         "  test/e2e/x.test.mjs:3  verify  CC 1: incomplete: no test Squeal runs loads its file\n",
@@ -131,6 +134,9 @@ describe("squeal code --base: the selection before the first run (spec 020 D14.4
     const ran = await gate(root, ["--base", "main"]);
 
     expect(ran.code).toBe(0);
-    expect(ran.lines).toEqual(["squeal code: node:test: 1 test file to run (tests 1)"]);
+    expect(ran.lines).toEqual([
+      "squeal code: node:test: 1 test file to run (tests 1)",
+      noEstimate("node:test", 1).trimEnd(),
+    ]);
   });
 });

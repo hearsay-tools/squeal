@@ -1,6 +1,7 @@
 import { compare } from "../../fs/compare.js";
 import type { RelativePath } from "../../types/common.js";
 import type { FileHash } from "../../types/keys.js";
+import type { RunEstimate } from "./estimate.js";
 import type { PrepareRun } from "./prepare.js";
 import type { LeftOutGroup, ScopeGroup } from "./scope.js";
 import type {
@@ -166,6 +167,12 @@ export interface GateRunReport {
    * are its `notRun`, not in `notFinished`.
    */
   readonly prepare?: readonly PrepareRun[];
+  /**
+   * D17.1: the estimate told before the first run, of the files this
+   * command ran here; absent when none was to run. Advice: the verdict does
+   * not read it.
+   */
+  readonly estimate?: Omit<RunEstimate, "runner">;
   readonly durationMs: number | null;
 }
 
@@ -293,6 +300,7 @@ export function runsOf(evidence: Evidence, durationsMs: GateTimes["durationsMs"]
     const from = sourcesOf(files);
     const children = childFilesOf(files);
     const prepare = runner === "node-test" ? preparesOf(evidence) : null;
+    const estimate = evidence.estimates?.find((e) => e.runner === runner);
     return [
       {
         runner,
@@ -303,11 +311,19 @@ export function runsOf(evidence: Evidence, durationsMs: GateTimes["durationsMs"]
         ...(from === null ? {} : { from }),
         ...(children === null ? {} : { children }),
         ...(prepare === null ? {} : { prepare }),
+        ...(estimate === undefined ? {} : { estimate: withoutRunner(estimate) }),
         durationMs,
       },
     ];
   });
 }
+
+const withoutRunner = ({ seconds, files, known, width }: RunEstimate) => ({
+  seconds,
+  files,
+  known,
+  width,
+});
 
 /** A file that started and did not finish; one its `prepare` kept from running is not (D15.3). */
 const unfinished = (f: TestFileEvidence) => !f.completed && f.notPrepared !== true;

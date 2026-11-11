@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { FILE_ERROR } from "../../src/core/code/gate/collect.js";
 import type { GateReport } from "../../src/core/code/gate/report.js";
 import { gitHashObject } from "../hash/git-repo.js";
-import { BASE, code, edit, ownHomeAndTmp, repo, SLOW } from "./code-gate-fixture.js";
+import { BASE, code, edit, noEstimate, ownHomeAndTmp, repo, SLOW } from "./code-gate-fixture.js";
 
 /*
  * Spec 020 D1 (row 020-05): `squeal code --base <ref>` end to end, in a
@@ -21,8 +21,10 @@ describe("squeal code --base: pass (spec 020 D1, exit 0)", () => {
 
     const ran = await code(root, ["--base", "main", "--json"]);
 
-    // D14.4: the selection, before the run; nothing else.
-    expect(ran.stderr).toBe("squeal code: Vitest: 1 test file to run (tests 1)\n");
+    // D14.4: the selection, then D17.1's estimate, before the run; nothing else.
+    expect(ran.stderr).toBe(
+      `squeal code: Vitest: 1 test file to run (tests 1)\n${noEstimate("Vitest", 1)}`,
+    );
     expect(ran.code).toBe(0);
     const report = JSON.parse(ran.stdout) as GateReport;
     expect(report.format).toBe("squeal-code-gate/1");

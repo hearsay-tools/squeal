@@ -18,6 +18,8 @@ import type {
 import type { BlobCache } from "../coverage/record.js";
 import { coverageProvider, PROVIDER_MISSING_NOTE } from "../coverage/runtime.js";
 import type { CoverageRun, CoveredFile } from "../coverage/types.js";
+import type { RunEstimate } from "./estimate.js";
+import { planRuns } from "./plan.js";
 import { type BasePrepares, declaresPrepare, type PrepareRun, prepareEntry } from "./prepare.js";
 import { type KnownEvidence, type Picked, type SelectionSummary, tellSelection } from "./prerun.js";
 import { type Mapped, mapPayloads, refKey } from "./records.js";
@@ -108,6 +110,18 @@ export interface CollectOptions {
   readonly selected?: (summary: SelectionSummary) => void;
   /** D6: `coverage.exclude` at the base; `selected` looks for no loader of a path it matches. */
   readonly excluded?: (path: RelativePath) => boolean;
+  /**
+   * D17: a selected file's stored seconds, the whole file as a daemon last
+   * ran it; `null` when the stores hold none. Absent: there is no store, so
+   * the estimate is unknown and the order counts loaders.
+   */
+  readonly durations?: (ref: TestFileRef) => number | null;
+  /**
+   * D17.1: told each runner's estimate once, after the stored lookup and
+   * the selection (D14.4) and before the first run or `prepare`, with the
+   * whole seconds left of the budget. Not called when no file is to run.
+   */
+  readonly estimated?: (estimates: readonly RunEstimate[], leftSeconds: number) => void;
 }
 
 /**
@@ -189,6 +203,12 @@ export async function collectEvidence(
     // Review 0.1.432 B2: the stores and the parts first, so the print names only what runs.
     const known = await storedOf(picked, options);
     await tellSelection(options.selected, picked, changed, { ...options, tally, known });
+    const planned = await plan(picked, known, {
+      paths,
+      options,
+      tierSize: policy.runner.tierSize,
+      deadline,
+    });
     const blobs: BlobCache = new Map();
     const testFiles: TestFileEvidence[] = [];
     const prepares: PrepareRun[] = [];
@@ -199,7 +219,8 @@ export async function collectEvidence(
       prepares.push(...before.prepares);
       timedOut ||= before.budgetEnded;
       testFiles.push(...chosen.flatMap((ref) => before.known.get(ref) ?? known.get(ref) ?? []));
-      const files = chosen.filter((ref) => !before.known.has(ref) && !known.has(ref));
+      // D17.2: the files left to run, in loader order.
+      const files = (planned.files[i] ?? []).filter((ref) => !before.known.has(ref));
       if (files.length === 0) continue;
       const left = Math.ceil(deadline - performance.now());
       const logDir = join(temp, "runs", String(i));
@@ -221,6 +242,7 @@ export async function collectEvidence(
       budgetSeconds: options.budgetSeconds,
       ...scoped(await leftOutFiles(picked)),
       ...(prepares.length === 0 ? {} : { prepares }),
+      ...planned.estimates,
     };
   } finally {
     await Promise.allSettled(runners.map((r) => r.adapter.close()));
@@ -423,6 +445,41 @@ interface Before {
   readonly prepares: readonly PrepareRun[];
   /** The budget ended in the `prepare`. */
   readonly budgetEnded: boolean;
+}
+
+/**
+ * D17, after the selection is told and before the first run or `prepare`:
+ * each runner's files left to run, its selected files less those `known`
+ * gives, in loader order (D17.2), and their estimate, told with the whole
+ * seconds left of the budget (D17.1). `files` is by `picked`'s index;
+ * `estimates` is Evidence's field, absent when no file is to run.
+ */
+async function plan(
+  picked: readonly (Picked & { readonly runner: Runner })[],
+  known: KnownEvidence,
+  context: {
+    readonly paths: readonly RelativePath[];
+    readonly options: CollectOptions;
+    readonly tierSize: number;
+    readonly deadline: number;
+  },
+): Promise<{
+  readonly files: readonly (readonly TestFileRef[])[];
+  readonly estimates: Pick<Evidence, "estimates">;
+}> {
+  const toRun = picked.map(({ runner, run }) => {
+    const files = run.filter((ref) => !known.has(ref));
+    return { kind: runner.kind, adapter: runner.adapter, files };
+  });
+  const { durations, estimated } = context.options;
+  const { files, estimates } = await planRuns(toRun, {
+    changed: context.paths,
+    durations,
+    tierSize: context.tierSize,
+  });
+  const left = Math.max(0, Math.floor((context.deadline - performance.now()) / 1000));
+  if (estimates.length > 0) estimated?.(estimates, left);
+  return { files, estimates: estimates.length === 0 ? {} : { estimates } };
 }
 
 /**
