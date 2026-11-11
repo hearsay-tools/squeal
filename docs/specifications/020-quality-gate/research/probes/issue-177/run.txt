@@ -1,0 +1,17 @@
+load 15.53, cpus 24, cli /home/agent/projects/squeal/.ai/cezar/worktrees/72b3aa40-7a7a-4aeb-b5d1-9271bc26b965/plugins/claude-code/dist/cli/squeal.mjs, version 0.1.430
+--- git diff --stat HEAD (with untracked)
+ src/helpers.ts   | 10 ++++++++++
+ src/old.ts       | 14 +++-----------
+ test/old.test.ts | 10 +++++++---
+ 3 files changed, 20 insertions(+), 14 deletions(-)
+--- squeal code --base HEAD
+exit 0
+Code gate: pass. 3 changed functions against HEAD (merge base 8b1af5bc): 3 pass.
+JSON report: squeal code --base HEAD --json
+--json exit 0
+format squeal-code-gate/1 verdict pass counts {"pass":3,"violation":0,"incomplete":0,"skipped":0,"accepted":0}
+src/old.ts main occ 0 edited pass cc 1 crap 1
+test/old.test.ts <describe> occ 0 edited pass cc 1 crap 1
+test/old.test.ts <describe>.<it> occ 5 added pass cc 1 crap 1
+top-level keys format,createdAt,versions,base,head,budget,functions,uncounted,runs,verdict,counts
+root /home/agent/projects/squeal/.ai/cezar/worktrees/72b3aa40-7a7a-4aeb-b5d1-9271bc26b965/docs/specifications/020-quality-gate/research/probes/issue-177/.scratch/case-1794360206
