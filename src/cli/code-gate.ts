@@ -20,11 +20,12 @@ import type { RunnerAdapter } from "../core/types/runner.js";
 import { createNodeTestAdapter } from "../runners/node-test/adapter.js";
 import { createVitestAdapter } from "../runners/vitest/index.js";
 import { CODE_GATE_USAGE, parseGateArgs } from "./code-gate-args.js";
+import { storedDurations } from "./code-gate-durations.js";
 import { exceptionsOf } from "./code-gate-exceptions.js";
 import { preRunOptions } from "./code-gate-prerun.js";
 import { relaunchGate, runAsChild, takeReportFd } from "./code-gate-relaunch.js";
 import { collectWithStores } from "./code-gate-stored.js";
-import { formatGateReport } from "./code-gate-text.js";
+import { estimateText, formatGateReport } from "./code-gate-text.js";
 import type { CliIo } from "./main.js";
 import { statusCommand } from "./status-command.js";
 
@@ -178,6 +179,8 @@ async function gate(args: readonly string[], io: CliIo, adapters: GateAdapters):
   const scope = resolveScope(policy.scope, parsed.groups ?? []);
   if ("error" in scope) return fail(scope.error, true);
   const durationsMs: Partial<Record<GateRunner, number>> = {};
+  // D17: the stored durations, for the estimate and the order.
+  const durations = storedDurations(root);
   const evidence = await collectWithStores(
     root,
     io.env ?? process.env,
@@ -195,9 +198,14 @@ async function gate(args: readonly string[], io: CliIo, adapters: GateAdapters):
       output: io.stderr,
       // D14.4: the selection on stderr, after it and before the first run.
       ...preRunOptions(changed, policy, io.stderr),
+      // D17.1: the estimate on stderr, after the stored lookup and before the first run.
+      ...(durations === null ? {} : { durations: durations.of }),
+      estimated: (estimates, left) => io.stderr(estimateText(estimates, left)),
     },
     parts,
-  ).catch((error: unknown) => (error instanceof Error ? error : new Error(String(error))));
+  )
+    .catch((error: unknown) => (error instanceof Error ? error : new Error(String(error))))
+    .finally(() => durations?.close());
   // D1: a configured runner that cannot start, or no coverage provider, is a setup error.
   if (evidence instanceof Error) {
     return fail(evidence.message, evidence instanceof CollectUsageError);
