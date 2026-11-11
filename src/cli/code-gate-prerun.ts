@@ -9,8 +9,9 @@ import type { GlobalSetupEntry } from "../core/types/runner.js";
 /*
  * Spec 020 D14.4 (row 020-15b, which carries 020-16a): what `squeal code
  * --base` tells on stderr after selection and before its first run, so
- * before any global setup writes: the files to run by runner and group,
- * each group the scope left out, the projects whose global setup runs, and
+ * before any global setup writes: the files selected by runner and group,
+ * how many of them run when the stores or the parts give the others, each
+ * group the scope left out, the projects whose global setup runs, and
  * each changed path no test Squeal runs loads, with the ways out.
  */
 
@@ -19,12 +20,23 @@ const RUNNER_NAMES: Readonly<Record<TestFileEvidence["runner"], string>> = {
   "node-test": "node:test",
 };
 
-function runnerLine({ runner, files, groups }: SelectionSummary["runners"][number]): string {
+/**
+ * One runner's line: its selected files by group, and, when the stores or
+ * the parts give some of them, how many run apart (review 0.1.432 B2).
+ */
+function runnerLine(selection: SelectionSummary["runners"][number]): string {
+  const { runner, files, run, known, groups } = selection;
   const name = RUNNER_NAMES[runner];
   if (files === 0) return `${name}: no test file to run`;
   const byGroup =
     groups.length === 0 ? "" : ` (${groups.map((g) => `${g.name} ${g.files}`).join(", ")})`;
-  return `${name}: ${plural(files, "test file")} to run${byGroup}`;
+  if (run === files) return `${name}: ${plural(files, "test file")} to run${byGroup}`;
+  const read = [
+    ...(known.parts === 0 ? [] : [`${known.parts} read from the parts`]),
+    ...(known.store === 0 ? [] : [`${known.store} read from the stores`]),
+  ];
+  const runs = `${run === 0 ? "none" : run} to run`;
+  return `${name}: ${plural(files, "test file")} selected${byGroup}: ${[runs, ...read].join(", ")}`;
 }
 
 function leftOutLine({
