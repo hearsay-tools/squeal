@@ -61,7 +61,7 @@ Squeal covers no test of a build output it does not produce, such as an end-to-e
 
 ## The quality check in CI
 
-`squeal code --base <ref>` checks every JS/TS function that changed since `git merge-base <ref> HEAD`, test callbacks included. It counts each changed function's complexity (CC), runs the test files that load the changed files with Squeal's coverage, and judges each function against `complexity.threshold` (default 20) and `crap.threshold` (default 30) as `squeal.config.json` sets them at the merge base, so a branch cannot loosen its own check. Equality passes. It needs no daemon, no harness and no agent session, writes nothing into the project, and stops its tests after `--timeout` seconds in all (default 600). Its exit code is the verdict:
+`squeal code --base <ref>` checks every JS/TS function that changed since `git merge-base <ref> HEAD`, test callbacks included. It counts each changed function's complexity (CC), runs the test files that load the changed files with Squeal's coverage, and judges each function against `complexity.threshold` (default 20) and `crap.threshold` (default 30) as `squeal.config.json` sets them at the merge base, so a branch cannot loosen its own check. Equality passes. It needs no daemon, no harness and no agent session, writes nothing into the project (a node:test entry's `prepare` command, below, writes what it writes), and stops its tests after `--timeout` seconds in all (default 600). Its exit code is the verdict:
 
 - `0` pass: every changed function is within both limits, or is skipped because its file is in `coverage.exclude`.
 - `1` violations: a changed function is over a limit, even when others are incomplete. Simplify it, or test more of it to lower its CRAP score.
@@ -69,6 +69,15 @@ Squeal covers no test of a build output it does not produce, such as an end-to-e
 - `2` a usage or setup error, for example a `<ref>` that does not resolve, or a project whose own Vitest does not resolve.
 
 Code that the tests reach only through a process they start, such as a CLI script, is measured when `coverage.children` is `true` in `squeal.config.json` at the merge base (see the [policy reference](plugins/claude-code/skills/squeal/references/policy.md)). Squeal then counts what those processes and the worker threads the tests start run, as a lower bound: a process that is killed, outlives its test file or gets an environment without `NODE_V8_COVERAGE` is not counted. The JSON report says so in `base.policy.coverageChildren` and in each run's `children`. The daemon measures them too, by the worktree's own `squeal.config.json`: a file that only a child runs is judged from the test file that starts it while `observe.runtimeInputs` is on (the default); with it off, it reads not measured.
+
+Test files that need a build first, such as tests that start the project's built CLI, can get it from their node:test entry's `prepare`:
+
+```json
+{ "nodeTest": [{ "name": "package", "include": ["test/e2e/*.test.mjs"],
+  "prepare": { "command": ["node", "scripts/build.mjs"], "timeoutSeconds": 600 } }] }
+```
+
+`squeal code --base` runs the command once, in the entry's `cwd` with its `env`, before the first selected test file of the entry, inside the `--timeout` budget. `command` is an argument list, never a shell string. Its output goes to stderr, and its exit code and duration go in the report's `runs[].prepare`. Squeal then runs the entry's test files itself: the command's success is never evidence. It runs the command as `squeal.config.json` declares it at the merge base, so land a new `prepare` before the change that needs it. The daemon does not run an entry that has `prepare`.
 
 Squeal needs Node 22.19 or later, and the project's own dependencies installed: it runs the project's Vitest, and the node:test projects `squeal.config.json` lists under `nodeTest`.
 
@@ -167,6 +176,7 @@ Squeal could not judge an incomplete function: its evidence is missing or partia
 
 - `no-loader`: no selected test file loads its file. Add a test that imports it, or add a test file that loads it to the run with `--test <file>`. For a script that tests only start as a separate process, set `coverage.children` to `true` on the target branch and name the test that starts it with `--test <file>`. Code that tests reach only through a browser is not measured yet; list such files in `coverage.exclude` on the target branch, and their functions read `skipped` and keep their CC check.
 - `not-finished`: a test file that loads it did not finish in the budget. Make that file faster, or raise `--timeout`.
+- `not-prepared`: a test file that loads it did not run, because its node:test entry's `prepare` failed, timed out, or is declared only on this branch. The report's `runs[].prepare` names the entry, its exit code and the files that did not run. Fix the command, raise its `timeoutSeconds` or `--timeout`, or land the declaration on the target branch first.
 - `test-failed`: a selected test failed. The report's `runs[].failed` names it; fix it.
 - `skipped`: a test file that loads it skipped a test, so its coverage can prove a pass but never a violation. Run the skipped test, or remove the skip.
 - `not-counted`: its file does not parse, or is over `complexity.maxFileBytes`. The report's `uncounted` names the file.
