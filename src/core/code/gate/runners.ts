@@ -1,4 +1,4 @@
-import { vitestDetected } from "../../daemon/runner.js";
+import { runsVitest } from "../../daemon/runner.js";
 import type { AbsolutePath } from "../../types/common.js";
 import type { NodeTestProject, Policy, PolicyInputs } from "../../types/policy.js";
 import type { RunnerAdapter } from "../../types/runner.js";
@@ -60,9 +60,9 @@ export interface Runner {
 }
 
 /**
- * Vitest when the daemon would run it (`vitestDetected`, or no other runner
- * configured), then each `nodeTest` project, in the policy's order. Each
- * adapter opened is pushed at once, so a later failure still closes it.
+ * Vitest when the daemon would run it (`runsVitest`), then each `nodeTest`
+ * project, in the policy's order. Each adapter opened is pushed at once, so
+ * a later failure still closes it.
  */
 export async function openRunners(
   adapters: GateAdapters,
@@ -84,7 +84,7 @@ export async function openRunners(
   },
   runners: Runner[],
 ): Promise<void> {
-  if (policy.nodeTest.length + policy.pytest.length === 0 || vitestDetected(root)) {
+  if (runsVitest(root, policy)) {
     const covered: CoveredFile[] = [];
     const collected = (run: CoverageRun) => covered.push(...run.files);
     const adapter = await adapters.vitest({
