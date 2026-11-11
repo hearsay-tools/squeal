@@ -33,8 +33,8 @@ import { createVitestAdapter } from "../runners/vitest/index.js";
  * D3's evidence of `changed`: each selected file `parts` certify taken
  * from them, in the environment the gate's runner has (D13.2), then each
  * with results and a record at its key read from the stores (D11.7), and
- * every other file run; how many came from each is told through
- * `options.note`. The keys hold
+ * every other file run, each it completes kept in the stores at its key
+ * (D17.3); how many came from each is told through `options.note`. The keys hold
  * `options.children`, the base's `coverage.children`, so a record
  * collected otherwise is never read. The stores close before it resolves.
  */
@@ -69,6 +69,8 @@ export async function collectWithStores(
     const evidence = await collectEvidence(root, changed, {
       ...options,
       ...(known === null ? {} : { stored: known }),
+      // D17.3: each file a run completes is kept at its key, for the next run and a daemon.
+      ...(stored === null ? {} : { ran: stored.ran }),
     });
     const selected = evidence.testFiles.length;
     for (const [from, where] of [
@@ -104,10 +106,11 @@ function inOrder(sources: readonly (StoredEvidence | undefined)[]): StoredEviden
 }
 
 /**
- * The stores of `root`'s repository, read-only, keyed as its daemon keys
- * with `coverage.children` as `children` says; `null` when there is none,
- * or when the worktree's policy has coverage off, so no daemon here stored
- * a record. Spec 020 D12.5: the key's coverage marker holds the key, so a
+ * The stores of `root`'s repository, keyed as its daemon keys with
+ * `coverage.children` as `children` says, read-only until a run is kept
+ * (D17.3); `null` outside a repository, when a store cannot be read as
+ * this Squeal's, or when the worktree's policy has coverage off, so no
+ * daemon here stores a record and the gate's runs are not its runs. Spec 020 D12.5: the key's coverage marker holds the key, so a
  * branch that turns children on in its own config cannot have its records
  * read where the base keeps them off (the coordinator, request 35b31f66).
  */
