@@ -18,7 +18,7 @@ import { importIdOf, type KnownState } from "../types/state.js";
 import type { ImportNotCurrent, ImportStatus } from "../types/status.js";
 import type { Store } from "../types/store.js";
 import type { TestFileKeyRecord } from "../types/store-records.js";
-import { compareEnvironment } from "./import-environment.js";
+import { compareEnvironment, type NodeGap, nodeGap } from "./import-environment.js";
 
 /*
  * Spec 018 D5: per import that has an exported file this worktree lists, how
@@ -102,8 +102,9 @@ export function readImports(
         testFiles: files.length,
         currentFiles,
         notCurrent,
-        environmentDifferences:
-          notCurrent.environment === 0 ? [] : differences(store, worktreeId, files),
+        ...(notCurrent.environment === 0
+          ? { environmentDifferences: [] }
+          : environmentOf(store, worktreeId, files)),
       },
     ];
   });
@@ -189,22 +190,35 @@ function hereOf(
   };
 }
 
-/** D1's named differences of each project whose environment differs, the project named when more than one. */
-function differences(
+/**
+ * D1's named differences of each project whose environment differs, the
+ * project named when more than one, and D19's Node: the first differing
+ * Node, and whether Node is all that differs in every such project.
+ */
+function environmentOf(
   store: Store,
   worktreeId: WorktreeId,
   files: readonly ImportFileRecord[],
-): string[] {
+): Pick<ImportStatus, "environmentDifferences" | "node"> {
   const exported = new Map(files.map((f) => [f.project, f.environment]));
   const local = new Map(worktreeEnvironments(store, worktreeId).map((e) => [e.project, e]));
-  return [...exported].flatMap(([project, hash]) => {
-    const comparison = compareEnvironment(
-      { hash, descriptor: readEnvironment(store, hash) },
-      local.get(project) ?? null,
-    );
-    if (comparison.kind === "equal" || comparison.kind === "unknown") return [];
-    const named =
+  const named: string[] = [];
+  const gaps: NodeGap[] = [];
+  for (const [project, hash] of exported) {
+    const theirs = { hash, descriptor: readEnvironment(store, hash) };
+    const ours = local.get(project) ?? null;
+    const comparison = compareEnvironment(theirs, ours);
+    if (comparison.kind === "equal" || comparison.kind === "unknown") continue;
+    gaps.push(nodeGap(theirs.descriptor, ours?.descriptor ?? null));
+    const texts =
       comparison.differences.length === 0 ? ["parts not recorded"] : comparison.differences;
-    return exported.size === 1 ? named : named.map((d) => `${project || "(default)"}: ${d}`);
-  });
+    named.push(
+      ...(exported.size === 1 ? texts : texts.map((d) => `${project || "(default)"}: ${d}`)),
+    );
+  }
+  const versions = gaps.find((g) => g.versions !== null)?.versions;
+  if (versions === undefined || versions === null) return { environmentDifferences: named };
+  const [theirNode, here] = versions;
+  const only = gaps.every((g) => g.onlyNode);
+  return { environmentDifferences: named, node: { exported: theirNode, here, only } };
 }
