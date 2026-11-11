@@ -93,7 +93,7 @@ const GOLDEN: GateReport = {
     counter: 3,
     coverageProvider: 3,
     coverageRecord: 4,
-    qualityPolicy: 3,
+    qualityPolicy: 4,
   },
   base: {
     ref: "origin/main",
