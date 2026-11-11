@@ -37,6 +37,7 @@ import type {
   FullSuiteRequest,
   StoppedProcesses,
 } from "../types/scheduler.js";
+import { DaemonWrites, SHUTDOWN_WRITE_MS, within } from "./busy-writes.js";
 import { describeProblems } from "./config-file.js";
 import { type FrontDesk, type PreparedDesk, prepareFrontDesk } from "./desk.js";
 import { afterEachRun, EscapedChildren } from "./escaped.js";
@@ -54,6 +55,7 @@ import { writeNote } from "./notes.js";
 import {
   abandon,
   DAEMON_BUSY_TIMEOUT_MS,
+  DAEMON_START_BUSY_TIMEOUT_MS,
   exit,
   message,
   type OpenedDaemon,
@@ -241,6 +243,8 @@ class Daemon {
   readonly #observedSeen: ObservedSeen = {};
   /** What waits for a busy store, the pass's, the pump's and the timers' writes (task 001-422). */
   readonly #busyWaits: BusyWaits;
+  /** Spec 021 D2: the registration, the start's mark, writing requests and shutdown, retried. */
+  readonly #writes: DaemonWrites;
   /** Spec 011 C9 (row 011-69): one last-resort GC once no tier ran for 60 s. */
   readonly #idleGc: IdleGc;
   #exit: Promise<DaemonExit> | null = null;
@@ -267,6 +271,7 @@ class Daemon {
       now: this.#now,
       note: (text) => this.#note(text, undefined, undefined, BUSY_TOPIC),
     });
+    this.#writes = new DaemonWrites(opened.store, this.#busyWaits);
     this.#idleGc = new IdleGc({
       now: this.#now,
       note: (text) => this.#note(text),
@@ -300,7 +305,12 @@ class Daemon {
     }
     try {
       this.#desk = await this.#openDesk(desk);
-      this.#register();
+      // Spec 021 D2: sliced and tried again, the socket served between tries, within the start's bound.
+      await this.#writes.write(
+        "the daemon's registration",
+        () => this.#register(),
+        within(DAEMON_START_BUSY_TIMEOUT_MS, () => this.#exit !== null),
+      );
     } catch (error) {
       return this.#shutdown("start-failed", 1, `could not start serving: ${message(error)}`);
     }
@@ -854,7 +864,11 @@ class Daemon {
       lint();
       // Past the start scan: a registration at a session's start from here on records this
       // daemon as scanned, which "none of the files changed here" needs (D6).
-      store.meta.set(bootstrappedMetaKey(worktreeId), String(this.#startedAt));
+      await this.#writes.write(
+        "the start's scan mark",
+        () => store.meta.set(bootstrappedMetaKey(worktreeId), String(this.#startedAt)),
+        within(DAEMON_START_BUSY_TIMEOUT_MS, () => this.#exit !== null),
+      );
       // Started: from here a write waits as long as a serving daemon's (task 001-161).
       setBusyTimeout(store, DAEMON_BUSY_TIMEOUT_MS);
       // Idle counts from ready: the baseline is work, and the hook that spawned
@@ -941,13 +955,25 @@ class Daemon {
     }
     // A runner that never started gets another chance before the checkpoint is planned.
     this.#vitest?.retry();
+    await this.#writable("a squeal run --all request");
     return this.#loop.scheduler.requestFullSuite(request);
+  }
+
+  /**
+   * Spec 021 D2: a socket request that writes waits until the store's write
+   * lock is free, a slice per try, the socket served between tries
+   * (`DaemonWrites.writable`). Its promote and focus do not wait: their one
+   * write, the yields row, is tried once with no wait (`TierYields`).
+   */
+  #writable(what: string): Promise<void> {
+    return this.#writes.writable(what, () => this.#phase === "stopping");
   }
 
   /** `squeal retry` (001-368): the stored requests that may run now are queued. */
   async #requestRetries(): Promise<void> {
     await this.#starting;
     if (this.#loop === null || this.#phase === "stopping") return;
+    await this.#writable("a squeal retry request");
     const { scheduler } = this.#loop;
     // Row 018-28: an import's observed entries key this worktree's files now, as a start would.
     this.#imports?.take((projects, imports) => scheduler.refreshObserved(projects, imports));
@@ -998,6 +1024,7 @@ class Daemon {
     if (this.#loop === null || this.#phase === "stopping") {
       throw new Error("the daemon is not running a scheduler");
     }
+    await this.#writable("a squeal run slow request");
     return requestSlowSuite(this.#loop.scheduler);
   }
 
@@ -1017,6 +1044,7 @@ class Daemon {
     if (this.#loop === null || this.#phase === "stopping") {
       throw new Error("the daemon is not running a scheduler");
     }
+    await this.#writable(`a squeal run ${group} request`);
     return requestGroup(this.#loop.scheduler, group, held, paths);
   }
 
@@ -1113,7 +1141,7 @@ class Daemon {
       this.#setPhase("stopping");
       this.#stopTimers();
       this.#shared?.close();
-      this.#markExit();
+      await this.#markExit();
       this.#note(text, undefined, this.#incarnation());
       await this.#starting.catch(() => {});
       await this.#step("full check", () => this.#stopFullCheck());
@@ -1136,7 +1164,13 @@ class Daemon {
         await this.opened.leftovers;
         removeScratch(this.opened.scratch);
       });
-      await this.#step("setDaemon", () => clearRecord(store, worktreeId));
+      await this.#step("setDaemon", () =>
+        this.#writes.write(
+          "the daemon's record",
+          () => clearRecord(store, worktreeId),
+          within(SHUTDOWN_WRITE_MS),
+        ),
+      );
       await this.#step("store.close", () => store.close());
       await this.#step("socket close", () => this.#desk?.close());
       pauseAt("stop-gap");
@@ -1155,13 +1189,18 @@ class Daemon {
    * yet registered writes none: a start that fails first leaves no row, which
    * no worktree record would let prune reach (task 001-276). Nor does one
    * whose row a prune took while it ran, checked in the write's transaction
-   * (task 001-278).
+   * (task 001-278). Spec 021 D2: tried again on a busy store, a slice per
+   * try, for as long as the one wait it replaced.
    */
-  #markExit(): void {
+  async #markExit(): Promise<void> {
     if (!this.#registered) return;
     const { store, worktreeId } = this.opened;
     try {
-      store.transaction(() => markExit(store, worktreeId, this.#incarnation()));
+      await this.#writes.write(
+        "the shutdown's mark",
+        () => store.transaction(() => markExit(store, worktreeId, this.#incarnation())),
+        within(SHUTDOWN_WRITE_MS),
+      );
     } catch (error) {
       this.#log(`could not mark the shutdown: ${message(error)}`);
     }
