@@ -3,6 +3,8 @@ import { join } from "node:path";
 import { createPytestAdapter } from "../../runners/pytest/adapter.js";
 import { DEFAULT_BATCH_SIZE } from "../../runners/pytest/run/run.js";
 import { PYTEST_ADAPTER_VERSION } from "../../runners/pytest/version.js";
+import { createHostedPytest, type ProcessHost } from "../runner-host/process-host.js";
+import { runnerHostGone } from "../runner-host/proxy.js";
 import type { AbsolutePath, ProjectName } from "../types/common.js";
 import type { PytestProject } from "../types/policy.js";
 import { createRecoveringRunner, type RecoveringRunner } from "./runner.js";
@@ -37,6 +39,8 @@ export interface PytestRunnersOptions {
   readonly note: (text: string, topic?: string) => void;
   /** A topic's latest stored note (the adapter's `latestNote`). */
   readonly latestNote?: (topic: string) => string | undefined;
+  /** Spec 021 D8 (row 021-12): each project's adapter in a runner host; absent, in this process. */
+  readonly host?: ProcessHost | undefined;
 }
 
 /**
@@ -63,20 +67,29 @@ export function createPytestRunnerSet(
 
 function pytestRunner(project: PytestProject, options: PytestRunnersOptions): RecoveringRunner {
   const { batchSize } = project;
+  // A host reads the files per batch from the project, as here (`HostedPytestOptions`).
+  const adapterOptions = {
+    root: options.root,
+    note: options.note,
+    ...(options.latestNote === undefined ? {} : { latestNote: options.latestNote }),
+    concurrency: options.tierSize,
+    tempDir: options.tempDir,
+    cacheDir: pytestCacheDir(options.stateDir, options.root, project.name),
+    ...(options.childEnv === undefined ? {} : { childEnv: options.childEnv }),
+  };
+  const { host } = options;
   return createRecoveringRunner({
     name: "pytest",
     adapterVersion: PYTEST_ADAPTER_VERSION,
     create: () =>
-      createPytestAdapter(project, {
-        root: options.root,
-        note: options.note,
-        ...(options.latestNote === undefined ? {} : { latestNote: options.latestNote }),
-        concurrency: options.tierSize,
-        ...(batchSize === undefined ? {} : { batchSize: () => batchSize }),
-        tempDir: options.tempDir,
-        cacheDir: pytestCacheDir(options.stateDir, options.root, project.name),
-        ...(options.childEnv === undefined ? {} : { childEnv: options.childEnv }),
-      }),
+      host === undefined
+        ? createPytestAdapter(project, {
+            ...adapterOptions,
+            ...(batchSize === undefined ? {} : { batchSize: () => batchSize }),
+          })
+        : createHostedPytest(host, project, adapterOptions),
+    // Spec 021 D7: a host that exited or missed a deadline is replaced.
+    ...(host === undefined ? {} : { gone: runnerHostGone }),
     // A run starts `runner.tierSize` processes at once whatever its grant (task 001-366).
     tierWidth: () => options.tierSize(),
     // It cannot cancel a run: an edit's tier starts beside a backlog tier (task 011-21).
