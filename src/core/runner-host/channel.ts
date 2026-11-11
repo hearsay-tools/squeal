@@ -55,7 +55,12 @@ export function spawnRunnerHost(
   runner: HostRunner,
   env: NodeJS.ProcessEnv = process.env,
 ): HostChannel {
-  const args = [...launch.execArgv, launch.cli, "runner-host", root, "--runner", runner];
+  // Node 22 warns that node:sqlite is experimental; the warning would land in
+  // the host's stderr tail and so in its exit note, as other launches silence it.
+  const quiet = launch.execArgv.some((arg) => arg.startsWith("--disable-warning"))
+    ? []
+    : ["--disable-warning=ExperimentalWarning"];
+  const args = [...quiet, ...launch.execArgv, launch.cli, "runner-host", root, "--runner", runner];
   const child = spawn(launch.execPath, args, {
     env,
     stdio: ["pipe", "pipe", "pipe"],
