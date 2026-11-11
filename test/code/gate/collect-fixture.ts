@@ -5,12 +5,20 @@ import { join, resolve } from "node:path";
 import { afterEach } from "vitest";
 import { ADAPTERS } from "../../../src/cli/code-gate.js";
 import { countFile } from "../../../src/core/code/count/index.js";
+import { type CollectOptions, collectEvidence } from "../../../src/core/code/gate/collect.js";
+import { evaluate } from "../../../src/core/code/gate/evaluate.js";
+import { loadBasePolicy } from "../../../src/core/code/gate/policy.js";
 import type { GateAdapters } from "../../../src/core/code/gate/runners.js";
-import type { ChangedSet, CountedPath } from "../../../src/core/code/gate/types.js";
+import { type GateScope, readScope, resolveScope } from "../../../src/core/code/gate/scope.js";
+import type { ChangedSet, CountedPath, Evidence } from "../../../src/core/code/gate/types.js";
+import { loadPolicy } from "../../../src/core/daemon/policy.js";
 import { blobHash } from "../../../src/core/hash/blob.js";
+import type { AbsolutePath } from "../../../src/core/types/common.js";
 import type { TestFileRef } from "../../../src/core/types/keys.js";
+import type { Policy } from "../../../src/core/types/policy.js";
 import type { RunnerAdapter, RunOptions } from "../../../src/core/types/runner.js";
 import { git, initRepo } from "../../hash/git-repo.js";
+import { TIMES, VERSIONS } from "./evaluate-fixture.js";
 
 /*
  * Spec 020 D3 (row 020-03): fixture projects for the one-shot collector,
@@ -121,4 +129,51 @@ export async function changedSet(root: string, paths: readonly string[]): Promis
     inErrors: [],
     uncounted: [],
   };
+}
+
+/**
+ * The collector over the fixture: a 600 s budget and the CLI's adapters,
+ * `options` on top. Its notes and the `prepare` output are kept.
+ */
+export async function collect(
+  root: string,
+  changed: ChangedSet,
+  options: Partial<CollectOptions> = {},
+): Promise<{ evidence: Evidence; notes: string[]; output: string }> {
+  const notes: string[] = [];
+  let output = "";
+  const evidence = await collectEvidence(root as AbsolutePath, changed, {
+    tests: [],
+    budgetSeconds: 600,
+    adapters: ADAPTERS,
+    note: (text) => notes.push(text),
+    output: (text) => {
+      output += text;
+    },
+    ...options,
+  });
+  return { evidence, notes, output };
+}
+
+/** The report of `evidence` under the policy read at the fixture's commit, and each function's state and gap. */
+export async function judged(root: string, changed: ChangedSet, evidence: Evidence) {
+  const { policy } = await loadBasePolicy(root as AbsolutePath, changed.baseCommit);
+  const report = evaluate(changed, evidence, policy, VERSIONS, TIMES);
+  return { report, states: report.functions.map((f) => [f.qualifiedName, f.state, f.gap]) };
+}
+
+/**
+ * The fixture's scope at its own commit, with `--group` names `added`;
+ * `checks` stand for the policy's when given.
+ */
+export function scopeOf(
+  root: string,
+  added: readonly string[] = [],
+  checks?: Policy["checks"],
+): GateScope {
+  const { policy } = loadPolicy(root);
+  const read = readScope(checks === undefined ? policy : { ...policy, checks });
+  const scope = resolveScope(read.base, added);
+  if ("error" in scope) throw new Error(scope.error);
+  return scope;
 }

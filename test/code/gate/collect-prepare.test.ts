@@ -1,23 +1,21 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { type CollectOptions, collectEvidence } from "../../../src/core/code/gate/collect.js";
-import { evaluate } from "../../../src/core/code/gate/evaluate.js";
 import { loadBasePolicy } from "../../../src/core/code/gate/policy.js";
 import type { BasePrepares } from "../../../src/core/code/gate/prepare.js";
 import type { GateAdapters } from "../../../src/core/code/gate/runners.js";
-import type { ChangedSet, Evidence } from "../../../src/core/code/gate/types.js";
 import type { AbsolutePath } from "../../../src/core/types/common.js";
 import {
   ADAPTERS,
   changedSet,
+  collect,
+  judged,
   onRun,
   ownTmpdir,
   project,
   SLOW,
   status,
 } from "./collect-fixture.js";
-import { TIMES, VERSIONS } from "./evaluate-fixture.js";
 
 /*
  * Spec 020 D15 (row 020-16b), from the probe of research `build-wrapper.md`
@@ -34,34 +32,6 @@ const UNIT = "test/unit/names.test.mjs";
 const prepares = (command: readonly string[], timeoutSeconds?: number): BasePrepares =>
   new Map([["package", { command, ...(timeoutSeconds === undefined ? {} : { timeoutSeconds }) }]]);
 const node = (script: string) => [process.execPath, "-e", script];
-
-/** The collector over the fixture, its notes and the `prepare` output kept. */
-async function collect(
-  root: string,
-  changed: ChangedSet,
-  options: Partial<CollectOptions> = {},
-): Promise<{ evidence: Evidence; notes: string[]; output: string }> {
-  const notes: string[] = [];
-  let output = "";
-  const evidence = await collectEvidence(root as AbsolutePath, changed, {
-    tests: [],
-    budgetSeconds: 600,
-    adapters: ADAPTERS,
-    note: (text) => notes.push(text),
-    output: (text) => {
-      output += text;
-    },
-    ...options,
-  });
-  return { evidence, notes, output };
-}
-
-/** The report of `evidence` under the policy read at the fixture's commit, prepares included. */
-async function judged(root: string, changed: ChangedSet, evidence: Evidence) {
-  const { policy } = await loadBasePolicy(root as AbsolutePath, changed.baseCommit);
-  const report = evaluate(changed, evidence, policy, VERSIONS, TIMES);
-  return { report, states: report.functions.map((f) => [f.qualifiedName, f.state, f.gap]) };
-}
 
 describe("collectEvidence: a node:test entry's prepare (spec 020 D15)", () => {
   it(
