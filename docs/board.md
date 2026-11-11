@@ -2190,11 +2190,11 @@ Spec folder `specifications/021-remote-store-and-execution/` (stage: research; t
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 021-07 one-shot writers retry and report honestly | planned | Spec D1: `hold`, the stop mark, the mark clear and `start`'s claim through `whileBusy`; no success after a failed write; `hold` does not start its command (#162, #186, #158, #108). | Held-lock tests per command, within and past the bound; busy text names the holder; review PASS. |
-| 021-08 daemon writes in the retried path | planned | Spec D2: refinement (retried after a throw, #138), revision apply (011-104), writing socket requests, `#reconcilePaths`, `#register`, baseline commit, shutdown through `busy.ts`'s sliced retry. | Held-lock tests for each; review PASS. |
-| 021-09 shorter holds, a log line per long write, WAL size | planned | Spec D3, D4: the hook's hand-off hold waits on nothing else; a log line per write over 250 ms; `journal_size_limit` and an idle `TRUNCATE` checkpoint; prune in slices. | Tests per item; review PASS. |
-| 021-10 naming the lock holder | planned | Spec D5: `lockHolders` from `/proc/locks`; `squeal ps --locks`. | A held lock is named by pid; non-Linux `undefined`; review PASS. |
-| 021-11 the runner host, Vitest as a local child host | planned | Spec D6 to D8: `squeal runner-host`, the protocol, the proxy adapter under `createRecoveringRunner`. | Vitest runner tests pass through the proxy; a killed host ends its tier `unknown` and is replaced; review PASS. |
+| 021-07 one-shot writers retry and report honestly | running (worker b6cc864e, claude opus xhigh) | Spec D1: `hold`, the stop mark, the mark clear and `start`'s claim through `whileBusy`; no success after a failed write; `hold` does not start its command (#162, #186, #158, #108). | Held-lock tests per command, within and past the bound; busy text names the holder; review PASS. |
+| 021-08 daemon writes in the retried path | running (worker ca906185, claude opus xhigh) | Spec D2: refinement (retried after a throw, #138), revision apply (011-104), writing socket requests, `#reconcilePaths`, `#register`, baseline commit, shutdown through `busy.ts`'s sliced retry. | Held-lock tests for each; review PASS. |
+| 021-09 shorter holds, a log line per long write, WAL size | running (worker ff966b5d, claude opus xhigh) | Spec D3, D4: the hook's hand-off hold waits on nothing else; a log line per write over 250 ms; `journal_size_limit` and an idle `TRUNCATE` checkpoint; prune in slices. | Tests per item; review PASS. |
+| 021-10 naming the lock holder | running (worker 081a882a, claude opus xhigh) | Spec D5: `lockHolders` from `/proc/locks`; `squeal ps --locks`. | A held lock is named by pid; non-Linux `undefined`; review PASS. |
+| 021-11 the runner host, Vitest as a local child host | running (worker 4d9faf6f, claude opus xhigh) | Spec D6 to D8: `squeal runner-host`, the protocol, the proxy adapter under `createRecoveringRunner`. | Vitest runner tests pass through the proxy; a killed host ends its tier `unknown` and is replaced; review PASS. |
 
 ### Later waves (spec 021; not briefed)
 
