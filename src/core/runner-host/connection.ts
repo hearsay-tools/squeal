@@ -29,7 +29,21 @@ export class HostLost extends Error {
 interface Pending {
   readonly resolve: (value: unknown) => void;
   readonly reject: (error: Error) => void;
-  readonly timer: NodeJS.Timeout | undefined;
+  /** Starts the request's deadline again from now. */
+  readonly arm: () => void;
+  /** Whether `renew` restarts it. */
+  readonly renewable: boolean;
+  timer: NodeJS.Timeout | undefined;
+}
+
+/**
+ * A request's deadline, always finite (spec 021 D6, review 0.1.434 B3).
+ * `renewable`: each `renew` starts it again, so it bounds the time between
+ * two signs of progress, not the whole request.
+ */
+export interface Deadline {
+  readonly ms: number;
+  readonly renewable?: { readonly progress: string };
 }
 
 export interface ConnectionOptions {
@@ -79,30 +93,45 @@ export class HostConnection {
 
   /**
    * Sends request `m` and resolves with its reply, rejects with its error, or
-   * with `HostLost`. `deadlineMs` `null`: no deadline but the host's exit.
+   * with `HostLost`: the host ended, or `deadline` passed, which stops it.
    */
   request(
     m: HostMethod,
     a: readonly unknown[],
-    deadlineMs: number | null,
+    deadline: number | Deadline,
     id: number = this.nextId(),
   ): Promise<unknown> {
     if (this.#lost !== null) return Promise.reject(this.#lost);
+    const { ms, renewable } = typeof deadline === "number" ? { ms: deadline } : deadline;
+    const what = renewable === undefined ? m : `${m}, nor ${renewable.progress},`;
     return new Promise((resolve, reject) => {
-      const timer =
-        deadlineMs === null
-          ? undefined
-          : setTimeout(
-              () =>
-                this.#lose(
-                  `${this.#options.label} did not answer ${m} within ${deadlineMs} ms; Squeal stopped it`,
-                  true,
-                ),
-              deadlineMs,
-            );
-      this.#pending.set(id, { resolve, reject, timer });
+      const pending: Pending = {
+        resolve,
+        reject,
+        timer: undefined,
+        renewable: renewable !== undefined,
+        arm: () => {
+          clearTimeout(pending.timer);
+          pending.timer = setTimeout(
+            () =>
+              this.#lose(
+                `${this.#options.label} did not answer ${what} within ${ms} ms; Squeal stopped it`,
+                true,
+              ),
+            ms,
+          );
+        },
+      };
+      pending.arm();
+      this.#pending.set(id, pending);
       this.#options.channel.write(encodeLine({ id, m, a }));
     });
+  }
+
+  /** Request `id` made progress: its deadline starts again when renewable. */
+  renew(id: number): void {
+    const pending = this.#pending.get(id);
+    if (pending?.renewable === true) pending.arm();
   }
 
   notice(message: HostNotice): void {
