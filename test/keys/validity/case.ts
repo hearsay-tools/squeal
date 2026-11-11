@@ -287,6 +287,12 @@ export interface VitestInput {
   /** Read each project's environment files once open, as the case's keys (row 011-88). */
   readonly environment?: true;
   /**
+   * Spec 020 D14.4 (row 020-15b): call `globalSetups()` once open, so its
+   * lines run. It enters no key, so its answer is no output; a tree without
+   * the method skips the call.
+   */
+  readonly globalSetups?: true;
+  /**
    * Row 015-108: read these files' closures in turn once open, as the case's
    * keys: each one's paths and packages. Its `imports` are no key, and are
    * left out.
