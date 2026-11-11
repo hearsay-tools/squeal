@@ -13,6 +13,7 @@ import { decideAccept, writeAccept } from "./harness/accept.js";
 import { assemble } from "./harness/assemble.js";
 import { nodeTestCase } from "./harness/node-test.js";
 import { observe } from "./harness/observe.js";
+import { pruneCase } from "./harness/prune.js";
 import { pytestCase } from "./harness/pytest.js";
 import {
   KEY,
@@ -96,6 +97,8 @@ export async function runCase(c: Case, scratch: string, runtime: string): Promis
       return assemble(c.input, scratch);
     case "store":
       return storeCase(c.input, scratch);
+    case "prune":
+      return pruneCase(c.input, join(scratch, "store"));
     case "adapter:vitest":
       return vitestCase(c.input, scratch);
     case "adapter:pytest":
