@@ -9,8 +9,17 @@
 // this module found it, so a test's fake timers do not change it. Not timed:
 // the daemon's recorder, the module-resolve hook's chain, V8's coverage in
 // the test workers. Informational: no key, export or refusal reads it.
+//
+// A Worker started with `COUNTED_OUTSIDE` in its `workerData` has its whole
+// busy time added to the clock of the thread that started it (`add`), so its
+// own clock reads 0: each thread's time counts once (review of 0.1.428, B2).
 "use strict";
 const { performance } = require("node:perf_hooks");
+const { isMainThread, workerData } = require("node:worker_threads");
+
+/** A `workerData` key: this Worker's time is on the clock of the thread that started it. */
+const COUNTED_OUTSIDE = "squealTimeCountedOutside";
+const outside = !isMainThread && workerData?.[COUNTED_OUTSIDE] === true;
 
 const now = performance.now.bind(performance);
 let total = 0;
@@ -36,9 +45,9 @@ function add(ms) {
   if (Number.isFinite(ms) && ms > 0) total += ms;
 }
 
-/** The time on this thread's clock so far, in milliseconds. */
+/** The time on this thread's clock so far, in milliseconds; 0 when it is counted outside. */
 function spent() {
-  return total;
+  return outside ? 0 : total;
 }
 
-module.exports = { add, now, spent, timed };
+module.exports = { COUNTED_OUTSIDE, add, now, spent, timed };
