@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
-import {
-  collectEvidence,
-  type GateAdapters,
-  type StoredEvidence,
-} from "../../../src/core/code/gate/collect.js";
+import { collectEvidence, type StoredEvidence } from "../../../src/core/code/gate/collect.js";
+import type { GateAdapters } from "../../../src/core/code/gate/runners.js";
 import type { TestFileEvidence } from "../../../src/core/code/gate/types.js";
 import type { TestFileRef } from "../../../src/core/types/keys.js";
 import type { RunnerAdapter } from "../../../src/core/types/runner.js";
