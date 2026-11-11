@@ -185,3 +185,95 @@ Squeal could not judge an incomplete function: its evidence is missing or partia
 - `not-joined`: Squeal could not match the coverage it has to the function. That is a limit of Squeal's; report it at https://github.com/hearsay-tools/squeal/issues with the JSON report.
 
 No agent session is needed for any of these. Run the same command on your machine, `squeal code --base origin/main`, or the pinned CLI as above, to see the same verdict with each function that is not pass on a line of its own; `--json` prints the report.
+
+## Results from CI
+
+Your CI already runs your tests. With Squeal's GitHub Action, the test step also records each test file's result, and a job after the tests publishes those results on a git ref of your repository. A developer's Squeal fetches the results of the main commit their branch starts from, so a test file that passed in CI at the same content does not run again on their machine. Vitest only, for now.
+
+Set it up once:
+
+1. Pin one exact Node version for CI and developers, for example `26.13.0` in `.node-version` at the repository root. A result counts only on the Node version that recorded it. Squeal's daemon runs the pinned version when it is installed.
+2. Set `shared.ref` in `squeal.config.json`. Without it, developers' Squeal fetches nothing:
+
+   ```json
+   { "shared": { "ref": "refs/squeal" } }
+   ```
+
+3. Add the action and an export job to the workflow that tests main:
+
+```yaml
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - run: npm ci
+      - uses: hearsay-tools/squeal/ci@v0
+      - run: squeal ci record --out "$RUNNER_TEMP/squeal-parts" -- npx vitest run --shard=${{ matrix.shard }}/3
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'push'
+        with:
+          name: squeal-parts-${{ matrix.shard }}
+          path: ${{ runner.temp }}/squeal-parts/
+          retention-days: 3
+
+  squeal-export:
+    needs: test
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - run: npm ci
+      - uses: hearsay-tools/squeal/ci@v0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: squeal-parts-*
+          path: ${{ runner.temp }}/squeal-parts
+          merge-multiple: true
+      - run: squeal ci export --parts "$RUNNER_TEMP/squeal-parts" --out "$RUNNER_TEMP/squeal-results.json.gz"
+      - run: squeal ci publish "$RUNNER_TEMP/squeal-results.json.gz" --keep 100
+```
+
+- `uses: hearsay-tools/squeal/ci@v0` puts `squeal` on the `PATH` for the later steps of its job. GitHub checks out Squeal's repository at the tag, with the released bundles in it, so the action downloads nothing else. Put it after `actions/setup-node`: Squeal needs Node 22.19 or later on the `PATH`.
+- `squeal ci record --out <dir> -- <command>` runs your own test command unchanged and exits with its code. It also writes one part file per Vitest process into `<dir>`. Recording adds time to the test step. Nothing may change the tests' input files while it runs; `squeal ci record --help` says why.
+- `squeal-export` runs only for pushes to main, and only after every shard has passed. In a checkout of the same commit, `squeal ci export` keys the parts as a developer's Squeal keys them, and `squeal ci publish` pushes them as `refs/squeal/<commit>`. In the same push it deletes the refs of main commits older than the newest 100; `fetch-depth: 0` lets it place them on main's history. It is the only job with `contents: write`, and no required check needs it.
+- With a merge queue, upload the parts and run the export on `merge_group` events instead of `push`, and check out `github.event.merge_group.head_sha` in the export job: that commit becomes the main commit.
+- The export job runs your install with a token that can push. To keep that token away from your dependencies' install scripts, split the job in two: the export, with `contents: read`, uploads `squeal-results.json.gz` as an artifact; a publish job with `contents: write` downloads it (by `pattern`, so a missing file is no error) and runs only `squeal ci publish`, which runs git and reads `squeal.config.json`, with no install.
+
+### Squeal never decides your CI result
+
+- When Squeal cannot run, for example on a Node older than it supports, the action warns in the job log and the step summary, and `squeal` passes through: `squeal ci record -- <command>` runs the command and exits with its code, and `squeal ci export` and `squeal ci publish` do nothing and exit 0.
+- When Squeal fails while it records, the command's own exit code still decides the step.
+- When `squeal ci export` or `squeal ci publish` refuses or fails, it prints its reason, adds a warning with that reason to the run and the step summary, and exits 0. A stop in sharing shows as a warning on the run, not as a failed job.
+- Only a usage error fails a step, for example an unknown option: a mistake in the workflow file, which shows on its first run.
+
+No step needs `continue-on-error`.
+
+### Squeal versions in CI
+
+Every Squeal release moves the tag `v0`, so your CI follows Squeal's releases with no change to the workflow. `v0` stays on releases whose CI setup is compatible: the action's inputs (it has none), the commands it provides and their arguments. A release that would break a workflow written for `v0` starts `v1`, and `v0` stays on the last compatible release. A change in the format Squeal records results in is not such a break: while CI and a developer run releases with different formats, that developer's Squeal does not use CI's results.
+
+To pin one exact commit instead, write the commit of a release in `uses:` and keep the tag in a comment, for example `uses: hearsay-tools/squeal/ci@<commit> # v0`. Renovate keeps such a pin current: with the preset `helpers:pinGitHubActionDigests` it writes the pin itself and opens a pull request each time `v0` moves. Dependabot does not read Squeal's release tags (`squeal--v<version>`) as versions, so it cannot keep this pin current.
