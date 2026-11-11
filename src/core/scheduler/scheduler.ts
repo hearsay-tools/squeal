@@ -9,6 +9,7 @@ import { hostLoad } from "../retry/load.js";
 import { statCandidates } from "../revision/reconcile.js";
 import { readSlowActivity } from "../slow/state.js";
 import { describeFailure } from "../state/fingerprint.js";
+import { retryWhileBusy } from "../store/busy.js";
 import { isBusy, withBusySlice } from "../store/connection.js";
 import { plural } from "../text.js";
 import type { ResolvedGroup } from "../types/check-groups.js";
@@ -124,6 +125,11 @@ class TierScheduler implements Scheduler {
     pump: () => this.#pump(),
     backgroundError: (subject, error) => this.#backgroundError(subject, error),
     applied: () => this.#cutTiers(null),
+    // Spec 021 D2: a refinement's writes wait a slice and are tried again, as the pump's are.
+    busy: () => {
+      const waits = this.options.busyWaits;
+      return waits === undefined ? undefined : { sliceMs: this.options.busySliceMs, waits };
+    },
   });
   /** Spec 019 D3: a lane per group other than `tests`; the default `slow` group's is the slow tier. */
   readonly #groups: GroupTiers;
@@ -199,6 +205,8 @@ class TierScheduler implements Scheduler {
   readonly #commandHold: CommandHold;
   /** Row 011-211: when a slow lane's runner instance closes with its slow files still queued. */
   readonly #slowRelease: SlowRelease;
+  /** Spec 021 D2: each retried pass of `#reconcilePaths` waits under a key of its own. */
+  #pathPasses = 0;
 
   constructor(private readonly options: SchedulerOptions) {
     this.#install = new InstallStamps(options.root);
@@ -1653,11 +1661,27 @@ class TierScheduler implements Scheduler {
     }, "putting the files of an unrecorded tier back in the queue");
   }
 
+  /**
+   * A watch pass over `paths`: a hold's released paths, or what a run moved.
+   * No change feed retries it: with `busyWaits` its writes wait a slice and
+   * a busy store's refusal is tried again, stat and all, until it lands or
+   * the scheduler closes (spec 021 D2); with the store's own wait otherwise.
+   */
   async #reconcilePaths(paths: readonly RelativePath[]): Promise<void> {
-    const { context } = this.#started();
-    const candidates = await statCandidates(paths, context.hasher);
-    // No slice: nothing retries this pass, so its writes wait as long as the store does.
-    await this.#handleBatch({ trigger: "watch", paths: candidates }, false);
+    const waits = this.options.busyWaits;
+    const sliced = this.#busy !== null && waits !== undefined;
+    const pass = async () => {
+      const { context } = this.#started();
+      const candidates = await statCandidates(paths, context.hasher);
+      await this.#handleBatch({ trigger: "watch", paths: candidates }, sliced);
+    };
+    if (!sliced) return pass();
+    await retryWhileBusy(pass, {
+      waits,
+      key: `scheduler:paths:${++this.#pathPasses}`,
+      what: `a pass over ${plural(paths.length, "path")}`,
+      stopped: () => this.#closed,
+    });
   }
 
   #isIdle(): boolean {
