@@ -5,6 +5,7 @@ import type { FileHash } from "../../types/keys.js";
 import type { CoverageSource } from "../coverage/types.js";
 import { type JoinedFunction, joinCoverage } from "../crap/join.js";
 import { applyExceptions, type Judged } from "./exceptions.js";
+import { byIdentity } from "./omitted.js";
 import type { BasePolicy } from "./policy.js";
 import {
   byPosition,
@@ -301,6 +302,7 @@ export function evaluate(
       ? {}
       : { scope: { groups: evidence.scope.inScope, leftOut: evidence.scope.leftOut } }),
     functions,
+    ...(changed.omitted === undefined ? {} : { omitted: [...changed.omitted].sort(byIdentity) }),
     uncounted,
     ...(applied === null ? {} : { exceptions: { unused: applied.unused } }),
     runs: runsOf(evidence, times.durationsMs),

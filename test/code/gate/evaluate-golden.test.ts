@@ -32,24 +32,40 @@ const load = fn("load", [1, 8], 6);
 const orphan = fn("orphan", [3, 6], 2);
 const callback = fn("<callback>", [3, 9], 1);
 
-const CHANGED: ChangedSet = changedSet(
-  [
-    {
-      path: "src/a.ts",
-      blob: A,
-      functions: [parse, render, map],
-      changed: ["parse", "render", "render.<map>"],
-      added: ["render.<map>"],
-    },
-    { path: "src/b.ts", blob: B, functions: [load], changed: ["load"] },
-    { path: "src/c.ts", blob: C, functions: [orphan], changed: ["orphan"] },
-    { path: "test/a.test.ts", blob: T, functions: [callback], changed: ["<callback>"] },
-  ],
-  [
-    { path: "src/huge.ts", reason: "too-large", blob: H },
-    { path: "src/link.ts", reason: "unsupported" },
-  ],
-);
+// D16: the inventory's left-out functions, out of order; the report sorts them.
+const OMITTED: ChangedSet["omitted"] = [
+  { path: "test/a.test.ts", qualifiedName: "<it>", occurrence: 1, line: 12, reason: "unchanged" },
+  {
+    path: "src/b.ts",
+    qualifiedName: "helper",
+    occurrence: 0,
+    line: 10,
+    reason: "moved",
+    base: { path: "src/a.ts", qualifiedName: "helper", occurrence: 0 },
+  },
+];
+
+const CHANGED: ChangedSet = {
+  ...changedSet(
+    [
+      {
+        path: "src/a.ts",
+        blob: A,
+        functions: [parse, render, map],
+        changed: ["parse", "render", "render.<map>"],
+        added: ["render.<map>"],
+      },
+      { path: "src/b.ts", blob: B, functions: [load], changed: ["load"] },
+      { path: "src/c.ts", blob: C, functions: [orphan], changed: ["orphan"] },
+      { path: "test/a.test.ts", blob: T, functions: [callback], changed: ["<callback>"] },
+    ],
+    [
+      { path: "src/huge.ts", reason: "too-large", blob: H },
+      { path: "src/link.ts", reason: "unsupported" },
+    ],
+  ),
+  omitted: OMITTED,
+};
 
 // `render`'s own lines are 10 to 20 but `render.<map>`'s 13: 5 of those 10 ran.
 const EVIDENCE: Evidence = evidence(
@@ -205,6 +221,17 @@ const GOLDEN: GateReport = {
       loaders: loaders([], []),
     },
   ],
+  omitted: [
+    {
+      path: "src/b.ts",
+      qualifiedName: "helper",
+      occurrence: 0,
+      line: 10,
+      reason: "moved",
+      base: { path: "src/a.ts", qualifiedName: "helper", occurrence: 0 },
+    },
+    { path: "test/a.test.ts", qualifiedName: "<it>", occurrence: 1, line: 12, reason: "unchanged" },
+  ],
   uncounted: [
     { path: "src/huge.ts", reason: "too-large", gap: "not-counted" },
     { path: "src/link.ts", reason: "unsupported", gap: "not-counted" },
@@ -247,6 +274,7 @@ describe("evaluate: the report", () => {
       functions: reversed(CHANGED.functions),
       counted: reversed(CHANGED.counted),
       uncounted: reversed(CHANGED.uncounted),
+      omitted: reversed(CHANGED.omitted ?? []),
     };
     const other: Evidence = { ...EVIDENCE, testFiles: reversed(EVIDENCE.testFiles) };
     expect(JSON.stringify(evaluate(shuffled, other, SKIP_TESTS, VERSIONS, DURATIONS))).toBe(once);
