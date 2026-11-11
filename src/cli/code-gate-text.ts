@@ -8,7 +8,12 @@ import type {
   GateRunReport,
   GateUnusedException,
 } from "../core/code/gate/report.js";
-import type { ExceptionEntry, GateGap, GateState } from "../core/code/gate/types.js";
+import {
+  type ExceptionEntry,
+  type GateGap,
+  type GateState,
+  RUNNER_NAMES,
+} from "../core/code/gate/types.js";
 import { functionName } from "../core/delivery/code-format.js";
 import { plural } from "../core/text.js";
 
@@ -216,11 +221,6 @@ function verdictLine(report: GateReport): string {
   const tally = parts.length === 0 ? "" : `: ${parts.join(", ")}`;
   return `Code gate: ${report.verdict}. ${what}${tally}.${leftOutText(report)}${omittedText(report)}`;
 }
-
-const RUNNER_NAMES: Readonly<Record<RunEstimate["runner"], string>> = {
-  vitest: "Vitest",
-  "node-test": "node:test",
-};
 
 /** D17.1: what shortens a run that does not fit what is left of the budget. */
 const WAYS_OUT =
