@@ -1,0 +1,24 @@
+busy  S(B)  B/S(B)   (host throughput in isolated cores)
+   2  1.002    2.0
+   4  1.035    3.9
+   6  1.079    5.6
+   8  1.092    7.3
+  10  1.111    9.0
+  12  1.135   10.6
+  14  1.167   12.0
+  16  1.236   12.9
+  18  1.349   13.3
+  20  1.557   12.8
+  22  2.090   10.5
+  24  2.488    9.6
+
+other load b0: background cores g that maximise g/S(b0+g) (background's own work rate), and that rate
+b0= 4: best g=15.0 rate=10.55; at g=20.0 rate=8.04; host total work at best 13.4 vs at 24 9.6
+b0= 6: best g=13.0 rate=9.14; at g=18.0 rate=7.23; host total work at best 13.4 vs at 24 9.6
+b0= 8: best g=11.0 rate=7.74; at g=16.0 rate=6.43; host total work at best 13.4 vs at 24 9.6
+b0=10: best g=11.0 rate=6.50; at g=14.0 rate=5.63; host total work at best 12.4 vs at 24 9.6
+b0=12: best g= 9.0 rate=5.32; at g=12.0 rate=4.82; host total work at best 12.4 vs at 24 9.6
+b0=14: best g= 7.0 rate=4.14; at g=10.0 rate=4.02; host total work at best 12.4 vs at 24 9.6
+b0=16: best g= 8.0 rate=3.22; at g= 8.0 rate=3.22; host total work at best 9.6 vs at 24 9.6
+b0=18: best g= 6.0 rate=2.41; at g= 6.0 rate=2.41; host total work at best 9.6 vs at 24 9.6
+b0=20: best g= 4.0 rate=1.61; at g= 4.0 rate=1.61; host total work at best 9.6 vs at 24 9.6
