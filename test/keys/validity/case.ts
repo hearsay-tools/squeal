@@ -318,6 +318,48 @@ export interface VitestInput {
   readonly coverage?: true | "unloadable";
 }
 
+/**
+ * A store pruned as a daemon prunes it (spec 001 D8, row 021-09): the rows
+ * written straight into a fresh store, then `Store.prune` at 7 days' retention.
+ * Ages are days before the prune's `now`.
+ */
+export interface PruneInput {
+  /**
+   * Each registered worktree: the main one (`root` its own repository), a live
+   * linked one (a root with a `.git` file), or one whose root is gone; with
+   * `rows`, a known state and a file hash per row, which go with the worktree.
+   */
+  readonly worktrees: readonly {
+    readonly id: string;
+    readonly root: "main" | "live" | "gone";
+    readonly rows?: number;
+  }[];
+  /** Keys a live worktree's test file holds now, so their results stay. */
+  readonly liveKeys?: readonly { readonly worktree: string; readonly key: string }[];
+  /** Results, `count` checks each under `key`, a long location so deletes free whole pages. */
+  readonly results: readonly {
+    readonly worktree: string;
+    readonly key: string;
+    readonly count: number;
+    readonly daysAgo: number;
+    readonly run: string;
+  }[];
+  /** Runs, each with a log directory; `endedDaysAgo` `null` while it runs. */
+  readonly runs?: readonly {
+    readonly id: string;
+    readonly worktree: string;
+    readonly endedDaysAgo: number | null;
+    readonly checkpoint?: string;
+  }[];
+  readonly checkpoints?: readonly {
+    readonly id: string;
+    readonly worktree: string;
+    readonly completedDaysAgo: number;
+  }[];
+  /** `store.maxSizeMb`; default none. */
+  readonly maxSizeMb?: number;
+}
+
 /** The Pythons the `adapter:pytest` kind runs on, as CI installs them (`test/helpers/pytest-env.ts`). */
 export type PytestPython = "3.10" | "3.13";
 
@@ -404,6 +446,7 @@ export type Case = {
   | { readonly kind: "accept"; readonly input: AcceptInput }
   | { readonly kind: "assemble"; readonly input: AssembleInput }
   | { readonly kind: "store"; readonly input: StoreInput }
+  | { readonly kind: "prune"; readonly input: PruneInput }
   | { readonly kind: "adapter:vitest"; readonly input: VitestInput }
   | { readonly kind: "adapter:pytest"; readonly input: PytestInput }
   | { readonly kind: "adapter:node-test"; readonly input: NodeTestInput }
