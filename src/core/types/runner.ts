@@ -573,6 +573,18 @@ export interface EnvironmentObserved {
  * `run --all` need every test file, D3 needs the runner's environment inputs,
  * D10 needs a clean shutdown.
  */
+/**
+ * Spec 020 D14.4: one project's `globalSetup` entries. The root project's
+ * run with any selection; another project's run when a file of it runs.
+ */
+export interface GlobalSetupEntry {
+  readonly project: ProjectName;
+  /** The root project: Vitest runs its global setup with every run. */
+  readonly root: boolean;
+  /** Relative to the worktree root when inside it, else absolute; never empty. */
+  readonly files: readonly string[];
+}
+
 export interface RunnerAdapter {
   readonly name: string;
   readonly adapterVersion: string;
@@ -617,6 +629,13 @@ export interface RunnerAdapter {
    * D8 step 3, task 005-26). Absent for a runner that lists every file.
    */
   omittedTestFiles?(): number;
+
+  /**
+   * Spec 020 D14.4 (row 020-15b): each project with a `globalSetup`, the
+   * root project's included, read from the config alone: no setup runs, and
+   * no key reads it. Absent: the runner has no global setup (node:test).
+   */
+  globalSetups?(): Promise<readonly GlobalSetupEntry[]>;
 
   /** Runner-side environment hash inputs, one entry per project. */
   environment(): Promise<readonly RunnerEnvironment[]>;
