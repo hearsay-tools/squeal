@@ -185,7 +185,7 @@ export interface Evidence {
   readonly scope?: ScopeEvidence;
   /** D15.3: each node:test entry's `prepare` that a selected file waited for; absent when none. */
   readonly prepares?: readonly PrepareRun[];
-  /** D17.1: each runner's estimate before its run, Vitest first; absent when no file was to run. */
+  /** D17.1: each runner's estimate before its run, in the order they ran (D18); absent when no file was to run. */
   readonly estimates?: readonly RunEstimate[];
 }
 
