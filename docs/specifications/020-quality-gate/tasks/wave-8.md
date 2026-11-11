@@ -41,3 +41,18 @@ Do: rows `proposed-gate-cli-test-kit` and `proposed-gate-core-test-fixtures`.
 Owns: `test/cli/code-gate*`, `test/code/gate/*`, and new kit files beside them. Test files only.
 
 Done when: every test in those folders passes with the same names and count; `code-gate-parts-cases.test.ts` is under 300 lines.
+
+## 020-21 one Vitest adapter rule, and the cleanup edits in spec 021's files
+
+Starts now that spec 021 wave 1 (0.1.436) is on main. Baseline: the wave 8 integration branch `w8/int`, which holds 020-22a and 020-22b on 0.1.436.
+
+Use /worker. Shape: finish. No behavior change.
+
+Do:
+- row `proposed-runs-vitest` in `quality/2026-11.md`: one owner for "Vitest runs here when no other runner is configured, or Vitest is detected", and one set of its daemon options;
+- the left-overs of 020-22b: drop the dead `listed` spread in `src/core/scheduler/runner-work.ts`; use `OBSERVED_META_KEYS` (`src/core/keys/observed-rows.ts`) in `src/core/daemon/lifecycle.ts`; import `BUSY_BOUND_MS` in `src/cli/store-writes.ts` from `src/core/store/sliced-write.ts`;
+- slice 8: export one read-only store open with the schema check from `src/core/store/open.ts`, used by `src/core/code/gate/stored.ts` and `src/cli/code-gate-durations.ts`.
+
+Owns: the files those name, `src/core/daemon/daemon.ts` and the other places the quality row lists, and their tests. Leave `test/cli/code-gate*` and `test/code/gate/*` test helpers to 020-23+24.
+
+Done when: lint, typecheck and `test/keys/key-format.test.ts` pass with keys unchanged; the tests of each changed file pass; no behavior change.
