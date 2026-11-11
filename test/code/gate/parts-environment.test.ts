@@ -9,7 +9,7 @@ import { environmentCheck } from "../../../src/core/code/gate/parts-environment.
 import { configFieldHash } from "../../../src/core/keys/environment-descriptor.js";
 import { KEY_FORMAT_VERSION } from "../../../src/core/keys/key-format.js";
 import type { RunnerEnvironment } from "../../../src/core/types/runner.js";
-import { ENVIRONMENT, GATE, observedAt, partProject, RUNNER } from "./parts-fixture.js";
+import { ENVIRONMENT, GATE, partProject, RUNNER } from "./parts-fixture.js";
 
 /*
  * Spec 020 D13.2 (amended 2026-11-10; reviews 0.1.427 B1 and 0.1.427-r2
@@ -70,7 +70,7 @@ describe("environmentCheck: the environment a part's project ran in (spec 020 D1
   it("certifies a gate runner that observes, as it does when its runs may be kept", async () => {
     // Spec 020 D17.3 (row 020-17c): the suffix is there already, and is not added twice.
     const observing = { ...RUNNER, adapterVersion: `${RUNNER.adapterVersion}+observe.6` };
-    expect(GATE.observedAdapterVersion(RUNNER.adapterVersion)).toBe(observing.adapterVersion);
+    expect(GATE.observedSuffix).toBe("+observe.6");
     expect(await checked(holding([partProject()]), GATE, async () => [observing])).toBeNull();
   });
 
@@ -105,9 +105,9 @@ describe("environmentCheck: the environment a part's project ran in (spec 020 D1
   });
 
   it("names another recorder version, which keys what a run observed", async () => {
-    expect(
-      await checked(holding([partProject()]), { ...GATE, observedAdapterVersion: observedAt("7") }),
-    ).toBe(other("adapter version 9+observe.6 in the export, 9+observe.7 here"));
+    expect(await checked(holding([partProject()]), { ...GATE, observedSuffix: "+observe.7" })).toBe(
+      other("adapter version 9+observe.6 in the export, 9+observe.7 here"),
+    );
   });
 
   it("gives no evidence of a project the part or the gate's runner lacks", async () => {

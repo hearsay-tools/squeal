@@ -18,15 +18,11 @@ import {
 import { ownNodeOptions } from "../process/recorders.js";
 
 /**
- * The adapter version an observing instance's environment hash carries:
- * `base` with the suffix of the recorder at `recorder`, `+observe.<version>`,
- * added once. `ci record` and the gate's `--parts` check (spec 020 D13.2)
- * build it alike.
+ * The suffix an observing instance's adapter version carries, so its
+ * environment hash differs. `ci record` and the gate's `--parts` check
+ * (spec 020 D13.2) add the same one.
  */
-export function observedAdapterVersion(base: string, recorder = RECORDER_VERSION): string {
-  const suffix = `+observe.${recorder}`;
-  return base.endsWith(suffix) ? base : `${base}${suffix}`;
-}
+export const OBSERVED_ADAPTER_SUFFIX = `+observe.${RECORDER_VERSION}`;
 
 /**
  * The recorder in one Vitest instance's workers (spec 001 D4; task 001-132;
@@ -76,7 +72,7 @@ export class VitestObserver {
 
   /** The adapter version the environment hash carries: an observing instance's differs. */
   adapterVersion(base: string): string {
-    return this.active ? observedAdapterVersion(base) : base;
+    return this.active ? `${base}${OBSERVED_ADAPTER_SUFFIX}` : base;
   }
 
   /** What the recorder added to, or took out of, `project`'s env: left out of its environment hash. */
