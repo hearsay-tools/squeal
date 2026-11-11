@@ -1,7 +1,9 @@
-import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { PART_PREFIX, type Part } from "../../src/core/ci/parts.js";
 import type { GateReport, GateRunReport } from "../../src/core/code/gate/report.js";
+import { resolveCommonDir } from "../../src/core/fs/git-layout.js";
+import { storePaths } from "../../src/core/store/paths.js";
 import { committed, scratch, writeFiles } from "../ci/fixture.js";
 import { watched } from "../code/gate/collect-fixture.js";
 import { MATH_FILES, recordCovered } from "../runners/vitest/ci-coverage-kit.js";
@@ -21,6 +23,20 @@ const BASE: Readonly<Record<string, string>> = {
   ...MATH_FILES,
   "src/math.ts": "export function add(a: number, b: number): number {\n  return a + b;\n}\n",
 };
+
+/**
+ * A test that reads `data/input.txt` at run time, outside every import
+ * graph: the part's observed reads certify it.
+ */
+export const READS: Readonly<Record<string, string>> = {
+  "data/input.txt": "hello\n",
+  "test/reads.test.ts": `import { readFileSync } from "node:fs";\nimport { expect, it } from "vitest";\n\nit("reads its input", () => {\n  expect(readFileSync(new URL("../data/input.txt", import.meta.url), "utf8").length).toBeGreaterThan(0);\n});\n`,
+};
+
+/** CC 6, which no test runs: CRAP 42, over 30, unless a skipped test may run it (D11.3). */
+export const RISKY = `export function risky(n: number): string {\n${[1, 2, 3, 4, 5]
+  .map((n) => `  if (n === ${n}) {\n    return "${n}";\n  }\n`)
+  .join("")}  return "many";\n}\n`;
 
 export interface Recorded {
   readonly root: string;
@@ -95,6 +111,15 @@ export function sameApartFromSource(report: GateReport): unknown {
     ({ from: _from, durationMs: _ms, estimate: _estimate, ...run }: GateRunReport) => run,
   );
   return { ...report, createdAt: "", runs };
+}
+
+/**
+ * D17.3: the gate keeps what it runs. Each case, and each control without
+ * parts, starts with no stores (review 0.1.433 S1).
+ */
+export function clearStores(root: string | undefined): void {
+  const common = root === undefined ? null : resolveCommonDir(root);
+  if (common !== null) rmSync(storePaths(common).dir, { recursive: true, force: true });
 }
 
 /** Each file below `dir` with its size and modification time. */
