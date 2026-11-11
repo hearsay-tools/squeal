@@ -1,0 +1,6 @@
+roots: /home/agent/projects/squeal/.ai/cezar/t/d8582e71/rs/fixture | /work/fixture
+environment() equal: true
+ absolute strings left in resolvedConfig: 2 "/node_modules/" "/"
+closure bytes equal: true affected equal: true
+observed equal: true
+outcomes: pass,pass | pass,pass
