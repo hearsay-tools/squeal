@@ -2,6 +2,7 @@ import type { FunctionCount } from "../../types/code.js";
 import type { RelativePath } from "../../types/common.js";
 import type { FileHash } from "../../types/keys.js";
 import type { CoverageRecord } from "../coverage/types.js";
+import type { RunEstimate } from "./estimate.js";
 import type { PrepareRun } from "./prepare.js";
 import type { ScopeEvidence } from "./scope.js";
 
@@ -184,6 +185,8 @@ export interface Evidence {
   readonly scope?: ScopeEvidence;
   /** D15.3: each node:test entry's `prepare` that a selected file waited for; absent when none. */
   readonly prepares?: readonly PrepareRun[];
+  /** D17.1: each runner's estimate before its run, Vitest first; absent when no file was to run. */
+  readonly estimates?: readonly RunEstimate[];
 }
 
 /** D6: the policy, read at the base commit. */

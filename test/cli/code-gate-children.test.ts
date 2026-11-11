@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { GateReport } from "../../src/core/code/gate/report.js";
-import { BASE, code, edit, ownHomeAndTmp, repo, SLOW } from "./code-gate-fixture.js";
+import { BASE, code, edit, noEstimate, ownHomeAndTmp, repo, SLOW } from "./code-gate-fixture.js";
 
 /*
  * Spec 020 D12 items 6 and 7 (row 020-10b): `squeal code --base` with
@@ -94,7 +94,9 @@ describe("squeal code --base with coverage.children (spec 020 D12)", () => {
     const { ran, report, states, leftInTmp } = await gate({ coverage: { children: true } });
 
     // D14.4: with coverage.children no path is named unloaded: a child may run it.
-    expect(ran.stderr).toBe("squeal code: Vitest: 2 test files to run (tests 2)\n");
+    expect(ran.stderr).toBe(
+      `squeal code: Vitest: 2 test files to run (tests 2)\n${noEstimate("Vitest", 2)}`,
+    );
     expect(states).toEqual(["classify pass 2", "grade pass 6"]);
     expect(ran.code).toBe(0);
     expect(report.base.policy.coverageChildren).toBe(true);
