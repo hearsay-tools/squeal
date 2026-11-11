@@ -11,6 +11,7 @@ import type {
   AffectedTestFiles,
   EnumeratedCheck,
   FileImports,
+  GlobalSetupEntry,
   InvalidatedPath,
   InvalidateResult,
   RunnerAdapter,
@@ -59,6 +60,7 @@ import { closurePackages, environmentPackages } from "./packages.js";
 import {
   configFiles,
   findProject,
+  globalSetupFiles,
   projectInputs,
   recreateTriggers,
   resolveExtensions,
@@ -550,6 +552,20 @@ export class VitestAdapter implements RunnerAdapter {
 
   omittedTestFiles(): number {
     return this.#omitted;
+  }
+
+  /** Spec 020 D14.4: read from each project's resolved config; nothing runs. */
+  globalSetups(): Promise<readonly GlobalSetupEntry[]> {
+    return this.#part(async (vitest) => {
+      const root = vitest.getRootProject();
+      const entries: GlobalSetupEntry[] = [];
+      for (const project of new Set([root, ...vitest.projects])) {
+        const files = globalSetupFiles(project).map((f) => this.paths.toRelative(f) ?? f);
+        if (files.length === 0) continue;
+        entries.push({ project: project.name, root: project === root, files });
+      }
+      return entries;
+    });
   }
 
   environment(): Promise<readonly RunnerEnvironment[]> {
