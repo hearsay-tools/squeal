@@ -7,6 +7,19 @@ import type { EpochMs, RelativePath, RevisionNumber } from "./common.js";
  * is then the one the release before sent (goal 1).
  */
 
+/** Why a loader can have no record now, so the sources it loads read `unknown` (spec 015 D9). */
+export type UnknownCause =
+  /** Its current result has no record and none is coming: D8's skips, a focused run, a runner without coverage. */
+  | "no-record"
+  /** A test at its key was skipped, so its record cannot show what that test runs. */
+  | "skipped"
+  /** It has no key: its closure or its project's environment is not known. */
+  | "unkeyed"
+  /** Its record names the source among those whose bytes it could not confirm. */
+  | "unread"
+  /** Spec 020 D11.5: no listed test file loads the source, so nothing measures it. */
+  | "no-loader";
+
 /** Spec 015 D6: at most this many code changes are told in full in one delivery. */
 export const CODE_LISTED_MAX = 5;
 
@@ -257,9 +270,7 @@ export interface CodeCoverageStatus {
    */
   readonly waitingForImports?: { readonly files: number; readonly testFiles: number };
   /** Files by why a loader can have no record. */
-  readonly unknown: Readonly<
-    Partial<Record<"no-record" | "skipped" | "unkeyed" | "unread" | "no-loader", number>>
-  >;
+  readonly unknown: Readonly<Partial<Record<UnknownCause, number>>>;
   /** `vitest.exclude` globs and `vitest.excludeProjects` names: their test files are not read. */
   readonly notRead?: readonly string[];
   /**
