@@ -17,6 +17,7 @@ import { DECLARED } from "./assemble/declared.js";
 import { DESCRIBED } from "./assemble/described.js";
 import { ELSEWHERE } from "./assemble/elsewhere.js";
 import { INHERITED } from "./assemble/inherited.js";
+import { PREPARE } from "./assemble/prepare.js";
 import { REFUSED_OBSERVED } from "./assemble/refused.js";
 import { REWRITTEN } from "./assemble/rewritten.js";
 import { RUNTIME_FILES } from "./assemble/runtime.js";
@@ -58,6 +59,7 @@ export const CASES: readonly Case[] = [
   ...ABSENT,
   ...DECLARED,
   ...CHECK_GROUPS,
+  ...PREPARE,
   ...SHARED_REF,
   ...RUNTIME_FILES,
   ...INHERITED,
