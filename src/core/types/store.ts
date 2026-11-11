@@ -425,6 +425,7 @@ export const WORKTREE_META_ROWS = {
   omittedTestFiles: { prefix: "omitted-test-files:", owner: "scheduler/omitted-test-files" },
   unknownFiles: { prefix: "unknown-files:", owner: "scheduler/unknown-files" },
   importRewalk: { prefix: "import-rewalk:", owner: "scheduler/import-rewalk" },
+  importsWaiting: { prefix: "imports-waiting:", owner: "scheduler/imports-waiting" },
 } as const;
 
 export type WorktreeMetaRow = keyof typeof WORKTREE_META_ROWS;

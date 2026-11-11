@@ -1,10 +1,13 @@
 import { realpathSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { KEY_FORMAT_VERSION } from "../../src/core/keys/key-format.js";
+import { importsWaiting } from "../../src/core/scheduler/imports-waiting.js";
 import { ImportsSeen } from "../../src/core/shared/imports-seen.js";
+import { importLines } from "../../src/core/status/import-lines.js";
 import { readStatus } from "../../src/core/status/snapshot.js";
 import { exportResults } from "../../src/core/store/transfer.js";
 import { encodeBundle } from "../../src/core/store/transfer-bundle.js";
+import type { StatusSnapshot } from "../../src/core/types/status.js";
 import { claimRepo, type Side, side } from "../scheduler/claims-fixture.js";
 import { publish, readerOf, scratch } from "./reader-kit.js";
 import { cloneOf, git } from "./remote.js";
@@ -16,7 +19,8 @@ import { cloneOf, git } from "./remote.js";
  * keying would: every exported file is then current from the import, with
  * no restart and no run. Before the fix, a fresh clone had 31 of 1,449 files
  * current at the first start (those without observed entries) and 1,449
- * after a restart.
+ * after a restart. Until the keys take the import, status names that cause,
+ * not "content differs" (review of 0.1.428, B1).
  */
 
 const COUNT = 3;
@@ -30,6 +34,7 @@ const NONE = {
   closure: 0,
   observed: 0,
   content: 0,
+  keysPending: 0,
   noKey: 0,
 };
 
@@ -55,45 +60,52 @@ function imported(s: Side): number {
     .filter((k) => k.origin?.kind === "imported").length;
 }
 
+/**
+ * A CI run of `COUNT` files that each read `INPUT`, its export published
+ * for its commit, and a fresh clone whose daemon keyed every file before
+ * the reader imports: `retry` is the daemon's retry request, which the
+ * reader's callback makes, as `daemon.ts` wires it.
+ */
+async function publishedAndCloned() {
+  const s = scratch();
+  const { main: ci } = claimRepo(COUNT, { [INPUT]: "input\n" });
+  const a = side(ci, { count: COUNT });
+  readsInput(a);
+  await a.scheduler.start();
+  await a.scheduler.requestFullSuite();
+  await a.scheduler.idle();
+  const commit = git(ci, ["rev-parse", "HEAD"]);
+  const { bundle } = exportResults(a.store, a.worktreeId, {
+    squealVersion: "0.0.0-test",
+    keyFormat: KEY_FORMAT_VERSION,
+    commit,
+    dirty: false,
+    createdAt: 1_762_000_000_000,
+    source: { kind: "local" },
+  });
+  expect(bundle.testFiles.map((f) => f.observed.observed)).toEqual(
+    Array.from({ length: COUNT }, () => [INPUT]),
+  );
+  git(ci, ["remote", "add", "origin", s.remote]);
+  git(ci, ["push", "-q", "origin", "main"]);
+  await publish(ci, commit, encodeBundle(bundle));
+
+  const dev = realpathSync(cloneOf(s, "main"));
+  const b = side(dev, { count: COUNT, policy: LOOKUP_ONLY });
+  const seen = new ImportsSeen(b.store);
+  const retry = () => {
+    seen.take((projects, imports) => b.scheduler.refreshObserved(projects, imports));
+    return b.scheduler.requestRetries();
+  };
+  await b.scheduler.start();
+  await b.scheduler.idle();
+  expect(b.passing()).toBe(0);
+  return { commit, dev, b, retry };
+}
+
 describe("an import into a running daemon (row 018-28)", SLOW, () => {
   it("re-keys the files whose observed entries it added: every exported file current at the first start", async () => {
-    const s = scratch();
-    // CI: the suite ran there, each file read INPUT; its export is published for its commit.
-    const { main: ci } = claimRepo(COUNT, { [INPUT]: "input\n" });
-    const a = side(ci, { count: COUNT });
-    readsInput(a);
-    await a.scheduler.start();
-    await a.scheduler.requestFullSuite();
-    await a.scheduler.idle();
-    const commit = git(ci, ["rev-parse", "HEAD"]);
-    const { bundle } = exportResults(a.store, a.worktreeId, {
-      squealVersion: "0.0.0-test",
-      keyFormat: KEY_FORMAT_VERSION,
-      commit,
-      dirty: false,
-      createdAt: 1_762_000_000_000,
-      source: { kind: "local" },
-    });
-    expect(bundle.testFiles.map((f) => f.observed.observed)).toEqual(
-      Array.from({ length: COUNT }, () => [INPUT]),
-    );
-    git(ci, ["remote", "add", "origin", s.remote]);
-    git(ci, ["push", "-q", "origin", "main"]);
-    await publish(ci, commit, encodeBundle(bundle));
-
-    // A fresh clone: its daemon keys every file before the reader imports.
-    const dev = realpathSync(cloneOf(s, "main"));
-    const b = side(dev, { count: COUNT, policy: LOOKUP_ONLY });
-    // The daemon's retry request, which the reader's callback makes, as `daemon.ts` wires it.
-    const seen = new ImportsSeen(b.store);
-    const retry = () => {
-      seen.take((projects) => b.scheduler.refreshObserved(projects));
-      return b.scheduler.requestRetries();
-    };
-    await b.scheduler.start();
-    await b.scheduler.idle();
-    expect(b.passing()).toBe(0);
-
+    const { commit, dev, b, retry } = await publishedAndCloned();
     const reader = readerOf(dev, { store: b.store, imported: () => void retry() });
     await reader.run();
     expect(reader.commits()).toEqual([commit]);
@@ -106,6 +118,40 @@ describe("an import into a running daemon (row 018-28)", SLOW, () => {
       imports: [
         { testFiles: COUNT, currentFiles: COUNT, currentResults: 2 * COUNT, notCurrent: NONE },
       ],
+    });
+  });
+
+  it("names the keys it waits for, not a content difference, until they take the import", async () => {
+    const { dev, b, retry } = await publishedAndCloned();
+    // The runner's next invalidation, the re-key's refinement, waits.
+    let release = () => {};
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const invalidate = b.runner.invalidate;
+    b.runner.invalidate = async () => {
+      await held;
+      b.runner.invalidate = invalidate;
+      return invalidate();
+    };
+    const reader = readerOf(dev, { store: b.store, imported: () => void retry() });
+    await reader.run();
+
+    const waiting = readStatus(dev) as StatusSnapshot;
+    expect(waiting).toMatchObject({
+      imports: [{ testFiles: COUNT, currentFiles: 0, notCurrent: { ...NONE, keysPending: COUNT } }],
+    });
+    expect(importLines(waiting)[1]).toBe(
+      `  Not current: ${COUNT} waiting for keys after the import`,
+    );
+    expect(importsWaiting(b.store, b.worktreeId)).toHaveLength(1);
+
+    release();
+    await b.scheduler.idle();
+    expect(importsWaiting(b.store, b.worktreeId)).toEqual([]);
+    expect(b.runner.runs).toEqual([]);
+    expect(readStatus(dev)).toMatchObject({
+      imports: [{ testFiles: COUNT, currentFiles: COUNT, notCurrent: NONE }],
     });
   });
 });
