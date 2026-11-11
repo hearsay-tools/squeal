@@ -21,9 +21,10 @@ import { fakeRepo, seedStore } from "./helpers.js";
  * checkout: an import from before the re-key at import (0.1.431) kept CI's
  * keys, whose environment differs from here only in fields D10 accepts; a
  * newer import's keys equal this worktree's, where its own results stay.
- * Default status names the newest import only, counts the files whose key
- * here equals the import's as matching, and names only the environment
- * differences that keep an imported pass apart.
+ * Default status names the newest import only, and only when a difference
+ * that keeps an imported pass apart blocks one of its files (R1); it counts
+ * the files whose key here equals the import's as matching, and names only
+ * those differences.
  */
 
 const PATHS = ["t/a.test.ts", "t/b.test.ts", "t/c.test.ts", "t/d.test.ts"];
@@ -174,8 +175,47 @@ function squawk(w: ReturnType<typeof worktree>): void {
 
 const snapshot = (imports: readonly ImportStatus[]) => ({ imports }) as unknown as StatusSnapshot;
 
+/** Cezar's checkout at its newest import's own commit (row 018-32's notes): content moved, nothing blocks. */
+const CEZAR: ImportStatus = {
+  importId: "imp-cezar",
+  source: "CI run 43089887527 on o/cezar at 5b278bdc",
+  commit: "5b278bdc",
+  importedAt: 9,
+  currentResults: 0,
+  testFiles: 1523,
+  currentFiles: 0,
+  notCurrent: {
+    sameKeyKept: 31,
+    sameKeyNotAdopted: 0,
+    environment: 45,
+    closure: 2,
+    observed: 21,
+    keysPending: 0,
+    content: 1424,
+    noKey: 0,
+  },
+  environmentDifferences: [],
+};
+
+describe("the default import line stays silent when the import works (row 018-32 R1, D15)", () => {
+  it("content moved since the import's commit and no difference blocks: no line, whatever N is", () => {
+    expect(importDefaultLines(snapshot([CEZAR]))).toEqual([]);
+    const moved = { ...CEZAR, notCurrent: { ...CEZAR.notCurrent, environment: 0, content: 1469 } };
+    expect(importDefaultLines(snapshot([moved]))).toEqual([]);
+    const none = { ...moved, notCurrent: { ...moved.notCurrent, sameKeyKept: 0, content: 1500 } };
+    expect(importDefaultLines(snapshot([none]))).toEqual([]);
+  });
+
+  it("--full keeps every count", () => {
+    expect(importLines(snapshot([CEZAR]))).toEqual([
+      `Imported: 0 of 1523 test files current from ${CEZAR.source} (0 current results)`,
+      "  Not current: 31 another result kept at the same key, 45 environment differs (only in fields an imported pass may differ in, but the import kept the export's keys), 2 closure list differs, 21 observed set differs, 1424 content differs",
+    ]);
+  });
+});
+
 describe("default status names the newest import's matching files (row 018-32)", () => {
-  it("the squawk case: the newest import, 3 of 4 files at the same key, the old import not named", () => {
+  it("the squawk case: the newest import works, so no default line; --full names both", () => {
     const w = worktree();
     squawk(w);
     const imports = w.imports();
@@ -183,15 +223,41 @@ describe("default status names the newest import's matching files (row 018-32)",
       ["imp-new", 0, 3],
       ["imp-old", 0, 0],
     ]);
-    expect(importDefaultLines(snapshot(imports))).toEqual([
-      `Imported results from ${NEW_SOURCE}: 3 of 4 test files match this worktree`,
-    ]);
+    expect(importDefaultLines(snapshot(imports))).toEqual([]);
     const text = formatStatus(buildSnapshot(w.store, w.repo.main, 10), 10, "squeal");
-    expect(text).toContain(
-      `\nImported results from ${NEW_SOURCE}: 3 of 4 test files match this worktree\n`,
-    );
-    expect(text).not.toContain(OLD_SOURCE);
+    expect(text).not.toContain("Imported results from");
     expect(text).not.toContain("none current");
+    const full = importLines(snapshot(imports));
+    expect(full.filter((l) => l.startsWith("Imported: "))).toEqual([
+      `Imported: 0 of 4 test files current from ${NEW_SOURCE} (0 current results)`,
+      `Imported: 0 of 4 test files current from ${OLD_SOURCE} (0 current results)`,
+    ]);
+  });
+
+  it("an older import whose environment blocks is not named once the newest works", () => {
+    const w = worktree();
+    const mac = { hash: "env-mac", descriptor: descriptor({ platform: "darwin", ci: true }) };
+    importResults(
+      w.store,
+      bundle("1", OLD, mac, (p) => `k-mac-${p}`),
+      {
+        importId: "imp-old",
+        fileHash: "h1",
+        now: 5,
+      },
+    );
+    expect(importDefaultLines(snapshot(w.imports()))).toHaveLength(1);
+    const here = { hash: "env-dev", descriptor: descriptor() };
+    importResults(
+      w.store,
+      bundle("2", NEW, here, (p) => `k-here-${p}`),
+      {
+        importId: "imp-new",
+        fileHash: "h2",
+        now: 6,
+      },
+    );
+    expect(importDefaultLines(snapshot(w.imports()))).toEqual([]);
   });
 
   it("a field D10 accepts is never named; --full says why the old import's files are not current", () => {
@@ -236,10 +302,10 @@ describe("default status names the newest import's matching files (row 018-32)",
   it("the newest import is the one imported last, even of an older commit", () => {
     const w = worktree();
     squawk(w);
-    const ci = { hash: "env-ci", descriptor: descriptor({ config: CI_CONFIG, ci: true }) };
+    const mac = { hash: "env-mac", descriptor: descriptor({ platform: "darwin", ci: true }) };
     importResults(
       w.store,
-      bundle("3", OLD, ci, (p) => `k-ci3-${p}`),
+      bundle("3", OLD, mac, (p) => `k-mac-${p}`),
       {
         importId: "imp-late",
         fileHash: "h3",
@@ -247,7 +313,7 @@ describe("default status names the newest import's matching files (row 018-32)",
       },
     );
     expect(importDefaultLines(snapshot(w.imports()))).toEqual([
-      "Imported results from CI run 3 on o/r at aaaaaaaa: 0 of 4 test files match this worktree",
+      "Imported results from CI run 3 on o/r at aaaaaaaa: 0 of 4 test files match this worktree; the environment differs for 4 (platform darwin in the export, linux here)",
     ]);
   });
 
