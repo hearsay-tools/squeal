@@ -1,0 +1,283 @@
+{
+  "schemaVersion": 1,
+  "available": true,
+  "worktreeId": "bbc0ed3ffcc05a97",
+  "worktreeRoot": "/home/agent/projects/squeal/.ai/cezar/t/c3ff303d/sq-181-NiGZo6",
+  "revision": 2,
+  "commit": {
+    "head": "ffb7098c43b44f0b47089d26dd11ad92e3564d19",
+    "sinceHead": 2,
+    "dirty": true
+  },
+  "counts": {
+    "current": 0,
+    "pending": 0,
+    "stale": 0,
+    "unknown": 0
+  },
+  "fileLevelCounts": {
+    "current": 0,
+    "pending": 0,
+    "stale": 0,
+    "unknown": 0
+  },
+  "testFilesWithoutChecks": {
+    "pending": 3,
+    "unknown": 0
+  },
+  "testFileCounts": {
+    "current": 0,
+    "pending": 3,
+    "stale": 0,
+    "unknown": 0
+  },
+  "testFilesByPhase": {
+    "running": 1,
+    "queued": 2
+  },
+  "testsByPhase": {
+    "running": 0,
+    "queued": 0
+  },
+  "fullSuite": {
+    "atCurrentRevision": false,
+    "lastCompletedRevision": null
+  },
+  "testFilesListed": true,
+  "inheritedCount": 0,
+  "inheritedFileLevelCount": 0,
+  "refinedRevision": 2,
+  "runnerPartPending": false,
+  "head": "ffb7098c43b44f0b47089d26dd11ad92e3564d19",
+  "dirty": true,
+  "dirtyObservedAt": 2,
+  "daemon": {
+    "state": "alive",
+    "lastHeartbeatAt": 1794360231585
+  },
+  "knownFailures": [],
+  "knownFailureCounts": {
+    "current": 0,
+    "pending": 0,
+    "stale": 0
+  },
+  "inherited": {
+    "count": 0,
+    "sources": []
+  },
+  "breakdown": {
+    "currentByOutcome": {
+      "pass": 0,
+      "fail": 0,
+      "skip": 0,
+      "unknown": 0
+    },
+    "pendingByPhase": {
+      "queued": 0,
+      "running": 0
+    },
+    "fileLevelByOutcome": {
+      "pass": 0,
+      "fail": 0,
+      "skip": 0,
+      "unknown": 0
+    },
+    "fileLevelByPhase": {
+      "queued": 0,
+      "running": 0
+    },
+    "testFiles": 3,
+    "testFilesWithoutChecks": 3,
+    "testFilesWithoutChecksRunning": 1
+  },
+  "closureMethod": "static imports plus declared inputs",
+  "storeSchemaVersion": 1,
+  "notes": [],
+  "daemonNotes": [
+    {
+      "at": 1794360217005,
+      "revision": 0,
+      "text": "node_modules/.pnpm/lock.yaml does not describe the installed packages (missing: test/fixtures/lint/toolchain/node_modules/typescript and 1 more); dependencies are keyed by their package.json files until pnpm rewrites it"
+    }
+  ],
+  "runsOpen": 1,
+  "outstanding": [
+    {
+      "standing": {
+        "kind": "running",
+        "lane": "vitest",
+        "since": 1794360217850,
+        "files": 1,
+        "yields": {
+          "kind": "overrun",
+          "yieldsAt": 1794360247850
+        }
+      },
+      "files": [
+        {
+          "project": "",
+          "path": "slow.test.ts"
+        }
+      ]
+    },
+    {
+      "standing": {
+        "kind": "queued",
+        "lane": "vitest",
+        "behind": 1794360217850,
+        "files": 1,
+        "promoted": true,
+        "yields": {
+          "kind": "overrun",
+          "yieldsAt": 1794360247850
+        },
+        "batch": {
+          "position": 1,
+          "of": 1,
+          "files": 1,
+          "estimatedEnd": null
+        }
+      },
+      "files": [
+        {
+          "project": "",
+          "path": "blocked-switch.test.ts"
+        }
+      ]
+    },
+    {
+      "standing": {
+        "kind": "queued",
+        "lane": "vitest",
+        "behind": 1794360217850,
+        "files": 1
+      },
+      "files": [
+        {
+          "project": "",
+          "path": "fast.test.ts"
+        }
+      ]
+    }
+  ],
+  "pendingTestFiles": {
+    "running": {
+      "files": [
+        {
+          "project": "",
+          "path": "slow.test.ts"
+        }
+      ],
+      "omitted": 0
+    },
+    "queued": {
+      "files": [
+        {
+          "project": "",
+          "path": "blocked-switch.test.ts"
+        },
+        {
+          "project": "",
+          "path": "fast.test.ts"
+        }
+      ],
+      "omitted": 0
+    }
+  },
+  "named": {
+    "outcome": "snapshot",
+    "waitedMs": 294,
+    "code": 3,
+    "result": "none",
+    "reason": "pending",
+    "testFiles": [
+      {
+        "project": "",
+        "path": "blocked-switch.test.ts",
+        "state": "pending",
+        "reason": "queued, promoted, behind the vitest tier of 1 test file running since 02:23:37; the tier has run past its estimate and yields at 02:24:07, 30 s past it",
+        "batch": {
+          "position": 1,
+          "of": 1,
+          "files": 1,
+          "estimatedEnd": null
+        }
+      }
+    ],
+    "unmatched": [],
+    "paths": [
+      {
+        "path": "blocked-switch.test.ts",
+        "kind": "test-file",
+        "selects": 1
+      }
+    ],
+    "leftForPause": [],
+    "verdict": {
+      "revision": 2,
+      "testFiles": 1,
+      "byClass": {
+        "current": 0,
+        "pending": 1,
+        "stale": 0,
+        "unknown": 0
+      },
+      "unlisted": false,
+      "failures": {
+        "tests": 0,
+        "testFiles": 0
+      }
+    }
+  },
+  "selection": {
+    "outcome": "snapshot",
+    "waitedMs": 294,
+    "code": 3,
+    "result": "none",
+    "reason": "pending",
+    "testFiles": [
+      {
+        "project": "",
+        "path": "blocked-switch.test.ts",
+        "state": "pending",
+        "reason": "queued, promoted, behind the vitest tier of 1 test file running since 02:23:37; the tier has run past its estimate and yields at 02:24:07, 30 s past it",
+        "batch": {
+          "position": 1,
+          "of": 1,
+          "files": 1,
+          "estimatedEnd": null
+        }
+      }
+    ],
+    "unmatched": [],
+    "paths": [
+      {
+        "path": "blocked-switch.test.ts",
+        "kind": "test-file",
+        "selects": 1
+      }
+    ],
+    "leftForPause": [],
+    "verdict": {
+      "revision": 2,
+      "testFiles": 1,
+      "byClass": {
+        "current": 0,
+        "pending": 1,
+        "stale": 0,
+        "unknown": 0
+      },
+      "unlisted": false,
+      "failures": {
+        "tests": 0,
+        "testFiles": 0
+      }
+    }
+  }
+}
+
+--- stderr
+Selected: blocked-switch.test.ts
+Pending (1):
+  1 queued, promoted, behind the vitest tier of 1 test file running since 02:23:37; the tier has run past its estimate and yields at 02:24:07, 30 s past it: blocked-switch.test.ts
+Named test files have no verdict: 1 test file still pending at revision 2: 1 queued, promoted, behind the vitest tier of 1 test file running since 02:23:37; the tier has run past its estimate and yields at 02:24:07, 30 s past it. Worktree: known failures 0; not current: 3 of 3 test files (1 running, 2 queued). A later pass is not reported. A failure arrives with a later tool call. For the verdict, wait: `squeal status --wait 60000 blocked-switch.test.ts`

@@ -1,0 +1,74 @@
+[
+  {
+    "ms": 1,
+    "name": "host",
+    "at": "2026-11-11T01:23:36.227Z",
+    "load": [
+      14.12,
+      12.4,
+      9.26
+    ],
+    "cpus": 24,
+    "node": "v24.22.1",
+    "cli": "/home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.429/dist/cli/squeal.mjs",
+    "root": "/home/agent/projects/squeal/.ai/cezar/t/c3ff303d/sq-181-NiGZo6",
+    "control": false
+  },
+  {
+    "ms": 161,
+    "name": "version",
+    "version": "0.1.429",
+    "vitest": "5.0.3"
+  },
+  {
+    "ms": 1492,
+    "name": "listed"
+  },
+  {
+    "ms": 1493,
+    "name": "edit-slow"
+  },
+  {
+    "ms": 2167,
+    "name": "slow-running"
+  },
+  {
+    "ms": 2167,
+    "name": "new-file-written"
+  },
+  {
+    "ms": 509,
+    "name": "direct-run",
+    "code": 1
+  },
+  {
+    "ms": 444,
+    "name": "mid-json",
+    "code": 3
+  },
+  {
+    "ms": 15176,
+    "name": "named-wait",
+    "code": 3
+  },
+  {
+    "ms": 466,
+    "name": "after-wait-json",
+    "code": 3
+  },
+  {
+    "ms": 45575,
+    "name": "final-wait",
+    "code": 1
+  },
+  {
+    "ms": 63655,
+    "name": "stop",
+    "code": 0
+  },
+  {
+    "ms": 63656,
+    "name": "daemon-exit",
+    "code": 0
+  }
+]

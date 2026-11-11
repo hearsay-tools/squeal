@@ -1,0 +1,31 @@
+
+ RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/t/c3ff303d/sq-181-Zxq74Y
+
+ ❯ blocked-switch.test.ts (1 test | 1 failed) 59ms
+   × blocked-switch 57ms
+
+ Test Files  1 failed (1)
+      Tests  1 failed (1)
+   Start at  02:25:13
+   Duration  216ms (tests 64%, transform 18%, import 12%, worker 5%)
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  blocked-switch.test.ts > blocked-switch
+AssertionError: expected 2 to be 1 // Object.is equality
+
+- Expected
++ Received
+
+- 1
++ 2
+
+ ❯ blocked-switch.test.ts:2:80
+      1| import {it,expect} from 'vitest';
+      2| it('blocked-switch',async()=>{await new Promise(r=>setTimeout(r,50));e…
+       |                                                                                ^
+      3|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+

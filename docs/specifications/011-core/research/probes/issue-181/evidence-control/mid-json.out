@@ -1,0 +1,242 @@
+{
+  "schemaVersion": 1,
+  "available": true,
+  "worktreeId": "3f14df7cf2e29436",
+  "worktreeRoot": "/home/agent/projects/squeal/.ai/cezar/t/c3ff303d/sq-181-Zxq74Y",
+  "revision": 1,
+  "commit": {
+    "head": "b5f2d8cc2a9a3dba62fcfd83f173b96e41e410a5",
+    "sinceHead": 1,
+    "dirty": true
+  },
+  "counts": {
+    "current": 4,
+    "pending": 0,
+    "stale": 0,
+    "unknown": 0
+  },
+  "fileLevelCounts": {
+    "current": 2,
+    "pending": 0,
+    "stale": 0,
+    "unknown": 0
+  },
+  "testFilesWithoutChecks": {
+    "pending": 1,
+    "unknown": 0
+  },
+  "testFileCounts": {
+    "current": 2,
+    "pending": 1,
+    "stale": 0,
+    "unknown": 0
+  },
+  "testFilesByPhase": {
+    "running": 1,
+    "queued": 0
+  },
+  "testsByPhase": {
+    "running": 0,
+    "queued": 0
+  },
+  "fullSuite": {
+    "atCurrentRevision": false,
+    "lastCompletedRevision": null
+  },
+  "testFilesListed": true,
+  "inheritedCount": 0,
+  "inheritedFileLevelCount": 0,
+  "refinedRevision": 1,
+  "runnerPartPending": false,
+  "head": "b5f2d8cc2a9a3dba62fcfd83f173b96e41e410a5",
+  "dirty": true,
+  "dirtyObservedAt": 1,
+  "daemon": {
+    "state": "alive",
+    "lastHeartbeatAt": 1794360312255
+  },
+  "knownFailures": [
+    {
+      "check": {
+        "kind": "test",
+        "project": "",
+        "testPath": "blocked-switch.test.ts",
+        "fullName": "blocked-switch"
+      },
+      "outcome": "fail",
+      "validity": "current",
+      "observedAt": 1,
+      "summary": "expected 2 to be 1 // Object.is equality; diff (- Expected, + Received): - 1 | + 2",
+      "fingerprint": "AssertionError: expected 2 to be 1 // Object.is equality @ blocked-switch.test.ts:2:80",
+      "location": {
+        "path": "blocked-switch.test.ts",
+        "line": 2,
+        "column": 80
+      },
+      "recorded": {
+        "worktreeId": "3f14df7cf2e29436",
+        "worktreeRoot": "/home/agent/projects/squeal/.ai/cezar/t/c3ff303d/sq-181-Zxq74Y",
+        "revision": 1,
+        "recordedAt": 1794360314138,
+        "loadPerCpu": 0.71625,
+        "noEarlierPass": true
+      }
+    }
+  ],
+  "knownFailureCounts": {
+    "current": 1,
+    "pending": 0,
+    "stale": 0
+  },
+  "inherited": {
+    "count": 0,
+    "sources": []
+  },
+  "breakdown": {
+    "currentByOutcome": {
+      "pass": 3,
+      "fail": 1,
+      "skip": 0,
+      "unknown": 0
+    },
+    "pendingByPhase": {
+      "queued": 0,
+      "running": 0
+    },
+    "fileLevelByOutcome": {
+      "pass": 2,
+      "fail": 0,
+      "skip": 0,
+      "unknown": 0
+    },
+    "fileLevelByPhase": {
+      "queued": 0,
+      "running": 0
+    },
+    "testFiles": 3,
+    "testFilesWithoutChecks": 1,
+    "testFilesWithoutChecksRunning": 1
+  },
+  "closureMethod": "static imports plus declared inputs",
+  "storeSchemaVersion": 1,
+  "notes": [],
+  "daemonNotes": [
+    {
+      "at": 1794360312668,
+      "revision": 0,
+      "text": "node_modules/.pnpm/lock.yaml does not describe the installed packages (missing: test/fixtures/lint/toolchain/node_modules/typescript and 1 more); dependencies are keyed by their package.json files until pnpm rewrites it"
+    }
+  ],
+  "runsOpen": 1,
+  "outstanding": [
+    {
+      "standing": {
+        "kind": "running",
+        "lane": "vitest",
+        "since": 1794360314147,
+        "files": 1
+      },
+      "files": [
+        {
+          "project": "",
+          "path": "slow.test.ts"
+        }
+      ]
+    }
+  ],
+  "pendingTestFiles": {
+    "running": {
+      "files": [
+        {
+          "project": "",
+          "path": "slow.test.ts"
+        }
+      ],
+      "omitted": 0
+    },
+    "queued": {
+      "files": [],
+      "omitted": 0
+    }
+  },
+  "named": {
+    "outcome": "snapshot",
+    "waitedMs": 281,
+    "code": 1,
+    "result": "fail",
+    "testFiles": [
+      {
+        "project": "",
+        "path": "blocked-switch.test.ts",
+        "state": "current",
+        "verdict": "fail"
+      }
+    ],
+    "unmatched": [],
+    "paths": [
+      {
+        "path": "blocked-switch.test.ts",
+        "kind": "test-file",
+        "selects": 1
+      }
+    ],
+    "leftForPause": [],
+    "verdict": {
+      "revision": 1,
+      "testFiles": 1,
+      "byClass": {
+        "current": 1,
+        "pending": 0,
+        "stale": 0,
+        "unknown": 0
+      },
+      "unlisted": false,
+      "failures": {
+        "tests": 1,
+        "testFiles": 0
+      }
+    }
+  },
+  "selection": {
+    "outcome": "snapshot",
+    "waitedMs": 281,
+    "code": 1,
+    "result": "fail",
+    "testFiles": [
+      {
+        "project": "",
+        "path": "blocked-switch.test.ts",
+        "state": "current",
+        "verdict": "fail"
+      }
+    ],
+    "unmatched": [],
+    "paths": [
+      {
+        "path": "blocked-switch.test.ts",
+        "kind": "test-file",
+        "selects": 1
+      }
+    ],
+    "leftForPause": [],
+    "verdict": {
+      "revision": 1,
+      "testFiles": 1,
+      "byClass": {
+        "current": 1,
+        "pending": 0,
+        "stale": 0,
+        "unknown": 0
+      },
+      "unlisted": false,
+      "failures": {
+        "tests": 1,
+        "testFiles": 0
+      }
+    }
+  }
+}
+
+--- stderr
+Selected: blocked-switch.test.ts
+Named test files at revision 1: 1 known failure: 1 test; 1 test file, each with a current result. Worktree: known failures 1 (1 test); not current: 1 of 3 test files (1 running)

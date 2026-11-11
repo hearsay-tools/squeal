@@ -1,0 +1,66 @@
+[
+  {
+    "ms": 1,
+    "name": "host",
+    "at": "2026-11-11T01:25:11.878Z",
+    "load": [
+      16.78,
+      13.51,
+      9.95
+    ],
+    "cpus": 24,
+    "node": "v24.22.1",
+    "cli": "/home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.429/dist/cli/squeal.mjs",
+    "root": "/home/agent/projects/squeal/.ai/cezar/t/c3ff303d/sq-181-Zxq74Y",
+    "control": true
+  },
+  {
+    "ms": 172,
+    "name": "version",
+    "version": "0.1.429",
+    "vitest": "5.0.3"
+  },
+  {
+    "ms": 1518,
+    "name": "listed"
+  },
+  {
+    "ms": 1519,
+    "name": "new-file-written"
+  },
+  {
+    "ms": 507,
+    "name": "direct-run",
+    "code": 1
+  },
+  {
+    "ms": 437,
+    "name": "mid-json",
+    "code": 1
+  },
+  {
+    "ms": 1446,
+    "name": "named-wait",
+    "code": 1
+  },
+  {
+    "ms": 453,
+    "name": "after-wait-json",
+    "code": 1
+  },
+  {
+    "ms": 459,
+    "name": "final-wait",
+    "code": 1
+  },
+  {
+    "ms": 4218,
+    "name": "stop",
+    "code": 0
+  },
+  {
+    "ms": 4218,
+    "name": "daemon-exit",
+    "code": 0
+  }
+]
