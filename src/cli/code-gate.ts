@@ -10,6 +10,7 @@ import { evaluate } from "../core/code/gate/evaluate.js";
 import { readPartsIn } from "../core/code/gate/parts.js";
 import { type BasePolicy, loadBasePolicy } from "../core/code/gate/policy.js";
 import type { EngineVersions, GateRunner } from "../core/code/gate/report.js";
+import { resolveScope } from "../core/code/gate/scope.js";
 import type { ChangedSet, GateVerdict } from "../core/code/gate/types.js";
 import { POLICY_FILE } from "../core/daemon/policy.js";
 import { squealVersion } from "../core/daemon/version.js";
@@ -148,6 +149,9 @@ export async function codeGateCommand(
   const inventory = await inventoryOf(root, parsed.ref, paths, io);
   if ("error" in inventory) return fail(inventory.error);
   const { changed, policy } = inventory;
+  // D14.1: the scope at the base, and `--group`; a name no test group has there is a usage error.
+  const scope = resolveScope(policy.scope, parsed.groups ?? []);
+  if ("error" in scope) return fail(scope.error, true);
   const durationsMs: Partial<Record<GateRunner, number>> = {};
   const evidence = await collectWithStores(
     root,
@@ -160,6 +164,7 @@ export async function codeGateCommand(
       note: (text) => io.stderr(`squeal code: ${text}\n`),
       // D12.1: how the runs collect is the base's, as the limits are.
       children: policy.children,
+      scope,
     },
     parts,
   ).catch((error: unknown) => (error instanceof Error ? error : new Error(String(error))));

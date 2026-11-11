@@ -19,6 +19,13 @@ import type { BlobCache } from "../coverage/record.js";
 import { coverageProvider, PROVIDER_MISSING_NOTE } from "../coverage/runtime.js";
 import type { CoverageRun, CoveredFile } from "../coverage/types.js";
 import { type Mapped, mapPayloads, refKey } from "./records.js";
+import {
+  type GateScope,
+  type LeftOutFile,
+  type LeftOutRef,
+  type ScopeTally,
+  tallyScope,
+} from "./scope.js";
 import type { ChangedSet, Evidence, TestFileEvidence } from "./types.js";
 
 /*
@@ -88,6 +95,12 @@ export interface CollectOptions {
    * coverage of the processes and threads the tests start. Absent, off.
    */
   readonly children?: boolean;
+  /**
+   * D14: the scope at the base with `--group`: a selected file of a group
+   * outside it does not run, and its closure is read. Absent, every
+   * selected file runs, as before.
+   */
+  readonly scope?: GateScope;
 }
 
 /**
@@ -142,8 +155,11 @@ export async function collectEvidence(
 ): Promise<Evidence> {
   const deadline = performance.now() + options.budgetSeconds * 1000;
   const { paths } = changed;
+  const tally = options.scope === undefined ? null : tallyScope(options.scope);
+  const scoped = (files: readonly LeftOutFile[]) =>
+    tally === null ? {} : { scope: tally.evidence(files) };
   if (paths.length === 0 && options.tests.length === 0) {
-    return { testFiles: [], timedOut: false, budgetSeconds: options.budgetSeconds };
+    return { testFiles: [], timedOut: false, budgetSeconds: options.budgetSeconds, ...scoped([]) };
   }
   const root = findWorktreeRoot(cwd);
   if (root === null) throw new Error(`${cwd} is not inside a git worktree`);
@@ -159,7 +175,8 @@ export async function collectEvidence(
     for (const problem of problems) note(`${POLICY_FILE}: ${problem}`);
     const opening = { provider, temp, note, children };
     await openRunners(options.adapters, root, policy, opening, runners);
-    const selected = await select(runners, paths, options.tests);
+    const leftOut: LeftOutRef[][] = [];
+    const selected = await select(runners, paths, options.tests, { tally, leftOut });
     const blobs: BlobCache = new Map();
     const testFiles: TestFileEvidence[] = [];
     let timedOut = false;
@@ -191,6 +208,7 @@ export async function collectEvidence(
       testFiles: testFiles.sort(byRunnerAndPath),
       timedOut,
       budgetSeconds: options.budgetSeconds,
+      ...scoped(await leftOutFiles(runners, leftOut)),
     };
   } finally {
     await Promise.allSettled(runners.map((r) => r.adapter.close()));
@@ -258,20 +276,23 @@ async function openRunners(
 /**
  * D3.1, per runner: the test files `affected()` gives for the changed
  * paths, its test files among them, and the `--test` files it lists.
- * Throws `CollectUsageError` for a `--test` file no runner lists.
+ * Throws `CollectUsageError` for a `--test` file no runner lists. D14.2:
+ * with a scope's `tally`, the files it leaves out go to `leftOut` instead.
  */
 async function select(
   runners: readonly Runner[],
   paths: readonly RelativePath[],
   tests: readonly RelativePath[],
+  scope: { readonly tally: ScopeTally | null; readonly leftOut: LeftOutRef[][] },
 ): Promise<TestFileRef[][]> {
   const named = new Set([...paths, ...tests]);
   const matched = new Set<RelativePath>();
   const selected: TestFileRef[][] = [];
-  for (const { adapter } of runners) {
+  for (const { kind, adapter } of runners) {
     const chosen = new Map<string, TestFileRef>();
     const add = (ref: TestFileRef) => chosen.set(refKey(ref), ref);
-    for (const ref of await adapter.testFiles()) {
+    const listed = await adapter.testFiles();
+    for (const ref of listed) {
       if (named.has(ref.path)) add(ref);
       matched.add(ref.path);
     }
@@ -279,7 +300,10 @@ async function select(
       const affected = await adapter.affected(paths);
       for (const ref of [...affected.direct, ...affected.transitive]) add(ref);
     }
-    selected.push([...chosen.values()].sort(byPath));
+    const all = [...chosen.values()].sort(byPath);
+    const split = scope.tally?.split(kind, listed, all, new Set(tests));
+    selected.push(split?.run ?? all);
+    scope.leftOut.push(split?.leftOut ?? []);
   }
   const unknown = tests.filter((path) => !matched.has(path));
   if (unknown.length > 0) {
@@ -333,6 +357,27 @@ async function evidenceOf(
     record,
     ...counts,
   };
+}
+
+/**
+ * D14.2: each file the scope left out with its closure, read with no run
+ * and no setup; `null` when the runner cannot give it. None with no scope.
+ */
+async function leftOutFiles(
+  runners: readonly Runner[],
+  leftOut: readonly LeftOutRef[][],
+): Promise<LeftOutFile[]> {
+  const files: LeftOutFile[] = [];
+  for (const [i, { kind, adapter }] of runners.entries()) {
+    for (const { ref, group } of leftOut[i] ?? []) {
+      const loads = await adapter.closure(ref).then(
+        (closure) => [...closure.paths].sort(compare),
+        () => null,
+      );
+      files.push({ runner: kind, path: ref.path, group, loads });
+    }
+  }
+  return files;
 }
 
 function byPath(a: TestFileRef, b: TestFileRef): number {
