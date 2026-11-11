@@ -12,6 +12,8 @@ import {
   changedSet,
   evidence,
   fn,
+  type JudgedOptions,
+  judged,
   type PathInput,
   POLICY,
   source,
@@ -29,6 +31,9 @@ import {
  */
 
 const BROWSER = "e2e/page.test.ts";
+
+/** The policy with the default scope (D14.1). */
+const SCOPED: BasePolicy = { ...POLICY, scope: readScope(DEFAULT_POLICY).base };
 
 /** A browser file the scope left out, loading `loads`. */
 const leftOut = (loads: readonly string[] | null, path = BROWSER): LeftOutFile => ({
@@ -52,18 +57,13 @@ function scoped(files: readonly LeftOutFile[]): ScopeEvidence {
   };
 }
 
-function judged(
+/** `judged` of a run whose scope left out `left`, under the default scope unless `options` names a policy. */
+const judgedLeftOut = (
   paths: readonly PathInput[],
   files: readonly TestFileEvidence[],
   left: readonly LeftOutFile[],
-  options: { policy?: BasePolicy; exceptions?: readonly ExceptionEntry[] } = {},
-) {
-  const run = { ...evidence(files), scope: scoped(left) };
-  const policy = options.policy ?? { ...POLICY, scope: readScope(DEFAULT_POLICY).base };
-  const report = evaluate(changedSet(paths), run, policy, VERSIONS, TIMES, options.exceptions);
-  const by = Object.fromEntries(report.functions.map((f) => [f.qualifiedName, f]));
-  return { report, by };
-}
+  options: JudgedOptions = {},
+) => judged(paths, files, { policy: SCOPED, ...options, scope: scoped(left) });
 
 const covered = fn("covered", [1, 5], 6);
 const missed = fn("missed", [10, 14], 6);
@@ -82,7 +82,7 @@ const unit = testFile(
 
 describe("evaluate: a loader the scope left out (spec 020 D14.2)", () => {
   it("passes on complete in-scope evidence, and lists the left-out loader", () => {
-    const { report, by } = judged(
+    const { report, by } = judgedLeftOut(
       [{ ...A, changed: ["covered"] }],
       [unit],
       [leftOut(["src/a.ts"]), leftOut(["src/other.ts"], "e2e/other.test.ts")],
@@ -97,23 +97,23 @@ describe("evaluate: a loader the scope left out (spec 020 D14.2)", () => {
   });
 
   it("reads a CRAP over the limit as incomplete, left-out; a CC over it stays a violation", () => {
-    const { report, by } = judged([A], [unit], [leftOut(["src/a.ts"])]);
+    const { report, by } = judgedLeftOut([A], [unit], [leftOut(["src/a.ts"])]);
     expect(by.missed).toMatchObject({ state: "incomplete", gap: "left-out", crap: 42 });
     expect(by.big).toMatchObject({ state: "violation", gap: null });
     expect(report.verdict).toBe("violations");
-    const alone = judged([{ ...A, changed: ["missed"] }], [unit], [leftOut(["src/a.ts"])]);
+    const alone = judgedLeftOut([{ ...A, changed: ["missed"] }], [unit], [leftOut(["src/a.ts"])]);
     expect(alone.report.verdict).toBe("incomplete");
     expect(alone.report.counts).toMatchObject({ incomplete: 1, violation: 0 });
   });
 
   it("counts a left-out file whose closure is not known as a loader that may load", () => {
-    const { by } = judged([{ ...A, changed: ["missed"] }], [unit], [leftOut(null)]);
+    const { by } = judgedLeftOut([{ ...A, changed: ["missed"] }], [unit], [leftOut(null)]);
     expect(by.missed).toMatchObject({ state: "incomplete", gap: "left-out" });
     expect(by.missed?.loaders.leftOut).toEqual([BROWSER]);
   });
 
   it("reads a source only left-out files load as left-out, not as no loader", () => {
-    const { by } = judged([{ ...A, changed: ["covered"] }], [], [leftOut(["src/a.ts"])]);
+    const { by } = judgedLeftOut([{ ...A, changed: ["covered"] }], [], [leftOut(["src/a.ts"])]);
     expect(by.covered).toMatchObject({
       state: "incomplete",
       gap: "left-out",
@@ -125,12 +125,12 @@ describe("evaluate: a loader the scope left out (spec 020 D14.2)", () => {
     const spec = fn("page spec", [1, 9], 3);
     const paths = [{ path: BROWSER, functions: [spec], changed: ["page spec"] }];
     const left = [leftOut([BROWSER, "src/a.ts"])];
-    expect(judged(paths, [], left).by["page spec"]).toMatchObject({
+    expect(judgedLeftOut(paths, [], left).by["page spec"]).toMatchObject({
       state: "incomplete",
       gap: "left-out",
     });
     const policy = { ...POLICY, coverageExclude: ["e2e/**"] };
-    const { by, report } = judged(paths, [], left, { policy });
+    const { by, report } = judgedLeftOut(paths, [], left, { policy });
     expect(by["page spec"]).toMatchObject({ state: "skipped", gap: null });
     expect(report.verdict).toBe("pass");
   });
@@ -159,7 +159,7 @@ describe("evaluate: D8 exceptions beside a left-out loader (spec 020 D14.2)", ()
 
   it("covers a CC and a CRAP violation on complete in-scope evidence", () => {
     const exceptions = [entry({}), crapEntry];
-    const { by, report } = judged([A], [unit], left, { exceptions });
+    const { by, report } = judgedLeftOut([A], [unit], left, { exceptions });
     expect(by.big).toMatchObject({ state: "accepted", gap: null });
     expect(by.missed).toMatchObject({ state: "accepted", gap: null, crap: 42 });
     expect(by.missed?.exceptions?.map((u) => u.outcome)).toEqual(["covers"]);
@@ -167,10 +167,12 @@ describe("evaluate: D8 exceptions beside a left-out loader (spec 020 D14.2)", ()
   });
 
   it("keeps the CRAP violation incomplete, left-out, with no entry or one it is over", () => {
-    const none = judged([{ ...A, changed: ["missed"] }], [unit], left, { exceptions: [] });
+    const none = judgedLeftOut([{ ...A, changed: ["missed"] }], [unit], left, { exceptions: [] });
     expect(none.by.missed).toMatchObject({ state: "incomplete", gap: "left-out" });
     const low = { ...crapEntry, value: 41 };
-    const over = judged([{ ...A, changed: ["missed"] }], [unit], left, { exceptions: [low] });
+    const over = judgedLeftOut([{ ...A, changed: ["missed"] }], [unit], left, {
+      exceptions: [low],
+    });
     expect(over.by.missed).toMatchObject({ state: "incomplete", gap: "left-out" });
     expect(over.by.missed?.exceptions?.map((u) => u.outcome)).toEqual(["over-value"]);
     expect(over.report.verdict).toBe("incomplete");
@@ -181,7 +183,7 @@ describe("evaluate: D8 exceptions beside a left-out loader (spec 020 D14.2)", ()
       record: null,
       completed: false,
     });
-    const { by } = judged([{ ...A, changed: ["missed"] }], [unit, stopped], left, {
+    const { by } = judgedLeftOut([{ ...A, changed: ["missed"] }], [unit, stopped], left, {
       exceptions: [crapEntry],
     });
     expect(by.missed).toMatchObject({ state: "incomplete", gap: "not-finished" });
@@ -191,7 +193,11 @@ describe("evaluate: D8 exceptions beside a left-out loader (spec 020 D14.2)", ()
 
 describe("evaluate: the report's scope (spec 020 D14.3)", () => {
   it("names the groups in scope, each group left out, and gate.groups at the base", () => {
-    const { report } = judged([{ ...A, changed: ["covered"] }], [unit], [leftOut(["src/a.ts"])]);
+    const { report } = judgedLeftOut(
+      [{ ...A, changed: ["covered"] }],
+      [unit],
+      [leftOut(["src/a.ts"])],
+    );
     expect(report.scope).toEqual({
       groups: [
         { name: "tests", at: "edit", from: "default" },

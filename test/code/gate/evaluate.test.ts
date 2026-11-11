@@ -1,31 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { evaluate } from "../../../src/core/code/gate/evaluate.js";
-import type { BasePolicy } from "../../../src/core/code/gate/policy.js";
-import {
-  changedSet,
-  evidence,
-  fn,
-  type PathInput,
-  POLICY,
-  source,
-  TIMES,
-  testFile,
-  VERSIONS,
-} from "./evaluate-fixture.js";
+import { fn, judged, type PathInput, source, testFile } from "./evaluate-fixture.js";
 
 /*
  * Spec 020 D5 (row 020-01): each function's state and gap, and the verdict.
  */
-
-function judged(
-  paths: readonly PathInput[],
-  files: Parameters<typeof evidence>[0],
-  policy: BasePolicy = POLICY,
-) {
-  const report = evaluate(changedSet(paths), evidence(files), policy, VERSIONS, TIMES);
-  const by = Object.fromEntries(report.functions.map((f) => [f.qualifiedName, f]));
-  return { report, by };
-}
 
 describe("evaluate: limits", () => {
   it("passes CC 20 and CRAP exactly 30, and a CC of 21 is a violation with no coverage", () => {
