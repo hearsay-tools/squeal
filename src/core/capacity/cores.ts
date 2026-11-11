@@ -53,27 +53,45 @@ export interface HostCpu {
 }
 
 /**
+ * A background tier's gate (spec 021 D18, row 021-18): `busy`, the host's
+ * busy cores as the pool reads them (row 011-182), `null` where it cannot,
+ * and the ceiling on them, a share of the machine's CPUs.
+ */
+export interface BackgroundGate {
+  readonly busy: number | null;
+  readonly ceiling: number;
+}
+
+/**
  * How many of `want` permits a daemon may take under the CPU gate (011 C10
- * Size, row 011-98): each needs the fresh marks' cores, its own and each
- * permit taken before it included, below `hostSlots`, or the marks' grants
- * below half of them. A mark without cores counts its grant, and a permit
- * not yet measured one core. So the backlog shrinks toward half the slots
- * while Squeal's tests use more CPU than the slots, and always moves. A
- * backlog tier's cores start at `busy`, the host's busy cores, when they are
- * more (011 C10 Size as amended 2026-10-24, row 011-182): on a host busy
- * with other work it takes a permit only while the grants are below half
- * the slots. `null`, any other tier's or an unread host's, adds nothing.
+ * Size, row 011-98). A mark without cores counts its grant, and a permit
+ * not yet measured one core.
+ *
+ * - A checkpoint's tier: each permit needs the fresh marks' cores, its own
+ *   and each permit taken before it included, below `hostSlots`, or the
+ *   marks' grants below half of them. So it shrinks toward half the slots
+ *   while Squeal's tests use more CPU than the slots, and always moves.
+ * - A background tier, with `background` (spec 021 D18, row 021-18): each
+ *   permit needs the cores below the slots, and with the host's busy cores
+ *   read, below the ceiling too, the cores starting at the busy cores when
+ *   they are more than the marks'. No grants term: the pool's floor keeps
+ *   background work moving.
  */
 export function gatedPermits(
   marks: readonly PoolMark[],
   own: { readonly cores: number; readonly grant: number },
   hostSlots: number,
   want: number,
-  busy: number | null = null,
+  background: BackgroundGate | null = null,
 ): number {
-  let cores = gatedCores(marks, own.cores, busy);
-  let grants = marks.reduce((sum, m) => sum + m.grant, own.grant);
+  let cores = gatedCores(marks, own.cores, background?.busy ?? null);
   let taken = 0;
+  if (background !== null) {
+    const limit = background.busy === null ? hostSlots : Math.min(hostSlots, background.ceiling);
+    for (; taken < want && cores < limit; taken++) cores++;
+    return taken;
+  }
+  let grants = marks.reduce((sum, m) => sum + m.grant, own.grant);
   for (; taken < want && (cores < hostSlots || grants < hostSlots / 2); taken++) {
     cores++;
     grants++;

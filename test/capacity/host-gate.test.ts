@@ -19,11 +19,14 @@ import { SLOT_WAITER_FRESH_MS } from "../../src/core/slow/slot-files.js";
 /*
  * 011 C10 Size as amended 2026-10-24 (row 011-182): for a backlog tier, the
  * CPU compared with the slots is the larger of the fresh marks' CPU and the
- * host's busy cores over the same window, so on a host busy with other work
- * a backlog tier takes a permit only while the grants are below half the
- * slots. A checkpoint's tier keeps the marks' CPU alone, and so does a
- * daemon that cannot read the host. The other daemons here are marks; this
- * daemon's tree and the host are fakes whose cores the test sets.
+ * host's busy cores over the same window. Since spec 021 D18 (row 021-18)
+ * the busy cores are compared with the ceiling too, and no grants term lets
+ * a backlog tier past it: on a host busy with other work it gets the floor's
+ * one permit when no other background tier runs, else none. A checkpoint's
+ * tier keeps the marks' CPU alone, and so does a daemon that cannot read the
+ * host. The other daemons here are marks; this daemon's tree and the host
+ * are fakes whose cores the test sets. The machine has 16 CPUs, so the
+ * default ceiling, 12 busy CPUs, is the slots.
  */
 
 let root: string;
@@ -63,6 +66,7 @@ function daemon(
     dir,
     owner: { pid: process.pid, worktreeId: id },
     hostSlots: 12,
+    cpus: 16,
     cores: options.tree ?? fake(0),
     host,
     ...(options.refreshMs === undefined ? {} : { refreshMs: options.refreshMs }),
@@ -106,42 +110,44 @@ describe("the host's busy cores (row 011-182)", () => {
 
 describe("gatedPermits with the host's busy cores (row 011-182)", () => {
   const own = { cores: 0, grant: 0 };
+  const busy = (cores: number | null) => ({ busy: cores, ceiling: 12 });
 
-  test("a busy host above the slots lets a backlog tier take permits only to half of them", () => {
-    expect(gatedPermits([], own, 12, 10, null)).toBe(10);
-    expect(gatedPermits([], own, 12, 10, 23.9)).toBe(6);
+  test("a busy host above the slots lets a backlog tier take no permit, whatever the grants", () => {
+    expect(gatedPermits([], own, 12, 10, busy(null))).toBe(10);
+    expect(gatedPermits([], own, 12, 10, busy(23.9))).toBe(0);
   });
 
   test("busy cores below the slots count one core for each new permit, as the marks' do", () => {
     // 4 busy: 8 permits bring the cores to the slots.
-    expect(gatedPermits([], own, 12, 10, 4)).toBe(8);
+    expect(gatedPermits([], own, 12, 10, busy(4))).toBe(8);
     const marks: PoolMark[] = [{ id: "a", want: 50, grant: 2, since: null, cores: 4 }];
-    expect(gatedPermits(marks, own, 12, 10, null)).toBe(8);
+    expect(gatedPermits(marks, own, 12, 10, busy(null))).toBe(8);
   });
 
   test("the larger of the marks' cores and the busy cores counts, never their sum", () => {
     const marks: PoolMark[] = [{ id: "a", want: 50, grant: 2, since: null, cores: 4 }];
     // Squeal's own tests are in both: 4 busy cores beside a mark of 4 cores leave 8 permits.
-    expect(gatedPermits(marks, own, 12, 10, 4)).toBe(8);
-    // Marks over the slots hold the gate whatever the host reads.
+    expect(gatedPermits(marks, own, 12, 10, busy(4))).toBe(8);
+    // Marks over the slots hold the gate whatever the host reads; a checkpoint's keeps half the slots.
     const full: PoolMark[] = [{ id: "a", want: 50, grant: 2, since: null, cores: 14 }];
-    expect(gatedPermits(full, own, 12, 10, 1)).toBe(4);
+    expect(gatedPermits(full, own, 12, 10, busy(1))).toBe(0);
+    expect(gatedPermits(full, own, 12, 10)).toBe(4);
   });
 });
 
 describe("the pool's gate on a busy host (row 011-182)", () => {
-  test("a busy host shrinks a backlog acquire and offer to half the slots, not a checkpoint's", () => {
+  test("a busy host leaves a backlog acquire and offer the floor's one permit, a checkpoint's its share", () => {
     const me = daemon("me", fake(23.9));
-    expect(me.offer(10, "fast", "backlog")).toBe(6);
+    expect(me.offer(10, "fast", "backlog")).toBe(1);
     expect(me.offer(10)).toBe(10);
     expect(me.offer(10, "fast", "checkpoint")).toBe(10);
     const checkpoint = me.acquire(10, "fast", 1, "checkpoint");
     expect(checkpoint?.grant).toBe(10);
     checkpoint?.release();
-    expect(me.acquire(10, "fast", 1, "backlog")?.grant).toBe(6);
+    expect(me.acquire(10, "fast", 1, "backlog")?.grant).toBe(1);
   });
 
-  test("a host busy at the slots shrinks a backlog acquire below half of them and leaves a checkpoint's as today", () => {
+  test("a host busy at the slots refuses a backlog acquire beside another daemon's and leaves a checkpoint's as today", () => {
     // Another daemon holds 2 permits on 2 cores; the host's 12 busy cores are the slots.
     others([2, 2]);
     const today = daemon("today", null).acquire(10, "fast", 1, "checkpoint")?.grant;
@@ -149,14 +155,14 @@ describe("the pool's gate on a busy host (row 011-182)", () => {
     expect(today).toBe(10);
     expect(daemon("me", fake(12)).acquire(10, "fast", 1, "checkpoint")?.grant).toBe(today);
     for (const pool of pools.splice(0)) pool.close();
-    // At the slots no permit passes on cores: only grants below half, 6, so 4 beside the 2 held.
-    expect(daemon("me", fake(12)).acquire(10, "fast", 1, "backlog")?.grant).toBe(4);
+    // At the slots no permit passes on cores, and the other daemon's tier runs: no floor.
+    expect(daemon("me", fake(12)).acquire(10, "fast", 1, "backlog")).toBeNull();
   });
 
-  test("a backlog tier grows while the grants are below half the slots, beside other daemons' marks", () => {
+  test("beside other daemons' tiers on few cores, a busy host refuses a backlog tier, an unread one does not", () => {
     // Two daemons hold 3 permits on few cores: the gate saw about 4 cores (011-139 finding 3).
     others([2, 1], [1, 1]);
-    expect(daemon("me", fake(23.9)).acquire(10, "fast", 1, "backlog")?.grant).toBe(3);
+    expect(daemon("me", fake(23.9)).acquire(10, "fast", 1, "backlog")).toBeNull();
     for (const pool of pools.splice(0)) pool.close();
     expect(daemon("me", fake(null)).acquire(10, "fast", 1, "backlog")?.grant).toBe(9);
   });
@@ -194,7 +200,7 @@ describe("the pool's gate on a busy host (row 011-182)", () => {
     clock += SLOT_WAITER_FRESH_MS - 1;
     expect(me.offer(10, "fast", "backlog")).toBe(10);
     clock += 1;
-    expect(me.offer(10, "fast", "backlog")).toBe(6);
+    expect(me.offer(10, "fast", "backlog")).toBe(1);
     // A checkpoint's offer reads nothing.
     clock += SLOT_WAITER_FRESH_MS;
     const reads = host.reads;
@@ -209,7 +215,7 @@ describe("the pool's gate on a busy host (row 011-182)", () => {
     expect(me.offer(10, "fast", "backlog")).toBe(10);
     expect(host.reads).toBe(reads + 1);
     clock += 1;
-    expect(me.offer(10, "fast", "backlog")).toBe(6);
+    expect(me.offer(10, "fast", "backlog")).toBe(1);
   });
 
   test("a daemon's own running tier counts beside what the host used beyond its tree", async () => {

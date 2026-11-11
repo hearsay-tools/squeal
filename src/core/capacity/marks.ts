@@ -20,6 +20,12 @@ export interface PoolMark extends Demand {
    * its grant counts in its place.
    */
   readonly cores?: number;
+  /**
+   * The permits its background tiers hold, of `grant` (spec 021 D18, row
+   * 021-18): the pool's floor serves a waiter only while no daemon's is
+   * above 0. Absent from an older release: its grant counts in its place.
+   */
+  readonly background?: number;
 }
 
 const MARK_PREFIX = "pool.mark.";
@@ -45,6 +51,7 @@ export function writeMark(dir: AbsolutePath, mark: PoolMark): void {
     ...(mark.slow === true ? { slow: true } : {}),
     ...(mark.least !== undefined && mark.least > 1 ? { least: mark.least } : {}),
     ...(mark.cores === undefined ? {} : { cores: Math.round(mark.cores * 100) / 100 }),
+    ...(mark.background === undefined ? {} : { background: mark.background }),
   };
   writeFileSync(`${path}.tmp`, `${JSON.stringify(body)}\n`, { mode: 0o600 });
   renameSync(`${path}.tmp`, path);
@@ -87,7 +94,10 @@ export function readMarks(dir: AbsolutePath, worktreeId: WorktreeId, now: number
 function parseMark(text: string): PoolMark | null {
   const raw: unknown = JSON.parse(text);
   if (typeof raw !== "object" || raw === null) return null;
-  const { id, want, grant, since, project, slow, least, cores } = raw as Record<string, unknown>;
+  const { id, want, grant, since, project, slow, least, cores, background } = raw as Record<
+    string,
+    unknown
+  >;
   if (typeof id !== "string" || !isCount(want) || !isCount(grant)) return null;
   if (since !== null && typeof since !== "number") return null;
   const mark = {
@@ -98,6 +108,7 @@ function parseMark(text: string): PoolMark | null {
     ...(slow === true ? { slow: true } : {}),
     ...(isCount(least) && least > 1 ? { least } : {}),
     ...(typeof cores === "number" && Number.isFinite(cores) && cores >= 0 ? { cores } : {}),
+    ...(isCount(background) ? { background } : {}),
   };
   if (project === null || project === undefined) return mark;
   const p = project as Record<string, unknown>;

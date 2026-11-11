@@ -8,6 +8,13 @@ import type { CheckPriority } from "../types/check-groups.js";
 import type { AbsolutePath } from "../types/common.js";
 import type { PoolGate } from "../types/standing.js";
 import {
+  backgroundCeiling,
+  backgroundOf,
+  ceilingRefusalLine,
+  DEFAULT_BACKGROUND_SHARE,
+  isBackgroundShare,
+} from "./background.js";
+import {
   createHostCpu,
   createTreeCpu,
   gatedCores,
@@ -30,6 +37,14 @@ export interface PoolCapacity {
    * backlog tier on the marks' CPU alone.
    */
   readonly host?: HostCpu | null;
+  /**
+   * `capacity.backgroundShare` (spec 021 D18, row 021-18): a background
+   * tier takes a permit only while the busy CPUs are below this share of the
+   * CPUs. A number from 0 to 1; default `DEFAULT_BACKGROUND_SHARE`.
+   */
+  readonly backgroundShare?: number;
+  /** The daemon's log: one line for each background tier the ceiling refuses (D18). Absent: none. */
+  readonly log?: (line: string) => void;
 }
 
 export interface PermitPoolOptions extends PoolCapacity {
@@ -47,6 +62,8 @@ export interface PermitPoolOptions extends PoolCapacity {
    * gate and no mark for an edit's tier.
    */
   readonly cores?: TreeCpu | null;
+  /** The CPUs the machine reports, of which the ceiling is a share. Default `os.availableParallelism()`. */
+  readonly cpus?: number;
 }
 
 /** One backlog or checkpoint tier's grant, held until the tier ends. */
@@ -147,6 +164,8 @@ interface Lease {
   readonly permits: DatabaseSync[];
   /** The workers its tier wants, kept above its grant while it waits (review 001-384, B1). */
   want: number;
+  /** A `backlog` lease is a background tier's: its permits are the mark's `background` (D18). */
+  readonly kind: PoolTierKind;
 }
 
 /**
@@ -181,6 +200,12 @@ interface Lease {
  *   the host's busy cores over the same window; a backlog tier's cores
  *   start at what the host used beyond the tree, plus the tree's cores now,
  *   when that is more (row 011-182).
+ * - A backlog tier has no grants term (spec 021 D18, row 021-18): with the
+ *   host read, each permit needs those cores below the ceiling,
+ *   `backgroundShare` of the CPUs, too. When no daemon's mark states a
+ *   background permit and this one holds none, the waiter served first
+ *   takes its tier's fewest workers (the floor), and then waits behind the
+ *   others at its next look.
  * - A mark that cannot be written fails the acquisition, which returns what
  *   it took; after a shrink or a release the refresh writes it again
  *   (review 001-384, B2).
@@ -212,12 +237,25 @@ class LockFilePool implements PermitPool {
   #mark: PoolMark | null = null;
   /** What the last look read, for a refused tier's wait (row 011-309). */
   #gate: PoolGate | null = null;
+  readonly #cpus: number;
+  readonly #backgroundShare: number;
+  /** The busy CPUs below which a background tier takes a permit (D18). */
+  readonly #ceiling: number;
+  /** The last look's grant was the floor's (D18). */
+  #floored = false;
+  /** The last look read the host's busy cores. */
+  #hostRead = false;
   #closed = false;
 
   constructor(options: PermitPoolOptions) {
     this.#options = options;
     this.#hostSlots = Math.max(1, Math.floor(options.hostSlots ?? defaultHostSlots()));
     this.#now = options.now ?? Date.now;
+    this.#cpus = options.cpus ?? availableParallelism();
+    this.#backgroundShare = isBackgroundShare(options.backgroundShare)
+      ? options.backgroundShare
+      : DEFAULT_BACKGROUND_SHARE;
+    this.#ceiling = backgroundCeiling(this.#backgroundShare, this.#cpus);
     this.#tree = options.cores === undefined ? createTreeCpu() : options.cores;
     this.#host =
       this.#tree === null ? null : options.host === undefined ? createHostCpu() : options.host;
@@ -246,18 +284,12 @@ class LockFilePool implements PermitPool {
     );
     const slow = lane === "slow";
     const rank = this.#since ?? now;
-    // Task 004-61: a contended pool serves fast lanes first. A fast lane's tier leaves free only
-    // what older fast waiters lack, a slow lane's also what every fast waiter lacks.
-    const ahead = (o: PoolMark): boolean => {
-      if (o.since === null) return false;
-      // A slow waiter is ahead of a younger slow tier only; a fast one of any slow tier too.
-      if (o.slow === true) return slow && o.since < rank;
-      return slow || o.since < rank;
-    };
     const reserve = others
-      .filter(ahead)
+      .filter((o) => servedBefore(o, lane, rank))
       .reduce((sum, o) => sum + Math.max(0, (shares.get(o.id) ?? 0) - o.grant), 0);
-    const allowed = Math.min(target, this.#gated(others, inUse, target, kind));
+    const gated = this.#gated(others, inUse, target, kind, lane, rank, fewest);
+    const allowed = Math.min(target, gated);
+    if (kind === "backlog") this.#logRefusal(gated, fewest, target);
     const permits = allowed < fewest ? [] : this.#take(allowed, reserve);
     // A tier that runs `fewest` workers on fewer permits would run more than it holds.
     if (permits.length < fewest) for (const db of permits.splice(0)) db.close();
@@ -267,12 +299,11 @@ class LockFilePool implements PermitPool {
     const previousLeast = this.#least;
     const pending = this.#pending;
     const mark = this.#mark;
-    // One that holds nothing and gets nothing waits even at a share of 0, so it is served first later.
-    this.#since = grant >= Math.max(entitled, inUse === 0 ? 1 : 0) ? null : (since ?? now);
+    this.#since = this.#served(grant, entitled, inUse) ? null : (since ?? now);
     this.#slowWaiting = this.#since !== null && slow && (since === null || slowWaiting);
     this.#least = this.#since === null ? 1 : fewest;
     this.#pending = grant === 0 ? wanted : 0;
-    const lease: Lease = { permits, want: wanted };
+    const lease: Lease = { permits, want: wanted, kind };
     if (grant > 0) this.#leases.add(lease);
     try {
       this.#publish(demand, inUse + grant);
@@ -298,8 +329,9 @@ class LockFilePool implements PermitPool {
 
   offer(want: number, lane: PoolLane = "fast", kind: PoolTierKind = "checkpoint"): number {
     if (this.#closed) return 0;
-    const { others, inUse, target } = this.#share(Math.max(1, Math.floor(want)), lane, this.#now());
-    return Math.min(target, this.#gated(others, inUse, target, kind));
+    const now = this.#now();
+    const { others, inUse, target } = this.#share(Math.max(1, Math.floor(want)), lane, now);
+    return Math.min(target, this.#gated(others, inUse, target, kind, lane, this.#since ?? now));
   }
 
   running(workers: number): () => void {
@@ -461,18 +493,79 @@ class LockFilePool implements PermitPool {
     return this.#measured ?? workers;
   }
 
-  /** How many of `want` permits the CPU gate lets this daemon take now (rows 011-98, 011-182). */
-  #gated(others: readonly PoolMark[], inUse: number, want: number, kind: PoolTierKind): number {
+  /**
+   * How many of `want` permits the CPU gate lets this daemon take now (rows
+   * 011-98, 011-182): a backlog tier's under the ceiling, or `fewest` from
+   * the floor when the ceiling leaves it fewer (spec 021 D18, row 021-18).
+   * `rank` is since when the tier of `lane` waits, now for one that does not.
+   */
+  #gated(
+    others: readonly PoolMark[],
+    inUse: number,
+    want: number,
+    kind: PoolTierKind,
+    lane: PoolLane,
+    rank: number,
+    fewest = 1,
+  ): number {
     const cores = this.#cores();
-    const busy = cores !== null && kind === "backlog" ? this.#busy(cores) : null;
+    const background = kind === "backlog";
+    const busy = cores !== null && background ? this.#busy(cores) : null;
     this.#gate = {
       busyCores: cores === null ? null : gatedCores(others, cores, busy),
-      cpus: availableParallelism(),
+      cpus: this.#cpus,
       hostSlots: this.#hostSlots,
       grants: others.reduce((sum, m) => sum + m.grant, 0),
     };
+    this.#floored = false;
+    this.#hostRead = busy !== null;
     if (cores === null) return want;
-    return gatedPermits(others, { cores, grant: inUse }, this.#hostSlots, want, busy);
+    const own = { cores, grant: inUse };
+    if (!background) return gatedPermits(others, own, this.#hostSlots, want);
+    const ceiling = { busy, ceiling: this.#ceiling };
+    const permits = gatedPermits(others, own, this.#hostSlots, want, ceiling);
+    if (permits >= fewest || this.#backgroundHeld() > 0) return permits;
+    // The floor: no background tier of the user's daemons runs, and no waiter is served first.
+    if (!others.every((o) => backgroundOf(o) === 0 && !servedBefore(o, lane, rank))) return permits;
+    this.#floored = true;
+    return fewest;
+  }
+
+  /**
+   * A backlog tier's look ends its wait: it got its share, or the floor
+   * served it, so it waits again from its next look, behind the others
+   * (D18). One that holds nothing and gets nothing waits even at a share of
+   * 0, so it is served first later.
+   */
+  #served(grant: number, entitled: number, inUse: number): boolean {
+    return grant >= Math.max(entitled, inUse === 0 ? 1 : 0) || (grant > 0 && this.#floored);
+  }
+
+  /**
+   * D18: the daemon's log has each refusal of a backlog tier by the ceiling,
+   * with the busy CPUs the gate read: the gate read the host and left the
+   * tier fewer than `fewest` workers where its share, `target`, had them.
+   */
+  #logRefusal(gated: number, fewest: number, target: number): void {
+    const gate = this.#gate;
+    if (gated >= fewest || target < fewest || this.#options.log === undefined) return;
+    if (!this.#hostRead || gate === null || gate.busyCores === null) return;
+    this.#options.log(
+      ceilingRefusalLine({
+        busy: gate.busyCores,
+        ceiling: this.#ceiling,
+        share: this.#backgroundShare,
+        cpus: this.#cpus,
+        hostSlots: this.#hostSlots,
+      }),
+    );
+  }
+
+  /** The permits this daemon's background tiers hold (D18). */
+  #backgroundHeld(): number {
+    let sum = 0;
+    for (const lease of this.#leases) if (lease.kind === "backlog") sum += grantOf(lease);
+    return sum;
   }
 
   /**
@@ -525,6 +618,7 @@ class LockFilePool implements PermitPool {
       ...(this.#since !== null && this.#slowWaiting ? { slow: true } : {}),
       ...(this.#since !== null && this.#least > 1 ? { least: this.#least } : {}),
       ...(cores === null ? {} : { cores }),
+      background: this.#backgroundHeld(),
       ...(project === undefined ? {} : { project }),
     };
     writeMark(dir, this.#mark);
@@ -583,4 +677,15 @@ class LockFilePool implements PermitPool {
 
 function grantOf(lease: Lease): number {
   return lease.permits.length;
+}
+
+/**
+ * Task 004-61: a contended pool serves fast lanes first. The waiter `o` is
+ * served before a tier of `lane` waiting since `rank`: a slow waiter before
+ * a younger slow tier only, a fast one before any slow tier too.
+ */
+function servedBefore(o: PoolMark, lane: PoolLane, rank: number): boolean {
+  if (o.since === null) return false;
+  if (o.slow === true) return lane === "slow" && o.since < rank;
+  return lane === "slow" || o.since < rank;
 }
