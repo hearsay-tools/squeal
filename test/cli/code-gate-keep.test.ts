@@ -86,6 +86,8 @@ describe("squeal code --base keeps its completed files (spec 020 D17.3)", () => 
       [LATE.path],
       undefined,
     ]);
+    // D17.1: both files run, so both are estimated.
+    expect(run?.estimate?.files).toBe(2);
     const [quick, late] = await keysNow(repo, [QUICK, LATE]);
     const ids = runIdsAt(repo, quick as CheckKey);
     expect(ids).toHaveLength(1);
@@ -103,12 +105,17 @@ describe("squeal code --base keeps its completed files (spec 020 D17.3)", () => 
     expect(second.stderr).toContain(
       "squeal code: 1 of 2 selected test files read from the stores\n",
     );
+    // D14.4, D17.1 (020-17 I): the kept file is resolved before the print and is not estimated.
+    expect(second.stderr).toMatch(
+      /^squeal code: Vitest: 2 test files selected \(tests 2\): 1 to run, 1 read from the stores\nsqueal code: Vitest: 1 test file to run here, up to \d+ at once; no stored duration, so the time is unknown\n/,
+    );
     const [run] = second.report.runs;
     expect([run?.completed, run?.notFinished, run?.from]).toEqual([
       [QUICK.path],
       [LATE.path],
       { [LATE.path]: "run", [QUICK.path]: "store" },
     ]);
+    expect([run?.estimate?.files, run?.estimate?.known]).toEqual([1, 0]);
     const quick = second.report.functions.find((f) => f.qualifiedName === "quick");
     expect(quick?.loaders.measured).toEqual([QUICK.path]);
   });
