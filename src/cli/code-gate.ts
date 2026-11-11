@@ -165,6 +165,9 @@ export async function codeGateCommand(
       // D12.1: how the runs collect is the base's, as the limits are.
       children: policy.children,
       scope,
+      // D15: the base's node:test `prepare` commands; their output goes to stderr.
+      ...(policy.prepares === undefined ? {} : { prepares: policy.prepares }),
+      output: io.stderr,
     },
     parts,
   ).catch((error: unknown) => (error instanceof Error ? error : new Error(String(error))));
