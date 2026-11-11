@@ -38,7 +38,7 @@ export interface RunnerSelection {
 
 /** D14.4: the selection, told before the first run. */
 export interface SelectionSummary {
-  /** One per runner opened, Vitest first; every node:test entry in one. */
+  /** One per runner opened, in the order they run (D18.4); every node:test entry in one. */
   readonly runners: readonly RunnerSelection[];
   /** D14.3: the test groups out of scope; empty when the run has no scope. */
   readonly leftOut: readonly LeftOutGroup[];
