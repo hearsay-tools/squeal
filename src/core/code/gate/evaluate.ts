@@ -15,10 +15,10 @@ import {
   type GatePathReport,
   type GateReport,
   type GateTimes,
-  runsOf,
   verdictOf,
 } from "./report.js";
 import { judgeFunction, type MissingGap, type RuleCoverage, UNRUN_GAPS } from "./rule.js";
+import { runsOf } from "./runs.js";
 import { leftOutLoaders } from "./scope.js";
 import {
   type ChangedFunction,
