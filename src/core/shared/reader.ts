@@ -1,7 +1,9 @@
 import { createHash } from "node:crypto";
+import { squealVersion } from "../daemon/version.js";
+import { KEY_FORMAT_VERSION } from "../keys/key-format.js";
 import { listImports, sourceLabel } from "../store/imports.js";
-import { decodeBundle } from "../store/transfer-bundle.js";
-import { importRefusal, importResults } from "../store/transfer-import.js";
+import { decodeBundle, type ResultsBundle } from "../store/transfer-bundle.js";
+import { importRefusal, importResults, otherKeyFormat } from "../store/transfer-import.js";
 import type { AbsolutePath, WorktreeId } from "../types/common.js";
 import type { Policy } from "../types/policy.js";
 import type { Store } from "../types/store.js";
@@ -17,6 +19,7 @@ import { fetchExport } from "./fetch.js";
 import { failureOf, networkEnv } from "./git.js";
 import { blobsAt, HEAD_TIMEOUT_MS, headOf } from "./local.js";
 import { refOf, remoteExports } from "./refs.js";
+import { writeSquealMismatch } from "./refused.js";
 
 /*
  * Spec 018 D14: with `shared.ref` set, the daemon imports CI's export of the
@@ -31,7 +34,9 @@ import { refOf, remoteExports } from "./refs.js";
  * git the reader starts, the `HEAD` read and the commit's listing too.
  * Row 018-28: a clone without `refs/remotes/origin/HEAD`, or whose one names
  * a branch the clone does not hold (R2), takes the default branch the remote
- * advertises, under the listing's kill timer.
+ * advertises, under the listing's kill timer. Row 018-34 (D21): an export
+ * of another key format leaves one record for status (`refused.ts`), which
+ * the next import clears, not a note per refused ref.
  */
 
 /** The kill timer of the listing (`transport.md` Q3: 0.45 to 0.6 s to GitHub). */
@@ -49,7 +54,7 @@ export interface SharedReaderOptions {
   readonly store: Store;
   readonly policy: () => Policy;
   readonly now: () => number;
-  /** A status note: a failed or slow fetch, or a refused export. */
+  /** A status note: a failed or slow fetch, or an export refused for another reason than its key format (D21). */
   readonly note: (text: string) => void;
   readonly log: (text: string) => void;
   /** Results were added: the daemon looks them up (as `squeal import` tells it). */
@@ -226,14 +231,17 @@ class Reader implements SharedReader {
       return;
     }
     const bundle = decodeBundle(bytes);
-    const refusal =
-      typeof bundle === "string"
-        ? bundle
-        : bundle.header.commit !== commit
-          ? `its header names commit ${bundle.header.commit ?? "none"}`
-          : importRefusal(bundle);
-    if (typeof bundle === "string" || refusal !== null) {
-      this.o.note(`CI results: refused ${ref}: ${refusal}`);
+    if (typeof bundle === "string" || bundle.header.commit !== commit) {
+      const why =
+        typeof bundle === "string"
+          ? bundle
+          : `its header names commit ${bundle.header.commit ?? "none"}`;
+      this.o.note(`CI results: refused ${ref}: ${why}`);
+      return;
+    }
+    const refusal = importRefusal(bundle);
+    if (refusal !== null) {
+      this.#refused(ref, commit, bundle, refusal);
       return;
     }
     const fileHash = createHash("sha256").update(bytes).digest("hex");
@@ -241,6 +249,8 @@ class Reader implements SharedReader {
     this.o.step?.(IMPORT_STEP, true);
     let added: number;
     try {
+      // D21: an export of this Squeal's key format ends a refusal for another.
+      writeSquealMismatch(this.o.store, this.o.worktreeId, null);
       added = importResults(this.o.store, bundle, {
         importId: fileHash.slice(0, 16),
         fileHash,
@@ -256,5 +266,27 @@ class Reader implements SharedReader {
     }
     this.o.log(`CI results: imported ${added} results from ${sourceLabel(bundle.header)}`);
     this.o.imported();
+  }
+
+  /**
+   * Spec 018 D21 (row 018-34): an export of another key format is one record
+   * of both Squeal releases, which status names in plain words, in place of a
+   * note per refused ref; the log keeps the formats. A busy store: the next
+   * nudge tries this start point again, as an import does.
+   */
+  #refused(ref: string, commit: string, bundle: ResultsBundle, refusal: string): void {
+    const ci = otherKeyFormat(bundle);
+    if (ci === null) {
+      this.o.note(`CI results: refused ${ref}: ${refusal}`);
+      return;
+    }
+    this.o.log(`CI results: refused ${ref}: ${refusal}`);
+    const here = { version: squealVersion(), keyFormat: KEY_FORMAT_VERSION };
+    try {
+      writeSquealMismatch(this.o.store, this.o.worktreeId, { ci, here, commit, at: this.o.now() });
+    } catch (error) {
+      this.#start = null;
+      throw error;
+    }
   }
 }

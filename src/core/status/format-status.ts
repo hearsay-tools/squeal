@@ -29,6 +29,7 @@ import { nodeMismatchLines } from "./node-mismatch.js";
 import { outstandingLines } from "./outstanding-text.js";
 import { phaseLines } from "./phase-files.js";
 import { slowSlotLines } from "./slot-holders.js";
+import { squealMismatchLines } from "./squeal-mismatch.js";
 import { detailLines, hiddenParts } from "./status-detail.js";
 import { atText } from "./test-frame.js";
 
@@ -101,6 +102,8 @@ export function formatStatus(
     ...importDefaultLines(result),
     // Spec 018 D19: shared results recorded on another Node than the daemon runs, said once.
     ...nodeMismatchLines(result.shared, command),
+    // Spec 018 D21: CI's export refused because CI ran a Squeal of another key format, said once.
+    ...squealMismatchLines(result.shared, full),
     ...owedLine(result),
     ...slowLine(result, command),
     // Spec 019 D5, D6 (row 019-16), with a `checks` key only: each group not all current, the commit.
