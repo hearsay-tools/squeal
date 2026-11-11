@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FILE_ERROR } from "../../src/core/code/gate/collect.js";
+import { FILE_ERROR } from "../../src/core/code/gate/evidence.js";
 import type { GateReport } from "../../src/core/code/gate/report.js";
 import { gitHashObject } from "../hash/git-repo.js";
 import { BASE, code, edit, noEstimate, ownHomeAndTmp, repo, SLOW } from "./code-gate-fixture.js";
