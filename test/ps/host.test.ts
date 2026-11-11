@@ -192,7 +192,7 @@ describe("readPool", () => {
     ];
     const { source } = fakeSource([], { locks, fileKeys: keys() });
     const reading = readPool(source, places, new Set([349493, 2091490]));
-    expect(reading.pool).toEqual({ slots: 23, held: 5 });
+    expect(reading.pool).toEqual({ slots: 23, held: 5, ceiling: 18 });
     expect([...reading.permits]).toEqual([
       [349493, 2],
       [2091490, 2],
@@ -206,7 +206,7 @@ describe("readPool", () => {
     const second = [write(2091490, "103:02:10"), write(2091490, "103:02:12")];
     const { source } = fakeSource([], { locks: null, fileKeys: keys() });
     const reading = readPool(source, places, new Set([349493, 2091490]), [first, second]);
-    expect(reading.pool).toEqual({ slots: 23, held: 3 });
+    expect(reading.pool).toEqual({ slots: 23, held: 3, ceiling: 18 });
     expect([...reading.permits]).toEqual([
       [2091490, 2],
       [349493, 1],
@@ -222,7 +222,7 @@ describe("readPool", () => {
       [null, second],
     ]) {
       const reading = readPool(source, places, new Set([349493]), readings);
-      expect(reading.pool).toEqual({ slots: 23, held: null });
+      expect(reading.pool).toEqual({ slots: 23, held: null, ceiling: 18 });
       expect(reading.permits.size).toBe(0);
       expect(reading.foreign).toEqual(
         readings[0] === null ? [] : [{ pid: 4242, path: join(tempPool, "pool.0.lock") }],
@@ -235,7 +235,7 @@ describe("readPool", () => {
     // `PsPlaces.userConfig`, not the home directory: a user with `XDG_CONFIG_HOME` keeps their file.
     const configFile = places.userConfig;
     const { source } = fakeSource([], { locks: [], fileKeys: keys() });
-    expect(readPool(source, places, new Set()).pool).toEqual({ slots: 23, held: 0 });
+    expect(readPool(source, places, new Set()).pool).toEqual({ slots: 23, held: 0, ceiling: 18 });
     mkdirSync(dirname(configFile), { recursive: true });
     writeFileSync(
       configFile,
@@ -243,12 +243,25 @@ describe("readPool", () => {
         capacity: { hostSlots: 12, projects: { "/home/user/projects/alpha": { slots: 4 } } },
       }),
     );
-    expect(readPool(source, places, new Set()).pool).toEqual({ slots: 12, held: 0 });
+    expect(readPool(source, places, new Set()).pool).toEqual({ slots: 12, held: 0, ceiling: 18 });
     // A value the loader does not take is the default, as the daemons read it.
     writeFileSync(configFile, JSON.stringify({ capacity: { hostSlots: 0 } }));
-    expect(readPool(source, places, new Set()).pool).toEqual({ slots: 23, held: 0 });
+    expect(readPool(source, places, new Set()).pool).toEqual({ slots: 23, held: 0, ceiling: 18 });
     writeFileSync(configFile, "{");
-    expect(readPool(source, places, new Set()).pool).toEqual({ slots: 23, held: 0 });
+    expect(readPool(source, places, new Set()).pool).toEqual({ slots: 23, held: 0, ceiling: 18 });
+  });
+
+  test("the background ceiling is capacity.backgroundShare of the CPUs, by default 75% (spec 021 D18)", () => {
+    const configFile = places.userConfig;
+    const { source } = fakeSource([], { locks: [], fileKeys: keys() });
+    mkdirSync(dirname(configFile), { recursive: true });
+    writeFileSync(configFile, JSON.stringify({ capacity: { backgroundShare: 0.5 } }));
+    expect(readPool(source, places, new Set()).pool.ceiling).toBe(12);
+    expect(readPool(source, places, new Set(), [[]], 4).pool.ceiling).toBe(2);
+    // A value the loader does not take is the default, as the daemons read it.
+    writeFileSync(configFile, JSON.stringify({ capacity: { backgroundShare: 2 } }));
+    expect(readPool(source, places, new Set()).pool.ceiling).toBe(18);
+    expect(readPool(source, places, new Set(), [[]], 4).pool.ceiling).toBe(3);
   });
 
   test("without /proc/locks (D10) nobody's permits are known: held is null, not zero", () => {
@@ -279,7 +292,7 @@ describe("readPool", () => {
       `1: POSIX  ADVISORY  WRITE 349493 ${major}:${minor}:${inode} 1073741824 1073742335\n`,
     );
     const reading = readPool(linux, places, new Set([349493]));
-    expect(reading.pool).toEqual({ slots: 3, held: 1 });
+    expect(reading.pool).toEqual({ slots: 3, held: 1, ceiling: 3 });
     expect([...reading.permits]).toEqual([[349493, 1]]);
   });
 
@@ -335,7 +348,7 @@ describe("readPool", () => {
       ];
       const { source } = fakeSource([], { locks, fileKeys });
       const reading = readPool(source, places, new Set([349493, 2091490]));
-      expect(reading.pool).toEqual({ slots: 23, held: 4 });
+      expect(reading.pool).toEqual({ slots: 23, held: 4, ceiling: 18 });
       expect([...reading.permits]).toEqual([
         [2091490, 1],
         [349493, 2],
@@ -352,7 +365,7 @@ describe("readPool", () => {
       const { source } = fakeSource([], { locks, fileKeys: keys() });
       const daemons = new Set([349493, 2091490]);
       const before = readPool(source, places, daemons);
-      expect(before.pool).toEqual({ slots: 23, held: 3 });
+      expect(before.pool).toEqual({ slots: 23, held: 3, ceiling: 18 });
       repositoryPool();
       writeFileSync(join(runtimePool, "group.e2e.wait.0123456789abcdef"), "");
       expect(readPool(source, places, daemons)).toEqual(before);

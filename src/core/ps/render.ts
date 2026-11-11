@@ -17,6 +17,7 @@ import type {
   PsFlag,
   PsHost,
   PsOrphan,
+  PsPool,
   PsRepository,
   PsRunnerHost,
   PsSnapshot,
@@ -40,7 +41,11 @@ const STATE_WIDTH = 19;
 const DETAIL = "      ";
 
 export const render: Render = (snapshot, { full }) => {
-  const lines = [firstLine(snapshot), hostLine(snapshot.host), squealLine(snapshot)];
+  const lines = [
+    firstLine(snapshot),
+    hostLine(snapshot.host, snapshot.squeal.pool),
+    squealLine(snapshot),
+  ];
   if (snapshot.repositories.length === 0) lines.push("", "No Squeal daemon runs.");
   for (const repository of snapshot.repositories)
     lines.push("", ...repositoryBlock(repository, snapshot, full));
@@ -83,9 +88,14 @@ function firstLine(s: PsSnapshot): string {
   return `squeal ps · ${count(s.squeal.daemons, "daemon")}, ${processes} · ${flags}`;
 }
 
-function hostLine(h: PsHost): string {
+function hostLine(h: PsHost, pool: PsPool): string {
   const load =
     h.load === null ? "load unknown" : `load ${h.load.map((l) => l.toFixed(1)).join(" ")}`;
+  // Spec 021 D18: background tiers take a permit only while the busy CPUs are below it.
+  const ceiling =
+    pool.ceiling === undefined
+      ? []
+      : [`background ceiling ${Math.round(pool.ceiling * 10) / 10} busy CPUs`];
   const pressure =
     h.memoryPressure === null
       ? "memory pressure unknown"
@@ -97,6 +107,7 @@ function hostLine(h: PsHost): string {
       : `swap ${ofGib(h.swapUsed, h.swapTotal)}`;
   return [
     `Host    ${load} on ${count(h.cpus, "CPU")}`,
+    ...ceiling,
     `CPU pressure ${h.cpuPressure === null ? "unknown" : share(h.cpuPressure)}`,
     pressure,
     `${used === null || h.memTotal === null ? "memory unknown" : `memory ${ofGib(used, h.memTotal)} used`}, ${swap}`,

@@ -87,6 +87,12 @@ export interface PsPool {
    * repositories' `repo.<key>` (D6; spec 019 D3, row 019-16).
    */
   readonly held: number | null;
+  /**
+   * The busy CPUs below which background tiers take a permit (spec 021
+   * D18, row 021-18): `capacity.backgroundShare` of the CPUs. Absent from
+   * a shape made before it.
+   */
+  readonly ceiling?: number;
 }
 
 export interface PsRepository {

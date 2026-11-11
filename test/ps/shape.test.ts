@@ -98,7 +98,7 @@ const snapshot: PsSnapshot = {
     memoryShare: 7.7,
     swapBytes: 276_824_064,
     skipped: { cpuPct: 1, privateBytes: 0, swapBytes: 1 },
-    pool: { slots: 23, held: 1 },
+    pool: { slots: 23, held: 1, ceiling: 18 },
   },
   repositories: [
     {
@@ -150,7 +150,7 @@ test("the JSON keeps exactly the shipped keys at every level, with null kept", (
   expect(keys(json.squeal)).toEqual(
     sorted("daemons testProcesses cpuPct cpuShare privateBytes memoryShare swapBytes skipped pool"),
   );
-  expect(keys(json.squeal.pool)).toEqual(sorted("slots held"));
+  expect(keys(json.squeal.pool)).toEqual(sorted("slots held ceiling"));
   expect(keys(json.squeal.skipped)).toEqual(sorted("cpuPct privateBytes swapBytes"));
   expect(keys(json.repositories[0])).toEqual(
     sorted("commonDir current cpuPct privateBytes swapBytes skipped daemons"),
