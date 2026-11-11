@@ -3,12 +3,13 @@ import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } fro
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach } from "vitest";
+import { ADAPTERS } from "../../../src/cli/code-gate.js";
 import { countFile } from "../../../src/core/code/count/index.js";
 import type { GateAdapters } from "../../../src/core/code/gate/runners.js";
 import type { ChangedSet, CountedPath } from "../../../src/core/code/gate/types.js";
 import { blobHash } from "../../../src/core/hash/blob.js";
-import { createNodeTestAdapter } from "../../../src/runners/node-test/adapter.js";
-import { createVitestAdapter } from "../../../src/runners/vitest/index.js";
+import type { TestFileRef } from "../../../src/core/types/keys.js";
+import type { RunnerAdapter, RunOptions } from "../../../src/core/types/runner.js";
 import { git, initRepo } from "../../hash/git-repo.js";
 
 /*
@@ -21,16 +22,41 @@ const FIXTURES = resolve(import.meta.dirname, "../../fixtures/code/gate");
 const SCRATCH = join(FIXTURES, ".tmp");
 
 /** The adapters as the CLI gives them (row 020-05). */
-export const ADAPTERS: GateAdapters = {
-  vitest: createVitestAdapter,
-  nodeTest: createNodeTestAdapter,
-};
+export { ADAPTERS };
 
 /** Adapters that throw when started: a case that must start none. */
 export const NO_ADAPTERS: GateAdapters = {
   vitest: () => Promise.reject(new Error("the Vitest adapter started")),
   nodeTest: () => Promise.reject(new Error("a node:test adapter started")),
 };
+
+/**
+ * `adapter` with `before` called on each run's files and options; the run
+ * gets the files `before` returns.
+ */
+export function onRun(
+  adapter: RunnerAdapter,
+  before: (files: readonly TestFileRef[], options: RunOptions) => readonly TestFileRef[],
+): RunnerAdapter {
+  return new Proxy(adapter, {
+    get(target, key) {
+      const value: unknown = Reflect.get(target, key, target);
+      if (typeof value !== "function") return value;
+      if (key !== "run") return value.bind(target);
+      return (files: readonly TestFileRef[], options: RunOptions) =>
+        target.run(before(files, options), options);
+    },
+  });
+}
+
+/** The CLI's adapters, each Vitest run's files appended to `ran`. */
+export function watched(ran: string[]): GateAdapters {
+  const record = (files: readonly TestFileRef[]) => {
+    ran.push(...files.map((f) => f.path));
+    return files;
+  };
+  return { ...ADAPTERS, vitest: async (options) => onRun(await ADAPTERS.vitest(options), record) };
+}
 
 /** Each case starts real Vitest instances and node:test processes; a loaded host needs headroom. */
 export const SLOW = { timeout: 120_000 } as const;

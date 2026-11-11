@@ -7,9 +7,7 @@ import type { GateAdapters } from "../../../src/core/code/gate/runners.js";
 import { compare } from "../../../src/core/fs/compare.js";
 import type { AbsolutePath } from "../../../src/core/types/common.js";
 import type { TestFileRef } from "../../../src/core/types/keys.js";
-import type { RunnerAdapter } from "../../../src/core/types/runner.js";
-import { createVitestAdapter } from "../../../src/runners/vitest/index.js";
-import { ADAPTERS, changedSet, project } from "./collect-fixture.js";
+import { ADAPTERS, changedSet, onRun, project } from "./collect-fixture.js";
 import { TIMES, VERSIONS } from "./evaluate-fixture.js";
 
 /*
@@ -32,20 +30,12 @@ const LEAF = "test/b-leaf.test.ts";
 
 /** The CLI's adapters; each Vitest run's files go to `events`, sorted by path first when `byPath`. */
 function adapters(events: string[], byPath: boolean): GateAdapters {
-  const wrap = (adapter: RunnerAdapter): RunnerAdapter =>
-    new Proxy(adapter, {
-      get(target, key) {
-        const value: unknown = Reflect.get(target, key, target);
-        if (typeof value !== "function") return value;
-        if (key !== "run") return value.bind(target);
-        return (files: readonly TestFileRef[], ...rest: unknown[]) => {
-          const given = byPath ? [...files].sort((a, b) => compare(a.path, b.path)) : files;
-          events.push(`run ${given.map((f) => f.path).join(" ")}`);
-          return (value as (...args: unknown[]) => unknown).call(target, given, ...rest);
-        };
-      },
-    });
-  return { ...ADAPTERS, vitest: async (options) => wrap(await createVitestAdapter(options)) };
+  const sorted = (files: readonly TestFileRef[]) => {
+    const given = byPath ? [...files].sort((a, b) => compare(a.path, b.path)) : files;
+    events.push(`run ${given.map((f) => f.path).join(" ")}`);
+    return given;
+  };
+  return { ...ADAPTERS, vitest: async (options) => onRun(await ADAPTERS.vitest(options), sorted) };
 }
 
 /** The collector over the fixture with the budget, then the evaluator: each function's state and gap. */
