@@ -2020,6 +2020,7 @@ Spec `specifications/018-ci-and-shared-results/spec.md` (stage: second slice bui
 | 018-29 `squeal ci record` reports its own overhead | done (0.1.431; reviews `0.1.428.md` FAIL, re-review PASS: ci record and ci export state the hooks' own time, each thread counted once) | `research/shared-proof.md` Q1: about +16% Vitest shard time from history, unconfirmed, against D8's +3%. | 018 D8 |
 | 018-30 the daemon runs on the project's pinned Node | running (the human 2026-11-11: "Node fix: 1: use project's pinned Node"; brief `tasks/wave-11.md`) | All cezar daemons here run Node 24.22.1 from the cockpit's PATH, CI's results are 26.13.0: 0 of 195,943 fetched results count. | 018 D18 |
 | 018-31 status names a Node mismatch for shared results | running (the human 2026-11-11: "2: clear warning only"; brief `tasks/wave-11.md`) | The mismatch shows only deep in status details today. | 018 D19 |
+| 018-32 status reports shared results correctly | running (the human 2026-11-11: "Status fix: Yes"; brief `tasks/wave-12.md`) | squawk's checkout: status named an import from before 0.1.431's re-key ("none current", tolerated CI fields listed) while a newer import had 1,440 of 1,523 files at the same key as local. | 018 D5, D15 |
 
 ### Wave 3: the trial (after the release with 018-07; needs the human's approval of the cezar CI file, spec D7)
 
