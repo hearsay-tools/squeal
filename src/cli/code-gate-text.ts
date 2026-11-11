@@ -1,3 +1,4 @@
+import type { PrepareRun } from "../core/code/gate/prepare.js";
 import type {
   GateExceptionUse,
   GateFunctionReport,
@@ -29,6 +30,8 @@ const GAP_WORDS: Readonly<Record<GateGap, string>> = {
   "test-failed": "a selected test failed",
   skipped: "a test file that loads it skipped a test",
   "left-out": "a test file that loads it is in a check group this run left out",
+  "not-prepared":
+    "a test file that loads it did not run: its node:test entry's prepare did not pass, or the base does not declare it",
 };
 
 const UNCOUNTED_WORDS: Readonly<Record<GatePathReport["reason"], string>> = {
@@ -137,7 +140,25 @@ function runLines(run: GateRunReport, budgetSeconds: number): string[] {
   const late = run.notFinished.map(
     (path) => `  ${path}: did not finish in the ${budgetSeconds} s budget`,
   );
-  return [...failed, ...late];
+  return [...failed, ...late, ...(run.prepare ?? []).flatMap(prepareLine)];
+}
+
+/** D15.3: why an entry's `prepare` kept its files from running, in words. */
+const PREPARE_WORDS: Readonly<Record<Exclude<PrepareRun["outcome"], "passed">, string>> = {
+  failed: "prepare failed",
+  "timed-out": "prepare did not finish in time",
+  "not-at-base":
+    "prepare is declared only at the head, so it did not run; land the declaration on the base branch first",
+};
+
+/** D15.3: an entry whose `prepare` did not pass, and how many files that kept from running. */
+function prepareLine(p: PrepareRun): string[] {
+  if (p.outcome === "passed") return [];
+  const exit = p.exit === null ? "" : ` (exit ${p.exit})`;
+  const files = `${plural(p.notRun.length, "test file")} did not run`;
+  return [
+    `  node:test entry ${JSON.stringify(p.project)}: ${PREPARE_WORDS[p.outcome]}${exit}: ${files}`,
+  ];
 }
 
 /**

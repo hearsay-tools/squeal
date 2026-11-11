@@ -62,6 +62,7 @@
 #   test/cli/setup/plan.test.ts
 #   test/cli/setup/pytest.test.ts
 #   test/cli/setup/setup-exclude.test.ts
+#   test/code/gate/prepare.test.ts
 #   test/daemon/composite-reconcile.test.ts
 #   test/daemon/observed-timer.test.ts
 #   test/daemon/policy.test.ts
@@ -88,6 +89,7 @@
 #   test/policy/checks-after.test.ts
 #   test/policy/checks-problems.test.ts
 #   test/policy/checks.test.ts
+#   test/policy/node-test-prepare.test.ts
 #   test/policy/node-test.test.ts
 #   test/policy/slow.test.ts
 #   test/policy/vitest-exclude.test.ts
@@ -191,6 +193,8 @@ test/code/crap/lazy
 # fixture projects with V8 coverage and Node's own type stripping.
 test/code/gate/collect-mixed.test.ts
 test/code/gate/collect-budget.test.ts
+# Spec 020 D15 (row 020-16b): a node:test entry's `prepare` before its real `node --test` run.
+test/code/gate/collect-prepare.test.ts
 # The kit (spec 016 D1): a real `node --test` through the node:test adapter,
 # so the same identity path.
 test/kit/node-test

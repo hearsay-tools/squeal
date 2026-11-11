@@ -1,0 +1,236 @@
+import { spawn } from "node:child_process";
+import { join } from "node:path";
+import type { AbsolutePath, RelativePath } from "../../types/common.js";
+import type { NodeTestPrepare, NodeTestProject } from "../../types/policy.js";
+
+/*
+ * Spec 020 D15 (row 020-16b): a node:test entry's `prepare` command, such
+ * as the build its tests start. The gate runs the base's declaration of the
+ * entry with the same name, so a branch cannot add a command and run it in
+ * the same change (D15.2). It runs once, before the entry's first selected
+ * file, in the entry's directory with its `env`, inside the gate's one
+ * budget and its own `timeoutSeconds` (D15.3). Its output goes to stderr.
+ * Its success is never evidence (D15.4): it only lets the files run.
+ */
+
+/**
+ * How an entry's `prepare` ended: `passed`, it exited 0; `failed`, another
+ * exit, a signal, or it could not start; `timed-out`, its `timeoutSeconds`
+ * or the budget ended first; `not-at-base`, only the head declares it, so
+ * it did not run.
+ */
+export type PrepareOutcome = "passed" | "failed" | "timed-out" | "not-at-base";
+
+/** D15.3, D7's `runs[].prepare`: one node:test entry's `prepare`. */
+export interface PrepareRun {
+  /** The `nodeTest` entry's name. */
+  readonly project: string;
+  /** The base's command; the head's when the base has none (`not-at-base`). */
+  readonly command: readonly string[];
+  readonly outcome: PrepareOutcome;
+  /** Its exit code; `null` when it did not exit by itself or did not run. */
+  readonly exit: number | null;
+  /** How long it ran; `null` when it did not run. */
+  readonly durationMs: number | null;
+  /** The entry's selected test files that did not run because of it; empty when it passed. */
+  readonly notRun: readonly RelativePath[];
+}
+
+/** D15.2: the base's `prepare` of each `nodeTest` entry, by the entry's name. */
+export type BasePrepares = ReadonlyMap<string, NodeTestPrepare>;
+
+/** The `prepare` of each `nodeTest` entry that has one. */
+export function preparesOf(projects: readonly NodeTestProject[]): BasePrepares {
+  return new Map(
+    projects.flatMap((p) => (p.prepare === undefined ? [] : [[p.name, p.prepare] as const])),
+  );
+}
+
+export interface PrepareContext {
+  readonly root: AbsolutePath;
+  /** The gate's one deadline, a `performance.now()` time (D3.4). */
+  readonly deadline: number;
+  /** D15.2: read at the base; absent, the base declares none. */
+  readonly base: BasePrepares | undefined;
+  readonly note: (text: string) => void;
+  /** The command's stdout and stderr, as they come (D15.3). */
+  readonly output: (text: string) => void;
+}
+
+/** What `prepareEntry` gives: the run, and whether the budget ended it. */
+export interface Prepared {
+  readonly run: PrepareRun;
+  /** The gate's deadline, not the entry's own `timeoutSeconds`, stopped it or kept it from starting. */
+  readonly budgetEnded: boolean;
+}
+
+const entryName = (project: NodeTestProject) => `node:test entry ${JSON.stringify(project.name)}`;
+const notRunText = (n: number) =>
+  n === 1 ? "its 1 selected test file does not run" : `its ${n} selected test files do not run`;
+
+/**
+ * D15.2, D15.3: the `prepare` of `project` before its selected `paths` run.
+ * `null` when neither the base nor the head declares one: they run as
+ * before. A head declaration the base lacks does not run, and a note says
+ * to land it first. Otherwise the base's command runs; a failure or a
+ * timeout keeps every one of `paths` from running.
+ */
+export async function prepareEntry(
+  project: NodeTestProject,
+  paths: readonly RelativePath[],
+  context: PrepareContext,
+): Promise<Prepared | null> {
+  const base = context.base?.get(project.name);
+  if (base === undefined) {
+    if (project.prepare === undefined) return null;
+    context.note(
+      `${entryName(project)} declares a prepare command that the base does not, so it does not run and ${notRunText(paths.length)}. Land the declaration on the base branch first: the gate runs the base's prepare.`,
+    );
+    return {
+      run: {
+        project: project.name,
+        command: project.prepare.command,
+        outcome: "not-at-base",
+        exit: null,
+        durationMs: null,
+        notRun: [...paths],
+      },
+      budgetEnded: false,
+    };
+  }
+  const own = base.timeoutSeconds === undefined ? Infinity : base.timeoutSeconds * 1000;
+  const left = Math.max(0, Math.floor(context.deadline - performance.now()));
+  context.note(`${entryName(project)}: prepare: ${base.command.join(" ")}`);
+  const ended = await runCommand(base.command, {
+    cwd: join(context.root, project.cwd ?? "."),
+    env: { ...process.env, ...project.env },
+    timeoutMs: Math.min(own, left),
+    output: context.output,
+  });
+  const outcome = ended.timedOut ? "timed-out" : ended.code === 0 ? "passed" : "failed";
+  const budgetEnded = ended.timedOut && left <= own;
+  if (outcome !== "passed") {
+    const why = whyText(ended, budgetEnded, base);
+    context.note(`${entryName(project)}: prepare ${why}: ${notRunText(paths.length)}`);
+  }
+  return {
+    run: {
+      project: project.name,
+      command: base.command,
+      outcome,
+      exit: ended.timedOut ? null : ended.code,
+      durationMs: ended.durationMs,
+      notRun: outcome === "passed" ? [] : [...paths],
+    },
+    budgetEnded,
+  };
+}
+
+function whyText(ended: Ended, budgetEnded: boolean, base: NodeTestPrepare): string {
+  const after = `after ${(ended.durationMs / 1000).toFixed(1)} s`;
+  if (ended.timedOut) {
+    return budgetEnded
+      ? `did not finish within the budget (${after})`
+      : `did not finish within its timeoutSeconds, ${base.timeoutSeconds}`;
+  }
+  if (ended.error !== null) return `could not start: ${ended.error}`;
+  if (ended.code === null) return `ended on ${ended.signal ?? "a signal"} ${after}`;
+  return `exited ${ended.code} ${after}`;
+}
+
+/** How a command run ended. */
+export interface Ended {
+  readonly code: number | null;
+  readonly signal: NodeJS.Signals | null;
+  /** It could not start, such as a missing executable or `cwd`. */
+  readonly error: string | null;
+  readonly timedOut: boolean;
+  readonly durationMs: number;
+}
+
+/** How long the pipes may stay open after the command exits: a process outside its group can hold them. */
+const CLOSE_GRACE_MS = 1_000;
+
+/**
+ * Runs `command` with no shell, in its own process group, its output
+ * handed to `output` as it comes. At `timeoutMs` the whole group is
+ * killed; when the command exits, what is left of its group is killed too.
+ * With `timeoutMs` 0 it does not start, and reads timed out.
+ */
+export function runCommand(
+  command: readonly string[],
+  options: {
+    readonly cwd: string;
+    readonly env: NodeJS.ProcessEnv;
+    readonly timeoutMs: number;
+    readonly output: (text: string) => void;
+  },
+): Promise<Ended> {
+  if (options.timeoutMs <= 0) {
+    return Promise.resolve({
+      code: null,
+      signal: null,
+      error: null,
+      timedOut: true,
+      durationMs: 0,
+    });
+  }
+  const started = performance.now();
+  const [file = "", ...args] = command;
+  return new Promise((resolve) => {
+    const child = spawn(file, args, {
+      cwd: options.cwd,
+      env: options.env,
+      detached: true,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let timedOut = false;
+    let error: string | null = null;
+    let exit: { code: number | null; signal: NodeJS.Signals | null } | null = null;
+    const killGroup = () => {
+      if (child.pid === undefined) return;
+      try {
+        process.kill(-child.pid, "SIGKILL");
+      } catch {
+        // ESRCH: the group has ended.
+      }
+    };
+    for (const stream of [child.stdout, child.stderr]) {
+      stream.setEncoding("utf8");
+      stream.on("data", (text: string) => options.output(text));
+    }
+    const timer = setTimeout(() => {
+      timedOut = true;
+      killGroup();
+    }, options.timeoutMs);
+    let settled = false;
+    const settle = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      const durationMs = Math.round(performance.now() - started);
+      resolve({
+        code: exit?.code ?? null,
+        signal: exit?.signal ?? null,
+        error,
+        timedOut,
+        durationMs,
+      });
+    };
+    child.once("error", (e) => {
+      error = e.message;
+      if (child.pid === undefined) settle();
+    });
+    child.once("exit", (code, signal) => {
+      exit = { code, signal };
+      killGroup();
+      setTimeout(() => {
+        child.stdout.destroy();
+        child.stderr.destroy();
+        settle();
+      }, CLOSE_GRACE_MS).unref();
+    });
+    // `close`, not `exit`: the output is whole once every pipe closed.
+    child.once("close", settle);
+  });
+}
