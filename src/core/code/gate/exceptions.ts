@@ -111,14 +111,17 @@ function outcomeOf(
  */
 function stateOf(judged: Judged, uses: readonly GateExceptionUse[], cc: number): Judgement {
   const { row, evidence, gap } = judged;
-  if (row.state === "incomplete") return row;
+  // D14.2: a left-out loader makes a CRAP violation incomplete, and leaves D8 the violation to cover.
+  if (row.state === "incomplete" && evidence.state === "incomplete") return row;
   const covers = (measure: ExceptionEntry["measure"]) =>
     uses.some((u) => u.entry.measure === measure && u.outcome === "covers");
   const ccOver = row.complexity > cc;
   if (ccOver && !covers("complexity")) return VIOLATION;
   if (evidence.state === "incomplete") return evidence;
   const accepted: Judgement = gap === null ? ACCEPTED : { state: "incomplete", gap };
-  if (evidence.state === "violation") return covers("crap") ? accepted : VIOLATION;
+  if (evidence.state === "violation") {
+    return covers("crap") ? accepted : { state: row.state, gap: row.gap };
+  }
   return ccOver ? accepted : evidence;
 }
 
