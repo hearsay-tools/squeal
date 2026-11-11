@@ -99,6 +99,8 @@ describe("loadPolicy (spec 001 D11)", () => {
       gate: DEFAULT_POLICY.gate,
       // Spec 018 D14; its key's own tests are test/shared/policy.test.ts.
       shared: DEFAULT_POLICY.shared,
+      // Spec 018 D18; its key's own tests are test/node-pin/policy.test.ts.
+      node: DEFAULT_POLICY.node,
     });
   });
 
