@@ -64,8 +64,23 @@ describe("parseGateArgs (spec 020 D1)", () => {
     [["--base", "main", "--parts"], "--parts names no directory"],
     [["--base", "main", "--parts", "--json"], "--parts names no directory"],
     [["--base", "main", "--parts="], "--parts names no directory"],
+    [["--base", "main", "--group"], "--group names no check group"],
+    [["--base", "main", "--group", "--json"], "--group names no check group"],
+    [["--base", "main", "--group="], "--group names no check group"],
   ])("refuses %j", (args, error) => {
     expect(parseGateArgs(args)).toEqual({ error: expect.stringContaining(error) });
+  });
+
+  it("takes the check groups, which only --group adds (spec 020 D14.1)", () => {
+    const args = ["src", "--base", "main", "--group", "browser", "e2e", "--group=slow", "--json"];
+    expect(parseGateArgs(args)).toEqual({
+      ref: "main",
+      paths: ["src"],
+      tests: [],
+      budgetSeconds: DEFAULT_BUDGET_SECONDS,
+      json: true,
+      groups: ["browser", "e2e", "slow"],
+    });
   });
 
   it("takes an exceptions file, which only --exceptions adds (spec 020 D8)", () => {
@@ -239,6 +254,34 @@ describe("formatGateReport (spec 020 D1)", () => {
   });
 });
 
+describe("formatGateReport: what the scope left out (spec 020 D14.3)", () => {
+  const scoped = (selected: number): GateReport => ({
+    ...REPORT,
+    scope: {
+      groups: [{ name: "tests", at: "edit", from: "default" }],
+      leftOut: [
+        { name: "browser", at: "manual", files: 120, selected, add: "--group browser" },
+        { name: "e2e", at: "stop", files: 4, selected: 0, add: "--group e2e" },
+      ],
+    },
+  });
+
+  it("names each left-out group that held a selected file on the verdict line", () => {
+    const [line] = formatGateReport(scoped(100), "j").split("\n");
+    expect(line).toBe(
+      "Code gate: incomplete. 4 changed functions against origin/main (merge base 01234567): 2 incomplete, 1 skipped, 1 pass, 1 path not counted. browser (manual) did not run: 100 test files load changed code; add --group browser to run them.",
+    );
+    expect(formatGateReport(scoped(1), "j").split("\n")[0]).toMatch(
+      / browser \(manual\) did not run: 1 test file loads changed code; add --group browser to run it\.$/,
+    );
+  });
+
+  it("names none when no left-out group held a selected file", () => {
+    const [line] = formatGateReport(scoped(0), "j").split("\n");
+    expect(line).toMatch(/1 path not counted\.$/);
+  });
+});
+
 describe("squeal --help (spec 020 D1)", () => {
   it("names squeal code --base after squeal code; its first line says it runs tests, with no daemon", () => {
     let out = "";
@@ -248,12 +291,14 @@ describe("squeal --help (spec 020 D1)", () => {
     main(["--help"], { stdout, stderr: () => {} });
     const lines = out.split("\n");
     const gate = lines.indexOf(
-      "  squeal code --base <ref> [<path>...] [--test <file>...] [--timeout <seconds>]",
+      "  squeal code --base <ref> [<path>...] [--test <file>...] [--group <name>...]",
     );
     expect(gate).toBeGreaterThan(
       lines.indexOf("  squeal code [<path>...] [--changed | --told] [--json]"),
     );
-    expect(lines[gate + 1]?.trim()).toBe("[--parts <dir>...] [--exceptions <file>] [--json]");
+    expect(lines[gate + 1]?.trim()).toBe(
+      "[--timeout <seconds>] [--parts <dir>...] [--exceptions <file>] [--json]",
+    );
     expect(lines[gate + 2]?.trim()).toMatch(/^Runs tests, with no daemon,/);
   });
 });

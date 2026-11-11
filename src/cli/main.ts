@@ -93,8 +93,8 @@ Usage:
                                 since this session registered, --told those over that
                                 this session was told about and the files it changed
                                 that are not judged; files not counted follow, with why
-  squeal code --base <ref> [<path>...] [--test <file>...] [--timeout <seconds>]
-              [--parts <dir>...] [--exceptions <file>] [--json]
+  squeal code --base <ref> [<path>...] [--test <file>...] [--group <name>...]
+              [--timeout <seconds>] [--parts <dir>...] [--exceptions <file>] [--json]
                                 Runs tests, with no daemon, for up to --timeout
                                 seconds (default 600) in all: judges every JS/TS
                                 function changed since git merge-base <ref> HEAD, test
@@ -104,7 +104,10 @@ Usage:
                                 --test files run with coverage, except a file whose
                                 results and coverage for these bytes are in the parts
                                 squeal ci record wrote to a --parts <dir>, or in the
-                                repository's stores, both only read; paths keep the
+                                repository's stores, both only read; of the first two,
+                                only the files of a check group in scope run: every
+                                test group not at manual, or gate.groups, at that
+                                commit, and each --group <name>; paths keep the
                                 functions in those files or directories. Prints the
                                 verdict and each function not pass with its gap or
                                 measure; --exceptions <file>: a
