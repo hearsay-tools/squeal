@@ -3,9 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { collectEvidence } from "../../../src/core/code/gate/collect.js";
-import { type GateScope, readScope, resolveScope } from "../../../src/core/code/gate/scope.js";
-import { loadPolicy } from "../../../src/core/daemon/policy.js";
-import { ADAPTERS, changedSet, project, SLOW, status } from "./collect-fixture.js";
+import { ADAPTERS, changedSet, project, SLOW, scopeOf, status } from "./collect-fixture.js";
 
 /*
  * Spec 020 D14.2 (row 020-15a): cezar's shape in #172. A browser spec loads
@@ -27,13 +25,6 @@ afterEach(() => {
   delete process.env[MARKER];
   rmSync(dir, { recursive: true, force: true });
 });
-
-/** The fixture's scope at its own commit, with `--group` names `added`. */
-function scopeOf(root: string, added: readonly string[] = []): GateScope {
-  const scope = resolveScope(readScope(loadPolicy(root).policy).base, added);
-  if ("error" in scope) throw new Error(scope.error);
-  return scope;
-}
 
 const ran = (files: readonly { path: string; completed: boolean }[]) =>
   files.map((f) => [f.path, f.completed]);
