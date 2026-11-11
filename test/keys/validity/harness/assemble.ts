@@ -193,8 +193,32 @@ async function keyed(
       input.runtime?.saved === true,
     );
   }
+  if (input.refusedWrite === true) await refusedOnce(store, () => keys.trackUntracked());
   await keys.trackUntracked();
   return keys;
+}
+
+/**
+ * Row 021-08: `call` with its first store transaction refused as a busy
+ * store refuses one; throws when `call` asked for none.
+ */
+async function refusedOnce(store: Store, call: () => Promise<unknown>): Promise<void> {
+  const transaction = store.transaction;
+  let refused = false;
+  const writable = store as { transaction: Store["transaction"] };
+  writable.transaction = ((fn: () => unknown) => {
+    if (refused) return transaction(fn);
+    refused = true;
+    throw Object.assign(new Error("database is locked"), { errcode: 5 });
+  }) as Store["transaction"];
+  try {
+    await call();
+  } catch (error) {
+    if (!refused) throw error;
+  } finally {
+    writable.transaction = transaction;
+  }
+  if (!refused) throw new Error("the refused write was never asked for");
 }
 
 /**
