@@ -1,0 +1,66 @@
+Wed Nov 11 14:26:55 UTC 2026
+52.05 59.29 63.14 55/3725 1092698
+squeal ps · 17 daemons, 16 test processes · 9 flags: hung ×6, past-departure, stale-socket ×2
+Host    load 52.0 59.3 63.1 on 24 CPUs · CPU pressure 56% · memory pressure 0.1% (0.0% full) · memory 36.1 of 47.0 GiB used, swap 3.9 of 4.0 GiB
+Squeal  CPU at least 7.6 CPUs (at least 33% of busy) · memory 17.5 GiB (49% of used) + 1.7 GiB swap · pool 6 of 12 permits
+
+/home/agent/projects/squeal (this repository) · 9 daemons · CPU at least 1.9 · memory 7.8 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+  serving            820679   5644f6f4  0.1.430 claude   6m    0%     0m38s  349M    0     1 session
+  serving            314908   dabd2fa9  0.1.430 claude  24m    0%     3m32s  923M    74M   1 session
+  serving            4108219  5d916418  0.1.430 claude  37m    3%    12m22s  984M    111M  fast tier, 2 files; 29 pending; 1 session
+    vitest           1070278  fork worker               41s   42%     0m02s  63M     0     nice 10, +1 child
+  serving            459099   9a7f9813  0.1.430 claude  19m    0%     2m07s  578M    22M   1 session
+  serving            911159   9ba321be  0.1.430 claude   4m   46%     1m20s  947M    0     3 sessions
+  serving            847990   9c1d468a  0.1.430 claude   6m    0%     1m28s  517M    0     4 sessions
+  serving            4111441  ee30371b  0.1.430 claude  37m   35%    11m20s  738M    32M   fast tier, 200 files; 917 pending; 1 session
+    vitest           1092741  fork worker                0s   21%     0m00s  38M     0     nice 10
+  serving            4020407  20186710  0.1.430 claude  40m    1%    13m00s  1.6G    93M   fast tier, 4 files; 21 pending; 1 session
+    vitest           1074712  fork worker               32s   43%     0m08s  686M    0     nice 10, +2 children
+  serving            850759   f96f00c3  0.1.430 claude   6m    0%     1m26s  565M    0     2 sessions
+
+/home/agent/projects/cezar · 8 daemons · CPU 5.7 · memory 9.8 GiB
+  STATE              PID      WORKTREE  VERSION          UP   CPU  CPU TIME  MEMORY  SWAP  WORK
+! serving            4052948  b7555ac0  0.1.430 claude  38m    0%    18m46s  680M    156M  idle
+      hung: its heartbeat is 13 s old on both samples, past two intervals
+      ends it: kill 4052948; sleep 5; kill -9 4052948
+  serving            2211216  68e454ae  0.1.430 claude  90m    9%    40m11s  1.0G    403M  fast tier, 17 files; 693 pending; 1 session
+    vitest           1026872  fork worker                2m    2%     0m03s  194M    0     nice 10
+! serving            92683    2022e36d  0.1.430         31m   76%    16m18s  911M    105M  fast tier, 4 files; 847 pending; 1 session
+      hung: its heartbeat is 17 s old on both samples, past two intervals
+      ends it: kill 92683; sleep 5; kill -9 92683
+    vitest           1023027  fork worker                2m    0%     0m02s  91M     0     nice 10
+    vitest           1023067  fork worker                2m    0%     0m02s  86M     0     nice 10
+! serving            1036562  ea56bd82  0.1.430          1m   63%     0m28s  524M    0     1 session
+      hung: its heartbeat is 40 s old on both samples, past two intervals
+      ends it: kill 1036562; sleep 5; kill -9 1036562
+! serving            3767355  d4969cd6  0.1.430 claude  47m   74%    28m08s  1.5G    69M   827 pending; 1 session
+      hung: its heartbeat is 4m old on both samples, past two intervals
+      ends it: kill 3767355; sleep 5; kill -9 3767355
+! serving            714616   52d09223  0.1.430 claude   2h    3%    33m21s  1.2G    369M  fast tier, 4 files; 1241 pending; session left 18s ago
+      hung: its heartbeat is 18 s old on both samples, past two intervals
+      ends it: kill 714616; sleep 5; kill -9 714616
+    vitest           1057787  fork worker                1m   51%     0m03s  243M    0     nice 10, +2 children
+    vitest           1057820  fork worker                1m   59%     0m03s  308M    0     nice 10, +1 child
+    vitest           1057846  fork worker                1m   54%     0m03s  245M    0     nice 10, +2 children
+    vitest           1057909  fork worker                1m   46%     0m05s  249M    0     nice 10
+  serving            324685   406c7586  0.1.430 claude  24m   65%    11m53s  990M    39M   fast tier, 4 files; 709 pending
+    vitest           930494   fork worker                3m    0%     0m03s  114M    0     nice 10
+    vitest           930517   fork worker                3m    0%     0m02s  116M    0     nice 10
+    vitest           930543   fork worker                3m    7%     0m03s  110M    0     nice 10
+    vitest           930586   fork worker                3m    0%     0m03s  117M    0     nice 10
+! serving            3767778  6fc255df  0.1.430 claude  47m   56%    23m46s  1.1G    223M  fast tier, 4 files; 603 pending; session left 9m ago
+      hung: its heartbeat is 10 s old on both samples, past two intervals
+      ends it: kill 3767778; sleep 5; kill -9 3767778
+      past-departure: its last session left 9m ago, and no slow work is left
+      ends it: squeal stop /home/agent/projects/cezar/.ai/cezar/worktrees/f0067401-1165-44f1-bb27-6e711c75290f
+    vitest           975552   fork worker                2m    6%     0m02s  86M     0     nice 10
+    vitest           975578   fork worker                2m    0%     0m02s  87M     0     nice 10
+
+Files no live process uses
+  ! stale-socket  /run/user/1001/squeal-549c6aa17fa6b896.sock (no live daemon of worktree 549c6aa17fa6b896 holds its lock; changed 2026-11-10 18:21 UTC)
+      ends it: rm /run/user/1001/squeal-549c6aa17fa6b896.sock
+  ! stale-socket  /run/user/1001/squeal-f4a99d0aa0fda698.sock (no live daemon of worktree f4a99d0aa0fda698 holds its lock; changed 2026-11-10 23:27 UTC)
+      ends it: rm /run/user/1001/squeal-f4a99d0aa0fda698.sock
+
+Unknown: 3 values; --full names each

@@ -1,0 +1,15 @@
+Wed Nov 11 14:31:47 UTC 2026
+41.01 54.88 60.94 14/2905 1243837
+820679 main=0.02 other-threads=0.02 children=0.00 cores
+4108219 main=0.07 other-threads=0.13 children=0.00 cores
+459099 main=0.02 other-threads=0.01 children=0.00 cores
+911159 main=0.03 other-threads=0.01 children=0.00 cores
+847990 main=0.05 other-threads=0.05 children=0.00 cores
+4020407 main=0.57 other-threads=0.09 children=0.14 cores
+850759 main=0.04 other-threads=0.03 children=0.00 cores
+4052948 main=0.78 other-threads=0.04 children=0.00 cores
+2211216 main=0.60 other-threads=0.10 children=0.00 cores
+92683 main=0.77 other-threads=0.06 children=0.03 cores
+1036562 main=0.85 other-threads=0.07 children=0.00 cores
+3767355 main=1.00 other-threads=0.00 children=0.00 cores
+324685 main=0.46 other-threads=0.05 children=0.11 cores

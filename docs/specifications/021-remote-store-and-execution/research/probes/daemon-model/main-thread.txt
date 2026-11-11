@@ -1,0 +1,13 @@
+Wed Nov 11 14:27:26 UTC 2026
+63.63 61.27 63.68 83/4204 1113123
+4052948 main-thread state=S wchan=ep_poll cpu=24%
+92683 main-thread state=S wchan=hrtimer_nanosleep cpu=1%
+1036562 main-thread state=S wchan=hrtimer_nanosleep cpu=30%
+3767355 main-thread state=R wchan=0 cpu=68%
+714616 main-thread state=S wchan=hrtimer_nanosleep cpu=8%
+3767778 main-thread state=R wchan=0 cpu=65%
+-- not flagged:
+4052948 main-thread state=S wchan=hrtimer_nanosleep cpu=0%
+324685 main-thread state=R wchan=0 cpu=74%
+714616 main-thread state=S wchan=hrtimer_nanosleep cpu=5%
+4111441 main-thread state=S wchan=ep_poll cpu=28%

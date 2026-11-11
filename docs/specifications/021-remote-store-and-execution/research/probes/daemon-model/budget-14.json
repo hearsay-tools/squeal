@@ -1,0 +1,20 @@
+{
+ "days": 6.99,
+ "samples": 937,
+ "ceiling": 14.0,
+ "samplesAboveCeiling": 319,
+ "samplesDeferring": 314,
+ "bgCoreHours": 432.0,
+ "deferredCoreHours": 166.1,
+ "deferredShareOfBg": 0.385,
+ "absorbedCoreHours": 156.7,
+ "stillQueuedAtEndCoreHours": 9.4,
+ "delayMedianMin": 330.0,
+ "delayP90Min": 1119.9,
+ "editTiers": 3838,
+ "editWallH": 12.33,
+ "editWallAfterH": 10.53,
+ "editTiersAboveCeiling": 2352,
+ "editAboveMedianWallS": 5.79,
+ "editAboveMedianAfterS": 4.59
+}
