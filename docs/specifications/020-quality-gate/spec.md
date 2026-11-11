@@ -77,7 +77,7 @@ The human chose this name on 2026-11-09, over a separate `squeal quality`. `sque
 2. Runs: one adapter run per runner (Vitest, node:test), with Squeal's coverage provider, as 015 D8 runs them. Records are mapped before `adapter.close()`. The collector takes the adapter factories as arguments, and the CLI passes them, because nothing under `src/core/code` may import a runner (`test/runners/boundaries.test.ts`, row 016-36). Vitest runs with `cache: false`, so it writes no results cache into the project (amended 2026-11-09, row 020-03).
 3. Loaders: from each run's `closure()`, not from a store.
 4. Budget: one deadline over all runs, 600 s by default, `--timeout` to change it. At the deadline, the running file is stopped. Every completed file keeps its record. The report names each file that did not finish. The command does not lower a project's own `testTimeout`. Any selected file that did not finish makes the verdict at least `incomplete`: a test in it may have failed or may not have run (amended 2026-11-10, review 0.1.423 B2). Failures a runner already reported for an unfinished file are kept in the report when the adapter gives them; the verdict does not depend on it.
-5. Nothing is written to the project or a store. Temporary files go under `$TMPDIR` and are removed. Amended 2026-11-11 (D15): Squeal writes nothing to the project; a declared `prepare` writes what it writes.
+5. Nothing is written to the project or a store. Temporary files go under `$TMPDIR` and are removed. Amended 2026-11-11 (D15): Squeal writes nothing to the project; a declared `prepare` writes what it writes. Amended 2026-11-11 (D17.3): the gate writes each completed test file's results to the stores at its key.
 
 ### D4. The join repair
 
@@ -186,7 +186,7 @@ Each is designed from a design survey run first (`tasks/wave-2.md`, "Surveys for
 4. **`uncovered`** stays a daemon measure that the same rule computes. The gate report does not show it (Q2.3).
 5. **No loader reads unknown.** `fileCondition([], true)` is `unknown`, with the cause `no-loader`, in both paths. A state judged with no loader is dropped once, through a marker of its own in `loaderSet`. Text reads `not measured: no test Squeal runs loads this file`. The delivery wording `NOT_LOADED` is removed, because it can no longer occur. This reverses 015 D9 and resolves #165 for files no runner loads.
 6. **Test files are counted in the daemon,** and each test file is its own loader. The 015-52 listing hold is removed. An upgrade starts one `include` recount with one summary line, never one delivery per function. This reverses 015 D1's "test files are never counted".
-7. **`--base` reuses the stores.** For each selected test file, it computes the key as a daemon would, with no store write. It reads the results and the coverage record at that key, read-only, and runs only the files with neither. The report marks stored files `fromStore`. Counts are not reused, because counting costs about 3 ms a file. D1's "neither talks to it nor uses its store" changes to "reads its stores, never writes them".
+7. **`--base` reuses the stores.** For each selected test file, it computes the key as a daemon would, with no store write. It reads the results and the coverage record at that key, read-only, and runs only the files with neither. The report marks stored files `fromStore`. Counts are not reused, because counting costs about 3 ms a file. D1's "neither talks to it nor uses its store" changes to "reads its stores, never writes them". Amended 2026-11-11 (D17.3): the gate also writes each test file it completed at that key.
 
 Rows: 020-07a (items 1 to 5), then 020-07b (item 6) and 020-07c (item 7) in parallel.
 
@@ -262,6 +262,15 @@ D2.3's selection stays as it is: moved, renamed and reindented functions, and te
 3. The text verdict line ends with the count, for example `7 left out as moved or unchanged; --json lists them`. With none, it says nothing.
 4. No rule changes, so `QUALITY_POLICY_VERSION` stays. The JSON format keeps `squeal-code-gate/1`, because the field is additive.
 5. Not decided here: whether a copied body at a new identity should be judged. It is the one case where a real edit can be left out (the "keeps" callback of `research/issue-177.md`). That needs its own decision.
+
+### D17. Wide selections (row 020-17, #175; designed 2026-11-11 from `research/wide-import.md`; the human, 2026-11-11: "Build both", "Keep result: Yes")
+
+When to call evidence complete does not change: an unfinished loader still rules out a pass (D3.4, D5).
+
+1. **Estimate (020-17a).** After selection and the stored lookup, before the first run, stderr gets one line per runner: the estimated seconds, how many files have a known duration, and the width. Estimate = per parallel group, the larger of the longest file and the summed durations divided by the width; plus the sum of each sequential group. A file with no stored duration counts at the median. With no store, the line says the estimate is unknown and gives the file count. When the estimate is over what is left of the budget, the line gives the ways out (`--timeout`, path arguments, `--group`/`gate.groups`, `--parts`). The estimate is advice: the run always starts. D7 gains `estimate`. It does not change the verdict.
+2. **Order (020-17b).** The collector reads each selected file's closure before the run, and hands each runner its files in loader order: changed paths in ascending order of their loaders' summed stored duration (the loader count when unknown), each path's loaders not yet given, then the rest. Files whose closure is unknown go last. The functions of one path complete together, so this completes small paths first; a path that every file loads comes last. `runs[].selected` stays sorted in the report.
+3. **The gate keeps its results (020-17c).** The gate writes each test file it ran to completion, with its results and coverage record, at the key a daemon gives it (D11.7), through the same store write path and lock the daemon uses. A file that did not finish, was left out, did not run because of `prepare`, or came from parts is not written. A second run on the same bytes then reads them (D11.7) and runs only what is missing. A daemon can read them too, because the key means the same run. This reverses D3.5's "nothing is written to a store" and D11.7's "never writes them".
+4. `QUALITY_POLICY_VERSION` does not change: no state rule changes.
 
 ## Testing
 
