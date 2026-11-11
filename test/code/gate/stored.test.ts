@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -9,6 +9,7 @@ import { isStoreOpenFailure, openStore } from "../../../src/core/store/open.js";
 import { storePaths } from "../../../src/core/store/paths.js";
 import { DEFAULT_POLICY } from "../../../src/core/types/policy.js";
 import { ON } from "../helpers.js";
+import { ownTmpdir } from "./collect-fixture.js";
 
 /*
  * Spec 020 D11.7 (row 020-07c): the gate reads the stores only when both
@@ -94,21 +95,14 @@ describe("openStored: a failure while keying (spec 020 D11.7)", () => {
   it("gives no stored file, tells why once, and leaves no scratch store", async () => {
     const notes: string[] = [];
     const given = options(commonDir(), { note: (text) => notes.push(text) });
-    const temp = dir("squeal-stored-tmp-");
-    const before = process.env.TMPDIR;
-    process.env.TMPDIR = temp;
-    try {
-      const stored = openStored(given);
-      expect(await stored?.stored("vitest", [REF])).toEqual(new Map());
-      expect(await stored?.stored("node-test", [REF])).toEqual(new Map());
-      await stored?.close();
-    } finally {
-      if (before === undefined) delete process.env.TMPDIR;
-      else process.env.TMPDIR = before;
-    }
+    const leftInTmp = ownTmpdir();
+    const stored = openStored(given);
+    expect(await stored?.stored("vitest", [REF])).toEqual(new Map());
+    expect(await stored?.stored("node-test", [REF])).toEqual(new Map());
+    await stored?.close();
     expect(notes).toEqual([
       "the stores were not read, so every selected file runs: no adapter here",
     ]);
-    expect(readdirSync(temp)).toEqual([]);
+    expect(leftInTmp()).toEqual([]);
   });
 });

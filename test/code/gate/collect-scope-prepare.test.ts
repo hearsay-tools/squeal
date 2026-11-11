@@ -1,16 +1,8 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { collectEvidence } from "../../../src/core/code/gate/collect.js";
-import { evaluate } from "../../../src/core/code/gate/evaluate.js";
-import { loadBasePolicy } from "../../../src/core/code/gate/policy.js";
 import type { BasePrepares } from "../../../src/core/code/gate/prepare.js";
-import { type GateScope, readScope, resolveScope } from "../../../src/core/code/gate/scope.js";
-import type { ChangedSet } from "../../../src/core/code/gate/types.js";
-import { loadPolicy } from "../../../src/core/daemon/policy.js";
-import type { AbsolutePath } from "../../../src/core/types/common.js";
-import { ADAPTERS, changedSet, project, SLOW, status } from "./collect-fixture.js";
-import { TIMES, VERSIONS } from "./evaluate-fixture.js";
+import { changedSet, collect, judged, project, SLOW, scopeOf, status } from "./collect-fixture.js";
 
 /*
  * Spec 020 D14.2 with D15.3 (row 020-15a+16b I): the fixture of
@@ -24,32 +16,8 @@ const E2E = "test/e2e/bin.test.mjs";
 const UNIT = "test/unit/names.test.mjs";
 const BASE: BasePrepares = new Map([["package", { command: ["node", "scripts/build.mjs"] }]]);
 
-/** The fixture's scope with the group `e2e` (`manual`, entry `package`) and the `--group` names `added`. */
-function scopeOf(root: string, added: readonly string[] = []): GateScope {
-  const { policy } = loadPolicy(root);
-  const checks = [{ name: "e2e", at: "manual", runner: "nodeTest", project: "package" } as const];
-  const scope = resolveScope(readScope({ ...policy, checks }).base, added);
-  if ("error" in scope) throw new Error(scope.error);
-  return scope;
-}
-
-/** The collector over the fixture with the base's `prepare` and `scope`, its notes and output kept. */
-async function collect(root: string, changed: ChangedSet, scope: GateScope) {
-  const notes: string[] = [];
-  let output = "";
-  const evidence = await collectEvidence(root as AbsolutePath, changed, {
-    tests: [],
-    budgetSeconds: 600,
-    adapters: ADAPTERS,
-    note: (text) => notes.push(text),
-    output: (text) => {
-      output += text;
-    },
-    prepares: BASE,
-    scope,
-  });
-  return { evidence, notes, output };
-}
+/** The group `e2e`: `manual`, entry `package`. */
+const E2E_GROUP = [{ name: "e2e", at: "manual", runner: "nodeTest", project: "package" } as const];
 
 describe("collectEvidence: a prepare and the scope by check group (spec 020 D14.2, D15.3)", () => {
   it(
@@ -58,7 +26,8 @@ describe("collectEvidence: a prepare and the scope by check group (spec 020 D14.
     async () => {
       const root = project("prepare");
       const changed = await changedSet(root, ["src/names.mjs"]);
-      const { evidence, notes, output } = await collect(root, changed, scopeOf(root));
+      const scope = scopeOf(root, [], E2E_GROUP);
+      const { evidence, notes, output } = await collect(root, changed, { prepares: BASE, scope });
       expect(notes).toEqual([]);
       expect(output).toBe("");
       expect(evidence.prepares).toBeUndefined();
@@ -72,11 +41,8 @@ describe("collectEvidence: a prepare and the scope by check group (spec 020 D14.
       expect(file).toMatchObject({ runner: "node-test", path: E2E, group: "e2e" });
       expect(file?.loads).toContain("src/names.mjs");
       // The left-out loader is listed, never `not-prepared`.
-      const { policy } = await loadBasePolicy(root as AbsolutePath, changed.baseCommit);
-      const report = evaluate(changed, evidence, policy, VERSIONS, TIMES);
-      expect(report.functions.map((f) => [f.qualifiedName, f.state, f.gap])).toEqual([
-        ["label", "pass", null],
-      ]);
+      const { report, states } = await judged(root, changed, evidence);
+      expect(states).toEqual([["label", "pass", null]]);
       expect(report.functions[0]?.loaders).toEqual({
         expected: [UNIT],
         measured: [UNIT],
@@ -92,7 +58,8 @@ describe("collectEvidence: a prepare and the scope by check group (spec 020 D14.
   it("runs it before the entry's file when --group puts the group in scope", SLOW, async () => {
     const root = project("prepare");
     const changed = await changedSet(root, ["src/names.mjs"]);
-    const { evidence, notes } = await collect(root, changed, scopeOf(root, ["e2e"]));
+    const scope = scopeOf(root, ["e2e"], E2E_GROUP);
+    const { evidence, notes } = await collect(root, changed, { prepares: BASE, scope });
     expect(notes).toEqual(['node:test entry "package": prepare: node scripts/build.mjs']);
     expect(evidence.prepares?.map((p) => [p.project, p.outcome, p.notRun])).toEqual([
       ["package", "passed", []],
