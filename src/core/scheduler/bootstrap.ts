@@ -191,20 +191,15 @@ export async function baseline(
   const first = lookup(refs);
   const recheck = first.filter((file) => fromStore.has(file.id));
   const lookupOnly = policy.baseline.onStart === "lookup-only";
-  const listedAt = (number: RevisionNumber) => ({
-    refined: number,
-    ...(ledger.listingFailed ? {} : { listed: number }),
-  });
   // The handover reads the moves as the last daemon left them, before this ledger's first commit.
   const open = openMoves(store, worktreeId);
   // Row 011-227: the listed counts show before the recheck; the recheck commits again.
   const handedMisses = first.filter(
     (file) => (previousKeys.get(file.id)?.pending ?? null) !== null,
   );
-  const early =
-    lookupOnly &&
-    recheck.length > 0 &&
-    commitFirst(ledger, listedAt(ledger.revision.number), handedMisses);
+  if (lookupOnly && recheck.length > 0) {
+    commitFirst(ledger, { refined: ledger.revision.number }, handedMisses);
+  }
   await resolveClosures(
     context,
     recheck.map((file) => file.ref),
@@ -281,8 +276,7 @@ export async function baseline(
   resumeOwed(ledger, owed);
   if (failures.size > 0) block(ledger, failures);
   const { number } = ledger.revision;
-  // One listing per start: the first commit recorded it (row 015-52).
-  await commitLast(ledger, early ? { refined: number } : listedAt(number), retry);
+  await commitLast(ledger, { refined: number }, retry);
   const persisted = persistedNoteTexts(store, worktreeId);
   const testFiles = testFilePaths(ledger);
   for (const text of unmatchedInputNotes(keys.unmatchedInputs(testFiles), testFiles.length)) {
@@ -291,8 +285,8 @@ export async function baseline(
 }
 
 /**
- * Row 011-227: commits the first lookup before the recheck; whether it did.
- * A busy store gives up before writing anything and the ledger owes it all
+ * Row 011-227: commits the first lookup before the recheck. A busy store
+ * gives up before writing anything and the ledger owes it all
  * again (row 011-126), so the baseline's last commit writes it. The misses
  * the last daemon left queued or running, `handed`, are written `queued`
  * (review 0.1.329 B2): a start that dies in the recheck leaves them owed to
@@ -304,7 +298,7 @@ function commitFirst(
   ledger: Ledger,
   options: Parameters<Ledger["commit"]>[0],
   handed: readonly FileState[],
-): boolean {
+): void {
   const phases = handed.map((file) => file.phase);
   for (const file of handed) {
     file.phase = "queued";
@@ -312,10 +306,8 @@ function commitFirst(
   }
   try {
     ledger.commit(options);
-    return true;
   } catch (error) {
-    if (isBusy(error)) return false;
-    throw error;
+    if (!isBusy(error)) throw error;
   } finally {
     for (const [i, file] of handed.entries()) {
       file.phase = phases[i] ?? null;

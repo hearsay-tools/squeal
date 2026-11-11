@@ -1,12 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import type { Policy } from "../../src/core/types/policy.js";
-import {
-  type ListingFact,
-  listingMetaKey,
-  parseListing,
-  refinedMetaKey,
-} from "../../src/core/types/scheduler.js";
+import { refinedMetaKey } from "../../src/core/types/scheduler.js";
 import type { KnownState } from "../../src/core/types/state.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { claimRepo, fileName, type Side, side } from "./claims-fixture.js";
@@ -48,13 +43,10 @@ const stateOf = (s: Side, path: string): KnownState | undefined =>
     .find((state) => state.check.kind === "test" && state.check.testPath === path);
 
 const ran = (s: Side) => s.runner.runs.flat().map((file) => file.path);
-const listing = (s: Side): ListingFact | null =>
-  parseListing(s.store.meta.get(listingMetaKey(s.worktreeId)));
 
 /** What a start had committed when the recheck asked the runner for a closure. */
 interface AtRecheck {
   readonly path: string;
-  readonly listing: ListingFact | null;
   readonly refined: string | null;
   readonly rows: number;
   readonly f1Phase: string | null | undefined;
@@ -94,7 +86,6 @@ async function stored(policy: Pick<Policy, "baseline">) {
     const states = new Map([F0, F1, F2, F3, F4].map((path) => [path, stateOf(b, path)]));
     recheck.push({
       path: testFile.path,
-      listing: listing(b),
       refined: b.store.meta.get(refinedMetaKey(b.worktreeId)),
       rows: b.store.testFileKeys.list(b.worktreeId).length,
       f1Phase: b.phase(F1),
@@ -115,8 +106,7 @@ describe(
 
       expect(recheck.map((call) => call.path).sort()).toEqual([F0, F1, F3, F4]);
       for (const call of recheck) {
-        expect(call.listing).not.toBeNull();
-        expect(call.refined).toBe(String(call.listing?.revision));
+        expect(call.refined).not.toBeNull();
         expect(call.rows).toBe(COUNT);
         // The first lookup's hit is current; the recheck's files are not yet.
         expect(call.states.get(F2)).toMatchObject({ outcome: "pass", validity: "current" });
@@ -143,10 +133,6 @@ describe(
       });
       expect(stateOf(b, F3)).toBeUndefined();
       expect(b.phase(F3)).toBeNull();
-      // One listing recorded, at the refined revision.
-      const fact = listing(b);
-      expect(fact?.count).toBe(1);
-      expect(String(fact?.revision)).toBe(b.store.meta.get(refinedMetaKey(b.worktreeId)));
     });
 
     it("a file the recheck finds current is not queued and gets no failure notice", async () => {
@@ -174,13 +160,9 @@ describe(
       await b.scheduler.idle();
 
       expect(recheck.map((call) => call.path).sort()).toEqual([F0, F1, F3, F4]);
-      for (const call of recheck) {
-        expect(call.listing).toBeNull();
-        expect(call.rows).toBe(0);
-      }
+      for (const call of recheck) expect(call.rows).toBe(0);
       expect(ran(b).sort()).toEqual([F3, F4]);
       expect(b.passing()).toBe(4);
-      expect(listing(b)?.count).toBe(1);
     });
   },
 );
