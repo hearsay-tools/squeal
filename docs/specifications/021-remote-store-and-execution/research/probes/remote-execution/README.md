@@ -13,7 +13,7 @@ Every tool's state lives under `$TMPDIR/re` (`env.sh` sets `HOME`, `MUTAGEN_DATA
 | `race.sh` | Writes a file every 20 ms and runs `mutagen sync flush` five times; records the session state after each flush. |
 | `conflict.sh` | Edits a file on both sides under `one-way-safe`, `one-way-replica`, `two-way-safe`. |
 | `unreachable.sh` | Pauses the container, then flushes with a 45 s limit. |
-| `remote-watch.mjs`, `latency.mjs` | Save-to-remote latency: the remote prints when a marker arrives; the driver appends markers locally. Host and container share one clock. |
+| `remote-watch.mjs`, `latency.mjs` | Save-to-remote latency: the remote prints when a marker arrives; the driver appends markers locally. Host and container share one clock. **Never run**: the load stayed above 24 for the whole session. Usage: `node latency.mjs hot\|cold\|hot-flush\|cold-flush 5` after copying `remote-watch.mjs` to `/probe/` in the container. |
 | `sar-days.sh`, `sar-days.txt` | Busy vCPUs and `%nice` per day from `/var/log/sysstat`. |
 | `results/` | Raw outputs quoted in the findings file. |
 
