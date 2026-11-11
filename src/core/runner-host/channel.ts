@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process";
 import type { Readable } from "node:stream";
 import type { AbsolutePath } from "../types/common.js";
 import type { HostRunner } from "./protocol.js";
@@ -61,10 +61,14 @@ export function spawnRunnerHost(
     ? []
     : ["--disable-warning=ExperimentalWarning"];
   const args = [...quiet, ...launch.execArgv, launch.cli, "runner-host", root, "--runner", runner];
-  const child = spawn(launch.execPath, args, {
-    env,
-    stdio: ["pipe", "pipe", "pipe"],
-  });
+  return channelOf(spawn(launch.execPath, args, { env, stdio: ["pipe", "pipe", "pipe"] }));
+}
+
+/**
+ * The daemon's end of a host process started with three pipes: a local host,
+ * or the user's `ssh` running one on a remote (spec 021 D9, row 021-13).
+ */
+export function channelOf(child: ChildProcessWithoutNullStreams): HostChannel {
   let tail = "";
   child.stderr.setEncoding("utf8").on("data", (chunk: string) => {
     tail = (tail + chunk).slice(-TAIL);

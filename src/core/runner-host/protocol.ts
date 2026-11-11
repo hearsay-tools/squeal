@@ -35,7 +35,12 @@ export type HostMethod =
   | "environment"
   | "run"
   | "cancel"
-  | "close";
+  | "close"
+  // Spec 021 D10 (row 021-13): a remote host's tree (`remote/tree-wire.ts`), answered before `start`.
+  | "tree"
+  | "write"
+  | "blobs"
+  | "install";
 
 export interface HostRequest {
   readonly id: number;
