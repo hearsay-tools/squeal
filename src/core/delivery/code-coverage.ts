@@ -9,6 +9,7 @@ import type {
   CodeFileLoaders,
 } from "../types/code-delivery.js";
 import type { WorktreeId } from "../types/common.js";
+import { LOWER_BOUND, NOT_RUN, NOT_RUN_CHILDREN, UNMEASURED } from "./code-coverage-words.js";
 
 /*
  * Spec 015 D9 (row 015-12): the `crap` and `uncovered` kinds of a code
@@ -65,30 +66,6 @@ export function evidenceOf(
     evidence: { complexity: counted.complexity, lines, covered, testFiles, first, ...children },
   };
 }
-
-/** Row 015-65 (D9 Delivery, amended 2026-10-26): the reason an `untested` line leads with. */
-const NOT_RUN = "no test runs it in the test's own thread";
-
-/** Spec 020 D12.7: `NOT_RUN` where the states were judged with `coverage.children`. */
-const NOT_RUN_CHILDREN =
-  "no test runs it, in the test's own thread or in a process or thread the test starts";
-
-/**
- * Row 015-80: what a line that says `NOT_RUN` also says, so it does not
- * read as "no test runs it". A test can run a file it does not load in a
- * worker thread, from a bundle (`test/lint/provider/helpers.ts`). Spec 020
- * D11.5 (row 020-07a): a file no test Squeal runs loads reads not
- * measured, so no line says so (row 015-103's words are gone).
- */
-export const UNMEASURED = "Squeal does not measure worker threads or child processes.";
-
-/**
- * Spec 020 D12.7 (row 020-10b, request 7f914e71): `UNMEASURED` with
- * `coverage.children`. Squeal reads a child's coverage when it exits, so
- * what it misses only lowers coverage.
- */
-export const LOWER_BOUND =
-  "Squeal counts what the processes and threads a test starts run as a lower bound: a process that is killed, outlives its test file or gets an environment without NODE_V8_COVERAGE is not counted.";
 
 /** D12.7: the entry's file was judged with `coverage.children`. */
 const withChildren = (e: CodeCoverageEvidence | undefined) => e?.children === true;
