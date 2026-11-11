@@ -1,6 +1,6 @@
 # 020 One quality gate: status
 
-Stage: in-progress. Slices 1 to 6, 020-14, wave 5 (020-15, 020-16a/b, 020-18) and wave 6 (020-17) shipped (0.1.423, 0.1.424, 0.1.427, 0.1.430, 0.1.432, 0.1.433); 020-08c done in cezar. Open: 020-19 (order across runners, running) and the quality rows 020-20 to 020-24 (`quality/2026-11.md`).
+Stage: in-progress. Slices 1 to 6, 020-14, wave 5 (020-15, 020-16a/b, 020-18), wave 6 (020-17), 020-19 and 020-20 shipped (0.1.423, 0.1.424, 0.1.427, 0.1.430, 0.1.432, 0.1.433, 0.1.435); 020-08c done in cezar. Open: the quality cleanup rows 020-21 to 020-24 (`quality/2026-11.md`).
 Started: 2026-11-09
 Issue: [#167](https://github.com/hearsay-tools/squeal/issues/167)
 
@@ -46,3 +46,4 @@ Issue: [#167](https://github.com/hearsay-tools/squeal/issues/167)
 - 2026-11-11, narrow re-review of `cand/0.1.433-r2` (`6fdee49bf`, reviewer 46896b75, `reviews/0.1.433-r2.md`): PASS, B1, B2 and S1 resolved, no findings. The coordinator (31e1d860) released 0.1.433: tag `squeal--v0.1.433` at `53cd6aae4`, hub `71695ab`, GitHub latest with `install.sh` and both Codex runtime assets; candidate CI 43072386429 and exact-commit main CI 43075184864 green; peers 3739e45a and 52f4f62a agreed. #175 closed. cezarion#3264 merged (020-08c done).
 - 2026-11-11, the human: #187 "Close + build row" (spec D18, row 020-19: runners in ascending order of their estimate) and "Quality: Scan only" (no evals). Brief `tasks/wave-7.md`.
 - 2026-11-11, quality scan (581a7afa, `quality/2026-11.md`): 0 drop candidates, 5 rows, 20 slices. Board rows 020-20 to 020-24. The coordinator takes 020-20 (the parts input rule copy that leaves out symlink targets; a possible false reuse, not yet reproduced) next, as a correctness row; the cleanup rows and slices follow 020-19, because they share its files. Slice 20 (this line, D7 and D11.7 wording) is done.
+- 2026-11-11, review of `cand/0.1.435` (`2e74d24d4`, `reviews/0.1.435.md`): PASS with no findings. The coordinator (31e1d860) released 0.1.435 with rows 020-19 (D18) and 020-20: tag `squeal--v0.1.435` at `94e0d2dc7`, hub `7edde38`, GitHub latest with `install.sh` and both Codex runtime assets; candidate CI 43086753064 and exact-commit main CI 43089480723 green; peers 52f4f62a and 3739e45a agreed. 020-20 found the symlink case already safe; the real false take it fixed was untracked files below a recursive listing. Version 0.1.434 was skipped (crossed messages; 52f4f62a renumbers).
