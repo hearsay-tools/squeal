@@ -25,6 +25,7 @@ import type {
   VitestCoverageOptions,
 } from "../coverage/types.js";
 import type { RunEstimate } from "./estimate.js";
+import { FILE_ERROR } from "./evidence.js";
 import { inLoaderOrder, orderRuns } from "./plan.js";
 import { type BasePrepares, declaresPrepare, type PrepareRun, prepareEntry } from "./prepare.js";
 import { type KnownEvidence, type Picked, type SelectionSummary, tellSelection } from "./prerun.js";
@@ -156,9 +157,6 @@ export type StoredEvidence = (
 export class CollectUsageError extends Error {
   override readonly name = "CollectUsageError";
 }
-
-/** The failed name of a completed file's import or syntax failure, which has no test name. */
-export const FILE_ERROR = "(file-level error)";
 
 /** One opened adapter and the payloads its runs handed over. */
 interface Runner {

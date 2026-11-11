@@ -3,8 +3,8 @@ import {
   type CollectOptions,
   CollectUsageError,
   collectEvidence,
-  FILE_ERROR,
 } from "../../../src/core/code/gate/collect.js";
+import { FILE_ERROR } from "../../../src/core/code/gate/evidence.js";
 import { gitHashObject } from "../../hash/git-repo.js";
 import {
   ADAPTERS,

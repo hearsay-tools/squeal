@@ -7,7 +7,7 @@ import {
   COVERAGE_PROVIDER_VERSION,
   COVERAGE_RECORD_VERSION,
 } from "../../../src/core/code/coverage/record.js";
-import { FILE_ERROR } from "../../../src/core/code/gate/collect.js";
+import { FILE_ERROR } from "../../../src/core/code/gate/evidence.js";
 import {
   type PartsOptions,
   partsEvidence,
