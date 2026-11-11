@@ -1,6 +1,6 @@
 # 021 Remote store and remote execution: status
 
-Stage: spec draft for the human's approval (`spec.md`); D18 written from row 021-06.
+Stage: approved (2026-11-11); wave 1 building (rows 021-07 to 021-11).
 Started: 2026-11-11
 
 ## Decisions so far
@@ -17,3 +17,4 @@ Started: 2026-11-11
 - 2026-11-11, the human on the wave 1 card: "Spec all five steps"; remote lost: "Policy setting" (the user chooses per project; the spec names the default); remote setup: "Daemon copies itself" (the daemon sends its own bundle over SSH at first connect); CPU budget: "Research and also check if that ceiling wouldn't make it faster actually because runs would not compete". Topic `cpu-budget`, row 021-06; the spec's budget section waits for it. A fixed ceiling stays rejected (the human, 2026-11-07); the budget must work on any machine.
 - 2026-11-11, the coordinator: `spec.md` drafted from 021-03, 021-04 and 021-05: Part 1 store fixes on one file (D1 to D5), Part 2 the runner host and local Vitest host (D6 to D8), Part 3 one runner over SSH for background tiers (D9 to D14), Part 4 writes through the daemon (D15), Part 5 a measured gate for one daemon per clone (D16). Remote-lost default `not-run` (the human chose a per-project policy; the default is the coordinator's proposal). D18 (CPU budget) waits for 021-06. Slices as rows 021-07 to 021-17, not on the board until approval.
 - 2026-11-11, the coordinator: 021-06 landed (`research/cpu-budget.md`). The human's hypothesis holds for CPU (Squeal −9.5%, agents' runs −8.8%, edit tiers −6.4%) and not for background results on this host (later at every load; no crossover, since other load alone kept the host near the top). D18 written from it: the adaptive own-slowdown budget of 011 `background-backoff.md`, per user and machine, one-permit floor, rows 021-18 and 021-19. This replaces `daemon-model.md`'s "4.3 h later", which had no floor and no chained tiers.
+- 2026-11-11, the human: "Spec 021: Approve, build"; remote lost: "Run locally". D13's default changed to `local`, under the D18 budget. The D18 floor card had no answer yet; 021-18 waits for it. Wave 1 (021-07 to 021-11) briefed in `tasks/wave-1.md`; rows 021-07 to 021-19 filed. Contract file `src/core/store/lock-holders.ts` committed on the coordinator branch, to land with the wave after review. CI import slicing (`transfer-import.ts`) left to spec 018's coordinator.
