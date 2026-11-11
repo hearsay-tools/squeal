@@ -1,38 +1,22 @@
-import { createHash } from "node:crypto";
-import {
-  mkdirSync,
-  mkdtempSync,
-  readdirSync,
-  readFileSync,
-  rmSync,
-  statSync,
-  writeFileSync,
-} from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { codeGateCommand } from "../../src/cli/code-gate.js";
 import { storedFiles } from "../../src/cli/code-gate-stored.js";
-import { COVERAGE_RECORD_VERSION } from "../../src/core/code/coverage/record.js";
-import type { GateAdapters } from "../../src/core/code/gate/collect.js";
-import type { GateReport } from "../../src/core/code/gate/report.js";
 import { codeStorePath } from "../../src/core/code/store/open.js";
 import { startDaemon } from "../../src/core/daemon/daemon.js";
-import { storePaths } from "../../src/core/store/paths.js";
 import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
-import type { RunnerAdapter } from "../../src/core/types/runner.js";
-import { createVitestAdapter } from "../../src/runners/vitest/index.js";
-import { ADAPTERS } from "../code/gate/collect-fixture.js";
 import { createFixtureRepo, type FixtureRepo, waitFor, withStore } from "../daemon/helpers.js";
 import { git } from "../hash/git-repo.js";
+import { gate, hasRecord, snapshot } from "./code-gate-keep-kit.js";
 
 /*
  * Spec 020 D11.7 (row 020-07c): `squeal code --base` keys each selected
  * test file as a daemon in the worktree keys it, and takes the files with
- * results and a coverage record at that key from the stores, read-only. A
- * real daemon runs the scheduler fixture first; the gate then runs only
- * what the stores lack, and leaves them byte for byte as they were.
+ * results and a coverage record at that key from the stores. A real daemon
+ * runs the scheduler fixture first; the gate then runs only what the
+ * stores lack. A run that reads every file leaves the stores byte for byte
+ * as they were; D17.3 (row 020-17c) keeps each file it runs to completion.
  */
 
 const SLOW = { timeout: 240_000 } as const;
@@ -68,80 +52,6 @@ function daemonKeys(repo: FixtureRepo): Map<string, CheckKey> | null {
     if (rows.length !== TEST_FILES || done.length !== TEST_FILES) return null;
     return new Map(done.map((r) => [r.testFile.path, r.key as CheckKey]));
   });
-}
-
-/** Whether the code store holds a record at `key`, read-only. */
-function hasRecord(repo: FixtureRepo, key: CheckKey): boolean {
-  const db = new DatabaseSync(codeStorePath(repo.commonDir), { readOnly: true });
-  try {
-    const sql = "SELECT 1 FROM coverage WHERE result_key = ? AND provider_version = ?";
-    return db.prepare(sql).get(key, COVERAGE_RECORD_VERSION) !== undefined;
-  } finally {
-    db.close();
-  }
-}
-
-/** Each store file's bytes, as a hash, and its mtime. */
-function snapshot(repo: FixtureRepo): string[] {
-  return [storePaths(repo.commonDir).database, codeStorePath(repo.commonDir)].map((path) => {
-    const hash = createHash("sha256").update(readFileSync(path)).digest("hex");
-    return `${path} ${hash} ${statSync(path).mtimeMs}`;
-  });
-}
-
-/** The CLI's adapters, each Vitest run's files appended to `ran`. */
-function watched(ran: string[]): GateAdapters {
-  const wrap = (adapter: RunnerAdapter): RunnerAdapter =>
-    new Proxy(adapter, {
-      get(target, key) {
-        const value: unknown = Reflect.get(target, key, target);
-        if (typeof value !== "function") return value;
-        if (key !== "run") return value.bind(target);
-        return (files: readonly TestFileRef[], ...rest: unknown[]) => {
-          ran.push(...files.map((f) => f.path));
-          return (value as (...args: unknown[]) => unknown).call(target, files, ...rest);
-        };
-      },
-    });
-  return { ...ADAPTERS, vitest: async (options) => wrap(await createVitestAdapter(options)) };
-}
-
-interface Gate {
-  readonly code: number;
-  readonly report: GateReport;
-  readonly stderr: string;
-  readonly ran: readonly string[];
-  readonly leftInTmp: readonly string[];
-}
-
-async function gate(repo: FixtureRepo, args: readonly string[]): Promise<Gate> {
-  const ran: string[] = [];
-  let stdout = "";
-  let stderr = "";
-  const io = {
-    stdout: (text: string) => {
-      stdout += text;
-    },
-    stderr: (text: string) => {
-      stderr += text;
-    },
-    cwd: repo.root,
-    env: repo.env,
-  };
-  // D3.5: a `TMPDIR` of the command's own, which it must leave empty.
-  const temp = mkdtempSync(join(tmpdir(), "squeal-gate-stored-"));
-  const saved = process.env.TMPDIR;
-  process.env.TMPDIR = temp;
-  let code: number;
-  try {
-    code = await codeGateCommand(["--base", "main", ...args, "--json"], io, watched(ran));
-  } finally {
-    if (saved === undefined) delete process.env.TMPDIR;
-    else process.env.TMPDIR = saved;
-  }
-  const leftInTmp = readdirSync(temp);
-  rmSync(temp, { recursive: true, force: true });
-  return { code, report: JSON.parse(stdout) as GateReport, stderr, ran, leftInTmp };
 }
 
 describe("squeal code --base reads the stores (spec 020 D11.7)", () => {
@@ -246,13 +156,12 @@ describe("squeal code --base reads the stores (spec 020 D11.7)", () => {
     expect(snapshot(repo)).toEqual(before);
   });
 
-  it("runs a file with results and no record at its key", SLOW, async () => {
+  it("runs a file with results and no record at its key, and keeps both", SLOW, async () => {
     const key = keys.get("test/math.test.ts") as CheckKey;
     const db = new DatabaseSync(codeStorePath(repo.commonDir));
     db.prepare("DELETE FROM coverage WHERE result_key = ?").run(key);
     db.close();
     expect(withStore(repo, (store) => store.results.byKey(key, 0).length)).toBeGreaterThan(0);
-    const before = snapshot(repo);
 
     const ran = await gate(repo, ["src/math.ts"]);
 
@@ -265,7 +174,16 @@ describe("squeal code --base reads the stores (spec 020 D11.7)", () => {
     expect(ran.report.runs.map((r) => [r.completed, r.from])).toEqual([
       [["test/math.test.ts"], undefined],
     ]);
-    expect(snapshot(repo)).toEqual(before);
+    // D17.3: the run's results replace the daemon's at the key, beside its new record.
+    expect(hasRecord(repo, key)).toBe(true);
+    const runIds = withStore(repo, (store) =>
+      store.results.byKey(key, 0).map((r) => r.provenance.runId),
+    );
+    expect(runIds.every((id) => id.startsWith("gate-"))).toBe(true);
+
+    const again = await gate(repo, ["src/math.ts"]);
+    expect(again.ran).toEqual([]);
+    expect(again.report.runs[0]?.from).toEqual({ "test/math.test.ts": "store" });
   });
 });
 
@@ -310,16 +228,18 @@ describe("squeal code --base keys the stores with the base's coverage.children",
 
   afterAll(() => repo?.cleanup());
 
-  it("finds the daemon's key with children on, and another with them off", SLOW, async () => {
+  /** The key of `test/math.test.ts` with `coverage.children` as `children` says. */
+  const keyed = async (children: boolean) => {
     const math = ref("test/math.test.ts");
-    const keyed = async (children: boolean) => {
-      const stored = storedFiles(repo.root, repo.env, () => {}, children);
-      try {
-        return (await stored?.keys([math]))?.get(math);
-      } finally {
-        await stored?.close();
-      }
-    };
+    const stored = storedFiles(repo.root, repo.env, () => {}, children);
+    try {
+      return (await stored?.keys([math]))?.get(math);
+    } finally {
+      await stored?.close();
+    }
+  };
+
+  it("finds the daemon's key with children on, and another with them off", SLOW, async () => {
     expect(await keyed(true)).toBe(key);
     expect(await keyed(false)).not.toBe(key);
   });
@@ -328,7 +248,8 @@ describe("squeal code --base keys the stores with the base's coverage.children",
     "runs the file the daemon stored with children, where the base keeps them off",
     SLOW,
     async () => {
-      const before = snapshot(repo);
+      const results = () => withStore(repo, (store) => store.results.byKey(key, 0));
+      const before = results();
 
       const ran = await gate(repo, ["src/math.ts"]);
 
@@ -338,7 +259,11 @@ describe("squeal code --base keys the stores with the base's coverage.children",
         [["test/math.test.ts"], undefined],
       ]);
       expect(ran.code).toBe(0);
-      expect(snapshot(repo)).toEqual(before);
+      // D17.3: the gate keeps its run at its own key, children off; the daemon's stays as it was.
+      expect(results()).toEqual(before);
+      const off = await keyed(false);
+      expect(off).not.toBe(key);
+      expect(hasRecord(repo, off as CheckKey)).toBe(true);
     },
   );
 });

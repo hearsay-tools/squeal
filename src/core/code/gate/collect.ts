@@ -51,6 +51,8 @@ export interface GateAdapters {
     readonly exclude: () => readonly string[];
     /** D3.5: no results cache written into the project. */
     readonly cache: false;
+    /** D17.3: the workers record runtime reads, as a daemon's do, when the runs may be kept. */
+    readonly observe?: () => boolean;
     readonly coverage: {
       readonly enabled: () => boolean;
       /** D12: `coverage.children` at the base. */
@@ -122,6 +124,19 @@ export interface CollectOptions {
    * whole seconds left of the budget. Not called when no file is to run.
    */
   readonly estimated?: (estimates: readonly RunEstimate[], leftSeconds: number) => void;
+  /**
+   * D17.3: told each runner's run once it ended, before the next starts;
+   * with it, Vitest records runtime reads as the worktree's daemon does.
+   */
+  readonly ran?: (run: GateRun) => Promise<void>;
+}
+
+/** D17.3: one runner's run, its report and each completed file's mapped record, by `refKey`. */
+export interface GateRun {
+  readonly runner: TestFileEvidence["runner"];
+  readonly files: readonly TestFileRef[];
+  readonly report: RunReport;
+  readonly records: ReadonlyMap<string, Mapped>;
 }
 
 /**
@@ -196,7 +211,7 @@ export async function collectEvidence(
   try {
     const { policy, problems } = loadPolicy(root);
     for (const problem of problems) note(`${POLICY_FILE}: ${problem}`);
-    const opening = { provider, temp, note, children };
+    const opening = { provider, temp, note, children, keeping: options.ran !== undefined };
     await openRunners(options.adapters, root, policy, opening, runners);
     const picked = await select(runners, paths, options.tests, tally);
     const at = { root, deadline, note, options, children };
@@ -232,6 +247,7 @@ export async function collectEvidence(
       if (report?.failure != null) note(`${runner.kind} run: ${report.failure}`);
       const mapping = { format, blobs, provider, children, note };
       const records = mapPayloads(runner.covered.splice(0), mapping);
+      await tellRan(options.ran, { runner: runner.kind, files, report, records });
       for (const ref of files) {
         testFiles.push(await evidenceOf(runner, ref, report, records, children));
       }
@@ -250,6 +266,15 @@ export async function collectEvidence(
   }
 }
 
+/** D17.3: a run that ended, to `ran`; none when the budget ended before it started. */
+async function tellRan(
+  ran: CollectOptions["ran"],
+  run: Omit<GateRun, "report"> & { readonly report: RunReport | null },
+): Promise<void> {
+  const { report } = run;
+  if (ran !== undefined && report !== null) await ran({ ...run, report });
+}
+
 /**
  * Vitest when the daemon would run it (`vitestDetected`, or no other runner
  * configured), then each `nodeTest` project, in the policy's order. Each
@@ -264,11 +289,14 @@ async function openRunners(
     temp,
     note,
     children,
+    keeping,
   }: {
     provider: AbsolutePath;
     temp: AbsolutePath;
     note: (text: string) => void;
     children: boolean;
+    /** D17.3: the runs may be kept, so Vitest records runtime reads as policy says. */
+    keeping: boolean;
   },
   runners: Runner[],
 ): Promise<void> {
@@ -281,6 +309,7 @@ async function openRunners(
       excludeProjects: () => policy.vitest.excludeProjects,
       exclude: () => policy.vitest.exclude,
       cache: false,
+      observe: () => keeping && policy.observe.runtimeInputs,
       coverage: {
         enabled: () => true,
         children: () => children,
