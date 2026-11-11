@@ -19,8 +19,11 @@ import { runMissingConfig } from "../helpers/baseline.js";
  * the metadata directory up, found no entry and took 4. The four node:test
  * files hold until the test releases them, so the mark is read while they
  * run: in one-file slots, one permit each (task 011-21 slice 2), the mark of
- * a lane that wants a third slot holds 2. Every path is temporary: HOME, XDG_CONFIG_HOME and
- * XDG_RUNTIME_DIR (`childEnv`), git's config shut out.
+ * a lane that wants a second slot holds 1 or 2, never more. Since spec 021
+ * D18 (row 021-18) a host busy above the background ceiling leaves the
+ * backlog the floor's one permit, so the grant depends on the host's load;
+ * the mark's project, B3's fault, does not. Every path is temporary: HOME,
+ * XDG_CONFIG_HOME and XDG_RUNTIME_DIR (`childEnv`), git's config shut out.
  */
 
 const REPO = resolve(import.meta.dirname, "../..");
@@ -95,14 +98,12 @@ describe("a --separate-git-dir repository's capacity.projects cap (review 001-38
     });
     daemons.push(child);
     const dir = slowSlotDir(env);
-    const mark = await until("the pool mark of a third slot", 120_000, async () => {
+    const mark = await until("the pool mark of a second slot", 120_000, async () => {
       const [found] = readMarks(dir, "reader", Date.now());
-      return found !== undefined && found.want >= 3 ? found : null;
+      return found !== undefined && found.want >= 2 ? found : null;
     });
-    expect({ want: mark.want, grant: mark.grant, project: mark.project }).toEqual({
-      want: 3,
-      grant: 2,
-      project: { id: root, slots: 2 },
-    });
+    expect(mark.project).toEqual({ id: root, slots: 2 });
+    expect(mark.grant).toBeGreaterThanOrEqual(1);
+    expect(mark.grant).toBeLessThanOrEqual(2);
   });
 });
