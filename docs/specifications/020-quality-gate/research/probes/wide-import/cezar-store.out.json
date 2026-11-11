@@ -1,0 +1,136 @@
+{
+ "W": 11,
+ "changed": [
+  "packages/cezar/src/home/home.ts",
+  "packages/cezar/src/home/install-marker.ts",
+  "packages/cezar/src/home/migration-crash.test.ts",
+  "packages/cezar/src/home/protected-roots.ts",
+  "packages/cezar/src/home/test-marker-guard.test.ts",
+  "packages/cezar/src/paths.ts",
+  "scripts/test-install-marker.d.mts",
+  "scripts/test-install-marker.mjs",
+  "scripts/test-install-marker.test.mjs"
+ ],
+ "testFilesInStore": 2387,
+ "selected": 1397,
+ "byProject": {
+  "e2e": 114,
+  "server": 1256,
+  "test:package": 1,
+  "f2:package": 6,
+  "web": 11,
+  "root:test:unit": 6,
+  "test:unit": 3
+ },
+ "byGroup": {
+  "browser (manual)": 114,
+  "tests": 1283
+ },
+ "loaderSets": {
+  "packages/cezar/src/home/home.ts": {
+   "all": 1011,
+   "inScope": 907
+  },
+  "packages/cezar/src/home/install-marker.ts": {
+   "all": 1106,
+   "inScope": 1004
+  },
+  "packages/cezar/src/home/migration-crash.test.ts": {
+   "all": 110,
+   "inScope": 9
+  },
+  "packages/cezar/src/home/protected-roots.ts": {
+   "all": 1052,
+   "inScope": 951
+  },
+  "packages/cezar/src/home/test-marker-guard.test.ts": {
+   "all": 110,
+   "inScope": 9
+  },
+  "packages/cezar/src/paths.ts": {
+   "all": 1390,
+   "inScope": 1276
+  },
+  "scripts/test-install-marker.d.mts": {
+   "all": 0,
+   "inScope": 0
+  },
+  "scripts/test-install-marker.mjs": {
+   "all": 10,
+   "inScope": 10
+  },
+  "scripts/test-install-marker.test.mjs": {
+   "all": 2,
+   "inScope": 2
+  }
+ },
+ "costs": {
+  "fromManifest": 394,
+  "fromDaemonSingleRuns": 243,
+  "fallback": 760,
+  "fallbackMedianMs": 6940,
+  "serialSecondsAll": 18092,
+  "serialSecondsTests": 14612,
+  "serialSecondsBrowser": 3480,
+  "p50": 6940,
+  "max": 316866,
+  "medianBySource": {
+   "daemon-single-run": {
+    "n": 243,
+    "medianMs": 15683
+   },
+   "ci-manifest": {
+    "n": 394,
+    "medianMs": 1378.5
+   }
+  },
+  "storedFileDurations": {
+   "files": 1213,
+   "serialSeconds": 18386,
+   "medianMs": 8730.316836999998,
+   "storeOverManifestMedianRatio": 2.72120225186595
+  }
+ },
+ "runAll": [
+  {
+   "files": 1638,
+   "wallSeconds": 7781,
+   "end": "abandoned"
+  },
+  {
+   "files": 577,
+   "wallSeconds": 2183,
+   "end": "abandoned"
+  },
+  {
+   "files": 1279,
+   "wallSeconds": 87,
+   "end": "abandoned"
+  },
+  {
+   "files": 1749,
+   "wallSeconds": 7252,
+   "end": "completed"
+  },
+  {
+   "files": 1037,
+   "wallSeconds": 3498,
+   "end": "completed"
+  },
+  {
+   "files": 650,
+   "wallSeconds": 6962,
+   "end": "abandoned"
+  },
+  {
+   "files": 983,
+   "wallSeconds": 683,
+   "end": "abandoned"
+  },
+  {
+   "files": 703,
+   "wallSeconds": 11300,
+   "end": "abandoned"
+  }
+ ]
+}

@@ -1,0 +1,22 @@
+{
+ "W": 4,
+ "cost": "manifest",
+ "files": 1397,
+ "estimatedCost": 184,
+ "fallbackMs": 7995,
+ "serialS": {
+  "all": 20533,
+  "tests": 17979,
+  "browser": 2554
+ },
+ "sims": {
+  "600s all path": "148/1397 files, 0 paths complete (), makespan 7064s",
+  "600s all loaders": "159/1397 files, 2 paths complete (test-install-marker.mjs, test-install-marker.test.mjs), makespan 7149s",
+  "600s tests path": "148/1283 files, 0 paths complete (), makespan 4510s",
+  "600s tests loaders": "159/1283 files, 4 paths complete (migration-crash.test.ts, test-marker-guard.test.ts, test-install-marker.mjs, test-install-marker.test.mjs), makespan 4595s",
+  "1500s all path": "460/1397 files, 0 paths complete (), makespan 7064s",
+  "1500s all loaders": "583/1397 files, 2 paths complete (test-install-marker.mjs, test-install-marker.test.mjs), makespan 7149s",
+  "1500s tests path": "460/1283 files, 2 paths complete (migration-crash.test.ts, test-marker-guard.test.ts), makespan 4510s",
+  "1500s tests loaders": "583/1283 files, 4 paths complete (migration-crash.test.ts, test-marker-guard.test.ts, test-install-marker.mjs, test-install-marker.test.mjs), makespan 4595s"
+ }
+}
