@@ -1,0 +1,6 @@
+Export Squeal shared results	Fetch the Squeal release	2026-11-10T14:34:20.7819659Z   SQUEAL_TAG: squeal--v0.1.425
+Export Squeal shared results	Fetch the Squeal release	2026-11-10T14:34:28.1013691Z warning: refs/tags/squeal--v0.1.425 9e653ba3b9a97551cb98429e282183d236afbfb0 is not a commit!
+Export Squeal shared results	Export Squeal results	﻿2026-11-10T14:34:29.7924919Z ##[group]Run node "$RUNNER_TEMP/squeal/plugins/claude-code/dist/cli/squeal.mjs" ci export --parts "$RUNNER_TEMP"/squeal-parts/squeal-parts-shard-* --out "$RUNNER_TEMP/squeal-results.json.gz"
+Export Squeal shared results	Export Squeal results	2026-11-10T14:34:29.7927560Z ^[[36;1mnode "$RUNNER_TEMP/squeal/plugins/claude-code/dist/cli/squeal.mjs" ci export --parts "$RUNNER_TEMP"/squeal-parts/squeal-parts-shard-* --out "$RUNNER_TEMP/squeal-results.json.gz"^[[0m
+Export Squeal shared results	Export Squeal results	2026-11-10T14:34:30.3549279Z squeal ci export: refused: /home/runner/work/_temp/squeal-parts/squeal-parts-shard-1/squeal-part-48b7e900-2e8b-44c0-b3c7-55ed1553bcc5.json is of a run that did not complete (crashed); wrote nothing
+Export Squeal shared results	Export Squeal results	2026-11-10T14:34:30.3662411Z ##[error]Process completed with exit code 1.

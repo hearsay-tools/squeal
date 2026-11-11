@@ -1,0 +1,88 @@
+{"date":"2026-11-11T01:24:12.680Z","node":"v24.22.1","squeal":"0.1.430","vitest":"5.0.3","load":[12.73,12.22,9.32],"cpus":24,"base":"/home/agent/projects/squeal/.ai/cezar/t/68cca4a1/squeal-issue-178-YWpP9l"}
+$ (cd /home/agent/projects/squeal/.ai/cezar/t/68cca4a1/squeal-issue-178-YWpP9l/origin && "git" "init" "-q")
+
+
+exit=0; signal=null; error=none
+$ (cd /home/agent/projects/squeal/.ai/cezar/t/68cca4a1/squeal-issue-178-YWpP9l/origin && "git" "add" ".")
+
+
+exit=0; signal=null; error=none
+$ (cd /home/agent/projects/squeal/.ai/cezar/t/68cca4a1/squeal-issue-178-YWpP9l/origin && "git" "-c" "user.name=Research probe" "-c" "user.email=probe@example.invalid" "commit" "-qm" "fixture")
+
+
+exit=0; signal=null; error=none
+$ (cd /home/agent/projects/squeal/.ai/cezar/t/68cca4a1/squeal-issue-178-YWpP9l && "git" "clone" "-q" "/home/agent/projects/squeal/.ai/cezar/t/68cca4a1/squeal-issue-178-YWpP9l/origin" "/home/agent/projects/squeal/.ai/cezar/t/68cca4a1/squeal-issue-178-YWpP9l/export")
+
+
+exit=0; signal=null; error=none
+before record: load1=12.73; cpus=24; ISSUE_178_CRASH=0
+$ (cd /home/agent/projects/squeal/.ai/cezar/t/68cca4a1/squeal-issue-178-YWpP9l/origin && "/home/agent/.nvm/versions/node/v24.22.1/bin/node" "/home/agent/projects/squeal/.ai/cezar/worktrees/68cca4a1-f98c-4f44-944c-092f53af0a7e/plugins/claude-code/dist/cli/squeal.mjs" "ci" "record" "--out" "/home/agent/projects/squeal/.ai/cezar/t/68cca4a1/squeal-issue-178-YWpP9l/complete-1" "--" "/home/agent/.nvm/versions/node/v24.22.1/bin/node" "/home/agent/projects/squeal/.ai/cezar/worktrees/68cca4a1-f98c-4f44-944c-092f53af0a7e/node_modules/vitest/vitest.mjs" "run" "--shard=1/2" "--maxWorkers=1")
+RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/t/68cca4a1/squeal-issue-178-YWpP9l/origin
+      Coverage enabled with squeal
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  02:24:13
+   Duration  293ms (worker 72%, import 12%, transform 9%, tests 6%)
+squeal ci record: wrote 1 part with 1 test file to /home/agent/projects/squeal/.ai/cezar/t/68cca4a1/squeal-issue-178-YWpP9l/complete-1
+squeal ci record: coverage records for 1 of 1 test files
+exit=0; signal=null; error=none
+before record: load1=14.2; cpus=24; ISSUE_178_CRASH=0
+$ (cd /home/agent/projects/squeal/.ai/cezar/t/68cca4a1/squeal-issue-178-YWpP9l/origin && "/home/agent/.nvm/versions/node/v24.22.1/bin/node" "/home/agent/projects/squeal/.ai/cezar/worktrees/68cca4a1-f98c-4f44-944c-092f53af0a7e/plugins/claude-code/dist/cli/squeal.mjs" "ci" "record" "--out" "/home/agent/projects/squeal/.ai/cezar/t/68cca4a1/squeal-issue-178-YWpP9l/complete-2" "--" "/home/agent/.nvm/versions/node/v24.22.1/bin/node" "/home/agent/projects/squeal/.ai/cezar/worktrees/68cca4a1-f98c-4f44-944c-092f53af0a7e/node_modules/vitest/vitest.mjs" "run" "--shard=2/2" "--maxWorkers=1")
+RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/t/68cca4a1/squeal-issue-178-YWpP9l/origin
+      Coverage enabled with squeal
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  02:24:14
+   Duration  232ms (worker 60%, import 20%, transform 12%, tests 8%)
+squeal ci record: wrote 1 part with 1 test file to /home/agent/projects/squeal/.ai/cezar/t/68cca4a1/squeal-issue-178-YWpP9l/complete-2
+squeal ci record: coverage records for 1 of 1 test files
+exit=0; signal=null; error=none
+$ (cd /home/agent/projects/squeal/.ai/cezar/t/68cca4a1/squeal-issue-178-YWpP9l/export && "/home/agent/.nvm/versions/node/v24.22.1/bin/node" "/home/agent/projects/squeal/.ai/cezar/worktrees/68cca4a1-f98c-4f44-944c-092f53af0a7e/plugins/claude-code/dist/cli/squeal.mjs" "ci" "export" "--parts" "/home/agent/projects/squeal/.ai/cezar/t/68cca4a1/squeal-issue-178-YWpP9l/complete-1" "/home/agent/projects/squeal/.ai/cezar/t/68cca4a1/squeal-issue-178-YWpP9l/complete-2" "--out" "/home/agent/projects/squeal/.ai/cezar/t/68cca4a1/squeal-issue-178-YWpP9l/complete.json.gz")
+Exported 2 test files, 4 results, to /home/agent/projects/squeal/.ai/cezar/t/68cca4a1/squeal-issue-178-YWpP9l/complete.json.gz.
+
+exit=0; signal=null; error=none
+complete: outputExists=true
+before record: load1=14.2; cpus=24; ISSUE_178_CRASH=1
+$ (cd /home/agent/projects/squeal/.ai/cezar/t/68cca4a1/squeal-issue-178-YWpP9l/origin && "/home/agent/.nvm/versions/node/v24.22.1/bin/node" "/home/agent/projects/squeal/.ai/cezar/worktrees/68cca4a1-f98c-4f44-944c-092f53af0a7e/plugins/claude-code/dist/cli/squeal.mjs" "ci" "record" "--out" "/home/agent/projects/squeal/.ai/cezar/t/68cca4a1/squeal-issue-178-YWpP9l/crashed-1" "--" "/home/agent/.nvm/versions/node/v24.22.1/bin/node" "/home/agent/projects/squeal/.ai/cezar/worktrees/68cca4a1-f98c-4f44-944c-092f53af0a7e/node_modules/vitest/vitest.mjs" "run" "--shard=1/2" "--maxWorkers=1")
+RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/t/68cca4a1/squeal-issue-178-YWpP9l/origin
+      Coverage enabled with squeal
+⎯⎯⎯⎯ Unhandled Rejection ⎯⎯⎯⎯⎯
+Error: issue-178 deliberate unhandled error
+ ❯ [as setup] global-setup.js:3:20
+      1| export default async function () {
+      2|   if (process.env.ISSUE_178_CRASH === '1') {
+      3|     Promise.reject(new Error('issue-178 deliberate unhandled error'));
+       |                    ^
+      4|     await new Promise(resolve => setTimeout(resolve, 50));
+      5|   }
+ ❯ TestProject._initializeGlobalSetup ../../../../worktrees/68cca4a1-f98c-4f44-944c-092f53af0a7e/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_vite@8.3.2_@types+node@22.20.5_esbuild@0.28.2_jiti@2.7.0_tsx@4.23.15_yaml@2.9.0_/node_modules/vitest/dist/chunks/index.DpLw24bj.js:12184:50
+ ❯ Vitest.initializeGlobalSetup ../../../../worktrees/68cca4a1-f98c-4f44-944c-092f53af0a7e/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_vite@8.3.2_@types+node@22.20.5_esbuild@0.28.2_jiti@2.7.0_tsx@4.23.15_yaml@2.9.0_/node_modules/vitest/dist/chunks/index.DpLw24bj.js:21286:35
+ ❯ ../../../../worktrees/68cca4a1-f98c-4f44-944c-092f53af0a7e/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_vite@8.3.2_@types+node@22.20.5_esbuild@0.28.2_jiti@2.7.0_tsx@4.23.15_yaml@2.9.0_/node_modules/vitest/dist/chunks/index.DpLw24bj.js:21126:6
+ ❯ ../../../../worktrees/68cca4a1-f98c-4f44-944c-092f53af0a7e/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_vite@8.3.2_@types+node@22.20.5_esbuild@0.28.2_jiti@2.7.0_tsx@4.23.15_yaml@2.9.0_/node_modules/vitest/dist/chunks/index.DpLw24bj.js:21155:11
+ ❯ ../../../../worktrees/68cca4a1-f98c-4f44-944c-092f53af0a7e/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_vite@8.3.2_@types+node@22.20.5_esbuild@0.28.2_jiti@2.7.0_tsx@4.23.15_yaml@2.9.0_/node_modules/vitest/dist/chunks/index.DpLw24bj.js:21017:19
+ ❯ startVitest ../../../../worktrees/68cca4a1-f98c-4f44-944c-092f53af0a7e/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_vite@8.3.2_@types+node@22.20.5_esbuild@0.28.2_jiti@2.7.0_tsx@4.23.15_yaml@2.9.0_/node_modules/vitest/dist/chunks/cli-api.C4x4GGip.js:369:8
+ ❯ start ../../../../worktrees/68cca4a1-f98c-4f44-944c-092f53af0a7e/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_vite@8.3.2_@types+node@22.20.5_esbuild@0.28.2_jiti@2.7.0_tsx@4.23.15_yaml@2.9.0_/node_modules/vitest/dist/chunks/cac.DfDGTQ9W.js:2370:15
+ ❯ CAC.run ../../../../worktrees/68cca4a1-f98c-4f44-944c-092f53af0a7e/node_modules/.pnpm/vitest@5.0.3_@types+node@22.20.5_vite@8.3.2_@types+node@22.20.5_esbuild@0.28.2_jiti@2.7.0_tsx@4.23.15_yaml@2.9.0_/node_modules/vitest/dist/chunks/cac.DfDGTQ9W.js:2346:2
+
+
+
+
+squeal ci record: Vitest process 668060 ended without the end of a run; no part
+exit=1; signal=null; error=none
+live global-setup abort: parts=0
+synthetic crashed part: {"format":"squeal-ci-part/4","end":"crashed","shard":{"index":1,"count":2},"testFiles":0}
+$ (cd /home/agent/projects/squeal/.ai/cezar/t/68cca4a1/squeal-issue-178-YWpP9l/export && "/home/agent/.nvm/versions/node/v24.22.1/bin/node" "/home/agent/projects/squeal/.ai/cezar/worktrees/68cca4a1-f98c-4f44-944c-092f53af0a7e/plugins/claude-code/dist/cli/squeal.mjs" "ci" "export" "--parts" "/home/agent/projects/squeal/.ai/cezar/t/68cca4a1/squeal-issue-178-YWpP9l/crashed-1" "/home/agent/projects/squeal/.ai/cezar/t/68cca4a1/squeal-issue-178-YWpP9l/complete-2" "--out" "/home/agent/projects/squeal/.ai/cezar/t/68cca4a1/squeal-issue-178-YWpP9l/mixed.json.gz")
+
+squeal ci export: refused: /home/agent/projects/squeal/.ai/cezar/t/68cca4a1/squeal-issue-178-YWpP9l/crashed-1/squeal-part-crashed.json is of a run that did not complete (crashed); wrote nothing
+exit=1; signal=null; error=none
+mixed: outputExists=false
+$ (cd /home/agent/projects/squeal/.ai/cezar/t/68cca4a1/squeal-issue-178-YWpP9l/export && "/home/agent/.nvm/versions/node/v24.22.1/bin/node" "/home/agent/projects/squeal/.ai/cezar/worktrees/68cca4a1-f98c-4f44-944c-092f53af0a7e/plugins/claude-code/dist/cli/squeal.mjs" "ci" "export" "--parts" "/home/agent/projects/squeal/.ai/cezar/t/68cca4a1/squeal-issue-178-YWpP9l/complete-2" "--out" "/home/agent/projects/squeal/.ai/cezar/t/68cca4a1/squeal-issue-178-YWpP9l/missing.json.gz")
+
+squeal ci export: refused: no part of shard 1/2: export the parts of every shard, after all of them passed; wrote nothing
+exit=1; signal=null; error=none
+missing: outputExists=false
+VERDICT: export refusal reproduced with synthetic crashed part; live abort leaves no part; complete control exports; missing shard refuses.
