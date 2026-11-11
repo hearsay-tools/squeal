@@ -1,8 +1,6 @@
-import { readHead } from "../daemon-loop/head.js";
-import { readObjectFormat } from "../hash/git-index.js";
-import { createFsHasher } from "../hash/hasher.js";
 import { testFileId } from "../keys/reverse-index.js";
-import { WorktreeKeys } from "../scheduler/keying.js";
+import { openDaemonKeys } from "../scheduler/daemon-keys.js";
+import type { WorktreeKeys } from "../scheduler/keying.js";
 import { observedGrowth } from "../scheduler/observed.js";
 import { recordsForFile } from "../scheduler/records.js";
 import { describeFailure } from "../state/fingerprint.js";
@@ -122,7 +120,7 @@ export async function ciExport(input: CiExportInput): Promise<CiExport> {
 
 async function exportWith(input: CiExportInput, runner: RunnerAdapter): Promise<CiExport> {
   const { worktreeId, store, parts, header } = input;
-  const keys = await openKeys(input);
+  const { keys } = await openDaemonKeys(input);
   const environments = await runner.environment();
   await keys.setEnvironments(environments);
   const environment = environmentRefusal(input, environments);
@@ -216,25 +214,6 @@ async function keyFiles(
   await keys.trackUntracked();
   keys.writeSeen();
   return { closures, report };
-}
-
-/** The daemon's keys of this worktree, over the job's store, bootstrapped as at a daemon's start. */
-async function openKeys(input: CiExportInput): Promise<WorktreeKeys> {
-  const { root, worktreeId, store, policy, squealVersion, env } = input;
-  const objectFormat = await readObjectFormat(root);
-  const keys = new WorktreeKeys({
-    root,
-    worktreeId,
-    store,
-    hasher: createFsHasher(root, objectFormat),
-    objectFormat,
-    policy,
-    squealVersion,
-    env,
-    onExtraFiles: () => {},
-  });
-  await keys.bootstrap(() => readHead(root));
-  return keys;
 }
 
 /**
