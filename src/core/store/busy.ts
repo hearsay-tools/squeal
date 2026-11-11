@@ -1,4 +1,6 @@
+import { setTimeout as sleep } from "node:timers/promises";
 import type { EpochMs } from "../types/common.js";
+import { isBusy, withBusySlice } from "./connection.js";
 
 /**
  * How long a write of a reconciliation pass or of the daemon's timers waits
@@ -17,6 +19,50 @@ export function busyBackoffMs(attempt: number): number {
 }
 
 const BACKOFF_MS = [0, 100, 250] as const;
+
+/** How a write a busy store refused is tried again (`retryWhileBusy`). */
+export interface BusyRetry {
+  /** Each try's writes wait at most this long for a busy store; absent: the store's own wait. */
+  readonly sliceMs?: number | undefined;
+  /** Where the wait is told: `key` waits, named `what`, from its first refusal until it lands. */
+  readonly waits?: BusyWaits | undefined;
+  readonly key: string;
+  readonly what: string;
+  /** True once the caller is gone: a refusal is thrown, not tried again. */
+  readonly stopped: () => boolean;
+}
+
+/**
+ * Spec 021 D2 (row 021-08): `attempt`, tried again while a busy store
+ * refuses it. Each try's writes wait at most `sliceMs`, so the event loop
+ * is never held longer, and the next try follows `busyBackoffMs`. A busy
+ * store refuses `BEGIN IMMEDIATE` before its transaction writes anything;
+ * what a refused try changed in memory before it is the caller's to make
+ * good at the next try (`attempt`'s `n` above 0). Any other error, or a
+ * refusal once `stopped`, is thrown.
+ */
+export async function retryWhileBusy<T>(
+  attempt: (n: number) => Promise<T>,
+  retry: BusyRetry,
+): Promise<T> {
+  const { sliceMs, waits, key } = retry;
+  for (let n = 0; ; n++) {
+    try {
+      const result = await (sliceMs === undefined
+        ? attempt(n)
+        : withBusySlice(sliceMs, () => attempt(n)));
+      waits?.ran(key);
+      return result;
+    } catch (error) {
+      if (!isBusy(error) || retry.stopped()) {
+        waits?.abandoned(key);
+        throw error;
+      }
+      waits?.waiting(key, retry.what);
+    }
+    await sleep(busyBackoffMs(n));
+  }
+}
 
 /**
  * What waits for a busy store, as one episode: from the first write that
