@@ -1,8 +1,7 @@
-import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import type { NamedPart } from "../../ci/export-check.js";
 import { hereOf, inputsOfReadsHere, uncertified } from "../../ci/inputs.js";
-import { PART_PREFIX, type Part, type PartFile, partRecord, readPart } from "../../ci/parts.js";
+import { type Part, type PartFile, partRecord } from "../../ci/parts.js";
 import { compare } from "../../fs/compare.js";
 import { hashFile, type ObjectFormat } from "../../hash/blob.js";
 import { readObjectFormat } from "../../hash/git-index.js";
@@ -49,27 +48,6 @@ export interface PartsOptions {
   readonly environment: GateEnvironment;
   /** Why parts give no evidence, told once per reason. */
   readonly note?: (text: string) => void;
-}
-
-/**
- * The parts in each of `dirs`, by file name; or why they cannot be read, a
- * setup error (D1): a directory that is missing or holds no part, or a part
- * that does not read.
- */
-export function readPartsIn(dirs: readonly AbsolutePath[]): NamedPart[] | string {
-  const parts: NamedPart[] = [];
-  for (const dir of dirs) {
-    if (!existsSync(dir)) return `no directory ${dir}`;
-    const names = readdirSync(dir).filter((n) => n.startsWith(PART_PREFIX) && n.endsWith(".json"));
-    if (names.length === 0) return `no part (${PART_PREFIX}*.json) in ${dir}`;
-    for (const name of names.sort(compare)) {
-      const file = join(dir, name);
-      const part = readPart(file);
-      if (typeof part === "string") return part;
-      parts.push({ file, part });
-    }
-  }
-  return parts;
 }
 
 /**

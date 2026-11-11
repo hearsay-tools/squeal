@@ -1,11 +1,13 @@
 import { randomUUID } from "node:crypto";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { CoverageRecord, CoverageSource } from "../code/coverage/types.js";
+import { compare } from "../fs/compare.js";
 import { configFieldHash, type EnvironmentDescriptor } from "../keys/environment-descriptor.js";
 import type { ExportSource } from "../store/imports.js";
 import type { AbsolutePath, EpochMs, ProjectName, RelativePath } from "../types/common.js";
 import type { ObservedInputs } from "../types/runner.js";
+import type { NamedPart } from "./export-check.js";
 import type { InputEvidence } from "./inputs.js";
 
 /*
@@ -267,6 +269,28 @@ export function readPart(file: AbsolutePath): Part | string {
     return `${file}: a part without evidence`;
   }
   return value as Part;
+}
+
+/**
+ * The parts in each of `dirs`, by file name; or why they cannot be read: a
+ * directory that is missing or holds no part (a shard's missing upload,
+ * review of 0.1.421 B3), or a part that does not read. `ci export` and
+ * `squeal code --parts` (spec 020 D13.2) read them alike.
+ */
+export function readPartsIn(dirs: readonly AbsolutePath[]): NamedPart[] | string {
+  const parts: NamedPart[] = [];
+  for (const dir of dirs) {
+    if (!existsSync(dir)) return `no directory ${dir}`;
+    const names = readdirSync(dir).filter((n) => n.startsWith(PART_PREFIX) && n.endsWith(".json"));
+    if (names.length === 0) return `no part (${PART_PREFIX}*.json) in ${dir}`;
+    for (const name of names.sort(compare)) {
+      const file = join(dir, name);
+      const part = readPart(file);
+      if (typeof part === "string") return part;
+      parts.push({ file, part });
+    }
+  }
+  return parts;
 }
 
 /**
