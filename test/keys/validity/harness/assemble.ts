@@ -73,11 +73,13 @@ export async function assemble(input: AssembleInput, scratch: string): Promise<C
         const report = {
           ...REPORT,
           completedFiles: input.runtime.freshObserved.map(({ path }) => ({ project: "", path })),
-          observed: input.runtime.freshObserved.map(({ path, paths, modules }) => ({
-            testFile: { project: "", path },
-            paths,
-            directories: [],
-            ...(modules === undefined ? {} : { modules }),
+          observed: input.runtime.freshObserved.map((o) => ({
+            testFile: { project: "", path: o.path },
+            paths: o.paths,
+            directories: o.directories ?? [],
+            ...(o.recursive === undefined ? {} : { recursive: o.recursive }),
+            ...(o.written === undefined ? {} : { written: o.written }),
+            ...(o.modules === undefined ? {} : { modules: o.modules }),
           })),
         };
         const growth = await observedGrowth({ root, keys }, report, keys.beginRun());

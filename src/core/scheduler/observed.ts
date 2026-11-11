@@ -1,5 +1,4 @@
-import { runGit, splitNul } from "../fs/git.js";
-import { GIT_ENTRY, Listings, listedDirectory, listingPath } from "../keys/observed.js";
+import { GIT_ENTRY, listedDirectory, listingPath } from "../keys/observed.js";
 import { testFileId } from "../keys/reverse-index.js";
 import type { AbsolutePath, RelativePath } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
@@ -32,7 +31,7 @@ export interface ObservedGrowth {
 /**
  * Prepares a tier's observations for `recordTier`, outside the lock: per
  * completed file (by `testFileId`), the inputs the runner observed beyond the
- * file's closure (`observedInputs`), with what other worktrees stored
+ * file's closure (`inputsOfReads`), with what other worktrees stored
  * meanwhile (D3, D5 as amended). A path git ignores is kept, and watched as
  * an extra file, unless it is the run's own scratch. Every file path
  * is hashed into the stat cache, so the keys `recordTier` computes have no
@@ -63,9 +62,8 @@ export async function observedGrowth(
     closure: new Set(keys.index.closure(observed.testFile)?.paths ?? []),
     observed,
   }));
-  const { inputs, ignored } = await observedInputs(context.root, reads, (directory) =>
-    keys.listingsBelow(directory),
-  );
+  const below = (directory: RelativePath) => keys.listingsBelow(directory);
+  const { inputs, ignored } = await inputsOfReads(context.root, reads, below);
   const tracked: RelativePath[] = [];
   const grown: { testFile: TestFileRef; add: RelativePath[]; growth: RelativePath[] }[] = [];
   for (const [at, { observed, closure }] of reads.entries()) {
@@ -129,28 +127,25 @@ export type ListingsBelow = (directory: RelativePath) => readonly RelativePath[]
  * (`linkTargets`, task 001-148); each listing, a recursive listing as the
  * listing of each directory below it (`below`; B5, task 001-134); and none
  * of the run's own scratch, a git-ignored path below a directory it wrote,
- * created or removed (`scratchOf`, 016 D4). `below` absent: the listings of
- * the files git does not ignore now (`listingsBelowHere`), for a caller with
- * no worktree keys, the gate's `--parts` (spec 020 D13.2, row 020-20). Reads
- * links and asks git once for all of `reads`; changes nothing. `ignored`:
- * the inputs git ignores, a listing by its directory.
+ * created or removed (`scratchOf`, 016 D4). The daemon's record and the
+ * gate's `--parts` (`inputsOfReadsHere` in `ci/inputs.ts`; spec 020 D13.2,
+ * row 020-20) both key by it. Reads links and asks git once for all of `reads`; changes
+ * nothing. `ignored`: the inputs git ignores, a listing by its directory.
  */
-export async function observedInputs(
+export async function inputsOfReads(
   root: AbsolutePath,
   reads: readonly ObservedRead[],
-  below?: ListingsBelow,
+  below: ListingsBelow,
 ): Promise<{
   readonly inputs: readonly RelativePath[][];
   readonly ignored: ReadonlySet<RelativePath>;
 }> {
-  const recursive = reads.flatMap((r) => r.observed.recursive ?? []);
-  const listings = below ?? (await listingsBelowHere(root, recursive));
   const candidates = new Set<RelativePath>();
   const fresh: RelativePath[][] = [];
   for (const { closure, observed } of reads) {
     const listed = new Set(observed.directories.map(listingPath));
     for (const directory of observed.recursive ?? []) {
-      for (const path of listings(directory)) listed.add(path);
+      for (const path of below(directory)) listed.add(path);
     }
     const read = observed.paths.filter((path) => !closure.has(path));
     const targets = await linkTargets(root, read);
@@ -169,27 +164,6 @@ export async function observedInputs(
     return (fresh[at] ?? []).filter((path) => !scratch(listedDirectory(path) ?? path));
   });
   return { inputs, ignored };
-}
-
-/**
- * `ListingsBelow` over the files git does not ignore below `directories`,
- * as the daemon's keys list files (`WorktreeKeys.bootstrap`): tracked and
- * untracked, a deleted one not. No git call when `directories` is empty.
- */
-export async function listingsBelowHere(
-  root: AbsolutePath,
-  directories: readonly RelativePath[],
-): Promise<ListingsBelow> {
-  if (directories.length === 0) return (directory) => [listingPath(directory)];
-  const specs = ["--", ...new Set(directories.map((d) => (d === "" ? "." : d)))];
-  const [listed, deleted] = await Promise.all([
-    runGit(root, ["ls-files", "-z", "--cached", "--others", "--exclude-standard", ...specs]),
-    runGit(root, ["ls-files", "-z", "--deleted", ...specs]),
-  ]);
-  const gone = new Set(splitNul(deleted));
-  const files = splitNul(listed).filter((path) => !gone.has(path));
-  const listings = new Listings(() => files, root);
-  return (directory) => listings.below(directory);
 }
 
 /**
