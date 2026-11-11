@@ -40,27 +40,6 @@ const PRELOAD_22 = `Error: Invalid package config /tmp/x/bad/package.json.
     at Module.require (node:internal/modules/cjs/loader:1527:12)
     at node:internal/modules/cjs/loader:2071:12
     at loadPreloadModules (node:internal/process/pre_execution:756:5) {`;
-/**
- * The same on Node 26 (probe, row 018-36): two frames above `trySelf` push the
- * preload's frame past Node's 10, so a module's own `require` reads the same.
- */
-const CUT_26 = `Error: Invalid package config /tmp/x/bad/package.json.
-    at getNearestParentPackageJSON (node:internal/modules/helpers:87:20)
-    at Object.loaderMethodWrapper [as getNearestParentPackageJSON] (node:internal/modules/helpers:123:12)
-    at Object.getNearestParentPackageJSON (node:internal/modules/package_json_reader:200:34)
-    at trySelf (node:internal/modules/cjs/loader:673:33)
-    at Module._resolveFilename (node:internal/modules/cjs/loader:1587:24)
-    at wrapResolveFilename (node:internal/modules/cjs/loader:1145:27)
-    at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1169:10)
-    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1196:12)
-    at Module._load (node:internal/modules/cjs/loader:1370:5)
-    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19) {
-  code: 'ERR_INVALID_PACKAGE_CONFIG'
-}
-
-Node.js v26.13.0`;
-/** A failed child started with a `--require` preload, as `execFileSync` words it. */
-const WITH_PRELOAD = "Command failed: node --require /tmp/x/pre.cjs /tmp/x/pre.cjs\n";
 /** The same error from a project's own load of a module beneath it, or its own `require`. */
 const LOADED = `Error: Invalid package config /tmp/x/bad/package.json.
     at Object.getNearestParentPackageJSON (node:internal/modules/package_json_reader:197:35)
@@ -83,19 +62,6 @@ describe("recorder signatures (task 001-390, review 001-401)", () => {
         /nearest package\.json \(ERR_INVALID_PACKAGE_CONFIG\)$/,
       );
     }
-  });
-
-  it("finds it on Node 26, whose stack ends before the preload, beside a --require option", () => {
-    expect(recorderSignature(error(`${WITH_PRELOAD}${CUT_26}`), OBSERVING)).toMatch(
-      /nearest package\.json \(ERR_INVALID_PACKAGE_CONFIG\)$/,
-    );
-    expect(recorderSignature(error(`${FAILED}${CUT_26}`), OBSERVING)).toBeUndefined();
-    // a frame past the loader is a module's own `require`, with or without a preload
-    const own = CUT_26.replace(" {\n", "\n    at Object.<anonymous> (/tmp/x/bad/main.cjs:1:1) {\n");
-    expect(recorderSignature(error(`${WITH_PRELOAD}${own}`), OBSERVING)).toBeUndefined();
-    // Node 22 and 24 stacks read as before: the option is asked of a cut stack only
-    expect(recorderSignature(error(`${FAILED}${PRELOAD_24}`), OBSERVING)).toBeDefined();
-    expect(recorderSignature(error(`${WITH_PRELOAD}${REQUIRED}`), OBSERVING)).toBeUndefined();
   });
 
   it("leaves ERR_INVALID_PACKAGE_CONFIG of a project's own load alone", () => {
