@@ -22,6 +22,7 @@ import { createVitestAdapter } from "../runners/vitest/index.js";
 import { CODE_GATE_USAGE, parseGateArgs } from "./code-gate-args.js";
 import { exceptionsOf } from "./code-gate-exceptions.js";
 import { preRunOptions } from "./code-gate-prerun.js";
+import { relaunchGate, runAsChild, takeReportFd } from "./code-gate-relaunch.js";
 import { collectWithStores } from "./code-gate-stored.js";
 import { formatGateReport } from "./code-gate-text.js";
 import type { CliIo } from "./main.js";
@@ -123,12 +124,34 @@ const quoted = (arg: string) =>
  * evidence `ci record`'s parts certify here (D13.2), or with results and a
  * record at its key in the stores (D11.7), does not run. Policy problems
  * and the runners' notes go to stderr; stdout holds the report alone.
+ * D14.4 (#182): with `--json` in the CLI process (`io.relaunch`), the gate
+ * runs in a child whose stdout is this process's stderr, so nothing a test
+ * setup or its processes write reaches stdout. The child is marked and
+ * never does so again.
  */
 export async function codeGateCommand(
   args: readonly string[],
   io: CliIo,
   adapters: GateAdapters = ADAPTERS,
 ): Promise<number> {
+  const reportFd = takeReportFd();
+  if (reportFd !== undefined && reportFd !== null) {
+    return runAsChild(reportFd, (stdout) => gate(args, { ...io, stdout }, adapters));
+  }
+  if (reportFd === undefined && io.relaunch !== undefined && wantsJson(args)) {
+    return relaunchGate(io.relaunch, args, io);
+  }
+  return gate(args, io, adapters);
+}
+
+/** Whether `args` parse, with `--json`. */
+function wantsJson(args: readonly string[]): boolean {
+  const parsed = parseGateArgs(args);
+  return !("error" in parsed) && parsed.json;
+}
+
+/** The gate in this process: `codeGateCommand`'s work, its report written to `io.stdout`. */
+async function gate(args: readonly string[], io: CliIo, adapters: GateAdapters): Promise<number> {
   const fail = (text: string, usage = false) => {
     io.stderr(`squeal code: ${text}\n${usage ? `\nUsage: ${CODE_GATE_USAGE}\n` : ""}`);
     return 2;
