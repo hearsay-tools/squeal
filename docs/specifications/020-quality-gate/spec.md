@@ -219,7 +219,7 @@ Rows: 020-10a (items 1 to 5) now, beside wave 2. 020-10b (items 6 and 7) waits f
    - Exports (`squeal-results/1`), keys and `KEY_FORMAT_VERSION` do not change. Every published export stays importable. Imported files keep no coverage; records travel in parts only.
    - Format 4 part readers accept format 3, and a gate given format 3 parts runs every selected file.
    - The runtime asset and the tag clone both hold `dist/coverage/provider.mjs` and `dist/cli/coverage-map.mjs`.
-4. **Export of `node:inspector` files** (decided by 018's coordinator 3739e45a, 2026-11-10; a coordinator decision for 018, not the human's): when a shard ran with the provider, `ci export` leaves out a test file whose closure imports `node:inspector`. D10 of 018 lets an imported pass cross a coverage difference. A test that uses `node:inspector` itself is the one case where the provider can change the outcome. Such files are rare.
+4. **Export of `node:inspector` files** (decided by 018's coordinator 3739e45a, 2026-11-10; a coordinator decision for 018, not the human's; amended 2026-11-12, D19.6): when a shard ran with any coverage provider, the project's or Squeal's, `ci export` leaves out a test file whose closure imports `node:inspector`. D10 of 018 lets an imported pass cross a coverage difference. A test that uses `node:inspector` itself is the one case where the provider can change the outcome. Such files are rare.
 5. **Kept from 018-23:** the read-time evidence rules in `vitest-ci.cjs`, `descriptors.cjs` and `children.cjs` stay as they are, for example "a foreign `SQUEAL_CI_RECORD` child withholds every path".
 6. **Spec 018 changes** (approved through row 020-08 by the human, 2026-11-10): D8's "No coverage provider is added" and the non-goal "Squeal's coverage provider in CI" are reversed. `ci record --help` says when the provider is added and when it is not. D10's coverage tolerance stays.
 7. **Cost:** +22% CPU on 30 short files at load 24 to 35, against 015's +8%. A real shard measurement is row 020-08c, a cezar proposal that needs the human's approval.
@@ -280,6 +280,16 @@ When to call evidence complete does not change: an unfinished loader still rules
 2. Runners now run in ascending order of their D17.1 estimate. A runner with an unknown estimate counts by its file count at the median known duration; with no store at all, the runner with fewer files runs first. Ties keep today's order (Vitest, then node:test entries in config order).
 3. Each runner's own files keep D17.2's order. The order across runners changes no verdict and no rule: `QUALITY_POLICY_VERSION` stays.
 4. The pre-run print lists runners in the order they will run.
+
+### D19. Records beside the project's coverage (row 020-26, #189; designed 2026-11-12 from `research/ci-coverage-both.md`; the human, 2026-11-12: "Build it", proof "Yes, after release")
+
+1. **Wrap, do not replace.** When the run's resolved config has `coverage.enabled` with `provider: "v8"`, `ci record` adds no provider. It wraps the project provider's `onAfterSuiteRun` once the provider exists, calls the original first and returns its result, and maps each batch with today's `coverage.cjs`. An error of Squeal's is a note in the part, never the run's. The project's report, reporters, thresholds and exit code stay the project's own.
+2. **Tested versions only.** Squeal records from the project's provider only on the Vitest minors it has tested: 4.1 and 5.0 today. On any other Vitest version, and with an Istanbul, custom or browser-mode provider, `ci record` yields as before (D13.1), and the part names why. Adding a version is one tested change.
+3. **Rules kept and added.** Kept: whole file, no name filter, finished, no `node:inspector` closure (D13.1). Added: no record from an `isolate: false` project, and none from a payload with child-process entries (`isExtendedContext`).
+4. **The part header** names which collector made the records: `squeal` (Squeal's provider), `v8` (the project's provider), or none with the yield reason. `ci record --help` says when each applies.
+5. **Readers.** The gate (`--parts`) and `ci export` reuse a part collected by `v8` under the same rule as a `squeal` part: same record and provider versions, same environment (D13.2). An unknown collector is not reused.
+6. **D13.4 amended.** `ci export` leaves out a test file whose closure imports `node:inspector` whenever the shard ran with any coverage provider, the project's or Squeal's (spec 018's coordinator 3739e45a, 2026-11-12).
+7. **Not decided here:** browser-mode V8 coverage, a batch of several files in one worker, and the tolerance between two reports of the same run. The Cezar proof (020-26c) runs a second provider-only run as the control.
 
 ## Testing
 
