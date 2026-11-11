@@ -285,6 +285,12 @@ export interface CliIo {
   readonly now?: () => EpochMs;
   /** Environment, read for the harness shell's session (`statusCommand`, `waitConsumer`). Default `process.env`. */
   readonly env?: Readonly<Record<string, string | undefined>>;
+  /**
+   * The command that starts this CLI again in a process of its own: Node,
+   * its flags and the script. Given only by the process entry, whose
+   * `stdout` and `stderr` are the process's own (spec 020 D14.4, #182).
+   */
+  readonly relaunch?: readonly string[];
 }
 
 /**
