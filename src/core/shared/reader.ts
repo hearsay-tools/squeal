@@ -19,7 +19,7 @@ import { fetchExport } from "./fetch.js";
 import { failureOf, networkEnv } from "./git.js";
 import { blobsAt, HEAD_TIMEOUT_MS, headOf } from "./local.js";
 import { refOf, remoteExports } from "./refs.js";
-import { writeSquealMismatch } from "./refused.js";
+import { readSquealMismatch, writeSquealMismatch } from "./refused.js";
 
 /*
  * Spec 018 D14: with `shared.ref` set, the daemon imports CI's export of the
@@ -161,8 +161,15 @@ class Reader implements SharedReader {
     const candidates = await this.#live((signal) => firstParents(root, start, signal));
     const held = new Set(listImports(this.o.store).map((i) => i.header.commit));
     const nearestHeld = candidates.findIndex((c) => held.has(c));
-    if (nearestHeld === 0) return;
     const reach = nearestHeld === -1 ? candidates.length : nearestHeld;
+    // D21: a refusal holds only while its export is nearer than every held
+    // import on this line; a held import nearer to the start point, from
+    // this worktree or another one sharing the store, is the one in use.
+    const refused = readSquealMismatch(this.o.store, this.o.worktreeId);
+    if (refused !== null && !candidates.slice(0, reach).includes(refused.commit)) {
+      writeSquealMismatch(this.o.store, this.o.worktreeId, null);
+    }
+    if (nearestHeld === 0) return;
 
     const env = await this.#live((signal) => networkEnv(root, signal));
     const listMs = this.o.listTimeoutMs ?? LIST_TIMEOUT_MS;
