@@ -18762,8 +18762,11 @@ function omittedTestFilesMetaKey(worktreeId) {
 async function listTestFilesOf(context, bound) {
   const { runner, store, worktreeId } = context;
   const listed7 = await bound.call(() => runner.testFiles());
-  store.meta.set(omittedTestFilesMetaKey(worktreeId), String(runner.omittedTestFiles?.() ?? 0));
+  recordOmittedTestFiles(store, worktreeId, runner.omittedTestFiles?.() ?? 0);
   return listed7;
+}
+function recordOmittedTestFiles(store, worktreeId, count3) {
+  store.meta.set(omittedTestFilesMetaKey(worktreeId), String(count3));
 }
 var init_omitted_test_files = __esm({
   "src/core/scheduler/omitted-test-files.ts"() {
@@ -18871,20 +18874,66 @@ function reloadPolicy(context, ledger, changes) {
   }
   return applied;
 }
-async function retryRunner(context, ledger) {
-  if (!ledger.broken) return;
+async function fetchRunnerRetry(context, ledger) {
+  if (!ledger.broken) return null;
   const bound = runnerPartBound(context);
   const failures = /* @__PURE__ */ new Map();
-  const touched = (await readEnvironments(context, failures, bound)).map((c) => c.testFile);
-  const listed7 = await listTestFiles(context, ledger, bound);
-  const blocked = [...ledger.files.values()].filter((f) => f.blocked !== null).map((f) => f.ref);
-  const refs2 = [...listed7, ...blocked];
-  touched.push(
-    ...(await resolveClosures(context, refs2, failures, bound)).map((c) => c.testFile),
-    ...refs2
+  const environments2 = await tryRunner(
+    context,
+    "environment",
+    () => bound.call(() => context.runner.environment()),
+    (reason2) => failed(failures, null, reason2)
   );
+  let omitted = 0;
+  const listed7 = await tryRunner(context, "testFiles", async () => {
+    const files5 = await bound.call(() => context.runner.testFiles());
+    omitted = context.runner.omittedTestFiles?.() ?? 0;
+    return files5;
+  });
+  const kept4 = listed7 === null ? null : new Set(listed7.map(testFileId));
+  const blocked = [...ledger.files.values()].filter((file) => file.blocked !== null && (kept4 === null || kept4.has(file.id))).map((file) => file.ref);
+  const refs2 = [...(listed7 ?? []).filter((ref3) => !context.keys.index.closure(ref3)), ...blocked];
+  const closures = [];
+  for (const ref3 of refs2) {
+    const closure = await resolveClosure(
+      context,
+      ref3,
+      bound,
+      (reason2) => failed(failures, ref3.project, reason2)
+    );
+    if (closure !== null) closures.push(closure);
+  }
+  return {
+    failures,
+    environments: environments2,
+    listed: listed7,
+    omitted: listed7 === null ? null : omitted,
+    refs: refs2,
+    closures
+  };
+}
+async function keyRunnerRetry(context, retry2, retouched = []) {
+  const { keys } = context;
+  const environments2 = retry2.environments;
+  const touched = (environments2 === null ? keys.unverifyRuntime([null]) : await keys.setEnvironments(environments2)).map((change2) => change2.testFile);
+  for (const closure of retry2.closures) {
+    touched.push(...keys.setClosure(closure).map((change2) => change2.testFile));
+  }
+  touched.push(...(await keys.trackUntracked()).map((change2) => change2.testFile));
+  return [...touched, ...retry2.refs, ...retouched];
+}
+function storeRunnerRetry(context, ledger, retry2, touched) {
+  if (retry2.environments !== null) {
+    recordImportGraph(context, { environments: retry2.environments });
+  }
+  if (retry2.omitted !== null) {
+    recordOmittedTestFiles(context.store, context.worktreeId, retry2.omitted);
+  }
+  applyListing(context, ledger, retry2.listed);
+  const resolved2 = retry2.closures.map((closure) => closure.testFile);
+  storeClosures(context, resolved2, { closures: retry2.closures });
   ledger.settle(touched, NOTHING_CHANGED);
-  settleFailures(ledger, failures, true, NOTHING_CHANGED);
+  settleFailures(ledger, retry2.failures, true, NOTHING_CHANGED);
 }
 async function readEnvironments(context, failures, bound) {
   const read5 = () => context.runner.environment();
@@ -18898,10 +18947,6 @@ async function readEnvironments(context, failures, bound) {
   const changes = await context.keys.setEnvironments(environments2);
   recordImportGraph(context, { environments: environments2 });
   return changes;
-}
-async function listTestFiles(context, ledger, bound) {
-  const listed7 = await tryRunner(context, "testFiles", () => listTestFilesOf(context, bound));
-  return applyListing(context, ledger, listed7);
 }
 function applyListing(context, ledger, listed7) {
   ledger.listingFailed = listed7 === null;
@@ -24447,6 +24492,18 @@ var init_keying = __esm({
       #environmentsRead = false;
       /** Each project's environment hash as last stored with its parts (018 D1). */
       #recordedEnvironments = null;
+      /**
+       * Spec 021 D2: what each project observed before a `setEnvironments` a
+       * busy store refused, which had replaced the environments already; the
+       * call that tries again compares with it, not with what the refused one set.
+       */
+      #observedBefore = null;
+      /**
+       * Spec 021 D2: paths hashed into the cache whose write a busy store
+       * refused; the next `track` hashes them again, writes them and judges
+       * whether git ignores them, as the refused one would have.
+       */
+      #unstored = /* @__PURE__ */ new Set();
       #lockfiles;
       /** How each project's installed dependencies enter its keys (D3, task 001-105). */
       #dependencies = /* @__PURE__ */ new Map();
@@ -24552,9 +24609,8 @@ var init_keying = __esm({
         const { squealVersion: squealVersion2, env } = this.options;
         const policy = this.#policy;
         const environments2 = this.#withStartup(read5);
-        const observedBefore = new Map(
-          [...this.#environments.keys()].map((p) => [p, this.observes(p)])
-        );
+        const observedBefore = this.#observedBefore ?? new Map([...this.#environments.keys()].map((p) => [p, this.observes(p)]));
+        this.#observedBefore = observedBefore;
         this.#environments.clear();
         this.#environmentFiles.clear();
         for (const environment of environments2) {
@@ -24601,11 +24657,13 @@ var init_keying = __esm({
           },
           readAsOne
         );
-        return [
+        const changes = [
           ...installed,
           ...this.#reobserve(observedBefore),
           ...[...this.#runnerClosures.values()].filter((r) => this.runtimeSelected(r.testFile)).flatMap((r) => this.setClosure(r, this.#saved.has(testFileId(r.testFile))))
         ];
+        this.#observedBefore = null;
+        return changes;
       }
       /** 018 D1: stores each project's hash with its parts when one moved since the last record. */
       #recordEnvironments(described) {
@@ -25010,7 +25068,12 @@ var init_keying = __esm({
         );
         this.#untracked.clear();
         for (const path of paths) if (this.#dropped.has(path)) this.#inherit(path);
-        if (paths.length > 0) await this.track(paths);
+        try {
+          if (paths.length > 0) await this.track(paths);
+        } catch (error) {
+          for (const path of paths) this.#untracked.add(path);
+          throw error;
+        }
         this.#release();
         return paths.length === 0 ? [] : this.index.rekey(paths);
       }
@@ -25043,13 +25106,13 @@ var init_keying = __esm({
         const unnamed = [...this.#unjudged].filter(
           (path) => !named4.has(path) && this.index.reverse.referencing([path]).length === 0 && !(this.#runtime.candidates().includes(path) && this.runtimeUnresolved().length > 0)
         );
+        if (unnamed.length > 0) this.#drop(unnamed);
         this.#unjudged.clear();
         if (unnamed.length === 0) return;
         for (const path of unnamed) {
           this.#inherited.delete(path);
           this.#extra.delete(path);
         }
-        this.#drop(unnamed);
         this.options.onExtraFiles(this.extraFiles());
       }
       /**
@@ -25072,11 +25135,19 @@ var init_keying = __esm({
       /** Hashes the untracked ones among `paths`; the gitignored ones become extra files. */
       async track(paths) {
         const untracked = [...new Set(paths)].filter(
-          (path) => this.cache.hashOf(path) === void 0 || this.#dropped.has(path)
+          (path) => this.cache.hashOf(path) === void 0 || this.#dropped.has(path) || this.#unstored.has(path)
         );
         if (untracked.length === 0) return;
-        await this.#seed(untracked);
-        for (const path of untracked) this.#dropped.delete(path);
+        try {
+          await this.#seed(untracked);
+        } catch (error) {
+          for (const path of untracked) this.#unstored.add(path);
+          throw error;
+        }
+        for (const path of untracked) {
+          this.#dropped.delete(path);
+          this.#unstored.delete(path);
+        }
         const ignored = await checkIgnored(this.options.root, untracked);
         const before4 = this.#extra.size;
         for (const path of ignored) {
@@ -33510,7 +33581,7 @@ import { join as join69, relative as relative7, resolve as resolve19, sep as sep
 function projectCwd(root, project) {
   return resolve19(root, project.cwd ?? ".");
 }
-function listTestFiles2(root, project) {
+function listTestFiles(root, project) {
   const cwd = projectCwd(root, project);
   const include = createInputMatcher(project.include);
   const exclude = createInputMatcher(project.exclude ?? []);
@@ -50629,7 +50700,7 @@ import { basename as basename18, join as join77 } from "node:path";
 async function openProject(context) {
   const { project, root, cwd, options, note } = context;
   const ref3 = (path) => ({ project: project.name, path });
-  let files5 = listTestFiles2(root, project);
+  let files5 = listTestFiles(root, project);
   const argv = [...nodeOptionsOf(project), ...project.argv];
   const [graph, firstProbe] = await Promise.all([
     createNodeTestGraph({ root, cwd, argv, testFiles: files5 }),
@@ -50666,7 +50737,7 @@ async function openProject(context) {
     async invalidate(paths) {
       graph.invalidate(paths);
       if (paths.some((p) => p.kind !== "change")) {
-        const next = listTestFiles2(root, project);
+        const next = listTestFiles(root, project);
         if (!sameList(next, files5)) {
           files5 = next;
           graph.setTestFiles(files5);
@@ -54117,49 +54188,6 @@ var init_record2 = __esm({
   }
 });
 
-// src/core/scheduler/request-progress.ts
-var RequestProgress;
-var init_request_progress = __esm({
-  "src/core/scheduler/request-progress.ts"() {
-    "use strict";
-    RequestProgress = class {
-      /** By `FileState.id`: the asked files still queued or running. */
-      #open = /* @__PURE__ */ new Map();
-      #ended = 0;
-      /** How many ends of asked files there were, a running count. */
-      get count() {
-        return this.#ended;
-      }
-      /** A request asked for `files`: those queued or running are asked until they end. */
-      ask(files5) {
-        for (const file of files5) if (file.phase !== null) this.#open.set(file.id, file);
-      }
-      /**
-       * `file` got a result, from a run or a lookup, or was marked `unknown`,
-       * and the requests' own records accepted it (`FileEnds.ended`; spec 001
-       * D7: a result at any key, a forced request's only from its own run): an
-       * asked file ends, once. What queues it again after is not the request's.
-       */
-      ended(file) {
-        if (this.#open.get(file.id) !== file) return;
-        this.#open.delete(file.id);
-        this.#ended += 1;
-      }
-      /**
-       * A commit closed a round of the ledger's work: an asked file neither
-       * queued nor running, or gone from `files`, left with no end. Within the
-       * round a run's end may put its file back in the queue (a discard, a
-       * split), which is the request's work still.
-       */
-      committed(files5) {
-        for (const [id, file] of this.#open) {
-          if (files5.get(id) !== file || file.phase === null) this.#open.delete(id);
-        }
-      }
-    };
-  }
-});
-
 // src/core/keys/resolution.ts
 import { posix as posix12 } from "node:path";
 function closuresToReresolve(changes, index, isDeclaredInput) {
@@ -54442,6 +54470,49 @@ var init_refine_apply = __esm({
     init_imports_waiting();
     init_refinement();
     REFINE = "scheduler:refinement";
+  }
+});
+
+// src/core/scheduler/request-progress.ts
+var RequestProgress;
+var init_request_progress = __esm({
+  "src/core/scheduler/request-progress.ts"() {
+    "use strict";
+    RequestProgress = class {
+      /** By `FileState.id`: the asked files still queued or running. */
+      #open = /* @__PURE__ */ new Map();
+      #ended = 0;
+      /** How many ends of asked files there were, a running count. */
+      get count() {
+        return this.#ended;
+      }
+      /** A request asked for `files`: those queued or running are asked until they end. */
+      ask(files5) {
+        for (const file of files5) if (file.phase !== null) this.#open.set(file.id, file);
+      }
+      /**
+       * `file` got a result, from a run or a lookup, or was marked `unknown`,
+       * and the requests' own records accepted it (`FileEnds.ended`; spec 001
+       * D7: a result at any key, a forced request's only from its own run): an
+       * asked file ends, once. What queues it again after is not the request's.
+       */
+      ended(file) {
+        if (this.#open.get(file.id) !== file) return;
+        this.#open.delete(file.id);
+        this.#ended += 1;
+      }
+      /**
+       * A commit closed a round of the ledger's work: an asked file neither
+       * queued nor running, or gone from `files`, left with no end. Within the
+       * round a run's end may put its file back in the queue (a discard, a
+       * split), which is the request's work still.
+       */
+      committed(files5) {
+        for (const [id, file] of this.#open) {
+          if (files5.get(id) !== file || file.phase === null) this.#open.delete(id);
+        }
+      }
+    };
   }
 });
 
@@ -55780,6 +55851,7 @@ var init_scheduler2 = __esm({
     init_queue();
     init_quiet();
     init_record2();
+    init_refine_apply();
     init_request_progress();
     init_rerun();
     init_retries();
@@ -56306,10 +56378,18 @@ var init_scheduler2 = __esm({
         ) ?? await this.#runnerWork.afterTier(async () => {
           const { context, ledger } = this.#started();
           const abandon4 = this.#awaitingInstall || this.#reinstalled;
-          if (!abandon4) await retryRunner(context, ledger);
+          const retry2 = abandon4 ? null : await fetchRunnerRetry(context, ledger);
+          const touched = retry2 === null ? [] : await this.#request(
+            operation,
+            (n) => keyRunnerRetry(context, retry2, n === 0 ? [] : lagging(context, ledger))
+          );
           return this.#request(
             operation,
-            async () => this.#transact((_, held3) => abandon4 ? abandonFullSuite(held3) : queue(held3))
+            async () => this.#transact((_, held3) => {
+              if (abandon4) return abandonFullSuite(held3);
+              if (retry2 !== null) storeRunnerRetry(context, held3, retry2, touched);
+              return queue(held3);
+            })
           );
         }, `${operation} after the runner work`);
         this.#pump();
@@ -56915,15 +56995,15 @@ var init_scheduler2 = __esm({
         }
       }
       /**
-       * `once`, a socket request's write (`#transact`, or its pass), tried again
-       * while a busy store refuses it, a slice per try (spec 021 D2), with
-       * `busyWaits`; once without. A refusal once the scheduler closes or its
+       * `once`, a socket request's write (`#transact`, its pass, or a runner
+       * retry's keys), tried again while a busy store refuses it, a slice per
+       * try (spec 021 D2), with `busyWaits`; once without. `n` counts the tries. A refusal once the scheduler closes or its
        * daemon stops answers the request with an error that says the store was
        * busy, so no request waits past the daemon.
        */
       async #request(operation, once3) {
         const waits2 = this.options.busyWaits;
-        if (waits2 === void 0 || this.#busy === null) return once3();
+        if (waits2 === void 0 || this.#busy === null) return once3(0);
         try {
           return await retryWhileBusy(once3, {
             sliceMs: this.options.busySliceMs,
@@ -61487,7 +61567,7 @@ var init_discovery_defaults = __esm({
 // src/runners/pytest/adapter-files.ts
 import { existsSync as existsSync43, readdirSync as readdirSync35 } from "node:fs";
 import { basename as basename28, dirname as dirname45, join as join110, relative as relative19, sep as sep19 } from "node:path";
-function listTestFiles3(root, project, note) {
+function listTestFiles2(root, project, note) {
   const cwd = projectDir(root, project);
   const include = createInputMatcher(project.include);
   const exclude = createInputMatcher(project.exclude ?? []);
@@ -64329,7 +64409,7 @@ async function createPytestAdapter(project, options) {
   };
   let { dir: dir2, settings } = place2();
   let stale = false;
-  let files5 = isDirectory4(cwd) ? listTestFiles3(root, project, note) : [];
+  let files5 = isDirectory4(cwd) ? listTestFiles2(root, project, note) : [];
   let built = null;
   let failure2 = null;
   const announce = (env) => {
@@ -64398,7 +64478,7 @@ async function createPytestAdapter(project, options) {
     const config = settings.config === null ? null : toRelative(root, settings.config.path);
     const relist = built === null || rebuild || paths.some((p) => p.kind !== "change" || p.path === config);
     if (relist) {
-      const listed7 = isDirectory4(cwd) ? listTestFiles3(root, project, note) : [];
+      const listed7 = isDirectory4(cwd) ? listTestFiles2(root, project, note) : [];
       if (!sameList(listed7, files5)) {
         files5 = listed7;
         built?.graph.setTestFiles(files5);
@@ -91537,7 +91617,7 @@ async function readRepoFacts(root) {
     const value = readJson2(join144(root, path));
     if (isRecord(value)) manifests.push({ dir: posix16.dirname(path).replace(/^\.$/, ""), value });
   }
-  return { root, tracked, manifests, testFiles: listTestFiles4(root, tracked) };
+  return { root, tracked, manifests, testFiles: listTestFiles3(root, tracked) };
 }
 function readJson2(path) {
   try {
@@ -91596,7 +91676,7 @@ var VITEST_CONFIGS = ["vitest.config", "vite.config"].flatMap(
 );
 var DEFAULT_INCLUDE = ["**/*.{test,spec}.?(c|m)[jt]s?(x)"];
 var DEFAULT_EXCLUDE = ["**/node_modules/**", "**/dist/**"];
-function listTestFiles4(root, tracked) {
+function listTestFiles3(root, tracked) {
   const listed7 = withStatusStore(root, {}, ({ store }) => {
     const id = worktreeIdFor(root);
     const rows = store.testFileKeys.list(id);
