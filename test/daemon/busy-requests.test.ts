@@ -3,8 +3,8 @@ import { startDaemon } from "../../src/core/daemon/daemon.js";
 import type { DeskEvents } from "../../src/core/daemon/desk.js";
 import type { Held } from "../../src/core/daemon/run-group.js";
 import { storePaths } from "../../src/core/store/paths.js";
+import { longestGap, type ThreadLockHolder, threadLockHolder } from "../helpers/busy-store.js";
 import { createFixtureRepo, type FixtureRepo, SLOW } from "./helpers.js";
-import { type ThreadLockHolder, threadLockHolder } from "./thread-lock-holder.js";
 
 /*
  * Review 0.1.434, B2 (spec 021 D2, row 021-08): a socket request waited
@@ -65,23 +65,6 @@ function takeWhenHeld(holder: ThreadLockHolder, group: string): Held {
   return (by) => {
     if (!holder.taken && by?.kind === "scheduler" && by.operation === operation) holder.take();
   };
-}
-
-/** The longest the event loop stopped until `done` settled, by a 10 ms tick. */
-async function longestGap(done: Promise<unknown>): Promise<number> {
-  let last = Date.now();
-  let longest = 0;
-  const tick = setInterval(() => {
-    const now = Date.now();
-    longest = Math.max(longest, now - last);
-    last = now;
-  }, 10);
-  try {
-    await done.catch(() => {});
-  } finally {
-    clearInterval(tick);
-  }
-  return Math.max(longest, Date.now() - last);
 }
 
 describe("a socket request whose own write meets a busy store (review 0.1.434 B2)", SLOW, () => {
