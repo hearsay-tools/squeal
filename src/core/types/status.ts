@@ -713,7 +713,11 @@ export interface ImportStatus {
    */
   readonly currentFiles: number;
   readonly notCurrent: ImportNotCurrent;
-  /** D1's named differences, when any file's environment differs. */
+  /**
+   * D1's named differences, when any file's environment differs, less the
+   * fields D10 accepts for an imported pass (row 018-32): empty when those
+   * are all that differ.
+   */
   readonly environmentDifferences: readonly string[];
   /**
    * Spec 018 D19: present when a file's environment differs and the export
