@@ -140,7 +140,25 @@ function runLines(run: GateRunReport, budgetSeconds: number): string[] {
   return [...failed, ...late];
 }
 
-/** D1's verdict line: the verdict, what was judged against what, and the count of each state. */
+/**
+ * D14.3: each group the scope left out that held a selected file, and the
+ * flag that runs it; never "all tests".
+ */
+function leftOutText(report: GateReport): string {
+  const groups = (report.scope?.leftOut ?? []).filter((g) => g.selected > 0);
+  return groups
+    .map(({ name, at, selected, add }) => {
+      const one = selected === 1;
+      const files = `${plural(selected, "test file")} ${one ? "loads" : "load"} changed code`;
+      return ` ${name} (${at}) did not run: ${files}; add ${add} to run ${one ? "it" : "them"}.`;
+    })
+    .join("");
+}
+
+/**
+ * D1's verdict line: the verdict, what was judged against what, the count
+ * of each state, and what the scope left out (D14.3).
+ */
 function verdictLine(report: GateReport): string {
   const { counts, base } = report;
   const against = `against ${base.ref} (merge base ${base.commit.slice(0, 8)})`;
@@ -157,7 +175,8 @@ function verdictLine(report: GateReport): string {
     judged === 0
       ? `No function changed ${against}`
       : `${plural(judged, "changed function")} ${against}`;
-  return `Code gate: ${report.verdict}. ${what}${parts.length === 0 ? "" : `: ${parts.join(", ")}`}.`;
+  const tally = parts.length === 0 ? "" : `: ${parts.join(", ")}`;
+  return `Code gate: ${report.verdict}. ${what}${tally}.${leftOutText(report)}`;
 }
 
 /** The human rendering of a gate report; `json` is the command that prints it as JSON. */
