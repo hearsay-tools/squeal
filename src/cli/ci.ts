@@ -25,6 +25,7 @@ import {
   type RecordedRun,
   type RecordingCoverage,
   startRecording,
+  type VitestRecording,
   vitestResolves,
 } from "../runners/vitest/ci-record.js";
 import { ciExportCommand, EXPORT_USAGE } from "./ci-export.js";
@@ -108,23 +109,15 @@ async function record(args: RecordArgs, io: CliIo, deps: CiDeps): Promise<number
     say(`${why}; the command runs unchanged, nothing recorded`);
     return exitOf(await runCommand(args.command, cwd, env), say);
   };
-  const root = findWorktreeRoot(cwd);
-  if (root === null) return unchanged(`${cwd} is not inside a git worktree`);
-  if (!vitestResolves(root)) {
-    return unchanged(`only Vitest is supported, and vitest does not resolve from ${root}`);
+  // Spec 018 D20.2 (row 018-33): an error of Squeal's own before the command runs it unchanged.
+  let started: Started | string;
+  try {
+    started = await startFor(cwd, env, deps);
+  } catch (error) {
+    started = `Squeal could not start recording (${errorText(error)})`;
   }
-  const policy = readPolicy(root);
-  const recording = startRecording({
-    paths: new WorktreePaths(root),
-    env,
-    observe: policy.observe.runtimeInputs,
-    allowlist: policy.env.allowlist,
-    squealVersion: squealVersion(),
-    objectFormat: await readObjectFormat(root),
-    coverage: recordingCoverage(deps),
-    ...(deps.tempDir === undefined ? {} : { tempDir: deps.tempDir }),
-  });
-  if (typeof recording === "string") return unchanged(recording);
+  if (typeof started === "string") return unchanged(started);
+  const { root, recording } = started;
   try {
     const exit = exitOf(await runCommand(args.command, cwd, recording.env), say);
     const commandEnd = performance.now();
@@ -140,8 +133,46 @@ async function record(args: RecordArgs, io: CliIo, deps: CiDeps): Promise<number
     }
     return exit;
   } finally {
-    recording.close();
+    try {
+      recording.close();
+    } catch (error) {
+      say(`could not remove its temporary files: ${errorText(error)}`);
+    }
   }
+}
+
+interface Started {
+  readonly root: AbsolutePath;
+  readonly recording: VitestRecording;
+}
+
+/** The recording for a Vitest command in `cwd`, or why the command runs unchanged. */
+async function startFor(
+  cwd: string,
+  env: NodeJS.ProcessEnv,
+  deps: CiDeps,
+): Promise<Started | string> {
+  const root = findWorktreeRoot(cwd);
+  if (root === null) return `${cwd} is not inside a git worktree`;
+  if (!vitestResolves(root)) {
+    return `only Vitest is supported, and vitest does not resolve from ${root}`;
+  }
+  const policy = readPolicy(root);
+  const recording = startRecording({
+    paths: new WorktreePaths(root),
+    env,
+    observe: policy.observe.runtimeInputs,
+    allowlist: policy.env.allowlist,
+    squealVersion: squealVersion(),
+    objectFormat: await readObjectFormat(root),
+    coverage: recordingCoverage(deps),
+    ...(deps.tempDir === undefined ? {} : { tempDir: deps.tempDir }),
+  });
+  return typeof recording === "string" ? recording : { root, recording };
+}
+
+function errorText(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 /** Spec 020 D13: the provider and the records' worker beside this Squeal, or which is missing. */
