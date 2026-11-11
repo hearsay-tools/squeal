@@ -6,13 +6,16 @@ import { observedDirectMetaKey, observedMetaKey } from "../keys/observed.js";
 import { observedStartupMetaKey } from "../keys/startup.js";
 import { markRest, recordHeartbeat } from "../presence/events.js";
 import type { BusyWaits } from "../store/busy.js";
+import { logLongWrites, longWriteLine } from "../store/long-write.js";
 import { storePaths } from "../store/paths.js";
+import { connectionOf } from "../store/store.js";
 import { listPaths, plural } from "../text.js";
 import type { AbsolutePath, EpochMs, WorktreeId } from "../types/common.js";
 import type { DaemonExitReason } from "../types/daemon.js";
 import type { Policy } from "../types/policy.js";
 import type { SlowWaiting } from "../types/scheduler.js";
 import type { Store } from "../types/store.js";
+import { CHECKPOINT_BUSY_MS, IdleCheckpoint, truncateWal } from "./idle-checkpoint.js";
 import { recordDaemonUsed } from "./last-use.js";
 import { SlicedWrites } from "./sliced-writes.js";
 import { type StoreFile, storeCondemned } from "./store-file.js";
@@ -258,6 +261,10 @@ export function startTimers(context: TimerContext): () => void {
     }
   };
   const retries = new SlicedWrites(context);
+  // Spec 021 D3: a write transaction of this thread held past 250 ms names itself in the log.
+  const unlog = logLongWrites((write) => context.log(longWriteLine(write)));
+  // Spec 021 D4: a minute quiet, the store's WAL is checkpointed and cut to zero bytes.
+  const checkpoint = new IdleCheckpoint();
 
   const check = () => {
     if (!existsSync(context.root)) {
@@ -290,6 +297,11 @@ export function startTimers(context: TimerContext): () => void {
     });
     attempt("unused check", () => unused(at));
     attempt("idle GC", () => context.idleGc?.());
+    attempt("idle checkpoint", () => {
+      if (checkpoint.due(at, context.work?.() ?? null)) {
+        truncateWal(connectionOf(store).db, CHECKPOINT_BUSY_MS);
+      }
+    });
   };
   /** Row 018-12: the count of a request's ended files the last check saw. */
   let seenEnded = 0;
@@ -446,6 +458,7 @@ export function startTimers(context: TimerContext): () => void {
     for (const timer of timers) clearInterval(timer);
     clearTimeout(first);
     retries.stop();
+    unlog();
   };
 }
 
