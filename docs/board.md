@@ -2204,7 +2204,7 @@ Spec folder `specifications/021-remote-store-and-execution/` (stage: research; t
 | 021-13 the SSH connection, the tree and the bundle | planned | Spec D9, D10, D14. After 021-11. | Container end-to-end: first connect copies the bundle and the tree; an edit runs remotely; review PASS. |
 | 021-14 proof, environment, lanes, failure policy, status | planned | Spec D11 to D13, D17 (remote lost: `local` by default). After 021-13. | Container tests for refusal on tree or environment difference, a hung remote, both policies; review PASS. |
 | 021-15 proof on a real second machine | planned (the human chooses a team machine or a boat.dev sandbox when it starts) | This repository over a real network: save to verdict, install, stop and resume. | Findings file. |
-| 021-16 writes through the daemon | planned | Spec D15. After 021-07 and 021-09. | Hooks and CLI write via the socket when a daemon serves; review PASS. |
+| 021-16 writes through the daemon | planned | Spec D15. After 021-07 and 021-09. Includes the code gate's keeper (spec 020 D17.3, `src/core/code/gate/keep.ts`), agreed with coordinator 31e1d860 on 2026-11-11. | Hooks and CLI write via the socket when a daemon serves; review PASS. |
 | 021-17 the gate for one daemon per clone | planned | Spec D16, a week after 021-07 to 021-16. | Lock watch and main-thread sampling repeated; findings file. |
 | 021-18 the adaptive background budget | planned (the human's answer on the floor pending) | Spec D18, after 011 `background-backoff.md`. | Budget steps logged; replay-matching tests; review PASS. |
 | 021-19 the budget measured | planned | Spec D18, a week after 021-18, this host and one other machine. | Findings file. |
