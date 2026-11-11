@@ -59,11 +59,16 @@ beforeAll(async () => {
 
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
-// D17.3 (row 020-17c): the gate keeps the files it runs in the repository's stores; each case reads the parts only.
-afterEach(() => {
-  const common = fixture === undefined ? null : resolveCommonDir(fixture.root);
+/**
+ * D17.3: the gate keeps what it runs. Each case, and each control without
+ * parts, starts with no stores (review 0.1.433 S1).
+ */
+function clearStores(root: string | undefined): void {
+  const common = root === undefined ? null : resolveCommonDir(root);
   if (common !== null) rmSync(storePaths(common).dir, { recursive: true, force: true });
-});
+}
+
+afterEach(() => clearStores(fixture?.root));
 
 describe("squeal code --base --parts: what the parts give (spec 020 D13.2)", () => {
   it("takes every certified file, a runtime read included", SLOW, async () => {
@@ -215,7 +220,10 @@ describe("squeal code --base --parts: the part's environment (spec 020 D13.2)", 
     }
   }, SLOW.timeout);
 
-  afterEach(() => vi.unstubAllEnvs());
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    clearStores(probe?.root);
+  });
   afterAll(() => rmSync(probeDir, { recursive: true, force: true }));
 
   it("takes a file at the environment its part ran in", SLOW, async () => {
@@ -231,9 +239,11 @@ describe("squeal code --base --parts: the part's environment (spec 020 D13.2)", 
     SLOW,
     async () => {
       const fromParts = await gateAt("no", ["--parts", probe.parts]);
+      clearStores(probe.root);
       const fresh = await gateAt("no", []);
 
       expect(fromParts.ran).toEqual(["test/risky.test.ts"]);
+      expect(fresh.ran).toEqual(["test/risky.test.ts"]);
       expect([fromParts.code, crap(fromParts)]).toEqual([1, [["risky", "violation", 42]]]);
       expect(sameApartFromSource(fromParts.report)).toEqual(sameApartFromSource(fresh.report));
       expect(fromParts.stderr).toContain("allow-listed variables differ (values: PROBE_COVER)");
@@ -276,6 +286,7 @@ describe("squeal code --base --parts: the part's snapshot update mode (018 D9, 0
     updated = await recordInto(none.root, "parts-update", ["--update"]);
   }, SLOW.timeout);
 
+  afterEach(() => clearStores(none?.root));
   afterAll(() => rmSync(updateDir, { recursive: true, force: true }));
 
   it(
@@ -285,9 +296,11 @@ describe("squeal code --base --parts: the part's snapshot update mode (018 D9, 0
       expect(onlyPart(updated).projects.map((p) => p.updateSnapshot)).toEqual(["all"]);
 
       const fromParts = await gate(none.root, ["src/risky.ts", "--parts", updated]);
+      clearStores(none.root);
       const fresh = await gate(none.root, ["src/risky.ts"]);
 
       expect(fromParts.ran).toEqual(["test/risky.test.ts"]);
+      expect(fresh.ran).toEqual(["test/risky.test.ts"]);
       expect([fromParts.code, crap(fromParts)]).toEqual([1, [["risky", "violation", 42]]]);
       expect(sameApartFromSource(fromParts.report)).toEqual(sameApartFromSource(fresh.report));
       expect(fromParts.stderr).toContain('ran project "" with snapshot update "all"');
