@@ -87,8 +87,9 @@ describe("pinnedNode (018 D18)", () => {
         wanted: pin,
       });
     }
+    // On a host that runs 22.19.0 itself, the pin is the session's own Node (CI's Node 22 job).
     expect(pinnedNode(rootWith({ ".node-version": "22.19.0" }), env)).toEqual({
-      binary,
+      binary: process.versions.node === "22.19.0" ? process.execPath : binary,
       version: "22.19.0",
     });
   });
