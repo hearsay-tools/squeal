@@ -101,6 +101,8 @@ describe("loadPolicy (spec 001 D11)", () => {
       shared: DEFAULT_POLICY.shared,
       // Spec 018 D18; its key's own tests are test/node-pin/policy.test.ts.
       node: DEFAULT_POLICY.node,
+      // Spec 021 D9 (row 021-13); the key's own tests are test/runner-host/remote/policy.test.ts.
+      remote: DEFAULT_POLICY.remote,
     });
   });
 

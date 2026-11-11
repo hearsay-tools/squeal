@@ -19,6 +19,7 @@ import { LINT_SHAPE } from "./policy-lint.js";
 import { NODE_SHAPE } from "./policy-node.js";
 import { compiles, nodeTestProjects } from "./policy-node-test.js";
 import { pytestProjects } from "./policy-pytest.js";
+import { REMOTE_SHAPE } from "./policy-remote.js";
 import { runtimeFiles } from "./policy-runtime.js";
 import { SHARED_SHAPE } from "./policy-shared.js";
 import { slowInclude } from "./policy-slow.js";
@@ -105,6 +106,7 @@ const SHAPE: Shape = {
   ...CODE_SHAPE,
   ...LINT_SHAPE,
   ...SHARED_SHAPE,
+  ...REMOTE_SHAPE,
   ...GATE_SHAPE,
   ...NODE_SHAPE,
 };

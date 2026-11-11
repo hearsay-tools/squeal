@@ -51,6 +51,7 @@ Stop also waits for the checks of the groups at `"stop"` in `checks`, and for th
 | `daemon.idleExitMinutes` | `60` | The daemon exits after this long with no registered session. |
 | `store.retentionDays` | `7` | Results for file contents no worktree has any more are dropped after this many days. |
 | `store.maxSizeMb` | `null` | Size cap of the store; `null` for none. |
+| `remote.allowed` | `true` | Whether a user may send this repository's background test runs to a remote host over SSH, which each user names in their own `~/.config/squeal/remote.json`. `false` forbids it: every run stays on the user's machine, and `squeal status` says the repository forbids remote runs. |
 
 ## Host config
 
