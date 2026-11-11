@@ -6,9 +6,25 @@ import type {
   SyncRequest,
 } from "../types/daemon.js";
 import type { TestFileRef } from "../types/keys.js";
+import { parseWriteRequest } from "./write-protocol.js";
 
 /** A request line is small; anything longer is not a Squeal client. */
 export const MAX_LINE_BYTES = 64 * 1024;
+
+/**
+ * Spec 021 D15 (row 021-16): a `write` line carries a batch of statements;
+ * a registration writes a view per known state, about 1.5 MB at 15,000.
+ * Only a line that starts as a `write` request may grow this long.
+ */
+export const MAX_WRITE_LINE_BYTES = 32 * 1024 * 1024;
+
+/** The start of every line `requestDaemon` writes for a `write` request. */
+const WRITE_LINE_START = '{"type":"write",';
+
+/** How long the request line that begins with `start` may be. */
+export function lineLimit(start: string): number {
+  return start.startsWith(WRITE_LINE_START) ? MAX_WRITE_LINE_BYTES : MAX_LINE_BYTES;
+}
 
 /** Parses one request line. A string is the reason it is not a request. */
 export function parseRequest(line: string): DaemonRequest | string {
@@ -97,7 +113,7 @@ export function parseRequest(line: string): DaemonRequest | string {
       return { type: "focus", testFiles: refs, texts: [...texts], withinMs };
     }
     default:
-      return `unknown request type ${JSON.stringify(request.type)}`;
+      return parseWriteRequest(request) ?? `unknown request type ${JSON.stringify(request.type)}`;
   }
 }
 

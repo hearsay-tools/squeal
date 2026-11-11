@@ -63,7 +63,7 @@ export async function ensure(
     const at = { id: context.consumer.worktreeId, root: location.root };
     const now = (deps.now ?? Date.now)();
     const stop = readHookStop(context.store, at.id, worktree ?? null, now);
-    if (await stopHolds(context.store, at, stop)) return "stopped";
+    if (await stopHolds(context.store, at, stop, context.write)) return "stopped";
   }
   const handoff = context === undefined ? "none" : await handOver(context, deps);
   if (handoff === "claimed") return successor(location, deps);
@@ -81,7 +81,7 @@ export async function ensure(
   );
   // Task 001-415: a rest is quiet only until the daemon spawned after it is due.
   if (ensured === "spawned" && context !== undefined) {
-    spawnedAfterRest(context.store, context.consumer.worktreeId, at);
+    await context.write(() => spawnedAfterRest(context.store, context.consumer.worktreeId, at));
   }
   return ensured;
 }
@@ -171,10 +171,13 @@ async function handOver(
     return "none";
   }
   try {
-    const claim = store.transaction(() => {
-      if (!stillRecorded(store, id, read.from)) return undefined;
-      return claimHandoff(store, id, { from: read.from, to: version, at: now() });
-    });
+    // Spec 021 D15: with a daemon serving, under the worktree's write lease.
+    const claim = await context.write(() =>
+      store.transaction(() => {
+        if (!stillRecorded(store, id, read.from)) return undefined;
+        return claimHandoff(store, id, { from: read.from, to: version, at: now() });
+      }),
+    );
     if (claim === undefined) return "none";
     return claim === null ? "joined" : "claimed";
   } catch {

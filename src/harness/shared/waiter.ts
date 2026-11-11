@@ -48,7 +48,8 @@ export function waitIdle(
       const outcome = await waitForDelta(context, timeoutMs, signal);
       gone = outcome === "unregistered";
       if (outcome === null) {
-        context.store.consumers.touch(context.consumer, (deps.now ?? Date.now)(), false);
+        const at = (deps.now ?? Date.now)();
+        await context.write(() => context.store.consumers.touch(context.consumer, at, false));
       }
       return outcome === "unregistered" || outcome === null
         ? null

@@ -5,6 +5,8 @@ import { HOOK_TIMEOUT_MS } from "../../core/types/store-records.js";
 interface Taken {
   readonly reports: PreparedReports;
   readonly close: () => void;
+  /** Spec 021 D15: resolves once what their commit sent to the daemon is written. */
+  readonly sent?: () => Promise<void>;
 }
 
 /**
@@ -18,10 +20,25 @@ interface Taken {
  */
 export class HandOff {
   #taken: Taken[] = [];
+  #sending: Promise<void>[] = [];
 
-  /** Takes `reports`, which wait for the verdict, and the `close` of the store they hold open. */
-  take(reports: PreparedReports, close: () => void): void {
-    this.#taken.push({ reports, close });
+  /**
+   * Takes `reports`, which wait for the verdict, the `close` of the store
+   * they hold open, and with a daemon serving, what waits for their sent
+   * writes (spec 021 D15).
+   */
+  take(reports: PreparedReports, close: () => void, sent?: () => Promise<void>): void {
+    this.#taken.push({ reports, close, ...(sent === undefined ? {} : { sent }) });
+  }
+
+  /**
+   * Resolves once every write the verdicts sent to the daemon is written, or
+   * failed: a failed one leaves its report owed. Never rejects.
+   */
+  async sent(): Promise<void> {
+    const sending = this.#sending;
+    this.#sending = [];
+    await Promise.allSettled(sending);
   }
 
   /** Whether a report waits for the verdict. */
@@ -59,13 +76,17 @@ export class HandOff {
   #end(verdict: (reports: PreparedReports) => void): void {
     const taken = this.#taken;
     this.#taken = [];
-    endInOrder(
-      taken,
-      (t) => endThenClose(t, verdict),
-      (rest) => {
-        for (const t of rest) endThenClose(t, (reports) => reports.abandon());
-      },
-    );
+    try {
+      endInOrder(
+        taken,
+        (t) => endThenClose(t, verdict),
+        (rest) => {
+          for (const t of rest) endThenClose(t, (reports) => reports.abandon());
+        },
+      );
+    } finally {
+      for (const t of taken) if (t.sent !== undefined) this.#sending.push(t.sent());
+    }
   }
 }
 
@@ -123,13 +144,14 @@ export async function writeThenCommit(
   if (!handOff.pending) {
     for (const [stream, text] of texts) stream.write(text, () => {});
     handOff.commit();
-    return;
+  } else {
+    try {
+      await Promise.all(texts.map(([stream, text]) => written(stream, text, boundMs)));
+      handOff.settle(true);
+    } catch {
+      handOff.abandon();
+    }
   }
-  try {
-    await Promise.all(texts.map(([stream, text]) => written(stream, text, boundMs)));
-  } catch {
-    handOff.abandon();
-    return;
-  }
-  handOff.settle(true);
+  // Spec 021 D15: the process ends once the daemon wrote what the verdict sent it.
+  await handOff.sent();
 }

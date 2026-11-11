@@ -145,7 +145,7 @@ export function stopTurn(
       const gitBy = performance.now() + HOOK_TIMEOUT_MS - STOP_MARGIN_MS - STOP_RECORD_WAIT_MS;
       const at = (deps.now ?? Date.now)();
       // Task 001-416: before the wait, so a SubagentStop its timeout kills still ends the registration.
-      if (!main) leaving(context, at);
+      if (!main) await leaving(context, at);
       const starting = quiet ? {} : startingAfter(await ensureIfStale(context, deps), at);
       if (wait > 0) {
         const isGroupFile = slowView(project).isSlow;
@@ -205,8 +205,8 @@ async function decideTurn(
     const { header, failures, reasons, held } = decided;
     const stopped = () => stoppedLine(context, project, now(), deps.command);
     if (reasons.length > 0) {
-      if (!main) leaving(context, null);
-      else if (held) hold(context);
+      if (!main) await leaving(context, null);
+      else if (held) await hold(context);
       const text = news ?? statusText(header, failures, deps.command);
       return { block: `${[...reasons, ...stopped()].join("\n")}\n\n${text}` };
     }
@@ -220,7 +220,7 @@ async function decideTurn(
       if (!(await context.delivery.endTurn(consumer, at))) {
         if (decision < STOP_DECISIONS) continue;
         // A hold for required checks never decided current: counted, so it cannot loop.
-        if (rules.required !== null) hold(context);
+        if (rules.required !== null) await hold(context);
         const text = statusText(header, failures, deps.command);
         return { block: `${retriesReason(header.revision)}\n\n${text}` };
       }
@@ -243,8 +243,10 @@ function stoppedLine(
 }
 
 /** Counts a hold of the main agent for required checks (spec 019 D4 step 3). */
-function hold(context: HookContext): void {
-  context.store.transaction(() => countStopHold(context.store, context.consumer));
+function hold(context: HookContext): Promise<void> {
+  return context.write(() =>
+    context.store.transaction(() => countStopHold(context.store, context.consumer)),
+  );
 }
 
 /**
@@ -281,10 +283,12 @@ export async function stopFork(
  * when a block keeps it going (task 001-416). The daemon drops a consumer
  * whose mark outlives `LEAVING_GRACE_MS`; the normal end unregisters it.
  */
-function leaving(context: HookContext, at: EpochMs | null): void {
-  context.store.transaction(() => {
-    if (isRegistered(context)) markLeaving(context.store, context.consumer, at);
-  });
+function leaving(context: HookContext, at: EpochMs | null): Promise<void> {
+  return context.write(() =>
+    context.store.transaction(() => {
+      if (isRegistered(context)) markLeaving(context.store, context.consumer, at);
+    }),
+  );
 }
 
 /** SubagentStop: the subagent is done, so its consumer and view go (D9). */

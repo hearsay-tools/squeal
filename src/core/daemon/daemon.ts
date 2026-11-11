@@ -71,6 +71,7 @@ import { adoptScratch, inRootWhileRunning, removeScratch } from "./scratch.js";
 import { pauseAt } from "./test-pause.js";
 import { capacityReader, repositoryRootOf } from "./user-config.js";
 import { squealVersion } from "./version.js";
+import { decodeBatch, SENT_WRITE_BOUND_MS, writeBatch } from "./write-batch.js";
 
 export type { DaemonTimings } from "./lifecycle.js";
 
@@ -941,6 +942,7 @@ class Daemon {
         squealVersion: this.#version,
         startedAt: this.#startedAt,
         token: this.#token,
+        storeSchema: this.opened.store.schemaVersion,
       },
       {
         requestFullSuite: (request) => this.#requestFullSuite(request),
@@ -958,6 +960,13 @@ class Daemon {
           this.#requestFocus(testFiles, texts, withinMs),
         requestHold: () => this.#requestHold(),
         requestResume: async () => void (await this.#requestHold()),
+        // Spec 021 D15 (row 021-16): a hook's or a command's writes, in the retried path of D2.
+        requestWrite: (batch) =>
+          this.#writes.write(
+            "a hook's or command's writes",
+            () => writeBatch(this.opened.store, decodeBatch(batch)),
+            within(SENT_WRITE_BOUND_MS, () => this.#phase === "stopping"),
+          ),
         // The tiers stop now, under a shutdown already begun too; the shutdown after the answer.
         onStop: () => {
           this.#cancelTiers("stop");

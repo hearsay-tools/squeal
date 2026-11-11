@@ -52,6 +52,8 @@ const waitingHold = new Map<
   { resolve: (holding: boolean) => void; reject: (error: Error) => void }
 >();
 
+const waitingWrite = new Map<string, { resolve: () => void; reject: (error: Error) => void }>();
+
 let server: DaemonServer | null = null;
 
 /** Started before the main thread holds the lock; binds only when told to. */
@@ -103,6 +105,17 @@ function bind(identity: DeskIdentity): void {
       post({ type: "focus", testFiles, texts, withinMs }),
     onStop: () => post({ type: "stop" }),
     onStepDown: (version) => post({ type: "step-down", version }),
+    ...(identity.storeSchema === undefined
+      ? {}
+      : {
+          storeSchema: identity.storeSchema,
+          requestWrite: (batch) =>
+            new Promise<void>((resolve, reject) => {
+              const id = randomUUID();
+              waitingWrite.set(id, { resolve, reject });
+              post({ type: "write", id, batch });
+            }),
+        }),
   });
   createDaemonServer(identity.socketPath, handle).then(
     (bound) => {
@@ -169,6 +182,13 @@ function receive(message: ToDesk): void {
       waitingHold.delete(message.id);
       if (message.holding !== null) entry?.resolve(message.holding);
       else entry?.reject(new Error(message.error ?? "hold failed"));
+      return;
+    }
+    case "write-result": {
+      const entry = waitingWrite.get(message.id);
+      waitingWrite.delete(message.id);
+      if (message.error === null) entry?.resolve();
+      else entry?.reject(new Error(message.error));
       return;
     }
     case "close":

@@ -1,5 +1,6 @@
 import type { EpochMs, RelativePath, WorktreeId } from "../types/common.js";
 import type { DaemonPhase, SyncAnswer } from "../types/daemon.js";
+import type { SentBatch } from "../types/daemon-writes.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { FullSuiteCheckpoint, FullSuiteRequest } from "../types/scheduler.js";
 import type { GroupRequested, HeldBy } from "./run-group.js";
@@ -14,6 +15,8 @@ export interface DeskIdentity {
   readonly startedAt: EpochMs;
   /** `DaemonRecord.token` (task 001-270). */
   readonly token: string;
+  /** Spec 021 D15: the store's `user_version`, which a sent write must match; absent: no writes taken. */
+  readonly storeSchema?: number;
 }
 
 /** Main thread to front desk. */
@@ -63,6 +66,12 @@ export type ToDesk =
       readonly holding: boolean | null;
       readonly error: string | null;
     }
+  | {
+      /** Spec 021 D15: how sent write `id` went; `error` `null` once written. */
+      readonly type: "write-result";
+      readonly id: string;
+      readonly error: string | null;
+    }
   | { readonly type: "close" };
 
 /** Front desk to main thread. */
@@ -84,6 +93,7 @@ export type FromDesk =
   | { readonly type: "sync"; readonly id: string; readonly paths?: readonly RelativePath[] }
   | { readonly type: "hold"; readonly id: string }
   | { readonly type: "resume" }
+  | { readonly type: "write"; readonly id: string; readonly batch: SentBatch }
   | {
       readonly type: "promote";
       readonly testFiles: readonly TestFileRef[];

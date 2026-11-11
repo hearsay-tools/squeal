@@ -257,6 +257,9 @@ describe("unregisterSession errors (review wave 4.5, N8)", () => {
       commonDir: r.repo.commonDir,
       store: r.store,
       consumer: r.consumer(),
+      // No daemon serves this context: its writes are made here (spec 021 D15).
+      write: async (work) => work(),
+      sent: async () => {},
       delivery: {
         ...delivery,
         unregister: async (consumer) => {
