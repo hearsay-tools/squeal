@@ -1,0 +1,83 @@
+
+== threshold
+plain: vitest 5.0.3 exit=1 failedTests=0 error=null
+tee: vitest 5.0.3 exit=1 failedTests=0 error=null teeLog=["string","string","string","string","string"]
+tee-nocopy: vitest 5.0.3 exit=1 failedTests=0 error=null teeLog=["string","string","string","string","string"]
+squeal: vitest 5.0.3 exit=0 failedTests=0 error=null
+tee report equals plain: true
+tee summary equals plain: true
+tee-nocopy report equals plain: true
+tee-nocopy summary equals plain: true
+squeal report equals plain: no report
+plain report files: {"src/add.ts":"3/3 statements","src/mul.ts":"5/6 statements","src/probe-inspector.ts":"1/1 statements","src/shared.ts":"1/1 statements","src/untested.ts":"0/3 statements"}
+tee header {"on":true}; squeal header {"on":true}
+  iso:test/iso/add.test.ts
+    tee:    record paths=src/add.ts,test/iso/add.test.ts parts=188+220B
+    squeal: record paths=src/add.ts,test/iso/add.test.ts parts=188+220B
+    records equal: true
+    nocopy: record paths=src/add.ts,test/iso/add.test.ts parts=188+220B
+  iso:test/iso/inspector.test.ts
+    tee:    none:inspector
+    squeal: none:inspector
+    nocopy: none:inspector
+  iso:test/iso/mul.test.ts
+    tee:    record paths=src/mul.ts,test/iso/mul.test.ts parts=204+200B
+    squeal: record paths=src/mul.ts,test/iso/mul.test.ts parts=204+200B
+    records equal: true
+    nocopy: record paths=src/mul.ts,test/iso/mul.test.ts parts=204+200B
+  shared:test/shared/one.test.ts
+    tee:    record paths=src/add.ts,src/shared.ts,test/shared/one.test.ts parts=188+192+224B
+    squeal: none:isolate-false
+    nocopy: record paths=src/add.ts,src/shared.ts,test/shared/one.test.ts parts=188+192+224B
+  shared:test/shared/two.test.ts
+    tee:    record paths=src/shared.ts,test/shared/two.test.ts parts=192+204B
+    squeal: none:isolate-false
+    nocopy: record paths=src/shared.ts,test/shared/two.test.ts parts=192+204B
+
+== nothreshold
+plain: vitest 5.0.3 exit=0 failedTests=0 error=null
+tee: vitest 5.0.3 exit=0 failedTests=0 error=null teeLog=["string","string","string","string","string"]
+tee report equals plain: true
+tee summary equals plain: true
+plain report files: {"src/add.ts":"3/3 statements","src/mul.ts":"5/6 statements","src/probe-inspector.ts":"1/1 statements","src/shared.ts":"1/1 statements","src/untested.ts":"0/3 statements"}
+tee header {"on":true}; squeal header undefined
+  iso:test/iso/add.test.ts
+    tee:    record paths=src/add.ts,test/iso/add.test.ts parts=188+220B
+    squeal: absent
+  iso:test/iso/inspector.test.ts
+    tee:    none:inspector
+    squeal: absent
+  iso:test/iso/mul.test.ts
+    tee:    record paths=src/mul.ts,test/iso/mul.test.ts parts=204+200B
+    squeal: absent
+  shared:test/shared/one.test.ts
+    tee:    record paths=src/add.ts,src/shared.ts,test/shared/one.test.ts parts=188+192+224B
+    squeal: absent
+  shared:test/shared/two.test.ts
+    tee:    record paths=src/shared.ts,test/shared/two.test.ts parts=192+204B
+    squeal: absent
+
+== named
+plain: vitest 5.0.3 exit=1 failedTests=0 error=null
+tee: vitest 5.0.3 exit=1 failedTests=0 error=null teeLog=["string","string","string","string","string"]
+squeal: vitest 5.0.3 exit=0 failedTests=0 error=null
+tee report equals plain: true
+tee summary equals plain: true
+squeal report equals plain: no report
+plain report files: {"src/add.ts":"2/3 statements","src/mul.ts":"0/6 statements","src/probe-inspector.ts":"0/1 statements","src/shared.ts":"1/1 statements","src/untested.ts":"0/3 statements"}
+tee header {"on":true}; squeal header {"on":true}
+  iso:test/iso/add.test.ts
+    tee:    none:filtered
+    squeal: none:filtered
+  iso:test/iso/inspector.test.ts
+    tee:    none:inspector
+    squeal: none:inspector
+  iso:test/iso/mul.test.ts
+    tee:    none:filtered
+    squeal: none:filtered
+  shared:test/shared/one.test.ts
+    tee:    none:filtered
+    squeal: none:isolate-false
+  shared:test/shared/two.test.ts
+    tee:    none:filtered
+    squeal: none:isolate-false

@@ -1,0 +1,4 @@
+cezarion 249c8783b, shard 1/4, 4 workers, projects server, contract, api-client, web; Vitest 4.1.10, @vitest/coverage-v8 4.1.10.
+"none" ran without coverage, before the coverage switch existed in probe.mjs (out dir /tmp/r189-cezar-out).
+plain vs tee coverage-final.json: 1301 files each, none only in one; 97234 statements, covered state differs in 14 (10 files), listed in report-diff.txt.
+tee: 422 payloads, all objects, 0 batches of several files; 422 records, 0 files without one; header {"on":true}.

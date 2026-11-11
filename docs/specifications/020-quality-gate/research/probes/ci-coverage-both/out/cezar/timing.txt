@@ -1,0 +1,3 @@
+none round=0 wall=626.04 user=1786.08 sys=668.09 load_before=18.12 load_after=34.08 {"mode":"plain","vitest":"4.1.10","exitCode":0,"failed":0,"error":null}
+plain round=0 wall=823.57 user=2085.17 sys=729.58 load_before=23.46 load_after=41.33 {"mode":"plain","vitest":"4.1.10","exitCode":0,"failed":0,"error":null}
+tee round=0 wall=687.07 user=2029.13 sys=681.69 load_before=22.66 load_after=39.81 {"mode":"tee","vitest":"4.1.10","exitCode":0,"failed":0,"error":null}

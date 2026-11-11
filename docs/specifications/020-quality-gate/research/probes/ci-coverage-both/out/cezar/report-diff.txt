@@ -1,0 +1,14 @@
+packages/cezar/src/autosave-git.ts line 110 plain 0 tee 1
+packages/cezar/src/autosave-git.ts line 110 plain 0 tee 1
+packages/cezar/src/autosave-holders.ts line 182 plain 4 tee 0
+packages/cezar/src/core/cursor-print-process.ts line 108 plain 0 tee 1
+packages/cezar/src/core/omp-runner.ts line 580 plain 0 tee 1
+packages/cezar/src/core/opencode-server-runner.ts line 655 plain 1 tee 0
+packages/cezar/src/preview/chromium-launch-progress.ts line 32 plain 1 tee 0
+packages/cezar/src/preview/chromium-launch-progress.ts line 32 plain 1 tee 0
+packages/cezar/src/project-migration/auto.ts line 67 plain 1 tee 0
+packages/cezar/src/project-migration/auto.ts line 126 plain 1 tee 0
+packages/cezar/src/project-migration/plan.ts line 264 plain 1 tee 0
+packages/cezar/src/workflows/run.ts line 245 plain 1 tee 0
+packages/cezar/src/workflows/run/run-line.ts line 294 plain 1 tee 0
+packages/cezar/src/workflows/run/run-line.ts line 294 plain 1 tee 0
