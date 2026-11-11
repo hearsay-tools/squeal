@@ -2,17 +2,18 @@ import { mkdtempSync, readdirSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import type { NoRecord, Part, PartFile } from "../../../src/core/ci/parts.js";
+import {
+  type NoRecord,
+  type Part,
+  type PartFile,
+  readPartsIn,
+} from "../../../src/core/ci/parts.js";
 import {
   COVERAGE_PROVIDER_VERSION,
   COVERAGE_RECORD_VERSION,
 } from "../../../src/core/code/coverage/record.js";
 import { FILE_ERROR } from "../../../src/core/code/gate/evidence.js";
-import {
-  type PartsOptions,
-  partsEvidence,
-  readPartsIn,
-} from "../../../src/core/code/gate/parts.js";
+import { type PartsOptions, partsEvidence } from "../../../src/core/code/gate/parts.js";
 import { blobHash } from "../../../src/core/hash/blob.js";
 import { KEY_FORMAT_VERSION } from "../../../src/core/keys/key-format.js";
 import { namesHash } from "../../../src/core/keys/observed.js";

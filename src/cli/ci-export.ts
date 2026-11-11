@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { costOf, costText } from "../core/ci/cost.js";
@@ -8,8 +8,7 @@ import {
   ciExport,
   type UncertifiedFile,
 } from "../core/ci/export.js";
-import type { NamedPart } from "../core/ci/export-check.js";
-import { PART_PREFIX, readPart } from "../core/ci/parts.js";
+import { readPartsIn } from "../core/ci/parts.js";
 import { coverageOn, coverageProvider } from "../core/code/coverage/runtime.js";
 import { readPolicy } from "../core/daemon/policy.js";
 import { squealVersion } from "../core/daemon/version.js";
@@ -59,7 +58,7 @@ export async function ciExportCommand(
   const say = (text: string) => io.stderr(`squeal ci export: ${text}; wrote nothing\n`);
   const root = findWorktreeRoot(cwd);
   if (root === null) return fail(say, `${cwd} is not inside a git worktree`);
-  const parts = readParts(parsed.parts.map((dir) => resolve(cwd, dir)));
+  const parts = readPartsIn(parsed.parts.map((dir) => resolve(cwd, dir)));
   if (typeof parts === "string") return fail(say, parts);
   // Row 018-29: what recording cost the shards, whatever the export does with their parts.
   const cost = costOf(parts.map(({ part }) => part));
@@ -151,26 +150,6 @@ function parseExport(args: readonly string[]): ExportArgs | { readonly error: st
   }
   if (parts.length === 0) return { error: "no --parts: name the directories the shards wrote" };
   return { parts, out };
-}
-
-/**
- * The parts in `dirs`, or why there is none to export: a directory named
- * without a part in it is a shard's missing upload (review of 0.1.421 B3).
- */
-function readParts(dirs: readonly AbsolutePath[]): NamedPart[] | string {
-  const parts: NamedPart[] = [];
-  for (const dir of dirs) {
-    if (!existsSync(dir)) return `no directory ${dir}`;
-    const names = readdirSync(dir).filter((n) => n.startsWith(PART_PREFIX) && n.endsWith(".json"));
-    if (names.length === 0) return `no part (${PART_PREFIX}*.json) in ${dir}`;
-    for (const name of names.sort()) {
-      const file = join(dir, name);
-      const part = readPart(file);
-      if (typeof part === "string") return part;
-      parts.push({ file, part });
-    }
-  }
-  return parts;
 }
 
 /**
