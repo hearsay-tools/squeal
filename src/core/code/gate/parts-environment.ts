@@ -28,11 +28,11 @@ export interface GateEnvironment {
   /** Policy `env.allowlist` here, as the daemon and `ci record` read it. */
   readonly allowlist: readonly string[];
   /**
-   * This Squeal's runtime-input recorder version: a part's run observed,
-   * and its adapter version carries `+observe.<version>`, as
-   * `VitestObserver.adapterVersion` adds it.
+   * The adapter version an observing run carries, from its `base`, as
+   * this Squeal's recorder adds it (`observedAdapterVersion`): a part's
+   * run observed. The CLI passes it, since the core imports no runner.
    */
-  readonly recorderVersion: string;
+  readonly observedAdapterVersion: (base: string) => string;
 }
 
 /** Why a part's run of a project gives no evidence here; `null` when it may. */
@@ -78,14 +78,10 @@ async function gatePlace(
   });
   const ci = sawCi(gate.env);
   const runs = new Map<ProjectName, RunView>();
-  const suffix = `+observe.${gate.recorderVersion}`;
   for (const runner of environments) {
-    const { adapterVersion } = runner;
     const observed = {
       ...runner,
-      adapterVersion: adapterVersion.endsWith(suffix)
-        ? adapterVersion
-        : `${adapterVersion}${suffix}`,
+      adapterVersion: gate.observedAdapterVersion(runner.adapterVersion),
     };
     runs.set(runner.project, {
       descriptor: describeEnvironment(KEY_FORMAT_VERSION, core, observed, [], ci),
