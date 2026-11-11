@@ -124,6 +124,35 @@ describe("startHold (row 011-288)", () => {
   });
 });
 
+describe("before a hold (spec 021 D3)", () => {
+  it("runs `beforeHold` while nothing is held, and not inside a hold already open", () => {
+    const { plain, store, prepare } = setup();
+    const seen: boolean[] = [];
+    const waiting = { ...prepare, beforeHold: () => seen.push(prepare.connection.held) };
+    const outer = startHold(waiting);
+    store.transaction(() => store.meta.set("view", "fail"));
+    outer.settle("report", () => {});
+    const inner = startHold(waiting);
+    inner.settle(null, () => {});
+    expect(seen).toEqual([false]);
+    prepare.reports.commit();
+    expect(plain.meta.get("view")).toBe("fail");
+    store.close();
+  });
+
+  it("runs no `beforeHold` while this thread holds another database", () => {
+    const other = setup();
+    const { store, prepare } = setup();
+    const seen: string[] = [];
+    const held = other.prepare.connection.hold();
+    startHold({ ...prepare, beforeHold: () => seen.push("waited") }).settle(null, () => {});
+    expect(seen).toEqual([]);
+    held?.rollback();
+    other.store.close();
+    store.close();
+  });
+});
+
 describe("an in-order commit (rows 011-288 and 011-292)", () => {
   const failing = (ends: string[], name: string) => ({
     commit: () => {

@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import type { DatabaseSync } from "node:sqlite";
-import { type CodeSource, codeSource } from "../../core/delivery/code-source.js";
+import { type CodeSource, codeLockFree, codeSource } from "../../core/delivery/code-source.js";
 import { createDelivery } from "../../core/delivery/delivery.js";
 import { HoldingConnection } from "../../core/delivery/held-connection.js";
 import { PreparedReports } from "../../core/delivery/prepared.js";
@@ -106,13 +106,16 @@ export function openContext(
     };
     const now = options.now ?? Date.now;
     const connection = holding?.made() ?? null;
-    const prepare =
-      connection === null ? undefined : { connection, reports: new PreparedReports() };
     // Spec 015 D6: read only while the worktree's `complexity.enabled` holds, in the hook's budget.
     const code = codeSource(location.commonDir, location.root, {
       busyTimeoutMs: options.busyTimeoutMs ?? STATUS_BUSY_TIMEOUT_MS,
       holding: connection !== null,
     });
+    // Spec 021 D3: the code store's lock is waited for before the store is held, never inside.
+    const prepare =
+      connection === null
+        ? undefined
+        : { connection, reports: new PreparedReports(), beforeHold: () => codeLockFree(code) };
     // Spec 017 D8: read only while the worktree's `lint.enabled` holds, in the same budget.
     const lint = lintStoreSource(location.commonDir, location.root, {
       busyTimeoutMs: options.busyTimeoutMs ?? STATUS_BUSY_TIMEOUT_MS,
