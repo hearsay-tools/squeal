@@ -61,7 +61,12 @@ describe("loadUserConfig (spec 001 D11 Capacity)", () => {
     const { config, problems } = load(null, 24);
     expect(problems).toEqual([]);
     expect(config).toEqual({
-      capacity: { hostSlots: 23, projects: {}, groupSlotScope: "repository" },
+      capacity: {
+        hostSlots: 23,
+        projects: {},
+        groupSlotScope: "repository",
+        backgroundShare: 0.75,
+      },
     });
   });
 
@@ -89,7 +94,12 @@ describe("loadUserConfig (spec 001 D11 Capacity)", () => {
     );
     expect(problems).toEqual([]);
     expect(config).toEqual({
-      capacity: { hostSlots: 12, projects: { [root]: { slots: 4 } }, groupSlotScope: "repository" },
+      capacity: {
+        hostSlots: 12,
+        projects: { [root]: { slots: 4 } },
+        groupSlotScope: "repository",
+        backgroundShare: 0.75,
+      },
     });
   });
 
@@ -119,7 +129,12 @@ describe("loadUserConfig (spec 001 D11 Capacity)", () => {
       'unknown key "maxParallel"',
     ]);
     expect(config).toEqual({
-      capacity: { hostSlots: 7, projects: { [root]: { slots: 3 } }, groupSlotScope: "repository" },
+      capacity: {
+        hostSlots: 7,
+        projects: { [root]: { slots: 3 } },
+        groupSlotScope: "repository",
+        backgroundShare: 0.75,
+      },
     });
   });
 
@@ -139,8 +154,27 @@ describe("loadUserConfig (spec 001 D11 Capacity)", () => {
     }
   });
 
+  // Spec 021 D18 (the human, 2026-11-11): "75% cpu can be a default, but it needs to be configurable".
+  it("reads capacity.backgroundShare from 0 to 1, default 0.75, and refuses another value with a message", () => {
+    for (const share of [0, 0.5, 1]) {
+      const { config, problems } = load(JSON.stringify({ capacity: { backgroundShare: share } }));
+      expect(problems).toEqual([]);
+      expect(config.capacity.backgroundShare).toBe(share);
+    }
+    expect(load(null, 4).config.capacity.backgroundShare).toBe(0.75);
+    for (const bad of ["1.5", "-0.1", '"0.5"', "null", "75"]) {
+      const { config, problems } = load(`{ "capacity": { "backgroundShare": ${bad} } }`);
+      expect(problems).toEqual([
+        `"capacity.backgroundShare" must be a number from 0 to 1, got ${bad}`,
+      ]);
+      expect(config.capacity.backgroundShare).toBe(0.75);
+    }
+  });
+
   it("is the defaults with one problem for a file that is not JSON or not an object", () => {
-    const defaults = { capacity: { hostSlots: 7, projects: {}, groupSlotScope: "repository" } };
+    const defaults = {
+      capacity: { hostSlots: 7, projects: {}, groupSlotScope: "repository", backgroundShare: 0.75 },
+    };
     const bad = load("{ capacity");
     expect(bad.config).toEqual(defaults);
     expect(bad.problems).toHaveLength(1);
@@ -230,21 +264,26 @@ describe("capacityReader (spec 001 D11 Capacity)", () => {
     const env = envWith('{"capacity": {"hostSlots": "six"}}');
     const file = userConfigPath(env);
     const { read, notes } = reader(env);
-    expect(read()).toEqual({ hostSlots: 3, groupSlotScope: "repository" });
-    expect(read()).toEqual({ hostSlots: 3, groupSlotScope: "repository" });
+    expect(read()).toEqual({ hostSlots: 3, groupSlotScope: "repository", backgroundShare: 0.75 });
+    expect(read()).toEqual({ hostSlots: 3, groupSlotScope: "repository", backgroundShare: 0.75 });
     expect(notes).toEqual([
       `${file}: "capacity.hostSlots" must be a positive integer, got "six"; the defaults apply in their place`,
     ]);
 
     writeFileSync(file, '{"capacity": {"hostSlots": 4, "projects": {"/srv/repo": {"slots": 2}}}}');
-    expect(read()).toEqual({ hostSlots: 4, projectSlots: 2, groupSlotScope: "repository" });
+    expect(read()).toEqual({
+      hostSlots: 4,
+      projectSlots: 2,
+      groupSlotScope: "repository",
+      backgroundShare: 0.75,
+    });
     expect(notes).toHaveLength(1);
   });
 
   it("notes a hostSlots cut to the CPU count after the file's problems (row 011-98)", () => {
     const env = envWith('{"capacity": {"hostSlots": 6, "projects": 3}}');
     const { read, notes } = reader(env);
-    expect(read()).toEqual({ hostSlots: 4, groupSlotScope: "repository" });
+    expect(read()).toEqual({ hostSlots: 4, groupSlotScope: "repository", backgroundShare: 0.75 });
     expect(notes).toEqual([
       `${userConfigPath(env)}: "capacity.projects" must be an object from repository root path to { "slots": n }, got 3; the defaults apply in their place; "capacity.hostSlots" 6 is above the CPU count, 4; it is cut to 4`,
     ]);
@@ -261,15 +300,26 @@ describe("capacityReader (spec 001 D11 Capacity)", () => {
   it("carries capacity.groupSlotScope to the daemon, read again at each call (row 019-18)", () => {
     const env = envWith('{"capacity": {"groupSlotScope": "user"}}');
     const { read, notes } = reader(env);
-    expect(read()).toEqual({ hostSlots: 3, groupSlotScope: "user" });
+    expect(read()).toEqual({ hostSlots: 3, groupSlotScope: "user", backgroundShare: 0.75 });
     writeFileSync(userConfigPath(env), '{"capacity": {"groupSlotScope": "repository"}}');
     expect(read().groupSlotScope).toBe("repository");
     expect(notes).toEqual([]);
   });
 
+  it("carries capacity.backgroundShare to the daemon and notes a bad value (spec 021 D18)", () => {
+    const env = envWith('{"capacity": {"backgroundShare": 0.5}}');
+    const { read, notes } = reader(env);
+    expect(read().backgroundShare).toBe(0.5);
+    writeFileSync(userConfigPath(env), '{"capacity": {"backgroundShare": 2}}');
+    expect(read().backgroundShare).toBe(0.75);
+    expect(notes).toEqual([
+      `${userConfigPath(env)}: "capacity.backgroundShare" must be a number from 0 to 1, got 2; the defaults apply in their place`,
+    ]);
+  });
+
   it("notes nothing for a missing or clean file", () => {
     const { read, notes } = reader(envWith(null));
-    expect(read()).toEqual({ hostSlots: 3, groupSlotScope: "repository" });
+    expect(read()).toEqual({ hostSlots: 3, groupSlotScope: "repository", backgroundShare: 0.75 });
     expect(notes).toEqual([]);
   });
 });

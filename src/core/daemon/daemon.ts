@@ -298,9 +298,13 @@ class Daemon {
   /** The pool's numbers: the options' when a caller set them, else the user's config (task 001-377). */
   #poolCapacity(): PoolCapacity {
     if (this.options.capacity !== undefined) return this.options.capacity;
-    const { hostSlots, projectSlots } = this.#capacity();
-    if (projectSlots === undefined) return { hostSlots };
-    return { hostSlots, project: { id: this.#repositoryRoot, slots: projectSlots } };
+    const { hostSlots, projectSlots, backgroundShare } = this.#capacity();
+    if (projectSlots === undefined) return { hostSlots, backgroundShare };
+    return {
+      hostSlots,
+      backgroundShare,
+      project: { id: this.#repositoryRoot, slots: projectSlots },
+    };
   }
 
   async start(desk: PreparedDesk): Promise<RunningDaemon | DaemonExit> {
@@ -864,7 +868,8 @@ class Daemon {
           this.#note(`watcher dropped events (${reason}); a full reconciliation follows`),
         // Spec 001 D11 Capacity (tasks 001-376, 001-377): backlog and checkpoint tiers share the
         // user's pool, sized from the user's config as read when the loop starts.
-        capacity: { dir: slowSlotDir(this.options.env), ...this.#poolCapacity() },
+        // Spec 021 D18 (row 021-18): each refusal by the background ceiling is a line in its log.
+        capacity: { dir: slowSlotDir(this.options.env), log: this.#log, ...this.#poolCapacity() },
         // Spec 019 D3 (row 019-18): a group's slot counts where the user's config says, by default
         // per repository, as read when the loop starts.
         slow: { slotScope: { scope: this.#capacity().groupSlotScope, commonDir } },

@@ -19,6 +19,12 @@ export interface UserConfig {
     readonly projects: Readonly<Record<AbsolutePath, { readonly slots: number }>>;
     /** `capacity.groupSlotScope`: every group's slot, the default `slow` group's too. Default `"repository"`. */
     readonly groupSlotScope: GroupSlotScope;
+    /**
+     * `capacity.backgroundShare` (spec 021 D18): background tiers take a
+     * permit only while the busy CPUs are below this share of the CPUs. A
+     * number from 0 to 1; default 0.75.
+     */
+    readonly backgroundShare: number;
   };
 }
 
@@ -45,4 +51,6 @@ export interface Capacity {
   readonly projectSlots?: number;
   /** `capacity.groupSlotScope`, default `"repository"` (row 019-18). */
   readonly groupSlotScope: GroupSlotScope;
+  /** `capacity.backgroundShare`, default 0.75 (spec 021 D18, row 021-18). */
+  readonly backgroundShare: number;
 }
