@@ -118,12 +118,12 @@ describe("a node:test runner in a runner host", SLOW, () => {
       if ("reason" in daemon) throw new Error(daemon.message);
       running = daemon;
       await daemon.ready;
+      // Both baseline files, which need not end together (review 0.1.442 S2), before the kill.
       await waitFor(
-        () => outcomes(repo, HOLD).includes("test pass"),
+        () => [HOLD, PLAIN].every((path) => outcomes(repo, path).includes("test pass")),
         120_000,
-        "the first run to pass",
+        "the first run of both files to pass",
       );
-      expect(outcomes(repo, PLAIN)).toContain("test pass");
       const first = hostsOf("node-test");
       expect(first).toHaveLength(1);
 
