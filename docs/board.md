@@ -2223,7 +2223,7 @@ Spec folder `specifications/021-remote-store-and-execution/` (stage: research; t
 | 021-15 proof on a real second machine | planned (the human chooses a team machine or a boat.dev sandbox when it starts) | This repository over a real network: save to verdict, install, stop and resume. | Findings file. |
 | 021-16 writes through the daemon | running (worker 40aa4eb4, claude opus xhigh; `tasks/wave-2.md`) | Spec D15. After 021-07 and 021-09. Includes the code gate's keeper (spec 020 D17.3, `src/core/code/gate/keep.ts`), agreed with coordinator 31e1d860 on 2026-11-11. | Hooks and CLI write via the socket when a daemon serves; review PASS. |
 | 021-17 the gate for one daemon per clone | planned | Spec D16, a week after 021-07 to 021-16. | Lock watch and main-thread sampling repeated; findings file. |
-| 021-18 the background ceiling | briefed (wave 2, `tasks/wave-2.md`) | Spec D18 as amended 2026-11-11: background tiers admitted only while busy CPUs are below `capacity.backgroundShare` of the CPUs (default 75%), a one-permit floor, a log line per refusal. | Tests for refusal, floor, edit tiers untouched, the setting; review PASS. |
+| 021-18 the background ceiling | running (worker b7f5103c, claude opus xhigh; `tasks/wave-2.md`) | Spec D18 as amended 2026-11-11: background tiers admitted only while busy CPUs are below `capacity.backgroundShare` of the CPUs (default 75%), a one-permit floor, a log line per refusal. | Tests for refusal, floor, edit tiers untouched, the setting; review PASS. |
 | 021-19 the budget measured | planned | Spec D18, a week after 021-18, this host and one other machine. | Findings file. |
 
 ## Later
