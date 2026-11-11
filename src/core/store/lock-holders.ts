@@ -109,15 +109,16 @@ function named(
 }
 
 /**
- * The arguments joined, with the program and each script path cut to its
- * base name, at most `COMMAND_CHARS` long. A daemon's first argument is its
+ * The arguments joined on one line, with the program and each script path
+ * cut to its base name, every run of white space (line breaks of an inline
+ * script included) read as one space, at most `COMMAND_CHARS` long. A daemon's first argument is its
  * process title (`squeal <project> daemon @<id>`), which is kept as it is.
  */
 export function shortCommand(args: readonly string[]): string {
   const words = args.map((arg, at) =>
     arg.startsWith("/") && (at === 0 || /\.[cm]?[jt]s$/.test(arg)) ? basename(arg) : arg,
   );
-  const line = words.join(" ").trim();
+  const line = words.join(" ").replace(/\s+/g, " ").trim();
   if (line === "") return NO_COMMAND;
   return line.length > COMMAND_CHARS ? `${line.slice(0, COMMAND_CHARS - 3)}...` : line;
 }
