@@ -272,6 +272,13 @@ When to call evidence complete does not change: an unfinished loader still rules
 3. **The gate keeps its results (020-17c).** The gate writes each test file it ran to completion, with its results and coverage record, at the key a daemon gives it (D11.7), through the same store write path and lock the daemon uses. A file that did not finish, was left out, did not run because of `prepare`, or came from parts is not written. A file whose keyed inputs changed or were touched during its run is not written, as the daemon's completion barrier rules; each opened runner keeps its own pending state (amended 2026-11-11, review 0.1.433 B1, B2). A second run on the same bytes then reads them (D11.7) and runs only what is missing. A daemon can read them too, because the key means the same run. This reverses D3.5's "nothing is written to a store" and D11.7's "never writes them".
 4. `QUALITY_POLICY_VERSION` does not change: no state rule changes.
 
+### D18. Order across runners (row 020-19, #187; the human, 2026-11-11: "Close + build row")
+
+1. The gate runs one runner after another. Before, Vitest always ran first, so a Vitest selection that used up the budget left the node:test files unrun, even short ones.
+2. Runners now run in ascending order of their D17.1 estimate. A runner with an unknown estimate counts by its file count at the median known duration; with no store at all, the runner with fewer files runs first. Ties keep today's order (Vitest, then node:test entries in config order).
+3. Each runner's own files keep D17.2's order. The order across runners changes no verdict and no rule: `QUALITY_POLICY_VERSION` stays.
+4. The pre-run print lists runners in the order they will run.
+
 ## Testing
 
 - Evaluator golden tests (020-01): limits and equality for CC and CRAP, CC over limit with no coverage, a skipped function under and over the CC limit, pass from a subset, violation that needs every loader, every gap, a failed test, verdict precedence. The same input twice gives the same report.
