@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   LONG_WRITE_MS,
@@ -6,12 +7,13 @@ import {
   longWriteLine,
   operationOf,
 } from "../../src/core/store/long-write.js";
+import { storePaths } from "../../src/core/store/paths.js";
 import type { Store } from "../../src/core/types/store.js";
 import { fakeCommonDir, open } from "./helpers.js";
 
 /*
  * Spec 021 D3 (row 021-09): a write transaction that holds the lock longer
- * than 250 ms names itself, with its duration and the WAL frames it wrote.
+ * than 250 ms names itself, with its duration and the rows it wrote.
  */
 
 /** Sleeps the thread, holding whatever it holds, with no CPU spent. */
@@ -31,6 +33,18 @@ function collect(): LongWrite[] {
   return writes;
 }
 
+/** Whether another process finds `database`'s write lock held, trying once with no wait. */
+function lockedElsewhere(database: string): boolean {
+  const probe = `import { DatabaseSync } from "node:sqlite";
+const db = new DatabaseSync(process.argv[1]);
+db.exec("PRAGMA busy_timeout = 0");
+try { db.exec("BEGIN IMMEDIATE"); db.exec("ROLLBACK"); process.exit(1); } catch { process.exit(0); }`;
+  const args = ["--disable-warning=ExperimentalWarning", "--input-type=module", "-e", probe];
+  const { status } = spawnSync(process.execPath, [...args, database], { stdio: "ignore" });
+  if (status !== 0 && status !== 1) throw new Error(`lock probe exited ${status}`);
+  return status === 0;
+}
+
 function recordSlowly(store: Store, ms: number): void {
   store.transaction(() => {
     store.meta.set("slow", "1");
@@ -39,7 +53,7 @@ function recordSlowly(store: Store, ms: number): void {
 }
 
 describe("a long write transaction (spec 021 D3)", () => {
-  it("tells its database, operation, duration and frames when held 300 ms", () => {
+  it("tells its database, operation, duration and rows when held 300 ms", () => {
     const store = open(fakeCommonDir());
     const writes = collect();
     recordSlowly(store, 300);
@@ -48,14 +62,26 @@ describe("a long write transaction (spec 021 D3)", () => {
     expect(write?.database).toBe("store.sqlite");
     expect(write?.operation).toMatch(/^recordSlowly/);
     expect(write?.ms).toBeGreaterThanOrEqual(300);
-    expect(write?.frames).toBeGreaterThanOrEqual(1);
+    expect(write?.rows).toBe(1);
   });
 
-  it("tells 0 frames for a long one that wrote nothing", () => {
+  it("tells 0 rows for a long one that wrote nothing", () => {
     const store = open(fakeCommonDir());
     const writes = collect();
     store.transaction(() => sleep(LONG_WRITE_MS + 50));
-    expect(writes.map((w) => w.frames)).toEqual([0]);
+    expect(writes.map((w) => w.rows)).toEqual([0]);
+  });
+
+  it("keeps this process's locks on the store while it measures", () => {
+    const commonDir = fakeCommonDir();
+    const store = open(commonDir);
+    collect();
+    const held = store.transaction(() => {
+      store.meta.set("k", "1");
+      return lockedElsewhere(storePaths(commonDir).database);
+    });
+    expect(held).toBe(true);
+    expect(lockedElsewhere(storePaths(commonDir).database)).toBe(false);
   });
 
   it("tells nothing of a short one, of a savepoint inside one, or without a sink", () => {
@@ -82,20 +108,20 @@ describe("a long write transaction (spec 021 D3)", () => {
         throw new Error("abandoned");
       }),
     ).toThrow("abandoned");
-    expect(writes).toHaveLength(1);
+    expect(writes.map((w) => w.rows)).toEqual([1]);
     expect(store.meta.get("lost")).toBeNull();
   });
 });
 
 describe("the long write's log line", () => {
-  it("names the database, duration, operation and frames", () => {
-    const write = { database: "store.sqlite", operation: "applyBatch < pass", ms: 312, frames: 4 };
+  it("names the database, duration, operation and rows", () => {
+    const write = { database: "store.sqlite", operation: "applyBatch < pass", ms: 312, rows: 4 };
     expect(longWriteLine(write)).toBe(
-      "long write: store.sqlite write lock held 312 ms by applyBatch < pass; 4 WAL frames written",
+      "long write: store.sqlite write lock held 312 ms by applyBatch < pass; 4 rows written",
     );
-    expect(longWriteLine({ ...write, frames: 1 })).toMatch(/; 1 WAL frame written$/);
-    expect(longWriteLine({ ...write, database: "", frames: null })).toBe(
-      "long write: a database in memory write lock held 312 ms by applyBatch < pass; WAL frames written not known",
+    expect(longWriteLine({ ...write, rows: 1 })).toMatch(/; 1 row written$/);
+    expect(longWriteLine({ ...write, database: "", rows: 0 })).toBe(
+      "long write: a database in memory write lock held 312 ms by applyBatch < pass; 0 rows written",
     );
   });
 
