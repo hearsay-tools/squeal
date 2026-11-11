@@ -4,6 +4,7 @@ import { coreEnvironmentInputs } from "../../../src/core/keys/environment.js";
 import { describeEnvironment } from "../../../src/core/keys/environment-descriptor.js";
 import { KEY_FORMAT_VERSION } from "../../../src/core/keys/key-format.js";
 import type { RunnerEnvironment } from "../../../src/core/types/runner.js";
+import { observedAdapterVersion } from "../../../src/runners/vitest/observe.js";
 
 /*
  * Spec 020 D13.2 (review 0.1.427 B1): one project's environment as the
@@ -23,11 +24,15 @@ export const RUNNER: RunnerEnvironment = {
 /** The runner's environments as the collector gives them. */
 export const ENVIRONMENT = async (): Promise<readonly RunnerEnvironment[]> => [RUNNER];
 
+/** The adapter version a Squeal whose recorder is at `recorder` gives an observing run. */
+export const observedAt = (recorder: string) => (base: string) =>
+  observedAdapterVersion(base, recorder);
+
 /** The gate's variables, an allow-listed one among them, and this Squeal's recorder. */
 export const GATE: GateEnvironment = {
   env: { PROBE: "yes", OTHER: "x" },
   allowlist: ["PROBE"],
-  recorderVersion: "6",
+  observedAdapterVersion: observedAt("6"),
 };
 
 /**
