@@ -33,22 +33,31 @@ export function loaderOrder(
   changed: readonly RelativePath[],
   inputs: OrderInputs,
 ): TestFileRef[] {
-  const loads = new Map(files.map((ref) => [ref, inputs.loads(ref)]));
   const stored = files.map(inputs.seconds);
   const fallback = median(stored.filter((s): s is number => s !== null)) ?? 1;
-  const cost = new Map(files.map((ref, i) => [ref, stored[i] ?? fallback]));
-  const paths = changed
-    .map((path) => {
-      const loaders = files.filter((ref) => loads.get(ref)?.includes(path) === true);
-      const seconds = loaders.reduce((sum, ref) => sum + (cost.get(ref) ?? fallback), 0);
-      return { path, loaders, seconds };
-    })
+  // Each changed path's loaders, in the order of `files`, from one pass over each closure.
+  const byPath = new Map(
+    changed.map((path) => [path, { path, loaders: [] as TestFileRef[], seconds: 0 }]),
+  );
+  const known: TestFileRef[] = [];
+  for (const [i, ref] of files.entries()) {
+    const loads = inputs.loads(ref);
+    if (loads === null) continue;
+    known.push(ref);
+    for (const path of new Set(loads)) {
+      const entry = byPath.get(path);
+      if (entry === undefined) continue;
+      entry.loaders.push(ref);
+      entry.seconds += stored[i] ?? fallback;
+    }
+  }
+  const paths = [...byPath.values()]
     .filter((p) => p.loaders.length > 0)
     .sort((a, b) => a.seconds - b.seconds || compare(a.path, b.path));
   const given = new Set<TestFileRef>();
   const give = (ref: TestFileRef) => given.add(ref);
   for (const { loaders } of paths) loaders.forEach(give);
-  files.filter((ref) => loads.get(ref) !== null).forEach(give);
+  known.forEach(give);
   files.forEach(give);
   return [...given];
 }
