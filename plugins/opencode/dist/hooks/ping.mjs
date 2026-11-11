@@ -413,6 +413,10 @@ var pythonInsideRoot = (entry) => {
   };
 };
 
+// src/core/daemon/policy-remote.ts
+var boolean4 = (v) => typeof v === "boolean" ? null : "true or false";
+var REMOTE_SHAPE = { remote: { allowed: boolean4 } };
+
 // src/core/keys/observed.ts
 import { createHash } from "node:crypto";
 var ABSENT_LISTING = createHash("sha1").update("\0absent").digest("hex");
@@ -492,7 +496,7 @@ function slowInclude(value) {
 }
 
 // src/core/daemon/policy.ts
-var boolean4 = (v) => typeof v === "boolean" ? null : "true or false";
+var boolean5 = (v) => typeof v === "boolean" ? null : "true or false";
 var strings2 = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
 var inputs = (v) => {
   const isList = strings2(v) === null;
@@ -510,23 +514,23 @@ var orNull = (leaf) => (v) => {
 };
 var oneOf2 = (...values) => (v) => values.includes(v) ? null : `one of ${values.map((s) => `"${s}"`).join(", ")}`;
 var SHAPE = {
-  interrupt: { onRegression: boolean4 },
+  interrupt: { onRegression: boolean5 },
   stop: {
-    blockOnKnownFailures: boolean4,
-    requireFullSuite: boolean4,
+    blockOnKnownFailures: boolean5,
+    requireFullSuite: boolean5,
     waitMs: atLeastZero2,
-    requireSlowSuite: boolean4,
+    requireSlowSuite: boolean5,
     slowWaitMs: atLeastZero2,
     // Spec 019 D4 step 3.
     maxHolds: positiveInteger
   },
   // Spec 019 D1.
   checks: checkGroups,
-  testCommand: { denyWhenCurrent: boolean4 },
+  testCommand: { denyWhenCurrent: boolean5 },
   baseline: { onStart: oneOf2("lookup-then-run-missing", "lookup-only") },
   inputs,
   runtimeFiles,
-  observe: { runtimeInputs: boolean4 },
+  observe: { runtimeInputs: boolean5 },
   env: { allowlist: strings2 },
   runner: {
     tierSize: positiveInteger,
@@ -547,12 +551,13 @@ var SHAPE = {
     trigger: oneOf2("continuous", "idle"),
     quietMs: atLeastZero2
   },
-  delivery: { uncoveredEdits: boolean4 },
+  delivery: { uncoveredEdits: boolean5 },
   daemon: { idleExitMinutes: aboveZero3, unusedExitMinutes: aboveZero3 },
   store: { retentionDays: atLeastZero2, maxSizeMb: orNull(aboveZero3) },
   ...CODE_SHAPE,
   ...LINT_SHAPE,
   ...SHARED_SHAPE,
+  ...REMOTE_SHAPE,
   ...GATE_SHAPE,
   ...NODE_SHAPE
 };
@@ -1709,9 +1714,23 @@ var DEFAULT_COVERAGE = { ...UNCONFIGURED3, slow: null };
 // src/harness/shared/hand-off.ts
 var HandOff = class {
   #taken = [];
-  /** Takes `reports`, which wait for the verdict, and the `close` of the store they hold open. */
-  take(reports, close) {
-    this.#taken.push({ reports, close });
+  #sending = [];
+  /**
+   * Takes `reports`, which wait for the verdict, the `close` of the store
+   * they hold open, and with a daemon serving, what waits for their sent
+   * writes (spec 021 D15).
+   */
+  take(reports, close, sent) {
+    this.#taken.push({ reports, close, ...sent === void 0 ? {} : { sent } });
+  }
+  /**
+   * Resolves once every write the verdicts sent to the daemon is written, or
+   * failed: a failed one leaves its report owed. Never rejects.
+   */
+  async sent() {
+    const sending = this.#sending;
+    this.#sending = [];
+    await Promise.allSettled(sending);
   }
   /** Whether a report waits for the verdict. */
   get pending() {
@@ -1743,13 +1762,17 @@ var HandOff = class {
   #end(verdict) {
     const taken = this.#taken;
     this.#taken = [];
-    endInOrder(
-      taken,
-      (t) => endThenClose(t, verdict),
-      (rest) => {
-        for (const t of rest) endThenClose(t, (reports) => reports.abandon());
-      }
-    );
+    try {
+      endInOrder(
+        taken,
+        (t) => endThenClose(t, verdict),
+        (rest) => {
+          for (const t of rest) endThenClose(t, (reports) => reports.abandon());
+        }
+      );
+    } finally {
+      for (const t of taken) if (t.sent !== void 0) this.#sending.push(t.sent());
+    }
   }
 };
 function endThenClose(taken, end) {

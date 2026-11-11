@@ -249,7 +249,8 @@ var DEFAULT_POLICY = {
   },
   gate: { groups: null },
   shared: { ref: null },
-  node: "project"
+  node: "project",
+  remote: { allowed: true }
 };
 
 // src/core/daemon/config-file.ts
@@ -374,9 +375,9 @@ function compile(glob, original) {
   }
   return out;
 }
-function matchingBrace(glob, open, original) {
+function matchingBrace(glob, open2, original) {
   let depth = 0;
-  for (let i = open; i < glob.length; i++) {
+  for (let i = open2; i < glob.length; i++) {
     if (glob[i] === "{") depth++;
     else if (glob[i] === "}" && --depth === 0) return i;
   }
@@ -903,6 +904,10 @@ var pythonInsideRoot = (entry3) => {
   };
 };
 
+// src/core/daemon/policy-remote.ts
+var boolean4 = (v) => typeof v === "boolean" ? null : "true or false";
+var REMOTE_SHAPE = { remote: { allowed: boolean4 } };
+
 // src/core/fs/compare.ts
 function compare(a, b) {
   return a < b ? -1 : a > b ? 1 : 0;
@@ -1017,7 +1022,7 @@ function slowInclude(value) {
 
 // src/core/daemon/policy.ts
 var POLICY_FILE = "squeal.config.json";
-var boolean4 = (v) => typeof v === "boolean" ? null : "true or false";
+var boolean5 = (v) => typeof v === "boolean" ? null : "true or false";
 var strings2 = (v) => Array.isArray(v) && v.every((s) => typeof s === "string") ? null : "an array of strings";
 var inputs = (v) => {
   const isList = strings2(v) === null;
@@ -1035,23 +1040,23 @@ var orNull = (leaf) => (v) => {
 };
 var oneOf2 = (...values) => (v) => values.includes(v) ? null : `one of ${values.map((s) => `"${s}"`).join(", ")}`;
 var SHAPE = {
-  interrupt: { onRegression: boolean4 },
+  interrupt: { onRegression: boolean5 },
   stop: {
-    blockOnKnownFailures: boolean4,
-    requireFullSuite: boolean4,
+    blockOnKnownFailures: boolean5,
+    requireFullSuite: boolean5,
     waitMs: atLeastZero2,
-    requireSlowSuite: boolean4,
+    requireSlowSuite: boolean5,
     slowWaitMs: atLeastZero2,
     // Spec 019 D4 step 3.
     maxHolds: positiveInteger
   },
   // Spec 019 D1.
   checks: checkGroups,
-  testCommand: { denyWhenCurrent: boolean4 },
+  testCommand: { denyWhenCurrent: boolean5 },
   baseline: { onStart: oneOf2("lookup-then-run-missing", "lookup-only") },
   inputs,
   runtimeFiles,
-  observe: { runtimeInputs: boolean4 },
+  observe: { runtimeInputs: boolean5 },
   env: { allowlist: strings2 },
   runner: {
     tierSize: positiveInteger,
@@ -1072,12 +1077,13 @@ var SHAPE = {
     trigger: oneOf2("continuous", "idle"),
     quietMs: atLeastZero2
   },
-  delivery: { uncoveredEdits: boolean4 },
+  delivery: { uncoveredEdits: boolean5 },
   daemon: { idleExitMinutes: aboveZero3, unusedExitMinutes: aboveZero3 },
   store: { retentionDays: atLeastZero2, maxSizeMb: orNull(aboveZero3) },
   ...CODE_SHAPE,
   ...LINT_SHAPE,
   ...SHARED_SHAPE,
+  ...REMOTE_SHAPE,
   ...GATE_SHAPE,
   ...NODE_SHAPE
 };
@@ -4806,15 +4812,15 @@ var HoldingConnection = class extends Connection {
     this.#begin();
     this.#held = true;
     holders.set(this.#file, this);
-    let open = true;
+    let open2 = true;
     const end = () => {
-      open = false;
+      open2 = false;
       this.#held = false;
       release(this.#file, this);
     };
     return {
       commit: () => {
-        if (!open) return;
+        if (!open2) return;
         try {
           this.db.exec("COMMIT");
         } catch (error) {
@@ -4825,7 +4831,7 @@ var HoldingConnection = class extends Connection {
         }
       },
       rollback: () => {
-        if (!open) return;
+        if (!open2) return;
         end();
         rollback(this.db);
       }
@@ -8124,7 +8130,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.441";
+  if (true) return "0.1.442";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -9320,8 +9326,8 @@ var V8_POSITION = /^(.+):(\d+):(\d+)$/;
 var PYTEST_ENTRY = /^(\S[^:]*):(\d+):(?: |$)/;
 var NATIVE_ENTRY = /^\s*File "(.+)", line (\d+)/;
 function v8Position(frame) {
-  const open = frame.indexOf(" (");
-  const where3 = open !== -1 && frame.endsWith(")") ? frame.slice(open + 2, -1) : frame;
+  const open2 = frame.indexOf(" (");
+  const where3 = open2 !== -1 && frame.endsWith(")") ? frame.slice(open2 + 2, -1) : frame;
   const match = V8_POSITION.exec(where3);
   if (match === null) return null;
   return { path: match[1], line: Number(match[2]), column: Number(match[3]) };
@@ -10804,15 +10810,15 @@ function readProcStat(pid) {
     if (error.code === "ENOENT") return null;
     throw error;
   }
-  const open = text2.indexOf("(");
+  const open2 = text2.indexOf("(");
   const close = text2.lastIndexOf(")");
   const rest = text2.slice(close + 2).split(" ");
   const ppid = Number(rest[1]);
   const startTime = Number(rest[19]);
-  if (open < 0 || close < open || !Number.isInteger(ppid) || !Number.isInteger(startTime)) {
+  if (open2 < 0 || close < open2 || !Number.isInteger(ppid) || !Number.isInteger(startTime)) {
     throw new Error(`unreadable /proc/${pid}/stat`);
   }
-  return { comm: text2.slice(open + 1, close), state: rest[0] ?? "", ppid, startTime };
+  return { comm: text2.slice(open2 + 1, close), state: rest[0] ?? "", ppid, startTime };
 }
 function pidNamespace() {
   try {
@@ -11098,8 +11104,8 @@ function readLiveHeader(store, worktreeId, now, states, since = null, keys) {
   const worktree = store.worktrees.get(worktreeId);
   const presence = readPresence(store, worktreeId, now, worktree);
   const runs = openRuns(store, worktree, presence.heartbeat);
-  const open = new Set(runs.flatMap((run2) => run2.testFiles.map(testFileId)));
-  const header = readHeader(store, worktreeId, states, keys, void 0, open);
+  const open2 = new Set(runs.flatMap((run2) => run2.testFiles.map(testFileId)));
+  const header = readHeader(store, worktreeId, states, keys, void 0, open2);
   const changes = changedSince(store, worktreeId, header.revision, since);
   const installed2 = [...changes.values()].find(
     (c) => c.newHash !== null && isInstalledLockfile(c.path)
@@ -11711,100 +11717,35 @@ function createDelivery(store, options) {
     return null;
   }
   const free = () => holdFree(options.prepare?.connection, HOOK_TIMEOUT_MS);
+  const unit = (work) => {
+    const freed = async () => {
+      const wait = free();
+      if (wait !== null) await wait;
+      return work();
+    };
+    return options.prepare?.unit?.(freed) ?? freed();
+  };
   return {
-    register: async (consumer, { inTurn = false, atStart = false, startingSince } = {}) => {
-      const wait = free();
-      if (wait !== null) await wait;
-      return store.transaction(() => {
-        const at = now();
-        const registered = store.consumers.get(consumer) !== null;
-        store.consumers.register(consumer, at);
-        forgetStopWait(store, consumer);
-        markLeaving(store, consumer, null);
-        const states = store.knownStates.list(consumer.worktreeId);
-        store.views.writeMany(
-          consumer,
-          states.map((s) => toView2(s, at))
-        );
-        const told = startingSince === void 0 ? null : { startingSince };
-        const read5 = readLiveHeader(store, consumer.worktreeId, at, states);
-        const live = told === null ? read5 : withTold(read5, told, at);
-        const knownFailures = withRecorded(store, consumer.worktreeId, states, live.revision);
-        const header = withDependencies(
-          store,
-          consumer.worktreeId,
-          live,
-          knownFailures.map((f) => f.check)
-        );
-        const starting = header.daemon?.state === "down" && header.daemon.startingSince !== void 0;
-        const daemon = header.daemon === void 0 ? null : toldOf(header.daemon);
-        tellLiveness(store, consumer, starting ? told : daemon);
-        tellRevision(store, consumer, header.revision);
-        tellSlowTier(store, consumer, header.slowTier);
-        tellGroupTiers(store, consumer, header.groupTiers);
-        tellCommit(store, consumer, header.commitLine);
-        oweCounts(store, consumer, header);
-        tellHolds(store, consumer, heldNow(store, consumer.worktreeId, at));
-        if (!registered) {
-          const alive2 = atStart && header.daemon?.state === "alive";
-          const resumed = tellRegistered(store, consumer, header.revision, {
-            at,
-            scanned: scannedDaemon(store, consumer.worktreeId, alive2),
-            head: options.root === void 0 ? null : registrationHead(options.root)
-          });
-          startEdits(store, consumer, header.revision, resumed?.said === true);
-          if (resumed !== null) recordUncoveredTold(store, consumer, resumed.uncovered);
-        }
-        if (inTurn) startTurn(store, consumer);
-        else writeTurn(store, consumer, null);
-        recordHarness(store, consumer, options.harnessProcess?.() ?? null);
-        recordVersion(store, consumer, options.squealVersion ?? null);
-        const code = registerCode(options.code, consumer, at);
-        const lint2 = registerLint(options.lint, consumer, at);
-        return {
-          schemaVersion: PAYLOAD_SCHEMA_VERSION,
-          consumer,
-          header,
-          // 011-18: a resumed session's failures name the closure paths changed since it started.
-          knownFailures: withClosureChanges(store, consumer, knownFailures, header.revision),
-          ...code === void 0 ? {} : { code },
-          ...lint2 === void 0 ? {} : { lint: lint2 },
-          // Row 011-275 (gh-120): the session's first notice names the keys a runtime here leaves out.
-          ...ignoredConfigAt(store.worktrees.get(consumer.worktreeId), header.daemon)
-        };
-      });
-    },
-    unregister: async (consumer) => {
-      const wait = free();
-      if (wait !== null) await wait;
-      store.transaction(() => drop(store, consumer, now()));
-    },
-    onToolBoundary: async (consumer, { stop: stop2 = false, atRevision } = {}) => {
-      const wait = free();
-      if (wait !== null) await wait;
-      return deliver2(consumer, {
+    register: (consumer, registerOptions = {}) => unit(() => registerNow(consumer, registerOptions)),
+    unregister: (consumer) => unit(() => store.transaction(() => drop(store, consumer, now()))),
+    onToolBoundary: (consumer, { stop: stop2 = false, atRevision } = {}) => unit(
+      () => deliver2(consumer, {
         heardFrom: true,
         liveness: true,
         stop: stop2,
         ...atRevision === void 0 ? {} : { atRevision }
-      });
-    },
-    peek: async (consumer, { kinds }) => {
-      const wait = free();
-      if (wait !== null) await wait;
+      })
+    ),
+    peek: (consumer, { kinds }) => {
       const only = new Set(kinds);
-      return deliver2(consumer, { heardFrom: true, keep: (e) => only.has(e.kind) });
+      return unit(() => deliver2(consumer, { heardFrom: true, keep: (e) => only.has(e.kind) }));
     },
-    startTurn: async (consumer) => {
-      const wait = free();
-      if (wait !== null) await wait;
+    startTurn: (consumer) => unit(() => {
       promptTurn(store, consumer);
       return deliver2(consumer, { heardFrom: true, liveness: true });
-    },
-    endTurn: async (consumer, { atRevision, handoff = false } = {}) => {
-      const wait = free();
-      if (wait !== null) await wait;
-      return store.transaction(() => {
+    }),
+    endTurn: (consumer, { atRevision, handoff = false } = {}) => unit(
+      () => store.transaction(() => {
         if (store.consumers.get(consumer) === null) return true;
         if (!atLatest(consumer, atRevision)) return false;
         const states = store.knownStates.list(consumer.worktreeId);
@@ -11817,15 +11758,13 @@ function createDelivery(store, options) {
           handoff ? at : null
         );
         return true;
-      });
-    },
+      })
+    ),
     waitForDelta: async (consumer, { timeoutMs, signal }) => {
       const deadline = performance.now() + timeoutMs;
       for (; ; ) {
         if (signal?.aborted) return null;
-        const wait = free();
-        if (wait !== null) await wait;
-        const delta = deliverIdle(consumer);
+        const delta = await unit(() => deliverIdle(consumer));
         if (delta !== null) return delta;
         const left = deadline - performance.now();
         if (left <= 0) return null;
@@ -11839,6 +11778,510 @@ function createDelivery(store, options) {
     },
     status: async (worktreeId) => options.status.build(worktreeId)
   };
+  function registerNow(consumer, { inTurn = false, atStart = false, startingSince }) {
+    return store.transaction(() => {
+      const at = now();
+      const registered = store.consumers.get(consumer) !== null;
+      store.consumers.register(consumer, at);
+      forgetStopWait(store, consumer);
+      markLeaving(store, consumer, null);
+      const states = store.knownStates.list(consumer.worktreeId);
+      store.views.writeMany(
+        consumer,
+        states.map((s) => toView2(s, at))
+      );
+      const told = startingSince === void 0 ? null : { startingSince };
+      const read5 = readLiveHeader(store, consumer.worktreeId, at, states);
+      const live = told === null ? read5 : withTold(read5, told, at);
+      const knownFailures = withRecorded(store, consumer.worktreeId, states, live.revision);
+      const header = withDependencies(
+        store,
+        consumer.worktreeId,
+        live,
+        knownFailures.map((f) => f.check)
+      );
+      const starting = header.daemon?.state === "down" && header.daemon.startingSince !== void 0;
+      const daemon = header.daemon === void 0 ? null : toldOf(header.daemon);
+      tellLiveness(store, consumer, starting ? told : daemon);
+      tellRevision(store, consumer, header.revision);
+      tellSlowTier(store, consumer, header.slowTier);
+      tellGroupTiers(store, consumer, header.groupTiers);
+      tellCommit(store, consumer, header.commitLine);
+      oweCounts(store, consumer, header);
+      tellHolds(store, consumer, heldNow(store, consumer.worktreeId, at));
+      if (!registered) {
+        const alive2 = atStart && header.daemon?.state === "alive";
+        const resumed = tellRegistered(store, consumer, header.revision, {
+          at,
+          scanned: scannedDaemon(store, consumer.worktreeId, alive2),
+          head: options.root === void 0 ? null : registrationHead(options.root)
+        });
+        startEdits(store, consumer, header.revision, resumed?.said === true);
+        if (resumed !== null) recordUncoveredTold(store, consumer, resumed.uncovered);
+      }
+      if (inTurn) startTurn(store, consumer);
+      else writeTurn(store, consumer, null);
+      recordHarness(store, consumer, options.harnessProcess?.() ?? null);
+      recordVersion(store, consumer, options.squealVersion ?? null);
+      const code = registerCode(options.code, consumer, at);
+      const lint2 = registerLint(options.lint, consumer, at);
+      return {
+        schemaVersion: PAYLOAD_SCHEMA_VERSION,
+        consumer,
+        header,
+        // 011-18: a resumed session's failures name the closure paths changed since it started.
+        knownFailures: withClosureChanges(store, consumer, knownFailures, header.revision),
+        ...code === void 0 ? {} : { code },
+        ...lint2 === void 0 ? {} : { lint: lint2 },
+        // Row 011-275 (gh-120): the session's first notice names the keys a runtime here leaves out.
+        ...ignoredConfigAt(store.worktrees.get(consumer.worktreeId), header.daemon)
+      };
+    });
+  }
+}
+
+// src/core/delivery/daemon-writer.ts
+import { setTimeout as sleep2 } from "node:timers/promises";
+
+// src/core/daemon/write-batch.ts
+function encodeBatch(statements) {
+  const sqls = [];
+  const index = /* @__PURE__ */ new Map();
+  const rows = statements.map(({ sql, params }) => {
+    let at = index.get(sql);
+    if (at === void 0) {
+      at = sqls.push(sql) - 1;
+      index.set(sql, at);
+    }
+    return [at, ...params.map(encodeParam)];
+  });
+  return { sqls, rows };
+}
+function encodeParam(value) {
+  if (value === null || typeof value === "number" || typeof value === "string") return value;
+  if (typeof value === "bigint") return { bigint: value.toString() };
+  const bytes = Buffer.from(value.buffer, value.byteOffset, value.byteLength);
+  return { bytes: bytes.toString("base64") };
+}
+
+// src/core/delivery/daemon-writer.ts
+var REQUEST_TIMEOUT_MS = 1e3;
+var SMALL_REQUEST_TIMEOUT_MS = 250;
+var LEASE_PAUSES_MS = [2, 5, 10, 20, 40, 50];
+var STATUS_PAUSES_MS = [1, 2, 5, 10, 20, 25];
+var DaemonWriter = class {
+  #options;
+  #socket;
+  #token = null;
+  /** No daemon takes writes: every later call says so at once. */
+  #off = false;
+  constructor(options) {
+    this.#options = options;
+  }
+  get leased() {
+    return this.#token !== null;
+  }
+  /**
+   * Takes the worktree's write lease; `false` when no daemon takes writes.
+   * Another holder is waited for until the bound, then a busy error is
+   * thrown, as SQLite's busy timeout throws one (`isBusy` reads it).
+   */
+  async acquire() {
+    if (this.#token !== null) return true;
+    const socket = this.#socketPath();
+    if (socket === null) return false;
+    const deadline = Date.now() + this.#options.boundMs;
+    for (let attempt = 0; ; attempt++) {
+      const { worktreeId, holder } = this.#options;
+      const answer = await this.#ask(socket, { type: "lease", worktreeId, holder });
+      if (!isLease(answer)) return this.#notTaken(false);
+      if (answer.token !== null) {
+        this.#token = answer.token;
+        return true;
+      }
+      const pause = pauseOf(LEASE_PAUSES_MS, attempt);
+      if (Date.now() + pause >= deadline) throw leaseBusy(answer.holder);
+      await sleep2(pause);
+    }
+  }
+  async send(batch, release2) {
+    const socket = this.#socketPath();
+    if (socket === null) return "not-taken";
+    const token = this.#token;
+    if (release2) this.#token = null;
+    const request = {
+      type: "write",
+      worktreeId: this.#options.worktreeId,
+      storeSchema: this.#options.storeSchema,
+      token,
+      release: release2,
+      batch: encodeBatch(batch)
+    };
+    const answer = await this.#ask(socket, request);
+    if (!isWrite(answer)) return this.#notTaken("not-taken");
+    const deadline = Date.now() + this.#options.boundMs;
+    let state = answer;
+    for (let attempt = 0; state.written === null; attempt++) {
+      const pause = pauseOf(STATUS_PAUSES_MS, attempt);
+      if (Date.now() + pause >= deadline) throw writeBusy();
+      await sleep2(pause);
+      const next = await requestDaemon(
+        socket,
+        { type: "write-status", requestId: answer.requestId },
+        SMALL_REQUEST_TIMEOUT_MS
+      );
+      if (!isWrite(next)) throw new Error(`squeal: ${errorOf(next)}`);
+      state = next;
+    }
+    if (state.written) return "written";
+    return this.#notTaken("not-taken");
+  }
+  async release() {
+    const token = this.#token;
+    const socket = this.#socket;
+    this.#token = null;
+    if (token === null || socket === null || socket === void 0) return;
+    const { worktreeId } = this.#options;
+    await this.#ask(socket, { type: "release", worktreeId, token });
+  }
+  #socketPath() {
+    if (this.#off) return null;
+    if (this.#socket === void 0) this.#socket = this.#options.socketPath();
+    return this.#socket;
+  }
+  /**
+   * The daemon's answer; `null` when it took nothing: nothing listens
+   * there, or, for any request but a write, it gave no answer (a hung
+   * socket, or one that is not a daemon's): a lease or a release changes
+   * no row, so the client writes the store itself. A write left unanswered
+   * may have been taken, so it throws: never written twice.
+   */
+  async #ask(socket, request) {
+    try {
+      const timeout = request.type === "write" ? this.#timeout() : SMALL_REQUEST_TIMEOUT_MS;
+      return await requestDaemon(socket, request, timeout);
+    } catch (error) {
+      const code = error.code;
+      if (code === "ENOENT" || code === "ECONNREFUSED" || code === "ESTALE") return null;
+      if (request.type !== "write") return null;
+      throw error;
+    }
+  }
+  #notTaken(answer) {
+    this.#off = true;
+    this.#token = null;
+    return answer;
+  }
+  #timeout() {
+    return this.#options.requestTimeoutMs ?? REQUEST_TIMEOUT_MS;
+  }
+};
+function isLease(answer) {
+  if (answer === null || !answer.ok || answer.type !== "lease") return false;
+  const { token, holder } = answer;
+  return (token === null || typeof token === "string") && holder !== void 0;
+}
+function isWrite(answer) {
+  if (answer === null || !answer.ok || answer.type !== "write") return false;
+  const { requestId, written: written2 } = answer;
+  return typeof requestId === "string" && (written2 === null || typeof written2 === "boolean");
+}
+function pauseOf(pauses2, attempt) {
+  return pauses2[Math.min(attempt, pauses2.length - 1)] ?? 0;
+}
+function errorOf(response) {
+  return response.ok ? `unexpected answer ${response.type}` : response.error;
+}
+function busy(message) {
+  return Object.assign(new Error(`database is locked: ${message}`), {
+    code: "ERR_SQLITE_ERROR",
+    errcode: 5
+  });
+}
+function leaseBusy(holder) {
+  const error = busy(`the worktree's write lease is held${holder === null ? "" : ` by ${holder}`}`);
+  return Object.assign(error, { leaseHolder: holder });
+}
+function writeBusy() {
+  return busy("the daemon has not written this batch yet");
+}
+
+// src/core/delivery/sent-meta.ts
+var READ = "SELECT value FROM meta WHERE key = ?";
+var SETS = /* @__PURE__ */ new Set([
+  "INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)",
+  "INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value"
+]);
+var DELETE = "DELETE FROM meta WHERE key = ?";
+function overlaidMeta(sql, params, pending2) {
+  if (sql !== READ || pending2.length === 0) return void 0;
+  const key = params[0];
+  for (let i = pending2.length - 1; i >= 0; i--) {
+    const write2 = pending2[i];
+    if (write2.params[0] !== key) continue;
+    if (SETS.has(write2.sql)) return { value: write2.params[1] };
+    if (write2.sql === DELETE) return null;
+  }
+  return void 0;
+}
+
+// src/core/delivery/sending-connection.ts
+var NeedsLease = class extends Error {
+  constructor() {
+    super("squeal: a store write needs the worktree's write lease first");
+  }
+};
+var SendingConnection = class extends HoldingConnection {
+  #direct = false;
+  #depth = 0;
+  #batch = [];
+  #held = null;
+  /** Batches sent outside a hold and not yet written. */
+  #unsent = 0;
+  #sending = /* @__PURE__ */ new Set();
+  #failure = null;
+  #closing = false;
+  #sender;
+  constructor(db, sender) {
+    super(db);
+    this.#sender = sender;
+    db.exec("PRAGMA query_only = 1");
+  }
+  /** Whether the store is written here: no daemon took the writes. */
+  get direct() {
+    return this.#direct;
+  }
+  get held() {
+    return this.#direct ? super.held : this.#held !== null;
+  }
+  /**
+   * Runs `work`, then waits until its batches are written and ends the lease
+   * unless a hold keeps it. A write before the lease (`NeedsLease`) takes
+   * it, through `acquire`, and runs `work` again: nothing was kept by then.
+   * `acquire` says whether a daemon took the lease; when none does, this
+   * connection writes the store itself from then on.
+   */
+  async unit(work, acquire) {
+    for (let tries = 0; ; tries++) {
+      try {
+        const result = await work();
+        await this.settle();
+        return result;
+      } catch (error) {
+        if (!(error instanceof NeedsLease) || tries > 0) {
+          await this.settle().catch(() => {
+          });
+          throw error;
+        }
+        if (!await acquire()) this.#becomeDirect();
+      }
+    }
+  }
+  /** Writes the store here from now on: no daemon serves. Before any write. */
+  writeDirectly() {
+    this.#becomeDirect();
+  }
+  /** Waits until every batch sent so far is written, then ends the lease unless a hold keeps it. */
+  async settle() {
+    await this.sent();
+    if (!this.#direct && this.#held === null && this.#sender.leased) await this.#sender.release();
+  }
+  /** Waits until every batch sent so far is written; rethrows the first that failed. */
+  async sent() {
+    while (this.#sending.size > 0) await Promise.allSettled([...this.#sending]);
+    const failure2 = this.#failure;
+    this.#failure = null;
+    if (failure2 !== null) throw failure2;
+  }
+  run(sql, ...params) {
+    if (this.#direct) return super.run(sql, ...params);
+    if (this.#depth > 0) {
+      this.#batch.push({ sql, params });
+      return 0;
+    }
+    return this.transaction(() => this.run(sql, ...params));
+  }
+  get(sql, ...params) {
+    if (this.#direct) return super.get(sql, ...params);
+    this.#readable();
+    const overlaid = overlaidMeta(sql, params, this.#pending());
+    return overlaid === void 0 ? super.get(sql, ...params) : overlaid;
+  }
+  all(sql, ...params) {
+    if (this.#direct) return super.all(sql, ...params);
+    this.#readable();
+    return super.all(sql, ...params);
+  }
+  transaction(fn) {
+    if (this.#direct) return super.transaction(fn);
+    const outer = this.#depth === 0;
+    if (outer) {
+      if (this.#held === null && !this.#sender.leased) throw new NeedsLease();
+      this.#readable();
+      this.db.exec("BEGIN");
+    }
+    const mark = this.#batch.length;
+    this.#depth++;
+    try {
+      const result = fn();
+      if (outer) {
+        this.db.exec("COMMIT");
+        this.#end(this.#batch);
+      }
+      return result;
+    } catch (error) {
+      this.#batch.length = mark;
+      if (outer) {
+        this.#batch = [];
+        rollback(this.db);
+      }
+      throw error;
+    } finally {
+      this.#depth--;
+    }
+  }
+  read(fn) {
+    if (this.#direct) return super.read(fn);
+    if (this.#depth > 0) return fn();
+    this.#readable();
+    this.db.exec("BEGIN");
+    this.#depth++;
+    try {
+      const result = fn();
+      this.db.exec("COMMIT");
+      return result;
+    } catch (error) {
+      rollback(this.db);
+      throw error;
+    } finally {
+      this.#depth--;
+    }
+  }
+  /**
+   * Keeps every batch from now until the hold's commit, which sends them as
+   * one and ends the lease once they are written; its rollback drops them
+   * and ends the lease. `null` inside a transaction or a hold, as
+   * `HoldingConnection.hold` is. Needs the lease (`NeedsLease`).
+   */
+  hold() {
+    if (this.#direct) return super.hold();
+    if (this.#held !== null || this.#depth > 0) return null;
+    if (!this.#sender.leased) throw new NeedsLease();
+    this.#readable();
+    const held = [];
+    this.#held = held;
+    let open2 = true;
+    return {
+      commit: () => {
+        if (!open2) return;
+        open2 = false;
+        this.#held = null;
+        this.#track(this.#send(held, true), false);
+      },
+      rollback: () => {
+        if (!open2) return;
+        open2 = false;
+        this.#held = null;
+        this.#track(this.#sender.release(), false);
+      }
+    };
+  }
+  heldElsewhere() {
+    return this.#direct ? super.heldElsewhere() : null;
+  }
+  /** Closes once every batch sent is written, since one the daemon does not take is written here. */
+  close() {
+    this.#held = null;
+    if (this.#sending.size === 0) {
+      super.close();
+      return;
+    }
+    if (this.#closing) return;
+    this.#closing = true;
+    void Promise.allSettled([...this.#sending]).then(() => super.close());
+  }
+  /** A read now would miss writes not yet written: it must wait for them (`sent`). */
+  #readable() {
+    if (this.#unsent > 0) {
+      throw new Error("squeal: a store read before this hook's writes were written (await sent())");
+    }
+  }
+  /** What a read here must see before the store has it: the hold's batch, then the open one. */
+  #pending() {
+    if (this.#held === null) return this.#depth > 0 ? this.#batch : [];
+    return this.#depth > 0 ? [...this.#held, ...this.#batch] : this.#held;
+  }
+  #end(batch) {
+    this.#batch = [];
+    if (batch.length === 0) return;
+    if (this.#held !== null) this.#held.push(...batch);
+    else this.#track(this.#send(batch, false), true);
+  }
+  /** Sends `batch`; when no daemon takes it, writes it here and stays direct. */
+  async #send(batch, release2) {
+    if (batch.length === 0) {
+      if (release2) await this.#sender.release();
+      return;
+    }
+    if (await this.#sender.send(batch, release2) === "written") return;
+    this.#becomeDirect();
+    super.transaction(() => {
+      for (const { sql, params } of batch) super.run(sql, ...params);
+    });
+  }
+  #track(sending, unsent) {
+    if (unsent) this.#unsent++;
+    const tracked = sending.then(
+      () => {
+      },
+      (error) => {
+        this.#failure ??= error;
+      }
+    );
+    const done = tracked.finally(() => {
+      if (unsent) this.#unsent--;
+      this.#sending.delete(done);
+    });
+    this.#sending.add(done);
+  }
+  /** From now on the store is written here, as `HoldingConnection` writes it. */
+  #becomeDirect() {
+    if (this.#direct) return;
+    this.#direct = true;
+    this.db.exec("PRAGMA query_only = 0");
+  }
+};
+
+// src/core/delivery/sent-store.ts
+function openSentStore(commonDir, options) {
+  const { worktreeId, boundMs, holder } = options;
+  let opened = null;
+  let made = null;
+  let sender = null;
+  const writer = options.writer ?? ((target) => new DaemonWriter({ ...target, holder }));
+  const store = openStore(commonDir, {
+    create: options.create ?? false,
+    busyTimeoutMs: options.busyTimeoutMs,
+    connection: (db) => {
+      sender = writer({
+        worktreeId,
+        boundMs,
+        storeSchema: Number(Object.values(db.prepare("PRAGMA user_version").get() ?? {})[0]),
+        socketPath: () => opened?.worktrees.get(worktreeId)?.daemon?.socketPath ?? null
+      });
+      made = new SendingConnection(db, sender);
+      return made;
+    }
+  });
+  if (isStoreOpenFailure(store)) return store;
+  opened = store;
+  const connection = made;
+  if (connection === null) throw new Error("squeal: the store opened without its connection");
+  const record = store.worktrees.get(worktreeId)?.daemon ?? null;
+  const now = (options.now ?? Date.now)();
+  if (daemonLiveness(record, now).state !== "alive") connection.writeDirectly();
+  const acquire = () => sender?.acquire() ?? Promise.resolve(false);
+  return { store, connection, write: (work) => connection.unit(work, acquire) };
 }
 
 // src/core/status/open.ts
@@ -13122,6 +13565,12 @@ function permitFree(path) {
   }
 }
 
+// src/core/capacity/background.ts
+var DEFAULT_BACKGROUND_SHARE = 0.75;
+function isBackgroundShare(value) {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 1;
+}
+
 // src/core/daemon/outlived.ts
 import { execFile } from "node:child_process";
 import { readdirSync as readdirSync9, readFileSync as readFileSync18 } from "node:fs";
@@ -13297,8 +13746,8 @@ function publishedPoolWaits(store, worktreeId, daemonStartedAt, now) {
 function isPoolWait(value) {
   if (typeof value !== "object" || value === null) return false;
   const w = value;
-  const busy = w.busyCores;
-  return typeof w.since === "number" && (busy === null || typeof busy === "number") && typeof w.cpus === "number" && typeof w.hostSlots === "number" && typeof w.grants === "number";
+  const busy2 = w.busyCores;
+  return typeof w.since === "number" && (busy2 === null || typeof busy2 === "number") && typeof w.cpus === "number" && typeof w.hostSlots === "number" && typeof w.grants === "number";
 }
 var ASKS_AGAIN = `the daemon asks again every ${CAPACITY_RECHECK_MS / 1e3} s`;
 
@@ -13377,12 +13826,12 @@ function slowTierText(header, command) {
     parts.push(pendingText(tier.pending, tier.activity, late, slowWords(header.slowSlot)));
   }
   if (tier.notRun > 0) parts.push(`${tier.notRun} not run at revision ${header.revision}`);
-  const open = tier.testFiles - tier.current;
-  const runs = open <= 0 ? "" : `; ${slowWaitText(command, open)}`;
+  const open2 = tier.testFiles - tier.current;
+  const runs = open2 <= 0 ? "" : `; ${slowWaitText(command, open2)}`;
   return `Slow tier: ${plural(tier.testFiles, "test file")}; ${parts.join("; ")}. ${capitalized(stopText(tier))}${runs}.`;
 }
-function slowWaitText(command, open) {
-  return `\`${command} run --slow --wait 60000\` waits for ${open === 1 ? "its result" : "their results"}`;
+function slowWaitText(command, open2) {
+  return `\`${command} run --slow --wait 60000\` waits for ${open2 === 1 ? "its result" : "their results"}`;
 }
 function stopText(tier) {
   if (tier.stopWaitMs !== void 0) {
@@ -13412,13 +13861,13 @@ function groupTierLines(header, command) {
   });
 }
 function groupTierText(group, revision, late, command) {
-  const open = group.testFiles - group.current;
-  if (open <= 0) return null;
+  const open2 = group.testFiles - group.current;
+  if (open2 <= 0) return null;
   const parts = [];
   if (group.current > 0) parts.push(`${group.current} ${currentText(group)}`);
   if (group.pending > 0) parts.push(groupPendingText(group, late, command));
   if (group.notRun > 0) parts.push(`${group.notRun} not run at revision ${revision}`);
-  return `${group.name}: ${plural(group.testFiles, "test file")}; ${parts.join("; ")}. ${capitalized(groupDoes(group))}; ${groupRunText(group, command, open)}.`;
+  return `${group.name}: ${plural(group.testFiles, "test file")}; ${parts.join("; ")}. ${capitalized(groupDoes(group))}; ${groupRunText(group, command, open2)}.`;
 }
 function groupPendingText(group, late, command) {
   if (group.activity === null && group.at === "commit") {
@@ -13468,8 +13917,8 @@ function groupWhenText(group) {
       return "only on request";
   }
 }
-function groupRunText(group, command, open) {
-  const one = open === 1;
+function groupRunText(group, command, open2) {
+  const one = open2 === 1;
   const results = one ? "its result" : "their results";
   const waiting = group.at !== "edit" || group.notRun > 0 || group.activity?.kind === "waiting";
   const does = waiting ? `runs ${one ? "it" : "them"} now and waits for ${results}` : `waits for ${results}`;
@@ -13615,7 +14064,8 @@ function loadUserConfig(options = {}) {
     capacity: {
       hostSlots: defaultHostSlots2(cpus),
       projects: {},
-      groupSlotScope: DEFAULT_GROUP_SLOT_SCOPE
+      groupSlotScope: DEFAULT_GROUP_SLOT_SCOPE,
+      backgroundShare: DEFAULT_BACKGROUND_SHARE
     }
   };
   const { value, problems } = loadConfigFile(path, SHAPE2, defaults);
@@ -13664,8 +14114,9 @@ function normalize2(path) {
   }
 }
 var groupSlotScope = (v) => GROUP_SLOT_SCOPES.includes(v) ? null : `one of ${GROUP_SLOT_SCOPES.map((s) => `"${s}"`).join(", ")}`;
+var backgroundShare = (v) => isBackgroundShare(v) ? null : "a number from 0 to 1";
 var SHAPE2 = {
-  capacity: { hostSlots: positiveInteger, projects, groupSlotScope }
+  capacity: { hostSlots: positiveInteger, projects, groupSlotScope, backgroundShare }
 };
 
 // src/core/status/slot-holders.ts
@@ -14696,29 +15147,30 @@ function usesSqueal(location2) {
   return existsSync11(storePaths(location2.commonDir).database) || existsSync11(join28(location2.root, "squeal.config.json"));
 }
 function openContext(input, location2, options = {}) {
-  const holding = options.prepare === true ? holdingConnection() : null;
-  const store = openStore(location2.commonDir, {
-    create: false,
-    busyTimeoutMs: options.busyTimeoutMs ?? STATUS_BUSY_TIMEOUT_MS,
-    ...holding === null ? {} : { connection: holding.make }
-  });
-  if (isStoreOpenFailure(store)) return null;
+  const worktreeId = worktreeIdFor(location2.root);
+  const busyTimeoutMs = options.busyTimeoutMs ?? STATUS_BUSY_TIMEOUT_MS;
+  const now = options.now ?? Date.now;
+  const opened = open(location2, worktreeId, options, busyTimeoutMs, now);
+  if (opened === null) return null;
+  const { store, connection, write: write2 } = opened;
   try {
     const consumer = {
-      worktreeId: worktreeIdFor(location2.root),
+      worktreeId,
       sessionId: input.session_id,
       agentId: input.agent_id ?? MAIN_AGENT
     };
-    const now = options.now ?? Date.now;
-    const connection = holding?.made() ?? null;
+    const sent = () => connection?.sent() ?? Promise.resolve();
     const code = codeSource(location2.commonDir, location2.root, {
-      busyTimeoutMs: options.busyTimeoutMs ?? STATUS_BUSY_TIMEOUT_MS,
+      busyTimeoutMs,
       holding: connection !== null
     });
-    const prepare2 = connection === null ? void 0 : { connection, reports: new PreparedReports(), beforeHold: () => codeLockFree(code) };
-    const lint2 = lintStoreSource(location2.commonDir, location2.root, {
-      busyTimeoutMs: options.busyTimeoutMs ?? STATUS_BUSY_TIMEOUT_MS
-    });
+    const prepare2 = connection === null ? void 0 : {
+      connection,
+      reports: new PreparedReports(),
+      beforeHold: () => codeLockFree(code),
+      unit: write2
+    };
+    const lint2 = lintStoreSource(location2.commonDir, location2.root, { busyTimeoutMs });
     const delivery = createDelivery(store, {
       status: createStatusBuilder(store, { now }),
       now,
@@ -14733,25 +15185,32 @@ function openContext(input, location2, options = {}) {
     });
     const close = () => store.close();
     const prepared = prepare2 === void 0 ? {} : { prepared: prepare2.reports };
-    return { ...location2, store, delivery, consumer, code, lint: lint2, ...prepared, close };
+    return { ...location2, store, delivery, consumer, code, lint: lint2, ...prepared, write: write2, sent, close };
   } catch (error) {
     store.close();
     throw error;
   }
 }
-function holdingConnection() {
-  let made = null;
-  return {
-    make: (db) => {
-      made = new HoldingConnection(db);
-      return made;
-    },
-    made: () => made
-  };
+function open(location2, worktreeId, options, busyTimeoutMs, now) {
+  if (options.prepare !== true) {
+    const store = openStore(location2.commonDir, { create: false, busyTimeoutMs });
+    if (isStoreOpenFailure(store)) return null;
+    const write2 = (work) => Promise.resolve().then(work);
+    return { store, connection: null, write: write2 };
+  }
+  const sent = openSentStore(location2.commonDir, {
+    worktreeId,
+    busyTimeoutMs,
+    boundMs: busyTimeoutMs,
+    holder: `${process.pid} ${process.argv[1] ?? "hook"}`,
+    now,
+    ...options.writer === void 0 ? {} : { writer: options.writer }
+  });
+  return "reason" in sent ? null : sent;
 }
 
 // src/core/commit/boundary.ts
-import { setTimeout as sleep2 } from "node:timers/promises";
+import { setTimeout as sleep3 } from "node:timers/promises";
 var HEAD_MOVE_WAIT_MS = 500;
 var PASS_POLL_MS = 20;
 function headMovedSinceLook(store, worktreeId, root) {
@@ -14771,7 +15230,7 @@ async function syncOnHeadMove(store, worktreeId, root, bounds = {}) {
   const requestId = pending(await ask({ type: "sync" }, socketMs));
   if (requestId === null) return true;
   for (; ; ) {
-    await sleep2(Math.min(PASS_POLL_MS, Math.max(0, deadline - performance.now())));
+    await sleep3(Math.min(PASS_POLL_MS, Math.max(0, deadline - performance.now())));
     const left = deadline - performance.now();
     if (left <= 0) return true;
     const answer = await ask({ type: "sync-status", requestId }, Math.min(socketMs, left));
@@ -15700,7 +16159,7 @@ function groupsCoverage(policy, listed4) {
 }
 
 // src/harness/shared/ensure.ts
-import { setTimeout as sleep3 } from "node:timers/promises";
+import { setTimeout as sleep4 } from "node:timers/promises";
 
 // src/core/daemon/ensure.ts
 import { spawn as spawn2 } from "node:child_process";
@@ -15809,7 +16268,7 @@ async function ensureDaemonProcess(root, options = {}) {
         cwd,
         detached: true,
         stdio: "ignore",
-        env: pinned ? { ...process.env, PATH: pathFirst(node2.binary, process.env.PATH) } : process.env
+        ...pinned ? { env: { ...process.env, PATH: pathFirst(node2.binary, process.env.PATH) } } : {}
       }
     );
     let ended = child.pid === void 0;
@@ -15834,22 +16293,24 @@ function daemonCliEntry(cli, env = process.env) {
 import { createHash as createHash12 } from "node:crypto";
 import { join as join29 } from "node:path";
 var TREE_PRINT_TIMEOUT_MS = 1e3;
-async function stopHolds(store, at, mark) {
+async function stopHolds(store, at, mark, write2 = async (work) => work()) {
   if (mark === null) return false;
   if (mark.untilStart === true) return true;
   const tree = await treePrint(at.root, TREE_PRINT_TIMEOUT_MS);
   if (tree === null || tree === mark.tree) return true;
-  return store.transaction(() => {
-    const now = readStop(store, at.id);
-    if (now === null) return false;
-    if (now.at !== mark.at || now.tree !== mark.tree || now.untilStart === true) return true;
-    if (mark.tree === null) {
-      markStopped(store, at.id, mark.at, tree);
-      return true;
-    }
-    clearStopped(store, at.id);
-    return false;
-  });
+  return write2(
+    () => store.transaction(() => {
+      const now = readStop(store, at.id);
+      if (now === null) return false;
+      if (now.at !== mark.at || now.tree !== mark.tree || now.untilStart === true) return true;
+      if (mark.tree === null) {
+        markStopped(store, at.id, mark.at, tree);
+        return true;
+      }
+      clearStopped(store, at.id);
+      return false;
+    })
+  );
 }
 async function treePrint(root, timeoutMs) {
   const options = timeoutMs === void 0 ? {} : { timeoutMs };
@@ -15915,7 +16376,7 @@ async function ensure(location2, deps, context) {
     const at2 = { id: context.consumer.worktreeId, root: location2.root };
     const now = (deps.now ?? Date.now)();
     const stop2 = readHookStop(context.store, at2.id, worktree ?? null, now);
-    if (await stopHolds(context.store, at2, stop2)) return "stopped";
+    if (await stopHolds(context.store, at2, stop2, context.write)) return "stopped";
   }
   const handoff = context === void 0 ? "none" : await handOver(context, deps);
   if (handoff === "claimed") return successor(location2, deps);
@@ -15932,7 +16393,7 @@ async function ensure(location2, deps, context) {
     })
   );
   if (ensured === "spawned" && context !== void 0) {
-    spawnedAfterRest(context.store, context.consumer.worktreeId, at);
+    await context.write(() => spawnedAfterRest(context.store, context.consumer.worktreeId, at));
   }
   return ensured;
 }
@@ -15974,10 +16435,12 @@ async function handOver(context, deps) {
     return "none";
   }
   try {
-    const claim = store.transaction(() => {
-      if (!stillRecorded(store, id, read5.from)) return void 0;
-      return claimHandoff(store, id, { from: read5.from, to: version, at: now() });
-    });
+    const claim = await context.write(
+      () => store.transaction(() => {
+        if (!stillRecorded(store, id, read5.from)) return void 0;
+        return claimHandoff(store, id, { from: read5.from, to: version, at: now() });
+      })
+    );
     if (claim === void 0) return "none";
     return claim === null ? "joined" : "claimed";
   } catch {
@@ -16029,7 +16492,7 @@ async function settle(context, deps) {
     if (record !== null && heartbeatFresh(record, now())) return true;
     const left = deadline - performance.now();
     if (left <= 0) return false;
-    await sleep3(Math.min(SETTLE_POLL_MS, left));
+    await sleep4(Math.min(SETTLE_POLL_MS, left));
   }
 }
 async function ensureToRegister(location2, deps, context) {
@@ -16083,6 +16546,7 @@ async function withContext(input, location2, deps, fn, overrides = {}) {
     harnessProcess: deps.harnessProcess ?? (() => findHarnessProcess()),
     squealVersion: deps.squealVersion ?? squealVersion(),
     prepare: true,
+    ...deps.writer === void 0 ? {} : { writer: deps.writer },
     ...overrides
   };
   const context = openContext(input, location2, options);
@@ -16091,12 +16555,18 @@ async function withContext(input, location2, deps, fn, overrides = {}) {
   try {
     const result = await fn(context);
     if (deps.handOff !== void 0 && context.prepared?.pending === true) {
-      deps.handOff.take(context.prepared, context.close);
+      deps.handOff.take(context.prepared, context.close, context.sent);
       handed = true;
-    } else context.prepared?.commit();
+    } else {
+      context.prepared?.commit();
+      await context.sent();
+    }
     return result;
   } catch (error) {
+    if (process.env.SQUEAL_DEBUG_CONTEXT) console.error("DEBUG withContext", error);
     context.prepared?.abandon();
+    await context.sent().catch(() => {
+    });
     throw error;
   } finally {
     if (!handed) context.close();
@@ -16323,7 +16793,7 @@ async function deliver(context, deps, edited = true) {
   }
   const delta = await context.delivery.onToolBoundary(context.consumer);
   const down = edited && ensured === "unavailable" ? notValidated(context, deps) : null;
-  const line = down ?? (edited ? uncoveredEditLine(context) : null);
+  const line = down ?? (edited ? await context.write(() => uncoveredEditLine(context)) : null);
   const room = MESSAGE_CAP_CHARS - (line === null ? 0 : line.length + 1);
   const text2 = delta === null ? null : formatDelta(delta, deps.command, room);
   if (line === null) return text2;
@@ -16519,7 +16989,7 @@ function fullSuiteReason(header, command = SQUEAL_COMMAND) {
 var DENIED_KINDS = ["pass-to-fail"];
 async function denyOnRegression(context, policy, call) {
   if (!call.edit || !policy.interrupt.onRegression) {
-    resumeTurn(context.store, context.consumer);
+    await context.write(() => resumeTurn(context.store, context.consumer));
     return null;
   }
   const delta = await context.delivery.peek(context.consumer, { kinds: DENIED_KINDS });
@@ -16545,46 +17015,48 @@ function realPath2(path) {
 }
 function denyCurrentTestCommand(context, command, now) {
   const { store, consumer } = context;
-  return store.transaction(() => {
-    if (store.consumers.get(consumer) === null || testCommandDenied(store, consumer)) return null;
-    const states = store.knownStates.list(consumer.worktreeId);
-    const keys = store.testFileKeys.list(consumer.worktreeId);
-    const header = readLiveHeader(store, consumer.worktreeId, now, states, null, keys);
-    if (header.daemon?.state !== "alive" || header.testFilesListed === false) return null;
-    if (header.runnerPartPending === true || header.awaitingInstall === true) return null;
-    const live = readPolicy(context.root);
-    if (!describing(command).resolves(live)) return null;
-    const configured = new Set(configuredProjects(live).map((p) => p.name));
-    const files2 = resolveTestFiles(
-      command,
-      keys.map((k) => k.testFile),
-      context.root,
-      configured,
-      readOmittedTestFiles(store, consumer.worktreeId)
-    );
-    if (files2 === null) return null;
-    const rows = new Map(keys.map((row) => [testFileId(row.testFile), row]));
-    const byFile2 = /* @__PURE__ */ new Map();
-    for (const state of states) {
-      const id = testFileKeyOf(state.check);
-      byFile2.set(id, [...byFile2.get(id) ?? [], state]);
-    }
-    const answered = [];
-    for (const file of files2) {
-      const row = rows.get(testFileId(file));
-      const own = byFile2.get(testFileId(file)) ?? [];
-      if (row === void 0 || row.key === null || row.pending !== null) return null;
-      if (own.length === 0 || own.some((s) => s.validity !== "current")) return null;
-      answered.push(...own);
-    }
-    recordTestCommandDenied(store, consumer, header.revision);
-    return testCommandReason({
-      revision: header.revision,
-      files: files2,
-      states: answered,
-      rootOf: (id) => store.worktrees.get(id)?.root ?? null
-    });
-  });
+  return context.write(
+    () => store.transaction(() => {
+      if (store.consumers.get(consumer) === null || testCommandDenied(store, consumer)) return null;
+      const states = store.knownStates.list(consumer.worktreeId);
+      const keys = store.testFileKeys.list(consumer.worktreeId);
+      const header = readLiveHeader(store, consumer.worktreeId, now, states, null, keys);
+      if (header.daemon?.state !== "alive" || header.testFilesListed === false) return null;
+      if (header.runnerPartPending === true || header.awaitingInstall === true) return null;
+      const live = readPolicy(context.root);
+      if (!describing(command).resolves(live)) return null;
+      const configured = new Set(configuredProjects(live).map((p) => p.name));
+      const files2 = resolveTestFiles(
+        command,
+        keys.map((k) => k.testFile),
+        context.root,
+        configured,
+        readOmittedTestFiles(store, consumer.worktreeId)
+      );
+      if (files2 === null) return null;
+      const rows = new Map(keys.map((row) => [testFileId(row.testFile), row]));
+      const byFile2 = /* @__PURE__ */ new Map();
+      for (const state of states) {
+        const id = testFileKeyOf(state.check);
+        byFile2.set(id, [...byFile2.get(id) ?? [], state]);
+      }
+      const answered = [];
+      for (const file of files2) {
+        const row = rows.get(testFileId(file));
+        const own = byFile2.get(testFileId(file)) ?? [];
+        if (row === void 0 || row.key === null || row.pending !== null) return null;
+        if (own.length === 0 || own.some((s) => s.validity !== "current")) return null;
+        answered.push(...own);
+      }
+      recordTestCommandDenied(store, consumer, header.revision);
+      return testCommandReason({
+        revision: header.revision,
+        files: files2,
+        states: answered,
+        rootOf: (id) => store.worktrees.get(id)?.root ?? null
+      });
+    })
+  );
 }
 
 // src/harness/shared/prompt.ts
@@ -16687,7 +17159,7 @@ async function endSession(input, locations, deps) {
 }
 
 // src/harness/shared/stop.ts
-import { setTimeout as sleep5 } from "node:timers/promises";
+import { setTimeout as sleep6 } from "node:timers/promises";
 
 // src/core/lint/pass/commit-news.ts
 function waitsToLint(state) {
@@ -16739,11 +17211,11 @@ function requiredLintOpen(source, worktreeId, required) {
   );
   return readOrNull(read5) ?? [];
 }
-function openGroups(open) {
-  return [...new Set(open.map((file) => file.group))];
+function openGroups(open2) {
+  return [...new Set(open2.map((file) => file.group))];
 }
-function pendingBefore(states, keys, required, group, open) {
-  const mine = new Set(open.filter((f) => f.group === group).map((f) => testFileId(f.ref)));
+function pendingBefore(states, keys, required, group, open2) {
+  const mine = new Set(open2.filter((f) => f.group === group).map((f) => testFileId(f.ref)));
   if (mine.size === 0) return [];
   if (keys.some((k) => k.pending === "running" && mine.has(testFileId(k.testFile)))) return [];
   return required.after(group).flatMap((name2) => {
@@ -16789,7 +17261,7 @@ async function treeNow(root, timeoutMs) {
 }
 
 // src/harness/shared/stop-decide.ts
-import { setTimeout as sleep4 } from "node:timers/promises";
+import { setTimeout as sleep5 } from "node:timers/promises";
 
 // src/harness/shared/stop-code.ts
 function measureWords(s) {
@@ -16893,8 +17365,8 @@ function slowFailuresReason(revision, failures, group = SLOW_GROUP) {
   const verb = failures.length === 1 ? "fails" : "fail";
   return `${words.policy} and ${words.ran} ran at revision ${revision}: ${plural(failures.length, "check")} ${verb}: ${listNames(failures.map((f) => formatCheck(f.check)))}.`;
 }
-function requiredSuiteReason(revision, open, command) {
-  return openGroups(open).map((group) => slowSuiteReason(revision, filesOf(open, group), command, group)).join("\n");
+function requiredSuiteReason(revision, open2, command) {
+  return openGroups(open2).map((group) => slowSuiteReason(revision, filesOf(open2, group), command, group)).join("\n");
 }
 function requiredUnlistedReason(revision, groups2, command = SQUEAL_COMMAND, runners) {
   return groups2.map((group) => {
@@ -16903,11 +17375,11 @@ function requiredUnlistedReason(revision, groups2, command = SQUEAL_COMMAND, run
     return `${words.policy} and ${unlisted3}. ${words.run} runs them and waits for their results.`;
   }).join("\n");
 }
-function requiredWaitReason(revision, open, groups2, wait) {
-  return (open.length === 0 ? groups2 : openGroups(open)).map(
+function requiredWaitReason(revision, open2, groups2, wait) {
+  return (open2.length === 0 ? groups2 : openGroups(open2)).map(
     (group) => slowWaitReason(
       revision,
-      filesOf(open, group),
+      filesOf(open2, group),
       wait.waitedMs,
       wait.command,
       wait.refining,
@@ -16926,8 +17398,8 @@ function requiredFailuresReason(revision, failed2, groupOf2) {
     )
   ).join("\n");
 }
-function filesOf(open, group) {
-  return open.filter((file) => file.group === group).map((file) => file.ref);
+function filesOf(open2, group) {
+  return open2.filter((file) => file.group === group).map((file) => file.ref);
 }
 function seconds(ms) {
   return `${(ms / 1e3).toFixed(ms % 1e3 === 0 ? 0 : 1)} s`;
@@ -16981,9 +17453,9 @@ function byGroup(checks) {
     names: checks.filter((c) => c.group === group).map((c) => c.name)
   }));
 }
-function openByGroup(open) {
+function openByGroup(open2) {
   return byGroup(
-    open.map(({ group, tool, path }) => ({
+    open2.map(({ group, tool, path }) => ({
       group,
       name: lintSubject(tool === "eslint" ? { path } : { path, tool })
     }))
@@ -16996,8 +17468,8 @@ function lintFindingsReason(revision, fails) {
     return `${words.policy} and ${words.ran} ran at revision ${revision}: ${plural(names2.length, "file")} ${verb} lint findings: ${listNames(names2)}.`;
   }).join("\n");
 }
-function lintOpenReason(revision, open, command = SQUEAL_COMMAND, waitedMs) {
-  return openByGroup(open).map(({ group, names: names2 }) => {
+function lintOpenReason(revision, open2, command = SQUEAL_COMMAND, waitedMs) {
+  return openByGroup(open2).map(({ group, names: names2 }) => {
     const words = stopGroupWords(group, command);
     const verb = names2.length === 1 ? "is" : "are";
     const checks = plural(names2.length, "lint check");
@@ -17028,19 +17500,19 @@ function requiredOpen(context, required, read5) {
     lint: requiredLintOpen(lintSourceOf(context), context.consumer.worktreeId, required)
   };
 }
-function isOpen(open) {
-  return open.tests.length > 0 || open.refining || open.lint.length > 0;
+function isOpen(open2) {
+  return open2.tests.length > 0 || open2.refining || open2.lint.length > 0;
 }
-function openGroupsOf(open) {
-  return [.../* @__PURE__ */ new Set([...openGroups(open.tests), ...open.lint.map((check) => check.group)])];
+function openGroupsOf(open2) {
+  return [.../* @__PURE__ */ new Set([...openGroups(open2.tests), ...open2.lint.map((check) => check.group)])];
 }
 function stoppedByRequest(header) {
   return header.daemon?.state === "down" && header.daemon.stopped === true;
 }
 function requiredStep(context, required, read5, options) {
   if (unchangedSinceRegistration(context)) return null;
-  const open = requiredOpen(context, required, read5);
-  if (isOpen(open) && !stoppedByRequest(read5.header)) return { kind: "open", open };
+  const open2 = requiredOpen(context, required, read5);
+  if (isOpen(open2) && !stoppedByRequest(read5.header)) return { kind: "open", open: open2 };
   const failing = failingLines(context, required, read5, options);
   return failing.reasons.length === 0 ? null : { kind: "failing", failing };
 }
@@ -17073,25 +17545,25 @@ function stepReason(step, required, read5, hold2) {
   if (step.kind === "failing") {
     return withLastHold(step.failing.reasons.join("\n"), step.failing.groups, command, last);
   }
-  const { open } = step;
+  const { open: open2 } = step;
   const { revision, listingRunners: runners } = read5.header;
-  const unlisted3 = open.tests.length === 0 && open.refining;
+  const unlisted3 = open2.tests.length === 0 && open2.refining;
   const tests2 = (() => {
-    if (open.tests.length === 0 && !open.refining) return [];
+    if (open2.tests.length === 0 && !open2.refining) return [];
     if (waitedMs === void 0) {
-      return unlisted3 ? [requiredUnlistedReason(revision, required.groups, command, runners)] : [requiredSuiteReason(revision, open.tests, command)];
+      return unlisted3 ? [requiredUnlistedReason(revision, required.groups, command, runners)] : [requiredSuiteReason(revision, open2.tests, command)];
     }
-    const before = (group) => pendingBefore(read5.states, read5.keys, required, group, open.tests);
-    const wait = { waitedMs, command, refining: open.refining, runners };
+    const before = (group) => pendingBefore(read5.states, read5.keys, required, group, open2.tests);
+    const wait = { waitedMs, command, refining: open2.refining, runners };
     return [
-      requiredWaitReason(revision, open.tests, required.groups, {
+      requiredWaitReason(revision, open2.tests, required.groups, {
         ...wait,
         ...required.groupTexts ? { before } : {}
       })
     ];
   })();
-  const lint2 = open.lint.length === 0 ? [] : [lintOpenReason(revision, open.lint, command, waitedMs)];
-  const groups2 = [.../* @__PURE__ */ new Set([...unlisted3 ? required.groups : [], ...openGroupsOf(open)])];
+  const lint2 = open2.lint.length === 0 ? [] : [lintOpenReason(revision, open2.lint, command, waitedMs)];
+  const groups2 = [.../* @__PURE__ */ new Set([...unlisted3 ? required.groups : [], ...openGroupsOf(open2)])];
   return withLastHold([...tests2, ...lint2].join("\n"), groups2, command, last);
 }
 function stoppedText2(context, required, at, command = SQUEAL_COMMAND) {
@@ -17104,15 +17576,15 @@ function stoppedText2(context, required, at, command = SQUEAL_COMMAND) {
     return { header: header2, open: requiredOpen(context, required, { states, keys, header: header2 }) };
   });
   if (read5 === null || !isOpen(read5.open)) return null;
-  const { header, open } = read5;
+  const { header, open: open2 } = read5;
   const { revision } = header;
-  const lint2 = open.lint.map(
+  const lint2 = open2.lint.map(
     ({ tool, path }) => lintSubject(tool === "eslint" ? { path } : { path, tool })
   );
   const parts = [
-    ...open.tests.length === 0 ? [] : [
+    ...open2.tests.length === 0 ? [] : [
       openPart(
-        open.tests.map((f) => f.ref.path),
+        open2.tests.map((f) => f.ref.path),
         "test file",
         "current"
       )
@@ -17170,7 +17642,7 @@ async function waitingEntryRecorded(context, harness, deps, deadline) {
     if (context.prepared?.pending === true) return false;
     const left = deadline - performance.now();
     if (left <= 0) return false;
-    await sleep4(Math.min(STOP_RECORD_POLL_MS, left));
+    await sleep5(Math.min(STOP_RECORD_POLL_MS, left));
   }
 }
 function holdsNow(context, { required }, now = Date.now()) {
@@ -17250,7 +17722,7 @@ function stopTurn(input, location2, deps) {
       const recordBy = performance.now() + STOP_RECORD_WAIT_MS;
       const gitBy = performance.now() + HOOK_TIMEOUT_MS - STOP_MARGIN_MS - STOP_RECORD_WAIT_MS;
       const at = (deps.now ?? Date.now)();
-      if (!main) leaving(context, at);
+      if (!main) await leaving(context, at);
       const starting = quiet ? {} : startingAfter(await ensureIfStale(context, deps), at);
       if (wait > 0) {
         const isGroupFile = slowView(project).isSlow;
@@ -17285,8 +17757,8 @@ async function decideTurn(context, project, news, turnRules, deps) {
     const { header, failures, reasons, held } = decided;
     const stopped = () => stoppedLine(context, project, now(), deps.command);
     if (reasons.length > 0) {
-      if (!main) leaving(context, null);
-      else if (held) hold(context);
+      if (!main) await leaving(context, null);
+      else if (held) await hold(context);
       const text2 = news ?? statusText(header, failures, deps.command);
       return { block: `${[...reasons, ...stopped()].join("\n")}
 
@@ -17301,7 +17773,7 @@ ${text2}` };
       };
       if (!await context.delivery.endTurn(consumer, at)) {
         if (decision < STOP_DECISIONS) continue;
-        if (rules.required !== null) hold(context);
+        if (rules.required !== null) await hold(context);
         const text2 = statusText(header, failures, deps.command);
         return { block: `${retriesReason(header.revision)}
 
@@ -17318,16 +17790,20 @@ function stoppedLine(context, project, at, command) {
   return text2 === null ? [] : [text2];
 }
 function hold(context) {
-  context.store.transaction(() => countStopHold(context.store, context.consumer));
+  return context.write(
+    () => context.store.transaction(() => countStopHold(context.store, context.consumer))
+  );
 }
 var STOP_DECISIONS = 3;
 function retriesReason(decided) {
   return `Squeal: the revision changed ${STOP_DECISIONS} times while Stop decided, now past revision ${decided}; stop again to decide at the newest.`;
 }
 function leaving(context, at) {
-  context.store.transaction(() => {
-    if (isRegistered(context)) markLeaving(context.store, context.consumer, at);
-  });
+  return context.write(
+    () => context.store.transaction(() => {
+      if (isRegistered(context)) markLeaving(context.store, context.consumer, at);
+    })
+  );
 }
 async function finishSubagent(context) {
   await context.delivery.unregister(context.consumer);
@@ -17371,12 +17847,12 @@ async function waitForPending(context, waitMs, pollMs, isSlow) {
     if (!isFastPending(header) || held) return;
     const left = deadline - performance.now();
     if (left <= 0) return;
-    await sleep5(Math.min(pollMs, left));
+    await sleep6(Math.min(pollMs, left));
   }
 }
 
 // src/harness/shared/stop-slow.ts
-import { setTimeout as sleep6 } from "node:timers/promises";
+import { setTimeout as sleep7 } from "node:timers/promises";
 var STOP_SLOW_HANDOFF_MS = HOOK_TIMEOUT_MS + 1e3;
 var STOP_SLOW_HANDOFF_SLACK_MS = HOOK_TIMEOUT_MS;
 var STOP_SLOW_DOWN_MS = 1e4;
@@ -17388,7 +17864,9 @@ async function stopSlow(input, location2, deps) {
   const poll = deps.pollIntervalMs ?? STOP_SLOW_POLL_MS;
   return withContext(input, location2, deps, async (context) => {
     const version = deps.squealVersion ?? squealVersion();
-    recordStopWait(context.store, context.consumer, input.harness, version);
+    await context.write(
+      () => recordStopWait(context.store, context.consumer, input.harness, version)
+    );
     const { store, consumer } = context;
     if (readStopHolds(store, consumer) >= required.maxHolds) return null;
     if (!await handedOver(context, deps, poll)) return null;
@@ -17434,7 +17912,7 @@ async function handedOver(context, deps, poll) {
     if (handed) return true;
     const left = deadline - performance.now();
     if (left <= 0) return false;
-    await sleep6(Math.min(poll, left));
+    await sleep7(Math.min(poll, left));
   }
 }
 async function waitForRequired(context, required, deps, poll) {
@@ -17463,10 +17941,10 @@ async function waitForRequired(context, required, deps, poll) {
     if (!isOpen(last.open) || over) {
       const waitedMs = Math.min(bound, Math.round(now - started));
       const options = { over, waitedMs, command: deps.command };
-      const decided = decide2(context, required, clock(), options);
+      const decided = await context.write(() => decide2(context, required, clock(), options));
       if (decided !== "again") return decided;
     }
-    await sleep6(Math.min(poll, Math.max(0, left)));
+    await sleep7(Math.min(poll, Math.max(0, left)));
   }
 }
 function decide2(context, required, at, {
@@ -17873,7 +18351,7 @@ var preToolUse = (input, location2, deps) => {
       edit: input.tool_name === "apply_patch",
       toolName: input.tool_name ?? "tool",
       command: deps.command
-    }) ?? (testCommand === null ? null : denyCurrentTestCommand(context, testCommand, (deps.now ?? Date.now)()));
+    }) ?? (testCommand === null ? null : await denyCurrentTestCommand(context, testCommand, (deps.now ?? Date.now)()));
     return reason === null ? null : deny(reason, deps.command);
   });
 };
@@ -18091,9 +18569,23 @@ import { fileURLToPath as fileURLToPath2 } from "node:url";
 // src/harness/shared/hand-off.ts
 var HandOff = class {
   #taken = [];
-  /** Takes `reports`, which wait for the verdict, and the `close` of the store they hold open. */
-  take(reports, close) {
-    this.#taken.push({ reports, close });
+  #sending = [];
+  /**
+   * Takes `reports`, which wait for the verdict, the `close` of the store
+   * they hold open, and with a daemon serving, what waits for their sent
+   * writes (spec 021 D15).
+   */
+  take(reports, close, sent) {
+    this.#taken.push({ reports, close, ...sent === void 0 ? {} : { sent } });
+  }
+  /**
+   * Resolves once every write the verdicts sent to the daemon is written, or
+   * failed: a failed one leaves its report owed. Never rejects.
+   */
+  async sent() {
+    const sending = this.#sending;
+    this.#sending = [];
+    await Promise.allSettled(sending);
   }
   /** Whether a report waits for the verdict. */
   get pending() {
@@ -18125,13 +18617,17 @@ var HandOff = class {
   #end(verdict) {
     const taken = this.#taken;
     this.#taken = [];
-    endInOrder(
-      taken,
-      (t) => endThenClose(t, verdict),
-      (rest) => {
-        for (const t of rest) endThenClose(t, (reports) => reports.abandon());
-      }
-    );
+    try {
+      endInOrder(
+        taken,
+        (t) => endThenClose(t, verdict),
+        (rest) => {
+          for (const t of rest) endThenClose(t, (reports) => reports.abandon());
+        }
+      );
+    } finally {
+      for (const t of taken) if (t.sent !== void 0) this.#sending.push(t.sent());
+    }
   }
 };
 function endThenClose(taken, end) {
@@ -18163,15 +18659,15 @@ async function writeThenCommit(handOff, outputs, boundMs = HAND_OFF_BOUND_MS) {
     for (const [stream, text2] of texts) stream.write(text2, () => {
     });
     handOff.commit();
-    return;
+  } else {
+    try {
+      await Promise.all(texts.map(([stream, text2]) => written(stream, text2, boundMs)));
+      handOff.settle(true);
+    } catch {
+      handOff.abandon();
+    }
   }
-  try {
-    await Promise.all(texts.map(([stream, text2]) => written(stream, text2, boundMs)));
-  } catch {
-    handOff.abandon();
-    return;
-  }
-  handOff.settle(true);
+  await handOff.sent();
 }
 
 // src/harness/codex/main.ts
