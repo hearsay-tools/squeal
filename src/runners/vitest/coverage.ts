@@ -1,7 +1,11 @@
 import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import type { Vitest } from "vitest/node";
-import type { CoverageRun, CoveredFile, ExecutedSource } from "../../core/code/coverage/types.js";
+import type {
+  CoveredFile,
+  ExecutedSource,
+  VitestCoverageOptions,
+} from "../../core/code/coverage/types.js";
 import type { WorktreePaths } from "../../core/fs/worktree-paths.js";
 import { causeText } from "../../core/state/fingerprint.js";
 import type { AbsolutePath } from "../../core/types/common.js";
@@ -18,18 +22,7 @@ import { cachedTransform } from "./stale.js";
  * runs it makes anyway. Absent, or `enabled` false, every instance gets
  * `coverage: { enabled: false }` (row 013-07).
  */
-export interface VitestCoverage {
-  /** Policy `coverage.enabled` with `complexity.enabled` (D1), read at each start. */
-  readonly enabled: () => boolean;
-  /** Squeal's provider, `provider.mjs`, which Vitest loads by path. */
-  readonly provider: AbsolutePath;
-  /** Where each instance keeps its workers' payloads: the daemon's temp directory. */
-  readonly tempDir: AbsolutePath;
-  /** One run's payloads, handed over after its report is built; never awaited by the run. */
-  readonly collected: (run: CoverageRun) => void;
-  /** Spec 020 D12: policy `coverage.children`, read with `enabled` at each start; absent, never. */
-  readonly children?: () => boolean;
-}
+export type VitestCoverage = VitestCoverageOptions;
 
 /** One worker batch as Squeal's provider keeps it (`provider.mjs`, `onAfterSuiteRun`). */
 export interface CoverageBatch {
