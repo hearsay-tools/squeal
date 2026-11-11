@@ -1,0 +1,11 @@
+# unreachable.sh, 2026-11-11 12:26Z
+paused at 12:26:29
+flush exit 124 after 45.006513517 s:
+status watching | beta connected True | lastError
+unpaused at 12:27:14
+flush after unpause exit 0 after .349305847 s
+status watching | beta connected True | lastError
+remote file: one
+# agent process killed on the remote (connection dropped, sshd up):
+status scanning | beta connected True | lastError
+flush exit 0 after .253261883 s

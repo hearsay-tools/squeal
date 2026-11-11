@@ -1,0 +1,7 @@
+# 2026-11-11 ~12:24Z
+local  {"node":"v24.22.1","platform":"linux","arch":"x64","CI":null,"tz":"Europe/Warsaw","lang":"C.UTF-8","cpus":24}
+remote {"node":"v24.22.1","platform":"linux","arch":"x64","CI":null,"tz":"UTC","lang":null,"cpus":24}
+# compare-tree.sh after the first sync: 11493 files, 0 differ (3.2 s wall for both sides, load ~60)
+# .env (gitignored) present on the remote; node_modules and .git absent (--ignore-vcs -i node_modules)
+# idle 60 s, one session over this repository (11,494 files): local daemon 710 ms CPU, remote agent 980 ms CPU; load 70.96
+# first flush with /work missing on the remote: exit 0; beta.transitionProblems: "unable to walk to transition root parent ... no such file or directory"

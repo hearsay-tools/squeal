@@ -1,0 +1,7 @@
+# race.sh, 2026-11-11 ~12:20Z, load 1-min ~55-70 (not a timing)
+flush 1: local before 4, local after 9, remote missing
+flush 2: local before 13, local after 20, remote 14
+flush 3: local before 27, local after 33, remote 14
+flush 4: local before 49, local after 60, remote 14
+flush 5: local before 63, local after 71, remote 14
+# every flush exited 0; each session state (race-flush-N.json) holds one beta transitionProblem for src/race-probe.txt
