@@ -18,7 +18,7 @@ import type { Policy } from "../core/types/policy.js";
 import type { RunnerAdapter } from "../core/types/runner.js";
 import { createNodeTestAdapter } from "../runners/node-test/adapter.js";
 import { createVitestAdapter } from "../runners/vitest/index.js";
-import { observedAdapterVersion } from "../runners/vitest/observe.js";
+import { OBSERVED_ADAPTER_SUFFIX } from "../runners/vitest/observe.js";
 
 /*
  * Spec 020 D11.7 (row 020-07c): what `squeal code --base` reads of the
@@ -59,7 +59,7 @@ export async function collectWithStores(
           environment: {
             env,
             allowlist: readPolicy(root).env.allowlist,
-            observedAdapterVersion,
+            observedSuffix: OBSERVED_ADAPTER_SUFFIX,
           },
           note,
         });
