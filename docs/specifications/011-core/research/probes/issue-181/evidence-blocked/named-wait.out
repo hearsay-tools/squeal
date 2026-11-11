@@ -1,0 +1,5 @@
+Revision: 2 · ffb7098c + 2, dirty
+Selected: blocked-switch.test.ts
+Pending (1):
+  1 queued, promoted, behind the vitest tier of 1 test file running since 02:23:37; the tier has run past its estimate and yields at 02:24:07, 30 s past it: blocked-switch.test.ts
+Named test files have no verdict: the deadline passed after 15.0 s: 1 test file still pending at revision 2: 1 queued, promoted, behind the vitest tier of 1 test file running since 02:23:37; the tier has run past its estimate and yields at 02:24:07, 30 s past it. Worktree: known failures 0; not current: 3 of 3 test files (1 running, 2 queued). A later pass is not reported. A failure arrives with a later tool call. For the verdict, wait again: `squeal status --wait 15000 blocked-switch.test.ts`
