@@ -3,14 +3,13 @@ import { setTimeout as delay } from "node:timers/promises";
 import { acquireDaemonLock } from "../../daemon/lock.js";
 import { worktreeIdFor } from "../../fs/git-layout.js";
 import type { Hasher } from "../../hash/hasher.js";
-import type { StatCache } from "../../hash/stat-cache.js";
 import { testFileId } from "../../keys/reverse-index.js";
 import { checkId } from "../../scheduler/files.js";
 import { healsUnheld } from "../../scheduler/hold.js";
 import type { WorktreeKeys } from "../../scheduler/keying.js";
 import { observedGrowth } from "../../scheduler/observed.js";
 import { recordsForFile } from "../../scheduler/records.js";
-import { changedSince, snapshotInputs } from "../../scheduler/stability.js";
+import { changedSince } from "../../scheduler/stability.js";
 import { storeResults } from "../../scheduler/store-results.js";
 import { describeFailure } from "../../state/fingerprint.js";
 import { BUSY_SLICE_MS, busyBackoffMs } from "../../store/busy.js";
@@ -29,6 +28,7 @@ import type { CoverageRecord } from "../coverage/types.js";
 import { isCodeStoreOpenFailure, openCodeStore } from "../store/open.js";
 import type { CodeStore } from "../store/types.js";
 import type { GateRun } from "./collect.js";
+import { Expectations, type Expected, type Pending } from "./keep-expected.js";
 import { refKey } from "./records.js";
 
 /*
@@ -65,24 +65,6 @@ export interface KeepOptions {
   readonly busyBoundMs?: number;
 }
 
-/** A file a lookup keyed and found nothing for: it runs, and may be kept. */
-interface Expected {
-  readonly ref: TestFileRef;
-  readonly key: CheckKey;
-  /** What its stability check compares: its closure, its environment files, its lockfile. */
-  readonly paths: readonly RelativePath[];
-}
-
-/** One runner's files about to run, with their inputs as the lookup found them. */
-interface Pending {
-  readonly keys: WorktreeKeys;
-  readonly hasher: Hasher;
-  /** `WorktreeKeys.beginRun`'s number, for the reads first hashed after it. */
-  readonly run: number;
-  readonly snapshot: StatCache;
-  readonly files: ReadonlyMap<string, Expected>;
-}
-
 /** A completed file that may be written. */
 interface Kept extends Expected {
   readonly record: CoverageRecord;
@@ -90,39 +72,37 @@ interface Kept extends Expected {
 
 export class Keeper {
   readonly #options: KeepOptions;
-  readonly #pending = new Map<GateRun["runner"], Pending>();
+  readonly #expected = new Expectations();
   readonly #told = new Set<string>();
 
   constructor(options: KeepOptions) {
     this.#options = options;
   }
 
-  /**
-   * Before `runner`'s run: the files of `keyed` it will run, each at the
-   * key the lookup gave it. Their inputs are copied from the stat cache
-   * now, as the daemon copies a tier's when it selects it.
-   */
+  /** Before `runner`'s run: the files of `keyed` it will run, each at the key the lookup gave it. */
   expect(
     runner: GateRun["runner"],
     keys: WorktreeKeys,
     hasher: Hasher,
     keyed: ReadonlyMap<TestFileRef, CheckKey>,
   ): void {
-    const files = new Map<string, Expected>();
-    for (const [ref, key] of keyed) {
-      files.set(testFileId(ref), { ref, key, paths: keys.stabilityPaths(ref) });
-    }
-    if (files.size === 0) return;
-    const paths = new Set([...files.values()].flatMap((f) => f.paths));
-    const snapshot = snapshotInputs(keys.cache, paths);
-    this.#pending.set(runner, { keys, hasher, run: keys.beginRun(), snapshot, files });
+    this.#expected.add(runner, keys, hasher, keyed);
   }
 
-  /** After `run`: writes each file `expect` named that it may keep; a failure only costs the write. */
+  /**
+   * After `run`: writes each file it may keep of the lookups that expected
+   * one of its files (review 0.1.433 B2); a failure only costs the write.
+   */
   async ran(run: GateRun): Promise<void> {
-    const pending = this.#pending.get(run.runner);
-    if (pending === undefined) return;
-    this.#pending.delete(run.runner);
+    for (const pending of this.#expected.take(run)) await this.#keep(pending, run);
+  }
+
+  /** Ends what no run took, such as a runner the budget ended before; keeps nothing. */
+  close(): void {
+    this.#expected.close();
+  }
+
+  async #keep(pending: Pending, run: GateRun): Promise<void> {
     try {
       let kept: readonly Kept[];
       try {

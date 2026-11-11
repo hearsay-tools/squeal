@@ -111,6 +111,51 @@ describe("Keeper (spec 020 D17.3)", () => {
     expect(notes).toHaveLength(1);
   });
 
+  it("keeps each lookup of one runner kind apart, and ends each run once (review 0.1.433 B2)", async () => {
+    const runs = { begun: 0, inFlight: 0 };
+    const keys = {
+      ...KEYS,
+      beginRun: () => {
+        runs.inFlight += 1;
+        runs.begun += 1;
+        return runs.begun;
+      },
+      endRun: () => {
+        runs.inFlight -= 1;
+      },
+    } as unknown as WorktreeKeys;
+    // Each write starts with the head, which fails here: one call per write reached.
+    let writes = 0;
+    const keep = new Keeper({
+      // A root that exists, so the write reaches the head; nothing is written after it.
+      root: tmpdir(),
+      commonDir: "/nowhere/.git",
+      policy: DEFAULT_POLICY,
+      head: () => Promise.reject(new Error(`write ${++writes}`)),
+    });
+    const ref = (project: string): TestFileRef => ({ project, path: "test/x.test.mjs" });
+    const [a, b, c] = [ref("a"), ref("b"), ref("c")];
+    const ranOf = (ref: TestFileRef) => ({
+      runner: "node-test" as const,
+      files: [ref],
+      report: report([ref]),
+      records: new Map([[refKey(ref), { record: RECORD }]]),
+    });
+    for (const one of [a, b, c]) keep.expect("node-test", keys, HASHER, new Map([[one, KEY]]));
+    keep.expect("node-test", keys, HASHER, new Map());
+    expect(runs).toEqual({ begun: 3, inFlight: 3 });
+
+    await keep.ran(ranOf(a));
+    await keep.ran(ranOf(a));
+    await keep.ran(ranOf(b));
+    expect([writes, runs.inFlight]).toEqual([2, 1]);
+
+    // `c`'s runner never ran: closing ends its run, and a late completion keeps nothing.
+    keep.close();
+    await keep.ran(ranOf(c));
+    expect([writes, runs.inFlight]).toEqual([2, 0]);
+  });
+
   it("does nothing for a runner it was not told of", async () => {
     const notes: string[] = [];
     const keep = keeper(() => Promise.reject(new Error("the write was reached")), notes);
