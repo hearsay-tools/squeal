@@ -111,6 +111,9 @@
 test/runners/node-test/
 # A real `node --test` through the daemon, so the same identity path.
 test/integration/node-test
+# A real `node --test` in a runner host, against the adapter in process and
+# through a daemon (row 021-12).
+test/runner-host/node-test-
 # A real `node --test` through the scheduler: the slow tier, preloads,
 # observed and environment growth, capacity, lanes, scratch inputs, the idle
 # pass (beside pytest), warm-up, an edit's tier beside the backlog tier,
