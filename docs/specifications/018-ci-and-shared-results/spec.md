@@ -120,6 +120,14 @@ Developer side, by a worker of this spec: a fresh clone of cezar at that SHA und
 
 Not chosen: the steps inside cezar's merge-group test job (it touches the gating path, and Squeal cannot yet read Vitest's own report: `main-results.md` 4 B); a scratch repository (it would not answer the question for a real project).
 
+### D18. The project's pinned Node runs the daemon
+
+The human, 2026-11-11: a session's own Node must not decide whether shared results count. When the project pins one exact Node version (`.node-version` or `.nvmrc` at the worktree root, `x.y.z` with or without a leading `v`) and that exact version is installed, the daemon is started with that Node binary instead of the one the hook runs on, and that Node's directory comes first in the daemon's `PATH`, so a test that starts `node` gets the same version. The key does not change: it already holds the daemon's `process.version` (D1). Installed versions are found where common version managers keep them (nvm, fnm, volta, asdf, mise, n) and on `PATH`; nothing is downloaded or installed. A range or alias (`lts/*`, `26`) is not resolved. With no pin, no exact pin or the version not installed, the daemon runs on the hook's Node as today, and D19 says so. `squeal.config.json` `node: "session"` keeps the hook's Node.
+
+### D19. Status names a Node mismatch
+
+When `shared.ref` is set and the fetched results were recorded on another Node version than the daemon runs, status says it once, in plain words, with both versions and what to do: install the pinned version (D18), or why it was not used (no pin, a range, not installed). Imports that differ only in Node are counted in that line, not one by one.
+
 ## Testing
 
 - D1: equal parts give equal hashes and any one changed part changes the hash and appears in `describeDifferences`; descriptors carry no value of an allow-listed variable or a config field.
