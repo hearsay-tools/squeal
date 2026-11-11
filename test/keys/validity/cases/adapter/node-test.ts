@@ -77,6 +77,57 @@ const COVERED: Readonly<Record<string, string>> = {
   ),
 };
 
+/**
+ * Row 018-36: a child Node's failure as `execFileSync` words it, after Node
+ * failed parsing `bad/package.json` at a `--require` preload: Node 24's
+ * stack, which ends at the preload's frame, and Node 26's, which Node's 10
+ * frames cut inside the loader before it.
+ */
+const PRELOAD_FAILURES = {
+  "Node 24's stack": [
+    "Error: Invalid package config /tmp/x/bad/package.json.",
+    "    at Object.getNearestParentPackageJSON (node:internal/modules/package_json_reader:197:35)",
+    "    at trySelf (node:internal/modules/cjs/loader:662:33)",
+    "    at Module._resolveFilename (node:internal/modules/cjs/loader:1548:24)",
+    "    at Module._load (node:internal/modules/cjs/loader:1341:5)",
+    "    at Module.require (node:internal/modules/cjs/loader:1674:12)",
+    "    at node:internal/modules/cjs/loader:2221:12 {",
+    "  code: 'ERR_INVALID_PACKAGE_CONFIG'",
+    "}",
+  ],
+  "Node 26's cut stack": [
+    "Error: Invalid package config /tmp/x/bad/package.json.",
+    "    at getNearestParentPackageJSON (node:internal/modules/helpers:87:20)",
+    "    at Object.loaderMethodWrapper [as getNearestParentPackageJSON] (node:internal/modules/helpers:123:12)",
+    "    at Object.getNearestParentPackageJSON (node:internal/modules/package_json_reader:200:34)",
+    "    at trySelf (node:internal/modules/cjs/loader:673:33)",
+    "    at Module._resolveFilename (node:internal/modules/cjs/loader:1587:24)",
+    "    at wrapResolveFilename (node:internal/modules/cjs/loader:1145:27)",
+    "    at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1169:10)",
+    "    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1196:12)",
+    "    at Module._load (node:internal/modules/cjs/loader:1370:5)",
+    "    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19) {",
+    "  code: 'ERR_INVALID_PACKAGE_CONFIG'",
+    "}",
+  ],
+};
+
+/** Row 018-36: a project whose own `--require` puts the recorder in `NODE_OPTIONS`, and a test per failure above. */
+const PRELOADED: Readonly<Record<string, string>> = {
+  "package.json": PACKAGE,
+  "validity-preload.cjs": "",
+  "test/preload.test.mjs": lines(
+    'import { test } from "node:test";',
+    "",
+    "const failed = (stderr) =>",
+    '  new Error(["Command failed: node --require /tmp/x/pre.cjs /tmp/x/pre.cjs", ...stderr].join("\\n"));',
+    ...Object.entries(PRELOAD_FAILURES).map(
+      ([name, stderr]) =>
+        `test(${JSON.stringify(name)}, () => { throw failed(${JSON.stringify(stderr)}); });`,
+    ),
+  ),
+};
+
 const COVERED_RUN = [{ files: ["test/area.test.mjs", "test/inspector.test.mjs"] }];
 
 const OUTCOME_FILES = ["test/broken.test.mjs", "test/fail.test.mjs", "test/pass.test.mjs"];
@@ -140,6 +191,16 @@ export const NODE_TEST_RUNS: readonly Case[] = [
       argv: ["--test-isolation=none"],
       coverage: true,
       runs: [{ files: ["test/area.test.mjs"] }],
+    },
+  },
+  {
+    kind: "adapter:node-test",
+    name: "a --require preload's ERR_INVALID_PACKAGE_CONFIG, under the recorder in NODE_OPTIONS, stores alike (row 018-36)",
+    why: "001 D11 Fidelity (task 001-390): a failure with a recorder's signature says so in its summary, never in its fingerprint; since 018-36 Node 26's cut stack carries it too, beside a --require option. With the project's own --require the recorder is in NODE_OPTIONS, so each failure is read for the signature, and each run stores what the last release stored: Node 24's stack was named there already, Node 26's only in the summary's wording",
+    input: {
+      files: PRELOADED,
+      env: { NODE_OPTIONS: "--require ./validity-preload.cjs" },
+      runs: [{ files: ["test/preload.test.mjs"] }],
     },
   },
   {
