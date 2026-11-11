@@ -48,7 +48,10 @@ export const isGate = (args: readonly string[]) =>
 const EXIT: Readonly<Record<GateVerdict, number>> = { pass: 0, violations: 1, incomplete: 3 };
 
 /** The runners' adapters as the CLI gives them to the collector (D3.2). */
-export const ADAPTERS: GateAdapters = { vitest: createVitestAdapter, nodeTest: createNodeTestAdapter };
+export const ADAPTERS: GateAdapters = {
+  vitest: createVitestAdapter,
+  nodeTest: createNodeTestAdapter,
+};
 
 /** Each path relative to `root`, or the first that is outside it. */
 function underRoot(
