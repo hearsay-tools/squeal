@@ -1,6 +1,7 @@
 import { compare } from "../../fs/compare.js";
 import type { RelativePath } from "../../types/common.js";
 import type { FileHash } from "../../types/keys.js";
+import type { LeftOutGroup, ScopeGroup } from "./scope.js";
 import type {
   ChangeKind,
   ChildFiles,
@@ -85,6 +86,11 @@ export interface GateFunctionReport {
     readonly expected: readonly RelativePath[];
     /** Of those, the ones whose whole record at the head bytes was read. */
     readonly measured: readonly RelativePath[];
+    /**
+     * D14.2: the selected test files that load it, or may, in a group the
+     * scope left out: they did not run. Present only when one is.
+     */
+    readonly leftOut?: readonly RelativePath[];
   };
   /** D8: the entries that name it, each with what it did; present only when one does. */
   readonly exceptions?: readonly GateExceptionUse[];
@@ -171,6 +177,8 @@ export interface GateReportPolicy extends GatePolicy {
    * with the key off is byte for byte as before.
    */
   readonly coverageChildren?: true;
+  /** D14.3: `gate.groups` as kept, `null` when not set; absent when the caller gave no scope. */
+  readonly gateGroups?: readonly string[] | null;
 }
 
 export interface GateReport {
@@ -194,6 +202,11 @@ export interface GateReport {
     readonly paths: readonly { readonly path: RelativePath; readonly blob: FileHash }[];
   };
   readonly budget: { readonly seconds: number; readonly timedOut: boolean };
+  /** D14.3: the groups in scope, and each group left out; absent when the caller gave no scope. */
+  readonly scope?: {
+    readonly groups: readonly ScopeGroup[];
+    readonly leftOut: readonly LeftOutGroup[];
+  };
   readonly functions: readonly GateFunctionReport[];
   readonly uncounted: readonly GatePathReport[];
   /** D8: present when an exceptions file was given: its entries that applied to no function. */

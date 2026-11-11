@@ -2,6 +2,7 @@ import type { FunctionCount } from "../../types/code.js";
 import type { RelativePath } from "../../types/common.js";
 import type { FileHash } from "../../types/keys.js";
 import type { CoverageRecord } from "../coverage/types.js";
+import type { ScopeEvidence } from "./scope.js";
 
 /*
  * Spec 020: the contract between the gate's three parts. `changedFunctions`
@@ -14,9 +15,10 @@ import type { CoverageRecord } from "../coverage/types.js";
 /**
  * `QUALITY_POLICY_VERSION` (D6): raised when a rule of D5, D6 or D8 changes
  * meaning. 2: D8's exceptions (row 020-09). 3: a loader that skipped a test
- * proves a pass and never a violation (D11.3, row 020-07a).
+ * proves a pass and never a violation (D11.3, row 020-07a). 4: the gaps
+ * `left-out` (D14, row 020-15a) and `not-prepared` (D15, row 020-16b).
  */
-export const QUALITY_POLICY_VERSION = 3;
+export const QUALITY_POLICY_VERSION = 4;
 
 /** D7: the format of `squeal code --base --json`. */
 export const GATE_REPORT_FORMAT = "squeal-code-gate/1";
@@ -142,6 +144,8 @@ export interface Evidence {
   /** The budget ended before every selected file ran. */
   readonly timedOut: boolean;
   readonly budgetSeconds: number;
+  /** D14: the scope and the selected files it left out; absent when the caller gave no scope. */
+  readonly scope?: ScopeEvidence;
 }
 
 /** D6: the policy, read at the base commit. */
@@ -164,7 +168,9 @@ export type GateGap =
   | "not-joined"
   | "test-failed"
   /** D11.3: a loader skipped a test, and the records in hand do not prove a pass. */
-  | "skipped";
+  | "skipped"
+  /** D14.2: a loader the scope left out did not run, and the records in hand do not prove a pass. */
+  | "left-out";
 
 /** D7: the verdict and its exit code (D1). */
 export type GateVerdict = "pass" | "violations" | "incomplete";
