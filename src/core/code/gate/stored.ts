@@ -94,7 +94,7 @@ export function openStored(options: StoredOptions): StoredFiles | null {
     commonDir: options.commonDir,
     policy: options.policy,
     head: () => readHead(options.root),
-    note: options.note ?? (() => {}),
+    ...(options.note === undefined ? {} : { note: options.note }),
   });
   let keyer: Promise<Keyer> | null = null;
   const keyerOf = () => {

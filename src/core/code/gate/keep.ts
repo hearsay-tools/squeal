@@ -48,8 +48,8 @@ export interface KeepOptions {
   readonly policy: Policy;
   /** The commit the runs ran at and whether the tree was dirty: the results' provenance. */
   readonly head: () => Promise<{ readonly head: CommitSha; readonly dirty: boolean }>;
-  /** Why a run's files were not kept, told once each. */
-  readonly note: (text: string) => void;
+  /** Why a run's files were not kept, told once each; dropped when absent. */
+  readonly note?: (text: string) => void;
   readonly now?: () => EpochMs;
 }
 
@@ -204,7 +204,7 @@ export class Keeper {
   #tell(text: string): void {
     if (this.#told.has(text)) return;
     this.#told.add(text);
-    this.#options.note(text);
+    this.#options.note?.(text);
   }
 }
 
