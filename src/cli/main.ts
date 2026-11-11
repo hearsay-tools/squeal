@@ -25,6 +25,7 @@ import { reachCommand } from "./reach.js";
 import { removeCommand } from "./remove.js";
 import { retryCommand } from "./retry.js";
 import { runCommand } from "./run.js";
+import { runnerHostCommand } from "./runner-host.js";
 import { SETUP_USAGE, setupCommand } from "./setup/command.js";
 import { startCommand } from "./start.js";
 import { statusCommand } from "./status-command.js";
@@ -269,6 +270,9 @@ Usage:
   squeal daemon <root> [--await-lock <ms>]
                                 Run the daemon in the foreground (hooks start it); a
                                 step-down's successor waits up to <ms> for the lock
+  squeal runner-host <root> --runner vitest
+                                Host the project's runner for a daemon over stdin and
+                                stdout (the daemon starts it)
   squeal --version              Print the version
   squeal --help                 Print this help
   squeal <command> --help       Print that command's part of this help
@@ -326,6 +330,7 @@ const COMMANDS: Readonly<Record<string, Command>> = {
   remove: removeCommand,
   update: updateCommand,
   "codex-runtime": codexRuntimeCommand,
+  "runner-host": runnerHostCommand,
 };
 
 /** Usage beyond the command's lines in `HELP`: the setup choices `HELP` only names. */
