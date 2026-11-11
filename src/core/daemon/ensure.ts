@@ -192,8 +192,11 @@ export async function ensureDaemon(
  *
  * The daemon runs `node <cli> daemon <root>` with the caller's environment
  * ("inherits the environment of the hook that started it with no additions",
- * D11). Its Node is the project's pinned one when `pinnedNode` finds it, with
- * that Node's directory first in `PATH` (spec 018 D18), else the caller's.
+ * D11): `process.env` as this process holds it, passed explicitly, since
+ * Node 26 gives a spawn without `env` the native environment block, which a
+ * `process.env` replaced by its host or a test does not change (row 018-36).
+ * Its Node is the project's pinned one when `pinnedNode` finds it, with that
+ * Node's directory first in `PATH` (spec 018 D18), else the caller's.
  * `<cli>` is `SQUEAL_CLI` when set, else `options.cli`.
  * Its working directory is the store directory, never the root, so a
  * harness can remove the worktree under a live daemon (D10, lessons defect
@@ -230,9 +233,9 @@ export async function ensureDaemonProcess(
         cwd,
         detached: true,
         stdio: "ignore",
-        ...(pinned
-          ? { env: { ...process.env, PATH: pathFirst(node.binary, process.env.PATH) } }
-          : {}),
+        env: pinned
+          ? { ...process.env, PATH: pathFirst(node.binary, process.env.PATH) }
+          : process.env,
       },
     );
     // A spawn that failed has no pid; its error is reported asynchronously, and a hook must never
