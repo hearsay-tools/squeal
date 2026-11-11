@@ -26,6 +26,7 @@ import type {
   WireRunOptions,
 } from "./protocol.js";
 import { RUNNER_HOST_PROTOCOL } from "./protocol.js";
+import type { RemoteRunOptions } from "./remote/tree-wire.js";
 import { type Widths, widthsOf } from "./runners.js";
 
 /*
@@ -55,6 +56,13 @@ export interface HostDeadlines {
   readonly cancelMs: number;
   /** `close`, then the exit after it. */
   readonly closeMs: number;
+  /**
+   * Spec 021 D13 (row 021-14), a remote host's: a run's host tells it is
+   * alive four times within this, and a run that goes this long without a
+   * sign is lost; the run's own deadline still bounds the whole. Absent for
+   * a local host.
+   */
+  readonly aliveMs?: number;
 }
 
 export const HOST_DEADLINES: HostDeadlines = {
@@ -226,9 +234,11 @@ class HostProxy implements RunnerAdapter {
   async run(testFiles: readonly TestFileRef[], options: RunOptions): Promise<RunReport> {
     const begun = Date.now();
     const { signal, stop, fileEnded, beforeForce, ...data } = options;
-    const wire: WireRunOptions = {
+    const { aliveMs } = this.#deadlines;
+    const wire: WireRunOptions & RemoteRunOptions = {
       ...data,
       ...(beforeForce === undefined ? {} : { beforeForce: true }),
+      ...(aliveMs === undefined ? {} : { alive: Math.max(1, Math.floor(aliveMs / 4)) }),
     };
     const id = this.#connection.nextId();
     this.#runs.set(id, { fileEnded, beforeForce });
@@ -241,9 +251,18 @@ class HostProxy implements RunnerAdapter {
     const onSignal = () => cancel("signal", signal?.reason)();
     const onStop = () => cancel("stop", stop?.reason)();
     const deadline: Deadline =
-      options.timeoutMs === null
-        ? { ms: this.#deadlines.runIdleMs, renewable: { progress: "end a file of it" } }
-        : { ms: options.timeoutMs + this.#deadlines.runMarginMs };
+      aliveMs !== undefined
+        ? {
+            ms: aliveMs,
+            renewable: { progress: "tell it is alive" },
+            ...(options.timeoutMs === null
+              ? {}
+              : { totalMs: options.timeoutMs + this.#deadlines.runMarginMs }),
+          }
+        : options.timeoutMs === null
+          ? { ms: this.#deadlines.runIdleMs, renewable: { progress: "end a file of it" } }
+          : { ms: options.timeoutMs + this.#deadlines.runMarginMs };
+
     try {
       this.#sendPolicy();
       const reply = this.#connection.request("run", [testFiles, wire], deadline, id);
@@ -335,6 +354,9 @@ class HostProxy implements RunnerAdapter {
       }
       case "coverage":
         this.#options.coverage?.(decodeCoverageRun(message.run));
+        return;
+      case "alive":
+        this.#connection.renew(message.run);
         return;
     }
   }

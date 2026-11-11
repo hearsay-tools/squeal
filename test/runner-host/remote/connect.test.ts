@@ -43,7 +43,7 @@ function fixture(): string {
 }
 
 async function connect(root: string, ssh: string, lines: string[] = []): Promise<RunnerAdapter> {
-  const adapter = await startRemoteHost({
+  const { adapter } = await startRemoteHost({
     target: { destination: "build-box", ssh },
     places,
     launch: { execPath: process.execPath, execArgv: [], cli },

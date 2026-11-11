@@ -1,7 +1,7 @@
 import type { VitestAdapterOptions } from "../../runners/vitest/index.js";
 import type { RunnerAdapter } from "../types/runner.js";
 import { type RunnerHostLaunch, spawnRunnerHost } from "./channel.js";
-import type { HostPolicy } from "./protocol.js";
+import type { HostAdapterOptions, HostPolicy } from "./protocol.js";
 import { type HostDeadlines, runnerHostGone, startHostProxy } from "./proxy.js";
 
 /*
@@ -20,17 +20,29 @@ export function createHostedVitest(
   deadlines?: Partial<HostDeadlines>,
 ): Promise<RunnerAdapter> {
   const { coverage } = options;
-  const policy = (): HostPolicy => ({
-    observe: options.observe?.() ?? false,
-    exclude: options.exclude?.() ?? [],
-    excludeProjects: options.excludeProjects?.() ?? [],
-    coverage: coverage?.enabled() ?? false,
-    coverageChildren: coverage?.children?.() ?? false,
-  });
   return startHostProxy({
     channel: spawnRunnerHost(launch, options.root, "vitest"),
     runner: "vitest",
     version,
+    ...hostedOptions(options),
+    ...(options.note === undefined ? {} : { note: options.note }),
+    ...(options.optimizer === undefined ? {} : { optimizer: options.optimizer }),
+    ...(coverage === undefined ? {} : { coverage: coverage.collected }),
+    ...(deadlines === undefined ? {} : { deadlines }),
+  });
+}
+
+/**
+ * `createVitestAdapter`'s options as a host takes them: the data at
+ * `start`, the functions as the policy read before each request (spec 021
+ * D8; a remote host's too, row 021-14).
+ */
+export function hostedOptions(options: VitestAdapterOptions): {
+  readonly options: HostAdapterOptions;
+  readonly policy: () => HostPolicy;
+} {
+  const { coverage } = options;
+  return {
     options: {
       childEnv: options.childEnv ?? {},
       ...(options.maxWorkers === undefined ? {} : { maxWorkers: options.maxWorkers }),
@@ -38,12 +50,14 @@ export function createHostedVitest(
         ? {}
         : { coverage: { provider: coverage.provider, tempDir: coverage.tempDir } }),
     },
-    policy,
-    ...(options.note === undefined ? {} : { note: options.note }),
-    ...(options.optimizer === undefined ? {} : { optimizer: options.optimizer }),
-    ...(coverage === undefined ? {} : { coverage: coverage.collected }),
-    ...(deadlines === undefined ? {} : { deadlines }),
-  });
+    policy: () => ({
+      observe: options.observe?.() ?? false,
+      exclude: options.exclude?.() ?? [],
+      excludeProjects: options.excludeProjects?.() ?? [],
+      coverage: coverage?.enabled() ?? false,
+      coverageChildren: coverage?.children?.() ?? false,
+    }),
+  };
 }
 
 /** How the daemon builds each Vitest instance (spec 021 D8). */

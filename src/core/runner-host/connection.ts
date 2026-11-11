@@ -34,6 +34,8 @@ interface Pending {
   /** Whether `renew` restarts it. */
   readonly renewable: boolean;
   timer: NodeJS.Timeout | undefined;
+  /** `Deadline.totalMs`'s timer. */
+  total?: NodeJS.Timeout;
 }
 
 /**
@@ -44,6 +46,8 @@ interface Pending {
 export interface Deadline {
   readonly ms: number;
   readonly renewable?: { readonly progress: string };
+  /** Spec 021 D13 (row 021-14): a bound no renewal moves, for a renewable deadline. */
+  readonly totalMs?: number;
 }
 
 export interface ConnectionOptions {
@@ -102,7 +106,8 @@ export class HostConnection {
     id: number = this.nextId(),
   ): Promise<unknown> {
     if (this.#lost !== null) return Promise.reject(this.#lost);
-    const { ms, renewable } = typeof deadline === "number" ? { ms: deadline } : deadline;
+    const { ms, renewable, totalMs } =
+      typeof deadline === "number" ? { ms: deadline, totalMs: undefined } : deadline;
     const what = renewable === undefined ? m : `${m}, nor ${renewable.progress},`;
     return new Promise((resolve, reject) => {
       const pending: Pending = {
@@ -123,6 +128,16 @@ export class HostConnection {
         },
       };
       pending.arm();
+      if (totalMs !== undefined) {
+        pending.total = setTimeout(
+          () =>
+            this.#lose(
+              `${this.#options.label} did not answer ${m} within ${totalMs} ms; Squeal stopped it`,
+              true,
+            ),
+          totalMs,
+        );
+      }
       this.#pending.set(id, pending);
       this.#options.channel.write(encodeLine({ id, m, a }));
     });
@@ -152,6 +167,7 @@ export class HostConnection {
     if (pending === undefined) return;
     this.#pending.delete(message.id);
     clearTimeout(pending.timer);
+    clearTimeout(pending.total);
     if ("e" in message) pending.reject(new Error(message.e.message));
     else pending.resolve(message.r);
   }
@@ -163,6 +179,7 @@ export class HostConnection {
     this.#options.channel.kill();
     for (const pending of this.#pending.values()) {
       clearTimeout(pending.timer);
+      clearTimeout(pending.total);
       pending.reject(lost);
     }
     this.#pending.clear();

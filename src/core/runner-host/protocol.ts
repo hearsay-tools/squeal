@@ -40,7 +40,9 @@ export type HostMethod =
   | "tree"
   | "write"
   | "blobs"
-  | "install";
+  | "install"
+  // Spec 021 D11 (row 021-14): the host's own Node, platform, install and allow-listed variables.
+  | "coreEnvironment";
 
 export interface HostRequest {
   readonly id: number;
@@ -82,7 +84,9 @@ export type HostEvent =
       readonly run: number;
       readonly env: Readonly<Record<string, unknown>>;
     }
-  | { readonly ev: "coverage"; readonly run: WireCoverageRun };
+  | { readonly ev: "coverage"; readonly run: WireCoverageRun }
+  /** Spec 021 D13 (row 021-14): run `run` is still in flight; asked for by `RemoteRunOptions.alive`. */
+  | { readonly ev: "alive"; readonly run: number };
 
 /** What the host sends. */
 export type HostMessage = HostReply | HostEvent;

@@ -18,6 +18,7 @@ import type {
   PsHost,
   PsOrphan,
   PsRepository,
+  PsRunnerHost,
   PsSnapshot,
   PsSqueal,
   PsTestProcess,
@@ -147,6 +148,7 @@ function repositoryBlock(r: PsRepository, s: PsSnapshot, full: boolean): string[
   ];
   for (const d of r.daemons) {
     lines.push(...daemonLines(d, s.at));
+    for (const h of d.hosts ?? []) lines.push(runnerHostLine(h, s.at));
     for (const p of d.processes) lines.push(...processLines(p, s.at, full));
   }
   return lines;
@@ -172,6 +174,21 @@ function daemonLines(d: PsDaemon, at: number): string[] {
     }),
     ...flagLines(d.flags),
   ];
+}
+
+/** Spec 021 D17: a runner host under its daemon, local or remote with its target. */
+function runnerHostLine(h: PsRunnerHost, at: number): string {
+  return row("  ", {
+    state: `  host ${h.runner ?? "runner"}`,
+    pid: String(h.pid),
+    detail: h.target === null ? "local" : `remote ${h.target} (ssh)`,
+    up: age(h.startedAt, at),
+    cpu: percent(h.cpuPct),
+    time: cpuTime(h.cpuMs),
+    memory: bytes(h.privateBytes, true),
+    swap: bytes(h.swapBytes, true),
+    work: "",
+  });
 }
 
 function processLines(p: PsTestProcess, at: number, full: boolean): string[] {

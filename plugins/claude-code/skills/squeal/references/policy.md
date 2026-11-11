@@ -61,6 +61,25 @@ Stop also waits for the checks of the groups at `"stop"` in `checks`, and for th
 | --- | --- | --- |
 | `capacity.groupSlotScope` | `"repository"` | Where `slow.maxParallel` and each check group's `limits.maxParallel` count: `"repository"`, across the worktrees of one repository, so two repositories' slow files may run at once; `"user"`, across every repository of the user, for suites that share fixed ports or a database between repositories. |
 
+## Remote runs
+
+`~/.config/squeal/remote.json` (under `$XDG_CONFIG_HOME` when set), per user and never committed, sends one repository's background Vitest runs (the start and restart baselines and the backlog) to an SSH host you name. Edit tiers, named waits, slow files and check groups stay on your machine. Nothing goes remote until you name a repository here, and a repository's `remote.allowed: false` forbids it.
+
+```json
+{ "repositories": { "/home/me/app": { "target": "build-box" } } }
+```
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `target` | required | The SSH destination: a `Host` of your ssh config, or `user@host`. Squeal runs your own `ssh` in batch mode with your configuration: a key that needs a passphrase prompt, or an unknown host key, fails with ssh's own text. |
+| `runner` | `"vitest"` | The runner whose background runs go there; only Vitest for now. |
+| `lanes` | `["background"]` | The runs that go there; only `"background"` for now. |
+| `whenLost` | `"local"` | When the remote does not answer within its deadline, or is refused: `"local"` runs those files here; `"not-run"` leaves them not run, their checks `unknown`. Squeal tries the remote again later. |
+| `node` | `"node"` | Node on the remote, a name on its login `PATH` or a path. Its version must equal this worktree's, or the remote is refused. |
+| `cache` | `".cache"` | The remote directory, relative to the remote home or absolute, where Squeal keeps its own copy (`squeal/<version>/`) and one tree per worktree (`squeal/trees/`). |
+
+A repository is named by its root path or by one of its remote URLs. At first connect Squeal copies itself to the remote and sends every tracked file and every untracked file git does not ignore, never an ignored one, then installs from the lockfile with the project's package manager, which runs the project's install scripts there. Each edit's changed files follow. A remote result is kept only when the remote's files of the run equal yours before and after the run, and its environment (Node, platform, installed dependencies, Vitest config) equals yours; a run over different files is sent again and retried once. `squeal status` names the remote: connecting, proven, refused with the difference, or unreachable since a time. `squeal ps` shows each runner host under its daemon, `local` or `remote <target> (ssh)`. Coverage is not taken on the remote.
+
 ## Complexity
 
 With `complexity.enabled`, Squeal counts the cyclomatic complexity of each function in the files it sees after each edit, with no test run: ESLint's classic `complexity` rule for `.ts`, `.tsx`, `.mts`, `.cts`, `.js`, `.jsx`, `.mjs` and `.cjs`, radon's for `.py`. A function over `complexity.threshold` fails, and its state is kept as a test's is.

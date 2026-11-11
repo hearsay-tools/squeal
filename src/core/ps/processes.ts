@@ -1,4 +1,4 @@
-import type { Attribute, ProcessOwner, TestProcessModel } from "./model.js";
+import type { Attribute, ProcessOwner, RunnerHostModel, TestProcessModel } from "./model.js";
 import type { ProcessTable } from "./source.js";
 
 /*
@@ -50,8 +50,11 @@ export const attribute: Attribute = (source, table, owners) => {
       if (mark !== null) marks.set(pid, mark);
     }
   }
+  // Spec 021 D17: a daemon's runner hosts are its own, never test processes.
+  const hosts = runnerHosts(source, table, owner, marks);
+  const hostPids = new Set(hosts.map((h) => h.pid));
   const isHead = (pid: number): boolean => {
-    if (owner.has(pid)) return false;
+    if (owner.has(pid) || hostPids.has(pid)) return false;
     const parent = table.get(pid)?.ppid;
     if (!source.readsMarks) return parent !== undefined && owner.has(parent);
     if (!marks.has(pid)) return false;
@@ -104,8 +107,46 @@ export const attribute: Attribute = (source, table, owners) => {
       descendants: descendants.get(head) ?? [],
     });
   }
-  return { processes, unowned };
+  return { processes, unowned, ...(hosts.length === 0 ? {} : { hosts }) };
 };
+
+/**
+ * The daemons' children that are runner hosts (spec 021 D17): a host
+ * carries no mark, so only an unmarked child's command line is read, and
+ * only where marks are read (D10); elsewhere a host shows as a test process.
+ */
+function runnerHosts(
+  source: Parameters<Attribute>[0],
+  table: ProcessTable,
+  owner: ReadonlyMap<number, ProcessOwner>,
+  marks: ReadonlyMap<number, string>,
+): RunnerHostModel[] {
+  const hosts: RunnerHostModel[] = [];
+  if (!source.readsMarks) return hosts;
+  for (const [pid, row] of table) {
+    if (!owner.has(row.ppid) || owner.has(pid) || marks.has(pid)) continue;
+    const args = source.cmdline(pid);
+    const host = args === null ? null : hostOf(args);
+    if (host !== null) hosts.push({ pid, daemonPid: row.ppid, ...host });
+  }
+  return hosts;
+}
+
+/**
+ * A runner host's command line: `node <cli> runner-host <root> --runner
+ * <name>`, or `ssh ... <target> '<command>'` whose command runs one (spec
+ * 021 D9). `null`: neither.
+ */
+export function hostOf(args: readonly string[]): Omit<RunnerHostModel, "pid" | "daemonPid"> | null {
+  const at = args.indexOf("runner-host");
+  if (at > 0 && !/(^|\/)ssh$/.test(args[0] ?? "")) {
+    const flag = args.indexOf("--runner", at);
+    return { runner: flag < 0 ? null : (args[flag + 1] ?? null), target: null };
+  }
+  const command = args.at(-1) ?? "";
+  if (!/(^|\/)ssh$/.test(args[0] ?? "") || !/ runner-host /.test(command)) return null;
+  return { runner: /--runner (\S+)/.exec(command)?.[1] ?? null, target: args.at(-2) ?? null };
+}
 
 /** The first of `pid` and its ancestors that `is`; `null` when none is. */
 function nearest(

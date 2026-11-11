@@ -20,6 +20,7 @@ import {
   type PsDaemon,
   type PsHost,
   type PsRepository,
+  type PsRunnerHost,
   type PsSnapshot,
   type PsTestProcess,
   type PsUnknown,
@@ -118,6 +119,25 @@ export function shapeOf(r: WindowRead, findings: FlagFindings, o: ShapeOptions):
       })),
       processes: first.attribution.processes.filter((p) => p.daemonPid === pid).map(processOf),
       flags: findings.daemons.get(pid) ?? [],
+      ...hostsOf(pid),
+    };
+  };
+
+  /** Spec 021 D17: the daemon's runner hosts, only when it has one. */
+  const hostsOf = (pid: number): { hosts?: PsRunnerHost[] } => {
+    const hosts = (first.attribution.hosts ?? []).filter((h) => h.daemonPid === pid);
+    if (hosts.length === 0) return {};
+    return {
+      hosts: hosts.map((h) => {
+        const row = table.get(h.pid);
+        return {
+          pid: h.pid,
+          runner: h.runner,
+          target: h.target,
+          startedAt: row === undefined ? null : startOf(row.startTicks),
+          ...costOf(costs.get(h.pid)),
+        };
+      }),
     };
   };
 
@@ -126,6 +146,7 @@ export function shapeOf(r: WindowRead, findings: FlagFindings, o: ShapeOptions):
   const pidsOf = (daemons: readonly PsDaemon[]): number[] => [
     ...daemons.map((d) => d.pid),
     ...daemons.flatMap((d) => d.processes).flatMap((p) => [p.pid, ...(below.get(p.pid) ?? [])]),
+    ...daemons.flatMap((d) => d.hosts ?? []).map((h) => h.pid),
   ];
   const totalOf = (daemons: readonly PsDaemon[]) =>
     sumCosts(pidsOf(daemons).flatMap((pid) => costs.get(pid) ?? []));

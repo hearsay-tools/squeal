@@ -14,8 +14,10 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
+import { installedDependenciesFingerprint } from "../../keys/environment.js";
 import { installCommand } from "../../scheduler/install-command.js";
 import {
+  type HostCore,
   type InstallAnswer,
   insideRoot,
   LOG_BYTES,
@@ -58,6 +60,10 @@ export interface TreeHost {
   runDir(runId: string): Promise<string>;
   /** The files of a run's `runDir`, to send back with its report. */
   logs(dir: string): Promise<WireLog[]>;
+  /** The paths of `expected` whose blob id here differs (spec 021 D11). */
+  differing(expected: Readonly<Record<string, string | null>>): Promise<string[]>;
+  /** This process's environment inputs, the variables of `allowlist` among them (D11). */
+  coreEnvironment(allowlist: readonly string[]): Promise<HostCore>;
 }
 
 /** The host's record of the files it wrote: path to blob id and mode. */
@@ -175,6 +181,28 @@ export function createTreeHost(
       const dir = join(runs, runId.replace(/[^A-Za-z0-9_.-]/g, "_"));
       await mkdir(dir, { recursive: true });
       return dir;
+    },
+    async differing(expected) {
+      const differ: string[] = [];
+      for (const [path, blob] of Object.entries(expected)) {
+        const here = insideRoot(path) ? await blobOf(join(root, path)) : null;
+        if (here !== blob) differ.push(path);
+      }
+      return differ;
+    },
+    async coreEnvironment(allowlist) {
+      const env: Record<string, string> = {};
+      for (const name of allowlist) {
+        const value = process.env[name];
+        if (value !== undefined) env[name] = value;
+      }
+      return {
+        nodeVersion: process.version,
+        platform: process.platform,
+        arch: process.arch,
+        installedDependencies: await installedDependenciesFingerprint(root, root),
+        env,
+      };
     },
     async logs(dir) {
       const logs: WireLog[] = [];

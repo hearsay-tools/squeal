@@ -128,6 +128,24 @@ export interface PsDaemon {
   readonly consumers: readonly PsConsumer[];
   readonly processes: readonly PsTestProcess[];
   readonly flags: readonly PsFlag[];
+  /** Spec 021 D17 (row 021-14): its runner hosts; absent when it has none. */
+  readonly hosts?: readonly PsRunnerHost[];
+}
+
+/**
+ * A runner host of a daemon (spec 021 D17): a local `squeal runner-host`,
+ * or for a remote one the user's `ssh` here, whose costs are this machine's.
+ */
+export interface PsRunnerHost {
+  readonly pid: number;
+  readonly runner: string | null;
+  /** The SSH destination of a remote host; `null` for a local one. */
+  readonly target: string | null;
+  readonly startedAt: EpochMs | null;
+  readonly cpuPct: number | null;
+  readonly cpuMs: number | null;
+  readonly privateBytes: number | null;
+  readonly swapBytes: number | null;
 }
 
 export interface PsWork {
