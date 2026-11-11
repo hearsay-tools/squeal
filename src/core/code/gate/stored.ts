@@ -5,19 +5,17 @@ import { DatabaseSync } from "node:sqlite";
 import { readHead } from "../../daemon-loop/head.js";
 import { compare } from "../../fs/compare.js";
 import { worktreeIdFor } from "../../fs/git-layout.js";
-import { readObjectFormat } from "../../hash/git-index.js";
-import { createFsHasher, type Hasher } from "../../hash/hasher.js";
-import { observedModulesMetaKey } from "../../keys/modules.js";
-import { observedDirectMetaKey, observedMetaKey } from "../../keys/observed.js";
+import type { Hasher } from "../../hash/hasher.js";
+import { OBSERVED_META_KEYS } from "../../keys/observed-rows.js";
 import { testFileId } from "../../keys/reverse-index.js";
-import { observedStartupMetaKey } from "../../keys/startup.js";
-import { WorktreeKeys } from "../../scheduler/keying.js";
+import { openDaemonKeys } from "../../scheduler/daemon-keys.js";
+import type { WorktreeKeys } from "../../scheduler/keying.js";
 import { Connection } from "../../store/connection.js";
 import { DEFAULT_BUSY_TIMEOUT_MS, isStoreOpenFailure, openStore } from "../../store/open.js";
 import { storePaths } from "../../store/paths.js";
 import { SCHEMA_VERSION, userVersion } from "../../store/schema.js";
 import { createStore } from "../../store/store.js";
-import type { AbsolutePath, ProjectName, RelativePath } from "../../types/common.js";
+import type { AbsolutePath, RelativePath } from "../../types/common.js";
 import type { CheckKey, TestFileRef } from "../../types/keys.js";
 import type { Policy } from "../../types/policy.js";
 import type { RunnerAdapter, RunnerClosure } from "../../types/runner.js";
@@ -237,14 +235,6 @@ interface Keyer {
   close(): Promise<void>;
 }
 
-/** The meta rows of a project's observed reads, shared by every worktree's daemon. */
-const OBSERVED_ROWS: readonly ((project: ProjectName) => string)[] = [
-  observedMetaKey,
-  observedDirectMetaKey,
-  observedModulesMetaKey,
-  observedStartupMetaKey,
-];
-
 /**
  * The daemon's keys of this worktree over a scratch store, bootstrapped as
  * at a daemon's start, with the adapters' environments and the observed
@@ -266,9 +256,21 @@ async function openKeyer(options: StoredOptions, main: Store | undefined): Promi
     if (isStoreOpenFailure(opened)) throw new Error(`no scratch store: ${opened.reason}`);
     scratch = opened;
     for (const project of new Set(environments.map((e) => e.project))) {
-      for (const row of OBSERVED_ROWS) if (main !== undefined) copyMeta(main, opened, row(project));
+      for (const key of OBSERVED_META_KEYS) {
+        if (main !== undefined) copyMeta(main, opened, key(project));
+      }
     }
-    const { keys, hasher } = await openKeys(options, opened);
+    const { root, policy, squealVersion, env } = options;
+    const worktreeId = worktreeIdFor(root);
+    const store = opened;
+    const { keys, hasher } = await openDaemonKeys({
+      root,
+      worktreeId,
+      store,
+      policy,
+      squealVersion,
+      env,
+    });
     await keys.setEnvironments(environments);
     const listed = new Map<string, RunnerAdapter>();
     for (const adapter of adapters) {
@@ -285,29 +287,6 @@ async function openKeyer(options: StoredOptions, main: Store | undefined): Promi
 function copyMeta(from: Store, to: Store, key: string): void {
   const value = from.meta.get(key);
   if (value !== null) to.meta.set(key, value);
-}
-
-/** The daemon's `WorktreeKeys` of this worktree over `store`, bootstrapped as at its start. */
-async function openKeys(
-  options: StoredOptions,
-  store: Store,
-): Promise<{ readonly keys: WorktreeKeys; readonly hasher: Hasher }> {
-  const { root, policy, squealVersion, env } = options;
-  const objectFormat = await readObjectFormat(root);
-  const hasher = createFsHasher(root, objectFormat);
-  const keys = new WorktreeKeys({
-    root,
-    worktreeId: worktreeIdFor(root),
-    store,
-    hasher,
-    objectFormat,
-    policy,
-    squealVersion,
-    env,
-    onExtraFiles: () => {},
-  });
-  await keys.bootstrap(() => readHead(root));
-  return { keys, hasher };
 }
 
 /**
