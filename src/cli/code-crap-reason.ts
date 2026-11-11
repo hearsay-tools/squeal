@@ -23,12 +23,19 @@ const PENDING: Readonly<Record<PendingReason, string>> = {
   record: "waits for a coverage record",
 };
 
+/**
+ * Spec 020 D11.5 (row 020-07a): a file no test Squeal runs loads is not
+ * measured, never untested. A fact about the tests Squeal runs (row
+ * 015-103): a test outside its runners can load it.
+ */
+export const NOT_LOADED = "no test Squeal runs loads this file";
+
 const UNKNOWN: Readonly<Record<UnknownCause, string>> = {
   "no-record": "a test file that loads this file has no coverage record",
   skipped: "a test file that loads this file skipped a test",
   unkeyed: "Squeal cannot key a test file that loads this file",
   unread: "a coverage record cannot confirm this file's bytes",
-  "no-loader": "no test Squeal runs loads this file",
+  "no-loader": NOT_LOADED,
 };
 
 /** Review 0.1.297 B4: none ran the function, and a record cannot tell whether it ran. */

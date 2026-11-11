@@ -9,7 +9,12 @@ import {
   readSummary,
 } from "../core/code/crap/summary.js";
 import type { CodeStore } from "../core/code/store/types.js";
-import { LOWER_BOUND, UNMEASURED } from "../core/delivery/code-coverage.js";
+import {
+  MEASURED,
+  MEASURED_CHILDREN,
+  tested,
+  untested,
+} from "../core/delivery/code-coverage-words.js";
 import { lastTransition } from "../core/delivery/code-deliver.js";
 import { type CodeBound, isOwn } from "../core/delivery/code-delta.js";
 import { functionName, toldOverWords } from "../core/delivery/code-format.js";
@@ -18,7 +23,7 @@ import { createInputMatcher } from "../core/keys/glob.js";
 import { plural } from "../core/text.js";
 import type { CodeKnownState, CodeMeasure, CodeOutcome } from "../core/types/code.js";
 import type { RelativePath, RevisionNumber, WorktreeId } from "../core/types/common.js";
-import { type CrapShown, crapFor } from "./code-crap-reason.js";
+import { type CrapShown, crapFor, NOT_LOADED } from "./code-crap-reason.js";
 
 /*
  * Spec 015 D9 (row 015-12): `squeal code`'s coverage part, while the
@@ -34,32 +39,8 @@ import { type CrapShown, crapFor } from "./code-crap-reason.js";
  * starts, as a lower bound.
  */
 
-/** Row 015-64 (D9 as amended 2026-10-26, 2026-10-27): what a function `uncovered` reads as. */
-const UNTESTED = "untested: no test runs it in the test's own thread";
-const TESTED = "a test runs it in its own thread";
-
-/** Spec 020 D12.7: the same with `coverage.children`. */
-const UNTESTED_CHILDREN =
-  "untested: no test runs it, in the test's own thread or in a process or thread the test starts";
-const TESTED_CHILDREN =
-  "a test runs it, in the test's own thread or in a process or thread the test starts";
-
-const untested = (children: true | undefined) => (children ? UNTESTED_CHILDREN : UNTESTED);
-const tested = (children: true | undefined) => (children ? TESTED_CHILDREN : TESTED);
-
-/**
- * Spec 020 D11.5 (row 020-07a): a file no test Squeal runs loads is not
- * measured, never untested. A fact about the tests Squeal runs (row
- * 015-103): a test outside its runners can load it.
- */
-const NOT_LOADED = "no test Squeal runs loads this file";
+/** Spec 020 D11.5: `NOT_LOADED` for a count of files. */
 const NOT_LOADED_FILES = "no test Squeal runs loads them";
-
-/** Row 015-80 (D9, amended 2026-10-27): so a failing state does not read as "no test runs it". */
-const MEASURED = `  Coverage counts what ran in the test's own thread. ${UNMEASURED}`;
-
-/** Spec 020 D12.7 (request 7f914e71): `MEASURED` with `coverage.children`. */
-const MEASURED_CHILDREN = `  Coverage counts what ran in the test's own thread and in the processes and threads it started. ${LOWER_BOUND}`;
 
 /**
  * One function's coverage states and evidence. Row 015-64: `crap` and
