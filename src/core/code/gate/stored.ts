@@ -27,7 +27,8 @@ import { codeStorePath } from "../store/open.js";
 import { CODE_SCHEMA_VERSION } from "../store/schema.js";
 import { createCodeStore } from "../store/store.js";
 import type { CodeStore } from "../store/types.js";
-import { FILE_ERROR, type GateRun, type StoredEvidence } from "./collect.js";
+import type { GateRun, StoredEvidence } from "./collect.js";
+import { FILE_ERROR } from "./evidence.js";
 import { Keeper } from "./keep.js";
 import type { TestFileEvidence } from "./types.js";
 
