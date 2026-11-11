@@ -2,7 +2,16 @@ import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { compare } from "../fs/compare.js";
-import { ABSENT_LISTING, GIT_ENTRY, listedDirectory, namesHash } from "../keys/observed.js";
+import { runGit, splitNul } from "../fs/git.js";
+import {
+  ABSENT_LISTING,
+  GIT_ENTRY,
+  Listings,
+  listedDirectory,
+  listingPath,
+  namesHash,
+} from "../keys/observed.js";
+import { inputsOfReads, type ListingsBelow, type ObservedRead } from "../scheduler/observed.js";
 import type { AbsolutePath, RelativePath } from "../types/common.js";
 import type { FileHash } from "../types/keys.js";
 
@@ -55,6 +64,40 @@ export function hereOf<T>(
     if (path === GIT_ENTRY) return gitEntryHash(root);
     return file(path);
   };
+}
+
+/**
+ * `inputsOfReads` for a caller with no worktree keys, the gate's `--parts`
+ * (spec 020 D13.2, row 020-20): a recursive listing reads the listings of
+ * the files git does not ignore now (`listingsBelowHere`).
+ */
+export async function inputsOfReadsHere(
+  root: AbsolutePath,
+  reads: readonly ObservedRead[],
+): Promise<readonly RelativePath[][]> {
+  const recursive = reads.flatMap((r) => r.observed.recursive ?? []);
+  return (await inputsOfReads(root, reads, await listingsBelowHere(root, recursive))).inputs;
+}
+
+/**
+ * `ListingsBelow` over the files git does not ignore below `directories`,
+ * as the daemon's keys list files (`WorktreeKeys.bootstrap`): tracked and
+ * untracked, a deleted one not. No git call when `directories` is empty.
+ */
+export async function listingsBelowHere(
+  root: AbsolutePath,
+  directories: readonly RelativePath[],
+): Promise<ListingsBelow> {
+  if (directories.length === 0) return (directory) => [listingPath(directory)];
+  const specs = ["--", ...new Set(directories.map((d) => (d === "" ? "." : d)))];
+  const [listed, deleted] = await Promise.all([
+    runGit(root, ["ls-files", "-z", "--cached", "--others", "--exclude-standard", ...specs]),
+    runGit(root, ["ls-files", "-z", "--deleted", ...specs]),
+  ]);
+  const gone = new Set(splitNul(deleted));
+  const files = splitNul(listed).filter((path) => !gone.has(path));
+  const listings = new Listings(() => files, root);
+  return (directory) => listings.below(directory);
 }
 
 interface EvidenceLine {
