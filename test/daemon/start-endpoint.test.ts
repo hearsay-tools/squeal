@@ -25,6 +25,9 @@ const OLDER = "0.1.1";
 /** `start`'s pings before its step-down: `stoppingDaemon`'s, its status read's, then `replaceShort`'s. */
 const PINGS_BEFORE_STEP_DOWN = 3;
 
+/** The requests that send writes (spec 021 D15), which a daemon before them refuses. */
+const WRITE_REQUESTS = new Set(["lease", "write", "write-status", "release"]);
+
 /** A short daemon of `OLDER` started at `startedAt`, on `repo`'s socket path. */
 function shortAt(repo: FixtureRepo, startedAt: number, token: string): DaemonRecord {
   return {
@@ -64,6 +67,11 @@ async function standIn(
     socket.on("error", () => {});
     socket.once("data", (chunk) => {
       const { type } = JSON.parse(chunk.toString("utf8")) as DaemonRequest;
+      // Spec 021 D15: start asks first for the write lease; this stand-in takes no writes.
+      if (WRITE_REQUESTS.has(type)) {
+        socket.end(`${JSON.stringify({ ok: false, error: "unknown request type" })}\n`);
+        return;
+      }
       asked.push(type);
       const answer =
         type === "ping"

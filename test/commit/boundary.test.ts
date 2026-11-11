@@ -44,6 +44,9 @@ const PENDING = {
 };
 
 /** A socket that records each request's type and answers with `answer`. */
+/** The requests that send writes (spec 021 D15), which a daemon before them refuses. */
+const WRITE_REQUESTS = new Set(["lease", "write", "write-status", "release"]);
+
 async function daemonSocket(answer: Answer = REFUSED): Promise<{ path: string; types: string[] }> {
   // Socket paths are limited to 108 bytes; the test temp dir can be longer.
   const dir = mkdtempSync("/tmp/sq-sync-");
@@ -54,6 +57,11 @@ async function daemonSocket(answer: Answer = REFUSED): Promise<{ path: string; t
     socket.on("error", () => undefined);
     socket.once("data", (data) => {
       const type = (JSON.parse(String(data).split("\n")[0] ?? "{}") as { type: string }).type;
+      // Spec 021 D15: a hook asks first for the write lease; this stand-in takes no writes.
+      if (WRITE_REQUESTS.has(type)) {
+        socket.end(`${JSON.stringify({ ok: false, error: "unknown request type" })}\n`);
+        return;
+      }
       types.push(type);
       socket.end(`${JSON.stringify(answer(type, types.length - 1))}\n`);
     });
