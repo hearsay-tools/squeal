@@ -4,13 +4,13 @@ import { type FetchedPart, recordImportGraph } from "../store/import-edges.js";
 import type { RelativePath } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { FileChange, Revision } from "../types/revision.js";
-import type { InvalidatedPath, RunnerClosure } from "../types/runner.js";
+import type { InvalidatedPath, RunnerClosure, RunnerEnvironment } from "../types/runner.js";
 import { NOTHING_CHANGED, type SchedulerContext, tryRunner } from "./context.js";
 import { onlyEditorScratch } from "./editor-scratch.js";
 import { type Failures, failed, settleFailures } from "./failures.js";
 import type { Ledger } from "./ledger.js";
 import { unmatchedInputNotes } from "./notes.js";
-import { listTestFilesOf } from "./omitted-test-files.js";
+import { recordOmittedTestFiles } from "./omitted-test-files.js";
 import { quietQueued } from "./quiet.js";
 import { type RunnerPartBound, runnerPartBound } from "./runner-work-bound.js";
 
@@ -154,28 +154,125 @@ function reloadPolicy(
 }
 
 /**
+ * What the runner said to a runner retry before `run --all`, while a runner
+ * failure is outstanding (`fetchRunnerRetry`): the environment, the test
+ * file list and the closures of the listed files without one and of the
+ * blocked files. `null` reads failed, as `failures` says.
+ */
+export interface RunnerRetry {
+  readonly failures: Failures;
+  readonly environments: readonly RunnerEnvironment[] | null;
+  readonly listed: readonly TestFileRef[] | null;
+  /** How many files that listing left out; `null` when it failed. */
+  readonly omitted: number | null;
+  /** The test files whose closures were asked for. */
+  readonly refs: readonly TestFileRef[];
+  readonly closures: readonly RunnerClosure[];
+}
+
+/**
  * Before `run --all`, while a runner failure is outstanding: reads the
  * environment, the test file list and the blocked files' closures again, so
- * the request covers what the runner can run now.
+ * the request covers what the runner can run now. `null` with no failure.
  *
  * It runs under the lock (D5), so its calls are bounded as a runner part's
  * are (task 001-259): a wedged runner holds the lock, and every wait queued
  * behind it, no longer than the bound, and the retry ends as failed.
+ *
+ * Spec 021 D2 (re-review of 0.1.434, B2): it only asks the runner and
+ * writes nothing; `keyRunnerRetry` and `storeRunnerRetry` apply what it
+ * read, each tried again on a busy store with the answers kept.
  */
-export async function retryRunner(context: SchedulerContext, ledger: Ledger): Promise<void> {
-  if (!ledger.broken) return;
+export async function fetchRunnerRetry(
+  context: SchedulerContext,
+  ledger: Ledger,
+): Promise<RunnerRetry | null> {
+  if (!ledger.broken) return null;
   const bound = runnerPartBound(context);
   const failures: Failures = new Map();
-  const touched = (await readEnvironments(context, failures, bound)).map((c) => c.testFile);
-  const listed = await listTestFiles(context, ledger, bound);
-  const blocked = [...ledger.files.values()].filter((f) => f.blocked !== null).map((f) => f.ref);
-  const refs = [...listed, ...blocked];
-  touched.push(
-    ...(await resolveClosures(context, refs, failures, bound)).map((c) => c.testFile),
-    ...refs,
+  const environments = await tryRunner(
+    context,
+    "environment",
+    () => bound.call(() => context.runner.environment()),
+    (reason) => failed(failures, null, reason),
   );
+  let omitted = 0;
+  const listed = await tryRunner(context, "testFiles", async () => {
+    const files = await bound.call(() => context.runner.testFiles());
+    omitted = context.runner.omittedTestFiles?.() ?? 0;
+    return files;
+  });
+  // As `applyListing` leaves them: its files without a closure, and the blocked ones it keeps.
+  const kept = listed === null ? null : new Set(listed.map(testFileId));
+  const blocked = [...ledger.files.values()]
+    .filter((file) => file.blocked !== null && (kept === null || kept.has(file.id)))
+    .map((file) => file.ref);
+  const refs = [...(listed ?? []).filter((ref) => !context.keys.index.closure(ref)), ...blocked];
+  const closures: RunnerClosure[] = [];
+  for (const ref of refs) {
+    const closure = await resolveClosure(context, ref, bound, (reason) =>
+      failed(failures, ref.project, reason),
+    );
+    if (closure !== null) closures.push(closure);
+  }
+  return {
+    failures,
+    environments,
+    listed,
+    omitted: listed === null ? null : omitted,
+    refs,
+    closures,
+  };
+}
+
+/**
+ * The keys of a runner retry: its environments and closures, and the paths
+ * they name hashed. Its writes, the stat cache's and the environment
+ * record's, are each a transaction of their own; a busy store's refusal
+ * throws, and a call again with the same `retry` writes them then (spec 021
+ * D2), with `retouched`, the files a refused call keyed and nothing settled.
+ * Returns the test files to settle.
+ */
+export async function keyRunnerRetry(
+  context: SchedulerContext,
+  retry: RunnerRetry,
+  retouched: readonly TestFileRef[] = [],
+): Promise<TestFileRef[]> {
+  const { keys } = context;
+  const environments = retry.environments;
+  const touched = (
+    environments === null ? keys.unverifyRuntime([null]) : await keys.setEnvironments(environments)
+  ).map((change) => change.testFile);
+  for (const closure of retry.closures) {
+    touched.push(...keys.setClosure(closure).map((change) => change.testFile));
+  }
+  touched.push(...(await keys.trackUntracked()).map((change) => change.testFile));
+  return [...touched, ...retry.refs, ...retouched];
+}
+
+/**
+ * The store's part of a runner retry, synchronous, for one store transaction
+ * taken before it changes anything (spec 021 D2): the import graph, the
+ * listing and what it left out, the closures, and the keys of `touched`
+ * settled.
+ */
+export function storeRunnerRetry(
+  context: SchedulerContext,
+  ledger: Ledger,
+  retry: RunnerRetry,
+  touched: readonly TestFileRef[],
+): void {
+  if (retry.environments !== null) {
+    recordImportGraph(context, { environments: retry.environments });
+  }
+  if (retry.omitted !== null) {
+    recordOmittedTestFiles(context.store, context.worktreeId, retry.omitted);
+  }
+  applyListing(context, ledger, retry.listed);
+  const resolved = retry.closures.map((closure) => closure.testFile);
+  storeClosures(context, resolved, { closures: retry.closures });
   ledger.settle(touched, NOTHING_CHANGED);
-  settleFailures(ledger, failures, true, NOTHING_CHANGED);
+  settleFailures(ledger, retry.failures, true, NOTHING_CHANGED);
 }
 
 /** Reads the environments under `bound`; unbounded without one. */
@@ -195,20 +292,6 @@ export async function readEnvironments(
   const changes = await context.keys.setEnvironments(environments);
   recordImportGraph(context, { environments });
   return changes;
-}
-
-/**
- * Lists test files, adds new ones and forgets the ones that are gone.
- * Returns the new ones and those without a closure. A failed listing keeps
- * the previous list (D5) and is retried with the next revision.
- */
-async function listTestFiles(
-  context: SchedulerContext,
-  ledger: Ledger,
-  bound: RunnerPartBound,
-): Promise<TestFileRef[]> {
-  const listed = await tryRunner(context, "testFiles", () => listTestFilesOf(context, bound));
-  return applyListing(context, ledger, listed);
 }
 
 /**

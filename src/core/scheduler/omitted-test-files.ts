@@ -31,6 +31,11 @@ export async function listTestFilesOf(
 ): Promise<readonly TestFileRef[]> {
   const { runner, store, worktreeId } = context;
   const listed = await bound.call(() => runner.testFiles());
-  store.meta.set(omittedTestFilesMetaKey(worktreeId), String(runner.omittedTestFiles?.() ?? 0));
+  recordOmittedTestFiles(store, worktreeId, runner.omittedTestFiles?.() ?? 0);
   return listed;
+}
+
+/** Records how many files the last listing left out (`readOmittedTestFiles`). */
+export function recordOmittedTestFiles(store: Store, worktreeId: WorktreeId, count: number): void {
+  store.meta.set(omittedTestFilesMetaKey(worktreeId), String(count));
 }
