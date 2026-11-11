@@ -157,10 +157,13 @@ function* removeWorktree(
       removed = 0;
       yield () => {
         if (!isGone(worktree.root)) return;
+        // Plain `?` placeholders: Node 22.19's node:sqlite refuses a reused `?1`
+        // ("column index out of range"); 22.19 is the Node floor and CI's pin.
         removed = conn.transaction(() =>
           conn.run(
-            `DELETE FROM ${table} WHERE worktree_id = ?1 AND ${key} IN (
-               SELECT ${key} FROM ${table} WHERE worktree_id = ?1 LIMIT ?2)`,
+            `DELETE FROM ${table} WHERE worktree_id = ? AND ${key} IN (
+               SELECT ${key} FROM ${table} WHERE worktree_id = ? LIMIT ?)`,
+            worktree.id,
             worktree.id,
             DELETE_BATCH,
           ),
