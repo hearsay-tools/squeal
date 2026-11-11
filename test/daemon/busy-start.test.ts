@@ -3,8 +3,8 @@ import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { startDaemon } from "../../src/core/daemon/daemon.js";
 import { Ledger } from "../../src/core/scheduler/ledger.js";
 import { storePaths } from "../../src/core/store/paths.js";
+import { fullStack, threadLockHolder } from "../helpers/busy-store.js";
 import { createFixtureRepo, ping, readNotes, SLOW, withStore } from "./helpers.js";
-import { fullStack, threadLockHolder } from "./thread-lock-holder.js";
 
 /*
  * Spec 021 D2 (row 021-08): the baseline's last commit waited the start's
