@@ -1,8 +1,8 @@
 import { availableParallelism } from "node:os";
-import { compare } from "../../fs/compare.js";
 import type { RelativePath } from "../../types/common.js";
 import type { TestFileRef } from "../../types/keys.js";
 import { type EstimateGroup, estimateRun, type RunEstimate } from "./estimate.js";
+import { loadsOf } from "./evidence.js";
 import { loaderOrder } from "./order.js";
 import type { KnownEvidence, Picked } from "./prerun.js";
 import { runnerOrder } from "./runner-order.js";
@@ -86,11 +86,7 @@ export async function inLoaderOrder<P extends Picked>(
   for (const run of runs) {
     const loads = new Map<TestFileRef, readonly RelativePath[] | null>();
     for (const ref of run.files) {
-      const paths = await run.pick.adapter.closure(ref).then(
-        (closure) => [...closure.paths].sort(compare),
-        () => null,
-      );
-      loads.set(ref, paths);
+      loads.set(ref, await loadsOf(run.pick.adapter, ref));
     }
     const inputs = { loads: (ref: TestFileRef) => loads.get(ref) ?? null, seconds };
     ordered.push({ ...run, files: loaderOrder(run.files, context.changed, inputs) });
