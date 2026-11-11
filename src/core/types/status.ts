@@ -715,6 +715,63 @@ export interface ImportStatus {
   readonly notCurrent: ImportNotCurrent;
   /** D1's named differences, when any file's environment differs. */
   readonly environmentDifferences: readonly string[];
+  /**
+   * Spec 018 D19: present when a file's environment differs and the export
+   * ran on another Node than this worktree's daemon. Absent in payloads from
+   * before the field.
+   */
+  readonly node?: ImportNode;
+}
+
+/** Spec 018 D19: the Node of an import's results and of this worktree's daemon. */
+export interface ImportNode {
+  /** The `process.version` the export's results were recorded on. */
+  readonly exported: string;
+  /** The `process.version` this worktree's daemon keys with. */
+  readonly here: string;
+  /**
+   * Node is the only difference that keeps the environments apart: with
+   * the same Node, every project of the import would key as here (D10's
+   * tolerated fields aside, and node:test's build of Node with it).
+   */
+  readonly only: boolean;
+}
+
+/**
+ * Spec 018 D18 for one worktree: `pinned` when the daemon starts on the
+ * project's pinned Node, else why it keeps the Node of the session: the
+ * project pins none, its pin is a range or alias, the pinned version is not
+ * installed, or `squeal.config.json` sets `node: "session"`.
+ */
+export interface NodePin {
+  readonly state: "pinned" | "none" | "range" | "missing" | "session";
+  /** The pin as the project wrote it (`range`, `missing`), or the pinned version (`pinned`). */
+  readonly wanted?: string;
+}
+
+/**
+ * Spec 018 D19: the one line status gives when the newest import with a
+ * test file here was recorded on another Node than this worktree's daemon
+ * runs, with `shared.ref` set.
+ */
+export interface NodeMismatch {
+  /** The Node the newest import's results were recorded on. */
+  readonly needed: string;
+  /** The Node this worktree's daemon runs. */
+  readonly daemon: string;
+  readonly pin: NodePin;
+  /** Of the newest import's test files here, those whose environment differs. */
+  readonly testFiles: number;
+  /** The imports that differ from here only in Node: the line counts them, none gets its own. */
+  readonly imports: number;
+}
+
+/** Spec 018 D14 and D19: the shared results the project opted into. */
+export interface SharedStatus {
+  /** The project's `shared.ref`. */
+  readonly ref: string;
+  /** D19's line; absent when the newest import's Node is the daemon's, or there is no import. */
+  readonly node?: NodeMismatch;
 }
 
 /**
@@ -804,6 +861,8 @@ export interface StatusSnapshot extends StatusHeader {
   };
   /** Spec 018 D5: each import with a test file this worktree lists, newest first. Absent when none has. */
   readonly imports?: readonly ImportStatus[];
+  /** Spec 018 D19: present when the project sets `shared.ref`. */
+  readonly shared?: SharedStatus;
   readonly breakdown: CheckBreakdown;
   readonly closureMethod: ClosureMethod;
   readonly storeSchemaVersion: number;
