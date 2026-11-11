@@ -3,7 +3,6 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } 
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { codeGateCommand } from "../../src/cli/code-gate.js";
 import { COVERAGE_RECORD_VERSION } from "../../src/core/code/coverage/record.js";
 import type { GateReport } from "../../src/core/code/gate/report.js";
 import { codeStorePath } from "../../src/core/code/store/open.js";
@@ -11,6 +10,7 @@ import { storePaths } from "../../src/core/store/paths.js";
 import type { CheckKey } from "../../src/core/types/keys.js";
 import { watched } from "../code/gate/collect-fixture.js";
 import { type FixtureRepo, withStore } from "../daemon/helpers.js";
+import { code, type Ran } from "./code-gate-fixture.js";
 
 /*
  * Spec 020 D11.7 and D17.3 (rows 020-07c, 020-17c): `squeal code --base`
@@ -74,30 +74,20 @@ export interface Gate {
 /** `squeal code --base main <args> --json` in `repo`, with a `TMPDIR` of its own it must leave empty. */
 export async function gate(repo: FixtureRepo, args: readonly string[]): Promise<Gate> {
   const ran: string[] = [];
-  let stdout = "";
-  let stderr = "";
-  const io = {
-    stdout: (text: string) => {
-      stdout += text;
-    },
-    stderr: (text: string) => {
-      stderr += text;
-    },
-    cwd: repo.root,
-    env: repo.env,
-  };
   // D3.5: a `TMPDIR` of the command's own, which it must leave empty.
   const temp = mkdtempSync(join(tmpdir(), "squeal-gate-stored-"));
   const saved = process.env.TMPDIR;
   process.env.TMPDIR = temp;
-  let code: number;
+  let result: Ran;
   try {
-    code = await codeGateCommand(["--base", "main", ...args, "--json"], io, watched(ran));
+    const options = { env: repo.env, adapters: watched(ran) };
+    result = await code(repo.root, ["--base", "main", ...args, "--json"], options);
   } finally {
     if (saved === undefined) delete process.env.TMPDIR;
     else process.env.TMPDIR = saved;
   }
   const leftInTmp = readdirSync(temp);
   rmSync(temp, { recursive: true, force: true });
-  return { code, report: JSON.parse(stdout) as GateReport, stderr, ran, leftInTmp };
+  const { stdout, stderr } = result;
+  return { code: result.code, report: JSON.parse(stdout) as GateReport, stderr, ran, leftInTmp };
 }
