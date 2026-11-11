@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { compare } from "../fs/compare.js";
-import { ABSENT_LISTING, GIT_ENTRY, namesHash } from "../keys/observed.js";
+import { ABSENT_LISTING, GIT_ENTRY, listedDirectory, namesHash } from "../keys/observed.js";
 import type { AbsolutePath, RelativePath } from "../types/common.js";
 import type { FileHash } from "../types/keys.js";
 
@@ -37,6 +37,24 @@ export function gitEntryHash(root: AbsolutePath): FileHash | null {
   if (entry === undefined) return null;
   const kind = entry.isDirectory() ? "directory" : "file";
   return createHash("sha1").update(`.git ${kind}`).digest("hex");
+}
+
+/**
+ * The content here of an input path, as its key holds it (018 D9): a listing
+ * path by the names on disk (`listingHash`), `.git` by its kind
+ * (`gitEntryHash`), a file by `file`, its blob id as the caller reads it
+ * (`ci export`: the stat cache; the gate's `--parts`: the bytes on disk).
+ */
+export function hereOf<T>(
+  root: AbsolutePath,
+  file: (path: RelativePath) => T,
+): (path: RelativePath) => FileHash | null | T {
+  return (path) => {
+    const directory = listedDirectory(path);
+    if (directory !== null) return listingHash(root, directory);
+    if (path === GIT_ENTRY) return gitEntryHash(root);
+    return file(path);
+  };
 }
 
 interface EvidenceLine {

@@ -1,27 +1,16 @@
 import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import type { NamedPart } from "../../ci/export-check.js";
-import { gitEntryHash, listingHash, uncertified } from "../../ci/inputs.js";
-import {
-  PART_PREFIX,
-  type Part,
-  type PartFile,
-  type PartObserved,
-  partRecord,
-  readPart,
-} from "../../ci/parts.js";
+import { hereOf, uncertified } from "../../ci/inputs.js";
+import { PART_PREFIX, type Part, type PartFile, partRecord, readPart } from "../../ci/parts.js";
 import { compare } from "../../fs/compare.js";
-import { runGit, splitNul } from "../../fs/git.js";
-import type { ObjectFormat } from "../../hash/blob.js";
-import { hashFile } from "../../hash/blob.js";
+import { hashFile, type ObjectFormat } from "../../hash/blob.js";
 import { readObjectFormat } from "../../hash/git-index.js";
-import { GIT_ENTRY, listedDirectory, listingPath } from "../../keys/observed.js";
 import { testFileId } from "../../keys/reverse-index.js";
-import { scratchOf } from "../../scheduler/observed.js";
+import { observedInputs } from "../../scheduler/observed.js";
 import type { AbsolutePath, RelativePath } from "../../types/common.js";
 import type { FileHash, TestFileRef } from "../../types/keys.js";
 import type { RunnerClosure } from "../../types/runner.js";
-import { checkIgnored } from "../../watcher/git.js";
 import { COVERAGE_PROVIDER_VERSION, COVERAGE_RECORD_VERSION } from "../coverage/record.js";
 import { FILE_ERROR, type StoredEvidence } from "./collect.js";
 import { environmentCheck, type GateEnvironment } from "./parts-environment.js";
@@ -37,8 +26,10 @@ import type { TestFileEvidence } from "./types.js";
  * `ci export`'s rule (`reuseRefusal` in `parts-environment.ts`; reviews
  * 0.1.427 B1, 0.1.427-r2 B1);
  * the part's read-time evidence certifies the content here of every input
- * of the file's closure and of what it read (`uncertified`, as `ci export`
- * certifies, 018 D9); and its record's sources are the bytes here. A file
+ * of the file's closure and of what it read, as the daemon's record keys
+ * them (`observedInputs`, row 020-20), each as `ci export` certifies it
+ * (`uncertified`, `hereOf`; 018 D9); and its record's sources are the bytes
+ * here. A file
  * with no record is taken only when it failed: its failure makes the
  * verdict incomplete whatever a run would add (D5). Every other file runs.
  * The parts are only read.
@@ -130,6 +121,7 @@ export function partsEvidence(options: PartsOptions): StoredEvidence {
     const found = new Map<TestFileRef, TestFileEvidence>();
     if (runner !== "vitest" || usable.size === 0) return found;
     const certify = await environmentCheck(environment, options.environment);
+    const candidates: Candidate[] = [];
     for (const ref of files) {
       const owned = owners.get(testFileId(ref)) ?? [];
       // A file in two parts, two runs of it, is taken from neither.
@@ -143,9 +135,15 @@ export function partsEvidence(options: PartsOptions): StoredEvidence {
         );
         continue;
       }
-      here ??= readObjectFormat(options.root).then((format) => hereOf(options.root, format));
-      const evidence = await taken(options, only, (await closure?.(ref)) ?? null, await here);
-      if (evidence !== null) found.set(ref, evidence);
+      const loaded = (await closure?.(ref)) ?? null;
+      if (loaded !== null) candidates.push({ ref, owner: only, closure: loaded });
+    }
+    if (candidates.length === 0) return found;
+    here ??= readObjectFormat(options.root).then((format) => contentHere(options.root, format));
+    const inputs = await inputsOf(options.root, candidates);
+    for (const [at, candidate] of candidates.entries()) {
+      const evidence = await taken(options, candidate, inputs[at] ?? [], await here);
+      if (evidence !== null) found.set(candidate.ref, evidence);
     }
     return found;
   };
@@ -158,37 +156,53 @@ interface Owner {
   readonly file: PartFile;
 }
 
+/** A selected test file the part may give, and its closure here. */
+interface Candidate {
+  readonly ref: TestFileRef;
+  readonly owner: Owner;
+  readonly closure: RunnerClosure;
+}
+
 /** The content of a path here, as a key holds it: `null` none, `undefined` unknown. */
 type Here = (path: RelativePath) => Promise<FileHash | null | undefined>;
 
-/**
- * A file's blob id, a listing path's names, `.git` by its kind: as `ci
- * export`'s `certifier` reads them.
- */
-function hereOf(root: AbsolutePath, format: ObjectFormat): Here {
+/** `hereOf` with a file's blob id from its bytes on disk, each path read once. */
+function contentHere(root: AbsolutePath, format: ObjectFormat): Here {
+  const of = hereOf(root, (path) => hashFile(join(root, path), format).catch(() => undefined));
   const known = new Map<RelativePath, Promise<FileHash | null | undefined>>();
   return (path) => {
     let hash = known.get(path);
     if (hash === undefined) {
-      const directory = listedDirectory(path);
-      if (directory !== null) hash = Promise.resolve(listingHash(root, directory));
-      else if (path === GIT_ENTRY) hash = Promise.resolve(gitEntryHash(root));
-      else hash = hashFile(join(root, path), format).catch(() => undefined);
+      hash = Promise.resolve(of(path));
       known.set(path, hash);
     }
     return hash;
   };
 }
 
-/** `file`'s evidence from `part`, or `null` when it must run. */
+/**
+ * The inputs each candidate's part must certify: its closure here, and what
+ * the file read beyond it, as the daemon's record keys it (`observedInputs`).
+ */
+async function inputsOf(
+  root: AbsolutePath,
+  candidates: readonly Candidate[],
+): Promise<RelativePath[][]> {
+  const reads = candidates.map(({ owner, closure }) => ({
+    closure: new Set(closure.paths),
+    observed: owner.file.observed ?? { paths: [], directories: [] },
+  }));
+  const { inputs } = await observedInputs(root, reads);
+  return candidates.map(({ closure }, at) => [...new Set(closure.paths), ...(inputs[at] ?? [])]);
+}
+
+/** `owner`'s file's evidence from its part, or `null` when it must run. */
 async function taken(
   options: PartsOptions,
-  { part, file }: Owner,
-  closure: RunnerClosure | null,
+  { owner: { part, file }, closure }: Candidate,
+  inputs: readonly RelativePath[],
   here: Here,
 ): Promise<TestFileEvidence | null> {
-  if (closure === null) return null;
-  const inputs = await inputsOf(options.root, closure, file.observed);
   const contents = new Map<RelativePath, FileHash | null | undefined>();
   for (const path of inputs) contents.set(path, await here(path));
   if (uncertified(inputs, part.evidence, (path) => contents.get(path)).length > 0) return null;
@@ -219,51 +233,4 @@ function failedOf(file: PartFile): string[] {
   const names = file.checks.filter((c) => c.outcome === "fail").map((c) => c.fullName);
   if (names.length > 0) return [...new Set(names)].sort(compare);
   return file.outcome === "fail" ? [FILE_ERROR] : [];
-}
-
-/**
- * The inputs the part must certify: the runner's closure here, and what
- * the file read beyond it, as the daemon's record keys it
- * (`observedGrowth`): each listing, a recursive listing as the listing of
- * each directory below it that holds a tracked file, and none of the
- * run's own scratch, a git-ignored path below a directory it wrote (016
- * D4).
- */
-async function inputsOf(
-  root: AbsolutePath,
-  closure: RunnerClosure,
-  observed: PartObserved | undefined,
-): Promise<RelativePath[]> {
-  const own = new Set(closure.paths);
-  if (observed === undefined) return [...own];
-  const listed = observed.directories.map(listingPath);
-  for (const directory of observed.recursive ?? []) {
-    listed.push(...(await listingsBelow(root, directory)));
-  }
-  const read = [...observed.paths, ...(observed.modules ?? []), ...listed];
-  const fresh = [...new Set(read)].filter((path) => !own.has(path));
-  const written = observed.written ?? [];
-  const bare = (path: RelativePath) => listedDirectory(path) ?? path;
-  const ignored =
-    written.length === 0
-      ? new Set<RelativePath>()
-      : await checkIgnored(
-          root,
-          [...new Set(fresh.map(bare))].filter((p) => p !== ""),
-        );
-  const scratch = scratchOf(written, ignored);
-  return [...own, ...fresh.filter((path) => !scratch(bare(path)))];
-}
-
-/** The listing paths of `directory` and of every directory below it that holds a tracked file. */
-async function listingsBelow(root: AbsolutePath, directory: RelativePath): Promise<RelativePath[]> {
-  const tracked = splitNul(await runGit(root, ["ls-files", "-z", "--", directory || "."]));
-  const out = new Set([listingPath(directory)]);
-  const floor = directory === "" ? 0 : directory.length;
-  for (const path of tracked) {
-    for (let at = path.lastIndexOf("/"); at > floor; at = path.lastIndexOf("/", at - 1)) {
-      out.add(listingPath(path.slice(0, at)));
-    }
-  }
-  return [...out];
 }
