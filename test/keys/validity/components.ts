@@ -31,7 +31,7 @@ export const GLOBAL: Component = {
   version: { path: FORMAT_FILE, constant: "KEY_FORMAT_VERSION" },
   entries: "entries/global.ts",
   texts: [],
-  kinds: ["key", "rows", "accept", "assemble", "store"],
+  kinds: ["key", "rows", "accept", "assemble", "store", "prune"],
 };
 
 export const COMPONENTS: readonly Component[] = [
