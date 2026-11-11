@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -13,7 +13,7 @@ import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
 import type { RunnerAdapter } from "../../src/core/types/runner.js";
 import { createVitestAdapter } from "../../src/runners/vitest/index.js";
 import { ADAPTERS } from "../code/gate/collect-fixture.js";
-import type { FixtureRepo } from "../daemon/helpers.js";
+import { type FixtureRepo, withStore } from "../daemon/helpers.js";
 
 /*
  * Spec 020 D11.7 and D17.3 (rows 020-07c, 020-17c): `squeal code --base`
@@ -35,6 +35,14 @@ export function hasRecord(repo: FixtureRepo, key: CheckKey): boolean {
   } finally {
     db.close();
   }
+}
+
+/** The run ids of the results stored at `key`; none while there is no store. */
+export function runIdsAt(repo: FixtureRepo, key: CheckKey): string[] {
+  if (!existsSync(storePaths(repo.commonDir).database)) return [];
+  return withStore(repo, (store) => [
+    ...new Set(store.results.byKey(key, 0).map((r) => r.provenance.runId)),
+  ]);
 }
 
 /** Each store file's bytes, as a hash, and its mtime. */

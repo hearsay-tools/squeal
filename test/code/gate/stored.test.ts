@@ -62,7 +62,7 @@ function options(common: string, extra: Partial<StoredOptions> = {}): StoredOpti
 const REF = { project: "", path: "test/a.test.ts" };
 
 describe("openStored: which stores it reads (spec 020 D11.7)", () => {
-  it.each([
+  it.each<[string, { main?: boolean }]>([
     ["the repository has no store", {}],
     ["the code store is missing", { main: true }],
   ])("reads none, and creates none on a lookup, when %s", async (_, which) => {
