@@ -1,4 +1,4 @@
-import { mkdtempSync, readdirSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -6,14 +6,18 @@ import { afterEach, describe, expect, it } from "vitest";
 import { openStored, type StoredOptions } from "../../../src/core/code/gate/stored.js";
 import { codeStorePath, openCodeStore } from "../../../src/core/code/store/open.js";
 import { isStoreOpenFailure, openStore } from "../../../src/core/store/open.js";
+import { storePaths } from "../../../src/core/store/paths.js";
 import { DEFAULT_POLICY } from "../../../src/core/types/policy.js";
 import { ON } from "../helpers.js";
 
 /*
  * Spec 020 D11.7 (row 020-07c): the gate reads the stores only when both
  * are there at this Squeal's schema, and a failure while keying costs only
- * the runs it would have saved: every selected file runs, told once. The
- * keys a daemon gives are `test/cli/code-gate-stored.test.ts`'s.
+ * the runs it would have saved: every selected file runs, told once. With a
+ * store missing it reads none and still keys, so its runs can be kept and
+ * the store created then (D17.3, row 020-17c); a store it cannot read is
+ * neither read nor written. The keys a daemon gives are
+ * `test/cli/code-gate-stored.test.ts`'s, the writes `code-gate-keep.test.ts`'s.
  */
 
 const dirs: string[] = [];
@@ -58,12 +62,17 @@ function options(common: string, extra: Partial<StoredOptions> = {}): StoredOpti
 const REF = { project: "", path: "test/a.test.ts" };
 
 describe("openStored: which stores it reads (spec 020 D11.7)", () => {
-  it("reads none when the repository has no store", () => {
-    expect(openStored(options(commonDir({})))).toBeNull();
-  });
-
-  it("reads none when the code store is missing", () => {
-    expect(openStored(options(commonDir({ main: true })))).toBeNull();
+  it.each([
+    ["the repository has no store", {}],
+    ["the code store is missing", { main: true }],
+  ])("reads none, and creates none on a lookup, when %s", async (_, which) => {
+    const common = commonDir(which);
+    const stored = openStored(options(common, { adapters: async () => [] }));
+    expect(stored).not.toBeNull();
+    expect(await stored?.stored("vitest", [REF])).toEqual(new Map());
+    await stored?.close();
+    expect(existsSync(storePaths(common).database)).toBe(which.main === true);
+    expect(existsSync(codeStorePath(common))).toBe(false);
   });
 
   it("reads none when a store has another schema version", () => {

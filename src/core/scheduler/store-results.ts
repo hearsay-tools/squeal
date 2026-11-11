@@ -24,9 +24,11 @@ import { addHeldFile } from "./held.js";
  * keeps its states and is told as a held one is: the scheduler's filter
  * (review 0.1.266, B1), off this path.
  * Returns what the key held before (task 001-171, `holdsNewFailure`).
+ * `squeal code --base` stores the files it keeps through it too (spec 020
+ * D17.3, `src/core/code/gate/keep.ts`).
  */
 export function storeResults(
-  context: SchedulerContext,
+  context: Pick<SchedulerContext, "store" | "keys" | "worktreeId" | "now">,
   records: readonly ResultRecord[],
   heals: (worktreeId: WorktreeId) => boolean,
 ): readonly ResultRecord[] {
