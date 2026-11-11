@@ -222,6 +222,18 @@ CI's own runner runs the project's own command; Squeal adds a recorder and reads
 4. `shared.ref` in cezar's `squeal.config.json`.
 Then one measurement row: CPU and wall time of the shards against the same SHA's earlier run, and the share of files current in new worktrees from the fetched export over one day.
 
+### D20. A CI setup that follows Squeal's releases
+
+The human, 2026-11-11: people who set up CI must not have to track Squeal releases. Squeal ships a GitHub Action in its own repository, `hearsay-tools/squeal/ci`. A project writes `uses: hearsay-tools/squeal/ci@v0` once. The action needs no download: GitHub checks out the action's repository at the tag, and the released bundles are committed there. It puts a `squeal` command on `PATH` for the job's later steps (`squeal ci record -- <command>`, `squeal ci export`, `squeal ci publish`, D8, D9, D13).
+
+1. Tag. Every release moves the tag `v0` to the release commit (`docs/process.md` 6a). `v0` stays on releases whose CI setup is compatible: the action's inputs, the commands it provides and their arguments. A release that breaks a CI file written for `v0` starts `v1`; `v0` stays on the last compatible release. A key format change (D1) is not such a break: CI and developers follow it within hours. A project that requires exact commit pins pins the action's commit; Dependabot and Renovate update `uses:` pins on their own.
+2. Never fails the user's CI. If the setup cannot run (for example a Node older than Squeal supports), the action warns in the job log and summary and still exits 0, and the `squeal` it provides passes through: `squeal ci record -- <command>` runs the command and exits with its code; `export` and `publish` warn and exit 0. When Squeal itself fails inside `squeal ci record`, the command's own exit code still decides the step. The project needs no `continue-on-error`.
+3. A user section in the README shows the whole setup (shards, export job with `contents: write`, `shared.ref`), with the exact-pin alternative.
+
+### D21. Status names a Squeal mismatch with CI
+
+When the reader refuses an export because CI ran a Squeal with another key format (`importRefusal`), status says so once, in plain words, with both Squeal versions and what happens next. Example: "CI results not used: CI ran Squeal 0.1.431, which records results in a different format than this Squeal (0.1.440). They are used again when CI and this machine run releases with the same format." The direction (CI older or newer) changes only the versions. The internal key format numbers go to `--full`. Silent when formats are equal (principle 1).
+
 ## Testing
 
 D8 and D9 on a fixture with two shards: the union, a refused environment mismatch, a refused snapshot update, exit codes passed through. D10: each tolerated field equal for a pass, a browser project still keyed, any other field still keyed. D11: an import into a store whose union holds extra paths makes the file current at the export's content and not at other content. D12: a node:test environment at two paths with one build is equal; two builds of one version differ. D13 and D14 on a scratch bare repository: publish, prune, fetch of one ref, offline, a ref off the default branch refused, nothing written to the user's config. Key-format alarm unchanged except the node:test adapter case.

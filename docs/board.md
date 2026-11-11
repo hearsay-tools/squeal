@@ -2021,6 +2021,8 @@ Spec `specifications/018-ci-and-shared-results/spec.md` (stage: second slice bui
 | 018-30 the daemon runs on the project's pinned Node | running (the human 2026-11-11: "Node fix: 1: use project's pinned Node"; brief `tasks/wave-11.md`) | All cezar daemons here run Node 24.22.1 from the cockpit's PATH, CI's results are 26.13.0: 0 of 195,943 fetched results count. | 018 D18 |
 | 018-31 status names a Node mismatch for shared results | running (the human 2026-11-11: "2: clear warning only"; brief `tasks/wave-11.md`) | The mismatch shows only deep in status details today. | 018 D19 |
 | 018-32 status reports shared results correctly | running (the human 2026-11-11: "Status fix: Yes"; brief `tasks/wave-12.md`) | squawk's checkout: status named an import from before 0.1.431's re-key ("none current", tolerated CI fields listed) while a newer import had 1,440 of 1,523 files at the same key as local. | 018 D5, D15 |
+| 018-33 a Squeal GitHub Action with a moving v0 tag that never fails the user's CI | running (the human 2026-11-11: "CI version: Yes, all three"; brief `tasks/wave-13.md`) | Today each project clones a pinned Squeal tag in CI and must update it by hand; a pinned CI silently stops sharing after a key format change. | 018 D20 |
+| 018-34 status names a Squeal mismatch with CI | running (the human 2026-11-11: "CI version: Yes, all three"; brief `tasks/wave-13.md`) | A key-format refusal shows only as an internal note with format numbers. | 018 D21 |
 
 ### Wave 3: the trial (after the release with 018-07; needs the human's approval of the cezar CI file, spec D7)
 
