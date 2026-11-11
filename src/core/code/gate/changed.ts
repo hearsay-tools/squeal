@@ -26,7 +26,7 @@ import type { ChangedFunction, ChangedSet, CountedPath, UncountedPath } from "./
  * of a ref, counted with 015's counter (015 D3) under 015 D2's identities.
  */
 
-/** D6: the keys D2 counts by, read at the base (`readBasePolicy`). */
+/** D6: the keys D2 counts by, read at the base (`loadBasePolicy`). */
 export type CountPolicy = Pick<BasePolicy, "include" | "exclude" | "maxFileBytes">;
 
 /** `--base` names no commit, or one with no common commit with `HEAD`: a setup error (D1, exit 2). */
