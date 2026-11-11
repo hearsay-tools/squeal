@@ -48,3 +48,23 @@ Done when:
 - a changed byte makes it run again;
 - an unfinished file is never written;
 - a daemon started afterwards reads the gate's results as current, with no rerun.
+
+## 020-17 I: integrate 020-17ab and 020-17c onto 0.1.432
+
+Use /worker. Shape: finish. Baseline: `origin/main` after release 0.1.432, which holds the review 0.1.432 repair (B1: `prepare` cancellation in `prepare.ts`; B2: stored and parts evidence resolved before the pre-run print in `collect.ts` and `prerun.ts`).
+
+Outcome: one branch with both rows on top of the repair, each keeping its intent (spec D17), and the order D14.4 now sets: resolve scope, resolve stored and parts evidence, print the plan, estimate and order only the files that will run, `prepare`, run, keep.
+
+Start: `git cherry-pick -x 0bf4145689..hold/020-17ab` (6 commits), then `git cherry-pick -x 0bf4145689..hold/020-17c` (9 commits). Expect conflicts in `collect.ts`, `code-gate-text.ts`, `code-gate.ts`, `test/cli/code-gate-stored.test.ts` and `commands.md` (3 copies). Read each row's notes under `tasks/020-17ab/` and `tasks/020-17c/` first, and `tasks/020-W5-R1/notes.md`.
+
+Rules:
+- The estimate counts only files that will run, after the stored lookup; a kept file read back on a second run is not estimated.
+- A kept write never happens for a file cancelled by SIGINT or SIGTERM, and the B1 cancellation still ends `prepare` first.
+- In `code-gate-stored.test.ts`, the case "runs a file with results and no record at its key" takes 020-17c's assertions plus 020-17ab's estimate line.
+
+Owns: every file the two rows and the repair touched.
+
+Done when:
+- every test both rows added passes, with `test/code/gate/`, `test/cli/code-gate*`, `test/keys/key-format.test.ts` and `test/version-sensitive.test.ts`;
+- lint and typecheck are clean; `squeal status --wait 60000 <changed paths>` shows only bundle drift or named load retries;
+- no `pnpm run build`.
