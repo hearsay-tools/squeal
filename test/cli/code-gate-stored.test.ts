@@ -1,5 +1,5 @@
-import { mkdirSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { storedFiles } from "../../src/cli/code-gate-stored.js";
@@ -8,7 +8,7 @@ import { startDaemon } from "../../src/core/daemon/daemon.js";
 import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
 import { createFixtureRepo, type FixtureRepo, waitFor, withStore } from "../daemon/helpers.js";
 import { git } from "../hash/git-repo.js";
-import { gate, hasRecord, snapshot } from "./code-gate-keep-kit.js";
+import { featureRepo, gate, hasRecord, keepPolicy, snapshot } from "./code-gate-keep-kit.js";
 
 /*
  * Spec 020 D11.7 (row 020-07c): `squeal code --base` keys each selected
@@ -20,12 +20,6 @@ import { gate, hasRecord, snapshot } from "./code-gate-keep-kit.js";
  */
 
 const SLOW = { timeout: 240_000 } as const;
-
-const POLICY = `${JSON.stringify({
-  complexity: { enabled: true },
-  coverage: { enabled: true },
-  baseline: { onStart: "lookup-then-run-missing" },
-})}\n`;
 
 /**
  * The feature branch: `add` and `upper` edited, a test of `upper` that
@@ -39,6 +33,8 @@ const FEATURE: Readonly<Record<string, string>> = {
   "src/strings.ts": "export const upper = (s: string) => String(s).toUpperCase();\n",
   "test/fail.test.ts": `import { expect, it } from "vitest";\nimport { upper } from "../src/strings.ts";\n\nit("fails", () => {\n  expect(upper("a")).toBe("B");\n});\n`,
 };
+
+const POLICY = keepPolicy("lookup-then-run-missing");
 
 const TEST_FILES = 7;
 
@@ -59,14 +55,7 @@ describe("squeal code --base reads the stores (spec 020 D11.7)", () => {
   let keys: Map<string, CheckKey>;
 
   beforeAll(async () => {
-    repo = createFixtureRepo({ files: { "squeal.config.json": POLICY } });
-    git(repo.root, ["checkout", "-q", "-b", "feature"]);
-    for (const [path, text] of Object.entries(FEATURE)) {
-      mkdirSync(dirname(join(repo.root, path)), { recursive: true });
-      writeFileSync(join(repo.root, path), text);
-    }
-    git(repo.root, ["add", "-A"]);
-    git(repo.root, ["commit", "-qm", "feature"]);
+    repo = featureRepo(POLICY, FEATURE);
     const daemon = await startDaemon({ root: repo.root, env: repo.env });
     if ("reason" in daemon) throw new Error(daemon.message);
     try {

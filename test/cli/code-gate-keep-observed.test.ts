@@ -1,12 +1,16 @@
-import { mkdirSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { storedFiles } from "../../src/cli/code-gate-stored.js";
 import { startDaemon } from "../../src/core/daemon/daemon.js";
 import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
-import { createFixtureRepo, type FixtureRepo, waitFor, withStore } from "../daemon/helpers.js";
-import { git } from "../hash/git-repo.js";
-import { gate, hasRecord, runIdsAt } from "./code-gate-keep-kit.js";
+import { type FixtureRepo, waitFor, withStore } from "../daemon/helpers.js";
+import {
+  featureRepo,
+  gate,
+  hasRecord,
+  keepPolicy,
+  keysNow,
+  runIdsAt,
+  write,
+} from "./code-gate-keep-kit.js";
 
 /*
  * Spec 020 D17.3 (row 020-17c): the gate's Vitest observes runtime reads as
@@ -19,13 +23,6 @@ import { gate, hasRecord, runIdsAt } from "./code-gate-keep-kit.js";
 
 const SLOW = { timeout: 300_000 } as const;
 
-const POLICY = (onStart: string) =>
-  `${JSON.stringify({
-    complexity: { enabled: true },
-    coverage: { enabled: true },
-    baseline: { onStart },
-  })}\n`;
-
 const READS = "test/reads.test.ts";
 const REF: TestFileRef = { project: "", path: READS };
 
@@ -34,16 +31,8 @@ const reads = (title: string) =>
   `import { readFileSync } from "node:fs";\nimport { expect, it } from "vitest";\n\nit(${JSON.stringify(title)}, () => {\n  expect(readFileSync(new URL("../data/input.txt", import.meta.url), "utf8")).toMatch(/^hello/);\n});\n`;
 
 /** Its key as the worktree's daemon would give it now. */
-async function keyNow(repo: FixtureRepo): Promise<CheckKey> {
-  const stored = storedFiles(repo.root, repo.env, () => {});
-  try {
-    const key = (await stored?.keys([REF]))?.get(REF);
-    if (key == null) throw new Error(`no key for ${READS}`);
-    return key;
-  } finally {
-    await stored?.close();
-  }
-}
+const keyNow = async (repo: FixtureRepo): Promise<CheckKey> =>
+  (await keysNow(repo, [REF]))[0] as CheckKey;
 
 /** The worktree's key of the file as its daemon last stored it; `null` before it has one. */
 function daemonKey(repo: FixtureRepo): CheckKey | null {
@@ -66,22 +55,12 @@ async function withDaemon<T>(repo: FixtureRepo, until: () => T | null, what: str
   }
 }
 
-function write(repo: FixtureRepo, files: Readonly<Record<string, string>>): void {
-  for (const [path, text] of Object.entries(files)) {
-    mkdirSync(dirname(join(repo.root, path)), { recursive: true });
-    writeFileSync(join(repo.root, path), text);
-  }
-}
-
 describe("squeal code --base keeps a file at the key its daemon gives it, reads included", () => {
   let repo: FixtureRepo;
 
   beforeAll(() => {
-    repo = createFixtureRepo({ files: { "squeal.config.json": POLICY("lookup-only") } });
-    git(repo.root, ["checkout", "-q", "-b", "feature"]);
-    write(repo, { "data/input.txt": "hello\n", [READS]: reads("reads its input") });
-    git(repo.root, ["add", "-A"]);
-    git(repo.root, ["commit", "-qm", "feature"]);
+    const files = { "data/input.txt": "hello\n", [READS]: reads("reads its input") };
+    repo = featureRepo(keepPolicy("lookup-only"), files);
   });
 
   afterAll(() => repo?.cleanup());
@@ -102,7 +81,7 @@ describe("squeal code --base keeps a file at the key its daemon gives it, reads 
     SLOW,
     async () => {
       // A daemon that runs every file observes the read and stores it for every worktree.
-      write(repo, { "squeal.config.json": POLICY("lookup-then-run-missing") });
+      write(repo, { "squeal.config.json": keepPolicy("lookup-then-run-missing") });
       const observed = await withDaemon(
         repo,
         () => {
@@ -112,7 +91,7 @@ describe("squeal code --base keeps a file at the key its daemon gives it, reads 
         "the daemon's result of the reading test",
       );
       write(repo, {
-        "squeal.config.json": POLICY("lookup-only"),
+        "squeal.config.json": keepPolicy("lookup-only"),
         [READS]: reads("reads it again"),
       });
       const key = await keyNow(repo);
@@ -174,30 +153,18 @@ describe("squeal code --base keeps no file whose inputs changed during its run",
   const MUTATES: TestFileRef = { project: "", path: "test/mutates.test.ts" };
 
   beforeAll(() => {
-    repo = createFixtureRepo({ files: { "squeal.config.json": POLICY("lookup-only") } });
-    git(repo.root, ["checkout", "-q", "-b", "feature"]);
-    write(repo, {
+    repo = featureRepo(keepPolicy("lookup-only"), {
       "src/steady.ts": "export const steady = (x: number) => x + 1;\n",
       "src/mut.ts": "export const mut = (x: number) => x + 2;\n",
       [STEADY.path]: `import { expect, it } from "vitest";\nimport { steady } from "../src/steady.ts";\n\nit("steady", () => {\n  expect(steady(1)).toBe(2);\n});\n`,
       [MUTATES.path]: `import { appendFileSync } from "node:fs";\nimport { expect, it } from "vitest";\nimport { mut } from "../src/mut.ts";\n\nit("mutates", () => {\n  expect(mut(1)).toBe(3);\n  appendFileSync(new URL("../src/mut.ts", import.meta.url), "// touched by its test\\n");\n});\n`,
     });
-    git(repo.root, ["add", "-A"]);
-    git(repo.root, ["commit", "-qm", "feature"]);
   });
 
   afterAll(() => repo?.cleanup());
 
   it("keeps the steady file and not the one that rewrote its source", SLOW, async () => {
-    const keysOf = async () => {
-      const stored = storedFiles(repo.root, repo.env, () => {});
-      try {
-        const keys = await stored?.keys([STEADY, MUTATES]);
-        return [keys?.get(STEADY), keys?.get(MUTATES)] as CheckKey[];
-      } finally {
-        await stored?.close();
-      }
-    };
+    const keysOf = () => keysNow(repo, [STEADY, MUTATES]);
     const [steady, before] = await keysOf();
 
     const ran = await gate(repo, []);
