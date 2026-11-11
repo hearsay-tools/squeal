@@ -61,10 +61,12 @@ const daemonOf = (pid: number): FoundDaemon => {
 };
 
 describe("finding daemons (D2 step 1)", () => {
-  test("reads the arguments of MainThread and node processes only", () => {
+  test("reads the arguments of Node main threads only: node-MainThread, MainThread, node", () => {
     writeProcesses(host, [
       daemonProcess({ pid: 100, root: alpha.root, lockPath: alpha.lockPath }),
       daemonProcess({ pid: 101, root: beta.root, lockPath: beta.lockPath, comm: "node" }),
+      // Node 26's main thread (row 018-30).
+      daemonProcess({ pid: 104, root: beta.root, comm: "node-MainThread" }),
       // Its arguments look like a daemon's, but no Node main thread has this name.
       { ...daemonProcess({ pid: 102, root: alpha.root }), comm: "bash" },
       {
@@ -80,9 +82,9 @@ describe("finding daemons (D2 step 1)", () => {
     ]);
     const cmdline = vi.spyOn(source, "cmdline");
     const found = run().daemons.map((d) => d.row.pid);
-    expect(found.sort()).toEqual([100, 101]);
+    expect(found.sort()).toEqual([100, 101, 104]);
     // Neither `bash` nor `git` is read.
-    expect(cmdline.mock.calls.map(([pid]) => pid).sort()).toEqual([100, 101]);
+    expect(cmdline.mock.calls.map(([pid]) => pid).sort()).toEqual([100, 101, 104]);
   });
 
   test("a daemon is a Squeal script followed by `daemon <root>`", () => {
