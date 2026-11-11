@@ -15,9 +15,10 @@ import type { RunnerEnvironment } from "../../types/runner.js";
  * completed and have written no snapshot. An allow-listed variable, Node,
  * the platform, the runner's version and its resolved config must match;
  * the fields Squeal sets for its own instance and the ones D10 lets `CI`
- * change are left out. The gate's runner does not observe and a part's run
- * did, so the gate's adapter version is compared with the recorder's
- * suffix this Squeal adds.
+ * change are left out. A part's run observed; the gate's runner observes
+ * only when its runs may be kept (D17.3, row 020-17c), so the gate's
+ * adapter version is compared with the recorder's suffix this Squeal adds,
+ * added when it lacks it.
  */
 
 /** What the gate's environment of a project holds beside its runner's own. */
@@ -77,10 +78,14 @@ async function gatePlace(
   });
   const ci = sawCi(gate.env);
   const runs = new Map<ProjectName, RunView>();
+  const suffix = `+observe.${gate.recorderVersion}`;
   for (const runner of environments) {
+    const { adapterVersion } = runner;
     const observed = {
       ...runner,
-      adapterVersion: `${runner.adapterVersion}+observe.${gate.recorderVersion}`,
+      adapterVersion: adapterVersion.endsWith(suffix)
+        ? adapterVersion
+        : `${adapterVersion}${suffix}`,
     };
     runs.set(runner.project, {
       descriptor: describeEnvironment(KEY_FORMAT_VERSION, core, observed, [], ci),
