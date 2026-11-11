@@ -26,7 +26,7 @@ import {
   seconds,
   socketClosed,
 } from "./stop-waits.js";
-import { leaveStoppedMark, stopTree } from "./stopped-mark.js";
+import { leaveStoppedMark, type StopMarkResult, stopTree } from "./stopped-mark.js";
 
 /**
  * How long `squeal stop` waits (D10, tasks 001-340, 001-367): for the
@@ -55,12 +55,15 @@ export const STOP_BOUNDS: StopBounds = { socketMs: 60_000, lockMs: 30_000, lefto
  * 011-09, #25): a path that is not a worktree's top level stops nothing and
  * exits 1, never the checkout around it; one that is gone stops the daemon
  * that served it, by the identity it had (row 011-277, `stopRemoved`), and
- * refuses `--until-start`: no worktree is there to hold.
+ * refuses `--until-start`: no worktree is there to hold. Spec 021 D1
+ * (#158): the mark's write asks a busy store again until `busyBoundMs`
+ * (default `BUSY_BOUND_MS`); `--until-start` without its mark exits 1.
  */
 export async function stopCommand(
   args: readonly string[],
   io: CliIo,
   bounds: StopBounds = STOP_BOUNDS,
+  busyBoundMs?: number,
 ): Promise<number> {
   const parsed = stopArgs(args, io);
   if (typeof parsed === "number") return parsed;
@@ -74,9 +77,8 @@ export async function stopCommand(
   const tree = await stopTree(root);
   const response = await askDaemon(socketPath, { type: "stop" });
   if (response === null) {
-    const until = stoppedMark(root, tree, untilStart, io);
-    io.stdout(`No daemon running for ${root}; ${stoppedClause(until, io)}\n`);
-    return 0;
+    const mark = stoppedMark(root, tree, untilStart, busyBoundMs, io);
+    return stoppedLine(`No daemon running for ${root}`, untilStart, mark, io);
   }
   if (!response.ok) {
     io.stderr(refusedLine(response.error));
@@ -91,7 +93,7 @@ export async function stopCommand(
   }
   // Row 011-20: a hook between the socket and the mark finds no mark and may spawn.
   pauseAt("stop-mark");
-  const until = stoppedMark(root, tree, untilStart, io);
+  const mark = stoppedMark(root, tree, untilStart, busyBoundMs, io);
   const lock = await lockFreed(root, daemon, bounds.lockMs);
   const after = seconds(bounds.lockMs);
   if (lock.state === "held") {
@@ -111,8 +113,7 @@ export async function stopCommand(
     io.stdout(leftoverLine(root, left, bounds.leftoversMs));
     return 1;
   }
-  io.stdout(`Squeal daemon stopped for ${root}; ${stoppedClause(until, io)}\n`);
-  return 0;
+  return stoppedLine(`Squeal daemon stopped for ${root}`, untilStart, mark, io);
 }
 
 const UNTIL_START = "--until-start";
@@ -149,22 +150,37 @@ function stopArgs(
 }
 
 /**
- * `leaveStoppedMark`, saying on stderr when it could not be written. Whether
- * the mark it left holds until `squeal start` alone (row 011-254).
+ * `leaveStoppedMark`, saying on stderr when it could not be written; spec
+ * 021 D1 (#158): with `--until-start`, in the words of a failed stop.
  */
 function stoppedMark(
   root: AbsolutePath,
   tree: string | null,
   untilStart: boolean,
+  busyBoundMs: number | undefined,
   io: CliIo,
-): boolean {
-  const left = leaveStoppedMark(root, (io.now ?? Date.now)(), tree, untilStart);
-  if (left.error !== null) {
-    io.stderr(
-      `squeal: could not record the stop, so a hook may start a daemon again: ${left.error}\n`,
-    );
+): StopMarkResult {
+  const left = leaveStoppedMark(root, (io.now ?? Date.now)(), tree, untilStart, busyBoundMs);
+  if (left.error === null) return left;
+  io.stderr(
+    untilStart
+      ? `squeal: could not record the stop: ${left.error}; a hook may start a daemon again\n`
+      : `squeal: could not record the stop, so a hook may start a daemon again: ${left.error}\n`,
+  );
+  return left;
+}
+
+/**
+ * The success line with its last clause and exit 0, or, for `--until-start`
+ * without its mark, the line alone and exit 1 (spec 021 D1, #158).
+ */
+function stoppedLine(line: string, untilStart: boolean, mark: StopMarkResult, io: CliIo): number {
+  if (untilStart && mark.error !== null) {
+    io.stdout(`${line}\n`);
+    return 1;
   }
-  return left.untilStart;
+  io.stdout(`${line}; ${stoppedClause(mark.untilStart, io)}\n`);
+  return 0;
 }
 
 /**
