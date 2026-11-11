@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { loadPolicy, POLICY_FILE } from "../../daemon/policy.js";
 import { runGit } from "../../fs/git.js";
 import type { AbsolutePath } from "../../types/common.js";
+import { readScope, type ScopeBase } from "./scope.js";
 import type { GatePolicy } from "./types.js";
 
 /*
@@ -27,6 +28,11 @@ export interface BasePolicy extends GatePolicy {
    * the gate does not read: it always collects coverage (D1).
    */
   readonly children: boolean;
+  /**
+   * D14.1: the check groups and `gate.groups` at the base, which the scope
+   * resolves from; absent, the default groups with no `gate.groups`.
+   */
+  readonly scope?: ScopeBase;
 }
 
 /** The policy at the base and the loader's problems with that file (001 D11). */
@@ -53,6 +59,7 @@ export async function loadBasePolicy(
     if (text !== null) writeFileSync(join(scratch, POLICY_FILE), text);
     const { policy, problems } = loadPolicy(scratch);
     const { complexity, coverage, crap } = policy;
+    const scope = readScope(policy);
     return {
       policy: {
         complexityThreshold: complexity.threshold,
@@ -62,8 +69,9 @@ export async function loadBasePolicy(
         exclude: complexity.exclude,
         maxFileBytes: complexity.maxFileBytes,
         children: coverage.children,
+        scope: scope.base,
       },
-      problems,
+      problems: [...problems, ...scope.problems],
     };
   } finally {
     rmSync(scratch, { recursive: true, force: true });
