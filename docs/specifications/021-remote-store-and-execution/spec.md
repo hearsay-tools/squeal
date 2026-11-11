@@ -150,7 +150,7 @@ From `research/cpu-budget.md` (row 021-06), a replay of 2026-11-04 to 2026-11-11
 
 **What a budget does, measured by replay.** The human asked whether a ceiling would finish work sooner because runs stop competing. For CPU, yes: Squeal spends 9.5% less CPU, because each background file costs 7% less on a quieter host and 2.5% of background work need not run once a later revision or a removed worktree overtakes it. Agents' own test runs get 8.8% faster and edit tiers 6.4% faster; host time above 20 busy vCPUs halves (13.2% to 6.7%). For background results, no: every budget delivers them later on this host, a median 9 s and a p90 2.4 min per tier, backlog p90 30 to 47 min. Other load alone sat at 12 cores or more in 106 of 107 samples above 20 busy, so background's own work rate still rose with each core it took. A budget finishes background work sooner only where Squeal's background alone pushes a machine past its throughput peak, such as a quiet laptop (`cpu-budget.md` Q1, Q4).
 
-**The budget.** The adaptive own-slowdown controller of `../011-core/research/background-backoff.md`, not a fixed ceiling (the human, 2026-11-07):
+**The budget.** The adaptive own-slowdown controller of `../011-core/research/background-backoff.md`, not a fixed ceiling, as first written (2026-11-11: the human is open to a machine-derived ceiling; see status):
 
 - Signal: the pooled median ratio of each recent file run's duration to that file's own fast reference, across the user's daemons on the machine. It needs no core count and sees a container's CPU quota.
 - Control: halve the background budget after two 60 s windows in a row above θ = 1.25; add one permit after a window at or below it; never above `hostSlots`.
