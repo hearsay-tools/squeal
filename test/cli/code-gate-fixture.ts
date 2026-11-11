@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { mkdirSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { availableParallelism, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach } from "vitest";
 import { codeCommand } from "../../src/cli/code.js";
@@ -64,6 +64,19 @@ export function ownHomeAndTmp(): () => readonly string[] {
     rmSync(temp, { recursive: true, force: true });
   });
   return () => readdirSync(temp);
+}
+
+/** D17.1: a fixture's Vitest sets no `maxWorkers`, so it runs one worker per CPU but one. */
+export const VITEST_WIDTH = Math.max(1, availableParallelism() - 1);
+
+/**
+ * D17.1: a runner's estimate line with no store: its files, its width and
+ * no time. node:test runs `runner.tierSize` at once, 4 by default.
+ */
+export function noEstimate(runner: "Vitest" | "node:test", files: number): string {
+  const width = runner === "Vitest" ? VITEST_WIDTH : 4;
+  const what = files === 1 ? "1 test file" : `${files} test files`;
+  return `squeal code: ${runner}: ${what} to run here, up to ${width} at once; no stored duration, so the time is unknown\n`;
 }
 
 export interface Ran {

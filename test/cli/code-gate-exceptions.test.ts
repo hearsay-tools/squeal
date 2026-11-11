@@ -10,7 +10,7 @@ import type {
 } from "../../src/core/code/gate/report.js";
 import { type ExceptionEntry, QUALITY_POLICY_VERSION } from "../../src/core/code/gate/types.js";
 import { git } from "../hash/git-repo.js";
-import { BASE, code, edit, ownHomeAndTmp, repo, SLOW } from "./code-gate-fixture.js";
+import { BASE, code, edit, noEstimate, ownHomeAndTmp, repo, SLOW } from "./code-gate-fixture.js";
 
 /*
  * Spec 020 D8 (row 020-09): `squeal code --base <ref> --exceptions <file>`
@@ -80,7 +80,9 @@ describe("squeal code --base --exceptions (spec 020 D8)", () => {
 
     const ran = await code(root, ["--base", "main", "--exceptions", file, "--json"]);
 
-    expect(ran.stderr).toBe("squeal code: Vitest: 1 test file to run (tests 1)\n");
+    expect(ran.stderr).toBe(
+      `squeal code: Vitest: 1 test file to run (tests 1)\n${noEstimate("Vitest", 1)}`,
+    );
     expect(ran.code).toBe(0);
     expect(functionsOf(ran.stdout)).toEqual([["deep", 21, 21, "accepted", [["covers", 21]]]]);
     const report = JSON.parse(ran.stdout) as GateReport;
