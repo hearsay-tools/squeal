@@ -4806,8 +4806,9 @@ function* removeWorktree(conn, worktrees, worktree, counts) {
         if (!isGone(worktree.root)) return;
         removed = conn.transaction(
           () => conn.run(
-            `DELETE FROM ${table} WHERE worktree_id = ?1 AND ${key} IN (
-               SELECT ${key} FROM ${table} WHERE worktree_id = ?1 LIMIT ?2)`,
+            `DELETE FROM ${table} WHERE worktree_id = ? AND ${key} IN (
+               SELECT ${key} FROM ${table} WHERE worktree_id = ? LIMIT ?)`,
+            worktree.id,
             worktree.id,
             DELETE_BATCH
           )
