@@ -4,7 +4,7 @@ import type { CheckMoment, CheckRunner, ResolvedGroup } from "../../types/check-
 import type { RelativePath } from "../../types/common.js";
 import type { TestFileRef } from "../../types/keys.js";
 import { DEFAULT_POLICY, type Policy } from "../../types/policy.js";
-import type { TestFileEvidence } from "./types.js";
+import { GATE_RUNNERS, type TestFileEvidence } from "./types.js";
 
 /*
  * Spec 020 D14 (row 020-15a): the gate's scope by check group (spec 019
@@ -240,7 +240,7 @@ export function tallyScope(scope: GateScope): ScopeTally {
           selected: t.selected,
           add: addGroup(name),
         }));
-      const byRunner = (f: LeftOutFile) => (f.runner === "vitest" ? 0 : 1);
+      const byRunner = (f: LeftOutFile) => GATE_RUNNERS.indexOf(f.runner);
       const sorted = [...files].sort(
         (a, b) => byRunner(a) - byRunner(b) || compare(a.path, b.path),
       );
