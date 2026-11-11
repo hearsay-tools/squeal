@@ -2,10 +2,12 @@ import { Worker } from "node:worker_threads";
 import { onTestFinished } from "vitest";
 
 /*
- * Spec 021 D2 (row 021-08): a second connection that takes the store's
- * write lock at an exact point of the daemon's own synchronous code, and
- * releases it on its own clock. Another thread holds it, so a daemon whose
- * event loop waits inside SQLite's busy handler still sees it released.
+ * Spec 021 D2 (row 021-08): the busy-store tests' helpers. A second
+ * connection that takes the store's write lock at an exact point of the
+ * daemon's or scheduler's own synchronous code and releases it on its own
+ * clock: another thread holds it, so an event loop that waits inside
+ * SQLite's busy handler still sees it released. And how long the event loop
+ * stopped while a write waited.
  */
 
 /** Waits for a go, then holds the store's write lock `holdMs` on its own event loop. */
@@ -66,4 +68,21 @@ export function fullStack(): string {
   } finally {
     Error.stackTraceLimit = limit;
   }
+}
+
+/** The longest the event loop stopped until `done` settled, by a 10 ms tick. */
+export async function longestGap(done: Promise<unknown>): Promise<number> {
+  let last = Date.now();
+  let longest = 0;
+  const tick = setInterval(() => {
+    const now = Date.now();
+    longest = Math.max(longest, now - last);
+    last = now;
+  }, 10);
+  try {
+    await done.catch(() => {});
+  } finally {
+    clearInterval(tick);
+  }
+  return Math.max(longest, Date.now() - last);
 }
