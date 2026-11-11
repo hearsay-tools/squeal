@@ -90,6 +90,7 @@ Started: 2026-10-31
 - 2026-11-11, review of 0.1.428 (`reviews/0.1.428.md`, recorded by the coordinator after the Codex reviewer stopped on a proxy error): FAIL, B1 status says "content differs" during the re-key window (018-28 item 2), B2 the coverage worker's time is counted twice (018-29). The human: "A: one repair". Versions moved: 0.1.429 (d64f8c13) and 0.1.430 (31e1d860) released first; these rows ship as 0.1.431.
 - 2026-11-11, re-review of 0.1.431 PASS (`reviews/0.1.428.md`, Re-review); candidate CI failed twice on the new 018-28 test "first start without origin/HEAD" (no import in 60 s on GitHub's runners; passes on this host with git 2.43). The human: "A: one more fix round" (past the one repair).
 - 2026-11-11, R2 (the human's extra round): cause of the CI-only failure was git 2.48+ recreating origin/HEAD on fetch and the fixture's `update-ref -d` deleting origin/main through it; real users reach a dangling origin/HEAD after an upstream default-branch rename plus `fetch --prune`, so `choose.ts` now takes origin/HEAD only when its branch exists. R2 check PASS; candidate CI 43040495364 green; 0.1.431 landed with rows 018-28 and 018-29. Note to `research/shared-proof.md` Q3: from git 2.48 a fetch does create origin/HEAD.
+- 2026-11-11, 0.1.431 released (tag squeal--v0.1.431 at 2778dc03f, hub 751f3ae, GitHub release with install.sh and the Codex runtime). The joint cezar PR (pin 0.1.431 plus 020-08c's dispatch-only trial) is prepared, not opened; it waits for the human's approval.
 
 ## Open questions
 
