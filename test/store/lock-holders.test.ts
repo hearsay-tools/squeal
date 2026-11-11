@@ -9,6 +9,7 @@ import {
   type HolderSource,
   holdersFrom,
   lockHolders,
+  shortCommand,
 } from "../../src/core/store/lock-holders.js";
 import { tempDir } from "./helpers.js";
 
@@ -249,5 +250,14 @@ describe("over /proc/locks", () => {
 
     expect(holder?.command.length).toBe(160);
     expect(holder?.command).toMatch(/^node squeal\.mjs hold -- word .*\.\.\.$/);
+  });
+});
+
+describe("shortCommand", () => {
+  test("puts an inline script on one line, so a busy message stays one line (spec 021 D5)", () => {
+    const command = shortCommand(["node", "-e", 'import x from "y";\nconst a = 1;\n\tdo(a);']);
+
+    expect(command).not.toMatch(/\n/);
+    expect(command).toBe('node -e import x from "y"; const a = 1; do(a);');
   });
 });
