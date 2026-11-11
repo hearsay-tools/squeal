@@ -61,6 +61,8 @@ describe("core types", () => {
       gate: { groups: null },
       // Spec 018 D14; its key's own tests are test/shared/policy.test.ts.
       shared: { ref: null },
+      // Spec 018 D18; its key's own tests are test/node-pin/policy.test.ts.
+      node: "project",
     });
   });
 });
