@@ -1,14 +1,13 @@
 import { testFileId } from "../keys/reverse-index.js";
+import { isBusy } from "../store/connection.js";
 import type { RelativePath } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { Revision } from "../types/revision.js";
 import type { RunnerClosure } from "../types/runner.js";
-import { refinedMetaKey } from "../types/scheduler.js";
 import type { SchedulerContext } from "./context.js";
-import { importsKeyed, importsWaiting } from "./imports-waiting.js";
 import type { Ledger } from "./ledger.js";
-import type { Mutex } from "./mutex.js";
-import { applyRunnerPart, fetchRunnerPart, recheckRunner } from "./refinement.js";
+import { type ApplyHost, applyRefinement, recordRefined } from "./refine-apply.js";
+import { fetchRunnerPart, recheckRunner } from "./refinement.js";
 import type { ContentRekey } from "./revision.js";
 import { runnerPartBound } from "./runner-work-bound.js";
 
@@ -42,15 +41,11 @@ function unchanged(context: SchedulerContext, ledger: Ledger): Revision {
 }
 
 /** What the runner work needs from its scheduler. */
-export interface RunnerWorkHost {
-  readonly lock: Mutex;
+export interface RunnerWorkHost extends ApplyHost {
   started(): { context: SchedulerContext; ledger: Ledger };
-  closed(): boolean;
   pump(): void;
   /** An error of work no caller awaits: a note for status, and `onError`. */
   backgroundError(subject: string, error: unknown): void;
-  /** A runner part was applied and committed, under the lock: what it queued may cancel a backlog tier. */
-  applied(): void;
 }
 
 /** The runner work of one scheduler, applied by its pump beside the tiers in flight (task 001-140). */
@@ -217,8 +212,9 @@ export class RunnerWork {
    * The runner phase calls the runner without the lock, so batches are
    * reconciled meanwhile; the apply phase takes the lock, applies what the
    * runner said, and commits it with the revision as refined (D2 as
-   * amended). Never rejects: an error is a note, and the revision counts as
-   * refined so no wait hangs on it. A runner-only refinement (`refined`
+   * amended). A busy store's refusal is tried again (`applyRefinement`, spec
+   * 021 D2). Never rejects: another error is a note, and the revision counts
+   * as refined so no wait hangs on it. A runner-only refinement (`refined`
    * `null`) commits no refined revision.
    */
   async #refine(
@@ -246,39 +242,19 @@ export class RunnerWork {
         touched,
         rechecked,
       );
-      await this.host.lock.run(
-        async () => {
-          const changedMeanwhile = ledger.refineChanges ?? new Set<RelativePath>();
-          ledger.refineChanges = null;
-          // Review of 0.1.428, B1: the imports marked by now have their observed paths in the regrow below.
-          const imports = importsWaiting(context.store, context.worktreeId);
-          const stale = await applyRunnerPart(
-            context,
-            ledger,
-            part,
-            changedMeanwhile,
-            refined ?? undefined,
-          );
-          for (const ref of stale) this.#carried.set(testFileId(ref), ref);
-          // Row 015-52: the listing holds the revision's test files unless the last one failed.
-          const listed = ledger.listingFailed ? null : (refined ?? revision.number);
-          ledger.commit({
-            ...(refined === null ? {} : { refined }),
-            ...(listed === null ? {} : { listed }),
-          });
-          this.host.applied();
-          importsKeyed(context.store, context.worktreeId, imports);
-        },
-        refined === null ? "applying observed paths" : `applying revision ${refined}`,
-      );
+      await applyRefinement(this.host, context, ledger, part, refined, (stale) => {
+        for (const ref of stale) this.#carried.set(testFileId(ref), ref);
+      });
     } catch (error) {
+      // Spec 021 D2: refused while the scheduler closes, the revision stays unrefined for the next start.
+      if (this.host.busy?.() !== undefined && isBusy(error) && this.host.closed()) return;
       // Row 015-52: what a runner part that threw listed is not known; the next one lists again.
       ledger.listingFailed = true;
       if (refined === null) {
         this.host.backgroundError("could not apply observed paths", error);
       } else {
         this.host.backgroundError(`could not apply revision ${refined}`, error);
-        this.#refinedAfterError(context, refined);
+        await this.#refinedAfterError(context, refined);
       }
     } finally {
       ledger.refineChanges = null;
@@ -316,18 +292,14 @@ export class RunnerWork {
   }
 
   /**
-   * A refinement that threw is not pending any more: nothing retries it, and
-   * its note says what failed. Its revision is recorded as refined, so waits
-   * do not wait for it forever (D2 as amended).
+   * A refinement that threw on anything but a busy store is not pending any
+   * more: nothing retries it, and its note says what failed. Its revision is
+   * recorded as refined, so waits do not wait for it forever (D2 as
+   * amended); that write is tried again on a busy store (spec 021 D2).
    */
-  #refinedAfterError(context: SchedulerContext, revision: number): void {
-    const { store, worktreeId } = context;
+  async #refinedAfterError(context: SchedulerContext, revision: number): Promise<void> {
     try {
-      store.transaction(() => {
-        const key = refinedMetaKey(worktreeId);
-        const previous = Number(store.meta.get(key) ?? Number.NaN);
-        if (!(previous >= revision)) store.meta.set(key, String(revision));
-      });
+      await recordRefined(this.host, context, revision);
     } catch (error) {
       this.host.backgroundError(`could not record revision ${revision} as refined`, error);
     }
