@@ -121,6 +121,18 @@ export class WorktreeKeys {
   #environmentsRead = false;
   /** Each project's environment hash as last stored with its parts (018 D1). */
   #recordedEnvironments: string | null = null;
+  /**
+   * Spec 021 D2: what each project observed before a `setEnvironments` a
+   * busy store refused, which had replaced the environments already; the
+   * call that tries again compares with it, not with what the refused one set.
+   */
+  #observedBefore: Map<ProjectName, boolean> | null = null;
+  /**
+   * Spec 021 D2: paths hashed into the cache whose write a busy store
+   * refused; the next `track` hashes them again, writes them and judges
+   * whether git ignores them, as the refused one would have.
+   */
+  readonly #unstored = new Set<RelativePath>();
   readonly #lockfiles: Lockfiles;
   /** How each project's installed dependencies enter its keys (D3, task 001-105). */
   #dependencies = new Map<ProjectName, DependencyKeys>();
@@ -261,9 +273,10 @@ export class WorktreeKeys {
     const { squealVersion, env } = this.options;
     const policy = this.#policy;
     const environments = this.#withStartup(read);
-    const observedBefore = new Map(
-      [...this.#environments.keys()].map((p) => [p, this.observes(p)]),
-    );
+    const observedBefore =
+      this.#observedBefore ??
+      new Map([...this.#environments.keys()].map((p) => [p, this.observes(p)]));
+    this.#observedBefore = observedBefore;
     this.#environments.clear();
     this.#environmentFiles.clear();
     for (const environment of environments) {
@@ -315,13 +328,15 @@ export class WorktreeKeys {
       },
       readAsOne,
     );
-    return [
+    const changes = [
       ...installed,
       ...this.#reobserve(observedBefore),
       ...[...this.#runnerClosures.values()]
         .filter((r) => this.runtimeSelected(r.testFile))
         .flatMap((r) => this.setClosure(r, this.#saved.has(testFileId(r.testFile)))),
     ];
+    this.#observedBefore = null;
+    return changes;
   }
 
   /** 018 D1: stores each project's hash with its parts when one moved since the last record. */
@@ -799,7 +814,13 @@ export class WorktreeKeys {
     );
     this.#untracked.clear();
     for (const path of paths) if (this.#dropped.has(path)) this.#inherit(path);
-    if (paths.length > 0) await this.track(paths);
+    try {
+      if (paths.length > 0) await this.track(paths);
+    } catch (error) {
+      // Spec 021 D2: a busy store's refusal leaves them untracked for the call that tries again.
+      for (const path of paths) this.#untracked.add(path);
+      throw error;
+    }
     this.#release();
     return paths.length === 0 ? [] : this.index.rekey(paths);
   }
@@ -838,13 +859,14 @@ export class WorktreeKeys {
         this.index.reverse.referencing([path]).length === 0 &&
         !(this.#runtime.candidates().includes(path) && this.runtimeUnresolved().length > 0),
     );
+    // Spec 021 D2: the write first, so a busy store's refusal leaves them for the next release.
+    if (unnamed.length > 0) this.#drop(unnamed);
     this.#unjudged.clear();
     if (unnamed.length === 0) return;
     for (const path of unnamed) {
       this.#inherited.delete(path);
       this.#extra.delete(path);
     }
-    this.#drop(unnamed);
     this.options.onExtraFiles(this.extraFiles());
   }
 
@@ -870,11 +892,22 @@ export class WorktreeKeys {
   /** Hashes the untracked ones among `paths`; the gitignored ones become extra files. */
   async track(paths: readonly RelativePath[]): Promise<void> {
     const untracked = [...new Set(paths)].filter(
-      (path) => this.cache.hashOf(path) === undefined || this.#dropped.has(path),
+      (path) =>
+        this.cache.hashOf(path) === undefined ||
+        this.#dropped.has(path) ||
+        this.#unstored.has(path),
     );
     if (untracked.length === 0) return;
-    await this.#seed(untracked);
-    for (const path of untracked) this.#dropped.delete(path);
+    try {
+      await this.#seed(untracked);
+    } catch (error) {
+      for (const path of untracked) this.#unstored.add(path);
+      throw error;
+    }
+    for (const path of untracked) {
+      this.#dropped.delete(path);
+      this.#unstored.delete(path);
+    }
     const ignored = await checkIgnored(this.options.root, untracked);
     const before = this.#extra.size;
     for (const path of ignored) {
