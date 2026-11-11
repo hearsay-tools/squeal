@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.440";
+  if (true) return "0.1.441";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -25474,12 +25474,15 @@ function recorderSignature(error, use) {
   if (use.files.length === 0) return void 0;
   const text3 = [error.message, error.stack ?? "", ...(error.causes ?? []).map((c) => c.message)].join("\n").concat(error.code === void 0 ? "" : `
 ${error.code}`);
-  if (use.inNodeOptions && PACKAGE.test(text3) && PRELOAD.test(text3)) {
+  if (use.inNodeOptions && PACKAGE.test(text3) && preloaded(text3)) {
     return "a --require preload makes Node parse the nearest package.json (ERR_INVALID_PACKAGE_CONFIG)";
   }
   if (use.inNodeOptions && OLD_NODE.test(text3)) return "Node before 18.18 rejects its --import";
   const spellings = use.files.flatMap((file) => [file, use.relativize(file)]);
   return spellings.some((s) => text3.includes(`Cannot find module '${s}'`)) ? "its file is missing" : void 0;
+}
+function preloaded(text3) {
+  return PRELOAD.test(text3) || CUT_PRELOAD.test(text3) && REQUIRE_OPTION.test(text3);
 }
 function withRecorderSignatures(report4, use) {
   if (use.files.length === 0) return report4;
@@ -25495,12 +25498,14 @@ function withRecorderSignatures(report4, use) {
     fileErrors: report4.fileErrors.map((f) => ({ ...f, errors: signed(f.errors) }))
   };
 }
-var PACKAGE, PRELOAD, OLD_NODE;
+var PACKAGE, PRELOAD, CUT_PRELOAD, REQUIRE_OPTION, OLD_NODE;
 var init_signature = __esm({
   "src/runners/observe/signature.ts"() {
     "use strict";
     PACKAGE = /ERR_INVALID_PACKAGE_CONFIG|Invalid package config /;
     PRELOAD = /\bat trySelf \(node:[^\n]*(?:\n[ \t]+at (?!require \()[^\n]*)*?\n[ \t]+at (?:node:internal\/modules\/cjs\/loader:\d|loadPreloadModules \()/;
+    CUT_PRELOAD = /\bat trySelf \(node:[^\n]*(?:\n[ \t]+at (?!require \()[^\n(]*\(node:internal\/[^\n]*)*(?:\n(?![ \t]+at )|$)/;
+    REQUIRE_OPTION = /(?:^|\s)(?:--require|-r)[=\s]/m;
     OLD_NODE = /--import is not allowed in NODE_OPTIONS|bad option: --import\b/;
   }
 });
@@ -77145,7 +77150,7 @@ async function ensureDaemonProcess(root, options = {}) {
         cwd,
         detached: true,
         stdio: "ignore",
-        ...pinned ? { env: { ...process.env, PATH: pathFirst(node2.binary, process.env.PATH) } } : {}
+        env: pinned ? { ...process.env, PATH: pathFirst(node2.binary, process.env.PATH) } : process.env
       }
     );
     let ended4 = child.pid === void 0;
