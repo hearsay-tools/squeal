@@ -14,7 +14,10 @@ import type { ImportStatus, NodeMismatch, NodePin, SharedStatus } from "../types
 /** Row 018-30's `pinnedNode(root)` in `src/core/node-pin.ts`, as status reads it. */
 export type PinnedNode =
   | { readonly binary: string; readonly version: string }
-  | { readonly reason: "none" | "range" | "missing" | "session"; readonly wanted?: string };
+  | {
+      readonly reason: "none" | "range" | "too-old" | "missing" | "session";
+      readonly wanted?: string;
+    };
 
 /**
  * The snapshot's `shared` part: nothing without `shared.ref`. `pin` runs
@@ -66,6 +69,8 @@ function whyText(m: NodeMismatch, command: string): string {
       return `The project pins no Node version: put ${bare(m.needed)} in .node-version, then ${restart}`;
     case "range":
       return `The project's Node pin ${JSON.stringify(wanted)} is not one exact version: pin ${bare(m.needed)} in .node-version or .nvmrc, then ${restart}`;
+    case "too-old":
+      return `The project pins Node ${bare(wanted)}, older than Squeal supports, so the daemon runs the session's Node: pin ${bare(m.needed)} in .node-version or .nvmrc, then ${restart}`;
     case "missing":
       return `The project pins Node ${bare(wanted)}, which is not installed here: install it, then ${restart}`;
     case "session":
