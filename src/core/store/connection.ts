@@ -1,6 +1,5 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import type { DatabaseSync, SQLInputValue, StatementSync } from "node:sqlite";
-import { endWrite, startWrite, type WriteStart } from "./long-write.js";
 
 export type Row = Record<string, unknown>;
 export type Params = readonly SQLInputValue[];
@@ -42,14 +41,15 @@ export class Connection {
    * is already open. Spec 001 D8: "short `BEGIN IMMEDIATE` write
    * transactions": the write lock is taken up front, so a writer waits on the
    * busy timeout instead of failing to upgrade a read snapshot. Spec 021
-   * D3: one held past `LONG_WRITE_MS` tells the daemon's log (`long-write.ts`).
+   * D3: the thread's write observer (`observeWrites`), when set, is told once
+   * the lock is held and again at the end.
    */
   transaction<T>(fn: () => T): T {
     const savepoint = this.#depth > 0 ? `squeal_${this.#depth}` : null;
-    let write: WriteStart | null = null;
+    let ended: WriteEnd | null = null;
     if (savepoint === null) {
       this.#withinSlice(() => this.db.exec("BEGIN IMMEDIATE"));
-      write = startWrite(this.db);
+      ended = observer?.(this.db) ?? null;
     } else this.db.exec(`SAVEPOINT ${savepoint}`);
     this.#depth++;
     try {
@@ -62,7 +62,7 @@ export class Connection {
       throw error;
     } finally {
       this.#depth--;
-      endWrite(write);
+      ended?.();
     }
   }
 
@@ -123,6 +123,27 @@ export class Connection {
     }
     return statement;
   }
+}
+
+/** What a write observer is told when a transaction ends, committed or rolled back. */
+export type WriteEnd = () => void;
+
+/**
+ * Spec 021 D3: told once an outermost write transaction holds the lock,
+ * with the connection's database; what it returns is told at the end.
+ */
+export type WriteObserver = (db: DatabaseSync) => WriteEnd | null;
+
+/** Per thread, since each worker thread loads its own copy of this module. */
+let observer: WriteObserver | null = null;
+
+/**
+ * Sets this thread's write observer, `null` to unset it. Only the daemon's
+ * long-write log sets one (`logLongWrites`); without it, a transaction
+ * calls nothing.
+ */
+export function observeWrites(next: WriteObserver | null): void {
+  observer = next;
 }
 
 /** A busy slice of one async context; `live` until the work it was given settles. */
