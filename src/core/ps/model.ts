@@ -201,8 +201,22 @@ export interface TestProcessModel {
   readonly descendants: readonly number[];
 }
 
+/**
+ * Spec 021 D17 (row 021-14): a runner host the daemon started, a local one
+ * (`squeal runner-host`) or the user's `ssh` running one on a remote.
+ */
+export interface RunnerHostModel {
+  readonly pid: number;
+  readonly daemonPid: number;
+  readonly runner: string | null;
+  /** The SSH destination of a remote host; `null` for a local one. */
+  readonly target: string | null;
+}
+
 export interface Attribution {
   readonly processes: readonly TestProcessModel[];
+  /** The daemons' runner hosts (spec 021 D17); absent: none read. */
+  readonly hosts?: readonly RunnerHostModel[];
   /** Processes with a mark no live daemon's token owns: `orphan-test-process` on two samples (D7). */
   readonly unowned: readonly { readonly pid: number; readonly mark: string }[];
 }

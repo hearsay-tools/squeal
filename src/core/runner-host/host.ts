@@ -17,7 +17,7 @@ import {
   type WireRunOptions,
 } from "./protocol.js";
 import type { TreeHost } from "./remote/tree-host.js";
-import type { TreeEntry, TreeWrite } from "./remote/tree-wire.js";
+import type { RemoteRunOptions, RemoteRunReply, TreeEntry, TreeWrite } from "./remote/tree-wire.js";
 import type { RunAround } from "./workers.js";
 
 /*
@@ -188,8 +188,11 @@ export async function serveRunnerHost(options: ServeOptions): Promise<void> {
 
   const run = async (id: number, args: readonly unknown[]): Promise<RunReport> => {
     const current = started();
-    const [files, wire] = args as [RunReportFiles, WireRunOptions];
-    const { beforeForce, ...data } = wire;
+    const [files, wire] = args as [RunReportFiles, WireRunOptions & RemoteRunOptions];
+    const { beforeForce, expected, alive, ...data } = wire;
+    // Spec 021 D11: a remote host runs only over the tree the daemon expects.
+    const refused = expected === undefined ? [] : await treeOf().differing(expected);
+    if (refused.length > 0) return { refused } as RemoteRunReply as RunReport;
     // A remote host logs in a directory of its own: the daemon's `logDir` is on another machine.
     const logDir = await options.tree?.runDir(data.runId);
     const signal = new AbortController();
@@ -212,11 +215,22 @@ export async function serveRunnerHost(options: ServeOptions): Promise<void> {
           }
         : {}),
     };
+    // Spec 021 D13: signs of life, so a daemon tells a hung remote from a long run.
+    const beat =
+      alive === undefined ? undefined : setInterval(() => send({ ev: "alive", run: id }), alive);
     try {
       const report = await around(runOptions, () => current.run(files, runOptions));
+      clearInterval(beat);
       if (options.tree === undefined || logDir === undefined) return report;
-      return { ...report, logs: await options.tree.logs(logDir) } as RunReport;
+      const observed = (report.observed ?? []).flatMap((o) => o.paths);
+      const proven = [...new Set([...Object.keys(expected ?? {}), ...observed])];
+      const reply: RemoteRunReply = {
+        logs: await options.tree.logs(logDir),
+        ...(expected === undefined ? {} : { proof: await options.tree.blobs(proven) }),
+      };
+      return { ...report, ...reply } as RunReport;
     } finally {
+      clearInterval(beat);
       runs.delete(id);
       forced.get(id)?.();
       forced.delete(id);
@@ -251,6 +265,8 @@ export async function serveRunnerHost(options: ServeOptions): Promise<void> {
         return treeOf().blobs(args[0] as readonly string[]);
       case "install":
         return treeOf().install();
+      case "coreEnvironment":
+        return treeOf().coreEnvironment(args[0] as readonly string[]);
       case "invalidate":
         // A remote's changed files ride on the revision's invalidate (spec 021 D10).
         if (args[1] !== undefined) await treeOf().write(args[1] as TreeWrite);

@@ -24,8 +24,9 @@ export interface Bundle {
 }
 
 /**
- * The bundle whose CLI is `cli`, or `null` when `cli` is no bundle's: a
- * daemon from the sources (`src/cli/index.ts` under `tsx`) has nothing it can copy.
+ * The bundle whose CLI is `cli`, or `null` when `cli` is no bundle's or
+ * cannot be read: a daemon from the sources (`src/cli/index.ts` under
+ * `tsx`) has nothing it can copy.
  */
 export function readBundle(cli: string): Bundle | null {
   if (!cli.endsWith(".mjs")) return null;
@@ -39,7 +40,12 @@ export function readBundle(cli: string): Bundle | null {
       else if (entry.isFile() && rel !== "") files.push(path);
     }
   };
-  walk(root, "");
+  try {
+    walk(root, "");
+  } catch {
+    // Gone or unreadable: nothing to copy.
+    return null;
+  }
   files.sort();
   const relCli = `${basename(dirname(cli))}/${basename(cli)}`;
   if (!files.includes(relCli)) return null;

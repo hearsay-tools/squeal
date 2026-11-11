@@ -59,7 +59,7 @@ describe.skipIf(unavailable !== undefined)("a runner host on a container over ss
     lines: string[] = [],
     extra: Partial<RemoteHostOptions> = {},
   ): Promise<RunnerAdapter> {
-    const adapter = await startRemoteHost({
+    const { adapter } = await startRemoteHost({
       target: { destination: remote.destination, ssh: remote.ssh },
       places,
       launch: { execPath: process.execPath, execArgv: [], cli },

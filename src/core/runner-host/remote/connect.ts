@@ -4,14 +4,20 @@ import { hostname } from "node:os";
 import { basename, dirname, join } from "node:path";
 import type { AbsolutePath } from "../../types/common.js";
 import type { RunnerAdapter, RunReport } from "../../types/runner.js";
-import { channelOf, type RunnerHostLaunch } from "../channel.js";
+import { channelOf, type HostChannel, type RunnerHostLaunch } from "../channel.js";
 import type { HostAdapterOptions, HostPolicy, HostRunner } from "../protocol.js";
 import { type HostDeadlines, type HostRequests, startHostProxy } from "../proxy.js";
 import { bundleDir, ensureBundle, type RemotePlaces, readBundle } from "./bundle.js";
 import { type SshTarget, shellQuote, spawnSsh } from "./ssh.js";
 import { treeEntries, treePaths, writesFor } from "./tree.js";
 import { LOCKFILES } from "./tree-host.js";
-import { type InstallAnswer, insideRoot, type TreeAnswer, type WireLog } from "./tree-wire.js";
+import {
+  type HostCore,
+  type InstallAnswer,
+  insideRoot,
+  type RemoteRunReply,
+  type TreeAnswer,
+} from "./tree-wire.js";
 
 /*
  * Spec 021 D9, D10, D14 (row 021-13): a runner host on a remote, started
@@ -32,6 +38,24 @@ export interface RemoteDeadlines {
 }
 
 export const REMOTE_DEADLINES: RemoteDeadlines = { sshMs: 120_000, installMs: 1_800_000 };
+
+/**
+ * A remote host's own deadlines beside `HOST_DEADLINES` (spec 021 D13):
+ * nothing but them notices a hung remote, so a run must show it is alive
+ * every few seconds, and other calls answer within two minutes.
+ */
+export const REMOTE_HOST_DEADLINES: Partial<HostDeadlines> = { aliveMs: 30_000, callMs: 120_000 };
+
+/** A started remote host: its adapter, and what the lane asks it beside. */
+export interface RemoteHost {
+  readonly adapter: RunnerAdapter;
+  /** Its environment inputs, the variables of `allowlist` among them (spec 021 D11). */
+  coreEnvironment(allowlist: readonly string[]): Promise<HostCore>;
+  /** The blob id of each path in the host's tree; `null`: absent. */
+  blobs(paths: readonly string[]): Promise<Readonly<Record<string, string | null>>>;
+  /** Node on the remote, as the check before the start saw it. */
+  readonly node: string;
+}
 
 export interface RemoteHostOptions {
   readonly target: SshTarget;
@@ -83,9 +107,8 @@ export function hostCommand(
  * first connect copies what the remote lacks. Rejects with the step that
  * failed: no bundle to copy, ssh, the copy, the install, or the start.
  */
-export async function startRemoteHost(options: RemoteHostOptions): Promise<RunnerAdapter> {
+export async function startRemoteHost(options: RemoteHostOptions): Promise<RemoteHost> {
   const deadlines = { ...REMOTE_DEADLINES, ...options.deadlines };
-  const callMs = deadlines.callMs ?? 300_000;
   const log = options.log ?? (() => {});
   const { target, places, root } = options;
   const bundle = readBundle(options.launch.cli);
@@ -106,14 +129,32 @@ export async function startRemoteHost(options: RemoteHostOptions): Promise<Runne
   );
   const tree = treeDir(places, root);
   const command = hostCommand(places, options.version, bundle.cli, tree, options.runner);
+  return remoteHostOver(channelOf(spawnSsh(target, command)), ensured.check.node, options);
+}
+
+/**
+ * The remote host on `channel`: its tree brought to the worktree's, its
+ * install, its start; then each revision's files on `invalidate`. Exported
+ * for tests, which serve a host in their own process.
+ */
+export async function remoteHostOver(
+  channel: HostChannel,
+  node: string,
+  options: Omit<RemoteHostOptions, "places" | "launch">,
+): Promise<RemoteHost> {
+  const hostDeadlines = { ...REMOTE_HOST_DEADLINES, ...options.deadlines };
+  const deadlines = { ...REMOTE_DEADLINES, ...hostDeadlines };
+  const callMs = deadlines.callMs ?? 300_000;
+  const log = options.log ?? (() => {});
+  const { target, root } = options;
   let requests: HostRequests | null = null;
   const install = async (on: HostRequests) => {
     const done = (await on.request("install", [], deadlines.installMs)) as InstallAnswer;
     if (done.ran) log(`${target.destination}: installed with ${done.command}`);
   };
   const { coverage: _off, ...adapterOptions } = options.options;
-  return startHostProxy({
-    channel: channelOf(spawnSsh(target, command)),
+  const adapter = await startHostProxy({
+    channel,
     runner: options.runner,
     version: options.version,
     // Spec 021 D12: coverage stays off on a remote lane.
@@ -121,7 +162,7 @@ export async function startRemoteHost(options: RemoteHostOptions): Promise<Runne
     policy: () => ({ ...options.policy(), coverage: false, coverageChildren: false }),
     ...(options.note === undefined ? {} : { note: options.note }),
     ...(options.optimizer === undefined ? {} : { optimizer: options.optimizer }),
-    ...(options.deadlines === undefined ? {} : { deadlines: options.deadlines }),
+    deadlines: hostDeadlines,
     prepare: async (on) => {
       requests = on;
       const entries = await treeEntries(root);
@@ -146,15 +187,28 @@ export async function startRemoteHost(options: RemoteHostOptions): Promise<Runne
       if (lockfile) await install(on);
       return undefined;
     },
-  }).then(withLogs);
+  });
+  const started = (): HostRequests => {
+    if (requests === null) throw new Error("the remote host has not started");
+    return requests;
+  };
+  return {
+    adapter: withLogs(adapter),
+    node,
+    coreEnvironment: async (allowlist) =>
+      (await started().request("coreEnvironment", [allowlist], callMs)) as HostCore,
+    blobs: async (paths) =>
+      (await started().request("blobs", [paths], callMs)) as Record<string, string | null>,
+  };
 }
 
 /** `adapter` whose runs' reports carry their logs: written into the run's own `logDir`. */
 function withLogs(adapter: RunnerAdapter): RunnerAdapter {
   const run = adapter.run.bind(adapter);
   adapter.run = async (testFiles, options) => {
-    const report = (await run(testFiles, options)) as RunReport & { logs?: readonly WireLog[] };
+    const report = (await run(testFiles, options)) as RunReport & RemoteRunReply;
     const { logs, ...rest } = report;
+    // `refused` and `proof` stay: the lane reads them (spec 021 D11).
     for (const log of logs ?? []) {
       if (!insideRoot(log.name)) continue;
       const at = join(options.logDir, log.name);

@@ -141,6 +141,8 @@ function measured(discovery: Discovery, attribution: Attribution): number[] {
   return [
     ...discovery.daemons.map((d) => d.row.pid),
     ...attribution.processes.flatMap((p) => [p.pid, ...p.descendants]),
+    // Spec 021 D17: a daemon's runner hosts, local, or the ssh that reaches a remote one.
+    ...(attribution.hosts ?? []).map((h) => h.pid),
   ];
 }
 

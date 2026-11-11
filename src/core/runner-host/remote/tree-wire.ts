@@ -38,6 +38,39 @@ export interface InstallAnswer {
   readonly command: string | null;
 }
 
+/**
+ * What a remote run carries beside `RunOptions` (spec 021 D11, D13): the
+ * blob id of each path of the run's closure as the daemon has it (`null`:
+ * absent there), which the host proves before it runs, and how often the
+ * host tells the daemon the run is still in flight.
+ */
+export interface RemoteRunOptions {
+  readonly expected?: Readonly<Record<string, string | null>>;
+  readonly alive?: number;
+}
+
+/**
+ * What a remote run's reply carries beside the `RunReport`: the paths whose
+ * blob ids differed before the run (`refused`; the run did not start), or
+ * after it the blob id of each expected and observed path (`proof`), and
+ * the run's logs.
+ */
+export interface RemoteRunReply {
+  readonly refused?: readonly string[];
+  readonly proof?: Readonly<Record<string, string | null>>;
+  readonly logs?: readonly WireLog[];
+}
+
+/** The host's own environment inputs (spec 021 D11): what the key holds of a process. */
+export interface HostCore {
+  readonly nodeVersion: string;
+  readonly platform: string;
+  readonly arch: string;
+  readonly installedDependencies: string;
+  /** The allow-listed variables that are set, by name. */
+  readonly env: Readonly<Record<string, string>>;
+}
+
 /** A run's log file, its path relative to the run's directory, its bytes base64. */
 export interface WireLog {
   readonly name: string;
