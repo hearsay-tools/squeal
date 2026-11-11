@@ -18,6 +18,7 @@ import {
   verdictOf,
 } from "./report.js";
 import { judgeFunction, type MissingGap, type RuleCoverage } from "./rule.js";
+import { leftOutLoaders } from "./scope.js";
 import {
   type ChangedFunction,
   type ChangedSet,
@@ -109,6 +110,8 @@ interface Context {
   readonly failed: boolean;
   readonly evidenceOf: (fn: ChangedFunction) => PathEvidence;
   readonly counted: (path: RelativePath) => CountedPath | undefined;
+  /** D14.2: the selected test files that load a source, or may, and that the scope left out. */
+  readonly leftOut: (path: RelativePath) => readonly RelativePath[];
 }
 
 type Judgement = Pick<GateFunctionReport, "state" | "gap">;
@@ -176,6 +179,7 @@ function judge(fn: ChangedFunction, ctx: Context): Judged {
     };
   }
   const ev = ctx.evidenceOf(fn);
+  const left = ctx.leftOut(fn.path);
   const coverage = coverageOf(fn, ev, ctx);
   const out = judgeFunction(
     {
@@ -186,16 +190,18 @@ function judge(fn: ChangedFunction, ctx: Context): Judged {
       coverage,
       failed: ctx.failed,
       skipped: ev.skipped,
+      leftOut: left.length,
     },
     ctx.policy,
   );
+  const leftOut = left.length === 0 ? {} : { leftOut: left };
   const measures: Measures = {
     coverage:
       coverage === null
         ? null
         : { lines: coverage.lines, covered: coverage.covered, share: coverage.share },
     crap: out.crap,
-    loaders: { expected: ev.expected, measured: ev.measured },
+    loaders: { expected: ev.expected, measured: ev.measured, ...leftOut },
   };
   return { row: report(fn, measures, stateOf(out)), evidence: out.evidence, gap: out.completeness };
 }
@@ -239,6 +245,7 @@ export function evaluate(
     excluded: createInputMatcher(policy.coverageExclude),
     failed: evidence.testFiles.some((f) => f.failed.length > 0),
     counted: (path) => counted.get(path),
+    leftOut: (path) => leftOutLoaders(evidence.scope?.files ?? [], path),
     evidenceOf: ({ path, blob }) => {
       const key = `${path}\0${blob}`;
       const known = cache.get(key);
@@ -278,10 +285,14 @@ export function evaluate(
         complexityExclude: [...policy.exclude],
         complexityMaxFileBytes: policy.maxFileBytes,
         ...(policy.children ? { coverageChildren: true as const } : {}),
+        ...(policy.scope === undefined ? {} : { gateGroups: policy.scope.configured }),
       },
     },
     head: { commit: changed.headCommit, dirty: changed.dirty, paths: headPaths(changed) },
     budget: { seconds: evidence.budgetSeconds, timedOut: evidence.timedOut },
+    ...(evidence.scope === undefined
+      ? {}
+      : { scope: { groups: evidence.scope.inScope, leftOut: evidence.scope.leftOut } }),
     functions,
     uncounted,
     ...(applied === null ? {} : { exceptions: { unused: applied.unused } }),

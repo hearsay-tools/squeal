@@ -202,6 +202,15 @@ export interface Policy {
     /** D11: the tools `enabled` runs, each when the project has it installed. Default `["eslint", "oxlint"]`. */
     readonly tools: readonly LintTool[];
   };
+  /** Spec 020 D14: what `squeal code --base` runs, read at the merge base. */
+  readonly gate: {
+    /**
+     * D14.1: the check groups whose test files the gate runs; it replaces
+     * the default, every test group whose moment is not `manual`. The
+     * default groups `tests` and `slow` count. Default `null`: not set.
+     */
+    readonly groups: readonly string[] | null;
+  };
   /** Spec 018 D14: the results CI publishes on git refs, one per main commit. */
   readonly shared: {
     /**
@@ -410,6 +419,7 @@ export const DEFAULT_POLICY: Policy = {
     blocking: false,
     tools: ["eslint", "oxlint"],
   },
+  gate: { groups: null },
   shared: { ref: null },
 };
 
