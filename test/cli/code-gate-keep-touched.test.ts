@@ -1,13 +1,18 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { storedFiles } from "../../src/cli/code-gate-stored.js";
 import { startDaemon } from "../../src/core/daemon/daemon.js";
 import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
-import { createFixtureRepo, type FixtureRepo, waitFor, withStore } from "../daemon/helpers.js";
-import { git } from "../hash/git-repo.js";
-import { gate, hasRecord, runIdsAt } from "./code-gate-keep-kit.js";
+import { type FixtureRepo, waitFor, withStore } from "../daemon/helpers.js";
+import {
+  featureRepo,
+  gate,
+  hasRecord,
+  keepPolicy,
+  keysNow,
+  runIdsAt,
+} from "./code-gate-keep-kit.js";
 
 /*
  * Review 0.1.433 B1 (spec 020 D17.3): the gate keeps a file only when its
@@ -26,13 +31,10 @@ const INPUT: TestFileRef = { project: "", path: "test/input.test.ts" };
 const STEADY: TestFileRef = { project: "", path: "test/steady.test.ts" };
 
 /** `data/input.txt` is declared for the input test alone; nothing is observed at run time. */
-const POLICY = `${JSON.stringify({
-  complexity: { enabled: true },
-  coverage: { enabled: true },
-  baseline: { onStart: "lookup-only" },
+const POLICY = keepPolicy("lookup-only", {
   observe: { runtimeInputs: false },
   inputs: { [INPUT.path]: ["data/input.txt"] },
-})}\n`;
+});
 
 /**
  * While `armed` exists, outside the worktree, the input test writes `good`
@@ -44,22 +46,6 @@ const inputTest = (armed: string) =>
 
 const STEADY_TEST = `import { expect, it } from "vitest";\nimport { twice } from "../src/twice.ts";\n\nit("steady", () => {\n  expect(twice(3)).toBe(6);\n});\n`;
 
-/** Each file's key as the worktree's daemon would give it now. */
-async function keysNow(repo: FixtureRepo, refs: readonly TestFileRef[]): Promise<CheckKey[]> {
-  const stored = storedFiles(repo.root, repo.env, () => {});
-  if (stored === null) throw new Error("no keys: coverage is off");
-  try {
-    const keys = await stored.keys(refs);
-    return refs.map((ref) => {
-      const key = keys.get(ref);
-      if (key == null) throw new Error(`no key for ${ref.path}`);
-      return key;
-    });
-  } finally {
-    await stored.close();
-  }
-}
-
 describe("squeal code --base keeps no file whose input moved during its run (review 0.1.433 B1)", () => {
   let repo: FixtureRepo;
   let outside: string;
@@ -68,20 +54,12 @@ describe("squeal code --base keeps no file whose input moved during its run (rev
   beforeAll(() => {
     outside = mkdtempSync(join(tmpdir(), "squeal-keep-touched-"));
     armed = join(outside, "armed");
-    repo = createFixtureRepo({ files: { "squeal.config.json": POLICY } });
-    git(repo.root, ["checkout", "-q", "-b", "feature"]);
-    const feature = {
+    repo = featureRepo(POLICY, {
       "src/twice.ts": "export const twice = (x: number) => x + x;\n",
       "data/input.txt": "bad\n",
       [INPUT.path]: inputTest(armed),
       [STEADY.path]: STEADY_TEST,
-    };
-    for (const [path, text] of Object.entries(feature)) {
-      mkdirSync(dirname(join(repo.root, path)), { recursive: true });
-      writeFileSync(join(repo.root, path), text);
-    }
-    git(repo.root, ["add", "-A"]);
-    git(repo.root, ["commit", "-qm", "feature"]);
+    });
   });
 
   afterAll(() => {
