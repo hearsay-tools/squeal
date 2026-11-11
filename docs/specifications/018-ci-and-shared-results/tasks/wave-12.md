@@ -21,3 +21,19 @@ Items, each with a failing test first:
 Owns: `src/core/status/*` import lines and their tests. Leave alone: `src/core/shared/*`, `src/core/node-pin.ts`, the daemon.
 
 Done when: status tests reproduce the squawk case (an old un-rekeyed import plus a newer one with same-key results) and show the new line; lint, typecheck, `squeal status --wait 60000` on changed paths. No build, no full suite.
+
+## 018-32 R1: the default import line stays silent when the import works
+
+Use /worker. Shape: repair. Base: `cez/55048193` at `351c003cb` (the row's first pass; read `tasks/018-32/notes.md`).
+
+Outcome: default status names the newest import only when the environment blocks at least one of its files; content that moved since the import's commit never makes a line (D15, principle 1).
+
+Accepted from the first pass: newest import by import time; N counts `sameKeyKept` and `sameKeyNotAdopted`; blocking differences only; D19 handling; the per-project environment fix.
+
+Change: the line `Imported results from <source>: N of M test files match this worktree; the environment differs for E (a; b; k more in squeal status --full)` appears only when E > 0 with a named blocking difference. No blocking difference: no default line, whatever N is. `--full` and `--json` keep every count. A Node-only blocking difference with the D19 line shown still gives no import line.
+
+Starting seam: the gate in `src/core/status/import-lines.ts` that chooses the default line. Failing test first in `test/status/import-newest.test.ts`: newest import with 31 same-key-kept, 1,424 content-differs and no blocking difference gives no default line. The squawk case test now expects no default line; `--full` still names both imports.
+
+Owns: `src/core/status/*` import lines and their tests, `tasks/018-32/notes.md`. Leave alone: `src/core/shared/*`, `src/core/node-pin.ts`, the daemon, the spec.
+
+Done when: lint, typecheck, `squeal status --wait 60000` on the changed paths (bundle tests and Node 26 daemon start failures are expected). No build, no full suite.
