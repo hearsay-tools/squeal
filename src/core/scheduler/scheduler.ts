@@ -205,8 +205,8 @@ class TierScheduler implements Scheduler {
   readonly #commandHold: CommandHold;
   /** Row 011-211: when a slow lane's runner instance closes with its slow files still queued. */
   readonly #slowRelease: SlowRelease;
-  /** Spec 021 D2: each retried pass of `#reconcilePaths` waits under a key of its own. */
-  #pathPasses = 0;
+  /** Spec 021 D2: each retried pass or request waits under a key of its own. */
+  #retries = 0;
 
   constructor(private readonly options: SchedulerOptions) {
     this.#install = new InstallStamps(options.root);
@@ -656,26 +656,39 @@ class TierScheduler implements Scheduler {
       if (warmUp) this.#warmUp.start(this.#started().context, ledger, record);
       return record;
     };
+    const operation = "taking a squeal run --all request";
     // An install the next reconciliation pass would find ends the wait first; still waiting,
     // nothing can be listed or keyed and the checkpoint is abandoned at once (review wave 11, B1).
-    // A request's pass: its writes keep the store's wait (task 001-422).
+    // Spec 021 D2: the request's pass is tried again on a busy store, as the feed's are.
     if (this.#awaitingInstall) {
-      await this.#handleBatch({ trigger: "interval", paths: [] }, false);
+      await this.#request(operation, () =>
+        this.#handleBatch({ trigger: "interval", paths: [] }, true),
+      );
     }
     this.#groups.preempt();
     const record =
-      (await this.#lock.run(() => {
-        const { ledger } = this.#started();
-        if (this.#awaitingInstall || this.#reinstalled) return abandonFullSuite(ledger);
-        if (ledger.broken || this.#runnerWork.size > 0 || this.#runnerWork.refining) return null;
-        return queue(ledger);
-      }, "taking a squeal run --all request")) ??
+      (await this.#request(operation, () =>
+        this.#lock.run(
+          () =>
+            this.#transact((_, ledger) => {
+              if (this.#awaitingInstall || this.#reinstalled) return abandonFullSuite(ledger);
+              if (ledger.broken || this.#runnerWork.size > 0 || this.#runnerWork.refining) {
+                return null;
+              }
+              return queue(ledger);
+            }),
+          operation,
+        ),
+      )) ??
       (await this.#runnerWork.afterTier(async () => {
         const { context, ledger } = this.#started();
-        if (this.#awaitingInstall || this.#reinstalled) return abandonFullSuite(ledger);
-        await retryRunner(context, ledger);
-        return queue(ledger);
-      }, "taking a squeal run --all request after the runner work"));
+        const abandon = this.#awaitingInstall || this.#reinstalled;
+        if (!abandon) await retryRunner(context, ledger);
+        // Under the lock already: a refused stage is tried again without giving the lock up.
+        return this.#request(operation, async () =>
+          this.#transact((_, held) => (abandon ? abandonFullSuite(held) : queue(held))),
+        );
+      }, `${operation} after the runner work`));
     this.#pump();
     return record;
   }
@@ -702,25 +715,39 @@ class TierScheduler implements Scheduler {
    * does not have.
    */
   async requestGroup(group: string): Promise<SlowSuiteRequest | null> {
-    let lint = false;
-    const request = await this.#lock.run(() => {
+    const operation = `taking a squeal run ${group} request`;
+    // A lint group's release writes the code store: never inside the store's transaction (D3).
+    const lint = await this.#lock.run(() => {
       const { context, ledger } = this.#started();
-      const revision = ledger.revision.number;
-      const view = groupView(context.policy);
-      const resolved = view.groups.find((g) => g.name === group);
-      if (resolved === undefined) return null;
-      if (this.#awaitingInstall || this.#reinstalled) return { revision, queued: 0 };
-      if (resolved.select.kind === "lint") {
-        lint = true;
-        return { revision, queued: releaseLint(context, group) };
+      const resolved = groupView(context.policy).groups.find((g) => g.name === group);
+      if (resolved?.select.kind !== "lint" || this.#awaitingInstall || this.#reinstalled) {
+        return null;
       }
-      this.#groups.lanes(context.policy);
-      this.#groups.get(group)?.request();
-      const queued = queueGroup(context, ledger, group);
-      this.#requests.ask([...ledger.files.values()].filter((f) => view.of(f.ref).name === group));
-      return { revision, queued };
-    }, `taking a squeal run ${group} request`);
-    if (lint) void this.options.passes?.pass().catch(() => {});
+      return { revision: ledger.revision.number, queued: releaseLint(context, group) };
+    }, operation);
+    if (lint !== null) {
+      void this.options.passes?.pass().catch(() => {});
+      this.#pump();
+      return lint;
+    }
+    const request = await this.#request(operation, () =>
+      this.#lock.run(
+        () =>
+          this.#transact((context, ledger) => {
+            const revision = ledger.revision.number;
+            const view = groupView(context.policy);
+            if (!view.groups.some((g) => g.name === group)) return null;
+            if (this.#awaitingInstall || this.#reinstalled) return { revision, queued: 0 };
+            this.#groups.lanes(context.policy);
+            this.#groups.get(group)?.request();
+            const queued = queueGroup(context, ledger, group);
+            const files = [...ledger.files.values()];
+            this.#requests.ask(files.filter((f) => view.of(f.ref).name === group));
+            return { revision, queued };
+          }),
+        operation,
+      ),
+    );
     this.#pump();
     return request;
   }
@@ -738,6 +765,7 @@ class TierScheduler implements Scheduler {
     group: string,
     paths: readonly RelativePath[],
   ): Promise<NarrowRunRequest | null> {
+    const operation = `taking a squeal run ${group} <path>... request`;
     const request = await this.#runnerWork.afterTier(async () => {
       const { context, ledger } = this.#started();
       const revision = ledger.revision.number;
@@ -760,15 +788,21 @@ class TierScheduler implements Scheduler {
           narrow: narrowAnswer(context, ledger, group, selection, waiting),
         };
       }
-      const selected = selection.selected.get(group) ?? new Set<string>();
-      const { queued, asks } = queueNarrow(ledger, selected);
-      this.#requests.ask([...selected].flatMap((id) => ledger.files.get(id) ?? []));
-      this.#groups.lanes(context.policy);
-      const lane = this.#groups.get(group);
-      lane?.narrow.add(asks, ledger);
-      lane?.preempt();
-      return { revision, queued, narrow: narrowAnswer(context, ledger, group, selection, null) };
-    }, `taking a squeal run ${group} <path>... request`);
+      // Under the lock already: a refused stage is tried again without giving the lock up.
+      return this.#request(operation, async () =>
+        this.#transact(() => {
+          const selected = selection.selected.get(group) ?? new Set<string>();
+          const { queued, asks } = queueNarrow(ledger, selected);
+          this.#requests.ask([...selected].flatMap((id) => ledger.files.get(id) ?? []));
+          this.#groups.lanes(context.policy);
+          const lane = this.#groups.get(group);
+          lane?.narrow.add(asks, ledger);
+          lane?.preempt();
+          const narrow = narrowAnswer(context, ledger, group, selection, null);
+          return { revision, queued, narrow };
+        }),
+      );
+    }, operation);
     this.#pump();
     return request;
   }
@@ -776,10 +810,16 @@ class TierScheduler implements Scheduler {
   /** `squeal retry` (001-368): queues the requests in the store that may run now. */
   async requestRetries(): Promise<void> {
     if (this.#closed || this.#reinstalled || this.#awaitingInstall || !this.#context) return;
-    await this.#lock.run(() => {
-      const { context, ledger } = this.#started();
-      if (this.#takeRetries(context, ledger)) ledger.commit();
-    }, "taking squeal retry requests");
+    const operation = "taking squeal retry requests";
+    await this.#request(operation, () =>
+      this.#lock.run(
+        () =>
+          this.#transact((context, ledger) => {
+            if (this.#takeRetries(context, ledger)) ledger.commit();
+          }),
+        operation,
+      ),
+    );
     this.#pump();
   }
 
@@ -1309,6 +1349,51 @@ class TierScheduler implements Scheduler {
     return ms === undefined || this.#busy === null ? fn() : withBusySlice(ms, fn);
   }
 
+  /**
+   * Spec 021 D2 (review 0.1.434, B2): `stage`, the synchronous part of a
+   * socket request that changes the ledger and writes it, in one store
+   * transaction taken before it changes anything. A busy store refuses that
+   * transaction at its start, so the stage can be tried again whole
+   * (`#request`) and never runs twice. Another error rolls the store back,
+   * and the ledger is put back as the store holds it (`Ledger.hold`).
+   */
+  #transact<T>(stage: (context: SchedulerContext, ledger: Ledger) => T): T {
+    const { context, ledger } = this.#started();
+    const restore = ledger.hold([...ledger.files.values()].map((file) => file.ref));
+    try {
+      return context.store.transaction(() => stage(context, ledger));
+    } catch (error) {
+      restore();
+      throw error;
+    }
+  }
+
+  /**
+   * `once`, a socket request's write (`#transact`, or its pass), tried again
+   * while a busy store refuses it, a slice per try (spec 021 D2), with
+   * `busyWaits`; once without. A refusal once the scheduler closes or its
+   * daemon stops answers the request with an error that says the store was
+   * busy, so no request waits past the daemon.
+   */
+  async #request<T>(operation: string, once: () => Promise<T>): Promise<T> {
+    const waits = this.options.busyWaits;
+    if (waits === undefined || this.#busy === null) return once();
+    try {
+      return await retryWhileBusy(once, {
+        sliceMs: this.options.busySliceMs,
+        waits,
+        key: `scheduler:request:${++this.#retries}`,
+        what: operation.replace(/^taking /, ""),
+        stopped: () => this.#stopping(),
+      });
+    } catch (error) {
+      if (!isBusy(error)) throw error;
+      throw new Error(`${operation}: the store was still busy when the daemon stopped`, {
+        cause: error,
+      });
+    }
+  }
+
   /** `task` under the lock, `#sliced`; `operation` names it to a lock watcher (row 011-302). */
   #runSliced<T>(task: () => T | Promise<T>, operation: string): Promise<T> {
     return this.#sliced(() => this.#lock.run(task, operation));
@@ -1684,7 +1769,7 @@ class TierScheduler implements Scheduler {
     if (!sliced) return pass();
     await retryWhileBusy(pass, {
       waits,
-      key: `scheduler:paths:${++this.#pathPasses}`,
+      key: `scheduler:paths:${++this.#retries}`,
       what: `a pass over ${plural(paths.length, "path")}`,
       stopped: () => this.#closed,
     });
