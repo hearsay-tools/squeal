@@ -20,6 +20,7 @@ import { GATE_GROUPS } from "./assemble/gate-groups.js";
 import { INHERITED } from "./assemble/inherited.js";
 import { PREPARE } from "./assemble/prepare.js";
 import { REFUSED_OBSERVED } from "./assemble/refused.js";
+import { REFUSED_WRITES } from "./assemble/refused-write.js";
 import { REWRITTEN } from "./assemble/rewritten.js";
 import { RUNTIME_FILES } from "./assemble/runtime.js";
 import { SHARED_REF } from "./assemble/shared-ref.js";
@@ -78,4 +79,5 @@ export const CASES: readonly Case[] = [
   ...PYTEST_PDM,
   ...NODE_TEST_RUNS,
   ...LEAVING_LISTING,
+  ...REFUSED_WRITES,
 ];

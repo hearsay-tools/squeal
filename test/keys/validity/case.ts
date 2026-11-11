@@ -153,6 +153,12 @@ export interface AssembleInput {
   /** The keys read the store through a `Proxy`, as a test's wrapped store: no connection of its own (018 D1). */
   readonly wrappedStore?: true;
   /**
+   * Row 021-08 (spec 021 D2): the first write of the closures' untracked
+   * paths is refused, as a busy store refuses `BEGIN IMMEDIATE`, and they
+   * are tracked again. A tree before 021-08 forgot the refused call's paths.
+   */
+  readonly refusedWrite?: true;
+  /**
    * Then the runner's closures replace the first ones, the `removed` test
    * files are forgotten, and untracked paths are tracked again (011-36).
    */
