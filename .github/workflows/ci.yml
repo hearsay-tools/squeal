@@ -116,6 +116,41 @@ jobs:
       - name: The build adds no plugin file
         run: test -z "$(git status --porcelain --untracked-files=all -- plugins)" || { git status --short --untracked-files=all -- plugins; exit 1; }
 
+  node26:
+    # Row 018-36: the full suite on Node 26, the current LTS, for main and candidate pushes and on
+    # request, in three shards as on Node 22, so a run takes no longer. Its daemon spawns, stack
+    # frames and dropped flags broke tests that Node 22 and 24 passed.
+    name: Node 26 (${{ matrix.shard }}/3)
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # 011-39: the last release's tag and the history to it, as for the Node 22 shards.
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v6.1.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          version: "0.12.2"
+      - name: Pythons for the pytest fixtures
+        run: uv python install 3.10 3.13
+      - name: Test
+        id: test
+        run: pnpm exec vitest run --shard=${{ matrix.shard }}/3 --exclude test/harness/opencode-dispose.test.ts
+      # 010-16: the dispose race runs alone, as in the Node 22 shards.
+      - name: Test the dispose race alone
+        if: ${{ !cancelled() && matrix.shard == 3 && steps.test.outcome != 'skipped' }}
+        run: pnpm exec vitest run test/harness/opencode-dispose.test.ts
+
   nightly:
     # Spec 010 D7: the whole suite on Node 24, scheduled on main only. Main's Node 22 result comes
     # from its landings, so the nightly runs this one job.
