@@ -62,6 +62,10 @@ export interface LockEntry {
   readonly file: string;
   /** A request waiting behind a held lock (`->`), not a held lock. */
   readonly blocked: boolean;
+  /** Its first byte (spec 021 D5); absent where the source does not give the range. */
+  readonly start?: number;
+  /** Its last byte; `null` for a lock to the end of the file (`EOF`). Absent with `start`. */
+  readonly end?: number | null;
 }
 
 /**

@@ -129,17 +129,22 @@ class ProcSource implements PsSource {
     const locks: LockEntry[] = [];
     for (const line of text.split("\n")) {
       const m =
-        /^\s*\d+:\s+((?:->\s*)+)?(\S+)\s+\S+\s+(READ|WRITE)\s+(-?\d+)\s+([0-9a-f]+):([0-9a-f]+):(\d+)\s/i.exec(
+        /^\s*\d+:\s+((?:->\s*)+)?(\S+)\s+\S+\s+(READ|WRITE)\s+(-?\d+)\s+([0-9a-f]+):([0-9a-f]+):(\d+)\s(?:\s*(\d+)\s+(\d+|EOF)\b)?/i.exec(
           line,
         );
       if (m === null) continue;
       const [, arrow, kind = "", access = "", pid = "", major = "", minor = "", inode = ""] = m;
+      const [start, end] = [m[8], m[9]];
       locks.push({
         kind,
         access: access.toUpperCase() === "WRITE" ? "write" : "read",
         pid: Number(pid) > 0 ? Number(pid) : null,
         file: `${hex(BigInt(`0x${major}`))}:${hex(BigInt(`0x${minor}`))}:${inode}`,
         blocked: arrow !== undefined,
+        // Spec 021 D5: the byte range, which names SQLite's WAL write lock (byte 120 of `-shm`).
+        ...(start === undefined
+          ? {}
+          : { start: Number(start), end: end === "EOF" ? null : Number(end) }),
       });
     }
     return locks;
