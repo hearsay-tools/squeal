@@ -50,6 +50,8 @@ export interface CatchUpRun {
   readonly workers: number | undefined;
   /** `RunOptions.lane`: the instance it ran in (a beside lane, row 011-269). */
   readonly lane: string | undefined;
+  /** `RunOptions.background`: a run that may go remote (spec 021 D12, row 021-14). */
+  readonly background: boolean;
   /** `RunOptions.priority`: its group's (spec 019 D3, row 019-18). */
   readonly priority: CheckPriority | undefined;
   readonly startedAt: number;
@@ -161,6 +163,7 @@ export class CatchUpRunner implements RunnerAdapter {
       files: [...files],
       workers: options.workers,
       lane: options.lane,
+      background: options.background === true,
       priority: options.priority,
       startedAt: performance.now(),
       endedAt: null,
