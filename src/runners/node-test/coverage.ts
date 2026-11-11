@@ -1,4 +1,4 @@
-import type { CoverageRun } from "../../core/code/coverage/types.js";
+import type { RunnerCoverageOptions } from "../../core/code/coverage/types.js";
 import type { AbsolutePath, RelativePath } from "../../core/types/common.js";
 import type { TestFileRef } from "../../core/types/keys.js";
 import type { NodeTestGraph } from "./graph/index.js";
@@ -9,14 +9,7 @@ import type { CoveragePayload, Covering } from "./run/coverage.js";
  * collect coverage in the runs it makes anyway. Absent, or `enabled`
  * false, no run takes coverage and the keys are those of 0.1.354.
  */
-export interface NodeTestCoverage {
-  /** Policy `coverage.enabled` with `complexity.enabled` (D1), read at each `environment`. */
-  readonly enabled: () => boolean;
-  /** Spec 020 D12: policy `coverage.children`, read with `enabled`; absent, never. */
-  readonly children?: () => boolean;
-  /** One run's payloads, handed over after its report is built; never awaited by the run. */
-  readonly collected: (run: CoverageRun) => void;
-}
+export type NodeTestCoverage = RunnerCoverageOptions;
 
 /** D8 Fidelity: a closure that imports `node:inspector` or `inspector` can read V8 coverage. */
 const INSPECTOR = "inspector";

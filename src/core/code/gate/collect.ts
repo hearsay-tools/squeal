@@ -18,7 +18,12 @@ import type {
 } from "../../types/runner.js";
 import type { BlobCache } from "../coverage/record.js";
 import { coverageProvider, PROVIDER_MISSING_NOTE } from "../coverage/runtime.js";
-import type { CoverageRun, CoveredFile } from "../coverage/types.js";
+import type {
+  CoverageRun,
+  CoveredFile,
+  RunnerCoverageOptions,
+  VitestCoverageOptions,
+} from "../coverage/types.js";
 import type { RunEstimate } from "./estimate.js";
 import { inLoaderOrder, orderRuns } from "./plan.js";
 import { type BasePrepares, declaresPrepare, type PrepareRun, prepareEntry } from "./prepare.js";
@@ -54,14 +59,8 @@ export interface GateAdapters {
     readonly cache: false;
     /** D17.3: the workers record runtime reads, as a daemon's do, when the runs may be kept. */
     readonly observe?: () => boolean;
-    readonly coverage: {
-      readonly enabled: () => boolean;
-      /** D12: `coverage.children` at the base. */
-      readonly children: () => boolean;
-      readonly provider: AbsolutePath;
-      readonly tempDir: AbsolutePath;
-      readonly collected: (run: CoverageRun) => void;
-    };
+    /** Always on; D12: `children` is `coverage.children` at the base. */
+    readonly coverage: VitestCoverageOptions;
   }) => Promise<RunnerAdapter>;
   readonly nodeTest: (
     project: NodeTestProject,
@@ -71,12 +70,8 @@ export interface GateAdapters {
       readonly concurrency: () => number;
       readonly inputs: () => PolicyInputs;
       readonly tempDir: AbsolutePath;
-      readonly coverage: {
-        readonly enabled: () => boolean;
-        /** D12: `coverage.children` at the base. */
-        readonly children: () => boolean;
-        readonly collected: (run: CoverageRun) => void;
-      };
+      /** Always on; D12: `children` is `coverage.children` at the base. */
+      readonly coverage: RunnerCoverageOptions;
     },
   ) => Promise<RunnerAdapter>;
 }
