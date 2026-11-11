@@ -1,15 +1,21 @@
-import { mkdirSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { storedFiles } from "../../src/cli/code-gate-stored.js";
 import { startDaemon } from "../../src/core/daemon/daemon.js";
 import { acquireDaemonLock } from "../../src/core/daemon/lock.js";
 import { lockFileFor, storePaths } from "../../src/core/store/paths.js";
 import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
-import { createFixtureRepo, type FixtureRepo, waitFor, withStore } from "../daemon/helpers.js";
-import { git } from "../hash/git-repo.js";
-import { daemonRuns, gate, hasRecord, runIdsAt } from "./code-gate-keep-kit.js";
+import { type FixtureRepo, waitFor, withStore } from "../daemon/helpers.js";
+import {
+  daemonRuns,
+  featureRepo,
+  gate,
+  hasRecord,
+  keepPolicy,
+  keysNow,
+  runIdsAt,
+} from "./code-gate-keep-kit.js";
 
 /*
  * Spec 020 D17.3 (row 020-17c): the gate writes each test file it ran to
@@ -26,12 +32,6 @@ const SLOW = { timeout: 240_000 } as const;
 /** Room for a loaded host to start Vitest and run the quick file; the late one never ends. */
 const BUDGET = "30";
 
-const POLICY = `${JSON.stringify({
-  complexity: { enabled: true },
-  coverage: { enabled: true },
-  baseline: { onStart: "lookup-only" },
-})}\n`;
-
 /** The feature branch: `src/keep.ts` and two tests of it, one quick and one that never ends. */
 const FEATURE: Readonly<Record<string, string>> = {
   "src/keep.ts":
@@ -43,34 +43,11 @@ const FEATURE: Readonly<Record<string, string>> = {
 const QUICK: TestFileRef = { project: "", path: "test/quick.test.ts" };
 const LATE: TestFileRef = { project: "", path: "test/late.test.ts" };
 
-/** Each file's key as the worktree's daemon would give it now. */
-async function keysNow(repo: FixtureRepo, refs: readonly TestFileRef[]): Promise<CheckKey[]> {
-  const stored = storedFiles(repo.root, repo.env, () => {});
-  if (stored === null) throw new Error("no keys: coverage is off");
-  try {
-    const keys = await stored.keys(refs);
-    return refs.map((ref) => {
-      const key = keys.get(ref);
-      if (key == null) throw new Error(`no key for ${ref.path}`);
-      return key;
-    });
-  } finally {
-    await stored.close();
-  }
-}
-
 describe("squeal code --base keeps its completed files (spec 020 D17.3)", () => {
   let repo: FixtureRepo;
 
   beforeAll(() => {
-    repo = createFixtureRepo({ files: { "squeal.config.json": POLICY } });
-    git(repo.root, ["checkout", "-q", "-b", "feature"]);
-    for (const [path, text] of Object.entries(FEATURE)) {
-      mkdirSync(dirname(join(repo.root, path)), { recursive: true });
-      writeFileSync(join(repo.root, path), text);
-    }
-    git(repo.root, ["add", "-A"]);
-    git(repo.root, ["commit", "-qm", "feature"]);
+    repo = featureRepo(keepPolicy("lookup-only"), FEATURE);
   });
 
   afterAll(() => repo?.cleanup());
