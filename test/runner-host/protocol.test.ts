@@ -32,6 +32,15 @@ describe("runner host framing", () => {
     ]);
   });
 
+  it("reads a frame written right after stray bytes that lack a newline (review 0.1.434 S1)", () => {
+    const reader = new LineReader();
+    const frame = encodeLine({ id: 7, r: "reply" });
+    // A native write or a child with inherited stdout, then the host's frame.
+    expect(reader.push(`\u001b[2Kpartial progress ${frame}`)).toEqual([{ id: 7, r: "reply" }]);
+    expect(reader.push("stray")).toEqual([]);
+    expect(reader.push(encodeLine({ ev: "note", text: "n" }))).toEqual([{ ev: "note", text: "n" }]);
+  });
+
   it("throws on a marked line that does not parse", () => {
     expect(() => new LineReader().push(`${MARKER}{"id":1,\n`)).toThrow();
   });
