@@ -113,15 +113,18 @@ describe("the Vitest adapter through a runner host", DAEMON_SLOW, () => {
         await expect.poll(() => runs.length).toBe(1);
         return {
           report: steady(report),
-          covered: runs.flatMap((run) =>
-            run.files.map((file) => ({
-              testFile: file.testFile,
-              payload: existsSync(file.payload),
-              sources: [...file.sources]
-                .map(([path, source]) => [relative(project.root, path), source.path, source.sha1])
-                .sort(),
-            })),
-          ),
+          // In the order the workers ended, which varies: sorted by test file.
+          covered: runs
+            .flatMap((run) =>
+              run.files.map((file) => ({
+                testFile: file.testFile,
+                payload: existsSync(file.payload),
+                sources: [...file.sources]
+                  .map(([path, source]) => [relative(project.root, path), source.path, source.sha1])
+                  .sort(),
+              })),
+            )
+            .sort((a, b) => a.testFile.path.localeCompare(b.testFile.path)),
         };
       },
       "basic",
@@ -172,34 +175,39 @@ describe("the Vitest adapter through a runner host", DAEMON_SLOW, () => {
 
   it("fails to start with the same text on a broken config", async () => {
     const broken = { "vitest.config.ts": "export default {\n" };
-    const errors = await Promise.all(
-      [inProcess, hosted].map(async (make) => {
-        let at = "";
-        try {
-          await openFixture("basic", broken, async (root) => {
-            at = root;
-            if (make === hosted) return make({ root });
-            // Vite names the config from the working directory: the daemon's in-process calls
-            // run in the root (`inRootWhileRunning`), as a host does.
-            const back = process.cwd();
-            process.chdir(root);
-            try {
-              return await make({ root });
-            } finally {
-              process.chdir(back);
-            }
-          });
-          return "started";
-        } catch (error) {
-          // Vite colours each character of its frame, as the note strips it; each copy's
-          // directory has a name of its own.
-          const text = stripVTControlCharacters(
-            error instanceof Error ? error.message : String(error),
-          );
-          return text.replaceAll(at, "<root>").replaceAll(basename(at), "<copy>");
-        }
-      }),
-    );
+    // One after the other: the in-process start moves this process into its copy, which a
+    // host started meanwhile would inherit as its working directory.
+    const errors: string[] = [];
+    for (const make of [inProcess, hosted]) {
+      errors.push(
+        await (async () => {
+          let at = "";
+          try {
+            await openFixture("basic", broken, async (root) => {
+              at = root;
+              if (make === hosted) return make({ root });
+              // Vite names the config from the working directory: the daemon's in-process calls
+              // run in the root (`inRootWhileRunning`), as a host does.
+              const back = process.cwd();
+              process.chdir(root);
+              try {
+                return await make({ root });
+              } finally {
+                process.chdir(back);
+              }
+            });
+            return "started";
+          } catch (error) {
+            // Vite colours each character of its frame, as the note strips it; each copy's
+            // directory has a name of its own.
+            const text = stripVTControlCharacters(
+              error instanceof Error ? error.message : String(error),
+            );
+            return text.replaceAll(at, "<root>").replaceAll(basename(at), "<copy>");
+          }
+        })(),
+      );
+    }
     expect(errors[1]).toBe(errors[0]);
     expect(errors[0]).not.toBe("started");
   });

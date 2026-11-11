@@ -14,13 +14,14 @@ import {
   waitFor,
   withStore,
 } from "../daemon/helpers.js";
+import { inside } from "../daemon/scratch-helpers.js";
 import { runMissingConfig } from "../helpers/baseline.js";
 
 /*
  * Spec 021 D7, D8 (row 021-11), against a real daemon in this process with
  * `runnerHost` set and a real `squeal runner-host` of a build of `src`: the
- * daemon's Vitest tiers run in a host, its child, whose working directory is
- * the root. A host killed during a tier ends that tier `crashed`, its checks
+ * daemon's Vitest tiers run in a host, its child, which enters the root for
+ * each call and holds nothing inside it between calls (spec 001 D10). A host killed during a tier ends that tier `crashed`, its checks
  * `unknown`, with a note; the next batch starts a new host, which runs them.
  * The daemon's stop ends its host.
  */
@@ -101,7 +102,13 @@ describe.runIf(process.platform === "linux")("a daemon with a runner host", SLOW
     // The host waits for its workers before it answers, so the daemon's sweep finds none.
     expect(readNotes(repo).filter((note) => note.includes("left running"))).toEqual([]);
     const first = hosts(repo.root);
-    expect(first).toEqual([{ pid: expect.any(Number), cwd: repo.root }]);
+    expect(first).toHaveLength(1);
+    // Between calls the host holds nothing inside the root (spec 001 D10).
+    await waitFor(
+      () => hosts(repo.root).every(({ cwd }) => !inside(cwd, repo.root)),
+      30_000,
+      "the host's working directory outside the root between calls",
+    );
 
     // The next run of the hold test holds; its host is killed during it.
     writeFileSync(join(marks, "hold"), "");
@@ -142,7 +149,7 @@ describe.runIf(process.platform === "linux")("a daemon with a runner host", SLOW
       "the hold test to pass",
     );
     const second = hosts(repo.root);
-    expect(second).toEqual([{ pid: expect.any(Number), cwd: repo.root }]);
+    expect(second).toHaveLength(1);
     expect(second[0]?.pid).not.toBe(killed);
 
     await daemon.stop("stop-requested");

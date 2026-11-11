@@ -49,6 +49,11 @@ export interface ServeOptions {
   readonly version: string;
   /** Around each run (`hostWorkers`); absent, the run alone. */
   readonly around?: RunAround;
+  /**
+   * Around every call that reaches the adapter, its start and close included:
+   * the root as the working directory while one is in flight (`inRootWhileAnswering`).
+   */
+  readonly within?: <T>(call: () => Promise<T>) => Promise<T>;
   /** How long `close` and the input's end wait for the adapter to close. */
   readonly closeMs?: number;
 }
@@ -59,6 +64,7 @@ const CLOSE_MS = 5_000;
 export async function serveRunnerHost(options: ServeOptions): Promise<void> {
   const send = (message: HostMessage) => options.write(encodeLine(message));
   const around: RunAround = options.around ?? ((_, run) => run());
+  const within = options.within ?? ((call) => call());
   let adapter: HostedAdapter | null = null;
   let policy: HostPolicy | null = null;
   let sent = "";
@@ -94,7 +100,8 @@ export async function serveRunnerHost(options: ServeOptions): Promise<void> {
         run.stop.abort("stop");
       }
       for (const done of forced.values()) done();
-      const closing = adapter?.close().catch(() => {});
+      const current = adapter;
+      const closing = current === null ? undefined : within(() => current.close()).catch(() => {});
       let timer: NodeJS.Timeout | undefined;
       const bound = new Promise((resolve) => {
         timer = setTimeout(resolve, options.closeMs ?? CLOSE_MS);
@@ -216,7 +223,7 @@ export async function serveRunnerHost(options: ServeOptions): Promise<void> {
       return;
     }
     const { id, m, a } = message;
-    answer(id, m, a).then(
+    (m === "cancel" || m === "close" ? answer(id, m, a) : within(() => answer(id, m, a))).then(
       (r) => {
         tellValues();
         send({ id, r: r === undefined ? null : r });
