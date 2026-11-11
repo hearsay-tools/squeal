@@ -5,6 +5,7 @@ import type { ChangedSet, TestFileEvidence } from "../core/code/gate/types.js";
 import { createInputMatcher } from "../core/keys/glob.js";
 import { plural } from "../core/text.js";
 import type { GlobalSetupEntry } from "../core/types/runner.js";
+import { loadsChangedText } from "./code-gate-text.js";
 
 /*
  * Spec 020 D14.4 (row 020-15b, which carries 020-16a): what `squeal code
@@ -50,7 +51,7 @@ function leftOutLine({
   const what =
     selected === 0
       ? `none ${of} loads changed code`
-      : `${selected} ${of} ${selected === 1 ? "loads" : "load"} changed code; add ${add} to run ${selected === 1 ? "it" : "them"}`;
+      : `${selected} ${of} ${loadsChangedText(selected, add)}`;
   return `${name} (${at}) is left out: ${what}`;
 }
 
