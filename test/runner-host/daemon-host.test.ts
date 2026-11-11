@@ -1,7 +1,9 @@
 import { existsSync, readFileSync, readlinkSync, writeFileSync } from "node:fs";
+import { getPriority } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { type RunningDaemon, startDaemon } from "../../src/core/daemon/daemon.js";
+import { TEST_NICE } from "../../src/core/daemon/low-priority.js";
 import { childrenOf } from "../../src/core/daemon/terminate.js";
 import {
   createFixtureRepo,
@@ -96,6 +98,8 @@ describe.runIf(process.platform === "linux")("a daemon with a runner host", SLOW
       "the first run to pass",
     );
     expect(outcomes(repo, "test/plain.test.ts")).toContain("test pass");
+    // The host waits for its workers before it answers, so the daemon's sweep finds none.
+    expect(readNotes(repo).filter((note) => note.includes("left running"))).toEqual([]);
     const first = hosts(repo.root);
     expect(first).toEqual([{ pid: expect.any(Number), cwd: repo.root }]);
 
@@ -103,6 +107,9 @@ describe.runIf(process.platform === "linux")("a daemon with a runner host", SLOW
     writeFileSync(join(marks, "hold"), "");
     edit(1);
     await waitFor(() => existsSync(join(marks, "started")), 120_000, "the hold test to start");
+    // The host lowers its workers as the daemon lowered its own (001 D11 Priority).
+    const worker = Number(readFileSync(join(marks, "started"), "utf8"));
+    await waitFor(() => getPriority(worker) === TEST_NICE, 10_000, "the worker at nice 10");
     const tier = withStore(repo, (store) =>
       store.runs
         .inFlight(repo.worktreeId, 0)
