@@ -24,6 +24,7 @@
 
 ## For the next worker
 
-- Not edited, owned by 020-17ab: the header of `src/cli/code-gate.ts` still says the gate reads the stores "and never writes them" (line 35).
+- The header of `src/cli/code-gate.ts` now says the gate keeps what it completes (row 020-17 I).
+- `commands.md` (3 copies): this row's paragraph on keeping comes right after the list of where evidence comes from, then 020-17ab's estimate and order paragraphs (row 020-17 I).
 - The codex-runtime manifest sha256 of `commands.md` and the bundles are refreshed in the coordinator's bundle commit.
 - Not done: growing the shared observed sets from the gate's reads, so that a reading file can be kept without a daemon. This needs `keys.addObserved` and the meta rows written as `storeResults`'s caller does. It is a scope decision.

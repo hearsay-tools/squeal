@@ -12,9 +12,12 @@ Worker fc234d55, 2026-11-11, on `cand/0.1.432` (`0bf414568`).
 - `src/cli/code-gate.ts` opens the durations, passes `durations` and `estimated`, and closes them in `finally`. `src/cli/code-gate-text.ts` `estimateText()` writes the lines.
 - Report: `Evidence.estimates`; `runs[].estimate` (`seconds`, `files`, `known`, `width`) in `report.ts` `runsOf`. `evaluate.ts` is unchanged.
 
-## For the rebase over the wave 5.5 repair (B2)
+## On 0.1.432 with the B2 repair and 020-17c (row 020-17 I)
 
-The repair resolves stored and parts evidence before the pre-run print. After it, `storedBefore` and the lookup loop in `plan()` duplicate the repair's lookup. Keep the repair's lookup. Feed `planRuns` with each runner's files that will reach `adapter.run` (selected in scope, less the stored and parts files), and call `options.estimated` after the print and before any `prepare`. The loop must run `planned.files[i]` (loader order), less what `prepare` keeps from running.
+Done as planned here. `collect.ts` now goes: select, `storedOf` (the repair's one lookup of the parts and the stores), `tellSelection`, `plan(picked, known, …)`, then per runner `preparedBefore`, the run of `planned.files[i]` less what `prepare` kept from running, and `tellRan` (020-17c's keep).
+- `storedBefore` and `Planned` are gone. `preparedBefore` takes no `stored`.
+- `plan` estimates and orders each runner's selected files less those `known` gives. So a file 020-17c kept and the next run reads back is not estimated (`test/cli/code-gate-keep.test.ts`, second case, reads both the selection line and `runs[].estimate`).
+- A node:test entry whose `prepare` only the head declares (`not-at-base`) still counts in the estimate, as it counts as "to run" in the selection line (W5-R1 notes). Both can drop it together later, from `declaresPrepare`, with no run.
 
 ## Decisions the spec did not settle
 
