@@ -2177,8 +2177,8 @@ Spec folder `specifications/021-remote-store-and-execution/` (stage: research; t
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 021-01 research: a live store service and its engine | planned | `research/README.md`, topic `store-service`: what the shipped git-ref route leaves unserved, measured; who writes and reads; which operation a remote engine must make fast and how PostgreSQL, libSQL, Litestream, object storage, Valkey and existing remote-cache servers compare on it; whether SQLite is a bottleneck today; reuse of the REAPI or Turborepo protocol; where it belongs. | `research/store-service.md` committed. |
-| 021-02 research: remote test execution over SSH, Mutagen, machines on demand | planned | `research/README.md`, topic `remote-execution`: the case for it now; runner-remote against whole-workspace-remote; Mutagen sync and proof that the remote tree equals a revision; the remote environment and keys; boat.dev and other on-demand machines; failure and policy. | `research/remote-execution.md` committed. |
+| 021-01 research: a live store service and its engine | running (researcher 6b0d8161, claude opus high) | `research/README.md`, topic `store-service`: what the shipped git-ref route leaves unserved, measured; who writes and reads; which operation a remote engine must make fast and how PostgreSQL, libSQL, Litestream, object storage, Valkey and existing remote-cache servers compare on it; whether SQLite is a bottleneck today; reuse of the REAPI or Turborepo protocol; where it belongs. | `research/store-service.md` committed. |
+| 021-02 research: remote test execution over SSH, Mutagen, machines on demand | running (researcher d330ff18, claude opus high) | `research/README.md`, topic `remote-execution`: the case for it now; runner-remote against whole-workspace-remote; Mutagen sync and proof that the remote tree equals a revision; the remote environment and keys; boat.dev and other on-demand machines; failure and policy. | `research/remote-execution.md` committed. |
 
 ## Later
 
