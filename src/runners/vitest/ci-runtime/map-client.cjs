@@ -3,7 +3,9 @@
 // `workerMapper`'s protocol (`src/core/code/coverage/mapper.ts`): the
 // worker reads and maps a payload, and this side gives the sources it asks
 // for. Both sides' time is Squeal's (`clock.cjs`, row 018-29): this side's
-// answers on the clock, the worker's busy time added when it closes.
+// answers on the clock, the worker's busy time added when it closes. That
+// busy time holds the worker's own evidence time, so the worker's clock is
+// counted outside (`COUNTED_OUTSIDE`) and reads 0.
 // CommonJS with Node built-ins only.
 "use strict";
 const { Worker } = require("node:worker_threads");
@@ -17,7 +19,7 @@ const clock = require("./clock.cjs");
 function startMapper(settings, failed) {
   const { script, execArgv } = settings.worker;
   const worker = new Worker(script, {
-    workerData: { format: settings.format },
+    workerData: { format: settings.format, [clock.COUNTED_OUTSIDE]: true },
     ...(Array.isArray(execArgv) ? { execArgv } : {}),
   });
   worker.unref();
@@ -84,7 +86,7 @@ function startMapper(settings, failed) {
       await queue;
       broken ??= new Error("closed");
       try {
-        // The time its event loop was busy: the mapping (its own evidence time is in it too, a little).
+        // The time its event loop was busy: the mapping and its own evidence time, which its clock leaves out.
         clock.add(worker.performance.eventLoopUtilization().active);
       } catch {}
       await worker.terminate();
