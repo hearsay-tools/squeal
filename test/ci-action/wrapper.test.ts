@@ -1,3 +1,4 @@
+import { readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type Checkout, checkout, scratch, step } from "./checkout.js";
@@ -8,7 +9,9 @@ import { type Checkout, checkout, scratch, step } from "./checkout.js";
  * Squeal cannot run, it passes through and never fails the step:
  * `squeal ci record -- <command>` runs the command and exits with its code,
  * `export` and `publish` exit 0, each with a warning in the job log and the
- * step summary.
+ * step summary. When Squeal runs, a refusal or a crash of `export` or
+ * `publish` warns the same way and exits 0; a usage error still fails
+ * (the coordinator for the human, 2026-11-11).
  */
 
 const squeal = (at: Checkout, args: readonly string[], env?: Record<string, string>) =>
@@ -28,11 +31,62 @@ describe("the action's squeal command", () => {
     const record = squeal(at, ["ci", "record", "--out", "parts", "--", ...exit3]);
     expect(record).toMatchObject({ code: 3, stdout: "ran\n", summary: "" });
     expect(record.calls).toEqual([["ci", "record", "--out", "parts", "--", ...exit3]]);
-    expect(squeal(at, ["ci", "export", "--parts", "p"]).code).toBe(0);
-    // A refusal of Squeal's own in the export job keeps its code: that job gates no merge.
-    const refused = squeal(at, ["ci", "publish", "r.json.gz"], { STUB_EXIT: "1" });
-    expect(refused).toMatchObject({ code: 1, stdout: "", summary: "" });
-    expect(refused.calls).toEqual([["ci", "publish", "r.json.gz"]]);
+    const published = squeal(at, ["ci", "publish", "r.json.gz"], {
+      STUB_OUT: "Published refs/squeal/abc.\n",
+      STUB_ERR: "a note\n",
+    });
+    expect(published).toMatchObject({
+      code: 0,
+      stdout: "Published refs/squeal/abc.\n",
+      stderr: "a note\n",
+      summary: "",
+    });
+    expect(published.calls).toEqual([["ci", "publish", "r.json.gz"]]);
+  });
+
+  it("turns a refusal or a crash of export or publish into a warning and exits 0", () => {
+    const at = checkout();
+    const temp = scratch("runner-temp");
+    const shared = (sub: string, env: Record<string, string>) =>
+      squeal(at, ["ci", sub, "x"], { RUNNER_TEMP: temp, ...env });
+    const failed = (sub: string, exit: number, error: string) =>
+      `squeal ci ${sub} failed (exit ${exit}): ${error}. The run's result stays as it is; it shares no Squeal results.`;
+
+    const refusal = "squeal ci export: the parts' environments differ; wrote nothing";
+    const err = `squeal ci export: Squeal's recording took 1.0 s\n${refusal}\n`;
+    const refused = shared("export", { STUB_EXIT: "1", STUB_ERR: err });
+    expect(refused).toMatchObject({
+      code: 0,
+      stdout: `::warning title=Squeal::${failed("export", 1, refusal)}\n`,
+      stderr: err,
+      summary: `**Squeal:** ${failed("export", 1, refusal)}\n\n`,
+    });
+
+    const crashed = shared("publish", { STUB_THROW: "100% boom" });
+    expect(crashed.code).toBe(0);
+    expect(crashed.stderr).toContain("Error: 100% boom");
+    expect(crashed.stdout).toBe(
+      `::warning title=Squeal::${failed("publish", 1, "Error: 100%25 boom")}\n`,
+    );
+    expect(crashed.summary).toContain(failed("publish", 1, "Error: 100% boom"));
+
+    // The shell may name the signal ("Killed"); the exit code says it either way.
+    const killed = shared("publish", { STUB_SIGNAL: "SIGKILL" });
+    expect(killed.code).toBe(0);
+    expect(killed.stdout).toMatch(
+      /^::warning title=Squeal::squeal ci publish failed \(exit 137\)(: Killed| with no error output)\. The run's result stays as it is; it shares no Squeal results\.\n$/,
+    );
+
+    const silent = shared("export", { STUB_EXIT: "1" });
+    expect(silent).toMatchObject({
+      code: 0,
+      stdout: `::warning title=Squeal::squeal ci export failed (exit 1) with no error output. The run's result stays as it is; it shares no Squeal results.\n`,
+    });
+
+    // A usage error is a mistake in the CI file: it fails, as the CLI's own exit code says.
+    const usage = shared("export", { STUB_EXIT: "2", STUB_ERR: "usage: squeal ci export\n" });
+    expect(usage).toMatchObject({ code: 2, stdout: "", stderr: "usage: squeal ci export\n" });
+    expect(readdirSync(temp)).toEqual([]);
   });
 
   it("passes through when node on the PATH is older than Squeal's floor", () => {
