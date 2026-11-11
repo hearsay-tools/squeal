@@ -16,6 +16,7 @@ import { settleChecks } from "./policy-checks-settle.js";
 import { CODE_SHAPE } from "./policy-code.js";
 import { GATE_SHAPE } from "./policy-gate.js";
 import { LINT_SHAPE } from "./policy-lint.js";
+import { NODE_SHAPE } from "./policy-node.js";
 import { compiles, nodeTestProjects } from "./policy-node-test.js";
 import { pytestProjects } from "./policy-pytest.js";
 import { runtimeFiles } from "./policy-runtime.js";
@@ -105,6 +106,7 @@ const SHAPE: Shape = {
   ...LINT_SHAPE,
   ...SHARED_SHAPE,
   ...GATE_SHAPE,
+  ...NODE_SHAPE,
 };
 
 /**

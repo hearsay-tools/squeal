@@ -221,6 +221,13 @@ export interface Policy {
      */
     readonly ref: string | null;
   };
+  /**
+   * Spec 018 D18: which Node the daemon runs on. `"project"`: the exact
+   * version `.node-version` or `.nvmrc` pins, when it is installed, else the
+   * Node of the hook or CLI that starts the daemon. `"session"`: always the
+   * latter. Read when the daemon starts. Default `"project"`.
+   */
+  readonly node: "project" | "session";
 }
 
 /**
@@ -435,6 +442,7 @@ export const DEFAULT_POLICY: Policy = {
   },
   gate: { groups: null },
   shared: { ref: null },
+  node: "project",
 };
 
 /**

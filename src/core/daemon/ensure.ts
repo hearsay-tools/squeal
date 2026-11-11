@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync } from "node:fs";
 import { resolveCommonDir, worktreeIdFor } from "../fs/git-layout.js";
+import { pathFirst, pinnedNode } from "../node-pin.js";
 import { daemonLiveness } from "../presence/heartbeat.js";
 import { argv0For, displayId, worktreeLabel } from "../process-label.js";
 import { isStoreOpenFailure, openStore } from "../store/open.js";
@@ -189,9 +190,11 @@ export async function ensureDaemon(
  * timeout is `unavailable`, not a reason to spawn. Several hooks spawning at
  * once is harmless: losers of the lock exit.
  *
- * The daemon runs `node <cli> daemon <root>` with the caller's Node and
- * environment ("inherits the environment of the hook that started it with no
- * additions", D11). `<cli>` is `SQUEAL_CLI` when set, else `options.cli`.
+ * The daemon runs `node <cli> daemon <root>` with the caller's environment
+ * ("inherits the environment of the hook that started it with no additions",
+ * D11). Its Node is the project's pinned one when `pinnedNode` finds it, with
+ * that Node's directory first in `PATH` (spec 018 D18), else the caller's.
+ * `<cli>` is `SQUEAL_CLI` when set, else `options.cli`.
  * Its working directory is the store directory, never the root, so a
  * harness can remove the worktree under a live daemon (D10, lessons defect
  * 13); the daemon takes its own temp directory once it holds the lock.
@@ -217,12 +220,21 @@ export async function ensureDaemonProcess(
     if (commonDir === null) return UNAVAILABLE;
     const cwd = storePaths(commonDir).dir;
     mkdirSync(cwd, { recursive: true });
-    const child = spawn(process.execPath, [cli, "daemon", root, ...lockWait], {
-      argv0: argv0For(worktreeLabel("daemon", root, commonDir, displayId(root))),
-      cwd,
-      detached: true,
-      stdio: "ignore",
-    });
+    const node = pinnedNode(root);
+    const pinned = "binary" in node;
+    const child = spawn(
+      pinned ? node.binary : process.execPath,
+      [cli, "daemon", root, ...lockWait],
+      {
+        argv0: argv0For(worktreeLabel("daemon", root, commonDir, displayId(root))),
+        cwd,
+        detached: true,
+        stdio: "ignore",
+        ...(pinned
+          ? { env: { ...process.env, PATH: pathFirst(node.binary, process.env.PATH) } }
+          : {}),
+      },
+    );
     // A spawn that failed has no pid; its error is reported asynchronously, and a hook must never
     // crash on it.
     let ended = child.pid === undefined;
