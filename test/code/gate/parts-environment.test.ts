@@ -67,6 +67,13 @@ describe("environmentCheck: the environment a part's project ran in (spec 020 D1
     expect(await checked(holding([partProject()]), GATE, async () => [gate])).toBeNull();
   });
 
+  it("certifies a gate runner that observes, as it does when its runs may be kept", async () => {
+    // Spec 020 D17.3 (row 020-17c): the suffix is there already, and is not added twice.
+    const observing = { ...RUNNER, adapterVersion: `${RUNNER.adapterVersion}+observe.6` };
+    expect(GATE.recorderVersion).toBe("6");
+    expect(await checked(holding([partProject()]), GATE, async () => [observing])).toBeNull();
+  });
+
   it("certifies a variable off the allow-list at another value", async () => {
     const gate = { ...GATE, env: { PROBE: "yes", OTHER: "y" } };
     expect(await checked(holding([partProject()]), gate)).toBeNull();
