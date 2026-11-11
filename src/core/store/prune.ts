@@ -4,85 +4,35 @@ import type { PruneOptions, PruneReport, WorktreeRepo } from "../types/store.js"
 import { num, str } from "./codec.js";
 import type { Connection } from "./connection.js";
 import type { StorePaths } from "./paths.js";
+import {
+  DAY_MS,
+  DELETE_BATCH,
+  EVICTION_BATCH,
+  keptRuns,
+  LAST_COMPLETED_CHECKPOINTS,
+  LIVE_KEYS,
+  PRUNABLE,
+  UNPROTECTED,
+  UNREFERENCED_RUN,
+  VACUUM_PAGES,
+} from "./prune-rules.js";
 import { expireReplaced, keptByReplaced } from "./repos/replaced.js";
-import { dropFallenUnknownRuns, keptByUnknownRuns } from "./repos/unknown-runs.js";
+import { dropFallenUnknownRuns } from "./repos/unknown-runs.js";
+import { WORKTREE_SCOPED_TABLES } from "./repos/worktrees.js";
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-const EVICTION_BATCH = 32;
+/* Spec 001 D8 (row 011-160): the rules are in `prune-rules.ts`. */
 
-/**
- * Task 001-141 (003 lessons, defect 5): rows deleted per write transaction
- * and pages freed per `incremental_vacuum`. One `DELETE` of a removed
- * worktree's 80,000 results held cezar's store for 15 s, past a daemon's 5 s
- * busy timeout; a step this size holds it for well under a hook's 1 s.
- */
-const DELETE_BATCH = 256;
-const VACUUM_PAGES = 512;
+/** One write transaction of a prune (spec 021 D3); one that gave up on a busy store is run again. */
+export type PruneSlice = () => void;
 
-/*
- * Spec 001 D8 as amended 2026-10-23 (row 011-160): "keep every result whose
- * key is current in any live worktree plus the newest result per check on
- * the main worktree; drop other keys after 7 days, the results of removed
- * worktrees included, which are kept for the same 7 days so a later worktree
- * at the same content inherits them; [...] a size cap evicting least
- * recently used results as a backstop; drop `checks` rows that no result,
- * known state, view or transition references."
- *
- * A live worktree is a `worktrees` row whose root still has a `.git` entry.
- * Runs and checkpoints follow the 7 days rule unless a kept result
- * references the run or a kept run the checkpoint; the newest completed
- * checkpoint of each live worktree is kept for status (D7). A removed
- * worktree's run goes once no kept result names it. Spec 011 C7 as
- * amended 2026-10-21 (row 011-77): a kept replaced failure keeps its run, its
- * log and its failure text until it expires at the cutoff. Row 011-108: the
- * run behind an UNKNOWN keeps its run and log while that UNKNOWN stands.
- */
-
-/**
- * Keys some live worktree computed for its current revision. Unkeyed rows are
- * left out: one `NULL` in a `NOT IN` list makes it match nothing.
- */
-const LIVE_KEYS = `SELECT k.key FROM test_file_keys k JOIN worktrees w ON w.id = k.worktree_id
-  WHERE k.key IS NOT NULL`;
-
-/** The main worktree, whose newest result per check is kept. */
-const MAIN = "SELECT id FROM worktrees WHERE is_main = 1";
-
-/**
- * Results under no live key that are not the newest of their check on the
- * main worktree (by `recorded_at`, then `rowid`). Tested row by row, so a
- * batch re-checks only its own rows, under the write lock.
- */
-const UNPROTECTED = `key NOT IN (${LIVE_KEYS})
-  AND NOT (worktree_id IN (${MAIN}) AND NOT EXISTS (
-    SELECT 1 FROM results n
-    WHERE n.check_id = results.check_id AND n.worktree_id IN (${MAIN})
-      AND (n.recorded_at > results.recorded_at
-           OR (n.recorded_at = results.recorded_at AND n.rowid > results.rowid))))`;
-
-/**
- * What no rule keeps: unprotected and older than the cutoff (the one
- * parameter), whether or not its worktree is still registered.
- */
-const PRUNABLE = `${UNPROTECTED} AND recorded_at < ?`;
-
-/** Runs no result, kept replaced failure or standing UNKNOWN names; `keptRuns` is the parameter. */
-const UNREFERENCED_RUN = `NOT EXISTS (SELECT 1 FROM results r WHERE r.run_id = runs.id)
-  AND id NOT IN (SELECT value FROM json_each(?))`;
-
-/** The runs replaced failures and standing UNKNOWNs keep; read inside the deleting transaction. */
-function keptRuns(conn: Connection): string {
-  return JSON.stringify([...keptByReplaced(conn).runs, ...keptByUnknownRuns(conn)]);
+/** What a prune removed so far, filled in as its slices run. */
+export interface PruneCounts {
+  resultsRemoved: number;
+  runsRemoved: number;
+  checkpointsRemoved: number;
+  checksRemoved: number;
+  worktreesRemoved: number;
 }
-
-/** The newest completed checkpoint of each live worktree; status reports it (D7). */
-const LAST_COMPLETED_CHECKPOINTS = `
-  SELECT id FROM (
-    SELECT (SELECT x.id FROM checkpoints x
-            WHERE x.worktree_id = w.id AND x.end_state = 'completed'
-            ORDER BY x.completed_at DESC, x.rowid DESC LIMIT 1) AS id
-    FROM worktrees w
-  ) WHERE id IS NOT NULL`;
 
 export function prune(
   conn: Connection,
@@ -90,57 +40,138 @@ export function prune(
   paths: StorePaths,
   options: PruneOptions,
 ): PruneReport {
+  const counts = noneRemoved();
+  for (const slice of pruneSlices(conn, worktrees, paths, options, counts)) slice();
+  return pruneReport(conn, counts);
+}
+
+export function noneRemoved(): PruneCounts {
+  return {
+    resultsRemoved: 0,
+    runsRemoved: 0,
+    checkpointsRemoved: 0,
+    checksRemoved: 0,
+    worktreesRemoved: 0,
+  };
+}
+
+/** The report of a prune whose slices all ran. */
+export function pruneReport(conn: Connection, counts: PruneCounts): PruneReport {
+  return {
+    ...counts,
+    bytesAfter: pragmaNumber(conn, "page_count") * pragmaNumber(conn, "page_size"),
+  };
+}
+
+/**
+ * Spec 021 D3 (row 021-09): the prune as slices, each one write transaction
+ * of at most `DELETE_BATCH` rows or `VACUUM_PAGES` pages, so its driver can
+ * leave the lock free between them (the daemon's `SlicedPrune`). Each slice
+ * is yielded before it runs, and what follows is read once it ran, so its
+ * driver asks for the next only after it succeeded. Rows a slice deletes
+ * are tested again under the lock. The `checks`, `checkpoints`, expiry and
+ * failure-text steps stay one transaction each: their tables have no index
+ * a batch could test by, and the daemon's log names them when they are long.
+ */
+export function* pruneSlices(
+  conn: Connection,
+  worktrees: WorktreeRepo,
+  paths: StorePaths,
+  options: PruneOptions,
+  counts: PruneCounts,
+): Generator<PruneSlice, void, undefined> {
   const cutoff = options.now - options.retentionDays * DAY_MS;
 
-  let worktreesRemoved = 0;
   for (const worktree of worktrees.list()) {
-    if (existsSync(join(worktree.root, ".git"))) continue;
-    worktrees.remove(worktree.id);
-    worktreesRemoved++;
+    if (!isGone(worktree.root)) continue;
+    yield* removeWorktree(conn, worktrees, worktree, counts);
   }
 
   // Row 011-77 (011 C7 as amended 2026-10-21): an expired replaced failure first, so its run,
   // log and text go in this pass.
-  conn.transaction(() => expireReplaced(conn, cutoff));
+  yield () => conn.transaction(() => expireReplaced(conn, cutoff));
   // Row 011-108: a record whose UNKNOWN no longer stands keeps its run no longer.
-  conn.transaction(() => dropFallenUnknownRuns(conn));
+  yield () => conn.transaction(() => dropFallenUnknownRuns(conn));
 
-  let resultsRemoved = dropPrunable(conn, cutoff);
+  yield* dropPrunable(conn, cutoff, counts);
 
   if (options.maxSizeMb !== null) {
-    resultsRemoved += evictToCap(conn, options.maxSizeMb * 1024 * 1024);
+    yield* evictToCap(conn, options.maxSizeMb * 1024 * 1024, counts);
   }
 
-  const runsRemoved = dropRuns(conn, paths, cutoff);
+  yield* dropRuns(conn, paths, cutoff, counts);
 
   // Same rule as runs, plus: a checkpoint stays while a kept run is one of its tiers.
-  const checkpointsRemoved = conn.transaction(() =>
-    conn.run(
-      `DELETE FROM checkpoints
-       WHERE id NOT IN (${LAST_COMPLETED_CHECKPOINTS})
-         AND NOT EXISTS (SELECT 1 FROM runs r WHERE r.checkpoint_id = checkpoints.id)
-         AND (worktree_id NOT IN (SELECT id FROM worktrees)
-              OR (end_state IS NOT NULL AND coalesce(completed_at, started_at) < ?))`,
-      cutoff,
-    ),
-  );
+  yield () => {
+    counts.checkpointsRemoved += conn.transaction(() =>
+      conn.run(
+        `DELETE FROM checkpoints
+         WHERE id NOT IN (${LAST_COMPLETED_CHECKPOINTS})
+           AND NOT EXISTS (SELECT 1 FROM runs r WHERE r.checkpoint_id = checkpoints.id)
+           AND (worktree_id NOT IN (SELECT id FROM worktrees)
+                OR (end_state IS NOT NULL AND coalesce(completed_at, started_at) < ?))`,
+        cutoff,
+      ),
+    );
+  };
 
-  const checksRemoved = conn.transaction(() =>
-    conn.run(
-      `DELETE FROM checks WHERE id NOT IN (
-         SELECT check_id FROM results UNION SELECT check_id FROM known_states
-         UNION SELECT check_id FROM consumer_views UNION SELECT check_id FROM transitions)`,
-    ),
-  );
+  yield () => {
+    counts.checksRemoved += conn.transaction(() =>
+      conn.run(
+        `DELETE FROM checks WHERE id NOT IN (
+           SELECT check_id FROM results UNION SELECT check_id FROM known_states
+           UNION SELECT check_id FROM consumer_views UNION SELECT check_id FROM transitions)`,
+      ),
+    );
+  };
 
-  vacuum(conn);
-  return {
-    resultsRemoved,
-    runsRemoved,
-    checkpointsRemoved,
-    checksRemoved,
-    worktreesRemoved,
-    bytesAfter: pragmaNumber(conn, "page_count") * pragmaNumber(conn, "page_size"),
+  yield* vacuum(conn);
+}
+
+/** A worktree whose root has no `.git` entry any more (spec 001 D8). */
+function isGone(root: string): boolean {
+  return !existsSync(join(root, ".git"));
+}
+
+/** The column a batch of each worktree table's rows is chosen by; `rowid` unless listed. */
+const BATCH_KEYS: Partial<Record<(typeof WORKTREE_SCOPED_TABLES)[number], string>> = {
+  // `WITHOUT ROWID`, keyed by `(worktree_id, path)`.
+  file_hashes: "path",
+};
+
+/**
+ * A removed worktree's rows, `DELETE_BATCH` per slice and table, then its
+ * registration and the rest in `WorktreeRepo.remove`. Each slice tests the
+ * root again, so a worktree made again at the root meanwhile keeps its rows.
+ */
+function* removeWorktree(
+  conn: Connection,
+  worktrees: WorktreeRepo,
+  worktree: { readonly id: string; readonly root: string },
+  counts: PruneCounts,
+): Generator<PruneSlice, void, undefined> {
+  for (const table of WORKTREE_SCOPED_TABLES) {
+    const key = BATCH_KEYS[table] ?? "rowid";
+    let removed = DELETE_BATCH;
+    while (removed === DELETE_BATCH) {
+      removed = 0;
+      yield () => {
+        if (!isGone(worktree.root)) return;
+        removed = conn.transaction(() =>
+          conn.run(
+            `DELETE FROM ${table} WHERE worktree_id = ?1 AND ${key} IN (
+               SELECT ${key} FROM ${table} WHERE worktree_id = ?1 LIMIT ?2)`,
+            worktree.id,
+            DELETE_BATCH,
+          ),
+        );
+      };
+    }
+  }
+  yield () => {
+    if (!isGone(worktree.root)) return;
+    worktrees.remove(worktree.id);
+    counts.worktreesRemoved++;
   };
 }
 
@@ -148,21 +179,36 @@ export function prune(
  * The runs nothing names, with their logs: a removed worktree's at once, a
  * live worktree's once ended before the cutoff. A removed worktree's run
  * that a kept result names stays until that result expires (row 011-160).
+ * Read first, then deleted `DELETE_BATCH` per slice, each run tested again.
  */
-function dropRuns(conn: Connection, paths: StorePaths, cutoff: number): number {
-  const dropped = conn.transaction(() =>
-    conn.all(
-      `DELETE FROM runs
-       WHERE ${UNREFERENCED_RUN}
-         AND (worktree_id NOT IN (SELECT id FROM worktrees)
-              OR (end_state IS NOT NULL AND coalesce(ended_at, started_at) < ?))
-       RETURNING log_dir`,
-      keptRuns(conn),
-      cutoff,
-    ),
-  );
-  for (const row of dropped) removeRunLog(paths, str(row, "log_dir"));
-  return dropped.length;
+function* dropRuns(
+  conn: Connection,
+  paths: StorePaths,
+  cutoff: number,
+  counts: PruneCounts,
+): Generator<PruneSlice, void, undefined> {
+  const DROPPABLE = `${UNREFERENCED_RUN}
+    AND (worktree_id NOT IN (SELECT id FROM worktrees)
+         OR (end_state IS NOT NULL AND coalesce(ended_at, started_at) < ?))`;
+  const ids = conn
+    .read(() => conn.all(`SELECT id FROM runs WHERE ${DROPPABLE}`, keptRuns(conn), cutoff))
+    .map((row) => str(row, "id"));
+  for (let at = 0; at < ids.length; at += DELETE_BATCH) {
+    const batch = JSON.stringify(ids.slice(at, at + DELETE_BATCH));
+    yield () => {
+      const dropped = conn.transaction(() =>
+        conn.all(
+          `DELETE FROM runs WHERE id IN (SELECT value FROM json_each(?)) AND ${DROPPABLE}
+           RETURNING log_dir`,
+          batch,
+          keptRuns(conn),
+          cutoff,
+        ),
+      );
+      for (const row of dropped) removeRunLog(paths, str(row, "log_dir"));
+      counts.runsRemoved += dropped.length;
+    };
+  }
 }
 
 /**
@@ -170,23 +216,27 @@ function dropRuns(conn: Connection, paths: StorePaths, cutoff: number): number {
  * from one read, which takes no lock in WAL, and each batch re-tests its rows
  * under the write lock, so a key that became live meanwhile keeps its result.
  */
-function dropPrunable(conn: Connection, cutoff: number): number {
+function* dropPrunable(
+  conn: Connection,
+  cutoff: number,
+  counts: PruneCounts,
+): Generator<PruneSlice, void, undefined> {
   const ids = conn
     .read(() => conn.all(`SELECT rowid AS id FROM results WHERE ${PRUNABLE}`, cutoff))
     .map((row) => num(row, "id"));
-  let removed = 0;
   for (let at = 0; at < ids.length; at += DELETE_BATCH) {
     const batch = JSON.stringify(ids.slice(at, at + DELETE_BATCH));
-    removed += conn.transaction(() =>
-      conn.run(
-        `DELETE FROM results WHERE rowid IN (SELECT value FROM json_each(?)) AND ${PRUNABLE}`,
-        batch,
-        cutoff,
-      ),
-    );
+    yield () => {
+      counts.resultsRemoved += conn.transaction(() =>
+        conn.run(
+          `DELETE FROM results WHERE rowid IN (SELECT value FROM json_each(?)) AND ${PRUNABLE}`,
+          batch,
+          cutoff,
+        ),
+      );
+    };
   }
-  conn.transaction(() => dropOrphanFailureTexts(conn));
-  return removed;
+  yield () => conn.transaction(() => dropOrphanFailureTexts(conn));
 }
 
 /**
@@ -194,10 +244,10 @@ function dropPrunable(conn: Connection, cutoff: number): number {
  * `incremental_vacuum` frees them all in one. Stops when a step frees
  * nothing, as on a store created without `auto_vacuum`.
  */
-function vacuum(conn: Connection): void {
+function* vacuum(conn: Connection): Generator<PruneSlice, void, undefined> {
   let free = pragmaNumber(conn, "freelist_count");
   while (free > 0) {
-    conn.db.exec(`PRAGMA incremental_vacuum(${VACUUM_PAGES})`);
+    yield () => conn.transaction(() => conn.db.exec(`PRAGMA incremental_vacuum(${VACUUM_PAGES})`));
     const left = pragmaNumber(conn, "freelist_count");
     if (left >= free) return;
     free = left;
@@ -208,27 +258,32 @@ function vacuum(conn: Connection): void {
  * The size-cap backstop. Evicts least recently used results first: those
  * no rule keeps, then the newest main-worktree results that no live worktree
  * uses. Results under a live key are never evicted, because known states
- * rest on them. Returns how many results it removed.
+ * rest on them. Adds what it removed to `counts`.
  */
-function evictToCap(conn: Connection, capBytes: number): number {
+function* evictToCap(
+  conn: Connection,
+  capBytes: number,
+  counts: PruneCounts,
+): Generator<PruneSlice, void, undefined> {
   const tiers = [UNPROTECTED, `key NOT IN (${LIVE_KEYS})`];
-  let removed = 0;
   for (const tier of tiers) {
     while (usedBytes(conn) > capBytes) {
-      const batch = conn.transaction(() => {
-        const n = conn.run(
-          `DELETE FROM results WHERE rowid IN (
-             SELECT rowid FROM results WHERE ${tier} ORDER BY last_used_at, rowid LIMIT ?)`,
-          EVICTION_BATCH,
-        );
-        dropOrphanFailureTexts(conn);
-        return n;
-      });
+      let batch = 0;
+      yield () => {
+        batch = conn.transaction(() => {
+          const n = conn.run(
+            `DELETE FROM results WHERE rowid IN (
+               SELECT rowid FROM results WHERE ${tier} ORDER BY last_used_at, rowid LIMIT ?)`,
+            EVICTION_BATCH,
+          );
+          dropOrphanFailureTexts(conn);
+          return n;
+        });
+        counts.resultsRemoved += batch;
+      };
       if (batch === 0) break;
-      removed += batch;
     }
   }
-  return removed;
 }
 
 /** Texts no result and no kept replaced failure names; inside the caller's transaction. */
