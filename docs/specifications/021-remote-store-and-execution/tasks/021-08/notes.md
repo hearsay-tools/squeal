@@ -10,6 +10,9 @@ Worker ca906185, wave 1 (`../wave-1.md`), base `235de8076`, 2026-11-11. Spec D2.
 | `fbf4f8654` | `scheduler.ts` by agreement (request d5db635f): runner work gets the busy slice and waits; `#reconcilePaths` retried |
 | `5d070e369` | `daemon.ts`: registration, the start's scan mark, writing socket requests, shutdown mark and record clear (`daemon/busy-writes.ts`) |
 | `8626bf630` | `bootstrap.ts` and `scheduler.ts` by agreement (request 37866011): the baseline's last commit retried |
+| `b77b708b3` | R1: the worker-thread lock holder shared by the daemon's busy tests |
+| `2d91c885c` | R1, review 0.1.434 B2: `scheduler.ts` by agreement (request 7cf4a17d): a socket request's write stage retried (`#transact`, `#request`) |
+| `9c4aad93a` | R1, B2: the daemon's free-lock probe (`#writable`, `DaemonWrites.writable`) removed |
 
 ## The retried path
 
@@ -24,15 +27,15 @@ A busy store refuses `BEGIN IMMEDIATE` before the transaction writes. What a ref
 | A hold's released paths, a run's moved paths | `scheduler.ts` `#reconcilePaths` | whole pass, stat and all; the pass itself is sliced (`#handleBatch(…, true)`) |
 | Baseline's last commit | `bootstrap.ts` `commitLast` | `ledger.commit` again; a refused commit puts its writes back (row 011-126) |
 | Registration, start's scan mark | `daemon.ts` via `DaemonWrites.write` | within `DAEMON_START_BUSY_TIMEOUT_MS`, or until a stop |
-| run --all, run slow, run group, retry | `daemon.ts` `#writable` | no retry of the request: it waits, sliced, until an empty write transaction takes the lock, then runs once with the store's own wait |
+| run --all, run slow, run group, run group paths, retry | `scheduler.ts` `#transact` in `#request` | the request's synchronous stage runs in one store transaction taken before it changes anything, so a refusal comes first and the stage is tried again whole; the lock is released between tries, except after the runner work (`afterTier`), where the task already holds it; another error rolls the store back and `Ledger.hold` puts the ledger back |
 | Shutdown mark, record clear | `daemon.ts` via `DaemonWrites.write` | within `SHUTDOWN_WRITE_MS` (5 s, the wait it replaced) |
 
 ## Decisions the spec left open
 
 - **A refinement is retried in place, not pushed back on the queue.** It keeps its place, so later revisions still apply in order, and its fetched runner part is reused. Only a busy refusal is retried. Another error keeps today's note and "counted refined": a deterministic error would loop.
 - **A refused refinement during the scheduler's close returns quietly.** The revision stays unrefined, and the next daemon's start reads its paths as edits (task 001-113), instead of a note and a refined mark.
-- **Socket requests wait for a free lock; they are not retried.** A request changes scheduler memory before its commit (a full suite creates a checkpoint, a retry claims and queues), so running it twice is not safe. A writer that takes the lock between the wait and the request's write still meets the store's own 5 s wait. `promote` and `focus` do not wait: their one write, the yields row, is tried once with no wait and skipped when busy (`yields.ts`, `withBusySliceSync(0, …)`).
-- **`run --all` already waited** behind a reconciliation pass started after the request (row 011-198), which the feed retries; the held-lock test uses `squeal retry` with a stored no-result request, whose claim is a write with nothing before it.
+- **Socket requests: the write lock first, then the change** (R1, review 0.1.434 B2; the first round's free-lock probe reserved nothing). A request changes scheduler memory before its commit (a full suite creates a checkpoint, a retry claims and queues), so it must never run twice: its stage takes the store's transaction before it changes anything, and only a refusal at that start is retried. A request still refused once the daemon stops answers `<operation>: the store was still busy when the daemon stopped`. A lint group's release writes the code store, so it stays outside the store's transaction (D3). `retryRunner`'s own writes, on the runner-failure path before a full suite, are not retried. `promote` and `focus` are unchanged: their one write, the yields row, is tried once with no wait and skipped when busy (`yields.ts`, `withBusySliceSync(0, …)`).
+- **`run --all` in a daemon waits** behind a reconciliation pass started after the request (row 011-198), which the feed retries; its held-lock test is at the scheduler (`test/scheduler/busy-requests.test.ts`), where no such pass runs.
 - **Bounds.** Start writes keep the start's 120 s total; shutdown writes keep 5 s each. Everything else retries until it lands or its scheduler or daemon stops.
 
 ## Not done here
@@ -49,5 +52,7 @@ A busy store refuses `BEGIN IMMEDIATE` before the transaction writes. What a ref
 | `test/scheduler/busy-refinement.test.ts` | second process, 2 s, during revision 1's runner phase, revision 2 queued | yes: `test/new-one.test.ts` keyless |
 | `test/scheduler/busy-released.test.ts` | second connection taken as the released paths' pass begins its write | yes: a tier ran at the conflicted keys |
 | `test/daemon/busy-writes.test.ts` | second process, 1.5 s; daemon's serving wait mocked to 200 ms | yes: retry rejected `database is locked`; shutdown mark missing |
+| `test/daemon/busy-requests.test.ts` (R1) | worker thread, taken when `squeal run tests` takes the scheduler's lock (its `held` callback), after where the probe ran | yes: event loop stopped 1,606 ms; a request refused at the stop failed with a bare `database is locked` |
+| `test/scheduler/busy-requests.test.ts` (R1) | second process, 1.5 s, store's own wait 100 ms | yes: retry and run --all rejected `database is locked` |
 | `test/daemon/busy-start.test.ts` | worker thread, taken at the baseline's last commit, 1.5 s | yes: no ping answered during the hold |
 | `test/store/retry-while-busy.test.ts` | none (unit) | new helper |
