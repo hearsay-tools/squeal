@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import type { DatabaseSync, SQLInputValue, StatementSync } from "node:sqlite";
+import { endWrite, startWrite, type WriteStart } from "./long-write.js";
 
 export type Row = Record<string, unknown>;
 export type Params = readonly SQLInputValue[];
@@ -40,12 +41,16 @@ export class Connection {
    * Runs `fn` in a `BEGIN IMMEDIATE` transaction, or in a savepoint when one
    * is already open. Spec 001 D8: "short `BEGIN IMMEDIATE` write
    * transactions": the write lock is taken up front, so a writer waits on the
-   * busy timeout instead of failing to upgrade a read snapshot.
+   * busy timeout instead of failing to upgrade a read snapshot. Spec 021
+   * D3: one held past `LONG_WRITE_MS` tells the daemon's log (`long-write.ts`).
    */
   transaction<T>(fn: () => T): T {
     const savepoint = this.#depth > 0 ? `squeal_${this.#depth}` : null;
-    if (savepoint === null) this.#withinSlice(() => this.db.exec("BEGIN IMMEDIATE"));
-    else this.db.exec(`SAVEPOINT ${savepoint}`);
+    let write: WriteStart | null = null;
+    if (savepoint === null) {
+      this.#withinSlice(() => this.db.exec("BEGIN IMMEDIATE"));
+      write = startWrite(this.db);
+    } else this.db.exec(`SAVEPOINT ${savepoint}`);
     this.#depth++;
     try {
       const result = fn();
@@ -57,6 +62,7 @@ export class Connection {
       throw error;
     } finally {
       this.#depth--;
+      endWrite(write);
     }
   }
 
