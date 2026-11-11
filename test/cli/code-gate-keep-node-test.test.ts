@@ -2,10 +2,9 @@ import { randomUUID } from "node:crypto";
 import { mkdirSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { codeCommand } from "../../src/cli/code.js";
 import type { GateReport } from "../../src/core/code/gate/report.js";
 import { initRepo, writeFile } from "../hash/git-repo.js";
-import { ownHomeAndTmp } from "./code-gate-fixture.js";
+import { code, ownHomeAndTmp } from "./code-gate-fixture.js";
 
 /*
  * Review 0.1.433 B2 (spec 020 D17.3): with two node:test entries, every
@@ -43,22 +42,16 @@ const BASE: Readonly<Record<string, string>> = {
 
 /** `squeal code --base main --json` in `root`. */
 async function gate(root: string) {
-  let stdout = "";
-  let stderr = "";
-  const io = {
-    stdout: (text: string) => {
-      stdout += text;
-    },
-    stderr: (text: string) => {
-      stderr += text;
-    },
-    cwd: root,
-    env: {},
+  const ran = await code(root, ["--base", "main", "--json"]);
+  const [run] = (JSON.parse(ran.stdout) as GateReport).runs;
+  const { stderr } = ran;
+  return {
+    code: ran.code,
+    stderr,
+    runner: run?.runner,
+    completed: run?.completed,
+    from: run?.from,
   };
-  const code = await codeCommand(["--base", "main", "--json"], io);
-  const report = JSON.parse(stdout) as GateReport;
-  const [run] = report.runs;
-  return { code, stderr, runner: run?.runner, completed: run?.completed, from: run?.from };
 }
 
 describe("squeal code --base keeps each node:test entry's files (review 0.1.433 B2)", () => {

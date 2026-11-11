@@ -1,9 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { mkdirSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { availableParallelism, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach } from "vitest";
 import { codeCommand } from "../../src/cli/code.js";
+import { codeGateCommand } from "../../src/cli/code-gate.js";
+import type { CliIo } from "../../src/cli/main.js";
+import type { GateAdapters } from "../../src/core/code/gate/runners.js";
 import { initRepo, writeFile } from "../hash/git-repo.js";
 
 /*
@@ -85,19 +88,59 @@ export interface Ran {
   readonly stderr: string;
 }
 
-/** `squeal code <args>` in `cwd`, as the CLI dispatches it. */
-export async function code(cwd: string, args: readonly string[]): Promise<Ran> {
+export interface CodeOptions {
+  /** The command's environment; empty by default. */
+  readonly env?: CliIo["env"];
+  /** The gate's adapters: the run goes to `codeGateCommand` with them. */
+  readonly adapters?: GateAdapters;
+  /** Sees each write to stderr as it comes. */
+  readonly stderr?: (text: string) => void;
+}
+
+/** `squeal code <args>` in `cwd`, as the CLI dispatches it, or the gate with `options.adapters`. */
+export async function code(
+  cwd: string,
+  args: readonly string[],
+  options: CodeOptions = {},
+): Promise<Ran> {
   let stdout = "";
   let stderr = "";
-  const result = await codeCommand(args, {
+  const io: CliIo = {
     stdout: (text) => {
       stdout += text;
     },
     stderr: (text) => {
       stderr += text;
+      options.stderr?.(text);
     },
     cwd,
-    env: {},
-  });
+    env: options.env ?? {},
+  };
+  const result =
+    options.adapters === undefined
+      ? await codeCommand(args, io)
+      : await codeGateCommand(args, io, options.adapters);
   return { code: result, stdout, stderr };
+}
+
+/**
+ * `squeal code <args>` in `root`: each stderr line, the lines told before
+ * the first setup or test wrote `marker` into `root`, and whether it is
+ * there at the end.
+ */
+export async function toldBefore(root: string, args: readonly string[], marker: string) {
+  const told: { readonly line: string; readonly afterMarker: boolean }[] = [];
+  const ran = await code(root, args, {
+    stderr: (text) => {
+      const afterMarker = existsSync(join(root, marker));
+      for (const line of text.split("\n").filter((l) => l !== "")) told.push({ line, afterMarker });
+    },
+  });
+  return {
+    code: ran.code,
+    stdout: ran.stdout,
+    lines: told.map((t) => t.line),
+    before: told.filter((t) => !t.afterMarker).map((t) => t.line),
+    marked: existsSync(join(root, marker)),
+  };
 }
