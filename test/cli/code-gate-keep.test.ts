@@ -1,14 +1,15 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { storedFiles } from "../../src/cli/code-gate-stored.js";
 import { startDaemon } from "../../src/core/daemon/daemon.js";
 import { acquireDaemonLock } from "../../src/core/daemon/lock.js";
-import { lockFileFor } from "../../src/core/store/paths.js";
+import { lockFileFor, storePaths } from "../../src/core/store/paths.js";
 import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
 import { createFixtureRepo, type FixtureRepo, waitFor, withStore } from "../daemon/helpers.js";
 import { git } from "../hash/git-repo.js";
-import { daemonRuns, gate, hasRecord } from "./code-gate-keep-kit.js";
+import { daemonRuns, gate, hasRecord, runIdsAt } from "./code-gate-keep-kit.js";
 
 /*
  * Spec 020 D17.3 (row 020-17c): the gate writes each test file it ran to
@@ -56,13 +57,6 @@ async function keysNow(repo: FixtureRepo, refs: readonly TestFileRef[]): Promise
   } finally {
     await stored.close();
   }
-}
-
-/** The run ids of the results stored at `key`. */
-function runIdsAt(repo: FixtureRepo, key: CheckKey): string[] {
-  return withStore(repo, (store) => [
-    ...new Set(store.results.byKey(key, 0).map((r) => r.provenance.runId)),
-  ]);
 }
 
 describe("squeal code --base keeps its completed files (spec 020 D17.3)", () => {
@@ -193,5 +187,20 @@ describe("squeal code --base keeps its completed files (spec 020 D17.3)", () => 
     const free = await gate(repo, ["src/math.ts"]);
     expect(free.stderr).not.toContain("a daemon runs in this worktree");
     expect(runIdsAt(repo, edited as CheckKey)).toHaveLength(1);
+  });
+
+  it("runs a file again whose record a stop left without its results", SLOW, async () => {
+    const [math] = await keysNow(repo, [{ project: "", path: "test/math.test.ts" }]);
+    expect(hasRecord(repo, math as CheckKey)).toBe(true);
+    // What a stop between a file's two writes leaves: its record, and no results at its key.
+    const db = new DatabaseSync(storePaths(repo.commonDir).database);
+    db.prepare("DELETE FROM results WHERE key = ?").run(math as CheckKey);
+    db.close();
+
+    const again = await gate(repo, ["src/math.ts"]);
+
+    expect(again.ran).toEqual(["test/math.test.ts"]);
+    expect(again.report.runs[0]?.from).toBeUndefined();
+    expect(runIdsAt(repo, math as CheckKey)).toHaveLength(1);
   });
 });
