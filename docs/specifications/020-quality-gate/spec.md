@@ -137,6 +137,8 @@ All of these are read **at the base commit**, so a branch cannot loosen its own 
 
 The report contains no times other than `createdAt` and run durations, so the golden test can compare everything else.
 
+Later sections add fields, each named there: `exceptions` (D8), `runs[].from` (D11.7, D13.2), `runs[].children` (D12.7), `scope` and `loaders.leftOut` (D14.3), `runs[].prepare` (D15.3), `omitted` (D16.2) and `runs[].estimate` (D17.1).
+
 ### D8. Exceptions (slice 4, row 020-09; approved by the human 2026-11-10)
 
 `squeal code --base <ref> --exceptions <file>` reads one JSON file, `format: "squeal-code-exceptions/1"`, whose `entries` each name:
@@ -186,7 +188,7 @@ Each is designed from a design survey run first (`tasks/wave-2.md`, "Surveys for
 4. **`uncovered`** stays a daemon measure that the same rule computes. The gate report does not show it (Q2.3).
 5. **No loader reads unknown.** `fileCondition([], true)` is `unknown`, with the cause `no-loader`, in both paths. A state judged with no loader is dropped once, through a marker of its own in `loaderSet`. Text reads `not measured: no test Squeal runs loads this file`. The delivery wording `NOT_LOADED` is removed, because it can no longer occur. This reverses 015 D9 and resolves #165 for files no runner loads.
 6. **Test files are counted in the daemon,** and each test file is its own loader. The 015-52 listing hold is removed. An upgrade starts one `include` recount with one summary line, never one delivery per function. This reverses 015 D1's "test files are never counted".
-7. **`--base` reuses the stores.** For each selected test file, it computes the key as a daemon would, with no store write. It reads the results and the coverage record at that key, read-only, and runs only the files with neither. The report marks stored files `fromStore`. Counts are not reused, because counting costs about 3 ms a file. D1's "neither talks to it nor uses its store" changes to "reads its stores, never writes them". Amended 2026-11-11 (D17.3): the gate also writes each test file it completed at that key.
+7. **`--base` reuses the stores.** For each selected test file, it computes the key as a daemon would, with no store write. It reads the results and the coverage record at that key, read-only, and runs only the files with neither. The report marks each test file read from the stores in `runs[].from` (`store`; `parts` for D13.2). Counts are not reused, because counting costs about 3 ms a file. D1's "neither talks to it nor uses its store" changes to "reads its stores, never writes them". Amended 2026-11-11 (D17.3): the gate also writes each test file it completed at that key.
 
 Rows: 020-07a (items 1 to 5), then 020-07b (item 6) and 020-07c (item 7) in parallel.
 
