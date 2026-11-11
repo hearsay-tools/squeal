@@ -86,3 +86,18 @@ The human: "Add a third angle - one daemon per project + multiple runners (local
 7. Recommendation: the primitive, its boundaries and its interface in outline, what it fixes and what it does not, and the smallest first slice. Where the honest answer is that today's model with targeted fixes is better, say so with the evidence.
 
 Rules as above. Read live daemons only through `/proc` and `squeal ps`; open no socket, signal nothing.
+
+## Topic: cpu-budget (the human, 2026-11-11)
+
+The human, on a host-wide budget for background runs: "Research and also check if that ceiling wouldn't make it faster actually because runs would not compete." `daemon-model.md` Q4 (this folder) replayed a fixed ceiling of 16 and 14 busy vCPUs: 26% and 38% of last week's background core-hours deferred, a median 4.3 h and 5.5 h later, and edit-tier wall 13 and 15% lower. It counted deferral only as delay. It did not count that deferred work, run on a quieter host, takes fewer seconds per file; nor that work a later revision made stale need not run at all.
+
+The human rejected a fixed ceiling on 2026-11-07 as "too coupled to this machine, remember it's for others as well". The budget must work on any machine. Read first, and extend, do not repeat: `../../011-core/research/load-slowdown.md` (the slowdown curve; finding 6(b): throughput as busy ÷ slowdown, peaking near 18 busy on this host), `background-backoff.md` (a budget driven by Squeal's own measured slowdown, θ = 1.25), `manual-mode.md` and `unread-work.md` in that folder, and `daemon-model.md` Q4 here.
+
+1. Throughput, not only delay. Replay the same week (stores copied to `$TMPDIR`, sar history; no load made) as a queue: every background tier and every edit tier arrives when it did; work runs at the speed the slowdown curve gives for the load at that moment; deferred work runs later at its later speed. For no budget, the adaptive budget of `background-backoff.md`, and fixed ceilings of 20, 18, 16 and 14 (fixed ceilings only as reference points): total CPU-seconds spent, time to finish each background tier (median, p90), edit-tier wall time and time to first answer, and the time the host spent above the knee. Is the human's hypothesis right: does a budget finish the same work sooner because runs do not compete? Where is the crossover?
+2. Work that need not run. From `unread-work.md` and the stores: how much deferred background work was overtaken by a later revision of the same files before it would have run, so that a budget would skip it. Count it in 1's totals.
+3. Agents' own runs. The same replay with agents' foreground test runs (`load-slowdown.md` finding 3) as load the budget cannot defer: how much faster do they get?
+4. Signal on other machines. The curve is this host's (24 vCPUs, SMT). Which part of the result depends on that? Name the signal that makes the budget machine-independent (`background-backoff.md`'s own-slowdown ratio, Linux PSI `cpu.pressure`, physical core count) and how the result changes if the knee sits elsewhere (for example a laptop with 8 cores, or a container with a CPU quota), by arithmetic on the curve's shape.
+5. Where it lives. With the runner host of `daemon-model.md` and `runner-split.md`: does a budget count remote runner hosts (their own machine's budget) separately from local ones? One paragraph.
+6. Recommendation: the budget's signal, its scope (per user, across all daemons) and defaults, and the expected effect on edit-tier latency, background completion and total CPU, with the evidence; or that no budget is worth it.
+
+Rules as above. No load made; read live processes only through `/proc` and `squeal ps`.
