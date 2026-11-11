@@ -1,0 +1,48 @@
+# node store-stats.mjs on copies made 2026-11-11 14:22:35Z..14:23:09Z (cp store.sqlite store.sqlite-wal)
+# live sizes at copy time: squeal store.sqlite 841 MB + WAL 69.8 MB; cezar store.sqlite 4,022 MB + WAL 443 MB
+== squeal
+user_version 1; page_size 4096; pages 206655 (846 MB); freelist 0 (0 MB)
+table | rows | MB (table+indexes) | worktree columns
+results | 956840 | 605.9 | worktree_id
+known_states | 231923 | 54.9 | worktree_id,origin_worktree
+test_file_imports | 7499 | 48.2 | -
+file_hashes | 281238 | 47.2 | worktree_id
+test_files | 1854 | 21.2 | -
+consumer_views | 103867 | 17.9 | worktree_id
+test_file_keys | 35013 | 11.2 | worktree_id
+runs | 7210 | 10.7 | worktree_id
+meta | 4491 | 8.4 | -
+revisions | 2355 | 7.5 | worktree_id
+checks | 15515 | 5.9 | -
+failure_texts | 1154 | 3.0 | -
+transitions | 17389 | 1.9 | worktree_id
+checkpoints | 145 | 1.4 | worktree_id
+worktree_environment_hashes | 134 | 0.0 | worktree_id
+worktrees | 32 | 0.0 | -
+environments | 2 | 0.0 | -
+consumers | 11 | 0.0 | worktree_id
+environment_walks | 2 | 0.0 | -
+== cezar
+user_version 1; page_size 4096; pages 982717 (4025 MB); freelist 0 (0 MB)
+table | rows | MB (table+indexes) | worktree columns
+results | 3580180 | 2272.0 | worktree_id
+known_states | 1180233 | 1215.2 | worktree_id,origin_worktree
+test_file_imports | 23143 | 145.2 | -
+meta | 2202 | 125.6 | -
+test_files | 2392 | 48.7 | -
+file_hashes | 266156 | 42.0 | worktree_id
+runs | 37610 | 36.5 | worktree_id
+test_file_keys | 94505 | 35.3 | worktree_id
+checkpoints | 1708 | 34.9 | worktree_id
+checks | 43708 | 18.3 | -
+consumer_views | 96260 | 16.1 | worktree_id
+failure_texts | 2249 | 12.0 | -
+import_files | 29583 | 9.5 | -
+transitions | 35115 | 3.9 | worktree_id
+revisions | 951 | 3.5 | worktree_id
+environments | 138 | 0.9 | -
+worktree_environment_hashes | 3486 | 0.4 | worktree_id
+environment_walks | 31 | 0.1 | -
+worktrees | 63 | 0.0 | -
+imports | 20 | 0.0 | -
+consumers | 5 | 0.0 | worktree_id
