@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.429";
+  if (true) return "0.1.430";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -32580,17 +32580,23 @@ function isTaggedEscape(root, at2) {
   return template?.type === "template_string" && call?.type === "call_expression" && call.childForFieldName("arguments")?.equals(template) === true;
 }
 function withTypeImports(parser2, parsed3) {
-  const { input, tree } = parsed3;
-  if (!input.includes("import")) return parsed3;
-  let changed2 = false;
-  const rewritten = input.replace(TYPE_IMPORT, (match2, literal2, at2) => {
-    if (!isImportSyntax(tree.rootNode, match2, literal2, at2)) return match2;
-    changed2 = true;
-    return "_".repeat(match2.length);
-  });
-  if (!changed2) return parsed3;
-  tree.delete();
-  return { input: rewritten, tree: parser2.parse(rewritten) };
+  if (!parsed3.input.includes("import")) return parsed3;
+  let current2 = parsed3;
+  for (; ; ) {
+    const { input, tree } = current2;
+    let changed2 = false;
+    const rewritten = input.replace(
+      IMPORT_LITERAL,
+      (match2, literal2, at2) => {
+        if (!isImportSyntax(tree.rootNode, match2, literal2, at2)) return match2;
+        changed2 = true;
+        return "_".repeat(match2.length);
+      }
+    );
+    if (!changed2) return current2;
+    tree.delete();
+    current2 = { input: rewritten, tree: parser2.parse(rewritten) };
+  }
 }
 function isImportSyntax(root, match2, literal2, at2) {
   const from = at2 + match2.indexOf(literal2);
@@ -32600,7 +32606,7 @@ function spans(root, type, start2, end) {
   const node = root.descendantForIndex(start2, end);
   return node?.type === type && node.startIndex === start2 && node.endIndex === end;
 }
-var tsx, loading2, IMPORT_LITERAL, TYPE_IMPORT, ESCAPE;
+var tsx, loading2, IMPORT_LITERAL, ESCAPE;
 var init_parser2 = __esm({
   "src/core/code/count/parser.ts"() {
     "use strict";
@@ -32609,8 +32615,7 @@ var init_parser2 = __esm({
     init_wasm2();
     tsx = null;
     loading2 = null;
-    IMPORT_LITERAL = String.raw`import[ \t]*\([ \t]*('[^'\n\\$\x60]*'|"[^"\n\\$\x60]*")[ \t]*\)`;
-    TYPE_IMPORT = new RegExp(String.raw`(?<=\btypeof\s+|[<,]\s*)${IMPORT_LITERAL}`, "g");
+    IMPORT_LITERAL = /import[ \t]*\([ \t]*('[^'\n\\$\x60]*'|"[^"\n\\$\x60]*")[ \t]*\)/g;
     ESCAPE = /\\(?:(x(?![0-9a-fA-F]{2})|u(?![0-9a-fA-F]{4}|\{[0-9a-fA-F]+\}))|[\s\S])/g;
   }
 });
@@ -32968,7 +32973,7 @@ var init_count = __esm({
     init_python();
     init_typescript();
     init_walk();
-    COUNTER_VERSION = 4;
+    COUNTER_VERSION = 5;
   }
 });
 
