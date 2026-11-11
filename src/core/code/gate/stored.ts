@@ -6,7 +6,7 @@ import { readHead } from "../../daemon-loop/head.js";
 import { compare } from "../../fs/compare.js";
 import { worktreeIdFor } from "../../fs/git-layout.js";
 import { readObjectFormat } from "../../hash/git-index.js";
-import { createFsHasher } from "../../hash/hasher.js";
+import { createFsHasher, type Hasher } from "../../hash/hasher.js";
 import { observedModulesMetaKey } from "../../keys/modules.js";
 import { observedDirectMetaKey, observedMetaKey } from "../../keys/observed.js";
 import { testFileId } from "../../keys/reverse-index.js";
@@ -27,7 +27,8 @@ import { codeStorePath } from "../store/open.js";
 import { CODE_SCHEMA_VERSION } from "../store/schema.js";
 import { createCodeStore } from "../store/store.js";
 import type { CodeStore } from "../store/types.js";
-import { FILE_ERROR, type StoredEvidence } from "./collect.js";
+import { FILE_ERROR, type GateRun, type StoredEvidence } from "./collect.js";
+import { Keeper } from "./keep.js";
 import type { TestFileEvidence } from "./types.js";
 
 /*
@@ -38,8 +39,9 @@ import type { TestFileEvidence } from "./types.js";
  * The keys live in a scratch store under `$TMPDIR`, seeded with a copy of
  * those observed rows, as `ci export` keys (018 D9). The real stores are
  * opened read-only: a file with results and a coverage record at its key
- * is taken from them, and every other file runs. Nothing is written to a
- * store of the repository.
+ * is taken from them, and every other file runs. D17.3 (row 020-17c): the
+ * files that run are handed to a `Keeper`, which writes those it may keep
+ * at the keys found here.
  */
 
 export interface StoredOptions {
@@ -70,6 +72,8 @@ interface Keyed {
 export interface StoredFiles {
   /** `CollectOptions.stored`: the files with results and a record at their key. */
   readonly stored: StoredEvidence;
+  /** `CollectOptions.ran` (D17.3): keeps the files a run completed that `stored` keyed and did not find. */
+  readonly ran: (run: GateRun) => Promise<void>;
   /** Each file's key as a daemon here gives it; `null` when it has none. */
   keys(files: readonly TestFileRef[]): Promise<ReadonlyMap<TestFileRef, CheckKey | null>>;
   /** Closes the stores and the adapters, and removes the scratch store. */
@@ -77,13 +81,21 @@ export interface StoredFiles {
 }
 
 /**
- * The stores of `options.commonDir`, read-only; `null` when either store is
- * missing, cannot be read, or has another schema than this Squeal's. Then
- * every selected file runs. The adapters start at the first lookup.
+ * The stores of `options.commonDir`, read-only; `null` when either store
+ * cannot be read, or has another schema than this Squeal's. Then every
+ * selected file runs, and none is kept. With a store missing, every file
+ * runs, and the keeper creates it. The adapters start at the first lookup.
  */
 export function openStored(options: StoredOptions): StoredFiles | null {
   const stores = readStores(options.commonDir);
   if (stores === null) return null;
+  const keeper = new Keeper({
+    root: options.root,
+    commonDir: options.commonDir,
+    policy: options.policy,
+    head: () => readHead(options.root),
+    note: options.note ?? (() => {}),
+  });
   let keyer: Promise<Keyer> | null = null;
   const keyerOf = () => {
     keyer ??= openKeyer(options, stores.main);
@@ -96,11 +108,15 @@ export function openStored(options: StoredOptions): StoredFiles | null {
   let told = false;
   const stored: StoredEvidence = async (runner, files) => {
     try {
+      const keyer = await keyerOf();
       const found = new Map<TestFileRef, TestFileEvidence>();
-      for (const [ref, at] of await (await keyerOf()).keyed(files)) {
+      const runs = new Map<TestFileRef, CheckKey>();
+      for (const [ref, at] of await keyer.keyed(files)) {
         const evidence = evidenceAt(stores, runner, ref, at);
         if (evidence !== null) found.set(ref, evidence);
+        else runs.set(ref, at.key);
       }
+      keeper.expect(runner, keyer.keys, keyer.hasher, runs);
       return found;
     } catch (error) {
       // A store or an adapter that fails here costs only the runs it would have saved.
@@ -120,16 +136,17 @@ export function openStored(options: StoredOptions): StoredFiles | null {
       stores.close();
     }
   };
-  return { stored, keys, close };
+  return { stored, ran: (run) => keeper.ran(run), keys, close };
 }
 
 /** The evidence the stores hold of `ref` at its key; `null` without results and a record there. */
 function evidenceAt(
-  stores: Stores,
+  stores: Partial<Stores>,
   runner: TestFileEvidence["runner"],
   ref: TestFileRef,
   { key, loads }: Keyed,
 ): TestFileEvidence | null {
+  if (stores.main === undefined || stores.code === undefined) return null;
   const results = stores.main.results
     .byKey(key, 0)
     .filter((r) => r.check.project === ref.project && r.check.testPath === ref.path);
@@ -161,36 +178,43 @@ interface Stores {
   close(): void;
 }
 
-/** Both stores over read-only connections, or `null` when one cannot be read as this Squeal's. */
-function readStores(commonDir: AbsolutePath): Stores | null {
+/**
+ * Each store over a read-only connection, absent when its file is missing;
+ * `null` when one exists that cannot be read as this Squeal's.
+ */
+function readStores(commonDir: AbsolutePath): (Partial<Stores> & Pick<Stores, "close">) | null {
   const paths = storePaths(commonDir);
-  const mainDb = readOnly(paths.database, SCHEMA_VERSION);
-  if (mainDb === null) return null;
   const codePath = codeStorePath(commonDir);
+  const mainDb = readOnly(paths.database, SCHEMA_VERSION);
   const codeDb = readOnly(codePath, CODE_SCHEMA_VERSION);
-  if (codeDb === null) {
-    mainDb.close();
+  if (mainDb === null || codeDb === null) {
+    if (mainDb !== null && mainDb !== "missing") mainDb.close();
+    if (codeDb !== null && codeDb !== "missing") codeDb.close();
     return null;
   }
-  const main = createStore(new Connection(mainDb), SCHEMA_VERSION, paths);
-  const code = createCodeStore(new Connection(codeDb), CODE_SCHEMA_VERSION, codePath);
+  const main =
+    mainDb === "missing" ? undefined : createStore(new Connection(mainDb), SCHEMA_VERSION, paths);
+  const code =
+    codeDb === "missing"
+      ? undefined
+      : createCodeStore(new Connection(codeDb), CODE_SCHEMA_VERSION, codePath);
   return {
-    main,
-    code,
+    ...(main === undefined ? {} : { main }),
+    ...(code === undefined ? {} : { code }),
     close: () => {
-      main.close();
-      code.close();
+      main?.close();
+      code?.close();
     },
   };
 }
 
 /**
  * `path` opened read-only, so no statement can write it and closing it
- * checkpoints nothing; `null` when it is missing, cannot be read, or is at
- * another schema version.
+ * checkpoints nothing; `"missing"` when there is no file; `null` when it
+ * cannot be read or is at another schema version.
  */
-function readOnly(path: AbsolutePath, version: number): DatabaseSync | null {
-  if (!existsSync(path)) return null;
+function readOnly(path: AbsolutePath, version: number): DatabaseSync | "missing" | null {
+  if (!existsSync(path)) return "missing";
   let db: DatabaseSync | undefined;
   try {
     db = new DatabaseSync(path, { readOnly: true });
@@ -205,6 +229,9 @@ function readOnly(path: AbsolutePath, version: number): DatabaseSync | null {
 
 interface Keyer {
   keyed(files: readonly TestFileRef[]): Promise<ReadonlyMap<TestFileRef, Keyed>>;
+  /** The daemon's keys and hasher behind `keyed`: the keeper checks a run's inputs with them. */
+  readonly keys: WorktreeKeys;
+  readonly hasher: Hasher;
   close(): Promise<void>;
 }
 
@@ -221,7 +248,7 @@ const OBSERVED_ROWS: readonly ((project: ProjectName) => string)[] = [
  * at a daemon's start, with the adapters' environments and the observed
  * rows of `main` for their projects.
  */
-async function openKeyer(options: StoredOptions, main: Store): Promise<Keyer> {
+async function openKeyer(options: StoredOptions, main: Store | undefined): Promise<Keyer> {
   const temp = mkdtempSync(join(tmpdir(), "squeal-gate-keys-"));
   const adapters: RunnerAdapter[] = [];
   let scratch: Store | null = null;
@@ -237,15 +264,15 @@ async function openKeyer(options: StoredOptions, main: Store): Promise<Keyer> {
     if (isStoreOpenFailure(opened)) throw new Error(`no scratch store: ${opened.reason}`);
     scratch = opened;
     for (const project of new Set(environments.map((e) => e.project))) {
-      for (const row of OBSERVED_ROWS) copyMeta(main, opened, row(project));
+      for (const row of OBSERVED_ROWS) if (main !== undefined) copyMeta(main, opened, row(project));
     }
-    const keys = await openKeys(options, opened);
+    const { keys, hasher } = await openKeys(options, opened);
     await keys.setEnvironments(environments);
     const listed = new Map<string, RunnerAdapter>();
     for (const adapter of adapters) {
       for (const ref of await adapter.testFiles()) listed.set(testFileId(ref), adapter);
     }
-    return { keyed: (files) => keyFiles(keys, listed, files), close };
+    return { keyed: (files) => keyFiles(keys, listed, files), keys, hasher, close };
   } catch (error) {
     await close();
     throw error;
@@ -259,14 +286,18 @@ function copyMeta(from: Store, to: Store, key: string): void {
 }
 
 /** The daemon's `WorktreeKeys` of this worktree over `store`, bootstrapped as at its start. */
-async function openKeys(options: StoredOptions, store: Store): Promise<WorktreeKeys> {
+async function openKeys(
+  options: StoredOptions,
+  store: Store,
+): Promise<{ readonly keys: WorktreeKeys; readonly hasher: Hasher }> {
   const { root, policy, squealVersion, env } = options;
   const objectFormat = await readObjectFormat(root);
+  const hasher = createFsHasher(root, objectFormat);
   const keys = new WorktreeKeys({
     root,
     worktreeId: worktreeIdFor(root),
     store,
-    hasher: createFsHasher(root, objectFormat),
+    hasher,
     objectFormat,
     policy,
     squealVersion,
@@ -274,7 +305,7 @@ async function openKeys(options: StoredOptions, store: Store): Promise<WorktreeK
     onExtraFiles: () => {},
   });
   await keys.bootstrap(() => readHead(root));
-  return keys;
+  return { keys, hasher };
 }
 
 /**
