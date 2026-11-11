@@ -213,3 +213,6 @@ test/node-pin/
 # node on the PATH with Squeal's Node floor.
 test/ci-action/setup
 test/ci-action/wrapper
+# Row 018-36: the observe-fidelity preload case leaves the cut Node 26 stack
+# unnamed (review 0.1.441 B1).
+test/runners/vitest/observe-fidelity
