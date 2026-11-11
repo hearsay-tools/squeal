@@ -13,8 +13,8 @@ import { NODE_SHAPE, type NodeSetting } from "./daemon/policy-node.js";
  * that starts the daemon runs, so a session's own Node does not decide
  * whether shared results count (the key holds the daemon's
  * `process.version`, D1). Nothing is installed or downloaded. Imported by
- * the daemon's spawn in hooks (task 001-31): `node:` modules and the small
- * config reader only.
+ * the daemon's spawn in hooks (task 001-31): `node:` modules, the small
+ * config reader and the Node floor of the OpenCode host check only.
  */
 
 /** The pin files at the worktree root, in the order they are read. */
@@ -49,10 +49,11 @@ const SELF = 'process.version + "\\n" + process.execPath';
  * Node. Otherwise the pin's first value, exact, and installed where nvm,
  * fnm, volta, asdf, mise or n keep that version, or on `env.PATH`; a range
  * or alias is not resolved, and a version below Squeal's minimum Node
- * (`engines.node`) is not used, since the daemon could not start on it. The session's own Node at that version is the
- * answer without a lookup. Synchronous, since status reads it inside one
- * read transaction (row 018-31); each candidate binary runs once per
- * process and file. Never throws.
+ * (`engines.node`) is not used, since the daemon could not start on it. The
+ * session's own Node at that version is the answer without a lookup.
+ * Synchronous, since status reads it inside one read transaction (row
+ * 018-31); each candidate binary runs once per process and file. Never
+ * throws.
  */
 export function pinnedNode(root: string, env: NodeJS.ProcessEnv = process.env): PinnedNode {
   const wanted = readPin(root);
@@ -64,8 +65,17 @@ export function pinnedNode(root: string, env: NodeJS.ProcessEnv = process.env): 
   if (version === undefined) return { reason: "range", wanted };
   if (!runsSqueal(version)) return { reason: "too-old", wanted };
   if (process.versions.node === version) return { binary: process.execPath, version };
-  const binary = installed(version, env) ?? onPath(version, root, env);
+  const binary = lookUp(version, root, env);
   return binary === null ? { reason: "missing", wanted } : { binary, version };
+}
+
+/** The binary of `version`: a version manager's install, else through `env.PATH`; `null` on any failure. */
+function lookUp(version: string, root: string, env: NodeJS.ProcessEnv): string | null {
+  try {
+    return installed(version, env) ?? onPath(version, root, env);
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -124,7 +134,7 @@ function nodeSetting(root: string): NodeSetting {
  * fnm, volta, asdf, mise, n. Each honours its own directory variable, else
  * its default under `env.HOME`.
  */
-export function managerCandidates(version: string, env: NodeJS.ProcessEnv): string[] {
+function managerCandidates(version: string, env: NodeJS.ProcessEnv): string[] {
   const home = env.HOME ?? homedir();
   const data = env.XDG_DATA_HOME ?? join(home, ".local", "share");
   const fnm =
