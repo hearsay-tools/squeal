@@ -26,6 +26,7 @@ const KEYS = {
   beginRun: () => 1,
   endRun: () => {},
   observes: () => false,
+  environmentFiles: () => ["setup.ts"],
 } as unknown as WorktreeKeys;
 
 const HASHER: Hasher = { stat: async () => null, hash: async () => null, now: () => 0 };
@@ -84,6 +85,22 @@ describe("Keeper (spec 020 D17.3)", () => {
     // The root does not exist, so the write fails at its first step; it is told once.
     expect(notes).toHaveLength(1);
     expect(notes[0]).toMatch(/^the gate kept no more results in the stores: /);
+  });
+
+  it("writes nothing of a file whose run loaded an environment file its keys lack", async () => {
+    const notes: string[] = [];
+    const loaded = (paths: string[]) => ({
+      ...run([REF], RECORD),
+      report: { ...report([REF]), environmentObserved: [{ project: "", paths }] },
+    });
+    const reached = () => Promise.reject(new Error("the write was reached"));
+
+    await keeper(reached, notes).ran(loaded(["setup.ts", "other-setup.ts"]));
+    expect(notes).toEqual([]);
+
+    // One its keys hold does not stop it: the write is reached, and fails here.
+    await keeper(reached, notes).ran(loaded(["setup.ts"]));
+    expect(notes).toHaveLength(1);
   });
 
   it("does nothing for a runner it was not told of", async () => {
