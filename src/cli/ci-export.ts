@@ -9,9 +9,10 @@ import {
   type UncertifiedFile,
 } from "../core/ci/export.js";
 import { readPartsIn } from "../core/ci/parts.js";
-import { coverageOn, coverageProvider } from "../core/code/coverage/runtime.js";
+import { coverageProvider } from "../core/code/coverage/runtime.js";
 import { readPolicy } from "../core/daemon/policy.js";
 import { squealVersion } from "../core/daemon/version.js";
+import { daemonVitestOptions } from "../core/daemon/vitest-options.js";
 import { readHead } from "../core/daemon-loop/head.js";
 import { findWorktreeRoot, worktreeIdFor } from "../core/fs/git-layout.js";
 import { KEY_FORMAT_VERSION } from "../core/keys/key-format.js";
@@ -153,35 +154,23 @@ function parseExport(args: readonly string[]): ExportArgs | { readonly error: st
 }
 
 /**
- * The Vitest adapter as the daemon builds it from `policy` (`daemon.ts`):
- * observing, the excluded projects and files, and Squeal's coverage provider
- * when coverage is on, which the environment hash holds. Coverage is never
- * collected here: the export runs no test.
+ * The Vitest adapter as the daemon builds it from `policy`
+ * (`daemonVitestOptions`), which the environment hash holds. Coverage is
+ * never collected here: the export runs no test.
  */
 function daemonVitest(
   root: AbsolutePath,
   policy: Policy,
   temp: AbsolutePath,
 ): Promise<RunnerAdapter> {
-  const provider = coverageOn(policy) ? coverageProvider() : null;
-  return createVitestAdapter({
-    root,
-    observe: () => policy.observe.runtimeInputs,
-    excludeProjects: () => policy.vitest.excludeProjects,
-    exclude: () => policy.vitest.exclude,
-    ...(provider === null
-      ? {}
-      : {
-          coverage: {
-            enabled: () => true,
-            // Spec 020 D12.5: the coverage marker holds `coverage.children`, as the daemon keys it.
-            children: () => policy.coverage.children,
-            provider,
-            tempDir: temp,
-            collected: () => {},
-          },
-        }),
-  });
+  return createVitestAdapter(
+    daemonVitestOptions({
+      root,
+      policy: () => policy,
+      provider: coverageProvider(),
+      tempDir: temp,
+    }),
+  );
 }
 
 const files = (n: number) => `${n} test file${n === 1 ? "" : "s"}`;

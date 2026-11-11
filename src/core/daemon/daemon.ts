@@ -516,6 +516,7 @@ class Daemon {
         nodeTest,
         pytest,
         runnerModule,
+        { daemonVitestOptions },
         { createCompositeRunner },
         { withSlowInstance, vitestLaneGroup, laneInstanceWorkers },
         { awaitsInstall },
@@ -537,6 +538,7 @@ class Daemon {
         import("./node-test-runners.js"),
         import("./pytest-runners.js"),
         import("./runner.js"),
+        import("./vitest-options.js"),
         import("./composite-runner.js"),
         import("./slow-instance.js"),
         import("../scheduler/install.js"),
@@ -563,12 +565,6 @@ class Daemon {
         this.options.ownsProcess && !vitest.hosted
           ? inRootWhileRunning(root, this.opened.scratch)
           : undefined;
-      // Spec 003 D7: one runner per configured or detected runner. Vitest is
-      // built when detected, or when nothing else is configured, so a project
-      // with neither keeps the "project without Vitest" failure note (001 D11).
-      // Decided here only: a reload reconciles the projects, not the runners (011 C10).
-      const configured = this.#policy.nodeTest;
-      const configuredPytest = this.#policy.pytest;
       // Spec 015 D8 (row 015-11, agreed with the coordinator): the runs Vitest makes with
       // coverage on hand their payloads to the records' writer, made below once the runners
       // opened. With no provider beside the running code, coverage stays off, with one note.
@@ -576,49 +572,40 @@ class Daemon {
       if (provider === null && coverage.coverageOn(this.#policy)) {
         this.#note(coverage.PROVIDER_MISSING_NOTE);
       }
-      const covering =
-        provider === null
-          ? {}
-          : {
-              coverage: {
-                enabled: () => coverage.coverageOn(this.#policy),
-                children: () => this.#policy.coverage.children,
-                provider,
-                tempDir: this.opened.scratch.tempDir,
-                collected: (run: Parameters<CoverageWriter["collected"]>[0]) =>
-                  this.#coverage?.collected(run),
-              },
-            };
+      // One object for every instance, so they share its coverage (row 015-70).
+      const vitestOptions = daemonVitestOptions({
+        root,
+        policy: () => this.#policy,
+        provider,
+        tempDir: this.opened.scratch.tempDir,
+        collected: (run) => this.#coverage?.collected(run),
+      });
       // Each Vitest instance's workers carry the mark of its lane (001 D12, task 004-18).
       const vitestInstance = (lane: string, maxWorkers?: number) => () =>
         vitest.create({
-          root,
+          ...vitestOptions,
           note: (text) => this.#note(text),
           optimizer: (projects) => this.#optimizerOff(projects),
-          observe: () => this.#policy.observe.runtimeInputs,
-          excludeProjects: () => this.#policy.vitest.excludeProjects,
-          exclude: () => this.#policy.vitest.exclude,
           childEnv: this.#children.envFor(lane),
-          ...covering,
           ...(maxWorkers === undefined ? {} : { maxWorkers }),
         });
-      const vitestRunner =
-        configured.length + configuredPytest.length === 0 || runnerModule.vitestDetected(root)
-          ? runnerModule.createRecoveringRunner({
-              name: "vitest",
-              adapterVersion: VITEST_ADAPTER_VERSION,
-              create: vitestInstance("vitest"),
-              // Spec 011 C14 (row 011-145): the fast instance runs focused tiers; no slow file gets one.
-              focuses: true,
-              onFailure: (text) =>
-                this.#note(
-                  `${text}; every check of this worktree is unknown until the config loads`,
-                ),
-              onRecovered: () => this.#note("Vitest started after the config changed"),
-              around,
-              ...vitest.recovery,
-            })
-          : null;
+      // Spec 003 D7: one runner per configured or detected runner (`runsVitest`), so a
+      // project with neither keeps the "project without Vitest" failure note (001 D11).
+      // Decided here only: a reload reconciles the projects, not the runners (011 C10).
+      const vitestRunner = runnerModule.runsVitest(root, this.#policy)
+        ? runnerModule.createRecoveringRunner({
+            name: "vitest",
+            adapterVersion: VITEST_ADAPTER_VERSION,
+            create: vitestInstance("vitest"),
+            // Spec 011 C14 (row 011-145): the fast instance runs focused tiers; no slow file gets one.
+            focuses: true,
+            onFailure: (text) =>
+              this.#note(`${text}; every check of this worktree is unknown until the config loads`),
+            onRecovered: () => this.#note("Vitest started after the config changed"),
+            around,
+            ...vitest.recovery,
+          })
+        : null;
       // Spec 003 D7 as amended 2026-10-22 (row 005-79): a Vitest below the root that
       // detection skips gets one note, read once here, off the hook path; a restart
       // that finds the same directories writes none.
