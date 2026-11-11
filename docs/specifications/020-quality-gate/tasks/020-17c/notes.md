@@ -8,6 +8,7 @@
   - Kept only when the file completed, has a record, `observedGrowth` gives it no growth, no `environmentObserved` path is outside its project's keys, and `changedSince` finds no input of `stabilityPaths` changed. This is `store-decision.ts`'s `store` at the key it ran under.
   - Rows: `putParts` of the record first, then `recordsForFile` through `storeResults`, one transaction. A reader needs both, so a stop between the two leaves an unread record that prune removes.
   - Lock: `acquireDaemonLock(lockFileFor(commonDir, worktreeIdFor(root)))`, held only for the write. When the lock is busy, the gate writes nothing and tells one note.
+  - Busy store (contract from spec 021's coordinator, through the parent): each write is one synchronous transaction, never across an await. It is tried in `BUSY_SLICE_MS` slices (`withBusySliceSync`) with `busyBackoffMs` between tries, under one bound per run (`KEEP_BUSY_BOUND_MS`, 10 s, as `squeal import`). The files not written by then are told as not kept, never as kept. `whileBusy` is in `src/cli/store-writes.ts`, which core code does not import, so `keep.ts` has its own `sliced`. Row 021-16 later moves this write to a daemon socket request.
   - Provenance: this worktree's id, its latest revision or 0, `readHead`'s commit and dirty flag, run id `gate-<uuid>`, so a daemon reads the origin `own`.
 - `storeResults` now takes `Pick<SchedulerContext, "store" | "keys" | "worktreeId" | "now">`. This is additive.
 

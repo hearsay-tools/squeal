@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { setTimeout as delay } from "node:timers/promises";
 import { acquireDaemonLock } from "../../daemon/lock.js";
 import { worktreeIdFor } from "../../fs/git-layout.js";
 import type { Hasher } from "../../hash/hasher.js";
@@ -12,6 +13,8 @@ import { recordsForFile } from "../../scheduler/records.js";
 import { changedSince, snapshotInputs } from "../../scheduler/stability.js";
 import { storeResults } from "../../scheduler/store-results.js";
 import { describeFailure } from "../../state/fingerprint.js";
+import { BUSY_SLICE_MS, busyBackoffMs } from "../../store/busy.js";
+import { isBusy, withBusySliceSync } from "../../store/connection.js";
 import { isStoreOpenFailure, openStore } from "../../store/open.js";
 import { lockFileFor } from "../../store/paths.js";
 import type { AbsolutePath, CommitSha, EpochMs, RelativePath } from "../../types/common.js";
@@ -40,6 +43,13 @@ import { refKey } from "./records.js";
  * daemon's worktree lock; while a daemon holds it, nothing is written.
  */
 
+/**
+ * How long the gate retries a store whose write lock another connection
+ * holds before the files of a run it has not written are not kept, as
+ * `squeal import` bounds its write (`BUSY_BOUND_MS`, row 011-212).
+ */
+export const KEEP_BUSY_BOUND_MS = 10_000;
+
 export interface KeepOptions {
   readonly root: AbsolutePath;
   /** The repository's git common directory, which holds the stores. */
@@ -51,6 +61,8 @@ export interface KeepOptions {
   /** Why a run's files were not kept, told once each; dropped when absent. */
   readonly note?: (text: string) => void;
   readonly now?: () => EpochMs;
+  /** Default `KEEP_BUSY_BOUND_MS`. */
+  readonly busyBoundMs?: number;
 }
 
 /** A file a lookup keyed and found nothing for: it runs, and may be kept. */
@@ -120,7 +132,9 @@ export class Keeper {
       }
       if (kept.length > 0) await this.#write(kept, run.report, pending.keys);
     } catch (error) {
-      this.#tell(`the gate kept no more results in the stores: ${messageOf(error)}`);
+      this.#tell(
+        `the test files this run completed were not kept in the stores: ${messageOf(error)}`,
+      );
     }
   }
 
@@ -160,7 +174,9 @@ export class Keeper {
    * Each file's record, then its results in one transaction, under the
    * worktree's daemon lock. A reader takes a file only with both, so a
    * stop between the two leaves a record no reader takes, which prune
-   * removes. The stores are created as a daemon creates them.
+   * removes. The stores are created as a daemon creates them. Each write
+   * is one short transaction, retried in busy slices (`sliced`) until one
+   * bound for the run: the files left then are told as not kept.
    */
   async #write(files: readonly Kept[], report: RunReport, keys: WorktreeKeys): Promise<void> {
     const { root, commonDir, policy } = this.#options;
@@ -169,9 +185,10 @@ export class Keeper {
     const head = await this.#options.head();
     const lock = acquireDaemonLock(lockFileFor(commonDir, worktreeId));
     if (lock === null) {
-      this.#tell("a daemon runs in this worktree, so the gate keeps no results in the stores");
+      this.#tell(`${notKept(files.length)}: a daemon runs in this worktree, and it keeps its own`);
       return;
     }
+    let written = 0;
     let store: Store | null = null;
     let code: CodeStore | null = null;
     try {
@@ -191,9 +208,19 @@ export class Keeper {
         runId: `gate-${randomUUID()}`,
         recordedAt: now(),
       };
-      for (const file of files) keepFile(store, code, keys, { file, report, provenance, now });
+      const bound = this.#options.busyBoundMs ?? KEEP_BUSY_BOUND_MS;
+      const at = { report, provenance, now, deadline: now() + bound };
+      for (const file of files) {
+        if (!(await keepFile(store, code, keys, { ...at, file }))) {
+          const seconds = Number((bound / 1000).toFixed(1));
+          const why = `the store stayed busy for ${seconds} s (another connection held its write lock)`;
+          this.#tell(`${notKept(files.length - written)}: ${why}`);
+          return;
+        }
+        written += 1;
+      }
     } catch (error) {
-      this.#tell(`the gate kept no more results in the stores: ${messageOf(error)}`);
+      this.#tell(`${notKept(files.length - written)}: ${messageOf(error)}`);
     } finally {
       code?.close();
       store?.close();
@@ -208,8 +235,12 @@ export class Keeper {
   }
 }
 
-/** One file's record at its key, then its results there, as the daemon's tier record stores them. */
-function keepFile(
+/**
+ * One file's record at its key, then its results there, as the daemon's
+ * tier record stores them; `false` when the store stayed busy until
+ * `deadline`, before its results were written.
+ */
+async function keepFile(
   store: Store,
   code: CodeStore,
   keys: WorktreeKeys,
@@ -218,11 +249,15 @@ function keepFile(
     readonly report: RunReport;
     readonly provenance: Provenance;
     readonly now: () => EpochMs;
+    readonly deadline: EpochMs;
   },
-): void {
-  const { file, report, provenance, now } = at;
+): Promise<boolean> {
+  const { file, report, provenance, now, deadline } = at;
   const recordKey = { resultKey: file.key, providerVersion: COVERAGE_RECORD_VERSION };
-  code.coverage.putParts(recordKey, shareRecord(file.record, COVERAGE_RECORD_VERSION), now());
+  const shared = shareRecord(file.record, COVERAGE_RECORD_VERSION);
+  if (!(await sliced(deadline, now, () => code.coverage.putParts(recordKey, shared, now())))) {
+    return false;
+  }
   // D8's file-level error expansion: the checks of the file's newest stored key, from any worktree.
   const previous = new Map(
     store.results.newestForTestFile(file.ref).map((r) => [checkId(r.check), r.check]),
@@ -236,7 +271,39 @@ function keepFile(
     describe: describeFailure,
   });
   const context = { store, keys, worktreeId: provenance.worktreeId, now };
-  storeResults(context, records, healsUnheld(store, file.paths));
+  return sliced(deadline, now, () =>
+    storeResults(context, records, healsUnheld(store, file.paths)),
+  );
+}
+
+/**
+ * `write`, one synchronous transaction, tried in busy slices of
+ * `BUSY_SLICE_MS` with `busyBackoffMs` between tries; `false` once the
+ * next try would start after `deadline`. A refused `BEGIN IMMEDIATE`
+ * writes nothing, and the pause is awaited between tries, never inside a
+ * transaction.
+ */
+async function sliced(
+  deadline: EpochMs,
+  now: () => EpochMs,
+  write: () => unknown,
+): Promise<boolean> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      withBusySliceSync(BUSY_SLICE_MS, write);
+      return true;
+    } catch (error) {
+      if (!isBusy(error)) throw error;
+    }
+    const pause = busyBackoffMs(attempt);
+    if (now() + pause >= deadline) return false;
+    await delay(pause);
+  }
+}
+
+/** The start of a note on `count` completed test files a run did not keep. */
+function notKept(count: number): string {
+  return `${count} completed test ${count === 1 ? "file was" : "files were"} not kept in the stores`;
 }
 
 function messageOf(error: unknown): string {
