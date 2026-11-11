@@ -11,9 +11,10 @@ import type {
  * gives each import with a test file this worktree lists: its files and
  * results current from it, the rest by reason, and, when any is current,
  * that imported files have no coverage record. The default text says one
- * line about the newest import only (row 018-32). Only the environment
- * differences that keep an imported pass apart are named (D10). D19: with
- * `shared.ref` set, Node is said once for all imports.
+ * line about the newest import only, and only when its environment keeps a
+ * file apart (row 018-32). Only the environment differences that keep an
+ * imported pass apart are named (D10). D19: with `shared.ref` set, Node is
+ * said once for all imports.
  */
 
 /** D5's reasons, in order, with the words that name each. */
@@ -62,33 +63,30 @@ export function importLines(s: StatusSnapshot): string[] {
 
 /**
  * The default text's line about imports, or none (D5 as amended by row
- * 018-32). It names the newest import with a test file here, newest by
- * import time (`readImports`' order), never an older one, and how many of
- * its files match this worktree: the files whose key here equals the
- * import's, current from it, another result kept there, or not adopted yet.
- * Silent when every file matches (D15). It counts the files whose
- * environment differs and names the differences that keep an imported pass
- * apart, so a mix of reasons is not read as the environment's alone (review
- * wave-1-2 N1). With `shared.ref` set, D19's line says Node
+ * 018-32 R1). It names the newest import with a test file here, newest by
+ * import time (`readImports`' order), never an older one, and only when the
+ * environment keeps at least one of its files apart with a difference D10
+ * does not accept: silent when the import works (D15), so content that moved
+ * since the import's commit never makes a line, whatever the count. The line
+ * says how many files match this worktree (the files whose key here equals
+ * the import's: current from it, another result kept there, or not adopted
+ * yet), counts the files whose environment differs and names the
+ * differences, so a mix of reasons is not read as the environment's alone
+ * (review wave-1-2 N1). With `shared.ref` set, D19's line says Node
  * (`node-mismatch.ts`): an import that differs from here only in Node gets
  * no line, another names no Node.
  */
 export function importDefaultLines(s: StatusSnapshot): string[] {
   const i = s.imports?.[0];
-  if (i === undefined) return [];
+  if (i === undefined || i.notCurrent.environment === 0) return [];
+  const node = s.shared?.node === undefined ? undefined : i.node;
+  const named = i.environmentDifferences.filter((d) => node === undefined || !isNode(d, node));
+  if (named.length === 0 || node?.only === true) return [];
   const { sameKeyKept, sameKeyNotAdopted } = i.notCurrent;
   const matching = i.currentFiles + sameKeyKept + sameKeyNotAdopted;
-  if (matching === i.testFiles) return [];
-  const node = s.shared?.node === undefined ? undefined : i.node;
-  if (node?.only === true) return [];
-  const named = i.environmentDifferences.filter((d) => node === undefined || !isNode(d, node));
   const verb = matching === 1 ? "matches" : "match";
-  const environment =
-    named.length === 0
-      ? ""
-      : `; the environment differs for ${i.notCurrent.environment}${listed(named)}`;
   return [
-    `Imported results from ${i.source}: ${matching} of ${plural(i.testFiles, "test file")} ${verb} this worktree${environment}`,
+    `Imported results from ${i.source}: ${matching} of ${plural(i.testFiles, "test file")} ${verb} this worktree; the environment differs for ${i.notCurrent.environment}${listed(named)}`,
   ];
 }
 
