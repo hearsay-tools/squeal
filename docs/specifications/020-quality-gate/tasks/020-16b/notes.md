@@ -29,6 +29,7 @@ Worker 26adafd0, 2026-11-11. Spec D15, on the gate as of `dcafbc887`. For a revi
 - `test/code/gate/collect-prepare.test.ts`, on the probe's fixture (`test/fixtures/code/gate/prepare`): the helper is measured and passes, and Squeal writes nothing else; a failing `prepare` gives `not-prepared` beside a `unit` loader that alone would prove a pass; no file selected means no `prepare`; head-only; the budget stops the `prepare`, and a passing one leaves the run what is left.
 - `test/cli/code-gate-prepare.test.ts`: the base's command runs, not the head's (exit 0); head-only gives exit 3, the note and the text line.
 - `test/cli/code-gate-text-prepare.test.ts`, `test/policy/node-test-prepare.test.ts`, `test/daemon/node-test-prepare.test.ts`.
+- `test/keys/validity/cases/assemble/prepare.ts`: the `prepare` check in `policy-node-test.ts` is on the key's validity path, so `test/keys/key-format.test.ts` asks a case that runs its lines. The case's node:test entries declare a valid `prepare` and each invalid shape. The last release skips them as an unknown key; this tree keeps the valid one; neither keys a file of them. The keys equal the last release's, so `KEY_FORMAT_VERSION` does not move.
 
 ## For whoever continues
 
