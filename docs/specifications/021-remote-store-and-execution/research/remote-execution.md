@@ -10,7 +10,7 @@ Tags: **[exp]** verified by experiment, **[docs]** read in official docs, **[src
 |---|---|---|
 | 1 | The case for it now | This host is above the slowdown knee again: 10 to 43% of samples per day above 16 busy vCPUs (3 to 10 November), and saturated (95% busy, swap full) while this file was written **[exp]**. Test runs are most of the busy CPU: 82% in the 011-181 sample, Squeal's `nice` runs 27 to 31% of busy CPU per day **[exp]**. Squeal's work above the knee is 94% background (baselines, backlog), 3% edit tiers **[exp, 011 load-slowdown]**. Laptops: not determined, no measurement exists. |
 | 2 | Two shapes | (a) runner remote, agent local: the whole runner adapter, a sync with a proof, the remote's environment descriptor; adds sync and round trips to each verdict **[src][inf]**. (b) everything remote: no Squeal change on a fixed host; on a machine started on demand, the store must sit on the persisted disk, and 018's import fills it at start **[src][docs][inf]**. |
-| 3 | Mutagen | Four modes, polling plus native watches on Linux, VCS ignore group, no `.gitignore` reading, conflicts kept in session state **[docs][src]**. `flush` returned success while the remote held an old or no copy, in 2 of 2 failure cases; it is not a proof **[exp]**. A proof is the remote's git blob ids of the files the run reads: 11,493 files in 3.2 s **[exp]**. MIT plus SSPL parts, Docker, Inc.; last release 2025-02-24 **[src][docs]**. |
+| 3 | Mutagen | Four modes, polling plus native watches on Linux, VCS ignore group, no `.gitignore` reading, conflicts kept in session state **[docs][src]**. `flush` returned success while the remote held an old or no copy, in 2 of 2 failure cases; it is not a proof **[exp]**. Save-to-remote latency: not measured, because the load stayed above 24. A proof is the remote's git blob ids of the files the run reads: 11,493 files in 3.2 s **[exp]**. MIT plus SSPL parts, Docker, Inc.; last release 2025-02-24 **[src][docs]**. |
 | 4 | Environment on the remote | Squeal already records an environment descriptor per project (spec 018 D1) and compares two with `compareEnvironment` **[src]**. The remote reports it the same way, and a result is refused unless the comparison is `equal` **[inf]**. Same Node image here: equal key inputs, but `TZ` and `LANG` differed and no key holds them **[exp][src]**. |
 | 5 | Machines on demand | boat.dev is persistent Ubuntu VMs with native SSH, an HTTP API and snapshots; resume in "a few seconds" **[docs]**. All seven options reach SSH, five only through a proxy or a user-built sshd **[docs]**. SSH is the common surface **[inf]**. |
 | 6 | Failure and policy | A hung remote blocked `flush` for 45 s with status "watching", connected, no error **[exp]**. Squeal needs its own deadline. Mutagen copied the gitignored `.env` **[exp]**. |
@@ -55,7 +55,7 @@ Shape (b) also covers agents that already run in a vendor sandbox. Whether those
 
 **Ignores [docs][src].** Rules use Git-like syntax, given per session (`-i`) or in `~/.mutagen.yml`. `--ignore-vcs` ignores `.git` and others. Mutagen reads no `.gitignore` file: the `ignore` package has no such code. The docs plan groups "for … node_modules directories" in "future versions". Measured: `.git` and `node_modules` stayed local, and the gitignored `.env` reached the remote **[exp]**.
 
-**Save to remote, and how a client knows [exp].** *Latency: see "Latency" below.* `mutagen sync flush` asks for one cycle and returns when a cycle that began after the request completes (`controller.go:327`, `:1438`) **[src]**. It does not wait for equality:
+**Save to remote, and how a client knows [exp].** The save-to-remote latency was **not measured**. The brief skips timings while the one-minute load is above 24. A check every 10 s from 12:30 to 13:30 UTC never saw it below 24, and the sysstat samples from 12:00 to 13:20 UTC read 30 to 86. The probe is ready (`latency.mjs`, `remote-watch.mjs`: hot file, cold file, each with and without `flush`). From the docs, a file outside the recently watched set can wait up to the 10 s poll unless the client flushes **[docs][inf]**. `mutagen sync flush` asks for one cycle and returns when a cycle that began after the request completes (`controller.go:327`, `:1438`) **[src]**. It does not wait for equality:
 
 - The remote's parent directory was missing. `flush` exited 0, and the session held `transitionProblems: "unable to walk to transition root parent"`. No file had arrived.
 - A file was rewritten every 20 ms (`race.sh`). Five flushes exited 0. After each, the remote held `14` or nothing while the local file held 9 to 71, and the state held a transition problem for that path.
@@ -67,7 +67,7 @@ So a client must read `mutagen sync list --template '{{json .}}'` for `transitio
 | Route | Per revision | Proof of revision N | Ignored files |
 |---|---|---|---|
 | rsync `--files-from` (019-04) | 0.05 s plus 2 RTT | Remote hash check | Sent if named |
-| Mutagen `one-way-replica` | Latency below, plus `flush` | Remote hash check; `flush` alone is not one | Sent unless ignored |
+| Mutagen `one-way-replica` | Not measured (load); a cold file up to the 10 s poll without `flush` | Remote hash check; `flush` alone is not one | Sent unless ignored |
 | Git tree commit (019-04) | push 0.03 to 0.15 s, fetch 1.5 to 2.0 s | By construction: the tree names the blob ids | Not sent |
 
 **License and maintainer [src][docs].** `LICENSE` at v0.18.1: MIT, "Copyright (c) 2016-present Docker, Inc.", except `sspl/` under the Server Side Public License, which is "included by default in official Mutagen release builds" (fanotify watching, xxh128, zstd). The site's banner: "Mutagen is Joining Docker". Last release v0.18.1 on 2025-02-24. The default branch has 85 commits since then, the last on 2026-04-22, signed off by `jacob@mutagen.io`. No release in 20 months.
@@ -129,7 +129,7 @@ About 3 to 4 hours of machine time, so the $20 minimum dominates.
 2. Is a documented shape (b), with no code, an acceptable answer to the request, or is the goal a Squeal feature?
 3. May the first experiment above spend the $20 boat.dev minimum, or should it run on a machine the team already has?
 
-Not determined: latency over a real network (no second machine); laptop load; whether vendor agent sandboxes (outside this brief's sources) allow a daemon; boat.dev cold create time and self-hosting; cold install size.
+Not determined: Mutagen save-to-remote latency, even on loopback (load 30 to 86 for the whole session); latency over a real network (no second machine); laptop load; whether vendor agent sandboxes (outside this brief's sources) allow a daemon; boat.dev cold create time and self-hosting; cold install size.
 
 ## Sources
 
