@@ -7,11 +7,17 @@ import { runGit, splitNul } from "../../fs/git.js";
 import { blobHash, type ObjectFormat } from "../../hash/blob.js";
 import { readObjectFormat } from "../../hash/git-index.js";
 import { createInputMatcher } from "../../keys/glob.js";
-import { CODE_EXTENSIONS, type CodeLanguage, type FileCount } from "../../types/code.js";
+import {
+  CODE_EXTENSIONS,
+  type CodeLanguage,
+  type FileCount,
+  type FunctionCount,
+} from "../../types/code.js";
 import type { AbsolutePath, RelativePath } from "../../types/common.js";
 import type { FileHash } from "../../types/keys.js";
 import { countFile } from "../count/index.js";
 import { overlaps } from "../pass/counted.js";
+import { omittedFunctions } from "./omitted.js";
 import type { BasePolicy } from "./policy.js";
 import type { ChangedFunction, ChangedSet, CountedPath, UncountedPath } from "./types.js";
 
@@ -64,6 +70,8 @@ export async function mergeBase(cwd: AbsolutePath, ref: string): Promise<string>
  *   provenance (D7); an `unsupported` path has none.
  * - `baseCounted`: each counted path as the base holds it, for D8's
  *   inherited exceptions (row 020-09).
+ * - `omitted`: the head functions it does not return that a changed line
+ *   touches, with why (D16, row 020-18).
  */
 export async function changedFunctions(
   cwd: AbsolutePath,
@@ -71,7 +79,7 @@ export async function changedFunctions(
   policy: CountPolicy,
 ): Promise<ChangedSet> {
   const baseCommit = await mergeBase(cwd, ref);
-  const [head, format, all] = await Promise.all([
+  const [head, format, { all, untracked }] = await Promise.all([
     readHead(cwd),
     readObjectFormat(cwd),
     changedPaths(cwd, baseCommit),
@@ -100,6 +108,7 @@ export async function changedFunctions(
   const functions: ChangedFunction[] = [];
   const inErrors: ChangedFunction[] = [];
   const counted: CountedPath[] = [];
+  const skipped = new Map<RelativePath, FunctionCount[]>();
   for (const [path, now] of heads) {
     counted.push({ path, blob: now.blob, functions: now.functions });
     // An identity whose base body is gone from the head was edited; one whose body lives on shifted or moved.
@@ -109,13 +118,19 @@ export async function changedFunctions(
         ?.functions.filter((f) => !atHead.has(f.bodyHash))
         .map(identity),
     );
+    const unjudged: FunctionCount[] = [];
+    skipped.set(path, unjudged);
     for (const count of now.functions) {
-      if (atBase.has(count.bodyHash)) continue;
+      if (atBase.has(count.bodyHash)) {
+        unjudged.push(count);
+        continue;
+      }
       const change = edited.has(identity(count)) ? "edited" : "added";
       const into = now.errors.some((e) => overlaps(count.range, e)) ? inErrors : functions;
       into.push({ path, blob: now.blob, change, count });
     }
   }
+  const omitted = await omittedFunctions(skipped, { cwd, baseCommit, bases, untracked });
   return {
     ref,
     baseCommit,
@@ -129,11 +144,18 @@ export async function changedFunctions(
     baseCounted: [...bases]
       .map(([path, c]) => ({ path, blob: c.blob, functions: c.functions }))
       .sort((a, b) => compare(a.path, b.path)),
+    omitted,
   };
 }
 
-/** D2.1 and D3.1: every changed and untracked path, removed ones included, sorted. */
-async function changedPaths(cwd: AbsolutePath, baseCommit: string): Promise<RelativePath[]> {
+/**
+ * D2.1 and D3.1: every changed and untracked path, removed ones included,
+ * sorted; and the untracked ones, whose every line is changed (D16).
+ */
+async function changedPaths(
+  cwd: AbsolutePath,
+  baseCommit: string,
+): Promise<{ all: RelativePath[]; untracked: Set<RelativePath> }> {
   const [diff, untracked] = await Promise.all([
     runGit(cwd, [
       "diff",
@@ -145,7 +167,8 @@ async function changedPaths(cwd: AbsolutePath, baseCommit: string): Promise<Rela
     ]),
     runGit(cwd, ["ls-files", "--others", "--exclude-standard", "-z"]),
   ]);
-  return [...new Set([...splitNul(diff), ...splitNul(untracked)])].sort(compare);
+  const added = new Set(splitNul(untracked));
+  return { all: [...new Set([...splitNul(diff), ...added])].sort(compare), untracked: added };
 }
 
 /** D2.1: of `paths`, the ones the gate counts, with their language. */
