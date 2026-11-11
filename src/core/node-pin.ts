@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync, realpathSync, type Stats, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { delimiter, dirname, isAbsolute, join } from "node:path";
+import { meetsMinimum } from "../harness/opencode/host.js";
 import { loadConfigFile } from "./daemon/config-file.js";
 import { NODE_SHAPE, type NodeSetting } from "./daemon/policy-node.js";
 
@@ -19,8 +20,12 @@ import { NODE_SHAPE, type NodeSetting } from "./daemon/policy-node.js";
 /** The pin files at the worktree root, in the order they are read. */
 export const PIN_FILES = [".node-version", ".nvmrc"] as const;
 
-/** Why the daemon runs on the session's Node (D19's reasons). */
-export type UnpinnedReason = "none" | "range" | "missing" | "session";
+/**
+ * Why the daemon runs on the session's Node (D19's reasons): no pin, a range
+ * or alias, an exact pin below Squeal's minimum Node, not installed, or
+ * `node: "session"`.
+ */
+export type UnpinnedReason = "none" | "range" | "too-old" | "missing" | "session";
 
 /**
  * The Node a worktree's daemon runs on. Found: the `binary` of the pinned
@@ -43,7 +48,8 @@ const SELF = 'process.version + "\\n" + process.execPath';
  * on. `node: "session"` in its `squeal.config.json` keeps the session's
  * Node. Otherwise the pin's first value, exact, and installed where nvm,
  * fnm, volta, asdf, mise or n keep that version, or on `env.PATH`; a range
- * or alias is not resolved. The session's own Node at that version is the
+ * or alias is not resolved, and a version below Squeal's minimum Node
+ * (`engines.node`) is not used, since the daemon could not start on it. The session's own Node at that version is the
  * answer without a lookup. Synchronous, since status reads it inside one
  * read transaction (row 018-31); each candidate binary runs once per
  * process and file. Never throws.
@@ -56,9 +62,23 @@ export function pinnedNode(root: string, env: NodeJS.ProcessEnv = process.env): 
   if (wanted === null) return { reason: "none" };
   const version = EXACT.exec(wanted)?.[1];
   if (version === undefined) return { reason: "range", wanted };
+  if (!runsSqueal(version)) return { reason: "too-old", wanted };
   if (process.versions.node === version) return { binary: process.execPath, version };
   const binary = installed(version, env) ?? onPath(version, root, env);
   return binary === null ? { reason: "missing", wanted } : { binary, version };
+}
+
+/**
+ * Whether Node `version` meets Squeal's minimum, `engines.node`'s floor.
+ * A build that does not know its floor (a copy of the `tsc` build without
+ * `engines`) takes any version.
+ */
+function runsSqueal(version: string): boolean {
+  try {
+    return meetsMinimum(version);
+  } catch {
+    return true;
+  }
 }
 
 /**
