@@ -1,0 +1,10 @@
+{
+  "nodeTest": [
+    { "name": "unit", "include": ["test/unit/*.test.mjs"] },
+    {
+      "name": "package",
+      "include": ["test/e2e/*.test.mjs"],
+      "prepare": { "command": ["node", "scripts/build.mjs"] }
+    }
+  ]
+}
