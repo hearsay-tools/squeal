@@ -2,14 +2,10 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { POLICY_FILE } from "../core/daemon/policy.js";
 import { treePrint } from "../core/delivery/stopped.js";
-import { resolveCommonDir, worktreeIdFor } from "../core/fs/git-layout.js";
 import { clearStopped, markStopped } from "../core/presence/events.js";
-import { isStoreOpenFailure, openStore } from "../core/store/open.js";
 import type { AbsolutePath, EpochMs } from "../core/types/common.js";
 import type { Store } from "../core/types/store.js";
-
-/** How long the CLI waits for the store's lock to record or clear the mark. */
-const MARK_BUSY_TIMEOUT_MS = 2_000;
+import { type WriteWithinOptions, writeWithin } from "./store-writes.js";
 
 /** How long `squeal stop` gives git to print the tree it leaves. */
 const STOP_TREE_TIMEOUT_MS = 10_000;
@@ -35,45 +31,45 @@ export interface StopMarkResult {
  * the worktree has a policy file, since SessionStart spawns a daemon there
  * when no store exists (the coordinator, 2026-10-26); without one no hook
  * starts any, and a store would make the hooks read the repository as using
- * Squeal (`usesSqueal`).
+ * Squeal (`usesSqueal`). Spec 021 D1 (#158): a busy store is asked again
+ * until `busyBoundMs`; past it, the error says so and names the lock's holder.
  */
 export function leaveStoppedMark(
   root: AbsolutePath,
   at: number,
   tree: string | null,
   untilStart = false,
+  busyBoundMs?: number,
 ): StopMarkResult {
   let until = false;
   const write = (store: Store, id: string) => {
     until = markStopped(store, id, at as EpochMs, tree, untilStart);
   };
-  const error = withStore(root, write, untilStart && existsSync(join(root, POLICY_FILE)));
+  const create = untilStart && existsSync(join(root, POLICY_FILE));
+  const error = withStore(root, write, { create, boundMs: busyBoundMs });
   // Without a store or a policy file no hook starts a daemon: `squeal start` alone does.
   return { error, untilStart: error === null && (until || untilStart) };
 }
 
-/** `squeal start` clears the stopped mark; the error when it could not, else `null`. */
-export function clearStoppedMark(root: AbsolutePath): string | null {
-  return withStore(root, (store, id) => clearStopped(store, id));
+/**
+ * `squeal start` clears the stopped mark; the error when it could not, else
+ * `null`. Spec 021 D1 (#108): asked again while the store is busy, as
+ * `leaveStoppedMark` is.
+ */
+export function clearStoppedMark(root: AbsolutePath, busyBoundMs?: number): string | null {
+  return withStore(root, (store, id) => clearStopped(store, id), { boundMs: busyBoundMs });
 }
 
+/** The mark's write in one transaction, through `writeWithin`; its error, `null` once written or with no store. */
 function withStore(
   root: AbsolutePath,
   write: (store: Store, id: string) => void,
-  create = false,
+  options: WriteWithinOptions,
 ): string | null {
-  try {
-    const commonDir = resolveCommonDir(root);
-    if (commonDir === null) return null;
-    const store = openStore(commonDir, { create, busyTimeoutMs: MARK_BUSY_TIMEOUT_MS });
-    if (isStoreOpenFailure(store)) return null;
-    try {
-      store.transaction(() => write(store, worktreeIdFor(root)));
-      return null;
-    } finally {
-      store.close();
-    }
-  } catch (error) {
-    return error instanceof Error ? error.message : String(error);
-  }
+  const written = writeWithin(
+    root,
+    (store, id) => store.transaction(() => write(store, id)),
+    options,
+  );
+  return "not" in written && written.not !== "none" ? written.why : null;
 }
