@@ -1,0 +1,1 @@
+[test-env] synthetic launcher only; no server or browser started
