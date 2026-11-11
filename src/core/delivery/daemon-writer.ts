@@ -193,7 +193,14 @@ function busy(message: string): Error {
 }
 
 function leaseBusy(holder: string | null): Error {
-  return busy(`the worktree's write lease is held${holder === null ? "" : ` by ${holder}`}`);
+  const error = busy(`the worktree's write lease is held${holder === null ? "" : ` by ${holder}`}`);
+  return Object.assign(error, { leaseHolder: holder });
+}
+
+/** The lease's holder a busy error names (`acquire`); `null` when it names none. */
+export function leaseHolderOf(error: unknown): string | null {
+  const holder = (error as { leaseHolder?: unknown } | null)?.leaseHolder;
+  return typeof holder === "string" ? holder : null;
 }
 
 function writeBusy(): Error {

@@ -77,7 +77,7 @@ export async function stopCommand(
   const tree = await stopTree(root);
   const response = await askDaemon(socketPath, { type: "stop" });
   if (response === null) {
-    const mark = stoppedMark(root, tree, untilStart, busyBoundMs, io);
+    const mark = await stoppedMark(root, tree, untilStart, busyBoundMs, io);
     return stoppedLine(`No daemon running for ${root}`, untilStart, mark, io);
   }
   if (!response.ok) {
@@ -93,7 +93,7 @@ export async function stopCommand(
   }
   // Row 011-20: a hook between the socket and the mark finds no mark and may spawn.
   pauseAt("stop-mark");
-  const mark = stoppedMark(root, tree, untilStart, busyBoundMs, io);
+  const mark = await stoppedMark(root, tree, untilStart, busyBoundMs, io);
   const lock = await lockFreed(root, daemon, bounds.lockMs);
   const after = seconds(bounds.lockMs);
   if (lock.state === "held") {
@@ -153,14 +153,14 @@ function stopArgs(
  * `leaveStoppedMark`, saying on stderr when it could not be written; spec
  * 021 D1 (#158): with `--until-start`, in the words of a failed stop.
  */
-function stoppedMark(
+async function stoppedMark(
   root: AbsolutePath,
   tree: string | null,
   untilStart: boolean,
   busyBoundMs: number | undefined,
   io: CliIo,
-): StopMarkResult {
-  const left = leaveStoppedMark(root, (io.now ?? Date.now)(), tree, untilStart, busyBoundMs);
+): Promise<StopMarkResult> {
+  const left = await leaveStoppedMark(root, (io.now ?? Date.now)(), tree, untilStart, busyBoundMs);
   if (left.error === null) return left;
   io.stderr(
     untilStart

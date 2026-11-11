@@ -53,7 +53,7 @@ export async function startCommand(
   }
   const root = worktreeRoot(args[0], io);
   if (root === null) return 1;
-  if (!endStops(root, io, busyBoundMs)) return 1;
+  if (!(await endStops(root, io, busyBoundMs))) return 1;
   // This CLI's own script is the daemon to spawn (review wave 3, B1), or its kept copy when
   // it runs from Codex's plugin cache or seed (rows 005-77, 002-36); `SQUEAL_CLI` overrides it.
   const script = process.argv[1];
@@ -98,14 +98,18 @@ export async function startCommand(
  * each whose command still runs. Spec 021 D1 (#108): with either still in the
  * store past `busyBoundMs`, says why and that nothing started, and `false`.
  */
-function endStops(root: AbsolutePath, io: CliIo, busyBoundMs: number | undefined): boolean {
+async function endStops(
+  root: AbsolutePath,
+  io: CliIo,
+  busyBoundMs: number | undefined,
+): Promise<boolean> {
   const again = `nothing started: run \`${statusCommand(io.env ?? process.env)} start\` again`;
-  const cleared = clearStoppedMark(root, busyBoundMs);
+  const cleared = await clearStoppedMark(root, busyBoundMs);
   if (cleared !== null) {
     io.stderr(`squeal: could not clear the stop mark: ${cleared}; ${again}\n`);
     return false;
   }
-  const holds = endCommandHolds(root, busyBoundMs);
+  const holds = await endCommandHolds(root, busyBoundMs);
   if (!Array.isArray(holds)) {
     io.stderr(`squeal: could not end the command holds: ${holds.why}; ${again}\n`);
     return false;
@@ -234,7 +238,7 @@ async function finishHandoff(
   const marks = ping === null ? null : marksOf(ping.pid, tokenOf(ping, record));
   if (ping !== null) await stopAt(stopping).catch(() => null);
   const old = ping?.startedAt ?? record?.startedAt ?? null;
-  const claim = claims(root, old, now, bounds.busyBoundMs);
+  const claim = await claims(root, old, now, bounds.busyBoundMs);
   if (typeof claim !== "boolean") {
     const command = statusCommand(io.env ?? process.env);
     io.stderr(
@@ -294,14 +298,14 @@ function follows(ping: PingResponse, old: number | null, own: string): boolean {
  * asked again until `busyBoundMs`; past it, why (`writeWithin`), and `start`
  * spawns nothing, where a second successor could wait beside the claim's.
  */
-function claims(
+async function claims(
   root: AbsolutePath,
   old: number | null,
   now: () => number,
   busyBoundMs: number | undefined,
-): boolean | NotWritten {
+): Promise<boolean | NotWritten> {
   const at = now() as EpochMs;
-  const claimed = writeWithin(
+  const claimed = await writeWithin(
     root,
     (store, id) =>
       store.transaction(() => {

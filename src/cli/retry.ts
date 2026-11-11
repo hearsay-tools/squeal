@@ -34,10 +34,9 @@ import {
   BUSY_BOUND_MS,
   type Busy,
   isBusyAnswer,
-  openForWrites,
+  openCommandStore,
   sessionOf,
   tellDaemonRetries,
-  whileBusy,
 } from "./store-writes.js";
 
 const USAGE =
@@ -89,15 +88,19 @@ export async function retryCommand(
   }
   const root = worktreeRoot(undefined, io);
   if (root === null) return 1;
-  const store = openForWrites(root);
-  if (store === null) {
+  const boundMs = internal.busyBoundMs ?? BUSY_BOUND_MS;
+  // Spec 021 D15: its writes go to the serving daemon, or are written here within D1's bound.
+  const opened = openCommandStore(root, { boundMs });
+  if ("not" in opened) {
     io.stderr(`squeal retry: no Squeal store for ${root}; start a daemon with squeal start\n`);
     return 1;
   }
+  const { store } = opened;
   const worktreeId = worktreeIdFor(root);
   const cwd = io.cwd ?? process.cwd();
   const load = (internal.hostLoad ?? hostLoad)();
-  const deadline = Date.now() + (internal.busyBoundMs ?? BUSY_BOUND_MS);
+  const deadline = (Date.now() + boundMs) as EpochMs;
+  const write = <T>(fn: () => T) => opened.write(fn, deadline);
   let refused = 0;
   let unlisted = 0;
   try {
@@ -106,13 +109,13 @@ export async function retryCommand(
       const rel = inWorktree(root, cwd, path);
       const row = rel === null ? undefined : keys.find((k) => k.testFile.path === rel);
       const shown = rel ?? path;
-      const where = { root, worktreeId, shown, deadline };
+      const where = { root, worktreeId, shown, write };
       const answer: Answer =
         row === undefined || row.key === null
           ? { ok: false, ...notKeyed(store, { root, worktreeId, rel, shown, given: path }, keys) }
           : parsed.kind === "cancel"
-            ? cancelLine(store, row, where)
-            : askLine(store, row, where, parsed.reason, sessionOf(io), load);
+            ? await cancelLine(store, row, where)
+            : await askLine(store, row, where, parsed.reason, sessionOf(io), load);
       if (answer.unlisted === true) unlisted++;
       else if (!answer.ok) refused++;
       io.stdout(`${answer.text}\n`);
@@ -153,12 +156,16 @@ function inWorktree(root: AbsolutePath, cwd: string, path: string): string | nul
   return toRelative(root, (isAbsolute(path) ? path : resolve(cwd, path)) as AbsolutePath);
 }
 
-/** The worktree a request is asked in, the file as the reply shows it, and when a busy store's bound ends. */
+/**
+ * The worktree a request is asked in, the file as the reply shows it, and
+ * how its writes are made: through the serving daemon or here, within the
+ * command's bound (`CommandStore.write`, spec 021 D1 and D15).
+ */
 interface Where {
   readonly root: AbsolutePath;
   readonly worktreeId: WorktreeId;
   readonly shown: string;
-  readonly deadline: EpochMs;
+  readonly write: <T>(fn: () => T) => Promise<T | Busy>;
 }
 
 /** A file's line when the store stayed busy past the bound, as 011-01 words a busy read. */
@@ -169,15 +176,15 @@ function busyLine(not: string, shown: string, { busyMs }: Busy): Answer {
   );
 }
 
-function askLine(
+async function askLine(
   store: Store,
   row: TestFileKeyRecord,
   where: Where,
   reason: RetryReason | null,
   asker: string,
   load: HostLoad,
-): Answer {
-  const { worktreeId, shown, deadline } = where;
+): Promise<Answer> {
+  const { worktreeId, shown, write } = where;
   const key = row.key as string;
   const states = store.knownStates.list(worktreeId);
   const own = states.filter(
@@ -207,7 +214,7 @@ function askLine(
     if (own.length > 0 && own.every((s) => s.validity === "current")) {
       return refuse(`Not retried: ${shown} has no known failure in this worktree.`);
     }
-    const answer = whileBusy(store, deadline, () => askNoResultRun(store, ask));
+    const answer = await write(() => askNoResultRun(store, ask));
     if (isBusyAnswer(answer)) return busyLine("Not queued", shown, answer);
     if (answer.kind === "joined") {
       return {
@@ -230,7 +237,7 @@ function askLine(
     );
   }
   const others = pendingOf(store, row).filter((r) => r.session !== asker);
-  const answer = whileBusy(store, deadline, () =>
+  const answer = await write(() =>
     askRetry(store, {
       testFile: row.testFile,
       key,
@@ -286,12 +293,12 @@ function spentLine(shown: string, record: RetryRecord): string {
   return `Not retried: ${shown} was already retried in this session at its current inputs (${record.reason}; ${how}). The failure stands.`;
 }
 
-function cancelLine(
+async function cancelLine(
   store: Store,
   row: TestFileKeyRecord,
-  { worktreeId, shown, deadline }: Where,
-): Answer {
-  const withdrawn = whileBusy(store, deadline, () =>
+  { worktreeId, shown, write }: Where,
+): Promise<Answer> {
+  const withdrawn = await write(() =>
     cancelRetries(store, row.testFile, row.key as string, worktreeId, Date.now()),
   );
   if (isBusyAnswer(withdrawn)) return busyLine("Not withdrawn", shown, withdrawn);

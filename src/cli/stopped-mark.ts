@@ -34,19 +34,19 @@ export interface StopMarkResult {
  * Squeal (`usesSqueal`). Spec 021 D1 (#158): a busy store is asked again
  * until `busyBoundMs`; past it, the error says so and names the lock's holder.
  */
-export function leaveStoppedMark(
+export async function leaveStoppedMark(
   root: AbsolutePath,
   at: number,
   tree: string | null,
   untilStart = false,
   busyBoundMs?: number,
-): StopMarkResult {
+): Promise<StopMarkResult> {
   let until = false;
   const write = (store: Store, id: string) => {
     until = markStopped(store, id, at as EpochMs, tree, untilStart);
   };
   const create = untilStart && existsSync(join(root, POLICY_FILE));
-  const error = withStore(root, write, { create, boundMs: busyBoundMs });
+  const error = await withStore(root, write, { create, boundMs: busyBoundMs });
   // Without a store or a policy file no hook starts a daemon: `squeal start` alone does.
   return { error, untilStart: error === null && (until || untilStart) };
 }
@@ -56,17 +56,20 @@ export function leaveStoppedMark(
  * `null`. Spec 021 D1 (#108): asked again while the store is busy, as
  * `leaveStoppedMark` is.
  */
-export function clearStoppedMark(root: AbsolutePath, busyBoundMs?: number): string | null {
+export function clearStoppedMark(root: AbsolutePath, busyBoundMs?: number): Promise<string | null> {
   return withStore(root, (store, id) => clearStopped(store, id), { boundMs: busyBoundMs });
 }
 
-/** The mark's write in one transaction, through `writeWithin`; its error, `null` once written or with no store. */
-function withStore(
+/**
+ * The mark's write in one transaction, through `writeWithin` (through the
+ * serving daemon, spec 021 D15); its error, `null` once written or with no store.
+ */
+async function withStore(
   root: AbsolutePath,
   write: (store: Store, id: string) => void,
   options: WriteWithinOptions,
-): string | null {
-  const written = writeWithin(
+): Promise<string | null> {
+  const written = await writeWithin(
     root,
     (store, id) => store.transaction(() => write(store, id)),
     options,
