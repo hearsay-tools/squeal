@@ -2,7 +2,7 @@
 
 Approved by the human on 2026-11-11: "#175 rows: Build both", "Keep result: Yes". Spec D17.
 
-Starts after wave 5 (020-15b and 020-18) is integrated; the coordinator writes the baseline here then. Two workers run in parallel:
+Baseline: `cand/0.1.432` at `0bf414568` (wave 5 integrated, in review). If its review asks for a repair, the coordinator rebases this wave over it. Two workers run in parallel:
 - 020-17ab: the estimate and the order, one worker, because both edit `collect.ts` before the run;
 - 020-17c: the gate keeps its results.
 
