@@ -35,4 +35,4 @@ Use `TEMPLATE.md` for a new spec. Reference code by commit hash or PR number; do
 | 018 | CI and shared results (Squeal in CI, importing CI results, a remote store; the human, 2026-10-31) | research |
 | 019 | Run triggers (per-runner run moment, a checkpoint at commit, a Stop that requires every slow test; the human, 2026-11-02) | shipped (0.1.402) |
 | 020 | One quality gate: `squeal code --base`, a one-shot pass/fail check of changed functions for pre-PR and CI (#167; the human, 2026-11-09) | in-progress (first slice released in 0.1.423) |
-| 021 | Remote store and remote execution (a live shared store and its engine; test runs on another machine over SSH, then on demand; the human, 2026-11-11) | spec draft |
+| 021 | Remote store and remote execution (a live shared store and its engine; test runs on another machine over SSH, then on demand; the human, 2026-11-11) | approved; wave 1 building |

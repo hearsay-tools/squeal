@@ -1,6 +1,6 @@
 # Store contention and runner hosts, local and over SSH
 
-Stage: draft, for the human's approval. Written 2026-11-11 from `research/store-contention.md`, `research/runner-split.md`, `research/daemon-model.md` and `research/cpu-budget.md`, after the human's "Spec all five steps".
+Stage: approved by the human 2026-11-11 ("Spec 021: Approve, build"; remote lost: "Run locally"). Written 2026-11-11 from `research/store-contention.md`, `research/runner-split.md`, `research/daemon-model.md` and `research/cpu-budget.md`, after the human's "Spec all five steps".
 
 ## Problem
 
@@ -119,12 +119,10 @@ The first remote lane carries background tiers (start and restart baselines, bac
 
 #### D13. When the remote is lost or hung
 
-Every message has a deadline; nothing else notices a hung remote (`runner-split.md` Q6, `remote-execution.md` Q6). A run on a lost or hung remote ends incomplete: its checks are `unknown`, never a failure and never a pass. Then the policy decides, set per project by the user (the human, 2026-11-11: "Policy setting"):
+Every message has a deadline; nothing else notices a hung remote (`runner-split.md` Q6, `remote-execution.md` Q6). A run on a lost or hung remote ends incomplete: its checks are `unknown`, never a failure and never a pass. Then the policy decides, set per project by the user (the human, 2026-11-11: "Policy setting"; default "Run locally"):
 
-- `not-run` (default): the lane's files stay not run, and status says "remote <target> unreachable since <time>; N files not run". The daemon tries to reconnect with backoff.
-- `local`: the lane's files run locally, under the same CPU budget as other background work (D18).
-
-The default is `not-run` because the lane exists to keep background load off this machine; falling back moves it back at the moment the remote fails.
+- `local` (default): the lane's files run locally, under the CPU budget of D18, and status says "remote <target> unreachable since <time>; running here". The daemon tries to reconnect with backoff and moves the lane back when the remote answers.
+- `not-run`: the lane's files stay not run, and status says "remote <target> unreachable since <time>; N files not run".
 
 #### D14. Squeal on the remote
 
@@ -183,7 +181,7 @@ Each row ships and works alone.
 | 021-18 | budget | D18, the adaptive background budget, with its log line |
 | 021-19 | budget | D18's measurement on this host and one other machine, after a week |
 
-021-07 to 021-10 touch disjoint files and can run in parallel. 021-11 can run beside them. 021-13 and 021-14 follow 021-11. 021-18 can run beside Part 1.
+021-07 to 021-10 touch disjoint files and can run in parallel. 021-11 can run beside them. The holder lookup of D5 has a contract file, `src/core/store/lock-holders.ts`, committed before wave 1 so 021-07 and 021-10 can build against it. 021-13 and 021-14 follow 021-11. 021-18 can run beside Part 1.
 
 ## Testing
 
