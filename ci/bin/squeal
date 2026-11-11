@@ -1,0 +1,17 @@
+#!/bin/sh
+# The `squeal` that Squeal's GitHub Action puts on the job's PATH (spec 018
+# D20, ci/action.yml). It runs this checkout's bundled CLI with the node on
+# the PATH, so `squeal ci record -- <command>`, `squeal ci export` and
+# `squeal ci publish` run the Squeal of the action's tag. When Squeal cannot
+# run here, it never fails the step: `squeal ci record -- <command>` runs the
+# command and exits with its code, `squeal ci export` and `squeal ci publish`
+# exit 0, and each warns in the job log and the step summary (ci/lib.sh).
+case $0 in
+  */*) squeal_ci_root=${0%/*}/../.. ;;
+  *) squeal_ci_root=../.. ;;
+esac
+. "$squeal_ci_root/ci/lib.sh"
+if squeal_ci_ready; then
+  exec node --disable-warning=ExperimentalWarning "$squeal_ci_cli" "$@"
+fi
+squeal_ci_pass_through "$@"

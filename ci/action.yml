@@ -1,0 +1,17 @@
+# Squeal's GitHub Action (spec 018 D20). A workflow adds
+# `uses: hearsay-tools/squeal/ci@v0` once; its later steps run
+# `squeal ci record -- <command>`, `squeal ci export` and `squeal ci publish`.
+# GitHub checks out this repository at the tag, where the released bundles
+# are committed, so the action downloads nothing. Every release moves `v0`
+# while this file's inputs, the commands it provides and their arguments stay
+# compatible. It never fails the job: when Squeal cannot run, `squeal` passes
+# through (ci/bin/squeal, ci/lib.sh).
+name: Squeal CI
+description: Puts squeal on the PATH for squeal ci record, export and publish. Never fails the job.
+author: Hearsay
+runs:
+  using: composite
+  steps:
+    - name: Set up Squeal
+      shell: bash
+      run: sh "$GITHUB_ACTION_PATH/setup.sh" || true
