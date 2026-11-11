@@ -280,7 +280,10 @@ describe("its main entry", () => {
   test("squeal ps --help prints its usage and exits 0 without a snapshot", async () => {
     const { io: cli, out } = io();
     expect(await main(["ps", "--help"], cli)).toBe(0);
-    expect(out()).toContain("squeal ps [--repo] [--full] [--json]");
+    expect(out()).toContain("squeal ps [--repo] [--full] [--json] [--locks]");
+    expect(out()).toContain(
+      "--locks\n                                (Linux): who holds or waits for each store's write lock",
+    );
     expect(out()).not.toContain("--leftovers");
     expect(out()).not.toContain("squeal stop");
   });
@@ -288,7 +291,7 @@ describe("its main entry", () => {
   test("squeal --help lists it", async () => {
     const { io: cli, out } = io();
     expect(await main(["--help"], cli)).toBe(0);
-    expect(out()).toContain("  squeal ps [--repo] [--full] [--json]\n");
+    expect(out()).toContain("  squeal ps [--repo] [--full] [--json] [--locks]\n");
   });
 
   test("squeal ps with an unknown option exits 2 through main", async () => {
