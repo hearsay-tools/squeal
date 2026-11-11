@@ -4926,12 +4926,13 @@ function codeSource(commonDir, root, {
       const complexity = policy();
       if (complexity === null) return null;
       let connection;
+      const wait = holdingAny() ? 0 : busyTimeoutMs;
       const store = openCodeStore(
         commonDir,
         { complexity },
         {
           create: false,
-          ...busyTimeoutMs === void 0 ? {} : { busyTimeoutMs },
+          ...wait === void 0 ? {} : { busyTimeoutMs: wait },
           ...holding ? { connection: (db) => connection = new HoldingConnection(db) } : {}
         }
       );

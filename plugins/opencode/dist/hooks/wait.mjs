@@ -8510,12 +8510,13 @@ function codeSource(commonDir, root, {
       const complexity = policy();
       if (complexity === null) return null;
       let connection;
+      const wait2 = holdingAny() ? 0 : busyTimeoutMs;
       const store = openCodeStore(
         commonDir,
         { complexity },
         {
           create: false,
-          ...busyTimeoutMs === void 0 ? {} : { busyTimeoutMs },
+          ...wait2 === void 0 ? {} : { busyTimeoutMs: wait2 },
           ...holding ? { connection: (db) => connection = new HoldingConnection(db) } : {}
         }
       );
