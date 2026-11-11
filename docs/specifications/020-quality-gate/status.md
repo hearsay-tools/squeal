@@ -1,6 +1,6 @@
 # 020 One quality gate: status
 
-Stage: in-progress. Slices 1 to 6 and 020-14 shipped (0.1.423, 0.1.424, 0.1.427, 0.1.430). Open: 020-08c (the cezar trial, in the peer's cezar PR), wave 5 (020-15, 020-16, 020-17).
+Stage: in-progress. Slices 1 to 6, 020-14 and wave 5 (020-15, 020-16a/b, 020-18) shipped (0.1.423, 0.1.424, 0.1.427, 0.1.430, 0.1.432). Open: 020-08c (the cezar trial, in the peer's cezar PR), wave 5 (020-15, 020-16, 020-17).
 Started: 2026-11-09
 Issue: [#167](https://github.com/hearsay-tools/squeal/issues/167)
 
@@ -40,3 +40,4 @@ Issue: [#167](https://github.com/hearsay-tools/squeal/issues/167)
 - 2026-11-11, the human: #182 "Yes, fold it in": with `--json`, stdout holds only the report, including output of test setup children (D14.4 amended, row 020-15b). #177 "Count and list": spec D16, row 020-18; selection stays as D2.3 says, and whether a copied body at a new identity should be judged stays open. The #175 proposal becomes D17 when approved.
 - 2026-11-11, the human, on #175: "Build both" (the estimate and the order) and "Keep result: Yes" (the gate writes its completed files to the stores). Spec D17; D3.5 and D11.7 amended. The estimate is advice and never stops a run (the coordinator, from `research/wide-import.md` open question 2). Wave 6, brief `tasks/wave-6.md`.
 - 2026-11-11, review of `cand/0.1.432` (`0bf414568`, reviewer 045344f9, `reviews/0.1.432.md`): FAIL with two proven blockers. B1: stopping the gate (SIGTERM, SIGINT) left a running `prepare` command alive past its own `timeoutSeconds`, still writing. B2: the pre-run print named global setups that would run although stored or parts evidence removed every run. Everything else fits D5, D8, D14 to D16 and the key rules. Repair `020-W5 R1` (`tasks/wave-5.5.md`), then one narrow re-review. The D14.4 order becomes: resolve scope, resolve reusable evidence, print the plan, prepare, run.
+- 2026-11-11, narrow re-review of `cand/0.1.432-r2` (`591bbc603`, reviewer 03beb87c, `reviews/0.1.432-r2.md`): PASS, B1 and B2 resolved, no new findings. The coordinator (31e1d860) released 0.1.432: tag `squeal--v0.1.432` at `5ca7954fe`, hub `a3341d0`, GitHub latest with `install.sh` and both Codex runtime assets; candidate CI 43047621282 and exact-commit main CI 43050276651 green; peers 3739e45a and 52f4f62a agreed. Issues #172, #174, #177 and #182 closed. Wave 6 (020-17) is running.
