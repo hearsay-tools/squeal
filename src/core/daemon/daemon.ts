@@ -13,6 +13,7 @@ import { readDaemonNotes } from "../notes.js";
 import { clearRecord, markExit, recordRegistration } from "../presence/events.js";
 import { resumesRest } from "../presence/facts.js";
 import { clearStartMark } from "../presence/lock-events.js";
+import type { RunnerHostLaunch } from "../runner-host/channel.js";
 import { readCommandHolds } from "../scheduler/hold-rows.js";
 import { ImportsSeen } from "../shared/imports-seen.js";
 import type { SharedReader } from "../shared/reader.js";
@@ -122,6 +123,12 @@ export interface DaemonOptions {
    * and oxlint's (rows 017-04, 017-05, 017-15).
    */
   readonly lintProviders?: { readonly [T in LintTool]?: (root: AbsolutePath) => LintProvider };
+  /**
+   * Spec 021 D8 (row 021-11): how the daemon starts a local runner host for
+   * each Vitest instance, `squeal runner-host`. The `squeal daemon` command
+   * gives its own Node and CLI script. Absent: Vitest runs in this process.
+   */
+  readonly runnerHost?: RunnerHostLaunch;
 }
 
 /** A daemon that owns its worktree: lock held, socket bound, worktree registered. */
