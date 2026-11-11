@@ -141,7 +141,11 @@ export class Keeper {
   /**
    * The completed files with a record, whose run read nothing beyond their
    * key (`observedGrowth`), loaded no environment file their project's
-   * keys lack, and whose inputs did not change during it (`changedSince`).
+   * keys lack, and whose inputs held still during it (`changedSince`): no
+   * input changed, and none was written and ended as it was. Review
+   * 0.1.433 B1: the second is the daemon's completion barrier
+   * (`barredByTouch`, task 001-168): the run may have read bytes its key
+   * does not name.
    */
   async #keepable(pending: Pending, run: GateRun): Promise<Kept[]> {
     const { report } = run;
@@ -162,11 +166,10 @@ export class Keeper {
         return loaded.some((path) => !keyed.has(path)) ? [project] : [];
       }),
     );
+    const unsteady = (path: RelativePath) => moved.changed.has(path) || moved.touched.has(path);
     return candidates.filter(
       (c) =>
-        !grown.has(testFileId(c.ref)) &&
-        !environment.has(c.ref.project) &&
-        !c.paths.some((path) => moved.changed.has(path)),
+        !grown.has(testFileId(c.ref)) && !environment.has(c.ref.project) && !c.paths.some(unsteady),
     );
   }
 
