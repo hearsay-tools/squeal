@@ -734,6 +734,8 @@ export async function executeTier(
         ...(tier.priority === undefined ? {} : { priority: tier.priority }),
         ...(observeIgnored ? { observeIgnored } : {}),
         ...(tier.lease === undefined ? {} : { workers: tier.lease.grant }),
+        // Spec 021 D12 (row 021-14): only a backlog tier or turn may go remote; a batch is waited for.
+        ...(background(tier) ? { background: true as const } : {}),
         ...(tier.focus === undefined ? {} : { checks: tier.focus }),
         fileEnded,
       },
@@ -750,6 +752,11 @@ export async function executeTier(
   } finally {
     unleased?.();
   }
+}
+
+/** A backlog tier or the backlog's turn, not a named wait's batch (`RunOptions.background`). */
+function background(tier: Tier): boolean {
+  return (tier.kind === "backlog" || tier.kind === "turn") && tier.promoted !== true;
 }
 
 /** The ids of the tier's files `report` does not complete. */

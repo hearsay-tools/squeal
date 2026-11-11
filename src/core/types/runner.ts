@@ -309,6 +309,13 @@ export interface RunOptions {
    */
   readonly workers?: number;
   /**
+   * A background tier's run (spec 021 D12, row 021-14; the coordinator,
+   * request bbd49224): a backlog tier or the backlog's turn, never an
+   * edit's, a slow, a focused or a named wait's batch tier. Only these may
+   * go to a remote runner host. Absent: someone waits for it here.
+   */
+  readonly background?: true;
+  /**
    * Called as each test file of the run ends, before the report, by a
    * runner that knows (Vitest: `onTestModuleEnd`, row 011-54): a file whose
    * module ended in a final state before any cancel. The scheduler's
