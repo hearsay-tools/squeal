@@ -266,8 +266,8 @@ export class RunnerWork {
             ...(refined === null ? {} : { refined }),
             ...(listed === null ? {} : { listed }),
           });
-          importsKeyed(context.store, context.worktreeId, imports);
           this.host.applied();
+          importsKeyed(context.store, context.worktreeId, imports);
         },
         refined === null ? "applying observed paths" : `applying revision ${refined}`,
       );
