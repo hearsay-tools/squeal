@@ -228,13 +228,14 @@ Usage:
                                 <shared.ref>/<commit> (default refs/squeal) to origin
                                 and delete refs beyond the newest n main commits
                                 (default 100)
-  squeal ps [--repo] [--full] [--json]
+  squeal ps [--repo] [--full] [--json] [--locks]
                                 Every Squeal daemon of this user on this host, with its
                                 test processes, their CPU and memory over 2 s, the host's
                                 totals, and what should not be up, each with the command
                                 that would end it; --repo: this repository only; --full
                                 adds each test's child processes; exit 0, 1 with a flag,
-                                3 on a platform other than Linux and macOS
+                                3 on a platform other than Linux and macOS. --locks
+                                (Linux): who holds or waits for each store's write lock
   squeal stop [--until-start] [root]
                                 Stop this worktree's daemon; a hook starts one at the
                                 next edit. --until-start: no edit or Git operation
