@@ -92,7 +92,7 @@ export function fileCondition(loaders: readonly Loader[], listed: boolean): File
  * list, so the first step after the upgrade drops them once (row 015-75's
  * drop), and the marker keeps them dropped.
  */
-export const NO_LOADER_SET = "no-loader";
+const NO_LOADER_SET = "no-loader";
 
 /**
  * Row 015-75: the test files that load a source, hashed short, so a

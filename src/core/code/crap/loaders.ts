@@ -1,3 +1,4 @@
+import type { UnknownCause } from "../../types/code-delivery.js";
 import type { EpochMs, RelativePath, WorktreeId } from "../../types/common.js";
 import type { CheckKey, TestFileRef } from "../../types/keys.js";
 import type { ClosureIndex } from "../../types/scheduler.js";
@@ -16,18 +17,8 @@ import type { CodeCoverageRepo } from "../store/types.js";
  * can be another branch's (review 0.1.297 B3).
  */
 
-/** Why a loader can have no record now, so the sources it loads read `unknown` (D9). */
-export type UnknownCause =
-  /** Its current result has no record and none is coming: D8's skips, a focused run, a runner without coverage. */
-  | "no-record"
-  /** A test at its key was skipped, so its record cannot show what that test runs. */
-  | "skipped"
-  /** It has no key: its closure or its project's environment is not known. */
-  | "unkeyed"
-  /** Its record names the source among those whose bytes it could not confirm. */
-  | "unread"
-  /** Spec 020 D11.5: no listed test file loads the source, so nothing measures it. */
-  | "no-loader";
+/** Why a loader can have no record now: one union with the delivery's count by cause. */
+export type { UnknownCause };
 
 /**
  * Why a loader is not ready yet: `imports`, its closure is not known here,
