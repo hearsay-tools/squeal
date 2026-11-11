@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { constants } from "node:os";
 import { setTimeout as sleep } from "node:timers/promises";
 import { pidNamespace } from "../core/delivery/harness-process.js";
-import { findWorktreeRoot, resolveCommonDir, worktreeIdFor } from "../core/fs/git-layout.js";
+import { findWorktreeRoot } from "../core/fs/git-layout.js";
 import {
   boundText,
   COMMAND_HOLD_MAX_MS,
@@ -17,14 +17,18 @@ import {
   removeCommandHold,
   setCommandHoldChild,
 } from "../core/scheduler/hold-rows.js";
-import { STATUS_BUSY_TIMEOUT_MS } from "../core/status/open.js";
-import { isStoreOpenFailure, openStore } from "../core/store/open.js";
 import type { AbsolutePath, WorktreeId } from "../core/types/common.js";
 import type { DaemonRequest, DaemonResponse } from "../core/types/daemon.js";
 import type { Store } from "../core/types/store.js";
 import { askDaemon, daemonSocket } from "./daemon-access.js";
 import { durationMs } from "./failures.js";
 import type { CliIo } from "./main.js";
+import {
+  type NotWritten,
+  type WriteWithinOptions,
+  type Written,
+  writeWithin,
+} from "./store-writes.js";
 
 /*
  * Row 011-74 (spec 011 C9 as amended 2026-10-21, *Hold command*;
@@ -41,10 +45,19 @@ const USAGE = "usage: squeal hold [--max <duration>] -- <command> [args...]\n";
 /** The signals the wrapper passes on to its command. */
 const FORWARDED = ["SIGINT", "SIGTERM", "SIGHUP"] as const;
 
+/**
+ * Spec 021 D1: the wrapper's own failure, the code `env`, `nice` and
+ * `timeout` exit with when they did not start the command: its entry could
+ * not be written within the bound, so the command did not run.
+ */
+export const HOLD_NOT_STARTED = 125;
+
 export interface HoldDeps {
   /** One request to the worktree's daemon; `null` when none listens. Default the socket's. */
   readonly ask?: (root: AbsolutePath, request: DaemonRequest) => Promise<DaemonResponse | null>;
   readonly holdWaitMs?: number;
+  /** How long each write asks a busy store again. Default `BUSY_BOUND_MS`. */
+  readonly busyBoundMs?: number;
 }
 
 /**
@@ -53,7 +66,9 @@ export interface HoldDeps {
  * removes the entry when it exits; the last removal asks the daemon to
  * resume. Exits with the command's code, `128 + n` for signal `n`, 127 or
  * 126 when it cannot start, 2 on a usage error. Without a store it runs the
- * command and says that nothing is on hold.
+ * command and says that nothing is on hold. Spec 021 D1 (#162): each write
+ * asks a busy store again until the bound; an entry not written by then
+ * starts no command, names the lock's holder and exits `HOLD_NOT_STARTED`.
  */
 export async function holdCommand(
   args: readonly string[],
@@ -69,31 +84,54 @@ export async function holdCommand(
   const ask =
     deps.ask ?? ((root, request) => daemonSocket(root).then((s) => askDaemon(s, request)));
   const now = io.now ?? Date.now;
+  const bound = { boundMs: deps.busyBoundMs };
   const root = findWorktreeRoot(cwd);
-  const begun = root === null ? `${cwd} is not inside a git worktree` : begin(root, parsed, now());
-  const held = typeof begun === "string" ? null : begun;
-  if (held === null) io.stderr(`squeal: nothing is on hold: ${begun}\n`);
-  else if (root !== null) {
+  const begun =
+    root === null
+      ? ({ not: "none", why: `${cwd} is not inside a git worktree` } as const)
+      : begin(root, parsed, now(), bound.boundMs);
+  if ("not" in begun) {
+    if (begun.not === "busy") {
+      const command = parsed.command.join(" ");
+      io.stderr(
+        `squeal hold: nothing is on hold and \`${command}\` did not start: ${begun.why}; run it again\n`,
+      );
+      return HOLD_NOT_STARTED;
+    }
+    io.stderr(`squeal: nothing is on hold: ${begun.why}\n`);
+  } else if (root !== null) {
     const told = await holdDaemon(root, ask, deps.holdWaitMs ?? HOLD_WAIT_MS);
-    const until = new Date(held.until).toTimeString().slice(0, 8);
+    const until = new Date(begun.until).toTimeString().slice(0, 8);
     io.stderr(
-      `squeal: validation of ${root} is on hold until \`${held.command}\` exits, at most ` +
-        `until ${until} (${boundText(held.until - held.since)}); edits are recorded and not run${told}\n`,
+      `squeal: validation of ${root} is on hold until \`${begun.command}\` exits, at most ` +
+        `until ${until} (${boundText(begun.until - begun.since)}); edits are recorded and not run${told}\n`,
     );
   }
+  const held = "not" in begun ? null : begun;
   const ended = await run(parsed.command, cwd, (child) => {
     if (root === null || held === null) return;
     const identity = child.pid === undefined ? null : processIdentity(child.pid);
-    withStore(root, (store, id) => setCommandHoldChild(store, id, held.token, identity));
+    const set = withStore(
+      root,
+      (store, id) => setCommandHoldChild(store, id, held.token, identity),
+      bound,
+    );
+    if ("not" in set) {
+      const why = `could not record \`${held.command}\`'s process in its hold: ${set.why}`;
+      io.stderr(`squeal hold: ${why}; the hold ends with this wrapper\n`);
+    }
   });
   if (typeof ended !== "number") io.stderr(`squeal hold: ${ended.failed}\n`);
   if (root !== null && held !== null) {
+    const left = withStore(root, (store, id) => removeCommandHold(store, id, held.token), bound);
     // Its heartbeat removes an entry left here, once the command is gone too.
-    const left = withStore(root, (store, id) => removeCommandHold(store, id, held.token));
-    // Gone already: `squeal start` or its bound ended it, and the daemon resumed then.
-    if (typeof left !== "string" && left !== null) {
-      await ask(root, { type: "resume" }).catch(() => null);
+    if ("not" in left) {
+      io.stderr(
+        `squeal hold: could not remove the hold: ${left.why}; the daemon removes it once \`${held.command}\` is gone\n`,
+      );
     }
+    // Gone already: `squeal start` or its bound ended it, and the daemon resumed then.
+    else if (left.wrote !== null) await ask(root, { type: "resume" }).catch(() => null);
   }
   return typeof ended === "number" ? ended : ended.code;
 }
@@ -103,11 +141,13 @@ export async function holdCommand(
  * worktree at `root`, as it clears a stopped mark. Returns a line for each
  * whose command still runs; the commands run on.
  */
-export function endCommandHolds(root: AbsolutePath): string[] {
-  const ended = withStore(root, (store, id) => clearCommandHolds(store, id));
-  if (typeof ended === "string") return [];
+export function endCommandHolds(root: AbsolutePath, busyBoundMs?: number): string[] | NotWritten {
+  const ended = withStore(root, (store, id) => clearCommandHolds(store, id), {
+    boundMs: busyBoundMs,
+  });
+  if ("not" in ended) return ended.not === "none" ? [] : ended;
   const namespace = pidNamespace();
-  return ended
+  return ended.wrote
     .filter((entry) => !holderGone(entry, namespace))
     .map((entry) => `Ended the hold for ${holdName(entry)}; the command still runs\n`);
 }
@@ -150,7 +190,12 @@ interface Begun {
 }
 
 /** Adds the entry; without a store, which a hold never creates, why nothing is on hold. */
-function begin(root: AbsolutePath, parsed: Parsed, since: number): Begun | string {
+function begin(
+  root: AbsolutePath,
+  parsed: Parsed,
+  since: number,
+  boundMs: number | undefined,
+): Begun | NotWritten {
   const held = {
     token: randomUUID(),
     since,
@@ -158,10 +203,12 @@ function begin(root: AbsolutePath, parsed: Parsed, since: number): Begun | strin
     command: parsed.command.join(" "),
   };
   const wrapper = processIdentity(process.pid);
-  const added = withStore(root, (store, id) =>
-    addCommandHold(store, id, { ...held, wrapper, child: null }),
+  const added = withStore(
+    root,
+    (store, id) => addCommandHold(store, id, { ...held, wrapper, child: null }),
+    { boundMs },
   );
-  return typeof added === "string" ? added : held;
+  return "not" in added ? added : held;
 }
 
 /**
@@ -241,26 +288,16 @@ function run(
 }
 
 /**
- * `fn` over the worktree's store, closed after; without a store, or one that
- * cannot be opened or written, why not. A hold never creates a store.
+ * `writeWithin` (spec 021 D1): `fn` over the worktree's store, closed after,
+ * asked again while it is busy. A hold never creates a store; a write that
+ * threw says so in the words of `nothing is on hold`.
  */
-function withStore<T>(root: AbsolutePath, fn: (store: Store, id: WorktreeId) => T): T | string {
-  const none = "no Squeal daemon has run in this worktree";
-  try {
-    const commonDir = resolveCommonDir(root);
-    if (commonDir === null) return none;
-    const store = openStore(commonDir, { create: false, busyTimeoutMs: STATUS_BUSY_TIMEOUT_MS });
-    if (isStoreOpenFailure(store)) {
-      return store.reason === "missing"
-        ? none
-        : `its Squeal store could not be opened (${store.reason})`;
-    }
-    try {
-      return fn(store, worktreeIdFor(root));
-    } finally {
-      store.close();
-    }
-  } catch (error) {
-    return `its Squeal store could not be written (${error instanceof Error ? error.message : String(error)})`;
-  }
+function withStore<T>(
+  root: AbsolutePath,
+  fn: (store: Store, id: WorktreeId) => T,
+  options: WriteWithinOptions,
+): Written<T> {
+  const written = writeWithin(root, fn, options);
+  if (!("not" in written) || written.not !== "failed") return written;
+  return { not: "failed", why: `its Squeal store could not be written (${written.why})` };
 }
