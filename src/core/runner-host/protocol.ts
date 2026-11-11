@@ -1,4 +1,5 @@
 import type { TestFileRef } from "../types/keys.js";
+import type { NodeTestProject, PolicyInputs, PytestProject } from "../types/policy.js";
 import type { RunOptions } from "../types/runner.js";
 import type { WireCoverageRun } from "./coverage-wire.js";
 
@@ -17,8 +18,8 @@ export const RUNNER_HOST_PROTOCOL = 1;
 /** What every protocol line starts with. JSON escapes U+0001 in strings, so no value holds it. */
 export const MARKER = "\u0001squeal-runner-host ";
 
-/** The runners a host builds (spec 021 D8: Vitest first). */
-export const HOST_RUNNERS = ["vitest"] as const;
+/** The runners a host builds (spec 021 D8: Vitest first; node:test and pytest, row 021-12). */
+export const HOST_RUNNERS = ["vitest", "node-test", "pytest"] as const;
 export type HostRunner = (typeof HOST_RUNNERS)[number];
 
 /** The requests a host answers, each once. */
@@ -65,7 +66,8 @@ export type HostReply =
 
 /** What a host tells the daemon without a request. */
 export type HostEvent =
-  | { readonly ev: "note"; readonly text: string }
+  /** A note; with a `topic`, it replaces that topic's earlier ones in status. */
+  | { readonly ev: "note"; readonly text: string; readonly topic?: string }
   | { readonly ev: "optimizer"; readonly projects: readonly string[] }
   | { readonly ev: "values"; readonly values: HostValues }
   | { readonly ev: "fileEnded"; readonly run: number; readonly testFile: TestFileRef }
@@ -91,6 +93,10 @@ export interface HostPolicy {
   readonly excludeProjects: readonly string[];
   readonly coverage: boolean;
   readonly coverageChildren: boolean;
+  /** node:test and pytest (row 021-12): policy `runner.tierSize`, processes at once per run. */
+  readonly tierSize?: number;
+  /** node:test (row 021-12): policy `inputs`. */
+  readonly inputs?: PolicyInputs;
 }
 
 /** The adapter's options that are data, given once at `start`. */
@@ -100,6 +106,22 @@ export interface HostAdapterOptions {
   readonly maxWorkers?: number;
   /** Squeal's coverage provider and the temp directory its payloads go to; absent, no coverage. */
   readonly coverage?: { readonly provider: string; readonly tempDir: string };
+  /** node:test's and pytest's options that are data (row 021-12); absent for Vitest. */
+  readonly process?: ProcessHostOptions;
+}
+
+/** A node:test or pytest adapter's options that are data, given once at `start` (row 021-12). */
+export interface ProcessHostOptions {
+  /** The `nodeTest` or `pytest` entry the adapter runs. */
+  readonly project: NodeTestProject | PytestProject;
+  /** Spec 001 D10: the daemon's temp directory, every child's `TMPDIR`; absent, the host's. */
+  readonly tempDir?: string;
+  /** pytest: its cache and bytecode directory under Squeal's state directory. */
+  readonly cacheDir?: string;
+  /** node:test: its runs take coverage while the policy's `coverage` says so; absent, never. */
+  readonly coverage?: true;
+  /** pytest: the latest stored note of each topic its `latestNote` reads, at the start. */
+  readonly latestNotes?: Readonly<Record<string, string>>;
 }
 
 /** `start`'s argument. */

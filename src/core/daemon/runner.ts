@@ -17,7 +17,11 @@ export interface RecoveringRunnerOptions {
   readonly onFailure: (message: string) => void;
   /** A creation attempt worked after a failure. */
   readonly onRecovered?: () => void;
-  /** `RunnerAdapter.tierWidth` when the adapter answers none, as node:test's `runner.tierSize` (task 001-366). */
+  /**
+   * `RunnerAdapter.tierWidth`, before the adapter's own: node:test's and
+   * pytest's `runner.tierSize` (task 001-366), which a runner host's proxy
+   * would otherwise answer with the grant (row 021-12).
+   */
   readonly tierWidth?: (testFile: TestFileRef, grant: number) => number;
   /** `RunnerAdapter.besideBacklog` of every file, before the adapter exists too (task 011-21). */
   readonly besideBacklog?: boolean;
@@ -160,7 +164,7 @@ export function createRecoveringRunner(options: RecoveringRunnerOptions): Recove
     omittedTestFiles: () => inner?.omittedTestFiles?.() ?? 0,
     slowWidth: (testFiles) => inner?.slowWidth?.(testFiles) ?? testFiles.length,
     tierWidth: (testFile, grant) =>
-      inner?.tierWidth?.(testFile, grant) ?? options.tierWidth?.(testFile, grant) ?? grant,
+      options.tierWidth?.(testFile, grant) ?? inner?.tierWidth?.(testFile, grant) ?? grant,
     tierPart: (testFile) => inner?.tierPart?.(testFile) ?? "",
     besideBacklog: () => options.besideBacklog === true,
     backlogSlot: () => options.backlogSlot ?? null,

@@ -652,9 +652,15 @@ class Daemon {
           around,
           ...vitest.recovery,
         });
+      // Spec 021 D8 (row 021-12): node:test and pytest in local runner hosts, as Vitest.
+      const host =
+        this.options.runnerHost === undefined
+          ? undefined
+          : { launch: this.options.runnerHost, version: this.#version };
       // Row 011-78 (011 C10, *Projects at a reload*): the sets read the live entries.
       const nodeTestRunners = nodeTest.createNodeTestRunnerSet(() => this.#policy.nodeTest, {
         root,
+        host,
         tempDir: this.opened.scratch.tempDir,
         childEnv: this.#children.env,
         tierSize: () => this.#policy.runner.tierSize,
@@ -670,6 +676,7 @@ class Daemon {
       // Spec 007 D8: pytest's cache and bytecode live under the state directory (open question 3).
       const pytestRunners = pytest.createPytestRunnerSet(() => this.#policy.pytest, {
         root,
+        host,
         stateDir: storePaths(commonDir).dir,
         tempDir: this.opened.scratch.tempDir,
         childEnv: this.#children.env,
