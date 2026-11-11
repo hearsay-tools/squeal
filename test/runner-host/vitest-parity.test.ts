@@ -33,7 +33,11 @@ const built = suiteCli({ observe: true });
 type Make = (options: VitestAdapterOptions) => Promise<RunnerAdapter>;
 const inProcess: Make = (options) => createVitestAdapter(options);
 const hosted: Make = (options) =>
-  createHostedVitest({ execPath: process.execPath, cli: built().cli }, squealVersion(), options);
+  createHostedVitest(
+    { execPath: process.execPath, execArgv: [], cli: built().cli },
+    squealVersion(),
+    options,
+  );
 
 /** `steps` on a fresh copy of `fixture` through each adapter; both results. */
 async function both<T>(
