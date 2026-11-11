@@ -1,9 +1,7 @@
 import { existsSync } from "node:fs";
 import { pruneCodeStoreAfter } from "../code/store/prune-main.js";
 import { dropGoneHarnesses, dropLeft, expireConsumers, lastDeparture } from "../delivery/expiry.js";
-import { observedModulesMetaKey } from "../keys/modules.js";
-import { observedDirectMetaKey, observedMetaKey } from "../keys/observed.js";
-import { observedStartupMetaKey } from "../keys/startup.js";
+import { OBSERVED_META_KEYS } from "../keys/observed-rows.js";
 import { markRest, recordHeartbeat } from "../presence/events.js";
 import type { BusyWaits } from "../store/busy.js";
 import { logLongWrites, longWriteLine } from "../store/long-write.js";
@@ -409,12 +407,7 @@ export function startTimers(context: TimerContext): () => void {
   ]);
   const observedKeys = [...projects]
     .sort()
-    .flatMap((project) => [
-      observedMetaKey(project),
-      observedDirectMetaKey(project),
-      observedStartupMetaKey(project),
-      observedModulesMetaKey(project),
-    ]);
+    .flatMap((project) => OBSERVED_META_KEYS.map((key) => key(project)));
   const readObserved = () => JSON.stringify(observedKeys.map((key) => store.meta.get(key)));
   const seen = context.observedSeen ?? {};
   if (seen.snapshot === undefined) {
