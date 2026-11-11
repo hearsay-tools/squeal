@@ -228,6 +228,11 @@ export interface Policy {
    * latter. Read when the daemon starts. Default `"project"`.
    */
   readonly node: "project" | "session";
+  /** Spec 021 D9: remote runner hosts, which each user names in their own `remote.json`. */
+  readonly remote: {
+    /** `false`: the repository forbids remote lanes; every run stays on the user's machine. Default `true`. */
+    readonly allowed: boolean;
+  };
 }
 
 /**
@@ -443,6 +448,7 @@ export const DEFAULT_POLICY: Policy = {
   gate: { groups: null },
   shared: { ref: null },
   node: "project",
+  remote: { allowed: true },
 };
 
 /**

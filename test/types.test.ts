@@ -63,6 +63,8 @@ describe("core types", () => {
       shared: { ref: null },
       // Spec 018 D18; its key's own tests are test/node-pin/policy.test.ts.
       node: "project",
+      // Spec 021 D9 (row 021-13); the key's own tests are test/runner-host/remote/policy.test.ts.
+      remote: { allowed: true },
     });
   });
 });
