@@ -153,6 +153,35 @@ describe("HoldingConnection (row 011-288)", () => {
     b.store.close();
   });
 
+  it("opens a hold inside another database's hold without waiting, and keeps its busy timeout (spec 021 D3)", () => {
+    const a = holding(fakeCommonDir());
+    const otherDir = fakeCommonDir();
+    const b = holding(otherDir, 30_000);
+    const daemon = connectionOf(open(otherDir)).db;
+    daemon.exec("BEGIN IMMEDIATE");
+    const held = a.conn.hold();
+    const started = performance.now();
+    let error: unknown = null;
+    try {
+      b.conn.hold();
+    } catch (thrown) {
+      error = thrown;
+    }
+    // A wait would be the 30 s busy timeout, holding `a`'s lock all along.
+    expect(isBusy(error)).toBe(true);
+    expect(performance.now() - started).toBeLessThan(5_000);
+    expect(b.conn.held).toBe(false);
+    expect(Object.values(b.conn.db.prepare("PRAGMA busy_timeout").get() ?? {})).toEqual([30_000]);
+    held?.rollback();
+    daemon.exec("ROLLBACK");
+    // With nothing else held it takes the lock as before.
+    const alone = b.conn.hold();
+    expect(b.conn.held).toBe(true);
+    alone?.rollback();
+    a.store.close();
+    b.store.close();
+  });
+
   it("no longer holds the database for this thread once closed while held", () => {
     const commonDir = fakeCommonDir();
     const a = holding(commonDir);
