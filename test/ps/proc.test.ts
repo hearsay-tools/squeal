@@ -186,13 +186,53 @@ describe("per-process reads", () => {
 });
 
 describe("locks and listeners", () => {
-  test("locks parses held and blocked entries, and an OFD lock has no pid", () => {
+  test("locks parses held and blocked entries with their byte ranges, and an OFD lock has no pid", () => {
     expect(source.locks()).toEqual([
-      { kind: "POSIX", access: "write", pid: 349493, file: "103:02:537238177", blocked: false },
-      { kind: "POSIX", access: "write", pid: 2091490, file: "103:02:537238177", blocked: true },
-      { kind: "POSIX", access: "read", pid: 2091490, file: "103:02:578571566", blocked: false },
-      { kind: "OFDLCK", access: "write", pid: null, file: "00:2c:1234", blocked: false },
-      { kind: "FLOCK", access: "write", pid: 1200, file: "00:2c:99", blocked: false },
+      {
+        kind: "POSIX",
+        access: "write",
+        pid: 349493,
+        file: "103:02:537238177",
+        blocked: false,
+        start: 0,
+        end: null,
+      },
+      {
+        kind: "POSIX",
+        access: "write",
+        pid: 2091490,
+        file: "103:02:537238177",
+        blocked: true,
+        start: 0,
+        end: null,
+      },
+      {
+        kind: "POSIX",
+        access: "read",
+        pid: 2091490,
+        file: "103:02:578571566",
+        blocked: false,
+        start: 1073741826,
+        end: 1073742335,
+      },
+      {
+        kind: "OFDLCK",
+        access: "write",
+        pid: null,
+        file: "00:2c:1234",
+        blocked: false,
+        start: 0,
+        end: null,
+      },
+      {
+        kind: "FLOCK",
+        access: "write",
+        pid: 1200,
+        file: "00:2c:99",
+        blocked: false,
+        start: 0,
+        end: 0,
+      },
     ]);
   });
 
