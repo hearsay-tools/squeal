@@ -1,6 +1,5 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import { closeSync, writeSync } from "node:fs";
-import { constants } from "node:os";
 import type { Readable } from "node:stream";
 import { setTimeout as delay } from "node:timers/promises";
 import type { CliIo } from "./main.js";
@@ -116,9 +115,9 @@ const how = (e: Ended) => (e.signal === null ? `with exit code ${e.code}` : `on 
  * process's, its report taken from fd 3 and written to `io.stdout` as soon
  * as it is whole, before the child keeps its files (D17.5). The child's
  * exit code; 3 when it ends without one whole report, which then writes
- * nothing to stdout; 128 plus the signal's number when it ends on a signal
- * after its report; 2 when it cannot start. SIGINT and SIGTERM from
- * `signals` go on to the child.
+ * nothing to stdout, and 3 when it ends on a signal, also after a whole
+ * report (D1's codes; review 0.1.444 B1); 2 when it cannot start. SIGINT
+ * and SIGTERM from `signals` go on to the child.
  */
 export async function relaunchGate(
   relaunch: readonly string[],
@@ -153,8 +152,10 @@ export async function relaunchGate(
       return 3;
     }
     if (end.code !== null) return end.code;
-    io.stderr(`squeal code: the gate's process ended ${how(end)} after its report\n`);
-    return 128 + (end.signal === null ? 0 : (constants.signals[end.signal] ?? 0));
+    io.stderr(
+      `squeal code: the gate's process ended ${how(end)} after its report, so the exit code is 3\n`,
+    );
+    return 3;
   } finally {
     for (const [signal, listener] of listeners) signals.off(signal, listener);
   }
