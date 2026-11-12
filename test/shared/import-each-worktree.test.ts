@@ -104,4 +104,21 @@ describe("an export another worktree of the store imported (row 018-44)", SLOW, 
     }
     expect(listImports(y.d.store)).toHaveLength(2);
   });
+
+  it("fetches it once for the first importer too, when it matches CI and re-keys none (review 0.1.459 B1)", async () => {
+    const { y, offline } = await twoWorktrees((bundle) => ({
+      ...bundle,
+      testFiles: bundle.testFiles.map((f) => ({ ...f, key: `${f.key}-other` })),
+      results: bundle.results.map((r) => ({ ...r, key: `${r.key}-other` })),
+    }));
+    // Y matches CI under D10 and imports first; D11's proof fails for every file.
+    await y.reader().run();
+    expect(listImports(y.d.store)).toHaveLength(1);
+
+    offline();
+    const restarted = y.reader();
+    await restarted.run();
+    expect(restarted.notes).toEqual([]);
+    expect(listImports(y.d.store)).toHaveLength(1);
+  });
 });
