@@ -148,6 +148,13 @@ export interface GateRunReport {
   readonly selected: readonly RelativePath[];
   readonly completed: readonly RelativePath[];
   readonly notFinished: readonly RelativePath[];
+  /**
+   * Row 020-43 (#196): the files of `notFinished` that never started,
+   * because the budget ended first or their run stopped before them; the
+   * others in `notFinished` started and were stopped. Absent when every
+   * file of `notFinished` started, so a report with none is as before.
+   */
+  readonly notStarted?: readonly RelativePath[];
   readonly failed: readonly { readonly path: RelativePath; readonly tests: readonly string[] }[];
   /**
    * #197 (row 020-40): the log folder kept of this run when a file it ran

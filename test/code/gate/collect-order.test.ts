@@ -19,7 +19,9 @@ import { TIMES, VERSIONS } from "./evaluate-fixture.js";
  * and the hub through it. In loader order the leaf's function completes
  * within a short budget. In path order, the order the collector used
  * before, it stays not finished. The hub's never completes: one of its
- * loaders never ends.
+ * loaders never ends. Row 020-43: Vitest tells each file as a worker
+ * starts it, so a file stopped at the deadline reads started, and one
+ * behind it that never got the worker reads not started.
  */
 
 /** Room for a loaded host to start Vitest and run the leaf's file. */
@@ -59,7 +61,8 @@ async function gate(byPath: boolean) {
   const report = evaluate(changed, evidence, policy, VERSIONS, TIMES);
   const states = report.functions.map((f) => [f.path, f.state, f.gap]);
   const completed = evidence.testFiles.map((f) => [f.path, f.completed]);
-  return { events, told, evidence, states, completed };
+  const started = evidence.testFiles.map((f) => [f.path, f.notStarted !== true]);
+  return { events, told, evidence, states, completed, started };
 }
 
 describe("collectEvidence: loader order and the estimate (spec 020 D17)", () => {
@@ -79,6 +82,10 @@ describe("collectEvidence: loader order and the estimate (spec 020 D17)", () => 
       [HUB, false],
       [LEAF, true],
     ]);
+    expect(ran.started).toEqual([
+      [HUB, true],
+      [LEAF, true],
+    ]);
     expect(ran.states).toEqual([
       ["src/hub.ts", "incomplete", "not-finished"],
       ["src/leaf.ts", "pass", null],
@@ -91,6 +98,11 @@ describe("collectEvidence: loader order and the estimate (spec 020 D17)", () => 
     expect(ran.events).toEqual(["estimate", `run ${HUB} ${LEAF}`]);
     expect(ran.completed).toEqual([
       [HUB, false],
+      [LEAF, false],
+    ]);
+    // The hub's file held the one worker to the deadline; the leaf's never started.
+    expect(ran.started).toEqual([
+      [HUB, true],
       [LEAF, false],
     ]);
     expect(ran.states).toEqual([

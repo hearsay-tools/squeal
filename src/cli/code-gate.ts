@@ -18,7 +18,6 @@ import { squealVersion } from "../core/daemon/version.js";
 import { findWorktreeRoot } from "../core/fs/git-layout.js";
 import { shellWord } from "../core/text.js";
 import type { AbsolutePath, RelativePath } from "../core/types/common.js";
-import type { RunnerAdapter } from "../core/types/runner.js";
 import { createNodeTestAdapter } from "../runners/node-test/adapter.js";
 import { createVitestAdapter } from "../runners/vitest/index.js";
 import { CODE_GATE_USAGE, parseGateArgs } from "./code-gate-args.js";
@@ -26,6 +25,7 @@ import { storedDurations } from "./code-gate-durations.js";
 import { exceptionsOf } from "./code-gate-exceptions.js";
 import { keptLogsLine, runLogKeeper } from "./code-gate-log.js";
 import { preRunOptions } from "./code-gate-prerun.js";
+import { overrunText, timed } from "./code-gate-progress.js";
 import { relaunchGate, runAsChild, takeReportFd } from "./code-gate-relaunch.js";
 import { collectWithStores } from "./code-gate-stored.js";
 import { estimateText, formatGateReport } from "./code-gate-text.js";
@@ -82,35 +82,6 @@ export function narrow(changed: ChangedSet, paths: readonly RelativePath[]): Cha
       ? {}
       : { baseCounted: changed.baseCounted.filter(within) }),
     ...(changed.omitted === undefined ? {} : { omitted: changed.omitted.filter(within) }),
-  };
-}
-
-/** The adapters, each runner's `run` timed into `durations` (D7's run durations). */
-function timed(
-  adapters: GateAdapters,
-  durations: Partial<Record<GateRunner, number>>,
-): GateAdapters {
-  const wrap = (runner: GateRunner, adapter: RunnerAdapter): RunnerAdapter =>
-    new Proxy(adapter, {
-      get(target, key) {
-        const value: unknown = Reflect.get(target, key, target);
-        if (typeof value !== "function") return value;
-        if (key !== "run") return value.bind(target);
-        return async (...args: Parameters<RunnerAdapter["run"]>) => {
-          const started = performance.now();
-          try {
-            return await target.run(...args);
-          } finally {
-            const ms = Math.round(performance.now() - started);
-            durations[runner] = (durations[runner] ?? 0) + ms;
-          }
-        };
-      },
-    });
-  return {
-    vitest: async (options) => wrap("vitest", await adapters.vitest(options)),
-    nodeTest: async (project, options) =>
-      wrap("node-test", await adapters.nodeTest(project, options)),
   };
 }
 
@@ -219,6 +190,8 @@ async function gate(
       // D17.1: the estimate on stderr, after the stored lookup and before the first run.
       ...(durations === null ? {} : { durations: durations.of }),
       estimated: (estimates, left) => io.stderr(estimateText(estimates, left)),
+      // Row 020-43: a file still running past its estimate, named once on stderr.
+      overran: (file) => io.stderr(overrunText(file)),
       // #197: a run with a failed or unfinished file keeps its log where a daemon keeps its runs'.
       keepLog: logs.keep,
     },

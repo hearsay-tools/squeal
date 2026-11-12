@@ -164,6 +164,12 @@ export interface TestFileEvidence {
    * only at the head, so it did not run; `completed` is `false`.
    */
   readonly notPrepared?: true;
+  /**
+   * Row 020-43: it went to a run and never started, because the budget
+   * ended first or the run stopped before it; `completed` is `false`.
+   * Absent when it started, and when it went to no run.
+   */
+  readonly notStarted?: true;
 }
 
 /**

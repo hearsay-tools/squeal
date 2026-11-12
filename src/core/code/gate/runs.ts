@@ -27,12 +27,16 @@ export function runsOf(evidence: Evidence, durationsMs: GateTimes["durationsMs"]
     const prepare = runner === "node-test" ? preparesOf(evidence) : null;
     const estimate = evidence.estimates?.find((e) => e.runner === runner);
     const log = evidence.logs?.find((l) => l.runner === runner)?.path;
+    const notStarted = sorted(
+      files.filter((f) => unfinished(f) && f.notStarted === true).map((f) => f.path),
+    );
     return [
       {
         runner,
         selected: sorted(files.map((f) => f.path)),
         completed: sorted(files.filter((f) => f.completed).map((f) => f.path)),
         notFinished: sorted(files.filter(unfinished).map((f) => f.path)),
+        ...(notStarted.length === 0 ? {} : { notStarted }),
         failed,
         ...(log === undefined ? {} : { log }),
         ...(from === null ? {} : { from }),

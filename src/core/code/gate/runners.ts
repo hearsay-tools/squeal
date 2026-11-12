@@ -1,5 +1,6 @@
 import { runsVitest } from "../../daemon/runner.js";
 import type { AbsolutePath } from "../../types/common.js";
+import type { TestFileRef } from "../../types/keys.js";
 import type { NodeTestProject, Policy, PolicyInputs } from "../../types/policy.js";
 import type { RunnerAdapter } from "../../types/runner.js";
 import type {
@@ -36,6 +37,8 @@ export interface GateAdapters {
     readonly observe?: () => boolean;
     /** Always on; D12: `children` is `coverage.children` at the base. */
     readonly coverage: VitestCoverageOptions;
+    /** Row 020-43: told each file as it starts; what it returns, as it ends. */
+    readonly fileStarted: FileStarted;
   }) => Promise<RunnerAdapter>;
   readonly nodeTest: (
     project: NodeTestProject,
@@ -49,9 +52,16 @@ export interface GateAdapters {
       readonly coverage: RunnerCoverageOptions;
       /** #193: the project's files with an incomplete closure; the gate tells them after selection. */
       readonly closures: (files: readonly IncompleteClosure[]) => void;
+      /** D18 as amended (row 020-44): the pool every entry's processes come from. */
+      readonly slots: (signal: AbortSignal) => Promise<(() => void) | null>;
+      /** Row 020-43: told each file as it starts; what it returns, as it ends. */
+      readonly fileStarted: FileStarted;
     },
   ) => Promise<RunnerAdapter>;
 }
+
+/** Told a test file started; what it returns is called once it ended (row 020-43). */
+export type FileStarted = (testFile: TestFileRef) => () => void;
 
 /** One opened adapter and the payloads its runs handed over. */
 export interface Runner {
@@ -78,6 +88,8 @@ export async function openRunners(
     children,
     keeping,
     closures,
+    slots,
+    started,
   }: {
     provider: AbsolutePath;
     temp: AbsolutePath;
@@ -87,6 +99,10 @@ export async function openRunners(
     keeping: boolean;
     /** #193: told each node:test project's files with an incomplete closure, each time its adapter tells them. */
     closures: (project: string, files: readonly IncompleteClosure[]) => void;
+    /** D18 as amended (row 020-44): one pool of slots for every node:test entry's processes. */
+    slots: (signal: AbortSignal) => Promise<(() => void) | null>;
+    /** Row 020-43: told each runner's file as it starts, by the runner kind. */
+    started: (runner: TestFileEvidence["runner"], testFile: TestFileRef) => () => void;
   },
   runners: Runner[],
 ): Promise<void> {
@@ -107,6 +123,7 @@ export async function openRunners(
         tempDir: temp,
         collected,
       },
+      fileStarted: (ref) => started("vitest", ref),
     });
     runners.push({ kind: "vitest", adapter, covered });
   }
@@ -122,6 +139,8 @@ export async function openRunners(
       tempDir: temp,
       coverage: { enabled: () => true, children: () => children, collected },
       closures: (files) => closures(project.name, files),
+      slots,
+      fileStarted: (ref) => started("node-test", ref),
     });
     runners.push({ kind: "node-test", adapter, covered, project });
   }
