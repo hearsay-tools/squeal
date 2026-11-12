@@ -1,0 +1,64 @@
+# Throwaway (row 021-15), 2026-11-12, UTC. One line per catch-up edit (edit-run.sh): the label,
+# edit to verdict of `squeal status --wait`, its exit code, the one-minute load of this host when
+# the verdict came. "start load" is the load when the edit was made (bench.sh, bench2.sh).
+# Set A = the 10 files of test/capacity; set B = unit-files.txt (10 files of test/scheduler);
+# lost = lost-files.txt (14 files).
+
+## Set A, coverage on (remote refused: config fields coverage differ; ran here)
+b1: 21769 ms exit 0 load 67.19
+## Set A, remote, first machine; the daemon was still starting (served only after the edit)
+b2: 53086 ms exit 0 load 32.98
+b3: 41331 ms exit 0 load 28.98
+b4: 24802 ms exit 0 load 20.48
+## Set A, remote, first machine, daemon serving (load above 24: not a clean timing)
+r5: 4758 ms exit 0 load 30.84
+r6: 4346 ms exit 0 load 34.14
+r7: 4140 ms exit 0 load 37.65
+r8: 4657 ms exit 0 load 43.67
+r9: 4803 ms exit 0 load 44.25
+## Set A, local (lane off)
+start load 23.75
+l1: 12438 ms exit 0 load 23.44
+l2: 8021 ms exit 0 load 22.46
+l3: 6099 ms exit 0 load 21.62
+l4: 5396 ms exit 0 load 22.32
+start load 22.85
+l5: 7316 ms exit 0 load 24.23
+## Set A, remote Node v24.22.1 (refused: Node v24.22.1 on the remote, v26.13.0 here; ran here)
+env1: 11966 ms exit 0 load 31.27
+## 10 git-dependent test files, remote (stored as failures, "proven over 411 paths")
+git1: 7699 ms exit 1 load 33.86
+## lost: sandbox stopped 8 s into the remote run; lost after 30 s; ran here
+edit 12:43:29.798 load 28.70; running 12:43:32.578; stop call 12:43:40.585; verdict 12:47:51.744 (250.7 s)
+## Set A after a resume within 10 minutes (same machine); first edit reconnects
+back1: 10975 ms exit 0 load 39.02
+back2: 5344 ms exit 0 load 37.58
+## Set A after a resume onto a new machine, cache ~/squeal-cache (refused: installed dependencies differ; ran here)
+start load 23.18
+r1: 3955 ms exit 0 load 22.04
+r2: 3512 ms exit 0 load 20.84
+r3: 3684 ms exit 0 load 20.67
+r4: 2358 ms exit 0 load 19.90
+r5: 2673 ms exit 0 load 19.82
+## Set A, remote, new machine, after `touch node_modules/.pnpm/lock.yaml` there (proven; capacity tests slow there)
+touch1: 3758 ms exit 0 load 16.83   (ran here: the lane was reconnecting)
+touch2: 42379 ms exit 0 load 23.88
+r1: 38817 ms exit 0 load 22.50
+r2: 42947 ms exit 0 load 21.77
+r3: 39217 ms exit 0 load 27.43
+r4: 47115 ms exit 0 load 20.00
+r5: 38754 ms exit 0 load 20.68
+## Set B, remote, new machine (proven)
+ur1: 9138 ms exit 0 load 19.59
+ur2: 8062 ms exit 0 load 19.49
+ur3: 7768 ms exit 0 load 20.58
+ur4: 7799 ms exit 0 load 21.10
+ur5: 7841 ms exit 0 load 20.35
+ur6: 8182 ms exit 0 load 20.88
+## Set B, local (lane off)
+ul1: 12482 ms exit 0 load 27.56
+ul2: 8457 ms exit 0 load 21.35
+ul3: 3480 ms exit 0 load 21.08
+ul4: 3448 ms exit 0 load 20.27
+ul5: 3413 ms exit 0 load 19.09
+ul6: 4152 ms exit 0 load 21.32

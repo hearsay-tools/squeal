@@ -1,0 +1,97 @@
+12:00:02.150 squeal daemon: remote boat-trial: connecting; background runs of vitest run here until it answers
+12:00:03.034 squeal daemon: boat-trial: Node v26.13.0; Squeal 0.1.448 present
+12:00:07.508 squeal daemon: boat-trial: tree of 12052 files, 0 sent
+12:00:07.847 squeal daemon: remote boat-trial: background runs of vitest go there (Node v26.13.0)
+12:00:50.897 squeal daemon: serving $TMPDIR/trial/clone on $TMPDIR/trial/run/squeal-bb7ee213d0a05521.sock
+12:00:54.012 squeal daemon: remote boat-trial: run proven over 49 paths
+12:00:54.014 squeal daemon: remote boat-trial: background runs of vitest go there; proven at 2026-11-12T12:00:54.011Z (blob ids equal before and after)
+12:01:49.508 squeal daemon: remote boat-trial: run proven over 49 paths
+12:01:57.065 squeal daemon: remote boat-trial: run proven over 49 paths
+12:02:04.779 squeal daemon: remote boat-trial: run proven over 49 paths
+12:02:11.929 squeal daemon: remote boat-trial: run proven over 49 paths
+12:02:20.560 squeal daemon: remote boat-trial: run proven over 49 paths
+12:02:36.947 squeal daemon: daemon stopped: squeal stop
+12:02:37.285 squeal daemon: daemon stopped: squeal stop
+12:02:42.528 squeal daemon: no remote lane: every run is here
+12:03:57.740 squeal daemon: serving $TMPDIR/trial/clone on $TMPDIR/trial/run/squeal-bb7ee213d0a05521.sock
+12:04:58.393 squeal daemon: no tier for 60 s: a last-resort GC took private memory from 471 to 352 MiB in a 349 ms pause
+12:26:02.940 squeal daemon: daemon stopped: squeal stop
+12:26:03.300 squeal daemon: daemon stopped: squeal stop
+12:26:08.399 squeal daemon: remote boat-trial: connecting; background runs of vitest run here until it answers
+12:26:09.137 squeal daemon: boat-trial: Node v24.22.1; Squeal 0.1.448 present
+12:26:21.595 squeal daemon: boat-trial: tree of 12052 files, 10 sent
+12:26:22.182 squeal daemon: remote boat-trial: background runs of vitest go there (Node v24.22.1)
+12:27:13.814 squeal daemon: serving $TMPDIR/trial/clone on $TMPDIR/trial/run/squeal-bb7ee213d0a05521.sock
+12:27:17.335 squeal daemon: remote boat-trial: Node v24.22.1 on the remote, v26.13.0 here
+12:27:17.337 squeal daemon: remote boat-trial refused: Node v24.22.1 on the remote, v26.13.0 here; running here
+12:27:35.158 squeal daemon: daemon stopped: squeal stop
+12:27:35.328 squeal daemon: daemon stopped: squeal stop
+12:27:38.989 squeal daemon: remote boat-trial: connecting; background runs of vitest run here until it answers
+12:27:39.681 squeal daemon: boat-trial: Node v26.13.0; Squeal 0.1.448 present
+12:27:52.068 squeal daemon: boat-trial: tree of 12052 files, 0 sent
+12:27:52.335 squeal daemon: remote boat-trial: background runs of vitest go there (Node v26.13.0)
+12:28:40.493 squeal daemon: serving $TMPDIR/trial/clone on $TMPDIR/trial/run/squeal-bb7ee213d0a05521.sock
+12:29:44.181 squeal daemon: no tier for 60 s: a last-resort GC took private memory from 513 to 382 MiB in a 176 ms pause
+12:42:45.980 squeal daemon: remote boat-trial: run proven over 411 paths
+12:42:45.983 squeal daemon: remote boat-trial: background runs of vitest go there; proven at 2026-11-12T12:42:45.960Z (blob ids equal before and after)
+12:44:10.206 squeal daemon: the vitest runner host did not answer run, nor tell it is alive, within 30000 ms; Squeal stopped it; a new one starts at the next call
+12:44:10.209 squeal daemon: remote boat-trial: the vitest runner host did not answer run, nor tell it is alive, within 30000 ms; Squeal stopped it
+12:44:10.211 squeal daemon: remote boat-trial unreachable since 2026-11-12T12:44:10.204Z (the vitest runner host did not answer run, nor tell it is alive, within 30000 ms; Squeal stopped it); running here
+12:48:25.896 squeal daemon: boat-trial: Node v26.13.0; Squeal 0.1.448 present
+12:48:34.614 squeal daemon: boat-trial: tree of 12052 files, 10 sent
+12:48:35.145 squeal daemon: remote boat-trial: background runs of vitest go there (Node v26.13.0)
+12:48:36.058 squeal daemon: remote boat-trial: tree differs at test/capacity/share.test.ts, test/capacity/cores.test.ts, test/capacity/pool-failure.test.ts, test/capacity/edit-mark.test.ts, test/capacity/crash.test.ts; sending again
+12:48:38.557 squeal daemon: remote boat-trial: run proven over 49 paths
+12:48:38.559 squeal daemon: remote boat-trial: background runs of vitest go there; proven at 2026-11-12T12:48:38.555Z (blob ids equal before and after)
+12:48:57.028 squeal daemon: daemon stopped: squeal stop
+12:48:57.645 squeal daemon: daemon stopped: squeal stop
+13:02:57.518 squeal daemon: remote boat-trial: connecting; background runs of vitest run here until it answers
+13:02:59.599 squeal daemon: boat-trial: Node v26.13.0; Squeal 0.1.448 copied
+13:03:44.365 squeal daemon: boat-trial: tree of 12052 files, 12052 sent
+13:03:49.371 squeal daemon: boat-trial: installed with pnpm install --frozen-lockfile
+13:03:49.556 squeal daemon: remote boat-trial: background runs of vitest go there (Node v26.13.0)
+13:04:13.356 squeal daemon: daemon stopped: squeal stop
+13:04:25.576 squeal daemon: serving $TMPDIR/trial/clone on $TMPDIR/trial/run/squeal-bb7ee213d0a05521.sock
+13:04:25.896 squeal daemon: daemon stopped: squeal stop
+13:04:30.635 squeal daemon: remote boat-trial: connecting; background runs of vitest run here until it answers
+13:04:32.493 squeal daemon: boat-trial: Node v26.13.0; Squeal 0.1.448 copied
+13:05:00.074 squeal daemon: boat-trial: tree of 12052 files, 12052 sent
+13:05:03.529 squeal daemon: boat-trial: installed with pnpm install --frozen-lockfile
+13:05:03.683 squeal daemon: remote boat-trial: background runs of vitest go there (Node v26.13.0)
+13:06:01.238 squeal daemon: serving $TMPDIR/trial/clone on $TMPDIR/trial/run/squeal-bb7ee213d0a05521.sock
+13:06:47.398 squeal daemon: daemon stopped: squeal stop
+13:06:47.575 squeal daemon: daemon stopped: squeal stop
+13:19:09.256 squeal daemon: remote boat-trial: connecting; background runs of vitest run here until it answers
+13:19:11.198 squeal daemon: boat-trial: Node v26.13.0; Squeal 0.1.448 present
+13:19:18.203 squeal daemon: boat-trial: tree of 12052 files, 0 sent
+13:19:18.404 squeal daemon: remote boat-trial: background runs of vitest go there (Node v26.13.0)
+13:20:05.794 squeal daemon: serving $TMPDIR/trial/clone on $TMPDIR/trial/run/squeal-bb7ee213d0a05521.sock
+13:21:10.111 squeal daemon: no tier for 60 s: a last-resort GC took private memory from 522 to 383 MiB in a 498 ms pause
+13:23:24.055 squeal daemon: remote boat-trial: installed dependencies differ
+13:23:24.057 squeal daemon: remote boat-trial refused: installed dependencies differ; running here
+13:24:54.779 squeal daemon: no tier for 60 s: a last-resort GC took private memory from 441 to 403 MiB in a 170 ms pause
+13:25:08.610 squeal daemon: boat-trial: Node v26.13.0; Squeal 0.1.448 present
+13:25:11.193 squeal daemon: boat-trial: tree of 12052 files, 10 sent
+13:25:11.382 squeal daemon: remote boat-trial: background runs of vitest go there (Node v26.13.0)
+13:25:57.731 squeal daemon: remote boat-trial: run proven over 49 paths
+13:25:57.734 squeal daemon: remote boat-trial: background runs of vitest go there; proven at 2026-11-12T13:25:57.727Z (blob ids equal before and after)
+13:26:54.459 squeal daemon: remote boat-trial: run proven over 49 paths
+13:27:39.309 squeal daemon: remote boat-trial: run proven over 49 paths
+13:28:21.027 squeal daemon: remote boat-trial: run proven over 49 paths
+13:29:24.817 squeal daemon: no tier for 60 s: a last-resort GC took private memory from 456 to 411 MiB in a 173 ms pause
+13:30:52.230 squeal daemon: remote boat-trial: run proven over 49 paths
+13:31:34.442 squeal daemon: remote boat-trial: run proven over 49 paths
+13:32:39.818 squeal daemon: no tier for 60 s: a last-resort GC took private memory from 450 to 411 MiB in a 148 ms pause
+13:33:12.511 squeal daemon: remote boat-trial: run proven over 475 paths
+13:33:24.010 squeal daemon: remote boat-trial: run proven over 475 paths
+13:33:34.810 squeal daemon: remote boat-trial: run proven over 475 paths
+13:33:45.488 squeal daemon: remote boat-trial: run proven over 475 paths
+13:33:56.171 squeal daemon: remote boat-trial: run proven over 475 paths
+13:34:07.378 squeal daemon: remote boat-trial: run proven over 475 paths
+13:34:16.120 squeal daemon: daemon stopped: squeal stop
+13:34:16.329 squeal daemon: daemon stopped: squeal stop
+13:34:20.099 squeal daemon: no remote lane: every run is here
+13:35:15.204 squeal daemon: serving $TMPDIR/trial/clone on $TMPDIR/trial/run/squeal-bb7ee213d0a05521.sock
+13:36:30.367 squeal daemon: no tier for 60 s: a last-resort GC took private memory from 444 to 370 MiB in a 214 ms pause
+13:38:45.711 squeal daemon: daemon stopped: squeal stop
+13:38:45.901 squeal daemon: daemon stopped: squeal stop

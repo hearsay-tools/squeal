@@ -1,0 +1,31 @@
+## boat.dev sandbox: 4514 passed, 54 failed test files; 13188 passed, 52 failed tests
+test/cli/group-pending-release.test.ts 1 | Error: no squeal--v* tag is an ancestor of HEAD: run `git fetch --tags` (a shallow clone needs its history too)
+test/evals/a8-load-hold.test.ts 2 | Error: Command failed: git rev-parse HEAD
+test/evals/atomic-turns.test.ts 3 | Error: Command failed: git rev-parse HEAD
+test/evals/fake-daemon.test.ts 6 | Error: Command failed: git rev-parse HEAD
+test/evals/nested-evidence.test.ts 2 | Error: Command failed: git rev-parse HEAD
+test/evals/retry-cell.test.ts 7 | Error: Command failed: git rev-parse HEAD
+test/evals/run-cell-pin.test.ts 4 | Error: Command failed: git rev-parse HEAD
+test/evals/run-cell.test.ts 9 | Error: Command failed: git rev-parse HEAD
+test/evals/surviving-link.test.ts 2 | Error: Command failed: git rev-parse HEAD
+test/keys/key-format.test.ts 0 | no squeal--v* tag is an ancestor of HEAD: run `git fetch --tags` (a shallow clone needs its history too)
+test/policy/repository-inputs.test.ts 0 | Command failed: git ls-files -z --cached --others --exclude-standard
+test/ps/snapshot.test.ts 1 | Error: Test timed out in 5000ms.
+test/ps/work.test.ts 1 | Error: Test timed out in 5000ms.
+test/reach/setup-chains.test.ts 2 | Error: squeal: git rev-parse --show-object-format exited 128 in /home/user/fullrun/test/fixtures/vitest/.tmp/basic-a2d640d2-a399-45ed-97c0-3
+test/slow/slot.test.ts 1 | Error: Test timed out in 5000ms.
+test/store/import-graph-aliases.test.ts 3 | Error: squeal: git rev-parse --show-object-format exited 128 in /home/user/fullrun/test/fixtures/vitest/.tmp/basic-947dc0a6-d9d6-49df-a35f-e
+test/store/key-shadow.test.ts 2 | Error: squeal: git rev-parse --show-object-format exited 128 in /home/user/fullrun/test/fixtures/vitest/.tmp/basic-6f3339f1-ecb6-462a-a2f2-8
+test/code/count/corpus.test.ts 2 | Error: Command failed: git -C /home/user/fullrun ls-tree -r --name-only e90e0030ccfef2ee90eabe9db3046c398ebdd3e5 src
+test/keys/validity/adapters.test.ts 0 | no squeal--v* tag is an ancestor of HEAD: run `git fetch --tags` (a shallow clone needs its history too)
+test/keys/validity/compare.test.ts 0 | no squeal--v* tag is an ancestor of HEAD: run `git fetch --tags` (a shallow clone needs its history too)
+test/keys/validity/lock.test.ts 0 | no squeal--v* tag is an ancestor of HEAD: run `git fetch --tags` (a shallow clone needs its history too)
+test/keys/validity/pytest.test.ts 0 | no squeal--v* tag is an ancestor of HEAD: run `git fetch --tags` (a shallow clone needs its history too)
+test/keys/validity/reach.test.ts 0 | no squeal--v* tag is an ancestor of HEAD: run `git fetch --tags` (a shallow clone needs its history too)
+test/runner-host/remote/admission.test.ts 1 | Error: Test timed out in 5000ms.
+test/runners/node-test/fixtures.test.ts 1 | Error: Command failed: git check-ignore big/
+test/runners/pytest/fixtures.test.ts 1 | Error: Command failed: git check-ignore big/
+test/harness/codex/packaging/runtime.test.ts 1 | AssertionError: expected 128 to be 1 // Object.is equality
+## this host: 4564 passed, 4 failed test files; 13296 passed, 2 failed tests
+test/harness/opencode-dispose.test.ts 1 | Error: before the new turn's request, the plugin killed the held Stop at +2198, at or after its idle deadline (+2000)
+test/scheduler/environment-growth-siblings.test.ts 1 | Error: expected 1 to be 2 // Object.is equality
