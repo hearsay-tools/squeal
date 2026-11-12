@@ -10,6 +10,7 @@ import type { TestFileRef } from "../../../core/types/keys.js";
 import type { PytestProject } from "../../../core/types/policy.js";
 import type { FocusedFile, RunReport } from "../../../core/types/runner.js";
 import { focusedTexts } from "../../focus.js";
+import { makeLogDir, storeGoneReport } from "../../log-dir.js";
 import { startGroup } from "../../process/group.js";
 import type { PytestEnvironment } from "../environment/index.js";
 import { runBasetemp } from "./basetemp.js";
@@ -94,7 +95,11 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
   if (refused.length > 0) return refusal(refusalNote(project, refused), started);
 
   const cacheDir = options.cacheDir ?? defaultCacheDir(options.root, project);
-  mkdirSync(options.logDir, { recursive: true });
+  // Row 018-38: a run started after its daemon died never makes a removed store again.
+  if (!makeLogDir(options.logDir)) {
+    const report = storeGoneReport(options.logDir);
+    return { report, observed: [], session: [], skippedFiles: [], notes: [] };
+  }
   mkdirSync(cacheDir, { recursive: true });
   const runtimeDir = options.runtimeDir ?? pytestRuntimeDir();
   const env: NodeJS.ProcessEnv = {

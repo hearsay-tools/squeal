@@ -199,3 +199,53 @@ describe("runPytest cut by Squeal's signal (row 011-232)", () => {
     },
   );
 });
+
+// Row 018-38: a run a runner host starts after its daemon died, the checkout removed since.
+describe("runPytest once the checkout holding its store is gone (row 018-38)", () => {
+  it.each([
+    { stop: "a stop's signal already aborted", signal: AbortSignal.abort() },
+    { stop: "no stop", signal: undefined },
+  ])("makes and starts nothing, with $stop", async ({ signal }) => {
+    const checkout = join(root, "removed", randomUUID());
+    const store = join(checkout, ".git", "squeal");
+    mkdirSync(store, { recursive: true });
+    rmSync(checkout, { recursive: true });
+    const logDir = join(store, "runs", randomUUID(), "pytest", "cut") as AbsolutePath;
+    const { report } = await runPytest({
+      root,
+      project,
+      environment,
+      files: refs,
+      logDir,
+      timeoutMs: null,
+      cacheDir: join(root, "cache") as AbsolutePath,
+      ...(signal === undefined ? {} : { signal }),
+    });
+    expect(report).toMatchObject({ end: "crashed", completedFiles: [], results: [] });
+    expect(report.failure).toContain(logDir);
+    expect(existsSync(checkout)).toBe(false);
+  });
+
+  it("reports a run stopped after the checkout went, writing nothing", async () => {
+    const checkout = join(root, "removed", randomUUID());
+    mkdirSync(join(checkout, ".git", "squeal"), { recursive: true });
+    const logDir = join(checkout, ".git", "squeal", "runs", randomUUID(), "pytest", "cut");
+    const stop = new AbortController();
+    const running = runPytest({
+      root,
+      project,
+      environment,
+      files: refs,
+      logDir: logDir as AbsolutePath,
+      timeoutMs: null,
+      cacheDir: join(root, "cache") as AbsolutePath,
+      signal: stop.signal,
+    });
+    await ready(logDir);
+    rmSync(checkout, { recursive: true });
+    stop.abort();
+    const { report } = await running;
+    expect(report).toMatchObject({ end: "completed", failure: null });
+    expect(existsSync(checkout)).toBe(false);
+  });
+});

@@ -1,8 +1,9 @@
-import { readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 import type { AbsolutePath } from "../../../core/types/common.js";
 import type { TestFileRef } from "../../../core/types/keys.js";
 import type { RunEnd, RunReport } from "../../../core/types/runner.js";
+import { writeLog } from "../../log-dir.js";
 import type { ProcessExit } from "../../process/group.js";
 import { runLogJson } from "../../run-summary.js";
 import type { ImportEvent, SpawnedEvent, WrittenEvent } from "./events.js";
@@ -117,7 +118,11 @@ export function readOr(path: string): string {
   }
 }
 
-/** `run.json`: each batch's command line and exit, which nothing trusts for a verdict (D6), the run's summary and notes. */
+/**
+ * `run.json`: each batch's command line and exit, which nothing trusts for a
+ * verdict (D6), the run's summary and notes; nothing once the log folder was
+ * removed (row 018-38).
+ */
 export function writeRunLog(
   logDir: AbsolutePath,
   log: {
@@ -136,5 +141,5 @@ export function writeRunLog(
     session: b.read?.session ?? false,
   }));
   const text = runLogJson({ cwd: log.cwd, batches, notes: log.notes }, log.report);
-  writeFileSync(join(logDir, "run.json"), text);
+  writeLog(join(logDir, "run.json"), text);
 }
