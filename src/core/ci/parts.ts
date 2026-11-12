@@ -68,7 +68,7 @@ export interface PartHeader {
   readonly end: PartEnd;
   /** The recorder ran in the run's workers: each file's `observed` is what it read. */
   readonly observing: boolean;
-  /** Format 4: whether the run had Squeal's coverage provider. Absent in format 3: no record. */
+  /** Format 4: whether Squeal made coverage records of the run, and from whose payloads. Absent in format 3: no record. */
   readonly coverage?: PartCoverage;
   /** Row 018-29: what recording cost the command; absent in a part of an older Squeal. */
   readonly cost?: RecordingCost;
@@ -97,11 +97,16 @@ export interface RecordingCost {
 /**
  * Spec 020 D13: Squeal's provider was in the run, with the versions its
  * records were made at, or why `ci record` did not add it. `note` on the
- * first form names an error that cost records after it was added.
+ * first form names an error that cost records after it was added. Spec 020
+ * D19.4: `collector` names whose payloads Squeal mapped into the records.
  */
 export type PartCoverage =
   | {
       readonly provider: "squeal";
+      /** Absent in a part of an older Squeal, whose records are `squeal`'s. */
+      readonly collector?: PartCollector;
+      /** With `collector: "v8"`: the project's `@vitest/coverage-v8` version. */
+      readonly collectorVersion?: string;
       readonly providerVersion: number;
       readonly recordVersion: number;
       readonly note?: string;
@@ -109,9 +114,29 @@ export type PartCoverage =
   | { readonly off: CoverageOff; readonly note: string };
 
 /**
+ * Spec 020 D19.4: who took the coverage Squeal mapped. `squeal`: Squeal's
+ * provider, which `ci record` added. `v8`: the project's own V8 provider,
+ * whose payloads Squeal read beside its report. A part of a later Squeal
+ * may name another, which no reader here reuses (`knownCollector`).
+ */
+export type PartCollector = "squeal" | "v8";
+
+const PART_COLLECTORS: readonly unknown[] = ["squeal", "v8"] satisfies PartCollector[];
+
+/** Whether this Squeal reads records of `coverage`'s collector: a `PartCollector`, or none named. */
+export function knownCollector(coverage: PartCoverage): boolean {
+  return (
+    "off" in coverage ||
+    coverage.collector === undefined ||
+    PART_COLLECTORS.includes(coverage.collector)
+  );
+}
+
+/**
  * `project-coverage`: the run's resolved config has `coverage.enabled`, and
- * a Vitest run takes one provider. `no-provider`: this Squeal or the run's
- * Node cannot give it. `failed`: an error of `ci record`'s own.
+ * a Vitest run takes one provider; the note says why Squeal read none of
+ * its payloads (D19.2). `no-provider`: this Squeal or the run's Node cannot
+ * give it. `failed`: an error of `ci record`'s own.
  */
 export type CoverageOff = "project-coverage" | "no-provider" | "failed";
 
@@ -121,10 +146,18 @@ export type CoverageOff = "project-coverage" | "no-provider" | "failed";
  * `node:inspector`, so its tests could see V8 coverage. `filtered`: a test
  * name, tag, line or id filter ran part of it. `not-whole`: its worker ran
  * other test files too. `isolate-false`: its project runs with `isolate:
- * false`, where the provider takes none. `unmapped`: no payload, or one
- * that could not be mapped.
+ * false`, where one worker's modules are shared between files. D19.3:
+ * `child-process`: its payload holds a child process's scripts
+ * (`coverage.autoAttachSubprocess`). `unmapped`: no payload, or one that
+ * could not be mapped.
  */
-export type NoRecord = "inspector" | "filtered" | "not-whole" | "isolate-false" | "unmapped";
+export type NoRecord =
+  | "inspector"
+  | "filtered"
+  | "not-whole"
+  | "isolate-false"
+  | "child-process"
+  | "unmapped";
 
 /**
  * Format 4: the part's coverage records, each source entry stored once.
