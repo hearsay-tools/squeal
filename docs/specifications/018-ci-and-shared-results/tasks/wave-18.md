@@ -51,3 +51,11 @@ Read: spec D9 (amended 2026-11-12 for repeated names), D10, D14, D21; `research/
 Check above all: 018-43 adds no evidence the export may not certify (spawn-argument rule equals the daemon recorder's; symlink removals; `includeTaskLocation` changes no key, D10); 018-44 fetches an export at most once per environment, never loops a fetch on restart, keeps the D21 refusal order and sliced import (row 021-20), and an old file-only import id still reads right. Say whether the accepted gap in `status.md` is a blocker.
 
 Done when: findings file with PASS or FAIL, blockers proven by a test or a reproduction in a scratch HOME. Lint, typecheck, `squeal status --wait 60000` on paths you touch; direct `pnpm exec vitest run <paths>` when Squeal is queued. No full suite, no `pnpm run build`.
+
+## Re-review of candidate 0.1.459 after repair B1
+
+Use /reviewer. Shape: review. Candidate `cand/0.1.459` at be0948131; range `3ba1abc77..be0948131` (review file, repair 143dd863d, status line, bundles). Read `reviews/0.1.459.md` (B1 and its reproduction) and the 2026-11-12 review line in `status.md`. Append a "Re-review" section to `reviews/0.1.459.md` with PASS or FAIL for be0948131 and commit it.
+
+Check: B1's reproduction (now the third test in `test/shared/import-each-worktree.test.ts`) fails before 143dd863d and passes after; no restart in an unchanged environment fetches or adds an import; file-only ids from `squeal import` and from 0.1.455-era reader imports still serve (one extra fetch after upgrade is acceptable, a repeating one is not); D21 order, sliced import and the final-record rule unchanged. New findings only for the repair's range.
+
+Done when: findings appended; lint, typecheck, direct `pnpm exec vitest run` of `test/shared/` and the key-format guard. No full suite, no build.
