@@ -273,6 +273,7 @@ export function evaluate(
           baseCommit: changed.baseCommit,
         });
   const functions = (applied?.functions ?? judged.map((j) => j.row)).sort(byPosition);
+  const { incompleteClosures } = evidence;
   const uncounted: GatePathReport[] = changed.uncounted
     .map((u) => ({ path: u.path, reason: u.reason, gap: "not-counted" as const }))
     .sort((a, b) => compare(a.path, b.path) || compare(a.reason, b.reason));
@@ -304,6 +305,7 @@ export function evaluate(
     uncounted,
     ...(applied === null ? {} : { exceptions: { unused: applied.unused } }),
     runs: runsOf(evidence, times.durationsMs),
+    ...(incompleteClosures === undefined ? {} : { incompleteClosures }),
     verdict: verdictOf(functions, uncounted, {
       failed: ctx.failed,
       unfinished: evidence.testFiles.some((f) => !f.completed),

@@ -12,6 +12,13 @@ export interface PreloadNotesInput {
 }
 
 /**
+ * Where a path Squeal does not record is declared: the top-level `inputs`
+ * of the policy file, in either shape spec 001 D11 gives it (#193).
+ */
+export const INPUTS_HINT =
+  'declare it in the top-level "inputs" of squeal.config.json (a list of globs for every test file, or a map from a test-file glob to globs)';
+
+/**
  * Notes for preloads: a bare one outside the worktree's modules is an
  * unrecognized loader; a worktree one whose closure imports `node:module`
  * may register module hooks, which change resolution and run in Node's
@@ -28,7 +35,7 @@ export function preloadNotes({ table, roots, outside, rules, rel }: PreloadNotes
     if (hooks === null) continue;
     const through = hooks === root ? "" : ` through ${JSON.stringify(rel(hooks))}`;
     notes.push(
-      `node-test: preload ${JSON.stringify(rel(root))} imports node:module${through} and may register module hooks; Squeal does not record in Node's loader thread, so what the hooks load enters no key; declare it in inputs; resolving with ${chain} rules`,
+      `node-test: preload ${JSON.stringify(rel(root))} imports node:module${through} and may register module hooks; Squeal does not record in Node's loader thread, so what the hooks load enters no key; ${INPUTS_HINT}; resolving with ${chain} rules`,
     );
   }
   return notes;
