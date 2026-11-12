@@ -351,17 +351,25 @@ export function runnerHosts(root: string): Stray[] {
 const HOSTS_LEAVE_MS = 30_000;
 
 /**
- * Waits for the runner hosts of `root`, and what they started, to be gone;
- * kills what is still there after `graceMs`.
+ * Waits for the runner hosts of `root`, and what they started, to be gone.
+ * What is still there after `graceMs` is killed so the fixture can go, and
+ * the teardown then fails naming it: a host that never leaves is a hang to
+ * report, not to hide (review 018-37 B1). The first snapshot takes the
+ * hosts' children at once, before any of them can be reparented (S1).
  */
 export async function awaitRunnerHosts(root: string, graceMs = HOSTS_LEAVE_MS): Promise<void> {
-  let left = runnerHosts(root);
+  let left = withDescendants(runnerHosts(root));
   const deadline = Date.now() + graceMs;
   while (left.length > 0 && Date.now() < deadline) {
     await delay(100);
     left = withDescendants(left).filter(({ pid }) => isAlive(pid));
   }
-  await killProcesses(withDescendants(left), 5_000);
+  if (left.length === 0) return;
+  const stuck = withDescendants(left);
+  await killProcesses(stuck, 5_000);
+  throw new Error(
+    `runner hosts of ${root} still ran ${graceMs} ms after their daemon ended; killed: ${stuck.map(({ pid, args }) => `${pid} ${args}`).join("; ")}`,
+  );
 }
 
 /** `processes` and every process they started that still runs, from `ps`. */
