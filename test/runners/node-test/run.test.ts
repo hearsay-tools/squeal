@@ -206,6 +206,59 @@ describe("runNodeTest", () => {
     expect(existsSync(join(logDir, "stdout-0.log"))).toBe(false);
   });
 
+  // Row 018-38: a run a runner host starts after its daemon died, the checkout removed since.
+  it.each([
+    { stop: "a stop's signal already aborted", signal: AbortSignal.abort() },
+    { stop: "no stop", signal: undefined },
+  ])(
+    "makes and starts nothing once the checkout holding its store is gone, with $stop",
+    async ({ signal }) => {
+      const checkout = join(logs, randomUUID());
+      const store = join(checkout, ".git", "squeal");
+      mkdirSync(store, { recursive: true });
+      rmSync(checkout, { recursive: true });
+      const logDir = join(store, "runs", randomUUID(), "node-test", "edge");
+      const { report } = await run({
+        project: edge,
+        files: files(edge, "test/pass.test.ts"),
+        logDir,
+        ...(signal === undefined ? {} : { signal }),
+      });
+      expect(report).toMatchObject({ end: "crashed", completedFiles: [], results: [] });
+      expect(report.failure).toContain(logDir);
+      expect(existsSync(checkout)).toBe(false);
+    },
+  );
+
+  // Row 018-38: a runner host stops its run when its daemon dies; the checkout may be gone by then.
+  it(
+    "reports a run stopped after the checkout holding its store went, writing nothing",
+    SLOW,
+    async () => {
+      const checkout = join(logs, randomUUID());
+      mkdirSync(join(checkout, ".git", "squeal"), { recursive: true });
+      const logDir = join(checkout, ".git", "squeal", "runs", randomUUID(), "node-test", "edge");
+      const stop = new AbortController();
+      const tier = files(edge, "test/pass.test.ts", "test/busy-loop.test.ts");
+      const running = run({
+        project: edge,
+        files: tier,
+        concurrency: 1,
+        logDir,
+        signal: stop.signal,
+      });
+      for (let waited = 0; !existsSync(join(logDir, "stdout-1.log")); waited += 50) {
+        if (waited > 20_000) throw new Error("the busy loop never started");
+        await new Promise((r) => setTimeout(r, 50));
+      }
+      rmSync(checkout, { recursive: true });
+      stop.abort();
+      const { report } = await running;
+      expect(report).toMatchObject({ end: "completed", failure: null, completedFiles: [tier[0]] });
+      expect(existsSync(checkout)).toBe(false);
+    },
+  );
+
   it("is crashed when a process dies before any wrapper completed", SLOW, async () => {
     mkdirSync(scratch, { recursive: true });
     const dies = join(scratch, "node-that-dies");
