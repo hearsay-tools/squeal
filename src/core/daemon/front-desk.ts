@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { parentPort } from "node:worker_threads";
 import type { DaemonPhase, SyncAnswer } from "../types/daemon.js";
-import type { ImportOutcome } from "../types/daemon-writes.js";
+import type { ImportOutcome, KeepOutcome } from "../types/daemon-writes.js";
 import type { FullSuiteCheckpoint } from "../types/scheduler.js";
 import type { DeskIdentity, FromDesk, ToDesk } from "./desk-messages.js";
 import { createHandlers } from "./handlers.js";
@@ -56,6 +56,8 @@ const waitingHold = new Map<
 const waitingWrite = new Map<string, { resolve: () => void; reject: (error: Error) => void }>();
 
 const waitingImport = new Map<string, (outcome: ImportOutcome) => void>();
+
+const waitingKeep = new Map<string, (outcome: KeepOutcome) => void>();
 
 let server: DaemonServer | null = null;
 
@@ -123,6 +125,12 @@ function bind(identity: DeskIdentity): void {
               const id = randomUUID();
               waitingImport.set(id, resolve);
               post({ type: "import", id, request });
+            }),
+          requestKeep: (request) =>
+            new Promise<KeepOutcome>((resolve) => {
+              const id = randomUUID();
+              waitingKeep.set(id, resolve);
+              post({ type: "keep", id, request });
             }),
         }),
   });
@@ -203,6 +211,12 @@ function receive(message: ToDesk): void {
     case "import-result": {
       const resolve = waitingImport.get(message.id);
       waitingImport.delete(message.id);
+      resolve?.(message.outcome);
+      return;
+    }
+    case "keep-result": {
+      const resolve = waitingKeep.get(message.id);
+      waitingKeep.delete(message.id);
       resolve?.(message.outcome);
       return;
     }
