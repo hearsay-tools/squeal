@@ -8,7 +8,11 @@ import { Keeper } from "../../src/core/code/gate/keep.js";
 import type { Hasher } from "../../src/core/hash/hasher.js";
 import { StatCache } from "../../src/core/hash/stat-cache.js";
 import { testFileId } from "../../src/core/keys/reverse-index.js";
-import { mergeHoldOf, unheldNow } from "../../src/core/run-evidence/run-evidence.js";
+import {
+  mergeHoldOf,
+  type RuntimeIdentity,
+  unheldNow,
+} from "../../src/core/run-evidence/run-evidence.js";
 import type { WorktreeKeys } from "../../src/core/scheduler/keying.js";
 import { storePaths } from "../../src/core/store/paths.js";
 import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
@@ -16,10 +20,15 @@ import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 import { git, writeTree } from "../keys/validity/harness/shared.js";
 
 /*
- * Row 011-320 (difference 3; spec 011 C9): `squeal code` reads the merge
- * hold as the daemon's `MergeHold` does, the unmerged index paths, at its
- * decision (the table's row "difference 3") and again at each write, as
- * the daemon's record reads its hold at each try (`TierRecords.#heldNow`).
+ * Row 011-320: the sources `squeal code`'s keeper reads beyond row 011-319's,
+ * through a real `Keeper` over a real store. The decision of each is the
+ * table's (`table.test.ts`, rows "difference 2" to "difference 4"); here,
+ * that the keeper reads them. Difference 2: the runtime identity, from the
+ * source `Keeper.expect` is given, before the run and at its end; without
+ * the source no identity is compared. Difference 3 (spec 011 C9): the merge
+ * hold, read as the daemon's `MergeHold` reads it, at the decision and again
+ * at each write, as the daemon's record reads its hold at each try
+ * (`TierRecords.#heldNow`).
  */
 
 const A: TestFileRef = { project: "", path: "test/a.test.ts" };
@@ -80,34 +89,74 @@ describe("squeal code's merge hold (row 011-320, 011 C9)", () => {
   ])("%s", async (_, merging, results) => {
     const root = repository();
     const notes: string[] = [];
-    const keep = new Keeper({
-      root,
-      commonDir: join(root, ".git"),
-      policy: { ...DEFAULT_POLICY, complexity: { ...DEFAULT_POLICY.complexity, enabled: true } },
-      head: async () => ({ head: "a".repeat(40), dirty: false }),
-      note: (text) => notes.push(text),
-    });
-    keep.expect("vitest", keysOf(INPUT), HASHER, new Map([[A, KEY_A]]));
-    await keep.ran({
-      runner: "vitest",
-      files: [A],
-      report: {
-        end: "completed",
-        durationMs: 1,
-        completedFiles: [A],
-        results: [],
-        fileErrors: [],
-        failure: null,
+
+    await keepA(root, notes, {
+      // After the run's decision, before the write: a merge leaves the file's input unmerged.
+      ran: () => {
+        if (merging) unmerge(root, INPUT);
       },
-      records: new Map([[testFileId(A), { record: RECORD }]]),
     });
-    // After the run's decision, before the write: a merge leaves the file's input unmerged.
-    if (merging) unmerge(root, INPUT);
-    await keep.flush();
 
     expect([resultsAt(join(root, ".git")), notes]).toEqual([results, []]);
   });
 });
+
+describe("squeal code's runtime identity (row 011-320, difference 2)", () => {
+  it.each([
+    ["writes the file whose runtime identity held", "node 26", "node 26", 1],
+    ["does not write a file whose runtime identity moved during the run", "node 26", "node 24", 0],
+    ["compares no identity without the source", undefined, undefined, 1],
+  ])("%s", async (_, before, after, results) => {
+    const root = repository();
+    let identity = before;
+    const runtime = before === undefined ? undefined : () => identity ?? "";
+
+    await keepA(root, [], {
+      ...(runtime === undefined ? {} : { runtime }),
+      started: () => {
+        identity = after;
+      },
+    });
+
+    expect(resultsAt(join(root, ".git"))).toBe(results);
+  });
+});
+
+/**
+ * A keeper of `root` expects `test/a.test.ts` at `KEY_A`, its run completes
+ * it, and `flush` writes what it kept. `started` runs after the lookup and
+ * before the run ends, `ran` after the run's decision and before the write.
+ */
+async function keepA(
+  root: string,
+  notes: string[],
+  at: { runtime?: RuntimeIdentity; started?: () => void; ran?: () => void },
+): Promise<void> {
+  const keep = new Keeper({
+    root,
+    commonDir: join(root, ".git"),
+    policy: { ...DEFAULT_POLICY, complexity: { ...DEFAULT_POLICY.complexity, enabled: true } },
+    head: async () => ({ head: "a".repeat(40), dirty: false }),
+    note: (text) => notes.push(text),
+  });
+  keep.expect("vitest", keysOf(INPUT), HASHER, new Map([[A, KEY_A]]), at.runtime);
+  at.started?.();
+  await keep.ran({
+    runner: "vitest",
+    files: [A],
+    report: {
+      end: "completed",
+      durationMs: 1,
+      completedFiles: [A],
+      results: [],
+      fileErrors: [],
+      failure: null,
+    },
+    records: new Map([[testFileId(A), { record: RECORD }]]),
+  });
+  at.ran?.();
+  await keep.flush();
+}
 
 /** Inputs that never move: every stat and hash is the one the lookup copied. */
 const HASHER: Hasher = { stat: async () => STAT, hash: async () => "h", now: () => 1_000_000 };
