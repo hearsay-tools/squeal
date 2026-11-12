@@ -1,6 +1,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { readPolicy } from "../../daemon/policy.js";
 import { readHead } from "../../daemon-loop/head.js";
 import { compare } from "../../fs/compare.js";
 import { worktreeIdFor } from "../../fs/git-layout.js";
@@ -119,7 +120,12 @@ export function openStored(options: StoredOptions): StoredFiles | null {
       }
       // Row 011-320: the runtime identity, read as the daemon reads it (difference 2), and the
       // revisions a serving daemon records during the run (review 0.1.458 B1).
-      const runtime = (ref: TestFileRef) => keyer.keys.runtimeIdentity(ref);
+      const runtime = {
+        identity: (ref: TestFileRef) => keyer.keys.runtimeIdentity(ref),
+        rules: options.policy,
+        // Review 0.1.458 B3: the policy as a daemon reloads it after an edit during the run.
+        rulesNow: () => readPolicy(options.root),
+      };
       const store = stores.main;
       const revisions = store === undefined ? {} : { revisions: { store, worktreeId } };
       keeper.expect(runner, keyer.keys, keyer.hasher, runs, { runtime, ...revisions });

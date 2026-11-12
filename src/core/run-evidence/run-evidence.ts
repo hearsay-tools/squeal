@@ -22,11 +22,18 @@ import {
 import type { Tier, TierFile } from "../scheduler/tiers.js";
 import type { AbsolutePath, RelativePath, RevisionNumber, WorktreeId } from "../types/common.js";
 import type { CheckKey, TestFileRef } from "../types/keys.js";
+import type { Policy } from "../types/policy.js";
 import type { RunReport } from "../types/runner.js";
 import type { Store } from "../types/store.js";
 import { filesBelow, listingsAmong } from "./listings.js";
 import { type Cause, causeOf, reasonOf } from "./reason.js";
-import { movedInputs, observedMoves, readKeepEvidence, UnmergedIndex } from "./sources.js";
+import {
+  movedInputs,
+  observedMoves,
+  readKeepEvidence,
+  runtimeAtEnd,
+  UnmergedIndex,
+} from "./sources.js";
 
 /*
  * Run evidence and the store decision (GLOSSARY, "Results"; row 011-319,
@@ -211,6 +218,25 @@ export async function unheldNow<T extends { readonly paths: readonly RelativePat
 /** A test file's runtime identity now (`WorktreeKeys.runtimeIdentity`, `TierFile.runtimePolicy`). */
 export type RuntimeIdentity = (ref: TestFileRef) => string;
 
+/** The policy's rules a runtime identity rests on (`RuntimeFiles`). */
+export type RuntimeRules = Pick<Policy, "runtimeFiles" | "inputs">;
+
+/**
+ * Where `squeal code` reads a file's runtime identity (row 011-320,
+ * difference 2): from the lookup's keys, at the lookup and at the run's
+ * end. Those keys keep the lookup's policy; the daemon reloads a policy
+ * edited during the run (`reloadPolicy`, `WorktreeKeys.setPolicy`), so the
+ * runtime rules on disk at the end are compared with the lookup's too
+ * (review 0.1.458 B3).
+ */
+export interface RuntimeSource {
+  readonly identity: RuntimeIdentity;
+  /** The rules the lookup's keys hold. */
+  readonly rules: RuntimeRules;
+  /** The rules of the policy on disk now, as the daemon loads it. */
+  readonly rulesNow: () => RuntimeRules;
+}
+
 /** What `squeal code` reads its evidence from (spec 020 D17.3). */
 export interface KeepSources {
   readonly root: AbsolutePath;
@@ -231,11 +257,12 @@ export interface KeepSources {
    */
   readonly revisions?: RevisionsSince;
   /**
-   * Row 011-320 (difference 2): the runtime identity at the run's end,
-   * compared with each file's `KeepFile.runtimeIdentity`; without it, no
+   * Row 011-320 (difference 2): the runtime identity at the run's end
+   * (`runtimeAtEnd`), compared with each file's `KeepFile.runtimeIdentity`;
+   * without it, no
    * identity is compared.
    */
-  readonly runtime?: RuntimeIdentity;
+  readonly runtime?: RuntimeSource;
 }
 
 /** What a record knows at the try of its write, of its own: the caller's facts, not evidence. */
@@ -372,7 +399,9 @@ export async function keepDecisions(
   const run = { files: entries, lane: KEEP_LANE, changes: new Set<RelativePath>(), cancel: null };
   const observed = evidence.observed ?? NOTHING_OBSERVED;
   const { changed } = evidence;
-  const end = runEnd(run, outcome.report, changed, outcome.requeue, observed, sources.runtime);
+  const { runtime: source, root } = sources;
+  const runtime = source === undefined ? undefined : runtimeAtEnd(source, root);
+  const end = runEnd(run, outcome.report, changed, outcome.requeue, observed, runtime);
   return new Map(entries.map((entry) => [entry.file.id, decisionOf(entry, end, outcome, true)]));
 }
 

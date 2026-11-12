@@ -119,6 +119,17 @@ const TABLE: Readonly<Record<string, Row>> = {
     names: "runtime's identity",
     keeperNames: "runtime's identity",
   },
+  "difference 2: the policy's runtime files moved during the run": {
+    during: {
+      policy: {
+        runtimeFiles: [{ project: "", tests: ["test/a.test.ts"], paths: ["runtime.txt"] }],
+      },
+    },
+    daemon: "environment",
+    keeper: "environment",
+    names: "runtime's identity",
+    keeperNames: "runtime's identity",
+  },
   "difference 3: a merge holds an input": {
     during: { merging: ["src/a.ts"] },
     daemon: "requeue",
