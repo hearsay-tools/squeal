@@ -1,10 +1,10 @@
 #!/bin/sh
 # Throwaway probe for issue 193. Not a product test. Usage, from the checkout root:
 #   sh docs/specifications/020-quality-gate/research/probes/issue-193/probe.sh <squeal.mjs> <out-dir>
-# Builds a temp git repo with one node:test project (preload importing node:module through a
-# helper; a test with a computed import()), then runs `squeal code --base main --json` twice:
+# Builds a temp git repo with two node:test projects (preload importing node:module through a
+# helper; a test with a computed import()), then runs `squeal code --base main --json` in five cases:
 # case "unrelated" changes a CI-only script; case "selected" changes the module the test imports.
-# Set VITEST_MODULES to a node_modules holding vitest for the fourth case.
+# Set VITEST_MODULES to a node_modules holding vitest for the linked-worktree case.
 # No daemon (one-shot gate), HOME and XDG dirs point into the temp dir, the store is the temp repo's.
 set -eu
 CLI=$1; OUT=$2
@@ -48,7 +48,7 @@ run() {
 git checkout -qb change1; echo 'module.exports = 2;' > .github/scripts/ci.cjs; git commit -qam ci; run unrelated
 git checkout -q main; git checkout -qb change2
 echo 'export function add(a, b) { const s = a + b; return s; }' > src/math.mjs; git commit -qam math; run selected
-# The store now holds the selected runs: rerun, so the gate reads them and opens the store's key adapters.
+# Repeat the selection. Check stderr for stored durations; this fixture did not create a store.
 run selected-again
 echo "== store: $(ls -d .git/squeal* 2>/dev/null | tr '\n' ' ')"
 # Only the module the computed import() loads changes: does the gate select the test?
