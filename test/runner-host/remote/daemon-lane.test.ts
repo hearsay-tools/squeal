@@ -84,7 +84,7 @@ describe("the daemon's remote lane (rows 021-13, 021-14)", () => {
   });
 
   it("is none when the repository forbids it, and status says why", () => {
-    const off = { ...DEFAULT_POLICY, remote: { allowed: false } };
+    const off = { ...DEFAULT_POLICY, remote: { ...DEFAULT_POLICY.remote, allowed: false } };
     const { adapter, notes } = lane(
       (root: string) => ({ repositories: { [root]: { target: "build-box" } } }),
       off,
