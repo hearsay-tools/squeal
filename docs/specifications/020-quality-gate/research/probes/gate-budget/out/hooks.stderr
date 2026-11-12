@@ -1,0 +1,13 @@
+[   0.3s] 0.04 runStart 4
+[   0.4s] 0.16 queued f1.test.ts
+[   0.4s] 0.18 start f1.test.ts
+[   2.4s] 2.20 end f1.test.ts
+[   2.6s] 2.35 queued f2.test.ts
+[   2.6s] 2.38 start f2.test.ts
+[   4.6s] 4.39 end f2.test.ts
+[   4.7s] 4.49 queued f3.test.ts
+[   4.8s] 4.51 start f3.test.ts
+[   6.8s] 6.52 end f3.test.ts
+[   6.9s] 6.66 queued f4.test.ts
+[   6.9s] 6.67 start f4.test.ts
+[   8.9s] 8.69 end f4.test.ts

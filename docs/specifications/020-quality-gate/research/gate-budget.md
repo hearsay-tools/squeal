@@ -2,13 +2,13 @@
 
 Recommendation: run the gate's Vitest lane and its node:test lane at the same time, as the daemon's lanes already run, and let the node:test entries share one pool of `runner.tierSize` processes. Never stop a running file to make room. Name the files that hold the budget while they run and in the report. Keep "the run starts", but end every over-budget report with one rerun command with a fitted `--timeout`. Stopping early, before the files that load no changed path, is an option for the human.
 
-Examined 2026-11-12: Squeal main `52534310d` (0.1.457), the released 0.1.457 bundle for probes, Vitest 5.0.3 in this repository and 4.1.10 in `~/projects/cezar/node_modules` (read only), Node 26.13.0, 24 vCPUs. The one-minute load was 76 to 98 from 17:30Z. Live probes run only at 24 or less (`probes/gate-budget/guard.sh`); see "Live probes".
+Examined 2026-11-12: Squeal main `52534310d` (0.1.457), the released 0.1.457 bundle for probes, Vitest 5.0.3 in this repository and 4.1.10 in `~/projects/cezar/node_modules` (read only), Node 26.13.0, 24 vCPUs. The one-minute load was 76 to 98 from 17:30Z. The live probes ran from 22:42Z to 22:44Z at a one-minute load of 21.1 to 22.7, under the guard's limit of 24 (`probes/gate-budget/guard.sh`); see "Live probes".
 
 | # | Question | Answer | Tag |
 | --- | --- | --- | --- |
-| 1 | A bounded rule that lets later runners produce evidence when the first overruns | Lanes at once (the daemon's rule), plus one node:test pool across entries. A share per runner and a per-file cap both stop running files: the stopped work is lost, and the later runner gains less. | read in source code; inferred (model); verified by experiment (store history) |
+| 1 | A bounded rule that lets later runners produce evidence when the first overruns | Lanes at once (the daemon's rule), plus one node:test pool across entries. A share per runner and a per-file cap both stop running files: the stopped work is lost, and the later runner gains less. | read in source code; inferred (model); verified by experiment (starve, control, long: today's starvation on 0.1.457) |
 | 2 | An early over-budget outcome and the command it names | Keep the run. Name `squeal code --base <ref> --timeout <N>`, with N from the estimate, before the run and in the final report, and say how many completed files are kept for that rerun. Option for the human: stop before the files that load no changed path when the estimate is at least 2× over. | read in source code; verified by experiment (store history); inferred |
-| 3 | Naming the file that consumes the budget while it runs | Both runners already know when a file starts; the gate is not told. Add a start callback, a stderr progress line, and a report that tells a stopped file (with its seconds) from one that never started. | read in source code; verified by experiment (pending, "Live probes") |
+| 3 | Naming the file that consumes the budget while it runs | Both runners already know when a file starts; the gate is not told. Add a start callback, a stderr progress line, and a report that tells a stopped file (with its seconds) from one that never started. | read in source code; verified by experiment (hooks on Vitest 5.0.3; starve on 0.1.457) |
 
 ## Q1. Sharing the budget across runners
 
@@ -37,7 +37,7 @@ Files completed in the budget. R0's 0 and 11 match both reports.
 
 - **R1, a share per runner.** Each runner gets a part of the budget in proportion to its estimate, and its running files stop at the end of its part. Cost: the stopped work is lost. A stopped file is not kept (D17.3), so the rerun repeats it. Risk: the share comes from stored durations, and a single file's next run is over 2× its stored time in 6.7% of cases (Q2). In case A with a 311 s launcher, R1 stops a file that would finish. It does nothing inside one lane (case B).
 - **R2, a per-file cap.** A file is stopped at k× its stored duration. Cost: as R1. Risk: k is host-bound. The launcher ran 311 s on the retry and more than 480 s in the comment's run, against 207 s stored (1.5× to over 2.3×). A file that is always slower than k× its stored time never completes, so its paths never pass.
-- **R3, lanes at once.** The Vitest lane and the node:test lane run at the same time, each with its own width, under the one deadline. No file is stopped early. Cost: the peak number of test processes is the sum of the two widths (5 + 4 in cezar), which is the daemon's own peak. Risks: (a) tests of the two runners share the machine and outside resources at once. A project that works under the daemon already does this. (b) A node:test entry's `prepare` (D15) could rewrite files that a Vitest file reads while it runs. The daemon never runs `prepare` (D15.6), so this is new. Running every `prepare` before either lane starts removes it. (c) The two lanes slow each other under load. That is not measured ("Live probes").
+- **R3, lanes at once.** The Vitest lane and the node:test lane run at the same time, each with its own width, under the one deadline. No file is stopped early. Cost: the peak number of test processes is the sum of the two widths (5 + 4 in cezar), which is the daemon's own peak. Risks: (a) tests of the two runners share the machine and outside resources at once. A project that works under the daemon already does this. (b) A node:test entry's `prepare` (D15) could rewrite files that a Vitest file reads while it runs. The daemon never runs `prepare` (D15.6), so this is new. Running every `prepare` before either lane starts removes it. (c) The two lanes slow each other under load. That is not measured: the probe files sleep, so they make no CPU load.
 - **R4, one node:test pool.** The node:test entries share `tierSize` slots: when one entry's queue is empty, the next entry's files take the free slots. The peak stays `tierSize`, because each node:test file is its own process (`run.ts:85-100`). Risk: two entries with a different `node`, argv or `cwd` run at the same time. In the daemon they run in turn inside a tier.
 
 **Interleaving** file by file across runners needs one queue across adapters. Vitest takes its whole list in one `runTestSpecifications` call, so this is a larger change. R3 and R4 give the same gain in both cases without it.
@@ -74,7 +74,7 @@ So an estimate summed over many files is good: a run that the estimate puts at 2
 **The signals exist. read in source code:**
 
 - node:test: the worker loop starts each file's process (`run.ts:182-214`). No callback tells the caller, and node:test does not call `RunOptions.fileEnded`. Only Vitest does (`src/runners/vitest/adapter.ts:632`).
-- Vitest: a worker sends `onQueued` when it starts to collect a file (`testRunner.onCollectStart`, Vitest 5.0.3 `dist/chunks/index.ggMXe2IF.js:151-154`; 4.1.10 `index.DXx9Dtk7.js:141-144`). That reaches reporters as `onTestModuleQueued` ("The file itself is not loaded yet", `plugin.d.BsjqSb4-.d.ts:2128-2130`). Squeal's reporter already counts it (`reporter.ts:117-119`, `263`). Probe `hooks` checks that it fires per start and not all at once ("Live probes").
+- Vitest: a worker sends `onQueued` when it starts to collect a file (`testRunner.onCollectStart`, Vitest 5.0.3 `dist/chunks/index.ggMXe2IF.js:151-154`; 4.1.10 `index.DXx9Dtk7.js:141-144`). That reaches reporters as `onTestModuleQueued` ("The file itself is not loaded yet", `plugin.d.BsjqSb4-.d.ts:2128-2130`). Squeal's reporter already counts it (`reporter.ts:117-119`, `263`). **Verified by experiment** (probe `hooks`, Vitest 5.0.3, one worker): it fires once per file, 0.01 to 0.03 s before `onTestModuleStart`, and not all at once at the start ("Live probes"). Vitest 4.1.10 was only read.
 
 **Proposal (inferred):**
 
@@ -96,11 +96,26 @@ Rows 1 and 2 both edit `collect.ts`: run them one after the other.
 1. For the human: E2 (stop before the files that load no changed path when the estimate is at least 2× over), E0 alone, or E3.
 2. How much two lanes at once slow each other on a loaded host. The daemon's lanes already do this every day; the gate's cost was not measured.
 3. Whether node:test entries with a different `node` or `cwd` can share one pool in every project. The daemon runs them in turn.
-4. The live checks in "Live probes", until the load allows them.
+4. Whether `onTestModuleQueued` also fires per file start with more than one worker, and in Vitest 4.1.10. The probe used one worker on 5.0.3.
 
 ## Live probes
 
-PENDING
+**Verified by experiment**, 2026-11-12 22:42Z to 22:44Z, Squeal 0.1.457 (released bundle), Vitest 5.0.3, Node 26.13.0. Each run under `env -i` with HOME and TMPDIR in `/tmp/gate-budget`, `nice 10` on 8 vCPUs, one-minute load 21.1 to 22.7 at start. The only file the runs wrote to their HOME was Vitest's `.local/share/vitest/.vitest-secret-token`. No process was left. Outputs in `probes/gate-budget/out/`.
+
+The fixture (`fixture.mjs`) has #196's shape on a small scale: node:test entry `slow` (one file sleeps 60 s, three quick files, all load `src/a.mjs`), node:test entry `quick` (two files that load `src/c.mjs`), and eight Vitest files of 1 s that load `src/b.ts`. No durations are stored, so the estimate is unknown for both runners.
+
+| Step | Edited | `--timeout` | Exit | Wall | Files completed | Verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| control | b, c | 25 s | 0 | 4.8 s | Vitest 8 of 8 in 2.6 s; node:test 2 of 2 in 0.2 s | pass |
+| starve | a, b, c | 25 s | 3 | 25.9 s | node:test 3 of 6 (the `slow` entry's quick files); `quick` entry 0 of 2; Vitest 0 of 8 | incomplete |
+| long | a, b, c | 180 s | 0 | 64.8 s | node:test 6 of 6 in 60.6 s; Vitest 8 of 8 in 2.6 s | pass |
+
+What the runs show:
+
+1. **Starvation is today's rule, not a host effect.** In `starve` the node:test run took 24.0 s of the 25 s, and the deadline stopped the 60 s file. The `quick` entry's two files and all eight Vitest files never started (Vitest `durationMs: null`). `control` shows that the same ten files need 2.8 s in all. So `b` and `c` are `incomplete` (`not-finished`) only because of the wait. Under R3 and R4 they would have completed in the first 3 s (**inferred** from `control`), and only `a` would stay `incomplete`. The verdict is `incomplete` under every rule.
+2. **The runners run in turn.** In `long` the wall time is 64.8 s: node:test 60.6 s, then Vitest 2.6 s, plus about 1.6 s of setup. With lanes at once it would be about 62 s (**inferred**). The gain on a run that fits is small. The gain on a run that does not fit is every file of the later runners.
+3. **Nothing names the file that holds the budget.** Between the pre-run lines (1.7 s) and the end (25.7 s) `starve` wrote nothing. The one runner line gives a count: `node-test run: deadline of 23862 ms passed with 1 of 4 test files unfinished`. Its "4" counts only the `slow` entry, so the two `quick` files that never started are not in it. In the JSON report the file that ran 24 s (`test/n1/slow.test.mjs`) and the two files that never started (`test/n2/c1.test.mjs`, `c2`) are in the same `notFinished` list.
+4. **The start signal for Vitest exists.** In `hooks` (four files of 2 s, one worker) each file's `queued` and `start` came 0.01 to 0.03 s apart, at 0.16, 2.35, 4.49 and 6.66 s. Each came 0.10 to 0.15 s after the end of the file before it. A `fileStarted` callback from `onTestModuleQueued` names the file when it starts, not when the run starts.
 
 ## Sources
 
@@ -109,4 +124,4 @@ PENDING
 - Squeal `52534310d`: `src/core/code/gate/{collect,plan,order,estimate,runner-order,steps,runners,keep,keep-sent}.ts`, `src/cli/code-gate-text.ts`, `src/cli/code-gate-args.ts`, `src/core/types/runner.ts`, `src/runners/node-test/run/run.ts`, `src/runners/node-test/adapter-project.ts`, `src/runners/vitest/{reporter,adapter,width}.ts`.
 - Vitest 5.0.3 `node_modules/vitest/dist/chunks/index.ggMXe2IF.js`, `index.DpLw24bj.js` (`enqueued` 19996, `onQueued` 10677), `plugin.d.BsjqSb4-.d.ts`; Vitest 4.1.10 `~/projects/cezar/node_modules/vitest/dist/chunks/index.DXx9Dtk7.js`.
 - Store history: `~/projects/squeal/.git/squeal/runs/*/report.json`, read only.
-- Probes: `probes/gate-budget/` (README).
+- Probes: `probes/gate-budget/` (README); live outputs `probes/gate-budget/out/` (`*.stdout` JSON reports, `*.stderr` with seconds, `*.load` load and exit, `queue.log`).
