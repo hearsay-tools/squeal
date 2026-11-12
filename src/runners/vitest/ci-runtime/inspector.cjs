@@ -5,7 +5,11 @@
 // when `ci record` yielded to the project's provider and mapped nothing.
 //
 // `installWatch` runs in every process and thread of the recorded command,
-// before the evidence hooks. In a Vitest worker it attributes each load to
+// before the evidence hooks, except where no coverage provider runs (review
+// of 0.1.443-r2 S2): the Vitest process knows that only once its config is
+// resolved, before it starts its workers, and says so to them in
+// `SQUEAL_CI_NO_PROVIDER` (`watchWorkers`); a worker started with it
+// installs no hook and writes no log. In a Vitest worker it attributes each load to
 // the test file running then (`__vitest_worker__.filepath`, as Squeal's
 // runtime recorder does): an `import` or `require` Node resolves (a
 // `module.registerHooks` resolve hook, which sees every load of a builtin,
@@ -38,6 +42,10 @@ const workerThreads = require("node:worker_threads");
 /** A specifier that names the inspector, with or without `node:`. */
 const INSPECTOR = /^(?:node:)?inspector(?:\/promises)?$/;
 const WATCH = "inspector";
+/** Set to `1` by a Vitest process in which no coverage provider runs, for the workers it starts. */
+const NO_PROVIDER = "SQUEAL_CI_NO_PROVIDER";
+/** Whether this Vitest process told its workers to watch nothing (`watchWorkers`). */
+let unwatched = false;
 
 const keyOf = (project, file) => `${project}\0${file}`;
 
@@ -67,6 +75,7 @@ function calledFrom(fn, files) {
  */
 function installWatch(raw, provider) {
   if (typeof raw !== "string" || workerThreads.isInternalThread) return;
+  if (process.env[NO_PROVIDER] === "1") return;
   if (typeof module_.registerHooks !== "function" || globalThis.__squealCiInspector) return;
   globalThis.__squealCiInspector = true;
   const append = fs.appendFileSync;
@@ -127,6 +136,17 @@ function installWatch(raw, provider) {
 }
 
 /**
+ * In the Vitest process, before it starts its workers: whether a coverage
+ * provider runs in its runs. With none, the workers it starts from now on
+ * install no watch (`installWatch`), and `withWatch` reads none.
+ */
+function watchWorkers(providerRuns) {
+  unwatched = providerRuns !== true;
+  if (unwatched) process.env[NO_PROVIDER] = "1";
+  else delete process.env[NO_PROVIDER];
+}
+
+/**
  * What the workers of this Vitest process wrote below `raw` for `modules`
  * (`{project, moduleId}`, each a test file that ended): the files that
  * loaded the inspector, and the files no watched worker saw run.
@@ -165,10 +185,12 @@ const providerRan = (header) =>
  * provider ran, the header's `inspector`: the test files of `ended` whose
  * workers loaded `node:inspector`, and those no watched worker saw run
  * (`readWatch` below `raw`). A file that loaded it keeps no record. Neither
- * list: no `inspector` field. An error of its own leaves every file unknown.
+ * list, or no worker watched (`watchWorkers`: a `failed` header of a
+ * provider that did not start): no `inspector` field. An error of its own
+ * leaves every file unknown.
  */
 function withWatch(covered, raw, ended) {
-  if (!providerRan(covered.header)) return covered;
+  if (!providerRan(covered.header) || unwatched) return covered;
   try {
     const { loaded, unknown } = readWatch(raw, ended);
     if (loaded.length === 0 && unknown.length === 0) return covered;
@@ -195,4 +217,4 @@ function parseLine(line) {
   }
 }
 
-module.exports = { installWatch, readWatch, withWatch };
+module.exports = { installWatch, readWatch, watchWorkers, withWatch };
