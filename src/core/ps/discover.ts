@@ -23,6 +23,8 @@ import { type LockEntry, type ProcessRow, type PsSource, ticksToMs } from "./sou
 /** `btime` is whole seconds, so a process start read from it is up to 1 s early. */
 const START_MARGIN_MS = 1_000;
 const SCRIPT = /(?:^|\/)(?:squeal|squeal\.mjs|squeal\/dist\/cli\/index\.js)$/;
+/** An option whose value may be the next argument: `--require`, never `--require=<file>`. */
+const BARE_OPTION = /^-[^=]*$/;
 /** The `unknown` entry of a lock reading that cannot be read. */
 const HOLDERS = "daemon lock holders";
 /** `<plugins>/cache/<marketplace>/squeal/<version>/...`, `<plugins>` being `.../.claude/plugins` or `.../.codex/plugins`. */
@@ -136,10 +138,22 @@ export function phaseOn(source: PsSource): PhaseOf {
   };
 }
 
-/** The index of `daemon` right after a Squeal script; `-1` when the arguments are not a daemon's. */
+/**
+ * The index of `daemon` right after the process's own Squeal script; `-1`
+ * when the arguments are not a daemon's. Its own script is `argv0` or the
+ * first argument after Node's options: an argument that follows another
+ * script names that script's command, as `hsq job __supervise ... --
+ * node squeal.mjs daemon <root>` does, and that supervisor is the daemon's
+ * parent, never a daemon (row 011-317). An option's value can stand apart
+ * (`--require <file>`), so an argument right after an option without `=`
+ * may be one.
+ */
 function daemonVerbAt(args: readonly string[]): number {
   for (let k = 1; k < args.length; k++) {
-    if (args[k] === "daemon" && SCRIPT.test(args[k - 1] ?? "")) return k;
+    const entry = args[k - 1] ?? "";
+    if (args[k] === "daemon" && SCRIPT.test(entry)) return k;
+    const ofNode = entry.startsWith("-") || BARE_OPTION.test(args[k - 2] ?? "");
+    if (k >= 2 && !ofNode) return -1;
   }
   return -1;
 }
