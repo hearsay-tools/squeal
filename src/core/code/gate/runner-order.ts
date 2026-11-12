@@ -1,11 +1,11 @@
 import { type EstimateGroup, estimateRun, median, type RunEstimate } from "./estimate.js";
 
 /*
- * Spec 020 D18 (row 020-19, #187): the order the gate runs its runners in.
- * They run one after another under one budget, so a runner reached after
- * the budget ends runs nothing. The runner the estimate calls shorter runs
- * first: a large Vitest selection then no longer leaves a few quick
- * node:test files unrun. The order changes no verdict and no rule.
+ * Spec 020 D18 (row 020-19, #187): the order of the gate's runners. Since
+ * row 020-44 they run at once (`lanes.ts`), so the order is the one the
+ * print lists them in (D18.4), and the order the node:test entries first
+ * ask the shared pool for processes in. The runner the estimate calls
+ * shorter comes first. The order changes no verdict and no rule.
  */
 
 /** One runner kind's files to run, grouped as D17.1 estimates them; no group when it runs none. */

@@ -205,7 +205,7 @@ export interface Evidence {
   readonly scope?: ScopeEvidence;
   /** D15.3: each node:test entry's `prepare` that a selected file waited for; absent when none. */
   readonly prepares?: readonly PrepareRun[];
-  /** D17.1: each runner's estimate before its run, in the order they ran (D18); absent when no file was to run. */
+  /** D17.1: each runner's estimate before its run, in D18's order; absent when no file was to run. */
   readonly estimates?: readonly RunEstimate[];
   /** #193: each node:test project's files with an incomplete static closure; absent when none has one. */
   readonly incompleteClosures?: readonly ClosureGaps[];
