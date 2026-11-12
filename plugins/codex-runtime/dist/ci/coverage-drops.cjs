@@ -35,8 +35,7 @@ function transformOf(module) {
 async function settle(result, vitest, projectName, inspector, root) {
   if (result === undefined) {
     const project = vitest.projects.find((p) => p.name === projectName);
-    const isolate = project?.serializedConfig?.isolate ?? project?.config?.isolate;
-    return { none: isolate === false ? "isolate-false" : "unmapped" };
+    return { none: isolateOff(project) ? "isolate-false" : "unmapped" };
   }
   const mapped = result.mapped === undefined ? null : await result.mapped;
   const ids = inspectorIds(result.environment, inspector, root);
@@ -77,6 +76,11 @@ function payloadFiles(payload) {
   }
 }
 
+/** Whether `project` runs its files with `isolate: false`, one worker's modules shared between them. */
+function isolateOff(project) {
+  return (project?.serializedConfig?.isolate ?? project?.config?.isolate) === false;
+}
+
 /** Whether `project`'s runs filter tests by name or tag: then no file runs whole. */
 function isFiltered(vitest, project) {
   const pattern =
@@ -92,4 +96,4 @@ function isFiltered(vitest, project) {
   );
 }
 
-module.exports = { isFiltered, projectFile, settle, transformOf };
+module.exports = { isFiltered, isolateOff, projectFile, settle, transformOf };
