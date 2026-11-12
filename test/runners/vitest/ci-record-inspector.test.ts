@@ -187,8 +187,13 @@ describe("ci export leaves out node:inspector users beside any coverage provider
     const inspector = (run.part.header.coverage as { inspector?: PartInspector }).inspector;
     expect(inspector?.unknown).toEqual([]);
     expect(inspector?.loaded).toEqual(expect.arrayContaining(LOADED));
-    expect(run.code, run.said).toBe(0);
-    expect(run.files.filter((path) => path !== "test/plain.test.ts")).toEqual([]);
+    // The plain file is clean only when no inspector user ran before it in
+    // its worker; on a runner with few CPUs one worker runs all five, and
+    // then nothing is left to export (exit 1, D19.6).
+    const plainLoaded = (inspector?.loaded ?? []).some((f) => f.path === "test/plain.test.ts");
+    expect(run.code, run.said).toBe(plainLoaded ? 1 : 0);
+    expect(run.files).toEqual(plainLoaded ? [] : ["test/plain.test.ts"]);
+    if (plainLoaded) expect(run.said).toContain("wrote nothing");
   });
 
   it(
