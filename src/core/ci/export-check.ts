@@ -53,8 +53,10 @@ export type RunView = Pick<PartProject, "descriptor" | "snapshotOptions">;
 
 /**
  * Resolved Vitest fields Squeal's own instance sets for itself and a run of
- * the project's command does not (`adapter.ts`, `#start`): `includeTaskLocation`,
- * and `snapshotOptions.updateSnapshot` (`update: "none"`), which a part
+ * the project's command may not (`adapter.ts`, `#start`): `includeTaskLocation`,
+ * which `ci record` sets as well since row 018-43 (a part of an earlier
+ * Squeal at this key format has not), and
+ * `snapshotOptions.updateSnapshot` (`update: "none"`), which a part
  * holds apart (`updateSnapshot`, which `reuseRefusal` refuses unless `none`
  * before it compares). The other snapshot options are compared field by
  * field (`RunView.snapshotOptions`; review of 0.1.421 B2). A part's

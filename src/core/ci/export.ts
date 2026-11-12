@@ -79,7 +79,7 @@ export interface CiExportCounts {
   readonly unkeyed: number;
   /** Files left out: an input's content here is not what their shard read, or the shard holds no evidence of it. */
   readonly uncertified: number;
-  /** Files left out: two of their checks share a name, which a part cannot name as the daemon does. */
+  /** Files left out: two of their checks share a name, and the part has not their locations to name them as the daemon does. */
   readonly ambiguous: number;
   /**
    * Files left out: their worker ran an import of `node:inspector` beside
@@ -128,6 +128,16 @@ export async function ciExport(input: CiExportInput): Promise<CiExport> {
   }
 }
 
+/**
+ * Whether the part names `file`'s checks as the daemon does: no two share a
+ * full name, or each check has the location by which `checkNames` named the
+ * repeats (D9, review of 0.1.421 B4; row 018-43).
+ */
+function namedAsDaemon(file: PartFile): boolean {
+  const shared = (file.sharedNames ?? []).length > 0;
+  return !shared || file.checks.every((check) => check.location !== null);
+}
+
 async function exportWith(input: CiExportInput, runner: RunnerAdapter): Promise<CiExport> {
   const { worktreeId, store, parts, header } = input;
   const { keys } = await openDaemonKeys(input);
@@ -138,7 +148,7 @@ async function exportWith(input: CiExportInput, runner: RunnerAdapter): Promise<
 
   const files = parts.flatMap((p) => p.part.testFiles);
   const passed = files.filter((file) => file.outcome !== "fail");
-  const named = passed.filter((file) => (file.sharedNames ?? []).length === 0);
+  const named = passed.filter(namedAsDaemon);
   // Spec 020 D13.4 (018's coordinator, 2026-11-10): the part marks such a file beside Squeal's records.
   // D19.6 (review of 0.1.443 B1): beside any provider, the files its workers saw load it, or did not see.
   const ran = parts.filter((p) => providerRan(p.part));

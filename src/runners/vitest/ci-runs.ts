@@ -204,9 +204,9 @@ function outcomes(
 
 /**
  * The full names two or more of `tests` share, sorted. `checkNames` names
- * the later ones by their line, which the project's own run does not
- * collect, so the part cannot give the daemon's names (D9; review of
- * 0.1.421 B4).
+ * the later ones by their line, which `ci record` has the run collect (row
+ * 018-43); without it the part cannot give the daemon's names, and the
+ * export leaves the file out (D9; review of 0.1.421 B4).
  */
 function sharedNames(tests: readonly RawTest[]): string[] {
   const seen = new Set<string>();

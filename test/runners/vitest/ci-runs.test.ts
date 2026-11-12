@@ -164,7 +164,7 @@ describe("recordedRun", () => {
     }));
     const body = recordedRun(run({ modules: [module("a", { tests })] }), context);
     expect(body.testFiles[0]?.checks.map((c) => c.fullName)).toEqual(["same", "same (line 20)"]);
-    // The project's run collects no location: the export leaves such a file out (D9, B4).
+    // The part keeps the shared names; with each check's location the export keeps the file (018-43).
     expect(body.testFiles[0]?.sharedNames).toEqual(["same"]);
     expect(recordedRun(run(), context).testFiles[0]?.sharedNames).toBeUndefined();
   });
