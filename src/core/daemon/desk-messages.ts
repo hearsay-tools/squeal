@@ -1,6 +1,12 @@
 import type { EpochMs, RelativePath, WorktreeId } from "../types/common.js";
 import type { DaemonPhase, SyncAnswer } from "../types/daemon.js";
-import type { ImportOutcome, ImportRequest, SentBatch } from "../types/daemon-writes.js";
+import type {
+  ImportOutcome,
+  ImportRequest,
+  KeepOutcome,
+  KeepRequest,
+  SentBatch,
+} from "../types/daemon-writes.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { FullSuiteCheckpoint, FullSuiteRequest } from "../types/scheduler.js";
 import type { GroupRequested, HeldBy } from "./run-group.js";
@@ -78,6 +84,12 @@ export type ToDesk =
       readonly id: string;
       readonly outcome: ImportOutcome;
     }
+  | {
+      /** Row 021-20, part two: how keep try `id` ended. */
+      readonly type: "keep-result";
+      readonly id: string;
+      readonly outcome: KeepOutcome;
+    }
   | { readonly type: "close" };
 
 /** Front desk to main thread. */
@@ -101,6 +113,7 @@ export type FromDesk =
   | { readonly type: "resume" }
   | { readonly type: "write"; readonly id: string; readonly batch: SentBatch }
   | { readonly type: "import"; readonly id: string; readonly request: ImportRequest }
+  | { readonly type: "keep"; readonly id: string; readonly request: KeepRequest }
   | {
       readonly type: "promote";
       readonly testFiles: readonly TestFileRef[];

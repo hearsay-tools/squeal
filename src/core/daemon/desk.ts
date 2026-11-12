@@ -3,7 +3,14 @@ import { fileURLToPath } from "node:url";
 import { Worker } from "node:worker_threads";
 import type { RelativePath } from "../types/common.js";
 import type { DaemonPhase, SyncAnswer } from "../types/daemon.js";
-import type { ImportOutcome, ImportRequest, SentBatch } from "../types/daemon-writes.js";
+import type {
+  FailedOutcome,
+  ImportOutcome,
+  ImportRequest,
+  KeepOutcome,
+  KeepRequest,
+  SentBatch,
+} from "../types/daemon-writes.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { FullSuiteCheckpoint, FullSuiteRequest } from "../types/scheduler.js";
 import type { DeskIdentity, FromDesk, ToDesk } from "./desk-messages.js";
@@ -79,6 +86,12 @@ export interface DeskEvents {
    * `DeskIdentity.storeSchema`: the daemon answers that it takes no imports.
    */
   readonly requestImport?: (request: ImportRequest) => Promise<ImportOutcome>;
+  /**
+   * Row 021-20, part two: one try of one write of a file the code gate
+   * keeps. Absent, or without `DeskIdentity.storeSchema`: the daemon
+   * answers that it takes no kept files.
+   */
+  readonly requestKeep?: (request: KeepRequest) => Promise<KeepOutcome>;
   /** The worker died after it started listening. */
   readonly onFailure: (error: Error) => void;
   /**
@@ -196,6 +209,7 @@ export function guarded(events: DeskEvents): DeskEvents {
     requestResume,
     requestWrite,
     requestImport,
+    requestKeep,
   } = events;
   return {
     onActivity: safe(events.onActivity),
@@ -211,6 +225,7 @@ export function guarded(events: DeskEvents): DeskEvents {
     ...(requestResume === undefined ? {} : { requestResume: asked(requestResume) }),
     ...(requestWrite === undefined ? {} : { requestWrite: asked(requestWrite) }),
     ...(requestImport === undefined ? {} : { requestImport: asked(requestImport) }),
+    ...(requestKeep === undefined ? {} : { requestKeep: asked(requestKeep) }),
     onStop: safe(events.onStop),
     onStepDown: safe(events.onStepDown),
     onFailure: safe(events.onFailure),
@@ -220,6 +235,21 @@ export function guarded(events: DeskEvents): DeskEvents {
 
 const NO_WRITES = "this daemon takes no writes";
 const NO_IMPORTS = "this daemon takes no imports";
+const NO_KEEPS = "this daemon takes no kept files";
+
+/**
+ * Row 021-20: posts how a request the main thread ran ended (`import`,
+ * `keep`); one it rejected, or one this daemon has no event for, as failed.
+ */
+function relay<O>(
+  run: Promise<O> | undefined,
+  missing: string,
+  post: (outcome: O | FailedOutcome) => void,
+): void {
+  (run ?? Promise.reject(new Error(missing))).then(post, (error: unknown) =>
+    post({ failed: error instanceof Error ? error.message : String(error) }),
+  );
+}
 
 async function inWorker(
   worker: Worker,
@@ -339,14 +369,13 @@ async function inWorker(
           );
           return;
         case "import":
-          (events.requestImport?.(message.request) ?? Promise.reject(new Error(NO_IMPORTS))).then(
-            (outcome) => post({ type: "import-result", id: message.id, outcome }),
-            (error: unknown) =>
-              post({
-                type: "import-result",
-                id: message.id,
-                outcome: { failed: error instanceof Error ? error.message : String(error) },
-              }),
+          relay(events.requestImport?.(message.request), NO_IMPORTS, (outcome) =>
+            post({ type: "import-result", id: message.id, outcome }),
+          );
+          return;
+        case "keep":
+          relay(events.requestKeep?.(message.request), NO_KEEPS, (outcome) =>
+            post({ type: "keep-result", id: message.id, outcome }),
           );
           return;
         case "stop":
@@ -425,6 +454,9 @@ async function inThread(identity: DeskIdentity, events: DeskEvents): Promise<Fro
       ...(events.requestImport === undefined || identity.storeSchema === undefined
         ? {}
         : { requestImport: events.requestImport, storeSchema: identity.storeSchema }),
+      ...(events.requestKeep === undefined || identity.storeSchema === undefined
+        ? {}
+        : { requestKeep: events.requestKeep, storeSchema: identity.storeSchema }),
     }),
   );
   return {
