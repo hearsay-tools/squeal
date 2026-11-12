@@ -4,7 +4,7 @@ import type { SchedulerContext } from "../scheduler/context.js";
 import { scratchUnstable } from "../scheduler/editor-scratch.js";
 import { rekeyEnvironments } from "../scheduler/environment-growth.js";
 import { newFileState } from "../scheduler/files.js";
-import { heldFiles, type MergeHold } from "../scheduler/hold.js";
+import type { MergeHold } from "../scheduler/hold.js";
 import type { WorktreeKeys } from "../scheduler/keying.js";
 import { NOTHING_OBSERVED, prepareObserved, type TierObservations } from "../scheduler/observed.js";
 import {
@@ -24,7 +24,7 @@ import type { AbsolutePath, RelativePath } from "../types/common.js";
 import type { CheckKey, TestFileRef } from "../types/keys.js";
 import type { RunReport } from "../types/runner.js";
 import { reasonOf } from "./reason.js";
-import { movedInputs, observedMoves, readKeepEvidence } from "./sources.js";
+import { heldBy, movedInputs, observedMoves, readKeepEvidence, UnmergedIndex } from "./sources.js";
 
 /*
  * Run evidence and the store decision (GLOSSARY, "Results"; row 011-319,
@@ -133,13 +133,42 @@ export async function readRecordEvidence(
   return { changed, touched, observed, held: mergeHeld(hold, tier.files, observed) };
 }
 
+/** What a merge hold says of paths (011 C9): the daemon's `MergeHold`, or `squeal code`'s `mergeHoldOf`. */
+export type HeldPaths = Pick<MergeHold, "holding" | "names">;
+
 /** The files of `files` whose keys, or what their run read, name a path a merge holds (011 C9). */
 export function mergeHeld(
-  hold: MergeHold,
+  hold: HeldPaths,
   files: readonly TierFile[],
   observed: TierObservations | undefined,
 ): TierFile[] {
-  return heldFiles(hold, files, observed?.growth);
+  return heldBy(hold, files, observed?.growth);
+}
+
+/** Where `squeal code` reads the merge hold, at its decision and again at each write. */
+export interface MergeHoldSource {
+  read(): Promise<HeldPaths>;
+}
+
+/**
+ * Row 011-320 (difference 3): `squeal code`'s merge hold in `root`, the
+ * unmerged index paths as the daemon's `MergeHold` reads them.
+ */
+export function mergeHoldOf(root: AbsolutePath): MergeHoldSource {
+  return new UnmergedIndex(root);
+}
+
+/**
+ * The files of `files` whose paths no merge holds now: the daemon's record
+ * reads its hold again at each try (`TierRecords.#heldNow`, review 0.1.273
+ * B1), and `squeal code` at each write.
+ */
+export async function unheldNow<T extends { readonly paths: readonly RelativePath[] }>(
+  hold: MergeHoldSource,
+  files: readonly T[],
+): Promise<T[]> {
+  const now = await hold.read();
+  return now.holding ? files.filter((f) => !now.names(f.paths)) : [...files];
 }
 
 /** A test file's runtime identity now (`WorktreeKeys.runtimeIdentity`, `TierFile.runtimePolicy`). */
@@ -154,6 +183,8 @@ export interface KeepSources {
   readonly run: number;
   /** The copy of the inputs taken before the run (`copyInputs`). */
   readonly before: StatCache;
+  /** Row 011-320 (difference 3): the merge hold at the decision (`mergeHoldOf`). */
+  readonly hold: MergeHoldSource;
   /**
    * Row 011-320 (difference 2): the runtime identity at the run's end,
    * compared with each file's `KeepFile.runtimeIdentity`; without it, no
@@ -291,7 +322,7 @@ export async function keepDecisions(
     return { ...entry, checkpointId: null, forced: false };
   });
   const evidence = await readKeepEvidence(sources, entries, report);
-  const outcome = recordOutcome(entries, report, evidence, KEEP_FACTS);
+  const outcome = recordOutcome(entries, report, evidence, { ...KEEP_FACTS, held: evidence.held });
   const run = { files: entries, lane: KEEP_LANE, changes: new Set<RelativePath>(), cancel: null };
   const observed = evidence.observed ?? NOTHING_OBSERVED;
   const { changed } = evidence;
@@ -299,7 +330,10 @@ export async function keepDecisions(
   return new Map(entries.map((entry) => [entry.file.id, decisionOf(entry, end, outcome, true)]));
 }
 
-/** `squeal code` has no ledger, no merge hold yet, and no retry: a barred file is not kept. */
+/**
+ * `squeal code` has no ledger and no retry: a barred file is not kept. A
+ * held file is `requeue`, as the daemon's, and not kept.
+ */
 const KEEP_FACTS: RecordFacts = {
   held: [],
   startupHeld: false,
