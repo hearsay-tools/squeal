@@ -2,7 +2,6 @@ import type { NodeTestProject } from "../../../src/core/types/policy.js";
 import { createNodeTestAdapter } from "../../../src/runners/node-test/adapter.js";
 import type { Fixture, Pack } from "../driver.js";
 import { isTest, type Module, type Written } from "../scenarios/types.js";
-import type { Gap } from "../verdicts.js";
 
 /*
  * node:test's pack (spec 016 D1): ES modules under `src/`, tests under
@@ -10,23 +9,14 @@ import type { Gap } from "../verdicts.js";
  * its variants are the forms reviews found the recorder missed: a
  * `--require` preload runs before every `--import` (003 wave 2.5 B1), and
  * Node splits `NODE_OPTIONS` at double quotes (003 wave 2.6 B1). Its runs
- * report what they observed, and the core keeps it (spec 016 D4); a slow
- * project's variant records the processes a test starts, which a fast one
- * does not.
+ * report what they observed, and the core keeps it (spec 016 D4). Every
+ * project records the processes a test starts (020 D12.6, row 020-36), a
+ * fast one's recorder an `--import` there and a slow one's a `--require`.
  */
 
 const STARTED = (holds: string) => `new URL("../${holds}.started", import.meta.url)`;
 /** What a startup hook shares with every test. */
 const SHARED = "globalThis.kitValue";
-
-/** K10's assertions on what its child process imported, in worktree b and after the restart. */
-const CHILD = ["step 5 holds", "step 7 edit", "step 7 direct", "step 11 holds", "step 13 edit"];
-
-/** 004 D5: a fast project's processes the test starts are not observed. */
-const FAST: Gap = {
-  spec: "004 D5: for a slow node:test project the recorder is also placed in the child's `NODE_OPTIONS`, so processes the test spawns are observed; for fast projects nothing changes",
-  fails: [...CHILD, "step 13 direct"],
-};
 
 function test(module: Extract<Written, { kind: "test" }>, of: (name: string) => Module): string {
   const from = of(module.from);
@@ -160,7 +150,6 @@ const required: Pack = {
 
 export const nodeTest: Pack = {
   ...base,
-  known: { K10: FAST },
   variants: [
     {
       name: "slow",

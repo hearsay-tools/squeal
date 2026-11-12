@@ -8,10 +8,10 @@ import type { TestFileRef } from "../../../core/types/keys.js";
 import type { NodeTestProject } from "../../../core/types/policy.js";
 import type { ObservedInputs, RunEnd, RunReport } from "../../../core/types/runner.js";
 import { logGoneReport, markLogDir } from "../../log-dir.js";
+import { recorderOption } from "../../observe/runtime.js";
 import { withRecorderSignatures } from "../../observe/signature.js";
 import { type ProcessExit, startGroup } from "../../process/group.js";
 import {
-  holdsRequire,
   preloadSpecifiers,
   quoteNodeOption,
   tokenizeNodeOptions,
@@ -240,7 +240,7 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
         : [{ testFile: r.testFile, durationMs: r.stream.durationMs }],
     ),
   };
-  const report = signed(built, { reads, nodeOptions: env.NODE_OPTIONS, runtime, paths });
+  const report = signed(built, { reads, runtime, paths });
   const observed = completed.flatMap((r) => {
     const files = graphs(options.logDir, r.index);
     const closure = observedClosure(r.testFile, r.absolute, files, preloads, paths);
@@ -253,22 +253,28 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
 
 /**
  * The daemon's environment with the project's merged over it (D1), as
- * `projectEnv` cleans it. Node runs a `--require` in `NODE_OPTIONS` before
- * those of argv, so when `NODE_OPTIONS` holds one, however quoted
- * (`holdsRequire`, review wave 2.6 B1), the recorder goes first there as
- * well; Node loads it once. For a slow project it goes there always, so a
- * process the test spawns, which inherits no argv, records too (004 D5).
- * There it stays a `--require` (task 001-390): a spawned Node's own argv
- * `--require` runs before any `--import`, and nothing here sees that argv to
- * choose per child, so an `--import` would miss what such a preload loads.
+ * `projectEnv` cleans it, and the recorder first in its `NODE_OPTIONS`, ahead
+ * of the project's own, so a process the test spawns, which inherits no
+ * argv, records too (spec 020 D12.6 as amended 2026-11-12, row 020-36; a
+ * slow project's only before, 004 D5). The test file's own process has it
+ * from argv already, and Node loads it once. As Vitest's recorder
+ * (`recorderOption`, spec 001 D11 Fidelity, task 001-390): an `--import` of
+ * its `file:` URL, since a `--require` makes a spawned Node parse the nearest
+ * `package.json` first, and one that is not JSON stops a child that starts
+ * without Squeal; beside a project `--require` a `--require`, which Node runs
+ * before those of argv, so the recorder is installed before every project
+ * preload (review wave 2.6 B1). An `--import` misses what a spawned Node's own
+ * argv `--require` loads, which runs before it; a slow project keeps the
+ * `--require` it had (004 D5), which records that too.
  */
 function childEnv(options: NodeTestRunOptions, runtime: NodeTestRuntime): NodeJS.ProcessEnv {
   const env = projectEnv(options.project, options.env ?? process.env);
-  const nodeOptions = env.NODE_OPTIONS;
-  const recorder = `--require ${quoteNodeOption(runtime.recorder)}`;
-  if (options.project.slow === true || (nodeOptions !== undefined && holdsRequire(nodeOptions))) {
-    env.NODE_OPTIONS = nodeOptions === undefined ? recorder : `${recorder} ${nodeOptions}`;
-  }
+  const nodeOptions = env.NODE_OPTIONS?.trim() ?? "";
+  const recorder =
+    options.project.slow === true
+      ? `--require ${quoteNodeOption(runtime.recorder)}`
+      : recorderOption(runtime.recorder, nodeOptions);
+  env.NODE_OPTIONS = nodeOptions === "" ? recorder : `${recorder} ${nodeOptions}`;
   return env;
 }
 
@@ -315,22 +321,17 @@ function readEvents(logDir: AbsolutePath, index: number) {
 
 /**
  * Spec 001 D11 Fidelity (task 001-390): a signature of a recorder this run
- * used says so; in `NODE_OPTIONS` only when `childEnv` or the warm-up put one
- * there, argv's reaching no child.
+ * used says so. Every recorder is in `NODE_OPTIONS`, as `childEnv` and the
+ * warm-up put it there (row 020-36), so every process a test starts loads it.
  */
 function signed(
   built: RunReport,
-  run: {
-    reads: NodeTestReads | null;
-    nodeOptions: string | undefined;
-    runtime: NodeTestRuntime;
-    paths: WorktreePaths;
-  },
+  run: { reads: NodeTestReads | null; runtime: NodeTestRuntime; paths: WorktreePaths },
 ): RunReport {
   const { reads, runtime } = run;
   return withRecorderSignatures(built, {
     files: reads === null ? [runtime.recorder] : [runtime.recorder, reads.recorder],
-    inNodeOptions: reads !== null || (run.nodeOptions ?? "").includes(runtime.recorder),
+    inNodeOptions: true,
     relativize: (text) => run.paths.relativizeText(text),
   });
 }

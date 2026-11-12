@@ -12,8 +12,8 @@ import { createNodeTestAdapter } from "../../../src/runners/node-test/adapter.js
  * file (spec 003 D3, D5; 004 D5). A module loaded through
  * `createRequire(<non-module>)` and what a process the test spawns loads join
  * that file's observed paths, not the project's preloads (lessons.md defect
- * 3); a slow project's spawned processes are recorded, a fast one's are not;
- * a file whose run loads nothing beyond itself and a manifest is named in a
+ * 3); every project's spawned processes are recorded (row 020-36; a slow
+ * project's only before); a file whose run loads nothing beyond itself and a manifest is named in a
  * note (defect 6). Since spec 016 D4 the run reports them (`observed`,
  * `environmentObserved`) and the core keys them; what a spawned process
  * loaded is `direct` (row 007-56).
@@ -146,9 +146,18 @@ describe("a test that spawns the package's CLI (spec 004 D5)", () => {
   };
   const FILE = "test/cli.test.mjs";
 
-  it("in a slow project, keys the file with what the CLI loaded", SLOW, async () => {
-    const root = spawnRepo("spawn-slow");
-    const adapter = await createNodeTestAdapter(project({ slow: true }), { root });
+  // Row 020-36 (020 D12.6 as amended 2026-11-12): the recorder reaches a fast project's spawned
+  // processes too, through `NODE_OPTIONS`, where before only a slow project's were recorded.
+  it.each([
+    ["a slow", { slow: true }],
+    ["a fast", {}],
+  ])("in %s project, keys the file with what the CLI loaded", SLOW, async (name, more) => {
+    const root = spawnRepo(`spawn-${name.slice(2)}`);
+    const notes: string[] = [];
+    const adapter = await createNodeTestAdapter(project(more), {
+      root,
+      note: (text) => notes.push(text),
+    });
     const report = await ran(adapter, FILE);
     expect(seen(report, FILE).paths).toEqual(
       expect.arrayContaining(["bin/cli.mjs", "lib/helper.mjs"]),
@@ -158,20 +167,8 @@ describe("a test that spawns the package's CLI (spec 004 D5)", () => {
       expect.arrayContaining(["bin/cli.mjs", "lib/helper.mjs"]),
     );
     expect(startup(report)).not.toContain("lib/helper.mjs");
-  });
-
-  it("in a fast project, observes nothing past the spawn and names the file", SLOW, async () => {
-    const root = spawnRepo("spawn-fast");
-    const notes: string[] = [];
-    const adapter = await createNodeTestAdapter(project({}), {
-      root,
-      note: (text) => notes.push(text),
-    });
+    // A file whose child loaded modules loaded more than itself: the bare-file note names none.
     expect(notes.filter((n) => n.includes("inputs"))).toEqual([]);
-    const report = await ran(adapter, FILE);
-    expect(seen(report, FILE).paths).not.toContain("lib/helper.mjs");
-    expect(seen(report, FILE).direct).toEqual([]);
-    expect(notes.filter((n) => n.includes("inputs"))).toEqual([bareNote(FILE)]);
   });
 });
 

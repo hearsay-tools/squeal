@@ -12,6 +12,8 @@ import { runNodeTest } from "../../../src/runners/node-test/run/run.js";
  * `package.json` that is not JSON into a temp directory and runs Node there. A
  * warm-up (`observeIgnored`, task 001-307) puts 001-132's recorder in every
  * process; as a `--require` it made that child die with ERR_INVALID_PACKAGE_CONFIG.
+ * Row 020-36: the module recorder reaches that child too, by the same rule, so
+ * the child still starts and what it loads keys the test file.
  */
 
 const FIXTURES = resolve(import.meta.dirname, "../../fixtures/node-test");
@@ -60,7 +62,7 @@ test("runs Node where the nearest package.json is not JSON", () => {
 };
 
 describe("a node:test warm-up's recorder a test cannot tell is there (task 001-390)", () => {
-  it("passes the cezar-shaped case, records the child's read, and keys as without it", {
+  it("passes the cezar-shaped case, records the child's read, and keys its load alone", {
     timeout: 60_000,
   }, async () => {
     const project: NodeTestProject = {
@@ -86,8 +88,16 @@ describe("a node:test warm-up's recorder a test cannot tell is there (task 001-3
     expect(reads?.[0]?.paths).toEqual(
       expect.arrayContaining(["data/child.txt", "scripts/child.cjs"]),
     );
+    // Row 020-36: the child's module load keys the file, its file read does not.
+    const child = "scripts/child.cjs";
     expect(observed).toEqual([
-      { testFile, paths: ["test/a.test.mjs"], preloadPaths: [], direct: [], written: [] },
+      {
+        testFile,
+        paths: [child, "test/a.test.mjs"],
+        preloadPaths: [],
+        direct: [child],
+        written: [],
+      },
     ]);
   });
 
@@ -113,8 +123,11 @@ describe("a node:test warm-up's recorder a test cannot tell is there (task 001-3
       });
       return report.results.map((r) => [r.outcome, r.errors[0]?.recorder]);
     };
-    expect(await run(true)).toEqual([["fail", "Node before 18.18 rejects its --import"]]);
-    // the module recorder in argv reaches no child: the old Node starts
-    expect(await run(false)).toEqual([["pass", undefined]]);
+    // Row 020-36: the module recorder reaches the child as an `--import` too, as Vitest's does.
+    for (const observeIgnored of [true, false]) {
+      expect(await run(observeIgnored)).toEqual([
+        ["fail", "Node before 18.18 rejects its --import"],
+      ]);
+    }
   });
 });
