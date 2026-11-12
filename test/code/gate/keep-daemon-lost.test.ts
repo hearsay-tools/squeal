@@ -1,12 +1,20 @@
 import { rmSync } from "node:fs";
 import { setTimeout as sleep } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
+import type { TestFileRef } from "../../../src/core/types/keys.js";
 import {
+  A,
+  B,
+  BOTH,
   countGateWrites,
+  type Inputs,
+  KEY_A,
+  KEY_B,
   kept,
   type ProxiedRequest,
   type ProxyPlan,
   RECORD,
+  realInputs,
   recordAt,
   resultsAt,
   type Served,
@@ -127,4 +135,78 @@ describe("a keep whose answer is lost (review 0.1.450 B2)", () => {
     );
     expect(at.keeps).toEqual([]);
   });
+});
+
+describe("an input that moves while a try is lost (review 0.1.450 R1-B2)", () => {
+  /**
+   * A worktree with real inputs whose daemon never receives the first
+   * request `is` picks: the proxy rewrites `moved`'s input, then drops the
+   * request.
+   */
+  async function lostWhileMoving(is: (request: ProxiedRequest) => boolean, moved: TestFileRef) {
+    let inputs: Inputs | null = null;
+    let dropped = false;
+    const at = await served({
+      proxy: (request) => {
+        if (dropped || !is(request)) return "forward";
+        dropped = true;
+        inputs?.move(moved);
+        return "drop";
+      },
+    });
+    inputs = await realInputs(at.root);
+    return { at, inputs, dropped: () => dropped };
+  }
+
+  const NOT_KEPT =
+    "1 completed test file was not kept in the stores: it changed after a write the daemon never received; the next run will run it again";
+
+  it(
+    "does not write the results of a file whose input moved while its results request was lost",
+    SLOW,
+    async () => {
+      const { at, inputs, dropped } = await lostWhileMoving(keepOf("results"), A);
+      const notes: string[] = [];
+      const count = countGateWrites();
+      await kept(at, notes, { daemonWaits: WAITS, inputs });
+      expect(count.stop()).toBe(0);
+      expect(dropped()).toBe(true);
+      expect(notes).toEqual([NOT_KEPT]);
+      expect([runs(at, "coverage"), runs(at, "results")]).toEqual([1, 0]);
+      expect(resultsAt(at.commonDir)).toBe(0);
+    },
+  );
+
+  it(
+    "writes nothing of a file whose input moved while its coverage request was lost",
+    SLOW,
+    async () => {
+      const { at, inputs, dropped } = await lostWhileMoving(keepOf("coverage"), A);
+      const notes: string[] = [];
+      await kept(at, notes, { daemonWaits: WAITS, inputs });
+      expect(dropped()).toBe(true);
+      expect(notes).toEqual([NOT_KEPT]);
+      expect([runs(at, "coverage"), runs(at, "results")]).toEqual([0, 0]);
+      expect(recordAt(at.commonDir)).toBeNull();
+      expect(resultsAt(at.commonDir)).toBe(0);
+    },
+  );
+
+  it(
+    "checks the next file too after a recovery pause, and writes the lost file once",
+    SLOW,
+    async () => {
+      // A's results request is lost while B's input moves: A is sent again and kept, B is not written.
+      const { at, inputs } = await lostWhileMoving(keepOf("results"), B);
+      const notes: string[] = [];
+      await kept(at, notes, { daemonWaits: WAITS, inputs, files: BOTH });
+      expect(notes).toEqual([NOT_KEPT]);
+      expect(at.keeps.map((k) => [k.write.kind, k.write.key])).toEqual([
+        ["coverage", KEY_A],
+        ["results", KEY_A],
+      ]);
+      expect([resultsAt(at.commonDir, KEY_A), resultsAt(at.commonDir, KEY_B)]).toEqual([1, 0]);
+      expect(recordAt(at.commonDir, KEY_B)).toBeNull();
+    },
+  );
 });
