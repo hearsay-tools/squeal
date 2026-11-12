@@ -1,0 +1,103 @@
+load at start: 2.67 on 24 CPUs; node v26.13.0; cli /home/agent/.claude/plugins/cache/hearsay/squeal/0.1.443/dist/cli/squeal.mjs
+### Case 1: #194's shape, no runner lists test/e2e (child variant)
+== 1a project's own suite: npm run test:package exit 0
+== 1b-gate: exit 3, 0.42 s wall
+verdict incomplete {"pass":0,"violation":0,"incomplete":2,"skipped":0,"accepted":0}
+  scripts/release.mjs publish incomplete no-loader cc 5 cov null crap null loaders {"expected":[],"measured":[]}
+  test/e2e/release.test.mjs <test> incomplete no-loader cc 3 cov null crap null loaders {"expected":[],"measured":[]}
+  stderr:
+    squeal code: node:test: no test file to run
+    squeal code: no test Squeal runs loads scripts/release.mjs: no Vitest or node:test project lists it, and no listed test file imports it. Its 1 changed function will read incomplete (no-loader). To measure it, give it to a runner (a nodeTest entry, with prepare when it needs a build); to skip its coverage, name it in coverage.exclude at the base.
+    squeal code: no test Squeal runs loads test/e2e/release.test.mjs: no Vitest or node:test project lists it, and no listed test file imports it. Its 1 changed function will read incomplete (no-loader). To measure it, give it to a runner (a nodeTest entry, with prepare when it needs a build); to skip its coverage, name it in coverage.exclude at the base.
+    Command exited with non-zero status 3
+== 1c --test test/e2e/release.test.mjs: exit 2
+squeal code: --test test/e2e/release.test.mjs: no Vitest or node:test project lists it as a test file
+
+Usage: squeal code --base <ref> [<path>...] [--test <file>...] [--group <name>...] [--parts <dir>...] [--timeout <seconds>] [--exceptions <file>] [--json]
+== 1d reported version gate: exit 3
+squeal code: node:test: no test file to run
+squeal code: no test Squeal runs loads scripts/release.mjs: no Vitest or node:test project lists it, and no listed test file imports it. Its 1 changed function will read incomplete (no-loader). To measure it, give it to a runner (a nodeTest entry, with prepare when it needs a build); to skip its coverage, name it in coverage.exclude at the base.
+squeal code: no test Squeal runs loads test/e2e/release.test.mjs: no Vitest or node:test project lists it, and no listed test file imports it. Its 1 changed function will read incomplete (no-loader). To measure it, give it to a runner (a nodeTest entry, with prepare when it needs a build); to skip its coverage, name it in coverage.exclude at the base.
+== 1e reported version --test: exit 2
+squeal code: --test test/e2e/release.test.mjs: no Vitest or node:test project lists it as a test file
+
+Usage: squeal code --base <ref> [<path>...] [--test <file>...] [--group <name>...] [--parts <dir>...] [--timeout <seconds>] [--exceptions <file>] [--json]
+### Case 2: package entry with prepare at the base, coverage.children true, child variant
+== 2-gate: exit 0, 0.76 s wall
+verdict pass {"pass":2,"violation":0,"incomplete":0,"skipped":0,"accepted":0}
+  scripts/release.mjs publish pass  cc 5 cov {"lines":7,"covered":7,"share":1} crap 5 loaders {"expected":["test/e2e/release.test.mjs"],"measured":["test/e2e/release.test.mjs"]}
+  test/e2e/release.test.mjs <test> pass  cc 3 cov {"lines":6,"covered":6,"share":1} crap 3 loaders {"expected":["test/e2e/release.test.mjs"],"measured":["test/e2e/release.test.mjs"]}
+  run {"runner":"node-test","selected":["test/e2e/release.test.mjs"],"completed":["test/e2e/release.test.mjs"],"notFinished":[],"failed":[],"children":{"read":1,"dropped":0},"prepare":[{"project":"package","command":["node","scripts/build.mjs"],"outcome":"passed","exit":0,"durationMs":53,"notRun":[]}],"estimate":{"seconds":null,"files":1,"known":0,"width":4},"durationMs":232}
+  stderr:
+    squeal code: node:test: 1 test file to run (tests 1)
+    squeal code: node:test: 1 test file to run here, up to 4 at once; no stored duration, so the time is unknown
+    squeal code: node:test entry "package": prepare: node scripts/build.mjs
+    squeal code: node-test project "package": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: test/e2e/release.test.mjs
+### Case 3: as case 2 with coverage.children false
+== 3-gate: exit 3, 0.72 s wall
+verdict incomplete {"pass":1,"violation":0,"incomplete":1,"skipped":0,"accepted":0}
+  scripts/release.mjs publish incomplete no-loader cc 5 cov null crap null loaders {"expected":[],"measured":[]}
+  test/e2e/release.test.mjs <test> pass  cc 3 cov {"lines":6,"covered":6,"share":1} crap 3 loaders {"expected":["test/e2e/release.test.mjs"],"measured":["test/e2e/release.test.mjs"]}
+  run {"runner":"node-test","selected":["test/e2e/release.test.mjs"],"completed":["test/e2e/release.test.mjs"],"notFinished":[],"failed":[],"prepare":[{"project":"package","command":["node","scripts/build.mjs"],"outcome":"passed","exit":0,"durationMs":54,"notRun":[]}],"estimate":{"seconds":null,"files":1,"known":0,"width":4},"durationMs":210}
+  stderr:
+    squeal code: node:test: 1 test file to run (tests 1)
+    squeal code: no test Squeal runs loads scripts/release.mjs: no Vitest or node:test project lists it, and no listed test file imports it. Its 1 changed function will read incomplete (no-loader). To measure it, give it to a runner (a nodeTest entry, with prepare when it needs a build); to skip its coverage, name it in coverage.exclude at the base.
+    squeal code: node:test: 1 test file to run here, up to 4 at once; no stored duration, so the time is unknown
+    squeal code: node:test entry "package": prepare: node scripts/build.mjs
+    squeal code: node-test project "package": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: test/e2e/release.test.mjs
+    Command exited with non-zero status 3
+### Case 4: as case 2, in-process variant (the test imports publish)
+== 4-gate: exit 0, 0.66 s wall
+verdict pass {"pass":2,"violation":0,"incomplete":0,"skipped":0,"accepted":0}
+  scripts/release.mjs publish pass  cc 5 cov {"lines":7,"covered":7,"share":1} crap 5 loaders {"expected":["test/e2e/release.test.mjs"],"measured":["test/e2e/release.test.mjs"]}
+  test/e2e/release.test.mjs <test> pass  cc 3 cov {"lines":6,"covered":6,"share":1} crap 3 loaders {"expected":["test/e2e/release.test.mjs"],"measured":["test/e2e/release.test.mjs"]}
+  run {"runner":"node-test","selected":["test/e2e/release.test.mjs"],"completed":["test/e2e/release.test.mjs"],"notFinished":[],"failed":[],"children":{"read":0,"dropped":0},"prepare":[{"project":"package","command":["node","scripts/build.mjs"],"outcome":"passed","exit":0,"durationMs":51,"notRun":[]}],"estimate":{"seconds":null,"files":1,"known":0,"width":4},"durationMs":155}
+  stderr:
+    squeal code: node:test: 1 test file to run (tests 1)
+    squeal code: node:test: 1 test file to run here, up to 4 at once; no stored duration, so the time is unknown
+    squeal code: node:test entry "package": prepare: node scripts/build.mjs
+### Case 5: as case 2, --test on the packaged file
+== 5-gate-test: exit 0, 0.75 s wall
+verdict pass {"pass":2,"violation":0,"incomplete":0,"skipped":0,"accepted":0}
+  scripts/release.mjs publish pass  cc 5 cov {"lines":7,"covered":7,"share":1} crap 5 loaders {"expected":["test/e2e/release.test.mjs"],"measured":["test/e2e/release.test.mjs"]}
+  test/e2e/release.test.mjs <test> pass  cc 3 cov {"lines":6,"covered":6,"share":1} crap 3 loaders {"expected":["test/e2e/release.test.mjs"],"measured":["test/e2e/release.test.mjs"]}
+  run {"runner":"node-test","selected":["test/e2e/release.test.mjs"],"completed":["test/e2e/release.test.mjs"],"notFinished":[],"failed":[],"children":{"read":1,"dropped":0},"prepare":[{"project":"package","command":["node","scripts/build.mjs"],"outcome":"passed","exit":0,"durationMs":50,"notRun":[]}],"estimate":{"seconds":null,"files":1,"known":0,"width":4},"durationMs":231}
+  stderr:
+    squeal code: node:test: 1 test file to run (tests 1)
+    squeal code: node:test: 1 test file to run here, up to 4 at once; no stored duration, so the time is unknown
+    squeal code: node:test entry "package": prepare: node scripts/build.mjs
+    squeal code: node-test project "package": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: test/e2e/release.test.mjs
+### Case 6: as case 2 (children true, child variant), but the head edits only publish(), not the test
+== 6-gate: exit 3, 0.45 s wall
+verdict incomplete {"pass":0,"violation":0,"incomplete":1,"skipped":0,"accepted":0}
+  scripts/release.mjs publish incomplete no-loader cc 5 cov null crap null loaders {"expected":[],"measured":[]}
+  stderr:
+    squeal code: node:test: no test file to run
+    Command exited with non-zero status 3
+### Case 7: case 6 with --test on the packaged file
+== 7-gate-test: exit 0, 0.73 s wall
+verdict pass {"pass":1,"violation":0,"incomplete":0,"skipped":0,"accepted":0}
+  scripts/release.mjs publish pass  cc 5 cov {"lines":7,"covered":7,"share":1} crap 5 loaders {"expected":["test/e2e/release.test.mjs"],"measured":["test/e2e/release.test.mjs"]}
+  run {"runner":"node-test","selected":["test/e2e/release.test.mjs"],"completed":["test/e2e/release.test.mjs"],"notFinished":[],"failed":[],"children":{"read":1,"dropped":0},"prepare":[{"project":"package","command":["node","scripts/build.mjs"],"outcome":"passed","exit":0,"durationMs":46,"notRun":[]}],"estimate":{"seconds":null,"files":1,"known":0,"width":4},"durationMs":225}
+  stderr:
+    squeal code: node:test: 1 test file to run (tests 1)
+    squeal code: node:test: 1 test file to run here, up to 4 at once; no stored duration, so the time is unknown
+    squeal code: node:test entry "package": prepare: node scripts/build.mjs
+    squeal code: node-test project "package": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: test/e2e/release.test.mjs
+### Case 8: unit-only config (case 1), head edits only publish()
+== 8-gate: exit 3, 0.41 s wall
+verdict incomplete {"pass":0,"violation":0,"incomplete":1,"skipped":0,"accepted":0}
+  scripts/release.mjs publish incomplete no-loader cc 5 cov null crap null loaders {"expected":[],"measured":[]}
+  stderr:
+    squeal code: node:test: no test file to run
+    squeal code: no test Squeal runs loads scripts/release.mjs: no Vitest or node:test project lists it, and no listed test file imports it. Its 1 changed function will read incomplete (no-loader). To measure it, give it to a runner (a nodeTest entry, with prepare when it needs a build); to skip its coverage, name it in coverage.exclude at the base.
+    Command exited with non-zero status 3
+### Case 9: case 6 with the package entry's prepare removed in the working tree (does prepare hide the hint?)
+== 9-gate: exit 3, 0.44 s wall
+verdict incomplete {"pass":0,"violation":0,"incomplete":1,"skipped":0,"accepted":0}
+  scripts/release.mjs publish incomplete no-loader cc 5 cov null crap null loaders {"expected":[],"measured":[]}
+  stderr:
+    squeal code: node:test: no test file to run
+    Command exited with non-zero status 3
+load at end: 2.69
+kept in /tmp/r194-XXXXXX (removed)

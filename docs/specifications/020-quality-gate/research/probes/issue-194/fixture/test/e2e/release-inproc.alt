@@ -1,0 +1,13 @@
+// In-process variant: the packaged test imports publish() from scripts/release.mjs.
+import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
+import test from "node:test";
+import { publish } from "../../scripts/release.mjs";
+
+test("release publishes public packages", () => {
+  assert.ok(existsSync("dist/stamp.json"), "run the build first");
+  const out = publish(["a", "@private/b"], true);
+  for (const line of out) {
+    assert.match(line, /^would publish/);
+  }
+});
