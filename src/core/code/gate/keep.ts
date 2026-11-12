@@ -19,20 +19,18 @@ import type { CheckKey, TestFileRef } from "../../types/keys.js";
 import type { Policy } from "../../types/policy.js";
 import type { RunReport } from "../../types/runner.js";
 import type { Store } from "../../types/store.js";
-import { isCodeStoreOpenFailure, openCodeStore } from "../store/open.js";
 import type { CodeStore } from "../store/types.js";
 import type { GateRun } from "./collect.js";
 import { Expectations, type LookupSources, type Pending } from "./keep-expected.js";
-import { writeHere } from "./keep-here.js";
+import { writerFor } from "./keep-here.js";
 import { NotKept } from "./keep-reasons.js";
 import { atStoreKey, keepSeen, type Seen, seenOf } from "./keep-seen.js";
-import { DAEMON_KEEPS_ITS_OWN, type DaemonWaits, KeepUnknown, sentWriter } from "./keep-sent.js";
+import { type DaemonWaits, KeepUnknown } from "./keep-sent.js";
 import {
   changedAfterLoss,
   databasesOf,
   InputCheck,
   KEEP_BUSY_BOUND_MS,
-  type KeepWriter,
   type Kept,
   keepFile,
   notKept,
@@ -132,7 +130,7 @@ export class Keeper {
    * files not yet written, told once, and never throws.
    */
   async flush(): Promise<void> {
-    for (const line of this.#notKept.take()) this.#tell(line);
+    this.#tellNotKept();
     const queued = this.#queued.splice(0);
     if (queued.length === 0) return;
     let left = queued.flatMap((q) => q.files).length;
@@ -235,10 +233,11 @@ export class Keeper {
    * 020-39: where no daemon serves, the runs' reads are merged first, in
    * one transaction tried as the files' are (`keepSeen`); where one
    * serves, nothing is merged, and a file kept at its grown key is told as
-   * not kept, as before (row 021-20 sends the writes to it).
+   * not kept, as before (row 021-20 sends the writes to it). With no file
+   * to write, the merge takes one try and no wait: the next run merges again.
    */
   async #write(runs: readonly Queued[]): Promise<void> {
-    const { root, commonDir, policy } = this.#options;
+    const { root, commonDir, policy, daemonWaits } = this.#options;
     const now = this.#options.now ?? Date.now;
     const worktreeId = worktreeIdFor(root);
     const head = await this.#options.head();
@@ -256,29 +255,22 @@ export class Keeper {
       const opened = openStore(commonDir);
       if (isStoreOpenFailure(opened)) throw new Error(`the store did not open: ${opened.reason}`);
       store = opened;
-      let writer: KeepWriter;
-      if (lock === null) {
-        if (all.length === 0) return;
-        const sent = sentWriter(store, worktreeId, now(), this.#options.daemonWaits);
-        if (sent === null) {
-          this.#tell(`${notKept(all.length)}: ${DAEMON_KEEPS_ITS_OWN}`);
-          return;
-        }
-        writer = sent;
-      } else {
-        code = openCode(commonDir, policy);
-        writer = writeHere({ store, code }, worktreeId, now);
-      }
+      const tell = (text: string) => this.#tell(text);
+      const at = { commonDir, policy, worktreeId, now, daemonWaits, files: all.length, tell };
+      const chosen = writerFor(store, lock !== null, at);
+      if (chosen === null) return;
+      code = chosen.code;
+      const { writer } = chosen;
       const boundMs = this.#options.busyBoundMs ?? KEEP_BUSY_BOUND_MS;
       const wait = new StoreWait({ now, boundMs, tell: (text) => this.#tell(text) });
       const check = new InputCheck();
       const databases = databasesOf(commonDir);
       const giveUp = (database: AbsolutePath) =>
-        wait.giveUp(database, all.slice(written + changed));
+        all.length === 0 || wait.giveUp(database, all.slice(written + changed));
       const seen = queued.flatMap((q) => q.seen);
       const merge = { database: databases.main, giveUp, check };
       if ((await keepSeen(writer, seen, merge)) === "spent") {
-        this.#tell(wait.spent(all.length, 0));
+        if (all.length > 0) this.#tell(wait.spent(all.length, 0));
         return;
       }
       const revision = store.revisions.latest(worktreeId)?.number ?? 0;
@@ -314,23 +306,30 @@ export class Keeper {
         }
       }
       wait.done({ written, changed, freed });
-      // A file that moved after a lost try, with no busy wait to tell it (review 0.1.450 R1-B2),
-      // and one a merge holds by its write (review 0.1.458 B4), which a wait counts as moved.
-      const lost = changed - held.length;
-      if (!wait.waited && lost > 0) this.#tell(changedAfterLoss(lost));
-      if (!wait.waited) for (const file of held) this.#notKept.add(file.ref.path, HELD);
+      if (!wait.waited) this.#tellUnwaited(changed, held);
     } catch (error) {
-      const left = all.length - written;
-      const unknown = error instanceof KeepUnknown;
-      this.#tell(
-        unknown ? perhapsKept(left, error.message) : `${notKept(left)}: ${messageOf(error)}`,
-      );
+      this.#tell(failed(all.length - written, error));
     } finally {
-      for (const line of this.#notKept.take()) this.#tell(line);
+      this.#tellNotKept();
       code?.close();
       store?.close();
       lock?.release();
     }
+  }
+
+  /**
+   * With no busy wait to tell them: the files that moved after a lost try
+   * (review 0.1.450 R1-B2), and those a merge holds by their write (review
+   * 0.1.458 B4), which a wait counts as moved; `held` is among `changed`.
+   */
+  #tellUnwaited(changed: number, held: readonly Kept[]): void {
+    const lost = changed - held.length;
+    if (lost > 0) this.#tell(changedAfterLoss(lost));
+    for (const file of held) this.#notKept.add(file.ref.path, HELD);
+  }
+
+  #tellNotKept(): void {
+    for (const line of this.#notKept.take()) this.#tell(line);
   }
 
   /** `q` without its files kept at a grown key, each told as not kept for it (row 020-39). */
@@ -360,18 +359,17 @@ export class Keeper {
   }
 }
 
-/** The code store for the keeper's own writes, created as a daemon creates it. */
-function openCode(commonDir: AbsolutePath, policy: Policy): CodeStore {
-  const code = openCodeStore(commonDir, policy);
-  if (isCodeStoreOpenFailure(code)) throw new Error(`the code store did not open: ${code.reason}`);
-  return code;
-}
-
 /** Why a file a merge holds by its write was not kept, as `NotKept` names it. */
 const HELD = {
   cause: { kind: "held", paths: [] },
   reason: "a merge holds a path its key names",
 } as const;
+
+/** The note on the `left` files not written once `error` ended the writes. */
+function failed(left: number, error: unknown): string {
+  if (error instanceof KeepUnknown) return perhapsKept(left, error.message);
+  return `${notKept(left)}: ${messageOf(error)}`;
+}
 
 function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
