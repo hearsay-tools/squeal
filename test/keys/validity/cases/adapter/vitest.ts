@@ -364,6 +364,21 @@ export const VITEST_RUNS: readonly Case[] = [
     },
   ),
   vitest(
+    "a run cancelled under a store that is gone completes and logs nothing (row 018-38)",
+    "018-38 (review 018-37): a runner host whose daemon died cancels its run and logs it late, and the checkout holding the store may be gone by then; the candidate writes no log there, where the last release made the folder again for it. Only the log needs the folder, so the run stores what the last release stored: nothing of its held file",
+    {
+      files: BASIC,
+      runs: [
+        {
+          files: [SLOW2].filter((r) => r !== undefined),
+          touched: [],
+          cancel: "stop",
+          storeGone: true,
+        },
+      ],
+    },
+  ),
+  vitest(
     "a run cancelled with a cause completes none of its held files (row 011-56)",
     "011-56: a cancel's text names its cause, which is wording; what the cancelled run completes is stored",
     {

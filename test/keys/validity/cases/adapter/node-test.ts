@@ -128,6 +128,23 @@ const PRELOADED: Readonly<Record<string, string>> = {
   ),
 };
 
+/**
+ * Row 018-38: a file that completes, then one that removes the case's run
+ * logs, `<scratch>/logs` beside the harness's `<scratch>/worktree`, as it runs.
+ */
+const LOGS_REMOVED: Readonly<Record<string, string>> = {
+  "package.json": PACKAGE,
+  "test/pass.test.mjs": lines('import { test } from "node:test";', "", 'test("passes", () => {});'),
+  "test/removes-logs.test.mjs": lines(
+    'import { rmSync } from "node:fs";',
+    'import { test } from "node:test";',
+    "",
+    'test("removes the run logs", () => {',
+    '  rmSync(new URL("../../logs", import.meta.url), { recursive: true, force: true });',
+    "});",
+  ),
+};
+
 const COVERED_RUN = [{ files: ["test/area.test.mjs", "test/inspector.test.mjs"] }];
 
 const OUTCOME_FILES = ["test/broken.test.mjs", "test/fail.test.mjs", "test/pass.test.mjs"];
@@ -201,6 +218,26 @@ export const NODE_TEST_RUNS: readonly Case[] = [
       files: PRELOADED,
       env: { NODE_OPTIONS: "--require ./validity-preload.cjs" },
       runs: [{ files: ["test/preload.test.mjs"] }],
+    },
+  },
+  {
+    kind: "adapter:node-test",
+    name: "a stopped node:test run under a store that is gone makes no folder and stores nothing, as the last release (row 018-38)",
+    why: "018-38: a runner host whose daemon died stops each run it still starts, and the checkout holding the store may be gone; the candidate makes no folder there and reports nothing, where the last release made the folder again and started nothing, so neither stores a file. The run before it, under a store that is there, stores alike",
+    input: {
+      files: OUTCOMES,
+      runs: [{ files: ["test/pass.test.mjs"] }, { files: ["test/pass.test.mjs"], storeGone: true }],
+    },
+  },
+  {
+    kind: "adapter:node-test",
+    name: "a node:test run whose log folder goes while it runs stores nothing (row 018-38)",
+    why: "018-38: the first file completes, the second removes the run's logs, and with them the graphs a completed file's observed closure is read from at the run's end; the candidate reports nothing then, and the last release throws reading them, so it stored nothing either",
+    lastThrows: "ENOENT: no such file or directory, scandir",
+    input: {
+      files: LOGS_REMOVED,
+      concurrency: 1,
+      runs: [{ files: ["test/pass.test.mjs", "test/removes-logs.test.mjs"] }],
     },
   },
   {

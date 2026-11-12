@@ -10,6 +10,10 @@ import type { Provenance, ResultRecord } from "../../../../src/core/types/store-
 
 /* What the case kinds share: a store of the tree's own schema, a fixture worktree, a row's projections. */
 
+/** Row 018-38: a run's log folder under a store that is not there, `<scratch>/gone/runs/<at>`. */
+export const goneLogDir = (scratch: string, at: number) =>
+  join(scratch, "gone", "runs", String(at));
+
 export const KEY: CheckKey = "validity-key";
 
 /** `KEY`'s file's key at a format read as one (011 C3 as amended 2026-10-20, task 011-38). */
