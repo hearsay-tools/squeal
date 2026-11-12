@@ -3,7 +3,12 @@ import { squealVersion } from "../daemon/version.js";
 import { KEY_FORMAT_VERSION } from "../keys/key-format.js";
 import { listImports, sourceLabel } from "../store/imports.js";
 import { decodeBundle, type ResultsBundle } from "../store/transfer-bundle.js";
-import { importRefusal, importResults, otherKeyFormat } from "../store/transfer-import.js";
+import {
+  ImportStopped,
+  importRefusal,
+  importSliced,
+  otherKeyFormat,
+} from "../store/transfer-import.js";
 import type { AbsolutePath, WorktreeId } from "../types/common.js";
 import type { Policy } from "../types/policy.js";
 import type { Store } from "../types/store.js";
@@ -258,15 +263,22 @@ class Reader implements SharedReader {
     try {
       // D21: an export of this Squeal's key format ends a refusal for another.
       writeSquealMismatch(this.o.store, this.o.worktreeId, null);
-      added = importResults(this.o.store, bundle, {
-        importId: fileHash.slice(0, 16),
-        fileHash,
-        now: this.o.now(),
-        rekeying: { worktreeId: this.o.worktreeId, blobs },
-      }).results;
+      // Spec 021 D3 (row 021-20): in slices, each tried again on a busy store; the import's
+      // record is written last, so one stopped between slices is fetched and imported again.
+      added = (
+        await importSliced(this.o.store, bundle, {
+          importId: fileHash.slice(0, 16),
+          fileHash,
+          now: this.o.now(),
+          clock: this.o.now,
+          rekeying: { worktreeId: this.o.worktreeId, blobs },
+          stopped: () => this.#stop.signal.aborted,
+        })
+      ).results;
     } catch (error) {
       // A busy store: the next nudge tries this start point again.
       this.#start = null;
+      if (error instanceof ImportStopped) throw STOPPED;
       throw error;
     } finally {
       this.o.step?.(IMPORT_STEP, false);
