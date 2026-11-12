@@ -123,6 +123,8 @@ describe("the loader map kept across reads (row 021-31)", () => {
       const kept = read(rig, map);
       const fresh = read(rig, new LoaderMap());
       expect(view(kept, paths)).toEqual(view(fresh, paths));
+      // Each source's loader set, kept while its test files stay.
+      expect(paths.map((path) => kept.set(path))).toEqual(paths.map((path) => fresh.set(path)));
       expect(kept.withoutImports).toBe(fresh.withoutImports);
       expect(kept.listed).toBe(fresh.listed);
     };

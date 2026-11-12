@@ -48,6 +48,8 @@ export interface Loaders {
   /** The worktree has test files listed; before that no source can be judged. */
   readonly listed: boolean;
   readonly of: (path: RelativePath) => readonly Loader[];
+  /** The `loaderSet` of `of(path)`, kept while its test files stay (row 021-31). */
+  readonly set: (path: RelativePath) => string;
   /** Listed test files whose closure is not known here: each is a loader of every source. */
   readonly withoutImports: number;
   readonly wakeAt: EpochMs | null;
@@ -165,6 +167,7 @@ export class LoaderBuild {
     return {
       listed,
       of: (path) => map.of(path),
+      set: (path) => map.set(path),
       withoutImports: map.withoutImports,
       wakeAt: this.#wakeAt,
     };
