@@ -142,11 +142,13 @@ describe("squeal code's note on the files it did not keep (row 011-320)", () => 
     notKept.add("test/h.test.ts", decided("held", []));
     notKept.add("test/a.test.ts", decided("unstable", ["src/", "src/a.ts"]));
     notKept.add("test/w.test.ts", decided("withheld", [], "the runner withheld the run"));
+    notKept.add("test/l.test.ts", decided("listing", ["src/"]));
 
     expect(notKept.take()).toEqual([
       "2 completed test files were not kept in the stores, because what their keys name changed during the run (src/, src/a.ts, src/b.ts): test/a.test.ts, test/b.test.ts; the next run will run them again",
       "1 completed test file was not kept in the stores, because a merge holds a path its key names: test/h.test.ts; the next run will run it again",
       "1 completed test file was not kept in the stores, because the runner withheld the run: test/w.test.ts; the next run will run it again",
+      "1 completed test file was not kept in the stores, because a file was added to or removed from a directory its key lists (src/): test/l.test.ts; the next run will run it again",
     ]);
     expect(notKept.take()).toEqual([]);
   });

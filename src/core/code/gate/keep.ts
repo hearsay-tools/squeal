@@ -177,7 +177,7 @@ export class Keeper {
    * their inputs held still during it, none changed, and none written and
    * ended as it was (review 0.1.433 B1, the daemon's completion barrier).
    * Row 011-320: their runtime identity held, no merge holds a path their
-   * key names, and no editor scratch file moved a listing it names. Each
+   * key names, and no file entered or left a directory it lists. Each
    * other one waits in `#notKept` with its reason, for `flush` to tell.
    */
   async #keepable(pending: Pending, run: GateRun): Promise<Kept[]> {
@@ -189,7 +189,7 @@ export class Keeper {
       if (completed.has(id) && record !== null) candidates.push({ ...file, record });
     }
     if (candidates.length === 0) return [];
-    const { keys, hasher, snapshot: before, scratch, runtime } = pending;
+    const { keys, hasher, snapshot: before, listed, runtime } = pending;
     const sources = {
       root: this.#options.root,
       keys,
@@ -197,7 +197,7 @@ export class Keeper {
       run: pending.run,
       before,
       hold: this.#hold,
-      scratch,
+      listed,
       ...(runtime === undefined ? {} : { runtime }),
     };
     const decided = await keepDecisions(sources, candidates, report);

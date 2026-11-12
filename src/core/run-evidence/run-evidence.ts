@@ -23,8 +23,8 @@ import type { Tier, TierFile } from "../scheduler/tiers.js";
 import type { AbsolutePath, RelativePath } from "../types/common.js";
 import type { CheckKey, TestFileRef } from "../types/keys.js";
 import type { RunReport } from "../types/runner.js";
+import { filesBelow, listingsAmong } from "./listings.js";
 import { type Cause, causeOf, reasonOf } from "./reason.js";
-import { listingsAmong, scratchHeld } from "./scratch.js";
 import { movedInputs, observedMoves, readKeepEvidence, UnmergedIndex } from "./sources.js";
 
 /*
@@ -37,10 +37,11 @@ import { movedInputs, observedMoves, readKeepEvidence, UnmergedIndex } from "./s
  * decision from `storeDecision` through here. Each acts on the decision and
  * writes in its own way. Each kind of evidence comes from a source its
  * caller supplies: the keeper reads changed and touched inputs, observed
- * reads, environment files and, since row 011-320, the runtime's identity
- * (`readKeepEvidence`, in `sources.ts`); the daemon reads those, the
- * revisions during the run, the merge hold and the editor-scratch listings
- * (`readRecordEvidence`).
+ * reads, environment files and, since row 011-320, the runtime's identity,
+ * the merge hold and the files below its listings (`readKeepEvidence`, in
+ * `sources.ts`); the daemon reads those, but the revisions during the run
+ * in place of the files below its listings, and the editor-scratch
+ * listings (`readRecordEvidence`).
  */
 
 /** What is known about one finished run of `TierFile`s, beyond its report. */
@@ -76,15 +77,15 @@ export function copyInputs(cache: StatCache, paths: Iterable<RelativePath>): Sta
 }
 
 /**
- * Before a run, for `squeal code`, which reads no revisions (row 011-320,
- * difference 4): the editor scratch files `cache` holds below the listings
- * among `paths`, which those listings were hashed from (row 011-117).
+ * Before a run, for `squeal code`, which reads no revisions (row 011-320):
+ * the files `keys` holds below the listings among `paths`, which those
+ * listings were hashed from, editor scratch files among them (row 011-117).
  */
-export function copyScratch(
-  cache: StatCache,
+export function copyListed(
+  keys: Pick<WorktreeKeys, "cache" | "extraFiles">,
   paths: Iterable<RelativePath>,
 ): ReadonlySet<RelativePath> {
-  return scratchHeld(cache, listingsAmong(paths));
+  return filesBelow(keys.cache, () => keys.extraFiles(), listingsAmong(paths));
 }
 
 /** A tier's `movedInputs` since it was selected (task 001-168). Outside the lock: it only reads. */
@@ -200,8 +201,8 @@ export interface KeepSources {
   readonly before: StatCache;
   /** Row 011-320 (difference 3): the merge hold at the decision (`mergeHoldOf`). */
   readonly hold: MergeHoldSource;
-  /** Row 011-320 (difference 4): the editor scratch files before the run (`copyScratch`). */
-  readonly scratch: ReadonlySet<RelativePath>;
+  /** Row 011-320: the files below the listings before the run (`copyListed`). */
+  readonly listed: ReadonlySet<RelativePath>;
   /**
    * Row 011-320 (difference 2): the runtime identity at the run's end,
    * compared with each file's `KeepFile.runtimeIdentity`; without it, no

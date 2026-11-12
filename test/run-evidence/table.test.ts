@@ -17,9 +17,10 @@ import { A, B, type During, decide } from "./fixture.js";
  * code` keeps a file only on "store at the key it ran under". A merge hold
  * or a touched input is a reason beside the decision, not a decision. Rows
  * marked "difference N" are the research's differences between the two
- * callers. Row 011-320 gave the keeper the sources of differences 2 to 4:
- * its column equals the daemon's there, but where no revision of an
- * editor's scratch file exists, which the daemon's record reads and
+ * callers. Row 011-320 gave the keeper the sources of differences 2 to 4
+ * and of a file added to or removed from a listed directory (proposed row
+ * `keep-listing-revision`): its column equals the daemon's there, but where
+ * no revision of the file exists, which the daemon's record reads and
  * `squeal code` does not: the keeper, reading the disk, is stricter.
  */
 
@@ -157,11 +158,43 @@ const TABLE: Readonly<Record<string, Row>> = {
     daemon: "store at ran",
     keeper: "store at ran",
   },
-  "a revision during the run moved a listed directory, no input's bytes": {
+  "a file added to a listed directory, a revision of it": {
     during: { batch: { "src/c.ts": "export const c = 3;\n" } },
     daemon: "unstable",
-    keeper: "store at ran",
+    keeper: "unstable",
     names: "src/ changed",
+    keeperNames: "src/ changed",
+  },
+  "a file added to a listed directory, no revision of it: no daemon serves, or the record came before its batch":
+    {
+      during: { create: { "src/c.ts": "export const c = 3;\n" } },
+      daemon: "store at ran",
+      keeper: "unstable",
+      keeperNames: "src/ changed",
+    },
+  "a file removed from a listed directory": {
+    during: { batch: { "src/d.ts": null } },
+    daemon: "unstable",
+    keeper: "unstable",
+    names: "src/ changed",
+    keeperNames: "src/ changed",
+  },
+  "a file added below a listed directory": {
+    during: { batch: { "src/sub/e.ts": "export const e = 5;\n" } },
+    daemon: "unstable",
+    keeper: "unstable",
+    names: "src/",
+    keeperNames: "src/",
+  },
+  "a symlinked directory below a listed one, nothing moved": {
+    during: { links: { "src/linked": "../lib" } },
+    daemon: "store at ran",
+    keeper: "store at ran",
+  },
+  "an ignored file added to a listed directory, which the watcher drops": {
+    during: { create: { "src/run.log": "log\n" } },
+    daemon: "store at ran",
+    keeper: "store at ran",
   },
   "the run did not complete it": {
     during: { report: only([B]) },
