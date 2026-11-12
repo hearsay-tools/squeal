@@ -14,15 +14,17 @@ import type { RunnerClosure, RunnerEnvironment, RunReport } from "../../types/ru
 import type { BlobCache } from "../coverage/record.js";
 import { coverageProvider, PROVIDER_MISSING_NOTE } from "../coverage/runtime.js";
 import type { RunEstimate } from "./estimate.js";
-import { type EndedRun, evidenceOf, keptLogs, leftOutFiles, type RunLog } from "./evidence.js";
+import { keptLogs, leftOutFiles, type RunLog } from "./evidence.js";
+import { runLanes, SlotPool } from "./lanes.js";
 import { inLoaderOrder, orderRuns } from "./plan.js";
-import type { BasePrepares, PrepareRun } from "./prepare.js";
+import type { BasePrepares } from "./prepare.js";
 import { type Picked, type SelectionSummary, tellSelection } from "./prerun.js";
-import { type Mapped, mapPayloads } from "./records.js";
+import { FileProgress, type Overrun } from "./progress.js";
+import type { Mapped } from "./records.js";
 import { type GateAdapters, openRunners, type Runner } from "./runners.js";
 import { type GateScope, type LeftOutFile, type ScopeTally, tallyScope } from "./scope.js";
 import { type IncompleteClosure, tellClosures } from "./select-closures.js";
-import { preparedBefore, storedOf, tellEstimates, tellRan } from "./steps.js";
+import { storedOf, tellEstimates } from "./steps.js";
 import { type ChangedSet, type Evidence, GATE_RUNNERS, type TestFileEvidence } from "./types.js";
 
 /*
@@ -89,8 +91,9 @@ export interface CollectOptions {
    */
   readonly estimated?: (estimates: readonly RunEstimate[], leftSeconds: number) => void;
   /**
-   * D17.3: told each runner's run once it ended, before the next starts;
-   * with it, Vitest records runtime reads as the worktree's daemon does.
+   * D17.3: told each runner's run once it ended, while the other runners'
+   * runs may still run (D18 as amended); with it, Vitest records runtime
+   * reads as the worktree's daemon does.
    */
   readonly ran?: (run: GateRun) => Promise<void>;
   /**
@@ -99,6 +102,11 @@ export interface CollectOptions {
    * kept none. Absent, no log is kept.
    */
   readonly keepLog?: (run: RunLog) => Promise<AbsolutePath | null>;
+  /**
+   * Row 020-43 (#196): told each file that runs past its estimate, once,
+   * while it still runs (`FileProgress`). Absent, none is told.
+   */
+  readonly overran?: (file: Overrun) => void;
 }
 
 /** D17.3: one runner's run, its report and each completed file's mapped record, by `testFileId`. */
@@ -136,10 +144,11 @@ export class CollectUsageError extends Error {
  * completed before the deadline, its failed tests, the sources its closure
  * loads and its record. The test files are selected from `changed.paths`,
  * every changed path, not from the changed functions (D3.1). The budget
- * counts from the call, the adapters' start included. The runs go one
- * runner after another, the one with the smaller estimate first (D18),
- * each given what is left of it; a runner reached after the deadline runs
- * nothing. A project's own `testTimeout` is never lowered. With no changed
+ * counts from the call, the adapters' start included. Once every
+ * node:test entry's `prepare` ran, every runner's run starts at once, each
+ * given what is left of it, and the node:test entries share
+ * `runner.tierSize` processes (D18 as amended, row 020-44); a run started
+ * after the deadline runs nothing. A project's own `testTimeout` is never lowered. With no changed
  * path and no `--test` file, no adapter starts.
  * A selected file `options.stored` gives evidence of does not run (D11.7).
  * Rejects when Vitest is configured but cannot start, or when Squeal's
@@ -150,7 +159,9 @@ export async function collectEvidence(
   changed: ChangedSet,
   options: CollectOptions,
 ): Promise<Evidence> {
-  const deadline = performance.now() + options.budgetSeconds * 1000;
+  const { budgetSeconds } = options;
+  const start = performance.now();
+  const deadline = start + budgetSeconds * 1000;
   const { paths } = changed;
   const tally = options.scope === undefined ? null : tallyScope(options.scope);
   const scoped = (files: readonly LeftOutFile[]) =>
@@ -174,14 +185,18 @@ export async function collectEvidence(
     const closures = (project: string, files: readonly IncompleteClosure[]) =>
       lists.set(project, files);
     const keeping = options.ran !== undefined;
-    const opening = { provider, temp, note, children, keeping, closures };
+    // Row 020-43: the runners tell each file's start, and the files past their estimate are named.
+    const { durations, overran } = options;
+    const progress = new FileProgress({ budgetSeconds, since: start, durations, overran });
+    // D18 as amended (row 020-44): the node:test entries' processes, `runner.tierSize` at once.
+    const slots = new SlotPool(policy.runner.tierSize).take;
+    const started = progress.started.bind(progress);
+    const opening = { provider, temp, note, children, keeping, closures, slots, started };
     await openRunners(options.adapters, root, policy, opening, runners);
     const picked = await select(runners, { paths, ...options }, tally);
-    const at = { root, deadline, note, options, children };
     // Review 0.1.432 B2: the stores and the parts first, so the print names only what runs.
     const known = await storedOf(picked, options);
-    // D18: the runners in the order they run, which the print follows (D18.4); no closure read.
-    const { durations } = options;
+    // D18: the runners in the order they start, which the print follows (D18.4); no closure read.
     const order = orderRuns(picked, known, { durations, tierSize: policy.runner.tierSize });
     const inOrder = order.runs.map((run) => run.pick);
     await tellSelection(options.selected, inOrder, changed, { ...options, tally, known });
@@ -190,39 +205,14 @@ export async function collectEvidence(
     const runs = await inLoaderOrder(order.runs, { changed: paths, durations });
     const estimates = tellEstimates(options.estimated, order.estimates, deadline);
     const blobs: BlobCache = new Map();
-    const testFiles: TestFileEvidence[] = [];
-    const prepares: PrepareRun[] = [];
-    const ended: EndedRun[] = [];
-    let timedOut = false;
-    for (const { pick, index: i, files: toRun } of runs) {
-      const { runner, run: chosen } = pick;
-      if (chosen.length === 0) continue;
-      const before = await preparedBefore(runner, chosen, at);
-      prepares.push(...before.prepares);
-      timedOut ||= before.budgetEnded;
-      testFiles.push(...chosen.flatMap((ref) => before.known.get(ref) ?? known.get(ref) ?? []));
-      // D17.2: the files left to run, in loader order.
-      const files = toRun.filter((ref) => !before.known.has(ref));
-      if (files.length === 0) continue;
-      const left = Math.ceil(deadline - performance.now());
-      const logDir = join(temp, "runs", String(i));
-      const report =
-        left > 0
-          ? await runner.adapter.run(files, { runId: `gate-${i}`, logDir, timeoutMs: left })
-          : null;
-      timedOut ||= report === null || report.end === "timed-out";
-      if (report?.failure != null) note(`${runner.kind} run: ${report.failure}`);
-      const mapping = { format, blobs, provider, children, note };
-      const records = mapPayloads(runner.covered.splice(0), mapping);
-      await tellRan(options.ran, { runner: runner.kind, files, report, records });
-      const ran: TestFileEvidence[] = [];
-      for (const ref of files) ran.push(await evidenceOf(runner, ref, report, records, children));
-      testFiles.push(...ran);
-      ended.push({ runner: runner.kind, files, logDir, report, ran });
-    }
-    const logs = await keptLogs(options.keepLog, ended);
+    const mapping = { format, blobs, provider, children, note };
+    const context = { root, deadline, note, options, children, temp, known, mapping, progress };
+    // D18 as amended (row 020-44): every runner at once, the node:test entries from one pool.
+    const lanes = await runLanes(runs, context).finally(() => progress.close());
+    const { testFiles, prepares, timedOut } = lanes;
+    const logs = await keptLogs(options.keepLog, lanes.ended);
     return {
-      testFiles: testFiles.sort(byRunnerAndPath),
+      testFiles: [...testFiles].sort(byRunnerAndPath),
       timedOut,
       budgetSeconds: options.budgetSeconds,
       ...scoped(await leftOutFiles(picked)),

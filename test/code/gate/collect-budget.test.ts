@@ -6,11 +6,12 @@ import { ADAPTERS, changedSet, project } from "./collect-fixture.js";
 /*
  * Spec 020 D3.4 (row 020-03): one deadline over every run. A file that
  * never ends (a deterministic sleep, not host load) is stopped at the
- * deadline; the files that completed keep their records, a runner reached
- * after the deadline runs nothing, and the project's own `testTimeout`,
- * above the 6 s test here, is not lowered. D18 (row 020-19): the runners
- * run in ascending order of their estimate, so node:test's one quick file
- * is not left unrun behind Vitest's three, one of which never ends.
+ * deadline; the files that completed keep their records, and the
+ * project's own `testTimeout`, above the 6 s test here, is not lowered. D18
+ * as amended (row 020-44): the runners run at once, so node:test's one
+ * quick file completes beside Vitest's three, one of which never ends,
+ * whatever their estimates; the print still lists them in ascending order
+ * of their estimate (D18.4).
  */
 
 /** Room for a loaded host to start node:test and Vitest and run the 6 s file. */
@@ -47,7 +48,7 @@ describe("collectEvidence: one budget over every run", () => {
   it("keeps the records of the files that finished, and names the rest", {
     timeout: 180_000,
   }, async () => {
-    // The stores hold node:test's file as the longer run, so Vitest's runs first.
+    // The stores hold node:test's file as the longer run: before row 020-44 it never ran.
     const { evidence, told, blob, ownBlob } = await collect((ref) =>
       ref.path === "node/late.test.ts" ? 900 : 1,
     );
@@ -56,14 +57,15 @@ describe("collectEvidence: one budget over every run", () => {
       ["vitest", "test/fast.test.ts", true, []],
       ["vitest", "test/patient.test.ts", true, []],
       ["vitest", "test/slow.test.ts", false, []],
-      ["node-test", "node/late.test.ts", false, []],
+      ["node-test", "node/late.test.ts", true, []],
     ]);
     const [fast, patient, slow, late] = evidence.testFiles;
-    for (const done of [fast, patient]) expect(done && ownBlob(done)).toBe(blob);
+    for (const done of [fast, patient, late]) expect(done && ownBlob(done)).toBe(blob);
     expect(slow?.record).toBeNull();
-    expect(late?.record).toBeNull();
-    // Its closure is known though it never ran: the evaluator reads it as not finished.
-    expect(late?.loads).toContain("src/a.ts");
+    // Row 020-43: it started and was stopped at the deadline.
+    expect(slow?.notStarted).toBeUndefined();
+    // Its closure is known though it did not finish: the evaluator reads it as not finished.
+    expect(slow?.loads).toContain("src/a.ts");
   });
 
   it("runs node:test's one file before Vitest's three with no store, so it completes", {

@@ -1,0 +1,7 @@
+{
+  "runner": { "tierSize": 2 },
+  "nodeTest": [
+    { "name": "slow", "include": ["n1/**/*.test.ts"] },
+    { "name": "quick", "include": ["n2/**/*.test.ts"] }
+  ]
+}
