@@ -82,4 +82,29 @@ describe("the tree on the wire (row 021-25)", () => {
     await expect(unpackFiles(shorter)).rejects.toThrow(/do not unpack/);
     await expect(unpackFiles({ ...write, gzip: "bm90IGd6aXA=" })).rejects.toThrow(/do not unpack/);
   });
+
+  // Review 0.1.454 S1: sizes that still add up, and blobs that still match, are refused.
+  it("refuses negative, fractional and unsafe sizes, and bytes in a write without files", async () => {
+    const dir = root({ a: "a", b: "b" });
+    const [write] = await writesFor(dir, ["a", "b"], new Set(["a", "b"]));
+    if (write === undefined) throw new Error("no write");
+    const sized = (...sizes: number[]) => ({
+      ...write,
+      files: write.files.map((file, i) => ({ ...file, size: sizes[i] ?? 0 })),
+    });
+    expect((await unpackFiles(sized(1, 1))).map(({ bytes }) => bytes.toString())).toEqual([
+      "a",
+      "b",
+    ]);
+    await expect(unpackFiles(sized(-1, 3))).rejects.toThrow(/size of "a" is no byte count: -1/);
+    await expect(unpackFiles(sized(1.5, 0.5))).rejects.toThrow(/size of "a" is no byte count: 1.5/);
+    await expect(unpackFiles(sized(1, 2 ** 53))).rejects.toThrow(/size of "b" is no byte count/);
+    await expect(unpackFiles(sized(Number.NaN, 2))).rejects.toThrow(/no byte count: NaN/);
+    const max = Number.MAX_SAFE_INTEGER;
+    await expect(unpackFiles(sized(max, max))).rejects.toThrow(/add up past a byte count/);
+    await expect(unpackFiles({ files: [], gzip: write.gzip })).rejects.toThrow(
+      /a write without files carries bytes/,
+    );
+    expect(await unpackFiles({ files: [], gzip: "" })).toEqual([]);
+  });
 });
