@@ -14,14 +14,15 @@ import {
   RUNNER_NAMES,
 } from "../core/code/gate/types.js";
 import { functionName } from "../core/delivery/code-format.js";
-import { plural } from "../core/text.js";
+import { listPaths, plural } from "../core/text.js";
 
 /*
  * Spec 020 D1 (row 020-05): the text of `squeal code --base`. The verdict
  * line, then each function that is not pass with its gap or measure, the
  * paths not counted, the exceptions that applied to no function, the
- * failed tests and the files that did not finish, then the command for the
- * JSON report. CRAP is rounded here only; the
+ * failed tests and the files that did not finish (row 020-46: or that the
+ * gate stopped early before), the rerun that fits (row 020-45), then the
+ * command for the JSON report. CRAP is rounded here only; the
  * JSON keeps the score.
  */
 
@@ -153,7 +154,22 @@ function runLines(run: GateRunReport, budgetSeconds: number): string[] {
       : [
           `  ${plural(notStarted.size, `${RUNNER_NAMES[run.runner]} test file`)} did not start in the ${budgetSeconds} s budget; --json lists them`,
         ];
-  return [...failed, ...late, ...unstarted, ...(run.prepare ?? []).flatMap(prepareLine)];
+  const prepares = (run.prepare ?? []).flatMap(prepareLine);
+  return [...failed, ...late, ...unstarted, ...overBudgetLine(run), ...prepares];
+}
+
+/** How many paths of the files a run stopped early before its line names. */
+const OVER_BUDGET_NAMED = 3;
+
+/** Row 020-46: the files the gate stopped early before, counted, with the first few by path. */
+function overBudgetLine({ runner, overBudget = [] }: GateRunReport): string[] {
+  if (overBudget.length === 0) return [];
+  const files = plural(overBudget.length, `${RUNNER_NAMES[runner]} test file`);
+  const load = overBudget.length === 1 ? "it loads" : "they load";
+  const named = listPaths(overBudget, OVER_BUDGET_NAMED);
+  return [
+    `  ${files} did not run: the estimate was at least twice what was left of the budget, and ${load} no changed function (${named}; --json lists them all)`,
+  ];
 }
 
 /** D15.3: why an entry's `prepare` kept its files from running, in words. */
@@ -229,6 +245,12 @@ function verdictLine(report: GateReport): string {
   return `Code gate: ${report.verdict}. ${what}${tally}.${leftOutText(report)}${omittedText(report)}`;
 }
 
+/** Row 020-45: the rerun that fits the estimate, when it was over what was left. */
+function rerunLine(report: GateReport): string[] {
+  const { rerun } = report.budget;
+  return rerun === undefined ? [] : [`A rerun that fits the estimate: ${rerun.command}`];
+}
+
 /** The human rendering of a gate report; `json` is the command that prints it as JSON. */
 export function formatGateReport(report: GateReport, json: string): string {
   const functions = report.functions
@@ -243,6 +265,7 @@ export function formatGateReport(report: GateReport, json: string): string {
     ...paths,
     ...unused,
     ...runs,
+    ...rerunLine(report),
     `JSON report: ${json}`,
   ];
   return `${lines.join("\n")}\n`;
