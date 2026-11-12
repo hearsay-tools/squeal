@@ -570,6 +570,11 @@ export class WorktreeKeys {
     return this.#observed.directOf(testFile);
   }
 
+  /** The module loads of `testFile` in this worktree's view (`markModules`); `squeal code` merges them (row 020-39). */
+  modulesOf(testFile: TestFileRef): readonly RelativePath[] {
+    return this.#modules.of(testFile);
+  }
+
   /**
    * 016 D4 (row 007-56): paths a process `testFile` started imported join
    * this worktree's marks; the record's transaction stores them (`writeSeen`).
