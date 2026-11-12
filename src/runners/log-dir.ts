@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, relative, sep } from "node:path";
 import type { AbsolutePath } from "../core/types/common.js";
 import type { RunReport } from "../core/types/runner.js";
@@ -21,16 +21,11 @@ const RUNS = "runs";
  * `<store>/runs/<run-id>`, a runner's `<run>/node-test/<project>`, a remote's
  * local `<run>/here` and the gate's `<temp>/runs/<i>` alike. `false`, having
  * made nothing, when that store is gone. A folder with no `runs` above it is
- * the caller's own and is made whole.
+ * the caller's own: made below the nearest folder that exists, whole.
  */
 export function makeLogDir(dir: AbsolutePath): boolean {
-  const store = storeOf(dir);
-  if (store === null) {
-    mkdirSync(dir, { recursive: true });
-    return true;
-  }
-  let at = store;
-  for (const level of relative(store, dir).split(sep)) {
+  let at = storeOf(dir) ?? existing(dirname(dir));
+  for (const level of relative(at, dir).split(sep)) {
     at = join(at, level);
     try {
       mkdirSync(at);
@@ -72,6 +67,11 @@ export function storeGoneReport(dir: AbsolutePath): RunReport {
     fileErrors: [],
     failure: `Squeal's store folder above the run log folder ${dir} is gone; nothing ran`,
   };
+}
+
+/** `dir`, or the nearest folder above it that exists. */
+function existing(dir: string): string {
+  return existsSync(dir) ? dir : existing(dirname(dir));
 }
 
 /** The parent of the nearest `runs` folder above `dir`; `null` without one. */
