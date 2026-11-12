@@ -1,0 +1,5 @@
+load-1m-at-start 22.93 2026-11-12T14:30:28Z
+squeal code: Vitest: 160 test files to run (tests 160)
+squeal code: global setup runs for: the root project (any selection)
+squeal code: Vitest: 160 test files to run here, up to 23 at once; no stored duration, so the time is unknown
+exit 3 wall-ms 36423 load-1m-at-end 27.22

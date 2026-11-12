@@ -1,0 +1,37 @@
+{
+ "rows": [
+  {
+   "key": "observedDirect.",
+   "bytes": 637388
+  },
+  {
+   "key": "observedModules.",
+   "bytes": 655123
+  },
+  {
+   "key": "observed.",
+   "bytes": 3812209
+  }
+ ],
+ "writes": [
+  {
+   "key": "observedDirect.",
+   "medianMs": 11.32,
+   "maxMs": 20.6,
+   "medianWalBytes": 650960
+  },
+  {
+   "key": "observedModules.",
+   "medianMs": 10.51,
+   "maxMs": 15.92,
+   "medianWalBytes": 667440
+  },
+  {
+   "key": "observed.",
+   "medianMs": 56.08,
+   "maxMs": 81.31,
+   "medianWalBytes": 3848112
+  }
+ ],
+ "load1m": 20.8
+}
