@@ -150,6 +150,17 @@ describe("squeal code's note on the files it did not keep (row 011-320)", () => 
     ]);
     expect(notKept.take()).toEqual([]);
   });
+
+  it("names the first three test files and paths in path order, then how many more", () => {
+    const notKept = new NotKept();
+    for (const name of ["e", "d", "c", "b", "a"]) {
+      notKept.add(`test/${name}.test.ts`, decided("grown", [`data/${name}.txt`, "data/z.txt"]));
+    }
+
+    expect(notKept.take()).toEqual([
+      "5 completed test files were not kept in the stores, because they read paths their keys lack (data/a.txt, data/b.txt, data/c.txt and 3 more): test/a.test.ts, test/b.test.ts, test/c.test.ts and 2 more; the next run will run them again",
+    ]);
+  });
 });
 
 /**
