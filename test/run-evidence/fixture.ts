@@ -4,20 +4,24 @@ import { join } from "node:path";
 import { loadPolicy } from "../../src/core/daemon/policy.js";
 import { readHead } from "../../src/core/daemon-loop/head.js";
 import { createFsHasher, type Hasher } from "../../src/core/hash/hasher.js";
-import { testFileId } from "../../src/core/keys/reverse-index.js";
 import { statCandidates } from "../../src/core/revision/reconcile.js";
 import {
   copyInputs,
-  decideFiles,
+  decisionOf,
   type FileDecision,
   keepDecisions,
+  type RecordFacts,
   readRecordEvidence,
+  recordOutcome,
+  runEnd,
   unstableInputs,
 } from "../../src/core/run-evidence/run-evidence.js";
 import type { SchedulerContext } from "../../src/core/scheduler/context.js";
 import { newFileState } from "../../src/core/scheduler/files.js";
 import type { MergeHold } from "../../src/core/scheduler/hold.js";
 import { WorktreeKeys } from "../../src/core/scheduler/keying.js";
+import { NOTHING_OBSERVED } from "../../src/core/scheduler/observed.js";
+import { Withholds } from "../../src/core/scheduler/stability.js";
 import type { Tier, TierFile } from "../../src/core/scheduler/tiers.js";
 import type { RelativePath, WorktreeId } from "../../src/core/types/common.js";
 import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
@@ -83,11 +87,18 @@ export interface During {
   readonly runtimeMoved?: boolean;
   /** How the run ended; by default it completed both files. */
   readonly report?: (report: RunReport) => RunReport;
-  /** The daemon's ledger of `a`: queued again, a cancel cut it, a newer run, gone, its key moved. */
-  readonly ledger?: "requeue" | "cancelled" | "superseded" | "gone" | "rekeyed";
+  /** The daemon's ledger of `a`: a backlog cancel cut it, a newer run, gone, its key moved. */
+  readonly ledger?: "cancelled" | "superseded" | "gone" | "rekeyed";
+  /** The daemon's record queues `a` again for a fact of its own (`RecordFacts`). */
+  readonly queued?: "unfinished" | "interrupted" | "not started" | "install moved";
+  /** The barrier withheld `a`'s last run at its key too (`Withholds`, task 007-30). */
+  readonly withheldBefore?: boolean;
 }
 
-/** Each file's store decision with the daemon's sources, and with `squeal code`'s; `null` where it has none. */
+/**
+ * Each file's store decision with the daemon's sources and record, and with
+ * `squeal code`'s; `null` where `during` names a fact of the daemon's alone.
+ */
 export interface Decided {
   readonly daemon: ReadonlyMap<string, FileDecision>;
   readonly keeper: ReadonlyMap<string, FileDecision> | null;
@@ -131,7 +142,7 @@ async function decided(root: string, store: Store, during: During): Promise<Deci
   await happen(root, keys, hasher, tier, during);
   const report = (during.report ?? ((r) => r))(completed([A, B], during));
   const keeper =
-    during.ledger === undefined
+    during.ledger === undefined && during.queued === undefined
       ? await keepDecisions(
           { root, keys, hasher, run: tier.run, before: tier.snapshot },
           CLOSURES.map(([ref]) => ({ ref, key: key(keys, ref), paths: keys.stabilityPaths(ref) })),
@@ -147,15 +158,46 @@ async function decided(root: string, store: Store, during: During): Promise<Deci
     runner: { environment: () => Promise.reject(new Error("no runner in this table")) },
     note: () => {},
   } as unknown as SchedulerContext;
+  // As `TierRecords` does: the evidence, the record's outcome, then `recordTier`'s end and
+  // `recordFile`'s decision per file.
+  const installMoved = during.queued === "install moved";
   const inputs = await unstableInputs(tier, hasher);
-  const evidence = await readRecordEvidence(context, tier, report, inputs, false, hold(during));
-  const daemon = decideFiles(tier, report, evidence, {
-    ...(during.ledger === "requeue" ? { requeue: new Set([testFileId(A)]) } : {}),
-    holds: (entry) => during.ledger !== "gone" || entry.file.ref !== A,
-    runtimeIdentity: (ref) => keys.runtimeIdentity(ref),
-  });
+  const evidence = await readRecordEvidence(
+    context,
+    tier,
+    report,
+    inputs,
+    installMoved,
+    hold(during),
+  );
+  const outcome = recordOutcome(files, report, evidence, facts(files, evidence.held, during));
+  const observed = evidence.observed ?? NOTHING_OBSERVED;
+  const runtime = (ref: TestFileRef) => keys.runtimeIdentity(ref);
+  const end = runEnd(tier, outcome.report, evidence.changed, outcome.requeue, observed, runtime);
+  const holds = (entry: TierFile) => during.ledger !== "gone" || entry.file.ref !== A;
+  const daemon = new Map(
+    files.map((entry) => [entry.file.id, decisionOf(entry, end, outcome, holds(entry))]),
+  );
   keys.endRun();
   return { daemon, keeper };
+}
+
+/** The daemon record's facts of `a` that `during` names, at its one try. */
+function facts(files: readonly TierFile[], held: readonly TierFile[], during: During): RecordFacts {
+  const [a] = files;
+  if (a === undefined) throw new Error("no file `a`");
+  const withholds = new Withholds();
+  if (during.withheldBefore === true) withholds.record([a]);
+  const { queued } = during;
+  return {
+    held,
+    startupHeld: queued === "not started",
+    withholds: (barred) => withholds.peek(barred),
+    unfinished: queued === "unfinished" ? [a.file.id] : [],
+    notStarted: queued === "not started" ? [a] : [],
+    interrupted: queued === "interrupted" ? [a.file.id] : [],
+    installMoved: queued === "install moved",
+  };
 }
 
 async function keyed(

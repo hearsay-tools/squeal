@@ -13,7 +13,13 @@ import {
   prepareObserved,
   type TierObservations,
 } from "../scheduler/observed.js";
-import { barredByTouch, changedSince, type Moved, snapshotInputs } from "../scheduler/stability.js";
+import {
+  barredByTouch,
+  changedSince,
+  type Moved,
+  snapshotInputs,
+  type Withheld,
+} from "../scheduler/stability.js";
 import {
   type StoreDecision,
   storeDecision,
@@ -57,20 +63,12 @@ export interface RunEvidence {
 export type RunFiles = Pick<Tier, "files" | "lane" | "changes" | "cancel">;
 
 /**
- * The store decision for one test file of a finished run (GLOSSARY, "Store
- * decision"): `storeDecision`'s, after the two kinds of evidence its caller
- * acts on first.
+ * A file's store decision (`storeDecision`; GLOSSARY, "Store decision")
+ * and its reason, which names the evidence behind it: a merge hold or a
+ * touched input, when the decision is the caller's action on either.
  */
-export type RunDecision =
-  /** A merge holds a path its key names (011 C9): nothing is stored until the merge ends. */
-  | { readonly kind: "held" }
-  /** Touched inputs (task 001-168): the run is withheld for these paths. */
-  | { readonly kind: "touched"; readonly paths: readonly RelativePath[] }
-  | StoreDecision;
-
-/** A file's store decision and its reason. */
 export interface FileDecision {
-  readonly decision: RunDecision;
+  readonly decision: StoreDecision;
   readonly reason: string;
 }
 
@@ -218,19 +216,82 @@ function loadedBeyondKeys(
   return loaded.size === 0 ? undefined : { files: loaded, changes: [] };
 }
 
-/**
- * The completion barrier (task 001-168; task 013-02): `report` without the
- * files of `files` whose keys, or what their run read, name a touched path.
- */
-export function touchBarrier<T extends TierFile>(
-  report: RunReport,
-  files: readonly T[],
-  evidence: Pick<RunEvidence, "touched" | "observed">,
-): { readonly report: RunReport; readonly barred: T[]; readonly paths: RelativePath[] } {
-  return barredByTouch(report, files, evidence.touched, evidence.observed?.growth);
+/** What a record knows at the try of its write, of its own: the caller's facts, not evidence. */
+export interface RecordFacts {
+  /** The files a merge holds at this try (`mergeHeld`): queued again, outside the barrier. */
+  readonly held: readonly TierFile[];
+  /** The hold rejects the report's startup failure (review 0.1.266 B2): the report goes without it. */
+  readonly startupHeld: boolean;
+  /** Which barred files are withheld at their key for the first time (`Withholds.peek`, task 007-30). */
+  readonly withholds: (barred: readonly TierFile[]) => Withheld<TierFile>;
+  /** Files a stop's or a hold's cancel cut short (D10, row 011-74): queued again. */
+  readonly unfinished: readonly string[];
+  /** Files a held startup failure kept from starting (review 0.1.266 B2): queued again. */
+  readonly notStarted: readonly TierFile[];
+  /** Files a crash after the stop, or the runtime's loss, interrupted (rows 011-66, 011-106). */
+  readonly interrupted: readonly string[];
+  /** The install moved during the run (task 001-107): the whole run queues again. */
+  readonly installMoved: boolean;
 }
 
-/** What a run's end says of its files (`tierEnd`), from its evidence. */
+/** What a record hands `recordTier`, and the withholds its caller counts once the write lands. */
+export interface RecordOutcome {
+  /** The barrier's report, without a startup failure the hold rejects. */
+  readonly report: RunReport;
+  /** `TierEnd.requeue`: the whole run, or these files, queue again uncounted. */
+  readonly requeue: boolean | ReadonlySet<string>;
+  /** The files a merge holds, and those it leaves free. */
+  readonly held: readonly TierFile[];
+  readonly free: readonly TierFile[];
+  /** The free files the barrier withheld, split as `RecordFacts.withholds` did. */
+  readonly barred: readonly TierFile[];
+  readonly withheld: Withheld<TierFile>;
+  /** The touched paths the barred files' keys, or their reads, name. */
+  readonly paths: readonly RelativePath[];
+}
+
+/**
+ * The report and the requeue of a finished run's record (row 011-319):
+ * the completion barrier (task 001-168, task 013-02) over the files the
+ * merge hold leaves free (011 C9) withholds those whose keys, or what their
+ * run read, name a touched path; a first withhold at a file's key queues it
+ * again, an exhausted one leaves it unknown (task 007-30). The held files,
+ * and those `facts` names, queue again; a moved install queues the whole
+ * run. The daemon's record and `squeal code` both take their report and
+ * requeue from here, then `runEnd` and `storeDecision` per file.
+ */
+export function recordOutcome(
+  files: readonly TierFile[],
+  report: RunReport,
+  evidence: Pick<RunEvidence, "touched" | "observed">,
+  facts: RecordFacts,
+): RecordOutcome {
+  const { held } = facts;
+  const free = held.length === 0 ? files : files.filter((f) => !held.includes(f));
+  const growth = evidence.observed?.growth;
+  const barrier = barredByTouch(report, free, evidence.touched, growth);
+  const withheld = facts.withholds(barrier.barred);
+  const { startupFailure: _, ...withoutStartup } = barrier.report;
+  const again = [
+    ...withheld.again.map(({ file }) => file.id),
+    ...facts.unfinished,
+    ...held.map(({ file }) => file.id),
+    ...facts.notStarted.map(({ file }) => file.id),
+    ...facts.interrupted,
+  ];
+  const { installMoved } = facts;
+  return {
+    report: facts.startupHeld ? withoutStartup : barrier.report,
+    requeue: installMoved || again.length === 0 ? installMoved : new Set(again),
+    held,
+    free,
+    barred: barrier.barred,
+    withheld,
+    paths: barrier.paths,
+  };
+}
+
+/** What a run's end says of its files (`tierEnd`), from its evidence and its record's outcome. */
 export function runEnd(
   tier: RunFiles,
   report: RunReport,
@@ -242,50 +303,19 @@ export function runEnd(
   return tierEnd(tier, report, changed, requeue, observed, runtimeIdentity);
 }
 
-/** What the daemon decides with its ledger; absent, each file is held at the key it ran under. */
-export interface DecideOptions {
-  /** The whole run, or these files, queue again uncounted (`TierEnd.requeue`). */
-  readonly requeue?: boolean | ReadonlySet<string>;
-  /** Whether the caller still holds `entry`'s file as it ran (the daemon's ledger). */
-  readonly holds?: (entry: TierFile) => boolean;
-  /** The runtime's identity now (`TierFile.runtimePolicy`, the daemon's). */
-  readonly runtimeIdentity?: (ref: TestFileRef) => string;
-}
-
 /**
- * Each file's store decision and its reason, by `testFileId`: held when a
- * merge holds a path it names, touched when the barrier withholds it, else
- * `storeDecision`'s over the run's end.
+ * `entry`'s store decision over the run's `end` (`storeDecision`, as
+ * `recordFile` takes it), the caller holding its file as it ran when
+ * `holds`, with the reason `outcome` gives it.
  */
-export function decideFiles(
-  tier: RunFiles,
-  report: RunReport,
-  evidence: RunEvidence,
-  options: DecideOptions = {},
-): Map<string, FileDecision> {
-  const free = tier.files.filter((f) => !evidence.held.includes(f));
-  const barrier = touchBarrier(report, free, evidence);
-  const observed = evidence.observed ?? NOTHING_OBSERVED;
-  const end = runEnd(
-    tier,
-    barrier.report,
-    evidence.changed,
-    options.requeue ?? false,
-    observed,
-    options.runtimeIdentity,
-  );
-  const touched = new Set(evidence.touched);
-  const out = new Map<string, FileDecision>();
-  for (const entry of tier.files) {
-    const named = [...entry.inputs, ...(observed.growth.get(entry.file.id)?.growth ?? [])];
-    const decision: RunDecision = evidence.held.includes(entry)
-      ? { kind: "held" }
-      : barrier.barred.includes(entry)
-        ? { kind: "touched", paths: [...new Set(named.filter((p) => touched.has(p)))].sort() }
-        : storeDecision(entry, end, options.holds?.(entry) ?? true);
-    out.set(entry.file.id, { decision, reason: reasonOf(decision, entry, end) });
-  }
-  return out;
+export function decisionOf(
+  entry: TierFile,
+  end: TierEnd,
+  outcome: RecordOutcome,
+  holds: boolean,
+): FileDecision {
+  const decision = storeDecision(entry, end, holds);
+  return { decision, reason: reasonOf(decision, entry, end, outcome) };
 }
 
 /** A file `squeal code` ran: the key a lookup gave it, and what its stability check compares. */
@@ -299,7 +329,7 @@ export interface KeepFile {
  * `squeal code`'s store decision for each of `files` that `report`'s run
  * ran, by `testFileId`, from the evidence it reads (`readKeepEvidence`). It
  * has no ledger: each file is held at the key it ran under, and nothing
- * queues again.
+ * queues again (`KEEP_FACTS`).
  */
 export async function keepDecisions(
   sources: KeepSources,
@@ -311,14 +341,28 @@ export async function keepDecisions(
     return { file, key, inputs: paths, runtimePolicy: "", checkpointId: null, forced: false };
   });
   const evidence = await readKeepEvidence(sources, entries, report);
+  const outcome = recordOutcome(entries, report, evidence, KEEP_FACTS);
   const run = { files: entries, lane: KEEP_LANE, changes: new Set<RelativePath>(), cancel: null };
-  return decideFiles(run, report, evidence);
+  const observed = evidence.observed ?? NOTHING_OBSERVED;
+  const end = runEnd(run, outcome.report, evidence.changed, outcome.requeue, observed);
+  return new Map(entries.map((entry) => [entry.file.id, decisionOf(entry, end, outcome, true)]));
 }
+
+/** `squeal code` has no ledger, no merge hold yet, and no retry: a barred file is not kept. */
+const KEEP_FACTS: RecordFacts = {
+  held: [],
+  startupHeld: false,
+  withholds: (barred) => ({ again: [], exhausted: barred }),
+  unfinished: [],
+  notStarted: [],
+  interrupted: [],
+  installMoved: false,
+};
 
 /** The lane `keepDecisions` names: no slow lane, so a timed-out run of several files splits. */
 const KEEP_LANE = "squeal code";
 
 /** `squeal code` keeps a file only when the daemon would store it at the key it ran under. */
-export function keeps(decision: RunDecision): boolean {
+export function keeps(decision: StoreDecision): boolean {
   return decision.kind === "store" && decision.at === "ran";
 }

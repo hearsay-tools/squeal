@@ -1,10 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { testFileId } from "../../src/core/keys/reverse-index.js";
-import {
-  type FileDecision,
-  keeps,
-  type RunDecision,
-} from "../../src/core/run-evidence/run-evidence.js";
+import { type FileDecision, keeps } from "../../src/core/run-evidence/run-evidence.js";
+import type { StoreDecision } from "../../src/core/scheduler/store-decision.js";
 import type { RunReport } from "../../src/core/types/runner.js";
 import { A, B, type During, decide } from "./fixture.js";
 
@@ -12,24 +9,29 @@ import { A, B, type During, decide } from "./fixture.js";
  * Row 011-319 (`specifications/011-core/research/run-evidence.md`): one
  * table at the run evidence module's interface. In: the input state before
  * the run, what happened during it, and its report. Out: `a`'s store
- * decision and its reason, and `b`'s beside it, once with the daemon's sources
- * (`readRecordEvidence`, then `decideFiles` with its ledger as the daemon's
- * record acts on it) and once with `squeal code`'s (`keepDecisions`).
- * `squeal code` keeps a file only on "store at the key it ran under". Rows
+ * decision and its reason, and `b`'s beside it. The daemon's column runs
+ * the daemon's record: `unstableInputs`, `readRecordEvidence`, then
+ * `recordOutcome` (the report and requeue `TierRecords.#write` hands
+ * `recordTier`), then `runEnd` and `storeDecision` per file as `recordTier`
+ * and `recordFile` do. The keeper's column runs `keepDecisions`, and `squeal
+ * code` keeps a file only on "store at the key it ran under". A merge hold
+ * or a touched input is a reason beside the decision, not a decision. Rows
  * marked "difference N" are the research's differences between the two
  * callers; the keeper's column of differences 2 to 4 is row 011-320's.
  */
 
 /** A decision as a row names it: its kind, and where it stores. */
-type Named = RunDecision["kind"] | "store at ran" | "store at grown";
+type Named = StoreDecision["kind"] | "store at ran" | "store at grown";
 
 interface Row {
   readonly during: During;
   readonly daemon: Named;
-  /** `null`: `squeal code` has no such source (it has no ledger). */
+  /** `null`: the row is a fact of the daemon's alone (its ledger, its record's retry). */
   readonly keeper: Named | null;
-  /** What the reasons name, each the daemon's and, where it decides alike, the keeper's. */
+  /** What the daemon's reason names. */
   readonly names?: string;
+  /** What the keeper's reason names. */
+  readonly keeperNames?: string;
   /** `b`'s decision in both columns, which nothing of `a`'s evidence moves; default "store at ran". */
   readonly beside?: Named;
 }
@@ -46,30 +48,40 @@ const TABLE: Readonly<Record<string, Row>> = {
     daemon: "unstable",
     keeper: "unstable",
     names: "src/a.ts",
+    keeperNames: "src/a.ts",
   },
-  "an input was touched": {
+  "an input was touched, the first time at its key": {
     during: { touch: ["src/a.ts"] },
-    daemon: "touched",
-    keeper: "touched",
-    names: "src/a.ts",
+    daemon: "requeue",
+    keeper: "unknown",
+    names: "src/a.ts was written",
+    keeperNames: "src/a.ts was written",
+  },
+  "an input was touched, its run before at its key withheld too": {
+    during: { touch: ["src/a.ts"], withheldBefore: true },
+    daemon: "unknown",
+    keeper: "unknown",
+    names: "src/a.ts was written",
+    keeperNames: "src/a.ts was written",
   },
   "difference 1: it read a path its key lacks, known before the run": {
     during: { read: ["data/known.txt"] },
     daemon: "store at grown",
     keeper: "store at grown",
     names: "data/known.txt",
+    keeperNames: "data/known.txt",
   },
   "difference 1: a path it read beyond its key changed": {
     during: { read: ["data/known.txt"], write: { "data/known.txt": "other\n" } },
     daemon: "unstable",
     keeper: "store at grown",
-    names: "data/known.txt",
+    names: "data/known.txt changed",
   },
   "difference 1: a path it read beyond its key was touched": {
     during: { read: ["data/known.txt"], touch: ["data/known.txt"] },
-    daemon: "touched",
+    daemon: "requeue",
     keeper: "store at grown",
-    names: "data/known.txt",
+    names: "data/known.txt was written",
   },
   "it read a path its key names": {
     during: { keyed: ["data/known.txt"], read: ["data/known.txt"] },
@@ -81,6 +93,7 @@ const TABLE: Readonly<Record<string, Row>> = {
     daemon: "first-seen",
     keeper: "first-seen",
     names: "data/new.txt",
+    keeperNames: "data/new.txt",
   },
   "it loaded only environment files its key names": {
     during: { loaded: ["setup.ts"] },
@@ -92,6 +105,7 @@ const TABLE: Readonly<Record<string, Row>> = {
     daemon: "environment",
     keeper: "environment",
     names: "environment files",
+    keeperNames: "environment files",
     beside: "environment",
   },
   "difference 2: the runtime's identity moved": {
@@ -102,9 +116,9 @@ const TABLE: Readonly<Record<string, Row>> = {
   },
   "difference 3: a merge holds an input": {
     during: { merging: ["src/a.ts"] },
-    daemon: "held",
+    daemon: "requeue",
     keeper: "store at ran",
-    names: "merge",
+    names: "merge holds",
   },
   "difference 4: an editor's scratch file moved a listed directory": {
     during: { batch: { "src/.a.ts.swp": "swap\n" } },
@@ -122,6 +136,7 @@ const TABLE: Readonly<Record<string, Row>> = {
     daemon: "split",
     keeper: "split",
     names: "at most 1",
+    keeperNames: "at most 1",
   },
   "the global setup failed": {
     during: {
@@ -144,8 +159,39 @@ const TABLE: Readonly<Record<string, Row>> = {
     daemon: "withheld",
     keeper: "withheld",
   },
-  "the daemon queues it again": { during: { ledger: "requeue" }, daemon: "requeue", keeper: null },
-  "a cancel cut it short": {
+  "a stop's or a hold's cancel cut it short": {
+    during: { queued: "unfinished", report: only([B]) },
+    daemon: "requeue",
+    keeper: null,
+  },
+  "a crash after the stop interrupted it": {
+    during: { queued: "interrupted", report: (r) => ({ ...only([B])(r), end: "crashed" }) },
+    daemon: "requeue",
+    keeper: null,
+  },
+  "a startup failure the merge hold rejects kept it from starting": {
+    during: {
+      queued: "not started",
+      report: (r) => ({
+        ...only([B])(r),
+        startupFailure: {
+          projects: [""],
+          testFiles: [A],
+          setupFile: "setup.ts",
+          error: { name: "Error", message: "held", stack: null, location: null, diff: null },
+        },
+      }),
+    },
+    daemon: "requeue",
+    keeper: null,
+  },
+  "the install moved during the run": {
+    during: { queued: "install moved" },
+    daemon: "requeue",
+    keeper: null,
+    beside: "requeue",
+  },
+  "a backlog cancel cut it short": {
     during: { ledger: "cancelled", report: only([B]) },
     daemon: "requeue",
     keeper: null,
@@ -163,11 +209,11 @@ const TABLE: Readonly<Record<string, Row>> = {
   },
 };
 
-function named(decision: RunDecision): Named {
+function named(decision: StoreDecision): Named {
   return decision.kind === "store" ? `store at ${decision.at}` : decision.kind;
 }
 
-describe("run evidence: the store decision per file, the daemon's sources and squeal code's", () => {
+describe("run evidence: the store decision per file, the daemon's record and squeal code's", () => {
   it.each(Object.entries(TABLE))("%s", { timeout: 60_000 }, async (_, row) => {
     const decided = await decide(row.during);
     const of = (decisions: ReadonlyMap<string, FileDecision>, ref: typeof A) =>
@@ -186,8 +232,7 @@ describe("run evidence: the store decision per file, the daemon's sources and sq
     expect(keeper === null ? null : keeps(keeper.decision)).toBe(
       row.keeper === null ? null : row.keeper === "store at ran",
     );
-    if (row.names === undefined) return;
-    expect(daemon.reason).toContain(row.names);
-    if (keeper !== null && row.keeper === row.daemon) expect(keeper.reason).toContain(row.names);
+    if (row.names !== undefined) expect(daemon.reason).toContain(row.names);
+    if (row.keeperNames !== undefined) expect(keeper?.reason).toContain(row.keeperNames);
   });
 });

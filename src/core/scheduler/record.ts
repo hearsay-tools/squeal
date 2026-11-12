@@ -1,7 +1,8 @@
 import {
   mergeHeld,
+  type RecordOutcome,
   readRecordEvidence,
-  touchBarrier,
+  recordOutcome,
   unstableInputs,
 } from "../run-evidence/run-evidence.js";
 import { isBusy } from "../store/connection.js";
@@ -295,64 +296,47 @@ export class TierRecords {
   }
 
   /**
-   * The completion barrier over the files the merge hold leaves free as the
-   * write is tried. Row 011-128 (011 C9): a held file's withhold counts
-   * toward no withhold limit, so `count` moves the free files' withholds,
-   * once the write has landed.
+   * The record's one write transaction, from what `#prepare` decided. Its
+   * report and requeue are the run evidence's (`recordOutcome`, row
+   * 011-319), from the facts of this try: the files the merge hold holds
+   * now, the barrier's withholds as `Withholds` splits them, what a cancel
+   * cut short, what a held startup kept from starting, what the stop or the
+   * runtime's loss interrupted, and the install.
    */
-  #barrier(ended: EndedRun, prepared: PreparedRecord, held: readonly TierFile[]) {
-    const { tier, ran } = ended;
-    const free = held.length === 0 ? tier.files : tier.files.filter((f) => !held.includes(f));
-    // Task 013-02 (D2 of 013-01): the files whose keys name a touched path, as a content change.
-    const { report, barred, paths } = touchBarrier(ran, free, prepared);
-    // Task 007-30: no revision follows the touch; a file's first withhold at its key queues it
-    // again as a moved install does, its previous state standing, and a second leaves it
-    // `unknown`, per file whatever tier it shares (review 007-31, B1). Only the first are
-    // queued again; the exhausted files, forced or not, record the withheld report and are
-    // `unknown` in the same commit (review 007-33, B1).
-    const withhold = this.#withholds.peek(barred);
-    const notes = [
-      withholdNote(paths, withhold.again, true),
-      withholdNote(paths, withhold.exhausted, false),
-    ].filter((note) => note !== null);
-    const count = () => {
-      this.#withholds.record(barred);
-      this.#withholds.clear(free.filter((ran) => !barred.includes(ran)));
-    };
-    return { report, again: withhold.again.map(({ file }) => file.id), notes, count };
-  }
-
-  /** The record's one write transaction, from what `#prepare` decided. */
   #write(ended: EndedRun, prepared: PreparedRecord, commit: boolean): Recorded {
     const host = this.#host;
     const { context, ledger } = host.started();
     const { tier, ran, ignored, installMoved, runtimeGone, slow } = ended;
     const { changed, touched, observed, cancelled } = prepared;
     const { held, projects, startup, notStarted } = this.#heldNow(ended, prepared);
-    const barrier = this.#barrier(ended, prepared, held);
-    const { startupFailure: _, ...withoutStartup } = barrier.report;
-    const report = startup ? withoutStartup : barrier.report;
     // Spec 004 D8: a slow run's activity goes with its results (review wave 2, B1, B2).
-    const moved = context.store.transaction(() => {
+    const { moved, outcome } = context.store.transaction(() => {
       // Rows 011-66 and 011-106: a crash after the daemon's stop began, or a run while its own
       // runtime went, is queued again once per key.
       const interrupted = interruptedFiles(context, ledger, tier, ran, {
         stopping: host.stopping() && !cancelled,
         runtimeGone,
       });
-      const again = [
-        ...barrier.again,
-        ...prepared.unfinished,
-        ...held.map(({ file }) => file.id),
-        ...notStarted.map(({ file }) => file.id),
-        ...interrupted,
-      ];
-      const requeue = installMoved || again.length === 0 ? installMoved : new Set(again);
+      // Task 007-30: no revision follows a touch; a file's first withhold at its key queues it
+      // again as a moved install does, its previous state standing, and a second leaves it
+      // `unknown`, per file whatever tier it shares (review 007-31, B1). The exhausted files,
+      // forced or not, record the withheld report and are `unknown` in the same commit (review
+      // 007-33, B1).
+      const outcome = recordOutcome(tier.files, ran, prepared, {
+        held,
+        startupHeld: startup,
+        withholds: (barred) => this.#withholds.peek(barred),
+        unfinished: prepared.unfinished,
+        notStarted,
+        interrupted,
+        installMoved,
+      });
       // Review 0.1.262, B2: a report the runtime's loss rejects applies no setup outcome either.
       const lost = runtimeGone && interrupted.length > 0;
       const setups = lost ? false : projects.size === 0 || projects;
       host.warmUp.record(context, ignored);
       host.yields.ended(context, tier);
+      const { report, requeue } = outcome;
       const result = recordTier(
         context,
         ledger,
@@ -366,9 +350,23 @@ export class TierRecords {
       );
       if (slow !== null) host.slowEnded();
       // The runner hears the touches too, so its next run reads the disk again.
-      return [...new Set([...result, ...touched])];
+      return { moved: [...new Set([...result, ...touched])], outcome };
     });
-    barrier.count();
-    return { moved, withheld: barrier.notes };
+    return { moved, withheld: this.#counted(outcome) };
+  }
+
+  /**
+   * Once the write has landed, the barrier's withholds count, and their
+   * notes. Row 011-128 (011 C9): a held file's withhold counts toward no
+   * withhold limit, so only the free files' withholds move.
+   */
+  #counted(outcome: RecordOutcome): string[] {
+    const { barred, free, withheld, paths } = outcome;
+    this.#withholds.record(barred);
+    this.#withholds.clear(free.filter((ran) => !barred.includes(ran)));
+    return [
+      withholdNote(paths, withheld.again, true),
+      withholdNote(paths, withheld.exhausted, false),
+    ].filter((note) => note !== null);
   }
 }
