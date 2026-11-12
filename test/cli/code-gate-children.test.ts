@@ -76,26 +76,40 @@ const FILES = {
   ),
 };
 
-/** The branch edits both functions; the tests and the config stay as at the base. */
-async function gate(config: Record<string, unknown> | null) {
+const BOTH = { "scripts/tool.mjs": tool("9"), "src/grade.mjs": grade("1") };
+
+/** By default the branch edits both functions; the tests and the config stay as at the base. */
+async function gate(
+  config: Record<string, unknown> | null,
+  edits: Readonly<Record<string, string>> = BOTH,
+  tests: readonly string[] = ["--test", "test/tool.test.ts"],
+) {
   const leftInTmp = ownHomeAndTmp();
   const root = repo(
     config === null ? FILES : { ...FILES, "squeal.config.json": JSON.stringify(config) },
   );
-  edit(root, { "scripts/tool.mjs": tool("9"), "src/grade.mjs": grade("1") });
-  const ran = await code(root, ["--base", "main", "--json", "--test", "test/tool.test.ts"]);
+  edit(root, edits);
+  const ran = await code(root, ["--base", "main", "--json", ...tests]);
   const report = JSON.parse(ran.stdout) as GateReport;
   const states = report.functions.map((f) => `${f.qualifiedName} ${f.state} ${f.gap ?? f.crap}`);
   return { ran, report, states, leftInTmp };
 }
 
+/** D14.4 (row 020-34): the line when some selected file runs, so a process it starts may run the script. */
+const CHILD_MAY_LOAD =
+  "squeal code: no selected test file imports scripts/tool.mjs. With coverage.children, it is measured only if a process one of them starts loads it; else its 1 changed function will read incomplete (no-loader). To select a test that starts it, give the test with --test or declare the path for it in inputs at the base; to skip its coverage, name it in coverage.exclude at the base.";
+
+/** D14.4: the line when no selected file runs, with coverage.children too (row 020-34). */
+const UNLOADED =
+  "squeal code: no test Squeal runs loads scripts/tool.mjs: no Vitest or node:test project lists it, and no listed test file imports it. Its 1 changed function will read incomplete (no-loader). To measure it, give it to a runner (a nodeTest entry, with prepare when it needs a build); to skip its coverage, name it in coverage.exclude at the base.";
+
 describe("squeal code --base with coverage.children (spec 020 D12)", () => {
   it("passes a script only a child runs, and a function only a child calls", SLOW, async () => {
     const { ran, report, states, leftInTmp } = await gate({ coverage: { children: true } });
 
-    // D14.4: with coverage.children no path is named unloaded: a child may run it.
+    // D14.4 (row 020-34): no selected file imports the script, but a process one starts may run it.
     expect(ran.stderr).toBe(
-      `squeal code: Vitest: 2 test files to run (tests 2)\n${noEstimate("Vitest", 2)}`,
+      `squeal code: Vitest: 2 test files to run (tests 2)\n${CHILD_MAY_LOAD}\n${noEstimate("Vitest", 2)}`,
     );
     expect(states).toEqual(["classify pass 2", "grade pass 6"]);
     expect(ran.code).toBe(0);
@@ -111,6 +125,23 @@ describe("squeal code --base with coverage.children (spec 020 D12)", () => {
     ]);
     expect(leftInTmp()).toEqual([]);
   });
+
+  it(
+    "names a child-only script as unloaded when no selected test file runs (row 020-34)",
+    SLOW,
+    async () => {
+      const { ran, states, leftInTmp } = await gate(
+        { coverage: { children: true } },
+        { "scripts/tool.mjs": tool("9") },
+        [],
+      );
+
+      expect(ran.stderr).toBe(`squeal code: Vitest: no test file to run\n${UNLOADED}\n`);
+      expect(states).toEqual(["classify incomplete no-loader"]);
+      expect(ran.code).toBe(3);
+      expect(leftInTmp()).toEqual([]);
+    },
+  );
 
   it(
     "without it, reads the child's script incomplete and the uncalled function a violation",

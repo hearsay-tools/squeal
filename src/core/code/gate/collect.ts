@@ -5,9 +5,11 @@ import { loadPolicy, POLICY_FILE } from "../../daemon/policy.js";
 import { compare } from "../../fs/compare.js";
 import { findWorktreeRoot } from "../../fs/git-layout.js";
 import { readObjectFormat } from "../../hash/git-index.js";
+import { createDeclaredInputs } from "../../keys/closure.js";
 import { testFileId } from "../../keys/reverse-index.js";
 import type { AbsolutePath, RelativePath } from "../../types/common.js";
 import type { TestFileRef } from "../../types/keys.js";
+import type { PolicyInputs } from "../../types/policy.js";
 import type { RunnerClosure, RunnerEnvironment, RunReport } from "../../types/runner.js";
 import type { BlobCache } from "../coverage/record.js";
 import { coverageProvider, PROVIDER_MISSING_NOTE } from "../coverage/runtime.js";
@@ -28,7 +30,8 @@ import { type ChangedSet, type Evidence, GATE_RUNNERS, type TestFileEvidence } f
  * own Vitest and node:test adapters with Squeal's coverage provider, as the
  * daemon builds them (015 D8), with no daemon and no store; selects the
  * test files that load a changed path, every changed test file and the
- * `--test` files; runs them under one deadline; and maps each completed
+ * `--test` files, and the test files whose declared `inputs` at the base
+ * name a changed path (row 020-35); runs them under one deadline; and maps each completed
  * file's payload to its record before the adapter closes, which deletes it.
  * D12 (row 020-10b): with `coverage.children` at the base, the runners
  * collect the coverage of the processes and threads the tests start too.
@@ -37,6 +40,12 @@ import { type ChangedSet, type Evidence, GATE_RUNNERS, type TestFileEvidence } f
 export interface CollectOptions {
   /** `--test` files, relative to the worktree root (D3.1). */
   readonly tests: readonly RelativePath[];
+  /**
+   * D3.1 (row 020-35): the top-level `inputs` at the base. A test file
+   * whose declared inputs, by the daemon's rules, name a changed path is
+   * selected. Absent, none is declared.
+   */
+  readonly inputs?: PolicyInputs;
   /** The one deadline over every run, from the call (D3.4). */
   readonly budgetSeconds: number;
   readonly adapters: GateAdapters;
@@ -160,7 +169,7 @@ export async function collectEvidence(
     const keeping = options.ran !== undefined;
     const opening = { provider, temp, note, children, keeping, closures };
     await openRunners(options.adapters, root, policy, opening, runners);
-    const picked = await select(runners, paths, options.tests, tally);
+    const picked = await select(runners, { paths, ...options }, tally);
     const at = { root, deadline, note, options, children };
     // Review 0.1.432 B2: the stores and the parts first, so the print names only what runs.
     const known = await storedOf(picked, options);
@@ -219,17 +228,29 @@ export async function collectEvidence(
 
 /**
  * D3.1, per runner: the test files `affected()` gives for the changed
- * paths, its test files among them, and the `--test` files it lists.
- * Throws `CollectUsageError` for a `--test` file no runner lists. D14.2:
- * with a scope's `tally`, the files it leaves out are the pick's `leftOut`
+ * paths, its test files among them, the `--test` files it lists, and the
+ * test files whose declared `inputs` name a changed path, which the pick's
+ * `byInputs` holds when nothing else chose them (row 020-35). Throws
+ * `CollectUsageError` for a `--test` file no runner lists. D14.2: with a
+ * scope's `tally`, the files it leaves out are the pick's `leftOut`
  * instead of its `run`.
  */
 async function select(
   runners: readonly Runner[],
-  paths: readonly RelativePath[],
-  tests: readonly RelativePath[],
+  {
+    paths,
+    tests,
+    inputs,
+  }: {
+    readonly paths: readonly RelativePath[];
+    readonly tests: readonly RelativePath[];
+    readonly inputs?: PolicyInputs | undefined;
+  },
   tally: ScopeTally | null,
 ): Promise<(Picked & { readonly runner: Runner })[]> {
+  // The daemon's rule (spec 001 D3): a list declares for every test file, a map per test glob.
+  const declared =
+    inputs === undefined || paths.length === 0 ? null : createDeclaredInputs(inputs, paths);
   const named = new Set([...paths, ...tests]);
   const matched = new Set<RelativePath>();
   const picked: (Picked & { readonly runner: Runner })[] = [];
@@ -246,10 +267,15 @@ async function select(
       const affected = await adapter.affected(paths);
       for (const ref of [...affected.direct, ...affected.transitive]) add(ref);
     }
+    const byInputs = listed.filter(
+      (ref) => !chosen.has(testFileId(ref)) && (declared?.for(ref.path).length ?? 0) > 0,
+    );
+    for (const ref of byInputs) add(ref);
     const all = [...chosen.values()].sort(byPath);
     const split = tally?.split(kind, listed, all, new Set(tests));
     const [run, leftOut] = [split?.run ?? all, split?.leftOut ?? []];
-    picked.push({ runner, kind, adapter, listed, run, leftOut });
+    const declaredOnly = byInputs.length === 0 ? {} : { byInputs: byInputs.sort(byPath) };
+    picked.push({ runner, kind, adapter, listed, run, leftOut, ...declaredOnly });
   }
   const unknown = tests.filter((path) => !matched.has(path));
   if (unknown.length > 0) {
