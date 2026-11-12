@@ -244,6 +244,22 @@ export interface FileLevelError {
  */
 export type RunEnd = "completed" | "crashed" | "timed-out";
 
+/**
+ * A background tier's grant from the per-user pool, as its run sees it
+ * (spec 021 D18, row 021-21; the coordinator, request 66d23a73): a remote
+ * run holds no local permit.
+ */
+export interface LocalPermits {
+  /** The run goes to another machine: its permits go back to the pool. Idempotent. */
+  away(): void;
+  /**
+   * The run comes back to run here after `away`: waits for permits as a
+   * backlog tier does, and answers the workers granted, or `null` when
+   * `signal` aborted meanwhile. Without `away` before, the workers it holds.
+   */
+  back(signal?: AbortSignal): Promise<number | null>;
+}
+
 export interface RunOptions {
   /** Id of the `runs/<run-id>/` directory (D1). */
   readonly runId: string;
@@ -315,6 +331,12 @@ export interface RunOptions {
    * go to a remote runner host. Absent: someone waits for it here.
    */
   readonly background?: true;
+  /**
+   * A background tier's local permits (spec 021 D18, row 021-21): a run
+   * sent to another machine gives them back, and one that comes back to run
+   * here waits for them again. Absent: the tier holds no grant.
+   */
+  readonly permits?: LocalPermits;
   /**
    * Called as each test file of the run ends, before the report, by a
    * runner that knows (Vitest: `onTestModuleEnd`, row 011-54): a file whose
