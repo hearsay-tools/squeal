@@ -230,14 +230,7 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
         : [{ testFile: r.testFile, durationMs: r.stream.durationMs }],
     ),
   };
-  // Spec 001 D11 Fidelity (task 001-390): a signature of a recorder this run used says so; in
-  // `NODE_OPTIONS` only when `childEnv` or the warm-up put one there, argv's reaching no child.
-  const inNodeOptions = reads !== null || (env.NODE_OPTIONS ?? "").includes(runtime.recorder);
-  const report = withRecorderSignatures(built, {
-    files: reads === null ? [runtime.recorder] : [runtime.recorder, reads.recorder],
-    inNodeOptions,
-    relativize: (text) => paths.relativizeText(text),
-  });
+  const report = signed(built, { reads, nodeOptions: env.NODE_OPTIONS, runtime, paths });
   const observed = completed.flatMap((r) => {
     const files = graphs(options.logDir, r.index);
     const closure = observedClosure(r.testFile, r.absolute, files, preloads, paths);
@@ -308,6 +301,28 @@ function readEvents(logDir: AbsolutePath, index: number) {
   } catch {
     return [];
   }
+}
+
+/**
+ * Spec 001 D11 Fidelity (task 001-390): a signature of a recorder this run
+ * used says so; in `NODE_OPTIONS` only when `childEnv` or the warm-up put one
+ * there, argv's reaching no child.
+ */
+function signed(
+  built: RunReport,
+  run: {
+    reads: NodeTestReads | null;
+    nodeOptions: string | undefined;
+    runtime: NodeTestRuntime;
+    paths: WorktreePaths;
+  },
+): RunReport {
+  const { reads, runtime } = run;
+  return withRecorderSignatures(built, {
+    files: reads === null ? [runtime.recorder] : [runtime.recorder, reads.recorder],
+    inNodeOptions: reads !== null || (run.nodeOptions ?? "").includes(runtime.recorder),
+    relativize: (text) => run.paths.relativizeText(text),
+  });
 }
 
 /** The recorder's files of one file's run: `graph-<index>-<pid>.ndjson`, one per process. */
