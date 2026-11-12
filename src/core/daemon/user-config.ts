@@ -15,6 +15,7 @@ import {
   positiveInteger,
   type Shape,
 } from "./config-file.js";
+import { hostIdleMinutes } from "./host-idle.js";
 
 /**
  * Spec 001 D11 Capacity: "`$XDG_CONFIG_HOME/squeal/config.json` (default
@@ -56,6 +57,7 @@ export function loadUserConfig(
       groupSlotScope: DEFAULT_GROUP_SLOT_SCOPE,
       backgroundShare: DEFAULT_BACKGROUND_SHARE,
     },
+    runner: { hostIdleMinutes: null },
   };
   const { value, problems } = loadConfigFile(path, SHAPE, defaults);
   const { hostSlots } = value.capacity;
@@ -226,4 +228,6 @@ export const backgroundShare: Leaf = (v) => (isBackgroundShare(v) ? null : "a nu
 
 const SHAPE: Shape = {
   capacity: { hostSlots: positiveInteger, projects, groupSlotScope, backgroundShare },
+  // Spec 021 D20.4 (row 021-26).
+  runner: { hostIdleMinutes: (v) => (v === null ? null : hostIdleMinutes(v)) },
 };

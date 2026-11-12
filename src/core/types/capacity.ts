@@ -26,6 +26,15 @@ export interface UserConfig {
      */
     readonly backgroundShare: number;
   };
+  readonly runner: {
+    /**
+     * Spec 021 D20.4 (row 021-26): whole minutes with no call after which a
+     * local runner host closes, on every project of this machine; it wins
+     * over `squeal.config.json`'s. `null`, the default: the project's value,
+     * else one from the machine's total memory.
+     */
+    readonly hostIdleMinutes: number | null;
+  };
 }
 
 export interface LoadedUserConfig {

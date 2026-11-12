@@ -43,6 +43,7 @@ import { describeProblems } from "./config-file.js";
 import { type FrontDesk, type PreparedDesk, prepareFrontDesk } from "./desk.js";
 import { afterEachRun, EscapedChildren } from "./escaped.js";
 import { startFullCheck } from "./full-check.js";
+import { defaultHostIdleMinutes, hostIdleMs } from "./host-idle.js";
 import { type GcFunction, IdleGc } from "./idle-gc.js";
 import { importInDaemon } from "./import-request.js";
 import { keepInDaemon } from "./keep-request.js";
@@ -72,7 +73,7 @@ import { requestSlowSuite, type SlowSuiteRequested } from "./run-slow.js";
 import type { RecoveringRunner } from "./runner.js";
 import { adoptScratch, inRootWhileRunning, removeScratch } from "./scratch.js";
 import { pauseAt } from "./test-pause.js";
-import { capacityReader, repositoryRootOf } from "./user-config.js";
+import { capacityReader, loadUserConfig, repositoryRootOf } from "./user-config.js";
 import { squealVersion } from "./version.js";
 import { decodeBatch, SENT_WRITE_BOUND_MS, writeBatch } from "./write-batch.js";
 
@@ -133,6 +134,11 @@ export interface DaemonOptions {
    * gives its own Node and CLI script. Absent: Vitest runs in this process.
    */
   readonly runnerHost?: RunnerHostLaunch;
+  /**
+   * Spec 021 D20 (row 021-26): how long, in milliseconds, a local runner
+   * host stays up with no call, in place of `runner.hostIdleMinutes`. For tests.
+   */
+  readonly hostIdleMs?: number;
 }
 
 /** A daemon that owns its worktree: lock held, socket bound, worktree registered. */
@@ -311,6 +317,17 @@ class Daemon {
   }
 
   /** Spec 021 D8: how node:test and pytest reach a local runner host, when the daemon has one. */
+  /**
+   * Spec 021 D20.4 (row 021-26): `runner.hostIdleMinutes` in milliseconds, the user config's
+   * read once here, `squeal.config.json`'s at each use, else from the machine's total memory.
+   */
+  #hostIdleMs(): () => number {
+    const fixed = this.options.hostIdleMs;
+    if (fixed !== undefined) return () => fixed;
+    const user = loadUserConfig({ env: this.options.env }).config.runner.hostIdleMinutes;
+    return hostIdleMs(user, () => this.#policy.runner.hostIdleMinutes, defaultHostIdleMinutes());
+  }
+
   #processHost(): { readonly launch: RunnerHostLaunch; readonly version: string } | undefined {
     const launch = this.options.runnerHost;
     return launch === undefined ? undefined : { launch, version: this.#version };
@@ -589,6 +606,9 @@ class Daemon {
         this.#version,
         createVitestAdapter,
       );
+      // Spec 021 D20 (row 021-26): a local runner host with no call for this long closes. The
+      // user config's minutes win over the project's; the default is the machine's, read once.
+      const idleMs = this.#hostIdleMs();
       const around =
         this.options.ownsProcess && !vitest.hosted
           ? inRootWhileRunning(root, this.opened.scratch)
@@ -632,6 +652,8 @@ class Daemon {
             onRecovered: () => this.#note("Vitest started after the config changed"),
             around,
             ...vitest.recovery,
+            // Lane instances keep their own close (D20.5): only the fast one closes when idle.
+            ...(vitest.hosted ? { idleMs } : {}),
           })
         : null;
       // Spec 003 D7 as amended 2026-10-22 (row 005-79): a Vitest below the root that
@@ -686,6 +708,7 @@ class Daemon {
       const nodeTestRunners = nodeTest.createNodeTestRunnerSet(() => this.#policy.nodeTest, {
         root,
         host,
+        idleMs,
         tempDir: this.opened.scratch.tempDir,
         childEnv: this.#children.env,
         tierSize: () => this.#policy.runner.tierSize,
@@ -702,6 +725,7 @@ class Daemon {
       const pytestRunners = pytest.createPytestRunnerSet(() => this.#policy.pytest, {
         root,
         host,
+        idleMs,
         stateDir: storePaths(commonDir).dir,
         tempDir: this.opened.scratch.tempDir,
         childEnv: this.#children.env,
@@ -747,13 +771,13 @@ class Daemon {
       );
       this.#vitest = vitestRunner;
       this.#runner = runner;
-      // Task 001-100: while no dependencies are installed nothing loads Vitest, so the
-      // first call after the install imports it from the worktree's own `node_modules`.
-      // The node:test graphs build here too, off the hook path (review wave 1, inputs).
       await Promise.all([
-        ...((await awaitsInstall(root)) ? [] : [vitestRunner?.open()]),
-        ...nodeTestRunners.members().map((r) => r.open()),
-        ...pytestRunners.members().map((r) => r.open()),
+        ...(await openedAtStart(
+          () => awaitsInstall(root),
+          vitest.hosted ? null : vitestRunner,
+          host,
+          [nodeTestRunners, pytestRunners],
+        )),
         vitestBelowRoot,
       ]);
       if (this.#phase === "stopping" || this.#stopRequested) return;
@@ -1297,4 +1321,23 @@ class Daemon {
       this.#log(`shutdown: ${name} failed: ${message(error)}`);
     }
   }
+}
+
+/**
+ * The runners a daemon opens as it starts, all in this process. Task 001-100:
+ * while no dependencies are installed nothing loads Vitest, so the first call
+ * after the install imports it from the worktree's own `node_modules`. The
+ * node:test graphs build here too, off the hook path (review wave 1,
+ * inputs). Spec 021 D20.1 (row 021-26): a runner in a local runner host
+ * (`host`, and a hosted Vitest passed as `null`) starts on its first call.
+ */
+async function openedAtStart(
+  installing: () => Promise<boolean>,
+  vitest: RecoveringRunner | null,
+  host: unknown,
+  sets: readonly { members(): readonly RecoveringRunner[] }[],
+): Promise<Promise<boolean>[]> {
+  const opened = vitest === null || (await installing()) ? [] : [vitest.open()];
+  if (host !== undefined) return opened;
+  return [...opened, ...sets.flatMap((set) => set.members().map((runner) => runner.open()))];
 }

@@ -4,9 +4,9 @@ import { createPytestAdapter } from "../../runners/pytest/adapter.js";
 import { DEFAULT_BATCH_SIZE } from "../../runners/pytest/run/run.js";
 import { PYTEST_ADAPTER_VERSION } from "../../runners/pytest/version.js";
 import { createHostedPytest, type ProcessHost } from "../runner-host/process-host.js";
-import { runnerHostGone } from "../runner-host/proxy.js";
 import type { AbsolutePath, ProjectName } from "../types/common.js";
 import type { PytestProject } from "../types/policy.js";
+import { hosted } from "./node-test-runners.js";
 import { createRecoveringRunner, type RecoveringRunner } from "./runner.js";
 import { createRunnerSet, type RunnerSet } from "./runner-set.js";
 
@@ -41,6 +41,8 @@ export interface PytestRunnersOptions {
   readonly latestNote?: (topic: string) => string | undefined;
   /** Spec 021 D8 (row 021-12): each project's adapter in a runner host; absent, in this process. */
   readonly host?: ProcessHost | undefined;
+  /** Spec 021 D20 (row 021-26): how long a host stays up with no call; absent, for good. */
+  readonly idleMs?: () => number;
 }
 
 /**
@@ -88,8 +90,8 @@ function pytestRunner(project: PytestProject, options: PytestRunnersOptions): Re
             ...(batchSize === undefined ? {} : { batchSize: () => batchSize }),
           })
         : createHostedPytest(host, project, adapterOptions),
-    // Spec 021 D7: a host that exited or missed a deadline is replaced.
-    ...(host === undefined ? {} : { gone: runnerHostGone }),
+    // Spec 021 D7: a host that exited or missed a deadline is replaced; D20: an idle one closes.
+    ...(host === undefined ? {} : hosted(options.idleMs)),
     // A run starts `runner.tierSize` processes at once whatever its grant (task 001-366).
     tierWidth: () => options.tierSize(),
     // It cannot cancel a run: an edit's tier starts beside a backlog tier (task 011-21).
