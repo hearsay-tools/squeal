@@ -6,6 +6,7 @@ import { compare } from "../fs/compare.js";
 import { configFieldHash, type EnvironmentDescriptor } from "../keys/environment-descriptor.js";
 import type { ExportSource } from "../store/imports.js";
 import type { AbsolutePath, EpochMs, ProjectName, RelativePath } from "../types/common.js";
+import type { TestFileRef } from "../types/keys.js";
 import type { ObservedInputs } from "../types/runner.js";
 import type { NamedPart } from "./export-check.js";
 import type { InputEvidence } from "./inputs.js";
@@ -110,8 +111,24 @@ export type PartCoverage =
       readonly providerVersion: number;
       readonly recordVersion: number;
       readonly note?: string;
+      readonly inspector?: PartInspector;
     }
-  | { readonly off: CoverageOff; readonly note: string };
+  | { readonly off: CoverageOff; readonly note: string; readonly inspector?: PartInspector };
+
+/**
+ * Spec 020 D19.6 (review of 0.1.443 B1, row 020-26ab R1): what `ci record`
+ * saw of `node:inspector` in the test workers of a run with a provider,
+ * apart from any record. `loaded`: test files whose worker loaded it while
+ * they ran, or after an earlier file of the same worker did. `unknown`:
+ * test files no watched worker saw run (a VM pool, browser mode, a worker
+ * without Squeal's hook), so it is not known whether they loaded it.
+ * `ci export` leaves out both. Absent: neither, a run with no provider, or
+ * a part of an older Squeal, whose files only the closure check can show.
+ */
+export interface PartInspector {
+  readonly loaded: readonly TestFileRef[];
+  readonly unknown: readonly TestFileRef[];
+}
 
 /**
  * Spec 020 D19.4: who took the coverage Squeal mapped. `squeal`: Squeal's
