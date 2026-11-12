@@ -10,6 +10,7 @@ import {
   diagnose,
   type FixtureRepo,
   ping,
+  readNotes,
   SLOW,
   type SpawnedProcess,
   spawnCli,
@@ -26,7 +27,15 @@ import { exitWithin } from "./scratch-helpers.js";
  * still listens. The old daemon's exit must leave the newcomer answering
  * (spec 001 D10). The scenarios are those of `scratch-identity.test.ts`, with
  * both daemons in one runtime dir so their sockets meet.
+ *
+ * Row 018-41: a re-clone in place moves the old daemon's store aside with its
+ * `.git`, so the old daemon stops by itself at its next heartbeat (row
+ * 011-226), within 5 s. The test pauses it until the newcomer answers, so its
+ * exit comes after the newcomer bound the socket however slow the start is.
  */
+
+/** The old daemon's stop note when its store moved aside (`storeCondemned`). */
+const STORE_MOVED = /^daemon stopped: the store file it opened was moved aside/;
 
 const processes: SpawnedProcess[] = [];
 const cleanups: (() => void)[] = [];
@@ -42,12 +51,13 @@ function fixture(): FixtureRepo {
   return repo;
 }
 
-/** Moves `root` aside and `replacement` into its place. */
-function swap(root: string, replacement: string): void {
+/** Moves `root` aside and `replacement` into its place; returns where `root` went. */
+function swap(root: string, replacement: string): string {
   const aside = `${root}.gone`;
   renameSync(root, aside);
   renameSync(replacement, root);
   cleanups.push(() => rmSync(aside, { recursive: true, force: true }));
+  return aside;
 }
 
 function start(cli: string, repo: FixtureRepo): SpawnedProcess {
@@ -72,14 +82,12 @@ function answering(repo: FixtureRepo, spawned: SpawnedProcess): Promise<PingResp
   });
 }
 
-/** Stops `old`, then checks that `newcomer` still answers on the shared socket. */
-async function handOver(
+/** Waits for `old` to exit, then checks that `newcomer` still answers on the shared socket. */
+async function handedOver(
   repo: FixtureRepo,
   old: SpawnedProcess,
   newcomer: SpawnedProcess,
 ): Promise<void> {
-  expect(old.child.exitCode).toBeNull();
-  old.child.kill("SIGTERM");
   expect(await exitWithin(old, 30_000)).toEqual({ code: 0, signal: null });
   const answer = await ping(repo.socketPath, 1_000);
   expect(answer?.pid).toBe(newcomer.child.pid);
@@ -116,7 +124,9 @@ describe.runIf(process.platform === "linux")(
       const newcomer = start(built().cli, newRepo);
       await answering(newRepo, newcomer);
 
-      await handOver(newRepo, old, newcomer);
+      expect(old.child.exitCode).toBeNull();
+      old.child.kill("SIGTERM");
+      await handedOver(newRepo, old, newcomer);
     });
 
     it("keeps the new clone's daemon answering after the old daemon exits, when the repository was cloned again in place", async () => {
@@ -128,11 +138,19 @@ describe.runIf(process.platform === "linux")(
 
       const clone = join(repo.root, "..", "clone");
       git(repo.root, ["clone", "-q", source, clone]);
-      swap(repo.root, clone);
+      old.child.kill("SIGSTOP");
+      const aside = swap(repo.root, clone);
       const newcomer = start(built().cli, repo);
       await answering(repo, newcomer);
+      expect(old.child.exitCode).toBeNull();
 
-      await handOver(repo, old, newcomer);
+      // Resumed, the old daemon's overdue heartbeat finds its store gone from its path.
+      old.child.kill("SIGCONT");
+      await handedOver(repo, old, newcomer);
+      const notes = readNotes({ commonDir: join(aside, ".git"), worktreeId: repo.worktreeId });
+      expect(notes.filter((text) => text.startsWith("daemon stopped:"))).toEqual([
+        expect.stringMatching(STORE_MOVED),
+      ]);
     });
   },
 );

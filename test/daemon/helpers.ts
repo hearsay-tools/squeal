@@ -312,10 +312,14 @@ export function withStore<T>(repo: FixtureRepo, fn: (store: Store) => T): T {
   }
 }
 
-/** Stops a daemon with SIGTERM, or SIGKILL if it does not go within 60 s. */
+/**
+ * Stops a daemon with SIGTERM, or SIGKILL if it does not go within 60 s. A
+ * daemon a test paused (SIGSTOP) is resumed, so it can take the SIGTERM.
+ */
 export async function stopProcess(process: SpawnedProcess): Promise<void> {
   if (process.child.exitCode !== null || process.child.signalCode !== null) return;
   process.child.kill("SIGTERM");
+  process.child.kill("SIGCONT");
   const timer = setTimeout(() => process.child.kill("SIGKILL"), 60_000);
   await process.exited;
   clearTimeout(timer);
