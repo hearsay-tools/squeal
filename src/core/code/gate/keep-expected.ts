@@ -1,7 +1,7 @@
 import type { Hasher } from "../../hash/hasher.js";
 import type { StatCache } from "../../hash/stat-cache.js";
 import { testFileId } from "../../keys/reverse-index.js";
-import { copyInputs, copyScratch, type RuntimeIdentity } from "../../run-evidence/run-evidence.js";
+import { copyInputs, copyListed, type RuntimeIdentity } from "../../run-evidence/run-evidence.js";
 import type { WorktreeKeys } from "../../scheduler/keying.js";
 import type { RelativePath } from "../../types/common.js";
 import type { CheckKey, TestFileRef } from "../../types/keys.js";
@@ -33,8 +33,8 @@ export interface Pending {
   /** `WorktreeKeys.beginRun`'s number, for the reads first hashed after it. */
   readonly run: number;
   readonly snapshot: StatCache;
-  /** The editor scratch files below the files' listings, as the lookup found them (row 011-320). */
-  readonly scratch: ReadonlySet<RelativePath>;
+  /** The files below the files' listings, as the lookup's keys hold them (row 011-320). */
+  readonly listed: ReadonlySet<RelativePath>;
   /** Where each file's runtime identity is read, before the run and at its end (row 011-320). */
   readonly runtime?: RuntimeIdentity;
   /** By `testFileId`. */
@@ -50,8 +50,8 @@ export class Expectations {
   /**
    * Before `runner`'s run: the files of `keyed` it will run, each at the
    * key the lookup gave it. Their inputs are copied from the stat cache
-   * now, as the daemon copies a tier's when it selects it, with the editor
-   * scratch files below their listings, and a run of `keys` begins. With
+   * now, as the daemon copies a tier's when it selects it, with the files
+   * below their listings, and a run of `keys` begins. With
    * `runtime`, each file's runtime identity is read now, as the daemon's
    * `TierFile.runtimePolicy` is at selection.
    */
@@ -71,10 +71,10 @@ export class Expectations {
     if (files.size === 0) return;
     const paths = new Set([...files.values()].flatMap((f) => f.paths));
     const snapshot = copyInputs(keys.cache, paths);
-    const scratch = copyScratch(keys.cache, paths);
+    const listed = copyListed(keys, paths);
     const run = keys.beginRun();
     const source = runtime === undefined ? {} : { runtime };
-    const pending = { runner, keys, hasher, run, snapshot, scratch, files, ...source };
+    const pending = { runner, keys, hasher, run, snapshot, listed, files, ...source };
     this.#open.add(pending);
     for (const id of files.keys()) this.#expected.set(expectationOf(runner, id), pending);
   }

@@ -1,3 +1,4 @@
+import { listedDirectory } from "../keys/observed.js";
 import type { StoreDecision, TierEnd } from "../scheduler/store-decision.js";
 import type { TierFile } from "../scheduler/tiers.js";
 import { listPaths } from "../text.js";
@@ -8,13 +9,16 @@ import type { RecordOutcome } from "./run-evidence.js";
 
 /**
  * The kind of evidence behind a decision (row 011-320): a merge hold, a
- * touched input, the runtime's identity, or the decision's own kind, a
- * store at the key it ran under (`ran`) or with what it read (`grown`).
+ * touched input, the runtime's identity, listings alone among what moved
+ * (`listing`: a file came or went below a directory the key lists), or the
+ * decision's own kind, a store at the key it ran under (`ran`) or with what
+ * it read (`grown`).
  */
 export type CauseKind =
   | "held"
   | "touched"
   | "runtime"
+  | "listing"
   | "ran"
   | "grown"
   | Exclude<StoreDecision["kind"], "store">;
@@ -60,8 +64,10 @@ export function causeOf(
   switch (decision.kind) {
     case "environment":
       return { kind: runtimeMoved(entry, end) ? "runtime" : "environment", paths: [] };
-    case "unstable":
-      return { kind: "unstable", paths: decision.paths };
+    case "unstable": {
+      const listings = decision.paths.every((path) => listedDirectory(path) !== null);
+      return { kind: listings ? "listing" : "unstable", paths: decision.paths };
+    }
     case "first-seen":
       return { kind: "first-seen", paths: growth?.firstSeen ?? [] };
     case "store":
@@ -84,6 +90,7 @@ export function reasonOf(decision: StoreDecision, cause: Cause): string {
         ? `the run timed out before it ended; it runs again in tiers of at most ${decision.cap}`
         : REASONS.unknown;
     case "unstable":
+    case "listing":
       return `${paths} changed during the run`;
     case "first-seen":
       return `it read ${paths}, first seen during the run`;

@@ -73,6 +73,8 @@ function phrase(kind: Kind, one: boolean, reason: string): string {
       return `${they} loaded environment files ${keyLacks}`;
     case "unstable":
       return `what ${keyNames} changed during the run`;
+    case "listing":
+      return `a file was added to or removed from a directory ${one ? "its key lists" : "their keys list"}`;
     case "first-seen":
       return `${they} read paths first seen during the run`;
     case "grown":

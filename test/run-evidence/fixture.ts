@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync, utimesSync } from "node:fs";
+import { mkdtempSync, rmSync, symlinkSync, utimesSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { loadPolicy } from "../../src/core/daemon/policy.js";
@@ -9,7 +9,7 @@ import { ancestorListings } from "../../src/core/keys/observed.js";
 import { statCandidates } from "../../src/core/revision/reconcile.js";
 import {
   copyInputs,
-  copyScratch,
+  copyListed,
   decisionOf,
   type FileDecision,
   keepDecisions,
@@ -52,6 +52,9 @@ export const B: TestFileRef = { project: "", path: "test/b.test.ts" };
 const FILES: Readonly<Record<string, string>> = {
   "src/a.ts": "export const a = 1;\n",
   "src/b.ts": "export const b = 2;\n",
+  "src/d.ts": "export const d = 4;\n",
+  ".gitignore": "*.log\n",
+  "lib/x.ts": "export const x = 6;\n",
   "data/known.txt": "known\n",
   "setup.ts": "export {};\n",
   "other-setup.ts": "export {};\n",
@@ -89,6 +92,8 @@ export interface During {
   readonly batch?: Readonly<Record<string, string | null>>;
   /** Untracked files written before the run's keys are read. */
   readonly untracked?: Readonly<Record<string, string>>;
+  /** Symbolic links committed with the files, by path, to their targets. */
+  readonly links?: Readonly<Record<string, string>>;
   /** What `a`'s run read beyond its key (`RunReport.observed`). */
   readonly read?: readonly string[];
   /** The environment files the run loaded (`RunReport.environmentObserved`). */
@@ -122,6 +127,9 @@ export async function decide(during: During): Promise<Decided> {
   const scratch = mkdtempSync(join(tmpdir(), "squeal-run-evidence-"));
   try {
     const root = writeTree(join(scratch, "repo"), FILES);
+    for (const [path, target] of Object.entries(during.links ?? {})) {
+      symlinkSync(target, join(root, path));
+    }
     git(root, ["init", "-q", "-b", "main"]);
     git(root, ["add", "-A"]);
     git(root, ["commit", "-qm", "fixture"]);
@@ -152,11 +160,11 @@ async function decided(root: string, store: Store, during: During): Promise<Deci
     snapshot: copyInputs(keys.cache, paths),
     cancel: during.ledger === "cancelled" ? aborted() : null,
   } as unknown as Tier;
-  // The keeper's copy of the editor scratch files, taken as `Expectations.add` takes it.
-  const scratch = copyScratch(keys.cache, paths);
+  // The keeper's copy of the files below the listings, taken as `Expectations.add` takes it.
+  const listed = copyListed(keys, paths);
   await happen(root, keys, hasher, tier, during);
   const report = (during.report ?? ((r) => r))(completed([A, B], during));
-  const ran = { root, keys, hasher, tier, report, scratch };
+  const ran = { root, keys, hasher, tier, report, listed };
   const ledgerFree = during.ledger === undefined && during.queued === undefined;
   const keeper = ledgerFree ? await keeperColumn(ran) : null;
   const daemon = await daemonColumn(ran, store, during);
@@ -171,11 +179,11 @@ interface Ran {
   readonly hasher: Hasher;
   readonly tier: Tier;
   readonly report: RunReport;
-  readonly scratch: ReadonlySet<RelativePath>;
+  readonly listed: ReadonlySet<RelativePath>;
 }
 
 /** `squeal code`'s decisions: `keepDecisions` over its files as `Expectations.add` gives them. */
-function keeperColumn({ root, keys, hasher, tier, report, scratch }: Ran) {
+function keeperColumn({ root, keys, hasher, tier, report, listed }: Ran) {
   const runtime = (ref: TestFileRef) => keys.runtimeIdentity(ref);
   // Each file with the runtime identity its tier entry has, as the lookup read it.
   const files = tier.files.map(({ file, key, inputs: paths, runtimePolicy: runtimeIdentity }) => {
@@ -183,7 +191,7 @@ function keeperColumn({ root, keys, hasher, tier, report, scratch }: Ran) {
   });
   const before = tier.snapshot;
   const hold = mergeHoldOf(root);
-  const sources = { root, keys, hasher, run: tier.run, before, hold, scratch, runtime };
+  const sources = { root, keys, hasher, run: tier.run, before, hold, listed, runtime };
   return keepDecisions(sources, files, report);
 }
 
