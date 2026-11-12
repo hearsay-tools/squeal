@@ -108,3 +108,25 @@ The human, 2026-11-11: "#190: Yes, research first". Shared results carry no cove
 5. Recommend: carry records in the export, in a separate ref, or not at all, with the size and the saving behind it.
 
 Findings go to `research/coverage-records.md`; probes under `research/probes/coverage-records/`. No changes to squawk or any run; no Squeal daemon in squawk's checkout; nothing written outside `$TMPDIR` and this folder.
+
+## Topic: live-saving (2026-11-12, row 018-39)
+
+The human, 2026-11-12: "1: measure the saving". The goal of spec 018 is less test load on developers' machines. squawk's CI publishes shared results on every merge (since squawk#3336, 2026-11-12 09:19Z, through Squeal's Action); developers' plugins follow Squeal releases from the hub.
+
+1. From the stores of squawk's live checkouts on this host (`~/projects/cezar` and its worktrees under `~/projects/cezar/.ai/cezar/worktrees/*`; the store is `<git-common-dir>/squeal/store.sqlite`), **read-only** (`node:sqlite` with `readOnly: true`, or a copy of the database file in your `$TMPDIR`; never open them writable, never start or stop a daemon, never run `squeal` in those checkouts): per worktree and day, how many test files became current from an import (origin `imported`) versus from a local run, and the local test seconds those imports replaced (the CI result's duration, or the local median for that file).
+2. The same numbers before and after 2026-11-12 09:19Z and per Squeal release the daemons ran (the store records the version), to separate the effect of the Action, Node 26 (0.1.441) and the node:test re-key (0.1.449).
+3. Where imports exist but are not current (status reasons: environment, content, closure, observed), the count per reason.
+4. Recommend what the numbers say about the goal, with the caveats (load, how many worktrees, how many days).
+
+Findings to `research/live-saving.md`; probes under `research/probes/live-saving/`. Nothing written outside your `$TMPDIR` and this folder; nothing in `~/projects/cezar` changes.
+
+## Topic: left-out-files (2026-11-12, row 018-40)
+
+The human, 2026-11-12: "2: why 150 files are left out". squawk's merge-group run 43188846583 (`ci export` log): "Exported 1484 test files ... Left out: 150 test files whose inputs here are not what their shard read, 31 test files with two checks of one name."
+
+1. From that run's artifacts (read-only `gh run download 43188846583 --repo hearsay-tools/squawk`, parts `squeal-parts-shard-*`, into your `$TMPDIR`) and the export's code (`src/core/ci/export.ts`, `export-check.ts`): for each left-out file, which input differed between what its shard read and the export job's fresh checkout; group the causes (built files such as `dist/`, files a test writes, generated or time-stamped content, files outside the repository, a shard-specific checkout).
+2. Which causes Squeal could handle soundly (a key that stays exact) and which must stay left out; the share of the 150 each would recover.
+3. The 31 duplicate-name files: is that squawk's tests or Squeal's naming?
+4. Recommend a row or none.
+
+Findings to `research/left-out-files.md`; probes under `research/probes/left-out-files/`. Read-only on GitHub; no runs, no comments.
