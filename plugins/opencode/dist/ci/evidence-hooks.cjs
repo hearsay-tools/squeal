@@ -7,7 +7,9 @@
 // so no descriptor, file handle or stream opened to write (`WriteStream`
 // opens through `fs.open`) needs tracking; reads through one opened to read
 // are `descriptors.cjs`'. A time change counts as a write; a hard link
-// writes both its names, which share content. Each wrapper takes the
+// writes both its names, which share content. A removal or a rename writes
+// the entry it names, not what a link there reaches (row 018-43). A spawn
+// reads the files its arguments name (`children.cjs`). Each wrapper takes the
 // evidence, then calls the original with the caller's own arguments. A child
 // or Worker started with an env of its own gets the hook (`children.cjs`).
 "use strict";
@@ -108,6 +110,8 @@ const REMOVES = ["rm", "rmSync", "rmdir", "rmdirSync", "unlink", "unlinkSync"];
 function wrapFs(evidence) {
   const promises = fs.promises;
   const tree = { structural: true, tree: true };
+  // A removal or a rename acts on the entry: a link's target stays as it was.
+  const entry = { ...tree, entry: true };
   for (const target of [fs, promises]) {
     for (const name of READS) around(target, name, (args) => evidence.read(args[0]));
     for (const name of LISTINGS) {
@@ -125,11 +129,11 @@ function wrapFs(evidence) {
       );
     }
     for (const name of ["mkdtemp", "mkdtempSync"]) wrapMkdtemp(target, name, evidence, promises);
-    for (const name of REMOVES) around(target, name, (args) => evidence.write(args[0], tree));
+    for (const name of REMOVES) around(target, name, (args) => evidence.write(args[0], entry));
     for (const name of ["rename", "renameSync"]) {
       around(target, name, (args) => {
-        evidence.write(args[0], tree);
-        evidence.write(args[1], tree);
+        evidence.write(args[0], entry);
+        evidence.write(args[1], entry);
       });
     }
     for (const name of ["copyFile", "copyFileSync", "cp", "cpSync"]) {
