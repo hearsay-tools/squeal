@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { parentPort } from "node:worker_threads";
 import type { DaemonPhase, SyncAnswer } from "../types/daemon.js";
+import type { ImportOutcome } from "../types/daemon-writes.js";
 import type { FullSuiteCheckpoint } from "../types/scheduler.js";
 import type { DeskIdentity, FromDesk, ToDesk } from "./desk-messages.js";
 import { createHandlers } from "./handlers.js";
@@ -53,6 +54,8 @@ const waitingHold = new Map<
 >();
 
 const waitingWrite = new Map<string, { resolve: () => void; reject: (error: Error) => void }>();
+
+const waitingImport = new Map<string, (outcome: ImportOutcome) => void>();
 
 let server: DaemonServer | null = null;
 
@@ -114,6 +117,12 @@ function bind(identity: DeskIdentity): void {
               const id = randomUUID();
               waitingWrite.set(id, { resolve, reject });
               post({ type: "write", id, batch });
+            }),
+          requestImport: (request) =>
+            new Promise<ImportOutcome>((resolve) => {
+              const id = randomUUID();
+              waitingImport.set(id, resolve);
+              post({ type: "import", id, request });
             }),
         }),
   });
@@ -189,6 +198,12 @@ function receive(message: ToDesk): void {
       waitingWrite.delete(message.id);
       if (message.error === null) entry?.resolve();
       else entry?.reject(new Error(message.error));
+      return;
+    }
+    case "import-result": {
+      const resolve = waitingImport.get(message.id);
+      waitingImport.delete(message.id);
+      resolve?.(message.outcome);
       return;
     }
     case "close":
