@@ -1,5 +1,5 @@
 import { compare } from "../../fs/compare.js";
-import type { RelativePath } from "../../types/common.js";
+import type { AbsolutePath, RelativePath } from "../../types/common.js";
 import type { FileHash } from "../../types/keys.js";
 import type { RunEstimate } from "./estimate.js";
 import type { PrepareRun } from "./prepare.js";
@@ -149,6 +149,13 @@ export interface GateRunReport {
   readonly completed: readonly RelativePath[];
   readonly notFinished: readonly RelativePath[];
   readonly failed: readonly { readonly path: RelativePath; readonly tests: readonly string[] }[];
+  /**
+   * #197 (row 020-40): the log folder kept of this run when a file it ran
+   * failed or did not finish: the runner's output, error messages and
+   * stacks, under the store's `runs/`, which its prune empties as it does a
+   * daemon run's. Absent when none was kept.
+   */
+  readonly log?: AbsolutePath;
   /**
    * Where each selected file's evidence came from: `run`, this command ran
    * it; `store`, the stores at its key (D11.7); `parts`, `squeal ci
