@@ -14,6 +14,15 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { background, ENV, REF, setup, until } from "./lane-fixture.js";
+import {
+  counted,
+  countedPnpm,
+  earlierRecord,
+  PNPM,
+  pnpmInstall,
+  restoreMoved,
+  writePnpmProject,
+} from "./pnpm-project.js";
 
 /*
  * Row 021-24 (`boat-trial.md` D3): a remote restored onto a new machine
@@ -182,3 +191,53 @@ describe("a remote restored onto a new machine (row 021-24)", () => {
     ]);
   });
 });
+
+describe.skipIf(PNPM === null)(
+  "a restored remote whose install record an earlier release wrote, with real pnpm (review 0.1.454 B1)",
+  () => {
+    it("installs from scratch once at the next connect, runs proven, and installs no more", async () => {
+      const dir = join(scratch, `pnpm${++n}`);
+      const count = join(dir, "installs");
+      const s = await setup({
+        installEnv: countedPnpm(join(dir, "bin"), count),
+        files: { ".gitignore": "node_modules\n" },
+        before: (root) => {
+          writePnpmProject(root, join(dir, "pnpm"));
+          pnpmInstall(root);
+        },
+      });
+      expect(counted(count)).toBe(1);
+      expect(s.statuses.at(-1)).toMatch(/go there \(Node v-test; environment equal\)$/);
+      /** Down for a reason of its own, then back at the next connect. */
+      const reconnect = async (meanwhile: () => void) => {
+        s.remote.env = { ...ENV, runnerVersion: "5.0.2" };
+        await s.lane.run([REF], background());
+        expect(s.statuses.at(-1)).toMatch(/^remote box refused: .*5\.0\.2 on the remote/);
+        meanwhile();
+        s.remote.env = ENV;
+        s.advance(60_000);
+        const from = s.statuses.length;
+        await s.lane.run([REF], background());
+        await until(() => s.statuses.slice(from).some((t) => / go there \(| refused/.test(t)));
+      };
+      // An earlier release's cache, kept across a restore onto a new machine.
+      await reconnect(() => {
+        earlierRecord(join(s.remoteRoot, "../installed.json"));
+        restoreMoved(s.remoteRoot);
+      });
+      expect(s.statuses.at(-1)).toMatch(/go there \(Node v-test; environment equal\)$/);
+      expect(counted(count)).toBe(2);
+      expect((await s.lane.run([REF], background())).end).toBe("completed");
+      expect(s.remoteRuns).toHaveLength(1);
+      expect(s.statuses.at(-1)).toMatch(
+        /^remote box: background runs of vitest go there; proven at/,
+      );
+      // Later connects find the record the migration wrote: no install.
+      await reconnect(() => {});
+      await reconnect(() => {});
+      expect(counted(count)).toBe(2);
+      expect((await s.lane.run([REF], background())).end).toBe("completed");
+      expect(s.remoteRuns).toHaveLength(2);
+    });
+  },
+);
