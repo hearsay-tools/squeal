@@ -252,7 +252,9 @@ describe("runNodeTest", () => {
         if (waited > 20_000) throw new Error("the busy loop never started");
         await new Promise((r) => setTimeout(r, 50));
       }
-      rmSync(checkout, { recursive: true });
+      // A log line written during the delete makes `rmdir` meet a new file (ENOTEMPTY, Node 22 CI,
+      // candidate 0.1.461): retry until the run stops writing.
+      rmSync(checkout, { recursive: true, maxRetries: 20, retryDelay: 50 });
       stop.abort();
       const { report } = await running;
       expect(report).toMatchObject({ end: "crashed", completedFiles: [], results: [] });
