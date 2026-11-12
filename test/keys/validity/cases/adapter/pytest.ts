@@ -596,6 +596,41 @@ export const PYTEST_RUNS: readonly Case[] = [
   ),
   {
     kind: "adapter:pytest",
+    name: "a stopped pytest run under a store that is gone makes no folder and stores nothing, as the last release (row 018-38)",
+    why: "018-38: a runner host whose daemon died stops each run it still starts, and the checkout holding the store may be gone; the candidate makes no folder there and reports nothing, where the last release made the folder again and started no batch, so neither stores a file",
+    input: {
+      python: "3.13",
+      files: {
+        "pyproject.toml": CONFIG,
+        "tests/test_pass.py": OUTCOMES["tests/test_pass.py"] ?? "",
+      },
+      runs: [{ files: ["tests/test_pass.py"], storeGone: true }],
+    },
+  },
+  {
+    kind: "adapter:pytest",
+    name: "a pytest run whose log folder goes while it runs stores nothing (row 018-38)",
+    why: "018-38: a test removes the run's logs, `<scratch>/logs` beside the harness's `<scratch>/worktree`, with the batch's events in them; the candidate reports nothing then, and the last release throws writing run.json there, so it stored nothing either",
+    lastThrows: "ENOENT: no such file or directory, open",
+    input: {
+      python: "3.13",
+      files: {
+        "pyproject.toml": CONFIG,
+        "tests/test_pass.py": OUTCOMES["tests/test_pass.py"] ?? "",
+        "tests/test_removes_logs.py": lines(
+          "import shutil",
+          "from pathlib import Path",
+          "",
+          "",
+          "def test_removes_logs():",
+          '    shutil.rmtree(Path(__file__).resolve().parents[2] / "logs")',
+        ),
+      },
+      runs: [{ files: ["tests/test_pass.py", "tests/test_removes_logs.py"] }],
+    },
+  },
+  {
+    kind: "adapter:pytest",
     name: "a batch past Squeal's deadline completes nothing after the kill",
     why: "007 D6: a batch killed on the deadline stores only what completed before it",
     input: {
