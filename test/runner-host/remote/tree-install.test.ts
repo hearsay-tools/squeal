@@ -54,6 +54,8 @@ const AGAIN = { ran: true, command: "pnpm install --frozen-lockfile", again: tru
 
 describe.skipIf(PNPM === null)(
   "an earlier release's install record, with real pnpm (review 0.1.454 B1)",
+  // Each test runs real pnpm installs; the 5 s default fails on a loaded host.
+  { timeout: 60_000 },
   () => {
     it("makes a restored install again from scratch once, back to the lockfile's", async () => {
       const t = await installedTree();
