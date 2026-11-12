@@ -127,7 +127,9 @@ describe("a remote runner host's first connect (row 021-13)", SLOW, () => {
     const lines: string[] = [];
     await connect(root, ssh, lines);
     expect(lines.some((line) => line.includes(`Squeal ${squealVersion()} present`))).toBe(true);
-    expect(lines.some((line) => / files, 1 sent$/.test(line))).toBe(true);
+    expect(
+      lines.some((line) => / files, 1 sent \(\d+\.\d MiB, \d+\.\d MiB on the wire\)$/.test(line)),
+    ).toBe(true);
   });
 
   it("refuses a daemon that runs from the sources: it has no bundle to copy", async () => {

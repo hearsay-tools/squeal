@@ -1,3 +1,5 @@
+import { promisify } from "node:util";
+import { gunzip, gzip } from "node:zlib";
 import { blobHash } from "../../hash/blob.js";
 
 /*
@@ -16,14 +18,20 @@ export interface TreeEntry {
   readonly mode?: "x" | "link";
 }
 
-/** A file with its bytes, base64. */
+/** A file of a write: its entry and how many bytes of the write's `gzip` are its. */
 export interface WireFile extends TreeEntry {
-  readonly data: string;
+  readonly size: number;
 }
 
-/** Files to write and paths to remove, in that order. */
+/**
+ * Files to write and paths to remove, in that order. Row 021-25: the
+ * files' bytes, one after another in the files' order, ride gzip-compressed
+ * and then base64 in `gzip` (`""` with no file); the daemon and its host
+ * are one version (D14), so both ends read this one form.
+ */
 export interface TreeWrite {
   readonly files: readonly WireFile[];
+  readonly gzip: string;
   readonly removed: readonly string[];
 }
 
@@ -108,4 +116,41 @@ export function insideRoot(path: string): boolean {
   const parts = path.split("/");
   if (parts[0] === ".git") return false;
   return parts.every((part) => part !== "" && part !== "." && part !== "..");
+}
+
+const zip = promisify(gzip);
+const unzip = promisify(gunzip);
+
+/** The files of one write, their bytes packed into its `gzip`. */
+export async function packFiles(
+  read: readonly { readonly entry: TreeEntry; readonly bytes: Buffer }[],
+): Promise<Pick<TreeWrite, "files" | "gzip">> {
+  if (read.length === 0) return { files: [], gzip: "" };
+  const packed = await zip(Buffer.concat(read.map((file) => file.bytes)));
+  return {
+    files: read.map(({ entry, bytes }) => ({ ...entry, size: bytes.byteLength })),
+    gzip: packed.toString("base64"),
+  };
+}
+
+/** Each file of `write` with its bytes; rejects when the bytes are not as long as the sizes say. */
+export async function unpackFiles(
+  write: Pick<TreeWrite, "files" | "gzip">,
+): Promise<{ readonly file: WireFile; readonly bytes: Buffer }[]> {
+  if (write.files.length === 0) return [];
+  const total = write.files.reduce((sum, file) => sum + file.size, 0);
+  const all = await unzip(Buffer.from(write.gzip, "base64"), {
+    maxOutputLength: Math.max(1, total),
+  }).catch((error: Error) => {
+    throw new Error(`runner host: a write's bytes do not unpack: ${error.message}`);
+  });
+  if (all.byteLength !== total) {
+    throw new Error(`runner host: a write holds ${all.byteLength} bytes, its files ${total}`);
+  }
+  let at = 0;
+  return write.files.map((file) => {
+    const bytes = all.subarray(at, at + file.size);
+    at += file.size;
+    return { file, bytes };
+  });
 }

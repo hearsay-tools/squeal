@@ -14,7 +14,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { createTreeHost } from "../../../src/core/runner-host/remote/tree-host.js";
-import { treeBlob, type WireFile } from "../../../src/core/runner-host/remote/tree-wire.js";
+import {
+  packFiles,
+  type TreeWrite,
+  treeBlob,
+} from "../../../src/core/runner-host/remote/tree-wire.js";
 
 /*
  * Spec 021 D10 (row 021-13): a remote host owns its tree. It writes only
@@ -34,24 +38,28 @@ function host(env?: NodeJS.ProcessEnv) {
   return { root, output, tree: createTreeHost(root, (text) => output.push(text), env) };
 }
 
-const file = (path: string, text: string, mode?: "x" | "link"): WireFile => ({
-  path,
-  blob: treeBlob(Buffer.from(text)),
-  data: Buffer.from(text).toString("base64"),
-  ...(mode === undefined ? {} : { mode }),
+/** A file of the tree with its bytes, as `writesFor` reads it. */
+const file = (path: string, text: string, mode?: "x" | "link") => ({
+  entry: { path, blob: treeBlob(Buffer.from(text)), ...(mode === undefined ? {} : { mode }) },
+  bytes: Buffer.from(text),
 });
+
+/** One write message of `files`, packed as the daemon sends it, and `removed`. */
+const write = async (
+  files: readonly ReturnType<typeof file>[],
+  removed: readonly string[] = [],
+): Promise<TreeWrite> => ({ ...(await packFiles(files)), removed });
 
 describe("a remote host's tree (row 021-13)", () => {
   it("writes files, links and modes, and answers their blob ids", async () => {
     const { root, tree } = host();
-    await tree.write({
-      files: [
+    await tree.write(
+      await write([
         file("src/a.ts", "a\n"),
         file("bin/run", "#!/bin/sh\n", "x"),
         file("link", "src/a.ts", "link"),
-      ],
-      removed: [],
-    });
+      ]),
+    );
     expect(readFileSync(join(root, "src/a.ts"), "utf8")).toBe("a\n");
     expect(statSync(join(root, "bin/run")).mode & 0o111).not.toBe(0);
     expect(readFileSync(join(root, "link"), "utf8")).toBe("a\n");
@@ -65,25 +73,27 @@ describe("a remote host's tree (row 021-13)", () => {
   it("refuses a path that leaves the root, by name or through a link, and bytes that are not their blob", async () => {
     const { root, tree } = host();
     for (const path of ["../out", "/etc/x", "a/../../out", ".git/config", ""]) {
-      await expect(tree.write({ files: [file(path, "x")], removed: [] })).rejects.toThrow(
-        /leaves the root/,
-      );
+      await expect(tree.write(await write([file(path, "x")]))).rejects.toThrow(/leaves the root/);
     }
     const outside = join(scratch, "outside");
     mkdirSync(outside, { recursive: true });
     symlinkSync(outside, join(root, "escape"));
-    await expect(tree.write({ files: [file("escape/x", "x")], removed: [] })).rejects.toThrow(
+    await expect(tree.write(await write([file("escape/x", "x")]))).rejects.toThrow(
       /outside the root through a link/,
     );
     expect(existsSync(join(outside, "x"))).toBe(false);
     await expect(
-      tree.write({ files: [{ ...file("a", "x"), blob: treeBlob(Buffer.from("y")) }], removed: [] }),
+      tree.write(
+        await write([
+          { ...file("a", "x"), entry: { path: "a", blob: treeBlob(Buffer.from("y")) } },
+        ]),
+      ),
     ).rejects.toThrow(/do not match their blob id/);
   });
 
   it("answers what it lacks, and removes only the files it wrote that the tree no longer has", async () => {
     const { root, tree } = host();
-    await tree.write({ files: [file("keep", "1"), file("old", "2")], removed: [] });
+    await tree.write(await write([file("keep", "1"), file("old", "2")]));
     // Made on the remote by an install or a run: not the daemon's to remove.
     mkdirSync(join(root, "node_modules"), { recursive: true });
     writeFileSync(join(root, "node_modules/x.js"), "x");
@@ -95,7 +105,7 @@ describe("a remote host's tree (row 021-13)", () => {
     expect(answer.missing).toEqual(["new", "mode"]);
     expect(existsSync(join(root, "old"))).toBe(false);
     expect(existsSync(join(root, "node_modules/x.js"))).toBe(true);
-    await tree.write({ files: [], removed: ["node_modules/x.js", "keep"] });
+    await tree.write(await write([], ["node_modules/x.js", "keep"]));
     expect(existsSync(join(root, "node_modules/x.js"))).toBe(true);
     expect(existsSync(join(root, "keep"))).toBe(false);
   });
@@ -110,13 +120,10 @@ describe("a remote host's tree (row 021-13)", () => {
     chmodSync(join(bin, "npm"), 0o755);
     const { root, tree, output } = host({ ...process.env, PATH: `${bin}:${process.env.PATH}` });
     expect(await tree.install()).toEqual({ ran: false, command: null });
-    await tree.write({
-      files: [file("package.json", "{}"), file("package-lock.json", "{}")],
-      removed: [],
-    });
+    await tree.write(await write([file("package.json", "{}"), file("package-lock.json", "{}")]));
     expect(await tree.install()).toEqual({ ran: true, command: "npm ci" });
     expect(await tree.install()).toEqual({ ran: false, command: null });
-    await tree.write({ files: [file("package-lock.json", '{"v":2}')], removed: [] });
+    await tree.write(await write([file("package-lock.json", '{"v":2}')]));
     expect(await tree.install()).toEqual({ ran: true, command: "npm ci" });
     expect(readFileSync(join(root, "../installs"), "utf8")).toBe("npm ci\nnpm ci\n");
     expect(output.join("")).toContain("installed");
@@ -138,7 +145,7 @@ describe("a remote host's tree (row 021-13)", () => {
     );
     chmodSync(join(bin, "npm"), 0o755);
     const { root, tree } = host({ ...process.env, PATH: `${bin}:${process.env.PATH}` });
-    await tree.write({ files: [file("package-lock.json", "{}")], removed: [] });
+    await tree.write(await write([file("package-lock.json", "{}")]));
     expect(await tree.install()).toEqual({ ran: true, command: "npm ci" });
     // A restore onto a new machine: the folder newer than npm's record of it.
     const later = new Date(Date.now() + 86_400_000);
@@ -155,7 +162,7 @@ describe("a remote host's tree (row 021-13)", () => {
     writeFileSync(join(bin, "npm"), "#!/bin/sh\necho 'ENOTFOUND registry' >&2\nexit 3\n");
     chmodSync(join(bin, "npm"), 0o755);
     const { tree } = host({ ...process.env, PATH: `${bin}:${process.env.PATH}` });
-    await tree.write({ files: [file("package-lock.json", "{}")], removed: [] });
+    await tree.write(await write([file("package-lock.json", "{}")]));
     await expect(tree.install()).rejects.toThrow(
       /npm ci failed on the remote \(exit code 3\): ENOTFOUND/,
     );

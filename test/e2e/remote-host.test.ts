@@ -133,6 +133,8 @@ describe.skipIf(unavailable !== undefined)("a runner host on a container over ss
     await connect(root, lines);
     expect(lines.some((l) => l.includes(`Squeal ${squealVersion()} present`))).toBe(true);
     expect(lines.some((l) => l.includes("installed with"))).toBe(false);
-    expect(lines.some((l) => / files, 0 sent$/.test(l))).toBe(true);
+    expect(lines.some((l) => / files, 0 sent \(0\.0 MiB, 0\.0 MiB on the wire\)$/.test(l))).toBe(
+      true,
+    );
   });
 });

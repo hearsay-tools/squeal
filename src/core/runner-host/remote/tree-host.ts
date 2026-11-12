@@ -24,6 +24,7 @@ import {
   type TreeEntry,
   type TreeWrite,
   treeBlob,
+  unpackFiles,
   type WireLog,
 } from "./tree-wire.js";
 
@@ -113,9 +114,8 @@ export function createTreeHost(
       await save();
       return { missing };
     },
-    async write({ files: written, removed }) {
-      for (const file of written) {
-        const bytes = Buffer.from(file.data, "base64");
+    async write(write) {
+      for (const { file, bytes } of await unpackFiles(write)) {
         if (treeBlob(bytes) !== file.blob) {
           throw new Error(`runner host: the bytes of ${file.path} do not match their blob id`);
         }
@@ -133,7 +133,7 @@ export function createTreeHost(
           ...(file.mode === undefined ? {} : { mode: file.mode }),
         };
       }
-      for (const path of removed) await remove(path);
+      for (const path of write.removed) await remove(path);
       await save();
     },
     async blobs(paths) {
