@@ -16,10 +16,13 @@
 // part and removes it; config and variable values never reach the part.
 // Spec 020 D13 (row 020-08a): before the original `start`, the wrap adds
 // Squeal's coverage provider (`coverage.cjs`); the file then holds whether
-// it did, and each module's coverage record or why it has none.
+// it did, and each module's coverage record or why it has none. D19.6
+// (review of 0.1.443 B1): when a provider ran, it also names the test files
+// whose workers loaded `node:inspector` (`inspector.cjs`).
 //
-// In every process and thread of the command, first, it takes the input
-// evidence (`evidence-hooks.cjs`; spec 018 D9 as amended 2026-11-09) when the
+// In every process and thread of the command, first, it starts the watch of
+// `node:inspector` loads (`inspector.cjs`), then takes the input evidence
+// (`evidence-hooks.cjs`; spec 018 D9 as amended 2026-11-09) when the
 // settings name its directory, so Vitest and what it loads see the wrapped
 // `fs` from their start.
 //
@@ -189,7 +192,7 @@ function install(settings, root) {
           const coverage = startCoverage(this, settings.coverage);
           const modules = new Map();
           const reporter = reporterFor(this, file, settings, fail, modules);
-          reporters.set(this, coveredReporter(reporter, coverage, modules));
+          reporters.set(this, coveredReporter(reporter, coverage, modules, settings.raw));
         }
         const reporter = reporters.get(this);
         if (!this.reporters.includes(reporter)) this.reporters.push(reporter);
@@ -247,11 +250,17 @@ function readEvidence() {
   }
 }
 
+const settings = readSettings();
+
+// Spec 020 D19.6 (review of 0.1.443 B1): the test files that load `node:inspector`, before the evidence.
+try {
+  require("./inspector.cjs").installWatch(settings?.raw, settings?.coverage?.provider);
+} catch {}
+
 try {
   require("./evidence-hooks.cjs").installEvidence(readEvidence());
 } catch {}
 
-const settings = readSettings();
 if (settings !== null && isMainThread && !globalThis.__squealCiRecord) {
   globalThis.__squealCiRecord = true;
   try {
