@@ -40,8 +40,19 @@ const FILES: Readonly<Record<string, string>> = {
   "src/b.ts": "export const b = 2;\n",
   "data/known.txt": "known\n",
   "setup.ts": "export {};\n",
+  "other-setup.ts": "export {};\n",
   [A.path]: 'import { a } from "../src/a.ts";\n',
   [B.path]: 'import { b } from "../src/b.ts";\n',
+};
+
+/** The project's environment, which reads `setup.ts`. */
+const ENVIRONMENT = {
+  project: "",
+  runnerName: "vitest",
+  runnerVersion: "0.0.0",
+  adapterVersion: "0",
+  resolvedConfig: "{}",
+  files: ["setup.ts"],
 };
 
 /** Each file's closure: `a` lists `src/` too, so an editor's scratch file there moves its key. */
@@ -52,6 +63,8 @@ const CLOSURES: readonly [TestFileRef, readonly string[]][] = [
 
 /** What happened while the run ran, and what the daemon's ledger says of `a` after it. */
 export interface During {
+  /** Paths `a`'s closure names beyond its imports, as when a daemon recorded them read. */
+  readonly keyed?: readonly string[];
   /** Files given other bytes. */
   readonly write?: Readonly<Record<string, string>>;
   /** Files written with the bytes they hold, their stat moved. */
@@ -74,10 +87,10 @@ export interface During {
   readonly ledger?: "requeue" | "cancelled" | "superseded" | "gone" | "rekeyed";
 }
 
-/** `a`'s store decision with the daemon's sources, and with `squeal code`'s; `null` where it has none. */
+/** Each file's store decision with the daemon's sources, and with `squeal code`'s; `null` where it has none. */
 export interface Decided {
-  readonly daemon: FileDecision;
-  readonly keeper: FileDecision | null;
+  readonly daemon: ReadonlyMap<string, FileDecision>;
+  readonly keeper: ReadonlyMap<string, FileDecision> | null;
 }
 
 const OTHER_KEY = "another-key" as CheckKey;
@@ -102,7 +115,7 @@ export async function decide(during: During): Promise<Decided> {
 
 async function decided(root: string, store: Store, during: During): Promise<Decided> {
   const hasher = createFsHasher(root, "sha1");
-  const keys = await keyed(root, store, hasher);
+  const keys = await keyed(root, store, hasher, during.keyed ?? []);
   const files = CLOSURES.map(([ref]) => entryOf(keys, ref, during));
   const paths = files.flatMap((f) => f.inputs);
   const revision = store.revisions.latest(WORKTREE)?.number ?? 0;
@@ -142,11 +155,15 @@ async function decided(root: string, store: Store, during: During): Promise<Deci
     runtimeIdentity: (ref) => keys.runtimeIdentity(ref),
   });
   keys.endRun();
-  const id = testFileId(A);
-  return { daemon: daemon.get(id) as FileDecision, keeper: keeper?.get(id) ?? null };
+  return { daemon, keeper };
 }
 
-async function keyed(root: string, store: Store, hasher: Hasher): Promise<WorktreeKeys> {
+async function keyed(
+  root: string,
+  store: Store,
+  hasher: Hasher,
+  more: readonly string[],
+): Promise<WorktreeKeys> {
   const keys = new WorktreeKeys({
     root,
     worktreeId: WORKTREE,
@@ -159,8 +176,10 @@ async function keyed(root: string, store: Store, hasher: Hasher): Promise<Worktr
     onExtraFiles: () => {},
   });
   await keys.bootstrap(() => readHead(root));
-  keys.index.setEnvironment("", "environment");
-  for (const [testFile, paths] of CLOSURES) keys.setClosure({ testFile, paths: [...paths] });
+  await keys.setEnvironments([ENVIRONMENT]);
+  for (const [testFile, paths] of CLOSURES) {
+    keys.setClosure({ testFile, paths: [...paths, ...(testFile === A ? more : [])] });
+  }
   await keys.trackUntracked();
   return keys;
 }

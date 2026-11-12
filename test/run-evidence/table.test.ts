@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { keeps, type RunDecision } from "../../src/core/run-evidence/run-evidence.js";
+import { testFileId } from "../../src/core/keys/reverse-index.js";
+import {
+  type FileDecision,
+  keeps,
+  type RunDecision,
+} from "../../src/core/run-evidence/run-evidence.js";
 import type { RunReport } from "../../src/core/types/runner.js";
 import { A, B, type During, decide } from "./fixture.js";
 
@@ -7,7 +12,7 @@ import { A, B, type During, decide } from "./fixture.js";
  * Row 011-319 (`specifications/011-core/research/run-evidence.md`): one
  * table at the run evidence module's interface. In: the input state before
  * the run, what happened during it, and its report. Out: `a`'s store
- * decision and its reason, once with the daemon's sources
+ * decision and its reason, and `b`'s beside it, once with the daemon's sources
  * (`readRecordEvidence`, then `decideFiles` with its ledger as the daemon's
  * record acts on it) and once with `squeal code`'s (`keepDecisions`).
  * `squeal code` keeps a file only on "store at the key it ran under". Rows
@@ -25,6 +30,8 @@ interface Row {
   readonly keeper: Named | null;
   /** What the reasons name, each the daemon's and, where it decides alike, the keeper's. */
   readonly names?: string;
+  /** `b`'s decision in both columns, which nothing of `a`'s evidence moves; default "store at ran". */
+  readonly beside?: Named;
 }
 
 const only = (files: RunReport["completedFiles"]) => (report: RunReport) => ({
@@ -64,17 +71,28 @@ const TABLE: Readonly<Record<string, Row>> = {
     keeper: "store at grown",
     names: "data/known.txt",
   },
+  "it read a path its key names": {
+    during: { keyed: ["data/known.txt"], read: ["data/known.txt"] },
+    daemon: "store at ran",
+    keeper: "store at ran",
+  },
   "it read a path first seen during the run": {
     during: { create: { "data/new.txt": "new\n" }, read: ["data/new.txt"] },
     daemon: "first-seen",
     keeper: "first-seen",
     names: "data/new.txt",
   },
-  "it loaded an environment file its key lacks": {
+  "it loaded only environment files its key names": {
     during: { loaded: ["setup.ts"] },
+    daemon: "store at ran",
+    keeper: "store at ran",
+  },
+  "it loaded an environment file its key lacks": {
+    during: { loaded: ["setup.ts", "other-setup.ts"] },
     daemon: "environment",
     keeper: "environment",
     names: "environment files",
+    beside: "environment",
   },
   "difference 2: the runtime's identity moved": {
     during: { runtimeMoved: true },
@@ -119,6 +137,7 @@ const TABLE: Readonly<Record<string, Row>> = {
     },
     daemon: "not-started",
     keeper: "not-started",
+    beside: "not-started",
   },
   "the runner withheld it": {
     during: { report: (r) => ({ ...only([B])(r), withheld: [A] }) },
@@ -150,12 +169,20 @@ function named(decision: RunDecision): Named {
 
 describe("run evidence: the store decision per file, the daemon's sources and squeal code's", () => {
   it.each(Object.entries(TABLE))("%s", { timeout: 60_000 }, async (_, row) => {
-    const { daemon, keeper } = await decide(row.during);
+    const decided = await decide(row.during);
+    const of = (decisions: ReadonlyMap<string, FileDecision>, ref: typeof A) =>
+      decisions.get(testFileId(ref)) as FileDecision;
+    const daemon = of(decided.daemon, A);
+    const keeper = decided.keeper === null ? null : of(decided.keeper, A);
 
     expect([named(daemon.decision), keeper === null ? null : named(keeper.decision)]).toEqual([
       row.daemon,
       row.keeper,
     ]);
+    const besides = [decided.daemon, ...(decided.keeper === null ? [] : [decided.keeper])];
+    expect(besides.map((decisions) => named(of(decisions, B).decision))).toEqual(
+      besides.map(() => row.beside ?? "store at ran"),
+    );
     expect(keeper === null ? null : keeps(keeper.decision)).toBe(
       row.keeper === null ? null : row.keeper === "store at ran",
     );
