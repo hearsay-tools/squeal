@@ -161,3 +161,59 @@ one stderr line after the verdict names each kept folder. Why:
   `find` by kind is exact. A new runner kind with several runs whose log
   folders can clash must write them under a folder of its own per run, as
   node:test does per project, or the merge overwrites files.
+
+## R1 repair (review 0.1.462 B1, B2; `tasks/wave-15.5.md`)
+
+Commit `6b0b40cf7`, in `src/cli/code-gate-log.ts` and
+`test/cli/code-gate-log.test.ts`. No type change; `runLogKeeper` and
+`LogKeeper` keep their shape.
+
+- **B1:** `openFor` opens the main store inside the keeper's handled
+  failure path. A busy or failed open, which throws (for example another
+  opener holds the write lock of a new store's schema, so `migrate` times
+  out), gives one note, `<Runner> run: its log was not kept: the store did
+  not open: <why>`, and `null`. Only a connection that opened is closed.
+- **B2:** `copyOwned` copies, then reads the run row again on the same
+  connection, with no transaction open during the copy. When a prune
+  removed the row, the copy is removed with the note `the store's prune
+  removed its run before the copy ended`. When the read fails, the copy is
+  removed with `its run was not read after the copy: <why>`. Prune commits
+  the row delete before it removes the folder (`prune.ts` `dropRuns`), so
+  once the read finds the row, a later prune removes the whole copy.
+- `finishRun` holds the row write unchanged: start and finish in one
+  transaction, before the report, with the 2 s busy bound.
+- **Decision the spec did not settle:** the 2 s bound stays per SQLite
+  step (the connection's busy timeout), not one total deadline. In the
+  normal case only the row write can wait. While a store is being created
+  the open waits at most 2 s in `migrate`, then the log is not kept.
+
+### Tests
+
+In `test/cli/code-gate-log.test.ts`; each was red before the fix and green
+after it (Squeal, revisions 1 and 3; still passing at revision 6):
+
+- "keeps no log, says why once, and the JSON report, verdict and exit
+  stay, while another opener creates the store" (B1, through the CLI):
+  before the fix exit 2, after it exit 3, verdict `incomplete`, one JSON
+  object, no `runs[].log`, one note, no kept folder.
+- "removes the copy, and says why, when a prune removed its row before the
+  copy" (B2): a real `store.prune` runs just before the first copy.
+- "removes the copy, and says why, when its row cannot be read after the
+  copy" (B2, the read's error path).
+
+The test file mocks `node:fs` so a test can run a hook just before the
+keeper's `cpSync`. Every other `node:fs` function passes through. The file
+is 312 lines.
+
+### Checks
+
+- `pnpm run lint`: pass ("Checked 3295 files … No fixes applied").
+- `pnpm run typecheck`: pass (exit 0).
+- `squeal status --wait 60000 src/cli/code-gate-log.ts
+  test/cli/code-gate-log.test.ts` at revision 6: `code-gate-log.test.ts`
+  passes, with 7 other files that read the source.
+- **Not run:** the other 236 test files that read the source (among them
+  `test/cli/code-gate.test.ts` and the `code-gate-keep*` tests). Squeal
+  queued them, and they waited for CPU on a full host (up to 24 of 24 cores
+  in use) through five waits. The coordinator (request 5d4d3c50) said not
+  to wait: the candidate's CI runs the full suite. No build, no full suite.
