@@ -45,3 +45,7 @@ Seam and lead: where `ps` decides a process is a daemon from its arguments. Firs
 Owns: `src/core/ps/`, its tests.
 
 Done when: the new test passes; the real daemon below it is still listed; lint and typecheck pass; affected results read.
+
+## R1: review of cand/0.1.446
+
+Use /reviewer (codex gpt-6.1-sol high, worker 8afc55fe). Pinned to `cand/0.1.446` at `e835adbd8abb14a1ca1aa0e6306a1a8d84f7b603`; range `6eb3c3a0a..e835adbd8`. Checks: the line reader's messages for every chunking and after a throw; the code-store prune never removes a record whose key has a result, chunked lookups at 0, 1, 1,000 and 1,001 keys, the dead-worktree walk; `ps` finds every daemon launch shape and no supervisor. Verdict: PASS (`reviews/0.1.446.md`), S1 a pre-existing retention race, row 011-318.
