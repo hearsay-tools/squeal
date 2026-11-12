@@ -103,7 +103,7 @@ describe("the guard on a remote 'not a git repository' failure (021 D19.2)", () 
     expect(paths(report)).toEqual([REF.path, GIT.path]);
     expect(report.fileDurations).toEqual([{ testFile: REF, durationMs: 1 }]);
     expect(s.repository).toEqual([
-      "1 test file failed on the remote as not a Git repository, so it runs here: test/git.test.ts; add it to remote.needsRepository in squeal.config.json",
+      "test files that failed on the remote as not a Git repository run here: test/git.test.ts; add each to remote.needsRepository in squeal.config.json",
     ]);
     expect(s.logs).toContain(
       "remote box: test/git.test.ts failed there as not a Git repository; running here",
