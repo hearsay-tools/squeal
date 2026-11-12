@@ -208,6 +208,8 @@ test/cli/code-gate-prerun.test.ts
 test/cli/code-gate-keep-node-test.test.ts
 # Spec 020 D17.5 (row 020-28): the gate keeps real node:test runs after a busy store.
 test/cli/code-gate-keep-busy.test.ts
+# Row 020-31 (#193): the gate's closure and module-hook notes over real node:test runs.
+test/cli/code-gate-closures.test.ts
 # The kit (spec 016 D1): a real `node --test` through the node:test adapter,
 # so the same identity path.
 test/kit/node-test

@@ -130,6 +130,24 @@ describe("createNodeTestAdapter", () => {
     ]);
   });
 
+  // #193 (row 020-31): the gate takes the list and tells it after its selection.
+  it(
+    "tells a closures callback every such file, and then writes no note of them",
+    SLOW,
+    async () => {
+      const told: unknown[] = [];
+      const { adapter, notes } = open({}, { closures: (files: unknown) => told.push(files) });
+      const a = await adapter;
+      const reasons = [`import() with a computed specifier at ${UNIT}/hidden.test.ts:5:28`];
+      expect(told).toEqual([[[`${UNIT}/hidden.test.ts`, reasons]]]);
+      expect(notes).toEqual([]);
+
+      await a.invalidate([{ path: `${UNIT}/math.test.ts`, kind: "change" }]);
+      expect(told).toHaveLength(2);
+      expect(notes).toEqual([]);
+    },
+  );
+
   it("affects only the test files whose closure holds a changed module", SLOW, async () => {
     const a = await open().adapter;
     expect(await a.affected(["packages/demo/src/math.ts"])).toEqual({
