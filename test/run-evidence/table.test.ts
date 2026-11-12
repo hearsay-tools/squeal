@@ -17,7 +17,10 @@ import { A, B, type During, decide } from "./fixture.js";
  * code` keeps a file only on "store at the key it ran under". A merge hold
  * or a touched input is a reason beside the decision, not a decision. Rows
  * marked "difference N" are the research's differences between the two
- * callers; the keeper's column of differences 2 to 4 is row 011-320's.
+ * callers. Row 011-320 gave the keeper the sources of differences 2 to 4:
+ * its column equals the daemon's there, but where no revision of an
+ * editor's scratch file exists, which the daemon's record reads and
+ * `squeal code` does not: the keeper, reading the disk, is stricter.
  */
 
 /** A decision as a row names it: its kind, and where it stores. */
@@ -125,8 +128,34 @@ const TABLE: Readonly<Record<string, Row>> = {
   "difference 4: an editor's scratch file moved a listed directory": {
     during: { batch: { "src/.a.ts.swp": "swap\n" } },
     daemon: "unstable",
-    keeper: "store at ran",
+    keeper: "unstable",
     names: "src/",
+    keeperNames: "src/",
+  },
+  "difference 4, no revision of it: no daemon serves, or the record came before its batch": {
+    during: { create: { "src/.a.ts.swp": "swap\n" } },
+    daemon: "store at ran",
+    keeper: "unstable",
+    keeperNames: "src/",
+  },
+  "difference 4: an editor's scratch file left a listed directory": {
+    during: { untracked: { "src/.a.ts.swp": "swap\n" }, batch: { "src/.a.ts.swp": null } },
+    daemon: "unstable",
+    keeper: "unstable",
+    names: "src/",
+    keeperNames: "src/",
+  },
+  "difference 4: an editor's scratch file moved a directory below a listed one": {
+    during: { batch: { "src/sub/.c.ts.swp": "swap\n" } },
+    daemon: "unstable",
+    keeper: "unstable",
+    names: "src/",
+    keeperNames: "src/",
+  },
+  "an editor's scratch file that was there before and stayed": {
+    during: { untracked: { "src/.a.ts.swp": "swap\n" }, batch: { "src/.a.ts.swp": "swap 2\n" } },
+    daemon: "store at ran",
+    keeper: "store at ran",
   },
   "a revision during the run moved a listed directory, no input's bytes": {
     during: { batch: { "src/c.ts": "export const c = 3;\n" } },

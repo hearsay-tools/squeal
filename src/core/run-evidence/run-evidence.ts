@@ -24,6 +24,7 @@ import type { AbsolutePath, RelativePath } from "../types/common.js";
 import type { CheckKey, TestFileRef } from "../types/keys.js";
 import type { RunReport } from "../types/runner.js";
 import { reasonOf } from "./reason.js";
+import { listingsAmong, scratchHeld } from "./scratch.js";
 import { movedInputs, observedMoves, readKeepEvidence, UnmergedIndex } from "./sources.js";
 
 /*
@@ -70,6 +71,18 @@ export interface FileDecision {
 /** Before a run: a copy of the stat cache entries of its inputs (`snapshotInputs`). */
 export function copyInputs(cache: StatCache, paths: Iterable<RelativePath>): StatCache {
   return snapshotInputs(cache, paths);
+}
+
+/**
+ * Before a run, for `squeal code`, which reads no revisions (row 011-320,
+ * difference 4): the editor scratch files `cache` holds below the listings
+ * among `paths`, which those listings were hashed from (row 011-117).
+ */
+export function copyScratch(
+  cache: StatCache,
+  paths: Iterable<RelativePath>,
+): ReadonlySet<RelativePath> {
+  return scratchHeld(cache, listingsAmong(paths));
 }
 
 /** A tier's `movedInputs` since it was selected (task 001-168). Outside the lock: it only reads. */
@@ -185,6 +198,8 @@ export interface KeepSources {
   readonly before: StatCache;
   /** Row 011-320 (difference 3): the merge hold at the decision (`mergeHoldOf`). */
   readonly hold: MergeHoldSource;
+  /** Row 011-320 (difference 4): the editor scratch files before the run (`copyScratch`). */
+  readonly scratch: ReadonlySet<RelativePath>;
   /**
    * Row 011-320 (difference 2): the runtime identity at the run's end,
    * compared with each file's `KeepFile.runtimeIdentity`; without it, no

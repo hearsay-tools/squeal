@@ -19,6 +19,7 @@ import type { TierFile } from "../scheduler/tiers.js";
 import type { AbsolutePath, RelativePath } from "../types/common.js";
 import type { RunReport } from "../types/runner.js";
 import type { HeldPaths, KeepSources, RunEvidence } from "./run-evidence.js";
+import { listingsAmong, scratchMoves } from "./scratch.js";
 
 /* Where the run evidence is read from (`run-evidence.ts`, which alone imports this file). */
 
@@ -60,9 +61,10 @@ export async function observedMoves(
 
 /**
  * The keeper's evidence: its inputs that moved, what the run read beyond
- * its keys (`observedGrowth`), and the environment files it loaded that its
- * project's keys lack. No revision, merge hold or editor scratch listing
- * is read (`research/run-evidence.md`, differences 3 and 4); the runtime's
+ * its keys (`observedGrowth`), the environment files it loaded that its
+ * project's keys lack, and since row 011-320 the files a merge holds
+ * (difference 3) and the listings an editor scratch file moved
+ * (`scratchMoves`, difference 4). No revision is read; the runtime's
  * identity is `keepDecisions`' (difference 2).
  */
 export async function readKeepEvidence(
@@ -84,7 +86,10 @@ export async function readKeepEvidence(
     ...(environment === undefined ? {} : { environment }),
   };
   const held = heldFiles(await sources.hold.read(), files, growth);
-  return { changed: inputs.changed, touched: [...inputs.touched].sort(), observed, held };
+  const listings = listingsAmong(files.flatMap((f) => f.inputs));
+  const scratch = await scratchMoves(root, sources.scratch, listings);
+  const changed = scratch.length === 0 ? inputs.changed : new Set([...inputs.changed, ...scratch]);
+  return { changed, touched: [...inputs.touched].sort(), observed, held };
 }
 
 /**
