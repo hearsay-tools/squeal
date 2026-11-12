@@ -11,7 +11,7 @@ import type { AdmitAnswer, AdmitAsk } from "./admission.js";
 import { bundleDir, ensureBundle, type RemotePlaces, readBundle } from "./bundle.js";
 import { type SshTarget, shellQuote, spawnSsh } from "./ssh.js";
 import { treeEntries, treePaths, writesFor } from "./tree.js";
-import { LOCKFILES } from "./tree-host.js";
+import { LOCKFILES } from "./tree-install.js";
 import {
   type HostCore,
   type InstallAnswer,
@@ -56,6 +56,11 @@ export interface RemoteHost {
   blobs(paths: readonly string[]): Promise<Readonly<Record<string, string | null>>>;
   /** One look at the remote machine's permit pool (spec 021 D18, row 021-21). */
   admit(ask: AdmitAsk): Promise<AdmitAnswer>;
+  /**
+   * The install from the lockfile, when the host's last one no longer
+   * stands: another lockfile, or an install changed since (row 021-24).
+   */
+  install(): Promise<InstallAnswer>;
   /** Node on the remote, as the check before the start saw it. */
   readonly node: string;
 }
@@ -151,9 +156,14 @@ export async function remoteHostOver(
   const log = options.log ?? (() => {});
   const { target, root } = options;
   let requests: HostRequests | null = null;
-  const install = async (on: HostRequests) => {
+  const install = async (on: HostRequests): Promise<InstallAnswer> => {
     const done = (await on.request("install", [], deadlines.installMs)) as InstallAnswer;
-    if (done.ran) log(`${target.destination}: installed with ${done.command}`);
+    if (done.again === true) {
+      log(
+        `${target.destination}: installed again with ${done.command}: the install changed since it was made there`,
+      );
+    } else if (done.ran) log(`${target.destination}: installed with ${done.command}`);
+    return done;
   };
   const { coverage: _off, ...adapterOptions } = options.options;
   const adapter = await startHostProxy({
@@ -203,6 +213,7 @@ export async function remoteHostOver(
     blobs: async (paths) =>
       (await started().request("blobs", [paths], callMs)) as Record<string, string | null>,
     admit: async (ask) => (await started().request("admit", [ask], callMs)) as AdmitAnswer,
+    install: () => install(started()),
   };
 }
 
