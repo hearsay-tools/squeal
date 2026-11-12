@@ -20,6 +20,10 @@ import { code, edit, keptLogs, ownHomeAndTmp, repo, SLOW } from "./code-gate-fix
  */
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** The line's words where no daemon registered the worktree, as in these fixtures. */
+const NEXT_PRUNE =
+  "kept until the next prune, within about 1 h while a daemon of this repository runs (none serves this worktree)";
 const NOW = 1_800_000_000_000;
 
 const cleanups: (() => void)[] = [];
@@ -61,9 +65,12 @@ describe("runLogKeeper: the log of a failed run (#197)", () => {
     const { root, run } = setUp();
     const notes: string[] = [];
 
-    const path = await runLogKeeper(root, { note: (t) => notes.push(t), now: () => NOW })(run);
+    const keeper = runLogKeeper(root, { note: (t) => notes.push(t), now: () => NOW });
+    const path = await keeper.keep(run);
 
     expect(notes).toEqual([]);
+    // No daemon registered this worktree: any daemon of the repository prunes it next.
+    expect(keeper.retention()).toBe("next-prune");
     expect(path).toMatch(/\.git\/squeal\/runs\/gate-[0-9a-f-]{36}$/);
     expect(readFileSync(join(path ?? "", "vitest.log"), "utf8")).toContain("expected 2 to be 3");
     expect(store(root).runs.get(basename(path ?? ""))).toEqual({
@@ -81,11 +88,13 @@ describe("runLogKeeper: the log of a failed run (#197)", () => {
 
   it("is pruned with a daemon run's log: after the retention days in a registered worktree", async () => {
     const { root, run } = setUp();
-    const path = await runLogKeeper(root, { note: () => {}, now: () => NOW })(run);
     const opened = store(root);
     const commonDir = join(root, ".git");
     const registration = { root, commonDir, isMain: true, registeredAt: NOW, daemon: null };
     opened.worktrees.upsert({ id: worktreeIdFor(root), ...registration });
+    const keeper = runLogKeeper(root, { note: () => {}, now: () => NOW });
+    const path = await keeper.keep(run);
+    expect(keeper.retention()).toEqual({ days: 7 });
 
     opened.prune({ now: NOW + 6 * DAY_MS, retentionDays: 7, maxSizeMb: null });
     expect(keptLogs(root)).toEqual([path]);
@@ -97,7 +106,7 @@ describe("runLogKeeper: the log of a failed run (#197)", () => {
 
   it("is pruned at the next prune where no daemon registered the worktree", async () => {
     const { root, run } = setUp();
-    await runLogKeeper(root, { note: () => {}, now: () => NOW })(run);
+    await runLogKeeper(root, { note: () => {}, now: () => NOW }).keep(run);
 
     store(root).prune({ now: NOW, retentionDays: 7, maxSizeMb: null });
 
@@ -111,10 +120,11 @@ describe("runLogKeeper: the log of a failed run (#197)", () => {
     cleanups.unshift(() => holder.db.exec("ROLLBACK"));
     const notes: string[] = [];
 
-    const keep = runLogKeeper(root, { note: (t) => notes.push(t), busyTimeoutMs: 50 });
-    const path = await keep(run);
+    const keeper = runLogKeeper(root, { note: (t) => notes.push(t), busyTimeoutMs: 50 });
+    const path = await keeper.keep(run);
 
     expect(path).toBeNull();
+    expect(keeper.retention()).toBeNull();
     expect(notes).toEqual([
       expect.stringMatching(/^Vitest run: its log was not kept: the store did not take its run: /),
     ]);
@@ -135,14 +145,19 @@ describe("keptLogsLine: the stderr line after the verdict (#197)", () => {
   });
 
   it("names each kept log by runner, in the report's order, and is absent with none", () => {
-    expect(keptLogsLine([run("vitest"), run("node-test")])).toBeNull();
-    expect(keptLogsLine([run("vitest", "/r/.git/squeal/runs/gate-1"), run("node-test")])).toBe(
-      "squeal code: log of the failed or unfinished test files, kept until the store's prune: Vitest /r/.git/squeal/runs/gate-1\n",
+    expect(keptLogsLine([run("vitest"), run("node-test")], null)).toBeNull();
+    expect(keptLogsLine([run("vitest", "/r/runs/gate-1"), run("node-test")], { days: 7 })).toBe(
+      "squeal code: log of the failed or unfinished test files, kept 7 days (store.retentionDays): Vitest /r/runs/gate-1\n",
     );
-    expect(
-      keptLogsLine([run("vitest", "/r/runs/gate-1"), run("node-test", "/r/runs/gate-2")]),
-    ).toBe(
-      "squeal code: logs of the failed or unfinished test files, kept until the store's prune: Vitest /r/runs/gate-1; node:test /r/runs/gate-2\n",
+    const both = [run("vitest", "/r/runs/gate-1"), run("node-test", "/r/runs/gate-2")];
+    expect(keptLogsLine(both, { days: 1 })).toBe(
+      "squeal code: logs of the failed or unfinished test files, kept 1 day (store.retentionDays): Vitest /r/runs/gate-1; node:test /r/runs/gate-2\n",
+    );
+  });
+
+  it("says the next prune removes them where no daemon serves the worktree", () => {
+    expect(keptLogsLine([run("vitest", "/r/runs/gate-1")], "next-prune")).toBe(
+      `squeal code: log of the failed or unfinished test files, ${NEXT_PRUNE}: Vitest /r/runs/gate-1\n`,
     );
   });
 });
@@ -171,7 +186,7 @@ describe("squeal code --base: the plain report and the kept log (#197)", () => {
       // The report first, then the one line that names the log, last.
       expect(writes.at(-2)?.startsWith("stdout ")).toBe(true);
       expect(writes.at(-1)).toBe(
-        `stderr squeal code: log of the failed or unfinished test files, kept until the store's prune: Vitest ${log}\n`,
+        `stderr squeal code: log of the failed or unfinished test files, ${NEXT_PRUNE}: Vitest ${log}\n`,
       );
     },
   );
