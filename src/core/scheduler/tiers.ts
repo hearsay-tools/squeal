@@ -14,6 +14,7 @@ import type { SchedulerContext } from "./context.js";
 import type { FileState } from "./files.js";
 import { selectFocusedTier } from "./focused.js";
 import type { Ledger, RevisionState } from "./ledger.js";
+import { TierPermits } from "./local-permits.js";
 import { NOTHING_OBSERVED, type TierObservations } from "./observed.js";
 import { batchBudget, batchFiles, batchTurnDue } from "./promoted-tier.js";
 import { quietHolds } from "./quiet.js";
@@ -712,10 +713,11 @@ export async function executeTier(
   const started = context.now();
   const signals = [tier.cancel?.signal, stop].filter((signal) => signal !== undefined);
   const signal = signals.length > 1 ? AbortSignal.any(signals) : signals[0];
+  const permits = tierPermits(context, tier);
   const fileEnded = (ref: TestFileRef) => {
     tier.ended?.add(testFileId(ref));
     const left = tier.files.filter(({ file }) => tier.ended?.has(file.id) !== true).length;
-    if (left > 0) tier.lease?.shrinkTo(left);
+    if (left > 0) (permits === null ? tier.lease : permits.lease)?.shrinkTo(left);
     onFileEnd?.();
   };
   const unleased = tier.lease === undefined ? context.capacity?.running(tier.files.length) : null;
@@ -736,6 +738,7 @@ export async function executeTier(
         ...(tier.lease === undefined ? {} : { workers: tier.lease.grant }),
         // Spec 021 D12 (row 021-14): only a backlog tier or turn may go remote; a batch is waited for.
         ...(background(tier) ? { background: true as const } : {}),
+        ...(permits === null ? {} : { permits }),
         ...(tier.focus === undefined ? {} : { checks: tier.focus }),
         fileEnded,
       },
@@ -751,7 +754,14 @@ export async function executeTier(
     };
   } finally {
     unleased?.();
+    permits?.release();
   }
+}
+
+/** Spec 021 D18 (row 021-21): a leased background tier's permits, which a run sent away gives back. */
+function tierPermits(context: SchedulerContext, tier: Tier): TierPermits | null {
+  if (tier.lease === undefined || !background(tier) || context.capacity === undefined) return null;
+  return new TierPermits(context.capacity, tier.lease, fewest(context, tier.files));
 }
 
 /** A backlog tier or the backlog's turn, not a named wait's batch (`RunOptions.background`). */
