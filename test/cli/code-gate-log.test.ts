@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -10,6 +10,7 @@ import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
 import { connectionOf } from "../../src/core/store/store.js";
 import type { Store } from "../../src/core/types/store.js";
 import { initRepo } from "../hash/git-repo.js";
+import { code, edit, keptLogs, ownHomeAndTmp, repo, SLOW } from "./code-gate-fixture.js";
 
 /*
  * #197 (row 020-40): a gate run with a failed or unfinished file keeps its
@@ -55,15 +56,6 @@ function store(root: string): Store {
   return opened;
 }
 
-/** The kept folders under the store's `runs/`. */
-function keptFolders(root: string): string[] {
-  try {
-    return readdirSync(join(root, ".git", "squeal", "runs"));
-  } catch {
-    return [];
-  }
-}
-
 describe("runLogKeeper: the log of a failed run (#197)", () => {
   it("copies the log folder under the store's runs folder, named by a finished run", async () => {
     const { root, run } = setUp();
@@ -96,10 +88,10 @@ describe("runLogKeeper: the log of a failed run (#197)", () => {
     opened.worktrees.upsert({ id: worktreeIdFor(root), ...registration });
 
     opened.prune({ now: NOW + 6 * DAY_MS, retentionDays: 7, maxSizeMb: null });
-    expect(keptFolders(root)).toEqual([basename(path ?? "")]);
+    expect(keptLogs(root)).toEqual([path]);
 
     opened.prune({ now: NOW + 8 * DAY_MS, retentionDays: 7, maxSizeMb: null });
-    expect(keptFolders(root)).toEqual([]);
+    expect(keptLogs(root)).toEqual([]);
     expect(opened.runs.get(basename(path ?? ""))).toBeNull();
   });
 
@@ -109,7 +101,7 @@ describe("runLogKeeper: the log of a failed run (#197)", () => {
 
     store(root).prune({ now: NOW, retentionDays: 7, maxSizeMb: null });
 
-    expect(keptFolders(root)).toEqual([]);
+    expect(keptLogs(root)).toEqual([]);
   });
 
   it("keeps nothing, and says why, when the store stays busy past its wait", async () => {
@@ -127,7 +119,7 @@ describe("runLogKeeper: the log of a failed run (#197)", () => {
       expect.stringMatching(/^Vitest run: its log was not kept: the store did not take its run: /),
     ]);
     // The row comes first: no folder is left that no row names, which no prune would remove.
-    expect(keptFolders(root)).toEqual([]);
+    expect(keptLogs(root)).toEqual([]);
   });
 });
 
@@ -153,4 +145,34 @@ describe("keptLogsLine: the stderr line after the verdict (#197)", () => {
       "squeal code: logs of the failed or unfinished test files, kept until the store's prune: Vitest /r/runs/gate-1; node:test /r/runs/gate-2\n",
     );
   });
+});
+
+describe("squeal code --base: the plain report and the kept log (#197)", () => {
+  it(
+    "names the kept log on stderr after the verdict, and the verdict and exit stay",
+    SLOW,
+    async () => {
+      ownHomeAndTmp();
+      const root = repo();
+      edit(root, {
+        "src/math.ts": "export function double(x: number): number {\n  return x;\n}\n",
+      });
+      const writes: string[] = [];
+
+      const ran = await code(root, ["--base", "main"], {
+        stdout: (text) => writes.push(`stdout ${text}`),
+        stderr: (text) => writes.push(`stderr ${text}`),
+      });
+
+      expect(ran.code).toBe(3);
+      expect(ran.stdout).toContain("Code gate: incomplete.");
+      const [log] = keptLogs(root);
+      expect(readFileSync(join(log ?? "", "vitest.log"), "utf8")).toContain("expected 2 to be 4");
+      // The report first, then the one line that names the log, last.
+      expect(writes.at(-2)?.startsWith("stdout ")).toBe(true);
+      expect(writes.at(-1)).toBe(
+        `stderr squeal code: log of the failed or unfinished test files, kept until the store's prune: Vitest ${log}\n`,
+      );
+    },
+  );
 });
