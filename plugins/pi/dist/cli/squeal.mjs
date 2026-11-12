@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.449";
+  if (true) return "0.1.450";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -27881,13 +27881,13 @@ function startupFailure(vitest, specs, collector, error, paths) {
 function classify3(vitest, specs, collector, error, paths) {
   const text3 = errorTexts(error);
   const owner2 = setupOwner(vitest, specs, text3);
-  const checkError = toCheckError(error, paths);
+  const checkError2 = toCheckError(error, paths);
   const location2 = owner2 ? frameOf(text3, owner2.file, paths) : null;
   return {
     projects: owner2?.projects ?? runProjects(specs),
     testFiles: [...collector.requested],
     setupFile: owner2 ? paths.toRelative(owner2.file) : null,
-    error: { ...checkError, location: location2 ?? checkError.location, phase: "setup" }
+    error: { ...checkError2, location: location2 ?? checkError2.location, phase: "setup" }
   };
 }
 function setupOwner(vitest, specs, text3) {
@@ -27959,13 +27959,13 @@ async function sortTouched(vitest, touched, lockfiles, paths) {
   if (vitest.projects.some((project) => project.isBrowserEnabled())) {
     return { ...NONE2, inputs: [...touched] };
   }
-  const once3 = /* @__PURE__ */ new Set([...await recreateTriggers(vitest), ...lockfiles]);
+  const once4 = /* @__PURE__ */ new Set([...await recreateTriggers(vitest), ...lockfiles]);
   const byName = (file) => paths.toRelative(file) !== null && READ_BY_NAME.test(basename12(file));
   const index = new ModuleIndex(vitest, paths);
   const inputs2 = [];
   const modules = [];
   for (const file of touched) {
-    if (once3.has(file) || byName(file)) inputs2.push(file);
+    if (once4.has(file) || byName(file)) inputs2.push(file);
     else if (index.names(file)) modules.push(file);
   }
   return { inputs: inputs2, modules, index };
@@ -33516,16 +33516,16 @@ function withTaggedEscapes(parser2, parsed3) {
   if (!tree.rootNode.hasError) return parsed3;
   const escapes = [...input.matchAll(ESCAPE)].flatMap((m) => m[1] === void 0 ? [] : [m.index]);
   if (escapes.length === 0) return parsed3;
-  const tried = parser2.parse(underscored(input, escapes));
-  const tagged = escapes.filter((at2) => isTaggedEscape(tried.rootNode, at2));
+  const tried2 = parser2.parse(underscored(input, escapes));
+  const tagged = escapes.filter((at2) => isTaggedEscape(tried2.rootNode, at2));
   if (tagged.length === 0) {
-    tried.delete();
+    tried2.delete();
     return parsed3;
   }
   tree.delete();
   const rewritten = underscored(input, tagged);
-  if (tagged.length === escapes.length) return { input: rewritten, tree: tried };
-  tried.delete();
+  if (tagged.length === escapes.length) return { input: rewritten, tree: tried2 };
+  tried2.delete();
   return { input: rewritten, tree: parser2.parse(rewritten) };
 }
 function underscored(input, escapes) {
@@ -41289,7 +41289,7 @@ function readLoaderChain(argv) {
     if (role === "condition") conditions.push(value);
     else if (TSX.has(value)) tsx2 = true;
     else if (role === "loader") unrecognized.push(value);
-    else preloads.push({ specifier: value, kind: role, path: isPath(value) });
+    else preloads.push({ specifier: value, kind: role, path: isPath2(value) });
   }
   return {
     rules: tsx2 ? "tsx" : "node",
@@ -41298,7 +41298,7 @@ function readLoaderChain(argv) {
     unrecognized
   };
 }
-var TSX, VALUE_FLAGS, isPath;
+var TSX, VALUE_FLAGS, isPath2;
 var init_loader_chain = __esm({
   "src/runners/node-test/graph/loader-chain.ts"() {
     "use strict";
@@ -41312,7 +41312,7 @@ var init_loader_chain = __esm({
       "--conditions": "condition",
       "-C": "condition"
     };
-    isPath = (specifier) => specifier.startsWith(".") || specifier.startsWith("/") || specifier.startsWith("file:");
+    isPath2 = (specifier) => specifier.startsWith(".") || specifier.startsWith("/") || specifier.startsWith("file:");
   }
 });
 
@@ -50768,16 +50768,16 @@ var init_group = __esm({
 import { existsSync as existsSync33 } from "node:fs";
 import { fileURLToPath as fileURLToPath12 } from "node:url";
 function nodeTestRuntime(module2 = new URL(import.meta.url)) {
-  const tried = [];
+  const tried2 = [];
   for (const candidate of CANDIDATES3) {
     const dir2 = new URL(candidate, module2);
     const reporter = fileURLToPath12(new URL("reporter.mjs", dir2));
     const recorder = fileURLToPath12(new URL("recorder.cjs", dir2));
     if (existsSync33(reporter) && existsSync33(recorder)) return { reporter, recorder };
-    tried.push(fileURLToPath12(dir2));
+    tried2.push(fileURLToPath12(dir2));
   }
   throw new Error(
-    `node:test runtime files not found beside ${module2.href}: tried ${tried.join(", ")}`
+    `node:test runtime files not found beside ${module2.href}: tried ${tried2.join(", ")}`
   );
 }
 var CANDIDATES3;
@@ -51329,20 +51329,20 @@ async function openProject(context) {
   if (!probe2.ok) note(`${probe2.error}; every check of the project is unknown until it runs`);
   const coverage = new ProjectCoverage(options.coverage, argv, note);
   const noted2 = /* @__PURE__ */ new Set();
-  const once3 = (text3, topic) => {
+  const once4 = (text3, topic) => {
     if (noted2.has(text3)) return;
     noted2.add(text3);
     note(text3, topic);
   };
   const notes = () => {
-    for (const text3 of graph.notes()) once3(text3.replace(/^node-test: /, ""));
-    for (const text3 of loaderThreadNotes(project)) once3(text3);
-    for (const reason2 of graph.preloads().incomplete) once3(`preload closure incomplete: ${reason2}`);
+    for (const text3 of graph.notes()) once4(text3.replace(/^node-test: /, ""));
+    for (const text3 of loaderThreadNotes(project)) once4(text3);
+    for (const reason2 of graph.preloads().incomplete) once4(`preload closure incomplete: ${reason2}`);
     const incomplete2 = graph.incompleteClosures();
     if (incomplete2.length > 0) {
       const named4 = incomplete2.slice(0, NAMED_INCOMPLETE).map(([file, reasons]) => `${file} (${reasons.join("; ")})`);
       const more2 = incomplete2.length > NAMED_INCOMPLETE ? ", ..." : "";
-      once3(
+      once4(
         `${incomplete2.length} test file(s) with an incomplete static closure, keyed by what their runs load: ${named4.join(", ")}${more2}`,
         `node-test-closure:${project.name}`
       );
@@ -53097,15 +53097,15 @@ var init_beside = __esm({
 });
 
 // src/core/scheduler/checkpoint-requests.ts
-import { randomUUID as randomUUID12 } from "node:crypto";
+import { randomUUID as randomUUID13 } from "node:crypto";
 function abandonFullSuite(ledger) {
   const files5 = [...ledger.files.values()].map((file) => file.ref);
-  const record2 = ledger.checkpoints.abandon(randomUUID12(), "run-all", ledger.revision.number, files5);
+  const record2 = ledger.checkpoints.abandon(randomUUID13(), "run-all", ledger.revision.number, files5);
   ledger.commit();
   return { ...record2, owner: record2.id };
 }
 function queueFullSuite(ledger, force, fresh = false, only2) {
-  const id = randomUUID12();
+  const id = randomUUID13();
   const revision = ledger.revision.number;
   const { checkpoints } = ledger;
   const lane = only2?.lane;
@@ -53399,7 +53399,7 @@ var init_handover = __esm({
 });
 
 // src/core/scheduler/bootstrap.ts
-import { randomUUID as randomUUID13 } from "node:crypto";
+import { randomUUID as randomUUID14 } from "node:crypto";
 async function scan(context, ledger, resumesRest2 = false) {
   const { store, keys, worktreeId } = context;
   const latest = store.revisions.latest(worktreeId);
@@ -53468,7 +53468,7 @@ async function baseline(context, ledger, unseen = [], resumesRest2 = false, retr
     unseen.push(new Set(runtimeRevision.changes.map((change2) => change2.path)));
     await readEnvironments(context, failures, bound);
   }
-  const checkpointId = randomUUID13();
+  const checkpointId = randomUUID14();
   const heldFails = /* @__PURE__ */ new Set();
   const lookup = (files5) => ledger.settle(files5, NOTHING_CHANGED, { checkpointId, queueMisses: false, heldFails });
   const first = lookup(refs2);
@@ -54826,7 +54826,7 @@ var init_interrupted = __esm({
 });
 
 // src/core/scheduler/slot-records.ts
-import { setTimeout as sleep13 } from "node:timers/promises";
+import { setTimeout as sleep14 } from "node:timers/promises";
 var SLOT_GATHER_MS, SLOT_GATHER_COMMITS, SlotRecords;
 var init_slot_records = __esm({
   "src/core/scheduler/slot-records.ts"() {
@@ -54852,7 +54852,7 @@ var init_slot_records = __esm({
         outcome2.catch(() => {
         });
         const gather = Math.max(SLOT_GATHER_MS, SLOT_GATHER_COMMITS * this.#commitMs);
-        this.#gathering ??= sleep13(gather).then(() => {
+        this.#gathering ??= sleep14(gather).then(() => {
           this.#gathering = null;
         });
         await this.#gathering;
@@ -55360,21 +55360,21 @@ async function applyRefinement(host, context, ledger, part2, refined, carry) {
   const apply3 = async (n) => {
     const changedMeanwhile = ledger.refineChanges ?? /* @__PURE__ */ new Set();
     imports = importsWaiting(context.store, context.worktreeId);
-    const tried = n === 0 ? part2 : { ...part2, reresolved: [...part2.reresolved, ...lagging(context, ledger)] };
-    carry(await applyRunnerPart(context, ledger, tried, changedMeanwhile, refined ?? void 0));
+    const tried2 = n === 0 ? part2 : { ...part2, reresolved: [...part2.reresolved, ...lagging(context, ledger)] };
+    carry(await applyRunnerPart(context, ledger, tried2, changedMeanwhile, refined ?? void 0));
     ledger.commit(refined === null ? {} : { refined });
     committed = true;
     ledger.refineChanges = null;
     host.applied();
   };
   const operation = refined === null ? "applying observed paths" : `applying revision ${refined}`;
-  const once3 = (n) => host.lock.run(async () => {
+  const once4 = (n) => host.lock.run(async () => {
     if (!committed) await apply3(n);
     importsKeyed(context.store, context.worktreeId, imports);
   }, operation);
   const busy2 = host.busy?.();
-  if (busy2 === void 0) return once3(0);
-  await retryWhileBusy(once3, {
+  if (busy2 === void 0) return once4(0);
+  await retryWhileBusy(once4, {
     sliceMs: busy2.sliceMs,
     waits: busy2.waits,
     key: REFINE,
@@ -57943,11 +57943,11 @@ var init_scheduler2 = __esm({
        * daemon stops answers the request with an error that says the store was
        * busy, so no request waits past the daemon.
        */
-      async #request(operation, once3) {
+      async #request(operation, once4) {
         const waits2 = this.options.busyWaits;
-        if (waits2 === void 0 || this.#busy === null) return once3(0);
+        if (waits2 === void 0 || this.#busy === null) return once4(0);
         try {
-          return await retryWhileBusy(once3, {
+          return await retryWhileBusy(once4, {
             sliceMs: this.options.busySliceMs,
             waits: waits2,
             key: `scheduler:request:${++this.#retries}`,
@@ -63751,7 +63751,7 @@ async function runPytest(options) {
   const cwd = project.cwd ? toAbsolute(options.root, project.cwd) : options.root;
   const inherited2 = inheritedArgs(environment.config, environment.runEnv);
   const refused = refusedFlags(inherited2, project);
-  if (refused.length > 0) return refusal(refusalNote(project, refused), started2);
+  if (refused.length > 0) return refusal2(refusalNote(project, refused), started2);
   const cacheDir = options.cacheDir ?? defaultCacheDir(options.root, project);
   const ours = markLogDir(options.logDir);
   if (ours === null) return logGone(options.logDir);
@@ -63952,7 +63952,7 @@ function ownEmptyConfig(cacheDir) {
 function logGone(logDir) {
   return { report: logGoneReport(logDir), observed: [], session: [], skippedFiles: [], notes: [] };
 }
-function refusal(note, started2) {
+function refusal2(note, started2) {
   return {
     report: {
       end: "crashed",
@@ -63973,14 +63973,14 @@ function defaultCacheDir(root, project) {
   return join120(tmpdir11(), "squeal-pytest", id);
 }
 function pytestRuntimeDir(module2 = new URL(import.meta.url)) {
-  const tried = [];
+  const tried2 = [];
   for (const candidate of ["../pytest/", "../runtime/"]) {
     const dir2 = fileURLToPath18(new URL(candidate, module2));
     if (existsSync44(join120(dir2, "squeal_pytest.py"))) return dir2.replace(/\/$/, "");
-    tried.push(dir2);
+    tried2.push(dir2);
   }
   throw new Error(
-    `pytest runtime files not found beside ${module2.href}: tried ${tried.join(", ")}`
+    `pytest runtime files not found beside ${module2.href}: tried ${tried2.join(", ")}`
   );
 }
 function isEdge(event2) {
@@ -65502,12 +65502,12 @@ async function createPytestAdapter(project, options) {
   const raw = options.note ?? (() => {
   });
   const noted2 = /* @__PURE__ */ new Set();
-  const once3 = (text3) => {
+  const once4 = (text3) => {
     if (noted2.has(text3)) return;
     noted2.add(text3);
     raw(text3);
   };
-  const note = (text3) => once3(`${label2}: ${text3}`);
+  const note = (text3) => once4(`${label2}: ${text3}`);
   const topic = `pytest-environment:${project.name}`;
   let told2 = null;
   const environmentNote = (text3) => {
@@ -65667,10 +65667,10 @@ async function createPytestAdapter(project, options) {
       );
       if (outcome2.kind === "moved") {
         stale = true;
-        once3(outcome2.report.failure ?? "");
+        once4(outcome2.report.failure ?? "");
         return outcome2.report;
       }
-      for (const text3 of outcome2.run.notes) once3(text3);
+      for (const text3 of outcome2.run.notes) once4(text3);
       const whole = outcome2.run.observed.filter(
         (seen) => focusedTexts(runOptions.checks, seen.testFile) === null
       );
@@ -68446,7 +68446,7 @@ function createCodePass(options) {
     refused = text3;
     return null;
   };
-  const once3 = async () => {
+  const once4 = async () => {
     const policy = options.policy();
     if (!policy.complexity.enabled) {
       wasOff = true;
@@ -68569,7 +68569,7 @@ function createCodePass(options) {
     do {
       again2 = false;
       try {
-        await once3();
+        await once4();
         lastError = null;
         aborted = 0;
       } catch (error) {
@@ -70290,7 +70290,7 @@ function createLintPass(options) {
     });
     retired = true;
   };
-  const once3 = async () => {
+  const once4 = async () => {
     const policy = options.policy();
     if (!policy.lint.enabled || !policy.lint.tools.includes(tool)) {
       if (policy.lint.enabled) retire(policy);
@@ -70335,7 +70335,7 @@ function createLintPass(options) {
       again2 = false;
       let wake = null;
       try {
-        wake = await once3();
+        wake = await once4();
         lastError = null;
       } catch (error) {
         const failure2 = error instanceof Error ? error : new Error(String(error));
@@ -71134,11 +71134,11 @@ var init_connect = __esm({
 });
 
 // src/core/runner-host/remote/admission.ts
-import { setTimeout as sleep14 } from "node:timers/promises";
+import { setTimeout as sleep15 } from "node:timers/promises";
 function createHostAdmission(open7, holdMs = ADMITTED_HOLD_MS) {
   let pool = null;
   let held3 = null;
-  let refusal2;
+  let refusal3;
   const drop2 = () => {
     if (held3 === null) return;
     clearTimeout(held3.timer);
@@ -71154,18 +71154,18 @@ function createHostAdmission(open7, holdMs = ADMITTED_HOLD_MS) {
     admit({ want, least }) {
       drop2();
       if (want < 1) return { grant: 0 };
-      refusal2 = void 0;
+      refusal3 = void 0;
       let lease;
       try {
         pool ??= open7((line) => {
-          refusal2 = line;
+          refusal3 = line;
         });
         lease = pool.acquire(want, "fast", least, "backlog");
       } catch (error) {
         hold(UNGRANTED);
         return { grant: want, failed: error instanceof Error ? error.message : String(error) };
       }
-      if (lease === null) return refusal2 === void 0 ? { grant: 0 } : { grant: 0, refusal: refusal2 };
+      if (lease === null) return refusal3 === void 0 ? { grant: 0 } : { grant: 0, refusal: refusal3 };
       hold(widthLease(lease, want));
       return { grant: lease.grant };
     },
@@ -71211,7 +71211,7 @@ async function remoteAdmission(admit2, ask2, wait) {
     }
     if (answer4.refusal !== void 0) wait.log(`on its machine, ${answer4.refusal}`);
     const signal2 = wait.cancel;
-    await sleep14(wait.everyMs, void 0, signal2 === void 0 ? {} : { signal: signal2 }).catch(() => {
+    await sleep15(wait.everyMs, void 0, signal2 === void 0 ? {} : { signal: signal2 }).catch(() => {
     });
   }
   return null;
@@ -72045,9 +72045,9 @@ var init_reader = __esm({
           this.o.note(`CI results: refused ${ref3}: ${why2}`);
           return;
         }
-        const refusal2 = importRefusal(bundle);
-        if (refusal2 !== null) {
-          this.#refused(ref3, commit, bundle, refusal2);
+        const refusal3 = importRefusal(bundle);
+        if (refusal3 !== null) {
+          this.#refused(ref3, commit, bundle, refusal3);
           return;
         }
         const fileHash = createHash42("sha256").update(bytes2).digest("hex");
@@ -72080,13 +72080,13 @@ var init_reader = __esm({
        * note per refused ref; the log keeps the formats. A busy store: the next
        * nudge tries this start point again, as an import does.
        */
-      #refused(ref3, commit, bundle, refusal2) {
+      #refused(ref3, commit, bundle, refusal3) {
         const ci = otherKeyFormat(bundle);
         if (ci === null) {
-          this.o.note(`CI results: refused ${ref3}: ${refusal2}`);
+          this.o.note(`CI results: refused ${ref3}: ${refusal3}`);
           return;
         }
-        this.o.log(`CI results: refused ${ref3}: ${refusal2}`);
+        this.o.log(`CI results: refused ${ref3}: ${refusal3}`);
         const here = { version: squealVersion(), keyFormat: KEY_FORMAT_VERSION };
         try {
           writeSquealMismatch(this.o.store, this.o.worktreeId, { ci, here, commit, at: this.o.now() });
@@ -81712,6 +81712,229 @@ init_common();
 
 // src/core/daemon/write-protocol.ts
 import { isAbsolute as isAbsolute17 } from "node:path";
+
+// src/core/daemon/keep-protocol.ts
+var MAX_RECORDS = 1e5;
+var OUTCOMES8 = /* @__PURE__ */ new Set(["pass", "fail", "skip"]);
+var PHASES = /* @__PURE__ */ new Set(["load", "after-tests", "setup"]);
+var RECORD_FIELDS = [
+  "check",
+  "key",
+  "outcome",
+  "durationMs",
+  "location",
+  "fingerprint",
+  "summary",
+  "errors",
+  "provenance"
+];
+function parseKeep(request) {
+  const { id, worktreeId, storeSchema } = request;
+  if (!isText2(id) || id.length > 128)
+    return '"id" must be a non-empty string of 128 characters at most';
+  if (!isText2(worktreeId)) return '"worktreeId" must be a non-empty string';
+  if (!Number.isInteger(storeSchema)) return '"storeSchema" must be an integer';
+  const write3 = parseKeepWrite(request.write, worktreeId);
+  if (typeof write3 === "string") return write3;
+  return {
+    type: "keep",
+    id,
+    worktreeId,
+    storeSchema,
+    write: write3
+  };
+}
+function parseKeepWrite(value, worktreeId) {
+  if (!isFields(value)) return '"write" must be an object';
+  switch (value.kind) {
+    case "coverage": {
+      const extra = unknownField(value, ["kind", "key", "record"]);
+      if (extra !== null) return `"write.${extra}" is not a field of a coverage write`;
+      if (!isKey(value.key)) return '"write.key" must be a result key';
+      const record2 = coverageRecord(value.record);
+      if (record2 !== null) return `"write.record" ${record2}`;
+      return { kind: "coverage", key: value.key, record: value.record };
+    }
+    case "results":
+      return parseResults(value, worktreeId);
+    default:
+      return '"write.kind" must be "coverage" or "results"';
+  }
+}
+function parseResults(value, worktreeId) {
+  const extra = unknownField(value, ["kind", "key", "records", "paths", "environmentFiles"]);
+  if (extra !== null) return `"write.${extra}" is not a field of a results write`;
+  const { key: key3, records, paths, environmentFiles: environmentFiles2 } = value;
+  if (!isKey(key3)) return '"write.key" must be a result key';
+  if (!isPathList(paths)) return '"write.paths" must be a list of relative paths';
+  if (!isPathList(environmentFiles2))
+    return '"write.environmentFiles" must be a list of relative paths';
+  if (!Array.isArray(records) || records.length === 0 || records.length > MAX_RECORDS) {
+    return `"write.records" must be a list of 1 to ${MAX_RECORDS} results`;
+  }
+  const seen = /* @__PURE__ */ new Set();
+  for (const [at2, record2] of records.entries()) {
+    const why2 = resultRecord(record2, key3, worktreeId);
+    if (why2 !== null) return `"write.records[${at2}]" ${why2}`;
+    const other = otherFileOrRun(record2, records[0]);
+    if (other !== null) return `"write.records[${at2}]" is ${other}`;
+    const id = JSON.stringify(record2.check);
+    if (seen.has(id)) return `"write.records[${at2}]" repeats a check`;
+    seen.add(id);
+  }
+  return {
+    kind: "results",
+    key: key3,
+    records,
+    paths,
+    environmentFiles: environmentFiles2
+  };
+}
+function otherFileOrRun(record2, first) {
+  const { check: check3, provenance } = record2;
+  if (check3.project !== first.check.project || check3.testPath !== first.check.testPath) {
+    return "another test file's";
+  }
+  const fields = ["worktreeId", "revision", "commit", "dirty", "runId", "recordedAt"];
+  return fields.every((f) => provenance[f] === first.provenance[f]) ? null : "another run's";
+}
+function resultRecord(value, key3, worktreeId) {
+  if (!isFields(value)) return "must be an object";
+  const extra = unknownField(value, RECORD_FIELDS);
+  if (extra !== null) return `has the unknown field "${extra}"`;
+  const check3 = checkId2(value.check);
+  if (check3 !== null) return `"check" ${check3}`;
+  if (value.key !== key3) return "is at another key";
+  if (!OUTCOMES8.has(value.outcome)) return '"outcome" must be pass, fail or skip';
+  if (!isCount4(value.durationMs, true)) return '"durationMs" must be a duration';
+  if (value.location !== null && !isLocation(value.location))
+    return '"location" must be a location or null';
+  if (!isTextOrNull(value.fingerprint)) return '"fingerprint" must be a string or null';
+  if (!isTextOrNull(value.summary)) return '"summary" must be a string or null';
+  if (!Array.isArray(value.errors)) return '"errors" must be a list';
+  for (const [at2, error] of value.errors.entries()) {
+    const why2 = checkError(error);
+    if (why2 !== null) return `"errors[${at2}]" ${why2}`;
+  }
+  return gateProvenance(value.provenance, worktreeId);
+}
+function checkId2(value) {
+  if (!isFields(value)) return "must be an object";
+  const { kind, project, testPath, fullName } = value;
+  if (typeof project !== "string" || !isPath(testPath))
+    return "must name a project and a test file";
+  if (kind === "file")
+    return unknownField(value, ["kind", "project", "testPath"]) === null ? null : "has an unknown field";
+  if (kind !== "test") return 'must be of kind "test" or "file"';
+  if (typeof fullName !== "string") return '"fullName" must be a string';
+  return unknownField(value, ["kind", "project", "testPath", "fullName"]) === null ? null : "has an unknown field";
+}
+function checkError(value) {
+  if (!isFields(value)) return "must be an object";
+  const fields = [
+    "name",
+    "message",
+    "stack",
+    "location",
+    "diff",
+    "loadAverage",
+    "code",
+    "causes",
+    "phase",
+    "recorder"
+  ];
+  const extra = unknownField(value, fields);
+  if (extra !== null) return `has the unknown field "${extra}"`;
+  const { name: name3, message: message3, stack, location: location2, diff, loadAverage, code, causes, phase, recorder } = value;
+  if (typeof name3 !== "string" || typeof message3 !== "string")
+    return "must have a name and a message";
+  if (!isTextOrNull(stack) || !isTextOrNull(diff))
+    return '"stack" and "diff" must be strings or null';
+  if (location2 !== null && !isLocation(location2)) return '"location" must be a location or null';
+  if (loadAverage !== void 0 && !isCount4(loadAverage, true))
+    return '"loadAverage" must be a number';
+  if (code !== void 0 && typeof code !== "string") return '"code" must be a string';
+  if (recorder !== void 0 && typeof recorder !== "string") return '"recorder" must be a string';
+  if (phase !== void 0 && !PHASES.has(phase))
+    return '"phase" must be load, after-tests or setup';
+  if (causes === void 0) return null;
+  const valid = (c) => isFields(c) && typeof c.message === "string" && (c.code === void 0 || typeof c.code === "string") && unknownField(c, ["message", "code"]) === null;
+  return Array.isArray(causes) && causes.every(valid) ? null : '"causes" must be a list of causes';
+}
+function gateProvenance(value, worktreeId) {
+  if (!isFields(value)) return '"provenance" must be an object';
+  const fields = ["worktreeId", "revision", "commit", "dirty", "runId", "recordedAt"];
+  if (unknownField(value, fields) !== null) return '"provenance" has an unknown field';
+  const { revision, commit, dirty, runId, recordedAt } = value;
+  if (value.worktreeId !== worktreeId) return '"provenance.worktreeId" must be this worktree';
+  if (!isCount4(revision, false)) return '"provenance.revision" must be a revision';
+  if (commit !== null && !(typeof commit === "string" && /^[0-9a-f]{40,64}$/.test(commit))) {
+    return '"provenance.commit" must be a commit or null';
+  }
+  if (typeof dirty !== "boolean") return '"provenance.dirty" must be true or false';
+  if (typeof runId !== "string" || !/^gate-[0-9a-f-]{36}$/.test(runId))
+    return '"provenance.runId" must be a gate run';
+  if (!isCount4(recordedAt, false)) return '"provenance.recordedAt" must be a time';
+  return null;
+}
+function coverageRecord(value) {
+  if (!isFields(value) || value.v !== 1) return "must be a version 1 coverage record";
+  if (unknownField(value, ["v", "sources", "unread"]) !== null) return "has an unknown field";
+  if (!isPathList(value.unread)) return '"unread" must be a list of relative paths';
+  if (!Array.isArray(value.sources)) return '"sources" must be a list';
+  for (const [at2, source2] of value.sources.entries()) {
+    if (!isFields(source2)) return `"sources[${at2}]" must be an object`;
+    if (unknownField(source2, ["path", "blob", "lines", "covered", "functions"]) !== null) {
+      return `"sources[${at2}]" has an unknown field`;
+    }
+    const { path, blob, lines, covered, functions } = source2;
+    if (!isPath(path)) return `"sources[${at2}].path" must be a relative path`;
+    if (typeof blob !== "string" || !/^[0-9a-f]{40,64}$/.test(blob)) {
+      return `"sources[${at2}].blob" must be a blob id`;
+    }
+    if (!isBase64(lines) || !isBase64(covered)) return `"sources[${at2}]" lines must be bitsets`;
+    if (!Array.isArray(functions) || !functions.every(isFunctionSpan)) {
+      return `"sources[${at2}].functions" must be a list of spans`;
+    }
+  }
+  return null;
+}
+function isFunctionSpan(value) {
+  return Array.isArray(value) && value.length === 5 && value.slice(0, 4).every((n) => isCount4(n, false)) && (value[4] === 0 || value[4] === 1);
+}
+function isLocation(value) {
+  return isFields(value) && isPath(value.path) && isCount4(value.line, false) && isCount4(value.column, false) && unknownField(value, ["path", "line", "column"]) === null;
+}
+function unknownField(value, known3) {
+  return Object.keys(value).find((field) => !known3.includes(field)) ?? null;
+}
+function isFields(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function isText2(value) {
+  return typeof value === "string" && value.length > 0;
+}
+function isTextOrNull(value) {
+  return value === null || typeof value === "string";
+}
+function isCount4(value, fraction) {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return false;
+  return fraction || Number.isInteger(value);
+}
+function isKey(value) {
+  return typeof value === "string" && /^[0-9a-f]{64}$/.test(value);
+}
+function isPath(value) {
+  return isText2(value) && !value.startsWith("/") && !value.includes("\0");
+}
+function isPathList(value) {
+  return Array.isArray(value) && value.every(isPath);
+}
+function isBase64(value) {
+  return typeof value === "string" && /^[A-Za-z0-9+/]*={0,2}$/.test(value);
+}
+
+// src/core/daemon/write-protocol.ts
 var TYPES = /* @__PURE__ */ new Set(["lease", "release", "write", "write-status"]);
 function isWriteRequest(request) {
   return TYPES.has(request.type);
@@ -81720,10 +81943,14 @@ var IMPORT_TYPES = /* @__PURE__ */ new Set(["import", "import-status"]);
 function isImportRequest(request) {
   return IMPORT_TYPES.has(request.type);
 }
+var KEEP_TYPES = /* @__PURE__ */ new Set(["keep", "keep-status"]);
+function isKeepRequest(request) {
+  return KEEP_TYPES.has(request.type);
+}
 function parseWriteRequest(request) {
   switch (request.type) {
     case "lease": {
-      if (!isText2(request.worktreeId)) return '"worktreeId" must be a non-empty string';
+      if (!isText3(request.worktreeId)) return '"worktreeId" must be a non-empty string';
       if (typeof request.holder !== "string") return '"holder" must be a string';
       const process2 = parseProcess(request.process);
       if (typeof process2 === "string") return process2;
@@ -81735,8 +81962,8 @@ function parseWriteRequest(request) {
       };
     }
     case "release":
-      if (!isText2(request.worktreeId)) return '"worktreeId" must be a non-empty string';
-      if (!isText2(request.token)) return '"token" must be a non-empty string';
+      if (!isText3(request.worktreeId)) return '"worktreeId" must be a non-empty string';
+      if (!isText3(request.token)) return '"token" must be a non-empty string';
       return {
         type: "release",
         worktreeId: request.worktreeId,
@@ -81752,15 +81979,20 @@ function parseWriteRequest(request) {
     case "import-status":
       if (typeof request.requestId !== "string") return '"requestId" must be a string';
       return { type: "import-status", requestId: request.requestId };
+    case "keep":
+      return parseKeep(request);
+    case "keep-status":
+      if (typeof request.requestId !== "string") return '"requestId" must be a string';
+      return { type: "keep-status", requestId: request.requestId };
     default:
       return void 0;
   }
 }
 function parseWrite(request) {
   const { worktreeId, storeSchema, token, release: release3 } = request;
-  if (!isText2(worktreeId)) return '"worktreeId" must be a non-empty string';
+  if (!isText3(worktreeId)) return '"worktreeId" must be a non-empty string';
   if (!Number.isInteger(storeSchema)) return '"storeSchema" must be an integer';
-  if (token !== null && !isText2(token)) return '"token" must be a non-empty string or null';
+  if (token !== null && !isText3(token)) return '"token" must be a non-empty string or null';
   if (typeof release3 !== "boolean") return '"release" must be true or false';
   const batch = parseBatch(request.batch);
   if (typeof batch === "string") return batch;
@@ -81775,9 +82007,9 @@ function parseWrite(request) {
 }
 function parseImport(request) {
   const { worktreeId, storeSchema, file, fileHash, dryRun } = request;
-  if (!isText2(worktreeId)) return '"worktreeId" must be a non-empty string';
+  if (!isText3(worktreeId)) return '"worktreeId" must be a non-empty string';
   if (!Number.isInteger(storeSchema)) return '"storeSchema" must be an integer';
-  if (!isText2(file) || !isAbsolute17(file)) return '"file" must be an absolute path';
+  if (!isText3(file) || !isAbsolute17(file)) return '"file" must be an absolute path';
   if (typeof fileHash !== "string" || !/^[0-9a-f]{64}$/.test(fileHash)) {
     return '"fileHash" must be a SHA-256 in hex';
   }
@@ -81803,16 +82035,16 @@ function parseProcess(value) {
   }
   return { pid, startTime, pidNamespace: pidNamespace2 };
 }
-function isText2(value) {
+function isText3(value) {
   return typeof value === "string" && value.length > 0;
 }
 
 // src/core/daemon/protocol.ts
 var MAX_LINE_BYTES = 64 * 1024;
 var MAX_WRITE_LINE_BYTES = 32 * 1024 * 1024;
-var WRITE_LINE_START = '{"type":"write",';
+var LONG_LINE_STARTS = ['{"type":"write",', '{"type":"keep",'];
 function lineLimit(start2) {
-  return start2.startsWith(WRITE_LINE_START) ? MAX_WRITE_LINE_BYTES : MAX_LINE_BYTES;
+  return LONG_LINE_STARTS.some((head2) => start2.startsWith(head2)) ? MAX_WRITE_LINE_BYTES : MAX_LINE_BYTES;
 }
 function parseRequest(line) {
   let value;
@@ -81861,7 +82093,7 @@ function parseRequest(line) {
       if (typeof request.requestId !== "string") return '"requestId" must be a string';
       return { type: "run-slow-status", requestId: request.requestId };
     case "run-group":
-      if (!isText3(request.group)) return '"group" must be a non-empty string';
+      if (!isText4(request.group)) return '"group" must be a non-empty string';
       return { type: "run-group", group: request.group };
     case "run-group-paths":
       return parseGroupPaths(request.group, request.paths);
@@ -81890,7 +82122,7 @@ function parseRequest(line) {
       if (!Array.isArray(testFiles3) || !testFiles3.every(isTestFileRef)) {
         return '"testFiles" must be a list of { project, path } strings';
       }
-      if (!Array.isArray(texts2) || texts2.length === 0 || !texts2.every(isText3)) {
+      if (!Array.isArray(texts2) || texts2.length === 0 || !texts2.every(isText4)) {
         return '"texts" must be a list of non-empty strings';
       }
       if (typeof withinMs !== "number" || !Number.isFinite(withinMs) || withinMs < 0) {
@@ -81905,14 +82137,14 @@ function parseRequest(line) {
 }
 function parseSync(paths) {
   if (paths === void 0) return { type: "sync" };
-  if (!Array.isArray(paths) || !paths.every(isText3)) {
+  if (!Array.isArray(paths) || !paths.every(isText4)) {
     return '"paths" must be a list of non-empty strings';
   }
   return { type: "sync", paths: [...paths] };
 }
 function parseGroupPaths(group, paths) {
-  if (!isText3(group)) return '"group" must be a non-empty string';
-  if (!Array.isArray(paths) || paths.length === 0 || !paths.every(isText3)) {
+  if (!isText4(group)) return '"group" must be a non-empty string';
+  if (!Array.isArray(paths) || paths.length === 0 || !paths.every(isText4)) {
     return '"paths" must be a non-empty list of non-empty strings';
   }
   return { type: "run-group-paths", group, paths: [...paths] };
@@ -81922,7 +82154,7 @@ function isTestFileRef(value) {
   const { project, path } = value;
   return typeof project === "string" && typeof path === "string";
 }
-function isText3(value) {
+function isText4(value) {
   return typeof value === "string" && value.length > 0;
 }
 function errorResponse(error) {
@@ -83934,7 +84166,7 @@ function coverageLine({ coverage, testFiles: testFiles3 }) {
 init_checks();
 init_policy2();
 import { relative as relative15, resolve as resolve24 } from "node:path";
-import { setTimeout as sleep11 } from "node:timers/promises";
+import { setTimeout as sleep12 } from "node:timers/promises";
 init_git_layout();
 init_heartbeat();
 init_text();
@@ -86330,7 +86562,7 @@ init_schema2();
 init_store4();
 
 // src/core/code/gate/keep.ts
-import { randomUUID as randomUUID8 } from "node:crypto";
+import { randomUUID as randomUUID9 } from "node:crypto";
 init_git_layout();
 init_reverse_index();
 init_observed2();
@@ -86397,19 +86629,132 @@ function expectationOf(runner, id) {
   return `${runner}\0${id}`;
 }
 
+// src/core/code/gate/keep-here.ts
+init_hold();
+init_store_results();
+init_busy();
+init_connection();
+init_parts();
+init_record();
+function writeHere(stores, worktreeId, now) {
+  const { store, code } = stores;
+  return {
+    coverage: async (file) => {
+      const recordKey = { resultKey: file.key, providerVersion: COVERAGE_RECORD_VERSION };
+      const shared2 = shareRecord(file.record, COVERAGE_RECORD_VERSION);
+      return tried(() => code.coverage.putParts(recordKey, shared2, now()));
+    },
+    results: async (file, records, keys) => tried(
+      () => storeResults({ store, keys, worktreeId, now }, records, healsUnheld(store, file.paths))
+    )
+  };
+}
+function tried(write3) {
+  try {
+    withBusySliceSync(BUSY_SLICE_MS, write3);
+    return "kept";
+  } catch (error) {
+    if (!isBusy(error)) throw error;
+    return "busy";
+  }
+}
+
+// src/core/code/gate/keep-sent.ts
+init_client();
+init_heartbeat();
+import { randomUUID as randomUUID8 } from "node:crypto";
+import { setTimeout as sleep10 } from "node:timers/promises";
+var DAEMON_WAITS = { answerMs: 2e3, reconcileMs: 1e4 };
+var STATUS_PAUSES_MS2 = [5, 10, 25, 50];
+var RECONCILE_PAUSE_MS = 250;
+var DAEMON_KEEPS_ITS_OWN = "a daemon runs in this worktree, and it keeps its own";
+var NOT_REACHED = /* @__PURE__ */ new Set(["ENOENT", "ECONNREFUSED"]);
+var KeepUnknown = class extends Error {
+};
+var KeepRefused = class extends Error {
+};
+function writeThroughDaemon(target) {
+  const { socketPath, worktreeId, storeSchema } = target;
+  const waits2 = target.waits ?? DAEMON_WAITS;
+  const ask2 = (request) => requestDaemon(socketPath, request, waits2.answerMs);
+  const statusOf = async (id) => {
+    const until = Date.now() + waits2.reconcileMs;
+    for (; ; ) {
+      let why2;
+      try {
+        const answer4 = await ask2({ type: "keep-status", requestId: id });
+        if (isKeep(answer4)) return answer4;
+        if (!answer4.ok && answer4.error.startsWith("unknown request id")) return "lost";
+        why2 = whyNot(answer4);
+      } catch (error) {
+        why2 = error.message;
+      }
+      if (Date.now() >= until) {
+        throw new KeepUnknown(`the daemon took the write and did not say how it went: ${why2}`);
+      }
+      await sleep10(RECONCILE_PAUSE_MS);
+    }
+  };
+  const tryOnce = async (write3) => {
+    const id = randomUUID8();
+    let state;
+    try {
+      const answer4 = await ask2({ type: "keep", id, worktreeId, storeSchema, write: write3 });
+      if (!isKeep(answer4)) throw refusal(answer4);
+      state = answer4;
+    } catch (error) {
+      if (error instanceof KeepRefused) throw error;
+      const { code, message: message3 } = error;
+      if (NOT_REACHED.has(code)) throw new Error(`the daemon did not answer: ${message3}`);
+      state = await statusOf(id);
+    }
+    for (let n = 0; state !== "lost" && state.outcome === null; n++) {
+      await sleep10(STATUS_PAUSES_MS2[Math.min(n, STATUS_PAUSES_MS2.length - 1)]);
+      state = await statusOf(id);
+    }
+    if (state === "lost" || state.outcome === null) return "lost";
+    const { outcome: outcome2 } = state;
+    if ("failed" in outcome2) throw new Error(outcome2.failed);
+    return outcome2.kept ? "kept" : "busy";
+  };
+  return {
+    coverage: (file) => tryOnce({ kind: "coverage", key: file.key, record: file.record }),
+    results: (file, records, keys) => tryOnce({
+      kind: "results",
+      key: file.key,
+      records,
+      paths: file.paths,
+      environmentFiles: keys.environmentFiles(file.ref.project)
+    })
+  };
+}
+function sentWriter(store, worktreeId, now, waits2) {
+  const daemon = store.worktrees.get(worktreeId)?.daemon ?? null;
+  if (daemon === null || !heartbeatFresh(daemon, now)) return null;
+  const { socketPath } = daemon;
+  const storeSchema = store.schemaVersion;
+  return writeThroughDaemon({ socketPath, worktreeId, storeSchema, ...waits2 ? { waits: waits2 } : {} });
+}
+function refusal(answer4) {
+  const why2 = whyNot(answer4);
+  const older = why2 === 'unknown request type "keep"' || why2 === "this daemon takes no kept files";
+  return new KeepRefused(older ? DAEMON_KEEPS_ITS_OWN : `the daemon refused the write: ${why2}`);
+}
+function isKeep(answer4) {
+  return answer4.ok && answer4.type === "keep";
+}
+function whyNot(answer4) {
+  return answer4.ok ? `it answered ${answer4.type}` : answer4.error;
+}
+
 // src/core/code/gate/keep-write.ts
 init_compare();
 init_files();
-init_hold();
 init_records3();
-init_store_results();
 init_fingerprint();
 init_busy();
-init_connection();
-import { setTimeout as sleep10 } from "node:timers/promises";
+import { setTimeout as sleep11 } from "node:timers/promises";
 init_paths();
-init_parts();
-init_record();
 init_open2();
 var KEEP_BUSY_BOUND_MS = 3e4;
 var NAMED = 5;
@@ -86469,18 +86814,33 @@ var StoreWait = class {
 function databasesOf(commonDir) {
   return { main: storePaths(commonDir).database, code: codeStorePath(commonDir) };
 }
+var LOST_TRIES = 3;
+var InputCheck = class {
+  #owed = false;
+  /** Whether a try failed, so every later write reads its file's inputs first. */
+  get owed() {
+    return this.#owed;
+  }
+  /** A try did not land. */
+  owe() {
+    this.#owed = true;
+  }
+  /** Whether the file whose inputs `read` reads may be written now; it reads them once owed. */
+  async holds(read5) {
+    return !this.#owed || read5();
+  }
+};
 async function keepFile(stores, at2) {
-  const { store, code, keys } = stores;
-  const { file, report: report4, provenance, now, databases, giveUp: giveUp2, steady } = at2;
-  const recordKey = { resultKey: file.key, providerVersion: COVERAGE_RECORD_VERSION };
-  const shared2 = shareRecord(file.record, COVERAGE_RECORD_VERSION);
-  const paused = (database) => async () => {
-    if (giveUp2(database)) return "spent";
+  const { store, keys, writer } = stores;
+  const { file, report: report4, provenance, databases, giveUp: giveUp2, check: check3 } = at2;
+  const steady = () => check3.holds(at2.steady);
+  const paused = (database) => async (busy2) => {
+    check3.owe();
+    if (busy2 && giveUp2(database)) return "spent";
     return await steady() ? null : "changed";
   };
   if (!await steady()) return "changed";
-  const put = () => code.coverage.putParts(recordKey, shared2, now());
-  const coded = await sliced(put, paused(databases.code));
+  const coded = await sliced(() => writer.coverage(file), paused(databases.code));
   if (coded !== "kept") return coded;
   const previous = new Map(
     store.results.newestForTestFile(file.ref).map((r) => [checkId(r.check), r.check])
@@ -86493,26 +86853,35 @@ async function keepFile(stores, at2) {
     provenance,
     describe: describeFailure
   });
-  const context = { store, keys, worktreeId: provenance.worktreeId, now };
-  const results3 = () => storeResults(context, records, healsUnheld(store, file.paths));
   if (!await steady()) return "changed";
-  return sliced(results3, paused(databases.main));
+  return sliced(() => writer.results(file, records, keys), paused(databases.main));
 }
-async function sliced(write3, paused) {
-  for (let attempt = 0; ; attempt++) {
-    try {
-      withBusySliceSync(BUSY_SLICE_MS, write3);
-      return "kept";
-    } catch (error) {
-      if (!isBusy(error)) throw error;
+async function sliced(attempt, paused) {
+  let lost = 0;
+  for (let n = 0; ; n++) {
+    const tried2 = await attempt();
+    if (tried2 === "kept") return "kept";
+    if (tried2 === "lost" && ++lost > LOST_TRIES) {
+      throw new Error(`the daemon lost ${lost} tries of a write before they ran`);
     }
-    await sleep10(busyBackoffMs(attempt));
-    const stop2 = await paused();
+    await sleep11(busyBackoffMs(n));
+    const stop2 = await paused(tried2 === "busy");
     if (stop2 !== null) return stop2;
   }
 }
+function perhapsKept(left, why2) {
+  const first = `whether the daemon kept the first of them is not known (${why2})`;
+  if (left === 1) {
+    return `1 completed test file may not be kept in the stores: whether the daemon kept it is not known (${why2}); the next run reads it if it was kept, else runs it again`;
+  }
+  return `${completed(left)} may not be kept in the stores: ${first}, and the other ${left - 1} were not written; the next run reads what was kept and runs the rest again`;
+}
 function notKept(count3) {
   return `${completed(count3)} ${count3 === 1 ? "was" : "were"} not kept in the stores`;
+}
+function changedAfterLoss(count3) {
+  const they = count3 === 1 ? "it" : "they";
+  return `${notKept(count3)}: ${they} changed after a write the daemon never received; ${again(count3)}`;
 }
 function completed(count3) {
   return `${count3} completed test ${count3 === 1 ? "file" : "files"}`;
@@ -86647,10 +87016,6 @@ var Keeper = class {
     const head2 = await this.#options.head();
     const all2 = queued.flatMap((q) => q.files);
     const lock2 = acquireDaemonLock(lockFileFor(commonDir, worktreeId));
-    if (lock2 === null) {
-      this.#tell(`${notKept(all2.length)}: a daemon runs in this worktree, and it keeps its own`);
-      return;
-    }
     let written2 = 0;
     let changed2 = 0;
     let freed = false;
@@ -86660,13 +87025,21 @@ var Keeper = class {
       const opened2 = openStore(commonDir);
       if (isStoreOpenFailure(opened2)) throw new Error(`the store did not open: ${opened2.reason}`);
       store = opened2;
-      const codeOpened = openCodeStore(commonDir, policy);
-      if (isCodeStoreOpenFailure(codeOpened)) {
-        throw new Error(`the code store did not open: ${codeOpened.reason}`);
+      let writer;
+      if (lock2 === null) {
+        const sent = sentWriter(store, worktreeId, now(), this.#options.daemonWaits);
+        if (sent === null) {
+          this.#tell(`${notKept(all2.length)}: ${DAEMON_KEEPS_ITS_OWN}`);
+          return;
+        }
+        writer = sent;
+      } else {
+        code = openCode(commonDir, policy);
+        writer = writeHere({ store, code }, worktreeId, now);
       }
-      code = codeOpened;
       const boundMs = this.#options.busyBoundMs ?? KEEP_BUSY_BOUND_MS;
       const wait = new StoreWait({ now, boundMs, tell: (text3) => this.#tell(text3) });
+      const check3 = new InputCheck();
       const databases = databasesOf(commonDir);
       const giveUp2 = (database) => wait.giveUp(database, all2.slice(written2 + changed2));
       const revision = store.revisions.latest(worktreeId)?.number ?? 0;
@@ -86676,13 +87049,13 @@ var Keeper = class {
           revision,
           commit: head2.head,
           dirty: head2.dirty,
-          runId: `gate-${randomUUID8()}`,
+          runId: `gate-${randomUUID9()}`,
           recordedAt: now()
         };
-        const stores = { store, code, keys: pending.keys };
+        const stores = { store, keys: pending.keys, writer };
         for (const file of files5) {
-          const steady = async () => !wait.waited || (await steadyOf([file], pending)).length > 0;
-          const at2 = { file, report: report4, provenance, now, databases, giveUp: giveUp2, steady };
+          const steady = async () => (await steadyOf([file], pending)).length > 0;
+          const at2 = { file, report: report4, provenance, databases, giveUp: giveUp2, check: check3, steady };
           const outcome2 = await keepFile(stores, at2);
           if (outcome2 === "spent") {
             this.#tell(wait.spent(all2.length - written2, changed2));
@@ -86696,12 +87069,17 @@ var Keeper = class {
         }
       }
       wait.done({ written: written2, changed: changed2, freed });
+      if (!wait.waited && changed2 > 0) this.#tell(changedAfterLoss(changed2));
     } catch (error) {
-      this.#tell(`${notKept(all2.length - written2)}: ${messageOf2(error)}`);
+      const left = all2.length - written2;
+      const unknown = error instanceof KeepUnknown;
+      this.#tell(
+        unknown ? perhapsKept(left, error.message) : `${notKept(left)}: ${messageOf2(error)}`
+      );
     } finally {
       code?.close();
       store?.close();
-      lock2.release();
+      lock2?.release();
     }
   }
   #tell(text3) {
@@ -86710,6 +87088,11 @@ var Keeper = class {
     this.#options.note?.(text3);
   }
 };
+function openCode(commonDir, policy) {
+  const code = openCodeStore(commonDir, policy);
+  if (isCodeStoreOpenFailure(code)) throw new Error(`the code store did not open: ${code.reason}`);
+  return code;
+}
 async function steadyOf(files5, pending) {
   const paths = new Set(files5.flatMap((f) => f.paths));
   const { changed: changed2 } = await changedSince2(pending.snapshot, paths, pending.hasher);
@@ -87463,7 +87846,7 @@ async function waitForPass(root, read5, options) {
   try {
     for (; ; ) {
       const left = settleMs - (performance.now() - started2);
-      await sleep11(Math.max(0, Math.min(pollMs, left)));
+      await sleep12(Math.max(0, Math.min(pollMs, left)));
       const next = read5();
       if (!("report" in next) || !hasPending(next.report) || left <= pollMs) return next;
     }
@@ -89523,9 +89906,9 @@ function codexStatusLine(cwd, env) {
 init_git_layout();
 init_notes();
 init_events();
-import { randomUUID as randomUUID14 } from "node:crypto";
+import { randomUUID as randomUUID15 } from "node:crypto";
 import { dirname as dirname59 } from "node:path";
-import { setTimeout as sleep15 } from "node:timers/promises";
+import { setTimeout as sleep16 } from "node:timers/promises";
 import { fileURLToPath as fileURLToPath19 } from "node:url";
 
 // src/core/presence/lock-events.ts
@@ -89649,26 +90032,22 @@ import { Worker as Worker2 } from "node:worker_threads";
 // src/core/daemon/handlers.ts
 init_common();
 init_daemon();
-import { randomUUID as randomUUID11 } from "node:crypto";
+import { randomUUID as randomUUID12 } from "node:crypto";
 
-// src/core/daemon/import-desk.ts
+// src/core/daemon/request-desk.ts
 init_common();
-import { randomUUID as randomUUID9 } from "node:crypto";
+import { randomUUID as randomUUID10 } from "node:crypto";
 var REMEMBERED = 16;
-var ImportDesk = class {
+var RequestDesk = class {
   #context;
-  #imports = /* @__PURE__ */ new Map();
+  #states = /* @__PURE__ */ new Map();
   constructor(context) {
     this.#context = context;
   }
-  /** The answer to `request`. A stopping daemon takes no new import. */
-  answer(request, phase) {
-    if (request.type === "import-status") return this.status(request);
-    if (phase === "stopping") return errorResponse("daemon is stopping");
-    return this.import(request);
-  }
-  import(request) {
+  /** Takes `request`, unless it names another worktree or store schema, or the daemon stops. */
+  take(request, phase) {
     const { worktreeId, storeSchema } = this.#context;
+    if (phase === "stopping") return errorResponse("daemon is stopping");
     if (request.worktreeId !== worktreeId) {
       return errorResponse(`this daemon serves worktree ${worktreeId}, not ${request.worktreeId}`);
     }
@@ -89677,14 +90056,17 @@ var ImportDesk = class {
         `the daemon's store is at schema ${storeSchema}, not ${request.storeSchema}`
       );
     }
-    const requestId = randomUUID9();
+    const requestId = this.#context.idOf?.(request) ?? randomUUID10();
+    const taken4 = this.#states.get(requestId);
+    if (taken4 !== void 0) return this.#answer(requestId, taken4.outcome);
     const state = { outcome: null };
-    this.#imports.set(requestId, state);
-    for (const old of this.#imports.keys()) {
-      if (this.#imports.size <= REMEMBERED) break;
-      this.#imports.delete(old);
+    this.#states.set(requestId, state);
+    const remembered = this.#context.remembered ?? REMEMBERED;
+    for (const old of this.#states.keys()) {
+      if (this.#states.size <= remembered) break;
+      this.#states.delete(old);
     }
-    this.#context.requestImport(request).then(
+    this.#context.run(request).then(
       (outcome2) => {
         state.outcome = outcome2;
       },
@@ -89692,17 +90074,19 @@ var ImportDesk = class {
         state.outcome = { failed: error instanceof Error ? error.message : String(error) };
       }
     );
-    return importAnswer(requestId, state.outcome);
+    return this.#answer(requestId, state.outcome);
   }
-  status(request) {
-    const state = this.#imports.get(request.requestId);
-    if (state === void 0) return errorResponse(`unknown request id ${request.requestId}`);
-    return importAnswer(request.requestId, state.outcome);
+  /** How request `requestId` goes. */
+  status(requestId) {
+    const state = this.#states.get(requestId);
+    if (state === void 0) return errorResponse(`unknown request id ${requestId}`);
+    return this.#answer(requestId, state.outcome);
+  }
+  #answer(requestId, outcome2) {
+    const { type } = this.#context;
+    return { schemaVersion: PAYLOAD_SCHEMA_VERSION, ok: true, type, requestId, outcome: outcome2 };
   }
 };
-function importAnswer(requestId, outcome2) {
-  return { schemaVersion: PAYLOAD_SCHEMA_VERSION, ok: true, type: "import", requestId, outcome: outcome2 };
-}
 
 // src/core/daemon/handlers.ts
 init_run_group();
@@ -89722,7 +90106,7 @@ init_version();
 
 // src/core/daemon/write-desk.ts
 init_common();
-import { randomUUID as randomUUID10 } from "node:crypto";
+import { randomUUID as randomUUID11 } from "node:crypto";
 var LEASE_TTL_MS = 5e3;
 var STOPPING = "daemon is stopping";
 var REMEMBERED2 = 64;
@@ -89759,7 +90143,7 @@ var WriteDesk = class {
     if (other !== null) return other;
     const current2 = this.#current();
     if (current2 !== null) return this.#leaseAnswer(null, current2.holder);
-    const token = randomUUID10();
+    const token = randomUUID11();
     this.#lease = {
       token,
       holder: request.holder,
@@ -89795,7 +90179,7 @@ var WriteDesk = class {
       lease.pending++;
       if (request.release) lease.releasing = true;
     }
-    const requestId = randomUUID10();
+    const requestId = randomUUID11();
     const state = { written: null, error: null };
     this.#writes.set(requestId, state);
     for (const old of this.#writes.keys()) {
@@ -89887,8 +90271,17 @@ function createHandlers(context) {
   const holdRequests = /* @__PURE__ */ new Map();
   const { requestWrite, storeSchema } = context;
   const writes = requestWrite === void 0 || storeSchema === void 0 ? null : new WriteDesk({ worktreeId: context.worktreeId, storeSchema, requestWrite });
-  const { requestImport } = context;
-  const imports = requestImport === void 0 || storeSchema === void 0 ? null : new ImportDesk({ worktreeId: context.worktreeId, storeSchema, requestImport });
+  const { requestImport, requestKeep, worktreeId } = context;
+  const imports = requestImport === void 0 || storeSchema === void 0 ? null : new RequestDesk({ type: "import", worktreeId, storeSchema, run: requestImport });
+  const keeps = requestKeep === void 0 || storeSchema === void 0 ? null : new RequestDesk({
+    type: "keep",
+    worktreeId,
+    storeSchema,
+    run: requestKeep,
+    // Review 0.1.450 B2: a lost answer is asked again by the gate's own id.
+    idOf: (request) => request.id,
+    remembered: KEEPS_REMEMBERED
+  });
   const runAll = (requestId, state) => {
     const answer4 = {
       schemaVersion: PAYLOAD_SCHEMA_VERSION,
@@ -89933,9 +90326,7 @@ function createHandlers(context) {
     if (isWriteRequest(request)) {
       return writes?.answer(request, context.phase()) ?? errorResponse(NO_WRITES);
     }
-    if (isImportRequest(request)) {
-      return imports?.answer(request, context.phase()) ?? errorResponse(NO_IMPORTS);
-    }
+    if (isDeskRequest(request)) return deskAnswer(request, { imports, keeps }, context.phase());
     switch (request.type) {
       case "ping":
         return {
@@ -89961,7 +90352,7 @@ function createHandlers(context) {
       case "run-all": {
         if (context.phase() === "stopping") return errorResponse("daemon is stopping");
         context.onActivity();
-        const requestId = randomUUID11();
+        const requestId = randomUUID12();
         const state = { checkpoint: null, error: null };
         remember2(requests, requestId, state);
         const full = {
@@ -89987,7 +90378,7 @@ function createHandlers(context) {
       case "run-slow": {
         if (context.phase() === "stopping") return errorResponse("daemon is stopping");
         context.onActivity();
-        const requestId = randomUUID11();
+        const requestId = randomUUID12();
         const state = { requested: null, error: null };
         remember2(slowRequests, requestId, state);
         const request2 = context.requestSlowSuite?.() ?? Promise.reject(new Error(SLOW_NOT_SUPPORTED));
@@ -90020,7 +90411,7 @@ function createHandlers(context) {
         if (context.phase() === "stopping") return errorResponse("daemon is stopping");
         if (context.requestSync === void 0) return errorResponse("this daemon cannot sync");
         context.onActivity();
-        const requestId = randomUUID11();
+        const requestId = randomUUID12();
         const state = { revision: null, readers: null, error: null };
         remember2(syncRequests, requestId, state);
         context.requestSync(request.paths).then(
@@ -90042,7 +90433,7 @@ function createHandlers(context) {
       case "hold": {
         if (context.phase() === "stopping") return errorResponse("daemon is stopping");
         if (context.requestHold === void 0) return errorResponse("this daemon cannot hold");
-        const requestId = randomUUID11();
+        const requestId = randomUUID12();
         const state = { holding: null, error: null };
         remember2(holdRequests, requestId, state);
         context.requestHold().then(
@@ -90096,7 +90487,21 @@ function createHandlers(context) {
   };
 }
 var NO_WRITES = "this daemon takes no writes";
+function isDeskRequest(request) {
+  return isImportRequest(request) || isKeepRequest(request);
+}
+function deskAnswer(request, desks, phase) {
+  const { imports, keeps } = desks;
+  if (isImportRequest(request)) {
+    if (imports === null) return errorResponse(NO_IMPORTS);
+    return request.type === "import" ? imports.take(request, phase) : imports.status(request.requestId);
+  }
+  if (keeps === null) return errorResponse(NO_KEEPS);
+  return request.type === "keep" ? keeps.take(request, phase) : keeps.status(request.requestId);
+}
 var NO_IMPORTS = "this daemon takes no imports";
+var NO_KEEPS = "this daemon takes no kept files";
+var KEEPS_REMEMBERED = 1024;
 function remember2(requests, requestId, state) {
   requests.set(requestId, state);
   for (const old of requests.keys()) {
@@ -90265,7 +90670,8 @@ function guarded(events) {
     requestHold,
     requestResume,
     requestWrite,
-    requestImport
+    requestImport,
+    requestKeep
   } = events;
   return {
     onActivity: safe(events.onActivity),
@@ -90281,6 +90687,7 @@ function guarded(events) {
     ...requestResume === void 0 ? {} : { requestResume: asked(requestResume) },
     ...requestWrite === void 0 ? {} : { requestWrite: asked(requestWrite) },
     ...requestImport === void 0 ? {} : { requestImport: asked(requestImport) },
+    ...requestKeep === void 0 ? {} : { requestKeep: asked(requestKeep) },
     onStop: safe(events.onStop),
     onStepDown: safe(events.onStepDown),
     onFailure: safe(events.onFailure),
@@ -90289,6 +90696,13 @@ function guarded(events) {
 }
 var NO_WRITES2 = "this daemon takes no writes";
 var NO_IMPORTS2 = "this daemon takes no imports";
+var NO_KEEPS2 = "this daemon takes no kept files";
+function relay(run7, missing2, post) {
+  (run7 ?? Promise.reject(new Error(missing2))).then(
+    post,
+    (error) => post({ failed: error instanceof Error ? error.message : String(error) })
+  );
+}
 async function inWorker(worker, identity4, events) {
   const post = (message3) => worker.postMessage(message3);
   let listening2 = false;
@@ -90394,13 +90808,17 @@ async function inWorker(worker, identity4, events) {
           );
           return;
         case "import":
-          (events.requestImport?.(message3.request) ?? Promise.reject(new Error(NO_IMPORTS2))).then(
-            (outcome2) => post({ type: "import-result", id: message3.id, outcome: outcome2 }),
-            (error) => post({
-              type: "import-result",
-              id: message3.id,
-              outcome: { failed: error instanceof Error ? error.message : String(error) }
-            })
+          relay(
+            events.requestImport?.(message3.request),
+            NO_IMPORTS2,
+            (outcome2) => post({ type: "import-result", id: message3.id, outcome: outcome2 })
+          );
+          return;
+        case "keep":
+          relay(
+            events.requestKeep?.(message3.request),
+            NO_KEEPS2,
+            (outcome2) => post({ type: "keep-result", id: message3.id, outcome: outcome2 })
           );
           return;
         case "stop":
@@ -90471,7 +90889,8 @@ async function inThread(identity4, events) {
       onStop: events.onStop,
       onStepDown: events.onStepDown,
       ...events.requestWrite === void 0 || identity4.storeSchema === void 0 ? {} : { requestWrite: events.requestWrite, storeSchema: identity4.storeSchema },
-      ...events.requestImport === void 0 || identity4.storeSchema === void 0 ? {} : { requestImport: events.requestImport, storeSchema: identity4.storeSchema }
+      ...events.requestImport === void 0 || identity4.storeSchema === void 0 ? {} : { requestImport: events.requestImport, storeSchema: identity4.storeSchema },
+      ...events.requestKeep === void 0 || identity4.storeSchema === void 0 ? {} : { requestKeep: events.requestKeep, storeSchema: identity4.storeSchema }
     })
   );
   return {
@@ -90501,7 +90920,7 @@ init_git_layout();
 init_events();
 import { existsSync as existsSync37, realpathSync as realpathSync14 } from "node:fs";
 import { join as join93 } from "node:path";
-import { setTimeout as sleep12 } from "node:timers/promises";
+import { setTimeout as sleep13 } from "node:timers/promises";
 init_connection();
 init_open();
 init_paths();
@@ -90640,9 +91059,9 @@ async function openDaemon(rootArgument, now, awaitLockMs, vacantLockWaitMs = VAC
     return giveUp({ worktreeId, store, lock: lock2 }, now, () => {
     }, text3);
   }
-  const { scratch, refusal: refusal2, leftovers: leftovers2 } = prepared;
-  if (refusal2 !== null) {
-    writeNote(store, worktreeId, { at: now(), revision: null, text: refusal2 }, () => {
+  const { scratch, refusal: refusal3, leftovers: leftovers2 } = prepared;
+  if (refusal3 !== null) {
+    writeNote(store, worktreeId, { at: now(), revision: null, text: refusal3 }, () => {
     });
   }
   return { root, commonDir, worktreeId, store, storeFile: storeFile2, lock: lock2, scratch, leftovers: leftovers2 };
@@ -90728,7 +91147,7 @@ async function lastDaemonVersion(commonDir, worktreeId, withinMs) {
     if (!("unread" in last) || !last.busy || performance.now() >= deadline) {
       return last;
     }
-    await sleep12(10);
+    await sleep13(10);
   }
 }
 function readLastDaemon(commonDir, worktreeId, busyTimeoutMs) {
@@ -91086,9 +91505,9 @@ async function importInDaemon(context, request) {
     return { failed: `${file} changed after squeal import read it; run the command again` };
   }
   const bundle = decodeBundle(bytes2);
-  const refusal2 = typeof bundle === "string" ? bundle : importRefusal(bundle);
-  if (typeof bundle === "string" || refusal2 !== null) {
-    return { failed: `refuses ${file}: ${refusal2}` };
+  const refusal3 = typeof bundle === "string" ? bundle : importRefusal(bundle);
+  if (typeof bundle === "string" || refusal3 !== null) {
+    return { failed: `refuses ${file}: ${refusal3}` };
   }
   const blobs = await exportCommitBlobs(context.root, bundle.header.commit);
   let sliceFrom = Date.now();
@@ -91129,6 +91548,59 @@ async function exportCommitBlobs(root, commit) {
     return await committedBlobs(root, commit);
   } catch {
     return null;
+  }
+}
+
+// src/core/daemon/keep-request.ts
+init_parts();
+init_record();
+init_open2();
+init_hold();
+init_store_results();
+init_busy();
+init_connection();
+async function keepInDaemon(context, request) {
+  const { write: write3 } = request;
+  if (write3.kind === "coverage") {
+    const code = openCodeStore(context.commonDir, context.policy(), {
+      busyTimeoutMs: BUSY_SLICE_MS
+    });
+    if (isCodeStoreOpenFailure(code)) {
+      return { failed: `the code store did not open: ${code.reason}` };
+    }
+    try {
+      const key3 = { resultKey: write3.key, providerVersion: COVERAGE_RECORD_VERSION };
+      const shared2 = shareRecord(write3.record, COVERAGE_RECORD_VERSION);
+      return await once3(
+        context,
+        "a kept file's coverage record",
+        () => code.coverage.putParts(key3, shared2, context.now())
+      );
+    } finally {
+      code.close();
+    }
+  }
+  const { store, worktreeId, now } = context;
+  const keys = {
+    environmentFiles: () => write3.environmentFiles
+  };
+  return once3(
+    context,
+    "a kept file's results",
+    () => storeResults(
+      { store, keys, worktreeId, now },
+      write3.records,
+      healsUnheld(store, write3.paths)
+    )
+  );
+}
+async function once3(context, what, write3) {
+  try {
+    await context.writes.write(what, write3, () => true);
+    return { kept: true };
+  } catch (error) {
+    if (isBusy(error)) return { kept: false };
+    throw error;
   }
 }
 
@@ -92018,7 +92490,7 @@ var Daemon = class {
   #socketPath;
   #startedAt;
   /** Drawn at start: with the version and `#startedAt`, its incarnation (task 001-270). */
-  #token = randomUUID14();
+  #token = randomUUID15();
   /** The incarnation registered before this daemon's (`predecessorIncarnation`, task 001-268). */
   #predecessor = void 0;
   /** Its start resumes a rest (`resumesRest`, read before it registers; row 011-91). */
@@ -92656,6 +93128,18 @@ var Daemon = class {
           () => writeBatch(this.opened.store, decodeBatch(batch)),
           within(SENT_WRITE_BOUND_MS, () => this.#phase === "stopping")
         ),
+        // Row 021-20, part two: one try of a write of a file the code gate keeps.
+        requestKeep: (request) => keepInDaemon(
+          {
+            commonDir: this.opened.commonDir,
+            worktreeId: this.opened.worktreeId,
+            store: this.opened.store,
+            policy: () => this.#policy,
+            writes: this.#writes,
+            now: this.#now
+          },
+          request
+        ),
         // Spec 021 D15 (row 021-20): `squeal import`'s export, imported here in slices.
         requestImport: (request) => importInDaemon(
           {
@@ -92829,7 +93313,7 @@ var Daemon = class {
       () => true
     );
     this.#cancelling = (async () => {
-      const grace = sleep15(CANCEL_GRACE_MS, false, { ref: false });
+      const grace = sleep16(CANCEL_GRACE_MS, false, { ref: false });
       if (await Promise.race([closed, grace])) return;
       const stop2 = await this.#children.stopMarked().catch(() => null);
       if (stop2 !== null) this.#note(stop2.text, stop2.stopped);
@@ -94350,9 +94834,9 @@ init_git_layout();
 init_command_hold();
 init_hold_rows();
 import { spawn as spawn14 } from "node:child_process";
-import { randomUUID as randomUUID15 } from "node:crypto";
+import { randomUUID as randomUUID16 } from "node:crypto";
 import { constants as constants10 } from "node:os";
-import { setTimeout as sleep16 } from "node:timers/promises";
+import { setTimeout as sleep17 } from "node:timers/promises";
 var HOLD_WAIT_MS = 3e3;
 var USAGE5 = "usage: squeal hold [--max <duration>] -- <command> [args...]\n";
 var FORWARDED3 = ["SIGINT", "SIGTERM", "SIGHUP"];
@@ -94458,7 +94942,7 @@ function parse12(args2) {
 }
 async function begin(root, parsed3, since, boundMs) {
   const held3 = {
-    token: randomUUID15(),
+    token: randomUUID16(),
     since,
     until: since + parsed3.maxMs,
     command: parsed3.command.join(" ")
@@ -94481,7 +94965,7 @@ async function holdDaemon(root, ask2, waitMs) {
   }
   if (answer4.type !== "hold") return "";
   for (let state = answer4; !state.settled && performance.now() < deadline; ) {
-    await sleep16(50);
+    await sleep17(50);
     const next = await ask2(root, { type: "hold-status", requestId: answer4.requestId }).catch(
       () => null
     );
@@ -94540,8 +95024,8 @@ init_transfer_import();
 
 // src/cli/import-daemon.ts
 init_heartbeat();
-import { setTimeout as sleep17 } from "node:timers/promises";
-var STATUS_PAUSES_MS2 = [20, 50, 100, 250];
+import { setTimeout as sleep18 } from "node:timers/promises";
+var STATUS_PAUSES_MS3 = [20, 50, 100, 250];
 async function importThroughDaemon(store, sent, now) {
   const record2 = store.worktrees.get(sent.worktreeId)?.daemon ?? null;
   if (record2 === null || !heartbeatFresh(record2, now)) return null;
@@ -94551,7 +95035,7 @@ async function importThroughDaemon(store, sent, now) {
   if (!isImport(answer4)) return null;
   let state = answer4;
   for (let attempt = 0; state.outcome === null; attempt++) {
-    await sleep17(STATUS_PAUSES_MS2[Math.min(attempt, STATUS_PAUSES_MS2.length - 1)]);
+    await sleep18(STATUS_PAUSES_MS3[Math.min(attempt, STATUS_PAUSES_MS3.length - 1)]);
     const next = await askDaemon(socket, {
       type: "import-status",
       requestId: answer4.requestId
@@ -94588,9 +95072,9 @@ ${USAGE6}`);
     return 1;
   }
   const bundle = decodeBundle(bytes2);
-  const refusal2 = typeof bundle === "string" ? bundle : importRefusal(bundle);
-  if (typeof bundle === "string" || refusal2 !== null) {
-    io.stderr(`squeal import: refuses ${file}: ${refusal2}
+  const refusal3 = typeof bundle === "string" ? bundle : importRefusal(bundle);
+  if (typeof bundle === "string" || refusal3 !== null) {
+    io.stderr(`squeal import: refuses ${file}: ${refusal3}
 `);
     return 1;
   }
@@ -96884,7 +97368,7 @@ init_user_config();
 init_git_layout();
 import { homedir as homedir5 } from "node:os";
 import { isAbsolute as isAbsolute25, resolve as resolve38 } from "node:path";
-import { setTimeout as sleep18 } from "node:timers/promises";
+import { setTimeout as sleep19 } from "node:timers/promises";
 
 // src/core/ps/darwin.ts
 init_source2();
@@ -98494,10 +98978,10 @@ function daemonOf(d, all2, name3) {
   else if (d.work.lastUsedAt === null && !all2.has(`${of} work`))
     name3(`${of} lastUsedAt`, "its store records no last use of its own (D9)");
 }
-function waitedFor2(reaped, once3) {
+function waitedFor2(reaped, once4) {
   if (reaped === 0) return "";
-  const whom = reaped < once3 ? `${reaped} of them` : once3 === 1 ? "it" : "them";
-  return `; the ancestor that waited for ${whom} counts ${once3 === 1 ? "its" : "their"} CPU`;
+  const whom = reaped < once4 ? `${reaped} of them` : once4 === 1 ? "it" : "them";
+  return `; the ancestor that waited for ${whom} counts ${once4 === 1 ? "its" : "their"} CPU`;
 }
 function afterParent(n) {
   return n === 1 ? "after its parent did, or under one whose children's times grew too little, so no sample shows which process waited for it" : "after their parents did, or under ones whose children's times grew too little, so no sample shows which processes waited for them";
@@ -99100,7 +99584,7 @@ ${USAGE7}`);
       repo: parsed3.repo,
       sampleMs: SAMPLE_MS,
       now: io.now ?? Date.now,
-      wait: options.wait ?? ((ms2) => sleep18(ms2))
+      wait: options.wait ?? ((ms2) => sleep19(ms2))
     });
   } catch (error) {
     io.stderr(
@@ -100429,7 +100913,7 @@ Usage: ${REACH_USAGE}
 // src/cli/remove.ts
 import { existsSync as existsSync66, lstatSync as lstatSync10, readdirSync as readdirSync41, readFileSync as readFileSync78, rmSync as rmSync33 } from "node:fs";
 import { basename as basename40, dirname as dirname62, join as join168 } from "node:path";
-import { setTimeout as sleep19 } from "node:timers/promises";
+import { setTimeout as sleep20 } from "node:timers/promises";
 init_paths3();
 init_scratch();
 init_git();
@@ -100600,7 +101084,7 @@ async function holdDaemonLocks(commonDir, waitMs) {
         for (const lock3 of held3) lock3.release();
         return { held: name3.slice(0, -".sqlite".length), lockPath };
       }
-      await sleep19(50);
+      await sleep20(50);
     }
   }
   return held3;
@@ -100861,7 +101345,7 @@ async function tellDaemon(root) {
 
 // src/cli/run.ts
 init_reverse_index();
-import { setTimeout as sleep24 } from "node:timers/promises";
+import { setTimeout as sleep25 } from "node:timers/promises";
 init_text();
 init_scheduler();
 
@@ -100870,7 +101354,7 @@ init_policy2();
 init_run_group();
 init_slow();
 init_text();
-import { setTimeout as sleep22 } from "node:timers/promises";
+import { setTimeout as sleep23 } from "node:timers/promises";
 
 // src/cli/group-pending.ts
 init_git_layout();
@@ -100977,7 +101461,7 @@ init_git_layout();
 init_reverse_index();
 init_install();
 init_slow();
-import { setTimeout as sleep20 } from "node:timers/promises";
+import { setTimeout as sleep21 } from "node:timers/promises";
 init_text();
 init_scheduler();
 var STORE_POLL_MS = 1e3;
@@ -101077,7 +101561,7 @@ async function ended2(wait, isOwn2) {
     if (polls % PING_POLLS === PING_POLLS - 1 && await askWithin(wait.socketPath, { type: "ping" }, wait.deadline) === null) {
       return { kind: "stopped" };
     }
-    await sleep20(Math.max(0, Math.min(STORE_POLL_MS, wait.deadline - Date.now())));
+    await sleep21(Math.max(0, Math.min(STORE_POLL_MS, wait.deadline - Date.now())));
   }
 }
 function pollGroup(store, id, isOwn2, deadline) {
@@ -101223,7 +101707,7 @@ init_moment();
 init_records2();
 init_source();
 init_text();
-import { setTimeout as sleep21 } from "node:timers/promises";
+import { setTimeout as sleep22 } from "node:timers/promises";
 var RECORD_WAIT_MS3 = 1e4;
 var POLL_MS2 = 100;
 var STORE_POLL_MS2 = 1e3;
@@ -101276,7 +101760,7 @@ async function taken2(root, socketPath, group, deadline) {
     const pending = answer4;
     const late = () => deadlineText(root, pending, "run the linter yourself");
     if (Date.now() > deadline) return late();
-    await sleep21(Math.max(0, Math.min(POLL_MS2, deadline - Date.now())));
+    await sleep22(Math.max(0, Math.min(POLL_MS2, deadline - Date.now())));
     const next = await askWithin(socketPath, { type: "run-group-status", requestId }, deadline);
     if (next === null) return "the daemon stopped before taking the request";
     if ("unanswered" in next) {
@@ -101305,7 +101789,7 @@ async function linted(root, socketPath, group, deadline) {
       const pong = await askWithin(socketPath, { type: "ping" }, deadline);
       if (pong === null) return { kind: "stopped" };
     }
-    await sleep21(Math.max(0, Math.min(STORE_POLL_MS2, deadline - Date.now())));
+    await sleep22(Math.max(0, Math.min(STORE_POLL_MS2, deadline - Date.now())));
   }
 }
 function readGroup(root, group) {
@@ -101466,7 +101950,7 @@ async function takenRequest(socketPath, first, deadline, unsupported = GROUP_NOT
     }
     const { requestId } = state;
     if (Date.now() > deadline) return { pending: state };
-    await sleep22(Math.max(0, Math.min(POLL_MS3, deadline - Date.now())));
+    await sleep23(Math.max(0, Math.min(POLL_MS3, deadline - Date.now())));
     const next = await askWithin(socketPath, { type: "run-group-status", requestId }, deadline);
     if (next === null) return "the daemon stopped before taking the request";
     if ("unanswered" in next) {
@@ -101485,7 +101969,7 @@ function andList2(words) {
 }
 
 // src/cli/run-slow.ts
-import { setTimeout as sleep23 } from "node:timers/promises";
+import { setTimeout as sleep24 } from "node:timers/promises";
 init_text();
 
 // src/cli/wait-arg.ts
@@ -101572,7 +102056,7 @@ async function taken3(socketPath, first, io, deadline) {
       return null;
     }
     if (Date.now() > deadline) return { pending: state.requestId };
-    await sleep23(POLL_MS4);
+    await sleep24(POLL_MS4);
     const next = await askDaemon(socketPath, {
       type: "run-slow-status",
       requestId: state.requestId
@@ -101717,7 +102201,7 @@ async function recorded(socketPath, first, deadline) {
     if (state.checkpoint !== null) return { checkpoint: state.checkpoint, owner: state.owner };
     if (state.error !== null) return `run --all failed: ${state.error}`;
     if (Date.now() > deadline) return null;
-    await sleep24(POLL_MS5);
+    await sleep25(POLL_MS5);
     const next = await askDaemon(socketPath, {
       type: "run-all-status",
       requestId: first.requestId
@@ -101774,7 +102258,7 @@ async function ended3(root, socketPath, checkpoint, deadline) {
     if (polls % PING_POLLS3 === PING_POLLS3 - 1 && await askDaemon(socketPath, { type: "ping" }) === null) {
       return { kind: "stopped" };
     }
-    await sleep24(Math.max(0, Math.min(STORE_POLL_MS3, deadline - Date.now())));
+    await sleep25(Math.max(0, Math.min(STORE_POLL_MS3, deadline - Date.now())));
   }
 }
 function pollCheckpoint(store, checkpoint, deadline) {
@@ -102091,7 +102575,7 @@ init_escaped();
 init_low_priority();
 init_outlived();
 init_terminate();
-import { setTimeout as sleep25 } from "node:timers/promises";
+import { setTimeout as sleep26 } from "node:timers/promises";
 function markOf(options) {
   const value = options.childEnv?.[CHILD_VARIABLE];
   if (value === void 0) return null;
@@ -102131,7 +102615,7 @@ async function workersGone(self, mark, since) {
   const deadline = Date.now() + GRACE_MS;
   left = left.filter((entry4) => !exited(entry4));
   while (left.length > 0 && Date.now() < deadline) {
-    await sleep25(25);
+    await sleep26(25);
     left = left.filter((entry4) => !exited(entry4));
   }
 }
@@ -102330,7 +102814,7 @@ init_stored();
 init_open();
 
 // src/cli/start-ready.ts
-import { setTimeout as sleep26 } from "node:timers/promises";
+import { setTimeout as sleep27 } from "node:timers/promises";
 var SPAWN_WAIT_MS = 3e4;
 async function spawnedFailed(root, { pid, ended: ended4 }, io) {
   const lives = () => !ended4();
@@ -102356,7 +102840,7 @@ async function served(root, deadline, accepts, lives = () => true) {
     if (answered2 && registered(root, probe2.ping)) return "served";
     if (ended4 && !answered2) return "ended";
     if (Date.now() > deadline) return answered2 ? "served" : "starting";
-    await sleep26(50);
+    await sleep27(50);
   }
 }
 function registered(root, ping2) {
@@ -102366,14 +102850,14 @@ function registered(root, ping2) {
 // src/cli/stop.ts
 import { realpathSync as realpathSync31 } from "node:fs";
 import { resolve as resolve42 } from "node:path";
-import { setTimeout as sleep29 } from "node:timers/promises";
+import { setTimeout as sleep30 } from "node:timers/promises";
 init_git_layout();
 init_paths();
 
 // src/cli/stop-removed.ts
 import { realpathSync as realpathSync30 } from "node:fs";
 import { basename as basename41, dirname as dirname63, join as join169 } from "node:path";
-import { setTimeout as sleep28 } from "node:timers/promises";
+import { setTimeout as sleep29 } from "node:timers/promises";
 init_paths3();
 init_terminate();
 init_git_layout();
@@ -102383,12 +102867,12 @@ init_open();
 init_paths();
 
 // src/cli/stop-waits.ts
-import { setTimeout as sleep27 } from "node:timers/promises";
+import { setTimeout as sleep28 } from "node:timers/promises";
 async function socketClosed(socketPath, ms2) {
   const deadline = Date.now() + ms2;
   while (await askDaemon(socketPath, { type: "ping" }).catch(() => "busy") !== null) {
     if (Date.now() > deadline) return false;
-    await sleep27(50);
+    await sleep28(50);
   }
   return true;
 }
@@ -102397,7 +102881,7 @@ async function leftoversGone(marks, ms2) {
   for (; ; ) {
     const left = await leftovers(marks);
     if (left.length === 0 || Date.now() > deadline) return left;
-    await sleep27(100);
+    await sleep28(100);
   }
 }
 function refusedLine2(error) {
@@ -102583,7 +103067,7 @@ async function processEnded(pid, start2, ms2) {
     const gone4 = start2 === null ? processGone(pid) : statOf(pid)?.start !== start2;
     if (gone4) return true;
     if (Date.now() > deadline) return false;
-    await sleep28(50);
+    await sleep29(50);
   }
 }
 
@@ -102787,7 +103271,7 @@ async function lockFreed(root, daemon, ms2) {
     if (missing(path) || daemon !== null && gone3(root, daemon)) return { state: "free" };
     const probe2 = marked3(path, daemon) ?? probeLock(path);
     if (probe2.state === "free" || Date.now() > deadline) return probe2;
-    await sleep29(50);
+    await sleep30(50);
   }
 }
 function marked3(path, daemon) {
@@ -103681,7 +104165,7 @@ function parseSetupArgs(args2) {
 init_git_layout();
 init_reverse_index();
 init_heartbeat();
-import { setTimeout as sleep30 } from "node:timers/promises";
+import { setTimeout as sleep31 } from "node:timers/promises";
 async function readNamedSnapshot(cwd, paths, options) {
   const started2 = performance.now();
   const elapsed = () => performance.now() - started2;
@@ -103705,7 +104189,7 @@ async function readNamedSnapshot(cwd, paths, options) {
       const state = sync?.current().state;
       const left = settleMs - elapsed();
       if (state === "synced" || left <= 0) break;
-      await (state === "unsupported" ? sleep30(left) : pollPause(Math.min(pollMs, left), sync));
+      await (state === "unsupported" ? sleep31(left) : pollPause(Math.min(pollMs, left), sync));
     }
     const read5 = withStatusStore(
       cwd,
@@ -103978,11 +104462,11 @@ function updateTargets(cwd, env, io) {
       versionAfter: () => piPackage(env)?.version ?? null
     });
   }
-  const openCode = openCodePackage(env);
-  if (onPath3("opencode", env) && openCode !== null) {
+  const openCode2 = openCodePackage(env);
+  if (onPath3("opencode", env) && openCode2 !== null) {
     targets.push({
       name: "OpenCode: Squeal",
-      version: openCode.version,
+      version: openCode2.version,
       update: () => runInstallSh("--opencode", cwd, env, io),
       versionAfter: () => openCodePackage(env)?.version ?? null
     });
