@@ -230,6 +230,8 @@ export class Keeper {
     const lock = acquireDaemonLock(lockFileFor(commonDir, worktreeId));
     let written = 0;
     let changed = 0;
+    /** The files a merge held by their write: among `changed`. */
+    const held: Kept[] = [];
     let freed = false;
     let store: Store | null = null;
     let code: CodeStore | null = null;
@@ -267,8 +269,14 @@ export class Keeper {
         };
         const stores = { store, keys: pending.keys, writer };
         for (const file of files) {
-          const steady = async () => (await this.#steady(pending, [file])).length > 0;
-          const at = { file, report, provenance, databases, giveUp, check, steady };
+          const steady = async () =>
+            (await stillAsRead(pending.snapshot, [file], pending.hasher)).length > 0;
+          const unheld = async () => {
+            const free = (await unheldNow(this.#hold, [file])).length > 0;
+            if (!free) held.push(file);
+            return free;
+          };
+          const at = { file, report, provenance, databases, giveUp, check, steady, unheld };
           const outcome = await keepFile(stores, at);
           if (outcome === "spent") {
             this.#tell(wait.spent(all.length - written, changed));
@@ -282,8 +290,12 @@ export class Keeper {
         }
       }
       wait.done({ written, changed, freed });
-      // A file that moved after a lost try, with no busy wait to tell it (review 0.1.450 R1-B2).
-      if (!wait.waited && changed > 0) this.#tell(changedAfterLoss(changed));
+      // A file that moved after a lost try, with no busy wait to tell it (review 0.1.450 R1-B2),
+      // and one a merge holds by its write (review 0.1.458 B4), which a wait counts as moved.
+      const lost = changed - held.length;
+      if (!wait.waited && lost > 0) this.#tell(changedAfterLoss(lost));
+      if (!wait.waited) for (const file of held) this.#notKept.add(file.ref.path, HELD);
+      for (const line of this.#notKept.take()) this.#tell(line);
     } catch (error) {
       const left = all.length - written;
       const unknown = error instanceof KeepUnknown;
@@ -298,9 +310,10 @@ export class Keeper {
   }
 
   /**
-   * The files of `files` that may still be written: their inputs hold the
-   * bytes the run read (D17.5), and no merge holds one of them now, as the
-   * daemon reads its hold again at each try of its record (row 011-320).
+   * The files of `files` that may still be written at `flush`'s opening
+   * check: their inputs hold the bytes the run read (D17.5), and no merge
+   * holds one of them now (row 011-320). `keepFile` reads the hold again
+   * before every try (review 0.1.458 B4).
    */
   async #steady(pending: Pending, files: readonly Kept[]): Promise<Kept[]> {
     const still = await stillAsRead(pending.snapshot, files, pending.hasher);
@@ -320,6 +333,12 @@ function openCode(commonDir: AbsolutePath, policy: Policy): CodeStore {
   if (isCodeStoreOpenFailure(code)) throw new Error(`the code store did not open: ${code.reason}`);
   return code;
 }
+
+/** Why a file a merge holds by its write was not kept, as `NotKept` names it. */
+const HELD = {
+  cause: { kind: "held", paths: [] },
+  reason: "a merge holds a path its key names",
+} as const;
 
 function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);

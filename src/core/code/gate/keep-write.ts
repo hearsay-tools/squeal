@@ -178,8 +178,12 @@ export class InputCheck {
  * database after each busy pause, says whether the bound is spent. Before
  * each write and after every pause, `check` decides whether the file's
  * inputs still hold the bytes its run read, reading them with `steady`.
- * All are asked outside any transaction. `store` is read for the file's
- * previous checks.
+ * Before every try, the first one and the results write after the coverage
+ * write included, `unheld` says whether no merge holds a path of the file
+ * (011 C9; review 0.1.458 B4), as the daemon's record reads its hold at
+ * each try (`TierRecords.#heldNow`); a held file is not written, and is
+ * counted as one whose inputs moved. All are asked outside any
+ * transaction. `store` is read for the file's previous checks.
  */
 export async function keepFile(
   stores: { readonly store: Store; readonly keys: WorktreeKeys; readonly writer: KeepWriter },
@@ -192,11 +196,13 @@ export async function keepFile(
     readonly check: InputCheck;
     /** Reads the file's inputs again: whether they hold the bytes its run read. */
     readonly steady: () => Promise<boolean>;
+    /** Reads the merge hold again: whether no merge holds a path of the file. */
+    readonly unheld: () => Promise<boolean>;
   },
 ): Promise<KeepOutcome> {
   const { store, keys, writer } = stores;
   const { file, report, provenance, databases, giveUp, check } = at;
-  const steady = () => check.holds(at.steady);
+  const steady = async () => (await at.unheld()) && (await check.holds(at.steady));
   const paused = (database: AbsolutePath) => async (busy: boolean) => {
     check.owe();
     if (busy && giveUp(database)) return "spent";

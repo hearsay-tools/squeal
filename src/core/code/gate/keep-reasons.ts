@@ -35,7 +35,7 @@ export class NotKept {
   readonly #kinds = new Map<Kind, Gathered>();
 
   /** `path`, a completed test file with a record, was not kept for `decided`. */
-  add(path: string, decided: FileDecision): void {
+  add(path: string, decided: Pick<FileDecision, "cause" | "reason">): void {
     const { kind, paths } = decided.cause;
     const at = this.#kinds.get(kind) ?? { files: [], paths: new Set(), reason: decided.reason };
     at.files.push(path);
