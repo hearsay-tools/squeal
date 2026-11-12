@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import type { HostCpu, TreeCpu } from "../../../src/core/capacity/cores.js";
-import { clearMark, writeMark } from "../../../src/core/capacity/marks.js";
+import { clearMark, readMarks, writeMark } from "../../../src/core/capacity/marks.js";
 import { createPermitPool, poolPermitFile } from "../../../src/core/capacity/pool.js";
 import {
   type AdmitAnswer,
@@ -125,6 +125,22 @@ describe("the remote machine's admission (spec 021 D18, row 021-21)", () => {
     await sleep(120);
     expect(free()).toBe(23);
     expect(remote.claim()).toBeNull();
+  });
+
+  test("the run's tail returns permits and states no more demand than the run asked", () => {
+    const remote = admission(busy(2));
+    expect(remote.admit({ want: 3, least: 1 }).grant).toBe(3);
+    const lease = remote.claim();
+    const demand = () =>
+      readMarks(dir, "reader", Date.now()).find((m) => m.id === "runner-host:/remote/tree")?.want;
+    // Ten files left of a run three wide: its demand stays three.
+    lease?.shrinkTo(10);
+    expect(demand()).toBe(3);
+    lease?.shrinkTo(1);
+    expect(demand()).toBe(1);
+    expect(free()).toBe(22);
+    lease?.release();
+    expect(free()).toBe(23);
   });
 
   test("a pool that fails admits the run without a grant and says why", () => {
