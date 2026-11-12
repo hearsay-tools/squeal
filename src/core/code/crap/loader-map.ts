@@ -1,6 +1,7 @@
 import { testFileId } from "../../keys/reverse-index.js";
 import type { RelativePath } from "../../types/common.js";
 import type { TestFileRef } from "../../types/keys.js";
+import { loaderSet } from "./file.js";
 import type { Loader, LoaderCondition } from "./loaders.js";
 
 /*
@@ -31,6 +32,8 @@ export class LoaderMap {
   readonly #byPath = new Map<RelativePath, Slot[]>();
   /** Test files whose closure is not known here: each is a loader of every source. */
   readonly #everywhere: Slot[] = [];
+  /** Each source's `loaderSet`, kept while the test files in its list stay. */
+  readonly #sets = new Map<RelativePath, string>();
   #read = 0;
   #listed: boolean | null = null;
   /** The sources whose loaders changed since `moved` was last called; `"all"`, any may have. */
@@ -60,8 +63,10 @@ export class LoaderMap {
       return;
     }
     slot.read = this.#read;
+    // A loader waiting for its closure is in no loader set (`loaderSet`): a change of that moves the sets.
     const spread =
       (paths === undefined) === (slot.paths === undefined) &&
+      imports(slot.condition) === imports(condition) &&
       samePaths(slot.paths, paths) &&
       samePaths(slot.files, files);
     const moved = !sameCondition(slot.condition, condition);
@@ -91,6 +96,15 @@ export class LoaderMap {
     return this.#everywhere.length === 0 ? own : [...own, ...this.#everywhere];
   }
 
+  /** The `loaderSet` of `path`'s loaders, made again only once the test files in its list change. */
+  set(path: RelativePath): string {
+    const known = this.#sets.get(path);
+    if (known !== undefined) return known;
+    const set = loaderSet(this.of(path));
+    this.#sets.set(path, set);
+    return set;
+  }
+
   get withoutImports(): number {
     return this.#everywhere.length;
   }
@@ -113,10 +127,12 @@ export class LoaderMap {
       if (into && at === -1) this.#everywhere.push(slot);
       if (!into && at !== -1) this.#everywhere.splice(at, 1);
       this.#moved = "all";
+      this.#sets.clear();
       return;
     }
     for (const path of sourcesOf(slot.paths, slot.files)) {
       if (this.#moved !== "all") this.#moved.add(path);
+      this.#sets.delete(path);
       const list = this.#byPath.get(path);
       if (into) {
         if (list === undefined) this.#byPath.set(path, [slot]);
@@ -152,6 +168,9 @@ function sourcesOf(
 ): Iterable<RelativePath> {
   return files === undefined ? paths : new Set([...paths, ...files]);
 }
+
+const imports = (condition: LoaderCondition) =>
+  condition.kind === "pending" && condition.reason === "imports";
 
 /** The same paths in the same order; the same array is the common case. */
 function samePaths(

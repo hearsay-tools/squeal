@@ -89,7 +89,7 @@ export class StepCache {
   condition(path: RelativePath, loaders: Loaders): FileCondition {
     const known = this.#conditions.get(path);
     if (known !== undefined) return known;
-    const condition = fileCondition(loaders.of(path), loaders.listed);
+    const condition = fileCondition(loaders.of(path), loaders.listed, () => loaders.set(path));
     this.#conditions.set(path, condition);
     return condition;
   }
