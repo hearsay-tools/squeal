@@ -94,7 +94,7 @@ export interface During {
   /** Files created, or removed (`null`), and applied in a revision as the watcher's batch is. */
   readonly batch?: Readonly<Record<string, string | null>>;
   /** As `batch`, after it, in a second revision. */
-  readonly then?: Readonly<Record<string, string | null>>;
+  readonly next?: Readonly<Record<string, string | null>>;
   /** Untracked files written before the run's keys are read. */
   readonly untracked?: Readonly<Record<string, string>>;
   /** Symbolic links committed with the files, by path, to their targets. */
@@ -347,7 +347,7 @@ async function happen(
     writeTree(root, { [POLICY_FILE]: `${JSON.stringify(during.policy)}\n` });
   }
   await revise(root, keys, hasher, tier, during.batch ?? {});
-  await revise(root, keys, hasher, tier, during.then ?? {});
+  await revise(root, keys, hasher, tier, during.next ?? {});
 }
 
 /** `batch` written, then applied in a revision as the watcher's batch is, to `tier` in flight. */
