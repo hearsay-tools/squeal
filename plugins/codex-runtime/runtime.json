@@ -1,10 +1,10 @@
 {
   "schema": 1,
-  "version": "0.1.449",
+  "version": "0.1.451",
   "nodeFloor": "22.19.0",
   "files": {
     ".codex-plugin/plugin.json": {
-      "sha256": "d7a33b870a7396b63b0686e31fd8eb4b95ca0d88f329881f38e9965db751ee0f",
+      "sha256": "0d017ff61639f45397cb5248ee49566fd5733475e416a575154a2560ff6eaa94",
       "mode": 420
     },
     "bin/squeal-launcher": {
@@ -48,7 +48,7 @@
       "mode": 420
     },
     "dist/ci/inspector.cjs": {
-      "sha256": "76075468c7873543c80345165ade37ecf304db054b1b930c25f180bacd5ed8e1",
+      "sha256": "e85013d47f9877a41b026cd2576c865fccd0449ca132c5437af946ff79f08c28",
       "mode": 420
     },
     "dist/ci/map-client.cjs": {
@@ -76,7 +76,7 @@
       "mode": 493
     },
     "dist/cli/squeal.mjs": {
-      "sha256": "ea951fc24b25f1fcffb6019143388cd0620229e9f2440625678a9c46732d2403",
+      "sha256": "60ed0745f17ca9625186d77ab2c5bb9cca9023ab1ca817e905d0742c5b3ddb3f",
       "mode": 493
     },
     "dist/code/tree-sitter-tsx.wasm": {
@@ -88,7 +88,7 @@
       "mode": 420
     },
     "dist/interrupt.mjs": {
-      "sha256": "a83992a0fbff8f5e25078ebed0cdfb1e6969a1d93760f04be007ae0d474354b1",
+      "sha256": "6bb76fcff51d9b39ad96dfbdf1a65a64afeb95f2a5c4d82db6b5126feb338382",
       "mode": 420
     },
     "dist/node-test/recorder.cjs": {
@@ -116,11 +116,11 @@
       "mode": 420
     },
     "dist/post-tool-use.mjs": {
-      "sha256": "dc7088d9b9f8991d6a6285fcbab00d1f77e62e9b4f7393c038efea162e44565c",
+      "sha256": "23263ad914f7c3b48759079fbcb88c987a3c3761a80759bf16790d59d19eb597",
       "mode": 420
     },
     "dist/pre-tool-use.mjs": {
-      "sha256": "0227cd1af4062d84ded109b6ae017c65da945b96933baec3c477a719079fbe08",
+      "sha256": "df0d090c9daf304940c8a16da8061c862e6166f199f58cc4654e78195bdb32b3",
       "mode": 420
     },
     "dist/pytest/sitecustomize.py": {
@@ -140,35 +140,35 @@
       "mode": 493
     },
     "dist/runtime.mjs": {
-      "sha256": "6f646c65757d5ff8b6202545e1e3a4966fd4afcc12c895872519757b2838834b",
+      "sha256": "b71bbd75d04b8b8041f8a2b09d55649b4b26b64fcdda4b143bb505c2982a6509",
       "mode": 420
     },
     "dist/session-end.mjs": {
-      "sha256": "9eee258be7a62a44185594f0773a55433052fe3618ed9ce4940662013f28a507",
+      "sha256": "8da54b97e7df79b9bc4ae826183e1382e4b068535590d2b08626da951b92c5b7",
       "mode": 420
     },
     "dist/session-start.mjs": {
-      "sha256": "20883ef084df1387a41d01ac2a7d2bc93456accd4bb676c2b533e771af320e42",
+      "sha256": "0a10267f53d51fe207623fe07165049cce7920651558550e17b64de06bfd6db9",
       "mode": 420
     },
     "dist/stop-slow.mjs": {
-      "sha256": "dc192300e087c8a2abfcdc6a089cf7204c883519ea699233ee7a1bf4184c8979",
+      "sha256": "1f12eba0fbe17fc37e3073d579d4d17c91a8b236b4e3362d98534a073b2b14b1",
       "mode": 420
     },
     "dist/stop.mjs": {
-      "sha256": "fcc88ce91409fd65cd6ccb84cf8c8980669d87c4bfce93666755f32a76d771b0",
+      "sha256": "1a0a660aa6f426f88c48ae1ad078261d03738315723ab9c585458cdfeb22dcb5",
       "mode": 420
     },
     "dist/subagent-start.mjs": {
-      "sha256": "42ece534714f5d4a6eb2fa26eb108164878df057f8e6f6d426a84150f3a92303",
+      "sha256": "7cba1a5b0357988d547126b4c0cdd22eda3fc5fec37d4fad88f4de5136f3650e",
       "mode": 420
     },
     "dist/subagent-stop.mjs": {
-      "sha256": "a8839a25d1c8aaa706878165ad4cb6824cf0b83e5c3226f957c11e7fd91df807",
+      "sha256": "1e3ca412ec7061610629936307cee2e4f9dcf4847783add33df3d307e35156a3",
       "mode": 420
     },
     "dist/user-prompt-submit.mjs": {
-      "sha256": "615aa2ef47360c4cb59bece3333153b25f14d10a98225b1585242e9dbccf8019",
+      "sha256": "48d8e5896730124ac3532bb0ad514b71c539294f94f90a277baa417c524eb163",
       "mode": 420
     },
     "skills/setup/SKILL.md": {
@@ -180,7 +180,7 @@
       "mode": 420
     },
     "skills/squeal/references/commands.md": {
-      "sha256": "f2d187eee79b9e1a46a16cf77de70d97a73ea94297fe44e9eec28146371e9987",
+      "sha256": "00c8b1374465737eb4072320c27d26b719713de21312175432ed8e9778b023d5",
       "mode": 420
     },
     "skills/squeal/references/policy.md": {
