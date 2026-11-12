@@ -16,7 +16,9 @@ import type { InstallAnswer } from "./tree-wire.js";
  * run is refused (`boat-trial.md` D3). The host knows it by its fingerprint
  * of the install, taken right after the install and again now. Such an
  * install is made again from scratch: a repeat install may leave the
- * folders as they are (pnpm's `optimisticRepeatInstall`).
+ * folders as they are (pnpm's `optimisticRepeatInstall`). So is one whose
+ * record an earlier release wrote, without that fingerprint: once, and
+ * then its record holds one (review 0.1.454 B1).
  */
 
 /** Committed lockfiles, as `installCommand` reads them (`src/core/scheduler/install-command.ts`). */
@@ -64,11 +66,13 @@ export async function installTree(place: InstallPlace): Promise<InstallAnswer> {
   const last = readInstalled(place.record);
   const same =
     last !== null &&
-    typeof last.installed === "string" &&
     JSON.stringify(last.locks) === JSON.stringify(locks) &&
     last.modules === existsSync(join(root, "node_modules"));
-  if (same && (await fingerprint()) === last.installed) return { ran: false, command: null };
-  // Row 021-24: the same lockfile, but its install changed since: made again from scratch.
+  const unchanged =
+    same && last.installed !== undefined && (await fingerprint()) === last.installed;
+  if (unchanged) return { ran: false, command: null };
+  // Row 021-24: the same lockfile, but its install changed since, or the record is an earlier
+  // release's, which holds no fingerprint to tell (review 0.1.454 B1): made again from scratch.
   if (same && !place.keepModules) {
     await rm(join(root, "node_modules"), { recursive: true, force: true });
   }
