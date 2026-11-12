@@ -57,17 +57,23 @@ export class RunCollector {
   readonly #names = new WeakMap<TestModule, Map<string, string>>();
   /** Each test whose result arrived before the cancel was asked, and its state then (`cutShort`). */
   readonly #beforeCancel = new Map<string, ReturnType<TestCase["result"]>["state"]>();
+  /** Spec 020 row 020-43: what `started` returned for each requested file queued and not yet ended. */
+  readonly #running = new Map<string, () => void>();
 
   /**
    * `ended` hears each requested file whose module ended in a final state
    * before any cancel, as it ends (`RunOptions.fileEnded`, row 011-54).
-   * `checks` are the run's texts (`RunOptions.checks`).
+   * `checks` are the run's texts (`RunOptions.checks`). `started` hears each
+   * requested file as Vitest queues it, when a worker starts to collect it,
+   * and what it returns is called once its module ended, in any state (spec
+   * 020 row 020-43).
    */
   constructor(
     requested: readonly TestFileRef[],
     readonly paths: WorktreePaths,
     readonly ended?: (testFile: TestFileRef) => void,
     checks?: readonly FocusedFile[],
+    readonly started?: (testFile: TestFileRef) => () => void,
   ) {
     this.#requested = new Map(requested.map((r) => [refKey(r), r]));
     this.#texts = new Map(
@@ -115,7 +121,13 @@ export class RunCollector {
   }
 
   moduleQueued(module: TestModule): void {
-    if (this.#ref(module.project.name, module.moduleId)) this.queued++;
+    const ref = this.#ref(module.project.name, module.moduleId);
+    if (!ref) return;
+    this.queued++;
+    if (this.started === undefined || this.#running.has(refKey(ref))) return;
+    this.#hook("fileStarted", ref, () => {
+      this.#running.set(refKey(ref), this.started?.(ref) ?? (() => {}));
+    });
   }
 
   moduleEnd(module: TestModule): void {
@@ -141,6 +153,11 @@ export class RunCollector {
       this.log.push(indent(`focused on ${JSON.stringify(texts)}: ${matched} of ${tests.length}`));
     }
     if (endedInTime(end)) this.#tell(ref);
+    const stop = this.#running.get(refKey(ref));
+    if (stop !== undefined) {
+      this.#running.delete(refKey(ref));
+      this.#hook("fileStarted's end", ref, stop);
+    }
     for (const error of module.errors()) {
       this.log.push(indent(`file-level error: ${errorText(error)}`));
     }
@@ -156,10 +173,15 @@ export class RunCollector {
    * stores nothing (D12), so its error goes to the run log and the run goes on.
    */
   #tell(ref: TestFileRef): void {
+    if (this.ended !== undefined) this.#hook("fileEnded", ref, () => this.ended?.(ref));
+  }
+
+  /** `call`, a caller's hook of `ref`, inside Vitest's reporter hook: a throw goes to the run log (`#tell`). */
+  #hook(name: string, ref: TestFileRef, call: () => void): void {
     try {
-      this.ended?.(ref);
+      call();
     } catch (error) {
-      this.note(`fileEnded of ${label(ref)} threw: ${String(error)}`);
+      this.note(`${name} of ${label(ref)} threw: ${String(error)}`);
     }
   }
 
