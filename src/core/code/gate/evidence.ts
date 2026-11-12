@@ -84,40 +84,76 @@ export async function leftOutFiles(picked: readonly Picked[]): Promise<LeftOutFi
 }
 
 /**
- * #197 (row 020-40): the log folder kept of one runner's run in which a
- * selected file failed or did not finish. It is a run of the main store,
- * under `<store>/runs/`, so the store's prune removes it as it removes a
- * daemon run's log (spec 001 D8).
+ * #197 (row 020-40): the log folder kept of one runner kind's runs in which
+ * a selected file failed or did not finish, one per kind, as the report has
+ * one `runs` entry per kind. It is a run of the main store, under
+ * `<store>/runs/`, so the store's prune removes it as it removes a daemon
+ * run's log (spec 001 D8).
  */
 export interface KeptLog {
   readonly runner: TestFileEvidence["runner"];
   readonly path: AbsolutePath;
 }
 
-/** #197 (row 020-40): one runner's run whose log folder the caller may keep (`CollectOptions.keepLog`). */
+/**
+ * #197 (row 020-40): one runner kind's runs with a failed or unfinished
+ * file, whose log folders the caller may keep as one (`CollectOptions.keepLog`).
+ */
 export interface RunLog {
   readonly runner: TestFileEvidence["runner"];
-  /** The files the run was given. */
+  /** The files those runs were given. */
   readonly files: readonly TestFileRef[];
-  /** The run's log folder, in the collector's temporary folder, removed once the runs end. */
+  /**
+   * Each run's log folder, in the collector's temporary folder, removed once
+   * the runs end. One per node:test project, each writing only under
+   * `node-test/<project>/`, so they merge into one folder with no clash.
+   */
+  readonly logDirs: readonly AbsolutePath[];
+  /** The first end that is not `completed`, else `completed`; the durations summed. */
+  readonly report: Pick<RunReport, "end" | "durationMs">;
+}
+
+/** #197 (row 020-40): one run as it ended, and the evidence of each file it was given. */
+export interface EndedRun {
+  readonly runner: TestFileEvidence["runner"];
+  readonly files: readonly TestFileRef[];
   readonly logDir: AbsolutePath;
-  readonly report: RunReport;
+  /** `null` when the run did not start. */
+  readonly report: RunReport | null;
+  readonly ran: readonly TestFileEvidence[];
 }
 
 /**
- * #197 (row 020-40): the log `keep` kept of `run` when a file it ran, one
- * of `ran`, failed or did not finish; `null` when every one completed with
- * no failure, when the run did not start or wrote no log folder, or when
- * `keep` kept nothing.
+ * #197 (row 020-40): the logs `keep` kept of `ended`, at most one per
+ * runner kind, of the runs in which a file failed or did not finish. A run
+ * whose files all completed with no failure, that did not start or that
+ * wrote no log folder offers none; a kind none of whose runs offers one,
+ * or whose log `keep` did not keep, has no entry.
  */
-export async function keptLog(
+export async function keptLogs(
   keep: ((run: RunLog) => Promise<AbsolutePath | null>) | undefined,
-  run: Omit<RunLog, "report"> & { readonly report: RunReport | null },
-  ran: readonly TestFileEvidence[],
-): Promise<KeptLog | null> {
-  const { report } = run;
-  if (keep === undefined || report === null || !existsSync(run.logDir)) return null;
-  if (ran.every((f) => f.completed && f.failed.length === 0)) return null;
-  const path = await keep({ ...run, report });
-  return path === null ? null : { runner: run.runner, path };
+  ended: readonly EndedRun[],
+): Promise<KeptLog[]> {
+  if (keep === undefined) return [];
+  const logs: KeptLog[] = [];
+  for (const runner of new Set(ended.map((run) => run.runner))) {
+    const offered = ended.filter((run) => run.runner === runner && offersLog(run));
+    if (offered.length === 0) continue;
+    const path = await keep({
+      runner,
+      files: offered.flatMap((run) => run.files),
+      logDirs: offered.map((run) => run.logDir),
+      report: {
+        end: offered.find((run) => run.report?.end !== "completed")?.report?.end ?? "completed",
+        durationMs: offered.reduce((sum, run) => sum + (run.report?.durationMs ?? 0), 0),
+      },
+    });
+    if (path !== null) logs.push({ runner, path });
+  }
+  return logs;
+}
+
+function offersLog({ report, logDir, ran }: EndedRun): boolean {
+  if (report === null || !existsSync(logDir)) return false;
+  return ran.some((file) => !file.completed || file.failed.length > 0);
 }

@@ -47,9 +47,10 @@ export interface LogKeeping {
 
 export interface LogKeeper {
   /**
-   * `CollectOptions.keepLog` for the worktree: the run's row in the main
-   * store, created as a daemon creates it, then its log folder copied to
-   * the folder the row names. `null`, with a note, when either fails.
+   * `CollectOptions.keepLog` for the worktree: the runs' row in the main
+   * store, created as a daemon creates a run's, then each of their log
+   * folders copied into the one folder the row names. `null`, with a note,
+   * when either fails.
    */
   readonly keep: (run: RunLog) => Promise<AbsolutePath | null>;
   /** How long the logs kept so far stay, as the last row write found it; `null` before one. */
@@ -60,7 +61,7 @@ export interface LogKeeper {
 export function runLogKeeper(root: AbsolutePath, options: LogKeeping): LogKeeper {
   const now = options.now ?? Date.now;
   let retention: LogRetention | null = null;
-  const keep = async ({ runner, files, logDir, report }: RunLog) => {
+  const keep = async ({ runner, files, logDirs, report }: RunLog) => {
     const notKept = (why: string) => {
       options.note(`${RUNNER_NAMES[runner]} run: its log was not kept: ${why}`);
       return null;
@@ -97,7 +98,7 @@ export function runLogKeeper(root: AbsolutePath, options: LogKeeping): LogKeeper
       store.close();
     }
     try {
-      cpSync(logDir, path, { recursive: true });
+      for (const logDir of logDirs) cpSync(logDir, path, { recursive: true });
     } catch (error) {
       rmSync(path, { recursive: true, force: true });
       return notKept(`it was not copied: ${messageOf(error)}`);
