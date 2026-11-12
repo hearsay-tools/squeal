@@ -42,7 +42,7 @@ describe("squeal ci record: the run's own coverage and errors (spec 020 D13.1)",
       const part = run.parts[0];
       expect(part?.header.coverage).toEqual({
         off: "project-coverage",
-        note: "the run has coverage of its own (coverage.enabled), and a Vitest run takes one coverage provider",
+        note: 'the run has coverage of its own with provider "custom", from which Squeal records nothing (it reads only the V8 provider\'s), and a Vitest run takes one coverage provider',
       });
       expect(part?.testFiles.map((f) => [f.path, f.record, f.noRecord])).toEqual([
         ["test/math.test.ts", undefined, undefined],
