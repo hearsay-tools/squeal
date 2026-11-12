@@ -6,8 +6,11 @@ import { testFileId } from "../../keys/reverse-index.js";
 import {
   keepDecisions,
   keeps,
+  type MergeHoldSource,
+  mergeHoldOf,
   type RuntimeIdentity,
   stillAsRead,
+  unheldNow,
 } from "../../run-evidence/run-evidence.js";
 import type { WorktreeKeys } from "../../scheduler/keying.js";
 import { isStoreOpenFailure, openStore } from "../../store/open.js";
@@ -86,9 +89,12 @@ export class Keeper {
   readonly #expected = new Expectations();
   readonly #queued: Queued[] = [];
   readonly #told = new Set<string>();
+  /** Row 011-320: the merge hold, read at each decision and again at each write. */
+  readonly #hold: MergeHoldSource;
 
   constructor(options: KeepOptions) {
     this.#options = options;
+    this.#hold = mergeHoldOf(options.root);
   }
 
   /**
@@ -128,7 +134,7 @@ export class Keeper {
     try {
       const steady: Queued[] = [];
       for (const q of queued) {
-        const files = await stillAsRead(q.pending.snapshot, q.files, q.pending.hasher);
+        const files = await this.#steady(q.pending, q.files);
         if (files.length > 0) steady.push({ ...q, files });
       }
       left = steady.flatMap((q) => q.files).length;
@@ -183,6 +189,7 @@ export class Keeper {
       hasher,
       run: pending.run,
       before,
+      hold: this.#hold,
       ...(runtime === undefined ? {} : { runtime }),
     };
     const decided = await keepDecisions(sources, candidates, report);
@@ -249,8 +256,7 @@ export class Keeper {
         };
         const stores = { store, keys: pending.keys, writer };
         for (const file of files) {
-          const steady = async () =>
-            (await stillAsRead(pending.snapshot, [file], pending.hasher)).length > 0;
+          const steady = async () => (await this.#steady(pending, [file])).length > 0;
           const at = { file, report, provenance, databases, giveUp, check, steady };
           const outcome = await keepFile(stores, at);
           if (outcome === "spent") {
@@ -278,6 +284,16 @@ export class Keeper {
       store?.close();
       lock?.release();
     }
+  }
+
+  /**
+   * The files of `files` that may still be written: their inputs hold the
+   * bytes the run read (D17.5), and no merge holds one of them now, as the
+   * daemon reads its hold again at each try of its record (row 011-320).
+   */
+  async #steady(pending: Pending, files: readonly Kept[]): Promise<Kept[]> {
+    const still = await stillAsRead(pending.snapshot, files, pending.hasher);
+    return still.length === 0 ? still : unheldNow(this.#hold, still);
   }
 
   #tell(text: string): void {

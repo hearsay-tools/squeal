@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync, utimesSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -11,6 +12,7 @@ import {
   decisionOf,
   type FileDecision,
   keepDecisions,
+  mergeHoldOf,
   type RecordFacts,
   readRecordEvidence,
   recordOutcome,
@@ -20,12 +22,17 @@ import {
 import type { SchedulerContext } from "../../src/core/scheduler/context.js";
 import { isEditorScratch } from "../../src/core/scheduler/editor-scratch.js";
 import { newFileState } from "../../src/core/scheduler/files.js";
-import type { MergeHold } from "../../src/core/scheduler/hold.js";
+import { MergeHold } from "../../src/core/scheduler/hold.js";
 import { WorktreeKeys } from "../../src/core/scheduler/keying.js";
 import { NOTHING_OBSERVED } from "../../src/core/scheduler/observed.js";
 import { Withholds } from "../../src/core/scheduler/stability.js";
 import type { Tier, TierFile } from "../../src/core/scheduler/tiers.js";
-import type { RelativePath, WorktreeId } from "../../src/core/types/common.js";
+import type {
+  AbsolutePath,
+  EpochMs,
+  RelativePath,
+  WorktreeId,
+} from "../../src/core/types/common.js";
 import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
 import type { RunReport } from "../../src/core/types/runner.js";
 import type { Store } from "../../src/core/types/store.js";
@@ -83,7 +90,7 @@ export interface During {
   readonly read?: readonly string[];
   /** The environment files the run loaded (`RunReport.environmentObserved`). */
   readonly loaded?: readonly string[];
-  /** The paths a merge holds. */
+  /** The paths a merge leaves unmerged in the index, during the run. */
   readonly merging?: readonly string[];
   /** `a` was selected under another runtime identity. */
   readonly runtimeMoved?: boolean;
@@ -143,19 +150,45 @@ async function decided(root: string, store: Store, during: During): Promise<Deci
   } as unknown as Tier;
   await happen(root, keys, hasher, tier, during);
   const report = (during.report ?? ((r) => r))(completed([A, B], during));
+  const ran = { root, keys, hasher, tier, report };
+  const ledgerFree = during.ledger === undefined && during.queued === undefined;
+  const keeper = ledgerFree ? await keeperColumn(ran) : null;
+  const daemon = await daemonColumn(ran, store, during);
+  keys.endRun();
+  return { daemon, keeper };
+}
+
+/** One finished run, as both columns read it. */
+interface Ran {
+  readonly root: string;
+  readonly keys: WorktreeKeys;
+  readonly hasher: Hasher;
+  readonly tier: Tier;
+  readonly report: RunReport;
+}
+
+/** `squeal code`'s decisions: `keepDecisions` over its files as `Expectations.add` gives them. */
+function keeperColumn({ root, keys, hasher, tier, report }: Ran) {
   const runtime = (ref: TestFileRef) => keys.runtimeIdentity(ref);
-  // The keeper's files as `Expectations.add` gives them: each with the identity `a`'s entry has.
-  const kept = files.map(({ file, key, inputs: paths, runtimePolicy: runtimeIdentity }) => {
+  // Each file with the runtime identity its tier entry has, as the lookup read it.
+  const files = tier.files.map(({ file, key, inputs: paths, runtimePolicy: runtimeIdentity }) => {
     return { ref: file.ref, key, paths, runtimeIdentity };
   });
-  const keeper =
-    during.ledger === undefined && during.queued === undefined
-      ? await keepDecisions(
-          { root, keys, hasher, run: tier.run, before: tier.snapshot, runtime },
-          kept,
-          report,
-        )
-      : null;
+  const before = tier.snapshot;
+  const sources = { root, keys, hasher, run: tier.run, before, hold: mergeHoldOf(root), runtime };
+  return keepDecisions(sources, files, report);
+}
+
+/**
+ * The daemon's decisions, as `TierRecords` takes them: its merge hold read
+ * at the record (`#ended`), the evidence, the record's outcome, then
+ * `recordTier`'s end and `recordFile`'s decision per file.
+ */
+async function daemonColumn(
+  { root, keys, hasher, tier, report }: Ran,
+  store: Store,
+  during: During,
+) {
   const context = {
     root,
     worktreeId: WORKTREE,
@@ -165,27 +198,32 @@ async function decided(root: string, store: Store, during: During): Promise<Deci
     runner: { environment: () => Promise.reject(new Error("no runner in this table")) },
     note: () => {},
   } as unknown as SchedulerContext;
-  // As `TierRecords` does: the evidence, the record's outcome, then `recordTier`'s end and
-  // `recordFile`'s decision per file.
-  const installMoved = during.queued === "install moved";
-  const inputs = await unstableInputs(tier, hasher);
-  const evidence = await readRecordEvidence(
-    context,
-    tier,
-    report,
-    inputs,
-    installMoved,
-    hold(during),
-  );
-  const outcome = recordOutcome(files, report, evidence, facts(files, evidence.held, during));
-  const observed = evidence.observed ?? NOTHING_OBSERVED;
-  const end = runEnd(tier, outcome.report, evidence.changed, outcome.requeue, observed, runtime);
-  const holds = (entry: TierFile) => during.ledger !== "gone" || entry.file.ref !== A;
-  const daemon = new Map(
-    files.map((entry) => [entry.file.id, decisionOf(entry, end, outcome, holds(entry))]),
-  );
-  keys.endRun();
-  return { daemon, keeper };
+  const hold = new MergeHold({
+    root: root as AbsolutePath,
+    store,
+    worktreeId: WORKTREE,
+    now: () => Date.now() as EpochMs,
+    revision: () => tier.revision.number,
+    resumed: () => {},
+    note: () => {},
+  });
+  try {
+    await hold.check();
+    const { files } = tier;
+    const installMoved = during.queued === "install moved";
+    const inputs = await unstableInputs(tier, hasher);
+    const evidence = await readRecordEvidence(context, tier, report, inputs, installMoved, hold);
+    const outcome = recordOutcome(files, report, evidence, facts(files, evidence.held, during));
+    const observed = evidence.observed ?? NOTHING_OBSERVED;
+    const runtime = (ref: TestFileRef) => keys.runtimeIdentity(ref);
+    const end = runEnd(tier, outcome.report, evidence.changed, outcome.requeue, observed, runtime);
+    const holds = (entry: TierFile) => during.ledger !== "gone" || entry.file.ref !== A;
+    return new Map(
+      files.map((entry) => [entry.file.id, decisionOf(entry, end, outcome, holds(entry))]),
+    );
+  } finally {
+    hold.close();
+  }
 }
 
 /** The daemon record's facts of `a` that `during` names, at its one try. */
@@ -269,6 +307,7 @@ async function happen(
   for (const [path, text] of Object.entries(during.write ?? {})) write(path, text);
   for (const path of during.touch ?? []) write(path, FILES[path] ?? "");
   for (const [path, text] of Object.entries(during.create ?? {})) writeTree(root, { [path]: text });
+  if (during.merging !== undefined) unmerge(root, during.merging);
   const batch = Object.entries(during.batch ?? {});
   for (const [path, text] of batch) writeTree(root, { [path]: text });
   if (batch.length === 0) return;
@@ -307,13 +346,21 @@ function completed(files: readonly TestFileRef[], during: During): RunReport {
   };
 }
 
-/** A merge hold of `during.merging`, as `MergeHold` names paths. */
-function hold(during: During): MergeHold {
-  const merging = new Set(during.merging ?? []);
-  return {
-    holding: merging.size > 0,
-    names: (paths: readonly RelativePath[]) => paths.some((path) => merging.has(path)),
-  } as unknown as MergeHold;
+/**
+ * Marks `paths` unmerged in the index, each with three stages at the bytes
+ * it holds, as a conflicted merge leaves a path: the worktree's bytes do
+ * not move.
+ */
+function unmerge(root: string, paths: readonly string[]): void {
+  const lines = paths.flatMap((path) => {
+    const blob = git(root, ["rev-parse", `:${path}`]).trim();
+    const stages = [1, 2, 3].map((stage) => `100644 ${blob} ${stage}\t${path}`);
+    return [`0 ${"0".repeat(blob.length)}\t${path}`, ...stages];
+  });
+  execFileSync("git", ["update-index", "--index-info"], {
+    cwd: root,
+    input: `${lines.join("\n")}\n`,
+  });
 }
 
 function aborted(): AbortController {

@@ -118,8 +118,9 @@ const TABLE: Readonly<Record<string, Row>> = {
   "difference 3: a merge holds an input": {
     during: { merging: ["src/a.ts"] },
     daemon: "requeue",
-    keeper: "store at ran",
+    keeper: "requeue",
     names: "merge holds",
+    keeperNames: "merge holds",
   },
   "difference 4: an editor's scratch file moved a listed directory": {
     during: { batch: { "src/.a.ts.swp": "swap\n" } },

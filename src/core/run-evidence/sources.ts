@@ -1,8 +1,12 @@
+import { stat } from "node:fs/promises";
+import { resolve } from "node:path";
+import { runGit } from "../fs/git.js";
 import type { Hasher } from "../hash/hasher.js";
 import type { StatCache } from "../hash/stat-cache.js";
 import { listedDirectory } from "../keys/observed.js";
 import type { SchedulerContext } from "../scheduler/context.js";
 import type { EnvironmentGrowth } from "../scheduler/environment-growth.js";
+import { unmergedIndexPaths } from "../scheduler/hold.js";
 import type { WorktreeKeys } from "../scheduler/keying.js";
 import {
   NOTHING_OBSERVED,
@@ -12,9 +16,9 @@ import {
 } from "../scheduler/observed.js";
 import { changedSince, type Moved, snapshotInputs } from "../scheduler/stability.js";
 import type { TierFile } from "../scheduler/tiers.js";
-import type { RelativePath } from "../types/common.js";
+import type { AbsolutePath, RelativePath } from "../types/common.js";
 import type { RunReport } from "../types/runner.js";
-import type { KeepSources, RunEvidence } from "./run-evidence.js";
+import type { HeldPaths, KeepSources, RunEvidence } from "./run-evidence.js";
 
 /* Where the run evidence is read from (`run-evidence.ts`, which alone imports this file). */
 
@@ -79,7 +83,73 @@ export async function readKeepEvidence(
     growth,
     ...(environment === undefined ? {} : { environment }),
   };
-  return { changed: inputs.changed, touched: [...inputs.touched].sort(), observed, held: [] };
+  const held = heldBy(await sources.hold.read(), files, growth);
+  return { changed: inputs.changed, touched: [...inputs.touched].sort(), observed, held };
+}
+
+/** The files of `files` whose keys, or what their run read, name a path `hold` holds (011 C9). */
+export function heldBy(
+  hold: HeldPaths,
+  files: readonly TierFile[],
+  growth: ReadonlyMap<string, ObservedGrowth> | undefined,
+): TierFile[] {
+  if (!hold.holding) return [];
+  return files.filter(
+    (f) => hold.names(f.inputs) || hold.names(growth?.get(f.file.id)?.growth ?? []),
+  );
+}
+
+/**
+ * Row 011-320 (difference 3; 011 C9): `squeal code`'s merge hold, the
+ * worktree's unmerged index paths read as `MergeHold` reads them (`git
+ * ls-files -u`), and again only when the index file moved since. A read
+ * that fails leaves the paths as last read, none before the first, as the
+ * daemon's hold does. It writes nothing.
+ */
+export class UnmergedIndex {
+  readonly #root: AbsolutePath;
+  #index: Promise<AbsolutePath | null> | null = null;
+  /** The index file's stat at the last read that applied; `undefined` before one. */
+  #read: string | undefined = undefined;
+  #paths: ReadonlySet<RelativePath> = new Set();
+
+  constructor(root: AbsolutePath) {
+    this.#root = root;
+  }
+
+  async read(): Promise<HeldPaths> {
+    const before = await this.#stat();
+    if (before !== this.#read) {
+      try {
+        const out = await runGit(this.#root, ["ls-files", "-u", "-z"]);
+        this.#paths = new Set(unmergedIndexPaths(out));
+        this.#read = before;
+      } catch {
+        // As the daemon's hold: the paths stay as last read.
+      }
+    }
+    const paths = this.#paths;
+    return {
+      holding: paths.size > 0,
+      names: (asked) => [...asked].some((path) => paths.has(path)),
+    };
+  }
+
+  /** The index file's inode, size and mtime; "none" without one. Its path is read once. */
+  async #stat(): Promise<string> {
+    this.#index ??= runGit(this.#root, ["rev-parse", "--git-path", "index"]).then(
+      (out) => resolve(this.#root, out.trim()),
+      () => null,
+    );
+    const index = await this.#index;
+    if (index === null) return "none";
+    try {
+      const { ino, size, mtimeMs } = await stat(index);
+      return `${ino} ${size} ${mtimeMs}`;
+    } catch {
+      return "none";
+    }
+  }
 }
 
 /** The files of `files` whose project's run loaded an environment file its keys lack. */
