@@ -40,16 +40,18 @@ kept folder. Why:
 ## Decisions the spec did not settle (my defaults)
 
 1. **When the row is written: before the report, with a 2 s busy wait**
-   (`LOG_BUSY_TIMEOUT_MS` in `src/cli/code-gate-log.ts`). The report must
-   name the path, and a path the report names should exist. So a busy
-   store can delay the verdict by 2 s at most, and only when a file failed
-   or did not finish. D17.5 keeps the result writes after the report for
-   the same reason; this wait is bounded and smaller. When the store stays
-   busy past it, or does not open, the log is not kept and a stderr note
-   says why. Alternative: copy before the report, write the row after it
-   with the keeper's 30 s bound; a gate stopped in that window leaves a
-   folder no prune removes, and an exhausted wait leaves the report naming
-   a removed folder.
+   (`LOG_BUSY_TIMEOUT_MS` in `src/cli/code-gate-log.ts`). Decided by the
+   coordinator, 2026-11-12, reply to request 18e35cd8: option A. The
+   report must name the path, and a path the report names should exist.
+   **This is an exception to D17.5 ("a busy store never delays the
+   verdict"): a busy store can delay the verdict by 2 s at most, and only
+   when a file failed or did not finish.** The coordinator amends D17.5
+   and D3.5 at integration. When the store stays busy past the wait, or
+   does not open, the log is not kept and a stderr note says why. Rejected
+   option B: copy before the report, write the row after it with the
+   keeper's 30 s bound; a gate stopped in that window leaves a folder no
+   prune removes, and an exhausted wait leaves the report naming a removed
+   folder.
 2. **A worktree with no daemon.** No `worktrees` row exists until a daemon
    registers the worktree, so its gate log goes at the next prune of any
    daemon of the same repository (at most an hour, or 60 s after a daemon
@@ -70,9 +72,16 @@ kept folder. Why:
    the stores or the parts, and files a `prepare` kept from running, did
    not run here and have no log.
 5. **The line:** one line in all, after the report, on stderr in both
-   modes, so `--json` stdout stays one object: `squeal code: log of the
-   failed or unfinished test files, kept until the store's prune: Vitest
-   <path>` (with two, `logs ...: Vitest <path>; node:test <path>`).
+   modes, so `--json` stdout stays one object. It says how long the logs
+   stay (the coordinator, 2026-11-12), from what the row's transaction
+   found: with a `worktrees` row for this worktree (a daemon served it),
+   `squeal code: log of the failed or unfinished test files, kept 7 days
+   (store.retentionDays): Vitest <path>`, the days read from the
+   worktree's `squeal.config.json`; with none, `..., kept until the next
+   prune, within about 1 h while a daemon of this repository runs (none
+   serves this worktree): Vitest <path>`. With two logs, `logs ...: Vitest
+   <path>; node:test <path>`. Another worktree's daemon prunes with its own
+   `store.retentionDays`; the default is 7 everywhere.
 
 ## Spec text proposed for the coordinator
 
@@ -85,6 +94,10 @@ kept folder. Why:
   The same inputs give the same report "apart from times and kept log
   paths".
 - D7's list of later fields: add `runs[].log` (D3.5).
+- D17.5, add: "Exception (row 020-40): the run row of a kept log (D3.5) is
+  written before the report, waiting at most 2 s for a busy store, and
+  only when a selected file failed or did not finish; past the wait the
+  log is not kept, with a note."
 
 ## Files
 
@@ -94,8 +107,13 @@ kept folder. Why:
   each run's evidence, before the temporary folder is removed;
   `Evidence.logs` (`types.ts`).
 - `src/core/code/gate/report.ts`, `runs.ts`: `GateRunReport.log`.
-- `src/cli/code-gate-log.ts`: `runLogKeeper` (row, then copy) and
-  `keptLogsLine`; `src/cli/code-gate.ts` wires both.
+- `src/cli/code-gate-log.ts`: `runLogKeeper` gives `keep` (row, then
+  copy) and `retention` (how long the kept logs stay); `keptLogsLine`
+  makes the line from both. `src/cli/code-gate.ts` wires them.
+- `test/cli/code-gate-keep-kit.ts`: `daemonRuns` leaves out `gate-` runs.
+  `code-gate-keep.test.ts` proves a daemon did not run a kept file by
+  reading the worktree's `runs`; its gate run leaves a file unfinished, so
+  the gate's own log row would list that file.
 - Tests: `test/cli/code-gate-log.test.ts` (row, copy, prune after the
   retention days, prune without a registered worktree, busy store keeps
   nothing, the line, plain CLI order), `test/code/gate/kept-log.test.ts`,
