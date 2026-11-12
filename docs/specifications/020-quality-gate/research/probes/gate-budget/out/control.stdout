@@ -1,0 +1,196 @@
+{
+  "format": "squeal-code-gate/1",
+  "createdAt": "2026-11-12T22:42:14.744Z",
+  "versions": {
+    "squeal": "0.1.457",
+    "counter": 5,
+    "coverageProvider": 3,
+    "coverageRecord": 4,
+    "qualityPolicy": 4
+  },
+  "base": {
+    "ref": "main",
+    "commit": "f7b23a855bee7fe4d5f0b74d9147d7ed20198ee1",
+    "policy": {
+      "complexityThreshold": 20,
+      "crapThreshold": 30,
+      "coverageExclude": [],
+      "complexityInclude": [
+        "**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,py}"
+      ],
+      "complexityExclude": [
+        "**/dist/**",
+        "**/build/**",
+        "**/vendor/**",
+        "**/*.min.js"
+      ],
+      "complexityMaxFileBytes": 524288,
+      "gateGroups": null
+    }
+  },
+  "head": {
+    "commit": "f7b23a855bee7fe4d5f0b74d9147d7ed20198ee1",
+    "dirty": true,
+    "paths": [
+      {
+        "path": "src/b.ts",
+        "blob": "b3a701bef7fec03e458304f82086a77822e5f1a3"
+      },
+      {
+        "path": "src/c.mjs",
+        "blob": "76582cb9bc286819a4ef2e8b0095faba42e1ce7d"
+      }
+    ]
+  },
+  "budget": {
+    "seconds": 25,
+    "timedOut": false
+  },
+  "scope": {
+    "groups": [
+      {
+        "name": "tests",
+        "at": "edit",
+        "from": "default"
+      },
+      {
+        "name": "slow",
+        "at": "edit",
+        "from": "default"
+      }
+    ],
+    "leftOut": []
+  },
+  "functions": [
+    {
+      "path": "src/b.ts",
+      "qualifiedName": "b",
+      "occurrence": 0,
+      "line": 1,
+      "bodyHash": "a5ab1086e40aa539",
+      "change": "edited",
+      "complexity": 2,
+      "coverage": {
+        "lines": 3,
+        "covered": 3,
+        "share": 1
+      },
+      "crap": 2,
+      "loaders": {
+        "expected": [
+          "test/v/b1.test.ts",
+          "test/v/b2.test.ts",
+          "test/v/b3.test.ts",
+          "test/v/b4.test.ts",
+          "test/v/b5.test.ts",
+          "test/v/b6.test.ts",
+          "test/v/b7.test.ts",
+          "test/v/b8.test.ts"
+        ],
+        "measured": [
+          "test/v/b1.test.ts",
+          "test/v/b2.test.ts",
+          "test/v/b3.test.ts",
+          "test/v/b4.test.ts",
+          "test/v/b5.test.ts",
+          "test/v/b6.test.ts",
+          "test/v/b7.test.ts",
+          "test/v/b8.test.ts"
+        ]
+      },
+      "state": "pass",
+      "gap": null
+    },
+    {
+      "path": "src/c.mjs",
+      "qualifiedName": "c",
+      "occurrence": 0,
+      "line": 1,
+      "bodyHash": "bd72c2162440399b",
+      "change": "edited",
+      "complexity": 2,
+      "coverage": {
+        "lines": 3,
+        "covered": 3,
+        "share": 1
+      },
+      "crap": 2,
+      "loaders": {
+        "expected": [
+          "test/n2/c1.test.mjs",
+          "test/n2/c2.test.mjs"
+        ],
+        "measured": [
+          "test/n2/c1.test.mjs",
+          "test/n2/c2.test.mjs"
+        ]
+      },
+      "state": "pass",
+      "gap": null
+    }
+  ],
+  "omitted": [],
+  "uncounted": [],
+  "runs": [
+    {
+      "runner": "vitest",
+      "selected": [
+        "test/v/b1.test.ts",
+        "test/v/b2.test.ts",
+        "test/v/b3.test.ts",
+        "test/v/b4.test.ts",
+        "test/v/b5.test.ts",
+        "test/v/b6.test.ts",
+        "test/v/b7.test.ts",
+        "test/v/b8.test.ts"
+      ],
+      "completed": [
+        "test/v/b1.test.ts",
+        "test/v/b2.test.ts",
+        "test/v/b3.test.ts",
+        "test/v/b4.test.ts",
+        "test/v/b5.test.ts",
+        "test/v/b6.test.ts",
+        "test/v/b7.test.ts",
+        "test/v/b8.test.ts"
+      ],
+      "notFinished": [],
+      "failed": [],
+      "estimate": {
+        "seconds": null,
+        "files": 8,
+        "known": 0,
+        "width": 7
+      },
+      "durationMs": 2585
+    },
+    {
+      "runner": "node-test",
+      "selected": [
+        "test/n2/c1.test.mjs",
+        "test/n2/c2.test.mjs"
+      ],
+      "completed": [
+        "test/n2/c1.test.mjs",
+        "test/n2/c2.test.mjs"
+      ],
+      "notFinished": [],
+      "failed": [],
+      "estimate": {
+        "seconds": null,
+        "files": 2,
+        "known": 0,
+        "width": 4
+      },
+      "durationMs": 157
+    }
+  ],
+  "verdict": "pass",
+  "counts": {
+    "pass": 2,
+    "violation": 0,
+    "incomplete": 0,
+    "skipped": 0,
+    "accepted": 0
+  }
+}

@@ -1,0 +1,4 @@
+[   1.8s] squeal code: node:test: 2 test files to run (tests 2)
+[   1.8s] squeal code: Vitest: 8 test files to run (tests 8)
+[   1.8s] squeal code: node:test: 2 test files to run here, up to 4 at once; no stored duration, so the time is unknown
+[   1.8s] squeal code: Vitest: 8 test files to run here, up to 7 at once; no stored duration, so the time is unknown

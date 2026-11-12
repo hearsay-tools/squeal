@@ -1,0 +1,219 @@
+{
+  "format": "squeal-code-gate/1",
+  "createdAt": "2026-11-12T22:42:40.905Z",
+  "versions": {
+    "squeal": "0.1.457",
+    "counter": 5,
+    "coverageProvider": 3,
+    "coverageRecord": 4,
+    "qualityPolicy": 4
+  },
+  "base": {
+    "ref": "main",
+    "commit": "b4dd76a131746d46e0a7593ca3ddc296a950a975",
+    "policy": {
+      "complexityThreshold": 20,
+      "crapThreshold": 30,
+      "coverageExclude": [],
+      "complexityInclude": [
+        "**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,py}"
+      ],
+      "complexityExclude": [
+        "**/dist/**",
+        "**/build/**",
+        "**/vendor/**",
+        "**/*.min.js"
+      ],
+      "complexityMaxFileBytes": 524288,
+      "gateGroups": null
+    }
+  },
+  "head": {
+    "commit": "b4dd76a131746d46e0a7593ca3ddc296a950a975",
+    "dirty": true,
+    "paths": [
+      {
+        "path": "src/a.mjs",
+        "blob": "b2ebc5f4986b5e1d79fd981ac11f3292ad4a6625"
+      },
+      {
+        "path": "src/b.ts",
+        "blob": "b3a701bef7fec03e458304f82086a77822e5f1a3"
+      },
+      {
+        "path": "src/c.mjs",
+        "blob": "76582cb9bc286819a4ef2e8b0095faba42e1ce7d"
+      }
+    ]
+  },
+  "budget": {
+    "seconds": 25,
+    "timedOut": true
+  },
+  "scope": {
+    "groups": [
+      {
+        "name": "tests",
+        "at": "edit",
+        "from": "default"
+      },
+      {
+        "name": "slow",
+        "at": "edit",
+        "from": "default"
+      }
+    ],
+    "leftOut": []
+  },
+  "functions": [
+    {
+      "path": "src/a.mjs",
+      "qualifiedName": "a",
+      "occurrence": 0,
+      "line": 1,
+      "bodyHash": "2e553956c65b13dd",
+      "change": "edited",
+      "complexity": 2,
+      "coverage": {
+        "lines": 4,
+        "covered": 3,
+        "share": 0.75
+      },
+      "crap": 2.0625,
+      "loaders": {
+        "expected": [
+          "test/n1/q1.test.mjs",
+          "test/n1/q2.test.mjs",
+          "test/n1/q3.test.mjs",
+          "test/n1/slow.test.mjs"
+        ],
+        "measured": [
+          "test/n1/q1.test.mjs",
+          "test/n1/q2.test.mjs",
+          "test/n1/q3.test.mjs"
+        ]
+      },
+      "state": "incomplete",
+      "gap": "not-finished"
+    },
+    {
+      "path": "src/b.ts",
+      "qualifiedName": "b",
+      "occurrence": 0,
+      "line": 1,
+      "bodyHash": "a5ab1086e40aa539",
+      "change": "edited",
+      "complexity": 2,
+      "coverage": null,
+      "crap": null,
+      "loaders": {
+        "expected": [
+          "test/v/b1.test.ts",
+          "test/v/b2.test.ts",
+          "test/v/b3.test.ts",
+          "test/v/b4.test.ts",
+          "test/v/b5.test.ts",
+          "test/v/b6.test.ts",
+          "test/v/b7.test.ts",
+          "test/v/b8.test.ts"
+        ],
+        "measured": []
+      },
+      "state": "incomplete",
+      "gap": "not-finished"
+    },
+    {
+      "path": "src/c.mjs",
+      "qualifiedName": "c",
+      "occurrence": 0,
+      "line": 1,
+      "bodyHash": "bd72c2162440399b",
+      "change": "edited",
+      "complexity": 2,
+      "coverage": null,
+      "crap": null,
+      "loaders": {
+        "expected": [
+          "test/n2/c1.test.mjs",
+          "test/n2/c2.test.mjs"
+        ],
+        "measured": []
+      },
+      "state": "incomplete",
+      "gap": "not-finished"
+    }
+  ],
+  "omitted": [],
+  "uncounted": [],
+  "runs": [
+    {
+      "runner": "vitest",
+      "selected": [
+        "test/v/b1.test.ts",
+        "test/v/b2.test.ts",
+        "test/v/b3.test.ts",
+        "test/v/b4.test.ts",
+        "test/v/b5.test.ts",
+        "test/v/b6.test.ts",
+        "test/v/b7.test.ts",
+        "test/v/b8.test.ts"
+      ],
+      "completed": [],
+      "notFinished": [
+        "test/v/b1.test.ts",
+        "test/v/b2.test.ts",
+        "test/v/b3.test.ts",
+        "test/v/b4.test.ts",
+        "test/v/b5.test.ts",
+        "test/v/b6.test.ts",
+        "test/v/b7.test.ts",
+        "test/v/b8.test.ts"
+      ],
+      "failed": [],
+      "estimate": {
+        "seconds": null,
+        "files": 8,
+        "known": 0,
+        "width": 7
+      },
+      "durationMs": null
+    },
+    {
+      "runner": "node-test",
+      "selected": [
+        "test/n1/q1.test.mjs",
+        "test/n1/q2.test.mjs",
+        "test/n1/q3.test.mjs",
+        "test/n1/slow.test.mjs",
+        "test/n2/c1.test.mjs",
+        "test/n2/c2.test.mjs"
+      ],
+      "completed": [
+        "test/n1/q1.test.mjs",
+        "test/n1/q2.test.mjs",
+        "test/n1/q3.test.mjs"
+      ],
+      "notFinished": [
+        "test/n1/slow.test.mjs",
+        "test/n2/c1.test.mjs",
+        "test/n2/c2.test.mjs"
+      ],
+      "failed": [],
+      "estimate": {
+        "seconds": null,
+        "files": 6,
+        "known": 0,
+        "width": 4
+      },
+      "durationMs": 24008
+    }
+  ],
+  "verdict": "incomplete",
+  "counts": {
+    "pass": 0,
+    "violation": 0,
+    "incomplete": 3,
+    "skipped": 0,
+    "accepted": 0
+  }
+}
