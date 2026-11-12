@@ -47,7 +47,7 @@ function setUp(): { root: string; run: RunLog } {
   const run: RunLog = {
     runner: "vitest",
     files: [{ project: "", path: "test/a.test.ts" }],
-    logDir,
+    logDirs: [logDir],
     report: { end: "completed", durationMs: 1500 } as RunLog["report"],
   };
   return { root, run };
@@ -84,6 +84,35 @@ describe("runLogKeeper: the log of a failed run (#197)", () => {
       endedAt: NOW,
       end: "completed",
     });
+  });
+
+  it("copies each node:test project's log folder into the one kept folder", async () => {
+    const { root } = setUp();
+    const logDirs = ["unit", "e2e"].map((project) => {
+      const logDir = join(scratch("squeal-gate-log-tmp-"), "runs", project);
+      mkdirSync(join(logDir, "node-test", project), { recursive: true });
+      writeFileSync(join(logDir, "node-test", project, "stderr-0.log"), `${project} broke\n`);
+      return logDir;
+    });
+    const files = [
+      { project: "unit", path: "test/unit/a.test.mjs" },
+      { project: "e2e", path: "test/e2e/b.test.mjs" },
+    ];
+    const report = { end: "timed-out", durationMs: 40 } as const;
+
+    const path = await runLogKeeper(root, { note: () => {}, now: () => NOW }).keep({
+      runner: "node-test",
+      files,
+      logDirs,
+      report,
+    });
+
+    for (const project of ["unit", "e2e"]) {
+      const log = join(path ?? "", "node-test", project, "stderr-0.log");
+      expect(readFileSync(log, "utf8")).toBe(`${project} broke\n`);
+    }
+    const row = store(root).runs.get(basename(path ?? ""));
+    expect([row?.testFiles, row?.end, row?.startedAt]).toEqual([files, "timed-out", NOW - 40]);
   });
 
   it("is pruned with a daemon run's log: after the retention days in a registered worktree", async () => {
