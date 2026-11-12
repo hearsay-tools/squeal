@@ -1,6 +1,7 @@
-import { mkdirSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, relative, sep } from "node:path";
 import type { AbsolutePath } from "../core/types/common.js";
+import type { RunReport } from "../core/types/runner.js";
 
 /*
  * Row 018-38: a run's log folder is made only below a store folder that still
@@ -34,12 +35,43 @@ export function makeLogDir(dir: AbsolutePath): boolean {
     try {
       mkdirSync(at);
     } catch (error) {
-      const code = (error as NodeJS.ErrnoException).code;
-      if (code === "ENOENT") return false;
-      if (code !== "EEXIST") throw error;
+      if (gone(error)) return false;
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
     }
   }
   return true;
+}
+
+/**
+ * Writes `text` to `path` in a log folder made earlier; nothing once that
+ * folder was removed, since a write never makes a folder (row 018-38).
+ */
+export function writeLog(path: string, text: string): void {
+  try {
+    writeFileSync(path, text);
+  } catch (error) {
+    if (!gone(error)) throw error;
+  }
+}
+
+/** Whether `error` says a path, or a folder holding it, is not there. */
+export function gone(error: unknown): boolean {
+  return (error as NodeJS.ErrnoException).code === "ENOENT";
+}
+
+/**
+ * The report of a run whose log folder `dir` `makeLogDir` could not make: a
+ * runner whose processes write there starts none of them (node:test, pytest).
+ */
+export function storeGoneReport(dir: AbsolutePath): RunReport {
+  return {
+    end: "crashed",
+    durationMs: 0,
+    completedFiles: [],
+    results: [],
+    fileErrors: [],
+    failure: `Squeal's store folder above the run log folder ${dir} is gone; nothing ran`,
+  };
 }
 
 /** The parent of the nearest `runs` folder above `dir`; `null` without one. */

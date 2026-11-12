@@ -1,4 +1,3 @@
-import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { SerializedError, TestSpecification, Vitest } from "vitest/node";
 import { compare } from "../../core/fs/compare.js";
@@ -11,7 +10,7 @@ import type {
   RunOptions,
   RunReport,
 } from "../../core/types/runner.js";
-import { makeLogDir } from "../log-dir.js";
+import { makeLogDir, writeLog } from "../log-dir.js";
 import { runLogJson } from "../run-summary.js";
 import { endedInTime, endedWhole, errorText, type RunCollector } from "./reporter.js";
 import { compareRefs, refKey, toCheckError } from "./results.js";
@@ -314,9 +313,9 @@ export function writeRunLog(options: RunOptions, collector: RunCollector, report
     "",
   ];
   const logFile = join(options.logDir, "vitest.log");
-  writeFileSync(logFile, `${[...header, ...collector.log].join("\n")}\n`);
+  writeLog(logFile, `${[...header, ...collector.log].join("\n")}\n`);
   collector.logFile = logFile;
-  writeFileSync(join(options.logDir, "report.json"), runLogJson({ runId: options.runId }, report));
+  writeLog(join(options.logDir, "report.json"), runLogJson({ runId: options.runId }, report));
 }
 
 function describeError(error: unknown): string {
