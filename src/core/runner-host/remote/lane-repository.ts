@@ -46,9 +46,10 @@ export function repositoryRoute(
   };
   return {
     split(testFiles) {
+      const stays = testFiles.map(here);
       return {
-        here: testFiles.filter((file) => here(file)),
-        there: testFiles.filter((file) => !here(file)),
+        here: testFiles.filter((_, i) => stays[i]),
+        there: testFiles.filter((_, i) => !stays[i]),
       };
     },
     guard(report) {
@@ -56,12 +57,9 @@ export function repositoryRoute(
       if (found.length === 0) return found;
       for (const file of found) failed.set(testFileId(file), file);
       const paths = [...failed.values()].map((file) => file.path).sort();
-      const shown =
-        paths.length > 5
-          ? `${paths.slice(0, 5).join(", ")} and ${paths.length - 5} more`
-          : paths.join(", ");
+      const shown = paths.length > 5 ? [...paths.slice(0, 5), `${paths.length - 5} more`] : paths;
       named(
-        `${paths.length === 1 ? "1 test file" : `${paths.length} test files`} failed on the remote as not a Git repository, so ${paths.length === 1 ? "it runs" : "they run"} here: ${shown}; add ${paths.length === 1 ? "it" : "them"} to remote.needsRepository in squeal.config.json`,
+        `test files that failed on the remote as not a Git repository run here: ${shown.join(", ")}; add each to remote.needsRepository in squeal.config.json`,
       );
       return found;
     },

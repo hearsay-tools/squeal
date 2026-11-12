@@ -298,7 +298,7 @@ describe.skipIf(unavailable !== undefined)("a remote lane on a container over ss
         `remote ${remote.destination}: test/git.test.ts failed there as not a Git repository; running here`,
       );
       expect(repository).toEqual([
-        "1 test file failed on the remote as not a Git repository, so it runs here: test/git.test.ts; add it to remote.needsRepository in squeal.config.json",
+        "test files that failed on the remote as not a Git repository run here: test/git.test.ts; add each to remote.needsRepository in squeal.config.json",
       ]);
       await adapter.run([GIT], background(root));
       expect(gitCalls()).toBe(before + 1);
