@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ADAPTERS } from "../../src/cli/code-gate.js";
 import { overrunText, timed } from "../../src/cli/code-gate-progress.js";
 import type { GateRunner } from "../../src/core/code/gate/report.js";
 import type { GateAdapters } from "../../src/core/code/gate/runners.js";
@@ -41,31 +42,25 @@ function waitingAdapter(): { adapter: RunnerAdapter; end: () => void } {
 
 describe("timed (row 020-44)", () => {
   it("counts the time any run of a runner kind ran, once for runs at once", async () => {
-    const first = waitingAdapter();
-    const second = waitingAdapter();
+    const waiting = waitingAdapter();
     const durations: Partial<Record<GateRunner, number>> = {};
-    const given: GateAdapters = {
-      vitest: async () => first.adapter,
-      nodeTest: async (project) => (project.name === "one" ? first.adapter : second.adapter),
-    };
-    const adapters = timed(given, durations);
-    const project = (name: string) => ({ name, argv: [], env: {}, include: [] });
-    const options = {} as Parameters<GateAdapters["nodeTest"]>[1];
-    const one = await adapters.nodeTest(project("one"), options);
-    const two = await adapters.nodeTest(project("two"), options);
+    const adapters = timed({ ...ADAPTERS, vitest: async () => waiting.adapter }, durations);
+    const options = {} as Parameters<GateAdapters["vitest"]>[0];
+    const adapter = await adapters.vitest(options);
     const since = performance.now();
-    const runs = [one, two].map((a) => a.run([], { runId: "r", logDir: "/l", timeoutMs: null }));
+    const run = () => adapter.run([], { runId: "r", logDir: "/l", timeoutMs: null });
+    const runs = [run(), run()];
     await new Promise((r) => setTimeout(r, 120));
-    first.end();
+    waiting.end();
     await runs[0];
-    expect(durations["node-test"]).toBeUndefined();
+    expect(durations.vitest).toBeUndefined();
     await new Promise((r) => setTimeout(r, 120));
-    second.end();
+    waiting.end();
     await runs[1];
     const wall = performance.now() - since;
 
     // One span, the wall time of both; summed, the first run's 120 ms or more would count twice.
-    const ms = durations["node-test"] ?? 0;
+    const ms = durations.vitest ?? 0;
     expect(ms).toBeGreaterThanOrEqual(230);
     expect(ms).toBeLessThanOrEqual(Math.ceil(wall) + 1);
   });
