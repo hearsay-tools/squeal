@@ -11,8 +11,10 @@ import { background, REF, setup } from "./lane-fixture.js";
  * Spec 021 D19 (row 021-23): what tests need, on a lane over a host served
  * in this process. A command missing on the remote refuses it at connect,
  * named, and its runs go as `whenLost` says. A `needsRepository` file never
- * goes remote. A remote failure with Git's "not a git repository" text
- * keeps no result: the file runs here, then stays here, and is named.
+ * goes remote. A remote failure with Git's "not a git repository" fatal
+ * line keeps no result: the file runs here, then stays here, and is named.
+ * Review 0.1.457's controls are in `lane-guard.test.ts` and
+ * `lane-setup.test.ts`.
  */
 
 const GIT = { project: "", path: "test/git.test.ts" };
@@ -131,13 +133,10 @@ describe("a report's files that failed as not a Git repository (021 D19.2)", () 
     diff: null,
   });
 
-  it("finds Git's text in a failure, a file error or a setup failure, in the stack too", () => {
+  it("finds Git's fatal line in a failure, a file error or a setup failure", () => {
     expect(notARepository({ ...REPORT, results: [result(GIT.path, GIT_TEXT)] })).toEqual([GIT]);
     expect(
-      notARepository({
-        ...REPORT,
-        fileErrors: [{ testFile: GIT, errors: [error("Command failed", `Error\n${GIT_TEXT}`)] }],
-      }),
+      notARepository({ ...REPORT, fileErrors: [{ testFile: GIT, errors: [error(GIT_TEXT)] }] }),
     ).toEqual([GIT]);
     const startupFailure = {
       projects: [""],
