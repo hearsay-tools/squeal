@@ -1,0 +1,160 @@
+{
+  "format": "squeal-code-gate/1",
+  "createdAt": "2026-11-12T22:44:03.708Z",
+  "versions": {
+    "squeal": "0.1.457",
+    "counter": 5,
+    "coverageProvider": 3,
+    "coverageRecord": 4,
+    "qualityPolicy": 4
+  },
+  "base": {
+    "ref": "HEAD",
+    "commit": "d63a3da8a26a2db1efb7509f9f1c28143b1f56ef",
+    "policy": {
+      "complexityThreshold": 20,
+      "crapThreshold": 30,
+      "coverageExclude": [],
+      "complexityInclude": [
+        "**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,py}"
+      ],
+      "complexityExclude": [
+        "**/dist/**",
+        "**/build/**",
+        "**/vendor/**",
+        "**/*.min.js"
+      ],
+      "complexityMaxFileBytes": 524288,
+      "gateGroups": null
+    }
+  },
+  "head": {
+    "commit": "d63a3da8a26a2db1efb7509f9f1c28143b1f56ef",
+    "dirty": true,
+    "paths": [
+      {
+        "path": "config/sequencer.mjs",
+        "blob": "fe09258217ba68171680d400ea5939a114f311dc"
+      }
+    ]
+  },
+  "budget": {
+    "seconds": 600,
+    "timedOut": false
+  },
+  "scope": {
+    "groups": [
+      {
+        "name": "tests",
+        "at": "edit",
+        "from": "default"
+      },
+      {
+        "name": "slow",
+        "at": "edit",
+        "from": "default"
+      }
+    ],
+    "leftOut": []
+  },
+  "functions": [
+    {
+      "path": "config/sequencer.mjs",
+      "qualifiedName": "pickShard",
+      "occurrence": 0,
+      "line": 8,
+      "bodyHash": "c40233fc88bc72d5",
+      "change": "edited",
+      "complexity": 1,
+      "coverage": {
+        "lines": 2,
+        "covered": 2,
+        "share": 1
+      },
+      "crap": 1,
+      "loaders": {
+        "expected": [
+          "test/sequencer.test.ts"
+        ],
+        "measured": [
+          "test/sequencer.test.ts"
+        ]
+      },
+      "state": "pass",
+      "gap": null
+    },
+    {
+      "path": "config/sequencer.mjs",
+      "qualifiedName": "pickShard.<filter>",
+      "occurrence": 0,
+      "line": 9,
+      "bodyHash": "78e4645416a45c76",
+      "change": "edited",
+      "complexity": 1,
+      "coverage": {
+        "lines": 1,
+        "covered": 1,
+        "share": 1
+      },
+      "crap": 1,
+      "loaders": {
+        "expected": [
+          "test/sequencer.test.ts"
+        ],
+        "measured": [
+          "test/sequencer.test.ts"
+        ]
+      },
+      "state": "pass",
+      "gap": null
+    }
+  ],
+  "omitted": [],
+  "uncounted": [],
+  "runs": [
+    {
+      "runner": "vitest",
+      "selected": [
+        "test/a-writer.test.ts",
+        "test/b-reader.test.ts",
+        "test/data.test.ts",
+        "test/define.test.ts",
+        "test/plain-1.test.ts",
+        "test/plain-2.test.ts",
+        "test/plain-3.test.ts",
+        "test/plugin.test.ts",
+        "test/sequencer.test.ts",
+        "test/side.test.ts"
+      ],
+      "completed": [
+        "test/a-writer.test.ts",
+        "test/b-reader.test.ts",
+        "test/data.test.ts",
+        "test/define.test.ts",
+        "test/plain-1.test.ts",
+        "test/plain-2.test.ts",
+        "test/plain-3.test.ts",
+        "test/plugin.test.ts",
+        "test/sequencer.test.ts",
+        "test/side.test.ts"
+      ],
+      "notFinished": [],
+      "failed": [],
+      "estimate": {
+        "seconds": null,
+        "files": 10,
+        "known": 0,
+        "width": 1
+      },
+      "durationMs": 3094
+    }
+  ],
+  "verdict": "pass",
+  "counts": {
+    "pass": 2,
+    "violation": 0,
+    "incomplete": 0,
+    "skipped": 0,
+    "accepted": 0
+  }
+}

@@ -1,0 +1,18 @@
+24.01 22.42 20.95 14/3657 391118
+load-1m-at-start 22.14 2026-11-12T22:42:13Z
+baseline done
+define done
+plugin done
+side done
+sort done
+shard done
+reporter done
+stringReporter done
+importedJson done
+fsJson done
+23.37 22.29 20.97 35/3904 406112
+load-1m-at-start 23.37 2026-11-12T22:42:47Z
+22.94 22.22 20.96 16/3837 407837
+load-1m-at-start 22.94 2026-11-12T22:42:53Z
+21.38 21.92 20.87 12/3755 410576
+all-done

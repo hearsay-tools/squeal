@@ -1,0 +1,21 @@
+Check: test/plain-1.test.ts > plain 1
+Worktree: /tmp/cds/daemon
+Revision: 1 · d89b37d5 + 1, dirty
+
+Known state: PASS, current, observed at revision 1, commit d89b37d
+  Location: test/plain-1.test.ts:2:1
+
+History: no transitions in this worktree
+
+Durations (2 results, 2 pass / 0 fail): min 2 ms, median 2 ms, p95 3 ms, max 3 ms
+Results (2, newest first):
+  PASS  2026-11-12T22:42:59.837Z  /tmp/cds/daemon (this worktree), revision 1, commit d89b37d, dirty
+        run 676e5f46-1720-4772-8057-17bdba1ffe04, 3 ms, key 5c5a0160b735
+        log: /tmp/cds/daemon/.git/squeal/runs/676e5f46-1720-4772-8057-17bdba1ffe04
+  PASS  2026-11-12T22:42:57.380Z  /tmp/cds/daemon (this worktree), revision 0, commit d89b37d, clean
+        run 4fb14267-54f8-415e-8bb0-3fe49c963373, 2 ms, key 775491be77c9
+        log: /tmp/cds/daemon/.git/squeal/runs/4fb14267-54f8-415e-8bb0-3fe49c963373
+
+Run log: /tmp/cds/daemon/.git/squeal/runs/676e5f46-1720-4772-8057-17bdba1ffe04/vitest.log
+  Run 676e5f46-1720-4772-8057-17bdba1ffe04 in /tmp/cds/daemon (this worktree) produced the result shown. The log covers that whole run, every test file in it, not only this check.
+  --include-logs prints the console lines of test/plain-1.test.ts from it.
