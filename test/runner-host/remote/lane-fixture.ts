@@ -8,7 +8,11 @@ import { afterAll, onTestFinished } from "vitest";
 import type { HostedAdapter } from "../../../src/core/runner-host/host.js";
 import type { HostDeadlines } from "../../../src/core/runner-host/proxy.js";
 import type { HostAdmission } from "../../../src/core/runner-host/remote/admission.js";
-import { type RemoteHost, remoteHostOver } from "../../../src/core/runner-host/remote/connect.js";
+import {
+  type RemoteHost,
+  RemoteRefusal,
+  remoteHostOver,
+} from "../../../src/core/runner-host/remote/connect.js";
 import { withRemoteLane } from "../../../src/core/runner-host/remote/lane.js";
 import type { WhenLost } from "../../../src/core/runner-host/remote/settings.js";
 import { createTreeHost } from "../../../src/core/runner-host/remote/tree-host.js";
@@ -60,6 +64,10 @@ export interface Setup {
   readonly admitEveryMs?: number;
   /** Prepares the local root before the lane connects, such as an install there. */
   readonly before?: (root: string) => void;
+  /** Spec 021 D19.2: the lane's `needsRepository` globs. */
+  readonly needsRepository?: readonly string[];
+  /** Spec 021 D19.1: each connect is refused with this text, as for a missing command. */
+  readonly refusal?: string;
 }
 
 let n = 0;
@@ -74,6 +82,8 @@ export async function setup({
   admission,
   admitEveryMs,
   before,
+  needsRepository,
+  refusal,
 }: Setup = {}) {
   const dir = join(scratch, `s${++n}`);
   const root = join(dir, "local");
@@ -91,6 +101,8 @@ export async function setup({
 
   const remoteRuns: string[] = [];
   const localRuns: RunOptions[] = [];
+  /** The files of each run here, joined as `remoteRuns`. */
+  const localFiles: string[] = [];
   let paused = false;
   const fake = (env: () => RunnerEnvironment, run: HostedAdapter["run"]): HostedAdapter => ({
     name: "vitest",
@@ -107,6 +119,7 @@ export async function setup({
   const connects: number[] = [];
   const connect = async (): Promise<RemoteHost> => {
     connects.push(Date.now());
+    if (refusal !== undefined) throw new RemoteRefusal(refusal);
     const host = inProcessHost(
       async () =>
         fake(
@@ -152,11 +165,13 @@ export async function setup({
     () => ENV,
     async (files, options) => {
       localRuns.push(options);
+      localFiles.push(files.map((f) => f.path).join(","));
       return { ...REPORT, completedFiles: [...files] };
     },
   );
   const statuses: string[] = [];
   const logs: string[] = [];
+  const repository: string[] = [];
   let clock = 1_000_000;
   const lane = withRemoteLane({
     target: "box",
@@ -168,6 +183,8 @@ export async function setup({
     allowlist: () => [],
     status: (text) => statuses.push(text),
     log: (text) => logs.push(text),
+    ...(needsRepository === undefined ? {} : { needsRepository: () => needsRepository }),
+    repository: (text) => repository.push(text),
     now: () => clock,
     backoffMs: [60_000],
     ...(admitEveryMs === undefined ? {} : { admitEveryMs }),
@@ -182,8 +199,10 @@ export async function setup({
     remoteRoot,
     remoteRuns,
     localRuns,
+    localFiles,
     statuses,
     logs,
+    repository,
     connects,
     advance: (ms: number) => {
       clock += ms;

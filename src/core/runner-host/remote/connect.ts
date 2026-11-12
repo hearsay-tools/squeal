@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import { hostname } from "node:os";
 import { basename, dirname, join } from "node:path";
+import { MISSING_SCRIPT, missingText } from "../../daemon/required-commands.js";
 import type { AbsolutePath } from "../../types/common.js";
 import type { RunnerAdapter, RunReport } from "../../types/runner.js";
 import { channelOf, type HostChannel, type RunnerHostLaunch } from "../channel.js";
@@ -9,7 +10,7 @@ import type { HostAdapterOptions, HostPolicy, HostRunner } from "../protocol.js"
 import { type HostDeadlines, type HostRequests, startHostProxy } from "../proxy.js";
 import type { AdmitAnswer, AdmitAsk } from "./admission.js";
 import { bundleDir, ensureBundle, type RemotePlaces, readBundle } from "./bundle.js";
-import { type SshTarget, shellQuote, spawnSsh } from "./ssh.js";
+import { type SshTarget, shellQuote, spawnSsh, sshFailure, sshRun } from "./ssh.js";
 import { treeEntries, treePaths, writesFor } from "./tree.js";
 import { LOCKFILES } from "./tree-install.js";
 import {
@@ -28,6 +29,11 @@ import {
  * sends the files the host lacks, and the host installs from the lockfile
  * (D10). Then each revision's changed files ride on `invalidate`, and a run's
  * logs come back with its report.
+ *
+ * Spec 021 D19.1 (row 021-23): before the host starts, the commands the
+ * project's tests need are looked for on the remote's `PATH`, which the
+ * host's runs get; a missing one refuses the remote, named, before its tree
+ * is sent.
  */
 
 /** How long each remote step may take beyond the host's own deadlines. */
@@ -81,7 +87,12 @@ export interface RemoteHostOptions {
   /** One line per step of the first connect, for the daemon's log. */
   readonly log?: (text: string) => void;
   readonly deadlines?: Partial<HostDeadlines & RemoteDeadlines>;
+  /** Spec 021 D19.1: `requires.commands`, looked for on the remote at each connect. Absent: none. */
+  readonly commands?: readonly string[];
 }
+
+/** A connect the remote refuses, as for a missing command (D19.1): the lane names it a refusal, not a loss. */
+export class RemoteRefusal extends Error {}
 
 /** The remote directory of the worktree at `root` on this machine: one per local worktree. */
 export function treeDir(places: RemotePlaces, root: AbsolutePath): string {
@@ -135,9 +146,32 @@ export async function startRemoteHost(options: RemoteHostOptions): Promise<Remot
   log(
     `${target.destination}: Node ${ensured.check.node}; Squeal ${options.version} ${ensured.copied ? "copied" : "present"}`,
   );
+  const missing = await missingThere(target, places, options.commands ?? [], deadlines.sshMs);
+  if (missing.length > 0) throw new RemoteRefusal(missingText(missing, "there"));
   const tree = treeDir(places, root);
   const command = hostCommand(places, options.version, bundle.cli, tree, options.runner);
   return remoteHostOver(channelOf(spawnSsh(target, command)), ensured.check.node, options);
+}
+
+/** Of `commands`, those the remote's `PATH` lacks, by `MISSING_SCRIPT` under its Node. Throws when it cannot look. */
+export async function missingThere(
+  target: SshTarget,
+  places: RemotePlaces,
+  commands: readonly string[],
+  deadlineMs: number,
+): Promise<string[]> {
+  if (commands.length === 0) return [];
+  const command = [places.node, "-e", MISSING_SCRIPT, ...commands].map(shellQuote).join(" ");
+  const looked = await sshRun(target, command, { deadlineMs });
+  const what = `could not look for ${commands.join(", ")} on ${target.destination}`;
+  if (looked.code !== 0) throw new Error(sshFailure(what, looked));
+  try {
+    const missing: unknown = JSON.parse(looked.stdout);
+    if (Array.isArray(missing) && missing.every((name) => commands.includes(name))) return missing;
+  } catch {
+    // Below.
+  }
+  throw new Error(`${what}: its Node printed ${JSON.stringify(looked.stdout.slice(0, 200))}`);
 }
 
 /**

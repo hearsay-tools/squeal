@@ -4,7 +4,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it, onTestFinished } from "vitest";
 import { squealVersion } from "../../../src/core/daemon/version.js";
-import { startRemoteHost, treeDir } from "../../../src/core/runner-host/remote/connect.js";
+import {
+  missingThere,
+  type RemoteHostOptions,
+  RemoteRefusal,
+  startRemoteHost,
+  treeDir,
+} from "../../../src/core/runner-host/remote/connect.js";
 import type { RunnerAdapter } from "../../../src/core/types/runner.js";
 import { SLOW } from "../../daemon/helpers.js";
 import { buildBundle, fakeSsh, gitFixture, scratchDir } from "./helpers.js";
@@ -14,7 +20,9 @@ import { buildBundle, fakeSsh, gitFixture, scratchDir } from "./helpers.js";
  * a fake `ssh` that runs each remote command in a directory of this
  * machine. The bundle is copied once per version and checked; the tree is
  * every tracked and non-ignored file, never an ignored one; an edit rides on
- * `invalidate`; a second connect copies nothing it has.
+ * `invalidate`; a second connect copies nothing it has. Row 021-23 (D19.1):
+ * a command the tests need, missing on the remote, refuses it before its
+ * tree is sent.
  */
 
 const scratch = mkdtempSync(join(tmpdir(), "squeal-remote-connect-"));
@@ -42,7 +50,12 @@ function fixture(): string {
   return root;
 }
 
-async function connect(root: string, ssh: string, lines: string[] = []): Promise<RunnerAdapter> {
+async function connect(
+  root: string,
+  ssh: string,
+  lines: string[] = [],
+  extra: Partial<RemoteHostOptions> = {},
+): Promise<RunnerAdapter> {
   const { adapter } = await startRemoteHost({
     target: { destination: "build-box", ssh },
     places,
@@ -59,6 +72,7 @@ async function connect(root: string, ssh: string, lines: string[] = []): Promise
       coverageChildren: false,
     }),
     log: (text) => lines.push(text),
+    ...extra,
   });
   onTestFinished(() => adapter.close());
   return adapter;
@@ -153,5 +167,36 @@ describe("a remote runner host's first connect (row 021-13)", SLOW, () => {
         }),
       }),
     ).rejects.toThrow(/needs Squeal's bundle/);
+  });
+});
+
+describe("the commands the tests need, on the remote at connect (row 021-23, D19.1)", SLOW, () => {
+  /** A remote login whose `PATH` holds the system's commands and nothing of this test's. */
+  const login = (ssh: string) => ({
+    destination: "build-box",
+    ssh,
+    env: { ...process.env, PATH: "/usr/bin:/bin" },
+  });
+
+  it("refuses a remote that lacks one, named, before the tree is sent", async () => {
+    const root = fixture();
+    const { home, ssh } = remote();
+    const target = login(ssh);
+    expect(await missingThere(target, places, ["sh", "squeal-absent-tool"], 30_000)).toEqual([
+      "squeal-absent-tool",
+    ]);
+    const refused = connect(root, ssh, [], { target, commands: ["sh", "squeal-absent-tool"] });
+    await expect(refused).rejects.toThrow(RemoteRefusal);
+    await expect(refused).rejects.toThrow("tests need squeal-absent-tool; not found on PATH there");
+    expect(existsSync(join(home, treeDir(places, root)))).toBe(false);
+    await connect(root, ssh, [], { target, commands: ["sh"] });
+    expect(existsSync(join(home, treeDir(places, root), "root/src/math.ts"))).toBe(true);
+  });
+
+  it("is an error, not a refusal, when the remote cannot look", async () => {
+    const { ssh } = remote();
+    const lost = missingThere(login(ssh), { ...places, node: "/no/such/node" }, ["sh"], 30_000);
+    await expect(lost).rejects.toThrow(/^could not look for sh on build-box: /);
+    await expect(lost).rejects.not.toThrow(RemoteRefusal);
   });
 });

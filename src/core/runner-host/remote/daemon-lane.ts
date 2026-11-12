@@ -14,13 +14,18 @@ import { loadRemoteSettings, remoteLaneFor, settingsNote } from "./settings.js";
  * with its background runs on the remote the user names for this
  * repository, when the repository allows it. Status names the lane in one
  * note topic: its target, its last proof or refusal, an unreachable target,
- * or why no lane is used.
+ * or why no lane is used. Spec 021 D19 (row 021-23): the policy's
+ * `requires.commands` are looked for on the remote at each connect, its
+ * `remote.needsRepository` files run here, and a second topic names the
+ * files a remote failed as not a Git repository.
  */
 
 /** The note topic of the lane's one status line. */
 export const REMOTE_TOPIC = "remote-lane";
 /** The note topic of `remote.json`'s problems. */
 export const REMOTE_SETTINGS_TOPIC = "remote-settings";
+/** The note topic of the files a remote failed as not a Git repository (D19.2). */
+export const REMOTE_REPOSITORY_TOPIC = "remote-lane:repository";
 
 export interface DaemonLaneOptions {
   readonly root: AbsolutePath;
@@ -87,8 +92,11 @@ export function withDaemonRemoteLane(options: DaemonLaneOptions): RunnerAdapter 
         policy: hosted.policy,
         ...(options.vitestOptions.note === undefined ? {} : { note: options.vitestOptions.note }),
         log: options.log,
+        commands: options.policy().requires.commands,
       }),
     allowlist: () => options.policy().env.allowlist,
+    needsRepository: () => options.policy().remote.needsRepository,
+    repository: (text) => say(`remote ${target}: ${text}`, REMOTE_REPOSITORY_TOPIC),
     status: (text) => say(text),
     log: options.log,
   });
