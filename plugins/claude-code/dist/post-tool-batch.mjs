@@ -698,9 +698,9 @@ function toNote(item) {
 }
 function stoppedOf(value) {
   if (typeof value !== "object" || value === null) return void 0;
-  const { what, commands } = value;
-  if (typeof what !== "string" || !Array.isArray(commands)) return void 0;
-  return commands.every((c) => typeof c === "string") ? { what, commands } : void 0;
+  const { what, commands: commands2 } = value;
+  if (typeof what !== "string" || !Array.isArray(commands2)) return void 0;
+  return commands2.every((c) => typeof c === "string") ? { what, commands: commands2 } : void 0;
 }
 
 // src/core/store/paths.ts
@@ -2315,7 +2315,7 @@ function readKeyedHolds(store, worktree, daemon, now, namespace = pidNamespace()
       }
     }
   ];
-  const commands = readCommandHolds(store, worktree.id).sort((a, b) => a.since - b.since).map((entry3) => {
+  const commands2 = readCommandHolds(store, worktree.id).sort((a, b) => a.since - b.since).map((entry3) => {
     const recorded = [entry3.wrapper, entry3.child].filter((p) => p !== null);
     const gone = recorded.length > 0 && recorded.every((p) => harnessGone(p, namespace));
     const hold = {
@@ -2329,7 +2329,7 @@ function readKeyedHolds(store, worktree, daemon, now, namespace = pidNamespace()
     };
     return { id: `command:${entry3.token}`, hold };
   });
-  return [...merge2, ...commands];
+  return [...merge2, ...commands2];
 }
 function unmergedPathsText(hold) {
   const shown = hold.paths.slice(0, HOLD_PATHS_SHOWN).join(", ");
@@ -2446,7 +2446,8 @@ var DEFAULT_POLICY = {
   gate: { groups: null },
   shared: { ref: null },
   node: "project",
-  remote: { allowed: true }
+  requires: { commands: [] },
+  remote: { allowed: true, needsRepository: [] }
 };
 
 // src/core/daemon/config-file.ts
@@ -2759,17 +2760,17 @@ function withDefaults(entry3) {
 }
 function projectEntries(value, path, fields, required, withDefaults3, check) {
   if (!Array.isArray(value)) return "an array of projects";
-  const kept = [];
+  const kept2 = [];
   const problems = [];
   value.forEach((entry3, index) => {
     const at = `${path}[${index}]`;
-    const problem = entryProblem(entry3, at, kept, fields, required, check);
-    if (problem === null) kept.push(withDefaults3(entry3));
+    const problem = entryProblem(entry3, at, kept2, fields, required, check);
+    if (problem === null) kept2.push(withDefaults3(entry3));
     else problems.push(problem);
   });
-  return { kept, problems };
+  return { kept: kept2, problems };
 }
-function entryProblem(entry3, at, kept, fields, required, check) {
+function entryProblem(entry3, at, kept2, fields, required, check) {
   if (!isRecord(entry3))
     return `"${at}" must be an object, got ${JSON.stringify(entry3)}; it is skipped`;
   const named3 = nonEmptyString(entry3.name) === null ? entry3.name : null;
@@ -2787,7 +2788,7 @@ function entryProblem(entry3, at, kept, fields, required, check) {
   }
   const across = check?.(entry3) ?? null;
   if (across !== null) return `"${at}.${across.key}" ${across.problem}; ${skipped}`;
-  if (kept.some((project) => project.name === named3)) {
+  if (kept2.some((project) => project.name === named3)) {
     return `"${at}.name" repeats ${JSON.stringify(named3)} of an earlier project; it is skipped`;
   }
   return null;
@@ -2860,21 +2861,21 @@ var TEST_ONLY = ["project", "tests"];
 var TEST_GROUP_ONLY = ["after", "quietMs", "limits"];
 function checkGroups(value) {
   if (!Array.isArray(value)) return "an array of check groups";
-  const kept = [];
+  const kept2 = [];
   const problems = [];
   value.forEach((entry3, index) => {
     const at = `checks[${index}]`;
-    const problem = entryProblem2(entry3, at) ?? nameProblem(entry3, at, kept);
-    if (problem === null) kept.push(entry3);
+    const problem = entryProblem2(entry3, at) ?? nameProblem(entry3, at, kept2);
+    if (problem === null) kept2.push(entry3);
     else problems.push(problem);
   });
-  return { kept, problems };
+  return { kept: kept2, problems };
 }
-function nameProblem(entry3, at, kept) {
+function nameProblem(entry3, at, kept2) {
   if (DEFAULT_GROUP_NAMES.includes(entry3.name)) {
     return `"${at}.name" is "${entry3.name}", the name of a default group; it is left out`;
   }
-  if (kept.some((group) => group.name === entry3.name)) {
+  if (kept2.some((group) => group.name === entry3.name)) {
     return `"${at}.name" repeats "${entry3.name}" of an earlier group; it is left out`;
   }
   return null;
@@ -3043,7 +3044,31 @@ var pythonInsideRoot = (entry3) => {
 
 // src/core/daemon/policy-remote.ts
 var boolean4 = (v) => typeof v === "boolean" ? null : "true or false";
-var REMOTE_SHAPE = { remote: { allowed: boolean4 } };
+var kept = (key, bad) => (value) => {
+  if (!Array.isArray(value) || !value.every((entry3) => typeof entry3 === "string")) {
+    return "an array of strings";
+  }
+  const good = [];
+  const problems = [];
+  value.forEach((entry3, index) => {
+    const why = bad(entry3);
+    if (why === null) good.push(entry3);
+    else problems.push(`"${key}[${index}]" ${why}; it is left out`);
+  });
+  return { kept: good, problems };
+};
+function commandName(entry3) {
+  return /^[^-\s/\\][^\s/\\]*$/.test(entry3) && !new RegExp("\\p{Cc}", "u").test(entry3);
+}
+var commands = kept(
+  "requires.commands",
+  (entry3) => commandName(entry3) ? null : `must be a command name such as "git", got ${JSON.stringify(entry3)}`
+);
+var needsRepository = kept("remote.needsRepository", (glob) => compiles([glob])?.problem ?? null);
+var REMOTE_SHAPE = {
+  requires: { commands },
+  remote: { allowed: boolean4, needsRepository }
+};
 
 // src/core/keys/observed.ts
 import { createHash as createHash2 } from "node:crypto";
@@ -3091,7 +3116,7 @@ function normalizeRuntimePath(given) {
 // src/core/daemon/policy-runtime.ts
 var runtimeFiles = (value) => {
   if (!Array.isArray(value)) return "an array of runtime-file rules";
-  const kept = [];
+  const kept2 = [];
   const problems = [];
   for (const [i, rule] of value.entries()) {
     try {
@@ -3113,7 +3138,7 @@ var runtimeFiles = (value) => {
       const problem = compiles(tests2);
       if (problem !== null)
         throw new Error(typeof problem === "string" ? problem : problem.problem);
-      kept.push({
+      kept2.push({
         project: rule.project,
         tests: tests2,
         paths: [...new Set(rule.paths.map(normalizeRuntimePath))].sort()
@@ -3122,7 +3147,7 @@ var runtimeFiles = (value) => {
       problems.push(`runtimeFiles[${i}]: ${error.message}`);
     }
   }
-  return { kept, problems };
+  return { kept: kept2, problems };
 };
 
 // src/core/daemon/policy-shared.ts
@@ -3142,14 +3167,14 @@ function slowInclude(value) {
   if (!Array.isArray(value) || !value.every((glob) => typeof glob === "string")) {
     return "an array of strings";
   }
-  const kept = [];
+  const kept2 = [];
   const problems = [];
   value.forEach((glob, index) => {
     const bad = compiles([glob]);
-    if (bad === null) kept.push(glob);
+    if (bad === null) kept2.push(glob);
     else problems.push(`"slow.include[${index}]" ${bad.problem}; it is left out`);
   });
-  return { kept, problems };
+  return { kept: kept2, problems };
 }
 
 // src/core/daemon/policy.ts
@@ -3243,7 +3268,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.455";
+  if (true) return "0.1.457";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -6343,9 +6368,9 @@ function keepReplaced(conn, failing, records, loadOf2) {
 }
 function expireReplaced(conn, cutoff) {
   const entries = readReplaced(conn);
-  const kept = entries.filter((e) => e.provenance.recordedAt >= cutoff);
-  if (kept.length < entries.length) writeMetaList(conn, REPLACED_META_KEY, kept);
-  return entries.length - kept.length;
+  const kept2 = entries.filter((e) => e.provenance.recordedAt >= cutoff);
+  if (kept2.length < entries.length) writeMetaList(conn, REPLACED_META_KEY, kept2);
+  return entries.length - kept2.length;
 }
 function keptByReplaced(conn) {
   const entries = readReplaced(conn);
@@ -6357,8 +6382,8 @@ function keptByReplaced(conn) {
 function capped(entries) {
   const seen = /* @__PURE__ */ new Set();
   const perCheck = /* @__PURE__ */ new Map();
-  const kept = [];
-  for (let i = entries.length - 1; i >= 0 && kept.length < REPLACED_KEPT; i--) {
+  const kept2 = [];
+  for (let i = entries.length - 1; i >= 0 && kept2.length < REPLACED_KEPT; i--) {
     const entry3 = entries[i];
     const check = identity(entry3.check);
     const id = JSON.stringify([check, entry3.key, entry3.provenance.runId]);
@@ -6366,9 +6391,9 @@ function capped(entries) {
     if (seen.has(id) || count2 >= REPLACED_PER_CHECK) continue;
     seen.add(id);
     perCheck.set(check, count2 + 1);
-    kept.push(entry3);
+    kept2.push(entry3);
   }
-  return kept.reverse();
+  return kept2.reverse();
 }
 function identity(check) {
   return JSON.stringify(checkParams(check));
@@ -6391,9 +6416,9 @@ function recordUnknownRuns(conn, worktreeId, revision, marked2, at) {
   if (added.length === 0) return;
   conn.transaction(() => {
     const ids = new Set(added.map(idOf));
-    const kept = standing(conn, readUnknownRuns(conn)).filter((r) => !ids.has(idOf(r)));
+    const kept2 = standing(conn, readUnknownRuns(conn)).filter((r) => !ids.has(idOf(r)));
     const newest = new Map(added.map((r) => [idOf(r), r]));
-    writeMetaList(conn, UNKNOWN_RUNS_META_KEY, [...kept, ...newest.values()]);
+    writeMetaList(conn, UNKNOWN_RUNS_META_KEY, [...kept2, ...newest.values()]);
   });
 }
 var STANDS = `SELECT 1 FROM checks c CROSS JOIN known_states s
@@ -6402,9 +6427,9 @@ var STANDS = `SELECT 1 FROM checks c CROSS JOIN known_states s
     AND s.observed_at = ? AND s.summary = ? LIMIT 1`;
 function dropFallenUnknownRuns(conn) {
   const records = readUnknownRuns(conn);
-  const kept = standing(conn, records);
-  if (kept.length < records.length) writeMetaList(conn, UNKNOWN_RUNS_META_KEY, kept);
-  return records.length - kept.length;
+  const kept2 = standing(conn, records);
+  if (kept2.length < records.length) writeMetaList(conn, UNKNOWN_RUNS_META_KEY, kept2);
+  return records.length - kept2.length;
 }
 function keptByUnknownRuns(conn) {
   return readUnknownRuns(conn).flatMap((r) => r.runId === null ? [] : [r.runId]);
@@ -7244,11 +7269,11 @@ function writeLane(conn, worktreeId, id, lane) {
       JSON.stringify(Object.keys(lanes))
     ).map((row) => str(row, "id"))
   );
-  const kept = Object.entries(lanes).filter(([id2]) => live.has(id2));
+  const kept2 = Object.entries(lanes).filter(([id2]) => live.has(id2));
   conn.run(
     "INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
     worktreeMetaKey("checkpointLanes", worktreeId),
-    JSON.stringify(Object.fromEntries([...kept, [id, lane]]))
+    JSON.stringify(Object.fromEntries([...kept2, [id, lane]]))
   );
 }
 function toCheckpoint(row) {
@@ -7568,15 +7593,15 @@ function createCheckRepo(conn) {
     ])
   );
   const recordRunners = (worktreeId, named3) => {
-    const kept = runners(worktreeId);
+    const kept2 = runners(worktreeId);
     let changed = false;
     for (const [project, runner] of named3) {
-      if (runner === void 0 || kept.get(project) === runner) continue;
-      kept.set(project, runner);
+      if (runner === void 0 || kept2.get(project) === runner) continue;
+      kept2.set(project, runner);
       changed = true;
     }
     if (!changed) return;
-    const entries = [...kept].map(([project, runner]) => ({ project, runner }));
+    const entries = [...kept2].map(([project, runner]) => ({ project, runner }));
     writeMetaList(conn, worktreeMetaKey("runners", worktreeId), entries);
   };
   return {
@@ -8849,11 +8874,11 @@ function pruneCodeStore(conn, options) {
   };
 }
 function deadWorktrees(conn, live) {
-  const kept = new Set(live);
+  const kept2 = new Set(live);
   const found2 = new Set(
     PER_WORKTREE.flatMap(([table]) => conn.all(worktreeIdsOf(table)).map((row) => str(row, "id")))
   );
-  return [...found2].filter((id) => !kept.has(id));
+  return [...found2].filter((id) => !kept2.has(id));
 }
 function pruneCoverage(conn, resultKeys, cutoff) {
   if (resultKeys === void 0) {
@@ -8867,13 +8892,13 @@ function pruneCoverage(conn, resultKeys, cutoff) {
     );
   }
   const held = conn.all("SELECT DISTINCT result_key FROM coverage").map((row) => str(row, "result_key"));
-  const kept = new Set(typeof resultKeys === "function" ? resultKeys(held) : resultKeys);
+  const kept2 = new Set(typeof resultKeys === "function" ? resultKeys(held) : resultKeys);
   return deleteInBatches(
     conn,
     "coverage",
     COVERAGE_KEY,
     `result_key IN (SELECT value FROM json_each(?)) OR ${OLDER_RECORD}`,
-    JSON.stringify(held.filter((key) => !kept.has(key))),
+    JSON.stringify(held.filter((key) => !kept2.has(key))),
     COVERAGE_RECORD_VERSION
   );
 }
@@ -11746,12 +11771,12 @@ function read3(store, worktreeId) {
   }
 }
 var identity2 = (keys) => JSON.stringify(Object.entries(keys).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0));
-function recordRegisteredKeys(store, worktreeId, slot2, { resumed, kept }) {
+function recordRegisteredKeys(store, worktreeId, slot2, { resumed, kept: kept2 }) {
   const recorded = read3(store, worktreeId);
   const named3 = /* @__PURE__ */ new Map();
   for (const [at, index] of Object.entries(recorded.slots)) {
     const keys = recorded.snapshots[index];
-    if (keys !== void 0 && kept.has(at) && (resumed || at !== slot2)) named3.set(at, keys);
+    if (keys !== void 0 && kept2.has(at) && (resumed || at !== slot2)) named3.set(at, keys);
   }
   if (!resumed) {
     const keys = {};
@@ -13133,11 +13158,11 @@ function trimmed(state, states, keys) {
   const owed2 = state.testFiles.filter((f) => pending2.has(f) && atKey(state, f, current2));
   if (owed2.length === state.testFiles.length) return null;
   const { keys: recorded, ...rest } = state;
-  const kept = Object.entries(recorded ?? {}).filter(([f]) => owed2.includes(f));
+  const kept2 = Object.entries(recorded ?? {}).filter(([f]) => owed2.includes(f));
   return {
     ...rest,
     testFiles: owed2,
-    ...recorded === void 0 ? {} : { keys: Object.fromEntries(kept) }
+    ...recorded === void 0 ? {} : { keys: Object.fromEntries(kept2) }
   };
 }
 
@@ -15352,7 +15377,7 @@ function loadUserConfig(options = {}) {
 }
 var projects = (value) => {
   if (!isRecord(value)) return 'an object from repository root path to { "slots": n }';
-  const kept = {};
+  const kept2 = {};
   const problems = [];
   for (const [root, entry3] of Object.entries(value)) {
     const at = `"capacity.projects[${root}]"`;
@@ -15367,9 +15392,9 @@ var projects = (value) => {
     }
     const slots = entry3.slots;
     const key = normalize2(root);
-    kept[key] = { slots: Math.min(slots, kept[key]?.slots ?? slots) };
+    kept2[key] = { slots: Math.min(slots, kept2[key]?.slots ?? slots) };
   }
-  return { kept, problems };
+  return { kept: kept2, problems };
 };
 function entryProblem3(entry3) {
   if (!isRecord(entry3)) return `must be { "slots": n }, got ${JSON.stringify(entry3)}`;
@@ -16837,8 +16862,8 @@ function sessionLocation(input, start, roots) {
   }
   const restart = start && input.agent_id === void 0 && (input.source === void 0 || RESTART_SOURCES.has(input.source));
   if (!restart) {
-    const kept = roots.get(input.session_id);
-    if (kept !== null) return kept;
+    const kept2 = roots.get(input.session_id);
+    if (kept2 !== null) return kept2;
   }
   const located = locate(input.cwd);
   if (located !== null) roots.set(input.session_id, located);
@@ -16893,11 +16918,11 @@ function hash2(text2) {
 function readKept(file) {
   const stat = lstatSync6(file, { throwIfNoEntry: false });
   if (stat === void 0 || !stat.isFile() || stat.uid !== currentUid()) return null;
-  const kept = JSON.parse(readFileSync20(file, "utf8"));
-  if (!isRecord(kept) || typeof kept.root !== "string" || typeof kept.commonDir !== "string") {
+  const kept2 = JSON.parse(readFileSync20(file, "utf8"));
+  if (!isRecord(kept2) || typeof kept2.root !== "string" || typeof kept2.commonDir !== "string") {
     return null;
   }
-  return existsSync12(kept.root) ? { root: kept.root, commonDir: kept.commonDir } : null;
+  return existsSync12(kept2.root) ? { root: kept2.root, commonDir: kept2.commonDir } : null;
 }
 
 // src/harness/shared/test-command.ts
