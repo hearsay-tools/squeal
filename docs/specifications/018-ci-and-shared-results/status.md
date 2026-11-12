@@ -105,6 +105,7 @@ Started: 2026-10-31
 - 2026-11-12, released 0.1.441 (tag squeal--v0.1.441 at 96026ba12, tags v0.1.441 and v0 moved there, hub 13ef056). Main CI 43124851809 passed on attempt 2 after `died.test.ts`'s teardown race; proposed row 018-37 for that race.
 - 2026-11-12, the human: "squawk pin: C: pin + Dependabot" (squawk's CI pins Squeal's Action to an exact release commit, `# v<version>`, and Dependabot opens one grouped pull request a week for its actions) and "Test race: Yes" (row 018-37, brief `tasks/wave-15.md`). The squawk change is redone on squawk's current main (8 shards and a shard rerun step landed there since).
 - 2026-11-12, the human: "Row 018-38: Yes": a cancelled run's log never recreates a removed store folder (the product cause behind the ENOTEMPTY teardown failures outside the daemon tests, which row 018-37 does not reach, and a stray folder in a removed user checkout). Brief `tasks/wave-16.md`.
+- 2026-11-12, review 0.1.449 (`reviews/0.1.449.md`): FAIL B1 (a covered node:test run's V8 coverage exit made a removed store again; an earlier pass was stored without its loads), repair R1 (coverage through run-owned links, a run-owned mark in the log folder); re-review still FAIL: outputs differ from 0.1.448 where only the log folder is removed, so old stored node:test passes could lack loads. Second failing review: the human chose "A: raise version": NODE_TEST_ADAPTER_VERSION 11 with the differing validity case; every stored node:test result runs once again per store.
 
 ## Open questions
 
