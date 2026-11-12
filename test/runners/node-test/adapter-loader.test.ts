@@ -90,10 +90,13 @@ interface Case {
   readonly note: string;
 }
 
+/** #193: the hint names the top-level key and both of its shapes (spec 001 D11). */
+const INPUTS =
+  'declare it in the top-level "inputs" of squeal.config.json (a list of globs for every test file, or a map from a test-file glob to globs)';
 const loaderNote = (loader: string) =>
-  `async loader ${JSON.stringify(loader)}: Squeal does not record in Node's loader thread, so what the loader loads enters no key; declare it in inputs`;
+  `async loader ${JSON.stringify(loader)}: Squeal does not record in Node's loader thread, so what the loader loads enters no key; ${INPUTS}`;
 const registerNote = (preload: string) =>
-  `preload ${JSON.stringify(preload)} imports node:module and may register module hooks; Squeal does not record in Node's loader thread, so what the hooks load enters no key; declare it in inputs; resolving with Node's own rules`;
+  `preload ${JSON.stringify(preload)} imports node:module and may register module hooks; Squeal does not record in Node's loader thread, so what the hooks load enters no key; ${INPUTS}; resolving with Node's own rules`;
 
 const SETUP = ["--require", "./scripts/setup.cjs"];
 const CASES: readonly Case[] = [

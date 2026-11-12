@@ -5,6 +5,7 @@ import type { CoverageRecord } from "../coverage/types.js";
 import type { RunEstimate } from "./estimate.js";
 import type { PrepareRun } from "./prepare.js";
 import type { ScopeEvidence } from "./scope.js";
+import type { ClosureGaps } from "./select-closures.js";
 
 /*
  * Spec 020: the contract between the gate's three parts. `changedFunctions`
@@ -199,6 +200,8 @@ export interface Evidence {
   readonly prepares?: readonly PrepareRun[];
   /** D17.1: each runner's estimate before its run, in the order they ran (D18); absent when no file was to run. */
   readonly estimates?: readonly RunEstimate[];
+  /** #193: each node:test project's files with an incomplete static closure; absent when none has one. */
+  readonly incompleteClosures?: readonly ClosureGaps[];
 }
 
 /** D6: the policy, read at the base commit. */

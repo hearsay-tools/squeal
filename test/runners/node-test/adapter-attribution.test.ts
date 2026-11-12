@@ -204,7 +204,7 @@ describe("a child's import of a path the static closure reaches through another 
 });
 
 const bareNote = (files: string) =>
-  `node-test project "p": ${files.split(", ").length} test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: ${files}`;
+  `node-test project "p": ${files.split(", ").length} test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in the top-level "inputs" of squeal.config.json (a list of globs for every test file, or a map from a test-file glob to globs): ${files}`;
 
 // Row 001-365 (005 lessons.md proposed row 3, gh-37): a bare file whose declared `inputs` cover it
 // is not named, with no wording of its own, since a declaration does not prove every read is.
