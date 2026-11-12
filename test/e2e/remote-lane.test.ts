@@ -35,6 +35,10 @@ const LONG = { timeout: 600_000 } as const;
 const MATH = { project: "", path: "test/math.test.ts" };
 const SLOW = { project: "", path: "test/slow.test.ts" };
 const GIT = { project: "", path: "test/git.test.ts" };
+/** Review 0.1.457 B1: fails on the container alone, with an assertion that quotes Git's words. */
+const QUOTE = { project: "", path: "test/quote.test.ts" };
+/** Review 0.1.457 B2: Git's diagnostic only in the error's cause. */
+const CAUSE = { project: "", path: "test/cause.test.ts" };
 /** Where the container's fake `git` logs its calls. */
 const GIT_CALLS = "/tmp/git-calls";
 /** The policy both sides take, the daemon's default: the recorder and coverage on (the remote turns coverage off, D12). */
@@ -94,6 +98,26 @@ describe.skipIf(unavailable !== undefined)("a remote lane on a container over ss
         'import { it } from "vitest";\nit("waits", async () => { await new Promise((r) => setTimeout(r, 6000)); });\n',
       "test/git.test.ts":
         'import { execFileSync } from "node:child_process";\nimport { expect, it } from "vitest";\nit("reads HEAD", () => {\n  expect(execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" })).toMatch(/^[0-9a-f]{40}\\n$/);\n});\n',
+      [QUOTE.path]: [
+        'import { existsSync } from "node:fs";',
+        'import { expect, it } from "vitest";',
+        'it("parser diagnostic", () => {',
+        '  expect(existsSync("/.dockerenv") ? "not a git repository" : "invalid input").toBe("invalid input");',
+        "});",
+        "",
+      ].join("\n"),
+      [CAUSE.path]: [
+        'import { execFileSync } from "node:child_process";',
+        'import { it } from "vitest";',
+        'it("reads HEAD", () => {',
+        "  try {",
+        '    execFileSync("git", ["rev-parse", "HEAD"], { stdio: "pipe" });',
+        "  } catch (error) {",
+        '    throw new Error("could not read revision", { cause: new Error(String((error as { stderr: unknown }).stderr).trim()) });',
+        "  }",
+        "});",
+        "",
+      ].join("\n"),
     });
     const git = (...args: string[]) => execFileSync("git", ["-C", root, ...args]);
     git("add", "-A");
@@ -301,6 +325,41 @@ describe.skipIf(unavailable !== undefined)("a remote lane on a container over ss
         "test files that failed on the remote as not a Git repository run here: test/git.test.ts; add each to remote.needsRepository in squeal.config.json",
       ]);
       await adapter.run([GIT], background(root));
+      expect(gitCalls()).toBe(before + 1);
+    },
+  );
+
+  it(
+    "keeps a real remote failure that quotes Git's words, runs nothing here, and remembers nothing",
+    LONG,
+    async () => {
+      const { adapter, root, logs, repository } = await lane();
+      const report = await adapter.run([QUOTE], background(root));
+      expect(report.results.map((r) => r.outcome)).toEqual(["fail"]);
+      expect(report.results[0]?.errors[0]?.message).toMatch(
+        /^expected 'not a git repository' to be 'invalid input'/,
+      );
+      expect(report.completedFiles).toEqual([QUOTE]);
+      expect(repository).toEqual([]);
+      expect(logs.filter((line) => line.includes("as not a Git repository"))).toEqual([]);
+      await adapter.run([QUOTE], background(root));
+      expect(logs.filter((line) => / run proven over \d+ paths$/.test(line))).toHaveLength(2);
+    },
+  );
+
+  it(
+    "keeps no remote failure whose cause is Git's diagnostic: the file runs here and is named",
+    LONG,
+    async () => {
+      const before = gitCalls();
+      const { adapter, root, repository } = await lane();
+      const report = await adapter.run([CAUSE], background(root));
+      expect(gitCalls()).toBe(before + 1);
+      expect(report.results.map((r) => [r.check.testPath, r.outcome])).toEqual([
+        [CAUSE.path, "pass"],
+      ]);
+      expect(repository.at(-1)).toContain(`run here: ${CAUSE.path};`);
+      await adapter.run([CAUSE], background(root));
       expect(gitCalls()).toBe(before + 1);
     },
   );
