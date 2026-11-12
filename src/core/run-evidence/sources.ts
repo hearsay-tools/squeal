@@ -6,7 +6,7 @@ import type { StatCache } from "../hash/stat-cache.js";
 import { listedDirectory } from "../keys/observed.js";
 import type { SchedulerContext } from "../scheduler/context.js";
 import type { EnvironmentGrowth } from "../scheduler/environment-growth.js";
-import { unmergedIndexPaths } from "../scheduler/hold.js";
+import { heldFiles, unmergedIndexPaths } from "../scheduler/hold.js";
 import type { WorktreeKeys } from "../scheduler/keying.js";
 import {
   NOTHING_OBSERVED,
@@ -83,20 +83,8 @@ export async function readKeepEvidence(
     growth,
     ...(environment === undefined ? {} : { environment }),
   };
-  const held = heldBy(await sources.hold.read(), files, growth);
+  const held = heldFiles(await sources.hold.read(), files, growth);
   return { changed: inputs.changed, touched: [...inputs.touched].sort(), observed, held };
-}
-
-/** The files of `files` whose keys, or what their run read, name a path `hold` holds (011 C9). */
-export function heldBy(
-  hold: HeldPaths,
-  files: readonly TierFile[],
-  growth: ReadonlyMap<string, ObservedGrowth> | undefined,
-): TierFile[] {
-  if (!hold.holding) return [];
-  return files.filter(
-    (f) => hold.names(f.inputs) || hold.names(growth?.get(f.file.id)?.growth ?? []),
-  );
 }
 
 /**
