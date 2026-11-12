@@ -16,6 +16,7 @@ import { ProjectCoverage } from "./coverage.js";
 import { enumerate } from "./enumerate.js";
 import { MANIFEST } from "./graph/graph.js";
 import { createNodeTestGraph } from "./graph/index.js";
+import { INPUTS_HINT } from "./graph/preload-notes.js";
 import { projectEnv } from "./recorders.js";
 import { coveragePayloads } from "./run/coverage.js";
 import type { ObservedClosure } from "./run/observed.js";
@@ -75,7 +76,9 @@ export async function openProject(context: ProjectContext): Promise<RunnerAdapte
     // B1: what the preloads load by a computed specifier is known only after a run.
     for (const reason of graph.preloads().incomplete) once(`preload closure incomplete: ${reason}`);
     const incomplete = graph.incompleteClosures();
-    if (incomplete.length > 0) {
+    // #193: a caller that takes the list tells it itself, scoped to what it selects.
+    if (options.closures !== undefined) options.closures(incomplete);
+    else if (incomplete.length > 0) {
       const named = incomplete
         .slice(0, NAMED_INCOMPLETE)
         .map(([file, reasons]) => `${file} (${reasons.join("; ")})`);
@@ -258,7 +261,7 @@ function loaderThreadNotes(project: NodeTestProject): string[] {
   const loaders = [...asyncLoaders(project.argv), ...asyncLoaders(nodeOptionsOf(project))];
   return [...new Set(loaders)].map(
     (loader) =>
-      `async loader ${JSON.stringify(loader)}: Squeal does not record in Node's loader thread, so what the loader loads enters no key; declare it in inputs`,
+      `async loader ${JSON.stringify(loader)}: Squeal does not record in Node's loader thread, so what the loader loads enters no key; ${INPUTS_HINT}`,
   );
 }
 
@@ -283,7 +286,7 @@ function bareNote(
     .filter((path) => !named.has(path) && !declared(path));
   if (found.length === 0) return null;
   for (const path of found) named.add(path);
-  return `${found.length} test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: ${found.sort(compare).join(", ")}`;
+  return `${found.length} test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; ${INPUTS_HINT}: ${found.sort(compare).join(", ")}`;
 }
 
 /**
