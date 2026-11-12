@@ -197,6 +197,10 @@ function unknownKey(path) {
   return `unknown key "${path}"`;
 }
 
+// src/core/daemon/host-idle.ts
+var GIB = 2 ** 30;
+var hostIdleMinutes = (v) => Number.isSafeInteger(v) && v >= 0 ? null : "a whole number of minutes >= 0";
+
 // src/core/daemon/user-config.ts
 function userConfigPath(env = process.env) {
   const xdg = env.XDG_CONFIG_HOME;
@@ -1082,7 +1086,7 @@ import { join as join14 } from "node:path";
 // src/core/ps/render-units.ts
 var KIB = 1024;
 var MIB = KIB * 1024;
-var GIB = MIB * 1024;
+var GIB2 = MIB * 1024;
 var UNKNOWN = "?";
 var NO_BOOT = "the boot time cannot be read, so no process has an age";
 function dateOf(ms) {
@@ -1106,11 +1110,11 @@ function cpus2(value) {
 function bytes(n, column = false) {
   if (n === null) return column ? UNKNOWN : "unknown";
   if (n === 0) return "0";
-  const [value, unit] = n >= GIB ? [(n / GIB).toFixed(1), "G"] : n >= MIB ? [String(Math.round(n / MIB)), "M"] : [String(Math.round(n / KIB)), "K"];
+  const [value, unit] = n >= GIB2 ? [(n / GIB2).toFixed(1), "G"] : n >= MIB ? [String(Math.round(n / MIB)), "M"] : [String(Math.round(n / KIB)), "K"];
   return column ? `${value}${unit}` : `${value} ${unit}iB`;
 }
 function ofGib(part, whole) {
-  return `${(part / GIB).toFixed(1)} of ${(whole / GIB).toFixed(1)} GiB`;
+  return `${(part / GIB2).toFixed(1)} of ${(whole / GIB2).toFixed(1)} GiB`;
 }
 function age(since, at) {
   return since === null ? UNKNOWN : columnDuration(at - since);
@@ -3090,7 +3094,7 @@ var DEFAULT_POLICY = {
   runtimeFiles: [],
   observe: { runtimeInputs: true },
   env: { allowlist: [] },
-  runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 6e5 },
+  runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 6e5, hostIdleMinutes: null },
   nodeTest: [],
   pytest: [],
   vitest: { excludeProjects: [], exclude: [] },
@@ -3748,7 +3752,9 @@ var SHAPE = {
   runner: {
     tierSize: positiveInteger,
     backlogTierSize: positiveInteger,
-    timeoutMs: orNull(positiveInteger)
+    timeoutMs: orNull(positiveInteger),
+    // Spec 021 D20.4 (row 021-26).
+    hostIdleMinutes: orNull(hostIdleMinutes)
   },
   nodeTest: (v) => nodeTestProjects(v, "nodeTest"),
   pytest: (v) => pytestProjects(v, "pytest"),

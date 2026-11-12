@@ -19,6 +19,10 @@ function isMissing(error) {
 // src/core/daemon/config-file.ts
 var positiveInteger = (v) => Number.isInteger(v) && v > 0 ? null : "a positive integer";
 
+// src/core/daemon/host-idle.ts
+var GIB = 2 ** 30;
+var hostIdleMinutes = (v) => Number.isSafeInteger(v) && v >= 0 ? null : "a whole number of minutes >= 0";
+
 // src/core/keys/glob.ts
 function globToRegExp(glob) {
   if (glob.startsWith("!")) throw new Error(`squeal: negated input glob is not supported: ${glob}`);
@@ -559,7 +563,9 @@ var SHAPE = {
   runner: {
     tierSize: positiveInteger,
     backlogTierSize: positiveInteger,
-    timeoutMs: orNull(positiveInteger)
+    timeoutMs: orNull(positiveInteger),
+    // Spec 021 D20.4 (row 021-26).
+    hostIdleMinutes: orNull(hostIdleMinutes)
   },
   nodeTest: (v) => nodeTestProjects(v, "nodeTest"),
   pytest: (v) => pytestProjects(v, "pytest"),
