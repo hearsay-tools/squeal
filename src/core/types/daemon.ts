@@ -10,6 +10,9 @@ import type {
   ImportRequest,
   ImportResponse,
   ImportStatusRequest,
+  KeepRequest,
+  KeepResponse,
+  KeepStatusRequest,
   LeaseRequest,
   LeaseResponse,
   ReleaseRequest,
@@ -255,7 +258,9 @@ export type DaemonRequest =
   | WriteRequest
   | WriteStatusRequest
   | ImportRequest
-  | ImportStatusRequest;
+  | ImportStatusRequest
+  | KeepRequest
+  | KeepStatusRequest;
 
 /** Where a daemon is in its life. `starting`: socket bound, scheduler not started yet. */
 export type DaemonPhase = "starting" | "ready" | "stopping";
@@ -528,6 +533,7 @@ export type DaemonResponse =
   | ReleaseResponse
   | WriteResponse
   | ImportResponse
+  | KeepResponse
   | DaemonErrorResponse;
 
 /**
