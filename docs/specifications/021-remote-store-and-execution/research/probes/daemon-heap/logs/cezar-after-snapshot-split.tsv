@@ -1,0 +1,5 @@
+pid	kind	priv	swap	threads	v8_256k	anon_big	anon_small	glibc	mimalloc	file
+1844362	daemon	1289	0	12	277	328	7	677	0	60
+1844594	host-vitest	614	0	71	238	43	22	20	291	61
+1844601	host-node-test	39	0	7	13	13	3	10	0	55
+1844611	host-node-test	47	0	7	14	19	3	10	0	54

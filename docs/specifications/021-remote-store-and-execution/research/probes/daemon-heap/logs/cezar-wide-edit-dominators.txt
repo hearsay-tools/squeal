@@ -1,0 +1,99 @@
+# /home/agent/projects/squeal/.ai/cezar/t/2e3bd449/dh-cezar-hJJBSw/log/daemon-2355075-1.heapsnapshot
+# 4405609 nodes, 19110975 edges, self size total 414.2 MiB
+
+## Self size by node type (MiB)
+   214.6  string
+    90.1  array
+    52.1  object
+    34.6  native
+    12.6  code
+     3.5  closure
+     3.3  number
+     1.4  object shape
+     1.3  hidden
+     0.4  sliced string
+     0.4  concatenated string
+     0.0  regexp
+     0.0  symbol
+     0.0  synthetic
+     0.0  bigint
+
+## Top 40 by self size: object/closure/native by constructor, others by type (MiB, count)
+   214.6   2331574  string
+    90.1    334488  array
+    33.2       242  native system / JSArrayBufferData
+    23.0    436058  object Object
+    22.9    750385  object Array
+    12.6    110980  code
+     3.3    214236  number
+     2.6     36998  object system / Context
+     1.7     10676  object Stats
+     1.4     16168  object shape
+     1.3      5650  native Node / FSEventWrap
+     1.3     21507  hidden
+     1.2     21600  closure 
+     0.8     25530  object Set
+     0.6     10676  closure listener
+     0.5     11811  closure native_bind
+     0.4      5652  object FSWatcher
+     0.4     13071  sliced string
+     0.4     12188  concatenated string
+     0.3      5651  object FSEvent
+     0.3      5650  closure handleEvent
+     0.1       939  object TstNode
+     0.1       624  object WatchHelper
+     0.0      1457  object Map
+     0.0       636  closure NodeError
+     0.0       443  object BuiltinModule
+     0.0       541  closure __init
+     0.0       530  regexp
+     0.0       595  object DirEntry
+     0.0       253  object ArrayBuffer
+     0.0       200  object Uint8Array
+     0.0       336  closure toString
+     0.0       310  closure get
+     0.0       722  symbol
+     0.0       100  native Node / Statement
+     0.0       161  object Global
+     0.0       166  closure set
+     0.0        77  object TokenType2
+     0.0       237  object Error
+     0.0       106  object Promise
+
+## Dominator tree (5 passes; reachable 4405601 of 4405609; retained by root 414.2 MiB)
+## every node retaining >= 3.0 MiB, to depth 12: retained MiB, self, edge from its DFS parent, node
+414.2 (0.0) synthetic 
+  215.3 (0.0) context:keys ← object system / Context | object WorktreeKeys
+    160.4 (0.0) #runnerClosures ← object WorktreeKeys | object Map
+      160.4 (0.1) internal:table ← object Map | array 
+    51.6 (0.0) index ← object WorktreeKeys | object KeyIndex
+      38.5 (0.0) reverse ← object KeyIndex | object ReverseIndex
+        38.1 (0.0) byPath ← object ReverseIndex | object Map
+          38.1 (0.4) internal:table ← object Map | array 
+      6.2 (0.0) keyed ← object KeyIndex | object Map
+        6.2 (0.1) internal:table ← object Map | array 
+  34.4 (0.1) internal:previous ← object system / Context | object system / Context
+    32.4 (0.0) context:Module3 ← object system / Context | object Object
+      32.0 (0.0) internal:buffer ← object Int8Array | object ArrayBuffer
+        32.0 (32.0) internal:backing_store ← object ArrayBuffer | native system / JSArrayBufferData
+  9.1 (0.0) #code ← object Daemon | object Object
+    9.1 (0.0) internal:context ← closure nudge | object system / Context
+      9.0 (0.0) context:cache2 ← object system / Context | object StepCache
+        8.1 (0.0) #loaders ← object StepCache | object Object
+          8.1 (0.0) of ← object Object | closure of
+            8.1 (0.0) internal:context ← closure of | object system / Context
+              8.1 (0.0) context:byPath3 ← object system / Context | object Map
+                8.1 (0.2) internal:table ← object Map | array 
+  7.8 (7.8) internal:source ← code file:///home/agent/projects/squeal/.ai/cezar/t/2e3bd449/dh-cezar-hJJBSw/squeal/dist/cli/sq | string "#!/usr/bin/env node\nimport { createRequire as __squealCreate"…
+  5.3 (0.0) internal:previous ← object system / Context | object system / Context
+    5.3 (0.0) context:queue ← object system / Context | object Array
+
+## Retained through named edges (MiB, edges)
+   151.0     3850  imports ← object Object
+    89.2   354460  static ← object Object
+    19.0   356630  sha1 ← object Object
+    10.3     2006  paths ← object Object
+     0.2        1  paths ← object KeyIndex
+     0.0        2  paths ← object system / Context
+     0.0        2  paths ← object Module
+     0.0        2  paths ← closure resolve

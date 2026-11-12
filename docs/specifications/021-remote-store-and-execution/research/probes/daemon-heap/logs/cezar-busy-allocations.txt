@@ -1,0 +1,55 @@
+sampled allocation: 5681.0 MiB
+
+## top 25 frames by self allocation (MiB)
+   781.8  join :0
+   758.2  next :0
+   642.5  write node:string_decoder:76
+   479.5  #read squeal.mjs:67424
+   469.2  push squeal.mjs:61587
+   387.4  (anonymous) squeal.mjs:66809
+   302.1  all squeal.mjs:5316
+   255.0  (anonymous) squeal.mjs:66798
+   229.2  (anonymous) squeal.mjs:66801
+   173.4  flatMap :0
+    94.3  descendantsOf2 squeal.mjs:12453
+    90.3  (anonymous) squeal.mjs:61628
+    75.7  set :0
+    54.0  get squeal.mjs:5313
+    47.9  (anonymous) squeal.mjs:67696
+    47.9  readMoves squeal.mjs:16110
+    46.6  #isSlow squeal.mjs:15747
+    40.3  add :0
+    39.8  split :0
+    37.6  parse2 squeal.mjs:4633
+    34.0  normalize node:path:1292
+    24.7  lstat promises:1871
+    22.1  of squeal.mjs:3573
+    21.3  readFileSync node:fs:605
+    20.3  filter :0
+
+## top 25 by deepest Squeal frame ← its callers (MiB)
+  1250.1  #read squeal.mjs:67424 ← advance squeal.mjs:67401 ← loaders squeal.mjs:66896
+  1115.1  push squeal.mjs:61587 ← (anonymous) squeal.mjs:61628
+   676.7  (no squeal frame)
+   387.4  (anonymous) squeal.mjs:66809 ← condition squeal.mjs:66920 ← walk3 squeal.mjs:67453
+   255.0  (anonymous) squeal.mjs:66798 ← condition squeal.mjs:66920 ← walk3 squeal.mjs:67453
+   229.2  (anonymous) squeal.mjs:66801 ← condition squeal.mjs:66920 ← walk3 squeal.mjs:67453
+   219.6  (anonymous) squeal.mjs:61628
+   191.9  condition squeal.mjs:66920 ← walk3 squeal.mjs:67453 ← (anonymous) squeal.mjs:67696
+   121.5  all squeal.mjs:5316 ← list squeal.mjs:6856 ← begin2 squeal.mjs:15075
+    93.4  all squeal.mjs:5316 ← list squeal.mjs:7728 ← judgedFiles squeal.mjs:67733
+    80.0  descendantsOf2 squeal.mjs:12453 ← lineOf2 squeal.mjs:12449 ← #scanOrphans squeal.mjs:12627
+    68.5  statOf squeal.mjs:10733 ← snapshot squeal.mjs:12419
+    56.4  (anonymous) squeal.mjs:67696 ← transaction squeal.mjs:5327 ← transaction squeal.mjs:9091
+    39.1  all squeal.mjs:5316 ← list squeal.mjs:7076 ← advance squeal.mjs:67401
+    37.6  parse2 squeal.mjs:4633 ← readSummary squeal.mjs:4642 ← runCoverageStep squeal.mjs:67658
+    36.1  toAbsolute squeal.mjs:9210 ← (anonymous) squeal.mjs:24720 ← worker squeal.mjs:18048
+    34.3  lstatOrNull2 squeal.mjs:24811 ← (anonymous) squeal.mjs:24720 ← worker squeal.mjs:18048
+    33.6  get squeal.mjs:5313 ← get squeal.mjs:9099 ← readSummary squeal.mjs:4642
+    29.9  all squeal.mjs:5316 ← list squeal.mjs:7076 ← begin2 squeal.mjs:15075
+    29.0  readMoves squeal.mjs:16110 ← nextMoves squeal.mjs:16171 ← recordMoves squeal.mjs:16164
+    26.9  readMoves squeal.mjs:16110 ← nextMoves squeal.mjs:16171 ← movesWouldChange squeal.mjs:16168
+    23.6  begin2 squeal.mjs:15075 ← (anonymous) squeal.mjs:15130 ← transaction squeal.mjs:5327
+    21.4  (anonymous) squeal.mjs:15130 ← transaction squeal.mjs:5327 ← transaction squeal.mjs:7375
+    19.8  walk3 squeal.mjs:67453 ← (anonymous) squeal.mjs:67696 ← transaction squeal.mjs:5327
+    18.1  toFile squeal.mjs:7785 ← list squeal.mjs:7728 ← judgedFiles squeal.mjs:67733

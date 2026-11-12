@@ -1,0 +1,23 @@
+# /home/agent/projects/squeal/.ai/cezar/t/2e3bd449/dh-cezar-hJJBSw/log/run1/daemon-1844362.jsonl
+utc	label	load1	priv	heapTotal	heapUsed	external	pauseMs
+21:12:01	settled	21.31	449.6	323.8	263.5	11.2	
+21:12:02	gc-before	21.31	449.6	323.8	263.6	11.2	
+21:12:02	gc-after	21.31	447.8	255.1	234.8	11.2	75.7
+21:12:05	lr-before	20.97	447.8	255.1	234.9	11.2	
+21:12:05	lr-after	20.97	375.2	250.1	234.7	8.7	209.7
+21:12:18	heap-snapshot	22.07	1263.8	249.8	234.7	8.7	
+21:12:24	lr-before	21.10	1275.4	261.6	243	9.5	
+21:12:24	lr-after	20.45	1263.8	249.8	234.8	8.7	169.2
+# /home/agent/projects/squeal/.ai/cezar/t/2e3bd449/dh-squeal-yRQNUf/log/daemon-2116786.jsonl
+utc	label	load1	priv	heapTotal	heapUsed	external	pauseMs
+21:18:28	gc-before	23.18	614.4	475.9	413.9	12.7	
+21:18:28	gc-after	23.18	607.8	360	243	12.7	127.6
+21:18:30	lr-before	24.45	607.8	360	243.2	12.7	
+21:18:31	lr-after	24.45	392	253.8	242.5	10.1	415.1
+21:18:46	heap-snapshot	26.95	1393.7	254	242.5	10.1	
+21:18:47	lr-before	26.95	1393.8	254	242.6	10.1	
+21:18:47	lr-after	26.95	1393.7	253.8	242.5	10.1	241.4
+21:19:09	gc-before	32.12	1406.9	266.9	251.7	10.8	
+21:19:09	gc-after	32.75	1405.7	264.3	242.4	10.8	156.1
+21:19:17	gc-before	34.37	1579.5	436	313.2	18.9	
+21:19:17	gc-after	34.37	1579.2	285.1	242.7	18.9	151

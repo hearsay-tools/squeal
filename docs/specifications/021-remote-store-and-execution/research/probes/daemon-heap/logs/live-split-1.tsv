@@ -1,0 +1,14 @@
+# 2026-11-12T21:06:41Z load 24.24 25.92 26.56; live cezar daemons (0.1.454 and 0.1.457 bundles), read from /proc only
+# 264491 up    2918 s: versions/0.1.457
+# 310741 up    2821 s: squeal/0.1.454
+# 406475 up    2636 s: versions/0.1.457
+# 270546 up    2904 s: versions/
+# 313328 up    2816 s: versions/
+# 424519 up    2604 s: versions/
+pid	kind	priv	swap	threads	v8_256k	anon_big	anon_small	glibc	mimalloc	file
+264491	daemon	1404	19	13	983	193	146	124	0	60
+310741	daemon	957	13	13	663	131	52	112	0	60
+406475	daemon	980	12	13	732	99	58	91	0	61
+270546	host-vitest	459	222	71	173	47	27	51	161	75
+313328	host-vitest	1100	19	71	296	283	27	144	349	75
+424519	host-vitest	1370	48	71	782	213	30	172	173	75

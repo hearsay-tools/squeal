@@ -1,0 +1,15 @@
+{"t":"2026-11-12T21:14:14.770Z","load1":"15.03","cycle":1,"step":"start","startMs":767,"listMs":32,"files":1765,"hostPriv":192}
+{"t":"2026-11-12T21:14:46.317Z","load1":"17.13","cycle":1,"step":"cold-edit","invalidateMs":150,"affectedMs":30814,"closureMs":6,"runMs":577,"editMs":31546,"direct":1,"transitive":0,"end":"completed","hostPriv":1383}
+{"t":"2026-11-12T21:14:52.327Z","load1":"16.48","cycle":1,"step":"warm-edit","invalidateMs":103,"affectedMs":5516,"closureMs":1,"runMs":390,"editMs":6010,"direct":1,"transitive":0,"end":"completed","hostPriv":1852}
+{"t":"2026-11-12T21:14:58.419Z","load1":"15.88","cycle":1,"step":"warm-edit","invalidateMs":109,"affectedMs":5598,"closureMs":16,"runMs":369,"editMs":6092,"direct":1,"transitive":0,"end":"completed","hostPriv":2059}
+{"t":"2026-11-12T21:14:58.737Z","load1":"15.88","cycle":1,"step":"close","closeMs":317}
+{"t":"2026-11-12T21:14:59.411Z","load1":"15.88","cycle":2,"step":"start","startMs":646,"listMs":27,"files":1765,"hostPriv":173}
+{"t":"2026-11-12T21:15:30.143Z","load1":"18.07","cycle":2,"step":"cold-edit","invalidateMs":164,"affectedMs":30042,"closureMs":2,"runMs":524,"editMs":30732,"direct":1,"transitive":0,"end":"completed","hostPriv":1711}
+{"t":"2026-11-12T21:15:38.179Z","load1":"17.59","cycle":2,"step":"warm-edit","invalidateMs":185,"affectedMs":7353,"closureMs":1,"runMs":496,"editMs":8035,"direct":1,"transitive":0,"end":"completed","hostPriv":1514}
+{"t":"2026-11-12T21:15:45.372Z","load1":"18.24","cycle":2,"step":"warm-edit","invalidateMs":94,"affectedMs":6587,"closureMs":1,"runMs":511,"editMs":7193,"direct":1,"transitive":0,"end":"completed","hostPriv":1626}
+{"t":"2026-11-12T21:15:45.736Z","load1":"18.24","cycle":2,"step":"close","closeMs":363}
+{"t":"2026-11-12T21:15:46.635Z","load1":"18.24","cycle":3,"step":"start","startMs":862,"listMs":36,"files":1765,"hostPriv":180}
+{"t":"2026-11-12T21:16:17.010Z","load1":"19.06","cycle":3,"step":"cold-edit","invalidateMs":154,"affectedMs":29817,"closureMs":1,"runMs":402,"editMs":30375,"direct":1,"transitive":0,"end":"completed","hostPriv":1767}
+{"t":"2026-11-12T21:16:23.923Z","load1":"18.50","cycle":3,"step":"warm-edit","invalidateMs":98,"affectedMs":6413,"closureMs":1,"runMs":401,"editMs":6913,"direct":1,"transitive":0,"end":"completed","hostPriv":1431}
+{"t":"2026-11-12T21:16:31.060Z","load1":"18.84","cycle":3,"step":"warm-edit","invalidateMs":90,"affectedMs":6469,"closureMs":1,"runMs":577,"editMs":7136,"direct":1,"transitive":0,"end":"completed","hostPriv":1917}
+{"t":"2026-11-12T21:16:31.439Z","load1":"18.84","cycle":3,"step":"close","closeMs":379}

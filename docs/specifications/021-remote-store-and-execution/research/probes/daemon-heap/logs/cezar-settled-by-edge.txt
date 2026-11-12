@@ -1,0 +1,16 @@
+## Retained through named edges (MiB, edges)
+   149.8     3694  imports ← object Object
+    88.8   351077  static ← object Object
+    18.7   351077  sha1 ← object Object
+    11.0   351077  dynamic ← object Object
+     8.3   354881  path ← object Object
+     2.8     1920  paths ← object Object
+     2.1     1927  packages ← object Object
+     0.2        1  paths ← object KeyIndex
+     0.2     1916  testFile ← object Object
+     0.0        1  paths ← object system / Context
+     0.0        2  paths ← object Module
+     0.0        2  paths ← closure resolve
+     0.0        1  path ← object Preload
+     0.0        1  path ← object Module
+     0.0        1  path ← object OutgoingMessage

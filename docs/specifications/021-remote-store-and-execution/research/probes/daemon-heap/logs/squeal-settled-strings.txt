@@ -1,0 +1,43 @@
+strings: 2269200 nodes, 110.3 MiB; 86213 distinct values; held once each: 18.5 MiB; copies: 91.8 MiB
+
+top 20 values by bytes in copies (MiB in copies, copies, value)
+    2.1    47183  "src/core/keys/reverse-index.ts"
+    1.5    38821  "src/core/fs/json.ts"
+    1.4    36117  "src/core/types/store.ts"
+    1.2    32747  "src/core/fs/compare.ts"
+    1.0    27660  "src/core/store/codec.ts"
+    1.0    33596  "src/core/text.ts"
+    1.0       34  "// Copyright Joyent, Inc. and other Node contributors.\n//\n// Permission is hereby granted,"
+    0.9    20601  "src/core/types/scheduler.ts"
+    0.8    17134  "src/core/daemon/policy.ts"
+    0.7    15840  "src/core/store/connection.ts"
+    0.7    15463  "src/core/fs/git-layout.ts"
+    0.6    17149  "src/core/state/derive.ts"
+    0.5    14447  "src/core/fs/errors.ts"
+    0.5    11630  "src/core/scheduler/context.ts"
+    0.5    11350  "src/core/state/fingerprint.ts"
+    0.5    11122  "src/core/delivery/slots.ts"
+    0.5     9688  "src/core/daemon/policy-node-test.ts"
+    0.5    12703  "src/core/store/paths.ts"
+    0.4    10162  "src/core/presence/heartbeat.ts"
+    0.4    11221  "src/core/keys/glob.ts"
+
+40-hex values (sha1): 3091 distinct, 421750 nodes, 22.5 MiB
+values with a '/' (paths): 39936 distinct, 1796106 nodes, 72.3 MiB, once 4.1 MiB
+
+plain Objects by property names, top 15 (count, self MiB, names)
+  421724   22.5  dynamic,path,sha1,static
+   14299    0.8  errHandlers,listeners,rawEmitters,watcher
+   14298    0.3  change,error
+   12247    0.6  hash,path
+    5788    0.3  hash,segment
+    5209    0.2  path,project
+    4522    0.2  from,name
+    1737    0.1  complete,method,paths,testFile
+    1737    0.1  environments,key,keys
+    1737    0.3  blocked,checks,durationMs,failing,id,key,keyedAt,phase,ref,rerunKey,rerunPending,resultKey,retryKey,
+    1737    0.1  condition,testFile
+    1737    0.1  kind,reason
+    1736    0.1  builtins,imports
+    1736    0.1  closure,dependencies,entries,key,readAsOne,runtime,verified
+    1736    0.1  imports,packages,paths,testFile

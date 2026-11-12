@@ -1,0 +1,43 @@
+strings: 1958449 nodes, 111.2 MiB; 71032 distinct values; held once each: 16.1 MiB; copies: 95.1 MiB
+
+top 20 values by bytes in copies (MiB in copies, copies, value)
+    1.9    35490  "packages/cezar/src/home/display.ts"
+    1.4    27330  "packages/cezar/src/core/product-env.ts"
+    1.2    26752  "packages/contract/src/waits.ts"
+    1.2    22676  "packages/cezar/src/project-paths.ts"
+    1.1    18433  "packages/cezar/src/workflows/run/wait-kinds.ts"
+    1.0    20355  "packages/contract/src/delegation.ts"
+    1.0       34  "// Copyright Joyent, Inc. and other Node contributors.\n//\n// Permission is hereby granted,"
+    0.9    14396  "packages/cezar/src/delegation/process-liveness.ts"
+    0.9    13944  "packages/cezar/src/workflows/run/launch-read-resolver.ts"
+    0.9    16480  "packages/cezar/src/workflows/waits.ts"
+    0.8    12034  "packages/cezar/src/workflows/run/turn-boundary.ts"
+    0.8    14954  "packages/cezar/src/core/agent-runner.ts"
+    0.7    11977  "packages/cezar/src/workflows/run/run-guards.ts"
+    0.7    11970  "packages/cezar/src/workflows/run/input-timers.ts"
+    0.6    12351  "packages/cezar/src/delegation/policy.ts"
+    0.6     9296  "packages/cezar/src/workflows/run/pending-ask-facts.ts"
+    0.6    11557  "packages/cezar/src/legacy-runs.ts"
+    0.6    12990  "packages/contract/src/runs.ts"
+    0.5    10532  "packages/cezar/src/core/agent-env.ts"
+    0.5    10535  "packages/cezar/src/home/switch.ts"
+
+40-hex values (sha1): 8545 distinct, 356526 nodes, 19.0 MiB
+values with a '/' (paths): 22835 distinct, 1554743 nodes, 77.4 MiB, once 2.1 MiB
+
+plain Objects by property names, top 15 (count, self MiB, names)
+  351077   18.7  dynamic,path,sha1,static
+   13105    0.5  from,name
+   10681    0.5  hash,path
+    6013    0.3  hash,segment
+    5750    0.2  path,project
+    5651    0.3  errHandlers,listeners,rawEmitters,watcher
+    5650    0.1  change,error
+    3631    0.2  ready,reason,state
+    1918    0.1  complete,method,paths,testFile
+    1917    0.3  blocked,checks,durationMs,failing,id,key,keyedAt,phase,ref,rerunKey,rerunPending,resultKey,retryKey,
+    1917    0.1  condition,testFile
+    1917    0.1  kind,reason
+    1916    0.1  builtins,imports
+    1817    0.1  environments,key,keys
+    1816    0.1  closure,dependencies,entries,key,readAsOne,runtime,verified
