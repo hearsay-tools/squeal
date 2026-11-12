@@ -31,6 +31,7 @@ const {
 } = require("./coverage-drops.cjs");
 const { allow, attachStamps } = require("./coverage-stamps.cjs");
 const { v8Batches, yieldReason } = require("./coverage-v8.cjs");
+const { withWatch } = require("./inspector.cjs");
 const { startMapper } = require("./map-client.cjs");
 
 const message = (error) => String(error?.message ?? error);
@@ -268,9 +269,10 @@ function failedCoverage(error) {
  * `vitest-ci.cjs`'s reporter with `coverage`'s hooks: the specifications at
  * the run's start, the batches as each module ends, and at the run's end
  * the records, which Vitest awaits and the reporter's `onTestRunEnd` gets
- * as its fourth argument. Never throws, never rejects.
+ * as its fourth argument, with what the workers below `raw` saw load
+ * `node:inspector` (`withWatch`). Never throws, never rejects.
  */
-function coveredReporter(reporter, coverage, modules) {
+function coveredReporter(reporter, coverage, modules, raw) {
   return {
     ...reporter,
     onTestRunStart: (specifications) => coverage.runStart(specifications),
@@ -285,7 +287,10 @@ function coveredReporter(reporter, coverage, modules) {
           project: m.project,
           moduleId: m.moduleId,
         }));
-        covered = coverage.end(ended).catch(failedCoverage);
+        covered = coverage
+          .end(ended)
+          .catch(failedCoverage)
+          .then((c) => withWatch(c, raw, ended));
       } catch (error) {
         covered = Promise.resolve(failedCoverage(error));
       }

@@ -4,6 +4,7 @@ import type {
   PartCollector,
   PartCoverage,
   PartFile,
+  PartInspector,
   PartRecords,
 } from "../../core/ci/parts.js";
 import { assemble, type Manifest, storedPart } from "../../core/code/coverage/parts.js";
@@ -13,8 +14,10 @@ import {
   decodeRecord,
 } from "../../core/code/coverage/record.js";
 import type { CoverageRecord, CoverageSource } from "../../core/code/coverage/types.js";
+import { compare } from "../../core/fs/compare.js";
 import type { WorktreePaths } from "../../core/fs/worktree-paths.js";
-import type { RelativePath } from "../../core/types/common.js";
+import type { AbsolutePath, ProjectName, RelativePath } from "../../core/types/common.js";
+import type { TestFileRef } from "../../core/types/keys.js";
 
 /*
  * Spec 020 D13 (row 020-08a): the coverage `coverage.cjs` wrote into a
@@ -35,8 +38,20 @@ export type RawCoverage =
       readonly collector?: PartCollector;
       readonly collectorVersion?: string;
       readonly note?: string;
+      readonly inspector?: RawInspector;
     }
-  | { readonly off: CoverageOff; readonly note: string };
+  | { readonly off: CoverageOff; readonly note: string; readonly inspector?: RawInspector };
+
+/** D19.6: `PartInspector` as `inspector.cjs` writes it, each test file by its absolute path. */
+export interface RawInspector {
+  readonly loaded: readonly RawFileRef[];
+  readonly unknown: readonly RawFileRef[];
+}
+
+interface RawFileRef {
+  readonly project: string;
+  readonly path: string;
+}
 
 /** A `SharedRecord` as `coverage.cjs` writes it: each part's bytes in base64, no tail. */
 export interface RawRecord {
@@ -54,7 +69,10 @@ export function partCoverage(
   paths: WorktreePaths,
 ): PartCoverage | undefined {
   if (raw === undefined) return undefined;
-  if ("off" in raw) return { off: raw.off, note: paths.relativizeText(String(raw.note)) };
+  const inspector =
+    raw.inspector === undefined ? {} : { inspector: partInspector(raw.inspector, paths) };
+  if ("off" in raw)
+    return { off: raw.off, note: paths.relativizeText(String(raw.note)), ...inspector };
   const { collectorVersion } = raw;
   return {
     provider: "squeal",
@@ -63,7 +81,20 @@ export function partCoverage(
     providerVersion: COVERAGE_PROVIDER_VERSION,
     recordVersion: COVERAGE_RECORD_VERSION,
     ...(raw.note === undefined ? {} : { note: paths.relativizeText(String(raw.note)) }),
+    ...inspector,
   };
+}
+
+/** The part's `inspector`: each test file of the worktree by its relative path, sorted; others dropped. */
+function partInspector(raw: RawInspector, paths: WorktreePaths): PartInspector {
+  const refs = (files: readonly RawFileRef[]): TestFileRef[] =>
+    files
+      .flatMap(({ project, path }) => {
+        const relative = paths.toRelative(path as AbsolutePath);
+        return relative === null ? [] : [{ project: project as ProjectName, path: relative }];
+      })
+      .sort((a, b) => compare(a.project, b.project) || compare(a.path, b.path));
+  return { loaded: refs(raw.loaded), unknown: refs(raw.unknown) };
 }
 
 /** The record `raw` holds; `null` when it does not read. A part that does not read leaves its path unread. */
