@@ -1,0 +1,5 @@
+squeal code: node-test project "unit": preload "scripts/preload.mjs" imports node:module through "scripts/hooks-helper.mjs" and may register module hooks; Squeal does not record in Node's loader thread, so what the hooks load enters no key; declare it in inputs; resolving with Node's own rules
+squeal code: node-test project "unit": 1 test file(s) with an incomplete static closure, keyed by what their runs load: test/math.test.mjs (import() with a computed specifier at test/math.test.mjs:6:19)
+squeal code: node-test project "root:unit": preload "scripts/preload.mjs" imports node:module through "scripts/hooks-helper.mjs" and may register module hooks; Squeal does not record in Node's loader thread, so what the hooks load enters no key; declare it in inputs; resolving with Node's own rules
+squeal code: node-test project "root:unit": 1 test file(s) with an incomplete static closure, keyed by what their runs load: test/math.test.mjs (import() with a computed specifier at test/math.test.mjs:6:19)
+squeal code: node:test: no test file to run

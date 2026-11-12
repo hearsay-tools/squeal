@@ -1,0 +1,72 @@
+{
+  "format": "squeal-code-gate/1",
+  "createdAt": "2026-11-12T05:18:29.510Z",
+  "versions": {
+    "squeal": "0.1.443",
+    "counter": 5,
+    "coverageProvider": 3,
+    "coverageRecord": 4,
+    "qualityPolicy": 4
+  },
+  "base": {
+    "ref": "main",
+    "commit": "1f81aaa40e4275f45ddaab942233bda4b5218b39",
+    "policy": {
+      "complexityThreshold": 20,
+      "crapThreshold": 30,
+      "coverageExclude": [],
+      "complexityInclude": [
+        "**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,py}"
+      ],
+      "complexityExclude": [
+        "**/dist/**",
+        "**/build/**",
+        "**/vendor/**",
+        "**/*.min.js"
+      ],
+      "complexityMaxFileBytes": 524288,
+      "gateGroups": null
+    }
+  },
+  "head": {
+    "commit": "bd18940088095a10ac6ab0002359bfe8135572af",
+    "dirty": false,
+    "paths": [
+      {
+        "path": ".github/scripts/ci.cjs",
+        "blob": "690aad34a46dc93c1dd9d876aa7201a2f317f62b"
+      }
+    ]
+  },
+  "budget": {
+    "seconds": 600,
+    "timedOut": false
+  },
+  "scope": {
+    "groups": [
+      {
+        "name": "tests",
+        "at": "edit",
+        "from": "default"
+      },
+      {
+        "name": "slow",
+        "at": "edit",
+        "from": "default"
+      }
+    ],
+    "leftOut": []
+  },
+  "functions": [],
+  "omitted": [],
+  "uncounted": [],
+  "runs": [],
+  "verdict": "pass",
+  "counts": {
+    "pass": 0,
+    "violation": 0,
+    "incomplete": 0,
+    "skipped": 0,
+    "accepted": 0
+  }
+}
