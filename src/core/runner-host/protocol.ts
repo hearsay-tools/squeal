@@ -202,21 +202,27 @@ export function frameOf(line: string): string | null {
 /**
  * Splits a stream's text into lines and yields the payload of each frame
  * (`frameOf`); a line without the marker is someone else's output and is
- * skipped.
+ * skipped. A line costs time linear in its length (row 011-314): only the
+ * new chunk is searched for a newline, and the unfinished line's chunks are
+ * joined once, when its newline arrives.
  */
 export class LineReader {
-  #rest = "";
+  /** The unfinished line, in the chunks it arrived in. */
+  #pending: string[] = [];
 
   /** The protocol lines `chunk` completes, each parsed. A line that does not parse throws. */
   push(chunk: string): unknown[] {
-    const text = this.#rest + chunk;
-    const lines = text.split("\n");
-    this.#rest = lines.pop() ?? "";
     const messages: unknown[] = [];
-    for (const line of lines) {
+    let from = 0;
+    for (let end = chunk.indexOf("\n"); end >= 0; end = chunk.indexOf("\n", from)) {
+      this.#pending.push(chunk.slice(from, end));
+      const line = this.#pending.join("");
+      this.#pending = [];
+      from = end + 1;
       const frame = frameOf(line);
       if (frame !== null) messages.push(JSON.parse(frame));
     }
+    if (from < chunk.length) this.#pending.push(chunk.slice(from));
     return messages;
   }
 }
