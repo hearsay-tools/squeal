@@ -358,6 +358,11 @@ export interface PruneInput {
   }[];
   /** `store.maxSizeMb`; default none. */
   readonly maxSizeMb?: number;
+  /**
+   * Keys asked after the prune which of them have a result, as the code
+   * store's prune asks (row 011-315, `ResultRepo.keysWithResults`).
+   */
+  readonly asked?: readonly string[];
 }
 
 /** The Pythons the `adapter:pytest` kind runs on, as CI installs them (`test/helpers/pytest-env.ts`). */

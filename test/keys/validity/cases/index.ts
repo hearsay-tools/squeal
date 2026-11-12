@@ -34,6 +34,7 @@ import { FAILED_IMPORTS } from "./observe/failed-import.js";
 import { OBSERVED_READS } from "./observe/reads.js";
 import { OBSERVED_STARTED } from "./observe/started.js";
 import { OBSERVED_WRITTEN } from "./observe/written.js";
+import { PRUNE_KEYS } from "./prune/keys.js";
 import { PRUNE_SLICES } from "./prune/slices.js";
 import { GOLDEN_ROWS } from "./rows/golden.js";
 import { RUNTIME_STORES } from "./store/runtime.js";
@@ -84,4 +85,5 @@ export const CASES: readonly Case[] = [
   ...RECURSIVE_LISTING,
   ...REFUSED_WRITES,
   ...PRUNE_SLICES,
+  ...PRUNE_KEYS,
 ];
