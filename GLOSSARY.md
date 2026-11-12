@@ -31,3 +31,25 @@ _Avoid_: dead (a death is the note "last one died"), down
 **Presence event**:
 Something a daemon, a hook or the CLI reports about a daemon (registered, beat, exiting, rested, spawned, stopped by request). Presence is built only from these events.
 _Avoid_: mark (when you mean the event, not its stored form)
+
+## Results
+
+**Run evidence**:
+What is known about one finished run that decides whether its results may be saved: which test files completed, whether each file's inputs held still from before the run to its end, and what the run read or loaded beyond them.
+_Avoid_: stability check, completion barrier (each is one part of it)
+
+**Store decision**:
+The answer for one test file of a finished run, from a closed set: save its results at the key it ran under, save them at a grown key, run it again, or discard them. Each comes with its reason.
+_Avoid_: keepable, verdict
+
+**Observed read**:
+A file a test read during a run that is not among its known inputs. Once recorded, it is one of the test file's inputs.
+_Avoid_: growth (the code's word for the observed reads one run adds)
+
+**Touched input**:
+An input written during a run whose bytes ended as they were. The run may have read other bytes, so its result is not saved.
+_Avoid_: unchanged (it is not the same as never written)
+
+**Keep**:
+`squeal code` saves the results of a test file it ran at the key a daemon would give that file, so the next run and a daemon read them.
+_Avoid_: cache
