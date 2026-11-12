@@ -1,6 +1,7 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { createPermitPool, type PermitPool, type PoolLease } from "../../capacity/pool.js";
 import { loadUserConfig } from "../../daemon/user-config.js";
+import { widthLease } from "../../scheduler/capacity.js";
 import { slowSlotDir } from "../../slow/slot.js";
 import type { AbsolutePath } from "../../types/common.js";
 import type { TestFileRef } from "../../types/keys.js";
@@ -82,7 +83,8 @@ export function createHostAdmission(
       if (lease === null) return refusal === undefined ? { grant: 0 } : { grant: 0, refusal };
       const timer = setTimeout(drop, holdMs);
       timer.unref();
-      held = { lease, timer };
+      // As a tier's lease under its runner's width: the run's tail never states more than it asked.
+      held = { lease: widthLease(lease, want), timer };
       return { grant: lease.grant };
     },
     claim() {
