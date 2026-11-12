@@ -25,7 +25,7 @@ All scripts are in this folder. Run them with the paths below; each prints JSON 
    ```
 
    Keep the scratch files out of the repository. A sample counts for C2 when its `busyCores` is at least a quarter of the CPUs (6 on 24). If an eval run is active, run only `sample-trees.py` and `analyze-trees.py`: C2 is then not measured, and C1's cause still names the trees. The next section says what `analyze-trees.py` prints.
-5. **Daemons and memory.** From `squeal ps`: each flagged daemon (older, root-gone, install-gone, not-installed) and how long it has been up; the daemons' total resident memory. From `free -b`: swap used and total. List niced processes adopted by `systemd --user` or init that carry the variable name `SQUEAL_OBSERVE`, with their age (report only; cezar's own leaks are hearsay-tools/cezarion#1448 and #1449).
+5. **Daemons and memory.** From `squeal ps`: each flagged daemon (older, root-gone, install-gone, not-installed) and how long it has been up; the daemons' total resident memory. From `free -b`: swap used and total. List niced processes adopted by `systemd --user` or init that carry the variable name `SQUEAL_OBSERVE`, with their age (report only; cezar's own leaks are hearsay-tools/cezarion#1448 and #1449). To read a daemon's disk reads, use `/proc/<pid>/task/<tid>/io` per thread: `/proc/<pid>/io` also counts the I/O of the child processes the daemon has ended, such as the daily integrity check, which reads the whole store in 4 KB pages (row 011-316, `research/daemon-idle-cpu.md` section 2).
 6. **Yesterday's result.** Read the newest earlier file in `../../host-load/`.
 
 ## Criteria
