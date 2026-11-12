@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from "node:async_hooks";
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { createConnection, createServer, type Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -15,7 +15,7 @@ import { keepInDaemon } from "../../../src/core/daemon/keep-request.js";
 import { acquireDaemonLock } from "../../../src/core/daemon/lock.js";
 import { createDaemonServer } from "../../../src/core/daemon/server.js";
 import { worktreeIdFor } from "../../../src/core/fs/git-layout.js";
-import type { Hasher } from "../../../src/core/hash/hasher.js";
+import { createFsHasher, type Hasher } from "../../../src/core/hash/hasher.js";
 import { StatCache } from "../../../src/core/hash/stat-cache.js";
 import { testFileId } from "../../../src/core/keys/reverse-index.js";
 import type { WorktreeKeys } from "../../../src/core/scheduler/keying.js";
@@ -65,7 +65,15 @@ export function inputs() {
     now: () => 1_000_000,
   };
   const cache = new StatCache([A, B].map((ref) => ({ path: inputOf(ref), ...STAT, hash: "h" })));
-  const keys = {
+  const move = (ref: TestFileRef) => {
+    moved.add(inputOf(ref));
+  };
+  return { hasher, keys: keysOver(cache), move };
+}
+
+/** A lookup's keys over `cache`, each test file reading its one input. */
+function keysOver(cache: StatCache): WorktreeKeys {
+  return {
     cache,
     stabilityPaths: (ref: TestFileRef) => [inputOf(ref)],
     beginRun: () => 1,
@@ -73,7 +81,30 @@ export function inputs() {
     observes: () => false,
     environmentFiles: () => [],
   } as unknown as WorktreeKeys;
-  return { hasher, keys, move: (ref: TestFileRef) => moved.add(inputOf(ref)) };
+}
+
+/** The inputs a keeper's lookup reads, and how a test changes one. */
+export type Inputs = ReturnType<typeof inputs>;
+
+/**
+ * Review 0.1.450 R1-B2: real inputs under `root`, `src/a.mjs` and
+ * `src/b.mjs`, stat'ed and hashed as git hashes them; `move` rewrites one.
+ */
+export async function realInputs(root: AbsolutePath): Promise<Inputs> {
+  const hasher = createFsHasher(root, "sha1");
+  mkdirSync(join(root, "src"), { recursive: true });
+  const records = [];
+  for (const ref of [A, B]) {
+    const path = inputOf(ref);
+    writeFileSync(join(root, path), `export const value = 1;\n`);
+    const stat = await hasher.stat(path);
+    const hash = await hasher.hash(path);
+    if (stat === null || hash === null) throw new Error(`${path} was not written`);
+    records.push({ path, ...stat, hash });
+  }
+  const move = (ref: TestFileRef) =>
+    writeFileSync(join(root, inputOf(ref)), "export const value = 2; // changed during recovery\n");
+  return { hasher, keys: keysOver(new StatCache(records)), move };
 }
 
 export function report(
@@ -281,12 +312,14 @@ export interface KeptOptions {
   /** The run's results; default none, so each file stores its file check alone. */
   readonly results?: readonly CheckRunResult[];
   readonly daemonWaits?: DaemonWaits;
+  /** The lookup's inputs; default `inputs()`, which only `move` changes. */
+  readonly inputs?: Inputs;
 }
 
 /** `files` run and flushed by a keeper of `at`'s worktree; `onBusy` runs at the busy note. */
 export async function kept(at: Served, notes: string[], options: KeptOptions = {}): Promise<void> {
   const { busyBoundMs = 5_000, files = [[A, KEY_A]], onBusy = () => {} } = options;
-  const moving = inputs();
+  const moving = options.inputs ?? inputs();
   const keep = new Keeper({
     root: at.root,
     commonDir: at.commonDir,

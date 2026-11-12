@@ -1,24 +1,18 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { compare } from "../../fs/compare.js";
 import { checkId } from "../../scheduler/files.js";
-import { healsUnheld } from "../../scheduler/hold.js";
 import type { WorktreeKeys } from "../../scheduler/keying.js";
 import { recordsForFile } from "../../scheduler/records.js";
-import { storeResults } from "../../scheduler/store-results.js";
 import { describeFailure } from "../../state/fingerprint.js";
-import { BUSY_SLICE_MS, busyBackoffMs } from "../../store/busy.js";
-import { isBusy, withBusySliceSync } from "../../store/connection.js";
+import { busyBackoffMs } from "../../store/busy.js";
 import { describeHolders, lockHolders } from "../../store/lock-holders.js";
 import { storePaths } from "../../store/paths.js";
-import type { AbsolutePath, EpochMs, WorktreeId } from "../../types/common.js";
+import type { AbsolutePath, EpochMs } from "../../types/common.js";
 import type { RunReport } from "../../types/runner.js";
 import type { Store } from "../../types/store.js";
 import type { Provenance, ResultRecord } from "../../types/store-records.js";
-import { shareRecord } from "../coverage/parts.js";
-import { COVERAGE_RECORD_VERSION } from "../coverage/record.js";
 import type { CoverageRecord } from "../coverage/types.js";
 import { codeStorePath } from "../store/open.js";
-import type { CodeStore } from "../store/types.js";
 import type { Expected } from "./keep-expected.js";
 
 /*
@@ -150,44 +144,42 @@ export interface KeepWriter {
   results(file: Kept, records: readonly ResultRecord[], keys: WorktreeKeys): Promise<Tried>;
 }
 
-/** The writer with no daemon serving: each try on the keeper's own connections, one busy slice. */
-export function writeHere(
-  stores: { readonly store: Store; readonly code: CodeStore },
-  worktreeId: WorktreeId,
-  now: () => EpochMs,
-): KeepWriter {
-  const { store, code } = stores;
-  return {
-    coverage: async (file) => {
-      const recordKey = { resultKey: file.key, providerVersion: COVERAGE_RECORD_VERSION };
-      const shared = shareRecord(file.record, COVERAGE_RECORD_VERSION);
-      return tried(() => code.coverage.putParts(recordKey, shared, now()));
-    },
-    results: async (file, records, keys) =>
-      tried(() =>
-        storeResults({ store, keys, worktreeId, now }, records, healsUnheld(store, file.paths)),
-      ),
-  };
-}
+/**
+ * Spec 020 D17.5, review 0.1.450 R1-B2: the one input check every new
+ * write of a kept file passes first (`keepFile`). Until a try fails, the
+ * opening check of `flush` holds. From the first try that did not land on,
+ * whether a busy store refused it or a daemon never received it, each
+ * file's inputs are read again before each of its writes and after every
+ * pause, for every file still to write. It is not the busy clock
+ * (`StoreWait`): a lost try owes the check and starts no wait.
+ */
+export class InputCheck {
+  #owed = false;
 
-/** `write`, one synchronous transaction, tried once with one busy slice. */
-function tried(write: () => unknown): Tried {
-  try {
-    withBusySliceSync(BUSY_SLICE_MS, write);
-    return "kept";
-  } catch (error) {
-    if (!isBusy(error)) throw error;
-    return "busy";
+  /** Whether a try failed, so every later write reads its file's inputs first. */
+  get owed(): boolean {
+    return this.#owed;
+  }
+
+  /** A try did not land. */
+  owe(): void {
+    this.#owed = true;
+  }
+
+  /** Whether the file whose inputs `read` reads may be written now; it reads them once owed. */
+  async holds(read: () => Promise<boolean>): Promise<boolean> {
+    return !this.#owed || read();
   }
 }
 
 /**
  * One file's record at its key, then its results there, as the daemon's
  * tier record stores them, each try by `writer`. `giveUp`, asked with the
- * database after each busy pause, says whether the bound is spent;
- * `steady`, asked then and before each write, whether the file's inputs
- * still hold the bytes its run read. Both are asked outside any
- * transaction. `store` is read for the file's previous checks.
+ * database after each busy pause, says whether the bound is spent. Before
+ * each write and after every pause, `check` decides whether the file's
+ * inputs still hold the bytes its run read, reading them with `steady`.
+ * All are asked outside any transaction. `store` is read for the file's
+ * previous checks.
  */
 export async function keepFile(
   stores: { readonly store: Store; readonly keys: WorktreeKeys; readonly writer: KeepWriter },
@@ -197,12 +189,16 @@ export async function keepFile(
     readonly provenance: Provenance;
     readonly databases: ReturnType<typeof databasesOf>;
     readonly giveUp: (database: AbsolutePath) => boolean;
+    readonly check: InputCheck;
+    /** Reads the file's inputs again: whether they hold the bytes its run read. */
     readonly steady: () => Promise<boolean>;
   },
 ): Promise<KeepOutcome> {
   const { store, keys, writer } = stores;
-  const { file, report, provenance, databases, giveUp, steady } = at;
+  const { file, report, provenance, databases, giveUp, check } = at;
+  const steady = () => check.holds(at.steady);
   const paused = (database: AbsolutePath) => async (busy: boolean) => {
+    check.owe();
     if (busy && giveUp(database)) return "spent";
     return (await steady()) ? null : "changed";
   };
@@ -266,6 +262,15 @@ export function perhapsKept(left: number, why: string): string {
 /** The start of a note on `count` completed test files that were not kept. */
 export function notKept(count: number): string {
   return `${completed(count)} ${count === 1 ? "was" : "were"} not kept in the stores`;
+}
+
+/**
+ * Review 0.1.450 R1-B2: the note on `count` files not kept because their
+ * inputs moved after a try the daemon never received, with no busy wait.
+ */
+export function changedAfterLoss(count: number): string {
+  const they = count === 1 ? "it" : "they";
+  return `${notKept(count)}: ${they} changed after a write the daemon never received; ${again(count)}`;
 }
 
 function completed(count: number): string {
