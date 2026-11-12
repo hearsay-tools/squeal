@@ -23,13 +23,13 @@ export function pruneCodeStoreAfter(
   try {
     const worktrees = main.worktrees.list().map((w) => w.id);
     const consumers = worktrees.flatMap((id) => main.consumers.list(id).map((r) => r.consumer));
-    const resultKeys = [...new Set(main.results.keysSince(0).map((k) => k.key))];
     return code.prune({
       now,
       retentionDays: policy.store.retentionDays,
       worktrees,
       consumers,
-      resultKeys,
+      // Row 011-315: only the keys the code store's records hold, never every key.
+      resultKeys: (keys) => main.results.keysWithResults(keys),
     });
   } finally {
     code.close();
