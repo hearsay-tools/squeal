@@ -66,6 +66,7 @@ import {
 } from "./open.js";
 import { prepareSocketDir, socketPathFor } from "./paths.js";
 import { lastPolicyNote, loadPolicy, POLICY_FILE } from "./policy.js";
+import { COMMANDS_TOPIC, commandsLine } from "./required-commands.js";
 import { type GroupRequested, type Held, keyingStep, requestGroup } from "./run-group.js";
 import { requestSlowSuite, type SlowSuiteRequested } from "./run-slow.js";
 import type { RecoveringRunner } from "./runner.js";
@@ -338,6 +339,7 @@ class Daemon {
       const { policy, problems } = loadPolicy(root);
       this.#policy = policy;
       this.#notePolicyProblems(problems);
+      this.#noteCommands();
       // Its problems are noted at start, as the policy's are, not at the first backlog tier.
       this.#capacity();
       this.#startTimers();
@@ -435,6 +437,18 @@ class Daemon {
   }
 
   /**
+   * Spec 021 D19.1 (row 021-23): a command of `requires.commands` missing on
+   * this daemon's `PATH`, which its test runs get, is named in status; the
+   * tests still run. Once found again, the line says so.
+   */
+  #noteCommands(): void {
+    const { store, worktreeId } = this.opened;
+    const last = readDaemonNotes(store, worktreeId).findLast((n) => n.topic === COMMANDS_TOPIC);
+    const text = commandsLine(this.#policy.requires.commands, last?.text);
+    if (text !== null) this.#note(text, undefined, undefined, COMMANDS_TOPIC);
+  }
+
+  /**
    * `SchedulerOptions.reloadPolicy`: spec 001 D11, "a revision that changes
    * the file reloads it and re-keys what `inputs` and `env.allowlist`
    * touch". The scheduler re-keys; the daemon restarts its timers for
@@ -455,6 +469,7 @@ class Daemon {
     if (this.#phase !== "stopping") this.#startTimers();
     const found = problems.length > 0 ? `: ${describeProblems(problems)}` : "";
     this.#note(`${POLICY_FILE} changed; policy reloaded${found}`);
+    this.#noteCommands();
     return policy;
   }
 
