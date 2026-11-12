@@ -47,8 +47,8 @@ describe("the bare-file note under the daemon's policy inputs (task 001-365)", S
       });
     await waitFor(ran, 120_000, "both node:test files run");
 
-    expect(readNotes(repo).filter((text) => text.includes("declare it in inputs"))).toEqual([
-      `node-test project "nt": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: ${UNDECLARED}`,
+    expect(readNotes(repo).filter((text) => text.includes("loaded nothing beyond"))).toEqual([
+      `node-test project "nt": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in the top-level "inputs" of squeal.config.json (a list of globs for every test file, or a map from a test-file glob to globs): ${UNDECLARED}`,
     ]);
   });
 });
