@@ -202,8 +202,9 @@ export function focusesFile(runner: RunnerAdapter | undefined, testFile: TestFil
   return runner?.focusesFile?.(testFile) ?? runner?.focuses === true;
 }
 
-interface Part {
-  readonly adapter: RunnerAdapter;
+/** One part of a run and its report; `adapter.name` prefixes the part's failure. */
+export interface Part {
+  readonly adapter: Pick<RunnerAdapter, "name">;
   readonly report: RunReport;
 }
 
@@ -214,7 +215,7 @@ const SEVERITY: Readonly<Record<RunEnd, number>> = { completed: 0, "timed-out": 
  * recorded as it went wrong; files stay trusted per part, because a crashed
  * part lists no completed files and a completed one does not depend on it.
  */
-function merge(parts: readonly Part[]): RunReport {
+export function merge(parts: readonly Part[]): RunReport {
   const reports = parts.map((part) => part.report);
   const end = reports.reduce<RunEnd>(
     (worst, report) => (SEVERITY[report.end] > SEVERITY[worst] ? report.end : worst),
