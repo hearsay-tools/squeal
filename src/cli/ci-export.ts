@@ -212,7 +212,7 @@ function leftOut(counts: CiExportCounts): string {
       : null,
     counts.ambiguous > 0 ? `${files(counts.ambiguous)} with two checks of one name` : null,
     counts.inspector > 0
-      ? `${files(counts.inspector)} that ran node:inspector beside Squeal's coverage provider`
+      ? `${files(counts.inspector)} that loaded node:inspector beside a coverage provider`
       : null,
   ]
     .filter((part) => part !== null)
