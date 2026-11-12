@@ -9,8 +9,8 @@
 // of 0.1.443-r2 S2): the Vitest process knows that only once its config is
 // resolved, before it starts its workers, and says so to them in
 // `SQUEAL_CI_NO_PROVIDER` (`watchWorkers`); a worker started with it
-// installs no hook and writes no log. In a Vitest worker it attributes each load to
-// the test file running then (`__vitest_worker__.filepath`, as Squeal's
+// installs no hook and writes no log. In a Vitest worker it attributes each
+// load to the test file running then (`__vitest_worker__.filepath`, as Squeal's
 // runtime recorder does): an `import` or `require` Node resolves (a
 // `module.registerHooks` resolve hook, which sees every load of a builtin,
 // a repeated one too) and a `process.getBuiltinModule` call. A load with no
