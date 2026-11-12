@@ -107,6 +107,7 @@ Started: 2026-10-31
 - 2026-11-12, the human: "Row 018-38: Yes": a cancelled run's log never recreates a removed store folder (the product cause behind the ENOTEMPTY teardown failures outside the daemon tests, which row 018-37 does not reach, and a stray folder in a removed user checkout). Brief `tasks/wave-16.md`.
 - 2026-11-12, review 0.1.449 (`reviews/0.1.449.md`): FAIL B1 (a covered node:test run's V8 coverage exit made a removed store again; an earlier pass was stored without its loads), repair R1 (coverage through run-owned links, a run-owned mark in the log folder); re-review still FAIL: outputs differ from 0.1.448 where only the log folder is removed, so old stored node:test passes could lack loads. Second failing review: the human chose "A: raise version": NODE_TEST_ADAPTER_VERSION 11 with the differing validity case; every stored node:test result runs once again per store.
 - 2026-11-12, released 0.1.449 (tag squeal--v0.1.449 at 3f8826305, hub 34c7e21; tags v0.1.449 and v0 moved). Stored node:test results run once again (NODE_TEST_ADAPTER_VERSION 11).
+- 2026-11-12, squawk#3358 merged (51087ab8b): a dispatch-only trial job for Squeal's packaged node:test suite (#194, spec 020 row 020-32); its trial run 43226175584 passed. squawk#3336 (Squeal's pinned Action + weekly Dependabot) merged earlier (cc3cead4b); its first merge-group run exported 1,484 test files and published refs/squeal/cc3cead4b.
 
 ## Open questions
 
