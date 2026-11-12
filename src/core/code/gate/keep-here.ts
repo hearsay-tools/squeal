@@ -7,9 +7,14 @@ import type { Store } from "../../types/store.js";
 import { shareRecord } from "../coverage/parts.js";
 import { COVERAGE_RECORD_VERSION } from "../coverage/record.js";
 import type { CodeStore } from "../store/types.js";
+import { mergeSeen } from "./keep-seen.js";
 import type { KeepWriter, Tried } from "./keep-write.js";
 
-/** The writer with no daemon serving: each try on the keeper's own connections, one busy slice. */
+/**
+ * The writer with no daemon serving: each try on the keeper's own
+ * connections, one busy slice. Row 020-39: it alone merges the runs' reads
+ * into the shared observed rows.
+ */
 export function writeHere(
   stores: { readonly store: Store; readonly code: CodeStore },
   worktreeId: WorktreeId,
@@ -26,6 +31,7 @@ export function writeHere(
       tried(() =>
         storeResults({ store, keys, worktreeId, now }, records, healsUnheld(store, file.paths)),
       ),
+    seen: async (seen) => tried(() => mergeSeen(store, seen)),
   };
 }
 

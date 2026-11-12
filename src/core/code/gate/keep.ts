@@ -25,6 +25,7 @@ import type { GateRun } from "./collect.js";
 import { Expectations, type LookupSources, type Pending } from "./keep-expected.js";
 import { writeHere } from "./keep-here.js";
 import { NotKept } from "./keep-reasons.js";
+import { atStoreKey, keepSeen, type Seen, seenOf } from "./keep-seen.js";
 import { DAEMON_KEEPS_ITS_OWN, type DaemonWaits, KeepUnknown, sentWriter } from "./keep-sent.js";
 import {
   changedAfterLoss,
@@ -77,9 +78,10 @@ export interface KeepOptions {
   readonly daemonWaits?: DaemonWaits;
 }
 
-/** One run's files that may be kept, until `flush` writes them. */
+/** One run's files that may be kept, and its reads to merge (row 020-39), until `flush` writes them. */
 interface Queued {
   readonly files: readonly Kept[];
+  readonly seen: readonly Seen[];
   readonly report: RunReport;
   readonly pending: Pending;
 }
@@ -138,10 +140,10 @@ export class Keeper {
       const steady: Queued[] = [];
       for (const q of queued) {
         const files = await this.#steady(q.pending, q.files);
-        if (files.length > 0) steady.push({ ...q, files });
+        if (files.length > 0 || q.seen.length > 0) steady.push({ ...q, files });
       }
       left = steady.flatMap((q) => q.files).length;
-      if (left > 0) await this.#write(steady);
+      if (steady.length > 0) await this.#write(steady);
     } catch (error) {
       this.#tell(`${notKept(left)}: ${messageOf(error)}`);
     }
@@ -155,13 +157,15 @@ export class Keeper {
 
   async #queue(pending: Pending, run: GateRun): Promise<void> {
     try {
-      let kept: readonly Kept[];
+      let kept: { readonly files: readonly Kept[]; readonly seen: readonly Seen[] };
       try {
         kept = await this.#keepable(pending, run);
       } finally {
         pending.keys.endRun();
       }
-      if (kept.length > 0) this.#queued.push({ files: kept, report: run.report, pending });
+      const { files, seen } = kept;
+      if (files.length + seen.length > 0)
+        this.#queued.push({ files, seen, report: run.report, pending });
     } catch (error) {
       this.#tell(
         `the test files this run completed were not kept in the stores: ${messageOf(error)}`,
@@ -178,8 +182,14 @@ export class Keeper {
    * Row 011-320: their runtime identity held, no merge holds a path their
    * key names, and no file entered or left a directory it lists. Each
    * other one waits in `#notKept` with its reason, for `flush` to tell.
+   * Row 020-39: a file whose run read beyond its key, all of it known
+   * before the run and held still, is kept at the key with those reads
+   * (`atStoreKey`); the runs' reads are merged as the daemon's are (`seen`).
    */
-  async #keepable(pending: Pending, run: GateRun): Promise<Kept[]> {
+  async #keepable(
+    pending: Pending,
+    run: GateRun,
+  ): Promise<{ readonly files: Kept[]; readonly seen: Seen[] }> {
     const { report } = run;
     const completed = new Set(report.completedFiles.map(testFileId));
     const candidates: Kept[] = [];
@@ -187,7 +197,7 @@ export class Keeper {
       const record = run.records.get(testFileId(file.ref))?.record ?? null;
       if (completed.has(id) && record !== null) candidates.push({ ...file, record });
     }
-    if (candidates.length === 0) return [];
+    if (candidates.length === 0) return { files: [], seen: [] };
     const { keys, hasher, snapshot: before, listed, runtime, revisions } = pending;
     const sources = {
       root: this.#options.root,
@@ -204,10 +214,12 @@ export class Keeper {
     const kept: Kept[] = [];
     for (const c of candidates) {
       const at = decided.get(testFileId(c.ref));
-      if (at !== undefined && keeps(at.decision)) kept.push(c);
-      else if (at !== undefined) this.#notKept.add(c.ref.path, at);
+      if (at === undefined) continue;
+      const file = keeps(at.decision) ? atStoreKey(keys, before, c, at) : null;
+      if (file !== null) kept.push(file);
+      else this.#notKept.add(c.ref.path, at);
     }
-    return kept;
+    return { files: kept, seen: seenOf(keys, report, candidates, decided) };
   }
 
   /**
@@ -219,15 +231,20 @@ export class Keeper {
    * the first busy write (`StoreWait`); the files not written then are
    * told as not kept. From that first busy write on, each file is checked
    * again before each of its writes and after every pause (review 0.1.444
-   * B2): the opening check of `flush` no longer holds after a wait.
+   * B2): the opening check of `flush` no longer holds after a wait. Row
+   * 020-39: where no daemon serves, the runs' reads are merged first, in
+   * one transaction tried as the files' are (`keepSeen`); where one
+   * serves, nothing is merged, and a file kept at its grown key is told as
+   * not kept, as before (row 021-20 sends the writes to it).
    */
-  async #write(queued: readonly Queued[]): Promise<void> {
+  async #write(runs: readonly Queued[]): Promise<void> {
     const { root, commonDir, policy } = this.#options;
     const now = this.#options.now ?? Date.now;
     const worktreeId = worktreeIdFor(root);
     const head = await this.#options.head();
-    const all = queued.flatMap((q) => q.files);
     const lock = acquireDaemonLock(lockFileFor(commonDir, worktreeId));
+    const queued = lock === null ? runs.map((q) => this.#withoutGrown(q)) : runs;
+    const all = queued.flatMap((q) => q.files);
     let written = 0;
     let changed = 0;
     /** The files a merge held by their write: among `changed`. */
@@ -241,6 +258,7 @@ export class Keeper {
       store = opened;
       let writer: KeepWriter;
       if (lock === null) {
+        if (all.length === 0) return;
         const sent = sentWriter(store, worktreeId, now(), this.#options.daemonWaits);
         if (sent === null) {
           this.#tell(`${notKept(all.length)}: ${DAEMON_KEEPS_ITS_OWN}`);
@@ -257,6 +275,12 @@ export class Keeper {
       const databases = databasesOf(commonDir);
       const giveUp = (database: AbsolutePath) =>
         wait.giveUp(database, all.slice(written + changed));
+      const seen = queued.flatMap((q) => q.seen);
+      const merge = { database: databases.main, giveUp, check };
+      if ((await keepSeen(writer, seen, merge)) === "spent") {
+        this.#tell(wait.spent(all.length, 0));
+        return;
+      }
       const revision = store.revisions.latest(worktreeId)?.number ?? 0;
       for (const { files, report, pending } of queued) {
         const provenance = {
@@ -295,7 +319,6 @@ export class Keeper {
       const lost = changed - held.length;
       if (!wait.waited && lost > 0) this.#tell(changedAfterLoss(lost));
       if (!wait.waited) for (const file of held) this.#notKept.add(file.ref.path, HELD);
-      for (const line of this.#notKept.take()) this.#tell(line);
     } catch (error) {
       const left = all.length - written;
       const unknown = error instanceof KeepUnknown;
@@ -303,10 +326,20 @@ export class Keeper {
         unknown ? perhapsKept(left, error.message) : `${notKept(left)}: ${messageOf(error)}`,
       );
     } finally {
+      for (const line of this.#notKept.take()) this.#tell(line);
       code?.close();
       store?.close();
       lock?.release();
     }
+  }
+
+  /** `q` without its files kept at a grown key, each told as not kept for it (row 020-39). */
+  #withoutGrown(q: Queued): Queued {
+    const files = q.files.filter((file) => {
+      if (file.grown !== undefined) this.#notKept.add(file.ref.path, file.grown);
+      return file.grown === undefined;
+    });
+    return { ...q, files };
   }
 
   /**
