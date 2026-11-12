@@ -1,0 +1,9 @@
+# 020-27 worker notes
+
+Facts found while fixing review 0.1.443-r2 S1 and S2. They are not in the code comments.
+
+- **How the Vitest process tells its workers.** Vitest 5.0.3 builds each worker's environment from `process.env` when the pool runs files (`{...process.env, ...options.env, ...config.env, ...project.config.env}`), after the `start` wrap in `vitest-ci.cjs`. A variable set in the `start` wrap reaches forks, threads and VM pools. `children.cjs` keeps other variables when it adds the hook to a child's env. Vitest 4.1 was not checked: only 5.0.3 is installed, and the 4.1 fixture is a stub that has no `configOverride`.
+- **Do not change `SQUEAL_CI_RECORD` after preload.** `children.cjs` reads it once at preload. A child whose value differs is "foreign", and that withholds every path, which leaves the whole part out of the export. So the fact "no provider runs" has its own variable, `SQUEAL_CI_NO_PROVIDER=1`.
+- **Vitest replaces `process.getBuiltinModule` in its workers.** In a fixture test file it is not native, also with no Squeal watch installed. To see whether the watch is installed, read `globalThis.__squealCiInspector`. The identity check is done only in `test/runners/vitest/ci-inspector-watch.test.ts`, in a plain Node process.
+- **"Provider runs" is read from Vitest's config.** It is true when `config.coverage.enabled` is true or `configOverride.coverage.enabled` is true (`providerRuns` in `vitest-ci.cjs`). A `failed` header from a provider that did not start now has no `inspector` field (`withWatch` skips it). The static closure check in `ci export` still applies to that part.
+- **The Vitest process still installs the watch at preload.** It decides only later, in `start`. No test runs there, so it writes nothing, but its hooks stay installed. Out of scope here.
