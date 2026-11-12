@@ -26,3 +26,8 @@ Leave alone: `store-decision.ts` (byte for byte), `record-tier.ts`, `record.ts`,
 Stop and ask the coordinator if the daemon's decisions or `store-decision.ts` would change, if the key alarm asks for a raise, or if a source needs a new store write from `squeal code`.
 
 Done when: the table's keeper column equals the daemon's for differences 2 to 4, in every case your sources cover; a kept file is never one the daemon would not store at the key it ran under; the note names the reason; the keeper's other table rows, the scheduler's tests and the keeper's CLI tests pass unchanged; `test/keys/key-format.test.ts` and `test/keys/validity/` pass with no raise; lint and typecheck pass; affected results through `squeal status --wait 60000 <paths>`. Notes in `tasks/011-320/notes.md` with the proposed D17.3 wording. Your final message lists decisions the design did not settle and each case a source does not cover.
+
+## W1 widened (the human, 2026-11-12)
+
+"Folder case: Add to the running row": row keep-listing-revision joins 011-320. Steered to worker ea62d171: `squeal code` does not keep a completed file when a file was added to or removed from a directory its key lists, during the run (the daemon decides "unstable" through `Tier.changes`). The table row "a revision during the run moved a listed directory, no input's bytes" flips its keeper column to the daemon's decision. The source works with and without a serving daemon; the note names the directory; the notes give the cost on a run in this repository. One commit.
+
