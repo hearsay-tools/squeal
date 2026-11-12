@@ -74,6 +74,20 @@ export interface KeyingOptions {
 const PROVISIONAL_ENVIRONMENT = "squeal-provisional-environment/1";
 
 /**
+ * What a worktree keeps of a runner's closure (spec 021 D21.1): all of it
+ * but `imports`, which no key reads. The import graph is written from the
+ * part the runner fetched (`recordImportGraph`), never from this copy.
+ */
+export type KeptClosure = Omit<RunnerClosure, "imports">;
+
+/** `runner` without `imports`; itself when it has none. */
+function kept(runner: RunnerClosure): KeptClosure {
+  if (runner.imports === undefined) return runner;
+  const { imports: _, ...rest } = runner;
+  return rest;
+}
+
+/**
  * The stat cache, closures, environments and keys of one worktree.
  *
  * Spec 001 D2: "Gitignored files that appear in a known closure (generated
@@ -89,7 +103,8 @@ export class WorktreeKeys {
   /** The paths the last `bootstrap` hashed for the first time, without a revision (row 011-91). */
   seededAtStart: readonly RelativePath[] = [];
   readonly isDeclaredInput = (path: RelativePath): boolean => this.#isDeclared(path);
-  readonly #runnerClosures = new Map<string, RunnerClosure>();
+  /** Each test file's closure, without `imports` (D21.1): 53% of an idle daemon's heap otherwise. */
+  readonly #runnerClosures = new Map<string, KeptClosure>();
   readonly #environments = new Map<ProjectName, RunnerEnvironment>();
   readonly #environmentFiles = new Set<RelativePath>();
   readonly #extra = new Set<RelativePath>();
@@ -374,7 +389,7 @@ export class WorktreeKeys {
   }
 
   /** A test file's installed-dependency segment of its key (D3, task 001-105). */
-  #dependencySegment(runner: RunnerClosure): string {
+  #dependencySegment(runner: KeptClosure): string {
     return this.#dependencies.get(runner.testFile.project)?.of(runner.packages) ?? "";
   }
 
@@ -474,12 +489,13 @@ export class WorktreeKeys {
   /**
    * Sets a test file's closure: the runner's paths plus this worktree's
    * declared inputs, and while policy `observe.runtimeInputs` holds, the
-   * paths its runs were observed to read (D3, task 001-132).
+   * paths its runs were observed to read (D3, task 001-132). Keeps it
+   * without `imports` (D21.1); the caller's `runner` keeps them.
    */
   setClosure(runner: RunnerClosure, saved = false): KeyChange[] {
     // Row 011-36: a path the replaced closure named may be named by nothing now.
     this.#rejudge(this.index.closure(runner.testFile)?.paths ?? []);
-    this.#runnerClosures.set(testFileId(runner.testFile), runner);
+    this.#runnerClosures.set(testFileId(runner.testFile), kept(runner));
     if (saved) this.#saved.add(testFileId(runner.testFile));
     else this.#saved.delete(testFileId(runner.testFile));
     const observes = this.observes(runner.testFile.project);
@@ -497,6 +513,11 @@ export class WorktreeKeys {
     );
     for (const path of update.untracked) this.#untracked.add(path);
     return update.changes;
+  }
+
+  /** The runner's closure of `testFile` as this worktree keeps it (D21.1); undefined before one. */
+  keptClosure(testFile: TestFileRef): KeptClosure | undefined {
+    return this.#runnerClosures.get(testFileId(testFile));
   }
 
   /**
