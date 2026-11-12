@@ -15,6 +15,7 @@ import {
   keepPolicy,
   keysNow,
   runIdsAt,
+  write,
 } from "./code-gate-keep-kit.js";
 
 /*
@@ -186,5 +187,83 @@ describe("squeal code --base keeps its completed files (spec 020 D17.3)", () => 
     expect(again.ran).toEqual(["test/math.test.ts"]);
     expect(again.report.runs[0]?.from).toBeUndefined();
     expect(runIdsAt(repo, math as CheckKey)).toHaveLength(1);
+  });
+});
+
+/** A test that reads `data/input.txt` at run time, which no import loads. */
+const reads = (title: string) =>
+  `import { readFileSync } from "node:fs";\nimport { expect, it } from "vitest";\n\nit(${JSON.stringify(title)}, () => {\n  expect(readFileSync(new URL("../data/input.txt", import.meta.url), "utf8")).toMatch(/^hello/);\n});\n`;
+
+const READS: TestFileRef = { project: "", path: "test/reads.test.ts" };
+
+/** The worktree's key of `READS` as its daemon last stored it; `null` before it has one. */
+function daemonKey(repo: FixtureRepo): CheckKey | null {
+  return withStore(
+    repo,
+    (store) =>
+      store.testFileKeys.list(repo.worktreeId).find((r) => r.testFile.path === READS.path)?.key ??
+      null,
+  );
+}
+
+/** Runs a daemon in `repo` until `until` holds, then stops it. */
+async function withDaemon<T>(repo: FixtureRepo, until: () => T | null, what: string): Promise<T> {
+  const daemon = await startDaemon({ root: repo.root, env: repo.env });
+  if ("reason" in daemon) throw new Error(daemon.message);
+  try {
+    await daemon.ready;
+    return (await waitFor(until, 180_000, what)) as T;
+  } finally {
+    await daemon.stop("stop-requested");
+  }
+}
+
+/*
+ * Spec 020 D17.3, review 0.1.452 S1 (row 011-319): the gate's Vitest
+ * observes runtime reads as the worktree's daemon does, so the key it keeps
+ * a file at holds a read a daemon recorded. Once the read file changes,
+ * neither the gate nor a daemon reads the kept result. Whether a run is kept
+ * is the run evidence table's (`test/run-evidence/table.test.ts`); this is
+ * the lookup after it.
+ */
+describe("squeal code --base, a kept result whose observed read changed", () => {
+  let repo: FixtureRepo;
+
+  beforeAll(() => {
+    const files = { "data/input.txt": "hello\n", [READS.path]: reads("reads its input") };
+    repo = featureRepo(keepPolicy("lookup-then-run-missing"), files);
+  });
+
+  afterAll(() => repo?.cleanup());
+
+  it("is read neither by the gate nor by a daemon", { timeout: 300_000 }, async () => {
+    // A daemon that runs every file observes the read and stores it for every worktree.
+    await withDaemon(
+      repo,
+      () => {
+        const key = daemonKey(repo);
+        return key !== null && runIdsAt(repo, key).length > 0 ? key : null;
+      },
+      "the daemon's result of the reading test",
+    );
+    write(repo, {
+      "squeal.config.json": keepPolicy("lookup-only"),
+      [READS.path]: reads("reads it again"),
+    });
+    const [kept] = (await keysNow(repo, [READS])) as [CheckKey];
+    const first = await gate(repo, []);
+    expect(first.ran).toEqual([READS.path]);
+    expect(runIdsAt(repo, kept)[0]).toMatch(/^gate-/);
+    expect(hasRecord(repo, kept)).toBe(true);
+
+    write(repo, { "data/input.txt": "hello, changed\n" });
+    const [after] = (await keysNow(repo, [READS])) as [CheckKey];
+    expect(after).not.toBe(kept);
+
+    const again = await gate(repo, []);
+    expect(again.ran).toEqual([READS.path]);
+    expect(again.report.runs[0]?.from).toBeUndefined();
+    // A daemon keys the file at the new key too, so the result kept at the old one is not current.
+    await withDaemon(repo, () => (daemonKey(repo) === after ? after : null), "the new key");
   });
 });
