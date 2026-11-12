@@ -7,7 +7,6 @@ import { checkIgnored } from "../watcher/git.js";
 import type { SchedulerContext } from "./context.js";
 import type { EnvironmentGrowth } from "./environment-growth.js";
 import { linkTargets } from "./link-target.js";
-import { changedSince, snapshotInputs } from "./stability.js";
 
 /** What one completed file's run adds to its closure (task 001-132). */
 export interface ObservedGrowth {
@@ -204,24 +203,15 @@ export const NOTHING_OBSERVED: TierObservations = {
 };
 
 /**
- * `observedGrowth`, and which of its file paths changed on disk since the
- * stat cache read them, or were written and ended as they were: the
- * stability check of D5 and the completion barrier (task 001-168) for paths
- * the tier's snapshot did not hold. A listing is checked against the
- * revisions during the run (`Tier.changes`). Under the scheduler lock: it
- * hashes paths into the stat cache.
+ * What the daemon's record reads of a run's reads beyond its closures,
+ * once per record under the scheduler lock (task 001-132): `observedGrowth`.
+ * Which of them moved during the run is the run evidence's
+ * (`run-evidence/run-evidence.ts`, `readRecordEvidence`).
  */
-export async function prepareObserved(
+export function prepareObserved(
   context: SchedulerContext,
   report: RunReport,
   run: number,
-): Promise<TierObservations> {
-  const growth = await observedGrowth(context, report, run);
-  if (growth.size === 0) return NOTHING_OBSERVED;
-  const paths = new Set<RelativePath>();
-  for (const { growth: grown } of growth.values()) {
-    for (const path of grown) if (listedDirectory(path) === null) paths.add(path);
-  }
-  const snapshot = snapshotInputs(context.keys.cache, paths);
-  return { growth, ...(await changedSince(snapshot, paths, context.hasher)) };
+): Promise<Map<string, ObservedGrowth>> {
+  return observedGrowth(context, report, run);
 }
