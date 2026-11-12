@@ -23,3 +23,27 @@ Worker 29f91714, 2026-11-12, on `cez/29f91714` from `ab437504f`. Spec D19.1 to D
 - 020-26c: the Cezar proof on real Vitest 4.1.10 (the kit has only the 4.1 stub; the 4.1 payload object is tested with a fake provider in `test/runners/vitest/ci-coverage-v8.test.ts`).
 - `plugins/*/dist` and `plugins/codex-runtime/runtime.json` drift until the integration build: `test/harness/codex/packaging/runtime.test.ts` fails two checks until then.
 - Not decided (D19.7): browser-mode V8 coverage, a batch of several files, the report tolerance.
+
+## R1: repair of review 0.1.443 B1 (worker cd3e1881, 2026-11-12)
+
+The blocker: with the project's provider yielded to, nothing per file said a test loaded `node:inspector` at run time; export read only the static closure (`packages.builtins`), which misses `process.getBuiltinModule("node:inspector")` and a helper reached by a computed `import()`.
+
+### Seam map
+
+- `ci-runtime/inspector.cjs` `installWatch(raw, provider)`, installed by `vitest-ci.cjs` in every process and thread before the evidence hooks. In a Vitest worker it attributes each load to `__vitest_worker__.filepath` (with `ctx.projectName`): a `module.registerHooks` resolve hook (Node 22.19, 24 and 26 call it for every `import` and `require` of a builtin, repeated ones too, from the same parent too) and a `process.getBuiltinModule` wrapper. Loads with no file running are ignored (the V8 provider's worker-side `node:inspector/promises` import runs before `filepath` is set). Calls of Squeal's own provider are ignored by their caller frame (`calledFrom`): Vitest re-evaluates `provider.mjs` after each file's module reset, while `filepath` is set, and without this every file was marked. Sticky per worker: after one load, every later file of that worker is marked (`isolate: false`, Node's module cache).
+- Proof of a clean file: a line written before each `process.send` and `MessagePort.prototype.postMessage` of the worker while `filepath` is set; Vitest reports every file through one of them.
+- Lines go to `<raw>/inspector/<owner>-<pid>-<thread>.ndjson`; `owner` is the Vitest main process (`ppid` of a fork, `pid` of a thread). `readRawRuns` reads only `<raw>/*.json`, so the directory does not disturb it.
+- `withWatch` (called from `coverage.cjs` `coveredReporter`, after `coverage.end`): when a provider may have run (`on`, `project-coverage`, `failed`), the header gets `inspector: { loaded, unknown }` (omitted when both are empty), and with `on` a loaded file's record becomes `{ none: "inspector" }`.
+- Part: `PartInspector` on both `PartCoverage` forms (additive, optional), relativized by `ci-coverage.ts` `partInspector`. It sits in the coverage header, not on `PartFile`, because `ci-runs.ts` (not this row's) copies per-file coverage only when the header is `on`.
+- Export: `export.ts` leaves out `loaded` and `unknown` files of every part with `providerRan`, counted in `inspector`; lists that do not read leave out every file of the part. The static closure check stays.
+
+### Facts found on the way
+
+- A VM pool (`vmThreads`) keeps `__vitest_worker__` in the VM context, so the watch sees no file: every file is `unknown` and the export refuses all of them. Browser mode is the same (no Node worker).
+- A pool flag on the command line (`--pool`, `--no-isolate`) changes the run's config, so the export refuses the part for its environment; the tests put those options in the fixture's config.
+- `src/cli/ci-export.ts` prints `inspector` as "test files that loaded node:inspector beside a coverage provider"; for `unknown` files that text is not exact.
+
+### Left for later
+
+- Bundles: `plugins/*/dist` and `plugins/codex-runtime/runtime.json` need the integration build (`ci/inspector.cjs` is new, `cli/squeal.mjs` changed).
+- Real Vitest 4.1 (020-26c): `__vitest_worker__.filepath` and `ctx.projectName` are read the same way there; not run here.
