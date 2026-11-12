@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.457";
+  if (true) return "0.1.459";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -22340,6 +22340,21 @@ function importFiles(store, importId) {
   const conn = readable(store);
   if (conn === null) return [];
   return conn.all("SELECT * FROM import_files WHERE import_id = ? ORDER BY project, path", importId).map(toImportFile);
+}
+function importEnvironments(store, importIds) {
+  const out2 = /* @__PURE__ */ new Map();
+  const conn = readable(store);
+  if (conn === null || importIds.length === 0) return out2;
+  const rows = conn.all(
+    `SELECT DISTINCT project, environment FROM import_files
+     WHERE import_id IN (SELECT value FROM json_each(?)) ORDER BY project, environment`,
+    JSON.stringify(importIds)
+  );
+  for (const row2 of rows) {
+    const project = String(row2.project);
+    out2.set(project, [...out2.get(project) ?? [], String(row2.environment)]);
+  }
+  return out2;
 }
 function toImportFile(row2) {
   return {
@@ -51936,7 +51951,9 @@ function holdsEvery(here, exported2) {
   return exported2.every((path) => held3.has(path));
 }
 function localHash(store, worktreeId, exported2) {
-  const here = worktreeEnvironment(store, worktreeId, exported2.project);
+  return rekeyedHash(exported2, worktreeEnvironment(store, worktreeId, exported2.project));
+}
+function rekeyedHash(exported2, here) {
   if (here === null) return null;
   if (here.hash === exported2.hash) return here.hash;
   if (exported2.descriptor === null || here.descriptor === null) return null;
@@ -72264,6 +72281,52 @@ var init_local = __esm({
   }
 });
 
+// src/core/shared/served.ts
+import { createHash as createHash42 } from "node:crypto";
+function triedHere(store, worktreeId, imports, candidates, nearestHeld) {
+  if (nearestHeld === -1) return candidates.length;
+  const commit = candidates[nearestHeld];
+  const held3 = imports.filter((i3) => i3.header.commit === commit);
+  return servesHere(store, worktreeId, held3) ? nearestHeld : nearestHeld + 1;
+}
+function servesHere(store, worktreeId, imports) {
+  const environments2 = environmentsOf(store, worktreeId);
+  if (imports.some((i3) => i3.id === ownId(i3.fileHash, environments2))) return true;
+  const byProject = importEnvironments(
+    store,
+    imports.map((i3) => i3.id)
+  );
+  for (const [project, hashes] of byProject) {
+    const here = worktreeEnvironment(store, worktreeId, project);
+    if (here === null || hashes.includes(here.hash)) continue;
+    const rekeys = hashes.some(
+      (hash4) => rekeyedHash({ hash: hash4, descriptor: readEnvironment(store, hash4) }, here) !== null
+    );
+    if (rekeys) return false;
+  }
+  return true;
+}
+function importIdHere(store, worktreeId, fileHash) {
+  const id = fileHash.slice(0, 16);
+  if (!listImports(store).some((i3) => i3.id === id)) return id;
+  return ownId(fileHash, environmentsOf(store, worktreeId));
+}
+function environmentsOf(store, worktreeId) {
+  return JSON.stringify(worktreeEnvironments(store, worktreeId).map((e) => [e.project, e.hash]));
+}
+function ownId(fileHash, environments2) {
+  return createHash42("sha256").update(`${fileHash}
+${environments2}`).digest("hex").slice(0, 16);
+}
+var init_served = __esm({
+  "src/core/shared/served.ts"() {
+    "use strict";
+    init_environments();
+    init_imports();
+    init_transfer_rekey();
+  }
+});
+
 // src/core/shared/reader.ts
 var reader_exports = {};
 __export(reader_exports, {
@@ -72272,7 +72335,7 @@ __export(reader_exports, {
   LIST_TIMEOUT_MS: () => LIST_TIMEOUT_MS,
   createSharedReader: () => createSharedReader
 });
-import { createHash as createHash42 } from "node:crypto";
+import { createHash as createHash43 } from "node:crypto";
 function createSharedReader(options) {
   return new Reader(options);
 }
@@ -72291,6 +72354,7 @@ var init_reader = __esm({
     init_local();
     init_refs();
     init_refused();
+    init_served();
     LIST_TIMEOUT_MS = 5e3;
     FETCH_TIMEOUT_MS = 1e4;
     IMPORT_STEP = "importing CI results";
@@ -72364,14 +72428,17 @@ var init_reader = __esm({
         if (start2 === null || `${prefix} ${start2}` === this.#start) return;
         this.#start = `${prefix} ${start2}`;
         const candidates = await this.#live((signal2) => firstParents(root, start2, signal2));
-        const held3 = new Set(listImports(this.o.store).map((i3) => i3.header.commit));
+        const imports = listImports(this.o.store);
+        const held3 = new Set(imports.map((i3) => i3.header.commit));
         const nearestHeld = candidates.findIndex((c) => held3.has(c));
         const reach2 = nearestHeld === -1 ? candidates.length : nearestHeld;
         const refused = readSquealMismatch(this.o.store, this.o.worktreeId);
         if (refused !== null && !candidates.slice(0, reach2).includes(refused.commit)) {
           writeSquealMismatch(this.o.store, this.o.worktreeId, null);
         }
-        if (nearestHeld === 0) return;
+        const last = triedHere(this.o.store, this.o.worktreeId, imports, candidates, nearestHeld);
+        const tried2 = candidates.slice(0, last);
+        if (tried2.length === 0) return;
         const env = await this.#live((signal2) => networkEnv(root, signal2));
         const listMs = this.o.listTimeoutMs ?? LIST_TIMEOUT_MS;
         const listed8 = await this.#live(
@@ -72383,7 +72450,7 @@ var init_reader = __esm({
           );
           return;
         }
-        for (const commit of candidates.slice(0, reach2)) {
+        for (const commit of tried2) {
           const oid = listed8.get(commit);
           if (oid === void 0) continue;
           const ref3 = refOf3(prefix, commit);
@@ -72441,14 +72508,14 @@ var init_reader = __esm({
           this.#refused(ref3, commit, bundle, refusal3);
           return;
         }
-        const fileHash = createHash42("sha256").update(bytes2).digest("hex");
+        const fileHash = createHash43("sha256").update(bytes2).digest("hex");
         const blobs = await this.#live((signal2) => blobsAt2(this.o.root, commit, signal2));
         this.o.step?.(IMPORT_STEP, true);
         let added;
         try {
           writeSquealMismatch(this.o.store, this.o.worktreeId, null);
           added = (await importSliced(this.o.store, bundle, {
-            importId: fileHash.slice(0, 16),
+            importId: importIdHere(this.o.store, this.o.worktreeId, fileHash),
             fileHash,
             now: this.o.now(),
             clock: this.o.now,
@@ -79279,6 +79346,10 @@ async function ciExport(input) {
     await runner.close();
   }
 }
+function namedAsDaemon(file) {
+  const shared2 = (file.sharedNames ?? []).length > 0;
+  return !shared2 || file.checks.every((check3) => check3.location !== null);
+}
 async function exportWith(input, runner) {
   const { worktreeId, store, parts: parts3, header: header2 } = input;
   const { keys } = await openDaemonKeys(input);
@@ -79288,7 +79359,7 @@ async function exportWith(input, runner) {
   if (environment !== null) return { refused: environment };
   const files5 = parts3.flatMap((p) => p.part.testFiles);
   const passed = files5.filter((file) => file.outcome !== "fail");
-  const named4 = passed.filter((file) => (file.sharedNames ?? []).length === 0);
+  const named4 = passed.filter(namedAsDaemon);
   const ran = parts3.filter((p) => providerRan(p.part));
   const watched = ran.map((p) => inspectorFiles(p.part));
   const loaded = new Set(watched.flatMap((w2) => w2.loaded));
@@ -95516,7 +95587,7 @@ async function withStore(root, fn, options) {
 }
 
 // src/cli/import.ts
-import { createHash as createHash43 } from "node:crypto";
+import { createHash as createHash44 } from "node:crypto";
 import { readFileSync as readFileSync70 } from "node:fs";
 import { resolve as resolve36 } from "node:path";
 init_git_layout();
@@ -95592,7 +95663,7 @@ ${USAGE6}`);
 `);
     return 1;
   }
-  const fileHash = createHash43("sha256").update(bytes2).digest("hex");
+  const fileHash = createHash44("sha256").update(bytes2).digest("hex");
   const worktreeId = worktreeIdFor(root);
   const clock = io.now ?? Date.now;
   const now = clock();
@@ -100769,7 +100840,7 @@ function testReach(test, pairs, edits) {
 
 // src/core/reach/entries.ts
 init_compare();
-import { createHash as createHash44 } from "node:crypto";
+import { createHash as createHash45 } from "node:crypto";
 import { posix as posix24 } from "node:path";
 
 // src/core/reach/suggest.ts
@@ -100914,7 +100985,7 @@ function groups2(files5, snapshot3) {
   const out2 = /* @__PURE__ */ new Map();
   for (const file of files5) {
     const route = mainRoute(file);
-    const reach2 = createHash44("sha1").update(file.reach.join(",")).digest("hex");
+    const reach2 = createHash45("sha1").update(file.reach.join(",")).digest("hex");
     const via = route?.gateway ?? `${route?.declared?.tests}\0${route?.declared?.input}`;
     const typesOnly = route !== null && typesOnlyThrough(file.path, route, snapshot3);
     const second = route === null ? null : secondGateway([file.path], route, snapshot3, file);
@@ -103755,7 +103826,7 @@ init_git_layout();
 init_events();
 init_stored();
 init_git_head();
-import { createHash as createHash45 } from "node:crypto";
+import { createHash as createHash46 } from "node:crypto";
 import { join as join172 } from "node:path";
 async function treePrint(root, timeoutMs) {
   const options = timeoutMs === void 0 ? {} : { timeoutMs };
@@ -103768,7 +103839,7 @@ async function treePrint(root, timeoutMs) {
         options
       )
     ]);
-    const hash4 = createHash45("sha1").update(head2 ?? "").update("\0").update(status3);
+    const hash4 = createHash46("sha1").update(head2 ?? "").update("\0").update(status3);
     for (const path of listedPaths(status3)) {
       const stat9 = lstatOrNull(join172(root, path));
       hash4.update(stat9 === null ? "-\0" : `${stat9.size} ${stat9.mtimeMs} ${stat9.ino}\0`);

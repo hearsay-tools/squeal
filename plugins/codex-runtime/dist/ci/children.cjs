@@ -22,6 +22,14 @@
 // value. A call Node would reject passes through untouched, so Node's own
 // validation runs.
 //
+// At each spawn, before the child starts, the hook reads each file the
+// spawn's arguments name (`evidence.argument`), as the daemon's recorder
+// keys it (`observe/spawn.cjs`, `recordArguments`; row 018-43): a child that
+// never opens a file it is given, or reads it outside Node, leaves the key
+// holding it, so the run's evidence must hold it too. The same calls, the
+// same arguments: the command and each one that is no option and holds a
+// `/`, `\` or `.`, from the spawn's `cwd`; `execSync`'s shell command none.
+//
 // Below a Vitest run, in its CLI process (`markNested`) and in its test
 // workers (`__vitest_worker__`), the settings each child gets say `nested`:
 // a Vitest run that a test starts is not the project's, so its hook takes
@@ -89,6 +97,20 @@ function optionsAt(name, args) {
 }
 
 /**
+ * Evidence of the files `command` and `args` name from `cwd`, as the
+ * daemon's recorder takes them (`recordArguments` in `observe/spawn.cjs`).
+ */
+function takeArguments(evidence, command, args, cwd) {
+  try {
+    const base = typeof cwd === "string" ? cwd : process.cwd();
+    for (const arg of [command, ...(Array.isArray(args) ? args : [])]) {
+      if (typeof arg !== "string" || arg.startsWith("-") || !/[/\\.]/.test(arg)) continue;
+      evidence.argument(path.resolve(base, arg));
+    }
+  } catch {}
+}
+
+/**
  * Puts the hook and this process's `SQUEAL_CI_RECORD`, `nested` below a
  * Vitest run, into the env of every child and Worker; withholds every path (`evidence.withhold`) for one the
  * hook cannot follow.
@@ -150,6 +172,8 @@ function wrapChildren(replace, evidence) {
             if (next !== env) options.envPairs = Object.entries(next).map(([k, v]) => `${k}=${v}`);
           }
         } catch {}
+        // `args[0]` is the command again; a shell's `-c` string names no file.
+        takeArguments(evidence, options?.file, options?.args?.slice(1), options?.cwd);
         return fn.call(this, options);
       },
   );
@@ -173,6 +197,14 @@ function wrapChildren(replace, evidence) {
                 call = [...args];
                 while (call.length < at) call.push(undefined);
                 call[at] = withOwn(options, "env", next);
+              }
+              if (name !== "execSync") {
+                takeArguments(
+                  evidence,
+                  args[0],
+                  Array.isArray(args[1]) ? args[1] : [],
+                  options?.cwd,
+                );
               }
             }
           } catch {
