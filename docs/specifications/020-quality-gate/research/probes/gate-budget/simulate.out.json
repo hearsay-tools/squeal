@@ -1,0 +1,216 @@
+[
+ {
+  "case": "A",
+  "launcherReal": 311,
+  "rules": {
+   "R0 today (in turn)": {
+    "node": {
+     "done": 1,
+     "killed": 0,
+     "launcher": true
+    },
+    "vitest": {
+     "done": 65,
+     "killed": 42.300000000001035,
+     "launcher": false
+    }
+   },
+   "R1 share by estimate": {
+    "node": {
+     "done": 0,
+     "killed": 38.43903489875054,
+     "launcher": false
+    },
+    "vitest": {
+     "done": 225,
+     "killed": 32.304825506247994,
+     "launcher": false
+    }
+   },
+   "R2 per-file cap 2x stored": {
+    "node": {
+     "done": 1,
+     "killed": 0,
+     "launcher": true
+    },
+    "vitest": {
+     "done": 65,
+     "killed": 42.300000000001035,
+     "launcher": false
+    }
+   },
+   "R3 lanes at once": {
+    "node": {
+     "done": 1,
+     "killed": 0,
+     "launcher": true
+    },
+    "vitest": {
+     "done": 250,
+     "killed": 10.000000000000853,
+     "launcher": false
+    }
+   },
+   "R4 lanes at once, node:test entries share one pool": {
+    "node": {
+     "done": 1,
+     "killed": 0,
+     "launcher": true
+    },
+    "vitest": {
+     "done": 250,
+     "killed": 10.000000000000853,
+     "launcher": false
+    }
+   }
+  }
+ },
+ {
+  "case": "A",
+  "launcherReal": 700,
+  "rules": {
+   "R0 today (in turn)": {
+    "node": {
+     "done": 0,
+     "killed": 431,
+     "launcher": false
+    },
+    "vitest": {
+     "done": 0,
+     "killed": 0,
+     "launcher": false
+    }
+   },
+   "R1 share by estimate": {
+    "node": {
+     "done": 0,
+     "killed": 38.43903489875054,
+     "launcher": false
+    },
+    "vitest": {
+     "done": 225,
+     "killed": 32.304825506247994,
+     "launcher": false
+    }
+   },
+   "R2 per-file cap 2x stored": {
+    "node": {
+     "done": 0,
+     "killed": 414,
+     "launcher": false
+    },
+    "vitest": {
+     "done": 5,
+     "killed": 42.10000000000008,
+     "launcher": false
+    }
+   },
+   "R3 lanes at once": {
+    "node": {
+     "done": 0,
+     "killed": 431,
+     "launcher": false
+    },
+    "vitest": {
+     "done": 250,
+     "killed": 10.000000000000853,
+     "launcher": false
+    }
+   },
+   "R4 lanes at once, node:test entries share one pool": {
+    "node": {
+     "done": 0,
+     "killed": 431,
+     "launcher": false
+    },
+    "vitest": {
+     "done": 250,
+     "killed": 10.000000000000853,
+     "launcher": false
+    }
+   }
+  }
+ },
+ {
+  "case": "B",
+  "launcherReal": 311,
+  "rules": {
+   "R0 today (in turn)": {
+    "node": {
+     "done": 104,
+     "killed": 9.160000000001673,
+     "launcher": true
+    }
+   },
+   "R1 share by estimate": {
+    "node": {
+     "done": 104,
+     "killed": 9.160000000001673,
+     "launcher": true
+    }
+   },
+   "R2 per-file cap 2x stored": {
+    "node": {
+     "done": 104,
+     "killed": 9.160000000001673,
+     "launcher": true
+    }
+   },
+   "R3 lanes at once": {
+    "node": {
+     "done": 104,
+     "killed": 9.160000000001673,
+     "launcher": true
+    }
+   },
+   "R4 lanes at once, node:test entries share one pool": {
+    "node": {
+     "done": 151,
+     "killed": 0,
+     "launcher": true
+    }
+   }
+  }
+ },
+ {
+  "case": "B",
+  "launcherReal": 700,
+  "rules": {
+   "R0 today (in turn)": {
+    "node": {
+     "done": 11,
+     "killed": 492,
+     "launcher": false
+    }
+   },
+   "R1 share by estimate": {
+    "node": {
+     "done": 11,
+     "killed": 492,
+     "launcher": false
+    }
+   },
+   "R2 per-file cap 2x stored": {
+    "node": {
+     "done": 51,
+     "killed": 415.2000000000007,
+     "launcher": false
+    }
+   },
+   "R3 lanes at once": {
+    "node": {
+     "done": 11,
+     "killed": 492,
+     "launcher": false
+    }
+   },
+   "R4 lanes at once, node:test entries share one pool": {
+    "node": {
+     "done": 150,
+     "killed": 492,
+     "launcher": false
+    }
+   }
+  }
+ }
+]
