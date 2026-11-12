@@ -7,6 +7,9 @@ import type {
   WorktreeId,
 } from "./common.js";
 import type {
+  ImportRequest,
+  ImportResponse,
+  ImportStatusRequest,
   LeaseRequest,
   LeaseResponse,
   ReleaseRequest,
@@ -250,7 +253,9 @@ export type DaemonRequest =
   | LeaseRequest
   | ReleaseRequest
   | WriteRequest
-  | WriteStatusRequest;
+  | WriteStatusRequest
+  | ImportRequest
+  | ImportStatusRequest;
 
 /** Where a daemon is in its life. `starting`: socket bound, scheduler not started yet. */
 export type DaemonPhase = "starting" | "ready" | "stopping";
@@ -522,6 +527,7 @@ export type DaemonResponse =
   | LeaseResponse
   | ReleaseResponse
   | WriteResponse
+  | ImportResponse
   | DaemonErrorResponse;
 
 /**
