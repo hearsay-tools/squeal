@@ -7,6 +7,7 @@ import type { RunnerAdapter, RunReport } from "../../types/runner.js";
 import { channelOf, type HostChannel, type RunnerHostLaunch } from "../channel.js";
 import type { HostAdapterOptions, HostPolicy, HostRunner } from "../protocol.js";
 import { type HostDeadlines, type HostRequests, startHostProxy } from "../proxy.js";
+import type { AdmitAnswer, AdmitAsk } from "./admission.js";
 import { bundleDir, ensureBundle, type RemotePlaces, readBundle } from "./bundle.js";
 import { type SshTarget, shellQuote, spawnSsh } from "./ssh.js";
 import { treeEntries, treePaths, writesFor } from "./tree.js";
@@ -53,6 +54,8 @@ export interface RemoteHost {
   coreEnvironment(allowlist: readonly string[]): Promise<HostCore>;
   /** The blob id of each path in the host's tree; `null`: absent. */
   blobs(paths: readonly string[]): Promise<Readonly<Record<string, string | null>>>;
+  /** One look at the remote machine's permit pool (spec 021 D18, row 021-21). */
+  admit(ask: AdmitAsk): Promise<AdmitAnswer>;
   /** Node on the remote, as the check before the start saw it. */
   readonly node: string;
 }
@@ -199,6 +202,7 @@ export async function remoteHostOver(
       (await started().request("coreEnvironment", [allowlist], callMs)) as HostCore,
     blobs: async (paths) =>
       (await started().request("blobs", [paths], callMs)) as Record<string, string | null>,
+    admit: async (ask) => (await started().request("admit", [ask], callMs)) as AdmitAnswer,
   };
 }
 

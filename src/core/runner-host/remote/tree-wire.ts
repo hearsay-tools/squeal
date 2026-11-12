@@ -42,11 +42,13 @@ export interface InstallAnswer {
  * What a remote run carries beside `RunOptions` (spec 021 D11, D13): the
  * blob id of each path of the run's closure as the daemon has it (`null`:
  * absent there), which the host proves before it runs, and how often the
- * host tells the daemon the run is still in flight.
+ * host tells the daemon the run is still in flight; `admitted`, the run
+ * holds the grant the host's last `admit` gave (D18, row 021-21).
  */
 export interface RemoteRunOptions {
   readonly expected?: Readonly<Record<string, string | null>>;
   readonly alive?: number;
+  readonly admitted?: true;
 }
 
 /**
