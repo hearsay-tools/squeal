@@ -1,0 +1,24 @@
+case A launcher 311s
+  R0 today (in turn)                                   node: done 1, stopped 0 s, launcher done | vitest: done 65, stopped 42 s
+  R1 share by estimate                                 node: done 0, stopped 38 s, launcher not done | vitest: done 225, stopped 32 s
+  R2 per-file cap 2x stored                            node: done 1, stopped 0 s, launcher done | vitest: done 65, stopped 42 s
+  R3 lanes at once                                     node: done 1, stopped 0 s, launcher done | vitest: done 250, stopped 10 s
+  R4 lanes at once, node:test entries share one pool   node: done 1, stopped 0 s, launcher done | vitest: done 250, stopped 10 s
+case A launcher 700s
+  R0 today (in turn)                                   node: done 0, stopped 431 s, launcher not done | vitest: done 0, stopped 0 s
+  R1 share by estimate                                 node: done 0, stopped 38 s, launcher not done | vitest: done 225, stopped 32 s
+  R2 per-file cap 2x stored                            node: done 0, stopped 414 s, launcher not done | vitest: done 5, stopped 42 s
+  R3 lanes at once                                     node: done 0, stopped 431 s, launcher not done | vitest: done 250, stopped 10 s
+  R4 lanes at once, node:test entries share one pool   node: done 0, stopped 431 s, launcher not done | vitest: done 250, stopped 10 s
+case B launcher 311s
+  R0 today (in turn)                                   node: done 104, stopped 9 s, launcher done
+  R1 share by estimate                                 node: done 104, stopped 9 s, launcher done
+  R2 per-file cap 2x stored                            node: done 104, stopped 9 s, launcher done
+  R3 lanes at once                                     node: done 104, stopped 9 s, launcher done
+  R4 lanes at once, node:test entries share one pool   node: done 151, stopped 0 s, launcher done
+case B launcher 700s
+  R0 today (in turn)                                   node: done 11, stopped 492 s, launcher not done
+  R1 share by estimate                                 node: done 11, stopped 492 s, launcher not done
+  R2 per-file cap 2x stored                            node: done 51, stopped 415 s, launcher not done
+  R3 lanes at once                                     node: done 11, stopped 492 s, launcher not done
+  R4 lanes at once, node:test entries share one pool   node: done 150, stopped 492 s, launcher not done
