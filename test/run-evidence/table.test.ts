@@ -184,14 +184,14 @@ const TABLE: Readonly<Record<string, Row>> = {
       keeperNames: "src/ changed",
     },
   "a file added to a listed directory and removed again, a revision of each": {
-    during: { batch: { "src/new.ts": "export const n = 1;\n" }, then: { "src/new.ts": null } },
+    during: { batch: { "src/new.ts": "export const n = 1;\n" }, next: { "src/new.ts": null } },
     daemon: "unstable",
     keeper: "unstable",
     names: "src/ changed",
     keeperNames: "src/ changed",
   },
   "an editor's scratch file added and removed again, a revision of each": {
-    during: { batch: { "src/.a.ts.swp": "swap\n" }, then: { "src/.a.ts.swp": null } },
+    during: { batch: { "src/.a.ts.swp": "swap\n" }, next: { "src/.a.ts.swp": null } },
     daemon: "store at ran",
     keeper: "store at ran",
   },
