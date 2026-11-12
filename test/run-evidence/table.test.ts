@@ -126,6 +126,12 @@ const TABLE: Readonly<Record<string, Row>> = {
     keeper: "store at ran",
     names: "src/",
   },
+  "a revision during the run moved a listed directory, no input's bytes": {
+    during: { batch: { "src/c.ts": "export const c = 3;\n" } },
+    daemon: "unstable",
+    keeper: "store at ran",
+    names: "src/ changed",
+  },
   "the run did not complete it": {
     during: { report: only([B]) },
     daemon: "unknown",
