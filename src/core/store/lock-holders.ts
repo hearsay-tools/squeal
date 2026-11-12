@@ -47,7 +47,7 @@ export function lockHolders(databasePath: string): readonly LockHolder[] | undef
  * holder: nobody has it open in WAL mode. One read of `/proc/locks` returns
  * a page at a time, so a lock that changes place between two pages can be
  * missed (014 `lessons.md` P9); a busy message then says the holder is not
- * known.
+ * known, unless `refusedLockHolders` finds it in a later read.
  */
 export function holdersFrom(
   source: HolderSource,
@@ -67,6 +67,45 @@ export function holdersFrom(
     // A source reads as absent rather than throw; this is the contract's guard if one does.
     return undefined;
   }
+}
+
+/** Row 020-37: how many times `refusedLockHolders` reads `/proc/locks` at most. */
+const REFUSED_READS = 4;
+/** The pause before each read after the first: the pauses stay under 100 ms together. */
+const REFUSED_PAUSE_MS = 25;
+const PAUSE = new Int32Array(new SharedArrayBuffer(4));
+
+/**
+ * Spec 021 D5, row 020-37: `lockHolders` for a database whose write a busy
+ * store has just refused, so a process holds its write lock. One read can
+ * miss that holder (`holdersFrom`), so a read that names no holder is
+ * followed by another `REFUSED_PAUSE_MS` later, `REFUSED_READS` reads at
+ * most. A source that cannot be read is not read again. Each pause blocks
+ * this thread: call it outside any transaction. Like `lockHolders`, it opens
+ * no descriptor of the store's files.
+ */
+export function refusedLockHolders(databasePath: string): readonly LockHolder[] | undefined {
+  if (process.platform !== "linux") return undefined;
+  return refusedHoldersFrom(createProcSource(), databasePath);
+}
+
+/** `refusedLockHolders` over `source`, each pause by `pause`. */
+export function refusedHoldersFrom(
+  source: HolderSource,
+  databasePath: string,
+  pause: (ms: number) => void = (ms) => Atomics.wait(PAUSE, 0, 0, ms),
+): readonly LockHolder[] | undefined {
+  let holders = holdersFrom(source, databasePath);
+  for (let read = 1; read < REFUSED_READS && namesNoHolder(holders); read++) {
+    pause(REFUSED_PAUSE_MS);
+    holders = holdersFrom(source, databasePath);
+  }
+  return holders;
+}
+
+/** Whether `holders` was read and names only waiters, or nobody. */
+function namesNoHolder(holders: readonly LockHolder[] | undefined): boolean {
+  return holders?.every((h) => h.waiting) === true;
 }
 
 /**
