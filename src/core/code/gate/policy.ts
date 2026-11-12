@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { loadPolicy, POLICY_FILE } from "../../daemon/policy.js";
 import { runGit } from "../../fs/git.js";
 import type { AbsolutePath } from "../../types/common.js";
+import type { PolicyInputs } from "../../types/policy.js";
 import { type BasePrepares, preparesOf } from "./prepare.js";
 import { readScope, type ScopeBase } from "./scope.js";
 import type { GatePolicy } from "./types.js";
@@ -40,6 +41,12 @@ export interface BasePolicy extends GatePolicy {
    * entry has one.
    */
   readonly prepares?: BasePrepares;
+  /**
+   * D3.1 (row 020-35): the top-level `inputs`, so a test file whose
+   * declared inputs name a changed path is selected, as the daemon re-runs
+   * it. Absent when the base declares none.
+   */
+  readonly inputs?: PolicyInputs;
 }
 
 /** The policy at the base and the loader's problems with that file (001 D11). */
@@ -79,12 +86,18 @@ export async function loadBasePolicy(
         children: coverage.children,
         scope: scope.base,
         ...(prepares.size === 0 ? {} : { prepares }),
+        ...(declares(policy.inputs) ? { inputs: policy.inputs } : {}),
       },
       problems: [...problems, ...scope.problems],
     };
   } finally {
     rmSync(scratch, { recursive: true, force: true });
   }
+}
+
+/** Whether `inputs` has an entry: a list with a glob, or a map with a test glob. */
+function declares(inputs: PolicyInputs): boolean {
+  return Array.isArray(inputs) ? inputs.length > 0 : Object.keys(inputs).length > 0;
 }
 
 /** The text of `path` at `commit`, or `null` when no file is there. */
