@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { setFlagsFromString } from "node:v8";
+import { getHeapStatistics, setFlagsFromString } from "node:v8";
 import { runInNewContext } from "node:vm";
 import type { EpochMs } from "../types/common.js";
 import type { RunnerAdapter } from "../types/runner.js";
@@ -37,6 +37,36 @@ export function idleGcDue(clock: IdleGcClock): boolean {
   return clock.now - clock.quietSince >= IDLE_GC_AFTER_MS;
 }
 
+/** Busy, at most one GC per this long since the daemon's last GC of either kind (spec 021 D21.2). */
+export const BUSY_GC_EVERY_MS = 60_000;
+
+/** Busy, a GC once heap in use is above this many times the last live size (spec 021 D21.2). */
+export const BUSY_GC_RATIO = 2;
+
+/** What the busy GC's decision reads. */
+export interface BusyGcClock {
+  readonly now: EpochMs;
+  /** A tier ended since the last check. */
+  readonly tierEnded: boolean;
+  /** The last GC's start, idle or busy; `null` while none ran. */
+  readonly lastGc: EpochMs | null;
+  /** V8's heap in use now, bytes. */
+  readonly heapInUse: number;
+  /** Heap in use after the last GC; before the first, the lowest read so far. `null` while none was read. */
+  readonly live: number | null;
+}
+
+/**
+ * Spec 021 D21.2 (row 021-29): a daemon with a long queue never has 60 s
+ * without a tier, so it also collects after a tier ends once its heap in use
+ * is above twice the last live size, at most once a minute.
+ */
+export function busyGcDue(clock: BusyGcClock): boolean {
+  if (!clock.tierEnded || clock.live === null) return false;
+  if (clock.lastGc !== null && clock.now - clock.lastGc < BUSY_GC_EVERY_MS) return false;
+  return clock.heapInUse > BUSY_GC_RATIO * clock.live;
+}
+
 /** Private memory where the host reports it, RSS where it does not. */
 export interface MemoryReading {
   readonly kind: "private" | "rss";
@@ -53,6 +83,8 @@ export interface IdleGcOptions {
   readonly lookup?: () => GcFunction | null;
   /** Default `readMemory`. */
   readonly memory?: () => MemoryReading;
+  /** V8's heap in use, bytes, for the busy GC (row 021-29). Default `readHeapInUse`. */
+  readonly heapInUse?: () => number;
 }
 
 /**
@@ -62,8 +94,18 @@ export interface IdleGcOptions {
  * last-resort flavor gives them back: 791 to 486 MiB in a 154 to 234 ms
  * pause. Not after each tier: the next tier regrows the space at once.
  *
+ * A busy daemon also runs it after a tier ends (spec 021 D21.2, row 021-29;
+ * research `021/daemon-heap.md` 1): while a queue drains, V8 keeps two to
+ * three times the live heap, and the idle GC's 60 s quiet never comes. One
+ * such GC took a busy daemon from 1,181 to 722 MiB in 186 ms. The live size
+ * is the heap in use after the last GC, idle or busy; before the first, the
+ * lowest heap in use read at ready and at the checks after tiers, so a low
+ * guess costs one GC at most. The idle trigger does not change: a busy GC
+ * neither stands for nor holds back the idle one.
+ *
  * Every run of the runner `track` wraps is a tier. The daemon calls `ready`
- * once its start scan is done, and the lifecycle check loop calls `check`.
+ * once its start scan is done, and the lifecycle check loop calls `check`,
+ * so a busy GC runs at the first check after a tier, off the tier's own path.
  * Kept by the daemon, so a policy reload that restarts the timers keeps it.
  */
 export class IdleGc {
@@ -71,6 +113,12 @@ export class IdleGc {
   #running = 0;
   #quietSince: EpochMs | null = null;
   #collected = false;
+  /** A tier ended since the last check: the busy GC is considered then only. */
+  #tierEnded = false;
+  /** The last GC's start, idle or busy. */
+  #lastGc: EpochMs | null = null;
+  /** Heap in use after the last GC; before the first, the lowest read so far. */
+  #live: number | null = null;
   /** Looked up at the first GC; `null` once it was missing or threw, and noted. */
   #gc: GcFunction | null | undefined;
 
@@ -81,6 +129,7 @@ export class IdleGc {
   /** The start scan is done: with no tier in flight, the quiet counts from here. */
   ready(): void {
     if (this.#running === 0) this.#quietSince = this.#options.now();
+    if (this.#lastGc === null) this.#lowest(this.#heapInUse());
   }
 
   started(): void {
@@ -91,6 +140,7 @@ export class IdleGc {
     this.#running = Math.max(0, this.#running - 1);
     this.#quietSince = this.#options.now();
     this.#collected = false;
+    this.#tierEnded = true;
   }
 
   /** `runner`, each of whose runs counts as a tier to its end. `runner` is a plain object. */
@@ -108,19 +158,46 @@ export class IdleGc {
     };
   }
 
-  /** Runs the GC when it is due. Never throws. */
+  /** Runs the GC when it is due, idle or busy. Never throws. */
   check(): void {
     if (this.#gc === null) return;
-    const due = idleGcDue({
-      now: this.#options.now(),
+    const now = this.#options.now();
+    const tierEnded = this.#tierEnded;
+    this.#tierEnded = false;
+    const idle = idleGcDue({
+      now,
       quietSince: this.#quietSince,
       tierRunning: this.#running > 0,
       collected: this.#collected,
     });
-    if (!due) return;
-    this.#collected = true;
+    if (idle) {
+      this.#collected = true;
+      const took = this.#collect(now);
+      if (took !== null) this.#options.log(`no tier for ${IDLE_GC_AFTER_MS / 1000} s: ${took}`);
+      return;
+    }
+    if (!tierEnded) return;
+    const heapInUse = this.#heapInUse();
+    const live = this.#live;
+    const busy = busyGcDue({ now, tierEnded, lastGc: this.#lastGc, heapInUse, live });
+    if (this.#lastGc === null) this.#lowest(heapInUse);
+    if (!busy) return;
+    const took = this.#collect(now);
+    if (took === null) return;
+    this.#options.log(
+      `busy, heap in use ${mib(heapInUse)} MiB over twice the last live size of ` +
+        `${mib(live ?? 0)} MiB: ${took}; ${mib(this.#live ?? 0)} MiB of heap in use after it`,
+    );
+  }
+
+  /**
+   * One last-resort GC; the heap in use after it is the live size from here.
+   * What it took, for the log line; `null` when no GC ran.
+   */
+  #collect(now: EpochMs): string | null {
     const gc = this.#gc ?? this.#lookup();
-    if (gc === null) return;
+    if (gc === null) return null;
+    this.#lastGc = now;
     const memory = this.#options.memory ?? readMemory;
     const before = memory();
     const start = performance.now();
@@ -128,15 +205,25 @@ export class IdleGc {
       gc(LAST_RESORT);
     } catch (error) {
       this.#off(`it failed (${String(error)})`);
-      return;
+      return null;
     }
     const pause = Math.round(performance.now() - start);
     const after = memory();
+    this.#live = this.#heapInUse();
     const what = before.kind === "private" ? "private memory" : "RSS";
-    this.#options.log(
-      `no tier for ${IDLE_GC_AFTER_MS / 1000} s: a last-resort GC took ${what} ` +
-        `from ${mib(before.bytes)} to ${mib(after.bytes)} MiB in a ${pause} ms pause`,
+    return (
+      `a last-resort GC took ${what} from ${mib(before.bytes)} to ${mib(after.bytes)} MiB ` +
+      `in a ${pause} ms pause`
     );
+  }
+
+  #heapInUse(): number {
+    return (this.#options.heapInUse ?? readHeapInUse)();
+  }
+
+  /** Before the first GC: the live size is the lowest heap in use read so far. */
+  #lowest(heapInUse: number): void {
+    this.#live = this.#live === null ? heapInUse : Math.min(this.#live, heapInUse);
   }
 
   #lookup(): GcFunction | null {
@@ -153,7 +240,7 @@ export class IdleGc {
 
   #off(why: string): void {
     this.#gc = null;
-    this.#options.note(`no last-resort GC when idle: ${why}; this daemon runs on without it`);
+    this.#options.note(`no last-resort GC: ${why}; this daemon runs on without it`);
   }
 }
 
@@ -188,6 +275,11 @@ export function readMemory(): MemoryReading {
     // No `/proc` (macOS): RSS below.
   }
   return { kind: "rss", bytes: process.memoryUsage.rss() };
+}
+
+/** V8's heap in use, `used_heap_size`: after a full GC, about the live size. No syscall. */
+export function readHeapInUse(): number {
+  return getHeapStatistics().used_heap_size;
 }
 
 const mib = (bytes: number) => Math.round(bytes / 2 ** 20);
