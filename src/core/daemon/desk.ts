@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import { Worker } from "node:worker_threads";
 import type { RelativePath } from "../types/common.js";
 import type { DaemonPhase, SyncAnswer } from "../types/daemon.js";
-import type { SentBatch } from "../types/daemon-writes.js";
+import type { ImportOutcome, ImportRequest, SentBatch } from "../types/daemon-writes.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { FullSuiteCheckpoint, FullSuiteRequest } from "../types/scheduler.js";
 import type { DeskIdentity, FromDesk, ToDesk } from "./desk-messages.js";
@@ -73,6 +73,12 @@ export interface DeskEvents {
    * `DeskIdentity.storeSchema`: the daemon answers that it takes no writes.
    */
   readonly requestWrite?: (batch: SentBatch) => Promise<void>;
+  /**
+   * Spec 021 D15 (row 021-20): imports the export file `squeal import`
+   * names, in the retried path. Absent, or without
+   * `DeskIdentity.storeSchema`: the daemon answers that it takes no imports.
+   */
+  readonly requestImport?: (request: ImportRequest) => Promise<ImportOutcome>;
   /** The worker died after it started listening. */
   readonly onFailure: (error: Error) => void;
   /**
@@ -189,6 +195,7 @@ export function guarded(events: DeskEvents): DeskEvents {
     requestHold,
     requestResume,
     requestWrite,
+    requestImport,
   } = events;
   return {
     onActivity: safe(events.onActivity),
@@ -203,6 +210,7 @@ export function guarded(events: DeskEvents): DeskEvents {
     ...(requestHold === undefined ? {} : { requestHold: asked(requestHold) }),
     ...(requestResume === undefined ? {} : { requestResume: asked(requestResume) }),
     ...(requestWrite === undefined ? {} : { requestWrite: asked(requestWrite) }),
+    ...(requestImport === undefined ? {} : { requestImport: asked(requestImport) }),
     onStop: safe(events.onStop),
     onStepDown: safe(events.onStepDown),
     onFailure: safe(events.onFailure),
@@ -211,6 +219,7 @@ export function guarded(events: DeskEvents): DeskEvents {
 }
 
 const NO_WRITES = "this daemon takes no writes";
+const NO_IMPORTS = "this daemon takes no imports";
 
 async function inWorker(
   worker: Worker,
@@ -329,6 +338,17 @@ async function inWorker(
               }),
           );
           return;
+        case "import":
+          (events.requestImport?.(message.request) ?? Promise.reject(new Error(NO_IMPORTS))).then(
+            (outcome) => post({ type: "import-result", id: message.id, outcome }),
+            (error: unknown) =>
+              post({
+                type: "import-result",
+                id: message.id,
+                outcome: { failed: error instanceof Error ? error.message : String(error) },
+              }),
+          );
+          return;
         case "stop":
           events.onStop();
           return;
@@ -402,6 +422,9 @@ async function inThread(identity: DeskIdentity, events: DeskEvents): Promise<Fro
       ...(events.requestWrite === undefined || identity.storeSchema === undefined
         ? {}
         : { requestWrite: events.requestWrite, storeSchema: identity.storeSchema }),
+      ...(events.requestImport === undefined || identity.storeSchema === undefined
+        ? {}
+        : { requestImport: events.requestImport, storeSchema: identity.storeSchema }),
     }),
   );
   return {
