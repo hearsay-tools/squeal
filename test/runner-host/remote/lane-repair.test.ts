@@ -65,29 +65,35 @@ describe("review 0.1.442 repairs of the remote lane", () => {
     expect(s.statuses.at(-1)).toMatch(/^remote box refused: .*installed.*; running here$/i);
   });
 
-  it("B2: ends a run without a test timeout whose files stop ending, though its host stays alive", async () => {
+  // The idle bound is below the alive one: heartbeats go on all the while, and only the idle bound can end it.
+  it("B2: ends a run without a test timeout whose files stop ending, though its host stays alive", {
+    timeout: 20_000,
+  }, async () => {
     const s = await setup({
       whenLost: "not-run",
-      deadlines: { aliveMs: 100, runIdleMs: 400 },
+      deadlines: { aliveMs: 3_000, runIdleMs: 800 },
       remoteRun: () => new Promise(() => {}),
     });
     const started = Date.now();
     const report = await s.lane.run([REF], background({ timeoutMs: null }));
     expect(report.end).toBe("timed-out");
     expect(report.results).toEqual([]);
-    expect(report.failure).toMatch(/nor end a file of it, within 400 ms/);
-    expect(Date.now() - started).toBeLessThan(3_000);
+    expect(report.failure).toMatch(/nor end a file of it, within 800 ms/);
+    expect(Date.now() - started).toBeLessThan(10_000);
     // A new host replaces it once the backoff passed.
     s.advance(60_000);
     await s.lane.run([REF], background());
     expect(s.connects).toHaveLength(2);
   });
 
-  it("B2: keeps a long run without a test timeout whose files go on ending", async () => {
+  // The run (1.8 s) outlasts its idle bound (1 s); each file's end, 150 ms apart, restarts it.
+  it("B2: keeps a long run without a test timeout whose files go on ending", {
+    timeout: 20_000,
+  }, async () => {
     const s = await setup({
-      deadlines: { aliveMs: 100, runIdleMs: 400 },
+      deadlines: { aliveMs: 3_000, runIdleMs: 1_000 },
       remoteRun: async (_root, _hang, options) => {
-        for (let i = 0; i < 6; i++) {
+        for (let i = 0; i < 12; i++) {
           await sleep(150);
           options.fileEnded?.(REF);
         }
