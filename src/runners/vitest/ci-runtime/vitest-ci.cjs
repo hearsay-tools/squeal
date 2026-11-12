@@ -21,8 +21,9 @@
 // whose workers loaded `node:inspector` (`inspector.cjs`).
 //
 // In every process and thread of the command, first, it starts the watch of
-// `node:inspector` loads (`inspector.cjs`), except in the test workers of a
-// Vitest process in which no coverage provider runs: the `start` wrap tells
+// `node:inspector` loads (`inspector.cjs`), except in a Vitest CLI process,
+// where no test file runs (review of 0.1.444 S1), and in the test workers of
+// a Vitest process in which no coverage provider runs: the `start` wrap tells
 // them so (`watchWorkers`, review of 0.1.443-r2 S2). Then it takes the input
 // evidence (`evidence-hooks.cjs`; spec 018 D9 as amended 2026-11-09) when the
 // settings name its directory, so Vitest and what it loads see the wrapped
@@ -66,9 +67,12 @@ function readSettings() {
   }
 }
 
+/** Whether `main` may be the `bin` of the `vitest` package: its name says so; no test worker's does. */
+const vitestScript = (main) => typeof main === "string" && path.basename(main).startsWith("vitest");
+
 /** The `vitest` package whose `bin` this process runs, or `null`. */
 function vitestPackage(main) {
-  if (typeof main !== "string" || !path.basename(main).startsWith("vitest")) return null;
+  if (!vitestScript(main)) return null;
   const file = fs.realpathSync(main);
   const found = nearestManifest(path.dirname(file));
   if (found === null || found.manifest.name !== "vitest") return null;
@@ -194,7 +198,7 @@ function install(settings, root) {
           // Spec 020 D13: before the original `start`, which starts the coverage provider.
           const coverage = startCoverage(this, settings.coverage);
           // Review of 0.1.443-r2 S2: before the run starts its workers.
-          watchWorkers(providerRuns(this));
+          watchWorkers(settings.raw, providerRuns(this));
           const modules = new Map();
           const reporter = reporterFor(this, file, settings, fail, modules);
           reporters.set(this, coveredReporter(reporter, coverage, modules, settings.raw));
@@ -273,8 +277,11 @@ function readEvidence() {
 const settings = readSettings();
 
 // Spec 020 D19.6 (review of 0.1.443 B1): the test files that load `node:inspector`, before the evidence.
+// Not in a Vitest CLI process (review of 0.1.444 S1): known by name only, as no file is read before the evidence.
 try {
-  installWatch(settings?.raw, settings?.coverage?.provider);
+  if (!(isMainThread && vitestScript(process.argv[1]))) {
+    installWatch(settings?.raw, settings?.coverage?.provider);
+  }
 } catch {}
 
 try {
