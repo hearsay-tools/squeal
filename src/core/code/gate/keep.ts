@@ -17,9 +17,12 @@ import { isCodeStoreOpenFailure, openCodeStore } from "../store/open.js";
 import type { CodeStore } from "../store/types.js";
 import type { GateRun } from "./collect.js";
 import { Expectations, type Pending } from "./keep-expected.js";
+import { writeHere } from "./keep-here.js";
 import { DAEMON_KEEPS_ITS_OWN, type DaemonWaits, KeepUnknown, sentWriter } from "./keep-sent.js";
 import {
+  changedAfterLoss,
   databasesOf,
+  InputCheck,
   KEEP_BUSY_BOUND_MS,
   type KeepWriter,
   type Kept,
@@ -27,7 +30,6 @@ import {
   notKept,
   perhapsKept,
   StoreWait,
-  writeHere,
 } from "./keep-write.js";
 
 /*
@@ -225,6 +227,7 @@ export class Keeper {
       }
       const boundMs = this.#options.busyBoundMs ?? KEEP_BUSY_BOUND_MS;
       const wait = new StoreWait({ now, boundMs, tell: (text) => this.#tell(text) });
+      const check = new InputCheck();
       const databases = databasesOf(commonDir);
       const giveUp = (database: AbsolutePath) =>
         wait.giveUp(database, all.slice(written + changed));
@@ -240,8 +243,8 @@ export class Keeper {
         };
         const stores = { store, keys: pending.keys, writer };
         for (const file of files) {
-          const steady = async () => !wait.waited || (await steadyOf([file], pending)).length > 0;
-          const at = { file, report, provenance, databases, giveUp, steady };
+          const steady = async () => (await steadyOf([file], pending)).length > 0;
+          const at = { file, report, provenance, databases, giveUp, check, steady };
           const outcome = await keepFile(stores, at);
           if (outcome === "spent") {
             this.#tell(wait.spent(all.length - written, changed));
@@ -255,6 +258,8 @@ export class Keeper {
         }
       }
       wait.done({ written, changed, freed });
+      // A file that moved after a lost try, with no busy wait to tell it (review 0.1.450 R1-B2).
+      if (!wait.waited && changed > 0) this.#tell(changedAfterLoss(changed));
     } catch (error) {
       const left = all.length - written;
       const unknown = error instanceof KeepUnknown;
