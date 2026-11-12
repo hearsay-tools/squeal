@@ -22,4 +22,4 @@ Done when: grep shows no `snapshotInputs`, `changedSince` or `barredByTouch` cal
 
 ## R2: narrow re-review
 
-Use /reviewer (codex gpt-6.1-sol high), pinned to the repaired candidate. Scope: B1, B2 and S1 of `reviews/0.1.452.md` and the repair delta only; the first review's proofs of keeper and daemon equivalence stand for the unchanged lines. Write `reviews/0.1.452-r2.md`.
+Use /reviewer (codex gpt-6.1-sol high), pinned to the repaired candidate. The candidate is renumbered `cand/0.1.453`: spec 020's row 020-37 took 0.1.452 by agreement with coordinator 31e1d860 (2026-11-12), and the failed `cand/0.1.452` branch was deleted. Scope: B1, B2 and S1 of `reviews/0.1.452.md` and the repair delta only; the first review's proofs of keeper and daemon equivalence stand for the unchanged lines. Write `reviews/0.1.453-r2.md`.
