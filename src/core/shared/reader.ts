@@ -25,6 +25,7 @@ import { failureOf, networkEnv } from "./git.js";
 import { blobsAt, HEAD_TIMEOUT_MS, headOf } from "./local.js";
 import { refOf, remoteExports } from "./refs.js";
 import { readSquealMismatch, writeSquealMismatch } from "./refused.js";
+import { importIdHere, servesHere } from "./served.js";
 
 /*
  * Spec 018 D14: with `shared.ref` set, the daemon imports CI's export of the
@@ -41,7 +42,9 @@ import { readSquealMismatch, writeSquealMismatch } from "./refused.js";
  * a branch the clone does not hold (R2), takes the default branch the remote
  * advertises, under the listing's kill timer. Row 018-34 (D21): an export
  * of another key format leaves one record for status (`refused.ts`), which
- * the next import clears, not a note per refused ref.
+ * the next import clears, not a note per refused ref. Row 018-44: a held
+ * export whose imports do not serve this worktree is imported again for it
+ * (`served.ts`); one that serves it reaches no remote.
  */
 
 /** The kill timer of the listing (`transport.md` Q3: 0.45 to 0.6 s to GitHub). */
@@ -164,7 +167,8 @@ class Reader implements SharedReader {
     this.#start = `${prefix} ${start}`;
 
     const candidates = await this.#live((signal) => firstParents(root, start, signal));
-    const held = new Set(listImports(this.o.store).map((i) => i.header.commit));
+    const imports = listImports(this.o.store);
+    const held = new Set(imports.map((i) => i.header.commit));
     const nearestHeld = candidates.findIndex((c) => held.has(c));
     const reach = nearestHeld === -1 ? candidates.length : nearestHeld;
     // D21: a refusal holds only while its export is nearer than every held
@@ -174,7 +178,11 @@ class Reader implements SharedReader {
     if (refused !== null && !candidates.slice(0, reach).includes(refused.commit)) {
       writeSquealMismatch(this.o.store, this.o.worktreeId, null);
     }
-    if (nearestHeld === 0) return;
+    // Row 018-44: the nearest held export too, when its imports do not serve this worktree.
+    const nearest = imports.filter((i) => i.header.commit === candidates[nearestHeld]);
+    const own = nearestHeld !== -1 && !servesHere(this.o.store, this.o.worktreeId, nearest);
+    const tried = candidates.slice(0, own ? reach + 1 : reach);
+    if (tried.length === 0) return;
 
     const env = await this.#live((signal) => networkEnv(root, signal));
     const listMs = this.o.listTimeoutMs ?? LIST_TIMEOUT_MS;
@@ -187,7 +195,7 @@ class Reader implements SharedReader {
       );
       return;
     }
-    for (const commit of candidates.slice(0, reach)) {
+    for (const commit of tried) {
       const oid = listed.get(commit);
       if (oid === undefined) continue;
       const ref = refOf(prefix, commit);
@@ -267,7 +275,7 @@ class Reader implements SharedReader {
       // record is written last, so one stopped between slices is fetched and imported again.
       added = (
         await importSliced(this.o.store, bundle, {
-          importId: fileHash.slice(0, 16),
+          importId: importIdHere(this.o.store, this.o.worktreeId, fileHash),
           fileHash,
           now: this.o.now(),
           clock: this.o.now,

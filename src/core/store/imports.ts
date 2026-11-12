@@ -169,6 +169,29 @@ export function importFiles(store: Store, importId: string): ImportFileRecord[] 
     .map(toImportFile);
 }
 
+/**
+ * Row 018-44: the environment hashes the files of `importIds` went at, by
+ * project: the export's, and the importing worktree's where it re-keyed (D11).
+ */
+export function importEnvironments(
+  store: Store,
+  importIds: readonly string[],
+): Map<ProjectName, EnvironmentHash[]> {
+  const out = new Map<ProjectName, EnvironmentHash[]>();
+  const conn = readable(store);
+  if (conn === null || importIds.length === 0) return out;
+  const rows = conn.all(
+    `SELECT DISTINCT project, environment FROM import_files
+     WHERE import_id IN (SELECT value FROM json_each(?)) ORDER BY project, environment`,
+    JSON.stringify(importIds),
+  );
+  for (const row of rows) {
+    const project = String(row.project);
+    out.set(project, [...(out.get(project) ?? []), String(row.environment)]);
+  }
+  return out;
+}
+
 function toImportFile(row: Row): ImportFileRecord {
   return {
     importId: String(row.import_id),
