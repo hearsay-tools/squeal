@@ -6,6 +6,7 @@
 # run here, it never fails the step: `squeal ci record -- <command>` runs the
 # command and exits with its code, `squeal ci export` and `squeal ci publish`
 # exit 0, and each warns in the job log and the step summary (ci/lib.sh).
+# Its warnings go to stderr, so stdout holds only the command's own output.
 # When Squeal runs, a refusal or a crash of `squeal ci export` or
 # `squeal ci publish` warns the same way and exits 0; a usage error fails.
 case $0 in
