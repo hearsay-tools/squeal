@@ -1,0 +1,3 @@
+squeal daemon: no tier for 60 s: a last-resort GC took private memory from 512 to 374 MiB in a 195 ms pause
+squeal daemon: no tier for 60 s: a last-resort GC took private memory from 497 to 355 MiB in a 270 ms pause
+squeal daemon: no tier for 60 s: a last-resort GC took private memory from 1394 to 1394 MiB in a 246 ms pause
