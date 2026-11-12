@@ -14,7 +14,7 @@ import { testFileId } from "../keys/reverse-index.js";
 import type { ProjectName, RelativePath, WorktreeId } from "../types/common.js";
 import type { CheckKey, EnvironmentHash, FileHash, TestFileRef } from "../types/keys.js";
 import type { Store } from "../types/store.js";
-import { worktreeEnvironment } from "./environments.js";
+import { type StoredEnvironment, worktreeEnvironment } from "./environments.js";
 import {
   type ExportedEnvironment,
   type ExportedTestFile,
@@ -130,17 +130,25 @@ function holdsEvery(here: readonly RelativePath[], exported: readonly RelativePa
   return exported.every((path) => held.has(path));
 }
 
-/**
- * This worktree's environment hash of the export's project when D10 finds
- * the two equal for a pass; `null` when they differ, when this worktree has
- * none recorded yet, or when a side holds no descriptor to compare.
- */
+/** This worktree's environment hash of the export's project when D10 finds the two equal (`rekeyedHash`). */
 function localHash(
   store: Store,
   worktreeId: WorktreeId,
   exported: ExportedEnvironment,
 ): EnvironmentHash | null {
-  const here = worktreeEnvironment(store, worktreeId, exported.project);
+  return rekeyedHash(exported, worktreeEnvironment(store, worktreeId, exported.project));
+}
+
+/**
+ * `here`'s hash, the one a re-key stores at, when D10 finds `exported` and
+ * `here` equal for a pass; `null` when they differ, when the worktree has
+ * none recorded yet, or when a side holds no descriptor to compare. Row
+ * 018-44 asks it of another import's environments too (`servesHere`).
+ */
+export function rekeyedHash(
+  exported: Pick<ExportedEnvironment, "hash" | "descriptor">,
+  here: StoredEnvironment | null,
+): EnvironmentHash | null {
   if (here === null) return null;
   if (here.hash === exported.hash) return here.hash;
   if (exported.descriptor === null || here.descriptor === null) return null;
