@@ -30,14 +30,25 @@ import { OBSERVED_ADAPTER_SUFFIX } from "../runners/vitest/observe.js";
  * every file, says so.
  */
 
+/** D3's evidence, and the step that keeps what its runs completed (D17.5). */
+export interface Collected {
+  readonly evidence: Evidence;
+  /**
+   * Writes each file a run completed to the stores at its key, then closes
+   * them. Called once, after the report is out (D17.5); it never throws.
+   */
+  keep(): Promise<void>;
+}
+
 /**
  * D3's evidence of `changed`: each selected file `parts` certify taken
  * from them, in the environment the gate's runner has (D13.2), then each
  * with results and a record at its key read from the stores (D11.7), and
- * every other file run, each it completes kept in the stores at its key
- * (D17.3); how many came from each is told through `options.note`. The keys hold
- * `options.children`, the base's `coverage.children`, so a record
- * collected otherwise is never read. The stores close before it resolves.
+ * every other file run, each it completes kept in the stores at its key by
+ * `keep` (D17.3, D17.5); how many came from each is told through
+ * `options.note`. The keys hold `options.children`, the base's
+ * `coverage.children`, so a record collected otherwise is never read. The
+ * stores close at `keep`, or before it rejects.
  */
 export async function collectWithStores(
   root: AbsolutePath,
@@ -45,7 +56,7 @@ export async function collectWithStores(
   changed: ChangedSet,
   options: CollectOptions,
   parts: readonly NamedPart[] = [],
-): Promise<Evidence> {
+): Promise<Collected> {
   const note = options.note ?? (() => {});
   const children = options.children === true;
   const fromParts =
@@ -65,9 +76,10 @@ export async function collectWithStores(
           note,
         });
   const stored = storedFiles(root, env, note, children);
+  let evidence: Evidence;
   try {
     const known = inOrder([fromParts, stored?.stored]);
-    const evidence = await collectEvidence(root, changed, {
+    evidence = await collectEvidence(root, changed, {
       ...options,
       ...(known === null ? {} : { stored: known }),
       // D17.3: each file a run completes is kept at its key, for the next run and a daemon.
@@ -81,10 +93,18 @@ export async function collectWithStores(
       const read = evidence.testFiles.filter((f) => f.from === from).length;
       if (read > 0) note(`${read} of ${selected} selected test files read from ${where}`);
     }
-    return evidence;
-  } finally {
+  } catch (error) {
     await stored?.close();
+    throw error;
   }
+  const keep = async () => {
+    try {
+      await stored?.flush();
+    } finally {
+      await stored?.close();
+    }
+  };
+  return { evidence, keep };
 }
 
 /**
