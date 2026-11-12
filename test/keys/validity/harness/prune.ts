@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { storePaths } from "../../../../src/core/store/paths.js";
 import { connectionOf } from "../../../../src/core/store/store.js";
+import type { ResultRepo, Store } from "../../../../src/core/types/store.js";
 import type { CaseOutput, PruneInput } from "../case.js";
 import { scratchStore } from "./shared.js";
 
@@ -9,8 +10,9 @@ import { scratchStore } from "./shared.js";
  * The `prune` kind (row 021-09): rows written straight into a fresh store
  * through SQL, which both trees' schema holds alike, then the tree's own
  * `Store.prune`. Outputs: what it says it removed and what the store and
- * the run logs hold after. The store's size after is wording: the pages a
- * vacuum leaves are no stored meaning.
+ * the run logs hold after, and with `asked`, which of those keys have a
+ * result after it (row 011-315). The store's size after is wording: the
+ * pages a vacuum leaves are no stored meaning.
  */
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -99,6 +101,7 @@ export function pruneCase(input: PruneInput, dir: string): CaseOutput {
     const { bytesAfter, ...removed } = report;
     return {
       outputs: {
+        ...withResults(store, input.asked),
         removed,
         worktrees: column("SELECT id FROM worktrees ORDER BY id"),
         results: column("SELECT worktree_id || ' ' || key FROM results ORDER BY 1"),
@@ -116,6 +119,26 @@ export function pruneCase(input: PruneInput, dir: string): CaseOutput {
   } finally {
     store.close();
   }
+}
+
+/**
+ * With `asked`, those of its keys with a result, in the order asked (row
+ * 011-315). A tree before it has no `keysWithResults`: there the answer is
+ * the keys `keysSince(0)` names, which that tree's code-store prune read
+ * instead.
+ */
+function withResults(
+  store: Store,
+  asked: readonly string[] | undefined,
+): { withResults?: readonly string[] } {
+  if (asked === undefined) return {};
+  const results: Pick<ResultRepo, "keysSince"> & Partial<Pick<ResultRepo, "keysWithResults">> =
+    store.results;
+  if (results.keysWithResults !== undefined) {
+    return { withResults: results.keysWithResults(asked) };
+  }
+  const stored = new Set(results.keysSince(0).map((k) => k.key));
+  return { withResults: [...new Set(asked)].filter((key) => stored.has(key)) };
 }
 
 /** A check row, its id `id`. */
