@@ -291,7 +291,7 @@ function byPath(a: TestFileRef, b: TestFileRef): number {
   return compare(a.path, b.path) || compare(a.project, b.project);
 }
 
-/** In `GATE_RUNNERS`' order, whatever order they ran in (D18); by path within each. */
+/** In `GATE_RUNNERS`' order, whatever D18's order; by path within each. */
 function byRunnerAndPath(a: TestFileEvidence, b: TestFileEvidence): number {
   const runner = GATE_RUNNERS.indexOf(a.runner) - GATE_RUNNERS.indexOf(b.runner);
   return runner || compare(a.path, b.path);
