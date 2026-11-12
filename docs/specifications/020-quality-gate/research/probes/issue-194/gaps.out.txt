@@ -1,0 +1,68 @@
+load at start: 19.27 on 24 CPUs; node v26.13.0; cli /home/agent/projects/squeal/.ai/cezar/worktrees/fba2a26d-0588-4267-8c31-13ed50bdb8e2/plugins/claude-code/dist/cli/squeal.mjs (0.1.448)
+### G1: two entries, prepare, children FALSE, publish() only edited (Q1: is the second entry the cause?)
+== G1: exit 3, 0.59 s wall
+  verdict incomplete {"pass":0,"violation":0,"incomplete":1,"skipped":0,"accepted":0}
+   scripts/release.mjs publish incomplete no-loader loaders {"expected":[],"measured":[]}
+  stderr:
+    squeal code: node:test: no test file to run
+    squeal code: no test Squeal runs loads scripts/release.mjs: no Vitest or node:test project lists it, and no listed test file imports it. Its 1 changed function will read incomplete (no-loader). To measure it, give it to a runner (a nodeTest entry, with pre
+    Command exited with non-zero status 3
+### G2: one unit entry, children TRUE, publish() only edited (Q1: is coverage.children the cause?)
+== G2: exit 3, 0.53 s wall
+  verdict incomplete {"pass":0,"violation":0,"incomplete":1,"skipped":0,"accepted":0}
+   scripts/release.mjs publish incomplete no-loader loaders {"expected":[],"measured":[]}
+  stderr:
+    squeal code: node:test: no test file to run
+    Command exited with non-zero status 3
+### G3: one unit entry, children FALSE, publish() only edited (case 8 control)
+== G3: exit 3, 0.44 s wall
+  verdict incomplete {"pass":0,"violation":0,"incomplete":1,"skipped":0,"accepted":0}
+   scripts/release.mjs publish incomplete no-loader loaders {"expected":[],"measured":[]}
+  stderr:
+    squeal code: node:test: no test file to run
+    squeal code: no test Squeal runs loads scripts/release.mjs: no Vitest or node:test project lists it, and no listed test file imports it. Its 1 changed function will read incomplete (no-loader). To measure it, give it to a runner (a nodeTest entry, with pre
+    Command exited with non-zero status 3
+### G4: case 6 plus a test-glob inputs map naming scripts/*.mjs at base and head (Q2: do declared inputs select?)
+== G4: exit 3, 0.49 s wall
+  verdict incomplete {"pass":0,"violation":0,"incomplete":1,"skipped":0,"accepted":0}
+   scripts/release.mjs publish incomplete no-loader loaders {"expected":[],"measured":[]}
+  stderr:
+    squeal code: node:test: no test file to run
+    Command exited with non-zero status 3
+### G5: G4 with --test (control: the run completes publish())
+== G5: exit 0, 0.82 s wall
+  verdict pass {"pass":1,"violation":0,"incomplete":0,"skipped":0,"accepted":0}
+   scripts/release.mjs publish pass  loaders {"expected":["test/e2e/release.test.mjs"],"measured":["test/e2e/release.test.mjs"]}
+   run node-test selected ["test/e2e/release.test.mjs"] children {"read":1,"dropped":0}
+  stderr:
+    squeal code: node:test: 1 test file to run (tests 1)
+    squeal code: node:test: 1 test file to run here, up to 4 at once; no stored duration, so the time is unknown
+    squeal code: node:test entry "package": prepare: node scripts/build.mjs
+### G6: daemon evidence. Package entry WITHOUT prepare (the daemon opens it), children true, dist built by hand.
+  run --all --wait (the fixture's two test files) exit 0
+Checkpoint d8588745-4b2d-4d9a-86ba-d9b3ea95093d completed at revision 0: no known failures; 2 test files, 0 already current, 2 run now
+Checkpoint d8588745-4b2d-4d9a-86ba-d9b3ea95093d started at revision 0: 2 test files to run, 0 already current
+
+Revision: 0
+  status exit 0
+Revision: 0
+Selected: test/e2e/release.test.mjs
+Named test files at revision 0: no known failures; 1 test file, each with a current result, after 0.3 s. Worktree: known failures 0; all 2 test files current
+  reach exit 0
+  reach names "child process": false
+### G7: the gate on G6's repository after the daemon stopped, publish() only edited (Q2: do stored observed reads select?)
+== G7: exit 3, 0.66 s wall
+  verdict incomplete {"pass":0,"violation":0,"incomplete":1,"skipped":0,"accepted":0}
+   scripts/release.mjs publish incomplete no-loader loaders {"expected":[],"measured":[]}
+  stderr:
+    squeal code: node:test: no test file to run
+    Command exited with non-zero status 3
+load at end: 21.54
+daemon log tail:
+squeal daemon: full integrity check: ok
+squeal daemon: node-test project "unit": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declar
+squeal daemon: node-test project "package": 1 test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; dec
+squeal daemon: daemon stopped: SIGTERM while it ran in systemd unit cezar.service; the next Squeal hook starts a new daemon, or `squeal start` starts one now
+squeal daemon: daemon stopped: SIGTERM while it ran in systemd unit cezar.service; the next Squeal hook starts a new daemon, or `squeal start` starts one now
+no leftover processes
+kept in /tmp/r194g-FD94IT
