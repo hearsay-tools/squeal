@@ -51525,7 +51525,7 @@ var NODE_TEST_ADAPTER_VERSION;
 var init_version3 = __esm({
   "src/runners/node-test/version.ts"() {
     "use strict";
-    NODE_TEST_ADAPTER_VERSION = "10";
+    NODE_TEST_ADAPTER_VERSION = "11";
   }
 });
 
