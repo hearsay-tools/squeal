@@ -1,0 +1,31 @@
+616bcf31	newest: fe53b2f9 current 0/1482 environment 1482
+		best:   c098ccc2 current 1044/1483 sameKeyKept 419, environment 16, closure 3, observed 1
+6421a070	newest: fe53b2f9 current 0/1482 environment 1482
+		best:   c098ccc2 current 1045/1483 sameKeyKept 419, environment 16, closure 3
+6ac78c9c	newest: fe53b2f9 current 0/1482 sameKeyKept 174, sameKeyNotAdopted 1, environment 1117, content 190
+		best:   becede8e current 1448/1469 sameKeyKept 11, environment 7, closure 3
+8437c153	newest: fe53b2f9 current 0/1482 environment 1482
+		best:   c098ccc2 current 1045/1483 sameKeyKept 419, environment 16, closure 3
+888db0a9	newest: fe53b2f9 current 2/1485 sameKeyKept 174, environment 1120, content 189
+		best:   becede8e current 171/1469 sameKeyKept 2, environment 1106, closure 4, content 186
+8ee33ff0	newest: fe53b2f9 current 0/1482 sameKeyKept 176, sameKeyNotAdopted 1, environment 1117, content 188
+		best:   becede8e current 1330/1469 sameKeyKept 6, environment 7, closure 18, observed 1, content 107
+a13cd09a	newest: fe53b2f9 current 0/1482 sameKeyKept 174, sameKeyNotAdopted 1, environment 1117, content 190
+		best:   fe53b2f9 current 0/1482 sameKeyKept 174, sameKeyNotAdopted 1, environment 1117, content 190
+b3a63fc4	newest: fe53b2f9 current 0/1485 environment 1485
+		best:   42c28fa2 current 284/1496 sameKeyKept 58, environment 3, closure 917, observed 37, content 197
+b7555ac0	newest: fe53b2f9 current 0/1482 environment 1482
+		best:   cc3cead4 current 601/1484 sameKeyKept 848, environment 23, closure 12
+c274a0de	newest: fe53b2f9 current 0/1482 environment 1482
+		best:   cc3cead4 current 609/1484 sameKeyKept 848, environment 23, closure 4
+d1d5dc51	newest: fe53b2f9 current 0/1482 environment 1482
+		best:   cc3cead4 current 532/1484 sameKeyKept 821, environment 23, closure 25, content 83
+dc20d96e	newest: fe53b2f9 current 0/1474 environment 1474
+		best:   5b278bdc current 1179/1523 sameKeyKept 282, environment 45, closure 12, observed 5
+e2e8adfd	newest: fe53b2f9 current 0/1482 environment 1482
+		best:   cc3cead4 current 602/1484 sameKeyKept 843, environment 23, closure 11, observed 1, content 4
+e68fc045	newest: fe53b2f9 current 0/1482 environment 1482
+		best:   cc3cead4 current 609/1484 sameKeyKept 848, environment 23, closure 4
+BEST per worktree, summed: {"testFiles":20777,"current":10499,"sameKeyKept":5998,"sameKeyNotAdopted":1,"environment":2448,"closure":1019,"observed":45,"content":767,"keysPending":0,"noKey":0}
+NEWEST per worktree, summed: {"testFiles":20746,"current":2,"sameKeyKept":698,"sameKeyNotAdopted":3,"environment":19286,"closure":0,"observed":0,"content":757,"keysPending":0,"noKey":0}
+ALL imports x worktrees, summed: {"testFiles":1068897,"current":13305,"sameKeyKept":45571,"sameKeyNotAdopted":1447,"environment":824858,"closure":102506,"observed":7027,"content":74183,"keysPending":0,"noKey":0}

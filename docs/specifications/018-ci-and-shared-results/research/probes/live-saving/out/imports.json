@@ -1,0 +1,966 @@
+{
+ "cutoff": "2026-11-12T14:45:00Z",
+ "imports": [
+  {
+   "importedAt": "2026-11-10T21:49",
+   "ci": "0.1.426",
+   "commit": "b3f058b7",
+   "used": {
+    "files": 12,
+    "rowSec": 2,
+    "medianSec": 3
+   },
+   "unused": {
+    "files": 1444,
+    "rowSec": 7497,
+    "medianSec": 7166
+   }
+  },
+  {
+   "importedAt": "2026-11-10T21:49",
+   "ci": "0.1.426",
+   "commit": "13582fdd",
+   "otherImport": {
+    "files": 648,
+    "rowSec": 1026,
+    "medianSec": 1236
+   },
+   "unused": {
+    "files": 829,
+    "rowSec": 7461,
+    "medianSec": 6211
+   }
+  },
+  {
+   "importedAt": "2026-11-10T21:49",
+   "ci": "0.1.426",
+   "commit": "816d95e4",
+   "otherImport": {
+    "files": 824,
+    "rowSec": 1568,
+    "medianSec": 1738
+   },
+   "unused": {
+    "files": 653,
+    "rowSec": 6781,
+    "medianSec": 5709
+   }
+  },
+  {
+   "importedAt": "2026-11-10T21:54",
+   "ci": "0.1.426",
+   "commit": "afd1b777",
+   "otherImport": {
+    "files": 1259,
+    "rowSec": 6441,
+    "medianSec": 5676
+   },
+   "unused": {
+    "files": 190,
+    "rowSec": 1743,
+    "medianSec": 1365
+   }
+  },
+  {
+   "importedAt": "2026-11-10T21:54",
+   "ci": "0.1.426",
+   "commit": "1ed7d04f",
+   "otherImport": {
+    "files": 31,
+    "rowSec": 10,
+    "medianSec": 12
+   },
+   "unused": {
+    "files": 1427,
+    "rowSec": 7539,
+    "medianSec": 7214
+   }
+  },
+  {
+   "importedAt": "2026-11-10T22:07",
+   "ci": "0.1.426",
+   "commit": "a47289f9",
+   "otherImport": {
+    "files": 1288,
+    "rowSec": 6335,
+    "medianSec": 6086
+   },
+   "unused": {
+    "files": 170,
+    "rowSec": 1422,
+    "medianSec": 1140
+   }
+  },
+  {
+   "importedAt": "2026-11-10T22:42",
+   "ci": "0.1.426",
+   "commit": "b0567e71",
+   "otherImport": {
+    "files": 814,
+    "rowSec": 1415,
+    "medianSec": 1635
+   },
+   "unused": {
+    "files": 644,
+    "rowSec": 6271,
+    "medianSec": 5591
+   }
+  },
+  {
+   "importedAt": "2026-11-11T00:14",
+   "ci": "0.1.426",
+   "commit": "7e0883a4",
+   "otherImport": {
+    "files": 31,
+    "rowSec": 10,
+    "medianSec": 12
+   },
+   "unused": {
+    "files": 1428,
+    "rowSec": 8984,
+    "medianSec": 7144
+   }
+  },
+  {
+   "importedAt": "2026-11-11T00:38",
+   "ci": "0.1.426",
+   "commit": "8df80218",
+   "otherImport": {
+    "files": 1289,
+    "rowSec": 7560,
+    "medianSec": 6031
+   },
+   "unused": {
+    "files": 170,
+    "rowSec": 1513,
+    "medianSec": 1125
+   }
+  },
+  {
+   "importedAt": "2026-11-11T01:07",
+   "ci": "0.1.426",
+   "commit": "3c814d6f",
+   "otherImport": {
+    "files": 1292,
+    "rowSec": 7586,
+    "medianSec": 6050
+   },
+   "unused": {
+    "files": 167,
+    "rowSec": 1209,
+    "medianSec": 1106
+   }
+  },
+  {
+   "importedAt": "2026-11-11T03:19",
+   "ci": "0.1.426",
+   "commit": "c692ef01",
+   "otherImport": {
+    "files": 700,
+    "rowSec": 1529,
+    "medianSec": 1446
+   },
+   "unused": {
+    "files": 761,
+    "rowSec": 6335,
+    "medianSec": 5688
+   }
+  },
+  {
+   "importedAt": "2026-11-11T03:21",
+   "ci": "0.1.426",
+   "commit": "c9fb4e00",
+   "otherImport": {
+    "files": 1244,
+    "rowSec": 6131,
+    "medianSec": 5579
+   },
+   "unused": {
+    "files": 216,
+    "rowSec": 1824,
+    "medianSec": 1554
+   }
+  },
+  {
+   "importedAt": "2026-11-11T06:49",
+   "ci": "0.1.426",
+   "commit": "bea86e3e",
+   "otherImport": {
+    "files": 780,
+    "rowSec": 1661,
+    "medianSec": 1547
+   },
+   "unused": {
+    "files": 686,
+    "rowSec": 6137,
+    "medianSec": 5502
+   }
+  },
+  {
+   "importedAt": "2026-11-11T09:26",
+   "ci": "0.1.426",
+   "commit": "6807e009",
+   "otherImport": {
+    "files": 164,
+    "rowSec": 231,
+    "medianSec": 187
+   },
+   "unused": {
+    "files": 1337,
+    "rowSec": 7626,
+    "medianSec": 7228
+   }
+  },
+  {
+   "importedAt": "2026-11-11T10:04",
+   "ci": "0.1.426",
+   "commit": "9c218872",
+   "otherImport": {
+    "files": 1252,
+    "rowSec": 4557,
+    "medianSec": 4290
+   },
+   "unused": {
+    "files": 240,
+    "rowSec": 3440,
+    "medianSec": 3039
+   }
+  },
+  {
+   "importedAt": "2026-11-11T11:16",
+   "ci": "0.1.426",
+   "commit": "c36457c3",
+   "otherImport": {
+    "files": 666,
+    "rowSec": 1247,
+    "medianSec": 1308
+   },
+   "unused": {
+    "files": 837,
+    "rowSec": 7224,
+    "medianSec": 6133
+   }
+  },
+  {
+   "importedAt": "2026-11-11T11:29",
+   "ci": "0.1.426",
+   "commit": "3f2785cc",
+   "otherImport": {
+    "files": 1454,
+    "rowSec": 7823,
+    "medianSec": 6896
+   },
+   "unused": {
+    "files": 49,
+    "rowSec": 667,
+    "medianSec": 545
+   }
+  },
+  {
+   "importedAt": "2026-11-11T12:02",
+   "ci": "0.1.426",
+   "commit": "9cea6f73",
+   "otherImport": {
+    "files": 176,
+    "rowSec": 164,
+    "medianSec": 177
+   },
+   "unused": {
+    "files": 1353,
+    "rowSec": 8764,
+    "medianSec": 7650
+   }
+  },
+  {
+   "importedAt": "2026-11-11T13:14",
+   "ci": "0.1.426",
+   "commit": "473f0265",
+   "otherImport": {
+    "files": 1011,
+    "rowSec": 2645,
+    "medianSec": 2476
+   },
+   "unused": {
+    "files": 518,
+    "rowSec": 6018,
+    "medianSec": 5351
+   }
+  },
+  {
+   "importedAt": "2026-11-11T13:28",
+   "ci": "0.1.426",
+   "commit": "6a843336",
+   "otherImport": {
+    "files": 1308,
+    "rowSec": 5374,
+    "medianSec": 4891
+   },
+   "unused": {
+    "files": 221,
+    "rowSec": 3485,
+    "medianSec": 2935
+   }
+  },
+  {
+   "importedAt": "2026-11-11T15:06",
+   "ci": "0.1.426",
+   "commit": "688c4620",
+   "otherImport": {
+    "files": 1018,
+    "rowSec": 2558,
+    "medianSec": 2361
+   },
+   "unused": {
+    "files": 471,
+    "rowSec": 5166,
+    "medianSec": 4828
+   }
+  },
+  {
+   "importedAt": "2026-11-11T15:24",
+   "ci": "0.1.426",
+   "commit": "dd3811e3",
+   "otherImport": {
+    "files": 1399,
+    "rowSec": 6305,
+    "medianSec": 5926
+   },
+   "unused": {
+    "files": 90,
+    "rowSec": 1612,
+    "medianSec": 1263
+   }
+  },
+  {
+   "importedAt": "2026-11-11T15:47",
+   "ci": "0.1.426",
+   "commit": "9819505d",
+   "otherImport": {
+    "files": 1486,
+    "rowSec": 7905,
+    "medianSec": 7159
+   },
+   "unused": {
+    "files": 3,
+    "rowSec": 22,
+    "medianSec": 30
+   }
+  },
+  {
+   "importedAt": "2026-11-11T15:54",
+   "ci": "0.1.426",
+   "commit": "7c302f57",
+   "otherImport": {
+    "files": 1439,
+    "rowSec": 7390,
+    "medianSec": 6690
+   },
+   "unused": {
+    "files": 50,
+    "rowSec": 658,
+    "medianSec": 499
+   }
+  },
+  {
+   "importedAt": "2026-11-11T16:20",
+   "ci": "0.1.426",
+   "commit": "0d7fc128",
+   "otherImport": {
+    "files": 1401,
+    "rowSec": 6476,
+    "medianSec": 5974
+   },
+   "unused": {
+    "files": 88,
+    "rowSec": 1554,
+    "medianSec": 1215
+   }
+  },
+  {
+   "importedAt": "2026-11-11T16:21",
+   "ci": "0.1.426",
+   "commit": "32db434a",
+   "otherImport": {
+    "files": 882,
+    "rowSec": 1999,
+    "medianSec": 1932
+   },
+   "unused": {
+    "files": 650,
+    "rowSec": 6860,
+    "medianSec": 5898
+   }
+  },
+  {
+   "importedAt": "2026-11-11T16:53",
+   "ci": "0.1.426",
+   "commit": "de606f9c",
+   "otherImport": {
+    "files": 235,
+    "rowSec": 269,
+    "medianSec": 296
+   },
+   "unused": {
+    "files": 1297,
+    "rowSec": 9068,
+    "medianSec": 7533
+   }
+  },
+  {
+   "importedAt": "2026-11-11T17:11",
+   "ci": "0.1.426",
+   "commit": "a2e1b9de",
+   "otherImport": {
+    "files": 163,
+    "rowSec": 222,
+    "medianSec": 186
+   },
+   "used": {
+    "files": 17,
+    "rowSec": 8,
+    "medianSec": 8
+   },
+   "unused": {
+    "files": 1343,
+    "rowSec": 8823,
+    "medianSec": 7404
+   }
+  },
+  {
+   "importedAt": "2026-11-11T18:05",
+   "ci": "0.1.426",
+   "commit": "b0ef80b1",
+   "otherImport": {
+    "files": 820,
+    "rowSec": 1911,
+    "medianSec": 1827
+   },
+   "unused": {
+    "files": 703,
+    "rowSec": 6405,
+    "medianSec": 5772
+   }
+  },
+  {
+   "importedAt": "2026-11-11T18:24",
+   "ci": "0.1.431",
+   "commit": "0c0f1037",
+   "otherImport": {
+    "files": 1521,
+    "rowSec": 8294,
+    "medianSec": 7577
+   },
+   "unused": {
+    "files": 2,
+    "rowSec": 21,
+    "medianSec": 21
+   }
+  },
+  {
+   "importedAt": "2026-11-11T19:04",
+   "ci": "0.1.431",
+   "commit": "9ca25002",
+   "used": {
+    "files": 1502,
+    "rowSec": 8633,
+    "medianSec": 7305
+   },
+   "unused": {
+    "files": 15,
+    "rowSec": 271,
+    "medianSec": 191
+   },
+   "rerun": {
+    "files": 6,
+    "rowSec": 954,
+    "medianSec": 102
+   }
+  },
+  {
+   "importedAt": "2026-11-11T19:49",
+   "ci": "0.1.431",
+   "commit": "f30ce4c4",
+   "otherImport": {
+    "files": 1503,
+    "rowSec": 8628,
+    "medianSec": 7304
+   },
+   "used": {
+    "files": 11,
+    "rowSec": 187,
+    "medianSec": 125
+   },
+   "late": {
+    "files": 9,
+    "rowSec": 1053,
+    "medianSec": 170
+   }
+  },
+  {
+   "importedAt": "2026-11-11T19:56",
+   "ci": "0.1.431",
+   "commit": "67ae4684",
+   "otherImport": {
+    "files": 1447,
+    "rowSec": 7875,
+    "medianSec": 6708
+   },
+   "used": {
+    "files": 59,
+    "rowSec": 820,
+    "medianSec": 629
+   },
+   "late": {
+    "files": 13,
+    "rowSec": 1162,
+    "medianSec": 191
+   },
+   "rerun": {
+    "files": 4,
+    "rowSec": 147,
+    "medianSec": 71
+   }
+  },
+  {
+   "importedAt": "2026-11-11T20:07",
+   "ci": "0.1.431",
+   "commit": "5b278bdc",
+   "otherImport": {
+    "files": 31,
+    "rowSec": 11,
+    "medianSec": 12
+   },
+   "used": {
+    "files": 1192,
+    "rowSec": 6665,
+    "medianSec": 5937
+   },
+   "late": {
+    "files": 248,
+    "rowSec": 695,
+    "medianSec": 872
+   },
+   "rerun": {
+    "files": 3,
+    "rowSec": 33,
+    "medianSec": 46
+   },
+   "unused": {
+    "files": 49,
+    "rowSec": 942,
+    "medianSec": 731
+   }
+  },
+  {
+   "importedAt": "2026-11-11T22:20",
+   "ci": "0.1.431",
+   "commit": "249c8783",
+   "otherImport": {
+    "files": 570,
+    "rowSec": 1022,
+    "medianSec": 965
+   },
+   "late": {
+    "files": 892,
+    "rowSec": 7586,
+    "medianSec": 5955
+   },
+   "unused": {
+    "files": 42,
+    "rowSec": 855,
+    "medianSec": 608
+   },
+   "used": {
+    "files": 19,
+    "rowSec": 99,
+    "medianSec": 70
+   }
+  },
+  {
+   "importedAt": "2026-11-12T00:29",
+   "ci": "0.1.431",
+   "commit": "427187b4",
+   "otherImport": {
+    "files": 31,
+    "rowSec": 11,
+    "medianSec": 12
+   },
+   "used": {
+    "files": 1486,
+    "rowSec": 8282,
+    "medianSec": 7562
+   },
+   "unused": {
+    "files": 6,
+    "rowSec": 32,
+    "medianSec": 25
+   }
+  },
+  {
+   "importedAt": "2026-11-12T01:21",
+   "ci": "0.1.431",
+   "commit": "46a383cf",
+   "otherImport": {
+    "files": 1398,
+    "rowSec": 6905,
+    "medianSec": 6335
+   },
+   "used": {
+    "files": 98,
+    "rowSec": 1114,
+    "medianSec": 974
+   },
+   "unused": {
+    "files": 33,
+    "rowSec": 572,
+    "medianSec": 423
+   }
+  },
+  {
+   "importedAt": "2026-11-12T01:56",
+   "ci": "0.1.431",
+   "commit": "42c28fa2",
+   "otherImport": {
+    "files": 31,
+    "rowSec": 11,
+    "medianSec": 12
+   },
+   "used": {
+    "files": 1306,
+    "rowSec": 8904,
+    "medianSec": 7530
+   },
+   "late": {
+    "files": 185,
+    "rowSec": 107,
+    "medianSec": 162
+   },
+   "unused": {
+    "files": 7,
+    "rowSec": 46,
+    "medianSec": 28
+   }
+  },
+  {
+   "importedAt": "2026-11-12T04:31",
+   "ci": "0.1.431",
+   "commit": "376a6476",
+   "otherImport": {
+    "files": 1329,
+    "rowSec": 8885,
+    "medianSec": 7516
+   },
+   "late": {
+    "files": 200,
+    "rowSec": 160,
+    "medianSec": 216
+   }
+  },
+  {
+   "importedAt": "2026-11-12T04:32",
+   "ci": "0.1.431",
+   "commit": "1e93f0cb",
+   "otherImport": {
+    "files": 656,
+    "rowSec": 1599,
+    "medianSec": 1402
+   },
+   "used": {
+    "files": 507,
+    "rowSec": 5786,
+    "medianSec": 4748
+   },
+   "late": {
+    "files": 131,
+    "rowSec": 78,
+    "medianSec": 109
+   },
+   "unused": {
+    "files": 219,
+    "rowSec": 1718,
+    "medianSec": 1262
+   }
+  },
+  {
+   "importedAt": "2026-11-12T07:21",
+   "ci": "0.1.431",
+   "commit": "99aaa04a",
+   "otherImport": {
+    "files": 1215,
+    "rowSec": 8262,
+    "medianSec": 6706
+   },
+   "late": {
+    "files": 149,
+    "rowSec": 184,
+    "medianSec": 225
+   },
+   "unused": {
+    "files": 149,
+    "rowSec": 703,
+    "medianSec": 590
+   }
+  },
+  {
+   "importedAt": "2026-11-12T07:35",
+   "ci": "0.1.431",
+   "commit": "de83e59e",
+   "otherImport": {
+    "files": 594,
+    "rowSec": 1402,
+    "medianSec": 1294
+   },
+   "used": {
+    "files": 589,
+    "rowSec": 5474,
+    "medianSec": 4619
+   },
+   "late": {
+    "files": 101,
+    "rowSec": 98,
+    "medianSec": 134
+   },
+   "unused": {
+    "files": 224,
+    "rowSec": 1837,
+    "medianSec": 1418
+   }
+  },
+  {
+   "importedAt": "2026-11-12T09:40",
+   "ci": "0.1.443",
+   "commit": "cc3cead4",
+   "otherImport": {
+    "files": 509,
+    "rowSec": 907,
+    "medianSec": 853
+   },
+   "late": {
+    "files": 339,
+    "rowSec": 330,
+    "medianSec": 463
+   },
+   "used": {
+    "files": 612,
+    "rowSec": 8024,
+    "medianSec": 6028
+   },
+   "unused": {
+    "files": 24,
+    "rowSec": 333,
+    "medianSec": 214
+   }
+  },
+  {
+   "importedAt": "2026-11-12T10:54",
+   "ci": "0.1.443",
+   "commit": "c6574b70",
+   "otherImport": {
+    "files": 1140,
+    "rowSec": 9240,
+    "medianSec": 7076
+   },
+   "late": {
+    "files": 343,
+    "rowSec": 349,
+    "medianSec": 482
+   }
+  },
+  {
+   "importedAt": "2026-11-12T11:17",
+   "ci": "0.1.443",
+   "commit": "92457553",
+   "otherImport": {
+    "files": 1140,
+    "rowSec": 9240,
+    "medianSec": 7076
+   },
+   "late": {
+    "files": 344,
+    "rowSec": 350,
+    "medianSec": 483
+   }
+  },
+  {
+   "importedAt": "2026-11-12T12:13",
+   "ci": "0.1.443",
+   "commit": "c098ccc2",
+   "otherImport": {
+    "files": 31,
+    "rowSec": 12,
+    "medianSec": 12
+   },
+   "late": {
+    "files": 388,
+    "rowSec": 178,
+    "medianSec": 202
+   },
+   "used": {
+    "files": 1045,
+    "rowSec": 8838,
+    "medianSec": 7168
+   },
+   "unused": {
+    "files": 19,
+    "rowSec": 274,
+    "medianSec": 175
+   }
+  },
+  {
+   "importedAt": "2026-11-12T14:04",
+   "ci": "0.1.443",
+   "commit": "becede8e",
+   "used": {
+    "files": 1448,
+    "rowSec": 8612,
+    "medianSec": 7170
+   },
+   "late": {
+    "files": 11,
+    "rowSec": 33,
+    "medianSec": 34
+   },
+   "unused": {
+    "files": 10,
+    "rowSec": 139,
+    "medianSec": 83
+   }
+  },
+  {
+   "importedAt": "2026-11-12T14:07",
+   "ci": "0.1.443",
+   "commit": "d51e5285",
+   "unused": {
+    "files": 1463,
+    "rowSec": 9315,
+    "medianSec": 7221
+   },
+   "otherImport": {
+    "files": 7,
+    "rowSec": 115,
+    "medianSec": 66
+   }
+  },
+  {
+   "importedAt": "2026-11-12T14:26",
+   "ci": "0.1.443",
+   "commit": "e12c42e8",
+   "otherImport": {
+    "files": 1447,
+    "rowSec": 8680,
+    "medianSec": 7190
+   },
+   "late": {
+    "files": 20,
+    "rowSec": 89,
+    "medianSec": 95
+   },
+   "used": {
+    "files": 2,
+    "rowSec": 1,
+    "medianSec": 1
+   }
+  },
+  {
+   "importedAt": "2026-11-12T14:35",
+   "ci": "0.1.443",
+   "commit": "3fe503e3",
+   "otherImport": {
+    "files": 1352,
+    "rowSec": 8251,
+    "medianSec": 6761
+   },
+   "late": {
+    "files": 19,
+    "rowSec": 92,
+    "medianSec": 91
+   },
+   "used": {
+    "files": 98,
+    "rowSec": 437,
+    "medianSec": 434
+   }
+  },
+  {
+   "importedAt": "2026-11-12T14:39",
+   "ci": "0.1.443",
+   "commit": "ba5a2048",
+   "otherImport": {
+    "files": 1355,
+    "rowSec": 8803,
+    "medianSec": 6732
+   },
+   "unused": {
+    "files": 114,
+    "rowSec": 626,
+    "medianSec": 554
+   }
+  }
+ ],
+ "byWorktree": {
+  "09a979c2739ffdce\trerun": {
+   "files": 10,
+   "sec": 1100.749526009
+  },
+  "09a979c2739ffdce\tlate": {
+   "files": 15,
+   "sec": 2005.0432998259998
+  },
+  "406c75867b0bee0e\tlate": {
+   "files": 648,
+   "sec": 7068.356314285998
+  },
+  "9b92fda3f2e18a7c\tlate": {
+   "files": 499,
+   "sec": 1422.7387202270002
+  },
+  "9b92fda3f2e18a7c\trerun": {
+   "files": 3,
+   "sec": 32.798038157
+  },
+  "f0571f70d4316106\tlate": {
+   "files": 934,
+   "sec": 458.53846446499955
+  },
+  "2c0000686e310df6\tlate": {
+   "files": 25,
+   "sec": 92.374963856
+  },
+  "06dc602acfa63e31\tlate": {
+   "files": 4,
+   "sec": 36.718985478
+  },
+  "ea51aa42bb29a31c\tlate": {
+   "files": 27,
+   "sec": 127.11980503500001
+  },
+  "d26fb7254bd5212c\tlate": {
+   "files": 1,
+   "sec": 2.4866576349999994
+  },
+  "5b8900dd19426c66\tlate": {
+   "files": 793,
+   "sec": 899.5919584359992
+  },
+  "c274a0de6bf23b61\tlate": {
+   "files": 6,
+   "sec": 25.326080410000003
+  },
+  "b7555ac0d0f19f40\tlate": {
+   "files": 2,
+   "sec": 13.937150238
+  },
+  "8437c15320c36795\tlate": {
+   "files": 388,
+   "sec": 177.9072942200001
+  },
+  "a13cd09a68ff70b6\tlate": {
+   "files": 28,
+   "sec": 78.534650419
+  },
+  "8ee33ff04309c461\tlate": {
+   "files": 22,
+   "sec": 135.373473683
+  }
+ }
+}
