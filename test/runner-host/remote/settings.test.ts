@@ -68,6 +68,13 @@ describe("the remote lane setting (row 021-13)", () => {
     expect(LANE_DEFAULTS.whenLost).toBe("local");
   });
 
+  it("keeps the remote cache outside .cache, which hosts such as boat.dev drop (row 021-25)", () => {
+    const loaded = settings({ repositories: { "/r": { target: "box" } } });
+    const { cache } = loaded.repositories["/r"] ?? LANE_DEFAULTS;
+    expect(cache).toBe(".squeal-remote");
+    expect(cache.split("/")[0]).not.toBe(".cache");
+  });
+
   it("names a lane by one of the repository's remote URLs", () => {
     const url = "git@github.com:org/app.git";
     const loaded = settings({
