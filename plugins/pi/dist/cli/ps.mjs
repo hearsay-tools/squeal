@@ -2075,6 +2075,7 @@ function holdersFrom(source, databasePath) {
     return void 0;
   }
 }
+var PAUSE = new Int32Array(new SharedArrayBuffer(4));
 function onWriteLock(locks, key) {
   const inode = inodeOf(key);
   const onByte = locks.filter(

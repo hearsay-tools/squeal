@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.451";
+  if (true) return "0.1.452";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -79849,6 +79849,24 @@ function holdersFrom(source2, databasePath) {
     return void 0;
   }
 }
+var REFUSED_READS = 4;
+var REFUSED_PAUSE_MS = 25;
+var PAUSE = new Int32Array(new SharedArrayBuffer(4));
+function refusedLockHolders(databasePath) {
+  if (process.platform !== "linux") return void 0;
+  return refusedHoldersFrom(createProcSource(), databasePath);
+}
+function refusedHoldersFrom(source2, databasePath, pause = (ms2) => Atomics.wait(PAUSE, 0, 0, ms2)) {
+  let holders2 = holdersFrom(source2, databasePath);
+  for (let read5 = 1; read5 < REFUSED_READS && namesNoHolder(holders2); read5++) {
+    pause(REFUSED_PAUSE_MS);
+    holders2 = holdersFrom(source2, databasePath);
+  }
+  return holders2;
+}
+function namesNoHolder(holders2) {
+  return holders2?.every((h) => h.waiting) === true;
+}
 function onWriteLock(locks, key3) {
   const inode = inodeOf(key3);
   const onByte = locks.filter(
@@ -86942,7 +86960,7 @@ function again(count3) {
   return `the next run will run ${count3 === 1 ? "it" : "them"} again`;
 }
 function holderOf3(database) {
-  return describeHolders(lockHolders(database));
+  return describeHolders(refusedLockHolders(database));
 }
 function names3(files5) {
   const shown = files5.map((f) => f.ref.path).sort(compare).slice(0, NAMED2);
