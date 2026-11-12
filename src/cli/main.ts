@@ -208,13 +208,19 @@ Usage:
                                 process into --out (default squeal-parts/): each test
                                 file's outcome, checks, duration and observed reads,
                                 and each project's environment; other runners only run.
-                                It adds Squeal's coverage provider to the run, and the
-                                part holds each test file's coverage record; it adds
-                                none when the run has coverage of its own
-                                (coverage.enabled, --coverage) or Node lacks
-                                process.getBuiltinModule. No record for a file run with
-                                a test name filter, with isolate: false or beside
-                                node:inspector. The exit code stays the command's.
+                                The part holds each test file's coverage record. With
+                                no coverage of the run's own, it adds Squeal's coverage
+                                provider to the run (not when Node lacks
+                                process.getBuiltinModule). With the run's own V8
+                                coverage (coverage.enabled, --coverage) on Vitest 4.1
+                                or 5.0, it adds none and reads that provider's data:
+                                the project's report and thresholds stay its own. With
+                                Istanbul, a custom provider, browser mode or another
+                                Vitest version, it records no coverage. The part names
+                                which applied. No record for a file run with a test
+                                name filter, with isolate: false, with child-process
+                                coverage or beside node:inspector. The exit code stays
+                                the command's.
                                 Requires that no other program changes the tests' input
                                 files while the command runs: Squeal sees the reads and
                                 writes of the command's Node processes, not every change
