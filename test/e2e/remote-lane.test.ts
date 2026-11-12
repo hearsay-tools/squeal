@@ -4,11 +4,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it, onTestFinished } from "vitest";
 import { squealVersion } from "../../src/core/daemon/version.js";
+import { spawnRunnerHost } from "../../src/core/runner-host/channel.js";
+import type { HostPolicy } from "../../src/core/runner-host/protocol.js";
+import { startHostProxy } from "../../src/core/runner-host/proxy.js";
 import { startRemoteHost, treeDir } from "../../src/core/runner-host/remote/connect.js";
 import { withRemoteLane } from "../../src/core/runner-host/remote/lane.js";
 import type { WhenLost } from "../../src/core/runner-host/remote/settings.js";
 import type { RunnerAdapter, RunOptions } from "../../src/core/types/runner.js";
-import { createVitestAdapter } from "../../src/runners/vitest/index.js";
 import { buildBundle, gitFixture } from "../runner-host/remote/helpers.js";
 import { dockerUnavailable, REMOTE_CACHE, type Remote, startRemote } from "./remote-container.js";
 
@@ -24,6 +26,26 @@ const unavailable = dockerUnavailable();
 const LONG = { timeout: 600_000 } as const;
 const MATH = { project: "", path: "test/math.test.ts" };
 const SLOW = { project: "", path: "test/slow.test.ts" };
+/** The options both sides run Vitest with: the recorder on, coverage off (D12). */
+const POLICY: HostPolicy = {
+  observe: true,
+  exclude: [],
+  excludeProjects: [],
+  coverage: false,
+  coverageChildren: false,
+};
+
+/** This process's env with only what a local host needs: no CI variable of any provider. */
+function withoutCi(): NodeJS.ProcessEnv {
+  const keep = ["PATH", "HOME", "TMPDIR", "LANG"] as const;
+  return Object.fromEntries(
+    keep.flatMap((name) => {
+      const value = process.env[name];
+      return value === undefined ? [] : [[name, value]];
+    }),
+  );
+}
+
 /** A Node that says it is another version: what a remote with another Node install reports. */
 const OTHER_NODE = "/opt/other-node/node";
 
@@ -55,8 +77,22 @@ describe.skipIf(unavailable !== undefined)("a remote lane on a container over ss
         'import { it } from "vitest";\nit("waits", async () => { await new Promise((r) => setTimeout(r, 6000)); });\n',
     });
     onTestFinished(() => rmSync(root, { recursive: true, force: true }));
-    // The options the remote gets: the same recorder on both sides, as the daemon gives them.
-    const local = await createVitestAdapter({ root, observe: () => true });
+    // Here Vitest runs in a local runner host, as the daemon runs it (spec 021 D8), with the
+    // remote's options and an env without CI variables, as the remote's ssh login has none. In
+    // this test process Vitest read CI when it loaded (std-env), and GitHub's runners set CI=true:
+    // a config resolved for CI (allowOnly, browser) differs, and the lane rightly refuses (D11).
+    const local = await startHostProxy({
+      channel: spawnRunnerHost(
+        { execPath: process.execPath, execArgv: [], cli },
+        root,
+        "vitest",
+        withoutCi(),
+      ),
+      runner: "vitest",
+      version: squealVersion(),
+      options: { childEnv: {} },
+      policy: () => POLICY,
+    });
     const statuses: string[] = [];
     const logs: string[] = [];
     const places = { node, cache: REMOTE_CACHE };
@@ -75,13 +111,7 @@ describe.skipIf(unavailable !== undefined)("a remote lane on a container over ss
           root,
           runner: "vitest",
           options: { childEnv: {} },
-          policy: () => ({
-            observe: true,
-            exclude: [],
-            excludeProjects: [],
-            coverage: false,
-            coverageChildren: false,
-          }),
+          policy: () => POLICY,
           deadlines: { aliveMs: 3_000 },
         }),
       allowlist: () => [],
