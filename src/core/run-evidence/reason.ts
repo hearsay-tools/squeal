@@ -1,13 +1,12 @@
-import type { TierEnd } from "../scheduler/store-decision.js";
+import type { StoreDecision, TierEnd } from "../scheduler/store-decision.js";
 import type { TierFile } from "../scheduler/tiers.js";
 import { listPaths } from "../text.js";
-import type { RunDecision } from "./run-evidence.js";
+import type { RecordOutcome } from "./run-evidence.js";
 
-/* The reason of each store decision (`decideFiles`), for the caller's notes. */
+/* The reason of each store decision (`decisionOf`): the evidence behind it. */
 
 /** The reasons of the decisions that name no path. */
 const REASONS = {
-  held: "a merge holds a path its key names",
   superseded: "a newer run has the file at another key",
   gone: "the file is no longer held as it ran",
   withheld: "the runner withheld the run",
@@ -17,11 +16,34 @@ const REASONS = {
   "no-key": "its key moved during the run, so what it read gives no key to store at",
 } as const;
 
-export function reasonOf(decision: RunDecision, entry: TierFile, end: TierEnd): string {
+/**
+ * Why `entry` got `decision`. A file a merge holds, or the barrier
+ * withheld, is queued again or left unknown for that evidence, unless the
+ * ledger no longer has it as it ran.
+ */
+export function reasonOf(
+  decision: StoreDecision,
+  entry: TierFile,
+  end: TierEnd,
+  outcome: RecordOutcome,
+): string {
+  if (decision.kind !== "superseded" && decision.kind !== "gone") {
+    if (outcome.held.includes(entry)) return "a merge holds a path its key names";
+    if (outcome.barred.includes(entry)) return touchedReason(entry, end, outcome);
+  }
+  return decidedReason(decision, entry, end);
+}
+
+/** The touched paths `entry`'s key, or its read, names. */
+function touchedReason(entry: TierFile, end: TierEnd, outcome: RecordOutcome): string {
+  const named = new Set([...entry.inputs, ...(end.growth.get(entry.file.id)?.growth ?? [])]);
+  const paths = outcome.paths.filter((path) => named.has(path));
+  return `${listPaths(paths)} was written during the run and ended as it was`;
+}
+
+function decidedReason(decision: StoreDecision, entry: TierFile, end: TierEnd): string {
   const growth = end.growth.get(entry.file.id);
   switch (decision.kind) {
-    case "touched":
-      return `${listPaths(decision.paths)} was written during the run and ended as it was`;
     case "split":
       return `the run timed out before it ended; it runs again in tiers of at most ${decision.cap}`;
     case "environment":
