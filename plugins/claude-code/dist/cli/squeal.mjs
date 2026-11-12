@@ -3244,14 +3244,18 @@ function createRecoveringRunner(options) {
   let parked = null;
   let answered2 = null;
   const around = options.around ?? ((call3) => call3());
+  let closing = null;
   const park2 = () => {
     const current2 = live();
     if (current2 === null || closed) return;
     inner = null;
     parked = { last: current2, environment: answered2 ?? parked?.environment ?? null };
     answered2 = null;
-    current2.close().catch(() => {
+    const ending3 = current2.close().catch(() => {
+    }).finally(() => {
+      if (closing === ending3) closing = null;
     });
+    closing = ending3;
   };
   const clock = new IdleClock(options.idleMs ?? (() => 0), park2);
   const values = () => inner ?? parked?.last ?? null;
@@ -3269,6 +3273,8 @@ function createRecoveringRunner(options) {
     retry2 = false;
     creating ??= (async () => {
       try {
+        await closing;
+        if (closed) throw new Error(`${options.name} adapter: closed`);
         const created = await options.create();
         if (closed) {
           await created.close();
@@ -3385,6 +3391,7 @@ function createRecoveringRunner(options) {
       parked = null;
       await creating?.catch(() => {
       });
+      await closing;
       await inner?.close();
     })
   };
