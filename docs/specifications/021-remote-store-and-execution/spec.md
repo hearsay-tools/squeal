@@ -184,6 +184,15 @@ The human, 2026-11-12, after the host ran out of memory: "speed is still importa
 5. **Scope.** Lane instances keep their 60 s close (`SlowRelease`). A remote runner host (Part 3) is not closed by this rule: its memory is on another machine.
 6. **Cost.** The first call after a close pays a cold start: about 0.4 to 0.7 s for the process and instance, then the related-file walk compiles every test file's imports again. In this repository (771 test files) an edit took 12.6 to 15.6 s cold against 1.8 to 2.1 s warm (`daemon-memory.md` 3); a small project pays about 1 s. Amended 2026-11-12 from row 021-27 (`research/daemon-heap.md` Q3, load 15 to 20): a cold start adds 23 to 25 s on cezar (1,765 Vitest files; 30.4 to 31.5 s against 6.0 to 8.0 s warm) and 8 to 13 s on this repository; the earlier figures were too low.
 
+### D21. A daemon's own memory
+
+From row 021-27 (`research/daemon-heap.md`). The human, 2026-11-12, approved all four fixes and kept D20's default ("Keep it").
+
+1. **Closures without imports.** `WorktreeKeys.#runnerClosures` keeps a `RunnerClosure` per test file with its `imports` list, 150 MiB of an idle cezar daemon's 281 MiB live heap; nothing reads that copy after `recordImportGraph` has stored the edges (read in source). The daemon keeps closures without `imports`. Saving: about 150 MiB per daemon, idle or busy.
+2. **A last-resort GC when busy.** The idle GC (011-69) needs 60 s with no tier, which a daemon with a long queue never has. A busy daemon also runs it after a tier ends when its heap in use is above twice the live size after its last GC, at most once a minute. One such GC took a busy daemon from 1,181 to 722 MiB in 186 ms.
+3. **The first `affected` after a reopen from the stored import graph.** A cold host's first `affected` walks every test file's imports: 23 to 25 s on cezar. The daemon already stores the import edges (`import-edges.ts`). Answering that call from them, and keeping the walk for what they cannot answer, would remove most of D20's cold start; it may also cut cezar's 5.5 to 7.4 s warm `affected`. Untested: the row starts with a measured experiment, and keeps results correct (an edit whose affected tests the graph cannot vouch for still goes to the host).
+4. **An incremental code-quality pass.** The CRAP loaders rebuild a map over every test file's closure paths on each pass (`src/core/code/crap/loaders.ts`), 41% of a busy daemon's allocation. They update only what a stored record changed.
+
 ## Slices
 
 Each row ships and works alone.
@@ -205,6 +214,10 @@ Each row ships and works alone.
 | 021-19 | budget | D18's measurement on this host and one other machine, after a week |
 | 021-26 | 2 | D20, runner hosts start on first need and close when idle, with `runner.hostIdleMinutes` |
 | 021-27 | research | what fills an idle daemon's 0.3 to 1.2 GB, and whether a runner host grows with each run |
+| 021-28 | memory | D21.1, closures kept without `imports` |
+| 021-29 | memory | D21.2, a last-resort GC when busy |
+| 021-30 | memory | D21.3, the first `affected` after a reopen from the stored import graph (experiment, then build) |
+| 021-31 | memory | D21.4, an incremental code-quality pass |
 
 021-07 to 021-10 touch disjoint files and can run in parallel. 021-11 can run beside them. The holder lookup of D5 has a contract file, `src/core/store/lock-holders.ts`, committed before wave 1 so 021-07 and 021-10 can build against it. 021-13 and 021-14 follow 021-11. 021-18 can run beside Part 1.
 
