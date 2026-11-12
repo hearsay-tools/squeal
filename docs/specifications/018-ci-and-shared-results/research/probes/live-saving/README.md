@@ -15,5 +15,6 @@ Every script opens squawk's (cezar's) shared store read-only: `new DatabaseSync(
 | `reasons.ts <git-common-dir>` | Squeal's `readImports` (D5 counts) per live worktree; run with `pnpm exec tsx` from the repository root | `out/reasons.txt` (read 15:00Z) |
 | `envdiff.mjs` | the newest import's server environment against each live worktree's | `out/envdiff.txt` |
 | `q.mjs "<sql>"` | any read-only query | `out/environments.txt` |
+| `snapshot.mjs <out-dir>` (row 018-45) | per checkout: file states by origin and import, adoptions, daemon version, local runs since the previous snapshot; imports present | `week/<UTC time>.json`, one a day; how to run it: `week/README.md` |
 
 Paths to the store are hard-coded in the small helpers; they ran on 2026-11-12 between 14:48Z and 15:01Z.
