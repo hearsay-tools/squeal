@@ -59,6 +59,11 @@ export interface RemoteRunOptions {
  */
 export interface RemoteRunReply {
   readonly refused?: readonly string[];
+  /**
+   * The run came with no grant of the host's machine held for it (spec 021
+   * D18, review 0.1.445 R1): it did not start, and the daemon asks again.
+   */
+  readonly unadmitted?: true;
   readonly proof?: Readonly<Record<string, string | null>>;
   readonly logs?: readonly WireLog[];
 }
