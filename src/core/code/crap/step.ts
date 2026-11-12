@@ -142,7 +142,7 @@ export function runCoverageStep(given: CoverageStepInput): CoverageStepReport | 
     if (seeded === "more") return SEEDING;
   }
   const loaders = cache.loaders(
-    () => new LoaderBuild({ ...input, coverage: store.coverage, now: input.now() }),
+    (map) => new LoaderBuild({ ...input, coverage: store.coverage, now: input.now() }, map),
     slice,
   );
   if (loaders === null) return READING;
