@@ -18,16 +18,17 @@ import {
   type SyncReaders,
   type SyncResponse,
 } from "../types/daemon.js";
-import type { SentBatch } from "../types/daemon-writes.js";
+import type { ImportOutcome, ImportRequest, SentBatch } from "../types/daemon-writes.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { FullSuiteCheckpoint, FullSuiteRequest } from "../types/scheduler.js";
+import { ImportDesk } from "./import-desk.js";
 import { errorResponse } from "./protocol.js";
 import { type GroupRequested, groupRequests, type Held, type MainStep } from "./run-group.js";
 import { SLOW_NOT_SUPPORTED, type SlowSuiteRequested } from "./run-slow.js";
 import type { DaemonHandler } from "./server.js";
 import { isNewerVersion } from "./version.js";
 import { WriteDesk } from "./write-desk.js";
-import { isWriteRequest } from "./write-protocol.js";
+import { isImportRequest, isWriteRequest } from "./write-protocol.js";
 
 /**
  * `run-all`, `run-slow`, `run-group` and `sync` requests remembered for
@@ -132,6 +133,13 @@ export interface HandlerContext {
    */
   readonly requestWrite?: (batch: SentBatch) => Promise<void>;
   readonly storeSchema?: number;
+  /**
+   * Spec 021 D15 (row 021-20): imports the export file `squeal import`
+   * names, in the daemon's retried path. Absent, or without `storeSchema`:
+   * this daemon answers that it takes no imports, and the command writes
+   * the store itself.
+   */
+  readonly requestImport?: (request: ImportRequest) => Promise<ImportOutcome>;
 }
 
 interface RunAllState {
@@ -171,6 +179,11 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
     requestWrite === undefined || storeSchema === undefined
       ? null
       : new WriteDesk({ worktreeId: context.worktreeId, storeSchema, requestWrite });
+  const { requestImport } = context;
+  const imports =
+    requestImport === undefined || storeSchema === undefined
+      ? null
+      : new ImportDesk({ worktreeId: context.worktreeId, storeSchema, requestImport });
   const runAll = (requestId: string, state: RunAllState): RunAllResponse => {
     const answer = {
       schemaVersion: PAYLOAD_SCHEMA_VERSION,
@@ -215,6 +228,9 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
   return (request): DaemonResponse => {
     if (isWriteRequest(request)) {
       return writes?.answer(request, context.phase()) ?? errorResponse(NO_WRITES);
+    }
+    if (isImportRequest(request)) {
+      return imports?.answer(request, context.phase()) ?? errorResponse(NO_IMPORTS);
     }
     switch (request.type) {
       case "ping":
@@ -379,6 +395,7 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
 }
 
 const NO_WRITES = "this daemon takes no writes";
+const NO_IMPORTS = "this daemon takes no imports";
 
 /** Remembers `requestId`; the oldest are dropped past `MAX_REQUESTS`. */
 function remember<T>(requests: Map<string, T>, requestId: string, state: T): void {

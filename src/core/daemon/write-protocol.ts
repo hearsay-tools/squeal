@@ -1,5 +1,8 @@
+import { isAbsolute } from "node:path";
 import type { WorktreeId } from "../types/common.js";
 import type {
+  ImportRequest,
+  ImportStatusRequest,
   LeaseProcess,
   LeaseRequest,
   ReleaseRequest,
@@ -17,13 +20,24 @@ export function isWriteRequest(request: { readonly type: string }): request is W
   return TYPES.has(request.type);
 }
 
+/** Spec 021 D15 (row 021-20): `squeal import`'s requests. */
+export type ImportRequests = ImportRequest | ImportStatusRequest;
+
+const IMPORT_TYPES = new Set(["import", "import-status"]);
+
+/** Whether `request` asks the daemon to import an export file, or how one went. */
+export function isImportRequest(request: { readonly type: string }): request is ImportRequests {
+  return IMPORT_TYPES.has(request.type);
+}
+
 /**
- * Spec 021 D15 (row 021-16): the requests that send writes, parsed;
- * a string says why one is not a request, `undefined` that it is none of them.
+ * Spec 021 D15 (rows 021-16, 021-20): the requests that send writes or an
+ * import, parsed; a string says why one is not a request, `undefined` that
+ * it is none of them.
  */
 export function parseWriteRequest(
   request: Record<string, unknown>,
-): WriteRequests | string | undefined {
+): WriteRequests | ImportRequests | string | undefined {
   switch (request.type) {
     case "lease": {
       if (!isText(request.worktreeId)) return '"worktreeId" must be a non-empty string';
@@ -50,6 +64,11 @@ export function parseWriteRequest(
     case "write-status":
       if (typeof request.requestId !== "string") return '"requestId" must be a string';
       return { type: "write-status", requestId: request.requestId };
+    case "import":
+      return parseImport(request);
+    case "import-status":
+      if (typeof request.requestId !== "string") return '"requestId" must be a string';
+      return { type: "import-status", requestId: request.requestId };
     default:
       return undefined;
   }
@@ -71,6 +90,26 @@ function parseWrite(request: Record<string, unknown>): WriteRequest | string {
     token,
     release,
     batch,
+  };
+}
+
+/** An export file the daemon is to import (row 021-20). */
+function parseImport(request: Record<string, unknown>): ImportRequest | string {
+  const { worktreeId, storeSchema, file, fileHash, dryRun } = request;
+  if (!isText(worktreeId)) return '"worktreeId" must be a non-empty string';
+  if (!Number.isInteger(storeSchema)) return '"storeSchema" must be an integer';
+  if (!isText(file) || !isAbsolute(file)) return '"file" must be an absolute path';
+  if (typeof fileHash !== "string" || !/^[0-9a-f]{64}$/.test(fileHash)) {
+    return '"fileHash" must be a SHA-256 in hex';
+  }
+  if (typeof dryRun !== "boolean") return '"dryRun" must be true or false';
+  return {
+    type: "import",
+    worktreeId: worktreeId as WorktreeId,
+    storeSchema: storeSchema as number,
+    file,
+    fileHash,
+    dryRun,
   };
 }
 
