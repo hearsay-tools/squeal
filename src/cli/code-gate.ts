@@ -138,13 +138,21 @@ export async function codeGateCommand(
   adapters: GateAdapters = ADAPTERS,
 ): Promise<number> {
   const reportFd = takeReportFd();
-  if (reportFd !== undefined && reportFd !== null) {
-    return runAsChild(reportFd, (stdout) => gate(args, { ...io, stdout }, adapters));
+  // D17.5: what runs once the report is out: written here, or sent on the child's pipe.
+  const afterReport: (() => Promise<void>)[] = [];
+  try {
+    if (reportFd !== undefined && reportFd !== null) {
+      const run = (stdout: (text: string) => void) =>
+        gate(args, { ...io, stdout }, adapters, afterReport);
+      return await runAsChild(reportFd, run);
+    }
+    if (reportFd === undefined && io.relaunch !== undefined && wantsJson(args)) {
+      return await relaunchGate(io.relaunch, args, io);
+    }
+    return await gate(args, io, adapters, afterReport);
+  } finally {
+    for (const step of afterReport.splice(0)) await step();
   }
-  if (reportFd === undefined && io.relaunch !== undefined && wantsJson(args)) {
-    return relaunchGate(io.relaunch, args, io);
-  }
-  return gate(args, io, adapters);
 }
 
 /** Whether `args` parse, with `--json`. */
@@ -153,8 +161,16 @@ function wantsJson(args: readonly string[]): boolean {
   return !("error" in parsed) && parsed.json;
 }
 
-/** The gate in this process: `codeGateCommand`'s work, its report written to `io.stdout`. */
-async function gate(args: readonly string[], io: CliIo, adapters: GateAdapters): Promise<number> {
+/**
+ * The gate in this process: `codeGateCommand`'s work, its report written to
+ * `io.stdout`. What must wait for the report goes to `afterReport` (D17.5).
+ */
+async function gate(
+  args: readonly string[],
+  io: CliIo,
+  adapters: GateAdapters,
+  afterReport: (() => Promise<void>)[],
+): Promise<number> {
   const fail = (text: string, usage = false) => {
     io.stderr(`squeal code: ${text}\n${usage ? `\nUsage: ${CODE_GATE_USAGE}\n` : ""}`);
     return 2;
@@ -182,7 +198,7 @@ async function gate(args: readonly string[], io: CliIo, adapters: GateAdapters):
   const durationsMs: Partial<Record<GateRunner, number>> = {};
   // D17: the stored durations, for the estimate and the order.
   const durations = storedDurations(root);
-  const evidence = await collectWithStores(
+  const collected = await collectWithStores(
     root,
     io.env ?? process.env,
     changed,
@@ -208,9 +224,12 @@ async function gate(args: readonly string[], io: CliIo, adapters: GateAdapters):
     .catch((error: unknown) => (error instanceof Error ? error : new Error(String(error))))
     .finally(() => durations?.close());
   // D1: a configured runner that cannot start, or no coverage provider, is a setup error.
-  if (evidence instanceof Error) {
-    return fail(evidence.message, evidence instanceof CollectUsageError);
+  if (collected instanceof Error) {
+    return fail(collected.message, collected instanceof CollectUsageError);
   }
+  // D17.5: the completed files are kept once the report is out, so a busy store never delays it.
+  afterReport.push(collected.keep);
+  const { evidence } = collected;
   const createdAt = new Date((io.now ?? Date.now)()).toISOString();
   const times = { createdAt, durationsMs };
   const report = evaluate(changed, evidence, policy, versions(), times, exceptions);
