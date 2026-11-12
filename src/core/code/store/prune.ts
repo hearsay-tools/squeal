@@ -1,4 +1,6 @@
+import { str } from "../../store/codec.js";
 import type { Connection, Params } from "../../store/connection.js";
+import type { EpochMs } from "../../types/common.js";
 import { COVERAGE_RECORD_VERSION } from "../coverage/record.js";
 import { pruneParts } from "./parts.js";
 import type { CodePruneOptions, CodePruneReport } from "./types.js";
@@ -27,6 +29,9 @@ const COVERAGE_META_OF_DEAD = `key LIKE 'coverage:%' AND (CASE
  * is `COVERAGE_RECORD_VERSION`.
  */
 const OLDER_RECORD = "provider_version < ?";
+
+/** The columns that name one coverage record. */
+const COVERAGE_KEY = "result_key, provider_version";
 
 /** Per-worktree tables, each with the columns that name one row. */
 const PER_WORKTREE = [
@@ -82,24 +87,7 @@ export function pruneCodeStore(conn: Connection, options: CodePruneOptions): Cod
      AND counts.blob NOT IN (SELECT s.blob FROM states s)`,
     cutoff,
   );
-  const coverageRemoved =
-    options.resultKeys === undefined
-      ? deleteInBatches(
-          conn,
-          "coverage",
-          "result_key, provider_version",
-          `recorded_at < ? OR ${OLDER_RECORD}`,
-          cutoff,
-          COVERAGE_RECORD_VERSION,
-        )
-      : deleteInBatches(
-          conn,
-          "coverage",
-          "result_key, provider_version",
-          `result_key NOT IN (SELECT value FROM json_each(?)) OR ${OLDER_RECORD}`,
-          JSON.stringify(options.resultKeys),
-          COVERAGE_RECORD_VERSION,
-        );
+  const coverageRemoved = pruneCoverage(conn, options.resultKeys, cutoff);
   const partsRemoved = pruneParts(conn, cutoff, DELETE_BATCH);
 
   const checksRemoved = deleteInBatches(
@@ -119,6 +107,43 @@ export function pruneCodeStore(conn: Connection, options: CodePruneOptions): Cod
     viewsRemoved,
     checksRemoved,
   };
+}
+
+/**
+ * Coverage records (row 015-11): with `resultKeys`, a record whose key was
+ * asked about and has no result goes; without them, a record older than the
+ * cutoff. A record of an older record version goes either way (row 018-10
+ * R1). The keys asked are those the records hold when the prune reads them
+ * (from `coverage_stored`, without the records), so a record stored after
+ * that read stays (row 011-315).
+ */
+function pruneCoverage(
+  conn: Connection,
+  resultKeys: CodePruneOptions["resultKeys"],
+  cutoff: EpochMs,
+): number {
+  if (resultKeys === undefined) {
+    return deleteInBatches(
+      conn,
+      "coverage",
+      COVERAGE_KEY,
+      `recorded_at < ? OR ${OLDER_RECORD}`,
+      cutoff,
+      COVERAGE_RECORD_VERSION,
+    );
+  }
+  const held = conn
+    .all("SELECT DISTINCT result_key FROM coverage")
+    .map((row) => str(row, "result_key"));
+  const kept = new Set(typeof resultKeys === "function" ? resultKeys(held) : resultKeys);
+  return deleteInBatches(
+    conn,
+    "coverage",
+    COVERAGE_KEY,
+    `result_key IN (SELECT value FROM json_each(?)) OR ${OLDER_RECORD}`,
+    JSON.stringify(held.filter((key) => !kept.has(key))),
+    COVERAGE_RECORD_VERSION,
+  );
 }
 
 /**
