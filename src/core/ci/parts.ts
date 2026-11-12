@@ -123,13 +123,9 @@ export type PartCollector = "squeal" | "v8";
 
 const PART_COLLECTORS: readonly unknown[] = ["squeal", "v8"] satisfies PartCollector[];
 
-/** Whether this Squeal reads records of `coverage`'s collector: a `PartCollector`, or none named. */
-export function knownCollector(coverage: PartCoverage): boolean {
-  return (
-    "off" in coverage ||
-    coverage.collector === undefined ||
-    PART_COLLECTORS.includes(coverage.collector)
-  );
+/** Whether this Squeal reads the records `collector` took: a `PartCollector`, or none (an older part). */
+export function knownCollector(collector: unknown): boolean {
+  return collector === undefined || PART_COLLECTORS.includes(collector);
 }
 
 /**
