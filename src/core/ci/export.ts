@@ -85,10 +85,17 @@ export interface CiExportCounts {
    * Files left out: their worker ran an import of `node:inspector` beside
    * a coverage provider, so the provider could change their outcome (spec
    * 020 D13.4): the part marks them, or, when a provider ran (D19.6,
-   * `providerRan`), its workers saw them load it or did not see them run
-   * (`PartInspector`; review of 0.1.443 B1), or their closure here imports it.
+   * `providerRan`), its workers saw them load it (`PartInspector.loaded`;
+   * review of 0.1.443 B1), or their closure here imports it.
    */
   readonly inspector: number;
+  /**
+   * Files left out: a provider ran, and its workers did not see them run
+   * (`PartInspector.unknown`, as in a `vmThreads` pool, or lists that do
+   * not read), so whether they loaded `node:inspector` is not known
+   * (review of 0.1.443-r2 S1). Not in `inspector`.
+   */
+  readonly unwatched: number;
 }
 
 /** A file left out because its shard's evidence does not certify these inputs' content here. */
@@ -135,8 +142,12 @@ async function exportWith(input: CiExportInput, runner: RunnerAdapter): Promise<
   // Spec 020 D13.4 (018's coordinator, 2026-11-10): the part marks such a file beside Squeal's records.
   // D19.6 (review of 0.1.443 B1): beside any provider, the files its workers saw load it, or did not see.
   const ran = parts.filter((p) => providerRan(p.part));
-  const watched = new Set(ran.flatMap((p) => inspectorFiles(p.part)));
-  const kept = named.filter((file) => file.noRecord !== "inspector" && !watched.has(fileId(file)));
+  const watched = ran.map((p) => inspectorFiles(p.part));
+  const loaded = new Set(watched.flatMap((w) => w.loaded));
+  const unknown = new Set(watched.flatMap((w) => w.unknown));
+  const proved = (file: PartFile) => file.noRecord === "inspector" || loaded.has(fileId(file));
+  const unwatched = named.filter((file) => !proved(file) && unknown.has(fileId(file))).length;
+  const kept = named.filter((file) => !proved(file) && !unknown.has(fileId(file)));
   // D19.6: beside any provider, the project's too, a closure that imports it is left out.
   const covered = new Set(ran.flatMap((p) => p.part.testFiles.map(fileId)));
   const inspects = (file: PartFile, closure: RunnerClosure) =>
@@ -179,7 +190,8 @@ async function exportWith(input: CiExportInput, runner: RunnerAdapter): Promise<
       unkeyed: kept.length - testFiles - uncertified.length - inspected,
       uncertified: uncertified.length,
       ambiguous: passed.length - named.length,
-      inspector: named.length - kept.length + inspected,
+      inspector: named.length - kept.length - unwatched + inspected,
+      unwatched,
     },
     uncertified,
   };
@@ -262,15 +274,18 @@ function refOf(file: PartFile): TestFileRef {
 const fileId = (file: PartFile): string => testFileId(refOf(file));
 
 /**
- * D19.6: the files `part` names as loading `node:inspector`, or not seen,
- * by `testFileId`; with lists that do not read, every file of the part.
+ * D19.6: the files `part` names as loading `node:inspector`, and those its
+ * workers did not see run, by `testFileId`; with lists that do not read,
+ * every file of the part is not seen.
  */
-function inspectorFiles(part: Part): string[] {
+function inspectorFiles(part: Part): { loaded: string[]; unknown: string[] } {
   const inspector: unknown = part.header.coverage?.inspector;
-  if (inspector === undefined) return [];
+  if (inspector === undefined) return { loaded: [], unknown: [] };
   const { loaded, unknown } = (inspector ?? {}) as Partial<PartInspector>;
-  if (!Array.isArray(loaded) || !Array.isArray(unknown)) return part.testFiles.map(fileId);
-  return [...loaded, ...unknown].map(testFileId);
+  if (!Array.isArray(loaded) || !Array.isArray(unknown)) {
+    return { loaded: [], unknown: part.testFiles.map(fileId) };
+  }
+  return { loaded: loaded.map(testFileId), unknown: unknown.map(testFileId) };
 }
 
 /** The builtin a closure's `packages.builtins` names `node:inspector` by. */
