@@ -5,15 +5,13 @@ import type {
   ImportStatusRequest,
   KeepRequest,
   KeepStatusRequest,
-  KeepWrite,
   LeaseProcess,
   LeaseRequest,
   ReleaseRequest,
   WriteRequest,
   WriteStatusRequest,
 } from "../types/daemon-writes.js";
-import type { CheckKey } from "../types/keys.js";
-import type { ResultRecord } from "../types/store-records.js";
+import { parseKeep } from "./keep-protocol.js";
 import { parseBatch } from "./write-batch.js";
 
 export type WriteRequests = LeaseRequest | ReleaseRequest | WriteRequest | WriteStatusRequest;
@@ -131,56 +129,6 @@ function parseImport(request: Record<string, unknown>): ImportRequest | string {
     fileHash,
     dryRun,
   };
-}
-
-/**
- * One write of a kept file (row 021-20, part two). The shapes are checked
- * here; the rows themselves as the gate built them, which the daemon's
- * write refuses, failed, when they do not fit.
- */
-function parseKeep(request: Record<string, unknown>): KeepRequest | string {
-  const { worktreeId, storeSchema } = request;
-  if (!isText(worktreeId)) return '"worktreeId" must be a non-empty string';
-  if (!Number.isInteger(storeSchema)) return '"storeSchema" must be an integer';
-  const write = parseKeepWrite(request.write);
-  if (typeof write === "string") return write;
-  return {
-    type: "keep",
-    worktreeId: worktreeId as WorktreeId,
-    storeSchema: storeSchema as number,
-    write,
-  };
-}
-
-function parseKeepWrite(value: unknown): KeepWrite | string {
-  const write = (value ?? {}) as Record<string, unknown>;
-  switch (write.kind) {
-    case "coverage": {
-      const { key, record } = write;
-      if (!isText(key)) return '"write.key" must be a non-empty string';
-      if (typeof record !== "object" || record === null) return '"write.record" must be an object';
-      return { kind: "coverage", key: key as CheckKey, record };
-    }
-    case "results": {
-      const { records, paths, environmentFiles } = write;
-      if (!Array.isArray(records) || records.length === 0) {
-        return '"write.records" must be a non-empty list';
-      }
-      if (!records.every((r) => typeof r === "object" && r !== null)) {
-        return '"write.records" must be a list of results';
-      }
-      if (!isTextList(paths)) return '"write.paths" must be a list of strings';
-      if (!isTextList(environmentFiles))
-        return '"write.environmentFiles" must be a list of strings';
-      return { kind: "results", records: records as ResultRecord[], paths, environmentFiles };
-    }
-    default:
-      return '"write.kind" must be "coverage" or "results"';
-  }
-}
-
-function isTextList(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((v) => typeof v === "string");
 }
 
 /** A lease's process (review 0.1.442 B3); `null` when the request names none. */
