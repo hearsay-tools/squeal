@@ -1,9 +1,19 @@
 import { availableParallelism } from "node:os";
+import { compare } from "../../fs/compare.js";
+import { testFileId } from "../../keys/reverse-index.js";
+import { shellWord } from "../../text.js";
 import type { RelativePath } from "../../types/common.js";
 import type { TestFileRef } from "../../types/keys.js";
-import { type EstimateGroup, estimateRun, type RunEstimate } from "./estimate.js";
+import {
+  type BudgetFit,
+  type EstimateGroup,
+  estimateAll,
+  estimateRun,
+  fitBudget,
+  type RunEstimate,
+} from "./estimate.js";
 import { loadsOf } from "./evidence.js";
-import { loaderOrder } from "./order.js";
+import { loaderOrder, splitEarly } from "./order.js";
 import type { KnownEvidence, Picked } from "./prerun.js";
 import { runnerOrder } from "./runner-order.js";
 import type { TestFileEvidence } from "./types.js";
@@ -15,6 +25,10 @@ import type { TestFileEvidence } from "./types.js";
  * estimate (D18), with no closure read, so before the selection is told.
  * Then it reads each file to run's closure and gives each runner its files
  * in loader order (D17.2). Only the files that will run count.
+ * Rows 020-45 and 020-46 (#196, #198): it fits the whole run's estimate
+ * to what is left of the budget; over it, a rerun command with a fitted
+ * `--timeout`; at twice it, the gate stops early, before the files that
+ * load no changed function.
  */
 
 /** One runner's run: what the selection picked for it, its place among the picks, its files to run. */
@@ -24,12 +38,19 @@ export interface PlannedRun<P extends Picked> {
   readonly index: number;
   /** Its selected files in scope that neither the parts nor the stores gave; in loader order from `inLoaderOrder`. */
   readonly files: readonly TestFileRef[];
+  /**
+   * Row 020-46: the selected files the gate stopped early before, which
+   * `files` leaves out; they load no changed function. Absent when none.
+   */
+  readonly overBudget?: readonly TestFileRef[];
 }
 
 /** D18: the runs in the order they run, and each runner kind's estimate, one per kind with a file to run, in that order. */
 export interface RunOrder<P extends Picked> {
   readonly runs: readonly PlannedRun<P>[];
   readonly estimates: readonly RunEstimate[];
+  /** Rows 020-45, 020-46: the whole run's estimate, `estimateAll`'s. */
+  readonly whole: { readonly seconds: number | null; readonly known: number };
 }
 
 export interface PlanContext {
@@ -68,20 +89,86 @@ export function orderRuns<P extends Picked>(
     const width = (ref: TestFileRef) => pick.adapter.tierWidth?.(ref, grant) ?? grant;
     own.push(...byWidth(files, width, seconds));
   }
-  const kinds = runnerOrder([...groups].map(([runner, of]) => ({ runner, groups: of })));
+  const runners = [...groups].map(([runner, of]) => ({ runner, groups: of }));
+  const kinds = runnerOrder(runners);
   const estimates = kinds.flatMap((kind) => {
     const of = groups.get(kind) ?? [];
     return of.length === 0 ? [] : [estimateRun(kind, of)];
   });
-  return { runs: kinds.flatMap((kind) => runs.filter((r) => r.pick.kind === kind)), estimates };
+  const whole = estimateAll(runners.filter((r) => r.groups.length > 0));
+  return {
+    runs: kinds.flatMap((kind) => runs.filter((r) => r.pick.kind === kind)),
+    estimates,
+    whole,
+  };
 }
 
-/** D17.2: each of `runs` with its files in loader order, from each file's closure. */
+/**
+ * Rows 020-45, 020-46: `order`'s whole estimate against the whole seconds
+ * left of a budget of `budgetSeconds` before `deadline` (a
+ * `performance.now()` time).
+ */
+export function fitOrder(
+  order: RunOrder<Picked>,
+  budgetSeconds: number,
+  deadline: number,
+): BudgetFit {
+  const leftSeconds = Math.max(0, Math.floor((deadline - performance.now()) / 1000));
+  return fitBudget(order.whole, { budgetSeconds, leftSeconds });
+}
+
+/** Row 020-46: what an early stop keeps running beside the loaders of a changed function. */
+export interface EarlyStop {
+  /** The paths of the changed functions. */
+  readonly functions: readonly RelativePath[];
+  /** The `--test` files, which always run. */
+  readonly tests: readonly RelativePath[];
+}
+
+/** D17.1, rows 020-45 and 020-46: what the estimate tells beside each runner's estimate. */
+export interface BudgetTold {
+  readonly fit: BudgetFit;
+  /** Row 020-45: the rerun that fits, with its `--timeout`; absent when the run fits or its time is unknown. */
+  readonly rerun?: { readonly seconds: number; readonly command: string };
+  /** Row 020-46: when the gate stops early, how many files run and the paths of the others, sorted. */
+  readonly early?: { readonly run: number; readonly overBudget: readonly RelativePath[] };
+}
+
+/** Row 020-45: the rerun command with `seconds` as its `--timeout` when the caller gives none. */
+export const defaultRerun =
+  (ref: string) =>
+  (seconds: number): string =>
+    `squeal code --base ${shellWord(ref)} --timeout ${seconds}`;
+
+/** Rows 020-45, 020-46: what `fit` tells, with `runs` as `inLoaderOrder` gave them. */
+export function budgetTold(
+  fit: BudgetFit,
+  runs: readonly PlannedRun<Picked>[],
+  command: (seconds: number) => string,
+): BudgetTold {
+  const { rerunSeconds } = fit;
+  if (rerunSeconds === undefined) return { fit };
+  const rerun = { seconds: rerunSeconds, command: command(rerunSeconds) };
+  if (fit.early !== true) return { fit, rerun };
+  const overBudget = runs.flatMap((r) => (r.overBudget ?? []).map((ref) => ref.path));
+  const run = runs.reduce((sum, r) => sum + r.files.length, 0);
+  return { fit, rerun, early: { run, overBudget: [...new Set(overBudget)].sort(compare) } };
+}
+
+/**
+ * D17.2: each of `runs` with its files in loader order, from each file's
+ * closure. Row 020-46: with `early`, only the files that may load a
+ * changed function stay in `files`; the others are its `overBudget`.
+ */
 export async function inLoaderOrder<P extends Picked>(
   runs: readonly PlannedRun<P>[],
-  context: { readonly changed: readonly RelativePath[] } & Pick<PlanContext, "durations">,
+  context: {
+    readonly changed: readonly RelativePath[];
+    readonly early?: EarlyStop | undefined;
+  } & Pick<PlanContext, "durations">,
 ): Promise<PlannedRun<P>[]> {
   const seconds = context.durations ?? (() => null);
+  const { early } = context;
   const ordered: PlannedRun<P>[] = [];
   for (const run of runs) {
     const loads = new Map<TestFileRef, readonly RelativePath[] | null>();
@@ -89,7 +176,18 @@ export async function inLoaderOrder<P extends Picked>(
       loads.set(ref, await loadsOf(run.pick.adapter, ref));
     }
     const inputs = { loads: (ref: TestFileRef) => loads.get(ref) ?? null, seconds };
-    ordered.push({ ...run, files: loaderOrder(run.files, context.changed, inputs) });
+    const files = loaderOrder(run.files, context.changed, inputs);
+    if (early === undefined) {
+      ordered.push({ ...run, files });
+      continue;
+    }
+    // A `--test` file, and one only declared `inputs` chose (row 020-35), run whatever they load.
+    const declared = new Set((run.pick.byInputs ?? []).map(testFileId));
+    const kept = (ref: TestFileRef) =>
+      early.tests.includes(ref.path) || declared.has(testFileId(ref));
+    const split = splitEarly(files, early.functions, { loads: inputs.loads, kept });
+    const skipped = split.overBudget.length === 0 ? {} : { overBudget: split.overBudget };
+    ordered.push({ ...run, files: split.run, ...skipped });
   }
   return ordered;
 }

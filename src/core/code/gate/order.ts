@@ -10,6 +10,8 @@ import { median } from "./estimate.js";
  * whose loaders cost least first, each with its loaders not given yet. Small
  * paths complete before the budget ends; a path every file loads, a hub,
  * comes last. Nothing here decides when evidence is complete.
+ * Row 020-46 (#198): when the gate stops early, it runs only the files
+ * that may load a changed function, in this order.
  */
 
 /** What the order reads of each file, known before the run. */
@@ -60,4 +62,31 @@ export function loaderOrder(
   known.forEach(give);
   files.forEach(give);
   return [...given];
+}
+
+/**
+ * Row 020-46: `files` split for an early stop, each part in the order of
+ * `files`. A file runs when its closure loads the path of a changed
+ * function (`functions`), when its closure is unknown, or when `kept`
+ * holds it (a `--test` file, or one only declared `inputs` chose). The
+ * others are `overBudget`: they load no changed function, so no
+ * function's state reads them (D5), and they read not finished.
+ */
+export function splitEarly(
+  files: readonly TestFileRef[],
+  functions: readonly RelativePath[],
+  inputs: {
+    readonly loads: OrderInputs["loads"];
+    readonly kept: (ref: TestFileRef) => boolean;
+  },
+): { readonly run: TestFileRef[]; readonly overBudget: TestFileRef[] } {
+  const paths = new Set(functions);
+  const run: TestFileRef[] = [];
+  const overBudget: TestFileRef[] = [];
+  for (const ref of files) {
+    const loads = inputs.loads(ref);
+    const may = loads === null || inputs.kept(ref) || loads.some((path) => paths.has(path));
+    (may ? run : overBudget).push(ref);
+  }
+  return { run, overBudget };
 }

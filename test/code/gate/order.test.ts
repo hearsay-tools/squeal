@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { loaderOrder } from "../../../src/core/code/gate/order.js";
+import { loaderOrder, splitEarly } from "../../../src/core/code/gate/order.js";
 import type { RelativePath } from "../../../src/core/types/common.js";
 import type { TestFileRef } from "../../../src/core/types/keys.js";
 
@@ -112,5 +112,60 @@ describe("loaderOrder", () => {
       seconds: () => null,
     });
     expect(ordered).toEqual(refs);
+  });
+});
+
+/*
+ * Row 020-46 (#198): when the gate stops early, a file runs only when it
+ * may load a changed function: its closure loads one's path, its closure
+ * is unknown, or it is kept (`--test`, or chosen only by declared inputs).
+ * A file selected only because its config imports a changed file loads no
+ * changed function, so it does not run.
+ */
+describe("splitEarly", () => {
+  it("runs the loaders of a changed function and not the files that load none", () => {
+    const files = [
+      ref("test/leaf.test.ts"),
+      ref("test/config-only.test.ts"),
+      ref("test/unknown.test.ts"),
+      ref("test/top-level.test.ts"),
+    ];
+    const loads: Record<string, readonly string[] | null> = {
+      "test/leaf.test.ts": ["src/leaf.ts", "test/leaf.test.ts"],
+      "test/config-only.test.ts": ["src/other.ts", "test/config-only.test.ts"],
+      "test/unknown.test.ts": null,
+      // It loads a changed path with no changed function: a top-level edit.
+      "test/top-level.test.ts": ["src/constants.ts"],
+    };
+    const split = splitEarly(files, ["src/leaf.ts"], {
+      loads: (r) => loads[r.path] ?? null,
+      kept: () => false,
+    });
+    expect(split.run.map((r) => r.path)).toEqual(["test/leaf.test.ts", "test/unknown.test.ts"]);
+    expect(split.overBudget.map((r) => r.path)).toEqual([
+      "test/config-only.test.ts",
+      "test/top-level.test.ts",
+    ]);
+  });
+
+  it("runs a kept file that loads no changed function", () => {
+    const files = [ref("test/named.test.ts"), ref("test/other.test.ts")];
+    const split = splitEarly(files, ["src/leaf.ts"], {
+      loads: () => ["src/other.ts"],
+      kept: (r) => r.path === "test/named.test.ts",
+    });
+    expect(split.run).toEqual([files[0]]);
+    expect(split.overBudget).toEqual([files[1]]);
+  });
+
+  it("keeps the order it is given in each part", () => {
+    const files = ["d", "c", "b", "a"].map((name) => ref(`test/${name}.test.ts`));
+    const split = splitEarly(files, ["src/p.ts"], {
+      loads: (r) =>
+        r.path === "test/c.test.ts" || r.path === "test/a.test.ts" ? ["src/p.ts"] : [],
+      kept: () => false,
+    });
+    expect(split.run.map((r) => r.path)).toEqual(["test/c.test.ts", "test/a.test.ts"]);
+    expect(split.overBudget.map((r) => r.path)).toEqual(["test/d.test.ts", "test/b.test.ts"]);
   });
 });
