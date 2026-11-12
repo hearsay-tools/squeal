@@ -3,7 +3,12 @@ import { acquireDaemonLock } from "../../daemon/lock.js";
 import { worktreeIdFor } from "../../fs/git-layout.js";
 import type { Hasher } from "../../hash/hasher.js";
 import { testFileId } from "../../keys/reverse-index.js";
-import { keepDecisions, keeps, stillAsRead } from "../../run-evidence/run-evidence.js";
+import {
+  keepDecisions,
+  keeps,
+  type RuntimeIdentity,
+  stillAsRead,
+} from "../../run-evidence/run-evidence.js";
 import type { WorktreeKeys } from "../../scheduler/keying.js";
 import { isStoreOpenFailure, openStore } from "../../store/open.js";
 import { lockFileFor } from "../../store/paths.js";
@@ -86,14 +91,18 @@ export class Keeper {
     this.#options = options;
   }
 
-  /** Before `runner`'s run: the files of `keyed` it will run, each at the key the lookup gave it. */
+  /**
+   * Before `runner`'s run: the files of `keyed` it will run, each at the
+   * key the lookup gave it, and with `runtime` their runtime identity.
+   */
   expect(
     runner: GateRun["runner"],
     keys: WorktreeKeys,
     hasher: Hasher,
     keyed: ReadonlyMap<TestFileRef, CheckKey>,
+    runtime?: RuntimeIdentity,
   ): void {
-    this.#expected.add(runner, keys, hasher, keyed);
+    this.#expected.add(runner, keys, hasher, keyed, runtime);
   }
 
   /**
@@ -167,8 +176,15 @@ export class Keeper {
       if (completed.has(id) && record !== null) candidates.push({ ...file, record });
     }
     if (candidates.length === 0) return [];
-    const { keys, hasher, snapshot: before } = pending;
-    const sources = { root: this.#options.root, keys, hasher, run: pending.run, before };
+    const { keys, hasher, snapshot: before, runtime } = pending;
+    const sources = {
+      root: this.#options.root,
+      keys,
+      hasher,
+      run: pending.run,
+      before,
+      ...(runtime === undefined ? {} : { runtime }),
+    };
     const decided = await keepDecisions(sources, candidates, report);
     return candidates.filter((c) => {
       const at = decided.get(testFileId(c.ref));

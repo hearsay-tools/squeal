@@ -116,7 +116,9 @@ export function openStored(options: StoredOptions): StoredFiles | null {
         if (evidence !== null) found.set(ref, evidence);
         else runs.set(ref, at.key);
       }
-      keeper.expect(runner, keyer.keys, keyer.hasher, runs);
+      // Row 011-320 (difference 2): the runtime identity, read as the daemon reads it.
+      const runtime = (ref: TestFileRef) => keyer.keys.runtimeIdentity(ref);
+      keeper.expect(runner, keyer.keys, keyer.hasher, runs, runtime);
       return found;
     } catch (error) {
       // A store or an adapter that fails here costs only the runs it would have saved.

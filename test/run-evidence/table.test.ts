@@ -111,8 +111,9 @@ const TABLE: Readonly<Record<string, Row>> = {
   "difference 2: the runtime's identity moved": {
     during: { runtimeMoved: true },
     daemon: "environment",
-    keeper: "store at ran",
+    keeper: "environment",
     names: "runtime's identity",
+    keeperNames: "runtime's identity",
   },
   "difference 3: a merge holds an input": {
     during: { merging: ["src/a.ts"] },

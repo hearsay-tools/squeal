@@ -143,11 +143,16 @@ async function decided(root: string, store: Store, during: During): Promise<Deci
   } as unknown as Tier;
   await happen(root, keys, hasher, tier, during);
   const report = (during.report ?? ((r) => r))(completed([A, B], during));
+  const runtime = (ref: TestFileRef) => keys.runtimeIdentity(ref);
+  // The keeper's files as `Expectations.add` gives them: each with the identity `a`'s entry has.
+  const kept = files.map(({ file, key, inputs: paths, runtimePolicy: runtimeIdentity }) => {
+    return { ref: file.ref, key, paths, runtimeIdentity };
+  });
   const keeper =
     during.ledger === undefined && during.queued === undefined
       ? await keepDecisions(
-          { root, keys, hasher, run: tier.run, before: tier.snapshot },
-          CLOSURES.map(([ref]) => ({ ref, key: key(keys, ref), paths: keys.stabilityPaths(ref) })),
+          { root, keys, hasher, run: tier.run, before: tier.snapshot, runtime },
+          kept,
           report,
         )
       : null;
@@ -174,7 +179,6 @@ async function decided(root: string, store: Store, during: During): Promise<Deci
   );
   const outcome = recordOutcome(files, report, evidence, facts(files, evidence.held, during));
   const observed = evidence.observed ?? NOTHING_OBSERVED;
-  const runtime = (ref: TestFileRef) => keys.runtimeIdentity(ref);
   const end = runEnd(tier, outcome.report, evidence.changed, outcome.requeue, observed, runtime);
   const holds = (entry: TierFile) => during.ledger !== "gone" || entry.file.ref !== A;
   const daemon = new Map(

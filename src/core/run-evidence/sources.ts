@@ -57,8 +57,9 @@ export async function observedMoves(
 /**
  * The keeper's evidence: its inputs that moved, what the run read beyond
  * its keys (`observedGrowth`), and the environment files it loaded that its
- * project's keys lack. No revision, runtime identity, merge hold or editor
- * scratch listing is read (`research/run-evidence.md`, differences 2 to 4).
+ * project's keys lack. No revision, merge hold or editor scratch listing
+ * is read (`research/run-evidence.md`, differences 3 and 4); the runtime's
+ * identity is `keepDecisions`' (difference 2).
  */
 export async function readKeepEvidence(
   sources: KeepSources,

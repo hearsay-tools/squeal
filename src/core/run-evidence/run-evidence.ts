@@ -36,10 +36,10 @@ import { movedInputs, observedMoves, readKeepEvidence } from "./sources.js";
  * decision from `storeDecision` through here. Each acts on the decision and
  * writes in its own way. Each kind of evidence comes from a source its
  * caller supplies: the keeper reads changed and touched inputs, observed
- * reads and environment files (`readKeepEvidence`, in `sources.ts`); the
- * daemon reads those,
- * the revisions during the run, the runtime's identity, the merge hold and
- * the editor-scratch listings (`readRecordEvidence`).
+ * reads, environment files and, since row 011-320, the runtime's identity
+ * (`readKeepEvidence`, in `sources.ts`); the daemon reads those, the
+ * revisions during the run, the merge hold and the editor-scratch listings
+ * (`readRecordEvidence`).
  */
 
 /** What is known about one finished run of `TierFile`s, beyond its report. */
@@ -142,6 +142,9 @@ export function mergeHeld(
   return heldFiles(hold, files, observed?.growth);
 }
 
+/** A test file's runtime identity now (`WorktreeKeys.runtimeIdentity`, `TierFile.runtimePolicy`). */
+export type RuntimeIdentity = (ref: TestFileRef) => string;
+
 /** What `squeal code` reads its evidence from (spec 020 D17.3). */
 export interface KeepSources {
   readonly root: AbsolutePath;
@@ -151,6 +154,12 @@ export interface KeepSources {
   readonly run: number;
   /** The copy of the inputs taken before the run (`copyInputs`). */
   readonly before: StatCache;
+  /**
+   * Row 011-320 (difference 2): the runtime identity at the run's end,
+   * compared with each file's `KeepFile.runtimeIdentity`; without it, no
+   * identity is compared.
+   */
+  readonly runtime?: RuntimeIdentity;
 }
 
 /** What a record knows at the try of its write, of its own: the caller's facts, not evidence. */
@@ -235,7 +244,7 @@ export function runEnd(
   changed: ReadonlySet<RelativePath>,
   requeue: boolean | ReadonlySet<string>,
   observed: TierObservations,
-  runtimeIdentity?: (ref: TestFileRef) => string,
+  runtimeIdentity?: RuntimeIdentity,
 ): TierEnd {
   return tierEnd(tier, report, changed, requeue, observed, runtimeIdentity);
 }
@@ -260,11 +269,14 @@ export interface KeepFile {
   readonly ref: TestFileRef;
   readonly key: CheckKey;
   readonly paths: readonly RelativePath[];
+  /** Its runtime identity when the lookup expected it (`KeepSources.runtime`); default none. */
+  readonly runtimeIdentity?: string;
 }
 
 /**
  * `squeal code`'s store decision for each of `files` that `report`'s run
- * ran, by `testFileId`, from the evidence it reads (`readKeepEvidence`). It
+ * ran, by `testFileId`, from the evidence it reads (`readKeepEvidence`)
+ * and the runtime identity at the run's end, as `recordTier` reads it. It
  * has no ledger: each file is held at the key it ran under, and nothing
  * queues again (`KEEP_FACTS`).
  */
@@ -273,15 +285,17 @@ export async function keepDecisions(
   files: readonly KeepFile[],
   report: RunReport,
 ): Promise<Map<string, FileDecision>> {
-  const entries = files.map(({ ref, key, paths }): TierFile => {
+  const entries = files.map(({ ref, key, paths, runtimeIdentity = "" }): TierFile => {
     const file = { ...newFileState(ref), key };
-    return { file, key, inputs: paths, runtimePolicy: "", checkpointId: null, forced: false };
+    const entry = { file, key, inputs: paths, runtimePolicy: runtimeIdentity };
+    return { ...entry, checkpointId: null, forced: false };
   });
   const evidence = await readKeepEvidence(sources, entries, report);
   const outcome = recordOutcome(entries, report, evidence, KEEP_FACTS);
   const run = { files: entries, lane: KEEP_LANE, changes: new Set<RelativePath>(), cancel: null };
   const observed = evidence.observed ?? NOTHING_OBSERVED;
-  const end = runEnd(run, outcome.report, evidence.changed, outcome.requeue, observed);
+  const { changed } = evidence;
+  const end = runEnd(run, outcome.report, changed, outcome.requeue, observed, sources.runtime);
   return new Map(entries.map((entry) => [entry.file.id, decisionOf(entry, end, outcome, true)]));
 }
 
