@@ -296,7 +296,7 @@ export function evaluate(
       },
     },
     head: { commit: changed.headCommit, dirty: changed.dirty, paths: headPaths(changed) },
-    budget: { seconds: evidence.budgetSeconds, timedOut: evidence.timedOut },
+    budget: budgetOf(evidence),
     ...(evidence.scope === undefined
       ? {}
       : { scope: { groups: evidence.scope.inScope, leftOut: evidence.scope.leftOut } }),
@@ -312,4 +312,10 @@ export function evaluate(
     }),
     counts: countStates(functions),
   };
+}
+
+/** D7's `budget`; row 020-45: the rerun that fits, when the estimate was over what was left. */
+function budgetOf(evidence: Evidence): GateReport["budget"] {
+  const { budgetSeconds: seconds, timedOut, rerun } = evidence;
+  return { seconds, timedOut, ...(rerun === undefined ? {} : { rerun }) };
 }
