@@ -281,6 +281,8 @@ async function readBack(keys: WorktreeKeys, input: AssembleInput): Promise<void>
   await keys.trackUntracked();
   // For coverage only: direct marks decide which file runs first after an edit, no stored row.
   for (const { path } of input.closures) keys.directOf?.({ project: "", path });
+  // Row 020-39: the module marks `squeal code` merges into the shared rows, read only here.
+  for (const { path } of input.closures) keys.modulesOf?.({ project: "", path });
 }
 
 /** `relisted`'s writes and removals, the runs that end, then a revision that reports no change. */
