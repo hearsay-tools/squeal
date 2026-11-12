@@ -25,7 +25,7 @@ import { failureOf, networkEnv } from "./git.js";
 import { blobsAt, HEAD_TIMEOUT_MS, headOf } from "./local.js";
 import { refOf, remoteExports } from "./refs.js";
 import { readSquealMismatch, writeSquealMismatch } from "./refused.js";
-import { importIdHere, servesHere } from "./served.js";
+import { importIdHere, triedHere } from "./served.js";
 
 /*
  * Spec 018 D14: with `shared.ref` set, the daemon imports CI's export of the
@@ -179,9 +179,8 @@ class Reader implements SharedReader {
       writeSquealMismatch(this.o.store, this.o.worktreeId, null);
     }
     // Row 018-44: the nearest held export too, when its imports do not serve this worktree.
-    const nearest = imports.filter((i) => i.header.commit === candidates[nearestHeld]);
-    const own = nearestHeld !== -1 && !servesHere(this.o.store, this.o.worktreeId, nearest);
-    const tried = candidates.slice(0, own ? reach + 1 : reach);
+    const last = triedHere(this.o.store, this.o.worktreeId, imports, candidates, nearestHeld);
+    const tried = candidates.slice(0, last);
     if (tried.length === 0) return;
 
     const env = await this.#live((signal) => networkEnv(root, signal));
