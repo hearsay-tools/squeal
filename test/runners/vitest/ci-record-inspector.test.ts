@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
-import type { Part } from "../../../src/core/ci/parts.js";
+import type { Part, PartInspector } from "../../../src/core/ci/parts.js";
 import { decodeBundle } from "../../../src/core/store/transfer-bundle.js";
 import { ci, committed, scratch } from "../../ci/fixture.js";
 import { TS_WORKER } from "../../code/coverage/payloads.js";
@@ -39,6 +39,7 @@ const FILES: Readonly<Record<string, string>> = {
     "export default defineConfig({",
     "  test: {",
     '    include: ["test/*.test.ts"],',
+    "    // test options",
     "    coverage: {",
     '      enabled: process.env.PROJECT_COVERAGE !== "0",',
     '      provider: process.env.PROVIDER === "v8" ? "v8" : "custom",',
@@ -82,20 +83,26 @@ const EVERY = [
   "test/runtime.test.ts",
 ];
 
-/** `ci record` in a fresh fixture with `env`, then `ci export` of its part there: the part and the exported files. */
-async function recordAndExport(name: string, env: NodeJS.ProcessEnv, worker = false) {
-  const root = committed(scratch(name), FILES);
+/**
+ * `ci record` in a fresh fixture with `env`, with the sources' records'
+ * worker when `worker` and the test `options` in its config, then `ci
+ * export` of its part there: the part and the exported files.
+ */
+async function recordAndExport(name: string, env: NodeJS.ProcessEnv, worker = false, options = "") {
+  const config = FILES["vitest.config.ts"] ?? "";
+  const fixture = { ...FILES, "vitest.config.ts": config.replace("    // test options", options) };
+  const root = committed(scratch(name), fixture);
   const out = join(dirname(root), "parts");
   const deps = worker ? { mapWorker: TS_WORKER } : {};
-  const recorded = await recordCovered(root, out, [], deps, { ...process.env, CI: "true", ...env });
+  const both = { ...process.env, CI: "true", ...env };
+  const recorded = await recordCovered(root, out, [], deps, both);
   expect(recorded.code, recorded.said).toBe(0);
   const target = join(dirname(root), "results.json.gz");
-  const exported = await ci(["export", "--parts", out, "--out", target], root);
-  expect(exported.code, exported.said).toBe(0);
+  const exported = await ci(["export", "--parts", out, "--out", target], root, both);
   const bundle = existsSync(target) ? decodeBundle(readFileSync(target)) : null;
   if (typeof bundle === "string") throw new Error(bundle);
   const files = (bundle?.testFiles ?? []).map((file) => file.path).sort();
-  return { part: recorded.parts[0] as Part, files, said: exported.said };
+  return { part: recorded.parts[0] as Part, files, code: exported.code, said: exported.said };
 }
 
 /** The four files that load the inspector, as a part's `inspector.loaded` names them. */
@@ -118,6 +125,7 @@ describe("ci export leaves out node:inspector users beside any coverage provider
         note: expect.stringContaining('provider "custom"'),
         inspector: { loaded: LOADED, unknown: [] },
       });
+      expect(run.code, run.said).toBe(0);
       expect(run.files).toEqual(["test/plain.test.ts"]);
       expect(run.said).toContain("Left out: 4 test files that loaded node:inspector");
     },
@@ -129,6 +137,7 @@ describe("ci export leaves out node:inspector users beside any coverage provider
       off: "project-coverage",
       inspector: { loaded: LOADED, unknown: [] },
     });
+    expect(run.code, run.said).toBe(0);
     expect(run.files).toEqual(["test/plain.test.ts"]);
   });
 
@@ -144,6 +153,7 @@ describe("ci export leaves out node:inspector users beside any coverage provider
       expect(marks(run.part)).toEqual(
         EVERY.map((p) => [p, p === "test/plain.test.ts" ? "record" : "inspector"]),
       );
+      expect(run.code, run.said).toBe(0);
       expect(run.files).toEqual(["test/plain.test.ts"]);
     },
   );
@@ -160,13 +170,44 @@ describe("ci export leaves out node:inspector users beside any coverage provider
       expect(marks(run.part)).toEqual(
         EVERY.map((p) => [p, p === "test/plain.test.ts" ? "record" : "inspector"]),
       );
+      expect(run.code, run.said).toBe(0);
       expect(run.files).toEqual(["test/plain.test.ts"]);
+    },
+  );
+
+  it("in worker threads: the same", SLOW, async () => {
+    const run = await recordAndExport("ci-inspector-threads", {}, false, 'pool: "threads",');
+    expect(run.part.header.coverage).toMatchObject({ inspector: { loaded: LOADED, unknown: [] } });
+    expect(run.code, run.said).toBe(0);
+    expect(run.files).toEqual(["test/plain.test.ts"]);
+  });
+
+  it("with isolate: false, the four too, though one worker keeps the modules", SLOW, async () => {
+    const run = await recordAndExport("ci-inspector-shared", {}, false, "isolate: false,");
+    const inspector = (run.part.header.coverage as { inspector?: PartInspector }).inspector;
+    expect(inspector?.unknown).toEqual([]);
+    expect(inspector?.loaded).toEqual(expect.arrayContaining(LOADED));
+    expect(run.code, run.said).toBe(0);
+    expect(run.files.filter((path) => path !== "test/plain.test.ts")).toEqual([]);
+  });
+
+  it(
+    "in a VM pool, where the watch sees no test file: every file is unknown and left out",
+    SLOW,
+    async () => {
+      const run = await recordAndExport("ci-inspector-vm", {}, false, 'pool: "vmThreads",');
+      const unknown = EVERY.map((path) => ({ project: "", path }));
+      expect(run.part.header.coverage).toMatchObject({ inspector: { loaded: [], unknown } });
+      expect(run.code, run.said).toBe(1);
+      expect(run.said).toContain("no test file to export; left out: 5 test files");
+      expect(run.files).toEqual([]);
     },
   );
 
   it("with no coverage provider at all: every file is exported, as before", SLOW, async () => {
     const run = await recordAndExport("ci-inspector-none", { PROJECT_COVERAGE: "0" });
     expect(run.part.header.coverage).toEqual({ off: "no-provider", note: expect.any(String) });
+    expect(run.code, run.said).toBe(0);
     expect(run.files).toEqual(EVERY);
   });
 });
