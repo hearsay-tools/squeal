@@ -206,6 +206,8 @@ test/cli/code-gate-prepare.test.ts
 test/cli/code-gate-prerun.test.ts
 # Spec 020 D17.3 (review 0.1.433 B2): the gate keeps two node:test entries' real runs.
 test/cli/code-gate-keep-node-test.test.ts
+# Spec 020 D17.5 (row 020-28): the gate keeps real node:test runs after a busy store.
+test/cli/code-gate-keep-busy.test.ts
 # The kit (spec 016 D1): a real `node --test` through the node:test adapter,
 # so the same identity path.
 test/kit/node-test
