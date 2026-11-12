@@ -1,22 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  type GcFunction,
-  IDLE_GC_AFTER_MS,
-  IdleGc,
-  type IdleGcOptions,
-  idleGcDue,
-} from "../../src/core/daemon/idle-gc.js";
+import { type GcFunction, IDLE_GC_AFTER_MS, idleGcDue } from "../../src/core/daemon/idle-gc.js";
 import type { RunnerAdapter, RunReport } from "../../src/core/types/runner.js";
+import { LAST_RESORT, MIB, subject, tier } from "./idle-gc-subject.js";
 
 /*
  * Spec 011 C9 (row 011-69, research `daemon-memory.md` 2 and 4): a daemon
  * that has run no tier in any lane for 60 s runs one last-resort GC, and no
  * other until a tier has run and ended since. Driven with a test clock and
- * a recording `gc`.
+ * a recording `gc`; the busy GC (row 021-29) is `busy-gc.test.ts`'s.
  */
-
-const LAST_RESORT = { type: "major", execution: "sync", flavor: "last-resort" };
-const MIB = 2 ** 20;
 
 describe("idleGcDue", () => {
   const quiet = { now: 1_000 + IDLE_GC_AFTER_MS, quietSince: 1_000, tierRunning: false };
@@ -33,47 +25,6 @@ describe("idleGcDue", () => {
     expect(idleGcDue({ ...quiet, quietSince: null, collected: false })).toBe(false);
   });
 });
-
-interface Subject {
-  readonly idle: IdleGc;
-  readonly gc: ReturnType<typeof vi.fn<GcFunction>>;
-  readonly notes: string[];
-  readonly lines: string[];
-  advance(ms: number): void;
-}
-
-function subject(options: Partial<IdleGcOptions> = {}): Subject {
-  let clock = 1_000_000;
-  const gc = vi.fn<GcFunction>();
-  const notes: string[] = [];
-  const lines: string[] = [];
-  let reading = 0;
-  const idle = new IdleGc({
-    now: () => clock,
-    note: (text) => notes.push(text),
-    log: (line) => lines.push(line),
-    lookup: () => gc,
-    // 900 MiB before each GC, 500 MiB after it.
-    memory: () => ({ kind: "private", bytes: (reading++ % 2 === 0 ? 900 : 500) * MIB }),
-    ...options,
-  });
-  return {
-    idle,
-    gc,
-    notes,
-    lines,
-    advance: (ms) => {
-      clock += ms;
-    },
-  };
-}
-
-/** A tier that runs `ms` on the test clock. */
-function tier(t: Subject, ms = 1_000): void {
-  t.idle.started();
-  t.advance(ms);
-  t.idle.ended();
-}
 
 describe("the idle GC (row 011-69)", () => {
   it("runs one last-resort GC 60 s after the daemon is ready when no tier ran", () => {
@@ -176,7 +127,7 @@ describe("the idle GC (row 011-69)", () => {
     expect(() => t.idle.check()).not.toThrow();
     expect(lookup).toHaveBeenCalledTimes(1);
     expect(t.notes).toEqual([
-      "no last-resort GC when idle: V8's gc is not available; this daemon runs on without it",
+      "no last-resort GC: V8's gc is not available; this daemon runs on without it",
     ]);
     expect(t.lines).toEqual([]);
   });
@@ -194,7 +145,7 @@ describe("the idle GC (row 011-69)", () => {
     t.advance(IDLE_GC_AFTER_MS);
     t.idle.check();
     expect(t.notes).toEqual([
-      "no last-resort GC when idle: V8's gc is not available (Error: flags frozen); this daemon runs on without it",
+      "no last-resort GC: V8's gc is not available (Error: flags frozen); this daemon runs on without it",
     ]);
   });
 
@@ -211,7 +162,7 @@ describe("the idle GC (row 011-69)", () => {
     t.idle.check();
     expect(gc).toHaveBeenCalledTimes(1);
     expect(t.notes).toEqual([
-      "no last-resort GC when idle: it failed (TypeError: bad options); this daemon runs on without it",
+      "no last-resort GC: it failed (TypeError: bad options); this daemon runs on without it",
     ]);
     expect(t.lines).toEqual([]);
   });
