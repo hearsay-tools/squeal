@@ -29,7 +29,10 @@ const REPORT: RunReport = {
 };
 
 /** Adapters over one config: `unit.config.ts` in a batch recreates `unit`. */
-function fakes(run: () => Promise<RunReport> = async () => REPORT) {
+function fakes(
+  run: () => Promise<RunReport> = async () => REPORT,
+  teardown: () => Promise<void> = async () => {},
+) {
   const made: number[] = [];
   const closed: number[] = [];
   const config = { unit: "{}", e2e: "{}" };
@@ -60,6 +63,7 @@ function fakes(run: () => Promise<RunReport> = async () => REPORT) {
       slowWidth: () => 10 * n,
       close: async () => {
         closed.push(n);
+        await teardown();
       },
     };
   };
@@ -215,5 +219,49 @@ describe("recovering runner: an idle adapter closes (spec 021 D20)", () => {
     expect(adapter.slowWidth?.([ref])).toBe(10);
     await adapter.closure(ref);
     expect(adapter.slowWidth?.([ref])).toBe(20);
+  });
+
+  it("makes the next adapter only once the idle adapter's close has ended (review 0.1.461 B1)", async () => {
+    let release = () => {};
+    const f = fakes(
+      async () => REPORT,
+      () =>
+        new Promise<void>((resolve) => {
+          release = resolve;
+        }),
+    );
+    const { adapter } = runner(f);
+    await adapter.closure(ref);
+    await vi.advanceTimersByTimeAsync(IDLE);
+    // The idle close runs its teardown; a call now must not start a second host beside it.
+    const next = adapter.closure(ref);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(f.made).toEqual([1]);
+    release();
+    expect((await next).paths).toEqual(["made-2"]);
+    expect(f.closed[0]).toBe(1);
+  });
+
+  it("returns from close only once the idle adapter's close has ended (review 0.1.461 B1)", async () => {
+    let release = () => {};
+    const f = fakes(
+      async () => REPORT,
+      () =>
+        new Promise<void>((resolve) => {
+          release = resolve;
+        }),
+    );
+    const { adapter } = runner(f);
+    await adapter.closure(ref);
+    await vi.advanceTimersByTimeAsync(IDLE);
+    let done = false;
+    const closing = adapter.close().then(() => {
+      done = true;
+    });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(done).toBe(false);
+    release();
+    await closing;
+    expect(f.closed).toEqual([1]);
   });
 });
