@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { connectionOf } from "../../src/core/store/store.js";
 import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
+import type { Store } from "../../src/core/types/store.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { SLOW } from "./cleanup.js";
 import { idleAfterQuiet } from "./quiet-clock.js";
@@ -19,6 +21,13 @@ import { openHarness } from "./vitest-harness.js";
  * re-exports `src/math.ts`; `test/math.test.ts` imports `src/math.ts`. With
  * one file per tier, the first tier after the edit is the whole answer.
  */
+/**
+ * Drops the stored walks, so the next content edit asks the runner for
+ * `affected`: with them the scheduler answers it from the stored graph
+ * (row 021-30), and the runner's own answer is what a test here is about.
+ */
+const withoutWalks = (store: Store) => connectionOf(store).run("DELETE FROM test_file_imports");
+
 describe("scheduler: run order after an edit behind a barrel (D5 step 4)", SLOW, () => {
   const edit = "export const add = (a: number, b: number) => a + b + 0;\n";
 
@@ -74,6 +83,7 @@ describe("scheduler: run order after an edit behind a barrel (D5 step 4)", SLOW,
     };
     await h.scheduler.start();
     await h.scheduler.idle();
+    withoutWalks(store);
     const baseline = h.runner.runs.length;
 
     h.write("src/math.ts", edit);
@@ -108,6 +118,7 @@ describe("scheduler: run order after an edit behind a barrel (D5 step 4)", SLOW,
     };
     await h.scheduler.start();
     await h.scheduler.idle();
+    withoutWalks(store);
     const baseline = h.runner.runs.length;
     expect(h.runner.runs.map((run) => run.files.map((f) => f.path))).toEqual([
       ["test/aa-slow.test.ts"],
