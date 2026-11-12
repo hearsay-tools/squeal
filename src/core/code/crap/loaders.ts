@@ -8,6 +8,7 @@ import { COVERAGE_RECORD_VERSION } from "../coverage/record.js";
 import { IN_PROCESS_ENVIRONMENTS, RECORDING_RUNNERS } from "../coverage/runtime.js";
 import { RESULT_WAITS_MS } from "../coverage/writer.js";
 import type { CodeCoverageRepo } from "../store/types.js";
+import type { LoaderMap } from "./loader-map.js";
 
 /*
  * Spec 015 D9: the test files that load each source, by this worktree's own
@@ -115,6 +116,9 @@ function conditionAt(
   return { kind: "unknown", cause: "no-record" };
 }
 
+/** A test file whose closure is not known here waits for it. */
+const IMPORTS: LoaderCondition = { kind: "pending", reason: "imports" };
+
 /**
  * Spec 015 D9: every listed test file of the worktree with its own closure
  * and condition. A test file whose closure is not known here may load any
@@ -123,20 +127,24 @@ function conditionAt(
  *
  * Row 015-45 (review 0.1.305 S1): it is read a test file at a time, so a
  * step reads it within its budget: the listing is one unit, and each test
- * file's result lookups and closure walk are one more. The map is given out
- * only once every listed test file is read, so no step judges from part of
- * it. Its inputs are those of its start.
+ * file's result lookups are one more. The map is given out only once every
+ * listed test file is read, so no step judges from part of it. Its inputs
+ * are those of its start.
+ *
+ * Row 021-31 (D21.4): it reads into `map`, kept across reads, which moves
+ * only the sources of a test file whose closure or condition changed.
  */
 export class LoaderBuild {
   readonly #inputs: LoaderInputs;
+  readonly #map: LoaderMap;
   #rows: readonly TestFileKeyRecord[] | null = null;
   #next = 0;
-  readonly #byPath = new Map<RelativePath, Loader[]>();
-  readonly #everywhere: Loader[] = [];
   #wakeAt: EpochMs | null = null;
 
-  constructor(inputs: LoaderInputs) {
+  constructor(inputs: LoaderInputs, map: LoaderMap) {
     this.#inputs = inputs;
+    this.#map = map;
+    map.begin();
   }
 
   /** Reads one unit each time `work` allows; the whole map once every test file is read, else `null`. */
@@ -151,15 +159,13 @@ export class LoaderBuild {
       if (row === undefined || !work()) return null;
       this.#read(row);
     }
-    const byPath = this.#byPath;
-    const everywhere = this.#everywhere;
+    const map = this.#map;
+    const listed = this.#rows.length > 0;
+    map.end(listed);
     return {
-      listed: this.#rows.length > 0,
-      of: (path) => {
-        const own = byPath.get(path) ?? [];
-        return everywhere.length === 0 ? own : [...own, ...everywhere];
-      },
-      withoutImports: everywhere.length,
+      listed,
+      of: (path) => map.of(path),
+      withoutImports: map.withoutImports,
       wakeAt: this.#wakeAt,
     };
   }
@@ -168,10 +174,7 @@ export class LoaderBuild {
     const inputs = this.#inputs;
     const paths = inputs.closures?.closure(row.testFile)?.paths;
     if (paths === undefined) {
-      this.#everywhere.push({
-        testFile: row.testFile,
-        condition: { kind: "pending", reason: "imports" },
-      });
+      this.#map.place(row.testFile, IMPORTS, undefined, undefined);
       return;
     }
     // Row 015-75: a runner without records gives none at any key. Rows 015-75 and 015-86: a
@@ -187,12 +190,6 @@ export class LoaderBuild {
     if (condition.kind === "pending" && condition.until !== undefined) {
       this.#wakeAt = Math.min(this.#wakeAt ?? condition.until, condition.until);
     }
-    const loader = { testFile: row.testFile, condition };
-    // Spec 020 D11.6: a test file is its own loader; its closure holds it, and its record measures it.
-    for (const path of inProcess ? new Set([...paths, ...environment.files]) : paths) {
-      const list = this.#byPath.get(path);
-      if (list === undefined) this.#byPath.set(path, [loader]);
-      else list.push(loader);
-    }
+    this.#map.place(row.testFile, condition, paths, inProcess ? environment.files : undefined);
   }
 }

@@ -8,16 +8,18 @@ import type { CoverageRecord } from "../coverage/types.js";
 import type { PassReport } from "../pass/types.js";
 import type { CodeCoverageRepo } from "../store/types.js";
 import { type FileCondition, fileCondition } from "./file.js";
+import { LoaderMap } from "./loader-map.js";
 import type { LoaderBuild, Loaders } from "./loaders.js";
 import type { Seed } from "./seed.js";
 
 /**
  * Row 015-42 (011-197): what a chain of coverage steps keeps, so a step
- * past its budget does not read and decode it all again. The loader map,
- * with each source's condition and signature from it, holds while keys and
- * results stay: the code pass drops it when results, records, a revision
- * or a wake may change it (`invalidate`), and a map still being read starts
- * again (row 015-45). A decoded record holds for the chain while its key
+ * past its budget does not read and decode it all again. The loader map
+ * holds while keys and results stay: the code pass has it read again when
+ * results, records, a revision or a wake may change it (`invalidate`), and
+ * a map still being read starts again (row 015-45). The read moves only
+ * the sources of the test files that changed, and only their conditions
+ * and signatures are made again (row 021-31). A decoded record holds for the chain while its key
  * keeps its bytes: a later run at a key stores its record over the first
  * (review 0.1.305 B1), so after `invalidate` each is read again, and
  * decoded again only when its bytes moved. They go once a step ends the
@@ -25,6 +27,8 @@ import type { Seed } from "./seed.js";
  * progress (row 015-47) outlives both: it reads no loader or record.
  */
 export class StepCache {
+  /** Each source's loaders, kept across reads (row 021-31). */
+  readonly #map = new LoaderMap();
   #loaders: Loaders | null = null;
   /** The loader map being read, a test file at a time (row 015-45). */
   #build: LoaderBuild | null = null;
@@ -45,12 +49,21 @@ export class StepCache {
    * The loader map, read once while it holds, as far as `work` allows at
    * each call (row 015-45); `null` until it is whole.
    */
-  loaders(start: () => LoaderBuild, work: () => boolean): Loaders | null {
+  loaders(start: (map: LoaderMap) => LoaderBuild, work: () => boolean): Loaders | null {
     if (this.#loaders !== null) return this.#loaders;
-    this.#build ??= start();
+    this.#build ??= start(this.#map);
     this.#loaders = this.#build.advance(work);
-    if (this.#loaders !== null) this.#build = null;
+    if (this.#loaders === null) return null;
+    this.#build = null;
+    this.#forget(this.#map.moved());
     return this.#loaders;
+  }
+
+  /** Drops what was made from the loaders of the sources that moved (row 021-31). */
+  #forget(moved: ReadonlySet<RelativePath> | "all"): void {
+    const made = [this.#conditions, this.#signatures, this.#early];
+    if (moved === "all") for (const by of made) by.clear();
+    else for (const path of moved) for (const by of made) by.delete(path);
   }
 
   /** The seed in progress, or done and not yet judged after; begun by `begin` when none is. */
@@ -150,12 +163,10 @@ export class StepCache {
     return true;
   }
 
+  /** Results, records, a revision or a wake may have moved loaders: the map is read again. */
   invalidate(): void {
     this.#loaders = null;
     this.#build = null;
-    this.#conditions.clear();
-    this.#signatures.clear();
-    this.#early.clear();
     this.#epoch++;
   }
 
