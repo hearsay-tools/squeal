@@ -1,5 +1,4 @@
-import { spawn } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import {
   chmod,
   lstat,
@@ -15,7 +14,7 @@ import {
 } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 import { installedDependenciesFingerprint } from "../../keys/environment.js";
-import { installCommand } from "../../scheduler/install-command.js";
+import { installTree, LOCKFILES } from "./tree-install.js";
 import {
   type HostCore,
   type InstallAnswer,
@@ -34,20 +33,11 @@ import {
  * one per local worktree, which only the daemon's messages change. It
  * writes nothing outside the root, removes only what it wrote (its record,
  * `files.json` beside the root), and installs the project's dependencies
- * from the lockfile when the lockfile's blob differs from its last install.
+ * from the lockfile when the lockfile's blob differs from its last install
+ * or that install changed since (`tree-install.ts`).
  * A local host has no tree and refuses these messages: it never writes into
  * a worktree.
  */
-
-/** Committed lockfiles, as `installCommand` reads them (`src/core/scheduler/install-command.ts`). */
-export const LOCKFILES = [
-  "package-lock.json",
-  "npm-shrinkwrap.json",
-  "pnpm-lock.yaml",
-  "yarn.lock",
-  "bun.lock",
-  "bun.lockb",
-] as const;
 
 /** What the host answers of its tree. */
 export interface TreeHost {
@@ -68,9 +58,6 @@ export interface TreeHost {
 
 /** The host's record of the files it wrote: path to blob id and mode. */
 type Held = Record<string, { blob: string; mode?: "x" | "link" }>;
-
-/** What the install's output keeps for its error. */
-const TAIL = 2_000;
 
 /**
  * The tree of a host whose root is `root`, its records in the directory
@@ -155,22 +142,12 @@ export function createTreeHost(
         answer[path] = insideRoot(path) ? await blobOf(join(root, path)) : null;
       return answer;
     },
-    async install() {
+    install() {
       const locks = Object.fromEntries(
         LOCKFILES.flatMap((name) => (files[name] === undefined ? [] : [[name, files[name].blob]])),
       );
-      if (Object.keys(locks).length === 0) return { ran: false, command: null };
-      // The lockfiles' blobs, and whether the install left a `node_modules`: one removed
-      // since is installed again; a project without dependencies may have none.
-      const stamp = (modules: boolean) => JSON.stringify({ locks, modules });
-      const modules = () => existsSync(join(root, "node_modules"));
-      const last = existsSync(installedPath) ? readFileSync(installedPath, "utf8") : null;
-      if (last === stamp(modules())) return { ran: false, command: null };
-      const manifest = readJson(join(root, "package.json"));
-      const command = await installCommand(root, manifest);
-      await runInstall(command, root, output, env);
-      await writeFile(installedPath, stamp(modules()));
-      return { ran: true, command };
+      const keepModules = Object.keys(files).some((path) => path.startsWith("node_modules/"));
+      return installTree({ root, record: installedPath, locks, keepModules, output, env });
     },
     async runDir(runId) {
       const runs = join(state, "runs");
@@ -247,36 +224,4 @@ function readJson(path: string): Held | null {
   } catch {
     return null;
   }
-}
-
-/** Runs the install in the root, its output to `output`; rejects with its end on a failure. */
-function runInstall(
-  command: string,
-  root: string,
-  output: (text: string) => void,
-  env: NodeJS.ProcessEnv,
-): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const child = spawn("sh", ["-c", command], {
-      cwd: root,
-      env,
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    let tail = "";
-    const take = (chunk: Buffer) => {
-      const text = chunk.toString("utf8");
-      output(text);
-      tail = (tail + text).slice(-TAIL);
-    };
-    child.stdout.on("data", take);
-    child.stderr.on("data", take);
-    child.on("error", (error) => reject(new Error(`could not run ${command}: ${error.message}`)));
-    child.on("close", (code, signal) => {
-      if (code === 0) resolve();
-      else {
-        const how = signal === null ? `exit code ${code}` : `signal ${signal}`;
-        reject(new Error(`${command} failed on the remote (${how}): ${tail.trim()}`));
-      }
-    });
-  });
 }

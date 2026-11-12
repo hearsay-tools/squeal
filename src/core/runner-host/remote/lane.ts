@@ -1,5 +1,4 @@
 import { join } from "node:path";
-import { coreEnvironmentInputs, installedDependenciesFingerprint } from "../../keys/environment.js";
 import type { AbsolutePath } from "../../types/common.js";
 import type { TestFileRef } from "../../types/keys.js";
 import {
@@ -14,10 +13,9 @@ import { isGroupLane } from "../../types/scheduler.js";
 import { runnerHostGone } from "../proxy.js";
 import { ADMIT_EVERY_MS, admitRun, cancelOf, notStarted } from "./admission.js";
 import type { RemoteHost } from "./connect.js";
-import { environmentDifferences } from "./environment.js";
+import { blobsAt, compareRemote } from "./lane-compare.js";
 import type { WhenLost } from "./settings.js";
-import { readEntry } from "./tree.js";
-import { insideRoot, type RemoteRunReply } from "./tree-wire.js";
+import type { RemoteRunReply } from "./tree-wire.js";
 
 /*
  * Spec 021 D11 to D13 (row 021-14): one runner's background runs on a
@@ -117,15 +115,45 @@ export function withRemoteLane(options: RemoteLaneOptions): RunnerAdapter {
   const connect = () => {
     state = { kind: "connecting" };
     pending.clear();
-    options.connect().then(
-      (host) => {
-        state = { kind: "ready", host, proven: false };
-        options.status(
-          `remote ${target}: background runs of ${local.name} go there (Node ${host.node})`,
-        );
-      },
-      (error: unknown) => down(error instanceof Error ? error.message : String(error), false),
-    );
+    options
+      .connect()
+      .then(compareFirst)
+      .catch((error: unknown) => {
+        if (state.kind === "connecting") {
+          down(error instanceof Error ? error.message : String(error), false);
+        }
+      });
+  };
+
+  /**
+   * Row 021-24 (`boat-trial.md` D3): a connected remote takes no run before
+   * its environment is compared; a refusal is named now, not at its first
+   * run. Each run compares again (review 0.1.442 B1).
+   */
+  const compareFirst = async (host: RemoteHost) => {
+    const closed = () => void host.adapter.close().catch(() => {});
+    if (state.kind !== "connecting") return closed();
+    options.status(`remote ${target}: connected (Node ${host.node}), not yet compared`);
+    const unequal = await sendPending(host)
+      .then(() => compared(host))
+      .catch((error: Error) => [error.message]);
+    // Closed meanwhile: this host is no one's.
+    if (state.kind !== "connecting") closed();
+    else if (runnerHostGone(host.adapter)) down("the host ended", false);
+    else if (unequal.length > 0) down(unequal.join("; "), true, host);
+    else {
+      state = { kind: "ready", host, proven: false };
+      options.status(
+        `remote ${target}: background runs of ${local.name} go there (Node ${host.node}; environment equal)`,
+      );
+    }
+  };
+
+  /** The paths invalidated since the last message to the host, sent now. */
+  const sendPending = async (host: RemoteHost) => {
+    const queued = [...pending.values()];
+    pending.clear();
+    if (queued.length > 0) await host.adapter.invalidate(queued);
   };
 
   /** The host when it can take a run now; else `null`, and a reconnect when due. */
@@ -140,40 +168,8 @@ export function withRemoteLane(options: RemoteLaneOptions): RunnerAdapter {
     return host;
   };
 
-  const differences = async (host: RemoteHost): Promise<string[]> => {
-    const allowlist = options.allowlist();
-    const [remoteCore, remoteRunners, localRunners, installed] = await Promise.all([
-      host.coreEnvironment(allowlist),
-      host.adapter.environment(),
-      local.environment(),
-      installedDependenciesFingerprint(options.root, options.root),
-    ]);
-    const files = [...new Set([...remoteRunners, ...localRunners].flatMap((r) => r.files))];
-    const [remoteBlobs, localBlobs] = await Promise.all([host.blobs(files), blobsHere(files)]);
-    const core = coreEnvironmentInputs({
-      squealVersion: options.version,
-      installedDependencies: installed,
-      allowlist,
-    });
-    return environmentDifferences(
-      {
-        core: { ...remoteCore, squealVersion: options.version },
-        runners: remoteRunners,
-        blob: (p) => remoteBlobs[p] ?? null,
-      },
-      { core, runners: localRunners, blob: (p) => localBlobs[p] ?? null },
-    );
-  };
-
-  const blobsHere = async (paths: readonly string[]) => {
-    const blobs: Record<string, string | null> = {};
-    for (const path of paths) {
-      blobs[path] = insideRoot(path)
-        ? ((await readEntry(options.root, path))?.entry.blob ?? null)
-        : null;
-    }
-    return blobs;
-  };
+  const compared = (host: RemoteHost) => compareRemote(host, options);
+  const blobsHere = (paths: readonly string[]) => blobsAt(options.root, paths);
 
   /**
    * The remote's run, proven over a current environment; `refused` after a
@@ -192,12 +188,10 @@ export function withRemoteLane(options: RemoteLaneOptions): RunnerAdapter {
     const configs = (await local.environment()).flatMap((r) => r.files);
     const inputs = [...new Set([...closures.flatMap((c) => c.paths), ...configs])];
     for (let attempt = 0; attempt < 2; attempt++) {
-      const queued = [...pending.values()];
-      pending.clear();
-      if (queued.length > 0) await host.adapter.invalidate(queued);
+      await sendPending(host);
       // Review 0.1.442 B1: equal for this run, after the revision's files and any install
       // reached the host; the remote changes only through these messages, sent in turn.
-      const unequal = await differences(host).catch((error: Error) => [error.message]);
+      const unequal = await compared(host);
       if (runnerHostGone(host.adapter)) {
         down("the host ended", false);
         return { lost: lostReport(testFiles) };
@@ -333,7 +327,8 @@ export function withRemoteLane(options: RemoteLaneOptions): RunnerAdapter {
     name: local.name,
     adapterVersion: local.adapterVersion,
     invalidate(paths) {
-      if (state.kind === "ready") queue(paths);
+      // While connecting too: the tree it sent may predate them.
+      if (state.kind !== "down") queue(paths);
       return local.invalidate(paths);
     },
     affected: (paths) => local.affected(paths),

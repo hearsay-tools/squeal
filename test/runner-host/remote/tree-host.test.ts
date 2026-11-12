@@ -7,6 +7,7 @@ import {
   rmSync,
   statSync,
   symlinkSync,
+  utimesSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -19,7 +20,7 @@ import { treeBlob, type WireFile } from "../../../src/core/runner-host/remote/tr
  * Spec 021 D10 (row 021-13): a remote host owns its tree. It writes only
  * inside its root, removes only what it wrote, refuses bytes that do not
  * match their blob id, and installs from the lockfile only when its blob
- * changed since the last install.
+ * changed since the last install, or that install did.
  */
 
 const scratch = mkdtempSync(join(tmpdir(), "squeal-tree-host-"));
@@ -119,6 +120,33 @@ describe("a remote host's tree (row 021-13)", () => {
     expect(await tree.install()).toEqual({ ran: true, command: "npm ci" });
     expect(readFileSync(join(root, "../installs"), "utf8")).toBe("npm ci\nnpm ci\n");
     expect(output.join("")).toContain("installed");
+  });
+
+  it("installs again from scratch, once, when its install changed since it made it (row 021-24)", async () => {
+    const bin = join(scratch, "npm-one-package");
+    mkdirSync(bin, { recursive: true });
+    writeFileSync(
+      join(bin, "npm"),
+      [
+        "#!/bin/sh",
+        'echo "npm $*" >> ../installs',
+        "mkdir -p node_modules/dep",
+        `printf '{"name":"dep","version":"1.0.0"}' > node_modules/dep/package.json`,
+        `printf '{"lockfileVersion":3,"packages":{"node_modules/dep":{"version":"1.0.0"}}}' > node_modules/.package-lock.json`,
+        "",
+      ].join("\n"),
+    );
+    chmodSync(join(bin, "npm"), 0o755);
+    const { root, tree } = host({ ...process.env, PATH: `${bin}:${process.env.PATH}` });
+    await tree.write({ files: [file("package-lock.json", "{}")], removed: [] });
+    expect(await tree.install()).toEqual({ ran: true, command: "npm ci" });
+    // A restore onto a new machine: the folder newer than npm's record of it.
+    const later = new Date(Date.now() + 86_400_000);
+    utimesSync(join(root, "node_modules/dep"), later, later);
+    expect(await tree.install()).toEqual({ ran: true, command: "npm ci", again: true });
+    expect(statSync(join(root, "node_modules/dep")).mtimeMs).toBeLessThan(Date.now());
+    expect(await tree.install()).toEqual({ ran: false, command: null });
+    expect(readFileSync(join(root, "../installs"), "utf8")).toBe("npm ci\nnpm ci\n");
   });
 
   it("names a failed install with its command and output", async () => {
