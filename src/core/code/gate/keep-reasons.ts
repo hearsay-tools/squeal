@@ -6,14 +6,24 @@ import { notKept } from "./keep-write.js";
 /*
  * Row 011-320: the note on the completed test files `squeal code` did not
  * keep for what its run evidence says (`keepDecisions`): one line per kind
- * of evidence, naming the test files and the paths behind it. It is told
+ * of evidence, naming the first test files and the first paths behind it,
+ * then how many more (the coordinator, 2026-11-12). It is told
  * with the keeper's other notes, once the report is out; the verdict, the
  * report and the exit code do not change.
  */
 
 type Kind = FileDecision["cause"]["kind"];
 
-interface Kept {
+/**
+ * How many test files, and how many paths behind them, a line names in
+ * path order before it counts the rest, as spec 020 D14.4's line on
+ * incomplete closures does: in a clone with no daemon history, the reads
+ * beyond the keys (research `run-evidence.md`, difference 1) can cover
+ * most files.
+ */
+const NAMED = 3;
+
+interface Gathered {
   readonly files: string[];
   readonly paths: Set<string>;
   /** The first file's reason, for a kind with no words of its own here. */
@@ -22,7 +32,7 @@ interface Kept {
 
 /** The completed files not kept, by kind of evidence, until `take`. */
 export class NotKept {
-  readonly #kinds = new Map<Kind, Kept>();
+  readonly #kinds = new Map<Kind, Gathered>();
 
   /** `path`, a completed test file with a record, was not kept for `decided`. */
   add(path: string, decided: FileDecision): void {
@@ -37,8 +47,8 @@ export class NotKept {
   take(): string[] {
     const lines = [...this.#kinds].map(([kind, { files, paths, reason }]) => {
       const one = files.length === 1;
-      const behind = paths.size === 0 ? "" : ` (${listPaths([...paths].sort(compare))})`;
-      const named = listPaths([...files].sort(compare));
+      const behind = paths.size === 0 ? "" : ` (${listPaths([...paths].sort(compare), NAMED)})`;
+      const named = listPaths([...files].sort(compare), NAMED);
       const again = `the next run will run ${one ? "it" : "them"} again`;
       return `${notKept(files.length)}, because ${phrase(kind, one, reason)}${behind}: ${named}; ${again}`;
     });
