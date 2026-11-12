@@ -29,6 +29,9 @@
  * stays unless the run created or removed one of its directories, which the
  * recorder now records, and module loads key whatever
  * `observe.runtimeInputs` says, so what is kept changes (the human,
- * 2026-10-25).
+ * 2026-10-25). "11": a run whose log folder is removed or made again during
+ * the run stores nothing, where earlier releases stored a completed file
+ * without the loads its removed graphs held (row 018-38, review 0.1.449 B1;
+ * the human, 2026-11-12: "A: raise version").
  */
-export const NODE_TEST_ADAPTER_VERSION = "10";
+export const NODE_TEST_ADAPTER_VERSION = "11";
