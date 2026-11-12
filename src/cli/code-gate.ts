@@ -24,6 +24,7 @@ import { createVitestAdapter } from "../runners/vitest/index.js";
 import { CODE_GATE_USAGE, parseGateArgs } from "./code-gate-args.js";
 import { storedDurations } from "./code-gate-durations.js";
 import { exceptionsOf } from "./code-gate-exceptions.js";
+import { keptLogsLine, runLogKeeper } from "./code-gate-log.js";
 import { preRunOptions } from "./code-gate-prerun.js";
 import { relaunchGate, runAsChild, takeReportFd } from "./code-gate-relaunch.js";
 import { collectWithStores } from "./code-gate-stored.js";
@@ -198,6 +199,7 @@ async function gate(
   const durationsMs: Partial<Record<GateRunner, number>> = {};
   // D17: the stored durations, for the estimate and the order.
   const durations = storedDurations(root);
+  const note = (text: string) => io.stderr(`squeal code: ${text}\n`);
   const collected = await collectWithStores(
     root,
     io.env ?? process.env,
@@ -206,7 +208,7 @@ async function gate(
       tests,
       budgetSeconds: parsed.budgetSeconds,
       adapters: timed(adapters, durationsMs),
-      note: (text) => io.stderr(`squeal code: ${text}\n`),
+      note,
       ...fromBase(policy),
       scope,
       // D15: a `prepare` command's output goes to stderr.
@@ -216,6 +218,8 @@ async function gate(
       // D17.1: the estimate on stderr, after the stored lookup and before the first run.
       ...(durations === null ? {} : { durations: durations.of }),
       estimated: (estimates, left) => io.stderr(estimateText(estimates, left)),
+      // #197: a run with a failed or unfinished file keeps its log where a daemon keeps its runs'.
+      keepLog: runLogKeeper(root, { note }),
     },
     parts,
   )
@@ -233,6 +237,9 @@ async function gate(
   const report = evaluate(changed, evidence, policy, versions(), times, exceptions);
   const json = `${statusCommand(io.env ?? process.env)} code ${[...args.map(shellWord), "--json"].join(" ")}`;
   io.stdout(parsed.json ? `${JSON.stringify(report, null, 2)}\n` : formatGateReport(report, json));
+  // #197: the kept logs, after the verdict, on stderr, so `--json` keeps stdout to the report.
+  const kept = keptLogsLine(report.runs);
+  if (kept !== null) io.stderr(kept);
   return EXIT[report.verdict];
 }
 
