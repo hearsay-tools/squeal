@@ -68,13 +68,15 @@ export async function observedMoves(
 
 /**
  * The keeper's evidence: its inputs that moved, what the run read beyond
- * its keys (`observedGrowth`), the environment files it loaded that its
- * project's keys lack, and since row 011-320 the files a merge holds
- * (difference 3) and the listings a file, an editor's scratch file among
- * them, entered or left during the run (`listingMoves`, difference 4 and
- * the fifth), with what a serving daemon's revisions during the run
- * changed (`changedDuring`, review 0.1.458 B1). The runtime's identity is
- * `keepDecisions`' (difference 2).
+ * its keys (`observedGrowth`) and, since row 020-39 (difference 1), which
+ * of those reads moved (`observedMoves`, as the daemon's record reads
+ * them), the environment files it loaded that its project's keys lack, and
+ * since row 011-320 the files a merge holds (difference 3) and the
+ * listings a file, an editor's scratch file among them, entered or left
+ * during the run (`listingMoves`, difference 4 and the fifth), with what a
+ * serving daemon's revisions during the run changed (`changedDuring`,
+ * review 0.1.458 B1). The runtime's identity is `keepDecisions`'
+ * (difference 2).
  */
 export async function readKeepEvidence(
   sources: KeepSources,
@@ -89,9 +91,9 @@ export async function readKeepEvidence(
     sources.hasher,
   );
   const environment = loadedBeyondKeys(keys, files, report);
+  const read = await observedMoves({ keys, hasher: sources.hasher }, growth);
   const observed: TierObservations = {
-    ...NOTHING_OBSERVED,
-    growth,
+    ...read,
     ...(environment === undefined ? {} : { environment }),
   };
   const held = heldFiles(await sources.hold.read(), files, growth);
@@ -99,7 +101,8 @@ export async function readKeepEvidence(
   const moved = await listingMoves(root, sources.listed, listings, () => keys.extraFiles());
   const during = changedDuring(sources.revisions, listings);
   const changed = new Set([...inputs.changed, ...moved, ...during]);
-  return { changed, touched: [...inputs.touched].sort(), observed, held };
+  const touched = [...new Set([...inputs.touched, ...read.touched])].sort();
+  return { changed, touched, observed, held };
 }
 
 /**
