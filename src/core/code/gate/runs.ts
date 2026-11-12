@@ -26,6 +26,7 @@ export function runsOf(evidence: Evidence, durationsMs: GateTimes["durationsMs"]
     const children = childFilesOf(files);
     const prepare = runner === "node-test" ? preparesOf(evidence) : null;
     const estimate = evidence.estimates?.find((e) => e.runner === runner);
+    const log = evidence.logs?.find((l) => l.runner === runner)?.path;
     return [
       {
         runner,
@@ -33,6 +34,7 @@ export function runsOf(evidence: Evidence, durationsMs: GateTimes["durationsMs"]
         completed: sorted(files.filter((f) => f.completed).map((f) => f.path)),
         notFinished: sorted(files.filter(unfinished).map((f) => f.path)),
         failed,
+        ...(log === undefined ? {} : { log }),
         ...(from === null ? {} : { from }),
         ...(children === null ? {} : { children }),
         ...(prepare === null ? {} : { prepare }),

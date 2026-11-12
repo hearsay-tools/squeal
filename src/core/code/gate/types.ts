@@ -3,6 +3,7 @@ import type { RelativePath } from "../../types/common.js";
 import type { FileHash } from "../../types/keys.js";
 import type { CoverageRecord } from "../coverage/types.js";
 import type { RunEstimate } from "./estimate.js";
+import type { KeptLog } from "./evidence.js";
 import type { PrepareRun } from "./prepare.js";
 import type { ScopeEvidence } from "./scope.js";
 import type { ClosureGaps } from "./select-closures.js";
@@ -202,6 +203,8 @@ export interface Evidence {
   readonly estimates?: readonly RunEstimate[];
   /** #193: each node:test project's files with an incomplete static closure; absent when none has one. */
   readonly incompleteClosures?: readonly ClosureGaps[];
+  /** #197 (row 020-40): the logs kept of runs with a failed or unfinished file, by runner; absent when none. */
+  readonly logs?: readonly KeptLog[];
 }
 
 /** D6: the policy, read at the base commit. */
