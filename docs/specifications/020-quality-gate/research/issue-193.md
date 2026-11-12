@@ -93,7 +93,7 @@ and unloadable changed paths; they say nothing of closure gaps.
 
 **Q5. The gap can matter, and fails toward incomplete.** `select`
 (`collect.ts:219-250`) uses `adapter.affected(paths)`, the static graph
-(020 D3.1). Observed runtime loads enter keys (001 C12), not the gate's
+(020 D3.1). Observed runtime loads enter keys (011 C12), not the gate's
 selection. In `dynamic-only`, the change to `src/extra.mjs`, loaded only by
 the computed `import()`, selected no test; the gate said no test loads it and
 read its changed function `incomplete` (`no-loader`), exit 3. So for a changed
@@ -119,7 +119,7 @@ a key that exists.
 
 - Do not plan a dedup fix from this issue alone. Ask the reporter for raw
   stderr from one run (`squeal code --base origin/main --json 2>gate.err`)
-  before any row; source and probe show no second path in 0.1.443.
+  before a duplicate-emission repair is approved; source and probe show no second path in 0.1.443.
 - The scope gap is real and small: after `select`, tell how many of the
   project's incomplete-closure files the change selected ("0 of 19 selected"),
   and put the full list per project in the gate JSON. That is a 020 D7/D14.4
