@@ -6,7 +6,7 @@ import {
   COVERAGE_RECORD_VERSION,
 } from "../core/code/coverage/record.js";
 import { BaseRefError, changedFunctions, mergeBase } from "../core/code/gate/changed.js";
-import { CollectUsageError } from "../core/code/gate/collect.js";
+import { type CollectOptions, CollectUsageError } from "../core/code/gate/collect.js";
 import { evaluate } from "../core/code/gate/evaluate.js";
 import { type BasePolicy, loadBasePolicy } from "../core/code/gate/policy.js";
 import type { EngineVersions, GateRunner } from "../core/code/gate/report.js";
@@ -207,11 +207,9 @@ async function gate(
       budgetSeconds: parsed.budgetSeconds,
       adapters: timed(adapters, durationsMs),
       note: (text) => io.stderr(`squeal code: ${text}\n`),
-      // D12.1: how the runs collect is the base's, as the limits are.
-      children: policy.children,
+      ...fromBase(policy),
       scope,
-      // D15: the base's node:test `prepare` commands; their output goes to stderr.
-      ...(policy.prepares === undefined ? {} : { prepares: policy.prepares }),
+      // D15: a `prepare` command's output goes to stderr.
       output: io.stderr,
       // D14.4: the selection on stderr, after it and before the first run.
       ...preRunOptions(changed, policy, io.stderr),
@@ -236,6 +234,18 @@ async function gate(
   const json = `${statusCommand(io.env ?? process.env)} code ${[...args.map(shellWord), "--json"].join(" ")}`;
   io.stdout(parsed.json ? `${JSON.stringify(report, null, 2)}\n` : formatGateReport(report, json));
   return EXIT[report.verdict];
+}
+
+/** The collector's options read at the base, as the limits are (D6). */
+function fromBase(policy: BasePolicy): Pick<CollectOptions, "children" | "inputs" | "prepares"> {
+  return {
+    // D12.1: how the runs collect.
+    children: policy.children,
+    // D3.1 (row 020-35): the declared inputs select too, as the daemon re-runs them.
+    ...(policy.inputs === undefined ? {} : { inputs: policy.inputs }),
+    // D15: the node:test `prepare` commands.
+    ...(policy.prepares === undefined ? {} : { prepares: policy.prepares }),
+  };
 }
 
 /**
