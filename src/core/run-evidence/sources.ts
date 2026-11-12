@@ -18,7 +18,7 @@ import { changedSince, type Moved, snapshotInputs } from "../scheduler/stability
 import type { TierFile } from "../scheduler/tiers.js";
 import type { AbsolutePath, RelativePath } from "../types/common.js";
 import type { RunReport } from "../types/runner.js";
-import { listingMoves, listingsAmong } from "./listings.js";
+import { changedDuring, listingMoves, listingsAmong } from "./listings.js";
 import type { HeldPaths, KeepSources, RunEvidence } from "./run-evidence.js";
 
 /* Where the run evidence is read from (`run-evidence.ts`, which alone imports this file). */
@@ -65,7 +65,8 @@ export async function observedMoves(
  * project's keys lack, and since row 011-320 the files a merge holds
  * (difference 3) and the listings a file, an editor's scratch file among
  * them, entered or left during the run (`listingMoves`, difference 4 and
- * the fifth). No revision is read; the runtime's identity is
+ * the fifth), with what a serving daemon's revisions during the run
+ * changed (`changedDuring`, review 0.1.458 B1). The runtime's identity is
  * `keepDecisions`' (difference 2).
  */
 export async function readKeepEvidence(
@@ -89,7 +90,8 @@ export async function readKeepEvidence(
   const held = heldFiles(await sources.hold.read(), files, growth);
   const listings = listingsAmong(files.flatMap((f) => f.inputs));
   const moved = await listingMoves(root, sources.listed, listings);
-  const changed = moved.length === 0 ? inputs.changed : new Set([...inputs.changed, ...moved]);
+  const during = changedDuring(sources.revisions, listings);
+  const changed = new Set([...inputs.changed, ...moved, ...during]);
   return { changed, touched: [...inputs.touched].sort(), observed, held };
 }
 

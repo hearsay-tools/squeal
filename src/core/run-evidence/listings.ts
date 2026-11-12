@@ -1,7 +1,9 @@
 import { runGit, splitNul } from "../fs/git.js";
 import type { StatCache } from "../hash/stat-cache.js";
 import { ancestorListings, listedDirectory } from "../keys/observed.js";
+import { isEditorScratch, scratchMovedListings } from "../scheduler/editor-scratch.js";
 import type { AbsolutePath, RelativePath } from "../types/common.js";
+import type { RevisionsSince } from "./run-evidence.js";
 
 /*
  * Row 011-320 (research `run-evidence.md`, difference 4 and the fifth,
@@ -83,6 +85,34 @@ export async function listingMoves(
     for (const listing of ancestorListings(path)) if (listings.has(listing)) moved.add(listing);
   }
   return [...moved];
+}
+
+/**
+ * Review 0.1.458 B1: what the revisions a serving daemon recorded during
+ * the run changed, as `applyBatch` adds them to a tier in flight (its
+ * `Tier.changes`): each path, and for an add or delete every listing above
+ * it, but an editor's scratch file's only as `scratchMovedListings` finds
+ * them among `listings`, by whether it was there before and is now. So a
+ * file that came and went during the run moves its listings here, while
+ * the files below them before and after the run are the same.
+ */
+export function changedDuring(
+  revisions: RevisionsSince | undefined,
+  listings: ReadonlySet<RelativePath>,
+): RelativePath[] {
+  if (revisions === undefined) return [];
+  const { store, worktreeId, after } = revisions;
+  const changes = new Set<RelativePath>();
+  for (const revision of store.revisions.range(worktreeId, after, Number.MAX_SAFE_INTEGER)) {
+    for (const change of revision.changes) {
+      changes.add(change.path);
+      const structural = change.oldHash === null || change.newHash === null;
+      if (!structural || isEditorScratch(change.path)) continue;
+      for (const listing of ancestorListings(change.path)) changes.add(listing);
+    }
+  }
+  const scratch = scratchMovedListings(store, worktreeId, after, changes, listings);
+  return [...changes, ...scratch];
 }
 
 /** The mode `git ls-files --stage` gives a submodule. */

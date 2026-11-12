@@ -106,6 +106,7 @@ export function openStored(options: StoredOptions): StoredFiles | null {
     return new Map(files.map((ref) => [ref, keyed.get(ref)?.key ?? null]));
   };
   let told = false;
+  const worktreeId = worktreeIdFor(options.root);
   const stored: StoredEvidence = async (runner, files) => {
     try {
       const keyer = await keyerOf();
@@ -116,9 +117,12 @@ export function openStored(options: StoredOptions): StoredFiles | null {
         if (evidence !== null) found.set(ref, evidence);
         else runs.set(ref, at.key);
       }
-      // Row 011-320 (difference 2): the runtime identity, read as the daemon reads it.
+      // Row 011-320: the runtime identity, read as the daemon reads it (difference 2), and the
+      // revisions a serving daemon records during the run (review 0.1.458 B1).
       const runtime = (ref: TestFileRef) => keyer.keys.runtimeIdentity(ref);
-      keeper.expect(runner, keyer.keys, keyer.hasher, runs, runtime);
+      const store = stores.main;
+      const revisions = store === undefined ? {} : { revisions: { store, worktreeId } };
+      keeper.expect(runner, keyer.keys, keyer.hasher, runs, { runtime, ...revisions });
       return found;
     } catch (error) {
       // A store or an adapter that fails here costs only the runs it would have saved.

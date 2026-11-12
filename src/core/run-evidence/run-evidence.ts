@@ -20,9 +20,10 @@ import {
   tierEnd,
 } from "../scheduler/store-decision.js";
 import type { Tier, TierFile } from "../scheduler/tiers.js";
-import type { AbsolutePath, RelativePath } from "../types/common.js";
+import type { AbsolutePath, RelativePath, RevisionNumber, WorktreeId } from "../types/common.js";
 import type { CheckKey, TestFileRef } from "../types/keys.js";
 import type { RunReport } from "../types/runner.js";
+import type { Store } from "../types/store.js";
 import { filesBelow, listingsAmong } from "./listings.js";
 import { type Cause, causeOf, reasonOf } from "./reason.js";
 import { movedInputs, observedMoves, readKeepEvidence, UnmergedIndex } from "./sources.js";
@@ -161,6 +162,26 @@ export function mergeHeld(
   return heldFiles(hold, files, observed?.growth);
 }
 
+/** A worktree's revisions in a store, read only: those a serving daemon records. */
+export interface Revisions {
+  readonly store: Store;
+  readonly worktreeId: WorktreeId;
+}
+
+/** `Revisions` after the one that was latest when a lookup expected a run. */
+export interface RevisionsSince extends Revisions {
+  readonly after: RevisionNumber;
+}
+
+/**
+ * Before a run, for `squeal code` (review 0.1.458 B1): where to read the
+ * revisions a serving daemon records during it, from the latest one now.
+ */
+export function revisionsSince(revisions: Revisions): RevisionsSince {
+  const after = revisions.store.revisions.latest(revisions.worktreeId)?.number ?? 0;
+  return { ...revisions, after };
+}
+
 /** Where `squeal code` reads the merge hold, at its decision and again at each write. */
 export interface MergeHoldSource {
   read(): Promise<HeldPaths>;
@@ -203,6 +224,12 @@ export interface KeepSources {
   readonly hold: MergeHoldSource;
   /** Row 011-320: the files below the listings before the run (`copyListed`). */
   readonly listed: ReadonlySet<RelativePath>;
+  /**
+   * Review 0.1.458 B1: the revisions a serving daemon recorded during the
+   * run (`revisionsSince`), which hold what came and went before its end;
+   * without them, only the files below the listings at its end are compared.
+   */
+  readonly revisions?: RevisionsSince;
   /**
    * Row 011-320 (difference 2): the runtime identity at the run's end,
    * compared with each file's `KeepFile.runtimeIdentity`; without it, no

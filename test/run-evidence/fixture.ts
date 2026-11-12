@@ -15,8 +15,10 @@ import {
   keepDecisions,
   mergeHoldOf,
   type RecordFacts,
+  type RevisionsSince,
   readRecordEvidence,
   recordOutcome,
+  revisionsSince,
   runEnd,
   unstableInputs,
 } from "../../src/core/run-evidence/run-evidence.js";
@@ -90,6 +92,8 @@ export interface During {
   readonly create?: Readonly<Record<string, string>>;
   /** Files created, or removed (`null`), and applied in a revision as the watcher's batch is. */
   readonly batch?: Readonly<Record<string, string | null>>;
+  /** As `batch`, after it, in a second revision. */
+  readonly then?: Readonly<Record<string, string | null>>;
   /** Untracked files written before the run's keys are read. */
   readonly untracked?: Readonly<Record<string, string>>;
   /** Symbolic links committed with the files, by path, to their targets. */
@@ -162,9 +166,10 @@ async function decided(root: string, store: Store, during: During): Promise<Deci
   } as unknown as Tier;
   // The keeper's copy of the files below the listings, taken as `Expectations.add` takes it.
   const listed = copyListed(keys, paths);
+  const revisions = revisionsSince({ store, worktreeId: WORKTREE });
   await happen(root, keys, hasher, tier, during);
   const report = (during.report ?? ((r) => r))(completed([A, B], during));
-  const ran = { root, keys, hasher, tier, report, listed };
+  const ran = { root, keys, hasher, tier, report, listed, revisions };
   const ledgerFree = during.ledger === undefined && during.queued === undefined;
   const keeper = ledgerFree ? await keeperColumn(ran) : null;
   const daemon = await daemonColumn(ran, store, during);
@@ -180,10 +185,11 @@ interface Ran {
   readonly tier: Tier;
   readonly report: RunReport;
   readonly listed: ReadonlySet<RelativePath>;
+  readonly revisions: RevisionsSince;
 }
 
 /** `squeal code`'s decisions: `keepDecisions` over its files as `Expectations.add` gives them. */
-function keeperColumn({ root, keys, hasher, tier, report, listed }: Ran) {
+function keeperColumn({ root, keys, hasher, tier, report, listed, revisions }: Ran) {
   const runtime = (ref: TestFileRef) => keys.runtimeIdentity(ref);
   // Each file with the runtime identity its tier entry has, as the lookup read it.
   const files = tier.files.map(({ file, key, inputs: paths, runtimePolicy: runtimeIdentity }) => {
@@ -191,7 +197,8 @@ function keeperColumn({ root, keys, hasher, tier, report, listed }: Ran) {
   });
   const before = tier.snapshot;
   const hold = mergeHoldOf(root);
-  const sources = { root, keys, hasher, run: tier.run, before, hold, listed, runtime };
+  const run = tier.run;
+  const sources = { root, keys, hasher, run, before, hold, listed, revisions, runtime };
   return keepDecisions(sources, files, report);
 }
 
@@ -324,14 +331,26 @@ async function happen(
   for (const path of during.touch ?? []) write(path, FILES[path] ?? "");
   for (const [path, text] of Object.entries(during.create ?? {})) writeTree(root, { [path]: text });
   if (during.merging !== undefined) unmerge(root, during.merging);
-  const batch = Object.entries(during.batch ?? {});
-  for (const [path, text] of batch) {
+  await revise(root, keys, hasher, tier, during.batch ?? {});
+  await revise(root, keys, hasher, tier, during.then ?? {});
+}
+
+/** `batch` written, then applied in a revision as the watcher's batch is, to `tier` in flight. */
+async function revise(
+  root: string,
+  keys: WorktreeKeys,
+  hasher: Hasher,
+  tier: Tier,
+  batch: Readonly<Record<string, string | null>>,
+): Promise<void> {
+  const entries = Object.entries(batch);
+  for (const [path, text] of entries) {
     if (text === null) rmSync(join(root, path));
     else writeTree(root, { [path]: text });
   }
-  if (batch.length === 0) return;
+  if (entries.length === 0) return;
   const candidates = await statCandidates(
-    batch.map(([path]) => path),
+    entries.map(([path]) => path),
     hasher,
   );
   const revision = await keys.reconcile({ trigger: "interval", paths: candidates }, () =>
