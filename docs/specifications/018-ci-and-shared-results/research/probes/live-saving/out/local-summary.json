@@ -1,0 +1,4500 @@
+{
+ "cutoff": "2026-11-12T14:45:00Z",
+ "runsRead": 34491,
+ "runsFromResultRows": 9116,
+ "runsWithoutDurations": 18,
+ "windows": {
+  "A before any import": {
+   "runs": 26746,
+   "fileRuns": 171639,
+   "distinctFiles": 1991,
+   "fileSec": 1426644,
+   "checkpointFileSec": 412061,
+   "nodeTestFileSec": 24628,
+   "worktrees": 343,
+   "wallSec": 651997
+  },
+  "B imports, none looked up": {
+   "runs": 3921,
+   "fileRuns": 36453,
+   "distinctFiles": 1937,
+   "fileSec": 312434,
+   "checkpointFileSec": 14139,
+   "nodeTestFileSec": 5802,
+   "worktrees": 50,
+   "wallSec": 137320
+  },
+  "C lookups work, CI 0.1.431": {
+   "runs": 2447,
+   "fileRuns": 9202,
+   "distinctFiles": 1763,
+   "fileSec": 75730,
+   "checkpointFileSec": 8233,
+   "nodeTestFileSec": 4623,
+   "worktrees": 19,
+   "wallSec": 65774
+  },
+  "D Action, CI 0.1.443": {
+   "runs": 1110,
+   "fileRuns": 3222,
+   "distinctFiles": 1420,
+   "fileSec": 16286,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 3858,
+   "worktrees": 14,
+   "wallSec": 26969
+  },
+  "E local 0.1.449+ (node:test re-key)": {
+   "runs": 267,
+   "fileRuns": 1632,
+   "distinctFiles": 1157,
+   "fileSec": 9360,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 230,
+   "worktrees": 4,
+   "wallSec": 5280
+  }
+ },
+ "days": {
+  "0033cb9bb31a004a\t2026-11-09": {
+   "runs": 144,
+   "fileRuns": 868,
+   "distinctFiles": 273,
+   "fileSec": 6491,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 85,
+   "worktrees": 1,
+   "wallSec": 3406
+  },
+  "008d7ac9bfbb0102\t2026-11-06": {
+   "runs": 75,
+   "fileRuns": 364,
+   "distinctFiles": 200,
+   "fileSec": 3283,
+   "checkpointFileSec": 2958,
+   "nodeTestFileSec": 21,
+   "worktrees": 1,
+   "wallSec": 1409
+  },
+  "00f6681f0071de25\t2026-11-06": {
+   "runs": 130,
+   "fileRuns": 663,
+   "distinctFiles": 469,
+   "fileSec": 17181,
+   "checkpointFileSec": 12004,
+   "nodeTestFileSec": 12,
+   "worktrees": 1,
+   "wallSec": 6953
+  },
+  "011b333dc64a3875\t2026-11-06": {
+   "runs": 1,
+   "fileRuns": 21,
+   "distinctFiles": 21,
+   "fileSec": 122,
+   "checkpointFileSec": 122,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 153
+  },
+  "024aa2061eb2a749\t2026-11-09": {
+   "runs": 13,
+   "fileRuns": 31,
+   "distinctFiles": 11,
+   "fileSec": 157,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 5,
+   "worktrees": 1,
+   "wallSec": 89
+  },
+  "0256ef085ea4c5b1\t2026-11-10": {
+   "runs": 1,
+   "fileRuns": 1,
+   "distinctFiles": 1,
+   "fileSec": 6,
+   "checkpointFileSec": 6,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 45
+  },
+  "026f2eda1b784381\t2026-11-09": {
+   "runs": 1,
+   "fileRuns": 1,
+   "distinctFiles": 1,
+   "fileSec": 4,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 5
+  },
+  "02735ee1930f090b\t2026-11-05": {
+   "runs": 2,
+   "fileRuns": 15,
+   "distinctFiles": 15,
+   "fileSec": 119,
+   "checkpointFileSec": 119,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 133
+  },
+  "04153395bf6f9869\t2026-11-11": {
+   "runs": 54,
+   "fileRuns": 215,
+   "distinctFiles": 199,
+   "fileSec": 4582,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 11,
+   "worktrees": 1,
+   "wallSec": 1663
+  },
+  "0422a62b8258cd02\t2026-11-06": {
+   "runs": 1,
+   "fileRuns": 39,
+   "distinctFiles": 39,
+   "fileSec": 103,
+   "checkpointFileSec": 103,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 126
+  },
+  "0684b8d82dbda575\t2026-11-09": {
+   "runs": 150,
+   "fileRuns": 292,
+   "distinctFiles": 158,
+   "fileSec": 1604,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 390,
+   "worktrees": 1,
+   "wallSec": 1322
+  },
+  "06dc602acfa63e31\t2026-11-12": {
+   "runs": 6,
+   "fileRuns": 12,
+   "distinctFiles": 12,
+   "fileSec": 122,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 2,
+   "worktrees": 1,
+   "wallSec": 576
+  },
+  "06fa4fc14cda8122\t2026-11-05": {
+   "runs": 4,
+   "fileRuns": 4,
+   "distinctFiles": 4,
+   "fileSec": 60,
+   "checkpointFileSec": 60,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 93
+  },
+  "071ff5f0754eed9c\t2026-11-10": {
+   "runs": 1,
+   "fileRuns": 5,
+   "distinctFiles": 5,
+   "fileSec": 24,
+   "checkpointFileSec": 24,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 33
+  },
+  "0768de8768e75ea6\t2026-11-07": {
+   "runs": 65,
+   "fileRuns": 2313,
+   "distinctFiles": 1110,
+   "fileSec": 10007,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 26,
+   "worktrees": 1,
+   "wallSec": 2065
+  },
+  "07bd34ed2dd48b4e\t2026-11-11": {
+   "runs": 21,
+   "fileRuns": 996,
+   "distinctFiles": 989,
+   "fileSec": 7227,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 59,
+   "worktrees": 1,
+   "wallSec": 817
+  },
+  "0833baf3908c1341\t2026-11-10": {
+   "runs": 18,
+   "fileRuns": 24,
+   "distinctFiles": 24,
+   "fileSec": 185,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 108,
+   "worktrees": 1,
+   "wallSec": 241
+  },
+  "0878667f1c0548e5\t2026-11-07": {
+   "runs": 11,
+   "fileRuns": 186,
+   "distinctFiles": 170,
+   "fileSec": 1760,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 4,
+   "worktrees": 1,
+   "wallSec": 487
+  },
+  "08b8b85d76a53276\t2026-11-07": {
+   "runs": 3,
+   "fileRuns": 3,
+   "distinctFiles": 3,
+   "fileSec": 120,
+   "checkpointFileSec": 120,
+   "nodeTestFileSec": 7,
+   "worktrees": 1,
+   "wallSec": 124
+  },
+  "09a979c2739ffdce\t2026-11-11": {
+   "runs": 420,
+   "fileRuns": 2049,
+   "distinctFiles": 1922,
+   "fileSec": 16149,
+   "checkpointFileSec": 15395,
+   "nodeTestFileSec": 842,
+   "worktrees": 1,
+   "wallSec": 13682
+  },
+  "0a67adba2a63e782\t2026-11-06": {
+   "runs": 51,
+   "fileRuns": 866,
+   "distinctFiles": 580,
+   "fileSec": 3541,
+   "checkpointFileSec": 3303,
+   "nodeTestFileSec": 44,
+   "worktrees": 1,
+   "wallSec": 3445
+  },
+  "0ae7abc1497cc016\t2026-11-07": {
+   "runs": 7,
+   "fileRuns": 56,
+   "distinctFiles": 52,
+   "fileSec": 308,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 1,
+   "worktrees": 1,
+   "wallSec": 201
+  },
+  "0b1dc27befd65337\t2026-11-11": {
+   "runs": 1,
+   "fileRuns": 5,
+   "distinctFiles": 5,
+   "fileSec": 138,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 144
+  },
+  "0be2483f6780bac8\t2026-11-06": {
+   "runs": 2,
+   "fileRuns": 11,
+   "distinctFiles": 11,
+   "fileSec": 250,
+   "checkpointFileSec": 250,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 271
+  },
+  "0beafa506b66ac47\t2026-11-07": {
+   "runs": 46,
+   "fileRuns": 350,
+   "distinctFiles": 171,
+   "fileSec": 2288,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 7,
+   "worktrees": 1,
+   "wallSec": 760
+  },
+  "0bf9eafcc7f590e4\t2026-11-10": {
+   "runs": 8,
+   "fileRuns": 26,
+   "distinctFiles": 22,
+   "fileSec": 131,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 2,
+   "worktrees": 1,
+   "wallSec": 104
+  },
+  "0ccbab61d976adb1\t2026-11-09": {
+   "runs": 138,
+   "fileRuns": 537,
+   "distinctFiles": 537,
+   "fileSec": 7224,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 3,
+   "worktrees": 1,
+   "wallSec": 2780
+  },
+  "0d61b120b2b3e4e9\t2026-11-06": {
+   "runs": 18,
+   "fileRuns": 18,
+   "distinctFiles": 18,
+   "fileSec": 538,
+   "checkpointFileSec": 538,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 698
+  },
+  "0dc8a510b51f21c0\t2026-11-07": {
+   "runs": 31,
+   "fileRuns": 809,
+   "distinctFiles": 797,
+   "fileSec": 7097,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 5,
+   "worktrees": 1,
+   "wallSec": 1897
+  },
+  "0df2c91a74bb1732\t2026-11-06": {
+   "runs": 102,
+   "fileRuns": 707,
+   "distinctFiles": 693,
+   "fileSec": 9677,
+   "checkpointFileSec": 9343,
+   "nodeTestFileSec": 11,
+   "worktrees": 1,
+   "wallSec": 4284
+  },
+  "0e109130fd0132dc\t2026-11-05": {
+   "runs": 30,
+   "fileRuns": 31,
+   "distinctFiles": 31,
+   "fileSec": 297,
+   "checkpointFileSec": 265,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 365
+  },
+  "0e67b72fb2af1d25\t2026-11-06": {
+   "runs": 285,
+   "fileRuns": 578,
+   "distinctFiles": 165,
+   "fileSec": 8643,
+   "checkpointFileSec": 5282,
+   "nodeTestFileSec": 95,
+   "worktrees": 1,
+   "wallSec": 7340
+  },
+  "0eb3c1d1a1fe2d87\t2026-11-05": {
+   "runs": 30,
+   "fileRuns": 34,
+   "distinctFiles": 34,
+   "fileSec": 858,
+   "checkpointFileSec": 858,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 955
+  },
+  "0f81d85e9ffbebc0\t2026-11-11": {
+   "runs": 93,
+   "fileRuns": 365,
+   "distinctFiles": 353,
+   "fileSec": 6574,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 5,
+   "worktrees": 1,
+   "wallSec": 2328
+  },
+  "105151a7f564827c\t2026-11-06": {
+   "runs": 2,
+   "fileRuns": 7,
+   "distinctFiles": 7,
+   "fileSec": 179,
+   "checkpointFileSec": 179,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 222
+  },
+  "11bef13bfe5db28f\t2026-11-11": {
+   "runs": 1,
+   "fileRuns": 1,
+   "distinctFiles": 1,
+   "fileSec": 4,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 6
+  },
+  "12941869e6f4d032\t2026-11-11": {
+   "runs": 416,
+   "fileRuns": 4501,
+   "distinctFiles": 1589,
+   "fileSec": 23677,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 377,
+   "worktrees": 1,
+   "wallSec": 6682
+  },
+  "13ea8a5df59c2f55\t2026-11-11": {
+   "runs": 2,
+   "fileRuns": 4,
+   "distinctFiles": 4,
+   "fileSec": 379,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 1,
+   "worktrees": 1,
+   "wallSec": 173
+  },
+  "1481cfcc842dafe4\t2026-11-06": {
+   "runs": 1,
+   "fileRuns": 3,
+   "distinctFiles": 3,
+   "fileSec": 13,
+   "checkpointFileSec": 13,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 122
+  },
+  "15372cf67f985872\t2026-11-09": {
+   "runs": 142,
+   "fileRuns": 565,
+   "distinctFiles": 565,
+   "fileSec": 3061,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 2,
+   "worktrees": 1,
+   "wallSec": 1119
+  },
+  "16321c4a75a89832\t2026-11-10": {
+   "runs": 49,
+   "fileRuns": 190,
+   "distinctFiles": 190,
+   "fileSec": 1460,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 3,
+   "worktrees": 1,
+   "wallSec": 562
+  },
+  "1763da89f3bd46de\t2026-11-05": {
+   "runs": 361,
+   "fileRuns": 2893,
+   "distinctFiles": 1272,
+   "fileSec": 31955,
+   "checkpointFileSec": 18445,
+   "nodeTestFileSec": 511,
+   "worktrees": 1,
+   "wallSec": 12168
+  },
+  "1763da89f3bd46de\t2026-11-06": {
+   "runs": 3,
+   "fileRuns": 3,
+   "distinctFiles": 3,
+   "fileSec": 153,
+   "checkpointFileSec": 153,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 157
+  },
+  "17922b08723c218f\t2026-11-06": {
+   "runs": 2,
+   "fileRuns": 3,
+   "distinctFiles": 3,
+   "fileSec": 66,
+   "checkpointFileSec": 66,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 102
+  },
+  "17efd169f9f10fd1\t2026-11-10": {
+   "runs": 385,
+   "fileRuns": 2721,
+   "distinctFiles": 927,
+   "fileSec": 32371,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 257,
+   "worktrees": 1,
+   "wallSec": 14743
+  },
+  "1a62cc012b37a68f\t2026-11-05": {
+   "runs": 7,
+   "fileRuns": 206,
+   "distinctFiles": 206,
+   "fileSec": 521,
+   "checkpointFileSec": 521,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 345
+  },
+  "1b7ced33f9e4f3cb\t2026-11-06": {
+   "runs": 63,
+   "fileRuns": 421,
+   "distinctFiles": 420,
+   "fileSec": 6303,
+   "checkpointFileSec": 6302,
+   "nodeTestFileSec": 1,
+   "worktrees": 1,
+   "wallSec": 2821
+  },
+  "1bce172252be2e78\t2026-11-09": {
+   "runs": 1,
+   "fileRuns": 1,
+   "distinctFiles": 1,
+   "fileSec": 7,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 7,
+   "worktrees": 1,
+   "wallSec": 9
+  },
+  "1c05a890874f1177\t2026-11-06": {
+   "runs": 261,
+   "fileRuns": 1014,
+   "distinctFiles": 556,
+   "fileSec": 9060,
+   "checkpointFileSec": 3439,
+   "nodeTestFileSec": 49,
+   "worktrees": 1,
+   "wallSec": 3830
+  },
+  "1d280ac15ccb952f\t2026-11-06": {
+   "runs": 7,
+   "fileRuns": 58,
+   "distinctFiles": 56,
+   "fileSec": 503,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 6,
+   "worktrees": 1,
+   "wallSec": 161
+  },
+  "1d280ac15ccb952f\t2026-11-07": {
+   "runs": 6,
+   "fileRuns": 14,
+   "distinctFiles": 9,
+   "fileSec": 25,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 3,
+   "worktrees": 1,
+   "wallSec": 21
+  },
+  "1d8ee364f8934738\t2026-11-09": {
+   "runs": 181,
+   "fileRuns": 182,
+   "distinctFiles": 91,
+   "fileSec": 414,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 357,
+   "worktrees": 1,
+   "wallSec": 2029
+  },
+  "1fb5e9e7541e5937\t2026-11-07": {
+   "runs": 48,
+   "fileRuns": 271,
+   "distinctFiles": 166,
+   "fileSec": 1399,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 3,
+   "worktrees": 1,
+   "wallSec": 492
+  },
+  "2022e36dff425400\t2026-11-11": {
+   "runs": 282,
+   "fileRuns": 1470,
+   "distinctFiles": 1178,
+   "fileSec": 15680,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 347,
+   "worktrees": 1,
+   "wallSec": 9259
+  },
+  "2050018431e1fbad\t2026-11-09": {
+   "runs": 14,
+   "fileRuns": 894,
+   "distinctFiles": 890,
+   "fileSec": 3119,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 2,
+   "worktrees": 1,
+   "wallSec": 1472
+  },
+  "207cbaf75866c9a0\t2026-11-07": {
+   "runs": 27,
+   "fileRuns": 594,
+   "distinctFiles": 579,
+   "fileSec": 4284,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 7,
+   "worktrees": 1,
+   "wallSec": 1957
+  },
+  "216a603eb14a4578\t2026-11-06": {
+   "runs": 12,
+   "fileRuns": 12,
+   "distinctFiles": 12,
+   "fileSec": 1225,
+   "checkpointFileSec": 1225,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 1305
+  },
+  "21c074ecf31ebb24\t2026-11-09": {
+   "runs": 1,
+   "fileRuns": 2,
+   "distinctFiles": 2,
+   "fileSec": 30,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 35
+  },
+  "21f5552a5908baa5\t2026-11-06": {
+   "runs": 17,
+   "fileRuns": 32,
+   "distinctFiles": 25,
+   "fileSec": 488,
+   "checkpointFileSec": 352,
+   "nodeTestFileSec": 5,
+   "worktrees": 1,
+   "wallSec": 477
+  },
+  "22a73ab69c107fef\t2026-11-10": {
+   "runs": 16,
+   "fileRuns": 46,
+   "distinctFiles": 38,
+   "fileSec": 1303,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 7,
+   "worktrees": 1,
+   "wallSec": 1086
+  },
+  "22ad3599afc4a3a3\t2026-11-09": {
+   "runs": 14,
+   "fileRuns": 489,
+   "distinctFiles": 489,
+   "fileSec": 1662,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 3,
+   "worktrees": 1,
+   "wallSec": 1898
+  },
+  "22ad3599afc4a3a3\t2026-11-10": {
+   "runs": 26,
+   "fileRuns": 1075,
+   "distinctFiles": 684,
+   "fileSec": 11819,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 3,
+   "worktrees": 1,
+   "wallSec": 2429
+  },
+  "23dd02b6c33e15de\t2026-11-05": {
+   "runs": 2,
+   "fileRuns": 119,
+   "distinctFiles": 119,
+   "fileSec": 241,
+   "checkpointFileSec": 241,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 300
+  },
+  "23e1eaf805151f40\t2026-11-07": {
+   "runs": 2,
+   "fileRuns": 10,
+   "distinctFiles": 10,
+   "fileSec": 45,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 5,
+   "worktrees": 1,
+   "wallSec": 49
+  },
+  "25496c2daf2e540c\t2026-11-06": {
+   "runs": 75,
+   "fileRuns": 317,
+   "distinctFiles": 311,
+   "fileSec": 4797,
+   "checkpointFileSec": 526,
+   "nodeTestFileSec": 26,
+   "worktrees": 1,
+   "wallSec": 1409
+  },
+  "2577491ddd1c7a46\t2026-11-05": {
+   "runs": 1,
+   "fileRuns": 1,
+   "distinctFiles": 1,
+   "fileSec": 20,
+   "checkpointFileSec": 20,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 35
+  },
+  "258f7dfb0d5f2708\t2026-11-09": {
+   "runs": 13,
+   "fileRuns": 44,
+   "distinctFiles": 33,
+   "fileSec": 721,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 6,
+   "worktrees": 1,
+   "wallSec": 685
+  },
+  "2781bb98175d608c\t2026-11-05": {
+   "runs": 240,
+   "fileRuns": 1344,
+   "distinctFiles": 453,
+   "fileSec": 9806,
+   "checkpointFileSec": 7379,
+   "nodeTestFileSec": 33,
+   "worktrees": 1,
+   "wallSec": 4965
+  },
+  "27a71463a02ff8b3\t2026-11-10": {
+   "runs": 6,
+   "fileRuns": 212,
+   "distinctFiles": 212,
+   "fileSec": 1186,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 2,
+   "worktrees": 1,
+   "wallSec": 260
+  },
+  "2969229dc7c0aa6d\t2026-11-10": {
+   "runs": 149,
+   "fileRuns": 1085,
+   "distinctFiles": 780,
+   "fileSec": 12148,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 133,
+   "worktrees": 1,
+   "wallSec": 6462
+  },
+  "2969229dc7c0aa6d\t2026-11-11": {
+   "runs": 77,
+   "fileRuns": 731,
+   "distinctFiles": 731,
+   "fileSec": 8323,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 3045
+  },
+  "2a71ba970d849d57\t2026-11-05": {
+   "runs": 5,
+   "fileRuns": 5,
+   "distinctFiles": 5,
+   "fileSec": 123,
+   "checkpointFileSec": 123,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 154
+  },
+  "2b085f7dfa50c7f0\t2026-11-09": {
+   "runs": 5,
+   "fileRuns": 17,
+   "distinctFiles": 17,
+   "fileSec": 175,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 2,
+   "worktrees": 1,
+   "wallSec": 116
+  },
+  "2b335cc20058ebed\t2026-11-05": {
+   "runs": 6,
+   "fileRuns": 6,
+   "distinctFiles": 6,
+   "fileSec": 84,
+   "checkpointFileSec": 84,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 113
+  },
+  "2b5435707f9a0957\t2026-11-06": {
+   "runs": 2,
+   "fileRuns": 9,
+   "distinctFiles": 9,
+   "fileSec": 270,
+   "checkpointFileSec": 270,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 279
+  },
+  "2be59b5ae94e27a0\t2026-11-05": {
+   "runs": 2,
+   "fileRuns": 37,
+   "distinctFiles": 36,
+   "fileSec": 89,
+   "checkpointFileSec": 89,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 109
+  },
+  "2c0000686e310df6\t2026-11-11": {
+   "runs": 47,
+   "fileRuns": 60,
+   "distinctFiles": 45,
+   "fileSec": 80,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 69,
+   "worktrees": 1,
+   "wallSec": 851
+  },
+  "2c0000686e310df6\t2026-11-12": {
+   "runs": 280,
+   "fileRuns": 555,
+   "distinctFiles": 299,
+   "fileSec": 2708,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 880,
+   "worktrees": 1,
+   "wallSec": 6782
+  },
+  "2d593d0be9463758\t2026-11-07": {
+   "runs": 11,
+   "fileRuns": 69,
+   "distinctFiles": 57,
+   "fileSec": 630,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 4,
+   "worktrees": 1,
+   "wallSec": 313
+  },
+  "2dbaadf0d11b6300\t2026-11-10": {
+   "runs": 20,
+   "fileRuns": 1141,
+   "distinctFiles": 741,
+   "fileSec": 7664,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 4,
+   "worktrees": 1,
+   "wallSec": 1300
+  },
+  "2e0540c4cc00c57e\t2026-11-11": {
+   "runs": 57,
+   "fileRuns": 226,
+   "distinctFiles": 226,
+   "fileSec": 1315,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 2,
+   "worktrees": 1,
+   "wallSec": 425
+  },
+  "2e0fe8b0f0a30b28\t2026-11-10": {
+   "runs": 229,
+   "fileRuns": 1070,
+   "distinctFiles": 821,
+   "fileSec": 6822,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 23,
+   "worktrees": 1,
+   "wallSec": 2604
+  },
+  "2e3cedc4057f04cf\t2026-11-05": {
+   "runs": 90,
+   "fileRuns": 663,
+   "distinctFiles": 461,
+   "fileSec": 3991,
+   "checkpointFileSec": 3604,
+   "nodeTestFileSec": 17,
+   "worktrees": 1,
+   "wallSec": 1887
+  },
+  "30d5e88ed780b415\t2026-11-09": {
+   "runs": 1,
+   "fileRuns": 9,
+   "distinctFiles": 9,
+   "fileSec": 8,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 12
+  },
+  "311868e96d087bf2\t2026-11-10": {
+   "runs": 1,
+   "fileRuns": 1,
+   "distinctFiles": 1,
+   "fileSec": 57,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 72
+  },
+  "31418a8202d7189c\t2026-11-06": {
+   "runs": 197,
+   "fileRuns": 636,
+   "distinctFiles": 84,
+   "fileSec": 5795,
+   "checkpointFileSec": 1696,
+   "nodeTestFileSec": 88,
+   "worktrees": 1,
+   "wallSec": 3300
+  },
+  "322fba65ea1f1cc1\t2026-11-06": {
+   "runs": 17,
+   "fileRuns": 120,
+   "distinctFiles": 119,
+   "fileSec": 2990,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 2,
+   "worktrees": 1,
+   "wallSec": 1874
+  },
+  "32c96154408567bf\t2026-11-06": {
+   "runs": 1,
+   "fileRuns": 31,
+   "distinctFiles": 31,
+   "fileSec": 224,
+   "checkpointFileSec": 224,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 150
+  },
+  "33dde166779decb7\t2026-11-10": {
+   "runs": 55,
+   "fileRuns": 210,
+   "distinctFiles": 192,
+   "fileSec": 2612,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 6,
+   "worktrees": 1,
+   "wallSec": 1071
+  },
+  "341022c876420138\t2026-11-10": {
+   "runs": 15,
+   "fileRuns": 39,
+   "distinctFiles": 35,
+   "fileSec": 526,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 297,
+   "worktrees": 1,
+   "wallSec": 425
+  },
+  "3448e94fabfdf06a\t2026-11-06": {
+   "runs": 2,
+   "fileRuns": 11,
+   "distinctFiles": 11,
+   "fileSec": 244,
+   "checkpointFileSec": 244,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 250
+  },
+  "3449ac3bcf8e0067\t2026-11-05": {
+   "runs": 335,
+   "fileRuns": 1488,
+   "distinctFiles": 880,
+   "fileSec": 13541,
+   "checkpointFileSec": 1259,
+   "nodeTestFileSec": 376,
+   "worktrees": 1,
+   "wallSec": 6124
+  },
+  "34762dd601407354\t2026-11-06": {
+   "runs": 4,
+   "fileRuns": 25,
+   "distinctFiles": 25,
+   "fileSec": 535,
+   "checkpointFileSec": 535,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 558
+  },
+  "34f1ca7c7153c0b3\t2026-11-09": {
+   "runs": 161,
+   "fileRuns": 637,
+   "distinctFiles": 630,
+   "fileSec": 6754,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 9,
+   "worktrees": 1,
+   "wallSec": 2553
+  },
+  "35b5cc26128189a1\t2026-11-06": {
+   "runs": 24,
+   "fileRuns": 532,
+   "distinctFiles": 506,
+   "fileSec": 3664,
+   "checkpointFileSec": 3546,
+   "nodeTestFileSec": 3,
+   "worktrees": 1,
+   "wallSec": 842
+  },
+  "35b5d04790873d4d\t2026-11-06": {
+   "runs": 1,
+   "fileRuns": 38,
+   "distinctFiles": 38,
+   "fileSec": 103,
+   "checkpointFileSec": 103,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 254
+  },
+  "35ea4073d9c17e0d\t2026-11-10": {
+   "runs": 10,
+   "fileRuns": 62,
+   "distinctFiles": 62,
+   "fileSec": 1480,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 1089
+  },
+  "35ea4073d9c17e0d\t2026-11-11": {
+   "runs": 1,
+   "fileRuns": 1,
+   "distinctFiles": 1,
+   "fileSec": 51,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 51,
+   "worktrees": 1,
+   "wallSec": 53
+  },
+  "36941fc6b42076c2\t2026-11-05": {
+   "runs": 8,
+   "fileRuns": 12,
+   "distinctFiles": 5,
+   "fileSec": 105,
+   "checkpointFileSec": 54,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 180
+  },
+  "36eada11a536626f\t2026-11-06": {
+   "runs": 4,
+   "fileRuns": 4,
+   "distinctFiles": 4,
+   "fileSec": 1,
+   "checkpointFileSec": 1,
+   "nodeTestFileSec": 1,
+   "worktrees": 1,
+   "wallSec": 6
+  },
+  "36fce0fe87aaf10d\t2026-11-06": {
+   "runs": 1,
+   "fileRuns": 129,
+   "distinctFiles": 129,
+   "fileSec": 116,
+   "checkpointFileSec": 116,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 182
+  },
+  "38334a34bdfa1703\t2026-11-09": {
+   "runs": 19,
+   "fileRuns": 66,
+   "distinctFiles": 43,
+   "fileSec": 922,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 14,
+   "worktrees": 1,
+   "wallSec": 838
+  },
+  "38442a3fdc2750b7\t2026-11-05": {
+   "runs": 1,
+   "fileRuns": 1,
+   "distinctFiles": 1,
+   "fileSec": 92,
+   "checkpointFileSec": 92,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 96
+  },
+  "391407039ced1a3b\t2026-11-09": {
+   "runs": 103,
+   "fileRuns": 409,
+   "distinctFiles": 409,
+   "fileSec": 2881,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 2,
+   "worktrees": 1,
+   "wallSec": 1143
+  },
+  "395337cd538f2654\t2026-11-09": {
+   "runs": 365,
+   "fileRuns": 1526,
+   "distinctFiles": 829,
+   "fileSec": 18591,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 77,
+   "worktrees": 1,
+   "wallSec": 7084
+  },
+  "39ef19400ad4b9ec\t2026-11-05": {
+   "runs": 3,
+   "fileRuns": 178,
+   "distinctFiles": 178,
+   "fileSec": 432,
+   "checkpointFileSec": 432,
+   "nodeTestFileSec": 2,
+   "worktrees": 1,
+   "wallSec": 172
+  },
+  "3a66c28a76ee37dd\t2026-11-06": {
+   "runs": 2,
+   "fileRuns": 18,
+   "distinctFiles": 18,
+   "fileSec": 404,
+   "checkpointFileSec": 404,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 214
+  },
+  "3a73328237f175af\t2026-11-11": {
+   "runs": 2,
+   "fileRuns": 2,
+   "distinctFiles": 2,
+   "fileSec": 0,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 29
+  },
+  "3bbb4966e4ddfdfd\t2026-11-06": {
+   "runs": 34,
+   "fileRuns": 101,
+   "distinctFiles": 89,
+   "fileSec": 1635,
+   "checkpointFileSec": 1578,
+   "nodeTestFileSec": 20,
+   "worktrees": 1,
+   "wallSec": 798
+  },
+  "3cc9102bbeb85b14\t2026-11-07": {
+   "runs": 17,
+   "fileRuns": 324,
+   "distinctFiles": 211,
+   "fileSec": 1435,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 4,
+   "worktrees": 1,
+   "wallSec": 729
+  },
+  "3d9e9bc4c9b435f3\t2026-11-07": {
+   "runs": 28,
+   "fileRuns": 97,
+   "distinctFiles": 57,
+   "fileSec": 433,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 15,
+   "worktrees": 1,
+   "wallSec": 426
+  },
+  "3dc488dbc27edd52\t2026-11-05": {
+   "runs": 33,
+   "fileRuns": 396,
+   "distinctFiles": 393,
+   "fileSec": 2928,
+   "checkpointFileSec": 2928,
+   "nodeTestFileSec": 2,
+   "worktrees": 1,
+   "wallSec": 2050
+  },
+  "3de0daffdd44d0a3\t2026-11-09": {
+   "runs": 2,
+   "fileRuns": 3,
+   "distinctFiles": 3,
+   "fileSec": 225,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 2,
+   "worktrees": 1,
+   "wallSec": 159
+  },
+  "3ede4dca0637d2d0\t2026-11-06": {
+   "runs": 45,
+   "fileRuns": 552,
+   "distinctFiles": 508,
+   "fileSec": 4112,
+   "checkpointFileSec": 2410,
+   "nodeTestFileSec": 20,
+   "worktrees": 1,
+   "wallSec": 3058
+  },
+  "3f62294293827a78\t2026-11-06": {
+   "runs": 6,
+   "fileRuns": 6,
+   "distinctFiles": 6,
+   "fileSec": 476,
+   "checkpointFileSec": 476,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 564
+  },
+  "3ffff863000b3a42\t2026-11-06": {
+   "runs": 1,
+   "fileRuns": 4,
+   "distinctFiles": 4,
+   "fileSec": 88,
+   "checkpointFileSec": 88,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 101
+  },
+  "406c75867b0bee0e\t2026-11-11": {
+   "runs": 570,
+   "fileRuns": 6891,
+   "distinctFiles": 1607,
+   "fileSec": 56350,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 708,
+   "worktrees": 1,
+   "wallSec": 29218
+  },
+  "406c75867b0bee0e\t2026-11-12": {
+   "runs": 14,
+   "fileRuns": 423,
+   "distinctFiles": 422,
+   "fileSec": 1875,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 11,
+   "worktrees": 1,
+   "wallSec": 1635
+  },
+  "40cff83bdfa0e72f\t2026-11-09": {
+   "runs": 127,
+   "fileRuns": 501,
+   "distinctFiles": 501,
+   "fileSec": 2581,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 2,
+   "worktrees": 1,
+   "wallSec": 1111
+  },
+  "43ff237b62dc6e15\t2026-11-05": {
+   "runs": 5,
+   "fileRuns": 17,
+   "distinctFiles": 17,
+   "fileSec": 394,
+   "checkpointFileSec": 346,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 279
+  },
+  "4471368aaf5e163a\t2026-11-05": {
+   "runs": 7,
+   "fileRuns": 7,
+   "distinctFiles": 7,
+   "fileSec": 62,
+   "checkpointFileSec": 62,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 201
+  },
+  "4484c1fc9fb52cbf\t2026-11-10": {
+   "runs": 1,
+   "fileRuns": 1,
+   "distinctFiles": 1,
+   "fileSec": 68,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 71
+  },
+  "45262cf3da7b44c3\t2026-11-10": {
+   "runs": 239,
+   "fileRuns": 2775,
+   "distinctFiles": 839,
+   "fileSec": 20571,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 127,
+   "worktrees": 1,
+   "wallSec": 8470
+  },
+  "454bbe5fd15550b3\t2026-11-07": {
+   "runs": 27,
+   "fileRuns": 177,
+   "distinctFiles": 69,
+   "fileSec": 807,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 9,
+   "worktrees": 1,
+   "wallSec": 332
+  },
+  "459cda46caa93790\t2026-11-09": {
+   "runs": 9,
+   "fileRuns": 10,
+   "distinctFiles": 10,
+   "fileSec": 2,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 1,
+   "worktrees": 1,
+   "wallSec": 33
+  },
+  "468fc0a10b1d36af\t2026-11-06": {
+   "runs": 4,
+   "fileRuns": 309,
+   "distinctFiles": 309,
+   "fileSec": 255,
+   "checkpointFileSec": 255,
+   "nodeTestFileSec": 1,
+   "worktrees": 1,
+   "wallSec": 279
+  },
+  "4699d0e1ebf1a53f\t2026-11-06": {
+   "runs": 4,
+   "fileRuns": 4,
+   "distinctFiles": 4,
+   "fileSec": 198,
+   "checkpointFileSec": 198,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 225
+  },
+  "475a3fba8126a788\t2026-11-09": {
+   "runs": 160,
+   "fileRuns": 706,
+   "distinctFiles": 641,
+   "fileSec": 3800,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 248,
+   "worktrees": 1,
+   "wallSec": 3578
+  },
+  "47988f1a16bec0dc\t2026-11-06": {
+   "runs": 1,
+   "fileRuns": 1,
+   "distinctFiles": 1,
+   "fileSec": 28,
+   "checkpointFileSec": 28,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 48
+  },
+  "47dc2df8a6a6b021\t2026-11-07": {
+   "runs": 6,
+   "fileRuns": 13,
+   "distinctFiles": 11,
+   "fileSec": 125,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 2,
+   "worktrees": 1,
+   "wallSec": 103
+  },
+  "48615e3d12070a2a\t2026-11-10": {
+   "runs": 1,
+   "fileRuns": 2,
+   "distinctFiles": 2,
+   "fileSec": 126,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 119
+  },
+  "491a99d22eb94d55\t2026-11-09": {
+   "runs": 1,
+   "fileRuns": 1,
+   "distinctFiles": 1,
+   "fileSec": 3,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 3,
+   "worktrees": 1,
+   "wallSec": 7
+  },
+  "492ec7432dbc6036\t2026-11-06": {
+   "runs": 3,
+   "fileRuns": 27,
+   "distinctFiles": 27,
+   "fileSec": 197,
+   "checkpointFileSec": 197,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 86
+  },
+  "49b46cd6b0444870\t2026-11-06": {
+   "runs": 21,
+   "fileRuns": 30,
+   "distinctFiles": 30,
+   "fileSec": 310,
+   "checkpointFileSec": 310,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 250
+  },
+  "4abc5bb06e2da008\t2026-11-07": {
+   "runs": 1,
+   "fileRuns": 7,
+   "distinctFiles": 7,
+   "fileSec": 56,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 60
+  },
+  "4bbe8e898cf32b7e\t2026-11-09": {
+   "runs": 2,
+   "fileRuns": 2,
+   "distinctFiles": 2,
+   "fileSec": 16,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 19
+  },
+  "4bfd5d5e454e6d23\t2026-11-07": {
+   "runs": 111,
+   "fileRuns": 114,
+   "distinctFiles": 87,
+   "fileSec": 140,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 140,
+   "worktrees": 1,
+   "wallSec": 877
+  },
+  "4c3b3b9fc8ae6a84\t2026-11-06": {
+   "runs": 4,
+   "fileRuns": 47,
+   "distinctFiles": 47,
+   "fileSec": 237,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 2,
+   "worktrees": 1,
+   "wallSec": 166
+  },
+  "4c4a9a04884bb727\t2026-11-10": {
+   "runs": 115,
+   "fileRuns": 554,
+   "distinctFiles": 542,
+   "fileSec": 2820,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 209,
+   "worktrees": 1,
+   "wallSec": 3120
+  },
+  "4ca378b80dae5c02\t2026-11-06": {
+   "runs": 86,
+   "fileRuns": 838,
+   "distinctFiles": 722,
+   "fileSec": 4954,
+   "checkpointFileSec": 2681,
+   "nodeTestFileSec": 24,
+   "worktrees": 1,
+   "wallSec": 4106
+  },
+  "4d73ece40653d59f\t2026-11-06": {
+   "runs": 2,
+   "fileRuns": 63,
+   "distinctFiles": 63,
+   "fileSec": 1238,
+   "checkpointFileSec": 1238,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 270
+  },
+  "4e8355daf4a43bf6\t2026-11-05": {
+   "runs": 3,
+   "fileRuns": 184,
+   "distinctFiles": 184,
+   "fileSec": 750,
+   "checkpointFileSec": 750,
+   "nodeTestFileSec": 2,
+   "worktrees": 1,
+   "wallSec": 161
+  },
+  "4fb8d0ff2f4c0d15\t2026-11-10": {
+   "runs": 222,
+   "fileRuns": 1612,
+   "distinctFiles": 1193,
+   "fileSec": 24343,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 104,
+   "worktrees": 1,
+   "wallSec": 9921
+  },
+  "4fb8d0ff2f4c0d15\t2026-11-11": {
+   "runs": 284,
+   "fileRuns": 6755,
+   "distinctFiles": 1567,
+   "fileSec": 46347,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 459,
+   "worktrees": 1,
+   "wallSec": 10841
+  },
+  "4fd960adac3baf1a\t2026-11-10": {
+   "runs": 2,
+   "fileRuns": 8,
+   "distinctFiles": 8,
+   "fileSec": 43,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 20
+  },
+  "507c2ccbad16e43f\t2026-11-05": {
+   "runs": 3,
+   "fileRuns": 9,
+   "distinctFiles": 9,
+   "fileSec": 344,
+   "checkpointFileSec": 344,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 153
+  },
+  "50e71b289ef2a04a\t2026-11-07": {
+   "runs": 32,
+   "fileRuns": 421,
+   "distinctFiles": 340,
+   "fileSec": 1297,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 14,
+   "worktrees": 1,
+   "wallSec": 1243
+  },
+  "52d09223e45cb3ef\t2026-11-11": {
+   "runs": 227,
+   "fileRuns": 2951,
+   "distinctFiles": 1527,
+   "fileSec": 31341,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 247,
+   "worktrees": 1,
+   "wallSec": 14003
+  },
+  "52d42b4c948c40e2\t2026-11-05": {
+   "runs": 1,
+   "fileRuns": 47,
+   "distinctFiles": 47,
+   "fileSec": 1107,
+   "checkpointFileSec": 1107,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 251
+  },
+  "52dc1dce2c4a8e0d\t2026-11-06": {
+   "runs": 5,
+   "fileRuns": 41,
+   "distinctFiles": 40,
+   "fileSec": 387,
+   "checkpointFileSec": 386,
+   "nodeTestFileSec": 1,
+   "worktrees": 1,
+   "wallSec": 353
+  },
+  "53392c4968a719b8\t2026-11-10": {
+   "runs": 3,
+   "fileRuns": 8,
+   "distinctFiles": 8,
+   "fileSec": 53,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 53,
+   "worktrees": 1,
+   "wallSec": 56
+  },
+  "5370aea89dbc14bc\t2026-11-11": {
+   "runs": 42,
+   "fileRuns": 501,
+   "distinctFiles": 483,
+   "fileSec": 3996,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 502,
+   "worktrees": 1,
+   "wallSec": 1929
+  },
+  "53aec3067279c45b\t2026-11-11": {
+   "runs": 42,
+   "fileRuns": 683,
+   "distinctFiles": 225,
+   "fileSec": 3922,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 11,
+   "worktrees": 1,
+   "wallSec": 642
+  },
+  "53d17a15883ec94c\t2026-11-07": {
+   "runs": 19,
+   "fileRuns": 119,
+   "distinctFiles": 52,
+   "fileSec": 519,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 7,
+   "worktrees": 1,
+   "wallSec": 402
+  },
+  "53f27079cfe1572e\t2026-11-11": {
+   "runs": 27,
+   "fileRuns": 233,
+   "distinctFiles": 232,
+   "fileSec": 4006,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 2,
+   "worktrees": 1,
+   "wallSec": 2219
+  },
+  "53f321133c633bc0\t2026-11-09": {
+   "runs": 147,
+   "fileRuns": 582,
+   "distinctFiles": 576,
+   "fileSec": 3477,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 4,
+   "worktrees": 1,
+   "wallSec": 1333
+  },
+  "546691e33b82164c\t2026-11-10": {
+   "runs": 64,
+   "fileRuns": 79,
+   "distinctFiles": 79,
+   "fileSec": 73,
+   "checkpointFileSec": 73,
+   "nodeTestFileSec": 34,
+   "worktrees": 1,
+   "wallSec": 192
+  },
+  "549c15645fab29c6\t2026-11-07": {
+   "runs": 12,
+   "fileRuns": 68,
+   "distinctFiles": 52,
+   "fileSec": 455,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 4,
+   "worktrees": 1,
+   "wallSec": 313
+  },
+  "55020ccdfa9ff622\t2026-11-09": {
+   "runs": 104,
+   "fileRuns": 412,
+   "distinctFiles": 411,
+   "fileSec": 2786,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 4,
+   "worktrees": 1,
+   "wallSec": 1106
+  },
+  "5515fd410d32c934\t2026-11-10": {
+   "runs": 40,
+   "fileRuns": 198,
+   "distinctFiles": 190,
+   "fileSec": 1765,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 4,
+   "worktrees": 1,
+   "wallSec": 1184
+  },
+  "5614f4b25d8a2781\t2026-11-10": {
+   "runs": 59,
+   "fileRuns": 849,
+   "distinctFiles": 605,
+   "fileSec": 8644,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 86,
+   "worktrees": 1,
+   "wallSec": 3494
+  },
+  "586ff839dba3aa43\t2026-11-05": {
+   "runs": 3,
+   "fileRuns": 7,
+   "distinctFiles": 7,
+   "fileSec": 261,
+   "checkpointFileSec": 261,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 370
+  },
+  "58acde4bb82dcea8\t2026-11-09": {
+   "runs": 21,
+   "fileRuns": 723,
+   "distinctFiles": 723,
+   "fileSec": 9924,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 5,
+   "worktrees": 1,
+   "wallSec": 2122
+  },
+  "58f08720ebbb6330\t2026-11-06": {
+   "runs": 123,
+   "fileRuns": 2700,
+   "distinctFiles": 1050,
+   "fileSec": 11686,
+   "checkpointFileSec": 109,
+   "nodeTestFileSec": 748,
+   "worktrees": 1,
+   "wallSec": 7880
+  },
+  "5a3df608773ca09f\t2026-11-09": {
+   "runs": 1,
+   "fileRuns": 1,
+   "distinctFiles": 1,
+   "fileSec": 0,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 3
+  },
+  "5a915f2b123082c2\t2026-11-07": {
+   "runs": 494,
+   "fileRuns": 1929,
+   "distinctFiles": 948,
+   "fileSec": 14295,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 46,
+   "worktrees": 1,
+   "wallSec": 5161
+  },
+  "5b8900dd19426c66\t2026-11-11": {
+   "runs": 35,
+   "fileRuns": 47,
+   "distinctFiles": 47,
+   "fileSec": 38,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 12,
+   "worktrees": 1,
+   "wallSec": 783
+  },
+  "5b8900dd19426c66\t2026-11-12": {
+   "runs": 135,
+   "fileRuns": 480,
+   "distinctFiles": 443,
+   "fileSec": 842,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 298,
+   "worktrees": 1,
+   "wallSec": 4395
+  },
+  "5b9d68e97b998d56\t2026-11-10": {
+   "runs": 982,
+   "fileRuns": 2972,
+   "distinctFiles": 1325,
+   "fileSec": 22291,
+   "checkpointFileSec": 9735,
+   "nodeTestFileSec": 3188,
+   "worktrees": 1,
+   "wallSec": 13983
+  },
+  "5d40f52e567d899e\t2026-11-10": {
+   "runs": 6,
+   "fileRuns": 20,
+   "distinctFiles": 19,
+   "fileSec": 230,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 2,
+   "worktrees": 1,
+   "wallSec": 104
+  },
+  "5db9fa3b5933177e\t2026-11-11": {
+   "runs": 138,
+   "fileRuns": 504,
+   "distinctFiles": 394,
+   "fileSec": 10413,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 16,
+   "worktrees": 1,
+   "wallSec": 4359
+  },
+  "5ddd3b6082216c54\t2026-11-06": {
+   "runs": 1,
+   "fileRuns": 7,
+   "distinctFiles": 7,
+   "fileSec": 32,
+   "checkpointFileSec": 32,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 78
+  },
+  "5e0a37aacf093b45\t2026-11-05": {
+   "runs": 26,
+   "fileRuns": 91,
+   "distinctFiles": 91,
+   "fileSec": 573,
+   "checkpointFileSec": 570,
+   "nodeTestFileSec": 3,
+   "worktrees": 1,
+   "wallSec": 467
+  },
+  "60b7f80f5146c710\t2026-11-10": {
+   "runs": 41,
+   "fileRuns": 151,
+   "distinctFiles": 146,
+   "fileSec": 2094,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 6,
+   "worktrees": 1,
+   "wallSec": 995
+  },
+  "616bcf31cb27cc33\t2026-11-12": {
+   "runs": 167,
+   "fileRuns": 258,
+   "distinctFiles": 108,
+   "fileSec": 1009,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 578,
+   "worktrees": 1,
+   "wallSec": 3534
+  },
+  "618feadc324e0a5e\t2026-11-09": {
+   "runs": 264,
+   "fileRuns": 3824,
+   "distinctFiles": 1304,
+   "fileSec": 35925,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 729,
+   "worktrees": 1,
+   "wallSec": 15687
+  },
+  "618feadc324e0a5e\t2026-11-10": {
+   "runs": 16,
+   "fileRuns": 116,
+   "distinctFiles": 104,
+   "fileSec": 2382,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 800
+  },
+  "628f174cdc8c24fa\t2026-11-10": {
+   "runs": 14,
+   "fileRuns": 56,
+   "distinctFiles": 56,
+   "fileSec": 90,
+   "checkpointFileSec": 90,
+   "nodeTestFileSec": 6,
+   "worktrees": 1,
+   "wallSec": 129
+  },
+  "6293cb1b578d1100\t2026-11-07": {
+   "runs": 2,
+   "fileRuns": 5,
+   "distinctFiles": 5,
+   "fileSec": 12,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 8
+  },
+  "6328fa9f19be5a43\t2026-11-05": {
+   "runs": 1,
+   "fileRuns": 1,
+   "distinctFiles": 1,
+   "fileSec": 44,
+   "checkpointFileSec": 44,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 57
+  },
+  "63436474a0033802\t2026-11-07": {
+   "runs": 1,
+   "fileRuns": 2,
+   "distinctFiles": 2,
+   "fileSec": 2,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 2
+  },
+  "65d383f2f7070735\t2026-11-06": {
+   "runs": 10,
+   "fileRuns": 79,
+   "distinctFiles": 79,
+   "fileSec": 806,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 3,
+   "worktrees": 1,
+   "wallSec": 672
+  },
+  "675c7bfb5de4579c\t2026-11-05": {
+   "runs": 3,
+   "fileRuns": 83,
+   "distinctFiles": 83,
+   "fileSec": 2398,
+   "checkpointFileSec": 2398,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 485
+  },
+  "67d8e5a1b3610a91\t2026-11-06": {
+   "runs": 1,
+   "fileRuns": 1,
+   "distinctFiles": 1,
+   "fileSec": 64,
+   "checkpointFileSec": 64,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 223
+  },
+  "67eda728b66d2f33\t2026-11-09": {
+   "runs": 43,
+   "fileRuns": 253,
+   "distinctFiles": 207,
+   "fileSec": 1662,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 8,
+   "worktrees": 1,
+   "wallSec": 909
+  },
+  "67ef21cc5bf662c6\t2026-11-07": {
+   "runs": 10,
+   "fileRuns": 81,
+   "distinctFiles": 67,
+   "fileSec": 400,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 3,
+   "worktrees": 1,
+   "wallSec": 150
+  },
+  "685d749a39069815\t2026-11-05": {
+   "runs": 3,
+   "fileRuns": 61,
+   "distinctFiles": 61,
+   "fileSec": 147,
+   "checkpointFileSec": 147,
+   "nodeTestFileSec": 2,
+   "worktrees": 1,
+   "wallSec": 198
+  },
+  "68a0bb168f740cf8\t2026-11-06": {
+   "runs": 2,
+   "fileRuns": 15,
+   "distinctFiles": 15,
+   "fileSec": 213,
+   "checkpointFileSec": 213,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 222
+  },
+  "68e454ae856531e1\t2026-11-11": {
+   "runs": 145,
+   "fileRuns": 1062,
+   "distinctFiles": 659,
+   "fileSec": 9249,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 486,
+   "worktrees": 1,
+   "wallSec": 7032
+  },
+  "695853876f885bd6\t2026-11-09": {
+   "runs": 15,
+   "fileRuns": 179,
+   "distinctFiles": 170,
+   "fileSec": 876,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 4,
+   "worktrees": 1,
+   "wallSec": 678
+  },
+  "6c0e1aef56832d8d\t2026-11-11": {
+   "runs": 2,
+   "fileRuns": 2,
+   "distinctFiles": 2,
+   "fileSec": 11,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 11,
+   "worktrees": 1,
+   "wallSec": 16
+  },
+  "6d501435a7cbea36\t2026-11-11": {
+   "runs": 75,
+   "fileRuns": 76,
+   "distinctFiles": 76,
+   "fileSec": 28,
+   "checkpointFileSec": 28,
+   "nodeTestFileSec": 23,
+   "worktrees": 1,
+   "wallSec": 210
+  },
+  "6da6e96bc3ab0503\t2026-11-06": {
+   "runs": 5,
+   "fileRuns": 58,
+   "distinctFiles": 58,
+   "fileSec": 359,
+   "checkpointFileSec": 105,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 423
+  },
+  "6dbaa813d8729b87\t2026-11-05": {
+   "runs": 3,
+   "fileRuns": 4,
+   "distinctFiles": 4,
+   "fileSec": 39,
+   "checkpointFileSec": 18,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 189
+  },
+  "6dbc7d4a1ecc2198\t2026-11-12": {
+   "runs": 1,
+   "fileRuns": 3,
+   "distinctFiles": 3,
+   "fileSec": 57,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 201
+  },
+  "6eb72e1f6ba6b0d5\t2026-11-05": {
+   "runs": 2,
+   "fileRuns": 52,
+   "distinctFiles": 52,
+   "fileSec": 99,
+   "checkpointFileSec": 99,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 114
+  },
+  "6ec59c726c775cb8\t2026-11-05": {
+   "runs": 6,
+   "fileRuns": 21,
+   "distinctFiles": 21,
+   "fileSec": 242,
+   "checkpointFileSec": 242,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 86
+  },
+  "6ed1e14de387b3f7\t2026-11-06": {
+   "runs": 452,
+   "fileRuns": 1708,
+   "distinctFiles": 1486,
+   "fileSec": 17973,
+   "checkpointFileSec": 16060,
+   "nodeTestFileSec": 765,
+   "worktrees": 1,
+   "wallSec": 8012
+  },
+  "6f3d527319cf3876\t2026-11-07": {
+   "runs": 80,
+   "fileRuns": 242,
+   "distinctFiles": 36,
+   "fileSec": 1801,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 48,
+   "worktrees": 1,
+   "wallSec": 1261
+  },
+  "6f971fcddb246b79\t2026-11-06": {
+   "runs": 1,
+   "fileRuns": 12,
+   "distinctFiles": 12,
+   "fileSec": 53,
+   "checkpointFileSec": 53,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 72
+  },
+  "6fc255dfbf36e84a\t2026-11-11": {
+   "runs": 8,
+   "fileRuns": 28,
+   "distinctFiles": 27,
+   "fileSec": 2387,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 1751
+  },
+  "700546e249c97fc5\t2026-11-10": {
+   "runs": 115,
+   "fileRuns": 390,
+   "distinctFiles": 358,
+   "fileSec": 3593,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 170,
+   "worktrees": 1,
+   "wallSec": 2444
+  },
+  "700546e249c97fc5\t2026-11-11": {
+   "runs": 165,
+   "fileRuns": 1777,
+   "distinctFiles": 1776,
+   "fileSec": 8803,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 579,
+   "worktrees": 1,
+   "wallSec": 3028
+  },
+  "70497851ad3cb34d\t2026-11-06": {
+   "runs": 538,
+   "fileRuns": 2679,
+   "distinctFiles": 1357,
+   "fileSec": 35986,
+   "checkpointFileSec": 24532,
+   "nodeTestFileSec": 979,
+   "worktrees": 1,
+   "wallSec": 18505
+  },
+  "709f660245db86b0\t2026-11-05": {
+   "runs": 10,
+   "fileRuns": 10,
+   "distinctFiles": 10,
+   "fileSec": 378,
+   "checkpointFileSec": 378,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 392
+  },
+  "712e6f1056e4a4d3\t2026-11-09": {
+   "runs": 2,
+   "fileRuns": 9,
+   "distinctFiles": 9,
+   "fileSec": 257,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 263
+  },
+  "732577893b2deda4\t2026-11-05": {
+   "runs": 3,
+   "fileRuns": 141,
+   "distinctFiles": 141,
+   "fileSec": 694,
+   "checkpointFileSec": 694,
+   "nodeTestFileSec": 1,
+   "worktrees": 1,
+   "wallSec": 195
+  },
+  "736d3d42fb5282c4\t2026-11-06": {
+   "runs": 14,
+   "fileRuns": 79,
+   "distinctFiles": 79,
+   "fileSec": 2284,
+   "checkpointFileSec": 2284,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 638
+  },
+  "73ae290078bbf2e6\t2026-11-06": {
+   "runs": 2,
+   "fileRuns": 38,
+   "distinctFiles": 38,
+   "fileSec": 368,
+   "checkpointFileSec": 368,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 315
+  },
+  "742807b9a43b80e4\t2026-11-06": {
+   "runs": 4,
+   "fileRuns": 278,
+   "distinctFiles": 278,
+   "fileSec": 1087,
+   "checkpointFileSec": 1087,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 437
+  },
+  "7510fbd49e2adcf9\t2026-11-06": {
+   "runs": 1,
+   "fileRuns": 116,
+   "distinctFiles": 116,
+   "fileSec": 280,
+   "checkpointFileSec": 280,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 436
+  },
+  "759b1f30a90a0a42\t2026-11-06": {
+   "runs": 24,
+   "fileRuns": 140,
+   "distinctFiles": 66,
+   "fileSec": 1209,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 13,
+   "worktrees": 1,
+   "wallSec": 500
+  },
+  "759b1f30a90a0a42\t2026-11-07": {
+   "runs": 49,
+   "fileRuns": 241,
+   "distinctFiles": 67,
+   "fileSec": 1576,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 37,
+   "worktrees": 1,
+   "wallSec": 759
+  },
+  "75bed8eeb22fc5e5\t2026-11-06": {
+   "runs": 98,
+   "fileRuns": 104,
+   "distinctFiles": 87,
+   "fileSec": 172,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 172,
+   "worktrees": 1,
+   "wallSec": 447
+  },
+  "75f4b76cbcb08662\t2026-11-09": {
+   "runs": 220,
+   "fileRuns": 1094,
+   "distinctFiles": 1046,
+   "fileSec": 4712,
+   "checkpointFileSec": 4680,
+   "nodeTestFileSec": 444,
+   "worktrees": 1,
+   "wallSec": 2870
+  },
+  "7616079808e22d7a\t2026-11-10": {
+   "runs": 4,
+   "fileRuns": 13,
+   "distinctFiles": 11,
+   "fileSec": 219,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 181
+  },
+  "766f7a8383f1f061\t2026-11-10": {
+   "runs": 175,
+   "fileRuns": 677,
+   "distinctFiles": 535,
+   "fileSec": 14064,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 8,
+   "worktrees": 1,
+   "wallSec": 5807
+  },
+  "76c287c3f3693a67\t2026-11-05": {
+   "runs": 1,
+   "fileRuns": 7,
+   "distinctFiles": 7,
+   "fileSec": 137,
+   "checkpointFileSec": 137,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 169
+  },
+  "772398a78c5779db\t2026-11-05": {
+   "runs": 9,
+   "fileRuns": 191,
+   "distinctFiles": 191,
+   "fileSec": 175,
+   "checkpointFileSec": 104,
+   "nodeTestFileSec": 10,
+   "worktrees": 1,
+   "wallSec": 202
+  },
+  "77c06d6b530c114c\t2026-11-06": {
+   "runs": 2,
+   "fileRuns": 16,
+   "distinctFiles": 16,
+   "fileSec": 167,
+   "checkpointFileSec": 167,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 184
+  },
+  "77fac1d2ef9afeee\t2026-11-10": {
+   "runs": 46,
+   "fileRuns": 137,
+   "distinctFiles": 120,
+   "fileSec": 2180,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 8,
+   "worktrees": 1,
+   "wallSec": 1519
+  },
+  "780e9aa63cf9dd50\t2026-11-06": {
+   "runs": 127,
+   "fileRuns": 411,
+   "distinctFiles": 408,
+   "fileSec": 7717,
+   "checkpointFileSec": 7717,
+   "nodeTestFileSec": 3,
+   "worktrees": 1,
+   "wallSec": 6370
+  },
+  "7860b49a4cf34746\t2026-11-06": {
+   "runs": 3,
+   "fileRuns": 286,
+   "distinctFiles": 286,
+   "fileSec": 1667,
+   "checkpointFileSec": 1667,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 425
+  },
+  "7905c8357b9e9cad\t2026-11-09": {
+   "runs": 20,
+   "fileRuns": 52,
+   "distinctFiles": 24,
+   "fileSec": 351,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 13,
+   "worktrees": 1,
+   "wallSec": 343
+  },
+  "7909d1a456abdf88\t2026-11-11": {
+   "runs": 7,
+   "fileRuns": 23,
+   "distinctFiles": 23,
+   "fileSec": 307,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 14,
+   "worktrees": 1,
+   "wallSec": 750
+  },
+  "7a0786d5187dfc5a\t2026-11-06": {
+   "runs": 1,
+   "fileRuns": 19,
+   "distinctFiles": 19,
+   "fileSec": 408,
+   "checkpointFileSec": 408,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 160
+  },
+  "7b1f0e8392a1c3fa\t2026-11-09": {
+   "runs": 108,
+   "fileRuns": 429,
+   "distinctFiles": 429,
+   "fileSec": 4503,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 2,
+   "worktrees": 1,
+   "wallSec": 1589
+  },
+  "7d424c10ef1198a3\t2026-11-06": {
+   "runs": 1,
+   "fileRuns": 3,
+   "distinctFiles": 3,
+   "fileSec": 131,
+   "checkpointFileSec": 131,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 135
+  },
+  "7e9c18afd9960a6f\t2026-11-05": {
+   "runs": 2,
+   "fileRuns": 2,
+   "distinctFiles": 2,
+   "fileSec": 141,
+   "checkpointFileSec": 141,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 159
+  },
+  "7f734e6617df391a\t2026-11-11": {
+   "runs": 4,
+   "fileRuns": 12,
+   "distinctFiles": 12,
+   "fileSec": 113,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 43
+  },
+  "7f7fa93f9b3df86a\t2026-11-05": {
+   "runs": 1,
+   "fileRuns": 90,
+   "distinctFiles": 90,
+   "fileSec": 259,
+   "checkpointFileSec": 259,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 159
+  },
+  "7f9dc1f5a363c383\t2026-11-06": {
+   "runs": 5,
+   "fileRuns": 6,
+   "distinctFiles": 6,
+   "fileSec": 44,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 2,
+   "worktrees": 1,
+   "wallSec": 54
+  },
+  "7f9dc1f5a363c383\t2026-11-07": {
+   "runs": 945,
+   "fileRuns": 9670,
+   "distinctFiles": 1408,
+   "fileSec": 84205,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 930,
+   "worktrees": 1,
+   "wallSec": 25846
+  },
+  "81822c8bffbc68a7\t2026-11-06": {
+   "runs": 11,
+   "fileRuns": 41,
+   "distinctFiles": 32,
+   "fileSec": 356,
+   "checkpointFileSec": 343,
+   "nodeTestFileSec": 1,
+   "worktrees": 1,
+   "wallSec": 173
+  },
+  "81aa2e09b198a605\t2026-11-07": {
+   "runs": 29,
+   "fileRuns": 84,
+   "distinctFiles": 57,
+   "fileSec": 460,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 6,
+   "worktrees": 1,
+   "wallSec": 256
+  },
+  "8232ce553489cea1\t2026-11-06": {
+   "runs": 1,
+   "fileRuns": 1,
+   "distinctFiles": 1,
+   "fileSec": 12,
+   "checkpointFileSec": 12,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 31
+  },
+  "83379b8a3634234e\t2026-11-06": {
+   "runs": 16,
+   "fileRuns": 187,
+   "distinctFiles": 187,
+   "fileSec": 91,
+   "checkpointFileSec": 91,
+   "nodeTestFileSec": 9,
+   "worktrees": 1,
+   "wallSec": 165
+  },
+  "83eb564f5a595089\t2026-11-12": {
+   "runs": 1,
+   "fileRuns": 1,
+   "distinctFiles": 1,
+   "fileSec": 8,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 14
+  },
+  "8437c15320c36795\t2026-11-12": {
+   "runs": 68,
+   "fileRuns": 651,
+   "distinctFiles": 529,
+   "fileSec": 1856,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 1617,
+   "worktrees": 1,
+   "wallSec": 1841
+  },
+  "847737e330d2d47e\t2026-11-10": {
+   "runs": 371,
+   "fileRuns": 2503,
+   "distinctFiles": 946,
+   "fileSec": 18480,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 238,
+   "worktrees": 1,
+   "wallSec": 8143
+  },
+  "84ff66db04abb39b\t2026-11-05": {
+   "runs": 1,
+   "fileRuns": 37,
+   "distinctFiles": 37,
+   "fileSec": 900,
+   "checkpointFileSec": 900,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 267
+  },
+  "8512336bb4a56de9\t2026-11-07": {
+   "runs": 359,
+   "fileRuns": 1782,
+   "distinctFiles": 724,
+   "fileSec": 11566,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 15,
+   "worktrees": 1,
+   "wallSec": 4058
+  },
+  "8546060a32f0e40a\t2026-11-06": {
+   "runs": 1,
+   "fileRuns": 10,
+   "distinctFiles": 10,
+   "fileSec": 128,
+   "checkpointFileSec": 128,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 134
+  },
+  "860c48af10f1ce3a\t2026-11-10": {
+   "runs": 46,
+   "fileRuns": 172,
+   "distinctFiles": 163,
+   "fileSec": 3157,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 2,
+   "worktrees": 1,
+   "wallSec": 1526
+  },
+  "88160040f80d70f9\t2026-11-07": {
+   "runs": 1,
+   "fileRuns": 1,
+   "distinctFiles": 1,
+   "fileSec": 1,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 3
+  },
+  "888db0a9b57fa7a2\t2026-11-12": {
+   "runs": 723,
+   "fileRuns": 2335,
+   "distinctFiles": 1447,
+   "fileSec": 16945,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 1214,
+   "worktrees": 1,
+   "wallSec": 13390
+  },
+  "8953d098813c9047\t2026-11-06": {
+   "runs": 35,
+   "fileRuns": 198,
+   "distinctFiles": 198,
+   "fileSec": 401,
+   "checkpointFileSec": 401,
+   "nodeTestFileSec": 73,
+   "worktrees": 1,
+   "wallSec": 524
+  },
+  "897b67e64d34f0b2\t2026-11-06": {
+   "runs": 1,
+   "fileRuns": 1,
+   "distinctFiles": 1,
+   "fileSec": 2,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 3
+  },
+  "8a7457825f3eff56\t2026-11-09": {
+   "runs": 110,
+   "fileRuns": 432,
+   "distinctFiles": 432,
+   "fileSec": 2710,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 2,
+   "worktrees": 1,
+   "wallSec": 1174
+  },
+  "8b1449aba94a715b\t2026-11-11": {
+   "runs": 63,
+   "fileRuns": 326,
+   "distinctFiles": 325,
+   "fileSec": 2875,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 2,
+   "worktrees": 1,
+   "wallSec": 1486
+  },
+  "8b3141e73d673304\t2026-11-07": {
+   "runs": 11,
+   "fileRuns": 46,
+   "distinctFiles": 23,
+   "fileSec": 188,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 4,
+   "worktrees": 1,
+   "wallSec": 133
+  },
+  "8be67f67705f9ca5\t2026-11-06": {
+   "runs": 11,
+   "fileRuns": 16,
+   "distinctFiles": 16,
+   "fileSec": 138,
+   "checkpointFileSec": 64,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 191
+  },
+  "8c179b7f19d5b9a6\t2026-11-05": {
+   "runs": 1,
+   "fileRuns": 1,
+   "distinctFiles": 1,
+   "fileSec": 28,
+   "checkpointFileSec": 28,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 28
+  },
+  "8caa8732b86a6c28\t2026-11-09": {
+   "runs": 186,
+   "fileRuns": 738,
+   "distinctFiles": 738,
+   "fileSec": 6767,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 4,
+   "worktrees": 1,
+   "wallSec": 2531
+  },
+  "8e60ff70afd54199\t2026-11-10": {
+   "runs": 1,
+   "fileRuns": 6,
+   "distinctFiles": 6,
+   "fileSec": 159,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 96
+  },
+  "8e9a9edaacec1f29\t2026-11-06": {
+   "runs": 612,
+   "fileRuns": 2740,
+   "distinctFiles": 948,
+   "fileSec": 16716,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 167,
+   "worktrees": 1,
+   "wallSec": 7066
+  },
+  "8e9a9edaacec1f29\t2026-11-07": {
+   "runs": 754,
+   "fileRuns": 4546,
+   "distinctFiles": 1138,
+   "fileSec": 26606,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 64,
+   "worktrees": 1,
+   "wallSec": 9419
+  },
+  "8ee33ff04309c461\t2026-11-12": {
+   "runs": 19,
+   "fileRuns": 51,
+   "distinctFiles": 49,
+   "fileSec": 362,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 5,
+   "worktrees": 1,
+   "wallSec": 260
+  },
+  "8f66990880ec3d67\t2026-11-05": {
+   "runs": 89,
+   "fileRuns": 646,
+   "distinctFiles": 506,
+   "fileSec": 2160,
+   "checkpointFileSec": 1732,
+   "nodeTestFileSec": 33,
+   "worktrees": 1,
+   "wallSec": 1126
+  },
+  "8fc3ef0125b42bb7\t2026-11-09": {
+   "runs": 513,
+   "fileRuns": 3277,
+   "distinctFiles": 768,
+   "fileSec": 20582,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 97,
+   "worktrees": 1,
+   "wallSec": 7675
+  },
+  "8fc3ef0125b42bb7\t2026-11-10": {
+   "runs": 165,
+   "fileRuns": 2741,
+   "distinctFiles": 794,
+   "fileSec": 22267,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 35,
+   "worktrees": 1,
+   "wallSec": 6528
+  },
+  "906f016d15e89c29\t2026-11-10": {
+   "runs": 23,
+   "fileRuns": 182,
+   "distinctFiles": 159,
+   "fileSec": 443,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 10,
+   "worktrees": 1,
+   "wallSec": 366
+  },
+  "914b7aebcf041bc1\t2026-11-07": {
+   "runs": 25,
+   "fileRuns": 102,
+   "distinctFiles": 52,
+   "fileSec": 819,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 8,
+   "worktrees": 1,
+   "wallSec": 425
+  },
+  "915c8ce6f3a953b2\t2026-11-06": {
+   "runs": 3,
+   "fileRuns": 20,
+   "distinctFiles": 20,
+   "fileSec": 170,
+   "checkpointFileSec": 170,
+   "nodeTestFileSec": 5,
+   "worktrees": 1,
+   "wallSec": 196
+  },
+  "91e27966a4e44d45\t2026-11-06": {
+   "runs": 1,
+   "fileRuns": 200,
+   "distinctFiles": 200,
+   "fileSec": 138,
+   "checkpointFileSec": 138,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 217
+  },
+  "92989a67a69415b3\t2026-11-07": {
+   "runs": 226,
+   "fileRuns": 1872,
+   "distinctFiles": 1641,
+   "fileSec": 12695,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 754,
+   "worktrees": 1,
+   "wallSec": 5500
+  },
+  "92ab57630d3c032c\t2026-11-10": {
+   "runs": 13,
+   "fileRuns": 44,
+   "distinctFiles": 34,
+   "fileSec": 892,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 8,
+   "worktrees": 1,
+   "wallSec": 442
+  },
+  "9525b0fd1dcf427b\t2026-11-10": {
+   "runs": 10,
+   "fileRuns": 779,
+   "distinctFiles": 745,
+   "fileSec": 2266,
+   "checkpointFileSec": 2266,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 1089
+  },
+  "955ea177e9fc6f18\t2026-11-06": {
+   "runs": 24,
+   "fileRuns": 887,
+   "distinctFiles": 614,
+   "fileSec": 6665,
+   "checkpointFileSec": 6660,
+   "nodeTestFileSec": 7,
+   "worktrees": 1,
+   "wallSec": 2150
+  },
+  "988a6e029ecdfb3d\t2026-11-05": {
+   "runs": 2,
+   "fileRuns": 248,
+   "distinctFiles": 248,
+   "fileSec": 542,
+   "checkpointFileSec": 542,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 141
+  },
+  "9890723e2fb925a9\t2026-11-05": {
+   "runs": 2,
+   "fileRuns": 54,
+   "distinctFiles": 54,
+   "fileSec": 121,
+   "checkpointFileSec": 121,
+   "nodeTestFileSec": 2,
+   "worktrees": 1,
+   "wallSec": 151
+  },
+  "98c477c08858139d\t2026-11-05": {
+   "runs": 4,
+   "fileRuns": 120,
+   "distinctFiles": 120,
+   "fileSec": 454,
+   "checkpointFileSec": 454,
+   "nodeTestFileSec": 2,
+   "worktrees": 1,
+   "wallSec": 304
+  },
+  "9948df95704e6f8e\t2026-11-06": {
+   "runs": 4,
+   "fileRuns": 82,
+   "distinctFiles": 82,
+   "fileSec": 637,
+   "checkpointFileSec": 422,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 647
+  },
+  "99491def056abee0\t2026-11-06": {
+   "runs": 16,
+   "fileRuns": 16,
+   "distinctFiles": 16,
+   "fileSec": 790,
+   "checkpointFileSec": 790,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 941
+  },
+  "9aafdea88d0278d7\t2026-11-05": {
+   "runs": 290,
+   "fileRuns": 1631,
+   "distinctFiles": 1537,
+   "fileSec": 11054,
+   "checkpointFileSec": 6230,
+   "nodeTestFileSec": 379,
+   "worktrees": 1,
+   "wallSec": 6655
+  },
+  "9b92fda3f2e18a7c\t2026-11-06": {
+   "runs": 239,
+   "fileRuns": 2126,
+   "distinctFiles": 1252,
+   "fileSec": 26736,
+   "checkpointFileSec": 13547,
+   "nodeTestFileSec": 313,
+   "worktrees": 1,
+   "wallSec": 18101
+  },
+  "9b92fda3f2e18a7c\t2026-11-07": {
+   "runs": 23,
+   "fileRuns": 941,
+   "distinctFiles": 939,
+   "fileSec": 8242,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 10,
+   "worktrees": 1,
+   "wallSec": 964
+  },
+  "9b92fda3f2e18a7c\t2026-11-09": {
+   "runs": 3,
+   "fileRuns": 7,
+   "distinctFiles": 7,
+   "fileSec": 27,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 2,
+   "worktrees": 1,
+   "wallSec": 30
+  },
+  "9b92fda3f2e18a7c\t2026-11-11": {
+   "runs": 419,
+   "fileRuns": 3631,
+   "distinctFiles": 1701,
+   "fileSec": 21361,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 512,
+   "worktrees": 1,
+   "wallSec": 13530
+  },
+  "9b92fda3f2e18a7c\t2026-11-12": {
+   "runs": 38,
+   "fileRuns": 183,
+   "distinctFiles": 182,
+   "fileSec": 17564,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 6997
+  },
+  "9c28162b06b7abb0\t2026-11-05": {
+   "runs": 3,
+   "fileRuns": 3,
+   "distinctFiles": 3,
+   "fileSec": 27,
+   "checkpointFileSec": 27,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 65
+  },
+  "9c9f8afb275710af\t2026-11-10": {
+   "runs": 78,
+   "fileRuns": 288,
+   "distinctFiles": 190,
+   "fileSec": 2284,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 10,
+   "worktrees": 1,
+   "wallSec": 889
+  },
+  "9e8695ab489da259\t2026-11-06": {
+   "runs": 4,
+   "fileRuns": 398,
+   "distinctFiles": 398,
+   "fileSec": 1954,
+   "checkpointFileSec": 1954,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 379
+  },
+  "9ebca61e5386853d\t2026-11-05": {
+   "runs": 2,
+   "fileRuns": 38,
+   "distinctFiles": 38,
+   "fileSec": 159,
+   "checkpointFileSec": 159,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 123
+  },
+  "9eeac5281b841366\t2026-11-10": {
+   "runs": 60,
+   "fileRuns": 222,
+   "distinctFiles": 221,
+   "fileSec": 2951,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 780,
+   "worktrees": 1,
+   "wallSec": 2023
+  },
+  "a13cd09a68ff70b6\t2026-11-12": {
+   "runs": 112,
+   "fileRuns": 173,
+   "distinctFiles": 151,
+   "fileSec": 359,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 77,
+   "worktrees": 1,
+   "wallSec": 491
+  },
+  "a1449fae3dbbf103\t2026-11-05": {
+   "runs": 79,
+   "fileRuns": 672,
+   "distinctFiles": 643,
+   "fileSec": 902,
+   "checkpointFileSec": 892,
+   "nodeTestFileSec": 28,
+   "worktrees": 1,
+   "wallSec": 828
+  },
+  "a14bf2fac9631a48\t2026-11-09": {
+   "runs": 120,
+   "fileRuns": 559,
+   "distinctFiles": 308,
+   "fileSec": 8641,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 53,
+   "worktrees": 1,
+   "wallSec": 3782
+  },
+  "a211cced82ffb0c9\t2026-11-10": {
+   "runs": 29,
+   "fileRuns": 639,
+   "distinctFiles": 637,
+   "fileSec": 5436,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 3,
+   "worktrees": 1,
+   "wallSec": 2010
+  },
+  "a2551b88e8dadcc2\t2026-11-06": {
+   "runs": 103,
+   "fileRuns": 714,
+   "distinctFiles": 641,
+   "fileSec": 10180,
+   "checkpointFileSec": 5711,
+   "nodeTestFileSec": 71,
+   "worktrees": 1,
+   "wallSec": 4455
+  },
+  "a27c15e841343d11\t2026-11-09": {
+   "runs": 209,
+   "fileRuns": 1092,
+   "distinctFiles": 739,
+   "fileSec": 9628,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 4,
+   "worktrees": 1,
+   "wallSec": 3501
+  },
+  "a2998b33dbc5f4ff\t2026-11-09": {
+   "runs": 102,
+   "fileRuns": 695,
+   "distinctFiles": 695,
+   "fileSec": 6772,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 2,
+   "worktrees": 1,
+   "wallSec": 2533
+  },
+  "a2998b33dbc5f4ff\t2026-11-10": {
+   "runs": 1,
+   "fileRuns": 4,
+   "distinctFiles": 4,
+   "fileSec": 77,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 92
+  },
+  "a2b7a0a096bac66c\t2026-11-06": {
+   "runs": 3,
+   "fileRuns": 21,
+   "distinctFiles": 21,
+   "fileSec": 222,
+   "checkpointFileSec": 222,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 152
+  },
+  "a2f923222be7674e\t2026-11-11": {
+   "runs": 29,
+   "fileRuns": 80,
+   "distinctFiles": 67,
+   "fileSec": 735,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 24,
+   "worktrees": 1,
+   "wallSec": 602
+  },
+  "a3004f6500c9a39f\t2026-11-05": {
+   "runs": 2,
+   "fileRuns": 11,
+   "distinctFiles": 11,
+   "fileSec": 237,
+   "checkpointFileSec": 237,
+   "nodeTestFileSec": 2,
+   "worktrees": 1,
+   "wallSec": 269
+  },
+  "a31c77f149935e44\t2026-11-06": {
+   "runs": 2,
+   "fileRuns": 80,
+   "distinctFiles": 80,
+   "fileSec": 128,
+   "checkpointFileSec": 128,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 160
+  },
+  "a447d00b9f0a8eb0\t2026-11-10": {
+   "runs": 527,
+   "fileRuns": 6126,
+   "distinctFiles": 864,
+   "fileSec": 39898,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 153,
+   "worktrees": 1,
+   "wallSec": 9276
+  },
+  "a47acd75898ab435\t2026-11-06": {
+   "runs": 2,
+   "fileRuns": 53,
+   "distinctFiles": 53,
+   "fileSec": 1040,
+   "checkpointFileSec": 1040,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 292
+  },
+  "a72b4c611170104c\t2026-11-06": {
+   "runs": 1,
+   "fileRuns": 1,
+   "distinctFiles": 1,
+   "fileSec": 7,
+   "checkpointFileSec": 7,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 33
+  },
+  "a8cd5a6886ba357e\t2026-11-07": {
+   "runs": 1,
+   "fileRuns": 7,
+   "distinctFiles": 7,
+   "fileSec": 15,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 5
+  },
+  "a9108639f91b5e94\t2026-11-10": {
+   "runs": 88,
+   "fileRuns": 567,
+   "distinctFiles": 504,
+   "fileSec": 3139,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 82,
+   "worktrees": 1,
+   "wallSec": 1548
+  },
+  "a98bcc297d928c66\t2026-11-05": {
+   "runs": 1,
+   "fileRuns": 43,
+   "distinctFiles": 43,
+   "fileSec": 127,
+   "checkpointFileSec": 127,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 259
+  },
+  "a9ee5a7b3593fe6a\t2026-11-10": {
+   "runs": 5,
+   "fileRuns": 18,
+   "distinctFiles": 18,
+   "fileSec": 1424,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 8,
+   "worktrees": 1,
+   "wallSec": 745
+  },
+  "a9ee5a7b3593fe6a\t2026-11-11": {
+   "runs": 6,
+   "fileRuns": 18,
+   "distinctFiles": 18,
+   "fileSec": 1102,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 3,
+   "worktrees": 1,
+   "wallSec": 678
+  },
+  "aa9e28ed1f7860bb\t2026-11-06": {
+   "runs": 5,
+   "fileRuns": 5,
+   "distinctFiles": 5,
+   "fileSec": 259,
+   "checkpointFileSec": 259,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 264
+  },
+  "aac637cda583155d\t2026-11-06": {
+   "runs": 150,
+   "fileRuns": 157,
+   "distinctFiles": 87,
+   "fileSec": 190,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 190,
+   "worktrees": 1,
+   "wallSec": 783
+  },
+  "ab39fba4e32268d4\t2026-11-06": {
+   "runs": 4,
+   "fileRuns": 332,
+   "distinctFiles": 332,
+   "fileSec": 337,
+   "checkpointFileSec": 337,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 483
+  },
+  "abc48d6d298f83b4\t2026-11-10": {
+   "runs": 43,
+   "fileRuns": 514,
+   "distinctFiles": 493,
+   "fileSec": 4332,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 335,
+   "worktrees": 1,
+   "wallSec": 3412
+  },
+  "ac3d211e888ae6a5\t2026-11-10": {
+   "runs": 24,
+   "fileRuns": 305,
+   "distinctFiles": 305,
+   "fileSec": 4547,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 59,
+   "worktrees": 1,
+   "wallSec": 2481
+  },
+  "adae64b07879c623\t2026-11-06": {
+   "runs": 163,
+   "fileRuns": 762,
+   "distinctFiles": 453,
+   "fileSec": 16675,
+   "checkpointFileSec": 8932,
+   "nodeTestFileSec": 53,
+   "worktrees": 1,
+   "wallSec": 8225
+  },
+  "add0a981dbdd98e4\t2026-11-10": {
+   "runs": 9,
+   "fileRuns": 208,
+   "distinctFiles": 208,
+   "fileSec": 428,
+   "checkpointFileSec": 428,
+   "nodeTestFileSec": 20,
+   "worktrees": 1,
+   "wallSec": 218
+  },
+  "adf77d6a5b098c12\t2026-11-10": {
+   "runs": 58,
+   "fileRuns": 694,
+   "distinctFiles": 660,
+   "fileSec": 6841,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 5,
+   "worktrees": 1,
+   "wallSec": 1787
+  },
+  "ae59b78fb2814dd5\t2026-11-06": {
+   "runs": 167,
+   "fileRuns": 1650,
+   "distinctFiles": 956,
+   "fileSec": 12919,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 63,
+   "worktrees": 1,
+   "wallSec": 9700
+  },
+  "ae93e575233f4f74\t2026-11-06": {
+   "runs": 399,
+   "fileRuns": 2097,
+   "distinctFiles": 781,
+   "fileSec": 16245,
+   "checkpointFileSec": 10111,
+   "nodeTestFileSec": 429,
+   "worktrees": 1,
+   "wallSec": 11747
+  },
+  "af353cc212319a10\t2026-11-09": {
+   "runs": 13,
+   "fileRuns": 17,
+   "distinctFiles": 7,
+   "fileSec": 102,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 10,
+   "worktrees": 1,
+   "wallSec": 157
+  },
+  "af6a7c38ee3a03e2\t2026-11-06": {
+   "runs": 100,
+   "fileRuns": 1464,
+   "distinctFiles": 862,
+   "fileSec": 12903,
+   "checkpointFileSec": 8546,
+   "nodeTestFileSec": 8,
+   "worktrees": 1,
+   "wallSec": 3239
+  },
+  "af898f9a737515c1\t2026-11-06": {
+   "runs": 5,
+   "fileRuns": 5,
+   "distinctFiles": 5,
+   "fileSec": 159,
+   "checkpointFileSec": 21,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 222
+  },
+  "b017b2a7e0be6964\t2026-11-05": {
+   "runs": 19,
+   "fileRuns": 76,
+   "distinctFiles": 76,
+   "fileSec": 2576,
+   "checkpointFileSec": 2576,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 807
+  },
+  "b0b627755a0afa2d\t2026-11-06": {
+   "runs": 255,
+   "fileRuns": 1011,
+   "distinctFiles": 1011,
+   "fileSec": 5345,
+   "checkpointFileSec": 5345,
+   "nodeTestFileSec": 320,
+   "worktrees": 1,
+   "wallSec": 2642
+  },
+  "b0f946dcd6b591fe\t2026-11-05": {
+   "runs": 24,
+   "fileRuns": 40,
+   "distinctFiles": 7,
+   "fileSec": 196,
+   "checkpointFileSec": 142,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 262
+  },
+  "b1691a5712c3cd67\t2026-11-05": {
+   "runs": 210,
+   "fileRuns": 747,
+   "distinctFiles": 489,
+   "fileSec": 5514,
+   "checkpointFileSec": 4871,
+   "nodeTestFileSec": 85,
+   "worktrees": 1,
+   "wallSec": 2825
+  },
+  "b2699008d38c7363\t2026-11-09": {
+   "runs": 46,
+   "fileRuns": 82,
+   "distinctFiles": 16,
+   "fileSec": 503,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 369,
+   "worktrees": 1,
+   "wallSec": 552
+  },
+  "b2c2dc75387db7bb\t2026-11-12": {
+   "runs": 312,
+   "fileRuns": 312,
+   "distinctFiles": 104,
+   "fileSec": 379,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 347,
+   "worktrees": 1,
+   "wallSec": 1060
+  },
+  "b3a63fc4105bbca2\t2026-11-12": {
+   "runs": 38,
+   "fileRuns": 1023,
+   "distinctFiles": 804,
+   "fileSec": 2707,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 257,
+   "worktrees": 1,
+   "wallSec": 5861
+  },
+  "b48e7ac3e161419a\t2026-11-10": {
+   "runs": 111,
+   "fileRuns": 1515,
+   "distinctFiles": 794,
+   "fileSec": 9782,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 51,
+   "worktrees": 1,
+   "wallSec": 1972
+  },
+  "b60c34ed15fd45c5\t2026-11-09": {
+   "runs": 32,
+   "fileRuns": 437,
+   "distinctFiles": 390,
+   "fileSec": 1184,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 9,
+   "worktrees": 1,
+   "wallSec": 903
+  },
+  "b60c34ed15fd45c5\t2026-11-10": {
+   "runs": 134,
+   "fileRuns": 2589,
+   "distinctFiles": 880,
+   "fileSec": 16446,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 15,
+   "worktrees": 1,
+   "wallSec": 7764
+  },
+  "b6185c4f67fc19b4\t2026-11-05": {
+   "runs": 1,
+   "fileRuns": 6,
+   "distinctFiles": 6,
+   "fileSec": 54,
+   "checkpointFileSec": 54,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 86
+  },
+  "b63223ed62b2edef\t2026-11-10": {
+   "runs": 25,
+   "fileRuns": 76,
+   "distinctFiles": 75,
+   "fileSec": 429,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 60,
+   "worktrees": 1,
+   "wallSec": 230
+  },
+  "b688dae48e48071a\t2026-11-06": {
+   "runs": 138,
+   "fileRuns": 627,
+   "distinctFiles": 503,
+   "fileSec": 15816,
+   "checkpointFileSec": 12333,
+   "nodeTestFileSec": 34,
+   "worktrees": 1,
+   "wallSec": 6587
+  },
+  "b7180c04ed5afcab\t2026-11-05": {
+   "runs": 1,
+   "fileRuns": 43,
+   "distinctFiles": 43,
+   "fileSec": 85,
+   "checkpointFileSec": 85,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 105
+  },
+  "b7555ac0d0f19f40\t2026-11-05": {
+   "runs": 5,
+   "fileRuns": 9,
+   "distinctFiles": 9,
+   "fileSec": 48,
+   "checkpointFileSec": 48,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 274
+  },
+  "b7555ac0d0f19f40\t2026-11-06": {
+   "runs": 199,
+   "fileRuns": 2415,
+   "distinctFiles": 1502,
+   "fileSec": 24643,
+   "checkpointFileSec": 24537,
+   "nodeTestFileSec": 410,
+   "worktrees": 1,
+   "wallSec": 12944
+  },
+  "b7555ac0d0f19f40\t2026-11-09": {
+   "runs": 205,
+   "fileRuns": 1368,
+   "distinctFiles": 1360,
+   "fileSec": 9106,
+   "checkpointFileSec": 9106,
+   "nodeTestFileSec": 396,
+   "worktrees": 1,
+   "wallSec": 7307
+  },
+  "b7555ac0d0f19f40\t2026-11-10": {
+   "runs": 2,
+   "fileRuns": 2,
+   "distinctFiles": 2,
+   "fileSec": 123,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 69,
+   "worktrees": 1,
+   "wallSec": 127
+  },
+  "b7555ac0d0f19f40\t2026-11-11": {
+   "runs": 118,
+   "fileRuns": 264,
+   "distinctFiles": 263,
+   "fileSec": 3527,
+   "checkpointFileSec": 3476,
+   "nodeTestFileSec": 165,
+   "worktrees": 1,
+   "wallSec": 3751
+  },
+  "b7555ac0d0f19f40\t2026-11-12": {
+   "runs": 30,
+   "fileRuns": 30,
+   "distinctFiles": 30,
+   "fileSec": 2735,
+   "checkpointFileSec": 2728,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 4044
+  },
+  "b8c0886d1ae1fe6d\t2026-11-11": {
+   "runs": 5,
+   "fileRuns": 14,
+   "distinctFiles": 13,
+   "fileSec": 48,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 4,
+   "worktrees": 1,
+   "wallSec": 134
+  },
+  "b96d60cf186df0e0\t2026-11-06": {
+   "runs": 2,
+   "fileRuns": 122,
+   "distinctFiles": 122,
+   "fileSec": 188,
+   "checkpointFileSec": 188,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 241
+  },
+  "b9bc6ef6f2871d61\t2026-11-05": {
+   "runs": 35,
+   "fileRuns": 35,
+   "distinctFiles": 35,
+   "fileSec": 309,
+   "checkpointFileSec": 309,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 423
+  },
+  "b9f3bfbf622588f5\t2026-11-06": {
+   "runs": 1,
+   "fileRuns": 16,
+   "distinctFiles": 16,
+   "fileSec": 264,
+   "checkpointFileSec": 264,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 54
+  },
+  "bb1a259065ace3d0\t2026-11-07": {
+   "runs": 1209,
+   "fileRuns": 4305,
+   "distinctFiles": 1144,
+   "fileSec": 19430,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 764,
+   "worktrees": 1,
+   "wallSec": 8263
+  },
+  "bb1e87558a17e57f\t2026-11-06": {
+   "runs": 2,
+   "fileRuns": 13,
+   "distinctFiles": 13,
+   "fileSec": 180,
+   "checkpointFileSec": 180,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 167
+  },
+  "bb7b921957b00c3c\t2026-11-06": {
+   "runs": 381,
+   "fileRuns": 1310,
+   "distinctFiles": 1123,
+   "fileSec": 12869,
+   "checkpointFileSec": 12028,
+   "nodeTestFileSec": 774,
+   "worktrees": 1,
+   "wallSec": 5550
+  },
+  "bd91d7543fcc9b91\t2026-11-07": {
+   "runs": 14,
+   "fileRuns": 179,
+   "distinctFiles": 173,
+   "fileSec": 1000,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 5,
+   "worktrees": 1,
+   "wallSec": 484
+  },
+  "be9c23ef07a51eec\t2026-11-10": {
+   "runs": 53,
+   "fileRuns": 194,
+   "distinctFiles": 184,
+   "fileSec": 2101,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 5,
+   "worktrees": 1,
+   "wallSec": 889
+  },
+  "bf0cbf926037c49a\t2026-11-10": {
+   "runs": 1,
+   "fileRuns": 1,
+   "distinctFiles": 1,
+   "fileSec": 6,
+   "checkpointFileSec": 6,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 64
+  },
+  "bf6ba46128ef123f\t2026-11-06": {
+   "runs": 1,
+   "fileRuns": 1,
+   "distinctFiles": 1,
+   "fileSec": 55,
+   "checkpointFileSec": 55,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 97
+  },
+  "c116f440dfd005d6\t2026-11-06": {
+   "runs": 348,
+   "fileRuns": 1009,
+   "distinctFiles": 922,
+   "fileSec": 17429,
+   "checkpointFileSec": 16996,
+   "nodeTestFileSec": 793,
+   "worktrees": 1,
+   "wallSec": 9247
+  },
+  "c23dd5e5e3fb4421\t2026-11-12": {
+   "runs": 2,
+   "fileRuns": 2,
+   "distinctFiles": 2,
+   "fileSec": 14,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 36
+  },
+  "c258f5c3c1da0da6\t2026-11-07": {
+   "runs": 66,
+   "fileRuns": 550,
+   "distinctFiles": 538,
+   "fileSec": 1482,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 35,
+   "worktrees": 1,
+   "wallSec": 1087
+  },
+  "c274a0de6bf23b61\t2026-11-12": {
+   "runs": 205,
+   "fileRuns": 214,
+   "distinctFiles": 109,
+   "fileSec": 360,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 312,
+   "worktrees": 1,
+   "wallSec": 1309
+  },
+  "c275eff36c2f6232\t2026-11-10": {
+   "runs": 182,
+   "fileRuns": 708,
+   "distinctFiles": 692,
+   "fileSec": 10477,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 6,
+   "worktrees": 1,
+   "wallSec": 3976
+  },
+  "c354db921cc6fc53\t2026-11-05": {
+   "runs": 1,
+   "fileRuns": 3,
+   "distinctFiles": 3,
+   "fileSec": 13,
+   "checkpointFileSec": 13,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 733
+  },
+  "c3f0bb39fcd1cea9\t2026-11-06": {
+   "runs": 2,
+   "fileRuns": 125,
+   "distinctFiles": 125,
+   "fileSec": 235,
+   "checkpointFileSec": 235,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 283
+  },
+  "c40cd22e2d231494\t2026-11-12": {
+   "runs": 4,
+   "fileRuns": 12,
+   "distinctFiles": 12,
+   "fileSec": 339,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 6,
+   "worktrees": 1,
+   "wallSec": 961
+  },
+  "c4aec7440dfba9bb\t2026-11-10": {
+   "runs": 49,
+   "fileRuns": 187,
+   "distinctFiles": 182,
+   "fileSec": 2263,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 6,
+   "worktrees": 1,
+   "wallSec": 920
+  },
+  "c6bb5f4be651a311\t2026-11-06": {
+   "runs": 1,
+   "fileRuns": 3,
+   "distinctFiles": 3,
+   "fileSec": 76,
+   "checkpointFileSec": 76,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 181
+  },
+  "c6e9adb08d0fb115\t2026-11-06": {
+   "runs": 2,
+   "fileRuns": 2,
+   "distinctFiles": 2,
+   "fileSec": 2,
+   "checkpointFileSec": 2,
+   "nodeTestFileSec": 2,
+   "worktrees": 1,
+   "wallSec": 9
+  },
+  "c77b54c3af8a4178\t2026-11-06": {
+   "runs": 13,
+   "fileRuns": 34,
+   "distinctFiles": 30,
+   "fileSec": 306,
+   "checkpointFileSec": 36,
+   "nodeTestFileSec": 217,
+   "worktrees": 1,
+   "wallSec": 294
+  },
+  "c81519b4be1a7cfb\t2026-11-09": {
+   "runs": 2,
+   "fileRuns": 2,
+   "distinctFiles": 2,
+   "fileSec": 22,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 24
+  },
+  "c81ac3af8b9081d4\t2026-11-07": {
+   "runs": 191,
+   "fileRuns": 732,
+   "distinctFiles": 609,
+   "fileSec": 4310,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 12,
+   "worktrees": 1,
+   "wallSec": 1468
+  },
+  "c8973e97af320371\t2026-11-10": {
+   "runs": 128,
+   "fileRuns": 493,
+   "distinctFiles": 200,
+   "fileSec": 6243,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 20,
+   "worktrees": 1,
+   "wallSec": 2693
+  },
+  "ca7cc43deac6bc64\t2026-11-05": {
+   "runs": 1,
+   "fileRuns": 36,
+   "distinctFiles": 36,
+   "fileSec": 687,
+   "checkpointFileSec": 687,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 293
+  },
+  "cba47afa24d61f1c\t2026-11-06": {
+   "runs": 117,
+   "fileRuns": 905,
+   "distinctFiles": 688,
+   "fileSec": 6272,
+   "checkpointFileSec": 5329,
+   "nodeTestFileSec": 405,
+   "worktrees": 1,
+   "wallSec": 4059
+  },
+  "cc4fab5fafa8e742\t2026-11-06": {
+   "runs": 2,
+   "fileRuns": 11,
+   "distinctFiles": 11,
+   "fileSec": 197,
+   "checkpointFileSec": 197,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 231
+  },
+  "ce2f05b61e965b64\t2026-11-10": {
+   "runs": 65,
+   "fileRuns": 240,
+   "distinctFiles": 197,
+   "fileSec": 4855,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 24,
+   "worktrees": 1,
+   "wallSec": 2165
+  },
+  "ceb90677620655e8\t2026-11-10": {
+   "runs": 3,
+   "fileRuns": 12,
+   "distinctFiles": 12,
+   "fileSec": 776,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 461
+  },
+  "ceb90677620655e8\t2026-11-11": {
+   "runs": 1,
+   "fileRuns": 1,
+   "distinctFiles": 1,
+   "fileSec": 2,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 2,
+   "worktrees": 1,
+   "wallSec": 18
+  },
+  "d04eba1931333cc2\t2026-11-07": {
+   "runs": 692,
+   "fileRuns": 2373,
+   "distinctFiles": 1219,
+   "fileSec": 11911,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 472,
+   "worktrees": 1,
+   "wallSec": 4522
+  },
+  "d10dc3653d37ebff\t2026-11-10": {
+   "runs": 17,
+   "fileRuns": 294,
+   "distinctFiles": 294,
+   "fileSec": 295,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 6,
+   "worktrees": 1,
+   "wallSec": 416
+  },
+  "d199e4aa010d41b4\t2026-11-10": {
+   "runs": 6,
+   "fileRuns": 6,
+   "distinctFiles": 6,
+   "fileSec": 1,
+   "checkpointFileSec": 1,
+   "nodeTestFileSec": 1,
+   "worktrees": 1,
+   "wallSec": 164
+  },
+  "d1d5dc51cfb3b62d\t2026-11-12": {
+   "runs": 28,
+   "fileRuns": 104,
+   "distinctFiles": 96,
+   "fileSec": 981,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 15,
+   "worktrees": 1,
+   "wallSec": 2201
+  },
+  "d26fb7254bd5212c\t2026-11-12": {
+   "runs": 94,
+   "fileRuns": 96,
+   "distinctFiles": 69,
+   "fileSec": 43,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 26,
+   "worktrees": 1,
+   "wallSec": 314
+  },
+  "d295d79a8dd3972e\t2026-11-11": {
+   "runs": 81,
+   "fileRuns": 1256,
+   "distinctFiles": 813,
+   "fileSec": 9068,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 14,
+   "worktrees": 1,
+   "wallSec": 1627
+  },
+  "d2a302b2eb8e13a9\t2026-11-06": {
+   "runs": 1,
+   "fileRuns": 1,
+   "distinctFiles": 1,
+   "fileSec": 34,
+   "checkpointFileSec": 34,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 56
+  },
+  "d2bb50b49749ca89\t2026-11-05": {
+   "runs": 5,
+   "fileRuns": 5,
+   "distinctFiles": 5,
+   "fileSec": 96,
+   "checkpointFileSec": 96,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 115
+  },
+  "d2c74f54466e1253\t2026-11-06": {
+   "runs": 2,
+   "fileRuns": 2,
+   "distinctFiles": 2,
+   "fileSec": 21,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 24
+  },
+  "d33064edd449e22e\t2026-11-09": {
+   "runs": 103,
+   "fileRuns": 352,
+   "distinctFiles": 331,
+   "fileSec": 2932,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 124,
+   "worktrees": 1,
+   "wallSec": 1492
+  },
+  "d42cc7401d2126aa\t2026-11-10": {
+   "runs": 68,
+   "fileRuns": 374,
+   "distinctFiles": 193,
+   "fileSec": 2862,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 7,
+   "worktrees": 1,
+   "wallSec": 1378
+  },
+  "d4969cd6bffcc1b8\t2026-11-11": {
+   "runs": 3,
+   "fileRuns": 6,
+   "distinctFiles": 6,
+   "fileSec": 346,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 4,
+   "worktrees": 1,
+   "wallSec": 190
+  },
+  "d5cd4c2bf039f8fb\t2026-11-05": {
+   "runs": 183,
+   "fileRuns": 721,
+   "distinctFiles": 665,
+   "fileSec": 13819,
+   "checkpointFileSec": 2364,
+   "nodeTestFileSec": 11,
+   "worktrees": 1,
+   "wallSec": 8401
+  },
+  "d5cd4c2bf039f8fb\t2026-11-06": {
+   "runs": 1,
+   "fileRuns": 1,
+   "distinctFiles": 1,
+   "fileSec": 28,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 36
+  },
+  "d656222edf190f7a\t2026-11-06": {
+   "runs": 3,
+   "fileRuns": 44,
+   "distinctFiles": 44,
+   "fileSec": 742,
+   "checkpointFileSec": 742,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 297
+  },
+  "d68710591f0b58c9\t2026-11-07": {
+   "runs": 32,
+   "fileRuns": 179,
+   "distinctFiles": 179,
+   "fileSec": 2025,
+   "checkpointFileSec": 1080,
+   "nodeTestFileSec": 1,
+   "worktrees": 1,
+   "wallSec": 882
+  },
+  "d86dd1cb08906f63\t2026-11-09": {
+   "runs": 10,
+   "fileRuns": 30,
+   "distinctFiles": 20,
+   "fileSec": 244,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 6,
+   "worktrees": 1,
+   "wallSec": 192
+  },
+  "d909d177ad0ca99d\t2026-11-10": {
+   "runs": 87,
+   "fileRuns": 405,
+   "distinctFiles": 191,
+   "fileSec": 3912,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 8,
+   "worktrees": 1,
+   "wallSec": 1319
+  },
+  "d9b5591105fb0d64\t2026-11-06": {
+   "runs": 1,
+   "fileRuns": 1,
+   "distinctFiles": 1,
+   "fileSec": 143,
+   "checkpointFileSec": 143,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 310
+  },
+  "dadac83551785671\t2026-11-06": {
+   "runs": 95,
+   "fileRuns": 466,
+   "distinctFiles": 415,
+   "fileSec": 7930,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 1183,
+   "worktrees": 1,
+   "wallSec": 6106
+  },
+  "dbf313d0d0507f15\t2026-11-12": {
+   "runs": 1,
+   "fileRuns": 4,
+   "distinctFiles": 4,
+   "fileSec": 1,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 1,
+   "worktrees": 1,
+   "wallSec": 13
+  },
+  "dc20d96e456f4242\t2026-11-11": {
+   "runs": 1,
+   "fileRuns": 1,
+   "distinctFiles": 1,
+   "fileSec": 30,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 187
+  },
+  "dc20d96e456f4242\t2026-11-12": {
+   "runs": 1,
+   "fileRuns": 2,
+   "distinctFiles": 2,
+   "fileSec": 77,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 82
+  },
+  "dca436ce47c368a6\t2026-11-06": {
+   "runs": 1,
+   "fileRuns": 13,
+   "distinctFiles": 13,
+   "fileSec": 158,
+   "checkpointFileSec": 158,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 169
+  },
+  "dce6e3b648b1286b\t2026-11-06": {
+   "runs": 2,
+   "fileRuns": 114,
+   "distinctFiles": 114,
+   "fileSec": 1568,
+   "checkpointFileSec": 1568,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 270
+  },
+  "dd5e88de0b5c392c\t2026-11-09": {
+   "runs": 21,
+   "fileRuns": 465,
+   "distinctFiles": 465,
+   "fileSec": 5504,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 6,
+   "worktrees": 1,
+   "wallSec": 2475
+  },
+  "dd88122f9478df7c\t2026-11-05": {
+   "runs": 1,
+   "fileRuns": 6,
+   "distinctFiles": 6,
+   "fileSec": 24,
+   "checkpointFileSec": 24,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 56
+  },
+  "df35b9123a5576a6\t2026-11-05": {
+   "runs": 99,
+   "fileRuns": 810,
+   "distinctFiles": 746,
+   "fileSec": 8902,
+   "checkpointFileSec": 8867,
+   "nodeTestFileSec": 8,
+   "worktrees": 1,
+   "wallSec": 2739
+  },
+  "dfb95355ebb91fbd\t2026-11-11": {
+   "runs": 48,
+   "fileRuns": 537,
+   "distinctFiles": 476,
+   "fileSec": 1268,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 43,
+   "worktrees": 1,
+   "wallSec": 972
+  },
+  "e0769810aee4f556\t2026-11-11": {
+   "runs": 3,
+   "fileRuns": 3,
+   "distinctFiles": 3,
+   "fileSec": 117,
+   "checkpointFileSec": 117,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 154
+  },
+  "e1861047ee7bd4b8\t2026-11-06": {
+   "runs": 3,
+   "fileRuns": 34,
+   "distinctFiles": 34,
+   "fileSec": 283,
+   "checkpointFileSec": 283,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 297
+  },
+  "e23227da1f44146d\t2026-11-05": {
+   "runs": 5,
+   "fileRuns": 21,
+   "distinctFiles": 21,
+   "fileSec": 308,
+   "checkpointFileSec": 308,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 345
+  },
+  "e275694de0a95314\t2026-11-05": {
+   "runs": 3,
+   "fileRuns": 3,
+   "distinctFiles": 3,
+   "fileSec": 88,
+   "checkpointFileSec": 88,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 119
+  },
+  "e2e8adfd2ecf11ba\t2026-11-12": {
+   "runs": 5,
+   "fileRuns": 23,
+   "distinctFiles": 20,
+   "fileSec": 508,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 4,
+   "worktrees": 1,
+   "wallSec": 1416
+  },
+  "e2f379942a5d4dbc\t2026-11-05": {
+   "runs": 3,
+   "fileRuns": 58,
+   "distinctFiles": 58,
+   "fileSec": 164,
+   "checkpointFileSec": 164,
+   "nodeTestFileSec": 3,
+   "worktrees": 1,
+   "wallSec": 201
+  },
+  "e363dd5239a0b474\t2026-11-10": {
+   "runs": 75,
+   "fileRuns": 252,
+   "distinctFiles": 221,
+   "fileSec": 2584,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 5,
+   "worktrees": 1,
+   "wallSec": 1353
+  },
+  "e5c7147c4d7312fc\t2026-11-06": {
+   "runs": 3,
+   "fileRuns": 475,
+   "distinctFiles": 475,
+   "fileSec": 1609,
+   "checkpointFileSec": 1609,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 243
+  },
+  "e68fc045083a0f80\t2026-11-12": {
+   "runs": 5,
+   "fileRuns": 4,
+   "distinctFiles": 4,
+   "fileSec": 79,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 3,
+   "worktrees": 1,
+   "wallSec": 550
+  },
+  "e728046a0602f113\t2026-11-06": {
+   "runs": 4,
+   "fileRuns": 178,
+   "distinctFiles": 178,
+   "fileSec": 2502,
+   "checkpointFileSec": 2502,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 558
+  },
+  "e7d7a348d78126cf\t2026-11-05": {
+   "runs": 3,
+   "fileRuns": 227,
+   "distinctFiles": 227,
+   "fileSec": 602,
+   "checkpointFileSec": 602,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 347
+  },
+  "e919449ffc3c001b\t2026-11-07": {
+   "runs": 1,
+   "fileRuns": 1,
+   "distinctFiles": 1,
+   "fileSec": 29,
+   "checkpointFileSec": 29,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 63
+  },
+  "e943552f1876c197\t2026-11-06": {
+   "runs": 1,
+   "fileRuns": 200,
+   "distinctFiles": 200,
+   "fileSec": 104,
+   "checkpointFileSec": 104,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 167
+  },
+  "e978197331f703c5\t2026-11-09": {
+   "runs": 421,
+   "fileRuns": 2193,
+   "distinctFiles": 1714,
+   "fileSec": 13009,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 1334,
+   "worktrees": 1,
+   "wallSec": 6187
+  },
+  "e980a3728e533819\t2026-11-05": {
+   "runs": 5,
+   "fileRuns": 19,
+   "distinctFiles": 19,
+   "fileSec": 571,
+   "checkpointFileSec": 563,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 367
+  },
+  "ea0ae271e5d199ba\t2026-11-06": {
+   "runs": 2,
+   "fileRuns": 26,
+   "distinctFiles": 26,
+   "fileSec": 307,
+   "checkpointFileSec": 307,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 252
+  },
+  "ea121a0305b2277f\t2026-11-06": {
+   "runs": 47,
+   "fileRuns": 47,
+   "distinctFiles": 47,
+   "fileSec": 1013,
+   "checkpointFileSec": 323,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 1193
+  },
+  "ea51aa42bb29a31c\t2026-11-12": {
+   "runs": 566,
+   "fileRuns": 950,
+   "distinctFiles": 472,
+   "fileSec": 3050,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 563,
+   "worktrees": 1,
+   "wallSec": 5349
+  },
+  "ebd8530bea6bfb99\t2026-11-09": {
+   "runs": 467,
+   "fileRuns": 4738,
+   "distinctFiles": 817,
+   "fileSec": 43384,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 84,
+   "worktrees": 1,
+   "wallSec": 11686
+  },
+  "ed1a138925ef7490\t2026-11-06": {
+   "runs": 1,
+   "fileRuns": 1,
+   "distinctFiles": 1,
+   "fileSec": 3,
+   "checkpointFileSec": 3,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 65
+  },
+  "ee42f83b564b5dd2\t2026-11-10": {
+   "runs": 40,
+   "fileRuns": 175,
+   "distinctFiles": 169,
+   "fileSec": 4238,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 3,
+   "worktrees": 1,
+   "wallSec": 1488
+  },
+  "f0571f70d4316106\t2026-11-11": {
+   "runs": 11,
+   "fileRuns": 234,
+   "distinctFiles": 234,
+   "fileSec": 69,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 12,
+   "worktrees": 1,
+   "wallSec": 903
+  },
+  "f0571f70d4316106\t2026-11-12": {
+   "runs": 60,
+   "fileRuns": 472,
+   "distinctFiles": 415,
+   "fileSec": 1532,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 1205,
+   "worktrees": 1,
+   "wallSec": 3385
+  },
+  "f0e066e9d09bcd6c\t2026-11-06": {
+   "runs": 1,
+   "fileRuns": 88,
+   "distinctFiles": 88,
+   "fileSec": 117,
+   "checkpointFileSec": 117,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 159
+  },
+  "f1bb6cb1a04053a8\t2026-11-06": {
+   "runs": 5,
+   "fileRuns": 174,
+   "distinctFiles": 174,
+   "fileSec": 110,
+   "checkpointFileSec": 110,
+   "nodeTestFileSec": 1,
+   "worktrees": 1,
+   "wallSec": 197
+  },
+  "f35513c2c003b8aa\t2026-11-06": {
+   "runs": 263,
+   "fileRuns": 1814,
+   "distinctFiles": 1065,
+   "fileSec": 26708,
+   "checkpointFileSec": 10260,
+   "nodeTestFileSec": 416,
+   "worktrees": 1,
+   "wallSec": 18772
+  },
+  "f35513c2c003b8aa\t2026-11-07": {
+   "runs": 2,
+   "fileRuns": 78,
+   "distinctFiles": 78,
+   "fileSec": 605,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 5,
+   "worktrees": 1,
+   "wallSec": 131
+  },
+  "f39af45f933dc1c4\t2026-11-05": {
+   "runs": 14,
+   "fileRuns": 27,
+   "distinctFiles": 21,
+   "fileSec": 170,
+   "checkpointFileSec": 51,
+   "nodeTestFileSec": 3,
+   "worktrees": 1,
+   "wallSec": 256
+  },
+  "f3bf31ba15e4ea53\t2026-11-10": {
+   "runs": 1,
+   "fileRuns": 1,
+   "distinctFiles": 1,
+   "fileSec": 106,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 124
+  },
+  "f405e4a4cc92064a\t2026-11-10": {
+   "runs": 2,
+   "fileRuns": 5,
+   "distinctFiles": 5,
+   "fileSec": 32,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 19
+  },
+  "f497eff5ac902840\t2026-11-05": {
+   "runs": 99,
+   "fileRuns": 373,
+   "distinctFiles": 283,
+   "fileSec": 2404,
+   "checkpointFileSec": 1465,
+   "nodeTestFileSec": 24,
+   "worktrees": 1,
+   "wallSec": 1213
+  },
+  "f497eff5ac902840\t2026-11-06": {
+   "runs": 93,
+   "fileRuns": 462,
+   "distinctFiles": 365,
+   "fileSec": 2042,
+   "checkpointFileSec": 2019,
+   "nodeTestFileSec": 12,
+   "worktrees": 1,
+   "wallSec": 851
+  },
+  "f49d15562ef1e18a\t2026-11-06": {
+   "runs": 2,
+   "fileRuns": 36,
+   "distinctFiles": 36,
+   "fileSec": 199,
+   "checkpointFileSec": 199,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 112
+  },
+  "f6b4d6633cee5c3f\t2026-11-07": {
+   "runs": 131,
+   "fileRuns": 982,
+   "distinctFiles": 451,
+   "fileSec": 4916,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 19,
+   "worktrees": 1,
+   "wallSec": 1935
+  },
+  "f6c2d38a345c7b8b\t2026-11-06": {
+   "runs": 1,
+   "fileRuns": 13,
+   "distinctFiles": 13,
+   "fileSec": 93,
+   "checkpointFileSec": 93,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 143
+  },
+  "f80542ee404e7eba\t2026-11-06": {
+   "runs": 2,
+   "fileRuns": 13,
+   "distinctFiles": 13,
+   "fileSec": 204,
+   "checkpointFileSec": 204,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 234
+  },
+  "f82e8fcd53e77aef\t2026-11-05": {
+   "runs": 2,
+   "fileRuns": 35,
+   "distinctFiles": 35,
+   "fileSec": 639,
+   "checkpointFileSec": 639,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 285
+  },
+  "f9b62a8a67ff7abc\t2026-11-06": {
+   "runs": 5,
+   "fileRuns": 13,
+   "distinctFiles": 13,
+   "fileSec": 254,
+   "checkpointFileSec": 252,
+   "nodeTestFileSec": 3,
+   "worktrees": 1,
+   "wallSec": 618
+  },
+  "f9c3cfa29968c283\t2026-11-05": {
+   "runs": 40,
+   "fileRuns": 405,
+   "distinctFiles": 356,
+   "fileSec": 1781,
+   "checkpointFileSec": 1460,
+   "nodeTestFileSec": 14,
+   "worktrees": 1,
+   "wallSec": 676
+  },
+  "f9c3cfa29968c283\t2026-11-06": {
+   "runs": 31,
+   "fileRuns": 546,
+   "distinctFiles": 520,
+   "fileSec": 1605,
+   "checkpointFileSec": 1592,
+   "nodeTestFileSec": 14,
+   "worktrees": 1,
+   "wallSec": 334
+  },
+  "faef8509c22debf0\t2026-11-05": {
+   "runs": 694,
+   "fileRuns": 2871,
+   "distinctFiles": 817,
+   "fileSec": 24517,
+   "checkpointFileSec": 11411,
+   "nodeTestFileSec": 88,
+   "worktrees": 1,
+   "wallSec": 9534
+  },
+  "fb696e7c511095eb\t2026-11-06": {
+   "runs": 156,
+   "fileRuns": 694,
+   "distinctFiles": 416,
+   "fileSec": 12629,
+   "checkpointFileSec": 11606,
+   "nodeTestFileSec": 23,
+   "worktrees": 1,
+   "wallSec": 5410
+  },
+  "fcb59046c0139cf8\t2026-11-05": {
+   "runs": 3,
+   "fileRuns": 53,
+   "distinctFiles": 53,
+   "fileSec": 1304,
+   "checkpointFileSec": 1304,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 425
+  },
+  "fce21c63a4044d90\t2026-11-07": {
+   "runs": 223,
+   "fileRuns": 844,
+   "distinctFiles": 725,
+   "fileSec": 8928,
+   "checkpointFileSec": 0,
+   "nodeTestFileSec": 23,
+   "worktrees": 1,
+   "wallSec": 3085
+  },
+  "fe359012a20f7a62\t2026-11-05": {
+   "runs": 2,
+   "fileRuns": 159,
+   "distinctFiles": 159,
+   "fileSec": 253,
+   "checkpointFileSec": 253,
+   "nodeTestFileSec": 0,
+   "worktrees": 1,
+   "wallSec": 329
+  }
+ }
+}

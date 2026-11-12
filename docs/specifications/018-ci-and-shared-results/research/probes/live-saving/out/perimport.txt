@@ -1,0 +1,53 @@
+imported_at	ci_ver	commit	exported	rekeyed_env(node,adapter)	files_held	files_looked_up	first_lookup_min
+2026-11-10T21:49	0.1.426	b3f058b7	1456	web:v26.13.0/3+observe.6=348 api-client:v26.13.0/3+observe.6=2 contract:v26.13.0/3+observe.6=29 server:v26.13.0/3+observe.6=1077	1456	12	2221.5
+2026-11-10T21:49	0.1.426	13582fdd	1477	web:v26.13.0/3+observe.6=344 api-client:v26.13.0/3+observe.6=2 contract:v26.13.0/3+observe.6=29 server:v26.13.0/3+observe.6=1102	829	0	-
+2026-11-10T21:49	0.1.426	816d95e4	1477	web:v26.13.0/3+observe.6=344 api-client:v26.13.0/3+observe.6=2 contract:v26.13.0/3+observe.6=29 server:v26.13.0/3+observe.6=1102	653	0	-
+2026-11-10T21:54	0.1.426	afd1b777	1449	web:v26.13.0/3+observe.6=343 api-client:v26.13.0/3+observe.6=2 contract:v26.13.0/3+observe.6=29 server:v26.13.0/3+observe.6=1075	190	0	-
+2026-11-10T21:54	0.1.426	1ed7d04f	1458	api-client:v26.13.0/3+observe.6=2 server:v26.13.0/3+observe.6=1080 contract:v26.13.0/3+observe.6=29 web:v26.13.0/3+observe.6=347	1427	0	-
+2026-11-10T22:07	0.1.426	a47289f9	1458	api-client:v26.13.0/3+observe.6=2 server:v26.13.0/3+observe.6=1080 contract:v26.13.0/3+observe.6=29 web:v26.13.0/3+observe.6=347	170	0	-
+2026-11-10T22:42	0.1.426	b0567e71	1458	api-client:v26.13.0/3+observe.6=2 server:v26.13.0/3+observe.6=1080 contract:v26.13.0/3+observe.6=29 web:v26.13.0/3+observe.6=347	644	0	-
+2026-11-11T00:14	0.1.426	7e0883a4	1459	api-client:v26.13.0/3+observe.6=2 web:v26.13.0/3+observe.6=348 contract:v26.13.0/3+observe.6=29 server:v26.13.0/3+observe.6=1080	1428	0	-
+2026-11-11T00:38	0.1.426	8df80218	1459	api-client:v26.13.0/3+observe.6=2 web:v26.13.0/3+observe.6=348 contract:v26.13.0/3+observe.6=29 server:v26.13.0/3+observe.6=1080	170	0	-
+2026-11-11T01:07	0.1.426	3c814d6f	1459	api-client:v26.13.0/3+observe.6=2 web:v26.13.0/3+observe.6=348 contract:v26.13.0/3+observe.6=29 server:v26.13.0/3+observe.6=1080	167	0	-
+2026-11-11T03:19	0.1.426	c692ef01	1461	api-client:v26.13.0/3+observe.6=2 web:v26.13.0/3+observe.6=348 contract:v26.13.0/3+observe.6=29 server:v26.13.0/3+observe.6=1082	761	0	-
+2026-11-11T03:21	0.1.426	c9fb4e00	1460	api-client:v26.13.0/3+observe.6=2 web:v26.13.0/3+observe.6=347 contract:v26.13.0/3+observe.6=29 server:v26.13.0/3+observe.6=1082	216	0	-
+2026-11-11T06:49	0.1.426	bea86e3e	1466	api-client:v26.13.0/3+observe.6=2 web:v26.13.0/3+observe.6=346 contract:v26.13.0/3+observe.6=29 server:v26.13.0/3+observe.6=1089	686	0	-
+2026-11-11T09:26	0.1.426	6807e009	1501	api-client:v26.13.0/3+observe.6=2 web:v26.13.0/3+observe.6=346 contract:v26.13.0/3+observe.6=29 server:v26.13.0/3+observe.6=1124	1337	0	-
+2026-11-11T10:04	0.1.426	9c218872	1492	api-client:v26.13.0/3+observe.6=2 web:v26.13.0/3+observe.6=345 contract:v26.13.0/3+observe.6=29 server:v26.13.0/3+observe.6=1116	240	0	-
+2026-11-11T11:16	0.1.426	c36457c3	1503	api-client:v26.13.0/3+observe.6=2 web:v26.13.0/3+observe.6=347 contract:v26.13.0/3+observe.6=29 server:v26.13.0/3+observe.6=1125	837	0	-
+2026-11-11T11:29	0.1.426	3f2785cc	1503	api-client:v26.13.0/3+observe.6=2 web:v26.13.0/3+observe.6=347 contract:v26.13.0/3+observe.6=29 server:v26.13.0/3+observe.6=1125	49	0	-
+2026-11-11T12:02	0.1.426	9cea6f73	1529	api-client:v26.13.0/3+observe.6=2 contract:v26.13.0/3+observe.6=29 server:v26.13.0/3+observe.6=1154 web:v26.13.0/3+observe.6=344	1353	0	-
+2026-11-11T13:14	0.1.426	473f0265	1529	api-client:v26.13.0/3+observe.6=2 contract:v26.13.0/3+observe.6=29 server:v26.13.0/3+observe.6=1154 web:v26.13.0/3+observe.6=344	518	0	-
+2026-11-11T13:28	0.1.426	6a843336	1529	api-client:v26.13.0/3+observe.6=2 contract:v26.13.0/3+observe.6=29 server:v26.13.0/3+observe.6=1154 web:v26.13.0/3+observe.6=344	221	0	-
+2026-11-11T15:06	0.1.426	688c4620	1489	api-client:v26.13.0/3+observe.6=2 contract:v26.13.0/3+observe.6=29 server:v26.13.0/3+observe.6=1112 web:v26.13.0/3+observe.6=346	471	0	-
+2026-11-11T15:24	0.1.426	dd3811e3	1489	api-client:v26.13.0/3+observe.6=2 contract:v26.13.0/3+observe.6=29 server:v26.13.0/3+observe.6=1112 web:v26.13.0/3+observe.6=346	90	0	-
+2026-11-11T15:47	0.1.426	9819505d	1489	api-client:v26.13.0/3+observe.6=2 contract:v26.13.0/3+observe.6=29 server:v26.13.0/3+observe.6=1112 web:v26.13.0/3+observe.6=346	3	0	-
+2026-11-11T15:54	0.1.426	7c302f57	1489	api-client:v26.13.0/3+observe.6=2 contract:v26.13.0/3+observe.6=29 server:v26.13.0/3+observe.6=1112 web:v26.13.0/3+observe.6=346	50	0	-
+2026-11-11T16:20	0.1.426	0d7fc128	1489	api-client:v26.13.0/3+observe.6=2 contract:v26.13.0/3+observe.6=29 server:v26.13.0/3+observe.6=1112 web:v26.13.0/3+observe.6=346	88	0	-
+2026-11-11T16:21	0.1.426	32db434a	1532	api-client:v26.13.0/3+observe.6=2 contract:v26.13.0/3+observe.6=29 server:v26.13.0/3+observe.6=1157 web:v26.13.0/3+observe.6=344	650	0	-
+2026-11-11T16:53	0.1.426	de606f9c	1532	web:v26.13.0/3+observe.6=344 api-client:v26.13.0/3+observe.6=2 contract:v26.13.0/3+observe.6=29 server:v26.13.0/3+observe.6=1157	1297	0	-
+2026-11-11T17:11	0.1.426	a2e1b9de	1523	web:v26.13.0/3+observe.6=346 api-client:v26.13.0/3+observe.6=2 contract:v26.13.0/3+observe.6=29 server:v26.13.0/3+observe.6=1146	1360	17	1058.9
+2026-11-11T18:05	0.1.426	b0ef80b1	1523	web:v26.13.0/3+observe.6=346 api-client:v26.13.0/3+observe.6=2 contract:v26.13.0/3+observe.6=29 server:v26.13.0/3+observe.6=1146	703	0	-
+2026-11-11T18:24	0.1.431	0c0f1037	1523	web:v26.13.0/3+observe.6=346 api-client:v26.13.0/3+observe.6=2 contract:v26.13.0/3+observe.6=29 server:v26.13.0/3+observe.6=1146	2	0	-
+2026-11-11T19:04	0.1.431	9ca25002	1523	api-client:v26.13.0/3+observe.6=2 contract:v26.13.0/3+observe.6=29 server:v26.13.0/3+observe.6=11 web:v26.13.0/3+observe.6=346 server:v26.13.0/3+observe.6=1135	1517	1502	46.3
+2026-11-11T19:49	0.1.431	f30ce4c4	1523	api-client:v26.13.0/3+observe.6=2 contract:v26.13.0/3+observe.6=29 server:v26.13.0/3+observe.6=2 web:v26.13.0/3+observe.6=346 server:v26.13.0/3+observe.6=1144	11	11	18.7
+2026-11-11T19:56	0.1.431	67ae4684	1523	api-client:v26.13.0/3+observe.6=2 contract:v26.13.0/3+observe.6=29 server:v26.13.0/3+observe.6=2 web:v26.13.0/3+observe.6=346 server:v26.13.0/3+observe.6=1144	59	59	74.5
+2026-11-11T20:07	0.1.431	5b278bdc	1523	api-client:v26.13.0/3+observe.6=2 contract:v26.13.0/3+observe.6=29 server:v26.13.0/3+observe.6=45 web:v26.13.0/3+observe.6=346 server:v26.13.0/3+observe.6=1101	1241	1192	140.4
+2026-11-11T22:20	0.1.431	249c8783	1523	api-client:v26.13.0/3+observe.6=2 contract:v26.13.0/3+observe.6=29 server:v26.13.0/3+observe.6=38 web:v26.13.0/3+observe.6=346 server:v26.13.0/3+observe.6=1108	61	19	370.4
+2026-11-12T00:29	0.1.431	427187b4	1523	api-client:v26.13.0/3+observe.6=2 contract:v26.13.0/3+observe.6=29 server:v26.13.0/3+observe.6=2 web:v26.13.0/3+observe.6=346 server:v26.13.0/3+observe.6=1144	1492	1486	32.0
+2026-11-12T01:21	0.1.431	46a383cf	1529	api-client:v26.13.0/3+observe.6=2 contract:v26.13.0/3+observe.6=29 server:v26.13.0/3+observe.6=31 web:v26.13.0/3+observe.6=345 server:v26.13.0/3+observe.6=1122	131	98	27.5
+2026-11-12T01:56	0.1.431	42c28fa2	1529	api-client:v26.13.0/3+observe.6=2 contract:v26.13.0/3+observe.6=29 server:v26.13.0/3+observe.6=3 web:v26.13.0/3+observe.6=345 server:v26.13.0/3+observe.6=1150	1313	1306	84.9
+2026-11-12T04:31	0.1.431	376a6476	1529	api-client:v26.13.0/3+observe.6=2 contract:v26.13.0/3+observe.6=29 server:v26.13.0/3+observe.6=2 web:v26.13.0/3+observe.6=345 server:v26.13.0/3+observe.6=1151	0	0	-
+2026-11-12T04:32	0.1.431	1e93f0cb	1513	web:v26.13.0/3+observe.6=1 api-client:v26.13.0/3+observe.6=2 contract:v26.13.0/3+observe.6=29 server:v26.13.0/3+observe.6=218 web:v26.13.0/3+observe.6=338 server:v26.13.0/3+observe.6=925	726	507	77.2
+2026-11-12T07:21	0.1.431	99aaa04a	1513	web:v26.13.0/3+observe.6=122 api-client:v26.13.0/3+observe.6=2 contract:v26.13.0/3+observe.6=29 server:v26.13.0/3+observe.6=223 web:v26.13.0/3+observe.6=217 server:v26.13.0/3+observe.6=920	149	0	-
+2026-11-12T07:35	0.1.431	de83e59e	1508	api-client:v26.13.0/3+observe.6=2 contract:v26.13.0/3+observe.6=29 server:v26.13.0/3+observe.6=238 web:v26.13.0/3+observe.6=340 server:v26.13.0/3+observe.6=899	813	589	112.8
+2026-11-12T09:40	0.1.443	cc3cead4	1484	web:v26.13.0/3+observe.6=1 api-client:v26.13.0/3+observe.6=2 contract:v26.13.0/3+observe.6=29 server:v26.13.0/3+observe.6=22 web:v26.13.0/3+observe.6=330 server:v26.13.0/3+observe.6=1100	636	612	21.6
+2026-11-12T10:54	0.1.443	c6574b70	1483	web:v26.13.0/3+observe.6=1 api-client:v26.13.0/3+observe.6=2 contract:v26.13.0/3+observe.6=29 server:v26.13.0/3+observe.6=18 web:v26.13.0/3+observe.6=330 server:v26.13.0/3+observe.6=1103	0	0	-
+2026-11-12T11:17	0.1.443	92457553	1484	web:v26.13.0/3+observe.6=1 api-client:v26.13.0/3+observe.6=2 contract:v26.13.0/3+observe.6=29 server:v26.13.0/3+observe.6=18 web:v26.13.0/3+observe.6=330 server:v26.13.0/3+observe.6=1104	0	0	-
+2026-11-12T12:13	0.1.443	c098ccc2	1483	web:v26.13.0/3+observe.6=1 api-client:v26.13.0/3+observe.6=2 contract:v26.13.0/3+observe.6=29 server:v26.13.0/3+observe.6=15 web:v26.13.0/3+observe.6=330 server:v26.13.0/3+observe.6=1106	1064	1045	47.6
+2026-11-12T14:04	0.1.443	becede8e	1469	server:v26.13.0/3+observe.6=1099 server:v26.13.0/3+observe.6=6 web:v26.13.0/3+observe.6=1 web:v26.13.0/3+observe.6=332 contract:v26.13.0/3+observe.6=29 api-client:v26.13.0/3+observe.6=2	1458	1448	0.1
+2026-11-12T14:07	0.1.443	d51e5285	1470	contract:v26.13.0/3+observe.6=29 server:v26.13.0/3+observe.6=1106 api-client:v26.13.0/3+observe.6=2 web:v26.13.0/3+observe.6=333	1463	0	-
+2026-11-12T14:26	0.1.443	e12c42e8	1469	server:v26.13.0/3+observe.6=1099 server:v26.13.0/3+observe.6=6 web:v26.13.0/3+observe.6=1 web:v26.13.0/3+observe.6=332 contract:v26.13.0/3+observe.6=29 api-client:v26.13.0/3+observe.6=2	2	2	0.7
+2026-11-12T14:35	0.1.443	3fe503e3	1469	server:v26.13.0/3+observe.6=1099 server:v26.13.0/3+observe.6=6 web:v26.13.0/3+observe.6=1 web:v26.13.0/3+observe.6=332 contract:v26.13.0/3+observe.6=29 api-client:v26.13.0/3+observe.6=2	98	98	0.2
+2026-11-12T14:39	0.1.443	ba5a2048	1469	contract:v26.13.0/3+observe.6=29 server:v26.13.0/3+observe.6=1105 api-client:v26.13.0/3+observe.6=2 web:v26.13.0/3+observe.6=333	114	0	-
+2026-11-12T14:47	0.1.443	fe53b2f9	1485	server:v26.13.0/3+observe.6=1119 web:v26.13.0/3+observe.6=1 web:v26.13.0/3+observe.6=334 contract:v26.13.0/3+observe.6=29 api-client:v26.13.0/3+observe.6=2	1089	2	0.1

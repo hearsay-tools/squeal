@@ -1,0 +1,27 @@
+late (local row before the first import that carried the key), by window of that import: {
+  C: { files: 1140, medSec: 6622 },
+  D: { files: 657, medSec: 639 },
+  E: { files: 28, medSec: 123 }
+}
+used (import row looked up), by window of the import: {
+  B: { files: 29, medSec: 11 },
+  C: { files: 6676, medSec: 39332 },
+  D: { files: 1750, medSec: 13363 },
+  E: { files: 1548, medSec: 7605 }
+}
+late by worktree {
+  '406c7586': 646,
+  '9b92fda3': 251,
+  f0571f70: 185,
+  '2c000068': 18,
+  ea51aa42: 27,
+  '06dc602a': 2,
+  c274a0de: 3,
+  '5b8900dd': 265,
+  b7555ac0: 1,
+  '8437c153': 388,
+  '09a979c2': 10,
+  d26fb725: 1,
+  a13cd09a: 11,
+  '8ee33ff0': 17
+}
