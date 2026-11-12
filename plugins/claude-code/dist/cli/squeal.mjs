@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.441";
+  if (true) return "0.1.443";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -26603,7 +26603,7 @@ function executedSources(environment, stamps, paths) {
   }
   return sources;
 }
-var INSPECTOR, failed2, LOAD_FAILED, InstanceCoverage, readsInspector, KEPT_NOTE;
+var INSPECTOR2, failed2, LOAD_FAILED, InstanceCoverage, readsInspector, KEPT_NOTE;
 var init_coverage2 = __esm({
   "src/runners/vitest/coverage.ts"() {
     "use strict";
@@ -26613,7 +26613,7 @@ var init_coverage2 = __esm({
     init_results3();
     init_sources();
     init_stale();
-    INSPECTOR = "inspector";
+    INSPECTOR2 = "inspector";
     failed2 = /* @__PURE__ */ new WeakSet();
     LOAD_FAILED = "Failed to load custom CoverageProviderModule from ";
     InstanceCoverage = class _InstanceCoverage {
@@ -26681,7 +26681,7 @@ var init_coverage2 = __esm({
         rmSync10(this.dir, { recursive: true, force: true });
       }
     };
-    readsInspector = (closure) => closure.builtins.has(INSPECTOR);
+    readsInspector = (closure) => closure.builtins.has(INSPECTOR2);
     KEPT_NOTE = "coverage of child processes is off in a test worker that already had NODE_V8_COVERAGE set: Squeal leaves it to the tests, so their children's coverage is not read (spec 020 D12)";
   }
 });
@@ -33750,7 +33750,7 @@ var init_adapter_environment = __esm({
 
 // src/runners/node-test/coverage.ts
 function reads(graph, listed8, path) {
-  return listed8.has(path) ? graph.packages(path).builtins.includes(INSPECTOR2) : null;
+  return listed8.has(path) ? graph.packages(path).builtins.includes(INSPECTOR3) : null;
 }
 function sharesProcess(argv) {
   let shared2 = false;
@@ -33764,11 +33764,11 @@ function sharesProcess(argv) {
   }
   return shared2;
 }
-var INSPECTOR2, ProjectCoverage, ISOLATION;
+var INSPECTOR3, ProjectCoverage, ISOLATION;
 var init_coverage3 = __esm({
   "src/runners/node-test/coverage.ts"() {
     "use strict";
-    INSPECTOR2 = "inspector";
+    INSPECTOR3 = "inspector";
     ProjectCoverage = class {
       constructor(coverage, argv, note) {
         this.coverage = coverage;
@@ -33803,7 +33803,7 @@ var init_coverage3 = __esm({
       covered(graph, files5) {
         const keyed = this.#keyed;
         if (keyed === false) return void 0;
-        const preloads = graph.environmentPackages().builtins.includes(INSPECTOR2);
+        const preloads = graph.environmentPackages().builtins.includes(INSPECTOR3);
         const listed8 = new Set(files5);
         return (testFile) => {
           const own = preloads ? true : reads(graph, listed8, testFile.path);
@@ -51153,7 +51153,7 @@ function testTally(view, side) {
   const environment = [...differing].filter((path) => view.isEnvironmentInput(path));
   const byFile = /* @__PURE__ */ new Map();
   for (const state of view.states()) {
-    const id = fileId(state.check.project, state.check.testPath);
+    const id = fileId2(state.check.project, state.check.testPath);
     byFile.set(id, [...byFile.get(id) ?? [], state]);
   }
   const counts = {
@@ -51186,7 +51186,7 @@ function testTally(view, side) {
       named4.push(notDeterminedFile(record2.testFile, apart, unanswered));
       continue;
     }
-    const states = byFile.get(fileId(record2.testFile.project, record2.testFile.path)) ?? [];
+    const states = byFile.get(fileId2(record2.testFile.project, record2.testFile.path)) ?? [];
     const current2 = states.filter((s) => s.validity === "current");
     if (current2.length > 0) {
       counts.failures += current2.filter((s) => s.outcome === "fail").length;
@@ -51226,12 +51226,12 @@ function notDeterminedFile(testFile, apart, unanswered) {
     ...silent.length > 0 ? { unanswered: silent } : {}
   };
 }
-var fileId;
+var fileId2;
 var init_compute = __esm({
   "src/core/commit/compute.ts"() {
     "use strict";
     init_report();
-    fileId = (project, path) => `${project}\0${path}`;
+    fileId2 = (project, path) => `${project}\0${path}`;
   }
 });
 
@@ -76022,6 +76022,10 @@ import { join as join40 } from "node:path";
 var PART_FORMAT = "squeal-ci-part/4";
 var PART_FORMATS = ["squeal-ci-part/3", PART_FORMAT];
 var PART_PREFIX = "squeal-part-";
+var PART_COLLECTORS = ["squeal", "v8"];
+function knownCollector(collector) {
+  return collector === void 0 || PART_COLLECTORS.includes(collector);
+}
 var UPDATE_SNAPSHOT = "updateSnapshot";
 function snapshotFields(resolvedConfig) {
   let options;
@@ -76248,8 +76252,11 @@ init_record();
 function partCoverage(raw, paths) {
   if (raw === void 0) return void 0;
   if ("off" in raw) return { off: raw.off, note: paths.relativizeText(String(raw.note)) };
+  const { collectorVersion } = raw;
   return {
     provider: "squeal",
+    collector: raw.collector ?? "squeal",
+    ...collectorVersion === void 0 ? {} : { collectorVersion: String(collectorVersion) },
     providerVersion: COVERAGE_PROVIDER_VERSION,
     recordVersion: COVERAGE_RECORD_VERSION,
     ...raw.note === void 0 ? {} : { note: paths.relativizeText(String(raw.note)) }
@@ -76750,6 +76757,10 @@ function reuseRefusal(named4, here, project) {
   }
   return null;
 }
+function providerRan(part2) {
+  const { coverage } = part2.header;
+  return coverage !== void 0 && !("off" in coverage && coverage.off === "no-provider");
+}
 function runRefusal(file, run6, here) {
   const project = JSON.stringify(run6.descriptor.project);
   if (run6.updateSnapshot !== "none") {
@@ -76941,7 +76952,11 @@ async function exportWith(input, runner) {
   const passed = files5.filter((file) => file.outcome !== "fail");
   const named4 = passed.filter((file) => (file.sharedNames ?? []).length === 0);
   const kept4 = named4.filter((file) => file.noRecord !== "inspector");
-  const { closures, report: report4 } = await keyFiles(input.root, runner, keys, kept4);
+  const covered = new Set(
+    parts3.filter((p) => providerRan(p.part)).flatMap((p) => p.part.testFiles.map(fileId))
+  );
+  const inspects = (file, closure) => covered.has(fileId(file)) && (closure.packages?.builtins ?? []).includes(INSPECTOR);
+  const { closures, report: report4, inspected } = await keyFiles(input.root, runner, keys, kept4, inspects);
   const parted = await keyPartsOf(input, keys, environments2, closures);
   const certify = certifier(input.root, keys, parts3);
   const uncertified2 = [];
@@ -76976,22 +76991,27 @@ async function exportWith(input, runner) {
       testFiles: testFiles3,
       results: bundle.results.length,
       failed: files5.length - passed.length,
-      unkeyed: kept4.length - testFiles3 - uncertified2.length,
+      unkeyed: kept4.length - testFiles3 - uncertified2.length - inspected,
       uncertified: uncertified2.length,
       ambiguous: passed.length - named4.length,
-      inspector: named4.length - kept4.length
+      inspector: named4.length - kept4.length + inspected
     },
     uncertified: uncertified2
   };
 }
-async function keyFiles(root, runner, keys, passed) {
+async function keyFiles(root, runner, keys, passed, leftOut3) {
   const listed8 = new Set((await runner.testFiles()).map(testFileId));
   const closures = /* @__PURE__ */ new Map();
+  let inspected = 0;
   for (const file of passed) {
     const ref3 = refOf2(file);
     if (!listed8.has(testFileId(ref3))) continue;
     const closure = await runner.closure(ref3).catch(() => null);
     if (closure === null) continue;
+    if (leftOut3(file, closure)) {
+      inspected++;
+      continue;
+    }
     closures.set(testFileId(ref3), closure);
     keys.setClosure(closure);
   }
@@ -77009,7 +77029,7 @@ async function keyFiles(root, runner, keys, passed) {
   }
   await keys.trackUntracked();
   keys.writeSeen();
-  return { closures, report: report4 };
+  return { closures, report: report4, inspected };
 }
 function environmentRefusal2(input, environments2) {
   const { store, worktreeId, parts: parts3 } = input;
@@ -77029,6 +77049,8 @@ function environmentRefusal2(input, environments2) {
 function refOf2(file) {
   return { project: file.project, path: file.path };
 }
+var fileId = (file) => testFileId(refOf2(file));
+var INSPECTOR = "inspector";
 
 // src/cli/ci-export.ts
 init_runtime();
@@ -80821,7 +80843,7 @@ function leftOut2(counts) {
     counts.unkeyed > 0 ? `${files3(counts.unkeyed)} this checkout could not key` : null,
     counts.uncertified > 0 ? `${files3(counts.uncertified)} whose inputs here are not what their shard read` : null,
     counts.ambiguous > 0 ? `${files3(counts.ambiguous)} with two checks of one name` : null,
-    counts.inspector > 0 ? `${files3(counts.inspector)} that ran node:inspector beside Squeal's coverage provider` : null
+    counts.inspector > 0 ? `${files3(counts.inspector)} that loaded node:inspector beside a coverage provider` : null
   ].filter((part2) => part2 !== null).join(", ");
 }
 
@@ -83411,6 +83433,10 @@ function unusable(part2) {
   const { coverage, observing } = part2.header;
   if (coverage === void 0) return `${part2.format} holds no coverage record`;
   if ("off" in coverage) return `ci record added no coverage provider (${coverage.off})`;
+  if (!knownCollector(coverage.collector)) {
+    const by = JSON.stringify(coverage.collector);
+    return `its records were collected by ${by}, which this Squeal does not read`;
+  }
   const { providerVersion, recordVersion: recordVersion2 } = coverage;
   if (providerVersion !== COVERAGE_PROVIDER_VERSION || recordVersion2 !== COVERAGE_RECORD_VERSION) {
     const made = `provider ${providerVersion}, record ${recordVersion2}`;
@@ -100755,13 +100781,19 @@ Usage:
                                 process into --out (default squeal-parts/): each test
                                 file's outcome, checks, duration and observed reads,
                                 and each project's environment; other runners only run.
-                                It adds Squeal's coverage provider to the run, and the
-                                part holds each test file's coverage record; it adds
-                                none when the run has coverage of its own
-                                (coverage.enabled, --coverage) or Node lacks
-                                process.getBuiltinModule. No record for a file run with
-                                a test name filter, with isolate: false or beside
-                                node:inspector. The exit code stays the command's.
+                                The part holds each test file's coverage record. With
+                                no coverage of the run's own, it adds Squeal's coverage
+                                provider to the run (not when Node lacks
+                                process.getBuiltinModule). With the run's own V8
+                                coverage (coverage.enabled, --coverage) on Vitest 4.1
+                                or 5.0, it adds none and reads that provider's data:
+                                the project's report and thresholds stay its own. With
+                                Istanbul, a custom provider, browser mode or another
+                                Vitest version, it records no coverage. The part names
+                                which applied. No record for a file run with a test
+                                name filter, with isolate: false, with child-process
+                                coverage or beside node:inspector. The exit code stays
+                                the command's.
                                 Requires that no other program changes the tests' input
                                 files while the command runs: Squeal sees the reads and
                                 writes of the command's Node processes, not every change

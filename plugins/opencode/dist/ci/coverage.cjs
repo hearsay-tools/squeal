@@ -9,20 +9,28 @@
 // executed, by the records' worker (`coverage-map.mjs`, `workerMapper`'s
 // protocol), one job at a time, as files end.
 //
-// It adds nothing when the run's resolved config has `coverage.enabled`
-// (a Vitest run takes one provider, and replacing the project's turns off
-// its report and thresholds) or when this Node lacks
-// `process.getBuiltinModule`, which the provider needs. No record for a
-// filtered file, a worker batch of several files, a project with
-// `isolate: false`, or a file whose worker ran a module that imports
-// `node:inspector`, known only after the run. Every error of its own is a
-// reason in the part; none reaches the run.
+// When the run's resolved config has `coverage.enabled` (a Vitest run takes
+// one provider), it adds none: with the V8 provider on a tested Vitest it
+// maps that provider's payloads instead (spec 020 D19, `coverage-v8.cjs`),
+// and otherwise it yields. It also adds nothing when this Node lacks
+// `process.getBuiltinModule`, which Squeal's provider needs. No record for
+// a filtered file, a worker batch of several files, a project with
+// `isolate: false`, a payload with a child process's scripts, or a file
+// whose worker ran a module that imports `node:inspector`, known only after
+// the run. Every error of its own is a reason in the part; none reaches the
+// run.
 "use strict";
-const fs = require("node:fs");
 const path = require("node:path");
-const { createHash } = require("node:crypto");
 const clock = require("./clock.cjs");
-const { isFiltered, projectFile, settle, transformOf } = require("./coverage-drops.cjs");
+const {
+  isFiltered,
+  isolateOff,
+  projectFile,
+  settle,
+  transformOf,
+} = require("./coverage-drops.cjs");
+const { allow, attachStamps } = require("./coverage-stamps.cjs");
+const { v8Batches, yieldReason } = require("./coverage-v8.cjs");
 const { startMapper } = require("./map-client.cjs");
 
 const message = (error) => String(error?.message ?? error);
@@ -43,24 +51,42 @@ function offCoverage(off, note) {
  * `dir`, `root`, `format`, or `off` and `note` when `ci record` has none.
  */
 function startCoverage(vitest, settings) {
-  if (typeof settings?.off === "string") return offCoverage(settings.off, String(settings.note));
-  if (typeof settings?.provider !== "string" || typeof settings.worker?.script !== "string") {
-    return offCoverage("no-provider", "ci record gave the hook no coverage settings");
-  }
-  if (typeof process.getBuiltinModule !== "function") {
-    const why = `Node ${process.version} has no process.getBuiltinModule, which Squeal's provider needs`;
-    return offCoverage("no-provider", why);
-  }
+  let own = false;
   try {
-    if (vitest.config?.coverage?.enabled === true) {
-      const why =
-        "the run has coverage of its own (coverage.enabled), and a Vitest run takes one coverage provider";
-      return offCoverage("project-coverage", why);
+    own = vitest.config?.coverage?.enabled === true;
+    if (own) return projectCoverage(vitest, settings);
+    const missing = unsettled(settings);
+    if (missing !== null) return offCoverage(missing.off, missing.note);
+    if (typeof process.getBuiltinModule !== "function") {
+      const why = `Node ${process.version} has no process.getBuiltinModule, which Squeal's provider needs`;
+      return offCoverage("no-provider", why);
     }
     return onCoverage(vitest, settings);
   } catch (error) {
-    return offCoverage("failed", message(error));
+    return offCoverage(own ? "project-coverage" : "failed", message(error));
   }
+}
+
+/** Why `settings` make no records, as the part's header says it; `null` when they make some. */
+function unsettled(settings) {
+  if (typeof settings?.off === "string") return { off: settings.off, note: String(settings.note) };
+  if (typeof settings?.provider === "string" && typeof settings.worker?.script === "string") {
+    return null;
+  }
+  return { off: "no-provider", note: "ci record gave the hook no coverage settings" };
+}
+
+/** D19: the run has coverage of its own; records from its V8 provider's payloads, or none and why. */
+function projectCoverage(vitest, settings) {
+  const missing = unsettled(settings);
+  const why =
+    yieldReason(vitest) ??
+    (missing === null ? null : `the run has V8 coverage of its own, and ${missing.note}`);
+  if (why !== null) return offCoverage("project-coverage", why);
+  const stamps = new WeakMap();
+  attachStamps(vitest, settings.root, stamps);
+  const dir = path.join(settings.dir, String(process.pid), "v8");
+  return runCoverage(vitest, settings, stamps, (failed) => v8Batches(vitest, dir, failed));
 }
 
 function onCoverage(vitest, settings) {
@@ -87,48 +113,20 @@ function onCoverage(vitest, settings) {
     override.coverage = before;
     throw error;
   }
-  return runCoverage(vitest, settings, stamps);
+  return runCoverage(vitest, settings, stamps, squealBatches(vitest));
 }
 
-/** Row 013-08: each Vite server of the instance may load the provider, by its path and real path. */
-function allow(vitest, provider) {
-  const files = new Set([provider, fs.realpathSync.native(provider)]);
-  for (const server of new Set([vitest.vite, ...vitest.projects.map((p) => p.vite)])) {
-    const allowed = server.config.server.fs.allow;
-    for (const file of files) if (!allowed.includes(file)) allowed.push(file);
-  }
+/** Squeal's provider's batches (`provider.mjs`, `takeBatches`). */
+function squealBatches(vitest) {
+  return () => ({
+    install: () => null,
+    take: () => vitest.coverageProvider?.takeBatches?.() ?? [],
+    collector: () => ({ collector: "squeal" }),
+  });
 }
 
-function environmentsOf(vitest) {
-  return new Set(vitest.projects.flatMap((p) => Object.values(p.vite.environments ?? {})));
-}
-
-/** As `SourceStamps.attach`: the sha1 of the bytes each container's `load` read, by module ID. */
-function attachStamps(vitest, root, stamps) {
-  for (const environment of environmentsOf(vitest)) {
-    const container = environment.pluginContainer;
-    if (stamps.has(container)) continue;
-    const reads = new Map();
-    stamps.set(container, reads);
-    const load = container.load.bind(container);
-    // Row 018-29: the hash is on the clock; the read, which waits, is not.
-    const stamp = clock.timed((id, bytes) => {
-      reads.set(id, createHash("sha1").update(bytes).digest("hex"));
-    });
-    container.load = async (id, ...rest) => {
-      if (projectFile(id, root) !== null) {
-        try {
-          stamp(id, await fs.promises.readFile(id));
-        } catch {
-          reads.delete(id);
-        }
-      }
-      return load(id, ...rest);
-    };
-  }
-}
-
-function runCoverage(vitest, settings, stamps) {
+/** The run's records, from the batches `batchesOf(failed)` gives (`squealBatches`, `v8Batches`). */
+function runCoverage(vitest, settings, stamps, batchesOf) {
   const { root, provider } = settings;
   const filtered = new Set();
   const results = new Map();
@@ -138,6 +136,8 @@ function runCoverage(vitest, settings, stamps) {
   const failed = (error) => {
     note ??= message(error);
   };
+  const batches = batchesOf(failed);
+  let unwrapped = null;
   const mapperNow = () => {
     mapper ??= startMapper(settings, failed);
     return mapper;
@@ -161,7 +161,7 @@ function runCoverage(vitest, settings, stamps) {
   };
   const take = clock.timed(() => {
     try {
-      for (const batch of vitest.coverageProvider?.takeBatches?.() ?? []) submit(batch);
+      for (const batch of batches.take()) submit(batch);
     } catch (error) {
       failed(error);
     }
@@ -180,6 +180,12 @@ function runCoverage(vitest, settings, stamps) {
     const [key] = keys;
     if (filtered.has(key) || isFiltered(vitest, project)) {
       results.set(key, { none: "filtered", payload, environment });
+      return;
+    }
+    // D19.3: a project's shared worker, and a child process's scripts, are not this file's run.
+    const none = isolateOff(project) ? "isolate-false" : batch.children ? "child-process" : null;
+    if (none !== null) {
+      results.set(key, { none, payload, environment });
       return;
     }
     const relative = projectFile(ids[0], root);
@@ -210,6 +216,7 @@ function runCoverage(vitest, settings, stamps) {
     /** The files a filter runs only part of (Vitest 4.1 and 5 `TestSpecification`). */
     runStart: clock.timed((specifications) => {
       try {
+        unwrapped ??= batches.install();
         for (const spec of specifications ?? []) {
           const partial =
             (spec.testLines?.length ?? 0) > 0 ||
@@ -225,6 +232,11 @@ function runCoverage(vitest, settings, stamps) {
     take,
     /** After the run: each of `modules`' records or why it has none, and the header. */
     async end(modules) {
+      const collector = batches.collector();
+      if (collector === null) {
+        const why = unwrapped ?? note ?? "the run ended before its coverage provider started";
+        return offCoverage("project-coverage", why).end();
+      }
       try {
         take();
         const files = new Map();
@@ -234,11 +246,12 @@ function runCoverage(vitest, settings, stamps) {
           const result = results.get(key);
           files.set(key, await settle(result, vitest, project, inspector, root));
         }
-        return { header: note === undefined ? { on: true } : { on: true, note }, files };
+        const header = { on: true, ...collector, ...(note === undefined ? {} : { note }) };
+        return { header, files };
       } catch (error) {
         // The provider was in the run: every file reads `unmapped`, the error the note.
         failed(error);
-        return { header: { on: true, note }, files: new Map() };
+        return { header: { on: true, ...collector, note }, files: new Map() };
       } finally {
         await mapper?.close().catch(() => {});
       }
