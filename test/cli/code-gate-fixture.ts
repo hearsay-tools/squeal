@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync } from "node:fs";
 import { availableParallelism, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach } from "vitest";
@@ -67,6 +67,14 @@ export function ownHomeAndTmp(): () => readonly string[] {
     rmSync(temp, { recursive: true, force: true });
   });
   return () => readdirSync(temp);
+}
+
+/** #197 (row 020-40): the log folders the gate kept under the store's `runs/`, as the report names them. */
+export function keptLogs(root: string): string[] {
+  const runs = join(root, ".git", "squeal", "runs");
+  if (!existsSync(runs)) return [];
+  const names = readdirSync(runs).filter((name) => name.startsWith("gate-"));
+  return names.map((name) => join(realpathSync(runs), name));
 }
 
 /** D17.1: a fixture's Vitest sets no `maxWorkers`, so it runs one worker per CPU but one. */
