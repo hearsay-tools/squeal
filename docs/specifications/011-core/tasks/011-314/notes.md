@@ -10,7 +10,7 @@ Bench (`research/probes/daemon-idle-cpu/line-reader-bench.ts`, 09:20:58Z, load a
 
 ## Not verified here
 
-The row's live check (a Vitest tier of 100+ files with coverage leaves no unread bytes on its host socket and holds no main thread at one core for over a minute) needs a daemon that runs this source. The daemon of this worktree runs the installed bundle 0.1.443 (`~/.claude/plugins/cache/hearsay/squeal/0.1.443/dist/cli/squeal.mjs`), so it still has the old reader. During this task its tier of `test/runner-host/protocol.test.ts` stayed "running" about a minute past its estimated end, which fits the old reader. Check the live criterion on a release that carries this commit.
+The row's live check (a Vitest tier of 100+ files with coverage leaves no unread bytes on its host socket and holds no main thread at one core for over a minute) needs a daemon that runs this source. The daemon of this worktree runs the installed bundle 0.1.443 (`~/.claude/plugins/cache/hearsay/squeal/0.1.443/dist/cli/squeal.mjs`), so it still has the old reader. During this task its tiers showed the bug. Each tier waited for "the tier's final checks" 1.5 to 2 minutes after its last file ended (one tier: files ended 10:30:37 CET, results at about 10:32:20). At 10:27 CET, between tiers, the daemon's main thread used 99.9% of a core with 1.8 GB resident (`top -H`, read only; load average 62). Check the live criterion on a release that carries this commit.
 
 ## Coverage code and maps by file (out of scope)
 
