@@ -7,6 +7,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { afterAll, onTestFinished } from "vitest";
 import type { HostedAdapter } from "../../../src/core/runner-host/host.js";
 import type { HostDeadlines } from "../../../src/core/runner-host/proxy.js";
+import type { HostAdmission } from "../../../src/core/runner-host/remote/admission.js";
 import { type RemoteHost, remoteHostOver } from "../../../src/core/runner-host/remote/connect.js";
 import { withRemoteLane } from "../../../src/core/runner-host/remote/lane.js";
 import type { WhenLost } from "../../../src/core/runner-host/remote/settings.js";
@@ -53,6 +54,10 @@ export interface Setup {
   readonly installEnv?: NodeJS.ProcessEnv;
   /** Files of the local tree beside the default ones. */
   readonly files?: Readonly<Record<string, string>>;
+  /** The remote machine's admission (spec 021 D18, row 021-21); absent, it admits every run. */
+  readonly admission?: HostAdmission;
+  /** How often a refused run asks the remote again. */
+  readonly admitEveryMs?: number;
 }
 
 let n = 0;
@@ -64,6 +69,8 @@ export async function setup({
   deadlines,
   installEnv,
   files = {},
+  admission,
+  admitEveryMs,
 }: Setup = {}) {
   const dir = join(scratch, `s${++n}`);
   const root = join(dir, "local");
@@ -115,7 +122,10 @@ export async function setup({
           },
         ),
       "0.0.0-test",
-      { tree: createTreeHost(remoteRoot, () => {}, installEnv) },
+      {
+        tree: createTreeHost(remoteRoot, () => {}, installEnv),
+        ...(admission === undefined ? {} : { admission }),
+      },
     );
     // A paused remote: nothing more reaches the daemon.
     const output = new PassThrough();
@@ -156,6 +166,7 @@ export async function setup({
     log: (text) => logs.push(text),
     now: () => clock,
     backoffMs: [60_000],
+    ...(admitEveryMs === undefined ? {} : { admitEveryMs }),
   });
   onTestFinished(() => lane.close());
   await until(() => statuses.some((s) => s.includes("go there")));

@@ -12,6 +12,7 @@ import {
 } from "../../types/runner.js";
 import { isGroupLane } from "../../types/scheduler.js";
 import { runnerHostGone } from "../proxy.js";
+import { remoteAdmission } from "./admission.js";
 import type { RemoteHost } from "./connect.js";
 import { environmentDifferences } from "./environment.js";
 import type { WhenLost } from "./settings.js";
@@ -28,6 +29,12 @@ import { insideRoot, type RemoteRunReply } from "./tree-wire.js";
  * incomplete; then the policy runs the lane's files here (`local`) or leaves
  * them not run (`not-run`), and the lane reconnects with backoff at a later
  * background run.
+ *
+ * Spec 021 D18, last bullet (row 021-21): a remote run counts against the
+ * remote machine. Once the remote can take it, the run gives its local
+ * permits back (`RunOptions.permits`) and waits for the remote machine's
+ * admission, under that machine's ceiling and floor; a run that comes back
+ * to run here waits for local permits again.
  */
 
 export interface RemoteLaneOptions {
@@ -45,7 +52,12 @@ export interface RemoteLaneOptions {
   readonly now?: () => number;
   /** Waits before each reconnect after a loss; the last repeats. */
   readonly backoffMs?: readonly number[];
+  /** How often a run the remote machine refuses asks again. Default `ADMIT_EVERY_MS`. */
+  readonly admitEveryMs?: number;
 }
+
+/** The scheduler's own look again at a refused tier (`CAPACITY_RECHECK_MS`). */
+export const ADMIT_EVERY_MS = 2_000;
 
 const BACKOFF_MS = [30_000, 60_000, 120_000, 300_000, 600_000];
 
@@ -163,16 +175,40 @@ export function withRemoteLane(options: RemoteLaneOptions): RunnerAdapter {
     return blobs;
   };
 
+  /** D18 (row 021-21): the workers a tier of `testFiles` runs at `grant`, as the scheduler sizes it. */
+  const widthAt = (testFiles: readonly TestFileRef[], grant: number): number => {
+    const widths = testFiles.map((file) => local.tierWidth?.(file, grant) ?? grant);
+    return Math.min(testFiles.length, Math.max(1, ...widths));
+  };
+
+  /**
+   * D18 (row 021-21): the run's local permits go back, then the remote
+   * machine admits it; the workers granted there, `null` on a cancel
+   * meanwhile. Rejects when the host does not answer.
+   */
+  const admitted = (host: RemoteHost, testFiles: readonly TestFileRef[], run: RunOptions) => {
+    run.permits?.away();
+    const ask = { want: widthAt(testFiles, testFiles.length), least: widthAt(testFiles, 1) };
+    return remoteAdmission((asked) => host.admit(asked), ask, {
+      cancel: cancelOf(run),
+      everyMs: options.admitEveryMs ?? ADMIT_EVERY_MS,
+      log: (line) => options.log(`remote ${target}: ${line}`),
+    });
+  };
+
   /**
    * The remote's run, proven over a current environment; `refused` after a
    * second tree refusal or a differing environment (then down), `lost` when
-   * the host ended during it (then down), with its incomplete report.
+   * the host ended during it or its admission (then down), with its
+   * incomplete report; `cancelled` during its admission.
    */
   const remoteRun = async (
     host: RemoteHost,
     testFiles: readonly TestFileRef[],
     run: RunOptions,
-  ): Promise<RunReport | "refused" | { readonly lost: RunReport }> => {
+  ): Promise<
+    RunReport | "refused" | { readonly lost: RunReport } | { readonly cancelled: RunReport }
+  > => {
     const closures = await Promise.all(testFiles.map((file) => local.closure(file)));
     const configs = (await local.environment()).flatMap((r) => r.files);
     const inputs = [...new Set([...closures.flatMap((c) => c.paths), ...configs])];
@@ -191,10 +227,19 @@ export function withRemoteLane(options: RemoteLaneOptions): RunnerAdapter {
         down(unequal.join("; "), true, host);
         return "refused";
       }
+      const grant = await admitted(host, testFiles, run).catch((error: Error) => error);
+      if (grant instanceof Error) {
+        down(runnerHostGone(host.adapter) ? "the host ended" : grant.message, false, host);
+        return { lost: lostReport(testFiles) };
+      }
+      if (grant === null) return { cancelled: notStarted() };
       const expected = await blobsHere(inputs);
+      const { permits: _permits, ...sent } = run;
       const reply = (await host.adapter.run(testFiles, {
-        ...run,
+        ...sent,
+        workers: grant,
         expected,
+        admitted: true,
       } as RunOptions)) as RunReport & RemoteRunReply;
       if (runnerHostGone(host.adapter)) {
         down(reply.failure ?? "the host ended", false);
@@ -242,11 +287,22 @@ export function withRemoteLane(options: RemoteLaneOptions): RunnerAdapter {
   /**
    * What the policy does with a background run the remote cannot take (D13):
    * `local` runs it here, in the tier the scheduler admitted under the local
-   * budget, in a log directory no earlier attempt used.
+   * budget, in a log directory no earlier attempt used. A run that gave its
+   * local permits back waits for them again (D18, row 021-21).
    */
-  const instead = (testFiles: readonly TestFileRef[], run: RunOptions): Promise<RunReport> => {
+  const instead = async (
+    testFiles: readonly TestFileRef[],
+    run: RunOptions,
+  ): Promise<RunReport> => {
     if (options.whenLost === "local") {
-      return local.run(testFiles, { ...run, logDir: join(run.logDir, "here") });
+      const { permits, ...here } = run;
+      const workers = permits === undefined ? run.workers : await permits.back(cancelOf(run));
+      if (workers === null) return notStarted();
+      return local.run(testFiles, {
+        ...here,
+        logDir: join(run.logDir, "here"),
+        ...(workers === undefined ? {} : { workers }),
+      });
     }
     notRun += testFiles.length;
     tell();
@@ -280,6 +336,7 @@ export function withRemoteLane(options: RemoteLaneOptions): RunnerAdapter {
       if (host === null) return instead(testFiles, run);
       const report = await remoteRun(host, testFiles, run);
       if (report === "refused") return instead(testFiles, run);
+      if ("cancelled" in report) return report.cancelled;
       if ("lost" in report) {
         // Review 0.1.442 B4: nothing of the lost attempt is kept; under `local` its files run
         // here now, unless the tier was cancelled meanwhile; under `not-run` they end unknown.
@@ -300,6 +357,28 @@ export function withRemoteLane(options: RemoteLaneOptions): RunnerAdapter {
       state = { kind: "down", since: now(), retryAt: Number.POSITIVE_INFINITY, refused: false };
       await Promise.allSettled([host?.adapter.close(), local.close()]);
     },
+  };
+}
+
+/** The tier's cancel or a stop, either of which ends a wait for permits (D18). */
+function cancelOf(run: RunOptions): AbortSignal | undefined {
+  const signals = [run.signal, run.stop].filter((signal) => signal !== undefined);
+  return signals.length > 1 ? AbortSignal.any(signals) : signals[0];
+}
+
+/**
+ * A run cancelled before it started anywhere (D18): it ended with no file
+ * completed, as a cancelled run does, so the scheduler queues its files
+ * again; under a stop alone, its files are not current, as a stopped run's.
+ */
+function notStarted(): RunReport {
+  return {
+    end: "completed",
+    durationMs: 0,
+    completedFiles: [],
+    results: [],
+    fileErrors: [],
+    failure: "cancelled while it waited for permits",
   };
 }
 
