@@ -5,7 +5,8 @@ import type { Case } from "../../case.js";
  * 016-17), on the driver's own Node: what a run stores (outcomes, a file
  * that fails to load), and from row 016-17 the directories a test creates,
  * which the module recorder records for the core's written-directory bound
- * (016 D4), and from row 015-86 Squeal's coverage of those runs (015 D8).
+ * (016 D4), from row 015-86 Squeal's coverage of those runs (015 D8), and
+ * from row 020-36 what a process a test spawns loads (020 D12.6).
  */
 
 const lines = (...text: string[]) => `${text.join("\n")}\n`;
@@ -161,6 +162,33 @@ const LOGS_REMOVED_COVERED: Readonly<Record<string, string>> = {
   "test/removes-logs.test.mjs": LOGS_REMOVED["test/removes-logs.test.mjs"] ?? "",
 };
 
+/**
+ * Row 020-36: a test that runs a module it also imports in a process of its
+ * own, then reads that process's graph, which only a recorder in
+ * `NODE_OPTIONS` writes. The import keeps the key alike at both trees.
+ */
+const CHILD_RECORDED: Readonly<Record<string, string>> = {
+  "package.json": PACKAGE,
+  "src/child.mjs": "export const marker = 1;\n",
+  "test/child-recorded.test.mjs": lines(
+    'import assert from "node:assert/strict";',
+    'import { spawnSync } from "node:child_process";',
+    'import { readFileSync } from "node:fs";',
+    'import { test } from "node:test";',
+    'import { fileURLToPath } from "node:url";',
+    'import { marker } from "../src/child.mjs";',
+    "",
+    "test(\"finds its child's load in the run's graph\", () => {",
+    '  const script = fileURLToPath(new URL("../src/child.mjs", import.meta.url));',
+    '  const child = spawnSync(process.execPath, [script], { encoding: "utf8" });',
+    "  assert.equal(child.status, 0, child.stderr);",
+    '  const graph = process.env.SQUEAL_NODE_TEST_GRAPH + "-" + child.pid + ".ndjson";',
+    '  assert.match(readFileSync(graph, "utf8"), /src\\/child\\.mjs/);',
+    "  assert.equal(marker, 1);",
+    "});",
+  ),
+};
+
 const COVERED_RUN = [{ files: ["test/area.test.mjs", "test/inspector.test.mjs"] }];
 
 const OUTCOME_FILES = ["test/broken.test.mjs", "test/fail.test.mjs", "test/pass.test.mjs"];
@@ -291,6 +319,12 @@ export const NODE_TEST_RUNS: readonly Case[] = [
       argv: ["--experimental-loader=./validity-loader.mjs"],
       runs: [{ files: ["test/pass.test.mjs"] }],
     },
+  },
+  {
+    kind: "adapter:node-test",
+    name: "a test finds its child process's load recorded (row 020-36)",
+    why: "020 D12.6 as amended 2026-11-12, the case that stands for NODE_TEST_ADAPTER_VERSION 12. Observable: the module recorder now rides in NODE_OPTIONS for every project, so a process a test spawns writes its own graph, whose loads key the test file; under one key a test that reads its child's graph stores a pass where the last release, whose recorder reached no child of a project that is not slow, stored a fail. The child runs a module the test file imports too, so the keys stay alike. The reason for the raise: a pass an earlier release stored while a child's loads went unkeyed must not be found by this release's keys (the human, 2026-11-12: \"Record them\")",
+    input: { files: CHILD_RECORDED, runs: [{ files: ["test/child-recorded.test.mjs"] }] },
   },
   {
     kind: "adapter:node-test",

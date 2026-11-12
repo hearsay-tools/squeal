@@ -32,6 +32,10 @@
  * 2026-10-25). "11": a run whose log folder is removed or made again during
  * the run stores nothing, where earlier releases stored a completed file
  * without the loads its removed graphs held (row 018-38, review 0.1.449 B1;
- * the human, 2026-11-12: "A: raise version").
+ * the human, 2026-11-12: "A: raise version"). "12": the module recorder is in
+ * every project's `NODE_OPTIONS`, as Vitest's is, so what a process a test
+ * spawns loads keys the test file (row 020-36, spec 020 D12.6 as amended
+ * 2026-11-12; the human: "Record them"), where only a slow project's did, so a
+ * pass stored while a child's loads went unkeyed runs once more.
  */
-export const NODE_TEST_ADAPTER_VERSION = "11";
+export const NODE_TEST_ADAPTER_VERSION = "12";
