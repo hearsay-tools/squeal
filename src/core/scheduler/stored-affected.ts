@@ -28,7 +28,8 @@ import type { ContentRekey } from "./revision.js";
  *    to, and Vitest's walk loses the importers of a deleted file.
  * 2. No changed path is an environment input, and the runner's view did not
  *    move: no project was recreated, the environment and the listing are not
- *    read again, and no runner failure is being retried.
+ *    read again, no runner failure is being retried, and no earlier call of
+ *    the runner part failed.
  * 3. Every listed test file is a Vitest file with a closure: no other runner
  *    stores walks, and a file without a closure may reach anything.
  * 4. Each test file whose closure names a changed path (the reverse index,
