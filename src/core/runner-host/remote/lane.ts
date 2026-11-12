@@ -58,6 +58,9 @@ export interface RemoteLaneOptions {
 
 const BACKOFF_MS = [30_000, 60_000, 120_000, 300_000, 600_000];
 
+/** How many runs in a row may come after their grant went back before the remote counts as lost. */
+const LATE_RUNS = 3;
+
 /** A run of a background tier in the runner's own lane: one that may go remote (D12). */
 export function goesRemote(options: RunOptions): boolean {
   const lane = options.lane ?? "";
@@ -203,24 +206,8 @@ export function withRemoteLane(options: RemoteLaneOptions): RunnerAdapter {
         down(unequal.join("; "), true, host);
         return "refused";
       }
-      const grant = await admitRun((ask) => host.admit(ask), testFiles, run, {
-        tierWidth: (file, grant) => local.tierWidth?.(file, grant) ?? grant,
-        everyMs: options.admitEveryMs ?? ADMIT_EVERY_MS,
-        log: (line) => options.log(`remote ${target}: ${line}`),
-      }).catch((error: Error) => error);
-      if (grant instanceof Error) {
-        down(runnerHostGone(host.adapter) ? "the host ended" : grant.message, false, host);
-        return { lost: lostReport(testFiles) };
-      }
-      if (grant === null) return { cancelled: notStarted() };
-      const expected = await blobsHere(inputs);
-      const { permits: _permits, ...sent } = run;
-      const reply = (await host.adapter.run(testFiles, {
-        ...sent,
-        workers: grant,
-        expected,
-        admitted: true,
-      } as RunOptions)) as RunReport & RemoteRunReply;
+      const reply = await admittedRun(host, testFiles, run, inputs);
+      if ("lost" in reply || "cancelled" in reply) return reply;
       if (runnerHostGone(host.adapter)) {
         down(reply.failure ?? "the host ended", false);
         return { lost: stripped(reply) };
@@ -242,6 +229,50 @@ export function withRemoteLane(options: RemoteLaneOptions): RunnerAdapter {
       `remote ${target}: refused a run whose tree stayed different; ${options.whenLost === "local" ? "ran it here" : "not run"}`,
     );
     return "refused";
+  };
+
+  /**
+   * D18 (row 021-21): the run admitted by the remote machine and sent there.
+   * A run that came after its grant went back did not start (review 0.1.445
+   * R1): the machine is asked again, up to `LATE_RUNS` times in a row, then
+   * the remote counts as lost.
+   */
+  const admittedRun = async (
+    host: RemoteHost,
+    testFiles: readonly TestFileRef[],
+    run: RunOptions,
+    inputs: readonly string[],
+  ): Promise<
+    (RunReport & RemoteRunReply) | { readonly lost: RunReport } | { readonly cancelled: RunReport }
+  > => {
+    for (let late = 1; ; late++) {
+      const grant = await admitRun((ask) => host.admit(ask), testFiles, run, {
+        tierWidth: (file, grant) => local.tierWidth?.(file, grant) ?? grant,
+        everyMs: options.admitEveryMs ?? ADMIT_EVERY_MS,
+        log: (line) => options.log(`remote ${target}: ${line}`),
+      }).catch((error: Error) => error);
+      if (grant instanceof Error) {
+        down(runnerHostGone(host.adapter) ? "the host ended" : grant.message, false, host);
+        return { lost: lostReport(testFiles) };
+      }
+      if (grant === null) return { cancelled: notStarted() };
+      const expected = await blobsHere(inputs);
+      const { permits: _permits, ...sent } = run;
+      const reply = (await host.adapter.run(testFiles, {
+        ...sent,
+        workers: grant,
+        expected,
+        admitted: true,
+      } as RunOptions)) as RunReport & RemoteRunReply;
+      if (reply.unadmitted !== true) return reply;
+      if (late >= LATE_RUNS) {
+        down(`its machine's grant went back before the run came, ${LATE_RUNS} times`, false, host);
+        return { lost: lostReport(testFiles) };
+      }
+      options.log(
+        `remote ${target}: its machine's grant went back before the run came; asking again`,
+      );
+    }
   };
 
   /** A lost run's report with nothing in it: every check of the tier `unknown`. */
@@ -342,6 +373,6 @@ export function withRemoteLane(options: RemoteLaneOptions): RunnerAdapter {
 
 /** A report without what only the lane reads. */
 function stripped(report: RunReport & RemoteRunReply): RunReport {
-  const { refused: _refused, proof: _proof, ...rest } = report;
+  const { refused: _refused, proof: _proof, unadmitted: _unadmitted, ...rest } = report;
   return rest;
 }

@@ -43,11 +43,19 @@ export interface HostAdmission {
    * returned first, so a look for 0 workers returns it and takes nothing.
    */
   admit(ask: AdmitAsk): AdmitAnswer;
-  /** The held grant, for the run that starts now; `null` when none is held. */
-  claim(): PoolLease | null;
+  /**
+   * The held grant, for the run that starts now: `UNGRANTED` after a look
+   * whose pool failed; `null` when none is held, as when its hold passed or
+   * a later look took its place, and then the run must not start (review
+   * 0.1.445 R1).
+   */
+  claim(): PoolLease | typeof UNGRANTED | null;
   /** Returns what it holds; its mark goes. */
   close(): void;
 }
+
+/** `claim`'s answer after a look whose pool failed: the run goes without a grant (`AdmitAnswer.failed`). */
+export const UNGRANTED = "ungranted";
 
 /** How long a grant waits for its run: the lane sends the run at once, so only a lost daemon leaves one. */
 export const ADMITTED_HOLD_MS = 30_000;
@@ -58,13 +66,22 @@ export function createHostAdmission(
   holdMs = ADMITTED_HOLD_MS,
 ): HostAdmission {
   let pool: PermitPool | null = null;
-  let held: { readonly lease: PoolLease; readonly timer: NodeJS.Timeout } | null = null;
+  let held: {
+    readonly lease: PoolLease | typeof UNGRANTED;
+    readonly timer: NodeJS.Timeout;
+  } | null = null;
   let refusal: string | undefined;
   const drop = () => {
     if (held === null) return;
     clearTimeout(held.timer);
-    held.lease.release();
+    if (held.lease !== UNGRANTED) held.lease.release();
     held = null;
+  };
+  /** Held for the next run until `holdMs` passes. */
+  const hold = (lease: PoolLease | typeof UNGRANTED) => {
+    const timer = setTimeout(drop, holdMs);
+    timer.unref();
+    held = { lease, timer };
   };
   return {
     admit({ want, least }) {
@@ -78,13 +95,12 @@ export function createHostAdmission(
         });
         lease = pool.acquire(want, "fast", least, "backlog");
       } catch (error) {
+        hold(UNGRANTED);
         return { grant: want, failed: error instanceof Error ? error.message : String(error) };
       }
       if (lease === null) return refusal === undefined ? { grant: 0 } : { grant: 0, refusal };
-      const timer = setTimeout(drop, holdMs);
-      timer.unref();
       // As a tier's lease under its runner's width: the run's tail never states more than it asked.
-      held = { lease: widthLease(lease, want), timer };
+      hold(widthLease(lease, want));
       return { grant: lease.grant };
     },
     claim() {
