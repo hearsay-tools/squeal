@@ -1,33 +1,54 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { committedBlobs } from "../core/commit/tree.js";
+import { exportCommitBlobs } from "../core/daemon/import-request.js";
 import { resolveCommonDir, worktreeIdFor } from "../core/fs/git-layout.js";
 import { compareEnvironment, comparisonText } from "../core/status/import-environment.js";
+import { isBusy } from "../core/store/connection.js";
 import { worktreeEnvironment } from "../core/store/environments.js";
 import { sourceLabel } from "../core/store/imports.js";
 import { isStoreOpenFailure, openStore } from "../core/store/open.js";
 import { decodeBundle, type ResultsBundle } from "../core/store/transfer-bundle.js";
-import { type ImportCounts, importRefusal, importResults } from "../core/store/transfer-import.js";
-import type { AbsolutePath, RelativePath } from "../core/types/common.js";
-import type { FileHash } from "../core/types/keys.js";
+import {
+  type ImportCounts,
+  type ImportOptions,
+  importRefusal,
+  importSliced,
+  retriedSlice,
+} from "../core/store/transfer-import.js";
+import type { AbsolutePath, WorktreeId } from "../core/types/common.js";
+import type { ImportOutcome } from "../core/types/daemon-writes.js";
 import type { Store } from "../core/types/store.js";
 import { askDaemon, CLI_SOCKET_TIMEOUT_MS, worktreeRoot } from "./daemon-access.js";
+import { importThroughDaemon } from "./import-daemon.js";
 import type { CliIo } from "./main.js";
-import { BUSY_BOUND_MS, isBusyAnswer, whileBusy } from "./store-writes.js";
+import { BUSY_BOUND_MS } from "./store-writes.js";
 
 const USAGE = "usage: squeal import <file> [--dry-run]\n";
 
+/** What a test sets in place of the command's defaults. */
+export interface ImportInternal {
+  /** How long one slice of an import made here asks a busy store. Default `BUSY_BOUND_MS`. */
+  readonly busyBoundMs?: number;
+}
+
 /**
  * `squeal import <file> [--dry-run]` (spec 018 D3): adds an export's results
- * to this repository's shared store in one transaction, then tells the
- * running daemons, and prints what was added and, per project, whether the
- * export's environment equals this worktree's. Works before any daemon has
- * started: the store is made when missing. `--dry-run` writes nothing and
- * prints the same. Exit 0 when imported, 1 when the file was refused or the
- * store stayed busy, 2 on a usage error.
+ * to this repository's shared store, then tells the running daemons, and
+ * prints what was added and, per project, whether the export's environment
+ * equals this worktree's. Spec 021 D15 (row 021-20): while a daemon serves
+ * the worktree, it imports the file in its retried path; else the import is
+ * made here, in slices that each ask a busy store again until the bound
+ * (021 D1, D3). Works before any daemon has started: the store is made when
+ * missing. `--dry-run` writes nothing and prints the same. Exit 0 when
+ * imported, 1 when the file was refused or the store stayed busy, 2 on a
+ * usage error.
  */
-export async function importCommand(args: readonly string[], io: CliIo): Promise<number> {
+export async function importCommand(
+  args: readonly string[],
+  io: CliIo,
+  internal: ImportInternal = {},
+): Promise<number> {
   const parsed = parse(args);
   if (typeof parsed === "string") {
     io.stderr(`squeal import: ${parsed}\n${USAGE}`);
@@ -55,29 +76,34 @@ export async function importCommand(args: readonly string[], io: CliIo): Promise
     return 1;
   }
   const fileHash = createHash("sha256").update(bytes).digest("hex");
-  const blobs = await commitBlobs(root, bundle.header.commit);
-  const rekeying = { worktreeId: worktreeIdFor(root), blobs };
-  const now = (io.now ?? Date.now)();
-  const options = {
-    importId: fileHash.slice(0, 16),
-    fileHash,
-    now,
-    dryRun: parsed.dryRun,
-    rekeying,
-  };
+  const worktreeId = worktreeIdFor(root);
+  const clock = io.now ?? Date.now;
+  const now = clock();
   try {
-    const counts = whileBusy(store, now + BUSY_BOUND_MS, () =>
-      importResults(store, bundle, options),
-    );
-    if (isBusyAnswer(counts)) {
+    const sent = { worktreeId, file, fileHash, dryRun: parsed.dryRun };
+    const outcome =
+      (await importThroughDaemon(store, sent, now)) ??
+      (await importHere(store, bundle, root, worktreeId, {
+        importId: fileHash.slice(0, 16),
+        fileHash,
+        now,
+        clock,
+        dryRun: parsed.dryRun,
+        boundMs: internal.busyBoundMs ?? BUSY_BOUND_MS,
+      }));
+    if ("busyMs" in outcome) {
       io.stderr(
-        `squeal import: store busy, waited ${counts.busyMs} ms: another process holds the store's lock; run the command again once it is released\n`,
+        `squeal import: store busy, waited ${outcome.busyMs} ms: another process holds the store's lock; run the command again once it is released\n`,
       );
       return 1;
     }
-    io.stdout(`${addedText(bundle, counts, parsed.dryRun)}\n`);
-    io.stdout(rekeyText(bundle, counts, blobs !== null));
-    io.stdout(`${environmentLines(store, bundle, worktreeIdFor(root))}\n`);
+    if ("failed" in outcome) {
+      io.stderr(`squeal import: ${outcome.failed}\n`);
+      return 1;
+    }
+    io.stdout(`${addedText(bundle, outcome.counts, parsed.dryRun)}\n`);
+    io.stdout(rekeyText(bundle, outcome.counts, outcome.commitHere));
+    io.stdout(`${environmentLines(store, bundle, worktreeId)}\n`);
   } finally {
     store.close();
   }
@@ -122,16 +148,36 @@ function addedText(bundle: ResultsBundle, counts: ImportCounts, dryRun: boolean)
   return `${verb} ${counts.results} results of ${n} test file${n === 1 ? "" : "s"} from ${source}${kept}.${added}`;
 }
 
-/** The blob ids of `commit`'s files, or `null` when this repository does not hold it (018 D11). */
-async function commitBlobs(
+/**
+ * The import made here, with no daemon serving: in slices, each asked again
+ * while another process holds the store's lock, until `boundMs` from its
+ * first try (021 D1, D3); then how long that slice waited. What committed
+ * before stays, and the import's record is written last, so the next
+ * import adds the rest.
+ */
+async function importHere(
+  store: Store,
+  bundle: ResultsBundle,
   root: AbsolutePath,
-  commit: string | null,
-): Promise<ReadonlyMap<RelativePath, FileHash> | null> {
-  if (commit === null) return null;
+  worktreeId: WorktreeId,
+  options: Omit<ImportOptions, "rekeying"> & { readonly boundMs: number },
+): Promise<ImportOutcome> {
+  const blobs = await exportCommitBlobs(root, bundle.header.commit);
+  const retried = retriedSlice(options.boundMs);
+  let sliceFrom = Date.now();
   try {
-    return await committedBlobs(root, commit);
-  } catch {
-    return null;
+    const counts = await importSliced(store, bundle, {
+      ...options,
+      rekeying: { worktreeId, blobs },
+      run: (slice) => {
+        sliceFrom = Date.now();
+        return retried(slice);
+      },
+    });
+    return { counts, commitHere: blobs !== null };
+  } catch (error) {
+    if (!isBusy(error)) throw error;
+    return { busyMs: Date.now() - sliceFrom };
   }
 }
 
