@@ -15,10 +15,24 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const DELETE_BATCH = 256;
 const VACUUM_PAGES = 512;
 
-/** A worktree that is not live; the one parameter is the JSON list of live ids. */
-const DEAD_WORKTREE = "worktree_id NOT IN (SELECT value FROM json_each(?))";
+/** A row of one of the worktrees named; the one parameter is the JSON list of their ids. */
+const OF_WORKTREES = "worktree_id IN (SELECT value FROM json_each(?))";
 
-/** A coverage step's meta key (row 015-12) of a worktree that is not live; the parameter as above. */
+/**
+ * Each worktree id `table` holds, one search of its first key column per id
+ * instead of a read of every row (row 011-315: on cezar's code store, 24 ids
+ * over 2.8 M state rows, 0.1 k page reads against 68 k).
+ */
+export const worktreeIdsOf = (table: string): string => `WITH RECURSIVE ids(id) AS (
+    SELECT min(worktree_id) FROM ${table}
+    UNION ALL SELECT (SELECT min(worktree_id) FROM ${table} WHERE worktree_id > ids.id)
+      FROM ids WHERE ids.id IS NOT NULL)
+  SELECT id FROM ids WHERE id IS NOT NULL`;
+
+/**
+ * A coverage step's meta key (row 015-12) of a worktree that is not live; the
+ * one parameter is the JSON list of live ids.
+ */
 const COVERAGE_META_OF_DEAD = `key LIKE 'coverage:%' AND (CASE
     WHEN instr(substr(key, 10), ':') = 0 THEN substr(key, 10)
     ELSE substr(key, 10, instr(substr(key, 10), ':') - 1) END) NOT IN (SELECT value FROM json_each(?))`;
@@ -58,13 +72,13 @@ export function pruneCodeStore(conn: Connection, options: CodePruneOptions): Cod
   const cutoff = options.now - options.retentionDays * DAY_MS;
   const live = JSON.stringify(options.worktrees);
 
-  const worktreesRemoved = conn.all(
-    `SELECT DISTINCT worktree_id FROM (SELECT worktree_id FROM files UNION
-         SELECT worktree_id FROM states UNION SELECT worktree_id FROM views
-         UNION SELECT worktree_id FROM transitions) WHERE ${DEAD_WORKTREE}`,
-    live,
-  ).length;
-  for (const [table, key] of PER_WORKTREE) deleteInBatches(conn, table, key, DEAD_WORKTREE, live);
+  // Row 011-315: the ids found here, so rows a worktree stores after this read stay.
+  const dead = deadWorktrees(conn, options.worktrees);
+  if (dead.length > 0) {
+    for (const [table, key] of PER_WORKTREE) {
+      deleteInBatches(conn, table, key, OF_WORKTREES, JSON.stringify(dead));
+    }
+  }
   // Row 015-12: the coverage step's meta, `coverage:<worktreeId>` and `coverage:<worktreeId>:<path>`.
   deleteInBatches(conn, "meta", "key", COVERAGE_META_OF_DEAD, live);
 
@@ -103,10 +117,19 @@ export function pruneCodeStore(conn: Connection, options: CodePruneOptions): Cod
     countsRemoved,
     coverageRemoved,
     partsRemoved,
-    worktreesRemoved,
+    worktreesRemoved: dead.length,
     viewsRemoved,
     checksRemoved,
   };
+}
+
+/** The worktree ids the per-worktree tables hold that are not in `live`. */
+function deadWorktrees(conn: Connection, live: readonly string[]): string[] {
+  const kept = new Set(live);
+  const found = new Set(
+    PER_WORKTREE.flatMap(([table]) => conn.all(worktreeIdsOf(table)).map((row) => str(row, "id"))),
+  );
+  return [...found].filter((id) => !kept.has(id));
 }
 
 /**
