@@ -1,5 +1,6 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import { closeSync, writeSync } from "node:fs";
+import { constants } from "node:os";
 import type { Readable } from "node:stream";
 import { setTimeout as delay } from "node:timers/promises";
 import type { CliIo } from "./main.js";
@@ -54,12 +55,16 @@ export function sendReport(fd: number, report: string): void {
 
 /** The report a whole frame holds; `null` when the bytes are not one whole frame. */
 export function unframe(bytes: Buffer): string | null {
+  if (frameSize(bytes) !== bytes.length) return null;
+  return bytes.subarray(bytes.indexOf(0x0a) + 1).toString("utf8");
+}
+
+/** The byte length of the frame whose head `bytes` start with; `null` before a whole head. */
+function frameSize(bytes: Buffer): number | null {
   const end = bytes.indexOf(0x0a);
   if (end < 0) return null;
   const head = bytes.subarray(0, end).toString("utf8");
-  if (!/^\d+$/.test(head)) return null;
-  const body = bytes.subarray(end + 1);
-  return body.length === Number(head) ? body.toString("utf8") : null;
+  return /^\d+$/.test(head) ? end + 1 + Number(head) : null;
 }
 
 interface Ended {
@@ -75,11 +80,22 @@ function ended(child: ChildProcess): Promise<Ended> {
   });
 }
 
-/** Every byte `pipe` gives until it ends, or `DRAIN_MS` after `exited` when something else holds it. */
+/**
+ * Every byte `pipe` gives until it holds one whole frame or ends, or
+ * `DRAIN_MS` after `exited` when something else holds it. A whole frame
+ * ends the read at once (D17.5): the child keeps its files after it.
+ */
 async function readAll(pipe: Readable, exited: Promise<unknown>): Promise<Buffer> {
   const chunks: Buffer[] = [];
-  pipe.on("data", (chunk: Buffer) => chunks.push(chunk));
+  let read = 0;
+  let size: number | null = null;
   const end = new Promise<void>((resolve) => {
+    pipe.on("data", (chunk: Buffer) => {
+      chunks.push(chunk);
+      read += chunk.length;
+      size ??= frameSize(Buffer.concat(chunks));
+      if (size !== null && read >= size) resolve();
+    });
     pipe.once("end", resolve);
     pipe.once("close", resolve);
     pipe.once("error", () => resolve());
@@ -97,9 +113,11 @@ const how = (e: Ended) => (e.signal === null ? `with exit code ${e.code}` : `on 
 /**
  * In the CLI process: `squeal code <args>` run again by `relaunch` in a
  * child whose stdout is this process's stderr and whose stdin is this
- * process's, its report taken from fd 3 and written to `io.stdout`. The
- * child's exit code; 3 when it ends without one whole report, which then
- * writes nothing to stdout; 2 when it cannot start. SIGINT and SIGTERM from
+ * process's, its report taken from fd 3 and written to `io.stdout` as soon
+ * as it is whole, before the child keeps its files (D17.5). The child's
+ * exit code; 3 when it ends without one whole report, which then writes
+ * nothing to stdout; 128 plus the signal's number when it ends on a signal
+ * after its report; 2 when it cannot start. SIGINT and SIGTERM from
  * `signals` go on to the child.
  */
 export async function relaunchGate(
@@ -121,20 +139,22 @@ export async function relaunchGate(
     const exited = ended(child);
     const pipe = child.stdio[REPORT_FD] as Readable | null;
     const bytes = pipe === null ? Buffer.alloc(0) : await readAll(pipe, exited);
+    const report = unframe(bytes);
+    if (report !== null) io.stdout(report);
     const end = await exited;
     if (end.error !== undefined) {
       io.stderr(`squeal code: could not start the gate's process: ${end.error.message}\n`);
       return 2;
     }
-    const report = unframe(bytes);
-    if (report === null || end.code === null) {
+    if (report === null) {
       io.stderr(
         `squeal code: the gate's process ended ${how(end)} without a whole report, so stdout stays empty\n`,
       );
       return 3;
     }
-    io.stdout(report);
-    return end.code;
+    if (end.code !== null) return end.code;
+    io.stderr(`squeal code: the gate's process ended ${how(end)} after its report\n`);
+    return 128 + (end.signal === null ? 0 : (constants.signals[end.signal] ?? 0));
   } finally {
     for (const [signal, listener] of listeners) signals.off(signal, listener);
   }

@@ -1,5 +1,5 @@
 import { EventEmitter } from "node:events";
-import { existsSync, mkdtempSync, openSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, openSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
@@ -17,7 +17,7 @@ import { ownHomeAndTmp, repo } from "./code-gate-fixture.js";
 /*
  * Spec 020 D14.4 (row 020-15b, #182): with `--json`, the CLI process runs
  * the gate in a child whose stdout is its stderr, and takes the report from
- * fd 3 as one frame. These children are small `node -e` scripts standing in
+ * fd 3 as one frame, written once whole (D17.5). These children are small `node -e` scripts standing in
  * for the CLI; `code-gate-json-stdout.test.ts` runs the real one.
  */
 
@@ -79,6 +79,32 @@ describe("squeal code --base --json in a child of the CLI process (spec 020 D14.
     expect(out.stdout).toBe("");
     expect(unframe(Buffer.from("50\n{"))).toBeNull();
     expect(unframe(Buffer.from("2\n{}"))).toBe("{}");
+  });
+
+  it("writes the report once it is whole, while the child still runs (D17.5)", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "squeal-relaunch-"));
+    dirs.push(dir);
+    const printed = join(dir, "printed");
+    // fd 3 stays open: the frame's length, not the pipe's end, says the report is whole.
+    const wait = `const until = Date.now() + 10000; setInterval(() => { if (require("fs").existsSync(${JSON.stringify(printed)})) process.exit(0); if (Date.now() > until) process.exit(7); }, 20);`;
+    const { io, out } = capture(node(framing("whole", wait)));
+    const stdout = (text: string) => {
+      io.stdout(text);
+      writeFileSync(printed, "");
+    };
+
+    expect(await codeGateCommand(["--base", "main", "--json"], { ...io, stdout })).toBe(0);
+    expect(out).toEqual({ stdout: "whole", stderr: "" });
+  });
+
+  it("keeps the report and exits 128 plus the signal when the child ends on one after it", async () => {
+    const { io, out } = capture(node(framing("kept", 'process.kill(process.pid, "SIGTERM")')));
+
+    expect(await codeGateCommand(["--base", "main", "--json"], io)).toBe(128 + 15);
+    expect(out).toEqual({
+      stdout: "kept",
+      stderr: "squeal code: the gate's process ended on SIGTERM after its report\n",
+    });
   });
 
   it("forwards SIGTERM to the child and exits with its code", async () => {
