@@ -230,9 +230,10 @@ describe("runNodeTest", () => {
     },
   );
 
-  // Row 018-38: a runner host stops its run when its daemon dies; the checkout may be gone by then.
+  // Row 018-38: a runner host stops its run when its daemon dies; the checkout may be gone by then,
+  // and with it the graphs of the file that completed, so the run reports nothing.
   it(
-    "reports a run stopped after the checkout holding its store went, writing nothing",
+    "reports nothing of a run stopped after the checkout holding its store went, and makes nothing",
     SLOW,
     async () => {
       const checkout = join(logs, randomUUID());
@@ -254,7 +255,8 @@ describe("runNodeTest", () => {
       rmSync(checkout, { recursive: true });
       stop.abort();
       const { report } = await running;
-      expect(report).toMatchObject({ end: "completed", failure: null, completedFiles: [tier[0]] });
+      expect(report).toMatchObject({ end: "crashed", completedFiles: [], results: [] });
+      expect(report.failure).toContain(logDir);
       expect(existsSync(checkout)).toBe(false);
     },
   );
