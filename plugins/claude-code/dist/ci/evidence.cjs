@@ -11,7 +11,12 @@
 // is none. `write(p, how)`: `p` written, before the call that writes it, and
 // its directory's listing when `p` appears or goes; the export certifies no
 // written path for the whole run, even when its content is restored. A write
-// through a symbolic link marks the path it reaches as well. `through(fd,
+// through a symbolic link marks the path it reaches as well; a call on the
+// entry itself (`how.entry`: a removal or a rename) follows only the links
+// above it, since it leaves what its own link reaches as it was (row 018-43).
+// `argument(p)`: `read(p)` of a file a spawn names in its arguments, as the
+// daemon's recorder reads it (`observe/spawn.cjs`, `recordArguments`; row
+// 018-43), known as a file without a call that recorder observes. `through(fd,
 // real)`: a read through a descriptor the run opened read-only on `real`
 // (`opened`), the content its file holds now, hashed through that descriptor
 // (`descriptors.cjs`; row 018-23).
@@ -210,12 +215,26 @@ function pathsOf(settings, original) {
       return kept(abs) ? relative(abs) : null;
     },
     target,
+    /** Whether `abs` is a file now, links followed, by `realpath` of it and of it as a directory. */
+    isFile: (abs) => {
+      try {
+        original.realpath(abs);
+      } catch {
+        return false;
+      }
+      try {
+        original.realpath(`${abs}${path.sep}`);
+        return false;
+      } catch (error) {
+        return error?.code === "ENOTDIR";
+      }
+    },
     /**
      * The path a write to `abs` reaches, each symbolic link on its way
-     * followed, a dangling last one too; by `realpath` and `readlink`, which
-     * no recorder observes.
+     * followed, a dangling last one too, or with `last` false the links
+     * above it only; by `realpath` and `readlink`, which no recorder observes.
      */
-    reached: (abs) => {
+    reached: (abs, last = true) => {
       let at = abs;
       for (let hops = 0; hops < 40; hops += 1) {
         const parent = path.dirname(at);
@@ -226,6 +245,7 @@ function pathsOf(settings, original) {
           return at;
         }
         const here = path.join(dir, path.basename(at));
+        if (!last) return here;
         try {
           at = path.resolve(dir, original.readlinkSync(here));
         } catch {
@@ -387,14 +407,24 @@ function createEvidence(settings) {
       out.written(exact, trees);
     } catch {}
   };
-  /** `p` written, and the path it reaches through symbolic links (`mark`). */
+  /**
+   * `p` written, and the path it reaches through symbolic links (`mark`);
+   * with `how.entry`, through the links above it only.
+   */
   const write = (p, how = {}) => {
     try {
       const abs = paths.toPath(p);
       if (abs === null) return;
       mark(abs, how);
-      const real = paths.reached(abs);
+      const real = paths.reached(abs, how.entry !== true);
       if (real !== abs) mark(real, how);
+    } catch {}
+  };
+  /** A file a spawn names in its arguments: read, as the daemon's recorder reads it. */
+  const argument = (p) => {
+    try {
+      const abs = paths.toPath(p);
+      if (abs !== null && paths.kept(abs) && paths.isFile(abs)) read(abs);
     } catch {}
   };
   /** The listing of a directory a call creates an entry in (`mkdtemp`'s prefix). */
@@ -460,6 +490,7 @@ function createEvidence(settings) {
     read: timed(read),
     list: timed(list),
     write: timed(write),
+    argument: timed(argument),
     entering: timed(entering),
     made: timed(made),
     opened: timed(opened),
