@@ -17,7 +17,9 @@ import {
  * the composite action `ci/action.yml`, whose one step runs `ci/setup.sh`.
  * It puts `ci/bin` on the job's PATH, checks that Squeal can run with the
  * node on the PATH, and always exits 0: when Squeal cannot run, it warns in
- * the job log and the step summary, and `squeal` passes through.
+ * the job log and the step summary, and `squeal` passes through. The
+ * warning goes to stderr; the line that names Squeal and Node stays on
+ * stdout (row 018-42).
  */
 
 const ACTION = readFileSync(join(REPO, "ci/action.yml"), "utf8");
@@ -60,7 +62,8 @@ describe("the action's setup", () => {
     const problem = `Squeal needs Node 999.0 or later, and node is ${process.versions.node}`;
     expect(ran).toMatchObject({
       code: 0,
-      stdout: `::warning title=Squeal::Squeal cannot run here: ${problem}. ${PASS_THROUGH}\n`,
+      stdout: "",
+      stderr: `::warning title=Squeal::Squeal cannot run here: ${problem}. ${PASS_THROUGH}\n`,
       summary: `**Squeal:** Squeal cannot run here: ${problem}. ${PASS_THROUGH}\n\n`,
       calls: [],
     });
@@ -71,8 +74,8 @@ describe("the action's setup", () => {
   it("warns, exits 0 and makes squeal pass through when the CLI does not start", () => {
     const at = checkout({ cli: BROKEN_CLI });
     const ran = runAction(at);
-    expect(ran.code).toBe(0);
-    expect(ran.stdout).toMatch(
+    expect(ran).toMatchObject({ code: 0, stdout: "" });
+    expect(ran.stderr).toMatch(
       /^::warning title=Squeal::Squeal cannot run here: Squeal's CLI does not start on Node v\d+\.\d+\.\d+: .+\. The squeal command passes through:/,
     );
     const { env } = workflowFiles(at);
@@ -81,8 +84,8 @@ describe("the action's setup", () => {
     // A later step's environment holds what setup wrote to $GITHUB_ENV.
     const later = { SQUEAL_CI_SETUP_FAILED: failed?.[1] ?? "" };
     const record = step(at, join(at.action, "bin/squeal"), ["ci", "record", "--", "true"], later);
-    expect(record.code).toBe(0);
-    expect(record.stdout).toContain("Squeal cannot run here: Squeal's CLI does not start");
+    expect(record).toMatchObject({ code: 0, stdout: "" });
+    expect(record.stderr).toContain("Squeal cannot run here: Squeal's CLI does not start");
   });
 
   it("exits 0 even when its script fails", () => {

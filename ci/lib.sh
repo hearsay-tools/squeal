@@ -70,9 +70,12 @@ squeal_ci_ready() {
   return 1
 }
 
-# A warning in the job log, and in the step summary when there is one.
+# A warning in the job log, and in the step summary when there is one. The
+# workflow command goes to stderr, so stdout holds only the command's own
+# output (`squeal code --json > report.json`): the runner reads workflow
+# commands from both (actions/runner ScriptHandler.cs, one OutputManager each).
 squeal_ci_warn() {
-  printf '::warning title=Squeal::%s\n' "$(squeal_ci_escape "$1")"
+  printf '::warning title=Squeal::%s\n' "$(squeal_ci_escape "$1")" >&2
   if [ -n "${GITHUB_STEP_SUMMARY-}" ]; then
     { printf '**Squeal:** %s\n\n' "$1" >>"$GITHUB_STEP_SUMMARY"; } 2>/dev/null || :
   fi
