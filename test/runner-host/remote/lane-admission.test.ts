@@ -208,21 +208,21 @@ describe("a remote lane under the remote machine's own ceiling (spec 021 D18, ro
       cores: null,
     });
     closing.push(holder);
-    let held: { release(): void } | null = null;
+    const taken: { lease: { release(): void; readonly grant: number } | null } = { lease: null };
     const { lane, localRuns } = await setup({
       remoteRun: async (_root, _hang, _options, kill) => {
         // Another daemon takes every local permit the run gave back; then the remote is lost.
-        held = holder.acquire(4, "fast", 1, "checkpoint");
+        taken.lease = holder.acquire(4, "fast", 1, "checkpoint");
         kill();
         return new Promise<never>(() => {});
       },
     });
     const running = lane.run([REF], background({ permits, workers: 4 }));
-    await until(() => held !== null);
-    expect(held).toMatchObject({ grant: 4 });
+    await until(() => taken.lease !== null);
+    expect(taken.lease?.grant).toBe(4);
     await new Promise((resolve) => setTimeout(resolve, 200));
     expect(localRuns).toHaveLength(0);
-    held?.release();
+    taken.lease?.release();
     const report = await running;
     expect(report.completedFiles).toEqual([REF]);
     expect(localRuns).toHaveLength(1);

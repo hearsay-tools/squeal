@@ -3,6 +3,8 @@ import { createPermitPool, type PermitPool, type PoolLease } from "../../capacit
 import { loadUserConfig } from "../../daemon/user-config.js";
 import { slowSlotDir } from "../../slow/slot.js";
 import type { AbsolutePath } from "../../types/common.js";
+import type { TestFileRef } from "../../types/keys.js";
+import type { RunOptions, RunReport } from "../../types/runner.js";
 
 /*
  * Spec 021 D18, last bullet (row 021-21): a remote runner host counts
@@ -160,4 +162,55 @@ export async function remoteAdmission(
     await sleep(wait.everyMs, undefined, signal === undefined ? {} : { signal }).catch(() => {});
   }
   return null;
+}
+
+/** The scheduler's own look again at a refused tier (`CAPACITY_RECHECK_MS`). */
+export const ADMIT_EVERY_MS = 2_000;
+
+/**
+ * The daemon's side for one background run: its local permits go back
+ * (`RunOptions.permits`), then the remote machine admits a tier of
+ * `testFiles` as the scheduler sizes one, as wide as its runner runs it and
+ * no narrower than at a grant of 1 (`tierWidth`, rows 001-366 and 011-97).
+ * The workers granted there; `null` on a cancel meanwhile.
+ */
+export function admitRun(
+  admit: (ask: AdmitAsk) => Promise<AdmitAnswer>,
+  testFiles: readonly TestFileRef[],
+  run: RunOptions,
+  wait: Omit<AdmissionWait, "cancel"> & {
+    readonly tierWidth: (testFile: TestFileRef, grant: number) => number;
+  },
+): Promise<number | null> {
+  run.permits?.away();
+  const widthAt = (grant: number) =>
+    Math.min(
+      testFiles.length,
+      Math.max(1, ...testFiles.map((file) => wait.tierWidth(file, grant))),
+    );
+  const ask = { want: widthAt(testFiles.length), least: widthAt(1) };
+  return remoteAdmission(admit, ask, { ...wait, cancel: cancelOf(run) });
+}
+
+/** The tier's cancel or a stop, either of which ends a wait for permits. */
+export function cancelOf(run: RunOptions): AbortSignal | undefined {
+  const signals = [run.signal, run.stop].filter((signal) => signal !== undefined);
+  return signals.length > 1 ? AbortSignal.any(signals) : signals[0];
+}
+
+/**
+ * A run cancelled while it waited for permits, before it started anywhere:
+ * it ended with no file completed, as a cancelled run does, so the
+ * scheduler queues its files again; under a stop alone its files are not
+ * current, as a stopped run's.
+ */
+export function notStarted(): RunReport {
+  return {
+    end: "completed",
+    durationMs: 0,
+    completedFiles: [],
+    results: [],
+    fileErrors: [],
+    failure: "cancelled while it waited for permits",
+  };
 }
