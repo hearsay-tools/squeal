@@ -1,0 +1,124 @@
+[issue-201] control first: {
+ "exit": 0,
+ "ms": 1042,
+ "reportAtMs": 980,
+ "verdict": "pass",
+ "counts": {
+  "pass": 1,
+  "violation": 0,
+  "incomplete": 0,
+  "skipped": 0,
+  "accepted": 0
+ },
+ "stderr": "squeal code: node:test: 5 test files to run (tests 5)\nsqueal code: node:test: 5 test files to run here, up to 4 at once; no stored duration, so the time is unknown\n"
+}
+[issue-201] control second: {
+ "exit": 0,
+ "ms": 322,
+ "reportAtMs": 319,
+ "verdict": "pass",
+ "counts": {
+  "pass": 1,
+  "violation": 0,
+  "incomplete": 0,
+  "skipped": 0,
+  "accepted": 0
+ },
+ "from": {
+  "test/a.test.mjs": "store",
+  "test/b.test.mjs": "store",
+  "test/c.test.mjs": "store",
+  "test/d.test.mjs": "store",
+  "test/e.test.mjs": "store"
+ },
+ "stderr": "squeal code: node:test: 5 test files selected (tests 5): none to run, 5 read from the stores\nsqueal code: 5 of 5 selected test files read from the stores\n"
+}
+[issue-201] holders while held (parent pid 1676386, child pid 1681424): [
+ {
+  "pid": 1681424,
+  "command": "node -e const { DatabaseSync } = require(\"node:sqlite\"); const db = new DatabaseSync(process.argv[1]); db.exec(\"BEGIN IMMEDIATE\"); process.stdout.write(\"held...",
+  "waiting": false
+ }
+]
+[issue-201] held first: {
+ "exit": 0,
+ "ms": 31613,
+ "reportAtMs": 978,
+ "verdict": "pass",
+ "counts": {
+  "pass": 1,
+  "violation": 0,
+  "incomplete": 0,
+  "skipped": 0,
+  "accepted": 0
+ },
+ "stderr": "squeal code: node:test: 5 test files to run (tests 5)\nsqueal code: node:test: 5 test files to run here, up to 4 at once; no stored duration, so the time is unknown\nsqueal code: the store is busy (held by pid 1681424 (node -e const { DatabaseSync } = require(\"node:sqlite\"); const db = new DatabaseSync(process.argv[1]); db.exec(\"BEGIN IMMEDIATE\"); process.stdout.write(\"held...)); waiting up to 30 s to keep 5 completed test files: test/a.test.mjs, test/b.test.mjs, test/c.test.mjs, test/d.test.mjs, test/e.test.mjs\nsqueal code: 5 completed test files were not kept in the stores: the store stayed busy for 30 s (held by pid 1681424 (node -e const { DatabaseSync } = require(\"node:sqlite\"); const db = new DatabaseSync(process.argv[1]); db.exec(\"BEGIN IMMEDIATE\"); process.stdout.write(\"held...)); the next run will run them again\n"
+}
+[issue-201] held second (lock free): {
+ "exit": 0,
+ "ms": 965,
+ "reportAtMs": 931,
+ "verdict": "pass",
+ "counts": {
+  "pass": 1,
+  "violation": 0,
+  "incomplete": 0,
+  "skipped": 0,
+  "accepted": 0
+ },
+ "stderr": "squeal code: node:test: 5 test files to run (tests 5)\nsqueal code: node:test: 5 test files to run here, up to 4 at once; no stored duration, so the time is unknown\n"
+}
+[issue-201] short first: {
+ "exit": 0,
+ "ms": 3665,
+ "reportAtMs": 927,
+ "verdict": "pass",
+ "counts": {
+  "pass": 1,
+  "violation": 0,
+  "incomplete": 0,
+  "skipped": 0,
+  "accepted": 0
+ },
+ "stderr": "squeal code: node:test: 5 test files to run (tests 5)\nsqueal code: node:test: 5 test files to run here, up to 4 at once; no stored duration, so the time is unknown\nsqueal code: the store is busy (held by pid 1701464 (node -e const { DatabaseSync } = require(\"node:sqlite\"); const db = new DatabaseSync(process.argv[1]); db.exec(\"BEGIN IMMEDIATE\"); process.stdout.write(\"held...)); waiting up to 30 s to keep 5 completed test files: test/a.test.mjs, test/b.test.mjs, test/c.test.mjs, test/d.test.mjs, test/e.test.mjs\nsqueal code: the store was free after 2.4 s: 5 completed test files kept\n",
+ "releasedAtMs": 3375
+}
+[issue-201] short second: {
+ "exit": 0,
+ "ms": 343,
+ "reportAtMs": 336,
+ "verdict": "pass",
+ "counts": {
+  "pass": 1,
+  "violation": 0,
+  "incomplete": 0,
+  "skipped": 0,
+  "accepted": 0
+ },
+ "from": {
+  "test/a.test.mjs": "store",
+  "test/b.test.mjs": "store",
+  "test/c.test.mjs": "store",
+  "test/d.test.mjs": "store",
+  "test/e.test.mjs": "store"
+ },
+ "stderr": "squeal code: node:test: 5 test files selected (tests 5): none to run, 5 read from the stores\nsqueal code: 5 of 5 selected test files read from the stores\n"
+}
+[issue-201] served busy: {
+ "ms": 1206,
+ "gateWriteTransactions": 0,
+ "requests": [
+  "coverage",
+  "results",
+  "results",
+  "results"
+ ],
+ "rowsAfterRelease": [
+  0,
+  0
+ ],
+ "notes": [
+  "the store is busy (held by pid 1703406 (node --experimental-import-meta-resolve --require suppress-warnings.cjs --conditions node --conditions development forks.js)); waiting up to 0.6 s to keep 2 completed test files: test/a.test.ts, test/b.test.ts",
+  "2 completed test files were not kept in the stores: the store stayed busy for 0.6 s (held by pid 1703406 (node --experimental-import-meta-resolve --require suppress-warnings.cjs --conditions node --conditions development forks.js)); the next run will run them again"
+ ]
+}
