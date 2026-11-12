@@ -14,7 +14,7 @@ import type { RunnerClosure, RunnerEnvironment, RunReport } from "../../types/ru
 import type { BlobCache } from "../coverage/record.js";
 import { coverageProvider, PROVIDER_MISSING_NOTE } from "../coverage/runtime.js";
 import type { RunEstimate } from "./estimate.js";
-import { evidenceOf, type KeptLog, keptLog, leftOutFiles, type RunLog } from "./evidence.js";
+import { type EndedRun, evidenceOf, keptLogs, leftOutFiles, type RunLog } from "./evidence.js";
 import { inLoaderOrder, orderRuns } from "./plan.js";
 import type { BasePrepares, PrepareRun } from "./prepare.js";
 import { type Picked, type SelectionSummary, tellSelection } from "./prerun.js";
@@ -94,8 +94,9 @@ export interface CollectOptions {
    */
   readonly ran?: (run: GateRun) => Promise<void>;
   /**
-   * #197 (row 020-40): keeps the log folder of a run with a failed or unfinished file before the
-   * temporary folder goes; gives where, `null` when it kept none. Absent, no log is kept.
+   * #197 (row 020-40): keeps the log folders of a runner kind's runs with a failed or unfinished
+   * file as one, after the runs and before the temporary folder goes; gives where, `null` when it
+   * kept none. Absent, no log is kept.
    */
   readonly keepLog?: (run: RunLog) => Promise<AbsolutePath | null>;
 }
@@ -191,7 +192,7 @@ export async function collectEvidence(
     const blobs: BlobCache = new Map();
     const testFiles: TestFileEvidence[] = [];
     const prepares: PrepareRun[] = [];
-    const logs: KeptLog[] = [];
+    const ended: EndedRun[] = [];
     let timedOut = false;
     for (const { pick, index: i, files: toRun } of runs) {
       const { runner, run: chosen } = pick;
@@ -217,10 +218,9 @@ export async function collectEvidence(
       const ran: TestFileEvidence[] = [];
       for (const ref of files) ran.push(await evidenceOf(runner, ref, report, records, children));
       testFiles.push(...ran);
-      const ended = { runner: runner.kind, files, logDir, report };
-      const log = await keptLog(options.keepLog, ended, ran);
-      if (log !== null) logs.push(log);
+      ended.push({ runner: runner.kind, files, logDir, report, ran });
     }
+    const logs = await keptLogs(options.keepLog, ended);
     return {
       testFiles: testFiles.sort(byRunnerAndPath),
       timedOut,
