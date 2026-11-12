@@ -1,4 +1,3 @@
-import type { RunEstimate } from "../core/code/gate/estimate.js";
 import type { PrepareRun } from "../core/code/gate/prepare.js";
 import type {
   GateExceptionUse,
@@ -228,38 +227,6 @@ function verdictLine(report: GateReport): string {
       : `${plural(judged, "changed function")} ${against}`;
   const tally = parts.length === 0 ? "" : `: ${parts.join(", ")}`;
   return `Code gate: ${report.verdict}. ${what}${tally}.${leftOutText(report)}${omittedText(report)}`;
-}
-
-/** D17.1: what shortens a run that does not fit what is left of the budget. */
-const WAYS_OUT =
-  "To fit it: a longer --timeout, paths that narrow the changed files, fewer check groups (gate.groups at the base, --group), or CI's results with --parts. The run starts anyway.";
-
-/**
- * D17.1: one stderr line per runner, told before the first run: its
- * estimate, how many files have a stored duration, and how many run at
- * once. The runners run in turn, so a line is over the budget when the
- * estimates up to its runner pass `leftSeconds`; that line gives the ways out.
- */
-export function estimateText(estimates: readonly RunEstimate[], leftSeconds: number): string {
-  let until = 0;
-  const lines = estimates.map(({ runner, seconds, files, known, width }) => {
-    const name = RUNNER_NAMES[runner];
-    const run = `${plural(files, "test file")} to run here, up to ${width} at once`;
-    if (seconds === null) return `${name}: ${run}; no stored duration, so the time is unknown`;
-    const first = until === 0;
-    until += seconds;
-    const from =
-      known < files
-        ? `the stored durations of ${known} (the others at their median)`
-        : files === 1
-          ? "its stored duration"
-          : "their stored durations";
-    const after = first ? "" : `, ${until} s with the runs before it`;
-    const over =
-      until > leftSeconds ? `, over the ${leftSeconds} s left of the budget. ${WAYS_OUT}` : "";
-    return `${name}: ${run}: about ${seconds} s from ${from}${after}${over}`;
-  });
-  return lines.map((line) => `squeal code: ${line}\n`).join("");
 }
 
 /** The human rendering of a gate report; `json` is the command that prints it as JSON. */
