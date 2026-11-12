@@ -115,6 +115,9 @@ test/integration/node-test
 # A real `node --test` in a runner host, against the adapter in process and
 # through a daemon (row 021-12).
 test/runner-host/node-test-
+# A real node:test runner host that closes when idle and reopens on the
+# next edit (row 021-26).
+test/runner-host/idle-host
 # A real `node --test` through the scheduler: the slow tier, preloads,
 # observed and environment growth, capacity, lanes, scratch inputs, the idle
 # pass (beside pytest), warm-up, an edit's tier beside the backlog tier,
