@@ -27,7 +27,7 @@ They returned load `18.14, 16.47, 9.23`, CPU count `24`, and
 The installed launcher's `--version` returned `0.1.443`; the cached CLI's
 `--version` returned `0.1.440`.
 
-The throwaway [probe](../../../../research/probes/issue-195/probe.py) creates
+The throwaway [probe](probes/issue-195/probe.py) creates
 separate fresh git repositories for missing and existing roots. Each contains
 one changed function, one unchanged Vitest marker test and one unchanged
 node:test marker test. Each test writes an ignored marker then asserts the
@@ -38,9 +38,9 @@ The script runs no install and starts no daemon.
 Exact invocations from the worktree root:
 
 ```sh
-python3 research/probes/issue-195/probe.py
-python3 research/probes/issue-195/probe.py --no-base-config
-ISSUE195_CLI=/home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.440/dist/cli/squeal.mjs python3 research/probes/issue-195/probe.py
+python3 docs/specifications/020-quality-gate/research/probes/issue-195/probe.py
+python3 docs/specifications/020-quality-gate/research/probes/issue-195/probe.py --no-base-config
+ISSUE195_CLI=/home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.440/dist/cli/squeal.mjs python3 docs/specifications/020-quality-gate/research/probes/issue-195/probe.py
 ```
 
 Each fixture command, from its `fixture` directory:
@@ -86,7 +86,7 @@ selected and completed, with no failed or unfinished files. The second pair
 rules out presence of the base config as the deciding factor in this fixture.
 
 Full captured streams, marker checks and command arrays are in
-[results.json](../../../../research/probes/issue-195/results.json). Generated
+[results.json](probes/issue-195/results.json). Generated
 fixture-root paths are replaced with `<probe-root>`; no other output is changed.
 
 ## Recommendation and limits
@@ -121,7 +121,7 @@ prove a regression window or that the incident is fixed.
   unknown revision, 989 Vitest plus 8 node:test files, and late exit 2.
 - [Spec](../spec.md), D1, D3, D7, D11.7, D17.3, and [status](../status.md),
   read at `9114fdf419c2f374146fe68410915a8753b7b4b0`.
-- [Probe instructions](../../../../research/probes/issue-195/README.md) and
-  [captured evidence](../../../../research/probes/issue-195/results.json).
+- [Probe instructions](probes/issue-195/README.md) and
+  [captured evidence](probes/issue-195/results.json).
 - Installed 0.1.443 launcher and cached 0.1.440 CLI paths above, executed as
   shipped; no build and no implementation inspection.

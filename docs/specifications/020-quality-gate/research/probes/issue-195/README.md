@@ -8,9 +8,9 @@ must be available. No package install is performed. Check one-minute load
 against the CPU count before running; skip when load is above the count.
 
 ```sh
-python3 research/probes/issue-195/probe.py
-python3 research/probes/issue-195/probe.py --no-base-config
-ISSUE195_CLI=/home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.440/dist/cli/squeal.mjs python3 research/probes/issue-195/probe.py
+python3 docs/specifications/020-quality-gate/research/probes/issue-195/probe.py
+python3 docs/specifications/020-quality-gate/research/probes/issue-195/probe.py --no-base-config
+ISSUE195_CLI=/home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.440/dist/cli/squeal.mjs python3 docs/specifications/020-quality-gate/research/probes/issue-195/probe.py
 ```
 
 The default CLI is the installed Codex launcher. `ISSUE195_CLI` can select
