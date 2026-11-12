@@ -22,9 +22,14 @@ import { createFixtureRepo, delay, type FixtureRepo, SLOW, waitFor, withStore } 
  * host's real slot, which live daemons hold on a busy host and none on CI.
  * The permit is the repository's (spec 019 D3, `capacity.groupSlotScope`
  * default `"repository"`, row 019-18): `repo.<key>` in that directory.
+ *
+ * Row 021-29 (spec 021 D21.2): the test sets the heap in use the daemon
+ * reads, so no busy GC runs by chance in this test's process, and then one
+ * does after a tier, once the heap is above twice what the last GC left.
  */
 
 const LAST_RESORT = { type: "major", execution: "sync", flavor: "last-resort" };
+const MIB = 2 ** 20;
 const SLOW_FILE = "test/slow-wait.test.ts";
 
 const outcome = (repo: FixtureRepo, path: string) =>
@@ -51,7 +56,7 @@ function waiters(dir: string): string[] {
 }
 
 describe("a daemon runs one last-resort GC once idle (row 011-69)", SLOW, () => {
-  it("collects 60 s after its last tier with a slow file queued, and again only after a tier", async () => {
+  it("collects 60 s after its last tier with a slow file queued, again only after a tier, and after a tier once its heap doubled", async () => {
     const repo = createFixtureRepo({
       files: {
         "squeal.config.json": runMissingConfig(
@@ -83,6 +88,7 @@ describe("a daemon runs one last-resort GC once idle (row 011-69)", SLOW, () => 
     });
     let offset = 0;
     const gc = vi.fn<GcFunction>();
+    let heap = 100 * MIB;
     const lines: string[] = [];
     const daemon = await startDaemon({
       root: repo.root,
@@ -90,6 +96,7 @@ describe("a daemon runs one last-resort GC once idle (row 011-69)", SLOW, () => 
       now: () => Date.now() + offset,
       log: (line) => lines.push(line),
       gc: () => gc,
+      heapInUse: () => heap,
       timings: { checkMs: 50 },
     });
     if ("reason" in daemon) throw new Error(daemon.message);
@@ -98,22 +105,25 @@ describe("a daemon runs one last-resort GC once idle (row 011-69)", SLOW, () => 
     // Quiet for 2 s: the five files current, only the slow file queued, no run
     // open. Under load a later tier (a first observation's re-run) would
     // otherwise start the quiet again after the clock moved.
-    let quietAt = 0;
-    await waitFor(
-      () =>
-        withStore(repo, (store) => {
-          const { counts } = readHeader(store, repo.worktreeId);
-          const quiet =
-            counts.current >= 5 &&
-            counts.pending <= 1 &&
-            store.runs.inFlight(repo.worktreeId, 0).length === 0;
-          if (!quiet) quietAt = 0;
-          else if (quietAt === 0) quietAt = Date.now();
-          return quiet && Date.now() - quietAt >= 2_000;
-        }),
-      60_000,
-      "the fast baseline, then 2 s quiet",
-    );
+    const settled = (what: string) => {
+      let quietAt = 0;
+      return waitFor(
+        () =>
+          withStore(repo, (store) => {
+            const { counts } = readHeader(store, repo.worktreeId);
+            const quiet =
+              counts.current >= 5 &&
+              counts.pending <= 1 &&
+              store.runs.inFlight(repo.worktreeId, 0).length === 0;
+            if (!quiet) quietAt = 0;
+            else if (quietAt === 0) quietAt = Date.now();
+            return quiet && Date.now() - quietAt >= 2_000;
+          }),
+        60_000,
+        `${what}, then 2 s quiet`,
+      );
+    };
+    await settled("the fast baseline");
     // The slow file waits at the permit the test holds, before the clock moves.
     await waitFor(() => waiters(slotDir).includes(repo.worktreeId), 30_000, "the slot waiter");
     await delay(300);
@@ -154,5 +164,27 @@ describe("a daemon runs one last-resort GC once idle (row 011-69)", SLOW, () => 
     await delay(500);
     expect(gc).toHaveBeenCalledTimes(2);
     expect(outcome(repo, SLOW_FILE)).toBeUndefined();
+
+    // Row 021-29. A tier of the edit that ended after that GC brings one more
+    // idle GC with the next clock move; it runs here, before the busy part.
+    await settled("the edit's tiers");
+    offset += 61_000;
+    await delay(500);
+    const idleGcs = gc.mock.calls.length;
+    // A minute on, with no tier since, the heap at three times what the last GC
+    // left: the next tier's end brings one busy GC, with no clock move.
+    heap = 300 * MIB;
+    offset += 61_000;
+    appendFileSync(join(repo.root, "src/math.ts"), "\nexport const busy = 1;\n");
+    await waitFor(() => gc.mock.calls.length > idleGcs, 60_000, "the busy GC after a tier");
+    await delay(500);
+    expect(gc).toHaveBeenCalledTimes(idleGcs + 1);
+    expect(gc).toHaveBeenLastCalledWith(LAST_RESORT);
+    // `gc` is a recording, so the heap stays at 300 MiB: the next tiers bring none.
+    expect(lines.filter((line) => line.includes("last-resort GC")).slice(idleGcs)).toEqual([
+      expect.stringMatching(
+        /^busy, heap in use 300 MiB over twice the last live size of 100 MiB: a last-resort GC took .* MiB in a \d+ ms pause; 300 MiB of heap in use after it$/,
+      ),
+    ]);
   });
 });
