@@ -283,6 +283,32 @@ describe("ci export's keys (spec 018 D9)", () => {
     expect("counts" in plain && plain.counts).toMatchObject({ testFiles: 2, inspector: 0 });
   });
 
+  it("leaves out the files a part's workers saw load node:inspector, or did not see run (review 0.1.443 B1)", async () => {
+    const { root, commit } = await repository();
+    const files = [file("test/a.test.ts", "pass"), file("test/b.test.ts", "pass")];
+    const [a, b] = files.map(({ project, path }) => ({ project, path }));
+    const counts = async (coverage: unknown) => {
+      const ran = { coverage: coverage as PartCoverage };
+      const result = await exported(root, commit, descriptor(), files, undefined, ran);
+      return "counts" in result ? result.counts : result.refused.text;
+    };
+    const yielded = (inspector: unknown) => ({
+      off: "project-coverage",
+      note: "custom",
+      inspector,
+    });
+    const seen = { loaded: [a], unknown: [] };
+    expect(await counts(yielded(seen))).toMatchObject({ testFiles: 1, inspector: 1 });
+    expect(await counts(yielded({ loaded: [a], unknown: [b] }))).toMatchObject({
+      testFiles: 0,
+      inspector: 2,
+    });
+    // Lists that do not read leave out every file of the part; with no provider, none.
+    expect(await counts(yielded({ loaded: "a" }))).toMatchObject({ testFiles: 0, inspector: 2 });
+    const none = { off: "no-provider", note: "none", inspector: seen };
+    expect(await counts(none)).toMatchObject({ testFiles: 2, inspector: 0 });
+  });
+
   it("leaves out a file an input of which its shard holds no evidence of, a commit's file too", async () => {
     const { root, commit } = await repository();
     const files = [file("test/a.test.ts", "pass")];
