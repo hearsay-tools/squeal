@@ -15,7 +15,7 @@ import { runnerHostGone } from "../proxy.js";
 import { ADMIT_EVERY_MS, admitRun, cancelOf, notStarted } from "./admission.js";
 import { type RemoteHost, RemoteRefusal } from "./connect.js";
 import { blobsAt, compareRemote } from "./lane-compare.js";
-import { repositoryRoute, withoutFiles } from "./lane-repository.js";
+import { deferredTo, repositoryRoute, withoutFiles } from "./lane-repository.js";
 import type { WhenLost } from "./settings.js";
 import type { RemoteRunReply } from "./tree-wire.js";
 
@@ -39,7 +39,9 @@ import type { RemoteRunReply } from "./tree-wire.js";
  * Spec 021 D19 (row 021-23): a background tier's files that read the
  * repository (`remote.needsRepository`) run here first, under the tier's
  * local permits, and the rest go remote. A remote run's file that failed
- * as not a Git repository keeps no result and runs here again.
+ * as not a Git repository keeps no result and runs here again. A report
+ * holds one setup failure (review 0.1.457 B3): a part after one whose run
+ * failed to start does not run, and its files join that failure's.
  */
 
 export interface RemoteLaneOptions {
@@ -379,8 +381,11 @@ export function withRemoteLane(options: RemoteLaneOptions): RunnerAdapter {
     options.log(
       `remote ${target}: ${failed.map((f) => f.path).join(", ")} failed there as not a Git repository; running here`,
     );
+    const kept = withoutFiles(report, failed);
+    // B3: the remote's own setup failure stands; the failed files run here in a later tier.
+    if (kept.startupFailure !== undefined) return deferredTo(kept, failed);
     return merge([
-      { adapter: { name: `remote ${target}` }, report: withoutFiles(report, failed) },
+      { adapter: { name: `remote ${target}` }, report: kept },
       { adapter: { name: "here" }, report: await runHere(failed, run, "here") },
     ]);
   };
@@ -409,6 +414,8 @@ export function withRemoteLane(options: RemoteLaneOptions): RunnerAdapter {
       const own = await runHere(here, run, "repository");
       // A `squeal stop` starts no further part: its files stay queued (D10, task 001-367).
       if (run.stop?.aborted === true) return own;
+      // B3: its setup failure stands; the rest of the tier runs in a later one.
+      if (own.startupFailure !== undefined) return deferredTo(own, there);
       return merge([
         { adapter: { name: "here" }, report: own },
         { adapter: { name: `remote ${target}` }, report: await remoteTier(there, run) },
