@@ -29,10 +29,11 @@ import { type ChangedSet, type Evidence, GATE_RUNNERS, type TestFileEvidence } f
  * Spec 020 D3 (row 020-03): the one-shot collector. It opens the project's
  * own Vitest and node:test adapters with Squeal's coverage provider, as the
  * daemon builds them (015 D8), with no daemon and no store; selects the
- * test files that load a changed path, every changed test file and the
- * `--test` files, and the test files whose declared `inputs` at the base
- * name a changed path (row 020-35); runs them under one deadline; and maps each completed
- * file's payload to its record before the adapter closes, which deletes it.
+ * test files that load a changed path, every changed test file, the
+ * `--test` files and the test files whose declared `inputs` at the base
+ * name a changed path (row 020-35); runs them under one deadline; and
+ * maps each completed file's payload to its record before the adapter
+ * closes, which deletes it.
  * D12 (row 020-10b): with `coverage.children` at the base, the runners
  * collect the coverage of the processes and threads the tests start too.
  */
