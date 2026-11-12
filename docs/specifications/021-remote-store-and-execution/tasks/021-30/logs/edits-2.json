@@ -1,0 +1,225 @@
+[
+  {
+    "label": "src-1:src/harness/opencode/protocol.ts",
+    "kind": "change",
+    "paths": [
+      "src/harness/opencode/protocol.ts"
+    ]
+  },
+  {
+    "label": "src-1:src/core/lint/provider/signals.ts",
+    "kind": "change",
+    "paths": [
+      "src/core/lint/provider/signals.ts"
+    ]
+  },
+  {
+    "label": "src-1:src/harness/codex/runtime-entry.ts",
+    "kind": "change",
+    "paths": [
+      "src/harness/codex/runtime-entry.ts"
+    ]
+  },
+  {
+    "label": "src-2to5:test/kit/scenarios/k1-flip.ts",
+    "kind": "change",
+    "paths": [
+      "test/kit/scenarios/k1-flip.ts"
+    ]
+  },
+  {
+    "label": "src-2to5:src/harness/codex/runtime-update/schedule.ts",
+    "kind": "change",
+    "paths": [
+      "src/harness/codex/runtime-update/schedule.ts"
+    ]
+  },
+  {
+    "label": "src-2to5:test/scheduler/crash-rekey-fixture.ts",
+    "kind": "change",
+    "paths": [
+      "test/scheduler/crash-rekey-fixture.ts"
+    ]
+  },
+  {
+    "label": "src-6to30:src/harness/opencode/build.ts",
+    "kind": "change",
+    "paths": [
+      "src/harness/opencode/build.ts"
+    ]
+  },
+  {
+    "label": "src-6to30:test/integration/stamps-repo.ts",
+    "kind": "change",
+    "paths": [
+      "test/integration/stamps-repo.ts"
+    ]
+  },
+  {
+    "label": "src-6to30:test/harness/opencode/real.ts",
+    "kind": "change",
+    "paths": [
+      "test/harness/opencode/real.ts"
+    ]
+  },
+  {
+    "label": "src-31to200:src/harness/shared/stop-lint.ts",
+    "kind": "change",
+    "paths": [
+      "src/harness/shared/stop-lint.ts"
+    ]
+  },
+  {
+    "label": "src-31to200:src/runners/pytest/adapter-run.ts",
+    "kind": "change",
+    "paths": [
+      "src/runners/pytest/adapter-run.ts"
+    ]
+  },
+  {
+    "label": "src-31to200:src/cli/setup/apply.ts",
+    "kind": "change",
+    "paths": [
+      "src/cli/setup/apply.ts"
+    ]
+  },
+  {
+    "label": "src-201up:src/core/delivery/code-runners.ts",
+    "kind": "change",
+    "paths": [
+      "src/core/delivery/code-runners.ts"
+    ]
+  },
+  {
+    "label": "src-201up:src/core/status/stopping.ts",
+    "kind": "change",
+    "paths": [
+      "src/core/status/stopping.ts"
+    ]
+  },
+  {
+    "label": "src-201up:src/core/slow/rank-store.ts",
+    "kind": "change",
+    "paths": [
+      "src/core/slow/rank-store.ts"
+    ]
+  },
+  {
+    "label": "test:test/keys/key-format.test.ts",
+    "kind": "change",
+    "paths": [
+      "test/keys/key-format.test.ts"
+    ]
+  },
+  {
+    "label": "test:test/runners/pytest/graph/import-context.test.ts",
+    "kind": "change",
+    "paths": [
+      "test/runners/pytest/graph/import-context.test.ts"
+    ]
+  },
+  {
+    "label": "test:test/integration/touched-caches.test.ts",
+    "kind": "change",
+    "paths": [
+      "test/integration/touched-caches.test.ts"
+    ]
+  },
+  {
+    "label": "test-helper:test/scheduler/backlog-suite.ts",
+    "kind": "change",
+    "paths": [
+      "test/scheduler/backlog-suite.ts"
+    ]
+  },
+  {
+    "label": "dynamic:src/harness/codex/hooks.ts",
+    "kind": "change",
+    "paths": [
+      "src/harness/codex/hooks.ts"
+    ]
+  },
+  {
+    "label": "two-sources",
+    "kind": "change",
+    "paths": [
+      "src/core/state/groups.ts",
+      "src/core/daemon/signals.ts"
+    ]
+  },
+  {
+    "label": "type-only:src/core/types/runner.ts",
+    "kind": "change",
+    "paths": [
+      "src/core/types/runner.ts"
+    ]
+  },
+  {
+    "label": "mixed-three",
+    "kind": "change",
+    "paths": [
+      "test/code/pass/judge-errors.test.ts",
+      "src/core/status/next-step.ts"
+    ]
+  },
+  {
+    "label": "config",
+    "kind": "change",
+    "paths": [
+      "vitest.config.ts"
+    ]
+  },
+  {
+    "label": "global-setup",
+    "kind": "change",
+    "paths": [
+      "test/global-teardown.ts"
+    ]
+  },
+  {
+    "label": "runtime-read",
+    "kind": "change",
+    "paths": [
+      "test/fixtures/vitest/basic/test/__snapshots__/strings.test.ts.snap"
+    ]
+  },
+  {
+    "label": "delete:src/harness/codex/adapter/repository.ts",
+    "kind": "delete",
+    "paths": [
+      "src/harness/codex/adapter/repository.ts"
+    ]
+  },
+  {
+    "label": "add-source",
+    "kind": "add",
+    "paths": [
+      "src/core/probe-021-30.ts"
+    ],
+    "body": "export const probe = 1;\n"
+  },
+  {
+    "label": "add-test",
+    "kind": "add",
+    "paths": [
+      "test/probe-021-30.test.ts"
+    ],
+    "body": "import { expect, it } from \"vitest\";\nimport * as m from \"../src/core/capacity/background.js\";\nit(\"probe\", () => expect(m).toBeDefined());\n"
+  },
+  {
+    "label": "add-snapshot",
+    "kind": "add",
+    "paths": [
+      "test/capacity/__snapshots__/ceiling.test.ts.snap"
+    ],
+    "body": "// Vitest Snapshot v1\n"
+  },
+  {
+    "label": "add-missing-candidate:b/runtime/r.cjs",
+    "kind": "add",
+    "paths": [
+      "b/runtime/r.cjs"
+    ],
+    "body": "export {};\n"
+  }
+]
