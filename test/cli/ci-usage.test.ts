@@ -73,11 +73,16 @@ describe("squeal ci", () => {
     const { io, text } = capture(BASE);
     expect(await main(["ci", "--help"], io)).toBe(0);
     expect(text()).toContain("squeal ci record [--out <dir>] -- <command>");
-    // Spec 020 D13.6: when the provider is added, and when it is not.
+    // Spec 020 D13.6 and D19.4: when the provider is added, when the project's is read, when neither.
     const said = text().replace(/\s+/g, " ");
-    expect(said).toContain("It adds Squeal's coverage provider to the run");
     expect(said).toContain(
-      "it adds none when the run has coverage of its own (coverage.enabled, --coverage) or Node lacks process.getBuiltinModule",
+      "With no coverage of the run's own, it adds Squeal's coverage provider to the run (not when Node lacks process.getBuiltinModule).",
+    );
+    expect(said).toContain(
+      "With the run's own V8 coverage (coverage.enabled, --coverage) on Vitest 4.1 or 5.0, it adds none and reads that provider's data: the project's report and thresholds stay its own.",
+    );
+    expect(said).toContain(
+      "With Istanbul, a custom provider, browser mode or another Vitest version, it records no coverage.",
     );
   });
 
