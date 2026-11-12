@@ -21,7 +21,9 @@
 // whose workers loaded `node:inspector` (`inspector.cjs`).
 //
 // In every process and thread of the command, first, it starts the watch of
-// `node:inspector` loads (`inspector.cjs`), then takes the input evidence
+// `node:inspector` loads (`inspector.cjs`), except in the test workers of a
+// Vitest process in which no coverage provider runs: the `start` wrap tells
+// them so (`watchWorkers`, review of 0.1.443-r2 S2). Then it takes the input evidence
 // (`evidence-hooks.cjs`; spec 018 D9 as amended 2026-11-09) when the
 // settings name its directory, so Vitest and what it loads see the wrapped
 // `fs` from their start.
@@ -45,6 +47,7 @@ const { createRequire } = require("node:module");
 const { isMainThread } = require("node:worker_threads");
 const clock = require("./clock.cjs");
 const { coveredModules, coveredReporter, startCoverage } = require("./coverage.cjs");
+const { installWatch, watchWorkers } = require("./inspector.cjs");
 
 const VARIABLE = "SQUEAL_CI_RECORD";
 const REGEXP = "squeal:regexp";
@@ -190,6 +193,8 @@ function install(settings, root) {
         if (!reporters.has(this)) {
           // Spec 020 D13: before the original `start`, which starts the coverage provider.
           const coverage = startCoverage(this, settings.coverage);
+          // Review of 0.1.443-r2 S2: before the run starts its workers.
+          watchWorkers(providerRuns(this));
           const modules = new Map();
           const reporter = reporterFor(this, file, settings, fail, modules);
           reporters.set(this, coveredReporter(reporter, coverage, modules, settings.raw));
@@ -203,6 +208,21 @@ function install(settings, root) {
     };
   } catch (error) {
     fail(error);
+  }
+}
+
+/**
+ * Whether a coverage provider runs in `vitest`'s runs: the project's, or
+ * Squeal's, which `startCoverage` put in `configOverride`. When that does
+ * not read, one may.
+ */
+function providerRuns(vitest) {
+  try {
+    return (
+      vitest.config?.coverage?.enabled === true || vitest.configOverride?.coverage?.enabled === true
+    );
+  } catch {
+    return true;
   }
 }
 
@@ -254,7 +274,7 @@ const settings = readSettings();
 
 // Spec 020 D19.6 (review of 0.1.443 B1): the test files that load `node:inspector`, before the evidence.
 try {
-  require("./inspector.cjs").installWatch(settings?.raw, settings?.coverage?.provider);
+  installWatch(settings?.raw, settings?.coverage?.provider);
 } catch {}
 
 try {
