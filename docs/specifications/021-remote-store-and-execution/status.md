@@ -1,6 +1,6 @@
 # 021 Remote store and remote execution: status
 
-Stage: approved (2026-11-11); wave 1 released as 0.1.436 (rows 021-07 to 021-11); wave 2 landed as 0.1.442 (rows 021-12, 021-13, 021-14, 021-16, 021-18). Open: 021-15, 021-17, 021-19, 021-20, 021-21.
+Stage: approved (2026-11-11); wave 1 released as 0.1.436 (rows 021-07 to 021-11); wave 2 released as 0.1.442 (rows 021-12, 021-13, 021-14, 021-16, 021-18). Open: 021-15, 021-17, 021-19, 021-20, 021-21.
 Started: 2026-11-11
 
 ## Decisions so far
@@ -35,3 +35,4 @@ Started: 2026-11-11
 - 2026-11-12, review of `cand/0.1.442` at `372400a1b` (reviewer e04750a4, `reviews/0.1.442.md`): FAIL, four proven blockers. B1 environment equality cached across later remote runs and installs (021-14); B2 a live heartbeat keeps a hung unlimited-timeout run alive (021-14); B3 the delivery lease expires before a live hand-off, so a second hook can report the same news (021-16); B4 the default lost-remote policy leaves the interrupted files unknown instead of running them locally (021-14). Should-fix: S1 the accepted remote admission deviation; S2 a race in `node-test-host.test.ts` (021-12). Repair R1: owners 0a7e1279, 40aa4eb4, 5d7ccbba resumed on the candidate.
 - 2026-11-12, candidate CI 43126867462 on `e8b5352f3` failed only `test/e2e/remote-lane.test.ts` (Node 22 and 26 shards 2/3): GitHub sets `CI=true`, so the test's in-process local Vitest resolved `allowOnly` and `browser` for CI while the container did not, and the environment check refused the remote (correct per D11). Test-only fix `a44c19f89` (worker 0a7e1279): the test's local side runs in a runner host child started without CI variables; reproduced with `CI=true GITHUB_ACTIONS=true` and passing on Node 24 and 22.19. No product change, so no further review.
 - 2026-11-12, candidate CI 43130587686 on `a53e632a6`: attempt 1 failed `test/daemon/died.test.ts` (Node 22, the known teardown race, row 018-37) and `test/scheduler/handover-batches.test.ts` (Node 26; passed 6 of 6 locally on Node 24 and 26; a third waiting file joined the second run); attempt 2 of the two failed jobs green. Wave 2 landed on main as 0.1.442.
+- 2026-11-12, 0.1.442 released (tag `squeal--v0.1.442` at `edc289eab`, tags `v0.1.442` and `v0` moved there, hub `37e8dac`, GitHub latest with `install.sh` and both Codex runtime assets; main CI 43135829664 green).
