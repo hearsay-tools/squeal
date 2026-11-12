@@ -422,7 +422,11 @@ const KEEP_FACTS: RecordFacts = {
 /** The lane `keepDecisions` names: no slow lane, so a timed-out run of several files splits. */
 const KEEP_LANE = "squeal code";
 
-/** `squeal code` keeps a file only when the daemon would store it at the key it ran under. */
+/**
+ * `squeal code` keeps a file only when the daemon would store it: at the
+ * key it ran under, or since row 020-39 at the key with what it read
+ * (`grown`), whose reads the keeper merges into the shared observed rows.
+ */
 export function keeps(decision: StoreDecision): boolean {
-  return decision.kind === "store" && decision.at === "ran";
+  return decision.kind === "store";
 }
