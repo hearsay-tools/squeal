@@ -108,9 +108,9 @@ describe("squeal code --base with coverage.children (spec 020 D12)", () => {
     const { ran, report, states, leftInTmp } = await gate({ coverage: { children: true } });
 
     // D14.4 (row 020-34): no selected file imports the script, but a process one starts may run it.
-    // Row 011-320: the keeper names the files it did not keep, here for reads beyond their keys.
+    // Row 020-39: with no daemon, the keeper keeps the files that read beyond their keys, and says nothing.
     expect(ran.stderr).toBe(
-      `squeal code: Vitest: 2 test files to run (tests 2)\n${CHILD_MAY_LOAD}\n${noEstimate("Vitest", 2)}squeal code: 2 completed test files were not kept in the stores, because they read paths their keys lack (scripts/grade-cli.mjs, scripts/tool.mjs): test/grade.test.ts, test/tool.test.ts; the next run will run them again\n`,
+      `squeal code: Vitest: 2 test files to run (tests 2)\n${CHILD_MAY_LOAD}\n${noEstimate("Vitest", 2)}`,
     );
     expect(states).toEqual(["classify pass 2", "grade pass 6"]);
     expect(ran.code).toBe(0);
