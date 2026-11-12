@@ -12,7 +12,7 @@ import {
 } from "../../types/runner.js";
 import { isGroupLane } from "../../types/scheduler.js";
 import { runnerHostGone } from "../proxy.js";
-import { remoteAdmission } from "./admission.js";
+import { ADMIT_EVERY_MS, admitRun, cancelOf, notStarted } from "./admission.js";
 import type { RemoteHost } from "./connect.js";
 import { environmentDifferences } from "./environment.js";
 import type { WhenLost } from "./settings.js";
@@ -55,9 +55,6 @@ export interface RemoteLaneOptions {
   /** How often a run the remote machine refuses asks again. Default `ADMIT_EVERY_MS`. */
   readonly admitEveryMs?: number;
 }
-
-/** The scheduler's own look again at a refused tier (`CAPACITY_RECHECK_MS`). */
-export const ADMIT_EVERY_MS = 2_000;
 
 const BACKOFF_MS = [30_000, 60_000, 120_000, 300_000, 600_000];
 
@@ -175,27 +172,6 @@ export function withRemoteLane(options: RemoteLaneOptions): RunnerAdapter {
     return blobs;
   };
 
-  /** D18 (row 021-21): the workers a tier of `testFiles` runs at `grant`, as the scheduler sizes it. */
-  const widthAt = (testFiles: readonly TestFileRef[], grant: number): number => {
-    const widths = testFiles.map((file) => local.tierWidth?.(file, grant) ?? grant);
-    return Math.min(testFiles.length, Math.max(1, ...widths));
-  };
-
-  /**
-   * D18 (row 021-21): the run's local permits go back, then the remote
-   * machine admits it; the workers granted there, `null` on a cancel
-   * meanwhile. Rejects when the host does not answer.
-   */
-  const admitted = (host: RemoteHost, testFiles: readonly TestFileRef[], run: RunOptions) => {
-    run.permits?.away();
-    const ask = { want: widthAt(testFiles, testFiles.length), least: widthAt(testFiles, 1) };
-    return remoteAdmission((asked) => host.admit(asked), ask, {
-      cancel: cancelOf(run),
-      everyMs: options.admitEveryMs ?? ADMIT_EVERY_MS,
-      log: (line) => options.log(`remote ${target}: ${line}`),
-    });
-  };
-
   /**
    * The remote's run, proven over a current environment; `refused` after a
    * second tree refusal or a differing environment (then down), `lost` when
@@ -227,7 +203,11 @@ export function withRemoteLane(options: RemoteLaneOptions): RunnerAdapter {
         down(unequal.join("; "), true, host);
         return "refused";
       }
-      const grant = await admitted(host, testFiles, run).catch((error: Error) => error);
+      const grant = await admitRun((ask) => host.admit(ask), testFiles, run, {
+        tierWidth: (file, grant) => local.tierWidth?.(file, grant) ?? grant,
+        everyMs: options.admitEveryMs ?? ADMIT_EVERY_MS,
+        log: (line) => options.log(`remote ${target}: ${line}`),
+      }).catch((error: Error) => error);
       if (grant instanceof Error) {
         down(runnerHostGone(host.adapter) ? "the host ended" : grant.message, false, host);
         return { lost: lostReport(testFiles) };
@@ -357,28 +337,6 @@ export function withRemoteLane(options: RemoteLaneOptions): RunnerAdapter {
       state = { kind: "down", since: now(), retryAt: Number.POSITIVE_INFINITY, refused: false };
       await Promise.allSettled([host?.adapter.close(), local.close()]);
     },
-  };
-}
-
-/** The tier's cancel or a stop, either of which ends a wait for permits (D18). */
-function cancelOf(run: RunOptions): AbortSignal | undefined {
-  const signals = [run.signal, run.stop].filter((signal) => signal !== undefined);
-  return signals.length > 1 ? AbortSignal.any(signals) : signals[0];
-}
-
-/**
- * A run cancelled before it started anywhere (D18): it ended with no file
- * completed, as a cancelled run does, so the scheduler queues its files
- * again; under a stop alone, its files are not current, as a stopped run's.
- */
-function notStarted(): RunReport {
-  return {
-    end: "completed",
-    durationMs: 0,
-    completedFiles: [],
-    results: [],
-    fileErrors: [],
-    failure: "cancelled while it waited for permits",
   };
 }
 
