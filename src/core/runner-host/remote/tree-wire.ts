@@ -36,6 +36,12 @@ export interface TreeAnswer {
 export interface InstallAnswer {
   readonly ran: boolean;
   readonly command: string | null;
+  /**
+   * Row 021-24: the lockfile was the one last installed, but the install
+   * had changed since, as a restore onto a new machine leaves it: it was
+   * made again from scratch.
+   */
+  readonly again?: true;
 }
 
 /**

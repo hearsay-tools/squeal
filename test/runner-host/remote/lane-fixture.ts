@@ -58,6 +58,8 @@ export interface Setup {
   readonly admission?: HostAdmission;
   /** How often a refused run asks the remote again. */
   readonly admitEveryMs?: number;
+  /** Prepares the local root before the lane connects, such as an install there. */
+  readonly before?: (root: string) => void;
 }
 
 let n = 0;
@@ -71,6 +73,7 @@ export async function setup({
   files = {},
   admission,
   admitEveryMs,
+  before,
 }: Setup = {}) {
   const dir = join(scratch, `s${++n}`);
   const root = join(dir, "local");
@@ -82,6 +85,7 @@ export async function setup({
   writeFileSync(join(root, "test/a.test.ts"), "import '../src/a';\n");
   writeFileSync(join(root, "vitest.config.ts"), "export default {};\n");
   for (const [path, text] of Object.entries(files)) writeFileSync(join(root, path), text);
+  before?.(root);
   execFileSync("git", ["init", "-q", root]);
   const remote = { env: remoteEnv };
 
@@ -169,7 +173,8 @@ export async function setup({
     ...(admitEveryMs === undefined ? {} : { admitEveryMs }),
   });
   onTestFinished(() => lane.close());
-  await until(() => statuses.some((s) => s.includes("go there")));
+  // Row 021-24: the lane compares at connect, so a remote may be refused before any run.
+  await until(() => statuses.some((s) => / go there| refused| unreachable/.test(s)));
   return {
     lane,
     remote,
