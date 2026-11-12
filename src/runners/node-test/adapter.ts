@@ -1,6 +1,6 @@
 import { realpathSync, statSync } from "node:fs";
 import { relative, sep } from "node:path";
-import type { AbsolutePath } from "../../core/types/common.js";
+import type { AbsolutePath, RelativePath } from "../../core/types/common.js";
 import type { NodeTestProject, PolicyInputs } from "../../core/types/policy.js";
 import type { InvalidatedPath, RunnerAdapter } from "../../core/types/runner.js";
 import { projectEnvironment } from "./adapter-environment.js";
@@ -37,6 +37,12 @@ export interface NodeTestAdapterOptions {
    * test leaves running, as its Vitest workers do (task 003-38).
    */
   readonly childEnv?: Readonly<Record<string, string>>;
+  /**
+   * The project's test files whose static closure is incomplete, with the
+   * graph's reasons, told at open and after each batch (#193, spec 020
+   * D14.4). Given, the adapter writes no note of them; absent, one note.
+   */
+  readonly closures?: (files: readonly (readonly [RelativePath, readonly string[]])[]) => void;
   /** Spec 015 D8 (row 015-86): coverage in the runs the adapter makes anyway; absent, none. */
   readonly coverage?: NodeTestCoverage;
 }

@@ -8,6 +8,7 @@ import type {
   RunnerCoverageOptions,
   VitestCoverageOptions,
 } from "../coverage/types.js";
+import type { IncompleteClosure } from "./select-closures.js";
 import type { TestFileEvidence } from "./types.js";
 
 /*
@@ -46,6 +47,8 @@ export interface GateAdapters {
       readonly tempDir: AbsolutePath;
       /** Always on; D12: `children` is `coverage.children` at the base. */
       readonly coverage: RunnerCoverageOptions;
+      /** #193: the project's files with an incomplete closure; the gate tells them after selection. */
+      readonly closures: (files: readonly IncompleteClosure[]) => void;
     },
   ) => Promise<RunnerAdapter>;
 }
@@ -74,6 +77,7 @@ export async function openRunners(
     note,
     children,
     keeping,
+    closures,
   }: {
     provider: AbsolutePath;
     temp: AbsolutePath;
@@ -81,6 +85,8 @@ export async function openRunners(
     children: boolean;
     /** D17.3: the runs may be kept, so Vitest records runtime reads as policy says. */
     keeping: boolean;
+    /** #193: told each node:test project's files with an incomplete closure, each time its adapter tells them. */
+    closures: (project: string, files: readonly IncompleteClosure[]) => void;
   },
   runners: Runner[],
 ): Promise<void> {
@@ -115,6 +121,7 @@ export async function openRunners(
       inputs: () => policy.inputs,
       tempDir: temp,
       coverage: { enabled: () => true, children: () => children, collected },
+      closures: (files) => closures(project.name, files),
     });
     runners.push({ kind: "node-test", adapter, covered, project });
   }

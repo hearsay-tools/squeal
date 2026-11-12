@@ -4,6 +4,7 @@ import type { FileHash } from "../../types/keys.js";
 import type { RunEstimate } from "./estimate.js";
 import type { PrepareRun } from "./prepare.js";
 import type { LeftOutGroup, ScopeGroup } from "./scope.js";
+import type { ClosureGaps } from "./select-closures.js";
 import type {
   ChangeKind,
   ChildFiles,
@@ -232,6 +233,13 @@ export interface GateReport {
   /** D8: present when an exceptions file was given: its entries that applied to no function. */
   readonly exceptions?: { readonly unused: readonly GateUnusedException[] };
   readonly runs: readonly GateRunReport[];
+  /**
+   * Row 020-31 (#193): each node:test project with a test file whose static
+   * closure is incomplete, every such file by path, with its reasons and
+   * whether this check selected it; by project. Absent when none has one,
+   * so such a report is as before. The verdict does not read it.
+   */
+  readonly incompleteClosures?: readonly ClosureGaps[];
   readonly verdict: GateVerdict;
   /** The functions in each state. */
   readonly counts: Readonly<Record<GateState, number>>;
