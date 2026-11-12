@@ -1582,7 +1582,7 @@ var init_policy = __esm({
       runtimeFiles: [],
       observe: { runtimeInputs: true },
       env: { allowlist: [] },
-      runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 6e5 },
+      runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 6e5, hostIdleMinutes: null },
       nodeTest: [],
       pytest: [],
       vitest: { excludeProjects: [], exclude: [] },
@@ -1705,6 +1705,23 @@ var init_config_file = __esm({
     init_errors();
     init_json();
     positiveInteger = (v) => Number.isInteger(v) && v > 0 ? null : "a positive integer";
+  }
+});
+
+// src/core/daemon/host-idle.ts
+import { totalmem } from "node:os";
+function defaultHostIdleMinutes(totalBytes = totalmem()) {
+  return Math.min(10, Math.max(2, Math.round(totalBytes / (8 * GIB))));
+}
+function hostIdleMs(user, project, fallback2) {
+  return () => (user ?? project() ?? fallback2) * 6e4;
+}
+var GIB, hostIdleMinutes;
+var init_host_idle = __esm({
+  "src/core/daemon/host-idle.ts"() {
+    "use strict";
+    GIB = 2 ** 30;
+    hostIdleMinutes = (v) => Number.isSafeInteger(v) && v >= 0 ? null : "a whole number of minutes >= 0";
   }
 });
 
@@ -2988,6 +3005,7 @@ var init_policy2 = __esm({
     init_notes();
     init_policy();
     init_config_file();
+    init_host_idle();
     init_policy_checks();
     init_policy_checks_settle();
     init_policy_code();
@@ -3040,7 +3058,9 @@ var init_policy2 = __esm({
       runner: {
         tierSize: positiveInteger,
         backlogTierSize: positiveInteger,
-        timeoutMs: orNull(positiveInteger)
+        timeoutMs: orNull(positiveInteger),
+        // Spec 021 D20.4 (row 021-26).
+        hostIdleMinutes: orNull(hostIdleMinutes)
       },
       nodeTest: (v) => nodeTestProjects(v, "nodeTest"),
       pytest: (v) => pytestProjects(v, "pytest"),
@@ -3128,6 +3148,77 @@ var init_git = __esm({
   }
 });
 
+// src/core/daemon/runner-idle.ts
+async function reopened(fresh, was, paths) {
+  const heard = await fresh.invalidate(paths);
+  const policy = paths.some((p) => p.path === POLICY_FILE);
+  const environment = was.environment === null && !policy ? null : await fresh.environment().catch(() => null);
+  const drifted = driftedProjects(was.environment, environment, policy);
+  const projects2 = [.../* @__PURE__ */ new Set([...heard.recreatedProjects, ...drifted])].sort();
+  return { result: { recreatedProjects: projects2 }, environment };
+}
+function driftedProjects(before4, after3, all2) {
+  const was = byProject(before4 ?? []);
+  const now = byProject(after3 ?? []);
+  const names7 = /* @__PURE__ */ new Set([...was.keys(), ...now.keys()]);
+  if (all2 || after3 === null && before4 !== null) return [...names7].sort();
+  if (before4 === null) return [];
+  return [...names7].filter((name3) => was.get(name3) !== now.get(name3)).sort();
+}
+function byProject(environments2) {
+  return new Map(environments2.map((e) => [e.project, JSON.stringify(e)]));
+}
+var IdleClock;
+var init_runner_idle = __esm({
+  "src/core/daemon/runner-idle.ts"() {
+    "use strict";
+    init_policy2();
+    IdleClock = class {
+      #idleMs;
+      #close;
+      #busy = 0;
+      #timer = null;
+      // The time ran out while an uncounted call was in flight: close once it ends.
+      #due = false;
+      constructor(idleMs, close) {
+        this.#idleMs = idleMs;
+        this.#close = close;
+      }
+      begin(counts) {
+        this.#busy += 1;
+        if (!counts) return;
+        this.#due = false;
+        this.stop();
+      }
+      end() {
+        this.#busy -= 1;
+        if (this.#busy > 0) return;
+        if (this.#due) {
+          this.#due = false;
+          this.#close();
+        } else if (this.#timer === null) {
+          this.#arm();
+        }
+      }
+      /** No close until the next call ends. */
+      stop() {
+        if (this.#timer !== null) clearTimeout(this.#timer);
+        this.#timer = null;
+      }
+      #arm() {
+        const ms2 = this.#idleMs();
+        if (!(ms2 > 0)) return;
+        this.#timer = setTimeout(() => {
+          this.#timer = null;
+          if (this.#busy > 0) this.#due = true;
+          else this.#close();
+        }, ms2);
+        this.#timer.unref?.();
+      }
+    };
+  }
+});
+
 // src/core/daemon/runner.ts
 var runner_exports = {};
 __export(runner_exports, {
@@ -3150,7 +3241,20 @@ function createRecoveringRunner(options) {
   let creating = null;
   let closed = false;
   let replaced = false;
-  const around = options.around ?? ((call2) => call2());
+  let parked = null;
+  let answered2 = null;
+  const around = options.around ?? ((call3) => call3());
+  const park2 = () => {
+    const current2 = live();
+    if (current2 === null || closed) return;
+    inner = null;
+    parked = { last: current2, environment: answered2 ?? parked?.environment ?? null };
+    answered2 = null;
+    current2.close().catch(() => {
+    });
+  };
+  const clock = new IdleClock(options.idleMs ?? (() => 0), park2);
+  const values = () => inner ?? parked?.last ?? null;
   const live = () => {
     if (inner !== null && options.gone?.(inner) === true) {
       const dead = inner;
@@ -3171,6 +3275,7 @@ function createRecoveringRunner(options) {
           throw new Error(`${options.name} adapter: closed`);
         }
         inner = created;
+        answered2 = null;
         if (error !== null) options.onRecovered?.();
         error = null;
         reported = null;
@@ -3195,51 +3300,89 @@ function createRecoveringRunner(options) {
     if (creating !== null || retry2 || error === null) return attempt();
     throw error;
   };
+  const call2 = (work) => around(async () => {
+    clock.begin(true);
+    try {
+      return await work(await adapter());
+    } finally {
+      clock.end();
+    }
+  });
   return {
     name: options.name,
     adapterVersion: options.adapterVersion,
     open: () => around(async () => {
+      clock.begin(true);
       try {
         await adapter();
         return true;
       } catch {
         return false;
+      } finally {
+        clock.end();
       }
     }),
     retry() {
       retry2 = true;
     },
     invalidate: (paths) => around(async () => {
-      const current2 = live();
-      if (closed || current2 !== null && !replaced) return (await adapter()).invalidate(paths);
-      if (current2 === null) retry2 = true;
-      replaced = false;
-      const fresh = await adapter();
-      if (current2 !== null) await fresh.invalidate(paths);
-      return { recreatedProjects: await projectsOf(fresh) };
+      clock.begin(true);
+      try {
+        const current2 = live();
+        if (!closed && !replaced && parked !== null && (current2 !== null || error === null)) {
+          const fresh2 = current2 ?? await adapter();
+          const { result, environment } = await reopened(fresh2, parked, paths);
+          if (environment !== null && fresh2 === inner) answered2 = environment;
+          parked = null;
+          return result;
+        }
+        if (closed || current2 !== null && !replaced) {
+          return await (await adapter()).invalidate(paths);
+        }
+        if (current2 === null) retry2 = true;
+        replaced = false;
+        parked = null;
+        const fresh = await adapter();
+        if (current2 !== null) await fresh.invalidate(paths);
+        return { recreatedProjects: await projectsOf(fresh) };
+      } finally {
+        clock.end();
+      }
     }),
-    // Task 007-26: a recheck is no batch, so it never retries a failed creation.
+    // Task 007-26: a recheck is no batch, so it never retries a failed creation, nor reopens a
+    // closed adapter, and it does not hold an idle one up (spec 021 D20.2).
     recheck: () => around(async () => {
       const current2 = live();
       if (current2 === null || closed) return { recreatedProjects: [] };
-      return await current2.recheck?.() ?? { recreatedProjects: [] };
+      clock.begin(false);
+      try {
+        return await current2.recheck?.() ?? { recreatedProjects: [] };
+      } finally {
+        clock.end();
+      }
     }),
-    affected: (changedPaths3) => around(async () => (await adapter()).affected(changedPaths3)),
-    closure: (testFile) => around(async () => (await adapter()).closure(testFile)),
-    enumerate: (testFile) => around(async () => (await adapter()).enumerate(testFile)),
-    testFiles: () => around(async () => (await adapter()).testFiles()),
-    omittedTestFiles: () => inner?.omittedTestFiles?.() ?? 0,
-    slowWidth: (testFiles3) => inner?.slowWidth?.(testFiles3) ?? testFiles3.length,
-    tierWidth: (testFile, grant) => options.tierWidth?.(testFile, grant) ?? inner?.tierWidth?.(testFile, grant) ?? grant,
-    tierPart: (testFile) => inner?.tierPart?.(testFile) ?? "",
+    affected: (changedPaths3) => call2((a) => a.affected(changedPaths3)),
+    closure: (testFile) => call2((a) => a.closure(testFile)),
+    enumerate: (testFile) => call2((a) => a.enumerate(testFile)),
+    testFiles: () => call2((a) => a.testFiles()),
+    omittedTestFiles: () => values()?.omittedTestFiles?.() ?? 0,
+    slowWidth: (testFiles3) => values()?.slowWidth?.(testFiles3) ?? testFiles3.length,
+    tierWidth: (testFile, grant) => options.tierWidth?.(testFile, grant) ?? values()?.tierWidth?.(testFile, grant) ?? grant,
+    tierPart: (testFile) => values()?.tierPart?.(testFile) ?? "",
     besideBacklog: () => options.besideBacklog === true,
     backlogSlot: () => options.backlogSlot ?? null,
     ...options.focuses === true ? { focuses: true } : {},
-    environment: () => around(async () => (await adapter()).environment()),
-    run: (testFiles3, runOptions) => around(async () => (await adapter()).run(testFiles3, runOptions)),
+    environment: () => call2(async (a) => {
+      const answer4 = await a.environment();
+      if (a === inner) answered2 = answer4;
+      return answer4;
+    }),
+    run: (testFiles3, runOptions) => call2((a) => a.run(testFiles3, runOptions)),
     close: () => around(async () => {
       if (closed) return;
       closed = true;
+      clock.stop();
+      parked = null;
       await creating?.catch(() => {
       });
       await inner?.close();
@@ -3306,6 +3449,7 @@ var init_runner2 = __esm({
     "use strict";
     init_git();
     init_json();
+    init_runner_idle();
     VITEST_CONFIG = /^(vitest\.(config|workspace|projects)|vite\.config)\.[cm]?[jt]s$/;
   }
 });
@@ -21306,7 +21450,8 @@ function loadUserConfig(options = {}) {
       projects: {},
       groupSlotScope: DEFAULT_GROUP_SLOT_SCOPE,
       backgroundShare: DEFAULT_BACKGROUND_SHARE
-    }
+    },
+    runner: { hostIdleMinutes: null }
   };
   const { value, problems } = loadConfigFile(path, SHAPE2, defaults);
   const { hostSlots } = value.capacity;
@@ -21395,6 +21540,7 @@ var init_user_config = __esm({
     init_json();
     init_slot_files();
     init_config_file();
+    init_host_idle();
     projects = (value) => {
       if (!isRecord(value)) return 'an object from repository root path to { "slots": n }';
       const kept5 = {};
@@ -21419,7 +21565,9 @@ var init_user_config = __esm({
     groupSlotScope = (v) => GROUP_SLOT_SCOPES.includes(v) ? null : `one of ${GROUP_SLOT_SCOPES.map((s) => `"${s}"`).join(", ")}`;
     backgroundShare = (v) => isBackgroundShare(v) ? null : "a number from 0 to 1";
     SHAPE2 = {
-      capacity: { hostSlots: positiveInteger, projects, groupSlotScope, backgroundShare }
+      capacity: { hostSlots: positiveInteger, projects, groupSlotScope, backgroundShare },
+      // Spec 021 D20.4 (row 021-26).
+      runner: { hostIdleMinutes: (v) => v === null ? null : hostIdleMinutes(v) }
     };
   }
 });
@@ -66664,7 +66812,8 @@ var init_runner_set = __esm({
 var node_test_runners_exports = {};
 __export(node_test_runners_exports, {
   createNodeTestRunnerSet: () => createNodeTestRunnerSet,
-  createNodeTestRunners: () => createNodeTestRunners
+  createNodeTestRunners: () => createNodeTestRunners,
+  hosted: () => hosted2
 });
 function createNodeTestRunners(projects2, options) {
   return opened(() => projects2, options.note)().map((project) => nodeTestRunner(project, options));
@@ -66703,8 +66852,8 @@ function nodeTestRunner(project, options) {
     name: "node-test",
     adapterVersion: NODE_TEST_ADAPTER_VERSION,
     create: () => host === void 0 ? createNodeTestAdapter(project, adapterOptions) : createHostedNodeTest(host, project, adapterOptions),
-    // Spec 021 D7: a host that exited or missed a deadline is replaced.
-    ...host === void 0 ? {} : { gone: runnerHostGone },
+    // Spec 021 D7: a host that exited or missed a deadline is replaced; D20: an idle one closes.
+    ...host === void 0 ? {} : hosted2(options.idleMs),
     // A run starts `runner.tierSize` files at once whatever its grant (task 001-366).
     tierWidth: () => options.tierSize(),
     // It cannot cancel a run: an edit's tier starts beside a backlog tier (task 011-21).
@@ -66714,6 +66863,9 @@ function nodeTestRunner(project, options) {
     onFailure: (text3) => options.note(`${text3} (node-test project ${JSON.stringify(project.name)})`),
     onRecovered: () => options.note(`node-test project ${JSON.stringify(project.name)} started`)
   });
+}
+function hosted2(idleMs) {
+  return { gone: runnerHostGone, ...idleMs === void 0 ? {} : { idleMs } };
 }
 var init_node_test_runners = __esm({
   "src/core/daemon/node-test-runners.ts"() {
@@ -66765,8 +66917,8 @@ function pytestRunner(project, options) {
       ...adapterOptions,
       ...batchSize === void 0 ? {} : { batchSize: () => batchSize }
     }) : createHostedPytest(host, project, adapterOptions),
-    // Spec 021 D7: a host that exited or missed a deadline is replaced.
-    ...host === void 0 ? {} : { gone: runnerHostGone },
+    // Spec 021 D7: a host that exited or missed a deadline is replaced; D20: an idle one closes.
+    ...host === void 0 ? {} : hosted2(options.idleMs),
     // A run starts `runner.tierSize` processes at once whatever its grant (task 001-366).
     tierWidth: () => options.tierSize(),
     // It cannot cancel a run: an edit's tier starts beside a backlog tier (task 011-21).
@@ -66786,7 +66938,7 @@ var init_pytest_runners = __esm({
     init_run3();
     init_version4();
     init_process_host();
-    init_proxy();
+    init_node_test_runners();
     init_runner2();
     init_runner_set();
   }
@@ -72289,7 +72441,7 @@ function withDaemonRemoteLane(options) {
   }
   const meanwhile = found3.lane.whenLost === "local" ? "run here" : "are not run";
   say(`remote ${target}: connecting; background runs of vitest ${meanwhile} until it answers`);
-  const hosted2 = hostedOptions(options.vitestOptions);
+  const hosted3 = hostedOptions(options.vitestOptions);
   return withRemoteLane({
     target,
     whenLost: found3.lane.whenLost,
@@ -72303,8 +72455,8 @@ function withDaemonRemoteLane(options) {
       version: version2,
       root,
       runner: "vitest",
-      options: hosted2.options,
-      policy: hosted2.policy,
+      options: hosted3.options,
+      policy: hosted3.policy,
       ...options.vitestOptions.note === void 0 ? {} : { note: options.vitestOptions.note },
       log: options.log,
       commands: options.policy().requires.commands
@@ -72482,11 +72634,11 @@ function triedHere(store, worktreeId, imports, candidates, nearestHeld) {
 function servesHere(store, worktreeId, imports) {
   const environments2 = environmentsOf(store, worktreeId);
   if (imports.some((i3) => i3.id === ownId(i3.fileHash, environments2))) return true;
-  const byProject = importEnvironments(
+  const byProject2 = importEnvironments(
     store,
     imports.map((i3) => i3.id)
   );
-  for (const [project, hashes] of byProject) {
+  for (const [project, hashes] of byProject2) {
     const here = worktreeEnvironment(store, worktreeId, project);
     if (here === null || hashes.includes(here.hash)) continue;
     const rekeys = hashes.some(
@@ -92251,6 +92403,9 @@ function failed4(context, mark) {
   );
 }
 
+// src/core/daemon/daemon.ts
+init_host_idle();
+
 // src/core/daemon/idle-gc.ts
 import { readFileSync as readFileSync55 } from "node:fs";
 import { setFlagsFromString } from "node:v8";
@@ -93453,6 +93608,16 @@ var Daemon = class {
       project: { id: this.#repositoryRoot, slots: projectSlots }
     };
   }
+  /**
+   * Spec 021 D20.4 (row 021-26): `runner.hostIdleMinutes` in milliseconds, the user config's
+   * read once here, `squeal.config.json`'s at each use, else from the machine's total memory.
+   */
+  #hostIdleMs() {
+    const fixed = this.options.hostIdleMs;
+    if (fixed !== void 0) return () => fixed;
+    const user = loadUserConfig({ env: this.options.env }).config.runner.hostIdleMinutes;
+    return hostIdleMs(user, () => this.#policy.runner.hostIdleMinutes, defaultHostIdleMinutes());
+  }
   /** Spec 021 D8: how node:test and pytest reach a local runner host, when the daemon has one. */
   #processHost() {
     const launch = this.options.runnerHost;
@@ -93703,6 +93868,7 @@ var Daemon = class {
         this.#version,
         createVitestAdapter2
       );
+      const idleMs = this.#hostIdleMs();
       const around = this.options.ownsProcess && !vitest.hosted ? inRootWhileRunning(root, this.opened.scratch) : void 0;
       const provider = coverage.coverageProvider();
       if (provider === null && coverage.coverageOn(this.#policy)) {
@@ -93731,7 +93897,9 @@ var Daemon = class {
         onFailure: (text3) => this.#note(`${text3}; every check of this worktree is unknown until the config loads`),
         onRecovered: () => this.#note("Vitest started after the config changed"),
         around,
-        ...vitest.recovery
+        ...vitest.recovery,
+        // Lane instances keep their own close (D20.5): only the fast one closes when idle.
+        ...vitest.hosted ? { idleMs } : {}
       }) : null;
       const vitestBelowRoot2 = runnerModule.readVitestBelowRoot(root).then((dirs) => {
         if (dirs.length === 0) return;
@@ -93767,6 +93935,7 @@ var Daemon = class {
       const nodeTestRunners = nodeTest.createNodeTestRunnerSet(() => this.#policy.nodeTest, {
         root,
         host,
+        idleMs,
         tempDir: this.opened.scratch.tempDir,
         childEnv: this.#children.env,
         tierSize: () => this.#policy.runner.tierSize,
@@ -93782,6 +93951,7 @@ var Daemon = class {
       const pytestRunners2 = pytest.createPytestRunnerSet(() => this.#policy.pytest, {
         root,
         host,
+        idleMs,
         stateDir: storePaths2(commonDir).dir,
         tempDir: this.opened.scratch.tempDir,
         childEnv: this.#children.env,
@@ -93820,9 +93990,12 @@ var Daemon = class {
       this.#vitest = vitestRunner;
       this.#runner = runner;
       await Promise.all([
-        ...await awaitsInstall2(root) ? [] : [vitestRunner?.open()],
-        ...nodeTestRunners.members().map((r) => r.open()),
-        ...pytestRunners2.members().map((r) => r.open()),
+        ...await openedAtStart(
+          () => awaitsInstall2(root),
+          vitest.hosted ? null : vitestRunner,
+          host,
+          [nodeTestRunners, pytestRunners2]
+        ),
         vitestBelowRoot2
       ]);
       if (this.#phase === "stopping" || this.#stopRequested) return;
@@ -94305,6 +94478,11 @@ var Daemon = class {
     }
   }
 };
+async function openedAtStart(installing, vitest, host, sets2) {
+  const opened2 = vitest === null || await installing() ? [] : [vitest.open()];
+  if (host !== void 0) return opened2;
+  return [...opened2, ...sets2.flatMap((set) => set.members().map((runner) => runner.open()))];
+}
 
 // src/core/daemon/signals.ts
 import { readFileSync as readFileSync66 } from "node:fs";
@@ -98268,7 +98446,7 @@ import { setTimeout as sleep19 } from "node:timers/promises";
 
 // src/core/ps/darwin.ts
 init_source2();
-import { availableParallelism as availableParallelism7, cpus, loadavg as loadavg4, totalmem, uptime } from "node:os";
+import { availableParallelism as availableParallelism7, cpus, loadavg as loadavg4, totalmem as totalmem2, uptime } from "node:os";
 import { basename as basename37 } from "node:path";
 var CLOCK_TICKS = 100;
 var PS2 = [
@@ -98297,7 +98475,7 @@ var DarwinSource = class {
   #last = /* @__PURE__ */ new Map();
   constructor(options) {
     this.#run = options.run ?? runCommand;
-    this.#os = options.os ?? { loadavg: loadavg4, totalmem, cpus, availableParallelism: availableParallelism7, uptime };
+    this.#os = options.os ?? { loadavg: loadavg4, totalmem: totalmem2, cpus, availableParallelism: availableParallelism7, uptime };
     const boot = (options.now ?? Date.now)() - this.#os.uptime() * 1e3;
     this.#boot = Number.isFinite(boot) ? Math.floor(boot / 1e3) * 1e3 : null;
   }
@@ -98696,7 +98874,7 @@ import { join as join164 } from "node:path";
 // src/core/ps/render-units.ts
 var KIB = 1024;
 var MIB = KIB * 1024;
-var GIB = MIB * 1024;
+var GIB2 = MIB * 1024;
 var UNKNOWN3 = "?";
 var NO_BOOT = "the boot time cannot be read, so no process has an age";
 function dateOf(ms2) {
@@ -98720,11 +98898,11 @@ function cpus2(value) {
 function bytes(n, column = false) {
   if (n === null) return column ? UNKNOWN3 : "unknown";
   if (n === 0) return "0";
-  const [value, unit] = n >= GIB ? [(n / GIB).toFixed(1), "G"] : n >= MIB ? [String(Math.round(n / MIB)), "M"] : [String(Math.round(n / KIB)), "K"];
+  const [value, unit] = n >= GIB2 ? [(n / GIB2).toFixed(1), "G"] : n >= MIB ? [String(Math.round(n / MIB)), "M"] : [String(Math.round(n / KIB)), "K"];
   return column ? `${value}${unit}` : `${value} ${unit}iB`;
 }
 function ofGib(part2, whole) {
-  return `${(part2 / GIB).toFixed(1)} of ${(whole / GIB).toFixed(1)} GiB`;
+  return `${(part2 / GIB2).toFixed(1)} of ${(whole / GIB2).toFixed(1)} GiB`;
 }
 function age(since, at2) {
   return since === null ? UNKNOWN3 : columnDuration(at2 - since);
