@@ -10,8 +10,10 @@ import { afterEach, describe, expect, it } from "vitest";
  * runs. Review of 0.1.444 B3: the Vitest process says so in a file below the
  * run's raw directory (`watchWorkers`), never in its environment, so no
  * allow-listed variable, key or part descriptor changes. Review of 0.1.444
- * S1: the Vitest CLI process itself installs no watch. Each case runs in
- * Node processes of its own, as the watch changes their globals.
+ * S1: the Vitest CLI process itself installs no watch. Review of 0.1.444-r2
+ * N1: nor does a process or thread a worker of a Vitest process with no
+ * provider starts, at any depth. Each case runs in Node processes of its
+ * own, as the watch changes their globals.
  */
 
 const RUNTIME = resolve(import.meta.dirname, "../../../src/runners/vitest/ci-runtime");
@@ -44,67 +46,147 @@ function logs(raw: string): unknown[] | null {
   return lines.sort().map((line) => JSON.parse(line));
 }
 
-/** A worker: installs the watch, then loads the inspector while `file` runs; `report`s its hook state. */
-const worker = (raw: string, file: string, report: string) =>
-  [
+/** A test worker, or a process or thread one started: its test file and what it starts. */
+interface Unit {
+  readonly kind: "process" | "thread";
+  readonly file: string;
+  readonly starts?: readonly Unit[];
+}
+
+/**
+ * The workers of a Vitest process, a forked one and a thread, and what each
+ * starts as a test may (review of 0.1.444-r2 N1): the fork a process, which
+ * starts one of its own, and a thread; the thread a process.
+ */
+const WORKERS: readonly Unit[] = [
+  {
+    kind: "process",
+    file: "/w/test/fork.test.ts",
+    starts: [
+      {
+        kind: "process",
+        file: "/w/test/fork-child.test.ts",
+        starts: [{ kind: "process", file: "/w/test/fork-grandchild.test.ts" }],
+      },
+      { kind: "thread", file: "/w/test/fork-thread.test.ts" },
+    ],
+  },
+  {
+    kind: "thread",
+    file: "/w/test/thread.test.ts",
+    starts: [{ kind: "process", file: "/w/test/thread-child.test.ts" }],
+  },
+];
+
+/**
+ * Code that runs each of `units` in turn, below `raw`, then calls `then`
+ * with their reports in order: a process's JSON output, a thread's message.
+ */
+function startAll(raw: string, units: readonly Unit[], then: string): string {
+  const codes = units.map((unit) => [unit.kind, code(raw, unit)]);
+  return [
+    'const { execFileSync } = require("node:child_process");',
+    'const { Worker } = require("node:worker_threads");',
+    "const run = ([kind, code]) =>",
+    '  kind === "process"',
+    '    ? JSON.parse(execFileSync(process.execPath, ["-e", code], { encoding: "utf8" }))',
+    '    : new Promise((done) => new Worker(code, { eval: true }).once("message", done));',
+    `const codes = ${JSON.stringify(codes)};`,
+    "(async () => {",
+    "  const reports = [];",
+    "  for (const unit of codes) reports.push(await run(unit));",
+    `  (${then})(reports);`,
+    "})();",
+  ].join("\n");
+}
+
+/**
+ * The code of `unit`: installs the watch, loads the inspector while its file
+ * runs, starts its own, then reports its hook state with theirs (`starts`).
+ */
+function code(raw: string, unit: Unit): string {
+  const report =
+    unit.kind === "process"
+      ? "(v) => console.log(JSON.stringify(v))"
+      : '(v) => require("node:worker_threads").parentPort.postMessage(v)';
+  const state =
+    "{ flag: globalThis.__squealCiInspector === true, wrapped: process.getBuiltinModule !== builtin }";
+  return [
     `const watch = require(${JSON.stringify(INSPECTOR)});`,
     "const builtin = process.getBuiltinModule;",
     `watch.installWatch(${JSON.stringify(raw)}, undefined);`,
-    `globalThis.__vitest_worker__ = { filepath: ${JSON.stringify(file)}, ctx: { projectName: "" } };`,
+    `globalThis.__vitest_worker__ = { filepath: ${JSON.stringify(unit.file)}, ctx: { projectName: "" } };`,
     'process.getBuiltinModule("node:inspector");',
-    `(${report})({ flag: globalThis.__squealCiInspector === true, wrapped: process.getBuiltinModule !== builtin });`,
+    `const state = ${state};`,
+    `const report = ${report};`,
+    unit.starts === undefined
+      ? "report(state);"
+      : startAll(raw, unit.starts, "(starts) => report({ ...state, starts })"),
   ].join("\n");
+}
+
+/** What `unit` and each it starts report when every one has hook state `hooks`. */
+function reported(unit: Unit, hooks: { flag: boolean; wrapped: boolean }): unknown {
+  const starts = unit.starts?.map((u) => reported(u, hooks));
+  return starts === undefined ? hooks : { ...hooks, starts };
+}
 
 /**
- * A Vitest process: `watchWorkers(raw, provider)`, then one forked worker
- * and one worker thread. Whether its env changed, its file, and each
- * worker's hook state.
+ * A Vitest process: `watchWorkers(raw, provider)`, then its `WORKERS`.
+ * Whether its env changed, its file, and the hook state of each worker and
+ * of what it started.
  */
 function vitestProcess(raw: string, provider: boolean): Record<string, unknown> {
-  const fork = worker(raw, "/w/test/fork.test.ts", "(v) => console.log(JSON.stringify(v))");
-  const thread = worker(
-    raw,
-    "/w/test/thread.test.ts",
-    '(v) => require("node:worker_threads").parentPort.postMessage(v)',
-  );
   const script = [
-    'const { execFileSync } = require("node:child_process");',
     'const { existsSync } = require("node:fs");',
-    'const { Worker } = require("node:worker_threads");',
     `const watch = require(${JSON.stringify(INSPECTOR)});`,
     "const before = JSON.stringify(process.env);",
     `watch.watchWorkers(${JSON.stringify(raw)}, ${provider});`,
     "const envSame = JSON.stringify(process.env) === before;",
     `const file = existsSync(${JSON.stringify(join(raw, "inspector"))} + "/" + process.pid + ".no-provider");`,
-    `const fork = JSON.parse(execFileSync(process.execPath, ["-e", ${JSON.stringify(fork)}], { encoding: "utf8" }));`,
-    `const w = new Worker(${JSON.stringify(thread)}, { eval: true });`,
-    "w.once('message', (thread) => console.log(JSON.stringify({ envSame, file, fork, thread })));",
+    startAll(
+      raw,
+      WORKERS,
+      "([fork, thread]) => console.log(JSON.stringify({ envSame, file, fork, thread }))",
+    ),
   ].join("\n");
   // Review of 0.1.444 B3: the old variable's name, allow-listed literally, stays unset.
   return node(["-e", script], { SQUEAL_CI_NO_PROVIDER: undefined });
 }
 
 describe("the node:inspector watch beside no coverage provider (reviews 0.1.443-r2 S2, 0.1.444 B3)", () => {
-  it("watches the forked and thread workers of a Vitest process with a provider", () => {
+  it("watches the workers of a Vitest process with a provider, and what they start", () => {
     const raw = scratchDir();
     const on = { flag: true, wrapped: true };
-    expect(vitestProcess(raw, true)).toEqual({ envSame: true, file: false, fork: on, thread: on });
-    expect(logs(raw)).toEqual([
-      { t: ["", "/w/test/fork.test.ts"], i: true },
-      { t: ["", "/w/test/thread.test.ts"], i: true },
-    ]);
+    const [fork, thread] = WORKERS.map((unit) => reported(unit, on));
+    expect(vitestProcess(raw, true)).toEqual({ envSame: true, file: false, fork, thread });
+    expect(logs(raw)).toEqual(
+      ["fork-child", "fork-grandchild", "fork-thread", "fork", "thread-child", "thread"].map(
+        (name) => ({ t: ["", `/w/test/${name}.test.ts`], i: true }),
+      ),
+    );
   });
 
-  it("without a provider: no worker hook, no log, and the Vitest process's env is unchanged", () => {
+  it("without a provider: no hook and no log in a worker or what it starts; the Vitest process's env is unchanged (review 0.1.444-r2 N1)", () => {
     const raw = scratchDir();
     const off = { flag: false, wrapped: false };
-    expect(vitestProcess(raw, false)).toEqual({
-      envSame: true,
-      file: true,
-      fork: off,
-      thread: off,
-    });
+    const [fork, thread] = WORKERS.map((unit) => reported(unit, off));
+    expect(vitestProcess(raw, false)).toEqual({ envSame: true, file: true, fork, thread });
     expect(logs(raw)).toBeNull();
+  });
+
+  it("a process that watches removes a file an earlier process of its pid left, so what it starts watches too", () => {
+    const raw = scratchDir();
+    const script = [
+      'const fs = require("node:fs");',
+      `const watch = require(${JSON.stringify(INSPECTOR)});`,
+      `const own = ${JSON.stringify(join(raw, "inspector"))} + "/" + process.pid + ".no-provider";`,
+      `fs.mkdirSync(${JSON.stringify(join(raw, "inspector"))}, { recursive: true });`,
+      'fs.writeFileSync(own, "");',
+      `watch.installWatch(${JSON.stringify(raw)}, undefined);`,
+      "console.log(JSON.stringify({ flag: globalThis.__squealCiInspector === true, file: fs.existsSync(own) }));",
+    ].join("\n");
+    expect(node(["-e", script])).toEqual({ flag: true, file: false });
   });
 
   it("removes an earlier file of its pid with a provider; reads no watch for a provider that did not start", () => {
