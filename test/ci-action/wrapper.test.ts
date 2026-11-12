@@ -11,7 +11,8 @@ import { type Checkout, checkout, scratch, step } from "./checkout.js";
  * `export` and `publish` exit 0, each with a warning in the job log and the
  * step summary. When Squeal runs, a refusal or a crash of `export` or
  * `publish` warns the same way and exits 0; a usage error still fails
- * (the coordinator for the human, 2026-11-11).
+ * (the coordinator for the human, 2026-11-11). The warning goes to stderr,
+ * so stdout holds only the command's own output (row 018-42).
  */
 
 const squeal = (at: Checkout, args: readonly string[], env?: Record<string, string>) =>
@@ -19,11 +20,14 @@ const squeal = (at: Checkout, args: readonly string[], env?: Record<string, stri
 
 const exit3 = ["/bin/sh", "-c", "echo ran; exit 3"];
 
-/** The workflow command a pass-through prints, for `problem` and `then`. */
+/** The workflow command a pass-through prints to stderr, for `problem` and `then`. */
 const warning = (problem: string, then: string) =>
   `::warning title=Squeal::Squeal cannot run here: ${problem}. ${then}\n`;
 
 const RECORD_THEN = "The command runs without recording, so this step shares no results.";
+
+/** The last line of `text`, which ends with a newline. */
+const lastLine = (text: string) => /([^\n]*)\n$/.exec(text)?.[1];
 
 describe("the action's squeal command", () => {
   it("runs the bundled CLI with its arguments, and keeps the CLI's exit code", () => {
@@ -54,33 +58,35 @@ describe("the action's squeal command", () => {
 
     const refusal = "squeal ci export: the parts' environments differ; wrote nothing";
     const err = `squeal ci export: Squeal's recording took 1.0 s\n${refusal}\n`;
-    const refused = shared("export", { STUB_EXIT: "1", STUB_ERR: err });
+    // The CLI's own stdout stays the step's stdout; the warning follows its error output.
+    const refused = shared("export", { STUB_EXIT: "1", STUB_OUT: "partial\n", STUB_ERR: err });
     expect(refused).toMatchObject({
       code: 0,
-      stdout: `::warning title=Squeal::${failed("export", 1, refusal)}\n`,
-      stderr: err,
+      stdout: "partial\n",
+      stderr: `${err}::warning title=Squeal::${failed("export", 1, refusal)}\n`,
       summary: `**Squeal:** ${failed("export", 1, refusal)}\n\n`,
     });
 
     const crashed = shared("publish", { STUB_THROW: "100% boom" });
-    expect(crashed.code).toBe(0);
+    expect(crashed).toMatchObject({ code: 0, stdout: "" });
     expect(crashed.stderr).toContain("Error: 100% boom");
-    expect(crashed.stdout).toBe(
-      `::warning title=Squeal::${failed("publish", 1, "Error: 100%25 boom")}\n`,
+    expect(lastLine(crashed.stderr)).toBe(
+      `::warning title=Squeal::${failed("publish", 1, "Error: 100%25 boom")}`,
     );
     expect(crashed.summary).toContain(failed("publish", 1, "Error: 100% boom"));
 
     // The shell may name the signal ("Killed"); the exit code says it either way.
     const killed = shared("publish", { STUB_SIGNAL: "SIGKILL" });
-    expect(killed.code).toBe(0);
-    expect(killed.stdout).toMatch(
-      /^::warning title=Squeal::squeal ci publish failed \(exit 137\)(: Killed| with no error output)\. The run's result stays as it is; it shares no Squeal results\.\n$/,
+    expect(killed).toMatchObject({ code: 0, stdout: "" });
+    expect(lastLine(killed.stderr)).toMatch(
+      /^::warning title=Squeal::squeal ci publish failed \(exit 137\)(: Killed| with no error output)\. The run's result stays as it is; it shares no Squeal results\.$/,
     );
 
     const silent = shared("export", { STUB_EXIT: "1" });
     expect(silent).toMatchObject({
       code: 0,
-      stdout: `::warning title=Squeal::squeal ci export failed (exit 1) with no error output. The run's result stays as it is; it shares no Squeal results.\n`,
+      stdout: "",
+      stderr: `::warning title=Squeal::squeal ci export failed (exit 1) with no error output. The run's result stays as it is; it shares no Squeal results.\n`,
     });
 
     // A usage error is a mistake in the CI file: it fails, as the CLI's own exit code says.
@@ -95,7 +101,8 @@ describe("the action's squeal command", () => {
     const record = squeal(at, ["ci", "record", "--out", "parts", "--", ...exit3]);
     expect(record).toMatchObject({
       code: 3,
-      stdout: `${warning(problem, RECORD_THEN)}ran\n`,
+      stdout: "ran\n",
+      stderr: warning(problem, RECORD_THEN),
       calls: [],
     });
     expect(record.summary).toBe(
@@ -105,15 +112,19 @@ describe("the action's squeal command", () => {
       const run = squeal(at, ["ci", sub, "x"]);
       expect(run).toMatchObject({
         code: 0,
-        stdout: warning(problem, `squeal ci ${sub} did nothing.`),
+        stdout: "",
+        stderr: warning(problem, `squeal ci ${sub} did nothing.`),
         calls: [],
       });
       expect(run.summary).toContain(`squeal ci ${sub} did nothing.`);
     }
-    // Not a command the action provides: Squeal did not run, and says so.
-    expect(squeal(at, ["--version"])).toMatchObject({
+    // Not a command the action provides: Squeal did not run, says so on
+    // stderr, and leaves the file `squeal code --json > report.json` writes empty.
+    expect(squeal(at, ["code", "--json"])).toMatchObject({
       code: 1,
-      stdout: warning(problem, "squeal --version did not run."),
+      stdout: "",
+      stderr: warning(problem, "squeal code --json did not run."),
+      calls: [],
     });
   });
 
@@ -122,7 +133,8 @@ describe("the action's squeal command", () => {
     const record = squeal(at, ["ci", "record", "--", ...exit3], { PATH: scratch("empty") });
     expect(record).toMatchObject({
       code: 3,
-      stdout: `${warning("node is not on the PATH", RECORD_THEN)}ran\n`,
+      stdout: "ran\n",
+      stderr: warning("node is not on the PATH", RECORD_THEN),
     });
   });
 
@@ -130,7 +142,11 @@ describe("the action's squeal command", () => {
     const at = checkout({ cli: null });
     const record = squeal(at, ["ci", "record", "--", ...exit3]);
     const problem = "this checkout of Squeal has no plugins/claude-code/dist/cli/squeal.mjs";
-    expect(record).toMatchObject({ code: 3, stdout: `${warning(problem, RECORD_THEN)}ran\n` });
+    expect(record).toMatchObject({
+      code: 3,
+      stdout: "ran\n",
+      stderr: warning(problem, RECORD_THEN),
+    });
   });
 
   it("passes through after a setup that found the CLI broken, escaping % only in the log", () => {
@@ -139,7 +155,8 @@ describe("the action's squeal command", () => {
     const record = squeal(at, ["ci", "record", "--", ...exit3], env);
     expect(record).toMatchObject({
       code: 3,
-      stdout: `${warning("the CLI is 50%25 broken", RECORD_THEN)}ran\n`,
+      stdout: "ran\n",
+      stderr: warning("the CLI is 50%25 broken", RECORD_THEN),
       calls: [],
     });
     expect(record.summary).toContain("the CLI is 50% broken.");
@@ -148,7 +165,8 @@ describe("the action's squeal command", () => {
   it("passing through, exits as the CLI would: no command, a command not found", () => {
     const at = checkout({ floor: "999.0" });
     const none = squeal(at, ["ci", "record", "--out", "parts"]);
-    expect(none.code).toBe(2);
+    expect(none).toMatchObject({ code: 2, stdout: "" });
+    expect(none.stderr).toContain("squeal ci record found no command after --.\n");
     expect(none.stderr).toContain("usage: squeal ci record [--out <dir>] -- <command> [args...]");
     expect(squeal(at, ["ci", "record", "--"]).code).toBe(2);
     const missing = squeal(at, ["ci", "record", "--", "/no/such/program"]);
