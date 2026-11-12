@@ -226,7 +226,7 @@ describe("runPytest once the checkout holding its store is gone (row 018-38)", (
     expect(existsSync(checkout)).toBe(false);
   });
 
-  it("reports a run stopped after the checkout went, writing nothing", async () => {
+  it("reports nothing of a run stopped after the checkout went, and makes nothing", async () => {
     const checkout = join(root, "removed", randomUUID());
     mkdirSync(join(checkout, ".git", "squeal"), { recursive: true });
     const logDir = join(checkout, ".git", "squeal", "runs", randomUUID(), "pytest", "cut");
@@ -245,7 +245,8 @@ describe("runPytest once the checkout holding its store is gone (row 018-38)", (
     rmSync(checkout, { recursive: true });
     stop.abort();
     const { report } = await running;
-    expect(report).toMatchObject({ end: "completed", failure: null });
+    expect(report).toMatchObject({ end: "crashed", completedFiles: [], results: [] });
+    expect(report.failure).toContain(logDir);
     expect(existsSync(checkout)).toBe(false);
   });
 });
