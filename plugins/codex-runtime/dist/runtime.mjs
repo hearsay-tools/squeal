@@ -2307,10 +2307,6 @@ var SELECT_RESULTS = `
 var KEYS_SINCE = `
   SELECT key, MAX(recorded_at) AS recorded_at FROM results INDEXED BY results_by_time
   WHERE recorded_at > ? GROUP BY key`;
-var KEYS_WITH_RESULTS = `
-  SELECT value AS key FROM json_each(?)
-  WHERE EXISTS (SELECT 1 FROM results WHERE key = value)`;
-var KEYS_WITH_RESULTS_CHUNK = 1e3;
 var NEWEST_OF_FILE = `${SELECT_RESULTS}
   WHERE c.project = ? AND c.test_path = ? AND r.key = (
     SELECT r2.key FROM checks c2 JOIN results r2 ON r2.check_id = c2.id
@@ -2368,15 +2364,6 @@ function createResultRepo(conn) {
       return conn.run(COPY_SET, key, str(newest, "key"), key) > 0;
     },
     keysSince: (since) => conn.all(KEYS_SINCE, since).map((row) => ({ key: str(row, "key"), recordedAt: num(row, "recorded_at") })),
-    keysWithResults: (keys) => {
-      const unique = [...new Set(keys)];
-      const found2 = [];
-      for (let i = 0; i < unique.length; i += KEYS_WITH_RESULTS_CHUNK) {
-        const chunk = JSON.stringify(unique.slice(i, i + KEYS_WITH_RESULTS_CHUNK));
-        for (const row of conn.all(KEYS_WITH_RESULTS, chunk)) found2.push(str(row, "key"));
-      }
-      return found2;
-    },
     putMany: (records) => conn.transaction(() => {
       for (const r of records) {
         const p = r.provenance;
@@ -3702,17 +3689,11 @@ var COVERAGE_RECORD_VERSION = 4;
 var DAY_MS2 = 24 * 60 * 60 * 1e3;
 var DELETE_BATCH2 = 256;
 var VACUUM_PAGES2 = 512;
-var OF_WORKTREES = "worktree_id IN (SELECT value FROM json_each(?))";
-var worktreeIdsOf = (table) => `WITH RECURSIVE ids(id) AS (
-    SELECT min(worktree_id) FROM ${table}
-    UNION ALL SELECT (SELECT min(worktree_id) FROM ${table} WHERE worktree_id > ids.id)
-      FROM ids WHERE ids.id IS NOT NULL)
-  SELECT id FROM ids WHERE id IS NOT NULL`;
+var DEAD_WORKTREE = "worktree_id NOT IN (SELECT value FROM json_each(?))";
 var COVERAGE_META_OF_DEAD = `key LIKE 'coverage:%' AND (CASE
     WHEN instr(substr(key, 10), ':') = 0 THEN substr(key, 10)
     ELSE substr(key, 10, instr(substr(key, 10), ':') - 1) END) NOT IN (SELECT value FROM json_each(?))`;
 var OLDER_RECORD = "provider_version < ?";
-var COVERAGE_KEY = "result_key, provider_version";
 var PER_WORKTREE = [
   ["files", "worktree_id, path"],
   ["states", "worktree_id, check_id, measure"],
@@ -3722,12 +3703,13 @@ var PER_WORKTREE = [
 function pruneCodeStore(conn, options) {
   const cutoff = options.now - options.retentionDays * DAY_MS2;
   const live = JSON.stringify(options.worktrees);
-  const dead = deadWorktrees(conn, options.worktrees);
-  if (dead.length > 0) {
-    for (const [table, key] of PER_WORKTREE) {
-      deleteInBatches(conn, table, key, OF_WORKTREES, JSON.stringify(dead));
-    }
-  }
+  const worktreesRemoved = conn.all(
+    `SELECT DISTINCT worktree_id FROM (SELECT worktree_id FROM files UNION
+         SELECT worktree_id FROM states UNION SELECT worktree_id FROM views
+         UNION SELECT worktree_id FROM transitions) WHERE ${DEAD_WORKTREE}`,
+    live
+  ).length;
+  for (const [table, key] of PER_WORKTREE) deleteInBatches(conn, table, key, DEAD_WORKTREE, live);
   deleteInBatches(conn, "meta", "key", COVERAGE_META_OF_DEAD, live);
   const viewsRemoved = deleteInBatches(
     conn,
@@ -3747,7 +3729,21 @@ function pruneCodeStore(conn, options) {
      AND counts.blob NOT IN (SELECT s.blob FROM states s)`,
     cutoff
   );
-  const coverageRemoved = pruneCoverage(conn, options.resultKeys, cutoff);
+  const coverageRemoved = options.resultKeys === void 0 ? deleteInBatches(
+    conn,
+    "coverage",
+    "result_key, provider_version",
+    `recorded_at < ? OR ${OLDER_RECORD}`,
+    cutoff,
+    COVERAGE_RECORD_VERSION
+  ) : deleteInBatches(
+    conn,
+    "coverage",
+    "result_key, provider_version",
+    `result_key NOT IN (SELECT value FROM json_each(?)) OR ${OLDER_RECORD}`,
+    JSON.stringify(options.resultKeys),
+    COVERAGE_RECORD_VERSION
+  );
   const partsRemoved = pruneParts(conn, cutoff, DELETE_BATCH2);
   const checksRemoved = deleteInBatches(
     conn,
@@ -3761,39 +3757,10 @@ function pruneCodeStore(conn, options) {
     countsRemoved,
     coverageRemoved,
     partsRemoved,
-    worktreesRemoved: dead.length,
+    worktreesRemoved,
     viewsRemoved,
     checksRemoved
   };
-}
-function deadWorktrees(conn, live) {
-  const kept2 = new Set(live);
-  const found2 = new Set(
-    PER_WORKTREE.flatMap(([table]) => conn.all(worktreeIdsOf(table)).map((row) => str(row, "id")))
-  );
-  return [...found2].filter((id) => !kept2.has(id));
-}
-function pruneCoverage(conn, resultKeys, cutoff) {
-  if (resultKeys === void 0) {
-    return deleteInBatches(
-      conn,
-      "coverage",
-      COVERAGE_KEY,
-      `recorded_at < ? OR ${OLDER_RECORD}`,
-      cutoff,
-      COVERAGE_RECORD_VERSION
-    );
-  }
-  const held = conn.all("SELECT DISTINCT result_key FROM coverage").map((row) => str(row, "result_key"));
-  const kept2 = new Set(typeof resultKeys === "function" ? resultKeys(held) : resultKeys);
-  return deleteInBatches(
-    conn,
-    "coverage",
-    COVERAGE_KEY,
-    `result_key IN (SELECT value FROM json_each(?)) OR ${OLDER_RECORD}`,
-    JSON.stringify(held.filter((key) => !kept2.has(key))),
-    COVERAGE_RECORD_VERSION
-  );
 }
 function deleteInBatches(conn, table, key, where3, ...params) {
   let removed = 0;
@@ -8163,7 +8130,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.447";
+  if (true) return "0.1.445";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
