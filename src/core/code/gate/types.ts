@@ -170,6 +170,13 @@ export interface TestFileEvidence {
    * Absent when it started, and when it went to no run.
    */
   readonly notStarted?: true;
+  /**
+   * Row 020-46: the estimate was at least twice what was left of the
+   * budget, and it loads no changed function, so the gate stopped early
+   * before it; `completed` is `false`, so the verdict is at least
+   * `incomplete` (D3.4).
+   */
+  readonly overBudget?: true;
 }
 
 /**
@@ -211,6 +218,19 @@ export interface Evidence {
   readonly incompleteClosures?: readonly ClosureGaps[];
   /** #197 (row 020-40): the logs kept of runs with a failed or unfinished file, by runner; absent when none. */
   readonly logs?: readonly KeptLog[];
+  /**
+   * Row 020-45: when the estimate was over what was left of the budget,
+   * the rerun command with a `--timeout` that fits it; absent otherwise.
+   */
+  readonly rerun?: GateRerun;
+}
+
+/** Row 020-45: a rerun of the gate that fits its estimate. */
+export interface GateRerun {
+  /** Its `--timeout`: the seconds before the first run plus twice the estimate, up to a whole minute. */
+  readonly seconds: number;
+  /** The command: the call's own arguments with that `--timeout`. */
+  readonly command: string;
 }
 
 /** D6: the policy, read at the base commit. */
