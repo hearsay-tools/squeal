@@ -30,6 +30,7 @@ describe("squeal ci record with Squeal's coverage provider (spec 020 D13)", () =
     expect(part.format).toBe("squeal-ci-part/4");
     expect(part.header.coverage).toEqual({
       provider: "squeal",
+      collector: "squeal",
       providerVersion: COVERAGE_PROVIDER_VERSION,
       recordVersion: COVERAGE_RECORD_VERSION,
     });
