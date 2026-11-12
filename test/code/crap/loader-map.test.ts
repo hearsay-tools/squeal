@@ -109,6 +109,37 @@ describe("the loader map kept across reads (row 021-31)", () => {
     expect(after[0]).toMatchObject({ state: "ready", loaders: [{ storedAt: 5 }] });
   });
 
+  it("forgets the sources a step no longer judges, and only once it has more than it judges", () => {
+    const rig = three();
+    const cache = new StepCache();
+    const loaders = cache.loaders(
+      (map) => new LoaderBuild(inputs(rig), map),
+      () => true,
+    );
+    if (loaders === null) throw new Error("the map was not read whole");
+    const before = SOURCES.map((path) => cache.condition(path, loaders));
+    const judged = (paths: readonly string[]) => paths.map((path) => ({ path }));
+
+    // As many conditions as judged files: nothing is looked at.
+    cache.keep(judged(["src/a.ts", "src/b.ts", "src/c.ts", "src/shared.ts", "src/new.ts"]));
+    expect(SOURCES.map((path, i) => cache.condition(path, loaders) === before[i])).toEqual([
+      true,
+      true,
+      true,
+      true,
+      true,
+    ]);
+    // A revision removed src/c.ts and src/env.ts: they are made again if they come back.
+    cache.keep(judged(["src/a.ts", "src/b.ts", "src/shared.ts"]));
+    expect(SOURCES.map((path, i) => cache.condition(path, loaders) === before[i])).toEqual([
+      true,
+      true,
+      false,
+      true,
+      false,
+    ]);
+  });
+
   it("gives what a read from scratch gives, through every kind of change", () => {
     const rig = three();
     const map = new LoaderMap();

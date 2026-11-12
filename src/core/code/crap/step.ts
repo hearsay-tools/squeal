@@ -154,6 +154,7 @@ export function runCoverageStep(given: CoverageStepInput): CoverageStepReport | 
       { input, cache, loaders, summary, start, countOf, work, brought },
       files,
     );
+    cache.keep(files);
     keepUnjudged(brought, files, next);
     for (const path of Object.keys(summary?.files ?? {})) {
       if (next[path] === undefined) writeEvidence(store.meta, worktreeId, path, null);
