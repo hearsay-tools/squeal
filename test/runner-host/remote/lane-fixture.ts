@@ -16,6 +16,7 @@ import {
 import { withRemoteLane } from "../../../src/core/runner-host/remote/lane.js";
 import type { WhenLost } from "../../../src/core/runner-host/remote/settings.js";
 import { createTreeHost } from "../../../src/core/runner-host/remote/tree-host.js";
+import type { TestFileRef } from "../../../src/core/types/keys.js";
 import type {
   RunnerAdapter,
   RunnerEnvironment,
@@ -68,6 +69,8 @@ export interface Setup {
   readonly needsRepository?: readonly string[];
   /** Spec 021 D19.1: each connect is refused with this text, as for a missing command. */
   readonly refusal?: string;
+  /** The local adapter's run; absent, each file completes with no result. */
+  readonly localRun?: (files: readonly TestFileRef[]) => Promise<RunReport>;
 }
 
 let n = 0;
@@ -84,6 +87,7 @@ export async function setup({
   before,
   needsRepository,
   refusal,
+  localRun,
 }: Setup = {}) {
   const dir = join(scratch, `s${++n}`);
   const root = join(dir, "local");
@@ -166,7 +170,7 @@ export async function setup({
     async (files, options) => {
       localRuns.push(options);
       localFiles.push(files.map((f) => f.path).join(","));
-      return { ...REPORT, completedFiles: [...files] };
+      return localRun === undefined ? { ...REPORT, completedFiles: [...files] } : localRun(files);
     },
   );
   const statuses: string[] = [];

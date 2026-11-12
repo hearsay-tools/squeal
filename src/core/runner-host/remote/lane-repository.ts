@@ -8,14 +8,34 @@ import type { RunReport } from "../../types/runner.js";
  * Spec 021 D19.2 (row 021-23): the tests that read the repository itself.
  * A remote tree has no `.git` (D10), so the files `remote.needsRepository`
  * matches always run here. A guard backs the setting: a remote run whose
- * failure carries Git's own "not a git repository" text keeps no result for
- * that file; the lane runs it here, runs it here from then on, and status
- * names it with the hint to add it to the setting. A false failure is never
- * stored as current (`boat-trial.md` D2: ten such files were).
+ * failure carries Git's own diagnostic for a missing repository keeps no
+ * result for that file; the lane runs it here, runs it here from then on,
+ * and status names it with the hint to add it to the setting. A false
+ * failure is never stored as current (`boat-trial.md` D2: ten such files
+ * were).
+ *
+ * Review 0.1.457 B1 and B2: the diagnostic is Git's own fatal line, one
+ * rule for every error a report holds: the error's message and each of its
+ * causes, of a test, of a file and of a setup. A failure that only quotes
+ * the words, in an assertion or a stack, is a real failure: it stays a
+ * remote failure, and its file is not remembered.
  */
 
-/** Git's text for a directory outside any repository: `fatal: not a git repository (or any ...): .git`. */
-export const NOT_A_REPOSITORY = /not a git repository/i;
+/**
+ * Git's fatal line for a directory outside any repository, at the start of a
+ * line, with one of Git's own continuations: `fatal: not a git repository
+ * (or any of the parent directories): .git`, `... (or any parent up to mount
+ * point /x)`, and with `GIT_DIR` set `fatal: not a git repository: '/x/.git'`
+ * (`Not` in Git before 2.x). A cause keeps its first line, capped at 200
+ * characters, so the line's end is not required.
+ */
+const MISSING_REPOSITORY = /^fatal: not a git repository(?: \(or any |: |$)/im;
+
+/** Whether `error`, or one of its causes, is Git's diagnostic for a missing repository. */
+export function missingRepository(error: CheckError): boolean {
+  const texts = [error.message, ...(error.causes ?? []).map((cause) => cause.message)];
+  return texts.some((text) => MISSING_REPOSITORY.test(text));
+}
 
 /** The files of a background tier that run here, and the guard's memory of the ones a remote failed. */
 export interface RepositoryRoute {
@@ -24,7 +44,7 @@ export interface RepositoryRoute {
     readonly here: readonly TestFileRef[];
     readonly there: readonly TestFileRef[];
   };
-  /** The files of a remote `report` whose failure carries Git's text, now kept here; status names them. */
+  /** The files of a remote `report` that failed for want of the repository, now kept here; status names them. */
   guard(report: RunReport): readonly TestFileRef[];
 }
 
@@ -66,24 +86,37 @@ export function repositoryRoute(
   };
 }
 
-/** The files of `report` with a failure or a file error that carries Git's text, or a setup failure's files. */
+/** The files of `report` whose failed test, file error or setup failure is `missingRepository`. */
 export function notARepository(report: RunReport): TestFileRef[] {
   const files = new Map<string, TestFileRef>();
   const add = (file: TestFileRef) => files.set(testFileId(file), file);
   for (const result of report.results) {
-    if (result.outcome === "fail" && result.errors.some(carries)) {
+    if (result.outcome === "fail" && result.errors.some(missingRepository)) {
       add({ project: result.check.project, path: result.check.testPath });
     }
   }
-  for (const error of report.fileErrors) if (error.errors.some(carries)) add(error.testFile);
+  for (const error of report.fileErrors) {
+    if (error.errors.some(missingRepository)) add(error.testFile);
+  }
   const startup = report.startupFailure;
-  if (startup !== undefined && carries(startup.error))
+  if (startup !== undefined && missingRepository(startup.error)) {
     for (const file of startup.testFiles) add(file);
+  }
   return [...files.values()];
 }
 
-function carries(error: CheckError): boolean {
-  return NOT_A_REPOSITORY.test(error.message) || NOT_A_REPOSITORY.test(error.stack ?? "");
+/**
+ * Review 0.1.457 B3: `report`, whose run failed to start, with `files`, a
+ * later part of the tier that did not run, among its setup failure's files.
+ * A report holds one setup failure, so a part after one that failed to start
+ * does not run: the scheduler queues its files again, unless their project
+ * is the one whose setup failed, whose files it blocks as it blocks the
+ * failed part's (`failStartup`).
+ */
+export function deferredTo(report: RunReport, files: readonly TestFileRef[]): RunReport {
+  const startup = report.startupFailure;
+  if (startup === undefined) throw new Error("deferredTo: the report's run started");
+  return { ...report, startupFailure: { ...startup, testFiles: [...startup.testFiles, ...files] } };
 }
 
 /** `report` with nothing of `files`: none of their results is stored. */
