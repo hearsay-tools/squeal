@@ -19,11 +19,11 @@ Brief: `tasks/wave-14.md`, "020-40". The human, 2026-11-12: "Keep the log file".
 
 ## Choice
 
-The gate writes a finished `runs` row for each run with a failed or
-unfinished file, with `log_dir` = `<store>/runs/gate-<uuid>`, then copies the
-run's log folder from its temporary folder there. The report names the
-folder in `runs[].log`, and one stderr line after the verdict names each
-kept folder. Why:
+The gate writes a finished `runs` row for each runner kind with a failed
+or unfinished file, with `log_dir` = `<store>/runs/gate-<uuid>`, then copies
+the log folder of each of that kind's runs with such a file from its
+temporary folder there. The report names the folder in `runs[].log`, and
+one stderr line after the verdict names each kept folder. Why:
 
 - It is the daemon's place and the daemon's prune: nothing new to prune,
   nothing in the tracked tree (the store is under the git directory).
@@ -65,6 +65,15 @@ kept folder. Why:
    `node-test/<project>/` with `stdout-<i>.log`, `stderr-<i>.log`,
    `events-<i>.ndjson`, `run.json` and module graphs. No byte limit,
    as a daemon run's log has none.
+   **One kept folder per runner kind, not per run.** The report has one
+   `runs` entry per kind, but node:test has one run per project
+   (`runners.ts` `openRunners`). So the collector keeps the logs after all
+   runs, before the temporary folder goes: per kind, it hands the keeper
+   the folders of the runs with a failed or unfinished file, and the keeper
+   copies each into one folder. node:test writes only under
+   `node-test/<project>/`, so the folders do not clash. The row lists those
+   runs' files, its end is the first end that is not `completed`, and its
+   duration is their sum. A project whose files all passed adds nothing.
 4. **What counts as failed or unfinished:** a file of the run that did not
    complete, or that completed with a failed test or a file-level error
    (`TestFileEvidence.failed`). A run with no report (the budget ended
@@ -85,11 +94,12 @@ kept folder. Why:
 
 ## Spec text proposed for the coordinator
 
-- D3.5, add: "Amended 2026-11-12 (row 020-40, #197): the log folder of a
-  run in which a selected file failed or did not finish is kept at
-  `<store>/runs/gate-<id>`, named by a finished `runs` row of the main
-  store, so the store's prune removes it as it removes a daemon run's log
-  (spec 001 D8). A run whose files all passed keeps nothing."
+- D3.5, add: "Amended 2026-11-12 (row 020-40, #197): the log folders of a
+  runner's runs in which a selected file failed or did not finish are kept
+  as one folder per runner, at `<store>/runs/gate-<id>`, named by a
+  finished `runs` row of the main store, so the store's prune removes it as
+  it removes a daemon run's log (spec 001 D8). A run whose files all passed
+  keeps nothing."
 - D7 `runs`: "and `log`, the kept log folder, when one was kept (D3.5)".
   The same inputs give the same report "apart from times and kept log
   paths".
@@ -101,10 +111,10 @@ kept folder. Why:
 
 ## Files
 
-- `src/core/code/gate/evidence.ts`: `KeptLog`, `RunLog`, `keptLog` (which
-  runs offer their log).
+- `src/core/code/gate/evidence.ts`: `KeptLog`, `RunLog`, `EndedRun`,
+  `keptLogs` (which runs offer their log, one log per kind).
 - `src/core/code/gate/collect.ts`: `CollectOptions.keepLog`, called after
-  each run's evidence, before the temporary folder is removed;
+  all runs, per runner kind, before the temporary folder is removed;
   `Evidence.logs` (`types.ts`).
 - `src/core/code/gate/report.ts`, `runs.ts`: `GateRunReport.log`.
 - `src/cli/code-gate-log.ts`: `runLogKeeper` gives `keep` (row, then
@@ -116,6 +126,38 @@ kept folder. Why:
   the gate's own log row would list that file.
 - Tests: `test/cli/code-gate-log.test.ts` (row, copy, prune after the
   retention days, prune without a registered worktree, busy store keeps
-  nothing, the line, plain CLI order), `test/code/gate/kept-log.test.ts`,
-  and `test/cli/code-gate.test.ts` (pass keeps nothing; a failed and an
-  unfinished file keep a log with `--json`).
+  nothing, the line, plain CLI order, two node:test folders merged),
+  `test/code/gate/kept-log.test.ts` (which runs offer a log, one per kind),
+  `test/code/gate/collect-kept-log.test.ts` (two failed node:test projects
+  give one log the report names), and `test/cli/code-gate.test.ts` (pass keeps nothing; a failed and an
+  unfinished file keep a log, named in `runs[].log` with `--json` and in
+  the stderr line).
+
+## Done-when, test by test
+
+- A failing file leaves a log the report names: plain,
+  `code-gate-log.test.ts` "names the kept log on stderr after the
+  verdict"; `--json`, `code-gate.test.ts` "runs a test file whose
+  callbacks only moved" (`runs[0].log`, the stderr line, the log holds the
+  assertion error).
+- An unfinished file leaves a log the report names: `--json`,
+  `code-gate.test.ts` "an unfinished loading file never passes", both
+  cases (`runs[0].log`, the stderr line, the log says `end: timed-out`).
+  The stderr line is the same with and without `--json`.
+- A passing run keeps nothing: `code-gate.test.ts` "pass" (`log`
+  absent, no `gate-` folder).
+- The kept logs fall under the existing prune: `code-gate-log.test.ts`,
+  the two prune cases.
+- JSON stays one object on stdout: each `--json` case parses the whole
+  of stdout; the line goes to stderr.
+- Verdict and exit unchanged: the same cases keep their verdict and exit
+  asserts; `code-gate-log.test.ts` checks exit 3 in plain mode.
+
+## For whoever continues
+
+- The coordinator amends D3.5, D7 and D17.5 from "Spec text proposed"
+  above at integration; this row does not edit the spec.
+- `Evidence.logs` holds at most one log per runner kind, so `runsOf`'s
+  `find` by kind is exact. A new runner kind with several runs whose log
+  folders can clash must write them under a folder of its own per run, as
+  node:test does per project, or the merge overwrites files.
