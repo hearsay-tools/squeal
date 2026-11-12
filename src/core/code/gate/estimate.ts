@@ -2,9 +2,13 @@ import type { TestFileEvidence } from "./types.js";
 
 /*
  * Spec 020 D17.1 (row 020-17a): how long one runner's run of the gate takes,
- * from the durations the stores hold, told before the first run. It is
- * advice: the run always starts, and the verdict does not read it. The
- * durations are measured on the host that stored them, under its load.
+ * from the durations the stores hold, told before the first run. The
+ * verdict does not read it. The durations are measured on the host that
+ * stored them, under its load. Rows 020-45 and 020-46 (#196, #198): over
+ * what is left of the budget, it names a rerun `--timeout` that fits; at
+ * twice what is left, the gate runs only the files that may load a changed
+ * function. A summed estimate over 20 or more files is more than 2x wrong
+ * in about 2.5% of 11,813 stored runs (`research/gate-budget.md`, Q2).
  */
 
 /** Files that run together: up to `width` at once, each with its stored seconds. */
@@ -60,4 +64,93 @@ export function estimateRun(
     total += Math.max(longest, sum / Math.max(1, group.width));
   }
   return { runner, seconds: Math.ceil(total), files, known: stored.length, width };
+}
+
+/** Row 020-45: a rerun's `--timeout` gives the run this many times its estimate. */
+export const RERUN_FACTOR = 2;
+
+/** Row 020-46: the gate stops early when the estimate is at least this many times what is left. */
+export const EARLY_FACTOR = 2;
+
+/** Row 020-46: ... and at least this many files to run have a stored duration. */
+export const EARLY_KNOWN = 20;
+
+/**
+ * D18: the run's estimate from each runner's estimate. The runners run
+ * one after another, so it is their sum.
+ */
+export function runSeconds(runners: readonly number[]): number {
+  return runners.reduce((sum, seconds) => sum + seconds, 0);
+}
+
+/** One runner kind's files to run, grouped as `estimateRun` takes them. */
+export interface RunnerGroups {
+  readonly runner: TestFileEvidence["runner"];
+  readonly groups: readonly EstimateGroup[];
+}
+
+/**
+ * Rows 020-45, 020-46: the estimate of the whole run, over `runners`. A
+ * runner with a stored duration takes its own estimate (D17.1); one with
+ * none counts each file at the median of every runner's stored durations,
+ * as D18.2 orders it. `seconds` is `null` when no file has a stored
+ * duration; `known` counts the files that have one.
+ */
+export function estimateAll(runners: readonly RunnerGroups[]): {
+  readonly seconds: number | null;
+  readonly known: number;
+} {
+  const stored = runners.flatMap(({ groups }) =>
+    groups.flatMap((g) => g.seconds.filter((s): s is number => s !== null)),
+  );
+  const middle = median(stored);
+  if (middle === null) return { seconds: null, known: 0 };
+  const each = runners.map(({ runner, groups }) => {
+    const own = estimateRun(runner, groups).seconds;
+    if (own !== null) return own;
+    const atMedian = groups.map((g) => ({ ...g, seconds: g.seconds.map(() => middle) }));
+    return estimateRun(runner, atMedian).seconds ?? 0;
+  });
+  return { seconds: runSeconds(each), known: stored.length };
+}
+
+/** D17.1, rows 020-45 and 020-46: the run's estimate against what is left of the budget. */
+export interface BudgetFit {
+  /** Whole seconds left of the budget when the estimate is told. */
+  readonly leftSeconds: number;
+  /** The whole run's estimate in whole seconds (`estimateAll`); `null` when no file has a stored duration. */
+  readonly seconds: number | null;
+  /** Of the files to run, those with a stored duration. */
+  readonly known: number;
+  /**
+   * Row 020-45: the `--timeout` of a rerun that fits, when the estimate is
+   * over what is left: the seconds spent before the first run plus
+   * `RERUN_FACTOR` times the estimate, rounded up to a whole minute.
+   * Absent when the run fits, or its time is unknown.
+   */
+  readonly rerunSeconds?: number;
+  /**
+   * Row 020-46: the estimate is at least `EARLY_FACTOR` times what is
+   * left, from at least `EARLY_KNOWN` stored durations: the gate runs only
+   * the files that may load a changed function. Absent otherwise.
+   */
+  readonly early?: true;
+}
+
+/**
+ * Rows 020-45, 020-46: how `run`, the whole run's estimate, stands
+ * against the `leftSeconds` of a budget of `budgetSeconds`.
+ */
+export function fitBudget(
+  run: { readonly seconds: number | null; readonly known: number },
+  budget: { readonly budgetSeconds: number; readonly leftSeconds: number },
+): BudgetFit {
+  const { seconds, known } = run;
+  const { leftSeconds } = budget;
+  const fit = { leftSeconds, seconds, known };
+  if (seconds === null || seconds <= leftSeconds) return fit;
+  const spent = Math.max(0, budget.budgetSeconds - leftSeconds);
+  const rerunSeconds = Math.ceil((spent + RERUN_FACTOR * seconds) / 60) * 60;
+  const early = seconds >= EARLY_FACTOR * leftSeconds && known >= EARLY_KNOWN;
+  return { ...fit, rerunSeconds, ...(early ? { early: true as const } : {}) };
 }

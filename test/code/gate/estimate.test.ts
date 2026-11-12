@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { estimateRun, median } from "../../../src/core/code/gate/estimate.js";
+import {
+  EARLY_KNOWN,
+  estimateAll,
+  estimateRun,
+  fitBudget,
+  median,
+} from "../../../src/core/code/gate/estimate.js";
 
 /*
  * Spec 020 D17.1 (row 020-17a): one runner's estimate before its first run.
@@ -53,5 +59,83 @@ describe("median", () => {
     expect(median([5, 1, 3])).toBe(3);
     expect(median([4, 1, 3, 2])).toBe(2.5);
     expect(median([])).toBeNull();
+  });
+});
+
+/*
+ * Rows 020-45 and 020-46 (#196, #198): the whole run's estimate against
+ * what is left of the budget. Over it, a rerun `--timeout` fits: the
+ * seconds spent before the first run plus twice the estimate, up to a
+ * whole minute. At twice what is left, from enough stored durations, the
+ * gate stops early.
+ */
+
+describe("estimateAll", () => {
+  it("adds the runners' estimates, as they run one after another (D18)", () => {
+    const run = estimateAll([
+      { runner: "vitest", groups: [{ width: 2, seconds: [10, 10, 10, 10] }] },
+      { runner: "node-test", groups: [{ width: 1, seconds: [3, 4] }] },
+    ]);
+    expect(run).toEqual({ seconds: 20 + 7, known: 6 });
+  });
+
+  it("counts a runner with no stored duration at every runner's median (D18.2)", () => {
+    const run = estimateAll([
+      { runner: "vitest", groups: [{ width: 1, seconds: [2, 4, 6] }] },
+      { runner: "node-test", groups: [{ width: 2, seconds: [null, null, null, null] }] },
+    ]);
+    // Vitest 12; node:test four files at the median 4, two at once: 8.
+    expect(run).toEqual({ seconds: 12 + 8, known: 3 });
+  });
+
+  it("is unknown with no stored duration at all", () => {
+    const run = estimateAll([{ runner: "vitest", groups: [{ width: 4, seconds: [null, null] }] }]);
+    expect(run).toEqual({ seconds: null, known: 0 });
+  });
+});
+
+describe("fitBudget", () => {
+  const budget = { budgetSeconds: 600, leftSeconds: 590 };
+
+  it("names no rerun when the run fits what is left", () => {
+    expect(fitBudget({ seconds: 590, known: 40 }, budget)).toEqual({
+      leftSeconds: 590,
+      seconds: 590,
+      known: 40,
+    });
+  });
+
+  it("names no rerun when the time is unknown", () => {
+    expect(fitBudget({ seconds: null, known: 0 }, budget)).toEqual({
+      leftSeconds: 590,
+      seconds: null,
+      known: 0,
+    });
+  });
+
+  it("over what is left, fits a rerun --timeout to twice the estimate after the time spent", () => {
+    const fit = fitBudget({ seconds: 700, known: 40 }, budget);
+    // 10 s spent before the first run, then 2 x 700 s: 1410 s, up to 1440.
+    expect(fit).toEqual({ leftSeconds: 590, seconds: 700, known: 40, rerunSeconds: 1440 });
+    expect(fit.rerunSeconds).toBeGreaterThanOrEqual(10 + 2 * 700);
+  });
+
+  it("keeps a whole minute as it is", () => {
+    const fit = fitBudget({ seconds: 145, known: 1 }, { budgetSeconds: 100, leftSeconds: 90 });
+    expect(fit.rerunSeconds).toBe(300);
+  });
+
+  it("stops early at twice what is left, from enough stored durations", () => {
+    const twice = fitBudget({ seconds: 1180, known: EARLY_KNOWN }, budget);
+    expect(twice).toMatchObject({ rerunSeconds: 2400, early: true });
+    const under = fitBudget({ seconds: 1179, known: 400 }, budget);
+    expect(under.rerunSeconds).toBe(2400);
+    expect(under.early).toBeUndefined();
+  });
+
+  it("does not stop early when fewer files than EARLY_KNOWN have a stored duration", () => {
+    const few = fitBudget({ seconds: 5000, known: EARLY_KNOWN - 1 }, budget);
+    expect(few.rerunSeconds).toBe(10020);
+    expect(few.early).toBeUndefined();
   });
 });
