@@ -167,3 +167,20 @@ let the verdict pass. `collect-early.test.ts` reads the evaluated report.
 - Bundles: `plugins/claude-code/dist` is not rebuilt by this row, so
   `test/harness/plugin.test.ts` ("bundles are committed exactly as the
   build produces them") fails until integration rebuilds it.
+
+## Checks run and not run (at `06daf241f`, 2026-11-12 about 23:50Z, host load 27 to 35 on 24 CPUs)
+
+- `pnpm run lint`: clean (3,295 files). `pnpm run typecheck`: clean.
+- Squeal, `squeal status --wait` over the 45 changed paths, revision 32
+  (the committed head): 79 affected test files current, 78 pass. The one
+  failure is `test/harness/plugin.test.ts` ("bundles are committed exactly
+  as the build produces them"): `plugins/claude-code/dist` is not
+  rebuilt, by design of this row's ownership.
+- All 74 gate test files (`test/code/gate/*.test.ts`,
+  `test/cli/code-gate*.test.ts`) pass at revision 32, the collector tests
+  (`collect-budget`, `collect-order`, `collect-prepare`, ...) among them.
+- Not run: 262 other affected test files, queued for CPU when the
+  coordinator ended the wait. Their result is unknown; the candidate CI
+  runs the full suite. No local full suite ran (`docs/process.md`).
+- Not run: `pnpm run build` (the bundles are not this row's), and no live
+  probe (host load over 24).
