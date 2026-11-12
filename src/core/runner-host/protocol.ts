@@ -42,7 +42,9 @@ export type HostMethod =
   | "blobs"
   | "install"
   // Spec 021 D11 (row 021-14): the host's own Node, platform, install and allow-listed variables.
-  | "coreEnvironment";
+  | "coreEnvironment"
+  // Spec 021 D18 (row 021-21): a look at the remote machine's permit pool (`remote/admission.ts`).
+  | "admit";
 
 export interface HostRequest {
   readonly id: number;
