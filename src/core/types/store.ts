@@ -256,6 +256,13 @@ export interface ResultRepo {
    */
   keysSince(since: EpochMs): readonly StoredKey[];
   /**
+   * Those of `keys` that have a result, each once, in the order given. Read
+   * only, as `listForCheck`. Row 011-315: the code store's prune asks only
+   * about the keys its coverage records hold (spec 015 D8), an index search
+   * each (`results_by_key`), instead of reading every key of the store.
+   */
+  keysWithResults(keys: readonly CheckKey[]): readonly CheckKey[];
+  /**
    * Copies the newest set stored under one of `from` (by its newest record
    * time) to `key`, each row with its provenance and record time, only while
    * `key` holds no row; true when it copied one. A miss among `from` reads

@@ -202,11 +202,18 @@ export interface CodePruneOptions {
   readonly worktrees: readonly WorktreeId[];
   readonly consumers: readonly Consumer[];
   /**
-   * Every key the main store holds a result at (row 015-11). Absent, a
-   * coverage record goes by age, as a count does.
+   * The keys the main store holds a result at (row 015-11): every such key,
+   * or, since row 011-315, a function the prune asks with the keys its
+   * coverage records hold, which answers those of them with a result, so no
+   * caller reads every key of the main store. Only a record whose key was
+   * asked and has no result goes. Absent, a coverage record goes by age, as
+   * a count does.
    */
-  readonly resultKeys?: readonly CheckKey[];
+  readonly resultKeys?: readonly CheckKey[] | ResultKeysOf;
 }
+
+/** Those of `keys` the main store holds a result at (`ResultRepo.keysWithResults`, row 011-315). */
+export type ResultKeysOf = (keys: readonly CheckKey[]) => readonly CheckKey[];
 
 export interface CodePruneReport {
   readonly countsRemoved: number;
