@@ -11,7 +11,7 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { countsText } from "../../src/cli/ci-export.js";
+import { countsText, nothingText } from "../../src/cli/ci-export.js";
 import { type CiExport, ciExport } from "../../src/core/ci/export.js";
 import type { InputEvidence } from "../../src/core/ci/inputs.js";
 import {
@@ -131,7 +131,7 @@ async function exported(
   run: RunDescriptor,
   files: readonly PartFile[],
   evidence: InputEvidence = evidenceOf(root),
-  ran: { coverage?: PartCoverage; inspected?: readonly string[] } = {},
+  ran: { coverage?: PartCoverage; inspected?: readonly string[]; listed?: readonly string[] } = {},
 ): Promise<CiExport> {
   const store = openStore(join(root, ".git"));
   if (isStoreOpenFailure(store)) throw new Error(JSON.stringify(store));
@@ -168,7 +168,7 @@ async function exported(
       root,
       worktreeId: "0123456789abcdef" as WorktreeId,
       store,
-      runner: async () => runner(["test/a.test.ts", "test/b.test.ts"], ran.inspected),
+      runner: async () => runner(ran.listed ?? ["test/a.test.ts", "test/b.test.ts"], ran.inspected),
       policy: DEFAULT_POLICY,
       squealVersion: SQUEAL,
       env: {},
@@ -180,6 +180,13 @@ async function exported(
     store.close();
   }
 }
+
+/** A part's coverage that yielded to the project's provider, with the watch's `inspector`. */
+const yieldedWith = (inspector: unknown) => ({
+  off: "project-coverage",
+  note: "custom",
+  inspector,
+});
 
 describe("ci export's keys (spec 018 D9)", () => {
   it("leaves out a file that failed in its shard and one the job's runner does not list", async () => {
@@ -199,6 +206,7 @@ describe("ci export's keys (spec 018 D9)", () => {
       uncertified: 0,
       ambiguous: 0,
       inspector: 0,
+      unwatched: 0,
     });
     const [only] = result.bundle.testFiles;
     expect(only?.path).toBe("test/a.test.ts");
@@ -292,21 +300,55 @@ describe("ci export's keys (spec 018 D9)", () => {
       const result = await exported(root, commit, descriptor(), files, undefined, ran);
       return "counts" in result ? result.counts : result.refused.text;
     };
-    const yielded = (inspector: unknown) => ({
-      off: "project-coverage",
-      note: "custom",
-      inspector,
-    });
     const seen = { loaded: [a], unknown: [] };
-    expect(await counts(yielded(seen))).toMatchObject({ testFiles: 1, inspector: 1 });
-    expect(await counts(yielded({ loaded: [a], unknown: [b] }))).toMatchObject({
-      testFiles: 0,
-      inspector: 2,
+    expect(await counts(yieldedWith(seen))).toMatchObject({
+      testFiles: 1,
+      inspector: 1,
+      unwatched: 0,
     });
-    // Lists that do not read leave out every file of the part; with no provider, none.
-    expect(await counts(yielded({ loaded: "a" }))).toMatchObject({ testFiles: 0, inspector: 2 });
-    const none = { off: "no-provider", note: "none", inspector: seen };
-    expect(await counts(none)).toMatchObject({ testFiles: 2, inspector: 0 });
+    // Lists that do not read leave out every file of the part, as not watched; with no provider, none.
+    expect(await counts(yieldedWith({ loaded: "a" }))).toMatchObject({
+      testFiles: 0,
+      inspector: 0,
+      unwatched: 2,
+    });
+    const none = { off: "no-provider", note: "none", inspector: { loaded: [a], unknown: [b] } };
+    expect(await counts(none)).toMatchObject({ testFiles: 2, inspector: 0, unwatched: 0 });
+  });
+
+  it("counts the files its workers did not see run apart from those that loaded node:inspector (review 0.1.443-r2 S1)", async () => {
+    const { root, commit } = await repository();
+    const paths = ["test/a.test.ts", "test/b.test.ts", "test/c.test.ts"];
+    const files = paths.map((path) => file(path, "pass"));
+    const [a, b, c] = files.map(({ project, path }) => ({ project, path }));
+    const exportOf = async (inspector: unknown) => {
+      const ran = { coverage: yieldedWith(inspector) as PartCoverage, listed: paths };
+      const result = await exported(root, commit, descriptor(), files, undefined, ran);
+      if ("refused" in result) throw new Error(result.refused.text);
+      return result;
+    };
+    const unwatched = "whose node:inspector use could not be watched (as in a vmThreads pool)";
+
+    // A mixed part: one proved load, one file not seen, one exported.
+    const mixed = await exportOf({ loaded: [a], unknown: [b] });
+    expect(mixed.counts).toMatchObject({ testFiles: 1, inspector: 1, unwatched: 1, unkeyed: 0 });
+    expect(mixed.bundle.testFiles.map((f) => f.path)).toEqual(["test/c.test.ts"]);
+    expect(countsText(mixed.counts, "x.json.gz")).toBe(
+      "Exported 1 test file, 2 results, to x.json.gz.\nLeft out: " +
+        `1 test file that loaded node:inspector beside a coverage provider, 1 test file ${unwatched}.`,
+    );
+
+    // A part whose watch saw no file run, as in a vmThreads pool: no file is said to load it.
+    const vm = await exportOf({ loaded: [], unknown: [a, b, c] });
+    expect(vm.counts).toMatchObject({ testFiles: 0, inspector: 0, unwatched: 3, unkeyed: 0 });
+    expect(nothingText(vm.counts)).toBe(
+      `no test file to export; left out: 3 test files ${unwatched}`,
+    );
+    expect(nothingText(vm.counts)).not.toContain("loaded");
+
+    // A file proved to load it, and named unknown too (another worker), counts as loaded.
+    const both = await exportOf({ loaded: [a], unknown: [a, b] });
+    expect(both.counts).toMatchObject({ testFiles: 1, inspector: 1, unwatched: 1 });
   });
 
   it("leaves out a file an input of which its shard holds no evidence of, a commit's file too", async () => {

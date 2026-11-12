@@ -197,7 +197,7 @@ function uncertifiedLines(files: readonly UncertifiedFile[]): string[] {
 }
 
 /** Why the export holds no file. */
-function nothingText(counts: CiExportCounts): string {
+export function nothingText(counts: CiExportCounts): string {
   const left = leftOut(counts);
   return `no test file to export${left.length === 0 ? "" : `; left out: ${left}`}`;
 }
@@ -213,6 +213,9 @@ function leftOut(counts: CiExportCounts): string {
     counts.ambiguous > 0 ? `${files(counts.ambiguous)} with two checks of one name` : null,
     counts.inspector > 0
       ? `${files(counts.inspector)} that loaded node:inspector beside a coverage provider`
+      : null,
+    counts.unwatched > 0
+      ? `${files(counts.unwatched)} whose node:inspector use could not be watched (as in a vmThreads pool)`
       : null,
   ]
     .filter((part) => part !== null)
