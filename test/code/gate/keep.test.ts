@@ -11,25 +11,24 @@ import type { RunReport } from "../../../src/core/types/runner.js";
 
 /*
  * Spec 020 D17.3 (row 020-17c): what the keeper writes is the CLI cases'
- * (`test/cli/code-gate-keep*.test.ts`). Here: it never reaches the write
- * for a file that did not complete or has no record, and a failure while
- * keeping costs only the write, told once, and never fails the gate. D17.5
- * (row 020-28): a run only queues its files, and `flush` writes them; a
- * busy store is `keep-busy.test.ts`'s.
+ * (`test/cli/code-gate-keep*.test.ts`), and which completed file it may
+ * keep is the run evidence table's (`test/run-evidence/table.test.ts`, row
+ * 011-319). Here: it never reaches the write for a file with no record,
+ * and a failure while keeping costs only the write, told once, and never
+ * fails the gate. D17.5 (row 020-28): a run only queues its files, and
+ * `flush` writes them; a busy store is `keep-busy.test.ts`'s.
  */
 
 const REF: TestFileRef = { project: "", path: "test/a.test.ts" };
 const KEY = "k".repeat(64) as CheckKey;
 const RECORD = { v: 1, sources: [], unread: [] } as never;
 
-/** Keys with no input to compare and nothing observed, as far as the keeper asks. */
+/** Keys with no input to compare, as far as the keeper asks of a run that read nothing. */
 const KEYS = {
   cache: new StatCache(),
   stabilityPaths: () => [],
   beginRun: () => 1,
   endRun: () => {},
-  observes: () => false,
-  environmentFiles: () => ["setup.ts"],
 } as unknown as WorktreeKeys;
 
 const HASHER: Hasher = { stat: async () => null, hash: async () => null, now: () => 0 };
@@ -65,15 +64,12 @@ const run = (completed: readonly TestFileRef[], record: unknown) => ({
 });
 
 describe("Keeper (spec 020 D17.3)", () => {
-  it.each([
-    ["did not complete", [], RECORD],
-    ["has no record", [REF], null],
-  ])("writes nothing of a file that %s", async (_, completed, record) => {
+  it("writes nothing of a file that has no record", async () => {
     const notes: string[] = [];
     const reached = () => Promise.reject(new Error("the write was reached"));
 
     const keep = keeper(reached, notes);
-    await keep.ran(run(completed, record));
+    await keep.ran(run([REF], null));
     await keep.flush();
 
     expect(notes).toEqual([]);
@@ -105,26 +101,6 @@ describe("Keeper (spec 020 D17.3)", () => {
     // The root does not exist, so the write fails at its first step; it is told once.
     expect(notes).toHaveLength(1);
     expect(notes[0]).toMatch(/^1 completed test file was not kept in the stores: /);
-  });
-
-  it("writes nothing of a file whose run loaded an environment file its keys lack", async () => {
-    const notes: string[] = [];
-    const loaded = (paths: string[]) => ({
-      ...run([REF], RECORD),
-      report: { ...report([REF]), environmentObserved: [{ project: "", paths }] },
-    });
-    const reached = () => Promise.reject(new Error("the write was reached"));
-
-    const lacking = keeper(reached, notes);
-    await lacking.ran(loaded(["setup.ts", "other-setup.ts"]));
-    await lacking.flush();
-    expect(notes).toEqual([]);
-
-    // One its keys hold does not stop it: the write is reached, and fails here.
-    const holding = keeper(reached, notes);
-    await holding.ran(loaded(["setup.ts"]));
-    await holding.flush();
-    expect(notes).toHaveLength(1);
   });
 
   it("keeps each lookup of one runner kind apart, and ends each run once (review 0.1.433 B2)", async () => {
