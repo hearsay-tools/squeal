@@ -5,7 +5,11 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import type { HostCpu, TreeCpu } from "../../../src/core/capacity/cores.js";
 import { clearMark, readMarks, writeMark } from "../../../src/core/capacity/marks.js";
-import { createPermitPool, poolPermitFile } from "../../../src/core/capacity/pool.js";
+import {
+  createPermitPool,
+  type PoolLease,
+  poolPermitFile,
+} from "../../../src/core/capacity/pool.js";
 import {
   type AdmitAnswer,
   type AdmitAsk,
@@ -13,6 +17,7 @@ import {
   type HostAdmission,
   machinePool,
   remoteAdmission,
+  UNGRANTED,
 } from "../../../src/core/runner-host/remote/admission.js";
 
 /*
@@ -87,6 +92,13 @@ function backgroundRunsThere(): void {
   writeMark(dir, { id: "there", want: 1, grant: 1, since: null, cores: 1, background: 1 });
 }
 
+/** The grant `remote` holds, which the test needs. */
+function leaseOf(remote: HostAdmission): PoolLease {
+  const claimed = remote.claim();
+  if (claimed === null || claimed === UNGRANTED) throw new Error(`no grant held: ${claimed}`);
+  return claimed;
+}
+
 describe("the remote machine's admission (spec 021 D18, row 021-21)", () => {
   test("refuses at its ceiling with the busy CPUs while another background tier runs, and the floor admits one run while none does", () => {
     backgroundRunsThere();
@@ -110,10 +122,10 @@ describe("the remote machine's admission (spec 021 D18, row 021-21)", () => {
     const remote = admission(busy(2), 50);
     expect(remote.admit({ want: 3, least: 1 }).grant).toBe(3);
     expect(free()).toBe(20);
-    const lease = remote.claim();
-    expect(lease?.grant).toBe(3);
+    const lease = leaseOf(remote);
+    expect(lease.grant).toBe(3);
     expect(remote.claim()).toBeNull();
-    lease?.release();
+    lease.release();
     expect(free()).toBe(23);
     // A look for 0 workers returns the grant held and takes nothing.
     expect(remote.admit({ want: 5, least: 1 }).grant).toBe(5);
@@ -130,16 +142,16 @@ describe("the remote machine's admission (spec 021 D18, row 021-21)", () => {
   test("the run's tail returns permits and states no more demand than the run asked", () => {
     const remote = admission(busy(2));
     expect(remote.admit({ want: 3, least: 1 }).grant).toBe(3);
-    const lease = remote.claim();
+    const lease = leaseOf(remote);
     const demand = () =>
       readMarks(dir, "reader", Date.now()).find((m) => m.id === "runner-host:/remote/tree")?.want;
     // Ten files left of a run three wide: its demand stays three.
-    lease?.shrinkTo(10);
+    lease.shrinkTo(10);
     expect(demand()).toBe(3);
-    lease?.shrinkTo(1);
+    lease.shrinkTo(1);
     expect(demand()).toBe(1);
     expect(free()).toBe(22);
-    lease?.release();
+    lease.release();
     expect(free()).toBe(23);
   });
 
@@ -151,6 +163,8 @@ describe("the remote machine's admission (spec 021 D18, row 021-21)", () => {
       grant: 3,
       failed: "capacity pool directory is not this user's",
     });
+    // The run that follows goes without a grant, once; a later one without a look is refused.
+    expect(remote.claim()).toBe(UNGRANTED);
     expect(remote.claim()).toBeNull();
   });
 
