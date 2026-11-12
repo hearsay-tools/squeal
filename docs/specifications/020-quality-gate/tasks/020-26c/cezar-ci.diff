@@ -1,0 +1,849 @@
+diff --git a/.github/scripts/ci-squeal-coverage-proof.workflow.test.cjs b/.github/scripts/ci-squeal-coverage-proof.workflow.test.cjs
+new file mode 100644
+index 0000000000000000000000000000000000000000..6d927d70f9fdad999b9cff003cd232fa5aaa1da1
+--- /dev/null
++++ b/.github/scripts/ci-squeal-coverage-proof.workflow.test.cjs
+@@ -0,0 +1,190 @@
++'use strict';
++
++// Guards the Squeal coverage proof (hearsay-tools/squeal spec 020 D19, row 020-26c): only a dispatch with
++// squeal_coverage_proof and no pr_number runs Vitest shard 1/4 three times with V8 coverage, once under
++// `squeal ci record`, and compares the three in a job summary. It never fails the run, and every other run
++// is unchanged. ci-squeal-results.workflow.test.cjs checks that no Squeal job gates a merge.
++const assert = require('node:assert/strict');
++const { spawnSync } = require('node:child_process');
++const fs = require('node:fs');
++const os = require('node:os');
++const path = require('node:path');
++const test = require('node:test');
++const { runInNewContext } = require('node:vm');
++const yaml = require('yaml');
++
++const repoRoot = path.join(__dirname, '..', '..');
++const ci = () => yaml.parse(fs.readFileSync(path.join(repoRoot, '.github', 'workflows', 'ci.yml'), 'utf8'));
++const PROOF = 'squeal-coverage-proof';
++const COMPARE = 'squeal-coverage-proof-compare';
++const step = (job, name) => job.steps.find((s) => s.id === name || s.name === name);
++
++function expression(raw, context) {
++  const code = String(raw).replace(/^\$\{\{\s*|\s*\}\}$/g, '').replace(/needs\.([\w]+-[\w-]+)/g, "needs['$1']");
++  return runInNewContext(code, context);
++}
++
++function context(event, { proof = false, pr = '', result = 'success', cancelled = false } = {}) {
++  return { github: { event_name: event }, inputs: { pr_number: pr, squeal_coverage_proof: proof, squeal_gate_trial: false },
++    needs: { [PROOF]: { result } }, matrix: { run: 'squeal' }, cancelled: () => cancelled };
++}
++
++function sandbox(t) {
++  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'ci-squeal-coverage-proof-'));
++  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
++  return directory;
++}
++
++// GitHub's artifact pattern, for the names these jobs use.
++const matches = (pattern, name) => new RegExp(`^${pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`).test(name);
++
++test('the input is a boolean off by default, and only the two proof jobs read it', () => {
++  const workflow = ci();
++  const input = workflow.on.workflow_dispatch.inputs.squeal_coverage_proof;
++  assert.deepEqual({ ...input, description: undefined }, { description: undefined, required: false, type: 'boolean', default: false });
++  const readers = Object.entries(workflow.jobs).filter(([, job]) => JSON.stringify(job).includes('squeal_coverage_proof')).map(([id]) => id);
++  assert.deepEqual(readers.sort(), [PROOF, COMPARE], 'the shards, coverage merge and gate trial run as in any dispatch');
++});
++
++test('only a squeal_coverage_proof dispatch without pr_number runs the proof; the comparison follows any result but skipped', () => {
++  const { jobs } = ci();
++  const proof = (event, options) => expression(jobs[PROOF].if, context(event, options));
++  assert.equal(jobs[PROOF].needs, undefined, 'it waits for no job');
++  assert.equal(proof('workflow_dispatch', { proof: true }), true);
++  assert.equal(proof('workflow_dispatch'), false, 'a bare dispatch, the proof of a ci.yml change, stays as it was');
++  assert.equal(proof('workflow_dispatch', { proof: true, pr: '42' }), false, 'a release PR dispatch takes no proof');
++  assert.equal(proof('workflow_dispatch', { proof: 'true' }), false, 'only the boolean input');
++  for (const event of ['pull_request_target', 'merge_group', 'push']) assert.equal(proof(event, { proof: true }), false, event);
++  const compare = (event, options) => expression(jobs[COMPARE].if, context(event, options));
++  assert.deepEqual(jobs[COMPARE].needs, [PROOF]);
++  // Without a status function GitHub adds success(), and one failed or timed-out run would skip the comparison.
++  assert.match(String(jobs[COMPARE].if), /^\$\{\{ !cancelled\(\) && /);
++  for (const result of ['success', 'failure', 'cancelled']) assert.equal(compare('workflow_dispatch', { proof: true, result }), true, result);
++  assert.equal(compare('workflow_dispatch', { proof: true, result: 'skipped' }), false);
++  assert.equal(compare('workflow_dispatch', { proof: true, cancelled: true }), false);
++  assert.equal(compare('workflow_dispatch', { proof: true, pr: '42' }), false);
++  for (const event of ['pull_request_target', 'merge_group', 'push']) assert.equal(compare(event, { proof: true }), false, event);
++});
++
++test('three runs of one commit, each reading only and never failing the run; only the squeal run sets up Squeal', () => {
++  const { jobs } = ci();
++  const job = jobs[PROOF];
++  assert.deepEqual(job.strategy, { 'fail-fast': false, matrix: { run: ['squeal', 'v8', 'v8-control'] } });
++  for (const id of [PROOF, COMPARE]) {
++    assert.deepEqual(jobs[id].permissions, { contents: 'read' }, id);
++    assert.equal(jobs[id]['continue-on-error'], true, `${id}: a timeout does not fail the run`);
++    assert.equal(typeof jobs[id]['timeout-minutes'], 'number', id);
++    for (const s of jobs[id].steps) assert.equal(s['continue-on-error'], true, `${id}: "${s.name}" must set continue-on-error`);
++    const checkout = jobs[id].steps.find((s) => s.uses?.startsWith('actions/checkout@'));
++    assert.equal(checkout.with.ref, '${{ github.sha }}', `${id}: the dispatched commit, as a bare dispatch's shards test`);
++    assert.equal(checkout.with['persist-credentials'], false, id);
++  }
++  const action = step(job, 'Set up Squeal');
++  assert.equal(action.uses, 'hearsay-tools/squeal/ci@v0');
++  for (const run of ['squeal', 'v8', 'v8-control']) assert.equal(expression(action.if, { matrix: { run } }), run === 'squeal', run);
++  const runs = job.steps.map((s) => s.run).filter(Boolean);
++  assert.ok(runs.includes('pnpm install --frozen-lockfile'));
++  assert.ok(runs.includes('npm run build:server'), 'the unit fixtures read the built server modules');
++  assert.equal(step(job, 'Upload the proof run').if, 'always()');
++  for (const name of ['Compare the proof runs', 'Upload the comparison']) assert.equal(step(jobs[COMPARE], name).if, 'always()', name);
++});
++
++test('the proof\'s artifacts reach only the comparison, never the coverage merge, the gate trial or the export', () => {
++  const { jobs } = ci();
++  const upload = step(jobs[PROOF], 'Upload the proof run');
++  assert.equal(upload.with.name, 'squeal-coverage-proof-${{ matrix.run }}');
++  assert.equal(upload.with.path, '${{ runner.temp }}/squeal-coverage-proof/');
++  const names = ['squeal', 'v8', 'v8-control'].map((run) => `squeal-coverage-proof-${run}`);
++  const download = step(jobs[COMPARE], 'Download the proof runs');
++  assert.deepEqual(download.with, { pattern: 'squeal-coverage-proof-*', path: '${{ runner.temp }}/squeal-coverage-proof' });
++  for (const name of names) assert.ok(matches(download.with.pattern, name), name);
++  const comparison = step(jobs[COMPARE], 'Upload the comparison').with.name;
++  assert.equal(comparison, 'squeal-coverage-comparison');
++  assert.equal(matches(download.with.pattern, comparison), false, 'a rerun of the comparison does not download its own artifact');
++  const patterns = Object.entries(jobs).filter(([id]) => id !== COMPARE).flatMap(([, job]) => (job.steps ?? []))
++    .filter((s) => s.uses?.startsWith('actions/download-artifact@')).map((s) => s.with.pattern ?? s.with.name);
++  assert.ok(patterns.includes('vitest-coverage-shard-*') && patterns.includes('squeal-parts-shard-*'), patterns.join(', '));
++  for (const pattern of patterns) for (const name of [...names, comparison]) assert.equal(matches(pattern, name), false, `${pattern} takes ${name}`);
++});
++
++function fakeBin(directory) {
++  const bin = path.join(directory, 'bin');
++  fs.mkdirSync(bin);
++  // `squeal ci record` returns the command's code, as the action's pass-through does when Squeal cannot run.
++  fs.writeFileSync(path.join(bin, 'squeal'), '#!/bin/sh\necho "squeal $*"\nmkdir -p "$4"\necho "{}" > "$4/squeal-part-1.json"\n'
++    + 'while [ "$1" != -- ]; do shift; done\nshift\nexec "$@"\n', { mode: 0o755 });
++  // npm writes the V8 report unless NO_REPORT is set, says one thing on stderr and exits with NPM_EXIT.
++  fs.writeFileSync(path.join(bin, 'npm'), '#!/bin/sh\necho "npm $*"\necho "npm: a note" >&2\n'
++    + '[ -n "$NO_REPORT" ] || { mkdir -p .ai/qa/coverage && echo \'{"r":1}\' > .ai/qa/coverage/coverage-final.json; }\nexit "$NPM_EXIT"\n', { mode: 0o755 });
++  return bin;
++}
++
++test('each run times the dispatch shard command, keeps its exit code, report and parts, and exits 0', (t) => {
++  const { jobs } = ci();
++  const shard = step(jobs[PROOF], 'shard');
++  const collect = step(jobs.vitest, 'collect');
++  assert.equal(shard.env.VITEST_FILE_DURATION_CAP, collect.env.VITEST_FILE_DURATION_CAP);
++  assert.equal(shard.env.PROOF_RUN, '${{ matrix.run }}');
++  // The command of shard 1 in a dispatch: the proof measures what the Vitest shards run.
++  const dispatched = collect.run.replace(/\$\{\{.*?\}\}/g, (raw) => (raw.includes('matrix.shard') && !raw.includes('&&') ? '1'
++    : expression(raw, context('workflow_dispatch'))));
++  const command = ['npm', 'test', '--', '--shard=1/4', '--maxWorkers=4', '--coverage.enabled'];
++  assert.equal(dispatched, command.join(' '));
++  for (const [run, exit] of [['squeal', 3], ['v8', 0], ['v8-control', 1]]) {
++    const directory = sandbox(t);
++    const workspace = path.join(directory, 'workspace');
++    fs.mkdirSync(workspace);
++    const result = spawnSync('bash', ['-e', '-c', shard.run], { cwd: workspace, encoding: 'utf8', env: {
++      PATH: `${fakeBin(directory)}:${path.dirname(process.execPath)}:/usr/bin:/bin`, RUNNER_TEMP: directory, GITHUB_WORKSPACE: workspace, PROOF_RUN: run, NPM_EXIT: String(exit) } });
++    assert.equal(result.status, 0, `${run}: ${result.stderr}`);
++    assert.match(result.stderr, /^npm: a note$/m, `${run}: the command's stderr stays in the log`);
++    const out = path.join(directory, 'squeal-coverage-proof');
++    const meta = JSON.parse(fs.readFileSync(path.join(out, 'run.json'), 'utf8'));
++    const recorded = run === 'squeal' ? ['squeal', 'ci', 'record', '--out', path.join(out, 'parts'), '--', ...command] : command;
++    // Load and CPU model come from /proc, which only Linux has; elsewhere they read null and empty.
++    const kind = (value) => (value === null ? 'number' : typeof value);
++    assert.deepEqual({ ...meta, wallSeconds: typeof meta.wallSeconds, userSeconds: typeof meta.userSeconds, sysSeconds: typeof meta.sysSeconds,
++      cpus: typeof meta.cpus, cpuModel: typeof meta.cpuModel, loadBefore: kind(meta.loadBefore), loadAfter: kind(meta.loadAfter) },
++    { format: 'squeal-coverage-proof-run/1', run, command: recorded, exitCode: exit, wallSeconds: 'number', userSeconds: 'number', sysSeconds: 'number',
++      root: workspace, cpus: 'number', cpuModel: 'string', loadBefore: 'number', loadAfter: 'number' });
++    assert.equal(fs.readFileSync(path.join(out, 'coverage-final.json'), 'utf8'), '{"r":1}\n');
++    assert.equal(fs.existsSync(path.join(out, 'parts', 'squeal-part-1.json')), run === 'squeal', `${run}: parts only under squeal ci record`);
++    assert.match(result.stdout, new RegExp(`^Squeal coverage proof ${run}: exit ${exit}, wall \\d+\\.\\d{3} s, `, 'm'));
++  }
++});
++
++test('a run without a V8 report warns and still writes its times', (t) => {
++  const shard = step(ci().jobs[PROOF], 'shard');
++  const directory = sandbox(t);
++  const result = spawnSync('bash', ['-e', '-c', shard.run], { cwd: directory, encoding: 'utf8', env: {
++    PATH: `${fakeBin(directory)}:/usr/bin:/bin`, RUNNER_TEMP: directory, GITHUB_WORKSPACE: directory, PROOF_RUN: 'v8', NPM_EXIT: '1', NO_REPORT: '1' } });
++  assert.equal(result.status, 0, result.stderr);
++  assert.match(result.stdout, /^::warning title=Squeal coverage proof v8::No V8 coverage report \(exit 1\)\.$/m);
++  const out = path.join(directory, 'squeal-coverage-proof');
++  assert.equal(fs.existsSync(path.join(out, 'coverage-final.json')), false);
++  assert.equal(JSON.parse(fs.readFileSync(path.join(out, 'run.json'), 'utf8')).exitCode, 1);
++});
++
++test('the compare step writes the summary and comparison.json from the downloaded runs, and exits 0', (t) => {
++  const compare = step(ci().jobs[COMPARE], 'Compare the proof runs');
++  const directory = sandbox(t);
++  const run = (env) => {
++    const summary = path.join(directory, 'summary.md');
++    fs.writeFileSync(summary, '');
++    const result = spawnSync('bash', ['-e', '-c', compare.run], { cwd: repoRoot, encoding: 'utf8',
++      env: { PATH: `${path.dirname(process.execPath)}:/usr/bin:/bin`, RUNNER_TEMP: directory, GITHUB_STEP_SUMMARY: summary, ...env } });
++    return { ...result, summary: fs.readFileSync(summary, 'utf8') };
++  };
++  const empty = run({});
++  assert.equal(empty.status, 0, empty.stderr);
++  assert.match(empty.summary, /^## Squeal coverage proof$/m);
++  assert.match(empty.summary, /^\| \(a\) `squeal` against \(b\) `v8` \| \(a\) `squeal`: coverage missing; \(b\) `v8`: coverage missing \|/m);
++  assert.equal(JSON.parse(fs.readFileSync(path.join(directory, 'squeal-coverage-comparison', 'comparison.json'), 'utf8')).format, 'squeal-coverage-proof/1');
++  // A node that cannot run the script: the summary says so and the step still exits 0.
++  const bin = path.join(directory, 'bin');
++  fs.mkdirSync(bin);
++  fs.writeFileSync(path.join(bin, 'node'), '#!/bin/sh\nexit 9\n', { mode: 0o755 });
++  const failed = run({ PATH: `${bin}:/usr/bin:/bin` });
++  assert.equal(failed.status, 0, failed.stderr);
++  assert.match(failed.summary, /^The comparison did not finish \(exit 9\); see the step log\.$/m);
++});
+diff --git a/.github/scripts/ci-squeal-results.workflow.test.cjs b/.github/scripts/ci-squeal-results.workflow.test.cjs
+index 48eaac77b8b36275ddb48978059f97a851839122..99eb46fae7b64661d7970b30e269b0c8ceb92637 100644
+--- a/.github/scripts/ci-squeal-results.workflow.test.cjs
++++ b/.github/scripts/ci-squeal-results.workflow.test.cjs
+@@ -52,7 +52,7 @@ test('the Vitest shards and the Squeal jobs read one exact Node version from .no
+   const { jobs } = ci();
+   const readers = Object.entries(jobs).filter(([, job]) => (job.steps ?? []).some((s) => s.with?.['node-version-file']))
+     .map(([id]) => id);
+-  assert.deepEqual(readers.sort(), ['squeal-export', 'squeal-gate-trial', 'squeal-publish', 'vitest'], 'other jobs keep their own Node setting');
++  assert.deepEqual(readers.sort(), ['squeal-coverage-proof', 'squeal-export', 'squeal-gate-trial', 'squeal-publish', 'vitest'], 'other jobs keep their own Node setting');
+   for (const id of readers) {
+     const setup = jobs[id].steps.find((s) => s.uses?.startsWith('actions/setup-node@'));
+     assert.equal(setup.with['node-version-file'], '.node-version', id);
+@@ -122,7 +122,8 @@ test('the merge-group step runs the test command under squeal ci record and retu
+   }
+ });
+ 
+-const SQUEAL_JOBS = ['squeal-export', 'squeal-publish', 'squeal-gate-trial'];
++// The coverage proof (ci-squeal-coverage-proof.workflow.test.cjs) is a manual dispatch's, and gates nothing either.
++const SQUEAL_JOBS = ['squeal-export', 'squeal-publish', 'squeal-gate-trial', 'squeal-coverage-proof', 'squeal-coverage-proof-compare'];
+ 
+ test('squeal-export runs after passing merge-group shards and only reads', () => {
+   const { jobs, permissions } = ci();
+@@ -235,7 +236,7 @@ test('squeal-export keys the shard parts in a fresh checkout; squeal-publish pus
+ test('every job that runs squeal sets up Squeal\'s action once, after its Node and before the first squeal call', () => {
+   const { jobs } = ci();
+   const users = Object.entries(jobs).filter(([, job]) => (job.steps ?? []).some((s) => s.uses === SQUEAL_ACTION)).map(([id]) => id);
+-  assert.deepEqual(users.sort(), ['squeal-export', 'squeal-gate-trial', 'squeal-publish', 'vitest']);
++  assert.deepEqual(users.sort(), ['squeal-coverage-proof', 'squeal-export', 'squeal-gate-trial', 'squeal-publish', 'vitest']);
+   const yamlText = fs.readFileSync(path.join(repoRoot, '.github', 'workflows', 'ci.yml'), 'utf8');
+   assert.doesNotMatch(yamlText, /squeal\.mjs|SQUEAL_TAG|SQUEAL_COMMIT|hearsay-tools\/squeal\.git/, 'no pinned clone of a Squeal release');
+   for (const id of users) {
+diff --git a/.github/scripts/squeal-coverage-proof.cjs b/.github/scripts/squeal-coverage-proof.cjs
+new file mode 100644
+index 0000000000000000000000000000000000000000..4397b750ad3fea8e013d3de52240285f3bd14f12
+--- /dev/null
++++ b/.github/scripts/squeal-coverage-proof.cjs
+@@ -0,0 +1,239 @@
++'use strict';
++
++// Compares the three runs of the Squeal coverage proof (ci.yml squeal-coverage-proof, hearsay-tools/squeal
++// spec 020 D19, row 020-26c): Vitest shard 1/4 with V8 coverage under `squeal ci record` (`squeal`), and
++// twice alone (`v8`, `v8-control`). It prints a Markdown job summary and writes the comparison as JSON.
++// It reads only the downloaded artifacts, and it exits 0 whatever it finds: the proof gates nothing.
++const fs = require('node:fs');
++const path = require('node:path');
++
++const RUNS = [
++  { run: 'squeal', label: '(a) `squeal`' },
++  { run: 'v8', label: '(b) `v8`' },
++  { run: 'v8-control', label: '(c) `v8-control`' },
++];
++const PAIRS = [['squeal', 'v8'], ['v8', 'v8-control']];
++const LISTED = 20;
++
++function readJson(file) {
++  try {
++    return { value: JSON.parse(fs.readFileSync(file, 'utf8')) };
++  } catch (error) {
++    return { error: error.code === 'ENOENT' ? 'missing' : `does not read: ${error.message}` };
++  }
++}
++
++/** Istanbul statement keys by source location, so two reports compare even when their ids differ. */
++function statements(entry) {
++  const seen = new Map();
++  const covered = new Map();
++  for (const [id, loc] of Object.entries(entry.statementMap ?? {})) {
++    const at = `${loc.start.line}:${loc.start.column}-${loc.end.line}:${loc.end.column}`;
++    const n = seen.get(at) ?? 0;
++    seen.set(at, n + 1);
++    covered.set(n === 0 ? at : `${at}#${n}`, (entry.s?.[id] ?? 0) > 0);
++  }
++  return covered;
++}
++
++/** The report's files by path relative to the run's checkout. */
++function coverageFiles(report, root) {
++  const prefix = root ? `${root.replace(/\/$/, '')}/` : null;
++  const files = new Map();
++  for (const [key, entry] of Object.entries(report)) {
++    const file = entry.path ?? key;
++    files.set(prefix && file.startsWith(prefix) ? file.slice(prefix.length) : file, statements(entry));
++  }
++  return files;
++}
++
++function readRun(input, run) {
++  const dir = path.join(input, `squeal-coverage-proof-${run}`);
++  const meta = readJson(path.join(dir, 'run.json'));
++  const report = readJson(path.join(dir, 'coverage-final.json'));
++  const info = { run, ...(meta.value ?? { runError: meta.error }) };
++  if (report.error) return { info: { ...info, coverageError: report.error }, files: null };
++  const files = coverageFiles(report.value, info.root);
++  let total = 0;
++  let covered = 0;
++  for (const stmts of files.values()) for (const hit of stmts.values()) { total += 1; covered += hit ? 1 : 0; }
++  return { info: { ...info, coverage: { files: files.size, statements: total, covered } }, files };
++}
++
++function compareFile(a, b) {
++  const counts = { compared: 0, onlyFirst: 0, onlySecond: 0, unmatched: 0 };
++  for (const [at, hit] of a) {
++    if (!b.has(at)) { counts.unmatched += 1; continue; }
++    counts.compared += 1;
++    if (hit && !b.get(at)) counts.onlyFirst += 1;
++    if (!hit && b.get(at)) counts.onlySecond += 1;
++  }
++  for (const at of b.keys()) if (!a.has(at)) counts.unmatched += 1;
++  return counts;
++}
++
++/** Covered-statement differences between two reports, as counts of statements and files. */
++function compareReports(first, second) {
++  const result = { first: first.run, second: second.run, statements: { compared: 0, differing: 0, onlyFirst: 0, onlySecond: 0, unmatched: 0 },
++    files: { compared: 0, differing: 0, onlyFirst: [], onlySecond: [] }, differingFiles: [] };
++  for (const [file, a] of first.files) {
++    const b = second.files.get(file);
++    if (!b) { result.files.onlyFirst.push(file); continue; }
++    const counts = compareFile(a, b);
++    result.files.compared += 1;
++    for (const key of ['compared', 'onlyFirst', 'onlySecond', 'unmatched']) result.statements[key] += counts[key];
++    if (counts.onlyFirst + counts.onlySecond > 0) result.differingFiles.push({ file, onlyFirst: counts.onlyFirst, onlySecond: counts.onlySecond });
++  }
++  for (const file of second.files.keys()) if (!first.files.has(file)) result.files.onlySecond.push(file);
++  result.statements.differing = result.statements.onlyFirst + result.statements.onlySecond;
++  result.files.differing = result.differingFiles.length;
++  result.differingFiles.sort((x, y) => (y.onlyFirst + y.onlySecond) - (x.onlyFirst + x.onlySecond) || (x.file < y.file ? -1 : 1));
++  return result;
++}
++
++function readParts(dir) {
++  let names;
++  try {
++    names = fs.readdirSync(dir).filter((name) => /^squeal-part-.*\.json$/.test(name)).sort();
++  } catch {
++    return { parts: [], errors: ['no parts directory'] };
++  }
++  const parts = [];
++  const errors = [];
++  for (const name of names) {
++    const { value, error } = readJson(path.join(dir, name));
++    if (error) errors.push(`${name}: ${error}`); else parts.push(value);
++  }
++  return { parts, errors };
++}
++
++const refName = (ref) => (ref.project ? `${ref.project}:${ref.path}` : ref.path);
++
++/** What the `squeal` run's parts say: records against test files, the coverage header and Squeal's own time. */
++function summarizeParts({ parts, errors }) {
++  const files = parts.flatMap((part) => part.testFiles ?? []);
++  const noRecord = {};
++  for (const file of files.filter((f) => f.record === undefined)) {
++    const reason = file.noRecord ?? 'none named';
++    noRecord[reason] = (noRecord[reason] ?? 0) + 1;
++  }
++  const headers = parts.map((part) => part.header?.coverage ?? null);
++  const costs = [...new Map(parts.map((part) => part.header?.cost).filter(Boolean).map((cost) => [cost.command, cost])).values()];
++  const sum = (list, key) => list.reduce((total, item) => total + (Number(item[key]) || 0), 0);
++  const unique = (list) => [...new Set(list.map((item) => JSON.stringify(item)))].map((item) => JSON.parse(item));
++  return {
++    parts: parts.length, errors, formats: unique(parts.map((part) => part.format ?? 'unknown')), ends: unique(parts.map((part) => part.header?.end ?? 'unknown')),
++    testFiles: files.length, withRecord: files.filter((f) => f.record !== undefined).length, noRecord,
++    coverage: unique(headers.map((h) => h && { ...h, inspector: undefined })),
++    collector: unique(headers.map((h) => (h && !('off' in h) ? h.collector ?? 'not named' : 'none'))),
++    inspector: {
++      loaded: [...new Set(headers.flatMap((h) => h?.inspector?.loaded ?? []).map(refName))].sort(),
++      unknown: [...new Set(headers.flatMap((h) => h?.inspector?.unknown ?? []).map(refName))].sort(),
++    },
++    cost: costs.length ? { commands: costs.length, hooksMs: sum(costs, 'hooksMs'), threads: sum(costs, 'threads'), afterMs: sum(costs, 'afterMs') } : null,
++    testMs: files.reduce((total, f) => total + (Number(f.durationMs) || 0), 0),
++  };
++}
++
++const num = (n) => Number(n).toLocaleString('en-US');
++// Two decimals under 10 s, one above, as the gate trial's summary rounds.
++const secs = (s) => {
++  if (s === null || s === undefined || Number.isNaN(Number(s))) return 'unknown';
++  const scale = Math.abs(Number(s)) < 10 ? 100 : 10;
++  return `${num(Math.round(Number(s) * scale) / scale)} s`;
++};
++const files = (n) => `${num(n)} test ${n === 1 ? 'file' : 'files'}`;
++const pct = (part, whole) => (whole > 0 ? `${Math.round((1000 * part) / whole) / 10}%` : 'n/a');
++const cpu = (info) => (typeof info.userSeconds === 'number' && typeof info.sysSeconds === 'number' ? info.userSeconds + info.sysSeconds : null);
++const label = (run) => RUNS.find((r) => r.run === run).label;
++
++function delta(name, a, b) {
++  if (typeof a !== 'number' || typeof b !== 'number') return `${name} unknown`;
++  const sign = a >= b ? '+' : '-';
++  return `${name} ${sign}${secs(Math.abs(a - b))} (${sign}${pct(Math.abs(a - b), b)})`;
++}
++
++function coverageLines(comparisons) {
++  const lines = ['### Covered statements', '',
++    '| Comparison | Statements compared | Covered state differs | Covered only in the first | Covered only in the second | Files compared | Files that differ | Files in one report only | Statements in one map only |',
++    '|---|---:|---:|---:|---:|---:|---:|---:|---:|'];
++  for (const c of comparisons) {
++    const name = `${label(c.first)} against ${label(c.second)}`;
++    if (c.missing) { lines.push(`| ${name} | ${c.missing} | | | | | | | |`); continue; }
++    const s = c.statements;
++    lines.push(`| ${name} | ${num(s.compared)} | ${num(s.differing)} (${pct(s.differing, s.compared)}) | ${num(s.onlyFirst)} | ${num(s.onlySecond)} | `
++      + `${num(c.files.compared)} | ${num(c.files.differing)} | ${num(c.files.onlyFirst.length + c.files.onlySecond.length)} | ${num(s.unmatched)} |`);
++  }
++  for (const c of comparisons.filter((x) => !x.missing && x.differingFiles.length)) {
++    lines.push('', `Files that differ, ${label(c.first)} against ${label(c.second)} (covered only in the first / only in the second), up to ${LISTED}:`, '');
++    for (const f of c.differingFiles.slice(0, LISTED)) lines.push(`- \`${f.file}\`: ${f.onlyFirst} / ${f.onlySecond}`);
++  }
++  return lines;
++}
++
++function partLines(p) {
++  const lines = ['', "### Squeal's records in (a)'s parts", ''];
++  if (!p.parts) return [...lines, `No part reads (${p.errors.join('; ') || 'none'}).`];
++  const reasons = Object.entries(p.noRecord).map(([reason, n]) => `${reason} ${n}`).join(', ') || 'none';
++  const coverage = p.coverage.map((h) => (h === null ? 'none (an older part format)' : 'off' in h ? `off: ${h.off} (${h.note})`
++    : `collector \`${h.collector ?? 'not named'}\`${h.collectorVersion ? ` (@vitest/coverage-v8 ${h.collectorVersion})` : ''}, provider ${h.providerVersion}, record ${h.recordVersion}${h.note ? `, note: ${h.note}` : ''}`));
++  lines.push(`- Parts: ${p.parts} (${p.formats.join(', ')}), run end ${p.ends.join(', ')}.${p.errors.length ? ` Not read: ${p.errors.join('; ')}.` : ''}`,
++    `- Coverage header: ${coverage.join('; ')}. Collector: ${p.collector.map((c) => `\`${c}\``).join(', ')} (expected \`v8\`).`,
++    `- Test files: ${num(p.testFiles)}; with a record: ${num(p.withRecord)} (${pct(p.withRecord, p.testFiles)}); without: ${num(p.testFiles - p.withRecord)} (${reasons}).`,
++    `- \`node:inspector\`: loaded by ${files(p.inspector.loaded.length)}, unknown for ${files(p.inspector.unknown.length)}.`);
++  for (const [kind, list] of Object.entries(p.inspector)) if (list.length) lines.push(`  - ${kind}: ${list.slice(0, LISTED).map((f) => `\`${f}\``).join(', ')}${list.length > LISTED ? ', …' : ''}`);
++  return lines;
++}
++
++function timeLines(infos, p) {
++  const lines = ['', '### Time', '', '| Run | Exit code | Wall | CPU (user + sys) | CPUs | CPU model | Load before, after |', '|---|---:|---:|---:|---:|---|---|'];
++  for (const info of infos) {
++    if (info.runError) { lines.push(`| ${label(info.run)} | run.json ${info.runError} | | | | | |`); continue; }
++    lines.push(`| ${label(info.run)} | ${info.exitCode} | ${secs(info.wallSeconds)} | ${secs(cpu(info))} | ${info.cpus ?? ''} | ${info.cpuModel ?? ''} | ${info.loadBefore ?? '?'}, ${info.loadAfter ?? '?'} |`);
++  }
++  const [a, b, c] = infos;
++  lines.push('', `- (a) against (b): ${delta('wall', a.wallSeconds, b.wallSeconds)}, ${delta('CPU', cpu(a), cpu(b))}.`,
++    `- (c) against (b), the run-to-run control: ${delta('wall', c.wallSeconds, b.wallSeconds)}, ${delta('CPU', cpu(c), cpu(b))}.`);
++  if (p.cost) {
++    lines.push(`- Squeal's own time in (a), from its parts: ${secs(p.cost.hooksMs / 1000)} in its hooks over ${p.cost.threads} processes and threads `
++      + `(${pct(p.cost.hooksMs, p.testMs)} of the test files' summed ${secs(p.testMs / 1000)}), and ${secs(p.cost.afterMs / 1000)} after the command.`);
++  } else lines.push("- Squeal's own time in (a): not in the parts.");
++  return lines;
++}
++
++/** Reads the downloaded artifacts under `input` and returns the comparison and its Markdown summary. */
++function compare(input) {
++  const runs = Object.fromEntries(RUNS.map(({ run }) => [run, readRun(input, run)]));
++  const comparisons = PAIRS.map(([first, second]) => {
++    const missing = [first, second].filter((run) => !runs[run].files).map((run) => `${label(run)}: coverage ${runs[run].info.coverageError}`);
++    return missing.length ? { first, second, missing: missing.join('; ') } : compareReports({ run: first, files: runs[first].files }, { run: second, files: runs[second].files });
++  });
++  const parts = summarizeParts(readParts(path.join(input, 'squeal-coverage-proof-squeal', 'parts')));
++  const infos = RUNS.map(({ run }) => runs[run].info);
++  const markdown = ['## Squeal coverage proof', '',
++    'A proof: these jobs gate nothing and never fail the run. Vitest shard 1/4, three runs with V8 coverage on one commit: (a) under `squeal ci record`, (b) and (c) alone; (c) is the run-to-run control.', '',
++    ...coverageLines(comparisons), ...partLines(parts), ...timeLines(infos, parts), ''].join('\n');
++  return { comparison: { format: 'squeal-coverage-proof/1', runs: infos, comparisons, parts }, markdown };
++}
++
++function main(argv, { stdout = (text) => process.stdout.write(text), stderr = (text) => process.stderr.write(text) } = {}) {
++  const option = (name) => { const at = argv.indexOf(name); return at >= 0 ? argv[at + 1] : undefined; };
++  const input = option('--input');
++  const json = option('--json');
++  if (!input) {
++    stderr('Usage: node .github/scripts/squeal-coverage-proof.cjs --input <downloaded artifacts> [--json <comparison.json>]\n');
++    return 0;
++  }
++  try {
++    const { comparison, markdown } = compare(input);
++    if (json) fs.writeFileSync(json, `${JSON.stringify(comparison, null, 2)}\n`);
++    stdout(markdown);
++  } catch (error) {
++    stdout(`## Squeal coverage proof\n\nThe comparison failed: ${error.message}\n`);
++    stderr(`${error.stack}\n`);
++  }
++  return 0;
++}
++
++module.exports = { compare, compareReports, coverageFiles, summarizeParts, main };
++if (require.main === module) process.exitCode = main(process.argv.slice(2));
+diff --git a/.github/scripts/squeal-coverage-proof.test.cjs b/.github/scripts/squeal-coverage-proof.test.cjs
+new file mode 100644
+index 0000000000000000000000000000000000000000..f77757975e242e14a31921c79d8351b0398a90cf
+--- /dev/null
++++ b/.github/scripts/squeal-coverage-proof.test.cjs
+@@ -0,0 +1,130 @@
++'use strict';
++
++// Pins the comparison of the Squeal coverage proof (squeal-coverage-proof.cjs, ci.yml squeal-coverage-proof-compare).
++const assert = require('node:assert/strict');
++const fs = require('node:fs');
++const os = require('node:os');
++const path = require('node:path');
++const test = require('node:test');
++const { compareReports, coverageFiles, summarizeParts, main } = require('./squeal-coverage-proof.cjs');
++
++const at = (line, column, endColumn = column + 5) => ({ start: { line, column }, end: { line, column: endColumn } });
++// One Istanbul file entry from [location, count] pairs, with ids in the given order.
++const entry = (file, statements) => ({
++  path: file,
++  statementMap: Object.fromEntries(statements.map(([loc], i) => [String(i), loc])),
++  s: Object.fromEntries(statements.map(([, count], i) => [String(i), count])),
++});
++const report = (root, files) => Object.fromEntries(Object.entries(files).map(([file, statements]) => {
++  const absolute = `${root.replace(/\/$/, '')}/${file}`;
++  return [absolute, entry(absolute, statements)];
++}));
++
++function sandbox(t) {
++  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'squeal-coverage-proof-'));
++  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
++  return directory;
++}
++
++test('statements compare by location relative to each run\'s checkout, whatever their ids', () => {
++  const first = coverageFiles(report('/w/a', {
++    'src/x.ts': [[at(1, 0), 1], [at(2, 0), 0], [at(3, 0), 4], [at(9, 0), 1]],
++    'src/only-first.ts': [[at(1, 0), 1]],
++    'src/same.ts': [[at(1, 0), 2], [at(1, 0), 0]],
++  }), '/w/a');
++  const second = coverageFiles(report('/w/b/', {
++    // Ids in another order. Line 2 is covered here only, line 3 in the first only; line 9 is in the first map only, line 7 in this one only.
++    'src/x.ts': [[at(3, 0), 0], [at(1, 0), 1], [at(2, 0), 2], [at(7, 0), 1]],
++    'src/same.ts': [[at(1, 0), 1], [at(1, 0), 0]],
++    'src/only-second.ts': [[at(1, 0), 0]],
++  }), '/w/b/');
++  assert.deepEqual([...first.keys()].sort(), ['src/only-first.ts', 'src/same.ts', 'src/x.ts']);
++  const result = compareReports({ run: 'squeal', files: first }, { run: 'v8', files: second });
++  assert.deepEqual(result.statements, { compared: 5, differing: 2, onlyFirst: 1, onlySecond: 1, unmatched: 2 });
++  assert.deepEqual(result.files, { compared: 2, differing: 1, onlyFirst: ['src/only-first.ts'], onlySecond: ['src/only-second.ts'] });
++  assert.deepEqual(result.differingFiles, [{ file: 'src/x.ts', onlyFirst: 1, onlySecond: 1 }]);
++  assert.deepEqual(compareReports({ run: 'v8', files: second }, { run: 'v8-control', files: second }).statements,
++    { compared: 7, differing: 0, onlyFirst: 0, onlySecond: 0, unmatched: 0 }, 'a report against itself');
++});
++
++const COVERAGE = { provider: 'squeal', collector: 'v8', collectorVersion: '4.1.10', providerVersion: 1, recordVersion: 2 };
++const part = (header, testFiles) => ({ format: 'squeal-ci-part/4', header: { end: 'completed', ...header }, projects: [], testFiles, evidence: {} });
++
++test('the parts give records against test files, the collector, node:inspector and Squeal\'s time once per command', () => {
++  const cost = { command: 'u1', hooksMs: 30000, threads: 7, afterMs: 1500 };
++  const inspector = { loaded: [{ project: 'server', path: 'a.test.ts' }], unknown: [{ project: 'web', path: 'b.test.ts' }] };
++  const summary = summarizeParts({ errors: [], parts: [
++    part({ coverage: { ...COVERAGE, inspector }, cost }, [{ durationMs: 100000, record: 0 }, { durationMs: 50000, noRecord: 'inspector' }]),
++    part({ coverage: { ...COVERAGE, inspector }, cost }, [{ durationMs: 50000, record: 1 }, { durationMs: null }]),
++  ] });
++  assert.deepEqual(summary, {
++    parts: 2, errors: [], formats: ['squeal-ci-part/4'], ends: ['completed'],
++    testFiles: 4, withRecord: 2, noRecord: { inspector: 1, 'none named': 1 },
++    coverage: [COVERAGE], collector: ['v8'],
++    inspector: { loaded: ['server:a.test.ts'], unknown: ['web:b.test.ts'] },
++    cost: { commands: 1, hooksMs: 30000, threads: 7, afterMs: 1500 }, testMs: 200000,
++  });
++  const yielded = summarizeParts({ errors: [], parts: [part({ coverage: { off: 'project-coverage', note: 'istanbul' } }, [{ durationMs: 1 }])] });
++  assert.deepEqual(yielded.collector, ['none']);
++  assert.equal(yielded.cost, null);
++});
++
++function writeRun(input, run, { meta, coverage, parts } = {}) {
++  const dir = path.join(input, `squeal-coverage-proof-${run}`);
++  fs.mkdirSync(dir, { recursive: true });
++  if (meta) fs.writeFileSync(path.join(dir, 'run.json'), JSON.stringify({ format: 'squeal-coverage-proof-run/1', run, root: `/w/${run}`, cpus: 4, cpuModel: 'AMD EPYC 7763', loadBefore: 0.5, loadAfter: 3.9, ...meta }));
++  if (coverage) fs.writeFileSync(path.join(dir, 'coverage-final.json'), typeof coverage === 'string' ? coverage : JSON.stringify(report(`/w/${run}`, coverage)));
++  if (parts) {
++    fs.mkdirSync(path.join(dir, 'parts'));
++    parts.forEach((content, i) => fs.writeFileSync(path.join(dir, 'parts', `squeal-part-${i}.json`), typeof content === 'string' ? content : JSON.stringify(content)));
++  }
++}
++
++test('the summary and comparison.json name the differences, the records and each run\'s time', (t) => {
++  const input = sandbox(t);
++  const files = { 'src/x.ts': [[at(1, 0), 1], [at(2, 0), 1]], 'src/y.ts': [[at(1, 0), 1]] };
++  writeRun(input, 'squeal', { meta: { exitCode: 0, wallSeconds: 660, userSeconds: 2000, sysSeconds: 100 }, coverage: { ...files, 'src/x.ts': [[at(1, 0), 1], [at(2, 0), 0]] },
++    parts: [part({ coverage: COVERAGE, cost: { command: 'u1', hooksMs: 21000, threads: 7, afterMs: 432 } }, [{ durationMs: 400000, record: 0 }, { durationMs: 20000, noRecord: 'inspector' }]), '{'] });
++  writeRun(input, 'v8', { meta: { exitCode: 0, wallSeconds: 600, userSeconds: 1900, sysSeconds: 100 }, coverage: files });
++  writeRun(input, 'v8-control', { meta: { exitCode: 1, wallSeconds: 630, userSeconds: 1950, sysSeconds: 90 }, coverage: files });
++  const json = path.join(input, 'comparison.json');
++  let markdown = '';
++  assert.equal(main(['--input', input, '--json', json], { stdout: (text) => { markdown += text; } }), 0);
++  const lines = markdown.split('\n');
++  for (const line of [
++    '| (a) `squeal` against (b) `v8` | 3 | 1 (33.3%) | 0 | 1 | 2 | 1 | 0 | 0 |',
++    '| (b) `v8` against (c) `v8-control` | 3 | 0 (0%) | 0 | 0 | 2 | 0 | 0 | 0 |',
++    '- `src/x.ts`: 0 / 1',
++    '- Coverage header: collector `v8` (@vitest/coverage-v8 4.1.10), provider 1, record 2. Collector: `v8` (expected `v8`).',
++    '- Test files: 2; with a record: 1 (50%); without: 1 (inspector 1).',
++    '- `node:inspector`: loaded by 0 test files, unknown for 0 test files.',
++    '| (a) `squeal` | 0 | 660 s | 2,100 s | 4 | AMD EPYC 7763 | 0.5, 3.9 |',
++    '| (c) `v8-control` | 1 | 630 s | 2,040 s | 4 | AMD EPYC 7763 | 0.5, 3.9 |',
++    '- (a) against (b): wall +60 s (+10%), CPU +100 s (+5%).',
++    '- (c) against (b), the run-to-run control: wall +30 s (+5%), CPU +40 s (+2%).',
++    "- Squeal's own time in (a), from its parts: 21 s in its hooks over 7 processes and threads (5% of the test files' summed 420 s), and 0.43 s after the command.",
++  ]) assert.ok(lines.includes(line), `missing: ${line}\n${markdown}`);
++  assert.match(markdown, /^- Parts: 1 \(squeal-ci-part\/4\), run end completed\. Not read: squeal-part-1\.json: does not read: .+\.$/m);
++  const comparison = JSON.parse(fs.readFileSync(json, 'utf8'));
++  assert.equal(comparison.format, 'squeal-coverage-proof/1');
++  assert.deepEqual(comparison.runs.map((run) => run.coverage), [{ files: 2, statements: 3, covered: 2 }, { files: 2, statements: 3, covered: 3 }, { files: 2, statements: 3, covered: 3 }]);
++  assert.deepEqual(comparison.comparisons.map((c) => c.statements.differing), [1, 0]);
++  assert.equal(comparison.parts.withRecord, 1);
++});
++
++test('a missing run, report or part is named in the summary, and the script still exits 0', (t) => {
++  const input = sandbox(t);
++  writeRun(input, 'squeal', { meta: { exitCode: 127, wallSeconds: 0.1, userSeconds: 0, sysSeconds: 0 } });
++  writeRun(input, 'v8', { meta: { exitCode: 0, wallSeconds: 600, userSeconds: 1900, sysSeconds: 100 }, coverage: '{' });
++  let markdown = '';
++  assert.equal(main(['--input', input], { stdout: (text) => { markdown += text; } }), 0);
++  assert.match(markdown, /^\| \(a\) `squeal` against \(b\) `v8` \| \(a\) `squeal`: coverage missing; \(b\) `v8`: coverage does not read: .+ \|( \|){7}$/m);
++  assert.match(markdown, /^\| \(b\) `v8` against \(c\) `v8-control` \| .*\(c\) `v8-control`: coverage missing \|/m);
++  assert.match(markdown, /^No part reads \(no parts directory\)\.$/m);
++  assert.match(markdown, /^\| \(c\) `v8-control` \| run\.json missing \|/m);
++  assert.match(markdown, /^- \(c\) against \(b\), the run-to-run control: wall unknown, CPU unknown\.$/m);
++  assert.match(markdown, /^- Squeal's own time in \(a\): not in the parts\.$/m);
++  let usage = '';
++  assert.equal(main([], { stderr: (text) => { usage += text; } }), 0);
++  assert.match(usage, /^Usage: /);
++});
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index ad7c2ab32c78a28d5acb9795ed8b8278bcb17569..f24d369c2a440f68fe179c3997a57003f61eb76d 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -28,6 +28,13 @@ on:
+         required: false
+         type: boolean
+         default: false
++      # The Squeal coverage proof (§ Squeal coverage proof in docs/sdlc/ci.md): only a dispatch
++      # without pr_number takes it; it never gates anything.
++      squeal_coverage_proof:
++        description: Run Vitest shard 1/4 with V8 coverage under squeal ci record and twice alone, and compare the three (no pr_number)
++        required: false
++        type: boolean
++        default: false
+ 
+ permissions:
+   contents: read
+@@ -1133,6 +1140,169 @@ jobs:
+           retention-days: 14
+           overwrite: true
+ 
++  # Squeal coverage proof (hearsay-tools/squeal spec 020 D19, row 020-26c; hearsay-tools/squeal#189).
++  # Only a manual dispatch with squeal_coverage_proof and no pr_number runs it. Vitest shard 1/4
++  # runs three times on the dispatched commit, each with the project's V8 coverage: `squeal`
++  # under `squeal ci record`, which reads the V8 provider's payloads into its parts, and `v8`
++  # and `v8-control` alone, the second as the run-to-run control. squeal-coverage-proof-compare
++  # compares the three. Neither job gates anything: every step continues on error, both jobs
++  # set continue-on-error, and both are outside verify.needs and the queue roster.
++  # See docs/sdlc/ci.md § Squeal coverage proof.
++  squeal-coverage-proof:
++    name: Squeal coverage proof ${{ matrix.run }}
++    if: ${{ github.event_name == 'workflow_dispatch' && inputs.squeal_coverage_proof == true && inputs.pr_number == '' }}
++    strategy:
++      fail-fast: false
++      matrix:
++        run: [ squeal, v8, v8-control ]
++    runs-on: ubuntu-24.04
++    timeout-minutes: 30
++    continue-on-error: true
++
++    # Runs the dispatched code (install, server build, tests), so it only reads.
++    permissions:
++      contents: read
++
++    steps:
++      - name: Check out the dispatched commit
++        continue-on-error: true
++        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
++        with:
++          ref: ${{ github.sha }}
++          persist-credentials: false
++
++      - name: Set up pnpm
++        continue-on-error: true
++        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
++        with:
++          version: '12.11.2'
++
++      # The shards' Node, so the three runs and a Vitest shard see the same V8.
++      - name: Set up Node.js
++        continue-on-error: true
++        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
++        with:
++          node-version-file: .node-version
++          cache: pnpm
++          cache-dependency-path: pnpm-lock.yaml
++
++      - name: Install pnpm dependencies
++        continue-on-error: true
++        run: pnpm install --frozen-lockfile
++
++      # Unit fixtures exercise built server modules, as in the Vitest shards.
++      - name: Build server dependencies
++        continue-on-error: true
++        run: npm run build:server
++
++      # Squeal's action, as in the shards: `v0` follows Squeal's releases, and it never fails
++      # the job (hearsay-tools/squeal spec 018 D20). Only the `squeal` run records.
++      - name: Set up Squeal
++        if: matrix.run == 'squeal'
++        continue-on-error: true
++        uses: hearsay-tools/squeal/ci@v0
++
++      # The shard command of a dispatch, with its V8 coverage. Bash's `time` gives the wall and
++      # CPU (user + sys) time of the command and every process it waited for. The step keeps
++      # the exit code, the times and the coverage report, and exits 0.
++      - name: Run Vitest shard 1/4 with V8 coverage
++        id: shard
++        continue-on-error: true
++        env:
++          VITEST_FILE_DURATION_CAP: '1'
++          PROOF_RUN: ${{ matrix.run }}
++        run: |
++          out="$RUNNER_TEMP/squeal-coverage-proof"
++          mkdir -p "$out"
++          set -- npm test -- --shard=1/4 --maxWorkers=4 --coverage.enabled
++          if [ "$PROOF_RUN" = squeal ]; then
++            set -- squeal ci record --out "$out/parts" -- "$@"
++          fi
++          load_before="$(cut -d ' ' -f 1 /proc/loadavg 2> /dev/null || true)"
++          code=0
++          TIMEFORMAT='%3R %3U %3S'
++          { time "$@" 2>&3 || code=$?; } 3>&2 2> "$out/time.txt"
++          load_after="$(cut -d ' ' -f 1 /proc/loadavg 2> /dev/null || true)"
++          read -r wall user sys < "$out/time.txt" || true
++          if ! cp .ai/qa/coverage/coverage-final.json "$out/coverage-final.json"; then
++            echo "::warning title=Squeal coverage proof $PROOF_RUN::No V8 coverage report (exit $code)."
++          fi
++          jq -n --arg run "$PROOF_RUN" --argjson code "$code" --arg wall "$wall" --arg user "$user" --arg sys "$sys" \
++            --arg root "$GITHUB_WORKSPACE" --arg cpus "$(getconf _NPROCESSORS_ONLN)" --arg model "$(sed -n 's/^model name[[:space:]]*: //p' /proc/cpuinfo 2> /dev/null | head -n 1)" \
++            --arg loadBefore "$load_before" --arg loadAfter "$load_after" --argjson command "$(printf '%s\0' "$@" | jq -cRs 'split("\u0000")[:-1]')" \
++            '{format: "squeal-coverage-proof-run/1", run: $run, command: $command, exitCode: $code,
++              wallSeconds: ($wall | tonumber? // null), userSeconds: ($user | tonumber? // null), sysSeconds: ($sys | tonumber? // null),
++              root: $root, cpus: ($cpus | tonumber? // null), cpuModel: $model,
++              loadBefore: ($loadBefore | tonumber? // null), loadAfter: ($loadAfter | tonumber? // null)}' > "$out/run.json"
++          echo "Squeal coverage proof $PROOF_RUN: exit $code, wall ${wall:-unknown} s, CPU ${user:-unknown} s user and ${sys:-unknown} s sys."
++
++      - name: Upload the proof run
++        if: always()
++        continue-on-error: true
++        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
++        with:
++          name: squeal-coverage-proof-${{ matrix.run }}
++          path: ${{ runner.temp }}/squeal-coverage-proof/
++          if-no-files-found: warn
++          retention-days: 14
++          overwrite: true
++
++  squeal-coverage-proof-compare:
++    name: Compare the Squeal coverage proof
++    needs: [squeal-coverage-proof]
++    # A status function in the condition: without one GitHub adds success(), and a proof run
++    # that failed or timed out would skip the comparison of the other two.
++    if: ${{ !cancelled() && github.event_name == 'workflow_dispatch' && inputs.squeal_coverage_proof == true && inputs.pr_number == '' && needs.squeal-coverage-proof.result != 'skipped' }}
++    runs-on: ubuntu-24.04
++    timeout-minutes: 10
++    continue-on-error: true
++
++    permissions:
++      contents: read
++
++    steps:
++      - name: Check out the comparison script
++        continue-on-error: true
++        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
++        with:
++          ref: ${{ github.sha }}
++          persist-credentials: false
++          sparse-checkout: .github/scripts
++
++      - name: Set up Node.js
++        continue-on-error: true
++        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
++        with:
++          node-version: lts/*
++
++      - name: Download the proof runs
++        continue-on-error: true
++        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
++        with:
++          pattern: squeal-coverage-proof-*
++          path: ${{ runner.temp }}/squeal-coverage-proof
++
++      # The script writes the job summary and comparison.json, and exits 0 whatever it finds.
++      - name: Compare the proof runs
++        if: always()
++        continue-on-error: true
++        run: |
++          out="$RUNNER_TEMP/squeal-coverage-comparison"
++          mkdir -p "$out"
++          node .github/scripts/squeal-coverage-proof.cjs --input "$RUNNER_TEMP/squeal-coverage-proof" --json "$out/comparison.json" \
++            >> "$GITHUB_STEP_SUMMARY" || echo "The comparison did not finish (exit $?); see the step log." >> "$GITHUB_STEP_SUMMARY"
++
++      - name: Upload the comparison
++        if: always()
++        continue-on-error: true
++        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
++        with:
++          name: squeal-coverage-comparison
++          path: ${{ runner.temp }}/squeal-coverage-comparison/
++          if-no-files-found: warn
++          retention-days: 14
++          overwrite: true
++
+   # Merges the four shard reports into one repo-relative Istanbul `coverage-final.json` and
+   # uploads it as `vitest-coverage-<head SHA>`. See docs/sdlc/ci.md § Vitest coverage artifact.
+   vitest-coverage-merge:
+diff --git a/docs/sdlc/ci.md b/docs/sdlc/ci.md
+index 8dcb84e8ebba5f4919fd0cea9d93d2313ec5ef37..1a3f83a90a2ed1120b8d98b8a80985588233a84b 100644
+--- a/docs/sdlc/ci.md
++++ b/docs/sdlc/ci.md
+@@ -544,6 +544,47 @@ gh workflow run ci.yml --ref <branch> -f squeal_gate_trial=true
+ `.github/scripts/ci-squeal-gate-trial.workflow.test.cjs` pins the trigger, the job's
+ permissions, its gate command and its summary.
+ 
++### Squeal coverage proof
++
++A manual proof checks that Squeal can record its per-test-file coverage beside the project's
++own V8 report in one run, without changing that report or adding cost above run-to-run noise
++(hearsay-tools/squeal spec 020 D19, row 020-26c; hearsay-tools/squeal#189). It runs only on
++request:
++
++```bash
++gh workflow run ci.yml --ref <branch> -f squeal_coverage_proof=true
++```
++
++- Only a dispatch with `squeal_coverage_proof` and no `pr_number` takes the proof. The rest of
++  that dispatch runs as a bare dispatch does, V8 coverage artifact included. Dispatches of one
++  branch share a concurrency group and cancel each other, so start the proof after the bare
++  proof of a `ci.yml` change ends (§ Proving a `ci.yml` change).
++- The `Squeal coverage proof <run>` jobs (`squeal-coverage-proof`) run Vitest shard 1/4 three
++  times in parallel on the dispatched commit, each with
++  `npm test -- --shard=1/4 --maxWorkers=4 --coverage.enabled`, the shard command of a dispatch.
++  `squeal` runs it under `squeal ci record` after Squeal's action, so Squeal reads the V8
++  provider's payloads into its parts. `v8` and `v8-control` run it alone; `v8-control` is the
++  run-to-run control. Each keeps its exit code, its wall and CPU (user + sys) time, the runner's
++  CPU count, CPU model and load, and `coverage-final.json`, and uploads them as
++  `squeal-coverage-proof-<run>` with the parts for `squeal`, kept 14 days.
++- The `Compare the Squeal coverage proof` job (`squeal-coverage-proof-compare`) runs after the
++  three end in any way but skipped. It downloads them and runs
++  `.github/scripts/squeal-coverage-proof.cjs`, which writes the job summary and uploads
++  `comparison.json` as `squeal-coverage-comparison`, kept 14 days.
++- The summary compares covered statements of `squeal` against `v8`, and of `v8` against
++  `v8-control`, by source location: statements whose covered state differs and the files they
++  are in. A difference between `squeal` and `v8` reads as Squeal's only when it is well above
++  the control's. Then it gives the parts' test files with and without a record and why, the
++  part header's collector (`v8` expected) and the test files that loaded `node:inspector`;
++  then each run's time, the two differences against `v8`, and Squeal's own time from the parts.
++- Nothing depends on it. Both jobs are outside `verify.needs` and the merge-queue roster, only a
++  manual dispatch runs them, every step continues on error and both jobs set
++  `continue-on-error`. The proof never runs on a pull request, in a merge group or on a push.
++
++`.github/scripts/ci-squeal-coverage-proof.workflow.test.cjs` pins the trigger, the three runs,
++their artifacts and the steps' scripts; `.github/scripts/squeal-coverage-proof.test.cjs` pins the
++comparison.
++
+ ### Upstream scan PRs
+ 
+ The weekly upstream scan also creates PRs with the repository's existing release
