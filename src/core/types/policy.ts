@@ -228,10 +228,25 @@ export interface Policy {
    * latter. Read when the daemon starts. Default `"project"`.
    */
   readonly node: "project" | "session";
+  /** Spec 021 D19.1: what the project's tests need, checked here and on each remote. */
+  readonly requires: {
+    /**
+     * Commands the tests need on `PATH`, such as `["git", "python3"]`. One
+     * missing here is named in status and the tests still run; one missing
+     * on a remote refuses that remote. Default `[]`.
+     */
+    readonly commands: readonly string[];
+  };
   /** Spec 021 D9: remote runner hosts, which each user names in their own `remote.json`. */
   readonly remote: {
     /** `false`: the repository forbids remote lanes; every run stays on the user's machine. Default `true`. */
     readonly allowed: boolean;
+    /**
+     * Spec 021 D19.2: worktree-relative test-file globs whose tests read the
+     * repository itself (`.git`), which a remote tree lacks: they always run
+     * here. Never merged with `requires.commands` (D19). Default `[]`.
+     */
+    readonly needsRepository: readonly string[];
   };
 }
 
@@ -448,7 +463,8 @@ export const DEFAULT_POLICY: Policy = {
   gate: { groups: null },
   shared: { ref: null },
   node: "project",
-  remote: { allowed: true },
+  requires: { commands: [] },
+  remote: { allowed: true, needsRepository: [] },
 };
 
 /**
