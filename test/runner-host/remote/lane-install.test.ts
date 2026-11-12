@@ -194,6 +194,8 @@ describe("a remote restored onto a new machine (row 021-24)", () => {
 
 describe.skipIf(PNPM === null)(
   "a restored remote whose install record an earlier release wrote, with real pnpm (review 0.1.454 B1)",
+  // Each test runs real pnpm installs; the 5 s default fails on a loaded host.
+  { timeout: 60_000 },
   () => {
     it("installs from scratch once at the next connect, runs proven, and installs no more", async () => {
       const dir = join(scratch, `pnpm${++n}`);
