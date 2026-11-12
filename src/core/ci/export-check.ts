@@ -142,6 +142,20 @@ export function reuseRefusal(
   return null;
 }
 
+/**
+ * Spec 020 D19.6 (D13.4 as amended 2026-11-12): whether a coverage provider,
+ * the project's or Squeal's, may have run in `part`'s run, so that a test
+ * that imports `node:inspector` could see its coverage. `ci export` then
+ * leaves out each file whose closure imports it, besides the files the part
+ * marks. Not when `ci record` added none to a run without coverage of its
+ * own (`no-provider`), nor in a format 3 part, which says nothing of it.
+ * The collector is read for nothing else here (D19.5).
+ */
+export function providerRan(part: Part): boolean {
+  const { coverage } = part.header;
+  return coverage !== undefined && !("off" in coverage && coverage.off === "no-provider");
+}
+
 /** A refusal `reuseRefusal` makes. */
 export type RunRefusal = Refusal & { readonly kind: RunRefusalKind };
 

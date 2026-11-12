@@ -28,6 +28,7 @@ import { bundleOf, type KeyedFile } from "./export-bundle.js";
 import {
   type NamedPart,
   partsRefusal,
+  providerRan,
   type Refusal,
   type RunView,
   reuseRefusal,
@@ -82,8 +83,9 @@ export interface CiExportCounts {
   readonly ambiguous: number;
   /**
    * Files left out: their worker ran an import of `node:inspector` beside
-   * Squeal's coverage provider, so the provider could change their outcome
-   * (spec 020 D13.4).
+   * a coverage provider, so the provider could change their outcome (spec
+   * 020 D13.4): the part marks them, or, when a provider ran (D19.6,
+   * `providerRan`), their closure here imports it.
    */
   readonly inspector: number;
 }
@@ -129,9 +131,15 @@ async function exportWith(input: CiExportInput, runner: RunnerAdapter): Promise<
   const files = parts.flatMap((p) => p.part.testFiles);
   const passed = files.filter((file) => file.outcome !== "fail");
   const named = passed.filter((file) => (file.sharedNames ?? []).length === 0);
-  // Spec 020 D13.4 (018's coordinator, 2026-11-10): the part marks such a file only beside the provider.
+  // Spec 020 D13.4 (018's coordinator, 2026-11-10): the part marks such a file beside Squeal's records.
   const kept = named.filter((file) => file.noRecord !== "inspector");
-  const { closures, report } = await keyFiles(input.root, runner, keys, kept);
+  // D19.6: beside any provider, the project's too, a closure that imports it is left out.
+  const covered = new Set(
+    parts.filter((p) => providerRan(p.part)).flatMap((p) => p.part.testFiles.map(fileId)),
+  );
+  const inspects = (file: PartFile, closure: RunnerClosure) =>
+    covered.has(fileId(file)) && (closure.packages?.builtins ?? []).includes(INSPECTOR);
+  const { closures, report, inspected } = await keyFiles(input.root, runner, keys, kept, inspects);
   const parted = await keyPartsOf(input, keys, environments, closures);
   const certify = certifier(input.root, keys, parts);
   const uncertified: UncertifiedFile[] = [];
@@ -166,10 +174,10 @@ async function exportWith(input: CiExportInput, runner: RunnerAdapter): Promise<
       testFiles,
       results: bundle.results.length,
       failed: files.length - passed.length,
-      unkeyed: kept.length - testFiles - uncertified.length,
+      unkeyed: kept.length - testFiles - uncertified.length - inspected,
       uncertified: uncertified.length,
       ambiguous: passed.length - named.length,
-      inspector: named.length - kept.length,
+      inspector: named.length - kept.length + inspected,
     },
     uncertified,
   };
@@ -181,21 +189,27 @@ async function exportWith(input: CiExportInput, runner: RunnerAdapter): Promise<
  * (`observedGrowth`, `addObserved`), stored in the job's store
  * (`writeSeen`). Returns the runner's closures and the report of the files
  * keyed; a file the runner does not list, or whose closure fails, is in
- * neither.
+ * neither, and a file `leftOut` names by its closure is only counted.
  */
 async function keyFiles(
   root: AbsolutePath,
   runner: RunnerAdapter,
   keys: WorktreeKeys,
   passed: readonly PartFile[],
-): Promise<{ closures: Map<string, RunnerClosure>; report: RunReport }> {
+  leftOut: (file: PartFile, closure: RunnerClosure) => boolean,
+): Promise<{ closures: Map<string, RunnerClosure>; report: RunReport; inspected: number }> {
   const listed = new Set((await runner.testFiles()).map(testFileId));
   const closures = new Map<string, RunnerClosure>();
+  let inspected = 0;
   for (const file of passed) {
     const ref = refOf(file);
     if (!listed.has(testFileId(ref))) continue;
     const closure = await runner.closure(ref).catch(() => null);
     if (closure === null) continue;
+    if (leftOut(file, closure)) {
+      inspected++;
+      continue;
+    }
     closures.set(testFileId(ref), closure);
     keys.setClosure(closure);
   }
@@ -213,7 +227,7 @@ async function keyFiles(
   }
   await keys.trackUntracked();
   keys.writeSeen();
-  return { closures, report };
+  return { closures, report, inspected };
 }
 
 /**
@@ -242,3 +256,8 @@ function environmentRefusal(
 function refOf(file: PartFile): TestFileRef {
   return { project: file.project, path: file.path };
 }
+
+const fileId = (file: PartFile): string => testFileId(refOf(file));
+
+/** The builtin a closure's `packages.builtins` names `node:inspector` by. */
+const INSPECTOR = "inspector";
