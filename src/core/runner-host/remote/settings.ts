@@ -44,12 +44,18 @@ export interface RemoteLane {
   readonly cache: string;
 }
 
+/**
+ * Row 021-25: the cache's default is a directory of its own under the
+ * remote home, not `.cache`, which hosts such as boat.dev drop when they
+ * save a machine (`boat-trial.md` D4): its loss sent Squeal's copy and the
+ * whole tree again, and installed again, at each restore.
+ */
 export const LANE_DEFAULTS: Omit<RemoteLane, "target"> = {
   runner: "vitest",
   lanes: ["background"],
   whenLost: "local",
   node: "node",
-  cache: ".cache",
+  cache: ".squeal-remote",
 };
 
 export interface RemoteSettings {
