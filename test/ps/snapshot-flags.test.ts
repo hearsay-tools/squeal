@@ -10,8 +10,10 @@ import { fakeWindow, type SnapshotHost, snapshotHost } from "./fixture-snapshot.
 import {
   daemonProcess,
   type FixtureRepo,
+  HOME,
   lockLine,
   makeRepo,
+  NODE,
   writeProcesses,
 } from "./fixture-stores.js";
 
@@ -74,6 +76,25 @@ describe("the host-wide rules read the whole host (reviews/wave-2.md B1)", () =>
     ]);
     expect(shape.orphans.map((o) => o.pid)).not.toContain(rules.liveParent);
   });
+});
+
+test("a job supervisor that runs daemon 800 is no daemon, and no end command names it (row 011-317)", async () => {
+  const squawk = `${HOME}/.nvm/versions/node/v26.13.0/lib/node_modules/@hearsay-tools/squawk/dist/index.js`;
+  const daemon = daemonProcess({ pid: 800, root: alpha.root, lockPath: alpha.lockPath });
+  const supervisor = {
+    ...daemonProcess({ pid: 799, root: alpha.root }),
+    cmdline: [NODE, squawk, "job", "__supervise", `${HOME}/.cache/jobs`, "daemon", "--"].concat(
+      daemon.cmdline,
+    ),
+  };
+  rmSync(join(host.base, "proc", "800"), { recursive: true });
+  writeProcesses(host, [supervisor, { ...daemon, ppid: 799 }]);
+  const shape = await snap();
+  const daemons = shape.repositories.flatMap((r) => r.daemons);
+  expect(daemons.map((d) => [d.pid, d.phase])).toEqual([[800, "serving"]]);
+  expect(daemons[0]?.flags.map((f) => f.flag)).not.toContain("duplicate");
+  expect(shape.squeal.daemons).toBe(1);
+  expect(JSON.stringify(shape)).not.toContain("kill 799");
 });
 
 describe("a held lock one /proc/locks read misses (lessons.md P9)", () => {

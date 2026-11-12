@@ -119,6 +119,32 @@ describe("finding daemons (D2 step 1)", () => {
     ]);
   });
 
+  test("the Squeal script is the process's own: a job supervisor that runs a daemon is none (row 011-317)", () => {
+    const squawk = `${HOME}/.nvm/versions/node/v26.13.0/lib/node_modules/@hearsay-tools/squawk/dist/index.js`;
+    const script = cacheScript("claude", "0.1.235");
+    const job = (...verb: string[]) => [NODE, ...verb, "--", NODE, script, "daemon", alpha.root];
+    const node = (pid: number, cmdline: string[], ppid = 1049) => ({
+      ...daemonProcess({ pid, root: alpha.root }),
+      ppid,
+      cmdline,
+    });
+    writeProcesses(host, [
+      // `hsq job start` runs the command under `job __supervise <dir> <name> -- <command>`.
+      node(500, job(squawk, "job", "__supervise", `${HOME}/.cache/jobs`, "daemon")),
+      { ...daemonProcess({ pid: 501, root: alpha.root, lockPath: alpha.lockPath }), ppid: 500 },
+      node(502, job("--enable-source-maps", squawk, "job", "start", "daemon")),
+      // Its own script may follow Node's options, and on Linux its argv0 is its label (005-88).
+      node(503, [NODE, "--enable-source-maps", script, "daemon", beta.root]),
+      node(504, [NODE, "--require", `${HOME}/hook.cjs`, script, "daemon", beta.root]),
+      node(505, ["squeal beta daemon @a3bb036f", script, "daemon", beta.root]),
+    ]);
+    expect(
+      run()
+        .daemons.map((d) => d.row.pid)
+        .sort(),
+    ).toEqual([501, 503, 504, 505]);
+  });
+
   test("only the user's own daemons", () => {
     const mine = daemonProcess({ pid: 300, root: alpha.root });
     writeProcesses(host, [mine]);
