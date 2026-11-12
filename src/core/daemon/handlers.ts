@@ -206,7 +206,15 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
   const keeps =
     requestKeep === undefined || storeSchema === undefined
       ? null
-      : new RequestDesk({ type: "keep", worktreeId, storeSchema, run: requestKeep });
+      : new RequestDesk({
+          type: "keep",
+          worktreeId,
+          storeSchema,
+          run: requestKeep,
+          // Review 0.1.450 B2: a lost answer is asked again by the gate's own id.
+          idOf: (request) => request.id,
+          remembered: KEEPS_REMEMBERED,
+        });
   const runAll = (requestId: string, state: RunAllState): RunAllResponse => {
     const answer = {
       schemaVersion: PAYLOAD_SCHEMA_VERSION,
@@ -443,6 +451,13 @@ function deskAnswer(
 
 const NO_IMPORTS = "this daemon takes no imports";
 const NO_KEEPS = "this daemon takes no kept files";
+
+/**
+ * Keep outcomes remembered for a gate that lost an answer: a gate tries a
+ * write about every 0.5 s while the store is busy and asks again within
+ * seconds, so this covers a few gates at once over their 30 s bound.
+ */
+const KEEPS_REMEMBERED = 1_024;
 
 /** Remembers `requestId`; the oldest are dropped past `MAX_REQUESTS`. */
 function remember<T>(requests: Map<string, T>, requestId: string, state: T): void {
