@@ -1,0 +1,39 @@
+
+ RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/worktrees/e8063559-5b03-4d75-8671-111f80d8f5f7
+
+ ❯ docs/specifications/020-quality-gate/research/probes/issue-201/gate-lock.probe.ts (3 tests | 2 failed) 38298ms
+   ❯ issue #201 probe (3)
+     × control: no lock 1410ms
+     × short: the child frees the lock 3 s after the gate starts its run 4144ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  docs/specifications/020-quality-gate/research/probes/issue-201/gate-lock.probe.ts > issue #201 probe > control: no lock
+AssertionError: expected { 'test/a.test.mjs': 'store', …(4) } to have property 'length'
+ ❯ docs/specifications/020-quality-gate/research/probes/issue-201/gate-lock.probe.ts:105:25
+    103|     const second = await gate(root);
+    104|     log("control second", second);
+    105|     expect(second.from).toHaveLength(5);
+       |                         ^
+    106|     expect(first.verdict).toBe("pass");
+    107|     expect(first.exit).toBe(0);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  docs/specifications/020-quality-gate/research/probes/issue-201/gate-lock.probe.ts > issue #201 probe > short: the child frees the lock 3 s after the gate starts its run
+AssertionError: expected { 'test/a.test.mjs': 'store', …(4) } to have property 'length'
+ ❯ docs/specifications/020-quality-gate/research/probes/issue-201/gate-lock.probe.ts:152:25
+    150|     const second = await gate(root);
+    151|     log("short second", second);
+    152|     expect(second.from).toHaveLength(5);
+       |                         ^
+    153|     expect(first.verdict).toBe("pass");
+    154|     expect(first.exit).toBe(0);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  2 failed | 2 passed (4)
+   Start at  22:01:45
+   Duration  47.34s (tests 84%, transform 14%, import 2%)
