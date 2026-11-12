@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   type NoRecord,
   type Part,
+  type PartCollector,
   type PartFile,
   readPartsIn,
 } from "../../../src/core/ci/parts.js";
@@ -123,6 +124,18 @@ function part(files: readonly PartFile[] = [file()], overrides: Partial<Part> = 
   };
 }
 
+/** `part()` whose records `collector` took (spec 020 D19.4). */
+function collected(collector: string): Part {
+  const made = part();
+  const coverage = {
+    provider: "squeal" as const,
+    collector: collector as PartCollector,
+    providerVersion: COVERAGE_PROVIDER_VERSION,
+    recordVersion: COVERAGE_RECORD_VERSION,
+  };
+  return { ...made, header: { ...made.header, coverage } };
+}
+
 /** What `partsEvidence` gives of `test/a.test.ts`, and its notes. */
 async function taken(root: string, parts: readonly Part[], options: Partial<PartsOptions> = {}) {
   const notes: string[] = [];
@@ -217,6 +230,21 @@ describe("partsEvidence: what makes a file run (spec 020 D13.2)", () => {
     expect(evidence).toBeNull();
     expect(notes).toEqual([
       `part-0.json gives no evidence of project "", so its test files run: part-0.json ran project "" in another environment than this gate's: allow-listed variables differ (values: PROBE) (the export as part-0.json's, here as this gate's)`,
+    ]);
+  });
+
+  it.each(["squeal", "v8"])(
+    "takes a file of a part collected by %s (spec 020 D19.5)",
+    async (by) => {
+      expect((await taken(repo(), [collected(by)])).evidence).toMatchObject({ from: "parts" });
+    },
+  );
+
+  it("runs every file of a part from another collector, with a note (spec 020 D19.5)", async () => {
+    const { evidence, notes } = await taken(repo(), [collected("istanbul")]);
+    expect(evidence).toBeNull();
+    expect(notes).toEqual([
+      '1 part gives no evidence, so its test files run: its records were collected by "istanbul", which this Squeal does not read (part-0.json)',
     ]);
   });
 

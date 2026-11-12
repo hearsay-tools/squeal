@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import type { NamedPart } from "../../ci/export-check.js";
 import { hereOf, inputsOfReadsHere, uncertified } from "../../ci/inputs.js";
-import { type Part, type PartFile, partRecord } from "../../ci/parts.js";
+import { knownCollector, type Part, type PartFile, partRecord } from "../../ci/parts.js";
 import { compare } from "../../fs/compare.js";
 import { hashFile, type ObjectFormat } from "../../hash/blob.js";
 import { readObjectFormat } from "../../hash/git-index.js";
@@ -19,7 +19,8 @@ import type { TestFileEvidence } from "./types.js";
  * Spec 020 D13.2 (row 020-08b): `squeal code --base --parts <dir>...` takes
  * a selected test file's evidence from `squeal ci record`'s parts instead of
  * running it (research `ci-evidence.md` Q3, rule 3). A file is taken when it
- * is in exactly one part; that part's run had Squeal's provider at this
+ * is in exactly one part; that part's run had Squeal's provider, or the
+ * project's V8 provider whose payloads Squeal read (D19.5), at this
  * Squeal's provider and record versions and recorded what its tests read;
  * the part's run of the file's project is evidence at the gate's runner by
  * `ci export`'s rule (`reuseRefusal` in `parts-environment.ts`; reviews
@@ -58,6 +59,10 @@ export function unusable(part: Part): string | null {
   const { coverage, observing } = part.header;
   if (coverage === undefined) return `${part.format} holds no coverage record`;
   if ("off" in coverage) return `ci record added no coverage provider (${coverage.off})`;
+  if (!knownCollector(coverage.collector)) {
+    const by = JSON.stringify(coverage.collector);
+    return `its records were collected by ${by}, which this Squeal does not read`;
+  }
   const { providerVersion, recordVersion } = coverage;
   if (providerVersion !== COVERAGE_PROVIDER_VERSION || recordVersion !== COVERAGE_RECORD_VERSION) {
     const made = `provider ${providerVersion}, record ${recordVersion}`;
