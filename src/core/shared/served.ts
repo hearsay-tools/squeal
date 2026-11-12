@@ -4,7 +4,7 @@ import {
   worktreeEnvironment,
   worktreeEnvironments,
 } from "../store/environments.js";
-import { type ImportRecord, importEnvironments, listImports } from "../store/imports.js";
+import { type ImportRecord, importEnvironments } from "../store/imports.js";
 import { rekeyedHash } from "../store/transfer-rekey.js";
 import type { WorktreeId } from "../types/common.js";
 import type { Store } from "../types/store.js";
@@ -69,15 +69,15 @@ export function servesHere(
 }
 
 /**
- * The id of an import of the export file `fileHash`: the first 16 of its
- * hash, as `squeal import` names it, unless the store holds an import of
- * that id already; then one of the file and this worktree's environments,
- * so a worktree in equal environments takes the same id, and one whose
- * environments changed takes another.
+ * The id of the reader's import of the export file `fileHash`: one of the
+ * file and this worktree's environments, so a worktree in equal environments
+ * takes the same id, and one whose environments changed takes another. The
+ * first import gets it too (review 0.1.459 B1): with a file-only id, a
+ * restart in the same environment could not tell its own import, and
+ * fetched the export again when no file re-keyed. Imports under the
+ * file-only id, from `squeal import` or an earlier Squeal, still read.
  */
 export function importIdHere(store: Store, worktreeId: WorktreeId, fileHash: string): string {
-  const id = fileHash.slice(0, 16);
-  if (!listImports(store).some((i) => i.id === id)) return id;
   return ownId(fileHash, environmentsOf(store, worktreeId));
 }
 
