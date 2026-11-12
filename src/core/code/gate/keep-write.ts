@@ -5,7 +5,7 @@ import type { WorktreeKeys } from "../../scheduler/keying.js";
 import { recordsForFile } from "../../scheduler/records.js";
 import { describeFailure } from "../../state/fingerprint.js";
 import { busyBackoffMs } from "../../store/busy.js";
-import { describeHolders, lockHolders } from "../../store/lock-holders.js";
+import { describeHolders, refusedLockHolders } from "../../store/lock-holders.js";
 import { storePaths } from "../../store/paths.js";
 import type { AbsolutePath, EpochMs } from "../../types/common.js";
 import type { RunReport } from "../../types/runner.js";
@@ -284,10 +284,12 @@ function again(count: number): string {
 /**
  * Spec 021 D5: who holds `database`'s write lock, read from `/proc` only.
  * It opens no descriptor of the store's files, so this process's own locks
- * on them stay (the store's coordinator, 2026-11-12).
+ * on them stay (the store's coordinator, 2026-11-12). Asked only after the
+ * store refused a write, outside any transaction, so a read that names no
+ * holder is read again (`refusedLockHolders`, row 020-37).
  */
 function holderOf(database: AbsolutePath): string {
-  return describeHolders(lockHolders(database));
+  return describeHolders(refusedLockHolders(database));
 }
 
 /** The paths of `files` in order, the first `NAMED` of them, then how many more. */
