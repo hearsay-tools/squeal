@@ -2,7 +2,7 @@ import type { KeyChange } from "../keys/key-index.js";
 import { testFileId } from "../keys/reverse-index.js";
 import { type FetchedPart, recordImportGraph } from "../store/import-edges.js";
 import type { RelativePath } from "../types/common.js";
-import type { TestFileRef } from "../types/keys.js";
+import type { CheckKey, TestFileRef } from "../types/keys.js";
 import type { FileChange, Revision } from "../types/revision.js";
 import type { InvalidatedPath, RunnerClosure, RunnerEnvironment } from "../types/runner.js";
 import { NOTHING_CHANGED, type SchedulerContext, tryRunner } from "./context.js";
@@ -24,6 +24,12 @@ export function toInvalidatedPath(change: FileChange): InvalidatedPath {
 export interface ContentRekey {
   /** Test files whose key moved because a closure path changed content. */
   readonly rekeyed: readonly TestFileRef[];
+  /**
+   * The key each of `rekeyed` held before the revision, by `testFileId`: the
+   * stored graph answers `affected` from the walk at that key (row 021-30,
+   * `storedAffected`).
+   */
+  readonly previous?: ReadonlyMap<string, CheckKey | null>;
   /** An environment input changed: the runner's environment is read again. */
   readonly environment: boolean;
   /**
@@ -111,7 +117,8 @@ export function rekeyContent(
   const touched: TestFileRef[] = keys.rekeyListings(changes).map((c) => c.testFile);
   const policy = reloadPolicy(context, ledger, changes);
   touched.push(...policy.changes.map((c) => c.testFile));
-  const rekeyed = keys.index.rekey(changes.map((c) => c.path)).map((c) => c.testFile);
+  const moved = keys.index.rekey(changes.map((c) => c.path));
+  const rekeyed = moved.map((c) => c.testFile);
   touched.push(...rekeyed);
   const declared = keys.updateDeclaredInputs(changes);
   if (declared !== null) touched.push(...declared.map((c) => c.testFile));
@@ -122,6 +129,7 @@ export function rekeyContent(
   const recent = touched.filter((ref) => ledger.queue.isRecent(ref));
   return {
     rekeyed,
+    previous: new Map(moved.map((c) => [testFileId(c.testFile), c.previous])),
     environment: inputs || policy.environment,
     catchUp,
     ...(recent.length > 0 ? { recent } : {}),

@@ -36,7 +36,9 @@ export interface EditCut {
  * importers to keep. When some sources have no namesake the revision
  * reaches and others do, the runner is asked again for the bare ones alone,
  * since `affected` answers for its paths together; with no answer every
- * direct importer of the revision stands for theirs.
+ * direct importer of the revision stands for theirs. `stored`, when the
+ * stored import graph gave `affected`, answers that second ask in the
+ * runner's place, or `null` to leave it to the runner (row 021-30).
  */
 export async function fetchEditCut(
   context: SchedulerContext,
@@ -45,6 +47,7 @@ export async function fetchEditCut(
   affected: AffectedTestFiles,
   bound: RunnerPartBound,
   closures: readonly RunnerClosure[] = [],
+  stored?: (paths: readonly RelativePath[]) => AffectedTestFiles | null,
 ): Promise<EditCut> {
   const { keys, runner } = context;
   const byPath = new Map<RelativePath, string[]>();
@@ -68,9 +71,11 @@ export async function fetchEditCut(
   if (bare.size === 0) return { namesakes, bare, fallback: new Set(), transitive };
   if (bare.size === namesakes.size)
     return { namesakes, bare, fallback: new Set(direct), transitive };
-  const own = await tryRunner(context, `affected (${listPaths([...bare])})`, () =>
-    bound.call(() => runner.affected([...bare])),
-  );
+  const own =
+    stored?.([...bare]) ??
+    (await tryRunner(context, `affected (${listPaths([...bare])})`, () =>
+      bound.call(() => runner.affected([...bare])),
+    ));
   const fallback = new Set(own === null ? direct : own.direct.map(testFileId));
   return { namesakes, bare, fallback, transitive };
 }
