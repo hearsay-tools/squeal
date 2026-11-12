@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { toAbsolute } from "../../../core/fs/paths.js";
 import { WorktreePaths } from "../../../core/fs/worktree-paths.js";
@@ -7,7 +7,7 @@ import type { AbsolutePath } from "../../../core/types/common.js";
 import type { TestFileRef } from "../../../core/types/keys.js";
 import type { NodeTestProject } from "../../../core/types/policy.js";
 import type { ObservedInputs, RunEnd, RunReport } from "../../../core/types/runner.js";
-import { logGoneReport, makeLogDir } from "../../log-dir.js";
+import { logGoneReport, markLogDir } from "../../log-dir.js";
 import { withRecorderSignatures } from "../../observe/signature.js";
 import { type ProcessExit, startGroup } from "../../process/group.js";
 import {
@@ -18,7 +18,7 @@ import {
 } from "../../process/node-options.js";
 import { projectEnv } from "../recorders.js";
 import { type NodeTestRuntime, nodeTestRuntime } from "../runtime.js";
-import { type Covering, coverageDir, coverageEnv } from "./coverage.js";
+import { CoverageLinks, type Covering, coverageDir, coverageEnv } from "./coverage.js";
 import { parseEvents } from "./events.js";
 import { type ObservedClosure, observedClosure } from "./observed.js";
 import { NodeTestReads } from "./reads.js";
@@ -110,8 +110,10 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
       ...options.project.argv,
     ]),
   );
-  // Row 018-38: a run started after its daemon died never makes a removed store again.
-  if (!makeLogDir(options.logDir)) return { report: logGoneReport(options.logDir), observed: [] };
+  // Row 018-38: a run started after its daemon died never makes a removed store again; the
+  // folder's mark tells it from one made again while the run ran (review 0.1.449 B1).
+  const ours = markLogDir(options.logDir);
+  if (ours === null) return { report: logGoneReport(options.logDir), observed: [] };
   const reads = options.observeIgnored ? NodeTestReads.start(options.root, options.logDir) : null;
 
   const runs: FileRun[] = options.files.map((testFile, index) => {
@@ -175,10 +177,12 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
   else options.signal?.addEventListener("abort", onAbort, { once: true });
 
   const queue = [...runs];
+  const links = new CoverageLinks();
+  // Row 018-38: no file starts once the log folder is no longer the run's.
   const worker = async () => {
     for (
       let run = queue.shift();
-      run !== undefined && !expired && !cancelled;
+      run !== undefined && !expired && !cancelled && ours();
       run = queue.shift()
     ) {
       const group = startGroup({
@@ -188,7 +192,9 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
         cwd,
         env: {
           ...(reads === null ? env : reads.env(env, run.absolute)),
-          ...(run.coverage === null ? {} : coverageEnv(run.coverage, run.covering)),
+          ...(run.coverage === null
+            ? {}
+            : coverageEnv(run.coverage, links.at(run.index), run.covering)),
           SQUEAL_NODE_TEST_GRAPH: join(options.logDir, `graph-${run.index}`),
         },
         stdout: join(options.logDir, `stdout-${run.index}.log`),
@@ -207,11 +213,15 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
     }
   };
   const width = Math.max(1, Math.min(options.concurrency ?? runs.length, runs.length));
-  await Promise.all(Array.from({ length: width }, worker));
+  try {
+    await Promise.all(Array.from({ length: width }, worker));
+  } finally {
+    links.remove();
+  }
   for (const timer of timers) clearTimeout(timer);
   options.signal?.removeEventListener("abort", onAbort);
-  // Row 018-38: the files' graphs went with a log folder removed while they ran.
-  if (!existsSync(options.logDir)) return { report: logGoneReport(options.logDir), observed: [] };
+  // Row 018-38: the files' graphs went with a log folder removed, or made again, while they ran.
+  if (!ours()) return { report: logGoneReport(options.logDir), observed: [] };
 
   const completed = runs.filter((r) => r.stream?.completed === true && !r.signalled);
   const { end, failure } = cancelled
