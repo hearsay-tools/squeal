@@ -1,6 +1,7 @@
 import type {
   CoverageOff,
   NoRecord,
+  PartCollector,
   PartCoverage,
   PartFile,
   PartRecords,
@@ -23,9 +24,18 @@ import type { RelativePath } from "../../core/types/common.js";
  * source entry once, as most test files of a run load the same sources.
  */
 
-/** Whether the provider was in the run, as `coverage.cjs` wrote it. */
+/**
+ * Whether Squeal made records of the run, as `coverage.cjs` wrote it, and
+ * from whose payloads (D19.4); `collector` absent: a hook of an older
+ * Squeal, Squeal's provider.
+ */
 export type RawCoverage =
-  | { readonly on: true; readonly note?: string }
+  | {
+      readonly on: true;
+      readonly collector?: PartCollector;
+      readonly collectorVersion?: string;
+      readonly note?: string;
+    }
   | { readonly off: CoverageOff; readonly note: string };
 
 /** A `SharedRecord` as `coverage.cjs` writes it: each part's bytes in base64, no tail. */
@@ -45,8 +55,11 @@ export function partCoverage(
 ): PartCoverage | undefined {
   if (raw === undefined) return undefined;
   if ("off" in raw) return { off: raw.off, note: paths.relativizeText(String(raw.note)) };
+  const { collectorVersion } = raw;
   return {
     provider: "squeal",
+    collector: raw.collector ?? "squeal",
+    ...(collectorVersion === undefined ? {} : { collectorVersion: String(collectorVersion) }),
     providerVersion: COVERAGE_PROVIDER_VERSION,
     recordVersion: COVERAGE_RECORD_VERSION,
     ...(raw.note === undefined ? {} : { note: paths.relativizeText(String(raw.note)) }),
