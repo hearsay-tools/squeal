@@ -54,6 +54,39 @@ describe("the code store's prune after the main store's", () => {
     expect(code.counts.get("unused", "typescript", 1)).toBeNull();
   });
 
+  it("asks the main store only about the keys the coverage records hold (row 011-315)", () => {
+    const commonDir = fakeCommonDir();
+    const main = openMain(commonDir);
+    main.results.putMany([
+      result(testCheck("kept"), "k-kept", { recordedAt: NOW }),
+      result(testCheck("other"), "k-other", { recordedAt: NOW }),
+    ]);
+    const code = open(commonDir);
+    code.coverage.put(at("k-kept"), RECORD, NOW - 30 * DAY_MS);
+    code.coverage.put(at("k-old"), RECORD, NOW);
+    const asked: string[][] = [];
+    const results = {
+      ...main.results,
+      keysSince: () => {
+        throw new Error("the prune read every key of the main store");
+      },
+      keysWithResults: (keys: readonly string[]) => {
+        asked.push([...keys].sort());
+        // Another daemon stores a record while the prune runs: it was not asked about.
+        code.coverage.put(at("k-new"), RECORD, NOW);
+        return main.results.keysWithResults(keys);
+      },
+    };
+
+    const report = pruneCodeStoreAfter({ ...main, results }, commonDir, ON, NOW);
+
+    expect(asked).toEqual([["k-kept", "k-old"]]);
+    expect(report).toMatchObject({ coverageRemoved: 1 });
+    expect(code.coverage.get(at("k-kept"))).toEqual(RECORD);
+    expect(code.coverage.get(at("k-old"))).toBeNull();
+    expect(code.coverage.get(at("k-new"))).toEqual(RECORD);
+  });
+
   it("opens and creates nothing while complexity is off or no code store exists", () => {
     const commonDir = fakeCommonDir();
     const main = openMain(commonDir);

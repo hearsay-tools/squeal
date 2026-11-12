@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type { CheckError } from "../../types/check.js";
+import type { CheckKey } from "../../types/keys.js";
 import type { ResultRepo } from "../../types/store.js";
 import {
   CHECK_COLUMNS,
@@ -28,6 +29,18 @@ const SELECT_RESULTS = `
 export const KEYS_SINCE = `
   SELECT key, MAX(recorded_at) AS recorded_at FROM results INDEXED BY results_by_time
   WHERE recorded_at > ? GROUP BY key`;
+
+/**
+ * `ResultRepo.keysWithResults` (row 011-315): one search of `results_by_key`
+ * per key, `KEYS_WITH_RESULTS_CHUNK` keys a statement. On a copy of cezar's
+ * store (3.9 M results, 255,000 keys) its 102,764 coverage keys took 0.4 s
+ * from the page cache, against 3.5 s for `KEYS_SINCE` from 0
+ * (`tasks/011-315/notes.md`).
+ */
+export const KEYS_WITH_RESULTS = `
+  SELECT value AS key FROM json_each(?)
+  WHERE EXISTS (SELECT 1 FROM results WHERE key = value)`;
+const KEYS_WITH_RESULTS_CHUNK = 1_000;
 
 /**
  * `ResultRepo.newestForTestFile` (row 011-154): the file's newest row names
@@ -111,6 +124,15 @@ export function createResultRepo(conn: Connection): ResultRepo {
       conn
         .all(KEYS_SINCE, since)
         .map((row) => ({ key: str(row, "key"), recordedAt: num(row, "recorded_at") })),
+    keysWithResults: (keys) => {
+      const unique = [...new Set(keys)];
+      const found: CheckKey[] = [];
+      for (let i = 0; i < unique.length; i += KEYS_WITH_RESULTS_CHUNK) {
+        const chunk = JSON.stringify(unique.slice(i, i + KEYS_WITH_RESULTS_CHUNK));
+        for (const row of conn.all(KEYS_WITH_RESULTS, chunk)) found.push(str(row, "key"));
+      }
+      return found;
+    },
     putMany: (records) =>
       conn.transaction(() => {
         for (const r of records) {
