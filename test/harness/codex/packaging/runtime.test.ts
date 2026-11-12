@@ -103,7 +103,8 @@ describe("Codex runtime build (spec 002 D1, D5, D8)", () => {
     // and dist/coverage/ the coverage provider Vitest loads by path (015-11).
     // dist/ci/ holds `squeal ci record`'s hook in the project's Vitest CLI process (018-16),
     // the input evidence it takes in every process of the command (018-17, 018-23),
-    // Squeal's coverage provider in that run (020-08a) and the clock of its own time (018-29).
+    // Squeal's coverage provider in that run (020-08a) or its reading of the project's V8
+    // provider (020-26ab), and the clock of its own time (018-29).
     const verbatim = (f: string) =>
       ["node-test/", "observe/", "coverage/", "ci/"].some((d) => f.startsWith(d));
     const runtime = files.filter(verbatim).sort();
@@ -111,6 +112,8 @@ describe("Codex runtime build (spec 002 D1, D5, D8)", () => {
       "ci/children.cjs",
       "ci/clock.cjs",
       "ci/coverage-drops.cjs",
+      "ci/coverage-stamps.cjs",
+      "ci/coverage-v8.cjs",
       "ci/coverage.cjs",
       "ci/descriptors.cjs",
       "ci/evidence-hooks.cjs",
