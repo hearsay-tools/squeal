@@ -1,3 +1,4 @@
+import { setTimeout as sleep } from "node:timers/promises";
 import { compare } from "../../fs/compare.js";
 import { checkId } from "../../scheduler/files.js";
 import { healsUnheld } from "../../scheduler/hold.js";
@@ -5,9 +6,10 @@ import type { WorktreeKeys } from "../../scheduler/keying.js";
 import { recordsForFile } from "../../scheduler/records.js";
 import { storeResults } from "../../scheduler/store-results.js";
 import { describeFailure } from "../../state/fingerprint.js";
+import { BUSY_SLICE_MS, busyBackoffMs } from "../../store/busy.js";
+import { isBusy, withBusySliceSync } from "../../store/connection.js";
 import { describeHolders, lockHolders } from "../../store/lock-holders.js";
 import { storePaths } from "../../store/paths.js";
-import { slicedWrite } from "../../store/sliced-write.js";
 import type { AbsolutePath, EpochMs } from "../../types/common.js";
 import type { RunReport } from "../../types/runner.js";
 import type { Store } from "../../types/store.js";
@@ -22,10 +24,13 @@ import type { Expected } from "./keep-expected.js";
 /*
  * Spec 020 D17.5 (row 020-28, #192): how the keeper writes its files once
  * the report is out. Each write is one short transaction, tried again in
- * busy slices (`slicedWrite`), never held across an await. One bound
- * counts from the first write a busy store refused; stderr names the files
- * that wait and the process that holds the write lock (spec 021 D5) before
- * the wait, and what was not kept when the bound runs out.
+ * busy slices as `slicedWrite` tries it, never held across an await. One
+ * bound counts from the first write a busy store refused; stderr names the
+ * files that wait and the process that holds the write lock (spec 021 D5)
+ * before the wait, and what was not kept when the bound runs out. After
+ * every busy pause, and before each write once the store was busy, the
+ * file's inputs are read again; a file whose bytes moved is not kept
+ * (review 0.1.444 B2).
  */
 
 /** D17.5: how long the keeper waits for a busy store, from the first write it refused. */
@@ -35,6 +40,9 @@ export const KEEP_BUSY_BOUND_MS = 30_000;
 export interface Kept extends Expected {
   readonly record: CoverageRecord;
 }
+
+/** What became of one file: written, not written once the bound was spent, or not written because its inputs moved. */
+export type KeepOutcome = "kept" | "spent" | "changed";
 
 /** How many file names a note lists before it counts the rest. */
 const NAMED = 5;
@@ -50,6 +58,11 @@ export class StoreWait {
 
   constructor(options: StoreWaitOptions) {
     this.#options = options;
+  }
+
+  /** Whether a busy store refused a write: from then on, each file's inputs are read again before its writes. */
+  get waited(): boolean {
+    return this.#since !== null;
   }
 
   /**
@@ -68,18 +81,36 @@ export class StoreWait {
     return now() - this.#since >= boundMs;
   }
 
-  /** The note once every file is written: after a wait only, how long it took. */
-  done(written: number): void {
+  /**
+   * The note once every file was written or left out, after a wait only:
+   * how long it took when a write landed after it (`freed`), how many
+   * files were kept, and how many were not because their inputs moved
+   * during it, which the next run runs again.
+   */
+  done(counts: {
+    readonly written: number;
+    readonly changed: number;
+    readonly freed: boolean;
+  }): void {
     const { now, tell } = this.#options;
-    if (this.#since === null || written === 0) return;
-    tell(`the store was free after ${seconds(now() - this.#since)} s: ${completed(written)} kept`);
+    const { written, changed, freed } = counts;
+    if (this.#since === null) return;
+    const moved = changed === 0 ? null : `${changed} changed during the wait, so ${again(changed)}`;
+    if (freed) {
+      const free = `the store was free after ${seconds(now() - this.#since)} s: ${completed(written)} kept`;
+      tell(moved === null ? free : `${free}; ${moved}`);
+    } else if (changed > 0) {
+      tell(
+        `${notKept(changed)}: ${changed === 1 ? "it" : "they"} changed during the wait; ${again(changed)}`,
+      );
+    }
   }
 
-  /** The note when the bound ran out with `left` files not written. */
-  spent(left: number): string {
+  /** The note when the bound ran out with `left` files not written, `changed` of them because their inputs moved. */
+  spent(left: number, changed: number): string {
     const busy = this.#database === null ? "" : ` (${holderOf(this.#database)})`;
-    const again = `the next run will run ${left === 1 ? "it" : "them"} again`;
-    return `${notKept(left)}: the store stayed busy for ${seconds(this.#options.boundMs)} s${busy}; ${again}`;
+    const moved = changed === 0 ? "" : `, and ${changed} of them changed during the wait`;
+    return `${notKept(left)}: the store stayed busy for ${seconds(this.#options.boundMs)} s${busy}${moved}; ${again(left)}`;
   }
 }
 
@@ -99,8 +130,10 @@ export function databasesOf(commonDir: AbsolutePath): {
 
 /**
  * One file's record at its key, then its results there, as the daemon's
- * tier record stores them; `false` once `giveUp`, asked with the database
- * after each busy try, says so, before its results were written.
+ * tier record stores them. `giveUp`, asked with the database after each
+ * busy pause, says whether the bound is spent; `steady`, asked then and
+ * before each write, whether the file's inputs still hold the bytes its
+ * run read. Both are asked outside any transaction.
  */
 export async function keepFile(
   stores: { readonly store: Store; readonly code: CodeStore; readonly keys: WorktreeKeys },
@@ -111,22 +144,21 @@ export async function keepFile(
     readonly now: () => EpochMs;
     readonly databases: ReturnType<typeof databasesOf>;
     readonly giveUp: (database: AbsolutePath) => boolean;
+    readonly steady: () => Promise<boolean>;
   },
-): Promise<boolean> {
+): Promise<KeepOutcome> {
   const { store, code, keys } = stores;
-  const { file, report, provenance, now, databases, giveUp } = at;
+  const { file, report, provenance, now, databases, giveUp, steady } = at;
   const recordKey = { resultKey: file.key, providerVersion: COVERAGE_RECORD_VERSION };
   const shared = shareRecord(file.record, COVERAGE_RECORD_VERSION);
-  // One transaction in busy slices; `false` once `giveUp` says so.
-  const written = async (database: AbsolutePath, write: () => unknown) => {
-    const wrote = () => {
-      write();
-      return true;
-    };
-    return (await slicedWrite(wrote, () => giveUp(database))) === true;
+  const paused = (database: AbsolutePath) => async () => {
+    if (giveUp(database)) return "spent";
+    return (await steady()) ? null : "changed";
   };
+  if (!(await steady())) return "changed";
   const put = () => code.coverage.putParts(recordKey, shared, now());
-  if (!(await written(databases.code, put))) return false;
+  const coded = await sliced(put, paused(databases.code));
+  if (coded !== "kept") return coded;
   // D8's file-level error expansion: the checks of the file's newest stored key, from any worktree.
   const previous = new Map(
     store.results.newestForTestFile(file.ref).map((r) => [checkId(r.check), r.check]),
@@ -141,7 +173,32 @@ export async function keepFile(
   });
   const context = { store, keys, worktreeId: provenance.worktreeId, now };
   const results = () => storeResults(context, records, healsUnheld(store, file.paths));
-  return written(databases.main, results);
+  // A record no results follow is never read (`Keeper.#write`), and prune removes it.
+  if (!(await steady())) return "changed";
+  return sliced(results, paused(databases.main));
+}
+
+/**
+ * `write`, one synchronous transaction, tried as `slicedWrite` tries it:
+ * each try waits at most `BUSY_SLICE_MS` for a busy store, the next
+ * follows `busyBackoffMs` later. After each pause `paused`, which may read
+ * files, says whether to stop; it runs outside the transaction.
+ */
+async function sliced(
+  write: () => unknown,
+  paused: () => Promise<Exclude<KeepOutcome, "kept"> | null>,
+): Promise<KeepOutcome> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      withBusySliceSync(BUSY_SLICE_MS, write);
+      return "kept";
+    } catch (error) {
+      if (!isBusy(error)) throw error;
+    }
+    await sleep(busyBackoffMs(attempt));
+    const stop = await paused();
+    if (stop !== null) return stop;
+  }
 }
 
 /** The start of a note on `count` completed test files that were not kept. */
@@ -151,6 +208,10 @@ export function notKept(count: number): string {
 
 function completed(count: number): string {
   return `${count} completed test ${count === 1 ? "file" : "files"}`;
+}
+
+function again(count: number): string {
+  return `the next run will run ${count === 1 ? "it" : "them"} again`;
 }
 
 /**
