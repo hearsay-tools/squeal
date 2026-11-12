@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { setTimeout as sleep } from "node:timers/promises";
 import { afterEach, describe, expect, it } from "vitest";
 import { Keeper } from "../../../src/core/code/gate/keep.js";
 import type { Hasher } from "../../../src/core/hash/hasher.js";
@@ -22,6 +23,9 @@ import type { RunReport } from "../../../src/core/types/runner.js";
  * is told as not kept. Review 0.1.444 B2: from the first busy write on,
  * each file's inputs are read again after every pause and before each of
  * its writes, and a file whose bytes moved is not kept and counted apart.
+ * Row 020-30: the holder is this process, and each case waits until
+ * `lockHolders` sees its lock before the gate starts; the case that frees
+ * the lock frees it only after the gate named the holder.
  */
 
 const A: TestFileRef = { project: "", path: "test/a.test.ts" };
@@ -71,8 +75,33 @@ afterEach(() => {
   for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
 
+/**
+ * How long a case waits for `lockHolders` to see its lock: one read of
+ * `/proc/locks` can miss it while other processes' locks come and go.
+ */
+const VISIBLE_MS = 5_000;
+
+/**
+ * Who holds `database`'s write lock, as `describeHolders` names it, once
+ * `lockHolders` sees this process hold it; where it names no holder at all
+ * (no `/proc`), what it says then.
+ */
+async function visibleHolder(database: string): Promise<string> {
+  const until = Date.now() + VISIBLE_MS;
+  for (;;) {
+    const holders = lockHolders(database);
+    if (holders === undefined || holders.some((h) => h.pid === process.pid && !h.waiting)) {
+      return describeHolders(holders);
+    }
+    if (Date.now() >= until) {
+      throw new Error(`lockHolders did not see this process hold ${database}`);
+    }
+    await sleep(10);
+  }
+}
+
 /** A worktree root, a common directory with a store, and a connection holding its write lock. */
-function lockedStore() {
+async function lockedStore() {
   const root = mkdtempSync(join(tmpdir(), "squeal-keep-"));
   dirs.push(root);
   const commonDir = join(root, ".git");
@@ -87,12 +116,7 @@ function lockedStore() {
     holder.exec("ROLLBACK");
     holder.close();
   };
-  return {
-    root,
-    commonDir,
-    release,
-    holder: describeHolders(lockHolders(storePaths(commonDir).database)),
-  };
+  return { root, commonDir, release, holder: await visibleHolder(storePaths(commonDir).database) };
 }
 
 /** `files` run and flushed; `onBusy` runs at the busy note. */
@@ -147,11 +171,18 @@ const BOTH = [
 
 describe("Keeper on a store another connection holds (spec 020 D17.3, D17.5)", () => {
   it("keeps the file once the lock is freed within the bound, and names the holder first", async () => {
-    const locked = lockedStore();
+    const locked = await lockedStore();
     const notes: string[] = [];
-    const freed = setTimeout(locked.release, 400);
+    // Row 020-30: freed after the busy note, which named the holder; a timer
+    // started before the gate could free it before the gate read who held it.
+    let freed: NodeJS.Timeout | undefined;
     try {
-      await kept(locked, notes, { busyBoundMs: 5_000 });
+      await kept(locked, notes, {
+        busyBoundMs: 5_000,
+        onBusy: () => {
+          freed = setTimeout(locked.release, 400);
+        },
+      });
     } finally {
       clearTimeout(freed);
       locked.release();
@@ -165,7 +196,7 @@ describe("Keeper on a store another connection holds (spec 020 D17.3, D17.5)", (
   });
 
   it("keeps nothing while the lock outlasts the bound, and says who held it and what runs again", async () => {
-    const locked = lockedStore();
+    const locked = await lockedStore();
     const notes: string[] = [];
     try {
       await kept(locked, notes, { busyBoundMs: 600 });
@@ -180,7 +211,7 @@ describe("Keeper on a store another connection holds (spec 020 D17.3, D17.5)", (
   });
 
   it("does not keep a file whose input moved during the wait, and counts it apart (review 0.1.444 B2)", async () => {
-    const locked = lockedStore();
+    const locked = await lockedStore();
     const notes: string[] = [];
     try {
       await kept(locked, notes, {
@@ -204,7 +235,7 @@ describe("Keeper on a store another connection holds (spec 020 D17.3, D17.5)", (
   });
 
   it("counts a moved file with the files to run again once the bound runs out", async () => {
-    const locked = lockedStore();
+    const locked = await lockedStore();
     const notes: string[] = [];
     try {
       await kept(locked, notes, { busyBoundMs: 600, files: BOTH, onBusy: ({ move }) => move(A) });
@@ -221,7 +252,7 @@ describe("Keeper on a store another connection holds (spec 020 D17.3, D17.5)", (
   });
 
   it("says a moved file was not kept when no write landed after the wait", async () => {
-    const locked = lockedStore();
+    const locked = await lockedStore();
     const notes: string[] = [];
     try {
       await kept(locked, notes, { busyBoundMs: 5_000, onBusy: ({ move }) => move(A) });
