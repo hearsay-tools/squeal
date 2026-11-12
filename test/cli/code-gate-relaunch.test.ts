@@ -97,13 +97,27 @@ describe("squeal code --base --json in a child of the CLI process (spec 020 D14.
     expect(out).toEqual({ stdout: "whole", stderr: "" });
   });
 
-  it("keeps the report and exits 128 plus the signal when the child ends on one after it", async () => {
+  it("keeps the report and exits 3 when the child ends on a signal after it (review 0.1.444 B1)", async () => {
     const { io, out } = capture(node(framing("kept", 'process.kill(process.pid, "SIGTERM")')));
 
-    expect(await codeGateCommand(["--base", "main", "--json"], io)).toBe(128 + 15);
+    expect(await codeGateCommand(["--base", "main", "--json"], io)).toBe(3);
     expect(out).toEqual({
       stdout: "kept",
-      stderr: "squeal code: the gate's process ended on SIGTERM after its report\n",
+      stderr:
+        "squeal code: the gate's process ended on SIGTERM after its report, so the exit code is 3\n",
+    });
+  });
+
+  it("writes nothing to stdout and exits 3 when the child ends on a signal inside its report", async () => {
+    const { io, out } = capture(
+      node('require("fs").writeSync(3, "50\\n{"); process.kill(process.pid, "SIGTERM")'),
+    );
+
+    expect(await codeGateCommand(["--base", "main", "--json"], io)).toBe(3);
+    expect(out).toEqual({
+      stdout: "",
+      stderr:
+        "squeal code: the gate's process ended on SIGTERM without a whole report, so stdout stays empty\n",
     });
   });
 
