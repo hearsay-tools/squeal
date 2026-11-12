@@ -1,10 +1,11 @@
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { DatabaseSync } from "node:sqlite";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { keptLogsLine, runLogKeeper } from "../../src/cli/code-gate-log.js";
 import type { RunLog } from "../../src/core/code/gate/evidence.js";
-import type { GateRunReport } from "../../src/core/code/gate/report.js";
+import type { GateReport, GateRunReport } from "../../src/core/code/gate/report.js";
 import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
 import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
 import { connectionOf } from "../../src/core/store/store.js";
@@ -26,8 +27,22 @@ const NEXT_PRUNE =
   "kept until the next prune, within about 1 h while a daemon of this repository runs (none serves this worktree)";
 const NOW = 1_800_000_000_000;
 
+/** Review 0.1.462 B2: runs once just before the keeper's next copy, as a daemon's prune could. */
+const copying = vi.hoisted(() => ({ before: null as (() => void) | null }));
+vi.mock("node:fs", async (importOriginal) => {
+  const fs = await importOriginal<typeof import("node:fs")>();
+  const cpSync: typeof fs.cpSync = (...args) => {
+    const before = copying.before;
+    copying.before = null;
+    before?.();
+    fs.cpSync(...args);
+  };
+  return { ...fs, cpSync };
+});
+
 const cleanups: (() => void)[] = [];
 afterEach(() => {
+  copying.before = null;
   for (const cleanup of cleanups.splice(0)) cleanup();
 });
 
@@ -160,6 +175,46 @@ describe("runLogKeeper: the log of a failed run (#197)", () => {
     // The row comes first: no folder is left that no row names, which no prune would remove.
     expect(keptLogs(root)).toEqual([]);
   });
+
+  it("removes the copy, and says why, when a prune removed its row before the copy", async () => {
+    // Review 0.1.462 B2: no daemon registered the worktree, so any daemon's prune may drop the row at once.
+    const { root, run } = setUp();
+    const opened = store(root);
+    let runsRemoved = 0;
+    copying.before = () => {
+      runsRemoved = opened.prune({ now: NOW, retentionDays: 7, maxSizeMb: null }).runsRemoved;
+    };
+    const notes: string[] = [];
+
+    const keeper = runLogKeeper(root, { note: (t) => notes.push(t), now: () => NOW });
+    const path = await keeper.keep(run);
+
+    expect(runsRemoved).toBe(1);
+    expect(path).toBeNull();
+    expect(keeper.retention()).toBeNull();
+    expect(notes).toEqual([
+      "Vitest run: its log was not kept: the store's prune removed its run before the copy ended",
+    ]);
+    // No folder is left that no row names, which no prune would remove.
+    expect(keptLogs(root)).toEqual([]);
+  });
+
+  it("removes the copy, and says why, when its row cannot be read after the copy", async () => {
+    const { root, run } = setUp();
+    const opened = store(root);
+    copying.before = () => connectionOf(opened).db.exec("ALTER TABLE runs RENAME TO runs_moved");
+    const notes: string[] = [];
+
+    const path = await runLogKeeper(root, { note: (t) => notes.push(t) }).keep(run);
+
+    expect(path).toBeNull();
+    expect(notes).toEqual([
+      expect.stringMatching(
+        /^Vitest run: its log was not kept: its run was not read after the copy: /,
+      ),
+    ]);
+    expect(keptLogs(root)).toEqual([]);
+  });
 });
 
 describe("keptLogsLine: the stderr line after the verdict (#197)", () => {
@@ -217,6 +272,41 @@ describe("squeal code --base: the plain report and the kept log (#197)", () => {
       expect(writes.at(-1)).toBe(
         `stderr squeal code: log of the failed or unfinished test files, ${NEXT_PRUNE}: Vitest ${log}\n`,
       );
+    },
+  );
+
+  it(
+    "keeps no log, says why once, and the JSON report, verdict and exit stay, while another opener creates the store",
+    SLOW,
+    async () => {
+      // Review 0.1.462 B1: another worktree's daemon holds the new store's first write lock.
+      ownHomeAndTmp();
+      const root = repo();
+      edit(root, {
+        "src/math.ts": "export function double(x: number): number {\n  return x;\n}\n",
+      });
+      mkdirSync(join(root, ".git", "squeal"), { recursive: true });
+      const creator = new DatabaseSync(join(root, ".git", "squeal", "store.sqlite"));
+      creator.exec(
+        "PRAGMA journal_mode = WAL; BEGIN IMMEDIATE; CREATE TABLE starting (value TEXT)",
+      );
+      cleanups.unshift(() => creator.close());
+
+      const ran = await code(root, ["--base", "main", "--json"]);
+
+      expect(ran.code).toBe(3);
+      const report = JSON.parse(ran.stdout) as GateReport;
+      expect(report.verdict).toBe("incomplete");
+      expect(report.runs.map((r) => [r.failed.map((f) => f.path), r.log])).toEqual([
+        [["test/math.test.ts"], undefined],
+      ]);
+      const notKept = ran.stderr.split("\n").filter((line) => line.includes("log was not kept"));
+      expect(notKept).toEqual([
+        expect.stringMatching(
+          /^squeal code: Vitest run: its log was not kept: the store did not open: /,
+        ),
+      ]);
+      expect(keptLogs(root)).toEqual([]);
     },
   );
 });
