@@ -1,6 +1,6 @@
 #!/bin/sh
 # Issue #194 probe (synthetic, throwaway). Temporary git repositories from ./fixture under one mktemp -d,
-# with HOME and TMPDIR inside it. The head edits publish() in scripts/release.mjs and a callback in
+# with TMPDIR inside it. The head edits publish() in scripts/release.mjs and a callback in
 # test/e2e/release.test.mjs. Usage:  sh run.sh <squeal.mjs> [<older squeal.mjs>]
 # Refuses when the one-minute load is above the CPU count.
 set -u
@@ -10,7 +10,7 @@ LOAD=$(cut -d' ' -f1 /proc/loadavg); CPUS=$(getconf _NPROCESSORS_ONLN)
 if [ "$(echo "$LOAD > $CPUS" | bc)" = 1 ]; then echo "load $LOAD > $CPUS CPUs: skipped"; exit 0; fi
 echo "load at start: $LOAD on $CPUS CPUs; node $(node --version); cli $CLI"
 W=$(mktemp -d /tmp/r194-XXXXXX)
-export HOME="$W/home" TMPDIR="$W/tmp"; mkdir -p "$HOME" "$TMPDIR"
+export TMPDIR="$W/tmp"; mkdir -p "$TMPDIR"
 export GIT_AUTHOR_NAME=p GIT_AUTHOR_EMAIL=p@p GIT_COMMITTER_NAME=p GIT_COMMITTER_EMAIL=p@p
 mkrepo() { # dir, squeal.config.json body, variant (child|inproc)
   cp -r "$HERE/fixture" "$1"; printf '%s\n' "$2" >"$1/squeal.config.json"
