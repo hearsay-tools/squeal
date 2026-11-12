@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { toAbsolute } from "../../../core/fs/paths.js";
 import { WorktreePaths } from "../../../core/fs/worktree-paths.js";
@@ -7,7 +7,7 @@ import type { AbsolutePath } from "../../../core/types/common.js";
 import type { TestFileRef } from "../../../core/types/keys.js";
 import type { NodeTestProject } from "../../../core/types/policy.js";
 import type { ObservedInputs, RunEnd, RunReport } from "../../../core/types/runner.js";
-import { gone, makeLogDir, storeGoneReport, writeLog } from "../../log-dir.js";
+import { logGoneReport, makeLogDir } from "../../log-dir.js";
 import { withRecorderSignatures } from "../../observe/signature.js";
 import { type ProcessExit, startGroup } from "../../process/group.js";
 import {
@@ -111,7 +111,7 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
     ]),
   );
   // Row 018-38: a run started after its daemon died never makes a removed store again.
-  if (!makeLogDir(options.logDir)) return { report: storeGoneReport(options.logDir), observed: [] };
+  if (!makeLogDir(options.logDir)) return { report: logGoneReport(options.logDir), observed: [] };
   const reads = options.observeIgnored ? NodeTestReads.start(options.root, options.logDir) : null;
 
   const runs: FileRun[] = options.files.map((testFile, index) => {
@@ -210,6 +210,8 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
   await Promise.all(Array.from({ length: width }, worker));
   for (const timer of timers) clearTimeout(timer);
   options.signal?.removeEventListener("abort", onAbort);
+  // Row 018-38: the files' graphs went with a log folder removed while they ran.
+  if (!existsSync(options.logDir)) return { report: logGoneReport(options.logDir), observed: [] };
 
   const completed = runs.filter((r) => r.stream?.completed === true && !r.signalled);
   const { end, failure } = cancelled
@@ -308,20 +310,12 @@ function readEvents(logDir: AbsolutePath, index: number) {
   }
 }
 
-/**
- * The recorder's files of one file's run: `graph-<index>-<pid>.ndjson`, one
- * per process; none once the log folder was removed (row 018-38).
- */
+/** The recorder's files of one file's run: `graph-<index>-<pid>.ndjson`, one per process. */
 function graphs(logDir: AbsolutePath, index: number): string[] {
   const prefix = `graph-${index}-`;
-  try {
-    return readdirSync(logDir)
-      .filter((name) => name.startsWith(prefix) && name.endsWith(".ndjson"))
-      .map((name) => readFileSync(join(logDir, name), "utf8"));
-  } catch (error) {
-    if (gone(error)) return [];
-    throw error;
-  }
+  return readdirSync(logDir)
+    .filter((name) => name.startsWith(prefix) && name.endsWith(".ndjson"))
+    .map((name) => readFileSync(join(logDir, name), "utf8"));
 }
 
 /** `run.json`: each file's command line and exit, which nothing else trusts, and the report. */
@@ -337,5 +331,5 @@ function writeRunLog(
     signalled: r.signalled,
   }));
   const text = JSON.stringify({ cwd: log.cwd, files, report: log.report }, null, 2);
-  writeLog(join(logDir, "run.json"), `${text}\n`);
+  writeFileSync(join(logDir, "run.json"), `${text}\n`);
 }

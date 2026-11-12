@@ -10,7 +10,7 @@ import type { TestFileRef } from "../../../core/types/keys.js";
 import type { PytestProject } from "../../../core/types/policy.js";
 import type { FocusedFile, RunReport } from "../../../core/types/runner.js";
 import { focusedTexts } from "../../focus.js";
-import { makeLogDir, storeGoneReport } from "../../log-dir.js";
+import { logGoneReport, makeLogDir } from "../../log-dir.js";
 import { startGroup } from "../../process/group.js";
 import type { PytestEnvironment } from "../environment/index.js";
 import { runBasetemp } from "./basetemp.js";
@@ -96,10 +96,7 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
 
   const cacheDir = options.cacheDir ?? defaultCacheDir(options.root, project);
   // Row 018-38: a run started after its daemon died never makes a removed store again.
-  if (!makeLogDir(options.logDir)) {
-    const report = storeGoneReport(options.logDir);
-    return { report, observed: [], session: [], skippedFiles: [], notes: [] };
-  }
+  if (!makeLogDir(options.logDir)) return logGone(options.logDir);
   mkdirSync(cacheDir, { recursive: true });
   const runtimeDir = options.runtimeDir ?? pytestRuntimeDir();
   const env: NodeJS.ProcessEnv = {
@@ -278,6 +275,8 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
   };
   const observed = trusted.map((b) => observeBatch(b.edges, b.files, paths));
   const completed = new Set(report.completedFiles);
+  // Row 018-38: a log folder removed while the batches ran took their records with it.
+  if (!existsSync(options.logDir)) return logGone(options.logDir);
   writeRunLog(options.logDir, { python, cwd, batches, report, notes });
   return {
     report,
@@ -344,6 +343,11 @@ function ownEmptyConfig(cacheDir: AbsolutePath): AbsolutePath {
   const path = join(dir, "pytest.ini") as AbsolutePath;
   writeFileSync(path, "[pytest]\n");
   return path;
+}
+
+/** A run whose log folder is gone (`logGoneReport`): no batch's record, no note. */
+function logGone(logDir: AbsolutePath): PytestRun {
+  return { report: logGoneReport(logDir), observed: [], session: [], skippedFiles: [], notes: [] };
 }
 
 function refusal(note: string, started: number): PytestRun {
