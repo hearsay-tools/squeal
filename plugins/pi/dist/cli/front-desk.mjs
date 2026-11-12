@@ -175,14 +175,18 @@ function isWriteRequest(request) {
 }
 function parseWriteRequest(request) {
   switch (request.type) {
-    case "lease":
+    case "lease": {
       if (!isText(request.worktreeId)) return '"worktreeId" must be a non-empty string';
       if (typeof request.holder !== "string") return '"holder" must be a string';
+      const process2 = parseProcess(request.process);
+      if (typeof process2 === "string") return process2;
       return {
         type: "lease",
         worktreeId: request.worktreeId,
-        holder: request.holder
+        holder: request.holder,
+        ...process2 === null ? {} : { process: process2 }
       };
+    }
     case "release":
       if (!isText(request.worktreeId)) return '"worktreeId" must be a non-empty string';
       if (!isText(request.token)) return '"token" must be a non-empty string';
@@ -216,6 +220,18 @@ function parseWrite(request) {
     release,
     batch
   };
+}
+function parseProcess(value) {
+  if (value === void 0) return null;
+  const { pid, startTime, pidNamespace: pidNamespace2 } = value ?? {};
+  if (!Number.isInteger(pid) || pid <= 0) return '"process.pid" must be a pid';
+  if (startTime !== null && !Number.isInteger(startTime)) {
+    return '"process.startTime" must be an integer or null';
+  }
+  if (pidNamespace2 !== null && typeof pidNamespace2 !== "string") {
+    return '"process.pidNamespace" must be a string or null';
+  }
+  return { pid, startTime, pidNamespace: pidNamespace2 };
 }
 function isText(value) {
   return typeof value === "string" && value.length > 0;
@@ -451,6 +467,64 @@ function versionParts(version) {
 
 // src/core/daemon/write-desk.ts
 import { randomUUID as randomUUID2 } from "node:crypto";
+
+// src/core/delivery/harness-process.ts
+import { readFileSync, readlinkSync } from "node:fs";
+function readProcStat(pid) {
+  let text;
+  try {
+    text = readFileSync(`/proc/${pid}/stat`, "utf8");
+  } catch (error) {
+    if (error.code === "ENOENT") return null;
+    throw error;
+  }
+  const open = text.indexOf("(");
+  const close = text.lastIndexOf(")");
+  const rest = text.slice(close + 2).split(" ");
+  const ppid = Number(rest[1]);
+  const startTime = Number(rest[19]);
+  if (open < 0 || close < open || !Number.isInteger(ppid) || !Number.isInteger(startTime)) {
+    throw new Error(`unreadable /proc/${pid}/stat`);
+  }
+  return { comm: text.slice(open + 1, close), state: rest[0] ?? "", ppid, startTime };
+}
+function pidNamespace() {
+  try {
+    return readlinkSync("/proc/self/ns/pid");
+  } catch {
+    return null;
+  }
+}
+function harnessAlive(harness, namespace, statOf) {
+  if (namespace === null || harness.pidNamespace !== namespace) return null;
+  const stat = statOf(harness.pid);
+  return stat !== null && stat.startTime === harness.startTime && stat.state !== "Z";
+}
+
+// src/core/daemon/lease-process.ts
+function leaseProcessAlive(holder) {
+  const { pid, startTime, pidNamespace: namespace } = holder;
+  if (startTime !== null && namespace !== null) {
+    try {
+      return harnessAlive(
+        { pid, startTime, pidNamespace: namespace },
+        pidNamespace(),
+        readProcStat
+      );
+    } catch {
+      return null;
+    }
+  }
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    const code = error.code;
+    return code === "ESRCH" ? false : code === "EPERM" ? true : null;
+  }
+}
+
+// src/core/daemon/write-desk.ts
 var LEASE_TTL_MS = 5e3;
 var STOPPING = "daemon is stopping";
 var REMEMBERED = 64;
@@ -462,11 +536,18 @@ var WriteDesk = class {
   constructor(context) {
     this.#context = context;
   }
-  /** The answer to `request`. A stopping daemon takes no new lease or write: its client writes itself. */
+  /**
+   * The answer to `request`. A stopping daemon takes no new lease or write:
+   * its client writes itself, except while another client holds the lease,
+   * whose report must stay its own (review 0.1.442 B3).
+   */
   answer(request, phase2) {
     switch (request.type) {
-      case "lease":
-        return phase2 === "stopping" ? errorResponse(STOPPING) : this.lease(request);
+      case "lease": {
+        if (phase2 !== "stopping") return this.lease(request);
+        const current = this.#current();
+        return current === null ? errorResponse(STOPPING) : this.#leaseAnswer(null, current.holder);
+      }
       case "write":
         return phase2 === "stopping" ? errorResponse(STOPPING) : this.write(request);
       case "release":
@@ -484,6 +565,7 @@ var WriteDesk = class {
     this.#lease = {
       token,
       holder: request.holder,
+      process: request.process,
       until: this.#now() + LEASE_TTL_MS,
       pending: 0,
       releasing: false
@@ -541,11 +623,20 @@ var WriteDesk = class {
     if (state === void 0) return errorResponse(`unknown request id ${request.requestId}`);
     return writeAnswer(request.requestId, state);
   }
-  /** The lease in force; one past its time with no write waiting has ended. */
+  /**
+   * The lease in force. One past its time with no write waiting is kept
+   * while its process lives, for another `LEASE_TTL_MS`, and else has ended.
+   */
   #current() {
     const lease = this.#lease;
-    if (lease !== null && lease.pending === 0 && this.#now() >= lease.until) this.#lease = null;
-    return this.#lease;
+    if (lease === null || lease.pending > 0 || this.#now() < lease.until) return lease;
+    const alive = this.#context.alive ?? leaseProcessAlive;
+    if (lease.process !== void 0 && alive(lease.process) === true) {
+      lease.until = this.#now() + LEASE_TTL_MS;
+      return lease;
+    }
+    this.#lease = null;
+    return null;
   }
   #otherWorktree(worktreeId) {
     if (worktreeId === this.#context.worktreeId) return null;
@@ -567,7 +658,7 @@ var WriteDesk = class {
     };
   }
   #now() {
-    return (this.#context.now ?? Date.now)();
+    return (this.#context.now ?? (() => performance.now()))();
   }
 };
 function writeAnswer(requestId, state) {

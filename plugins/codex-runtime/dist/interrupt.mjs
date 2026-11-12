@@ -11177,6 +11177,18 @@ function createDelivery(store, options) {
 // src/core/delivery/daemon-writer.ts
 import { setTimeout as sleep2 } from "node:timers/promises";
 
+// src/core/daemon/lease-process.ts
+function leaseProcess(pid = process.pid) {
+  const namespace = pidNamespace();
+  let startTime = null;
+  try {
+    startTime = namespace === null ? null : readProcStat(pid)?.startTime ?? null;
+  } catch {
+    startTime = null;
+  }
+  return { pid, startTime, pidNamespace: startTime === null ? null : namespace };
+}
+
 // src/core/daemon/write-batch.ts
 function encodeBatch(statements) {
   const sqls = [];
@@ -11207,6 +11219,7 @@ var DaemonWriter = class {
   #options;
   #socket;
   #token = null;
+  #process;
   /** No daemon takes writes: every later call says so at once. */
   #off = false;
   constructor(options) {
@@ -11227,7 +11240,9 @@ var DaemonWriter = class {
     const deadline = Date.now() + this.#options.boundMs;
     for (let attempt = 0; ; attempt++) {
       const { worktreeId, holder } = this.#options;
-      const answer = await this.#ask(socket, { type: "lease", worktreeId, holder });
+      this.#process ??= leaseProcess();
+      const process2 = this.#process;
+      const answer = await this.#ask(socket, { type: "lease", worktreeId, holder, process: process2 });
       if (!isLease(answer)) return this.#notTaken(false);
       if (answer.token !== null) {
         this.#token = answer.token;
@@ -11252,7 +11267,7 @@ var DaemonWriter = class {
       batch: encodeBatch(batch)
     };
     const answer = await this.#ask(socket, request);
-    if (!isWrite(answer)) return this.#notTaken("not-taken");
+    if (!isWrite(answer)) return this.#notTaken("not-taken", socket, token);
     const deadline = Date.now() + this.#options.boundMs;
     let state = answer;
     for (let attempt = 0; state.written === null; attempt++) {
@@ -11268,7 +11283,7 @@ var DaemonWriter = class {
       state = next;
     }
     if (state.written) return "written";
-    return this.#notTaken("not-taken");
+    return this.#notTaken("not-taken", socket, release2 ? null : token);
   }
   async release() {
     const token = this.#token;
@@ -11301,9 +11316,18 @@ var DaemonWriter = class {
       throw error;
     }
   }
-  #notTaken(answer) {
+  /**
+   * No daemon takes this client's writes from now on. A lease it still
+   * holds there (`token`) is ended first: its process lives on, and would
+   * keep it (review 0.1.442 B3).
+   */
+  async #notTaken(answer, socket, token) {
     this.#off = true;
     this.#token = null;
+    if (socket !== void 0 && token !== void 0 && token !== null) {
+      const { worktreeId } = this.#options;
+      await this.#ask(socket, { type: "release", worktreeId, token }).catch(() => null);
+    }
     return answer;
   }
   #timeout() {
@@ -11417,8 +11441,11 @@ var SendingConnection = class extends HoldingConnection {
   }
   /** Waits until every batch sent so far is written, then ends the lease unless a hold keeps it. */
   async settle() {
-    await this.sent();
-    if (!this.#direct && this.#held === null && this.#sender.leased) await this.#sender.release();
+    try {
+      await this.sent();
+    } finally {
+      if (!this.#direct && this.#held === null && this.#sender.leased) await this.#sender.release();
+    }
   }
   /** Waits until every batch sent so far is written; rethrows the first that failed. */
   async sent() {
@@ -11523,9 +11550,16 @@ var SendingConnection = class extends HoldingConnection {
   heldElsewhere() {
     return this.#direct ? super.heldElsewhere() : null;
   }
-  /** Closes once every batch sent is written, since one the daemon does not take is written here. */
+  /**
+   * Closes once every batch sent is written, since one the daemon does not
+   * take is written here. A hold left open is dropped and its lease ended:
+   * a live process keeps its lease until then (review 0.1.442 B3).
+   */
   close() {
-    this.#held = null;
+    if (this.#held !== null || this.#sender.leased && !this.#direct) {
+      this.#held = null;
+      this.#track(this.#sender.release(), false);
+    }
     if (this.#sending.size === 0) {
       super.close();
       return;
@@ -14356,7 +14390,7 @@ async function ensureDaemonProcess(root, options = {}) {
         cwd,
         detached: true,
         stdio: "ignore",
-        ...pinned ? { env: { ...process.env, PATH: pathFirst(node2.binary, process.env.PATH) } } : {}
+        env: pinned ? { ...process.env, PATH: pathFirst(node2.binary, process.env.PATH) } : process.env
       }
     );
     let ended = child.pid === void 0;
