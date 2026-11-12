@@ -36,7 +36,7 @@ import {
 import { certifier } from "./export-inputs.js";
 import { keyPartsOf } from "./export-parts.js";
 import { partsReport } from "./export-report.js";
-import { type PartFile, snapshotFields } from "./parts.js";
+import { type Part, type PartFile, type PartInspector, snapshotFields } from "./parts.js";
 
 /*
  * Spec 018 D9 (row 018-17): `squeal ci export`'s keys and results. In a
@@ -85,7 +85,8 @@ export interface CiExportCounts {
    * Files left out: their worker ran an import of `node:inspector` beside
    * a coverage provider, so the provider could change their outcome (spec
    * 020 D13.4): the part marks them, or, when a provider ran (D19.6,
-   * `providerRan`), their closure here imports it.
+   * `providerRan`), its workers saw them load it or did not see them run
+   * (`PartInspector`; review of 0.1.443 B1), or their closure here imports it.
    */
   readonly inspector: number;
 }
@@ -132,11 +133,12 @@ async function exportWith(input: CiExportInput, runner: RunnerAdapter): Promise<
   const passed = files.filter((file) => file.outcome !== "fail");
   const named = passed.filter((file) => (file.sharedNames ?? []).length === 0);
   // Spec 020 D13.4 (018's coordinator, 2026-11-10): the part marks such a file beside Squeal's records.
-  const kept = named.filter((file) => file.noRecord !== "inspector");
+  // D19.6 (review of 0.1.443 B1): beside any provider, the files its workers saw load it, or did not see.
+  const ran = parts.filter((p) => providerRan(p.part));
+  const watched = new Set(ran.flatMap((p) => inspectorFiles(p.part)));
+  const kept = named.filter((file) => file.noRecord !== "inspector" && !watched.has(fileId(file)));
   // D19.6: beside any provider, the project's too, a closure that imports it is left out.
-  const covered = new Set(
-    parts.filter((p) => providerRan(p.part)).flatMap((p) => p.part.testFiles.map(fileId)),
-  );
+  const covered = new Set(ran.flatMap((p) => p.part.testFiles.map(fileId)));
   const inspects = (file: PartFile, closure: RunnerClosure) =>
     covered.has(fileId(file)) && (closure.packages?.builtins ?? []).includes(INSPECTOR);
   const { closures, report, inspected } = await keyFiles(input.root, runner, keys, kept, inspects);
@@ -258,6 +260,18 @@ function refOf(file: PartFile): TestFileRef {
 }
 
 const fileId = (file: PartFile): string => testFileId(refOf(file));
+
+/**
+ * D19.6: the files `part` names as loading `node:inspector`, or not seen,
+ * by `testFileId`; with lists that do not read, every file of the part.
+ */
+function inspectorFiles(part: Part): string[] {
+  const inspector: unknown = part.header.coverage?.inspector;
+  if (inspector === undefined) return [];
+  const { loaded, unknown } = (inspector ?? {}) as Partial<PartInspector>;
+  if (!Array.isArray(loaded) || !Array.isArray(unknown)) return part.testFiles.map(fileId);
+  return [...loaded, ...unknown].map(testFileId);
+}
 
 /** The builtin a closure's `packages.builtins` names `node:inspector` by. */
 const INSPECTOR = "inspector";
