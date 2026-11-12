@@ -79,7 +79,7 @@ turn that earlier live run into a passing suite.
 load samples were 22.18 and 20.77 with 24 online CPUs. The probe's immediate
 check at 2026-11-12 21:42:09Z was **31.92**. It printed the installed version,
 then skipped before creating any fixture, runner or lock. Node was v26.13.0.
-The throwaway [probe and skip log](../../../../research/probes/issue-202/README.md)
+The throwaway [probe and skip log](probes/issue-202/README.md)
 are committed. Its live assertions remain untested. No real daemon lock was
 touched. No full suite or build ran. Work stayed inside the 20-minute bound.
 
@@ -108,9 +108,9 @@ Read-only commands included `gh issue view 202 --repo hearsay-tools/squeal
 git diff --exit-code squeal--v0.1.457 origin/main -- src/core/code/gate \
   src/cli/code-gate.ts src/cli/code-gate-stored.ts src/cli/code-gate-relaunch.ts \
   src/core/daemon/keep-request.ts src/core/daemon/lock.ts src/core/store/busy.ts
-node research/probes/issue-202/return-delay.mjs \
+node docs/specifications/020-quality-gate/research/probes/issue-202/return-delay.mjs \
   /home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.457/dist/cli/squeal.mjs \
-  > research/probes/issue-202/evidence-2026-11-12.txt
+  > docs/specifications/020-quality-gate/research/probes/issue-202/evidence-2026-11-12.txt
 node docs/specifications/020-quality-gate/research/probes/issue-201/verify-evidence.mjs
 node --check research/probes/issue-202/return-delay.mjs
 ```
@@ -120,7 +120,7 @@ not PASS. The offline verifier and syntax check passed.
 Local Markdown links and `git diff --cached --check` passed. Final affected
 status used `/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal status
 --wait 60000 docs/specifications/020-quality-gate/research/issue-202.md
-research/probes/issue-202/return-delay.mjs`: exit 3, no test closure covers
+docs/specifications/020-quality-gate/research/probes/issue-202/return-delay.mjs`: exit 3, no test closure covers
 either path; zero known failures, 630 unknown of 1,736 test files. This is
 not a passing affected-test verdict.
 
@@ -128,3 +128,5 @@ not a passing affected-test verdict.
 - [Related incident #201](https://github.com/hearsay-tools/squeal/issues/201), [research](issue-201.md) and [probe method](probes/issue-201/README.md): retained measurements, failure caveat and source lineage.
 - [020 spec](../spec.md) D11.7/D17.3/D17.5 and [status](../status.md); [021 spec](../../021-remote-store-and-execution/spec.md) D1/D5/D15; [011 spec](../../011-core/spec.md) C7. D17.5's last sentence describes daemon routing as later; 021-20's release record and current source establish that it shipped in 0.1.450.
 - Source at [0.1.457](https://github.com/hearsay-tools/squeal/tree/49557fe0facdbe670664ed5e0146b662e346f169): `src/cli/code-gate{,-stored,-relaunch}.ts`, `src/core/code/gate/{keep,keep-write,keep-here,keep-sent}.ts`, `src/core/store/paths.ts`.
+
+Coordinator note: the worker ran the new probe at repository-root `research/probes/issue-202/`. Integration moved its files into this spec’s `research/probes/issue-202/`; commands above show the final location. No live probe was rerun.
