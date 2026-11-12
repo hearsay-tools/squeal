@@ -72,6 +72,22 @@ describe("loadBasePolicy", () => {
     });
   });
 
+  it("reads declared inputs at the base, of either form, and not a branch's (D3.1)", async () => {
+    const map = { "test/e2e/*.test.mjs": ["scripts/*.mjs"] };
+    const mapped = repo(JSON.stringify({ inputs: map }));
+    const listed = repo(JSON.stringify({ inputs: ["fixtures/**"] }));
+    const none = repo(null);
+    none.commit(JSON.stringify({ inputs: ["fixtures/**"] }));
+    none.write(JSON.stringify({ inputs: ["fixtures/**"] }));
+
+    expect((await loadBasePolicy(mapped.root, mapped.base)).policy).toEqual({
+      ...DEFAULTS,
+      inputs: map,
+    });
+    expect((await loadBasePolicy(listed.root, listed.base)).policy.inputs).toEqual(["fixtures/**"]);
+    expect((await loadBasePolicy(none.root, none.base)).policy).not.toHaveProperty("inputs");
+  });
+
   it("reads coverage.children at the base, with coverage.enabled off too (D12.1)", async () => {
     const { root, base } = repo(JSON.stringify({ coverage: { enabled: false, children: true } }));
 
