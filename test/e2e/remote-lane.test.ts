@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -22,13 +23,20 @@ import { dockerUnavailable, REMOTE_CACHE, type Remote, startRemote } from "./rem
  * a paused container ends its run `unknown` within its deadline under
  * `not-run`; under `local` a killed host's files run here in the same call.
  * Both sides take the daemon's default, coverage on; the remote runs without
- * it (D12), and its runs are still proven (row 021-22).
+ * it (D12), and its runs are still proven (row 021-22). Row 021-23 (D19): a
+ * command the tests need, missing there, refuses the remote; a
+ * `needsRepository` file never runs there; a remote "not a git repository"
+ * failure is not kept, and its file runs here. The container's `git` is a
+ * fake that answers as Git does outside a repository and logs each call.
  */
 
 const unavailable = dockerUnavailable();
 const LONG = { timeout: 600_000 } as const;
 const MATH = { project: "", path: "test/math.test.ts" };
 const SLOW = { project: "", path: "test/slow.test.ts" };
+const GIT = { project: "", path: "test/git.test.ts" };
+/** Where the container's fake `git` logs its calls. */
+const GIT_CALLS = "/tmp/git-calls";
 /** The policy both sides take, the daemon's default: the recorder and coverage on (the remote turns coverage off, D12). */
 const POLICY: HostPolicy = {
   observe: true,
@@ -65,6 +73,8 @@ describe.skipIf(unavailable !== undefined)("a remote lane on a container over ss
         `printf '%s\\n' 'Object.defineProperty(process, "version", { value: "v0.0.1-other" });' > /opt/other-node/version.mjs`,
         `printf '#!/bin/sh\\nexec /opt/node/bin/node --import /opt/other-node/version.mjs "$@"\\n' > ${OTHER_NODE}`,
         `chmod +x ${OTHER_NODE}`,
+        `printf '#!/bin/sh\necho "$*" >> ${GIT_CALLS}\necho "fatal: not a git repository (or any of the parent directories): .git" >&2\nexit 128\n' > /usr/local/bin/git`,
+        "chmod +x /usr/local/bin/git",
       ].join(" && "),
     );
   }, LONG.timeout);
@@ -73,12 +83,29 @@ describe.skipIf(unavailable !== undefined)("a remote lane on a container over ss
     rmSync(scratch, { recursive: true, force: true });
   });
 
-  async function lane(whenLost: WhenLost = "local", node = "/opt/node/bin/node") {
+  async function lane(
+    whenLost: WhenLost = "local",
+    node = "/opt/node/bin/node",
+    needs: { readonly commands?: string[]; readonly needsRepository?: string[] } = {},
+  ) {
     const root = gitFixture("basic", {
       ".gitignore": ".squeal-logs/\n",
       "test/slow.test.ts":
         'import { it } from "vitest";\nit("waits", async () => { await new Promise((r) => setTimeout(r, 6000)); });\n',
+      "test/git.test.ts":
+        'import { execFileSync } from "node:child_process";\nimport { expect, it } from "vitest";\nit("reads HEAD", () => {\n  expect(execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" })).toMatch(/^[0-9a-f]{40}\\n$/);\n});\n',
     });
+    const git = (...args: string[]) => execFileSync("git", ["-C", root, ...args]);
+    git("add", "-A");
+    git(
+      "-c",
+      "user.name=squeal",
+      "-c",
+      "user.email=squeal@example.com",
+      "commit",
+      "-qm",
+      "fixture",
+    );
     onTestFinished(() => rmSync(root, { recursive: true, force: true }));
     const provider = coverageProvider();
     if (provider === null) throw new Error("no coverage provider beside the sources");
@@ -104,6 +131,7 @@ describe.skipIf(unavailable !== undefined)("a remote lane on a container over ss
     });
     const statuses: string[] = [];
     const logs: string[] = [];
+    const repository: string[] = [];
     const places = { node, cache: REMOTE_CACHE };
     const adapter: RunnerAdapter = withRemoteLane({
       target: remote.destination,
@@ -122,15 +150,20 @@ describe.skipIf(unavailable !== undefined)("a remote lane on a container over ss
           options,
           policy: () => POLICY,
           deadlines: { aliveMs: 3_000 },
+          ...(needs.commands === undefined ? {} : { commands: needs.commands }),
         }),
       allowlist: () => [],
+      ...(needs.needsRepository === undefined
+        ? {}
+        : { needsRepository: () => needs.needsRepository ?? [] }),
+      repository: (text) => repository.push(text),
       status: (text) => statuses.push(text),
       log: (text) => logs.push(text),
     });
     onTestFinished(() => adapter.close());
     const settled = () => statuses.some((s) => / go there| refused| unreachable/.test(s));
     for (let i = 0; i < 600 && !settled(); i++) await new Promise((r) => setTimeout(r, 50));
-    return { adapter, root, statuses, logs, tree: `${treeDir(places, root)}/root` };
+    return { adapter, root, statuses, logs, repository, tree: `${treeDir(places, root)}/root` };
   }
 
   const background = (root: string): RunOptions => ({
@@ -209,4 +242,66 @@ describe.skipIf(unavailable !== undefined)("a remote lane on a container over ss
       new RegExp(`^remote ${remote.destination} unreachable since .*; running here$`),
     );
   });
+
+  /** How many times the container's fake `git` ran. */
+  const gitCalls = () => Number(remote.exec(`cat ${GIT_CALLS} 2>/dev/null | wc -l`).trim());
+
+  it(
+    "refuses a remote that lacks a command the tests need, names it, and runs here",
+    LONG,
+    async () => {
+      const { adapter, root, statuses } = await lane("local", "/opt/node/bin/node", {
+        commands: ["sh", "squeal-e2e-absent"],
+      });
+      expect(statuses.at(-1)).toBe(
+        `remote ${remote.destination} refused: tests need squeal-e2e-absent; not found on PATH there; running here`,
+      );
+      const report = await adapter.run([MATH], background(root));
+      expect(report.results.map((r) => r.outcome)).toEqual(["pass", "pass"]);
+    },
+  );
+
+  it(
+    "never sends a needsRepository file there; the rest of its tier runs there, proven",
+    LONG,
+    async () => {
+      const before = gitCalls();
+      const { adapter, root, logs, repository } = await lane("local", "/opt/node/bin/node", {
+        needsRepository: ["test/git.test.ts"],
+      });
+      const report = await adapter.run([MATH, GIT], background(root));
+      expect(report.results.map((r) => [r.check.testPath, r.outcome])).toEqual([
+        [GIT.path, "pass"],
+        [MATH.path, "pass"],
+        [MATH.path, "pass"],
+      ]);
+      expect(gitCalls()).toBe(before);
+      expect(logs.some((line) => / run proven over \d+ paths$/.test(line))).toBe(true);
+      expect(repository).toEqual([]);
+    },
+  );
+
+  it(
+    "keeps no remote 'not a git repository' failure: the file runs here and is named",
+    LONG,
+    async () => {
+      const before = gitCalls();
+      const { adapter, root, logs, repository } = await lane();
+      const report = await adapter.run([MATH, GIT], background(root));
+      expect(gitCalls()).toBe(before + 1);
+      expect(report.results.map((r) => [r.check.testPath, r.outcome])).toEqual([
+        [MATH.path, "pass"],
+        [MATH.path, "pass"],
+        [GIT.path, "pass"],
+      ]);
+      expect(logs).toContain(
+        `remote ${remote.destination}: test/git.test.ts failed there as not a Git repository; running here`,
+      );
+      expect(repository).toEqual([
+        "1 test file failed on the remote as not a Git repository, so it runs here: test/git.test.ts; add it to remote.needsRepository in squeal.config.json",
+      ]);
+      await adapter.run([GIT], background(root));
+      expect(gitCalls()).toBe(before + 1);
+    },
+  );
 });
