@@ -1,5 +1,11 @@
 import type { ProjectName } from "../types/common.js";
-import type { RunnerEnvironment } from "../types/runner.js";
+import type {
+  InvalidatedPath,
+  InvalidateResult,
+  RunnerAdapter,
+  RunnerEnvironment,
+} from "../types/runner.js";
+import { POLICY_FILE } from "./policy.js";
 
 /**
  * Spec 021 D20.2 (row 021-26): when a recovering runner closes an idle
@@ -56,6 +62,36 @@ export class IdleClock {
     }, ms);
     this.#timer.unref?.();
   }
+}
+
+/** Spec 021 D20: an adapter closed when idle, and the environment the scheduler keyed from it. */
+export interface Parked {
+  readonly last: RunnerAdapter;
+  readonly environment: readonly RunnerEnvironment[] | null;
+}
+
+/**
+ * Spec 021 D20.3: the first batch after a planned close, as `fresh`, the
+ * adapter that followed `was`, hears it. It reports what it recreates for
+ * these paths, a config file's project; beyond that, only the projects whose
+ * environment moved while no adapter was there to see it. `environment`:
+ * what `fresh` answered, when it was asked.
+ */
+export async function reopened(
+  fresh: RunnerAdapter,
+  was: Parked,
+  paths: readonly InvalidatedPath[],
+): Promise<{
+  readonly result: InvalidateResult;
+  readonly environment: readonly RunnerEnvironment[] | null;
+}> {
+  const heard = await fresh.invalidate(paths);
+  const policy = paths.some((p) => p.path === POLICY_FILE);
+  const environment =
+    was.environment === null && !policy ? null : await fresh.environment().catch(() => null);
+  const drifted = driftedProjects(was.environment, environment, policy);
+  const projects = [...new Set([...heard.recreatedProjects, ...drifted])].sort();
+  return { result: { recreatedProjects: projects }, environment };
 }
 
 /**
