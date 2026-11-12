@@ -2,11 +2,11 @@ import { createRequire as __squealCreateRequire } from "node:module";
 const require = __squealCreateRequire(import.meta.url);
 
 // src/core/daemon/front-desk.ts
-import { randomUUID as randomUUID4 } from "node:crypto";
+import { randomUUID as randomUUID5 } from "node:crypto";
 import { parentPort } from "node:worker_threads";
 
 // src/core/daemon/handlers.ts
-import { randomUUID as randomUUID3 } from "node:crypto";
+import { randomUUID as randomUUID4 } from "node:crypto";
 
 // src/core/types/common.ts
 var PAYLOAD_SCHEMA_VERSION = 1;
@@ -16,6 +16,12 @@ function daemonIncarnation(daemon) {
   if (daemon?.token === void 0) return null;
   return `${daemon.squealVersion}@${daemon.startedAt}#${daemon.token}`;
 }
+
+// src/core/daemon/import-desk.ts
+import { randomUUID } from "node:crypto";
+
+// src/core/daemon/write-protocol.ts
+import { isAbsolute } from "node:path";
 
 // src/core/store/codec.ts
 var CHECK_COLUMNS = "c.project AS check_project, c.test_path AS check_test_path, c.kind AS check_kind, c.full_name AS check_full_name";
@@ -173,6 +179,10 @@ var TYPES = /* @__PURE__ */ new Set(["lease", "release", "write", "write-status"
 function isWriteRequest(request) {
   return TYPES.has(request.type);
 }
+var IMPORT_TYPES = /* @__PURE__ */ new Set(["import", "import-status"]);
+function isImportRequest(request) {
+  return IMPORT_TYPES.has(request.type);
+}
 function parseWriteRequest(request) {
   switch (request.type) {
     case "lease": {
@@ -200,6 +210,11 @@ function parseWriteRequest(request) {
     case "write-status":
       if (typeof request.requestId !== "string") return '"requestId" must be a string';
       return { type: "write-status", requestId: request.requestId };
+    case "import":
+      return parseImport(request);
+    case "import-status":
+      if (typeof request.requestId !== "string") return '"requestId" must be a string';
+      return { type: "import-status", requestId: request.requestId };
     default:
       return void 0;
   }
@@ -219,6 +234,24 @@ function parseWrite(request) {
     token,
     release,
     batch
+  };
+}
+function parseImport(request) {
+  const { worktreeId, storeSchema, file, fileHash, dryRun } = request;
+  if (!isText(worktreeId)) return '"worktreeId" must be a non-empty string';
+  if (!Number.isInteger(storeSchema)) return '"storeSchema" must be an integer';
+  if (!isText(file) || !isAbsolute(file)) return '"file" must be an absolute path';
+  if (typeof fileHash !== "string" || !/^[0-9a-f]{64}$/.test(fileHash)) {
+    return '"fileHash" must be a SHA-256 in hex';
+  }
+  if (typeof dryRun !== "boolean") return '"dryRun" must be true or false';
+  return {
+    type: "import",
+    worktreeId,
+    storeSchema,
+    file,
+    fileHash,
+    dryRun
   };
 }
 function parseProcess(value) {
@@ -359,8 +392,59 @@ function errorResponse(error) {
   return { schemaVersion: PAYLOAD_SCHEMA_VERSION, ok: false, error };
 }
 
+// src/core/daemon/import-desk.ts
+var REMEMBERED = 16;
+var ImportDesk = class {
+  #context;
+  #imports = /* @__PURE__ */ new Map();
+  constructor(context) {
+    this.#context = context;
+  }
+  /** The answer to `request`. A stopping daemon takes no new import. */
+  answer(request, phase2) {
+    if (request.type === "import-status") return this.status(request);
+    if (phase2 === "stopping") return errorResponse("daemon is stopping");
+    return this.import(request);
+  }
+  import(request) {
+    const { worktreeId, storeSchema } = this.#context;
+    if (request.worktreeId !== worktreeId) {
+      return errorResponse(`this daemon serves worktree ${worktreeId}, not ${request.worktreeId}`);
+    }
+    if (request.storeSchema !== storeSchema) {
+      return errorResponse(
+        `the daemon's store is at schema ${storeSchema}, not ${request.storeSchema}`
+      );
+    }
+    const requestId = randomUUID();
+    const state = { outcome: null };
+    this.#imports.set(requestId, state);
+    for (const old of this.#imports.keys()) {
+      if (this.#imports.size <= REMEMBERED) break;
+      this.#imports.delete(old);
+    }
+    this.#context.requestImport(request).then(
+      (outcome) => {
+        state.outcome = outcome;
+      },
+      (error) => {
+        state.outcome = { failed: error instanceof Error ? error.message : String(error) };
+      }
+    );
+    return importAnswer(requestId, state.outcome);
+  }
+  status(request) {
+    const state = this.#imports.get(request.requestId);
+    if (state === void 0) return errorResponse(`unknown request id ${request.requestId}`);
+    return importAnswer(request.requestId, state.outcome);
+  }
+};
+function importAnswer(requestId, outcome) {
+  return { schemaVersion: PAYLOAD_SCHEMA_VERSION, ok: true, type: "import", requestId, outcome };
+}
+
 // src/core/daemon/run-group.ts
-import { randomUUID } from "node:crypto";
+import { randomUUID as randomUUID2 } from "node:crypto";
 var GROUP_NOT_SUPPORTED = "squeal run <group> is not supported by this daemon, which predates check groups; `squeal stop`, then `squeal start`, starts the installed version";
 var NARROW_NOT_SUPPORTED = "squeal run <group> <path>... is not supported by this daemon, which predates narrow runs, and it ran nothing; `squeal stop`, then `squeal start`, starts the installed version";
 var MainSteps = class {
@@ -411,7 +495,7 @@ function groupRequests(requestGroup, max, step = () => null, now = Date.now) {
   };
   return {
     start(group, paths) {
-      const requestId = randomUUID();
+      const requestId = randomUUID2();
       const request = {
         group,
         at: now(),
@@ -466,7 +550,7 @@ function versionParts(version) {
 }
 
 // src/core/daemon/write-desk.ts
-import { randomUUID as randomUUID2 } from "node:crypto";
+import { randomUUID as randomUUID3 } from "node:crypto";
 
 // src/core/delivery/harness-process.ts
 import { readFileSync, readlinkSync } from "node:fs";
@@ -527,7 +611,7 @@ function leaseProcessAlive(holder) {
 // src/core/daemon/write-desk.ts
 var LEASE_TTL_MS = 5e3;
 var STOPPING = "daemon is stopping";
-var REMEMBERED = 64;
+var REMEMBERED2 = 64;
 var WriteDesk = class {
   #context;
   #lease = null;
@@ -561,7 +645,7 @@ var WriteDesk = class {
     if (other !== null) return other;
     const current = this.#current();
     if (current !== null) return this.#leaseAnswer(null, current.holder);
-    const token = randomUUID2();
+    const token = randomUUID3();
     this.#lease = {
       token,
       holder: request.holder,
@@ -597,11 +681,11 @@ var WriteDesk = class {
       lease.pending++;
       if (request.release) lease.releasing = true;
     }
-    const requestId = randomUUID2();
+    const requestId = randomUUID3();
     const state = { written: null, error: null };
     this.#writes.set(requestId, state);
     for (const old of this.#writes.keys()) {
-      if (this.#writes.size <= REMEMBERED) break;
+      if (this.#writes.size <= REMEMBERED2) break;
       this.#writes.delete(old);
     }
     const settle = (error) => {
@@ -674,7 +758,7 @@ function writeAnswer(requestId, state) {
 function remember(set, value) {
   set.add(value);
   for (const old of set) {
-    if (set.size <= REMEMBERED) break;
+    if (set.size <= REMEMBERED2) break;
     set.delete(old);
   }
 }
@@ -689,6 +773,8 @@ function createHandlers(context) {
   const holdRequests = /* @__PURE__ */ new Map();
   const { requestWrite, storeSchema } = context;
   const writes = requestWrite === void 0 || storeSchema === void 0 ? null : new WriteDesk({ worktreeId: context.worktreeId, storeSchema, requestWrite });
+  const { requestImport } = context;
+  const imports = requestImport === void 0 || storeSchema === void 0 ? null : new ImportDesk({ worktreeId: context.worktreeId, storeSchema, requestImport });
   const runAll = (requestId, state) => {
     const answer2 = {
       schemaVersion: PAYLOAD_SCHEMA_VERSION,
@@ -733,6 +819,9 @@ function createHandlers(context) {
     if (isWriteRequest(request)) {
       return writes?.answer(request, context.phase()) ?? errorResponse(NO_WRITES);
     }
+    if (isImportRequest(request)) {
+      return imports?.answer(request, context.phase()) ?? errorResponse(NO_IMPORTS);
+    }
     switch (request.type) {
       case "ping":
         return {
@@ -758,7 +847,7 @@ function createHandlers(context) {
       case "run-all": {
         if (context.phase() === "stopping") return errorResponse("daemon is stopping");
         context.onActivity();
-        const requestId = randomUUID3();
+        const requestId = randomUUID4();
         const state = { checkpoint: null, error: null };
         remember2(requests, requestId, state);
         const full = {
@@ -784,7 +873,7 @@ function createHandlers(context) {
       case "run-slow": {
         if (context.phase() === "stopping") return errorResponse("daemon is stopping");
         context.onActivity();
-        const requestId = randomUUID3();
+        const requestId = randomUUID4();
         const state = { requested: null, error: null };
         remember2(slowRequests, requestId, state);
         const request2 = context.requestSlowSuite?.() ?? Promise.reject(new Error(SLOW_NOT_SUPPORTED));
@@ -817,7 +906,7 @@ function createHandlers(context) {
         if (context.phase() === "stopping") return errorResponse("daemon is stopping");
         if (context.requestSync === void 0) return errorResponse("this daemon cannot sync");
         context.onActivity();
-        const requestId = randomUUID3();
+        const requestId = randomUUID4();
         const state = { revision: null, readers: null, error: null };
         remember2(syncRequests, requestId, state);
         context.requestSync(request.paths).then(
@@ -839,7 +928,7 @@ function createHandlers(context) {
       case "hold": {
         if (context.phase() === "stopping") return errorResponse("daemon is stopping");
         if (context.requestHold === void 0) return errorResponse("this daemon cannot hold");
-        const requestId = randomUUID3();
+        const requestId = randomUUID4();
         const state = { holding: null, error: null };
         remember2(holdRequests, requestId, state);
         context.requestHold().then(
@@ -893,6 +982,7 @@ function createHandlers(context) {
   };
 }
 var NO_WRITES = "this daemon takes no writes";
+var NO_IMPORTS = "this daemon takes no imports";
 function remember2(requests, requestId, state) {
   requests.set(requestId, state);
   for (const old of requests.keys()) {
@@ -1005,6 +1095,7 @@ var steps = new MainSteps();
 var waitingSync = /* @__PURE__ */ new Map();
 var waitingHold = /* @__PURE__ */ new Map();
 var waitingWrite = /* @__PURE__ */ new Map();
+var waitingImport = /* @__PURE__ */ new Map();
 var server = null;
 function bind(identity) {
   const handle = createHandlers({
@@ -1015,28 +1106,28 @@ function bind(identity) {
     token: identity.token,
     phase: () => phase,
     requestFullSuite: (request) => new Promise((resolve, reject) => {
-      const id = randomUUID4();
+      const id = randomUUID5();
       waiting.set(id, { resolve, reject });
       post({ type: "run-all", id, request });
     }),
     requestSlowSuite: () => new Promise((resolve, reject) => {
-      const id = randomUUID4();
+      const id = randomUUID5();
       waitingSlow.set(id, { resolve, reject });
       post({ type: "run-slow", id });
     }),
     requestGroup: (group, held, paths) => new Promise((resolve, reject) => {
-      const id = randomUUID4();
+      const id = randomUUID5();
       waitingGroup.set(id, { resolve, reject, held });
       post({ type: "run-group", id, group, ...paths === void 0 ? {} : { paths } });
     }),
     mainStep: () => steps.current(),
     requestSync: (paths) => new Promise((resolve, reject) => {
-      const id = randomUUID4();
+      const id = randomUUID5();
       waitingSync.set(id, { resolve, reject });
       post({ type: "sync", id, ...paths === void 0 ? {} : { paths } });
     }),
     requestHold: () => new Promise((resolve, reject) => {
-      const id = randomUUID4();
+      const id = randomUUID5();
       waitingHold.set(id, { resolve, reject });
       post({ type: "hold", id });
     }),
@@ -1051,9 +1142,14 @@ function bind(identity) {
     ...identity.storeSchema === void 0 ? {} : {
       storeSchema: identity.storeSchema,
       requestWrite: (batch) => new Promise((resolve, reject) => {
-        const id = randomUUID4();
+        const id = randomUUID5();
         waitingWrite.set(id, { resolve, reject });
         post({ type: "write", id, batch });
+      }),
+      requestImport: (request) => new Promise((resolve) => {
+        const id = randomUUID5();
+        waitingImport.set(id, resolve);
+        post({ type: "import", id, request });
       })
     }
   });
@@ -1126,6 +1222,12 @@ function receive(message) {
       waitingWrite.delete(message.id);
       if (message.error === null) entry?.resolve();
       else entry?.reject(new Error(message.error));
+      return;
+    }
+    case "import-result": {
+      const resolve = waitingImport.get(message.id);
+      waitingImport.delete(message.id);
+      resolve?.(message.outcome);
       return;
     }
     case "close":
