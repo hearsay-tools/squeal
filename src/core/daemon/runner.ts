@@ -12,8 +12,7 @@ import type {
   RunnerAdapter,
   RunnerEnvironment,
 } from "../types/runner.js";
-import { POLICY_FILE } from "./policy.js";
-import { driftedProjects, IdleClock } from "./runner-idle.js";
+import { IdleClock, type Parked, reopened } from "./runner-idle.js";
 
 export interface RecoveringRunnerOptions {
   readonly name: string;
@@ -169,27 +168,6 @@ export function createRecoveringRunner(options: RecoveringRunnerOptions): Recove
       }
     });
 
-  /**
-   * Spec 021 D20.3: the first batch after a planned close, as the adapter
-   * that followed it hears it. It reports what it recreates for these paths,
-   * a config file's project; beyond that, only the projects whose
-   * environment moved while no adapter was there to see it.
-   */
-  const reopened = async (
-    fresh: RunnerAdapter,
-    was: Parked,
-    paths: readonly InvalidatedPath[],
-  ): Promise<InvalidateResult> => {
-    const heard = await fresh.invalidate(paths);
-    const policy = paths.some((p) => p.path === POLICY_FILE);
-    const now =
-      was.environment === null && !policy ? null : await fresh.environment().catch(() => null);
-    if (now !== null && fresh === inner) answered = now;
-    parked = null;
-    const drifted = driftedProjects(was.environment, now, policy);
-    return { recreatedProjects: [...new Set([...heard.recreatedProjects, ...drifted])].sort() };
-  };
-
   return {
     name: options.name,
     adapterVersion: options.adapterVersion,
@@ -215,7 +193,11 @@ export function createRecoveringRunner(options: RecoveringRunnerOptions): Recove
           const current = live();
           // Spec 021 D20.3: the batch goes to the next adapter now, as every batch's `affected` would.
           if (!closed && !replaced && parked !== null && (current !== null || error === null)) {
-            return await reopened(current ?? (await adapter()), parked, paths);
+            const fresh = current ?? (await adapter());
+            const { result, environment } = await reopened(fresh, parked, paths);
+            if (environment !== null && fresh === inner) answered = environment;
+            parked = null;
+            return result;
           }
           if (closed || (current !== null && !replaced)) {
             return await (await adapter()).invalidate(paths);
@@ -274,12 +256,6 @@ export function createRecoveringRunner(options: RecoveringRunnerOptions): Recove
         await inner?.close();
       }),
   };
-}
-
-/** Spec 021 D20: an adapter closed when idle, and the environment the scheduler keyed from it. */
-interface Parked {
-  readonly last: RunnerAdapter;
-  readonly environment: readonly RunnerEnvironment[] | null;
 }
 
 /** Every project of `adapter`, sorted: what a new instance reports recreated. */
