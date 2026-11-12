@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.449";
+  if (true) return "0.1.451";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -41008,7 +41008,7 @@ function preloadNotes({ table, roots, outside: outside2, rules, rel: rel2 }) {
     if (hooks === null) continue;
     const through = hooks === root ? "" : ` through ${JSON.stringify(rel2(hooks))}`;
     notes.push(
-      `node-test: preload ${JSON.stringify(rel2(root))} imports node:module${through} and may register module hooks; Squeal does not record in Node's loader thread, so what the hooks load enters no key; declare it in inputs; resolving with ${chain} rules`
+      `node-test: preload ${JSON.stringify(rel2(root))} imports node:module${through} and may register module hooks; Squeal does not record in Node's loader thread, so what the hooks load enters no key; ${INPUTS_HINT}; resolving with ${chain} rules`
     );
   }
   return notes;
@@ -41028,9 +41028,11 @@ function importerOfModule(table, root) {
   }
   return null;
 }
+var INPUTS_HINT;
 var init_preload_notes = __esm({
   "src/runners/node-test/graph/preload-notes.ts"() {
     "use strict";
+    INPUTS_HINT = 'declare it in the top-level "inputs" of squeal.config.json (a list of globs for every test file, or a map from a test-file glob to globs)';
   }
 });
 
@@ -51339,7 +51341,8 @@ async function openProject(context) {
     for (const text3 of loaderThreadNotes(project)) once3(text3);
     for (const reason2 of graph.preloads().incomplete) once3(`preload closure incomplete: ${reason2}`);
     const incomplete2 = graph.incompleteClosures();
-    if (incomplete2.length > 0) {
+    if (options.closures !== void 0) options.closures(incomplete2);
+    else if (incomplete2.length > 0) {
       const named4 = incomplete2.slice(0, NAMED_INCOMPLETE).map(([file, reasons]) => `${file} (${reasons.join("; ")})`);
       const more2 = incomplete2.length > NAMED_INCOMPLETE ? ", ..." : "";
       once3(
@@ -51469,7 +51472,7 @@ function nodeOptionsOf(project) {
 function loaderThreadNotes(project) {
   const loaders = [...asyncLoaders(project.argv), ...asyncLoaders(nodeOptionsOf(project))];
   return [...new Set(loaders)].map(
-    (loader) => `async loader ${JSON.stringify(loader)}: Squeal does not record in Node's loader thread, so what the loader loads enters no key; declare it in inputs`
+    (loader) => `async loader ${JSON.stringify(loader)}: Squeal does not record in Node's loader thread, so what the loader loads enters no key; ${INPUTS_HINT}`
   );
 }
 function bareNote(seen, named4, declared) {
@@ -51478,7 +51481,7 @@ function bareNote(seen, named4, declared) {
   ).map((c) => c.testFile.path).filter((path) => !named4.has(path) && !declared(path));
   if (found3.length === 0) return null;
   for (const path of found3) named4.add(path);
-  return `${found3.length} test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; declare it in inputs: ${found3.sort(compare).join(", ")}`;
+  return `${found3.length} test file(s) loaded nothing beyond themselves and a manifest when they ran, so what they reach through a spawned process or a file read enters no key; ${INPUTS_HINT}: ${found3.sort(compare).join(", ")}`;
 }
 function declaresInputs(inputs2) {
   if (isInputList(inputs2)) return () => inputs2.length > 0;
@@ -51512,6 +51515,7 @@ var init_adapter_project = __esm({
     init_enumerate();
     init_graph2();
     init_graph3();
+    init_preload_notes();
     init_recorders2();
     init_coverage4();
     init_run2();
@@ -84824,7 +84828,8 @@ async function openRunners(adapters, root, policy, {
   temp,
   note,
   children,
-  keeping
+  keeping,
+  closures
 }, runners2) {
   if (runsVitest(root, policy)) {
     const covered = [];
@@ -84856,10 +84861,50 @@ async function openRunners(adapters, root, policy, {
       concurrency: () => policy.runner.tierSize,
       inputs: () => policy.inputs,
       tempDir: temp,
-      coverage: { enabled: () => true, children: () => children, collected }
+      coverage: { enabled: () => true, children: () => children, collected },
+      closures: (files5) => closures(project.name, files5)
     });
     runners2.push({ kind: "node-test", adapter, covered, project });
   }
+}
+
+// src/core/code/gate/select-closures.ts
+init_compare();
+init_reverse_index();
+init_text();
+var NAMED = 3;
+function closureGaps(lists, inCheck) {
+  const chosen = new Set(inCheck.map(testFileId));
+  return [...lists].filter(([, files5]) => files5.length > 0).sort(([a], [b]) => compare(a, b)).map(([project, files5]) => ({
+    runner: "node-test",
+    project,
+    files: files5.map(([path, reasons]) => ({
+      path,
+      reasons: [...reasons],
+      selected: chosen.has(testFileId({ project, path }))
+    })).sort((a, b) => compare(a.path, b.path))
+  }));
+}
+function tellClosures(lists, picked, note) {
+  const inCheck = picked.filter((p) => p.kind === "node-test").flatMap((p) => p.run);
+  const gaps = closureGaps(lists, inCheck);
+  for (const gap of gaps) note(closureLine2(gap));
+  return gaps.length === 0 ? {} : { incompleteClosures: gaps };
+}
+function closureLine2({ project, files: files5 }) {
+  const selected2 = files5.filter((f) => f.selected).map((f) => f.path);
+  const more2 = selected2.length > NAMED ? ` and ${selected2.length - NAMED} more` : "";
+  const named4 = selected2.length === 0 ? "" : `: ${selected2.slice(0, NAMED).join(", ")}${more2}`;
+  const verb = selected2.length === 1 ? "is" : "are";
+  const others = files5.length - selected2.length;
+  return [
+    `node-test project ${JSON.stringify(project)}:`,
+    `${selected2.length} of ${plural(files5.length, "test file")} with an incomplete static closure ${verb} in this check${named4}.`,
+    ...others === 0 ? [] : [
+      `The gate selects test files by their static imports, so ${others === 1 ? "the other one does" : `the other ${others} do`} not run for a changed path ${others === 1 ? "it loads" : "they load"} only through a computed import() or require().`
+    ],
+    `The --json report lists ${files5.length === 1 ? "it" : `all ${files5.length}`} in incompleteClosures.`
+  ].join(" ");
 }
 
 // src/core/code/gate/prepare.ts
@@ -85118,7 +85163,10 @@ async function collectEvidence(cwd, changed2, options) {
   try {
     const { policy, problems } = loadPolicy(root);
     for (const problem of problems) note(`${POLICY_FILE}: ${problem}`);
-    const opening = { provider, temp, note, children, keeping: options.ran !== void 0 };
+    const lists = /* @__PURE__ */ new Map();
+    const closures = (project, files5) => lists.set(project, files5);
+    const keeping = options.ran !== void 0;
+    const opening = { provider, temp, note, children, keeping, closures };
     await openRunners(options.adapters, root, policy, opening, runners2);
     const picked = await select(runners2, paths, options.tests, tally2);
     const at2 = { root, deadline, note, options, children };
@@ -85127,6 +85175,7 @@ async function collectEvidence(cwd, changed2, options) {
     const order = orderRuns(picked, known3, { durations: durations2, tierSize: policy.runner.tierSize });
     const inOrder2 = order.runs.map((run7) => run7.pick);
     await tellSelection(options.selected, inOrder2, changed2, { ...options, tally: tally2, known: known3 });
+    const gaps = tellClosures(lists, picked, note);
     const runs = await inLoaderOrder(order.runs, { changed: paths, durations: durations2 });
     const estimates = tellEstimates(options.estimated, order.estimates, deadline);
     const blobs = /* @__PURE__ */ new Map();
@@ -85160,7 +85209,8 @@ async function collectEvidence(cwd, changed2, options) {
       budgetSeconds: options.budgetSeconds,
       ...scoped(await leftOutFiles(picked)),
       ...prepares.length === 0 ? {} : { prepares },
-      ...estimates
+      ...estimates,
+      ...gaps
     };
   } finally {
     await Promise.allSettled(runners2.map((r) => r.adapter.close()));
@@ -85559,6 +85609,7 @@ function evaluate(changed2, evidence, policy, versions2, times, exceptions) {
     baseCommit: changed2.baseCommit
   });
   const functions = (applied?.functions ?? judged2.map((j) => j.row)).sort(byPosition);
+  const { incompleteClosures } = evidence;
   const uncounted = changed2.uncounted.map((u) => ({ path: u.path, reason: u.reason, gap: "not-counted" })).sort((a, b) => compare(a.path, b.path) || compare(a.reason, b.reason));
   return {
     format: GATE_REPORT_FORMAT,
@@ -85586,6 +85637,7 @@ function evaluate(changed2, evidence, policy, versions2, times, exceptions) {
     uncounted,
     ...applied === null ? {} : { exceptions: { unused: applied.unused } },
     runs: runsOf(evidence, times.durationsMs),
+    ...incompleteClosures === void 0 ? {} : { incompleteClosures },
     verdict: verdictOf2(functions, uncounted, {
       failed: ctx.failed,
       unfinished: evidence.testFiles.some((f) => !f.completed)
@@ -86412,7 +86464,7 @@ init_parts();
 init_record();
 init_open2();
 var KEEP_BUSY_BOUND_MS = 3e4;
-var NAMED = 5;
+var NAMED2 = 5;
 var StoreWait = class {
   #options;
   #since = null;
@@ -86524,7 +86576,7 @@ function holderOf3(database) {
   return describeHolders(lockHolders(database));
 }
 function names3(files5) {
-  const shown = files5.map((f) => f.ref.path).sort(compare).slice(0, NAMED);
+  const shown = files5.map((f) => f.ref.path).sort(compare).slice(0, NAMED2);
   const more2 = files5.length - shown.length;
   return more2 > 0 ? `${shown.join(", ")} and ${more2} more` : shown.join(", ");
 }
