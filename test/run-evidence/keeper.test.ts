@@ -12,14 +12,16 @@ import { testFileId } from "../../src/core/keys/reverse-index.js";
 import {
   type FileDecision,
   mergeHoldOf,
+  type Revisions,
   type RuntimeIdentity,
   unheldNow,
 } from "../../src/core/run-evidence/run-evidence.js";
 import type { WorktreeKeys } from "../../src/core/scheduler/keying.js";
 import { storePaths } from "../../src/core/store/paths.js";
+import type { CommitSha, EpochMs, WorktreeId } from "../../src/core/types/common.js";
 import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
 import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
-import { git, writeTree } from "../keys/validity/harness/shared.js";
+import { git, scratchStore, writeTree } from "../keys/validity/harness/shared.js";
 
 /*
  * Row 011-320: the sources `squeal code`'s keeper reads beyond row 011-319's,
@@ -132,6 +134,55 @@ describe("squeal code's runtime identity (row 011-320, difference 2)", () => {
   });
 });
 
+describe("squeal code's revisions during the run (review 0.1.458 B1)", () => {
+  it.each([
+    ["writes the file when no revision moved what it lists", [], 1],
+    [
+      "does not write a file whose listed directory a revision gained a file in and a later one lost it",
+      ["src/new.mjs", null],
+      0,
+    ],
+  ] as const)("%s", async (_, came, results) => {
+    const root = repository();
+    const notes: string[] = [];
+    // The repository's store, where a serving daemon records the worktree's revisions.
+    const store = scratchStore(join(root, "..", "repository-store"));
+    const worktreeId = "served" as WorktreeId;
+    const revise = (path: string, from: string | null, to: string | null) =>
+      store.revisions.append({
+        worktreeId,
+        createdAt: 1 as EpochMs,
+        head: "a".repeat(40) as CommitSha,
+        dirty: true,
+        trigger: "watch",
+        changes: [{ path, oldHash: from, newHash: to }],
+      });
+    revise("src/b.mjs", "h", "i");
+    try {
+      await keepA(root, notes, {
+        listing: true,
+        revisions: { store, worktreeId },
+        started: () => {
+          if (came.length === 0) return;
+          revise("src/new.mjs", null, "n");
+          revise("src/new.mjs", "n", null);
+        },
+      });
+    } finally {
+      store.close();
+    }
+
+    expect(resultsAt(join(root, ".git"))).toBe(results);
+    expect(notes).toEqual(
+      results === 1
+        ? []
+        : [
+            "1 completed test file was not kept in the stores, because a file was added to or removed from a directory its key lists (src/): test/a.test.ts; the next run will run it again",
+          ],
+    );
+  });
+});
+
 describe("squeal code's note on the files it did not keep (row 011-320)", () => {
   const decided = (kind: string, paths: string[], reason = "") =>
     ({ cause: { kind, paths }, reason }) as unknown as FileDecision;
@@ -173,7 +224,13 @@ describe("squeal code's note on the files it did not keep (row 011-320)", () => 
 async function keepA(
   root: string,
   notes: string[],
-  at: { runtime?: RuntimeIdentity; started?: () => void; ran?: () => void },
+  at: {
+    runtime?: RuntimeIdentity;
+    revisions?: Revisions;
+    listing?: boolean;
+    started?: () => void;
+    ran?: () => void;
+  },
 ): Promise<void> {
   const keep = new Keeper({
     root,
@@ -182,7 +239,12 @@ async function keepA(
     head: async () => ({ head: "a".repeat(40), dirty: false }),
     note: (text) => notes.push(text),
   });
-  keep.expect("vitest", keysOf(INPUT), HASHER, new Map([[A, KEY_A]]), at.runtime);
+  const sources = {
+    ...(at.runtime === undefined ? {} : { runtime: at.runtime }),
+    ...(at.revisions === undefined ? {} : { revisions: at.revisions }),
+  };
+  const keys = keysOf(at.listing === true ? [INPUT, "src/"] : [INPUT]);
+  keep.expect("vitest", keys, HASHER, new Map([[A, KEY_A]]), sources);
   at.started?.();
   await keep.ran({
     runner: "vitest",
@@ -204,15 +266,17 @@ async function keepA(
 /** Inputs that never move: every stat and hash is the one the lookup copied. */
 const HASHER: Hasher = { stat: async () => STAT, hash: async () => "h", now: () => 1_000_000 };
 
-/** A lookup's keys, `test/a.test.ts` reading `input` alone. */
-function keysOf(input: string): WorktreeKeys {
+/** A lookup's keys over the repository's two files, `test/a.test.ts` reading `paths`. */
+function keysOf(paths: readonly string[]): WorktreeKeys {
+  const files = [INPUT, "src/b.mjs"].map((path) => ({ path, ...STAT, hash: "h" }));
   return {
-    cache: new StatCache([{ path: input, ...STAT, hash: "h" }]),
-    stabilityPaths: () => [input],
+    cache: new StatCache(files),
+    stabilityPaths: () => paths,
     beginRun: () => 1,
     endRun: () => {},
     observes: () => false,
     environmentFiles: () => [],
+    extraFiles: () => [],
   } as unknown as WorktreeKeys;
 }
 

@@ -1,7 +1,14 @@
 import type { Hasher } from "../../hash/hasher.js";
 import type { StatCache } from "../../hash/stat-cache.js";
 import { testFileId } from "../../keys/reverse-index.js";
-import { copyInputs, copyListed, type RuntimeIdentity } from "../../run-evidence/run-evidence.js";
+import {
+  copyInputs,
+  copyListed,
+  type Revisions,
+  type RevisionsSince,
+  type RuntimeIdentity,
+  revisionsSince,
+} from "../../run-evidence/run-evidence.js";
 import type { WorktreeKeys } from "../../scheduler/keying.js";
 import type { RelativePath } from "../../types/common.js";
 import type { CheckKey, TestFileRef } from "../../types/keys.js";
@@ -37,8 +44,19 @@ export interface Pending {
   readonly listed: ReadonlySet<RelativePath>;
   /** Where each file's runtime identity is read, before the run and at its end (row 011-320). */
   readonly runtime?: RuntimeIdentity;
+  /** The revisions a serving daemon records from the lookup on (review 0.1.458 B1). */
+  readonly revisions?: RevisionsSince;
   /** By `testFileId`. */
   readonly files: ReadonlyMap<string, Expected>;
+}
+
+/**
+ * What a lookup reads beyond its keys (row 011-320), each optional: the
+ * runtime identity, and the worktree's revisions in the repository's store.
+ */
+export interface LookupSources {
+  readonly runtime?: RuntimeIdentity;
+  readonly revisions?: Revisions;
 }
 
 export class Expectations {
@@ -51,17 +69,19 @@ export class Expectations {
    * Before `runner`'s run: the files of `keyed` it will run, each at the
    * key the lookup gave it. Their inputs are copied from the stat cache
    * now, as the daemon copies a tier's when it selects it, with the files
-   * below their listings, and a run of `keys` begins. With
-   * `runtime`, each file's runtime identity is read now, as the daemon's
-   * `TierFile.runtimePolicy` is at selection.
+   * below their listings, and a run of `keys` begins. With `sources`'
+   * runtime, each file's runtime identity is read now, as the daemon's
+   * `TierFile.runtimePolicy` is at selection; with its revisions, the
+   * latest one now is where the revisions during the run begin.
    */
   add(
     runner: GateRun["runner"],
     keys: WorktreeKeys,
     hasher: Hasher,
     keyed: ReadonlyMap<TestFileRef, CheckKey>,
-    runtime?: RuntimeIdentity,
+    sources: LookupSources = {},
   ): void {
+    const { runtime } = sources;
     const files = new Map<string, Expected>();
     for (const [ref, key] of keyed) {
       const paths = keys.stabilityPaths(ref);
@@ -73,8 +93,17 @@ export class Expectations {
     const snapshot = copyInputs(keys.cache, paths);
     const listed = copyListed(keys, paths);
     const run = keys.beginRun();
-    const source = runtime === undefined ? {} : { runtime };
-    const pending = { runner, keys, hasher, run, snapshot, listed, files, ...source };
+    const pending = {
+      runner,
+      keys,
+      hasher,
+      run,
+      snapshot,
+      listed,
+      files,
+      ...(runtime === undefined ? {} : { runtime }),
+      ...(sources.revisions === undefined ? {} : { revisions: revisionsSince(sources.revisions) }),
+    };
     this.#open.add(pending);
     for (const id of files.keys()) this.#expected.set(expectationOf(runner, id), pending);
   }

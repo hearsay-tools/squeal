@@ -8,7 +8,6 @@ import {
   keeps,
   type MergeHoldSource,
   mergeHoldOf,
-  type RuntimeIdentity,
   stillAsRead,
   unheldNow,
 } from "../../run-evidence/run-evidence.js";
@@ -23,7 +22,7 @@ import type { Store } from "../../types/store.js";
 import { isCodeStoreOpenFailure, openCodeStore } from "../store/open.js";
 import type { CodeStore } from "../store/types.js";
 import type { GateRun } from "./collect.js";
-import { Expectations, type Pending } from "./keep-expected.js";
+import { Expectations, type LookupSources, type Pending } from "./keep-expected.js";
 import { writeHere } from "./keep-here.js";
 import { NotKept } from "./keep-reasons.js";
 import { DAEMON_KEEPS_ITS_OWN, type DaemonWaits, KeepUnknown, sentWriter } from "./keep-sent.js";
@@ -102,16 +101,16 @@ export class Keeper {
 
   /**
    * Before `runner`'s run: the files of `keyed` it will run, each at the
-   * key the lookup gave it, and with `runtime` their runtime identity.
+   * key the lookup gave it, with what `sources` reads (row 011-320).
    */
   expect(
     runner: GateRun["runner"],
     keys: WorktreeKeys,
     hasher: Hasher,
     keyed: ReadonlyMap<TestFileRef, CheckKey>,
-    runtime?: RuntimeIdentity,
+    sources?: LookupSources,
   ): void {
-    this.#expected.add(runner, keys, hasher, keyed, runtime);
+    this.#expected.add(runner, keys, hasher, keyed, sources);
   }
 
   /**
@@ -189,7 +188,7 @@ export class Keeper {
       if (completed.has(id) && record !== null) candidates.push({ ...file, record });
     }
     if (candidates.length === 0) return [];
-    const { keys, hasher, snapshot: before, listed, runtime } = pending;
+    const { keys, hasher, snapshot: before, listed, runtime, revisions } = pending;
     const sources = {
       root: this.#options.root,
       keys,
@@ -199,6 +198,7 @@ export class Keeper {
       hold: this.#hold,
       listed,
       ...(runtime === undefined ? {} : { runtime }),
+      ...(revisions === undefined ? {} : { revisions }),
     };
     const decided = await keepDecisions(sources, candidates, report);
     const kept: Kept[] = [];
