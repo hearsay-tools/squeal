@@ -316,7 +316,6 @@ class Daemon {
     };
   }
 
-  /** Spec 021 D8: how node:test and pytest reach a local runner host, when the daemon has one. */
   /**
    * Spec 021 D20.4 (row 021-26): `runner.hostIdleMinutes` in milliseconds, the user config's
    * read once here, `squeal.config.json`'s at each use, else from the machine's total memory.
@@ -328,6 +327,7 @@ class Daemon {
     return hostIdleMs(user, () => this.#policy.runner.hostIdleMinutes, defaultHostIdleMinutes());
   }
 
+  /** Spec 021 D8: how node:test and pytest reach a local runner host, when the daemon has one. */
   #processHost(): { readonly launch: RunnerHostLaunch; readonly version: string } | undefined {
     const launch = this.options.runnerHost;
     return launch === undefined ? undefined : { launch, version: this.#version };
