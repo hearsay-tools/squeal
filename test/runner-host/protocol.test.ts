@@ -44,6 +44,58 @@ describe("runner host framing", () => {
   it("throws on a marked line that does not parse", () => {
     expect(() => new LineReader().push(`${MARKER}{"id":1,\n`)).toThrow();
   });
+
+  it("gives the same messages for every chunk size", () => {
+    const text = [
+      "vite: optimizing\n",
+      encodeLine({ id: 1, r: { files: ["a", "b"] } }),
+      "\n\nstray ",
+      encodeLine({ ev: "note", text: "n\nm" }),
+      encodeLine({ id: 2, r: null }),
+      `partial ${MARKER}{"id":3`,
+    ].join("");
+    const whole = new LineReader().push(text);
+    expect(whole).toHaveLength(3);
+    for (let size = 1; size <= text.length; size++) {
+      const reader = new LineReader();
+      const messages: unknown[] = [];
+      for (let at = 0; at < text.length; at += size) {
+        messages.push(...reader.push(text.slice(at, at + size)));
+      }
+      expect(messages, `chunks of ${size}`).toEqual(whole);
+      // The unfinished line is kept: its end completes it.
+      expect(reader.push(`,"r":0}\n`), `chunks of ${size}`).toEqual([{ id: 3, r: 0 }]);
+    }
+  });
+
+  /*
+   * Row 011-314: a long line costs time linear in its length. The reader
+   * that joined the unfinished line with each chunk and split it all again
+   * took about 2 s for a 4 MB line in 4 KB chunks, so it stops here within
+   * the bound, at about a fifth of the line, instead of after half a minute.
+   */
+  it("reads a 16 MB line fed in 4 KB chunks as one message, in linear time", () => {
+    const limitMs = 1500;
+    const chunk = 4096;
+    const text = "x".repeat(16 * 1024 * 1024);
+    const line = encodeLine({ ev: "note", text });
+    const reader = new LineReader();
+    const messages: unknown[] = [];
+    const started = performance.now();
+    let at = 0;
+    for (; at < line.length && performance.now() - started < limitMs; at += chunk) {
+      messages.push(...reader.push(line.slice(at, at + chunk)));
+    }
+    const ms = Math.round(performance.now() - started);
+    expect(at, `${at} of ${line.length} characters read in ${ms} ms`).toBeGreaterThanOrEqual(
+      line.length,
+    );
+    expect(ms).toBeLessThan(limitMs);
+    expect(messages).toHaveLength(1);
+    const [message] = messages as { ev: string; text: string }[];
+    expect(message?.ev).toBe("note");
+    expect(message?.text === text).toBe(true);
+  });
 });
 
 describe("coverage payloads over the protocol", () => {
