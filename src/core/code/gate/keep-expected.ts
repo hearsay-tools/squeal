@@ -6,7 +6,7 @@ import {
   copyListed,
   type Revisions,
   type RevisionsSince,
-  type RuntimeIdentity,
+  type RuntimeSource,
   revisionsSince,
 } from "../../run-evidence/run-evidence.js";
 import type { WorktreeKeys } from "../../scheduler/keying.js";
@@ -43,7 +43,7 @@ export interface Pending {
   /** The files below the files' listings, as the lookup's keys hold them (row 011-320). */
   readonly listed: ReadonlySet<RelativePath>;
   /** Where each file's runtime identity is read, before the run and at its end (row 011-320). */
-  readonly runtime?: RuntimeIdentity;
+  readonly runtime?: RuntimeSource;
   /** The revisions a serving daemon records from the lookup on (review 0.1.458 B1). */
   readonly revisions?: RevisionsSince;
   /** By `testFileId`. */
@@ -55,7 +55,7 @@ export interface Pending {
  * runtime identity, and the worktree's revisions in the repository's store.
  */
 export interface LookupSources {
-  readonly runtime?: RuntimeIdentity;
+  readonly runtime?: RuntimeSource;
   readonly revisions?: Revisions;
 }
 
@@ -85,7 +85,7 @@ export class Expectations {
     const files = new Map<string, Expected>();
     for (const [ref, key] of keyed) {
       const paths = keys.stabilityPaths(ref);
-      const identity = runtime === undefined ? {} : { runtimeIdentity: runtime(ref) };
+      const identity = runtime === undefined ? {} : { runtimeIdentity: runtime.identity(ref) };
       files.set(testFileId(ref), { ref, key, paths, ...identity });
     }
     if (files.size === 0) return;

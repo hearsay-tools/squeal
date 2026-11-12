@@ -6,6 +6,7 @@ import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it } from "vitest";
 import { Keeper } from "../../src/core/code/gate/keep.js";
 import { NotKept } from "../../src/core/code/gate/keep-reasons.js";
+import { POLICY_FILE, readPolicy } from "../../src/core/daemon/policy.js";
 import type { Hasher } from "../../src/core/hash/hasher.js";
 import { StatCache } from "../../src/core/hash/stat-cache.js";
 import { testFileId } from "../../src/core/keys/reverse-index.js";
@@ -13,7 +14,7 @@ import {
   type FileDecision,
   mergeHoldOf,
   type Revisions,
-  type RuntimeIdentity,
+  type RuntimeSource,
   unheldNow,
 } from "../../src/core/run-evidence/run-evidence.js";
 import type { WorktreeKeys } from "../../src/core/scheduler/keying.js";
@@ -114,7 +115,11 @@ describe("squeal code's runtime identity (row 011-320, difference 2)", () => {
     const root = repository();
     const notes: string[] = [];
     let identity = before;
-    const runtime = before === undefined ? undefined : () => identity ?? "";
+    const rules = readPolicy(root);
+    const runtime =
+      before === undefined
+        ? undefined
+        : { identity: () => identity ?? "", rules, rulesNow: () => readPolicy(root) };
 
     await keepA(root, notes, {
       ...(runtime === undefined ? {} : { runtime }),
@@ -131,6 +136,33 @@ describe("squeal code's runtime identity (row 011-320, difference 2)", () => {
             "1 completed test file was not kept in the stores, because the runtime's identity moved during the run: test/a.test.ts; the next run will run it again",
           ],
     );
+  });
+
+  it.each([
+    [
+      "writes the file when the policy's runtime files for another test file moved",
+      "test/b.test.ts",
+      1,
+    ],
+    [
+      "does not write a file whose runtime files the policy changed during the run (review 0.1.458 B3)",
+      "test/a.test.ts",
+      0,
+    ],
+  ])("%s", async (_, tests, results) => {
+    const root = repository();
+    const notes: string[] = [];
+    const rules = readPolicy(root);
+    // Its keys give one identity throughout: they keep the lookup's policy.
+    const runtime = { identity: () => "", rules, rulesNow: () => readPolicy(root) };
+    const policy = { runtimeFiles: [{ project: "", tests: [tests], paths: ["runtime.txt"] }] };
+
+    await keepA(root, notes, {
+      runtime,
+      started: () => writeTree(root, { [POLICY_FILE]: `${JSON.stringify(policy)}\n` }),
+    });
+
+    expect([resultsAt(join(root, ".git")), notes.length]).toEqual([results, 1 - results]);
   });
 });
 
@@ -225,7 +257,7 @@ async function keepA(
   root: string,
   notes: string[],
   at: {
-    runtime?: RuntimeIdentity;
+    runtime?: RuntimeSource;
     revisions?: Revisions;
     listing?: boolean;
     started?: () => void;

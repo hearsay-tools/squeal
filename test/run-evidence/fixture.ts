@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync, symlinkSync, utimesSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { loadPolicy } from "../../src/core/daemon/policy.js";
+import { loadPolicy, POLICY_FILE } from "../../src/core/daemon/policy.js";
 import { readHead } from "../../src/core/daemon-loop/head.js";
 import { createFsHasher, type Hasher } from "../../src/core/hash/hasher.js";
 import { ancestorListings } from "../../src/core/keys/observed.js";
@@ -37,6 +37,7 @@ import type {
   WorktreeId,
 } from "../../src/core/types/common.js";
 import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
+import type { Policy } from "../../src/core/types/policy.js";
 import type { RunReport } from "../../src/core/types/runner.js";
 import type { Store } from "../../src/core/types/store.js";
 import { git, scratchStore, writeTree } from "../keys/validity/harness/shared.js";
@@ -106,6 +107,8 @@ export interface During {
   readonly merging?: readonly string[];
   /** `a` was selected under another runtime identity. */
   readonly runtimeMoved?: boolean;
+  /** `squeal.config.json` written during the run; the daemon reloads it before its record. */
+  readonly policy?: Readonly<Record<string, unknown>>;
   /** How the run ended; by default it completed both files. */
   readonly report?: (report: RunReport) => RunReport;
   /** The daemon's ledger of `a`: a backlog cancel cut it, a newer run, gone, its key moved. */
@@ -167,9 +170,10 @@ async function decided(root: string, store: Store, during: During): Promise<Deci
   // The keeper's copy of the files below the listings, taken as `Expectations.add` takes it.
   const listed = copyListed(keys, paths);
   const revisions = revisionsSince({ store, worktreeId: WORKTREE });
+  const policy = loadPolicy(root).policy;
   await happen(root, keys, hasher, tier, during);
   const report = (during.report ?? ((r) => r))(completed([A, B], during));
-  const ran = { root, keys, hasher, tier, report, listed, revisions };
+  const ran = { root, keys, hasher, tier, report, listed, revisions, policy };
   const ledgerFree = during.ledger === undefined && during.queued === undefined;
   const keeper = ledgerFree ? await keeperColumn(ran) : null;
   const daemon = await daemonColumn(ran, store, during);
@@ -186,11 +190,17 @@ interface Ran {
   readonly report: RunReport;
   readonly listed: ReadonlySet<RelativePath>;
   readonly revisions: RevisionsSince;
+  /** The policy the lookup's keys hold. */
+  readonly policy: Policy;
 }
 
 /** `squeal code`'s decisions: `keepDecisions` over its files as `Expectations.add` gives them. */
-function keeperColumn({ root, keys, hasher, tier, report, listed, revisions }: Ran) {
-  const runtime = (ref: TestFileRef) => keys.runtimeIdentity(ref);
+function keeperColumn({ root, keys, hasher, tier, report, listed, revisions, policy }: Ran) {
+  const runtime = {
+    identity: (ref: TestFileRef) => keys.runtimeIdentity(ref),
+    rules: policy,
+    rulesNow: () => loadPolicy(root).policy,
+  };
   // Each file with the runtime identity its tier entry has, as the lookup read it.
   const files = tier.files.map(({ file, key, inputs: paths, runtimePolicy: runtimeIdentity }) => {
     return { ref: file.ref, key, paths, runtimeIdentity };
@@ -232,6 +242,8 @@ async function daemonColumn(
   });
   try {
     await hold.check();
+    // A revision of the policy file reloads it (`reloadPolicy`, `WorktreeKeys.setPolicy`).
+    if (during.policy !== undefined) keys.setPolicy(loadPolicy(root).policy);
     const { files } = tier;
     const installMoved = during.queued === "install moved";
     const inputs = await unstableInputs(tier, hasher);
@@ -331,6 +343,9 @@ async function happen(
   for (const path of during.touch ?? []) write(path, FILES[path] ?? "");
   for (const [path, text] of Object.entries(during.create ?? {})) writeTree(root, { [path]: text });
   if (during.merging !== undefined) unmerge(root, during.merging);
+  if (during.policy !== undefined) {
+    writeTree(root, { [POLICY_FILE]: `${JSON.stringify(during.policy)}\n` });
+  }
   await revise(root, keys, hasher, tier, during.batch ?? {});
   await revise(root, keys, hasher, tier, during.then ?? {});
 }
