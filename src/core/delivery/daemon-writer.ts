@@ -1,9 +1,10 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { requestDaemon } from "../daemon/client.js";
+import { leaseProcess } from "../daemon/lease-process.js";
 import { encodeBatch, type Statement } from "../daemon/write-batch.js";
 import type { AbsolutePath, WorktreeId } from "../types/common.js";
 import type { DaemonRequest, DaemonResponse } from "../types/daemon.js";
-import type { LeaseResponse, WriteResponse } from "../types/daemon-writes.js";
+import type { LeaseProcess, LeaseResponse, WriteResponse } from "../types/daemon-writes.js";
 import type { SendOutcome, WriteSender } from "./sending-connection.js";
 
 export interface DaemonWriterOptions {
@@ -49,6 +50,7 @@ export class DaemonWriter implements WriteSender {
   readonly #options: DaemonWriterOptions;
   #socket: AbsolutePath | null | undefined;
   #token: string | null = null;
+  #process: LeaseProcess | undefined;
   /** No daemon takes writes: every later call says so at once. */
   #off = false;
 
@@ -72,7 +74,10 @@ export class DaemonWriter implements WriteSender {
     const deadline = Date.now() + this.#options.boundMs;
     for (let attempt = 0; ; attempt++) {
       const { worktreeId, holder } = this.#options;
-      const answer = await this.#ask(socket, { type: "lease", worktreeId, holder });
+      // Review 0.1.442 B3: the lease lasts while this process lives, paused or not.
+      this.#process ??= leaseProcess();
+      const process = this.#process;
+      const answer = await this.#ask(socket, { type: "lease", worktreeId, holder, process });
       if (!isLease(answer)) return this.#notTaken(false);
       if (answer.token !== null) {
         this.#token = answer.token;
@@ -98,7 +103,7 @@ export class DaemonWriter implements WriteSender {
       batch: encodeBatch(batch),
     } as const;
     const answer = await this.#ask(socket, request);
-    if (!isWrite(answer)) return this.#notTaken("not-taken");
+    if (!isWrite(answer)) return this.#notTaken("not-taken", socket, token);
     const deadline = Date.now() + this.#options.boundMs;
     let state = answer;
     for (let attempt = 0; state.written === null; attempt++) {
@@ -115,7 +120,7 @@ export class DaemonWriter implements WriteSender {
     }
     if (state.written) return "written";
     // The daemon rolled it back: written here instead, where a failure surfaces as it would have.
-    return this.#notTaken("not-taken");
+    return this.#notTaken("not-taken", socket, release ? null : token);
   }
 
   async release(): Promise<void> {
@@ -152,9 +157,18 @@ export class DaemonWriter implements WriteSender {
     }
   }
 
-  #notTaken<T>(answer: T): T {
+  /**
+   * No daemon takes this client's writes from now on. A lease it still
+   * holds there (`token`) is ended first: its process lives on, and would
+   * keep it (review 0.1.442 B3).
+   */
+  async #notTaken<T>(answer: T, socket?: AbsolutePath, token?: string | null): Promise<T> {
     this.#off = true;
     this.#token = null;
+    if (socket !== undefined && token !== undefined && token !== null) {
+      const { worktreeId } = this.#options;
+      await this.#ask(socket, { type: "release", worktreeId, token }).catch(() => null);
+    }
     return answer;
   }
 
