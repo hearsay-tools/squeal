@@ -108,3 +108,40 @@ fs.readFileSync("read.txt");
     });
   });
 });
+
+describe("removing or renaming a link (018-43, cause B)", () => {
+  it("keeps the evidence of the path a removed or renamed link reaches, inside the root or outside it", () => {
+    // squawk's `cursor-print-runner.test.ts`: a link to a mock in a temporary directory, removed after.
+    const script = `import * as fs from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+for (const name of ["u", "p", "m", "i", "o", "d/x", "gone"]) fs.readFileSync(\`real/\${name}.txt\`);
+const outside = fs.mkdtempSync(join(tmpdir(), "squeal-ci-links-"));
+const link = (name, at) => fs.symlinkSync(resolve(\`real/\${name}\`), at);
+link("u.txt", join(outside, "u"));
+fs.unlinkSync(join(outside, "u"));
+link("p.txt", join(outside, "p"));
+await fs.promises.rm(join(outside, "p"));
+link("m.txt", join(outside, "m"));
+fs.renameSync(join(outside, "m"), join(outside, "m2"));
+link("d", join(outside, "d"));
+fs.rmSync(join(outside, "d"), { recursive: true });
+link("i.txt", "links/i");
+fs.renameSync("links/i", "links/i2");
+link("o.txt", "links/o");
+fs.renameSync("links/i2", "links/o");
+fs.rmSync("links/o");
+fs.unlinkSync("dirlink/gone.txt");
+fs.rmSync(outside, { recursive: true });
+`;
+    const names = ["u", "p", "m", "i", "o", "d/x", "gone"];
+    const files = Object.fromEntries(names.map((n) => [`real/${n}.txt`, GOOD]));
+    const evidence = evidenceOf(script, { ...files, "links/.keep": "" }, { dirlink: "real" });
+    expect(evidence).toEqual({
+      ...Object.fromEntries(
+        names.filter((n) => n !== "gone").map((n) => [`real/${n}.txt`, blob(GOOD)]),
+      ),
+      "script.mjs": blob(script),
+    });
+  });
+});
