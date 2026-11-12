@@ -94,6 +94,8 @@ A proxy adapter implements `RunnerAdapter` by sending these messages. It is one 
 
 The daemon starts its Vitest runner as a local runner host child: same messages over a pipe, no SSH. Its environment and `execPath` come from the worktree's hook, as the daemon's do today. node:test and pytest follow in later rows of this spec, by the same cut (`runner-split.md` Q5). Cost: 26 to 46 MiB per worktree and runner (`daemon-model.md` Q7), one more process in `squeal ps`. Nothing for the user to set up.
 
+Amended 2026-11-12: the cost estimate was wrong. On this host a Vitest runner host held 0.3 to 1.6 GB and each node:test host 20 to 100 MB, for as long as its daemon lived; 14 cezar daemons held 9.1 GB beside 6.4 GB in Vitest hosts and 1.3 GB in node:test hosts (the coordinator's survey before an out-of-memory stop, `status.md` 2026-11-12). D20 bounds a host's life.
+
 ### Part 3: a runner host over SSH
 
 #### D9. Opt-in, and where the target lives
@@ -171,6 +173,17 @@ Two settings in `squeal.config.json`, kept apart on purpose (the human, 2026-11-
 
 A guard backs the second setting: a remote run whose failure says the directory is not a Git repository (Git's own "not a git repository" text) stores no result for that file, reruns it here, and status names it with the hint to add it to `remote.needsRepository`. A false failure is never stored as current.
 
+### D20. Idle local runner hosts close
+
+The human, 2026-11-12, after the host ran out of memory: "speed is still important but high parallelism is even more important. Many devs don't have 48g of ram just for their agents and test runners." And on the limit: "just a setting. Keep it simple. No need to tweak it on the fly based on the host total memory etc. The default could be based on that, but that's it."
+
+1. **Started on first need.** A local runner host (the fast Vitest instance, each node:test and pytest runner) starts on the first call that needs it, not at daemon start. The synchronous members answer from the values the host last reported, or from the runner's options before any host has reported.
+2. **Closed when idle.** A host with no call in flight closes after `runner.hostIdleMinutes` with no call started. Closing the process returns all of its memory; closing an instance inside a process that stays up does not (`../011-core/research/daemon-memory.md` 3).
+3. **A planned close is not a crash (D7).** No check becomes `unknown`, no note is shown, and the next call starts a new host. Projects whose config inputs did not change while the host was closed are not reported recreated, so unchanged keys stay current and nothing reruns. A config change while closed still recreates its project, as it does today.
+4. **The setting.** `runner.hostIdleMinutes` in `squeal.config.json` and the user config, a whole number of minutes; `0` keeps hosts up for the daemon's life. Its default comes once, at daemon start, from the machine's total memory: one minute per 8 GiB, at least 2 and at most 10 (16 GiB gives 2, 48 GiB gives 6, 80 GiB or more gives 10). Squeal does not change it while it runs.
+5. **Scope.** Lane instances keep their 60 s close (`SlowRelease`). A remote runner host (Part 3) is not closed by this rule: its memory is on another machine.
+6. **Cost.** The first call after a close pays a cold start: about 0.4 to 0.7 s for the process and instance, then the related-file walk compiles every test file's imports again. In this repository (771 test files) an edit took 12.6 to 15.6 s cold against 1.8 to 2.1 s warm (`daemon-memory.md` 3); a small project pays about 1 s.
+
 ## Slices
 
 Each row ships and works alone.
@@ -190,6 +203,8 @@ Each row ships and works alone.
 | 021-17 | 5 | D16, the measurement |
 | 021-18 | budget | D18, the background ceiling (75% of CPUs by default, `capacity.backgroundShare`), floor and log line |
 | 021-19 | budget | D18's measurement on this host and one other machine, after a week |
+| 021-26 | 2 | D20, runner hosts start on first need and close when idle, with `runner.hostIdleMinutes` |
+| 021-27 | research | what fills an idle daemon's 0.3 to 1.2 GB, and whether a runner host grows with each run |
 
 021-07 to 021-10 touch disjoint files and can run in parallel. 021-11 can run beside them. The holder lookup of D5 has a contract file, `src/core/store/lock-holders.ts`, committed before wave 1 so 021-07 and 021-10 can build against it. 021-13 and 021-14 follow 021-11. 021-18 can run beside Part 1.
 
