@@ -41,3 +41,13 @@ Plan: a read-only snapshot script under `research/probes/live-saving/` takes, pe
 
 Running (2026-11-12): the first snapshot is in `research/probes/live-saving/week/`. A background job (`hsq job start squeal-018-45-week`, pid in `~/.local/share/squeal-018-45-week/*.log`) runs `snapshot.mjs` once a day at 16:30Z from 2026-11-13 to 2026-11-19 into `~/.local/share/squeal-018-45-week/out/` (outside every checkout; its `loop.log` records each run). After 2026-11-19 16:30Z: copy `out/*.json` into `research/probes/live-saving/week/`, then one `/researcher` writes `research/week-of-adoptions.md` from them and `research/live-saving.md`. Starting that session is the human's call (no scheduled session without the human's ask, CLAUDE.md "Starting sessions").
 
+
+## Review of candidate 0.1.459 (rows 018-43, 018-44)
+
+Use /reviewer. Shape: review. Candidate `cand/0.1.459` at 3ba1abc77; range `3784637e2..3ba1abc77` (main 0.1.457 plus 018-43, 018-44, docs and bundles). Write `reviews/0.1.459.md` and commit it on your branch.
+
+Read: spec D9 (amended 2026-11-12 for repeated names), D10, D14, D21; `research/left-out-files.md`; `research/live-saving.md` (first-importer defect); `tasks/018-43/notes.md`, `tasks/018-44/notes.md`; `status.md` 2026-11-12 lines.
+
+Check above all: 018-43 adds no evidence the export may not certify (spawn-argument rule equals the daemon recorder's; symlink removals; `includeTaskLocation` changes no key, D10); 018-44 fetches an export at most once per environment, never loops a fetch on restart, keeps the D21 refusal order and sliced import (row 021-20), and an old file-only import id still reads right. Say whether the accepted gap in `status.md` is a blocker.
+
+Done when: findings file with PASS or FAIL, blockers proven by a test or a reproduction in a scratch HOME. Lint, typecheck, `squeal status --wait 60000` on paths you touch; direct `pnpm exec vitest run <paths>` when Squeal is queued. No full suite, no `pnpm run build`.
