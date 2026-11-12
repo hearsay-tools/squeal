@@ -181,10 +181,16 @@ export async function remoteHostOver(
       const entries = await treeEntries(root);
       const { missing } = (await on.request("tree", [entries], callMs)) as TreeAnswer;
       const paths = new Set(entries.map((entry) => entry.path));
+      let bytes = 0;
+      let wire = 0;
       for (const write of await writesFor(root, missing, paths)) {
         await on.request("write", [write], callMs);
+        bytes += write.files.reduce((sum, file) => sum + file.size, 0);
+        wire += write.gzip.length;
       }
-      log(`${target.destination}: tree of ${entries.length} files, ${missing.length} sent`);
+      log(
+        `${target.destination}: tree of ${entries.length} files, ${missing.length} sent (${mib(bytes)}, ${mib(wire)} on the wire)`,
+      );
       await install(on);
     },
     invalidateWith: async (paths) => {
@@ -215,6 +221,11 @@ export async function remoteHostOver(
     admit: async (ask) => (await started().request("admit", [ask], callMs)) as AdmitAnswer,
     install: () => install(started()),
   };
+}
+
+/** `bytes` in MiB, one decimal. */
+function mib(bytes: number): string {
+  return `${(bytes / 1_048_576).toFixed(1)} MiB`;
 }
 
 /** `adapter` whose runs' reports carry their logs: written into the run's own `logDir`. */

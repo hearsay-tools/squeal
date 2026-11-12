@@ -3,13 +3,7 @@ import { lstat, readFile, readlink } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import type { AbsolutePath } from "../../types/common.js";
-import {
-  insideRoot,
-  type TreeEntry,
-  type TreeWrite,
-  treeBlob,
-  type WireFile,
-} from "./tree-wire.js";
+import { insideRoot, packFiles, type TreeEntry, type TreeWrite, treeBlob } from "./tree-wire.js";
 
 /*
  * Spec 021 D10 (row 021-13): the daemon's side of the remote tree. The tree
@@ -71,7 +65,7 @@ export async function treeEntries(root: AbsolutePath): Promise<TreeEntry[]> {
  * The writes that bring a remote to `paths` as they are on disk now: a path
  * of the tree with its bytes, a path that is no longer in it (deleted, or
  * ignored now) removed. Split so that no message carries much more than
- * `WRITE_BYTES`; a larger file goes alone.
+ * `WRITE_BYTES` before compression; a larger file goes alone.
  */
 export async function writesFor(
   root: AbsolutePath,
@@ -80,11 +74,12 @@ export async function writesFor(
   limit: number = WRITE_BYTES,
 ): Promise<TreeWrite[]> {
   const writes: TreeWrite[] = [];
-  let files: WireFile[] = [];
+  let files: { entry: TreeEntry; bytes: Buffer }[] = [];
   let removed: string[] = [];
   let size = 0;
-  const flush = () => {
-    if (files.length > 0 || removed.length > 0) writes.push({ files, removed });
+  const flush = async () => {
+    if (files.length > 0 || removed.length > 0)
+      writes.push({ ...(await packFiles(files)), removed });
     files = [];
     removed = [];
     size = 0;
@@ -96,10 +91,10 @@ export async function writesFor(
       removed.push(path);
       continue;
     }
-    if (size > 0 && size + read.bytes.byteLength > limit) flush();
-    files.push({ ...read.entry, data: read.bytes.toString("base64") });
+    if (size > 0 && size + read.bytes.byteLength > limit) await flush();
+    files.push(read);
     size += read.bytes.byteLength;
   }
-  flush();
+  await flush();
   return writes;
 }
