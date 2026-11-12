@@ -14,7 +14,7 @@ import type { RunnerClosure, RunnerEnvironment, RunReport } from "../../types/ru
 import type { BlobCache } from "../coverage/record.js";
 import { coverageProvider, PROVIDER_MISSING_NOTE } from "../coverage/runtime.js";
 import type { RunEstimate } from "./estimate.js";
-import { evidenceOf, leftOutFiles } from "./evidence.js";
+import { evidenceOf, type KeptLog, keptLog, leftOutFiles, type RunLog } from "./evidence.js";
 import { inLoaderOrder, orderRuns } from "./plan.js";
 import type { BasePrepares, PrepareRun } from "./prepare.js";
 import { type Picked, type SelectionSummary, tellSelection } from "./prerun.js";
@@ -93,6 +93,11 @@ export interface CollectOptions {
    * with it, Vitest records runtime reads as the worktree's daemon does.
    */
   readonly ran?: (run: GateRun) => Promise<void>;
+  /**
+   * #197 (row 020-40): keeps the log folder of a run with a failed or unfinished file before the
+   * temporary folder goes; gives where, `null` when it kept none. Absent, no log is kept.
+   */
+  readonly keepLog?: (run: RunLog) => Promise<AbsolutePath | null>;
 }
 
 /** D17.3: one runner's run, its report and each completed file's mapped record, by `testFileId`. */
@@ -186,6 +191,7 @@ export async function collectEvidence(
     const blobs: BlobCache = new Map();
     const testFiles: TestFileEvidence[] = [];
     const prepares: PrepareRun[] = [];
+    const logs: KeptLog[] = [];
     let timedOut = false;
     for (const { pick, index: i, files: toRun } of runs) {
       const { runner, run: chosen } = pick;
@@ -208,9 +214,12 @@ export async function collectEvidence(
       const mapping = { format, blobs, provider, children, note };
       const records = mapPayloads(runner.covered.splice(0), mapping);
       await tellRan(options.ran, { runner: runner.kind, files, report, records });
-      for (const ref of files) {
-        testFiles.push(await evidenceOf(runner, ref, report, records, children));
-      }
+      const ran: TestFileEvidence[] = [];
+      for (const ref of files) ran.push(await evidenceOf(runner, ref, report, records, children));
+      testFiles.push(...ran);
+      const ended = { runner: runner.kind, files, logDir, report };
+      const log = await keptLog(options.keepLog, ended, ran);
+      if (log !== null) logs.push(log);
     }
     return {
       testFiles: testFiles.sort(byRunnerAndPath),
@@ -220,6 +229,7 @@ export async function collectEvidence(
       ...(prepares.length === 0 ? {} : { prepares }),
       ...estimates,
       ...gaps,
+      ...(logs.length === 0 ? {} : { logs }),
     };
   } finally {
     await Promise.allSettled(runners.map((r) => r.adapter.close()));
