@@ -12,6 +12,7 @@ import type {
   GATE_REPORT_FORMAT,
   GateGap,
   GatePolicy,
+  GateRerun,
   GateState,
   GateVerdict,
   OmittedFunction,
@@ -187,6 +188,13 @@ export interface GateRunReport {
    * not read it.
    */
   readonly estimate?: Omit<RunEstimate, "runner">;
+  /**
+   * Row 020-46: the selected files the gate stopped early before, by
+   * path: the estimate was at least twice what was left, and they load no
+   * changed function. They are not in `notFinished`; each keeps the
+   * verdict at least `incomplete`. Absent when none.
+   */
+  readonly overBudget?: readonly RelativePath[];
   readonly durationMs: number | null;
 }
 
@@ -230,7 +238,12 @@ export interface GateReport {
      */
     readonly paths: readonly { readonly path: RelativePath; readonly blob: FileHash }[];
   };
-  readonly budget: { readonly seconds: number; readonly timedOut: boolean };
+  readonly budget: {
+    readonly seconds: number;
+    readonly timedOut: boolean;
+    /** Row 020-45: the rerun that fits the estimate, when it was over what was left; absent otherwise. */
+    readonly rerun?: GateRerun;
+  };
   /** D14.3: the groups in scope, and each group left out; absent when the caller gave no scope. */
   readonly scope?: {
     readonly groups: readonly ScopeGroup[];
