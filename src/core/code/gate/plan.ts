@@ -12,11 +12,12 @@ import {
   fitBudget,
   type RunEstimate,
 } from "./estimate.js";
-import { loadsOf } from "./evidence.js";
+import { evidenceOf, loadsOf } from "./evidence.js";
 import { loaderOrder, splitEarly } from "./order.js";
 import type { KnownEvidence, Picked } from "./prerun.js";
 import { runnerOrder } from "./runner-order.js";
-import type { TestFileEvidence } from "./types.js";
+import type { Runner } from "./runners.js";
+import type { ChangedSet, TestFileEvidence } from "./types.js";
 
 /*
  * Spec 020 D17, D18 (rows 020-17ab, 020-19): what the collector does
@@ -123,6 +124,54 @@ export interface EarlyStop {
   readonly functions: readonly RelativePath[];
   /** The `--test` files, which always run. */
   readonly tests: readonly RelativePath[];
+}
+
+/**
+ * D17.2, rows 020-45 and 020-46: `order`'s runs in loader order, fitted
+ * to the seconds left of the budget before `deadline` (a
+ * `performance.now()` time). At twice what is left, each run keeps only
+ * the files that may load one of `changed`'s functions. `told` is what the
+ * estimate tells; its rerun command is `context.rerun`'s, else
+ * `defaultRerun`'s.
+ */
+export async function fitRuns<P extends Picked>(
+  order: RunOrder<P>,
+  changed: ChangedSet,
+  context: Pick<PlanContext, "durations"> & {
+    readonly budgetSeconds: number;
+    readonly deadline: number;
+    readonly tests: readonly RelativePath[];
+    readonly rerun?: ((seconds: number) => string) | undefined;
+  },
+): Promise<{ readonly runs: PlannedRun<P>[]; readonly told: BudgetTold }> {
+  const fit = fitOrder(order, context.budgetSeconds, context.deadline);
+  const functions = [...new Set(changed.functions.map((f) => f.path))];
+  const early = fit.early === true ? { functions, tests: context.tests } : undefined;
+  const { durations } = context;
+  const runs = await inLoaderOrder(order.runs, { changed: changed.paths, durations, early });
+  const told = budgetTold(fit, runs, context.rerun ?? defaultRerun(changed.ref));
+  return { runs, told };
+}
+
+/**
+ * Row 020-46: of `run`, the selected files the gate did not stop early
+ * before, and the evidence of those it did: not completed, the closure
+ * read with no run, so no function's state reads a pass from them.
+ */
+export async function stoppedEarly(
+  runner: Runner,
+  run: PlannedRun<Picked>,
+  children: boolean,
+): Promise<{ readonly chosen: readonly TestFileRef[]; readonly evidence: TestFileEvidence[] }> {
+  const overBudget = run.overBudget ?? [];
+  const evidence: TestFileEvidence[] = [];
+  for (const ref of overBudget) {
+    evidence.push({
+      ...(await evidenceOf(runner, ref, null, new Map(), children)),
+      overBudget: true,
+    });
+  }
+  return { chosen: run.pick.run.filter((ref) => !overBudget.includes(ref)), evidence };
 }
 
 /** D17.1, rows 020-45 and 020-46: what the estimate tells beside each runner's estimate. */
