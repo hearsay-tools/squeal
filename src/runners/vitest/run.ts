@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { SerializedError, TestSpecification, Vitest } from "vitest/node";
 import { compare } from "../../core/fs/compare.js";
@@ -11,6 +11,7 @@ import type {
   RunOptions,
   RunReport,
 } from "../../core/types/runner.js";
+import { makeLogDir } from "../log-dir.js";
 import { runLogJson } from "../run-summary.js";
 import { endedInTime, endedWhole, errorText, type RunCollector } from "./reporter.js";
 import { compareRefs, refKey, toCheckError } from "./results.js";
@@ -302,10 +303,11 @@ function owner(error: SerializedError, collector: RunCollector): RelativePath | 
 
 /**
  * Writes `vitest.log` (raw output, absolute paths kept) and `report.json`, the
- * run's summary (`runLogJson`), under `logDir`.
+ * run's summary (`runLogJson`), under `logDir`; nothing once the store folder
+ * that holds `logDir` is gone (row 018-38, `makeLogDir`).
  */
 export function writeRunLog(options: RunOptions, collector: RunCollector, report: RunReport): void {
-  mkdirSync(options.logDir, { recursive: true });
+  if (!makeLogDir(options.logDir)) return;
   const header = [
     `squeal vitest run ${options.runId}`,
     `end: ${report.end}${report.failure ? ` (${report.failure})` : ""}, ${report.durationMs} ms`,
