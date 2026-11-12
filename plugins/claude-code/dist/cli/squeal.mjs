@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.455";
+  if (true) return "0.1.456";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -51419,7 +51419,7 @@ async function runNodeTest(options) {
       (r) => r.stream?.durationMs == null ? [] : [{ testFile: r.testFile, durationMs: r.stream.durationMs }]
     )
   };
-  const report4 = signed(built, { reads: reads2, nodeOptions: env.NODE_OPTIONS, runtime, paths });
+  const report4 = signed(built, { reads: reads2, runtime, paths });
   const observed2 = completed2.flatMap((r) => {
     const files5 = graphs(options.logDir, r.index);
     const closure = observedClosure(r.testFile, r.absolute, files5, preloads, paths);
@@ -51431,11 +51431,9 @@ async function runNodeTest(options) {
 }
 function childEnv(options, runtime) {
   const env = projectEnv(options.project, options.env ?? process.env);
-  const nodeOptions = env.NODE_OPTIONS;
-  const recorder = `--require ${quoteNodeOption(runtime.recorder)}`;
-  if (options.project.slow === true || nodeOptions !== void 0 && holdsRequire(nodeOptions)) {
-    env.NODE_OPTIONS = nodeOptions === void 0 ? recorder : `${recorder} ${nodeOptions}`;
-  }
+  const nodeOptions = env.NODE_OPTIONS?.trim() ?? "";
+  const recorder = options.project.slow === true ? `--require ${quoteNodeOption(runtime.recorder)}` : recorderOption(runtime.recorder, nodeOptions);
+  env.NODE_OPTIONS = nodeOptions === "" ? recorder : `${recorder} ${nodeOptions}`;
   return env;
 }
 function ending(runs, completed2, expired, timeoutMs, node2) {
@@ -51468,7 +51466,7 @@ function signed(built, run7) {
   const { reads: reads2, runtime } = run7;
   return withRecorderSignatures(built, {
     files: reads2 === null ? [runtime.recorder] : [runtime.recorder, reads2.recorder],
-    inNodeOptions: reads2 !== null || (run7.nodeOptions ?? "").includes(runtime.recorder),
+    inNodeOptions: true,
     relativize: (text3) => run7.paths.relativizeText(text3)
   });
 }
@@ -51496,6 +51494,7 @@ var init_run2 = __esm({
     init_worktree_paths();
     init_process_label();
     init_log_dir();
+    init_runtime2();
     init_signature();
     init_group();
     init_node_options();
@@ -51723,7 +51722,7 @@ var NODE_TEST_ADAPTER_VERSION;
 var init_version3 = __esm({
   "src/runners/node-test/version.ts"() {
     "use strict";
-    NODE_TEST_ADAPTER_VERSION = "11";
+    NODE_TEST_ADAPTER_VERSION = "12";
   }
 });
 
@@ -84847,6 +84846,7 @@ init_policy2();
 init_compare();
 init_git_layout();
 init_git_index();
+init_closure();
 init_reverse_index();
 init_runtime();
 import { mkdtempSync as mkdtempSync6, rmSync as rmSync15 } from "node:fs";
@@ -85020,6 +85020,7 @@ function byWidth(refs2, width, seconds5) {
 
 // src/core/code/gate/prerun.ts
 init_compare();
+init_reverse_index();
 
 // src/core/code/gate/scope.ts
 init_check_groups();
@@ -85151,21 +85152,30 @@ async function tellSelection(tell, picked, changed2, context) {
   if (tell === void 0) return;
   const { scope: scope2, tally: tally2, known: known3, excluded = () => false } = context;
   const leftOut3 = tally2?.evidence([]).leftOut ?? [];
-  const looked2 = context.children === true ? () => true : excluded;
-  tell(await summarize(picked, changed2, { scope: scope2, leftOut: leftOut3, known: known3, excluded: looked2 }));
+  const summary = await summarize(picked, changed2, { scope: scope2, leftOut: leftOut3, known: known3, excluded });
+  tell(context.children === true ? withChildren2(summary) : summary);
+}
+function withChildren2(summary) {
+  const { unloaded, ...rest2 } = summary;
+  if (unloaded.length === 0 || summary.runners.every((r) => r.files === 0)) return summary;
+  return { ...rest2, unloaded: [], childMayLoad: unloaded };
 }
 async function summarize(picked, changed2, context) {
   const { known: known3 } = context;
   const kinds = [...new Set(picked.map((p) => p.kind))];
   const runners2 = kinds.map((runner) => {
-    const selected2 = picked.filter((p) => p.kind === runner).flatMap((p) => p.run);
+    const of = picked.filter((p) => p.kind === runner);
+    const selected2 = of.flatMap((p) => p.run);
     const from = (where3) => selected2.filter((ref3) => known3.get(ref3)?.from === where3).length;
+    const declared = new Set(of.flatMap((p) => p.byInputs ?? []).map(testFileId));
+    const byInputs = selected2.filter((ref3) => declared.has(testFileId(ref3))).map((r) => r.path);
     return {
       runner,
       files: selected2.length,
       run: selected2.filter((ref3) => !known3.has(ref3)).length,
       known: { store: from("store"), parts: from("parts") },
-      groups: byGroup(context.scope, runner, selected2)
+      groups: byGroup(context.scope, runner, selected2),
+      ...byInputs.length === 0 ? {} : { byInputs: [...new Set(byInputs)].sort(compare) }
     };
   });
   const runs = picked.map((p) => ({ ...p, run: p.run.filter((ref3) => !known3.has(ref3)) }));
@@ -85587,7 +85597,7 @@ async function collectEvidence(cwd, changed2, options) {
     const keeping = options.ran !== void 0;
     const opening = { provider, temp, note, children, keeping, closures };
     await openRunners(options.adapters, root, policy, opening, runners2);
-    const picked = await select(runners2, paths, options.tests, tally2);
+    const picked = await select(runners2, { paths, ...options }, tally2);
     const at2 = { root, deadline, note, options, children };
     const known3 = await storedOf2(picked, options);
     const { durations: durations2 } = options;
@@ -85636,7 +85646,12 @@ async function collectEvidence(cwd, changed2, options) {
     rmSync15(temp, { recursive: true, force: true });
   }
 }
-async function select(runners2, paths, tests2, tally2) {
+async function select(runners2, {
+  paths,
+  tests: tests2,
+  inputs: inputs2
+}, tally2) {
+  const declared = inputs2 === void 0 || paths.length === 0 ? null : createDeclaredInputs(inputs2, paths);
   const named4 = /* @__PURE__ */ new Set([...paths, ...tests2]);
   const matched = /* @__PURE__ */ new Set();
   const picked = [];
@@ -85653,10 +85668,15 @@ async function select(runners2, paths, tests2, tally2) {
       const affected2 = await adapter.affected(paths);
       for (const ref3 of [...affected2.direct, ...affected2.transitive]) add3(ref3);
     }
+    const byInputs = listed8.filter(
+      (ref3) => !chosen.has(testFileId(ref3)) && (declared?.for(ref3.path).length ?? 0) > 0
+    );
+    for (const ref3 of byInputs) add3(ref3);
     const all2 = [...chosen.values()].sort(byPath);
     const split5 = tally2?.split(kind, listed8, all2, new Set(tests2));
     const [run7, leftOut3] = [split5?.run ?? all2, split5?.leftOut ?? []];
-    picked.push({ runner, kind, adapter, listed: listed8, run: run7, leftOut: leftOut3 });
+    const declaredOnly = byInputs.length === 0 ? {} : { byInputs: byInputs.sort(byPath) };
+    picked.push({ runner, kind, adapter, listed: listed8, run: run7, leftOut: leftOut3, ...declaredOnly });
   }
   const unknown = tests2.filter((path) => !matched.has(path));
   if (unknown.length > 0) {
@@ -86090,13 +86110,17 @@ async function loadBasePolicy(cwd, baseCommit) {
         maxFileBytes: complexity.maxFileBytes,
         children: coverage.children,
         scope: scope2.base,
-        ...prepares.size === 0 ? {} : { prepares }
+        ...prepares.size === 0 ? {} : { prepares },
+        ...declares(policy.inputs) ? { inputs: policy.inputs } : {}
       },
       problems: [...problems, ...scope2.problems]
     };
   } finally {
     rmSync16(scratch, { recursive: true, force: true });
   }
+}
+function declares(inputs2) {
+  return Array.isArray(inputs2) ? inputs2.length > 0 : Object.keys(inputs2).length > 0;
 }
 async function fileAt(cwd, commit, path) {
   const out2 = await runGit(cwd, ["cat-file", "--batch"], { input: `${commit}:./${path}
@@ -86431,13 +86455,21 @@ function runnerLine(selection) {
   const name3 = RUNNER_NAMES[runner];
   if (files5 === 0) return `${name3}: no test file to run`;
   const byGroup2 = groups3.length === 0 ? "" : ` (${groups3.map((g2) => `${g2.name} ${g2.files}`).join(", ")})`;
-  if (run7 === files5) return `${name3}: ${plural(files5, "test file")} to run${byGroup2}`;
+  const declared = byInputsText(selection.byInputs ?? []);
+  if (run7 === files5) return `${name3}: ${plural(files5, "test file")} to run${byGroup2}${declared}`;
   const read5 = [
     ...known3.parts === 0 ? [] : [`${known3.parts} read from the parts`],
     ...known3.store === 0 ? [] : [`${known3.store} read from the stores`]
   ];
   const runs = `${run7 === 0 ? "none" : run7} to run`;
-  return `${name3}: ${plural(files5, "test file")} selected${byGroup2}: ${[runs, ...read5].join(", ")}`;
+  return `${name3}: ${plural(files5, "test file")} selected${byGroup2}: ${[runs, ...read5].join(", ")}${declared}`;
+}
+var NAMED2 = 3;
+function byInputsText(byInputs) {
+  if (byInputs.length === 0) return "";
+  const more2 = byInputs.length > NAMED2 ? ` and ${byInputs.length - NAMED2} more` : "";
+  const names7 = `${byInputs.slice(0, NAMED2).join(", ")}${more2}`;
+  return `; ${byInputs.length} by declared inputs at the base, not by imports: ${names7}`;
 }
 function leftOutLine({
   name: name3,
@@ -86459,15 +86491,24 @@ function unloadedLine(path, functions) {
     "to skip its coverage, name it in coverage.exclude at the base."
   ].join(" ");
 }
+function childMayLoadLine(path, functions) {
+  return [
+    `no selected test file imports ${path}.`,
+    "With coverage.children, it is measured only if a process one of them starts loads it;",
+    `else its ${plural(functions, "changed function")} will read incomplete (no-loader).`,
+    "To select a test that starts it, give the test with --test or declare the path for it in inputs at the base;",
+    "to skip its coverage, name it in coverage.exclude at the base."
+  ].join(" ");
+}
 function preRunText(summary, changed2) {
   const setups = summary.setups.map(setupName);
+  const functions = (path) => changed2.functions.filter((f) => f.path === path).length;
   const lines = [
     ...summary.runners.map(runnerLine),
     ...summary.leftOut.map(leftOutLine),
     ...setups.length === 0 ? [] : [`global setup runs for: ${setups.join(", ")}`],
-    ...summary.unloaded.map(
-      (path) => unloadedLine(path, changed2.functions.filter((f) => f.path === path).length)
-    )
+    ...summary.unloaded.map((path) => unloadedLine(path, functions(path))),
+    ...(summary.childMayLoad ?? []).map((path) => childMayLoadLine(path, functions(path)))
   ];
   return lines.map((line) => `squeal code: ${line}
 `).join("");
@@ -86995,7 +87036,7 @@ import { setTimeout as sleep11 } from "node:timers/promises";
 init_paths();
 init_open2();
 var KEEP_BUSY_BOUND_MS = 3e4;
-var NAMED2 = 5;
+var NAMED3 = 5;
 var StoreWait = class {
   #options;
   #since = null;
@@ -87131,7 +87172,7 @@ function holderOf3(database) {
   return describeHolders(refusedLockHolders(database));
 }
 function names3(files5) {
-  const shown = files5.map((f) => f.ref.path).sort(compare).slice(0, NAMED2);
+  const shown = files5.map((f) => f.ref.path).sort(compare).slice(0, NAMED3);
   const more2 = files5.length - shown.length;
   return more2 > 0 ? `${shown.join(", ")} and ${more2} more` : shown.join(", ");
 }
@@ -87721,11 +87762,9 @@ Usage: ${CODE_GATE_USAGE}
       adapters: timed(adapters, durationsMs),
       note: (text3) => io.stderr(`squeal code: ${text3}
 `),
-      // D12.1: how the runs collect is the base's, as the limits are.
-      children: policy.children,
+      ...fromBase2(policy),
       scope: scope2,
-      // D15: the base's node:test `prepare` commands; their output goes to stderr.
-      ...policy.prepares === void 0 ? {} : { prepares: policy.prepares },
+      // D15: a `prepare` command's output goes to stderr.
       output: io.stderr,
       // D14.4: the selection on stderr, after it and before the first run.
       ...preRunOptions(changed2, policy, io.stderr),
@@ -87747,6 +87786,16 @@ Usage: ${CODE_GATE_USAGE}
   io.stdout(parsed3.json ? `${JSON.stringify(report4, null, 2)}
 ` : formatGateReport(report4, json3));
   return EXIT[report4.verdict];
+}
+function fromBase2(policy) {
+  return {
+    // D12.1: how the runs collect.
+    children: policy.children,
+    // D3.1 (row 020-35): the declared inputs select too, as the daemon re-runs them.
+    ...policy.inputs === void 0 ? {} : { inputs: policy.inputs },
+    // D15: the node:test `prepare` commands.
+    ...policy.prepares === void 0 ? {} : { prepares: policy.prepares }
+  };
 }
 async function inventoryOf(root, ref3, paths, io) {
   try {
