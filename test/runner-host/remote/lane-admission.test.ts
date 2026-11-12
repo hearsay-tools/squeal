@@ -9,6 +9,7 @@ import {
   type AdmitAsk,
   createHostAdmission,
   type HostAdmission,
+  UNGRANTED,
 } from "../../../src/core/runner-host/remote/admission.js";
 import { TierCapacity, WAIT_FOR_CAPACITY } from "../../../src/core/scheduler/capacity.js";
 import { TierPermits } from "../../../src/core/scheduler/local-permits.js";
@@ -111,7 +112,8 @@ describe("a remote lane under the remote machine's own ceiling (spec 021 D18, ro
         events.push(`admit ${ask.want}`);
         return ++looks < 3 ? { grant: 0 } : { grant: ask.want };
       },
-      claim: () => null,
+      // A grant without a pool behind it: the run goes ungranted.
+      claim: () => UNGRANTED,
       close: () => {},
     };
     const permits: LocalPermits = {
