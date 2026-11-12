@@ -1,8 +1,19 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { FILE_ERROR } from "../../src/core/code/gate/evidence.js";
 import type { GateReport } from "../../src/core/code/gate/report.js";
 import { gitHashObject } from "../hash/git-repo.js";
-import { BASE, code, edit, noEstimate, ownHomeAndTmp, repo, SLOW } from "./code-gate-fixture.js";
+import {
+  BASE,
+  code,
+  edit,
+  keptLogs,
+  noEstimate,
+  ownHomeAndTmp,
+  repo,
+  SLOW,
+} from "./code-gate-fixture.js";
 
 /*
  * Spec 020 D1 (row 020-05): `squeal code --base <ref>` end to end, in a
@@ -40,6 +51,9 @@ describe("squeal code --base: pass (spec 020 D1, exit 0)", () => {
     ]);
     expect(report.runs[0]?.durationMs).toBeGreaterThan(0);
     expect(leftInTmp()).toEqual([]);
+    // #197: a run with no failed or unfinished file keeps no log.
+    expect(report.runs[0]?.log).toBeUndefined();
+    expect(keptLogs(root)).toEqual([]);
   });
 });
 
@@ -202,6 +216,13 @@ describe("squeal code --base: a changed test file always runs (spec 020 D3.1)", 
         [{ path: "test/order.test.ts", tests: ["reads"] }],
       ],
     ]);
+    // #197: the run's log is kept with the failed test's error, and named after the verdict.
+    const log = report.runs[0]?.log ?? "";
+    expect(keptLogs(root)).toEqual([log]);
+    const text = readFileSync(join(log, "vitest.log"), "utf8");
+    expect(text).toContain("FAIL test/order.test.ts > reads");
+    expect(text).toContain("AssertionError: expected +0 to be 1");
+    expect(ran.stderr.endsWith(` Vitest ${log}\n`)).toBe(true);
   });
 });
 
@@ -249,6 +270,10 @@ describe("squeal code --base: an unfinished loading file never passes (spec 020 
       ["double", "incomplete", "not-finished"],
     ]);
     expect(report.verdict).toBe("incomplete");
+    // #197: an unfinished file keeps the run's log too, whether or not a test of it failed.
+    const log = report.runs[0]?.log ?? "";
+    expect(keptLogs(root)).toEqual([log]);
+    expect(readFileSync(join(log, "vitest.log"), "utf8")).toContain("end: timed-out");
   });
 });
 
