@@ -176,6 +176,21 @@ const UNREADABLE_GIT: Readonly<Record<string, string>> = {
   "test/pass.test.mjs": lines('import { test } from "node:test";', "", 'test("passes", () => {});'),
 };
 
+/**
+ * Row 020-31 (#193): a project whose argv names an async loader, so the
+ * adapter's loader-thread note, whose hint now names the top-level
+ * `inputs` key, is written; the loader only passes resolution on.
+ */
+const ASYNC_LOADER: Readonly<Record<string, string>> = {
+  "package.json": PACKAGE,
+  "validity-loader.mjs": lines(
+    "export async function resolve(specifier, context, next) {",
+    "  return next(specifier, context);",
+    "}",
+  ),
+  "test/pass.test.mjs": lines('import { test } from "node:test";', "", 'test("passes", () => {});'),
+};
+
 export const NODE_TEST_RUNS: readonly Case[] = [
   {
     kind: "adapter:node-test",
@@ -265,6 +280,16 @@ export const NODE_TEST_RUNS: readonly Case[] = [
       coverage: true,
       concurrency: 1,
       runs: [{ files: ["test/first.test.mjs", "test/removes-logs.test.mjs"] }],
+    },
+  },
+  {
+    kind: "adapter:node-test",
+    name: "a project with an async loader in its argv runs and stores alike (row 020-31)",
+    why: "020 D14.4 as amended for 020-31 (#193): the loader-thread note's hint now names the top-level inputs key of squeal.config.json; the note is wording, so the run stores what the last release stored",
+    input: {
+      files: ASYNC_LOADER,
+      argv: ["--experimental-loader=./validity-loader.mjs"],
+      runs: [{ files: ["test/pass.test.mjs"] }],
     },
   },
   {
