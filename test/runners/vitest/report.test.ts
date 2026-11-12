@@ -1,4 +1,5 @@
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -181,6 +182,56 @@ describe("vitest adapter: errors around cancel and close go to the run log (revi
       );
     } finally {
       rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("vitest adapter: the run log needs the store folder (row 018-38)", () => {
+  /** A store, `<checkout>/.git/squeal`, with `runs/` when `ran` says a run logged there before. */
+  function store(ran: boolean) {
+    const checkout = mkdtempSync(join(tmpdir(), "squeal-018-38-"));
+    const dir = join(checkout, ".git", "squeal");
+    mkdirSync(ran ? join(dir, "runs") : dir, { recursive: true });
+    const runId = randomUUID();
+    return { checkout, dir, options: { runId, logDir: join(dir, "runs", runId), timeoutMs: null } };
+  }
+
+  it.each([
+    { run: "a run in a store that logged before", ran: true },
+    { run: "a first run in a fresh store, `runs/` not there yet", ran: false },
+  ])("writes vitest.log and report.json for $run", ({ ran }) => {
+    const { checkout, options } = store(ran);
+    try {
+      writeRunLog(
+        options,
+        collectorWithTwoPassedFiles(),
+        buildReport(collectorWithTwoPassedFiles(), completed, 1),
+      );
+      expect(readFileSync(join(options.logDir, "vitest.log"), "utf8")).toContain(
+        `squeal vitest run ${options.runId}`,
+      );
+      expect(JSON.parse(readFileSync(join(options.logDir, "report.json"), "utf8"))).toMatchObject({
+        runId: options.runId,
+      });
+    } finally {
+      rmSync(checkout, { recursive: true, force: true });
+    }
+  });
+
+  it.each([
+    { removed: "the store folder", what: (s: ReturnType<typeof store>) => s.dir },
+    { removed: "the whole checkout", what: (s: ReturnType<typeof store>) => s.checkout },
+  ])("writes and makes nothing, without a throw, once $removed was removed", ({ what }) => {
+    const made = store(true);
+    const removed = what(made);
+    rmSync(removed, { recursive: true });
+    try {
+      const collector = collectorWithTwoPassedFiles();
+      writeRunLog(made.options, collector, buildReport(collector, completed, 1));
+      expect(existsSync(removed)).toBe(false);
+      expect(collector.logFile).toBeNull();
+    } finally {
+      rmSync(made.checkout, { recursive: true, force: true });
     }
   });
 });
