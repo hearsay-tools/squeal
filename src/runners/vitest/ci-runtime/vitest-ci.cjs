@@ -277,7 +277,8 @@ function readEvidence() {
 const settings = readSettings();
 
 // Spec 020 D19.6 (review of 0.1.443 B1): the test files that load `node:inspector`, before the evidence.
-// Not in a Vitest CLI process (review of 0.1.444 S1): known by name only, as no file is read before the evidence.
+// Not in a Vitest CLI process (review of 0.1.444 S1), known here by its script's name only:
+// `vitestPackage` reads files, and those reads stay after the evidence starts.
 try {
   if (!(isMainThread && vitestScript(process.argv[1]))) {
     installWatch(settings?.raw, settings?.coverage?.provider);
