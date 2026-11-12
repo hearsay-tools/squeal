@@ -13,8 +13,10 @@ import { ci, cloneOf, committed, recordVitest, scratchDir, writeFiles } from "./
  * lines and in one `test.each`. Both shards pass with `GOOD`. An export job
  * whose checkout holds `BAD`, or no file there, exports none of the reads; a
  * part set without one shard, or with an empty part directory, exports
- * nothing; the files with shared names are left out, never exported under a
- * name the daemon does not give.
+ * nothing. The files with shared names export under the names the daemon
+ * gives, a repeat by its line: `ci record` collects each test's location
+ * (row 018-43); a part without them leaves such a file out, never exported
+ * under a name the daemon does not give.
  */
 
 const READS = (name: string) =>
@@ -31,6 +33,9 @@ const FILES = {
 };
 
 const SLOW = { timeout: 300_000 };
+
+/** The files that read nothing but their own, which every checkout certifies. */
+const NAMED = ["test/each.test.ts", "test/lines.test.ts"];
 
 let dir = "";
 let origin = "";
@@ -86,9 +91,8 @@ describe("ci export certifies each result by its shard's evidence (review of 0.1
         ["none", null],
       ] as const) {
         const { code, said, bundle } = await exportIn(checkout(name, value));
-        expect(bundle?.testFiles.map((f) => f.path) ?? [], said).toEqual([]);
-        expect(code).toBe(1);
-        expect(said).toContain("no test file to export");
+        expect(bundle?.testFiles.map((f) => f.path) ?? [], said).toEqual(NAMED);
+        expect(code).toBe(0);
         expect(said).toContain("2 test files whose inputs here are not what their shard read");
         expect(said).toContain(
           "left out test/a.test.ts: its shard recorded other content, or none, for data/value.txt",
@@ -96,11 +100,9 @@ describe("ci export certifies each result by its shard's evidence (review of 0.1
       }
       const good = await exportIn(checkout("good", "GOOD"));
       expect(good.code, good.said).toBe(0);
-      const paths = good.bundle?.testFiles.map((f) => f.path);
-      expect(paths).toEqual(["test/a.test.ts", "test/b.test.ts"]);
-      expect(good.bundle?.testFiles.every((f) => f.closure?.paths.includes("data/value.txt"))).toBe(
-        true,
-      );
+      const reads = good.bundle?.testFiles.filter((f) => !NAMED.includes(f.path));
+      expect(reads?.map((f) => f.path)).toEqual(["test/a.test.ts", "test/b.test.ts"]);
+      expect(reads?.every((f) => f.closure?.paths.includes("data/value.txt"))).toBe(true);
       // Each shard took the ignored file's content as its tests read it, the blob of `GOOD`.
       const blob = execFileSync("git", ["hash-object", "--stdin"], { input: "GOOD" }).toString();
       for (const { part } of parts()) expect(part.evidence["data/value.txt"]).toBe(blob.trim());
@@ -127,17 +129,19 @@ describe("ci export certifies each result by its shard's evidence (review of 0.1
   });
 
   it(
-    "B4: leaves out a file with two checks of one name, on two lines or in one test.each",
+    "B4: names two checks of one name, on two lines or in one test.each, as the daemon does (018-43)",
     SLOW,
     async () => {
       const { code, said, bundle } = await exportIn(checkout("names", "GOOD"));
       expect(code, said).toBe(0);
-      const exported = new Set(bundle?.results.map((r) => r.testPath));
-      expect(exported.has("test/lines.test.ts") || exported.has("test/each.test.ts"), said).toBe(
-        false,
-      );
-      expect(said).toContain("Exported 2 test files");
-      expect(said).toContain("2 test files with two checks of one name");
+      expect(said).toContain("Exported 4 test files");
+      expect(said).not.toContain("two checks of one name");
+      const names = (path: string) =>
+        (bundle?.results ?? [])
+          .filter((r) => r.testPath === path && r.kind === "test")
+          .map((r) => r.fullName);
+      expect(names("test/lines.test.ts")).toEqual(["duplicate", "duplicate (line 3)", "once"]);
+      expect(names("test/each.test.ts")).toEqual(["same", "same (line 2)"]);
       const files = parts().flatMap((p) => p.part.testFiles);
       expect(Object.fromEntries(files.map((f) => [f.path, f.sharedNames ?? []]))).toEqual({
         "test/a.test.ts": [],
@@ -145,6 +149,8 @@ describe("ci export certifies each result by its shard's evidence (review of 0.1
         "test/each.test.ts": ["same"],
         "test/lines.test.ts": ["duplicate"],
       });
+      // `ci record` collects every test's location, as the daemon's instance does.
+      expect(files.every((f) => f.checks.every((c) => c.location !== null))).toBe(true);
     },
   );
 });

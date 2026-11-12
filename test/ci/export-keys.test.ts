@@ -242,7 +242,7 @@ describe("ci export's keys (spec 018 D9)", () => {
     );
   });
 
-  it("leaves out a file whose checks share a name, and one whose input content it cannot certify", async () => {
+  it("leaves out a file whose checks share a name without their locations, and one whose input content it cannot certify", async () => {
     const { root, commit } = await repository();
     const shared = { ...file("test/a.test.ts", "pass"), sharedNames: ["runs twice"] };
     // `src/x.ts` here is `// src/x.ts\n`, not the content the shard read.
@@ -253,6 +253,24 @@ describe("ci export's keys (spec 018 D9)", () => {
     expect(result.counts).toMatchObject({ testFiles: 0, ambiguous: 1, uncertified: 1, unkeyed: 0 });
     expect(result.uncertified).toEqual([
       { testFile: { project: "", path: "test/b.test.ts" }, inputs: ["src/x.ts"] },
+    ]);
+  });
+
+  it("exports a file whose checks share a name when each has its location, as the daemon names them (018-43)", async () => {
+    const { root, commit } = await repository();
+    const at = (line: number) => ({ line, column: 3 });
+    const checks = [
+      { fullName: "runs twice", outcome: "pass" as const, durationMs: 1, location: at(2) },
+      { fullName: "runs twice (line 2)", outcome: "pass" as const, durationMs: 1, location: at(2) },
+    ];
+    const shared = { ...file("test/a.test.ts", "pass"), checks, sharedNames: ["runs twice"] };
+    const result = await exported(root, commit, descriptor(), [shared]);
+    if ("refused" in result) throw new Error(result.refused.text);
+    expect(result.counts).toMatchObject({ testFiles: 1, ambiguous: 0, uncertified: 0 });
+    const tests = result.bundle.results.filter((r) => r.kind === "test");
+    expect(tests.map((r) => [r.fullName, r.location?.line])).toEqual([
+      ["runs twice", 2],
+      ["runs twice (line 2)", 2],
     ]);
   });
 
