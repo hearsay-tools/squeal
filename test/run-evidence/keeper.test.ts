@@ -6,6 +6,7 @@ import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it } from "vitest";
 import { Keeper } from "../../src/core/code/gate/keep.js";
 import { NotKept } from "../../src/core/code/gate/keep-reasons.js";
+import { databasesOf, InputCheck, keepFile } from "../../src/core/code/gate/keep-write.js";
 import { POLICY_FILE, readPolicy } from "../../src/core/daemon/policy.js";
 import type { Hasher } from "../../src/core/hash/hasher.js";
 import { StatCache } from "../../src/core/hash/stat-cache.js";
@@ -22,6 +23,7 @@ import { storePaths } from "../../src/core/store/paths.js";
 import type { CommitSha, EpochMs, WorktreeId } from "../../src/core/types/common.js";
 import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
 import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
+import type { RunReport } from "../../src/core/types/runner.js";
 import { git, scratchStore, writeTree } from "../keys/validity/harness/shared.js";
 
 /*
@@ -41,6 +43,15 @@ const KEY_A = "a".repeat(64) as CheckKey;
 const INPUT = "src/a.mjs";
 const RECORD = { v: 1, sources: [], unread: [] } as never;
 const STAT = { mtimeMs: 1, ctimeMs: 1, size: 1, inode: 1 };
+/** A run that completed `test/a.test.ts`. */
+const REPORT: RunReport = {
+  end: "completed",
+  durationMs: 1,
+  completedFiles: [A],
+  results: [],
+  fileErrors: [],
+  failure: null,
+};
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -103,6 +114,68 @@ describe("squeal code's merge hold (row 011-320, 011 C9)", () => {
     });
 
     expect([resultsAt(join(root, ".git")), notes]).toEqual([results, []]);
+  });
+});
+
+describe("squeal code's merge hold before each write (review 0.1.458 B4)", () => {
+  it("does not write a file a merge holds once flush's opening check passed", async () => {
+    const root = repository();
+    const notes: string[] = [];
+
+    await keepA(root, notes, { head: () => unmerge(root, INPUT) });
+
+    expect([resultsAt(join(root, ".git")), notes]).toEqual([
+      0,
+      [
+        "1 completed test file was not kept in the stores, because a merge holds a path its key names: test/a.test.ts; the next run will run it again",
+      ],
+    ]);
+  });
+
+  it("does not write the results of a file a merge holds after its coverage write", async () => {
+    const root = repository();
+    const store = scratchStore(join(root, "..", "repository-store"));
+    const hold = mergeHoldOf(root);
+    const file = { ref: A, key: KEY_A, paths: [INPUT], record: RECORD };
+    const wrote: string[] = [];
+    const writer = {
+      coverage: async () => {
+        wrote.push("coverage");
+        unmerge(root, INPUT);
+        return "kept" as const;
+      },
+      results: async () => {
+        wrote.push("results");
+        return "kept" as const;
+      },
+    };
+    const provenance = {
+      worktreeId: "worktree" as WorktreeId,
+      revision: 0,
+      commit: "a".repeat(40) as CommitSha,
+      dirty: false,
+      runId: "gate-hold",
+      recordedAt: 1 as EpochMs,
+    };
+    try {
+      const outcome = await keepFile(
+        { store, keys: keysOf([INPUT]), writer },
+        {
+          file,
+          report: REPORT,
+          provenance,
+          databases: databasesOf(join(root, ".git")),
+          giveUp: () => false,
+          check: new InputCheck(),
+          steady: async () => true,
+          unheld: async () => (await unheldNow(hold, [file])).length > 0,
+        },
+      );
+
+      expect([outcome, wrote]).toEqual(["changed", ["coverage"]]);
+    } finally {
+      store.close();
+    }
   });
 });
 
@@ -260,6 +333,8 @@ async function keepA(
     runtime?: RuntimeSource;
     revisions?: Revisions;
     listing?: boolean;
+    /** In the write's `head()`: after `flush`'s opening check, before either write. */
+    head?: () => void;
     started?: () => void;
     ran?: () => void;
   },
@@ -268,7 +343,10 @@ async function keepA(
     root,
     commonDir: join(root, ".git"),
     policy: { ...DEFAULT_POLICY, complexity: { ...DEFAULT_POLICY.complexity, enabled: true } },
-    head: async () => ({ head: "a".repeat(40), dirty: false }),
+    head: async () => {
+      at.head?.();
+      return { head: "a".repeat(40), dirty: false };
+    },
     note: (text) => notes.push(text),
   });
   const sources = {
@@ -281,14 +359,7 @@ async function keepA(
   await keep.ran({
     runner: "vitest",
     files: [A],
-    report: {
-      end: "completed",
-      durationMs: 1,
-      completedFiles: [A],
-      results: [],
-      fileErrors: [],
-      failure: null,
-    },
+    report: REPORT,
     records: new Map([[testFileId(A), { record: RECORD }]]),
   });
   at.ran?.();
