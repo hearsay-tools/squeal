@@ -4,6 +4,7 @@ import type { Readable } from "node:stream";
 import { squealVersion } from "../core/daemon/version.js";
 import { serveRunnerHost } from "../core/runner-host/host.js";
 import { HOST_RUNNERS, type HostRunner } from "../core/runner-host/protocol.js";
+import { createHostAdmission, machinePool } from "../core/runner-host/remote/admission.js";
 import { createTreeHost } from "../core/runner-host/remote/tree-host.js";
 import { buildAdapter } from "../core/runner-host/runners.js";
 import { hostWorkers } from "../core/runner-host/workers.js";
@@ -31,7 +32,8 @@ export interface RunnerHostCommandOptions {
  *
  * `--tree` (spec 021 D10, row 021-13): the host runs on a remote and owns
  * its root, a copy the daemon's messages write; it makes the root when
- * missing and keeps its records in the directory around it.
+ * missing and keeps its records in the directory around it. Its machine's
+ * permit pool admits the daemon's background runs (D18, row 021-21).
  */
 export async function runnerHostCommand(
   args: readonly string[],
@@ -65,7 +67,13 @@ export async function runnerHostCommand(
     },
     version: squealVersion(),
     around: hostWorkers(),
-    ...(parsed.tree ? { tree: createTreeHost(root, (text) => process.stderr.write(text)) } : {}),
+    ...(parsed.tree
+      ? {
+          tree: createTreeHost(root, (text) => process.stderr.write(text)),
+          // Spec 021 D18 (row 021-21; request 66d23a73): its machine's own ceiling admits its runs.
+          admission: createHostAdmission(machinePool(root)),
+        }
+      : {}),
     ...(owned ? { within: inRootWhileAnswering(root, process.cwd()) } : {}),
   });
   // The adapter closed or its bound passed; a handle a dependency left open must not keep the host.
