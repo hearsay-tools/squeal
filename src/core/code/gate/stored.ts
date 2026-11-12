@@ -70,8 +70,10 @@ interface Keyed {
 export interface StoredFiles {
   /** `CollectOptions.stored`: the files with results and a record at their key. */
   readonly stored: StoredEvidence;
-  /** `CollectOptions.ran` (D17.3): keeps the files a run completed that `stored` keyed and did not find. */
+  /** `CollectOptions.ran` (D17.3): queues the files a run completed that `stored` keyed and did not find. */
   readonly ran: (run: GateRun) => Promise<void>;
+  /** D17.5: writes the queued files, once the report is out and before `close`. */
+  flush(): Promise<void>;
   /** Each file's key as a daemon here gives it; `null` when it has none. */
   keys(files: readonly TestFileRef[]): Promise<ReadonlyMap<TestFileRef, CheckKey | null>>;
   /** Closes the stores and the adapters, and removes the scratch store. */
@@ -135,7 +137,7 @@ export function openStored(options: StoredOptions): StoredFiles | null {
       stores.close();
     }
   };
-  return { stored, ran: (run) => keeper.ran(run), keys, close };
+  return { stored, ran: (run) => keeper.ran(run), flush: () => keeper.flush(), keys, close };
 }
 
 /** The evidence the stores hold of `ref` at its key; `null` without results and a record there. */
