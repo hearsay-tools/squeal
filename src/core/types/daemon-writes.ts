@@ -185,6 +185,11 @@ export interface FailedOutcome {
  */
 export interface KeepRequest {
   readonly type: "keep";
+  /**
+   * The try's own id, chosen by the gate (review 0.1.450 B2): a lost answer
+   * is asked again by it (`keep-status`), and the daemon runs one id once.
+   */
+  readonly id: string;
   readonly worktreeId: WorktreeId;
   /** The `user_version` the gate read its store at; another one is refused. */
   readonly storeSchema: number;
@@ -205,12 +210,14 @@ export type KeepWrite =
     }
   | {
       readonly kind: "results";
+      /** The file's key: every record's (review 0.1.450 B3). */
+      readonly key: CheckKey;
       readonly records: readonly ResultRecord[];
       readonly paths: readonly RelativePath[];
       readonly environmentFiles: readonly RelativePath[];
     };
 
-/** Asks how the keep try `requestId` went. */
+/** Asks how the keep try `requestId` (its `KeepRequest.id`) went. */
 export interface KeepStatusRequest {
   readonly type: "keep-status";
   readonly requestId: string;

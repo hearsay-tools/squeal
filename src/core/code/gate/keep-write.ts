@@ -129,15 +129,25 @@ export function databasesOf(commonDir: AbsolutePath): {
 }
 
 /**
- * One try of each write of a kept file: `false` when a busy store refused
- * it. Here (`writeHere`), or through the daemon that serves the worktree
- * (`writeThroughDaemon`, spec 021 D15, row 021-20).
+ * How one try of a write ended: written; refused by a busy store; or, sent
+ * to a daemon, proved never to have run (review 0.1.450 B2), so another
+ * try is a new write.
+ */
+export type Tried = "kept" | "busy" | "lost";
+
+/** How many lost tries of one write are tried again before the write fails. */
+const LOST_TRIES = 3;
+
+/**
+ * One try of each write of a kept file. Here (`writeHere`), or through the
+ * daemon that serves the worktree (`writeThroughDaemon`, spec 021 D15, row
+ * 021-20).
  */
 export interface KeepWriter {
   /** The file's coverage record at its key (`putParts`). */
-  coverage(file: Kept): Promise<boolean>;
+  coverage(file: Kept): Promise<Tried>;
   /** The file's results in one transaction (`storeResults`), `keys` its lookup's. */
-  results(file: Kept, records: readonly ResultRecord[], keys: WorktreeKeys): Promise<boolean>;
+  results(file: Kept, records: readonly ResultRecord[], keys: WorktreeKeys): Promise<Tried>;
 }
 
 /** The writer with no daemon serving: each try on the keeper's own connections, one busy slice. */
@@ -160,14 +170,14 @@ export function writeHere(
   };
 }
 
-/** `write`, one synchronous transaction, tried once with one busy slice: whether it landed. */
-function tried(write: () => unknown): boolean {
+/** `write`, one synchronous transaction, tried once with one busy slice. */
+function tried(write: () => unknown): Tried {
   try {
     withBusySliceSync(BUSY_SLICE_MS, write);
-    return true;
+    return "kept";
   } catch (error) {
     if (!isBusy(error)) throw error;
-    return false;
+    return "busy";
   }
 }
 
@@ -192,8 +202,8 @@ export async function keepFile(
 ): Promise<KeepOutcome> {
   const { store, keys, writer } = stores;
   const { file, report, provenance, databases, giveUp, steady } = at;
-  const paused = (database: AbsolutePath) => async () => {
-    if (giveUp(database)) return "spent";
+  const paused = (database: AbsolutePath) => async (busy: boolean) => {
+    if (busy && giveUp(database)) return "spent";
     return (await steady()) ? null : "changed";
   };
   if (!(await steady())) return "changed";
@@ -220,18 +230,37 @@ export async function keepFile(
  * `attempt`, one try of one write, tried as `slicedWrite` tries it: each
  * try waits at most `BUSY_SLICE_MS` for a busy store, the next follows
  * `busyBackoffMs` later. After each pause `paused`, which may read files,
- * says whether to stop; it runs outside any transaction.
+ * says whether to stop; it runs outside any transaction, and counts the
+ * bound only after a busy store's refusal. A try a daemon proved never ran
+ * is tried again after the same pause, at most `LOST_TRIES` times.
  */
 async function sliced(
-  attempt: () => Promise<boolean>,
-  paused: () => Promise<Exclude<KeepOutcome, "kept"> | null>,
+  attempt: () => Promise<Tried>,
+  paused: (busy: boolean) => Promise<Exclude<KeepOutcome, "kept"> | null>,
 ): Promise<KeepOutcome> {
+  let lost = 0;
   for (let n = 0; ; n++) {
-    if (await attempt()) return "kept";
+    const tried = await attempt();
+    if (tried === "kept") return "kept";
+    if (tried === "lost" && ++lost > LOST_TRIES) {
+      throw new Error(`the daemon lost ${lost} tries of a write before they ran`);
+    }
     await sleep(busyBackoffMs(n));
-    const stop = await paused();
+    const stop = await paused(tried === "busy");
     if (stop !== null) return stop;
   }
+}
+
+/**
+ * Review 0.1.450 B2: the note when the daemon did not say whether it kept
+ * the first of `left` files (`why`), and wrote none of the others.
+ */
+export function perhapsKept(left: number, why: string): string {
+  const first = `whether the daemon kept the first of them is not known (${why})`;
+  if (left === 1) {
+    return `1 completed test file may not be kept in the stores: whether the daemon kept it is not known (${why}); the next run reads it if it was kept, else runs it again`;
+  }
+  return `${completed(left)} may not be kept in the stores: ${first}, and the other ${left - 1} were not written; the next run reads what was kept and runs the rest again`;
 }
 
 /** The start of a note on `count` completed test files that were not kept. */
