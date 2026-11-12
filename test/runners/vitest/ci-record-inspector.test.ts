@@ -15,7 +15,9 @@ import { recordCovered } from "./ci-coverage-kit.js";
  * inside a test: a literal `import()`, a `require()`, a
  * `process.getBuiltinModule` call, and a helper module reached only through
  * a computed `import()`. A fifth file never loads it and stays exported. A
- * run with no coverage provider at all exports every file, as before.
+ * run with no coverage provider at all exports every file, as before, and
+ * its workers install no watch (review of 0.1.443-r2 S2). Files the watch
+ * could not see run are named so, not as loading it (S1).
  */
 
 const SLOW = { timeout: 300_000 } as const;
@@ -70,8 +72,22 @@ const FILES: Readonly<Record<string, string>> = {
     "});",
     "",
   ].join("\n"),
-  "test/plain.test.ts":
-    'import { expect, it } from "vitest";\nit("adds", () => expect(1 + 1).toBe(2));\n',
+  "test/plain.test.ts": [
+    'import { existsSync } from "node:fs";',
+    'import { join } from "node:path";',
+    'import { afterAll, expect, it } from "vitest";',
+    'it("adds", () => expect(1 + 1).toBe(2));',
+    "// `EXPECT_WATCH`: whether this worker watches node:inspector (review 0.1.443-r2 S2).",
+    "const watch = process.env.EXPECT_WATCH;",
+    "if (watch !== undefined) {",
+    '  const wrapped = !String(process.getBuiltinModule).includes("[native code]");',
+    "  const flag = (globalThis as { __squealCiInspector?: boolean }).__squealCiInspector === true;",
+    '  it("watches", () => expect([flag, wrapped]).toEqual([watch === "1", watch === "1"]));',
+    '  const { raw } = JSON.parse(process.env.SQUEAL_CI_RECORD ?? "{}");',
+    '  if (watch === "0") afterAll(() => expect(existsSync(join(raw, "inspector"))).toBe(false));',
+    "}",
+    "",
+  ].join("\n"),
 };
 
 /** Every test file of `FILES`, sorted. */
@@ -119,7 +135,8 @@ describe("ci export leaves out node:inspector users beside any coverage provider
     "yielded to a custom provider: all four forms are seen and left out, the plain file is exported",
     SLOW,
     async () => {
-      const run = await recordAndExport("ci-inspector-custom", {});
+      // The plain file checks its worker watches (review 0.1.443-r2 S2).
+      const run = await recordAndExport("ci-inspector-custom", { EXPECT_WATCH: "1" });
       expect(run.part.header.coverage).toEqual({
         off: "project-coverage",
         note: expect.stringContaining('provider "custom"'),
@@ -162,7 +179,8 @@ describe("ci export leaves out node:inspector users beside any coverage provider
     "with Squeal's provider: the same, its own inspector session names no file",
     SLOW,
     async () => {
-      const run = await recordAndExport("ci-inspector-squeal", { PROJECT_COVERAGE: "0" }, true);
+      const env = { PROJECT_COVERAGE: "0", EXPECT_WATCH: "1" };
+      const run = await recordAndExport("ci-inspector-squeal", env, true);
       expect(run.part.header.coverage).toMatchObject({
         collector: "squeal",
         inspector: { loaded: LOADED, unknown: [] },
@@ -204,15 +222,25 @@ describe("ci export leaves out node:inspector users beside any coverage provider
       const unknown = EVERY.map((path) => ({ project: "", path }));
       expect(run.part.header.coverage).toMatchObject({ inspector: { loaded: [], unknown } });
       expect(run.code, run.said).toBe(1);
-      expect(run.said).toContain("no test file to export; left out: 5 test files");
+      // Review 0.1.443-r2 S1: not said to load it, said not watched.
+      expect(run.said).toContain(
+        "no test file to export; left out: 5 test files whose node:inspector use could not be watched (as in a vmThreads pool); wrote nothing",
+      );
+      expect(run.said).not.toContain("loaded node:inspector");
       expect(run.files).toEqual([]);
     },
   );
 
-  it("with no coverage provider at all: every file is exported, as before", SLOW, async () => {
-    const run = await recordAndExport("ci-inspector-none", { PROJECT_COVERAGE: "0" });
-    expect(run.part.header.coverage).toEqual({ off: "no-provider", note: expect.any(String) });
-    expect(run.code, run.said).toBe(0);
-    expect(run.files).toEqual(EVERY);
-  });
+  it(
+    "with no coverage provider at all: no watch, no log, every file is exported",
+    SLOW,
+    async () => {
+      // The plain file checks its worker has no watch and no worker wrote a log (review 0.1.443-r2 S2).
+      const env = { PROJECT_COVERAGE: "0", EXPECT_WATCH: "0" };
+      const run = await recordAndExport("ci-inspector-none", env);
+      expect(run.part.header.coverage).toEqual({ off: "no-provider", note: expect.any(String) });
+      expect(run.code, run.said).toBe(0);
+      expect(run.files).toEqual(EVERY);
+    },
+  );
 });
