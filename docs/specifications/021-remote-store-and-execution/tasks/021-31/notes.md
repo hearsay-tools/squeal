@@ -8,7 +8,7 @@ Worker d056771a, 2026-11-12. Spec 021 D21.4; `../../research/daemon-heap.md` Q1 
 - `loaders.ts`, `LoaderBuild`: reads into the map it is given, one test file per unit as before (row 015-45). It gives the map out only once every row is read, as before.
 - `cache.ts`, `StepCache`: owns the map. `invalidate()` no longer clears the conditions, signatures and early signatures. When a read is whole, `#forget` drops only those of the moved sources. `keep(files)`, called by the step after each walk, drops those of sources the step no longer judges (a revision removed or renamed them). Without it they would grow for the daemon's life, as `invalidate()` no longer clears them.
 - `file.ts`, `fileCondition`: one loop over the loaders instead of four `flatMap`s and a `Set`; the loader set comes from the map.
-- Tests: `test/code/crap/loader-map.test.ts`. A read after one stored record moves only that test file's sources. A source's condition is made again only when its loaders moved. Through 13 kinds of change, the kept map gives each source the same loaders, `withoutImports`, `listed` and loader set as a read from scratch. `keep` forgets removed sources only once there are more conditions than judged files. All 42 files in `test/code/crap/` pass unchanged.
+- Tests: `test/code/crap/loader-map.test.ts`. A read after one stored record moves only that test file's sources. A source's condition is made again only when its loaders moved. Through 13 kinds of change, the kept map gives each source the same loaders, `withoutImports`, `listed` and loader set as a read from scratch. `keep` forgets removed sources only once there are more conditions than judged files. The 41 test files that were in `test/code/crap/` before pass unchanged.
 
 ## Seam map
 
