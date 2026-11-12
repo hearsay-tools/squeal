@@ -230,7 +230,7 @@ export class MergeHold {
 export function heldFiles<
   T extends { readonly file: { readonly id: string }; readonly inputs: readonly RelativePath[] },
 >(
-  hold: MergeHold,
+  hold: Pick<MergeHold, "holding" | "names">,
   files: readonly T[],
   growth?: ReadonlyMap<string, { readonly growth: readonly RelativePath[] }>,
 ): T[] {

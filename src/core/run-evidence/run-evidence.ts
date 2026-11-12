@@ -4,7 +4,7 @@ import type { SchedulerContext } from "../scheduler/context.js";
 import { scratchUnstable } from "../scheduler/editor-scratch.js";
 import { rekeyEnvironments } from "../scheduler/environment-growth.js";
 import { newFileState } from "../scheduler/files.js";
-import type { MergeHold } from "../scheduler/hold.js";
+import { heldFiles, type MergeHold } from "../scheduler/hold.js";
 import type { WorktreeKeys } from "../scheduler/keying.js";
 import { NOTHING_OBSERVED, prepareObserved, type TierObservations } from "../scheduler/observed.js";
 import {
@@ -24,7 +24,7 @@ import type { AbsolutePath, RelativePath } from "../types/common.js";
 import type { CheckKey, TestFileRef } from "../types/keys.js";
 import type { RunReport } from "../types/runner.js";
 import { reasonOf } from "./reason.js";
-import { heldBy, movedInputs, observedMoves, readKeepEvidence, UnmergedIndex } from "./sources.js";
+import { movedInputs, observedMoves, readKeepEvidence, UnmergedIndex } from "./sources.js";
 
 /*
  * Run evidence and the store decision (GLOSSARY, "Results"; row 011-319,
@@ -142,7 +142,7 @@ export function mergeHeld(
   files: readonly TierFile[],
   observed: TierObservations | undefined,
 ): TierFile[] {
-  return heldBy(hold, files, observed?.growth);
+  return heldFiles(hold, files, observed?.growth);
 }
 
 /** Where `squeal code` reads the merge hold, at its decision and again at each write. */
