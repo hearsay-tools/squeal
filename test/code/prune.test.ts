@@ -1,6 +1,9 @@
+import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 import { COVERAGE_RECORD_VERSION as V } from "../../src/core/code/coverage/record.js";
-import type { CodeKnownState } from "../../src/core/types/code.js";
+import { codeStorePath } from "../../src/core/code/store/open.js";
+import { worktreeIdsOf } from "../../src/core/code/store/prune.js";
+import type { CodeKnownState, CodeTransition } from "../../src/core/types/code.js";
 import { check, commonDir, count, file, open } from "./helpers.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -20,6 +23,22 @@ function failing(worktreeId: string, qualifiedName: string): CodeKnownState {
     countedAt: 1,
     blob: "b1",
     changedAt: 1,
+  };
+}
+
+function firstFail(worktreeId: string): CodeTransition {
+  return {
+    worktreeId,
+    check: check("Ledger.settle"),
+    measure: "complexity",
+    kind: "first-seen-fail",
+    from: null,
+    to: "fail",
+    fromValue: null,
+    toValue: 23,
+    threshold: 20,
+    revision: 1,
+    at: 1,
   };
 }
 
@@ -77,21 +96,7 @@ describe("code store prune (015 D4, 011 C7)", () => {
         toldAt: 1,
       },
     ]);
-    store.transitions.append([
-      {
-        worktreeId: "gone",
-        check: check("Ledger.settle"),
-        measure: "complexity",
-        kind: "first-seen-fail",
-        from: null,
-        to: "fail",
-        fromValue: null,
-        toValue: 23,
-        threshold: 20,
-        revision: 1,
-        at: 1,
-      },
-    ]);
+    store.transitions.append([firstFail("gone")]);
 
     const report = store.prune({ now: NOW, retentionDays: 7, worktrees: ["w1"], consumers: [] });
 
@@ -104,6 +109,53 @@ describe("code store prune (015 D4, 011 C7)", () => {
     // A later worktree at the same bytes still finds the recent count.
     expect(store.counts.get("gone-recent", "typescript", 1)).not.toBeNull();
     expect(store.counts.get("gone-old", "typescript", 1)).toBeNull();
+  });
+
+  it("keeps a live worktree's rows and drops a dead one's, wherever its id sorts (row 011-315)", () => {
+    const store = open(commonDir());
+    // Dead ids before, between and after the live ones, each in another table.
+    store.files.upsertMany("a-dead", [file("src/a.ts", "b1")]);
+    store.files.upsertMany("m-live", [file("src/a.ts", "b1")]);
+    store.states.upsertMany([
+      failing("m-live", "Ledger.open"),
+      failing("p-dead", "Ledger.open"),
+      failing("z-live", "Ledger.open"),
+    ]);
+    store.transitions.append([firstFail("q-dead"), firstFail("z-live")]);
+
+    const report = store.prune({
+      now: NOW,
+      retentionDays: 7,
+      worktrees: ["m-live", "z-live"],
+      consumers: [],
+    });
+
+    expect(report.worktreesRemoved).toBe(3);
+    expect(store.files.list("a-dead")).toEqual([]);
+    expect(store.files.list("m-live")).toEqual([file("src/a.ts", "b1")]);
+    expect(store.states.list("p-dead")).toEqual([]);
+    expect(store.states.list("m-live")).toEqual([failing("m-live", "Ledger.open")]);
+    expect(store.states.list("z-live")).toEqual([failing("z-live", "Ledger.open")]);
+    expect(store.transitions.history("q-dead", check("Ledger.settle"))).toEqual([]);
+    expect(store.transitions.history("z-live", check("Ledger.settle"))).toHaveLength(1);
+  });
+
+  it("finds each table's worktree ids by a search per id, never a read of every row (row 011-315)", () => {
+    const dir = commonDir();
+    open(dir);
+    const db = new DatabaseSync(codeStorePath(dir), { readOnly: true });
+    try {
+      for (const table of ["files", "states", "views", "transitions"]) {
+        const plan = db
+          .prepare(`EXPLAIN QUERY PLAN ${worktreeIdsOf(table)}`)
+          .all()
+          .map((row) => String(row.detail));
+        expect(plan).toContainEqual(expect.stringMatching(new RegExp(`^SEARCH ${table} `)));
+        expect(plan.join("\n")).not.toMatch(new RegExp(`SCAN ${table}\\b`));
+      }
+    } finally {
+      db.close();
+    }
   });
 
   it("drops the view entries of a consumer no longer registered", () => {
