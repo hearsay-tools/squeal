@@ -104,7 +104,8 @@ describe("Codex runtime build (spec 002 D1, D5, D8)", () => {
     // dist/ci/ holds `squeal ci record`'s hook in the project's Vitest CLI process (018-16),
     // the input evidence it takes in every process of the command (018-17, 018-23),
     // Squeal's coverage provider in that run (020-08a) or its reading of the project's V8
-    // provider (020-26ab), and the clock of its own time (018-29).
+    // provider (020-26ab), the watch of node:inspector loads (020-26ab R1), and the clock of
+    // its own time (018-29).
     const verbatim = (f: string) =>
       ["node-test/", "observe/", "coverage/", "ci/"].some((d) => f.startsWith(d));
     const runtime = files.filter(verbatim).sort();
@@ -118,6 +119,7 @@ describe("Codex runtime build (spec 002 D1, D5, D8)", () => {
       "ci/descriptors.cjs",
       "ci/evidence-hooks.cjs",
       "ci/evidence.cjs",
+      "ci/inspector.cjs",
       "ci/map-client.cjs",
       "ci/vitest-ci.cjs",
       "coverage/provider.mjs",
