@@ -1,0 +1,151 @@
+shard	test file	causes (inputs per cause)
+shard-1	server:packages/cezar/src/contract-subpaths.test.ts	never-loaded=29
+shard-1	server:packages/cezar/src/core/child-home-env.test.ts	argument=2
+shard-1	server:packages/cezar/src/core/conversation-answer-delivery-declared-delivery.test.ts	argument=2
+shard-1	server:packages/cezar/src/core/harness-autosave-settlement-churn.test.ts	argument=2
+shard-1	server:packages/cezar/src/core/harness-pi-session-parity.test.ts	argument=2
+shard-1	server:packages/cezar/src/core/native-failure-control.test.ts	argument=2
+shard-1	server:packages/cezar/src/core/omp-input-pipe.test.ts	argument=2
+shard-1	server:packages/cezar/src/core/owned-input-delivery-provider-failure.test.ts	argument=2
+shard-1	server:packages/cezar/src/core/runner-shutdown-eof-evidence-parity.test.ts	argument=2
+shard-1	server:packages/cezar/src/core/skill-resume-session-identity-claude-pi-parity.test.ts	argument=2
+shard-1	server:packages/cezar/src/core/workflow-final-message-content-budget-parity.test.ts	argument=2
+shard-1	server:packages/cezar/src/core/workflow-followup-hold-parity.test.ts	argument=2
+shard-1	server:packages/cezar/src/core/workflow-no-progress-process-exit-parity.test.ts	argument=2
+shard-1	server:packages/cezar/src/delegation/windows-workspace-identity.test.ts	absent-snapshot=1
+shard-1	server:packages/cezar/src/home/runtime-cli.test.ts	never-loaded=12
+shard-1	server:packages/cezar/src/index-project-paths.test.ts	never-loaded=12
+shard-1	server:packages/cezar/src/server/project-migration-fence.test.ts	never-loaded=11
+shard-1	server:packages/cezar/src/workflows/waits-pi-every-runner-base-delivery-parity.test.ts	argument=2
+shard-1	server:packages/cezar/src/workflows/worker-location-evidence.test.ts	argument=2
+shard-1	server:packages/cezar/src/workflows/worker-parent-attention-restart-human-ask.test.ts	argument=2
+shard-1	web:packages/web/src/components/app-shell-container.test.tsx	never-loaded=84
+shard-1	web:packages/web/src/components/command-palette.test.tsx	never-loaded=84
+shard-1	web:packages/web/src/components/last-location-controller.test.tsx	never-loaded=84
+shard-1	web:packages/web/src/components/mobile-projects.test.tsx	never-loaded=84
+shard-1	web:packages/web/src/components/project-switch.integration.test.tsx	never-loaded=84
+shard-1	web:packages/web/src/lib/product-command-display.test.tsx	never-loaded=84
+shard-1	web:packages/web/src/lib/project-switch.client.test.ts	never-loaded=84
+shard-1	web:packages/web/src/routes/settings/project-location.test.tsx	never-loaded=84
+shard-1	web:packages/web/src/routes/task-thread/run-header-mobile.test.tsx	never-loaded=84
+shard-1	web:packages/web/src/test/failure-setup.test.ts	never-loaded=8
+shard-2	server:packages/cezar/src/ast-grep-rules.test.ts	native-reader-only=10
+shard-2	server:packages/cezar/src/lint/lint-ast-grep-1.test.ts	native-reader-only=31, never-loaded=386, argument=1
+shard-2	web:packages/web/src/app.home-recovery.test.tsx	never-loaded=109
+shard-2	web:packages/web/src/components/app-shell-chrome.test.tsx	never-loaded=107
+shard-2	web:packages/web/src/components/diff/diff-fallback.test.tsx	never-loaded=4
+shard-2	web:packages/web/src/components/sidebar-project-header.test.tsx	never-loaded=107
+shard-2	web:packages/web/src/routes/settings/accounts-defaults.test.tsx	never-loaded=107
+shard-2	web:packages/web/src/routes/task-git/task-commits.test.tsx	never-loaded=4
+shard-2	web:packages/web/src/routes/task-thread/preview/preview-split.test.tsx	never-loaded=17
+shard-3	server:packages/cezar/src/lint/lint-runner.test.ts	native-reader-only=44, never-loaded=258
+shard-3	server:packages/cezar/src/lint/test-home-write.test.ts	require-in-string=32
+shard-4	server:packages/cezar/src/contract-import-boundaries.test.ts	never-loaded=1
+shard-4	server:packages/cezar/src/core/conversation-batch-ack.test.ts	argument=2
+shard-4	server:packages/cezar/src/core/harness-autosave-settlement-cancel.test.ts	argument=2
+shard-4	server:packages/cezar/src/core/harness-pi-run-parity.test.ts	argument=2
+shard-4	server:packages/cezar/src/core/runner-shutdown-eof-deadline-parity.test.ts	argument=1
+shard-4	server:packages/cezar/src/core/workflow-no-progress-parked-input-parity.test.ts	argument=2
+shard-4	server:packages/cezar/src/workflows/waits-pi-every-runner-workers-refusals-parity.test.ts	argument=2
+shard-4	server:packages/cezar/src/workflows/worker-parent-attention-fresh-spawn-ask.test.ts	argument=2
+shard-4	web:packages/web/src/components/project-rail.test.tsx	never-loaded=80
+shard-4	web:packages/web/src/components/task-quick-list.test.tsx	never-loaded=80
+shard-4	web:packages/web/src/routes/new-task-composer.test.tsx	never-loaded=19
+shard-4	web:packages/web/src/routes/task-github/task-github-item.test.tsx	never-loaded=80
+shard-5	server:packages/cezar/src/core/ci-tools-ask-done.test.ts	symlink-unlink=1, argument=2
+shard-5	server:packages/cezar/src/core/conversation-answer-delivery-pending-question.test.ts	symlink-unlink=1, argument=3
+shard-5	server:packages/cezar/src/core/conversation-resume.test.ts	symlink-unlink=1, argument=3
+shard-5	server:packages/cezar/src/core/cursor-print-runner.test.ts	symlink-unlink=1
+shard-5	server:packages/cezar/src/core/dry-run-backends.test.ts	symlink-unlink=1
+shard-5	server:packages/cezar/src/core/harness-autosave-settlement-failed-continue.test.ts	symlink-unlink=1, argument=3
+shard-5	server:packages/cezar/src/core/harness-autosave-settlement.test.ts	symlink-unlink=1, argument=3
+shard-5	server:packages/cezar/src/core/harness-cursor-ownership-parity.test.ts	symlink-unlink=1
+shard-5	server:packages/cezar/src/core/harness-pi-settlement-parity.test.ts	argument=3
+shard-5	server:packages/cezar/src/core/model-refusal-parity.test.ts	symlink-unlink=1, argument=2
+shard-5	server:packages/cezar/src/core/module-imports.testkit.test.ts	require-in-string=45
+shard-5	server:packages/cezar/src/core/native-delivery-control.test.ts	symlink-unlink=1, argument=2
+shard-5	server:packages/cezar/src/core/owned-input-delivery-rejection.test.ts	argument=3
+shard-5	server:packages/cezar/src/core/runner-shutdown-eof-intent-parity.test.ts	argument=2
+shard-5	server:packages/cezar/src/core/workflow-ask-timeout-parity.test.ts	symlink-unlink=1, argument=3
+shard-5	server:packages/cezar/src/core/workflow-autonomous-native-questions-parity.test.ts	symlink-unlink=1, argument=2
+shard-5	server:packages/cezar/src/core/workflow-final-message-late-reply-parity.test.ts	symlink-unlink=1, argument=3
+shard-5	server:packages/cezar/src/core/workflow-followup-late-ack-continuation-parity.test.ts	symlink-unlink=1, argument=3
+shard-5	server:packages/cezar/src/core/workflow-no-progress-progress-parity.test.ts	symlink-unlink=1, argument=3
+shard-5	server:packages/cezar/src/core/workflow-timeout-authored-and-standalone-parity.test.ts	symlink-unlink=1, argument=2
+shard-5	server:packages/cezar/src/delegation/windows-workspace-security.test.ts	absent-snapshot=1
+shard-5	server:packages/cezar/src/lint/import-closure.test.ts	require-in-string=61
+shard-5	server:packages/cezar/src/workflows/ci-wait-rerun-fresh-parity.test.ts	symlink-unlink=1
+shard-5	server:packages/cezar/src/workflows/monitoring-turn-ask-precedence-done-refusal-fresh.test.ts	symlink-unlink=1
+shard-5	server:packages/cezar/src/workflows/monitoring-turn-done-fresh.test.ts	symlink-unlink=1
+shard-5	server:packages/cezar/src/workflows/resume-diagnostics-restart-context-parity.test.ts	symlink-unlink=1, argument=3
+shard-5	server:packages/cezar/src/workflows/run-monitoring-timers.test.ts	argument=3
+shard-5	server:packages/cezar/src/workflows/waits-cursor-completion-parity.test.ts	symlink-unlink=1
+shard-5	server:packages/cezar/src/workflows/waits-cursor-input-parity.test.ts	symlink-unlink=1
+shard-5	server:packages/cezar/src/workflows/waits-pi-every-runner-base-parity.test.ts	argument=3
+shard-5	server:packages/cezar/src/workflows/worker-parent-attention-capacity-wake.test.ts	symlink-unlink=1, argument=3
+shard-5	server:packages/cezar/src/workflows/worker-restart-destroy-absent-ledger-parity.test.ts	symlink-unlink=1
+shard-5	web:packages/web/src/api/global-events.test.tsx	never-loaded=83
+shard-5	web:packages/web/src/components/mobile-sidebar-tasks.test.tsx	never-loaded=83
+shard-5	web:packages/web/src/components/nav-selection.test.tsx	never-loaded=83
+shard-5	web:packages/web/src/components/sidebar-limits.test.tsx	never-loaded=83
+shard-5	web:packages/web/src/components/tools-menu.test.tsx	never-loaded=83
+shard-5	web:packages/web/src/routes/new-task-project.test.tsx	never-loaded=83
+shard-5	web:packages/web/src/routes/reports-restore.test.tsx	never-loaded=2
+shard-5	web:packages/web/src/routes/settings/bookmarklets-section.test.tsx	never-loaded=83
+shard-5	web:packages/web/src/routes/settings/worktrees-section.test.tsx	never-loaded=83
+shard-6	server:packages/cezar/src/cli-dispatch.test.ts	never-loaded=6
+shard-6	server:packages/cezar/src/core/harness-autosave-settlement-cancel-continue.test.ts	argument=2
+shard-6	server:packages/cezar/src/core/harness-pi-provider-parity.test.ts	argument=2
+shard-6	server:packages/cezar/src/core/product-env-cli.test.ts	never-loaded=6
+shard-6	server:packages/cezar/src/core/runner-shutdown-end-escalation-parity.test.ts	argument=1
+shard-6	server:packages/cezar/src/core/runner-shutdown-signal-readiness-parity.test.ts	argument=1
+shard-6	server:packages/cezar/src/core/skill-resume-recovery-prompt-parity.test.ts	argument=2
+shard-6	server:packages/cezar/src/core/workflow-autonomous-idle-close-parity.test.ts	argument=2
+shard-6	server:packages/cezar/src/core/workflow-no-progress-continue-steer-parity.test.ts	argument=2
+shard-6	server:packages/cezar/src/workflows/ci-wait-refusal.test.ts	argument=2
+shard-6	server:packages/cezar/src/workflows/resume-diagnostics-failure-context-parity.test.ts	argument=2
+shard-6	server:packages/cezar/src/workflows/waits-pi-every-runner-workers-parity.test.ts	argument=2
+shard-6	server:packages/cezar/src/workflows/worker-parent-attention-fresh-ordinary-progress.test.ts	argument=2
+shard-6	web:packages/web/src/routes.test.tsx	never-loaded=27
+shard-6	web:packages/web/src/routes/github/github-sidebar-filters.test.tsx	never-loaded=27
+shard-6	web:packages/web/src/routes/repo-git/git-sidebar.test.tsx	never-loaded=27
+shard-6	web:packages/web/src/routes/settings/agents-section.test.tsx	never-loaded=27
+shard-6	web:packages/web/src/routes/settings/sidebar-section.test.tsx	never-loaded=27
+shard-6	web:packages/web/src/routes/task-thread/preview/task-preview-layout.test.tsx	never-loaded=16
+shard-6	web:packages/web/src/routes/tasks-overview-route.test.tsx	never-loaded=27
+shard-7	server:packages/cezar/src/core/ci-tools-wait-cancel.test.ts	argument=3
+shard-7	server:packages/cezar/src/core/conversation-answer-delivery-steering.test.ts	argument=3
+shard-7	server:packages/cezar/src/core/harness-autosave-settlement-success.test.ts	argument=3
+shard-7	server:packages/cezar/src/core/harness-pi-owned-input-parity.test.ts	argument=3
+shard-7	server:packages/cezar/src/core/runner-closure.test.ts	never-loaded=34
+shard-7	server:packages/cezar/src/core/runner-shutdown-outside-signal-parity.test.ts	argument=2
+shard-7	server:packages/cezar/src/core/skill-resume-wire-and-fallback-parity.test.ts	argument=2
+shard-7	server:packages/cezar/src/core/workflow-final-message-silent-tail-parity.test.ts	argument=2
+shard-7	server:packages/cezar/src/core/workflow-followup-late-start-continuation-parity.test.ts	argument=3
+shard-7	server:packages/cezar/src/core/workflow-timeout-explicit-zero-parity.test.ts	argument=2
+shard-7	server:packages/cezar/src/inline-contract-check.test.ts	never-loaded=2, observed-other=1
+shard-7	server:packages/cezar/src/lint/lint-ast-grep-2.test.ts	native-reader-only=31, never-loaded=413, argument=1
+shard-7	server:packages/cezar/src/workflows/waits-pi-every-runner-entries-nudges-parity.test.ts	argument=3
+shard-7	server:packages/cezar/src/workflows/worker-parent-attention-continued-ordinary-progress.test.ts	argument=3
+shard-7	server:packages/cezar/src/workflows/worker-wait-resumed-requests.test.ts	argument=3
+shard-7	web:packages/web/src/components/command-palette-voice.test.tsx	never-loaded=58
+shard-7	web:packages/web/src/routes/cross-project-task-navigation.test.tsx	never-loaded=58
+shard-7	web:packages/web/src/routes/github/github-route-wiring.test.tsx	never-loaded=58
+shard-7	web:packages/web/src/routes/settings/control-locations.test.tsx	never-loaded=58
+shard-7	web:packages/web/src/routes/settings/projects-section.test.tsx	never-loaded=58
+shard-7	web:packages/web/src/routes/skills.test.tsx	never-loaded=58
+shard-8	server:packages/cezar/src/core/harness-autosave-branch.test.ts	argument=3
+shard-8	server:packages/cezar/src/core/harness-pi-ownership-parity.test.ts	argument=3
+shard-8	server:packages/cezar/src/core/pi-steering.test.ts	argument=2
+shard-8	server:packages/cezar/src/core/skill-provision-slash-install-parity.test.ts	argument=3
+shard-8	server:packages/cezar/src/core/skill-resume-recovery-before-session-event-parity.test.ts	argument=3
+shard-8	server:packages/cezar/src/core/workflow-followup-turn-end-parity.test.ts	argument=3
+shard-8	server:packages/cezar/src/workflows/ci-wait-retry.test.ts	argument=3
+shard-8	server:packages/cezar/src/workflows/waits-pi-every-runner-workers-closed-parity.test.ts	argument=3
+shard-8	server:packages/cezar/src/workflows/worker-parent-attention-fresh-delayed-progress.test.ts	argument=3
+shard-8	server:packages/cezar/src/workflows/worker-wait-conversations.test.ts	argument=3
+shard-8	web:packages/web/src/lib/project-switch.test.ts	never-loaded=60
+shard-8	web:packages/web/src/routes/new-task.test.tsx	never-loaded=13
+shard-8	web:packages/web/src/routes/settings/resources-section.test.tsx	never-loaded=60
+shard-8	web:packages/web/src/routes/settings/settings.test.tsx	never-loaded=60
+shard-8	web:packages/web/src/routes/task-thread/preview/use-preview-pane-transport.test.ts	never-loaded=1
