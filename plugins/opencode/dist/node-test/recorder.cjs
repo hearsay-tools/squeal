@@ -1,7 +1,9 @@
 // Squeal's module recorder (spec 003 D5; task 003-28). Loaded as the first `--require` of a test
 // file's process, and first in its `NODE_OPTIONS` when that holds a `--require`, so it is installed
-// before every project preload: Node runs all `--require` preloads before any `--import`; for a slow
-// project it is in `NODE_OPTIONS` always, so processes the test spawns record too (004 D5). CommonJS,
+// before every project preload: Node runs all `--require` preloads before any `--import`. It is first
+// in `NODE_OPTIONS` always, so processes the test spawns record too (004 D5; every project's since
+// row 020-36, 020 D12.6): there an `--import` of its `file:` URL beside no project `--require`, as
+// Vitest's recorder, and a `--require` for a slow project. Node loads it once per process. CommonJS,
 // so it loads synchronously on any Node; it runs inside the project's Node and requires only Node
 // built-ins. Appends one `{"parent","url","specifier"[,"preload"]}` line per resolved import or require to
 // `<SQUEAL_NODE_TEST_GRAPH>-<pid>.ndjson`. A synchronous `module.registerHooks` resolve hook, since
