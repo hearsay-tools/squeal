@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.443";
+  if (true) return "0.1.446";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -6588,6 +6588,15 @@ function createResultRepo(conn) {
       return conn.run(COPY_SET, key3, str(newest, "key"), key3) > 0;
     },
     keysSince: (since) => conn.all(KEYS_SINCE, since).map((row2) => ({ key: str(row2, "key"), recordedAt: num(row2, "recorded_at") })),
+    keysWithResults: (keys) => {
+      const unique = [...new Set(keys)];
+      const found3 = [];
+      for (let i3 = 0; i3 < unique.length; i3 += KEYS_WITH_RESULTS_CHUNK) {
+        const chunk = JSON.stringify(unique.slice(i3, i3 + KEYS_WITH_RESULTS_CHUNK));
+        for (const row2 of conn.all(KEYS_WITH_RESULTS, chunk)) found3.push(str(row2, "key"));
+      }
+      return found3;
+    },
     putMany: (records) => conn.transaction(() => {
       for (const r of records) {
         const p = r.provenance;
@@ -6627,7 +6636,7 @@ function storeFailureText(conn, summary, errors) {
   );
   return id;
 }
-var SELECT_RESULTS, KEYS_SINCE, NEWEST_OF_FILE, COPY_SET;
+var SELECT_RESULTS, KEYS_SINCE, KEYS_WITH_RESULTS, KEYS_WITH_RESULTS_CHUNK, NEWEST_OF_FILE, COPY_SET;
 var init_results = __esm({
   "src/core/store/repos/results.ts"() {
     "use strict";
@@ -6640,6 +6649,10 @@ var init_results = __esm({
     KEYS_SINCE = `
   SELECT key, MAX(recorded_at) AS recorded_at FROM results INDEXED BY results_by_time
   WHERE recorded_at > ? GROUP BY key`;
+    KEYS_WITH_RESULTS = `
+  SELECT value AS key FROM json_each(?)
+  WHERE EXISTS (SELECT 1 FROM results WHERE key = value)`;
+    KEYS_WITH_RESULTS_CHUNK = 1e3;
     NEWEST_OF_FILE = `${SELECT_RESULTS}
   WHERE c.project = ? AND c.test_path = ? AND r.key = (
     SELECT r2.key FROM checks c2 JOIN results r2 ON r2.check_id = c2.id
@@ -8500,13 +8513,12 @@ var init_record = __esm({
 function pruneCodeStore(conn, options) {
   const cutoff = options.now - options.retentionDays * DAY_MS2;
   const live = JSON.stringify(options.worktrees);
-  const worktreesRemoved = conn.all(
-    `SELECT DISTINCT worktree_id FROM (SELECT worktree_id FROM files UNION
-         SELECT worktree_id FROM states UNION SELECT worktree_id FROM views
-         UNION SELECT worktree_id FROM transitions) WHERE ${DEAD_WORKTREE}`,
-    live
-  ).length;
-  for (const [table, key3] of PER_WORKTREE) deleteInBatches(conn, table, key3, DEAD_WORKTREE, live);
+  const dead = deadWorktrees(conn, options.worktrees);
+  if (dead.length > 0) {
+    for (const [table, key3] of PER_WORKTREE) {
+      deleteInBatches(conn, table, key3, OF_WORKTREES, JSON.stringify(dead));
+    }
+  }
   deleteInBatches(conn, "meta", "key", COVERAGE_META_OF_DEAD, live);
   const viewsRemoved = deleteInBatches(
     conn,
@@ -8526,21 +8538,7 @@ function pruneCodeStore(conn, options) {
      AND counts.blob NOT IN (SELECT s.blob FROM states s)`,
     cutoff
   );
-  const coverageRemoved = options.resultKeys === void 0 ? deleteInBatches(
-    conn,
-    "coverage",
-    "result_key, provider_version",
-    `recorded_at < ? OR ${OLDER_RECORD}`,
-    cutoff,
-    COVERAGE_RECORD_VERSION
-  ) : deleteInBatches(
-    conn,
-    "coverage",
-    "result_key, provider_version",
-    `result_key NOT IN (SELECT value FROM json_each(?)) OR ${OLDER_RECORD}`,
-    JSON.stringify(options.resultKeys),
-    COVERAGE_RECORD_VERSION
-  );
+  const coverageRemoved = pruneCoverage(conn, options.resultKeys, cutoff);
   const partsRemoved = pruneParts(conn, cutoff, DELETE_BATCH2);
   const checksRemoved = deleteInBatches(
     conn,
@@ -8554,10 +8552,39 @@ function pruneCodeStore(conn, options) {
     countsRemoved,
     coverageRemoved,
     partsRemoved,
-    worktreesRemoved,
+    worktreesRemoved: dead.length,
     viewsRemoved,
     checksRemoved
   };
+}
+function deadWorktrees(conn, live) {
+  const kept4 = new Set(live);
+  const found3 = new Set(
+    PER_WORKTREE.flatMap(([table]) => conn.all(worktreeIdsOf(table)).map((row2) => str(row2, "id")))
+  );
+  return [...found3].filter((id) => !kept4.has(id));
+}
+function pruneCoverage(conn, resultKeys, cutoff) {
+  if (resultKeys === void 0) {
+    return deleteInBatches(
+      conn,
+      "coverage",
+      COVERAGE_KEY,
+      `recorded_at < ? OR ${OLDER_RECORD}`,
+      cutoff,
+      COVERAGE_RECORD_VERSION
+    );
+  }
+  const held3 = conn.all("SELECT DISTINCT result_key FROM coverage").map((row2) => str(row2, "result_key"));
+  const kept4 = new Set(typeof resultKeys === "function" ? resultKeys(held3) : resultKeys);
+  return deleteInBatches(
+    conn,
+    "coverage",
+    COVERAGE_KEY,
+    `result_key IN (SELECT value FROM json_each(?)) OR ${OLDER_RECORD}`,
+    JSON.stringify(held3.filter((key3) => !kept4.has(key3))),
+    COVERAGE_RECORD_VERSION
+  );
 }
 function deleteInBatches(conn, table, key3, where3, ...params) {
   let removed = 0;
@@ -8585,20 +8612,27 @@ function vacuum2(conn) {
 function freePages(conn) {
   return Number(conn.get("PRAGMA freelist_count")?.freelist_count ?? 0);
 }
-var DAY_MS2, DELETE_BATCH2, VACUUM_PAGES2, DEAD_WORKTREE, COVERAGE_META_OF_DEAD, OLDER_RECORD, PER_WORKTREE;
+var DAY_MS2, DELETE_BATCH2, VACUUM_PAGES2, OF_WORKTREES, worktreeIdsOf, COVERAGE_META_OF_DEAD, OLDER_RECORD, COVERAGE_KEY, PER_WORKTREE;
 var init_prune2 = __esm({
   "src/core/code/store/prune.ts"() {
     "use strict";
+    init_codec();
     init_record();
     init_parts2();
     DAY_MS2 = 24 * 60 * 60 * 1e3;
     DELETE_BATCH2 = 256;
     VACUUM_PAGES2 = 512;
-    DEAD_WORKTREE = "worktree_id NOT IN (SELECT value FROM json_each(?))";
+    OF_WORKTREES = "worktree_id IN (SELECT value FROM json_each(?))";
+    worktreeIdsOf = (table) => `WITH RECURSIVE ids(id) AS (
+    SELECT min(worktree_id) FROM ${table}
+    UNION ALL SELECT (SELECT min(worktree_id) FROM ${table} WHERE worktree_id > ids.id)
+      FROM ids WHERE ids.id IS NOT NULL)
+  SELECT id FROM ids WHERE id IS NOT NULL`;
     COVERAGE_META_OF_DEAD = `key LIKE 'coverage:%' AND (CASE
     WHEN instr(substr(key, 10), ':') = 0 THEN substr(key, 10)
     ELSE substr(key, 10, instr(substr(key, 10), ':') - 1) END) NOT IN (SELECT value FROM json_each(?))`;
     OLDER_RECORD = "provider_version < ?";
+    COVERAGE_KEY = "result_key, provider_version";
     PER_WORKTREE = [
       ["files", "worktree_id, path"],
       ["states", "worktree_id, check_id, measure"],
@@ -60697,17 +60731,21 @@ var init_protocol = __esm({
     MARKER = "squeal-runner-host ";
     HOST_RUNNERS = ["vitest", "node-test", "pytest"];
     LineReader = class {
-      #rest = "";
+      /** The unfinished line, in the chunks it arrived in. */
+      #pending = [];
       /** The protocol lines `chunk` completes, each parsed. A line that does not parse throws. */
       push(chunk) {
-        const text3 = this.#rest + chunk;
-        const lines = text3.split("\n");
-        this.#rest = lines.pop() ?? "";
         const messages = [];
-        for (const line of lines) {
+        let from = 0;
+        for (let end = chunk.indexOf("\n"); end >= 0; end = chunk.indexOf("\n", from)) {
+          this.#pending.push(chunk.slice(from, end));
+          const line = this.#pending.join("");
+          this.#pending = [];
+          from = end + 1;
           const frame = frameOf2(line);
           if (frame !== null) messages.push(JSON.parse(frame));
         }
+        if (from < chunk.length) this.#pending.push(chunk.slice(from));
         return messages;
       }
     };
@@ -90333,13 +90371,13 @@ function pruneCodeStoreAfter(main2, commonDir, policy, now) {
   try {
     const worktrees = main2.worktrees.list().map((w2) => w2.id);
     const consumers = worktrees.flatMap((id) => main2.consumers.list(id).map((r) => r.consumer));
-    const resultKeys = [...new Set(main2.results.keysSince(0).map((k) => k.key))];
     return code.prune({
       now,
       retentionDays: policy.store.retentionDays,
       worktrees,
       consumers,
-      resultKeys
+      // Row 011-315: only the keys the code store's records hold, never every key.
+      resultKeys: (keys) => main2.results.keysWithResults(keys)
     });
   } finally {
     code.close();
@@ -96242,6 +96280,7 @@ function poolDirs(places) {
 init_source2();
 var START_MARGIN_MS = 1e3;
 var SCRIPT3 = /(?:^|\/)(?:squeal|squeal\.mjs|squeal\/dist\/cli\/index\.js)$/;
+var BARE_OPTION = /^-[^=]*$/;
 var HOLDERS = "daemon lock holders";
 var CACHE_INSTALL = /^(.*\/\.(claude|codex)\/plugins)\/cache\/([^/]+)\/squeal\/([^/]+)\//;
 var PACKAGE_INSTALL = /\/squeal-(pi|opencode)\/dist\/cli\/squeal\.mjs$/;
@@ -96311,7 +96350,10 @@ function phaseOn(source2) {
 }
 function daemonVerbAt(args2) {
   for (let k = 1; k < args2.length; k++) {
-    if (args2[k] === "daemon" && SCRIPT3.test(args2[k - 1] ?? "")) return k;
+    const entry4 = args2[k - 1] ?? "";
+    if (args2[k] === "daemon" && SCRIPT3.test(entry4)) return k;
+    const ofNode = entry4.startsWith("-") || BARE_OPTION.test(args2[k - 2] ?? "");
+    if (k >= 2 && !ofNode) return -1;
   }
   return -1;
 }
@@ -97722,7 +97764,7 @@ function shapeOf(r, findings, o) {
   const processes2 = daemons.flatMap((d) => d.processes);
   const pids3 = pidsOf(daemons);
   const total = totalOf(daemons);
-  const ids = !o.repo ? null : current2 === null ? /* @__PURE__ */ new Set() : worktreeIdsOf(current2);
+  const ids = !o.repo ? null : current2 === null ? /* @__PURE__ */ new Set() : worktreeIdsOf2(current2);
   const files5 = ids === null ? findings.files : findings.files.filter((f) => ids.has(socketIdOf(f.path)));
   const orphans2 = o.repo ? [] : findings.orphans;
   const kept4 = new Set(daemons.flatMap((d) => [d.pid, ...d.processes.map((p) => p.pid)]));
@@ -97774,7 +97816,7 @@ function byPath2(a, b) {
   if (a === null || b === null) return Number(a === null) - Number(b === null);
   return compare(a, b);
 }
-function worktreeIdsOf(commonDir) {
+function worktreeIdsOf2(commonDir) {
   const locks = names5(storePaths(commonDir).locksDir);
   return new Set(locks.flatMap((n) => lockFileWorktreeId(n) ?? []));
 }
@@ -99161,7 +99203,7 @@ function namedFiles(analysis, snapshot3, paths, limit) {
 
 // src/core/reach/proposals.ts
 init_compare();
-var COVERAGE_KEY = '"coverage": { "enabled": true }';
+var COVERAGE_KEY2 = '"coverage": { "enabled": true }';
 var COMPLEXITY_KEY = '"complexity": { "enabled": true }';
 function proposals(snapshot3, analysis, history2, { command, listed: listed8 }) {
   const warmup = `${command} warmup`;
@@ -99178,7 +99220,7 @@ function proposals(snapshot3, analysis, history2, { command, listed: listed8 }) 
   const { coverage } = snapshot3;
   if (!coverage.on) {
     const keys = [
-      ...coverage.coverageEnabled ? [] : [COVERAGE_KEY],
+      ...coverage.coverageEnabled ? [] : [COVERAGE_KEY2],
       ...coverage.complexityEnabled ? [] : [COMPLEXITY_KEY]
     ];
     out2.push({ kind: "coverage", keys, command: warmup });

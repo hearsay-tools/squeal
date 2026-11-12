@@ -907,6 +907,7 @@ function poolDirs(places) {
 // src/core/ps/discover.ts
 var START_MARGIN_MS = 1e3;
 var SCRIPT = /(?:^|\/)(?:squeal|squeal\.mjs|squeal\/dist\/cli\/index\.js)$/;
+var BARE_OPTION = /^-[^=]*$/;
 var HOLDERS = "daemon lock holders";
 var CACHE_INSTALL = /^(.*\/\.(claude|codex)\/plugins)\/cache\/([^/]+)\/squeal\/([^/]+)\//;
 var PACKAGE_INSTALL = /\/squeal-(pi|opencode)\/dist\/cli\/squeal\.mjs$/;
@@ -976,7 +977,10 @@ function phaseOn(source) {
 }
 function daemonVerbAt(args) {
   for (let k = 1; k < args.length; k++) {
-    if (args[k] === "daemon" && SCRIPT.test(args[k - 1] ?? "")) return k;
+    const entry = args[k - 1] ?? "";
+    if (args[k] === "daemon" && SCRIPT.test(entry)) return k;
+    const ofNode = entry.startsWith("-") || BARE_OPTION.test(args[k - 2] ?? "");
+    if (k >= 2 && !ofNode) return -1;
   }
   return -1;
 }
