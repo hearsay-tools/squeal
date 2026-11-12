@@ -1,4 +1,4 @@
-import { type ChildProcess, spawn } from "node:child_process";
+import { type ChildProcess, execFileSync, spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import {
   copyFileSync,
@@ -23,7 +23,14 @@ import type { Store } from "../../src/core/types/store.js";
 import { git } from "../hash/git-repo.js";
 import { compileObserved } from "../helpers/build-inputs.js";
 import { CODE_OFF } from "../helpers/policy.js";
-import { findProcesses, killProcesses, TEST_CACHE, testBuildDir } from "./strays.js";
+import {
+  findProcesses,
+  isAlive,
+  killProcesses,
+  type Stray,
+  TEST_CACHE,
+  testBuildDir,
+} from "./strays.js";
 
 const repoRoot = resolve(import.meta.dirname, "../..");
 const fixture = resolve(repoRoot, "test/fixtures/scheduler/basic");
@@ -314,12 +321,70 @@ export async function stopProcess(process: SpawnedProcess): Promise<void> {
   clearTimeout(timer);
 }
 
-/** Stops every daemon a test build runs for `root`, however it was started. */
+/**
+ * Stops every daemon a test build runs for `root`, however it was started,
+ * then waits for their runner hosts to leave (`awaitRunnerHosts`).
+ */
 export async function stopStrays(root: string): Promise<void> {
   const strays = findProcesses(`${TEST_CACHE}/`).filter(
     ({ args }) => args.endsWith(` daemon ${root}`) || args.includes(` daemon ${root} `),
   );
   await killProcesses(strays, 60_000);
+  await awaitRunnerHosts(root);
+}
+
+/** The runner hosts (`squeal runner-host <root>`, spec 021 D6) a test build runs for `root`. */
+export function runnerHosts(root: string): Stray[] {
+  return findProcesses(`${TEST_CACHE}/`, ` runner-host ${root} `);
+}
+
+/*
+ * Row 018-37: a daemon a test kills with SIGKILL leaves its runner hosts.
+ * Each sees its input end, cancels its run and logs it on the way out:
+ * `writeRunLog` makes `.git/squeal/runs/<id>` with a recursive mkdir, so a
+ * removal of the fixture meanwhile failed with ENOTEMPTY on `.git/squeal`
+ * or the fixture's root, which that mkdir had made again (CI 43102768524,
+ * 43102892208, 43124851809). A host leaves within seconds of its input's
+ * end, bounded by the run's cancel, `CLOSE_MS` of `serveRunnerHost` and the
+ * exit timer of `runnerHostCommand`; on this project's host in 0.2 s.
+ */
+const HOSTS_LEAVE_MS = 30_000;
+
+/**
+ * Waits for the runner hosts of `root`, and what they started, to be gone;
+ * kills what is still there after `graceMs`.
+ */
+export async function awaitRunnerHosts(root: string, graceMs = HOSTS_LEAVE_MS): Promise<void> {
+  let left = runnerHosts(root);
+  const deadline = Date.now() + graceMs;
+  while (left.length > 0 && Date.now() < deadline) {
+    await delay(100);
+    left = withDescendants(left).filter(({ pid }) => isAlive(pid));
+  }
+  await killProcesses(withDescendants(left), 5_000);
+}
+
+/** `processes` and every process they started that still runs, from `ps`. */
+function withDescendants(processes: readonly Stray[]): Stray[] {
+  if (processes.length === 0) return [];
+  const table = execFileSync("ps", ["-A", "-o", "pid=", "-o", "ppid="], { encoding: "utf8" });
+  const children = new Map<number, number[]>();
+  for (const line of table.split("\n")) {
+    const match = /^\s*(\d+)\s+(\d+)/.exec(line);
+    if (match === null) continue;
+    const parent = Number(match[2]);
+    children.set(parent, [...(children.get(parent) ?? []), Number(match[1])]);
+  }
+  const found = new Map(processes.map((entry) => [entry.pid, entry]));
+  const queue = [...found.keys()];
+  for (let pid = queue.shift(); pid !== undefined; pid = queue.shift()) {
+    for (const child of children.get(pid) ?? []) {
+      if (found.has(child)) continue;
+      found.set(child, { pid: child, args: "" });
+      queue.push(child);
+    }
+  }
+  return [...found.values()];
 }
 
 /** One daemon test file's CLI, fixtures and daemons. */

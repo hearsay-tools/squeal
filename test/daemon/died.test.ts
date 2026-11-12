@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -19,11 +19,14 @@ import {
   type FixtureRepo,
   ping,
   readNotes,
+  runnerHosts,
   SLOW,
   type SpawnedProcess,
+  stopStrays,
   waitFor,
   withStore,
 } from "./helpers.js";
+import { isAlive } from "./strays.js";
 
 /*
  * Task 001-263 (`research/daemon-sigkill.md`): a daemon killed mid-tier, as
@@ -231,5 +234,50 @@ describe.runIf(process.platform === "linux")(
         }
       },
     );
+
+    /*
+     * Row 018-37: the runner host a SIGKILL leaves logs its cancelled run on
+     * the way out; on a slow machine teardown removed the fixture meanwhile
+     * and failed with ENOTEMPTY. Here the host is held stopped until a second
+     * into teardown, as that machine's scheduler held it.
+     */
+    it("teardown waits for the runner host a SIGKILL left (row 018-37)", async () => {
+      const dir = mkdtempSync(join(tmpdir(), "sq-018-37-"));
+      suite.cleanup(() => rmSync(dir, { recursive: true, force: true }));
+      const signal = (pids: readonly number[], name: NodeJS.Signals) => {
+        for (const pid of pids) process.kill(pid, name);
+      };
+      let hosts: number[] = [];
+      try {
+        const { repo, spawned } = await heldDaemon(dir);
+        hosts = runnerHosts(repo.root).map(({ pid }) => pid);
+        expect(hosts).not.toEqual([]);
+        signal(hosts, "SIGSTOP");
+        spawned.child.kill("SIGKILL");
+        expect(await spawned.exited).toEqual({ code: null, signal: "SIGKILL" });
+
+        const runs = join(repo.commonDir, "squeal", "runs");
+        const logged = () =>
+          existsSync(runs)
+            ? readdirSync(runs).filter((id) => existsSync(join(runs, id, "report.json")))
+            : [];
+        const before = logged();
+        const resume = setTimeout(() => signal(hosts, "SIGCONT"), 1_000);
+        try {
+          await stopStrays(repo.root);
+          expect(runnerHosts(repo.root)).toEqual([]);
+          // The held run's log, the write that raced the removal, came first.
+          expect(logged().length).toBeGreaterThan(before.length);
+        } finally {
+          clearTimeout(resume);
+        }
+      } finally {
+        signal(
+          hosts.filter((pid) => isAlive(pid)),
+          "SIGCONT",
+        );
+        writeFileSync(join(dir, "flag"), "");
+      }
+    });
   },
 );
