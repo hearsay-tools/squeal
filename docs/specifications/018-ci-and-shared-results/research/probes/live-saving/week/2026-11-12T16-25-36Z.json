@@ -1,0 +1,3826 @@
+{
+ "probe": "018-45 snapshot.mjs",
+ "takenAt": "2026-11-12T16:25:36.772Z",
+ "since": "2026-11-11T16:25:36.772Z",
+ "sinceFrom": "24 h before takenAt",
+ "node": "v26.13.0",
+ "host": {
+  "loadavg": [
+   18.6,
+   16,
+   16.8
+  ]
+ },
+ "stores": [
+  {
+   "commonDir": "/home/agent/projects/cezar/.git",
+   "store": "/home/agent/projects/cezar/.git/squeal/store.sqlite",
+   "readAt": "2026-11-12T16:25:36.779Z",
+   "worktreesInStore": 40,
+   "imports": [
+    {
+     "id": "35e15501b2c97161",
+     "commit": "b3f058b793c56a80eb4512ba4bd30c2073aa197b",
+     "createdAt": "2026-11-10T21:01:35.476Z",
+     "importedAt": "2026-11-10T21:49:19.806Z",
+     "ciSquealVersion": "0.1.426",
+     "keyFormat": 21,
+     "source": {
+      "runId": "42898628821",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3203-816d95e429126ffd21389cfd252d88080120a87b"
+     },
+     "files": 1456,
+     "filesAtCiKey": 1456,
+     "filesRekeyed": 0,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "92ba1cc3737a7de2",
+     "commit": "13582fdd7c41b3b5bcc31f193e1348bb8aae1035",
+     "createdAt": "2026-11-10T19:35:28.276Z",
+     "importedAt": "2026-11-10T21:49:21.553Z",
+     "ciSquealVersion": "0.1.426",
+     "keyFormat": 21,
+     "source": {
+      "runId": "42883978163",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3192-afd1b7771e98233a7231f5afa07d4091818c5807"
+     },
+     "files": 1477,
+     "filesAtCiKey": 1477,
+     "filesRekeyed": 0,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "7ec794a4f4aa44a8",
+     "commit": "816d95e429126ffd21389cfd252d88080120a87b",
+     "createdAt": "2026-11-10T20:27:51.274Z",
+     "importedAt": "2026-11-10T21:49:34.101Z",
+     "ciSquealVersion": "0.1.426",
+     "keyFormat": 21,
+     "source": {
+      "runId": "42892819408",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3198-5c3b5089722cec7768337e1e0e7e3f0d18232f37"
+     },
+     "files": 1477,
+     "filesAtCiKey": 1477,
+     "filesRekeyed": 0,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "e6feffd5a262b392",
+     "commit": "afd1b7771e98233a7231f5afa07d4091818c5807",
+     "createdAt": "2026-11-10T18:35:18.299Z",
+     "importedAt": "2026-11-10T21:54:49.503Z",
+     "ciSquealVersion": "0.1.426",
+     "keyFormat": 21,
+     "source": {
+      "runId": "42873763583",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3182-efcfb0e39701c4efb2170af39ab28fa3e3917ed0"
+     },
+     "files": 1449,
+     "filesAtCiKey": 1449,
+     "filesRekeyed": 0,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "cabf181526fce1a6",
+     "commit": "1ed7d04fe5dd62b65cd943de040a6785de3a0688",
+     "createdAt": "2026-11-10T21:47:35.019Z",
+     "importedAt": "2026-11-10T21:54:53.827Z",
+     "ciSquealVersion": "0.1.426",
+     "keyFormat": 21,
+     "source": {
+      "runId": "42906074347",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3202-7fccf1badd1083bb59c3f714edfe0a849dea4423"
+     },
+     "files": 1458,
+     "filesAtCiKey": 1458,
+     "filesRekeyed": 0,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "5550a216afe5688e",
+     "commit": "a47289f942660f796066f2a37d9e7741ad6024ac",
+     "createdAt": "2026-11-10T22:05:11.307Z",
+     "importedAt": "2026-11-10T22:07:46.806Z",
+     "ciSquealVersion": "0.1.426",
+     "keyFormat": 21,
+     "source": {
+      "runId": "42908601752",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3204-1ed7d04fe5dd62b65cd943de040a6785de3a0688"
+     },
+     "files": 1458,
+     "filesAtCiKey": 1458,
+     "filesRekeyed": 0,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "340790f21e6173df",
+     "commit": "b0567e717880cab46f9585c7d2d975e9adcc260e",
+     "createdAt": "2026-11-10T22:34:20.570Z",
+     "importedAt": "2026-11-10T22:42:18.716Z",
+     "ciSquealVersion": "0.1.426",
+     "keyFormat": 21,
+     "source": {
+      "runId": "42913330005",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3206-a47289f942660f796066f2a37d9e7741ad6024ac"
+     },
+     "files": 1458,
+     "filesAtCiKey": 1458,
+     "filesRekeyed": 0,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "18cc3b39f09cc636",
+     "commit": "7e0883a43acc1df271df4ace375086ee6e4b809a",
+     "createdAt": "2026-11-11T00:09:41.051Z",
+     "importedAt": "2026-11-11T00:14:32.497Z",
+     "ciSquealVersion": "0.1.426",
+     "keyFormat": 21,
+     "source": {
+      "runId": "42926942236",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3220-1b5939ba0d0f56ddfeecdbe513d7c1a60244ac1d"
+     },
+     "files": 1459,
+     "filesAtCiKey": 1459,
+     "filesRekeyed": 0,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "85877f4323923946",
+     "commit": "8df80218f8ef513c1eab8b649a310e35cfb466a6",
+     "createdAt": "2026-11-11T00:23:45.169Z",
+     "importedAt": "2026-11-11T00:38:55.817Z",
+     "ciSquealVersion": "0.1.426",
+     "keyFormat": 21,
+     "source": {
+      "runId": "42928576294",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3219-7e0883a43acc1df271df4ace375086ee6e4b809a"
+     },
+     "files": 1459,
+     "filesAtCiKey": 1459,
+     "filesRekeyed": 0,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "a69ebedf13ca253e",
+     "commit": "3c814d6f728c946a41c9ce481d4c6972e7b2a498",
+     "createdAt": "2026-11-11T00:41:47.015Z",
+     "importedAt": "2026-11-11T01:07:43.497Z",
+     "ciSquealVersion": "0.1.426",
+     "keyFormat": 21,
+     "source": {
+      "runId": "42931392804",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3221-8df80218f8ef513c1eab8b649a310e35cfb466a6"
+     },
+     "files": 1459,
+     "filesAtCiKey": 1459,
+     "filesRekeyed": 0,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "faf7c4b6077db22a",
+     "commit": "c692ef01a35e81a1ae7438f981c975a6bc10fec1",
+     "createdAt": "2026-11-11T02:58:58.047Z",
+     "importedAt": "2026-11-11T03:19:09.074Z",
+     "ciSquealVersion": "0.1.426",
+     "keyFormat": 21,
+     "source": {
+      "runId": "42947760599",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3232-1415d9b2708d4a5955077202e5c22677ca117f46"
+     },
+     "files": 1461,
+     "filesAtCiKey": 1461,
+     "filesRekeyed": 0,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "690b852da7eb1ace",
+     "commit": "c9fb4e0094870544da87ee089320250d1d981e2b",
+     "createdAt": "2026-11-11T03:18:29.830Z",
+     "importedAt": "2026-11-11T03:21:49.696Z",
+     "ciSquealVersion": "0.1.426",
+     "keyFormat": 21,
+     "source": {
+      "runId": "42950053503",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3234-c692ef01a35e81a1ae7438f981c975a6bc10fec1"
+     },
+     "files": 1460,
+     "filesAtCiKey": 1460,
+     "filesRekeyed": 0,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "2b911a0da10e1c5f",
+     "commit": "bea86e3e8d034b3c78674db1ca4cd991a35f6980",
+     "createdAt": "2026-11-11T04:06:56.402Z",
+     "importedAt": "2026-11-11T06:49:26.913Z",
+     "ciSquealVersion": "0.1.426",
+     "keyFormat": 21,
+     "source": {
+      "runId": "42955387729",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3235-c9fb4e0094870544da87ee089320250d1d981e2b"
+     },
+     "files": 1466,
+     "filesAtCiKey": 1466,
+     "filesRekeyed": 0,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "726c10d9131632df",
+     "commit": "6807e00987f8dd5f21ff40c4dbd8d07f421b0696",
+     "createdAt": "2026-11-11T09:25:01.542Z",
+     "importedAt": "2026-11-11T09:26:32.414Z",
+     "ciSquealVersion": "0.1.426",
+     "keyFormat": 21,
+     "source": {
+      "runId": "42992637093",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3229-fef829b56c5a4352f5054966ef6b1076f37f5ac6"
+     },
+     "files": 1501,
+     "filesAtCiKey": 1501,
+     "filesRekeyed": 0,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "70ebdb3631431ebe",
+     "commit": "9c21887242176869cb1f58a427d618f7b6b233a8",
+     "createdAt": "2026-11-11T09:40:44.503Z",
+     "importedAt": "2026-11-11T10:04:52.516Z",
+     "ciSquealVersion": "0.1.426",
+     "keyFormat": 21,
+     "source": {
+      "runId": "42995136546",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3225-293ee4dbbce6a5a8d9f706cf520dff53d06a5ed0"
+     },
+     "files": 1492,
+     "filesAtCiKey": 1492,
+     "filesRekeyed": 0,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "013039e516ca774a",
+     "commit": "c36457c3a837064eba3e45af0eea655c51128bf4",
+     "createdAt": "2026-11-11T10:36:46.240Z",
+     "importedAt": "2026-11-11T11:16:06.918Z",
+     "ciSquealVersion": "0.1.426",
+     "keyFormat": 21,
+     "source": {
+      "runId": "43002715298",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3227-43625fd576d3e272f4d79fc7b5bcb0aff797a521"
+     },
+     "files": 1503,
+     "filesAtCiKey": 1503,
+     "filesRekeyed": 0,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "81e09339e2849686",
+     "commit": "3f2785cc5bc739ad9006b4e1abfa49a9343b573e",
+     "createdAt": "2026-11-11T11:15:45.585Z",
+     "importedAt": "2026-11-11T11:29:59.639Z",
+     "ciSquealVersion": "0.1.426",
+     "keyFormat": 21,
+     "source": {
+      "runId": "43008154198",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3243-c36457c3a837064eba3e45af0eea655c51128bf4"
+     },
+     "files": 1503,
+     "filesAtCiKey": 1503,
+     "filesRekeyed": 0,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "655eb930ad055bbb",
+     "commit": "9cea6f73e8e1ebc9b4132e9f69410173250a853a",
+     "createdAt": "2026-11-11T11:53:47.417Z",
+     "importedAt": "2026-11-11T12:02:02.594Z",
+     "ciSquealVersion": "0.1.426",
+     "keyFormat": 21,
+     "source": {
+      "runId": "43013340341",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3240-3f2785cc5bc739ad9006b4e1abfa49a9343b573e"
+     },
+     "files": 1529,
+     "filesAtCiKey": 1529,
+     "filesRekeyed": 0,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "d5ea3e797f8612df",
+     "commit": "473f02655257b865bad6851136b76abf42409ce7",
+     "createdAt": "2026-11-11T13:09:56.719Z",
+     "importedAt": "2026-11-11T13:14:42.542Z",
+     "ciSquealVersion": "0.1.426",
+     "keyFormat": 21,
+     "source": {
+      "runId": "43024175344",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3249-9a155ef3a4cc28460fb08436f834308d79b58630"
+     },
+     "files": 1529,
+     "filesAtCiKey": 1529,
+     "filesRekeyed": 0,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "08f3af03341f9fdb",
+     "commit": "6a8433364b7c489f6ec52bf3ae55256a5b8a7f4b",
+     "createdAt": "2026-11-11T13:23:53.972Z",
+     "importedAt": "2026-11-11T13:28:08.635Z",
+     "ciSquealVersion": "0.1.426",
+     "keyFormat": 21,
+     "source": {
+      "runId": "43026204900",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3250-473f02655257b865bad6851136b76abf42409ce7"
+     },
+     "files": 1529,
+     "filesAtCiKey": 1529,
+     "filesRekeyed": 0,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "09cb2e6fe2cdff85",
+     "commit": "688c462002c345a3f44c56b77207067e7afc1751",
+     "createdAt": "2026-11-11T15:02:58.024Z",
+     "importedAt": "2026-11-11T15:06:23.062Z",
+     "ciSquealVersion": "0.1.426",
+     "keyFormat": 21,
+     "source": {
+      "runId": "43041916151",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3258-f3801ede4f153a72be0fb9bfe9d9990cd048d798"
+     },
+     "files": 1489,
+     "filesAtCiKey": 1489,
+     "filesRekeyed": 0,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "a68682b4c75c8df5",
+     "commit": "dd3811e3a65859d0eb7c401bc0434b94a6c19530",
+     "createdAt": "2026-11-11T15:12:26.365Z",
+     "importedAt": "2026-11-11T15:24:18.443Z",
+     "ciSquealVersion": "0.1.426",
+     "keyFormat": 21,
+     "source": {
+      "runId": "43042920843",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3260-688c462002c345a3f44c56b77207067e7afc1751"
+     },
+     "files": 1489,
+     "filesAtCiKey": 1489,
+     "filesRekeyed": 0,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "c96efc5d2a26f65d",
+     "commit": "9819505db3ef327265d8de9f2c5c040284813cfd",
+     "createdAt": "2026-11-11T15:39:30.976Z",
+     "importedAt": "2026-11-11T15:47:58.527Z",
+     "ciSquealVersion": "0.1.426",
+     "keyFormat": 21,
+     "source": {
+      "runId": "43047635299",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3239-dd3811e3a65859d0eb7c401bc0434b94a6c19530"
+     },
+     "files": 1489,
+     "filesAtCiKey": 1489,
+     "filesRekeyed": 0,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "c45e1c93f51da47f",
+     "commit": "7c302f57fc2bb6f67d21a19ec7074ef419fb86ed",
+     "createdAt": "2026-11-11T15:47:25.527Z",
+     "importedAt": "2026-11-11T15:54:43.897Z",
+     "ciSquealVersion": "0.1.426",
+     "keyFormat": 21,
+     "source": {
+      "runId": "43048578772",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3262-9819505db3ef327265d8de9f2c5c040284813cfd"
+     },
+     "files": 1489,
+     "filesAtCiKey": 1489,
+     "filesRekeyed": 0,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "9aa0d0c53916ea8b",
+     "commit": "0d7fc12809457f967d7abc92fcb8cf7958683dd1",
+     "createdAt": "2026-11-11T15:58:00.230Z",
+     "importedAt": "2026-11-11T16:20:46.034Z",
+     "ciSquealVersion": "0.1.426",
+     "keyFormat": 21,
+     "source": {
+      "runId": "43050539228",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3263-7c302f57fc2bb6f67d21a19ec7074ef419fb86ed"
+     },
+     "files": 1489,
+     "filesAtCiKey": 1489,
+     "filesRekeyed": 0,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "de3765a172466548",
+     "commit": "32db434a54e2de283fd12ec9e522e52960a8960b",
+     "createdAt": "2026-11-11T16:18:21.110Z",
+     "importedAt": "2026-11-11T16:21:33.069Z",
+     "ciSquealVersion": "0.1.426",
+     "keyFormat": 21,
+     "source": {
+      "runId": "43054098647",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3259-0d7fc12809457f967d7abc92fcb8cf7958683dd1"
+     },
+     "files": 1532,
+     "filesAtCiKey": 1532,
+     "filesRekeyed": 0,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "79e27ecfdf2798cc",
+     "commit": "de606f9cc2ec3b77f62537e16b2405e74eb110b6",
+     "createdAt": "2026-11-11T16:36:47.549Z",
+     "importedAt": "2026-11-11T16:53:34.252Z",
+     "ciSquealVersion": "0.1.426",
+     "keyFormat": 21,
+     "source": {
+      "runId": "43057127384",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3254-52019f38c8096d660d76e8b3ec203e71038b4f7a"
+     },
+     "files": 1532,
+     "filesAtCiKey": 1532,
+     "filesRekeyed": 0,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "54f98d9c03b2653d",
+     "commit": "a2e1b9de5d1570f17d65f7951b860f34915448d7",
+     "createdAt": "2026-11-11T17:09:59.392Z",
+     "importedAt": "2026-11-11T17:11:54.654Z",
+     "ciSquealVersion": "0.1.426",
+     "keyFormat": 21,
+     "source": {
+      "runId": "43062706914",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3271-96c2acc23fbbb96a4c1770b7b686350c855a0927"
+     },
+     "files": 1523,
+     "filesAtCiKey": 1523,
+     "filesRekeyed": 0,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "dba2bc8e0b9a055f",
+     "commit": "b0ef80b1a78e4d8012e73d3e574b19e9b05641eb",
+     "createdAt": "2026-11-11T17:52:26.743Z",
+     "importedAt": "2026-11-11T18:05:36.690Z",
+     "ciSquealVersion": "0.1.426",
+     "keyFormat": 21,
+     "source": {
+      "runId": "43069660356",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3273-7c75eb53da87f2457b762ef558b262e9f49ce6dd"
+     },
+     "files": 1523,
+     "filesAtCiKey": 1523,
+     "filesRekeyed": 0,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "6f38365dca412e56",
+     "commit": "0c0f103787124515ce67fc5a6e94d6a2a4ed3a40",
+     "createdAt": "2026-11-11T18:16:55.416Z",
+     "importedAt": "2026-11-11T18:24:05.204Z",
+     "ciSquealVersion": "0.1.431",
+     "keyFormat": 21,
+     "source": {
+      "runId": "43073375295",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3264-b0ef80b1a78e4d8012e73d3e574b19e9b05641eb"
+     },
+     "files": 1523,
+     "filesAtCiKey": 1523,
+     "filesRekeyed": 0,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "b2ab551b3f58d9e5",
+     "commit": "9ca25002a6d6d702c5ef1619195e31f12e7ccde5",
+     "createdAt": "2026-11-11T18:43:33.178Z",
+     "importedAt": "2026-11-11T19:04:02.111Z",
+     "ciSquealVersion": "0.1.431",
+     "keyFormat": 21,
+     "source": {
+      "runId": "43077596810",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3275-0c0f103787124515ce67fc5a6e94d6a2a4ed3a40"
+     },
+     "files": 1523,
+     "filesAtCiKey": 11,
+     "filesRekeyed": 1512,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "fe52a58d5ccbe61d",
+     "commit": "f30ce4c4c7366ed22bc2fab9fa898eab00ac0bf5",
+     "createdAt": "2026-11-11T19:27:41.843Z",
+     "importedAt": "2026-11-11T19:49:04.335Z",
+     "ciSquealVersion": "0.1.431",
+     "keyFormat": 21,
+     "source": {
+      "runId": "43084415803",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3278-9ca25002a6d6d702c5ef1619195e31f12e7ccde5"
+     },
+     "files": 1523,
+     "filesAtCiKey": 2,
+     "filesRekeyed": 1521,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "8d74a93d15b2db6c",
+     "commit": "67ae4684b62caf8cd73add4bc04e1fb8a39a03d0",
+     "createdAt": "2026-11-11T19:51:19.407Z",
+     "importedAt": "2026-11-11T19:56:24.516Z",
+     "ciSquealVersion": "0.1.431",
+     "keyFormat": 21,
+     "source": {
+      "runId": "43088330004",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3281-f30ce4c4c7366ed22bc2fab9fa898eab00ac0bf5"
+     },
+     "files": 1523,
+     "filesAtCiKey": 2,
+     "filesRekeyed": 1521,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "ab71061b19b291a7",
+     "commit": "5b278bdc7168b943f1c720b63a12da6b3ed3af5d",
+     "createdAt": "2026-11-11T20:01:56.415Z",
+     "importedAt": "2026-11-11T20:07:05.899Z",
+     "ciSquealVersion": "0.1.431",
+     "keyFormat": 21,
+     "source": {
+      "runId": "43089887527",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3277-67ae4684b62caf8cd73add4bc04e1fb8a39a03d0"
+     },
+     "files": 1523,
+     "filesAtCiKey": 45,
+     "filesRekeyed": 1478,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "29fba627cf0d0ad1",
+     "commit": "249c8783b565d81a5fa47d0486d05ec198c8eb60",
+     "createdAt": "2026-11-11T22:14:29.186Z",
+     "importedAt": "2026-11-11T22:20:41.101Z",
+     "ciSquealVersion": "0.1.431",
+     "keyFormat": 21,
+     "source": {
+      "runId": "43107363467",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3284-5b278bdc7168b943f1c720b63a12da6b3ed3af5d"
+     },
+     "files": 1523,
+     "filesAtCiKey": 38,
+     "filesRekeyed": 1485,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "9a24a49a8c0c4ba6",
+     "commit": "427187b4ed647715f5bb9667173a810a0d14c9e9",
+     "createdAt": "2026-11-12T00:18:59.893Z",
+     "importedAt": "2026-11-12T00:29:50.116Z",
+     "ciSquealVersion": "0.1.431",
+     "keyFormat": 21,
+     "source": {
+      "runId": "43124365623",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3282-a71d98fb3f7647f2aefeb1cb0c54a3d081ca8060"
+     },
+     "files": 1523,
+     "filesAtCiKey": 2,
+     "filesRekeyed": 1521,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "eeff9edfc57e924c",
+     "commit": "46a383cfa52ba9cc890624ee6ec33b813991613e",
+     "createdAt": "2026-11-12T01:13:52.533Z",
+     "importedAt": "2026-11-12T01:21:56.656Z",
+     "ciSquealVersion": "0.1.431",
+     "keyFormat": 21,
+     "source": {
+      "runId": "43130975567",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3295-1d20622f93298a3a225b8bad5c364696dd70f685"
+     },
+     "files": 1529,
+     "filesAtCiKey": 31,
+     "filesRekeyed": 1498,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "fd95b134ca6bfc56",
+     "commit": "42c28fa2aaad3970b293d8c902b2b68e8631a4ce",
+     "createdAt": "2026-11-12T01:45:21.176Z",
+     "importedAt": "2026-11-12T01:56:34.560Z",
+     "ciSquealVersion": "0.1.431",
+     "keyFormat": 21,
+     "source": {
+      "runId": "43134601742",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3296-2b91e798791c4e4835401b46833bc4ead175a4eb"
+     },
+     "files": 1529,
+     "filesAtCiKey": 3,
+     "filesRekeyed": 1526,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "e090121706b8f225",
+     "commit": "376a64769b068dea836c710389b32690fbb3a2dc",
+     "createdAt": "2026-11-12T03:33:30.287Z",
+     "importedAt": "2026-11-12T04:31:20.056Z",
+     "ciSquealVersion": "0.1.431",
+     "keyFormat": 21,
+     "source": {
+      "runId": "43146752215",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3322-b12aed82bd9e3f7d96d8fd868fd641c9d874b307"
+     },
+     "files": 1529,
+     "filesAtCiKey": 2,
+     "filesRekeyed": 1527,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "45f57c527f1741d3",
+     "commit": "1e93f0cb754a214836942f77c04cf457e21a1cda",
+     "createdAt": "2026-11-12T04:29:48.144Z",
+     "importedAt": "2026-11-12T04:32:16.604Z",
+     "ciSquealVersion": "0.1.431",
+     "keyFormat": 21,
+     "source": {
+      "runId": "43153986330",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3329-8efb35d448557a6f951696c3ab100a9d4cc4f21a"
+     },
+     "files": 1513,
+     "filesAtCiKey": 219,
+     "filesRekeyed": 1294,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "a068b78551bc2970",
+     "commit": "99aaa04ad74f9407341815160d18738adc333279",
+     "createdAt": "2026-11-12T06:41:11.922Z",
+     "importedAt": "2026-11-12T07:21:05.634Z",
+     "ciSquealVersion": "0.1.431",
+     "keyFormat": 21,
+     "source": {
+      "runId": "43168532420",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3333-e89aa5a5172cbfbb52022bd3f3d6610f8ba28e8c"
+     },
+     "files": 1513,
+     "filesAtCiKey": 345,
+     "filesRekeyed": 1168,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "2e760c5431b0326d",
+     "commit": "de83e59e1070d82220d7effd7855fd51d3624928",
+     "createdAt": "2026-11-12T07:33:26.579Z",
+     "importedAt": "2026-11-12T07:35:22.458Z",
+     "ciSquealVersion": "0.1.431",
+     "keyFormat": 21,
+     "source": {
+      "runId": "43174744680",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3285-99aaa04ad74f9407341815160d18738adc333279"
+     },
+     "files": 1508,
+     "filesAtCiKey": 238,
+     "filesRekeyed": 1270,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "77d391cac973b56b",
+     "commit": "cc3cead4b816910280bfc6633348cbe59cd74e5d",
+     "createdAt": "2026-11-12T09:20:02.735Z",
+     "importedAt": "2026-11-12T09:40:28.715Z",
+     "ciSquealVersion": "0.1.443",
+     "keyFormat": 21,
+     "source": {
+      "runId": "43188846583",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3336-a1a3de45d1da50685f1ba6eb06b8b7bc4aaa5184"
+     },
+     "files": 1484,
+     "filesAtCiKey": 23,
+     "filesRekeyed": 1461,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "6adddda874b13797",
+     "commit": "c6574b70244da8e8fa7be70e8a120993d8df08a2",
+     "createdAt": "2026-11-12T10:45:43.812Z",
+     "importedAt": "2026-11-12T10:54:44.932Z",
+     "ciSquealVersion": "0.1.443",
+     "keyFormat": 21,
+     "source": {
+      "runId": "43201508525",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3341-cc3cead4b816910280bfc6633348cbe59cd74e5d"
+     },
+     "files": 1483,
+     "filesAtCiKey": 19,
+     "filesRekeyed": 1464,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "63bd26d206636a5e",
+     "commit": "924575538e2e424854dbdcc968acc8b54980c938",
+     "createdAt": "2026-11-12T11:16:21.696Z",
+     "importedAt": "2026-11-12T11:17:44.998Z",
+     "ciSquealVersion": "0.1.443",
+     "keyFormat": 21,
+     "source": {
+      "runId": "43206254266",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3344-c6574b70244da8e8fa7be70e8a120993d8df08a2"
+     },
+     "files": 1484,
+     "filesAtCiKey": 19,
+     "filesRekeyed": 1465,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "859b10ffa7b6c0dc",
+     "commit": "c098ccc299244ee28b071f46180f74ab6be81524",
+     "createdAt": "2026-11-12T12:11:47.094Z",
+     "importedAt": "2026-11-12T12:13:20.688Z",
+     "ciSquealVersion": "0.1.443",
+     "keyFormat": 21,
+     "source": {
+      "runId": "43214364723",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3354-924575538e2e424854dbdcc968acc8b54980c938"
+     },
+     "files": 1483,
+     "filesAtCiKey": 16,
+     "filesRekeyed": 1467,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "a140315197fc5784",
+     "commit": "becede8ec299ccac957347f0654e320991c436a4",
+     "createdAt": "2026-11-12T13:21:44.468Z",
+     "importedAt": "2026-11-12T14:04:50.905Z",
+     "ciSquealVersion": "0.1.443",
+     "keyFormat": 21,
+     "source": {
+      "runId": "43224897571",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3357-c098ccc299244ee28b071f46180f74ab6be81524"
+     },
+     "files": 1469,
+     "filesAtCiKey": 7,
+     "filesRekeyed": 1462,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "51b22e3a3d967b0e",
+     "commit": "d51e5285bdc98407b5ed0fcdc16a2cbf4029f20d",
+     "createdAt": "2026-11-12T14:05:49.973Z",
+     "importedAt": "2026-11-12T14:07:04.307Z",
+     "ciSquealVersion": "0.1.443",
+     "keyFormat": 21,
+     "source": {
+      "runId": "43232149390",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3346-becede8ec299ccac957347f0654e320991c436a4"
+     },
+     "files": 1470,
+     "filesAtCiKey": 1470,
+     "filesRekeyed": 0,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "e64613b884e18835",
+     "commit": "e12c42e8aeb9f446f7a3ca523f06a68357154f5f",
+     "createdAt": "2026-11-12T14:06:05.364Z",
+     "importedAt": "2026-11-12T14:26:17.752Z",
+     "ciSquealVersion": "0.1.443",
+     "keyFormat": 21,
+     "source": {
+      "runId": "43232151746",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3351-d51e5285bdc98407b5ed0fcdc16a2cbf4029f20d"
+     },
+     "files": 1469,
+     "filesAtCiKey": 7,
+     "filesRekeyed": 1462,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "cf2c81fd51930422",
+     "commit": "3fe503e33a4c131d6bd33594871785d6e9807cc6",
+     "createdAt": "2026-11-12T14:25:08.795Z",
+     "importedAt": "2026-11-12T14:35:18.621Z",
+     "ciSquealVersion": "0.1.443",
+     "keyFormat": 21,
+     "source": {
+      "runId": "43235418734",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3353-8cefeca45d811ae221b8ea1e7d05a738bdfe50f4"
+     },
+     "files": 1469,
+     "filesAtCiKey": 7,
+     "filesRekeyed": 1462,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "c4dbe64ada144ac4",
+     "commit": "ba5a204864ef62ade53ec837a7845afc766998e1",
+     "createdAt": "2026-11-12T14:34:32.165Z",
+     "importedAt": "2026-11-12T14:39:12.881Z",
+     "ciSquealVersion": "0.1.443",
+     "keyFormat": 21,
+     "source": {
+      "runId": "43237065587",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3352-51087ab8b391d155915af93185bfa30bf6a972da"
+     },
+     "files": 1469,
+     "filesAtCiKey": 1469,
+     "filesRekeyed": 0,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    },
+    {
+     "id": "421ee85085ba163d",
+     "commit": "fe53b2f96760a1ba07fbd196918382a07b09fe4a",
+     "createdAt": "2026-11-12T14:44:09.829Z",
+     "importedAt": "2026-11-12T14:47:23.865Z",
+     "ciSquealVersion": "0.1.443",
+     "keyFormat": 21,
+     "source": {
+      "runId": "43238701839",
+      "event": "merge_group",
+      "ref": "refs/heads/gh-readonly-queue/main/pr-3345-ba5a204864ef62ade53ec837a7845afc766998e1"
+     },
+     "files": 1485,
+     "filesAtCiKey": 1120,
+     "filesRekeyed": 365,
+     "filesUnknownEnvironment": 0,
+     "newSincePreviousSnapshot": null
+    }
+   ],
+   "importsGoneSincePreviousSnapshot": [],
+   "worktrees": [
+    {
+     "root": "/home/agent/projects/cezar",
+     "registered": true,
+     "id": "b7555ac0d0f19f40",
+     "isMain": true,
+     "registeredAt": "2026-10-14T19:55:25.617Z",
+     "daemon": {
+      "version": "0.1.452",
+      "startedAt": "2026-11-12T15:43:31.112Z",
+      "heartbeatAt": "2026-11-12T16:25:33.407Z",
+      "heartbeatFresh": true,
+      "versionsSeen": [
+       {
+        "version": "0.1.452",
+        "startedAt": "2026-11-12T15:43:31.112Z"
+       }
+      ]
+     },
+     "lastRecordedRevision": 335,
+     "head": "cc3cead4b816910280bfc6633348cbe59cd74e5d",
+     "files": {
+      "listed": 1916,
+      "withStates": 1916,
+      "current": 1551,
+      "imported": 1113,
+      "local": 438,
+      "localOwn": 2,
+      "localInherited": 436,
+      "mixed": 0,
+      "notCurrent": 365,
+      "notCurrentBy": {
+       "stale": 365
+      }
+     },
+     "byImport": {
+      "b2ab551b3f58d9e5": {
+       "files": 29,
+       "ciFileSec": 10
+      },
+      "fd95b134ca6bfc56": {
+       "files": 347,
+       "ciFileSec": 531
+      },
+      "77d391cac973b56b": {
+       "files": 601,
+       "ciFileSec": 7934
+      },
+      "2e760c5431b0326d": {
+       "files": 93,
+       "ciFileSec": 199
+      },
+      "45f57c527f1741d3": {
+       "files": 43,
+       "ciFileSec": 173
+      }
+     },
+     "adoptions": [
+      {
+       "import": "b2ab551b3f58d9e5",
+       "revision": 326,
+       "revisionAt": "2026-11-11T19:48:17.348Z",
+       "trigger": "start",
+       "files": 29,
+       "reachedByChange": 0,
+       "reachedCiFileSec": 0
+      },
+      {
+       "import": "2e760c5431b0326d",
+       "revision": 332,
+       "revisionAt": "2026-11-12T08:00:36.620Z",
+       "trigger": "start",
+       "files": 93,
+       "reachedByChange": 0,
+       "reachedCiFileSec": 0
+      },
+      {
+       "import": "45f57c527f1741d3",
+       "revision": 332,
+       "revisionAt": "2026-11-12T08:00:36.620Z",
+       "trigger": "start",
+       "files": 43,
+       "reachedByChange": 0,
+       "reachedCiFileSec": 0
+      },
+      {
+       "import": "fd95b134ca6bfc56",
+       "revision": 332,
+       "revisionAt": "2026-11-12T08:00:36.620Z",
+       "trigger": "start",
+       "files": 347,
+       "reachedByChange": 0,
+       "reachedCiFileSec": 0
+      },
+      {
+       "import": "77d391cac973b56b",
+       "revision": 333,
+       "revisionAt": "2026-11-12T09:38:40.060Z",
+       "trigger": "start",
+       "files": 601,
+       "reachedByChange": 0,
+       "reachedCiFileSec": 0
+      }
+     ],
+     "localRuns": {
+      "runs": 147,
+      "fileRuns": 293,
+      "fileSec": 6211,
+      "checkpointFileSec": 6204,
+      "fromResultRowsFileSec": 114,
+      "wallSec": 7743,
+      "endStates": {
+       "completed": 147
+      },
+      "fileSecByDaemonVersion": {
+       "unknown": 6211
+      },
+      "runsWithoutDurations": 0
+     },
+     "runsInProgress": 0
+    },
+    {
+     "root": "/home/agent/projects/cezar/.ai/cezar/worktrees/00b197a7-72c1-43b7-8aaa-243340140773",
+     "registered": true,
+     "id": "8ee33ff04309c461",
+     "isMain": false,
+     "registeredAt": "2026-11-12T09:40:01.231Z",
+     "daemon": {
+      "version": "0.1.449",
+      "startedAt": "2026-11-12T13:54:17.140Z",
+      "heartbeatAt": "2026-11-12T14:38:09.897Z",
+      "heartbeatFresh": false,
+      "versionsSeen": [
+       {
+        "version": "0.1.449",
+        "startedAt": "2026-11-12T13:54:17.140Z"
+       }
+      ]
+     },
+     "lastRecordedRevision": 6,
+     "head": "ba5a204864ef62ade53ec837a7845afc766998e1",
+     "files": {
+      "listed": 1919,
+      "withStates": 1746,
+      "current": 1496,
+      "imported": 1428,
+      "local": 68,
+      "localOwn": 34,
+      "localInherited": 34,
+      "mixed": 0,
+      "notCurrent": 250,
+      "notCurrentBy": {
+       "pending": 250
+      }
+     },
+     "byImport": {
+      "a140315197fc5784": {
+       "files": 1330,
+       "ciFileSec": 8053
+      },
+      "cf2c81fd51930422": {
+       "files": 97,
+       "ciFileSec": 437
+      },
+      "e64613b884e18835": {
+       "files": 1,
+       "ciFileSec": 1
+      }
+     },
+     "adoptions": [
+      {
+       "import": "a140315197fc5784",
+       "revision": 2,
+       "revisionAt": "2026-11-12T14:07:32.689Z",
+       "trigger": "interval",
+       "files": 1330,
+       "reachedByChange": 0,
+       "reachedCiFileSec": 0
+      },
+      {
+       "import": "e64613b884e18835",
+       "revision": 4,
+       "revisionAt": "2026-11-12T14:26:34.811Z",
+       "trigger": "interval",
+       "files": 1,
+       "reachedByChange": 0,
+       "reachedCiFileSec": 0
+      },
+      {
+       "import": "cf2c81fd51930422",
+       "revision": 5,
+       "revisionAt": "2026-11-12T14:35:11.750Z",
+       "trigger": "watch",
+       "files": 97,
+       "reachedByChange": 0,
+       "reachedCiFileSec": 0
+      }
+     ],
+     "localRuns": {
+      "runs": 19,
+      "fileRuns": 51,
+      "fileSec": 362,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 5,
+      "wallSec": 260,
+      "endStates": {
+       "completed": 19
+      },
+      "fileSecByDaemonVersion": {
+       "unknown": 68,
+       "0.1.449": 294
+      },
+      "runsWithoutDurations": 0
+     },
+     "runsInProgress": 0
+    },
+    {
+     "root": "/home/agent/projects/cezar/.ai/cezar/worktrees/01e9423c-30ab-4621-b648-2a0266c4fc93",
+     "registered": true,
+     "id": "d8d1f6108c91bd36",
+     "isMain": false,
+     "registeredAt": "2026-10-27T14:29:17.271Z",
+     "daemon": {
+      "version": "0.1.368",
+      "startedAt": "2026-10-27T19:48:42.465Z",
+      "heartbeatAt": "2026-10-27T20:41:45.459Z",
+      "heartbeatFresh": false,
+      "versionsSeen": [
+       {
+        "version": "0.1.368",
+        "startedAt": "2026-10-27T19:48:42.465Z"
+       }
+      ]
+     },
+     "lastRecordedRevision": 159,
+     "head": "f765ca0de271fb953f7ec2b03c66fb7e5b7a7221",
+     "files": {
+      "listed": 1099,
+      "withStates": 1099,
+      "current": 681,
+      "imported": 0,
+      "local": 681,
+      "localOwn": 100,
+      "localInherited": 581,
+      "mixed": 0,
+      "notCurrent": 418,
+      "notCurrentBy": {
+       "pending": 418
+      }
+     },
+     "byImport": {},
+     "adoptions": [],
+     "localRuns": {
+      "runs": 0,
+      "fileRuns": 0,
+      "fileSec": 0,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 0,
+      "wallSec": 0,
+      "endStates": {},
+      "fileSecByDaemonVersion": {},
+      "runsWithoutDurations": 0
+     },
+     "runsInProgress": 0
+    },
+    {
+     "root": "/home/agent/projects/cezar/.ai/cezar/worktrees/0498344c-fbab-4546-99a0-d7d1473f625a",
+     "registered": false
+    },
+    {
+     "root": "/home/agent/projects/cezar/.ai/cezar/worktrees/06d646d2-8f43-4163-989a-f0f0bbb45338",
+     "registered": true,
+     "id": "b29e5e733d220014",
+     "isMain": false,
+     "registeredAt": "2026-10-20T21:50:59.566Z",
+     "daemon": {
+      "version": "0.1.232",
+      "startedAt": "2026-10-20T21:50:59.566Z",
+      "heartbeatAt": "2026-10-20T23:27:52.369Z",
+      "heartbeatFresh": false,
+      "versionsSeen": [
+       {
+        "version": "0.1.232",
+        "startedAt": "2026-10-20T21:50:59.566Z"
+       }
+      ]
+     },
+     "lastRecordedRevision": 8,
+     "head": "fab8edab07141b5307a4b4f5f94477c9d53a5204",
+     "files": {
+      "listed": 892,
+      "withStates": 859,
+      "current": 836,
+      "imported": 0,
+      "local": 836,
+      "localOwn": 72,
+      "localInherited": 764,
+      "mixed": 0,
+      "notCurrent": 23,
+      "notCurrentBy": {
+       "pending": 23
+      }
+     },
+     "byImport": {},
+     "adoptions": [],
+     "localRuns": {
+      "runs": 0,
+      "fileRuns": 0,
+      "fileSec": 0,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 0,
+      "wallSec": 0,
+      "endStates": {},
+      "fileSecByDaemonVersion": {},
+      "runsWithoutDurations": 0
+     },
+     "runsInProgress": 0
+    },
+    {
+     "root": "/home/agent/projects/cezar/.ai/cezar/worktrees/0ce567de-4081-4a95-8986-20ce3af61fb5",
+     "registered": true,
+     "id": "218bad807b8f7b6e",
+     "isMain": false,
+     "registeredAt": "2026-10-26T15:04:51.449Z",
+     "daemon": {
+      "version": "0.1.346",
+      "startedAt": "2026-10-26T15:04:51.449Z",
+      "heartbeatAt": "2026-10-26T15:14:43.320Z",
+      "heartbeatFresh": false,
+      "versionsSeen": [
+       {
+        "version": "0.1.346",
+        "startedAt": "2026-10-26T15:04:51.449Z"
+       }
+      ]
+     },
+     "lastRecordedRevision": -1,
+     "head": null,
+     "files": {
+      "listed": 1078,
+      "withStates": 171,
+      "current": 171,
+      "imported": 0,
+      "local": 171,
+      "localOwn": 0,
+      "localInherited": 171,
+      "mixed": 0,
+      "notCurrent": 0,
+      "notCurrentBy": {}
+     },
+     "byImport": {},
+     "adoptions": [],
+     "localRuns": {
+      "runs": 0,
+      "fileRuns": 0,
+      "fileSec": 0,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 0,
+      "wallSec": 0,
+      "endStates": {},
+      "fileSecByDaemonVersion": {},
+      "runsWithoutDurations": 0
+     },
+     "runsInProgress": 0
+    },
+    {
+     "root": "/home/agent/projects/cezar/.ai/cezar/worktrees/101aee17-6e9d-4c77-a98d-077df8285243",
+     "registered": true,
+     "id": "52648a1e01c82efd",
+     "isMain": false,
+     "registeredAt": "2026-10-26T15:04:51.454Z",
+     "daemon": {
+      "version": "0.1.346",
+      "startedAt": "2026-10-26T15:04:51.454Z",
+      "heartbeatAt": "2026-10-26T15:14:19.683Z",
+      "heartbeatFresh": false,
+      "versionsSeen": [
+       {
+        "version": "0.1.346",
+        "startedAt": "2026-10-26T15:04:51.454Z"
+       }
+      ]
+     },
+     "lastRecordedRevision": -1,
+     "head": null,
+     "files": {
+      "listed": 1078,
+      "withStates": 171,
+      "current": 171,
+      "imported": 0,
+      "local": 171,
+      "localOwn": 0,
+      "localInherited": 171,
+      "mixed": 0,
+      "notCurrent": 0,
+      "notCurrentBy": {}
+     },
+     "byImport": {},
+     "adoptions": [],
+     "localRuns": {
+      "runs": 0,
+      "fileRuns": 0,
+      "fileSec": 0,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 0,
+      "wallSec": 0,
+      "endStates": {},
+      "fileSecByDaemonVersion": {},
+      "runsWithoutDurations": 0
+     },
+     "runsInProgress": 0
+    },
+    {
+     "root": "/home/agent/projects/cezar/.ai/cezar/worktrees/1e0f62e4-9445-4f1f-b3d6-06c9da638b5d",
+     "registered": true,
+     "id": "5182a571181332b7",
+     "isMain": false,
+     "registeredAt": "2026-10-27T14:28:45.032Z",
+     "daemon": {
+      "version": "0.1.367",
+      "startedAt": "2026-10-27T14:28:45.032Z",
+      "heartbeatAt": "2026-10-27T15:13:18.741Z",
+      "heartbeatFresh": false,
+      "versionsSeen": [
+       {
+        "version": "0.1.367",
+        "startedAt": "2026-10-27T14:28:45.032Z"
+       }
+      ]
+     },
+     "lastRecordedRevision": 3,
+     "head": "deb3e49cbc206da63ff73578551925a6d88a3d71",
+     "files": {
+      "listed": 1094,
+      "withStates": 1007,
+      "current": 1007,
+      "imported": 0,
+      "local": 1007,
+      "localOwn": 259,
+      "localInherited": 748,
+      "mixed": 0,
+      "notCurrent": 0,
+      "notCurrentBy": {}
+     },
+     "byImport": {},
+     "adoptions": [],
+     "localRuns": {
+      "runs": 0,
+      "fileRuns": 0,
+      "fileSec": 0,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 0,
+      "wallSec": 0,
+      "endStates": {},
+      "fileSecByDaemonVersion": {},
+      "runsWithoutDurations": 0
+     },
+     "runsInProgress": 0
+    },
+    {
+     "root": "/home/agent/projects/cezar/.ai/cezar/worktrees/2bea0a61-1f0d-48cf-9dff-7e3b0bf19cb9",
+     "registered": true,
+     "id": "d328afe4cd7542e4",
+     "isMain": false,
+     "registeredAt": "2026-10-26T15:04:51.482Z",
+     "daemon": {
+      "version": "0.1.346",
+      "startedAt": "2026-10-26T15:04:51.482Z",
+      "heartbeatAt": "2026-10-26T15:14:47.616Z",
+      "heartbeatFresh": false,
+      "versionsSeen": [
+       {
+        "version": "0.1.346",
+        "startedAt": "2026-10-26T15:04:51.482Z"
+       }
+      ]
+     },
+     "lastRecordedRevision": -1,
+     "head": null,
+     "files": {
+      "listed": 1078,
+      "withStates": 171,
+      "current": 171,
+      "imported": 0,
+      "local": 171,
+      "localOwn": 0,
+      "localInherited": 171,
+      "mixed": 0,
+      "notCurrent": 0,
+      "notCurrentBy": {}
+     },
+     "byImport": {},
+     "adoptions": [],
+     "localRuns": {
+      "runs": 0,
+      "fileRuns": 0,
+      "fileSec": 0,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 0,
+      "wallSec": 0,
+      "endStates": {},
+      "fileSecByDaemonVersion": {},
+      "runsWithoutDurations": 0
+     },
+     "runsInProgress": 0
+    },
+    {
+     "root": "/home/agent/projects/cezar/.ai/cezar/worktrees/2e666efd-b429-40bb-b306-58176dd69885",
+     "registered": false
+    },
+    {
+     "root": "/home/agent/projects/cezar/.ai/cezar/worktrees/38182ab6-a29a-4dfb-a802-65ac45b71f61",
+     "registered": true,
+     "id": "6ac78c9c85565467",
+     "isMain": false,
+     "registeredAt": "2026-11-12T14:03:52.586Z",
+     "daemon": {
+      "version": "0.1.450",
+      "startedAt": "2026-11-12T14:03:52.586Z",
+      "heartbeatAt": "2026-11-12T14:05:00.688Z",
+      "heartbeatFresh": false,
+      "versionsSeen": [
+       {
+        "version": "0.1.450",
+        "startedAt": "2026-11-12T14:03:52.586Z"
+       }
+      ]
+     },
+     "lastRecordedRevision": -1,
+     "head": null,
+     "files": {
+      "listed": 1918,
+      "withStates": 1509,
+      "current": 1509,
+      "imported": 1448,
+      "local": 61,
+      "localOwn": 0,
+      "localInherited": 61,
+      "mixed": 0,
+      "notCurrent": 0,
+      "notCurrentBy": {}
+     },
+     "byImport": {
+      "a140315197fc5784": {
+       "files": 1448,
+       "ciFileSec": 8612
+      }
+     },
+     "adoptions": [
+      {
+       "import": "a140315197fc5784",
+       "revision": 0,
+       "revisionAt": null,
+       "trigger": null,
+       "files": 1448,
+       "reachedByChange": 0,
+       "reachedCiFileSec": 0
+      }
+     ],
+     "localRuns": {
+      "runs": 0,
+      "fileRuns": 0,
+      "fileSec": 0,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 0,
+      "wallSec": 0,
+      "endStates": {},
+      "fileSecByDaemonVersion": {},
+      "runsWithoutDurations": 0
+     },
+     "runsInProgress": 0
+    },
+    {
+     "root": "/home/agent/projects/cezar/.ai/cezar/worktrees/3ee27649-8a5f-4820-bbe6-1cd1ba897ac3",
+     "registered": false
+    },
+    {
+     "root": "/home/agent/projects/cezar/.ai/cezar/worktrees/4bc0484d-5839-4a39-9102-f62a38629260",
+     "registered": true,
+     "id": "332df5eb2377e75c",
+     "isMain": false,
+     "registeredAt": "2026-10-28T18:42:37.688Z",
+     "daemon": {
+      "version": "0.1.374",
+      "startedAt": "2026-10-28T18:42:37.688Z",
+      "heartbeatAt": "2026-10-28T18:43:34.372Z",
+      "heartbeatFresh": false,
+      "versionsSeen": [
+       {
+        "version": "0.1.374",
+        "startedAt": "2026-10-28T18:42:37.688Z"
+       }
+      ]
+     },
+     "lastRecordedRevision": -1,
+     "head": null,
+     "files": {
+      "listed": 1132,
+      "withStates": 677,
+      "current": 677,
+      "imported": 0,
+      "local": 677,
+      "localOwn": 65,
+      "localInherited": 612,
+      "mixed": 0,
+      "notCurrent": 0,
+      "notCurrentBy": {}
+     },
+     "byImport": {},
+     "adoptions": [],
+     "localRuns": {
+      "runs": 0,
+      "fileRuns": 0,
+      "fileSec": 0,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 0,
+      "wallSec": 0,
+      "endStates": {},
+      "fileSecByDaemonVersion": {},
+      "runsWithoutDurations": 0
+     },
+     "runsInProgress": 0
+    },
+    {
+     "root": "/home/agent/projects/cezar/.ai/cezar/worktrees/55b700ad-3b69-4d92-80d6-f6f4c29fc10c",
+     "registered": true,
+     "id": "8a225f859a26f804",
+     "isMain": false,
+     "registeredAt": "2026-11-12T16:17:25.336Z",
+     "daemon": {
+      "version": "0.1.454",
+      "startedAt": "2026-11-12T16:17:25.336Z",
+      "heartbeatAt": "2026-11-12T16:25:36.758Z",
+      "heartbeatFresh": true,
+      "versionsSeen": [
+       {
+        "version": "0.1.454",
+        "startedAt": "2026-11-12T16:17:25.336Z"
+       }
+      ]
+     },
+     "lastRecordedRevision": -1,
+     "head": null,
+     "files": {
+      "listed": 1922,
+      "withStates": 706,
+      "current": 706,
+      "imported": 574,
+      "local": 132,
+      "localOwn": 0,
+      "localInherited": 132,
+      "mixed": 0,
+      "notCurrent": 0,
+      "notCurrentBy": {}
+     },
+     "byImport": {
+      "a140315197fc5784": {
+       "files": 383,
+       "ciFileSec": 539
+      },
+      "421ee85085ba163d": {
+       "files": 189,
+       "ciFileSec": 624
+      },
+      "cf2c81fd51930422": {
+       "files": 2,
+       "ciFileSec": 0
+      }
+     },
+     "adoptions": [
+      {
+       "import": "421ee85085ba163d",
+       "revision": 0,
+       "revisionAt": null,
+       "trigger": null,
+       "files": 189,
+       "reachedByChange": 0,
+       "reachedCiFileSec": 0
+      },
+      {
+       "import": "a140315197fc5784",
+       "revision": 0,
+       "revisionAt": null,
+       "trigger": null,
+       "files": 383,
+       "reachedByChange": 0,
+       "reachedCiFileSec": 0
+      },
+      {
+       "import": "cf2c81fd51930422",
+       "revision": 0,
+       "revisionAt": null,
+       "trigger": null,
+       "files": 2,
+       "reachedByChange": 0,
+       "reachedCiFileSec": 0
+      }
+     ],
+     "localRuns": {
+      "runs": 0,
+      "fileRuns": 0,
+      "fileSec": 0,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 0,
+      "wallSec": 0,
+      "endStates": {},
+      "fileSecByDaemonVersion": {},
+      "runsWithoutDurations": 0
+     },
+     "runsInProgress": 0
+    },
+    {
+     "root": "/home/agent/projects/cezar/.ai/cezar/worktrees/5d9c542f-c7e2-4af5-9b47-dc76e43a8f72",
+     "registered": true,
+     "id": "488681ad1616bdb9",
+     "isMain": false,
+     "registeredAt": "2026-10-26T14:03:52.641Z",
+     "daemon": {
+      "version": "0.1.345",
+      "startedAt": "2026-10-26T14:15:13.596Z",
+      "heartbeatAt": "2026-10-26T14:15:32.289Z",
+      "heartbeatFresh": false,
+      "versionsSeen": [
+       {
+        "version": "0.1.345",
+        "startedAt": "2026-10-26T14:15:13.596Z"
+       }
+      ]
+     },
+     "lastRecordedRevision": -1,
+     "head": null,
+     "files": {
+      "listed": 1076,
+      "withStates": 167,
+      "current": 167,
+      "imported": 0,
+      "local": 167,
+      "localOwn": 0,
+      "localInherited": 167,
+      "mixed": 0,
+      "notCurrent": 0,
+      "notCurrentBy": {}
+     },
+     "byImport": {},
+     "adoptions": [],
+     "localRuns": {
+      "runs": 0,
+      "fileRuns": 0,
+      "fileSec": 0,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 0,
+      "wallSec": 0,
+      "endStates": {},
+      "fileSecByDaemonVersion": {},
+      "runsWithoutDurations": 0
+     },
+     "runsInProgress": 0
+    },
+    {
+     "root": "/home/agent/projects/cezar/.ai/cezar/worktrees/5f9a8e86-7c8f-4562-8873-c11c7b5b196f",
+     "registered": true,
+     "id": "dc20d96e456f4242",
+     "isMain": false,
+     "registeredAt": "2026-11-11T21:12:02.780Z",
+     "daemon": {
+      "version": "0.1.451",
+      "startedAt": "2026-11-12T14:09:11.088Z",
+      "heartbeatAt": "2026-11-12T14:09:52.545Z",
+      "heartbeatFresh": false,
+      "versionsSeen": [
+       {
+        "version": "0.1.451",
+        "startedAt": "2026-11-12T14:09:11.088Z"
+       }
+      ]
+     },
+     "lastRecordedRevision": 12,
+     "head": "2e24af771dcbe5a1cebe77cb5995fa97c78c19c5",
+     "files": {
+      "listed": 1928,
+      "withStates": 1882,
+      "current": 1736,
+      "imported": 1210,
+      "local": 526,
+      "localOwn": 3,
+      "localInherited": 523,
+      "mixed": 0,
+      "notCurrent": 146,
+      "notCurrentBy": {
+       "stale": 146
+      }
+     },
+     "byImport": {
+      "b2ab551b3f58d9e5": {
+       "files": 31,
+       "ciFileSec": 11
+      },
+      "ab71061b19b291a7": {
+       "files": 1179,
+       "ciFileSec": 6615
+      }
+     },
+     "adoptions": [
+      {
+       "import": "ab71061b19b291a7",
+       "revision": 0,
+       "revisionAt": null,
+       "trigger": null,
+       "files": 1164,
+       "reachedByChange": 0,
+       "reachedCiFileSec": 0
+      },
+      {
+       "import": "b2ab551b3f58d9e5",
+       "revision": 0,
+       "revisionAt": null,
+       "trigger": null,
+       "files": 31,
+       "reachedByChange": 0,
+       "reachedCiFileSec": 0
+      },
+      {
+       "import": "ab71061b19b291a7",
+       "revision": 12,
+       "revisionAt": "2026-11-11T22:55:50.975Z",
+       "trigger": "watch",
+       "files": 15,
+       "reachedByChange": 0,
+       "reachedCiFileSec": 0
+      }
+     ],
+     "localRuns": {
+      "runs": 2,
+      "fileRuns": 3,
+      "fileSec": 107,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 0,
+      "wallSec": 270,
+      "endStates": {
+       "completed": 2
+      },
+      "fileSecByDaemonVersion": {
+       "unknown": 107
+      },
+      "runsWithoutDurations": 0
+     },
+     "runsInProgress": 0
+    },
+    {
+     "root": "/home/agent/projects/cezar/.ai/cezar/worktrees/733e90fb-89ee-446f-8dd5-c149aa051a6c",
+     "registered": true,
+     "id": "a13cd09a68ff70b6",
+     "isMain": false,
+     "registeredAt": "2026-11-12T12:09:55.985Z",
+     "daemon": {
+      "version": "0.1.447",
+      "startedAt": "2026-11-12T12:09:55.985Z",
+      "heartbeatAt": "2026-11-12T13:36:50.832Z",
+      "heartbeatFresh": false,
+      "versionsSeen": [
+       {
+        "version": "0.1.447",
+        "startedAt": "2026-11-12T12:09:55.985Z"
+       }
+      ]
+     },
+     "lastRecordedRevision": 16,
+     "head": "b011cbf9652158bed55a022baa1ac437f06fd8ba",
+     "files": {
+      "listed": 1918,
+      "withStates": 1724,
+      "current": 175,
+      "imported": 0,
+      "local": 175,
+      "localOwn": 146,
+      "localInherited": 29,
+      "mixed": 0,
+      "notCurrent": 1549,
+      "notCurrentBy": {
+       "pending": 1549
+      }
+     },
+     "byImport": {},
+     "adoptions": [],
+     "localRuns": {
+      "runs": 112,
+      "fileRuns": 173,
+      "fileSec": 359,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 77,
+      "wallSec": 491,
+      "endStates": {
+       "completed": 112
+      },
+      "fileSecByDaemonVersion": {
+       "0.1.447": 359
+      },
+      "runsWithoutDurations": 0
+     },
+     "runsInProgress": 0
+    },
+    {
+     "root": "/home/agent/projects/cezar/.ai/cezar/worktrees/883a9452-b4c0-4dbf-8971-fc688d50c4a6",
+     "registered": true,
+     "id": "b3a63fc4105bbca2",
+     "isMain": false,
+     "registeredAt": "2026-11-12T10:21:31.074Z",
+     "daemon": {
+      "version": "0.1.449",
+      "startedAt": "2026-11-12T14:09:43.444Z",
+      "heartbeatAt": "2026-11-12T14:32:13.169Z",
+      "heartbeatFresh": false,
+      "versionsSeen": [
+       {
+        "version": "0.1.449",
+        "startedAt": "2026-11-12T14:09:43.444Z"
+       }
+      ]
+     },
+     "lastRecordedRevision": 23,
+     "head": "302df98d6193959eccf00136f70fb149d554902a",
+     "files": {
+      "listed": 1919,
+      "withStates": 1732,
+      "current": 1199,
+      "imported": 306,
+      "local": 893,
+      "localOwn": 794,
+      "localInherited": 99,
+      "mixed": 0,
+      "notCurrent": 533,
+      "notCurrentBy": {
+       "stale": 151,
+       "pending": 382
+      }
+     },
+     "byImport": {
+      "b2ab551b3f58d9e5": {
+       "files": 12,
+       "ciFileSec": 2
+      },
+      "fd95b134ca6bfc56": {
+       "files": 284,
+       "ciFileSec": 380
+      },
+      "77d391cac973b56b": {
+       "files": 9,
+       "ciFileSec": 86
+      },
+      "2e760c5431b0326d": {
+       "files": 1,
+       "ciFileSec": 0
+      }
+     },
+     "adoptions": [
+      {
+       "import": "2e760c5431b0326d",
+       "revision": 23,
+       "revisionAt": "2026-11-12T11:17:41.368Z",
+       "trigger": "interval",
+       "files": 1,
+       "reachedByChange": 0,
+       "reachedCiFileSec": 0
+      },
+      {
+       "import": "77d391cac973b56b",
+       "revision": 23,
+       "revisionAt": "2026-11-12T11:17:41.368Z",
+       "trigger": "interval",
+       "files": 9,
+       "reachedByChange": 0,
+       "reachedCiFileSec": 0
+      },
+      {
+       "import": "b2ab551b3f58d9e5",
+       "revision": 23,
+       "revisionAt": "2026-11-12T11:17:41.368Z",
+       "trigger": "interval",
+       "files": 12,
+       "reachedByChange": 0,
+       "reachedCiFileSec": 0
+      },
+      {
+       "import": "fd95b134ca6bfc56",
+       "revision": 23,
+       "revisionAt": "2026-11-12T11:17:41.368Z",
+       "trigger": "interval",
+       "files": 284,
+       "reachedByChange": 0,
+       "reachedCiFileSec": 0
+      }
+     ],
+     "localRuns": {
+      "runs": 38,
+      "fileRuns": 1023,
+      "fileSec": 2707,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 257,
+      "wallSec": 5861,
+      "endStates": {
+       "completed": 36,
+       "timed-out": 2
+      },
+      "fileSecByDaemonVersion": {
+       "unknown": 2138,
+       "0.1.449": 569
+      },
+      "runsWithoutDurations": 0
+     },
+     "runsInProgress": 0
+    },
+    {
+     "root": "/home/agent/projects/cezar/.ai/cezar/worktrees/8a4ee07c-3835-4941-82a1-6d7833a76f6a",
+     "registered": true,
+     "id": "e3d618fa97bb3095",
+     "isMain": false,
+     "registeredAt": "2026-10-26T15:04:51.479Z",
+     "daemon": {
+      "version": "0.1.346",
+      "startedAt": "2026-10-26T15:04:51.479Z",
+      "heartbeatAt": "2026-10-26T15:14:13.078Z",
+      "heartbeatFresh": false,
+      "versionsSeen": [
+       {
+        "version": "0.1.346",
+        "startedAt": "2026-10-26T15:04:51.479Z"
+       }
+      ]
+     },
+     "lastRecordedRevision": -1,
+     "head": null,
+     "files": {
+      "listed": 1078,
+      "withStates": 171,
+      "current": 171,
+      "imported": 0,
+      "local": 171,
+      "localOwn": 0,
+      "localInherited": 171,
+      "mixed": 0,
+      "notCurrent": 0,
+      "notCurrentBy": {}
+     },
+     "byImport": {},
+     "adoptions": [],
+     "localRuns": {
+      "runs": 0,
+      "fileRuns": 0,
+      "fileSec": 0,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 0,
+      "wallSec": 0,
+      "endStates": {},
+      "fileSecByDaemonVersion": {},
+      "runsWithoutDurations": 0
+     },
+     "runsInProgress": 0
+    },
+    {
+     "root": "/home/agent/projects/cezar/.ai/cezar/worktrees/8bb1714d-5d21-45ea-aa2d-b0ff6c55a6c0",
+     "registered": true,
+     "id": "616bcf31cb27cc33",
+     "isMain": false,
+     "registeredAt": "2026-11-12T09:38:39.934Z",
+     "daemon": {
+      "version": "0.1.448",
+      "startedAt": "2026-11-12T12:52:42.163Z",
+      "heartbeatAt": "2026-11-12T13:06:19.445Z",
+      "heartbeatFresh": false,
+      "versionsSeen": [
+       {
+        "version": "0.1.448",
+        "startedAt": "2026-11-12T12:52:42.163Z"
+       }
+      ]
+     },
+     "lastRecordedRevision": 40,
+     "head": "e982d976860a06524b737f27f48199ba2eef8069",
+     "files": {
+      "listed": 1916,
+      "withStates": 1711,
+      "current": 1609,
+      "imported": 1075,
+      "local": 534,
+      "localOwn": 97,
+      "localInherited": 437,
+      "mixed": 0,
+      "notCurrent": 102,
+      "notCurrentBy": {
+       "stale": 102
+      }
+     },
+     "byImport": {
+      "b2ab551b3f58d9e5": {
+       "files": 29,
+       "ciFileSec": 10
+      },
+      "859b10ffa7b6c0dc": {
+       "files": 1044,
+       "ciFileSec": 8831
+      },
+      "45f57c527f1741d3": {
+       "files": 2,
+       "ciFileSec": 1
+      }
+     },
+     "adoptions": [
+      {
+       "import": "45f57c527f1741d3",
+       "revision": 0,
+       "revisionAt": null,
+       "trigger": null,
+       "files": 2,
+       "reachedByChange": 0,
+       "reachedCiFileSec": 0
+      },
+      {
+       "import": "b2ab551b3f58d9e5",
+       "revision": 0,
+       "revisionAt": null,
+       "trigger": null,
+       "files": 29,
+       "reachedByChange": 0,
+       "reachedCiFileSec": 0
+      },
+      {
+       "import": "859b10ffa7b6c0dc",
+       "revision": 40,
+       "revisionAt": "2026-11-12T12:52:45.066Z",
+       "trigger": "start",
+       "files": 1044,
+       "reachedByChange": 0,
+       "reachedCiFileSec": 0
+      }
+     ],
+     "localRuns": {
+      "runs": 167,
+      "fileRuns": 258,
+      "fileSec": 1009,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 578,
+      "wallSec": 3534,
+      "endStates": {
+       "completed": 167
+      },
+      "fileSecByDaemonVersion": {
+       "unknown": 547,
+       "0.1.448": 462
+      },
+      "runsWithoutDurations": 0
+     },
+     "runsInProgress": 0
+    },
+    {
+     "root": "/home/agent/projects/cezar/.ai/cezar/worktrees/8cf104a9-c8ee-4507-93f3-33b82092606b",
+     "registered": true,
+     "id": "0833baf3908c1341",
+     "isMain": false,
+     "registeredAt": "2026-11-10T10:41:53.895Z",
+     "daemon": {
+      "version": "0.1.423",
+      "startedAt": "2026-11-10T10:41:53.895Z",
+      "heartbeatAt": "2026-11-10T11:38:41.377Z",
+      "heartbeatFresh": false,
+      "versionsSeen": [
+       {
+        "version": "0.1.423",
+        "startedAt": "2026-11-10T10:41:53.895Z"
+       }
+      ]
+     },
+     "lastRecordedRevision": 3,
+     "head": "38e81501bfd205da259b1322b7179726725e3341",
+     "files": {
+      "listed": 1853,
+      "withStates": 1753,
+      "current": 1753,
+      "imported": 0,
+      "local": 1753,
+      "localOwn": 24,
+      "localInherited": 1729,
+      "mixed": 0,
+      "notCurrent": 0,
+      "notCurrentBy": {}
+     },
+     "byImport": {},
+     "adoptions": [],
+     "localRuns": {
+      "runs": 0,
+      "fileRuns": 0,
+      "fileSec": 0,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 0,
+      "wallSec": 0,
+      "endStates": {},
+      "fileSecByDaemonVersion": {},
+      "runsWithoutDurations": 0
+     },
+     "runsInProgress": 0
+    },
+    {
+     "root": "/home/agent/projects/cezar/.ai/cezar/worktrees/9986e564-0c52-4248-b973-6deb235c6294",
+     "registered": true,
+     "id": "888db0a9b57fa7a2",
+     "isMain": false,
+     "registeredAt": "2026-11-12T09:40:00.360Z",
+     "daemon": {
+      "version": "0.1.451",
+      "startedAt": "2026-11-12T14:08:39.661Z",
+      "heartbeatAt": "2026-11-12T15:50:35.126Z",
+      "heartbeatFresh": false,
+      "versionsSeen": [
+       {
+        "version": "0.1.451",
+        "startedAt": "2026-11-12T14:08:39.661Z"
+       }
+      ]
+     },
+     "lastRecordedRevision": 104,
+     "head": "384ea27d4cefc95368fe727c04187ca811f37108",
+     "files": {
+      "listed": 1926,
+      "withStates": 1826,
+      "current": 1800,
+      "imported": 173,
+      "local": 1627,
+      "localOwn": 1615,
+      "localInherited": 12,
+      "mixed": 0,
+      "notCurrent": 26,
+      "notCurrentBy": {
+       "stale": 26
+      }
+     },
+     "byImport": {
+      "a140315197fc5784": {
+       "files": 171,
+       "ciFileSec": 239
+      },
+      "421ee85085ba163d": {
+       "files": 2,
+       "ciFileSec": 1
+      }
+     },
+     "adoptions": [
+      {
+       "import": "a140315197fc5784",
+       "revision": 96,
+       "revisionAt": "2026-11-12T14:39:10.424Z",
+       "trigger": "interval",
+       "files": 171,
+       "reachedByChange": 0,
+       "reachedCiFileSec": 0
+      },
+      {
+       "import": "421ee85085ba163d",
+       "revision": 98,
+       "revisionAt": "2026-11-12T14:45:37.050Z",
+       "trigger": "watch",
+       "files": 2,
+       "reachedByChange": 0,
+       "reachedCiFileSec": 0
+      }
+     ],
+     "localRuns": {
+      "runs": 823,
+      "fileRuns": 3183,
+      "fileSec": 18507,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 1645,
+      "wallSec": 15149,
+      "endStates": {
+       "completed": 819,
+       "timed-out": 4
+      },
+      "fileSecByDaemonVersion": {
+       "unknown": 12121,
+       "0.1.451": 6386
+      },
+      "runsWithoutDurations": 0
+     },
+     "runsInProgress": 1
+    },
+    {
+     "root": "/home/agent/projects/cezar/.ai/cezar/worktrees/b0ae04cd-bc9f-43d2-846e-731a4c0a781e",
+     "registered": true,
+     "id": "c4aee88e430840ea",
+     "isMain": false,
+     "registeredAt": "2026-10-26T14:50:11.523Z",
+     "daemon": {
+      "version": "0.1.346",
+      "startedAt": "2026-10-26T15:20:33.347Z",
+      "heartbeatAt": "2026-10-26T15:23:33.064Z",
+      "heartbeatFresh": false,
+      "versionsSeen": [
+       {
+        "version": "0.1.346",
+        "startedAt": "2026-10-26T15:20:33.347Z"
+       }
+      ]
+     },
+     "lastRecordedRevision": -1,
+     "head": null,
+     "files": {
+      "listed": 1078,
+      "withStates": 171,
+      "current": 171,
+      "imported": 0,
+      "local": 171,
+      "localOwn": 0,
+      "localInherited": 171,
+      "mixed": 0,
+      "notCurrent": 0,
+      "notCurrentBy": {}
+     },
+     "byImport": {},
+     "adoptions": [],
+     "localRuns": {
+      "runs": 0,
+      "fileRuns": 0,
+      "fileSec": 0,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 0,
+      "wallSec": 0,
+      "endStates": {},
+      "fileSecByDaemonVersion": {},
+      "runsWithoutDurations": 0
+     },
+     "runsInProgress": 0
+    },
+    {
+     "root": "/home/agent/projects/cezar/.ai/cezar/worktrees/b31044f5-11de-402d-a9f9-fb8e6e8fe772",
+     "registered": false
+    },
+    {
+     "root": "/home/agent/projects/cezar/.ai/cezar/worktrees/bc74916d-e325-499c-93e9-01ebeeae20de",
+     "registered": true,
+     "id": "587ad99de104fae8",
+     "isMain": false,
+     "registeredAt": "2026-10-26T15:06:04.016Z",
+     "daemon": {
+      "version": "0.1.346",
+      "startedAt": "2026-10-26T15:06:04.016Z",
+      "heartbeatAt": "2026-10-26T15:11:54.552Z",
+      "heartbeatFresh": false,
+      "versionsSeen": [
+       {
+        "version": "0.1.346",
+        "startedAt": "2026-10-26T15:06:04.016Z"
+       }
+      ]
+     },
+     "lastRecordedRevision": -1,
+     "head": null,
+     "files": {
+      "listed": 1078,
+      "withStates": 171,
+      "current": 171,
+      "imported": 0,
+      "local": 171,
+      "localOwn": 0,
+      "localInherited": 171,
+      "mixed": 0,
+      "notCurrent": 0,
+      "notCurrentBy": {}
+     },
+     "byImport": {},
+     "adoptions": [],
+     "localRuns": {
+      "runs": 0,
+      "fileRuns": 0,
+      "fileSec": 0,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 0,
+      "wallSec": 0,
+      "endStates": {},
+      "fileSecByDaemonVersion": {},
+      "runsWithoutDurations": 0
+     },
+     "runsInProgress": 0
+    },
+    {
+     "root": "/home/agent/projects/cezar/.ai/cezar/worktrees/bd8b749e-d215-4df3-bd0a-77a60ae57fef",
+     "registered": true,
+     "id": "5319b4b5e54380cd",
+     "isMain": false,
+     "registeredAt": "2026-10-28T17:37:37.635Z",
+     "daemon": {
+      "version": "0.1.374",
+      "startedAt": "2026-10-28T19:07:06.453Z",
+      "heartbeatAt": "2026-10-28T19:26:40.308Z",
+      "heartbeatFresh": false,
+      "versionsSeen": [
+       {
+        "version": "0.1.374",
+        "startedAt": "2026-10-28T19:07:06.453Z"
+       }
+      ]
+     },
+     "lastRecordedRevision": -1,
+     "head": null,
+     "files": {
+      "listed": 1119,
+      "withStates": 1104,
+      "current": 1104,
+      "imported": 0,
+      "local": 1104,
+      "localOwn": 265,
+      "localInherited": 839,
+      "mixed": 0,
+      "notCurrent": 0,
+      "notCurrentBy": {}
+     },
+     "byImport": {},
+     "adoptions": [],
+     "localRuns": {
+      "runs": 0,
+      "fileRuns": 0,
+      "fileSec": 0,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 0,
+      "wallSec": 0,
+      "endStates": {},
+      "fileSecByDaemonVersion": {},
+      "runsWithoutDurations": 0
+     },
+     "runsInProgress": 0
+    },
+    {
+     "root": "/home/agent/projects/cezar/.ai/cezar/worktrees/be81eb38-2dc3-4c58-a76f-575c0a502fcf",
+     "registered": true,
+     "id": "864f1739b368307d",
+     "isMain": false,
+     "registeredAt": "2026-10-26T15:11:23.536Z",
+     "daemon": {
+      "version": "0.1.346",
+      "startedAt": "2026-10-26T15:16:58.008Z",
+      "heartbeatAt": "2026-10-26T15:19:26.348Z",
+      "heartbeatFresh": false,
+      "versionsSeen": [
+       {
+        "version": "0.1.346",
+        "startedAt": "2026-10-26T15:16:58.008Z"
+       }
+      ]
+     },
+     "lastRecordedRevision": -1,
+     "head": null,
+     "files": {
+      "listed": 1078,
+      "withStates": 171,
+      "current": 171,
+      "imported": 0,
+      "local": 171,
+      "localOwn": 0,
+      "localInherited": 171,
+      "mixed": 0,
+      "notCurrent": 0,
+      "notCurrentBy": {}
+     },
+     "byImport": {},
+     "adoptions": [],
+     "localRuns": {
+      "runs": 0,
+      "fileRuns": 0,
+      "fileSec": 0,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 0,
+      "wallSec": 0,
+      "endStates": {},
+      "fileSecByDaemonVersion": {},
+      "runsWithoutDurations": 0
+     },
+     "runsInProgress": 0
+    },
+    {
+     "root": "/home/agent/projects/cezar/.ai/cezar/worktrees/c32ae733-9186-4f99-9012-da44a3e752bf",
+     "registered": true,
+     "id": "f2913abba4b64866",
+     "isMain": false,
+     "registeredAt": "2026-10-25T18:05:06.646Z",
+     "daemon": {
+      "version": "0.1.345",
+      "startedAt": "2026-10-26T14:24:33.240Z",
+      "heartbeatAt": "2026-10-26T14:45:05.667Z",
+      "heartbeatFresh": false,
+      "versionsSeen": [
+       {
+        "version": "0.1.345",
+        "startedAt": "2026-10-26T14:24:33.240Z"
+       }
+      ]
+     },
+     "lastRecordedRevision": 26,
+     "head": "03e8b0bb60901048cae42138a3dd0aae3cb87a76",
+     "files": {
+      "listed": 1078,
+      "withStates": 1029,
+      "current": 171,
+      "imported": 0,
+      "local": 171,
+      "localOwn": 5,
+      "localInherited": 166,
+      "mixed": 0,
+      "notCurrent": 858,
+      "notCurrentBy": {
+       "pending": 240,
+       "unknown": 618
+      }
+     },
+     "byImport": {},
+     "adoptions": [],
+     "localRuns": {
+      "runs": 0,
+      "fileRuns": 0,
+      "fileSec": 0,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 0,
+      "wallSec": 0,
+      "endStates": {},
+      "fileSecByDaemonVersion": {},
+      "runsWithoutDurations": 0
+     },
+     "runsInProgress": 0
+    },
+    {
+     "root": "/home/agent/projects/cezar/.ai/cezar/worktrees/cd4cfd98-f8aa-4aeb-bdb8-50d06045b907",
+     "registered": true,
+     "id": "9b0f65e1b9630e0a",
+     "isMain": false,
+     "registeredAt": "2026-10-26T12:41:56.772Z",
+     "daemon": {
+      "version": "0.1.346",
+      "startedAt": "2026-10-26T15:27:16.808Z",
+      "heartbeatAt": "2026-10-26T15:34:23.737Z",
+      "heartbeatFresh": false,
+      "versionsSeen": [
+       {
+        "version": "0.1.346",
+        "startedAt": "2026-10-26T15:27:16.808Z"
+       }
+      ]
+     },
+     "lastRecordedRevision": 26,
+     "head": "98ad418504d41151a2deeba29128811a980ddbaf",
+     "files": {
+      "listed": 1079,
+      "withStates": 610,
+      "current": 24,
+      "imported": 0,
+      "local": 24,
+      "localOwn": 0,
+      "localInherited": 24,
+      "mixed": 0,
+      "notCurrent": 586,
+      "notCurrentBy": {
+       "stale": 480,
+       "unknown": 41,
+       "pending": 65
+      }
+     },
+     "byImport": {},
+     "adoptions": [],
+     "localRuns": {
+      "runs": 0,
+      "fileRuns": 0,
+      "fileSec": 0,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 0,
+      "wallSec": 0,
+      "endStates": {},
+      "fileSecByDaemonVersion": {},
+      "runsWithoutDurations": 0
+     },
+     "runsInProgress": 0
+    },
+    {
+     "root": "/home/agent/projects/cezar/.ai/cezar/worktrees/dd1d0074-c71a-4f17-aac4-4a0ab7f4d496",
+     "registered": true,
+     "id": "6421a0703e84308c",
+     "isMain": false,
+     "registeredAt": "2026-11-12T13:00:44.219Z",
+     "daemon": {
+      "version": "0.1.448",
+      "startedAt": "2026-11-12T13:00:44.219Z",
+      "heartbeatAt": "2026-11-12T13:03:18.661Z",
+      "heartbeatFresh": false,
+      "versionsSeen": [
+       {
+        "version": "0.1.448",
+        "startedAt": "2026-11-12T13:00:44.219Z"
+       }
+      ]
+     },
+     "lastRecordedRevision": -1,
+     "head": null,
+     "files": {
+      "listed": 1916,
+      "withStates": 1607,
+      "current": 1607,
+      "imported": 1076,
+      "local": 531,
+      "localOwn": 0,
+      "localInherited": 531,
+      "mixed": 0,
+      "notCurrent": 0,
+      "notCurrentBy": {}
+     },
+     "byImport": {
+      "b2ab551b3f58d9e5": {
+       "files": 29,
+       "ciFileSec": 10
+      },
+      "859b10ffa7b6c0dc": {
+       "files": 1045,
+       "ciFileSec": 8838
+      },
+      "45f57c527f1741d3": {
+       "files": 2,
+       "ciFileSec": 1
+      }
+     },
+     "adoptions": [
+      {
+       "import": "45f57c527f1741d3",
+       "revision": 0,
+       "revisionAt": null,
+       "trigger": null,
+       "files": 2,
+       "reachedByChange": 0,
+       "reachedCiFileSec": 0
+      },
+      {
+       "import": "859b10ffa7b6c0dc",
+       "revision": 0,
+       "revisionAt": null,
+       "trigger": null,
+       "files": 1045,
+       "reachedByChange": 0,
+       "reachedCiFileSec": 0
+      },
+      {
+       "import": "b2ab551b3f58d9e5",
+       "revision": 0,
+       "revisionAt": null,
+       "trigger": null,
+       "files": 29,
+       "reachedByChange": 0,
+       "reachedCiFileSec": 0
+      }
+     ],
+     "localRuns": {
+      "runs": 0,
+      "fileRuns": 0,
+      "fileSec": 0,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 0,
+      "wallSec": 0,
+      "endStates": {},
+      "fileSecByDaemonVersion": {},
+      "runsWithoutDurations": 0
+     },
+     "runsInProgress": 0
+    },
+    {
+     "root": "/home/agent/projects/cezar/.ai/cezar/worktrees/e040d496-9a10-4f9f-b001-f19320816fe9",
+     "registered": false
+    },
+    {
+     "root": "/home/agent/projects/cezar/.ai/cezar/worktrees/f1b647a5-bc03-4c84-bbe5-e43376275842",
+     "registered": true,
+     "id": "a895c679e7323596",
+     "isMain": false,
+     "registeredAt": "2026-10-28T15:43:10.371Z",
+     "daemon": {
+      "version": "0.1.374",
+      "startedAt": "2026-10-28T15:43:10.371Z",
+      "heartbeatAt": "2026-10-28T15:43:15.416Z",
+      "heartbeatFresh": false,
+      "versionsSeen": [
+       {
+        "version": "0.1.374",
+        "startedAt": "2026-10-28T15:43:10.371Z"
+       }
+      ]
+     },
+     "lastRecordedRevision": -1,
+     "head": null,
+     "files": {
+      "listed": 1118,
+      "withStates": 217,
+      "current": 217,
+      "imported": 0,
+      "local": 217,
+      "localOwn": 0,
+      "localInherited": 217,
+      "mixed": 0,
+      "notCurrent": 0,
+      "notCurrentBy": {}
+     },
+     "byImport": {},
+     "adoptions": [],
+     "localRuns": {
+      "runs": 0,
+      "fileRuns": 0,
+      "fileSec": 0,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 0,
+      "wallSec": 0,
+      "endStates": {},
+      "fileSecByDaemonVersion": {},
+      "runsWithoutDurations": 0
+     },
+     "runsInProgress": 0
+    },
+    {
+     "root": "/home/agent/projects/cezar/.ai/cezar/worktrees/fedf8c0a-a20a-4fd3-80cf-f79d17ea2344",
+     "registered": true,
+     "id": "ed8eb60f74e53d99",
+     "isMain": false,
+     "registeredAt": "2026-10-27T14:28:36.170Z",
+     "daemon": {
+      "version": "0.1.367",
+      "startedAt": "2026-10-27T14:28:36.170Z",
+      "heartbeatAt": "2026-10-27T14:57:27.265Z",
+      "heartbeatFresh": false,
+      "versionsSeen": [
+       {
+        "version": "0.1.367",
+        "startedAt": "2026-10-27T14:28:36.170Z"
+       }
+      ]
+     },
+     "lastRecordedRevision": 11,
+     "head": "dd7c828ebfc3f76842d9071a3c86c81e792cf990",
+     "files": {
+      "listed": 1095,
+      "withStates": 930,
+      "current": 930,
+      "imported": 0,
+      "local": 930,
+      "localOwn": 370,
+      "localInherited": 560,
+      "mixed": 0,
+      "notCurrent": 0,
+      "notCurrentBy": {}
+     },
+     "byImport": {},
+     "adoptions": [],
+     "localRuns": {
+      "runs": 0,
+      "fileRuns": 0,
+      "fileSec": 0,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 0,
+      "wallSec": 0,
+      "endStates": {},
+      "fileSecByDaemonVersion": {},
+      "runsWithoutDurations": 0
+     },
+     "runsInProgress": 0
+    },
+    {
+     "root": "/home/agent/projects/cezar/.claude/worktrees/agent-a057a91fc60935f6e",
+     "registered": true,
+     "id": "fde08e7670c62827",
+     "isMain": false,
+     "registeredAt": "2026-10-15T08:58:20.632Z",
+     "daemon": {
+      "version": "0.1.168",
+      "startedAt": "2026-10-15T09:31:51.013Z",
+      "heartbeatAt": "2026-10-15T09:32:11.023Z",
+      "heartbeatFresh": false,
+      "versionsSeen": [
+       {
+        "version": "0.1.168",
+        "startedAt": "2026-10-15T09:31:51.013Z"
+       }
+      ]
+     },
+     "lastRecordedRevision": 10,
+     "head": "03419167d231a12cbafefd6ae9be911102c0e172",
+     "files": {
+      "listed": 821,
+      "withStates": 731,
+      "current": 731,
+      "imported": 0,
+      "local": 731,
+      "localOwn": 2,
+      "localInherited": 729,
+      "mixed": 0,
+      "notCurrent": 0,
+      "notCurrentBy": {}
+     },
+     "byImport": {},
+     "adoptions": [],
+     "localRuns": {
+      "runs": 0,
+      "fileRuns": 0,
+      "fileSec": 0,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 0,
+      "wallSec": 0,
+      "endStates": {},
+      "fileSecByDaemonVersion": {},
+      "runsWithoutDurations": 0
+     },
+     "runsInProgress": 0
+    },
+    {
+     "root": "/home/agent/projects/cezar/.claude/worktrees/agent-a06e3c59f05774c4a",
+     "registered": true,
+     "id": "14f3cd0d0e29d9d0",
+     "isMain": false,
+     "registeredAt": "2026-10-15T00:17:05.370Z",
+     "daemon": {
+      "version": "0.1.168",
+      "startedAt": "2026-10-15T07:46:08.404Z",
+      "heartbeatAt": "2026-10-15T20:05:30.620Z",
+      "heartbeatFresh": false,
+      "versionsSeen": [
+       {
+        "version": "0.1.168",
+        "startedAt": "2026-10-15T07:46:08.404Z"
+       }
+      ]
+     },
+     "lastRecordedRevision": 12,
+     "head": "efac418a6660e3d9d7ab169a2db8100efd9ed683",
+     "files": {
+      "listed": 821,
+      "withStates": 820,
+      "current": 812,
+      "imported": 0,
+      "local": 812,
+      "localOwn": 8,
+      "localInherited": 804,
+      "mixed": 0,
+      "notCurrent": 8,
+      "notCurrentBy": {
+       "stale": 8
+      }
+     },
+     "byImport": {},
+     "adoptions": [],
+     "localRuns": {
+      "runs": 0,
+      "fileRuns": 0,
+      "fileSec": 0,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 0,
+      "wallSec": 0,
+      "endStates": {},
+      "fileSecByDaemonVersion": {},
+      "runsWithoutDurations": 0
+     },
+     "runsInProgress": 0
+    },
+    {
+     "root": "/home/agent/projects/cezar/.claude/worktrees/agent-a093b1364b09ce75f",
+     "registered": true,
+     "id": "bccd1abcbff9f3c3",
+     "isMain": false,
+     "registeredAt": "2026-10-14T23:10:49.552Z",
+     "daemon": {
+      "version": "0.1.168",
+      "startedAt": "2026-10-14T23:10:49.552Z",
+      "heartbeatAt": "2026-10-15T12:21:04.226Z",
+      "heartbeatFresh": false,
+      "versionsSeen": [
+       {
+        "version": "0.1.168",
+        "startedAt": "2026-10-14T23:10:49.552Z"
+       }
+      ]
+     },
+     "lastRecordedRevision": 8,
+     "head": "efac418a6660e3d9d7ab169a2db8100efd9ed683",
+     "files": {
+      "listed": 821,
+      "withStates": 777,
+      "current": 776,
+      "imported": 0,
+      "local": 776,
+      "localOwn": 275,
+      "localInherited": 501,
+      "mixed": 0,
+      "notCurrent": 1,
+      "notCurrentBy": {
+       "pending": 1
+      }
+     },
+     "byImport": {},
+     "adoptions": [],
+     "localRuns": {
+      "runs": 0,
+      "fileRuns": 0,
+      "fileSec": 0,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 0,
+      "wallSec": 0,
+      "endStates": {},
+      "fileSecByDaemonVersion": {},
+      "runsWithoutDurations": 0
+     },
+     "runsInProgress": 0
+    },
+    {
+     "root": "/home/agent/projects/cezar/.claude/worktrees/agent-a16d2518c9e74f138",
+     "registered": true,
+     "id": "f4451e5305ccac83",
+     "isMain": false,
+     "registeredAt": "2026-10-15T01:08:30.886Z",
+     "daemon": {
+      "version": "0.1.168",
+      "startedAt": "2026-10-15T01:08:30.886Z",
+      "heartbeatAt": "2026-10-15T14:35:56.110Z",
+      "heartbeatFresh": false,
+      "versionsSeen": [
+       {
+        "version": "0.1.168",
+        "startedAt": "2026-10-15T01:08:30.886Z"
+       }
+      ]
+     },
+     "lastRecordedRevision": 22,
+     "head": "9607b79a4e04ebe15fa4053c0a533a95e426a836",
+     "files": {
+      "listed": 821,
+      "withStates": 800,
+      "current": 799,
+      "imported": 0,
+      "local": 799,
+      "localOwn": 84,
+      "localInherited": 715,
+      "mixed": 0,
+      "notCurrent": 1,
+      "notCurrentBy": {
+       "pending": 1
+      }
+     },
+     "byImport": {},
+     "adoptions": [],
+     "localRuns": {
+      "runs": 0,
+      "fileRuns": 0,
+      "fileSec": 0,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 0,
+      "wallSec": 0,
+      "endStates": {},
+      "fileSecByDaemonVersion": {},
+      "runsWithoutDurations": 0
+     },
+     "runsInProgress": 0
+    },
+    {
+     "root": "/home/agent/projects/cezar/.claude/worktrees/agent-a3232b6032035fd18",
+     "registered": true,
+     "id": "6c9474d59dcd0a26",
+     "isMain": false,
+     "registeredAt": "2026-10-14T23:15:02.691Z",
+     "daemon": {
+      "version": "0.1.168",
+      "startedAt": "2026-10-14T23:15:02.691Z",
+      "heartbeatAt": "2026-10-15T12:19:27.363Z",
+      "heartbeatFresh": false,
+      "versionsSeen": [
+       {
+        "version": "0.1.168",
+        "startedAt": "2026-10-14T23:15:02.691Z"
+       }
+      ]
+     },
+     "lastRecordedRevision": 12,
+     "head": "efac418a6660e3d9d7ab169a2db8100efd9ed683",
+     "files": {
+      "listed": 821,
+      "withStates": 781,
+      "current": 767,
+      "imported": 0,
+      "local": 767,
+      "localOwn": 83,
+      "localInherited": 684,
+      "mixed": 0,
+      "notCurrent": 14,
+      "notCurrentBy": {
+       "unknown": 8,
+       "stale": 3,
+       "pending": 3
+      }
+     },
+     "byImport": {},
+     "adoptions": [],
+     "localRuns": {
+      "runs": 0,
+      "fileRuns": 0,
+      "fileSec": 0,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 0,
+      "wallSec": 0,
+      "endStates": {},
+      "fileSecByDaemonVersion": {},
+      "runsWithoutDurations": 0
+     },
+     "runsInProgress": 0
+    },
+    {
+     "root": "/home/agent/projects/cezar/.claude/worktrees/agent-a53122e43ca4b5937",
+     "registered": true,
+     "id": "66a59a96d221062f",
+     "isMain": false,
+     "registeredAt": "2026-10-14T23:07:24.754Z",
+     "daemon": {
+      "version": "0.1.168",
+      "startedAt": "2026-10-14T23:07:24.754Z",
+      "heartbeatAt": "2026-10-15T02:22:31.166Z",
+      "heartbeatFresh": false,
+      "versionsSeen": [
+       {
+        "version": "0.1.168",
+        "startedAt": "2026-10-14T23:07:24.754Z"
+       }
+      ]
+     },
+     "lastRecordedRevision": 34,
+     "head": "efac418a6660e3d9d7ab169a2db8100efd9ed683",
+     "files": {
+      "listed": 822,
+      "withStates": 813,
+      "current": 813,
+      "imported": 0,
+      "local": 813,
+      "localOwn": 311,
+      "localInherited": 502,
+      "mixed": 0,
+      "notCurrent": 0,
+      "notCurrentBy": {}
+     },
+     "byImport": {},
+     "adoptions": [],
+     "localRuns": {
+      "runs": 0,
+      "fileRuns": 0,
+      "fileSec": 0,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 0,
+      "wallSec": 0,
+      "endStates": {},
+      "fileSecByDaemonVersion": {},
+      "runsWithoutDurations": 0
+     },
+     "runsInProgress": 0
+    },
+    {
+     "root": "/home/agent/projects/cezar/.claude/worktrees/agent-aa2a16753f6a94438",
+     "registered": true,
+     "id": "33032bc59ce26eb2",
+     "isMain": false,
+     "registeredAt": "2026-10-14T23:07:16.341Z",
+     "daemon": {
+      "version": "0.1.168",
+      "startedAt": "2026-10-14T23:07:16.341Z",
+      "heartbeatAt": "2026-10-15T00:17:14.882Z",
+      "heartbeatFresh": false,
+      "versionsSeen": [
+       {
+        "version": "0.1.168",
+        "startedAt": "2026-10-14T23:07:16.341Z"
+       }
+      ]
+     },
+     "lastRecordedRevision": 5,
+     "head": "efac418a6660e3d9d7ab169a2db8100efd9ed683",
+     "files": {
+      "listed": 821,
+      "withStates": 793,
+      "current": 793,
+      "imported": 0,
+      "local": 793,
+      "localOwn": 79,
+      "localInherited": 714,
+      "mixed": 0,
+      "notCurrent": 0,
+      "notCurrentBy": {}
+     },
+     "byImport": {},
+     "adoptions": [],
+     "localRuns": {
+      "runs": 0,
+      "fileRuns": 0,
+      "fileSec": 0,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 0,
+      "wallSec": 0,
+      "endStates": {},
+      "fileSecByDaemonVersion": {},
+      "runsWithoutDurations": 0
+     },
+     "runsInProgress": 0
+    },
+    {
+     "root": "/home/agent/projects/cezar/.claude/worktrees/agent-aa4e225f859cc33c5",
+     "registered": true,
+     "id": "0dff3a8741b0db18",
+     "isMain": false,
+     "registeredAt": "2026-10-15T01:08:40.400Z",
+     "daemon": {
+      "version": "0.1.168",
+      "startedAt": "2026-10-15T01:08:40.400Z",
+      "heartbeatAt": "2026-10-15T14:34:20.257Z",
+      "heartbeatFresh": false,
+      "versionsSeen": [
+       {
+        "version": "0.1.168",
+        "startedAt": "2026-10-15T01:08:40.400Z"
+       }
+      ]
+     },
+     "lastRecordedRevision": 20,
+     "head": "e2b664d9ea4ca2250620a24a813f48d1e4965414",
+     "files": {
+      "listed": 822,
+      "withStates": 787,
+      "current": 787,
+      "imported": 0,
+      "local": 787,
+      "localOwn": 78,
+      "localInherited": 709,
+      "mixed": 0,
+      "notCurrent": 0,
+      "notCurrentBy": {}
+     },
+     "byImport": {},
+     "adoptions": [],
+     "localRuns": {
+      "runs": 0,
+      "fileRuns": 0,
+      "fileSec": 0,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 0,
+      "wallSec": 0,
+      "endStates": {},
+      "fileSecByDaemonVersion": {},
+      "runsWithoutDurations": 0
+     },
+     "runsInProgress": 0
+    },
+    {
+     "root": "/home/agent/projects/cezar/.claude/worktrees/agent-ad8974545d7f2f950",
+     "registered": true,
+     "id": "f54e49b17f1cc8ca",
+     "isMain": false,
+     "registeredAt": "2026-10-14T23:07:33.780Z",
+     "daemon": {
+      "version": "0.1.168",
+      "startedAt": "2026-10-14T23:07:33.780Z",
+      "heartbeatAt": "2026-10-14T23:32:39.020Z",
+      "heartbeatFresh": false,
+      "versionsSeen": [
+       {
+        "version": "0.1.168",
+        "startedAt": "2026-10-14T23:07:33.780Z"
+       }
+      ]
+     },
+     "lastRecordedRevision": 7,
+     "head": "efac418a6660e3d9d7ab169a2db8100efd9ed683",
+     "files": {
+      "listed": 821,
+      "withStates": 785,
+      "current": 785,
+      "imported": 0,
+      "local": 785,
+      "localOwn": 15,
+      "localInherited": 770,
+      "mixed": 0,
+      "notCurrent": 0,
+      "notCurrentBy": {}
+     },
+     "byImport": {},
+     "adoptions": [],
+     "localRuns": {
+      "runs": 0,
+      "fileRuns": 0,
+      "fileSec": 0,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 0,
+      "wallSec": 0,
+      "endStates": {},
+      "fileSecByDaemonVersion": {},
+      "runsWithoutDurations": 0
+     },
+     "runsInProgress": 0
+    },
+    {
+     "root": "/home/agent/projects/cezar/.claude/worktrees/agent-ae36f47254b9d5b33",
+     "registered": true,
+     "id": "20f9e9bad475763f",
+     "isMain": false,
+     "registeredAt": "2026-10-15T08:21:04.096Z",
+     "daemon": {
+      "version": "0.1.168",
+      "startedAt": "2026-10-15T08:21:04.096Z",
+      "heartbeatAt": "2026-10-15T09:53:55.653Z",
+      "heartbeatFresh": false,
+      "versionsSeen": [
+       {
+        "version": "0.1.168",
+        "startedAt": "2026-10-15T08:21:04.096Z"
+       }
+      ]
+     },
+     "lastRecordedRevision": 8,
+     "head": "41d6c2691368aa0533dd97d556bc44ebcf6cea7c",
+     "files": {
+      "listed": 821,
+      "withStates": 792,
+      "current": 792,
+      "imported": 0,
+      "local": 792,
+      "localOwn": 309,
+      "localInherited": 483,
+      "mixed": 0,
+      "notCurrent": 0,
+      "notCurrentBy": {}
+     },
+     "byImport": {},
+     "adoptions": [],
+     "localRuns": {
+      "runs": 0,
+      "fileRuns": 0,
+      "fileSec": 0,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 0,
+      "wallSec": 0,
+      "endStates": {},
+      "fileSecByDaemonVersion": {},
+      "runsWithoutDurations": 0
+     },
+     "runsInProgress": 0
+    },
+    {
+     "root": "/home/agent/projects/cezar/.claude/worktrees/gate-902",
+     "registered": true,
+     "id": "729119b9b25c6779",
+     "isMain": false,
+     "registeredAt": "2026-10-15T20:02:15.963Z",
+     "daemon": {
+      "version": "0.1.168",
+      "startedAt": "2026-10-15T20:25:40.315Z",
+      "heartbeatAt": "2026-10-15T20:49:32.098Z",
+      "heartbeatFresh": false,
+      "versionsSeen": [
+       {
+        "version": "0.1.168",
+        "startedAt": "2026-10-15T20:25:40.315Z"
+       }
+      ]
+     },
+     "lastRecordedRevision": 2,
+     "head": "00ff0f16df12fa9c99460379de4f4c5637afbc62",
+     "files": {
+      "listed": 836,
+      "withStates": 752,
+      "current": 544,
+      "imported": 0,
+      "local": 544,
+      "localOwn": 0,
+      "localInherited": 544,
+      "mixed": 0,
+      "notCurrent": 208,
+      "notCurrentBy": {
+       "stale": 208
+      }
+     },
+     "byImport": {},
+     "adoptions": [],
+     "localRuns": {
+      "runs": 0,
+      "fileRuns": 0,
+      "fileSec": 0,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 0,
+      "wallSec": 0,
+      "endStates": {},
+      "fileSecByDaemonVersion": {},
+      "runsWithoutDurations": 0
+     },
+     "runsInProgress": 0
+    },
+    {
+     "root": "/home/agent/projects/cezar/.claude/worktrees/tfs-1056",
+     "registered": true,
+     "id": "f13e9a73ad4c584c",
+     "isMain": false,
+     "registeredAt": "2026-10-15T08:21:32.758Z",
+     "daemon": {
+      "version": "0.1.168",
+      "startedAt": "2026-10-15T08:21:32.758Z",
+      "heartbeatAt": "2026-10-15T10:29:16.832Z",
+      "heartbeatFresh": false,
+      "versionsSeen": [
+       {
+        "version": "0.1.168",
+        "startedAt": "2026-10-15T08:21:32.758Z"
+       }
+      ]
+     },
+     "lastRecordedRevision": 3,
+     "head": "03419167d231a12cbafefd6ae9be911102c0e172",
+     "files": {
+      "listed": 821,
+      "withStates": 804,
+      "current": 804,
+      "imported": 0,
+      "local": 804,
+      "localOwn": 79,
+      "localInherited": 725,
+      "mixed": 0,
+      "notCurrent": 0,
+      "notCurrentBy": {}
+     },
+     "byImport": {},
+     "adoptions": [],
+     "localRuns": {
+      "runs": 0,
+      "fileRuns": 0,
+      "fileSec": 0,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 0,
+      "wallSec": 0,
+      "endStates": {},
+      "fileSecByDaemonVersion": {},
+      "runsWithoutDurations": 0
+     },
+     "runsInProgress": 0
+    }
+   ],
+   "otherWorktreeRuns": [
+    {
+     "id": "2022e36dff425400",
+     "root": null,
+     "lastKnownDaemonVersion": null,
+     "localRuns": {
+      "runs": 82,
+      "fileRuns": 328,
+      "fileSec": 2542,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 0,
+      "wallSec": 1356,
+      "endStates": {
+       "completed": 82
+      },
+      "fileSecByDaemonVersion": {
+       "unknown": 2542
+      },
+      "runsWithoutDurations": 0
+     }
+    },
+    {
+     "id": "52d09223e45cb3ef",
+     "root": null,
+     "lastKnownDaemonVersion": null,
+     "localRuns": {
+      "runs": 8,
+      "fileRuns": 397,
+      "fileSec": 1880,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 0,
+      "wallSec": 1137,
+      "endStates": {
+       "completed": 8
+      },
+      "fileSecByDaemonVersion": {
+       "unknown": 1880
+      },
+      "runsWithoutDurations": 0
+     }
+    },
+    {
+     "id": "406c75867b0bee0e",
+     "root": null,
+     "lastKnownDaemonVersion": null,
+     "localRuns": {
+      "runs": 392,
+      "fileRuns": 4296,
+      "fileSec": 30626,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 676,
+      "wallSec": 16742,
+      "endStates": {
+       "completed": 391,
+       "timed-out": 1
+      },
+      "fileSecByDaemonVersion": {
+       "unknown": 30626
+      },
+      "runsWithoutDurations": 0
+     }
+    },
+    {
+     "id": "09a979c2739ffdce",
+     "root": null,
+     "lastKnownDaemonVersion": null,
+     "localRuns": {
+      "runs": 420,
+      "fileRuns": 2049,
+      "fileSec": 16149,
+      "checkpointFileSec": 15395,
+      "fromResultRowsFileSec": 842,
+      "wallSec": 13682,
+      "endStates": {
+       "completed": 420
+      },
+      "fileSecByDaemonVersion": {
+       "unknown": 16149
+      },
+      "runsWithoutDurations": 0
+     }
+    },
+    {
+     "id": "9b92fda3f2e18a7c",
+     "root": null,
+     "lastKnownDaemonVersion": null,
+     "localRuns": {
+      "runs": 454,
+      "fileRuns": 3810,
+      "fileSec": 38923,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 510,
+      "wallSec": 20521,
+      "endStates": {
+       "completed": 452,
+       "timed-out": 2
+      },
+      "fileSecByDaemonVersion": {
+       "unknown": 38923
+      },
+      "runsWithoutDurations": 0
+     }
+    },
+    {
+     "id": "dfb95355ebb91fbd",
+     "root": null,
+     "lastKnownDaemonVersion": null,
+     "localRuns": {
+      "runs": 48,
+      "fileRuns": 537,
+      "fileSec": 1268,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 43,
+      "wallSec": 972,
+      "endStates": {
+       "completed": 48
+      },
+      "fileSecByDaemonVersion": {
+       "unknown": 1268
+      },
+      "runsWithoutDurations": 0
+     }
+    },
+    {
+     "id": "a2f923222be7674e",
+     "root": null,
+     "lastKnownDaemonVersion": null,
+     "localRuns": {
+      "runs": 29,
+      "fileRuns": 80,
+      "fileSec": 735,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 24,
+      "wallSec": 602,
+      "endStates": {
+       "completed": 29
+      },
+      "fileSecByDaemonVersion": {
+       "unknown": 735
+      },
+      "runsWithoutDurations": 0
+     }
+    },
+    {
+     "id": "3a73328237f175af",
+     "root": null,
+     "lastKnownDaemonVersion": null,
+     "localRuns": {
+      "runs": 2,
+      "fileRuns": 2,
+      "fileSec": 0,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 0,
+      "wallSec": 29,
+      "endStates": {
+       "completed": 2
+      },
+      "fileSecByDaemonVersion": {
+       "unknown": 0
+      },
+      "runsWithoutDurations": 0
+     }
+    },
+    {
+     "id": "5b8900dd19426c66",
+     "root": null,
+     "lastKnownDaemonVersion": null,
+     "localRuns": {
+      "runs": 170,
+      "fileRuns": 527,
+      "fileSec": 880,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 310,
+      "wallSec": 5178,
+      "endStates": {
+       "completed": 170
+      },
+      "fileSecByDaemonVersion": {
+       "unknown": 880
+      },
+      "runsWithoutDurations": 0
+     }
+    },
+    {
+     "id": "f0571f70d4316106",
+     "root": null,
+     "lastKnownDaemonVersion": null,
+     "localRuns": {
+      "runs": 71,
+      "fileRuns": 706,
+      "fileSec": 1601,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 1216,
+      "wallSec": 4288,
+      "endStates": {
+       "completed": 71
+      },
+      "fileSecByDaemonVersion": {
+       "unknown": 1601
+      },
+      "runsWithoutDurations": 0
+     }
+    },
+    {
+     "id": "6c0e1aef56832d8d",
+     "root": null,
+     "lastKnownDaemonVersion": null,
+     "localRuns": {
+      "runs": 2,
+      "fileRuns": 2,
+      "fileSec": 11,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 11,
+      "wallSec": 16,
+      "endStates": {
+       "completed": 2
+      },
+      "fileSecByDaemonVersion": {
+       "unknown": 11
+      },
+      "runsWithoutDurations": 0
+     }
+    },
+    {
+     "id": "2c0000686e310df6",
+     "root": null,
+     "lastKnownDaemonVersion": null,
+     "localRuns": {
+      "runs": 327,
+      "fileRuns": 615,
+      "fileSec": 2788,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 949,
+      "wallSec": 7633,
+      "endStates": {
+       "completed": 327
+      },
+      "fileSecByDaemonVersion": {
+       "unknown": 2788
+      },
+      "runsWithoutDurations": 0
+     }
+    },
+    {
+     "id": "83eb564f5a595089",
+     "root": null,
+     "lastKnownDaemonVersion": null,
+     "localRuns": {
+      "runs": 1,
+      "fileRuns": 1,
+      "fileSec": 8,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 0,
+      "wallSec": 14,
+      "endStates": {
+       "completed": 1
+      },
+      "fileSecByDaemonVersion": {
+       "unknown": 8
+      },
+      "runsWithoutDurations": 0
+     }
+    },
+    {
+     "id": "dbf313d0d0507f15",
+     "root": null,
+     "lastKnownDaemonVersion": null,
+     "localRuns": {
+      "runs": 1,
+      "fileRuns": 4,
+      "fileSec": 1,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 1,
+      "wallSec": 13,
+      "endStates": {
+       "completed": 1
+      },
+      "fileSecByDaemonVersion": {
+       "unknown": 1
+      },
+      "runsWithoutDurations": 0
+     }
+    },
+    {
+     "id": "06dc602acfa63e31",
+     "root": null,
+     "lastKnownDaemonVersion": null,
+     "localRuns": {
+      "runs": 6,
+      "fileRuns": 12,
+      "fileSec": 122,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 2,
+      "wallSec": 576,
+      "endStates": {
+       "completed": 6
+      },
+      "fileSecByDaemonVersion": {
+       "unknown": 122
+      },
+      "runsWithoutDurations": 0
+     }
+    },
+    {
+     "id": "ea51aa42bb29a31c",
+     "root": null,
+     "lastKnownDaemonVersion": null,
+     "localRuns": {
+      "runs": 566,
+      "fileRuns": 950,
+      "fileSec": 3050,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 563,
+      "wallSec": 5349,
+      "endStates": {
+       "completed": 566
+      },
+      "fileSecByDaemonVersion": {
+       "unknown": 3050
+      },
+      "runsWithoutDurations": 0
+     }
+    },
+    {
+     "id": "d26fb7254bd5212c",
+     "root": null,
+     "lastKnownDaemonVersion": null,
+     "localRuns": {
+      "runs": 94,
+      "fileRuns": 96,
+      "fileSec": 43,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 26,
+      "wallSec": 314,
+      "endStates": {
+       "completed": 94
+      },
+      "fileSecByDaemonVersion": {
+       "unknown": 43
+      },
+      "runsWithoutDurations": 0
+     }
+    },
+    {
+     "id": "c23dd5e5e3fb4421",
+     "root": null,
+     "lastKnownDaemonVersion": null,
+     "localRuns": {
+      "runs": 2,
+      "fileRuns": 2,
+      "fileSec": 14,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 0,
+      "wallSec": 36,
+      "endStates": {
+       "completed": 2
+      },
+      "fileSecByDaemonVersion": {
+       "unknown": 14
+      },
+      "runsWithoutDurations": 0
+     }
+    },
+    {
+     "id": "b2c2dc75387db7bb",
+     "root": null,
+     "lastKnownDaemonVersion": null,
+     "localRuns": {
+      "runs": 312,
+      "fileRuns": 312,
+      "fileSec": 379,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 347,
+      "wallSec": 1060,
+      "endStates": {
+       "completed": 312
+      },
+      "fileSecByDaemonVersion": {
+       "unknown": 379
+      },
+      "runsWithoutDurations": 0
+     }
+    },
+    {
+     "id": "c274a0de6bf23b61",
+     "root": null,
+     "lastKnownDaemonVersion": null,
+     "localRuns": {
+      "runs": 205,
+      "fileRuns": 214,
+      "fileSec": 360,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 312,
+      "wallSec": 1309,
+      "endStates": {
+       "completed": 205
+      },
+      "fileSecByDaemonVersion": {
+       "unknown": 360
+      },
+      "runsWithoutDurations": 0
+     }
+    },
+    {
+     "id": "d1d5dc51cfb3b62d",
+     "root": null,
+     "lastKnownDaemonVersion": null,
+     "localRuns": {
+      "runs": 27,
+      "fileRuns": 100,
+      "fileSec": 873,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 15,
+      "wallSec": 1844,
+      "endStates": {
+       "completed": 27
+      },
+      "fileSecByDaemonVersion": {
+       "unknown": 873
+      },
+      "runsWithoutDurations": 0
+     }
+    },
+    {
+     "id": "6dbc7d4a1ecc2198",
+     "root": null,
+     "lastKnownDaemonVersion": null,
+     "localRuns": {
+      "runs": 1,
+      "fileRuns": 3,
+      "fileSec": 57,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 0,
+      "wallSec": 201,
+      "endStates": {
+       "completed": 1
+      },
+      "fileSecByDaemonVersion": {
+       "unknown": 57
+      },
+      "runsWithoutDurations": 0
+     }
+    },
+    {
+     "id": "e68fc045083a0f80",
+     "root": null,
+     "lastKnownDaemonVersion": null,
+     "localRuns": {
+      "runs": 3,
+      "fileRuns": 3,
+      "fileSec": 3,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 3,
+      "wallSec": 26,
+      "endStates": {
+       "completed": 3
+      },
+      "fileSecByDaemonVersion": {
+       "unknown": 3
+      },
+      "runsWithoutDurations": 0
+     }
+    },
+    {
+     "id": "e2e8adfd2ecf11ba",
+     "root": null,
+     "lastKnownDaemonVersion": null,
+     "localRuns": {
+      "runs": 4,
+      "fileRuns": 20,
+      "fileSec": 324,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 4,
+      "wallSec": 962,
+      "endStates": {
+       "completed": 4
+      },
+      "fileSecByDaemonVersion": {
+       "unknown": 324
+      },
+      "runsWithoutDurations": 0
+     }
+    },
+    {
+     "id": "c40cd22e2d231494",
+     "root": null,
+     "lastKnownDaemonVersion": null,
+     "localRuns": {
+      "runs": 4,
+      "fileRuns": 12,
+      "fileSec": 339,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 6,
+      "wallSec": 961,
+      "endStates": {
+       "completed": 4
+      },
+      "fileSecByDaemonVersion": {
+       "unknown": 339
+      },
+      "runsWithoutDurations": 0
+     }
+    },
+    {
+     "id": "8437c15320c36795",
+     "root": null,
+     "lastKnownDaemonVersion": null,
+     "localRuns": {
+      "runs": 67,
+      "fileRuns": 651,
+      "fileSec": 1856,
+      "checkpointFileSec": 0,
+      "fromResultRowsFileSec": 1617,
+      "wallSec": 1373,
+      "endStates": {
+       "completed": 67
+      },
+      "fileSecByDaemonVersion": {
+       "unknown": 1856
+      },
+      "runsWithoutDurations": 0
+     }
+    }
+   ],
+   "reportsSkippedForTime": 0
+  }
+ ],
+ "elapsedMs": 2787
+}
