@@ -69,7 +69,7 @@ describe("squeal code --base: the estimate before the first run (spec 020 D17.1)
   });
 
   it(
-    "gives the ways out when the estimate is over what is left, and runs anyway",
+    "gives the ways out and one rerun command whose --timeout fits, when the estimate is over what is left, and runs anyway",
     SLOW,
     async () => {
       ownHomeAndTmp();
@@ -80,13 +80,42 @@ describe("squeal code --base: the estimate before the first run (spec 020 D17.1)
       const ran = await gate(root, ["--base", "main", "--timeout", "40"]);
 
       expect(ran.code).toBe(0);
-      expect(ran.before).toHaveLength(2);
+      expect(ran.before).toHaveLength(3);
       expect(ran.before[1]).toMatch(
         new RegExp(
           `^${LINE}, over the \\d+ s left of the budget\\. To fit it: a longer --timeout, paths that narrow the changed files, fewer check groups \\(gate\\.groups at the base, --group\\), or CI's results with --parts\\. The run starts anyway\\.$`,
         ),
       );
+      // Rows 020-45: the call's own arguments with the seconds before the run plus twice the 42 s, up to a minute.
+      const told =
+        /^squeal code: about 42 s in all, over the (\d+) s left of the budget\. A rerun that fits: (\S+) code --base main --timeout (\d+)$/.exec(
+          ran.before[2] ?? "",
+        );
+      expect(told).not.toBeNull();
+      const [left, timeout] = [Number(told?.[1]), Number(told?.[3])];
+      expect(timeout % 60).toBe(0);
+      expect(timeout).toBeGreaterThanOrEqual(40 - left + 2 * 42);
+      expect(timeout).toBeLessThan(40 - left + 2 * 42 + 60);
       expect(ran.stdout).toMatch(/^Code gate: pass\./);
+      // The report names the same command.
+      expect(ran.stdout).toContain(
+        `A rerun that fits the estimate: ${told?.[2]} code --base main --timeout ${timeout}\n`,
+      );
     },
   );
+
+  it("gives the rerun in the JSON report's budget", SLOW, async () => {
+    ownHomeAndTmp();
+    const root = repo(FILES);
+    seed(root, 41.2);
+    edit(root, { "src/math.ts": DOUBLED });
+
+    const ran = await gate(root, ["--base", "main", "--timeout", "40", "--json"]);
+
+    expect(ran.code).toBe(0);
+    const report = JSON.parse(ran.stdout) as GateReport;
+    expect(report.budget.rerun?.command).toMatch(/ code --base main --timeout \d+ --json$/);
+    expect(ran.before[2]).toContain(`A rerun that fits: ${report.budget.rerun?.command}`);
+    expect(report.verdict).toBe("pass");
+  });
 });
