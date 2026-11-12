@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import { coreEnvironmentInputs, installedDependenciesFingerprint } from "../../keys/environment.js";
 import type { AbsolutePath } from "../../types/common.js";
 import type { TestFileRef } from "../../types/keys.js";
@@ -238,9 +239,15 @@ export function withRemoteLane(options: RemoteLaneOptions): RunnerAdapter {
     );
   };
 
-  /** What the policy does with a background run the remote cannot take (D13). */
+  /**
+   * What the policy does with a background run the remote cannot take (D13):
+   * `local` runs it here, in the tier the scheduler admitted under the local
+   * budget, in a log directory no earlier attempt used.
+   */
   const instead = (testFiles: readonly TestFileRef[], run: RunOptions): Promise<RunReport> => {
-    if (options.whenLost === "local") return local.run(testFiles, run);
+    if (options.whenLost === "local") {
+      return local.run(testFiles, { ...run, logDir: join(run.logDir, "here") });
+    }
     notRun += testFiles.length;
     tell();
     return Promise.resolve({
@@ -273,7 +280,17 @@ export function withRemoteLane(options: RemoteLaneOptions): RunnerAdapter {
       if (host === null) return instead(testFiles, run);
       const report = await remoteRun(host, testFiles, run);
       if (report === "refused") return instead(testFiles, run);
-      if ("lost" in report) return report.lost;
+      if ("lost" in report) {
+        // Review 0.1.442 B4: nothing of the lost attempt is kept; under `local` its files run
+        // here now, unless the tier was cancelled meanwhile; under `not-run` they end unknown.
+        const cancelled = run.signal?.aborted === true || run.stop?.aborted === true;
+        if (options.whenLost === "local" && !cancelled) return instead(testFiles, run);
+        if (options.whenLost === "not-run") {
+          notRun += testFiles.length;
+          tell();
+        }
+        return report.lost;
+      }
       failures = 0;
       notRun = 0;
       return report;

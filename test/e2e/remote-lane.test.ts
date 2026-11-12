@@ -16,8 +16,8 @@ import { dockerUnavailable, REMOTE_CACHE, type Remote, startRemote } from "./rem
  * Spec 021 Testing, Part 3 (row 021-14): a background run on a container
  * over the real `ssh`, through the lane the daemon builds. A tree that
  * differs is refused, sent again and retried; a different Node is refused;
- * a paused container ends its run `unknown` within its deadline; then
- * `local` runs the next background run here and `not-run` leaves it.
+ * a paused container ends its run `unknown` within its deadline under
+ * `not-run`; under `local` a killed host's files run here in the same call.
  */
 
 const unavailable = dockerUnavailable();
@@ -131,10 +131,10 @@ describe.skipIf(unavailable !== undefined)("a remote lane on a container over ss
   });
 
   it(
-    "ends a paused container's run unknown within its deadline; local then runs the next here",
+    "ends a paused container's run unknown within its deadline under whenLost not-run",
     LONG,
     async () => {
-      const { adapter, root, statuses } = await lane("local");
+      const { adapter, root, statuses } = await lane("not-run");
       const started = Date.now();
       const running = adapter.run([SLOW], background(root));
       await new Promise((r) => setTimeout(r, 1_500));
@@ -143,30 +143,31 @@ describe.skipIf(unavailable !== undefined)("a remote lane on a container over ss
         const report = await running;
         expect(report.end).toBe("timed-out");
         expect(report.completedFiles).toEqual([]);
+        expect(report.results).toEqual([]);
         expect(Date.now() - started).toBeLessThan(15_000);
         expect(statuses.at(-1)).toMatch(
-          new RegExp(`^remote ${remote.destination} unreachable since .*; running here$`),
+          new RegExp(`^remote ${remote.destination} unreachable since .*; 1 files not run$`),
         );
-        const here = await adapter.run([MATH], background(root));
-        expect(here.results.map((r) => r.outcome)).toEqual(["pass", "pass"]);
       } finally {
         remote.unpause();
       }
     },
   );
 
-  it("leaves a lost remote's files not run under whenLost not-run", LONG, async () => {
-    const { adapter, root, statuses } = await lane("not-run");
+  // Review 0.1.442 B4: under the default `local`, the interrupted files run here in the same call.
+  it("runs a killed host's interrupted files here at once under whenLost local", LONG, async () => {
+    const { adapter, root, statuses } = await lane("local");
     const running = adapter.run([SLOW], background(root));
     await new Promise((r) => setTimeout(r, 1_500));
     // The host process dies on the remote (no procps in the image: through /proc).
     remote.exec(
       'for p in /proc/[0-9]*; do tr "\\0" " " < $p/cmdline 2>/dev/null | grep -q "runner-hos[t] .*--tree" && kill -9 $(basename $p); done; true',
     );
-    expect((await running).end).toBe("crashed");
-    const next = await adapter.run([MATH], background(root));
-    expect(next.end).toBe("crashed");
-    expect(next.failure).toMatch(/not run here/);
-    expect(statuses.at(-1)).toMatch(/unreachable since .*; 1 files not run$/);
+    const report = await running;
+    expect(report.end).toBe("completed");
+    expect(report.results.map((r) => r.outcome)).toEqual(["pass"]);
+    expect(statuses.at(-1)).toMatch(
+      new RegExp(`^remote ${remote.destination} unreachable since .*; running here$`),
+    );
   });
 });
