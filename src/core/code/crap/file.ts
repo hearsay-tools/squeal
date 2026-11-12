@@ -57,33 +57,43 @@ const REASONS: readonly PendingReason[] = ["imports", "run", "record"];
  * Pending until every loader has a current result with a record; unknown
  * while one cannot have one (D9). A source no test file loads is unknown,
  * `no-loader`, once the worktree has test files listed: never 0% (spec 020
- * D11.5, which reverses 015 D9's ready with no loader).
+ * D11.5, which reverses 015 D9's ready with no loader). `set` gives the
+ * loaders' `loaderSet`, which the loader map keeps while they stay (row
+ * 021-31); the loaders are read once, as one source's can be every test file.
  */
-export function fileCondition(loaders: readonly Loader[], listed: boolean): FileCondition {
+export function fileCondition(
+  loaders: readonly Loader[],
+  listed: boolean,
+  set: () => string = () => loaderSet(loaders),
+): FileCondition {
   if (!listed) return { state: "pending", reason: "run", waiting: 0, ready: [] };
-  if (loaders.length === 0) {
-    return { state: "unknown", cause: "no-loader", ready: [], set: loaderSet(loaders) };
+  if (loaders.length === 0) return { state: "unknown", cause: "no-loader", ready: [], set: set() };
+  const ready: ReadyLoader[] = [];
+  let cause = CAUSES.length;
+  let reason = REASONS.length;
+  let waiting = 0;
+  for (const { testFile, condition: c } of loaders) {
+    if (c.kind === "ready") ready.push({ testFile, key: c.key, storedAt: c.storedAt });
+    else if (c.kind === "unknown") cause = first(CAUSES, c.cause, cause);
+    else {
+      waiting++;
+      reason = first(REASONS, c.reason, reason);
+    }
   }
-  const ready = loaders.flatMap((l) =>
-    l.condition.kind === "ready"
-      ? [{ testFile: l.testFile, key: l.condition.key, storedAt: l.condition.storedAt }]
-      : [],
-  );
-  const causes = new Set(
-    loaders.flatMap((l) => (l.condition.kind === "unknown" ? [l.condition.cause] : [])),
-  );
-  const cause = CAUSES.find((c) => causes.has(c));
-  if (cause !== undefined) {
-    const runners = cause === "no-record" ? runnersOf(loaders) : [];
+  const unknown = CAUSES[cause];
+  if (unknown !== undefined) {
+    const runners = unknown === "no-record" ? runnersOf(loaders) : [];
     const named = runners.length === 0 ? {} : { runners };
-    return { state: "unknown", cause, ready, set: loaderSet(loaders), ...named };
+    return { state: "unknown", cause: unknown, ready, set: set(), ...named };
   }
-  const waiting = loaders.flatMap((l) => (l.condition.kind === "pending" ? [l.condition] : []));
-  if (waiting.length > 0) {
-    const reason = REASONS.find((r) => waiting.some((w) => w.reason === r)) ?? "record";
-    return { state: "pending", reason, waiting: waiting.length, ready };
-  }
-  return { state: "ready", loaders: ready, set: loaderSet(loaders) };
+  if (waiting > 0) return { state: "pending", reason: REASONS[reason] ?? "record", waiting, ready };
+  return { state: "ready", loaders: ready, set: set() };
+}
+
+/** The earlier of `at` and `value`'s place in `order`; one not in it changes nothing. */
+function first<T>(order: readonly T[], value: T, at: number): number {
+  const i = order.indexOf(value);
+  return i === -1 || i > at ? at : i;
 }
 
 /**
