@@ -15,7 +15,7 @@ case $STEP in
   gate) # gate after a shard-only sequencer edit, and a control edit of src/marked.ts
     for e in shard control; do
       repo gate-$e; cd /tmp/cds/gate-$e
-      if [ $e = shard ]; then node "$P/edits.mjs" . shard; else sed -i 's/__MARK__/__MARK__ + ""/' src/marked.ts; fi
+      if [ $e = shard ]; then node "$P/edits.mjs" . shard; else sed -i '2s/__MARK__$/__MARK__ + ""/' src/marked.ts; fi
       git diff --stat > "$OUT/gate-$e.diff"
       S code --base HEAD --json > "$OUT/gate-$e.json" 2> "$OUT/gate-$e.err"; echo "exit $?" >> "$OUT/gate-$e.err"
     done ;;

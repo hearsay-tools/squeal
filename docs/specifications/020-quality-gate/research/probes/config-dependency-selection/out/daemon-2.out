@@ -1,0 +1,9 @@
+Revision: 1 · d89b37d5 + 1, dirty
+Known failures: 0; all 10 test files current
+Affected checks: 20 passed (10 tests, 10 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 1; `squeal run --all` requests one)
+Complexity: 0 functions over 20; squeal code lists them.
+Coverage: 0 functions over CRAP 30, 4 untested; 6 files unknown (6 because no test Squeal runs loads them); squeal code lists them.
+More: `squeal status --full` adds the worktree and daemon and 1 note
+
+Returned on quiet: the edits since revision 1 re-keyed no test file, at revision 1 after 0.3 s. Worktree: known failures 0; all 10 test files current

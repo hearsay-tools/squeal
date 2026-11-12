@@ -1,0 +1,134 @@
+{
+  "schemaVersion": 1,
+  "available": true,
+  "worktreeId": "1d65df300e935267",
+  "worktreeRoot": "/tmp/cds/daemon",
+  "revision": 0,
+  "counts": {
+    "current": 20,
+    "pending": 0,
+    "stale": 0,
+    "unknown": 0
+  },
+  "fileLevelCounts": {
+    "current": 10,
+    "pending": 0,
+    "stale": 0,
+    "unknown": 0
+  },
+  "testFilesWithoutChecks": {
+    "pending": 0,
+    "unknown": 0
+  },
+  "testFileCounts": {
+    "current": 10,
+    "pending": 0,
+    "stale": 0,
+    "unknown": 0
+  },
+  "testFilesByPhase": {
+    "running": 0,
+    "queued": 0
+  },
+  "testsByPhase": {
+    "running": 0,
+    "queued": 0
+  },
+  "fullSuite": {
+    "atCurrentRevision": true,
+    "lastCompletedRevision": 0
+  },
+  "testFilesListed": true,
+  "inheritedCount": 0,
+  "inheritedFileLevelCount": 0,
+  "refinedRevision": 0,
+  "runnerPartPending": false,
+  "head": "d89b37d53d3724f59bf3716c72bcb080b9d60afa",
+  "dirty": null,
+  "dirtyObservedAt": null,
+  "daemon": {
+    "state": "alive",
+    "lastHeartbeatAt": 1794523373861
+  },
+  "knownFailures": [],
+  "knownFailureCounts": {
+    "current": 0,
+    "pending": 0,
+    "stale": 0
+  },
+  "inherited": {
+    "count": 0,
+    "sources": []
+  },
+  "breakdown": {
+    "currentByOutcome": {
+      "pass": 20,
+      "fail": 0,
+      "skip": 0,
+      "unknown": 0
+    },
+    "pendingByPhase": {
+      "queued": 0,
+      "running": 0
+    },
+    "fileLevelByOutcome": {
+      "pass": 10,
+      "fail": 0,
+      "skip": 0,
+      "unknown": 0
+    },
+    "fileLevelByPhase": {
+      "queued": 0,
+      "running": 0
+    },
+    "testFiles": 10,
+    "testFilesWithoutChecks": 0,
+    "testFilesWithoutChecksRunning": 0
+  },
+  "closureMethod": "static imports plus declared inputs",
+  "storeSchemaVersion": 1,
+  "notes": [
+    "no revision recorded for this worktree yet"
+  ],
+  "daemonNotes": [
+    {
+      "at": 1794523374698,
+      "revision": 0,
+      "text": "node_modules/.pnpm/lock.yaml does not describe the installed packages (missing: test/fixtures/lint/toolchain/node_modules/typescript and 1 more); dependencies are keyed by their package.json files until pnpm rewrites it"
+    }
+  ],
+  "runsOpen": 0,
+  "outstanding": [],
+  "pendingTestFiles": {
+    "running": {
+      "files": [],
+      "omitted": 0
+    },
+    "queued": {
+      "files": [],
+      "omitted": 0
+    }
+  },
+  "code": {
+    "v": 1,
+    "threshold": 20,
+    "over": 0,
+    "sinceRegistration": 0,
+    "since": null,
+    "pending": 0,
+    "files": 19,
+    "unknown": 0,
+    "coverage": {
+      "v": 1,
+      "threshold": 30,
+      "crap": 0,
+      "uncovered": 4,
+      "files": 19,
+      "waitingForRuns": 0,
+      "waitingForRecords": 0,
+      "unknown": {
+        "no-loader": 6
+      }
+    }
+  }
+}

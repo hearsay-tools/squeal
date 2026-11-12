@@ -1,0 +1,1 @@
+Squeal daemon stopped for /tmp/cds/daemon; `squeal stop --until-start` keeps it stopped through edits and Git operations

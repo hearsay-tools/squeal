@@ -1,0 +1,10 @@
+Checkpoint ef6c699b-79b4-446e-a74a-44203a445d90 completed at revision 0: no known failures; 10 test files, 0 already current, 10 run now
+Checkpoint ef6c699b-79b4-446e-a74a-44203a445d90 started at revision 0: 10 test files to run, 0 already current
+
+Revision: 0
+Known failures: 0; all 10 test files current
+Affected checks: 20 passed (10 tests, 10 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 0
+Complexity: 0 functions over 20; squeal code lists them.
+Coverage: 0 functions over CRAP 30, 4 untested; 6 files unknown (6 because no test Squeal runs loads them); squeal code lists them.
+More: `squeal status --full` adds the worktree and daemon and 2 notes
