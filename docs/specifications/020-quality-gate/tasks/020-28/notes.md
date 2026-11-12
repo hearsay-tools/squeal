@@ -38,12 +38,10 @@ What the slice built, and the seams a next worker needs.
   X s: N completed test files kept".
 - One run id per runner run, as before; one head read and one revision per
   flush.
-- A file whose input changes during the busy wait itself is still written:
-  the re-check runs once, before the lock. The key names the bytes the run
-  read, so those results stay true for it.
-- A `--json` child that dies on a signal after its whole report: the parent
-  keeps the printed report and exits 128 plus the signal number (before:
-  exit 3 and an empty stdout).
+- Superseded by R1 (review 0.1.444 B2): a file whose input changes during
+  the busy wait is not written. See "Repair R1" below.
+- Superseded by R1 (review 0.1.444 B1): a `--json` child that dies on a
+  signal after its whole report exits 3; the printed report stays.
 
 ## Tests
 
@@ -63,3 +61,38 @@ What the slice built, and the seams a next worker needs.
 - A daemon serving the worktree: the note is unchanged ("a daemon runs in
   this worktree, and it keeps its own"), and no new test covers it.
   Row 021-20 later sends these writes to the daemon.
+
+## Repair R1 (review 0.1.444 B1, B2; 2026-11-12)
+
+- B1 (`relaunchGate`): a child that ends on a signal exits 3, with or
+  without a whole report. The report printed early stays on stdout. The
+  stderr line says which: "ended on SIGTERM after its report, so the exit
+  code is 3", or "... without a whole report, so stdout stays empty".
+- B2 (`keep.ts`, `keep-write.ts`): `flush` still checks every queued file
+  once, before the lock (`steadyOf`, one batch per run). Until a store
+  refuses a write, that check stands: no file is read again, so a flush on
+  a free store costs what it did. From the first busy refusal
+  (`StoreWait.waited`) each file is read again before its coverage record,
+  before its results, and after every busy pause (`keepFile`'s `steady`).
+  All checks run outside any transaction.
+- The busy loop is `sliced` in `keep-write.ts`: `slicedWrite`'s loop
+  (same slice, same backoff), with an async question after each pause,
+  because `slicedWrite`'s `giveUp` is synchronous and `src/core/store/*`
+  is not this row's. `slicedWrite` now has one user, `daemon/full-check.ts`.
+- A file that changed before its results write but after its coverage
+  record leaves that record alone: a reader takes a file only with both,
+  and prune removes it.
+- Counts: `keepFile` returns `kept`, `spent` or `changed`. Notes:
+  - freed: "the store was free after X s: N completed test files kept;
+    C changed during the wait, so the next run will run them again";
+  - no write landed after the wait (every waiting file changed): "C
+    completed test files were not kept in the stores: they changed during
+    the wait; the next run will run them again";
+  - exhausted: "N completed test files were not kept in the stores: the
+    store stayed busy for 30 s (holders), and C of them changed during the
+    wait; the next run will run them again". N counts the changed files.
+- Tests: `test/code/gate/keep-busy.test.ts` (moved from `keep.test.ts`,
+  which would pass 300 lines) adds a moved input freed, exhausted, and
+  with no later write; `test/cli/code-gate-keep-busy.test.ts` adds the
+  review's busy-note edit; `test/cli/code-gate-relaunch.test.ts` has the
+  whole-frame and partial-frame signal cases.

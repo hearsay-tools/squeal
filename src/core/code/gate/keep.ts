@@ -38,6 +38,8 @@ import {
  * daemon's worktree lock; while a daemon holds it, nothing is written.
  * D17.5 (row 020-28, #192): each run's files are queued, and written by
  * `flush` once the report is out, so a busy store never delays the verdict.
+ * Review 0.1.444 B2: once the store was busy, each file's inputs are read
+ * again after every pause and before each of its writes.
  */
 
 export interface KeepOptions {
@@ -98,8 +100,9 @@ export class Keeper {
   /**
    * D17.5, once the report is out: writes every queued file whose inputs
    * still hold the bytes its run read. A busy store is waited for up to
-   * the bound, counted from the first write it refused; a failure only
-   * costs the files not yet written, told once, and never throws.
+   * the bound, counted from the first write it refused, and a file whose
+   * inputs moved during the wait is not written; a failure only costs the
+   * files not yet written, told once, and never throws.
    */
   async flush(): Promise<void> {
     const queued = this.#queued.splice(0);
@@ -108,7 +111,7 @@ export class Keeper {
     try {
       const steady: Queued[] = [];
       for (const q of queued) {
-        const files = await steadyOf(q);
+        const files = await steadyOf(q.files, q.pending);
         if (files.length > 0) steady.push({ ...q, files });
       }
       left = steady.flatMap((q) => q.files).length;
@@ -182,7 +185,9 @@ export class Keeper {
    * removes. The stores are created as a daemon creates them. Each write
    * is one short transaction, retried in busy slices until one bound from
    * the first busy write (`StoreWait`); the files not written then are
-   * told as not kept.
+   * told as not kept. From that first busy write on, each file is checked
+   * again before each of its writes and after every pause (review 0.1.444
+   * B2): the opening check of `flush` no longer holds after a wait.
    */
   async #write(queued: readonly Queued[]): Promise<void> {
     const { root, commonDir, policy } = this.#options;
@@ -196,6 +201,8 @@ export class Keeper {
       return;
     }
     let written = 0;
+    let changed = 0;
+    let freed = false;
     let store: Store | null = null;
     let code: CodeStore | null = null;
     try {
@@ -210,7 +217,8 @@ export class Keeper {
       const boundMs = this.#options.busyBoundMs ?? KEEP_BUSY_BOUND_MS;
       const wait = new StoreWait({ now, boundMs, tell: (text) => this.#tell(text) });
       const databases = databasesOf(commonDir);
-      const giveUp = (database: AbsolutePath) => wait.giveUp(database, all.slice(written));
+      const giveUp = (database: AbsolutePath) =>
+        wait.giveUp(database, all.slice(written + changed));
       const revision = store.revisions.latest(worktreeId)?.number ?? 0;
       for (const { files, report, pending } of queued) {
         const provenance = {
@@ -223,15 +231,21 @@ export class Keeper {
         };
         const stores = { store, code, keys: pending.keys };
         for (const file of files) {
-          const at = { file, report, provenance, now, databases, giveUp };
-          if (!(await keepFile(stores, at))) {
-            this.#tell(wait.spent(all.length - written));
+          const steady = async () => !wait.waited || (await steadyOf([file], pending)).length > 0;
+          const at = { file, report, provenance, now, databases, giveUp, steady };
+          const outcome = await keepFile(stores, at);
+          if (outcome === "spent") {
+            this.#tell(wait.spent(all.length - written, changed));
             return;
           }
-          written += 1;
+          if (outcome === "changed") changed += 1;
+          else {
+            written += 1;
+            freed ||= wait.waited;
+          }
         }
       }
-      wait.done(written);
+      wait.done({ written, changed, freed });
     } catch (error) {
       this.#tell(`${notKept(all.length - written)}: ${messageOf(error)}`);
     } finally {
@@ -249,11 +263,11 @@ export class Keeper {
 }
 
 /**
- * D17.5: the files of `queued` none of whose inputs changed since the
- * lookup, read again at the write; a file whose bytes moved after its
- * run is not kept, and the next run keys it anew.
+ * D17.5: the files of `files` none of whose inputs changed since
+ * `pending`'s lookup, read again at the write; a file whose bytes moved
+ * after its run is not kept, and the next run keys it anew.
  */
-async function steadyOf({ files, pending }: Queued): Promise<readonly Kept[]> {
+async function steadyOf(files: readonly Kept[], pending: Pending): Promise<readonly Kept[]> {
   const paths = new Set(files.flatMap((f) => f.paths));
   const { changed } = await changedSince(pending.snapshot, paths, pending.hasher);
   return files.filter((f) => !f.paths.some((path) => changed.has(path)));

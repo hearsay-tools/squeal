@@ -1,16 +1,10 @@
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { DatabaseSync } from "node:sqlite";
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { Keeper } from "../../../src/core/code/gate/keep.js";
 import type { Hasher } from "../../../src/core/hash/hasher.js";
 import { StatCache } from "../../../src/core/hash/stat-cache.js";
 import { testFileId } from "../../../src/core/keys/reverse-index.js";
 import type { WorktreeKeys } from "../../../src/core/scheduler/keying.js";
-import { describeHolders, lockHolders } from "../../../src/core/store/lock-holders.js";
-import { isStoreOpenFailure, openStore } from "../../../src/core/store/open.js";
-import { storePaths } from "../../../src/core/store/paths.js";
 import type { CheckKey, TestFileRef } from "../../../src/core/types/keys.js";
 import { DEFAULT_POLICY } from "../../../src/core/types/policy.js";
 import type { RunReport } from "../../../src/core/types/runner.js";
@@ -20,10 +14,8 @@ import type { RunReport } from "../../../src/core/types/runner.js";
  * (`test/cli/code-gate-keep*.test.ts`). Here: it never reaches the write
  * for a file that did not complete or has no record, and a failure while
  * keeping costs only the write, told once, and never fails the gate. D17.5
- * (row 020-28): a run only queues its files, and `flush` writes them. A
- * store whose write lock another connection holds is retried in busy
- * slices until a bound from the first busy write; the wait names the
- * holder, and a file still not written then is told as not kept.
+ * (row 020-28): a run only queues its files, and `flush` writes them; a
+ * busy store is `keep-busy.test.ts`'s.
  */
 
 const REF: TestFileRef = { project: "", path: "test/a.test.ts" };
@@ -194,98 +186,5 @@ describe("Keeper (spec 020 D17.3)", () => {
     await keep.flush();
 
     expect(notes).toEqual([]);
-  });
-});
-
-describe("Keeper on a store another connection holds (spec 020 D17.3, D17.5)", () => {
-  const dirs: string[] = [];
-  afterEach(() => {
-    for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
-  });
-
-  /** A worktree root, a common directory with a store, and a connection holding its write lock. */
-  function lockedStore() {
-    const root = mkdtempSync(join(tmpdir(), "squeal-keep-"));
-    dirs.push(root);
-    const commonDir = join(root, ".git");
-    mkdirSync(commonDir);
-    const store = openStore(commonDir);
-    if (isStoreOpenFailure(store)) throw new Error(store.reason);
-    store.close();
-    const holder = new DatabaseSync(storePaths(commonDir).database);
-    holder.exec("BEGIN IMMEDIATE");
-    const release = () => {
-      if (!holder.isOpen) return;
-      holder.exec("ROLLBACK");
-      holder.close();
-    };
-    return {
-      root,
-      commonDir,
-      release,
-      holder: describeHolders(lockHolders(storePaths(commonDir).database)),
-    };
-  }
-
-  async function kept(
-    at: { root: string; commonDir: string },
-    notes: string[],
-    busyBoundMs: number,
-  ): Promise<void> {
-    const keep = new Keeper({
-      root: at.root,
-      commonDir: at.commonDir,
-      policy: { ...DEFAULT_POLICY, complexity: { ...DEFAULT_POLICY.complexity, enabled: true } },
-      head: async () => ({ head: "a".repeat(40), dirty: false }),
-      note: (text) => notes.push(text),
-      busyBoundMs,
-    });
-    keep.expect("vitest", KEYS, HASHER, new Map([[REF, KEY]]));
-    await keep.ran(run([REF], RECORD));
-    await keep.flush();
-  }
-
-  /** The results stored at `KEY`, read once the lock is free. */
-  function resultsAt(commonDir: string): number {
-    const db = new DatabaseSync(storePaths(commonDir).database, { readOnly: true });
-    try {
-      const row = db.prepare("SELECT count(*) AS n FROM results WHERE key = ?").get(KEY);
-      return Number(row?.n);
-    } finally {
-      db.close();
-    }
-  }
-
-  it("keeps the file once the lock is freed within the bound, and names the holder first", async () => {
-    const locked = lockedStore();
-    const notes: string[] = [];
-    const freed = setTimeout(locked.release, 400);
-    try {
-      await kept(locked, notes, 5_000);
-    } finally {
-      clearTimeout(freed);
-      locked.release();
-    }
-    expect(notes).toHaveLength(2);
-    expect(notes[0]).toBe(
-      `the store is busy (${locked.holder}); waiting up to 5 s to keep 1 completed test file: test/a.test.ts`,
-    );
-    expect(notes[1]).toMatch(/^the store was free after \d+(\.\d)? s: 1 completed test file kept$/);
-    expect(resultsAt(locked.commonDir)).toBe(1);
-  });
-
-  it("keeps nothing while the lock outlasts the bound, and says who held it and what runs again", async () => {
-    const locked = lockedStore();
-    const notes: string[] = [];
-    try {
-      await kept(locked, notes, 600);
-    } finally {
-      locked.release();
-    }
-    expect(notes).toEqual([
-      `the store is busy (${locked.holder}); waiting up to 0.6 s to keep 1 completed test file: test/a.test.ts`,
-      `1 completed test file was not kept in the stores: the store stayed busy for 0.6 s (${locked.holder}); the next run will run it again`,
-    ]);
-    expect(resultsAt(locked.commonDir)).toBe(0);
   });
 });
