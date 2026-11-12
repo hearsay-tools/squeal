@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { loadPolicy } from "../../src/core/daemon/policy.js";
 import { readHead } from "../../src/core/daemon-loop/head.js";
 import { createFsHasher, type Hasher } from "../../src/core/hash/hasher.js";
+import { ancestorListings } from "../../src/core/keys/observed.js";
 import { statCandidates } from "../../src/core/revision/reconcile.js";
 import {
   copyInputs,
@@ -17,6 +18,7 @@ import {
   unstableInputs,
 } from "../../src/core/run-evidence/run-evidence.js";
 import type { SchedulerContext } from "../../src/core/scheduler/context.js";
+import { isEditorScratch } from "../../src/core/scheduler/editor-scratch.js";
 import { newFileState } from "../../src/core/scheduler/files.js";
 import type { MergeHold } from "../../src/core/scheduler/hold.js";
 import { WorktreeKeys } from "../../src/core/scheduler/keying.js";
@@ -273,7 +275,14 @@ async function happen(
   const revision = await keys.reconcile({ trigger: "interval", paths: candidates }, () =>
     readHead(root),
   );
-  for (const change of revision?.changes ?? []) tier.changes.add(change.path);
+  // As `applyBatch` adds a revision to the tiers in flight: each path, and for an add or delete
+  // its directories' listings, but an editor's scratch file's only as the record finds them.
+  for (const change of revision?.changes ?? []) {
+    tier.changes.add(change.path);
+    const structural = change.oldHash === null || change.newHash === null;
+    if (!structural || isEditorScratch(change.path)) continue;
+    for (const listing of ancestorListings(change.path)) tier.changes.add(listing);
+  }
 }
 
 /** The run's report: both files completed, `a`'s reads and the environment's loads as `during` says. */
