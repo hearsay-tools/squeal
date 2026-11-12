@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { merge } from "../../daemon/composite-runner.js";
 import type { AbsolutePath } from "../../types/common.js";
 import type { TestFileRef } from "../../types/keys.js";
 import {
@@ -12,8 +13,9 @@ import {
 import { isGroupLane } from "../../types/scheduler.js";
 import { runnerHostGone } from "../proxy.js";
 import { ADMIT_EVERY_MS, admitRun, cancelOf, notStarted } from "./admission.js";
-import type { RemoteHost } from "./connect.js";
+import { type RemoteHost, RemoteRefusal } from "./connect.js";
 import { blobsAt, compareRemote } from "./lane-compare.js";
+import { repositoryRoute, withoutFiles } from "./lane-repository.js";
 import type { WhenLost } from "./settings.js";
 import type { RemoteRunReply } from "./tree-wire.js";
 
@@ -33,6 +35,11 @@ import type { RemoteRunReply } from "./tree-wire.js";
  * permits back (`RunOptions.permits`) and waits for the remote machine's
  * admission, under that machine's ceiling and floor; a run that comes back
  * to run here waits for local permits again.
+ *
+ * Spec 021 D19 (row 021-23): a background tier's files that read the
+ * repository (`remote.needsRepository`) run here first, under the tier's
+ * local permits, and the rest go remote. A remote run's file that failed
+ * as not a Git repository keeps no result and runs here again.
  */
 
 export interface RemoteLaneOptions {
@@ -44,6 +51,10 @@ export interface RemoteLaneOptions {
   readonly local: RunnerAdapter;
   readonly connect: () => Promise<RemoteHost>;
   readonly allowlist: () => readonly string[];
+  /** Spec 021 D19.2: test-file globs that always run here. Absent: none. */
+  readonly needsRepository?: () => readonly string[];
+  /** The line that names the files a remote failed as not a Git repository. Absent: `status`. */
+  readonly repository?: (text: string) => void;
   /** The lane's one status line, which replaces the last (D17). */
   readonly status: (text: string) => void;
   readonly log: (text: string) => void;
@@ -91,6 +102,10 @@ export function withRemoteLane(options: RemoteLaneOptions): RunnerAdapter {
   const queue = (paths: readonly InvalidatedPath[]) => {
     for (const path of paths) pending.set(path.path, path);
   };
+  const route = repositoryRoute(
+    options.needsRepository ?? (() => []),
+    options.repository ?? options.status,
+  );
 
   /** The remote cannot take runs: closed, and tried again after a backoff. */
   const down = (reason: string, refused: boolean, host?: RemoteHost) => {
@@ -119,8 +134,12 @@ export function withRemoteLane(options: RemoteLaneOptions): RunnerAdapter {
       .connect()
       .then(compareFirst)
       .catch((error: unknown) => {
+        // Spec 021 D19.1: a command the tests need, missing there, is a refusal, not a loss.
         if (state.kind === "connecting") {
-          down(error instanceof Error ? error.message : String(error), false);
+          down(
+            error instanceof Error ? error.message : String(error),
+            error instanceof RemoteRefusal,
+          );
         }
       });
   };
@@ -290,25 +309,35 @@ export function withRemoteLane(options: RemoteLaneOptions): RunnerAdapter {
   };
 
   /**
+   * `testFiles` run here, in the tier the scheduler admitted under the local
+   * budget, in the log directory `dir` under the run's, which no other part
+   * of the run uses. A run that gave its local permits back waits for them
+   * again (D18, row 021-21); one that did not keeps them.
+   */
+  const runHere = async (
+    testFiles: readonly TestFileRef[],
+    run: RunOptions,
+    dir: string,
+  ): Promise<RunReport> => {
+    const { permits, ...here } = run;
+    const workers = permits === undefined ? run.workers : await permits.back(cancelOf(run));
+    if (workers === null) return notStarted();
+    return local.run(testFiles, {
+      ...here,
+      logDir: join(run.logDir, dir),
+      ...(workers === undefined ? {} : { workers }),
+    });
+  };
+
+  /**
    * What the policy does with a background run the remote cannot take (D13):
-   * `local` runs it here, in the tier the scheduler admitted under the local
-   * budget, in a log directory no earlier attempt used. A run that gave its
-   * local permits back waits for them again (D18, row 021-21).
+   * `local` runs it here; `not-run` leaves it not run.
    */
   const instead = async (
     testFiles: readonly TestFileRef[],
     run: RunOptions,
   ): Promise<RunReport> => {
-    if (options.whenLost === "local") {
-      const { permits, ...here } = run;
-      const workers = permits === undefined ? run.workers : await permits.back(cancelOf(run));
-      if (workers === null) return notStarted();
-      return local.run(testFiles, {
-        ...here,
-        logDir: join(run.logDir, "here"),
-        ...(workers === undefined ? {} : { workers }),
-      });
-    }
+    if (options.whenLost === "local") return runHere(testFiles, run, "here");
     notRun += testFiles.length;
     tell();
     return Promise.resolve({
@@ -319,6 +348,41 @@ export function withRemoteLane(options: RemoteLaneOptions): RunnerAdapter {
       fileErrors: [],
       failure: `remote ${target} unreachable; not run here (whenLost "not-run")`,
     });
+  };
+
+  /** A background tier of files that may go remote: there when the remote takes it, else as D13 says. */
+  const remoteTier = async (
+    testFiles: readonly TestFileRef[],
+    run: RunOptions,
+  ): Promise<RunReport> => {
+    const host = ready();
+    if (host === null) return instead(testFiles, run);
+    const report = await remoteRun(host, testFiles, run);
+    if (report === "refused") return instead(testFiles, run);
+    if ("cancelled" in report) return report.cancelled;
+    if ("lost" in report) {
+      // Review 0.1.442 B4: nothing of the lost attempt is kept; under `local` its files run
+      // here now, unless the tier was cancelled meanwhile; under `not-run` they end unknown.
+      const cancelled = run.signal?.aborted === true || run.stop?.aborted === true;
+      if (options.whenLost === "local" && !cancelled) return instead(testFiles, run);
+      if (options.whenLost === "not-run") {
+        notRun += testFiles.length;
+        tell();
+      }
+      return report.lost;
+    }
+    failures = 0;
+    notRun = 0;
+    // D19.2's guard: a file that failed there as not a Git repository keeps no result; it runs here.
+    const failed = route.guard(report);
+    if (failed.length === 0) return report;
+    options.log(
+      `remote ${target}: ${failed.map((f) => f.path).join(", ")} failed there as not a Git repository; running here`,
+    );
+    return merge([
+      { adapter: { name: `remote ${target}` }, report: withoutFiles(report, failed) },
+      { adapter: { name: "here" }, report: await runHere(failed, run, "here") },
+    ]);
   };
 
   connect();
@@ -338,25 +402,17 @@ export function withRemoteLane(options: RemoteLaneOptions): RunnerAdapter {
     environment: () => local.environment(),
     async run(testFiles, run) {
       if (!goesRemote(run)) return local.run(testFiles, run);
-      const host = ready();
-      if (host === null) return instead(testFiles, run);
-      const report = await remoteRun(host, testFiles, run);
-      if (report === "refused") return instead(testFiles, run);
-      if ("cancelled" in report) return report.cancelled;
-      if ("lost" in report) {
-        // Review 0.1.442 B4: nothing of the lost attempt is kept; under `local` its files run
-        // here now, unless the tier was cancelled meanwhile; under `not-run` they end unknown.
-        const cancelled = run.signal?.aborted === true || run.stop?.aborted === true;
-        if (options.whenLost === "local" && !cancelled) return instead(testFiles, run);
-        if (options.whenLost === "not-run") {
-          notRun += testFiles.length;
-          tell();
-        }
-        return report.lost;
-      }
-      failures = 0;
-      notRun = 0;
-      return report;
+      const { here, there } = route.split(testFiles);
+      if (there.length === 0) return local.run(testFiles, run);
+      if (here.length === 0) return remoteTier(there, run);
+      // D19.2: the repository's readers first, while the tier holds its local permits.
+      const own = await runHere(here, run, "repository");
+      // A `squeal stop` starts no further part: its files stay queued (D10, task 001-367).
+      if (run.stop?.aborted === true) return own;
+      return merge([
+        { adapter: { name: "here" }, report: own },
+        { adapter: { name: `remote ${target}` }, report: await remoteTier(there, run) },
+      ]);
     },
     async close() {
       const host = state.kind === "ready" ? state.host : null;
