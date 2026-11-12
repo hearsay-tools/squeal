@@ -95,6 +95,8 @@ export interface CodeOptions {
   readonly adapters?: GateAdapters;
   /** Sees each write to stderr as it comes. */
   readonly stderr?: (text: string) => void;
+  /** Sees each write to stdout as it comes. */
+  readonly stdout?: (text: string) => void;
 }
 
 /** `squeal code <args>` in `cwd`, as the CLI dispatches it, or the gate with `options.adapters`. */
@@ -108,6 +110,7 @@ export async function code(
   const io: CliIo = {
     stdout: (text) => {
       stdout += text;
+      options.stdout?.(text);
     },
     stderr: (text) => {
       stderr += text;

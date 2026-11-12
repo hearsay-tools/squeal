@@ -8,6 +8,7 @@ import type { Hasher } from "../../../src/core/hash/hasher.js";
 import { StatCache } from "../../../src/core/hash/stat-cache.js";
 import { testFileId } from "../../../src/core/keys/reverse-index.js";
 import type { WorktreeKeys } from "../../../src/core/scheduler/keying.js";
+import { describeHolders, lockHolders } from "../../../src/core/store/lock-holders.js";
 import { isStoreOpenFailure, openStore } from "../../../src/core/store/open.js";
 import { storePaths } from "../../../src/core/store/paths.js";
 import type { CheckKey, TestFileRef } from "../../../src/core/types/keys.js";
@@ -18,9 +19,11 @@ import type { RunReport } from "../../../src/core/types/runner.js";
  * Spec 020 D17.3 (row 020-17c): what the keeper writes is the CLI cases'
  * (`test/cli/code-gate-keep*.test.ts`). Here: it never reaches the write
  * for a file that did not complete or has no record, and a failure while
- * keeping costs only the write, told once, and never fails the gate. A
+ * keeping costs only the write, told once, and never fails the gate. D17.5
+ * (row 020-28): a run only queues its files, and `flush` writes them. A
  * store whose write lock another connection holds is retried in busy
- * slices until a bound; a file still not written then is told as not kept.
+ * slices until a bound from the first busy write; the wait names the
+ * holder, and a file still not written then is told as not kept.
  */
 
 const REF: TestFileRef = { project: "", path: "test/a.test.ts" };
@@ -77,22 +80,39 @@ describe("Keeper (spec 020 D17.3)", () => {
     const notes: string[] = [];
     const reached = () => Promise.reject(new Error("the write was reached"));
 
-    await keeper(reached, notes).ran(run(completed, record));
+    const keep = keeper(reached, notes);
+    await keep.ran(run(completed, record));
+    await keep.flush();
 
     expect(notes).toEqual([]);
+  });
+
+  it("writes nothing until `flush` (D17.5)", async () => {
+    const notes: string[] = [];
+    const keep = keeper(() => Promise.reject(new Error("the write was reached")), notes);
+
+    await keep.ran(run([REF], RECORD));
+    expect(notes).toEqual([]);
+
+    // The root does not exist, so the write fails at its first step.
+    await keep.flush();
+    expect(notes).toHaveLength(1);
+    expect(notes[0]).toMatch(/^1 completed test file was not kept in the stores: /);
   });
 
   it("tells a failure once and never throws it", async () => {
     const notes: string[] = [];
     const keep = keeper(() => Promise.reject(new Error("no head")), notes);
 
-    await expect(keep.ran(run([REF], RECORD))).resolves.toBeUndefined();
+    await keep.ran(run([REF], RECORD));
+    await expect(keep.flush()).resolves.toBeUndefined();
     keep.expect("vitest", KEYS, HASHER, new Map([[REF, KEY]]));
     await keep.ran(run([REF], RECORD));
+    await keep.flush();
 
     // The root does not exist, so the write fails at its first step; it is told once.
     expect(notes).toHaveLength(1);
-    expect(notes[0]).toMatch(/^the test files this run completed were not kept in the stores: /);
+    expect(notes[0]).toMatch(/^1 completed test file was not kept in the stores: /);
   });
 
   it("writes nothing of a file whose run loaded an environment file its keys lack", async () => {
@@ -103,11 +123,15 @@ describe("Keeper (spec 020 D17.3)", () => {
     });
     const reached = () => Promise.reject(new Error("the write was reached"));
 
-    await keeper(reached, notes).ran(loaded(["setup.ts", "other-setup.ts"]));
+    const lacking = keeper(reached, notes);
+    await lacking.ran(loaded(["setup.ts", "other-setup.ts"]));
+    await lacking.flush();
     expect(notes).toEqual([]);
 
     // One its keys hold does not stop it: the write is reached, and fails here.
-    await keeper(reached, notes).ran(loaded(["setup.ts"]));
+    const holding = keeper(reached, notes);
+    await holding.ran(loaded(["setup.ts"]));
+    await holding.flush();
     expect(notes).toHaveLength(1);
   });
 
@@ -124,14 +148,16 @@ describe("Keeper (spec 020 D17.3)", () => {
         runs.inFlight -= 1;
       },
     } as unknown as WorktreeKeys;
-    // Each write starts with the head, which fails here: one call per write reached.
+    // Each flush with files starts its write with the head, which fails here and counts the files.
     let writes = 0;
+    const notes: string[] = [];
     const keep = new Keeper({
       // A root that exists, so the write reaches the head; nothing is written after it.
       root: tmpdir(),
       commonDir: "/nowhere/.git",
       policy: DEFAULT_POLICY,
       head: () => Promise.reject(new Error(`write ${++writes}`)),
+      note: (text) => notes.push(text),
     });
     const ref = (project: string): TestFileRef => ({ project, path: "test/x.test.mjs" });
     const [a, b, c] = [ref("a"), ref("b"), ref("c")];
@@ -148,12 +174,16 @@ describe("Keeper (spec 020 D17.3)", () => {
     await keep.ran(ranOf(a));
     await keep.ran(ranOf(a));
     await keep.ran(ranOf(b));
-    expect([writes, runs.inFlight]).toEqual([2, 1]);
+    expect(runs.inFlight).toBe(1);
+    await keep.flush();
+    // `a` once and `b`: the second run of `a` found its lookup taken.
+    expect(notes).toEqual(["2 completed test files were not kept in the stores: write 1"]);
 
     // `c`'s runner never ran: closing ends its run, and a late completion keeps nothing.
     keep.close();
     await keep.ran(ranOf(c));
-    expect([writes, runs.inFlight]).toEqual([2, 0]);
+    await keep.flush();
+    expect([writes, runs.inFlight]).toEqual([1, 0]);
   });
 
   it("does nothing for a runner it was not told of", async () => {
@@ -161,12 +191,13 @@ describe("Keeper (spec 020 D17.3)", () => {
     const keep = keeper(() => Promise.reject(new Error("the write was reached")), notes);
 
     await keep.ran({ ...run([REF], RECORD), runner: "node-test" });
+    await keep.flush();
 
     expect(notes).toEqual([]);
   });
 });
 
-describe("Keeper on a store another connection holds (spec 020 D17.3)", () => {
+describe("Keeper on a store another connection holds (spec 020 D17.3, D17.5)", () => {
   const dirs: string[] = [];
   afterEach(() => {
     for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
@@ -188,10 +219,19 @@ describe("Keeper on a store another connection holds (spec 020 D17.3)", () => {
       holder.exec("ROLLBACK");
       holder.close();
     };
-    return { root, commonDir, release };
+    return {
+      root,
+      commonDir,
+      release,
+      holder: describeHolders(lockHolders(storePaths(commonDir).database)),
+    };
   }
 
-  function keeperAt(at: { root: string; commonDir: string }, notes: string[], busyBoundMs: number) {
+  async function kept(
+    at: { root: string; commonDir: string },
+    notes: string[],
+    busyBoundMs: number,
+  ): Promise<void> {
     const keep = new Keeper({
       root: at.root,
       commonDir: at.commonDir,
@@ -201,7 +241,8 @@ describe("Keeper on a store another connection holds (spec 020 D17.3)", () => {
       busyBoundMs,
     });
     keep.expect("vitest", KEYS, HASHER, new Map([[REF, KEY]]));
-    return keep;
+    await keep.ran(run([REF], RECORD));
+    await keep.flush();
   }
 
   /** The results stored at `KEY`, read once the lock is free. */
@@ -215,30 +256,35 @@ describe("Keeper on a store another connection holds (spec 020 D17.3)", () => {
     }
   }
 
-  it("keeps the file once the lock is freed within the bound", async () => {
+  it("keeps the file once the lock is freed within the bound, and names the holder first", async () => {
     const locked = lockedStore();
     const notes: string[] = [];
     const freed = setTimeout(locked.release, 400);
     try {
-      await keeperAt(locked, notes, 5_000).ran(run([REF], RECORD));
+      await kept(locked, notes, 5_000);
     } finally {
       clearTimeout(freed);
       locked.release();
     }
-    expect(notes).toEqual([]);
+    expect(notes).toHaveLength(2);
+    expect(notes[0]).toBe(
+      `the store is busy (${locked.holder}); waiting up to 5 s to keep 1 completed test file: test/a.test.ts`,
+    );
+    expect(notes[1]).toMatch(/^the store was free after \d+(\.\d)? s: 1 completed test file kept$/);
     expect(resultsAt(locked.commonDir)).toBe(1);
   });
 
-  it("keeps nothing while the lock outlasts the bound, and says the file was not kept", async () => {
+  it("keeps nothing while the lock outlasts the bound, and says who held it and what runs again", async () => {
     const locked = lockedStore();
     const notes: string[] = [];
     try {
-      await keeperAt(locked, notes, 600).ran(run([REF], RECORD));
+      await kept(locked, notes, 600);
     } finally {
       locked.release();
     }
     expect(notes).toEqual([
-      "1 completed test file was not kept in the stores: the store stayed busy for 0.6 s (another connection held its write lock)",
+      `the store is busy (${locked.holder}); waiting up to 0.6 s to keep 1 completed test file: test/a.test.ts`,
+      `1 completed test file was not kept in the stores: the store stayed busy for 0.6 s (${locked.holder}); the next run will run it again`,
     ]);
     expect(resultsAt(locked.commonDir)).toBe(0);
   });
