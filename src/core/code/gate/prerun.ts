@@ -1,4 +1,5 @@
 import { compare } from "../../fs/compare.js";
+import { testFileId } from "../../keys/reverse-index.js";
 import type { RelativePath } from "../../types/common.js";
 import type { TestFileRef } from "../../types/keys.js";
 import type { GlobalSetupEntry, RunnerAdapter } from "../../types/runner.js";
@@ -34,6 +35,11 @@ export interface RunnerSelection {
   readonly known: { readonly store: number; readonly parts: number };
   /** The selected files by group, in the groups' ownership order; empty when the run has no scope. */
   readonly groups: readonly { readonly name: string; readonly files: number }[];
+  /**
+   * D3.1 (row 020-35): of `files`, those only their declared `inputs` at
+   * the base chose, by path; absent when none.
+   */
+  readonly byInputs?: readonly RelativePath[];
 }
 
 /** D14.4: the selection, told before the first run. */
@@ -50,11 +56,18 @@ export interface SelectionSummary {
   /**
    * Each path of a changed function that no runner lists as a test file
    * and no selected test file loads, so its functions will read
-   * `no-loader`; sorted. A path `excluded` matches is not looked for. None
-   * with `coverage.children`: a process a test starts may run any path,
-   * and its record then measures it (D12).
+   * `no-loader`; sorted. A path `excluded` matches is not looked for.
+   * With `coverage.children` (row 020-34), only when no selected file runs
+   * or is read; else such a path is in `childMayLoad`.
    */
   readonly unloaded: readonly RelativePath[];
+  /**
+   * D12, D14.4 (row 020-34): with `coverage.children`, the paths
+   * `unloaded` would hold while some selected file runs or is read: a
+   * process it starts may still load one, and its record then measures
+   * it. Sorted; absent when none.
+   */
+  readonly childMayLoad?: readonly RelativePath[];
 }
 
 /** One opened runner and what the selection gave it (D3.1, D14.2). */
@@ -67,6 +80,8 @@ export interface Picked {
   readonly run: readonly TestFileRef[];
   /** The selected files the scope leaves out. */
   readonly leftOut: readonly LeftOutRef[];
+  /** D3.1 (row 020-35): the selected files only their declared `inputs` chose; absent when none. */
+  readonly byInputs?: readonly TestFileRef[];
 }
 
 /** The evidence of selected files known without a run (D11.7, D13.2), by the selection's refs. */
@@ -92,9 +107,21 @@ export async function tellSelection(
   if (tell === undefined) return;
   const { scope, tally, known, excluded = () => false } = context;
   const leftOut = tally?.evidence([]).leftOut ?? [];
-  // D12: with children, a path no closure holds may still be run and measured.
-  const looked = context.children === true ? () => true : excluded;
-  tell(await summarize(picked, changed, { scope, leftOut, known, excluded: looked }));
+  const summary = await summarize(picked, changed, { scope, leftOut, known, excluded });
+  tell(context.children === true ? withChildren(summary) : summary);
+}
+
+/**
+ * D12, D14.4 (row 020-34): with `coverage.children`, a process a selected
+ * file starts may load a path no closure holds, and its record then
+ * measures it; so while some selected file runs or is read, `summary`'s
+ * unloaded paths are told as `childMayLoad`. With none, they stay
+ * `unloaded`: nothing can measure them.
+ */
+function withChildren(summary: SelectionSummary): SelectionSummary {
+  const { unloaded, ...rest } = summary;
+  if (unloaded.length === 0 || summary.runners.every((r) => r.files === 0)) return summary;
+  return { ...rest, unloaded: [], childMayLoad: unloaded };
 }
 
 /**
@@ -115,16 +142,20 @@ export async function summarize(
 ): Promise<SelectionSummary> {
   const { known } = context;
   const kinds = [...new Set(picked.map((p) => p.kind))];
-  const runners = kinds.map((runner) => {
-    const selected = picked.filter((p) => p.kind === runner).flatMap((p) => p.run);
+  const runners = kinds.map((runner): RunnerSelection => {
+    const of = picked.filter((p) => p.kind === runner);
+    const selected = of.flatMap((p) => p.run);
     const from = (where: TestFileEvidence["from"]) =>
       selected.filter((ref) => known.get(ref)?.from === where).length;
+    const declared = new Set(of.flatMap((p) => p.byInputs ?? []).map(testFileId));
+    const byInputs = selected.filter((ref) => declared.has(testFileId(ref))).map((r) => r.path);
     return {
       runner,
       files: selected.length,
       run: selected.filter((ref) => !known.has(ref)).length,
       known: { store: from("store"), parts: from("parts") },
       groups: byGroup(context.scope, runner, selected),
+      ...(byInputs.length === 0 ? {} : { byInputs: [...new Set(byInputs)].sort(compare) }),
     };
   });
   const runs = picked.map((p) => ({ ...p, run: p.run.filter((ref) => !known.has(ref)) }));

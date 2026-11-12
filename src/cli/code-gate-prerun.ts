@@ -13,12 +13,15 @@ import { loadsChangedText } from "./code-gate-text.js";
  * before any global setup writes: the files selected by runner and group,
  * how many of them run when the stores or the parts give the others, each
  * group the scope left out, the projects whose global setup runs, and
- * each changed path no test Squeal runs loads, with the ways out.
+ * each changed path no test Squeal runs loads, with the ways out. Rows
+ * 020-34 and 020-35: the files declared `inputs` chose, and with
+ * `coverage.children` a weaker line while some selected file runs.
  */
 
 /**
  * One runner's line: its selected files by group, and, when the stores or
  * the parts give some of them, how many run apart (review 0.1.432 B2).
+ * Row 020-35: then the files only their declared `inputs` chose.
  */
 function runnerLine(selection: SelectionSummary["runners"][number]): string {
   const { runner, files, run, known, groups } = selection;
@@ -26,13 +29,25 @@ function runnerLine(selection: SelectionSummary["runners"][number]): string {
   if (files === 0) return `${name}: no test file to run`;
   const byGroup =
     groups.length === 0 ? "" : ` (${groups.map((g) => `${g.name} ${g.files}`).join(", ")})`;
-  if (run === files) return `${name}: ${plural(files, "test file")} to run${byGroup}`;
+  const declared = byInputsText(selection.byInputs ?? []);
+  if (run === files) return `${name}: ${plural(files, "test file")} to run${byGroup}${declared}`;
   const read = [
     ...(known.parts === 0 ? [] : [`${known.parts} read from the parts`]),
     ...(known.store === 0 ? [] : [`${known.store} read from the stores`]),
   ];
   const runs = `${run === 0 ? "none" : run} to run`;
-  return `${name}: ${plural(files, "test file")} selected${byGroup}: ${[runs, ...read].join(", ")}`;
+  return `${name}: ${plural(files, "test file")} selected${byGroup}: ${[runs, ...read].join(", ")}${declared}`;
+}
+
+/** How many files of `byInputs` the line names before it only counts them. */
+const NAMED = 3;
+
+/** D3.1 (row 020-35): the files only declared `inputs` chose, the first `NAMED` by path. */
+function byInputsText(byInputs: readonly string[]): string {
+  if (byInputs.length === 0) return "";
+  const more = byInputs.length > NAMED ? ` and ${byInputs.length - NAMED} more` : "";
+  const names = `${byInputs.slice(0, NAMED).join(", ")}${more}`;
+  return `; ${byInputs.length} by declared inputs at the base, not by imports: ${names}`;
 }
 
 function leftOutLine({
@@ -63,16 +78,31 @@ function unloadedLine(path: string, functions: number): string {
   ].join(" ");
 }
 
+/**
+ * Row 020-34 (D14.4): with `coverage.children`, a changed path no selected
+ * test file imports, while some of them run: a process one starts may
+ * still load it; else the ways in.
+ */
+function childMayLoadLine(path: string, functions: number): string {
+  return [
+    `no selected test file imports ${path}.`,
+    "With coverage.children, it is measured only if a process one of them starts loads it;",
+    `else its ${plural(functions, "changed function")} will read incomplete (no-loader).`,
+    "To select a test that starts it, give the test with --test or declare the path for it in inputs at the base;",
+    "to skip its coverage, name it in coverage.exclude at the base.",
+  ].join(" ");
+}
+
 /** The pre-run lines of `summary`, each with its line feed; `changed` counts each unloaded path's functions. */
 export function preRunText(summary: SelectionSummary, changed: ChangedSet): string {
   const setups = summary.setups.map(setupName);
+  const functions = (path: string) => changed.functions.filter((f) => f.path === path).length;
   const lines = [
     ...summary.runners.map(runnerLine),
     ...summary.leftOut.map(leftOutLine),
     ...(setups.length === 0 ? [] : [`global setup runs for: ${setups.join(", ")}`]),
-    ...summary.unloaded.map((path) =>
-      unloadedLine(path, changed.functions.filter((f) => f.path === path).length),
-    ),
+    ...summary.unloaded.map((path) => unloadedLine(path, functions(path))),
+    ...(summary.childMayLoad ?? []).map((path) => childMayLoadLine(path, functions(path))),
   ];
   return lines.map((line) => `squeal code: ${line}\n`).join("");
 }
