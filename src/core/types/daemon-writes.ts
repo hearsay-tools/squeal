@@ -125,3 +125,46 @@ export interface ImportCounts {
   /** Test files whose results went at their key here (018 D11), not at the exported key. */
   readonly rekeyed: number;
 }
+
+/**
+ * Spec 021 D15 (row 021-20): asks the daemon to import an export file
+ * (`squeal import`) in its retried path. An import creates tables, adds
+ * check rows it reads back and can be tens of MB, which a sent batch
+ * cannot carry, so the daemon reads the file and imports it itself.
+ */
+export interface ImportRequest {
+  readonly type: "import";
+  readonly worktreeId: WorktreeId;
+  /** The `user_version` the command read its store at; another one is refused. */
+  readonly storeSchema: number;
+  /** The export file, an absolute path, which the daemon reads itself. */
+  readonly file: string;
+  /** SHA-256 of the bytes the command read and checked; other bytes are not imported. */
+  readonly fileHash: string;
+  readonly dryRun: boolean;
+}
+
+/** Asks how the import `requestId` went. */
+export interface ImportStatusRequest {
+  readonly type: "import-status";
+  readonly requestId: string;
+}
+
+/**
+ * How an import ended: what it added, and whether this repository holds the
+ * export's commit (018 D11); or how long its last slice waited for a busy
+ * store before the bound; or why it failed.
+ */
+export type ImportOutcome =
+  | { readonly counts: ImportCounts; readonly commitHere: boolean }
+  | { readonly busyMs: number }
+  | { readonly failed: string };
+
+/** An import's state: `outcome` `null` while it runs. */
+export interface ImportResponse {
+  readonly schemaVersion: PayloadSchemaVersion;
+  readonly ok: true;
+  readonly type: "import";
+  readonly requestId: string;
+  readonly outcome: ImportOutcome | null;
+}

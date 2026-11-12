@@ -44,6 +44,7 @@ import { type FrontDesk, type PreparedDesk, prepareFrontDesk } from "./desk.js";
 import { afterEachRun, EscapedChildren } from "./escaped.js";
 import { startFullCheck } from "./full-check.js";
 import { type GcFunction, IdleGc } from "./idle-gc.js";
+import { importInDaemon } from "./import-request.js";
 import { recordDaemonUsed } from "./last-use.js";
 import {
   type DaemonTimings,
@@ -974,6 +975,20 @@ class Daemon {
             "a hook's or command's writes",
             () => writeBatch(this.opened.store, decodeBatch(batch)),
             within(SENT_WRITE_BOUND_MS, () => this.#phase === "stopping"),
+          ),
+        // Spec 021 D15 (row 021-20): `squeal import`'s export, imported here in slices.
+        requestImport: (request) =>
+          importInDaemon(
+            {
+              root: this.opened.root,
+              worktreeId: this.opened.worktreeId,
+              store: this.opened.store,
+              writes: this.#writes,
+              now: this.#now,
+              stopping: () => this.#phase === "stopping",
+              step: (operation, running) => this.#desk?.step(operation, running),
+            },
+            request,
           ),
         // The tiers stop now, under a shutdown already begun too; the shutdown after the answer.
         onStop: () => {

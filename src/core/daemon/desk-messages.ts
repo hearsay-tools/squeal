@@ -1,6 +1,6 @@
 import type { EpochMs, RelativePath, WorktreeId } from "../types/common.js";
 import type { DaemonPhase, SyncAnswer } from "../types/daemon.js";
-import type { SentBatch } from "../types/daemon-writes.js";
+import type { ImportOutcome, ImportRequest, SentBatch } from "../types/daemon-writes.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { FullSuiteCheckpoint, FullSuiteRequest } from "../types/scheduler.js";
 import type { GroupRequested, HeldBy } from "./run-group.js";
@@ -72,6 +72,12 @@ export type ToDesk =
       readonly id: string;
       readonly error: string | null;
     }
+  | {
+      /** Spec 021 D15 (row 021-20): how import `id` ended. */
+      readonly type: "import-result";
+      readonly id: string;
+      readonly outcome: ImportOutcome;
+    }
   | { readonly type: "close" };
 
 /** Front desk to main thread. */
@@ -94,6 +100,7 @@ export type FromDesk =
   | { readonly type: "hold"; readonly id: string }
   | { readonly type: "resume" }
   | { readonly type: "write"; readonly id: string; readonly batch: SentBatch }
+  | { readonly type: "import"; readonly id: string; readonly request: ImportRequest }
   | {
       readonly type: "promote";
       readonly testFiles: readonly TestFileRef[];
