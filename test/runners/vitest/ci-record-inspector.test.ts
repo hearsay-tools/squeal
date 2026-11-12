@@ -17,7 +17,11 @@ import { recordCovered } from "./ci-coverage-kit.js";
  * a computed `import()`. A fifth file never loads it and stays exported. A
  * run with no coverage provider at all exports every file, as before, and
  * its workers install no watch (review of 0.1.443-r2 S2). Files the watch
- * could not see run are named so, not as loading it (S1).
+ * could not see run are named so, not as loading it (S1). The Vitest process
+ * itself never watches (review of 0.1.444 S1; `controller.ts` checks it), and
+ * the project allow-lists the variable that once carried "no provider", by its
+ * literal name: no run has it, so no part descriptor names it (review of
+ * 0.1.444 B3).
  */
 
 const SLOW = { timeout: 300_000 } as const;
@@ -35,12 +39,16 @@ const typeOfSession = (load: string) =>
 const FILES: Readonly<Record<string, string>> = {
   "package.json": JSON.stringify({ name: "ci-inspector-fixture", private: true, type: "module" }),
   ".gitignore": "coverage/\nnode_modules/\n",
-  "squeal.config.json": `${JSON.stringify({ observe: { runtimeInputs: true } })}\n`,
+  "squeal.config.json": `${JSON.stringify({
+    observe: { runtimeInputs: true },
+    env: { allowlist: ["SQUEAL_CI_NO_PROVIDER"] },
+  })}\n`,
   "vitest.config.ts": [
     'import { defineConfig } from "vitest/config";',
     "export default defineConfig({",
     "  test: {",
     '    include: ["test/*.test.ts"],',
+    '    globalSetup: ["./controller.ts"],',
     "    // test options",
     "    coverage: {",
     '      enabled: process.env.PROJECT_COVERAGE !== "0",',
@@ -53,6 +61,15 @@ const FILES: Readonly<Record<string, string>> = {
     "",
   ].join("\n"),
   "custom-v8.mjs": 'export { default } from "@vitest/coverage-v8";\n',
+  // Runs in the Vitest process, which never watches node:inspector (review 0.1.444 S1).
+  "controller.ts": [
+    "export default function setup(): void {",
+    "  if ((globalThis as { __squealCiInspector?: boolean }).__squealCiInspector === true) {",
+    '    throw new Error("the Vitest process watches node:inspector");',
+    "  }",
+    "}",
+    "",
+  ].join("\n"),
   "src/helper.ts": [
     "export async function running(): Promise<string> {",
     '  const { Session } = await import("node:inspector");',
@@ -73,7 +90,7 @@ const FILES: Readonly<Record<string, string>> = {
     "",
   ].join("\n"),
   "test/plain.test.ts": [
-    'import { existsSync } from "node:fs";',
+    'import { existsSync, readdirSync } from "node:fs";',
     'import { join } from "node:path";',
     'import { afterAll, expect, it } from "vitest";',
     'it("adds", () => expect(1 + 1).toBe(2));',
@@ -84,7 +101,9 @@ const FILES: Readonly<Record<string, string>> = {
     "  const flag = (globalThis as { __squealCiInspector?: boolean }).__squealCiInspector === true;",
     '  it("watches", () => expect(flag).toBe(watch === "1"));',
     '  const { raw } = JSON.parse(process.env.SQUEAL_CI_RECORD ?? "{}");',
-    '  afterAll(() => expect(existsSync(join(raw, "inspector"))).toBe(watch === "1"));',
+    '  const dir = join(raw, "inspector");',
+    '  const logged = () => existsSync(dir) && readdirSync(dir).some((n) => n.endsWith(".ndjson"));',
+    '  afterAll(() => expect(logged()).toBe(watch === "1"));',
     "}",
     "",
   ].join("\n"),
@@ -239,6 +258,8 @@ describe("ci export leaves out node:inspector users beside any coverage provider
       const env = { PROJECT_COVERAGE: "0", EXPECT_WATCH: "0" };
       const run = await recordAndExport("ci-inspector-none", env);
       expect(run.part.header.coverage).toEqual({ off: "no-provider", note: expect.any(String) });
+      // Review 0.1.444 B3: the allow-listed old name is in no descriptor, so export takes the part.
+      expect(run.part.projects.map((p) => p.descriptor.env.names)).toEqual([[]]);
       expect(run.code, run.said).toBe(0);
       expect(run.files).toEqual(EVERY);
     },
