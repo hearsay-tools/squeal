@@ -96,6 +96,11 @@ export function createRecoveringRunner(options: RecoveringRunnerOptions): Recove
   let answered: readonly RunnerEnvironment[] | null = null;
   const around = options.around ?? ((call) => call());
 
+  // D20.2: the close of the adapter closed when idle, until it ends. The next adapter and the
+  // final close wait for it: a host's close runs its teardown (Vitest's `globalSetup`), and a new
+  // host that set up beside it would meet what it still holds (review 0.1.461 B1).
+  let closing: Promise<void> | null = null;
+
   /** Spec 021 D20.2: closes an idle adapter. No crash: nothing is replaced. */
   const park = () => {
     const current = live();
@@ -103,7 +108,13 @@ export function createRecoveringRunner(options: RecoveringRunnerOptions): Recove
     inner = null;
     parked = { last: current, environment: answered ?? parked?.environment ?? null };
     answered = null;
-    current.close().catch(() => {});
+    const ending: Promise<void> = current
+      .close()
+      .catch(() => {})
+      .finally(() => {
+        if (closing === ending) closing = null;
+      });
+    closing = ending;
   };
   const clock = new IdleClock(options.idleMs ?? (() => 0), park);
   // D20.1: the synchronous members answer from the adapter closed when idle until another exists.
@@ -124,6 +135,7 @@ export function createRecoveringRunner(options: RecoveringRunnerOptions): Recove
     retry = false;
     creating ??= (async () => {
       try {
+        await closing;
         const created = await options.create();
         if (closed) {
           await created.close();
@@ -253,6 +265,7 @@ export function createRecoveringRunner(options: RecoveringRunnerOptions): Recove
         clock.stop();
         parked = null;
         await creating?.catch(() => {});
+        await closing;
         await inner?.close();
       }),
   };
