@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
-import { afterAll, describe, expect, it, onTestFinished } from "vitest";
+import { afterAll, describe, expect, it, onTestFinished, vi } from "vitest";
 import {
   REMOTE_SETTINGS_TOPIC,
   REMOTE_TOPIC,
@@ -11,13 +11,14 @@ import {
 } from "../../../src/core/runner-host/remote/daemon-lane.js";
 import { remoteSettingsPath } from "../../../src/core/runner-host/remote/settings.js";
 import { DEFAULT_POLICY, type Policy } from "../../../src/core/types/policy.js";
-import type { RunnerAdapter } from "../../../src/core/types/runner.js";
+import type { RunnerAdapter, RunOptions } from "../../../src/core/types/runner.js";
 import { REPORT } from "../fake-channel.js";
 
 /*
  * Spec 021 D9, D17 (rows 021-13, 021-14): which lane the daemon's Vitest
  * runner gets, and the status line that says so. No test reads the real
- * home: each names its own config directory.
+ * home: each names its own config directory. Row 021-23 (D19.2): the
+ * policy's `remote.needsRepository` reaches the lane.
  */
 
 const scratch = mkdtempSync(join(tmpdir(), "squeal-daemon-lane-"));
@@ -125,5 +126,36 @@ describe("the daemon's remote lane (rows 021-13, 021-14)", () => {
     const notes: [string, string][] = [[REMOTE_TOPIC, "remote build-box: connecting"]];
     lane(undefined, DEFAULT_POLICY, notes);
     expect(notes.at(-1)).toEqual([REMOTE_TOPIC, "no remote lane: every run is here"]);
+  });
+});
+
+describe("the daemon's remote lane and remote.needsRepository (row 021-23)", () => {
+  it("runs a file that needs the repository here, even while the others are not run", async () => {
+    const run = vi.spyOn(vitest, "run");
+    onTestFinished(() => run.mockRestore());
+    const policy = {
+      ...DEFAULT_POLICY,
+      remote: { allowed: true, needsRepository: ["test/git.*"] },
+    };
+    const { adapter, notes } = lane(
+      (root: string) => ({
+        repositories: { [root]: { target: "build-box", whenLost: "not-run" } },
+      }),
+      policy,
+    );
+    for (let i = 0; i < 200 && notes.length < 2; i++) await sleep(10);
+    const background: RunOptions = {
+      runId: "r",
+      logDir: join(scratch, "logs"),
+      timeoutMs: 1_000,
+      background: true,
+      lane: "vitest",
+    };
+    await adapter.run([{ project: "", path: "test/git.test.ts" }], background);
+    const other = await adapter.run([{ project: "", path: "test/a.test.ts" }], background);
+    expect(run.mock.calls.map(([files]) => files.map((f) => f.path))).toEqual([
+      ["test/git.test.ts"],
+    ]);
+    expect(other.failure).toBe('remote build-box unreachable; not run here (whenLost "not-run")');
   });
 });
