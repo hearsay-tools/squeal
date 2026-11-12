@@ -1,21 +1,14 @@
 import type { Hasher } from "../hash/hasher.js";
 import type { StatCache } from "../hash/stat-cache.js";
-import { listedDirectory } from "../keys/observed.js";
 import type { SchedulerContext } from "../scheduler/context.js";
 import { scratchUnstable } from "../scheduler/editor-scratch.js";
-import { type EnvironmentGrowth, rekeyEnvironments } from "../scheduler/environment-growth.js";
+import { rekeyEnvironments } from "../scheduler/environment-growth.js";
 import { newFileState } from "../scheduler/files.js";
 import { heldFiles, type MergeHold } from "../scheduler/hold.js";
 import type { WorktreeKeys } from "../scheduler/keying.js";
-import {
-  NOTHING_OBSERVED,
-  observedGrowth,
-  prepareObserved,
-  type TierObservations,
-} from "../scheduler/observed.js";
+import { NOTHING_OBSERVED, prepareObserved, type TierObservations } from "../scheduler/observed.js";
 import {
   barredByTouch,
-  changedSince,
   type Moved,
   snapshotInputs,
   type Withheld,
@@ -31,6 +24,7 @@ import type { AbsolutePath, RelativePath } from "../types/common.js";
 import type { CheckKey, TestFileRef } from "../types/keys.js";
 import type { RunReport } from "../types/runner.js";
 import { reasonOf } from "./reason.js";
+import { movedInputs, observedMoves, readKeepEvidence } from "./sources.js";
 
 /*
  * Run evidence and the store decision (GLOSSARY, "Results"; row 011-319,
@@ -42,7 +36,8 @@ import { reasonOf } from "./reason.js";
  * decision from `storeDecision` through here. Each acts on the decision and
  * writes in its own way. Each kind of evidence comes from a source its
  * caller supplies: the keeper reads changed and touched inputs, observed
- * reads and environment files (`readKeepEvidence`); the daemon reads those,
+ * reads and environment files (`readKeepEvidence`, in `sources.ts`); the
+ * daemon reads those,
  * the revisions during the run, the runtime's identity, the merge hold and
  * the editor-scratch listings (`readRecordEvidence`).
  */
@@ -77,21 +72,6 @@ export function copyInputs(cache: StatCache, paths: Iterable<RelativePath>): Sta
   return snapshotInputs(cache, paths);
 }
 
-/**
- * After a run: the inputs among `paths` whose content differs from
- * `before`, and the touched ones (`changedSince`). A listing is no file:
- * the revisions during the run cover it, and the editor-scratch listings.
- */
-export function movedInputs(
-  before: StatCache,
-  paths: Iterable<RelativePath>,
-  hasher: Hasher,
-): Promise<Moved> {
-  const files = new Set<RelativePath>();
-  for (const path of paths) if (listedDirectory(path) === null) files.add(path);
-  return changedSince(before, files, hasher);
-}
-
 /** A tier's `movedInputs` since it was selected (task 001-168). Outside the lock: it only reads. */
 export function unstableInputs(
   tier: Pick<Tier, "snapshot" | "files">,
@@ -124,8 +104,11 @@ export async function stillAsRead<T extends { readonly paths: readonly RelativeP
 /**
  * The daemon's evidence beyond `inputs`, read once per record under the
  * scheduler lock (row 011-126). Task 003-43: environment files the run
- * loaded beyond the keyed ones re-key first (`rekeyEnvironments`). Task
- * 001-132: what the run read beyond its closures is hashed. Row 011-117
+ * loaded beyond the keyed ones re-key first: the daemon's evidence entry
+ * re-keys the environments (`rekeyEnvironments` whole, its `seeStartup`
+ * write first), it does not only read. Task 001-132: what the run read
+ * beyond its closures is hashed (`prepareObserved`), then checked against
+ * the stat cache (`observedMoves`). Row 011-117
  * (review 0.1.268 B1): a listing editor scratch files moved during the run,
  * one the run observed first included, as the batches applied before this
  * record leave it, counts as changed. Row 011-72 (011 C9): a file whose key
@@ -141,7 +124,8 @@ export async function readRecordEvidence(
   hold: MergeHold,
 ): Promise<RunEvidence> {
   const environment = installMoved ? undefined : await rekeyEnvironments(context, report, tier);
-  const read = installMoved ? undefined : await prepareObserved(context, report, tier.run);
+  const growth = installMoved ? undefined : await prepareObserved(context, report, tier.run);
+  const read = growth === undefined ? undefined : await observedMoves(context, growth);
   const observed =
     environment === undefined || read === undefined ? read : { ...read, environment };
   const changed = new Set([...inputs.changed, ...scratchUnstable(context, tier, observed?.growth)]);
@@ -167,53 +151,6 @@ export interface KeepSources {
   readonly run: number;
   /** The copy of the inputs taken before the run (`copyInputs`). */
   readonly before: StatCache;
-}
-
-/**
- * The keeper's evidence: its inputs that moved, what the run read beyond
- * its keys (`observedGrowth`), and the environment files it loaded that its
- * project's keys lack. No revision, runtime identity, merge hold or editor
- * scratch listing is read (`research/run-evidence.md`, differences 2 to 4).
- */
-async function readKeepEvidence(
-  sources: KeepSources,
-  files: readonly TierFile[],
-  report: RunReport,
-): Promise<RunEvidence> {
-  const { root, keys } = sources;
-  const growth = await observedGrowth({ root, keys }, report, sources.run);
-  const inputs = await movedInputs(
-    sources.before,
-    files.flatMap((f) => f.inputs),
-    sources.hasher,
-  );
-  const environment = loadedBeyondKeys(keys, files, report);
-  const observed: TierObservations = {
-    ...NOTHING_OBSERVED,
-    growth,
-    ...(environment === undefined ? {} : { environment }),
-  };
-  return { changed: inputs.changed, touched: [...inputs.touched].sort(), observed, held: [] };
-}
-
-/** The files of `files` whose project's run loaded an environment file its keys lack. */
-function loadedBeyondKeys(
-  keys: WorktreeKeys,
-  files: readonly TierFile[],
-  report: RunReport,
-): EnvironmentGrowth | undefined {
-  const beyond = new Map<string, RelativePath[]>();
-  for (const { project, paths } of report.environmentObserved ?? []) {
-    const keyed = new Set(keys.environmentFiles(project));
-    const lacking = paths.filter((path) => !keyed.has(path));
-    if (lacking.length > 0) beyond.set(project, lacking);
-  }
-  const loaded = new Map<string, readonly RelativePath[]>();
-  for (const { file } of files) {
-    const paths = beyond.get(file.ref.project);
-    if (paths !== undefined) loaded.set(file.id, paths);
-  }
-  return loaded.size === 0 ? undefined : { files: loaded, changes: [] };
 }
 
 /** What a record knows at the try of its write, of its own: the caller's facts, not evidence. */
