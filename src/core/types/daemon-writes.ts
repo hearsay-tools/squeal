@@ -1,4 +1,6 @@
-import type { PayloadSchemaVersion, WorktreeId } from "./common.js";
+import type { PayloadSchemaVersion, RelativePath, WorktreeId } from "./common.js";
+import type { CheckKey } from "./keys.js";
+import type { ResultRecord } from "./store-records.js";
 
 /*
  * Spec 021 D15 (row 021-16): hooks and the writing CLI commands send their
@@ -158,7 +160,7 @@ export interface ImportStatusRequest {
 export type ImportOutcome =
   | { readonly counts: ImportCounts; readonly commitHere: boolean }
   | { readonly busyMs: number }
-  | { readonly failed: string };
+  | FailedOutcome;
 
 /** An import's state: `outcome` `null` while it runs. */
 export interface ImportResponse {
@@ -167,4 +169,61 @@ export interface ImportResponse {
   readonly type: "import";
   readonly requestId: string;
   readonly outcome: ImportOutcome | null;
+}
+
+/** Why a request the daemon took did not end as asked. */
+export interface FailedOutcome {
+  readonly failed: string;
+}
+
+/**
+ * Spec 021 D15 (row 021-20, part two): one try of one write of a test file
+ * the code gate keeps (spec 020 D17.3, D17.5), run by the daemon that
+ * holds the worktree's lock, in its retried path. The gate keeps the wait:
+ * its bound, the notes and the check of the file's inputs after each
+ * busy pause, as with no daemon.
+ */
+export interface KeepRequest {
+  readonly type: "keep";
+  readonly worktreeId: WorktreeId;
+  /** The `user_version` the gate read its store at; another one is refused. */
+  readonly storeSchema: number;
+  readonly write: KeepWrite;
+}
+
+/**
+ * What one try writes: the file's coverage record at its key (`putParts`),
+ * or its results (`storeResults`) with the paths its heal is judged by and
+ * the environment files its project's key read (`unresolvedPreloads`).
+ */
+export type KeepWrite =
+  | {
+      readonly kind: "coverage";
+      readonly key: CheckKey;
+      /** A `CoverageRecord` (spec 015 D8) as JSON. */
+      readonly record: unknown;
+    }
+  | {
+      readonly kind: "results";
+      readonly records: readonly ResultRecord[];
+      readonly paths: readonly RelativePath[];
+      readonly environmentFiles: readonly RelativePath[];
+    };
+
+/** Asks how the keep try `requestId` went. */
+export interface KeepStatusRequest {
+  readonly type: "keep-status";
+  readonly requestId: string;
+}
+
+/** A try's end: `kept` false when a busy store refused it, so the gate pauses and tries again. */
+export type KeepOutcome = { readonly kept: boolean } | FailedOutcome;
+
+/** A keep try's state: `outcome` `null` while it runs. */
+export interface KeepResponse {
+  readonly schemaVersion: PayloadSchemaVersion;
+  readonly ok: true;
+  readonly type: "keep";
+  readonly requestId: string;
+  readonly outcome: KeepOutcome | null;
 }

@@ -9,6 +9,7 @@ import {
 } from "../types/common.js";
 import {
   type DaemonPhase,
+  type DaemonRequest,
   type DaemonResponse,
   daemonIncarnation,
   type HoldResponse,
@@ -18,17 +19,29 @@ import {
   type SyncReaders,
   type SyncResponse,
 } from "../types/daemon.js";
-import type { ImportOutcome, ImportRequest, SentBatch } from "../types/daemon-writes.js";
+import type {
+  ImportOutcome,
+  ImportRequest,
+  KeepOutcome,
+  KeepRequest,
+  SentBatch,
+} from "../types/daemon-writes.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { FullSuiteCheckpoint, FullSuiteRequest } from "../types/scheduler.js";
-import { ImportDesk } from "./import-desk.js";
 import { errorResponse } from "./protocol.js";
+import { RequestDesk } from "./request-desk.js";
 import { type GroupRequested, groupRequests, type Held, type MainStep } from "./run-group.js";
 import { SLOW_NOT_SUPPORTED, type SlowSuiteRequested } from "./run-slow.js";
 import type { DaemonHandler } from "./server.js";
 import { isNewerVersion } from "./version.js";
 import { WriteDesk } from "./write-desk.js";
-import { isImportRequest, isWriteRequest } from "./write-protocol.js";
+import {
+  type ImportRequests,
+  isImportRequest,
+  isKeepRequest,
+  isWriteRequest,
+  type KeepRequests,
+} from "./write-protocol.js";
 
 /**
  * `run-all`, `run-slow`, `run-group` and `sync` requests remembered for
@@ -140,6 +153,12 @@ export interface HandlerContext {
    * the store itself.
    */
   readonly requestImport?: (request: ImportRequest) => Promise<ImportOutcome>;
+  /**
+   * Row 021-20, part two: one try of one write of a file the code gate
+   * keeps, in the daemon's retried path. Absent, or without `storeSchema`:
+   * this daemon answers that it takes no kept files.
+   */
+  readonly requestKeep?: (request: KeepRequest) => Promise<KeepOutcome>;
 }
 
 interface RunAllState {
@@ -179,11 +198,15 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
     requestWrite === undefined || storeSchema === undefined
       ? null
       : new WriteDesk({ worktreeId: context.worktreeId, storeSchema, requestWrite });
-  const { requestImport } = context;
+  const { requestImport, requestKeep, worktreeId } = context;
   const imports =
     requestImport === undefined || storeSchema === undefined
       ? null
-      : new ImportDesk({ worktreeId: context.worktreeId, storeSchema, requestImport });
+      : new RequestDesk({ type: "import", worktreeId, storeSchema, run: requestImport });
+  const keeps =
+    requestKeep === undefined || storeSchema === undefined
+      ? null
+      : new RequestDesk({ type: "keep", worktreeId, storeSchema, run: requestKeep });
   const runAll = (requestId: string, state: RunAllState): RunAllResponse => {
     const answer = {
       schemaVersion: PAYLOAD_SCHEMA_VERSION,
@@ -229,9 +252,7 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
     if (isWriteRequest(request)) {
       return writes?.answer(request, context.phase()) ?? errorResponse(NO_WRITES);
     }
-    if (isImportRequest(request)) {
-      return imports?.answer(request, context.phase()) ?? errorResponse(NO_IMPORTS);
-    }
+    if (isDeskRequest(request)) return deskAnswer(request, { imports, keeps }, context.phase());
     switch (request.type) {
       case "ping":
         return {
@@ -395,7 +416,33 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
 }
 
 const NO_WRITES = "this daemon takes no writes";
+/** Row 021-20: an import or a keep request, or how one goes, which a request desk answers. */
+function isDeskRequest(request: DaemonRequest): request is ImportRequests | KeepRequests {
+  return isImportRequest(request) || isKeepRequest(request);
+}
+
+/** Row 021-20: the answer to `request` from its desk, or that this daemon takes none. */
+function deskAnswer(
+  request: ImportRequests | KeepRequests,
+  desks: {
+    readonly imports: RequestDesk<"import", ImportRequest, ImportOutcome> | null;
+    readonly keeps: RequestDesk<"keep", KeepRequest, KeepOutcome> | null;
+  },
+  phase: DaemonPhase,
+): DaemonResponse {
+  const { imports, keeps } = desks;
+  if (isImportRequest(request)) {
+    if (imports === null) return errorResponse(NO_IMPORTS);
+    return request.type === "import"
+      ? imports.take(request, phase)
+      : imports.status(request.requestId);
+  }
+  if (keeps === null) return errorResponse(NO_KEEPS);
+  return request.type === "keep" ? keeps.take(request, phase) : keeps.status(request.requestId);
+}
+
 const NO_IMPORTS = "this daemon takes no imports";
+const NO_KEEPS = "this daemon takes no kept files";
 
 /** Remembers `requestId`; the oldest are dropped past `MAX_REQUESTS`. */
 function remember<T>(requests: Map<string, T>, requestId: string, state: T): void {

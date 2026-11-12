@@ -45,6 +45,7 @@ import { afterEachRun, EscapedChildren } from "./escaped.js";
 import { startFullCheck } from "./full-check.js";
 import { type GcFunction, IdleGc } from "./idle-gc.js";
 import { importInDaemon } from "./import-request.js";
+import { keepInDaemon } from "./keep-request.js";
 import { recordDaemonUsed } from "./last-use.js";
 import {
   type DaemonTimings,
@@ -975,6 +976,19 @@ class Daemon {
             "a hook's or command's writes",
             () => writeBatch(this.opened.store, decodeBatch(batch)),
             within(SENT_WRITE_BOUND_MS, () => this.#phase === "stopping"),
+          ),
+        // Row 021-20, part two: one try of a write of a file the code gate keeps.
+        requestKeep: (request) =>
+          keepInDaemon(
+            {
+              commonDir: this.opened.commonDir,
+              worktreeId: this.opened.worktreeId,
+              store: this.opened.store,
+              policy: () => this.#policy,
+              writes: this.#writes,
+              now: this.#now,
+            },
+            request,
           ),
         // Spec 021 D15 (row 021-20): `squeal import`'s export, imported here in slices.
         requestImport: (request) =>
