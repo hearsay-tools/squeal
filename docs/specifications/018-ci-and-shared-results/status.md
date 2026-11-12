@@ -110,6 +110,7 @@ Started: 2026-10-31
 - 2026-11-12, squawk#3358 merged (51087ab8b): a dispatch-only trial job for Squeal's packaged node:test suite (#194, spec 020 row 020-32); its trial run 43226175584 passed. squawk#3336 (Squeal's pinned Action + weekly Dependabot) merged earlier (cc3cead4b); its first merge-group run exported 1,484 test files and published refs/squeal/cc3cead4b.
 - 2026-11-12, the human: "Next: 1: measure the saving, 2: why 150 files are left out, 3: daemon test flake, 4: Action warning to stderr": rows 018-39 and 018-40 (research), 018-41 and 018-42 (brief `tasks/wave-17.md`).
 - 2026-11-12, the human: "Rows: A: recording faults, B: first-importer fix, C: week-long measurement": rows 018-43, 018-44, 018-45 (brief `tasks/wave-18.md`). D9 stays as it is (cause C of `research/left-out-files.md` not taken). 0.1.455 (rows 018-41, 018-42) landed on main 04205d685.
+- 2026-11-12, released 0.1.455 (tag squeal--v0.1.455 at 04205d685, hub 908c0f5; tags v0.1.455 and v0 moved). Main CI 43254392193 passed on attempt 2; attempt 1 failed only `tier-yields-kept` (row 011-301, a known flake).
 
 ## Open questions
 
