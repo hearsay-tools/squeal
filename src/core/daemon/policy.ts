@@ -11,6 +11,7 @@ import {
   positiveInteger,
   type Shape,
 } from "./config-file.js";
+import { hostIdleMinutes } from "./host-idle.js";
 import { checkGroups } from "./policy-checks.js";
 import { settleChecks } from "./policy-checks-settle.js";
 import { CODE_SHAPE } from "./policy-code.js";
@@ -85,6 +86,8 @@ const SHAPE: Shape = {
     tierSize: positiveInteger,
     backlogTierSize: positiveInteger,
     timeoutMs: orNull(positiveInteger),
+    // Spec 021 D20.4 (row 021-26).
+    hostIdleMinutes: orNull(hostIdleMinutes),
   },
   nodeTest: (v) => nodeTestProjects(v, "nodeTest"),
   pytest: (v) => pytestProjects(v, "pytest"),

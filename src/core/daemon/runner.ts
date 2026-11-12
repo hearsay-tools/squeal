@@ -6,7 +6,14 @@ import { isRecord } from "../fs/json.js";
 import type { AbsolutePath } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { Policy } from "../types/policy.js";
-import type { InvalidatedPath, InvalidateResult, RunnerAdapter } from "../types/runner.js";
+import type {
+  InvalidatedPath,
+  InvalidateResult,
+  RunnerAdapter,
+  RunnerEnvironment,
+} from "../types/runner.js";
+import { POLICY_FILE } from "./policy.js";
+import { driftedProjects, IdleClock } from "./runner-idle.js";
 
 export interface RecoveringRunnerOptions {
   readonly name: string;
@@ -38,6 +45,16 @@ export interface RecoveringRunnerOptions {
    * reports every project recreated. Absent: an adapter lives until `close`.
    */
   readonly gone?: (adapter: RunnerAdapter) => boolean;
+  /**
+   * Spec 021 D20 (row 021-26): milliseconds after which an adapter with no
+   * call in flight, and none started, is closed, read each time the clock
+   * starts (`IdleClock`); `0` keeps it. A planned close is not `gone`: no
+   * check becomes `unknown`, no note is written, the next call creates a new
+   * adapter, and the first `invalidate` after reports only the projects that
+   * adapter recreates for the batch, or whose environment it answers
+   * differently (`driftedProjects`). Absent: never closed when idle.
+   */
+  readonly idleMs?: () => number;
 }
 
 /** A runner whose creation may fail and be retried. */
@@ -74,7 +91,24 @@ export function createRecoveringRunner(options: RecoveringRunnerOptions): Recove
   let closed = false;
   // Spec 021 D7: a gone adapter was dropped, and no `invalidate` has re-keyed since.
   let replaced = false;
+  // Spec 021 D20.3: an idle adapter was closed, and no `invalidate` has reported since.
+  let parked: Parked | null = null;
+  // D20.3: the environment `inner` last answered, which the scheduler keyed.
+  let answered: readonly RunnerEnvironment[] | null = null;
   const around = options.around ?? ((call) => call());
+
+  /** Spec 021 D20.2: closes an idle adapter. No crash: nothing is replaced. */
+  const park = () => {
+    const current = live();
+    if (current === null || closed) return;
+    inner = null;
+    parked = { last: current, environment: answered ?? parked?.environment ?? null };
+    answered = null;
+    current.close().catch(() => {});
+  };
+  const clock = new IdleClock(options.idleMs ?? (() => 0), park);
+  // D20.1: the synchronous members answer from the adapter closed when idle until another exists.
+  const values = (): RunnerAdapter | null => inner ?? parked?.last ?? null;
 
   /** `inner`, unless it is gone: then it is closed and dropped. */
   const live = (): RunnerAdapter | null => {
@@ -97,6 +131,7 @@ export function createRecoveringRunner(options: RecoveringRunnerOptions): Recove
           throw new Error(`${options.name} adapter: closed`);
         }
         inner = created;
+        answered = null;
         if (error !== null) options.onRecovered?.();
         error = null;
         reported = null;
@@ -123,16 +158,51 @@ export function createRecoveringRunner(options: RecoveringRunnerOptions): Recove
     throw error;
   };
 
+  /** A call that reaches the adapter, in flight on the idle clock (D20.2). */
+  const call = <T>(work: (adapter: RunnerAdapter) => Promise<T>): Promise<T> =>
+    around(async () => {
+      clock.begin(true);
+      try {
+        return await work(await adapter());
+      } finally {
+        clock.end();
+      }
+    });
+
+  /**
+   * Spec 021 D20.3: the first batch after a planned close, as the adapter
+   * that followed it hears it. It reports what it recreates for these paths,
+   * a config file's project; beyond that, only the projects whose
+   * environment moved while no adapter was there to see it.
+   */
+  const reopened = async (
+    fresh: RunnerAdapter,
+    was: Parked,
+    paths: readonly InvalidatedPath[],
+  ): Promise<InvalidateResult> => {
+    const heard = await fresh.invalidate(paths);
+    const policy = paths.some((p) => p.path === POLICY_FILE);
+    const now =
+      was.environment === null && !policy ? null : await fresh.environment().catch(() => null);
+    if (now !== null && fresh === inner) answered = now;
+    parked = null;
+    const drifted = driftedProjects(was.environment, now, policy);
+    return { recreatedProjects: [...new Set([...heard.recreatedProjects, ...drifted])].sort() };
+  };
+
   return {
     name: options.name,
     adapterVersion: options.adapterVersion,
     open: () =>
       around(async () => {
+        clock.begin(true);
         try {
           await adapter();
           return true;
         } catch {
           return false;
+        } finally {
+          clock.end();
         }
       }),
     retry() {
@@ -140,46 +210,76 @@ export function createRecoveringRunner(options: RecoveringRunnerOptions): Recove
     },
     invalidate: (paths: readonly InvalidatedPath[]) =>
       around(async (): Promise<InvalidateResult> => {
-        const current = live();
-        if (closed || (current !== null && !replaced)) return (await adapter()).invalidate(paths);
-        // A failed creation retries at each batch. A new adapter, made here or since a gone one
-        // was dropped (spec 021 D7), is a new instance: every project is recreated.
-        if (current === null) retry = true;
-        replaced = false;
-        const fresh = await adapter();
-        if (current !== null) await fresh.invalidate(paths);
-        return { recreatedProjects: await projectsOf(fresh) };
+        clock.begin(true);
+        try {
+          const current = live();
+          // Spec 021 D20.3: the batch goes to the next adapter now, as every batch's `affected` would.
+          if (!closed && !replaced && parked !== null && (current !== null || error === null)) {
+            return await reopened(current ?? (await adapter()), parked, paths);
+          }
+          if (closed || (current !== null && !replaced)) {
+            return await (await adapter()).invalidate(paths);
+          }
+          // A failed creation retries at each batch. A new adapter, made here or since a gone one
+          // was dropped (spec 021 D7), is a new instance: every project is recreated.
+          if (current === null) retry = true;
+          replaced = false;
+          parked = null;
+          const fresh = await adapter();
+          if (current !== null) await fresh.invalidate(paths);
+          return { recreatedProjects: await projectsOf(fresh) };
+        } finally {
+          clock.end();
+        }
       }),
-    // Task 007-26: a recheck is no batch, so it never retries a failed creation.
+    // Task 007-26: a recheck is no batch, so it never retries a failed creation, nor reopens a
+    // closed adapter, and it does not hold an idle one up (spec 021 D20.2).
     recheck: () =>
       around(async (): Promise<InvalidateResult> => {
         const current = live();
         if (current === null || closed) return { recreatedProjects: [] };
-        return (await current.recheck?.()) ?? { recreatedProjects: [] };
+        clock.begin(false);
+        try {
+          return (await current.recheck?.()) ?? { recreatedProjects: [] };
+        } finally {
+          clock.end();
+        }
       }),
-    affected: (changedPaths) => around(async () => (await adapter()).affected(changedPaths)),
-    closure: (testFile: TestFileRef) => around(async () => (await adapter()).closure(testFile)),
-    enumerate: (testFile: TestFileRef) => around(async () => (await adapter()).enumerate(testFile)),
-    testFiles: () => around(async () => (await adapter()).testFiles()),
-    omittedTestFiles: () => inner?.omittedTestFiles?.() ?? 0,
-    slowWidth: (testFiles) => inner?.slowWidth?.(testFiles) ?? testFiles.length,
+    affected: (changedPaths) => call((a) => a.affected(changedPaths)),
+    closure: (testFile: TestFileRef) => call((a) => a.closure(testFile)),
+    enumerate: (testFile: TestFileRef) => call((a) => a.enumerate(testFile)),
+    testFiles: () => call((a) => a.testFiles()),
+    omittedTestFiles: () => values()?.omittedTestFiles?.() ?? 0,
+    slowWidth: (testFiles) => values()?.slowWidth?.(testFiles) ?? testFiles.length,
     tierWidth: (testFile, grant) =>
-      options.tierWidth?.(testFile, grant) ?? inner?.tierWidth?.(testFile, grant) ?? grant,
-    tierPart: (testFile) => inner?.tierPart?.(testFile) ?? "",
+      options.tierWidth?.(testFile, grant) ?? values()?.tierWidth?.(testFile, grant) ?? grant,
+    tierPart: (testFile) => values()?.tierPart?.(testFile) ?? "",
     besideBacklog: () => options.besideBacklog === true,
     backlogSlot: () => options.backlogSlot ?? null,
     ...(options.focuses === true ? { focuses: true as const } : {}),
-    environment: () => around(async () => (await adapter()).environment()),
-    run: (testFiles, runOptions) =>
-      around(async () => (await adapter()).run(testFiles, runOptions)),
+    environment: () =>
+      call(async (a) => {
+        const answer = await a.environment();
+        if (a === inner) answered = answer;
+        return answer;
+      }),
+    run: (testFiles, runOptions) => call((a) => a.run(testFiles, runOptions)),
     close: () =>
       around(async () => {
         if (closed) return;
         closed = true;
+        clock.stop();
+        parked = null;
         await creating?.catch(() => {});
         await inner?.close();
       }),
   };
+}
+
+/** Spec 021 D20: an adapter closed when idle, and the environment the scheduler keyed from it. */
+interface Parked {
+  readonly last: RunnerAdapter;
+  readonly environment: readonly RunnerEnvironment[] | null;
 }
 
 /** Every project of `adapter`, sorted: what a new instance reports recreated. */
