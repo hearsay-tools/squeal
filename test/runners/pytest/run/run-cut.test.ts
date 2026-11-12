@@ -249,4 +249,29 @@ describe("runPytest once the checkout holding its store is gone (row 018-38)", (
     expect(report.failure).toContain(logDir);
     expect(existsSync(checkout)).toBe(false);
   });
+
+  // Review 0.1.449 B1: a folder made again holds none of the records the run wrote before.
+  it("reports nothing of a run whose log folder was removed and made again while it ran", async () => {
+    const store = join(root, "remade", randomUUID(), ".git", "squeal");
+    mkdirSync(store, { recursive: true });
+    const logDir = join(store, "runs", randomUUID(), "pytest", "cut");
+    const stop = new AbortController();
+    const running = runPytest({
+      root,
+      project,
+      environment,
+      files: refs,
+      logDir: logDir as AbsolutePath,
+      timeoutMs: null,
+      cacheDir: join(root, "cache") as AbsolutePath,
+      signal: stop.signal,
+    });
+    await ready(logDir);
+    rmSync(logDir, { recursive: true });
+    mkdirSync(logDir);
+    stop.abort();
+    const { report } = await running;
+    expect(report).toMatchObject({ end: "crashed", completedFiles: [], results: [] });
+    expect(report.failure).toContain(logDir);
+  });
 });
