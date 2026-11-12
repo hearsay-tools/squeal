@@ -1,0 +1,216 @@
+{
+  "schemaVersion": 1,
+  "available": true,
+  "worktreeId": "5594c50fda771a29",
+  "worktreeRoot": "/home/agent/projects/squeal/.ai/cezar/t/9de32fd5/issue-204/repo",
+  "revision": 1,
+  "commit": {
+    "head": "94b19ce2296251d025e694afd9f8905fa11d7fcc",
+    "sinceHead": 1,
+    "dirty": false
+  },
+  "counts": {
+    "current": 2,
+    "pending": 22,
+    "stale": 0,
+    "unknown": 0
+  },
+  "fileLevelCounts": {
+    "current": 1,
+    "pending": 11,
+    "stale": 0,
+    "unknown": 0
+  },
+  "testFilesWithoutChecks": {
+    "pending": 0,
+    "unknown": 0
+  },
+  "testFileCounts": {
+    "current": 1,
+    "pending": 11,
+    "stale": 0,
+    "unknown": 0
+  },
+  "testFilesByPhase": {
+    "running": 11,
+    "queued": 0
+  },
+  "testsByPhase": {
+    "running": 11,
+    "queued": 0
+  },
+  "fullSuite": {
+    "atCurrentRevision": false,
+    "lastCompletedRevision": 0
+  },
+  "testFilesListed": true,
+  "inheritedCount": 0,
+  "inheritedFileLevelCount": 0,
+  "refinedRevision": 1,
+  "runnerPartPending": false,
+  "head": "94b19ce2296251d025e694afd9f8905fa11d7fcc",
+  "dirty": false,
+  "dirtyObservedAt": 1,
+  "daemon": {
+    "state": "alive",
+    "lastHeartbeatAt": 1794522317903
+  },
+  "knownFailures": [],
+  "knownFailureCounts": {
+    "current": 0,
+    "pending": 0,
+    "stale": 0
+  },
+  "inherited": {
+    "count": 0,
+    "sources": []
+  },
+  "breakdown": {
+    "currentByOutcome": {
+      "pass": 2,
+      "fail": 0,
+      "skip": 0,
+      "unknown": 0
+    },
+    "pendingByPhase": {
+      "queued": 0,
+      "running": 22
+    },
+    "fileLevelByOutcome": {
+      "pass": 1,
+      "fail": 0,
+      "skip": 0,
+      "unknown": 0
+    },
+    "fileLevelByPhase": {
+      "queued": 0,
+      "running": 11
+    },
+    "testFiles": 12,
+    "testFilesWithoutChecks": 0,
+    "testFilesWithoutChecksRunning": 0
+  },
+  "closureMethod": "static imports plus declared inputs",
+  "storeSchemaVersion": 1,
+  "notes": [],
+  "daemonNotes": [
+    {
+      "at": 1794522318668,
+      "revision": 0,
+      "text": "node_modules/.pnpm/lock.yaml does not describe the installed packages (missing: test/fixtures/lint/toolchain/node_modules/typescript and 1 more); dependencies are keyed by their package.json files until pnpm rewrites it"
+    }
+  ],
+  "runsOpen": 1,
+  "outstanding": [
+    {
+      "standing": {
+        "kind": "running",
+        "lane": "vitest",
+        "since": 1794522320643,
+        "files": 11,
+        "ended": 4
+      },
+      "files": [
+        {
+          "project": "",
+          "path": "test/m01.test.ts"
+        },
+        {
+          "project": "",
+          "path": "test/m02.test.ts"
+        },
+        {
+          "project": "",
+          "path": "test/m03.test.ts"
+        },
+        {
+          "project": "",
+          "path": "test/m04.test.ts"
+        },
+        {
+          "project": "",
+          "path": "test/m05.test.ts"
+        },
+        {
+          "project": "",
+          "path": "test/m06.test.ts"
+        },
+        {
+          "project": "",
+          "path": "test/m07.test.ts"
+        },
+        {
+          "project": "",
+          "path": "test/m08.test.ts"
+        },
+        {
+          "project": "",
+          "path": "test/m09.test.ts"
+        },
+        {
+          "project": "",
+          "path": "test/m10.test.ts"
+        },
+        {
+          "project": "",
+          "path": "test/m11.test.ts"
+        }
+      ]
+    }
+  ],
+  "pendingTestFiles": {
+    "running": {
+      "files": [
+        {
+          "project": "",
+          "path": "test/m01.test.ts"
+        },
+        {
+          "project": "",
+          "path": "test/m02.test.ts"
+        },
+        {
+          "project": "",
+          "path": "test/m03.test.ts"
+        },
+        {
+          "project": "",
+          "path": "test/m04.test.ts"
+        },
+        {
+          "project": "",
+          "path": "test/m05.test.ts"
+        },
+        {
+          "project": "",
+          "path": "test/m06.test.ts"
+        },
+        {
+          "project": "",
+          "path": "test/m07.test.ts"
+        },
+        {
+          "project": "",
+          "path": "test/m08.test.ts"
+        },
+        {
+          "project": "",
+          "path": "test/m09.test.ts"
+        },
+        {
+          "project": "",
+          "path": "test/m10.test.ts"
+        },
+        {
+          "project": "",
+          "path": "test/m11.test.ts"
+        }
+      ],
+      "omitted": 0
+    },
+    "queued": {
+      "files": [],
+      "omitted": 0
+    }
+  }
+}

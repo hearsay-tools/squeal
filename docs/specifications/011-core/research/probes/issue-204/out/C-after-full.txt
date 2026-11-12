@@ -1,0 +1,12 @@
+Revision: 3 · d4cc1fd2 + 0
+Known failures: 0; all 12 test files current
+Affected checks: 24 passed (12 tests, 12 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 3; `squeal run --all` requests one)
+
+Worktree: /home/agent/projects/squeal/.ai/cezar/t/9de32fd5/issue-204/repo (HEAD d4cc1fd, clean at revision 3)
+Daemon: running, last heartbeat 1 s ago
+Inherited from other worktrees: none (every current result here was run in this worktree)
+Closure method: static imports plus declared inputs
+Store schema: 1
+Notes:
+  2026-11-12T22:25:18.668Z, revision 0: node_modules/.pnpm/lock.yaml does not describe the installed packages (missing: test/fixtures/lint/toolchain/node_modules/typescript and 1 more); dependencies are keyed by their package.json files until pnpm rewrites it

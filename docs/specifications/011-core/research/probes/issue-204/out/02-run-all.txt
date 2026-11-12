@@ -1,0 +1,8 @@
+Checkpoint ab97f57b-8aa5-4ff8-b34e-8d1bb777c95a completed at revision 0: no known failures; 12 test files, 0 already current, 12 run now
+Checkpoint ab97f57b-8aa5-4ff8-b34e-8d1bb777c95a started at revision 0: 12 test files to run, 0 already current
+
+Revision: 0
+Known failures: 0; all 12 test files current
+Affected checks: 24 passed (12 tests, 12 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: completed at revision 0
+More: `squeal status --full` adds the worktree and daemon and 2 notes

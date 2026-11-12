@@ -1,0 +1,1 @@
+Squeal daemon stopped for /home/agent/projects/squeal/.ai/cezar/t/9de32fd5/issue-204/repo; `squeal stop --until-start` keeps it stopped through edits and Git operations

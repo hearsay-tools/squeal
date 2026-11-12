@@ -1,0 +1,115 @@
+{
+  "schemaVersion": 1,
+  "available": true,
+  "worktreeId": "5594c50fda771a29",
+  "worktreeRoot": "/home/agent/projects/squeal/.ai/cezar/t/9de32fd5/issue-204/repo",
+  "revision": 2,
+  "commit": {
+    "head": "8356a57bccc6cfb3bfb24eab122ef64edc113ea7",
+    "sinceHead": 0,
+    "dirty": false
+  },
+  "counts": {
+    "current": 24,
+    "pending": 0,
+    "stale": 0,
+    "unknown": 0
+  },
+  "fileLevelCounts": {
+    "current": 12,
+    "pending": 0,
+    "stale": 0,
+    "unknown": 0
+  },
+  "testFilesWithoutChecks": {
+    "pending": 0,
+    "unknown": 0
+  },
+  "testFileCounts": {
+    "current": 12,
+    "pending": 0,
+    "stale": 0,
+    "unknown": 0
+  },
+  "testFilesByPhase": {
+    "running": 0,
+    "queued": 0
+  },
+  "testsByPhase": {
+    "running": 0,
+    "queued": 0
+  },
+  "fullSuite": {
+    "atCurrentRevision": false,
+    "lastCompletedRevision": 0
+  },
+  "testFilesListed": true,
+  "inheritedCount": 0,
+  "inheritedFileLevelCount": 0,
+  "refinedRevision": 2,
+  "runnerPartPending": false,
+  "head": "8356a57bccc6cfb3bfb24eab122ef64edc113ea7",
+  "dirty": false,
+  "dirtyObservedAt": 2,
+  "daemon": {
+    "state": "alive",
+    "lastHeartbeatAt": 1794522332908
+  },
+  "knownFailures": [],
+  "knownFailureCounts": {
+    "current": 0,
+    "pending": 0,
+    "stale": 0
+  },
+  "inherited": {
+    "count": 0,
+    "sources": []
+  },
+  "breakdown": {
+    "currentByOutcome": {
+      "pass": 24,
+      "fail": 0,
+      "skip": 0,
+      "unknown": 0
+    },
+    "pendingByPhase": {
+      "queued": 0,
+      "running": 0
+    },
+    "fileLevelByOutcome": {
+      "pass": 12,
+      "fail": 0,
+      "skip": 0,
+      "unknown": 0
+    },
+    "fileLevelByPhase": {
+      "queued": 0,
+      "running": 0
+    },
+    "testFiles": 12,
+    "testFilesWithoutChecks": 0,
+    "testFilesWithoutChecksRunning": 0
+  },
+  "closureMethod": "static imports plus declared inputs",
+  "storeSchemaVersion": 1,
+  "notes": [],
+  "daemonNotes": [
+    {
+      "at": 1794522318668,
+      "revision": 0,
+      "text": "node_modules/.pnpm/lock.yaml does not describe the installed packages (missing: test/fixtures/lint/toolchain/node_modules/typescript and 1 more); dependencies are keyed by their package.json files until pnpm rewrites it"
+    }
+  ],
+  "runsOpen": 0,
+  "outstanding": [],
+  "pendingTestFiles": {
+    "running": {
+      "files": [],
+      "omitted": 0
+    },
+    "queued": {
+      "files": [],
+      "omitted": 0
+    }
+  }
+}

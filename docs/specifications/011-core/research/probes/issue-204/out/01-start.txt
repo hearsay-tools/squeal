@@ -1,0 +1,9 @@
+Squeal daemon spawned for /home/agent/projects/squeal/.ai/cezar/t/9de32fd5/issue-204/repo
+
+Revision: 0
+Known failures: 0; the daemon has not listed this worktree's test files yet
+Affected checks: none counted; the daemon has not listed this worktree's test files yet
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+Outstanding:
+  the daemon is still listing this worktree's test files; `squeal status --wait 60000` waits for it
+More: `squeal status --full` adds the worktree and daemon and 1 note
