@@ -71014,8 +71014,13 @@ function createHostAdmission(open7, holdMs = ADMITTED_HOLD_MS) {
   const drop2 = () => {
     if (held3 === null) return;
     clearTimeout(held3.timer);
-    held3.lease.release();
+    if (held3.lease !== UNGRANTED) held3.lease.release();
     held3 = null;
+  };
+  const hold = (lease) => {
+    const timer = setTimeout(drop2, holdMs);
+    timer.unref();
+    held3 = { lease, timer };
   };
   return {
     admit({ want, least }) {
@@ -71029,12 +71034,11 @@ function createHostAdmission(open7, holdMs = ADMITTED_HOLD_MS) {
         });
         lease = pool.acquire(want, "fast", least, "backlog");
       } catch (error) {
+        hold(UNGRANTED);
         return { grant: want, failed: error instanceof Error ? error.message : String(error) };
       }
       if (lease === null) return refusal2 === void 0 ? { grant: 0 } : { grant: 0, refusal: refusal2 };
-      const timer = setTimeout(drop2, holdMs);
-      timer.unref();
-      held3 = { lease: widthLease(lease, want), timer };
+      hold(widthLease(lease, want));
       return { grant: lease.grant };
     },
     claim() {
@@ -71107,7 +71111,7 @@ function notStarted() {
     failure: "cancelled while it waited for permits"
   };
 }
-var ADMITTED_HOLD_MS, ADMIT_EVERY_MS;
+var UNGRANTED, ADMITTED_HOLD_MS, ADMIT_EVERY_MS;
 var init_admission = __esm({
   "src/core/runner-host/remote/admission.ts"() {
     "use strict";
@@ -71115,6 +71119,7 @@ var init_admission = __esm({
     init_user_config();
     init_capacity();
     init_slot();
+    UNGRANTED = "ungranted";
     ADMITTED_HOLD_MS = 3e4;
     ADMIT_EVERY_MS = 2e3;
   }
@@ -71266,24 +71271,8 @@ function withRemoteLane(options) {
         down(unequal.join("; "), true, host);
         return "refused";
       }
-      const grant = await admitRun((ask2) => host.admit(ask2), testFiles3, run7, {
-        tierWidth: (file, grant2) => local2.tierWidth?.(file, grant2) ?? grant2,
-        everyMs: options.admitEveryMs ?? ADMIT_EVERY_MS,
-        log: (line) => options.log(`remote ${target}: ${line}`)
-      }).catch((error) => error);
-      if (grant instanceof Error) {
-        down(runnerHostGone(host.adapter) ? "the host ended" : grant.message, false, host);
-        return { lost: lostReport(testFiles3) };
-      }
-      if (grant === null) return { cancelled: notStarted() };
-      const expected = await blobsHere(inputs2);
-      const { permits: _permits, ...sent } = run7;
-      const reply = await host.adapter.run(testFiles3, {
-        ...sent,
-        workers: grant,
-        expected,
-        admitted: true
-      });
+      const reply = await admittedRun(host, testFiles3, run7, inputs2);
+      if ("lost" in reply || "cancelled" in reply) return reply;
       if (runnerHostGone(host.adapter)) {
         down(reply.failure ?? "the host ended", false);
         return { lost: stripped(reply) };
@@ -71303,6 +71292,36 @@ function withRemoteLane(options) {
       `remote ${target}: refused a run whose tree stayed different; ${options.whenLost === "local" ? "ran it here" : "not run"}`
     );
     return "refused";
+  };
+  const admittedRun = async (host, testFiles3, run7, inputs2) => {
+    for (let late = 1; ; late++) {
+      const grant = await admitRun((ask2) => host.admit(ask2), testFiles3, run7, {
+        tierWidth: (file, grant2) => local2.tierWidth?.(file, grant2) ?? grant2,
+        everyMs: options.admitEveryMs ?? ADMIT_EVERY_MS,
+        log: (line) => options.log(`remote ${target}: ${line}`)
+      }).catch((error) => error);
+      if (grant instanceof Error) {
+        down(runnerHostGone(host.adapter) ? "the host ended" : grant.message, false, host);
+        return { lost: lostReport(testFiles3) };
+      }
+      if (grant === null) return { cancelled: notStarted() };
+      const expected = await blobsHere(inputs2);
+      const { permits: _permits, ...sent } = run7;
+      const reply = await host.adapter.run(testFiles3, {
+        ...sent,
+        workers: grant,
+        expected,
+        admitted: true
+      });
+      if (reply.unadmitted !== true) return reply;
+      if (late >= LATE_RUNS) {
+        down(`its machine's grant went back before the run came, ${LATE_RUNS} times`, false, host);
+        return { lost: lostReport(testFiles3) };
+      }
+      options.log(
+        `remote ${target}: its machine's grant went back before the run came; asking again`
+      );
+    }
   };
   const lostReport = (testFiles3) => ({
     end: "crashed",
@@ -71384,10 +71403,10 @@ function withRemoteLane(options) {
   };
 }
 function stripped(report4) {
-  const { refused: _refused, proof: _proof, ...rest2 } = report4;
+  const { refused: _refused, proof: _proof, unadmitted: _unadmitted, ...rest2 } = report4;
   return rest2;
 }
-var BACKOFF_MS2;
+var BACKOFF_MS2, LATE_RUNS;
 var init_lane = __esm({
   "src/core/runner-host/remote/lane.ts"() {
     "use strict";
@@ -71400,6 +71419,7 @@ var init_lane = __esm({
     init_tree2();
     init_tree_wire();
     BACKOFF_MS2 = [3e4, 6e4, 12e4, 3e5, 6e5];
+    LATE_RUNS = 3;
   }
 });
 
@@ -101574,7 +101594,10 @@ async function serveRunnerHost(options) {
   };
   const run7 = async (id, args2) => {
     const [files5, wire] = args2;
-    const lease = wire.admitted === true ? options.admission?.claim() ?? null : null;
+    const admission = wire.admitted === true ? options.admission : void 0;
+    const claimed = admission === void 0 ? "ungranted" : admission.claim();
+    if (claimed === null) return { unadmitted: true };
+    const lease = claimed === "ungranted" ? null : claimed;
     try {
       return await runOf3(
         id,
