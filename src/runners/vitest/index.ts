@@ -65,6 +65,13 @@ export interface VitestAdapterOptions {
    * writes nothing into the project. Absent: Vitest's own, as the daemon runs.
    */
   readonly cache?: false;
+  /**
+   * Spec 020 row 020-43: told each file of a run as Vitest queues it, when a
+   * worker starts to collect it (`onTestModuleQueued`); what it returns is
+   * called once the file's module ended, in any state. Absent, as in the
+   * daemon: none is told.
+   */
+  readonly fileStarted?: (testFile: TestFileRef) => () => void;
 }
 
 /**
@@ -88,6 +95,7 @@ export async function createVitestAdapter(
     options.exclude,
     options.coverage,
     options.cache,
+    options.fileStarted,
   );
   await adapter.open();
   return adapter;
@@ -119,6 +127,7 @@ class SizedVitestAdapter extends VitestAdapter implements WidthValues {
     excludeFiles?: () => readonly string[],
     coverage?: VitestCoverage,
     cache?: false,
+    started?: (testFile: TestFileRef) => () => void,
   ) {
     super(
       paths,
@@ -132,6 +141,7 @@ class SizedVitestAdapter extends VitestAdapter implements WidthValues {
       excludeFiles,
       coverage,
       cache,
+      started,
     );
     this.#widths = widths;
   }

@@ -49,6 +49,20 @@ export interface NodeTestRunOptions {
    * whose children take theirs too (020 D12); default none.
    */
   readonly covered?: (testFile: TestFileRef) => Covering;
+  /**
+   * Spec 020 D18 as amended (row 020-44): a pool of process slots the run
+   * shares with other runs. Before each file's process starts, the run takes
+   * a slot, and gives it back when the process exits; `concurrency` still
+   * bounds the run itself. The `signal` it gets is aborted at the deadline
+   * or a stop: it then resolves `null`, and the file does not start.
+   * Absent: only `concurrency` bounds the run.
+   */
+  readonly slots?: (signal: AbortSignal) => Promise<(() => void) | null>;
+  /**
+   * Spec 020 row 020-43: told as each file's process starts; what it returns
+   * is called once that process exited, in any state. Absent: none is told.
+   */
+  readonly fileStarted?: (testFile: TestFileRef) => () => void;
 }
 
 /** A tier's report and, for each completed file, what its process loaded. */
@@ -152,7 +166,10 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
   let expired = false;
   let cancelled = false;
   const timers: NodeJS.Timeout[] = [];
+  // Ends a wait for a shared slot (`slots`): a file waiting for one when the run stops never starts.
+  const stopping = new AbortController();
   const stopAll = () => {
+    stopping.abort();
     for (const group of running) group.kill("SIGTERM");
     timers.push(
       setTimeout(() => {
@@ -185,27 +202,39 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
       run !== undefined && !expired && !cancelled && ours();
       run = queue.shift()
     ) {
-      const group = startGroup({
-        command: node,
-        args: run.args,
-        argv0,
-        cwd,
-        env: {
-          ...(reads === null ? env : reads.env(env, run.absolute)),
-          ...(run.coverage === null
-            ? {}
-            : coverageEnv(run.coverage, links.at(run.index), run.covering)),
-          SQUEAL_NODE_TEST_GRAPH: join(options.logDir, `graph-${run.index}`),
-        },
-        stdout: join(options.logDir, `stdout-${run.index}.log`),
-        stderr: join(options.logDir, `stderr-${run.index}.log`),
-      });
-      running.add(group);
-      run.exit = await group.exited;
-      // This runs in the exit's own turn, so a stop or deadline flag set by now came while the
-      // process ran, and `stopAll` signalled it.
-      run.signalled = expired || cancelled;
-      running.delete(group);
+      const slot = options.slots === undefined ? () => {} : await options.slots(stopping.signal);
+      if (slot === null) break;
+      if (expired || cancelled || !ours()) {
+        slot();
+        break;
+      }
+      const ended = options.fileStarted?.(run.testFile);
+      try {
+        const group = startGroup({
+          command: node,
+          args: run.args,
+          argv0,
+          cwd,
+          env: {
+            ...(reads === null ? env : reads.env(env, run.absolute)),
+            ...(run.coverage === null
+              ? {}
+              : coverageEnv(run.coverage, links.at(run.index), run.covering)),
+            SQUEAL_NODE_TEST_GRAPH: join(options.logDir, `graph-${run.index}`),
+          },
+          stdout: join(options.logDir, `stdout-${run.index}.log`),
+          stderr: join(options.logDir, `stderr-${run.index}.log`),
+        });
+        running.add(group);
+        run.exit = await group.exited;
+        // This runs in the exit's own turn, so a stop or deadline flag set by now came while the
+        // process ran, and `stopAll` signalled it.
+        run.signalled = expired || cancelled;
+        running.delete(group);
+      } finally {
+        ended?.();
+        slot();
+      }
       run.stream = readFileStream(
         { testFile: run.testFile, arg: run.arg, events: readEvents(options.logDir, run.index) },
         paths,

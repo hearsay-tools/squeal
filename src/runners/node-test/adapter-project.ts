@@ -165,6 +165,8 @@ export async function openProject(context: ProjectContext): Promise<RunnerAdapte
         ...(runOptions.observeIgnored === true ? { observeIgnored: true } : {}),
         ...(runOptions.stop === undefined ? {} : { signal: runOptions.stop }),
         ...(covered === undefined ? {} : { covered }),
+        ...(options.slots === undefined ? {} : { slots: options.slots }),
+        ...(options.fileStarted === undefined ? {} : { fileStarted: options.fileStarted }),
       });
       if (covered !== undefined) {
         const payloads = coveragePayloads(logDir, testFiles, ran.completedFiles);

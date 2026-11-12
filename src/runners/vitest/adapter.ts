@@ -160,6 +160,8 @@ export class VitestAdapter implements RunnerAdapter {
   readonly #coverage: VitestCoverage | undefined;
   /** Spec 020 D3.5: `false`, Vitest writes no results cache; absent, the config's own. */
   readonly #cache: false | undefined;
+  /** Spec 020 row 020-43: told each run's file as it starts (`RunCollector.started`); absent, none. */
+  readonly #started: ((testFile: TestFileRef) => () => void) | undefined;
   /** Whether the current instance started with coverage on, as policy had it then. */
   #coverageOn = false;
   /** The current instance's coverage; `null` with coverage off. */
@@ -184,7 +186,9 @@ export class VitestAdapter implements RunnerAdapter {
    * `excludeFiles` is policy `vitest.exclude`, read at each start too (spec
    * 004 D7, task 004-81). `coverage` collects coverage in each run while it
    * is enabled (spec 015 D8, row 015-11). `cache` false writes no results
-   * cache into the project (spec 020 D3.5, row 020-03).
+   * cache into the project (spec 020 D3.5, row 020-03). `started` hears each
+   * file of a run as it starts, and through what it returns as it ends (spec
+   * 020 row 020-43).
    */
   constructor(
     readonly paths: WorktreePaths,
@@ -198,9 +202,11 @@ export class VitestAdapter implements RunnerAdapter {
     excludeFiles: () => readonly string[] = () => [],
     coverage?: VitestCoverage,
     cache?: false,
+    started?: (testFile: TestFileRef) => () => void,
   ) {
     this.#coverage = coverage;
     this.#cache = cache;
+    this.#started = started;
     this.#exclude = exclude;
     this.#excludeFiles = excludeFiles;
     this.#node = vitest;
@@ -631,6 +637,7 @@ export class VitestAdapter implements RunnerAdapter {
           this.paths,
           options.fileEnded,
           options.checks,
+          this.#started,
         );
         if (specs.length === 0) {
           const empty = buildReport(collector, { end: "completed", failure: null, hung: false }, 0);

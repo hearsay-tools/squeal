@@ -7,6 +7,7 @@ import { projectEnvironment } from "./adapter-environment.js";
 import { projectCwd } from "./adapter-files.js";
 import { openProject, type ProjectContext, unavailable } from "./adapter-project.js";
 import type { NodeTestCoverage } from "./coverage.js";
+import type { NodeTestRunOptions } from "./run/run.js";
 import { NODE_TEST_ADAPTER_VERSION } from "./version.js";
 
 export { NODE_TEST_ADAPTER_VERSION };
@@ -45,6 +46,18 @@ export interface NodeTestAdapterOptions {
   readonly closures?: (files: readonly (readonly [RelativePath, readonly string[]])[]) => void;
   /** Spec 015 D8 (row 015-86): coverage in the runs the adapter makes anyway; absent, none. */
   readonly coverage?: NodeTestCoverage;
+  /**
+   * Spec 020 D18 as amended (row 020-44): the gate's pool of process slots,
+   * which every node:test entry's runs share (`NodeTestRunOptions.slots`).
+   * Absent, as in the daemon: only `concurrency` bounds a run.
+   */
+  readonly slots?: NodeTestRunOptions["slots"];
+  /**
+   * Spec 020 row 020-43: told as each file of a run starts, and through what
+   * it returns, as it ends (`NodeTestRunOptions.fileStarted`). Absent, as in
+   * the daemon: none is told.
+   */
+  readonly fileStarted?: NodeTestRunOptions["fileStarted"];
 }
 
 /**
