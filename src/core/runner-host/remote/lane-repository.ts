@@ -96,8 +96,7 @@ export function withoutFiles(report: RunReport, files: readonly TestFileRef[]): 
   const keptRefs = (list: readonly TestFileRef[] | undefined) =>
     list?.filter((file) => !gone.has(testFileId(file)));
   const { startupFailure, ...rest } = report;
-  const startupLeft =
-    startupFailure !== undefined && startupFailure.testFiles.some((f) => !gone.has(testFileId(f)));
+  const startupLeft = startupFailure?.testFiles.some((f) => !gone.has(testFileId(f))) === true;
   const optional = {
     fileDurations: kept(report.fileDurations),
     observed: kept(report.observed),
