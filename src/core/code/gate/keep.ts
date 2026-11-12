@@ -3,12 +3,11 @@ import { acquireDaemonLock } from "../../daemon/lock.js";
 import { worktreeIdFor } from "../../fs/git-layout.js";
 import type { Hasher } from "../../hash/hasher.js";
 import { testFileId } from "../../keys/reverse-index.js";
+import { keepDecisions, keeps, stillAsRead } from "../../run-evidence/run-evidence.js";
 import type { WorktreeKeys } from "../../scheduler/keying.js";
-import { observedGrowth } from "../../scheduler/observed.js";
-import { changedSince } from "../../scheduler/stability.js";
 import { isStoreOpenFailure, openStore } from "../../store/open.js";
 import { lockFileFor } from "../../store/paths.js";
-import type { AbsolutePath, CommitSha, EpochMs, RelativePath } from "../../types/common.js";
+import type { AbsolutePath, CommitSha, EpochMs } from "../../types/common.js";
 import type { CheckKey, TestFileRef } from "../../types/keys.js";
 import type { Policy } from "../../types/policy.js";
 import type { RunReport } from "../../types/runner.js";
@@ -36,10 +35,11 @@ import {
  * Spec 020 D17.3 (row 020-17c): the gate keeps each test file it ran to
  * completion, with its results and its coverage record, at the key a
  * daemon in the worktree gives it (D11.7), so the next run on the same
- * bytes, and a daemon, read it. It keeps a file as the daemon's tier
- * record stores one (`scheduler/store-decision.ts`, "store" at the key it
- * ran under): it completed, its inputs held still for the whole run, and
- * the run read nothing its key lacks. The rows are the daemon's own
+ * bytes, and a daemon, read it. It keeps a file only when the store
+ * decision of its run evidence is "store at the key it ran under"
+ * (`run-evidence/run-evidence.ts`, row 011-319): it completed, its inputs
+ * held still for the whole run, and the run read nothing its key lacks.
+ * The rows are the daemon's own
  * (`recordsForFile`, `storeResults`, `putParts`), written under the
  * daemon's worktree lock; while a daemon holds it, nothing is written.
  * D17.5 (row 020-28, #192): each run's files are queued, and written by
@@ -119,7 +119,7 @@ export class Keeper {
     try {
       const steady: Queued[] = [];
       for (const q of queued) {
-        const files = await steadyOf(q.files, q.pending);
+        const files = await stillAsRead(q.pending.snapshot, q.files, q.pending.hasher);
         if (files.length > 0) steady.push({ ...q, files });
       }
       left = steady.flatMap((q) => q.files).length;
@@ -152,13 +152,11 @@ export class Keeper {
   }
 
   /**
-   * The completed files with a record, whose run read nothing beyond their
-   * key (`observedGrowth`), loaded no environment file their project's
-   * keys lack, and whose inputs held still during it (`changedSince`): no
-   * input changed, and none was written and ended as it was. Review
-   * 0.1.433 B1: the second is the daemon's completion barrier
-   * (`barredByTouch`, task 001-168): the run may have read bytes its key
-   * does not name.
+   * The completed files with a record whose store decision is "store at
+   * the key it ran under" (`keepDecisions`): the run read nothing beyond
+   * their key, loaded no environment file their project's keys lack, and
+   * their inputs held still during it, none changed, and none written and
+   * ended as it was (review 0.1.433 B1, the daemon's completion barrier).
    */
   async #keepable(pending: Pending, run: GateRun): Promise<Kept[]> {
     const { report } = run;
@@ -169,21 +167,13 @@ export class Keeper {
       if (completed.has(id) && record !== null) candidates.push({ ...file, record });
     }
     if (candidates.length === 0) return [];
-    const { keys } = pending;
-    const grown = await observedGrowth({ root: this.#options.root, keys }, report, pending.run);
-    const paths = new Set(candidates.flatMap((c) => c.paths));
-    const moved = await changedSince(pending.snapshot, paths, pending.hasher);
-    const environment = new Set(
-      (report.environmentObserved ?? []).flatMap(({ project, paths: loaded }) => {
-        const keyed = new Set(keys.environmentFiles(project));
-        return loaded.some((path) => !keyed.has(path)) ? [project] : [];
-      }),
-    );
-    const unsteady = (path: RelativePath) => moved.changed.has(path) || moved.touched.has(path);
-    return candidates.filter(
-      (c) =>
-        !grown.has(testFileId(c.ref)) && !environment.has(c.ref.project) && !c.paths.some(unsteady),
-    );
+    const { keys, hasher, snapshot: before } = pending;
+    const sources = { root: this.#options.root, keys, hasher, run: pending.run, before };
+    const decided = await keepDecisions(sources, candidates, report);
+    return candidates.filter((c) => {
+      const at = decided.get(testFileId(c.ref));
+      return at !== undefined && keeps(at.decision);
+    });
   }
 
   /**
@@ -243,7 +233,8 @@ export class Keeper {
         };
         const stores = { store, keys: pending.keys, writer };
         for (const file of files) {
-          const steady = async () => (await steadyOf([file], pending)).length > 0;
+          const steady = async () =>
+            (await stillAsRead(pending.snapshot, [file], pending.hasher)).length > 0;
           const at = { file, report, provenance, databases, giveUp, check, steady };
           const outcome = await keepFile(stores, at);
           if (outcome === "spent") {
@@ -285,17 +276,6 @@ function openCode(commonDir: AbsolutePath, policy: Policy): CodeStore {
   const code = openCodeStore(commonDir, policy);
   if (isCodeStoreOpenFailure(code)) throw new Error(`the code store did not open: ${code.reason}`);
   return code;
-}
-
-/**
- * D17.5: the files of `files` none of whose inputs changed since
- * `pending`'s lookup, read again at the write; a file whose bytes moved
- * after its run is not kept, and the next run keys it anew.
- */
-async function steadyOf(files: readonly Kept[], pending: Pending): Promise<readonly Kept[]> {
-  const paths = new Set(files.flatMap((f) => f.paths));
-  const { changed } = await changedSince(pending.snapshot, paths, pending.hasher);
-  return files.filter((f) => !f.paths.some((path) => changed.has(path)));
 }
 
 function messageOf(error: unknown): string {

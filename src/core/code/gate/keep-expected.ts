@@ -1,8 +1,8 @@
 import type { Hasher } from "../../hash/hasher.js";
 import type { StatCache } from "../../hash/stat-cache.js";
 import { testFileId } from "../../keys/reverse-index.js";
+import { copyInputs } from "../../run-evidence/run-evidence.js";
 import type { WorktreeKeys } from "../../scheduler/keying.js";
-import { snapshotInputs } from "../../scheduler/stability.js";
 import type { RelativePath } from "../../types/common.js";
 import type { CheckKey, TestFileRef } from "../../types/keys.js";
 import type { GateRun } from "./collect.js";
@@ -59,7 +59,7 @@ export class Expectations {
     }
     if (files.size === 0) return;
     const paths = new Set([...files.values()].flatMap((f) => f.paths));
-    const snapshot = snapshotInputs(keys.cache, paths);
+    const snapshot = copyInputs(keys.cache, paths);
     const pending = { runner, keys, hasher, run: keys.beginRun(), snapshot, files };
     this.#open.add(pending);
     for (const id of files.keys()) this.#expected.set(expectationOf(runner, id), pending);
