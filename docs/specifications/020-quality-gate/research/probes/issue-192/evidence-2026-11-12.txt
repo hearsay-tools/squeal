@@ -1,0 +1,100 @@
+[issue-192] control first: {
+ "exit": 0,
+ "ms": 712,
+ "verdict": "pass",
+ "counts": {
+  "pass": 1,
+  "violation": 0,
+  "incomplete": 0,
+  "skipped": 0,
+  "accepted": 0
+ },
+ "stderr": "squeal code: node:test: 5 test files to run (tests 5)\nsqueal code: node:test: 5 test files to run here, up to 4 at once; no stored duration, so the time is unknown\n"
+}
+[issue-192] control second: {
+ "exit": 0,
+ "ms": 226,
+ "verdict": "pass",
+ "counts": {
+  "pass": 1,
+  "violation": 0,
+  "incomplete": 0,
+  "skipped": 0,
+  "accepted": 0
+ },
+ "from": {
+  "test/a.test.mjs": "store",
+  "test/b.test.mjs": "store",
+  "test/c.test.mjs": "store",
+  "test/d.test.mjs": "store",
+  "test/e.test.mjs": "store"
+ },
+ "stderr": "squeal code: node:test: 5 test files selected (tests 5): none to run, 5 read from the stores\nsqueal code: 5 of 5 selected test files read from the stores\n"
+}
+[issue-192] holders while held (parent pid 816456, child pid 817894): [
+ {
+  "pid": 817894,
+  "command": "node -e const { DatabaseSync } = require(\"node:sqlite\"); const db = new DatabaseSync(process.argv[1]); db.exec(\"BEGIN IMMEDIATE\"); process.stdout.write(\"held...",
+  "waiting": false
+ }
+]
+[issue-192] held first: {
+ "exit": 0,
+ "ms": 10853,
+ "verdict": "pass",
+ "counts": {
+  "pass": 1,
+  "violation": 0,
+  "incomplete": 0,
+  "skipped": 0,
+  "accepted": 0
+ },
+ "stderr": "squeal code: node:test: 5 test files to run (tests 5)\nsqueal code: node:test: 5 test files to run here, up to 4 at once; no stored duration, so the time is unknown\nsqueal code: 5 completed test files were not kept in the stores: the store stayed busy for 10 s (another connection held its write lock)\n"
+}
+[issue-192] held second (lock free): {
+ "exit": 0,
+ "ms": 1827,
+ "verdict": "pass",
+ "counts": {
+  "pass": 1,
+  "violation": 0,
+  "incomplete": 0,
+  "skipped": 0,
+  "accepted": 0
+ },
+ "stderr": "squeal code: node:test: 5 test files to run (tests 5)\nsqueal code: node:test: 5 test files to run here, up to 4 at once; no stored duration, so the time is unknown\n"
+}
+[issue-192] short first: {
+ "exit": 0,
+ "ms": 3507,
+ "verdict": "pass",
+ "counts": {
+  "pass": 1,
+  "violation": 0,
+  "incomplete": 0,
+  "skipped": 0,
+  "accepted": 0
+ },
+ "stderr": "squeal code: node:test: 5 test files to run (tests 5)\nsqueal code: node:test: 5 test files to run here, up to 4 at once; no stored duration, so the time is unknown\n",
+ "releasedAtMs": 3418
+}
+[issue-192] short second: {
+ "exit": 0,
+ "ms": 324,
+ "verdict": "pass",
+ "counts": {
+  "pass": 1,
+  "violation": 0,
+  "incomplete": 0,
+  "skipped": 0,
+  "accepted": 0
+ },
+ "from": {
+  "test/a.test.mjs": "store",
+  "test/b.test.mjs": "store",
+  "test/c.test.mjs": "store",
+  "test/d.test.mjs": "store",
+  "test/e.test.mjs": "store"
+ },
+ "stderr": "squeal code: node:test: 5 test files selected (tests 5): none to run, 5 read from the stores\nsqueal code: 5 of 5 selected test files read from the stores\n"
+}
