@@ -9,6 +9,7 @@ import { ancestorListings } from "../../src/core/keys/observed.js";
 import { statCandidates } from "../../src/core/revision/reconcile.js";
 import {
   copyInputs,
+  copyScratch,
   decisionOf,
   type FileDecision,
   keepDecisions,
@@ -84,8 +85,10 @@ export interface During {
   readonly touch?: readonly string[];
   /** Files created, no watcher batch of them applied before the record. */
   readonly create?: Readonly<Record<string, string>>;
-  /** Files created, and applied in a revision as the watcher's batch is. */
-  readonly batch?: Readonly<Record<string, string>>;
+  /** Files created, or removed (`null`), and applied in a revision as the watcher's batch is. */
+  readonly batch?: Readonly<Record<string, string | null>>;
+  /** Untracked files written before the run's keys are read. */
+  readonly untracked?: Readonly<Record<string, string>>;
   /** What `a`'s run read beyond its key (`RunReport.observed`). */
   readonly read?: readonly string[];
   /** The environment files the run loaded (`RunReport.environmentObserved`). */
@@ -122,6 +125,7 @@ export async function decide(during: During): Promise<Decided> {
     git(root, ["init", "-q", "-b", "main"]);
     git(root, ["add", "-A"]);
     git(root, ["commit", "-qm", "fixture"]);
+    writeTree(root, during.untracked ?? {});
     const store = scratchStore(join(root, ".git"));
     try {
       return await decided(root, store, during);
@@ -148,9 +152,11 @@ async function decided(root: string, store: Store, during: During): Promise<Deci
     snapshot: copyInputs(keys.cache, paths),
     cancel: during.ledger === "cancelled" ? aborted() : null,
   } as unknown as Tier;
+  // The keeper's copy of the editor scratch files, taken as `Expectations.add` takes it.
+  const scratch = copyScratch(keys.cache, paths);
   await happen(root, keys, hasher, tier, during);
   const report = (during.report ?? ((r) => r))(completed([A, B], during));
-  const ran = { root, keys, hasher, tier, report };
+  const ran = { root, keys, hasher, tier, report, scratch };
   const ledgerFree = during.ledger === undefined && during.queued === undefined;
   const keeper = ledgerFree ? await keeperColumn(ran) : null;
   const daemon = await daemonColumn(ran, store, during);
@@ -165,17 +171,19 @@ interface Ran {
   readonly hasher: Hasher;
   readonly tier: Tier;
   readonly report: RunReport;
+  readonly scratch: ReadonlySet<RelativePath>;
 }
 
 /** `squeal code`'s decisions: `keepDecisions` over its files as `Expectations.add` gives them. */
-function keeperColumn({ root, keys, hasher, tier, report }: Ran) {
+function keeperColumn({ root, keys, hasher, tier, report, scratch }: Ran) {
   const runtime = (ref: TestFileRef) => keys.runtimeIdentity(ref);
   // Each file with the runtime identity its tier entry has, as the lookup read it.
   const files = tier.files.map(({ file, key, inputs: paths, runtimePolicy: runtimeIdentity }) => {
     return { ref: file.ref, key, paths, runtimeIdentity };
   });
   const before = tier.snapshot;
-  const sources = { root, keys, hasher, run: tier.run, before, hold: mergeHoldOf(root), runtime };
+  const hold = mergeHoldOf(root);
+  const sources = { root, keys, hasher, run: tier.run, before, hold, scratch, runtime };
   return keepDecisions(sources, files, report);
 }
 
@@ -309,7 +317,10 @@ async function happen(
   for (const [path, text] of Object.entries(during.create ?? {})) writeTree(root, { [path]: text });
   if (during.merging !== undefined) unmerge(root, during.merging);
   const batch = Object.entries(during.batch ?? {});
-  for (const [path, text] of batch) writeTree(root, { [path]: text });
+  for (const [path, text] of batch) {
+    if (text === null) rmSync(join(root, path));
+    else writeTree(root, { [path]: text });
+  }
   if (batch.length === 0) return;
   const candidates = await statCandidates(
     batch.map(([path]) => path),

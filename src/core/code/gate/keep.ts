@@ -182,7 +182,7 @@ export class Keeper {
       if (completed.has(id) && record !== null) candidates.push({ ...file, record });
     }
     if (candidates.length === 0) return [];
-    const { keys, hasher, snapshot: before, runtime } = pending;
+    const { keys, hasher, snapshot: before, scratch, runtime } = pending;
     const sources = {
       root: this.#options.root,
       keys,
@@ -190,6 +190,7 @@ export class Keeper {
       run: pending.run,
       before,
       hold: this.#hold,
+      scratch,
       ...(runtime === undefined ? {} : { runtime }),
     };
     const decided = await keepDecisions(sources, candidates, report);
