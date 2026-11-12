@@ -10,7 +10,7 @@ import { VitestAdapter } from "../../../../src/runners/vitest/adapter.js";
 import { loadVitest, type VitestNode } from "../../../../src/runners/vitest/load.js";
 import type { CaseOutput, VitestInput } from "../case.js";
 import { selectedOf, storedOf } from "./reported.js";
-import { writeTree } from "./shared.js";
+import { goneLogDir, writeTree } from "./shared.js";
 
 /*
  * The `adapter:vitest` kind (011 C14, task 011-37 section 2, row 011-41):
@@ -232,7 +232,7 @@ export async function vitestCase(input: VitestInput, scratch: string): Promise<C
       if (early) cancel?.abort(run.cancelBefore);
       const options = {
         runId: `validity-${at}`,
-        logDir: join(scratch, "logs"),
+        logDir: run.storeGone === true ? goneLogDir(scratch, at) : join(scratch, "logs"),
         timeoutMs: null,
         ...(cancel === null ? {} : { signal: cancel.signal }),
         ...(run.fileEndedThrows === true ? { fileEnded: throwing } : {}),
