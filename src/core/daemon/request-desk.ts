@@ -4,7 +4,7 @@ import type { DaemonErrorResponse, DaemonPhase } from "../types/daemon.js";
 import type { FailedOutcome } from "../types/daemon-writes.js";
 import { errorResponse } from "./protocol.js";
 
-/** Outcomes remembered for status requests, per desk; older ones are dropped. */
+/** Outcomes remembered for status requests, per desk, by default; older ones are dropped. */
 const REMEMBERED = 16;
 
 /** A request a desk takes: for one worktree's daemon, read at one store schema. */
@@ -30,6 +30,14 @@ export interface RequestDeskContext<R extends DeskRequest, O> {
   readonly storeSchema: number;
   /** Runs one request on the main thread, which owns the stores. */
   readonly run: (request: R) => Promise<O>;
+  /**
+   * The id a client gave the request (review 0.1.450 B2): its outcome is
+   * kept under it, a status request names it, and a request whose id was
+   * taken already is not run again. Absent: the desk makes a fresh id.
+   */
+  readonly idOf?: (request: R) => string;
+  /** How many outcomes the desk remembers. Default 16. */
+  readonly remembered?: number;
 }
 
 /**
@@ -61,11 +69,14 @@ export class RequestDesk<T extends string, R extends DeskRequest, O> {
         `the daemon's store is at schema ${storeSchema}, not ${request.storeSchema}`,
       );
     }
-    const requestId = randomUUID();
+    const requestId = this.#context.idOf?.(request) ?? randomUUID();
+    const taken = this.#states.get(requestId);
+    if (taken !== undefined) return this.#answer(requestId, taken.outcome);
     const state: { outcome: O | FailedOutcome | null } = { outcome: null };
     this.#states.set(requestId, state);
+    const remembered = this.#context.remembered ?? REMEMBERED;
     for (const old of this.#states.keys()) {
-      if (this.#states.size <= REMEMBERED) break;
+      if (this.#states.size <= remembered) break;
       this.#states.delete(old);
     }
     this.#context.run(request).then(

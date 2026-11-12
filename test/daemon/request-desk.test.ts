@@ -29,9 +29,10 @@ const REQUEST: ImportRequest = {
 
 const KEEP: KeepRequest = {
   type: "keep",
+  id: "try-1",
   worktreeId: WORKTREE,
   storeSchema: 7,
-  write: { kind: "coverage", key: "k1", record: { v: 1, sources: [], unread: [] } },
+  write: { kind: "coverage", key: "a".repeat(64), record: { v: 1, sources: [], unread: [] } },
 };
 
 function importDesk(outcome: Promise<ImportOutcome> = new Promise(() => {})) {
@@ -69,20 +70,7 @@ describe("the import and keep requests (021-20)", () => {
     ] as const) {
       expect(parseRequest(JSON.stringify({ ...REQUEST, ...part }))).toBe(why);
     }
-    const results = { kind: "results", records: [{}], paths: ["a"], environmentFiles: [] };
-    expect(parseRequest(JSON.stringify({ ...KEEP, write: results }))).toMatchObject({
-      write: results,
-    });
-    for (const [write, why] of [
-      [{ kind: "other" }, '"write.kind" must be "coverage" or "results"'],
-      [{ kind: "coverage", key: "", record: {} }, '"write.key" must be a non-empty string'],
-      [{ kind: "coverage", key: "k", record: null }, '"write.record" must be an object'],
-      [{ ...results, records: [] }, '"write.records" must be a non-empty list'],
-      [{ ...results, paths: [1] }, '"write.paths" must be a list of strings'],
-      [{ ...results, environmentFiles: "x" }, '"write.environmentFiles" must be a list of strings'],
-    ] as const) {
-      expect(parseRequest(JSON.stringify({ ...KEEP, write }))).toBe(why);
-    }
+    // Every field of a keep write: `keep-protocol.test.ts`.
   });
 });
 
@@ -131,5 +119,30 @@ describe("the request desk (021-20)", () => {
     });
     expect(desk.status("none")).toMatchObject({ ok: false, error: "unknown request id none" });
     expect(taken).toEqual([]);
+  });
+
+  it("keeps a keep's outcome under the gate's id and runs one id once (review 0.1.450 B2)", async () => {
+    const runs: KeepRequest[] = [];
+    const desk = new RequestDesk({
+      type: "keep",
+      worktreeId: WORKTREE,
+      storeSchema: 7,
+      run: async (request: KeepRequest) => {
+        runs.push(request);
+        return { kept: true };
+      },
+      idOf: (request) => request.id,
+      remembered: 2,
+    });
+    expect(desk.take(KEEP, "ready")).toMatchObject({ requestId: "try-1", outcome: null });
+    await Promise.resolve();
+    // The same id again, as a gate whose answer was lost might send it: not run twice.
+    expect(desk.take(KEEP, "ready")).toMatchObject({ requestId: "try-1", outcome: { kept: true } });
+    expect(desk.status("try-1")).toMatchObject({ outcome: { kept: true } });
+    expect(runs).toHaveLength(1);
+    // Past `remembered` newer ids, the oldest is forgotten.
+    desk.take({ ...KEEP, id: "try-2" }, "ready");
+    desk.take({ ...KEEP, id: "try-3" }, "ready");
+    expect(desk.status("try-1")).toMatchObject({ ok: false, error: "unknown request id try-1" });
   });
 });

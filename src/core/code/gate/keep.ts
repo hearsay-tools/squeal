@@ -17,7 +17,7 @@ import { isCodeStoreOpenFailure, openCodeStore } from "../store/open.js";
 import type { CodeStore } from "../store/types.js";
 import type { GateRun } from "./collect.js";
 import { Expectations, type Pending } from "./keep-expected.js";
-import { DAEMON_KEEPS_ITS_OWN, sentWriter } from "./keep-sent.js";
+import { DAEMON_KEEPS_ITS_OWN, type DaemonWaits, KeepUnknown, sentWriter } from "./keep-sent.js";
 import {
   databasesOf,
   KEEP_BUSY_BOUND_MS,
@@ -25,6 +25,7 @@ import {
   type Kept,
   keepFile,
   notKept,
+  perhapsKept,
   StoreWait,
   writeHere,
 } from "./keep-write.js";
@@ -62,6 +63,8 @@ export interface KeepOptions {
    * written are not kept; default `KEEP_BUSY_BOUND_MS` (D17.5).
    */
   readonly busyBoundMs?: number;
+  /** How long a daemon that writes the files is waited for; default `DAEMON_WAITS` (review 0.1.450 B2). */
+  readonly daemonWaits?: DaemonWaits;
 }
 
 /** One run's files that may be kept, until `flush` writes them. */
@@ -210,7 +213,7 @@ export class Keeper {
       store = opened;
       let writer: KeepWriter;
       if (lock === null) {
-        const sent = sentWriter(store, worktreeId, now());
+        const sent = sentWriter(store, worktreeId, now(), this.#options.daemonWaits);
         if (sent === null) {
           this.#tell(`${notKept(all.length)}: ${DAEMON_KEEPS_ITS_OWN}`);
           return;
@@ -253,7 +256,11 @@ export class Keeper {
       }
       wait.done({ written, changed, freed });
     } catch (error) {
-      this.#tell(`${notKept(all.length - written)}: ${messageOf(error)}`);
+      const left = all.length - written;
+      const unknown = error instanceof KeepUnknown;
+      this.#tell(
+        unknown ? perhapsKept(left, error.message) : `${notKept(left)}: ${messageOf(error)}`,
+      );
     } finally {
       code?.close();
       store?.close();
