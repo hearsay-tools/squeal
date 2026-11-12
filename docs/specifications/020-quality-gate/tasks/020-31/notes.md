@@ -120,4 +120,27 @@ loaded nothing) is one text, `INPUTS_HINT` in
   only a computed import loads (exit 3, as before); a second run that reads
   a file from the stores. Each run: one module-hook note and one closure
   line per project, stdout one JSON object.
-- `adapter-loader.test.ts`, `adapter-attribution.test.ts`: the new hint.
+- `adapter-loader.test.ts`, `adapter-attribution.test.ts`,
+  `test/daemon/bare-note-inputs.test.ts`: the new hint.
+
+## Checks run (2026-11-12, host load 24 to 78 on 24 CPUs)
+
+- `pnpm run lint`, `pnpm run typecheck`: pass.
+- Squeal at revision 25: the new and edited tests pass, 274 of the 438
+  affected files current with no failure from this change. Five fail on
+  drift only, because the bundles and the Codex runtime manifest are not
+  built: `test/harness/pi/package.test.ts`,
+  `test/harness/opencode/package.test.ts`,
+  `test/harness/codex/packaging/runtime.test.ts` (two cases),
+  `test/harness/codex/runtime-release/limits.test.ts` (the sha256 of
+  `commands.md` in `runtime.json`). `pnpm run build` clears them.
+- The daemon held no test slot for over 30 minutes, so seven queued gate
+  tests ran directly: `pnpm exec vitest run --maxWorkers=2
+  test/cli/code-gate.test.ts test/cli/code-gate-json-stdout.test.ts
+  test/cli/code-gate-stored.test.ts test/code/gate/collect-prepare.test.ts
+  test/cli/code-gate-prepare.test.ts test/code/gate/collect-budget.test.ts
+  test/code/gate/collect-order.test.ts`: 7 files, 30 tests pass.
+- About 160 affected files were still queued for CPU at the end, among
+  them `code-gate-keep*.test.ts`, `code-gate-parts-*.test.ts` and
+  `code-gate-args.test.ts`; none has a node:test fixture with a computed
+  import, so none can see the new line or field. Not run.
