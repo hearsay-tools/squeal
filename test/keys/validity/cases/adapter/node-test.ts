@@ -145,6 +145,22 @@ const LOGS_REMOVED: Readonly<Record<string, string>> = {
   ),
 };
 
+/**
+ * Row 018-38, review 0.1.449 B1: a file that passes after a load its static
+ * closure lacks, then one that removes the case's run logs (`<scratch>/logs`,
+ * beside the harness's `<scratch>/worktree`) and leaves the store in place.
+ */
+const LOGS_REMOVED_COVERED: Readonly<Record<string, string>> = {
+  "package.json": PACKAGE,
+  "src/dep.mjs": "export const value = 1;\n",
+  "test/first.test.mjs": lines(
+    'import { test } from "node:test";',
+    "",
+    'test("first", async () => { await import("../src/" + "dep.mjs"); });',
+  ),
+  "test/removes-logs.test.mjs": LOGS_REMOVED["test/removes-logs.test.mjs"] ?? "",
+};
+
 const COVERED_RUN = [{ files: ["test/area.test.mjs", "test/inspector.test.mjs"] }];
 
 const OUTCOME_FILES = ["test/broken.test.mjs", "test/fail.test.mjs", "test/pass.test.mjs"];
@@ -238,6 +254,17 @@ export const NODE_TEST_RUNS: readonly Case[] = [
       files: LOGS_REMOVED,
       concurrency: 1,
       runs: [{ files: ["test/pass.test.mjs", "test/removes-logs.test.mjs"] }],
+    },
+  },
+  {
+    kind: "adapter:node-test",
+    name: "a covered run whose log folder goes after a file passed stores nothing (row 018-38)",
+    why: "018-38, the case that stands for NODE_TEST_ADAPTER_VERSION 11. Observable: with coverage on, the first file passes after loading src/dep.mjs at run time and the second removes only the run's logs, the store left in place; the last release's covered process makes the log folder again as it exits, so the run stores the first file's pass without the loads its removed graphs held, under a key that lacks them, where the candidate's run mark rejects the run and it stores nothing. The reason for the raise: a result an earlier release stored that way must not be found by this release's keys (review 0.1.449 B1; the human, 2026-11-12: \"A: raise version\")",
+    input: {
+      files: LOGS_REMOVED_COVERED,
+      coverage: true,
+      concurrency: 1,
+      runs: [{ files: ["test/first.test.mjs", "test/removes-logs.test.mjs"] }],
     },
   },
   {
