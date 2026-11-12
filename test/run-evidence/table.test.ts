@@ -14,10 +14,12 @@ import { A, B, type During, decide } from "./fixture.js";
  * `recordOutcome` (the report and requeue `TierRecords.#write` hands
  * `recordTier`), then `runEnd` and `storeDecision` per file as `recordTier`
  * and `recordFile` do. The keeper's column runs `keepDecisions`, and `squeal
- * code` keeps a file only on "store at the key it ran under". A merge hold
+ * code` keeps a file on "store at the key it ran under", and since row
+ * 020-39 on "store at the key with what it read" (`grown`). A merge hold
  * or a touched input is a reason beside the decision, not a decision. Rows
  * marked "difference N" are the research's differences between the two
- * callers. Row 011-320 gave the keeper the sources of differences 2 to 4
+ * callers. Row 020-39 gave the keeper the stability of what its run read
+ * beyond its key (difference 1). Row 011-320 gave the keeper the sources of differences 2 to 4
  * and of a file added to or removed from a listed directory (proposed row
  * `keep-listing-revision`): its column equals the daemon's there, but where
  * no revision of the file exists, which the daemon's record reads and
@@ -78,14 +80,16 @@ const TABLE: Readonly<Record<string, Row>> = {
   "difference 1: a path it read beyond its key changed": {
     during: { read: ["data/known.txt"], write: { "data/known.txt": "other\n" } },
     daemon: "unstable",
-    keeper: "store at grown",
+    keeper: "unstable",
     names: "data/known.txt changed",
+    keeperNames: "data/known.txt changed",
   },
   "difference 1: a path it read beyond its key was touched": {
     during: { read: ["data/known.txt"], touch: ["data/known.txt"] },
     daemon: "requeue",
-    keeper: "store at grown",
+    keeper: "unknown",
     names: "data/known.txt was written",
+    keeperNames: "data/known.txt was written",
   },
   "it read a path its key names": {
     during: { keyed: ["data/known.txt"], read: ["data/known.txt"] },
@@ -98,6 +102,13 @@ const TABLE: Readonly<Record<string, Row>> = {
     keeper: "first-seen",
     names: "data/new.txt",
     keeperNames: "data/new.txt",
+  },
+  "it read a git-ignored path that was there before the run": {
+    during: { untracked: { "data/run.log": "log\n" }, read: ["data/run.log"] },
+    daemon: "first-seen",
+    keeper: "first-seen",
+    names: "data/run.log",
+    keeperNames: "data/run.log",
   },
   "it loaded only environment files its key names": {
     during: { loaded: ["setup.ts"] },
@@ -349,7 +360,7 @@ describe("run evidence: the store decision per file, the daemon's record and squ
       besides.map(() => row.beside ?? "store at ran"),
     );
     expect(keeper === null ? null : keeps(keeper.decision)).toBe(
-      row.keeper === null ? null : row.keeper === "store at ran",
+      row.keeper === null ? null : row.keeper.startsWith("store at"),
     );
     if (row.names !== undefined) expect(daemon.reason).toContain(row.names);
     if (row.keeperNames !== undefined) expect(keeper?.reason).toContain(row.keeperNames);
