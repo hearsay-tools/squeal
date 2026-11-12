@@ -1,0 +1,5 @@
+A after A2: {"filesWithResults":37,"resultKeys":37,"observedMeta":[]}
+B after B2: {"filesWithResults":160,"resultKeys":320,"observedMeta":[["observed.",144046],["observedDirect.",118580],["observedModules.",118580]]}
+A2 reruns vs B observed: {"ranInA2":123,"observedInB":123,"both":123,"onlyA2":[],"medianPaths":5,"maxPaths":343,"topDirs":[["test/fixtures",1656],["src/core",819],["src/cli",223],["src/harness",218],["src/runners",203],["package.json",105],["src/package.json",95],["test/harness",43]]}
+selection vs main store observed.: {"selected":160,"withObserved":131,"medianPaths":4,"storeEntries":1124}
+main store observed. entries for files at 93e3e65cd: {"entries":1124,"nonEmpty":1124,"nonEmptyExistingAt93e3":1054}

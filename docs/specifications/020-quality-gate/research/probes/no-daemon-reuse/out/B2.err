@@ -1,0 +1,4 @@
+load-1m-at-start 23.42 2026-11-12T15:21:47Z
+squeal code: Vitest: 160 test files selected (tests 160): none to run, 160 read from the stores
+squeal code: 160 of 160 selected test files read from the stores
+exit 0 wall-ms 24093 load-1m-at-end 24.42

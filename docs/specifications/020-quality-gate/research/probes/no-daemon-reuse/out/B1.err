@@ -1,0 +1,121 @@
+load-1m-at-start 20.21 2026-11-12T15:15:41Z
+squeal code: Vitest: 160 test files to run (tests 160)
+squeal code: global setup runs for: the root project (any selection)
+squeal code: Vitest: 160 test files to run here, up to 7 at once: about 131 s from their stored durations
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.3 [39m[90m/tmp/ndr/B/test/fixtures/vitest/.tmp/gate-parts-cases-cf7ede85-4abe-4503-88ad-724c9a5fb22c/origin[39m
+      [2mCoverage enabled with [22m[33msqueal[39m
+
+ [32m✓[39m test/add.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+
+ [31m❯[39m test/broken.test.ts [2m([22m[2m1 test[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 20[2mms[22m[39m
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.3 [39m[90m/tmp/ndr/B/test/fixtures/vitest/.tmp/gate-parts-environment-35de568d-4832-4788-b753-2ffe2a9fa19c/origin[39m
+      [2mCoverage enabled with [22m[33msqueal[39m
+[31m   [31m×[31m halves[39m[32m 17[2mms[22m[39m
+
+ [32m✓[39m test/risky.test.ts [2m([22m[2m2 tests[22m[2m | [22m[33m1 skipped[39m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m test/reads.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m test/grade.test.ts [2m([22m[2m3 tests[22m[2m | [22m[33m1 skipped[39m[2m)[22m[32m 5[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m test/broken.test.ts[2m > [22mhalves
+[31m[1mAssertionError[22m: expected 2 to be 3 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 3[39m
+[31m+ 2[39m
+
+[36m [2m❯[22m test/broken.test.ts:[2m4:36[22m[39m
+    [90m  2|[39m import { half } from "../src/broken";
+    [90m  3|[39m
+    [90m  4|[39m it("halves", () => expect(half(4)).toBe(3));
+    [90m   |[39m                                    [31m^[39m
+    [90m  5|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m4 passed[39m[22m[90m (5)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m6 passed[39m[22m[2m | [22m[33m2 skipped[39m[90m (9)[39m
+[2m   Start at [22m 16:16:11
+[2m   Duration [22m 488ms[2m (worker 50%, transform 28%, import 15%, tests 7%)[22m
+
+ [32m✓[39m test/grade.test.ts [2m([22m[2m3 tests[22m[2m | [22m[33m1 skipped[39m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m test/add.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m test/risky.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 6[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m3 passed[39m[22m[90m (3)[39m
+[2m      Tests [22m [1m[32m5 passed[39m[22m[2m | [22m[33m1 skipped[39m[90m (6)[39m
+[2m   Start at [22m 16:16:11
+[2m   Duration [22m 390ms[2m (transform 40%, worker 36%, import 18%, tests 5%)[22m
+
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.3 [39m[90m/tmp/ndr/B/test/fixtures/vitest/.tmp/gate-parts-link-4fe45cea-67b1-4223-a8ac-e5fd5ed2174b/origin[39m
+      [2mCoverage enabled with [22m[33msqueal[39m
+
+ [32m✓[39m test/link.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m test/linked.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m test/add.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m test/grade.test.ts [2m([22m[2m3 tests[22m[2m | [22m[33m1 skipped[39m[2m)[22m[32m 4[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m4 passed[39m[22m[90m (4)[39m
+[2m      Tests [22m [1m[32m6 passed[39m[22m[2m | [22m[33m1 skipped[39m[90m (7)[39m
+[2m   Start at [22m 16:16:14
+[2m   Duration [22m 422ms[2m (worker 49%, transform 29%, import 16%, tests 6%)[22m
+
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.3 [39m[90m/tmp/ndr/B/test/fixtures/vitest/.tmp/gate-parts-update-bec5b64e-e9e2-4cbb-9cd8-f751110b7b18/origin[39m
+      [2mCoverage enabled with [22m[33msqueal[39m
+
+ [32m✓[39m test/add.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m test/grade.test.ts [2m([22m[2m3 tests[22m[2m | [22m[33m1 skipped[39m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m test/risky.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 3[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m3 passed[39m[22m[90m (3)[39m
+[2m      Tests [22m [1m[32m5 passed[39m[22m[2m | [22m[33m1 skipped[39m[90m (6)[39m
+[2m   Start at [22m 16:16:16
+[2m   Duration [22m 288ms[2m (worker 51%, transform 27%, import 17%, tests 5%)[22m
+
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.3 [39m[90m/tmp/ndr/B/test/fixtures/vitest/.tmp/gate-parts-948b4baf-d59f-48a2-8b0f-8b2a3a00b68d/origin[39m
+      [2mCoverage enabled with [22m[33msqueal[39m
+
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.3 [39m[90m/tmp/ndr/B/test/fixtures/vitest/.tmp/gate-parts-update-bec5b64e-e9e2-4cbb-9cd8-f751110b7b18/origin[39m
+      [2mCoverage enabled with [22m[33msqueal[39m
+
+ [32m✓[39m test/grade.test.ts [2m([22m[2m3 tests[22m[2m | [22m[33m1 skipped[39m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m test/reads.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m test/grade.test.ts [2m([22m[2m3 tests[22m[2m | [22m[33m1 skipped[39m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m test/risky.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m test/add.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m3 passed[39m[22m[90m (3)[39m
+[2m      Tests [22m [1m[32m5 passed[39m[22m[2m | [22m[33m1 skipped[39m[90m (6)[39m
+[2m   Start at [22m 16:16:17
+[2m   Duration [22m 418ms[2m (worker 38%, transform 35%, import 18%, tests 9%)[22m
+
+ [32m✓[39m test/add.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m3 passed[39m[22m[90m (3)[39m
+[2m      Tests [22m [1m[32m5 passed[39m[22m[2m | [22m[33m1 skipped[39m[90m (6)[39m
+[2m   Start at [22m 16:16:17
+[2m   Duration [22m 445ms[2m (worker 49%, transform 27%, import 17%, tests 7%)[22m
+
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.3 [39m[90m/tmp/ndr/B/test/fixtures/vitest/.tmp/ci-coverage-c30d643e-ea2f-4a7d-893b-fc94b45b71d3/origin[39m
+      [2mCoverage enabled with [22m[33msqueal[39m
+
+ [32m✓[39m test/grade.test.ts [2m([22m[2m3 tests[22m[2m | [22m[33m1 skipped[39m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m test/add.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m2 passed[39m[22m[90m (2)[39m
+[2m      Tests [22m [1m[32m4 passed[39m[22m[2m | [22m[33m1 skipped[39m[90m (5)[39m
+[2m   Start at [22m 16:18:29
+[2m   Duration [22m 520ms[2m (worker 52%, import 19%, transform 19%, tests 9%)[22m
+
+[vitest-pool]: Timeout terminating forks worker for test files /tmp/ndr/B/test/lint/cli/bundled.test.ts.
+exit 0 wall-ms 215710 load-1m-at-end 37.78
