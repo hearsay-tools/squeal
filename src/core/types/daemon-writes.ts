@@ -113,3 +113,15 @@ export interface WriteResponse {
   readonly written: boolean | null;
   readonly error: string | null;
 }
+
+/** What an import added (spec 018 D3). */
+export interface ImportCounts {
+  readonly results: number;
+  /** Results left as they were: the store held results at their key already. */
+  readonly alreadyStored: number;
+  readonly closures: number;
+  readonly observed: number;
+  readonly startup: number;
+  /** Test files whose results went at their key here (018 D11), not at the exported key. */
+  readonly rekeyed: number;
+}
