@@ -148,8 +148,8 @@ export class CollectUsageError extends Error {
  * node:test entry's `prepare` ran, every runner's run starts at once, each
  * given what is left of it, and the node:test entries share
  * `runner.tierSize` processes (D18 as amended, row 020-44); a run started
- * after the deadline runs nothing. A project's own `testTimeout` is never lowered. With no changed
- * path and no `--test` file, no adapter starts.
+ * after the deadline runs nothing. A project's own `testTimeout` is never
+ * lowered. With no changed path and no `--test` file, no adapter starts.
  * A selected file `options.stored` gives evidence of does not run (D11.7).
  * Rejects when Vitest is configured but cannot start, or when Squeal's
  * provider is missing: a setup error (D1).
