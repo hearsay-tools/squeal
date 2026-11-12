@@ -228,10 +228,10 @@ index 48eaac77b8b36275ddb48978059f97a851839122..99eb46fae7b64661d7970b30e269b0c8
    for (const id of users) {
 diff --git a/.github/scripts/squeal-coverage-proof.cjs b/.github/scripts/squeal-coverage-proof.cjs
 new file mode 100644
-index 0000000000000000000000000000000000000000..4397b750ad3fea8e013d3de52240285f3bd14f12
+index 0000000000000000000000000000000000000000..2c024ab74665cefff892e8653441e080c1999217
 --- /dev/null
 +++ b/.github/scripts/squeal-coverage-proof.cjs
-@@ -0,0 +1,239 @@
+@@ -0,0 +1,240 @@
 +'use strict';
 +
 +// Compares the three runs of the Squeal coverage proof (ci.yml squeal-coverage-proof, hearsay-tools/squeal
@@ -357,6 +357,7 @@ index 0000000000000000000000000000000000000000..4397b750ad3fea8e013d3de52240285f
 +  const unique = (list) => [...new Set(list.map((item) => JSON.stringify(item)))].map((item) => JSON.parse(item));
 +  return {
 +    parts: parts.length, errors, formats: unique(parts.map((part) => part.format ?? 'unknown')), ends: unique(parts.map((part) => part.header?.end ?? 'unknown')),
++    versions: unique(parts.map((part) => `Squeal ${part.header?.squealVersion ?? 'unknown'}, Vitest ${part.header?.runnerVersion ?? 'unknown'}`)),
 +    testFiles: files.length, withRecord: files.filter((f) => f.record !== undefined).length, noRecord,
 +    coverage: unique(headers.map((h) => h && { ...h, inspector: undefined })),
 +    collector: unique(headers.map((h) => (h && !('off' in h) ? h.collector ?? 'not named' : 'none'))),
@@ -411,7 +412,7 @@ index 0000000000000000000000000000000000000000..4397b750ad3fea8e013d3de52240285f
 +  const reasons = Object.entries(p.noRecord).map(([reason, n]) => `${reason} ${n}`).join(', ') || 'none';
 +  const coverage = p.coverage.map((h) => (h === null ? 'none (an older part format)' : 'off' in h ? `off: ${h.off} (${h.note})`
 +    : `collector \`${h.collector ?? 'not named'}\`${h.collectorVersion ? ` (@vitest/coverage-v8 ${h.collectorVersion})` : ''}, provider ${h.providerVersion}, record ${h.recordVersion}${h.note ? `, note: ${h.note}` : ''}`));
-+  lines.push(`- Parts: ${p.parts} (${p.formats.join(', ')}), run end ${p.ends.join(', ')}.${p.errors.length ? ` Not read: ${p.errors.join('; ')}.` : ''}`,
++  lines.push(`- Parts: ${p.parts} (${p.formats.join(', ')}; ${p.versions.join('; ')}), run end ${p.ends.join(', ')}.${p.errors.length ? ` Not read: ${p.errors.join('; ')}.` : ''}`,
 +    `- Coverage header: ${coverage.join('; ')}. Collector: ${p.collector.map((c) => `\`${c}\``).join(', ')} (expected \`v8\`).`,
 +    `- Test files: ${num(p.testFiles)}; with a record: ${num(p.withRecord)} (${pct(p.withRecord, p.testFiles)}); without: ${num(p.testFiles - p.withRecord)} (${reasons}).`,
 +    `- \`node:inspector\`: loaded by ${files(p.inspector.loaded.length)}, unknown for ${files(p.inspector.unknown.length)}.`);
@@ -473,10 +474,10 @@ index 0000000000000000000000000000000000000000..4397b750ad3fea8e013d3de52240285f
 +if (require.main === module) process.exitCode = main(process.argv.slice(2));
 diff --git a/.github/scripts/squeal-coverage-proof.test.cjs b/.github/scripts/squeal-coverage-proof.test.cjs
 new file mode 100644
-index 0000000000000000000000000000000000000000..f77757975e242e14a31921c79d8351b0398a90cf
+index 0000000000000000000000000000000000000000..43dbd4fa41357ed58f74ec38a7bb6e24a29d2f5f
 --- /dev/null
 +++ b/.github/scripts/squeal-coverage-proof.test.cjs
-@@ -0,0 +1,130 @@
+@@ -0,0 +1,131 @@
 +'use strict';
 +
 +// Pins the comparison of the Squeal coverage proof (squeal-coverage-proof.cjs, ci.yml squeal-coverage-proof-compare).
@@ -527,7 +528,8 @@ index 0000000000000000000000000000000000000000..f77757975e242e14a31921c79d8351b0
 +});
 +
 +const COVERAGE = { provider: 'squeal', collector: 'v8', collectorVersion: '4.1.10', providerVersion: 1, recordVersion: 2 };
-+const part = (header, testFiles) => ({ format: 'squeal-ci-part/4', header: { end: 'completed', ...header }, projects: [], testFiles, evidence: {} });
++const part = (header, testFiles) => ({ format: 'squeal-ci-part/4', header: { squealVersion: '0.1.443', runnerVersion: '4.1.10', end: 'completed', ...header },
++  projects: [], testFiles, evidence: {} });
 +
 +test('the parts give records against test files, the collector, node:inspector and Squeal\'s time once per command', () => {
 +  const cost = { command: 'u1', hooksMs: 30000, threads: 7, afterMs: 1500 };
@@ -537,7 +539,7 @@ index 0000000000000000000000000000000000000000..f77757975e242e14a31921c79d8351b0
 +    part({ coverage: { ...COVERAGE, inspector }, cost }, [{ durationMs: 50000, record: 1 }, { durationMs: null }]),
 +  ] });
 +  assert.deepEqual(summary, {
-+    parts: 2, errors: [], formats: ['squeal-ci-part/4'], ends: ['completed'],
++    parts: 2, errors: [], formats: ['squeal-ci-part/4'], ends: ['completed'], versions: ['Squeal 0.1.443, Vitest 4.1.10'],
 +    testFiles: 4, withRecord: 2, noRecord: { inspector: 1, 'none named': 1 },
 +    coverage: [COVERAGE], collector: ['v8'],
 +    inspector: { loaded: ['server:a.test.ts'], unknown: ['web:b.test.ts'] },
@@ -583,7 +585,7 @@ index 0000000000000000000000000000000000000000..f77757975e242e14a31921c79d8351b0
 +    '- (c) against (b), the run-to-run control: wall +30 s (+5%), CPU +40 s (+2%).',
 +    "- Squeal's own time in (a), from its parts: 21 s in its hooks over 7 processes and threads (5% of the test files' summed 420 s), and 0.43 s after the command.",
 +  ]) assert.ok(lines.includes(line), `missing: ${line}\n${markdown}`);
-+  assert.match(markdown, /^- Parts: 1 \(squeal-ci-part\/4\), run end completed\. Not read: squeal-part-1\.json: does not read: .+\.$/m);
++  assert.match(markdown, /^- Parts: 1 \(squeal-ci-part\/4; Squeal 0\.1\.443, Vitest 4\.1\.10\), run end completed\. Not read: squeal-part-1\.json: does not read: .+\.$/m);
 +  const comparison = JSON.parse(fs.readFileSync(json, 'utf8'));
 +  assert.equal(comparison.format, 'squeal-coverage-proof/1');
 +  assert.deepEqual(comparison.runs.map((run) => run.coverage), [{ files: 2, statements: 3, covered: 2 }, { files: 2, statements: 3, covered: 3 }, { files: 2, statements: 3, covered: 3 }]);
