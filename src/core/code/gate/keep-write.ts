@@ -1,5 +1,6 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { compare } from "../../fs/compare.js";
+import type { FileDecision } from "../../run-evidence/run-evidence.js";
 import { checkId } from "../../scheduler/files.js";
 import type { WorktreeKeys } from "../../scheduler/keying.js";
 import { recordsForFile } from "../../scheduler/records.js";
@@ -14,6 +15,7 @@ import type { Provenance, ResultRecord } from "../../types/store-records.js";
 import type { CoverageRecord } from "../coverage/types.js";
 import { codeStorePath } from "../store/open.js";
 import type { Expected } from "./keep-expected.js";
+import type { Seen } from "./keep-seen.js";
 
 /*
  * Spec 020 D17.5 (row 020-28, #192): how the keeper writes its files once
@@ -33,6 +35,12 @@ export const KEEP_BUSY_BOUND_MS = 30_000;
 /** A completed file that may be written. */
 export interface Kept extends Expected {
   readonly record: CoverageRecord;
+  /**
+   * Row 020-39: its store decision when it is kept at the key with what
+   * its run read (`atStoreKey`): written only where no daemon serves, else
+   * told as not kept for it.
+   */
+  readonly grown?: Pick<FileDecision, "cause" | "reason">;
 }
 
 /** What became of one file: written, not written once the bound was spent, or not written because its inputs moved. */
@@ -142,6 +150,8 @@ export interface KeepWriter {
   coverage(file: Kept): Promise<Tried>;
   /** The file's results in one transaction (`storeResults`), `keys` its lookup's. */
   results(file: Kept, records: readonly ResultRecord[], keys: WorktreeKeys): Promise<Tried>;
+  /** Row 020-39: the runs' reads merged into the shared observed rows (`mergeSeen`); here only. */
+  seen?(seen: readonly Seen[]): Promise<Tried>;
 }
 
 /**
@@ -236,7 +246,7 @@ export async function keepFile(
  * bound only after a busy store's refusal. A try a daemon proved never ran
  * is tried again after the same pause, at most `LOST_TRIES` times.
  */
-async function sliced(
+export async function sliced(
   attempt: () => Promise<Tried>,
   paused: (busy: boolean) => Promise<Exclude<KeepOutcome, "kept"> | null>,
 ): Promise<KeepOutcome> {
