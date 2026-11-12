@@ -23,8 +23,8 @@
 // In every process and thread of the command, first, it starts the watch of
 // `node:inspector` loads (`inspector.cjs`), except in the test workers of a
 // Vitest process in which no coverage provider runs: the `start` wrap tells
-// them so (`watchWorkers`, review of 0.1.443-r2 S2). Then it takes the input evidence
-// (`evidence-hooks.cjs`; spec 018 D9 as amended 2026-11-09) when the
+// them so (`watchWorkers`, review of 0.1.443-r2 S2). Then it takes the input
+// evidence (`evidence-hooks.cjs`; spec 018 D9 as amended 2026-11-09) when the
 // settings name its directory, so Vitest and what it loads see the wrapped
 // `fs` from their start.
 //
