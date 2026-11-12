@@ -89,7 +89,7 @@ export async function readKeepEvidence(
   };
   const held = heldFiles(await sources.hold.read(), files, growth);
   const listings = listingsAmong(files.flatMap((f) => f.inputs));
-  const moved = await listingMoves(root, sources.listed, listings);
+  const moved = await listingMoves(root, sources.listed, listings, () => keys.extraFiles());
   const during = changedDuring(sources.revisions, listings);
   const changed = new Set([...inputs.changed, ...moved, ...during]);
   return { changed, touched: [...inputs.touched].sort(), observed, held };

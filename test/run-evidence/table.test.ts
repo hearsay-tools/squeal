@@ -203,6 +203,32 @@ const TABLE: Readonly<Record<string, Row>> = {
     daemon: "store at ran",
     keeper: "store at ran",
   },
+  "a file added through a symlinked directory below a listed one": {
+    during: { links: { "src/linked": "../lib" }, batch: { "src/linked/new.ts": "export {};\n" } },
+    daemon: "unstable",
+    keeper: "unstable",
+    names: "src/",
+    keeperNames: "src/",
+  },
+  "a file added through a symlinked directory below a listed one, no revision of it": {
+    during: { links: { "src/linked": "../lib" }, create: { "src/linked/new.ts": "export {};\n" } },
+    daemon: "store at ran",
+    keeper: "unstable",
+    keeperNames: "src/",
+  },
+  "an editor's scratch file added through a symlinked directory below a listed one": {
+    during: { links: { "src/linked": "../lib" }, batch: { "src/linked/.x.ts.swp": "swap\n" } },
+    daemon: "unstable",
+    keeper: "unstable",
+    names: "src/",
+    keeperNames: "src/",
+  },
+  "an editor's scratch file added through a symlinked directory, no revision of it": {
+    during: { links: { "src/linked": "../lib" }, create: { "src/linked/.x.ts.swp": "swap\n" } },
+    daemon: "store at ran",
+    keeper: "unstable",
+    keeperNames: "src/",
+  },
   "an ignored file added to a listed directory, which the watcher drops": {
     during: { create: { "src/run.log": "log\n" } },
     daemon: "store at ran",
