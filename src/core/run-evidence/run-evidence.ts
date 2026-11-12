@@ -23,7 +23,7 @@ import type { Tier, TierFile } from "../scheduler/tiers.js";
 import type { AbsolutePath, RelativePath } from "../types/common.js";
 import type { CheckKey, TestFileRef } from "../types/keys.js";
 import type { RunReport } from "../types/runner.js";
-import { reasonOf } from "./reason.js";
+import { type Cause, causeOf, reasonOf } from "./reason.js";
 import { listingsAmong, scratchHeld } from "./scratch.js";
 import { movedInputs, observedMoves, readKeepEvidence, UnmergedIndex } from "./sources.js";
 
@@ -65,6 +65,8 @@ export type RunFiles = Pick<Tier, "files" | "lane" | "changes" | "cancel">;
  */
 export interface FileDecision {
   readonly decision: StoreDecision;
+  /** The kind of evidence behind it and its paths (row 011-320): what `squeal code`'s note groups by. */
+  readonly cause: Cause;
   readonly reason: string;
 }
 
@@ -307,7 +309,8 @@ export function decisionOf(
   holds: boolean,
 ): FileDecision {
   const decision = storeDecision(entry, end, holds);
-  return { decision, reason: reasonOf(decision, entry, end, outcome) };
+  const cause = causeOf(decision, entry, end, outcome);
+  return { decision, cause, reason: reasonOf(decision, cause) };
 }
 
 /** A file `squeal code` ran: the key a lookup gave it, and what its stability check compares. */

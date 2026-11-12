@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -265,5 +266,43 @@ describe("squeal code --base, a kept result whose observed read changed", () => 
     expect(again.report.runs[0]?.from).toBeUndefined();
     // A daemon keys the file at the new key too, so the result kept at the old one is not current.
     await withDaemon(repo, () => (daemonKey(repo) === after ? after : null), "the new key");
+  });
+});
+
+/**
+ * Row 011-320 (difference 3; spec 011 C9): a merge holds a path the key of
+ * a file the gate ran. The gate runs it, keeps nothing at its key, as the
+ * daemon stores nothing there, and the note says why; verdict and exit code
+ * do not change.
+ */
+describe("squeal code --base, a file whose input a merge holds", () => {
+  const HELD: TestFileRef = { project: "", path: "test/held.test.ts" };
+  let repo: FixtureRepo;
+
+  beforeAll(() => {
+    repo = featureRepo(keepPolicy("lookup-only"), {
+      "src/held.ts": "export const held = (x: number) => (x > 0 ? 1 : 0);\n",
+      [HELD.path]: `import { expect, it } from "vitest";\nimport { held } from "../src/held.ts";\n\nit("held", () => {\n  expect(held(1)).toBe(1);\n  expect(held(0)).toBe(0);\n});\n`,
+    });
+  });
+
+  afterAll(() => repo?.cleanup());
+
+  it("is run, not kept, and named in a note", SLOW, async () => {
+    // Three stages of `src/held.ts` at the bytes it holds, as a conflicted merge leaves the index.
+    const blob = execFileSync("git", ["rev-parse", ":src/held.ts"], { cwd: repo.root });
+    const stages = [1, 2, 3].map((stage) => `100644 ${String(blob).trim()} ${stage}\tsrc/held.ts`);
+    const input = [`0 ${"0".repeat(40)}\tsrc/held.ts`, ...stages, ""].join("\n");
+    execFileSync("git", ["update-index", "--index-info"], { cwd: repo.root, input });
+
+    const held = await gate(repo, ["src/held.ts"]);
+
+    expect([held.code, held.report.verdict, held.ran]).toEqual([0, "pass", [HELD.path]]);
+    expect(held.report.runs[0]?.completed).toEqual([HELD.path]);
+    expect(held.stderr).toContain(
+      "squeal code: 1 completed test file was not kept in the stores, because a merge holds a path its key names: test/held.test.ts; the next run will run it again\n",
+    );
+    const [key] = (await keysNow(repo, [HELD])) as [CheckKey];
+    expect(runIdsAt(repo, key)).toEqual([]);
   });
 });

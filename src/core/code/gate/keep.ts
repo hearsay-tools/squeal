@@ -25,6 +25,7 @@ import type { CodeStore } from "../store/types.js";
 import type { GateRun } from "./collect.js";
 import { Expectations, type Pending } from "./keep-expected.js";
 import { writeHere } from "./keep-here.js";
+import { NotKept } from "./keep-reasons.js";
 import { DAEMON_KEEPS_ITS_OWN, type DaemonWaits, KeepUnknown, sentWriter } from "./keep-sent.js";
 import {
   changedAfterLoss,
@@ -91,6 +92,8 @@ export class Keeper {
   readonly #told = new Set<string>();
   /** Row 011-320: the merge hold, read at each decision and again at each write. */
   readonly #hold: MergeHoldSource;
+  /** Row 011-320: the completed files not kept for their run's evidence, told at `flush`. */
+  readonly #notKept = new NotKept();
 
   constructor(options: KeepOptions) {
     this.#options = options;
@@ -128,6 +131,7 @@ export class Keeper {
    * files not yet written, told once, and never throws.
    */
   async flush(): Promise<void> {
+    for (const line of this.#notKept.take()) this.#tell(line);
     const queued = this.#queued.splice(0);
     if (queued.length === 0) return;
     let left = queued.flatMap((q) => q.files).length;
@@ -172,6 +176,9 @@ export class Keeper {
    * their key, loaded no environment file their project's keys lack, and
    * their inputs held still during it, none changed, and none written and
    * ended as it was (review 0.1.433 B1, the daemon's completion barrier).
+   * Row 011-320: their runtime identity held, no merge holds a path their
+   * key names, and no editor scratch file moved a listing it names. Each
+   * other one waits in `#notKept` with its reason, for `flush` to tell.
    */
   async #keepable(pending: Pending, run: GateRun): Promise<Kept[]> {
     const { report } = run;
@@ -194,10 +201,13 @@ export class Keeper {
       ...(runtime === undefined ? {} : { runtime }),
     };
     const decided = await keepDecisions(sources, candidates, report);
-    return candidates.filter((c) => {
+    const kept: Kept[] = [];
+    for (const c of candidates) {
       const at = decided.get(testFileId(c.ref));
-      return at !== undefined && keeps(at.decision);
-    });
+      if (at !== undefined && keeps(at.decision)) kept.push(c);
+      else if (at !== undefined) this.#notKept.add(c.ref.path, at);
+    }
+    return kept;
   }
 
   /**
