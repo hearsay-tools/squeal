@@ -1,3 +1,4 @@
+import { spawn } from "node:child_process";
 import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -14,6 +15,7 @@ import type { HookResult } from "../../src/harness/claude-code/run.js";
 import { recorded } from "../harness/helpers.js";
 import { runMissingConfig } from "../helpers/baseline.js";
 import {
+  awaitRunnerHosts,
   daemonSuite,
   diagnose,
   type FixtureRepo,
@@ -26,7 +28,7 @@ import {
   waitFor,
   withStore,
 } from "./helpers.js";
-import { isAlive } from "./strays.js";
+import { isAlive, TEST_CACHE } from "./strays.js";
 
 /*
  * Task 001-263 (`research/daemon-sigkill.md`): a daemon killed mid-tier, as
@@ -278,6 +280,33 @@ describe.runIf(process.platform === "linux")(
         );
         writeFileSync(join(dir, "flag"), "");
       }
+    });
+
+    // Review 018-37 B1: a runner host that never leaves is killed so the fixture can go, and the teardown fails naming it.
+    it("teardown fails naming a runner host that never leaves (review 018-37 B1)", async () => {
+      const root = mkdtempSync(join(tmpdir(), "sq-018-37-stuck-"));
+      suite.cleanup(() => rmSync(root, { recursive: true, force: true }));
+      const stuck = spawn(
+        process.execPath,
+        [
+          "-e",
+          "setInterval(() => {}, 1000)",
+          `${TEST_CACHE}/stand-in`,
+          "runner-host",
+          root,
+          "--runner",
+          "vitest",
+        ],
+        { stdio: "ignore" },
+      );
+      suite.cleanup(() => stuck.kill("SIGKILL"));
+      await waitFor(() => runnerHosts(root).length === 1, 10_000, "the stand-in host listed");
+      await expect(awaitRunnerHosts(root, 300)).rejects.toThrow(
+        new RegExp(
+          `runner hosts of ${root} still ran 300 ms after their daemon ended; killed: ${stuck.pid} `,
+        ),
+      );
+      expect(isAlive(stuck.pid ?? 0)).toBe(false);
     });
   },
 );
