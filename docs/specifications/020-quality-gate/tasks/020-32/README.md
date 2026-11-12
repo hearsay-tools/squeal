@@ -137,7 +137,7 @@ It cannot show:
 
 ## Checks run
 
-All in scratch clones of `hearsay-tools/squawk` under `/tmp/w5180f9e2/` (nothing run or written under `~/projects/cezar`). Tests ran with `node --test --test-concurrency=2` under `env -i`, with a temporary HOME, TMPDIR and git config that has the settings of Cezar's `scripts/test-git-env.mjs`. `node_modules` held copies of `yaml` 2.9.0 and `@babel/parser` 8.0.7 from Cezar's install, so `scripts/test-home-env.mjs`, which requires a full workspace install, was not loaded. The one-minute load was 35 to 79 on 24 CPUs.
+All in scratch clones of `hearsay-tools/squawk` under `/tmp/w5180f9e2/` (nothing run or written under `~/projects/cezar`). Tests ran with `node --test --test-concurrency=2` under `env -i`, with a temporary HOME, TMPDIR and git config that has the settings of Cezar's `scripts/test-git-env.mjs`. `node_modules` held copies of `yaml` 2.9.0 and `@babel/parser` 8.0.7 from Cezar's install, so `scripts/test-home-env.mjs`, which requires a full workspace install, was not loaded. The one-minute load was 30 to 79 on 24 CPUs from 11:22Z to 12:45Z.
 
 | Check | Result |
 |---|---|
@@ -152,6 +152,8 @@ All in scratch clones of `hearsay-tools/squawk` under `/tmp/w5180f9e2/` (nothing
 | `complexity-gate.mjs --base HEAD^1 --head HEAD` | "Checked 45 changed functions in 2 files: none over 20 is new or more complex than at the merge base" |
 | `check-clones.cjs` | not run: `jscpd` is not in the copied `node_modules`. It scans only `packages/`, which the diff does not touch. |
 | npm `--prefix`: `npm --prefix ../.. run build` in a workspace of a two-package probe | runs the root `build` (npm 11.20.0) |
+
+**Not run: `e2e.sh`** (in this folder). It runs the job's three scripts, "Build the trial commits", the gate step and "Report the trial", taken verbatim from the patched `ci.yml`, with real Squeal 0.1.443 on the synthetic #194 fixture (`../../research/probes/issue-194/fixture`, the fixture's own entry in place of Cezar's): (A) the dispatched commit against `origin/main`, (B) the replay mode, (C) a control with the keys committed on the branch only and the literal `squeal code --base origin/main`, expected `not-prepared` with children off. It checks the summary's `jq` program against a real report, which the fixture report in test 8 only imitates. The brief allows a live probe only below a one-minute load of 24; the samples were 79, 61, 35, 39, 65, 60 (11:22Z to 11:46Z), then 47 (12:02Z), 38 (12:22Z) and 30 (12:45Z). Run it with `sh e2e.sh <patched Cezar clone with node_modules/yaml> <squeal.mjs>`; it refuses at a load of 24 or more. Until it runs, the summary's field names rest on Squeal's `src/core/code/gate/report.ts` and `prepare.ts` types, read at `472a13730`. The gate's `report.json` in the artifact is complete whatever the summary shows.
 
 Not run: Cezar's `npm run lint`, `ci-test-sequencer.test.cjs` (loads Vite), and any build or test of the packaged suite: the trial runs on GitHub.
 
