@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -7,95 +7,182 @@ import { afterEach, describe, expect, it } from "vitest";
 /*
  * Review of 0.1.443-r2 S2 (spec 020 D19.6): a test worker watches
  * `node:inspector` only when its Vitest process said a coverage provider
- * runs (`watchWorkers`, which sets `SQUEAL_CI_NO_PROVIDER` for the workers it
- * starts). With none, `installWatch` wraps nothing and writes no log, and
- * `withWatch` reads none. Each case runs in a Node process of its own, as the
- * watch changes that process's globals.
+ * runs. Review of 0.1.444 B3: the Vitest process says so in a file below the
+ * run's raw directory (`watchWorkers`), never in its environment, so no
+ * allow-listed variable, key or part descriptor changes. Review of 0.1.444
+ * S1: the Vitest CLI process itself installs no watch. Each case runs in
+ * Node processes of its own, as the watch changes their globals.
  */
 
-const INSPECTOR = resolve(
-  import.meta.dirname,
-  "../../../src/runners/vitest/ci-runtime/inspector.cjs",
-);
+const RUNTIME = resolve(import.meta.dirname, "../../../src/runners/vitest/ci-runtime");
+const INSPECTOR = join(RUNTIME, "inspector.cjs");
 
 const dirs: string[] = [];
 afterEach(() => {
   for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
 
-/** `script` in a new Node process with `env` added, after `inspector.cjs` is required as `watch`; its JSON output. */
-function inProcess(script: string, env: NodeJS.ProcessEnv = {}): unknown {
-  const raw = mkdtempSync(join(tmpdir(), "squeal-inspector-watch-"));
-  dirs.push(raw);
-  const { SQUEAL_CI_NO_PROVIDER: _inherited, ...base } = process.env;
-  const code = [
-    `const watch = require(${JSON.stringify(INSPECTOR)});`,
-    `const raw = ${JSON.stringify(raw)};`,
-    script,
-  ].join("\n");
-  const out = execFileSync(process.execPath, ["-e", code], {
-    env: { ...base, ...env },
-    encoding: "utf8",
-  });
-  const logs = existsSync(join(raw, "inspector")) ? readdirSync(join(raw, "inspector")) : null;
-  const lines = (logs ?? []).flatMap((name) =>
-    readFileSync(join(raw, "inspector", name), "utf8")
-      .trim()
-      .split("\n"),
-  );
-  return { ...JSON.parse(out), logs: logs === null ? null : lines.map((l) => JSON.parse(l)) };
+function scratchDir(): string {
+  const dir = mkdtempSync(join(tmpdir(), "squeal-inspector-watch-"));
+  dirs.push(dir);
+  return dir;
 }
 
-/** Installs the watch, then loads the inspector while a test file runs. */
-const LOAD = [
-  "const builtin = process.getBuiltinModule;",
-  "watch.installWatch(raw, undefined);",
-  'globalThis.__vitest_worker__ = { filepath: "/w/test/a.test.ts", ctx: { projectName: "" } };',
-  'process.getBuiltinModule("node:inspector");',
-  "console.log(JSON.stringify({",
-  "  flag: globalThis.__squealCiInspector === true,",
-  "  wrapped: process.getBuiltinModule !== builtin,",
-  "}));",
-].join("\n");
+/** `node <args>` with this process's env less the recording's, plus `env`; its JSON output. */
+function node(args: readonly string[], env: NodeJS.ProcessEnv = {}): Record<string, unknown> {
+  const { SQUEAL_CI_RECORD: _record, ...base } = process.env;
+  const out = execFileSync(process.execPath, args, { env: { ...base, ...env }, encoding: "utf8" });
+  return JSON.parse(out) as Record<string, unknown>;
+}
 
-describe("the node:inspector watch beside no coverage provider (review 0.1.443-r2 S2)", () => {
-  it("installs and writes its log in a worker whose Vitest process said a provider runs", () => {
-    expect(inProcess(LOAD)).toEqual({
-      flag: true,
-      wrapped: true,
-      logs: [{ t: ["", "/w/test/a.test.ts"], i: true }],
-    });
+/** Each line the watch logged below `raw`, sorted; `null` when it wrote no log. */
+function logs(raw: string): unknown[] | null {
+  const dir = join(raw, "inspector");
+  const names = existsSync(dir) ? readdirSync(dir).filter((n) => n.endsWith(".ndjson")) : [];
+  if (names.length === 0) return null;
+  const lines = names.flatMap((n) => readFileSync(join(dir, n), "utf8").trim().split("\n"));
+  return lines.sort().map((line) => JSON.parse(line));
+}
+
+/** A worker: installs the watch, then loads the inspector while `file` runs; `report`s its hook state. */
+const worker = (raw: string, file: string, report: string) =>
+  [
+    `const watch = require(${JSON.stringify(INSPECTOR)});`,
+    "const builtin = process.getBuiltinModule;",
+    `watch.installWatch(${JSON.stringify(raw)}, undefined);`,
+    `globalThis.__vitest_worker__ = { filepath: ${JSON.stringify(file)}, ctx: { projectName: "" } };`,
+    'process.getBuiltinModule("node:inspector");',
+    `(${report})({ flag: globalThis.__squealCiInspector === true, wrapped: process.getBuiltinModule !== builtin });`,
+  ].join("\n");
+
+/**
+ * A Vitest process: `watchWorkers(raw, provider)`, then one forked worker
+ * and one worker thread. Whether its env changed, its file, and each
+ * worker's hook state.
+ */
+function vitestProcess(raw: string, provider: boolean): Record<string, unknown> {
+  const fork = worker(raw, "/w/test/fork.test.ts", "(v) => console.log(JSON.stringify(v))");
+  const thread = worker(
+    raw,
+    "/w/test/thread.test.ts",
+    '(v) => require("node:worker_threads").parentPort.postMessage(v)',
+  );
+  const script = [
+    'const { execFileSync } = require("node:child_process");',
+    'const { existsSync } = require("node:fs");',
+    'const { Worker } = require("node:worker_threads");',
+    `const watch = require(${JSON.stringify(INSPECTOR)});`,
+    "const before = JSON.stringify(process.env);",
+    `watch.watchWorkers(${JSON.stringify(raw)}, ${provider});`,
+    "const envSame = JSON.stringify(process.env) === before;",
+    `const file = existsSync(${JSON.stringify(join(raw, "inspector"))} + "/" + process.pid + ".no-provider");`,
+    `const fork = JSON.parse(execFileSync(process.execPath, ["-e", ${JSON.stringify(fork)}], { encoding: "utf8" }));`,
+    `const w = new Worker(${JSON.stringify(thread)}, { eval: true });`,
+    "w.once('message', (thread) => console.log(JSON.stringify({ envSame, file, fork, thread })));",
+  ].join("\n");
+  // Review of 0.1.444 B3: the old variable's name, allow-listed literally, stays unset.
+  return node(["-e", script], { SQUEAL_CI_NO_PROVIDER: undefined });
+}
+
+describe("the node:inspector watch beside no coverage provider (reviews 0.1.443-r2 S2, 0.1.444 B3)", () => {
+  it("watches the forked and thread workers of a Vitest process with a provider", () => {
+    const raw = scratchDir();
+    const on = { flag: true, wrapped: true };
+    expect(vitestProcess(raw, true)).toEqual({ envSame: true, file: false, fork: on, thread: on });
+    expect(logs(raw)).toEqual([
+      { t: ["", "/w/test/fork.test.ts"], i: true },
+      { t: ["", "/w/test/thread.test.ts"], i: true },
+    ]);
   });
 
-  it("installs nothing and writes no log in a worker told no provider runs", () => {
-    expect(inProcess(LOAD, { SQUEAL_CI_NO_PROVIDER: "1" })).toEqual({
-      flag: false,
-      wrapped: false,
-      logs: null,
+  it("without a provider: no worker hook, no log, and the Vitest process's env is unchanged", () => {
+    const raw = scratchDir();
+    const off = { flag: false, wrapped: false };
+    expect(vitestProcess(raw, false)).toEqual({
+      envSame: true,
+      file: true,
+      fork: off,
+      thread: off,
     });
+    expect(logs(raw)).toBeNull();
   });
 
-  it("tells the workers it starts, and reads no watch for a provider that did not start", () => {
+  it("removes an earlier file of its pid with a provider; reads no watch for a provider that did not start", () => {
+    const raw = scratchDir();
     const script = [
+      `const watch = require(${JSON.stringify(INSPECTOR)});`,
+      'const { existsSync } = require("node:fs");',
+      `const raw = ${JSON.stringify(raw)};`,
+      'const file = () => existsSync(raw + "/inspector/" + process.pid + ".no-provider");',
       'const ended = [{ project: "", moduleId: "/w/test/a.test.ts" }];',
       "const failed = () => ({ header: { off: 'failed', note: 'x' }, files: new Map() });",
-      "watch.watchWorkers(false);",
-      "const off = { env: process.env.SQUEAL_CI_NO_PROVIDER ?? null, header: watch.withWatch(failed(), raw, ended).header };",
-      "watch.watchWorkers(true);",
-      "const on = { env: process.env.SQUEAL_CI_NO_PROVIDER ?? null, header: watch.withWatch(failed(), raw, ended).header };",
+      "watch.watchWorkers(raw, false);",
+      "const off = { file: file(), header: watch.withWatch(failed(), raw, ended).header };",
+      "watch.watchWorkers(raw, true);",
+      "const on = { file: file(), header: watch.withWatch(failed(), raw, ended).header };",
       "console.log(JSON.stringify({ off, on }));",
     ].join("\n");
-    expect(inProcess(script, { SQUEAL_CI_NO_PROVIDER: "1" })).toEqual({
-      off: { env: "1", header: { off: "failed", note: "x" } },
+    expect(node(["-e", script])).toEqual({
+      off: { file: true, header: { off: "failed", note: "x" } },
       on: {
-        env: null,
+        file: false,
         header: {
           off: "failed",
           note: "x",
           inspector: { loaded: [], unknown: [{ project: "", path: "/w/test/a.test.ts" }] },
         },
       },
-      logs: null,
+    });
+  });
+});
+
+describe("the preload's watch in the Vitest CLI process (review 0.1.444 S1)", () => {
+  /**
+   * `main` under the preload, as the recording runs each process: whether it
+   * installed the watch, and what its hooks logged when a test file posted a
+   * message, called `process.getBuiltinModule` and imported the inspector.
+   */
+  function preloaded(main: string) {
+    const raw = scratchDir();
+    const script = join(scratchDir(), main);
+    writeFileSync(
+      script,
+      [
+        'const { MessageChannel } = await import("node:worker_threads");',
+        "const run = (name) => {",
+        '  globalThis.__vitest_worker__ = { filepath: "/w/test/" + name + ".test.ts", ctx: { projectName: "" } };',
+        "};",
+        'run("post");',
+        "const { port1 } = new MessageChannel();",
+        'port1.postMessage("x");',
+        "port1.close();",
+        'run("builtin");',
+        'process.getBuiltinModule("node:inspector");',
+        'run("import");',
+        'await import("node:inspector");',
+        "console.log(JSON.stringify({ flag: globalThis.__squealCiInspector === true }));",
+        "",
+      ].join("\n"),
+    );
+    const settings = JSON.stringify({ raw });
+    const state = node(["--require", join(RUNTIME, "vitest-ci.cjs"), script], {
+      SQUEAL_CI_RECORD: settings,
+    });
+    return { ...state, logs: logs(raw) };
+  }
+
+  it("installs no hook in a process that runs Vitest's bin", () => {
+    expect(preloaded("vitest.mjs")).toEqual({ flag: false, logs: null });
+  });
+
+  it("installs each hook in a worker's process", () => {
+    expect(preloaded("forks.mjs")).toEqual({
+      flag: true,
+      logs: [
+        { t: ["", "/w/test/builtin.test.ts"], i: true },
+        { t: ["", "/w/test/import.test.ts"], i: true },
+        { t: ["", "/w/test/post.test.ts"], i: false },
+      ],
     });
   });
 });
