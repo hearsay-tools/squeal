@@ -63,9 +63,8 @@ export class LoaderMap {
       return;
     }
     slot.read = this.#read;
-    // A loader waiting for its closure is in no loader set (`loaderSet`): a change of that moves the sets.
+    // A loader waiting for its closure is in no `loaderSet`: one that starts or stops waiting moves it.
     const spread =
-      (paths === undefined) === (slot.paths === undefined) &&
       imports(slot.condition) === imports(condition) &&
       samePaths(slot.paths, paths) &&
       samePaths(slot.files, files);
@@ -103,6 +102,11 @@ export class LoaderMap {
     const set = loaderSet(this.of(path));
     this.#sets.set(path, set);
     return set;
+  }
+
+  /** Drops the loader sets of sources not in `judged` (`StepCache.keep`). */
+  keep(judged: ReadonlySet<RelativePath>): void {
+    for (const path of this.#sets.keys()) if (!judged.has(path)) this.#sets.delete(path);
   }
 
   get withoutImports(): number {

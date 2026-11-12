@@ -19,12 +19,12 @@ import type { Seed } from "./seed.js";
  * results, records, a revision or a wake may change it (`invalidate`), and
  * a map still being read starts again (row 015-45). The read moves only
  * the sources of the test files that changed, and only their conditions
- * and signatures are made again (row 021-31). A decoded record holds for the chain while its key
- * keeps its bytes: a later run at a key stores its record over the first
- * (review 0.1.305 B1), so after `invalidate` each is read again, and
- * decoded again only when its bytes moved. They go once a step ends the
- * chain (`settle`), so they hold no memory between chains. A seed in
- * progress (row 015-47) outlives both: it reads no loader or record.
+ * and signatures are made again (row 021-31). A decoded record holds for
+ * the chain while its key keeps its bytes: a later run at a key stores its
+ * record over the first (review 0.1.305 B1), so after `invalidate` each is
+ * read again, and decoded again only when its bytes moved. They go once a
+ * step ends the chain (`settle`), so they hold no memory between chains. A
+ * seed in progress (row 015-47) outlives both: it reads no loader or record.
  */
 export class StepCache {
   /** Each source's loaders, kept across reads (row 021-31). */
@@ -96,8 +96,8 @@ export class StepCache {
 
   /**
    * `signatureOf`, made again only when the file's blob or counter version
-   * or the threshold moves, or after `invalidate`, which a stored record
-   * calls; `early`, of a file not ready's records in hand (row 015-57).
+   * or the threshold moves, or a read moved its loaders, as a stored record
+   * does (row 021-31); `early`, of a file not ready's records in hand (row 015-57).
    */
   signature(
     file: Pick<CodeFile, "path" | "blob" | "counterVersion">,
@@ -132,6 +132,20 @@ export class StepCache {
   /** A full judgement of `path` wrote its states (row 015-57). */
   judged(path: RelativePath): void {
     this.#failing.delete(path);
+  }
+
+  /**
+   * Drops what was made for sources a step no longer judges, as a revision
+   * removed or moved them: kept across reads (row 021-31), it would grow
+   * with each. Looked at only once more sources have conditions than `files` holds.
+   */
+  keep(files: readonly Pick<CodeFile, "path">[]): void {
+    if (this.#conditions.size <= files.length) return;
+    const judged = new Set(files.map((f) => f.path));
+    for (const by of [this.#conditions, this.#signatures, this.#early, this.#failing]) {
+      for (const path of by.keys()) if (!judged.has(path)) by.delete(path);
+    }
+    this.#map.keep(judged);
   }
 
   /** The record at `key`, decoded once in a chain while its bytes stay; `null` when the store holds none. */
