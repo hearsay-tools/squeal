@@ -30,6 +30,7 @@ export function runsOf(evidence: Evidence, durationsMs: GateTimes["durationsMs"]
     const notStarted = sorted(
       files.filter((f) => unfinished(f) && f.notStarted === true).map((f) => f.path),
     );
+    const overBudget = files.filter((f) => f.overBudget === true).map((f) => f.path);
     return [
       {
         runner,
@@ -43,6 +44,7 @@ export function runsOf(evidence: Evidence, durationsMs: GateTimes["durationsMs"]
         ...(children === null ? {} : { children }),
         ...(prepare === null ? {} : { prepare }),
         ...(estimate === undefined ? {} : { estimate: withoutRunner(estimate) }),
+        ...(overBudget.length === 0 ? {} : { overBudget: sorted(overBudget) }),
         durationMs,
       },
     ];
@@ -56,8 +58,12 @@ const withoutRunner = ({ seconds, files, known, width }: RunEstimate) => ({
   width,
 });
 
-/** A file that started and did not finish; one its `prepare` kept from running is not (D15.3). */
-const unfinished = (f: TestFileEvidence) => !f.completed && f.notPrepared !== true;
+/**
+ * A file that started and did not finish; one its `prepare` kept from
+ * running is not (D15.3), nor one the gate stopped early before (row 020-46).
+ */
+const unfinished = (f: TestFileEvidence) =>
+  !f.completed && f.notPrepared !== true && f.overBudget !== true;
 
 /** D15.3: the `prepare` runs, by entry; `null` when none. */
 function preparesOf(evidence: Evidence): PrepareRun[] | null {
