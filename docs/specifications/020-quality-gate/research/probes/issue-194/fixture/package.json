@@ -1,0 +1,9 @@
+{
+  "name": "issue-194-fixture",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/unit/",
+    "test:package": "node scripts/test-package.mjs"
+  }
+}
