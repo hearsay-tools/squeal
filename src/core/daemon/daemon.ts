@@ -122,6 +122,8 @@ export interface DaemonOptions {
   readonly capacity?: PoolCapacity;
   /** How the daemon finds V8's `gc` for its idle GC (row 011-69). Default `exposeGc`. */
   readonly gc?: () => GcFunction | null;
+  /** How the daemon reads its heap in use for the busy GC (row 021-29). Default `readHeapInUse`. */
+  readonly heapInUse?: () => number;
   /**
    * Spec 017 D3, D11: each lint tool's provider for the daemon's root. A tool with none gets no
    * lint pass; with none at all no lint pass starts. The `squeal daemon` command gives ESLint's
@@ -294,6 +296,7 @@ class Daemon {
       note: (text) => this.#note(text),
       log: this.#log,
       ...(options.gc === undefined ? {} : { lookup: options.gc }),
+      ...(options.heapInUse === undefined ? {} : { heapInUse: options.heapInUse }),
     });
     this.#repositoryRoot = repositoryRootOf(opened.root, opened.commonDir);
     this.#capacity = capacityReader({
@@ -424,6 +427,7 @@ class Daemon {
         this.#loop !== null && this.#phase !== "stopping"
           ? this.#loop.scheduler.slowWaiting()
           : null,
+      // Row 021-29: the same check runs the busy GC after a tier.
       idleGc: () => {
         if (this.#phase !== "stopping") this.#idleGc.check();
       },
@@ -758,7 +762,8 @@ class Daemon {
               log: this.#log,
               ...(this.options.env === undefined ? {} : { env: this.options.env }),
             });
-      // Row 011-69: each run, of any lane, is a tier the idle GC waits for.
+      // Row 011-69: each run, of any lane, is a tier the idle GC waits for and,
+      // row 021-29, after whose end the busy GC looks at the heap.
       const runner = this.#idleGc.track(
         afterEachRun(
           createCompositeRunner(vitestLanes === null ? [] : [vitestLanes], [
