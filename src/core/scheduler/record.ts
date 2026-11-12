@@ -1,23 +1,27 @@
+import {
+  mergeHeld,
+  readRecordEvidence,
+  touchBarrier,
+  unstableInputs,
+} from "../run-evidence/run-evidence.js";
 import { isBusy } from "../store/connection.js";
 import { plural } from "../text.js";
 import type { RelativePath } from "../types/common.js";
 import type { RunReport } from "../types/runner.js";
 import type { BusyResume } from "./busy-resume.js";
 import type { SchedulerContext } from "./context.js";
-import { scratchUnstable } from "./editor-scratch.js";
-import { rekeyEnvironments } from "./environment-growth.js";
 import { recordFocusedTier } from "./focused-record.js";
-import { heldFiles, type MergeHold } from "./hold.js";
+import type { MergeHold } from "./hold.js";
 import type { InstallStamps } from "./install-stamp.js";
 import { interruptedFiles } from "./interrupted.js";
 import type { Ledger } from "./ledger.js";
 import type { Mutex } from "./mutex.js";
-import { prepareObserved, type TierObservations } from "./observed.js";
+import type { TierObservations } from "./observed.js";
 import { type HeldSetups, heldSetups } from "./setup.js";
 import { SlotRecords } from "./slot-records.js";
 import type { SlowRun } from "./slow-tier.js";
-import { barredByTouch, type Moved, Withholds, withholdNote } from "./stability.js";
-import { recordTier, type Tier, type TierFile, unfinishedFiles, unstableInputs } from "./tiers.js";
+import { type Moved, Withholds, withholdNote } from "./stability.js";
+import { recordTier, type Tier, type TierFile, unfinishedFiles } from "./tiers.js";
 import type { WarmUp } from "./warm-up.js";
 import type { TierYields } from "./yields.js";
 
@@ -189,7 +193,7 @@ export class TierRecords {
   ): Promise<Recorded> {
     const host = this.#host;
     const { context } = host.started();
-    const inputs = await unstableInputs(context, tier);
+    const inputs = await unstableInputs(tier, context.hasher);
     const installMoved =
       host.reinstalled() ||
       (await host.install.stamp()) !== installStamp ||
@@ -220,7 +224,7 @@ export class TierRecords {
     const { context } = host.started();
     const ignored = await host.warmUp.read(context, tier, ran);
     // The completion barrier (task 001-168): a touch since selection withholds the files keying it.
-    const inputs = await unstableInputs(context, tier);
+    const inputs = await unstableInputs(tier, context.hasher);
     const installMoved = host.reinstalled() || (await host.install.stamp()) !== installStamp;
     const runtimeGone = await host.runtimeMissing();
     // Row 011-72: the record reads the index when it moved, so a merge during the run holds its files.
@@ -252,22 +256,11 @@ export class TierRecords {
     const { hold } = this.#host;
     const { context } = this.#host.started();
     const { tier, ran, inputs, installMoved, held: holdCut } = ended;
-    // Task 003-43: environment files the run loaded beyond the keyed ones re-key first.
-    const environment = installMoved ? undefined : await rekeyEnvironments(context, ran, tier);
-    // Task 001-132: what the run read beyond its closures, hashed under the lock.
-    const read = installMoved ? undefined : await prepareObserved(context, ran, tier.run);
-    const observed =
-      environment === undefined || read === undefined ? read : { ...read, environment };
-    // Row 011-117 (review 0.1.268 B1): a listing editor scratch files moved during the run, one
-    // the run observed first included, as the batches applied before this record leave it.
-    const changed = new Set([
-      ...inputs.changed,
-      ...scratchUnstable(context, tier, observed?.growth),
-    ]);
-    const touched = [...new Set([...inputs.touched, ...(observed?.touched ?? [])])].sort();
-    // Row 011-72 (011 C9): a file whose key names an unmerged path stores nothing and stays
-    // queued; that withhold counts toward no withhold limit.
-    const held = heldFiles(hold, tier.files, observed?.growth);
+    // What the run loaded and read beyond its keys, editor scratch listings, the merge hold. Row
+    // 011-72 (011 C9): a held file stores nothing and stays queued; that withhold counts toward
+    // no withhold limit.
+    const evidence = await readRecordEvidence(context, tier, ran, inputs, installMoved, hold);
+    const { changed, touched, observed, held } = evidence;
     // Review 0.1.266, B2: the held files' projects give no setup outcome, and a startup failure
     // that blames one is the hold's: it blocks nothing and the files it kept from starting queue.
     const setupsHeld = heldSetups(hold, tier.files, held, ran.startupFailure);
@@ -288,7 +281,7 @@ export class TierRecords {
     const { hold } = this.#host;
     const { tier, ran } = ended;
     const { observed, setupsHeld: was } = prepared;
-    const now = heldFiles(hold, tier.files, observed?.growth);
+    const now = mergeHeld(hold, tier.files, observed);
     const held = tier.files.filter((f) => prepared.held.includes(f) || now.includes(f));
     const setups = heldSetups(hold, tier.files, held, ran.startupFailure);
     return {
@@ -309,10 +302,9 @@ export class TierRecords {
    */
   #barrier(ended: EndedRun, prepared: PreparedRecord, held: readonly TierFile[]) {
     const { tier, ran } = ended;
-    const { touched, observed } = prepared;
     const free = held.length === 0 ? tier.files : tier.files.filter((f) => !held.includes(f));
     // Task 013-02 (D2 of 013-01): the files whose keys name a touched path, as a content change.
-    const { report, barred, paths } = barredByTouch(ran, free, touched, observed?.growth);
+    const { report, barred, paths } = touchBarrier(ran, free, prepared);
     // Task 007-30: no revision follows the touch; a file's first withhold at its key queues it
     // again as a moved install does, its previous state standing, and a second leaves it
     // `unknown`, per file whatever tier it shares (review 007-31, B1). Only the first are

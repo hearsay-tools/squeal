@@ -2,8 +2,8 @@ import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { defaultHostSlots, type PoolLease } from "../capacity/pool.js";
 import type { StatCache } from "../hash/stat-cache.js";
-import { listedDirectory } from "../keys/observed.js";
 import { testFileId } from "../keys/reverse-index.js";
+import { copyInputs, runEnd } from "../run-evidence/run-evidence.js";
 import type { CheckPriority } from "../types/check-groups.js";
 import type { EpochMs, ProjectName, RelativePath } from "../types/common.js";
 import type { CheckKey, TestFileRef } from "../types/keys.js";
@@ -23,8 +23,6 @@ import { tierLoad } from "./retries.js";
 import { type CutFiles, joinSpan, NONE_CUT, type TierSpan } from "./sharing.js";
 import { backlogSlot, joinsSlot } from "./slots.js";
 import { groupView, laneFor } from "./slow.js";
-import { changedSince, type Moved, snapshotInputs } from "./stability.js";
-import { tierEnd } from "./store-decision.js";
 
 /** One test file of a tier and the key it runs under. */
 export interface TierFile {
@@ -651,7 +649,7 @@ export function newTier(
     revision: ledger.revision,
     checkpointId: files.find((p) => p.checkpointId !== null)?.checkpointId ?? null,
     files,
-    snapshot: snapshotInputs(
+    snapshot: copyInputs(
       keys.cache,
       files.flatMap((p) => p.inputs),
     ),
@@ -782,19 +780,6 @@ export function endTier(context: SchedulerContext, ledger: Ledger, tier: Tier): 
 }
 
 /**
- * The tier's inputs whose content now differs from the snapshot, and those
- * touched since it (task 001-168). Outside the lock: it only reads. A
- * listing is no file; the revisions during the run cover it (`Tier.changes`),
- * and one editor scratch files moved is asked as the run is recorded
- * (`scratchUnstable`, row 011-117).
- */
-export function unstableInputs(context: SchedulerContext, tier: Tier): Promise<Moved> {
-  const inputs = new Set(tier.files.flatMap((f) => f.inputs));
-  for (const path of inputs) if (listedDirectory(path) !== null) inputs.delete(path);
-  return changedSince(tier.snapshot, inputs, context.hasher);
-}
-
-/**
  * Records a finished tier.
  *
  * - Crashed, or not completed before a timeout: nothing stored under a key,
@@ -863,7 +848,7 @@ export function recordTier(
 ): RelativePath[] {
   const { store } = context;
   endTier(context, ledger, tier);
-  const end = tierEnd(tier, report, changedOnDisk, requeue, observed, (ref) =>
+  const end = runEnd(tier, report, changedOnDisk, requeue, observed, (ref) =>
     context.keys.runtimeIdentity(ref),
   );
   const record = tierRecord(context, ledger, tier, report, end, setups);
