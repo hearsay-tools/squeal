@@ -13,9 +13,13 @@
 // (`watchWorkers`), never in a variable: an environment variable would reach
 // the run's keys and part descriptors when a project allow-lists its name
 // (review of 0.1.444 B3). A worker that finds its Vitest process's file
-// installs no hook and writes no log. In a Vitest worker it attributes each
-// load to the test file running then (`__vitest_worker__.filepath`, as Squeal's
-// runtime recorder does): an `import` or `require` Node resolves (a
+// installs no hook and writes no log. A process passes what it found on
+// below `raw` for its own pid, so a process or thread it starts does the
+// same, at any depth (review of 0.1.444-r2 N1); a process started through
+// one that loads no Node hook, a shell for one, finds no file and watches.
+// In a Vitest worker the watch attributes each load to the test file
+// running then (`__vitest_worker__.filepath`, as Squeal's runtime recorder
+// does): an `import` or `require` Node resolves (a
 // `module.registerHooks` resolve hook, which sees every load of a builtin,
 // a repeated one too) and a `process.getBuiltinModule` call. A load with no
 // test file running (the worker's setup, where the V8 provider loads it)
@@ -35,7 +39,8 @@
 // process whose worker wrote it (the parent of a forked worker, the process
 // of a thread). `readWatch` reads them in that process at the run's end, and
 // `withWatch` puts them in the part's coverage header. A Vitest process with
-// no provider writes `<raw>/inspector/<pid>.no-provider` instead.
+// no provider writes `<raw>/inspector/<pid>.no-provider` instead, and so
+// does each process its workers start, and so on.
 // CommonJS with Node built-ins only; any error of its own is swallowed.
 "use strict";
 const fs = require("node:fs");
@@ -51,8 +56,27 @@ const WATCH = "inspector";
 let unwatched = false;
 
 const keyOf = (project, file) => `${project}\0${file}`;
-/** The file below `raw` by which Vitest process `owner` tells its workers that no coverage provider runs. */
+/**
+ * The file below `raw` by which process `owner` tells the processes and
+ * threads it starts that no coverage provider runs: a Vitest process
+ * (`watchWorkers`), or one a file of its own owner told so (`installWatch`).
+ */
 const noProvider = (raw, owner) => path.join(raw, WATCH, `${owner}.no-provider`);
+
+/**
+ * Says below `raw`, in this process's file, whether the processes and
+ * threads it starts watch nothing (`none`); with `none` false, a file left
+ * by an earlier process of this pid goes.
+ */
+function tell(raw, none) {
+  try {
+    const file = noProvider(raw, process.pid);
+    if (none) {
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      fs.writeFileSync(file, "");
+    } else fs.rmSync(file, { force: true });
+  } catch {}
+}
 
 /**
  * Whether the function that called `fn` is in one of `files` (absolute
@@ -73,16 +97,21 @@ function calledFrom(fn, files) {
 }
 
 /**
- * Watches this process or thread once, writing below `raw`; `raw` not a
- * string watches nothing. `provider`: the path of Squeal's coverage
- * provider, whose own `process.getBuiltinModule` call names no file (Vitest
- * evaluates it again after each file's module reset).
+ * Watches this process or thread once, writing below `raw`, unless its
+ * owner's file says no provider runs; `raw` not a string watches nothing.
+ * A process's main thread tells what it found to those it starts (`tell`).
+ * `provider`: the path of Squeal's coverage provider, whose own
+ * `process.getBuiltinModule` call names no file (Vitest evaluates it again
+ * after each file's module reset).
  */
 function installWatch(raw, provider) {
   if (typeof raw !== "string" || workerThreads.isInternalThread) return;
   if (typeof module_.registerHooks !== "function" || globalThis.__squealCiInspector) return;
   const owner = workerThreads.isMainThread ? process.ppid : process.pid;
-  if (fs.existsSync(noProvider(raw, owner))) return;
+  const none = fs.existsSync(noProvider(raw, owner));
+  // Review of 0.1.444-r2 N1: a thread's owner is its process, which told already.
+  if (workerThreads.isMainThread) tell(raw, none);
+  if (none) return;
   globalThis.__squealCiInspector = true;
   const append = fs.appendFileSync;
   const mkdir = fs.mkdirSync;
@@ -148,14 +177,7 @@ function installWatch(raw, provider) {
  */
 function watchWorkers(raw, providerRuns) {
   unwatched = providerRuns !== true;
-  if (typeof raw !== "string") return;
-  try {
-    const file = noProvider(raw, process.pid);
-    if (unwatched) {
-      fs.mkdirSync(path.dirname(file), { recursive: true });
-      fs.writeFileSync(file, "");
-    } else fs.rmSync(file, { force: true });
-  } catch {}
+  if (typeof raw === "string") tell(raw, unwatched);
 }
 
 /**
