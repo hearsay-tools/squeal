@@ -49,6 +49,7 @@
 # Exempt: they name node:test but check nothing node:test does on this Node.
 # They read or write policy, setup, primer, report or eval-record text, or
 # drive timers or signals. Node 22 only.
+#   test/cli/code-gate-children.test.ts
 #   test/cli/code-gate-prepare-cancel.test.ts
 #   test/cli/codex.test.ts
 #   test/cli/init-node-test.test.ts
@@ -210,6 +211,8 @@ test/cli/code-gate-keep-node-test.test.ts
 test/cli/code-gate-keep-busy.test.ts
 # Row 020-31 (#193): the gate's closure and module-hook notes over real node:test runs.
 test/cli/code-gate-closures.test.ts
+# Rows 020-34 and 020-35 (#194): selection by declared inputs over real node:test runs and children.
+test/cli/code-gate-inputs.test.ts
 # The kit (spec 016 D1): a real `node --test` through the node:test adapter,
 # so the same identity path.
 test/kit/node-test
