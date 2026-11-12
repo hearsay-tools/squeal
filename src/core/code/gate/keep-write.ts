@@ -10,10 +10,10 @@ import { BUSY_SLICE_MS, busyBackoffMs } from "../../store/busy.js";
 import { isBusy, withBusySliceSync } from "../../store/connection.js";
 import { describeHolders, lockHolders } from "../../store/lock-holders.js";
 import { storePaths } from "../../store/paths.js";
-import type { AbsolutePath, EpochMs } from "../../types/common.js";
+import type { AbsolutePath, EpochMs, WorktreeId } from "../../types/common.js";
 import type { RunReport } from "../../types/runner.js";
 import type { Store } from "../../types/store.js";
-import type { Provenance } from "../../types/store-records.js";
+import type { Provenance, ResultRecord } from "../../types/store-records.js";
 import { shareRecord } from "../coverage/parts.js";
 import { COVERAGE_RECORD_VERSION } from "../coverage/record.js";
 import type { CoverageRecord } from "../coverage/types.js";
@@ -129,35 +129,75 @@ export function databasesOf(commonDir: AbsolutePath): {
 }
 
 /**
+ * One try of each write of a kept file: `false` when a busy store refused
+ * it. Here (`writeHere`), or through the daemon that serves the worktree
+ * (`writeThroughDaemon`, spec 021 D15, row 021-20).
+ */
+export interface KeepWriter {
+  /** The file's coverage record at its key (`putParts`). */
+  coverage(file: Kept): Promise<boolean>;
+  /** The file's results in one transaction (`storeResults`), `keys` its lookup's. */
+  results(file: Kept, records: readonly ResultRecord[], keys: WorktreeKeys): Promise<boolean>;
+}
+
+/** The writer with no daemon serving: each try on the keeper's own connections, one busy slice. */
+export function writeHere(
+  stores: { readonly store: Store; readonly code: CodeStore },
+  worktreeId: WorktreeId,
+  now: () => EpochMs,
+): KeepWriter {
+  const { store, code } = stores;
+  return {
+    coverage: async (file) => {
+      const recordKey = { resultKey: file.key, providerVersion: COVERAGE_RECORD_VERSION };
+      const shared = shareRecord(file.record, COVERAGE_RECORD_VERSION);
+      return tried(() => code.coverage.putParts(recordKey, shared, now()));
+    },
+    results: async (file, records, keys) =>
+      tried(() =>
+        storeResults({ store, keys, worktreeId, now }, records, healsUnheld(store, file.paths)),
+      ),
+  };
+}
+
+/** `write`, one synchronous transaction, tried once with one busy slice: whether it landed. */
+function tried(write: () => unknown): boolean {
+  try {
+    withBusySliceSync(BUSY_SLICE_MS, write);
+    return true;
+  } catch (error) {
+    if (!isBusy(error)) throw error;
+    return false;
+  }
+}
+
+/**
  * One file's record at its key, then its results there, as the daemon's
- * tier record stores them. `giveUp`, asked with the database after each
- * busy pause, says whether the bound is spent; `steady`, asked then and
- * before each write, whether the file's inputs still hold the bytes its
- * run read. Both are asked outside any transaction.
+ * tier record stores them, each try by `writer`. `giveUp`, asked with the
+ * database after each busy pause, says whether the bound is spent;
+ * `steady`, asked then and before each write, whether the file's inputs
+ * still hold the bytes its run read. Both are asked outside any
+ * transaction. `store` is read for the file's previous checks.
  */
 export async function keepFile(
-  stores: { readonly store: Store; readonly code: CodeStore; readonly keys: WorktreeKeys },
+  stores: { readonly store: Store; readonly keys: WorktreeKeys; readonly writer: KeepWriter },
   at: {
     readonly file: Kept;
     readonly report: RunReport;
     readonly provenance: Provenance;
-    readonly now: () => EpochMs;
     readonly databases: ReturnType<typeof databasesOf>;
     readonly giveUp: (database: AbsolutePath) => boolean;
     readonly steady: () => Promise<boolean>;
   },
 ): Promise<KeepOutcome> {
-  const { store, code, keys } = stores;
-  const { file, report, provenance, now, databases, giveUp, steady } = at;
-  const recordKey = { resultKey: file.key, providerVersion: COVERAGE_RECORD_VERSION };
-  const shared = shareRecord(file.record, COVERAGE_RECORD_VERSION);
+  const { store, keys, writer } = stores;
+  const { file, report, provenance, databases, giveUp, steady } = at;
   const paused = (database: AbsolutePath) => async () => {
     if (giveUp(database)) return "spent";
     return (await steady()) ? null : "changed";
   };
   if (!(await steady())) return "changed";
-  const put = () => code.coverage.putParts(recordKey, shared, now());
-  const coded = await sliced(put, paused(databases.code));
+  const coded = await sliced(() => writer.coverage(file), paused(databases.code));
   if (coded !== "kept") return coded;
   // D8's file-level error expansion: the checks of the file's newest stored key, from any worktree.
   const previous = new Map(
@@ -171,31 +211,24 @@ export async function keepFile(
     provenance,
     describe: describeFailure,
   });
-  const context = { store, keys, worktreeId: provenance.worktreeId, now };
-  const results = () => storeResults(context, records, healsUnheld(store, file.paths));
   // A record no results follow is never read (`Keeper.#write`), and prune removes it.
   if (!(await steady())) return "changed";
-  return sliced(results, paused(databases.main));
+  return sliced(() => writer.results(file, records, keys), paused(databases.main));
 }
 
 /**
- * `write`, one synchronous transaction, tried as `slicedWrite` tries it:
- * each try waits at most `BUSY_SLICE_MS` for a busy store, the next
- * follows `busyBackoffMs` later. After each pause `paused`, which may read
- * files, says whether to stop; it runs outside the transaction.
+ * `attempt`, one try of one write, tried as `slicedWrite` tries it: each
+ * try waits at most `BUSY_SLICE_MS` for a busy store, the next follows
+ * `busyBackoffMs` later. After each pause `paused`, which may read files,
+ * says whether to stop; it runs outside any transaction.
  */
 async function sliced(
-  write: () => unknown,
+  attempt: () => Promise<boolean>,
   paused: () => Promise<Exclude<KeepOutcome, "kept"> | null>,
 ): Promise<KeepOutcome> {
-  for (let attempt = 0; ; attempt++) {
-    try {
-      withBusySliceSync(BUSY_SLICE_MS, write);
-      return "kept";
-    } catch (error) {
-      if (!isBusy(error)) throw error;
-    }
-    await sleep(busyBackoffMs(attempt));
+  for (let n = 0; ; n++) {
+    if (await attempt()) return "kept";
+    await sleep(busyBackoffMs(n));
     const stop = await paused();
     if (stop !== null) return stop;
   }
