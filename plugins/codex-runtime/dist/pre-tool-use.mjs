@@ -213,7 +213,7 @@ var DEFAULT_POLICY = {
   runtimeFiles: [],
   observe: { runtimeInputs: true },
   env: { allowlist: [] },
-  runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 6e5 },
+  runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 6e5, hostIdleMinutes: null },
   nodeTest: [],
   pytest: [],
   vitest: { excludeProjects: [], exclude: [] },
@@ -322,6 +322,10 @@ function merge(shape, defaults, given, prefix, found2) {
 function unknownKey(path) {
   return `unknown key "${path}"`;
 }
+
+// src/core/daemon/host-idle.ts
+var GIB = 2 ** 30;
+var hostIdleMinutes = (v) => Number.isSafeInteger(v) && v >= 0 ? null : "a whole number of minutes >= 0";
 
 // src/core/keys/glob.ts
 function globToRegExp(glob) {
@@ -1081,7 +1085,9 @@ var SHAPE = {
   runner: {
     tierSize: positiveInteger,
     backlogTierSize: positiveInteger,
-    timeoutMs: orNull(positiveInteger)
+    timeoutMs: orNull(positiveInteger),
+    // Spec 021 D20.4 (row 021-26).
+    hostIdleMinutes: orNull(hostIdleMinutes)
   },
   nodeTest: (v) => nodeTestProjects(v, "nodeTest"),
   pytest: (v) => pytestProjects(v, "pytest"),
@@ -13703,7 +13709,8 @@ function loadUserConfig(options = {}) {
       projects: {},
       groupSlotScope: DEFAULT_GROUP_SLOT_SCOPE,
       backgroundShare: DEFAULT_BACKGROUND_SHARE
-    }
+    },
+    runner: { hostIdleMinutes: null }
   };
   const { value, problems } = loadConfigFile(path, SHAPE2, defaults);
   const { hostSlots } = value.capacity;
@@ -13753,7 +13760,9 @@ function normalize2(path) {
 var groupSlotScope = (v) => GROUP_SLOT_SCOPES.includes(v) ? null : `one of ${GROUP_SLOT_SCOPES.map((s) => `"${s}"`).join(", ")}`;
 var backgroundShare = (v) => isBackgroundShare(v) ? null : "a number from 0 to 1";
 var SHAPE2 = {
-  capacity: { hostSlots: positiveInteger, projects, groupSlotScope, backgroundShare }
+  capacity: { hostSlots: positiveInteger, projects, groupSlotScope, backgroundShare },
+  // Spec 021 D20.4 (row 021-26).
+  runner: { hostIdleMinutes: (v) => v === null ? null : hostIdleMinutes(v) }
 };
 
 // src/core/status/slot-holders.ts
