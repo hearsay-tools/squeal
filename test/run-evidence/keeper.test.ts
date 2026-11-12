@@ -5,10 +5,12 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it } from "vitest";
 import { Keeper } from "../../src/core/code/gate/keep.js";
+import { NotKept } from "../../src/core/code/gate/keep-reasons.js";
 import type { Hasher } from "../../src/core/hash/hasher.js";
 import { StatCache } from "../../src/core/hash/stat-cache.js";
 import { testFileId } from "../../src/core/keys/reverse-index.js";
 import {
+  type FileDecision,
   mergeHoldOf,
   type RuntimeIdentity,
   unheldNow,
@@ -108,10 +110,11 @@ describe("squeal code's runtime identity (row 011-320, difference 2)", () => {
     ["compares no identity without the source", undefined, undefined, 1],
   ])("%s", async (_, before, after, results) => {
     const root = repository();
+    const notes: string[] = [];
     let identity = before;
     const runtime = before === undefined ? undefined : () => identity ?? "";
 
-    await keepA(root, [], {
+    await keepA(root, notes, {
       ...(runtime === undefined ? {} : { runtime }),
       started: () => {
         identity = after;
@@ -119,6 +122,33 @@ describe("squeal code's runtime identity (row 011-320, difference 2)", () => {
     });
 
     expect(resultsAt(join(root, ".git"))).toBe(results);
+    expect(notes).toEqual(
+      results === 1
+        ? []
+        : [
+            "1 completed test file was not kept in the stores, because the runtime's identity moved during the run: test/a.test.ts; the next run will run it again",
+          ],
+    );
+  });
+});
+
+describe("squeal code's note on the files it did not keep (row 011-320)", () => {
+  const decided = (kind: string, paths: string[], reason = "") =>
+    ({ cause: { kind, paths }, reason }) as unknown as FileDecision;
+
+  it("tells one line per kind of evidence, naming the test files and the paths behind it", () => {
+    const notKept = new NotKept();
+    notKept.add("test/b.test.ts", decided("unstable", ["src/b.ts"]));
+    notKept.add("test/h.test.ts", decided("held", []));
+    notKept.add("test/a.test.ts", decided("unstable", ["src/", "src/a.ts"]));
+    notKept.add("test/w.test.ts", decided("withheld", [], "the runner withheld the run"));
+
+    expect(notKept.take()).toEqual([
+      "2 completed test files were not kept in the stores, because what their keys name changed during the run (src/, src/a.ts, src/b.ts): test/a.test.ts, test/b.test.ts; the next run will run them again",
+      "1 completed test file was not kept in the stores, because a merge holds a path its key names: test/h.test.ts; the next run will run it again",
+      "1 completed test file was not kept in the stores, because the runner withheld the run: test/w.test.ts; the next run will run it again",
+    ]);
+    expect(notKept.take()).toEqual([]);
   });
 });
 
