@@ -1,5 +1,6 @@
 import { createInterface } from "node:readline";
 import type { Readable } from "node:stream";
+import type { PoolLease } from "../capacity/pool.js";
 import type { CoverageRun } from "../code/coverage/types.js";
 import type { RunnerAdapter, RunOptions, RunReport } from "../types/runner.js";
 import { encodeCoverageRun } from "./coverage-wire.js";
@@ -16,6 +17,7 @@ import {
   RUNNER_HOST_PROTOCOL,
   type WireRunOptions,
 } from "./protocol.js";
+import type { AdmitAsk, HostAdmission } from "./remote/admission.js";
 import type { TreeHost } from "./remote/tree-host.js";
 import type { RemoteRunOptions, RemoteRunReply, TreeEntry, TreeWrite } from "./remote/tree-wire.js";
 import type { RunAround } from "./workers.js";
@@ -65,6 +67,12 @@ export interface ServeOptions {
    * nothing into the root and refuses those messages.
    */
   readonly tree?: TreeHost;
+  /**
+   * Spec 021 D18 (row 021-21): the admission of the machine a remote host
+   * runs on, which the daemon asks with `admit` before a background run.
+   * Absent, a local host: the daemon's own pool admits its runs.
+   */
+  readonly admission?: HostAdmission;
 }
 
 const CLOSE_MS = 5_000;
@@ -120,6 +128,7 @@ export async function serveRunnerHost(options: ServeOptions): Promise<void> {
         run.stop.abort("stop");
       }
       for (const done of forced.values()) done();
+      options.admission?.close();
       const closing = closeAdapter();
       let timer: NodeJS.Timeout | undefined;
       const bound = new Promise((resolve) => {
@@ -186,10 +195,32 @@ export async function serveRunnerHost(options: ServeOptions): Promise<void> {
     };
   };
 
+  /** Spec 021 D18 (row 021-21): an admitted run holds its machine's permits until it ends. */
   const run = async (id: number, args: readonly unknown[]): Promise<RunReport> => {
-    const current = started();
     const [files, wire] = args as [RunReportFiles, WireRunOptions & RemoteRunOptions];
-    const { beforeForce, expected, alive, ...data } = wire;
+    const lease = wire.admitted === true ? (options.admission?.claim() ?? null) : null;
+    try {
+      return await runOf(
+        id,
+        files,
+        lease === null ? wire : { ...wire, workers: lease.grant },
+        lease,
+      );
+    } finally {
+      lease?.release();
+    }
+  };
+
+  const runOf = async (
+    id: number,
+    files: RunReportFiles,
+    wire: WireRunOptions & RemoteRunOptions,
+    lease: PoolLease | null,
+  ): Promise<RunReport> => {
+    const current = started();
+    // `permits` are the daemon's (`RunOptions.permits`): never this host's to use.
+    const { beforeForce, expected, alive, admitted: _admitted, permits: _permits, ...data } = wire;
+    let left = files.length;
     // Spec 021 D11: a remote host runs only over the tree the daemon expects.
     const refused = expected === undefined ? [] : await treeOf().differing(expected);
     if (refused.length > 0) return { refused } as RemoteRunReply as RunReport;
@@ -203,7 +234,11 @@ export async function serveRunnerHost(options: ServeOptions): Promise<void> {
       ...(logDir === undefined ? {} : { logDir }),
       signal: signal.signal,
       stop: stop.signal,
-      fileEnded: (testFile) => send({ ev: "fileEnded", run: id, testFile }),
+      fileEnded: (testFile) => {
+        // The run's tail returns the permits of the workers it no longer runs (row 011-97).
+        if (--left > 0) lease?.shrinkTo(left);
+        send({ ev: "fileEnded", run: id, testFile });
+      },
       ...(beforeForce === true
         ? {
             beforeForce: (env) =>
@@ -267,6 +302,11 @@ export async function serveRunnerHost(options: ServeOptions): Promise<void> {
         return treeOf().install();
       case "coreEnvironment":
         return treeOf().coreEnvironment(args[0] as readonly string[]);
+      case "admit": {
+        // A host without admission, a local one, leaves its runs to the daemon's pool.
+        const ask = args[0] as AdmitAsk;
+        return options.admission?.admit(ask) ?? { grant: Math.max(0, ask.want) };
+      }
       case "invalidate":
         // A remote's changed files ride on the revision's invalidate (spec 021 D10).
         if (args[1] !== undefined) await treeOf().write(args[1] as TreeWrite);
