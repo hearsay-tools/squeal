@@ -1,0 +1,117 @@
+{
+  "format": "squeal-code-gate/1",
+  "createdAt": "2026-11-12T05:18:27.133Z",
+  "versions": {
+    "squeal": "0.1.443",
+    "counter": 5,
+    "coverageProvider": 3,
+    "coverageRecord": 4,
+    "qualityPolicy": 4
+  },
+  "base": {
+    "ref": "main",
+    "commit": "3de5982f21cf4c367213ebf5ca633ba443875d17",
+    "policy": {
+      "complexityThreshold": 20,
+      "crapThreshold": 30,
+      "coverageExclude": [],
+      "complexityInclude": [
+        "**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,py}"
+      ],
+      "complexityExclude": [
+        "**/dist/**",
+        "**/build/**",
+        "**/vendor/**",
+        "**/*.min.js"
+      ],
+      "complexityMaxFileBytes": 524288,
+      "gateGroups": null
+    }
+  },
+  "head": {
+    "commit": "7fc8ec3414e96f448e66a3a455f3e1e573231d13",
+    "dirty": false,
+    "paths": [
+      {
+        "path": "src/math.mjs",
+        "blob": "03ee1e924dfb6db0bf1d7d486d9018f4a144aa00"
+      }
+    ]
+  },
+  "budget": {
+    "seconds": 600,
+    "timedOut": false
+  },
+  "scope": {
+    "groups": [
+      {
+        "name": "tests",
+        "at": "edit",
+        "from": "default"
+      },
+      {
+        "name": "slow",
+        "at": "edit",
+        "from": "default"
+      }
+    ],
+    "leftOut": []
+  },
+  "functions": [
+    {
+      "path": "src/math.mjs",
+      "qualifiedName": "add",
+      "occurrence": 0,
+      "line": 1,
+      "bodyHash": "816045599779f34c",
+      "change": "edited",
+      "complexity": 1,
+      "coverage": {
+        "lines": 1,
+        "covered": 1,
+        "share": 1
+      },
+      "crap": 1,
+      "loaders": {
+        "expected": [
+          "test/math.test.mjs"
+        ],
+        "measured": [
+          "test/math.test.mjs"
+        ]
+      },
+      "state": "pass",
+      "gap": null
+    }
+  ],
+  "omitted": [],
+  "uncounted": [],
+  "runs": [
+    {
+      "runner": "node-test",
+      "selected": [
+        "test/math.test.mjs"
+      ],
+      "completed": [
+        "test/math.test.mjs"
+      ],
+      "notFinished": [],
+      "failed": [],
+      "estimate": {
+        "seconds": null,
+        "files": 2,
+        "known": 0,
+        "width": 4
+      },
+      "durationMs": 325
+    }
+  ],
+  "verdict": "pass",
+  "counts": {
+    "pass": 1,
+    "violation": 0,
+    "incomplete": 0,
+    "skipped": 0,
+    "accepted": 0
+  }
+}
