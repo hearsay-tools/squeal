@@ -1331,7 +1331,7 @@ class Daemon {
  * inputs). Spec 021 D20.1 (row 021-26): a runner in a local runner host
  * (`host`, and a hosted Vitest passed as `null`) starts on its first call.
  */
-async function openedAtStart(
+export async function openedAtStart(
   installing: () => Promise<boolean>,
   vitest: RecoveringRunner | null,
   host: unknown,
