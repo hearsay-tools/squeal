@@ -6,8 +6,9 @@ import { createFsHasher, type Hasher, seedStatCache } from "../../../../src/core
 import { StatCache } from "../../../../src/core/hash/stat-cache.js";
 import * as keyIndex from "../../../../src/core/keys/index.js";
 import { statCandidates } from "../../../../src/core/revision/reconcile.js";
+import type { SchedulerContext } from "../../../../src/core/scheduler/context.js";
 import { WorktreeKeys } from "../../../../src/core/scheduler/keying.js";
-import { observedGrowth } from "../../../../src/core/scheduler/observed.js";
+import { type observedGrowth, prepareObserved } from "../../../../src/core/scheduler/observed.js";
 import { changedSince, snapshotInputs } from "../../../../src/core/scheduler/stability.js";
 import type { RelativePath, WorktreeId } from "../../../../src/core/types/common.js";
 import type { Store } from "../../../../src/core/types/store.js";
@@ -16,6 +17,10 @@ import { git, REPORT, scratchStore, writeTree } from "./shared.js";
 
 const WORKTREE = "validity-a" as WorktreeId;
 const OTHER = "validity-b" as WorktreeId;
+
+/** What `observedGrowth` gives, which `prepareObserved` gives too, whole or as its `growth`. */
+type Growth = Awaited<ReturnType<typeof observedGrowth>>;
+type Prepared = { readonly growth: Growth };
 
 /**
  * Each test file's closure and key as a daemon assembles them (011 C3): a
@@ -82,7 +87,18 @@ export async function assemble(input: AssembleInput, scratch: string): Promise<C
             ...(o.modules === undefined ? {} : { modules: o.modules }),
           })),
         };
-        const growth = await observedGrowth({ root, keys }, report, keys.beginRun());
+        // Row 011-319: through `prepareObserved`, as the daemon's record reads a run, so its lines
+        // run at both trees: before, it also checked the reads' bytes; since, it is `observedGrowth`.
+        // A plain hasher: the check's hash reads must not move `movedAfterReads`'s files.
+        const context = { root, keys, hasher: createFsHasher(root, "sha1") };
+        const prepared: unknown = await prepareObserved(
+          context as unknown as SchedulerContext,
+          report,
+          keys.beginRun(),
+        );
+        const growth = (
+          prepared instanceof Map ? prepared : (prepared as Prepared).growth
+        ) as Growth;
         freshGrowth = [...growth];
         for (const [id, addition] of growth) {
           const ref = report.completedFiles.find((ref) => keyIndex.testFileId(ref) === id);
