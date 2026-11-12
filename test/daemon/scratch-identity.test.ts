@@ -8,6 +8,7 @@ import { runMissingConfig } from "../helpers/baseline.js";
 import {
   createFixtureRepo,
   type FixtureRepo,
+  readNotes,
   SLOW,
   type SpawnedProcess,
   spawnCli,
@@ -24,8 +25,17 @@ import { exitWithin, resultOf, TMP_TEST } from "./scratch-helpers.js";
  * in place: a daemon's temp directory is keyed by its repository's stored id
  * and its root, so a daemon whose root path another repository, or a fresh
  * clone, took over while it still runs never empties or removes the newcomer's.
- * The path changes hands by two renames, so the old daemon cannot exit first.
+ * The path changes hands by two renames, so the root never goes away.
+ *
+ * Row 018-41: a re-clone in place still moves the old daemon's store aside
+ * with its `.git`, so the old daemon stops by itself at its next heartbeat
+ * (row 011-226), within 5 s. The test pauses it until the newcomer is ready,
+ * so its exit comes after the newcomer made its temp dir however slow the
+ * start is.
  */
+
+/** The old daemon's stop note when its store moved aside (`storeCondemned`). */
+const STORE_MOVED = /^daemon stopped: the store file it opened was moved aside/;
 
 const processes: SpawnedProcess[] = [];
 const cleanups: (() => void)[] = [];
@@ -139,7 +149,8 @@ describe.runIf(process.platform === "linux")(
 
       const clone = join(repo.root, "..", "clone");
       git(repo.root, ["clone", "-q", source, clone]);
-      swap(repo.root, clone);
+      old.child.kill("SIGSTOP");
+      const aside = swap(repo.root, clone);
       const runtimeDir = join(repo.runtimeDir, "new");
       mkdirSync(runtimeDir, { mode: 0o700 });
       const cloned = {
@@ -155,8 +166,13 @@ describe.runIf(process.platform === "linux")(
       expect(old.child.exitCode).toBeNull();
       expect(existsSync(join(oldTemp, "old-marker"))).toBe(true);
       writeFileSync(join(newTemp, "new-marker"), "");
-      old.child.kill("SIGTERM");
+      // Resumed, the old daemon's overdue heartbeat finds its store gone from its path.
+      old.child.kill("SIGCONT");
       expect(await exitWithin(old, 30_000)).toEqual({ code: 0, signal: null });
+      const notes = readNotes({ commonDir: join(aside, ".git"), worktreeId: repo.worktreeId });
+      expect(notes.filter((text) => text.startsWith("daemon stopped:"))).toEqual([
+        expect.stringMatching(STORE_MOVED),
+      ]);
       expect(existsSync(join(newTemp, "new-marker"))).toBe(true);
       expect(existsSync(oldTemp)).toBe(false);
       expect(newTemp).not.toBe(oldTemp);
