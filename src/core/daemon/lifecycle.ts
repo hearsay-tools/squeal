@@ -160,7 +160,9 @@ export interface TimerContext {
   readonly slowWaiting?: () => SlowWaiting | null;
   /**
    * Spec 011 C9 (row 011-69): each check asks for the last-resort GC, which
-   * runs once no tier ran for 60 s (`IdleGc.check`). Absent: none.
+   * runs once no tier ran for 60 s, and, while busy, after a tier when the
+   * heap in use is over twice the last live size, at most once a minute
+   * (spec 021 D21.2, row 021-29; `IdleGc.check`). Absent: none.
    */
   readonly idleGc?: () => void;
   /**
