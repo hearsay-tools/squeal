@@ -17,11 +17,229 @@ function daemonIncarnation(daemon) {
   return `${daemon.squealVersion}@${daemon.startedAt}#${daemon.token}`;
 }
 
-// src/core/daemon/import-desk.ts
-import { randomUUID } from "node:crypto";
-
 // src/core/daemon/write-protocol.ts
 import { isAbsolute } from "node:path";
+
+// src/core/daemon/keep-protocol.ts
+var MAX_RECORDS = 1e5;
+var OUTCOMES = /* @__PURE__ */ new Set(["pass", "fail", "skip"]);
+var PHASES = /* @__PURE__ */ new Set(["load", "after-tests", "setup"]);
+var RECORD_FIELDS = [
+  "check",
+  "key",
+  "outcome",
+  "durationMs",
+  "location",
+  "fingerprint",
+  "summary",
+  "errors",
+  "provenance"
+];
+function parseKeep(request) {
+  const { id, worktreeId, storeSchema } = request;
+  if (!isText(id) || id.length > 128)
+    return '"id" must be a non-empty string of 128 characters at most';
+  if (!isText(worktreeId)) return '"worktreeId" must be a non-empty string';
+  if (!Number.isInteger(storeSchema)) return '"storeSchema" must be an integer';
+  const write = parseKeepWrite(request.write, worktreeId);
+  if (typeof write === "string") return write;
+  return {
+    type: "keep",
+    id,
+    worktreeId,
+    storeSchema,
+    write
+  };
+}
+function parseKeepWrite(value, worktreeId) {
+  if (!isFields(value)) return '"write" must be an object';
+  switch (value.kind) {
+    case "coverage": {
+      const extra = unknownField(value, ["kind", "key", "record"]);
+      if (extra !== null) return `"write.${extra}" is not a field of a coverage write`;
+      if (!isKey(value.key)) return '"write.key" must be a result key';
+      const record = coverageRecord(value.record);
+      if (record !== null) return `"write.record" ${record}`;
+      return { kind: "coverage", key: value.key, record: value.record };
+    }
+    case "results":
+      return parseResults(value, worktreeId);
+    default:
+      return '"write.kind" must be "coverage" or "results"';
+  }
+}
+function parseResults(value, worktreeId) {
+  const extra = unknownField(value, ["kind", "key", "records", "paths", "environmentFiles"]);
+  if (extra !== null) return `"write.${extra}" is not a field of a results write`;
+  const { key, records, paths, environmentFiles } = value;
+  if (!isKey(key)) return '"write.key" must be a result key';
+  if (!isPathList(paths)) return '"write.paths" must be a list of relative paths';
+  if (!isPathList(environmentFiles))
+    return '"write.environmentFiles" must be a list of relative paths';
+  if (!Array.isArray(records) || records.length === 0 || records.length > MAX_RECORDS) {
+    return `"write.records" must be a list of 1 to ${MAX_RECORDS} results`;
+  }
+  const seen = /* @__PURE__ */ new Set();
+  for (const [at, record] of records.entries()) {
+    const why = resultRecord(record, key, worktreeId);
+    if (why !== null) return `"write.records[${at}]" ${why}`;
+    const other = otherFileOrRun(record, records[0]);
+    if (other !== null) return `"write.records[${at}]" is ${other}`;
+    const id = JSON.stringify(record.check);
+    if (seen.has(id)) return `"write.records[${at}]" repeats a check`;
+    seen.add(id);
+  }
+  return {
+    kind: "results",
+    key,
+    records,
+    paths,
+    environmentFiles
+  };
+}
+function otherFileOrRun(record, first) {
+  const { check, provenance } = record;
+  if (check.project !== first.check.project || check.testPath !== first.check.testPath) {
+    return "another test file's";
+  }
+  const fields = ["worktreeId", "revision", "commit", "dirty", "runId", "recordedAt"];
+  return fields.every((f) => provenance[f] === first.provenance[f]) ? null : "another run's";
+}
+function resultRecord(value, key, worktreeId) {
+  if (!isFields(value)) return "must be an object";
+  const extra = unknownField(value, RECORD_FIELDS);
+  if (extra !== null) return `has the unknown field "${extra}"`;
+  const check = checkId(value.check);
+  if (check !== null) return `"check" ${check}`;
+  if (value.key !== key) return "is at another key";
+  if (!OUTCOMES.has(value.outcome)) return '"outcome" must be pass, fail or skip';
+  if (!isCount(value.durationMs, true)) return '"durationMs" must be a duration';
+  if (value.location !== null && !isLocation(value.location))
+    return '"location" must be a location or null';
+  if (!isTextOrNull(value.fingerprint)) return '"fingerprint" must be a string or null';
+  if (!isTextOrNull(value.summary)) return '"summary" must be a string or null';
+  if (!Array.isArray(value.errors)) return '"errors" must be a list';
+  for (const [at, error] of value.errors.entries()) {
+    const why = checkError(error);
+    if (why !== null) return `"errors[${at}]" ${why}`;
+  }
+  return gateProvenance(value.provenance, worktreeId);
+}
+function checkId(value) {
+  if (!isFields(value)) return "must be an object";
+  const { kind, project, testPath, fullName } = value;
+  if (typeof project !== "string" || !isPath(testPath))
+    return "must name a project and a test file";
+  if (kind === "file")
+    return unknownField(value, ["kind", "project", "testPath"]) === null ? null : "has an unknown field";
+  if (kind !== "test") return 'must be of kind "test" or "file"';
+  if (typeof fullName !== "string") return '"fullName" must be a string';
+  return unknownField(value, ["kind", "project", "testPath", "fullName"]) === null ? null : "has an unknown field";
+}
+function checkError(value) {
+  if (!isFields(value)) return "must be an object";
+  const fields = [
+    "name",
+    "message",
+    "stack",
+    "location",
+    "diff",
+    "loadAverage",
+    "code",
+    "causes",
+    "phase",
+    "recorder"
+  ];
+  const extra = unknownField(value, fields);
+  if (extra !== null) return `has the unknown field "${extra}"`;
+  const { name, message, stack, location: location2, diff, loadAverage, code, causes, phase: phase2, recorder } = value;
+  if (typeof name !== "string" || typeof message !== "string")
+    return "must have a name and a message";
+  if (!isTextOrNull(stack) || !isTextOrNull(diff))
+    return '"stack" and "diff" must be strings or null';
+  if (location2 !== null && !isLocation(location2)) return '"location" must be a location or null';
+  if (loadAverage !== void 0 && !isCount(loadAverage, true))
+    return '"loadAverage" must be a number';
+  if (code !== void 0 && typeof code !== "string") return '"code" must be a string';
+  if (recorder !== void 0 && typeof recorder !== "string") return '"recorder" must be a string';
+  if (phase2 !== void 0 && !PHASES.has(phase2))
+    return '"phase" must be load, after-tests or setup';
+  if (causes === void 0) return null;
+  const valid = (c) => isFields(c) && typeof c.message === "string" && (c.code === void 0 || typeof c.code === "string") && unknownField(c, ["message", "code"]) === null;
+  return Array.isArray(causes) && causes.every(valid) ? null : '"causes" must be a list of causes';
+}
+function gateProvenance(value, worktreeId) {
+  if (!isFields(value)) return '"provenance" must be an object';
+  const fields = ["worktreeId", "revision", "commit", "dirty", "runId", "recordedAt"];
+  if (unknownField(value, fields) !== null) return '"provenance" has an unknown field';
+  const { revision, commit, dirty, runId, recordedAt } = value;
+  if (value.worktreeId !== worktreeId) return '"provenance.worktreeId" must be this worktree';
+  if (!isCount(revision, false)) return '"provenance.revision" must be a revision';
+  if (commit !== null && !(typeof commit === "string" && /^[0-9a-f]{40,64}$/.test(commit))) {
+    return '"provenance.commit" must be a commit or null';
+  }
+  if (typeof dirty !== "boolean") return '"provenance.dirty" must be true or false';
+  if (typeof runId !== "string" || !/^gate-[0-9a-f-]{36}$/.test(runId))
+    return '"provenance.runId" must be a gate run';
+  if (!isCount(recordedAt, false)) return '"provenance.recordedAt" must be a time';
+  return null;
+}
+function coverageRecord(value) {
+  if (!isFields(value) || value.v !== 1) return "must be a version 1 coverage record";
+  if (unknownField(value, ["v", "sources", "unread"]) !== null) return "has an unknown field";
+  if (!isPathList(value.unread)) return '"unread" must be a list of relative paths';
+  if (!Array.isArray(value.sources)) return '"sources" must be a list';
+  for (const [at, source] of value.sources.entries()) {
+    if (!isFields(source)) return `"sources[${at}]" must be an object`;
+    if (unknownField(source, ["path", "blob", "lines", "covered", "functions"]) !== null) {
+      return `"sources[${at}]" has an unknown field`;
+    }
+    const { path, blob, lines, covered, functions } = source;
+    if (!isPath(path)) return `"sources[${at}].path" must be a relative path`;
+    if (typeof blob !== "string" || !/^[0-9a-f]{40,64}$/.test(blob)) {
+      return `"sources[${at}].blob" must be a blob id`;
+    }
+    if (!isBase64(lines) || !isBase64(covered)) return `"sources[${at}]" lines must be bitsets`;
+    if (!Array.isArray(functions) || !functions.every(isFunctionSpan)) {
+      return `"sources[${at}].functions" must be a list of spans`;
+    }
+  }
+  return null;
+}
+function isFunctionSpan(value) {
+  return Array.isArray(value) && value.length === 5 && value.slice(0, 4).every((n) => isCount(n, false)) && (value[4] === 0 || value[4] === 1);
+}
+function isLocation(value) {
+  return isFields(value) && isPath(value.path) && isCount(value.line, false) && isCount(value.column, false) && unknownField(value, ["path", "line", "column"]) === null;
+}
+function unknownField(value, known) {
+  return Object.keys(value).find((field) => !known.includes(field)) ?? null;
+}
+function isFields(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function isText(value) {
+  return typeof value === "string" && value.length > 0;
+}
+function isTextOrNull(value) {
+  return value === null || typeof value === "string";
+}
+function isCount(value, fraction) {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return false;
+  return fraction || Number.isInteger(value);
+}
+function isKey(value) {
+  return typeof value === "string" && /^[0-9a-f]{64}$/.test(value);
+}
+function isPath(value) {
+  return isText(value) && !value.startsWith("/") && !value.includes("\0");
+}
+function isPathList(value) {
+  return Array.isArray(value) && value.every(isPath);
+}
+function isBase64(value) {
+  return typeof value === "string" && /^[A-Za-z0-9+/]*={0,2}$/.test(value);
+}
 
 // src/core/store/codec.ts
 var CHECK_COLUMNS = "c.project AS check_project, c.test_path AS check_test_path, c.kind AS check_kind, c.full_name AS check_full_name";
@@ -183,10 +401,14 @@ var IMPORT_TYPES = /* @__PURE__ */ new Set(["import", "import-status"]);
 function isImportRequest(request) {
   return IMPORT_TYPES.has(request.type);
 }
+var KEEP_TYPES = /* @__PURE__ */ new Set(["keep", "keep-status"]);
+function isKeepRequest(request) {
+  return KEEP_TYPES.has(request.type);
+}
 function parseWriteRequest(request) {
   switch (request.type) {
     case "lease": {
-      if (!isText(request.worktreeId)) return '"worktreeId" must be a non-empty string';
+      if (!isText2(request.worktreeId)) return '"worktreeId" must be a non-empty string';
       if (typeof request.holder !== "string") return '"holder" must be a string';
       const process2 = parseProcess(request.process);
       if (typeof process2 === "string") return process2;
@@ -198,8 +420,8 @@ function parseWriteRequest(request) {
       };
     }
     case "release":
-      if (!isText(request.worktreeId)) return '"worktreeId" must be a non-empty string';
-      if (!isText(request.token)) return '"token" must be a non-empty string';
+      if (!isText2(request.worktreeId)) return '"worktreeId" must be a non-empty string';
+      if (!isText2(request.token)) return '"token" must be a non-empty string';
       return {
         type: "release",
         worktreeId: request.worktreeId,
@@ -215,15 +437,20 @@ function parseWriteRequest(request) {
     case "import-status":
       if (typeof request.requestId !== "string") return '"requestId" must be a string';
       return { type: "import-status", requestId: request.requestId };
+    case "keep":
+      return parseKeep(request);
+    case "keep-status":
+      if (typeof request.requestId !== "string") return '"requestId" must be a string';
+      return { type: "keep-status", requestId: request.requestId };
     default:
       return void 0;
   }
 }
 function parseWrite(request) {
   const { worktreeId, storeSchema, token, release } = request;
-  if (!isText(worktreeId)) return '"worktreeId" must be a non-empty string';
+  if (!isText2(worktreeId)) return '"worktreeId" must be a non-empty string';
   if (!Number.isInteger(storeSchema)) return '"storeSchema" must be an integer';
-  if (token !== null && !isText(token)) return '"token" must be a non-empty string or null';
+  if (token !== null && !isText2(token)) return '"token" must be a non-empty string or null';
   if (typeof release !== "boolean") return '"release" must be true or false';
   const batch = parseBatch(request.batch);
   if (typeof batch === "string") return batch;
@@ -238,9 +465,9 @@ function parseWrite(request) {
 }
 function parseImport(request) {
   const { worktreeId, storeSchema, file, fileHash, dryRun } = request;
-  if (!isText(worktreeId)) return '"worktreeId" must be a non-empty string';
+  if (!isText2(worktreeId)) return '"worktreeId" must be a non-empty string';
   if (!Number.isInteger(storeSchema)) return '"storeSchema" must be an integer';
-  if (!isText(file) || !isAbsolute(file)) return '"file" must be an absolute path';
+  if (!isText2(file) || !isAbsolute(file)) return '"file" must be an absolute path';
   if (typeof fileHash !== "string" || !/^[0-9a-f]{64}$/.test(fileHash)) {
     return '"fileHash" must be a SHA-256 in hex';
   }
@@ -266,16 +493,16 @@ function parseProcess(value) {
   }
   return { pid, startTime, pidNamespace: pidNamespace2 };
 }
-function isText(value) {
+function isText2(value) {
   return typeof value === "string" && value.length > 0;
 }
 
 // src/core/daemon/protocol.ts
 var MAX_LINE_BYTES = 64 * 1024;
 var MAX_WRITE_LINE_BYTES = 32 * 1024 * 1024;
-var WRITE_LINE_START = '{"type":"write",';
+var LONG_LINE_STARTS = ['{"type":"write",', '{"type":"keep",'];
 function lineLimit(start) {
-  return start.startsWith(WRITE_LINE_START) ? MAX_WRITE_LINE_BYTES : MAX_LINE_BYTES;
+  return LONG_LINE_STARTS.some((head) => start.startsWith(head)) ? MAX_WRITE_LINE_BYTES : MAX_LINE_BYTES;
 }
 function parseRequest(line) {
   let value;
@@ -324,7 +551,7 @@ function parseRequest(line) {
       if (typeof request.requestId !== "string") return '"requestId" must be a string';
       return { type: "run-slow-status", requestId: request.requestId };
     case "run-group":
-      if (!isText2(request.group)) return '"group" must be a non-empty string';
+      if (!isText3(request.group)) return '"group" must be a non-empty string';
       return { type: "run-group", group: request.group };
     case "run-group-paths":
       return parseGroupPaths(request.group, request.paths);
@@ -353,7 +580,7 @@ function parseRequest(line) {
       if (!Array.isArray(testFiles) || !testFiles.every(isTestFileRef)) {
         return '"testFiles" must be a list of { project, path } strings';
       }
-      if (!Array.isArray(texts) || texts.length === 0 || !texts.every(isText2)) {
+      if (!Array.isArray(texts) || texts.length === 0 || !texts.every(isText3)) {
         return '"texts" must be a list of non-empty strings';
       }
       if (typeof withinMs !== "number" || !Number.isFinite(withinMs) || withinMs < 0) {
@@ -368,14 +595,14 @@ function parseRequest(line) {
 }
 function parseSync(paths) {
   if (paths === void 0) return { type: "sync" };
-  if (!Array.isArray(paths) || !paths.every(isText2)) {
+  if (!Array.isArray(paths) || !paths.every(isText3)) {
     return '"paths" must be a list of non-empty strings';
   }
   return { type: "sync", paths: [...paths] };
 }
 function parseGroupPaths(group, paths) {
-  if (!isText2(group)) return '"group" must be a non-empty string';
-  if (!Array.isArray(paths) || paths.length === 0 || !paths.every(isText2)) {
+  if (!isText3(group)) return '"group" must be a non-empty string';
+  if (!Array.isArray(paths) || paths.length === 0 || !paths.every(isText3)) {
     return '"paths" must be a non-empty list of non-empty strings';
   }
   return { type: "run-group-paths", group, paths: [...paths] };
@@ -385,29 +612,26 @@ function isTestFileRef(value) {
   const { project, path } = value;
   return typeof project === "string" && typeof path === "string";
 }
-function isText2(value) {
+function isText3(value) {
   return typeof value === "string" && value.length > 0;
 }
 function errorResponse(error) {
   return { schemaVersion: PAYLOAD_SCHEMA_VERSION, ok: false, error };
 }
 
-// src/core/daemon/import-desk.ts
+// src/core/daemon/request-desk.ts
+import { randomUUID } from "node:crypto";
 var REMEMBERED = 16;
-var ImportDesk = class {
+var RequestDesk = class {
   #context;
-  #imports = /* @__PURE__ */ new Map();
+  #states = /* @__PURE__ */ new Map();
   constructor(context) {
     this.#context = context;
   }
-  /** The answer to `request`. A stopping daemon takes no new import. */
-  answer(request, phase2) {
-    if (request.type === "import-status") return this.status(request);
-    if (phase2 === "stopping") return errorResponse("daemon is stopping");
-    return this.import(request);
-  }
-  import(request) {
+  /** Takes `request`, unless it names another worktree or store schema, or the daemon stops. */
+  take(request, phase2) {
     const { worktreeId, storeSchema } = this.#context;
+    if (phase2 === "stopping") return errorResponse("daemon is stopping");
     if (request.worktreeId !== worktreeId) {
       return errorResponse(`this daemon serves worktree ${worktreeId}, not ${request.worktreeId}`);
     }
@@ -416,14 +640,17 @@ var ImportDesk = class {
         `the daemon's store is at schema ${storeSchema}, not ${request.storeSchema}`
       );
     }
-    const requestId = randomUUID();
+    const requestId = this.#context.idOf?.(request) ?? randomUUID();
+    const taken = this.#states.get(requestId);
+    if (taken !== void 0) return this.#answer(requestId, taken.outcome);
     const state = { outcome: null };
-    this.#imports.set(requestId, state);
-    for (const old of this.#imports.keys()) {
-      if (this.#imports.size <= REMEMBERED) break;
-      this.#imports.delete(old);
+    this.#states.set(requestId, state);
+    const remembered = this.#context.remembered ?? REMEMBERED;
+    for (const old of this.#states.keys()) {
+      if (this.#states.size <= remembered) break;
+      this.#states.delete(old);
     }
-    this.#context.requestImport(request).then(
+    this.#context.run(request).then(
       (outcome) => {
         state.outcome = outcome;
       },
@@ -431,17 +658,19 @@ var ImportDesk = class {
         state.outcome = { failed: error instanceof Error ? error.message : String(error) };
       }
     );
-    return importAnswer(requestId, state.outcome);
+    return this.#answer(requestId, state.outcome);
   }
-  status(request) {
-    const state = this.#imports.get(request.requestId);
-    if (state === void 0) return errorResponse(`unknown request id ${request.requestId}`);
-    return importAnswer(request.requestId, state.outcome);
+  /** How request `requestId` goes. */
+  status(requestId) {
+    const state = this.#states.get(requestId);
+    if (state === void 0) return errorResponse(`unknown request id ${requestId}`);
+    return this.#answer(requestId, state.outcome);
+  }
+  #answer(requestId, outcome) {
+    const { type } = this.#context;
+    return { schemaVersion: PAYLOAD_SCHEMA_VERSION, ok: true, type, requestId, outcome };
   }
 };
-function importAnswer(requestId, outcome) {
-  return { schemaVersion: PAYLOAD_SCHEMA_VERSION, ok: true, type: "import", requestId, outcome };
-}
 
 // src/core/daemon/run-group.ts
 import { randomUUID as randomUUID2 } from "node:crypto";
@@ -773,8 +1002,17 @@ function createHandlers(context) {
   const holdRequests = /* @__PURE__ */ new Map();
   const { requestWrite, storeSchema } = context;
   const writes = requestWrite === void 0 || storeSchema === void 0 ? null : new WriteDesk({ worktreeId: context.worktreeId, storeSchema, requestWrite });
-  const { requestImport } = context;
-  const imports = requestImport === void 0 || storeSchema === void 0 ? null : new ImportDesk({ worktreeId: context.worktreeId, storeSchema, requestImport });
+  const { requestImport, requestKeep, worktreeId } = context;
+  const imports = requestImport === void 0 || storeSchema === void 0 ? null : new RequestDesk({ type: "import", worktreeId, storeSchema, run: requestImport });
+  const keeps = requestKeep === void 0 || storeSchema === void 0 ? null : new RequestDesk({
+    type: "keep",
+    worktreeId,
+    storeSchema,
+    run: requestKeep,
+    // Review 0.1.450 B2: a lost answer is asked again by the gate's own id.
+    idOf: (request) => request.id,
+    remembered: KEEPS_REMEMBERED
+  });
   const runAll = (requestId, state) => {
     const answer2 = {
       schemaVersion: PAYLOAD_SCHEMA_VERSION,
@@ -819,9 +1057,7 @@ function createHandlers(context) {
     if (isWriteRequest(request)) {
       return writes?.answer(request, context.phase()) ?? errorResponse(NO_WRITES);
     }
-    if (isImportRequest(request)) {
-      return imports?.answer(request, context.phase()) ?? errorResponse(NO_IMPORTS);
-    }
+    if (isDeskRequest(request)) return deskAnswer(request, { imports, keeps }, context.phase());
     switch (request.type) {
       case "ping":
         return {
@@ -982,7 +1218,21 @@ function createHandlers(context) {
   };
 }
 var NO_WRITES = "this daemon takes no writes";
+function isDeskRequest(request) {
+  return isImportRequest(request) || isKeepRequest(request);
+}
+function deskAnswer(request, desks, phase2) {
+  const { imports, keeps } = desks;
+  if (isImportRequest(request)) {
+    if (imports === null) return errorResponse(NO_IMPORTS);
+    return request.type === "import" ? imports.take(request, phase2) : imports.status(request.requestId);
+  }
+  if (keeps === null) return errorResponse(NO_KEEPS);
+  return request.type === "keep" ? keeps.take(request, phase2) : keeps.status(request.requestId);
+}
 var NO_IMPORTS = "this daemon takes no imports";
+var NO_KEEPS = "this daemon takes no kept files";
+var KEEPS_REMEMBERED = 1024;
 function remember2(requests, requestId, state) {
   requests.set(requestId, state);
   for (const old of requests.keys()) {
@@ -1096,6 +1346,7 @@ var waitingSync = /* @__PURE__ */ new Map();
 var waitingHold = /* @__PURE__ */ new Map();
 var waitingWrite = /* @__PURE__ */ new Map();
 var waitingImport = /* @__PURE__ */ new Map();
+var waitingKeep = /* @__PURE__ */ new Map();
 var server = null;
 function bind(identity) {
   const handle = createHandlers({
@@ -1150,6 +1401,11 @@ function bind(identity) {
         const id = randomUUID5();
         waitingImport.set(id, resolve);
         post({ type: "import", id, request });
+      }),
+      requestKeep: (request) => new Promise((resolve) => {
+        const id = randomUUID5();
+        waitingKeep.set(id, resolve);
+        post({ type: "keep", id, request });
       })
     }
   });
@@ -1227,6 +1483,12 @@ function receive(message) {
     case "import-result": {
       const resolve = waitingImport.get(message.id);
       waitingImport.delete(message.id);
+      resolve?.(message.outcome);
+      return;
+    }
+    case "keep-result": {
+      const resolve = waitingKeep.get(message.id);
+      waitingKeep.delete(message.id);
       resolve?.(message.outcome);
       return;
     }
