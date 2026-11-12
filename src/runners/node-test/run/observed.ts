@@ -8,8 +8,8 @@ import { writtenAbove } from "../../observe/inputs.js";
 
 /**
  * The project files one test file's run loaded, from the recorder's edges
- * (spec 003 D5): its own process, the `node --test` child, and for a slow
- * project the processes the test spawns (004 D5). Worktree-relative, sorted,
+ * (spec 003 D5): its own process, the `node --test` child, and the processes
+ * the test spawns (004 D5; every project's since row 020-36). Worktree-relative, sorted,
  * `node_modules` and paths outside the worktree left out.
  */
 export interface ObservedClosure {
@@ -54,7 +54,7 @@ interface Edge {
  * Spec 016 D4: the file whose edges reach the test file's entry is the test
  * file's own process, its worker threads included; what each other process
  * loaded from its own non-preload roots, over its own edges, is `direct`: a
- * process the test started (recorded in a slow project, 004 D5). The
+ * process the test started (004 D5, 020 D12.6). The
  * `node --test` parent's loads are its preloads.
  */
 export function observedClosure(
