@@ -31,3 +31,19 @@ Done when: the table's keeper column equals the daemon's for differences 2 to 4,
 
 "Folder case: Add to the running row": row keep-listing-revision joins 011-320. Steered to worker ea62d171: `squeal code` does not keep a completed file when a file was added to or removed from a directory its key lists, during the run (the daemon decides "unstable" through `Tier.changes`). The table row "a revision during the run moved a listed directory, no input's bytes" flips its keeper column to the daemon's decision. The source works with and without a serving daemon; the note names the directory; the notes give the cost on a run in this repository. One commit.
 
+
+## R1: review of cand/0.1.458
+
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.458` at `c4593e4c2dfdc40b744eab74968ff80a0aa97716`; range `8f945a59b..c4593e4c2` (nine worker commits of ea62d171, cherry-picked onto 0.1.456 with one resolved conflict in `test/cli/code-gate-children.test.ts`, then the 0.1.458 bundles). Read: board row 011-320 (widened by the human), `research/run-evidence.md` differences 2 to 4, `tasks/011-320/notes.md`, this file's W1 and "W1 widened". Candidate CI: run 43262584600.
+
+Check, each as proven, plausible or unverified:
+
+1. Each of the five checks (runtime identity, merge hold at the decision and at each write, editor scratch, a file added to or removed from a listed directory, the bounded note) refuses a keep exactly where the daemon would not store at the key it ran under, and never keeps a file the daemon would not store. The two rows where the keeper is stricter than the daemon (no revision of the change) are acceptable only if stricter, never looser.
+2. No daemon decision changed: `record.ts`, `record-tier.ts`, `store-decision.ts`, `src/core/daemon/**` unchanged; the `hold.ts` change is type only and its emitted code is the same; the daemon's `mergeHeld` path is equivalent.
+3. `squeal code` makes no new store write; the listing check's git reads and their failure modes (ignored files, symlinked directories, submodules, a failed read) behave as the notes say.
+4. Verdict, report JSON, `--json` stdout and exit code are unchanged; each note line is bounded (three files, three paths, "and N more").
+5. The merged expectation in `test/cli/code-gate-children.test.ts` keeps both 020-34's hint line and 011-320's not-kept line.
+6. `src/core/scheduler/store-decision.ts` unchanged; `test/keys/key-format.test.ts` passes against `squeal--v0.1.455` with no raise.
+7. Judge the gaps in the notes ("Cases a source does not cover"): is any of them a keep this row claims to refuse?
+
+Host policy: no local full suite, no `squeal run --all`, no `pnpm run build`; targeted runs with `env -u PLUGIN_ROOT -u PLUGIN_DATA`; affected results through `squeal status --wait 60000 <paths>`. Write `reviews/0.1.458.md` and commit it on your branch.
