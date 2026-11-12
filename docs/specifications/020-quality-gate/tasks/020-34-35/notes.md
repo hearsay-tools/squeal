@@ -102,6 +102,10 @@ no `KEY_FORMAT_VERSION` and no validity case changes.
   today's line with children on (G2's shape on Vitest).
 - `test/code/gate/policy.test.ts`: the base's `inputs` of both forms, and
   not a branch's.
+- `test/version-sensitive.txt` (shared list): `code-gate-inputs.test.ts`
+  is an entry (real `node --test`); `code-gate-children.test.ts` is
+  exempted in the header, since it runs Vitest only and is flagged only
+  because the expected hint text names a `nodeTest` entry.
 
 ## For a next worker
 
