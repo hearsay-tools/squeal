@@ -4,6 +4,7 @@ import { join } from "node:path";
 import type { RunLog } from "../core/code/gate/evidence.js";
 import type { GateRunReport } from "../core/code/gate/report.js";
 import { RUNNER_NAMES } from "../core/code/gate/types.js";
+import { readPolicy } from "../core/daemon/policy.js";
 import { resolveCommonDir, worktreeIdFor } from "../core/fs/git-layout.js";
 import { isStoreOpenFailure, openStore } from "../core/store/open.js";
 import { storePaths } from "../core/store/paths.js";
@@ -22,10 +23,19 @@ import type { AbsolutePath, EpochMs } from "../core/types/common.js";
 
 /**
  * How long the row's write waits for a busy store. It is written before the
- * report, so the wait is short: a busy store delays the verdict this much
- * at most, and only when a file failed or did not finish (D17.5's rule).
+ * report, which names the folder, so a busy store delays the verdict this
+ * much at most, and only when a file failed or did not finish: the one
+ * exception to D17.5's "a busy store never delays the verdict" (the
+ * coordinator, 2026-11-12).
  */
 export const LOG_BUSY_TIMEOUT_MS = 2_000;
+
+/**
+ * How long a kept log stays: `days`, `store.retentionDays` here, where a
+ * daemon registered the worktree; `next-prune` where none did, so any
+ * daemon of the repository removes it at its next prune, within an hour.
+ */
+export type LogRetention = { readonly days: number } | "next-prune";
 
 export interface LogKeeping {
   /** Why a log was not kept, told once per run. */
@@ -35,17 +45,22 @@ export interface LogKeeping {
   readonly busyTimeoutMs?: number;
 }
 
-/**
- * `CollectOptions.keepLog` for the worktree at `root`: the run's row in the
- * main store, created as a daemon creates it, then its log folder copied to
- * the folder the row names. `null`, with a note, when either fails.
- */
-export function runLogKeeper(
-  root: AbsolutePath,
-  options: LogKeeping,
-): (run: RunLog) => Promise<AbsolutePath | null> {
+export interface LogKeeper {
+  /**
+   * `CollectOptions.keepLog` for the worktree: the run's row in the main
+   * store, created as a daemon creates it, then its log folder copied to
+   * the folder the row names. `null`, with a note, when either fails.
+   */
+  readonly keep: (run: RunLog) => Promise<AbsolutePath | null>;
+  /** How long the logs kept so far stay, as the last row write found it; `null` before one. */
+  readonly retention: () => LogRetention | null;
+}
+
+/** The keeper of the logs of the gate's runs in the worktree at `root`. */
+export function runLogKeeper(root: AbsolutePath, options: LogKeeping): LogKeeper {
   const now = options.now ?? Date.now;
-  return async ({ runner, files, logDir, report }) => {
+  let retention: LogRetention | null = null;
+  const keep = async ({ runner, files, logDir, report }: RunLog) => {
     const notKept = (why: string) => {
       options.note(`${RUNNER_NAMES[runner]} run: its log was not kept: ${why}`);
       return null;
@@ -57,23 +72,24 @@ export function runLogKeeper(
     if (isStoreOpenFailure(store)) return notKept(`the store did not open: ${store.reason}`);
     const id = `gate-${randomUUID()}`;
     const path = join(storePaths(commonDir).runsDir, id);
+    let registered: boolean;
     try {
       const worktreeId = worktreeIdFor(root);
       const endedAt = now();
-      store.transaction(() => {
+      registered = store.transaction(() => {
         const revision = store.revisions.latest(worktreeId)?.number ?? 0;
         const startedAt = endedAt - Math.round(report.durationMs);
-        const checkpointId = null;
         store.runs.start({
           id,
           worktreeId,
           revision,
           testFiles: files,
-          checkpointId,
+          checkpointId: null,
           logDir: path,
           startedAt,
         });
         store.runs.finish(id, report.end, endedAt);
+        return store.worktrees.get(worktreeId) !== null;
       });
     } catch (error) {
       return notKept(`the store did not take its run: ${messageOf(error)}`);
@@ -82,25 +98,38 @@ export function runLogKeeper(
     }
     try {
       cpSync(logDir, path, { recursive: true });
-      return path;
     } catch (error) {
       rmSync(path, { recursive: true, force: true });
       return notKept(`it was not copied: ${messageOf(error)}`);
     }
+    retention = registered ? { days: readPolicy(root).store.retentionDays } : "next-prune";
+    return path;
   };
+  return { keep, retention: () => retention };
 }
 
 /**
  * The stderr line after the verdict that names each kept log, by runner in
- * the report's order; `null` when none was kept.
+ * the report's order, and how long they stay; `null` when none was kept.
  */
-export function keptLogsLine(runs: readonly GateRunReport[]): string | null {
+export function keptLogsLine(
+  runs: readonly GateRunReport[],
+  retention: LogRetention | null,
+): string | null {
   const kept = runs.flatMap((run) =>
     run.log === undefined ? [] : [`${RUNNER_NAMES[run.runner]} ${run.log}`],
   );
   if (kept.length === 0) return null;
   const what = kept.length === 1 ? "log" : "logs";
-  return `squeal code: ${what} of the failed or unfinished test files, kept until the store's prune: ${kept.join("; ")}\n`;
+  return `squeal code: ${what} of the failed or unfinished test files, ${stays(retention)}: ${kept.join("; ")}\n`;
+}
+
+function stays(retention: LogRetention | null): string {
+  if (retention === null) return "kept until the store's prune";
+  if (retention === "next-prune") {
+    return "kept until the next prune, within about 1 h while a daemon of this repository runs (none serves this worktree)";
+  }
+  return `kept ${retention.days === 1 ? "1 day" : `${retention.days} days`} (store.retentionDays)`;
 }
 
 function messageOf(error: unknown): string {

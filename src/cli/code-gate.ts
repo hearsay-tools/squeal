@@ -200,6 +200,7 @@ async function gate(
   // D17: the stored durations, for the estimate and the order.
   const durations = storedDurations(root);
   const note = (text: string) => io.stderr(`squeal code: ${text}\n`);
+  const logs = runLogKeeper(root, { note });
   const collected = await collectWithStores(
     root,
     io.env ?? process.env,
@@ -219,7 +220,7 @@ async function gate(
       ...(durations === null ? {} : { durations: durations.of }),
       estimated: (estimates, left) => io.stderr(estimateText(estimates, left)),
       // #197: a run with a failed or unfinished file keeps its log where a daemon keeps its runs'.
-      keepLog: runLogKeeper(root, { note }),
+      keepLog: logs.keep,
     },
     parts,
   )
@@ -238,7 +239,7 @@ async function gate(
   const json = `${statusCommand(io.env ?? process.env)} code ${[...args.map(shellWord), "--json"].join(" ")}`;
   io.stdout(parsed.json ? `${JSON.stringify(report, null, 2)}\n` : formatGateReport(report, json));
   // #197: the kept logs, after the verdict, on stderr, so `--json` keeps stdout to the report.
-  const kept = keptLogsLine(report.runs);
+  const kept = keptLogsLine(report.runs, logs.retention());
   if (kept !== null) io.stderr(kept);
   return EXIT[report.verdict];
 }
