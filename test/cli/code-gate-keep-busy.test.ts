@@ -217,6 +217,36 @@ describe("squeal code --base keeps its files after the report when the store is 
     expect(fromStores(second)).toEqual(MATH);
   });
 
+  it(
+    "does not keep a file whose input changed during the busy wait (review 0.1.444 B2)",
+    SLOW,
+    async () => {
+      ownHomeAndTmp();
+      const root = fixture();
+      const held = await holder(root);
+
+      const first = await gate(root, true, () => {
+        // After the report and the check that opens the write: `z`'s input moves.
+        writeFile(root, "src/other.mjs", "export function square(x) {\n  return 9;\n}\n");
+        held.release();
+      });
+      // The bytes `z` ran with again: its key is the one the first run had.
+      writeFile(root, "src/other.mjs", OTHER_RAN);
+      const second = await gate(root, true);
+
+      expect([first.code, first.report?.verdict, first.order]).toEqual([
+        0,
+        "pass",
+        ["report", "wait"],
+      ]);
+      expect(first.stderr).toMatch(
+        /the store was free after [\d.]+ s: 5 completed test files kept; 1 changed during the wait, so the next run will run it again\n/,
+      );
+      expect([second.code, fromStores(second)]).toEqual([0, MATH]);
+      expect(second.stderr).toContain("5 of 6 selected test files read from the stores");
+    },
+  );
+
   it("in the CLI's child, sends the report on its pipe before the wait", SLOW, async () => {
     ownHomeAndTmp();
     const root = fixture();
