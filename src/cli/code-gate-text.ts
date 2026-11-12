@@ -143,10 +143,18 @@ function runLines(run: GateRunReport, budgetSeconds: number): string[] {
     const more = tests.length > NAMED_TESTS ? ` and ${tests.length - NAMED_TESTS} more` : "";
     return `  ${path}: failed: ${shown}${more}`;
   });
-  const late = run.notFinished.map(
-    (path) => `  ${path}: did not finish in the ${budgetSeconds} s budget`,
-  );
-  return [...failed, ...late, ...(run.prepare ?? []).flatMap(prepareLine)];
+  // Row 020-43: a file that started and was stopped is named; those that never started are counted.
+  const notStarted = new Set(run.notStarted ?? []);
+  const late = run.notFinished
+    .filter((path) => !notStarted.has(path))
+    .map((path) => `  ${path}: did not finish in the ${budgetSeconds} s budget`);
+  const unstarted =
+    notStarted.size === 0
+      ? []
+      : [
+          `  ${plural(notStarted.size, `${RUNNER_NAMES[run.runner]} test file`)} did not start in the ${budgetSeconds} s budget; --json lists them`,
+        ];
+  return [...failed, ...late, ...unstarted, ...(run.prepare ?? []).flatMap(prepareLine)];
 }
 
 /** D15.3: why an entry's `prepare` kept its files from running, in words. */
