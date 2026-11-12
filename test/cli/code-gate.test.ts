@@ -274,6 +274,7 @@ describe("squeal code --base: an unfinished loading file never passes (spec 020 
     const log = report.runs[0]?.log ?? "";
     expect(keptLogs(root)).toEqual([log]);
     expect(readFileSync(join(log, "vitest.log"), "utf8")).toContain("end: timed-out");
+    expect(ran.stderr.endsWith(` Vitest ${log}\n`)).toBe(true);
   });
 });
 
