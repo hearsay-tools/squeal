@@ -64,3 +64,7 @@ Incomplete semantics stay as they are: an unfinished selected file keeps the ver
 - `src/runners/vitest/project.ts` (`projectConfigFiles`, `isProjectInput`), `src/runners/vitest/affected.ts`, `src/runners/vitest/environment.ts`, `src/core/code/gate/report.ts` (`verdictOf`), `src/core/code/gate/evaluate.ts`, `src/core/code/gate/estimate.ts`, `src/core/code/gate/keep.ts` (`#write`), `src/cli/code-gate-text.ts`, all at `c23ca67aa`.
 - Spec 020 D3, D5, D7, D11.7, D13, D17 and `status.md`; `docs/board.md` rows 021-20 and 020-28.
 - Commands: `cat /proc/loadavg`, `getconf _NPROCESSORS_ONLN`, `squeal --version`, `grep`/`sed` over the files above.
+
+## Landing-time update
+
+Read in git history and the board after the research: main `8a1185f0e` contains 0.1.450 and row 021-20 part two (keeper writes through a serving daemon), with its R2 review PASS and candidate CI 43223198834 green; release is pending. The daemon-present loss described above is evidence about 0.1.447/0.1.449, not a claim about 0.1.450. No live retention check ran. Selection and the advice-only budget rule remain separate human decisions.
