@@ -1,9 +1,6 @@
-import { observedModulesMetaKey } from "../keys/modules.js";
-import { addMissingEntries, observedDirectMetaKey, observedMetaKey } from "../keys/observed.js";
 import { testFileId } from "../keys/reverse-index.js";
-import { observedStartupMetaKey } from "../keys/startup.js";
 import type { CheckId } from "../types/check.js";
-import type { EpochMs, ProjectName } from "../types/common.js";
+import type { EpochMs } from "../types/common.js";
 import type { ImportCounts } from "../types/daemon-writes.js";
 import type { CheckKey } from "../types/keys.js";
 import { importMark } from "../types/state.js";
@@ -12,17 +9,16 @@ import type { ResultRecord } from "../types/store-records.js";
 import { putEnvironments } from "./environments.js";
 import { ensureImportTables } from "./imports.js";
 import { connectionOf } from "./store.js";
-import {
-  type ExportedResult,
-  type ExportedTestFile,
-  OBSERVED_MAPS,
-  type ObservedMap,
-  observedHash,
-  type ResultsBundle,
-  staticListHash,
-} from "./transfer-bundle.js";
+import type { ExportedResult, ResultsBundle } from "./transfer-bundle.js";
 import { type Rekeyed, type Rekeying, rekeyFiles } from "./transfer-rekey.js";
-import { groupBy, holdsKey } from "./transfer-rows.js";
+import {
+  addClosures,
+  addObserved,
+  addStartup,
+  groupBy,
+  holdsKey,
+  recordFiles,
+} from "./transfer-rows.js";
 
 /*
  * Spec 021 D3 (row 021-20): an import as slices, each one short write
@@ -35,12 +31,6 @@ import { groupBy, holdsKey } from "./transfer-rows.js";
 export const IMPORT_SLICE_RESULTS = 2_000;
 /** Test files whose closure lists or import rows one slice adds at most. */
 export const IMPORT_SLICE_FILES = 500;
-
-const MAP_KEY: Readonly<Record<ObservedMap, (project: ProjectName) => string>> = {
-  observed: observedMetaKey,
-  observedDirect: observedDirectMetaKey,
-  observedModules: observedModulesMetaKey,
-};
 
 /** How an import writes (018 D3, D11; 021 D3). */
 export interface ImportOptions {
@@ -102,7 +92,7 @@ export function* importSlices(
   for (const files of chunks(bundle.testFiles, IMPORT_SLICE_FILES)) {
     let added = 0;
     yield write("an import's closure lists", () => {
-      added = addClosures(store, files, options);
+      added = addClosures(store, files, options.importId, options.now);
     });
     tally.closures += added;
   }
@@ -230,110 +220,7 @@ function addResults(
   return { results: records.length, alreadyStored };
 }
 
-/** The closure lists of `files` the store has none of. */
-function addClosures(
-  store: Store,
-  files: readonly ExportedTestFile[],
-  options: ImportOptions,
-): number {
-  let closures = 0;
-  for (const f of files) {
-    const testFile = { project: f.project, path: f.path };
-    if (
-      f.closure !== null &&
-      f.closure.method === METHOD &&
-      store.testFiles.get(testFile) === null
-    ) {
-      store.testFiles.put({
-        testFile,
-        closure: { testFile, paths: f.closure.paths, complete: f.closure.complete, method: METHOD },
-        updatedAt: options.now,
-        updatedBy: importMark(options.importId),
-      });
-      closures++;
-    }
-  }
-  return closures;
-}
-
-/** `project`'s observed entries the store has none of; how many of the `observed` map. */
-function addObserved(
-  store: Store,
-  project: ProjectName,
-  files: readonly ExportedTestFile[],
-): number {
-  let observed = 0;
-  for (const map of OBSERVED_MAPS) {
-    const entries = Object.fromEntries(
-      files.flatMap((f) => (f.observed[map] === undefined ? [] : [[f.path, f.observed[map]]])),
-    );
-    const added = addMissingEntries(store, MAP_KEY[map](project), entries);
-    if (map === "observed") observed += added.length;
-  }
-  return observed;
-}
-
-function addStartup(store: Store, bundle: ResultsBundle): number {
-  let startup = 0;
-  for (const s of bundle.observedStartup) {
-    startup += addMissingEntries(
-      store,
-      observedStartupMetaKey(s.project),
-      { "": s.paths },
-      "list",
-    ).length;
-  }
-  return startup;
-}
-
-/**
- * D5's row of each of `files`: the key its results went at, and the
- * environment, static list and observed entries that key was computed from,
- * here when re-keyed, else as the export held them.
- */
-function recordFiles(
-  store: Store,
-  bundle: ResultsBundle,
-  files: readonly ExportedTestFile[],
-  importId: string,
-  rekeyed: ReadonlyMap<string, Rekeyed>,
-): void {
-  const conn = connectionOf(store);
-  const hashes = new Map(bundle.environments.map((e) => [e.project, e.hash]));
-  for (const f of files) {
-    const here = rekeyed.get(testFileId(f));
-    const [key, environment, closure, observed] =
-      here === undefined
-        ? [
-            f.key,
-            hashes.get(f.project) ?? "",
-            f.closure === null ? "" : staticListHash(f.closure.paths, f.observed.observed),
-            observedHash(f.observed),
-          ]
-        : [
-            here.key,
-            here.environment,
-            staticListHash(here.closure, here.observed.observed),
-            observedHash(here.observed),
-          ];
-    conn.run(
-      `INSERT OR REPLACE INTO import_files (import_id, project, path, key, environment, closure, observed)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      importId,
-      f.project,
-      f.path,
-      key,
-      environment,
-      closure,
-      observed,
-    );
-  }
-}
-
 /** `items` in runs of `size`. */
 function* chunks<T>(items: readonly T[], size: number): Generator<readonly T[], void, undefined> {
   for (let at = 0; at < items.length; at += size) yield items.slice(at, at + size);
 }
-
-/** The one closure method a store reads (`test-files.ts`). */
-const METHOD = "static imports plus declared inputs" as const;
