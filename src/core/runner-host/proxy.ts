@@ -255,8 +255,9 @@ class HostProxy implements RunnerAdapter {
         ? {
             ms: aliveMs,
             renewable: { progress: "tell it is alive" },
+            // Review 0.1.442 B2: signs of life prove the transport, not the run's progress.
             ...(options.timeoutMs === null
-              ? {}
+              ? { idle: { ms: this.#deadlines.runIdleMs, progress: "end a file of it" } }
               : { totalMs: options.timeoutMs + this.#deadlines.runMarginMs }),
           }
         : options.timeoutMs === null
@@ -356,7 +357,7 @@ class HostProxy implements RunnerAdapter {
         this.#options.coverage?.(decodeCoverageRun(message.run));
         return;
       case "alive":
-        this.#connection.renew(message.run);
+        this.#connection.renew(message.run, "alive");
         return;
     }
   }

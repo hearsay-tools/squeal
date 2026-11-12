@@ -36,7 +36,14 @@ interface Pending {
   timer: NodeJS.Timeout | undefined;
   /** `Deadline.totalMs`'s timer. */
   total?: NodeJS.Timeout;
+  /** Starts `Deadline.idle` again from now; absent without one. */
+  readonly armIdle?: () => void;
+  /** `Deadline.idle`'s timer. */
+  idle?: NodeJS.Timeout;
 }
+
+/** What renewed a request: a sign of progress of its work, or only of a live transport. */
+export type Renewal = "progress" | "alive";
 
 /**
  * A request's deadline, always finite (spec 021 D6, review 0.1.434 B3).
@@ -48,6 +55,12 @@ export interface Deadline {
   readonly renewable?: { readonly progress: string };
   /** Spec 021 D13 (row 021-14): a bound no renewal moves, for a renewable deadline. */
   readonly totalMs?: number;
+  /**
+   * Review 0.1.442 B2: a second bound that only `progress` renewals restart,
+   * so signs of a live transport (`alive`) never keep a run whose work is
+   * stuck (a remote run without a test timeout).
+   */
+  readonly idle?: { readonly ms: number; readonly progress: string };
 }
 
 export interface ConnectionOptions {
@@ -106,8 +119,10 @@ export class HostConnection {
     id: number = this.nextId(),
   ): Promise<unknown> {
     if (this.#lost !== null) return Promise.reject(this.#lost);
-    const { ms, renewable, totalMs } =
-      typeof deadline === "number" ? { ms: deadline, totalMs: undefined } : deadline;
+    const { ms, renewable, totalMs, idle } =
+      typeof deadline === "number"
+        ? { ms: deadline, totalMs: undefined, idle: undefined }
+        : deadline;
     const what = renewable === undefined ? m : `${m}, nor ${renewable.progress},`;
     return new Promise((resolve, reject) => {
       const pending: Pending = {
@@ -127,6 +142,21 @@ export class HostConnection {
           );
         },
       };
+      if (idle !== undefined) {
+        const armIdle = () => {
+          clearTimeout(pending.idle);
+          pending.idle = setTimeout(
+            () =>
+              this.#lose(
+                `${this.#options.label} did not answer ${m}, nor ${idle.progress}, within ${idle.ms} ms; Squeal stopped it`,
+                true,
+              ),
+            idle.ms,
+          );
+        };
+        Object.assign(pending, { armIdle });
+        armIdle();
+      }
       pending.arm();
       if (totalMs !== undefined) {
         pending.total = setTimeout(
@@ -143,10 +173,14 @@ export class HostConnection {
     });
   }
 
-  /** Request `id` made progress: its deadline starts again when renewable. */
-  renew(id: number): void {
+  /**
+   * Request `id` showed a sign of life: its renewable deadline starts again,
+   * and its `idle` bound too when the sign is `progress` of its work.
+   */
+  renew(id: number, renewal: Renewal = "progress"): void {
     const pending = this.#pending.get(id);
     if (pending?.renewable === true) pending.arm();
+    if (renewal === "progress") pending?.armIdle?.();
   }
 
   notice(message: HostNotice): void {
@@ -168,6 +202,7 @@ export class HostConnection {
     this.#pending.delete(message.id);
     clearTimeout(pending.timer);
     clearTimeout(pending.total);
+    clearTimeout(pending.idle);
     if ("e" in message) pending.reject(new Error(message.e.message));
     else pending.resolve(message.r);
   }
@@ -180,6 +215,7 @@ export class HostConnection {
     for (const pending of this.#pending.values()) {
       clearTimeout(pending.timer);
       clearTimeout(pending.total);
+      clearTimeout(pending.idle);
       pending.reject(lost);
     }
     this.#pending.clear();

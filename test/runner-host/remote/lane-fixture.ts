@@ -1,0 +1,193 @@
+import { execFileSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { PassThrough } from "node:stream";
+import { setTimeout as sleep } from "node:timers/promises";
+import { afterAll, onTestFinished } from "vitest";
+import type { HostedAdapter } from "../../../src/core/runner-host/host.js";
+import type { HostDeadlines } from "../../../src/core/runner-host/proxy.js";
+import { type RemoteHost, remoteHostOver } from "../../../src/core/runner-host/remote/connect.js";
+import { withRemoteLane } from "../../../src/core/runner-host/remote/lane.js";
+import type { WhenLost } from "../../../src/core/runner-host/remote/settings.js";
+import { createTreeHost } from "../../../src/core/runner-host/remote/tree-host.js";
+import type {
+  RunnerAdapter,
+  RunnerEnvironment,
+  RunOptions,
+  RunReport,
+} from "../../../src/core/types/runner.js";
+import { inProcessHost, POLICY, REPORT } from "../fake-channel.js";
+
+/*
+ * Spec 021 D11 to D13 (row 021-14): a remote lane over a host served in this
+ * process through a real proxy and tree host, with a fake adapter on each
+ * side. Shared by `lane.test.ts` and `lane-repair.test.ts`.
+ */
+
+const scratch = mkdtempSync(join(tmpdir(), "squeal-remote-lane-"));
+afterAll(() => rmSync(scratch, { recursive: true, force: true }));
+
+export const REF = { project: "", path: "test/a.test.ts" };
+export const ENV: RunnerEnvironment = {
+  project: "",
+  runnerName: "vitest",
+  runnerVersion: "5.0.3",
+  adapterVersion: "1",
+  resolvedConfig: "{}",
+  files: ["vitest.config.ts"],
+};
+
+export interface Setup {
+  readonly whenLost?: WhenLost;
+  readonly remoteEnv?: RunnerEnvironment;
+  /** The remote adapter's run; `hang` stops the host's output, `kill` ends the host. */
+  readonly remoteRun?: (
+    root: string,
+    hang: () => void,
+    options: RunOptions,
+    kill: () => void,
+  ) => Promise<RunReport>;
+  readonly deadlines?: Partial<HostDeadlines>;
+  /** The env the remote's install runs with, such as a fake `npm` on its `PATH`. */
+  readonly installEnv?: NodeJS.ProcessEnv;
+  /** Files of the local tree beside the default ones. */
+  readonly files?: Readonly<Record<string, string>>;
+}
+
+let n = 0;
+/** A lane over a host served in this process, connected; `remote.env` is what the host reports. */
+export async function setup({
+  whenLost = "local",
+  remoteEnv = ENV,
+  remoteRun,
+  deadlines,
+  installEnv,
+  files = {},
+}: Setup = {}) {
+  const dir = join(scratch, `s${++n}`);
+  const root = join(dir, "local");
+  const remoteRoot = join(dir, "remote", "root");
+  mkdirSync(join(root, "src"), { recursive: true });
+  mkdirSync(join(root, "test"), { recursive: true });
+  mkdirSync(remoteRoot, { recursive: true });
+  writeFileSync(join(root, "src/a.ts"), "export const a = 1;\n");
+  writeFileSync(join(root, "test/a.test.ts"), "import '../src/a';\n");
+  writeFileSync(join(root, "vitest.config.ts"), "export default {};\n");
+  for (const [path, text] of Object.entries(files)) writeFileSync(join(root, path), text);
+  execFileSync("git", ["init", "-q", root]);
+  const remote = { env: remoteEnv };
+
+  const remoteRuns: string[] = [];
+  const localRuns: RunOptions[] = [];
+  let paused = false;
+  const fake = (env: () => RunnerEnvironment, run: HostedAdapter["run"]): HostedAdapter => ({
+    name: "vitest",
+    adapterVersion: "1",
+    invalidate: async () => ({ recreatedProjects: [] }),
+    affected: async () => ({ direct: [REF], transitive: [] }),
+    closure: async (testFile) => ({ testFile, paths: ["src/a.ts", "test/a.test.ts"] }),
+    enumerate: async () => [],
+    testFiles: async () => [REF],
+    environment: async () => [env()],
+    run,
+    close: async () => {},
+  });
+  const connects: number[] = [];
+  const connect = async (): Promise<RemoteHost> => {
+    connects.push(Date.now());
+    const host = inProcessHost(
+      async () =>
+        fake(
+          () => remote.env,
+          async (files, options) => {
+            remoteRuns.push(files.map((f) => f.path).join(","));
+            return remoteRun === undefined
+              ? { ...REPORT, completedFiles: [...files] }
+              : remoteRun(
+                  remoteRoot,
+                  () => {
+                    paused = true;
+                  },
+                  options,
+                  () => host.channel.kill(),
+                );
+          },
+        ),
+      "0.0.0-test",
+      { tree: createTreeHost(remoteRoot, () => {}, installEnv) },
+    );
+    // A paused remote: nothing more reaches the daemon.
+    const output = new PassThrough();
+    output.setEncoding("utf8");
+    host.channel.output.on("data", (chunk: string) => {
+      if (!paused) output.write(chunk);
+    });
+    onTestFinished(() => host.channel.kill());
+    return remoteHostOver({ ...host.channel, output }, "v-test", {
+      target: { destination: "box" },
+      version: "0.0.0-test",
+      root,
+      runner: "vitest",
+      options: { childEnv: {} },
+      policy: () => POLICY,
+      ...(deadlines === undefined ? {} : { deadlines }),
+    });
+  };
+  const local: RunnerAdapter = fake(
+    () => ENV,
+    async (files, options) => {
+      localRuns.push(options);
+      return { ...REPORT, completedFiles: [...files] };
+    },
+  );
+  const statuses: string[] = [];
+  const logs: string[] = [];
+  let clock = 1_000_000;
+  const lane = withRemoteLane({
+    target: "box",
+    whenLost,
+    root,
+    version: "0.0.0-test",
+    local,
+    connect,
+    allowlist: () => [],
+    status: (text) => statuses.push(text),
+    log: (text) => logs.push(text),
+    now: () => clock,
+    backoffMs: [60_000],
+  });
+  onTestFinished(() => lane.close());
+  await until(() => statuses.some((s) => s.includes("go there")));
+  return {
+    lane,
+    remote,
+    root,
+    remoteRoot,
+    remoteRuns,
+    localRuns,
+    statuses,
+    logs,
+    connects,
+    advance: (ms: number) => {
+      clock += ms;
+    },
+  };
+}
+
+export async function until(done: () => boolean, ms = 10_000): Promise<void> {
+  const end = Date.now() + ms;
+  while (!done()) {
+    if (Date.now() > end) throw new Error("until: not met");
+    await sleep(10);
+  }
+}
+
+export const options = (extra: Partial<RunOptions> = {}): RunOptions => ({
+  runId: `r${++n}`,
+  logDir: join(scratch, `logs${n}`),
+  timeoutMs: 60_000,
+  ...extra,
+});
+export const background = (extra: Partial<RunOptions> = {}) =>
+  options({ background: true, workers: 2, lane: "vitest", ...extra });
