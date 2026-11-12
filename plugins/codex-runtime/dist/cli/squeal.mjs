@@ -72307,8 +72307,6 @@ function servesHere(store, worktreeId, imports) {
   return true;
 }
 function importIdHere(store, worktreeId, fileHash) {
-  const id = fileHash.slice(0, 16);
-  if (!listImports(store).some((i3) => i3.id === id)) return id;
   return ownId(fileHash, environmentsOf(store, worktreeId));
 }
 function environmentsOf(store, worktreeId) {
