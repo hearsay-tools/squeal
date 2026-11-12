@@ -3,9 +3,10 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it, onTestFinished } from "vitest";
+import { coverageProvider } from "../../src/core/code/coverage/runtime.js";
 import { squealVersion } from "../../src/core/daemon/version.js";
 import { spawnRunnerHost } from "../../src/core/runner-host/channel.js";
-import type { HostPolicy } from "../../src/core/runner-host/protocol.js";
+import type { HostAdapterOptions, HostPolicy } from "../../src/core/runner-host/protocol.js";
 import { startHostProxy } from "../../src/core/runner-host/proxy.js";
 import { startRemoteHost, treeDir } from "../../src/core/runner-host/remote/connect.js";
 import { withRemoteLane } from "../../src/core/runner-host/remote/lane.js";
@@ -20,18 +21,20 @@ import { dockerUnavailable, REMOTE_CACHE, type Remote, startRemote } from "./rem
  * differs is refused, sent again and retried; a different Node is refused;
  * a paused container ends its run `unknown` within its deadline under
  * `not-run`; under `local` a killed host's files run here in the same call.
+ * Both sides take the daemon's default, coverage on; the remote runs without
+ * it (D12), and its runs are still proven (row 021-22).
  */
 
 const unavailable = dockerUnavailable();
 const LONG = { timeout: 600_000 } as const;
 const MATH = { project: "", path: "test/math.test.ts" };
 const SLOW = { project: "", path: "test/slow.test.ts" };
-/** The options both sides run Vitest with: the recorder on, coverage off (D12). */
+/** The policy both sides take, the daemon's default: the recorder and coverage on (the remote turns coverage off, D12). */
 const POLICY: HostPolicy = {
   observe: true,
   exclude: [],
   excludeProjects: [],
-  coverage: false,
+  coverage: true,
   coverageChildren: false,
 };
 
@@ -77,8 +80,14 @@ describe.skipIf(unavailable !== undefined)("a remote lane on a container over ss
         'import { it } from "vitest";\nit("waits", async () => { await new Promise((r) => setTimeout(r, 6000)); });\n',
     });
     onTestFinished(() => rmSync(root, { recursive: true, force: true }));
+    const provider = coverageProvider();
+    if (provider === null) throw new Error("no coverage provider beside the sources");
+    const options: HostAdapterOptions = {
+      childEnv: {},
+      coverage: { provider, tempDir: join(scratch, "coverage") },
+    };
     // Here Vitest runs in a local runner host, as the daemon runs it (spec 021 D8), with the
-    // remote's options and an env without CI variables, as the remote's ssh login has none. In
+    // daemon's options and an env without CI variables, as the remote's ssh login has none. In
     // this test process Vitest read CI when it loaded (std-env), and GitHub's runners set CI=true:
     // a config resolved for CI (allowOnly, browser) differs, and the lane rightly refuses (D11).
     const local = await startHostProxy({
@@ -90,7 +99,7 @@ describe.skipIf(unavailable !== undefined)("a remote lane on a container over ss
       ),
       runner: "vitest",
       version: squealVersion(),
-      options: { childEnv: {} },
+      options,
       policy: () => POLICY,
     });
     const statuses: string[] = [];
@@ -110,7 +119,7 @@ describe.skipIf(unavailable !== undefined)("a remote lane on a container over ss
           version: squealVersion(),
           root,
           runner: "vitest",
-          options: { childEnv: {} },
+          options,
           policy: () => POLICY,
           deadlines: { aliveMs: 3_000 },
         }),
