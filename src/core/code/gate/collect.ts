@@ -19,6 +19,7 @@ import { type Picked, type SelectionSummary, tellSelection } from "./prerun.js";
 import { type Mapped, mapPayloads } from "./records.js";
 import { type GateAdapters, openRunners, type Runner } from "./runners.js";
 import { type GateScope, type LeftOutFile, type ScopeTally, tallyScope } from "./scope.js";
+import { type IncompleteClosure, tellClosures } from "./select-closures.js";
 import { preparedBefore, storedOf, tellEstimates, tellRan } from "./steps.js";
 import { type ChangedSet, type Evidence, GATE_RUNNERS, type TestFileEvidence } from "./types.js";
 
@@ -153,7 +154,11 @@ export async function collectEvidence(
   try {
     const { policy, problems } = loadPolicy(root);
     for (const problem of problems) note(`${POLICY_FILE}: ${problem}`);
-    const opening = { provider, temp, note, children, keeping: options.ran !== undefined };
+    const lists = new Map<string, readonly IncompleteClosure[]>();
+    const closures = (project: string, files: readonly IncompleteClosure[]) =>
+      lists.set(project, files);
+    const keeping = options.ran !== undefined;
+    const opening = { provider, temp, note, children, keeping, closures };
     await openRunners(options.adapters, root, policy, opening, runners);
     const picked = await select(runners, paths, options.tests, tally);
     const at = { root, deadline, note, options, children };
@@ -164,6 +169,8 @@ export async function collectEvidence(
     const order = orderRuns(picked, known, { durations, tierSize: policy.runner.tierSize });
     const inOrder = order.runs.map((run) => run.pick);
     await tellSelection(options.selected, inOrder, changed, { ...options, tally, known });
+    // #193: each project's files with an incomplete closure, once, scoped to this selection.
+    const gaps = tellClosures(lists, picked, note);
     const runs = await inLoaderOrder(order.runs, { changed: paths, durations });
     const estimates = tellEstimates(options.estimated, order.estimates, deadline);
     const blobs: BlobCache = new Map();
@@ -202,6 +209,7 @@ export async function collectEvidence(
       ...scoped(await leftOutFiles(picked)),
       ...(prepares.length === 0 ? {} : { prepares }),
       ...estimates,
+      ...gaps,
     };
   } finally {
     await Promise.allSettled(runners.map((r) => r.adapter.close()));
