@@ -1,0 +1,315 @@
+[
+  {
+    "root": "<probe-root>",
+    "squeal": "0.1.443",
+    "node": "v26.13.0",
+    "vitest": "5.0.3",
+    "cpus": 24,
+    "cases": [
+      {
+        "mode": "missing",
+        "command": [
+          "/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal",
+          "code",
+          "--base",
+          "HEAD",
+          "--json",
+          "--timeout",
+          "30"
+        ],
+        "cwd": "<probe-root>/missing/fixture",
+        "TMPDIR": "<probe-root>/missing/tmp",
+        "load1": 17.30712890625,
+        "exit": 3,
+        "seconds": 0.425,
+        "markers": {
+          "node": false,
+          "vitest": false
+        },
+        "tmp_exists_after": false,
+        "stdout_bytes": 0,
+        "stderr": "node:fs:3749\n  return binding.mkdtemp(prefix, options.encoding);\n                 ^\n\nError: ENOENT: no such file or directory, mkdtemp '<probe-root>/missing/tmp/squeal-gate-policy-XXXXXX'\n    at mkdtempSync (node:fs:3749:18)\n    at loadBasePolicy (file:///home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.443/dist/cli/squeal.mjs:85091:19)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async inventoryOf (file:///home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.443/dist/cli/squeal.mjs:86454:34)\n    at async gate (file:///home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.443/dist/cli/squeal.mjs:86409:21)\n    at async runAsChild (file:///home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.443/dist/cli/squeal.mjs:85586:16)\n    at async file:///home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.443/dist/cli/squeal.mjs:103566:20 {\n  errno: -2,\n  code: 'ENOENT',\n  syscall: 'mkdtemp',\n  path: '<probe-root>/missing/tmp/squeal-gate-policy-XXXXXX'\n}\n\nNode.js v26.13.0\nsqueal code: the gate's process ended with exit code 1 without a whole report, so stdout stays empty\n",
+        "json_parse": false,
+        "json_error": "Expecting value: line 1 column 1 (char 0)",
+        "stdout": ""
+      },
+      {
+        "mode": "existing",
+        "command": [
+          "/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal",
+          "code",
+          "--base",
+          "HEAD",
+          "--json",
+          "--timeout",
+          "30"
+        ],
+        "cwd": "<probe-root>/existing/fixture",
+        "TMPDIR": "<probe-root>/existing/tmp",
+        "load1": 17.30712890625,
+        "exit": 0,
+        "seconds": 2.305,
+        "markers": {
+          "node": true,
+          "vitest": true
+        },
+        "tmp_exists_after": true,
+        "stdout_bytes": 2640,
+        "stderr": "squeal code: Vitest: 1 test file to run (tests 1)\nsqueal code: node:test: 1 test file to run (tests 1)\nsqueal code: Vitest: 1 test file to run here, up to 1 at once; no stored duration, so the time is unknown\nsqueal code: node:test: 1 test file to run here, up to 4 at once; no stored duration, so the time is unknown\n",
+        "json_parse": true,
+        "format": "squeal-code-gate/1",
+        "verdict": "pass",
+        "runs": [
+          {
+            "runner": "vitest",
+            "selected": [
+              "vitest.test.mjs"
+            ],
+            "completed": [
+              "vitest.test.mjs"
+            ],
+            "notFinished": [],
+            "failed": [],
+            "estimate": {
+              "seconds": null,
+              "files": 1,
+              "known": 0,
+              "width": 1
+            },
+            "durationMs": 224
+          },
+          {
+            "runner": "node-test",
+            "selected": [
+              "node.test.mjs"
+            ],
+            "completed": [
+              "node.test.mjs"
+            ],
+            "notFinished": [],
+            "failed": [],
+            "estimate": {
+              "seconds": null,
+              "files": 1,
+              "known": 0,
+              "width": 4
+            },
+            "durationMs": 215
+          }
+        ],
+        "stdout": "{\n  \"format\": \"squeal-code-gate/1\",\n  \"createdAt\": \"2026-11-12T08:52:11.381Z\",\n  \"versions\": {\n    \"squeal\": \"0.1.443\",\n    \"counter\": 5,\n    \"coverageProvider\": 3,\n    \"coverageRecord\": 4,\n    \"qualityPolicy\": 4\n  },\n  \"base\": {\n    \"ref\": \"HEAD\",\n    \"commit\": \"a9da67e0c95df69bc550b326e3bd9e411730e769\",\n    \"policy\": {\n      \"complexityThreshold\": 20,\n      \"crapThreshold\": 30,\n      \"coverageExclude\": [],\n      \"complexityInclude\": [\n        \"**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,py}\"\n      ],\n      \"complexityExclude\": [\n        \"**/dist/**\",\n        \"**/build/**\",\n        \"**/vendor/**\",\n        \"**/*.min.js\"\n      ],\n      \"complexityMaxFileBytes\": 524288,\n      \"gateGroups\": null\n    }\n  },\n  \"head\": {\n    \"commit\": \"a9da67e0c95df69bc550b326e3bd9e411730e769\",\n    \"dirty\": true,\n    \"paths\": [\n      {\n        \"path\": \"value.mjs\",\n        \"blob\": \"75b80cb29ebad1a65022629502697349ea096ca4\"\n      }\n    ]\n  },\n  \"budget\": {\n    \"seconds\": 30,\n    \"timedOut\": false\n  },\n  \"scope\": {\n    \"groups\": [\n      {\n        \"name\": \"tests\",\n        \"at\": \"edit\",\n        \"from\": \"default\"\n      },\n      {\n        \"name\": \"slow\",\n        \"at\": \"edit\",\n        \"from\": \"default\"\n      }\n    ],\n    \"leftOut\": []\n  },\n  \"functions\": [\n    {\n      \"path\": \"value.mjs\",\n      \"qualifiedName\": \"value\",\n      \"occurrence\": 0,\n      \"line\": 1,\n      \"bodyHash\": \"72d34910c00cfed0\",\n      \"change\": \"edited\",\n      \"complexity\": 1,\n      \"coverage\": {\n        \"lines\": 1,\n        \"covered\": 1,\n        \"share\": 1\n      },\n      \"crap\": 1,\n      \"loaders\": {\n        \"expected\": [\n          \"node.test.mjs\",\n          \"vitest.test.mjs\"\n        ],\n        \"measured\": [\n          \"node.test.mjs\",\n          \"vitest.test.mjs\"\n        ]\n      },\n      \"state\": \"pass\",\n      \"gap\": null\n    }\n  ],\n  \"omitted\": [],\n  \"uncounted\": [],\n  \"runs\": [\n    {\n      \"runner\": \"vitest\",\n      \"selected\": [\n        \"vitest.test.mjs\"\n      ],\n      \"completed\": [\n        \"vitest.test.mjs\"\n      ],\n      \"notFinished\": [],\n      \"failed\": [],\n      \"estimate\": {\n        \"seconds\": null,\n        \"files\": 1,\n        \"known\": 0,\n        \"width\": 1\n      },\n      \"durationMs\": 224\n    },\n    {\n      \"runner\": \"node-test\",\n      \"selected\": [\n        \"node.test.mjs\"\n      ],\n      \"completed\": [\n        \"node.test.mjs\"\n      ],\n      \"notFinished\": [],\n      \"failed\": [],\n      \"estimate\": {\n        \"seconds\": null,\n        \"files\": 1,\n        \"known\": 0,\n        \"width\": 4\n      },\n      \"durationMs\": 215\n    }\n  ],\n  \"verdict\": \"pass\",\n  \"counts\": {\n    \"pass\": 1,\n    \"violation\": 0,\n    \"incomplete\": 0,\n    \"skipped\": 0,\n    \"accepted\": 0\n  }\n}\n"
+      }
+    ],
+    "base_config": true
+  },
+  {
+    "root": "<probe-root>",
+    "squeal": "0.1.443",
+    "node": "v26.13.0",
+    "vitest": "5.0.3",
+    "cpus": 24,
+    "base_config": false,
+    "cases": [
+      {
+        "mode": "missing",
+        "command": [
+          "/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal",
+          "code",
+          "--base",
+          "HEAD",
+          "--json",
+          "--timeout",
+          "30"
+        ],
+        "cwd": "<probe-root>/missing/fixture",
+        "TMPDIR": "<probe-root>/missing/tmp",
+        "load1": 15.57421875,
+        "exit": 3,
+        "seconds": 0.487,
+        "markers": {
+          "node": false,
+          "vitest": false
+        },
+        "tmp_exists_after": false,
+        "stdout_bytes": 0,
+        "stderr": "node:fs:3749\n  return binding.mkdtemp(prefix, options.encoding);\n                 ^\n\nError: ENOENT: no such file or directory, mkdtemp '<probe-root>/missing/tmp/squeal-gate-policy-XXXXXX'\n    at mkdtempSync (node:fs:3749:18)\n    at loadBasePolicy (file:///home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.443/dist/cli/squeal.mjs:85091:19)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async inventoryOf (file:///home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.443/dist/cli/squeal.mjs:86454:34)\n    at async gate (file:///home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.443/dist/cli/squeal.mjs:86409:21)\n    at async runAsChild (file:///home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.443/dist/cli/squeal.mjs:85586:16)\n    at async file:///home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.443/dist/cli/squeal.mjs:103566:20 {\n  errno: -2,\n  code: 'ENOENT',\n  syscall: 'mkdtemp',\n  path: '<probe-root>/missing/tmp/squeal-gate-policy-XXXXXX'\n}\n\nNode.js v26.13.0\nsqueal code: the gate's process ended with exit code 1 without a whole report, so stdout stays empty\n",
+        "json_parse": false,
+        "json_error": "Expecting value: line 1 column 1 (char 0)",
+        "stdout": ""
+      },
+      {
+        "mode": "existing",
+        "command": [
+          "/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal",
+          "code",
+          "--base",
+          "HEAD",
+          "--json",
+          "--timeout",
+          "30"
+        ],
+        "cwd": "<probe-root>/existing/fixture",
+        "TMPDIR": "<probe-root>/existing/tmp",
+        "load1": 15.57421875,
+        "exit": 0,
+        "seconds": 2.724,
+        "markers": {
+          "node": true,
+          "vitest": true
+        },
+        "tmp_exists_after": true,
+        "stdout_bytes": 2640,
+        "stderr": "squeal code: Vitest: 1 test file to run (tests 1)\nsqueal code: node:test: 1 test file to run (tests 1)\nsqueal code: Vitest: 1 test file to run here, up to 1 at once; no stored duration, so the time is unknown\nsqueal code: node:test: 1 test file to run here, up to 4 at once; no stored duration, so the time is unknown\n",
+        "json_parse": true,
+        "format": "squeal-code-gate/1",
+        "verdict": "pass",
+        "runs": [
+          {
+            "runner": "vitest",
+            "selected": [
+              "vitest.test.mjs"
+            ],
+            "completed": [
+              "vitest.test.mjs"
+            ],
+            "notFinished": [],
+            "failed": [],
+            "estimate": {
+              "seconds": null,
+              "files": 1,
+              "known": 0,
+              "width": 1
+            },
+            "durationMs": 257
+          },
+          {
+            "runner": "node-test",
+            "selected": [
+              "node.test.mjs"
+            ],
+            "completed": [
+              "node.test.mjs"
+            ],
+            "notFinished": [],
+            "failed": [],
+            "estimate": {
+              "seconds": null,
+              "files": 1,
+              "known": 0,
+              "width": 4
+            },
+            "durationMs": 279
+          }
+        ],
+        "stdout": "{\n  \"format\": \"squeal-code-gate/1\",\n  \"createdAt\": \"2026-11-12T08:52:33.301Z\",\n  \"versions\": {\n    \"squeal\": \"0.1.443\",\n    \"counter\": 5,\n    \"coverageProvider\": 3,\n    \"coverageRecord\": 4,\n    \"qualityPolicy\": 4\n  },\n  \"base\": {\n    \"ref\": \"HEAD\",\n    \"commit\": \"7e8d4414689711eea65d67372959971e7ab8d8e5\",\n    \"policy\": {\n      \"complexityThreshold\": 20,\n      \"crapThreshold\": 30,\n      \"coverageExclude\": [],\n      \"complexityInclude\": [\n        \"**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,py}\"\n      ],\n      \"complexityExclude\": [\n        \"**/dist/**\",\n        \"**/build/**\",\n        \"**/vendor/**\",\n        \"**/*.min.js\"\n      ],\n      \"complexityMaxFileBytes\": 524288,\n      \"gateGroups\": null\n    }\n  },\n  \"head\": {\n    \"commit\": \"7e8d4414689711eea65d67372959971e7ab8d8e5\",\n    \"dirty\": true,\n    \"paths\": [\n      {\n        \"path\": \"value.mjs\",\n        \"blob\": \"75b80cb29ebad1a65022629502697349ea096ca4\"\n      }\n    ]\n  },\n  \"budget\": {\n    \"seconds\": 30,\n    \"timedOut\": false\n  },\n  \"scope\": {\n    \"groups\": [\n      {\n        \"name\": \"tests\",\n        \"at\": \"edit\",\n        \"from\": \"default\"\n      },\n      {\n        \"name\": \"slow\",\n        \"at\": \"edit\",\n        \"from\": \"default\"\n      }\n    ],\n    \"leftOut\": []\n  },\n  \"functions\": [\n    {\n      \"path\": \"value.mjs\",\n      \"qualifiedName\": \"value\",\n      \"occurrence\": 0,\n      \"line\": 1,\n      \"bodyHash\": \"72d34910c00cfed0\",\n      \"change\": \"edited\",\n      \"complexity\": 1,\n      \"coverage\": {\n        \"lines\": 1,\n        \"covered\": 1,\n        \"share\": 1\n      },\n      \"crap\": 1,\n      \"loaders\": {\n        \"expected\": [\n          \"node.test.mjs\",\n          \"vitest.test.mjs\"\n        ],\n        \"measured\": [\n          \"node.test.mjs\",\n          \"vitest.test.mjs\"\n        ]\n      },\n      \"state\": \"pass\",\n      \"gap\": null\n    }\n  ],\n  \"omitted\": [],\n  \"uncounted\": [],\n  \"runs\": [\n    {\n      \"runner\": \"vitest\",\n      \"selected\": [\n        \"vitest.test.mjs\"\n      ],\n      \"completed\": [\n        \"vitest.test.mjs\"\n      ],\n      \"notFinished\": [],\n      \"failed\": [],\n      \"estimate\": {\n        \"seconds\": null,\n        \"files\": 1,\n        \"known\": 0,\n        \"width\": 1\n      },\n      \"durationMs\": 257\n    },\n    {\n      \"runner\": \"node-test\",\n      \"selected\": [\n        \"node.test.mjs\"\n      ],\n      \"completed\": [\n        \"node.test.mjs\"\n      ],\n      \"notFinished\": [],\n      \"failed\": [],\n      \"estimate\": {\n        \"seconds\": null,\n        \"files\": 1,\n        \"known\": 0,\n        \"width\": 4\n      },\n      \"durationMs\": 279\n    }\n  ],\n  \"verdict\": \"pass\",\n  \"counts\": {\n    \"pass\": 1,\n    \"violation\": 0,\n    \"incomplete\": 0,\n    \"skipped\": 0,\n    \"accepted\": 0\n  }\n}\n"
+      }
+    ]
+  },
+  {
+    "root": "<probe-root>",
+    "squeal": "0.1.440",
+    "node": "v26.13.0",
+    "vitest": "5.0.3",
+    "cpus": 24,
+    "base_config": true,
+    "cases": [
+      {
+        "mode": "missing",
+        "command": [
+          "node",
+          "--disable-warning=ExperimentalWarning",
+          "/home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.440/dist/cli/squeal.mjs",
+          "code",
+          "--base",
+          "HEAD",
+          "--json",
+          "--timeout",
+          "30"
+        ],
+        "cwd": "<probe-root>/missing/fixture",
+        "TMPDIR": "<probe-root>/missing/tmp",
+        "load1": 14.38623046875,
+        "exit": 3,
+        "seconds": 0.441,
+        "markers": {
+          "node": false,
+          "vitest": false
+        },
+        "tmp_exists_after": false,
+        "stdout_bytes": 0,
+        "stderr": "node:fs:3749\n  return binding.mkdtemp(prefix, options.encoding);\n                 ^\n\nError: ENOENT: no such file or directory, mkdtemp '<probe-root>/missing/tmp/squeal-gate-policy-XXXXXX'\n    at mkdtempSync (node:fs:3749:18)\n    at loadBasePolicy (file:///home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.440/dist/cli/squeal.mjs:82850:19)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async inventoryOf (file:///home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.440/dist/cli/squeal.mjs:84209:34)\n    at async gate (file:///home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.440/dist/cli/squeal.mjs:84164:21)\n    at async runAsChild (file:///home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.440/dist/cli/squeal.mjs:83345:16)\n    at async file:///home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.440/dist/cli/squeal.mjs:100986:20 {\n  errno: -2,\n  code: 'ENOENT',\n  syscall: 'mkdtemp',\n  path: '<probe-root>/missing/tmp/squeal-gate-policy-XXXXXX'\n}\n\nNode.js v26.13.0\nsqueal code: the gate's process ended with exit code 1 without a whole report, so stdout stays empty\n",
+        "json_parse": false,
+        "json_error": "Expecting value: line 1 column 1 (char 0)",
+        "stdout": ""
+      },
+      {
+        "mode": "existing",
+        "command": [
+          "node",
+          "--disable-warning=ExperimentalWarning",
+          "/home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.440/dist/cli/squeal.mjs",
+          "code",
+          "--base",
+          "HEAD",
+          "--json",
+          "--timeout",
+          "30"
+        ],
+        "cwd": "<probe-root>/existing/fixture",
+        "TMPDIR": "<probe-root>/existing/tmp",
+        "load1": 14.38623046875,
+        "exit": 0,
+        "seconds": 2.275,
+        "markers": {
+          "node": true,
+          "vitest": true
+        },
+        "tmp_exists_after": true,
+        "stdout_bytes": 2640,
+        "stderr": "squeal code: Vitest: 1 test file to run (tests 1)\nsqueal code: node:test: 1 test file to run (tests 1)\nsqueal code: Vitest: 1 test file to run here, up to 1 at once; no stored duration, so the time is unknown\nsqueal code: node:test: 1 test file to run here, up to 4 at once; no stored duration, so the time is unknown\n",
+        "json_parse": true,
+        "format": "squeal-code-gate/1",
+        "verdict": "pass",
+        "runs": [
+          {
+            "runner": "vitest",
+            "selected": [
+              "vitest.test.mjs"
+            ],
+            "completed": [
+              "vitest.test.mjs"
+            ],
+            "notFinished": [],
+            "failed": [],
+            "estimate": {
+              "seconds": null,
+              "files": 1,
+              "known": 0,
+              "width": 1
+            },
+            "durationMs": 259
+          },
+          {
+            "runner": "node-test",
+            "selected": [
+              "node.test.mjs"
+            ],
+            "completed": [
+              "node.test.mjs"
+            ],
+            "notFinished": [],
+            "failed": [],
+            "estimate": {
+              "seconds": null,
+              "files": 1,
+              "known": 0,
+              "width": 4
+            },
+            "durationMs": 198
+          }
+        ],
+        "stdout": "{\n  \"format\": \"squeal-code-gate/1\",\n  \"createdAt\": \"2026-11-12T08:53:04.599Z\",\n  \"versions\": {\n    \"squeal\": \"0.1.440\",\n    \"counter\": 5,\n    \"coverageProvider\": 3,\n    \"coverageRecord\": 4,\n    \"qualityPolicy\": 4\n  },\n  \"base\": {\n    \"ref\": \"HEAD\",\n    \"commit\": \"3c5afe62c9e38b2a25220eca0798009c03b4c12d\",\n    \"policy\": {\n      \"complexityThreshold\": 20,\n      \"crapThreshold\": 30,\n      \"coverageExclude\": [],\n      \"complexityInclude\": [\n        \"**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,py}\"\n      ],\n      \"complexityExclude\": [\n        \"**/dist/**\",\n        \"**/build/**\",\n        \"**/vendor/**\",\n        \"**/*.min.js\"\n      ],\n      \"complexityMaxFileBytes\": 524288,\n      \"gateGroups\": null\n    }\n  },\n  \"head\": {\n    \"commit\": \"3c5afe62c9e38b2a25220eca0798009c03b4c12d\",\n    \"dirty\": true,\n    \"paths\": [\n      {\n        \"path\": \"value.mjs\",\n        \"blob\": \"75b80cb29ebad1a65022629502697349ea096ca4\"\n      }\n    ]\n  },\n  \"budget\": {\n    \"seconds\": 30,\n    \"timedOut\": false\n  },\n  \"scope\": {\n    \"groups\": [\n      {\n        \"name\": \"tests\",\n        \"at\": \"edit\",\n        \"from\": \"default\"\n      },\n      {\n        \"name\": \"slow\",\n        \"at\": \"edit\",\n        \"from\": \"default\"\n      }\n    ],\n    \"leftOut\": []\n  },\n  \"functions\": [\n    {\n      \"path\": \"value.mjs\",\n      \"qualifiedName\": \"value\",\n      \"occurrence\": 0,\n      \"line\": 1,\n      \"bodyHash\": \"72d34910c00cfed0\",\n      \"change\": \"edited\",\n      \"complexity\": 1,\n      \"coverage\": {\n        \"lines\": 1,\n        \"covered\": 1,\n        \"share\": 1\n      },\n      \"crap\": 1,\n      \"loaders\": {\n        \"expected\": [\n          \"node.test.mjs\",\n          \"vitest.test.mjs\"\n        ],\n        \"measured\": [\n          \"node.test.mjs\",\n          \"vitest.test.mjs\"\n        ]\n      },\n      \"state\": \"pass\",\n      \"gap\": null\n    }\n  ],\n  \"omitted\": [],\n  \"uncounted\": [],\n  \"runs\": [\n    {\n      \"runner\": \"vitest\",\n      \"selected\": [\n        \"vitest.test.mjs\"\n      ],\n      \"completed\": [\n        \"vitest.test.mjs\"\n      ],\n      \"notFinished\": [],\n      \"failed\": [],\n      \"estimate\": {\n        \"seconds\": null,\n        \"files\": 1,\n        \"known\": 0,\n        \"width\": 1\n      },\n      \"durationMs\": 259\n    },\n    {\n      \"runner\": \"node-test\",\n      \"selected\": [\n        \"node.test.mjs\"\n      ],\n      \"completed\": [\n        \"node.test.mjs\"\n      ],\n      \"notFinished\": [],\n      \"failed\": [],\n      \"estimate\": {\n        \"seconds\": null,\n        \"files\": 1,\n        \"known\": 0,\n        \"width\": 4\n      },\n      \"durationMs\": 198\n    }\n  ],\n  \"verdict\": \"pass\",\n  \"counts\": {\n    \"pass\": 1,\n    \"violation\": 0,\n    \"incomplete\": 0,\n    \"skipped\": 0,\n    \"accepted\": 0\n  }\n}\n"
+      }
+    ]
+  }
+]
