@@ -103,12 +103,15 @@ export function snapshot(repo: FixtureRepo): string[] {
   });
 }
 
-/** The test files of each run the worktree's daemons recorded, read-only. */
+/**
+ * The test files of each run the worktree's daemons recorded, read-only. A
+ * gate run that kept its log (#197, row 020-40) has a `gate-` run of its own.
+ */
 export function daemonRuns(repo: FixtureRepo): string[] {
   const db = new DatabaseSync(storePaths(repo.commonDir).database, { readOnly: true });
   try {
     const rows = db
-      .prepare("SELECT test_files FROM runs WHERE worktree_id = ?")
+      .prepare("SELECT test_files FROM runs WHERE worktree_id = ? AND id NOT LIKE 'gate-%'")
       .all(repo.worktreeId) as { test_files: string }[];
     return rows.map((r) => r.test_files);
   } finally {
