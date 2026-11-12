@@ -10,7 +10,7 @@ import type { TestFileRef } from "../../../core/types/keys.js";
 import type { PytestProject } from "../../../core/types/policy.js";
 import type { FocusedFile, RunReport } from "../../../core/types/runner.js";
 import { focusedTexts } from "../../focus.js";
-import { logGoneReport, makeLogDir } from "../../log-dir.js";
+import { logGoneReport, markLogDir } from "../../log-dir.js";
 import { startGroup } from "../../process/group.js";
 import type { PytestEnvironment } from "../environment/index.js";
 import { runBasetemp } from "./basetemp.js";
@@ -95,8 +95,10 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
   if (refused.length > 0) return refusal(refusalNote(project, refused), started);
 
   const cacheDir = options.cacheDir ?? defaultCacheDir(options.root, project);
-  // Row 018-38: a run started after its daemon died never makes a removed store again.
-  if (!makeLogDir(options.logDir)) return logGone(options.logDir);
+  // Row 018-38: a run started after its daemon died never makes a removed store again; the
+  // folder's mark tells it from one made again while the run ran (review 0.1.449 B1).
+  const ours = markLogDir(options.logDir);
+  if (ours === null) return logGone(options.logDir);
   mkdirSync(cacheDir, { recursive: true });
   const runtimeDir = options.runtimeDir ?? pytestRuntimeDir();
   const env: NodeJS.ProcessEnv = {
@@ -185,7 +187,7 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
   const worker = async () => {
     for (
       let batch = queue.shift();
-      batch !== undefined && !expired && !cancelled;
+      batch !== undefined && !expired && !cancelled && ours();
       batch = queue.shift()
     ) {
       const events = join(options.logDir, `events-${batch.index}.jsonl`);
@@ -275,8 +277,8 @@ export async function runPytest(options: PytestRunOptions): Promise<PytestRun> {
   };
   const observed = trusted.map((b) => observeBatch(b.edges, b.files, paths));
   const completed = new Set(report.completedFiles);
-  // Row 018-38: a log folder removed while the batches ran took their records with it.
-  if (!existsSync(options.logDir)) return logGone(options.logDir);
+  // Row 018-38: a log folder removed, or made again, while the batches ran took their records.
+  if (!ours()) return logGone(options.logDir);
   writeRunLog(options.logDir, { python, cwd, batches, report, notes });
   return {
     report,

@@ -1,7 +1,9 @@
-import { existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, rmSync, symlinkSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AbsolutePath } from "../../../core/types/common.js";
 import type { TestFileRef } from "../../../core/types/keys.js";
+import { makeLogDir } from "../../log-dir.js";
 
 /*
  * Spec 015 D8 (row 015-86): V8 coverage of a node:test file's own process.
@@ -32,11 +34,43 @@ export function coverageDir(logDir: AbsolutePath, index: number): AbsolutePath {
   return join(logDir, `cov-${index}`);
 }
 
-/** The env of a covered file's run, for the recorder to delete or point at `children/` (`recorder.cjs`). */
-export function coverageEnv(dir: AbsolutePath, covering: Covering = true): Record<string, string> {
-  mkdirSync(dir, { recursive: true });
-  const env = { NODE_V8_COVERAGE: dir, SQUEAL_NODE_TEST_COVERAGE: dir };
+/**
+ * The env of a covered file's run, for the recorder to delete or point at
+ * `children/` (`recorder.cjs`). Row 018-38 R1: its processes write through
+ * `link`, a symbolic link to `dir` in the run's log folder from a folder of
+ * the run's own outside the store (`CoverageLinks`). Node makes its coverage
+ * folder, parents and all, as a process exits; through a link whose log folder
+ * went it makes none and says so on stderr, so a removed store stays removed.
+ * No coverage when the store is gone already.
+ */
+export function coverageEnv(
+  dir: AbsolutePath,
+  link: AbsolutePath,
+  covering: Covering = true,
+): Record<string, string> {
+  if (!makeLogDir(dir)) return {};
+  symlinkSync(dir, link, "junction");
+  const env = { NODE_V8_COVERAGE: link, SQUEAL_NODE_TEST_COVERAGE: link };
   return covering === "children" ? { ...env, SQUEAL_NODE_TEST_CHILDREN: "1" } : env;
+}
+
+/**
+ * Row 018-38 R1: a run's links for its covered files' coverage
+ * (`coverageEnv`), in a folder it makes under the OS's temp directory at the
+ * first and removes once the run's processes ended.
+ */
+export class CoverageLinks {
+  #folder: AbsolutePath | null = null;
+
+  /** The link of the run's file `index`. */
+  at(index: number): AbsolutePath {
+    this.#folder ??= mkdtempSync(join(tmpdir(), "squeal-coverage-")) as AbsolutePath;
+    return join(this.#folder, `cov-${index}`) as AbsolutePath;
+  }
+
+  remove(): void {
+    if (this.#folder !== null) rmSync(this.#folder, { recursive: true, force: true });
+  }
 }
 
 /** Node's name of a main thread's file: `coverage-<pid>-<time>-0.json` (thread 0). */

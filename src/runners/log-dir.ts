@@ -1,4 +1,5 @@
-import { existsSync, mkdirSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, relative, sep } from "node:path";
 import type { AbsolutePath } from "../core/types/common.js";
 import type { RunReport } from "../core/types/runner.js";
@@ -35,6 +36,31 @@ export function makeLogDir(dir: AbsolutePath): boolean {
     }
   }
   return true;
+}
+
+/** Row 018-38 R1: the file in a run's log folder that holds the run's own token. */
+const MARK = "run.mark";
+
+/**
+ * Makes `dir` (`makeLogDir`) and marks it as this run's with a token of its
+ * own; `null`, having made nothing, when the store is gone. The answer says
+ * whether `dir` still holds the token, so a log folder removed and made again
+ * reads as gone, with every record the run wrote there: a covered Node
+ * process makes its coverage folder, parents and all, as it exits (row
+ * 018-38, review 0.1.449 B1).
+ */
+export function markLogDir(dir: AbsolutePath): (() => boolean) | null {
+  if (!makeLogDir(dir)) return null;
+  const mark = join(dir, MARK);
+  const token = randomUUID();
+  writeFileSync(mark, token);
+  return () => {
+    try {
+      return readFileSync(mark, "utf8") === token;
+    } catch {
+      return false;
+    }
+  };
 }
 
 /**
