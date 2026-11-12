@@ -14,16 +14,21 @@ export const MAX_LINE_BYTES = 64 * 1024;
 /**
  * Spec 021 D15 (row 021-16): a `write` line carries a batch of statements;
  * a registration writes a view per known state, about 1.5 MB at 15,000.
- * Only a line that starts as a `write` request may grow this long.
+ * Row 021-20 (review 0.1.450 B1): a `keep` line carries one file's coverage
+ * record or its results, past 64 KiB for a file that loads many sources or
+ * has many checks. Only a line that starts as one of these requests may
+ * grow this long.
  */
 export const MAX_WRITE_LINE_BYTES = 32 * 1024 * 1024;
 
-/** The start of every line `requestDaemon` writes for a `write` request. */
-const WRITE_LINE_START = '{"type":"write",';
+/** The start of every line `requestDaemon` writes for a `write` or a `keep` request. */
+const LONG_LINE_STARTS = ['{"type":"write",', '{"type":"keep",'] as const;
 
 /** How long the request line that begins with `start` may be. */
 export function lineLimit(start: string): number {
-  return start.startsWith(WRITE_LINE_START) ? MAX_WRITE_LINE_BYTES : MAX_LINE_BYTES;
+  return LONG_LINE_STARTS.some((head) => start.startsWith(head))
+    ? MAX_WRITE_LINE_BYTES
+    : MAX_LINE_BYTES;
 }
 
 /** Parses one request line. A string is the reason it is not a request. */
