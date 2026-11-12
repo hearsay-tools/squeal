@@ -46,8 +46,8 @@ export interface InstallAnswer {
   readonly command: string | null;
   /**
    * Row 021-24: the lockfile was the one last installed, but the install
-   * had changed since, as a restore onto a new machine leaves it: it was
-   * made again from scratch.
+   * had changed since, as a restore onto a new machine leaves it, or an
+   * earlier release recorded it: it was made again from scratch.
    */
   readonly again?: true;
 }
@@ -133,12 +133,30 @@ export async function packFiles(
   };
 }
 
-/** Each file of `write` with its bytes; rejects when the bytes are not as long as the sizes say. */
+/**
+ * Each file of `write` with its bytes. Rejects, before it unpacks anything,
+ * a size that is no whole byte count, a total past a safe integer and bytes
+ * in a write without files (review 0.1.454 S1); then bytes that do not
+ * unpack or are not as long as the sizes say.
+ */
 export async function unpackFiles(
   write: Pick<TreeWrite, "files" | "gzip">,
 ): Promise<{ readonly file: WireFile; readonly bytes: Buffer }[]> {
-  if (write.files.length === 0) return [];
+  for (const file of write.files) {
+    if (!Number.isSafeInteger(file.size) || file.size < 0) {
+      throw new Error(
+        `runner host: the size of ${JSON.stringify(file.path)} is no byte count: ${file.size}`,
+      );
+    }
+  }
   const total = write.files.reduce((sum, file) => sum + file.size, 0);
+  if (!Number.isSafeInteger(total)) {
+    throw new Error(`runner host: a write's sizes add up past a byte count: ${total}`);
+  }
+  if (write.files.length === 0) {
+    if (write.gzip !== "") throw new Error("runner host: a write without files carries bytes");
+    return [];
+  }
   const all = await unzip(Buffer.from(write.gzip, "base64"), {
     maxOutputLength: Math.max(1, total),
   }).catch((error: Error) => {
