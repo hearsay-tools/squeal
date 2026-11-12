@@ -74,6 +74,11 @@ loaded nothing) is one text, `INPUTS_HINT` in
   `adapter-project.ts`, `gate/runners.ts`, `gate/types.ts`,
   `gate/evaluate.ts`. `test/version-sensitive.txt` gained the new CLI test,
   which runs real `node --test`.
+- The skill reference `commands.md` (the three identical copies under
+  `plugins/claude-code`, `plugins/codex-runtime` and `plugins/pi`) names
+  `incompleteClosures` in the JSON field list and gives the closure line a
+  paragraph, agreed with the coordinator (request 5876dfce).
+  `plugins/codex/seed` is an older copy, left alone.
 
 ## Type changes (all additive)
 
