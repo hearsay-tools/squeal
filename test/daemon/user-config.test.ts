@@ -67,6 +67,7 @@ describe("loadUserConfig (spec 001 D11 Capacity)", () => {
         groupSlotScope: "repository",
         backgroundShare: 0.75,
       },
+      runner: { hostIdleMinutes: null },
     });
   });
 
@@ -100,6 +101,7 @@ describe("loadUserConfig (spec 001 D11 Capacity)", () => {
         groupSlotScope: "repository",
         backgroundShare: 0.75,
       },
+      runner: { hostIdleMinutes: null },
     });
   });
 
@@ -135,6 +137,7 @@ describe("loadUserConfig (spec 001 D11 Capacity)", () => {
         groupSlotScope: "repository",
         backgroundShare: 0.75,
       },
+      runner: { hostIdleMinutes: null },
     });
   });
 
@@ -171,9 +174,27 @@ describe("loadUserConfig (spec 001 D11 Capacity)", () => {
     }
   });
 
+  // Spec 021 D20.4 (row 021-26): memory belongs to the machine, so this file's value wins.
+  it("reads runner.hostIdleMinutes as whole minutes from 0, default null, and refuses another value", () => {
+    for (const minutes of [0, 1, 30]) {
+      const { config, problems } = load(JSON.stringify({ runner: { hostIdleMinutes: minutes } }));
+      expect(problems).toEqual([]);
+      expect(config.runner.hostIdleMinutes).toBe(minutes);
+    }
+    expect(load(JSON.stringify({ runner: { hostIdleMinutes: null } })).problems).toEqual([]);
+    for (const bad of ["1.5", "-1", '"5"']) {
+      const { config, problems } = load(`{ "runner": { "hostIdleMinutes": ${bad} } }`);
+      expect(problems).toEqual([
+        `"runner.hostIdleMinutes" must be a whole number of minutes >= 0, got ${bad}`,
+      ]);
+      expect(config.runner.hostIdleMinutes).toBeNull();
+    }
+  });
+
   it("is the defaults with one problem for a file that is not JSON or not an object", () => {
     const defaults = {
       capacity: { hostSlots: 7, projects: {}, groupSlotScope: "repository", backgroundShare: 0.75 },
+      runner: { hostIdleMinutes: null },
     };
     const bad = load("{ capacity");
     expect(bad.config).toEqual(defaults);

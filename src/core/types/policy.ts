@@ -97,6 +97,13 @@ export interface Policy {
      * test timeout)". `null` means no limit.
      */
     readonly timeoutMs: number | null;
+    /**
+     * Spec 021 D20 (row 021-26): whole minutes with no call after which a
+     * local runner host closes; `0` keeps hosts up for the daemon's life.
+     * The user config's value wins over this one (D20.4). `null`, the
+     * default: from the machine's total memory, one minute per 8 GiB, 2 to 10.
+     */
+    readonly hostIdleMinutes: number | null;
   };
   /**
    * Spec 003 D1: node:test projects, validated beside any Vitest project of
@@ -426,7 +433,7 @@ export const DEFAULT_POLICY: Policy = {
   runtimeFiles: [],
   observe: { runtimeInputs: true },
   env: { allowlist: [] },
-  runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 600_000 },
+  runner: { tierSize: 4, backlogTierSize: 200, timeoutMs: 600_000, hostIdleMinutes: null },
   nodeTest: [],
   pytest: [],
   vitest: { excludeProjects: [], exclude: [] },

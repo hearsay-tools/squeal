@@ -26,6 +26,8 @@ export interface NodeTestRunnersOptions {
   readonly coverage?: NodeTestCoverage;
   /** Spec 021 D8 (row 021-12): each project's adapter in a runner host; absent, in this process. */
   readonly host?: ProcessHost | undefined;
+  /** Spec 021 D20 (row 021-26): how long a host stays up with no call; absent, for good. */
+  readonly idleMs?: () => number;
 }
 
 /**
@@ -96,8 +98,8 @@ function nodeTestRunner(
       host === undefined
         ? createNodeTestAdapter(project, adapterOptions)
         : createHostedNodeTest(host, project, adapterOptions),
-    // Spec 021 D7: a host that exited or missed a deadline is replaced.
-    ...(host === undefined ? {} : { gone: runnerHostGone }),
+    // Spec 021 D7: a host that exited or missed a deadline is replaced; D20: an idle one closes.
+    ...(host === undefined ? {} : hosted(options.idleMs)),
     // A run starts `runner.tierSize` files at once whatever its grant (task 001-366).
     tierWidth: () => options.tierSize(),
     // It cannot cancel a run: an edit's tier starts beside a backlog tier (task 011-21).
@@ -108,4 +110,15 @@ function nodeTestRunner(
       options.note(`${text} (node-test project ${JSON.stringify(project.name)})`),
     onRecovered: () => options.note(`node-test project ${JSON.stringify(project.name)} started`),
   });
+}
+
+/**
+ * `createRecoveringRunner`'s options for an adapter in a local runner host:
+ * one gone is replaced (spec 021 D7), one idle closes (D20). pytest's too.
+ */
+export function hosted(idleMs: (() => number) | undefined): {
+  readonly gone: typeof runnerHostGone;
+  readonly idleMs?: () => number;
+} {
+  return { gone: runnerHostGone, ...(idleMs === undefined ? {} : { idleMs }) };
 }
