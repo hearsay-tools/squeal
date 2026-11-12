@@ -2983,7 +2983,7 @@ function shapeOf(r, findings, o) {
   const ids = !o.repo ? null : current === null ? /* @__PURE__ */ new Set() : worktreeIdsOf(current);
   const files = ids === null ? findings.files : findings.files.filter((f) => ids.has(socketIdOf(f.path)));
   const orphans2 = o.repo ? [] : findings.orphans;
-  const kept = new Set(daemons.flatMap((d) => [d.pid, ...d.processes.map((p) => p.pid)]));
+  const kept2 = new Set(daemons.flatMap((d) => [d.pid, ...d.processes.map((p) => p.pid)]));
   const shape = {
     v: PS_SHAPE_VERSION,
     at: model.now,
@@ -3008,7 +3008,7 @@ function shapeOf(r, findings, o) {
     unflaggedFiles: o.full ? findings.unflagged : null,
     flags: daemons.reduce((n, d) => n + d.flags.length, 0) + processes.reduce((n, p) => n + p.flags.length, 0) + orphans2.reduce((n, p) => n + p.flags.length, 0) + files.length
   };
-  const named2 = [...r.unknown, ...findings.unknown].filter((u) => !o.repo || ofKept(u.what, kept));
+  const named2 = [...r.unknown, ...findings.unknown].filter((u) => !o.repo || ofKept(u.what, kept2));
   const covered = new Map(pids3.map((pid) => [pid, costs.get(pid) ?? null]));
   return { ...shape, unknown: unknownOf({ shape, named: named2, costs: covered }) };
 }
@@ -3039,9 +3039,9 @@ function worktreeIdsOf(commonDir) {
 function socketIdOf(path) {
   return socketWorktreeId(basename5(path)) ?? "";
 }
-function ofKept(what, kept) {
+function ofKept(what, kept2) {
   const pid = /^(?:daemon|process) (\d+)\b/.exec(what)?.[1];
-  return pid === void 0 || kept.has(Number(pid));
+  return pid === void 0 || kept2.has(Number(pid));
 }
 
 // src/core/ps/work.ts
@@ -3127,7 +3127,8 @@ var DEFAULT_POLICY = {
   gate: { groups: null },
   shared: { ref: null },
   node: "project",
-  remote: { allowed: true }
+  requires: { commands: [] },
+  remote: { allowed: true, needsRepository: [] }
 };
 
 // src/core/keys/glob.ts
@@ -3318,17 +3319,17 @@ function withDefaults(entry) {
 }
 function projectEntries(value, path, fields, required, withDefaults3, check) {
   if (!Array.isArray(value)) return "an array of projects";
-  const kept = [];
+  const kept2 = [];
   const problems = [];
   value.forEach((entry, index) => {
     const at = `${path}[${index}]`;
-    const problem = entryProblem(entry, at, kept, fields, required, check);
-    if (problem === null) kept.push(withDefaults3(entry));
+    const problem = entryProblem(entry, at, kept2, fields, required, check);
+    if (problem === null) kept2.push(withDefaults3(entry));
     else problems.push(problem);
   });
-  return { kept, problems };
+  return { kept: kept2, problems };
 }
-function entryProblem(entry, at, kept, fields, required, check) {
+function entryProblem(entry, at, kept2, fields, required, check) {
   if (!isRecord(entry))
     return `"${at}" must be an object, got ${JSON.stringify(entry)}; it is skipped`;
   const named2 = nonEmptyString(entry.name) === null ? entry.name : null;
@@ -3346,7 +3347,7 @@ function entryProblem(entry, at, kept, fields, required, check) {
   }
   const across = check?.(entry) ?? null;
   if (across !== null) return `"${at}.${across.key}" ${across.problem}; ${skipped}`;
-  if (kept.some((project) => project.name === named2)) {
+  if (kept2.some((project) => project.name === named2)) {
     return `"${at}.name" repeats ${JSON.stringify(named2)} of an earlier project; it is skipped`;
   }
   return null;
@@ -3419,21 +3420,21 @@ var TEST_ONLY = ["project", "tests"];
 var TEST_GROUP_ONLY = ["after", "quietMs", "limits"];
 function checkGroups(value) {
   if (!Array.isArray(value)) return "an array of check groups";
-  const kept = [];
+  const kept2 = [];
   const problems = [];
   value.forEach((entry, index) => {
     const at = `checks[${index}]`;
-    const problem = entryProblem2(entry, at) ?? nameProblem(entry, at, kept);
-    if (problem === null) kept.push(entry);
+    const problem = entryProblem2(entry, at) ?? nameProblem(entry, at, kept2);
+    if (problem === null) kept2.push(entry);
     else problems.push(problem);
   });
-  return { kept, problems };
+  return { kept: kept2, problems };
 }
-function nameProblem(entry, at, kept) {
+function nameProblem(entry, at, kept2) {
   if (DEFAULT_GROUP_NAMES.includes(entry.name)) {
     return `"${at}.name" is "${entry.name}", the name of a default group; it is left out`;
   }
-  if (kept.some((group) => group.name === entry.name)) {
+  if (kept2.some((group) => group.name === entry.name)) {
     return `"${at}.name" repeats "${entry.name}" of an earlier group; it is left out`;
   }
   return null;
@@ -3602,7 +3603,31 @@ var pythonInsideRoot = (entry) => {
 
 // src/core/daemon/policy-remote.ts
 var boolean4 = (v) => typeof v === "boolean" ? null : "true or false";
-var REMOTE_SHAPE = { remote: { allowed: boolean4 } };
+var kept = (key, bad) => (value) => {
+  if (!Array.isArray(value) || !value.every((entry) => typeof entry === "string")) {
+    return "an array of strings";
+  }
+  const good = [];
+  const problems = [];
+  value.forEach((entry, index) => {
+    const why = bad(entry);
+    if (why === null) good.push(entry);
+    else problems.push(`"${key}[${index}]" ${why}; it is left out`);
+  });
+  return { kept: good, problems };
+};
+function commandName(entry) {
+  return /^[^-\s/\\][^\s/\\]*$/.test(entry) && !new RegExp("\\p{Cc}", "u").test(entry);
+}
+var commands = kept(
+  "requires.commands",
+  (entry) => commandName(entry) ? null : `must be a command name such as "git", got ${JSON.stringify(entry)}`
+);
+var needsRepository = kept("remote.needsRepository", (glob) => compiles([glob])?.problem ?? null);
+var REMOTE_SHAPE = {
+  requires: { commands },
+  remote: { allowed: boolean4, needsRepository }
+};
 
 // src/core/keys/observed.ts
 import { createHash as createHash2 } from "node:crypto";
@@ -3621,7 +3646,7 @@ function normalizeRuntimePath(given) {
 // src/core/daemon/policy-runtime.ts
 var runtimeFiles = (value) => {
   if (!Array.isArray(value)) return "an array of runtime-file rules";
-  const kept = [];
+  const kept2 = [];
   const problems = [];
   for (const [i, rule] of value.entries()) {
     try {
@@ -3643,7 +3668,7 @@ var runtimeFiles = (value) => {
       const problem = compiles(tests2);
       if (problem !== null)
         throw new Error(typeof problem === "string" ? problem : problem.problem);
-      kept.push({
+      kept2.push({
         project: rule.project,
         tests: tests2,
         paths: [...new Set(rule.paths.map(normalizeRuntimePath))].sort()
@@ -3652,7 +3677,7 @@ var runtimeFiles = (value) => {
       problems.push(`runtimeFiles[${i}]: ${error.message}`);
     }
   }
-  return { kept, problems };
+  return { kept: kept2, problems };
 };
 
 // src/core/daemon/policy-shared.ts
@@ -3672,14 +3697,14 @@ function slowInclude(value) {
   if (!Array.isArray(value) || !value.every((glob) => typeof glob === "string")) {
     return "an array of strings";
   }
-  const kept = [];
+  const kept2 = [];
   const problems = [];
   value.forEach((glob, index) => {
     const bad = compiles([glob]);
-    if (bad === null) kept.push(glob);
+    if (bad === null) kept2.push(glob);
     else problems.push(`"slow.include[${index}]" ${bad.problem}; it is left out`);
   });
-  return { kept, problems };
+  return { kept: kept2, problems };
 }
 
 // src/core/daemon/policy.ts
@@ -4172,12 +4197,12 @@ function followed(discovery, work, attribution) {
   return [...pids3].sort((a, b) => a - b);
 }
 function only(table, pids3) {
-  const kept = /* @__PURE__ */ new Map();
+  const kept2 = /* @__PURE__ */ new Map();
   for (const pid of pids3) {
     const row2 = table.get(pid);
-    if (row2 !== void 0) kept.set(pid, row2);
+    if (row2 !== void 0) kept2.set(pid, row2);
   }
-  return kept;
+  return kept2;
 }
 
 // src/cli/ps.ts
