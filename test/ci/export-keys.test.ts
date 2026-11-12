@@ -17,6 +17,7 @@ import type { InputEvidence } from "../../src/core/ci/inputs.js";
 import {
   PART_FORMAT,
   type Part,
+  type PartCoverage,
   type PartFile,
   type RunDescriptor,
   snapshotFields,
@@ -59,12 +60,20 @@ const ENVIRONMENT: RunnerEnvironment = {
   files: [],
 };
 
-/** A runner that lists `listed` and gives each file a closure of itself and `src/x.ts`. */
-function runner(listed: readonly string[]): RunnerAdapter {
+/**
+ * A runner that lists `listed` and gives each file a closure of itself and
+ * `src/x.ts`; the closure of each of `inspected` imports `node:inspector`.
+ */
+function runner(listed: readonly string[], inspected: readonly string[] = []): RunnerAdapter {
+  const builtins = { imports: [], builtins: ["fs", "inspector"] };
   const fake: Pick<RunnerAdapter, "environment" | "testFiles" | "closure" | "close"> = {
     environment: async () => [ENVIRONMENT],
     testFiles: async () => listed.map((path) => ({ project: "", path })),
-    closure: async (testFile: TestFileRef) => ({ testFile, paths: [testFile.path, "src/x.ts"] }),
+    closure: async (testFile: TestFileRef) => ({
+      testFile,
+      paths: [testFile.path, "src/x.ts"],
+      ...(inspected.includes(testFile.path) ? { packages: builtins } : {}),
+    }),
     close: async () => {},
   };
   return fake as RunnerAdapter;
@@ -122,6 +131,7 @@ async function exported(
   run: RunDescriptor,
   files: readonly PartFile[],
   evidence: InputEvidence = evidenceOf(root),
+  ran: { coverage?: PartCoverage; inspected?: readonly string[] } = {},
 ): Promise<CiExport> {
   const store = openStore(join(root, ".git"));
   if (isStoreOpenFailure(store)) throw new Error(JSON.stringify(store));
@@ -139,6 +149,7 @@ async function exported(
       source: { kind: "local" },
       end: "completed",
       observing: true,
+      ...(ran.coverage === undefined ? {} : { coverage: ran.coverage }),
     },
     projects: [
       {
@@ -157,7 +168,7 @@ async function exported(
       root,
       worktreeId: "0123456789abcdef" as WorktreeId,
       store,
-      runner: async () => runner(["test/a.test.ts", "test/b.test.ts"]),
+      runner: async () => runner(["test/a.test.ts", "test/b.test.ts"], ran.inspected),
       policy: DEFAULT_POLICY,
       squealVersion: SQUEAL,
       env: {},
@@ -246,8 +257,30 @@ describe("ci export's keys (spec 018 D9)", () => {
     expect(result.counts).toMatchObject({ testFiles: 1, inspector: 1, unkeyed: 0, failed: 0 });
     expect(result.bundle.testFiles.map((f) => f.path)).toEqual(["test/b.test.ts"]);
     expect(countsText(result.counts, "x.json.gz")).toContain(
-      "1 test file that ran node:inspector beside Squeal's coverage provider",
+      "1 test file that loaded node:inspector beside a coverage provider",
     );
+  });
+
+  it("leaves out a file whose closure imports node:inspector beside the project's provider (spec 020 D19.6)", async () => {
+    const { root, commit } = await repository();
+    const files = [file("test/a.test.ts", "pass"), file("test/b.test.ts", "pass")];
+    const inspected = ["test/a.test.ts"];
+    const project = { off: "project-coverage", note: "istanbul" } as const;
+    const yielded = await exported(root, commit, descriptor(), files, undefined, {
+      coverage: project,
+      inspected,
+    });
+    if ("refused" in yielded) throw new Error(yielded.refused.text);
+    expect(yielded.counts).toMatchObject({ testFiles: 1, inspector: 1, unkeyed: 0 });
+    expect(yielded.bundle.testFiles.map((f) => f.path)).toEqual(["test/b.test.ts"]);
+
+    // No provider ran: ci record added none, and the run had no coverage of its own.
+    const none = { off: "no-provider", note: "this Squeal has no coverage/provider.mjs" } as const;
+    const plain = await exported(root, commit, descriptor(), files, undefined, {
+      coverage: none,
+      inspected,
+    });
+    expect("counts" in plain && plain.counts).toMatchObject({ testFiles: 2, inspector: 0 });
   });
 
   it("leaves out a file an input of which its shard holds no evidence of, a commit's file too", async () => {
