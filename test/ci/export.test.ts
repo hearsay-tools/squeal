@@ -154,11 +154,11 @@ describe("squeal ci export (spec 018 D9)", () => {
     }
     expect(await proven(job.root, job.bundle)).toEqual([true, true, true, true]);
 
-    // The project's own run collects no test location (Squeal's instance sets `includeTaskLocation`).
+    // `ci record` collects each test's location, as Squeal's instance does (row 018-43).
     const results = (bundle: ResultsBundle) =>
-      bundle.results.map(({ durationMs: _ms, location: _at, ...result }) => result);
+      bundle.results.map(({ durationMs: _ms, ...result }) => result);
     expect(results(job.bundle)).toEqual(results(daemon));
-    expect(job.bundle.results.filter((r) => r.location !== null)).toEqual([]);
+    expect(job.bundle.results.filter((r) => r.kind === "test" && r.location === null)).toEqual([]);
     expect(job.bundle.environments.map((e) => e.hash)).toEqual(
       daemon.environments.map((e) => e.hash),
     );

@@ -229,9 +229,10 @@ export interface PartFile {
   /** Absent: the recorder saw no read, or did not run (`PartHeader.observing`). */
   readonly observed?: PartObserved;
   /**
-   * Full names two or more of the file's checks share. Without the run's
-   * test locations the part cannot name them as the daemon does, so D9
-   * leaves the file out. Absent: none.
+   * Full names two or more of the file's checks share. `ci record` collects
+   * each test's location, so the checks are named as the daemon names them,
+   * a repeat by its line (row 018-43); a part whose checks lack their
+   * locations cannot, and D9 leaves the file out. Absent: none.
    */
   readonly sharedNames?: readonly string[];
   /** Format 4: its record, an index into `Part.coverage.records`. */

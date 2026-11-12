@@ -5,7 +5,9 @@
 // `Vitest.prototype.start`, which the CLI calls for each run after the
 // instance built its own reporters, and adds one reporter to the instance
 // before the run starts, so the run's own reporters, config and exit code stay
-// as they are. Vitest 4.1 and 5 export the `Vitest` class only as a type;
+// as they are, but for one option: the run collects each test's location, as
+// the daemon's instance does (`includeTaskLocation`; row 018-43), so a part
+// names a repeated test name by its line as the daemon does. Vitest 4.1 and 5 export the `Vitest` class only as a type;
 // `vitest/node` imports it from one of its own modules for its `version`, so
 // the hook looks there (row 018-26: Vitest 4.1 has no `Logger.setVitest`).
 //
@@ -195,6 +197,7 @@ function install(settings, root) {
         // Again at each start: a restart builds the instance's reporters anew.
         if (!Array.isArray(this.reporters)) throw new Error("the Vitest instance has no reporters");
         if (!reporters.has(this)) {
+          locateTests(this);
           // Spec 020 D13: before the original `start`, which starts the coverage provider.
           const coverage = startCoverage(this, settings.coverage);
           // Review of 0.1.443-r2 S2: before the run starts its workers.
@@ -213,6 +216,18 @@ function install(settings, root) {
   } catch (error) {
     fail(error);
   }
+}
+
+/**
+ * Each test's location in `vitest`'s runs, as the daemon's instance collects
+ * it (`adapter.ts`, `#start`), through `configOverride`, which each project's
+ * serialized config takes, so every worker does. `checkNames` names a
+ * repeated name by its line (row 018-43). Without it, no location: the
+ * export leaves out a file with a repeated name, as before.
+ */
+function locateTests(vitest) {
+  const override = vitest.configOverride;
+  if (typeof override === "object" && override !== null) override.includeTaskLocation = true;
 }
 
 /**
