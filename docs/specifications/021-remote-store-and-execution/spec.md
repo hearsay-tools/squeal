@@ -162,6 +162,15 @@ From `research/cpu-budget.md` (row 021-06), a replay of 2026-11-04 to 2026-11-11
 
 The budget is sold as protection for foreground work and less CPU, not as faster background results.
 
+### D19. What tests need: commands, and the repository
+
+Two settings in `squeal.config.json`, kept apart on purpose (the human, 2026-11-12: "It's one thing to require git or python3 as a command. \".git\" being present on the other host is a special case. So make sure not to mix the two under one setting"; boat trial D2):
+
+1. **`requires.commands`**: the commands the project's tests need on `PATH`, such as `["git", "python3"]`. Squeal checks each one when the daemon starts here and when a remote lane connects. A command missing here is named in status ("tests need python3; not found on PATH here"); the tests still run. A command missing on a remote refuses that remote with the same named text, and its lanes run here (D13 `local`) or stay not run (`not-run`).
+2. **`remote.needsRepository`**: test-file patterns whose tests read the repository itself (`.git`: commits, tags, tracked files). The remote tree has no `.git` (D10), so these files always run here when a remote lane is on; every other file may go remote. Default `[]`.
+
+A guard backs the second setting: a remote run whose failure says the directory is not a Git repository (Git's own "not a git repository" text) stores no result for that file, reruns it here, and status names it with the hint to add it to `remote.needsRepository`. A false failure is never stored as current.
+
 ## Slices
 
 Each row ships and works alone.
