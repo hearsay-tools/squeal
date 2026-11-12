@@ -25,13 +25,18 @@ import { OPTIMIZED } from "./touched-repo.js";
 
 /*
  * Review wave-13f B4 (task 001-176), under a real daemon run from the
- * sources: the daemon opens its Vitest instance while `src/mod.js` holds
- * NEW, and Vite's optimizer bundles it through the alias at that start. OLD
- * is written back before the scheduler's first key scan, so neither the scan
- * nor a later batch sees a change. A `git` on the daemon's PATH holds the
- * scan's first `git rev-parse --show-object-format` until the bundle holds
- * NEW, restores OLD, and runs the real git. The stored result must be what a
- * fresh adapter gives on OLD.
+ * sources: the daemon's Vitest instance opens while `src/mod.js` holds NEW,
+ * and Vite's optimizer bundles it through the alias at that open. Then OLD
+ * is written back. The stored result must be what a fresh adapter gives on
+ * OLD.
+ *
+ * Since row 021-26 (spec 021 D20.1) the instance runs in a runner host that
+ * opens on the first call that needs it: the baseline's, after the
+ * scheduler's first key scan. A reopen after an idle close (D20.2) makes its
+ * instance the same way. So a `git` on the daemon's PATH holds the daemon's
+ * first git call after Vite made its cache directory, which it does as the
+ * instance opens, until the bundle holds NEW; then it restores OLD and runs
+ * the real git.
  */
 
 const REPO = resolve(import.meta.dirname, "../..");
@@ -75,21 +80,23 @@ function createRepo(observe: boolean): string {
 }
 
 /**
- * A directory holding a `git` that, once, at the first object-format query,
- * waits for an optimizer bundle under `root` holding NEW, writes OLD to
- * `src/mod.js` and marks `planted`; every call then runs the real git.
+ * A directory holding a `git` that, once, at the first call after Vite made
+ * its cache directory under `root`, waits for an optimizer bundle there
+ * holding NEW, writes OLD to `src/mod.js` and marks `planted`; every call
+ * then runs the real git.
  */
 function gitShim(root: string, planted: string): string {
   const dir = join(shims, randomUUID());
   mkdirSync(dir);
   const real = execFileSync("sh", ["-c", "command -v git"], { encoding: "utf8" }).trim();
   const once = join(dir, "once");
+  const cache = join(root, "node_modules/.vite");
   const script = [
     "#!/bin/sh",
-    `if [ "$1 $2" = "rev-parse --show-object-format" ] && [ ! -e '${once}' ]; then`,
+    `if [ -d '${cache}' ] && [ ! -e '${once}' ]; then`,
     `  : > '${once}'`,
     "  i=0",
-    `  while ! grep -rqs '"new"' '${join(root, "node_modules/.vite")}'; do`,
+    `  while ! grep -rqs '"new"' '${cache}'; do`,
     "    i=$((i+1)); [ $i -gt 1200 ] && break; sleep 0.1",
     "  done",
     `  if [ $i -le 1200 ]; then printf '%s' '${OLD.trimEnd()}' > '${join(root, "src/mod.js")}'; echo >> '${join(root, "src/mod.js")}'; : > '${planted}'; fi`,
@@ -145,7 +152,7 @@ function stateOf(root: string, testPath: string): string[] {
   }
 }
 
-describe("an optimizer bundle built before the daemon's first key scan (review wave-13f B4)", () => {
+describe("an optimizer bundle built as the daemon's Vitest instance opens (review wave-13f B4)", () => {
   it.each([true, false])(
     "stores what a fresh adapter gives on the restored bytes (observe %s)",
     SLOW,
@@ -156,7 +163,7 @@ describe("an optimizer bundle built before the daemon's first key scan (review w
       await startDaemon(root, gitShim(root, planted));
       await settle(root);
 
-      expect(existsSync(planted), "the bundle held NEW before the scan").toBe(true);
+      expect(existsSync(planted), "the bundle held NEW at the open").toBe(true);
       expect(readFileSync(join(root, "src/mod.js"), "utf8")).toBe(OLD);
       expect(stateOf(root, "test/optimized.test.ts")).toEqual(["current fail"]);
       expect(await freshOutcomes(root, [{ project: "", path: "test/optimized.test.ts" }])).toEqual([
