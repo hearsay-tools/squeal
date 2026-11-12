@@ -11,9 +11,10 @@
 // `module.registerHooks` resolve hook, which sees every load of a builtin,
 // a repeated one too) and a `process.getBuiltinModule` call. A load with no
 // test file running (the worker's setup, where the V8 provider loads it)
-// names none, nor a call of Squeal's own provider. Once a test file of a worker loaded it, every later file of
-// that worker counts as loading it too: a module the worker keeps (`isolate:
-// false`, a package Node caches) holds the inspector without a second load.
+// names none, nor a call of Squeal's own provider. Once a test file of a
+// worker loaded it, every later file of that worker counts as loading it
+// too: a module the worker keeps (`isolate: false`, a package Node caches)
+// holds the inspector without a second load.
 //
 // A file the watch saw run with no load is proved clean. It sees a file run
 // before each message its worker sends (`process.send`, a thread's
