@@ -4,6 +4,7 @@ import type { RunReport } from "../../types/runner.js";
 import type { CollectOptions, GateRun } from "./collect.js";
 import type { RunEstimate } from "./estimate.js";
 import { evidenceOf } from "./evidence.js";
+import type { BudgetTold } from "./plan.js";
 import { declaresPrepare, type PrepareRun, prepareEntry } from "./prepare.js";
 import type { KnownEvidence, Picked } from "./prerun.js";
 import type { Runner } from "./runners.js";
@@ -91,16 +92,17 @@ export async function preparedBefore(
 /**
  * D17.1: `estimates`, in the order the runners run, told to `estimated`
  * with the whole seconds left of the budget before the first run or
- * `prepare`; Evidence's field, absent when no file is to run.
+ * `prepare`, and (rows 020-45, 020-46) what `told` says of the whole run;
+ * Evidence's fields, absent when no file is to run or no rerun is named.
  */
 export function tellEstimates(
   estimated: CollectOptions["estimated"],
   estimates: readonly RunEstimate[],
-  deadline: number,
-): Pick<Evidence, "estimates"> {
+  told: BudgetTold,
+): Pick<Evidence, "estimates" | "rerun"> {
   if (estimates.length === 0) return {};
-  estimated?.(estimates, Math.max(0, Math.floor((deadline - performance.now()) / 1000)));
-  return { estimates };
+  estimated?.(estimates, told.fit.leftSeconds, told);
+  return { estimates, ...(told.rerun === undefined ? {} : { rerun: told.rerun }) };
 }
 
 /** D17.3: a run that ended, to `ran`; none when the budget ended before it started. */

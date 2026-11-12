@@ -4,7 +4,7 @@ import type { TestFileRef } from "../../types/keys.js";
 import type { RunReport } from "../../types/runner.js";
 import type { CollectOptions } from "./collect.js";
 import { type EndedRun, evidenceOf } from "./evidence.js";
-import type { PlannedRun } from "./plan.js";
+import { type PlannedRun, stoppedEarly } from "./plan.js";
 import type { PrepareRun } from "./prepare.js";
 import type { KnownEvidence, Picked } from "./prerun.js";
 import type { FileProgress } from "./progress.js";
@@ -106,7 +106,9 @@ type Planned = PlannedRun<Picked & { readonly runner: Runner }>;
 /**
  * D15.3, D18 as amended: each entry's `prepare` in the order of `runs`,
  * then every run with a file left at once; a run that starts after the
- * deadline runs nothing.
+ * deadline runs nothing. Row 020-46: a file the gate stopped early before
+ * goes to no `prepare` and no run, so it reads `overBudget`, never
+ * `notStarted`.
  */
 export async function runLanes(runs: readonly Planned[], context: LaneContext): Promise<Lanes> {
   const testFiles: TestFileEvidence[] = [];
@@ -114,7 +116,9 @@ export async function runLanes(runs: readonly Planned[], context: LaneContext): 
   const toRun: { readonly planned: Planned; readonly files: readonly TestFileRef[] }[] = [];
   let timedOut = false;
   for (const planned of runs) {
-    const { runner, run: chosen } = planned.pick;
+    const { runner } = planned.pick;
+    const { chosen, evidence: notRun } = await stoppedEarly(runner, planned, context.children);
+    testFiles.push(...notRun);
     if (chosen.length === 0) continue;
     const before = await preparedBefore(runner, chosen, context);
     prepares.push(...before.prepares);
