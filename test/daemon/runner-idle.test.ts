@@ -264,4 +264,33 @@ describe("recovering runner: an idle adapter closes (spec 021 D20)", () => {
     await closing;
     expect(f.closed).toEqual([1]);
   });
+
+  it("starts one adapter for callers that wait on the same close, and none once closed meanwhile (review 0.1.461 B1)", async () => {
+    let release = () => {};
+    const f = fakes(
+      async () => REPORT,
+      () =>
+        new Promise<void>((resolve) => {
+          release = resolve;
+        }),
+    );
+    const { adapter } = runner(f);
+    await adapter.closure(ref);
+    await vi.advanceTimersByTimeAsync(IDLE);
+    const both = Promise.all([adapter.closure(ref), adapter.closure(ref)]);
+    await vi.advanceTimersByTimeAsync(0);
+    release();
+    expect((await both).map((c) => c.paths)).toEqual([["made-2"], ["made-2"]]);
+    expect(f.made).toEqual([1, 2]);
+
+    // A close while a reopen waits on the old close starts no adapter.
+    await vi.advanceTimersByTimeAsync(IDLE);
+    const queued = adapter.closure(ref);
+    await vi.advanceTimersByTimeAsync(0);
+    const closing = adapter.close();
+    release();
+    await closing;
+    await expect(queued).rejects.toThrow("adapter: closed");
+    expect(f.made).toEqual([1, 2]);
+  });
 });

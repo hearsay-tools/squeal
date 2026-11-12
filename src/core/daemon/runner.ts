@@ -136,6 +136,7 @@ export function createRecoveringRunner(options: RecoveringRunnerOptions): Recove
     creating ??= (async () => {
       try {
         await closing;
+        if (closed) throw new Error(`${options.name} adapter: closed`);
         const created = await options.create();
         if (closed) {
           await created.close();
