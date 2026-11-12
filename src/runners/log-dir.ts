@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { basename, dirname, join, relative, sep } from "node:path";
 import type { AbsolutePath } from "../core/types/common.js";
 import type { RunReport } from "../core/types/runner.js";
@@ -30,7 +30,7 @@ export function makeLogDir(dir: AbsolutePath): boolean {
     try {
       mkdirSync(at);
     } catch (error) {
-      if (gone(error)) return false;
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
       if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
     }
   }
@@ -38,34 +38,19 @@ export function makeLogDir(dir: AbsolutePath): boolean {
 }
 
 /**
- * Writes `text` to `path` in a log folder made earlier; nothing once that
- * folder was removed, since a write never makes a folder (row 018-38).
+ * The report of a run whose log folder `dir` is gone: `makeLogDir` could not
+ * make it, or it went while the run ran. A runner whose processes write their
+ * records there (node:test, pytest) starts none then, and one whose records
+ * went with the folder reports none of them (row 018-38).
  */
-export function writeLog(path: string, text: string): void {
-  try {
-    writeFileSync(path, text);
-  } catch (error) {
-    if (!gone(error)) throw error;
-  }
-}
-
-/** Whether `error` says a path, or a folder holding it, is not there. */
-export function gone(error: unknown): boolean {
-  return (error as NodeJS.ErrnoException).code === "ENOENT";
-}
-
-/**
- * The report of a run whose log folder `dir` `makeLogDir` could not make: a
- * runner whose processes write there starts none of them (node:test, pytest).
- */
-export function storeGoneReport(dir: AbsolutePath): RunReport {
+export function logGoneReport(dir: AbsolutePath): RunReport {
   return {
     end: "crashed",
     durationMs: 0,
     completedFiles: [],
     results: [],
     fileErrors: [],
-    failure: `Squeal's store folder above the run log folder ${dir} is gone; nothing ran`,
+    failure: `Squeal's run log folder ${dir} is gone; the run reports nothing`,
   };
 }
 
