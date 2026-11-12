@@ -1,0 +1,7 @@
+Revision: 1 · 94b19ce2 + 1
+Known failures: 0; all 12 test files current
+Affected checks: 24 passed (12 tests, 12 test files loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed since revision 0 (the counts are for revision 1; `squeal run --all` requests one)
+More: `squeal status --full` adds the worktree and daemon and 1 note
+
+Returned on quiet: the edits since revision 1 re-keyed no test file, at revision 1 after 0.3 s. Worktree: known failures 0; all 12 test files current

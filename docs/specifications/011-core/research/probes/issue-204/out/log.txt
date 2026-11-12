@@ -1,0 +1,10 @@
+== 22:25:17 load=20.73 squeal 0.1.457
+== 22:25:20 load=20.73 run --all exit 0
+== 22:25:20 load=20.73 rebase onto main~2 (A)
+== 22:25:28 load=20.27 A status --wait exit 0
+== 22:25:28 load=20.27 rebase onto main~1 (B)
+== 22:25:36 load=19.79 B status --wait exit 0
+== 22:25:36 load=19.79 rebase onto main (C)
+== 22:25:44 load=18.76 C status --wait exit 0
+== 22:25:44 load=18.76 stop
+== 22:25:45 load=18.76 stop exit 0
