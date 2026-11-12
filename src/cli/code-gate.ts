@@ -24,11 +24,11 @@ import { CODE_GATE_USAGE, parseGateArgs } from "./code-gate-args.js";
 import { storedDurations } from "./code-gate-durations.js";
 import { exceptionsOf } from "./code-gate-exceptions.js";
 import { keptLogsLine, runLogKeeper } from "./code-gate-log.js";
-import { preRunOptions } from "./code-gate-prerun.js";
+import { estimateOptions, preRunOptions } from "./code-gate-prerun.js";
 import { overrunText, timed } from "./code-gate-progress.js";
 import { relaunchGate, runAsChild, takeReportFd } from "./code-gate-relaunch.js";
 import { collectWithStores } from "./code-gate-stored.js";
-import { estimateText, formatGateReport } from "./code-gate-text.js";
+import { formatGateReport } from "./code-gate-text.js";
 import type { CliIo } from "./main.js";
 import { statusCommand } from "./status-command.js";
 
@@ -189,7 +189,8 @@ async function gate(
       ...preRunOptions(changed, policy, io.stderr),
       // D17.1: the estimate on stderr, after the stored lookup and before the first run.
       ...(durations === null ? {} : { durations: durations.of }),
-      estimated: (estimates, left) => io.stderr(estimateText(estimates, left)),
+      // Rows 020-45, 020-46: over what is left, one rerun command with a fitted --timeout.
+      ...estimateOptions(parsed, io),
       // Row 020-43: a file still running past its estimate, named once on stderr.
       overran: (file) => io.stderr(overrunText(file)),
       // #197: a run with a failed or unfinished file keeps its log where a daemon keeps its runs'.

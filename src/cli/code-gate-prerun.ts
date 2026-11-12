@@ -1,11 +1,16 @@
 import type { CollectOptions } from "../core/code/gate/collect.js";
+import type { RunEstimate } from "../core/code/gate/estimate.js";
+import type { BudgetTold } from "../core/code/gate/plan.js";
 import type { BasePolicy } from "../core/code/gate/policy.js";
 import type { SelectionSummary } from "../core/code/gate/prerun.js";
 import { type ChangedSet, RUNNER_NAMES } from "../core/code/gate/types.js";
 import { createInputMatcher } from "../core/keys/glob.js";
-import { plural } from "../core/text.js";
+import { listPaths, plural, shellWord } from "../core/text.js";
 import type { GlobalSetupEntry } from "../core/types/runner.js";
+import type { GateArgs } from "./code-gate-args.js";
 import { loadsChangedText } from "./code-gate-text.js";
+import type { CliIo } from "./main.js";
+import { statusCommand } from "./status-command.js";
 
 /*
  * Spec 020 D14.4 (row 020-15b, which carries 020-16a): what `squeal code
@@ -16,6 +21,10 @@ import { loadsChangedText } from "./code-gate-text.js";
  * each changed path no test Squeal runs loads, with the ways out. Rows
  * 020-34 and 020-35: the files declared `inputs` chose, and with
  * `coverage.children` a weaker line while some selected file runs.
+ * D17.1 (row 020-17a): each runner's estimate, after the stored lookup.
+ * Rows 020-45 and 020-46 (#196, #198): over what is left of the budget,
+ * one rerun command with a fitted `--timeout`; at twice it, the files the
+ * gate runs and those it stops early before.
  */
 
 /**
@@ -120,5 +129,111 @@ export function preRunOptions(
   return {
     selected: (summary) => stderr(preRunText(summary, changed)),
     excluded: createInputMatcher(policy.coverageExclude),
+  };
+}
+
+/** D17.1: what shortens a run that does not fit what is left of the budget. */
+const WAYS_OUT =
+  "To fit it: a longer --timeout, paths that narrow the changed files, fewer check groups (gate.groups at the base, --group), or CI's results with --parts. The run starts anyway.";
+
+/**
+ * D17.1: one stderr line per runner, told before the first run: its
+ * estimate, how many files have a stored duration, and how many run at
+ * once. The runners run in turn, so a line is over the budget when the
+ * estimates up to its runner pass `leftSeconds`; that line gives the ways
+ * out. Rows 020-45, 020-46: then `budget`'s line, when it names a rerun.
+ */
+export function estimateText(
+  estimates: readonly RunEstimate[],
+  leftSeconds: number,
+  budget?: BudgetTold,
+): string {
+  let until = 0;
+  const lines = estimates.map(({ runner, seconds, files, known, width }) => {
+    const name = RUNNER_NAMES[runner];
+    const run = `${plural(files, "test file")} to run here, up to ${width} at once`;
+    if (seconds === null) return `${name}: ${run}; no stored duration, so the time is unknown`;
+    const first = until === 0;
+    until += seconds;
+    const from =
+      known < files
+        ? `the stored durations of ${known} (the others at their median)`
+        : files === 1
+          ? "its stored duration"
+          : "their stored durations";
+    const after = first ? "" : `, ${until} s with the runs before it`;
+    const over =
+      until > leftSeconds ? `, over the ${leftSeconds} s left of the budget. ${WAYS_OUT}` : "";
+    return `${name}: ${run}: about ${seconds} s from ${from}${after}${over}`;
+  });
+  const fit = budget === undefined ? null : budgetLine(budget);
+  return [...lines, ...(fit === null ? [] : [fit])]
+    .map((line) => `squeal code: ${line}\n`)
+    .join("");
+}
+
+/**
+ * Rows 020-45, 020-46: the line after the runners' when the whole run is
+ * over what is left: the rerun that fits, and, when the gate stops early,
+ * how many files it runs and the first `NAMED` of those it does not.
+ * `null` when the run fits or its time is unknown.
+ */
+export function budgetLine({ fit, rerun, early }: BudgetTold): string | null {
+  if (rerun === undefined || fit.seconds === null) return null;
+  const all = `about ${fit.seconds} s in all`;
+  if (early === undefined || early.overBudget.length === 0) {
+    return `${all}, over the ${fit.leftSeconds} s left of the budget. A rerun that fits: ${rerun.command}`;
+  }
+  const { run, overBudget } = early;
+  const runs =
+    run === 0
+      ? "it runs no test file"
+      : `it runs the ${plural(run, "test file")} that may load a changed function`;
+  const left = `the ${overBudget.length} that load none (${listPaths(overBudget, NAMED)}; the report lists them all)`;
+  return [
+    `${all}, at least twice the ${fit.leftSeconds} s left of the budget, so the gate stops early:`,
+    `${runs}, and not ${left}.`,
+    `A rerun that runs them all: ${rerun.command}`,
+  ].join(" ");
+}
+
+/**
+ * Row 020-45: the command that runs this check again with `seconds` as
+ * its `--timeout`: `squeal`, the command that runs Squeal here, with the
+ * call's own arguments as given and `--timeout` in place of any given.
+ * Each list option ends at the next option, so the order parses the same.
+ */
+export function rerunCommand(args: GateArgs, squeal: string): (seconds: number) => string {
+  const listed = (flag: string, values: readonly string[] | undefined) =>
+    values === undefined || values.length === 0 ? [] : [flag, ...values];
+  return (seconds) => {
+    const words = [
+      "--base",
+      args.ref,
+      ...args.paths,
+      ...listed("--test", args.tests),
+      ...listed("--group", args.groups),
+      ...listed("--parts", args.parts),
+      ...(args.exceptions === undefined ? [] : ["--exceptions", args.exceptions]),
+      "--timeout",
+      String(seconds),
+      ...(args.json ? ["--json"] : []),
+    ];
+    return `${squeal} code ${words.map(shellWord).join(" ")}`;
+  };
+}
+
+/**
+ * D17.1, rows 020-45 and 020-46: the collector's options that tell the
+ * estimate on `io.stderr` before the first run, with the rerun command of
+ * `args` run as Squeal runs under `io.env`.
+ */
+export function estimateOptions(
+  args: GateArgs,
+  io: Pick<CliIo, "env" | "stderr">,
+): Pick<CollectOptions, "estimated" | "rerun"> {
+  return {
+    estimated: (estimates, left, budget) => io.stderr(estimateText(estimates, left, budget)),
+    rerun: rerunCommand(args, statusCommand(io.env ?? process.env)),
   };
 }
