@@ -21,6 +21,24 @@ import type { Store } from "../types/store.js";
  */
 
 /**
+ * How many of `candidates`, nearest the start point first, the reader tries
+ * (D14): every one nearer than the nearest held one, at `nearestHeld`, and
+ * that one too when its imports do not serve `worktreeId` (`servesHere`).
+ */
+export function triedHere(
+  store: Store,
+  worktreeId: WorktreeId,
+  imports: readonly ImportRecord[],
+  candidates: readonly string[],
+  nearestHeld: number,
+): number {
+  if (nearestHeld === -1) return candidates.length;
+  const commit = candidates[nearestHeld];
+  const held = imports.filter((i) => i.header.commit === commit);
+  return servesHere(store, worktreeId, held) ? nearestHeld : nearestHeld + 1;
+}
+
+/**
  * Whether `imports`, the store's imports of one commit, serve `worktreeId`
  * as well as an import of its own would: one of them is this worktree's own
  * in its present environments (`importIdHere`), or for each project they
