@@ -6,7 +6,7 @@ import type { TestFileRef } from "../../../../src/core/types/keys.js";
 import { createNodeTestAdapter } from "../../../../src/runners/node-test/adapter.js";
 import type { CaseOutput, NodeTestInput } from "../case.js";
 import { type Decided, decided, Kept, storedRun } from "./reported.js";
-import { writeTree } from "./shared.js";
+import { goneLogDir, writeTree } from "./shared.js";
 
 /*
  * The `adapter:node-test` kind (011 C14, spec 003 D1 to D6, row 016-17): the
@@ -84,9 +84,11 @@ export async function nodeTestCase(input: NodeTestInput, scratch: string): Promi
     for (const [at, run] of input.runs.entries()) {
       const report = await adapter.run(run.files.map(ref), {
         runId: `validity-${at}`,
-        logDir: join(scratch, "logs", String(at)),
+        logDir:
+          run.storeGone === true ? goneLogDir(scratch, at) : join(scratch, "logs", String(at)),
         timeoutMs: 60_000,
         ...(run.lane === undefined ? {} : { lane: run.lane }),
+        ...(run.storeGone === true ? { stop: AbortSignal.abort() } : {}),
       });
       const stored = storedRun(report, steps[steps.length - 1] as Decided);
       runs.push({ ...stored, completed: [...stored.completed, ...recorded.splice(0)].sort() });

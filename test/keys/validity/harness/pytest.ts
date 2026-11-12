@@ -13,7 +13,7 @@ import {
   type Pythons,
 } from "../case.js";
 import { type Decided, decided, Kept, selectedOf, storedRun } from "./reported.js";
-import { writeTree } from "./shared.js";
+import { goneLogDir, writeTree } from "./shared.js";
 
 /*
  * The `adapter:pytest` kind (011 C14, 007 D2 to D6, row 011-48): the tree's
@@ -172,9 +172,11 @@ export async function pytestCase(input: PytestInput, scratch: string): Promise<C
       const ran = () =>
         adapter.run(run.files.map(ref), {
           runId: `validity-${at}`,
-          logDir: join(scratch, "logs", String(at)),
+          logDir:
+            run.storeGone === true ? goneLogDir(scratch, at) : join(scratch, "logs", String(at)),
           timeoutMs: run.timeoutMs ?? 60_000,
           ...(checks === undefined ? {} : { checks }),
+          ...(run.storeGone === true ? { stop: AbortSignal.abort() } : {}),
         });
       rmSync(proof, { force: true });
       const report = selectedOf(

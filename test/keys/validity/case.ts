@@ -293,6 +293,12 @@ export interface VitestInput {
      * or its file kills its worker at once (row 011-289).
      */
     readonly unwaited?: true;
+    /**
+     * Row 018-38: the run logs into `<scratch>/gone/runs/<at>`, under a store
+     * that is not there, as a run a runner host cancels after its daemon died
+     * and the checkout went. Only its log needs the folder.
+     */
+    readonly storeGone?: true;
   }[];
   /** Read each project's environment files once open, as the case's keys (row 011-88). */
   readonly environment?: true;
@@ -401,6 +407,13 @@ export interface PytestInput {
     readonly timeoutMs?: number;
     /** A focused run's texts per file path (`RunOptions.checks`, row 011-144): see `selectedOf`. */
     readonly checks?: readonly { readonly path: string; readonly texts: readonly string[] }[];
+    /**
+     * Row 018-38: the run logs into `<scratch>/gone/runs/<at>`, under a store
+     * that is not there, and its stop (`RunOptions.stop`) is already aborted:
+     * a run a runner host starts after its daemon died and the checkout went.
+     * Its processes write their records into that folder.
+     */
+    readonly storeGone?: true;
   }[];
   /** Paths whose affected test files are read at open and after each run. */
   readonly affected?: readonly string[];
@@ -416,7 +429,17 @@ export interface NodeTestInput {
    * In turn on one adapter: the files run, and the run's lane
    * (`RunOptions.lane`, rows 004-18 and 019-12); default none.
    */
-  readonly runs: readonly { readonly files: readonly string[]; readonly lane?: string }[];
+  readonly runs: readonly {
+    readonly files: readonly string[];
+    readonly lane?: string;
+    /**
+     * Row 018-38: the run logs into `<scratch>/gone/runs/<at>`, under a store
+     * that is not there, and its stop (`RunOptions.stop`) is already aborted:
+     * a run a runner host starts after its daemon died and the checkout went.
+     * Its processes write their records into that folder.
+     */
+    readonly storeGone?: true;
+  }[];
   /** The project's flags before `--test`; default none. */
   readonly argv?: readonly string[];
   /**
@@ -445,9 +468,10 @@ export type Case = {
   readonly why: string;
   /**
    * Text of the error the last release throws on this input before it keys
-   * anything (row 011-310): such a release stored nothing a key of the input
-   * can find, so the verdict reports the case instead of asking a raise,
-   * while the candidate throws nothing. Inert once the last release keys it.
+   * anything (row 011-310), or at a run whose log folder went while it ran
+   * (row 018-38): such a release stored nothing a key of the input can find,
+   * so the verdict reports the case instead of asking a raise, while the
+   * candidate throws nothing. Inert once the last release keys it.
    */
   readonly lastThrows?: string;
 } & (
