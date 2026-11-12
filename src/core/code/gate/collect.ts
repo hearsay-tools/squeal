@@ -16,7 +16,7 @@ import { coverageProvider, PROVIDER_MISSING_NOTE } from "../coverage/runtime.js"
 import type { RunEstimate } from "./estimate.js";
 import { keptLogs, leftOutFiles, type RunLog } from "./evidence.js";
 import { runLanes, SlotPool } from "./lanes.js";
-import { inLoaderOrder, orderRuns } from "./plan.js";
+import { type BudgetTold, fitRuns, orderRuns } from "./plan.js";
 import type { BasePrepares } from "./prepare.js";
 import { type Picked, type SelectionSummary, tellSelection } from "./prerun.js";
 import { FileProgress, type Overrun } from "./progress.js";
@@ -89,7 +89,16 @@ export interface CollectOptions {
    * the selection (D14.4) and before the first run or `prepare`, with the
    * whole seconds left of the budget. Not called when no file is to run.
    */
-  readonly estimated?: (estimates: readonly RunEstimate[], leftSeconds: number) => void;
+  readonly estimated?: (
+    estimates: readonly RunEstimate[],
+    leftSeconds: number,
+    budget: BudgetTold,
+  ) => void;
+  /**
+   * Row 020-45: the command that runs this check again with `seconds` as
+   * its `--timeout`; absent, `squeal code --base <ref> --timeout <seconds>`.
+   */
+  readonly rerun?: (seconds: number) => string;
   /**
    * D17.3: told each runner's run once it ended, while the other runners'
    * runs may still run (D18 as amended); with it, Vitest records runtime
@@ -150,6 +159,8 @@ export class CollectUsageError extends Error {
  * `runner.tierSize` processes (D18 as amended, row 020-44); a run started
  * after the deadline runs nothing. A project's own `testTimeout` is never
  * lowered. With no changed path and no `--test` file, no adapter starts.
+ * Row 020-46: when the estimate is at least twice what is left, the files
+ * that load no changed function do not run, and read not finished.
  * A selected file `options.stored` gives evidence of does not run (D11.7).
  * Rejects when Vitest is configured but cannot start, or when Squeal's
  * provider is missing: a setup error (D1).
@@ -202,8 +213,9 @@ export async function collectEvidence(
     await tellSelection(options.selected, inOrder, changed, { ...options, tally, known });
     // #193: each project's files with an incomplete closure, once, scoped to this selection.
     const gaps = tellClosures(lists, picked, note);
-    const runs = await inLoaderOrder(order.runs, { changed: paths, durations });
-    const estimates = tellEstimates(options.estimated, order.estimates, deadline);
+    // D17.2; rows 020-45, 020-46: the estimate against what is left; at twice it, the gate stops early.
+    const { runs, told } = await fitRuns(order, changed, { ...options, deadline });
+    const estimates = tellEstimates(options.estimated, order.estimates, told);
     const blobs: BlobCache = new Map();
     const mapping = { format, blobs, provider, children, note };
     const context = { root, deadline, note, options, children, temp, known, mapping, progress };
