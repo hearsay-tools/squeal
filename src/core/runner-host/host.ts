@@ -195,10 +195,18 @@ export async function serveRunnerHost(options: ServeOptions): Promise<void> {
     };
   };
 
-  /** Spec 021 D18 (row 021-21): an admitted run holds its machine's permits until it ends. */
+  /**
+   * Spec 021 D18 (row 021-21): an admitted run holds its machine's permits
+   * until it ends. One that comes with no grant held, its hold passed,
+   * never starts (review 0.1.445 R1): it is refused, and the daemon asks
+   * again. Only a look whose pool failed lets it go without a grant.
+   */
   const run = async (id: number, args: readonly unknown[]): Promise<RunReport> => {
     const [files, wire] = args as [RunReportFiles, WireRunOptions & RemoteRunOptions];
-    const lease = wire.admitted === true ? (options.admission?.claim() ?? null) : null;
+    const admission = wire.admitted === true ? options.admission : undefined;
+    const claimed = admission === undefined ? "ungranted" : admission.claim();
+    if (claimed === null) return { unadmitted: true } as RemoteRunReply as RunReport;
+    const lease = claimed === "ungranted" ? null : claimed;
     try {
       return await runOf(
         id,

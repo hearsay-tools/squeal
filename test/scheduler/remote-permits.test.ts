@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { createPermitPool } from "../../src/core/capacity/pool.js";
 import type { HostedAdapter } from "../../src/core/runner-host/host.js";
-import type { HostAdmission } from "../../src/core/runner-host/remote/admission.js";
+import { type HostAdmission, UNGRANTED } from "../../src/core/runner-host/remote/admission.js";
 import { remoteHostOver } from "../../src/core/runner-host/remote/connect.js";
 import { withRemoteLane } from "../../src/core/runner-host/remote/lane.js";
 import { createTreeHost } from "../../src/core/runner-host/remote/tree-host.js";
@@ -62,7 +62,8 @@ function busyRemote(runner: CatchUpRunner, root: string, seen: (at: string) => v
       seen("look");
       return ++looks <= 2 ? { grant: 0 } : { grant: ask.want };
     },
-    claim: () => null,
+    // A grant without a pool behind it: the run goes ungranted.
+    claim: () => UNGRANTED,
     close: () => {},
   };
   const adapter = (): HostedAdapter => ({
