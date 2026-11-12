@@ -24,6 +24,7 @@ import { REFUSED_WRITES } from "./assemble/refused-write.js";
 import { REWRITTEN } from "./assemble/rewritten.js";
 import { RUNTIME_FILES } from "./assemble/runtime.js";
 import { SHARED_REF } from "./assemble/shared-ref.js";
+import { TEST_NEEDS } from "./assemble/test-needs.js";
 import { GOLDEN_KEYS } from "./key/golden.js";
 import { INSTALLED_KEYS } from "./key/installed.js";
 import { PNPM_KEYS } from "./key/pnpm.js";
@@ -67,6 +68,7 @@ export const CASES: readonly Case[] = [
   ...PREPARE,
   ...GATE_GROUPS,
   ...SHARED_REF,
+  ...TEST_NEEDS,
   ...RUNTIME_FILES,
   ...INHERITED,
   ...REWRITTEN,
