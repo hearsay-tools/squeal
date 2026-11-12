@@ -3,7 +3,7 @@ import { encodeBatch } from "../../src/core/daemon/write-batch.js";
 import { LEASE_TTL_MS, WriteDesk } from "../../src/core/daemon/write-desk.js";
 import type { WorktreeId } from "../../src/core/types/common.js";
 import type { DaemonResponse } from "../../src/core/types/daemon.js";
-import type { SentBatch, WriteRequest } from "../../src/core/types/daemon-writes.js";
+import type { LeaseProcess, SentBatch, WriteRequest } from "../../src/core/types/daemon-writes.js";
 
 /*
  * Spec 021 D15 (row 021-16): the socket's side of sent writes. The lease
@@ -15,7 +15,13 @@ const ID = "aaaaaaaaaaaaaaaa" as WorktreeId;
 const OTHER = "bbbbbbbbbbbbbbbb" as WorktreeId;
 const BATCH = encodeBatch([{ sql: "DELETE FROM meta WHERE key = ?", params: ["k"] }]);
 
-function desk(options: { schema?: number; write?: (batch: SentBatch) => Promise<void> } = {}) {
+function desk(
+  options: {
+    schema?: number;
+    write?: (batch: SentBatch) => Promise<void>;
+    alive?: (holder: LeaseProcess) => boolean | null;
+  } = {},
+) {
   let now = 1_000;
   const written: SentBatch[] = [];
   const pending: (() => void)[] = [];
@@ -23,6 +29,7 @@ function desk(options: { schema?: number; write?: (batch: SentBatch) => Promise<
     worktreeId: ID,
     storeSchema: options.schema ?? 7,
     now: () => now,
+    ...(options.alive === undefined ? {} : { alive: options.alive }),
     requestWrite:
       options.write ??
       ((batch) =>
@@ -180,5 +187,61 @@ describe("the write lease (021-16)", () => {
       written: false,
       error: "UNIQUE constraint failed: consumers.id",
     });
+  });
+});
+
+describe("a lease's process (review 0.1.442 B3)", () => {
+  const PROCESS: LeaseProcess = { pid: 4242, startTime: 7, pidNamespace: "pid:[1]" };
+  const leaseFor = (d: WriteDesk, holder: string, process?: LeaseProcess) =>
+    d.answer(
+      { type: "lease", worktreeId: ID, holder, ...(process === undefined ? {} : { process }) },
+      "ready",
+    );
+
+  it("keeps a lease past its time while its process lives, and ends it once the process is gone", () => {
+    let alive = true;
+    const asked: LeaseProcess[] = [];
+    const t = desk({
+      alive: (holder) => {
+        asked.push(holder);
+        return alive;
+      },
+    });
+    const token = tokenOf(leaseFor(t.d, "1 paused hook", PROCESS));
+    t.advance(LEASE_TTL_MS * 4);
+    expect(leaseFor(t.d, "2 next hook", PROCESS)).toMatchObject({
+      token: null,
+      holder: "1 paused hook",
+    });
+    expect(asked).toEqual([PROCESS]);
+    alive = false;
+    t.advance(LEASE_TTL_MS - 1);
+    // Asked again only once its time passed again.
+    expect(leaseFor(t.d, "2 next hook")).toMatchObject({ token: null });
+    expect(asked).toHaveLength(1);
+    t.advance(1);
+    expect(tokenOf(leaseFor(t.d, "2 next hook"))).not.toBe(token);
+  });
+
+  it("ends a lease past its time when its process cannot be told, as one with no process", () => {
+    const t = desk({ alive: () => null });
+    tokenOf(leaseFor(t.d, "1 hook", PROCESS));
+    t.advance(LEASE_TTL_MS);
+    tokenOf(leaseFor(t.d, "2 hook"));
+    t.advance(LEASE_TTL_MS);
+    expect(leaseFor(t.d, "3 hook")).toMatchObject({ token: expect.any(String) });
+  });
+
+  it("names a held lease's holder to a stopping daemon's client, which then waits, not writes", () => {
+    const { d } = desk({ alive: () => true });
+    const token = tokenOf(leaseFor(d, "1 telling hook", PROCESS));
+    const asked = { type: "lease", worktreeId: ID, holder: "2 hook" } as const;
+    expect(d.answer(asked, "stopping")).toMatchObject({
+      ok: true,
+      token: null,
+      holder: "1 telling hook",
+    });
+    d.answer({ type: "release", worktreeId: ID, token }, "stopping");
+    expect(d.answer(asked, "stopping")).toMatchObject({ ok: false, error: "daemon is stopping" });
   });
 });

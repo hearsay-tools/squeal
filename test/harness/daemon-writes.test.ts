@@ -1,4 +1,8 @@
+import { spawn } from "node:child_process";
 import { afterEach, describe, expect, it } from "vitest";
+import { requestDaemon } from "../../src/core/daemon/client.js";
+import { leaseProcess } from "../../src/core/daemon/lease-process.js";
+import { LEASE_TTL_MS } from "../../src/core/daemon/write-desk.js";
 import { testCommandDenied } from "../../src/core/delivery/test-command-denied.js";
 import { omittedTestFilesMetaKey } from "../../src/core/scheduler/omitted-test-files.js";
 import { runHook } from "../../src/harness/claude-code/hooks.js";
@@ -122,6 +126,56 @@ describe("hooks while a daemon serves (021-16)", () => {
     await writeThenCommit(held, [[working, first.stdout]]);
     expect((await parallel).stdout).not.toContain(TRANSITION);
   });
+
+  it(
+    "keep a report their own while a hook paused past the lease's time hands it off (review 0.1.442 B3)",
+    async () => {
+      const { r } = await serving();
+      await hook(r, "session-start");
+      r.apply(r.fail());
+      const paused = new HandOff();
+      const first = await hook(r, "post-tool-batch", {}, { handOff: paused });
+      expect(first.stdout).toContain(TRANSITION);
+      // Its output not yet written, past the lease's time: its process lives, so it keeps the lease.
+      await new Promise((done) => setTimeout(done, LEASE_TTL_MS + 200));
+      const overlapping = await hook(r, "post-tool-batch");
+      await writeThenCommit(paused, [[working, first.stdout]]);
+      const after = await hook(r, "post-tool-batch");
+      const told = [first, overlapping, after].filter((o) => o.stdout.includes(TRANSITION));
+      expect(told).toEqual([first]);
+    },
+    LEASE_TTL_MS * 4,
+  );
+
+  it(
+    "take the lease again once its client died, after the lease's time, and tell what that client did not",
+    async () => {
+      const { r } = await serving();
+      await hook(r, "session-start");
+      r.apply(r.fail());
+      const child = spawn(process.execPath, ["-e", "setTimeout(() => {}, 60_000)"]);
+      await new Promise((done) => child.once("spawn", done));
+      const socketPath = r.store.worktrees.get(r.worktreeId)?.daemon?.socketPath;
+      if (socketPath === undefined) throw new Error("no daemon recorded");
+      const taken = await requestDaemon(
+        socketPath,
+        {
+          type: "lease",
+          worktreeId: r.worktreeId,
+          holder: "dying",
+          process: leaseProcess(child.pid),
+        },
+        1_000,
+      );
+      expect(taken).toMatchObject({ ok: true, token: expect.any(String) });
+      child.kill("SIGKILL");
+      await new Promise((done) => child.once("exit", done));
+      expect((await hook(r, "post-tool-batch")).stdout).not.toContain(TRANSITION);
+      await new Promise((done) => setTimeout(done, LEASE_TTL_MS + 200));
+      expect((await hook(r, "post-tool-batch")).stdout).toContain(TRANSITION);
+    },
+    LEASE_TTL_MS * 4,
+  );
 
   it("deny an answered test command once over parallel calls (005 D8)", async () => {
     const r = squealRepo();

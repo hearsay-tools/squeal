@@ -32,11 +32,25 @@ export interface SentBatch {
   readonly rows: readonly (readonly [number, ...SentParam[]])[];
 }
 
+/**
+ * The process a lease is taken for. Review 0.1.442 B3: a client paused
+ * between deciding a report and handing it to its host keeps its lease
+ * while this process lives, and loses it once the process is gone.
+ */
+export interface LeaseProcess {
+  readonly pid: number;
+  /** Field 22 of `/proc/<pid>/stat` and the PID namespace, where `/proc` exists; else `null`. */
+  readonly startTime: number | null;
+  readonly pidNamespace: string | null;
+}
+
 /** Takes the worktree's write lease for `holder` (a pid and a name, for the daemon's log). */
 export interface LeaseRequest {
   readonly type: "lease";
   readonly worktreeId: WorktreeId;
   readonly holder: string;
+  /** The client's process; absent (a client before review 0.1.442 B3), the lease ends by time alone. */
+  readonly process?: LeaseProcess;
 }
 
 /**

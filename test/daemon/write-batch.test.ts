@@ -114,4 +114,22 @@ describe("the statements the daemon writes (021-16)", () => {
     const back = decodeBatch(JSON.parse(JSON.stringify(batch)));
     expect(back).toEqual(statements);
   });
+
+  it("reads a lease's process, and refuses one that names no pid (review 0.1.442 B3)", () => {
+    const lease = { type: "lease", worktreeId: "w", holder: "1 hook" };
+    const process = { pid: 42, startTime: 7, pidNamespace: "pid:[1]" };
+    expect(parseRequest(JSON.stringify({ ...lease, process }))).toEqual({ ...lease, process });
+    const bare = { pid: 42, startTime: null, pidNamespace: null };
+    expect(parseRequest(JSON.stringify({ ...lease, process: bare }))).toEqual({
+      ...lease,
+      process: bare,
+    });
+    expect(parseRequest(JSON.stringify(lease))).toEqual(lease);
+    expect(parseRequest(JSON.stringify({ ...lease, process: { pid: "42" } }))).toBe(
+      '"process.pid" must be a pid',
+    );
+    expect(
+      parseRequest(JSON.stringify({ ...lease, process: { ...process, startTime: "x" } })),
+    ).toBe('"process.startTime" must be an integer or null');
+  });
 });

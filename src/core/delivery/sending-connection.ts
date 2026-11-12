@@ -107,8 +107,12 @@ export class SendingConnection extends HoldingConnection {
 
   /** Waits until every batch sent so far is written, then ends the lease unless a hold keeps it. */
   async settle(): Promise<void> {
-    await this.sent();
-    if (!this.#direct && this.#held === null && this.#sender.leased) await this.#sender.release();
+    try {
+      await this.sent();
+    } finally {
+      // Also after a failed batch: a live process keeps its lease (review 0.1.442 B3).
+      if (!this.#direct && this.#held === null && this.#sender.leased) await this.#sender.release();
+    }
   }
 
   /** Waits until every batch sent so far is written; rethrows the first that failed. */
@@ -222,9 +226,16 @@ export class SendingConnection extends HoldingConnection {
     return this.#direct ? super.heldElsewhere() : null;
   }
 
-  /** Closes once every batch sent is written, since one the daemon does not take is written here. */
+  /**
+   * Closes once every batch sent is written, since one the daemon does not
+   * take is written here. A hold left open is dropped and its lease ended:
+   * a live process keeps its lease until then (review 0.1.442 B3).
+   */
   override close(): void {
-    this.#held = null;
+    if (this.#held !== null || (this.#sender.leased && !this.#direct)) {
+      this.#held = null;
+      this.#track(this.#sender.release(), false);
+    }
     if (this.#sending.size === 0) {
       super.close();
       return;

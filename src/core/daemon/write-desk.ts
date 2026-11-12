@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { PAYLOAD_SCHEMA_VERSION, type WorktreeId } from "../types/common.js";
 import type { DaemonErrorResponse, DaemonPhase } from "../types/daemon.js";
 import type {
+  LeaseProcess,
   LeaseRequest,
   LeaseResponse,
   ReleaseRequest,
@@ -11,14 +12,18 @@ import type {
   WriteResponse,
   WriteStatusRequest,
 } from "../types/daemon-writes.js";
+import { leaseProcessAlive } from "./lease-process.js";
 import { errorResponse } from "./protocol.js";
 import type { WriteRequests } from "./write-protocol.js";
 
 /**
- * How long a lease lasts without a write or a lease request under its
- * token: longer than a hook's hand-off bound (2 s), so a hook that writes
- * its output keeps it, and short enough that a client killed with it costs
- * the next one a few seconds at most.
+ * How long a lease lasts without a write under its token before the desk
+ * asks whether its process still lives (review 0.1.442 B3): longer than a
+ * hook's hand-off bound (2 s), and short enough that a client killed with
+ * it costs the next one a few seconds at most. A lease whose process lives
+ * is kept past it, so a client paused before its hand-off keeps its report
+ * its own; one whose process cannot be told (no process named, another PID
+ * namespace) ends at it.
  */
 export const LEASE_TTL_MS = 5_000;
 
@@ -36,12 +41,17 @@ export interface WriteDeskContext {
   readonly storeSchema: number;
   /** Writes one batch in the daemon's retried path; rejects with why it was not written. */
   readonly requestWrite: (batch: SentBatch) => Promise<void>;
+  /** Milliseconds that never go back and do not run while the host sleeps. Default `performance.now`. */
   readonly now?: () => number;
+  /** Whether a lease's process lives (`leaseProcessAlive`); a test gives its own. */
+  readonly alive?: (holder: LeaseProcess) => boolean | null;
 }
 
 interface Lease {
   readonly token: string;
   readonly holder: string;
+  /** The client's process: the lease outlives its time while it lives. */
+  readonly process: LeaseProcess | undefined;
   until: number;
   /** Writes under it not yet settled: it does not end while one waits on a busy store. */
   pending: number;
@@ -71,11 +81,18 @@ export class WriteDesk {
     this.#context = context;
   }
 
-  /** The answer to `request`. A stopping daemon takes no new lease or write: its client writes itself. */
+  /**
+   * The answer to `request`. A stopping daemon takes no new lease or write:
+   * its client writes itself, except while another client holds the lease,
+   * whose report must stay its own (review 0.1.442 B3).
+   */
   answer(request: WriteRequests, phase: DaemonPhase): WriteAnswer {
     switch (request.type) {
-      case "lease":
-        return phase === "stopping" ? errorResponse(STOPPING) : this.lease(request);
+      case "lease": {
+        if (phase !== "stopping") return this.lease(request);
+        const current = this.#current();
+        return current === null ? errorResponse(STOPPING) : this.#leaseAnswer(null, current.holder);
+      }
       case "write":
         return phase === "stopping" ? errorResponse(STOPPING) : this.write(request);
       case "release":
@@ -94,6 +111,7 @@ export class WriteDesk {
     this.#lease = {
       token,
       holder: request.holder,
+      process: request.process,
       until: this.#now() + LEASE_TTL_MS,
       pending: 0,
       releasing: false,
@@ -158,11 +176,20 @@ export class WriteDesk {
     return writeAnswer(request.requestId, state);
   }
 
-  /** The lease in force; one past its time with no write waiting has ended. */
+  /**
+   * The lease in force. One past its time with no write waiting is kept
+   * while its process lives, for another `LEASE_TTL_MS`, and else has ended.
+   */
   #current(): Lease | null {
     const lease = this.#lease;
-    if (lease !== null && lease.pending === 0 && this.#now() >= lease.until) this.#lease = null;
-    return this.#lease;
+    if (lease === null || lease.pending > 0 || this.#now() < lease.until) return lease;
+    const alive = this.#context.alive ?? leaseProcessAlive;
+    if (lease.process !== undefined && alive(lease.process) === true) {
+      lease.until = this.#now() + LEASE_TTL_MS;
+      return lease;
+    }
+    this.#lease = null;
+    return null;
   }
 
   #otherWorktree(worktreeId: WorktreeId): DaemonErrorResponse | null {
@@ -188,7 +215,7 @@ export class WriteDesk {
   }
 
   #now(): number {
-    return (this.#context.now ?? Date.now)();
+    return (this.#context.now ?? (() => performance.now()))();
   }
 }
 
