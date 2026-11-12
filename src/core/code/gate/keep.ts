@@ -3,30 +3,28 @@ import { acquireDaemonLock } from "../../daemon/lock.js";
 import { worktreeIdFor } from "../../fs/git-layout.js";
 import type { Hasher } from "../../hash/hasher.js";
 import { testFileId } from "../../keys/reverse-index.js";
-import { checkId } from "../../scheduler/files.js";
-import { healsUnheld } from "../../scheduler/hold.js";
 import type { WorktreeKeys } from "../../scheduler/keying.js";
 import { observedGrowth } from "../../scheduler/observed.js";
-import { recordsForFile } from "../../scheduler/records.js";
 import { changedSince } from "../../scheduler/stability.js";
-import { storeResults } from "../../scheduler/store-results.js";
-import { describeFailure } from "../../state/fingerprint.js";
 import { isStoreOpenFailure, openStore } from "../../store/open.js";
 import { lockFileFor } from "../../store/paths.js";
-import { BUSY_BOUND_MS, slicedWrite } from "../../store/sliced-write.js";
 import type { AbsolutePath, CommitSha, EpochMs, RelativePath } from "../../types/common.js";
 import type { CheckKey, TestFileRef } from "../../types/keys.js";
 import type { Policy } from "../../types/policy.js";
 import type { RunReport } from "../../types/runner.js";
 import type { Store } from "../../types/store.js";
-import type { Provenance } from "../../types/store-records.js";
-import { shareRecord } from "../coverage/parts.js";
-import { COVERAGE_RECORD_VERSION } from "../coverage/record.js";
-import type { CoverageRecord } from "../coverage/types.js";
 import { isCodeStoreOpenFailure, openCodeStore } from "../store/open.js";
 import type { CodeStore } from "../store/types.js";
 import type { GateRun } from "./collect.js";
-import { Expectations, type Expected, type Pending } from "./keep-expected.js";
+import { Expectations, type Pending } from "./keep-expected.js";
+import {
+  databasesOf,
+  KEEP_BUSY_BOUND_MS,
+  type Kept,
+  keepFile,
+  notKept,
+  StoreWait,
+} from "./keep-write.js";
 
 /*
  * Spec 020 D17.3 (row 020-17c): the gate keeps each test file it ran to
@@ -38,6 +36,8 @@ import { Expectations, type Expected, type Pending } from "./keep-expected.js";
  * the run read nothing its key lacks. The rows are the daemon's own
  * (`recordsForFile`, `storeResults`, `putParts`), written under the
  * daemon's worktree lock; while a daemon holds it, nothing is written.
+ * D17.5 (row 020-28, #192): each run's files are queued, and written by
+ * `flush` once the report is out, so a busy store never delays the verdict.
  */
 
 export interface KeepOptions {
@@ -48,25 +48,28 @@ export interface KeepOptions {
   readonly policy: Policy;
   /** The commit the runs ran at and whether the tree was dirty: the results' provenance. */
   readonly head: () => Promise<{ readonly head: CommitSha; readonly dirty: boolean }>;
-  /** Why a run's files were not kept, told once each; dropped when absent. */
+  /** Why files were not kept, told once each, and a busy store's wait; dropped when absent. */
   readonly note?: (text: string) => void;
   readonly now?: () => EpochMs;
   /**
-   * How long the gate retries a store whose write lock another connection
-   * holds before the files of a run it has not written are not kept;
-   * default `BUSY_BOUND_MS`.
+   * How long `flush` waits for a store whose write lock another connection
+   * holds, from the first write it refused, before the files it has not
+   * written are not kept; default `KEEP_BUSY_BOUND_MS` (D17.5).
    */
   readonly busyBoundMs?: number;
 }
 
-/** A completed file that may be written. */
-interface Kept extends Expected {
-  readonly record: CoverageRecord;
+/** One run's files that may be kept, until `flush` writes them. */
+interface Queued {
+  readonly files: readonly Kept[];
+  readonly report: RunReport;
+  readonly pending: Pending;
 }
 
 export class Keeper {
   readonly #options: KeepOptions;
   readonly #expected = new Expectations();
+  readonly #queued: Queued[] = [];
   readonly #told = new Set<string>();
 
   constructor(options: KeepOptions) {
@@ -84,19 +87,44 @@ export class Keeper {
   }
 
   /**
-   * After `run`: writes each file it may keep of the lookups that expected
-   * one of its files (review 0.1.433 B2); a failure only costs the write.
+   * After `run`: queues each file it may keep of the lookups that expected
+   * one of its files (review 0.1.433 B2), for `flush`; a failure only
+   * costs the write.
    */
   async ran(run: GateRun): Promise<void> {
-    for (const pending of this.#expected.take(run)) await this.#keep(pending, run);
+    for (const pending of this.#expected.take(run)) await this.#queue(pending, run);
   }
 
-  /** Ends what no run took, such as a runner the budget ended before; keeps nothing. */
+  /**
+   * D17.5, once the report is out: writes every queued file whose inputs
+   * still hold the bytes its run read. A busy store is waited for up to
+   * the bound, counted from the first write it refused; a failure only
+   * costs the files not yet written, told once, and never throws.
+   */
+  async flush(): Promise<void> {
+    const queued = this.#queued.splice(0);
+    if (queued.length === 0) return;
+    let left = queued.flatMap((q) => q.files).length;
+    try {
+      const steady: Queued[] = [];
+      for (const q of queued) {
+        const files = await steadyOf(q);
+        if (files.length > 0) steady.push({ ...q, files });
+      }
+      left = steady.flatMap((q) => q.files).length;
+      if (left > 0) await this.#write(steady);
+    } catch (error) {
+      this.#tell(`${notKept(left)}: ${messageOf(error)}`);
+    }
+  }
+
+  /** Ends what no run took, such as a runner the budget ended before, and drops the queue. */
   close(): void {
     this.#expected.close();
+    this.#queued.splice(0);
   }
 
-  async #keep(pending: Pending, run: GateRun): Promise<void> {
+  async #queue(pending: Pending, run: GateRun): Promise<void> {
     try {
       let kept: readonly Kept[];
       try {
@@ -104,7 +132,7 @@ export class Keeper {
       } finally {
         pending.keys.endRun();
       }
-      if (kept.length > 0) await this.#write(kept, run.report, pending.keys);
+      if (kept.length > 0) this.#queued.push({ files: kept, report: run.report, pending });
     } catch (error) {
       this.#tell(
         `the test files this run completed were not kept in the stores: ${messageOf(error)}`,
@@ -152,17 +180,19 @@ export class Keeper {
    * worktree's daemon lock. A reader takes a file only with both, so a
    * stop between the two leaves a record no reader takes, which prune
    * removes. The stores are created as a daemon creates them. Each write
-   * is one short transaction, retried in busy slices (`slicedWrite`) until one
-   * bound for the run: the files left then are told as not kept.
+   * is one short transaction, retried in busy slices until one bound from
+   * the first busy write (`StoreWait`); the files not written then are
+   * told as not kept.
    */
-  async #write(files: readonly Kept[], report: RunReport, keys: WorktreeKeys): Promise<void> {
+  async #write(queued: readonly Queued[]): Promise<void> {
     const { root, commonDir, policy } = this.#options;
     const now = this.#options.now ?? Date.now;
     const worktreeId = worktreeIdFor(root);
     const head = await this.#options.head();
+    const all = queued.flatMap((q) => q.files);
     const lock = acquireDaemonLock(lockFileFor(commonDir, worktreeId));
     if (lock === null) {
-      this.#tell(`${notKept(files.length)}: a daemon runs in this worktree, and it keeps its own`);
+      this.#tell(`${notKept(all.length)}: a daemon runs in this worktree, and it keeps its own`);
       return;
     }
     let written = 0;
@@ -177,27 +207,33 @@ export class Keeper {
         throw new Error(`the code store did not open: ${codeOpened.reason}`);
       }
       code = codeOpened;
-      const provenance: Provenance = {
-        worktreeId,
-        revision: store.revisions.latest(worktreeId)?.number ?? 0,
-        commit: head.head,
-        dirty: head.dirty,
-        runId: `gate-${randomUUID()}`,
-        recordedAt: now(),
-      };
-      const bound = this.#options.busyBoundMs ?? BUSY_BOUND_MS;
-      const at = { report, provenance, now, deadline: now() + bound };
-      for (const file of files) {
-        if (!(await keepFile(store, code, keys, { ...at, file }))) {
-          const seconds = Number((bound / 1000).toFixed(1));
-          const why = `the store stayed busy for ${seconds} s (another connection held its write lock)`;
-          this.#tell(`${notKept(files.length - written)}: ${why}`);
-          return;
+      const boundMs = this.#options.busyBoundMs ?? KEEP_BUSY_BOUND_MS;
+      const wait = new StoreWait({ now, boundMs, tell: (text) => this.#tell(text) });
+      const databases = databasesOf(commonDir);
+      const giveUp = (database: AbsolutePath) => wait.giveUp(database, all.slice(written));
+      const revision = store.revisions.latest(worktreeId)?.number ?? 0;
+      for (const { files, report, pending } of queued) {
+        const provenance = {
+          worktreeId,
+          revision,
+          commit: head.head,
+          dirty: head.dirty,
+          runId: `gate-${randomUUID()}`,
+          recordedAt: now(),
+        };
+        const stores = { store, code, keys: pending.keys };
+        for (const file of files) {
+          const at = { file, report, provenance, now, databases, giveUp };
+          if (!(await keepFile(stores, at))) {
+            this.#tell(wait.spent(all.length - written));
+            return;
+          }
+          written += 1;
         }
-        written += 1;
       }
+      wait.done(written);
     } catch (error) {
-      this.#tell(`${notKept(files.length - written)}: ${messageOf(error)}`);
+      this.#tell(`${notKept(all.length - written)}: ${messageOf(error)}`);
     } finally {
       code?.close();
       store?.close();
@@ -213,53 +249,14 @@ export class Keeper {
 }
 
 /**
- * One file's record at its key, then its results there, as the daemon's
- * tier record stores them; `false` when the store stayed busy until
- * `deadline`, before its results were written.
+ * D17.5: the files of `queued` none of whose inputs changed since the
+ * lookup, read again at the write; a file whose bytes moved after its
+ * run is not kept, and the next run keys it anew.
  */
-async function keepFile(
-  store: Store,
-  code: CodeStore,
-  keys: WorktreeKeys,
-  at: {
-    readonly file: Kept;
-    readonly report: RunReport;
-    readonly provenance: Provenance;
-    readonly now: () => EpochMs;
-    readonly deadline: EpochMs;
-  },
-): Promise<boolean> {
-  const { file, report, provenance, now, deadline } = at;
-  const recordKey = { resultKey: file.key, providerVersion: COVERAGE_RECORD_VERSION };
-  const shared = shareRecord(file.record, COVERAGE_RECORD_VERSION);
-  // One transaction in busy slices; `false` once the store stayed busy until `deadline`.
-  const written = async (write: () => unknown) => {
-    const wrote = () => {
-      write();
-      return true;
-    };
-    return (await slicedWrite(wrote, () => now() >= deadline)) === true;
-  };
-  if (!(await written(() => code.coverage.putParts(recordKey, shared, now())))) return false;
-  // D8's file-level error expansion: the checks of the file's newest stored key, from any worktree.
-  const previous = new Map(
-    store.results.newestForTestFile(file.ref).map((r) => [checkId(r.check), r.check]),
-  );
-  const records = recordsForFile({
-    ref: file.ref,
-    key: file.key,
-    report,
-    previousChecks: [...previous.values()],
-    provenance,
-    describe: describeFailure,
-  });
-  const context = { store, keys, worktreeId: provenance.worktreeId, now };
-  return written(() => storeResults(context, records, healsUnheld(store, file.paths)));
-}
-
-/** The start of a note on `count` completed test files a run did not keep. */
-function notKept(count: number): string {
-  return `${count} completed test ${count === 1 ? "file was" : "files were"} not kept in the stores`;
+async function steadyOf({ files, pending }: Queued): Promise<readonly Kept[]> {
+  const paths = new Set(files.flatMap((f) => f.paths));
+  const { changed } = await changedSince(pending.snapshot, paths, pending.hasher);
+  return files.filter((f) => !f.paths.some((path) => changed.has(path)));
 }
 
 function messageOf(error: unknown): string {
