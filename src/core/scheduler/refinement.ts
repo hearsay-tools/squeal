@@ -21,6 +21,7 @@ import {
   toInvalidatedPath,
 } from "./revision.js";
 import { RunnerPartBound, runnerPartBound, runnerPartBoundMs } from "./runner-work-bound.js";
+import { affectedAsk, askAffected } from "./stored-affected.js";
 
 /**
  * What the runner said about one revision: the runner phase of its
@@ -156,8 +157,12 @@ export async function fetchRunnerPart(
   pick(keys.index.reverse.referencing(touched));
   const moved = changes.filter((c) => !keys.isDeclaredInput(c.path));
   pick(closuresToReresolve(moved, keys.index.reverse, keys.isDeclaredInput));
-  const affected = await tryRunner(context, `affected (${listPaths(paths)})`, () =>
-    bound.call(() => runner.affected(paths)),
+  // Row 021-30: the stored import graph answers where it can vouch; the host walks otherwise.
+  const ask = affectedAsk(changes, content, { recreated, retrying, listed, failures });
+  const { affected, stored } = await askAffected(context, ledger, ask, paths, () =>
+    tryRunner(context, `affected (${listPaths(paths)})`, () =>
+      bound.call(() => runner.affected(paths)),
+    ),
   );
   pick(affected?.direct ?? []);
   pick(affected?.transitive ?? []);
@@ -176,7 +181,15 @@ export async function fetchRunnerPart(
   const cut =
     affected === null || content.catchUp === true
       ? undefined
-      : await fetchEditCut(context, refsOf(ledger, listed), paths, affected, bound, closures);
+      : await fetchEditCut(
+          context,
+          refsOf(ledger, listed),
+          paths,
+          affected,
+          bound,
+          closures,
+          stored,
+        );
   return {
     revision,
     retrying,
