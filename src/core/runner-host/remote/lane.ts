@@ -58,7 +58,7 @@ export function goesRemote(options: RunOptions): boolean {
 
 type State =
   | { readonly kind: "connecting" }
-  | { readonly kind: "ready"; readonly host: RemoteHost; checked: boolean; proven: boolean }
+  | { readonly kind: "ready"; readonly host: RemoteHost; proven: boolean }
   | {
       readonly kind: "down";
       readonly since: number;
@@ -106,7 +106,7 @@ export function withRemoteLane(options: RemoteLaneOptions): RunnerAdapter {
     pending.clear();
     options.connect().then(
       (host) => {
-        state = { kind: "ready", host, checked: false, proven: false };
+        state = { kind: "ready", host, proven: false };
         options.status(
           `remote ${target}: background runs of ${local.name} go there (Node ${host.node})`,
         );
@@ -115,22 +115,14 @@ export function withRemoteLane(options: RemoteLaneOptions): RunnerAdapter {
     );
   };
 
-  /** The host when it can take a run now, its environment checked; else `null`, and a reconnect when due. */
-  const ready = async (): Promise<RemoteHost | null> => {
+  /** The host when it can take a run now; else `null`, and a reconnect when due. */
+  const ready = (): RemoteHost | null => {
     if (state.kind === "down" && now() >= state.retryAt) connect();
     if (state.kind !== "ready") return null;
     const { host } = state;
     if (runnerHostGone(host.adapter)) {
       down("the host ended", false);
       return null;
-    }
-    if (!state.checked) {
-      const differ = await differences(host).catch((error: Error) => [error.message]);
-      if (differ.length > 0) {
-        down(differ.join("; "), true, host);
-        return null;
-      }
-      state.checked = true;
     }
     return host;
   };
@@ -170,12 +162,16 @@ export function withRemoteLane(options: RemoteLaneOptions): RunnerAdapter {
     return blobs;
   };
 
-  /** The remote's run, proven; `null` after a second refusal. */
+  /**
+   * The remote's run, proven over a current environment; `refused` after a
+   * second tree refusal or a differing environment (then down), `lost` when
+   * the host ended during it (then down), with its incomplete report.
+   */
   const remoteRun = async (
     host: RemoteHost,
     testFiles: readonly TestFileRef[],
     run: RunOptions,
-  ): Promise<RunReport | null> => {
+  ): Promise<RunReport | "refused" | { readonly lost: RunReport }> => {
     const closures = await Promise.all(testFiles.map((file) => local.closure(file)));
     const configs = (await local.environment()).flatMap((r) => r.files);
     const inputs = [...new Set([...closures.flatMap((c) => c.paths), ...configs])];
@@ -183,6 +179,17 @@ export function withRemoteLane(options: RemoteLaneOptions): RunnerAdapter {
       const queued = [...pending.values()];
       pending.clear();
       if (queued.length > 0) await host.adapter.invalidate(queued);
+      // Review 0.1.442 B1: equal for this run, after the revision's files and any install
+      // reached the host; the remote changes only through these messages, sent in turn.
+      const unequal = await differences(host).catch((error: Error) => [error.message]);
+      if (runnerHostGone(host.adapter)) {
+        down("the host ended", false);
+        return { lost: lostReport(testFiles) };
+      }
+      if (unequal.length > 0) {
+        down(unequal.join("; "), true, host);
+        return "refused";
+      }
       const expected = await blobsHere(inputs);
       const reply = (await host.adapter.run(testFiles, {
         ...run,
@@ -190,7 +197,7 @@ export function withRemoteLane(options: RemoteLaneOptions): RunnerAdapter {
       } as RunOptions)) as RunReport & RemoteRunReply;
       if (runnerHostGone(host.adapter)) {
         down(reply.failure ?? "the host ended", false);
-        return stripped(reply);
+        return { lost: stripped(reply) };
       }
       const after =
         reply.refused === undefined ? await blobsHere(Object.keys(reply.proof ?? {})) : {};
@@ -205,8 +212,21 @@ export function withRemoteLane(options: RemoteLaneOptions): RunnerAdapter {
       );
       queue(differ.map((path) => ({ path, kind: "change" as const })));
     }
-    return null;
+    options.status(
+      `remote ${target}: refused a run whose tree stayed different; ${options.whenLost === "local" ? "ran it here" : "not run"}`,
+    );
+    return "refused";
   };
+
+  /** A lost run's report with nothing in it: every check of the tier `unknown`. */
+  const lostReport = (testFiles: readonly TestFileRef[]): RunReport => ({
+    end: "crashed",
+    durationMs: 0,
+    completedFiles: [],
+    results: [],
+    fileErrors: [],
+    failure: `remote ${target} unreachable during the run of ${testFiles.length} files`,
+  });
 
   /** Status names the first proven run of a connection; later ones go to the log alone. */
   const proven = (host: RemoteHost, paths: number) => {
@@ -249,18 +269,14 @@ export function withRemoteLane(options: RemoteLaneOptions): RunnerAdapter {
     environment: () => local.environment(),
     async run(testFiles, run) {
       if (!goesRemote(run)) return local.run(testFiles, run);
-      const host = await ready();
+      const host = ready();
       if (host === null) return instead(testFiles, run);
       const report = await remoteRun(host, testFiles, run);
-      if (report !== null) {
-        failures = 0;
-        notRun = 0;
-        return report;
-      }
-      options.status(
-        `remote ${target}: refused a run whose tree stayed different; ${options.whenLost === "local" ? "ran it here" : "not run"}`,
-      );
-      return instead(testFiles, run);
+      if (report === "refused") return instead(testFiles, run);
+      if ("lost" in report) return report.lost;
+      failures = 0;
+      notRun = 0;
+      return report;
     },
     async close() {
       const host = state.kind === "ready" ? state.host : null;
