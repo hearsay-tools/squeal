@@ -187,7 +187,14 @@ export function groupRequests(
       requestId,
       group: request.group,
       requested:
-        requested === null ? null : { revision: requested.revision, queued: requested.queued },
+        requested === null
+          ? null
+          : {
+              revision: requested.revision,
+              queued: requested.queued,
+              // Row 011-325: the id of its covered files, when the scheduler recorded them.
+              ...(requested.coveredId === undefined ? {} : { coveredId: requested.coveredId }),
+            },
       unknown: request.unknown,
       error: request.error,
       holder: holderOf(request),
