@@ -86727,7 +86727,7 @@ var FileProgress = class {
     const timer = setTimeout(() => {
       this.#open.delete(end);
       const now = performance.now();
-      const seconds5 = Math.floor((now - at2) / 1e3);
+      const seconds5 = Math.max(Math.floor(limit), Math.floor((now - at2) / 1e3));
       const usedSeconds = Math.floor((now - since) / 1e3);
       overran({ runner, path: ref3.path, seconds: seconds5, storedSeconds, usedSeconds, budgetSeconds });
     }, limit * 1e3);
