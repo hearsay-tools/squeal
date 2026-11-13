@@ -154,7 +154,8 @@ export class RequestIntake {
           return this.#request(operation, async () =>
             this.#transact((context, ledger) => {
               const waited = installWait.answer(context, ledger, plan, reason, id);
-              recordCovered(context, ledger, id, waited.covered, reason);
+              if (store.record === undefined)
+                recordCovered(context, ledger, id, waited.covered, reason);
               return waited.answer;
             }),
           );
@@ -230,13 +231,13 @@ export class RequestIntake {
     const done = this.#transact((context, ledger): Staged<A> | { waited: A } | typeof DEFERRED => {
       if (reason !== null && "stage" in installWait) {
         const waited = installWait.stage(context, ledger, id);
-        recordCovered(context, ledger, id, waited.covered, reason);
+        if (store.record === undefined) recordCovered(context, ledger, id, waited.covered, reason);
         return { waited: waited.answer };
       }
       if (deferWhenPending && (ledger.broken || this.#host.runnerPending())) return DEFERRED;
       recovered?.store(ledger);
       const staged = store.stage(context, ledger, plan, id);
-      recordCovered(context, ledger, id, staged.covered, null);
+      if (store.record === undefined) recordCovered(context, ledger, id, staged.covered, null);
       return staged;
     });
     if (done === DEFERRED) return DEFERRED;
