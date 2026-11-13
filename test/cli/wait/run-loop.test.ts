@@ -12,7 +12,15 @@ import {
 import { squealRepo } from "../../harness/helpers.js";
 import { appendRevisions, fakeRepo } from "../../status/helpers.js";
 import { closeFakeDaemons, fakeDaemon, lockStore, received } from "../fake-daemon.js";
-import { closeLoopFixtures, ref, scratch, socketPath, stalling, steppedClock } from "./fixture.js";
+import {
+  closeLoopFixtures,
+  ref,
+  scratch,
+  socketPath,
+  stalling,
+  steppedClock,
+  timingOut,
+} from "./fixture.js";
 
 /*
  * Row 011-326: the run waits' loop rows, over a scratch store, the fake
@@ -89,6 +97,14 @@ describe("the checkpoint wait's loop (row 011-326)", () => {
     const { w, clock, ask } = checkpointWait(60_000);
     w.file(A, { validity: "pending", pending: "running" });
     expect(await runWait(ask, clock.ports)).toEqual({ kind: "stopped" });
+    expect(clock.pauses).toEqual([1_000, 1_000, 1_000, 1_000]);
+  });
+
+  it("a ping with no answer throws out of the wait (review 0.1.469 N2; 011-327 flips it)", async () => {
+    const { w, clock, ask } = checkpointWait(60_000);
+    w.file(A, { validity: "pending", pending: "running" });
+    const ports = timingOut(clock.ports, ["ping"]);
+    await expect(runWait(ask, ports)).rejects.toThrow(/no answer from .* in 2000 ms/);
     expect(clock.pauses).toEqual([1_000, 1_000, 1_000, 1_000]);
   });
 
