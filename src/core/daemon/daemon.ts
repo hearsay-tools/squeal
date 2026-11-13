@@ -1096,7 +1096,7 @@ class Daemon {
     if (this.#loop === null || this.#phase === "stopping") return;
     const { scheduler } = this.#loop;
     // Row 018-28: an import's observed entries key this worktree's files now, as a start would.
-    this.#imports?.take((projects, imports) => scheduler.refreshObserved(projects, imports));
+    await this.#imports?.take((projects, imports) => scheduler.requestImports(projects, imports));
     await scheduler.requestRetries();
   }
 
