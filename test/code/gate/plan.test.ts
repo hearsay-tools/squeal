@@ -70,14 +70,15 @@ const fitAt = (order: ReturnType<typeof shape>["order"], leftSeconds: number) =>
   fitOrder(order, 600, performance.now() + leftSeconds * 1000 + 500);
 
 describe("orderRuns: the whole run's estimate", () => {
-  it("adds the runners' estimates and counts the stored durations", () => {
+  it("takes the larger runner's estimate, as they run at once, and counts the stored durations", () => {
     const picked = [
       pick("vitest", ["test/a.test.ts"], { "test/a.test.ts": [] }),
       pick("node-test", ["test/b.test.mjs", "test/c.test.mjs"], {}),
     ];
     const durations = (r: TestFileRef) => (r.path === "test/a.test.ts" ? 30 : 4);
     const order = orderRuns(picked, new Map(), { durations, tierSize: 1 });
-    expect(order.whole).toEqual({ seconds: 30 + 8, known: 3 });
+    // Vitest 30 s and node:test 8 s at once (D18 as amended, row 020-44): 30 s, not 38 s.
+    expect(order.whole).toEqual({ seconds: 30, known: 3 });
   });
 
   it("is unknown with no store", () => {
