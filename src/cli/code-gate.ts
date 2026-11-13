@@ -19,6 +19,7 @@ import type { ChangedSet, GateVerdict } from "../core/code/gate/types.js";
 import { POLICY_FILE } from "../core/daemon/policy.js";
 import { squealVersion } from "../core/daemon/version.js";
 import { findWorktreeRoot } from "../core/fs/git-layout.js";
+import type { HostLoad } from "../core/retry/load.js";
 import { shellWord } from "../core/text.js";
 import type { AbsolutePath, RelativePath } from "../core/types/common.js";
 import { createNodeTestAdapter } from "../runners/node-test/adapter.js";
@@ -50,6 +51,19 @@ export const isGate = (args: readonly string[]) =>
 
 /** D1: the exit code of each verdict. */
 const EXIT: Readonly<Record<GateVerdict, number>> = { pass: 0, violations: 1, incomplete: 3 };
+
+/**
+ * The CLI's io, with what a caller in this process may give the gate of
+ * the host instead of reading it (row 020-54 repair, review 0.1.468 B1).
+ */
+export interface GateIo extends CliIo {
+  /**
+   * The host's load, read to run once more a file that failed under load
+   * (D3.4, row 020-54). Absent, the daemon's own (`hostLoad`). A `--json`
+   * relaunch's child reads the host's own: this does not cross processes.
+   */
+  readonly hostLoad?: () => HostLoad;
+}
 
 /** The runners' adapters as the CLI gives them to the collector (D3.2). */
 export const ADAPTERS: GateAdapters = {
@@ -109,7 +123,7 @@ const versions = (): EngineVersions => ({
  */
 export async function codeGateCommand(
   args: readonly string[],
-  io: CliIo,
+  io: GateIo,
   adapters: GateAdapters = ADAPTERS,
 ): Promise<number> {
   const reportFd = takeReportFd();
@@ -142,7 +156,7 @@ function wantsJson(args: readonly string[]): boolean {
  */
 async function gate(
   args: readonly string[],
-  io: CliIo,
+  io: GateIo,
   adapters: GateAdapters,
   afterReport: (() => Promise<void>)[],
 ): Promise<number> {
@@ -201,6 +215,7 @@ async function gate(
       // #197: a run with a failed or unfinished file keeps its log where a daemon keeps its runs'.
       keepLog: logs.keep,
       teardown: teardowns.hear,
+      ...(io.hostLoad === undefined ? {} : { hostLoad: io.hostLoad }),
     },
     parts,
   )
