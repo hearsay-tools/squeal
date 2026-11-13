@@ -1,10 +1,10 @@
 {
   "schema": 1,
-  "version": "0.1.464",
+  "version": "0.1.465",
   "nodeFloor": "22.19.0",
   "files": {
     ".codex-plugin/plugin.json": {
-      "sha256": "6de0e845eed36900c83c68052248f8eee3efdc46dc6abcd366212d1b0c669fde",
+      "sha256": "36814351aeebd066b23ec3c672228f89771a5e6730010a2dcf1afa214f87e9cc",
       "mode": 420
     },
     "bin/squeal-launcher": {
@@ -64,7 +64,7 @@
       "mode": 420
     },
     "dist/cli/front-desk.mjs": {
-      "sha256": "5476a5759640f5c18b32f5a6419f362e109a3bafbca5c459574f70afaea54120",
+      "sha256": "c8fffdd21bfe73c87b485c65d2102b7c0e819ce7b831af2a26c7e04aa3060d57",
       "mode": 420
     },
     "dist/cli/lint-worker.mjs": {
@@ -76,7 +76,7 @@
       "mode": 493
     },
     "dist/cli/squeal.mjs": {
-      "sha256": "1faa1621227d315fc36997cf74f907f1ea41e5db6093f419ab4037cf1d460cd2",
+      "sha256": "d3fa49722b4ffad0a5d9b94a5b2c12b2538d9abbf3b6a014ac888f26c0e90312",
       "mode": 493
     },
     "dist/code/tree-sitter-tsx.wasm": {
@@ -88,7 +88,7 @@
       "mode": 420
     },
     "dist/interrupt.mjs": {
-      "sha256": "0aef7c3e590ce1fe6d8c6e6300bb97344b553eb4128fdba5577aedaa84b93fb8",
+      "sha256": "4ab1d0f403ce7182f44d03c64cdea776b20e80763d76dc06469f4604e6596e61",
       "mode": 420
     },
     "dist/node-test/recorder.cjs": {
@@ -116,11 +116,11 @@
       "mode": 420
     },
     "dist/post-tool-use.mjs": {
-      "sha256": "bbfa0a0313198496559612ab1f96d99d125809b487ffd8be95b6926da297ab3d",
+      "sha256": "22f25bfbf878a014a0067553461b819bf88d7a0504028ecf43588627c20db915",
       "mode": 420
     },
     "dist/pre-tool-use.mjs": {
-      "sha256": "c9ef82c97ce3488d905ec2797744f5b51736e6b9854fc69d5409b8fca1009282",
+      "sha256": "6ed65e209315b289ace1be0552c178b9981fc534b49bf7f96765d8db7a6f1de8",
       "mode": 420
     },
     "dist/pytest/sitecustomize.py": {
@@ -140,35 +140,35 @@
       "mode": 493
     },
     "dist/runtime.mjs": {
-      "sha256": "6a6da2b01b17483e42890c8cb45f68ba0e17c2a41a350967040bfcecb2a996d5",
+      "sha256": "94f3133fb6b217660ca4fb4cddc95485851b91ab575635435766f90708617454",
       "mode": 420
     },
     "dist/session-end.mjs": {
-      "sha256": "5db6081c959f756ee63eb192cbdf54c06e978e38d4de8a18226f33b27e4d3688",
+      "sha256": "4389633aca9d37a83b364ede68b4bdc6444f0c2a7c23e0e2e3fa2eb9928fbf85",
       "mode": 420
     },
     "dist/session-start.mjs": {
-      "sha256": "61ed39ccc95baad93f43b30624dd695886c9fefe00d7c6e312e627bd7e800991",
+      "sha256": "2f7f0b1b03e6d60810ac5b269d9bdf71e0c0f2f8cd9bdf51c6ae770432233023",
       "mode": 420
     },
     "dist/stop-slow.mjs": {
-      "sha256": "cba63f5a07ddb866bfe6b1468e17440345f631ed432e0be7dc15a24b1038ed7f",
+      "sha256": "75ccee1c933cd2707c2a5040bacabd1547e8e28bac5b90dc91c505d697dd8537",
       "mode": 420
     },
     "dist/stop.mjs": {
-      "sha256": "ec4c3377b06b27c7964eb055f8c2dd8492f772f3a223c69e417088b5557b12a7",
+      "sha256": "d129a6b7f4f74a4fbb9dc52a9af898e3525da342bc689d50e3a066b8af302c21",
       "mode": 420
     },
     "dist/subagent-start.mjs": {
-      "sha256": "cb6686187645f448978b3eef08154a1d740d6e0dbf46e41015c885fa30d74d31",
+      "sha256": "1b64b29ab515652f0d662e0b3f529fe4849a260e17c06a87a4c376018871989b",
       "mode": 420
     },
     "dist/subagent-stop.mjs": {
-      "sha256": "3d91616e24fcb7f6a0ca9ed9bbb49a2b6166ead51403019a998620d60d8c0a4b",
+      "sha256": "357f1592c533f361bf97fe023dfc0a68209d03e52af5cdca78c98545446da6aa",
       "mode": 420
     },
     "dist/user-prompt-submit.mjs": {
-      "sha256": "d8fc6e388c9e247497d1c4152e908b3316d8bb26ccfafbc601fae168cc05cd1a",
+      "sha256": "a7f30f9f54416da6d1420d9aaa7e9fdc18a69167e79b72c8242976e29e9b7a38",
       "mode": 420
     },
     "skills/setup/SKILL.md": {
@@ -180,7 +180,7 @@
       "mode": 420
     },
     "skills/squeal/references/commands.md": {
-      "sha256": "fd548d7e79710eed92439e7c85f10411a9eae26c7cc95b10bf69c2739a75f038",
+      "sha256": "103f2701612e7d40f0b3b06f0a525e2e69bdc359aed20c8ef8f98a0046bb4893",
       "mode": 420
     },
     "skills/squeal/references/policy.md": {

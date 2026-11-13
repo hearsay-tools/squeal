@@ -64,9 +64,37 @@ function parseKeepWrite(value, worktreeId) {
     }
     case "results":
       return parseResults(value, worktreeId);
+    case "seen":
+      return parseSeen(value);
     default:
-      return '"write.kind" must be "coverage" or "results"';
+      return '"write.kind" must be "coverage", "results" or "seen"';
   }
+}
+function parseSeen(value) {
+  const extra = unknownField(value, ["kind", "seen"]);
+  if (extra !== null) return `"write.${extra}" is not a field of a seen write`;
+  const { seen } = value;
+  if (!Array.isArray(seen) || seen.length === 0 || seen.length > MAX_RECORDS) {
+    return `"write.seen" must be a list of 1 to ${MAX_RECORDS} test files' reads`;
+  }
+  for (const [at, one] of seen.entries()) {
+    const why = seenReads(one);
+    if (why !== null) return `"write.seen[${at}]" ${why}`;
+  }
+  return { kind: "seen", seen };
+}
+function seenReads(value) {
+  if (!isFields(value)) return "must be an object";
+  const extra = unknownField(value, ["ref", "add", "direct", "modules"]);
+  if (extra !== null) return `has the unknown field "${extra}"`;
+  const { ref } = value;
+  if (!isFields(ref) || typeof ref.project !== "string" || !isPath(ref.path) || unknownField(ref, ["project", "path"]) !== null) {
+    return '"ref" must name a project and a test file';
+  }
+  for (const field of ["add", "direct", "modules"]) {
+    if (!isPathList(value[field])) return `"${field}" must be a list of relative paths`;
+  }
+  return null;
 }
 function parseResults(value, worktreeId) {
   const extra = unknownField(value, ["kind", "key", "records", "paths", "environmentFiles"]);
