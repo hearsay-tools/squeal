@@ -53,3 +53,17 @@ _Avoid_: unchanged (it is not the same as never written)
 **Keep**:
 `squeal code` saves the results of a test file it ran at the key a daemon would give that file, so the next run and a daemon read them.
 _Avoid_: cache
+
+## Requests
+
+**Request**:
+An explicit ask a command or a named wait sends a daemon to run or reorder test files now: `squeal run --all`, `squeal run <group>`, `squeal run <group> <path>...`, `squeal retry`, a named wait's promotion or focused checks, an import's observed reads. Edits are not requests.
+_Avoid_: job, command (when you mean what the daemon takes)
+
+**Request intake**:
+The one place a daemon's scheduler takes every request. It applies the rules all requests share, in one fixed order: the start or install-wait answer, the runner work the request waits for, the store write tried again while the store is busy, the record of the files the request asked for, waking the lanes, and starting work. A request states only what it queues and what it answers.
+_Avoid_: request handler, entry path
+
+**Covered files**:
+The test files a request covers, as the scheduler decided them when it took the request: each queued, already current, or not queued with the reason. They are what the request's progress counts and what a wait on the request waits for.
+_Avoid_: the request's files (when guessed from a lane or a group afterwards)
