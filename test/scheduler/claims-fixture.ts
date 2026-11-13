@@ -200,6 +200,8 @@ export interface SideOptions {
   readonly rerunCap?: number;
   /** Wraps the store the scheduler is given. */
   readonly wrap?: (store: Store) => Store;
+  /** `SchedulerOptions.busyWaits` and `busySliceMs` (spec 021 D2), as a daemon's. Default none. */
+  readonly busy?: Pick<SchedulerOptions, "busyWaits" | "busySliceMs">;
 }
 
 /** A scheduler of the worktree at `root`, its daemon live in the store while it beats. */
@@ -256,6 +258,7 @@ export function side(root: string, options: SideOptions): Side {
     ...(options.rerunCap === undefined ? {} : { rerunCap: options.rerunCap }),
     ...(options.slow === undefined ? {} : { slow: options.slow }),
     ...(options.capacity === undefined ? {} : { capacity: options.capacity }),
+    ...options.busy,
   });
   onTestFinished(async () => {
     clearInterval(beat);

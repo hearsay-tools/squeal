@@ -103,9 +103,9 @@ export async function daemonOf(root: string, environment?: Environment) {
   const d = side(root, { count: COUNT, policy: LOOKUP_ONLY });
   if (environment !== undefined) d.runner.environment = environment;
   const seen = new ImportsSeen(d.store);
-  const retry = () => {
-    seen.take((projects, imports) => d.scheduler.refreshObserved(projects, imports));
-    return d.scheduler.requestRetries();
+  const retry = async () => {
+    await seen.take((projects, imports) => d.scheduler.requestImports(projects, imports));
+    await d.scheduler.requestRetries();
   };
   await d.scheduler.start();
   await d.scheduler.idle();

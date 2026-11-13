@@ -52,18 +52,18 @@ function imported(store: Store, id: string, files: readonly (readonly [ProjectNa
 }
 
 describe("the imports a daemon's keys read (row 018-28)", () => {
-  it("hands each later import's projects once, and again while the scheduler does not take them", () => {
+  it("hands each later import's projects once, and again while the scheduler does not take them", async () => {
     const store = open(fakeCommonDir());
     imported(store, "before", [["web", "a.test.ts"]]);
     const seen = new ImportsSeen(store);
     const handed: (readonly ProjectName[])[] = [];
     const take = (accept: boolean) =>
-      seen.take((projects) => {
+      seen.take(async (projects) => {
         handed.push(projects);
         return accept;
       });
 
-    take(true);
+    await take(true);
     expect(handed).toEqual([]);
 
     imported(store, "first", [
@@ -71,17 +71,55 @@ describe("the imports a daemon's keys read (row 018-28)", () => {
       ["web", "w.test.ts"],
       ["server", "t.test.ts"],
     ]);
-    take(false);
-    take(true);
-    take(true);
+    await take(false);
+    await take(true);
+    await take(true);
     expect(handed).toEqual([
       ["server", "web"],
       ["server", "web"],
     ]);
 
     imported(store, "second", [["contract", "c.test.ts"]]);
-    take(true);
+    await take(true);
     expect(handed.at(-1)).toEqual(["contract"]);
     expect(handed).toHaveLength(3);
+  });
+
+  /*
+   * Row 011-323: the scheduler's request is a promise that waits for its
+   * lock and a busy store. Meanwhile another call does not hand the import
+   * again; a request that throws (a busy store at the daemon's stop) leaves
+   * it to the next call, as a false answer does.
+   */
+  it("hands an import once while its request runs, and again after the request threw", async () => {
+    const store = open(fakeCommonDir());
+    const seen = new ImportsSeen(store);
+    imported(store, "first", [["web", "w.test.ts"]]);
+    const handed: string[][] = [];
+    let finish = (_: boolean) => {};
+    const running = seen.take(async (_, ids) => {
+      handed.push([...ids]);
+      return new Promise<boolean>((resolve) => {
+        finish = resolve;
+      });
+    });
+    await seen.take(async (_, ids) => {
+      handed.push([...ids]);
+      return true;
+    });
+    expect(handed).toEqual([["first"]]);
+    finish(true);
+    await running;
+
+    imported(store, "second", [["web", "x.test.ts"]]);
+    const busy = seen.take(async () => {
+      throw new Error("the store was still busy when the daemon stopped");
+    });
+    await expect(busy).rejects.toThrow(/still busy/);
+    await seen.take(async (_, ids) => {
+      handed.push([...ids]);
+      return true;
+    });
+    expect(handed).toEqual([["first"], ["second"]]);
   });
 });
