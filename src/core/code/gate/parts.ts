@@ -1,15 +1,14 @@
 import { join } from "node:path";
 import type { NamedPart } from "../../ci/export-check.js";
-import { hereOf, inputsOfReadsHere, type Uncertified, uncertifiedWhy } from "../../ci/inputs.js";
-import { knownCollector, type Part, type PartFile, partRecord } from "../../ci/parts.js";
+import { hereOf, inputsOfReadsHere } from "../../ci/inputs.js";
+import { type PartFile, partRecord } from "../../ci/parts.js";
+import { FileReuse, type Holder } from "../../ci/reuse.js";
 import { compare } from "../../fs/compare.js";
 import { hashFile, type ObjectFormat } from "../../hash/blob.js";
 import { readObjectFormat } from "../../hash/git-index.js";
-import { testFileId } from "../../keys/reverse-index.js";
 import type { AbsolutePath, RelativePath } from "../../types/common.js";
 import type { FileHash, TestFileRef } from "../../types/keys.js";
 import type { RunnerClosure } from "../../types/runner.js";
-import { COVERAGE_PROVIDER_VERSION, COVERAGE_RECORD_VERSION } from "../coverage/record.js";
 import type { StoredEvidence } from "./collect.js";
 import { FILE_ERROR } from "./evidence.js";
 import { environmentCheck, type GateEnvironment } from "./parts-environment.js";
@@ -19,21 +18,23 @@ import type { TestFileEvidence } from "./types.js";
 /*
  * Spec 020 D13.2 (row 020-08b): `squeal code --base --parts <dir>...` takes
  * a selected test file's evidence from `squeal ci record`'s parts instead of
- * running it (research `ci-evidence.md` Q3, rule 3). A file is taken when it
- * is in exactly one part; that part's run had Squeal's provider, or the
- * project's V8 provider whose payloads Squeal read (D19.5), at this
- * Squeal's provider and record versions and recorded what its tests read;
- * the part's run of the file's project is evidence at the gate's runner by
- * `ci export`'s rule (`reuseRefusal` in `parts-environment.ts`; reviews
- * 0.1.427 B1, 0.1.427-r2 B1);
- * the part's read-time evidence certifies the content here of every input
- * of the file's closure and of what it read, as the daemon's record keys
- * them (`inputsOfReads`, row 020-20), each as `ci export` certifies it
- * (`uncertified`, `hereOf`; 018 D9); and its record's sources are the bytes
- * here. A file
- * with no record is taken only when it failed: its failure makes the
- * verdict incomplete whatever a run would add (D5). Every other file runs.
- * The parts are only read.
+ * running it (research `ci-evidence.md` Q3, rule 3). Whether a part gives a
+ * file, and why not, is `FileReuse`'s (`ci/reuse.ts`, row 020-52), the rule
+ * `ci export` applies too, with the gate's option `records`: a file is
+ * taken when it is in exactly one part; that part's run had Squeal's
+ * provider, or the project's V8 provider whose payloads Squeal read
+ * (D19.5), at this Squeal's provider and record versions and recorded what
+ * its tests read; the part's run of the file's project is evidence at the
+ * gate's runner by `ci export`'s rule (`reuseRefusal`, through
+ * `parts-environment.ts`; reviews 0.1.427 B1, 0.1.427-r2 B1); the part's
+ * read-time evidence certifies the content here of every input of the
+ * file's closure and of what it read, as the daemon's record keys them
+ * (`inputsOfReads`, row 020-20; 018 D9); and its record's sources are the
+ * bytes here. A file with no record is taken only when it failed: its
+ * failure makes the verdict incomplete whatever a run would add (D5).
+ * Every other file runs. This file reads what the steps need, in batches:
+ * the runner's environments, each file's closure, the inputs of what it
+ * read, the bytes on disk. The parts are only read.
  */
 
 export interface PartsOptions {
@@ -54,44 +55,13 @@ export interface PartsOptions {
   readonly refused?: (refusal: PartRefusal) => void;
 }
 
-/**
- * Why a part's files give no coverage evidence here; `null` when they may.
- * Whether its runs are evidence at all is `reuseRefusal`'s, per project.
- */
-export function unusable(part: Part): string | null {
-  const { coverage, observing } = part.header;
-  if (coverage === undefined) return `${part.format} holds no coverage record`;
-  if ("off" in coverage) return `ci record added no coverage provider (${coverage.off})`;
-  if (!knownCollector(coverage.collector)) {
-    const by = JSON.stringify(coverage.collector);
-    return `its records were collected by ${by}, which this Squeal does not read`;
-  }
-  const { providerVersion, recordVersion } = coverage;
-  if (providerVersion !== COVERAGE_PROVIDER_VERSION || recordVersion !== COVERAGE_RECORD_VERSION) {
-    const made = `provider ${providerVersion}, record ${recordVersion}`;
-    const here = `${COVERAGE_PROVIDER_VERSION}, ${COVERAGE_RECORD_VERSION}`;
-    return `its records were made at ${made}; this Squeal's are ${here}`;
-  }
-  if (!observing) return "its run did not record what its tests read";
-  return null;
-}
-
 /** `CollectOptions.stored` over `options.parts`: Vitest files only, since `ci record` records Vitest alone. */
 export function partsEvidence(options: PartsOptions): StoredEvidence {
-  const owners = new Map<string, Owner[]>();
+  const records = { changed: options.changed, children: options.children };
+  const reuse = new FileReuse(options.parts, { records });
   const why = new Map<string, string[]>();
-  const partWhy = new Map<string, string>();
-  for (const { file: name, part } of options.parts) {
-    for (const file of part.testFiles) {
-      const id = testFileId(file);
-      owners.set(id, [...(owners.get(id) ?? []), { name, part, file }]);
-    }
-    const reason = options.children
-      ? "coverage.children is on at the base, and ci record collects no child process's coverage"
-      : unusable(part);
-    if (reason === null) continue;
+  for (const { name, why: reason } of reuse.unusable) {
     why.set(reason, [...(why.get(reason) ?? []), name]);
-    partWhy.set(name, reason);
   }
   for (const [reason, names] of why) {
     const count = names.length === 1 ? "1 part gives" : `${names.length} parts give`;
@@ -109,11 +79,10 @@ export function partsEvidence(options: PartsOptions): StoredEvidence {
     if (runner !== "vitest") return found;
     const refuse = (ref: TestFileRef, refusal: GatePartRefusal) =>
       options.refused?.({ runner, path: ref.path, ...refusal });
-    const single: { readonly ref: TestFileRef; readonly owner: Owner }[] = [];
+    const single: { readonly ref: TestFileRef; readonly owner: Holder }[] = [];
     for (const ref of files) {
-      const [only, ...more] = owners.get(testFileId(ref)) ?? [];
-      if (only === undefined) continue;
-      const owner = ownerOf(only, more, partWhy);
+      const owner = reuse.owner(ref);
+      if (owner === null) continue;
       if ("reason" in owner) refuse(ref, owner);
       else single.push({ ref, owner });
     }
@@ -121,67 +90,35 @@ export function partsEvidence(options: PartsOptions): StoredEvidence {
     const certify = await environmentCheck(environment, options.environment);
     const candidates: Candidate[] = [];
     for (const { ref, owner } of single) {
-      const differs = certify({ file: owner.name, part: owner.part }, ref.project);
+      const differs = reuse.environment(owner, ref.project, certify);
       if (differs !== null) {
         const project = JSON.stringify(ref.project);
         tell(
-          `${owner.name} gives no evidence of project ${project}, so its test files run: ${differs}`,
+          `${owner.name} gives no evidence of project ${project}, so its test files run: ${differs.detail}`,
         );
-        refuse(ref, { part: owner.name, reason: "environment", detail: differs });
+        refuse(ref, differs);
         continue;
       }
-      const loaded = (await closure?.(ref)) ?? null;
-      if (loaded !== null) candidates.push({ ref, owner, closure: loaded });
-      else refuse(ref, { part: owner.name, reason: "closure" });
+      const loaded = reuse.closure(owner, (await closure?.(ref)) ?? null);
+      if ("reason" in loaded) refuse(ref, loaded);
+      else candidates.push({ ref, owner, closure: loaded });
     }
     if (candidates.length === 0) return found;
     here ??= readObjectFormat(options.root).then((format) => contentHere(options.root, format));
     const inputs = await inputsOf(options.root, candidates);
     for (const [at, candidate] of candidates.entries()) {
-      const evidence = await taken(options, candidate, inputs[at] ?? [], await here);
-      if ("reason" in evidence) refuse(candidate.ref, { part: candidate.owner.name, ...evidence });
-      else found.set(candidate.ref, evidence);
+      const refused = await reuse.evidence(candidate.owner, inputs[at] ?? [], await here);
+      if (refused !== null) refuse(candidate.ref, refused.refusal);
+      else found.set(candidate.ref, given(candidate));
     }
     return found;
   };
 }
 
-/**
- * `only`, the one part that may give a file; or why none does, before its
- * environment and inputs are read: `more` parts hold it too, two runs of
- * it, so none gives it; or its one part gives no evidence, as `partWhy`
- * says.
- */
-function ownerOf(
-  only: Owner,
-  more: readonly Owner[],
-  partWhy: ReadonlyMap<string, string>,
-): Owner | GatePartRefusal {
-  if (more.length > 0) {
-    const [first, ...others] = [only, ...more].map((o) => o.name).sort(compare);
-    return {
-      part: first ?? only.name,
-      reason: "duplicate",
-      detail: `also in ${others.join(", ")}`,
-    };
-  }
-  const unusableWhy = partWhy.get(only.name);
-  return unusableWhy === undefined
-    ? only
-    : { part: only.name, reason: "unusable", detail: unusableWhy };
-}
-
-/** A test file in a part, and the part's file name. */
-interface Owner {
-  readonly name: string;
-  readonly part: Part;
-  readonly file: PartFile;
-}
-
 /** A selected test file the part may give, and its closure here. */
 interface Candidate {
   readonly ref: TestFileRef;
-  readonly owner: Owner;
+  readonly owner: Holder;
   readonly closure: RunnerClosure;
 }
 
@@ -218,53 +155,17 @@ async function inputsOf(
   return candidates.map(({ closure }, at) => [...new Set(closure.paths), ...(inputs[at] ?? [])]);
 }
 
-/** How an input differs, as a refusal tells it. */
-const INPUT_DIFFERS: Readonly<Record<Uncertified, string>> = {
-  unrecorded: "its part holds no evidence of it",
-  unknown: "its content here is not known",
-  differs: "its part read other content",
-};
-
-/** Why `owner`'s file must run, beside its part's name; or its evidence from the part. */
-type Taken = TestFileEvidence | Omit<GatePartRefusal, "part">;
-
-/** `owner`'s file's evidence from its part, or why it must run. */
-async function taken(
-  options: PartsOptions,
-  { owner: { part, file }, closure }: Candidate,
-  inputs: readonly RelativePath[],
-  here: Here,
-): Promise<Taken> {
-  const contents = new Map<RelativePath, FileHash | null | undefined>();
-  for (const path of inputs) contents.set(path, await here(path));
-  const differ = uncertifiedWhy(inputs, part.evidence, (path) => contents.get(path));
-  const [first] = differ.sort((a, b) => compare(a.path, b.path));
-  if (first !== undefined) {
-    const more = differ.length > 1 ? `; ${differ.length - 1} more inputs` : "";
-    return { reason: "input", input: first.path, detail: `${INPUT_DIFFERS[first.why]}${more}` };
-  }
-  const failed = failedOf(file);
-  const record = partRecord(part, file);
-  if (record === null && failed.length === 0) {
-    return { reason: "record", ...(file.noRecord === undefined ? {} : { detail: file.noRecord }) };
-  }
-  if (record !== null) {
-    const [unread] = record.unread.filter((path) => options.changed.includes(path)).sort(compare);
-    if (unread !== undefined) return { reason: "unread", input: unread };
-    for (const source of [...record.sources].sort((a, b) => compare(a.path, b.path))) {
-      if ((await here(source.path)) !== source.blob)
-        return { reason: "source", input: source.path };
-    }
-  }
+/** The evidence `FileReuse.evidence` let `candidate`'s part give of its file. */
+function given({ owner: { part, file }, closure }: Candidate): TestFileEvidence {
   return {
     runner: "vitest",
     path: file.path,
     // 018 D8: a part lists a file only when its run completed; 015 D8: a record only of a whole run.
     completed: true,
-    failed,
+    failed: failedOf(file),
     skipped: file.checks.some((c) => c.outcome === "skip") || file.outcome === "skip",
     loads: [...closure.paths].sort(compare),
-    record,
+    record: partRecord(part, file),
     from: "parts",
   };
 }

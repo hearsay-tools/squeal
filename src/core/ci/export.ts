@@ -174,21 +174,25 @@ async function exportWith(input: CiExportInput, runner: RunnerAdapter): Promise<
     runId: "squeal-ci-export",
     recordedAt: input.now(),
   };
-  const exported = report.completedFiles.flatMap((ref): KeyedFile[] => {
+  const exported: KeyedFile[] = [];
+  for (const ref of report.completedFiles) {
     const key = keys.index.key(ref);
     const closure = keys.index.closure(ref);
     const keyParts = parted(ref);
-    if (key === null || closure === undefined || keyParts === null) return [];
+    if (key === null || closure === undefined || keyParts === null) continue;
     const { paths, complete, method } = closure;
-    const inputs = certify(ref, paths);
+    const inputs = await certify(ref, paths);
     if (inputs.length > 0) {
       uncertified.push({ testFile: ref, inputs });
-      return [];
+      continue;
     }
     const describe = describeFailure;
     const records = recordsForFile({ ref, key, report, previousChecks: [], provenance, describe });
-    return [{ file: { ...ref, key, closure: { paths, complete, method }, keyParts }, records }];
-  });
+    exported.push({
+      file: { ...ref, key, closure: { paths, complete, method }, keyParts },
+      records,
+    });
+  }
   const bundle = bundleOf(store, worktreeId, header, exported);
   const testFiles = bundle.testFiles.length;
   return {

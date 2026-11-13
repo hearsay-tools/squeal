@@ -1,5 +1,6 @@
-import { type NamedPart, type Place, type RunView, reuseRefusal } from "../../ci/export-check.js";
+import { type Place, type RunView, reuseRefusal } from "../../ci/export-check.js";
 import { type Part, snapshotFields } from "../../ci/parts.js";
+import type { RunCheck } from "../../ci/reuse.js";
 import { coreEnvironmentInputs } from "../../keys/environment.js";
 import { describeEnvironment, sawCi } from "../../keys/environment-descriptor.js";
 import { KEY_FORMAT_VERSION } from "../../keys/key-format.js";
@@ -35,8 +36,8 @@ export interface GateEnvironment {
   readonly observedSuffix: string;
 }
 
-/** Why a part's run of a project gives no evidence here; `null` when it may. */
-export type Certify = (named: NamedPart, project: ProjectName) => string | null;
+/** Why a part's run of a project gives no evidence here; `null` when it may (`FileReuse.environment`). */
+export type Certify = RunCheck;
 
 /**
  * The gate runner's environments, from `runners` (the adapter's
