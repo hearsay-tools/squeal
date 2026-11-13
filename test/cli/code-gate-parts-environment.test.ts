@@ -83,6 +83,11 @@ describe("squeal code --base --parts: the part's environment (spec 020 D13.2)", 
       expect([fromParts.code, crap(fromParts)]).toEqual([1, [["risky", "violation", 42]]]);
       expect(sameApartFromSource(fromParts.report)).toEqual(sameApartFromSource(fresh.report));
       expect(fromParts.stderr).toContain("allow-listed variables differ (values: PROBE_COVER)");
+      // Row 020-49 (#205): the report says why too.
+      expect(fromParts.report.runs[0]?.refused?.["test/risky.test.ts"]).toMatchObject({
+        reason: "environment",
+        detail: expect.stringContaining("allow-listed variables differ (values: PROBE_COVER)"),
+      });
     },
   );
 
@@ -138,6 +143,10 @@ describe("squeal code --base --parts: the part's snapshot update mode (018 D9, 0
       expect([fromParts.code, crap(fromParts)]).toEqual([1, [["risky", "violation", 42]]]);
       expect(sameApartFromSource(fromParts.report)).toEqual(sameApartFromSource(fresh.report));
       expect(fromParts.stderr).toContain('ran project "" with snapshot update "all"');
+      expect(fromParts.report.runs[0]?.refused?.["test/risky.test.ts"]).toMatchObject({
+        reason: "environment",
+        detail: expect.stringContaining('ran project "" with snapshot update "all"'),
+      });
     },
   );
 

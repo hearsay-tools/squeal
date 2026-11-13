@@ -104,11 +104,18 @@ export async function gate(
 
 /**
  * The report apart from its times, where each file's evidence came from
- * (D7, D13.2), and the estimate of the files left to run here (D17.1).
+ * and why the parts did not give it (D7, D13.2; row 020-49), and the
+ * estimate of the files left to run here (D17.1).
  */
 export function sameApartFromSource(report: GateReport): unknown {
   const runs = report.runs.map(
-    ({ from: _from, durationMs: _ms, estimate: _estimate, ...run }: GateRunReport) => run,
+    ({
+      from: _from,
+      refused: _refused,
+      durationMs: _ms,
+      estimate: _estimate,
+      ...run
+    }: GateRunReport) => run,
   );
   return { ...report, createdAt: "", runs };
 }
