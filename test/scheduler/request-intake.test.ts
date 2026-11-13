@@ -2,7 +2,9 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { askRetry } from "../../src/core/retry/records.js";
 import type { SchedulerContext } from "../../src/core/scheduler/context.js";
+import { GroupTiers } from "../../src/core/scheduler/group-tiers.js";
 import { AWAITING_INSTALL_REASON } from "../../src/core/scheduler/install.js";
 import { Ledger } from "../../src/core/scheduler/ledger.js";
 import { Mutex } from "../../src/core/scheduler/mutex.js";
@@ -12,7 +14,10 @@ import {
   NO_PASS,
   RequestIntake,
 } from "../../src/core/scheduler/request-intake.js";
+import { groupRequest } from "../../src/core/scheduler/request-intake-requests.js";
 import type { NowRequest, Request, Skip } from "../../src/core/scheduler/request-intake-types.js";
+import { retryRequest } from "../../src/core/scheduler/retries.js";
+import type { SlowTier } from "../../src/core/scheduler/slow-tier.js";
 import { createStateSink } from "../../src/core/state/sink.js";
 import { BusyWaits } from "../../src/core/store/busy.js";
 import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
@@ -20,6 +25,7 @@ import { storePaths } from "../../src/core/store/paths.js";
 import type { AbsolutePath, WorktreeId } from "../../src/core/types/common.js";
 import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
 import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
+import { TESTS_GROUP } from "../../src/core/types/scheduler.js";
 import type { Store } from "../../src/core/types/store.js";
 import type { DeliveredPass } from "../../src/core/types/watcher.js";
 import { threadLockHolder } from "../helpers/busy-store.js";
@@ -311,6 +317,37 @@ describe("request intake: the progress record (row 018-12)", () => {
     expect(p.ledger.file(B)?.phase).toBe("queued");
     expect(p.ledger.file(A)?.phase).toBe("queued");
     expect(p.log).toEqual(TAKEN);
+  });
+
+  // The per-request registration cases this replaces: `request-progress.test.ts`'s "run tests counts
+  // each of its files" (the group's files) and the retry request's claimed files (review wave 3.6, B3).
+  it("records the real group request's files: the group's, queued or not", async () => {
+    const p = probeHost();
+    const lane = { request: () => p.log.push("lane requested") } as unknown as SlowTier;
+    const answer = await p.intake.take(
+      groupRequest(TESTS_GROUP, new GroupTiers(() => lane), undefined),
+    );
+    // `B` was queued; `A` has no key, so it is not queued and its ask counts nothing.
+    expect(answer).toMatchObject({ queued: 1 });
+    expect(p.log).toEqual(["record test/a.test.ts test/b.test.ts (A not queued)", "pump"]);
+  });
+
+  it("records the real retry request's claimed files only", async () => {
+    const p = probeHost();
+    p.ledger.settle([A], NOTHING);
+    p.ledger.commit();
+    const key = KEYS.get(A.path) as CheckKey;
+    askRetry(p.store, {
+      testFile: A,
+      key,
+      session: "s1",
+      reason: "environment",
+      at: 1,
+      worktreeId: WT,
+    });
+    await p.intake.take(retryRequest());
+    expect(p.ledger.file(A)?.retryKey).toBe(key);
+    expect(p.log).toEqual(["record test/a.test.ts (A queued)", "pump"]);
   });
 
   it("records nothing for a stage that throws, and leaves the ledger and store as they were", async () => {
