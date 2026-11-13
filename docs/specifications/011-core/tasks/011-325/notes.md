@@ -17,7 +17,7 @@ Worker 2498379c, 2026-11-13. Brief: `tasks/wave-81.md`, W2. Design: `research/re
 
 1. **One transaction.** `RequestIntake.#stage` calls `recordCovered` inside `#transact`, after the stage returned and before the commit; the progress record (`host.record`) follows the commit, as the review of 0.1.470 asked. Test: "is written in the transaction that queues the files: one it cannot write queues none" (a record that fails rolls the queued file back).
 2. **One reader under `src/core`:** `readCoveredFiles`, above. No CLI file reads the table.
-3. **Kept while any of its files is queued or running, and 10 minutes after.** At each new record's write, in the same transaction, the worktree's older records are pruned: one whose files the ledger shows neither queued nor running gets `idle_since = now` once; one idle for `COVERED_FILES_KEPT_MS` (10 minutes) is deleted. "Any of its files" is literal: any file of the record, whatever its decided state. `idle_since` is set once and never cleared, so a file queued again later by an edit does not keep the record (that run is not the request's, as `RequestProgress` judges). The 10 minutes count from the first write that found the record idle, so a record can live longer than 10 minutes after its last end, never shorter. Test: "is pruned only once none of its files is queued or running and 10 minutes passed".
+3. **Kept while any of its files is queued or running, and 10 minutes after.** Repaired after review 0.1.478 B1; see "Repair of B1" below. Tests: the lifetime rows of `request-covered.test.ts`.
 4. **An answer without the id keeps the guess.** Today's CLI ignores the field: `test/cli/covered-id-ignored.test.ts` (`run --all --wait`, `run --slow`, `run tests` print and exit the same with and without it).
 5. **Survives a daemon handoff.** The record is in the store. Test: "survives a daemon handoff: the next daemon reads it, and keeps it while a file is queued" (a second store connection and a new ledger over the same store read it, and their write 20 minutes later keeps it while `B` is queued).
 
@@ -56,9 +56,32 @@ Not recorded: promote and focus (`covers: { skip }`, they queue no file), an imp
 3. **`run --all` while waiting** records its lane's files (all listed files without `--fast`/`--slow`), not the abandoned checkpoint's (every listed file, whatever the lane): the request's own files, as in the joined case.
 4. **The install-wait answers record too** (`InstallWaitRule.stage` and `.answer` return `Staged<A>`). The narrow run's install-wait answer wrote nothing before; it now writes its record in one busy-retried transaction under the lock it already holds. Its answer is unchanged; on a busy store it now waits for the store like any request.
 5. **Every taken stage writes a record unless its declaration names why not** (`StageRule.record: { skip }`), also one with no files (an unknown group, a `retry` that claimed nothing): such a record is idle at once and pruned 10 minutes later. The skip is for a request whose answer carries no id, so no wait could read its record: W1's import (below). `retry` keeps its record: the brief's table has a row for it.
-6. **The prune reads the ledger** (`ledger.file(ref)?.phase`), not the store's `test_file_keys.pending`, through a predicate `writeCoveredFiles` takes, so the store module stays free of the scheduler.
+6. **The prune reads the ledger** (`phase`, and since the B1 repair `leftPendingAt`), not the store's `test_file_keys.pending`, through the `CoveredActivity` that `writeCoveredFiles` takes, so the store module stays free of the scheduler.
 7. **The run-all id beside `owner`** needed a two-line edit of the bridge file `handlers.ts` (`runAll`): agreed with the coordinator, request `e0083705`, option A, in its own commit.
 8. **The probe moved** from `request-intake.test.ts` to `test/scheduler/request-intake-probe.ts`, shared by the intake's table and the covered-files table, which keeps both test files near 300 lines. Its `record` now also feeds the real `RequestProgress` (the ledger's `ends`), and its clock is `state.now`, fixed unless a row moves it.
+
+## Repair of B1 (review 0.1.478, brief `tasks/wave-81.5.md` W2.5)
+
+The first version set `idle_since` once, never cleared it, and deleted idle records without looking at their files again, so a file queued again after its record went idle did not keep it (the review's reproduction). Repaired on `cand/0.1.478` (`ee2d2827f`):
+
+- **The source of "when a file last left queued or running": `FileState.leftPendingAt`**, set in `Ledger.#syncPhase` to `context.now()` when a file's phase becomes `null`, and nowhere else (coordinator 9ddca779, request `8058bbb3`, option A). Memory only: never persisted, no store or schema change, no key change. `Ledger.hold` copies it with the rest of the file, so a rolled-back stage leaves no false exit. Only `recordCovered` reads it: `grep -rn leftPendingAt src test` names `files.ts` (the field and its `null`), `ledger.ts:885` (the one assignment) and `scheduler/covered-files.ts` (the read and two comments).
+- **Why not the store:** it holds no exit time for every exit. `runs.ended_at` covers an exit through a run (a result, a crash, a timeout) and `results.last_used_at` a lookup hit, but a queued file can leave with neither: `Ledger.settle` drops a non-forced queued file whose key is back at its `resultKey` (row 011-118: an edit, then its revert), and a withdrawn retry or a runner failure (`block`) dequeue it with no time either.
+- **The prune** (`writeCoveredFiles`, `idleSince`): every record write re-reads each record of the worktree. One with a file queued or running now gets `idle_since = NULL`. Otherwise it counts as idle from the latest of: its `idle_since` (its `recorded_at` while it has none); each file's `leftPendingAt`, which also holds an exit that began and ended between two writes; and the ledger's first record write. It is deleted once that time is 10 minutes old.
+- **The handoff bound:** a new daemon's ledger saw none of the earlier daemon's exits, all of which came before its first record write (`knownSince`, a `WeakMap` by ledger in `scheduler/covered-files.ts`). So that write counts every idle record as idle from it at the earliest: after a handoff, each idle record lives at least 10 minutes past the next daemon's first request.
+- **A file the scheduler lists no more** (`CoveredActivity.listed`): when a write last found its record busy, the record counts as idle from the current write, since that file's exit is held nowhere and came no later.
+- **A limit left:** a file removed from the listing and listed again between two writes, while it was the record's only queued file, comes back as a new `FileState` with no exit time; its record counts from the latest other bound. No test covers this case.
+
+Rows (`request-covered.test.ts`), each failing on `ee2d2827f` and passing after the repair:
+
+| Row | What it shows |
+|---|---|
+| "is kept while a file is queued again after it went idle, and 10 minutes after that end" | the review's reproduction (queued again at minute 2, still queued at 11), then deleted exactly 10 minutes after the later end |
+| "is kept while a file runs again after it went idle, and 10 minutes after that end" | the same for a running re-entry |
+| "counts an exit with no run and no stored result: an edit and its revert" | row 011-118's settle drop between two writes, on an idle record |
+| "counts a run that began and ended between two writes" | a running exit between two writes |
+| "after a daemon handoff, counts an idle record from the next daemon's first write" | the handoff bound |
+
+The older row "is pruned only once none of its files is queued or running and 10 minutes passed" now expects deletion exactly 10 minutes after the end (minute 21, was 22), since the exit time is known; it fails on `ee2d2827f` for that reason only. Mutations checked by hand: with `knownSince` at 0 the handoff row fails; with `leftAt` always `null` the five exit rows fail.
 
 ## Review 0.1.470 S1, folded in
 
@@ -73,6 +96,7 @@ All additive except the intake's own declaration types:
 
 - New `src/core/store/covered-files.ts`: `CoveredFile`, `CoveredFiles`, `COVERED_FILES_TABLE`, `COVERED_FILES_KEPT_MS`, `writeCoveredFiles`, `readCoveredFiles`.
 - New `src/core/scheduler/covered-files.ts`: `coveredOf`, `recordCovered`.
+- B1 repair: new `FileState.leftPendingAt: EpochMs | null` (memory only, read only by `recordCovered`); `writeCoveredFiles`' third argument is now a `CoveredActivity` (`listed`, `pending`, `leftAt`, `knownSince`), was a `pending` predicate; the reader's signature and shape are unchanged.
 - `request-intake-types.ts`: new `RequestId`; `StageRule.stage` takes a fourth argument `id`; new optional `StageRule.record: Skip` (why no covered-files record is written); `InstallWaitRule`'s `stage` takes `id` and returns `Staged<A>` (was `A`), its `answer` takes `id` last and returns `Staged<A>` (was `A`). `Staged`'s doc now says the covered files include current and not-queued ones.
 - `types/scheduler.ts`: `FullSuiteCheckpoint.coveredId?` and `SlowSuiteRequest.coveredId?` (so `NarrowRunRequest` too).
 - `types/daemon.ts`: `RunAllResponse.coveredId?`; new `RequestTaken { revision, queued, coveredId? }`, now the type of `RunSlowResponse.requested` and `RunGroupResponse.requested` (the same shape as before plus the optional field; `SlowSuiteRequested` follows).
@@ -97,3 +121,10 @@ All additive except the intake's own declaration types:
 - Squeal, named (`squeal status --wait`): 16 request test files (`narrow-run`, `request-progress*`, `install-wait`, `reinstall`, `busy-requests` both, `busy-writes`, `full-suite-pass`, `checkpoints`, `run-lanes`, `retry`, `test/daemon/run-group*`): no known failures at revision 31. 57 request-behaviour files (`group-lanes-*`, `slow-tier`, `retry*`, `promotion*`, `focused*`, `commit-lint`, `manual-lint`, `observed-growth`, `checkpoint*`, `request-progress*`, `warm-up*`, `test/daemon/run-*`, `test/cli/run-*`): 53 pass, 3 pending (passed directly, above), 1 fail: `slow-tier.test.ts:136` compared the `run --slow` answer exactly; fixed by naming `coveredId` (commit `bab99b252`), FAIL -> PASS at revision 32.
 - `test/scheduler/tier-yields-overrun.test.ts` "a tier holding a file the overrun cut does not yield again at that key" failed once at revision 32 (4.5 s against a 1.8 s median, load 2.2 per CPU; it reads clock skew and a settle pause, and promote and focus take no record); `squeal retry --reason load`: FAIL -> PASS.
 - Not run to a verdict: the rest of the affected set, about 1,220 test files queued in Squeal at revision 32 (types imported widely), known failures 0 when last read. No `pnpm run build` and no full suite, as the brief says.
+
+### Checks of the B1 repair (2026-11-14, on `cand/0.1.478` `ee2d2827f`; host load 74 to 91 on 24 CPUs)
+
+- `pnpm run lint`: "Checked 3386 files ... No fixes applied." `pnpm run typecheck`: no errors.
+- Direct: `env -u PLUGIN_ROOT -u PLUGIN_DATA pnpm exec vitest run test/scheduler/request-covered.test.ts test/scheduler/request-intake.test.ts test/daemon/covered-id.test.ts`: 3 files, 51 tests pass. With `ee2d2827f`'s four source files put back in place: `request-covered.test.ts` 6 failed, 13 passed (the five new rows and the older lifetime row, as above).
+- Squeal, named, revision 52: `request-covered`, `request-intake`, `covered-id`, the `ledger*` and `request-progress*` scheduler tests: current, pass. `test/scheduler/fresh-worktree-durations.test.ts` timed out at 5 s at revisions 41 (before this repair's source edit) and 52, at load 91 per 24 CPUs; it passed alone directly (1 test, 9.9 s); `squeal retry --reason load` queued behind the load gate.
+- Not run to a verdict: the rest of the affected set, left to CI as the coordinator said for this row.
