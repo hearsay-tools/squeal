@@ -3,7 +3,7 @@
 Run from the checkout with a packaged Squeal CLI path:
 
 ```sh
-node research/probes/issue-210/probe.mjs /home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.465/dist/cli/squeal.mjs
+node docs/specifications/020-quality-gate/research/probes/issue-210/probe.mjs /home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.465/dist/cli/squeal.mjs
 ```
 
 This is a throwaway research fixture, not a product test. It creates and removes

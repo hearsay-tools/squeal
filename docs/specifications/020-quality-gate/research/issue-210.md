@@ -32,7 +32,7 @@ load was `14.52 4.45 3.72`. Before each of the four gates it was
 at 13:17 Europe/Warsaw (12:17 UTC). It induced no host load beyond its two tiny
 files, with `runner.tierSize: 1` and a 20-second gate budget.
 
-The [throwaway probe](../../../../research/probes/issue-210/probe.mjs) creates two
+The [throwaway probe](probes/issue-210/probe.mjs) creates two
 temporary Git repositories with no dependency installation and no daemon.
 Each base contains `test/a.test.mjs` and `test/b.test.mjs`. A imports only
 `node:test` and `node:assert/strict`; its callback changes `const value = 2` to
@@ -54,7 +54,7 @@ gh issue view 200 --repo hearsay-tools/squeal --json title,body,comments,url
 git rev-parse HEAD
 getconf _NPROCESSORS_ONLN
 /home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal --version
-node research/probes/issue-210/probe.mjs /home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.465/dist/cli/squeal.mjs > /tmp/issue-210-probe.jsonl
+node docs/specifications/020-quality-gate/research/probes/issue-210/probe.mjs /home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.465/dist/cli/squeal.mjs > /tmp/issue-210-probe.jsonl
 ```
 
 Each of the four child commands, from its temporary repository:
@@ -141,8 +141,8 @@ daemon retry, or cross-runner experiment ran. No source/build behavior on
 0.1.464 was tested. The only executed checks were the tiny packaged CLI probe;
 this is reproduction evidence, not product-suite validation.
 
-Final checks: `node --check research/probes/issue-210/probe.mjs` passed; report
-local links resolved. `squeal status --wait 60000 research/probes/issue-210/probe.mjs
+Final checks: `node --check docs/specifications/020-quality-gate/research/probes/issue-210/probe.mjs` passed; report
+local links resolved. `squeal status --wait 60000 docs/specifications/020-quality-gate/research/probes/issue-210/probe.mjs
 docs/specifications/020-quality-gate/research/issue-210.md` returned exit 3:
 no test closure holds either file, zero known failures, 6 of 1,771 test files
 not current (unknown). No product-suite pass is claimed.
@@ -156,4 +156,4 @@ not current (unknown). No product-suite pass is claimed.
 - [Evaluator at examined SHA](https://github.com/hearsay-tools/squeal/blob/9273ca81243c08be207eeedde8eaecc2f8bf93af/src/core/code/gate/evaluate.ts#L252).
   Other read source files at the same SHA: `src/core/code/gate/{rule,runs,stored,lanes}.ts`,
   `src/core/scheduler/rerun.ts`, `src/core/retry/load.ts`.
-- [Earlier #200 research](issue-200.md); [probe instructions](../../../../research/probes/issue-210/README.md).
+- [Earlier #200 research](issue-200.md); [probe instructions](probes/issue-210/README.md).
