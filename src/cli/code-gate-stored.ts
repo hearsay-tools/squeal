@@ -6,6 +6,7 @@ import {
   type StoredEvidence,
 } from "../core/code/gate/collect.js";
 import { partsEvidence } from "../core/code/gate/parts.js";
+import type { PartRefusal } from "../core/code/gate/parts-refused.js";
 import { openStored, type StoredFiles } from "../core/code/gate/stored.js";
 import type { ChangedSet, Evidence, TestFileEvidence } from "../core/code/gate/types.js";
 import { readPolicy } from "../core/daemon/policy.js";
@@ -59,6 +60,8 @@ export async function collectWithStores(
 ): Promise<Collected> {
   const note = options.note ?? (() => {});
   const children = options.children === true;
+  // Row 020-49 (#205): why the parts did not give each file they hold, for the report.
+  const refused: PartRefusal[] = [];
   const fromParts =
     parts.length === 0
       ? undefined
@@ -74,6 +77,7 @@ export async function collectWithStores(
             observedSuffix: OBSERVED_ADAPTER_SUFFIX,
           },
           note,
+          refused: (refusal) => refused.push(refusal),
         });
   const stored = storedFiles(root, env, note, children);
   let evidence: Evidence;
@@ -85,6 +89,7 @@ export async function collectWithStores(
       // D17.3: each file a run completes is kept at its key, for the next run and a daemon.
       ...(stored === null ? {} : { ran: stored.ran }),
     });
+    if (refused.length > 0) evidence = { ...evidence, refused };
     const selected = evidence.testFiles.length;
     for (const [from, where] of [
       ["parts", "the parts"],
