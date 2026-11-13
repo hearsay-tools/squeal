@@ -14,6 +14,7 @@ import { LANE_FLAGS, laneFiles, laneText, runLanes } from "./run-lanes.js";
 import { runSlowCommand } from "./run-slow.js";
 import { statusCommand } from "./status-command.js";
 import { failuresText, gapText, noVerdictText, readClasses, verdictCode } from "./verdict.js";
+import type { RequestOutcome } from "./wait/decide.js";
 import { openCheckpoint } from "./wait/progress.js";
 import { inStore } from "./wait/reads.js";
 import type { CheckpointOutcome } from "./wait/table.js";
@@ -209,12 +210,20 @@ async function recorded(
   first: RunAllResponse,
   deadline: number,
 ): Promise<Recorded | string | null> {
-  const outcome = await untilTaken({ loop: "run-all", socketPath, first, deadline });
+  return recordedOf(await untilTaken({ loop: "run-all", socketPath, first, deadline }));
+}
+
+/** The request loop's outcome as `recorded` gives it: the checkpoint, `null` past the deadline, or why not. */
+export function recordedOf(outcome: RequestOutcome<RunAllResponse>): Recorded | string | null {
   if (outcome.kind === "taken" && outcome.answer.checkpoint !== null) {
     return { checkpoint: outcome.answer.checkpoint, owner: outcome.answer.owner };
   }
   if (outcome.kind === "failed") return `run --all failed: ${outcome.error}`;
   if (outcome.kind === "pending") return null;
+  // Row 011-327: a status request the daemon did not answer within its bound is a busy daemon.
+  if (outcome.kind === "unanswered") {
+    return `the daemon did not answer about request ${outcome.answer.requestId}${outcome.words}; the daemon records the checkpoint once its current work allows`;
+  }
   // The `run-all` row reads any other answer, and none, as a stopped daemon.
   return "the daemon stopped before recording the checkpoint";
 }
@@ -248,7 +257,7 @@ function owedText(root: AbsolutePath, checkpoint: CheckpointRecord): string {
 }
 
 /** A `run-all` answer once the checkpoint was recorded. */
-interface Recorded {
+export interface Recorded {
   readonly checkpoint: CheckpointRecord;
   /** `RunAllResponse.owner`: absent from a daemon before 005-36. */
   readonly owner: string | undefined;
