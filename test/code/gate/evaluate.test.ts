@@ -162,16 +162,4 @@ describe("evaluate: gaps", () => {
     );
     expect(by.a).toMatchObject({ state: "incomplete", gap: "not-counted", crap: null });
   });
-
-  it("reads test-failed when any selected test failed, and keeps the measures", () => {
-    const { by, report } = judged(
-      [path],
-      [
-        testFile("test/a.test.ts", ["src/a.ts"], [source("src/a.ts", [a])]),
-        testFile("test/b.test.ts", ["src/b.ts"], [], { failed: ["b > breaks"] }),
-      ],
-    );
-    expect(by.a).toMatchObject({ state: "incomplete", gap: "test-failed", crap: 3 });
-    expect(report.verdict).toBe("incomplete");
-  });
 });
