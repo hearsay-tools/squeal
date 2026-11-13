@@ -266,6 +266,12 @@ export function parseCheckpointProgress(raw: string | null): CheckpointProgress 
  */
 export interface FullSuiteCheckpoint extends CheckpointRecord {
   readonly owner: string;
+  /**
+   * Row 011-325: the id the request's covered files are recorded under
+   * (`readCoveredFiles`); absent from a scheduler before it. The store's
+   * checkpoint row holds none.
+   */
+  readonly coveredId?: string;
 }
 
 /** A `squeal run --all` request. Spec 001 D5. */
@@ -295,6 +301,12 @@ export interface SlowSuiteRequest {
    * when none is declared or every slow file is current at the revision.
    */
   readonly queued: number;
+  /**
+   * Row 011-325: the id the request's covered files are recorded under
+   * (`readCoveredFiles`); absent from a scheduler before it and for a lint
+   * group, which covers no test file.
+   */
+  readonly coveredId?: string;
 }
 
 /**

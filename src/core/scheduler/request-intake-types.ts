@@ -15,12 +15,20 @@ export interface Skip {
   readonly skip: string;
 }
 
-/** What a stage decided: the answer, and the covered files, recorded after the commit. */
+/**
+ * What a stage decided: the answer, and the covered files. Row 011-325:
+ * they are recorded in the stage's transaction under the request's id
+ * (`recordCovered`), each queued, current or not queued with the reason;
+ * after the commit, those queued or running are its progress record.
+ */
 export interface Staged<A> {
   readonly answer: A;
-  /** The files it queued, or found queued or running, for itself; those not queued nor running count nothing. */
+  /** The files it queued, found queued or running, found current, or did not queue, for itself. */
   readonly covered: readonly FileState[];
 }
+
+/** Row 011-325: the id the intake records a request's covered files under, for its answer. */
+export type RequestId = string;
 
 /** Rule 1: the start or closed answer. */
 export type StartRule<A> =
@@ -35,15 +43,24 @@ export type InstallWaitRule<A, P> =
   /** At once, before the lock, with the closed answer. */
   | { readonly atOnce: A }
   /**
-   * Under the lock, in its transaction instead of its stage. `passFirst`: an
-   * awaited install's pass, which may end the wait, runs before the lock.
+   * Under the lock, in its transaction instead of its stage; its covered
+   * files are recorded not queued, with the reason. `passFirst`: an awaited
+   * install's pass, which may end the wait, runs before the lock.
    */
   | {
-      readonly stage: (context: SchedulerContext, ledger: Ledger) => A;
+      readonly stage: (context: SchedulerContext, ledger: Ledger, id: RequestId) => Staged<A>;
       readonly passFirst?: true;
     }
-  /** Under the lock, from its plan (`always`), writing nothing. */
-  | { readonly answer: (context: SchedulerContext, ledger: Ledger, plan: P, reason: string) => A }
+  /** Under the lock, from its plan (`always`), queuing nothing; its covered files as `stage`'s. */
+  | {
+      readonly answer: (
+        context: SchedulerContext,
+        ledger: Ledger,
+        plan: P,
+        reason: string,
+        id: RequestId,
+      ) => Staged<A>;
+    }
   | Skip;
 
 /** What `always` runner work decided: the plan its stage takes, or the answer at once. */
@@ -77,9 +94,13 @@ export interface Outside<A> extends Skip {
   readonly work: () => void;
 }
 
-/** Rules 4 and 5: the store write, and the covered files it records after the commit. */
+/**
+ * Rules 4 and 5: the store write, with the record of its covered files in
+ * its transaction, and their progress record after the commit.
+ */
 export interface StageRule<A, P> {
-  readonly stage: (context: SchedulerContext, ledger: Ledger, plan: P) => Staged<A>;
+  /** `id`: what its covered files are recorded under, for its answer (row 011-325). */
+  readonly stage: (context: SchedulerContext, ledger: Ledger, plan: P, id: RequestId) => Staged<A>;
   readonly outside?: Outside<A>;
 }
 

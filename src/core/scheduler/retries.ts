@@ -65,7 +65,8 @@ export function takeRetries(
 /**
  * `squeal retry` (001-368) as the request intake takes it (row 011-322):
  * claims and queues the requests in the store that may run now. Its covered
- * files are those `takeRetries` claims.
+ * files are those `takeRetries` claims, all queued (row 011-325: its answer
+ * carries no id; the record is for its progress and a later reader).
  */
 export function retryRequest(): Request<void> {
   return {
