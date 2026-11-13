@@ -37,8 +37,9 @@ export interface Kept extends Expected {
   readonly record: CoverageRecord;
   /**
    * Row 020-39: its store decision when it is kept at the key with what
-   * its run read (`atStoreKey`): written only where no daemon serves, else
-   * told as not kept for it.
+   * its run read (`atStoreKey`): written once its writer merged the runs'
+   * reads, the keeper where no daemon serves or a serving daemon (row
+   * 020-48), else told as not kept for it.
    */
   readonly grown?: Pick<FileDecision, "cause" | "reason">;
 }
