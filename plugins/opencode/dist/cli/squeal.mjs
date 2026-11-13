@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.467";
+  if (true) return "0.1.470";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -16669,8 +16669,7 @@ var init_rerun = __esm({
 function loadOf(context) {
   return (context.hostLoad ?? hostLoad)();
 }
-function takeRetries(context, ledger, claimed = () => {
-}) {
+function takeRetries(context, ledger, claimed) {
   const { store, worktreeId } = context;
   const pending = readRetries(store).filter((r) => r.end === null);
   for (const request of pending) {
@@ -16681,6 +16680,24 @@ function takeRetries(context, ledger, claimed = () => {
   }
   const dropped = dropWithdrawn(ledger, pending);
   return queueDue(context, ledger, pending, claimed) || dropped;
+}
+function retryRequest() {
+  return {
+    operation: "taking squeal retry requests",
+    start: { closed: void 0 },
+    installWait: { atOnce: void 0 },
+    runnerWork: { skip: "waits for no runner work: a retry runs at the key its file holds" },
+    store: {
+      stage: (context, ledger) => {
+        const covered = [];
+        if (takeRetries(context, ledger, (file) => covered.push(file))) ledger.commit();
+        return { answer: void 0, covered };
+      }
+    },
+    wake: {
+      skip: "wakes no lane: a retried slow-lane file may wait for its lane's next planning (difference 2 of research/request-intake.md, row 011-323)"
+    }
+  };
 }
 function dropWithdrawn(ledger, pending) {
   let changed2 = false;
@@ -22785,6 +22802,25 @@ function importsKeyed(store, worktreeId, imports2) {
 }
 function clearImportsWaiting(store, worktreeId) {
   store.meta.delete(importsWaitingMetaKey(worktreeId));
+}
+function observedRequest(projects2, imports2, queueObserved) {
+  return {
+    operation: "refreshing the observed reads of an import",
+    start: { closed: false },
+    installWait: { atOnce: false },
+    runnerWork: { skip: "waits for no runner work: it queues its own (`queueObserved`)" },
+    store: {
+      skip: "synchronous: the daemon's lifecycle reads its answer at once (daemon.ts:416); its waiting mark is written outside the busy-store retry until row 011-323 (difference 1)",
+      covers: { skip: "covers no file: the refinement's regrow re-keys the files it reaches" },
+      now: (context) => {
+        if (projects2.length > 0) context.keys.refreshObserved(projects2);
+        markImportsWaiting(context.store, context.worktreeId, imports2);
+        queueObserved();
+        return true;
+      }
+    },
+    wake: { skip: "wakes no lane: the pump applies its runner work first" }
+  };
 }
 var init_imports_waiting = __esm({
   "src/core/scheduler/imports-waiting.ts"() {
@@ -53854,126 +53890,79 @@ var init_beside = __esm({
   }
 });
 
-// src/core/scheduler/checkpoint-requests.ts
-import { randomUUID as randomUUID14 } from "node:crypto";
-function abandonFullSuite(ledger) {
-  const files5 = [...ledger.files.values()].map((file) => file.ref);
-  const record2 = ledger.checkpoints.abandon(randomUUID14(), "run-all", ledger.revision.number, files5);
-  ledger.commit();
-  return { ...record2, owner: record2.id };
-}
-function queueFullSuite(ledger, force, fresh = false, only2) {
-  const id = randomUUID14();
-  const revision = ledger.revision.number;
-  const { checkpoints } = ledger;
-  const lane = only2?.lane;
-  ledger.confirmHeld();
-  const files5 = [...ledger.files.values()].filter(
-    (file) => only2 === void 0 || only2.isSlow(file.ref) === (only2.lane === "slow")
-  );
-  const unrunnable = files5.filter((file) => file.key === null || file.blocked !== null);
-  const runnable2 = files5.filter((file) => file.key !== null && file.blocked === null);
-  const open7 = force ? runnable2 : runnable2.filter((file) => classify2(file) !== "current");
-  const joins = !fresh && open7.length + unrunnable.length > 0 && checkpoints.covers(refs([...open7, ...unrunnable]), force);
-  const attributed = joins ? checkpoints.active?.record.id ?? id : id;
-  let requested;
-  if (force) {
-    requested = runnable2;
-    const queue = joins ? [] : runnable2;
-    for (const file of queue) ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED), true);
-  } else {
-    for (const file of open7) file.unknownKey = null;
-    const pending = open7.filter((file) => file.phase !== null);
-    const misses = ledger.settle(
-      refs(open7.filter((file) => file.phase === null)),
-      NOTHING_CHANGED,
-      { checkpointId: attributed }
-    );
-    requested = [...pending, ...misses];
+// src/core/keys/resolution.ts
+import { posix as posix11 } from "node:path";
+function closuresToReresolve(changes, index, isDeclaredInput) {
+  const picked = /* @__PURE__ */ new Map();
+  const pick = (refs2) => {
+    for (const ref3 of refs2) picked.set(testFileId(ref3), ref3);
+  };
+  for (const change2 of changes) {
+    const dir2 = directoryOf(change2.path);
+    const base = posix11.basename(change2.path);
+    const edited = change2.oldHash !== null && change2.newHash !== null;
+    if (edited && base !== "package.json") continue;
+    if (!edited && isDeclaredInput(change2.path)) return index.testFiles();
+    if (base === "package.json") {
+      if (dir2 === "") return index.testFiles();
+      pick(index.below(dir2));
+      continue;
+    }
+    const dot = base.lastIndexOf(".");
+    const name3 = dot > 0 ? base.slice(0, dot) : base;
+    pick(index.inDirectory(dir2));
+    pick(index.below(dir2 === "" ? name3 : `${dir2}/${name3}`));
+    if (name3 === "index" && dir2 !== "") pick(index.inDirectory(directoryOf(dir2)));
   }
-  const testFiles3 = refs([...requested, ...unrunnable]);
-  let record2;
-  if (joins) {
-    record2 = checkpoints.join(id, "run-all", revision, testFiles3, lane);
-  } else if (testFiles3.length === 0 && checkpoints.active !== null) {
-    record2 = checkpoints.completeAtOnce(id, "run-all", revision, lane);
-  } else {
-    record2 = checkpoints.start(id, "run-all", revision, testFiles3, force, lane);
-    for (const file of unrunnable) checkpoints.failed(file.ref);
-  }
-  ledger.commit();
-  return { ...record2, owner: joins ? attributed : record2.id };
+  return [...picked.keys()].sort(compare).map((id) => picked.get(id));
 }
-function owedStrict(ledger, owed) {
-  if (owed === null) return [];
-  const strictIds = new Set(owed.owed.strict.map((ref3) => ledger.file(ref3)?.id));
-  return owed.owed.remaining.flatMap((ref3) => ledger.file(ref3) ?? []).filter((file) => strictIds.has(file.id) && file.key !== null);
-}
-function resumeOwed(ledger, taken3) {
-  const { checkpoints } = ledger;
-  if (taken3 === null) return;
-  const listed8 = taken3.owed.remaining.flatMap((ref3) => ledger.file(ref3) ?? []);
-  const strict = owedStrict(ledger, taken3);
-  const loose = listed8.filter((file) => !strict.includes(file));
-  const unrunnable = loose.filter((file) => file.key === null || file.blocked !== null);
-  const baseline2 = checkpoints.active;
-  const others = baseline2 === null ? loose.filter((file) => !unrunnable.includes(file) && classify2(file) !== "current") : [];
-  checkpoints.resume(taken3.records, refs([...strict, ...others, ...unrunnable]), refs(strict));
-  for (const file of strict) ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED), true);
-  ledger.settle(refs(others.filter((file) => file.phase === null)), NOTHING_CHANGED);
-  for (const file of unrunnable) checkpoints.failed(file.ref);
-}
-function refs(files5) {
-  return files5.map((file) => file.ref);
-}
-var init_checkpoint_requests = __esm({
-  "src/core/scheduler/checkpoint-requests.ts"() {
+var init_resolution = __esm({
+  "src/core/keys/resolution.ts"() {
     "use strict";
-    init_context();
-    init_files();
-    init_queue();
+    init_compare();
+    init_reverse_index();
   }
 });
 
 // src/core/scheduler/namesakes.ts
-import { posix as posix11 } from "node:path";
+import { posix as posix12 } from "node:path";
 function languageOf(path) {
   if (SCRIPT2.test(path)) return "script";
   return path.endsWith(".py") ? "python" : null;
 }
 function testedName(path, language) {
-  const base = posix11.basename(path);
+  const base = posix12.basename(path);
   if (language === "python") {
     const match3 = MARKED_PYTHON.exec(base);
     return match3 === null ? null : match3[1] ?? match3[2] ?? null;
   }
   const match2 = MARKED_SCRIPT.exec(base);
   if (match2 !== null) return match2[1] ?? null;
-  const inTests = posix11.basename(posix11.dirname(path)) === "__tests__";
+  const inTests = posix12.basename(posix12.dirname(path)) === "__tests__";
   return inTests && SCRIPT2.test(base) ? base.replace(SCRIPT2, "") : null;
 }
 function conventionalDirs(source2) {
-  const dir2 = posix11.dirname(source2);
-  const dirs = /* @__PURE__ */ new Set([dir2, posix11.join(dir2, "__tests__")]);
+  const dir2 = posix12.dirname(source2);
+  const dirs = /* @__PURE__ */ new Set([dir2, posix12.join(dir2, "__tests__")]);
   const segments2 = source2.split("/");
   const at2 = segments2.indexOf("src");
   if (at2 >= 0 && at2 < segments2.length - 1) {
     const prefix = segments2.slice(0, at2);
     const below3 = segments2.slice(at2 + 1, -1);
-    for (const tree of ["test", "tests"]) dirs.add(posix11.join(...prefix, tree, ...below3));
+    for (const tree of ["test", "tests"]) dirs.add(posix12.join(...prefix, tree, ...below3));
   }
   return dirs;
 }
 function namesakesOf(source2, testFiles3) {
   const language = languageOf(source2);
   if (language === null) return [];
-  const name3 = posix11.basename(source2).replace(/\.[^.]+$/, "");
+  const name3 = posix12.basename(source2).replace(/\.[^.]+$/, "");
   if (name3 === "index") return [];
   const named4 = [...new Set(testFiles3)].filter(
     (path) => path !== source2 && testedName(path, language) === name3
   );
   const dirs = conventionalDirs(source2);
-  const near = named4.filter((path) => dirs.has(posix11.dirname(path)));
+  const near = named4.filter((path) => dirs.has(posix12.dirname(path)));
   if (near.length > 0) return near;
   return named4.length === 1 ? named4 : [];
 }
@@ -54100,6 +54089,493 @@ var init_edit_cut = __esm({
     init_text();
     init_context();
     init_namesakes();
+  }
+});
+
+// src/core/scheduler/fresh-walks.ts
+function changedUnder(environment, changedMeanwhile) {
+  const read5 = [...environment.files, ...(environment.imports ?? []).map((file) => file.path)];
+  return read5.some((path) => changedMeanwhile.has(path));
+}
+function bindWalks(part2, resolved2, changedMeanwhile) {
+  const keep = new Set(resolved2.map(testFileId));
+  const stale = [];
+  for (const closure of part2.closures) {
+    const ref3 = closure.testFile;
+    if (!keep.has(testFileId(ref3))) continue;
+    if ([ref3.path, ...closure.paths].some((path) => changedMeanwhile.has(path))) {
+      stale.push(ref3);
+      keep.delete(testFileId(ref3));
+    }
+  }
+  return {
+    stale,
+    walks: {
+      closures: part2.closures.filter((closure) => keep.has(testFileId(closure.testFile))),
+      environments: part2.environments?.filter((env) => !changedUnder(env, changedMeanwhile)) ?? null
+    }
+  };
+}
+var init_fresh_walks = __esm({
+  "src/core/scheduler/fresh-walks.ts"() {
+    "use strict";
+    init_reverse_index();
+  }
+});
+
+// src/core/scheduler/stored-affected.ts
+import { inflateRawSync as inflateRawSync3 } from "node:zlib";
+function affectedAsk(changes, content, seen) {
+  return {
+    changes,
+    ...content.previous === void 0 ? {} : { previous: content.previous },
+    runnerMoved: seen.recreated.size > 0 || content.environment || seen.retrying || seen.listed !== void 0 || seen.failures.size > 0
+  };
+}
+async function askAffected(context, ledger, ask2, paths, host) {
+  const answer4 = storedAffected(context, ledger, ask2, paths);
+  if (answer4 === null) return { affected: await host(), stored: void 0 };
+  return { affected: answer4, stored: (some) => storedAffected(context, ledger, ask2, some) };
+}
+function graphAffected(source2, ask2, paths) {
+  if (ask2.runnerMoved || paths.length === 0) return null;
+  for (const change2 of ask2.changes) {
+    if (change2.oldHash === null || change2.newHash === null) return null;
+    if (change2.path.endsWith(".snap") || source2.isEnvironmentInput(change2.path)) return null;
+  }
+  const listed8 = /* @__PURE__ */ new Set();
+  for (const ref3 of source2.testFiles) {
+    if (source2.runnerOf(ref3.project) !== "vitest" || !source2.hasClosure(ref3)) return null;
+    listed8.add(testFileId(ref3));
+  }
+  const changed2 = new Set(paths);
+  const direct = [];
+  const transitive = [];
+  for (const ref3 of source2.referencing(paths)) {
+    if (!listed8.has(testFileId(ref3))) continue;
+    if (changed2.has(ref3.path)) {
+      direct.push(ref3);
+      continue;
+    }
+    const key3 = keyBefore(source2, ask2, ref3);
+    const walk5 = key3 === null ? void 0 : source2.walk(ref3, key3);
+    const own = walk5?.find(([path]) => path === ref3.path);
+    if (walk5 === void 0 || own === void 0) return null;
+    if ([...own[1], ...own[2]].some((target) => changed2.has(target))) direct.push(ref3);
+    else if (walk5.some((entry4) => visits(entry4, changed2))) transitive.push(ref3);
+  }
+  return { direct: direct.sort(byRef), transitive: transitive.sort(byRef) };
+}
+function keyBefore(source2, ask2, ref3) {
+  const id = testFileId(ref3);
+  return ask2.previous?.has(id) === true ? ask2.previous.get(id) ?? null : source2.key(ref3);
+}
+function visits([path, statics, dynamics], changed2) {
+  return changed2.has(path) || statics.some((p) => changed2.has(p)) || dynamics.some((p) => changed2.has(p));
+}
+function storedAffected(context, ledger, ask2, paths) {
+  const conn = walkConnection(context);
+  if (conn === null) return null;
+  const { keys } = context;
+  const source2 = {
+    testFiles: [...ledger.files.values()].map((file) => file.ref),
+    referencing: (changed2) => keys.index.reverse.referencing(changed2),
+    hasClosure: (ref3) => keys.index.closure(ref3) !== void 0,
+    runnerOf: (project) => keys.runnerOf(project),
+    isEnvironmentInput: (path) => keys.isEnvironmentInput(path),
+    key: (ref3) => keys.index.key(ref3),
+    walk: (ref3, key3) => readWalk(conn, ref3, key3)
+  };
+  return graphAffected(source2, ask2, paths);
+}
+function walkConnection(context) {
+  try {
+    const conn = connectionOf(context.store);
+    return hasImportGraphTables(conn) ? conn : null;
+  } catch {
+    return null;
+  }
+}
+function readWalk(conn, ref3, key3) {
+  const row2 = conn.get(
+    "SELECT imports FROM test_file_imports WHERE project = ? AND path = ? AND key = ?",
+    ref3.project,
+    ref3.path,
+    key3
+  );
+  if (row2 === null) return void 0;
+  return JSON.parse(inflateRawSync3(row2.imports).toString("utf8"));
+}
+function byRef(a, b) {
+  return a.project === b.project ? compare(a.path, b.path) : compare(a.project, b.project);
+}
+var init_stored_affected = __esm({
+  "src/core/scheduler/stored-affected.ts"() {
+    "use strict";
+    init_compare();
+    init_reverse_index();
+    init_import_edges();
+    init_store3();
+  }
+});
+
+// src/core/scheduler/refinement.ts
+async function fetchRunnerPart(context, ledger, revision, content, carried, touched2 = [], rechecked) {
+  const { keys, runner } = context;
+  const bound = new RunnerPartBound(
+    context.runnerPartMs ?? runnerPartBoundMs(context.policy.runner.timeoutMs)
+  );
+  const changes = revision.changes;
+  const paths = changes.map((c) => c.path);
+  const structural2 = changes.some((c) => c.oldHash === null || c.newHash === null);
+  const failures = /* @__PURE__ */ new Map();
+  const retrying = ledger.broken;
+  const invalidations = [
+    ...changes.map(toInvalidatedPath),
+    ...touched2.map((path) => ({ path, kind: "touch" }))
+  ];
+  const invalidated = rechecked === void 0 ? await tryRunner(
+    context,
+    `invalidate (${listPaths(invalidations.map((p) => p.path))})`,
+    () => bound.call(() => runner.invalidate(invalidations)),
+    (reason2) => failed(failures, null, reason2)
+  ) : { recreatedProjects: rechecked };
+  const recreated = new Set(invalidated?.recreatedProjects ?? []);
+  const environments2 = recreated.size > 0 || content.environment || retrying ? await tryRunner(
+    context,
+    "environment",
+    () => bound.call(() => runner.environment()),
+    (reason2) => failed(failures, null, reason2)
+  ) : null;
+  const listed8 = structural2 || recreated.size > 0 || ledger.listingFailed ? await tryRunner(context, "testFiles", () => listTestFilesOf(context, bound)) : void 0;
+  const exists3 = new Set(
+    listed8 ? listed8.map(testFileId) : [...ledger.files.values()].map((f) => f.id)
+  );
+  const reresolve = /* @__PURE__ */ new Map();
+  const pick = (refs2) => {
+    for (const ref3 of refs2) {
+      const id = testFileId(ref3);
+      if (exists3.has(id)) reresolve.set(id, ref3);
+    }
+  };
+  pick((listed8 ?? []).filter((ref3) => !keys.index.closure(ref3)));
+  pick(
+    [...ledger.files.values()].filter((file) => recreated.has(file.ref.project) || file.blocked !== null).map((file) => file.ref)
+  );
+  pick(content.rekeyed);
+  pick(keys.runtimeUnresolved());
+  pick(carried);
+  pick(keys.index.reverse.referencing(touched2));
+  const moved4 = changes.filter((c) => !keys.isDeclaredInput(c.path));
+  pick(closuresToReresolve(moved4, keys.index.reverse, keys.isDeclaredInput));
+  const ask2 = affectedAsk(changes, content, { recreated, retrying, listed: listed8, failures });
+  const { affected: affected2, stored: stored3 } = await askAffected(
+    context,
+    ledger,
+    ask2,
+    paths,
+    () => tryRunner(
+      context,
+      `affected (${listPaths(paths)})`,
+      () => bound.call(() => runner.affected(paths))
+    )
+  );
+  pick(affected2?.direct ?? []);
+  pick(affected2?.transitive ?? []);
+  const closures = [];
+  for (const ref3 of reresolve.values()) {
+    const closure = await tryRunner(
+      context,
+      `closure of ${ref3.path}`,
+      () => bound.call(() => runner.closure(ref3)),
+      (reason2) => failed(failures, ref3.project, reason2)
+    );
+    if (closure !== null) closures.push(closure);
+  }
+  const cut = affected2 === null || content.catchUp === true ? void 0 : await fetchEditCut(
+    context,
+    refsOf(ledger, listed8),
+    paths,
+    affected2,
+    bound,
+    closures,
+    stored3
+  );
+  return {
+    revision,
+    retrying,
+    failures,
+    environments: environments2,
+    listed: listed8,
+    direct: new Set((affected2?.direct ?? []).map(testFileId)),
+    ...content.catchUp === true ? { catchUp: true } : {},
+    ...content.recent === void 0 ? {} : { recent: content.recent },
+    ...cut === void 0 ? {} : { cut },
+    reresolved: [...reresolve.values()],
+    closures
+  };
+}
+async function recheckRunner(context) {
+  const recheck = context.runner.recheck?.bind(context.runner);
+  if (recheck === void 0) return [];
+  const result = await tryRunner(context, "recheck", () => runnerPartBound(context).call(recheck));
+  return result?.recreatedProjects ?? [];
+}
+async function applyRunnerPart(context, ledger, part2, changedMeanwhile, keyedAt) {
+  const { keys } = context;
+  const changed2 = new Set(part2.revision.changes.map((c) => c.path));
+  const touched2 = /* @__PURE__ */ new Map();
+  const touch = (refs2) => {
+    for (const ref3 of refs2) touched2.set(testFileId(ref3), ref3);
+  };
+  const touchKeys = (keyChanges) => touch(keyChanges.map((c) => c.testFile));
+  if (part2.environments !== null) touchKeys(await keys.setEnvironments(part2.environments));
+  else touchKeys(await keys.regrowStartup());
+  touchKeys(keys.regrowObserved());
+  if (part2.listed !== void 0) applyListing(context, ledger, part2.listed);
+  const resolved2 = [];
+  for (const closure of part2.closures) {
+    const ref3 = closure.testFile;
+    if (!ledger.file(ref3)) continue;
+    touchKeys(keys.setClosure(closure));
+    resolved2.push(ref3);
+  }
+  if (part2.failures.size > 0) touchKeys(keys.unverifyRuntime([...part2.failures.keys()]));
+  if (part2.listed === null) touchKeys(keys.unverifyRuntime([null]));
+  touchKeys(await keys.trackUntracked());
+  const { stale, walks } = bindWalks(part2, resolved2, changedMeanwhile);
+  storeClosures(context, resolved2, walks);
+  touch(part2.reresolved);
+  const observedDirect = observedDirectOf(keys, changed2, part2.direct);
+  const catchUp = part2.catchUp === true || keyedAt !== void 0 && isCatchUp(context, ledger, changed2);
+  if (catchUp && part2.catchUp !== true && keyedAt !== void 0) {
+    for (const ref3 of part2.recent ?? []) ledger.queue.toCatchUp(ref3, keyedAt);
+  }
+  const options = {
+    direct: /* @__PURE__ */ new Set([...part2.direct, ...observedDirect]),
+    ...keyedAt === void 0 ? {} : { keyedAt },
+    ...catchUp ? { catchUp: true } : {}
+  };
+  const misses = ledger.settle(touched2.values(), changed2, options);
+  quietQueued(context, ledger, misses, part2.revision.changes);
+  settleFailures(ledger, part2.failures, part2.retrying, changed2, options);
+  if (!catchUp && keyedAt !== void 0 && part2.cut !== void 0) {
+    const { direct } = part2;
+    const { kept: kept6, reached } = editWork(context, ledger, part2.cut, changed2, direct, observedDirect);
+    const ids = [...reached, ...(part2.recent ?? []).map(testFileId)];
+    demote(ledger, ids, kept6, keyedAt);
+    quietCaughtUp(context, ledger, ids);
+  }
+  return stale;
+}
+function refsOf(ledger, listed8) {
+  return listed8 ?? [...ledger.files.values()].map((file) => file.ref);
+}
+var init_refinement = __esm({
+  "src/core/scheduler/refinement.ts"() {
+    "use strict";
+    init_resolution();
+    init_reverse_index();
+    init_text();
+    init_context();
+    init_edit_cut();
+    init_failures2();
+    init_fresh_walks();
+    init_omitted_test_files();
+    init_quiet();
+    init_revision();
+    init_runner_work_bound();
+    init_stored_affected();
+  }
+});
+
+// src/core/scheduler/refine-apply.ts
+async function applyRefinement(host, context, ledger, part2, refined, carry) {
+  let committed = false;
+  let imports2 = [];
+  const apply3 = async (n) => {
+    const changedMeanwhile = ledger.refineChanges ?? /* @__PURE__ */ new Set();
+    imports2 = importsWaiting(context.store, context.worktreeId);
+    const tried2 = n === 0 ? part2 : { ...part2, reresolved: [...part2.reresolved, ...lagging(context, ledger)] };
+    carry(await applyRunnerPart(context, ledger, tried2, changedMeanwhile, refined ?? void 0));
+    ledger.commit(refined === null ? {} : { refined });
+    committed = true;
+    ledger.refineChanges = null;
+    host.applied();
+  };
+  const operation = refined === null ? "applying observed paths" : `applying revision ${refined}`;
+  const once4 = (n) => host.lock.run(async () => {
+    if (!committed) await apply3(n);
+    importsKeyed(context.store, context.worktreeId, imports2);
+  }, operation);
+  const busy2 = host.busy?.();
+  if (busy2 === void 0) return once4(0);
+  await retryWhileBusy(once4, {
+    sliceMs: busy2.sliceMs,
+    waits: busy2.waits,
+    key: REFINE,
+    what: refined === null ? "the runner's observed paths" : `the runner part of revision ${refined}`,
+    stopped: () => host.closed()
+  });
+}
+async function recordRefined(host, context, revision) {
+  const { store, worktreeId } = context;
+  const write3 = async () => store.transaction(() => {
+    const key3 = refinedMetaKey(worktreeId);
+    const previous = Number(store.meta.get(key3) ?? Number.NaN);
+    if (!(previous >= revision)) store.meta.set(key3, String(revision));
+  });
+  const busy2 = host.busy?.();
+  if (busy2 === void 0) return write3();
+  await retryWhileBusy(write3, {
+    sliceMs: busy2.sliceMs,
+    waits: busy2.waits,
+    key: `${REFINE}:refined`,
+    what: `revision ${revision} as refined`,
+    stopped: () => host.closed()
+  });
+}
+function lagging(context, ledger) {
+  const { index } = context.keys;
+  return [...ledger.files.values()].filter((file) => index.key(file.ref) !== file.key).map((file) => file.ref);
+}
+var REFINE;
+var init_refine_apply = __esm({
+  "src/core/scheduler/refine-apply.ts"() {
+    "use strict";
+    init_busy();
+    init_scheduler();
+    init_imports_waiting();
+    init_refinement();
+    REFINE = "scheduler:refinement";
+  }
+});
+
+// src/core/scheduler/checkpoint-requests.ts
+import { randomUUID as randomUUID14 } from "node:crypto";
+function abandonFullSuite(ledger) {
+  const files5 = [...ledger.files.values()].map((file) => file.ref);
+  const record2 = ledger.checkpoints.abandon(randomUUID14(), "run-all", ledger.revision.number, files5);
+  ledger.commit();
+  return { ...record2, owner: record2.id };
+}
+function queueFullSuite(ledger, force, fresh = false, only2) {
+  const id = randomUUID14();
+  const revision = ledger.revision.number;
+  const { checkpoints } = ledger;
+  const lane = only2?.lane;
+  ledger.confirmHeld();
+  const files5 = [...ledger.files.values()].filter(
+    (file) => only2 === void 0 || only2.isSlow(file.ref) === (only2.lane === "slow")
+  );
+  const unrunnable = files5.filter((file) => file.key === null || file.blocked !== null);
+  const runnable2 = files5.filter((file) => file.key !== null && file.blocked === null);
+  const open7 = force ? runnable2 : runnable2.filter((file) => classify2(file) !== "current");
+  const joins = !fresh && open7.length + unrunnable.length > 0 && checkpoints.covers(refs([...open7, ...unrunnable]), force);
+  const attributed = joins ? checkpoints.active?.record.id ?? id : id;
+  let requested;
+  if (force) {
+    requested = runnable2;
+    const queue = joins ? [] : runnable2;
+    for (const file of queue) ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED), true);
+  } else {
+    for (const file of open7) file.unknownKey = null;
+    const pending = open7.filter((file) => file.phase !== null);
+    const misses = ledger.settle(
+      refs(open7.filter((file) => file.phase === null)),
+      NOTHING_CHANGED,
+      { checkpointId: attributed }
+    );
+    requested = [...pending, ...misses];
+  }
+  const testFiles3 = refs([...requested, ...unrunnable]);
+  let record2;
+  if (joins) {
+    record2 = checkpoints.join(id, "run-all", revision, testFiles3, lane);
+  } else if (testFiles3.length === 0 && checkpoints.active !== null) {
+    record2 = checkpoints.completeAtOnce(id, "run-all", revision, lane);
+  } else {
+    record2 = checkpoints.start(id, "run-all", revision, testFiles3, force, lane);
+    for (const file of unrunnable) checkpoints.failed(file.ref);
+  }
+  ledger.commit();
+  return { ...record2, owner: joins ? attributed : record2.id };
+}
+function fullSuiteRequest(request, host) {
+  const warmUp2 = request.observeIgnored === true;
+  const force = request.force === true || warmUp2;
+  const lane = request.lane;
+  return {
+    operation: "taking a squeal run --all request",
+    start: {
+      skip: "no closed answer: before the start the scheduler throws (`started`)",
+      afterPass: true
+    },
+    // An install the next reconciliation pass would find ends the wait first; still waiting,
+    // nothing can be listed or keyed and the checkpoint is abandoned at once (review wave 11, B1).
+    installWait: { passFirst: true, stage: (_, ledger) => abandonFullSuite(ledger) },
+    runnerWork: {
+      // Re-review of 0.1.434, B2: the runner is asked once; what it said is keyed, then stored
+      // with the checkpoint, each tried again on a busy store with the answers kept.
+      whenPending: async (context, ledger) => {
+        const retry2 = await fetchRunnerRetry(context, ledger);
+        if (retry2 === null) return null;
+        let touched2 = [];
+        return {
+          key: async (n) => {
+            touched2 = await keyRunnerRetry(context, retry2, n === 0 ? [] : lagging(context, ledger));
+          },
+          store: (held3) => storeRunnerRetry(context, held3, retry2, touched2)
+        };
+      }
+    },
+    store: {
+      stage: (context, ledger) => {
+        const { policy } = context;
+        const only2 = lane === void 0 ? void 0 : { lane, isSlow: slowView(policy).isSlow };
+        const record2 = queueFullSuite(ledger, force, warmUp2, only2);
+        host.quiet.end(context.now());
+        if (warmUp2) host.warmUp.start(context, ledger, record2);
+        const covered = record2.testFiles.flatMap((ref3) => ledger.file(ref3) ?? []);
+        return { answer: record2, covered };
+      }
+    },
+    wake: {
+      allLanes: "before the lock, as before row 011-322: after the transaction a slow selection planning meanwhile would miss the request (slow-tier.ts:357)"
+    }
+  };
+}
+function owedStrict(ledger, owed) {
+  if (owed === null) return [];
+  const strictIds = new Set(owed.owed.strict.map((ref3) => ledger.file(ref3)?.id));
+  return owed.owed.remaining.flatMap((ref3) => ledger.file(ref3) ?? []).filter((file) => strictIds.has(file.id) && file.key !== null);
+}
+function resumeOwed(ledger, taken3) {
+  const { checkpoints } = ledger;
+  if (taken3 === null) return;
+  const listed8 = taken3.owed.remaining.flatMap((ref3) => ledger.file(ref3) ?? []);
+  const strict = owedStrict(ledger, taken3);
+  const loose = listed8.filter((file) => !strict.includes(file));
+  const unrunnable = loose.filter((file) => file.key === null || file.blocked !== null);
+  const baseline2 = checkpoints.active;
+  const others = baseline2 === null ? loose.filter((file) => !unrunnable.includes(file) && classify2(file) !== "current") : [];
+  checkpoints.resume(taken3.records, refs([...strict, ...others, ...unrunnable]), refs(strict));
+  for (const file of strict) ledger.enqueue(file, priorityOf(file, NOTHING_CHANGED), true);
+  ledger.settle(refs(others.filter((file) => file.phase === null)), NOTHING_CHANGED);
+  for (const file of unrunnable) checkpoints.failed(file.ref);
+}
+function refs(files5) {
+  return files5.map((file) => file.ref);
+}
+var init_checkpoint_requests = __esm({
+  "src/core/scheduler/checkpoint-requests.ts"() {
+    "use strict";
+    init_context();
+    init_files();
+    init_queue();
+    init_refine_apply();
+    init_revision();
+    init_slow();
   }
 });
 
@@ -54819,7 +55295,7 @@ var init_ignored_marks = __esm({
 });
 
 // src/core/store/import-graph.ts
-import { inflateRawSync as inflateRawSync3 } from "node:zlib";
+import { inflateRawSync as inflateRawSync4 } from "node:zlib";
 function readImportGraph(store, worktreeId) {
   const conn = connectionOf(store);
   const tables = hasImportGraphTables(conn);
@@ -54852,7 +55328,7 @@ function readImportGraph(store, worktreeId) {
 }
 function decodeImports(row2) {
   const bytes2 = row2.imports;
-  const entries3 = JSON.parse(inflateRawSync3(bytes2).toString("utf8"));
+  const entries3 = JSON.parse(inflateRawSync4(bytes2).toString("utf8"));
   return new Map(entries3.map(([path, s, d]) => [path, { static: s, dynamic: d }]));
 }
 function environmentOf3(conn, project, hash4) {
@@ -55476,6 +55952,45 @@ async function selectNarrow(context, ledger, paths) {
   }
   return selection;
 }
+function narrowRequest(group, paths, groups3) {
+  return {
+    operation: `taking a squeal run ${group} <path>... request`,
+    start: {
+      skip: "no closed answer: once closed its runner-work wait rejects; before the start it throws"
+    },
+    // Review 0.1.411, B2: the answer says why nothing was queued, of the files it selected.
+    installWait: {
+      answer: (context, ledger, { revision, selection }, reason2) => ({
+        revision,
+        queued: 0,
+        narrow: narrowAnswer(context, ledger, group, selection, reason2)
+      })
+    },
+    runnerWork: {
+      always: async (context, ledger) => {
+        const revision = ledger.revision.number;
+        const resolved2 = groupView(context.policy).groups.find((g2) => g2.name === group);
+        if (resolved2 === void 0) return { answer: null };
+        if (resolved2.select.kind === "lint") {
+          throw new Error(`group ${group} is a lint group, which runs whole: squeal run ${group}`);
+        }
+        return { plan: { revision, selection: await selectNarrow(context, ledger, paths) } };
+      }
+    },
+    store: {
+      stage: (context, ledger, { revision, selection }) => {
+        const selected2 = selection.selected.get(group) ?? /* @__PURE__ */ new Set();
+        const { queued, asks } = queueNarrow(ledger, selected2);
+        groups3.lanes(context.policy);
+        groups3.get(group)?.narrow.add(asks, ledger);
+        const narrow2 = narrowAnswer(context, ledger, group, selection, null);
+        const covered = [...selected2].flatMap((id) => ledger.files.get(id) ?? []);
+        return { answer: { revision, queued, narrow: narrow2 }, covered };
+      }
+    },
+    wake: { lane: group }
+  };
+}
 function queueNarrow(ledger, ids) {
   const open7 = [...ids].flatMap((id) => ledger.files.get(id) ?? []).filter((file) => file.key !== null && file.blocked === null && classify2(file) !== "current");
   for (const file of open7) file.unknownKey = null;
@@ -55879,396 +56394,1054 @@ var init_record2 = __esm({
   }
 });
 
-// src/core/keys/resolution.ts
-import { posix as posix12 } from "node:path";
-function closuresToReresolve(changes, index, isDeclaredInput) {
-  const picked = /* @__PURE__ */ new Map();
-  const pick = (refs2) => {
-    for (const ref3 of refs2) picked.set(testFileId(ref3), ref3);
-  };
-  for (const change2 of changes) {
-    const dir2 = directoryOf(change2.path);
-    const base = posix12.basename(change2.path);
-    const edited = change2.oldHash !== null && change2.newHash !== null;
-    if (edited && base !== "package.json") continue;
-    if (!edited && isDeclaredInput(change2.path)) return index.testFiles();
-    if (base === "package.json") {
-      if (dir2 === "") return index.testFiles();
-      pick(index.below(dir2));
-      continue;
-    }
-    const dot = base.lastIndexOf(".");
-    const name3 = dot > 0 ? base.slice(0, dot) : base;
-    pick(index.inDirectory(dir2));
-    pick(index.below(dir2 === "" ? name3 : `${dir2}/${name3}`));
-    if (name3 === "index" && dir2 !== "") pick(index.inDirectory(directoryOf(dir2)));
-  }
-  return [...picked.keys()].sort(compare).map((id) => picked.get(id));
-}
-var init_resolution = __esm({
-  "src/core/keys/resolution.ts"() {
-    "use strict";
-    init_compare();
-    init_reverse_index();
-  }
-});
-
-// src/core/scheduler/fresh-walks.ts
-function changedUnder(environment, changedMeanwhile) {
-  const read5 = [...environment.files, ...(environment.imports ?? []).map((file) => file.path)];
-  return read5.some((path) => changedMeanwhile.has(path));
-}
-function bindWalks(part2, resolved2, changedMeanwhile) {
-  const keep = new Set(resolved2.map(testFileId));
-  const stale = [];
-  for (const closure of part2.closures) {
-    const ref3 = closure.testFile;
-    if (!keep.has(testFileId(ref3))) continue;
-    if ([ref3.path, ...closure.paths].some((path) => changedMeanwhile.has(path))) {
-      stale.push(ref3);
-      keep.delete(testFileId(ref3));
-    }
-  }
-  return {
-    stale,
-    walks: {
-      closures: part2.closures.filter((closure) => keep.has(testFileId(closure.testFile))),
-      environments: part2.environments?.filter((env) => !changedUnder(env, changedMeanwhile)) ?? null
-    }
-  };
-}
-var init_fresh_walks = __esm({
-  "src/core/scheduler/fresh-walks.ts"() {
-    "use strict";
-    init_reverse_index();
-  }
-});
-
-// src/core/scheduler/stored-affected.ts
-import { inflateRawSync as inflateRawSync4 } from "node:zlib";
-function affectedAsk(changes, content, seen) {
-  return {
-    changes,
-    ...content.previous === void 0 ? {} : { previous: content.previous },
-    runnerMoved: seen.recreated.size > 0 || content.environment || seen.retrying || seen.listed !== void 0 || seen.failures.size > 0
-  };
-}
-async function askAffected(context, ledger, ask2, paths, host) {
-  const answer4 = storedAffected(context, ledger, ask2, paths);
-  if (answer4 === null) return { affected: await host(), stored: void 0 };
-  return { affected: answer4, stored: (some) => storedAffected(context, ledger, ask2, some) };
-}
-function graphAffected(source2, ask2, paths) {
-  if (ask2.runnerMoved || paths.length === 0) return null;
-  for (const change2 of ask2.changes) {
-    if (change2.oldHash === null || change2.newHash === null) return null;
-    if (change2.path.endsWith(".snap") || source2.isEnvironmentInput(change2.path)) return null;
-  }
-  const listed8 = /* @__PURE__ */ new Set();
-  for (const ref3 of source2.testFiles) {
-    if (source2.runnerOf(ref3.project) !== "vitest" || !source2.hasClosure(ref3)) return null;
-    listed8.add(testFileId(ref3));
-  }
-  const changed2 = new Set(paths);
-  const direct = [];
-  const transitive = [];
-  for (const ref3 of source2.referencing(paths)) {
-    if (!listed8.has(testFileId(ref3))) continue;
-    if (changed2.has(ref3.path)) {
-      direct.push(ref3);
-      continue;
-    }
-    const key3 = keyBefore(source2, ask2, ref3);
-    const walk5 = key3 === null ? void 0 : source2.walk(ref3, key3);
-    const own = walk5?.find(([path]) => path === ref3.path);
-    if (walk5 === void 0 || own === void 0) return null;
-    if ([...own[1], ...own[2]].some((target) => changed2.has(target))) direct.push(ref3);
-    else if (walk5.some((entry4) => visits(entry4, changed2))) transitive.push(ref3);
-  }
-  return { direct: direct.sort(byRef), transitive: transitive.sort(byRef) };
-}
-function keyBefore(source2, ask2, ref3) {
-  const id = testFileId(ref3);
-  return ask2.previous?.has(id) === true ? ask2.previous.get(id) ?? null : source2.key(ref3);
-}
-function visits([path, statics, dynamics], changed2) {
-  return changed2.has(path) || statics.some((p) => changed2.has(p)) || dynamics.some((p) => changed2.has(p));
-}
-function storedAffected(context, ledger, ask2, paths) {
-  const conn = walkConnection(context);
-  if (conn === null) return null;
-  const { keys } = context;
-  const source2 = {
-    testFiles: [...ledger.files.values()].map((file) => file.ref),
-    referencing: (changed2) => keys.index.reverse.referencing(changed2),
-    hasClosure: (ref3) => keys.index.closure(ref3) !== void 0,
-    runnerOf: (project) => keys.runnerOf(project),
-    isEnvironmentInput: (path) => keys.isEnvironmentInput(path),
-    key: (ref3) => keys.index.key(ref3),
-    walk: (ref3, key3) => readWalk(conn, ref3, key3)
-  };
-  return graphAffected(source2, ask2, paths);
-}
-function walkConnection(context) {
-  try {
-    const conn = connectionOf(context.store);
-    return hasImportGraphTables(conn) ? conn : null;
-  } catch {
-    return null;
-  }
-}
-function readWalk(conn, ref3, key3) {
-  const row2 = conn.get(
-    "SELECT imports FROM test_file_imports WHERE project = ? AND path = ? AND key = ?",
-    ref3.project,
-    ref3.path,
-    key3
-  );
-  if (row2 === null) return void 0;
-  return JSON.parse(inflateRawSync4(row2.imports).toString("utf8"));
-}
-function byRef(a, b) {
-  return a.project === b.project ? compare(a.path, b.path) : compare(a.project, b.project);
-}
-var init_stored_affected = __esm({
-  "src/core/scheduler/stored-affected.ts"() {
-    "use strict";
-    init_compare();
-    init_reverse_index();
-    init_import_edges();
-    init_store3();
-  }
-});
-
-// src/core/scheduler/refinement.ts
-async function fetchRunnerPart(context, ledger, revision, content, carried, touched2 = [], rechecked) {
-  const { keys, runner } = context;
-  const bound = new RunnerPartBound(
-    context.runnerPartMs ?? runnerPartBoundMs(context.policy.runner.timeoutMs)
-  );
-  const changes = revision.changes;
-  const paths = changes.map((c) => c.path);
-  const structural2 = changes.some((c) => c.oldHash === null || c.newHash === null);
-  const failures = /* @__PURE__ */ new Map();
-  const retrying = ledger.broken;
-  const invalidations = [
-    ...changes.map(toInvalidatedPath),
-    ...touched2.map((path) => ({ path, kind: "touch" }))
-  ];
-  const invalidated = rechecked === void 0 ? await tryRunner(
-    context,
-    `invalidate (${listPaths(invalidations.map((p) => p.path))})`,
-    () => bound.call(() => runner.invalidate(invalidations)),
-    (reason2) => failed(failures, null, reason2)
-  ) : { recreatedProjects: rechecked };
-  const recreated = new Set(invalidated?.recreatedProjects ?? []);
-  const environments2 = recreated.size > 0 || content.environment || retrying ? await tryRunner(
-    context,
-    "environment",
-    () => bound.call(() => runner.environment()),
-    (reason2) => failed(failures, null, reason2)
-  ) : null;
-  const listed8 = structural2 || recreated.size > 0 || ledger.listingFailed ? await tryRunner(context, "testFiles", () => listTestFilesOf(context, bound)) : void 0;
-  const exists3 = new Set(
-    listed8 ? listed8.map(testFileId) : [...ledger.files.values()].map((f) => f.id)
-  );
-  const reresolve = /* @__PURE__ */ new Map();
-  const pick = (refs2) => {
-    for (const ref3 of refs2) {
-      const id = testFileId(ref3);
-      if (exists3.has(id)) reresolve.set(id, ref3);
-    }
-  };
-  pick((listed8 ?? []).filter((ref3) => !keys.index.closure(ref3)));
-  pick(
-    [...ledger.files.values()].filter((file) => recreated.has(file.ref.project) || file.blocked !== null).map((file) => file.ref)
-  );
-  pick(content.rekeyed);
-  pick(keys.runtimeUnresolved());
-  pick(carried);
-  pick(keys.index.reverse.referencing(touched2));
-  const moved4 = changes.filter((c) => !keys.isDeclaredInput(c.path));
-  pick(closuresToReresolve(moved4, keys.index.reverse, keys.isDeclaredInput));
-  const ask2 = affectedAsk(changes, content, { recreated, retrying, listed: listed8, failures });
-  const { affected: affected2, stored: stored3 } = await askAffected(
-    context,
-    ledger,
-    ask2,
-    paths,
-    () => tryRunner(
-      context,
-      `affected (${listPaths(paths)})`,
-      () => bound.call(() => runner.affected(paths))
-    )
-  );
-  pick(affected2?.direct ?? []);
-  pick(affected2?.transitive ?? []);
-  const closures = [];
-  for (const ref3 of reresolve.values()) {
-    const closure = await tryRunner(
-      context,
-      `closure of ${ref3.path}`,
-      () => bound.call(() => runner.closure(ref3)),
-      (reason2) => failed(failures, ref3.project, reason2)
-    );
-    if (closure !== null) closures.push(closure);
-  }
-  const cut = affected2 === null || content.catchUp === true ? void 0 : await fetchEditCut(
-    context,
-    refsOf(ledger, listed8),
-    paths,
-    affected2,
-    bound,
-    closures,
-    stored3
-  );
-  return {
-    revision,
-    retrying,
-    failures,
-    environments: environments2,
-    listed: listed8,
-    direct: new Set((affected2?.direct ?? []).map(testFileId)),
-    ...content.catchUp === true ? { catchUp: true } : {},
-    ...content.recent === void 0 ? {} : { recent: content.recent },
-    ...cut === void 0 ? {} : { cut },
-    reresolved: [...reresolve.values()],
-    closures
-  };
-}
-async function recheckRunner(context) {
-  const recheck = context.runner.recheck?.bind(context.runner);
-  if (recheck === void 0) return [];
-  const result = await tryRunner(context, "recheck", () => runnerPartBound(context).call(recheck));
-  return result?.recreatedProjects ?? [];
-}
-async function applyRunnerPart(context, ledger, part2, changedMeanwhile, keyedAt) {
-  const { keys } = context;
-  const changed2 = new Set(part2.revision.changes.map((c) => c.path));
-  const touched2 = /* @__PURE__ */ new Map();
-  const touch = (refs2) => {
-    for (const ref3 of refs2) touched2.set(testFileId(ref3), ref3);
-  };
-  const touchKeys = (keyChanges) => touch(keyChanges.map((c) => c.testFile));
-  if (part2.environments !== null) touchKeys(await keys.setEnvironments(part2.environments));
-  else touchKeys(await keys.regrowStartup());
-  touchKeys(keys.regrowObserved());
-  if (part2.listed !== void 0) applyListing(context, ledger, part2.listed);
-  const resolved2 = [];
-  for (const closure of part2.closures) {
-    const ref3 = closure.testFile;
-    if (!ledger.file(ref3)) continue;
-    touchKeys(keys.setClosure(closure));
-    resolved2.push(ref3);
-  }
-  if (part2.failures.size > 0) touchKeys(keys.unverifyRuntime([...part2.failures.keys()]));
-  if (part2.listed === null) touchKeys(keys.unverifyRuntime([null]));
-  touchKeys(await keys.trackUntracked());
-  const { stale, walks } = bindWalks(part2, resolved2, changedMeanwhile);
-  storeClosures(context, resolved2, walks);
-  touch(part2.reresolved);
-  const observedDirect = observedDirectOf(keys, changed2, part2.direct);
-  const catchUp = part2.catchUp === true || keyedAt !== void 0 && isCatchUp(context, ledger, changed2);
-  if (catchUp && part2.catchUp !== true && keyedAt !== void 0) {
-    for (const ref3 of part2.recent ?? []) ledger.queue.toCatchUp(ref3, keyedAt);
-  }
-  const options = {
-    direct: /* @__PURE__ */ new Set([...part2.direct, ...observedDirect]),
-    ...keyedAt === void 0 ? {} : { keyedAt },
-    ...catchUp ? { catchUp: true } : {}
-  };
-  const misses = ledger.settle(touched2.values(), changed2, options);
-  quietQueued(context, ledger, misses, part2.revision.changes);
-  settleFailures(ledger, part2.failures, part2.retrying, changed2, options);
-  if (!catchUp && keyedAt !== void 0 && part2.cut !== void 0) {
-    const { direct } = part2;
-    const { kept: kept6, reached } = editWork(context, ledger, part2.cut, changed2, direct, observedDirect);
-    const ids = [...reached, ...(part2.recent ?? []).map(testFileId)];
-    demote(ledger, ids, kept6, keyedAt);
-    quietCaughtUp(context, ledger, ids);
-  }
-  return stale;
-}
-function refsOf(ledger, listed8) {
-  return listed8 ?? [...ledger.files.values()].map((file) => file.ref);
-}
-var init_refinement = __esm({
-  "src/core/scheduler/refinement.ts"() {
-    "use strict";
-    init_resolution();
-    init_reverse_index();
-    init_text();
-    init_context();
-    init_edit_cut();
-    init_failures2();
-    init_fresh_walks();
-    init_omitted_test_files();
-    init_quiet();
-    init_revision();
-    init_runner_work_bound();
-    init_stored_affected();
-  }
-});
-
-// src/core/scheduler/refine-apply.ts
-async function applyRefinement(host, context, ledger, part2, refined, carry) {
-  let committed = false;
-  let imports2 = [];
-  const apply3 = async (n) => {
-    const changedMeanwhile = ledger.refineChanges ?? /* @__PURE__ */ new Set();
-    imports2 = importsWaiting(context.store, context.worktreeId);
-    const tried2 = n === 0 ? part2 : { ...part2, reresolved: [...part2.reresolved, ...lagging(context, ledger)] };
-    carry(await applyRunnerPart(context, ledger, tried2, changedMeanwhile, refined ?? void 0));
-    ledger.commit(refined === null ? {} : { refined });
-    committed = true;
-    ledger.refineChanges = null;
-    host.applied();
-  };
-  const operation = refined === null ? "applying observed paths" : `applying revision ${refined}`;
-  const once4 = (n) => host.lock.run(async () => {
-    if (!committed) await apply3(n);
-    importsKeyed(context.store, context.worktreeId, imports2);
-  }, operation);
-  const busy2 = host.busy?.();
-  if (busy2 === void 0) return once4(0);
-  await retryWhileBusy(once4, {
-    sliceMs: busy2.sliceMs,
-    waits: busy2.waits,
-    key: REFINE,
-    what: refined === null ? "the runner's observed paths" : `the runner part of revision ${refined}`,
-    stopped: () => host.closed()
-  });
-}
-async function recordRefined(host, context, revision) {
-  const { store, worktreeId } = context;
-  const write3 = async () => store.transaction(() => {
-    const key3 = refinedMetaKey(worktreeId);
-    const previous = Number(store.meta.get(key3) ?? Number.NaN);
-    if (!(previous >= revision)) store.meta.set(key3, String(revision));
-  });
-  const busy2 = host.busy?.();
-  if (busy2 === void 0) return write3();
-  await retryWhileBusy(write3, {
-    sliceMs: busy2.sliceMs,
-    waits: busy2.waits,
-    key: `${REFINE}:refined`,
-    what: `revision ${revision} as refined`,
-    stopped: () => host.closed()
-  });
-}
-function lagging(context, ledger) {
-  const { index } = context.keys;
-  return [...ledger.files.values()].filter((file) => index.key(file.ref) !== file.key).map((file) => file.ref);
-}
-var REFINE;
-var init_refine_apply = __esm({
-  "src/core/scheduler/refine-apply.ts"() {
+// src/core/scheduler/request-intake.ts
+var NO_PASS, DEFERRED, RequestIntake;
+var init_request_intake = __esm({
+  "src/core/scheduler/request-intake.ts"() {
     "use strict";
     init_busy();
+    init_connection();
+    NO_PASS = "the change feed delivered no reconciliation pass that started after the request (its pass failed, or the daemon closed first), so no checkpoint was planned";
+    DEFERRED = /* @__PURE__ */ Symbol("deferred");
+    RequestIntake = class {
+      #host;
+      /** Spec 021 D2: each retried request waits under a key of its own. */
+      #retries = 0;
+      constructor(host) {
+        this.#host = host;
+      }
+      take(request) {
+        if ("now" in request.store) return this.#now(request);
+        return this.#take(request);
+      }
+      #now(request) {
+        const host = this.#host;
+        if (!host.open()) return request.start.closed;
+        if (host.waiting() !== null) return request.installWait.atOnce;
+        const { context, ledger } = host.started();
+        const answer4 = request.store.now(context, ledger);
+        host.pump();
+        return answer4;
+      }
+      async #take(request) {
+        const host = this.#host;
+        const { start: start2, installWait, wake } = request;
+        if ("closed" in start2 && (!host.open() || start2.nothing === true)) return start2.closed;
+        if ("atOnce" in installWait && host.waiting() !== null) return installWait.atOnce;
+        if ("afterPass" in start2) await this.#afterPass();
+        if ("passFirst" in installWait && host.awaitingInstall()) {
+          await this.#request(request.operation, () => host.installPass());
+        }
+        if ("allLanes" in wake) host.wakeAll();
+        const answer4 = await this.#locked(request);
+        host.pump();
+        return answer4;
+      }
+      /** Row 011-198: once a pass that started after the request was delivered. */
+      async #afterPass() {
+        const passes = this.#host.passes();
+        if (passes === void 0) return;
+        const asked = passes.started();
+        await passes.pass();
+        if ((passes.deliveredPass()?.number ?? 0) <= asked) throw new Error(NO_PASS);
+      }
+      /** Rules 2 to 6 under the lock: once, behind the runner work, or again on each busy try. */
+      #locked(request) {
+        const { operation, runnerWork, store } = request;
+        const { lock: lock2 } = this.#host;
+        if ("apply" in store) {
+          return lock2.run(() => {
+            const { context, ledger } = this.#host.started();
+            const answer4 = store.apply(context, ledger);
+            this.#wake(request.wake);
+            return answer4;
+          }, operation);
+        }
+        if ("always" in runnerWork) {
+          return this.#host.afterRunnerWork(async () => {
+            const { context, ledger } = this.#host.started();
+            const reason2 = this.#host.waiting();
+            const planned = await runnerWork.always(context, ledger);
+            if ("answer" in planned) return planned.answer;
+            const { installWait } = request;
+            if (reason2 !== null && "answer" in installWait) {
+              return installWait.answer(context, ledger, planned.plan, reason2);
+            }
+            return this.#request(
+              operation,
+              async () => this.#staged(this.#stage(request, store, planned.plan, reason2, null, false))
+            );
+          }, operation);
+        }
+        return this.#perTry(request, store);
+      }
+      /**
+       * A request with no runner work, or whose runner work is only pending:
+       * the lock taken again on each busy try (today's quirk 1). A stage that
+       * met pending runner work waits for it, under the lock through every try.
+       */
+      async #perTry(request, store) {
+        const { operation, runnerWork } = request;
+        const host = this.#host;
+        const plan2 = void 0;
+        if (store.outside !== void 0) {
+          const { release: release3, work } = store.outside;
+          const released = await host.lock.run(() => {
+            const { context, ledger } = host.started();
+            return host.waiting() === null ? release3(context, ledger) : null;
+          }, operation);
+          if (released !== null) {
+            work();
+            return released.answer;
+          }
+        }
+        const pending = "whenPending" in runnerWork ? runnerWork.whenPending : null;
+        const first2 = await this.#request(
+          operation,
+          () => host.lock.run(
+            () => this.#stage(request, store, plan2, host.waiting(), null, pending !== null),
+            operation
+          )
+        );
+        if (first2 !== DEFERRED || pending === null) return this.#staged(first2);
+        return host.afterRunnerWork(async () => {
+          const { context, ledger } = host.started();
+          const reason2 = host.waiting();
+          const recovered = reason2 === null ? await pending(context, ledger) : null;
+          if (recovered !== null) await this.#request(operation, (n) => recovered.key(n));
+          return this.#request(
+            operation,
+            async () => this.#staged(this.#stage(request, store, plan2, reason2, recovered, false))
+          );
+        }, `${operation} after the runner work`);
+      }
+      /**
+       * One try, under the lock: the install-wait answer or the stage, in one
+       * transaction; after its commit, the stage's covered files are recorded
+       * and its lane or the tiers in flight woken. An install-wait answer
+       * records and wakes nothing.
+       */
+      #stage(request, store, plan2, reason2, recovered, deferWhenPending) {
+        const { installWait } = request;
+        const done = this.#transact((context, ledger) => {
+          if (reason2 !== null && "stage" in installWait) {
+            return { waited: installWait.stage(context, ledger) };
+          }
+          if (deferWhenPending && (ledger.broken || this.#host.runnerPending())) return DEFERRED;
+          recovered?.store(ledger);
+          return store.stage(context, ledger, plan2);
+        });
+        if (done === DEFERRED) return DEFERRED;
+        if ("waited" in done) return done.waited;
+        this.#host.record(done.covered);
+        this.#wake(request.wake);
+        return done.answer;
+      }
+      #staged(answer4) {
+        if (answer4 === DEFERRED) throw new Error("squeal scheduler: a stage deferred twice");
+        return answer4;
+      }
+      /** Rule 6 after the record; `allLanes` woke before the lock. */
+      #wake(wake) {
+        if ("lane" in wake) this.#host.wakeLane(wake.lane);
+        else if ("cutTiers" in wake) this.#host.cutTiers();
+      }
+      /**
+       * Spec 021 D2 (review 0.1.434, B2): `stage`, the synchronous part of a
+       * socket request that changes the ledger and writes it, in one store
+       * transaction taken before it changes anything. A busy store refuses that
+       * transaction at its start, so the stage can be tried again whole
+       * (`#request`) and never runs twice. Another error rolls the store back,
+       * and the ledger is put back as the store holds it (`Ledger.hold`).
+       */
+      #transact(stage2) {
+        const { context, ledger } = this.#host.started();
+        const restore2 = ledger.hold([...ledger.files.values()].map((file) => file.ref));
+        try {
+          return context.store.transaction(() => stage2(context, ledger));
+        } catch (error) {
+          restore2();
+          throw error;
+        }
+      }
+      /**
+       * `once`, a socket request's write (`#transact`, its pass, or a runner
+       * retry's keys), tried again while a busy store refuses it, a slice per
+       * try (spec 021 D2), with `busyWaits`; once without. `n` counts the tries.
+       * A refusal once the scheduler closes or its daemon stops answers the
+       * request with an error that says the store was busy, so no request waits
+       * past the daemon.
+       */
+      async #request(operation, once4) {
+        const busy2 = this.#host.busy();
+        if (busy2 === void 0) return once4(0);
+        try {
+          return await retryWhileBusy(once4, {
+            sliceMs: busy2.sliceMs,
+            waits: busy2.waits,
+            key: `scheduler:request:${++this.#retries}`,
+            what: operation.replace(/^taking /, ""),
+            stopped: () => this.#host.stopping()
+          });
+        } catch (error) {
+          if (!isBusy(error)) throw error;
+          throw new Error(`${operation}: the store was still busy when the daemon stopped`, {
+            cause: error
+          });
+        }
+      }
+    };
+  }
+});
+
+// src/core/slow/guard.ts
+import { availableParallelism as availableParallelism6, loadavg as loadavg3 } from "node:os";
+function loadPerCpu(wait = {}) {
+  const load = wait.load ?? loadavg3;
+  const cpus3 = wait.cpus ?? availableParallelism6;
+  return (load()[0] ?? 0) / Math.max(1, cpus3());
+}
+var init_guard = __esm({
+  "src/core/slow/guard.ts"() {
+    "use strict";
+  }
+});
+
+// src/core/scheduler/commit-asks.ts
+function mayRunAt(file, key3) {
+  return file.phase !== null && (file.key === key3 || file.runningKey === key3);
+}
+var CommitAsks;
+var init_commit_asks = __esm({
+  "src/core/scheduler/commit-asks.ts"() {
+    "use strict";
+    CommitAsks = class {
+      #keys = /* @__PURE__ */ new Map();
+      add(asks, ledger) {
+        for (const { ref: ref3, key: key3 } of asks) {
+          const file = ledger.file(ref3);
+          if (file !== void 0) this.#keys.set(file.id, key3);
+        }
+      }
+      /** Whether a commit asked for `ref` at its key now. */
+      has(ledger, ref3) {
+        if (this.#keys.size === 0) return false;
+        const file = ledger.file(ref3);
+        return file !== void 0 && file.key !== null && this.#keys.get(file.id) === file.key;
+      }
+      /** Drops the asks that can no longer run (above). */
+      prune(ledger) {
+        for (const [id, key3] of this.#keys) {
+          const file = ledger.files.get(id);
+          if (file === void 0 || !mayRunAt(file, key3)) this.#keys.delete(id);
+        }
+      }
+      get size() {
+        return this.#keys.size;
+      }
+    };
+  }
+});
+
+// src/core/scheduler/group-limits.ts
+function poolLaneOf2(group) {
+  return poolLaneOf(group.limits.priority);
+}
+function tierKindOf(group) {
+  return group.limits.priority === "low" ? "slow" : "edit";
+}
+function fullWidth(group, policy) {
+  return Math.max(1, group.limits.maxParallel ?? policy.runner.tierSize);
+}
+function workersPerFile(group) {
+  return Math.max(1, group.limits.maxWorkers ?? 1);
+}
+function ungated(group) {
+  const { at: at2, after: after3, quietMs, limits: limits2 } = group;
+  return at2 === "edit" && after3.length === 0 && quietMs === 0 && limits2.priority === "normal" && limits2.maxWorkers === null;
+}
+function slotDirOf(group, base, at2) {
+  return slotFiles(group, at2?.scope ?? "user").dir(base, at2?.commonDir ?? base);
+}
+var init_group_limits = __esm({
+  "src/core/scheduler/group-limits.ts"() {
+    "use strict";
+    init_pool();
+    init_slot_files();
+  }
+});
+
+// src/core/scheduler/slow-trigger.ts
+function momentHolds(context, group) {
+  switch (group.at) {
+    case "edit":
+      return (quietLeftMs(context, group) ?? 0) <= 0;
+    case "pause":
+    case "stop":
+      return consumersIdle(context.store, context.worktreeId, context.now());
+    case "commit":
+    case "manual":
+      return false;
+  }
+}
+function quietLeftMs(context, group) {
+  if (group.at !== "edit") return null;
+  const latest = context.store.revisions.latest(context.worktreeId);
+  return latest === null ? 0 : latest.createdAt + group.quietMs - context.now();
+}
+function consumersIdle(store, worktreeId, now) {
+  for (const record2 of store.consumers.list(worktreeId)) {
+    const heard = Math.max(record2.lastSeenAt, record2.lastDeliveredAt ?? 0);
+    if (heard < now - CONSUMER_EXPIRY_MS) continue;
+    if (readTurn(store, record2.consumer).turn === "in-turn") return false;
+  }
+  return true;
+}
+var init_slow_trigger = __esm({
+  "src/core/scheduler/slow-trigger.ts"() {
+    "use strict";
+    init_turn();
+    init_store_records();
+  }
+});
+
+// src/core/scheduler/slow-tier.ts
+function runnerOf2(context, ref3) {
+  const lane = laneOf(context, ref3);
+  const { nodeTest, pytest } = context.policy;
+  const own = [...nodeTest, ...pytest].some((project) => project.name === ref3.project);
+  return own ? `${lane}\0${ref3.project}` : lane;
+}
+function noSlot(want) {
+  let permits = want;
+  return {
+    get permits() {
+      return permits;
+    },
+    shrinkTo(count3) {
+      permits = Math.min(permits, Math.max(1, count3));
+    },
+    release() {
+      permits = 0;
+    }
+  };
+}
+function longest(durations2) {
+  const known3 = durations2.filter((ms2) => ms2 !== null);
+  return known3.length === 0 ? null : Math.max(...known3);
+}
+function queueGroup(context, ledger, group) {
+  const { of } = groupView(context.policy);
+  const open7 = [...ledger.files.values()].filter(
+    (file) => of(file.ref).name === group && file.key !== null && file.blocked === null && classify2(file) !== "current"
+  );
+  for (const file of open7) file.unknownKey = null;
+  const pending = open7.filter((file) => file.phase !== null);
+  const misses = ledger.settle(
+    open7.filter((file) => file.phase === null).map((file) => file.ref),
+    NOTHING_CHANGED
+  );
+  ledger.commit();
+  return pending.length + misses.length;
+}
+var SLOW_RECHECK_MS, SLOT_HELD_NOTE_MS, DEFERRED2, SlowTier;
+var init_slow_tier = __esm({
+  "src/core/scheduler/slow-tier.ts"() {
+    "use strict";
+    init_check_groups();
+    init_guard();
+    init_slot();
+    init_slot_files();
+    init_state2();
     init_scheduler();
-    init_imports_waiting();
-    init_refinement();
-    REFINE = "scheduler:refinement";
+    init_capacity();
+    init_claims();
+    init_commit_asks();
+    init_context();
+    init_files();
+    init_group_limits();
+    init_slow();
+    init_slow_trigger();
+    init_tiers();
+    SLOW_RECHECK_MS = 15e3;
+    SLOT_HELD_NOTE_MS = 6e4;
+    DEFERRED2 = "deferred";
+    SlowTier = class {
+      constructor(host, options = {}, group = SLOW_GROUP) {
+        this.host = host;
+        this.options = options;
+        this.group = group;
+      }
+      host;
+      options;
+      group;
+      /** A `run --slow` request is open until no slow file is pending. */
+      #requested = false;
+      /** Spec 019 D5 step 1 (row 019-22): the files a commit asked a `commit` group's lane to run. */
+      asks = new CommitAsks();
+      /**
+       * Spec 019 D6 "Narrow run" (row 019-49): the files `squeal run <group>
+       * <path>...` asked to run, each at its key then. They run whatever the
+       * group's moment, past the load guard and without a pool grant, as an
+       * open request does; the group's other files keep waiting.
+       */
+      narrow = new CommitAsks();
+      /** What is left of `slow.maxDeferMs` for the pass; `null` between passes. */
+      #budgetMs = null;
+      #slotMissedSince = null;
+      /** This worktree's waiter's mark is in the slot's directory. */
+      #marked = false;
+      /**
+       * A departure drain (011 C9 and 004 D2 as amended 2026-10-21, row
+       * 011-93): it leaves no waiter mark and takes no permit while another
+       * worktree's mark is fresh, so a live session's slow files go first.
+       */
+      draining = false;
+      /** The last pass took the slot: its next skips one turn for another worktree's mark. */
+      #tookLast = false;
+      /** When a slow run last ended (`ended`): a drain's wait counts from it (row 011-163). */
+      #endedAt = null;
+      #slotNoted = false;
+      #timer = null;
+      /** When `#timer` fires, so an earlier deadline replaces it. */
+      #timerAt = 0;
+      /**
+       * While the load guard holds the lane: when its wait began
+       * (`performance.now`), and the runner lane its files run in. The next
+       * `next` or a `preempt` ends the wait and takes its time off the budget.
+       */
+      #deferred = null;
+      /** Counts `preempt` calls, so one between selection and the guard is not lost. */
+      #preemptions = 0;
+      /** What this tier last published, as stored, so `close` clears only its own. */
+      #published = null;
+      /** The tier this lane runs, until its record ends it (`endedOnce`). */
+      #flying = null;
+      #dir = null;
+      /** The group under the policy in force; `null` once a reload dropped it. */
+      #resolved(context) {
+        return groupView(context.policy).groups.find((group) => group.name === this.group) ?? null;
+      }
+      /** The files of the group in the queue, in run order. */
+      #queued(ledger) {
+        return ledger.orderedGroup(this.group);
+      }
+      /**
+       * The group's slot directory (`slotDirOf`), read once: under `"repository"`
+       * the repository's id is read from its store directory, and the pump asks
+       * on every turn.
+       */
+      #slotDir() {
+        this.#dir ??= slotDirOf(
+          this.group,
+          this.options.slotDir ?? slowSlotDir(),
+          this.options.slotScope
+        );
+        return this.#dir;
+      }
+      /** A `run --slow` request is open: the daemon is in use while slow files are pending (row 011-92). */
+      get requested() {
+        return this.#requested;
+      }
+      /** When a slow run last ended, recorded, discarded or put back; `null` before the first. */
+      get endedAt() {
+        return this.#endedAt;
+      }
+      /**
+       * The runner lane whose files wait for the load guard now, `null` when
+       * none: its instance stays open through the wait (row 011-211).
+       */
+      get deferring() {
+        return this.#deferred?.lane ?? null;
+      }
+      /**
+       * `run --slow`: the pending slow files run behind fast work, whatever the
+       * turns and the load (trigger b; D3 as amended 2026-10-14, task 004-59). A
+       * load guard wait in progress gives way, so the pump plans again without it.
+       */
+      request() {
+        this.#requested = true;
+        this.preempt();
+      }
+      /**
+       * A consumer may have gone idle (task 001-281): with slow files queued the
+       * pump plans again now instead of at `SLOW_RECHECK_MS`. It starts nothing a
+       * trigger does not allow; `next` decides as on the timer. Before the
+       * scheduler has started it does nothing: the start pumps as it ends.
+       */
+      nudge() {
+        if (this.host.closed() || !this.host.ready()) return;
+        if (this.#queued(this.host.started().ledger).length > 0) this.host.pump();
+      }
+      /** Fast work may be coming (a revision, `run --all`): a load guard wait gives way to it. */
+      preempt() {
+        this.#preemptions += 1;
+        this.#endDeferral();
+      }
+      /** The load guard's wait ends: the pass's budget keeps what it did not take. */
+      #endDeferral() {
+        const deferred = this.#deferred;
+        if (deferred === null) return;
+        this.#deferred = null;
+        if (this.#budgetMs === null) return;
+        this.#budgetMs = Math.max(0, this.#budgetMs - (performance.now() - deferred.from));
+      }
+      close() {
+        if (this.#timer !== null) clearTimeout(this.#timer);
+        this.#timer = null;
+        this.preempt();
+      }
+      /**
+       * Called by the pump when no fast tier is left to select. The load guard
+       * waits before the slot is taken, so a wait never holds it, and the slot is
+       * handed over between files (D2, lessons defect 2): a worktree that misses
+       * it leaves a waiter's mark, and one that finds another's mark skips one turn.
+       * The guard decides whether the slow lane runs, never which worktree runs
+       * it (D3 as amended, task 004-84): it waits only while the slot is free,
+       * and a marked waiter takes the slot at a handover without a new wait.
+       * The guard's wait holds this lane only (spec 019 D3, review 0.1.396 B1):
+       * it publishes the wait, arms a recheck and returns `null`, so the pump
+       * asks the other lanes; the recheck's `next` reads the load again with
+       * what is left of the budget. `launch` starts the run under the lock, in
+       * the block whose check found no hold, so no run starts once a hold began
+       * (011 C9; review 0.1.269, B1).
+       */
+      async next(launch) {
+        this.#endDeferral();
+        if (this.host.closed()) return "again";
+        const preemptions = this.#preemptions;
+        const refs2 = await this.host.lock.run(
+          () => this.#candidates(),
+          `listing the queued files of group ${this.group}`
+        );
+        const { context } = this.host.started();
+        const dir2 = this.#slotDir();
+        const group = this.#resolved(context);
+        if (refs2.length === 0 || group === null) {
+          this.#unmark(dir2, context.worktreeId);
+          return null;
+        }
+        if (preemptions !== this.#preemptions) return "again";
+        const guard = this.#guardOf(context, dir2, group, refs2);
+        if (guard === DEFERRED2) return null;
+        if (!await this.#mayStart(preemptions)) return "again";
+        if (guard === "held") return this.#waitAtSlot(context, dir2, false);
+        const want = this.#want(context, group, guard, refs2.length);
+        const slot2 = this.#takeSlot(context, dir2, group, want);
+        if (slot2 === null) return null;
+        return this.#launch(refs2, guard.ranUnderLoad, slot2, group, launch);
+      }
+      /**
+       * The load guard for the lane whose first file is `first`, or none: an
+       * open request or a marked waiter skips it, as does a group without
+       * `deferUnderLoad` (`#skipGuard`).
+       */
+      #guardOf(context, dir2, group, refs2) {
+        const defer = group.limits.deferUnderLoad;
+        return this.#explicit(refs2) || this.#marked || defer === null ? this.#skipGuard(defer) : this.#guard(dir2, group, defer, laneOf(context, refs2[0]));
+      }
+      /** An open request, or a narrow run's ask for one of `refs` (row 019-49): no guard, no grant. */
+      #explicit(refs2) {
+        if (this.#requested) return true;
+        if (this.narrow.size === 0) return false;
+        const { ledger } = this.host.started();
+        return refs2.some((ref3) => this.narrow.has(ledger, ref3));
+      }
+      /**
+       * After the guard's wait: no preemption since `preemptions` was read, the
+       * daemon's runtime still there and no hold begun; else the pump plans again.
+       */
+      async #mayStart(preemptions) {
+        if (await this.host.runtimeMissing() || preemptions !== this.#preemptions) return false;
+        return await this.host.holdCheck() === "free" && preemptions === this.#preemptions;
+      }
+      /**
+       * How many of `count` files the tier may take: a `normal` group's, or a
+       * `low` one's on an idle machine with no `normal` work (`normalIdle`), up
+       * to its full width; else one (spec 019 D3).
+       */
+      #want(context, group, guard, count3) {
+        const wide = group.limits.priority === "normal" || guard.idle && this.host.normalIdle();
+        return wide ? Math.min(fullWidth(group, context.policy), count3) : 1;
+      }
+      /**
+       * The group's slot for `want` files; a group without `maxParallel` takes
+       * no shared slot (D3). `null` when the files wait at the slot: another
+       * worktree holds it, or this one yields its turn (`#waitAtSlot`).
+       */
+      #takeSlot(context, dir2, group, want) {
+        const permits = group.limits.maxParallel;
+        const yieldTurn = permits !== null && (this.#tookLast || this.draining) && othersWaitingForSlot(dir2, context.worktreeId, void 0, this.group);
+        const owner2 = { pid: process.pid, worktreeId: context.worktreeId };
+        const slot2 = yieldTurn ? null : permits === null ? noSlot(want) : acquireSlowSlot({ dir: dir2, owner: owner2, permits, want, group: this.group });
+        if (slot2 === null) return this.#waitAtSlot(context, dir2, yieldTurn);
+        this.#tookLast = true;
+        this.#unmark(dir2, context.worktreeId);
+        this.#slotMissedSince = null;
+        this.#slotNoted = false;
+        return slot2;
+      }
+      /**
+       * Selects the tier under the lock and launches it with `slot`, whose
+       * permits go back when no tier flies.
+       */
+      async #launch(refs2, ranUnderLoad, slot2, group, launch) {
+        let flown = false;
+        try {
+          const selected2 = await this.host.lock.run(() => {
+            const picked = this.#select(refs2, ranUnderLoad, slot2, group);
+            if (picked === null || typeof picked !== "object") return picked;
+            launch({ ...picked, slot: slot2 });
+            flown = true;
+            return "flown";
+          }, `selecting a tier of group ${this.group}`);
+          if (selected2 === "claimed") return null;
+          if (selected2 === WAIT_FOR_CAPACITY) {
+            this.#publish({ kind: "waiting", for: "pool" });
+            return null;
+          }
+          return selected2 === null ? "again" : selected2;
+        } finally {
+          if (!flown) slot2.release();
+        }
+      }
+      /**
+       * The groups `after` names go first (spec 019 D1): a group's while it has
+       * a file queued or a tier in flight. For `tests`, the default `slow`
+       * group's: fast work of this daemon, an edit's always (004 D2 as amended
+       * 2026-10-09), its fast backlog (a baseline, a checkpoint, `run --all`)
+       * queued or running unless a request is open (D2 as amended 2026-10-14,
+       * task 004-60), so a warm-up's slow files never contend with its fast
+       * ones. During a departure drain only the drain's fast work counts: the
+       * paused backlog is not pending (`fastIdle`, row 011-93).
+       */
+      #waitsForAfter(group) {
+        return group.after.some(
+          (name3) => name3 === TESTS_GROUP ? this.host.editPending() || !this.#requested && !this.host.fastIdle() : this.host.groupHolds(name3)
+        );
+      }
+      /**
+       * Under the lock: a queued file of this group holds the groups that name
+       * it in `after` (spec 019 D1). At `commit` and `manual` (`heldUntilAsked`)
+       * only one a trigger lets run does: a commit asked for it at its key, or
+       * a request or a checkpoint covers it. Any other runs for no one until a
+       * later commit or `squeal run <group>`, so a follower would wait for it
+       * forever (row 019-26, review 0.1.398 B2; row 019-47). At any other
+       * moment every queued file holds.
+       */
+      holdsFollowers() {
+        const { context, ledger } = this.host.started();
+        const queued = this.#queued(ledger);
+        const group = this.#resolved(context);
+        if (group === null || !heldUntilAsked(group.at)) return queued.length > 0;
+        return queued.some(this.#trigger(context, ledger, group));
+      }
+      /**
+       * Another worktree holds the slot, or this one yields its turn: the files
+       * wait at the slot, marked as a waiter unless draining, and retry at
+       * `SLOW_RECHECK_MS`.
+       */
+      #waitAtSlot(context, dir2, yielded) {
+        this.#tookLast = false;
+        if (this.draining) {
+          this.#unmark(dir2, context.worktreeId);
+        } else {
+          markSlotWaiter(dir2, context.worktreeId, this.group);
+          this.#marked = true;
+        }
+        this.#publish({ kind: "waiting", for: "slot" });
+        if (!yielded) this.#slotMissed(context, dir2);
+        this.#arm();
+        return null;
+      }
+      #unmark(dir2, worktreeId) {
+        if (!this.#marked) return;
+        this.#marked = false;
+        clearSlotWaiter(dir2, worktreeId, this.group);
+      }
+      /**
+       * Under the lock: the slow files a trigger lets run now, in order, all of
+       * the first one's lane and runner (`runnerOf`); none when none may. A file
+       * whose key another worktree runs is none (`claimOf`, task 001-205): the
+       * pump waits on the claim without taking the slot, and a result that
+       * landed is applied here, so a drain before exit (004-29) ends with it.
+       */
+      #candidates() {
+        const { context, ledger } = this.host.started();
+        const queued = this.#queued(ledger);
+        const group = this.#resolved(context);
+        this.asks.prune(ledger);
+        this.narrow.prune(ledger);
+        if (queued.length === 0 || group === null) {
+          this.#requested = false;
+          this.#budgetMs = null;
+          this.#publish(null);
+          return [];
+        }
+        if (this.#waitsForAfter(group)) {
+          this.#publish({ kind: "waiting", for: "fast" });
+          return [];
+        }
+        const triggered = queued.filter(this.#trigger(context, ledger, group));
+        const claims2 = new Map(triggered.map((ref3) => [ref3, claimOf(ledger, ref3)]));
+        const free = triggered.filter((ref3) => claims2.get(ref3) === "free");
+        const first2 = free[0];
+        if (first2 !== void 0) {
+          const runner = runnerOf2(context, first2);
+          return free.filter((ref3) => runnerOf2(context, ref3) === runner);
+        }
+        if ([...claims2.values()].includes("settled")) return this.#candidates();
+        if ([...claims2.values()].includes("waits")) return [];
+        this.#publishUntriggered(group);
+        const quiet = quietLeftMs(context, group);
+        this.#arm(quiet === null ? this.#recheckMs() : Math.max(1, quiet));
+        return [];
+      }
+      /**
+       * Under the lock: whether a trigger lets a file of the group run now. Its
+       * moment (`momentHolds`; for the default `slow` group trigger (a) by
+       * `slow.trigger`), an open request, a commit's ask at the file's key (019
+       * D5 step 1), a narrow run's ask at it (019 D6, row 019-49), or the
+       * file's open `run --all` checkpoint. Explicit
+       * requests ignore moments (spec 019 D1).
+       */
+      #trigger(context, ledger, group) {
+        const moment2 = momentHolds(context, group);
+        const runAll = ledger.checkpoints.active?.explicit === true;
+        return (ref3) => moment2 || this.#requested || this.asks.has(ledger, ref3) || this.narrow.has(ledger, ref3) || runAll && ledger.checkpoints.idFor(ref3) !== null;
+      }
+      /**
+       * What pending files no trigger lets run wait for (004 D8): the agent's
+       * pause at `pause` or `stop` (`"idle"`); at `edit` only the quiet window,
+       * which the line states as pending with no reason; at `commit` and
+       * `manual` a request, which the group's line names (`group-text.ts`).
+       */
+      #publishUntriggered(group) {
+        if (group.at === "pause" || group.at === "stop") {
+          this.#publish({ kind: "waiting", for: "idle" });
+        } else this.#publish(null);
+      }
+      /**
+       * An open `run --slow` request skips the load guard (D3 as amended
+       * 2026-10-14, task 004-59): no wait, no budget spent, no "ran under load"
+       * note. So does a marked waiter, which takes the slot at a handover (task
+       * 004-84): its file replaces the one that ran, so the wait would lower no
+       * load. The load is still read once, since D2's idle width needs it below
+       * `slow.maxLoadPerCpu`: under load the tier runs one file at a time.
+       */
+      #skipGuard(defer) {
+        if (defer === null) return { ranUnderLoad: null, idle: true };
+        return { ranUnderLoad: null, idle: this.#load() <= defer.maxLoadPerCpu };
+      }
+      /** The 1-minute load per CPU the guard reads (`loadPerCpu`). */
+      #load() {
+        return loadPerCpu({
+          ...this.options.load === void 0 ? {} : { load: this.options.load },
+          ...this.options.cpus === void 0 ? {} : { cpus: this.options.cpus }
+        });
+      }
+      /**
+       * The load guard (D3) with the pass's remaining budget, read once: the
+       * load is at or below `maxLoadPerCpu`, or the budget is spent, and the
+       * file runs (under the load at the bound). Otherwise `"held"` when every
+       * permit of the slot in `dir` is held (task 004-84): the files wait at the
+       * slot. Else `DEFERRED`: the lane publishes that it waits for the load and
+       * arms its recheck, at most the budget left; its `lane` is `deferring`.
+       */
+      #guard(dir2, group, defer, lane) {
+        const budget2 = this.#budgetMs ?? defer.maxDeferMs;
+        this.#budgetMs = budget2;
+        const load = this.#load();
+        if (load <= defer.maxLoadPerCpu) return { ranUnderLoad: null, idle: true };
+        if (budget2 <= 0) return { ranUnderLoad: load, idle: false };
+        const permits = group.limits.maxParallel;
+        if (permits !== null && slowSlotHeld({ dir: dir2, permits, group: this.group })) return "held";
+        this.#deferred = { from: performance.now(), lane };
+        this.#publish({ kind: "waiting", for: "load" });
+        this.#arm(Math.min(this.#recheckMs(), budget2));
+        return DEFERRED2;
+      }
+      /**
+       * Under the lock, after the guard and the slot: the tier, of `refs` in
+       * order, as many as `slot` has permits while the machine is still idle,
+       * else one, and only as many as one run starts at once
+       * (`RunnerAdapter.slowWidth`, review 001-394 B2): the rest stay queued for
+       * a later tier. The permits it does not use go. Nothing when an edit's fast
+       * work arrived meanwhile. A file is passed over when it left the queue or
+       * class, its trigger is gone (a consumer entered a turn during the wait;
+       * the file stays queued and the pass keeps its budget), or the store now
+       * holds a result that may stand for it (`Ledger.lookup`), here or in the
+       * start's transaction (`startTier`; then `null`, so the pump plans again).
+       * `"claimed"` when no file runs because other worktrees run their keys
+       * (task 001-205). The permits and notes follow the files the
+       * tier starts.
+       *
+       * Before the start the tier takes its workers from the per-user pool, as
+       * a backlog tier does (001 D11 Capacity, task 001-386): `slow.maxWorkers`
+       * per file, and as many files as its grant holds, at least one. Without a
+       * grant it waits (`WAIT_FOR_CAPACITY`), unless a `run --slow` request is
+       * open: that runs now, without a grant, as an edit's tier does.
+       */
+      #select(refs2, ranUnderLoad, slot2, group) {
+        if (this.host.halted() || this.host.held()) return null;
+        const { context, ledger } = this.host.started();
+        if (this.#waitsForAfter(group)) return null;
+        const low = group.limits.priority === "low";
+        const width = !low || this.host.normalIdle() ? slot2.permits : 1;
+        const triggered = this.#trigger(context, ledger, group);
+        const picked = [];
+        for (const ref3 of refs2) {
+          if (picked.length >= width) break;
+          const mine = ledger.queue.checkGroup(ref3) === this.group;
+          if (!ledger.queue.has(ref3) || !mine || !triggered(ref3)) continue;
+          const tierFile = this.#pick(ref3, context, ledger);
+          if (tierFile !== null) picked.push(tierFile);
+        }
+        if (picked.length === 0) return ledger.claims.waiting ? "claimed" : null;
+        const atOnce = context.runner.slowWidth?.(picked.map(({ file }) => file.ref));
+        if (atOnce !== void 0) picked.splice(Math.max(1, atOnce));
+        const perFile = workersPerFile(group);
+        const taken3 = ungated(group) ? null : context.capacity?.take(picked.length * perFile, poolLaneOf2(group)) ?? null;
+        if (taken3 === WAIT_FOR_CAPACITY && !this.#explicit(picked.map(({ file }) => file.ref))) {
+          ledger.commit();
+          return WAIT_FOR_CAPACITY;
+        }
+        const lease = taken3 === WAIT_FOR_CAPACITY || taken3 === null ? void 0 : perFileLease(taken3, perFile);
+        if (lease !== void 0) picked.splice(Math.max(1, Math.floor(lease.grant / perFile)));
+        const since = context.now();
+        let started2 = null;
+        try {
+          started2 = this.#start(context, ledger, picked, since, lease, group);
+        } finally {
+          if (started2 === null) lease?.release();
+        }
+        const tier = started2;
+        if (tier === null) {
+          return picked.some(({ file }) => !ledger.queue.has(file.ref)) ? null : "claimed";
+        }
+        slot2.shrinkTo(tier.files.length);
+        const bound = group.limits.deferUnderLoad?.maxLoadPerCpu;
+        for (const { file } of tier.files) {
+          if (ranUnderLoad === null) continue;
+          context.note(
+            this.group === SLOW_GROUP ? `slow file ${file.ref.path} ran under load ${ranUnderLoad.toFixed(2)} per CPU, above slow.maxLoadPerCpu ${bound}, once the load guard had waited slow.maxDeferMs for this slow pass (spec 004 D3)` : `file ${file.ref.path} of group "${this.group}" ran under load ${ranUnderLoad.toFixed(2)} per CPU, above its deferUnderLoad.maxLoadPerCpu ${bound}, once the load guard had waited its maxDeferMs for this pass (spec 019 D3)`
+          );
+        }
+        return { tier };
+      }
+      /** `startTier` of `picked`, and the activity naming its files in the same transaction. */
+      #start(context, ledger, picked, since, lease, group) {
+        return context.store.transaction(() => {
+          const tier = startTier(context, ledger, picked, tierKindOf(group), lease);
+          const first2 = tier?.files[0];
+          if (tier === null || first2 === void 0) return null;
+          this.#flying = tier;
+          const lastDurationMs = longest(tier.files.map(({ file }) => file.durationMs));
+          const paths = tier.files.map(({ file }) => file.ref.path);
+          this.#publish({
+            kind: "running",
+            path: first2.file.ref.path,
+            ...paths.length > 1 ? { paths } : {},
+            since,
+            lastDurationMs
+          });
+          return tier;
+        });
+      }
+      /**
+       * Under the lock: `ref` as a file of the tier, or `null` when it has no key
+       * or is blocked (it leaves the queue), when another worktree's result
+       * stands for it (applied), or when another worktree runs its key and its
+       * result could stand for it (it stays queued, task 001-205).
+       */
+      #pick(ref3, context, ledger) {
+        const file = ledger.file(ref3);
+        const key3 = file?.key ?? null;
+        const checkpointId = ledger.checkpoints.idFor(ref3);
+        const forced = ledger.queue.isForced(ref3);
+        if (!file || key3 === null || file.blocked !== null) {
+          ledger.queue.remove(ref3);
+          if (file) ledger.touch(file);
+          ledger.commit();
+          return null;
+        }
+        const { hits, mayWait } = forced ? { hits: [], mayWait: false } : ledger.probe(key3);
+        if (hits.length > 0) {
+          ledger.applyResults(file, key3, hits, checkpointId);
+          ledger.commit();
+          return null;
+        }
+        const waits2 = mayWait && !ledger.queue.isRecent(ref3);
+        if (waits2 && ledger.claims.holds(key3)) return null;
+        const inputs2 = context.keys.stabilityPaths(ref3);
+        const runtimePolicy = context.keys.runtimeIdentity(ref3);
+        return { file, key: key3, inputs: inputs2, runtimePolicy, checkpointId, forced, waits: waits2 };
+      }
+      /**
+       * Under the lock, as a slow run ends, recorded, discarded or put back: its
+       * "running" activity goes in favour of what the remaining slow files wait
+       * for, without starting one (review wave 2, B1). An edit's fast work in
+       * flight or pending, or the agent not pausing; when a trigger already
+       * holds, nothing until `next` decides.
+       */
+      ended() {
+        const { context, ledger } = this.host.started();
+        this.#flying = null;
+        this.#endedAt = context.now();
+        const queued = this.#queued(ledger);
+        const group = this.#resolved(context);
+        if (queued.length === 0 || group === null) this.#publish(null);
+        else if (this.#waitsForAfter(group)) this.#publish({ kind: "waiting", for: "fast" });
+        else if (queued.some(this.#trigger(context, ledger, group))) this.#publish(null);
+        else this.#publishUntriggered(group);
+      }
+      /**
+       * `ended` once the tier this lane runs is recorded (`endTier` took it out
+       * of `Ledger.tierChanges`); nothing for a lane whose tier still runs or
+       * that runs none. A record names no lane, so each lane asks (row 019-10).
+       */
+      endedOnce() {
+        const tier = this.#flying;
+        if (tier === null || this.host.started().ledger.tierChanges.has(tier.changes)) return;
+        this.ended();
+      }
+      /** At close: clears the activity unless another daemon published since (a handover), and the waiter's mark. */
+      retire() {
+        const { context } = this.host.started();
+        this.#unmark(this.#slotDir(), context.worktreeId);
+        const now = readGroupActivity(context.store, context.worktreeId, this.group);
+        if (now !== null && JSON.stringify(now) === this.#published) this.#publish(null);
+      }
+      /** Spec 004 D8: what headers and status say the slow tier is doing (`src/core/slow/state.ts`). */
+      #publish(activity) {
+        const { context } = this.host.started();
+        publishGroupActivity(context.store, context.worktreeId, this.group, activity);
+        this.#published = activity === null ? null : JSON.stringify(activity);
+        return null;
+      }
+      #slotMissed(context, dir2) {
+        const now = context.now();
+        this.#slotMissedSince ??= now;
+        if (this.#slotNoted || now - this.#slotMissedSince < SLOT_HELD_NOTE_MS) return;
+        this.#slotNoted = true;
+        const first2 = slotFiles(this.group).permit(0);
+        context.note(
+          `the slow slot ${dir2}/${first2} has been held by another daemon of this user for over a minute; this worktree's slow files wait for it (spec 004 D2)`
+        );
+      }
+      /**
+       * Pumps again after `ms`, once; an armed timer that fires later gives way.
+       * The pump re-arms while slow work still waits.
+       */
+      #arm(ms2 = this.#recheckMs()) {
+        if (this.host.closed()) return;
+        const at2 = performance.now() + ms2;
+        if (this.#timer !== null) {
+          if (this.#timerAt <= at2) return;
+          clearTimeout(this.#timer);
+        }
+        this.#timerAt = at2;
+        this.#timer = setTimeout(() => {
+          this.#timer = null;
+          this.host.pump();
+        }, ms2);
+        this.#timer.unref();
+      }
+      #recheckMs() {
+        return Math.min(this.options.recheckMs ?? SLOW_RECHECK_MS, SLOW_RECHECK_MS);
+      }
+    };
+  }
+});
+
+// src/core/scheduler/request-intake-requests.ts
+function promoteRequest(testFiles3, withinMs) {
+  return {
+    operation: "promoting the test files of a named wait",
+    start: { closed: void 0 },
+    installWait: { skip: WRITES_NO_STORE },
+    runnerWork: { skip: "waits for no runner work: it orders files queued at their keys" },
+    store: {
+      skip: WRITES_NO_STORE,
+      covers: QUEUES_NO_FILE,
+      apply: (context, ledger) => {
+        ledger.queue.promote(testFiles3, context.now() + withinMs, answeredOf(context, ledger));
+      }
+    },
+    wake: { cutTiers: true }
+  };
+}
+function focusRequest(testFiles3, texts2, withinMs) {
+  return {
+    operation: "focusing the checks of a named wait",
+    // With no texts it asks for nothing.
+    start: { closed: void 0, nothing: texts2.length === 0 },
+    installWait: { skip: WRITES_NO_STORE },
+    runnerWork: { skip: "waits for no runner work: its tier is planned by the pump" },
+    store: {
+      skip: WRITES_NO_STORE,
+      covers: QUEUES_NO_FILE,
+      apply: (context, ledger) => {
+        const until = context.now() + withinMs;
+        for (const ref3 of testFiles3) {
+          if (mayFocus(context, ledger, ref3)) ledger.queue.focused.add(ref3, texts2, until);
+        }
+      }
+    },
+    wake: { cutTiers: true }
+  };
+}
+function groupRequest(group, groups3, passes) {
+  const known3 = (policy) => groupView(policy).groups.some((g2) => g2.name === group);
+  return {
+    operation: `taking a squeal run ${group} request`,
+    start: { skip: "no closed answer: before the start the scheduler throws (`started`)" },
+    installWait: {
+      stage: (context, ledger) => known3(context.policy) ? { revision: ledger.revision.number, queued: 0 } : null
+    },
+    runnerWork: { skip: "waits for no runner work: it queues the group's files at their keys" },
+    store: {
+      outside: {
+        skip: "a lint group's release writes the lint store, never inside the store's transaction (D3); it covers no test file and wakes no lane; while an install is awaited the stage answers",
+        release: (context, ledger) => {
+          const resolved2 = groupView(context.policy).groups.find((g2) => g2.name === group);
+          if (resolved2?.select.kind !== "lint") return null;
+          return {
+            answer: { revision: ledger.revision.number, queued: releaseLint(context, group) }
+          };
+        },
+        work: () => void passes?.pass().catch(() => {
+        })
+      },
+      stage: (context, ledger) => {
+        const revision = ledger.revision.number;
+        const view = groupView(context.policy);
+        if (!known3(context.policy)) return { answer: null, covered: [] };
+        groups3.lanes(context.policy);
+        groups3.get(group)?.request();
+        const queued = queueGroup(context, ledger, group);
+        const covered = [...ledger.files.values()].filter((f) => view.of(f.ref).name === group);
+        return { answer: { revision, queued }, covered };
+      }
+    },
+    wake: {
+      skip: "its lane is marked requested inside the stage (`SlowTier.request`, which preempts it), before its files are queued, as before row 011-322"
+    }
+  };
+}
+var WRITES_NO_STORE, QUEUES_NO_FILE;
+var init_request_intake_requests = __esm({
+  "src/core/scheduler/request-intake-requests.ts"() {
+    "use strict";
+    init_commit_moment();
+    init_focused();
+    init_promoted_tier();
+    init_slow();
+    init_slow_tier();
+    WRITES_NO_STORE = "writes no store: it orders the queued files in memory, which the next commit writes";
+    QUEUES_NO_FILE = {
+      skip: "covers no file: it queues none, and the named wait reads its own files' results"
+    };
   }
 });
 
@@ -56657,766 +57830,6 @@ var init_slow_release = __esm({
   }
 });
 
-// src/core/slow/guard.ts
-import { availableParallelism as availableParallelism6, loadavg as loadavg3 } from "node:os";
-function loadPerCpu(wait = {}) {
-  const load = wait.load ?? loadavg3;
-  const cpus3 = wait.cpus ?? availableParallelism6;
-  return (load()[0] ?? 0) / Math.max(1, cpus3());
-}
-var init_guard = __esm({
-  "src/core/slow/guard.ts"() {
-    "use strict";
-  }
-});
-
-// src/core/scheduler/commit-asks.ts
-function mayRunAt(file, key3) {
-  return file.phase !== null && (file.key === key3 || file.runningKey === key3);
-}
-var CommitAsks;
-var init_commit_asks = __esm({
-  "src/core/scheduler/commit-asks.ts"() {
-    "use strict";
-    CommitAsks = class {
-      #keys = /* @__PURE__ */ new Map();
-      add(asks, ledger) {
-        for (const { ref: ref3, key: key3 } of asks) {
-          const file = ledger.file(ref3);
-          if (file !== void 0) this.#keys.set(file.id, key3);
-        }
-      }
-      /** Whether a commit asked for `ref` at its key now. */
-      has(ledger, ref3) {
-        if (this.#keys.size === 0) return false;
-        const file = ledger.file(ref3);
-        return file !== void 0 && file.key !== null && this.#keys.get(file.id) === file.key;
-      }
-      /** Drops the asks that can no longer run (above). */
-      prune(ledger) {
-        for (const [id, key3] of this.#keys) {
-          const file = ledger.files.get(id);
-          if (file === void 0 || !mayRunAt(file, key3)) this.#keys.delete(id);
-        }
-      }
-      get size() {
-        return this.#keys.size;
-      }
-    };
-  }
-});
-
-// src/core/scheduler/group-limits.ts
-function poolLaneOf2(group) {
-  return poolLaneOf(group.limits.priority);
-}
-function tierKindOf(group) {
-  return group.limits.priority === "low" ? "slow" : "edit";
-}
-function fullWidth(group, policy) {
-  return Math.max(1, group.limits.maxParallel ?? policy.runner.tierSize);
-}
-function workersPerFile(group) {
-  return Math.max(1, group.limits.maxWorkers ?? 1);
-}
-function ungated(group) {
-  const { at: at2, after: after3, quietMs, limits: limits2 } = group;
-  return at2 === "edit" && after3.length === 0 && quietMs === 0 && limits2.priority === "normal" && limits2.maxWorkers === null;
-}
-function slotDirOf(group, base, at2) {
-  return slotFiles(group, at2?.scope ?? "user").dir(base, at2?.commonDir ?? base);
-}
-var init_group_limits = __esm({
-  "src/core/scheduler/group-limits.ts"() {
-    "use strict";
-    init_pool();
-    init_slot_files();
-  }
-});
-
-// src/core/scheduler/slow-trigger.ts
-function momentHolds(context, group) {
-  switch (group.at) {
-    case "edit":
-      return (quietLeftMs(context, group) ?? 0) <= 0;
-    case "pause":
-    case "stop":
-      return consumersIdle(context.store, context.worktreeId, context.now());
-    case "commit":
-    case "manual":
-      return false;
-  }
-}
-function quietLeftMs(context, group) {
-  if (group.at !== "edit") return null;
-  const latest = context.store.revisions.latest(context.worktreeId);
-  return latest === null ? 0 : latest.createdAt + group.quietMs - context.now();
-}
-function consumersIdle(store, worktreeId, now) {
-  for (const record2 of store.consumers.list(worktreeId)) {
-    const heard = Math.max(record2.lastSeenAt, record2.lastDeliveredAt ?? 0);
-    if (heard < now - CONSUMER_EXPIRY_MS) continue;
-    if (readTurn(store, record2.consumer).turn === "in-turn") return false;
-  }
-  return true;
-}
-var init_slow_trigger = __esm({
-  "src/core/scheduler/slow-trigger.ts"() {
-    "use strict";
-    init_turn();
-    init_store_records();
-  }
-});
-
-// src/core/scheduler/slow-tier.ts
-function runnerOf2(context, ref3) {
-  const lane = laneOf(context, ref3);
-  const { nodeTest, pytest } = context.policy;
-  const own = [...nodeTest, ...pytest].some((project) => project.name === ref3.project);
-  return own ? `${lane}\0${ref3.project}` : lane;
-}
-function noSlot(want) {
-  let permits = want;
-  return {
-    get permits() {
-      return permits;
-    },
-    shrinkTo(count3) {
-      permits = Math.min(permits, Math.max(1, count3));
-    },
-    release() {
-      permits = 0;
-    }
-  };
-}
-function longest(durations2) {
-  const known3 = durations2.filter((ms2) => ms2 !== null);
-  return known3.length === 0 ? null : Math.max(...known3);
-}
-function queueGroup(context, ledger, group) {
-  const { of } = groupView(context.policy);
-  const open7 = [...ledger.files.values()].filter(
-    (file) => of(file.ref).name === group && file.key !== null && file.blocked === null && classify2(file) !== "current"
-  );
-  for (const file of open7) file.unknownKey = null;
-  const pending = open7.filter((file) => file.phase !== null);
-  const misses = ledger.settle(
-    open7.filter((file) => file.phase === null).map((file) => file.ref),
-    NOTHING_CHANGED
-  );
-  ledger.commit();
-  return pending.length + misses.length;
-}
-var SLOW_RECHECK_MS, SLOT_HELD_NOTE_MS, DEFERRED, SlowTier;
-var init_slow_tier = __esm({
-  "src/core/scheduler/slow-tier.ts"() {
-    "use strict";
-    init_check_groups();
-    init_guard();
-    init_slot();
-    init_slot_files();
-    init_state2();
-    init_scheduler();
-    init_capacity();
-    init_claims();
-    init_commit_asks();
-    init_context();
-    init_files();
-    init_group_limits();
-    init_slow();
-    init_slow_trigger();
-    init_tiers();
-    SLOW_RECHECK_MS = 15e3;
-    SLOT_HELD_NOTE_MS = 6e4;
-    DEFERRED = "deferred";
-    SlowTier = class {
-      constructor(host, options = {}, group = SLOW_GROUP) {
-        this.host = host;
-        this.options = options;
-        this.group = group;
-      }
-      host;
-      options;
-      group;
-      /** A `run --slow` request is open until no slow file is pending. */
-      #requested = false;
-      /** Spec 019 D5 step 1 (row 019-22): the files a commit asked a `commit` group's lane to run. */
-      asks = new CommitAsks();
-      /**
-       * Spec 019 D6 "Narrow run" (row 019-49): the files `squeal run <group>
-       * <path>...` asked to run, each at its key then. They run whatever the
-       * group's moment, past the load guard and without a pool grant, as an
-       * open request does; the group's other files keep waiting.
-       */
-      narrow = new CommitAsks();
-      /** What is left of `slow.maxDeferMs` for the pass; `null` between passes. */
-      #budgetMs = null;
-      #slotMissedSince = null;
-      /** This worktree's waiter's mark is in the slot's directory. */
-      #marked = false;
-      /**
-       * A departure drain (011 C9 and 004 D2 as amended 2026-10-21, row
-       * 011-93): it leaves no waiter mark and takes no permit while another
-       * worktree's mark is fresh, so a live session's slow files go first.
-       */
-      draining = false;
-      /** The last pass took the slot: its next skips one turn for another worktree's mark. */
-      #tookLast = false;
-      /** When a slow run last ended (`ended`): a drain's wait counts from it (row 011-163). */
-      #endedAt = null;
-      #slotNoted = false;
-      #timer = null;
-      /** When `#timer` fires, so an earlier deadline replaces it. */
-      #timerAt = 0;
-      /**
-       * While the load guard holds the lane: when its wait began
-       * (`performance.now`), and the runner lane its files run in. The next
-       * `next` or a `preempt` ends the wait and takes its time off the budget.
-       */
-      #deferred = null;
-      /** Counts `preempt` calls, so one between selection and the guard is not lost. */
-      #preemptions = 0;
-      /** What this tier last published, as stored, so `close` clears only its own. */
-      #published = null;
-      /** The tier this lane runs, until its record ends it (`endedOnce`). */
-      #flying = null;
-      #dir = null;
-      /** The group under the policy in force; `null` once a reload dropped it. */
-      #resolved(context) {
-        return groupView(context.policy).groups.find((group) => group.name === this.group) ?? null;
-      }
-      /** The files of the group in the queue, in run order. */
-      #queued(ledger) {
-        return ledger.orderedGroup(this.group);
-      }
-      /**
-       * The group's slot directory (`slotDirOf`), read once: under `"repository"`
-       * the repository's id is read from its store directory, and the pump asks
-       * on every turn.
-       */
-      #slotDir() {
-        this.#dir ??= slotDirOf(
-          this.group,
-          this.options.slotDir ?? slowSlotDir(),
-          this.options.slotScope
-        );
-        return this.#dir;
-      }
-      /** A `run --slow` request is open: the daemon is in use while slow files are pending (row 011-92). */
-      get requested() {
-        return this.#requested;
-      }
-      /** When a slow run last ended, recorded, discarded or put back; `null` before the first. */
-      get endedAt() {
-        return this.#endedAt;
-      }
-      /**
-       * The runner lane whose files wait for the load guard now, `null` when
-       * none: its instance stays open through the wait (row 011-211).
-       */
-      get deferring() {
-        return this.#deferred?.lane ?? null;
-      }
-      /**
-       * `run --slow`: the pending slow files run behind fast work, whatever the
-       * turns and the load (trigger b; D3 as amended 2026-10-14, task 004-59). A
-       * load guard wait in progress gives way, so the pump plans again without it.
-       */
-      request() {
-        this.#requested = true;
-        this.preempt();
-      }
-      /**
-       * A consumer may have gone idle (task 001-281): with slow files queued the
-       * pump plans again now instead of at `SLOW_RECHECK_MS`. It starts nothing a
-       * trigger does not allow; `next` decides as on the timer. Before the
-       * scheduler has started it does nothing: the start pumps as it ends.
-       */
-      nudge() {
-        if (this.host.closed() || !this.host.ready()) return;
-        if (this.#queued(this.host.started().ledger).length > 0) this.host.pump();
-      }
-      /** Fast work may be coming (a revision, `run --all`): a load guard wait gives way to it. */
-      preempt() {
-        this.#preemptions += 1;
-        this.#endDeferral();
-      }
-      /** The load guard's wait ends: the pass's budget keeps what it did not take. */
-      #endDeferral() {
-        const deferred = this.#deferred;
-        if (deferred === null) return;
-        this.#deferred = null;
-        if (this.#budgetMs === null) return;
-        this.#budgetMs = Math.max(0, this.#budgetMs - (performance.now() - deferred.from));
-      }
-      close() {
-        if (this.#timer !== null) clearTimeout(this.#timer);
-        this.#timer = null;
-        this.preempt();
-      }
-      /**
-       * Called by the pump when no fast tier is left to select. The load guard
-       * waits before the slot is taken, so a wait never holds it, and the slot is
-       * handed over between files (D2, lessons defect 2): a worktree that misses
-       * it leaves a waiter's mark, and one that finds another's mark skips one turn.
-       * The guard decides whether the slow lane runs, never which worktree runs
-       * it (D3 as amended, task 004-84): it waits only while the slot is free,
-       * and a marked waiter takes the slot at a handover without a new wait.
-       * The guard's wait holds this lane only (spec 019 D3, review 0.1.396 B1):
-       * it publishes the wait, arms a recheck and returns `null`, so the pump
-       * asks the other lanes; the recheck's `next` reads the load again with
-       * what is left of the budget. `launch` starts the run under the lock, in
-       * the block whose check found no hold, so no run starts once a hold began
-       * (011 C9; review 0.1.269, B1).
-       */
-      async next(launch) {
-        this.#endDeferral();
-        if (this.host.closed()) return "again";
-        const preemptions = this.#preemptions;
-        const refs2 = await this.host.lock.run(
-          () => this.#candidates(),
-          `listing the queued files of group ${this.group}`
-        );
-        const { context } = this.host.started();
-        const dir2 = this.#slotDir();
-        const group = this.#resolved(context);
-        if (refs2.length === 0 || group === null) {
-          this.#unmark(dir2, context.worktreeId);
-          return null;
-        }
-        if (preemptions !== this.#preemptions) return "again";
-        const guard = this.#guardOf(context, dir2, group, refs2);
-        if (guard === DEFERRED) return null;
-        if (!await this.#mayStart(preemptions)) return "again";
-        if (guard === "held") return this.#waitAtSlot(context, dir2, false);
-        const want = this.#want(context, group, guard, refs2.length);
-        const slot2 = this.#takeSlot(context, dir2, group, want);
-        if (slot2 === null) return null;
-        return this.#launch(refs2, guard.ranUnderLoad, slot2, group, launch);
-      }
-      /**
-       * The load guard for the lane whose first file is `first`, or none: an
-       * open request or a marked waiter skips it, as does a group without
-       * `deferUnderLoad` (`#skipGuard`).
-       */
-      #guardOf(context, dir2, group, refs2) {
-        const defer = group.limits.deferUnderLoad;
-        return this.#explicit(refs2) || this.#marked || defer === null ? this.#skipGuard(defer) : this.#guard(dir2, group, defer, laneOf(context, refs2[0]));
-      }
-      /** An open request, or a narrow run's ask for one of `refs` (row 019-49): no guard, no grant. */
-      #explicit(refs2) {
-        if (this.#requested) return true;
-        if (this.narrow.size === 0) return false;
-        const { ledger } = this.host.started();
-        return refs2.some((ref3) => this.narrow.has(ledger, ref3));
-      }
-      /**
-       * After the guard's wait: no preemption since `preemptions` was read, the
-       * daemon's runtime still there and no hold begun; else the pump plans again.
-       */
-      async #mayStart(preemptions) {
-        if (await this.host.runtimeMissing() || preemptions !== this.#preemptions) return false;
-        return await this.host.holdCheck() === "free" && preemptions === this.#preemptions;
-      }
-      /**
-       * How many of `count` files the tier may take: a `normal` group's, or a
-       * `low` one's on an idle machine with no `normal` work (`normalIdle`), up
-       * to its full width; else one (spec 019 D3).
-       */
-      #want(context, group, guard, count3) {
-        const wide = group.limits.priority === "normal" || guard.idle && this.host.normalIdle();
-        return wide ? Math.min(fullWidth(group, context.policy), count3) : 1;
-      }
-      /**
-       * The group's slot for `want` files; a group without `maxParallel` takes
-       * no shared slot (D3). `null` when the files wait at the slot: another
-       * worktree holds it, or this one yields its turn (`#waitAtSlot`).
-       */
-      #takeSlot(context, dir2, group, want) {
-        const permits = group.limits.maxParallel;
-        const yieldTurn = permits !== null && (this.#tookLast || this.draining) && othersWaitingForSlot(dir2, context.worktreeId, void 0, this.group);
-        const owner2 = { pid: process.pid, worktreeId: context.worktreeId };
-        const slot2 = yieldTurn ? null : permits === null ? noSlot(want) : acquireSlowSlot({ dir: dir2, owner: owner2, permits, want, group: this.group });
-        if (slot2 === null) return this.#waitAtSlot(context, dir2, yieldTurn);
-        this.#tookLast = true;
-        this.#unmark(dir2, context.worktreeId);
-        this.#slotMissedSince = null;
-        this.#slotNoted = false;
-        return slot2;
-      }
-      /**
-       * Selects the tier under the lock and launches it with `slot`, whose
-       * permits go back when no tier flies.
-       */
-      async #launch(refs2, ranUnderLoad, slot2, group, launch) {
-        let flown = false;
-        try {
-          const selected2 = await this.host.lock.run(() => {
-            const picked = this.#select(refs2, ranUnderLoad, slot2, group);
-            if (picked === null || typeof picked !== "object") return picked;
-            launch({ ...picked, slot: slot2 });
-            flown = true;
-            return "flown";
-          }, `selecting a tier of group ${this.group}`);
-          if (selected2 === "claimed") return null;
-          if (selected2 === WAIT_FOR_CAPACITY) {
-            this.#publish({ kind: "waiting", for: "pool" });
-            return null;
-          }
-          return selected2 === null ? "again" : selected2;
-        } finally {
-          if (!flown) slot2.release();
-        }
-      }
-      /**
-       * The groups `after` names go first (spec 019 D1): a group's while it has
-       * a file queued or a tier in flight. For `tests`, the default `slow`
-       * group's: fast work of this daemon, an edit's always (004 D2 as amended
-       * 2026-10-09), its fast backlog (a baseline, a checkpoint, `run --all`)
-       * queued or running unless a request is open (D2 as amended 2026-10-14,
-       * task 004-60), so a warm-up's slow files never contend with its fast
-       * ones. During a departure drain only the drain's fast work counts: the
-       * paused backlog is not pending (`fastIdle`, row 011-93).
-       */
-      #waitsForAfter(group) {
-        return group.after.some(
-          (name3) => name3 === TESTS_GROUP ? this.host.editPending() || !this.#requested && !this.host.fastIdle() : this.host.groupHolds(name3)
-        );
-      }
-      /**
-       * Under the lock: a queued file of this group holds the groups that name
-       * it in `after` (spec 019 D1). At `commit` and `manual` (`heldUntilAsked`)
-       * only one a trigger lets run does: a commit asked for it at its key, or
-       * a request or a checkpoint covers it. Any other runs for no one until a
-       * later commit or `squeal run <group>`, so a follower would wait for it
-       * forever (row 019-26, review 0.1.398 B2; row 019-47). At any other
-       * moment every queued file holds.
-       */
-      holdsFollowers() {
-        const { context, ledger } = this.host.started();
-        const queued = this.#queued(ledger);
-        const group = this.#resolved(context);
-        if (group === null || !heldUntilAsked(group.at)) return queued.length > 0;
-        return queued.some(this.#trigger(context, ledger, group));
-      }
-      /**
-       * Another worktree holds the slot, or this one yields its turn: the files
-       * wait at the slot, marked as a waiter unless draining, and retry at
-       * `SLOW_RECHECK_MS`.
-       */
-      #waitAtSlot(context, dir2, yielded) {
-        this.#tookLast = false;
-        if (this.draining) {
-          this.#unmark(dir2, context.worktreeId);
-        } else {
-          markSlotWaiter(dir2, context.worktreeId, this.group);
-          this.#marked = true;
-        }
-        this.#publish({ kind: "waiting", for: "slot" });
-        if (!yielded) this.#slotMissed(context, dir2);
-        this.#arm();
-        return null;
-      }
-      #unmark(dir2, worktreeId) {
-        if (!this.#marked) return;
-        this.#marked = false;
-        clearSlotWaiter(dir2, worktreeId, this.group);
-      }
-      /**
-       * Under the lock: the slow files a trigger lets run now, in order, all of
-       * the first one's lane and runner (`runnerOf`); none when none may. A file
-       * whose key another worktree runs is none (`claimOf`, task 001-205): the
-       * pump waits on the claim without taking the slot, and a result that
-       * landed is applied here, so a drain before exit (004-29) ends with it.
-       */
-      #candidates() {
-        const { context, ledger } = this.host.started();
-        const queued = this.#queued(ledger);
-        const group = this.#resolved(context);
-        this.asks.prune(ledger);
-        this.narrow.prune(ledger);
-        if (queued.length === 0 || group === null) {
-          this.#requested = false;
-          this.#budgetMs = null;
-          this.#publish(null);
-          return [];
-        }
-        if (this.#waitsForAfter(group)) {
-          this.#publish({ kind: "waiting", for: "fast" });
-          return [];
-        }
-        const triggered = queued.filter(this.#trigger(context, ledger, group));
-        const claims2 = new Map(triggered.map((ref3) => [ref3, claimOf(ledger, ref3)]));
-        const free = triggered.filter((ref3) => claims2.get(ref3) === "free");
-        const first2 = free[0];
-        if (first2 !== void 0) {
-          const runner = runnerOf2(context, first2);
-          return free.filter((ref3) => runnerOf2(context, ref3) === runner);
-        }
-        if ([...claims2.values()].includes("settled")) return this.#candidates();
-        if ([...claims2.values()].includes("waits")) return [];
-        this.#publishUntriggered(group);
-        const quiet = quietLeftMs(context, group);
-        this.#arm(quiet === null ? this.#recheckMs() : Math.max(1, quiet));
-        return [];
-      }
-      /**
-       * Under the lock: whether a trigger lets a file of the group run now. Its
-       * moment (`momentHolds`; for the default `slow` group trigger (a) by
-       * `slow.trigger`), an open request, a commit's ask at the file's key (019
-       * D5 step 1), a narrow run's ask at it (019 D6, row 019-49), or the
-       * file's open `run --all` checkpoint. Explicit
-       * requests ignore moments (spec 019 D1).
-       */
-      #trigger(context, ledger, group) {
-        const moment2 = momentHolds(context, group);
-        const runAll = ledger.checkpoints.active?.explicit === true;
-        return (ref3) => moment2 || this.#requested || this.asks.has(ledger, ref3) || this.narrow.has(ledger, ref3) || runAll && ledger.checkpoints.idFor(ref3) !== null;
-      }
-      /**
-       * What pending files no trigger lets run wait for (004 D8): the agent's
-       * pause at `pause` or `stop` (`"idle"`); at `edit` only the quiet window,
-       * which the line states as pending with no reason; at `commit` and
-       * `manual` a request, which the group's line names (`group-text.ts`).
-       */
-      #publishUntriggered(group) {
-        if (group.at === "pause" || group.at === "stop") {
-          this.#publish({ kind: "waiting", for: "idle" });
-        } else this.#publish(null);
-      }
-      /**
-       * An open `run --slow` request skips the load guard (D3 as amended
-       * 2026-10-14, task 004-59): no wait, no budget spent, no "ran under load"
-       * note. So does a marked waiter, which takes the slot at a handover (task
-       * 004-84): its file replaces the one that ran, so the wait would lower no
-       * load. The load is still read once, since D2's idle width needs it below
-       * `slow.maxLoadPerCpu`: under load the tier runs one file at a time.
-       */
-      #skipGuard(defer) {
-        if (defer === null) return { ranUnderLoad: null, idle: true };
-        return { ranUnderLoad: null, idle: this.#load() <= defer.maxLoadPerCpu };
-      }
-      /** The 1-minute load per CPU the guard reads (`loadPerCpu`). */
-      #load() {
-        return loadPerCpu({
-          ...this.options.load === void 0 ? {} : { load: this.options.load },
-          ...this.options.cpus === void 0 ? {} : { cpus: this.options.cpus }
-        });
-      }
-      /**
-       * The load guard (D3) with the pass's remaining budget, read once: the
-       * load is at or below `maxLoadPerCpu`, or the budget is spent, and the
-       * file runs (under the load at the bound). Otherwise `"held"` when every
-       * permit of the slot in `dir` is held (task 004-84): the files wait at the
-       * slot. Else `DEFERRED`: the lane publishes that it waits for the load and
-       * arms its recheck, at most the budget left; its `lane` is `deferring`.
-       */
-      #guard(dir2, group, defer, lane) {
-        const budget2 = this.#budgetMs ?? defer.maxDeferMs;
-        this.#budgetMs = budget2;
-        const load = this.#load();
-        if (load <= defer.maxLoadPerCpu) return { ranUnderLoad: null, idle: true };
-        if (budget2 <= 0) return { ranUnderLoad: load, idle: false };
-        const permits = group.limits.maxParallel;
-        if (permits !== null && slowSlotHeld({ dir: dir2, permits, group: this.group })) return "held";
-        this.#deferred = { from: performance.now(), lane };
-        this.#publish({ kind: "waiting", for: "load" });
-        this.#arm(Math.min(this.#recheckMs(), budget2));
-        return DEFERRED;
-      }
-      /**
-       * Under the lock, after the guard and the slot: the tier, of `refs` in
-       * order, as many as `slot` has permits while the machine is still idle,
-       * else one, and only as many as one run starts at once
-       * (`RunnerAdapter.slowWidth`, review 001-394 B2): the rest stay queued for
-       * a later tier. The permits it does not use go. Nothing when an edit's fast
-       * work arrived meanwhile. A file is passed over when it left the queue or
-       * class, its trigger is gone (a consumer entered a turn during the wait;
-       * the file stays queued and the pass keeps its budget), or the store now
-       * holds a result that may stand for it (`Ledger.lookup`), here or in the
-       * start's transaction (`startTier`; then `null`, so the pump plans again).
-       * `"claimed"` when no file runs because other worktrees run their keys
-       * (task 001-205). The permits and notes follow the files the
-       * tier starts.
-       *
-       * Before the start the tier takes its workers from the per-user pool, as
-       * a backlog tier does (001 D11 Capacity, task 001-386): `slow.maxWorkers`
-       * per file, and as many files as its grant holds, at least one. Without a
-       * grant it waits (`WAIT_FOR_CAPACITY`), unless a `run --slow` request is
-       * open: that runs now, without a grant, as an edit's tier does.
-       */
-      #select(refs2, ranUnderLoad, slot2, group) {
-        if (this.host.halted() || this.host.held()) return null;
-        const { context, ledger } = this.host.started();
-        if (this.#waitsForAfter(group)) return null;
-        const low = group.limits.priority === "low";
-        const width = !low || this.host.normalIdle() ? slot2.permits : 1;
-        const triggered = this.#trigger(context, ledger, group);
-        const picked = [];
-        for (const ref3 of refs2) {
-          if (picked.length >= width) break;
-          const mine = ledger.queue.checkGroup(ref3) === this.group;
-          if (!ledger.queue.has(ref3) || !mine || !triggered(ref3)) continue;
-          const tierFile = this.#pick(ref3, context, ledger);
-          if (tierFile !== null) picked.push(tierFile);
-        }
-        if (picked.length === 0) return ledger.claims.waiting ? "claimed" : null;
-        const atOnce = context.runner.slowWidth?.(picked.map(({ file }) => file.ref));
-        if (atOnce !== void 0) picked.splice(Math.max(1, atOnce));
-        const perFile = workersPerFile(group);
-        const taken3 = ungated(group) ? null : context.capacity?.take(picked.length * perFile, poolLaneOf2(group)) ?? null;
-        if (taken3 === WAIT_FOR_CAPACITY && !this.#explicit(picked.map(({ file }) => file.ref))) {
-          ledger.commit();
-          return WAIT_FOR_CAPACITY;
-        }
-        const lease = taken3 === WAIT_FOR_CAPACITY || taken3 === null ? void 0 : perFileLease(taken3, perFile);
-        if (lease !== void 0) picked.splice(Math.max(1, Math.floor(lease.grant / perFile)));
-        const since = context.now();
-        let started2 = null;
-        try {
-          started2 = this.#start(context, ledger, picked, since, lease, group);
-        } finally {
-          if (started2 === null) lease?.release();
-        }
-        const tier = started2;
-        if (tier === null) {
-          return picked.some(({ file }) => !ledger.queue.has(file.ref)) ? null : "claimed";
-        }
-        slot2.shrinkTo(tier.files.length);
-        const bound = group.limits.deferUnderLoad?.maxLoadPerCpu;
-        for (const { file } of tier.files) {
-          if (ranUnderLoad === null) continue;
-          context.note(
-            this.group === SLOW_GROUP ? `slow file ${file.ref.path} ran under load ${ranUnderLoad.toFixed(2)} per CPU, above slow.maxLoadPerCpu ${bound}, once the load guard had waited slow.maxDeferMs for this slow pass (spec 004 D3)` : `file ${file.ref.path} of group "${this.group}" ran under load ${ranUnderLoad.toFixed(2)} per CPU, above its deferUnderLoad.maxLoadPerCpu ${bound}, once the load guard had waited its maxDeferMs for this pass (spec 019 D3)`
-          );
-        }
-        return { tier };
-      }
-      /** `startTier` of `picked`, and the activity naming its files in the same transaction. */
-      #start(context, ledger, picked, since, lease, group) {
-        return context.store.transaction(() => {
-          const tier = startTier(context, ledger, picked, tierKindOf(group), lease);
-          const first2 = tier?.files[0];
-          if (tier === null || first2 === void 0) return null;
-          this.#flying = tier;
-          const lastDurationMs = longest(tier.files.map(({ file }) => file.durationMs));
-          const paths = tier.files.map(({ file }) => file.ref.path);
-          this.#publish({
-            kind: "running",
-            path: first2.file.ref.path,
-            ...paths.length > 1 ? { paths } : {},
-            since,
-            lastDurationMs
-          });
-          return tier;
-        });
-      }
-      /**
-       * Under the lock: `ref` as a file of the tier, or `null` when it has no key
-       * or is blocked (it leaves the queue), when another worktree's result
-       * stands for it (applied), or when another worktree runs its key and its
-       * result could stand for it (it stays queued, task 001-205).
-       */
-      #pick(ref3, context, ledger) {
-        const file = ledger.file(ref3);
-        const key3 = file?.key ?? null;
-        const checkpointId = ledger.checkpoints.idFor(ref3);
-        const forced = ledger.queue.isForced(ref3);
-        if (!file || key3 === null || file.blocked !== null) {
-          ledger.queue.remove(ref3);
-          if (file) ledger.touch(file);
-          ledger.commit();
-          return null;
-        }
-        const { hits, mayWait } = forced ? { hits: [], mayWait: false } : ledger.probe(key3);
-        if (hits.length > 0) {
-          ledger.applyResults(file, key3, hits, checkpointId);
-          ledger.commit();
-          return null;
-        }
-        const waits2 = mayWait && !ledger.queue.isRecent(ref3);
-        if (waits2 && ledger.claims.holds(key3)) return null;
-        const inputs2 = context.keys.stabilityPaths(ref3);
-        const runtimePolicy = context.keys.runtimeIdentity(ref3);
-        return { file, key: key3, inputs: inputs2, runtimePolicy, checkpointId, forced, waits: waits2 };
-      }
-      /**
-       * Under the lock, as a slow run ends, recorded, discarded or put back: its
-       * "running" activity goes in favour of what the remaining slow files wait
-       * for, without starting one (review wave 2, B1). An edit's fast work in
-       * flight or pending, or the agent not pausing; when a trigger already
-       * holds, nothing until `next` decides.
-       */
-      ended() {
-        const { context, ledger } = this.host.started();
-        this.#flying = null;
-        this.#endedAt = context.now();
-        const queued = this.#queued(ledger);
-        const group = this.#resolved(context);
-        if (queued.length === 0 || group === null) this.#publish(null);
-        else if (this.#waitsForAfter(group)) this.#publish({ kind: "waiting", for: "fast" });
-        else if (queued.some(this.#trigger(context, ledger, group))) this.#publish(null);
-        else this.#publishUntriggered(group);
-      }
-      /**
-       * `ended` once the tier this lane runs is recorded (`endTier` took it out
-       * of `Ledger.tierChanges`); nothing for a lane whose tier still runs or
-       * that runs none. A record names no lane, so each lane asks (row 019-10).
-       */
-      endedOnce() {
-        const tier = this.#flying;
-        if (tier === null || this.host.started().ledger.tierChanges.has(tier.changes)) return;
-        this.ended();
-      }
-      /** At close: clears the activity unless another daemon published since (a handover), and the waiter's mark. */
-      retire() {
-        const { context } = this.host.started();
-        this.#unmark(this.#slotDir(), context.worktreeId);
-        const now = readGroupActivity(context.store, context.worktreeId, this.group);
-        if (now !== null && JSON.stringify(now) === this.#published) this.#publish(null);
-      }
-      /** Spec 004 D8: what headers and status say the slow tier is doing (`src/core/slow/state.ts`). */
-      #publish(activity) {
-        const { context } = this.host.started();
-        publishGroupActivity(context.store, context.worktreeId, this.group, activity);
-        this.#published = activity === null ? null : JSON.stringify(activity);
-        return null;
-      }
-      #slotMissed(context, dir2) {
-        const now = context.now();
-        this.#slotMissedSince ??= now;
-        if (this.#slotNoted || now - this.#slotMissedSince < SLOT_HELD_NOTE_MS) return;
-        this.#slotNoted = true;
-        const first2 = slotFiles(this.group).permit(0);
-        context.note(
-          `the slow slot ${dir2}/${first2} has been held by another daemon of this user for over a minute; this worktree's slow files wait for it (spec 004 D2)`
-        );
-      }
-      /**
-       * Pumps again after `ms`, once; an armed timer that fires later gives way.
-       * The pump re-arms while slow work still waits.
-       */
-      #arm(ms2 = this.#recheckMs()) {
-        if (this.host.closed()) return;
-        const at2 = performance.now() + ms2;
-        if (this.#timer !== null) {
-          if (this.#timerAt <= at2) return;
-          clearTimeout(this.#timer);
-        }
-        this.#timerAt = at2;
-        this.#timer = setTimeout(() => {
-          this.#timer = null;
-          this.host.pump();
-        }, ms2);
-        this.#timer.unref();
-      }
-      #recheckMs() {
-        return Math.min(this.options.recheckMs ?? SLOW_RECHECK_MS, SLOW_RECHECK_MS);
-      }
-    };
-  }
-});
-
 // src/core/scheduler/stored-keys.ts
 function withoutResult(file, keys, index) {
   const { key: key3 } = file;
@@ -57603,7 +58016,7 @@ import { setTimeout as delay4 } from "node:timers/promises";
 function createScheduler(options) {
   return new TierScheduler(options);
 }
-var NO_PASS, TierScheduler;
+var TierScheduler;
 var init_scheduler2 = __esm({
   "src/core/scheduler/scheduler.ts"() {
     "use strict";
@@ -57646,15 +58059,14 @@ var init_scheduler2 = __esm({
     init_mutex();
     init_narrow_run();
     init_pool_wait();
-    init_promoted_tier();
     init_queue();
     init_quiet();
     init_record2();
-    init_refine_apply();
+    init_request_intake();
+    init_request_intake_requests();
     init_request_progress();
     init_rerun();
     init_retries();
-    init_revision();
     init_runner_work();
     init_slots2();
     init_slow();
@@ -57665,7 +58077,6 @@ var init_scheduler2 = __esm({
     init_tiers();
     init_warm_up();
     init_yields();
-    NO_PASS = "the change feed delivered no reconciliation pass that started after the request (its pass failed, or the daemon closed first), so no checkpoint was planned";
     TierScheduler = class {
       constructor(options) {
         this.options = options;
@@ -57797,6 +58208,32 @@ var init_scheduler2 = __esm({
       #warmUp = new WarmUp();
       /** Row 018-12: the files explicit requests queued, whose ends are activity. */
       #requests = new RequestProgress();
+      /** Row 011-322: the one place a request is taken; each request method is one call into it. */
+      #intake = new RequestIntake({
+        lock: this.#lock,
+        started: () => this.#started(),
+        open: () => !this.#closed && this.#context !== null,
+        stopping: () => this.#stopping(),
+        waiting: () => this.#awaitingInstall ? AWAITING_INSTALL_REASON : this.#reinstalled ? REINSTALLED_REASON : null,
+        awaitingInstall: () => this.#awaitingInstall,
+        // Spec 021 D2: the request's pass is tried again on a busy store, as the feed's are.
+        installPass: () => this.#handleBatch({ trigger: "interval", paths: [] }, true),
+        passes: () => this.options.passes,
+        busy: () => {
+          const waits2 = this.options.busyWaits;
+          return waits2 === void 0 ? void 0 : { waits: waits2, sliceMs: this.options.busySliceMs };
+        },
+        runnerPending: () => this.#runnerWork.size > 0 || this.#runnerWork.refining,
+        afterRunnerWork: (task, operation) => this.#runnerWork.afterTier(task, operation),
+        record: (files5) => this.#requests.ask(files5),
+        wakeAll: () => this.#groups.preempt(),
+        wakeLane: (group) => {
+          this.#groups.lanes(this.#started().context.policy);
+          this.#groups.get(group)?.preempt();
+        },
+        cutTiers: () => this.#cutTiers(null),
+        pump: () => this.#pump()
+      });
       /** The records of the runs that ended (row 011-131). */
       #records;
       /** Something the pump waits for happened: a tier ended, runner work drained, a batch or request came. */
@@ -58125,74 +58562,11 @@ var init_scheduler2 = __esm({
           return this.#runtimeGone;
         }
       }
-      /**
-       * Queues the checkpoint once a pass that started after the request was
-       * delivered (`passes`, row 011-198), unless it needs the runner: while a
-       * runner failure is outstanding the runner is retried first, and while a
-       * revision waits for its runner part the checkpoint follows it. A warm-up
-       * (`observeIgnored`) runs every runnable file forced, in a checkpoint of
-       * its own: only its own tiers run flagged, and a forced checkpoint counts
-       * only its own tiers' results (review wave 13ar, B1). With a `lane`, only
-       * that lane's test files (task 004-61).
-       */
-      async requestFullSuite(request = {}) {
-        const passes = this.options.passes;
-        if (passes !== void 0) {
-          const asked = passes.started();
-          await passes.pass();
-          if ((passes.deliveredPass()?.number ?? 0) <= asked) throw new Error(NO_PASS);
-        }
-        const warmUp2 = request.observeIgnored === true;
-        const force = request.force === true || warmUp2;
-        const lane = request.lane;
-        const queue = (ledger) => {
-          const { policy } = this.#started().context;
-          const only2 = lane === void 0 ? void 0 : { lane, isSlow: slowView(policy).isSlow };
-          const record3 = queueFullSuite(ledger, force, warmUp2, only2);
-          this.#requests.ask(record3.testFiles.flatMap((ref3) => ledger.file(ref3) ?? []));
-          this.#quiet.end(this.#started().context.now());
-          if (warmUp2) this.#warmUp.start(this.#started().context, ledger, record3);
-          return record3;
-        };
-        const operation = "taking a squeal run --all request";
-        if (this.#awaitingInstall) {
-          await this.#request(
-            operation,
-            () => this.#handleBatch({ trigger: "interval", paths: [] }, true)
-          );
-        }
-        this.#groups.preempt();
-        const record2 = await this.#request(
-          operation,
-          () => this.#lock.run(
-            () => this.#transact((_, ledger) => {
-              if (this.#awaitingInstall || this.#reinstalled) return abandonFullSuite(ledger);
-              if (ledger.broken || this.#runnerWork.size > 0 || this.#runnerWork.refining) {
-                return null;
-              }
-              return queue(ledger);
-            }),
-            operation
-          )
-        ) ?? await this.#runnerWork.afterTier(async () => {
-          const { context, ledger } = this.#started();
-          const abandon4 = this.#awaitingInstall || this.#reinstalled;
-          const retry2 = abandon4 ? null : await fetchRunnerRetry(context, ledger);
-          const touched2 = retry2 === null ? [] : await this.#request(
-            operation,
-            (n) => keyRunnerRetry(context, retry2, n === 0 ? [] : lagging(context, ledger))
-          );
-          return this.#request(
-            operation,
-            async () => this.#transact((_, held3) => {
-              if (abandon4) return abandonFullSuite(held3);
-              if (retry2 !== null) storeRunnerRetry(context, held3, retry2, touched2);
-              return queue(held3);
-            })
-          );
-        }, `${operation} after the runner work`);
-        this.#pump();
-        return record2;
+      /** `squeal run --all` (`fullSuiteRequest`): the checkpoint, after a pass delivered after it. */
+      requestFullSuite(request = {}) {
+        return this.#intake.take(
+          fullSuiteRequest(request, { quiet: this.#quiet, warmUp: this.#warmUp })
+        );
       }
       /** Row 011-302: what holds the lock, to a `run-group` request that waits for it. */
       watchLock(listener) {
@@ -58207,153 +58581,34 @@ var init_scheduler2 = __esm({
         if (request === null) throw new Error("squeal scheduler: the default slow group is missing");
         return request;
       }
-      /**
-       * Spec 019 D6: group `group`'s files run now, whatever its moment; its
-       * lane still waits for the groups `after` names (D1). A lint group's
-       * pending checks lint now (row 019-22): its released paths, then a pass,
-       * whose end nudges the lint pass. `null` for a group the policy in force
-       * does not have.
-       */
-      async requestGroup(group) {
-        const operation = `taking a squeal run ${group} request`;
-        const lint2 = await this.#lock.run(() => {
-          const { context, ledger } = this.#started();
-          const resolved2 = groupView(context.policy).groups.find((g2) => g2.name === group);
-          if (resolved2?.select.kind !== "lint" || this.#awaitingInstall || this.#reinstalled) {
-            return null;
-          }
-          return { revision: ledger.revision.number, queued: releaseLint(context, group) };
-        }, operation);
-        if (lint2 !== null) {
-          void this.options.passes?.pass().catch(() => {
-          });
-          this.#pump();
-          return lint2;
-        }
-        const request = await this.#request(
-          operation,
-          () => this.#lock.run(
-            () => this.#transact((context, ledger) => {
-              const revision = ledger.revision.number;
-              const view = groupView(context.policy);
-              if (!view.groups.some((g2) => g2.name === group)) return null;
-              if (this.#awaitingInstall || this.#reinstalled) return { revision, queued: 0 };
-              this.#groups.lanes(context.policy);
-              this.#groups.get(group)?.request();
-              const queued = queueGroup(context, ledger, group);
-              const files5 = [...ledger.files.values()];
-              this.#requests.ask(files5.filter((f) => view.of(f.ref).name === group));
-              return { revision, queued };
-            }),
-            operation
-          )
-        );
-        this.#pump();
-        return request;
+      /** Spec 019 D6: `squeal run <group>` (`groupRequest`); `null` for a group the policy lacks. */
+      requestGroup(group) {
+        return this.#intake.take(groupRequest(group, this.#groups, this.options.passes));
       }
-      /**
-       * Spec 019 D6 "Narrow run" (row 019-49): of group `group`, only the test
-       * files `paths` select run now (`selectNarrow`), whatever its moment; a
-       * current one does not run again. Its lane runs them as asks at their
-       * keys, so the group's other files keep waiting and the group is never
-       * made current by it. A source path asks the runner, so the request waits
-       * for the runner work before it. `null` for a group the policy in force
-       * does not have; rejects for a lint group.
-       */
-      async requestGroupPaths(group, paths) {
-        const operation = `taking a squeal run ${group} <path>... request`;
-        const request = await this.#runnerWork.afterTier(async () => {
-          const { context, ledger } = this.#started();
-          const revision = ledger.revision.number;
-          const resolved2 = groupView(context.policy).groups.find((g2) => g2.name === group);
-          if (resolved2 === void 0) return null;
-          if (resolved2.select.kind === "lint") {
-            throw new Error(`group ${group} is a lint group, which runs whole: squeal run ${group}`);
-          }
-          const selection = await selectNarrow(context, ledger, paths);
-          const waiting2 = this.#awaitingInstall ? AWAITING_INSTALL_REASON : this.#reinstalled ? REINSTALLED_REASON : null;
-          if (waiting2 !== null) {
-            return {
-              revision,
-              queued: 0,
-              narrow: narrowAnswer(context, ledger, group, selection, waiting2)
-            };
-          }
-          return this.#request(
-            operation,
-            async () => this.#transact(() => {
-              const selected2 = selection.selected.get(group) ?? /* @__PURE__ */ new Set();
-              const { queued, asks } = queueNarrow(ledger, selected2);
-              this.#requests.ask([...selected2].flatMap((id) => ledger.files.get(id) ?? []));
-              this.#groups.lanes(context.policy);
-              const lane = this.#groups.get(group);
-              lane?.narrow.add(asks, ledger);
-              lane?.preempt();
-              const narrow2 = narrowAnswer(context, ledger, group, selection, null);
-              return { revision, queued, narrow: narrow2 };
-            })
-          );
-        }, operation);
-        this.#pump();
-        return request;
+      /** Spec 019 D6 "Narrow run" (row 019-49): `narrowRequest`. */
+      requestGroupPaths(group, paths) {
+        return this.#intake.take(narrowRequest(group, paths, this.#groups));
       }
       /** `squeal retry` (001-368): queues the requests in the store that may run now. */
-      async requestRetries() {
-        if (this.#closed || this.#reinstalled || this.#awaitingInstall || !this.#context) return;
-        const operation = "taking squeal retry requests";
-        await this.#request(
-          operation,
-          () => this.#lock.run(
-            () => this.#transact((context, ledger) => {
-              if (this.#takeRetries(context, ledger)) ledger.commit();
-            }),
-            operation
-          )
-        );
-        this.#pump();
+      requestRetries() {
+        return this.#intake.take(retryRequest());
       }
       /**
-       * `takeRetries`, each retry it claims and queues asked (row 018-12): at
-       * `squeal retry`, in a reconciliation pass, at start (review wave 3.6,
-       * B3). One that waits at the closed load gate asks nothing yet.
+       * `takeRetries`, each retry it claims and queues asked (row 018-12): in a
+       * reconciliation pass and at start (review wave 3.6, B3); `squeal retry`'s
+       * are its covered files (`retryRequest`). One that waits at the closed
+       * load gate asks nothing yet.
        */
       #takeRetries(context, ledger) {
         return takeRetries(context, ledger, (file) => this.#requests.ask([file]));
       }
-      /**
-       * Spec 011 C15: a named wait promotes `testFiles` for `withinMs` on this
-       * daemon's clock. Only the order of queued files changes; the pump takes
-       * a promoted file at the next tier boundary of a free lane, and the tier
-       * in flight there may yield to it (C4 step 5 as amended 2026-10-21, row
-       * 011-51).
-       */
-      async promote(testFiles3, withinMs) {
-        if (this.#closed || !this.#context) return;
-        await this.#lock.run(() => {
-          const { context, ledger } = this.#started();
-          ledger.queue.promote(testFiles3, context.now() + withinMs, answeredOf(context, ledger));
-          this.#cutTiers(null);
-        }, "promoting the test files of a named wait");
-        this.#pump();
+      /** Spec 011 C15: a named wait promotes `testFiles` for `withinMs` (`promoteRequest`). */
+      promote(testFiles3, withinMs) {
+        return this.#intake.take(promoteRequest(testFiles3, withinMs));
       }
-      /**
-       * Spec 011 C15, focused checks (row 011-145): a named wait asks for the
-       * checks of `testFiles` that hold one of `texts`, first and alone, for
-       * `withinMs` on this daemon's clock. A file that is not listed, slow or of
-       * a runner that runs whole files only gets no entry. The tier in flight in
-       * a file's lane may yield to it as to a promoted file (C4 step 5).
-       */
-      async focus(testFiles3, texts2, withinMs) {
-        if (this.#closed || !this.#context || texts2.length === 0) return;
-        await this.#lock.run(() => {
-          const { context, ledger } = this.#started();
-          const until = context.now() + withinMs;
-          for (const ref3 of testFiles3) {
-            if (mayFocus(context, ledger, ref3)) ledger.queue.focused.add(ref3, texts2, until);
-          }
-          this.#cutTiers(null);
-        }, "focusing the checks of a named wait");
-        this.#pump();
+      /** Spec 011 C15, focused checks (row 011-145): `focusRequest`. */
+      focus(testFiles3, texts2, withinMs) {
+        return this.#intake.take(focusRequest(testFiles3, texts2, withinMs));
       }
       nudge() {
         if (this.#closed || !this.#context) return;
@@ -58363,13 +58618,11 @@ var init_scheduler2 = __esm({
         if (this.#closed || !this.#context) return Promise.resolve();
         return this.#updateCommit();
       }
+      /** Row 018-28: an import's observed reads (`observedRequest`); synchronous. */
       refreshObserved(projects2 = [], imports2 = []) {
-        if (this.#closed || this.#reinstalled || this.#awaitingInstall || !this.#context) return false;
-        if (projects2.length > 0) this.#context.keys.refreshObserved(projects2);
-        markImportsWaiting(this.#context.store, this.#context.worktreeId, imports2);
-        this.#runnerWork.queueObserved();
-        this.#pump();
-        return true;
+        return this.#intake.take(
+          observedRequest(projects2, imports2, () => this.#runnerWork.queueObserved())
+        );
       }
       status() {
         return { revision: this.#ledger?.revision.number ?? 0 };
@@ -58774,49 +59027,6 @@ var init_scheduler2 = __esm({
       #sliced(fn) {
         const ms2 = this.options.busySliceMs;
         return ms2 === void 0 || this.#busy === null ? fn() : withBusySlice(ms2, fn);
-      }
-      /**
-       * Spec 021 D2 (review 0.1.434, B2): `stage`, the synchronous part of a
-       * socket request that changes the ledger and writes it, in one store
-       * transaction taken before it changes anything. A busy store refuses that
-       * transaction at its start, so the stage can be tried again whole
-       * (`#request`) and never runs twice. Another error rolls the store back,
-       * and the ledger is put back as the store holds it (`Ledger.hold`).
-       */
-      #transact(stage2) {
-        const { context, ledger } = this.#started();
-        const restore2 = ledger.hold([...ledger.files.values()].map((file) => file.ref));
-        try {
-          return context.store.transaction(() => stage2(context, ledger));
-        } catch (error) {
-          restore2();
-          throw error;
-        }
-      }
-      /**
-       * `once`, a socket request's write (`#transact`, its pass, or a runner
-       * retry's keys), tried again while a busy store refuses it, a slice per
-       * try (spec 021 D2), with `busyWaits`; once without. `n` counts the tries. A refusal once the scheduler closes or its
-       * daemon stops answers the request with an error that says the store was
-       * busy, so no request waits past the daemon.
-       */
-      async #request(operation, once4) {
-        const waits2 = this.options.busyWaits;
-        if (waits2 === void 0 || this.#busy === null) return once4(0);
-        try {
-          return await retryWhileBusy(once4, {
-            sliceMs: this.options.busySliceMs,
-            waits: waits2,
-            key: `scheduler:request:${++this.#retries}`,
-            what: operation.replace(/^taking /, ""),
-            stopped: () => this.#stopping()
-          });
-        } catch (error) {
-          if (!isBusy(error)) throw error;
-          throw new Error(`${operation}: the store was still busy when the daemon stopped`, {
-            cause: error
-          });
-        }
       }
       /** `task` under the lock, `#sliced`; `operation` names it to a lock watcher (row 011-302). */
       #runSliced(task, operation) {
