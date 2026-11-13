@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.473";
+  if (true) return "0.1.475";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -86458,6 +86458,7 @@ function offersLog({ report: report4, logDir, ran }) {
 }
 
 // src/core/code/gate/lanes.ts
+init_load();
 import { join as join68 } from "node:path";
 
 // src/core/code/gate/plan.ts
@@ -86704,6 +86705,75 @@ function mapPayloads(files5, { format: format2, blobs, provider, children, note 
 function childFiles(file) {
   const dir2 = file.children?.dir;
   return dir2 === void 0 || !existsSync32(dir2) ? 0 : readdirSync24(dir2).length;
+}
+
+// src/core/code/gate/retry.ts
+init_compare();
+init_reverse_index();
+init_load();
+init_text();
+function failedIn(files5, report4) {
+  const completed2 = new Set(report4.completedFiles.map(testFileId));
+  const failed7 = /* @__PURE__ */ new Set([
+    ...report4.fileErrors.map((e) => testFileId(e.testFile)),
+    ...report4.results.filter((r) => r.outcome === "fail").map((r) => testFileId({ project: r.check.project, path: r.check.testPath }))
+  ]);
+  return files5.filter((ref3) => completed2.has(testFileId(ref3)) && failed7.has(testFileId(ref3)));
+}
+function overloadedOf(files5, report4, load, leftMs) {
+  if (report4 === null || leftMs <= 0) return null;
+  const failed7 = failedIn(files5, report4);
+  if (failed7.length === 0) return null;
+  const sample = load();
+  if (loadAllows(sample) || sample.oneMinute === null) return null;
+  return { load: { oneMinute: sample.oneMinute, cpus: sample.cpus }, files: failed7 };
+}
+function withoutRetried(records, overloaded) {
+  if (overloaded === null) return records;
+  const retried = new Set(overloaded.files.map(testFileId));
+  return new Map([...records].filter(([id]) => !retried.has(id)));
+}
+function afterRetry(files5, ran, overloaded, rerun) {
+  if (rerun === null) return [...ran];
+  const again2 = new Map(overloaded.files.map((ref3, i3) => [testFileId(ref3), rerun[i3]]));
+  const { oneMinute, cpus: cpus3 } = overloaded.load;
+  const load = Math.round(oneMinute * 100) / 100;
+  return ran.map((first2, i3) => {
+    const id = testFileId(files5[i3] ?? { project: "", path: first2.path });
+    if (!again2.has(id)) return first2;
+    const second = again2.get(id);
+    if (second?.completed !== true) {
+      return { ...first2, retried: { load, cpus: cpus3, outcome: "not-finished" } };
+    }
+    const outcome2 = second.failed.length > 0 ? "failed" : "passed";
+    return { ...second, retried: { load, cpus: cpus3, outcome: outcome2 } };
+  });
+}
+function retriedOf(files5) {
+  const retried = files5.flatMap(
+    (f) => f.retried === void 0 ? [] : [[f.path, f.retried]]
+  );
+  if (retried.length === 0) return null;
+  return Object.fromEntries(retried.sort(([a], [b]) => compare(a, b)));
+}
+var RETRIED_NAMES = 3;
+var OUTCOMES9 = [
+  ["passed", "passed"],
+  ["failed", "failed again"],
+  ["not-finished", "did not finish, so the first failure stands"]
+];
+function retriedText(runs) {
+  const retried = runs.flatMap((run7) => Object.entries(run7.retried ?? {}));
+  if (retried.length === 0) return "";
+  const highest = retried.map(([, r]) => r).reduce((top, r) => r.load / r.cpus > top.load / top.cpus ? r : top);
+  const outcomes2 = OUTCOMES9.flatMap(([outcome2, said]) => {
+    const paths = retried.filter(([, r]) => r.outcome === outcome2).map(([path]) => path);
+    return paths.length === 0 ? [] : [`${paths.length} ${said} (${listPaths(paths.sort(compare), RETRIED_NAMES)})`];
+  });
+  const count3 = retried.length === 1 ? "1 test file" : `${retried.length} test files`;
+  const load = `${highest.load} on ${highest.cpus} CPUs`;
+  return `squeal code: ${count3} failed while the host load was at or over its CPU count (${load}) and ran once more: ${outcomes2.join(", ")}.
+`;
 }
 
 // src/core/code/gate/prepare.ts
@@ -86997,29 +87067,63 @@ async function runLanes(runs, context) {
     const files5 = planned.files.filter((ref3) => !before4.known.has(ref3));
     if (files5.length > 0) toRun2.push({ planned, files: files5 });
   }
-  const ended2 = await Promise.all(toRun2.map((run7) => runOne(run7.planned, run7.files, context)));
-  for (const run7 of ended2) {
-    testFiles3.push(...run7.ran);
+  const first2 = await Promise.all(toRun2.map((run7) => runOne(run7.planned, run7.files, context)));
+  const reruns = await Promise.all(
+    toRun2.map(({ planned }, i3) => {
+      const files5 = first2[i3]?.overloaded?.files;
+      return files5 === void 0 ? null : runOne(planned, files5, context, RERUN);
+    })
+  );
+  const ended2 = [];
+  first2.forEach((run7, i3) => {
+    const rerun = reruns[i3] ?? null;
+    const { overloaded } = run7;
+    const again2 = rerun?.report == null ? null : rerun.ran;
+    testFiles3.push(
+      ...overloaded === void 0 ? run7.ran : afterRetry(run7.files, run7.ran, overloaded, again2)
+    );
+    ended2.push(run7);
     timedOut ||= run7.report === null || run7.report.end === "timed-out";
-  }
+    if (rerun === null || rerun.report === null) return;
+    ended2.push(rerun);
+    timedOut ||= rerun.report.end === "timed-out";
+  });
   return { testFiles: testFiles3, prepares, ended: ended2, timedOut };
 }
-async function runOne({ pick, index: i3 }, files5, context) {
+var RERUN = "-rerun";
+async function runOne({ pick, index: i3 }, files5, context, rerun) {
   const { runner } = pick;
   const { options, progress: progress2 } = context;
   const left = Math.ceil(context.deadline - performance.now());
-  const logDir = join68(context.temp, "runs", String(i3));
-  const report4 = left > 0 ? await runner.adapter.run(files5, { runId: `gate-${i3}`, logDir, timeoutMs: left }).finally(() => progress2.runEnded(runner.kind, files5)) : null;
+  const id = `${i3}${rerun ?? ""}`;
+  const logDir = join68(context.temp, "runs", id);
+  const report4 = left > 0 ? await runner.adapter.run(files5, { runId: `gate-${id}`, logDir, timeoutMs: left }).finally(() => progress2.runEnded(runner.kind, files5)) : null;
   if (report4?.failure != null) context.note(`${runner.kind} run: ${report4.failure}`);
   const records = mapPayloads(runner.covered.splice(0), context.mapping);
-  await tellRan(options.ran, { runner: runner.kind, files: files5, report: report4, records });
+  const overloaded = rerun === void 0 ? overloadedOf(
+    files5,
+    report4,
+    options.hostLoad ?? hostLoad,
+    context.deadline - performance.now()
+  ) : null;
+  if (rerun === void 0) {
+    const kept6 = withoutRetried(records, overloaded);
+    await tellRan(options.ran, { runner: runner.kind, files: files5, report: report4, records: kept6 });
+  }
   const ran = [];
   for (const ref3 of files5) {
     const evidence = await evidenceOf4(runner, ref3, report4, records, context.children);
     const started2 = evidence.completed || progress2.wasStarted(runner.kind, ref3);
     ran.push(started2 ? evidence : { ...evidence, notStarted: true });
   }
-  return { runner: runner.kind, files: files5, logDir, report: report4, ran };
+  return {
+    runner: runner.kind,
+    files: files5,
+    logDir,
+    report: report4,
+    ran,
+    ...overloaded === null ? {} : { overloaded }
+  };
 }
 
 // src/core/code/gate/prerun.ts
@@ -87623,6 +87727,23 @@ function parseExceptions(text3) {
   return entries3;
 }
 
+// src/core/code/gate/failed-tests.ts
+init_compare();
+function failedFiles(files5) {
+  return files5.filter((f) => f.failed.length > 0).map((f) => ({ ...f, failed: [...f.failed].sort(compare) })).sort((a, b) => compare(a.path, b.path));
+}
+function withFailedTests(fn, failed7) {
+  if (fn.gap !== "test-failed") return fn;
+  const loaders = new Set(fn.loaders.expected);
+  const failedTests = failed7.map((f) => ({
+    path: f.path,
+    tests: f.failed,
+    from: f.from ?? "run",
+    loader: loaders.has(f.path)
+  }));
+  return { ...fn, failedTests };
+}
+
 // src/core/code/gate/report.ts
 init_compare();
 function verdictOf2(functions, uncounted, runs) {
@@ -87669,6 +87790,7 @@ function runsOf(evidence, durationsMs) {
       files5.filter((f) => unfinished2(f) && f.notStarted === true).map((f) => f.path)
     );
     const overBudget = files5.filter((f) => f.overBudget === true).map((f) => f.path);
+    const retried = retriedOf(files5);
     return [
       {
         runner,
@@ -87684,6 +87806,7 @@ function runsOf(evidence, durationsMs) {
         ...prepare2 === null ? {} : { prepare: prepare2 },
         ...estimate === void 0 ? {} : { estimate: withoutRunner(estimate) },
         ...overBudget.length === 0 ? {} : { overBudget: sorted2(overBudget) },
+        ...retried === null ? {} : { retried },
         durationMs: durationMs2
       }
     ];
@@ -87840,10 +87963,11 @@ function headPaths(changed2) {
 function evaluate(changed2, evidence, policy, versions2, times, exceptions) {
   const counted3 = new Map(changed2.counted.map((c) => [c.path, c]));
   const cache2 = /* @__PURE__ */ new Map();
+  const failed7 = failedFiles(evidence.testFiles);
   const ctx = {
     policy,
     excluded: createInputMatcher(policy.coverageExclude),
-    failed: evidence.testFiles.some((f) => f.failed.length > 0),
+    failed: failed7.length > 0,
     counted: (path) => counted3.get(path),
     leftOut: (path) => leftOutLoaders(evidence.scope?.files ?? [], path),
     evidenceOf: ({ path, blob }) => {
@@ -87863,7 +87987,7 @@ function evaluate(changed2, evidence, policy, versions2, times, exceptions) {
     policy,
     baseCommit: changed2.baseCommit
   });
-  const functions = (applied?.functions ?? judged2.map((j) => j.row)).sort(byPosition);
+  const functions = (applied?.functions ?? judged2.map((j) => j.row)).map((f) => withFailedTests(f, failed7)).sort(byPosition);
   const { incompleteClosures } = evidence;
   const uncounted = changed2.uncounted.map((u) => ({ path: u.path, reason: u.reason, gap: "not-counted" })).sort((a, b) => compare(a.path, b.path) || compare(a.reason, b.reason));
   return {
@@ -87916,7 +88040,7 @@ var TOLD3 = [
   ["source", "its record holds other bytes of a source"]
 ];
 var REFUSED_NAMES = 3;
-var OUTCOMES9 = [
+var OUTCOMES10 = [
   ["ran", "ran here"],
   ["unfinished", "started here and did not finish"],
   ["not-run", "did not run"],
@@ -87938,7 +88062,7 @@ function refusedLines(runs) {
       const files5 = refused.filter(([, r]) => r.reason === reason2);
       if (files5.length === 0) return [];
       const outcomes2 = files5.map(([path]) => outcomeOf2(run7, path));
-      const where3 = OUTCOMES9.flatMap(([outcome2, said]) => {
+      const where3 = OUTCOMES10.flatMap(([outcome2, said]) => {
         const count4 = outcomes2.filter((o) => o === outcome2).length;
         return count4 === 0 ? [] : [`${count4} ${said}`];
       }).join(", ");
@@ -88251,6 +88375,46 @@ init_text();
 
 // src/cli/code-gate-text.ts
 init_text();
+
+// src/cli/code-gate-text-failed.ts
+init_text();
+function outsideOf(f) {
+  const failed7 = f.failedTests ?? [];
+  if (f.gap !== "test-failed" || failed7.length === 0) return null;
+  return failed7.some((t) => t.loader) ? null : failed7;
+}
+function causeText2(failed7) {
+  const first2 = failed7[0];
+  const named4 = first2 === void 0 ? "" : `${first2.path} \u203A ${first2.tests[0] ?? ""}`;
+  const more2 = failed7.reduce((sum2, t) => sum2 + t.tests.length, 0) - 1;
+  return more2 > 0 ? `${named4} and ${plural(more2, "more failed test")}` : named4;
+}
+function outsideWords(f) {
+  const failed7 = outsideOf(f);
+  return failed7 === null ? null : `a selected test failed outside its loaders: ${causeText2(failed7)}`;
+}
+var causeKey = (failed7) => JSON.stringify(failed7.map((t) => [t.path, t.tests]));
+function foldedLine(group) {
+  const [first2] = group;
+  if (first2 === void 0) return "";
+  const where3 = `${first2.path}:${first2.line} ${functionName({ kind: "code", ...first2 })}`;
+  const cause = causeText2(outsideOf(first2) ?? []);
+  return `  ${plural(group.length, "changed function")}: incomplete: a selected test failed outside their loaders: ${cause} (first: ${where3}; --json lists them all)`;
+}
+function foldOutside(functions) {
+  const groups3 = /* @__PURE__ */ new Map();
+  for (const f of functions) {
+    const failed7 = outsideOf(f);
+    if (failed7 === null) continue;
+    const key3 = causeKey(failed7);
+    groups3.set(key3, [...groups3.get(key3) ?? [], f]);
+  }
+  const shared2 = [...groups3.values()].filter((group) => group.length > 1);
+  const folded = new Set(shared2.flat());
+  return { listed: functions.filter((f) => !folded.has(f)), folded: shared2.map(foldedLine) };
+}
+
+// src/cli/code-gate-text.ts
 var GAP_WORDS = {
   "not-counted": "not counted: it is inside code that does not parse",
   "no-loader": "no test Squeal runs loads its file",
@@ -88321,7 +88485,9 @@ function exceptionsText(f, ccLimit) {
   return missed.length === 0 ? "" : `; ${missed.join("; ")}`;
 }
 function stateText(f, ccLimit) {
-  if (f.state === "incomplete") return `incomplete: ${f.gap === null ? "" : GAP_WORDS[f.gap]}`;
+  if (f.state === "incomplete") {
+    return `incomplete: ${f.gap === null ? "" : outsideWords(f) ?? GAP_WORDS[f.gap]}`;
+  }
   if (f.state === "skipped") return "skipped: its file is in coverage.exclude";
   return `${f.state}${exceptionsText(f, ccLimit)}`;
 }
@@ -88406,13 +88572,15 @@ function rerunLine(report4) {
   return rerun === void 0 ? [] : [`A rerun that fits the estimate: ${rerun.command}`];
 }
 function formatGateReport(report4, json3) {
-  const functions = report4.functions.filter((f) => f.state !== "pass").map((f) => functionLine(f, report4));
+  const { listed: listed8, folded } = foldOutside(report4.functions.filter((f) => f.state !== "pass"));
+  const functions = listed8.map((f) => functionLine(f, report4));
   const paths = report4.uncounted.map((u) => `  ${u.path}: ${UNCOUNTED_WORDS[u.reason]}`);
   const unused = (report4.exceptions?.unused ?? []).map(unusedLine);
   const runs = report4.runs.flatMap((run7) => runLines(run7, report4.budget.seconds));
   const lines = [
     verdictLine(report4),
     ...functions,
+    ...folded,
     ...paths,
     ...unused,
     ...runs,
@@ -90151,7 +90319,8 @@ Usage: ${CODE_GATE_USAGE}
       overran: (file) => io.stderr(overrunText(file)),
       // #197: a run with a failed or unfinished file keeps its log where a daemon keeps its runs'.
       keepLog: logs.keep,
-      teardown: teardowns.hear
+      teardown: teardowns.hear,
+      ...io.hostLoad === void 0 ? {} : { hostLoad: io.hostLoad }
     },
     parts3
   ).catch((error) => error instanceof Error ? error : new Error(String(error))).finally(() => durations2?.close());
@@ -90173,6 +90342,8 @@ Usage: ${CODE_GATE_USAGE}
 function afterVerdict(runs, retention, io) {
   const refused = refusedText(runs);
   if (refused !== "") io.stderr(refused);
+  const retried = retriedText(runs);
+  if (retried !== "") io.stderr(retried);
   const kept6 = keptLogsLine(runs, retention);
   if (kept6 !== null) io.stderr(kept6);
 }
