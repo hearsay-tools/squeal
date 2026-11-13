@@ -138,14 +138,14 @@ describe("runner traits: each runner kind's statement", () => {
   it("reads runner.tierSize and the width table at each answer", () => {
     let table: unknown = null;
     const vitest = vitestTraits({ widths: () => table, omitted: () => 0 });
-    const nodeTest = nodeTestTraits({ tierSize: () => tierSize });
+    const processKind = nodeTestTraits({ tierSize: () => tierSize });
     const pytest = pytestTraits({ tierSize: () => tierSize });
-    expect([vitest.tierWidth(A, 8), nodeTest.tierWidth(A, 8), pytest.tierWidth(A, 1)]).toEqual([
+    expect([vitest.tierWidth(A, 8), processKind.tierWidth(A, 8), pytest.tierWidth(A, 1)]).toEqual([
       8, 4, 4,
     ]);
     table = VITEST_TABLE;
     tierSize = 6;
-    expect([vitest.tierWidth(A, 8), nodeTest.tierWidth(A, 8), pytest.tierWidth(A, 1)]).toEqual([
+    expect([vitest.tierWidth(A, 8), processKind.tierWidth(A, 8), pytest.tierWidth(A, 1)]).toEqual([
       2, 6, 6,
     ]);
   });
