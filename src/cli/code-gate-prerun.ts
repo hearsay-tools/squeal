@@ -139,32 +139,29 @@ const WAYS_OUT =
 /**
  * D17.1: one stderr line per runner, told before the first run: its
  * estimate, how many files have a stored duration, and how many run at
- * once. The runners run in turn, so a line is over the budget when the
- * estimates up to its runner pass `leftSeconds`; that line gives the ways
- * out. Rows 020-45, 020-46: then `budget`'s line, when it names a rerun.
+ * once. The runners run at once (D18 as amended, row 020-44), so a line
+ * is over the budget when its own runner's estimate passes `leftSeconds`;
+ * that line gives the ways out. Rows 020-45, 020-46: then `budget`'s
+ * line, when it names a rerun.
  */
 export function estimateText(
   estimates: readonly RunEstimate[],
   leftSeconds: number,
   budget?: BudgetTold,
 ): string {
-  let until = 0;
   const lines = estimates.map(({ runner, seconds, files, known, width }) => {
     const name = RUNNER_NAMES[runner];
     const run = `${plural(files, "test file")} to run here, up to ${width} at once`;
     if (seconds === null) return `${name}: ${run}; no stored duration, so the time is unknown`;
-    const first = until === 0;
-    until += seconds;
     const from =
       known < files
         ? `the stored durations of ${known} (the others at their median)`
         : files === 1
           ? "its stored duration"
           : "their stored durations";
-    const after = first ? "" : `, ${until} s with the runs before it`;
     const over =
-      until > leftSeconds ? `, over the ${leftSeconds} s left of the budget. ${WAYS_OUT}` : "";
-    return `${name}: ${run}: about ${seconds} s from ${from}${after}${over}`;
+      seconds > leftSeconds ? `, over the ${leftSeconds} s left of the budget. ${WAYS_OUT}` : "";
+    return `${name}: ${run}: about ${seconds} s from ${from}${over}`;
   });
   const fit = budget === undefined ? null : budgetLine(budget);
   return [...lines, ...(fit === null ? [] : [fit])]
