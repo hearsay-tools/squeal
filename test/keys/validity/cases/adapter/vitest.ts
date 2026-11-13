@@ -223,6 +223,16 @@ const OUTCOME_FILES = [
   ref("test/fails.test.ts"),
   ref("test/broken.test.ts"),
 ];
+/**
+ * Row 020-50 (#207): `FAILING` with one forks worker per file and a 1 ms
+ * teardown threshold, so Vitest logs its teardown timeout line for the
+ * files' workers, as the research probe forced it.
+ */
+const TEARDOWN: Readonly<Record<string, string>> = {
+  ...FAILING,
+  "vitest.config.ts":
+    'export default { test: { include: ["test/**/*.test.ts"], setupFiles: ["test/setup.ts"], testTimeout: 60_000, pool: "forks", teardownTimeout: 1 } };\n',
+};
 const SLOW = [1, 2, 3].map((n) => ref(`test/slow${n}.test.ts`));
 const [, SLOW2, SLOW3] = SLOW;
 const EVERY = [SLOW2, SLOW3, ref("test/computed.test.ts")].filter((r) => r !== undefined);
@@ -563,5 +573,15 @@ export const VITEST_RUNS: readonly Case[] = [
     "a run whose file-start hook returns no end stores alike (row 020-43)",
     "020 row 020-43: a hook that returns no end, as a caller outside the types may, leaves the adapter its own empty end for each file; it only tells, so the run stores what the last release stored",
     { files: FAILING, fileStarted: "bare", runs: [{ files: OUTCOME_FILES, touched: [] }] },
+  ),
+  vitest(
+    "a run with the gate's teardown listener stores alike (row 020-50)",
+    "013 V8 as amended (#207): the gate gives the adapter a listener for Vitest's teardown timeout line, which the adapter reads from the instance's logger, passing every message on; the daemon gives none and the last release ignores it; the line changes no result, so a passing, a failing and an unloadable file store what the last release stored",
+    { files: TEARDOWN, teardown: "hears", runs: [{ files: OUTCOME_FILES, touched: [] }] },
+  ),
+  vitest(
+    "a run whose teardown listener throws stores alike (row 020-50)",
+    "013 V8 as amended (#207): a listener that throws goes to the adapter's note, never into Vitest's timer, and Vitest still prints its line; the run stores what the last release stored",
+    { files: TEARDOWN, teardown: "throws", runs: [{ files: OUTCOME_FILES, touched: [] }] },
   ),
 ];

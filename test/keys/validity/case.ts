@@ -339,6 +339,14 @@ export interface VitestInput {
    * its own empty one.
    */
   readonly fileStarted?: "ends" | "bare";
+  /**
+   * Spec 020 row 020-50 (#207): the gate's `teardown` listener, the
+   * adapter's thirteenth argument, which a release before it ignores. What
+   * it hears is wording, so the runs must store alike. `throws`: the
+   * listener throws, which the adapter sends to its note while Vitest still
+   * prints its line.
+   */
+  readonly teardown?: "hears" | "throws";
 }
 
 /**

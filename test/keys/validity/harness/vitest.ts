@@ -23,7 +23,9 @@ import { goneLogDir, tell, writeTree } from "./shared.js";
  * cand/0.1.232, B1). The reason a run gives is wording. Vitest resolves from the
  * candidate's install at both trees (`compare.ts`). Row 020-43: with
  * `fileStarted`, the gate's file-start hook, which a release before it
- * ignores; what it is told is wording.
+ * ignores; what it is told is wording. Row 020-50: with `teardown`, the
+ * gate's listener for Vitest's teardown timeout line, ignored the same way;
+ * what it hears is wording.
  */
 
 async function until(holds: () => boolean, what: string): Promise<void> {
@@ -199,6 +201,18 @@ function fileStartedOf(input: VitestInput) {
   return { started, wording: { told } };
 }
 
+/** Row 020-50: the teardown listener when `input` asks it, and what it heard, as wording. */
+function teardownOf(input: VitestInput) {
+  const { teardown } = input;
+  if (teardown === undefined) return { listener: undefined, wording: {} };
+  const heard: string[] = [];
+  const listener = (files: readonly string[]) => {
+    heard.push(...files);
+    if (teardown === "throws") throw new Error("the listener throws");
+  };
+  return { listener, wording: { teardowns: heard } };
+}
+
 /** Runs `input`'s runs in turn on one adapter over its fixture, under `scratch`. */
 export async function vitestCase(input: VitestInput, scratch: string): Promise<CaseOutput> {
   const markers = join(scratch, "markers");
@@ -216,6 +230,7 @@ export async function vitestCase(input: VitestInput, scratch: string): Promise<C
   const exclude = input.exclude ?? [];
   const heard = new Set<string>();
   const hook = fileStartedOf(input);
+  const teardown = teardownOf(input);
   const adapter = new VitestAdapter(
     new WorktreePaths(root),
     witnessed(await loadVitest(root), heard),
@@ -229,6 +244,7 @@ export async function vitestCase(input: VitestInput, scratch: string): Promise<C
     coverageOf(input, scratch),
     undefined,
     hook.started,
+    teardown.listener,
   );
   const reports: RunReport[] = [];
   const rechecks: unknown[] = [];
@@ -287,6 +303,7 @@ export async function vitestCase(input: VitestInput, scratch: string): Promise<C
       failures: reports.map((r) => r.failure),
       rechecks,
       ...hook.wording,
+      ...teardown.wording,
     },
   };
 }
