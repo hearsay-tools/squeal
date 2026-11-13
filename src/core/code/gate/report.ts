@@ -99,6 +99,23 @@ export interface GateFunctionReport {
   };
   /** D8: the entries that name it, each with what it did; present only when one does. */
   readonly exceptions?: readonly GateExceptionUse[];
+  /**
+   * Row 020-53 (#210): with the gap `test-failed`, each selected test file
+   * with a failed test, by path. D5.5 makes any of them block the function,
+   * whether or not it is one of its loaders. Absent with any other gap.
+   */
+  readonly failedTests?: readonly GateFailedTests[];
+}
+
+/** Row 020-53: one selected test file with a failed test, as a `test-failed` function names it. */
+export interface GateFailedTests {
+  readonly path: RelativePath;
+  /** The full names of its failed tests, sorted, as in `runs[].failed`. */
+  readonly tests: readonly string[];
+  /** Where its evidence came from: this command's run, the stores or the parts. */
+  readonly from: GateEvidenceSource;
+  /** It is one of the function's loaders: in `loaders.expected`. */
+  readonly loader: boolean;
 }
 
 /**
