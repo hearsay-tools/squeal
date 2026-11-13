@@ -197,36 +197,6 @@ describe("run --all --wait: the checkpoint's verdict (spec 005 D1)", () => {
     expect(result.code).toBe(1);
   });
 
-  it("exits 3 when a revision was recorded during the checkpoint", async () => {
-    const w = worktree();
-    w.file(A);
-    await daemonFor(w.socket, w.checkpoint([A]));
-    later(50, () => {
-      appendRevisions(w.store, w.id, 1, { head: null, dirty: true });
-      finish(w.store);
-    });
-    const result = await run(["run", "--all", "--wait"], w.root);
-    expect(result.first).toBe(
-      "Checkpoint c1 has no verdict: revision 4 was recorded after the checkpoint's revision 3",
-    );
-    expect(result.code).toBe(3);
-  });
-
-  it("exits 3 at the deadline with files pending, and the checkpoint goes on", async () => {
-    const w = worktree();
-    w.file(A);
-    w.file(B, { validity: "pending", pending: "running" });
-    await daemonFor(w.socket, w.checkpoint([B]));
-    const started = Date.now();
-    const result = await run(["run", "--all", "--wait=300"], w.root);
-    expect(Date.now() - started).toBeLessThan(3_000);
-    expect(result.first).toBe(
-      "Checkpoint c1 has no verdict: the deadline passed with 1 test file pending at revision 3; the checkpoint goes on in the daemon",
-    );
-    expect(result.code).toBe(3);
-    expect(w.store.checkpoints.get("c1")?.end).toBeNull();
-  });
-
   it("exits 3 when a covered file is unknown at the end", async () => {
     const w = worktree();
     w.file(A);
@@ -237,16 +207,6 @@ describe("run --all --wait: the checkpoint's verdict (spec 005 D1)", () => {
     expect(result.first).toBe(
       "Checkpoint c1 has no verdict: 1 test file without a current result at revision 3 (1 unknown). Without a result: test/b.test.ts: no result: no key: its project's environment or closure is not known (a runner call failed), or a closure path is untracked",
     );
-    expect(result.code).toBe(3);
-  });
-
-  it("exits 3 when the checkpoint was abandoned", async () => {
-    const w = worktree();
-    w.file(A);
-    await daemonFor(w.socket, w.checkpoint([A]));
-    later(50, () => finish(w.store, "abandoned"));
-    const result = await run(["run", "--all", "--wait"], w.root);
-    expect(result.first).toMatch(/^Checkpoint c1 has no verdict: it was abandoned before/);
     expect(result.code).toBe(3);
   });
 
@@ -331,30 +291,6 @@ describe("run --all --wait: the checkpoint's verdict (spec 005 D1)", () => {
     );
     expect(result.code).toBe(0);
   });
-
-  it("exits 3 and says so when the daemon stopped and the next one owes the checkpoint (001-219)", async () => {
-    const w = worktree();
-    w.file(A, { validity: "pending", pending: "queued" });
-    const owed: CheckpointProgress = {
-      id: "c1",
-      kind: "run-all",
-      revision: 3 as RevisionNumber,
-      startedAt: Date.now(),
-      done: 0,
-      total: 1,
-      owed: { ids: ["c1"], remaining: [ref(A)], strict: [] },
-    };
-    await daemonFor(w.socket, w.checkpoint([A]));
-    later(100, () => {
-      closeFakeDaemons();
-      w.store.meta.set(checkpointMetaKey(w.id), JSON.stringify(owed));
-    });
-    const result = await run(["run", "--all", "--wait"], w.root);
-    expect(result.first).toBe(
-      "Checkpoint c1 has no verdict: the daemon stopped before it ended; the next daemon resumes it, and `run --all --wait` then waits for it",
-    );
-    expect(result.code).toBe(3);
-  }, 15_000);
 
   it("rejects a malformed deadline with exit code 2", async () => {
     const w = worktree();

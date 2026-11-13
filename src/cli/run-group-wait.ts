@@ -52,7 +52,7 @@ export async function waitForGroup(wait: GroupWait, io: CliIo): Promise<number> 
   const outcome = await runWait({ wait: "group", root, socketPath, deadline, files });
   const now = io.now ?? Date.now;
   const command = statusCommand(io.env ?? process.env);
-  const [line, code] = verdictLine(wait, outcome, command);
+  const [line, code] = groupVerdictLine(wait, outcome, command);
   const subject =
     wait.files === undefined ? `Group ${wait.group}` : `Selected test files of group ${wait.group}`;
   io.stdout(`${subject} ${line}\n${wait.line}\n`);
@@ -61,7 +61,11 @@ export async function waitForGroup(wait: GroupWait, io: CliIo): Promise<number> 
 }
 
 /** The verdict line after the subject, and the exit code. */
-function verdictLine(wait: GroupWait, outcome: GroupOutcome, command: string): [string, 0 | 1 | 3] {
+export function groupVerdictLine(
+  wait: GroupWait,
+  outcome: GroupOutcome,
+  command: string,
+): [string, 0 | 1 | 3] {
   const narrow = wait.files !== undefined;
   const none = (why: string): [string, 3] => [`${narrow ? "have" : "has"} no verdict: ${why}`, 3];
   switch (outcome.kind) {
