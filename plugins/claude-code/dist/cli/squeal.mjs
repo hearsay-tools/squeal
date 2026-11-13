@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.471";
+  if (true) return "0.1.473";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -3148,6 +3148,44 @@ var init_git = __esm({
   }
 });
 
+// src/core/types/runner-traits.ts
+function declareTraits(stated = {}) {
+  const { omittedTestFiles, slowWidth, tierWidth: tierWidth3, tierPart, besideBacklog, backlogSlot: backlogSlot2 } = stated;
+  const { focuses, lane } = stated;
+  return {
+    omittedTestFiles: () => omittedTestFiles?.() ?? 0,
+    slowWidth: (testFiles3) => Math.max(1, slowWidth?.(testFiles3) ?? testFiles3.length),
+    tierWidth: (testFile, grant) => Math.max(1, tierWidth3?.(testFile, grant) ?? grant),
+    tierPart: (testFile) => tierPart?.(testFile) ?? "",
+    besideBacklog: (testFile) => besideBacklog?.(testFile) ?? false,
+    backlogSlot: (testFile) => {
+      const files5 = backlogSlot2?.(testFile) ?? null;
+      return files5 === null ? null : Math.max(1, Math.floor(files5));
+    },
+    focuses: (testFile) => focuses?.(testFile) ?? false,
+    lane: (testFile) => lane?.(testFile) ?? ""
+  };
+}
+function liveTraits(current2) {
+  return {
+    omittedTestFiles: () => current2().omittedTestFiles(),
+    slowWidth: (testFiles3) => current2().slowWidth(testFiles3),
+    tierWidth: (testFile, grant) => current2().tierWidth(testFile, grant),
+    tierPart: (testFile) => current2().tierPart(testFile),
+    besideBacklog: (testFile) => current2().besideBacklog(testFile),
+    backlogSlot: (testFile) => current2().backlogSlot(testFile),
+    focuses: (testFile) => current2().focuses(testFile),
+    lane: (testFile) => current2().lane(testFile)
+  };
+}
+var NO_TRAITS;
+var init_runner_traits = __esm({
+  "src/core/types/runner-traits.ts"() {
+    "use strict";
+    NO_TRAITS = declareTraits();
+  }
+});
+
 // src/core/daemon/runner-idle.ts
 async function reopened(fresh, was, paths) {
   const heard = await fresh.invalidate(paths);
@@ -3258,7 +3296,7 @@ function createRecoveringRunner(options) {
     closing = ending3;
   };
   const clock = new IdleClock(options.idleMs ?? (() => 0), park2);
-  const values = () => inner ?? parked?.last ?? null;
+  const traits = liveTraits(() => (inner ?? parked?.last)?.traits ?? options.traits);
   const live = () => {
     if (inner !== null && options.gone?.(inner) === true) {
       const dead = inner;
@@ -3317,6 +3355,7 @@ function createRecoveringRunner(options) {
   return {
     name: options.name,
     adapterVersion: options.adapterVersion,
+    traits,
     open: () => around(async () => {
       clock.begin(true);
       try {
@@ -3371,13 +3410,6 @@ function createRecoveringRunner(options) {
     closure: (testFile) => call2((a) => a.closure(testFile)),
     enumerate: (testFile) => call2((a) => a.enumerate(testFile)),
     testFiles: () => call2((a) => a.testFiles()),
-    omittedTestFiles: () => values()?.omittedTestFiles?.() ?? 0,
-    slowWidth: (testFiles3) => values()?.slowWidth?.(testFiles3) ?? testFiles3.length,
-    tierWidth: (testFile, grant) => options.tierWidth?.(testFile, grant) ?? values()?.tierWidth?.(testFile, grant) ?? grant,
-    tierPart: (testFile) => values()?.tierPart?.(testFile) ?? "",
-    besideBacklog: () => options.besideBacklog === true,
-    backlogSlot: () => options.backlogSlot ?? null,
-    ...options.focuses === true ? { focuses: true } : {},
     environment: () => call2(async (a) => {
       const answer4 = await a.environment();
       if (a === inner) answered2 = answer4;
@@ -3456,6 +3488,7 @@ var init_runner2 = __esm({
     "use strict";
     init_git();
     init_json();
+    init_runner_traits();
     init_runner_idle();
     VITEST_CONFIG = /^(vitest\.(config|workspace|projects)|vite\.config)\.[cm]?[jt]s$/;
   }
@@ -11723,291 +11756,6 @@ var init_measure = __esm({
   }
 });
 
-// src/core/daemon/composite-flights.ts
-function withheld(testFiles3, durationMs2) {
-  return {
-    end: "completed",
-    durationMs: durationMs2,
-    completedFiles: [],
-    results: [],
-    fileErrors: [],
-    failure: null,
-    withheld: testFiles3
-  };
-}
-async function runPart(adapter, testFiles3, options) {
-  const started2 = Date.now();
-  try {
-    return await adapter.run(testFiles3, options);
-  } catch (error) {
-    return {
-      end: "crashed",
-      durationMs: Date.now() - started2,
-      completedFiles: [],
-      results: [],
-      fileErrors: [],
-      failure: error instanceof Error ? error.message : String(error)
-    };
-  }
-}
-var Flights;
-var init_composite_flights = __esm({
-  "src/core/daemon/composite-flights.ts"() {
-    "use strict";
-    Flights = class {
-      #running = /* @__PURE__ */ new Map();
-      #removed = /* @__PURE__ */ new WeakSet();
-      /** Every member a reload retired, removed or replaced: none starts a part again. */
-      #left = /* @__PURE__ */ new WeakSet();
-      /** Retired members not closed yet: each waits for its parts in flight. */
-      #retired = /* @__PURE__ */ new Set();
-      #closing = [];
-      removed(adapter) {
-        return this.#removed.has(adapter);
-      }
-      left(adapter) {
-        return this.#left.has(adapter);
-      }
-      stop(adapter) {
-        this.#removed.add(adapter);
-        for (const controller of this.#running.get(adapter) ?? []) controller.abort("stop");
-      }
-      retire(adapter) {
-        this.#left.add(adapter);
-        this.#retired.add(adapter);
-        if (!this.#running.has(adapter)) this.#closeRetired(adapter);
-      }
-      async run(adapter, testFiles3, options) {
-        const controller = new AbortController();
-        const running = this.#running.get(adapter) ?? /* @__PURE__ */ new Set();
-        this.#running.set(adapter, running.add(controller));
-        const stop2 = options.stop === void 0 ? controller.signal : AbortSignal.any([options.stop, controller.signal]);
-        try {
-          const report4 = await runPart(adapter, testFiles3, { ...options, stop: stop2 });
-          return this.removed(adapter) ? withheld(testFiles3, report4.durationMs) : report4;
-        } finally {
-          running.delete(controller);
-          if (running.size === 0) {
-            this.#running.delete(adapter);
-            if (this.#retired.has(adapter)) this.#closeRetired(adapter);
-          }
-        }
-      }
-      /** Closes the retired members still running, and waits for every retired close. */
-      async close() {
-        for (const adapter of this.#retired) this.#closeRetired(adapter);
-        await Promise.all(this.#closing);
-      }
-      #closeRetired(adapter) {
-        this.#retired.delete(adapter);
-        this.#closing.push(adapter.close().catch(() => {
-        }));
-      }
-    };
-  }
-});
-
-// src/core/daemon/composite-runner.ts
-var composite_runner_exports = {};
-__export(composite_runner_exports, {
-  createCompositeRunner: () => createCompositeRunner,
-  focusesFile: () => focusesFile,
-  merge: () => merge3
-});
-function createCompositeRunner(adapters, sets2 = []) {
-  const all2 = () => [...adapters, ...sets2.flatMap((set) => set.members())];
-  let members = all2();
-  const owners = /* @__PURE__ */ new Map();
-  const flights = new Flights();
-  const own = (adapter, projects2) => {
-    for (const project of projects2) {
-      const owner2 = owners.get(project);
-      if (owner2 !== void 0 && owner2 !== adapter) {
-        throw new Error(
-          `project ${JSON.stringify(project)} is reported by both ${owner2.name} and ${adapter.name}; rename one`
-        );
-      }
-      owners.set(project, adapter);
-    }
-  };
-  const reconcile2 = () => {
-    if (sets2.length === 0) return [];
-    const changes = sets2.map((set) => set.reconcile());
-    members = all2();
-    for (const { removed, replaced } of changes) {
-      for (const runner of removed) flights.stop(runner);
-      for (const runner of [...removed, ...replaced]) {
-        for (const [project, owner2] of owners) if (owner2 === runner) owners.delete(project);
-        flights.retire(runner);
-      }
-    }
-    return changes.flatMap((change2) => change2.projects);
-  };
-  const each = (call2) => Promise.all(members.map(async (adapter) => ({ adapter, value: await call2(adapter) })));
-  const environment = async () => {
-    const parts3 = await each((adapter) => adapter.environment());
-    for (const { adapter, value } of parts3)
-      own(
-        adapter,
-        value.map((e) => e.project)
-      );
-    return parts3.flatMap((part2) => part2.value);
-  };
-  const ownerOf = async (testFile) => {
-    if (!owners.has(testFile.project)) await environment();
-    const owner2 = owners.get(testFile.project);
-    if (owner2 === void 0) {
-      throw new Error(
-        `no runner owns project ${JSON.stringify(testFile.project)} (${testFile.path})`
-      );
-    }
-    return owner2;
-  };
-  return {
-    get name() {
-      return members.map((adapter) => adapter.name).join("+");
-    },
-    get adapterVersion() {
-      return members.map((adapter) => adapter.adapterVersion).join("+");
-    },
-    async invalidate(paths) {
-      const reconciled = reconcile2();
-      const parts3 = await Promise.all(members.map((adapter) => adapter.invalidate(paths)));
-      const projects2 = /* @__PURE__ */ new Set([...reconciled, ...parts3.flatMap((part2) => part2.recreatedProjects)]);
-      return { recreatedProjects: [...projects2].sort(compare) };
-    },
-    async recheck() {
-      const parts3 = await Promise.all(
-        members.map((adapter) => adapter.recheck?.() ?? { recreatedProjects: [] })
-      );
-      const projects2 = new Set(parts3.flatMap((part2) => part2.recreatedProjects));
-      return { recreatedProjects: [...projects2].sort(compare) };
-    },
-    async affected(changedPaths3) {
-      const parts3 = await Promise.all(members.map((adapter) => adapter.affected(changedPaths3)));
-      return {
-        direct: parts3.flatMap((part2) => part2.direct).sort(compareRefs),
-        transitive: parts3.flatMap((part2) => part2.transitive).sort(compareRefs)
-      };
-    },
-    // A project no adapter listed yet has the composite's lane: its run fails on its own.
-    lane: (testFile) => owners.get(testFile.project)?.name ?? members.map((a) => a.name).join("+"),
-    closure: async (testFile) => (await ownerOf(testFile)).closure(testFile),
-    enumerate: async (testFile) => (await ownerOf(testFile)).enumerate(testFile),
-    async testFiles() {
-      const parts3 = await each((adapter) => adapter.testFiles());
-      for (const { adapter, value } of parts3)
-        own(
-          adapter,
-          value.map((f) => f.project)
-        );
-      return parts3.flatMap((part2) => part2.value);
-    },
-    omittedTestFiles: () => members.reduce((sum2, adapter) => sum2 + (adapter.omittedTestFiles?.() ?? 0), 0),
-    environment,
-    // The parts run one after another: a slow tier starts only the first file's owner's (004 D2).
-    slowWidth(testFiles3) {
-      const owner2 = testFiles3[0] === void 0 ? void 0 : owners.get(testFiles3[0].project);
-      if (owner2 === void 0) return testFiles3.length;
-      const end = testFiles3.findIndex((f) => owners.get(f.project) !== owner2);
-      const own2 = end === -1 ? testFiles3 : testFiles3.slice(0, end);
-      return owner2.slowWidth?.(own2) ?? own2.length;
-    },
-    // A backlog tier holds one lane, so one owner's files (task 001-366).
-    tierWidth: (testFile, grant) => owners.get(testFile.project)?.tierWidth?.(testFile, grant) ?? grant,
-    // `run` below runs the owners one after another (review wave-3 B1).
-    tierPart(testFile) {
-      const owner2 = owners.get(testFile.project);
-      if (owner2 === void 0) return "";
-      return `${members.indexOf(owner2)}:${owner2.tierPart?.(testFile) ?? ""}`;
-    },
-    besideBacklog: (testFile) => owners.get(testFile.project)?.besideBacklog?.(testFile) ?? false,
-    backlogSlot: (testFile) => owners.get(testFile.project)?.backlogSlot?.(testFile) ?? null,
-    // Row 011-145: a focused tier goes only to a file whose owner honours `RunOptions.checks`.
-    focusesFile: (testFile) => focusesFile(owners.get(testFile.project), testFile),
-    async run(testFiles3, options) {
-      if (testFiles3.some((f) => !owners.has(f.project))) await environment();
-      const groups3 = /* @__PURE__ */ new Map();
-      for (const testFile of testFiles3) {
-        const owner2 = owners.get(testFile.project) ?? await ownerOf(testFile);
-        groups3.set(owner2, [...groups3.get(owner2) ?? [], testFile]);
-      }
-      const order = [...members, ...[...groups3.keys()].filter((a) => !members.includes(a))];
-      const parts3 = [];
-      for (const adapter of order) {
-        const files5 = groups3.get(adapter);
-        if (files5 === void 0 || options.stop?.aborted === true) continue;
-        if (flights.left(adapter)) parts3.push({ adapter, report: withheld(files5, 0) });
-        else parts3.push({ adapter, report: await flights.run(adapter, files5, options) });
-      }
-      return merge3(parts3);
-    },
-    // Each adapter knows its own lanes (a slow instance, task 004-18); the others ignore it.
-    async releaseLane(lane) {
-      await Promise.all(members.map((adapter) => adapter.releaseLane?.(lane)));
-    },
-    async close() {
-      const closed = await Promise.allSettled([
-        ...members.map((adapter) => adapter.close()),
-        flights.close()
-      ]);
-      const failed7 = closed.find((result) => result.status === "rejected");
-      if (failed7 !== void 0) throw failed7.reason;
-    }
-  };
-}
-function focusesFile(runner, testFile) {
-  return runner?.focusesFile?.(testFile) ?? runner?.focuses === true;
-}
-function merge3(parts3) {
-  const reports = parts3.map((part2) => part2.report);
-  const end = reports.reduce(
-    (worst, report4) => SEVERITY[report4.end] > SEVERITY[worst] ? report4.end : worst,
-    "completed"
-  );
-  const failures = parts3.flatMap(
-    ({ adapter, report: report4 }) => report4.failure === null ? [] : [`${adapter.name}: ${report4.failure}`]
-  );
-  const timed2 = reports.some((report4) => report4.fileDurations !== void 0);
-  const observed2 = reports.some((report4) => report4.observed !== void 0);
-  const read5 = reports.some((report4) => report4.reads !== void 0);
-  const environment = reports.flatMap((report4) => report4.environmentObserved ?? []);
-  const skipped2 = reports.flatMap((report4) => report4.skippedFiles ?? []);
-  const withheld2 = reports.flatMap((report4) => report4.withheld ?? []);
-  const focused = reports.flatMap((report4) => report4.focused ?? []);
-  const startup = reports.find((report4) => report4.startupFailure !== void 0)?.startupFailure;
-  const started2 = [...new Set(reports.flatMap((report4) => report4.startedProjects ?? []))];
-  return {
-    end,
-    durationMs: reports.reduce((sum2, report4) => sum2 + report4.durationMs, 0),
-    completedFiles: reports.flatMap((report4) => report4.completedFiles),
-    results: reports.flatMap((report4) => report4.results),
-    fileErrors: reports.flatMap((report4) => report4.fileErrors),
-    failure: failures.length === 0 ? null : failures.join("; "),
-    ...timed2 ? { fileDurations: reports.flatMap((report4) => report4.fileDurations ?? []) } : {},
-    ...observed2 ? { observed: reports.flatMap((report4) => report4.observed ?? []) } : {},
-    ...read5 ? { reads: reports.flatMap((report4) => report4.reads ?? []) } : {},
-    ...environment.length > 0 ? { environmentObserved: environment } : {},
-    ...skipped2.length > 0 ? { skippedFiles: skipped2 } : {},
-    ...withheld2.length > 0 ? { withheld: withheld2 } : {},
-    ...focused.length > 0 ? { focused } : {},
-    ...startup === void 0 ? {} : { startupFailure: startup },
-    ...started2.length === 0 ? {} : { startedProjects: started2.sort(compare) }
-  };
-}
-function compareRefs(a, b) {
-  return a.project === b.project ? compare(a.path, b.path) : compare(a.project, b.project);
-}
-var SEVERITY;
-var init_composite_runner = __esm({
-  "src/core/daemon/composite-runner.ts"() {
-    "use strict";
-    init_compare();
-    init_composite_flights();
-    SEVERITY = { completed: 0, "timed-out": 1, crashed: 2 };
-  }
-});
-
 // src/core/daemon/low-priority.ts
 import { execFile } from "node:child_process";
 import { getPriority, setPriority } from "node:os";
@@ -12509,33 +12257,26 @@ function afterEachRun(runner, children, note, table = HOST) {
   let inFlight = 0;
   let first2 = 0;
   let overlapped = [];
-  const lane = runner.lane?.bind(runner);
+  const { traits } = runner;
   const releaseLane = runner.releaseLane?.bind(runner);
   const recheck = runner.recheck?.bind(runner);
-  const laneOf3 = (testFiles3, options) => options.lane ?? (testFiles3[0] === void 0 ? "" : lane?.(testFiles3[0]) ?? "");
+  const laneOf3 = (testFiles3, options) => options.lane ?? (testFiles3[0] === void 0 ? "" : traits.lane(testFiles3[0]));
   return {
     name: runner.name,
     adapterVersion: runner.adapterVersion,
+    traits,
     invalidate: (paths) => runner.invalidate(paths),
     ...recheck === void 0 ? {} : { recheck },
     affected: (changedPaths3) => runner.affected(changedPaths3),
     closure: (testFile) => runner.closure(testFile),
     enumerate: (testFile) => runner.enumerate(testFile),
     testFiles: () => runner.testFiles(),
-    omittedTestFiles: () => runner.omittedTestFiles?.() ?? 0,
-    slowWidth: (testFiles3) => runner.slowWidth?.(testFiles3) ?? testFiles3.length,
-    tierWidth: (testFile, grant) => runner.tierWidth?.(testFile, grant) ?? grant,
-    tierPart: (testFile) => runner.tierPart?.(testFile) ?? "",
-    besideBacklog: (testFile) => runner.besideBacklog?.(testFile) ?? false,
-    backlogSlot: (testFile) => runner.backlogSlot?.(testFile) ?? null,
-    focusesFile: (testFile) => focusesFile(runner, testFile),
     environment: () => runner.environment(),
-    ...lane === void 0 ? {} : { lane },
     ...releaseLane === void 0 ? {} : { releaseLane },
     async run(testFiles3, options) {
       const at2 = laneOf3(testFiles3, options);
       const lead = testFiles3[0];
-      const overlaps3 = lead !== void 0 && runner.besideBacklog?.(lead) === true;
+      const overlaps3 = lead !== void 0 && traits.besideBacklog(lead);
       const mark = overlaps3 ? `${at2}#${options.runId}` : at2;
       const since = children.mark();
       if (inFlight === 0) {
@@ -12626,7 +12367,6 @@ var CHILD_VARIABLE, ROUNDS, CHUNK2, ORPHANS_EVERY_MS, PROC3, EscapedChildren;
 var init_escaped = __esm({
   "src/core/daemon/escaped.ts"() {
     "use strict";
-    init_composite_runner();
     init_low_priority();
     init_outlived();
     init_terminate();
@@ -19247,8 +18987,7 @@ var init_sharing = __esm({
 
 // src/core/scheduler/slots.ts
 function backlogSlot(context, ref3) {
-  const files5 = context.runner.backlogSlot?.(ref3) ?? null;
-  return files5 === null ? null : Math.max(1, Math.floor(files5));
+  return context.runner.traits.backlogSlot(ref3);
 }
 function busyLanes(context, ledger, inFlight) {
   const held3 = /* @__PURE__ */ new Map();
@@ -19260,7 +18999,7 @@ function busyLanes(context, ledger, inFlight) {
     const inLane = (ref3) => laneOf(context, ref3) === lane;
     const queued = ledger.queue.hasFirstGroup(inLane) || focusedWaiting(context, ledger, inLane);
     const lead = backlog[0]?.files[0]?.file.ref;
-    const beside = queued && !edit && lead !== void 0 && context.runner.besideBacklog?.(lead) === true;
+    const beside = queued && !edit && lead !== void 0 && context.runner.traits.besideBacklog(lead);
     const any = tiers[0]?.files[0]?.file.ref;
     const slots = !queued && !isGroupLane(lane) && any !== void 0 && backlogSlot(context, any) !== null && backlog.length < context.policy.runner.tierSize;
     if (!beside && !slots) busy2.add(lane);
@@ -19438,7 +19177,7 @@ var init_quiet = __esm({
 
 // src/core/scheduler/focused.ts
 function mayFocus(context, ledger, ref3) {
-  return ledger.file(ref3) !== void 0 && !ledger.queue.isSlow(ref3) && focusesFile(context.runner, ref3);
+  return ledger.file(ref3) !== void 0 && !ledger.queue.isSlow(ref3) && context.runner.traits.focuses(ref3);
 }
 function runnable(context, ledger, entry4) {
   const file = ledger.file(entry4.ref);
@@ -19533,7 +19272,6 @@ function startFocusedTier(context, ledger, picked) {
 var init_focused = __esm({
   "src/core/scheduler/focused.ts"() {
     "use strict";
-    init_composite_runner();
     init_claims();
     init_focused_row();
     init_quiet();
@@ -19885,7 +19623,7 @@ function omittedTestFilesMetaKey(worktreeId) {
 async function listTestFilesOf(context, bound) {
   const { runner, store, worktreeId } = context;
   const listed8 = await bound.call(() => runner.testFiles());
-  recordOmittedTestFiles(store, worktreeId, runner.omittedTestFiles?.() ?? 0);
+  recordOmittedTestFiles(store, worktreeId, runner.traits.omittedTestFiles());
   return listed8;
 }
 function recordOmittedTestFiles(store, worktreeId, count3) {
@@ -20012,7 +19750,7 @@ async function fetchRunnerRetry(context, ledger) {
   let omitted = 0;
   const listed8 = await tryRunner(context, "testFiles", async () => {
     const files5 = await bound.call(() => context.runner.testFiles());
-    omitted = context.runner.omittedTestFiles?.() ?? 0;
+    omitted = context.runner.traits.omittedTestFiles();
     return files5;
   });
   const kept6 = listed8 === null ? null : new Set(listed8.map(testFileId));
@@ -20458,7 +20196,7 @@ var init_record_tier = __esm({
 import { randomUUID as randomUUID4 } from "node:crypto";
 import { join as join29 } from "node:path";
 function laneOf(context, ref3) {
-  return laneFor(context.policy, ref3, context.runner.lane?.(ref3) ?? "");
+  return laneFor(context.policy, ref3, context.runner.traits.lane(ref3));
 }
 function selectTier(context, ledger, busy2 = /* @__PURE__ */ new Set(), cut = NONE_CUT, turnDue = ledger.queue.backlogTurn(), pass = {}) {
   const { keys, policy } = context;
@@ -20644,10 +20382,10 @@ function narrowerThanEdit(context, picked, grant, trimmed) {
   return Math.min(picked.length, leased) < edit;
 }
 function tierWidth(context, ref3, grant) {
-  return Math.max(1, context.runner.tierWidth?.(ref3, grant) ?? grant);
+  return context.runner.traits.tierWidth(ref3, grant);
 }
 function partOf(context, ref3) {
-  return context.runner.tierPart?.(ref3) ?? "";
+  return context.runner.traits.tierPart(ref3);
 }
 function widest(context, picked) {
   const widths = picked.map((p) => tierWidth(context, p.file.ref, picked.length));
@@ -24724,7 +24462,7 @@ function toCheckRunResult(testCase, testFile, paths, fullName) {
     errors: outcome2 === "fail" ? (result.errors ?? []).map((e) => withLoad(toCheckError(e, paths))) : []
   };
 }
-function compareRefs2(a, b) {
+function compareRefs(a, b) {
   return a.project === b.project ? compare(a.path, b.path) : compare(a.project, b.project);
 }
 var OUTCOMES7, CAUSE_DEPTH, CAUSE_MESSAGE_CHARS, TIMEOUT, currentLoad, refKey;
@@ -26948,7 +26686,7 @@ function buildReport(collector, execution, durationMs2) {
     ...execution.failure === null ? [] : [execution.failure],
     ...unattributed.map((e) => `unhandled error outside any test file: ${errorText(e)}`)
   ].join("\n");
-  const completed2 = end === "crashed" ? [] : [...collector.modules.values()].filter((m) => endedInTime(m) || execution.keepsWhole === true && endedWhole(m)).map((m) => m.ref).sort(compareRefs2);
+  const completed2 = end === "crashed" ? [] : [...collector.modules.values()].filter((m) => endedInTime(m) || execution.keepsWhole === true && endedWhole(m)).map((m) => m.ref).sort(compareRefs);
   const completedKeys = new Set(completed2.map(refKey));
   const started2 = startedProjects(collector);
   const errors = /* @__PURE__ */ new Map();
@@ -26975,10 +26713,10 @@ function buildReport(collector, execution, durationMs2) {
     end,
     durationMs: durationMs2,
     completedFiles: completed2,
-    results: collector.results.filter((r) => completedKeys.has(refKey(r.ref))).sort((a, b) => compareRefs2(a.ref, b.ref)).map((r) => r.result),
-    fileErrors: [...errors.values()].sort((a, b) => compareRefs2(a.testFile, b.testFile)),
+    results: collector.results.filter((r) => completedKeys.has(refKey(r.ref))).sort((a, b) => compareRefs(a.ref, b.ref)).map((r) => r.result),
+    fileErrors: [...errors.values()].sort((a, b) => compareRefs(a.testFile, b.testFile)),
     failure: failure2 === "" ? null : collector.paths.relativizeText(failure2),
-    fileDurations: [...collector.modules.values()].filter((m) => completedKeys.has(refKey(m.ref)) && m.durationMs !== null).sort((a, b) => compareRefs2(a.ref, b.ref)).map((m) => ({ testFile: m.ref, durationMs: m.durationMs ?? 0 })),
+    fileDurations: [...collector.modules.values()].filter((m) => completedKeys.has(refKey(m.ref)) && m.durationMs !== null).sort((a, b) => compareRefs(a.ref, b.ref)).map((m) => ({ testFile: m.ref, durationMs: m.durationMs ?? 0 })),
     ...started2.length === 0 ? {} : { startedProjects: started2 },
     ...focusedOf(collector, completed2)
   };
@@ -28840,8 +28578,6 @@ var init_adapter = __esm({
       paths;
       name = "vitest";
       adapterVersion = VITEST_ADAPTER_VERSION;
-      /** 013 V4 (row 011-135): a run takes `RunOptions.checks`. */
-      focuses = true;
       #vitest = null;
       /** Where the current instance copies transformed modules (`instanceTempDirs`). */
       #tempDirs = [];
@@ -29165,8 +28901,8 @@ var init_adapter = __esm({
           const changed2 = changedPaths3.map((p) => this.paths.toAbsolute(p));
           const { direct, transitive } = await affectedTestFiles(vitest, specs, changed2);
           return {
-            direct: direct.map((s) => this.#ref(s)).sort(compareRefs2),
-            transitive: transitive.map((s) => this.#ref(s)).sort(compareRefs2)
+            direct: direct.map((s) => this.#ref(s)).sort(compareRefs),
+            transitive: transitive.map((s) => this.#ref(s)).sort(compareRefs)
           };
         });
       }
@@ -29201,9 +28937,10 @@ var init_adapter = __esm({
           const specs = await vitest.globTestSpecifications();
           const covered = this.#covered(supported(specs));
           this.#omitted = specs.length - covered.length;
-          return covered.map((s) => this.#ref(s)).sort(compareRefs2);
+          return covered.map((s) => this.#ref(s)).sort(compareRefs);
         });
       }
+      /** The files the last listing left out, which Vitest's traits answer from (`index.ts`). */
       omittedTestFiles() {
         return this.#omitted;
       }
@@ -29540,27 +29277,61 @@ var init_width = __esm({
         this.#widths?.apply(vitest, workers ?? this.maxWorkers, testFiles3);
       }
       /**
-       * Spec 004 D2 (review 001-394 B2): the files a slow run starts at once,
-       * under each project's own `maxWorkers` (001 D11 Runner ceiling). The
-       * slow instance has the same configs, so this instance's are read. None
-       * started yet: all of them.
+       * The table Vitest's traits answer from (`vitestTraits`, row 011-329), in
+       * this process and sent by a runner host (spec 021 D6): the slow width
+       * (spec 004 D2, review 001-394 B2) and a backlog tier's (011 C4 step 5,
+       * task 001-366), under each project's own `maxWorkers`. `null` before a
+       * start: the traits' defaults.
        */
-      slowWidth(testFiles3) {
-        return this.#widths?.atOnce(testFiles3) ?? testFiles3.length;
-      }
-      /**
-       * Spec 011 C4 step 5 (task 001-366): the workers a backlog tier holding
-       * `testFile` runs with at `grant`, under its project's own `maxWorkers`.
-       * No instance yet: `grant`.
-       */
-      tierWidth(testFile, grant) {
-        return this.#widths?.of(testFile.project, grant) ?? grant;
-      }
-      /** The table both answer from, sent by a runner host (spec 021 D6); `null` before a start. */
       table() {
         return this.#widths?.table ?? null;
       }
     };
+  }
+});
+
+// src/runners/vitest/traits.ts
+var traits_exports = {};
+__export(traits_exports, {
+  decodeWidths: () => decodeWidths,
+  vitestTraits: () => vitestTraits
+});
+function vitestTraits(values = NO_VALUES) {
+  let table;
+  let decoded = null;
+  const widths = () => {
+    const now = values.widths();
+    if (now !== table) {
+      table = now;
+      decoded = decodeWidths(now);
+    }
+    return decoded;
+  };
+  return declareTraits({
+    omittedTestFiles: () => values.omitted(),
+    slowWidth: (testFiles3) => widths()?.atOnce(testFiles3),
+    tierWidth: (testFile, grant) => widths()?.of(testFile.project, grant),
+    focuses: () => true
+  });
+}
+function decodeWidths(table) {
+  if (typeof table !== "object" || table === null) return null;
+  const { projects: projects2 } = table;
+  if (!Array.isArray(projects2) || !projects2.every(isWidthEntry)) return null;
+  return new WidthAnswers({ projects: projects2 });
+}
+function isWidthEntry(entry4) {
+  if (typeof entry4 !== "object" || entry4 === null) return false;
+  const { project, ceiling, floor: floor2, group } = entry4;
+  return typeof project === "string" && (ceiling === null || typeof ceiling === "number") && typeof floor2 === "number" && (typeof group === "number" || group === "sequential");
+}
+var NO_VALUES;
+var init_traits = __esm({
+  "src/runners/vitest/traits.ts"() {
+    "use strict";
+    init_runner_traits();
+    init_width();
+    NO_VALUES = { widths: () => void 0, omitted: () => void 0 };
   }
 });
 
@@ -29597,8 +29368,11 @@ var init_vitest = __esm({
     init_worktree_paths();
     init_adapter();
     init_load2();
+    init_traits();
     init_width();
     SizedVitestAdapter = class extends VitestAdapter {
+      /** Spec 011 C14 (row 011-329): Vitest's, from its widths and its last listing. */
+      traits;
       #widths;
       constructor(widths, paths, vitest, note, observe, childEnv2, optimizer, exclude, excludeFiles, coverage, cache2, started2, teardown) {
         super(
@@ -29617,12 +29391,10 @@ var init_vitest = __esm({
           teardown
         );
         this.#widths = widths;
-      }
-      slowWidth(testFiles3) {
-        return this.#widths.slowWidth(testFiles3);
-      }
-      tierWidth(testFile, grant) {
-        return this.#widths.tierWidth(testFile, grant);
+        this.traits = vitestTraits({
+          widths: () => widths.table(),
+          omitted: () => this.omittedTestFiles()
+        });
       }
       widthValues() {
         return this.#widths.table();
@@ -52061,6 +51833,25 @@ var init_run2 = __esm({
   }
 });
 
+// src/runners/node-test/traits.ts
+function nodeTestTraits(values = {}) {
+  const { tierSize } = values;
+  return declareTraits({
+    // A run starts `runner.tierSize` files at once whatever its grant (task 001-366).
+    tierWidth: () => tierSize?.(),
+    // It cannot cancel a run: an edit's tier starts beside a backlog tier (task 011-21).
+    besideBacklog: () => true,
+    // A process per file: the backlog runs in one-file slots (task 011-21 slice 2).
+    backlogSlot: () => 1
+  });
+}
+var init_traits2 = __esm({
+  "src/runners/node-test/traits.ts"() {
+    "use strict";
+    init_runner_traits();
+  }
+});
+
 // src/runners/node-test/adapter-project.ts
 import { basename as basename18, join as join79 } from "node:path";
 async function openProject(context) {
@@ -52101,6 +51892,7 @@ async function openProject(context) {
   return {
     name: NODE_TEST_LANE,
     adapterVersion: context.adapterVersion,
+    traits: nodeTestTraits({ tierSize: options.concurrency }),
     async invalidate(paths) {
       graph.invalidate(paths);
       if (paths.some((p) => p.kind !== "change")) {
@@ -52266,6 +52058,7 @@ var init_adapter_project = __esm({
     init_recorders2();
     init_coverage4();
     init_run2();
+    init_traits2();
     NAMED_INCOMPLETE = 3;
     NODE_TEST_LANE = "node-test";
   }
@@ -52331,6 +52124,7 @@ async function createNodeTestAdapter(project, options) {
   return {
     name: "node-test",
     adapterVersion: NODE_TEST_ADAPTER_VERSION,
+    traits: nodeTestTraits({ tierSize: options.concurrency }),
     async invalidate(paths) {
       if (inner !== null) return inner.invalidate(paths);
       if (!mayFix(paths) || !await attempt()) return { recreatedProjects: [] };
@@ -52373,6 +52167,7 @@ var init_adapter2 = __esm({
     init_adapter_environment();
     init_adapter_files();
     init_adapter_project();
+    init_traits2();
     init_version3();
   }
 });
@@ -57198,8 +56993,7 @@ var init_slow_tier = __esm({
           if (tierFile !== null) picked.push(tierFile);
         }
         if (picked.length === 0) return ledger.claims.waiting ? "claimed" : null;
-        const atOnce = context.runner.slowWidth?.(picked.map(({ file }) => file.ref));
-        if (atOnce !== void 0) picked.splice(Math.max(1, atOnce));
+        picked.splice(context.runner.traits.slowWidth(picked.map(({ file }) => file.ref)));
         const perFile = workersPerFile(group);
         const taken3 = ungated(group) ? null : context.capacity?.take(picked.length * perFile, poolLaneOf2(group)) ?? null;
         if (taken3 === WAIT_FOR_CAPACITY && !this.#explicit(picked.map(({ file }) => file.ref))) {
@@ -62359,371 +62153,191 @@ var init_channel = __esm({
   }
 });
 
-// src/core/runner-host/protocol.ts
-function encodeLine(message3) {
-  return `${MARKER}${JSON.stringify(message3)}
-`;
-}
-function frameOf2(line) {
-  const at2 = line.indexOf(MARKER);
-  return at2 < 0 ? null : line.slice(at2 + MARKER.length);
-}
-function errorOf2(cause) {
-  return { message: cause instanceof Error ? cause.message : String(cause) };
-}
-var RUNNER_HOST_PROTOCOL, MARKER, HOST_RUNNERS, LineReader;
-var init_protocol = __esm({
-  "src/core/runner-host/protocol.ts"() {
-    "use strict";
-    RUNNER_HOST_PROTOCOL = 1;
-    MARKER = "squeal-runner-host ";
-    HOST_RUNNERS = ["vitest", "node-test", "pytest"];
-    LineReader = class {
-      /** The unfinished line, in the chunks it arrived in. */
-      #pending = [];
-      /** The protocol lines `chunk` completes, each parsed. A line that does not parse throws. */
-      push(chunk) {
-        const messages = [];
-        let from = 0;
-        for (let end = chunk.indexOf("\n"); end >= 0; end = chunk.indexOf("\n", from)) {
-          this.#pending.push(chunk.slice(from, end));
-          const line = this.#pending.join("");
-          this.#pending = [];
-          from = end + 1;
-          const frame = frameOf2(line);
-          if (frame !== null) messages.push(JSON.parse(frame));
-        }
-        if (from < chunk.length) this.#pending.push(chunk.slice(from));
-        return messages;
-      }
-    };
+// src/runners/pytest/run/bytecode.ts
+import {
+  existsSync as existsSync42,
+  mkdirSync as mkdirSync22,
+  mkdtempSync as mkdtempSync11,
+  readdirSync as readdirSync33,
+  realpathSync as realpathSync15,
+  rmSync as rmSync27,
+  statSync as statSync25,
+  symlinkSync as symlinkSync2
+} from "node:fs";
+import { dirname as dirname46, join as join113, relative as relative20, sep as sep20 } from "node:path";
+function runBytecode(cacheDir, root, kept6) {
+  const shared2 = join113(cacheDir, "pycache");
+  const { dir: prefix, remove: remove2 } = runScratch(join113(cacheDir, "pycache-runs"));
+  const links = linkPoints(root, kept6);
+  prune5(shared2, root, links);
+  for (const link of links) {
+    mkdirSync22(join113(shared2, link), { recursive: true });
+    mkdirSync22(dirname46(join113(prefix, link)), { recursive: true });
+    symlinkSync2(join113(shared2, link), join113(prefix, link));
   }
-});
-
-// src/core/runner-host/connection.ts
-var HostLost, HostConnection;
-var init_connection2 = __esm({
-  "src/core/runner-host/connection.ts"() {
-    "use strict";
-    init_protocol();
-    HostLost = class extends Error {
-      constructor(message3, timedOut) {
-        super(message3);
-        this.timedOut = timedOut;
-        this.name = "HostLost";
-      }
-      timedOut;
-    };
-    HostConnection = class {
-      #options;
-      #pending = /* @__PURE__ */ new Map();
-      #next = 1;
-      #lost = null;
-      #closing = false;
-      constructor(options) {
-        this.#options = options;
-        const reader = new LineReader();
-        options.channel.output.on("data", (chunk) => {
-          let messages;
-          try {
-            messages = reader.push(chunk);
-          } catch {
-            this.#lose(`${options.label} wrote a protocol line that does not parse`, false);
-            return;
-          }
-          for (const message3 of messages) this.#receive(message3);
-        });
-        void options.channel.ended.then((how2) => {
-          const tail = options.channel.stderrTail();
-          this.#lose(`${options.label} exited (${how2})${tail === "" ? "" : `: ${tail}`}`, false);
-        });
-      }
-      /** Why the host can answer no more; `null` while it can. */
-      get lost() {
-        return this.#lost;
-      }
-      /** The id the next request takes. */
-      nextId() {
-        return this.#next++;
-      }
-      /**
-       * Sends request `m` and resolves with its reply, rejects with its error, or
-       * with `HostLost`: the host ended, or `deadline` passed, which stops it.
-       */
-      request(m, a, deadline, id = this.nextId()) {
-        if (this.#lost !== null) return Promise.reject(this.#lost);
-        const { ms: ms2, renewable, totalMs, idle: idle2 } = typeof deadline === "number" ? { ms: deadline, totalMs: void 0, idle: void 0 } : deadline;
-        const what = renewable === void 0 ? m : `${m}, nor ${renewable.progress},`;
-        return new Promise((resolve45, reject) => {
-          const pending = {
-            resolve: resolve45,
-            reject,
-            timer: void 0,
-            renewable: renewable !== void 0,
-            arm: () => {
-              clearTimeout(pending.timer);
-              pending.timer = setTimeout(
-                () => this.#lose(
-                  `${this.#options.label} did not answer ${what} within ${ms2} ms; Squeal stopped it`,
-                  true
-                ),
-                ms2
-              );
-            }
-          };
-          if (idle2 !== void 0) {
-            const armIdle = () => {
-              clearTimeout(pending.idle);
-              pending.idle = setTimeout(
-                () => this.#lose(
-                  `${this.#options.label} did not answer ${m}, nor ${idle2.progress}, within ${idle2.ms} ms; Squeal stopped it`,
-                  true
-                ),
-                idle2.ms
-              );
-            };
-            Object.assign(pending, { armIdle });
-            armIdle();
-          }
-          pending.arm();
-          if (totalMs !== void 0) {
-            pending.total = setTimeout(
-              () => this.#lose(
-                `${this.#options.label} did not answer ${m} within ${totalMs} ms; Squeal stopped it`,
-                true
-              ),
-              totalMs
-            );
-          }
-          this.#pending.set(id, pending);
-          this.#options.channel.write(encodeLine({ id, m, a }));
-        });
-      }
-      /**
-       * Request `id` showed a sign of life: its renewable deadline starts again,
-       * and its `idle` bound too when the sign is `progress` of its work.
-       */
-      renew(id, renewal = "progress") {
-        const pending = this.#pending.get(id);
-        if (pending?.renewable === true) pending.arm();
-        if (renewal === "progress") pending?.armIdle?.();
-      }
-      notice(message3) {
-        if (this.#lost === null) this.#options.channel.write(encodeLine(message3));
-      }
-      /** `close` began: the host's end is expected, and no longer reported as lost. */
-      closing() {
-        this.#closing = true;
-      }
-      #receive(message3) {
-        if ("ev" in message3) {
-          this.#options.event(message3);
-          return;
-        }
-        const pending = this.#pending.get(message3.id);
-        if (pending === void 0) return;
-        this.#pending.delete(message3.id);
-        clearTimeout(pending.timer);
-        clearTimeout(pending.total);
-        clearTimeout(pending.idle);
-        if ("e" in message3) pending.reject(new Error(message3.e.message));
-        else pending.resolve(message3.r);
-      }
-      #lose(text3, timedOut) {
-        if (this.#lost !== null) return;
-        const lost = new HostLost(text3, timedOut);
-        this.#lost = lost;
-        this.#options.channel.kill();
-        for (const pending of this.#pending.values()) {
-          clearTimeout(pending.timer);
-          clearTimeout(pending.total);
-          clearTimeout(pending.idle);
-          pending.reject(lost);
-        }
-        this.#pending.clear();
-        if (!this.#closing) this.#options.lost(lost);
-      }
-    };
-  }
-});
-
-// src/core/runner-host/coverage-wire.ts
-function encodeCoverageRun(run7) {
-  const index = /* @__PURE__ */ new Map();
-  const sources = [];
-  const files5 = run7.files.map((file) => {
-    const entries3 = [...file.sources].map(([path, source2]) => {
-      let at2 = index.get(source2);
-      if (at2 === void 0) {
-        at2 = sources.push(source2) - 1;
-        index.set(source2, at2);
-      }
-      return [path, at2];
-    });
-    return { ...file, sources: entries3 };
+  return { prefix, remove: remove2 };
+}
+function runScratch(parent2) {
+  mkdirSync22(parent2, { recursive: true });
+  sweep(parent2);
+  const dir2 = mkdtempSync11(join113(parent2, "run-"));
+  return { dir: dir2, remove: () => rmSync27(dir2, { recursive: true, force: true }) };
+}
+function linkPoints(root, kept6) {
+  const points = kept6.flatMap((dir2) => {
+    const fromRoot = relative20(root, dir2);
+    if (fromRoot === "") return [];
+    if (!fromRoot.startsWith(`..${sep20}`) && fromRoot !== "..") return [dir2];
+    const parts3 = dir2.split(sep20);
+    const rootParts = root.split(sep20);
+    const common = parts3.findIndex((part2, i3) => part2 !== rootParts[i3]);
+    return common === -1 ? [] : [parts3.slice(0, common + 1).join(sep20)];
   });
-  return { runId: run7.runId, sources, files: files5 };
+  const unique = [...new Set(points)].sort();
+  return unique.filter((p) => !unique.some((q) => q !== p && p.startsWith(`${q}${sep20}`)));
 }
-function decodeCoverageRun(wire) {
-  const files5 = wire.files.map((file) => {
-    const sources = /* @__PURE__ */ new Map();
-    for (const [path, at2] of file.sources) {
-      const source2 = wire.sources[at2];
-      if (source2 === void 0) throw new Error(`coverage source ${at2} of ${path} was not sent`);
-      sources.set(path, source2);
-    }
-    return { ...file, sources };
-  });
-  return { runId: wire.runId, files: files5 };
-}
-var init_coverage_wire = __esm({
-  "src/core/runner-host/coverage-wire.ts"() {
-    "use strict";
-  }
-});
-
-// src/runners/pytest/environment/site.ts
-import { readdirSync as readdirSync33, readFileSync as readFileSync56 } from "node:fs";
-import { isAbsolute as isAbsolute21, join as join113, resolve as resolve29 } from "node:path";
-function parsePyvenvCfg(text3) {
-  const pairs = {};
-  for (const line of text3.split(/\r?\n/)) {
-    const at2 = line.indexOf("=");
-    if (at2 > 0) pairs[line.slice(0, at2).trim().toLowerCase()] = line.slice(at2 + 1).trim();
-  }
-  return pairs;
-}
-function readPyvenvCfg(env) {
-  const text3 = readOptional(join113(env, "pyvenv.cfg"));
-  return text3 === null ? null : parsePyvenvCfg(text3);
-}
-function minorVersion(cfg) {
-  const match2 = /^(\d+)\.(\d+)/.exec(cfg?.version_info ?? cfg?.version ?? "");
-  return match2 === null ? null : `${match2[1]}.${match2[2]}`;
-}
-function sitePackagesDir(env) {
-  const lib = join113(env, "lib");
-  const names7 = listOptional(lib);
-  const version2 = minorVersion(readPyvenvCfg(env));
-  const named4 = version2 === null ? void 0 : names7.find((name3) => name3 === `python${version2}`);
-  const candidates = named4 === void 0 ? names7 : [named4];
-  const withSite = candidates.filter(
-    (name3) => listOptional(join113(lib, name3)).includes("site-packages")
-  );
-  return withSite.length === 1 ? join113(lib, withSite[0], "site-packages") : null;
-}
-function listOptional(dir2) {
+function keptDirs(env, python) {
   try {
-    return readdirSync33(dir2).sort(compare);
-  } catch (error) {
-    if (isMissing(error) || error.code === "ENOTDIR") return [];
-    throw error;
+    return [env, dirname46(dirname46(realpathSync15(python)))];
+  } catch {
+    return [env];
   }
 }
-function readOptional(path) {
+function prune5(shared2, root, links) {
+  const mirror = join113(shared2, root);
+  if (!existsSync42(mirror)) return;
+  const kept6 = new Set(links.map((link) => relative20(root, link).split(sep20)[0]));
+  for (const name3 of readdirSync33(mirror)) {
+    if (!kept6.has(name3)) rmSync27(join113(mirror, name3), { recursive: true, force: true });
+  }
+}
+function sweep(runs) {
+  for (const name3 of readdirSync33(runs)) {
+    const path = join113(runs, name3);
+    try {
+      if (Date.now() - statSync25(path).mtimeMs > ABANDONED_MS) {
+        rmSync27(path, { recursive: true, force: true });
+      }
+    } catch {
+    }
+  }
+}
+var ABANDONED_MS;
+var init_bytecode = __esm({
+  "src/runners/pytest/run/bytecode.ts"() {
+    "use strict";
+    ABANDONED_MS = 24 * 60 * 60 * 1e3;
+  }
+});
+
+// src/runners/pytest/run/basetemp.ts
+import { realpathSync as realpathSync16 } from "node:fs";
+import { join as join114 } from "node:path";
+function runBasetemp(cacheDir) {
+  const scratch = runScratch(join114(cacheDir, "basetemp-runs"));
+  const real3 = realpathSync16(scratch.dir);
+  return {
+    dir: (index) => join114(real3, String(index)),
+    remove: scratch.remove
+  };
+}
+function scrubBasetemp(text3, basetemp, name3) {
+  const folder = name3 === void 0 ? null : tmpPathFolder(name3);
+  const own = folder === null ? "" : `(?:/${escapeRegExp3(folder)}\\d+(?=${END}|$))?`;
+  return text3.replace(
+    new RegExp(`${escapeRegExp3(basetemp)}${own}(?![\\w.-])`, "g"),
+    (match2) => match2 === basetemp ? "<basetemp>" : `<basetemp>/${folder}<n>`
+  );
+}
+function tmpPathFolder(name3) {
+  return Array.from(name3.replace(/[^\p{L}\p{N}_]/gu, "_")).slice(0, 30).join("");
+}
+function escapeRegExp3(text3) {
+  return text3.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+var END;
+var init_basetemp = __esm({
+  "src/runners/pytest/run/basetemp.ts"() {
+    "use strict";
+    init_bytecode();
+    END = "[/\\s'\"`):,]";
+  }
+});
+
+// src/runners/pytest/run/batches.ts
+import { readFileSync as readFileSync56, realpathSync as realpathSync17, writeFileSync as writeFileSync17 } from "node:fs";
+import { join as join115 } from "node:path";
+function split2(files5, size, alone) {
+  const batches2 = [];
+  let open7 = [];
+  for (const file of files5) {
+    if (alone?.(file) === true) batches2.push([file]);
+    else {
+      open7.push(file);
+      if (open7.length === Math.max(1, size)) {
+        batches2.push(open7);
+        open7 = [];
+      }
+    }
+  }
+  if (open7.length > 0) batches2.push(open7);
+  return batches2;
+}
+function ending2(batches2, done, expired, tier) {
+  const unfinished3 = batches2.filter((b) => b.files.some((f) => !done.has(f.testFile)));
+  const total = tier.total;
+  if (expired) {
+    const count3 = total - done.size;
+    return {
+      end: "timed-out",
+      failure: `deadline of ${tier.timeoutMs} ms passed with ${count3} of ${total} test files unfinished`
+    };
+  }
+  if (unfinished3.length === 0) return { end: "completed", failure: null };
+  const what = unfinished3.map((b) => `${names4(b, (f) => !done.has(f.testFile))} (${describeExit2(b, tier)})`).join(", ");
+  const failure2 = `pytest ended without a complete report for ${what}`;
+  return { end: done.size === 0 ? "crashed" : "completed", failure: failure2 };
+}
+function names4(batch, keep = () => true) {
+  return batch.files.filter(keep).map((f) => f.testFile.path).join(", ");
+}
+function describeExit2(batch, tier) {
+  const exit2 = batch.exit;
+  if (exit2 === null) return "not started";
+  if (exit2.error !== null) return `cannot run ${tier.python}: ${exit2.error}`;
+  const how2 = exit2.signal === null ? `exit code ${exit2.code}` : `signal ${exit2.signal}`;
+  const tail = readOr(join115(tier.logDir, `stderr-${batch.index}.log`)).trim().split("\n").slice(-3);
+  return tail[0] === "" ? how2 : `${how2}: ${tail.join(" | ")}`;
+}
+function realOr(path) {
+  try {
+    return realpathSync17(path);
+  } catch {
+    return path;
+  }
+}
+function readOr(path) {
   try {
     return readFileSync56(path, "utf8");
-  } catch (error) {
-    if (isMissing(error)) return null;
-    throw error;
+  } catch {
+    return "";
   }
 }
-function pthFiles(site) {
-  return listOptional(site).filter((name3) => name3.endsWith(".pth") && !name3.startsWith("."));
+function writeRunLog3(logDir, log) {
+  const batches2 = log.batches.map((b) => ({
+    files: b.files.map((f) => f.testFile.path),
+    command: [log.python, ...b.args],
+    exit: b.exit,
+    signalled: b.signalled,
+    session: b.read?.session ?? false
+  }));
+  const text3 = runLogJson({ cwd: log.cwd, batches: batches2, notes: log.notes }, log.report);
+  writeFileSync17(join115(logDir, "run.json"), text3);
 }
-function stdlibDirs(cfg) {
-  const version2 = minorVersion(cfg);
-  const home = cfg?.home;
-  if (version2 === null || home === void 0 || !isAbsolute21(home)) return [];
-  const stdlib = resolve29(home, "..", "lib", `python${version2}`);
-  return [stdlib, join113(stdlib, "lib-dynload")];
-}
-var init_site = __esm({
-  "src/runners/pytest/environment/site.ts"() {
+var init_batches = __esm({
+  "src/runners/pytest/run/batches.ts"() {
     "use strict";
-    init_compare();
-    init_errors();
-  }
-});
-
-// src/runners/pytest/environment/config.ts
-import { statSync as statSync25 } from "node:fs";
-import { dirname as dirname46, join as join114 } from "node:path";
-function findPytestConfig(root, cwd) {
-  let fallback2 = null;
-  for (let dir2 = cwd; ; dir2 = dirname46(dir2)) {
-    for (const name3 of NAMES) {
-      const path = join114(dir2, name3);
-      const text3 = isFile2(path) ? readOptional(path) ?? "" : null;
-      if (text3 === null) continue;
-      if (name3 === "pyproject.toml" && fallback2 === null) fallback2 = path;
-      if (holdsPytest(name3, text3)) return { path, rootdir: dir2, holds: "pytest" };
-    }
-    if (toRelative(root, dir2) === null) break;
-  }
-  return fallback2 === null ? null : { path: fallback2, rootdir: dirname46(fallback2), holds: "fallback" };
-}
-function holdsPytest(name3, text3) {
-  switch (name3) {
-    case "pytest.toml":
-    case ".pytest.toml":
-    case "pytest.ini":
-    case ".pytest.ini":
-      return true;
-    case "tox.ini":
-      return iniSections(text3).includes("pytest");
-    case "setup.cfg":
-      return iniSections(text3).includes("tool:pytest");
-    case "pyproject.toml":
-      return pyprojectHoldsPytest(text3);
-  }
-}
-function iniSections(text3) {
-  const names7 = [];
-  for (const line of text3.split(/\r?\n/)) {
-    if (!line.startsWith("[")) continue;
-    const real3 = line.split("#")[0]?.split(";")[0]?.trimEnd() ?? "";
-    if (real3.endsWith("]")) names7.push(real3.slice(1, -1));
-  }
-  return names7;
-}
-function pyprojectHoldsPytest(text3) {
-  let table = null;
-  for (const line of text3.split(/\r?\n/)) {
-    const header2 = TABLE.exec(line)?.[1]?.replace(/\s*\.\s*/g, ".");
-    if (header2 !== void 0) {
-      if (header2.startsWith("tool.pytest.")) return true;
-      table = header2;
-    } else if (table === "tool.pytest" && KEY.test(line)) return true;
-  }
-  return false;
-}
-function isFile2(path) {
-  try {
-    return statSync25(path).isFile();
-  } catch (error) {
-    if (isMissing(error) || error.code === "ENOTDIR") return false;
-    throw error;
-  }
-}
-var NAMES, TABLE, KEY;
-var init_config = __esm({
-  "src/runners/pytest/environment/config.ts"() {
-    "use strict";
-    init_errors();
-    init_paths2();
-    init_site();
-    NAMES = [
-      "pytest.toml",
-      ".pytest.toml",
-      "pytest.ini",
-      ".pytest.ini",
-      "pyproject.toml",
-      "tox.ini",
-      "setup.cfg"
-    ];
-    TABLE = /^\s*\[\s*([^\][]+?)\s*\]\s*(?:#.*)?$/;
-    KEY = /^\s*[A-Za-z0-9_"'-]/;
+    init_run_summary();
   }
 });
 
@@ -63544,6 +63158,70 @@ var init_dist = __esm({
   }
 });
 
+// src/runners/pytest/environment/site.ts
+import { readdirSync as readdirSync34, readFileSync as readFileSync57 } from "node:fs";
+import { isAbsolute as isAbsolute21, join as join116, resolve as resolve29 } from "node:path";
+function parsePyvenvCfg(text3) {
+  const pairs = {};
+  for (const line of text3.split(/\r?\n/)) {
+    const at2 = line.indexOf("=");
+    if (at2 > 0) pairs[line.slice(0, at2).trim().toLowerCase()] = line.slice(at2 + 1).trim();
+  }
+  return pairs;
+}
+function readPyvenvCfg(env) {
+  const text3 = readOptional(join116(env, "pyvenv.cfg"));
+  return text3 === null ? null : parsePyvenvCfg(text3);
+}
+function minorVersion(cfg) {
+  const match2 = /^(\d+)\.(\d+)/.exec(cfg?.version_info ?? cfg?.version ?? "");
+  return match2 === null ? null : `${match2[1]}.${match2[2]}`;
+}
+function sitePackagesDir(env) {
+  const lib = join116(env, "lib");
+  const names7 = listOptional(lib);
+  const version2 = minorVersion(readPyvenvCfg(env));
+  const named4 = version2 === null ? void 0 : names7.find((name3) => name3 === `python${version2}`);
+  const candidates = named4 === void 0 ? names7 : [named4];
+  const withSite = candidates.filter(
+    (name3) => listOptional(join116(lib, name3)).includes("site-packages")
+  );
+  return withSite.length === 1 ? join116(lib, withSite[0], "site-packages") : null;
+}
+function listOptional(dir2) {
+  try {
+    return readdirSync34(dir2).sort(compare);
+  } catch (error) {
+    if (isMissing(error) || error.code === "ENOTDIR") return [];
+    throw error;
+  }
+}
+function readOptional(path) {
+  try {
+    return readFileSync57(path, "utf8");
+  } catch (error) {
+    if (isMissing(error)) return null;
+    throw error;
+  }
+}
+function pthFiles(site) {
+  return listOptional(site).filter((name3) => name3.endsWith(".pth") && !name3.startsWith("."));
+}
+function stdlibDirs(cfg) {
+  const version2 = minorVersion(cfg);
+  const home = cfg?.home;
+  if (version2 === null || home === void 0 || !isAbsolute21(home)) return [];
+  const stdlib = resolve29(home, "..", "lib", `python${version2}`);
+  return [stdlib, join116(stdlib, "lib-dynload")];
+}
+var init_site = __esm({
+  "src/runners/pytest/environment/site.ts"() {
+    "use strict";
+    init_compare();
+    init_errors();
+  }
+});
+
 // src/runners/pytest/environment/config-values.ts
 import { basename as basename28 } from "node:path";
 function readConfigValue(config, key3, text3 = readOptional(config.path)) {
@@ -63551,7 +63229,7 @@ function readConfigValue(config, key3, text3 = readOptional(config.path)) {
   const name3 = basename28(config.path);
   if (name3.endsWith(".toml")) return tomlValue(name3, text3, key3);
   const section2 = name3 === "setup.cfg" ? "tool:pytest" : "pytest";
-  return iniSections2(text3).get(section2)?.get(key3);
+  return iniSections(text3).get(section2)?.get(key3);
 }
 function configArgs(value) {
   if (value === void 0) return [];
@@ -63578,7 +63256,7 @@ function tomlValue(name3, text3, key3) {
 function isTable(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
-function iniSections2(text3) {
+function iniSections(text3) {
   const sections = /* @__PURE__ */ new Map();
   let section2 = null;
   let last = null;
@@ -63649,6 +63327,1342 @@ var init_config_values = __esm({
     "use strict";
     init_dist();
     init_site();
+  }
+});
+
+// src/runners/pytest/run/command.ts
+function inheritedArgs(config, env) {
+  const addopts = config === null ? [] : configArgs(readConfigValue(config, "addopts")) ?? [];
+  return { addopts, envAddopts: shellSplit(env.PYTEST_ADDOPTS ?? "") ?? [] };
+}
+function refusedFlags(inherited2, project) {
+  const found3 = [];
+  const scan2 = (tokens, source2) => {
+    for (const token of tokens) {
+      const flag3 = REFUSED[token.split("=")[0]];
+      if (flag3 !== void 0 && !found3.some((f) => f.flag === flag3 && f.source === source2)) {
+        found3.push({ flag: flag3, source: source2 });
+      }
+    }
+  };
+  scan2(inherited2.addopts, "addopts");
+  scan2(inherited2.envAddopts, "PYTEST_ADDOPTS");
+  scan2(project.args, "args");
+  return found3;
+}
+function refusalNote(project, refused) {
+  const where3 = (source2) => source2 === "pytest" ? "in pytest's resolved options" : `in ${source2}`;
+  const flags2 = refused.map((r) => `${r.flag} (${where3(r.source)})`).join(", ");
+  return `pytest project "${project.name}": Squeal does not run pytest with ${flags2}, which change what runs or wait for input; its checks stay unknown until the flag is removed.`;
+}
+function pytestArgs(inputs2, cwd) {
+  const { project, config } = inputs2;
+  const overrides = ["--maxfail=0"];
+  if (loads(inputs2, "pytest_xdist")) overrides.push("-n", "0");
+  if (loads(inputs2, "pytest_cov")) overrides.push("--no-cov");
+  overrides.push("-o", `cache_dir=${inputs2.cacheDir}`);
+  return [
+    "-m",
+    "pytest",
+    ...config === null ? ["-c", inputs2.emptyConfig, `--rootdir=${cwd}`, `--confcutdir=${cwd}`] : ["-c", config.path],
+    "-p",
+    "squeal_pytest",
+    "--continue-on-collection-errors",
+    ...project.args,
+    ...overrides
+  ];
+}
+function loads(inputs2, distribution) {
+  const own = inputs2.plugins.filter((p) => normalize5(p.distribution) === distribution);
+  if (own.length === 0) return false;
+  const tokens = [
+    ...inputs2.inherited.addopts,
+    ...inputs2.inherited.envAddopts,
+    ...inputs2.project.args
+  ];
+  const named4 = /* @__PURE__ */ new Set();
+  for (let i3 = 0; i3 < tokens.length; i3++) {
+    const token = tokens[i3];
+    if (token === "-p") named4.add(tokens[++i3] ?? "");
+    else if (token.startsWith("-p")) named4.add(token.slice(2));
+  }
+  for (const name3 of (inputs2.env.PYTEST_PLUGINS ?? "").split(",")) named4.add(name3.trim());
+  if (own.some((p) => named4.has(`no:${p.name}`))) return false;
+  const autoload = (inputs2.env.PYTEST_DISABLE_PLUGIN_AUTOLOAD ?? "") === "";
+  return autoload || own.some((p) => named4.has(p.name) || named4.has(p.module));
+}
+function normalize5(distribution) {
+  return distribution.toLowerCase().replace(/[-.]+/g, "_");
+}
+var REFUSED;
+var init_command = __esm({
+  "src/runners/pytest/run/command.ts"() {
+    "use strict";
+    init_config_values();
+    REFUSED = {
+      "--lf": "--lf",
+      "--last-failed": "--lf",
+      "--ff": "--ff",
+      "--failed-first": "--ff",
+      "--sw": "--sw",
+      "--stepwise": "--sw",
+      "--sw-skip": "--sw-skip",
+      "--stepwise-skip": "--sw-skip",
+      "--pdb": "--pdb",
+      "--trace": "--trace",
+      "--snapshot-update": "--snapshot-update",
+      "--looponfail": "--looponfail",
+      "-f": "--looponfail"
+    };
+  }
+});
+
+// src/runners/pytest/run/events.ts
+function parsePytestEvents(text3) {
+  const events = [];
+  for (const line of text3.split("\n")) {
+    if (line.trim() === "") continue;
+    try {
+      const value = JSON.parse(line);
+      if (typeof value === "object" && value !== null && typeof value.type === "string") {
+        events.push(value);
+      }
+    } catch {
+    }
+  }
+  return events;
+}
+var init_events3 = __esm({
+  "src/runners/pytest/run/events.ts"() {
+    "use strict";
+  }
+});
+
+// src/runners/pytest/run/observed.ts
+import { dirname as dirname47, sep as sep21 } from "node:path";
+function observeBatch(edges, files5, paths) {
+  const children = /* @__PURE__ */ new Map();
+  const spawned = /* @__PURE__ */ new Map();
+  const written2 = /* @__PURE__ */ new Map();
+  const session = /* @__PURE__ */ new Set();
+  const conftests = /* @__PURE__ */ new Set();
+  const imports2 = [];
+  const add3 = (map, from, to) => {
+    const set = map.get(from) ?? /* @__PURE__ */ new Set();
+    set.add(to);
+    map.set(from, set);
+  };
+  for (const edge of edges) {
+    if (edge.type === "written") {
+      add3(written2, edge.ctx, edge.path);
+      continue;
+    }
+    if (edge.type === "spawned") {
+      add3(children, edge.ctx, edge.to);
+      add3(spawned, edge.ctx, edge.to);
+      continue;
+    }
+    imports2.push(edge);
+    if (edge.to.endsWith(`${sep21}conftest.py`)) conftests.add(edge.to);
+    const from = edge.from ?? edge.ctx;
+    if (from === null) session.add(edge.to);
+    else add3(children, from, edge.to);
+  }
+  const relative32 = (all2) => [...all2].flatMap((p) => {
+    const path = paths.toRelative(p);
+    return path === null ? [] : [path];
+  }).sort(compare);
+  const reach2 = (roots) => {
+    const seen = /* @__PURE__ */ new Set();
+    const todo = [...roots];
+    for (let next = todo.pop(); next !== void 0; next = todo.pop()) {
+      if (seen.has(next)) continue;
+      seen.add(next);
+      todo.push(...children.get(next) ?? []);
+    }
+    return relative32(seen);
+  };
+  const closures = files5.map(({ testFile, real: real3 }) => {
+    const dir2 = dirname47(real3);
+    const own = [...conftests].filter(
+      (c) => dir2 === dirname47(c) || dir2.startsWith(`${dirname47(c)}${sep21}`)
+    );
+    const loaded = reach2([real3, ...own]);
+    const made = written2.get(real3) ?? /* @__PURE__ */ new Set();
+    return {
+      testFile,
+      paths: loaded,
+      spawned: relative32(spawned.get(real3) ?? []),
+      written: writtenAbove(loaded, made, paths)
+    };
+  });
+  const imported = new Set(imports2.map((e) => e.to));
+  const tests2 = new Set(files5.map((f) => f.real));
+  for (const { from } of imports2) {
+    if (from !== null && !imported.has(from) && !tests2.has(from)) session.add(from);
+  }
+  return { closures, session: reach2([...session].filter((p) => !conftests.has(p))) };
+}
+var init_observed4 = __esm({
+  "src/runners/pytest/run/observed.ts"() {
+    "use strict";
+    init_compare();
+    init_inputs();
+  }
+});
+
+// src/runners/pytest/run/report.ts
+import { join as join117, sep as sep22 } from "node:path";
+function readBatch(events, files5, rootdir, paths, basetemp = null) {
+  const scrub = (text3, name3) => basetemp === null ? text3 : scrubBasetemp(text3, basetemp, name3);
+  const collected = events.find((e) => e.type === "collected");
+  const phases = /* @__PURE__ */ new Map();
+  for (const e of events) {
+    if (e.type === "phase") phases.set(e.nodeid, [...phases.get(e.nodeid) ?? [], e]);
+  }
+  const collects = events.flatMap((e) => e.type === "collect" ? [e] : []);
+  const items = collected?.items ?? [];
+  const counts = events.find((e) => e.type === "focused")?.files ?? {};
+  const reports = files5.map((file) => {
+    const own = items.filter((item) => item.path === file.real);
+    const failed7 = collects.find(
+      (c) => c.outcome === "failed" && (c.path === file.real || own.length === 0 && under2(file.real, c.path))
+    );
+    const skip = collects.find((c) => c.outcome === "skipped" && c.path === file.real);
+    const done = own.every((item) => phases.get(item.nodeid)?.some((p) => p.when === "teardown"));
+    const { texts: texts2 } = file;
+    const results3 = done ? own.map((item) => joinPhases(item, file.testFile, phases, rootdir, paths, scrub)).filter((r) => texts2 === void 0 || holdsCheckText(r.check.fullName, texts2)) : [];
+    return {
+      testFile: file.testFile,
+      completed: collected !== void 0 && done,
+      results: results3,
+      fileError: failed7 === void 0 ? null : { testFile: file.testFile, errors: [collectionError(failed7.longrepr, paths, scrub)] },
+      skipped: skip === void 0 ? null : skipReason(skip.longrepr),
+      durationMs: Math.round(results3.reduce((sum2, r) => sum2 + r.durationMs, 0)),
+      ...texts2 === void 0 ? {} : {
+        focused: {
+          testFile: file.testFile,
+          collected: counts[file.real]?.collected ?? null,
+          matched: results3.length
+        }
+      }
+    };
+  });
+  return {
+    files: reports,
+    session: events.some((e) => e.type === "session"),
+    refused: events.flatMap((e) => e.type === "refused" ? e.flags : []),
+    addressIds: items.map((i3) => i3.nodeid).filter((id) => /0x[0-9a-f]{4,}/i.test(id))
+  };
+}
+function joinPhases(item, testFile, phases, rootdir, paths, scrubAll) {
+  const scrub = (text3) => scrubAll(text3, item.name);
+  const own = phases.get(item.nodeid) ?? [];
+  const phase = (when) => own.find((p) => p.when === when);
+  const setup = phase("setup");
+  const call2 = phase("call");
+  const teardown = phase("teardown");
+  const errors = [];
+  let outcome2 = "pass";
+  if (setup?.outcome === "failed") {
+    outcome2 = "fail";
+    errors.push(phaseError(setup, paths, scrub));
+  } else if (setup?.outcome === "skipped" || call2?.outcome === "skipped") outcome2 = "skip";
+  else if (call2?.outcome === "failed") {
+    outcome2 = "fail";
+    errors.push(phaseError(call2, paths, scrub));
+  }
+  if (teardown?.outcome === "failed") {
+    outcome2 = "fail";
+    errors.push(phaseError(teardown, paths, scrub));
+  }
+  const first2 = setup ?? call2 ?? teardown;
+  return {
+    check: {
+      kind: "test",
+      project: testFile.project,
+      testPath: testFile.path,
+      fullName: item.nodeid.slice(item.nodeid.indexOf("::") + 2)
+    },
+    outcome: outcome2,
+    durationMs: own.reduce((sum2, p) => sum2 + p.duration * 1e3, 0),
+    location: first2 === void 0 ? null : checkLocation(first2, testFile, rootdir, paths),
+    errors
+  };
+}
+function checkLocation(phase, testFile, rootdir, paths) {
+  const { path, line } = phase.location;
+  if (line === null) return null;
+  const relative32 = paths.toRelative(join117(rootdir, path)) ?? testFile.path;
+  return { path: relative32, line: line + 1, column: 1 };
+}
+function phaseError(phase, paths, scrub) {
+  const text3 = scrub(phase.longrepr ?? "");
+  const { name: name3, message: message3 } = splitException(
+    phase.crash === null ? lastErrorLine(text3) ?? text3 : scrub(phase.crash.message)
+  );
+  const type = /:\d+: ([A-Za-z_][\w.]*)$/.exec(text3.trimEnd())?.[1];
+  return {
+    name: name3 === "Error" && type !== void 0 ? type : name3,
+    message: phase.when === "call" ? message3 : `[${phase.when}] ${message3}`,
+    stack: text3 === "" ? null : paths.relativizeText(text3),
+    location: phase.crash === null ? null : paths.location(phase.crash.path, phase.crash.line, 1),
+    diff: null
+  };
+}
+function collectionError(longrepr, paths, scrub) {
+  const text3 = scrub(longrepr ?? "collection failed");
+  const { name: name3, message: message3 } = splitException(lastErrorLine(text3) ?? text3.split("\n")[0] ?? text3);
+  return { name: name3, message: message3, stack: paths.relativizeText(text3), location: null, diff: null };
+}
+function lastErrorLine(text3) {
+  const lines = text3.split("\n").filter((l) => l.startsWith("E   "));
+  const last = lines.at(-1);
+  return last === void 0 ? null : last.slice(4).trim();
+}
+function splitException(text3) {
+  const match2 = /^([A-Za-z_][\w.]*): ([\s\S]*)$/.exec(text3);
+  return match2 === null ? { name: "Error", message: text3 } : { name: match2[1], message: match2[2] };
+}
+function skipReason(longrepr) {
+  return longrepr ?? "skipped";
+}
+function under2(file, dir2) {
+  return file.startsWith(dir2.endsWith(sep22) ? dir2 : `${dir2}${sep22}`);
+}
+var init_report3 = __esm({
+  "src/runners/pytest/run/report.ts"() {
+    "use strict";
+    init_focus();
+    init_basetemp();
+  }
+});
+
+// src/runners/pytest/run/run.ts
+import { createHash as createHash34 } from "node:crypto";
+import { existsSync as existsSync43, mkdirSync as mkdirSync23, writeFileSync as writeFileSync18 } from "node:fs";
+import { tmpdir as tmpdir11 } from "node:os";
+import { delimiter as delimiter6, join as join118, relative as relative21, sep as sep23 } from "node:path";
+import { fileURLToPath as fileURLToPath17 } from "node:url";
+async function runPytest(options) {
+  const started2 = performance.now();
+  const { project, environment } = options;
+  const paths = new WorktreePaths(options.root);
+  const cwd = project.cwd ? toAbsolute(options.root, project.cwd) : options.root;
+  const inherited2 = inheritedArgs(environment.config, environment.runEnv);
+  const refused = refusedFlags(inherited2, project);
+  if (refused.length > 0) return refusal2(refusalNote(project, refused), started2);
+  const cacheDir = options.cacheDir ?? defaultCacheDir(options.root, project);
+  const ours = markLogDir(options.logDir);
+  if (ours === null) return logGone(options.logDir);
+  mkdirSync23(cacheDir, { recursive: true });
+  const runtimeDir2 = options.runtimeDir ?? pytestRuntimeDir();
+  const env = {
+    ...environment.runEnv,
+    ...options.childEnv,
+    PYTHONPATH: [environment.runEnv.PYTHONPATH, runtimeDir2].filter((p) => p !== void 0 && p !== "").join(delimiter6),
+    SQUEAL_PYTEST_ROOT: options.root,
+    // The plugin names the file in progress for the processes a test starts (task 007-55);
+    // one inherited from a run around this daemon's would record pytest's own imports.
+    SQUEAL_PYTEST_FILE: void 0,
+    SQUEAL_PYTEST_CHECKS: void 0
+  };
+  const args2 = pytestArgs(
+    {
+      project,
+      config: environment.config,
+      plugins: environment.plugins,
+      env,
+      inherited: inherited2,
+      cacheDir: join118(cacheDir, "pytest-cache"),
+      emptyConfig: ownEmptyConfig(cacheDir)
+    },
+    cwd
+  );
+  const rootdir = realOr(environment.config?.rootdir ?? cwd);
+  const basetemp = runBasetemp(cacheDir);
+  const batches2 = split2(
+    options.files,
+    options.batchSize ?? DEFAULT_BATCH_SIZE,
+    options.alone
+  ).map((files5, index) => ({
+    index,
+    files: files5.map((testFile) => {
+      const texts2 = focusedTexts(options.checks, testFile);
+      const real3 = realOr(toAbsolute(options.root, testFile.path));
+      return texts2 === null ? { testFile, real: real3 } : { testFile, real: real3, texts: texts2 };
+    }),
+    // After `args`, so it wins over the project's own `--basetemp` (task 007-37).
+    args: [
+      ...args2,
+      `--basetemp=${basetemp.dir(index)}`,
+      ...files5.map((f) => relative21(cwd, toAbsolute(options.root, f.path)).split(sep23).join("/"))
+    ],
+    exit: null,
+    signalled: false,
+    read: null,
+    edges: []
+  }));
+  const python = environment.discovery.python;
+  const running = /* @__PURE__ */ new Set();
+  let expired = false;
+  let cancelled2 = false;
+  const timers = [];
+  const stopAll = () => {
+    for (const group of running) group.kill("SIGTERM");
+    timers.push(
+      setTimeout(() => {
+        for (const group of running) group.kill("SIGKILL");
+      }, KILL_GRACE_MS2)
+    );
+  };
+  if (options.timeoutMs !== null) {
+    timers.push(
+      setTimeout(() => {
+        expired = true;
+        stopAll();
+      }, options.timeoutMs)
+    );
+  }
+  const onAbort = () => {
+    cancelled2 = true;
+    stopAll();
+  };
+  if (options.signal?.aborted === true) cancelled2 = true;
+  else options.signal?.addEventListener("abort", onAbort, { once: true });
+  const queue = [...batches2];
+  const bytecode = runBytecode(cacheDir, options.root, [
+    ...keptDirs(environment.discovery.env, environment.discovery.python),
+    runtimeDir2
+  ]);
+  const worker = async () => {
+    for (let batch = queue.shift(); batch !== void 0 && !expired && !cancelled2 && ours(); batch = queue.shift()) {
+      const events = join118(options.logDir, `events-${batch.index}.jsonl`);
+      const group = startGroup({
+        command: python,
+        args: batch.args,
+        cwd,
+        env: {
+          ...env,
+          PYTHONPYCACHEPREFIX: bytecode.prefix,
+          SQUEAL_PYTEST_EVENTS: events,
+          ...focusedEnv(batch)
+        },
+        stdout: join118(options.logDir, `stdout-${batch.index}.log`),
+        stderr: join118(options.logDir, `stderr-${batch.index}.log`)
+      });
+      running.add(group);
+      batch.exit = await group.exited;
+      batch.signalled = expired || cancelled2;
+      running.delete(group);
+      const parsed3 = parsePytestEvents(readOr(events));
+      batch.read = readBatch(parsed3, batch.files, rootdir, paths, basetemp.dir(batch.index));
+      batch.edges = parsed3.filter(isEdge);
+    }
+  };
+  const width = Math.max(1, Math.min(options.concurrency ?? batches2.length, batches2.length));
+  try {
+    await Promise.all(Array.from({ length: width }, worker));
+  } finally {
+    for (const timer of timers) clearTimeout(timer);
+    options.signal?.removeEventListener("abort", onAbort);
+    bytecode.remove();
+    basetemp.remove();
+  }
+  const notes = [];
+  let refusedAtRun = null;
+  const trusted2 = batches2.filter((b) => {
+    const code = b.exit?.code;
+    if (b.read !== null && b.read.refused.length > 0) {
+      const flags2 = b.read.refused.map((flag3) => ({ flag: flag3, source: "pytest" }));
+      refusedAtRun ??= refusalNote(project, flags2);
+      return false;
+    }
+    if (code === 5 && !b.files.every((f) => f.texts !== void 0))
+      notes.push(`pytest project "${project.name}" collected nothing in ${names4(b)}.`);
+    return code !== 3 && code !== 4;
+  });
+  const done = trusted2.flatMap(completedOf);
+  if (refusedAtRun !== null) notes.push(refusedAtRun);
+  const addresses = [...new Set(trusted2.flatMap((b) => b.read?.addressIds ?? []))];
+  if (addresses.length > 0) {
+    notes.push(
+      `pytest project "${project.name}": these test ids hold a memory address, so they change every run: ${addresses.join(", ")}.`
+    );
+  }
+  const { end, failure: failure2 } = cancelled2 ? { end: "completed", failure: null } : ending2(batches2, new Set(done.map((f) => f.testFile)), expired, {
+    total: options.files.length,
+    timeoutMs: options.timeoutMs,
+    python,
+    logDir: options.logDir
+  });
+  const whole = end === "completed" && failure2 === null && refusedAtRun === null && done.length === options.files.length;
+  const skippedAll = whole ? allSkippedNote(project, done) : null;
+  if (skippedAll !== null) notes.push(skippedAll);
+  const report4 = {
+    end,
+    durationMs: Math.round(performance.now() - started2),
+    completedFiles: done.map((f) => f.testFile),
+    results: done.flatMap((f) => f.results),
+    fileErrors: done.flatMap((f) => f.fileError === null ? [] : [f.fileError]),
+    failure: refusedAtRun ?? failure2,
+    fileDurations: done.map((f) => ({ testFile: f.testFile, durationMs: f.durationMs })),
+    ...focusedOf2(done)
+  };
+  const observed2 = trusted2.map((b) => observeBatch(b.edges, b.files, paths));
+  const completed2 = new Set(report4.completedFiles);
+  if (!ours()) return logGone(options.logDir);
+  writeRunLog3(options.logDir, { python, cwd, batches: batches2, report: report4, notes });
+  return {
+    report: report4,
+    observed: observed2.flatMap((o) => o.closures).filter((c) => completed2.has(c.testFile)),
+    session: [...new Set(observed2.flatMap((o) => o.session))].sort(),
+    skippedFiles: done.flatMap(
+      (f) => f.skipped === null ? [] : [{ testFile: f.testFile, reason: f.skipped }]
+    ),
+    notes
+  };
+}
+function completedOf(batch) {
+  if (batch.signalled && batch.exit?.signal !== "SIGTERM") return [];
+  return batch.read?.files.filter((f) => f.completed) ?? [];
+}
+function focusedEnv(batch) {
+  const checks = batch.files.flatMap((f) => f.texts === void 0 ? [] : [[f.real, f.texts]]);
+  return checks.length === 0 ? {} : { SQUEAL_PYTEST_CHECKS: JSON.stringify(Object.fromEntries(checks)) };
+}
+function focusedOf2(done) {
+  const focused = done.flatMap((f) => f.focused === void 0 ? [] : [f.focused]);
+  return focused.length === 0 ? {} : { focused };
+}
+function allSkippedNote(project, files5) {
+  const results3 = files5.flatMap((f) => f.results);
+  const skipped2 = results3.length + files5.filter((f) => f.skipped !== null).length;
+  if (skipped2 === 0 || files5.some((f) => f.fileError !== null)) return null;
+  if (results3.some((r) => r.outcome !== "skip")) return null;
+  return `pytest project "${project.name}" skipped every collected test (${skipped2} skipped) in ${files5.length === 1 ? "its one file" : `${files5.length} files`}; pytest exits 0 then, so check what skips them (a missing setting or service often does).`;
+}
+function ownEmptyConfig(cacheDir) {
+  const dir2 = join118(cacheDir, "no-config");
+  mkdirSync23(dir2, { recursive: true });
+  const path = join118(dir2, "pytest.ini");
+  writeFileSync18(path, "[pytest]\n");
+  return path;
+}
+function logGone(logDir) {
+  return { report: logGoneReport(logDir), observed: [], session: [], skippedFiles: [], notes: [] };
+}
+function refusal2(note, started2) {
+  return {
+    report: {
+      end: "crashed",
+      durationMs: Math.round(performance.now() - started2),
+      completedFiles: [],
+      results: [],
+      fileErrors: [],
+      failure: note
+    },
+    observed: [],
+    session: [],
+    skippedFiles: [],
+    notes: [note]
+  };
+}
+function defaultCacheDir(root, project) {
+  const id = createHash34("sha256").update(`${root}\0${project.name}`).digest("hex").slice(0, 16);
+  return join118(tmpdir11(), "squeal-pytest", id);
+}
+function pytestRuntimeDir(module2 = new URL(import.meta.url)) {
+  const tried2 = [];
+  for (const candidate of ["../pytest/", "../runtime/"]) {
+    const dir2 = fileURLToPath17(new URL(candidate, module2));
+    if (existsSync43(join118(dir2, "squeal_pytest.py"))) return dir2.replace(/\/$/, "");
+    tried2.push(dir2);
+  }
+  throw new Error(
+    `pytest runtime files not found beside ${module2.href}: tried ${tried2.join(", ")}`
+  );
+}
+function isEdge(event2) {
+  return event2.type === "import" || event2.type === "spawned" || event2.type === "written";
+}
+var DEFAULT_BATCH_SIZE, KILL_GRACE_MS2;
+var init_run3 = __esm({
+  "src/runners/pytest/run/run.ts"() {
+    "use strict";
+    init_paths2();
+    init_worktree_paths();
+    init_focus();
+    init_log_dir();
+    init_group();
+    init_basetemp();
+    init_batches();
+    init_bytecode();
+    init_command();
+    init_events3();
+    init_observed4();
+    init_report3();
+    DEFAULT_BATCH_SIZE = 5;
+    KILL_GRACE_MS2 = 2e3;
+  }
+});
+
+// src/runners/pytest/traits.ts
+function pytestTraits(values = {}) {
+  const { tierSize, batchSize } = values;
+  return declareTraits({
+    // A run starts `runner.tierSize` processes at once whatever its grant (task 001-366).
+    tierWidth: () => tierSize?.(),
+    // It cannot cancel a run: an edit's tier starts beside a backlog tier (task 011-21).
+    besideBacklog: () => true,
+    // A slot is one batch process (spec 007 D6): light files packed, a heavy file alone.
+    backlogSlot: () => batchSize?.() ?? DEFAULT_BATCH_SIZE,
+    // Spec 007 D6 (row 011-145): its deselection hook runs a focused tier's texts.
+    focuses: () => true
+  });
+}
+var init_traits3 = __esm({
+  "src/runners/pytest/traits.ts"() {
+    "use strict";
+    init_runner_traits();
+    init_run3();
+  }
+});
+
+// src/core/runner-host/protocol.ts
+function encodeLine(message3) {
+  return `${MARKER}${JSON.stringify(message3)}
+`;
+}
+function frameOf2(line) {
+  const at2 = line.indexOf(MARKER);
+  return at2 < 0 ? null : line.slice(at2 + MARKER.length);
+}
+function errorOf2(cause) {
+  return { message: cause instanceof Error ? cause.message : String(cause) };
+}
+var RUNNER_HOST_PROTOCOL, MARKER, HOST_RUNNERS, LineReader;
+var init_protocol = __esm({
+  "src/core/runner-host/protocol.ts"() {
+    "use strict";
+    RUNNER_HOST_PROTOCOL = 1;
+    MARKER = "squeal-runner-host ";
+    HOST_RUNNERS = ["vitest", "node-test", "pytest"];
+    LineReader = class {
+      /** The unfinished line, in the chunks it arrived in. */
+      #pending = [];
+      /** The protocol lines `chunk` completes, each parsed. A line that does not parse throws. */
+      push(chunk) {
+        const messages = [];
+        let from = 0;
+        for (let end = chunk.indexOf("\n"); end >= 0; end = chunk.indexOf("\n", from)) {
+          this.#pending.push(chunk.slice(from, end));
+          const line = this.#pending.join("");
+          this.#pending = [];
+          from = end + 1;
+          const frame = frameOf2(line);
+          if (frame !== null) messages.push(JSON.parse(frame));
+        }
+        if (from < chunk.length) this.#pending.push(chunk.slice(from));
+        return messages;
+      }
+    };
+  }
+});
+
+// src/core/runner-host/connection.ts
+var HostLost, HostConnection;
+var init_connection2 = __esm({
+  "src/core/runner-host/connection.ts"() {
+    "use strict";
+    init_protocol();
+    HostLost = class extends Error {
+      constructor(message3, timedOut) {
+        super(message3);
+        this.timedOut = timedOut;
+        this.name = "HostLost";
+      }
+      timedOut;
+    };
+    HostConnection = class {
+      #options;
+      #pending = /* @__PURE__ */ new Map();
+      #next = 1;
+      #lost = null;
+      #closing = false;
+      constructor(options) {
+        this.#options = options;
+        const reader = new LineReader();
+        options.channel.output.on("data", (chunk) => {
+          let messages;
+          try {
+            messages = reader.push(chunk);
+          } catch {
+            this.#lose(`${options.label} wrote a protocol line that does not parse`, false);
+            return;
+          }
+          for (const message3 of messages) this.#receive(message3);
+        });
+        void options.channel.ended.then((how2) => {
+          const tail = options.channel.stderrTail();
+          this.#lose(`${options.label} exited (${how2})${tail === "" ? "" : `: ${tail}`}`, false);
+        });
+      }
+      /** Why the host can answer no more; `null` while it can. */
+      get lost() {
+        return this.#lost;
+      }
+      /** The id the next request takes. */
+      nextId() {
+        return this.#next++;
+      }
+      /**
+       * Sends request `m` and resolves with its reply, rejects with its error, or
+       * with `HostLost`: the host ended, or `deadline` passed, which stops it.
+       */
+      request(m, a, deadline, id = this.nextId()) {
+        if (this.#lost !== null) return Promise.reject(this.#lost);
+        const { ms: ms2, renewable, totalMs, idle: idle2 } = typeof deadline === "number" ? { ms: deadline, totalMs: void 0, idle: void 0 } : deadline;
+        const what = renewable === void 0 ? m : `${m}, nor ${renewable.progress},`;
+        return new Promise((resolve45, reject) => {
+          const pending = {
+            resolve: resolve45,
+            reject,
+            timer: void 0,
+            renewable: renewable !== void 0,
+            arm: () => {
+              clearTimeout(pending.timer);
+              pending.timer = setTimeout(
+                () => this.#lose(
+                  `${this.#options.label} did not answer ${what} within ${ms2} ms; Squeal stopped it`,
+                  true
+                ),
+                ms2
+              );
+            }
+          };
+          if (idle2 !== void 0) {
+            const armIdle = () => {
+              clearTimeout(pending.idle);
+              pending.idle = setTimeout(
+                () => this.#lose(
+                  `${this.#options.label} did not answer ${m}, nor ${idle2.progress}, within ${idle2.ms} ms; Squeal stopped it`,
+                  true
+                ),
+                idle2.ms
+              );
+            };
+            Object.assign(pending, { armIdle });
+            armIdle();
+          }
+          pending.arm();
+          if (totalMs !== void 0) {
+            pending.total = setTimeout(
+              () => this.#lose(
+                `${this.#options.label} did not answer ${m} within ${totalMs} ms; Squeal stopped it`,
+                true
+              ),
+              totalMs
+            );
+          }
+          this.#pending.set(id, pending);
+          this.#options.channel.write(encodeLine({ id, m, a }));
+        });
+      }
+      /**
+       * Request `id` showed a sign of life: its renewable deadline starts again,
+       * and its `idle` bound too when the sign is `progress` of its work.
+       */
+      renew(id, renewal = "progress") {
+        const pending = this.#pending.get(id);
+        if (pending?.renewable === true) pending.arm();
+        if (renewal === "progress") pending?.armIdle?.();
+      }
+      notice(message3) {
+        if (this.#lost === null) this.#options.channel.write(encodeLine(message3));
+      }
+      /** `close` began: the host's end is expected, and no longer reported as lost. */
+      closing() {
+        this.#closing = true;
+      }
+      #receive(message3) {
+        if ("ev" in message3) {
+          this.#options.event(message3);
+          return;
+        }
+        const pending = this.#pending.get(message3.id);
+        if (pending === void 0) return;
+        this.#pending.delete(message3.id);
+        clearTimeout(pending.timer);
+        clearTimeout(pending.total);
+        clearTimeout(pending.idle);
+        if ("e" in message3) pending.reject(new Error(message3.e.message));
+        else pending.resolve(message3.r);
+      }
+      #lose(text3, timedOut) {
+        if (this.#lost !== null) return;
+        const lost = new HostLost(text3, timedOut);
+        this.#lost = lost;
+        this.#options.channel.kill();
+        for (const pending of this.#pending.values()) {
+          clearTimeout(pending.timer);
+          clearTimeout(pending.total);
+          clearTimeout(pending.idle);
+          pending.reject(lost);
+        }
+        this.#pending.clear();
+        if (!this.#closing) this.#options.lost(lost);
+      }
+    };
+  }
+});
+
+// src/core/runner-host/coverage-wire.ts
+function encodeCoverageRun(run7) {
+  const index = /* @__PURE__ */ new Map();
+  const sources = [];
+  const files5 = run7.files.map((file) => {
+    const entries3 = [...file.sources].map(([path, source2]) => {
+      let at2 = index.get(source2);
+      if (at2 === void 0) {
+        at2 = sources.push(source2) - 1;
+        index.set(source2, at2);
+      }
+      return [path, at2];
+    });
+    return { ...file, sources: entries3 };
+  });
+  return { runId: run7.runId, sources, files: files5 };
+}
+function decodeCoverageRun(wire) {
+  const files5 = wire.files.map((file) => {
+    const sources = /* @__PURE__ */ new Map();
+    for (const [path, at2] of file.sources) {
+      const source2 = wire.sources[at2];
+      if (source2 === void 0) throw new Error(`coverage source ${at2} of ${path} was not sent`);
+      sources.set(path, source2);
+    }
+    return { ...file, sources };
+  });
+  return { runId: wire.runId, files: files5 };
+}
+var init_coverage_wire = __esm({
+  "src/core/runner-host/coverage-wire.ts"() {
+    "use strict";
+  }
+});
+
+// src/core/runner-host/proxy.ts
+function runnerHostGone(adapter) {
+  return gone2.has(adapter);
+}
+async function startHostProxy(options) {
+  const proxy2 = new HostProxy(options);
+  try {
+    await proxy2.start();
+  } catch (error) {
+    await proxy2.close();
+    throw error;
+  }
+  return proxy2;
+}
+function hostTraits(options, values) {
+  const tierSize = () => options.policy().tierSize;
+  switch (options.runner) {
+    case "vitest":
+      return vitestTraits({
+        widths: () => values().widths,
+        omitted: () => values().omittedTestFiles
+      });
+    case "node-test":
+      return nodeTestTraits({ tierSize });
+    case "pytest": {
+      const project = options.options.process?.project;
+      return pytestTraits({ tierSize, batchSize: () => project?.batchSize });
+    }
+  }
+}
+var HOST_DEADLINES, gone2, HostProxy;
+var init_proxy = __esm({
+  "src/core/runner-host/proxy.ts"() {
+    "use strict";
+    init_traits2();
+    init_traits3();
+    init_traits();
+    init_connection2();
+    init_coverage_wire();
+    init_protocol();
+    HOST_DEADLINES = {
+      startMs: 3e5,
+      callMs: 3e5,
+      runMarginMs: 3e5,
+      runIdleMs: 18e5,
+      cancelMs: 6e4,
+      closeMs: 3e4
+    };
+    gone2 = /* @__PURE__ */ new WeakSet();
+    HostProxy = class {
+      name;
+      adapterVersion = "";
+      traits;
+      recheck;
+      globalSetups;
+      #options;
+      #deadlines;
+      #connection;
+      #runs = /* @__PURE__ */ new Map();
+      #values = { omittedTestFiles: 0, widths: null };
+      #policy = "";
+      #closed = null;
+      /** A host lost before its start answered is the start's error, noted as the runner's failure. */
+      #started = false;
+      constructor(options) {
+        this.#options = options;
+        this.name = options.runner;
+        this.#deadlines = { ...HOST_DEADLINES, ...options.deadlines };
+        this.traits = hostTraits(options, () => this.#values);
+        this.#connection = new HostConnection({
+          channel: options.channel,
+          label: `the ${options.runner} runner host`,
+          event: (message3) => this.#event(message3),
+          lost: (error) => {
+            gone2.add(this);
+            if (this.#started) options.note?.(`${error.message}; a new one starts at the next call`);
+          }
+        });
+      }
+      async start() {
+        await this.#options.prepare?.({
+          request: (m, a, deadlineMs) => this.#connection.request(m, a, deadlineMs)
+        });
+        const policy = this.#options.policy();
+        this.#policy = JSON.stringify(policy);
+        const started2 = await this.#connection.request(
+          "start",
+          [
+            {
+              protocol: RUNNER_HOST_PROTOCOL,
+              version: this.#options.version,
+              runner: this.#options.runner,
+              options: this.#options.options,
+              policy
+            }
+          ],
+          this.#deadlines.startMs
+        );
+        if (started2.version !== this.#options.version) {
+          throw new Error(
+            `the runner host is Squeal ${started2.version}, the daemon ${this.#options.version}`
+          );
+        }
+        this.name = started2.adapter.name;
+        this.adapterVersion = started2.adapter.adapterVersion;
+        if (started2.adapter.members.includes("recheck"))
+          this.recheck = () => this.#call("recheck", []);
+        if (started2.adapter.members.includes("globalSetups"))
+          this.globalSetups = () => this.#call("globalSetups", []);
+        this.#take(started2.values);
+        this.#started = true;
+      }
+      async invalidate(paths) {
+        const riding = await this.#options.invalidateWith?.(paths);
+        const args2 = riding === void 0 ? [paths] : [paths, riding];
+        return await this.#call("invalidate", args2);
+      }
+      affected(changedPaths3) {
+        return this.#call("affected", [changedPaths3]);
+      }
+      closure(testFile) {
+        return this.#call("closure", [testFile]);
+      }
+      enumerate(testFile) {
+        return this.#call("enumerate", [testFile]);
+      }
+      testFiles() {
+        return this.#call("testFiles", []);
+      }
+      environment() {
+        return this.#call("environment", []);
+      }
+      async run(testFiles3, options) {
+        const begun = Date.now();
+        const { signal: signal2, stop: stop2, fileEnded, beforeForce, ...data2 } = options;
+        const { aliveMs } = this.#deadlines;
+        const wire = {
+          ...data2,
+          ...beforeForce === void 0 ? {} : { beforeForce: true },
+          ...aliveMs === void 0 ? {} : { alive: Math.max(1, Math.floor(aliveMs / 4)) }
+        };
+        const id = this.#connection.nextId();
+        this.#runs.set(id, { fileEnded, beforeForce });
+        const cancel2 = (which, reason2) => () => {
+          const named4 = typeof reason2 === "string" ? [reason2] : [];
+          this.#connection.request("cancel", [id, which, ...named4], this.#deadlines.cancelMs).catch(() => {
+          });
+        };
+        const onSignal = () => cancel2("signal", signal2?.reason)();
+        const onStop = () => cancel2("stop", stop2?.reason)();
+        const deadline = aliveMs !== void 0 ? {
+          ms: aliveMs,
+          renewable: { progress: "tell it is alive" },
+          // Review 0.1.442 B2: signs of life prove the transport, not the run's progress.
+          ...options.timeoutMs === null ? { idle: { ms: this.#deadlines.runIdleMs, progress: "end a file of it" } } : { totalMs: options.timeoutMs + this.#deadlines.runMarginMs }
+        } : options.timeoutMs === null ? { ms: this.#deadlines.runIdleMs, renewable: { progress: "end a file of it" } } : { ms: options.timeoutMs + this.#deadlines.runMarginMs };
+        try {
+          this.#sendPolicy();
+          const reply = this.#connection.request("run", [testFiles3, wire], deadline, id);
+          if (signal2?.aborted) onSignal();
+          else signal2?.addEventListener("abort", onSignal, { once: true });
+          if (stop2?.aborted) onStop();
+          else stop2?.addEventListener("abort", onStop, { once: true });
+          return await reply;
+        } catch (error) {
+          if (!(error instanceof HostLost)) throw error;
+          return {
+            end: error.timedOut ? "timed-out" : "crashed",
+            durationMs: Date.now() - begun,
+            completedFiles: [],
+            results: [],
+            fileErrors: [],
+            failure: error.message
+          };
+        } finally {
+          signal2?.removeEventListener("abort", onSignal);
+          stop2?.removeEventListener("abort", onStop);
+          this.#runs.delete(id);
+        }
+      }
+      close() {
+        this.#closed ??= this.#close();
+        return this.#closed;
+      }
+      async #close() {
+        gone2.add(this);
+        this.#connection.closing();
+        const { channel: channel2 } = this.#options;
+        if (this.#connection.lost === null) {
+          await this.#connection.request("close", [], this.#deadlines.closeMs).catch(() => {
+          });
+        }
+        channel2.endInput();
+        let timer;
+        const bound = new Promise((resolve45) => {
+          timer = setTimeout(resolve45, this.#deadlines.closeMs);
+        });
+        await Promise.race([channel2.ended, bound]);
+        clearTimeout(timer);
+        channel2.kill();
+      }
+      #call(m, a) {
+        this.#sendPolicy();
+        return this.#connection.request(m, a, this.#deadlines.callMs);
+      }
+      /** The policy, before a request that may read it, when it changed since last sent. */
+      #sendPolicy() {
+        const policy = this.#options.policy();
+        const text3 = JSON.stringify(policy);
+        if (text3 === this.#policy) return;
+        this.#policy = text3;
+        this.#connection.notice({ m: "policy", a: [policy] });
+      }
+      #take(values) {
+        this.#values = values;
+      }
+      #event(message3) {
+        switch (message3.ev) {
+          case "note":
+            this.#options.note?.(message3.text, message3.topic);
+            return;
+          case "optimizer":
+            this.#options.optimizer?.(message3.projects);
+            return;
+          case "values":
+            this.#take(message3.values);
+            return;
+          case "fileEnded":
+            this.#connection.renew(message3.run);
+            this.#runs.get(message3.run)?.fileEnded?.(message3.testFile);
+            return;
+          case "beforeForce": {
+            const hook = this.#runs.get(message3.run)?.beforeForce;
+            const run7 = message3.run;
+            void (hook?.(message3.env) ?? Promise.resolve()).catch(() => {
+            }).then(() => this.#connection.notice({ m: "forced", a: [run7] }));
+            return;
+          }
+          case "coverage":
+            this.#options.coverage?.(decodeCoverageRun(message3.run));
+            return;
+          case "alive":
+            this.#connection.renew(message3.run, "alive");
+            return;
+        }
+      }
+    };
+  }
+});
+
+// src/core/runner-host/process-host.ts
+function pytestEnvironmentTopic(project) {
+  return `pytest-environment:${project.name}`;
+}
+function createHostedNodeTest(host, project, options) {
+  const { coverage } = options;
+  return hosted(host, "node-test", options.root, {
+    options: {
+      childEnv: options.childEnv ?? {},
+      process: {
+        project,
+        ...options.tempDir === void 0 ? {} : { tempDir: options.tempDir },
+        ...coverage === void 0 ? {} : { coverage: true }
+      }
+    },
+    policy: () => ({
+      ...NO_VITEST_POLICY,
+      coverage: coverage?.enabled() ?? false,
+      coverageChildren: coverage?.children?.() ?? false,
+      ...options.concurrency === void 0 ? {} : { tierSize: options.concurrency() },
+      ...options.inputs === void 0 ? {} : { inputs: options.inputs() }
+    }),
+    ...options.note === void 0 ? {} : { note: options.note },
+    ...coverage === void 0 ? {} : { coverage: coverage.collected }
+  });
+}
+function createHostedPytest(host, project, options) {
+  const topic = pytestEnvironmentTopic(project);
+  const latest = options.latestNote?.(topic);
+  return hosted(host, "pytest", options.root, {
+    options: {
+      childEnv: options.childEnv ?? {},
+      process: {
+        project,
+        ...options.tempDir === void 0 ? {} : { tempDir: options.tempDir },
+        ...options.cacheDir === void 0 ? {} : { cacheDir: options.cacheDir },
+        ...latest === void 0 ? {} : { latestNotes: { [topic]: latest } }
+      }
+    },
+    policy: () => ({
+      ...NO_VITEST_POLICY,
+      ...options.concurrency === void 0 ? {} : { tierSize: options.concurrency() }
+    }),
+    ...options.note === void 0 ? {} : { note: options.note }
+  });
+}
+function hosted(host, runner, root, proxy2) {
+  return startHostProxy({
+    channel: spawnRunnerHost(host.launch, root, runner, host.env),
+    runner,
+    version: host.version,
+    ...proxy2,
+    ...host.deadlines === void 0 ? {} : { deadlines: host.deadlines }
+  });
+}
+var NO_VITEST_POLICY;
+var init_process_host = __esm({
+  "src/core/runner-host/process-host.ts"() {
+    "use strict";
+    init_channel();
+    init_proxy();
+    NO_VITEST_POLICY = {
+      observe: false,
+      exclude: [],
+      excludeProjects: [],
+      coverage: false,
+      coverageChildren: false
+    };
+  }
+});
+
+// src/core/daemon/runner-set.ts
+function createRunnerSet(entries3, build) {
+  const make = (entry4) => ({ runner: build(entry4), stamp: stampOf(entry4) });
+  let built = new Map(entries3().map((entry4) => [entry4.name, make(entry4)]));
+  return {
+    members: () => [...built.values()].map((member) => member.runner),
+    reconcile() {
+      const next = /* @__PURE__ */ new Map();
+      const replaced = [];
+      const projects2 = /* @__PURE__ */ new Set();
+      for (const entry4 of entries3()) {
+        const was = built.get(entry4.name);
+        if (was !== void 0 && was.stamp === stampOf(entry4)) {
+          next.set(entry4.name, was);
+          continue;
+        }
+        next.set(entry4.name, make(entry4));
+        projects2.add(entry4.name);
+        if (was !== void 0) replaced.push(was.runner);
+      }
+      const removed = [...built].filter(([name3]) => !next.has(name3));
+      for (const [name3] of removed) projects2.add(name3);
+      built = next;
+      return {
+        removed: removed.map(([, member]) => member.runner),
+        replaced,
+        projects: [...projects2].sort(compare)
+      };
+    }
+  };
+}
+function stampOf(entry4) {
+  return JSON.stringify(
+    entry4,
+    (_, value) => isRecord(value) ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => compare(a, b))) : value
+  );
+}
+var init_runner_set = __esm({
+  "src/core/daemon/runner-set.ts"() {
+    "use strict";
+    init_compare();
+    init_json();
+  }
+});
+
+// src/core/daemon/node-test-runners.ts
+var node_test_runners_exports = {};
+__export(node_test_runners_exports, {
+  createNodeTestRunnerSet: () => createNodeTestRunnerSet,
+  createNodeTestRunners: () => createNodeTestRunners,
+  hosted: () => hosted2
+});
+function createNodeTestRunners(projects2, options) {
+  return opened(() => projects2, options.note)().map((project) => nodeTestRunner(project, options));
+}
+function createNodeTestRunnerSet(projects2, options) {
+  return createRunnerSet(
+    opened(projects2, options.note),
+    (project) => nodeTestRunner(project, options)
+  );
+}
+function opened(projects2, note) {
+  const noted2 = /* @__PURE__ */ new Set();
+  return () => projects2().filter((project) => {
+    if (project.prepare === void 0) return true;
+    if (!noted2.has(project.name)) {
+      noted2.add(project.name);
+      note(
+        `node-test project ${JSON.stringify(project.name)} has a prepare command, so Squeal does not run its tests in the background; squeal code --base runs the prepare, then them`
+      );
+    }
+    return false;
+  });
+}
+function nodeTestRunner(project, options) {
+  const adapterOptions = {
+    root: options.root,
+    note: options.note,
+    concurrency: options.tierSize,
+    tempDir: options.tempDir,
+    ...options.inputs === void 0 ? {} : { inputs: options.inputs },
+    ...options.childEnv === void 0 ? {} : { childEnv: options.childEnv },
+    ...options.coverage === void 0 ? {} : { coverage: options.coverage }
+  };
+  const { host } = options;
+  return createRecoveringRunner({
+    name: "node-test",
+    adapterVersion: NODE_TEST_ADAPTER_VERSION,
+    create: () => host === void 0 ? createNodeTestAdapter(project, adapterOptions) : createHostedNodeTest(host, project, adapterOptions),
+    // Spec 021 D7: a host that exited or missed a deadline is replaced; D20: an idle one closes.
+    ...host === void 0 ? {} : hosted2(options.idleMs),
+    traits: nodeTestTraits({ tierSize: options.tierSize }),
+    onFailure: (text3) => options.note(`${text3} (node-test project ${JSON.stringify(project.name)})`),
+    onRecovered: () => options.note(`node-test project ${JSON.stringify(project.name)} started`)
+  });
+}
+function hosted2(idleMs) {
+  return { gone: runnerHostGone, ...idleMs === void 0 ? {} : { idleMs } };
+}
+var init_node_test_runners = __esm({
+  "src/core/daemon/node-test-runners.ts"() {
+    "use strict";
+    init_adapter2();
+    init_traits2();
+    init_version3();
+    init_process_host();
+    init_proxy();
+    init_runner2();
+    init_runner_set();
+  }
+});
+
+// src/runners/pytest/environment/config.ts
+import { statSync as statSync26 } from "node:fs";
+import { dirname as dirname48, join as join119 } from "node:path";
+function findPytestConfig(root, cwd) {
+  let fallback2 = null;
+  for (let dir2 = cwd; ; dir2 = dirname48(dir2)) {
+    for (const name3 of NAMES) {
+      const path = join119(dir2, name3);
+      const text3 = isFile2(path) ? readOptional(path) ?? "" : null;
+      if (text3 === null) continue;
+      if (name3 === "pyproject.toml" && fallback2 === null) fallback2 = path;
+      if (holdsPytest(name3, text3)) return { path, rootdir: dir2, holds: "pytest" };
+    }
+    if (toRelative(root, dir2) === null) break;
+  }
+  return fallback2 === null ? null : { path: fallback2, rootdir: dirname48(fallback2), holds: "fallback" };
+}
+function holdsPytest(name3, text3) {
+  switch (name3) {
+    case "pytest.toml":
+    case ".pytest.toml":
+    case "pytest.ini":
+    case ".pytest.ini":
+      return true;
+    case "tox.ini":
+      return iniSections2(text3).includes("pytest");
+    case "setup.cfg":
+      return iniSections2(text3).includes("tool:pytest");
+    case "pyproject.toml":
+      return pyprojectHoldsPytest(text3);
+  }
+}
+function iniSections2(text3) {
+  const names7 = [];
+  for (const line of text3.split(/\r?\n/)) {
+    if (!line.startsWith("[")) continue;
+    const real3 = line.split("#")[0]?.split(";")[0]?.trimEnd() ?? "";
+    if (real3.endsWith("]")) names7.push(real3.slice(1, -1));
+  }
+  return names7;
+}
+function pyprojectHoldsPytest(text3) {
+  let table = null;
+  for (const line of text3.split(/\r?\n/)) {
+    const header2 = TABLE.exec(line)?.[1]?.replace(/\s*\.\s*/g, ".");
+    if (header2 !== void 0) {
+      if (header2.startsWith("tool.pytest.")) return true;
+      table = header2;
+    } else if (table === "tool.pytest" && KEY.test(line)) return true;
+  }
+  return false;
+}
+function isFile2(path) {
+  try {
+    return statSync26(path).isFile();
+  } catch (error) {
+    if (isMissing(error) || error.code === "ENOTDIR") return false;
+    throw error;
+  }
+}
+var NAMES, TABLE, KEY;
+var init_config = __esm({
+  "src/runners/pytest/environment/config.ts"() {
+    "use strict";
+    init_errors();
+    init_paths2();
+    init_site();
+    NAMES = [
+      "pytest.toml",
+      ".pytest.toml",
+      "pytest.ini",
+      ".pytest.ini",
+      "pyproject.toml",
+      "tox.ini",
+      "setup.cfg"
+    ];
+    TABLE = /^\s*\[\s*([^\][]+?)\s*\]\s*(?:#.*)?$/;
+    KEY = /^\s*[A-Za-z0-9_"'-]/;
   }
 });
 
@@ -63738,38 +64752,38 @@ var init_discovery_defaults = __esm({
 });
 
 // src/runners/pytest/adapter-files.ts
-import { existsSync as existsSync42, readdirSync as readdirSync34 } from "node:fs";
-import { basename as basename29, dirname as dirname47, join as join115, relative as relative20, sep as sep20 } from "node:path";
+import { existsSync as existsSync44, readdirSync as readdirSync35 } from "node:fs";
+import { basename as basename29, dirname as dirname49, join as join120, relative as relative22, sep as sep24 } from "node:path";
 function listTestFiles2(root, project, note) {
   const cwd = projectDir(root, project);
   const include = createInputMatcher(project.include);
   const exclude = createInputMatcher(project.exclude ?? []);
   const optedIncludes = rootedDependencyIncludes(project.include);
   const optedIn = createInputMatcher(optedIncludes);
-  const optedRoots = bases2(optedIncludes).map((base) => join115(cwd, base));
+  const optedRoots = bases2(optedIncludes).map((base) => join120(cwd, base));
   const { norecursedirs, pythonFiles } = recursionSettings(root, cwd);
   const env = environmentDir(root, project);
   const listed8 = (path) => {
-    const fromCwd = slashes4(relative20(cwd, path));
-    return include(fromCwd) && !exclude(fromCwd) && (!isDependencyPath(slashes4(relative20(cwd, dirname47(path)))) || optedIn(fromCwd));
+    const fromCwd = slashes4(relative22(cwd, path));
+    return include(fromCwd) && !exclude(fromCwd) && (!isDependencyPath(slashes4(relative22(cwd, dirname49(path)))) || optedIn(fromCwd));
   };
-  const canWalk = (path) => !never(path, env) && (!isDependencyPath(slashes4(relative20(cwd, path))) || optedRoots.some(
-    (base) => path === base || path.startsWith(`${base}${sep20}`) || base.startsWith(`${path}${sep20}`)
+  const canWalk = (path) => !never(path, env) && (!isDependencyPath(slashes4(relative22(cwd, path))) || optedRoots.some(
+    (base) => path === base || path.startsWith(`${base}${sep24}`) || base.startsWith(`${path}${sep24}`)
   ));
   const isTest = (path) => listed8(path) && pythonFiles.some((pattern2) => fnmatchEx(pattern2, path));
   const found3 = [];
   const skipped2 = [];
   const walk5 = (dir2) => {
     for (const entry4 of entries(dir2)) {
-      const path = join115(dir2, entry4.name);
+      const path = join120(dir2, entry4.name);
       if (entry4.isDirectory()) {
         if (!canWalk(path)) continue;
         if (!norecursedirs.some((pattern2) => fnmatchEx(pattern2, path))) walk5(path);
-        else if (holds2(path, canWalk, isTest)) skipped2.push(slashes4(relative20(root, path)));
-      } else if (entry4.isFile() && listed8(path)) found3.push(slashes4(relative20(root, path)));
+        else if (holds2(path, canWalk, isTest)) skipped2.push(slashes4(relative22(root, path)));
+      } else if (entry4.isFile() && listed8(path)) found3.push(slashes4(relative22(root, path)));
     }
   };
-  for (const base of bases2(project.include)) walk5(join115(cwd, base));
+  for (const base of bases2(project.include)) walk5(join120(cwd, base));
   if (skipped2.length > 0) note?.(skippedNote(skipped2.sort(compare)));
   return found3.sort(compare);
 }
@@ -63786,20 +64800,20 @@ function recursionSettings(root, cwd) {
 }
 function never(path, env) {
   const name3 = basename29(path);
-  return name3 === ".git" || name3 === "__pycache__" || path === env || existsSync42(join115(path, "pyvenv.cfg"));
+  return name3 === ".git" || name3 === "__pycache__" || path === env || existsSync44(join120(path, "pyvenv.cfg"));
 }
 function holds2(dir2, canWalk, isTest) {
   const name3 = basename29(dir2);
   if (name3.startsWith(".") || name3 === "node_modules") return false;
   return entries(dir2).some((entry4) => {
-    const path = join115(dir2, entry4.name);
+    const path = join120(dir2, entry4.name);
     if (entry4.isFile()) return isTest(path);
     return entry4.isDirectory() && canWalk(path) && holds2(path, canWalk, isTest);
   });
 }
 function entries(dir2) {
   try {
-    return readdirSync34(dir2, { withFileTypes: true });
+    return readdirSync35(dir2, { withFileTypes: true });
   } catch {
     return [];
   }
@@ -63852,7 +64866,7 @@ function bases2(globs4) {
   );
 }
 function slashes4(path) {
-  return path.split(sep20).join("/");
+  return path.split(sep24).join("/");
 }
 var NORECURSEDIRS, PYTHON_FILES, GLOB3, NAMED_SKIPPED;
 var init_adapter_files2 = __esm({
@@ -63883,13 +64897,13 @@ var init_adapter_files2 = __esm({
 });
 
 // src/runners/pytest/adapter-environment.ts
-import { existsSync as existsSync43 } from "node:fs";
-import { join as join116, relative as relative21, resolve as resolve31, sep as sep21 } from "node:path";
+import { existsSync as existsSync45 } from "node:fs";
+import { join as join121, relative as relative23, resolve as resolve31, sep as sep25 } from "node:path";
 function environmentDir(root, project) {
   const discovery = discoverEnvironment(root, project);
   if (discovery.kind === "found") return discovery.env;
   const cwd = projectDir(root, project);
-  return project.python === void 0 ? join116(cwd, ".venv") : resolve31(cwd, project.python);
+  return project.python === void 0 ? join121(cwd, ".venv") : resolve31(cwd, project.python);
 }
 async function admit(project, read5, fingerprint, clock = REAL_CLOCK) {
   const end = clock.now() + SETTLE_LIMIT_MS;
@@ -63931,12 +64945,12 @@ function unsettled(project) {
 }
 function pytestMarker(envDir) {
   const site = sitePackagesDir(envDir);
-  return site === null ? null : join116(site, "pytest", "__init__.py");
+  return site === null ? null : join121(site, "pytest", "__init__.py");
 }
 function admitEnvironment(root, project, environment) {
   if (environment.state !== "ready") return environment;
   const marker = pytestMarker(environment.discovery.env);
-  if (marker !== null && existsSync43(marker)) return environment;
+  if (marker !== null && existsSync45(marker)) return environment;
   const where3 = toRelative(root, environment.discovery.env) ?? environment.discovery.env;
   return {
     state: "no-pytest",
@@ -63960,7 +64974,7 @@ function pytestVersion(environment) {
 }
 function projectEnvironment3(parts3) {
   const { root, project, environment } = parts3;
-  const cwd = slashes4(relative21(root, projectDir(root, project)));
+  const cwd = slashes4(relative23(root, projectDir(root, project)));
   const ready = environment.state === "ready";
   const config = {
     cwd,
@@ -63971,7 +64985,7 @@ function projectEnvironment3(parts3) {
     ...ready ? { hash: environment.hash } : { note: environment.note }
   };
   const files5 = new Set(parts3.pluginPaths);
-  for (const path of [parts3.configFile, join116(parts3.envDir, "pyvenv.cfg")]) {
+  for (const path of [parts3.configFile, join121(parts3.envDir, "pyvenv.cfg")]) {
     const inside = path === null ? null : toRelative(root, path);
     if (inside !== null) files5.add(inside);
   }
@@ -63989,7 +65003,7 @@ function projectEnvironment3(parts3) {
   };
 }
 function structural(root, dir2) {
-  return [{ path: relative21(root, join116(dir2, "pyvenv.cfg")).split(sep21).join("/"), kind: "change" }];
+  return [{ path: relative23(root, join121(dir2, "pyvenv.cfg")).split(sep25).join("/"), kind: "change" }];
 }
 var PYTEST_UNAVAILABLE, SETTLE_MS, SETTLE_LIMIT_MS, SETTLE_POLL_MS, REAL_CLOCK;
 var init_adapter_environment2 = __esm({
@@ -64153,24 +65167,24 @@ var init_enumerate2 = __esm({
 });
 
 // src/runners/pytest/environment/fingerprint.ts
-import { createHash as createHash34 } from "node:crypto";
-import { realpathSync as realpathSync15, statSync as statSync26 } from "node:fs";
-import { join as join117 } from "node:path";
+import { createHash as createHash35 } from "node:crypto";
+import { realpathSync as realpathSync18, statSync as statSync27 } from "node:fs";
+import { join as join122 } from "node:path";
 function readEnvironmentFiles(env, python) {
   const site = sitePackagesDir(env);
   const siteEntries = site === null ? [] : listOptional(site).filter((name3) => name3 !== "__pycache__");
   const pth = [];
   const directUrls = [];
   if (site !== null) {
-    for (const name3 of pthFiles(site)) pth.push([name3, readOptional(join117(site, name3)) ?? ""]);
+    for (const name3 of pthFiles(site)) pth.push([name3, readOptional(join122(site, name3)) ?? ""]);
     for (const name3 of siteEntries) {
       if (!name3.endsWith(".dist-info")) continue;
-      const text3 = readOptional(join117(site, name3, "direct_url.json"));
+      const text3 = readOptional(join122(site, name3, "direct_url.json"));
       if (text3 !== null) directUrls.push([name3, text3]);
     }
   }
   return {
-    pyvenvCfg: readOptional(join117(env, "pyvenv.cfg")),
+    pyvenvCfg: readOptional(join122(env, "pyvenv.cfg")),
     interpreter: interpreterStat(python),
     siteEntries,
     pth,
@@ -64178,12 +65192,12 @@ function readEnvironmentFiles(env, python) {
   };
 }
 function environmentFingerprint(files5) {
-  return createHash34("sha256").update(JSON.stringify(files5)).digest("hex");
+  return createHash35("sha256").update(JSON.stringify(files5)).digest("hex");
 }
 function interpreterStat(python) {
   try {
-    const realPath2 = realpathSync15(python);
-    const s = statSync26(realPath2, { bigint: true });
+    const realPath2 = realpathSync18(python);
+    const s = statSync27(realPath2, { bigint: true });
     return { realPath: realPath2, stat: `${s.dev}:${s.ino}:${s.size}:${s.mtimeNs}:${s.ctimeNs}` };
   } catch (error) {
     if (isMissing(error)) return null;
@@ -64199,9 +65213,9 @@ var init_fingerprint3 = __esm({
 });
 
 // src/runners/pytest/environment/states.ts
-import { realpathSync as realpathSync16 } from "node:fs";
-import { join as join118 } from "node:path";
-import { fileURLToPath as fileURLToPath17 } from "node:url";
+import { realpathSync as realpathSync19 } from "node:fs";
+import { join as join123 } from "node:path";
+import { fileURLToPath as fileURLToPath18 } from "node:url";
 function environmentState(root, project) {
   const discovery = discoverEnvironment(root, project);
   const cwd = projectDir(root, project);
@@ -64211,7 +65225,7 @@ function environmentState(root, project) {
       return {
         state: "none",
         command: null,
-        note: `pytest project "${project.name}": ${displayDir(root, join118(cwd, "pdm.toml"))} sets \`python.use_venv = false\`. Squeal does not support PEP 582 (\`__pypackages__\`), and no supported Python environment was found, so Squeal runs none of its tests and inherits none of their results. Use a project-approved local virtual environment in ${where3}, with the project's test dependencies installed there. Squeal then uses its normal environment checks before running tests or inheriting results.`
+        note: `pytest project "${project.name}": ${displayDir(root, join123(cwd, "pdm.toml"))} sets \`python.use_venv = false\`. Squeal does not support PEP 582 (\`__pypackages__\`), and no supported Python environment was found, so Squeal runs none of its tests and inherits none of their results. Use a project-approved local virtual environment in ${where3}, with the project's test dependencies installed there. Squeal then uses its normal environment checks before running tests or inheriting results.`
       };
     }
     return {
@@ -64230,7 +65244,7 @@ function environmentState(root, project) {
   };
 }
 function pdmDisablesVenv(cwd) {
-  const text3 = readOptional(join118(cwd, "pdm.toml"));
+  const text3 = readOptional(join123(cwd, "pdm.toml"));
   if (text3 === null) return false;
   let doc;
   try {
@@ -64255,18 +65269,18 @@ function outsideEditables(root, env) {
   const found3 = [];
   for (const name3 of listOptional(site)) {
     if (!name3.endsWith(".dist-info")) continue;
-    const named4 = editableDir(readOptional(join118(site, name3, "direct_url.json")));
+    const named4 = editableDir(readOptional(join123(site, name3, "direct_url.json")));
     if (named4 === null || insideWorktree(root, named4)) continue;
     found3.push({
       distribution: name3.slice(0, -".dist-info".length).split("-")[0],
-      path: realOr(named4)
+      path: realOr2(named4)
     });
   }
   return found3;
 }
 function insideWorktree(root, dir2) {
-  const path = realOr(dir2);
-  return [root, realOr(root)].some((r) => path === r || toRelative(r, path) !== null);
+  const path = realOr2(dir2);
+  return [root, realOr2(root)].some((r) => path === r || toRelative(r, path) !== null);
 }
 function editableDir(text3) {
   if (text3 === null) return null;
@@ -64282,14 +65296,14 @@ function editableDir(text3) {
   const url = parsed3.url;
   if (typeof url !== "string" || !url.startsWith("file:")) return null;
   try {
-    return fileURLToPath17(url);
+    return fileURLToPath18(url);
   } catch {
     return null;
   }
 }
-function realOr(path) {
+function realOr2(path) {
   try {
-    return realpathSync16(path);
+    return realpathSync19(path);
   } catch {
     return path;
   }
@@ -64306,771 +65320,6 @@ var init_states4 = __esm({
     init_paths2();
     init_discover();
     init_site();
-  }
-});
-
-// src/runners/pytest/run/bytecode.ts
-import {
-  existsSync as existsSync44,
-  mkdirSync as mkdirSync22,
-  mkdtempSync as mkdtempSync11,
-  readdirSync as readdirSync35,
-  realpathSync as realpathSync17,
-  rmSync as rmSync27,
-  statSync as statSync27,
-  symlinkSync as symlinkSync2
-} from "node:fs";
-import { dirname as dirname48, join as join119, relative as relative22, sep as sep22 } from "node:path";
-function runBytecode(cacheDir, root, kept6) {
-  const shared2 = join119(cacheDir, "pycache");
-  const { dir: prefix, remove: remove2 } = runScratch(join119(cacheDir, "pycache-runs"));
-  const links = linkPoints(root, kept6);
-  prune5(shared2, root, links);
-  for (const link of links) {
-    mkdirSync22(join119(shared2, link), { recursive: true });
-    mkdirSync22(dirname48(join119(prefix, link)), { recursive: true });
-    symlinkSync2(join119(shared2, link), join119(prefix, link));
-  }
-  return { prefix, remove: remove2 };
-}
-function runScratch(parent2) {
-  mkdirSync22(parent2, { recursive: true });
-  sweep(parent2);
-  const dir2 = mkdtempSync11(join119(parent2, "run-"));
-  return { dir: dir2, remove: () => rmSync27(dir2, { recursive: true, force: true }) };
-}
-function linkPoints(root, kept6) {
-  const points = kept6.flatMap((dir2) => {
-    const fromRoot = relative22(root, dir2);
-    if (fromRoot === "") return [];
-    if (!fromRoot.startsWith(`..${sep22}`) && fromRoot !== "..") return [dir2];
-    const parts3 = dir2.split(sep22);
-    const rootParts = root.split(sep22);
-    const common = parts3.findIndex((part2, i3) => part2 !== rootParts[i3]);
-    return common === -1 ? [] : [parts3.slice(0, common + 1).join(sep22)];
-  });
-  const unique = [...new Set(points)].sort();
-  return unique.filter((p) => !unique.some((q) => q !== p && p.startsWith(`${q}${sep22}`)));
-}
-function keptDirs(env, python) {
-  try {
-    return [env, dirname48(dirname48(realpathSync17(python)))];
-  } catch {
-    return [env];
-  }
-}
-function prune5(shared2, root, links) {
-  const mirror = join119(shared2, root);
-  if (!existsSync44(mirror)) return;
-  const kept6 = new Set(links.map((link) => relative22(root, link).split(sep22)[0]));
-  for (const name3 of readdirSync35(mirror)) {
-    if (!kept6.has(name3)) rmSync27(join119(mirror, name3), { recursive: true, force: true });
-  }
-}
-function sweep(runs) {
-  for (const name3 of readdirSync35(runs)) {
-    const path = join119(runs, name3);
-    try {
-      if (Date.now() - statSync27(path).mtimeMs > ABANDONED_MS) {
-        rmSync27(path, { recursive: true, force: true });
-      }
-    } catch {
-    }
-  }
-}
-var ABANDONED_MS;
-var init_bytecode = __esm({
-  "src/runners/pytest/run/bytecode.ts"() {
-    "use strict";
-    ABANDONED_MS = 24 * 60 * 60 * 1e3;
-  }
-});
-
-// src/runners/pytest/run/basetemp.ts
-import { realpathSync as realpathSync18 } from "node:fs";
-import { join as join120 } from "node:path";
-function runBasetemp(cacheDir) {
-  const scratch = runScratch(join120(cacheDir, "basetemp-runs"));
-  const real3 = realpathSync18(scratch.dir);
-  return {
-    dir: (index) => join120(real3, String(index)),
-    remove: scratch.remove
-  };
-}
-function scrubBasetemp(text3, basetemp, name3) {
-  const folder = name3 === void 0 ? null : tmpPathFolder(name3);
-  const own = folder === null ? "" : `(?:/${escapeRegExp3(folder)}\\d+(?=${END}|$))?`;
-  return text3.replace(
-    new RegExp(`${escapeRegExp3(basetemp)}${own}(?![\\w.-])`, "g"),
-    (match2) => match2 === basetemp ? "<basetemp>" : `<basetemp>/${folder}<n>`
-  );
-}
-function tmpPathFolder(name3) {
-  return Array.from(name3.replace(/[^\p{L}\p{N}_]/gu, "_")).slice(0, 30).join("");
-}
-function escapeRegExp3(text3) {
-  return text3.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-var END;
-var init_basetemp = __esm({
-  "src/runners/pytest/run/basetemp.ts"() {
-    "use strict";
-    init_bytecode();
-    END = "[/\\s'\"`):,]";
-  }
-});
-
-// src/runners/pytest/run/batches.ts
-import { readFileSync as readFileSync57, realpathSync as realpathSync19, writeFileSync as writeFileSync17 } from "node:fs";
-import { join as join121 } from "node:path";
-function split2(files5, size, alone) {
-  const batches2 = [];
-  let open7 = [];
-  for (const file of files5) {
-    if (alone?.(file) === true) batches2.push([file]);
-    else {
-      open7.push(file);
-      if (open7.length === Math.max(1, size)) {
-        batches2.push(open7);
-        open7 = [];
-      }
-    }
-  }
-  if (open7.length > 0) batches2.push(open7);
-  return batches2;
-}
-function ending2(batches2, done, expired, tier) {
-  const unfinished3 = batches2.filter((b) => b.files.some((f) => !done.has(f.testFile)));
-  const total = tier.total;
-  if (expired) {
-    const count3 = total - done.size;
-    return {
-      end: "timed-out",
-      failure: `deadline of ${tier.timeoutMs} ms passed with ${count3} of ${total} test files unfinished`
-    };
-  }
-  if (unfinished3.length === 0) return { end: "completed", failure: null };
-  const what = unfinished3.map((b) => `${names4(b, (f) => !done.has(f.testFile))} (${describeExit2(b, tier)})`).join(", ");
-  const failure2 = `pytest ended without a complete report for ${what}`;
-  return { end: done.size === 0 ? "crashed" : "completed", failure: failure2 };
-}
-function names4(batch, keep = () => true) {
-  return batch.files.filter(keep).map((f) => f.testFile.path).join(", ");
-}
-function describeExit2(batch, tier) {
-  const exit2 = batch.exit;
-  if (exit2 === null) return "not started";
-  if (exit2.error !== null) return `cannot run ${tier.python}: ${exit2.error}`;
-  const how2 = exit2.signal === null ? `exit code ${exit2.code}` : `signal ${exit2.signal}`;
-  const tail = readOr(join121(tier.logDir, `stderr-${batch.index}.log`)).trim().split("\n").slice(-3);
-  return tail[0] === "" ? how2 : `${how2}: ${tail.join(" | ")}`;
-}
-function realOr2(path) {
-  try {
-    return realpathSync19(path);
-  } catch {
-    return path;
-  }
-}
-function readOr(path) {
-  try {
-    return readFileSync57(path, "utf8");
-  } catch {
-    return "";
-  }
-}
-function writeRunLog3(logDir, log) {
-  const batches2 = log.batches.map((b) => ({
-    files: b.files.map((f) => f.testFile.path),
-    command: [log.python, ...b.args],
-    exit: b.exit,
-    signalled: b.signalled,
-    session: b.read?.session ?? false
-  }));
-  const text3 = runLogJson({ cwd: log.cwd, batches: batches2, notes: log.notes }, log.report);
-  writeFileSync17(join121(logDir, "run.json"), text3);
-}
-var init_batches = __esm({
-  "src/runners/pytest/run/batches.ts"() {
-    "use strict";
-    init_run_summary();
-  }
-});
-
-// src/runners/pytest/run/command.ts
-function inheritedArgs(config, env) {
-  const addopts = config === null ? [] : configArgs(readConfigValue(config, "addopts")) ?? [];
-  return { addopts, envAddopts: shellSplit(env.PYTEST_ADDOPTS ?? "") ?? [] };
-}
-function refusedFlags(inherited2, project) {
-  const found3 = [];
-  const scan2 = (tokens, source2) => {
-    for (const token of tokens) {
-      const flag3 = REFUSED[token.split("=")[0]];
-      if (flag3 !== void 0 && !found3.some((f) => f.flag === flag3 && f.source === source2)) {
-        found3.push({ flag: flag3, source: source2 });
-      }
-    }
-  };
-  scan2(inherited2.addopts, "addopts");
-  scan2(inherited2.envAddopts, "PYTEST_ADDOPTS");
-  scan2(project.args, "args");
-  return found3;
-}
-function refusalNote(project, refused) {
-  const where3 = (source2) => source2 === "pytest" ? "in pytest's resolved options" : `in ${source2}`;
-  const flags2 = refused.map((r) => `${r.flag} (${where3(r.source)})`).join(", ");
-  return `pytest project "${project.name}": Squeal does not run pytest with ${flags2}, which change what runs or wait for input; its checks stay unknown until the flag is removed.`;
-}
-function pytestArgs(inputs2, cwd) {
-  const { project, config } = inputs2;
-  const overrides = ["--maxfail=0"];
-  if (loads(inputs2, "pytest_xdist")) overrides.push("-n", "0");
-  if (loads(inputs2, "pytest_cov")) overrides.push("--no-cov");
-  overrides.push("-o", `cache_dir=${inputs2.cacheDir}`);
-  return [
-    "-m",
-    "pytest",
-    ...config === null ? ["-c", inputs2.emptyConfig, `--rootdir=${cwd}`, `--confcutdir=${cwd}`] : ["-c", config.path],
-    "-p",
-    "squeal_pytest",
-    "--continue-on-collection-errors",
-    ...project.args,
-    ...overrides
-  ];
-}
-function loads(inputs2, distribution) {
-  const own = inputs2.plugins.filter((p) => normalize5(p.distribution) === distribution);
-  if (own.length === 0) return false;
-  const tokens = [
-    ...inputs2.inherited.addopts,
-    ...inputs2.inherited.envAddopts,
-    ...inputs2.project.args
-  ];
-  const named4 = /* @__PURE__ */ new Set();
-  for (let i3 = 0; i3 < tokens.length; i3++) {
-    const token = tokens[i3];
-    if (token === "-p") named4.add(tokens[++i3] ?? "");
-    else if (token.startsWith("-p")) named4.add(token.slice(2));
-  }
-  for (const name3 of (inputs2.env.PYTEST_PLUGINS ?? "").split(",")) named4.add(name3.trim());
-  if (own.some((p) => named4.has(`no:${p.name}`))) return false;
-  const autoload = (inputs2.env.PYTEST_DISABLE_PLUGIN_AUTOLOAD ?? "") === "";
-  return autoload || own.some((p) => named4.has(p.name) || named4.has(p.module));
-}
-function normalize5(distribution) {
-  return distribution.toLowerCase().replace(/[-.]+/g, "_");
-}
-var REFUSED;
-var init_command = __esm({
-  "src/runners/pytest/run/command.ts"() {
-    "use strict";
-    init_config_values();
-    REFUSED = {
-      "--lf": "--lf",
-      "--last-failed": "--lf",
-      "--ff": "--ff",
-      "--failed-first": "--ff",
-      "--sw": "--sw",
-      "--stepwise": "--sw",
-      "--sw-skip": "--sw-skip",
-      "--stepwise-skip": "--sw-skip",
-      "--pdb": "--pdb",
-      "--trace": "--trace",
-      "--snapshot-update": "--snapshot-update",
-      "--looponfail": "--looponfail",
-      "-f": "--looponfail"
-    };
-  }
-});
-
-// src/runners/pytest/run/events.ts
-function parsePytestEvents(text3) {
-  const events = [];
-  for (const line of text3.split("\n")) {
-    if (line.trim() === "") continue;
-    try {
-      const value = JSON.parse(line);
-      if (typeof value === "object" && value !== null && typeof value.type === "string") {
-        events.push(value);
-      }
-    } catch {
-    }
-  }
-  return events;
-}
-var init_events3 = __esm({
-  "src/runners/pytest/run/events.ts"() {
-    "use strict";
-  }
-});
-
-// src/runners/pytest/run/observed.ts
-import { dirname as dirname49, sep as sep23 } from "node:path";
-function observeBatch(edges, files5, paths) {
-  const children = /* @__PURE__ */ new Map();
-  const spawned = /* @__PURE__ */ new Map();
-  const written2 = /* @__PURE__ */ new Map();
-  const session = /* @__PURE__ */ new Set();
-  const conftests = /* @__PURE__ */ new Set();
-  const imports2 = [];
-  const add3 = (map, from, to) => {
-    const set = map.get(from) ?? /* @__PURE__ */ new Set();
-    set.add(to);
-    map.set(from, set);
-  };
-  for (const edge of edges) {
-    if (edge.type === "written") {
-      add3(written2, edge.ctx, edge.path);
-      continue;
-    }
-    if (edge.type === "spawned") {
-      add3(children, edge.ctx, edge.to);
-      add3(spawned, edge.ctx, edge.to);
-      continue;
-    }
-    imports2.push(edge);
-    if (edge.to.endsWith(`${sep23}conftest.py`)) conftests.add(edge.to);
-    const from = edge.from ?? edge.ctx;
-    if (from === null) session.add(edge.to);
-    else add3(children, from, edge.to);
-  }
-  const relative32 = (all2) => [...all2].flatMap((p) => {
-    const path = paths.toRelative(p);
-    return path === null ? [] : [path];
-  }).sort(compare);
-  const reach2 = (roots) => {
-    const seen = /* @__PURE__ */ new Set();
-    const todo = [...roots];
-    for (let next = todo.pop(); next !== void 0; next = todo.pop()) {
-      if (seen.has(next)) continue;
-      seen.add(next);
-      todo.push(...children.get(next) ?? []);
-    }
-    return relative32(seen);
-  };
-  const closures = files5.map(({ testFile, real: real3 }) => {
-    const dir2 = dirname49(real3);
-    const own = [...conftests].filter(
-      (c) => dir2 === dirname49(c) || dir2.startsWith(`${dirname49(c)}${sep23}`)
-    );
-    const loaded = reach2([real3, ...own]);
-    const made = written2.get(real3) ?? /* @__PURE__ */ new Set();
-    return {
-      testFile,
-      paths: loaded,
-      spawned: relative32(spawned.get(real3) ?? []),
-      written: writtenAbove(loaded, made, paths)
-    };
-  });
-  const imported = new Set(imports2.map((e) => e.to));
-  const tests2 = new Set(files5.map((f) => f.real));
-  for (const { from } of imports2) {
-    if (from !== null && !imported.has(from) && !tests2.has(from)) session.add(from);
-  }
-  return { closures, session: reach2([...session].filter((p) => !conftests.has(p))) };
-}
-var init_observed4 = __esm({
-  "src/runners/pytest/run/observed.ts"() {
-    "use strict";
-    init_compare();
-    init_inputs();
-  }
-});
-
-// src/runners/pytest/run/report.ts
-import { join as join122, sep as sep24 } from "node:path";
-function readBatch(events, files5, rootdir, paths, basetemp = null) {
-  const scrub = (text3, name3) => basetemp === null ? text3 : scrubBasetemp(text3, basetemp, name3);
-  const collected = events.find((e) => e.type === "collected");
-  const phases = /* @__PURE__ */ new Map();
-  for (const e of events) {
-    if (e.type === "phase") phases.set(e.nodeid, [...phases.get(e.nodeid) ?? [], e]);
-  }
-  const collects = events.flatMap((e) => e.type === "collect" ? [e] : []);
-  const items = collected?.items ?? [];
-  const counts = events.find((e) => e.type === "focused")?.files ?? {};
-  const reports = files5.map((file) => {
-    const own = items.filter((item) => item.path === file.real);
-    const failed7 = collects.find(
-      (c) => c.outcome === "failed" && (c.path === file.real || own.length === 0 && under2(file.real, c.path))
-    );
-    const skip = collects.find((c) => c.outcome === "skipped" && c.path === file.real);
-    const done = own.every((item) => phases.get(item.nodeid)?.some((p) => p.when === "teardown"));
-    const { texts: texts2 } = file;
-    const results3 = done ? own.map((item) => joinPhases(item, file.testFile, phases, rootdir, paths, scrub)).filter((r) => texts2 === void 0 || holdsCheckText(r.check.fullName, texts2)) : [];
-    return {
-      testFile: file.testFile,
-      completed: collected !== void 0 && done,
-      results: results3,
-      fileError: failed7 === void 0 ? null : { testFile: file.testFile, errors: [collectionError(failed7.longrepr, paths, scrub)] },
-      skipped: skip === void 0 ? null : skipReason(skip.longrepr),
-      durationMs: Math.round(results3.reduce((sum2, r) => sum2 + r.durationMs, 0)),
-      ...texts2 === void 0 ? {} : {
-        focused: {
-          testFile: file.testFile,
-          collected: counts[file.real]?.collected ?? null,
-          matched: results3.length
-        }
-      }
-    };
-  });
-  return {
-    files: reports,
-    session: events.some((e) => e.type === "session"),
-    refused: events.flatMap((e) => e.type === "refused" ? e.flags : []),
-    addressIds: items.map((i3) => i3.nodeid).filter((id) => /0x[0-9a-f]{4,}/i.test(id))
-  };
-}
-function joinPhases(item, testFile, phases, rootdir, paths, scrubAll) {
-  const scrub = (text3) => scrubAll(text3, item.name);
-  const own = phases.get(item.nodeid) ?? [];
-  const phase = (when) => own.find((p) => p.when === when);
-  const setup = phase("setup");
-  const call2 = phase("call");
-  const teardown = phase("teardown");
-  const errors = [];
-  let outcome2 = "pass";
-  if (setup?.outcome === "failed") {
-    outcome2 = "fail";
-    errors.push(phaseError(setup, paths, scrub));
-  } else if (setup?.outcome === "skipped" || call2?.outcome === "skipped") outcome2 = "skip";
-  else if (call2?.outcome === "failed") {
-    outcome2 = "fail";
-    errors.push(phaseError(call2, paths, scrub));
-  }
-  if (teardown?.outcome === "failed") {
-    outcome2 = "fail";
-    errors.push(phaseError(teardown, paths, scrub));
-  }
-  const first2 = setup ?? call2 ?? teardown;
-  return {
-    check: {
-      kind: "test",
-      project: testFile.project,
-      testPath: testFile.path,
-      fullName: item.nodeid.slice(item.nodeid.indexOf("::") + 2)
-    },
-    outcome: outcome2,
-    durationMs: own.reduce((sum2, p) => sum2 + p.duration * 1e3, 0),
-    location: first2 === void 0 ? null : checkLocation(first2, testFile, rootdir, paths),
-    errors
-  };
-}
-function checkLocation(phase, testFile, rootdir, paths) {
-  const { path, line } = phase.location;
-  if (line === null) return null;
-  const relative32 = paths.toRelative(join122(rootdir, path)) ?? testFile.path;
-  return { path: relative32, line: line + 1, column: 1 };
-}
-function phaseError(phase, paths, scrub) {
-  const text3 = scrub(phase.longrepr ?? "");
-  const { name: name3, message: message3 } = splitException(
-    phase.crash === null ? lastErrorLine(text3) ?? text3 : scrub(phase.crash.message)
-  );
-  const type = /:\d+: ([A-Za-z_][\w.]*)$/.exec(text3.trimEnd())?.[1];
-  return {
-    name: name3 === "Error" && type !== void 0 ? type : name3,
-    message: phase.when === "call" ? message3 : `[${phase.when}] ${message3}`,
-    stack: text3 === "" ? null : paths.relativizeText(text3),
-    location: phase.crash === null ? null : paths.location(phase.crash.path, phase.crash.line, 1),
-    diff: null
-  };
-}
-function collectionError(longrepr, paths, scrub) {
-  const text3 = scrub(longrepr ?? "collection failed");
-  const { name: name3, message: message3 } = splitException(lastErrorLine(text3) ?? text3.split("\n")[0] ?? text3);
-  return { name: name3, message: message3, stack: paths.relativizeText(text3), location: null, diff: null };
-}
-function lastErrorLine(text3) {
-  const lines = text3.split("\n").filter((l) => l.startsWith("E   "));
-  const last = lines.at(-1);
-  return last === void 0 ? null : last.slice(4).trim();
-}
-function splitException(text3) {
-  const match2 = /^([A-Za-z_][\w.]*): ([\s\S]*)$/.exec(text3);
-  return match2 === null ? { name: "Error", message: text3 } : { name: match2[1], message: match2[2] };
-}
-function skipReason(longrepr) {
-  return longrepr ?? "skipped";
-}
-function under2(file, dir2) {
-  return file.startsWith(dir2.endsWith(sep24) ? dir2 : `${dir2}${sep24}`);
-}
-var init_report3 = __esm({
-  "src/runners/pytest/run/report.ts"() {
-    "use strict";
-    init_focus();
-    init_basetemp();
-  }
-});
-
-// src/runners/pytest/run/run.ts
-import { createHash as createHash35 } from "node:crypto";
-import { existsSync as existsSync45, mkdirSync as mkdirSync23, writeFileSync as writeFileSync18 } from "node:fs";
-import { tmpdir as tmpdir11 } from "node:os";
-import { delimiter as delimiter6, join as join123, relative as relative23, sep as sep25 } from "node:path";
-import { fileURLToPath as fileURLToPath18 } from "node:url";
-async function runPytest(options) {
-  const started2 = performance.now();
-  const { project, environment } = options;
-  const paths = new WorktreePaths(options.root);
-  const cwd = project.cwd ? toAbsolute(options.root, project.cwd) : options.root;
-  const inherited2 = inheritedArgs(environment.config, environment.runEnv);
-  const refused = refusedFlags(inherited2, project);
-  if (refused.length > 0) return refusal2(refusalNote(project, refused), started2);
-  const cacheDir = options.cacheDir ?? defaultCacheDir(options.root, project);
-  const ours = markLogDir(options.logDir);
-  if (ours === null) return logGone(options.logDir);
-  mkdirSync23(cacheDir, { recursive: true });
-  const runtimeDir2 = options.runtimeDir ?? pytestRuntimeDir();
-  const env = {
-    ...environment.runEnv,
-    ...options.childEnv,
-    PYTHONPATH: [environment.runEnv.PYTHONPATH, runtimeDir2].filter((p) => p !== void 0 && p !== "").join(delimiter6),
-    SQUEAL_PYTEST_ROOT: options.root,
-    // The plugin names the file in progress for the processes a test starts (task 007-55);
-    // one inherited from a run around this daemon's would record pytest's own imports.
-    SQUEAL_PYTEST_FILE: void 0,
-    SQUEAL_PYTEST_CHECKS: void 0
-  };
-  const args2 = pytestArgs(
-    {
-      project,
-      config: environment.config,
-      plugins: environment.plugins,
-      env,
-      inherited: inherited2,
-      cacheDir: join123(cacheDir, "pytest-cache"),
-      emptyConfig: ownEmptyConfig(cacheDir)
-    },
-    cwd
-  );
-  const rootdir = realOr2(environment.config?.rootdir ?? cwd);
-  const basetemp = runBasetemp(cacheDir);
-  const batches2 = split2(
-    options.files,
-    options.batchSize ?? DEFAULT_BATCH_SIZE,
-    options.alone
-  ).map((files5, index) => ({
-    index,
-    files: files5.map((testFile) => {
-      const texts2 = focusedTexts(options.checks, testFile);
-      const real3 = realOr2(toAbsolute(options.root, testFile.path));
-      return texts2 === null ? { testFile, real: real3 } : { testFile, real: real3, texts: texts2 };
-    }),
-    // After `args`, so it wins over the project's own `--basetemp` (task 007-37).
-    args: [
-      ...args2,
-      `--basetemp=${basetemp.dir(index)}`,
-      ...files5.map((f) => relative23(cwd, toAbsolute(options.root, f.path)).split(sep25).join("/"))
-    ],
-    exit: null,
-    signalled: false,
-    read: null,
-    edges: []
-  }));
-  const python = environment.discovery.python;
-  const running = /* @__PURE__ */ new Set();
-  let expired = false;
-  let cancelled2 = false;
-  const timers = [];
-  const stopAll = () => {
-    for (const group of running) group.kill("SIGTERM");
-    timers.push(
-      setTimeout(() => {
-        for (const group of running) group.kill("SIGKILL");
-      }, KILL_GRACE_MS2)
-    );
-  };
-  if (options.timeoutMs !== null) {
-    timers.push(
-      setTimeout(() => {
-        expired = true;
-        stopAll();
-      }, options.timeoutMs)
-    );
-  }
-  const onAbort = () => {
-    cancelled2 = true;
-    stopAll();
-  };
-  if (options.signal?.aborted === true) cancelled2 = true;
-  else options.signal?.addEventListener("abort", onAbort, { once: true });
-  const queue = [...batches2];
-  const bytecode = runBytecode(cacheDir, options.root, [
-    ...keptDirs(environment.discovery.env, environment.discovery.python),
-    runtimeDir2
-  ]);
-  const worker = async () => {
-    for (let batch = queue.shift(); batch !== void 0 && !expired && !cancelled2 && ours(); batch = queue.shift()) {
-      const events = join123(options.logDir, `events-${batch.index}.jsonl`);
-      const group = startGroup({
-        command: python,
-        args: batch.args,
-        cwd,
-        env: {
-          ...env,
-          PYTHONPYCACHEPREFIX: bytecode.prefix,
-          SQUEAL_PYTEST_EVENTS: events,
-          ...focusedEnv(batch)
-        },
-        stdout: join123(options.logDir, `stdout-${batch.index}.log`),
-        stderr: join123(options.logDir, `stderr-${batch.index}.log`)
-      });
-      running.add(group);
-      batch.exit = await group.exited;
-      batch.signalled = expired || cancelled2;
-      running.delete(group);
-      const parsed3 = parsePytestEvents(readOr(events));
-      batch.read = readBatch(parsed3, batch.files, rootdir, paths, basetemp.dir(batch.index));
-      batch.edges = parsed3.filter(isEdge);
-    }
-  };
-  const width = Math.max(1, Math.min(options.concurrency ?? batches2.length, batches2.length));
-  try {
-    await Promise.all(Array.from({ length: width }, worker));
-  } finally {
-    for (const timer of timers) clearTimeout(timer);
-    options.signal?.removeEventListener("abort", onAbort);
-    bytecode.remove();
-    basetemp.remove();
-  }
-  const notes = [];
-  let refusedAtRun = null;
-  const trusted2 = batches2.filter((b) => {
-    const code = b.exit?.code;
-    if (b.read !== null && b.read.refused.length > 0) {
-      const flags2 = b.read.refused.map((flag3) => ({ flag: flag3, source: "pytest" }));
-      refusedAtRun ??= refusalNote(project, flags2);
-      return false;
-    }
-    if (code === 5 && !b.files.every((f) => f.texts !== void 0))
-      notes.push(`pytest project "${project.name}" collected nothing in ${names4(b)}.`);
-    return code !== 3 && code !== 4;
-  });
-  const done = trusted2.flatMap(completedOf);
-  if (refusedAtRun !== null) notes.push(refusedAtRun);
-  const addresses = [...new Set(trusted2.flatMap((b) => b.read?.addressIds ?? []))];
-  if (addresses.length > 0) {
-    notes.push(
-      `pytest project "${project.name}": these test ids hold a memory address, so they change every run: ${addresses.join(", ")}.`
-    );
-  }
-  const { end, failure: failure2 } = cancelled2 ? { end: "completed", failure: null } : ending2(batches2, new Set(done.map((f) => f.testFile)), expired, {
-    total: options.files.length,
-    timeoutMs: options.timeoutMs,
-    python,
-    logDir: options.logDir
-  });
-  const whole = end === "completed" && failure2 === null && refusedAtRun === null && done.length === options.files.length;
-  const skippedAll = whole ? allSkippedNote(project, done) : null;
-  if (skippedAll !== null) notes.push(skippedAll);
-  const report4 = {
-    end,
-    durationMs: Math.round(performance.now() - started2),
-    completedFiles: done.map((f) => f.testFile),
-    results: done.flatMap((f) => f.results),
-    fileErrors: done.flatMap((f) => f.fileError === null ? [] : [f.fileError]),
-    failure: refusedAtRun ?? failure2,
-    fileDurations: done.map((f) => ({ testFile: f.testFile, durationMs: f.durationMs })),
-    ...focusedOf2(done)
-  };
-  const observed2 = trusted2.map((b) => observeBatch(b.edges, b.files, paths));
-  const completed2 = new Set(report4.completedFiles);
-  if (!ours()) return logGone(options.logDir);
-  writeRunLog3(options.logDir, { python, cwd, batches: batches2, report: report4, notes });
-  return {
-    report: report4,
-    observed: observed2.flatMap((o) => o.closures).filter((c) => completed2.has(c.testFile)),
-    session: [...new Set(observed2.flatMap((o) => o.session))].sort(),
-    skippedFiles: done.flatMap(
-      (f) => f.skipped === null ? [] : [{ testFile: f.testFile, reason: f.skipped }]
-    ),
-    notes
-  };
-}
-function completedOf(batch) {
-  if (batch.signalled && batch.exit?.signal !== "SIGTERM") return [];
-  return batch.read?.files.filter((f) => f.completed) ?? [];
-}
-function focusedEnv(batch) {
-  const checks = batch.files.flatMap((f) => f.texts === void 0 ? [] : [[f.real, f.texts]]);
-  return checks.length === 0 ? {} : { SQUEAL_PYTEST_CHECKS: JSON.stringify(Object.fromEntries(checks)) };
-}
-function focusedOf2(done) {
-  const focused = done.flatMap((f) => f.focused === void 0 ? [] : [f.focused]);
-  return focused.length === 0 ? {} : { focused };
-}
-function allSkippedNote(project, files5) {
-  const results3 = files5.flatMap((f) => f.results);
-  const skipped2 = results3.length + files5.filter((f) => f.skipped !== null).length;
-  if (skipped2 === 0 || files5.some((f) => f.fileError !== null)) return null;
-  if (results3.some((r) => r.outcome !== "skip")) return null;
-  return `pytest project "${project.name}" skipped every collected test (${skipped2} skipped) in ${files5.length === 1 ? "its one file" : `${files5.length} files`}; pytest exits 0 then, so check what skips them (a missing setting or service often does).`;
-}
-function ownEmptyConfig(cacheDir) {
-  const dir2 = join123(cacheDir, "no-config");
-  mkdirSync23(dir2, { recursive: true });
-  const path = join123(dir2, "pytest.ini");
-  writeFileSync18(path, "[pytest]\n");
-  return path;
-}
-function logGone(logDir) {
-  return { report: logGoneReport(logDir), observed: [], session: [], skippedFiles: [], notes: [] };
-}
-function refusal2(note, started2) {
-  return {
-    report: {
-      end: "crashed",
-      durationMs: Math.round(performance.now() - started2),
-      completedFiles: [],
-      results: [],
-      fileErrors: [],
-      failure: note
-    },
-    observed: [],
-    session: [],
-    skippedFiles: [],
-    notes: [note]
-  };
-}
-function defaultCacheDir(root, project) {
-  const id = createHash35("sha256").update(`${root}\0${project.name}`).digest("hex").slice(0, 16);
-  return join123(tmpdir11(), "squeal-pytest", id);
-}
-function pytestRuntimeDir(module2 = new URL(import.meta.url)) {
-  const tried2 = [];
-  for (const candidate of ["../pytest/", "../runtime/"]) {
-    const dir2 = fileURLToPath18(new URL(candidate, module2));
-    if (existsSync45(join123(dir2, "squeal_pytest.py"))) return dir2.replace(/\/$/, "");
-    tried2.push(dir2);
-  }
-  throw new Error(
-    `pytest runtime files not found beside ${module2.href}: tried ${tried2.join(", ")}`
-  );
-}
-function isEdge(event2) {
-  return event2.type === "import" || event2.type === "spawned" || event2.type === "written";
-}
-var DEFAULT_BATCH_SIZE, KILL_GRACE_MS2;
-var init_run3 = __esm({
-  "src/runners/pytest/run/run.ts"() {
-    "use strict";
-    init_paths2();
-    init_worktree_paths();
-    init_focus();
-    init_log_dir();
-    init_group();
-    init_basetemp();
-    init_batches();
-    init_bytecode();
-    init_command();
-    init_events3();
-    init_observed4();
-    init_report3();
-    DEFAULT_BATCH_SIZE = 5;
-    KILL_GRACE_MS2 = 2e3;
   }
 });
 
@@ -66687,6 +66936,8 @@ async function createPytestAdapter(project, options) {
   return {
     name: "pytest",
     adapterVersion: PYTEST_ADAPTER_VERSION,
+    // 007 D6 (row 011-135): `runPytest` takes `RunOptions.checks`, so its traits focus.
+    traits: pytestTraits({ tierSize: options.concurrency, batchSize: options.batchSize }),
     invalidate: async (paths) => invalidate(paths, await reread()),
     recheck,
     async affected(changed2) {
@@ -66763,8 +67014,6 @@ async function createPytestAdapter(project, options) {
         ...session.length > 0 ? { environmentObserved: [{ project: project.name, paths: session }] } : {}
       };
     },
-    // 007 D6 (row 011-135): `runPytest` takes `RunOptions.checks`.
-    focuses: true,
     close: async () => {
     }
   };
@@ -66810,532 +67059,9 @@ var init_adapter3 = __esm({
     init_hash();
     init_environment3();
     init_graph5();
+    init_traits3();
     init_version4();
     NAMED_INCOMPLETE2 = 3;
-  }
-});
-
-// src/core/runner-host/runners.ts
-async function buildAdapter(root, start2, hooks) {
-  switch (start2.runner) {
-    case "vitest": {
-      const { createVitestAdapter: createVitestAdapter2 } = await Promise.resolve().then(() => (init_vitest(), vitest_exports));
-      const { coverage, childEnv: childEnv2, maxWorkers } = start2.options;
-      return createVitestAdapter2({
-        root,
-        note: hooks.note,
-        optimizer: hooks.optimizer,
-        observe: () => hooks.policy().observe,
-        excludeProjects: () => hooks.policy().excludeProjects,
-        exclude: () => hooks.policy().exclude,
-        childEnv: childEnv2,
-        ...coverage === void 0 ? {} : {
-          coverage: {
-            enabled: () => hooks.policy().coverage,
-            children: () => hooks.policy().coverageChildren,
-            provider: coverage.provider,
-            tempDir: coverage.tempDir,
-            collected: hooks.coverage
-          }
-        },
-        ...maxWorkers === void 0 ? {} : { maxWorkers }
-      });
-    }
-    case "node-test": {
-      const { createNodeTestAdapter: createNodeTestAdapter2 } = await Promise.resolve().then(() => (init_adapter2(), adapter_exports));
-      const data2 = processOptions(start2);
-      return createNodeTestAdapter2(data2.project, {
-        root,
-        note: hooks.note,
-        childEnv: start2.options.childEnv,
-        ...perRun(start2, hooks),
-        ...start2.policy.inputs === void 0 ? {} : { inputs: () => hooks.policy().inputs ?? [] },
-        ...data2.tempDir === void 0 ? {} : { tempDir: data2.tempDir },
-        ...data2.coverage === true ? {
-          coverage: {
-            enabled: () => hooks.policy().coverage,
-            children: () => hooks.policy().coverageChildren,
-            collected: hooks.coverage
-          }
-        } : {}
-      });
-    }
-    case "pytest": {
-      const { createPytestAdapter: createPytestAdapter2 } = await Promise.resolve().then(() => (init_adapter3(), adapter_exports2));
-      const data2 = processOptions(start2);
-      const project = data2.project;
-      const { batchSize } = project;
-      const latest = new Map(Object.entries(data2.latestNotes ?? {}));
-      return createPytestAdapter2(project, {
-        root,
-        note: (text3, topic) => {
-          if (topic !== void 0) latest.set(topic, text3);
-          hooks.note(text3, topic);
-        },
-        latestNote: (topic) => latest.get(topic),
-        childEnv: start2.options.childEnv,
-        ...perRun(start2, hooks),
-        ...batchSize === void 0 ? {} : { batchSize: () => batchSize },
-        ...data2.tempDir === void 0 ? {} : { tempDir: data2.tempDir },
-        ...data2.cacheDir === void 0 ? {} : { cacheDir: data2.cacheDir }
-      });
-    }
-    default:
-      throw new Error(`runner host: no runner ${String(start2.runner)}`);
-  }
-}
-function processOptions(start2) {
-  const data2 = start2.options.process;
-  if (data2 === void 0) throw new Error(`runner host: no project for ${start2.runner}`);
-  return data2;
-}
-function perRun(start2, hooks) {
-  const first2 = start2.policy.tierSize;
-  if (first2 === void 0) return {};
-  return { concurrency: () => hooks.policy().tierSize ?? first2 };
-}
-function widthsOf(widths) {
-  if (widths === null || typeof widths !== "object") return null;
-  const answers2 = new WidthAnswers(widths);
-  return {
-    slowWidth: (testFiles3) => answers2.atOnce(testFiles3),
-    tierWidth: (testFile, grant) => answers2.of(testFile.project, grant)
-  };
-}
-var init_runners = __esm({
-  "src/core/runner-host/runners.ts"() {
-    "use strict";
-    init_width();
-  }
-});
-
-// src/core/runner-host/proxy.ts
-function runnerHostGone(adapter) {
-  return gone2.has(adapter);
-}
-async function startHostProxy(options) {
-  const proxy2 = new HostProxy(options);
-  try {
-    await proxy2.start();
-  } catch (error) {
-    await proxy2.close();
-    throw error;
-  }
-  return proxy2;
-}
-var HOST_DEADLINES, gone2, HostProxy;
-var init_proxy = __esm({
-  "src/core/runner-host/proxy.ts"() {
-    "use strict";
-    init_connection2();
-    init_coverage_wire();
-    init_protocol();
-    init_runners();
-    HOST_DEADLINES = {
-      startMs: 3e5,
-      callMs: 3e5,
-      runMarginMs: 3e5,
-      runIdleMs: 18e5,
-      cancelMs: 6e4,
-      closeMs: 3e4
-    };
-    gone2 = /* @__PURE__ */ new WeakSet();
-    HostProxy = class {
-      name;
-      adapterVersion = "";
-      focuses;
-      recheck;
-      globalSetups;
-      #options;
-      #deadlines;
-      #connection;
-      #runs = /* @__PURE__ */ new Map();
-      #values = { omittedTestFiles: 0, widths: null };
-      #widths = null;
-      #policy = "";
-      #closed = null;
-      /** A host lost before its start answered is the start's error, noted as the runner's failure. */
-      #started = false;
-      constructor(options) {
-        this.#options = options;
-        this.name = options.runner;
-        this.#deadlines = { ...HOST_DEADLINES, ...options.deadlines };
-        this.#connection = new HostConnection({
-          channel: options.channel,
-          label: `the ${options.runner} runner host`,
-          event: (message3) => this.#event(message3),
-          lost: (error) => {
-            gone2.add(this);
-            if (this.#started) options.note?.(`${error.message}; a new one starts at the next call`);
-          }
-        });
-      }
-      async start() {
-        await this.#options.prepare?.({
-          request: (m, a, deadlineMs) => this.#connection.request(m, a, deadlineMs)
-        });
-        const policy = this.#options.policy();
-        this.#policy = JSON.stringify(policy);
-        const started2 = await this.#connection.request(
-          "start",
-          [
-            {
-              protocol: RUNNER_HOST_PROTOCOL,
-              version: this.#options.version,
-              runner: this.#options.runner,
-              options: this.#options.options,
-              policy
-            }
-          ],
-          this.#deadlines.startMs
-        );
-        if (started2.version !== this.#options.version) {
-          throw new Error(
-            `the runner host is Squeal ${started2.version}, the daemon ${this.#options.version}`
-          );
-        }
-        this.name = started2.adapter.name;
-        this.adapterVersion = started2.adapter.adapterVersion;
-        if (started2.adapter.focuses) this.focuses = true;
-        if (started2.adapter.members.includes("recheck"))
-          this.recheck = () => this.#call("recheck", []);
-        if (started2.adapter.members.includes("globalSetups"))
-          this.globalSetups = () => this.#call("globalSetups", []);
-        this.#take(started2.values);
-        this.#started = true;
-      }
-      async invalidate(paths) {
-        const riding = await this.#options.invalidateWith?.(paths);
-        const args2 = riding === void 0 ? [paths] : [paths, riding];
-        return await this.#call("invalidate", args2);
-      }
-      affected(changedPaths3) {
-        return this.#call("affected", [changedPaths3]);
-      }
-      closure(testFile) {
-        return this.#call("closure", [testFile]);
-      }
-      enumerate(testFile) {
-        return this.#call("enumerate", [testFile]);
-      }
-      testFiles() {
-        return this.#call("testFiles", []);
-      }
-      environment() {
-        return this.#call("environment", []);
-      }
-      omittedTestFiles() {
-        return this.#values.omittedTestFiles;
-      }
-      slowWidth(testFiles3) {
-        return this.#widths?.slowWidth(testFiles3) ?? testFiles3.length;
-      }
-      tierWidth(testFile, grant) {
-        return this.#widths?.tierWidth(testFile, grant) ?? grant;
-      }
-      async run(testFiles3, options) {
-        const begun = Date.now();
-        const { signal: signal2, stop: stop2, fileEnded, beforeForce, ...data2 } = options;
-        const { aliveMs } = this.#deadlines;
-        const wire = {
-          ...data2,
-          ...beforeForce === void 0 ? {} : { beforeForce: true },
-          ...aliveMs === void 0 ? {} : { alive: Math.max(1, Math.floor(aliveMs / 4)) }
-        };
-        const id = this.#connection.nextId();
-        this.#runs.set(id, { fileEnded, beforeForce });
-        const cancel2 = (which, reason2) => () => {
-          const named4 = typeof reason2 === "string" ? [reason2] : [];
-          this.#connection.request("cancel", [id, which, ...named4], this.#deadlines.cancelMs).catch(() => {
-          });
-        };
-        const onSignal = () => cancel2("signal", signal2?.reason)();
-        const onStop = () => cancel2("stop", stop2?.reason)();
-        const deadline = aliveMs !== void 0 ? {
-          ms: aliveMs,
-          renewable: { progress: "tell it is alive" },
-          // Review 0.1.442 B2: signs of life prove the transport, not the run's progress.
-          ...options.timeoutMs === null ? { idle: { ms: this.#deadlines.runIdleMs, progress: "end a file of it" } } : { totalMs: options.timeoutMs + this.#deadlines.runMarginMs }
-        } : options.timeoutMs === null ? { ms: this.#deadlines.runIdleMs, renewable: { progress: "end a file of it" } } : { ms: options.timeoutMs + this.#deadlines.runMarginMs };
-        try {
-          this.#sendPolicy();
-          const reply = this.#connection.request("run", [testFiles3, wire], deadline, id);
-          if (signal2?.aborted) onSignal();
-          else signal2?.addEventListener("abort", onSignal, { once: true });
-          if (stop2?.aborted) onStop();
-          else stop2?.addEventListener("abort", onStop, { once: true });
-          return await reply;
-        } catch (error) {
-          if (!(error instanceof HostLost)) throw error;
-          return {
-            end: error.timedOut ? "timed-out" : "crashed",
-            durationMs: Date.now() - begun,
-            completedFiles: [],
-            results: [],
-            fileErrors: [],
-            failure: error.message
-          };
-        } finally {
-          signal2?.removeEventListener("abort", onSignal);
-          stop2?.removeEventListener("abort", onStop);
-          this.#runs.delete(id);
-        }
-      }
-      close() {
-        this.#closed ??= this.#close();
-        return this.#closed;
-      }
-      async #close() {
-        gone2.add(this);
-        this.#connection.closing();
-        const { channel: channel2 } = this.#options;
-        if (this.#connection.lost === null) {
-          await this.#connection.request("close", [], this.#deadlines.closeMs).catch(() => {
-          });
-        }
-        channel2.endInput();
-        let timer;
-        const bound = new Promise((resolve45) => {
-          timer = setTimeout(resolve45, this.#deadlines.closeMs);
-        });
-        await Promise.race([channel2.ended, bound]);
-        clearTimeout(timer);
-        channel2.kill();
-      }
-      #call(m, a) {
-        this.#sendPolicy();
-        return this.#connection.request(m, a, this.#deadlines.callMs);
-      }
-      /** The policy, before a request that may read it, when it changed since last sent. */
-      #sendPolicy() {
-        const policy = this.#options.policy();
-        const text3 = JSON.stringify(policy);
-        if (text3 === this.#policy) return;
-        this.#policy = text3;
-        this.#connection.notice({ m: "policy", a: [policy] });
-      }
-      #take(values) {
-        this.#values = values;
-        this.#widths = widthsOf(values.widths);
-      }
-      #event(message3) {
-        switch (message3.ev) {
-          case "note":
-            this.#options.note?.(message3.text, message3.topic);
-            return;
-          case "optimizer":
-            this.#options.optimizer?.(message3.projects);
-            return;
-          case "values":
-            this.#take(message3.values);
-            return;
-          case "fileEnded":
-            this.#connection.renew(message3.run);
-            this.#runs.get(message3.run)?.fileEnded?.(message3.testFile);
-            return;
-          case "beforeForce": {
-            const hook = this.#runs.get(message3.run)?.beforeForce;
-            const run7 = message3.run;
-            void (hook?.(message3.env) ?? Promise.resolve()).catch(() => {
-            }).then(() => this.#connection.notice({ m: "forced", a: [run7] }));
-            return;
-          }
-          case "coverage":
-            this.#options.coverage?.(decodeCoverageRun(message3.run));
-            return;
-          case "alive":
-            this.#connection.renew(message3.run, "alive");
-            return;
-        }
-      }
-    };
-  }
-});
-
-// src/core/runner-host/process-host.ts
-function pytestEnvironmentTopic(project) {
-  return `pytest-environment:${project.name}`;
-}
-function createHostedNodeTest(host, project, options) {
-  const { coverage } = options;
-  return hosted(host, "node-test", options.root, {
-    options: {
-      childEnv: options.childEnv ?? {},
-      process: {
-        project,
-        ...options.tempDir === void 0 ? {} : { tempDir: options.tempDir },
-        ...coverage === void 0 ? {} : { coverage: true }
-      }
-    },
-    policy: () => ({
-      ...NO_VITEST_POLICY,
-      coverage: coverage?.enabled() ?? false,
-      coverageChildren: coverage?.children?.() ?? false,
-      ...options.concurrency === void 0 ? {} : { tierSize: options.concurrency() },
-      ...options.inputs === void 0 ? {} : { inputs: options.inputs() }
-    }),
-    ...options.note === void 0 ? {} : { note: options.note },
-    ...coverage === void 0 ? {} : { coverage: coverage.collected }
-  });
-}
-function createHostedPytest(host, project, options) {
-  const topic = pytestEnvironmentTopic(project);
-  const latest = options.latestNote?.(topic);
-  return hosted(host, "pytest", options.root, {
-    options: {
-      childEnv: options.childEnv ?? {},
-      process: {
-        project,
-        ...options.tempDir === void 0 ? {} : { tempDir: options.tempDir },
-        ...options.cacheDir === void 0 ? {} : { cacheDir: options.cacheDir },
-        ...latest === void 0 ? {} : { latestNotes: { [topic]: latest } }
-      }
-    },
-    policy: () => ({
-      ...NO_VITEST_POLICY,
-      ...options.concurrency === void 0 ? {} : { tierSize: options.concurrency() }
-    }),
-    ...options.note === void 0 ? {} : { note: options.note }
-  });
-}
-function hosted(host, runner, root, proxy2) {
-  return startHostProxy({
-    channel: spawnRunnerHost(host.launch, root, runner, host.env),
-    runner,
-    version: host.version,
-    ...proxy2,
-    ...host.deadlines === void 0 ? {} : { deadlines: host.deadlines }
-  });
-}
-var NO_VITEST_POLICY;
-var init_process_host = __esm({
-  "src/core/runner-host/process-host.ts"() {
-    "use strict";
-    init_channel();
-    init_proxy();
-    NO_VITEST_POLICY = {
-      observe: false,
-      exclude: [],
-      excludeProjects: [],
-      coverage: false,
-      coverageChildren: false
-    };
-  }
-});
-
-// src/core/daemon/runner-set.ts
-function createRunnerSet(entries3, build) {
-  const make = (entry4) => ({ runner: build(entry4), stamp: stampOf(entry4) });
-  let built = new Map(entries3().map((entry4) => [entry4.name, make(entry4)]));
-  return {
-    members: () => [...built.values()].map((member) => member.runner),
-    reconcile() {
-      const next = /* @__PURE__ */ new Map();
-      const replaced = [];
-      const projects2 = /* @__PURE__ */ new Set();
-      for (const entry4 of entries3()) {
-        const was = built.get(entry4.name);
-        if (was !== void 0 && was.stamp === stampOf(entry4)) {
-          next.set(entry4.name, was);
-          continue;
-        }
-        next.set(entry4.name, make(entry4));
-        projects2.add(entry4.name);
-        if (was !== void 0) replaced.push(was.runner);
-      }
-      const removed = [...built].filter(([name3]) => !next.has(name3));
-      for (const [name3] of removed) projects2.add(name3);
-      built = next;
-      return {
-        removed: removed.map(([, member]) => member.runner),
-        replaced,
-        projects: [...projects2].sort(compare)
-      };
-    }
-  };
-}
-function stampOf(entry4) {
-  return JSON.stringify(
-    entry4,
-    (_, value) => isRecord(value) ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => compare(a, b))) : value
-  );
-}
-var init_runner_set = __esm({
-  "src/core/daemon/runner-set.ts"() {
-    "use strict";
-    init_compare();
-    init_json();
-  }
-});
-
-// src/core/daemon/node-test-runners.ts
-var node_test_runners_exports = {};
-__export(node_test_runners_exports, {
-  createNodeTestRunnerSet: () => createNodeTestRunnerSet,
-  createNodeTestRunners: () => createNodeTestRunners,
-  hosted: () => hosted2
-});
-function createNodeTestRunners(projects2, options) {
-  return opened(() => projects2, options.note)().map((project) => nodeTestRunner(project, options));
-}
-function createNodeTestRunnerSet(projects2, options) {
-  return createRunnerSet(
-    opened(projects2, options.note),
-    (project) => nodeTestRunner(project, options)
-  );
-}
-function opened(projects2, note) {
-  const noted2 = /* @__PURE__ */ new Set();
-  return () => projects2().filter((project) => {
-    if (project.prepare === void 0) return true;
-    if (!noted2.has(project.name)) {
-      noted2.add(project.name);
-      note(
-        `node-test project ${JSON.stringify(project.name)} has a prepare command, so Squeal does not run its tests in the background; squeal code --base runs the prepare, then them`
-      );
-    }
-    return false;
-  });
-}
-function nodeTestRunner(project, options) {
-  const adapterOptions = {
-    root: options.root,
-    note: options.note,
-    concurrency: options.tierSize,
-    tempDir: options.tempDir,
-    ...options.inputs === void 0 ? {} : { inputs: options.inputs },
-    ...options.childEnv === void 0 ? {} : { childEnv: options.childEnv },
-    ...options.coverage === void 0 ? {} : { coverage: options.coverage }
-  };
-  const { host } = options;
-  return createRecoveringRunner({
-    name: "node-test",
-    adapterVersion: NODE_TEST_ADAPTER_VERSION,
-    create: () => host === void 0 ? createNodeTestAdapter(project, adapterOptions) : createHostedNodeTest(host, project, adapterOptions),
-    // Spec 021 D7: a host that exited or missed a deadline is replaced; D20: an idle one closes.
-    ...host === void 0 ? {} : hosted2(options.idleMs),
-    // A run starts `runner.tierSize` files at once whatever its grant (task 001-366).
-    tierWidth: () => options.tierSize(),
-    // It cannot cancel a run: an edit's tier starts beside a backlog tier (task 011-21).
-    besideBacklog: true,
-    // A process per file: the backlog runs in one-file slots (task 011-21 slice 2).
-    backlogSlot: 1,
-    onFailure: (text3) => options.note(`${text3} (node-test project ${JSON.stringify(project.name)})`),
-    onRecovered: () => options.note(`node-test project ${JSON.stringify(project.name)} started`)
-  });
-}
-function hosted2(idleMs) {
-  return { gone: runnerHostGone, ...idleMs === void 0 ? {} : { idleMs } };
-}
-var init_node_test_runners = __esm({
-  "src/core/daemon/node-test-runners.ts"() {
-    "use strict";
-    init_adapter2();
-    init_version3();
-    init_process_host();
-    init_proxy();
-    init_runner2();
-    init_runner_set();
   }
 });
 
@@ -67379,14 +67105,7 @@ function pytestRunner(project, options) {
     }) : createHostedPytest(host, project, adapterOptions),
     // Spec 021 D7: a host that exited or missed a deadline is replaced; D20: an idle one closes.
     ...host === void 0 ? {} : hosted2(options.idleMs),
-    // A run starts `runner.tierSize` processes at once whatever its grant (task 001-366).
-    tierWidth: () => options.tierSize(),
-    // It cannot cancel a run: an edit's tier starts beside a backlog tier (task 011-21).
-    besideBacklog: true,
-    // A slot is one batch process (spec 007 D6): light files packed, a heavy file alone.
-    backlogSlot: batchSize ?? DEFAULT_BATCH_SIZE,
-    // Spec 007 D6 (row 011-145): its deselection hook runs a focused tier's texts.
-    focuses: true,
+    traits: pytestTraits({ tierSize: options.tierSize, batchSize: () => batchSize }),
     onFailure: (text3) => options.note(`${text3} (pytest project ${JSON.stringify(project.name)})`),
     onRecovered: () => options.note(`pytest project ${JSON.stringify(project.name)} started`)
   });
@@ -67395,12 +67114,296 @@ var init_pytest_runners = __esm({
   "src/core/daemon/pytest-runners.ts"() {
     "use strict";
     init_adapter3();
-    init_run3();
+    init_traits3();
     init_version4();
     init_process_host();
     init_node_test_runners();
     init_runner2();
     init_runner_set();
+  }
+});
+
+// src/core/daemon/composite-flights.ts
+function withheld(testFiles3, durationMs2) {
+  return {
+    end: "completed",
+    durationMs: durationMs2,
+    completedFiles: [],
+    results: [],
+    fileErrors: [],
+    failure: null,
+    withheld: testFiles3
+  };
+}
+async function runPart(adapter, testFiles3, options) {
+  const started2 = Date.now();
+  try {
+    return await adapter.run(testFiles3, options);
+  } catch (error) {
+    return {
+      end: "crashed",
+      durationMs: Date.now() - started2,
+      completedFiles: [],
+      results: [],
+      fileErrors: [],
+      failure: error instanceof Error ? error.message : String(error)
+    };
+  }
+}
+var Flights;
+var init_composite_flights = __esm({
+  "src/core/daemon/composite-flights.ts"() {
+    "use strict";
+    Flights = class {
+      #running = /* @__PURE__ */ new Map();
+      #removed = /* @__PURE__ */ new WeakSet();
+      /** Every member a reload retired, removed or replaced: none starts a part again. */
+      #left = /* @__PURE__ */ new WeakSet();
+      /** Retired members not closed yet: each waits for its parts in flight. */
+      #retired = /* @__PURE__ */ new Set();
+      #closing = [];
+      removed(adapter) {
+        return this.#removed.has(adapter);
+      }
+      left(adapter) {
+        return this.#left.has(adapter);
+      }
+      stop(adapter) {
+        this.#removed.add(adapter);
+        for (const controller of this.#running.get(adapter) ?? []) controller.abort("stop");
+      }
+      retire(adapter) {
+        this.#left.add(adapter);
+        this.#retired.add(adapter);
+        if (!this.#running.has(adapter)) this.#closeRetired(adapter);
+      }
+      async run(adapter, testFiles3, options) {
+        const controller = new AbortController();
+        const running = this.#running.get(adapter) ?? /* @__PURE__ */ new Set();
+        this.#running.set(adapter, running.add(controller));
+        const stop2 = options.stop === void 0 ? controller.signal : AbortSignal.any([options.stop, controller.signal]);
+        try {
+          const report4 = await runPart(adapter, testFiles3, { ...options, stop: stop2 });
+          return this.removed(adapter) ? withheld(testFiles3, report4.durationMs) : report4;
+        } finally {
+          running.delete(controller);
+          if (running.size === 0) {
+            this.#running.delete(adapter);
+            if (this.#retired.has(adapter)) this.#closeRetired(adapter);
+          }
+        }
+      }
+      /** Closes the retired members still running, and waits for every retired close. */
+      async close() {
+        for (const adapter of this.#retired) this.#closeRetired(adapter);
+        await Promise.all(this.#closing);
+      }
+      #closeRetired(adapter) {
+        this.#retired.delete(adapter);
+        this.#closing.push(adapter.close().catch(() => {
+        }));
+      }
+    };
+  }
+});
+
+// src/core/daemon/composite-runner.ts
+var composite_runner_exports = {};
+__export(composite_runner_exports, {
+  createCompositeRunner: () => createCompositeRunner,
+  merge: () => merge3
+});
+function createCompositeRunner(adapters, sets2 = []) {
+  const all2 = () => [...adapters, ...sets2.flatMap((set) => set.members())];
+  let members = all2();
+  const owners = /* @__PURE__ */ new Map();
+  const flights = new Flights();
+  const own = (adapter, projects2) => {
+    for (const project of projects2) {
+      const owner2 = owners.get(project);
+      if (owner2 !== void 0 && owner2 !== adapter) {
+        throw new Error(
+          `project ${JSON.stringify(project)} is reported by both ${owner2.name} and ${adapter.name}; rename one`
+        );
+      }
+      owners.set(project, adapter);
+    }
+  };
+  const reconcile2 = () => {
+    if (sets2.length === 0) return [];
+    const changes = sets2.map((set) => set.reconcile());
+    members = all2();
+    for (const { removed, replaced } of changes) {
+      for (const runner of removed) flights.stop(runner);
+      for (const runner of [...removed, ...replaced]) {
+        for (const [project, owner2] of owners) if (owner2 === runner) owners.delete(project);
+        flights.retire(runner);
+      }
+    }
+    return changes.flatMap((change2) => change2.projects);
+  };
+  const each = (call2) => Promise.all(members.map(async (adapter) => ({ adapter, value: await call2(adapter) })));
+  const environment = async () => {
+    const parts3 = await each((adapter) => adapter.environment());
+    for (const { adapter, value } of parts3)
+      own(
+        adapter,
+        value.map((e) => e.project)
+      );
+    return parts3.flatMap((part2) => part2.value);
+  };
+  const ownerOf = async (testFile) => {
+    if (!owners.has(testFile.project)) await environment();
+    const owner2 = owners.get(testFile.project);
+    if (owner2 === void 0) {
+      throw new Error(
+        `no runner owns project ${JSON.stringify(testFile.project)} (${testFile.path})`
+      );
+    }
+    return owner2;
+  };
+  const of = (testFile) => owners.get(testFile.project)?.traits;
+  const traits = declareTraits({
+    omittedTestFiles: () => members.reduce((sum2, adapter) => sum2 + adapter.traits.omittedTestFiles(), 0),
+    // The parts run one after another: a slow tier starts only the first file's owner's (004 D2).
+    slowWidth(testFiles3) {
+      const owner2 = testFiles3[0] === void 0 ? void 0 : owners.get(testFiles3[0].project);
+      const end = testFiles3.findIndex((f) => owners.get(f.project) !== owner2);
+      return owner2?.traits.slowWidth(end === -1 ? testFiles3 : testFiles3.slice(0, end));
+    },
+    // A backlog tier holds one lane, so one owner's files (task 001-366).
+    tierWidth: (testFile, grant) => of(testFile)?.tierWidth(testFile, grant),
+    // `run` below runs the owners one after another (review wave-3 B1).
+    tierPart(testFile) {
+      const owner2 = owners.get(testFile.project);
+      if (owner2 === void 0) return void 0;
+      return `${members.indexOf(owner2)}:${owner2.traits.tierPart(testFile)}`;
+    },
+    besideBacklog: (testFile) => of(testFile)?.besideBacklog(testFile),
+    backlogSlot: (testFile) => of(testFile)?.backlogSlot(testFile),
+    // Row 011-145: a focused tier goes only to a file whose owner honours `RunOptions.checks`.
+    focuses: (testFile) => of(testFile)?.focuses(testFile),
+    // A project no adapter listed yet has the composite's lane: its run fails on its own.
+    lane: (testFile) => owners.get(testFile.project)?.name ?? members.map((a) => a.name).join("+")
+  });
+  return {
+    get name() {
+      return members.map((adapter) => adapter.name).join("+");
+    },
+    get adapterVersion() {
+      return members.map((adapter) => adapter.adapterVersion).join("+");
+    },
+    traits,
+    async invalidate(paths) {
+      const reconciled = reconcile2();
+      const parts3 = await Promise.all(members.map((adapter) => adapter.invalidate(paths)));
+      const projects2 = /* @__PURE__ */ new Set([...reconciled, ...parts3.flatMap((part2) => part2.recreatedProjects)]);
+      return { recreatedProjects: [...projects2].sort(compare) };
+    },
+    async recheck() {
+      const parts3 = await Promise.all(
+        members.map((adapter) => adapter.recheck?.() ?? { recreatedProjects: [] })
+      );
+      const projects2 = new Set(parts3.flatMap((part2) => part2.recreatedProjects));
+      return { recreatedProjects: [...projects2].sort(compare) };
+    },
+    async affected(changedPaths3) {
+      const parts3 = await Promise.all(members.map((adapter) => adapter.affected(changedPaths3)));
+      return {
+        direct: parts3.flatMap((part2) => part2.direct).sort(compareRefs2),
+        transitive: parts3.flatMap((part2) => part2.transitive).sort(compareRefs2)
+      };
+    },
+    closure: async (testFile) => (await ownerOf(testFile)).closure(testFile),
+    enumerate: async (testFile) => (await ownerOf(testFile)).enumerate(testFile),
+    async testFiles() {
+      const parts3 = await each((adapter) => adapter.testFiles());
+      for (const { adapter, value } of parts3)
+        own(
+          adapter,
+          value.map((f) => f.project)
+        );
+      return parts3.flatMap((part2) => part2.value);
+    },
+    environment,
+    async run(testFiles3, options) {
+      if (testFiles3.some((f) => !owners.has(f.project))) await environment();
+      const groups3 = /* @__PURE__ */ new Map();
+      for (const testFile of testFiles3) {
+        const owner2 = owners.get(testFile.project) ?? await ownerOf(testFile);
+        groups3.set(owner2, [...groups3.get(owner2) ?? [], testFile]);
+      }
+      const order = [...members, ...[...groups3.keys()].filter((a) => !members.includes(a))];
+      const parts3 = [];
+      for (const adapter of order) {
+        const files5 = groups3.get(adapter);
+        if (files5 === void 0 || options.stop?.aborted === true) continue;
+        if (flights.left(adapter)) parts3.push({ adapter, report: withheld(files5, 0) });
+        else parts3.push({ adapter, report: await flights.run(adapter, files5, options) });
+      }
+      return merge3(parts3);
+    },
+    // Each adapter knows its own lanes (a slow instance, task 004-18); the others ignore it.
+    async releaseLane(lane) {
+      await Promise.all(members.map((adapter) => adapter.releaseLane?.(lane)));
+    },
+    async close() {
+      const closed = await Promise.allSettled([
+        ...members.map((adapter) => adapter.close()),
+        flights.close()
+      ]);
+      const failed7 = closed.find((result) => result.status === "rejected");
+      if (failed7 !== void 0) throw failed7.reason;
+    }
+  };
+}
+function merge3(parts3) {
+  const reports = parts3.map((part2) => part2.report);
+  const end = reports.reduce(
+    (worst, report4) => SEVERITY[report4.end] > SEVERITY[worst] ? report4.end : worst,
+    "completed"
+  );
+  const failures = parts3.flatMap(
+    ({ adapter, report: report4 }) => report4.failure === null ? [] : [`${adapter.name}: ${report4.failure}`]
+  );
+  const timed2 = reports.some((report4) => report4.fileDurations !== void 0);
+  const observed2 = reports.some((report4) => report4.observed !== void 0);
+  const read5 = reports.some((report4) => report4.reads !== void 0);
+  const environment = reports.flatMap((report4) => report4.environmentObserved ?? []);
+  const skipped2 = reports.flatMap((report4) => report4.skippedFiles ?? []);
+  const withheld2 = reports.flatMap((report4) => report4.withheld ?? []);
+  const focused = reports.flatMap((report4) => report4.focused ?? []);
+  const startup = reports.find((report4) => report4.startupFailure !== void 0)?.startupFailure;
+  const started2 = [...new Set(reports.flatMap((report4) => report4.startedProjects ?? []))];
+  return {
+    end,
+    durationMs: reports.reduce((sum2, report4) => sum2 + report4.durationMs, 0),
+    completedFiles: reports.flatMap((report4) => report4.completedFiles),
+    results: reports.flatMap((report4) => report4.results),
+    fileErrors: reports.flatMap((report4) => report4.fileErrors),
+    failure: failures.length === 0 ? null : failures.join("; "),
+    ...timed2 ? { fileDurations: reports.flatMap((report4) => report4.fileDurations ?? []) } : {},
+    ...observed2 ? { observed: reports.flatMap((report4) => report4.observed ?? []) } : {},
+    ...read5 ? { reads: reports.flatMap((report4) => report4.reads ?? []) } : {},
+    ...environment.length > 0 ? { environmentObserved: environment } : {},
+    ...skipped2.length > 0 ? { skippedFiles: skipped2 } : {},
+    ...withheld2.length > 0 ? { withheld: withheld2 } : {},
+    ...focused.length > 0 ? { focused } : {},
+    ...startup === void 0 ? {} : { startupFailure: startup },
+    ...started2.length === 0 ? {} : { startedProjects: started2.sort(compare) }
+  };
+}
+function compareRefs2(a, b) {
+  return a.project === b.project ? compare(a.path, b.path) : compare(a.project, b.project);
+}
+var SEVERITY;
+var init_composite_runner = __esm({
+  "src/core/daemon/composite-runner.ts"() {
+    "use strict";
+    init_compare();
+    init_runner_traits();
+    init_composite_flights();
+    SEVERITY = { completed: 0, "timed-out": 1, crashed: 2 };
   }
 });
 
@@ -67414,11 +67417,13 @@ __export(slow_instance_exports, {
 function withSlowInstance(fast, createLane, createBeside) {
   const lanes = /* @__PURE__ */ new Map();
   const beside = createBeside === void 0 ? null : new LaneInstance(createBeside);
-  const lane = fast.lane?.bind(fast);
   const recheck = fast.recheck?.bind(fast);
   return {
     name: fast.name,
     adapterVersion: fast.adapterVersion,
+    // A lane's instance may not exist yet, and the fast one has the same configs (review 001-394
+    // B2); a backlog tier and a focused one run on the fast instance (task 001-366, row 011-145).
+    traits: fast.traits,
     invalidate(paths) {
       for (const instance2 of lanes.values()) instance2.invalidate(paths);
       beside?.invalidate(paths);
@@ -67430,18 +67435,7 @@ function withSlowInstance(fast, createLane, createBeside) {
     closure: (testFile) => fast.closure(testFile),
     enumerate: (testFile) => fast.enumerate(testFile),
     testFiles: () => fast.testFiles(),
-    omittedTestFiles: () => fast.omittedTestFiles?.() ?? 0,
-    // A lane's instance may not exist yet; the fast one has the same configs (review 001-394 B2).
-    slowWidth: (testFiles3) => fast.slowWidth?.(testFiles3) ?? testFiles3.length,
-    // A backlog tier runs on the fast instance (task 001-366).
-    tierWidth: (testFile, grant) => fast.tierWidth?.(testFile, grant) ?? grant,
-    tierPart: (testFile) => fast.tierPart?.(testFile) ?? "",
-    besideBacklog: (testFile) => fast.besideBacklog?.(testFile) ?? false,
-    backlogSlot: (testFile) => fast.backlogSlot?.(testFile) ?? null,
-    // Row 011-145: a focused tier runs on the fast instance; a slow file gets none.
-    focusesFile: (testFile) => focusesFile(fast, testFile),
     environment: () => fast.environment(),
-    ...lane === void 0 ? {} : { lane },
     async run(testFiles3, options) {
       const at2 = options.lane;
       if (at2 !== void 0 && isGroupLane(at2)) {
@@ -67488,7 +67482,6 @@ var init_slow_instance = __esm({
     init_runner();
     init_scheduler();
     init_check_groups();
-    init_composite_runner();
     LaneInstance = class {
       constructor(create2) {
         this.create = create2;
@@ -72791,7 +72784,7 @@ function withRemoteLane(options) {
   const admittedRun = async (host, testFiles3, run7, inputs2) => {
     for (let late = 1; ; late++) {
       const grant = await admitRun((ask2) => host.admit(ask2), testFiles3, run7, {
-        tierWidth: (file, grant2) => local2.tierWidth?.(file, grant2) ?? grant2,
+        tierWidth: (file, grant2) => local2.traits.tierWidth(file, grant2),
         everyMs: options.admitEveryMs ?? ADMIT_EVERY_MS,
         log: (line) => options.log(`remote ${target}: ${line}`)
       }).catch((error) => error);
@@ -79770,7 +79763,7 @@ function testFiles(run7, context, table) {
     const coverage = table === null ? {} : table.fileCoverage(module2.coverage);
     files5.push({ ref: ref3, file: { ...ref3, ...outcomes(module2, named4.has(path)), ...coverage } });
   }
-  files5.sort((a, b) => compareRefs2(a.ref, b.ref));
+  files5.sort((a, b) => compareRefs(a.ref, b.ref));
   const observed2 = new Map(
     context.recorded === null ? [] : observedInputs(
       context.recorded,
@@ -86595,7 +86588,7 @@ function orderRuns(picked, known3, context) {
     const own = groups3.get(pick.kind) ?? [];
     groups3.set(pick.kind, own);
     const grant = pick.kind === "vitest" ? vitestWidth() : context.tierSize;
-    const width = (ref3) => pick.adapter.tierWidth?.(ref3, grant) ?? grant;
+    const width = (ref3) => pick.adapter.traits.tierWidth(ref3, grant);
     own.push(...byWidth(files5, width, seconds5));
   }
   const runners2 = [...groups3].map(([runner, of]) => ({ runner, groups: of }));
@@ -95538,6 +95531,7 @@ var Daemon = class {
         { describeFailure: describeFailure2 },
         { createVitestAdapter: createVitestAdapter2 },
         { VITEST_ADAPTER_VERSION: VITEST_ADAPTER_VERSION2 },
+        { vitestTraits: vitestTraits2 },
         nodeTest,
         pytest,
         runnerModule,
@@ -95560,6 +95554,7 @@ var Daemon = class {
         Promise.resolve().then(() => (init_fingerprint(), fingerprint_exports)),
         Promise.resolve().then(() => (init_vitest(), vitest_exports)),
         Promise.resolve().then(() => (init_version2(), version_exports)),
+        Promise.resolve().then(() => (init_traits(), traits_exports)),
         Promise.resolve().then(() => (init_node_test_runners(), node_test_runners_exports)),
         Promise.resolve().then(() => (init_pytest_runners(), pytest_runners_exports)),
         Promise.resolve().then(() => (init_runner2(), runner_exports)),
@@ -95607,8 +95602,8 @@ var Daemon = class {
         name: "vitest",
         adapterVersion: VITEST_ADAPTER_VERSION2,
         create: vitestInstance("vitest"),
-        // Spec 011 C14 (row 011-145): the fast instance runs focused tiers; no slow file gets one.
-        focuses: true,
+        // Spec 011 C14 (rows 011-145, 011-329): the fast instance runs focused tiers.
+        traits: vitestTraits2(),
         onFailure: (text3) => this.#note(`${text3}; every check of this worktree is unknown until the config loads`),
         onRecovered: () => this.#note("Vitest started after the config changed"),
         around,
@@ -95633,6 +95628,7 @@ var Daemon = class {
           name: "vitest",
           adapterVersion: VITEST_ADAPTER_VERSION2,
           create: vitestInstance(lane, workers),
+          traits: vitestTraits2(),
           onFailure: (text3) => this.#note(`${whose} ${text3}`),
           around,
           ...vitest.recovery
@@ -95642,6 +95638,7 @@ var Daemon = class {
         name: "vitest",
         adapterVersion: VITEST_ADAPTER_VERSION2,
         create: vitestInstance(`${BESIDE_LANE_PREFIX}vitest`, this.#policy.runner.tierSize),
+        traits: vitestTraits2(),
         onFailure: (text3) => this.#note(`the tier beside a named wait's batch: ${text3}`),
         around,
         ...vitest.recovery
@@ -105364,7 +105361,7 @@ async function serveRunnerHost(options) {
   });
   let ending3 = false;
   const valuesOf = (current2) => ({
-    omittedTestFiles: current2.omittedTestFiles?.() ?? 0,
+    omittedTestFiles: current2.traits.omittedTestFiles(),
     widths: current2.widthValues?.() ?? null
   });
   const tellValues = () => {
@@ -105443,7 +105440,8 @@ async function serveRunnerHost(options) {
       adapter: {
         name: built.name,
         adapterVersion: built.adapterVersion,
-        focuses: built.focuses === true,
+        // Sent and no longer read (row 011-329): a kind's focus holds for each file of it or none.
+        focuses: built.traits.focuses({ project: "", path: "" }),
         members: [
           ...built.recheck === void 0 ? [] : ["recheck"],
           ...built.globalSetups === void 0 ? [] : ["globalSetups"]
@@ -105792,8 +105790,85 @@ function readJson4(path) {
   }
 }
 
-// src/cli/runner-host.ts
-init_runners();
+// src/core/runner-host/runners.ts
+async function buildAdapter(root, start2, hooks) {
+  switch (start2.runner) {
+    case "vitest": {
+      const { createVitestAdapter: createVitestAdapter2 } = await Promise.resolve().then(() => (init_vitest(), vitest_exports));
+      const { coverage, childEnv: childEnv2, maxWorkers } = start2.options;
+      return createVitestAdapter2({
+        root,
+        note: hooks.note,
+        optimizer: hooks.optimizer,
+        observe: () => hooks.policy().observe,
+        excludeProjects: () => hooks.policy().excludeProjects,
+        exclude: () => hooks.policy().exclude,
+        childEnv: childEnv2,
+        ...coverage === void 0 ? {} : {
+          coverage: {
+            enabled: () => hooks.policy().coverage,
+            children: () => hooks.policy().coverageChildren,
+            provider: coverage.provider,
+            tempDir: coverage.tempDir,
+            collected: hooks.coverage
+          }
+        },
+        ...maxWorkers === void 0 ? {} : { maxWorkers }
+      });
+    }
+    case "node-test": {
+      const { createNodeTestAdapter: createNodeTestAdapter2 } = await Promise.resolve().then(() => (init_adapter2(), adapter_exports));
+      const data2 = processOptions(start2);
+      return createNodeTestAdapter2(data2.project, {
+        root,
+        note: hooks.note,
+        childEnv: start2.options.childEnv,
+        ...perRun(start2, hooks),
+        ...start2.policy.inputs === void 0 ? {} : { inputs: () => hooks.policy().inputs ?? [] },
+        ...data2.tempDir === void 0 ? {} : { tempDir: data2.tempDir },
+        ...data2.coverage === true ? {
+          coverage: {
+            enabled: () => hooks.policy().coverage,
+            children: () => hooks.policy().coverageChildren,
+            collected: hooks.coverage
+          }
+        } : {}
+      });
+    }
+    case "pytest": {
+      const { createPytestAdapter: createPytestAdapter2 } = await Promise.resolve().then(() => (init_adapter3(), adapter_exports2));
+      const data2 = processOptions(start2);
+      const project = data2.project;
+      const { batchSize } = project;
+      const latest = new Map(Object.entries(data2.latestNotes ?? {}));
+      return createPytestAdapter2(project, {
+        root,
+        note: (text3, topic) => {
+          if (topic !== void 0) latest.set(topic, text3);
+          hooks.note(text3, topic);
+        },
+        latestNote: (topic) => latest.get(topic),
+        childEnv: start2.options.childEnv,
+        ...perRun(start2, hooks),
+        ...batchSize === void 0 ? {} : { batchSize: () => batchSize },
+        ...data2.tempDir === void 0 ? {} : { tempDir: data2.tempDir },
+        ...data2.cacheDir === void 0 ? {} : { cacheDir: data2.cacheDir }
+      });
+    }
+    default:
+      throw new Error(`runner host: no runner ${String(start2.runner)}`);
+  }
+}
+function processOptions(start2) {
+  const data2 = start2.options.process;
+  if (data2 === void 0) throw new Error(`runner host: no project for ${start2.runner}`);
+  return data2;
+}
+function perRun(start2, hooks) {
+  const first2 = start2.policy.tierSize;
+  if (first2 === void 0) return {};
+  return { concurrency: () => hooks.policy().tierSize ?? first2 };
+}
 
 // src/core/runner-host/workers.ts
 init_escaped();
