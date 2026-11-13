@@ -79,9 +79,13 @@ Answer at `1363820e6`: only `src/core/types/runner-traits.ts` lines 97 to 107 fo
 - `test/version-sensitive.txt`: one line in the header's "Exempt" list, `test/daemon/runner-traits-holders.test.ts` (coordinator's agreement, 2026-11-13). Its in-process node:test row builds the adapter on a missing `cwd`, so no node:test runs and its result does not depend on the Node version; the rule flags it by name (`createNodeTestAdapter`, `NodeTestProject`). The other two table files name no node:test project (variables renamed).
 - `src/runners/vitest/width.ts`: `VitestWidths.slowWidth` and `tierWidth` removed (dead after the move, and they restated `?? grant` and `?? testFiles.length`); `table()`'s comment. The key alarm reaches no part of `width.ts` (record).
 
+## The key alarm's covered-lines rule
+
+`test/keys/key-format.test.ts` fails when a key component's bundle has changed lines no validity case runs. Besides Vitest's (decision 7), the node:test and pytest adapters now import their kind's traits, so `runner-traits.ts` is in those bundles; no case ran `declareTraits`' `backlogSlot` body (lines 103 to 105). As `hinted` does for Vitest's width hints, `traitsAsked` (`test/keys/validity/harness/shared.ts`) asks every trait of each run's files and drops the answers; the node:test and pytest harnesses call it after each run. An adapter of a release before this row has no `traits` and is asked nothing. Traits decide no stored row, so no case output and no adapter version moves. The record's call "they pass without a version raise when every case's output is unchanged" held for outputs; it did not foresee this rule.
+
 ## Type changes
 
-- Added: `RunnerTraits`, `TraitStatement`, `declareTraits`, `NO_TRAITS`, `liveTraits`; `VitestTraitValues`, `vitestTraits`, `decodeWidths`; `withVitestTraits` (test helper); `NodeTestTraitValues`, `nodeTestTraits`; `PytestTraitValues`, `pytestTraits`.
+- Added: `RunnerTraits`, `TraitStatement`, `declareTraits`, `NO_TRAITS`, `liveTraits`; `VitestTraitValues`, `vitestTraits`, `decodeWidths`; `withVitestTraits`, `traitsAsked` (test helpers); `NodeTestTraitValues`, `nodeTestTraits`; `PytestTraitValues`, `pytestTraits`.
 - Required `RunnerAdapter.traits`; required `RecoveringRunnerOptions.traits`. `VitestAdapter` (the bare class) implements `Omit<RunnerAdapter, "traits">`; `createVitestAdapter`'s result has `traits`.
 - Removed: `RunnerAdapter` `omittedTestFiles?`, `slowWidth?`, `tierWidth?`, `tierPart?`, `besideBacklog?`, `backlogSlot?`, `focuses?`, `focusesFile?`, `lane?`; `RecoveringRunnerOptions` `tierWidth`, `besideBacklog`, `backlogSlot`, `focuses`; `focusesFile` (composite); `Widths` and `widthsOf` (`runner-host/runners.ts`); `VitestWidths.slowWidth`, `tierWidth`; `SizedVitestAdapter.slowWidth`, `tierWidth`; `HostProxy.focuses`, `omittedTestFiles`, `slowWidth`, `tierWidth`; `VitestAdapter.focuses`.
 
