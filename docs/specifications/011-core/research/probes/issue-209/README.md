@@ -4,9 +4,9 @@ This is research evidence, not a product test or a proposed implementation.
 Run from the repository root with its existing pnpm dependencies:
 
 ```sh
-gh issue view 209 --repo hearsay-tools/squeal --json title,body,comments,url,createdAt > research/probes/issue-209/issue.json
-pnpm exec tsx research/probes/issue-209/probe.ts > research/probes/issue-209/output.jsonl
-pnpm exec biome check research/probes/issue-209/probe.ts
+gh issue view 209 --repo hearsay-tools/squeal --json title,body,comments,url,createdAt > docs/specifications/011-core/research/probes/issue-209/issue.json
+pnpm exec tsx docs/specifications/011-core/research/probes/issue-209/probe.ts > docs/specifications/011-core/research/probes/issue-209/output.jsonl
+pnpm exec biome check docs/specifications/011-core/research/probes/issue-209/probe.ts
 git diff --exit-code squeal--v0.1.464 HEAD -- src/core/scheduler src/core/slow/classify.ts src/cli/status-wait.ts src/cli/status-wait-lines.ts
 ```
 
@@ -32,3 +32,6 @@ No test process, daemon, store, watcher, pool or live worktree is used. This
 does not reproduce real concurrency, actual revision batching, execution
 latency or the reported heartbeat lapse. Keep `node_modules` out of git;
 no local install is needed.
+
+The coordinator relocated these files into the owning spec after collection.
+The commands above use the final paths; the researcher ran them at `research/probes/issue-209/`. Only relative imports changed in the probe.

@@ -48,7 +48,7 @@ previous recent survives catch-up add: recent=true, catchUp=false
 assertions=PASS, elapsedMs=9
 ```
 
-Full raw output and exact commands are in the [probe README](../../../../research/probes/issue-209/README.md) and `output.jsonl`. `pnpm exec tsx research/probes/issue-209/probe.ts` exited 0. `pnpm exec biome check research/probes/issue-209/probe.ts` passed. No full suite or product tests were run for this documentation-only investigation.
+Full raw output and exact commands are in the [probe README](probes/issue-209/README.md) and `output.jsonl`. `pnpm exec tsx research/probes/issue-209/probe.ts` exited 0. `pnpm exec biome check research/probes/issue-209/probe.ts` passed. No full suite or product tests were run for this documentation-only investigation.
 
 Scoped verification: `/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal status --wait 60000 research/probes/issue-209/probe.ts docs/specifications/011-core/research/issue-209.md` exited 3: no test file's closure holds either path. Revision 10 reported zero known failures and six unknown files out of 1,771. Thus Squeal gives no verdict on these deliverables; the standalone experiment is their executable verification.
 
@@ -68,3 +68,5 @@ To attribute the incident, obtain its per-revision changed keyed paths; the five
 - [Release source](https://github.com/hearsay-tools/squeal/tree/ff4c9c2f1608ec88c79c77481b976ba5e5be7575): `src/core/scheduler/{revision,ledger,queue}.ts`, `src/core/slow/classify.ts`, `src/cli/{status-wait,status-wait-lines}.ts`.
 - Project docs at `b5eba8432`: `docs/specifications/011-core/spec.md` C4/C6/C9/C15 and `status.md`; `docs/specifications/004-slow-suites/spec.md` D1/D2; `011-core/research/issue-181.md` and `issue-185.md`.
 - Experiment: `research/probes/issue-209/{probe.ts,README.md,output.jsonl,issue.json}`. No external web search or product changes.
+
+The coordinator moved the preserved probes from repository-root `research/probes/issue-209/` to this spec’s `research/probes/issue-209/`, as the triage scope requires. Commands and scoped status above record the original experiment paths. The probe’s relative imports were adjusted for the move.
