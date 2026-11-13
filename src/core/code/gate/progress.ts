@@ -53,7 +53,8 @@ export interface ProgressOptions {
 export class FileProgress {
   readonly #options: ProgressOptions;
   readonly #started = new Set<string>();
-  readonly #timers = new Set<NodeJS.Timeout>();
+  /** The end of each started file not yet ended or named, and the file's key. */
+  readonly #open = new Map<() => void, string>();
   #closed = false;
 
   constructor(options: ProgressOptions) {
@@ -62,28 +63,43 @@ export class FileProgress {
 
   /**
    * For `runner`'s adapter: `ref` started. What it returns ends it, so it
-   * is not named after; a run that ends ends its files with it (`close`).
+   * is not named after; a second call does nothing. A run that ends ends
+   * its files with it (`runEnded`), and the end of the runs ends them all
+   * (`close`).
    */
   started(runner: TestFileEvidence["runner"], ref: TestFileRef): () => void {
-    this.#started.add(keyOf(runner, ref));
+    const key = keyOf(runner, ref);
+    this.#started.add(key);
     const { overran, durations, budgetSeconds, since } = this.#options;
     if (this.#closed || overran === undefined) return () => {};
     const storedSeconds = durations?.(ref) ?? null;
     const limit = Math.max(storedSeconds ?? 0, overrunFloor(budgetSeconds));
     const at = performance.now();
+    const end = () => {
+      clearTimeout(timer);
+      this.#open.delete(end);
+    };
     const timer = setTimeout(() => {
-      this.#timers.delete(timer);
+      this.#open.delete(end);
       const now = performance.now();
       const seconds = Math.floor((now - at) / 1000);
       const usedSeconds = Math.floor((now - since) / 1000);
       overran({ runner, path: ref.path, seconds, storedSeconds, usedSeconds, budgetSeconds });
     }, limit * 1000);
     timer.unref();
-    this.#timers.add(timer);
-    return () => {
-      clearTimeout(timer);
-      this.#timers.delete(timer);
-    };
+    this.#open.set(end, key);
+    return end;
+  }
+
+  /**
+   * `runner`'s run of `refs` ended, in any way: each of them not yet ended
+   * ends now. A Vitest worker that dies leaves its file with no module end
+   * while the other runners' runs go on (review 0.1.464 B1); their files
+   * stay open. `wasStarted` still tells these files.
+   */
+  runEnded(runner: TestFileEvidence["runner"], refs: readonly TestFileRef[]): void {
+    const keys = new Set(refs.map((ref) => keyOf(runner, ref)));
+    for (const [end, key] of [...this.#open]) if (keys.has(key)) end();
   }
 
   /** Whether `runner` told `ref` started. */
@@ -94,8 +110,7 @@ export class FileProgress {
   /** The runs ended: no file is named from here on. */
   close(): void {
     this.#closed = true;
-    for (const timer of this.#timers) clearTimeout(timer);
-    this.#timers.clear();
+    for (const end of [...this.#open.keys()]) end();
   }
 }
 

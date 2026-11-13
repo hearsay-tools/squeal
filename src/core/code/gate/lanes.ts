@@ -152,9 +152,12 @@ async function runOne(
   const { options, progress } = context;
   const left = Math.ceil(context.deadline - performance.now());
   const logDir = join(context.temp, "runs", String(i));
+  // Review 0.1.464 B1: the run's end, in any way, ends its files; the other runs' stay open.
   const report: RunReport | null =
     left > 0
-      ? await runner.adapter.run(files, { runId: `gate-${i}`, logDir, timeoutMs: left })
+      ? await runner.adapter
+          .run(files, { runId: `gate-${i}`, logDir, timeoutMs: left })
+          .finally(() => progress.runEnded(runner.kind, files))
       : null;
   if (report?.failure != null) context.note(`${runner.kind} run: ${report.failure}`);
   const records = mapPayloads(runner.covered.splice(0), context.mapping);
