@@ -1,13 +1,15 @@
 import { testFileId } from "../keys/reverse-index.js";
-import type { RelativePath } from "../types/common.js";
+import type { RelativePath, RevisionNumber } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { AffectedTestFiles } from "../types/runner.js";
-import type { NarrowNotRun, NarrowRun } from "../types/scheduler.js";
+import type { NarrowNotRun, NarrowRun, NarrowRunRequest } from "../types/scheduler.js";
 import type { CommitAsk } from "./commit-asks.js";
 import { NOTHING_CHANGED, type SchedulerContext, tryRunner } from "./context.js";
 import { editWork, fetchEditCut, observedDirectOf } from "./edit-cut.js";
 import { classify, type FileState } from "./files.js";
+import type { GroupTiers } from "./group-tiers.js";
 import type { Ledger } from "./ledger.js";
+import type { Request } from "./request-intake-types.js";
 import { runnerPartBound } from "./runner-work-bound.js";
 import { groupView } from "./slow.js";
 
@@ -87,6 +89,68 @@ export async function selectNarrow(
     if (!any) selection.unmatched.push(path);
   }
   return selection;
+}
+
+/** What a narrow run decided under the lock, before its store write. */
+interface NarrowPlan {
+  /** The worktree's revision when the request was taken. */
+  readonly revision: RevisionNumber;
+  readonly selection: Selection;
+}
+
+/**
+ * Spec 019 D6 "Narrow run" (row 019-49) as the request intake takes it (row
+ * 011-322): of group `group`, only the test files `paths` select run now
+ * (`selectNarrow`), whatever its moment; a current one does not run again.
+ * Its lane (of `groups`) runs them as asks at their keys, so the group's
+ * other files keep waiting and the group is never made current by it. A
+ * source path asks the runner, so the request waits for the runner work
+ * before it. `null` for a group the policy in force does not have; rejects
+ * for a lint group.
+ */
+export function narrowRequest(
+  group: string,
+  paths: readonly RelativePath[],
+  groups: GroupTiers,
+): Request<NarrowRunRequest | null, NarrowPlan> {
+  return {
+    operation: `taking a squeal run ${group} <path>... request`,
+    start: {
+      skip: "no closed answer: once closed its runner-work wait rejects; before the start it throws",
+    },
+    // Review 0.1.411, B2: the answer says why nothing was queued, of the files it selected.
+    installWait: {
+      answer: (context, ledger, { revision, selection }, reason) => ({
+        revision,
+        queued: 0,
+        narrow: narrowAnswer(context, ledger, group, selection, reason),
+      }),
+    },
+    runnerWork: {
+      always: async (context, ledger) => {
+        const revision = ledger.revision.number;
+        const resolved = groupView(context.policy).groups.find((g) => g.name === group);
+        if (resolved === undefined) return { answer: null };
+        if (resolved.select.kind === "lint") {
+          throw new Error(`group ${group} is a lint group, which runs whole: squeal run ${group}`);
+        }
+        return { plan: { revision, selection: await selectNarrow(context, ledger, paths) } };
+      },
+    },
+    store: {
+      stage: (context, ledger, { revision, selection }) => {
+        const selected = selection.selected.get(group) ?? new Set<string>();
+        const { queued, asks } = queueNarrow(ledger, selected);
+        groups.lanes(context.policy);
+        groups.get(group)?.narrow.add(asks, ledger);
+        // Review 0.1.411, B2: the answer says which selected files are current, after queuing.
+        const narrow = narrowAnswer(context, ledger, group, selection, null);
+        const covered = [...selected].flatMap((id) => ledger.files.get(id) ?? []);
+        return { answer: { revision, queued, narrow }, covered };
+      },
+    },
+    wake: { lane: group },
+  };
 }
 
 /**
