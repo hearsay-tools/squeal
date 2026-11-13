@@ -9,7 +9,7 @@ import type { RunReport } from "../../../src/core/types/runner.js";
 import { VitestAdapter } from "../../../src/runners/vitest/adapter.js";
 import { loadVitest, type VitestNode } from "../../../src/runners/vitest/load.js";
 import { compareRefs } from "../../../src/runners/vitest/results.js";
-import { type FixtureProject, openFixture, paths, ref, SLOW } from "./helpers.js";
+import { type FixtureProject, openFixture, paths, ref, SLOW, withVitestTraits } from "./helpers.js";
 
 /*
  * 013 V7 as amended 2026-10-21 (011-82 row B, row 011-95): the related walk
@@ -86,16 +86,18 @@ async function open(
       },
     } as VitestNode;
     const excludeFiles = () => ["e2e/**"];
-    const adapter = new VitestAdapter(
-      new WorktreePaths(realpathSync(root)),
-      node,
-      () => {},
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      excludeFiles,
+    const adapter = withVitestTraits(
+      new VitestAdapter(
+        new WorktreePaths(realpathSync(root)),
+        node,
+        () => {},
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        excludeFiles,
+      ),
     );
     await adapter.open();
     return adapter;

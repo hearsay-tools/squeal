@@ -3,9 +3,11 @@ import { WorktreePaths } from "../../core/fs/worktree-paths.js";
 import type { AbsolutePath, RelativePath } from "../../core/types/common.js";
 import type { TestFileRef } from "../../core/types/keys.js";
 import type { RunnerAdapter } from "../../core/types/runner.js";
+import type { RunnerTraits } from "../../core/types/runner-traits.js";
 import { VitestAdapter } from "./adapter.js";
 import type { VitestCoverage } from "./coverage.js";
 import { loadVitest, type VitestNode } from "./load.js";
+import { vitestTraits } from "./traits.js";
 import { VitestWidths, type WidthTable } from "./width.js";
 
 export type { VitestCoverage } from "./coverage.js";
@@ -119,7 +121,9 @@ export interface WidthValues {
  * from (task 011-37 section 5, rows 011-40 and 011-329): width changes
  * nothing a check stores, so `adapter.ts` holds none of it.
  */
-class SizedVitestAdapter extends VitestAdapter implements WidthValues {
+class SizedVitestAdapter extends VitestAdapter implements RunnerAdapter, WidthValues {
+  /** Spec 011 C14 (row 011-329): Vitest's, from its widths and its last listing. */
+  readonly traits: RunnerTraits;
   readonly #widths: VitestWidths;
 
   constructor(
@@ -153,6 +157,10 @@ class SizedVitestAdapter extends VitestAdapter implements WidthValues {
       teardown,
     );
     this.#widths = widths;
+    this.traits = vitestTraits({
+      widths: () => widths.table(),
+      omitted: () => this.omittedTestFiles(),
+    });
   }
 
   widthValues(): WidthTable | null {

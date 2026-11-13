@@ -8,7 +8,7 @@ import { CRASH_CLOSE_MS, retireCrashed } from "../../../src/runners/vitest/broke
 import { loadVitest, type VitestNode } from "../../../src/runners/vitest/load.js";
 import { RunCollector } from "../../../src/runners/vitest/reporter.js";
 import { waitFor } from "../../watcher/helpers.js";
-import { openFixture, ref, SLOW } from "./helpers.js";
+import { openFixture, ref, SLOW, withVitestTraits } from "./helpers.js";
 
 /*
  * Row 011-289 (`research/ci-crash-rekey-stall.md`, its probe): a worker that
@@ -59,7 +59,9 @@ describe("vitest adapter: a worker that dies during the run's cancel (row 011-28
     const created: Vitest[] = [];
     const p = await openFixture("basic", { "test/kill.test.ts": KILLING }, async (root) => {
       const real = realpathSync(root);
-      const adapter = new VitestAdapter(new WorktreePaths(real), await releasing(real, created));
+      const adapter = withVitestTraits(
+        new VitestAdapter(new WorktreePaths(real), await releasing(real, created)),
+      );
       await adapter.open();
       return adapter;
     });

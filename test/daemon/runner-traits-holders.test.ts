@@ -6,7 +6,6 @@ import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import { createNodeTestRunners } from "../../src/core/daemon/node-test-runners.js";
 import { createPytestRunners } from "../../src/core/daemon/pytest-runners.js";
 import { createRecoveringRunner } from "../../src/core/daemon/runner.js";
-import { WorktreePaths } from "../../src/core/fs/worktree-paths.js";
 import { type HostedAdapter, serveRunnerHost } from "../../src/core/runner-host/host.js";
 import {
   encodeLine,
@@ -22,9 +21,9 @@ import type { RunnerAdapter } from "../../src/core/types/runner.js";
 import { createNodeTestAdapter } from "../../src/runners/node-test/adapter.js";
 import { nodeTestTraits } from "../../src/runners/node-test/traits.js";
 import { pytestTraits } from "../../src/runners/pytest/traits.js";
-import { VitestAdapter } from "../../src/runners/vitest/adapter.js";
 import { vitestTraits } from "../../src/runners/vitest/traits.js";
 import { fakeAdapter, inProcessHost, POLICY } from "../runner-host/fake-channel.js";
+import { openFixture } from "../runners/vitest/helpers.js";
 import { A, answers, DEFAULTS, VITEST_TABLE } from "./runner-traits-fixture.js";
 
 /*
@@ -57,18 +56,15 @@ const py = (batchSize?: number): PytestProject => ({
 let tierSize = 4;
 
 describe("runner traits by holder: the in-process adapter", () => {
-  it("is Vitest's over the widths its hints give and the last listing", () => {
-    const hints = { started: () => {}, size: () => {}, table: () => VITEST_TABLE };
-    const adapter = new VitestAdapter(
-      new WorktreePaths(dir as AbsolutePath),
-      undefined as never,
-      undefined,
-      undefined,
-      undefined,
-      hints,
-    );
-    expect(answers(adapter.traits)).toEqual({ ...VITEST, slowWidth: 2, tierWidth: 2 });
-  });
+  it("is Vitest's over the widths of the instance it started and its last listing", async () => {
+    const config = `import { defineConfig } from "vitest/config";
+export default defineConfig({ test: { include: ["test/*.test.ts"], maxWorkers: 2 } });
+`;
+    const fx = await openFixture("basic", { "vitest.config.ts": config });
+    expect(answers(fx.adapter.traits)).toEqual({ ...VITEST, slowWidth: 2, tierWidth: 2 });
+    await fx.adapter.testFiles();
+    expect(answers(fx.adapter.traits)).toEqual({ ...VITEST, slowWidth: 2, tierWidth: 2 });
+  }, 60_000);
 
   it("is node:test's at runner.tierSize, read per answer", async () => {
     const adapter = await createNodeTestAdapter(NT, {
