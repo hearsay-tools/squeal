@@ -23,6 +23,9 @@ const verdict = (pending: number, unlisted = false): FileVerdict => ({
   ...classes(pending, unlisted),
   failures: { tests: 0, testFiles: 0 },
 });
+const UNOPENED = "no Squeal store at /r/.git/squeal/store.sqlite";
+const BUSY =
+  "store busy, waited 1000 ms: another process holds the store's lock; run the command again once it is released";
 const HOLD: StatusHold = { cause: "merge", since: 1, revision: 3, paths: ["a"], pathCount: 1 };
 const counts = (linting: number): LintCounts => ({
   files: 2,
@@ -112,10 +115,22 @@ const CHECKPOINT: readonly Row[] = [
     end({ kind: "moved", revision: 5 }, "newer revision"),
   ],
   [
-    "stopped: the store did not open (accidental, 011-327)",
+    "unopened: the store did not open, with why (011-327: was stopped)",
     "checkpoint",
-    cp({ store: "unopened" }),
-    end({ kind: "stopped" }, "store unopened"),
+    cp({ store: "unopened", unavailable: UNOPENED }),
+    end({ kind: "unopened", unavailable: UNOPENED }, "store unopened"),
+  ],
+  [
+    "go on: a busy store before the deadline is read again (011-327: was a throw)",
+    "checkpoint",
+    cp({ store: "busy", unavailable: BUSY, late: false }),
+    ON,
+  ],
+  [
+    "unopened: a busy store at the deadline's read, with why (011-327: was a throw)",
+    "checkpoint",
+    cp({ store: "busy", unavailable: BUSY, late: true }),
+    end({ kind: "unopened", unavailable: BUSY }, "store busy", "late"),
   ],
   [
     "stopped: the fifth read's ping found no daemon",
@@ -186,10 +201,22 @@ const GROUP: readonly Row[] = [
     end({ kind: "on-hold", hold: HOLD }, "files pending", "before deadline", "held"),
   ],
   [
-    "stopped: the store did not open (accidental, 011-327)",
+    "unopened: the store did not open, with why (011-327: was stopped)",
     "group",
-    gr({ store: "unopened" }),
-    end({ kind: "stopped" }, "store unopened"),
+    gr({ store: "unopened", unavailable: UNOPENED }),
+    end({ kind: "unopened", unavailable: UNOPENED }, "store unopened"),
+  ],
+  [
+    "go on: a busy store before the deadline is read again (011-327: was a throw)",
+    "group",
+    gr({ store: "busy", unavailable: BUSY, late: false }),
+    ON,
+  ],
+  [
+    "unopened: a busy store at the deadline's read, with why (011-327: was a throw)",
+    "group",
+    gr({ store: "busy", unavailable: BUSY, late: true }),
+    end({ kind: "unopened", unavailable: BUSY }, "store busy", "late"),
   ],
   [
     "stopped: the fifth read's ping found no daemon",
@@ -338,11 +365,14 @@ describe("the run waits' table: pure rows (row 011-326)", () => {
   });
 
   it("each wait's chain names every outcome of its closed set", () => {
-    const outcomes = (wait: RunWaitName) => new Set(RUN_WAITS[wait].rules.map((r) => r.then));
+    const outcomes = (wait: RunWaitName) =>
+      new Set(RUN_WAITS[wait].rules.map((r) => r.then).filter((then) => then !== "go on"));
     expect(outcomes("checkpoint")).toEqual(
-      new Set(["stopped", "moved", "abandoned", "on-hold", "ended", "deadline"]),
+      new Set(["unopened", "stopped", "moved", "abandoned", "on-hold", "ended", "deadline"]),
     );
-    expect(outcomes("group")).toEqual(new Set(["stopped", "on-hold", "ended", "deadline"]));
+    expect(outcomes("group")).toEqual(
+      new Set(["unopened", "stopped", "on-hold", "ended", "deadline"]),
+    );
     expect(outcomes("lint group")).toEqual(
       new Set(["off", "unread", "deadline", "ended", "stopped"]),
     );

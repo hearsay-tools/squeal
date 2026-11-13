@@ -50,6 +50,7 @@ export function decideRunWait(row: RunWaitRow, record: WaitRecord): WaitStep {
     const held = allHold(rule.when, record);
     if (held === false) continue;
     if (held !== true) return held;
+    if (rule.then === "go on") return GO_ON;
     const missing = rule.with.find((field) => record[field] === undefined);
     if (missing !== undefined) return { kind: "read", field: missing };
     return { kind: "end", outcome: outcomeOf(rule, record), reason: rule.when };
@@ -70,41 +71,32 @@ function allHold(
 }
 
 function holds(condition: Condition, r: WaitRecord): boolean {
-  switch (condition) {
-    case "store unopened":
-      return r.store === "unopened";
-    case "newer revision":
-      return r.since !== undefined && (r.revision ?? 0) > r.since;
-    case "abandoned":
-      return r.end === "abandoned";
-    case "running":
-      return r.end !== "completed";
-    case "completed":
-      return r.end === "completed";
-    case "before deadline":
-      return r.late === false;
-    case "late":
-      return r.late === true;
-    case "held":
-      return r.hold !== null && r.hold !== undefined;
-    case "verdict settled":
-      return r.verdict !== undefined && r.verdict.byClass.pending === 0 && !r.verdict.unlisted;
-    case "files pending":
-      return r.classes !== undefined && (r.classes.byClass.pending > 0 || r.classes.unlisted);
-    case "files settled":
-      return r.classes !== undefined && r.classes.byClass.pending === 0 && !r.classes.unlisted;
-    case "lint off":
-      return r.counts === "off";
-    case "lint unread":
-      return r.counts === "unread";
-    case "nothing to lint":
-      return typeof r.counts === "object" && r.counts.linting === 0;
-    case "ping due":
-      return r.poll % PING_POLLS === PING_POLLS - 1;
-    case "no daemon":
-      return r.daemon === "none";
-  }
+  return HOLDS[condition](r);
 }
+
+/** What each condition asks of a read record: one flat predicate each. */
+const HOLDS: Readonly<Record<Condition, (r: WaitRecord) => boolean>> = {
+  "store unopened": (r) => r.store === "unopened",
+  "store busy": (r) => r.store === "busy",
+  "newer revision": (r) => r.since !== undefined && (r.revision ?? 0) > r.since,
+  abandoned: (r) => r.end === "abandoned",
+  running: (r) => r.end !== "completed",
+  completed: (r) => r.end === "completed",
+  "before deadline": (r) => r.late === false,
+  late: (r) => r.late === true,
+  held: (r) => r.hold !== null && r.hold !== undefined,
+  "verdict settled": (r) =>
+    r.verdict !== undefined && r.verdict.byClass.pending === 0 && !r.verdict.unlisted,
+  "files pending": (r) =>
+    r.classes !== undefined && (r.classes.byClass.pending > 0 || r.classes.unlisted),
+  "files settled": (r) =>
+    r.classes !== undefined && r.classes.byClass.pending === 0 && !r.classes.unlisted,
+  "lint off": (r) => r.counts === "off",
+  "lint unread": (r) => r.counts === "unread",
+  "nothing to lint": (r) => typeof r.counts === "object" && r.counts.linting === 0,
+  "ping due": (r) => r.poll % PING_POLLS === PING_POLLS - 1,
+  "no daemon": (r) => r.daemon === "none",
+};
 
 /** The rule's outcome with its fields; an `install` of `null` is left out, as no install wait. */
 function outcomeOf(rule: Rule, record: WaitRecord): WaitOutcome {
