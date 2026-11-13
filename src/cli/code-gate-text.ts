@@ -15,11 +15,13 @@ import {
 } from "../core/code/gate/types.js";
 import { functionName } from "../core/delivery/code-format.js";
 import { listPaths, plural } from "../core/text.js";
+import { foldOutside, outsideWords } from "./code-gate-text-failed.js";
 
 /*
  * Spec 020 D1 (row 020-05): the text of `squeal code --base`. The verdict
- * line, then each function that is not pass with its gap or measure, the
- * paths not counted, the exceptions that applied to no function, the
+ * line, then each function that is not pass with its gap or measure (row
+ * 020-53: the ones that share a failure outside their loaders fold into
+ * one line after the others), the paths not counted, the exceptions that applied to no function, the
  * failed tests and the files that did not finish (row 020-46: or that the
  * gate stopped early before), the rerun that fits (row 020-45), then the
  * command for the JSON report. CRAP is rounded here only; the
@@ -120,7 +122,9 @@ function exceptionsText(f: GateFunctionReport, ccLimit: number): string {
 }
 
 function stateText(f: GateFunctionReport, ccLimit: number): string {
-  if (f.state === "incomplete") return `incomplete: ${f.gap === null ? "" : GAP_WORDS[f.gap]}`;
+  if (f.state === "incomplete") {
+    return `incomplete: ${f.gap === null ? "" : (outsideWords(f) ?? GAP_WORDS[f.gap])}`;
+  }
   if (f.state === "skipped") return "skipped: its file is in coverage.exclude";
   return `${f.state}${exceptionsText(f, ccLimit)}`;
 }
@@ -253,15 +257,15 @@ function rerunLine(report: GateReport): string[] {
 
 /** The human rendering of a gate report; `json` is the command that prints it as JSON. */
 export function formatGateReport(report: GateReport, json: string): string {
-  const functions = report.functions
-    .filter((f) => f.state !== "pass")
-    .map((f) => functionLine(f, report));
+  const { listed, folded } = foldOutside(report.functions.filter((f) => f.state !== "pass"));
+  const functions = listed.map((f) => functionLine(f, report));
   const paths = report.uncounted.map((u) => `  ${u.path}: ${UNCOUNTED_WORDS[u.reason]}`);
   const unused = (report.exceptions?.unused ?? []).map(unusedLine);
   const runs = report.runs.flatMap((run) => runLines(run, report.budget.seconds));
   const lines = [
     verdictLine(report),
     ...functions,
+    ...folded,
     ...paths,
     ...unused,
     ...runs,
