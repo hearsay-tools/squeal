@@ -55,7 +55,7 @@ Kept as they are (coordinator's calls below): promote and focus take no install-
 
 ## Coordinator's calls (repo-local; the human may overturn)
 
-- **Location.** A module under `src/core/scheduler/` named for the term, with one entry file (no barrel, row 015-110). `#transact` and `#request` move into it. Each request's declaration sits beside the code that queues its files (`checkpoint-requests.ts`, `narrow-run.ts`, `retries.ts`, `slow-tier.ts`'s `queueGroup`, and so on). The scheduler's public request methods stay, as one-line calls into the intake, so `daemon.ts` and the bridge do not change.
+- **Location.** A module under `src/core/scheduler/` named for the term, with one entry file (no barrel, row 015-110). `#transact` and `#request` move into it. Each request's declaration sits beside the code that queues its files (`checkpoint-requests.ts`, `narrow-run.ts`, `retries.ts`, and so on); a group request's declaration sits in the intake's files, not beside `slow-tier.ts`'s `queueGroup` (coordinator 9ddca779, 2026-11-13: card 8 and the later scheduler cards edit `slow-tier.ts`). The scheduler's public request methods stay, as one-line calls into the intake, so `daemon.ts` and the bridge do not change.
 - **011-322 preserves today's behaviour exactly, including the order quirks the designs found:**
   - a request without runner work takes the scheduler's lock again on each busy try (today's 671, 746, 827); a request with runner work holds it from that work through every try;
   - `run --all` wakes all lanes before it takes the lock (today's 669), as a named exception in its declaration: moving it after the transaction would widen the window in which a slow selection misses it (`slow-tier.ts:357`);
