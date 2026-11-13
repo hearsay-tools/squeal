@@ -1,9 +1,10 @@
 import { compare } from "../fs/compare.js";
 import type { ProjectName } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
-import type { RunEnd, RunnerAdapter, RunReport } from "../types/runner.js";
+import type { RunnerAdapter, RunReport } from "../types/runner.js";
 import { declareTraits } from "../types/runner-traits.js";
 import { Flights, withheld } from "./composite-flights.js";
+import { MERGE_RULES, type Part } from "./report-merge.js";
 import type { RunnerSet } from "./runner-set.js";
 
 /**
@@ -200,56 +201,18 @@ export function createCompositeRunner(
   };
 }
 
-/** One part of a run and its report; `adapter.name` prefixes the part's failure. */
-export interface Part {
-  readonly adapter: Pick<RunnerAdapter, "name">;
-  readonly report: RunReport;
-}
-
-const SEVERITY: Readonly<Record<RunEnd, number>> = { completed: 0, "timed-out": 1, crashed: 2 };
-
 /**
- * One report from the parts. The end is the worst part's, so the run is
- * recorded as it went wrong; files stay trusted per part, because a crashed
- * part lists no completed files and a completed one does not depend on it.
+ * One report from the parts, by the report merge's rule for each field
+ * (`MERGE_RULES`, `report-merge.ts`); a rule's `undefined` leaves its
+ * field absent. The keys come in the rules' order.
  */
 export function merge(parts: readonly Part[]): RunReport {
-  const reports = parts.map((part) => part.report);
-  const end = reports.reduce<RunEnd>(
-    (worst, report) => (SEVERITY[report.end] > SEVERITY[worst] ? report.end : worst),
-    "completed",
-  );
-  const failures = parts.flatMap(({ adapter, report }) =>
-    report.failure === null ? [] : [`${adapter.name}: ${report.failure}`],
-  );
-  const timed = reports.some((report) => report.fileDurations !== undefined);
-  const observed = reports.some((report) => report.observed !== undefined);
-  const read = reports.some((report) => report.reads !== undefined);
-  const environment = reports.flatMap((report) => report.environmentObserved ?? []);
-  const skipped = reports.flatMap((report) => report.skippedFiles ?? []);
-  const withheld = reports.flatMap((report) => report.withheld ?? []);
-  // Row 011-145: each part's focused counts, in the parts' order as `completedFiles`.
-  const focused = reports.flatMap((report) => report.focused ?? []);
-  // Task 001-382: one adapter runs Vitest, so at most one part failed to start.
-  const startup = reports.find((report) => report.startupFailure !== undefined)?.startupFailure;
-  const started = [...new Set(reports.flatMap((report) => report.startedProjects ?? []))];
-  return {
-    end,
-    durationMs: reports.reduce((sum, report) => sum + report.durationMs, 0),
-    completedFiles: reports.flatMap((report) => report.completedFiles),
-    results: reports.flatMap((report) => report.results),
-    fileErrors: reports.flatMap((report) => report.fileErrors),
-    failure: failures.length === 0 ? null : failures.join("; "),
-    ...(timed ? { fileDurations: reports.flatMap((report) => report.fileDurations ?? []) } : {}),
-    ...(observed ? { observed: reports.flatMap((report) => report.observed ?? []) } : {}),
-    ...(read ? { reads: reports.flatMap((report) => report.reads ?? []) } : {}),
-    ...(environment.length > 0 ? { environmentObserved: environment } : {}),
-    ...(skipped.length > 0 ? { skippedFiles: skipped } : {}),
-    ...(withheld.length > 0 ? { withheld } : {}),
-    ...(focused.length > 0 ? { focused } : {}),
-    ...(startup === undefined ? {} : { startupFailure: startup }),
-    ...(started.length === 0 ? {} : { startedProjects: started.sort(compare) }),
-  };
+  const fields = Object.entries(MERGE_RULES)
+    .map(([field, rule]) => [field, rule(parts)] as const)
+    .filter(([, value]) => value !== undefined);
+  // Sound: `MergeRules` has a rule for every field, each answering its field's
+  // type, and `undefined` only for an optional field, which stays absent.
+  return Object.fromEntries(fields) as unknown as RunReport;
 }
 
 function compareRefs(a: TestFileRef, b: TestFileRef): number {
