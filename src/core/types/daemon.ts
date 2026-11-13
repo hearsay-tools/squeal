@@ -307,6 +307,12 @@ export interface RunAllResponse {
    * CLI cannot tell (review wave-3, B4).
    */
   readonly owner?: string;
+  /**
+   * Row 011-325: set with `checkpoint`, the id of the request's covered
+   * files (`readCoveredFiles`). Absent from a daemon before it; a CLI that
+   * gets none keeps its own reading of the request's files.
+   */
+  readonly coveredId?: string;
 }
 
 /**
