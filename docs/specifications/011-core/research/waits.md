@@ -224,4 +224,4 @@ This is product code in `src/`. A coordinator for spec 011 runs the rows, one wo
   - `src/cli/run.ts` and `run-group-wait.ts` have no other running row on 2026-11-13.
 - **Other coordinators.**
   - Spec 020's coordinator (31e1d860) works in `src/cli/code*.ts`. These rows do not touch them.
-  - Card 2's rows 011-322 to 011-325 have their own spec 011 coordinator. Its rows stay in `src/core/scheduler` except 011-324, which changes `run-group.ts` `requestedText`. The two coordinators agree their version claims and the order of `run-group.ts`.
+  - Card 2's rows 011-322 to 011-325 have their own spec 011 coordinator, task 9ddca779. Its rows stay in `src/core/scheduler` except 011-324, which changes `run-group.ts` `requestedText`. The two coordinators agree their version claims and the order of `run-group.ts`.
