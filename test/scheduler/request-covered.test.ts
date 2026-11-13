@@ -16,7 +16,7 @@ import {
   readCoveredFiles,
 } from "../../src/core/store/covered-files.js";
 import { connectionOf } from "../../src/core/store/store.js";
-import type { TestFileRef } from "../../src/core/types/keys.js";
+import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
 import { DEFAULT_POLICY, type Policy } from "../../src/core/types/policy.js";
 import { SLOW_GROUP, TESTS_GROUP } from "../../src/core/types/scheduler.js";
 import {
@@ -242,7 +242,7 @@ describe("covered files: the record's transaction and lifetime (row 011-325)", (
   it("is written in the transaction that queues the files: one it cannot write queues none", async () => {
     const p = probeHost();
     connectionOf(p.store).db.exec(`CREATE TABLE ${COVERED_FILES_TABLE} (id TEXT PRIMARY KEY)`);
-    await expect(p.intake.take(probe(p))).rejects.toThrow(/files/);
+    await expect(p.intake.take(probe(p))).rejects.toThrow(/no such column/);
     expect(p.log).toEqual(["stage (A not queued)"]);
     expect(p.committed()).toEqual({ key: null, pending: null });
   });
@@ -269,20 +269,133 @@ describe("covered files: the record's transaction and lifetime (row 011-325)", (
 
   it("is pruned only once none of its files is queued or running and 10 minutes passed", async () => {
     const p = probeHost();
-    const answer = await p.intake.take(groupRequest(TESTS_GROUP, p.groups, undefined));
-    const id = answer?.coveredId ?? "";
-    const start = p.state.now;
-    /** A later request at `minutes` after the first, which prunes; whether the first is kept. */
-    const keptAt = async (minutes: number) => {
-      p.state.now = start + minutes * 60_000;
-      await p.intake.take(retryRequest());
-      return readCoveredFiles(p.store, id) !== null;
-    };
+    const { keptAt, end } = await lifetime(p);
     expect(await keptAt(11)).toBe(true);
-    p.ledger.applyResults(fileOf(p, B), keyOf(B), [], null);
-    p.ledger.commit();
+    end(p, 11);
     expect(await keptAt(12)).toBe(true);
+    expect(await keptAt(20)).toBe(true);
+    expect(await keptAt(21)).toBe(false);
+  });
+
+  // Review 0.1.478, B1: its reproduction. A file queued again after the record went idle keeps it.
+  it("is kept while a file is queued again after it went idle, and 10 minutes after that end", async () => {
+    const p = probeHost();
+    const { keptAt, end, at } = await lifetime(p);
+    end(p, 0);
+    expect(await keptAt(1)).toBe(true);
+    at(2);
+    p.ledger.enqueue(fileOf(p, B), 0, true);
+    p.ledger.commit();
+    expect(await keptAt(2)).toBe(true);
+    expect(fileOf(p, B).phase).toBe("queued");
+    expect(await keptAt(11)).toBe(true);
+    end(p, 12);
     expect(await keptAt(21)).toBe(true);
     expect(await keptAt(22)).toBe(false);
   });
+
+  it("is kept while a file runs again after it went idle, and 10 minutes after that end", async () => {
+    const p = probeHost();
+    const { keptAt, end, at } = await lifetime(p);
+    end(p, 0);
+    expect(await keptAt(1)).toBe(true);
+    at(2);
+    p.ledger.setRunning(fileOf(p, B), keyOf(B));
+    p.ledger.commit();
+    expect(await keptAt(2)).toBe(true);
+    expect(fileOf(p, B).phase).toBe("running");
+    expect(await keptAt(12)).toBe(true);
+    end(p, 13);
+    expect(await keptAt(22)).toBe(true);
+    expect(await keptAt(23)).toBe(false);
+  });
 });
+
+describe("covered files: an exit between two writes (review 0.1.478, B1)", () => {
+  // Row 011-118: an edit queues B again; its revert drops it from the queue, with no run and no result.
+  it("counts an exit with no run and no stored result: an edit and its revert", async () => {
+    const p = probeHost();
+    const { keptAt, end, at } = await lifetime(p);
+    end(p, 0);
+    expect(await keptAt(1)).toBe(true);
+    const b = fileOf(p, B);
+    at(3);
+    p.state.keys.set(B.path, "f".repeat(64) as CheckKey);
+    p.ledger.settle([B], NOTHING);
+    p.ledger.commit();
+    expect(b.phase).toBe("queued");
+    at(5);
+    p.state.keys.set(B.path, keyOf(B));
+    p.ledger.settle([B], NOTHING);
+    p.ledger.commit();
+    expect(b.phase).toBeNull();
+    expect(await keptAt(11)).toBe(true);
+    expect(await keptAt(14)).toBe(true);
+    expect(await keptAt(15)).toBe(false);
+  });
+
+  it("counts a run that began and ended between two writes", async () => {
+    const p = probeHost();
+    const { keptAt, end, at } = await lifetime(p);
+    end(p, 0);
+    expect(await keptAt(1)).toBe(true);
+    at(3);
+    p.ledger.setRunning(fileOf(p, B), keyOf(B));
+    p.ledger.commit();
+    end(p, 5);
+    expect(await keptAt(11)).toBe(true);
+    expect(await keptAt(14)).toBe(true);
+    expect(await keptAt(15)).toBe(false);
+  });
+
+  // The next daemon's ledger never saw the earlier one's exits: they came before its first write.
+  it("after a daemon handoff, counts an idle record from the next daemon's first write", async () => {
+    const before = probeHost();
+    const { id, start, keptAt, end, at } = await lifetime(before);
+    end(before, 0);
+    expect(await keptAt(1)).toBe(true);
+    at(3);
+    before.ledger.enqueue(fileOf(before, B), 0, true);
+    before.ledger.commit();
+    end(before, 5);
+    const after = probeHost({ dir: before.dir, queued: false });
+    const keptAfter = async (minutes: number) => {
+      after.state.now = start + minutes * 60_000;
+      await after.intake.take(retryRequest());
+      return readCoveredFiles(after.store, id) !== null;
+    };
+    expect(await keptAfter(9)).toBe(true);
+    expect(await keptAfter(14)).toBe(true);
+    expect(await keptAfter(19)).toBe(false);
+  });
+});
+
+/**
+ * Row 011-325, condition 3: the probe takes `run tests`, which leaves `B`
+ * queued; `keptAt(m)`, a later request `m` minutes after it, prunes and
+ * says whether the record is still there; `end(p, m)` ends `B`, running
+ * or queued, at minute `m`, with no write of its own.
+ */
+async function lifetime(p: Probe) {
+  const answer = await p.intake.take(groupRequest(TESTS_GROUP, p.groups, undefined));
+  const id = answer?.coveredId ?? "";
+  const start = p.state.now;
+  const at = (minutes: number) => {
+    p.state.now = start + minutes * 60_000;
+  };
+  const keptAt = async (minutes: number) => {
+    at(minutes);
+    await p.intake.take(retryRequest());
+    return readCoveredFiles(p.store, id) !== null;
+  };
+  const end = (q: Probe, minutes: number) => {
+    at(minutes);
+    const b = fileOf(q, B);
+    // A forced entry stays queued through its results; a tier takes it first.
+    q.ledger.dequeue(b);
+    q.ledger.setRunning(b, null);
+    q.ledger.applyResults(b, keyOf(B), [], null);
+    q.ledger.commit();
+  };
+  return { id, start, at, keptAt, end };
+}
