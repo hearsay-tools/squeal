@@ -1,5 +1,7 @@
+import type { DownReason } from "../../core/presence/wait.js";
 import type { RevisionNumber } from "../../core/types/common.js";
 import type { StatusHold } from "../../core/types/standing.js";
+import type { DaemonLiveness } from "../../core/types/status.js";
 import type { CheckpointEnd } from "../../core/types/store-records.js";
 import type { FileClasses, FileVerdict } from "../verdict.js";
 import type { InstallHold } from "./progress.js";
@@ -53,11 +55,10 @@ export type Condition =
   | "lint off"
   | "lint unread"
   | "nothing to lint"
-  | "ping due"
-  | "no daemon";
+  | "daemon down";
 
-/** The field each condition reads; `poll` is given, never read. */
-export const FIELD_OF: Readonly<Record<Condition, ReadField | "poll">> = {
+/** The field each condition reads. */
+export const FIELD_OF: Readonly<Record<Condition, ReadField>> = {
   "store unopened": "store",
   "store busy": "store",
   "newer revision": "revision",
@@ -73,20 +74,31 @@ export const FIELD_OF: Readonly<Record<Condition, ReadField | "poll">> = {
   "lint off": "counts",
   "lint unread": "counts",
   "nothing to lint": "counts",
-  "ping due": "poll",
-  "no daemon": "daemon",
+  "daemon down": "daemon",
 };
 
-/** Every this many reads, a run wait asks whether the daemon is still there: every 5 s. */
-export const PING_POLLS = 5;
+/**
+ * Row 011-327: what the daemon check of one read found, daemon presence's
+ * wait view (`watchDaemon`). Down, with why (`DownReason`) and the daemon's
+ * liveness as status words it (`noDaemonText`): since when no daemon has
+ * validated, and a handoff's successor.
+ */
+export type DaemonReading =
+  /** `unread`: a lint group's read of the worktree's store failed; it proves nothing, so the wait goes on. */
+  { readonly state: "alive" | "lapsed" | "unread" } | DaemonDown;
+
+/** A daemon the wait view found down: no daemon will finish the wait. */
+export interface DaemonDown {
+  readonly state: "down";
+  readonly reason: DownReason;
+  readonly liveness: DaemonLiveness;
+}
 
 /**
  * What one read of a run wait found. A field is absent until the decision
  * asked for it: a wait reads only what its row's chain reaches.
  */
 export interface WaitRecord {
-  /** The read's number from 0; the daemon check is due on every `PING_POLLS`th. */
-  readonly poll: number;
   /** The checkpoint's revision, which a newer one ends (the checkpoint wait; given, not read). */
   readonly since?: RevisionNumber;
   /**
@@ -110,8 +122,8 @@ export interface WaitRecord {
   readonly install?: InstallHold | null;
   /** The lint group's checks; `off` when lint is off, `unread` when the lint store cannot be read. */
   readonly counts?: LintCounts | "off" | "unread";
-  /** The daemon check's answer: `none` when no daemon listens. */
-  readonly daemon?: "answered" | "none" | "unanswered";
+  /** The daemon check: daemon presence's wait view (row 011-327). */
+  readonly daemon?: DaemonReading;
 }
 
 /** Row 011-327: the worktree's store did not open, or was busy at the deadline's read; why. */
@@ -126,7 +138,9 @@ export type CheckpointOutcome =
   | UnopenedOutcome
   /** Row 011-73 (C6 as amended 2026-10-21): its files are queued while the worktree is on hold. */
   | { readonly kind: "on-hold"; readonly hold: StatusHold }
-  | { readonly kind: "abandoned" | "stopped" }
+  | { readonly kind: "abandoned" }
+  /** Row 011-327: the wait view found the daemon down, and why. */
+  | { readonly kind: "stopped"; readonly daemon: DaemonDown }
   | { readonly kind: "moved"; readonly revision: RevisionNumber }
   | { readonly kind: "deadline"; readonly verdict: FileVerdict };
 
@@ -136,12 +150,13 @@ export type GroupOutcome =
   | { readonly kind: "deadline"; readonly verdict: FileVerdict; readonly install?: InstallHold }
   | { readonly kind: "on-hold"; readonly hold: StatusHold }
   | UnopenedOutcome
-  | { readonly kind: "stopped" };
+  | { readonly kind: "stopped"; readonly daemon: DaemonDown };
 
 /** How the wait on a lint group's checks ended (row 019-22). */
 export type LintGroupOutcome =
   | { readonly kind: "ended" | "deadline"; readonly counts: LintCounts }
-  | { readonly kind: "off" | "unread" | "stopped" };
+  | { readonly kind: "off" | "unread" }
+  | { readonly kind: "stopped"; readonly daemon: DaemonDown };
 
 /** Each run wait's closed set of outcomes (GLOSSARY "Wait outcome"). */
 export interface OutcomeOf {
@@ -153,7 +168,14 @@ export interface OutcomeOf {
 export type WaitOutcome = OutcomeOf[RunWaitName];
 
 /** The fields an outcome carries. */
-export type PayloadField = "verdict" | "hold" | "revision" | "install" | "counts" | "unavailable";
+export type PayloadField =
+  | "verdict"
+  | "hold"
+  | "revision"
+  | "install"
+  | "counts"
+  | "unavailable"
+  | "daemon";
 
 /**
  * One link of a chain: when every condition holds, the wait ends with
@@ -182,8 +204,15 @@ const rule = (
   ...fields: readonly PayloadField[]
 ): Rule => ({ when, then, with: fields });
 
-/** The daemon check, last in every chain: a ping every `PING_POLLS` reads that no daemon hears. */
-const GONE = rule(["ping due", "no daemon"], "stopped");
+/**
+ * The daemon check, last in every chain. Row 011-327 (decision 4 item 2),
+ * the status waits' rule: at every read that reaches it, daemon presence's
+ * wait view (`watchDaemon`). A cleared record (`squeal stop`) ends the wait
+ * at that read; a handoff goes on to its bound; a daemon that died, once its
+ * heartbeat's grace and `WAIT_DOWN_MS` of a dead socket passed. Was a ping
+ * on every fifth read.
+ */
+const GONE = rule(["daemon down"], "stopped", "daemon");
 
 /**
  * Row 011-327 (decision 4 item 1), the status waits' rule (`waitForStatus`):
