@@ -224,8 +224,9 @@ export function createHandlers(context: HandlerContext): DaemonHandler {
       error: state.error,
     } as const;
     if (state.checkpoint === null) return { ...answer, checkpoint: null };
-    const { owner, ...checkpoint } = state.checkpoint;
-    return { ...answer, checkpoint, owner };
+    // Row 011-325: the id of its covered files beside `owner`, never in the checkpoint's row.
+    const { owner, coveredId, ...checkpoint } = state.checkpoint;
+    return { ...answer, checkpoint, owner, ...(coveredId === undefined ? {} : { coveredId }) };
   };
   const runSlow = (requestId: string, state: RunSlowState): RunSlowResponse => ({
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
