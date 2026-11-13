@@ -1,6 +1,6 @@
 import { realpathSync } from "node:fs";
 import { WorktreePaths } from "../../core/fs/worktree-paths.js";
-import type { AbsolutePath } from "../../core/types/common.js";
+import type { AbsolutePath, RelativePath } from "../../core/types/common.js";
 import type { TestFileRef } from "../../core/types/keys.js";
 import type { RunnerAdapter } from "../../core/types/runner.js";
 import { VitestAdapter } from "./adapter.js";
@@ -72,6 +72,12 @@ export interface VitestAdapterOptions {
    * daemon: none is told.
    */
   readonly fileStarted?: (testFile: TestFileRef) => () => void;
+  /**
+   * Spec 020 row 020-50 (#207): told the files of each worker Vitest timed
+   * out terminating (`teardownTimeout`), as Vitest logs it, during a run or
+   * the instance's close. Absent, as in the daemon: none is told.
+   */
+  readonly teardown?: (files: readonly RelativePath[]) => void;
 }
 
 /**
@@ -96,6 +102,7 @@ export async function createVitestAdapter(
     options.coverage,
     options.cache,
     options.fileStarted,
+    options.teardown,
   );
   await adapter.open();
   return adapter;
@@ -128,6 +135,7 @@ class SizedVitestAdapter extends VitestAdapter implements WidthValues {
     coverage?: VitestCoverage,
     cache?: false,
     started?: (testFile: TestFileRef) => () => void,
+    teardown?: (files: readonly RelativePath[]) => void,
   ) {
     super(
       paths,
@@ -142,6 +150,7 @@ class SizedVitestAdapter extends VitestAdapter implements WidthValues {
       coverage,
       cache,
       started,
+      teardown,
     );
     this.#widths = widths;
   }

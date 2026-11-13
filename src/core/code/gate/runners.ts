@@ -1,5 +1,5 @@
 import { runsVitest } from "../../daemon/runner.js";
-import type { AbsolutePath } from "../../types/common.js";
+import type { AbsolutePath, RelativePath } from "../../types/common.js";
 import type { TestFileRef } from "../../types/keys.js";
 import type { NodeTestProject, Policy, PolicyInputs } from "../../types/policy.js";
 import type { RunnerAdapter } from "../../types/runner.js";
@@ -39,6 +39,8 @@ export interface GateAdapters {
     readonly coverage: VitestCoverageOptions;
     /** Row 020-43: told each file as it starts; what it returns, as it ends. */
     readonly fileStarted: FileStarted;
+    /** Row 020-50: told the files of each worker Vitest timed out terminating, during a run or the close. */
+    readonly teardown?: (files: readonly RelativePath[]) => void;
   }) => Promise<RunnerAdapter>;
   readonly nodeTest: (
     project: NodeTestProject,
@@ -90,6 +92,7 @@ export async function openRunners(
     closures,
     slots,
     started,
+    teardown,
   }: {
     provider: AbsolutePath;
     temp: AbsolutePath;
@@ -103,6 +106,8 @@ export async function openRunners(
     slots: (signal: AbortSignal) => Promise<(() => void) | null>;
     /** Row 020-43: told each runner's file as it starts, by the runner kind. */
     started: (runner: TestFileEvidence["runner"], testFile: TestFileRef) => () => void;
+    /** Row 020-50 (#207): told Vitest's teardown timeouts; absent, none is told. */
+    teardown?: ((files: readonly RelativePath[]) => void) | undefined;
   },
   runners: Runner[],
 ): Promise<void> {
@@ -124,6 +129,7 @@ export async function openRunners(
         collected,
       },
       fileStarted: (ref) => started("vitest", ref),
+      ...(teardown === undefined ? {} : { teardown }),
     });
     runners.push({ kind: "vitest", adapter, covered });
   }

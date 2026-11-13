@@ -116,6 +116,12 @@ export interface CollectOptions {
    * while it still runs (`FileProgress`). Absent, none is told.
    */
   readonly overran?: (file: Overrun) => void;
+  /**
+   * Row 020-50 (#207): told the files of each worker Vitest timed out
+   * terminating, as Vitest logs it, during a run or the adapters' close,
+   * which ends before this returns. Absent, none is told.
+   */
+  readonly teardown?: (files: readonly RelativePath[]) => void;
 }
 
 /** D17.3: one runner's run, its report and each completed file's mapped record, by `testFileId`. */
@@ -202,7 +208,8 @@ export async function collectEvidence(
     // D18 as amended (row 020-44): the node:test entries' processes, `runner.tierSize` at once.
     const slots = new SlotPool(policy.runner.tierSize).take;
     const started = progress.started.bind(progress);
-    const opening = { provider, temp, note, children, keeping, closures, slots, started };
+    const { teardown } = options;
+    const opening = { provider, temp, note, children, keeping, closures, slots, started, teardown };
     await openRunners(options.adapters, root, policy, opening, runners);
     const picked = await select(runners, { paths, ...options }, tally);
     // Review 0.1.432 B2: the stores and the parts first, so the print names only what runs.
