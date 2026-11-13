@@ -1,0 +1,21 @@
+{
+  "mode": "control",
+  "load1": 11.24267578125,
+  "cpus": 24,
+  "command": [
+    "/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal",
+    "code",
+    "--base",
+    "HEAD",
+    "--json",
+    "--timeout",
+    "15"
+  ],
+  "squealVersion": "0.1.463",
+  "nodeVersion": "v26.13.0",
+  "vitestVersion": "5.0.3",
+  "seconds": 1.603,
+  "exit": 0,
+  "stderr": "squeal code: Vitest: 1 test file to run (tests 1)\nsqueal code: Vitest: 1 test file to run here, up to 1 at once; no stored duration, so the time is unknown\n",
+  "stdout": "{\n  \"format\": \"squeal-code-gate/1\",\n  \"createdAt\": \"2026-11-13T02:30:52.608Z\",\n  \"versions\": {\n    \"squeal\": \"0.1.463\",\n    \"counter\": 5,\n    \"coverageProvider\": 3,\n    \"coverageRecord\": 4,\n    \"qualityPolicy\": 4\n  },\n  \"base\": {\n    \"ref\": \"HEAD\",\n    \"commit\": \"69ee73a09c29da1f156baadee6e319b4a8c3f16f\",\n    \"policy\": {\n      \"complexityThreshold\": 20,\n      \"crapThreshold\": 30,\n      \"coverageExclude\": [],\n      \"complexityInclude\": [\n        \"**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,py}\"\n      ],\n      \"complexityExclude\": [\n        \"**/dist/**\",\n        \"**/build/**\",\n        \"**/vendor/**\",\n        \"**/*.min.js\"\n      ],\n      \"complexityMaxFileBytes\": 524288,\n      \"gateGroups\": null\n    }\n  },\n  \"head\": {\n    \"commit\": \"69ee73a09c29da1f156baadee6e319b4a8c3f16f\",\n    \"dirty\": true,\n    \"paths\": [\n      {\n        \"path\": \"subject.ts\",\n        \"blob\": \"0f93308e31157ee94ad80f5b39fa0ebd1353e34d\"\n      }\n    ]\n  },\n  \"budget\": {\n    \"seconds\": 15,\n    \"timedOut\": false\n  },\n  \"scope\": {\n    \"groups\": [\n      {\n        \"name\": \"tests\",\n        \"at\": \"edit\",\n        \"from\": \"default\"\n      },\n      {\n        \"name\": \"slow\",\n        \"at\": \"edit\",\n        \"from\": \"default\"\n      }\n    ],\n    \"leftOut\": []\n  },\n  \"functions\": [\n    {\n      \"path\": \"subject.ts\",\n      \"qualifiedName\": \"value\",\n      \"occurrence\": 0,\n      \"line\": 1,\n      \"bodyHash\": \"2166a24bb0327d3b\",\n      \"change\": \"edited\",\n      \"complexity\": 1,\n      \"coverage\": {\n        \"lines\": 1,\n        \"covered\": 1,\n        \"share\": 1\n      },\n      \"crap\": 1,\n      \"loaders\": {\n        \"expected\": [\n          \"pass.test.ts\"\n        ],\n        \"measured\": [\n          \"pass.test.ts\"\n        ]\n      },\n      \"state\": \"pass\",\n      \"gap\": null\n    }\n  ],\n  \"omitted\": [],\n  \"uncounted\": [],\n  \"runs\": [\n    {\n      \"runner\": \"vitest\",\n      \"selected\": [\n        \"pass.test.ts\"\n      ],\n      \"completed\": [\n        \"pass.test.ts\"\n      ],\n      \"notFinished\": [],\n      \"failed\": [],\n      \"estimate\": {\n        \"seconds\": null,\n        \"files\": 1,\n        \"known\": 0,\n        \"width\": 1\n      },\n      \"durationMs\": 198\n    }\n  ],\n  \"verdict\": \"pass\",\n  \"counts\": {\n    \"pass\": 1,\n    \"violation\": 0,\n    \"incomplete\": 0,\n    \"skipped\": 0,\n    \"accepted\": 0\n  }\n}\n"
+}

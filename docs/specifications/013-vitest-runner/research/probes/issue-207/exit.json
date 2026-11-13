@@ -1,0 +1,21 @@
+{
+  "mode": "exit",
+  "load1": 10.98291015625,
+  "cpus": 24,
+  "command": [
+    "/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal",
+    "code",
+    "--base",
+    "HEAD",
+    "--json",
+    "--timeout",
+    "15"
+  ],
+  "squealVersion": "0.1.463",
+  "nodeVersion": "v26.13.0",
+  "vitestVersion": "5.0.3",
+  "seconds": 1.834,
+  "exit": 3,
+  "stderr": "squeal code: Vitest: 2 test files to run (tests 2)\nsqueal code: Vitest: 2 test files to run here, up to 1 at once; no stored duration, so the time is unknown\n[vitest-pool]: Timeout terminating forks worker for test files <fixture>/crash.test.ts.\n[vitest-pool]: Timeout terminating forks worker for test files <fixture>/pass.test.ts.\nsqueal code: log of the failed or unfinished test files, kept until the next prune, within about 1 h while a daemon of this repository runs (none serves this worktree): Vitest <fixture>/.git/squeal/runs/gate-611c4dfb-7643-4973-a4ca-cfa1b64114b1\n",
+  "stdout": "{\n  \"format\": \"squeal-code-gate/1\",\n  \"createdAt\": \"2026-11-13T02:30:57.127Z\",\n  \"versions\": {\n    \"squeal\": \"0.1.463\",\n    \"counter\": 5,\n    \"coverageProvider\": 3,\n    \"coverageRecord\": 4,\n    \"qualityPolicy\": 4\n  },\n  \"base\": {\n    \"ref\": \"HEAD\",\n    \"commit\": \"a25b1ec5cc2e17d4baeccf561e0ef29122d7a534\",\n    \"policy\": {\n      \"complexityThreshold\": 20,\n      \"crapThreshold\": 30,\n      \"coverageExclude\": [],\n      \"complexityInclude\": [\n        \"**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,py}\"\n      ],\n      \"complexityExclude\": [\n        \"**/dist/**\",\n        \"**/build/**\",\n        \"**/vendor/**\",\n        \"**/*.min.js\"\n      ],\n      \"complexityMaxFileBytes\": 524288,\n      \"gateGroups\": null\n    }\n  },\n  \"head\": {\n    \"commit\": \"a25b1ec5cc2e17d4baeccf561e0ef29122d7a534\",\n    \"dirty\": true,\n    \"paths\": [\n      {\n        \"path\": \"subject.ts\",\n        \"blob\": \"0f93308e31157ee94ad80f5b39fa0ebd1353e34d\"\n      }\n    ]\n  },\n  \"budget\": {\n    \"seconds\": 15,\n    \"timedOut\": false\n  },\n  \"scope\": {\n    \"groups\": [\n      {\n        \"name\": \"tests\",\n        \"at\": \"edit\",\n        \"from\": \"default\"\n      },\n      {\n        \"name\": \"slow\",\n        \"at\": \"edit\",\n        \"from\": \"default\"\n      }\n    ],\n    \"leftOut\": []\n  },\n  \"functions\": [\n    {\n      \"path\": \"subject.ts\",\n      \"qualifiedName\": \"value\",\n      \"occurrence\": 0,\n      \"line\": 1,\n      \"bodyHash\": \"2166a24bb0327d3b\",\n      \"change\": \"edited\",\n      \"complexity\": 1,\n      \"coverage\": {\n        \"lines\": 1,\n        \"covered\": 1,\n        \"share\": 1\n      },\n      \"crap\": 1,\n      \"loaders\": {\n        \"expected\": [\n          \"crash.test.ts\",\n          \"pass.test.ts\"\n        ],\n        \"measured\": [\n          \"crash.test.ts\",\n          \"pass.test.ts\"\n        ]\n      },\n      \"state\": \"incomplete\",\n      \"gap\": \"test-failed\"\n    }\n  ],\n  \"omitted\": [],\n  \"uncounted\": [],\n  \"runs\": [\n    {\n      \"runner\": \"vitest\",\n      \"selected\": [\n        \"crash.test.ts\",\n        \"pass.test.ts\"\n      ],\n      \"completed\": [\n        \"crash.test.ts\",\n        \"pass.test.ts\"\n      ],\n      \"notFinished\": [],\n      \"failed\": [\n        {\n          \"path\": \"crash.test.ts\",\n          \"tests\": [\n            \"worker exits\"\n          ]\n        }\n      ],\n      \"log\": \"<fixture>/.git/squeal/runs/gate-611c4dfb-7643-4973-a4ca-cfa1b64114b1\",\n      \"estimate\": {\n        \"seconds\": null,\n        \"files\": 2,\n        \"known\": 0,\n        \"width\": 1\n      },\n      \"durationMs\": 376\n    }\n  ],\n  \"verdict\": \"incomplete\",\n  \"counts\": {\n    \"pass\": 0,\n    \"violation\": 0,\n    \"incomplete\": 1,\n    \"skipped\": 0,\n    \"accepted\": 0\n  }\n}\n"
+}
