@@ -16,6 +16,7 @@ import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
 import type { FileState } from "./files.js";
 import type { Ledger } from "./ledger.js";
 import { priorityOf } from "./queue.js";
+import type { Request } from "./request-intake-types.js";
 
 /*
  * Spec 001 D6 as amended (001-348, scope 001-368): the agent's `squeal retry`
@@ -38,13 +39,15 @@ export function loadOf(context: SchedulerContext) {
 /**
  * Under the lock: claims and queues the pending requests at this worktree's
  * keys that may run now, and drops a queued retry whose request was
- * withdrawn. `claimed` hears each file it claims and queues (row 018-12).
- * Returns whether the queue changed.
+ * withdrawn. `claimed` hears each file it claims and queues (row 018-12):
+ * required, so no caller leaves the progress record out (start, pass and
+ * `squeal retry`, review wave 3.6 B3; row 011-322). Returns whether the
+ * queue changed.
  */
 export function takeRetries(
   context: SchedulerContext,
   ledger: Ledger,
-  claimed: (file: FileState) => void = () => {},
+  claimed: (file: FileState) => void,
 ): boolean {
   const { store, worktreeId } = context;
   const pending = readRetries(store).filter((r) => r.end === null);
@@ -57,6 +60,32 @@ export function takeRetries(
   }
   const dropped = dropWithdrawn(ledger, pending);
   return queueDue(context, ledger, pending, claimed) || dropped;
+}
+
+/**
+ * `squeal retry` (001-368) as the request intake takes it (row 011-322):
+ * claims and queues the requests in the store that may run now. Its covered
+ * files are those `takeRetries` claims.
+ */
+export function retryRequest(): Request<void> {
+  return {
+    operation: "taking squeal retry requests",
+    start: { closed: undefined },
+    installWait: { atOnce: undefined },
+    runnerWork: { skip: "waits for no runner work: a retry runs at the key its file holds" },
+    store: {
+      stage: (context, ledger) => {
+        const covered: FileState[] = [];
+        if (takeRetries(context, ledger, (file) => covered.push(file))) ledger.commit();
+        return { answer: undefined, covered };
+      },
+    },
+    wake: {
+      skip:
+        "wakes no lane: a retried slow-lane file may wait for its lane's next planning " +
+        "(difference 2 of research/request-intake.md, row 011-323)",
+    },
+  };
 }
 
 /** A queued retry whose request was withdrawn leaves the queue, unless its 001-171 re-run is still to come. */
