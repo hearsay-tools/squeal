@@ -3,6 +3,7 @@ import Module, { createRequire } from "node:module";
 import { join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createRecoveringRunner } from "../../../src/core/daemon/runner.js";
+import { NO_TRAITS } from "../../../src/core/types/runner-traits.js";
 import { createVitestAdapter } from "../../../src/runners/vitest/index.js";
 import { loadVitest } from "../../../src/runners/vitest/load.js";
 
@@ -66,6 +67,7 @@ describe("a project without Vitest", () => {
     const runner = createRecoveringRunner({
       name: "vitest",
       adapterVersion: "test",
+      traits: NO_TRAITS,
       create: () => createVitestAdapter({ root }),
       onFailure: (text) => notes.push(text),
     });

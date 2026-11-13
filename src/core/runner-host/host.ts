@@ -96,7 +96,7 @@ export async function serveRunnerHost(options: ServeOptions): Promise<void> {
   let ending = false;
 
   const valuesOf = (current: HostedAdapter): HostValues => ({
-    omittedTestFiles: current.omittedTestFiles?.() ?? 0,
+    omittedTestFiles: current.traits.omittedTestFiles(),
     widths: current.widthValues?.() ?? null,
   });
   /** A `values` event when they differ from the last sent. */
@@ -185,7 +185,8 @@ export async function serveRunnerHost(options: ServeOptions): Promise<void> {
       adapter: {
         name: built.name,
         adapterVersion: built.adapterVersion,
-        focuses: built.focuses === true,
+        // Sent and no longer read (row 011-329): a kind's focus holds for each file of it or none.
+        focuses: built.traits.focuses({ project: "", path: "" }),
         members: [
           ...(built.recheck === undefined ? [] : ["recheck" as const]),
           ...(built.globalSetups === undefined ? [] : ["globalSetups" as const]),

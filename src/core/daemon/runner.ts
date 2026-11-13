@@ -12,6 +12,7 @@ import type {
   RunnerAdapter,
   RunnerEnvironment,
 } from "../types/runner.js";
+import { liveTraits, type RunnerTraits } from "../types/runner-traits.js";
 import { IdleClock, type Parked, reopened } from "./runner-idle.js";
 
 export interface RecoveringRunnerOptions {
@@ -24,17 +25,11 @@ export interface RecoveringRunnerOptions {
   /** A creation attempt worked after a failure. */
   readonly onRecovered?: () => void;
   /**
-   * `RunnerAdapter.tierWidth`, before the adapter's own: node:test's and
-   * pytest's `runner.tierSize` (task 001-366), which a runner host's proxy
-   * would otherwise answer with the grant (row 021-12).
+   * Its runner kind's traits over no values (spec 011 C14, row 011-329):
+   * what it answers before an adapter exists, and while none is live or
+   * closed when idle, such as after a runner host died (spec 021 D20.1).
    */
-  readonly tierWidth?: (testFile: TestFileRef, grant: number) => number;
-  /** `RunnerAdapter.besideBacklog` of every file, before the adapter exists too (task 011-21). */
-  readonly besideBacklog?: boolean;
-  /** `RunnerAdapter.backlogSlot` of every file, before the adapter exists too (task 011-21 slice 2). */
-  readonly backlogSlot?: number;
-  /** `RunnerAdapter.focuses`, before the adapter exists too (spec 011 C14, row 011-145). */
-  readonly focuses?: true;
+  readonly traits: RunnerTraits;
   /** Wraps every call that reaches the adapter, creation included (the working directory, D10). */
   readonly around?: (<T>(call: () => Promise<T>) => Promise<T>) | undefined;
   /**
@@ -117,8 +112,9 @@ export function createRecoveringRunner(options: RecoveringRunnerOptions): Recove
     closing = ending;
   };
   const clock = new IdleClock(options.idleMs ?? (() => 0), park);
-  // D20.1: the synchronous members answer from the adapter closed when idle until another exists.
-  const values = (): RunnerAdapter | null => inner ?? parked?.last ?? null;
+  // D20.1: the traits answer from the adapter closed when idle until another exists, and from
+  // the kind's over no values while there is neither.
+  const traits = liveTraits(() => (inner ?? parked?.last)?.traits ?? options.traits);
 
   /** `inner`, unless it is gone: then it is closed and dropped. */
   const live = (): RunnerAdapter | null => {
@@ -184,6 +180,7 @@ export function createRecoveringRunner(options: RecoveringRunnerOptions): Recove
   return {
     name: options.name,
     adapterVersion: options.adapterVersion,
+    traits,
     open: () =>
       around(async () => {
         clock.begin(true);
@@ -244,14 +241,6 @@ export function createRecoveringRunner(options: RecoveringRunnerOptions): Recove
     closure: (testFile: TestFileRef) => call((a) => a.closure(testFile)),
     enumerate: (testFile: TestFileRef) => call((a) => a.enumerate(testFile)),
     testFiles: () => call((a) => a.testFiles()),
-    omittedTestFiles: () => values()?.omittedTestFiles?.() ?? 0,
-    slowWidth: (testFiles) => values()?.slowWidth?.(testFiles) ?? testFiles.length,
-    tierWidth: (testFile, grant) =>
-      options.tierWidth?.(testFile, grant) ?? values()?.tierWidth?.(testFile, grant) ?? grant,
-    tierPart: (testFile) => values()?.tierPart?.(testFile) ?? "",
-    besideBacklog: () => options.besideBacklog === true,
-    backlogSlot: () => options.backlogSlot ?? null,
-    ...(options.focuses === true ? { focuses: true as const } : {}),
     environment: () =>
       call(async (a) => {
         const answer = await a.environment();

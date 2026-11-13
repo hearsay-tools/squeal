@@ -157,8 +157,8 @@ export class Widths extends WidthAnswers {
 
 /**
  * The adapter's hints (task 011-37 section 5, row 011-40): the widths of the
- * instance it started last, each run sized under them, and the scheduler's
- * width questions answered from them. `maxWorkers` is the width of a run
+ * instance it started last, each run sized under them, and the table the
+ * traits' widths answer from. `maxWorkers` is the width of a run
  * without a grant (spec 004 D2: the slow tier's instance), under the
  * project's own as a grant is (D11, task 001-378).
  */
@@ -176,25 +176,12 @@ export class VitestWidths implements VitestHints {
   }
 
   /**
-   * Spec 004 D2 (review 001-394 B2): the files a slow run starts at once,
-   * under each project's own `maxWorkers` (001 D11 Runner ceiling). The
-   * slow instance has the same configs, so this instance's are read. None
-   * started yet: all of them.
+   * The table Vitest's traits answer from (`vitestTraits`, row 011-329), in
+   * this process and sent by a runner host (spec 021 D6): the slow width
+   * (spec 004 D2, review 001-394 B2) and a backlog tier's (011 C4 step 5,
+   * task 001-366), under each project's own `maxWorkers`. `null` before a
+   * start: the traits' defaults.
    */
-  slowWidth(testFiles: readonly TestFileRef[]): number {
-    return this.#widths?.atOnce(testFiles) ?? testFiles.length;
-  }
-
-  /**
-   * Spec 011 C4 step 5 (task 001-366): the workers a backlog tier holding
-   * `testFile` runs with at `grant`, under its project's own `maxWorkers`.
-   * No instance yet: `grant`.
-   */
-  tierWidth(testFile: TestFileRef, grant: number): number {
-    return this.#widths?.of(testFile.project, grant) ?? grant;
-  }
-
-  /** The table both answer from, sent by a runner host (spec 021 D6); `null` before a start. */
   table(): WidthTable | null {
     return this.#widths?.table ?? null;
   }

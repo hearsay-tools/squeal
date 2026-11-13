@@ -9,6 +9,7 @@ import { readDaemonNotes } from "../../src/core/notes.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 import type { RunnerAdapter, RunOptions } from "../../src/core/types/runner.js";
+import { NO_TRAITS } from "../../src/core/types/runner-traits.js";
 import { createVitestAdapter } from "../../src/runners/vitest/index.js";
 import { VITEST_ADAPTER_VERSION } from "../../src/runners/vitest/version.js";
 import { git } from "../hash/git-repo.js";
@@ -121,6 +122,7 @@ export function withSlowLanes(
     createRecoveringRunner({
       name: "vitest",
       adapterVersion: VITEST_ADAPTER_VERSION,
+      traits: NO_TRAITS,
       create: async () => {
         made += 1;
         const adapter = await createVitestAdapter({ root });

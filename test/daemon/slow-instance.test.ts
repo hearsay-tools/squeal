@@ -10,6 +10,7 @@ import type { EpochMs } from "../../src/core/types/common.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 import type { InvalidatedPath, RunnerAdapter, RunOptions } from "../../src/core/types/runner.js";
+import { NO_TRAITS } from "../../src/core/types/runner-traits.js";
 
 /*
  * Spec 004 D2 (task 004-18): a slow lane's runs go to an instance of their
@@ -23,6 +24,7 @@ function fake(name: string, log: string[]): RunnerAdapter {
   return {
     name: "vitest",
     adapterVersion: "1",
+    traits: NO_TRAITS,
     async invalidate(paths: readonly InvalidatedPath[]) {
       log.push(`${name} invalidate ${paths.map((p) => p.path).join(",")}`);
       return { recreatedProjects: [] };

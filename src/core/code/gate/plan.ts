@@ -87,7 +87,7 @@ export function orderRuns<P extends Picked>(
     const own = groups.get(pick.kind) ?? [];
     groups.set(pick.kind, own);
     const grant = pick.kind === "vitest" ? vitestWidth() : context.tierSize;
-    const width = (ref: TestFileRef) => pick.adapter.tierWidth?.(ref, grant) ?? grant;
+    const width = (ref: TestFileRef) => pick.adapter.traits.tierWidth(ref, grant);
     own.push(...byWidth(files, width, seconds));
   }
   const runners = [...groups].map(([runner, of]) => ({ runner, groups: of }));

@@ -21,6 +21,7 @@ import { createTreeHost } from "../../../src/core/runner-host/remote/tree-host.j
 import type { RemoteRunReply } from "../../../src/core/runner-host/remote/tree-wire.js";
 import { takePermit } from "../../../src/core/slow/slot.js";
 import type { RunOptions } from "../../../src/core/types/runner.js";
+import { NO_TRAITS } from "../../../src/core/types/runner-traits.js";
 import { inProcessHost, POLICY, REPORT } from "../fake-channel.js";
 import { background, REF, setup, until } from "./lane-fixture.js";
 
@@ -103,6 +104,7 @@ describe("a run whose remote grant went back before it came (review 0.1.445 R1, 
     const adapter: HostedAdapter = {
       name: "vitest",
       adapterVersion: "1",
+      traits: NO_TRAITS,
       invalidate: async () => ({ recreatedProjects: [] }),
       affected: async () => ({ direct: [], transitive: [] }),
       closure: async (testFile) => ({ testFile, paths: [] }),

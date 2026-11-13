@@ -68,7 +68,7 @@ describe.runIf(process.platform === "linux")(
         onTestFinished(() => nodeTest.close());
         const notes: string[] = [];
         const runner = afterEachRun(nodeTest, children, ({ text }) => notes.push(text));
-        expect(runner.besideBacklog?.(SECOND)).toBe(true);
+        expect(runner.traits.besideBacklog(SECOND)).toBe(true);
         await runner.testFiles();
 
         // The backlog tier's run starts first and ends first; the edit's starts while it runs.

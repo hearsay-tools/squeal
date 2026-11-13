@@ -156,7 +156,7 @@ export type TierKind = "backlog" | "turn" | "edit" | "slow" | "focused";
  * beside it (spec 004 D2, task 004-18).
  */
 export function laneOf(context: SchedulerContext, ref: TestFileRef): string {
-  return laneFor(context.policy, ref, context.runner.lane?.(ref) ?? "");
+  return laneFor(context.policy, ref, context.runner.traits.lane(ref));
 }
 
 /**
@@ -538,12 +538,12 @@ function narrowerThanEdit(
 
 /** How many files a backlog tier holding `ref` runs at once at `grant` workers (task 001-366). */
 function tierWidth(context: SchedulerContext, ref: TestFileRef, grant: number): number {
-  return Math.max(1, context.runner.tierWidth?.(ref, grant) ?? grant);
+  return context.runner.traits.tierWidth(ref, grant);
 }
 
 /** The part of a backlog tier `ref` runs in; parts run one after another (review wave-3 B1). */
 function partOf(context: SchedulerContext, ref: TestFileRef): string {
-  return context.runner.tierPart?.(ref) ?? "";
+  return context.runner.traits.tierPart(ref);
 }
 
 /** The workers a backlog tier of `picked` asks the pool for: no more than its runner runs it with. */

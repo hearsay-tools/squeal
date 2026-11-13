@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createRecoveringRunner } from "../../src/core/daemon/runner.js";
 import type { RunnerAdapter, RunnerEnvironment } from "../../src/core/types/runner.js";
+import { NO_TRAITS } from "../../src/core/types/runner-traits.js";
 
 /*
  * Spec 021 D7 (row 021-11): a runner host that exits, or misses a deadline,
@@ -35,6 +36,7 @@ function fakes(errors: (string | null)[] = []) {
       dead: false,
       name: "vitest",
       adapterVersion: "2",
+      traits: NO_TRAITS,
       invalidate: async () => ({ recreatedProjects: [] }),
       affected: async () => ({ direct: [], transitive: [] }),
       closure: async (testFile) => ({ testFile, paths: [`made-${n}`] }),
@@ -67,6 +69,7 @@ function runner(f: ReturnType<typeof fakes>) {
   const adapter = createRecoveringRunner({
     name: "vitest",
     adapterVersion: "2",
+    traits: NO_TRAITS,
     create: f.create,
     onFailure: (text) => failures.push(text),
     gone: (inner) => (inner as Fake).dead,
@@ -122,6 +125,7 @@ describe("recovering runner: a gone adapter is replaced (spec 021 D7)", () => {
     const plain = createRecoveringRunner({
       name: "vitest",
       adapterVersion: "2",
+      traits: NO_TRAITS,
       create: f.create,
       onFailure: () => {},
     });

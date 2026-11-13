@@ -15,6 +15,7 @@ import type { TestFileRef } from "../../src/core/types/keys.js";
 import { DEFAULT_POLICY, type Policy } from "../../src/core/types/policy.js";
 import type { RevisionTrigger } from "../../src/core/types/revision.js";
 import type { RunnerAdapter, RunOptions, RunReport } from "../../src/core/types/runner.js";
+import { declareTraits, type RunnerTraits } from "../../src/core/types/runner-traits.js";
 import type { Scheduler } from "../../src/core/types/scheduler.js";
 import type { Store } from "../../src/core/types/store.js";
 import { claimRepo } from "./claims-fixture.js";
@@ -91,22 +92,18 @@ export class CatchUpRunner implements RunnerAdapter {
   beforeRun: ((files: readonly TestFileRef[]) => void) | null = null;
   /** A run's own hold, before the shared one: it waits for the promise, or its cancel (row 011-269). */
   holdOf: ((run: CatchUpRun) => Promise<void> | undefined) | null = null;
-  declare readonly lane?: (testFile: TestFileRef) => string;
-  declare readonly tierWidth?: (testFile: TestFileRef, grant: number) => number;
-  declare readonly besideBacklog?: (testFile: TestFileRef) => boolean;
-  declare readonly backlogSlot?: (testFile: TestFileRef) => number | null;
+  readonly traits: RunnerTraits;
   #gate: { shut: Promise<void>; open: () => void } | null = null;
   readonly #byPath: ReadonlyMap<string, CatchUpFile>;
   readonly #cancels: boolean;
 
   constructor(
     private readonly files: readonly CatchUpFile[],
-    { cancels = true, ...hooks }: Hooks = {},
+    { cancels = true, ...traits }: Hooks = {},
   ) {
     this.#byPath = new Map(files.map((f) => [f.path, f]));
     this.#cancels = cancels;
-    for (const [name, hook] of Object.entries(hooks))
-      if (hook !== undefined) Object.assign(this, { [name]: hook });
+    this.traits = declareTraits(traits);
   }
 
   /** Later runs wait until `release` or their cancel. */

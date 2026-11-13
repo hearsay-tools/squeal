@@ -12,6 +12,7 @@ import {
 import { remoteSettingsPath } from "../../../src/core/runner-host/remote/settings.js";
 import { DEFAULT_POLICY, type Policy } from "../../../src/core/types/policy.js";
 import type { RunnerAdapter, RunOptions } from "../../../src/core/types/runner.js";
+import { NO_TRAITS } from "../../../src/core/types/runner-traits.js";
 import { REPORT } from "../fake-channel.js";
 
 /*
@@ -27,6 +28,7 @@ afterAll(() => rmSync(scratch, { recursive: true, force: true }));
 const vitest: RunnerAdapter = {
   name: "vitest",
   adapterVersion: "1",
+  traits: NO_TRAITS,
   invalidate: async () => ({ recreatedProjects: [] }),
   affected: async () => ({ direct: [], transitive: [] }),
   closure: async (testFile) => ({ testFile, paths: [] }),

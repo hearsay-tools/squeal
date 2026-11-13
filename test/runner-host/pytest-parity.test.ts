@@ -185,7 +185,7 @@ describe("the pytest adapter through a runner host", () => {
       return {
         name: adapter.name,
         adapterVersion: adapter.adapterVersion,
-        focuses: adapter.focuses,
+        focuses: adapter.traits.focuses(ref(WHERE)),
         testFiles,
         environment: await adapter.environment(),
         closures: await Promise.all(testFiles.map((f) => adapter.closure(f))),

@@ -664,8 +664,7 @@ export class SlowTier {
     }
     if (picked.length === 0) return ledger.claims.waiting ? "claimed" : null;
     // 004 D2: every file starts at once, so the tier holds as many as its run starts (review 001-394 B2).
-    const atOnce = context.runner.slowWidth?.(picked.map(({ file }) => file.ref));
-    if (atOnce !== undefined) picked.splice(Math.max(1, atOnce));
+    picked.splice(context.runner.traits.slowWidth(picked.map(({ file }) => file.ref)));
     const perFile = workersPerFile(group);
     // An edit's tier takes no grant (`ungated`); every other one waits for one, unless requested.
     const taken = ungated(group)

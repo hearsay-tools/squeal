@@ -1,5 +1,6 @@
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import type { RunnerAdapter, RunOptions, RunReport } from "../../src/core/types/runner.js";
+import type { RunnerTraits } from "../../src/core/types/runner-traits.js";
 import type { Phase, PhaseTrace } from "./phase-trace.js";
 
 export interface RecordedRun {
@@ -20,6 +21,8 @@ export type FailingCall = "invalidate" | "affected" | "closure" | "testFiles" | 
  * calls (`Gate`).
  */
 export interface RecordingRunner extends RunnerAdapter {
+  /** The inner runner's; a test may state others. */
+  traits: RunnerTraits;
   readonly runs: RecordedRun[];
   beforeRun: ((files: readonly TestFileRef[]) => void | Promise<void>) | null;
   /** Calls that reject with `failure` while listed. */
@@ -61,6 +64,7 @@ export function recordingRunner(
   const runner: RecordingRunner = {
     name: inner.name,
     adapterVersion: inner.adapterVersion,
+    traits: inner.traits,
     runs: [],
     beforeRun: null,
     failing: new Set(),
@@ -71,8 +75,6 @@ export function recordingRunner(
     closure: (testFile) => guarded("closure", () => inner.closure(testFile), testFile.path),
     enumerate: (testFile) => serial(() => inner.enumerate(testFile), `enumerate ${testFile.path}`),
     testFiles: () => guarded("testFiles", () => inner.testFiles()),
-    omittedTestFiles: () => inner.omittedTestFiles?.() ?? 0,
-    slowWidth: (testFiles) => inner.slowWidth?.(testFiles) ?? testFiles.length,
     environment: () =>
       guarded("environment", async () => {
         const environments = await inner.environment();

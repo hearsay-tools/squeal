@@ -10,6 +10,7 @@ import { storePaths } from "../../src/core/store/paths.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import { DEFAULT_POLICY, type Policy } from "../../src/core/types/policy.js";
 import type { RunnerAdapter, RunOptions, RunReport } from "../../src/core/types/runner.js";
+import { declareTraits, type RunnerTraits } from "../../src/core/types/runner-traits.js";
 import type { Scheduler } from "../../src/core/types/scheduler.js";
 import type { Store } from "../../src/core/types/store.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
@@ -38,12 +39,8 @@ export class WallRunner implements RunnerAdapter {
   active = 0;
   #gate: { shut: Promise<void>; open: () => void } | null = null;
 
-  /** `RunnerAdapter.lane`; absent, one lane. */
-  declare readonly lane?: (testFile: TestFileRef) => string;
-  /** `RunnerAdapter.tierWidth`; absent, the runner has none. */
-  declare readonly tierWidth?: (testFile: TestFileRef, grant: number) => number;
-  /** `RunnerAdapter.tierPart`; absent, one part. */
-  declare readonly tierPart?: (testFile: TestFileRef) => string;
+  /** Its lane, width and part as the options give them; each absent, the default. */
+  readonly traits: RunnerTraits;
 
   constructor(
     private readonly files: readonly TestFileRef[],
@@ -51,9 +48,7 @@ export class WallRunner implements RunnerAdapter {
     private readonly durations: (path: string) => number,
     hooks: Pick<WallOptions, "lane" | "tierWidth" | "tierPart"> = {},
   ) {
-    if (hooks.lane !== undefined) this.lane = hooks.lane;
-    if (hooks.tierWidth !== undefined) this.tierWidth = hooks.tierWidth;
-    if (hooks.tierPart !== undefined) this.tierPart = hooks.tierPart;
+    this.traits = declareTraits(hooks);
   }
 
   /** Later runs wait until `release`. */
