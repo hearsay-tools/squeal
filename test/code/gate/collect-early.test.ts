@@ -12,7 +12,9 @@ import { changedSet, collect, judged, project, SLOW } from "./collect-fixture.js
  * loaders and stops before the twenty, which read not finished, so the
  * function passes and the verdict stays incomplete. Under twice, every
  * file runs. Over the budget either way, the evidence names a rerun whose
- * `--timeout` fits the estimate.
+ * `--timeout` fits the estimate. With the runners at once (row 020-44),
+ * the fit and the early stop come before the runs start: the files not
+ * run go to no run, so they read neither `notFinished` nor `notStarted`.
  */
 
 const LEAVES = ["test/leaf-a.test.mjs", "test/leaf-b.test.mjs"];
@@ -63,6 +65,8 @@ describe("collectEvidence: an estimate over the budget", () => {
         });
         // Its closure is read with no run.
         expect(byPath.get(path)?.loads).toContain("src/shared.mjs");
+        // Row 020-43 beside it: it went to no run, so it never reads not started.
+        expect(byPath.get(path)?.notStarted).toBeUndefined();
       }
       // Nothing ran out of time: the gate did not start them.
       expect(evidence.timedOut).toBe(false);
@@ -73,6 +77,7 @@ describe("collectEvidence: an estimate over the budget", () => {
       expect(run?.completed).toEqual(LEAVES);
       expect(run?.overBudget).toEqual(SHARED);
       expect(run?.notFinished).toEqual([]);
+      expect(run?.notStarted).toBeUndefined();
 
       // The rerun's --timeout covers twice the estimate after the seconds spent.
       const seconds = budget?.fit.seconds ?? 0;
