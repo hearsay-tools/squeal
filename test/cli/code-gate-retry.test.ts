@@ -12,7 +12,9 @@ import { BASE, code, edit, ownHomeAndTmp, repo, SLOW } from "./code-gate-fixture
  * count. Only the daemon's reading of the load (`hostLoad`) is replaced
  * here; its threshold (`loadAllows`) is the real one. Over it, a test that
  * fails its first run only reads passed, exit 0, named in `runs[].retried`
- * and in one stderr line. Under it, the failure stands, as before.
+ * and in one stderr line. Under it, the failure stands, as before. Neither
+ * run of a retried file is kept (the coordinator, request 27108c13, "A"),
+ * so the next gate on the same bytes runs it again.
  */
 
 const load = vi.hoisted(() => ({ now: { oneMinute: 0, cpus: 24 } as HostLoad }));
@@ -50,6 +52,11 @@ async function gate(oneMinute: number) {
   edit(root, {
     "src/math.ts": "export function double(x: number): number {\n  return x + x;\n}\n",
   });
+  return { root, ...(await again(root)) };
+}
+
+/** The gate once more in `root`, at the load set now. */
+async function again(root: string) {
   const ran = await code(root, ["--base", "main", "--json"]);
   const report = JSON.parse(ran.stdout) as GateReport;
   const lines = ran.stderr.split("\n").filter((line) => line.includes("ran once more"));
@@ -70,6 +77,25 @@ describe("squeal code --base: a failure under load runs once more (row 020-54)",
       "squeal code: 1 test file failed while the host load was at or over its CPU count (24 on 24 CPUs) and ran once more: 1 passed (test/flaky.test.ts).",
     ]);
   });
+
+  it(
+    "keeps neither run of the retried file: the next gate on the same bytes runs it",
+    SLOW,
+    async () => {
+      const { root, run } = await gate(24);
+      expect(run?.retried?.["test/flaky.test.ts"]?.outcome).toBe("passed");
+
+      load.now = { oneMinute: 3, cpus: 24 };
+      const next = await again(root);
+      // The other file was kept and is read; the retried one is in no store, so it runs here.
+      expect(next.run?.from).toEqual({
+        "test/flaky.test.ts": "run",
+        "test/math.test.ts": "store",
+      });
+      expect(next.run?.retried).toBeUndefined();
+      expect(next.ran.code).toBe(0);
+    },
+  );
 
   it("keeps the failure under the threshold, with no rerun and no line", SLOW, async () => {
     const { ran, report, lines, run } = await gate(23.99);
