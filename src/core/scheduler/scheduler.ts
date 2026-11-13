@@ -43,7 +43,7 @@ import { CAPACITY_RECHECK_MS, TierCapacity } from "./capacity.js";
 import { abandonFullSuite, queueFullSuite } from "./checkpoint-requests.js";
 import { claimWake } from "./claims.js";
 import { CommandHold } from "./command-hold.js";
-import { attachCommitLanes, releaseLint } from "./commit-moment.js";
+import { attachCommitLanes } from "./commit-moment.js";
 import type { SchedulerContext } from "./context.js";
 import { NOTHING_CHANGED } from "./context.js";
 import { focusedWaiting } from "./focused.js";
@@ -76,7 +76,7 @@ import { BacklogQuiet, publishQuiet, quietSleepMs } from "./quiet.js";
 import { TierRecords } from "./record.js";
 import { lagging } from "./refine-apply.js";
 import { RequestIntake } from "./request-intake.js";
-import { focusRequest, promoteRequest } from "./request-intake-requests.js";
+import { focusRequest, groupRequest, promoteRequest } from "./request-intake-requests.js";
 import { RequestProgress } from "./request-progress.js";
 import { RERUN_CAP } from "./rerun.js";
 import { retryRequest, takeRetries } from "./retries.js";
@@ -85,7 +85,7 @@ import { RunnerWork } from "./runner-work.js";
 import { busyLanes } from "./slots.js";
 import { groupView, slowView } from "./slow.js";
 import { SlowRelease } from "./slow-release.js";
-import { queueGroup, type SlowRun, SlowTier } from "./slow-tier.js";
+import { type SlowRun, SlowTier } from "./slow-tier.js";
 import { supersededIn } from "./store-decision.js";
 import { StoredKeys } from "./stored-keys.js";
 import { cancels, endTier, executeTier, laneOf, selectTier, type Tier } from "./tiers.js";
@@ -752,49 +752,9 @@ class TierScheduler implements Scheduler {
     return request;
   }
 
-  /**
-   * Spec 019 D6: group `group`'s files run now, whatever its moment; its
-   * lane still waits for the groups `after` names (D1). A lint group's
-   * pending checks lint now (row 019-22): its released paths, then a pass,
-   * whose end nudges the lint pass. `null` for a group the policy in force
-   * does not have.
-   */
-  async requestGroup(group: string): Promise<SlowSuiteRequest | null> {
-    const operation = `taking a squeal run ${group} request`;
-    // A lint group's release writes the code store: never inside the store's transaction (D3).
-    const lint = await this.#lock.run(() => {
-      const { context, ledger } = this.#started();
-      const resolved = groupView(context.policy).groups.find((g) => g.name === group);
-      if (resolved?.select.kind !== "lint" || this.#awaitingInstall || this.#reinstalled) {
-        return null;
-      }
-      return { revision: ledger.revision.number, queued: releaseLint(context, group) };
-    }, operation);
-    if (lint !== null) {
-      void this.options.passes?.pass().catch(() => {});
-      this.#pump();
-      return lint;
-    }
-    const request = await this.#request(operation, () =>
-      this.#lock.run(
-        () =>
-          this.#transact((context, ledger) => {
-            const revision = ledger.revision.number;
-            const view = groupView(context.policy);
-            if (!view.groups.some((g) => g.name === group)) return null;
-            if (this.#awaitingInstall || this.#reinstalled) return { revision, queued: 0 };
-            this.#groups.lanes(context.policy);
-            this.#groups.get(group)?.request();
-            const queued = queueGroup(context, ledger, group);
-            const files = [...ledger.files.values()];
-            this.#requests.ask(files.filter((f) => view.of(f.ref).name === group));
-            return { revision, queued };
-          }),
-        operation,
-      ),
-    );
-    this.#pump();
-    return request;
+  /** Spec 019 D6: `squeal run <group>` (`groupRequest`); `null` for a group the policy lacks. */
+  requestGroup(group: string): Promise<SlowSuiteRequest | null> {
+    return this.#intake.take(groupRequest(group, this.#groups, this.options.passes));
   }
 
   /**

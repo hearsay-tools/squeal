@@ -55,3 +55,13 @@ Two callers: the daemon's import take (`daemon.ts:1095`, with projects and impor
 - `markImportsWaiting` throwing (a busy store past the store's wait): the call throws after the keys' refresh, with no runner work queued and no pump; `squeal import` ignores it (`src/cli/import.ts:224`).
 
 Kept: synchronous (`NowRequest`, the intake's `#now`): the closed and install-wait answers at once, then `now`, then the pump; a throw starts nothing. Named skips: the store write outside the busy-store retry until row 011-323 (difference 1), no covered files, no lane woken, no runner work waited for.
+
+### `squeal run <group>` (`requestGroup`, today's 723-766; declaration `groupRequest` in `request-intake-requests.ts`, not beside `slow-tier.ts`'s `queueGroup`; `requestSlowSuite` stays a call to it)
+
+Paths today:
+- the lint branch, one lock task, no transaction and no busy retry: `#started` (throws before the start); a lint group while no install is awaited and no reinstall: `releaseLint` (writes the lint store), then a change-feed pass not awaited, the pump, and the answer. A `releaseLint` throw rejects with no pump. Any other group, or while waiting: on to the stage.
+- the stage: `#request` around `#lock.run(#transact(...))`, the lock taken again on each busy try. In the transaction: an unknown group answers `null` (an empty transaction); while waiting, `{ revision, queued: 0 }` (an empty transaction); otherwise the lanes are synced, the group's lane marked requested (`SlowTier.request`, which preempts it), `queueGroup` settles and commits, and the group's files are asked (`#requests.ask`, which keeps those queued or running).
+- busy refusal: tried again; at the stop: rejects "taking a squeal run <group> request: the store was still busy when the daemon stopped". Other error: rolled back and restored; rejects; no pump.
+- every answer from the stage (`null`, `queued: 0`, the count): pump.
+
+Kept: the lint branch first, in its own lock task, outside the store's transaction (`store.outside`, a named skip); the install-wait answer in the stage's transaction after the unknown-group answer (`installWait.stage` answers `null` for an unknown group); the lane marked requested inside the stage (quirk 3; `wake: { skip }`); the lock per busy try; no pump after a throw. An unknown group's answer now goes through the record step with no file (`ask([])`, which does nothing).
