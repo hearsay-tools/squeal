@@ -11,7 +11,12 @@ import type { LintCounts } from "./reads.js";
  * the wait checked them before the move; each cell is a difference between
  * two waits, beside the others. The cells that differ by accident are
  * marked "accidental" where they stand (`research/waits.md`, "Gaps open
- * today in the run waits"); row 011-327 changes them, not this row.
+ * today in the run waits").
+ *
+ * Row 011-327 (decision 4) gives the run waits the status waits' rules,
+ * each a changed cell. Every socket request a wait or a request loop makes
+ * ends by the deadline (`askWithin`), and a late answer is a busy daemon:
+ * common to every row, so no longer a cell.
  */
 
 /** A run wait by name (GLOSSARY "Run wait"). */
@@ -142,13 +147,6 @@ export interface Rule {
   readonly with: readonly PayloadField[];
 }
 
-/**
- * How a socket request of a wait waits for its answer: `unbounded`, by
- * `askDaemon`'s own 2 s, where a late answer throws; `deadline`, by
- * `askWithin` within what is left of the wait, where no answer is words.
- */
-export type SocketBound = "unbounded" | "deadline";
-
 /** A run wait's row. */
 export interface RunWaitRow {
   /** The store a read opens: the worktree's, or none, where the lint read opens the lint store. */
@@ -157,8 +155,6 @@ export interface RunWaitRow {
   readonly reads: readonly ReadField[];
   /** The chain: the first rule whose conditions all hold ends the wait; with none, it goes on. */
   readonly rules: readonly Rule[];
-  /** The daemon check's socket bound. */
-  readonly socket: SocketBound;
 }
 
 const rule = (
@@ -186,8 +182,6 @@ export const RUN_WAITS: Readonly<Record<RunWaitName, RunWaitRow>> = {
       rule(["late"], "deadline", "verdict"),
       GONE,
     ],
-    // Accidental: the ping has no deadline bound, and a late answer throws a stack.
-    socket: "unbounded",
   },
   // `run <group> [<path>...] --wait`: on hold > ended or deadline; the deadline names an install.
   group: {
@@ -201,7 +195,6 @@ export const RUN_WAITS: Readonly<Record<RunWaitName, RunWaitRow>> = {
       rule(["late"], "deadline", "verdict", "install"),
       GONE,
     ],
-    socket: "deadline",
   },
   // `run <lint group> --wait`: off or unread, then deadline > ended, then stopped.
   // Accidental: `late` before `nothing to lint`, so the deadline's last read gives no verdict.
@@ -215,7 +208,6 @@ export const RUN_WAITS: Readonly<Record<RunWaitName, RunWaitRow>> = {
       rule(["nothing to lint"], "ended", "counts"),
       GONE,
     ],
-    socket: "deadline",
   },
 };
 
@@ -228,15 +220,13 @@ export interface RequestRow {
   readonly askBy: "first" | "last";
   /** What an answer of another type, or one not `ok`, means: the daemon stopped, or it refused. */
   readonly wrong: "stopped" | "refused";
-  readonly socket: SocketBound;
   /** The pause between status requests: 100 ms, or at most what is left before the deadline. */
   readonly pause: "fixed" | "to deadline";
 }
 
 /** The request loops' rows. */
 export const REQUEST_LOOPS: Readonly<Record<RequestLoopName, RequestRow>> = {
-  // Accidental: `run-all` and `run-slow` ask with no deadline bound; a late answer throws a stack.
-  "run-all": { askBy: "first", wrong: "stopped", socket: "unbounded", pause: "fixed" },
-  "run-slow": { askBy: "last", wrong: "refused", socket: "unbounded", pause: "fixed" },
-  "run-group": { askBy: "last", wrong: "refused", socket: "deadline", pause: "to deadline" },
+  "run-all": { askBy: "first", wrong: "stopped", pause: "fixed" },
+  "run-slow": { askBy: "last", wrong: "refused", pause: "fixed" },
+  "run-group": { askBy: "last", wrong: "refused", pause: "to deadline" },
 };
