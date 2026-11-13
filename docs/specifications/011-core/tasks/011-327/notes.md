@@ -12,6 +12,8 @@ Worker 664d4f3e, 2026-11-13. Brief: `tasks/wave-83.md` W1. Record: `research/wai
 | 2, busy and unopened store | `ded5c7d65` | The worktree store read through `withStatusStore`; a busy read is read again; a store that does not open gives why, exit 3. |
 | 3, gone daemon | `2e1a335e7` | The `GONE` rule reads daemon presence's wait view (`watchDaemon`); the stopped lines name why. |
 | 4, lint group at the deadline | `3663b66ef` | `nothing to lint` before `late`. |
+| Repair of review 0.1.474 B1, tests | `b0a1b7c74` | Two loop rows over a real exclusive lock on the lint store, red; a damaged lint store pinned as `unread`. The lint group's loop rows move to `lint-loop.test.ts`. |
+| Repair of review 0.1.474 B1, change | `0814d4a5c` | A busy lint store is read again until the deadline's read; any other failure stays `unread`. |
 
 ## Each cell before and after
 
@@ -27,7 +29,9 @@ The status wait each change now matches is `waitForStatus` (`src/cli/status-wait
 | checkpoint and group: chain head | `store unopened → stopped` | `STORE`: `store unopened → unopened` (why); `store busy ∧ late → unopened` (why); `store busy → go on` | A read that fails with a busy lock is skipped; the deadline's read that cannot read ends the wait with the store's reason (`status-wait.ts:395-398`) |
 | `GONE` | `ping due ∧ no daemon → stopped`: a ping on every fifth read (`PING_POLLS`) | `daemon down → stopped`, with the reading: at every read that reaches the rule, `watch.judge(record, at, stoppingOf(store, worktree, at))` | `status-wait.ts:296-301` and its `settled && daemon.state === "down"` (line 356) |
 | lint group chain | `late → deadline` before `nothing to lint → ended` | `nothing to lint → ended` before `late → deadline` | The group wait's own order (`files settled` before `late`) |
-| lint group outcome order | off, unread, then deadline > ended, then stopped | off, unread, then ended > deadline, then stopped | |
+| lint group outcome order | off, unread, then deadline > ended, then stopped | off, unread, a busy lint store at the deadline's read, then ended > deadline, then stopped | |
+| lint group: the lint store read (review 0.1.474 B1) | `withLint(lintStoreSource(commonDir, root))`, the lint store's default 1 s busy timeout; a busy store and a damaged row both `failed`, read as `unread`, which ended the wait at once | The CLI's own read (`lintRead` in `wait/reads.ts`): `lintStoreSource(commonDir, root, { busyTimeoutMs })` with `readBound`'s timeout; an error at the open or in the read that `isBusy` tells is `counts: "busy"` with why and `late` as the read began; any other failure, a missing store and an unreadable one stay `unread` | The worktree store's rule above (`STORE`), itself `status-wait.ts:244-249` and `395-398` |
+| lint group chain head (review 0.1.474 B1) | `lint off → off`; `lint unread → unread` | then `lint busy ∧ late → unopened` (why); `lint busy → go on` | as the worktree rows' `STORE` |
 
 Common to every row now, so not a cell: every socket request ends by the deadline (`askWithin`).
 
@@ -67,6 +71,8 @@ The first `run-all` request (`run.ts` `requestRunAll`) and the first `run-slow` 
 
    Was: `… the daemon stopped before it ended` (a store that did not open), or a stack trace and exit 1 (a busy store).
 
+4a. Review 0.1.474 B1, the lint group: `Group <g> has no verdict: lint store busy, waited <n> ms: another process holds the lint store's lock; run the command again once it is released`, exit 3, at the deadline's read only. A busy lint store before the deadline is read again. Was: `Group <g> has no verdict: the lint store cannot be read` after about 1 s of a busy store, whatever the deadline. A damaged, newer or missing lint store keeps that line.
+
 ### A gone daemon (decision 4 item 2)
 
 5. The stopped lines keep their lead and name why in parentheses, in the status waits' words (`noDaemonText`, `status-wait-lines.ts`):
@@ -91,7 +97,7 @@ The first `run-all` request (`run.ts` `requestRunAll`) and the first `run-slow` 
 What changes in how a run wait ends:
 
 - **005 D1, exit 3 list.** "no daemon" now also covers: the daemon did not answer within its bound (the first request or a status request), and the store did not open (named by its reason). The daemon is judged gone as `status --wait` judges it: a cleared record at the next read, a handoff waited through to its bound, a dead daemon after the heartbeat's grace and 10 s of a dead socket (15 to 20 s after its last heartbeat). The first line names which.
-- **019 D6.** The same for `run <group> --wait` and its narrow run; a lint group whose last check ended by the deadline's read gives its verdict, as a test group does.
+- **019 D6.** The same for `run <group> --wait` and its narrow run; a lint group whose last check ended by the deadline's read gives its verdict, as a test group does. A busy lint store is read again until the deadline's read, as the worktree store is; one still busy then ends the wait with why, exit 3 (review 0.1.474 B1). A damaged lint store still ends the wait with `the lint store cannot be read`.
 
 ## Flipped or replaced test cases
 
@@ -114,6 +120,9 @@ What changes in how a run wait ends:
 | same | "deadline beats ended at the deadline's read: no verdict (accidental, 011-327)" | "ended beats deadline at the deadline's read: the verdict, as a test group" |
 | `test/cli/wait/lines.test.ts` | the stopped rows, the lead alone | the lead with `(<reason>)`; new rows for `unopened`, a handoff, and the busy-daemon request lines |
 | `test/cli/wait/first-request.test.ts` | (new file) | four command rows: `run --all` and `run --slow`, with and without `--wait`, on a daemon that holds the request |
+| `test/cli/wait/lint-loop.test.ts` | (new file; the lint group's loop rows moved here from `run-loop.test.ts`, unchanged) | review 0.1.474 B1: "a busy lint store is read again: released at the first pause, the next read gives the verdict"; "a lint store busy through the deadline: the deadline's read ends the wait with why"; "a damaged lint store still ends the wait as unread" |
+| `test/cli/wait/table.test.ts` | (none) | "go on: a busy lint store before the deadline is read again"; "unopened: a lint store busy at the deadline's read, with why"; the lint group's outcome set gains `unopened` |
+| `test/cli/wait/lines.test.ts` | (none) | "unopened: the lint store busy at the deadline's read" |
 
 ## Decisions the record did not settle, and my choice
 
@@ -122,7 +131,7 @@ What changes in how a run wait ends:
 3. **`late` on a busy read** is whether the deadline had passed when the read began, as `waitForStatus`'s `final`: the read's busy timeout was chosen from it. Otherwise a busy read bounded by what is left would always end late and never get the full timeout at the deadline's read.
 4. **No settle time.** `waitForStatus` never ends on no daemon before 750 ms (`STATUS_WAIT_SETTLE_MS`), for a daemon a hook just spawned. A run wait starts after the daemon answered its request, so the record is there; a `squeal stop` before the first read ends it at that read.
 5. **The lint group's presence read.** The lint group reads the lint store, not the worktree's. Its `GONE` rule reads presence in a read of the worktree's store of its own, bounded as the other reads (`presenceRead`). A worktree store that does not open there proves nothing: `unread`, and the wait goes on.
-6. **The lint store's busy read is unchanged.** A busy lint store still ends the lint group with `the lint store cannot be read` (`unread`): `withLint` reports a busy store and a damaged row alike as `failed`, and telling them apart is a change in `src/core/lint/`. Named here; not changed.
+6. **The lint store's busy read (repaired after review 0.1.474 B1).** The first candidate left a busy lint store ending the wait as `unread` after about 1 s, because `withLint` reports a busy store and a damaged row alike as `failed`. The repair needs no `src/core` change: the lint read opens the store itself through `lintStoreSource(commonDir, root, { busyTimeoutMs })` with `readBound`'s timeout, runs the counts, closes it, and tells a busy error with `isBusy` (`src/core/store/connection.ts`) at the open and in the read. A busy read is `counts: "busy"`: read again before the deadline, and at the deadline's read the wait ends as `unopened` with why, exit 3. Any other failure stays `unread`, so a damaged row is never read again forever. One attempt per read, with SQLite's busy handler waiting the bound; `withStatusStore` also tries again within the bound for a store that answers busy at once (row 011-113). The lint read does not: before the deadline the next read comes a second later, and only the deadline's read could end early that way. A busy read's `late` is whether the deadline had passed when it began (decision 3); the read loop now keeps a field a read already gave, so the row's `late` read does not replace it.
 7. **The stopped line** keeps its lead (`the daemon stopped before …`) and names why in parentheses with `noDaemonText`. The liveness it reads is built from the same store read as the wait view (`worktreeLiveness` with the stopping reading), not from a second status read: `noDaemonText` reads only the state, the time since and a handoff's successor.
 8. **A handoff with the record cleared, past its claim's bound,** reads `stopped`, not `handoff`: presence's `stoppingOf` reads a cleared record's claim only before its bound. The `handoff` reason is a recorded stopping daemon past its bound. This is presence's rule; the row does not change it.
 9. **The watch is a port** (`WaitPorts.watch`, production `watchDaemon` as `waitForStatus` builds it). The cleared-record and handoff rows run the real `watchDaemon`. The stale-heartbeat rows (died, busy) use `presenceWatch` in `test/cli/wait/fixture.ts`, presence's own `waitView` with a socket state the row sets: `watchDaemon` asks the socket in the background, and a stepped clock does not wait for that answer.
@@ -139,7 +148,8 @@ What changes in how a run wait ends:
 - `wait/presence.ts` (new): `readBound`, `presenceOf`, `presenceRead`, `stoppedText`.
 - `run.ts`: new exports `recordedOf` and `Recorded`; private `requestRunAll`.
 - `run-slow.ts`: new exports `pendingText` (it takes a `Pending`) and `Pending`.
-- `run-lint-group.ts`: `lintGroupVerdictLine(outcome, group, command)`, a new parameter.
+- `run-lint-group.ts`: `lintGroupVerdictLine(outcome, group, command)`, a new parameter; it words `unopened` (review 0.1.474 B1).
+- Review 0.1.474 B1: the condition `lint busy`; `WaitRecord.counts` may be `busy`; `LintGroupOutcome` has `UnopenedOutcome`. In `wait/reads.ts` the private `lintCounts` became `lintRead` (it returns the record's fields) and `countsIn`.
 - `status-wait-lines.ts`: `noDaemonText` exported; its body unchanged.
 
 ## For the next worker
