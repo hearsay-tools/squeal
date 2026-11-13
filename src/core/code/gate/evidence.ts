@@ -70,6 +70,59 @@ export async function evidenceOf(
 }
 
 /**
+ * Spec 013 V8 as amended (row 020-50, #207): one stderr line per file whose
+ * worker Vitest timed out terminating (`warned`), saying whether its result
+ * counts in this report, from the files' final evidence: it counts when the
+ * file completed, its failed tests included, and does not when the report
+ * lists it as not finished, as in a crashed run. It says nothing of
+ * storage, which is the keeper's (D17.3). A warned path this command did
+ * not run here, as one the stores served, gives no line.
+ */
+export function teardownLines(
+  warned: Iterable<RelativePath>,
+  files: readonly TestFileEvidence[],
+): string[] {
+  const lines: string[] = [];
+  for (const path of [...new Set(warned)].sort(compare)) {
+    const ran = files.filter(
+      (f) => f.runner === "vitest" && f.path === path && f.from === undefined,
+    );
+    if (ran.length === 0) continue;
+    const completed = ran.filter((f) => f.completed);
+    const failed = completed.reduce((sum, f) => sum + f.failed.length, 0);
+    const failures =
+      failed === 0 ? "" : `, ${failed === 1 ? "1 failed test" : `${failed} failed tests`} included`;
+    const what =
+      completed.length === ran.length
+        ? `the file completed, so its result counts in this report${failures}`
+        : completed.length === 0
+          ? "the report lists the file as not finished, so its result does not count"
+          : `the file completed in ${completed.length} of its ${ran.length} projects, so its result counts in this report for those only${failures}`;
+    lines.push(`squeal code: Vitest timed out terminating the worker of ${path}; ${what}.\n`);
+  }
+  return lines;
+}
+
+/**
+ * Row 020-50 (#207): the files of each worker Vitest timed out terminating,
+ * heard through `CollectOptions.teardown` until the adapters closed, and
+ * their lines (`teardownLines`) once the evidence is final.
+ */
+export class TeardownWarnings {
+  readonly #warned = new Set<RelativePath>();
+
+  /** `CollectOptions.teardown`. */
+  readonly hear = (files: readonly RelativePath[]): void => {
+    for (const file of files) this.#warned.add(file);
+  };
+
+  /** Writes each line of the files heard, given the final evidence, to `write`. */
+  tell(files: readonly TestFileEvidence[], write: (text: string) => void): void {
+    for (const line of teardownLines(this.#warned, files)) write(line);
+  }
+}
+
+/**
  * D14.2: each file the scope left out with its closure, read with no run
  * and no setup; `null` when the runner cannot give it. None with no scope.
  */
