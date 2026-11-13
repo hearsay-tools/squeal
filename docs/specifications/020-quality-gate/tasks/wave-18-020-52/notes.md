@@ -100,3 +100,14 @@ Export-only branches that stay in `export.ts`, because they are not reasons of D
 | Each refusal reason of D13.2 comes from the one module | `grep -rnE 'reason: "(duplicate\|unusable\|environment\|closure\|input\|record\|unread\|source)"' src/` finds them in `src/core/ci/reuse.ts` only (two unrelated hits in `status-wait-ask-store.ts` and `crap/loaders.ts` are other types). |
 | A test per deliberate difference | Section 3, column "Test": `test/ci/reuse.test.ts`, 11 tests. |
 | No change to report fields, stderr text, exit codes or exports | The gate's report and stderr tests (`parts-refused`, `report-refused`, `code-gate-parts*`) and the export's text, counts and bundle tests (`export*`, `ci-export*`) pass unchanged. |
+
+## 7. Checks run and not run
+
+Run, with their real results:
+
+- `pnpm run lint`: `Checked 3343 files in 1274ms. No fixes applied.`
+- `pnpm run typecheck` (`tsrs --fast --noEmit`): no errors.
+- `squeal status --wait 60000` over the seven changed source files and `test/ci/reuse.test.ts`, revision 16 (commit `4b1c5b9fb`): Squeal selected 351 affected test files. Final output at revision 17 (only this notes file changed since 16): `Named test files at revision 17: 4 known failures: 4 tests; 351 test files, each with a current result`. So 347 pass and 4 fail, the four below. 6 worktree test files stay unknown (not in this selection).
+- Known failures, all four expected and not fixed here: the bundle-drift tests `test/harness/plugin.test.ts`, `test/harness/codex/packaging/runtime.test.ts`, `test/harness/opencode/package.test.ts`, `test/harness/pi/package.test.ts` ("cli/squeal.mjs differs from the build"). The wave forbids `pnpm run build` in a worker tree, and this row does not own `plugins/*/dist`; the coordinator rebuilds the bundles at integration.
+
+Not run: `pnpm run build` (wave rule); a full suite or `squeal run --all` (worker rule; CI runs the full suite); `test/e2e/**` (outside Squeal, and no row file is an e2e path).
