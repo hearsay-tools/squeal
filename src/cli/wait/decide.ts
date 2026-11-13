@@ -92,6 +92,7 @@ const HOLDS: Readonly<Record<Condition, (r: WaitRecord) => boolean>> = {
     r.classes !== undefined && r.classes.byClass.pending === 0 && !r.classes.unlisted,
   "lint off": (r) => r.counts === "off",
   "lint unread": (r) => r.counts === "unread",
+  "lint busy": (r) => r.counts === "busy",
   "nothing to lint": (r) => typeof r.counts === "object" && r.counts.linting === 0,
   "daemon down": (r) => r.daemon?.state === "down",
 };
