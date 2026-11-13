@@ -3,14 +3,14 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { availableParallelism, cpus, loadavg } from "node:os";
-import type { SchedulerContext } from "../../../src/core/scheduler/context.js";
-import { newFileState } from "../../../src/core/scheduler/files.js";
-import type { Ledger } from "../../../src/core/scheduler/ledger.js";
-import { priorityOf, RunQueue } from "../../../src/core/scheduler/queue.js";
-import { isCatchUp } from "../../../src/core/scheduler/revision.js";
-import { slowFiles } from "../../../src/core/slow/classify.js";
-import type { TestFileRef } from "../../../src/core/types/keys.js";
-import { DEFAULT_POLICY } from "../../../src/core/types/policy.js";
+import type { SchedulerContext } from "../../../../../../src/core/scheduler/context.js";
+import { newFileState } from "../../../../../../src/core/scheduler/files.js";
+import type { Ledger } from "../../../../../../src/core/scheduler/ledger.js";
+import { priorityOf, RunQueue } from "../../../../../../src/core/scheduler/queue.js";
+import { isCatchUp } from "../../../../../../src/core/scheduler/revision.js";
+import { slowFiles } from "../../../../../../src/core/slow/classify.js";
+import type { TestFileRef } from "../../../../../../src/core/types/keys.js";
+import { DEFAULT_POLICY } from "../../../../../../src/core/types/policy.js";
 
 const start = performance.now();
 console.log(
