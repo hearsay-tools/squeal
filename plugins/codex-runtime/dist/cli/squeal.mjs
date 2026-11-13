@@ -6540,7 +6540,7 @@ function createConsumerRepo(conn) {
     conn.run(`DELETE FROM consumer_views WHERE ${WHERE_CONSUMER}`, ...consumerParams(consumer));
     conn.run(`DELETE FROM consumers WHERE ${WHERE_CONSUMER}`, ...consumerParams(consumer));
   });
-  const idleSince = (cutoff) => conn.all(
+  const idleSince2 = (cutoff) => conn.all(
     `SELECT * FROM consumers
          WHERE last_seen_at < ? AND coalesce(last_delivered_at, 0) < ?
          ORDER BY worktree_id, session_id, agent_id`,
@@ -6588,11 +6588,11 @@ function createConsumerRepo(conn) {
     },
     unregister,
     expire: (cutoff) => conn.transaction(() => {
-      const expired = idleSince(cutoff).map((record2) => record2.consumer);
+      const expired = idleSince2(cutoff).map((record2) => record2.consumer);
       for (const consumer of expired) unregister(consumer);
       return expired;
     }),
-    idleSince
+    idleSince: idleSince2
   };
 }
 function toConsumer(row2) {
@@ -14264,6 +14264,7 @@ function newFileState(ref3) {
     failing: false,
     durationMs: null,
     phase: null,
+    leftPendingAt: null,
     runningKey: null,
     unknownKey: null,
     discards: 0,
@@ -17419,6 +17420,7 @@ var init_ledger = __esm({
         const phase = running ? "running" : this.queue.has(file.ref) ? "queued" : null;
         if (phase === file.phase) return;
         file.phase = phase;
+        if (phase === null) file.leftPendingAt = this.context.now();
         this.#dirty.add(file.id);
       }
       /** Marks a file's key row as owed, for callers that change a file directly. */
@@ -55740,25 +55742,26 @@ var init_mutex = __esm({
 });
 
 // src/core/store/covered-files.ts
-function writeCoveredFiles(store, record2, pending) {
+function writeCoveredFiles(store, record2, activity) {
   const conn = connection(store);
   if (conn === null) return;
   if (!hasTable(conn)) conn.db.exec(TABLE_SQL);
   const now = record2.recordedAt;
-  const open7 = conn.all(
-    `SELECT id, files FROM ${COVERED_FILES_TABLE} WHERE worktree_id = ? AND idle_since IS NULL`,
+  const rows = conn.all(
+    `SELECT id, recorded_at, idle_since, files FROM ${COVERED_FILES_TABLE} WHERE worktree_id = ?`,
     record2.worktreeId
   );
-  for (const row2 of open7) {
-    if (parseFiles(row2.files).some((file) => pending(file.testFile))) continue;
-    conn.run(`UPDATE ${COVERED_FILES_TABLE} SET idle_since = ? WHERE id = ?`, now, String(row2.id));
+  for (const row2 of rows) {
+    const id = String(row2.id);
+    const was = row2.idle_since === null ? null : Number(row2.idle_since);
+    const files5 = parseFiles(row2.files);
+    const idle2 = idleSince(files5, was, Number(row2.recorded_at), now, activity);
+    if (idle2 !== null && idle2 <= now - COVERED_FILES_KEPT_MS) {
+      conn.run(`DELETE FROM ${COVERED_FILES_TABLE} WHERE id = ?`, id);
+    } else if (idle2 !== was) {
+      conn.run(`UPDATE ${COVERED_FILES_TABLE} SET idle_since = ? WHERE id = ?`, idle2, id);
+    }
   }
-  conn.run(
-    `DELETE FROM ${COVERED_FILES_TABLE} WHERE worktree_id = ? AND idle_since <= ?`,
-    record2.worktreeId,
-    now - COVERED_FILES_KEPT_MS
-  );
-  const busy2 = record2.files.some((file) => pending(file.testFile));
   conn.run(
     `INSERT INTO ${COVERED_FILES_TABLE} (id, worktree_id, revision, recorded_at, idle_since, files)
      VALUES (?, ?, ?, ?, ?, ?)`,
@@ -55766,9 +55769,16 @@ function writeCoveredFiles(store, record2, pending) {
     record2.worktreeId,
     record2.revision,
     now,
-    busy2 ? null : now,
+    idleSince(record2.files, null, now, now, activity),
     JSON.stringify(record2.files)
   );
+}
+function idleSince(files5, was, recordedAt, now, activity) {
+  if (files5.some((file) => activity.pending(file.testFile))) return null;
+  if (was === null && files5.some((file) => !activity.listed(file.testFile))) return now;
+  let idle2 = Math.max(was ?? recordedAt, activity.knownSince);
+  for (const file of files5) idle2 = Math.max(idle2, activity.leftAt(file.testFile) ?? idle2);
+  return idle2;
 }
 function connection(store) {
   try {
@@ -55829,6 +55839,9 @@ function coveredOf(file, waiting2) {
   return { testFile, state: "not-queued", reason: reason2 };
 }
 function recordCovered(context, ledger, id, files5, waiting2) {
+  const now = context.now();
+  const since = knownSince.get(ledger) ?? now;
+  knownSince.set(ledger, since);
   const unique = [...new Map(files5.map((file) => [file.id, file])).values()];
   writeCoveredFiles(
     context.store,
@@ -55836,17 +55849,24 @@ function recordCovered(context, ledger, id, files5, waiting2) {
       id,
       worktreeId: context.worktreeId,
       revision: ledger.revision.number,
-      recordedAt: context.now(),
+      recordedAt: now,
       files: unique.map((file) => coveredOf(file, waiting2))
     },
-    (ref3) => (ledger.file(ref3)?.phase ?? null) !== null
+    {
+      listed: (ref3) => ledger.file(ref3) !== void 0,
+      pending: (ref3) => (ledger.file(ref3)?.phase ?? null) !== null,
+      leftAt: (ref3) => ledger.file(ref3)?.leftPendingAt ?? null,
+      knownSince: since
+    }
   );
 }
+var knownSince;
 var init_covered_files2 = __esm({
   "src/core/scheduler/covered-files.ts"() {
     "use strict";
     init_covered_files();
     init_files();
+    knownSince = /* @__PURE__ */ new WeakMap();
   }
 });
 
