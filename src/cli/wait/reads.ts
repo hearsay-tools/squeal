@@ -11,6 +11,7 @@ import { groupView } from "../../core/scheduler/slow.js";
 import { isStoreOpenFailure, openStore } from "../../core/store/open.js";
 import type { AbsolutePath, RevisionNumber, WorktreeId } from "../../core/types/common.js";
 import type { TestFileRef } from "../../core/types/keys.js";
+import type { StatusUnavailable } from "../../core/types/status.js";
 import type { Store } from "../../core/types/store.js";
 import type { CheckpointLane } from "../../core/types/store-records.js";
 import { laneFiles } from "../run-lanes.js";
@@ -58,8 +59,8 @@ export type RunWaitAsk =
       readonly files: Extract<WaitFiles, { kind: "group" }>;
     });
 
-/** The store fields a read fills; `store` and `daemon` are the loop's. */
-export type StoreField = Exclude<ReadField, "store" | "daemon">;
+/** The store fields a read fills; `store`, `unavailable` and `daemon` are the loop's. */
+export type StoreField = Exclude<ReadField, "store" | "unavailable" | "daemon">;
 
 /** One read's reader: the record's value for `field`. */
 export type FieldReader = (field: StoreField) => Partial<WaitRecord>;
@@ -176,7 +177,8 @@ function ownOf(
 
 /**
  * `read` over the worktree's store, or `null` when it cannot be opened: the
- * reads of `run --all --wait` and `run <group> --wait`.
+ * reads beside a run wait (`run.ts`, `group-pending.ts`). A busy store
+ * throws; the run waits' own reads go through `withStatusStore` (row 011-327).
  */
 export function inStore<T>(
   root: AbsolutePath,
@@ -192,6 +194,15 @@ export function inStore<T>(
   } finally {
     store.close();
   }
+}
+
+/** `withStatusStore`'s words before why a store was not read; a run wait's line names only why. */
+const UNAVAILABLE_LEAD = "status unavailable, ";
+
+/** Why the worktree's store was not read (row 011-327): "no Squeal store at …", "store busy, waited …". */
+export function unavailableText(unavailable: StatusUnavailable): string {
+  const { message } = unavailable;
+  return message.startsWith(UNAVAILABLE_LEAD) ? message.slice(UNAVAILABLE_LEAD.length) : message;
 }
 
 /** The group's lint checks as the lint store has them. */

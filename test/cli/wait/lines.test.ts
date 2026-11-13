@@ -75,6 +75,12 @@ describe("the checkpoint wait's lines (spec 005 D1)", () => {
     ],
     ["stopped", { kind: "stopped" }, false, `${NONE} the daemon stopped before it ended`],
     [
+      "unopened: why the store was not read (011-327)",
+      { kind: "unopened", unavailable: "no Squeal store at /r/.git/squeal/store.sqlite" },
+      false,
+      `${NONE} no Squeal store at /r/.git/squeal/store.sqlite`,
+    ],
+    [
       "stopped, owed to the next daemon (001-219)",
       { kind: "stopped" },
       true,
@@ -133,6 +139,15 @@ describe("the group wait's lines (spec 019 D6)", () => {
       { kind: "stopped" },
       true,
       `have no verdict: the daemon stopped before the selected test files had results`,
+    ],
+    [
+      "unopened: why the store was not read (011-327)",
+      {
+        kind: "unopened",
+        unavailable: "store version newer than this Squeal (store 9, supported 8)",
+      },
+      false,
+      `${NONE} store version newer than this Squeal (store 9, supported 8)`,
     ],
   ])("%s", (_name, outcome, narrow, text) => {
     expect(groupVerdictLine(wait(narrow), outcome, "squeal")).toEqual([text, 3]);
