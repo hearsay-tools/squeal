@@ -4,9 +4,11 @@ import { availableParallelism, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach } from "vitest";
 import { codeCommand } from "../../src/cli/code.js";
-import { codeGateCommand } from "../../src/cli/code-gate.js";
+import { codeGateCommand, type GateIo } from "../../src/cli/code-gate.js";
 import type { CliIo } from "../../src/cli/main.js";
 import type { GateAdapters } from "../../src/core/code/gate/runners.js";
+import type { HostLoad } from "../../src/core/retry/load.js";
+import { quiet } from "../code/gate/host-load.js";
 import { initRepo, writeFile } from "../hash/git-repo.js";
 
 /*
@@ -105,9 +107,18 @@ export interface CodeOptions {
   readonly stderr?: (text: string) => void;
   /** Sees each write to stdout as it comes. */
   readonly stdout?: (text: string) => void;
+  /**
+   * The host's load the gate reads to rerun a failure under load (row
+   * 020-54); by default below the threshold (`quiet`), so a test not about
+   * the rerun does not depend on the host. `null`: the daemon's own reading.
+   */
+  readonly hostLoad?: (() => HostLoad) | null;
 }
 
-/** `squeal code <args>` in `cwd`, as the CLI dispatches it, or the gate with `options.adapters`. */
+/**
+ * `squeal code <args>` in `cwd`, as the CLI dispatches it, or the gate with
+ * `options.adapters`; the gate reads the host load `options.hostLoad` gives.
+ */
 export async function code(
   cwd: string,
   args: readonly string[],
@@ -115,7 +126,8 @@ export async function code(
 ): Promise<Ran> {
   let stdout = "";
   let stderr = "";
-  const io: CliIo = {
+  const hostLoad = options.hostLoad === undefined ? quiet : options.hostLoad;
+  const io: GateIo = {
     stdout: (text) => {
       stdout += text;
       options.stdout?.(text);
@@ -126,6 +138,7 @@ export async function code(
     },
     cwd,
     env: options.env ?? {},
+    ...(hostLoad === null ? {} : { hostLoad }),
   };
   const result =
     options.adapters === undefined
