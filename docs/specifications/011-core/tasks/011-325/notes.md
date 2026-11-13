@@ -55,7 +55,7 @@ Not recorded: promote and focus (`covers: { skip }`, they queue no file), an imp
 2. **`run --all` adds what its checkpoint lacks**: its covered files are the checkpoint's `testFiles` plus the lane's listed files already current. Those are current, so their phase is `null` and the progress record (`RequestProgress.ask` keeps queued or running ones only) is unchanged.
 3. **`run --all` while waiting** records its lane's files (all listed files without `--fast`/`--slow`), not the abandoned checkpoint's (every listed file, whatever the lane): the request's own files, as in the joined case.
 4. **The install-wait answers record too** (`InstallWaitRule.stage` and `.answer` return `Staged<A>`). The narrow run's install-wait answer wrote nothing before; it now writes its record in one busy-retried transaction under the lock it already holds. Its answer is unchanged; on a busy store it now waits for the store like any request.
-5. **Every taken stage writes a record**, also one with no files (an unknown group, a `retry` that claimed nothing): the rule stays one line in the intake, and such a record is idle at once and pruned 10 minutes later.
+5. **Every taken stage writes a record unless its declaration names why not** (`StageRule.record: { skip }`), also one with no files (an unknown group, a `retry` that claimed nothing): such a record is idle at once and pruned 10 minutes later. The skip is for a request whose answer carries no id, so no wait could read its record: W1's import (below). `retry` keeps its record: the brief's table has a row for it.
 6. **The prune reads the ledger** (`ledger.file(ref)?.phase`), not the store's `test_file_keys.pending`, through a predicate `writeCoveredFiles` takes, so the store module stays free of the scheduler.
 7. **The run-all id beside `owner`** needed a two-line edit of the bridge file `handlers.ts` (`runAll`): agreed with the coordinator, request `e0083705`, option A, in its own commit.
 8. **The probe moved** from `request-intake.test.ts` to `test/scheduler/request-intake-probe.ts`, shared by the intake's table and the covered-files table, which keeps both test files near 300 lines. Its `record` now also feeds the real `RequestProgress` (the ledger's `ends`), and its clock is `state.now`, fixed unless a row moves it.
@@ -73,11 +73,14 @@ All additive except the intake's own declaration types:
 
 - New `src/core/store/covered-files.ts`: `CoveredFile`, `CoveredFiles`, `COVERED_FILES_TABLE`, `COVERED_FILES_KEPT_MS`, `writeCoveredFiles`, `readCoveredFiles`.
 - New `src/core/scheduler/covered-files.ts`: `coveredOf`, `recordCovered`.
-- `request-intake-types.ts`: new `RequestId`; `StageRule.stage` takes a fourth argument `id`; `InstallWaitRule`'s `stage` takes `id` and returns `Staged<A>` (was `A`), its `answer` takes `id` last and returns `Staged<A>` (was `A`). `Staged`'s doc now says the covered files include current and not-queued ones.
+- `request-intake-types.ts`: new `RequestId`; `StageRule.stage` takes a fourth argument `id`; new optional `StageRule.record: Skip` (why no covered-files record is written); `InstallWaitRule`'s `stage` takes `id` and returns `Staged<A>` (was `A`), its `answer` takes `id` last and returns `Staged<A>` (was `A`). `Staged`'s doc now says the covered files include current and not-queued ones.
 - `types/scheduler.ts`: `FullSuiteCheckpoint.coveredId?` and `SlowSuiteRequest.coveredId?` (so `NarrowRunRequest` too).
 - `types/daemon.ts`: `RunAllResponse.coveredId?`; new `RequestTaken { revision, queued, coveredId? }`, now the type of `RunSlowResponse.requested` and `RunGroupResponse.requested` (the same shape as before plus the optional field; `SlowSuiteRequested` follows).
 
 ## For W1 (row 011-323) and the coordinator
+
+- **The import's record skip, at integration.** W1 makes the import a staged async request (`importRequest`, `imports-waiting.ts`) whose answer is a boolean with no id. Without a skip, every import would write an empty covered-files record. Its declaration names why not, beside its stage: `store: { stage: ..., record: { skip: "an import's answer is a boolean and carries no id, so no wait reads a record of its files" } }`. The intake then writes no record for it, in the stage and in any install-wait answer, and its progress record (`covered: []`) is as before. Test: "writes none for a request that names why, and keeps its progress record" (`request-covered.test.ts`).
+- W1's `WakeRule` `{ coveredLanes }` and the wake call in `#stage` do not touch the record lines: the record is written inside the transaction, the wake after the commit.
 
 - `request-intake.ts`: `#locked` makes the id; `#perTry(request, store, id)` and `#stage(request, store, plan, id, reason, recovered, deferWhenPending)` take it. `#now`, `take`'s first overload, `WakeRule` and `#wake` are untouched.
 - `retries.ts`: only `retryRequest`'s doc comment changed; its `wake` is W1's.
