@@ -100,12 +100,12 @@ describe("the checkpoint wait's loop (row 011-326)", () => {
     expect(clock.pauses).toEqual([1_000, 1_000, 1_000, 1_000]);
   });
 
-  it("a ping with no answer throws out of the wait (review 0.1.469 N2; 011-327 flips it)", async () => {
-    const { w, clock, ask } = checkpointWait(60_000);
+  it("a ping with no answer is a busy daemon: it goes on, no throw (011-327, review 0.1.469 N2)", async () => {
+    const { w, clock, ask } = checkpointWait(6_000);
     w.file(A, { validity: "pending", pending: "running" });
     const ports = timingOut(clock.ports, ["ping"]);
-    await expect(runWait(ask, ports)).rejects.toThrow(/no answer from .* in 2000 ms/);
-    expect(clock.pauses).toEqual([1_000, 1_000, 1_000, 1_000]);
+    expect(await runWait(ask, ports)).toMatchObject({ kind: "deadline" });
+    expect(clock.pauses).toEqual([1_000, 1_000, 1_000, 1_000, 1_000, 1_000]);
   });
 
   it("moved: a revision recorded during the wait", async () => {
