@@ -75,20 +75,20 @@ Messages, shaped by `RunnerAdapter` (`src/core/types/runner.ts`):
 
 | Message | Answer |
 |---|---|
-| `start` with protocol version, Squeal version, policy values (the adapter's `exclude`, `observe` and similar options as data) | the environment descriptor (spec 018 D1), the values of the synchronous members (`slowWidth`, `tierWidth`, `focuses` and the rest), capabilities |
+| `start` with protocol version, Squeal version, policy values (the adapter's `exclude`, `observe` and similar options as data) | the environment descriptor (spec 018 D1), the values the runner's traits answer from (the files the listing left out, Vitest's widths), capabilities |
 | `testFiles`, `enumerate`, `closure`, `invalidate`, `affected` | the adapter's answer, paths relative to the root |
 | `blobs` with paths | the git blob id of each path, or absent |
 | `run` with files, run options and the expected blob ids of each file's closure | streamed `fileEnded` events, then the `RunReport`, observed inputs, the blob ids of closure and observed paths after the run, and the run's log files |
 | `cancel` | the cancelled run still answers once |
 | `close` | the host closes its adapter and exits |
 
-Events from the host: `note` and `optimizer` (today's callbacks), and a new values message when an instance restart changes a synchronous member. `beforeForce` runs on the host. Every request has a deadline the daemon sets. When its input ends, the host stops its run and its workers and exits (`runner-split.md` Q6: 1.5 s in the prototype). Protocol versions are compared at `start`; a host of another Squeal version is refused.
+Events from the host: `note` and `optimizer` (today's callbacks), and a new values message when an instance restart changes those values. `beforeForce` runs on the host. Every request has a deadline the daemon sets. When its input ends, the host stops its run and its workers and exits (`runner-split.md` Q6: 1.5 s in the prototype). Protocol versions are compared at `start`; a host of another Squeal version is refused.
 
 Prior art for this shape: the LSP's process per root and the Bazel worker protocol (framed JSON over stdio, a handshake, one answer per cancelled request), Develocity Test Distribution for declared inputs and path mapping (`daemon-model.md` Q3, `runner-split.md` Q7).
 
 #### D7. The daemon's side
 
-A proxy adapter implements `RunnerAdapter` by sending these messages. It is one more `create` under `createRecoveringRunner` (`src/core/daemon/daemon.ts`). Watcher, hashing, keys, scheduler, store, the stability check and delivery stay in the daemon. The synchronous members answer from the values the host last reported. A host that exits or misses a deadline is a run that did not complete (`crashed` or `timed-out`, every check of the tier `unknown`); the recovering runner starts a new host.
+A proxy adapter implements `RunnerAdapter` by sending these messages. It is one more `create` under `createRecoveringRunner` (`src/core/daemon/daemon.ts`). Watcher, hashing, keys, scheduler, store, the stability check and delivery stay in the daemon. Its traits are its runner kind's (011 C14), answering from the values the host last reported. A host that exits or misses a deadline is a run that did not complete (`crashed` or `timed-out`, every check of the tier `unknown`); the recovering runner starts a new host.
 
 #### D8. Local runner hosts first
 
