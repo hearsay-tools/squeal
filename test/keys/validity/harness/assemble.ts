@@ -205,11 +205,14 @@ async function keyed(
   await keys.bootstrap(() => readHead(root));
   if (input.environment === undefined) keys.index.setEnvironment("", "environment");
   else await keys.setEnvironments([input.environment]);
-  for (const { path, imports } of input.closures) {
+  for (const { path, imports, walk } of input.closures) {
+    const testFile = { project: "", path };
     keys.setClosure(
-      { testFile: { project: "", path }, paths: [...imports] },
+      { testFile, paths: [...imports], ...(walk === undefined ? {} : { imports: walk }) },
       input.runtime?.saved === true,
     );
+    // For coverage only: row 021-28's read of what the worktree keeps, which no key reads.
+    keys.keptClosure?.(testFile);
   }
   if (input.refusedWrite === true) await refusedOnce(store, () => keys.trackUntracked());
   await keys.trackUntracked();
