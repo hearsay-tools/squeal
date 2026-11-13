@@ -30,7 +30,8 @@ squeal code: Vitest: 1 test file not taken from the parts, 1 run here: its part 
 2. `8c080d103` feat(020-49): the report gives `runs[].refused`. `types.ts`, `report.ts`, `runs.ts`; test `report-refused.test.ts` (new). This is the report-fields commit the brief asks for.
 3. `8a522fc1e` feat(020-49): `code-gate-stored.ts` passes the parts' refusals to the report (by agreement, request 42abfd07). The refusal sink and `Evidence.refused` only, 5 lines.
 4. `ba1785c37` feat(020-49): stderr gives one bounded line per refusal reason. `parts-refused.ts` (`refusedText`), `code-gate.ts` (`afterVerdict`); tests `report-refused.test.ts`, `test/cli/code-gate-parts-cases.test.ts`.
-5. This notes file.
+5. `bd57ba8b3` This notes file.
+6. `dabadaf5e` test(020-49): parts-versus-run comparisons leave out `refused`; the environment cases assert the reason. `test/cli/code-gate-parts-kit.ts`, `test/cli/code-gate-parts-environment.test.ts`.
 
 ## Proposed spec text (the coordinator amends the spec)
 
@@ -104,8 +105,9 @@ The done-when line most likely to be false was "a later store hit reads apart fr
 - `squeal status --wait 60000` on the new and changed test files, each at its revision: `test/code/gate/parts.test.ts`, `parts-refused.test.ts`, `test/ci/inputs.test.ts` pass (revision 15); `report-refused.test.ts`, `report-children.test.ts` pass (revision 18); `test/version-sensitive.test.ts` failed at revision 18 because `report-refused.test.ts` named a variable `nodeTest`, which that rule reads as a node:test caller; renamed, it passes at revision 19; `test/cli/code-gate-parts-cases.test.ts` passes (revision 26).
 - `pnpm exec vitest run test/cli/code-gate-parts-cases.test.ts`, run directly to confirm the new end-to-end cases ran: 7 passed in 6.93 s, load 10.33 on 24 CPUs.
 - `squeal code` on the changed source files: every function at or under complexity 20 (`gate` 19 after `afterVerdict`, `partsEvidence`'s lookup 17, `taken` 12). CRAP unknown while the affected tests are queued.
-- Expected failure: `test/harness/opencode/package.test.ts` "has the bundles exactly as `npm run build:plugin` produces them" fails at revision 27 (`cli/squeal.mjs differs from the build`). This is bundle drift: the source changed and the wave forbids `pnpm run build` in a worker tree. The other bundle tests (`plugins/claude-code/dist` and the other harness packages) will fail the same way. The coordinator's rebuild at integration clears them.
-- The affected-test verdict over every changed path is in the final report to the parent.
+- Expected failures: the four bundle tests above fail from revision 27 on. This is bundle drift: the source changed and the wave forbids `pnpm run build` in a worker tree. The coordinator's rebuild at integration clears them.
+- `test/cli/code-gate-parts-environment.test.ts`: two cases failed at revision 28. They compare a gate with parts to one without, through `sameApartFromSource`, which left out `from` but not the new `refused`. The helper now leaves out `refused` too, and both cases assert the `environment` reason. They pass at revision 29.
+- Affected-test verdict: `squeal status --wait 60000 $(git diff --name-only f15692098..HEAD -- src test)` at revision 30 (commit `dabadaf5e`): 372 test files selected, each with a current result. 368 pass. 4 tests fail, all bundle drift (`cli/squeal.mjs differs from the build`): `test/harness/plugin.test.ts`, `test/harness/codex/packaging/runtime.test.ts`, `test/harness/opencode/package.test.ts`, `test/harness/pi/package.test.ts`. 9 test files elsewhere in the worktree are unknown (never run here; the baseline is lookup-only); none is in this selection.
 
 ## Checks not run
 
