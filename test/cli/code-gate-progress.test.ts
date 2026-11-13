@@ -4,6 +4,7 @@ import { overrunText, timed } from "../../src/cli/code-gate-progress.js";
 import type { GateRunner } from "../../src/core/code/gate/report.js";
 import type { GateAdapters } from "../../src/core/code/gate/runners.js";
 import type { RunnerAdapter, RunReport } from "../../src/core/types/runner.js";
+import { NO_TRAITS } from "../../src/core/types/runner-traits.js";
 
 /*
  * Spec 020 rows 020-43 and 020-44 (#196): the stderr line that names a file
@@ -35,6 +36,7 @@ function waitingAdapter(): { adapter: RunnerAdapter; end: () => void } {
     failure: null,
   };
   const adapter = {
+    traits: NO_TRAITS,
     run: () => new Promise<RunReport>((resolve) => ends.push(() => resolve(report))),
   } as unknown as RunnerAdapter;
   return { adapter, end: () => ends.shift()?.() };
