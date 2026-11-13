@@ -76,9 +76,10 @@ import { priorityOf } from "./queue.js";
 import { BacklogQuiet, publishQuiet, quietSleepMs } from "./quiet.js";
 import { TierRecords } from "./record.js";
 import { lagging } from "./refine-apply.js";
+import { RequestIntake } from "./request-intake.js";
 import { RequestProgress } from "./request-progress.js";
 import { RERUN_CAP } from "./rerun.js";
-import { takeRetries } from "./retries.js";
+import { retryRequest, takeRetries } from "./retries.js";
 import { fetchRunnerRetry, keyRunnerRetry, storeRunnerRetry } from "./revision.js";
 import { RunnerWork } from "./runner-work.js";
 import { busyLanes } from "./slots.js";
@@ -162,6 +163,37 @@ class TierScheduler implements Scheduler {
   readonly #warmUp = new WarmUp();
   /** Row 018-12: the files explicit requests queued, whose ends are activity. */
   readonly #requests = new RequestProgress();
+  /** Row 011-322: the one place a request is taken; each request method is one call into it. */
+  readonly #intake = new RequestIntake({
+    lock: this.#lock,
+    started: () => this.#started(),
+    open: () => !this.#closed && this.#context !== null,
+    stopping: () => this.#stopping(),
+    waiting: () =>
+      this.#awaitingInstall
+        ? AWAITING_INSTALL_REASON
+        : this.#reinstalled
+          ? REINSTALLED_REASON
+          : null,
+    awaitingInstall: () => this.#awaitingInstall,
+    // Spec 021 D2: the request's pass is tried again on a busy store, as the feed's are.
+    installPass: () => this.#handleBatch({ trigger: "interval", paths: [] }, true),
+    passes: () => this.options.passes,
+    busy: () => {
+      const waits = this.options.busyWaits;
+      return waits === undefined ? undefined : { waits, sliceMs: this.options.busySliceMs };
+    },
+    runnerPending: () => this.#runnerWork.size > 0 || this.#runnerWork.refining,
+    afterRunnerWork: (task, operation) => this.#runnerWork.afterTier(task, operation),
+    record: (files) => this.#requests.ask(files),
+    wakeAll: () => this.#groups.preempt(),
+    wakeLane: (group) => {
+      this.#groups.lanes(this.#started().context.policy);
+      this.#groups.get(group)?.preempt();
+    },
+    cutTiers: () => this.#cutTiers(null),
+    pump: () => this.#pump(),
+  });
   /** The records of the runs that ended (row 011-131). */
   readonly #records: TierRecords;
   /** Something the pump waits for happened: a tier ended, runner work drained, a batch or request came. */
@@ -821,25 +853,15 @@ class TierScheduler implements Scheduler {
   }
 
   /** `squeal retry` (001-368): queues the requests in the store that may run now. */
-  async requestRetries(): Promise<void> {
-    if (this.#closed || this.#reinstalled || this.#awaitingInstall || !this.#context) return;
-    const operation = "taking squeal retry requests";
-    await this.#request(operation, () =>
-      this.#lock.run(
-        () =>
-          this.#transact((context, ledger) => {
-            if (this.#takeRetries(context, ledger)) ledger.commit();
-          }),
-        operation,
-      ),
-    );
-    this.#pump();
+  requestRetries(): Promise<void> {
+    return this.#intake.take(retryRequest());
   }
 
   /**
-   * `takeRetries`, each retry it claims and queues asked (row 018-12): at
-   * `squeal retry`, in a reconciliation pass, at start (review wave 3.6,
-   * B3). One that waits at the closed load gate asks nothing yet.
+   * `takeRetries`, each retry it claims and queues asked (row 018-12): in a
+   * reconciliation pass and at start (review wave 3.6, B3); `squeal retry`'s
+   * are its covered files (`retryRequest`). One that waits at the closed
+   * load gate asks nothing yet.
    */
   #takeRetries(context: SchedulerContext, ledger: Ledger): boolean {
     return takeRetries(context, ledger, (file) => this.#requests.ask([file]));

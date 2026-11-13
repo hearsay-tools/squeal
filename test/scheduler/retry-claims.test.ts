@@ -92,7 +92,7 @@ function queuedRetry() {
     at: 1,
     worktreeId: A,
   });
-  expect(takeRetries(a.context, a.ledger)).toBe(true);
+  expect(takeRetries(a.context, a.ledger, () => {})).toBe(true);
   expect(file.retryKey).toBe(K);
   expect(a.ledger.queue.isForced(FILE)).toBe(true);
   expect(readRetries(store)[0]?.claim?.worktreeId).toBe(A);
@@ -122,7 +122,7 @@ describe("a claimed retry whose file leaves its key", () => {
   it("is given back by the worktree's next daemon when the file went while none ran", () => {
     const { store, keys } = queuedRetry();
     const next = daemonA(store, keys, true);
-    expect(takeRetries(next.context, next.ledger)).toBe(false);
+    expect(takeRetries(next.context, next.ledger, () => {})).toBe(false);
     expect(readRetries(store)[0]).toMatchObject({ key: K, claim: null, end: null });
     expect(bTakes(store)).toBe(true);
   });
