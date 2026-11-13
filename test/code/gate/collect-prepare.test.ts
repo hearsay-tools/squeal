@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { loadBasePolicy } from "../../../src/core/code/gate/policy.js";
 import type { BasePrepares } from "../../../src/core/code/gate/prepare.js";
 import type { GateAdapters } from "../../../src/core/code/gate/runners.js";
@@ -25,6 +25,21 @@ import {
  * has none. The gate runs the base's `prepare` once before the entry's
  * files, inside the budget, and its success is never evidence.
  */
+
+/*
+ * Row 020-54 repair (review 0.1.468 B1): the entry `package` fails with no
+ * build, and a case counts its one run. The host reads as loaded at its CPU
+ * count through the daemon's own `hostLoad`, as on a busy CI runner; the
+ * fixture's pin (`quiet`) keeps this test's failing files from a rerun, so
+ * what it sees does not depend on the host.
+ */
+vi.mock("../../../src/core/retry/load.js", async (original) => {
+  const { AT } = await import("./host-load.js");
+  return {
+    ...(await original<typeof import("../../../src/core/retry/load.js")>()),
+    hostLoad: () => AT,
+  };
+});
 
 const E2E = "test/e2e/bin.test.mjs";
 const UNIT = "test/unit/names.test.mjs";

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { GateFunctionReport, GateReport } from "../../src/core/code/gate/report.js";
 import { code, edit, ownHomeAndTmp, repo } from "./code-gate-fixture.js";
 
@@ -12,6 +12,21 @@ import { code, edit, ownHomeAndTmp, repo } from "./code-gate-fixture.js";
  */
 
 const SLOW = { timeout: 240_000 } as const;
+
+/*
+ * Row 020-54 repair (review 0.1.468 B1): B fails on every run, and the next
+ * gate must read it from the stores. The host reads as loaded over its CPU
+ * count through the daemon's own `hostLoad`, as on a busy CI runner; the
+ * fixture's pin (`quiet`) keeps this test's failing files from a rerun, so
+ * what it sees does not depend on the host.
+ */
+vi.mock("../../src/core/retry/load.js", async (original) => {
+  const { OVER } = await import("../code/gate/host-load.js");
+  return {
+    ...(await original<typeof import("../../src/core/retry/load.js")>()),
+    hostLoad: () => OVER,
+  };
+});
 
 const A = "test/a.test.mjs";
 const B = "test/b.test.mjs";

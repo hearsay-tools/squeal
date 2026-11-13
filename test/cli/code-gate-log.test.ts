@@ -20,6 +20,21 @@ import { code, edit, keptLogs, ownHomeAndTmp, repo, SLOW } from "./code-gate-fix
  * removes it as it removes a daemon run's log.
  */
 
+/*
+ * Row 020-54 repair (review 0.1.468 B1): its gates fail `test/math.test.ts`
+ * and read the kept log of that one run. The host reads as loaded at its CPU
+ * count through the daemon's own `hostLoad`, as on a busy CI runner; the
+ * fixture's pin (`quiet`) keeps this test's failing files from a rerun, so
+ * what it sees does not depend on the host.
+ */
+vi.mock("../../src/core/retry/load.js", async (original) => {
+  const { AT } = await import("../code/gate/host-load.js");
+  return {
+    ...(await original<typeof import("../../src/core/retry/load.js")>()),
+    hostLoad: () => AT,
+  };
+});
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** The line's words where no daemon registered the worktree, as in these fixtures. */
