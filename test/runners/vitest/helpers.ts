@@ -9,8 +9,10 @@ import type {
   RunOptions,
   RunReport,
 } from "../../../src/core/types/runner.js";
+import type { VitestAdapter } from "../../../src/runners/vitest/adapter.js";
 import { createVitestAdapter } from "../../../src/runners/vitest/index.js";
 import { compareRefs } from "../../../src/runners/vitest/results.js";
+import { vitestTraits } from "../../../src/runners/vitest/traits.js";
 
 const fixturesDir = resolve(import.meta.dirname, "../../fixtures/vitest");
 
@@ -125,3 +127,12 @@ export const readsTest = (specifier: string, expected: string) =>
     `it("reads ${expected}", () => expect(which).toBe("${expected}"));`,
     "",
   ].join("\n");
+
+/**
+ * A bare `VitestAdapter` as a runner: Vitest's traits over its own listing
+ * and no widths, as `createVitestAdapter`'s answer before a start (row 011-329).
+ */
+export function withVitestTraits(adapter: VitestAdapter): VitestAdapter & RunnerAdapter {
+  const omitted = () => adapter.omittedTestFiles();
+  return Object.assign(adapter, { traits: vitestTraits({ widths: () => undefined, omitted }) });
+}

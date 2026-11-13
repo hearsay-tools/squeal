@@ -25,6 +25,7 @@ import type { Store } from "../../src/core/types/store.js";
 import { VitestAdapter } from "../../src/runners/vitest/adapter.js";
 import { createVitestAdapter } from "../../src/runners/vitest/index.js";
 import { loadVitest } from "../../src/runners/vitest/load.js";
+import { withVitestTraits } from "../runners/vitest/helpers.js";
 import { onCleanUp } from "./cleanup.js";
 import type { PhaseTrace } from "./phase-trace.js";
 import { movableClock } from "./quiet-clock.js";
@@ -142,7 +143,7 @@ export interface HarnessOptions {
 const slowVitest =
   (root: string, node: Awaited<ReturnType<typeof loadVitest>>, observe?: () => boolean) =>
   (): RunnerAdapter =>
-    new VitestAdapter(new WorktreePaths(root), node, undefined, observe);
+    withVitestTraits(new VitestAdapter(new WorktreePaths(root), node, undefined, observe));
 
 /** The policy a harness starts with: `DEFAULT_POLICY` under the test's, with edit-sized tiers. */
 function harnessPolicy(options: HarnessOptions): Policy {
