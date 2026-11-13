@@ -10,6 +10,7 @@ import type {
   ChangeKind,
   ChildFiles,
   ExceptionEntry,
+  FileRetry,
   GATE_REPORT_FORMAT,
   GateGap,
   GatePolicy,
@@ -219,6 +220,15 @@ export interface GateRunReport {
    * verdict at least `incomplete`. Absent when none.
    */
   readonly overBudget?: readonly RelativePath[];
+  /**
+   * Row 020-54 (#210): each selected file that failed here while the
+   * host's load was at or over its CPU count, the daemon's load threshold,
+   * and ran once more, by path: the load and CPU count when its first run
+   * ended, and the rerun's end. `passed` and `failed` are the file's result
+   * here; with `not-finished` the first failure stands. Absent when none
+   * ran again.
+   */
+  readonly retried?: Readonly<Record<RelativePath, FileRetry>>;
   readonly durationMs: number | null;
 }
 

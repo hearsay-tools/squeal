@@ -178,6 +178,29 @@ export interface TestFileEvidence {
    * `incomplete` (D3.4).
    */
   readonly overBudget?: true;
+  /**
+   * Row 020-54 (#210): it failed here while the host's load was at or over
+   * its CPU count, the daemon's load threshold, and ran once more: the
+   * load then, and the rerun's end. Absent when it ran once.
+   */
+  readonly retried?: FileRetry;
+}
+
+/**
+ * Row 020-54 (#210): a file that failed here while the host's load was at
+ * or over its CPU count, the daemon's load threshold, and ran once more.
+ */
+export interface FileRetry {
+  /** The host's one-minute load average when its first run ended, to two decimals. */
+  readonly load: number;
+  /** The host's CPU count then: the threshold, which the load was not below. */
+  readonly cpus: number;
+  /**
+   * The rerun's end: `passed` or `failed` again, and the file's result is
+   * the rerun's; `not-finished`, the budget or a crash stopped it, and the
+   * first run's failure stands.
+   */
+  readonly outcome: "passed" | "failed" | "not-finished";
 }
 
 /**
