@@ -168,7 +168,14 @@ The coordinator files this row. What it needs:
   (`cli/squeal.mjs differs from the build`: `test/harness/plugin.test.ts`,
   `test/harness/codex/packaging/runtime.test.ts`,
   `test/harness/opencode/package.test.ts`, `test/harness/pi/package.test.ts`);
-  22 were still pending at the deadline. See the final report for their end.
+  22 were still pending at the deadline. A second wait (revision 26):
+  342 pass, the same bundle drift, 10 queued for CPU (the host had 17 of 24
+  cores busy). A third wait on those 10 minus the three drift files:
+  `code-gate-keep`, `collect-budget`, `warmup`, `departure`, `drain-wait`,
+  `lifecycle`, `shared-store` all pass ("no known failures; 7 test files,
+  each with a current result, after 330.0 s"). End state: 349 affected test
+  files pass; 4 fail, all bundle drift; the three drift files were queued
+  again at the end and were not waited for.
 
 ## Checks not run
 
