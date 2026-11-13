@@ -128,7 +128,7 @@ export async function runCommand(
   });
   const now = io.now ?? Date.now;
   const command = statusCommand(io.env ?? process.env);
-  const [line, code] = verdictLine(root, checkpoint, outcome, joined, command);
+  const [line, code] = checkpointVerdictLine(root, checkpoint, outcome, joined, command);
   const status = readStatus(root, { now });
   // Task 001-403: an abandoned or incomplete checkpoint names the file it lacks and why.
   const gap = outcome.kind === "abandoned" || code === 3 ? gapText(status) : "";
@@ -152,7 +152,7 @@ function takeAllWait(args: readonly string[]): ReturnType<typeof takeWait> {
  * A request that joined a running checkpoint counts that one's work (review
  * wave-1, S2), or only the files when its record is gone.
  */
-function verdictLine(
+export function checkpointVerdictLine(
   root: AbsolutePath,
   checkpoint: CheckpointRecord,
   outcome: CheckpointOutcome,
@@ -255,7 +255,7 @@ interface Recorded {
 }
 
 /** The running checkpoint a request joined, as it stood when the request was recorded. */
-interface Joined {
+export interface Joined {
   readonly id: string;
   /** What it had done; `null` when it had ended, with the request, before `run --all` read it. */
   readonly open: CheckpointProgress | null;

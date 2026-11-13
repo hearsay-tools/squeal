@@ -60,7 +60,7 @@ export async function runLintGroupCommand(run: LintGroupRun, io: CliIo): Promise
   // The lint group wait (`src/cli/wait/`): until none of the group's checks is left to lint.
   const files = { kind: "group", group: group.name } as const;
   const outcome = await runWait({ wait: "lint group", root, socketPath, deadline, files });
-  const [verdict, code] = verdictLine(outcome, group);
+  const [verdict, code] = lintGroupVerdictLine(outcome, group);
   io.stdout(`Group ${group.name} ${verdict}\n${line}`);
   return code;
 }
@@ -110,7 +110,10 @@ function requestedText(group: string, { revision, queued }: Requested): string {
 }
 
 /** The verdict after `Group <name> `, and the exit code. */
-function verdictLine(outcome: LintGroupOutcome, group: ResolvedGroup): [string, 0 | 1 | 3] {
+export function lintGroupVerdictLine(
+  outcome: LintGroupOutcome,
+  group: ResolvedGroup,
+): [string, 0 | 1 | 3] {
   const none = (why: string): [string, 3] => [`has no verdict: ${why}`, 3];
   switch (outcome.kind) {
     case "off":

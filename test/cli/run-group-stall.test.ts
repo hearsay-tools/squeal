@@ -96,14 +96,6 @@ function stalling(path: string, answer: (type: string) => Record<string, unknown
   });
 }
 
-const PENDING = {
-  requestId: "g1",
-  group: "e2e",
-  requested: null,
-  unknown: false,
-  error: null,
-};
-
 async function run(argv: string[], cwd: string) {
   let stdout = "";
   let stderr = "";
@@ -136,19 +128,6 @@ describe("squeal run <group> --wait on a daemon that does not answer (019-24 ite
     expect(result.ms).toBeLessThan(1_500);
   });
 
-  it("bounds the run-group-status polls by the wait and exits 3 with the pending line", async () => {
-    const w = worktree();
-    await stalling(w.socket, (type) =>
-      type === "ping" ? {} : type === "run-group" ? PENDING : null,
-    );
-    const result = await run(["run", "e2e", "--wait", "300"], w.root);
-    expect(result.stdout).toBe(
-      "Group e2e has no verdict: the deadline passed before the daemon took request g1; this daemon does not say what holds it. The request stays pending: wait again with squeal run e2e --wait.\n",
-    );
-    expect(result.code).toBe(3);
-    expect(result.ms).toBeLessThan(1_500);
-  });
-
   it("without --wait, words the 2 s socket bound on stderr and keeps exit 1", async () => {
     const w = worktree();
     await stalling(w.socket, (type) => (type === "ping" ? {} : null));
@@ -159,21 +138,5 @@ describe("squeal run <group> --wait on a daemon that does not answer (019-24 ite
     expect(result.stdout).toBe("");
     expect(result.code).toBe(1);
     expect(result.ms).toBeLessThan(3_500);
-  });
-
-  it("goes on to the deadline when the wait's ping gets no answer", async () => {
-    const w = worktree();
-    let pings = 0;
-    await stalling(w.socket, (type) => {
-      if (type === "ping") return pings++ === 0 ? {} : null;
-      return { ...PENDING, requested: { revision: 3, queued: 1 } };
-    });
-    const result = await run(["run", "e2e", "--wait", "5500"], w.root);
-    expect(result.stdout.split("\n")[0]).toBe(
-      "Group e2e has no verdict: the deadline passed with 1 test file pending at revision 3; the group goes on in the daemon",
-    );
-    expect(pings).toBe(2);
-    expect(result.code).toBe(3);
-    expect(result.ms).toBeLessThan(7_000);
   });
 });

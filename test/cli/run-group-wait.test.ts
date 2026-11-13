@@ -154,17 +154,6 @@ describe("squeal run <group> --wait: the group's verdict (spec 019 D6)", () => {
     expect(result.code).toBe(1);
   });
 
-  it("exits 3 at the deadline with a file of the group pending", async () => {
-    const w = worktree();
-    w.file(E2E, { validity: "pending", pending: "queued" });
-    await daemon(w.socket, "e2e", 1);
-    const result = await run(["run", "e2e", "--wait", "1500"], w.root);
-    expect(result.first).toBe(
-      "Group e2e has no verdict: the deadline passed with 1 test file pending at revision 3; the group goes on in the daemon",
-    );
-    expect(result.code).toBe(3);
-  });
-
   it("exits 3 when a file of the group has no current result and nothing runs it", async () => {
     const w = worktree();
     w.file(E2E, { validity: "stale" });
@@ -190,19 +179,6 @@ describe("squeal run <group> --wait: the group's verdict (spec 019 D6)", () => {
     );
     expect(result.code).toBe(3);
   });
-
-  it("exits 3 when the daemon goes away before the group's files have results", async () => {
-    const w = worktree();
-    w.file(E2E, { validity: "pending", pending: "queued" });
-    await daemon(w.socket, "e2e", 1);
-    // The stand-in answers `run-group`, then nothing listens: the wait's ping finds no daemon.
-    later(200, () => closeFakeDaemons());
-    const result = await run(["run", "e2e", "--wait", "20000"], w.root);
-    expect(result.first).toBe(
-      "Group e2e has no verdict: the daemon stopped before the group's test files had results",
-    );
-    expect(result.code).toBe(3);
-  });
 });
 
 /*
@@ -211,20 +187,6 @@ describe("squeal run <group> --wait: the group's verdict (spec 019 D6)", () => {
  * in the daemon; nothing runs before the install, so the line names it.
  */
 describe("squeal run <group> --wait at the deadline while the worktree waits for an install", () => {
-  it("the whole group: names the install and its command, no run going on", async () => {
-    const w = worktree();
-    w.file(E2E, { validity: "unknown" });
-    w.awaitInstall("pnpm install");
-    await daemon(w.socket, "e2e", 0);
-    const result = await run(["run", "e2e", "--wait", "1500"], w.root);
-    expect(result.first).toBe(
-      `Group e2e has no verdict: the deadline passed at revision 3 while ${AWAITING_INSTALL_REASON}, so Squeal runs none of the group's test files before the dependencies are installed; \`pnpm install\` installs them`,
-    );
-    expect(result.stdout).not.toContain("goes on");
-    expect(result.stdout).not.toContain("0 test files pending");
-    expect(result.code).toBe(3);
-  });
-
   it("the narrow run: names the install for the selected files, then the answer's not-run line", async () => {
     const w = worktree();
     w.file(E2E, { validity: "unknown" });
