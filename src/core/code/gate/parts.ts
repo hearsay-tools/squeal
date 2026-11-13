@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import type { NamedPart } from "../../ci/export-check.js";
-import { hereOf, inputsOfReadsHere, uncertified } from "../../ci/inputs.js";
+import { hereOf, inputsOfReadsHere, type Uncertified, uncertifiedWhy } from "../../ci/inputs.js";
 import { knownCollector, type Part, type PartFile, partRecord } from "../../ci/parts.js";
 import { compare } from "../../fs/compare.js";
 import { hashFile, type ObjectFormat } from "../../hash/blob.js";
@@ -13,6 +13,7 @@ import { COVERAGE_PROVIDER_VERSION, COVERAGE_RECORD_VERSION } from "../coverage/
 import type { StoredEvidence } from "./collect.js";
 import { FILE_ERROR } from "./evidence.js";
 import { environmentCheck, type GateEnvironment } from "./parts-environment.js";
+import type { GatePartRefusal, PartRefusal } from "./parts-refused.js";
 import type { TestFileEvidence } from "./types.js";
 
 /*
@@ -49,6 +50,8 @@ export interface PartsOptions {
   readonly environment: GateEnvironment;
   /** Why parts give no evidence, told once per reason. */
   readonly note?: (text: string) => void;
+  /** Row 020-49 (#205): each selected file a part holds and does not give, and why. */
+  readonly refused?: (refusal: PartRefusal) => void;
 }
 
 /**
@@ -77,6 +80,7 @@ export function unusable(part: Part): string | null {
 export function partsEvidence(options: PartsOptions): StoredEvidence {
   const owners = new Map<string, Owner[]>();
   const why = new Map<string, string[]>();
+  const partWhy = new Map<string, string>();
   for (const { file: name, part } of options.parts) {
     for (const file of part.testFiles) {
       const id = testFileId(file);
@@ -85,15 +89,15 @@ export function partsEvidence(options: PartsOptions): StoredEvidence {
     const reason = options.children
       ? "coverage.children is on at the base, and ci record collects no child process's coverage"
       : unusable(part);
-    if (reason !== null) why.set(reason, [...(why.get(reason) ?? []), name]);
+    if (reason === null) continue;
+    why.set(reason, [...(why.get(reason) ?? []), name]);
+    partWhy.set(name, reason);
   }
   for (const [reason, names] of why) {
     const count = names.length === 1 ? "1 part gives" : `${names.length} parts give`;
     const first = `${names[0]}${names.length > 1 ? ", …" : ""}`;
     options.note?.(`${count} no evidence, so its test files run: ${reason} (${first})`);
   }
-  const unused = new Set([...why.values()].flat());
-  const usable = new Set(options.parts.filter((p) => !unused.has(p.file)).map((p) => p.part));
   let here: Promise<Here> | null = null;
   const told = new Set<string>();
   const tell = (text: string) => {
@@ -102,34 +106,69 @@ export function partsEvidence(options: PartsOptions): StoredEvidence {
   };
   return async (runner, files, closure, environment) => {
     const found = new Map<TestFileRef, TestFileEvidence>();
-    if (runner !== "vitest" || usable.size === 0) return found;
+    if (runner !== "vitest") return found;
+    const refuse = (ref: TestFileRef, refusal: GatePartRefusal) =>
+      options.refused?.({ runner, path: ref.path, ...refusal });
+    const single: { readonly ref: TestFileRef; readonly owner: Owner }[] = [];
+    for (const ref of files) {
+      const [only, ...more] = owners.get(testFileId(ref)) ?? [];
+      if (only === undefined) continue;
+      const owner = ownerOf(only, more, partWhy);
+      if ("reason" in owner) refuse(ref, owner);
+      else single.push({ ref, owner });
+    }
+    if (single.length === 0) return found;
     const certify = await environmentCheck(environment, options.environment);
     const candidates: Candidate[] = [];
-    for (const ref of files) {
-      const owned = owners.get(testFileId(ref)) ?? [];
-      // A file in two parts, two runs of it, is taken from neither.
-      const [only] = owned;
-      if (owned.length !== 1 || only === undefined || !usable.has(only.part)) continue;
-      const differs = certify({ file: only.name, part: only.part }, ref.project);
+    for (const { ref, owner } of single) {
+      const differs = certify({ file: owner.name, part: owner.part }, ref.project);
       if (differs !== null) {
         const project = JSON.stringify(ref.project);
         tell(
-          `${only.name} gives no evidence of project ${project}, so its test files run: ${differs}`,
+          `${owner.name} gives no evidence of project ${project}, so its test files run: ${differs}`,
         );
+        refuse(ref, { part: owner.name, reason: "environment", detail: differs });
         continue;
       }
       const loaded = (await closure?.(ref)) ?? null;
-      if (loaded !== null) candidates.push({ ref, owner: only, closure: loaded });
+      if (loaded !== null) candidates.push({ ref, owner, closure: loaded });
+      else refuse(ref, { part: owner.name, reason: "closure" });
     }
     if (candidates.length === 0) return found;
     here ??= readObjectFormat(options.root).then((format) => contentHere(options.root, format));
     const inputs = await inputsOf(options.root, candidates);
     for (const [at, candidate] of candidates.entries()) {
       const evidence = await taken(options, candidate, inputs[at] ?? [], await here);
-      if (evidence !== null) found.set(candidate.ref, evidence);
+      if ("reason" in evidence) refuse(candidate.ref, { part: candidate.owner.name, ...evidence });
+      else found.set(candidate.ref, evidence);
     }
     return found;
   };
+}
+
+/**
+ * `only`, the one part that may give a file; or why none does, before its
+ * environment and inputs are read: `more` parts hold it too, two runs of
+ * it, so none gives it; or its one part gives no evidence, as `partWhy`
+ * says.
+ */
+function ownerOf(
+  only: Owner,
+  more: readonly Owner[],
+  partWhy: ReadonlyMap<string, string>,
+): Owner | GatePartRefusal {
+  if (more.length > 0) {
+    const [first, ...others] = [only, ...more].map((o) => o.name).sort(compare);
+    return {
+      part: first ?? only.name,
+      reason: "duplicate",
+      detail: `also in ${others.join(", ")}`,
+    };
+  }
+  const unusableWhy = partWhy.get(only.name);
+  return unusableWhy === undefined
+    ? only
+    : { part: only.name, reason: "unusable", detail: unusableWhy };
 }
 
 /** A test file in a part, and the part's file name. */
@@ -179,23 +218,42 @@ async function inputsOf(
   return candidates.map(({ closure }, at) => [...new Set(closure.paths), ...(inputs[at] ?? [])]);
 }
 
-/** `owner`'s file's evidence from its part, or `null` when it must run. */
+/** How an input differs, as a refusal tells it. */
+const INPUT_DIFFERS: Readonly<Record<Uncertified, string>> = {
+  unrecorded: "its part holds no evidence of it",
+  unknown: "its content here is not known",
+  differs: "its part read other content",
+};
+
+/** Why `owner`'s file must run, beside its part's name; or its evidence from the part. */
+type Taken = TestFileEvidence | Omit<GatePartRefusal, "part">;
+
+/** `owner`'s file's evidence from its part, or why it must run. */
 async function taken(
   options: PartsOptions,
   { owner: { part, file }, closure }: Candidate,
   inputs: readonly RelativePath[],
   here: Here,
-): Promise<TestFileEvidence | null> {
+): Promise<Taken> {
   const contents = new Map<RelativePath, FileHash | null | undefined>();
   for (const path of inputs) contents.set(path, await here(path));
-  if (uncertified(inputs, part.evidence, (path) => contents.get(path)).length > 0) return null;
+  const differ = uncertifiedWhy(inputs, part.evidence, (path) => contents.get(path));
+  const [first] = differ.sort((a, b) => compare(a.path, b.path));
+  if (first !== undefined) {
+    const more = differ.length > 1 ? `; ${differ.length - 1} more inputs` : "";
+    return { reason: "input", input: first.path, detail: `${INPUT_DIFFERS[first.why]}${more}` };
+  }
   const failed = failedOf(file);
   const record = partRecord(part, file);
-  if (record === null && failed.length === 0) return null;
+  if (record === null && failed.length === 0) {
+    return { reason: "record", ...(file.noRecord === undefined ? {} : { detail: file.noRecord }) };
+  }
   if (record !== null) {
-    if (record.unread.some((path) => options.changed.includes(path))) return null;
-    for (const source of record.sources) {
-      if ((await here(source.path)) !== source.blob) return null;
+    const [unread] = record.unread.filter((path) => options.changed.includes(path)).sort(compare);
+    if (unread !== undefined) return { reason: "unread", input: unread };
+    for (const source of [...record.sources].sort((a, b) => compare(a.path, b.path))) {
+      if ((await here(source.path)) !== source.blob)
+        return { reason: "source", input: source.path };
     }
   }
   return {

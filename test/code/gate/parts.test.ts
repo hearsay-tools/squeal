@@ -1,161 +1,29 @@
-import { mkdtempSync, readdirSync, rmSync, symlinkSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { readdirSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
-import {
-  type NoRecord,
-  type Part,
-  type PartCollector,
-  type PartFile,
-  readPartsIn,
-} from "../../../src/core/ci/parts.js";
-import {
-  COVERAGE_PROVIDER_VERSION,
-  COVERAGE_RECORD_VERSION,
-} from "../../../src/core/code/coverage/record.js";
+import { describe, expect, it } from "vitest";
+import { readPartsIn } from "../../../src/core/ci/parts.js";
 import { FILE_ERROR } from "../../../src/core/code/gate/evidence.js";
-import { type PartsOptions, partsEvidence } from "../../../src/core/code/gate/parts.js";
-import { blobHash } from "../../../src/core/hash/blob.js";
-import { KEY_FORMAT_VERSION } from "../../../src/core/keys/key-format.js";
+import { partsEvidence } from "../../../src/core/code/gate/parts.js";
 import { namesHash } from "../../../src/core/keys/observed.js";
-import type { TestFileRef } from "../../../src/core/types/keys.js";
-import type { RunnerClosure } from "../../../src/core/types/runner.js";
-import { initRepo, writeFile } from "../../hash/git-repo.js";
-import { ENVIRONMENT, GATE, partProject } from "./parts-fixture.js";
+import { writeFile } from "../../hash/git-repo.js";
+import { ENVIRONMENT, GATE } from "./parts-fixture.js";
+import { blob, CLOSURE, EVIDENCE, file, part, REF, repos, taken, unrecorded } from "./parts-kit.js";
 
 /*
  * Spec 020 D13.2 (row 020-08b; research `ci-evidence.md` Q3, rule 3): the
  * rules `partsEvidence` takes a file by, over synthetic parts of a small
- * repository. The end-to-end cases with `ci record`'s real parts are in
- * `test/cli/code-gate-parts*.test.ts`.
+ * repository (`parts-kit.ts`); `parts-refused.test.ts` has what makes a
+ * file run, and why (row 020-49). The end-to-end cases with `ci record`'s
+ * real parts are in `test/cli/code-gate-parts*.test.ts`.
  */
 
-const FILES: Readonly<Record<string, string>> = {
-  ".gitignore": "out/\n",
-  "src/a.ts": "export const a = 1;\n",
-  "test/a.test.ts": "import { a } from '../src/a';\n",
-  "data/x.txt": "x\n",
-  "fixtures/one/one.txt": "1\n",
-  "fixtures/two/deep/two.txt": "2\n",
-};
-
-const blob = (text: string) => blobHash(Buffer.from(text), "sha1");
-
-const REF: TestFileRef = { project: "", path: "test/a.test.ts" };
-
-const CLOSURE = async (testFile: TestFileRef): Promise<RunnerClosure> => ({
-  testFile,
-  paths: ["src/a.ts", "test/a.test.ts"],
-});
-
-const dirs: string[] = [];
-afterEach(() => {
-  for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
-});
-
-function repo(): string {
-  const root = mkdtempSync(join(tmpdir(), "squeal-gate-parts-"));
-  dirs.push(root);
-  initRepo(root, FILES);
-  return root;
-}
-
-/** The evidence a run of `FILES` read: each file's blob. */
-const EVIDENCE = Object.fromEntries(
-  Object.entries(FILES).map(([path, text]) => [path, blob(text)]),
-);
-
-function file(overrides: Partial<PartFile> = {}): PartFile {
-  return {
-    project: "",
-    path: REF.path,
-    outcome: "pass",
-    durationMs: 1,
-    checks: [{ fullName: "a", outcome: "pass", durationMs: 1, location: null }],
-    observed: { paths: ["data/x.txt"], directories: [] },
-    record: 0,
-    ...overrides,
-  };
-}
-
-/** `file(overrides)` with no record, and why. */
-function unrecorded(noRecord: NoRecord, overrides: Partial<PartFile> = {}): PartFile {
-  const { record: _record, ...rest } = file(overrides);
-  return { ...rest, noRecord };
-}
-
-function part(files: readonly PartFile[] = [file()], overrides: Partial<Part> = {}): Part {
-  return {
-    format: "squeal-ci-part/4",
-    header: {
-      squealVersion: "0.0.0-test",
-      keyFormat: KEY_FORMAT_VERSION,
-      runner: "vitest",
-      runnerVersion: "5.0.3",
-      commit: null,
-      dirty: false,
-      shard: { index: 1, count: 1 },
-      createdAt: 0,
-      source: { kind: "local" },
-      end: "completed",
-      observing: true,
-      coverage: {
-        provider: "squeal",
-        providerVersion: COVERAGE_PROVIDER_VERSION,
-        recordVersion: COVERAGE_RECORD_VERSION,
-      },
-    },
-    projects: [partProject()],
-    testFiles: files,
-    evidence: EVIDENCE,
-    coverage: {
-      sources: [
-        {
-          path: "src/a.ts",
-          blob: blob(FILES["src/a.ts"] as string),
-          lines: "",
-          covered: "",
-          functions: [],
-        },
-      ],
-      records: [{ sources: [0], unread: [] }],
-    },
-    ...overrides,
-  };
-}
-
-/** `part()` whose records `collector` took (spec 020 D19.4). */
-function collected(collector: string): Part {
-  const made = part();
-  const coverage = {
-    provider: "squeal" as const,
-    collector: collector as PartCollector,
-    providerVersion: COVERAGE_PROVIDER_VERSION,
-    recordVersion: COVERAGE_RECORD_VERSION,
-  };
-  return { ...made, header: { ...made.header, coverage } };
-}
-
-/** What `partsEvidence` gives of `test/a.test.ts`, and its notes. */
-async function taken(root: string, parts: readonly Part[], options: Partial<PartsOptions> = {}) {
-  const notes: string[] = [];
-  const evidence = partsEvidence({
-    root,
-    parts: parts.map((p, i) => ({ file: `part-${i}.json`, part: p })),
-    changed: ["src/a.ts"],
-    children: false,
-    environment: GATE,
-    note: (text) => notes.push(text),
-    ...options,
-  });
-  const found = await evidence("vitest", [REF], CLOSURE, ENVIRONMENT);
-  return { evidence: found.get(REF) ?? null, notes };
-}
+const repo = repos();
 
 describe("partsEvidence: a certified file (spec 020 D13.2)", () => {
   it("is taken with its record, its checks and the closure here", async () => {
-    const { evidence, notes } = await taken(repo(), [part()]);
+    const { evidence, notes, refused } = await taken(repo(), [part()]);
 
+    expect(refused).toEqual([]);
     expect(evidence).toEqual({
       runner: "vitest",
       path: "test/a.test.ts",
@@ -185,75 +53,6 @@ describe("partsEvidence: a certified file (spec 020 D13.2)", () => {
     const { evidence } = await taken(repo(), [part([failing])]);
 
     expect(evidence).toMatchObject({ failed: [FILE_ERROR], record: null, from: "parts" });
-  });
-});
-
-describe("partsEvidence: what makes a file run (spec 020 D13.2)", () => {
-  it("runs a file whose runtime read changed here", async () => {
-    const root = repo();
-    writeFile(root, "data/x.txt", "changed\n");
-    expect((await taken(root, [part()])).evidence).toBeNull();
-  });
-
-  it("runs a passing file with no record", async () => {
-    const none = unrecorded("filtered");
-    expect((await taken(repo(), [part([none])])).evidence).toBeNull();
-  });
-
-  it("runs a file whose record could not read a changed path", async () => {
-    const coverage = { sources: [], records: [{ sources: [], unread: ["src/a.ts"] }] };
-    expect((await taken(repo(), [part([file()], { coverage })])).evidence).toBeNull();
-  });
-
-  it("runs a file whose record holds other bytes of a source", async () => {
-    const coverage = {
-      sources: [{ path: "src/a.ts", blob: blob("old\n"), lines: "", covered: "", functions: [] }],
-      records: [{ sources: [0], unread: [] }],
-    };
-    expect((await taken(repo(), [part([file()], { coverage })])).evidence).toBeNull();
-  });
-
-  it("runs every file of a run that did not record its reads, with a note", async () => {
-    const blind = part();
-    const { evidence, notes } = await taken(repo(), [
-      { ...blind, header: { ...blind.header, observing: false } },
-    ]);
-    expect(evidence).toBeNull();
-    expect(notes).toEqual([
-      "1 part gives no evidence, so its test files run: its run did not record what its tests read (part-0.json)",
-    ]);
-  });
-
-  it("runs a file whose part ran in another environment, with a note (review 0.1.427 B1)", async () => {
-    const other = { ...GATE, env: { PROBE: "no" } };
-    const { evidence, notes } = await taken(repo(), [part()], { environment: other });
-    expect(evidence).toBeNull();
-    expect(notes).toEqual([
-      `part-0.json gives no evidence of project "", so its test files run: part-0.json ran project "" in another environment than this gate's: allow-listed variables differ (values: PROBE) (the export as part-0.json's, here as this gate's)`,
-    ]);
-  });
-
-  it.each(["squeal", "v8"])(
-    "takes a file of a part collected by %s (spec 020 D19.5)",
-    async (by) => {
-      expect((await taken(repo(), [collected(by)])).evidence).toMatchObject({ from: "parts" });
-    },
-  );
-
-  it("runs every file of a part from another collector, with a note (spec 020 D19.5)", async () => {
-    const { evidence, notes } = await taken(repo(), [collected("istanbul")]);
-    expect(evidence).toBeNull();
-    expect(notes).toEqual([
-      '1 part gives no evidence, so its test files run: its records were collected by "istanbul", which this Squeal does not read (part-0.json)',
-    ]);
-  });
-
-  it("runs every file when coverage.children is on at the base, with a note", async () => {
-    const { evidence, notes } = await taken(repo(), [part()], { children: true });
-    expect(evidence).toBeNull();
-    expect(notes).toEqual([
-      "1 part gives no evidence, so its test files run: coverage.children is on at the base, and ci record collects no child process's coverage (part-0.json)",
-    ]);
   });
 });
 

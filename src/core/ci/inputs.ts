@@ -218,9 +218,36 @@ export function uncertified(
   evidence: InputEvidence,
   here: (path: RelativePath) => FileHash | null | undefined,
 ): RelativePath[] {
-  return paths.filter((path) => {
-    if (!Object.hasOwn(evidence, path)) return true;
-    const now = here(path);
-    return now === undefined || evidence[path] !== now;
+  return uncertifiedWhy(paths, evidence, here).map((input) => input.path);
+}
+
+/**
+ * Why the evidence does not certify an input (row 020-49, #205):
+ * `unrecorded`, it holds no content of the path; `unknown`, the content
+ * here is not known; `differs`, it holds other content than here.
+ */
+export type Uncertified = "unrecorded" | "unknown" | "differs";
+
+/** `uncertified`'s inputs, in the order of `paths`, each with why. */
+export function uncertifiedWhy(
+  paths: readonly RelativePath[],
+  evidence: InputEvidence,
+  here: (path: RelativePath) => FileHash | null | undefined,
+): { readonly path: RelativePath; readonly why: Uncertified }[] {
+  return paths.flatMap((path) => {
+    const why = whyUncertified(path, evidence, here);
+    return why === null ? [] : [{ path, why }];
   });
+}
+
+/** Why `evidence` does not certify `path` here; `null` when it does. */
+function whyUncertified(
+  path: RelativePath,
+  evidence: InputEvidence,
+  here: (path: RelativePath) => FileHash | null | undefined,
+): Uncertified | null {
+  if (!Object.hasOwn(evidence, path)) return "unrecorded";
+  const now = here(path);
+  if (now === undefined) return "unknown";
+  return evidence[path] === now ? null : "differs";
 }
