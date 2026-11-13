@@ -107,7 +107,18 @@ The done-when line most likely to be false was "stored failures name their origi
 
 ## Checks run
 
-See the final section, written after the affected-test verdict.
+- `pnpm run lint` (biome check .): exit 0, 3,344 files, no fixes.
+- `pnpm run typecheck` (tsrs --fast --noEmit): exit 0, after each source commit.
+- `squeal status --wait` on each new test at its revision, red first: `evaluate-failed-tests.test.ts` failed 3 of 4 at revision 2 (no field), passed at revision 4 and with the exception case at revision 6; `code-gate-text-failed.test.ts` failed 3 at revision 7 (no wiring), passed at revision 10; `code-gate-failed-outside.test.ts` passed at revision 12 (a real two-run node:test gate, 5.4 s).
+- `test/version-sensitive.test.ts` failed at revision 12: the new CLI test runs node:test and was not in `test/version-sensitive.txt`. Listed (commit 5), it passed at revision 13.
+- `squeal code` on the changed sources: every function at CC 8 or under; the new ones at CC 5 or under.
+- Affected-test verdict: `squeal status --wait 280000 $(git diff --name-only 029499709..HEAD -- src test)` at revision 15 (commit `e9b7da38e`; the only later change is this notes file): 348 test files selected. 342 pass. 4 tests fail, all bundle drift (`cli/squeal.mjs differs from the build`, seen at revision 14): `test/harness/plugin.test.ts`, `test/harness/codex/packaging/runtime.test.ts`, `test/harness/opencode/package.test.ts`, `test/harness/pi/package.test.ts`. Still pending at 18:48 (local), queued for CPU with the host at 22 of 24 cores in use: `test/cli/code-gate-keep.test.ts`, `test/daemon/drain-wait.test.ts`, and the four bundle tests' rerun. No pending file is reported as passing here.
+
+## Checks not run
+
+- No full suite and no `pnpm run build` (wave rule). The bundles are not rebuilt, so the four bundle tests above fail on drift until the coordinator rebuilds at integration.
+- The research probe (`research/probes/issue-210/probe.mjs`) was not rerun: it calls an installed CLI, not this tree. `test/cli/code-gate-failed-outside.test.ts` runs the same shape with this tree's code.
+- No test with a real `--parts` failure end to end; the `parts` origin is covered at the evaluator (`evaluate-failed-tests.test.ts`), where it is read from `TestFileEvidence.from` as the stores' is.
 
 ## For the coordinator and the next worker
 
