@@ -1,0 +1,125 @@
+{
+  "format": "squeal-code-gate/1",
+  "createdAt": "2026-11-13T01:09:41.459Z",
+  "versions": {
+    "squeal": "0.1.460",
+    "counter": 5,
+    "coverageProvider": 3,
+    "coverageRecord": 4,
+    "qualityPolicy": 4
+  },
+  "base": {
+    "ref": "HEAD",
+    "commit": "5f2cb093432c58a50ddc20c4a1568243edb2a275",
+    "policy": {
+      "complexityThreshold": 20,
+      "crapThreshold": 30,
+      "coverageExclude": [],
+      "complexityInclude": [
+        "**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,py}"
+      ],
+      "complexityExclude": [
+        "**/dist/**",
+        "**/build/**",
+        "**/vendor/**",
+        "**/*.min.js"
+      ],
+      "complexityMaxFileBytes": 524288,
+      "gateGroups": null
+    }
+  },
+  "head": {
+    "commit": "5f2cb093432c58a50ddc20c4a1568243edb2a275",
+    "dirty": true,
+    "paths": [
+      {
+        "path": "src/value.ts",
+        "blob": "919684fed20a6a8a2688d2089fe9427993980eee"
+      }
+    ]
+  },
+  "budget": {
+    "seconds": 30,
+    "timedOut": false
+  },
+  "scope": {
+    "groups": [
+      {
+        "name": "tests",
+        "at": "edit",
+        "from": "default"
+      },
+      {
+        "name": "slow",
+        "at": "edit",
+        "from": "default"
+      }
+    ],
+    "leftOut": []
+  },
+  "functions": [
+    {
+      "path": "src/value.ts",
+      "qualifiedName": "value",
+      "occurrence": 0,
+      "line": 1,
+      "bodyHash": "72d34910c00cfed0",
+      "change": "edited",
+      "complexity": 1,
+      "coverage": {
+        "lines": 2,
+        "covered": 2,
+        "share": 1
+      },
+      "crap": 1,
+      "loaders": {
+        "expected": [
+          "test/accepted.test.ts",
+          "test/refused.test.ts"
+        ],
+        "measured": [
+          "test/accepted.test.ts",
+          "test/refused.test.ts"
+        ]
+      },
+      "state": "pass",
+      "gap": null
+    }
+  ],
+  "omitted": [],
+  "uncounted": [],
+  "runs": [
+    {
+      "runner": "vitest",
+      "selected": [
+        "test/accepted.test.ts",
+        "test/refused.test.ts"
+      ],
+      "completed": [
+        "test/accepted.test.ts",
+        "test/refused.test.ts"
+      ],
+      "notFinished": [],
+      "failed": [],
+      "from": {
+        "test/accepted.test.ts": "parts",
+        "test/refused.test.ts": "run"
+      },
+      "estimate": {
+        "seconds": null,
+        "files": 1,
+        "known": 0,
+        "width": 1
+      },
+      "durationMs": 183
+    }
+  ],
+  "verdict": "pass",
+  "counts": {
+    "pass": 1,
+    "violation": 0,
+    "incomplete": 0,
+    "skipped": 0,
+    "accepted": 0
+  }
+}

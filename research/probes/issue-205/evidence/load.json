@@ -1,0 +1,26 @@
+[
+  {
+    "phase": "before fixture",
+    "at": "2026-11-13T01:09:38.424Z",
+    "load1": 9.76,
+    "cpus": 24
+  },
+  {
+    "phase": "before record",
+    "at": "2026-11-13T01:09:38.601Z",
+    "load1": 9.76,
+    "cpus": 24
+  },
+  {
+    "phase": "before accepted control",
+    "at": "2026-11-13T01:09:39.565Z",
+    "load1": 9.76,
+    "cpus": 24
+  },
+  {
+    "phase": "before refused case",
+    "at": "2026-11-13T01:09:40.279Z",
+    "load1": 9.76,
+    "cpus": 24
+  }
+]
