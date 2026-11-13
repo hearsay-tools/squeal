@@ -1653,11 +1653,6 @@ import { readdirSync as readdirSync7, readFileSync as readFileSync9, readlinkSyn
 import { availableParallelism as availableParallelism3 } from "node:os";
 import { join as join16 } from "node:path";
 
-// src/core/fs/compare.ts
-function compare(a, b) {
-  return a < b ? -1 : a > b ? 1 : 0;
-}
-
 // src/core/daemon/terminate.ts
 import { readdirSync as readdirSync5, readFileSync as readFileSync7 } from "node:fs";
 import { readFile } from "node:fs/promises";
@@ -2752,6 +2747,11 @@ function filesOf(args) {
 
 // src/core/ps/snapshot-shape.ts
 import { basename as basename5 } from "node:path";
+
+// src/core/fs/compare.ts
+function compare(a, b) {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
 
 // src/core/ps/shape.ts
 var PS_SHAPE_VERSION = 1;

@@ -929,6 +929,28 @@ import { isAbsolute as isAbsolute5, join as join5, relative as relative3, resolv
 // src/core/daemon/runner.ts
 import { readdirSync as readdirSync3, readFileSync as readFileSync4 } from "node:fs";
 import { join as join4, posix as posix3 } from "node:path";
+
+// src/core/types/runner-traits.ts
+function declareTraits(stated = {}) {
+  const { omittedTestFiles, slowWidth, tierWidth, tierPart, besideBacklog, backlogSlot: backlogSlot2 } = stated;
+  const { focuses, lane } = stated;
+  return {
+    omittedTestFiles: () => omittedTestFiles?.() ?? 0,
+    slowWidth: (testFiles) => Math.max(1, slowWidth?.(testFiles) ?? testFiles.length),
+    tierWidth: (testFile, grant) => Math.max(1, tierWidth?.(testFile, grant) ?? grant),
+    tierPart: (testFile) => tierPart?.(testFile) ?? "",
+    besideBacklog: (testFile) => besideBacklog?.(testFile) ?? false,
+    backlogSlot: (testFile) => {
+      const files = backlogSlot2?.(testFile) ?? null;
+      return files === null ? null : Math.max(1, Math.floor(files));
+    },
+    focuses: (testFile) => focuses?.(testFile) ?? false,
+    lane: (testFile) => lane?.(testFile) ?? ""
+  };
+}
+var NO_TRAITS = declareTraits();
+
+// src/core/daemon/runner.ts
 var VITEST_CONFIG = /^(vitest\.(config|workspace|projects)|vite\.config)\.[cm]?[jt]s$/;
 function vitestDetected(root) {
   let names2;
