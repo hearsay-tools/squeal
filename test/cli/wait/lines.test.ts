@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { checkpointVerdictLine } from "../../../src/cli/run.js";
+import { checkpointVerdictLine, recordedOf } from "../../../src/cli/run.js";
 import { type GroupWait, groupVerdictLine } from "../../../src/cli/run-group-wait.js";
 import { lintGroupVerdictLine } from "../../../src/cli/run-lint-group.js";
+import { pendingText } from "../../../src/cli/run-slow.js";
 import type { FileVerdict } from "../../../src/cli/verdict.js";
 import type {
   CheckpointOutcome,
@@ -11,6 +12,7 @@ import type {
 import { AWAITING_INSTALL_REASON } from "../../../src/core/scheduler/install.js";
 import type { ResolvedGroup } from "../../../src/core/types/check-groups.js";
 import type { RevisionNumber } from "../../../src/core/types/common.js";
+import type { RunAllResponse } from "../../../src/core/types/daemon.js";
 import { checkpointMetaKey } from "../../../src/core/types/scheduler.js";
 import type { StatusHold } from "../../../src/core/types/standing.js";
 import { closeLoopFixtures, ref, scratch } from "./fixture.js";
@@ -167,5 +169,28 @@ describe("the lint group wait's lines (row 019-22)", () => {
     ],
   ])("%s", (_name, outcome, text) => {
     expect(lintGroupVerdictLine(outcome, group)).toEqual([text, 3]);
+  });
+});
+
+describe("a request the daemon did not answer within its bound (row 011-327)", () => {
+  it("run --all: a busy daemon, worded as no verdict, not a stack", () => {
+    const answer = { requestId: "r1" } as RunAllResponse;
+    expect(recordedOf({ kind: "unanswered", answer, words: " within 2 s" })).toBe(
+      "the daemon did not answer about request r1 within 2 s; the daemon records the checkpoint once its current work allows",
+    );
+    expect(recordedOf({ kind: "pending", answer })).toBeNull();
+  });
+
+  it("run --slow: a busy daemon, worded as a pending request, not a stack", () => {
+    const busy = { pending: "s1", unanswered: " within 2 s" };
+    expect(pendingText(busy, null)).toBe(
+      "Slow tier requested (request s1); the daemon did not answer about it within 2 s and takes it once its current work allows\n",
+    );
+    expect(pendingText(busy, 2_100)).toBe(
+      "Returned without a verdict after 2.1 s: the daemon did not answer about slow tier request s1 within 2 s; the request is pending and this command has no verdict for it. The daemon takes it once its current work allows; `squeal status --wait 60000 <slow test file>` then waits for that file's result.\n",
+    );
+    expect(pendingText({ pending: "s1" }, 2_100)).toMatch(
+      /^Returned on timeout after 2\.1 s: the daemon has not taken slow tier request s1 yet; /,
+    );
   });
 });
