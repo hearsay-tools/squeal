@@ -2,10 +2,17 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PassThrough } from "node:stream";
-import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
-import { createNodeTestRunners } from "../../src/core/daemon/node-test-runners.js";
-import { createPytestRunners } from "../../src/core/daemon/pytest-runners.js";
-import { createRecoveringRunner } from "../../src/core/daemon/runner.js";
+import { afterAll, afterEach, describe, expect, it, onTestFinished, vi } from "vitest";
+import {
+  createNodeTestRunners,
+  type NodeTestRunnersOptions,
+} from "../../src/core/daemon/node-test-runners.js";
+import {
+  createPytestRunners,
+  type PytestRunnersOptions,
+} from "../../src/core/daemon/pytest-runners.js";
+import { createRecoveringRunner, type RecoveringRunner } from "../../src/core/daemon/runner.js";
+import { squealVersion } from "../../src/core/daemon/version.js";
 import { type HostedAdapter, serveRunnerHost } from "../../src/core/runner-host/host.js";
 import {
   encodeLine,
@@ -18,11 +25,14 @@ import { startHostProxy } from "../../src/core/runner-host/proxy.js";
 import type { AbsolutePath } from "../../src/core/types/common.js";
 import type { NodeTestProject, PytestProject } from "../../src/core/types/policy.js";
 import type { RunnerAdapter } from "../../src/core/types/runner.js";
+import type { RunnerTraits } from "../../src/core/types/runner-traits.js";
 import { createNodeTestAdapter } from "../../src/runners/node-test/adapter.js";
 import { nodeTestTraits } from "../../src/runners/node-test/traits.js";
+import { createPytestAdapter } from "../../src/runners/pytest/adapter.js";
 import { pytestTraits } from "../../src/runners/pytest/traits.js";
 import { vitestTraits } from "../../src/runners/vitest/traits.js";
 import { fakeAdapter, inProcessHost, POLICY } from "../runner-host/fake-channel.js";
+import { sourceHost } from "../runner-host/process-helpers.js";
 import { openFixture } from "../runners/vitest/helpers.js";
 import { A, answers, DEFAULTS, VITEST_TABLE } from "./runner-traits-fixture.js";
 
@@ -31,7 +41,9 @@ import { A, answers, DEFAULTS, VITEST_TABLE } from "./runner-traits-fixture.js";
  * through `traits` as the scheduler reads them. The in-process adapter, the
  * runner host's proxy over the values the host sent, and the recovering
  * runner before creation, after an idle close and after its host died
- * (spec 021 D7, D20.1). The host's start reply stays as it was sent.
+ * (spec 021 D7, D20.1); node:test's and pytest's in a real runner host
+ * through open, an idle close and the next host (review 0.1.473 S1). The
+ * host's start reply stays as it was sent.
  */
 
 const dir = mkdtempSync(join(tmpdir(), "squeal-traits-"));
@@ -55,6 +67,17 @@ const py = (batchSize?: number): PytestProject => ({
 
 let tierSize = 4;
 
+/** The answers of `traits` at `runner.tierSize` 4, then 6. */
+function bySize(traits: RunnerTraits) {
+  const at = (size: number) => {
+    tierSize = size;
+    return answers(traits);
+  };
+  const sized = [at(4), at(6)];
+  tierSize = 4;
+  return sized;
+}
+
 describe("runner traits by holder: the in-process adapter", () => {
   it("is Vitest's over the widths of the instance it started and its last listing", async () => {
     const config = `import { defineConfig } from "vitest/config";
@@ -77,6 +100,23 @@ export default defineConfig({ test: { include: ["test/*.test.ts"], maxWorkers: 2
     tierSize = 6;
     expect(answers(adapter.traits)).toEqual({ ...NODE_TEST, tierWidth: 6 });
     tierSize = 4;
+    await adapter.close();
+  });
+
+  it.each([
+    ["no batch size", undefined, PYTEST],
+    ["a batch size of 2", 2, { ...PYTEST, backlogSlot: 2 }],
+  ])("is pytest's with %s at runner.tierSize, read per answer", async (_, batchSize, expected) => {
+    // As `pytest-runners.ts` makes it; a missing `cwd` and no environment, so no Python runs.
+    const adapter = await createPytestAdapter(py(batchSize), {
+      root: dir as AbsolutePath,
+      tempDir: dir as AbsolutePath,
+      cacheDir: join(dir, "cache") as AbsolutePath,
+      source: {},
+      concurrency: () => tierSize,
+      ...(batchSize === undefined ? {} : { batchSize: () => batchSize }),
+    });
+    expect(bySize(adapter.traits)).toEqual([expected, { ...expected, tierWidth: 6 }]);
     await adapter.close();
   });
 });
@@ -185,6 +225,47 @@ describe("runner traits by holder: the recovering runner", () => {
     expect(answers(runner.traits)).toEqual({ ...VITEST, omitted: 2, slowWidth: 2, tierWidth: 2 });
     await runner.close();
   });
+
+  // pytest's batch size of 2, which no default gives: each case starts two hosts.
+  it.each([
+    ["node:test", (o: Hosted) => createNodeTestRunners([NT], o)[0], NODE_TEST],
+    [
+      "pytest with a batch size of 2",
+      (o: Hosted) => createPytestRunners([py(2)], o)[0],
+      { ...PYTEST, backlogSlot: 2 },
+    ],
+  ])(
+    "in a runner host is %s's through open, an idle close and a replacement (spec 021 D20.1)",
+    async (_, make, expected) => {
+      // Each adapter the host builds notes its missing `cwd` once: one note per host started.
+      const started: string[] = [];
+      let idle = 0;
+      const runner: RecoveringRunner | undefined = make({
+        ...options(),
+        note: (text) => {
+          if (text.includes("is not a directory")) started.push(text);
+        },
+        host: sourceHost(squealVersion()),
+        idleMs: () => idle,
+      });
+      if (runner === undefined) throw new Error("no runner");
+      onTestFinished(() => runner.close());
+      const sized = [expected, { ...expected, tierWidth: 6 }];
+      expect(bySize(runner.traits)).toEqual(sized);
+      expect(await runner.open()).toBe(true);
+      expect([started.length, bySize(runner.traits)]).toEqual([1, sized]);
+      // The end of a call arms the idle close; a later timer fires after it.
+      idle = 1;
+      await runner.testFiles();
+      idle = 0;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(bySize(runner.traits)).toEqual(sized);
+      // The next call starts another host: the first one closed.
+      await runner.testFiles();
+      expect([started.length, bySize(runner.traits)]).toEqual([2, sized]);
+    },
+    120_000,
+  );
 });
 
 /** The adapters closed, in order. */
@@ -218,6 +299,9 @@ function vitestRunner(
     ...extra,
   });
 }
+
+/** What both factories take. */
+type Hosted = NodeTestRunnersOptions & PytestRunnersOptions;
 
 function options() {
   return {
