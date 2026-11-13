@@ -34,3 +34,6 @@ export const DEFAULTS: ReturnType<typeof answers> = {
   focuses: false,
   lane: "",
 };
+
+/** A Vitest width table: project `""` at most 2 workers, one group (`WidthTable`). */
+export const VITEST_TABLE = { projects: [{ project: "", ceiling: 2, floor: 1, group: 0 }] };
