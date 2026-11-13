@@ -1,4 +1,4 @@
-import type { Part } from "../../src/core/daemon/composite-runner.js";
+import type { Part } from "../../src/core/daemon/report-merge.js";
 import type { CheckError } from "../../src/core/types/check.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import type { CheckRunResult, RunReport, StartupFailure } from "../../src/core/types/runner.js";
