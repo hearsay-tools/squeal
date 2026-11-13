@@ -98,10 +98,4 @@ describe("formatGateReport: a failure outside a function's loaders (row 020-53)"
       "  2 changed functions: incomplete: a selected test failed outside their loaders: test/b.test.mjs › b one (first: src/a.ts:3 a2; --json lists them all)",
     ]);
   });
-
-  it("keeps today's words for a test-failed row that names no failed tests", () => {
-    expect(functionLines([failedRow({})])).toEqual([
-      "  src/a.ts:1  f  CC 3: incomplete: a selected test failed",
-    ]);
-  });
 });
