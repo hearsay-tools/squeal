@@ -32,6 +32,8 @@ const verdict = (pending: number, unlisted = false): FileVerdict => ({
 const UNOPENED = "no Squeal store at /r/.git/squeal/store.sqlite";
 const BUSY =
   "store busy, waited 1000 ms: another process holds the store's lock; run the command again once it is released";
+const LINT_BUSY =
+  "lint store busy, waited 1000 ms: another process holds the lint store's lock; run the command again once it is released";
 const HOLD: StatusHold = { cause: "merge", since: 1, revision: 3, paths: ["a"], pathCount: 1 };
 const counts = (linting: number): LintCounts => ({
   files: 2,
@@ -292,6 +294,18 @@ const LINT: readonly Row[] = [
     end({ kind: "unread" }, "lint unread"),
   ],
   [
+    "go on: a busy lint store before the deadline is read again (011-327, review 0.1.474 B1: was unread)",
+    "lint group",
+    lint({ counts: "busy", unavailable: LINT_BUSY, late: false }),
+    ON,
+  ],
+  [
+    "unopened: a lint store busy at the deadline's read, with why (011-327, review 0.1.474 B1: was unread)",
+    "lint group",
+    lint({ counts: "busy", unavailable: LINT_BUSY, late: true }),
+    end({ kind: "unopened", unavailable: LINT_BUSY }, "lint busy", "late"),
+  ],
+  [
     "stopped: the wait view found the daemon down (011-327: was the fifth read's ping)",
     "lint group",
     lint({ counts: counts(1), late: false, daemon: STOPPED }),
@@ -396,7 +410,7 @@ describe("the run waits' table: pure rows (row 011-326)", () => {
       new Set(["unopened", "stopped", "on-hold", "ended", "deadline"]),
     );
     expect(outcomes("lint group")).toEqual(
-      new Set(["off", "unread", "deadline", "ended", "stopped"]),
+      new Set(["off", "unread", "unopened", "deadline", "ended", "stopped"]),
     );
   });
 });
