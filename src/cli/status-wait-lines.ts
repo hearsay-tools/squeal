@@ -433,7 +433,7 @@ export function namedClassLines(wait: EndedNamed, command = "squeal"): string[] 
  * a stopping daemon's handoff did not finish within its bound, and
  * `squeal start` finishes it.
  */
-function noDaemonText(
+export function noDaemonText(
   daemon: DaemonLiveness,
   down: DownReason | undefined,
   command: string,

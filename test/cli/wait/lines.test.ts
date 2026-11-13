@@ -6,6 +6,7 @@ import { pendingText } from "../../../src/cli/run-slow.js";
 import type { FileVerdict } from "../../../src/cli/verdict.js";
 import type {
   CheckpointOutcome,
+  DaemonDown,
   GroupOutcome,
   LintGroupOutcome,
 } from "../../../src/cli/wait/table.js";
@@ -34,6 +35,23 @@ const verdict: FileVerdict = {
 };
 const HOLD: StatusHold = { cause: "merge", since: 1, revision: 3, paths: ["a"], pathCount: 1 };
 const NONE = "has no verdict:";
+/** Row 011-327: daemon presence's readings a stopped wait names, in the status waits' words. */
+const STOPPED: DaemonDown = {
+  state: "down",
+  reason: "stopped",
+  liveness: { state: "down", since: Date.UTC(2026, 10, 13, 21) },
+};
+const SINCE = "no daemon has validated since 2026-11-13T21:00:00.000Z";
+const SILENT: DaemonDown = { ...STOPPED, reason: "silent" };
+const HANDOFF: DaemonDown = {
+  ...STOPPED,
+  reason: "handoff",
+  liveness: {
+    state: "down",
+    since: 1,
+    stopping: { from: "0.1.30", since: 1, to: "0.1.31", boundAt: 2, overdue: true },
+  },
+} as DaemonDown;
 
 describe("the checkpoint wait's lines (spec 005 D1)", () => {
   const line = (outcome: CheckpointOutcome, owed = false) => {
@@ -73,7 +91,18 @@ describe("the checkpoint wait's lines (spec 005 D1)", () => {
       false,
       `${NONE} it was abandoned before every test file had a result (a newer request replaced it, a test file's inputs never held still, a tier crashed or timed out, or the daemon stopped)`,
     ],
-    ["stopped", { kind: "stopped" }, false, `${NONE} the daemon stopped before it ended`],
+    [
+      "stopped: squeal stop cleared the record, named (011-327)",
+      { kind: "stopped", daemon: STOPPED },
+      false,
+      `${NONE} the daemon stopped before it ended (${SINCE}: the daemon stopped)`,
+    ],
+    [
+      "stopped: a handoff past its bound, named (011-327)",
+      { kind: "stopped", daemon: HANDOFF },
+      false,
+      `${NONE} the daemon stopped before it ended (the handoff to 0.1.31 did not finish within 130 s; \`squeal start\` finishes it)`,
+    ],
     [
       "unopened: why the store was not read (011-327)",
       { kind: "unopened", unavailable: "no Squeal store at /r/.git/squeal/store.sqlite" },
@@ -82,9 +111,9 @@ describe("the checkpoint wait's lines (spec 005 D1)", () => {
     ],
     [
       "stopped, owed to the next daemon (001-219)",
-      { kind: "stopped" },
+      { kind: "stopped", daemon: STOPPED },
       true,
-      `${NONE} the daemon stopped before it ended; the next daemon resumes it, and \`run --all --wait\` then waits for it`,
+      `${NONE} the daemon stopped before it ended (${SINCE}: the daemon stopped); the next daemon resumes it, and \`run --all --wait\` then waits for it`,
     ],
   ])("%s", (_name, outcome, owed, text) => {
     expect(line(outcome, owed)).toEqual([text, 3]);
@@ -129,16 +158,16 @@ describe("the group wait's lines (spec 019 D6)", () => {
       `${NONE} the deadline passed at revision 3 while ${AWAITING_INSTALL_REASON}, so Squeal runs none of the group's test files before the dependencies are installed; \`pnpm install\` installs them`,
     ],
     [
-      "stopped",
-      { kind: "stopped" },
+      "stopped: a daemon that died, named (011-327)",
+      { kind: "stopped", daemon: SILENT },
       false,
-      `${NONE} the daemon stopped before the group's test files had results`,
+      `${NONE} the daemon stopped before the group's test files had results (${SINCE}: its heartbeat stopped and nothing listens on its socket)`,
     ],
     [
       "stopped, narrow",
-      { kind: "stopped" },
+      { kind: "stopped", daemon: STOPPED },
       true,
-      `have no verdict: the daemon stopped before the selected test files had results`,
+      `have no verdict: the daemon stopped before the selected test files had results (${SINCE}: the daemon stopped)`,
     ],
     [
       "unopened: why the store was not read (011-327)",
@@ -173,9 +202,9 @@ describe("the lint group wait's lines (row 019-22)", () => {
     ["off", { kind: "off" }, `${NONE} lint is off: lint.enabled is false in squeal.config.json`],
     ["unread", { kind: "unread" }, `${NONE} the lint store cannot be read`],
     [
-      "stopped",
-      { kind: "stopped" },
-      `${NONE} the daemon stopped before the group's lint checks were linted`,
+      "stopped, named (011-327)",
+      { kind: "stopped", daemon: STOPPED },
+      `${NONE} the daemon stopped before the group's lint checks were linted (${SINCE}: the daemon stopped)`,
     ],
     [
       "deadline",
@@ -183,7 +212,7 @@ describe("the lint group wait's lines (row 019-22)", () => {
       `${NONE} the deadline passed with 2 lint checks pending; the group goes on in the daemon`,
     ],
   ])("%s", (_name, outcome, text) => {
-    expect(lintGroupVerdictLine(outcome, group)).toEqual([text, 3]);
+    expect(lintGroupVerdictLine(outcome, group, "squeal")).toEqual([text, 3]);
   });
 });
 

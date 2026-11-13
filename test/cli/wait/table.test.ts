@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 import type { FileClasses, FileVerdict } from "../../../src/cli/verdict.js";
 import { decideRunWait, type WaitStep } from "../../../src/cli/wait/decide.js";
 import type { LintCounts } from "../../../src/cli/wait/reads.js";
-import { RUN_WAITS, type RunWaitName, type WaitRecord } from "../../../src/cli/wait/table.js";
+import {
+  type DaemonDown,
+  type DaemonReading,
+  RUN_WAITS,
+  type RunWaitName,
+  type WaitRecord,
+} from "../../../src/cli/wait/table.js";
 import type { StatusHold } from "../../../src/core/types/standing.js";
 
 /*
@@ -37,14 +43,24 @@ const counts = (linting: number): LintCounts => ({
 
 /** A read of the checkpoint wait at revision 3, its store open. */
 const cp = (fields: Partial<WaitRecord>): WaitRecord => ({
-  poll: 0,
   since: 3,
   store: "opened",
   ...fields,
 });
 /** A read of a group wait, its store open. */
-const gr = (fields: Partial<WaitRecord>): WaitRecord => ({ poll: 0, store: "opened", ...fields });
-const lint = (fields: Partial<WaitRecord>): WaitRecord => ({ poll: 0, ...fields });
+const gr = (fields: Partial<WaitRecord>): WaitRecord => ({ store: "opened", ...fields });
+const lint = (fields: Partial<WaitRecord>): WaitRecord => ({ ...fields });
+
+/** Row 011-327: the wait view's readings of the daemon. */
+const ALIVE: DaemonReading = { state: "alive" };
+const LAPSED: DaemonReading = { state: "lapsed" };
+const STOPPED: DaemonDown = {
+  state: "down",
+  reason: "stopped",
+  liveness: { state: "down", since: 1 },
+};
+const SILENT: DaemonDown = { ...STOPPED, reason: "silent" };
+const HANDOFF: DaemonDown = { ...STOPPED, reason: "handoff" };
 
 const end = (outcome: object, ...reason: string[]): WaitStep =>
   ({ kind: "end", outcome, reason }) as WaitStep;
@@ -133,27 +149,33 @@ const CHECKPOINT: readonly Row[] = [
     end({ kind: "unopened", unavailable: BUSY }, "store busy", "late"),
   ],
   [
-    "stopped: the fifth read's ping found no daemon",
+    "stopped: the wait view found the record cleared, squeal stop (011-327: was the fifth read's ping)",
     "checkpoint",
-    cp({ poll: 4, end: null, revision: 3, late: false, hold: null, daemon: "none" }),
-    end({ kind: "stopped" }, "ping due", "no daemon"),
+    cp({ end: null, revision: 3, late: false, hold: null, daemon: STOPPED }),
+    end({ kind: "stopped", daemon: STOPPED }, "daemon down"),
   ],
   [
-    "go on: running before the deadline, no hold",
+    "stopped: the wait view found the handoff past its bound (011-327)",
     "checkpoint",
-    cp({ end: null, revision: 3, late: false, hold: null }),
+    cp({ end: null, revision: 3, late: false, hold: null, daemon: HANDOFF }),
+    end({ kind: "stopped", daemon: HANDOFF }, "daemon down"),
+  ],
+  [
+    "go on: running before the deadline, no hold, the daemon alive",
+    "checkpoint",
+    cp({ end: null, revision: 3, late: false, hold: null, daemon: ALIVE }),
     ON,
   ],
   [
     "go on: completed with a re-run pending before the deadline",
     "checkpoint",
-    cp({ end: "completed", revision: 3, late: false, verdict: verdict(1) }),
+    cp({ end: "completed", revision: 3, late: false, verdict: verdict(1), daemon: ALIVE }),
     ON,
   ],
   [
-    "go on: the ping on the fifth read was answered",
+    "go on: a lapsed heartbeat, a busy daemon or a handoff before its bound (011-327)",
     "checkpoint",
-    cp({ poll: 9, end: null, revision: 3, late: false, hold: null, daemon: "answered" }),
+    cp({ end: null, revision: 3, late: false, hold: null, daemon: LAPSED }),
     ON,
   ],
 ];
@@ -219,21 +241,21 @@ const GROUP: readonly Row[] = [
     end({ kind: "unopened", unavailable: BUSY }, "store busy", "late"),
   ],
   [
-    "stopped: the fifth read's ping found no daemon",
+    "stopped: the wait view found a dead socket past the grace (011-327: was the fifth read's ping)",
     "group",
-    gr({ poll: 4, classes: classes(1), late: false, hold: null, daemon: "none" }),
-    end({ kind: "stopped" }, "ping due", "no daemon"),
+    gr({ classes: classes(1), late: false, hold: null, daemon: SILENT }),
+    end({ kind: "stopped", daemon: SILENT }, "daemon down"),
   ],
   [
-    "go on: a ping with no answer within the deadline is a busy daemon (019-24)",
+    "go on: a lapsed heartbeat is a busy daemon (011-327: was a ping with no answer, 019-24)",
     "group",
-    gr({ poll: 4, classes: classes(1), late: false, hold: null, daemon: "unanswered" }),
+    gr({ classes: classes(1), late: false, hold: null, daemon: LAPSED }),
     ON,
   ],
   [
     "go on: a file pending before the deadline, no hold",
     "group",
-    gr({ classes: classes(1), late: false, hold: null }),
+    gr({ classes: classes(1), late: false, hold: null, daemon: ALIVE }),
     ON,
   ],
 ];
@@ -270,21 +292,21 @@ const LINT: readonly Row[] = [
     end({ kind: "unread" }, "lint unread"),
   ],
   [
-    "stopped: the fifth read's ping found no daemon",
+    "stopped: the wait view found the daemon down (011-327: was the fifth read's ping)",
     "lint group",
-    lint({ poll: 4, counts: counts(1), late: false, daemon: "none" }),
-    end({ kind: "stopped" }, "ping due", "no daemon"),
+    lint({ counts: counts(1), late: false, daemon: STOPPED }),
+    end({ kind: "stopped", daemon: STOPPED }, "daemon down"),
   ],
   [
-    "go on: a ping with no answer within the deadline",
+    "go on: the worktree's store unread proves nothing of the daemon (011-327)",
     "lint group",
-    lint({ poll: 4, counts: counts(1), late: false, daemon: "unanswered" }),
+    lint({ counts: counts(1), late: false, daemon: { state: "unread" } }),
     ON,
   ],
   [
     "go on: checks left before the deadline",
     "lint group",
-    lint({ counts: counts(1), late: false }),
+    lint({ counts: counts(1), late: false, daemon: ALIVE }),
     ON,
   ],
 ];
@@ -316,9 +338,9 @@ const READS: readonly Row[] = [
     end({ kind: "moved", revision: 4 }, "newer revision"),
   ],
   [
-    "checkpoint asks the daemon on the fifth read only",
+    "checkpoint reads the daemon at every read that goes on (011-327: the fifth only)",
     "checkpoint",
-    cp({ poll: 4, end: null, revision: 3, late: false, hold: null }),
+    cp({ end: null, revision: 3, late: false, hold: null }),
     read("daemon"),
   ],
   [
@@ -346,15 +368,15 @@ const READS: readonly Row[] = [
     end({ kind: "ended", verdict: verdict(0) }, "files settled"),
   ],
   [
-    "group asks the daemon on the fifth read only",
+    "group reads the daemon at every read that goes on (011-327: the fifth only)",
     "group",
-    gr({ poll: 14, classes: classes(1), late: false, hold: null }),
+    gr({ classes: classes(1), late: false, hold: null }),
     read("daemon"),
   ],
   [
-    "lint group asks the daemon on the fifth read only",
+    "lint group reads the daemon at every read that goes on (011-327: the fifth only)",
     "lint group",
-    lint({ poll: 4, counts: counts(1), late: false }),
+    lint({ counts: counts(1), late: false }),
     read("daemon"),
   ],
 ];
