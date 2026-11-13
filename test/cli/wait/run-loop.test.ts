@@ -2,10 +2,13 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { runWait } from "../../../src/cli/wait/wait.js";
+import { WAIT_DOWN_MS } from "../../../src/cli/wait-liveness.js";
 import { isLintStoreOpenFailure, openLintStore } from "../../../src/core/lint/store/open.js";
+import { claimHandoff } from "../../../src/core/presence/events.js";
+import { HANDOFF_BOUND_MS, handoffFrom } from "../../../src/core/presence/stored.js";
 import { STATUS_BUSY_TIMEOUT_MS } from "../../../src/core/status/open.js";
 import { storePaths } from "../../../src/core/store/paths.js";
-import type { RevisionNumber } from "../../../src/core/types/common.js";
+import type { EpochMs, RevisionNumber } from "../../../src/core/types/common.js";
 import { DEFAULT_POLICY } from "../../../src/core/types/policy.js";
 import {
   awaitingInstallMetaKey,
@@ -16,12 +19,11 @@ import { appendRevisions, fakeRepo } from "../../status/helpers.js";
 import { closeFakeDaemons, fakeDaemon, lockStore, received } from "../fake-daemon.js";
 import {
   closeLoopFixtures,
+  presenceWatch,
   ref,
   scratch,
   socketPath,
-  stalling,
   steppedClock,
-  timingOut,
 } from "./fixture.js";
 
 /*
@@ -86,28 +88,70 @@ describe("the checkpoint wait's loop (row 011-326)", () => {
     expect(clock.pauses).toEqual([1_000, 1_000]);
   });
 
-  it("asks the daemon on the fifth read, and goes on while it answers", async () => {
+  it("reads the daemon's presence at every read, and sends no ping while it heartbeats (011-327: a ping on the fifth read)", async () => {
     const { w, clock, socket, ask } = checkpointWait(6_000);
     w.file(A, { validity: "pending", pending: "running" });
     await fakeDaemon(socket, {});
     expect(await runWait(ask, clock.ports)).toMatchObject({ kind: "deadline" });
     expect(clock.pauses).toEqual([1_000, 1_000, 1_000, 1_000, 1_000, 1_000]);
-    expect(received).toEqual([{ type: "ping" }]);
+    expect(received).toEqual([]);
   });
 
-  it("stopped: the fifth read's ping finds no daemon", async () => {
+  it("squeal stop: the wait ends at its next read and names the stop (011-327: the fifth read's ping)", async () => {
     const { w, clock, ask } = checkpointWait(60_000);
     w.file(A, { validity: "pending", pending: "running" });
-    expect(await runWait(ask, clock.ports)).toEqual({ kind: "stopped" });
-    expect(clock.pauses).toEqual([1_000, 1_000, 1_000, 1_000]);
+    const heartbeatAt = w.daemon(clock.start)?.heartbeatAt;
+    clock.onPause((n) => {
+      if (n === 2) w.daemon(null);
+    });
+    expect(await runWait(ask, clock.ports)).toEqual({
+      kind: "stopped",
+      daemon: { state: "down", reason: "stopped", liveness: { state: "down", since: heartbeatAt } },
+    });
+    expect(clock.pauses).toEqual([1_000, 1_000]);
   });
 
-  it("a ping with no answer is a busy daemon: it goes on, no throw (011-327, review 0.1.469 N2)", async () => {
-    const { w, clock, ask } = checkpointWait(6_000);
+  it("a handoff is waited through to its bound (011-327)", async () => {
+    const { w, clock, ask } = checkpointWait(60_000);
     w.file(A, { validity: "pending", pending: "running" });
-    const ports = timingOut(clock.ports, ["ping"]);
+    const record = w.daemon(clock.start - 1_000);
+    if (record === null) throw new Error("no record");
+    // The old daemon cleared its record; its successor's claim is bound 3 s after the wait starts.
+    const at = (clock.start + 3_000 - HANDOFF_BOUND_MS) as EpochMs;
+    claimHandoff(w.store, w.id, { from: handoffFrom(record), to: "0.1.31", at });
+    w.daemon(null);
+    expect(await runWait(ask, clock.ports)).toMatchObject({
+      kind: "stopped",
+      daemon: { state: "down", reason: "stopped" },
+    });
+    expect(clock.pauses).toEqual([1_000, 1_000, 1_000]);
+  });
+
+  it("a daemon that died is found once its heartbeat's grace and WAIT_DOWN_MS passed (011-327)", async () => {
+    const { w, clock, ask } = checkpointWait(60_000);
+    w.file(A, { validity: "pending", pending: "running" });
+    w.daemon(clock.start);
+    const ports = { ...clock.ports, watch: presenceWatch("absent") };
+    expect(await runWait(ask, ports)).toEqual({
+      kind: "stopped",
+      daemon: {
+        state: "down",
+        reason: "silent",
+        liveness: { state: "down", since: clock.start },
+      },
+    });
+    // The grace is two 5 s heartbeat intervals, then the socket stays dead for WAIT_DOWN_MS.
+    expect(clock.at() - clock.start).toBe(2 * 5_000 + WAIT_DOWN_MS);
+    expect(clock.pauses).toHaveLength(20);
+  });
+
+  it("a busy daemon: a lapsed heartbeat whose socket holds a daemon goes on, no throw (011-327, review 0.1.469 N2)", async () => {
+    const { w, clock, ask } = checkpointWait(2_500);
+    w.file(A, { validity: "pending", pending: "running" });
+    w.daemon(clock.start - 60_000);
+    const ports = { ...clock.ports, watch: presenceWatch("listening") };
     expect(await runWait(ask, ports)).toMatchObject({ kind: "deadline" });
-    expect(clock.pauses).toEqual([1_000, 1_000, 1_000, 1_000, 1_000, 1_000]);
+    expect(clock.pauses).toEqual([1_000, 1_000, 500]);
   });
 
   it("moved: a revision recorded during the wait", async () => {
@@ -214,35 +258,40 @@ describe("the group wait's loop (row 011-326)", () => {
     expect(clock.pauses).toEqual([]);
   });
 
-  it("a ping with no answer within the deadline is a busy daemon: it goes on (019-24)", async () => {
-    const { w, clock, socket, ask } = groupWait(4_050);
+  it("a busy daemon: a lapsed heartbeat whose socket holds a daemon goes on (011-327: a ping with no answer within the deadline, 019-24)", async () => {
+    const { w, clock, ask } = groupWait(4_050);
     w.file(E2E, { validity: "pending", pending: "queued" });
-    let pings = 0;
-    await stalling(socket, () => {
-      pings += 1;
-      return null;
-    });
-    expect(await runWait(ask, clock.ports)).toMatchObject({ kind: "deadline" });
+    w.daemon(clock.start - 60_000);
+    const ports = { ...clock.ports, watch: presenceWatch("listening") };
+    expect(await runWait(ask, ports)).toMatchObject({ kind: "deadline" });
     expect(clock.pauses).toEqual([1_000, 1_000, 1_000, 1_000, 50]);
-    expect(pings).toBe(1);
   });
 
-  it("stopped: the fifth read's ping finds no daemon", async () => {
+  it("stopped: no daemon record at a read ends the wait there and names the stop (011-327: the fifth read's ping)", async () => {
     const { w, clock, ask } = groupWait(60_000);
     w.file(E2E, { validity: "pending", pending: "queued" });
-    expect(await runWait(ask, clock.ports)).toEqual({ kind: "stopped" });
+    w.daemon(null);
+    expect(await runWait(ask, clock.ports)).toMatchObject({
+      kind: "stopped",
+      daemon: { state: "down", reason: "stopped" },
+    });
+    expect(clock.pauses).toEqual([]);
   });
 });
 
-/** A lint group `lint` of eslint at `commit` with `states`; lint off without them. */
-function lintWait(deadlineIn: number, states: Record<string, "pass" | "pending"> | "off") {
+/** A lint group `lint` of eslint at `at` with `states`; lint off without them. */
+function lintWait(
+  deadlineIn: number,
+  states: Record<string, "pass" | "pending"> | "off",
+  at: "commit" | "stop" = "commit",
+) {
   const r = squealRepo();
   if (states !== "off") {
     writeFileSync(
       join(r.root, "squeal.config.json"),
       JSON.stringify({
         lint: { enabled: true, tools: ["eslint"] },
-        checks: [{ name: "lint", lint: true, at: "commit" }],
+        checks: [{ name: "lint", lint: true, at }],
       }),
     );
     const lint = { ...DEFAULT_POLICY.lint, enabled: true };
@@ -271,10 +320,22 @@ function lintWait(deadlineIn: number, states: Record<string, "pass" | "pending">
     deadline: clock.start + deadlineIn,
     files: { kind: "group", group: "lint" },
   } as const;
-  return { clock, ask };
+  return { r, clock, ask };
 }
 
 describe("the lint group wait's loop (row 011-326)", () => {
+  it("stopped: squeal stop ends the wait at its next read and names it, read in the worktree's store (011-327)", async () => {
+    const { r, clock, ask } = lintWait(60_000, { "src/a.js": "pending" }, "stop");
+    clock.onPause((n) => {
+      if (n === 1) r.daemon("none");
+    });
+    expect(await runWait(ask, clock.ports)).toMatchObject({
+      kind: "stopped",
+      daemon: { state: "down", reason: "stopped" },
+    });
+    expect(clock.pauses).toEqual([1_000]);
+  });
+
   it("ended: nothing left to lint before the deadline", async () => {
     const { clock, ask } = lintWait(60_000, { "src/a.js": "pass" });
     expect(await runWait(ask, clock.ports)).toMatchObject({

@@ -15,6 +15,7 @@ import { runSlowCommand } from "./run-slow.js";
 import { statusCommand } from "./status-command.js";
 import { failuresText, gapText, noVerdictText, readClasses, verdictCode } from "./verdict.js";
 import type { RequestOutcome } from "./wait/decide.js";
+import { stoppedText } from "./wait/presence.js";
 import { openCheckpoint } from "./wait/progress.js";
 import { inStore } from "./wait/reads.js";
 import { askWithin } from "./wait/socket.js";
@@ -191,7 +192,9 @@ export function checkpointVerdictLine(
         "it was abandoned before every test file had a result (a newer request replaced it, a test file's inputs never held still, a tier crashed or timed out, or the daemon stopped)",
       );
     case "stopped":
-      return none(`the daemon stopped before it ended${owedText(root, checkpoint)}`);
+      return none(
+        `the daemon stopped before it ended (${stoppedText(outcome.daemon, command)})${owedText(root, checkpoint)}`,
+      );
     // Row 011-327: the store did not open, or was busy at the deadline's read.
     case "unopened":
       return none(outcome.unavailable);

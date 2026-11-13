@@ -16,7 +16,9 @@ import type { Store } from "../../core/types/store.js";
 import type { CheckpointLane } from "../../core/types/store-records.js";
 import { laneFiles } from "../run-lanes.js";
 import { holdOfWait, readClasses, readVerdict } from "../verdict.js";
+import { presenceOf, presenceRead } from "./presence.js";
 import { checkpointEnd, installWait, latestRevision } from "./progress.js";
+import type { WaitPorts } from "./socket.js";
 import type { ReadField, WaitRecord } from "./table.js";
 
 /*
@@ -59,8 +61,8 @@ export type RunWaitAsk =
       readonly files: Extract<WaitFiles, { kind: "group" }>;
     });
 
-/** The store fields a read fills; `store`, `unavailable` and `daemon` are the loop's. */
-export type StoreField = Exclude<ReadField, "store" | "unavailable" | "daemon">;
+/** The fields a read fills; `store` and `unavailable` are the loop's. */
+export type StoreField = Exclude<ReadField, "store" | "unavailable">;
 
 /** One read's reader: the record's value for `field`. */
 export type FieldReader = (field: StoreField) => Partial<WaitRecord>;
@@ -71,14 +73,13 @@ export type FieldReader = (field: StoreField) => Partial<WaitRecord>;
  * store. A field the wait's row does not reach is not read, and a field
  * its reader does not know throws.
  */
-export function waitReads(
-  ask: RunWaitAsk,
-  now: () => number,
-): (store: Store | null) => FieldReader {
+export function waitReads(ask: RunWaitAsk, ports: WaitPorts): (store: Store | null) => FieldReader {
+  const { now } = ports;
   const late = () => ({ late: now() >= ask.deadline });
   switch (ask.wait) {
     case "checkpoint": {
       const { id, worktreeId } = ask.checkpoint;
+      const presence = presenceOf(ask.root, worktreeId, ports);
       return (store) => {
         const lane = () => laneFiles(opened(ask, store), worktreeId, ask.files.lane);
         return (field) => {
@@ -103,6 +104,8 @@ export function waitReads(
             }
             case "verdict":
               return { verdict: readVerdict(opened(ask, store), worktreeId, lane()) };
+            case "daemon":
+              return { daemon: presence(opened(ask, store)) };
             default:
               return unknownField(ask, field);
           }
@@ -113,6 +116,7 @@ export function waitReads(
       // Read once, as before the move: the group's view from the policy at the start, then the id.
       const own = ownOf(ask.root, ask.files);
       const id = worktreeIdFor(ask.root);
+      const presence = presenceOf(ask.root, id, ports);
       return (store) => {
         /** The read's own files, which its hold and verdict read again. */
         let files: TestFileRef[] | null = null;
@@ -138,18 +142,24 @@ export function waitReads(
               return { verdict: readVerdict(opened(ask, store), id, listed()) };
             case "install":
               return { install: installWait(opened(ask, store), id) };
+            case "daemon":
+              return { daemon: presence(opened(ask, store)) };
             default:
               return unknownField(ask, field);
           }
         };
       };
     }
-    case "lint group":
+    case "lint group": {
+      const presence = presenceOf(ask.root, worktreeIdFor(ask.root), ports);
       return () => (field) => {
         if (field === "late") return late();
         if (field === "counts") return { counts: lintCounts(ask.root, ask.files.group) };
+        // The lint group reads no worktree store but here, in a read of its own (row 011-327).
+        if (field === "daemon") return { daemon: presenceRead(ask, presence, now) };
         return unknownField(ask, field);
       };
+    }
   }
 }
 
