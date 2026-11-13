@@ -320,8 +320,21 @@ export interface RunSlowResponse {
   readonly ok: true;
   readonly type: "run-slow";
   readonly requestId: string;
-  readonly requested: { readonly revision: RevisionNumber; readonly queued: number } | null;
+  readonly requested: RequestTaken | null;
   readonly error: string | null;
+}
+
+/**
+ * What the scheduler did with a `run-slow` or `run-group` request: the
+ * revision it was taken at and how many files it queued. `coveredId` (row
+ * 011-325): the id of the request's covered files (`readCoveredFiles`);
+ * absent from a daemon before it and for a lint group. A CLI that gets
+ * none keeps its own reading of the request's files.
+ */
+export interface RequestTaken {
+  readonly revision: RevisionNumber;
+  readonly queued: number;
+  readonly coveredId?: string;
 }
 
 /**
@@ -335,7 +348,7 @@ export interface RunGroupResponse {
   readonly type: "run-group";
   readonly requestId: string;
   readonly group: string;
-  readonly requested: { readonly revision: RevisionNumber; readonly queued: number } | null;
+  readonly requested: RequestTaken | null;
   readonly unknown: boolean;
   readonly error: string | null;
   /**
