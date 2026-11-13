@@ -100,6 +100,30 @@ describe("budgetLine", () => {
   });
 });
 
+describe("estimateText: the runners run at once (D18 as amended, row 020-44)", () => {
+  const vitest = { runner: "vitest", seconds: 300, files: 30, known: 30, width: 4 } as const;
+  const node = { runner: "node-test", seconds: 500, files: 10, known: 10, width: 2 } as const;
+
+  it("judges each runner's line by its own estimate, not by the runs before it", () => {
+    const lines = estimateText([vitest, node], 590).trimEnd().split("\n");
+    // 300 s and 500 s at once fit 590 s; in turn they would have made 800 s.
+    expect(lines).toEqual([
+      "squeal code: Vitest: 30 test files to run here, up to 4 at once: about 300 s from their stored durations",
+      "squeal code: node:test: 10 test files to run here, up to 2 at once: about 500 s from their stored durations",
+    ]);
+  });
+
+  it("gives the ways out on the line of the runner whose estimate is over what is left", () => {
+    const lines = estimateText([vitest, { ...node, seconds: 700 }], 590)
+      .trimEnd()
+      .split("\n");
+    expect(lines[0]).not.toMatch(/over the|To fit it/);
+    expect(lines[1]).toMatch(
+      /: about 700 s from their stored durations, over the 590 s left of the budget\. To fit it: /,
+    );
+  });
+});
+
 describe("formatGateReport: the rerun and the files not run", () => {
   it("names the rerun before the JSON command, and counts each runner's files not run", () => {
     const overBudget = ["test/c1.test.ts", "test/c2.test.ts", "test/c3.test.ts", "test/c4.test.ts"];
