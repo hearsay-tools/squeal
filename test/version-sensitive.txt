@@ -70,6 +70,7 @@
 #   test/daemon/node-test-prepare.test.ts
 #   test/daemon/observed-timer.test.ts
 #   test/daemon/policy.test.ts
+#   test/daemon/runner-traits-holders.test.ts
 #   test/evals/claim-grades.test.ts
 #   test/evals/grade.test.ts
 #   test/evals/malformed.test.ts
