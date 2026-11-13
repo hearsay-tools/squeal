@@ -12,6 +12,7 @@ import { TeardownWarnings } from "../core/code/gate/evidence.js";
 import { refusedText } from "../core/code/gate/parts-refused.js";
 import { type BasePolicy, loadBasePolicy } from "../core/code/gate/policy.js";
 import type { EngineVersions, GateRunner, GateRunReport } from "../core/code/gate/report.js";
+import { retriedText } from "../core/code/gate/retry.js";
 import type { GateAdapters } from "../core/code/gate/runners.js";
 import { resolveScope } from "../core/code/gate/scope.js";
 import type { ChangedSet, GateVerdict } from "../core/code/gate/types.js";
@@ -226,7 +227,8 @@ async function gate(
 /**
  * What stderr tells after the verdict, so `--json` keeps stdout to the
  * report: why the parts did not give files they hold, one bounded line per
- * reason (row 020-49, #205); then the kept logs (#197).
+ * reason (row 020-49, #205); the files that ran once more because they
+ * failed under load (row 020-54, #210); then the kept logs (#197).
  */
 function afterVerdict(
   runs: readonly GateRunReport[],
@@ -235,6 +237,9 @@ function afterVerdict(
 ): void {
   const refused = refusedText(runs);
   if (refused !== "") io.stderr(refused);
+  // Row 020-54 (#210): the files that failed under load and ran once more, in one line.
+  const retried = retriedText(runs);
+  if (retried !== "") io.stderr(retried);
   const kept = keptLogsLine(runs, retention);
   if (kept !== null) io.stderr(kept);
 }
