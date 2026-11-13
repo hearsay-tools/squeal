@@ -65,6 +65,8 @@ A runner call that fails is a state, never a skip: the rule and its consequences
 
 Amended 2026-10-26 (row 011-245, gh-101): a run cancelled past the cancel's grace awaits `RunOptions.beforeForce` right before the forced cancel, with `vitest.config.env`, for at most 500 ms (`BEFORE_FORCE_MS`, `src/runners/vitest/run.ts`); a hook that throws at once or rejects later is one note in the run log and changes nothing of the run's end. A run that ends by itself or in the grace never calls it. The adapter passes the option on and reads nothing itself; the daemon's reading and note are 011 C13's process-reaping bullet. A validity case cuts a test that blocks past the first grace.
 
+Amended 2026-11-13 (row 020-50, #207): Vitest logs `[vitest-pool]: Timeout terminating <pool> worker for test files <paths>.` when a worker it stops after its files ended outlives `teardownTimeout`. The line comes from a timer through the instance's logger only: no reporter event carries it, no task rejects, and the pool awaits the worker's exit only at its next cancel or close, so the line can come after the run's report, while the instance closes. It changes no result: a file's completion still comes from the reporter (V4) and a run's failure from its errors (above). When the caller gives a `teardown` listener (the gate does, the daemon does not), the adapter hooks the instance's `logger.error`, passes every message to Vitest unchanged, tells the listener the worktree files each such line names, and removes the hook in the instance's close handlers, which run after the pool's workers exited. A line it cannot read tells nothing.
+
 ### V9. Policy and capacity
 
 <!-- 001 spec.md@cdd72a91 lines 209 (D11) -->
