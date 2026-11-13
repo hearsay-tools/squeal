@@ -12,4 +12,9 @@ Done when (tests): every existing parts, export and `ci` test passes with no ass
 
 ## 020-51: one keying path for the gate and `ci export` (card 11)
 
-Not dispatched yet: it starts from main after 020-52 lands. Brief written then.
+Use /worker. Shape: slice (a refactor). Starts from main after 020-52 (0.1.466, `src/core/ci/reuse.ts`). Read the board row 020-51, spec 020 D11.7 (the gate keys files as a daemon would) and 018's export keying, and the fixes `6d436384a` and `6d3ad0269` (each had to be made in both copies).
+- The gate (`src/core/code/gate/stored.ts` `openKeyer` near 238 and `keyFiles` near 291; `src/cli/code-gate-stored.ts` `daemonAdapters` near 171) and `ci export` (`src/core/ci/export.ts` `keyFiles` near 222, `exportWith`; `src/cli/ci-export.ts`) drive the same ordered `WorktreeKeys` calls, and the gate opens a second Vitest adapter only to key. Make one module own "key these test files as the daemon would", called by both; the gate keys with the adapter it already has, or says in notes why it cannot.
+- Known difference (020-52's notes, section 3): the input lists differ (the gate's closure plus `inputsOfReadsHere`, the export's keyed closure). Keep each reader's list as it is unless the two are equal by proof; name it as an option.
+- First edit, as a lead: lift `keyFiles` from `ci/export.ts` into the new module, then call it from `gate/stored.ts`.
+Owns: `src/core/code/gate/stored.ts`, `src/cli/code-gate-stored.ts`, `src/core/ci/export.ts`, `src/cli/ci-export.ts`, one new module (your choice of place, said in notes), their tests.
+Done when (tests): every existing gate-stored, export and `ci` test passes with no assertion changed (imports may move); key-format and validity cases unchanged; the same fixture gives byte-identical export output before and after; a test shows the gate run opens one Vitest adapter (or the notes prove why two stay).
