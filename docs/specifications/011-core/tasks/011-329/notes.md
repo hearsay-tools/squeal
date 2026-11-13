@@ -94,3 +94,15 @@ Answer at `1363820e6`: only `src/core/types/runner-traits.ts` lines 97 to 107 fo
 - Doc comments that still name a removed member, in lines this row did not own: `scheduler/backlog.ts:82`, `slots.ts:11,27,72`, `slow-tier.ts:626`, `slow.ts:95`, `tiers.ts:152` (`RunnerAdapter.<trait>`), `status/standing.ts:406` (`RunnerAdapter.lane`); `runner-host/protocol.ts:148-157` ("the synchronous members"). Each now means `RunnerAdapter.traits.<trait>`.
 - 011-330 (the report merge) edits `merge` in `composite-runner.ts`; this row did not touch it.
 - Card 10's seam is `remote/lane.ts:265`: `local.traits.tierWidth(file, grant)`.
+
+## Verification at `c4dc78378` (2026-11-13)
+
+The host rebooted near 19:52Z and stayed at load ~110 on 24 CPUs (another project's load). Many runs timed out in hooks or at 5 s; those are listed as such, not as passing.
+
+- `pnpm run typecheck`: no errors. `pnpm run lint`: no findings.
+- Squeal, current pass: the three traits table files, `test/runners/vitest/width.test.ts`, `test/code/gate/estimate.test.ts`, `plan.test.ts`, `test/runner-host/vitest-parity.test.ts`, `test/version-sensitive.test.ts` (also 7 of 7 in a direct run). `node-test-parity.test.ts` passed at revision 61 and `test/keys/validity/adapters.test.ts` (with "fires none for a change to Vitest's width hints") at revision 76; both were pending again at revision 79 after the harness edit.
+- `test/keys/key-format.test.ts`: **no verdict.** Squeal's runs timed out in its `beforeAll` (the release tree's extraction), so its main test was skipped. A direct run (`hookTimeout` 300 s) passed 11 of 12 tests; the main test, "moves only when the validity path's outputs differ from the last release's", ran past its own 300 s limit (normal median 6 s, maximum 58 s) and did not complete. Its last completed run, at revision 69, failed on the two defects fixed since (`fcef06272`, `b6062735c`). The coordinator runs it after integration; CI runs it on the candidate.
+- `test/runner-host/pytest-parity.test.ts`: fails at file level only, its `afterAll` cleanup timing out (10 s) at load 5 to 7 per CPU; its tests ran.
+- Over `test/scheduler`, `test/code/gate`, `test/runner-host`, `test/keys`, `test/daemon` and `test/runners/{vitest,node-test,pytest}` (710 files): 366 pass, 2 fail (the two above), 304 pending, 38 unknown. `test/scheduler/busy-merge.test.ts` timed out once in a poll at load 7.7 per CPU and was pending a load retry. Other files that failed once in a hook or at 5 s at load 90 to 210 (`collect-inputs`, `touched-in-flight` passed on retry; `cancel-cause`, `imports`, `setup-rejection`, `coverage-default`, `observe*`, `overlap`, `keep-grown*`, `lock`, `reach`, `test-command-listing`, integration stamps files) had load retries queued.
+- No full suite was run or requested.
+
