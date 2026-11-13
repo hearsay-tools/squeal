@@ -2,9 +2,10 @@ import { randomUUID } from "node:crypto";
 import { setTimeout as sleep } from "node:timers/promises";
 import { type DaemonRequestError, requestDaemon } from "../../daemon/client.js";
 import { heartbeatFresh } from "../../presence/heartbeat.js";
-import type { AbsolutePath, EpochMs, WorktreeId } from "../../types/common.js";
+import type { AbsolutePath, EpochMs, RelativePath, WorktreeId } from "../../types/common.js";
 import type { DaemonRequest, DaemonResponse } from "../../types/daemon.js";
 import type { KeepResponse, KeepWrite, SeenReads } from "../../types/daemon-writes.js";
+import type { TestFileRef } from "../../types/keys.js";
 import type { Store } from "../../types/store.js";
 import { OlderDaemon } from "./keep-seen.js";
 import type { KeepWriter, Tried } from "./keep-write.js";
@@ -29,9 +30,9 @@ const RECONCILE_PAUSE_MS = 250;
 export const DAEMON_KEEPS_ITS_OWN = "a daemon runs in this worktree, and it keeps its own";
 
 /**
- * Row 020-48: how many bytes of reads one `seen` write carries at most, far
- * below a `keep` line's limit (`MAX_WRITE_LINE_BYTES`, 32 MiB); a gate
- * run's reads are some KB, so most runs send one.
+ * Row 020-48: how many bytes one `seen` write is at most as JSON
+ * (`partsOf`), far below a `keep` line's limit (`MAX_WRITE_LINE_BYTES`,
+ * 32 MiB); a gate run's reads are some KB, so most runs send one.
  */
 export const SEEN_BYTES = 4 * 1024 * 1024;
 
@@ -177,23 +178,100 @@ function refusal(answer: DaemonResponse, kind: KeepWrite["kind"]): Error {
   return new KeepRefused(older ? DAEMON_KEEPS_ITS_OWN : `the daemon refused the write: ${why}`);
 }
 
-/** `seen` in order, in parts of at most `SEEN_BYTES` as JSON; one file's reads never split. */
+/**
+ * Review 0.1.465 S1: `seen` in order, in parts whose write, as JSON
+ * (`{"kind":"seen","seen":[...]}`), is at most `bytes`. A file whose reads
+ * do not fit goes on in an entry of its own `ref` in the next part, its
+ * three lists in order, so the parts joined hold each list whole (the
+ * merge adds). Only a path that with its file's ref alone passes `bytes`
+ * goes past it, one to a part. The request around the write adds its type,
+ * id, worktree and schema: a few hundred bytes, below a `keep` line's limit.
+ */
 export function partsOf(seen: readonly SeenReads[], bytes = SEEN_BYTES): SeenReads[][] {
-  const parts: SeenReads[][] = [];
-  let part: SeenReads[] = [];
-  let size = 0;
+  const parts = new SeenParts(bytes);
   for (const one of seen) {
-    const length = Buffer.byteLength(JSON.stringify(one));
-    if (part.length > 0 && size + length > bytes) {
-      parts.push(part);
-      part = [];
-      size = 0;
-    }
-    part.push(one);
-    size += length;
+    parts.start(one.ref);
+    for (const list of LISTS) for (const path of one[list]) parts.add(list, path);
   }
-  if (part.length > 0) parts.push(part);
-  return parts;
+  return parts.done();
+}
+
+const LISTS = ["add", "direct", "modules"] as const;
+
+type Entry = { readonly ref: TestFileRef } & Record<(typeof LISTS)[number], RelativePath[]>;
+
+/** The bytes of `value` as JSON. */
+const jsonBytes = (value: unknown) => Buffer.byteLength(JSON.stringify(value));
+
+/** The bytes of a write with no reads: `{"kind":"seen","seen":[]}`. */
+const FRAME = jsonBytes({ kind: "seen", seen: [] });
+
+/** `partsOf`'s parts as they fill, with the bytes of the current part's write. */
+class SeenParts {
+  readonly #bytes: number;
+  readonly #parts: Entry[][] = [];
+  #part: Entry[] = [];
+  #size = FRAME;
+  #entry: Entry | null = null;
+
+  constructor(bytes: number) {
+    this.#bytes = bytes;
+  }
+
+  /** The next file, `ref`: an entry of its own, in this part while it fits. */
+  start(ref: TestFileRef): void {
+    this.#entry = null;
+    this.#open(ref);
+  }
+
+  /** `path` on the current file's `list`; a new part, with a new entry of its ref, when it does not fit. */
+  add(list: (typeof LISTS)[number], path: RelativePath): void {
+    let entry = this.#entry as Entry;
+    let cost = jsonBytes(path) + (entry[list].length > 0 ? 1 : 0);
+    if (this.#size + cost > this.#bytes && !this.#alone(entry)) {
+      if (this.#empty(entry)) this.#drop(entry);
+      this.#close();
+      entry = this.#open(entry.ref);
+      cost = jsonBytes(path);
+    }
+    entry[list].push(path);
+    this.#size += cost;
+  }
+
+  done(): SeenReads[][] {
+    this.#close();
+    return this.#parts;
+  }
+
+  #open(ref: TestFileRef): Entry {
+    const entry: Entry = { ref, add: [], direct: [], modules: [] };
+    if (this.#part.length > 0 && this.#size + 1 + jsonBytes(entry) > this.#bytes) this.#close();
+    this.#size += jsonBytes(entry) + (this.#part.length > 0 ? 1 : 0);
+    this.#part.push(entry);
+    this.#entry = entry;
+    return entry;
+  }
+
+  /** Whether `entry` is the current part's only entry and holds no path: a new part would not help. */
+  #alone(entry: Entry): boolean {
+    return this.#part.length === 1 && this.#empty(entry);
+  }
+
+  #empty(entry: Entry): boolean {
+    return LISTS.every((list) => entry[list].length === 0);
+  }
+
+  /** Takes `entry`, the last of the part and empty, back out of it. */
+  #drop(entry: Entry): void {
+    this.#part.pop();
+    this.#size -= jsonBytes(entry) + (this.#part.length > 0 ? 1 : 0);
+  }
+
+  #close(): void {
+    if (this.#part.length > 0) this.#parts.push(this.#part);
+    this.#part = [];
+    this.#size = FRAME;
+  }
 }
 
 function isKeep(answer: DaemonResponse): answer is KeepResponse {
