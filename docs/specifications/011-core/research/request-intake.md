@@ -63,6 +63,7 @@ Kept as they are (coordinator's calls below): promote and focus take no install-
   - a failed request does not start work (no pump after a throw), as today;
   - `run --all` still waits for a pass delivered after the request (row 011-198) and runs the pass that may end an install wait first (review wave 11 B1).
   The worker reports any of these the fixed order cannot hold without a change, before changing it.
+  Amended 2026-11-13 (review `reviews/0.1.470.md` N1, accepted): "behaviour preserved" excludes a failed request's progress asks; a stage that throws now records nothing, where before an ask made before the throw could stay.
 - **Retries.** Start and every reconciliation pass also take stored retries (`takeRetries`); their progress record stays where all three meet (wave-3.6 B3). The callback that records it becomes required, so no caller can leave it out. The retry request states its covered files through it.
 - **Imports.** In 011-322 the import's observed refresh keeps its write outside the retry, as a named skip that cites row 011-323. The lifecycle's refresh that writes nothing (`daemon.ts:416`) stays a synchronous call with a named reason; its boolean answer does not change.
 - **The pump is opaque to the intake.** The intake ends by waking lanes and starting work. It does not read or change the pump's admission checks or tier selection (cards 5 and 6). Card 5 may later replace "wake these lanes" with "these facts changed"; card 7 may take the intake's answer and the lanes to wake as data. That is the seam the later scheduler cards use.
