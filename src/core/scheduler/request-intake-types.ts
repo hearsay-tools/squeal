@@ -122,6 +122,11 @@ export type WakeRule =
   | { readonly allLanes: string }
   /** The group's lane, after the record. */
   | { readonly lane: string }
+  /**
+   * The lanes of its covered files' groups, after the record: the reason.
+   * A group with no lane of its own (`tests`) has none to wake.
+   */
+  | { readonly coveredLanes: string }
   /** The tiers in flight are checked, after its change. */
   | { readonly cutTiers: true }
   | Skip;
