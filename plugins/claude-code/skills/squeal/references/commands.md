@@ -123,7 +123,7 @@ Each selected test file's results and coverage come from the first of these that
 
 stderr counts what did not run, for example `2 of 3 selected test files read from the parts`.
 
-When the parts hold a selected test file and do not give it, stderr says why after the verdict, one line per reason, for example `Vitest: 2 test files not taken from the parts, 2 run here: its part does not certify an input as it is here (test/add.test.ts: test/add.test.ts, test/reads.test.ts: data/input.txt)`. It names at most three files per line and counts the rest.
+When the parts hold a selected test file and do not give it, stderr says why after the verdict, one line per reason, for example `Vitest: 2 test files not taken from the parts, 2 ran here: its part does not certify an input as it is here (test/add.test.ts: test/add.test.ts, test/reads.test.ts: data/input.txt)`. It names at most three files per line and counts the rest. The counts come from the run report: a file the budget never reached says `did not run`, and one stopped before it finished says `started here and did not finish`.
 
 When Vitest warns that it timed out terminating a test file's worker, stderr adds one line for that file saying whether its result counts in this report: it counts when the file completed, failed tests included; it does not when the report lists the file as not finished.
 
