@@ -53,7 +53,7 @@ import { updateCommitReport } from "./head-move.js";
 import { MergeHold } from "./hold.js";
 import { IgnoredMarks } from "./ignored-marks.js";
 import { ImportRewalk } from "./import-rewalk.js";
-import { clearImportsWaiting, observedRequest } from "./imports-waiting.js";
+import { clearImportsWaiting, importRequest, observedRequest } from "./imports-waiting.js";
 import {
   AWAITING_INSTALL_REASON,
   missingInstall,
@@ -725,10 +725,15 @@ class TierScheduler implements Scheduler {
     return this.#updateCommit();
   }
 
-  /** Row 018-28: an import's observed reads (`observedRequest`); synchronous. */
-  refreshObserved(projects: readonly ProjectName[] = [], imports: readonly string[] = []): boolean {
+  /** Task 003-26: the lifecycle's refresh of the observed reads (`observedRequest`); synchronous. */
+  refreshObserved(): boolean {
+    return this.#intake.take(observedRequest(() => this.#runnerWork.queueObserved()));
+  }
+
+  /** Row 018-28: an import's observed reads (`importRequest`), its mark busy-retried (row 011-323). */
+  requestImports(projects: readonly ProjectName[], imports: readonly string[]): Promise<boolean> {
     return this.#intake.take(
-      observedRequest(projects, imports, () => this.#runnerWork.queueObserved()),
+      importRequest(projects, imports, () => this.#runnerWork.queueObserved()),
     );
   }
 
