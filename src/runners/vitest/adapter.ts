@@ -72,6 +72,7 @@ import { abandon, buildReport, execute, unattributedErrors, writeRunLog } from "
 import { invalidateStale, SourceStamps } from "./sources.js";
 import { invalidateStructural } from "./stale.js";
 import { closeRejected, startupFailure, withStartup } from "./startup.js";
+import { hearTeardowns } from "./teardown.js";
 import { sortTouched, Touches } from "./touched.js";
 import { VITEST_ADAPTER_VERSION } from "./version.js";
 
@@ -162,6 +163,8 @@ export class VitestAdapter implements RunnerAdapter {
   readonly #cache: false | undefined;
   /** Spec 020 row 020-43: told each run's file as it starts (`RunCollector.started`); absent, none. */
   readonly #started: ((testFile: TestFileRef) => () => void) | undefined;
+  /** Spec 020 row 020-50: told each file Vitest timed out terminating the worker of; absent, none. */
+  readonly #teardown: ((files: readonly RelativePath[]) => void) | undefined;
   /** Whether the current instance started with coverage on, as policy had it then. */
   #coverageOn = false;
   /** The current instance's coverage; `null` with coverage off. */
@@ -188,7 +191,8 @@ export class VitestAdapter implements RunnerAdapter {
    * is enabled (spec 015 D8, row 015-11). `cache` false writes no results
    * cache into the project (spec 020 D3.5, row 020-03). `started` hears each
    * file of a run as it starts, and through what it returns as it ends (spec
-   * 020 row 020-43).
+   * 020 row 020-43). `teardown` hears the files of each worker Vitest timed
+   * out terminating, during a run or the instance's close (row 020-50).
    */
   constructor(
     readonly paths: WorktreePaths,
@@ -203,7 +207,9 @@ export class VitestAdapter implements RunnerAdapter {
     coverage?: VitestCoverage,
     cache?: false,
     started?: (testFile: TestFileRef) => () => void,
+    teardown?: (files: readonly RelativePath[]) => void,
   ) {
+    this.#teardown = teardown;
     this.#coverage = coverage;
     this.#cache = cache;
     this.#started = started;
@@ -256,6 +262,7 @@ export class VitestAdapter implements RunnerAdapter {
     });
     // Review wave-13 B2: every project server's, not only the root's, before any load.
     sources.attach(vitest);
+    this.#hearTeardowns(vitest);
     this.#sources = sources;
     try {
       // Row 013-08: a client environment loads the provider only from an allowed file.
@@ -286,6 +293,20 @@ export class VitestAdapter implements RunnerAdapter {
       throw error;
     }
     return vitest;
+  }
+
+  /**
+   * Row 020-50 (#207): the worktree's files of each teardown timeout line of
+   * `vitest`, to `teardown`, until its close. The hook holds no reference to
+   * the adapter (row 019-19), only the listener, the paths and the note.
+   */
+  #hearTeardowns(vitest: Vitest): void {
+    const teardown = this.#teardown;
+    if (teardown === undefined) return;
+    const paths = this.paths;
+    const relative = (files: readonly string[]) =>
+      files.flatMap((file) => paths.toRelative(file) ?? []);
+    hearTeardowns(vitest, (files) => teardown(relative(files)), this.#note);
   }
 
   /**
