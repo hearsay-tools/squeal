@@ -6,9 +6,8 @@ import { readHead } from "../../daemon-loop/head.js";
 import { compare } from "../../fs/compare.js";
 import { worktreeIdFor } from "../../fs/git-layout.js";
 import type { Hasher } from "../../hash/hasher.js";
-import { OBSERVED_META_KEYS } from "../../keys/observed-rows.js";
 import { testFileId } from "../../keys/reverse-index.js";
-import { openDaemonKeys } from "../../scheduler/daemon-keys.js";
+import { type DaemonKeying, openDaemonKeying } from "../../scheduler/daemon-keying.js";
 import type { WorktreeKeys } from "../../scheduler/keying.js";
 import { Connection } from "../../store/connection.js";
 import { isStoreOpenFailure, openReadOnly, openStore } from "../../store/open.js";
@@ -18,7 +17,7 @@ import { createStore } from "../../store/store.js";
 import type { AbsolutePath, RelativePath } from "../../types/common.js";
 import type { CheckKey, TestFileRef } from "../../types/keys.js";
 import type { Policy } from "../../types/policy.js";
-import type { RunnerAdapter, RunnerClosure } from "../../types/runner.js";
+import type { RunnerAdapter } from "../../types/runner.js";
 import type { Store } from "../../types/store.js";
 import { COVERAGE_RECORD_VERSION, decodeRecord } from "../coverage/record.js";
 import { codeStorePath } from "../store/open.js";
@@ -233,7 +232,7 @@ interface Keyer {
 /**
  * The daemon's keys of this worktree over a scratch store, bootstrapped as
  * at a daemon's start, with the adapters' environments and the observed
- * rows of `main` for their projects.
+ * rows of `main` for their projects (`openDaemonKeying`, row 020-51).
  */
 async function openKeyer(options: StoredOptions, main: Store | undefined): Promise<Keyer> {
   const temp = mkdtempSync(join(tmpdir(), "squeal-gate-keys-"));
@@ -246,42 +245,26 @@ async function openKeyer(options: StoredOptions, main: Store | undefined): Promi
   };
   try {
     adapters.push(...(await options.adapters(temp)));
-    const environments = (await Promise.all(adapters.map((a) => a.environment()))).flat();
     const opened = openStore(temp);
     if (isStoreOpenFailure(opened)) throw new Error(`no scratch store: ${opened.reason}`);
     scratch = opened;
-    for (const project of new Set(environments.map((e) => e.project))) {
-      for (const key of OBSERVED_META_KEYS) {
-        if (main !== undefined) copyMeta(main, opened, key(project));
-      }
-    }
     const { root, policy, squealVersion, env } = options;
-    const worktreeId = worktreeIdFor(root);
-    const store = opened;
-    const { keys, hasher } = await openDaemonKeys({
+    const keying = await openDaemonKeying({
       root,
-      worktreeId,
-      store,
+      worktreeId: worktreeIdFor(root),
+      store: opened,
       policy,
       squealVersion,
       env,
+      adapters,
+      ...(main === undefined ? {} : { observedFrom: main }),
     });
-    await keys.setEnvironments(environments);
-    const listed = new Map<string, RunnerAdapter>();
-    for (const adapter of adapters) {
-      for (const ref of await adapter.testFiles()) listed.set(testFileId(ref), adapter);
-    }
-    return { keyed: (files) => keyFiles(keys, listed, files), keys, hasher, close };
+    const { keys, hasher } = keying;
+    return { keyed: (files) => keyFiles(keying, files), keys, hasher, close };
   } catch (error) {
     await close();
     throw error;
   }
-}
-
-/** Copies the meta row `key` of `from` into `to`, when `from` has one. */
-function copyMeta(from: Store, to: Store, key: string): void {
-  const value = from.meta.get(key);
-  if (value !== null) to.meta.set(key, value);
 }
 
 /**
@@ -289,25 +272,17 @@ function copyMeta(from: Store, to: Store, key: string): void {
  * adapter lists, or whose closure fails, has none.
  */
 async function keyFiles(
-  keys: WorktreeKeys,
-  listed: ReadonlyMap<string, RunnerAdapter>,
+  keying: DaemonKeying,
   files: readonly TestFileRef[],
 ): Promise<ReadonlyMap<TestFileRef, Keyed>> {
-  const closures = new Map<TestFileRef, RunnerClosure>();
-  for (const ref of files) {
-    const closure = await listed
-      .get(testFileId(ref))
-      ?.closure(ref)
-      .catch(() => null);
-    if (closure === undefined || closure === null) continue;
-    closures.set(ref, closure);
-    keys.setClosure(closure);
-  }
-  await keys.trackUntracked();
+  const { closures } = await keying.keyFiles(files);
   const keyed = new Map<TestFileRef, Keyed>();
-  for (const [ref, closure] of closures) {
-    const key = keys.index.key(ref);
-    if (key !== null) keyed.set(ref, { key, loads: [...closure.paths].sort(compare) });
+  for (const ref of files) {
+    const closure = closures.get(testFileId(ref));
+    const key = closure === undefined ? null : keying.keys.index.key(ref);
+    if (closure !== undefined && key !== null) {
+      keyed.set(ref, { key, loads: [...closure.paths].sort(compare) });
+    }
   }
   return keyed;
 }

@@ -1,7 +1,5 @@
 import { testFileId } from "../keys/reverse-index.js";
-import { openDaemonKeys } from "../scheduler/daemon-keys.js";
-import type { WorktreeKeys } from "../scheduler/keying.js";
-import { observedGrowth } from "../scheduler/observed.js";
+import { type DaemonKeying, openDaemonKeying } from "../scheduler/daemon-keying.js";
 import { recordsForFile } from "../scheduler/records.js";
 import { describeFailure } from "../state/fingerprint.js";
 import { worktreeEnvironment } from "../store/environments.js";
@@ -140,9 +138,9 @@ function namedAsDaemon(file: PartFile): boolean {
 
 async function exportWith(input: CiExportInput, runner: RunnerAdapter): Promise<CiExport> {
   const { worktreeId, store, parts, header } = input;
-  const { keys } = await openDaemonKeys(input);
-  const environments = await runner.environment();
-  await keys.setEnvironments(environments);
+  // Row 020-51: keyed by the one path the gate's stores lookup keys with.
+  const keying = await openDaemonKeying({ ...input, adapters: [runner] });
+  const { keys, environments } = keying;
   const environment = environmentRefusal(input, environments);
   if (environment !== null) return { refused: environment };
 
@@ -162,7 +160,7 @@ async function exportWith(input: CiExportInput, runner: RunnerAdapter): Promise<
   const covered = new Set(ran.flatMap((p) => p.part.testFiles.map(fileId)));
   const inspects = (file: PartFile, closure: RunnerClosure) =>
     covered.has(fileId(file)) && (closure.packages?.builtins ?? []).includes(INSPECTOR);
-  const { closures, report, inspected } = await keyFiles(input.root, runner, keys, kept, inspects);
+  const { closures, report, inspected } = await keyFiles(keying, kept, inspects);
   const parted = await keyPartsOf(input, keys, environments, closures);
   const certify = certifier(input.root, keys, parts);
   const uncertified: UncertifiedFile[] = [];
@@ -212,49 +210,21 @@ async function exportWith(input: CiExportInput, runner: RunnerAdapter): Promise<
 }
 
 /**
- * Keys `passed` as a daemon's start and record do: each file the runner
- * lists by its closure, then with what its shard observed beyond it
- * (`observedGrowth`, `addObserved`), stored in the job's store
- * (`writeSeen`). Returns the runner's closures and the report of the files
- * keyed; a file the runner does not list, or whose closure fails, is in
- * neither, and a file `leftOut` names by its closure is only counted.
+ * Keys `passed` as a daemon's start and record do (`DaemonKeying`): each
+ * file the runner lists by its closure, then with what its shard observed
+ * beyond it, stored in the job's store. Returns the runner's closures and
+ * the report of the files keyed; a file the runner does not list, or whose
+ * closure fails, is in neither, and a file `leftOut` names by its closure
+ * is only counted.
  */
 async function keyFiles(
-  root: AbsolutePath,
-  runner: RunnerAdapter,
-  keys: WorktreeKeys,
+  keying: DaemonKeying,
   passed: readonly PartFile[],
   leftOut: (file: PartFile, closure: RunnerClosure) => boolean,
-): Promise<{ closures: Map<string, RunnerClosure>; report: RunReport; inspected: number }> {
-  const listed = new Set((await runner.testFiles()).map(testFileId));
-  const closures = new Map<string, RunnerClosure>();
-  let inspected = 0;
-  for (const file of passed) {
-    const ref = refOf(file);
-    if (!listed.has(testFileId(ref))) continue;
-    const closure = await runner.closure(ref).catch(() => null);
-    if (closure === null) continue;
-    if (leftOut(file, closure)) {
-      inspected++;
-      continue;
-    }
-    closures.set(testFileId(ref), closure);
-    keys.setClosure(closure);
-  }
-  await keys.trackUntracked();
-  const report = partsReport(passed.filter((file) => closures.has(testFileId(refOf(file)))));
-  const run = keys.beginRun();
-  try {
-    const growth = await observedGrowth({ root, keys }, report, run);
-    for (const { testFile } of report.observed ?? []) {
-      const grown = growth.get(testFileId(testFile));
-      if (grown !== undefined) keys.addObserved(testFile, grown.add);
-    }
-  } finally {
-    keys.endRun();
-  }
-  await keys.trackUntracked();
-  keys.writeSeen();
+): Promise<{ closures: ReadonlyMap<string, RunnerClosure>; report: RunReport; inspected: number }> {
+  const { closures, leftOut: inspected } = await keying.keyFiles(passed, { leftOut });
+  const report = partsReport(passed.filter((file) => closures.has(fileId(file))));
+  await keying.grow(report);
   return { closures, report, inspected };
 }
 
