@@ -13,6 +13,7 @@ import {
 import type { RelativePath, WorktreeId } from "../../src/core/types/common.js";
 import type { CheckKey } from "../../src/core/types/keys.js";
 import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
+import { NO_TRAITS } from "../../src/core/types/runner-traits.js";
 import type { Store } from "../../src/core/types/store.js";
 import { freshStore } from "../state/helpers.js";
 
@@ -45,7 +46,7 @@ function setup() {
     worktreeId: WT,
     policy: DEFAULT_POLICY,
     now: () => Date.now(),
-    runner: {},
+    runner: { traits: NO_TRAITS },
     keys: { cache: new StatCache(), isEnvironmentInput: () => false, runnerOf: () => undefined },
   } as unknown as SchedulerContext;
   const ledger = new Ledger(context);

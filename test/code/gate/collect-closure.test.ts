@@ -3,6 +3,7 @@ import { collectEvidence } from "../../../src/core/code/gate/collect.js";
 import type { TestFileEvidence } from "../../../src/core/code/gate/types.js";
 import type { TestFileRef } from "../../../src/core/types/keys.js";
 import type { RunnerAdapter, RunnerClosure } from "../../../src/core/types/runner.js";
+import { NO_TRAITS } from "../../../src/core/types/runner-traits.js";
 import { changedSet, NO_ADAPTERS, project } from "./collect-fixture.js";
 
 /*
@@ -15,7 +16,11 @@ const REF: TestFileRef = { project: "", path: "test/loads.test.ts" };
 
 /** A Vitest adapter that lists `REF`, cannot give its closure, and fails if it runs. */
 function noClosure(): RunnerAdapter {
-  const adapter: Pick<RunnerAdapter, "testFiles" | "affected" | "closure" | "run" | "close"> = {
+  const adapter: Pick<
+    RunnerAdapter,
+    "traits" | "testFiles" | "affected" | "closure" | "run" | "close"
+  > = {
+    traits: NO_TRAITS,
     testFiles: async () => [REF],
     affected: async () => ({ direct: [REF], transitive: [] }),
     closure: () => Promise.reject(new Error("no closure")),

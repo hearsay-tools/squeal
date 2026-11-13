@@ -11,6 +11,7 @@ import type { Picked } from "../../../src/core/code/gate/prerun.js";
 import type { RelativePath } from "../../../src/core/types/common.js";
 import type { TestFileRef } from "../../../src/core/types/keys.js";
 import type { RunnerAdapter } from "../../../src/core/types/runner.js";
+import { NO_TRAITS } from "../../../src/core/types/runner-traits.js";
 
 /*
  * Rows 020-45 and 020-46 (#196, #198): the plan fits the whole run's
@@ -31,6 +32,7 @@ function pick(
   byInputs: readonly string[] = [],
 ): Picked {
   const adapter = {
+    traits: NO_TRAITS,
     closure: async (r: TestFileRef) => {
       const paths = loads[r.path];
       if (paths === undefined) throw new Error(`no closure for ${r.path}`);
