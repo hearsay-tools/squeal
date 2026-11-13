@@ -80,6 +80,23 @@ describe("FileProgress", () => {
     expect(told).toEqual([]);
   });
 
+  it("ends a run's files with the run, once, and names the files of a run still going", () => {
+    // Review 0.1.464 B1: a Vitest worker died, so its file had no module end; node:test runs on.
+    const { files, told } = progress();
+    const dead = files.started("vitest", QUICK);
+    const late: TestFileRef = { project: "slow", path: "test/n1/late.test.mjs" };
+    files.started("node-test", SLOW);
+    vi.advanceTimersByTime(1_000);
+
+    files.runEnded("vitest", [QUICK, { project: "", path: "test/v/never.test.ts" }]);
+    files.runEnded("node-test", [late]);
+    dead();
+    vi.advanceTimersByTime(600_000);
+
+    expect(told.map((t) => [t.runner, t.path])).toEqual([["node-test", SLOW.path]]);
+    expect(files.wasStarted("vitest", QUICK)).toBe(true);
+  });
+
   it("knows which files started, by runner and project", () => {
     const files = new FileProgress({ budgetSeconds: 25, since: performance.now() });
     files.started("node-test", SLOW);
