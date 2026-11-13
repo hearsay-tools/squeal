@@ -102,6 +102,12 @@ export interface StageRule<A, P> {
   /** `id`: what its covered files are recorded under, for its answer (row 011-325). */
   readonly stage: (context: SchedulerContext, ledger: Ledger, plan: P, id: RequestId) => Staged<A>;
   readonly outside?: Outside<A>;
+  /**
+   * Row 011-325: why no covered-files record is written under its id (its
+   * answer carries none, so no wait reads one); absent, one is, also for
+   * its install-wait answer. Its progress record stays.
+   */
+  readonly record?: Skip;
 }
 
 /** No store write: under the lock once; `covers` names why it records no file. */

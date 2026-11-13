@@ -247,6 +247,15 @@ describe("covered files: the record's transaction and lifetime (row 011-325)", (
     expect(p.committed()).toEqual({ key: null, pending: null });
   });
 
+  // For a request whose answer carries no id (an import's boolean, row 011-323): no record.
+  it("writes none for a request that names why, and keeps its progress record", async () => {
+    const p = probeHost();
+    const record = { skip: "the probe's answer carries no id" };
+    await p.intake.take(probe(p, { store: { stage: queueA(p), record } }));
+    expect(ids(p)).toEqual([]);
+    expect(p.log).toContain("record test/a.test.ts (A queued)");
+  });
+
   it("survives a daemon handoff: the next daemon reads it, and keeps it while a file is queued", async () => {
     const before = probeHost();
     const answer = await before.intake.take(groupRequest(TESTS_GROUP, before.groups, undefined));
