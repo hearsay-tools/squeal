@@ -43,3 +43,20 @@ Owns: those two test files. Leave alone: every product file and W1's files.
 If a new row shows an answer that differs from the base before 011-329 (`73abdb9e1`) in a way N1 does not name, stop and report it to the coordinator; do not change product code.
 
 Done when: the new rows pass; the table's other rows are unchanged; lint and typecheck pass; affected results read through `squeal status --wait 60000 <paths>`. Notes: a short "W2" section appended to `tasks/011-329/notes.md` naming each new row.
+
+## R1: review of cand/0.1.477
+
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.477` at `efafa9f32d5956483b2dc9b58583b80a068e7c1b`; range `371cc8f8c..efafa9f32`: W1's three commits of e645ac81 (`8c11ce0ff..07e2a6d7a`), W2's two commits of e8ca62ce (`499797ac5..116ea33b0`), all cherry-picked, then the 0.1.477 version raise and bundles. The behaviour to compare against is `371cc8f8c`. Read: board row 011-330, `research/runner-traits.md` (decision 2, "The report merge", row 2's done-when), `tasks/011-330/notes.md`, the "W2" section of `tasks/011-329/notes.md`, `reviews/0.1.473.md` S1 and N1, this file's W1 and W2. Candidate CI: the run on `efafa9f32`.
+
+Check, each as proven, plausible or unverified:
+
+1. **Every merged report is the same** as at `371cc8f8c`, for the composite and the remote lane: each field's value, whether an optional key is present or absent (empty included), the key order of the merged object, the failure text and its order, the first setup failure kept, `startedProjects` once each and sorted.
+2. **A field with no rule fails the typecheck**: `MergeRules` over every `RunReport` key, and the `Object.fromEntries` build with its one cast in `merge`. Can a forgotten or misplaced rule still pass the typecheck and the table, and does the cast hide one?
+3. **One decision path** (review `0.1.452.md` B1): the table calls `merge` as the composite and the remote lane do, never a copy of the rules.
+4. **Replace, don't layer.** Each of the four deleted composite cases maps to table rows that prove the same thing; no remote lane case was deleted, by the worker's call (notes).
+5. **Scope.** In `composite-runner.ts` only `merge`, `Part` and `SEVERITY` moved; nothing under `src/core/runner-host/` changed; `RunReport`'s shape did not change.
+6. **W2 (review 0.1.473 S1).** The new holder rows cover in-process pytest (no batch size and 2) and node:test and pytest recovering runners in a real host through creation, idle close and replacement; each answer matches the base, or differs only as N1 names; no product file changed. Judge the worker's choice to leave out a hosted pytest row with no batch size.
+
+`test/version-sensitive.test.ts` passed on the coordinator's tree at the candidate (7 of 7); lint, typecheck and `check:version` are clean; the build shows no drift. `test/keys/key-format.test.ts` runs on the coordinator's tree and in CI.
+
+Host policy: no local full suite, no `squeal run --all`, no `pnpm run build`; targeted runs with `env -u PLUGIN_ROOT -u PLUGIN_DATA`; affected results through `squeal status --wait 60000 <paths>`. Write `reviews/0.1.477.md` and commit it on your branch.
