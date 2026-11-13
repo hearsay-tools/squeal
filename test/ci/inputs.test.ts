@@ -2,7 +2,13 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { listingHash, readEvidence, readRecorded, uncertified } from "../../src/core/ci/inputs.js";
+import {
+  listingHash,
+  readEvidence,
+  readRecorded,
+  uncertified,
+  uncertifiedWhy,
+} from "../../src/core/ci/inputs.js";
 import { ABSENT_LISTING } from "../../src/core/keys/observed.js";
 
 /*
@@ -129,6 +135,17 @@ describe("uncertified (spec 018 D9)", () => {
     const paths = ["src/a.ts", "test/__snapshots__/a.snap", "data/v.txt"];
     expect(uncertified(paths, { "data/v.txt": "v" }, now)).toEqual(paths.slice(0, 2));
     expect(uncertified(["unknown.ts"], { "unknown.ts": "u" }, now)).toEqual(["unknown.ts"]);
+  });
+
+  it("says why each input is not certified (row 020-49, #205)", () => {
+    const now = here({ "src/a.ts": "blob-a", "data/v.txt": "v2", "same.txt": "s" });
+    const evidence = { "data/v.txt": "v", "unknown.ts": "u", "same.txt": "s" };
+    const paths = ["src/a.ts", "data/v.txt", "unknown.ts", "same.txt"];
+    expect(uncertifiedWhy(paths, evidence, now)).toEqual([
+      { path: "src/a.ts", why: "unrecorded" },
+      { path: "data/v.txt", why: "differs" },
+      { path: "unknown.ts", why: "unknown" },
+    ]);
   });
 });
 
