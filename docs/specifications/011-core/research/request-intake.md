@@ -95,7 +95,7 @@ Kept as they are (coordinator's calls below): promote and focus take no install-
 - Edits and reconciliation passes: they are not requests.
 - Any change to a key, the store format or a request's response type in 011-322.
 
-## Rows (spec 011)
+## Rows (spec 011; approved by the human, 2026-11-13, "Approve, land, start")
 
 1. **011-322, one request intake, behaviour preserved.** Every request goes through it. Done when: no request method of the scheduler calls `#transact`, `#request`, `#requests.ask`, `#groups.preempt`, `#cutTiers` or `#pump` itself; each skipped rule is a named reason in that request's declaration; a request without an install-wait answer or covered files fails typecheck; the intake's table covers busy store, install wait, progress record, stop and order with a probe request; the scheduler's and the daemon's existing request tests pass unchanged, less the cases the table replaced, each named in the notes; no answer, response type, CLI output or key changes.
 2. **011-323, the shared rules reach every request.** After 011-322. Done when: an import's waiting mark is written inside the busy-store retry, and with a second connection holding the write lock, `squeal import` into a running daemon re-keys once the holder ends and status names the import meanwhile; a test shows whether a `squeal retry` of a slow-lane file waits for the slow lane's next planning; if it does, the retry wakes the lanes of the files it queued; the named skips for both are gone.
