@@ -36,3 +36,13 @@ Kept: the lock per busy try; no wake (`wake: { skip }` citing difference 2 and r
 Changed, as the design asks: the progress record moved from inside the stage to after the commit (same lock task, nothing runs between). A file asked before `ledger.commit()` today is still queued after it, so the set asked is the same; a stage that throws now records nothing.
 
 `takeRetries`' `claimed` is required (coordinator 9ddca779, 2026-11-13, option A): start and pass give `#takeRetries`' ask; `squeal retry` gives its covered-files collector. Two calls outside my file list got `() => {}` as the third argument, by that agreement: `test/scheduler/retry-claims.test.ts:95` and `:125`.
+
+### Promote and focus (`promote`, `focus`, today's 848-888; declarations `promoteRequest`, `focusRequest` in `request-intake-requests.ts`, since `focused.ts` is card 8's)
+
+Paths today, the same for both:
+- closed or not started (focus: also no texts): resolves at once; no lock, no pump.
+- otherwise the lock once, no transaction and no busy retry: promote orders `ledger.queue` (`answeredOf`); focus adds a focused entry per file `mayFocus` allows. Then `#cutTiers(null)` under the same lock task.
+- success: pump. A throw under the lock rejects with no pump.
+- No install-wait check: while an install is awaited they still order the queue; the pump then stops at its own install check.
+
+Kept: no install-wait answer (`installWait: { skip: "writes no store: ..." }`); no store write (`store: { skip, covers, apply }`); no progress record (`covers: { skip }`); `cutTiers` under the lock after the change; no runner work. Focus's "no texts" is the closed answer's `nothing: true`.

@@ -46,7 +46,7 @@ import { CommandHold } from "./command-hold.js";
 import { attachCommitLanes, releaseLint } from "./commit-moment.js";
 import type { SchedulerContext } from "./context.js";
 import { NOTHING_CHANGED } from "./context.js";
-import { focusedWaiting, mayFocus } from "./focused.js";
+import { focusedWaiting } from "./focused.js";
 import { requeueFocusedTier } from "./focused-record.js";
 import { GroupTiers } from "./group-tiers.js";
 import { updateCommitReport } from "./head-move.js";
@@ -71,12 +71,12 @@ import { Mutex } from "./mutex.js";
 import { narrowAnswer, queueNarrow, REINSTALLED_REASON, selectNarrow } from "./narrow-run.js";
 import type { SchedulerOptions } from "./options.js";
 import { PoolWaits, publishPoolWaits } from "./pool-wait.js";
-import { answeredOf } from "./promoted-tier.js";
 import { priorityOf } from "./queue.js";
 import { BacklogQuiet, publishQuiet, quietSleepMs } from "./quiet.js";
 import { TierRecords } from "./record.js";
 import { lagging } from "./refine-apply.js";
 import { RequestIntake } from "./request-intake.js";
+import { focusRequest, promoteRequest } from "./request-intake-requests.js";
 import { RequestProgress } from "./request-progress.js";
 import { RERUN_CAP } from "./rerun.js";
 import { retryRequest, takeRetries } from "./retries.js";
@@ -867,46 +867,18 @@ class TierScheduler implements Scheduler {
     return takeRetries(context, ledger, (file) => this.#requests.ask([file]));
   }
 
-  /**
-   * Spec 011 C15: a named wait promotes `testFiles` for `withinMs` on this
-   * daemon's clock. Only the order of queued files changes; the pump takes
-   * a promoted file at the next tier boundary of a free lane, and the tier
-   * in flight there may yield to it (C4 step 5 as amended 2026-10-21, row
-   * 011-51).
-   */
-  async promote(testFiles: readonly TestFileRef[], withinMs: number): Promise<void> {
-    if (this.#closed || !this.#context) return;
-    await this.#lock.run(() => {
-      const { context, ledger } = this.#started();
-      // Row 011-283 (review 0.1.384 B1): `Promotions` asks which selected file has its answer.
-      ledger.queue.promote(testFiles, context.now() + withinMs, answeredOf(context, ledger));
-      this.#cutTiers(null);
-    }, "promoting the test files of a named wait");
-    this.#pump();
+  /** Spec 011 C15: a named wait promotes `testFiles` for `withinMs` (`promoteRequest`). */
+  promote(testFiles: readonly TestFileRef[], withinMs: number): Promise<void> {
+    return this.#intake.take(promoteRequest(testFiles, withinMs));
   }
 
-  /**
-   * Spec 011 C15, focused checks (row 011-145): a named wait asks for the
-   * checks of `testFiles` that hold one of `texts`, first and alone, for
-   * `withinMs` on this daemon's clock. A file that is not listed, slow or of
-   * a runner that runs whole files only gets no entry. The tier in flight in
-   * a file's lane may yield to it as to a promoted file (C4 step 5).
-   */
-  async focus(
+  /** Spec 011 C15, focused checks (row 011-145): `focusRequest`. */
+  focus(
     testFiles: readonly TestFileRef[],
     texts: readonly string[],
     withinMs: number,
   ): Promise<void> {
-    if (this.#closed || !this.#context || texts.length === 0) return;
-    await this.#lock.run(() => {
-      const { context, ledger } = this.#started();
-      const until = context.now() + withinMs;
-      for (const ref of testFiles) {
-        if (mayFocus(context, ledger, ref)) ledger.queue.focused.add(ref, texts, until);
-      }
-      this.#cutTiers(null);
-    }, "focusing the checks of a named wait");
-    this.#pump();
+    return this.#intake.take(focusRequest(testFiles, texts, withinMs));
   }
 
   nudge(): void {
