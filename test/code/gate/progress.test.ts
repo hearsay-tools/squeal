@@ -67,6 +67,16 @@ describe("FileProgress", () => {
     ]);
   });
 
+  it("never reads under the limit when the timer fires a fraction early", () => {
+    const { files, told } = progress();
+    files.started("node-test", SLOW);
+    // Node's timer clock may run ahead of performance.now() by under a millisecond.
+    const now = performance.now.bind(performance);
+    vi.spyOn(performance, "now").mockImplementation(() => now() - 0.5);
+    vi.advanceTimersByTime(30_000);
+    expect(told.map((t) => [t.path, t.seconds])).toEqual([[SLOW.path, 30]]);
+  });
+
   it("does not name a file that ended, or once the runs ended", () => {
     const { files, told } = progress();
     const ended = files.started("vitest", QUICK);
