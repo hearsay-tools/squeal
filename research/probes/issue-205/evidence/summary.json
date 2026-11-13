@@ -1,0 +1,44 @@
+{
+  "version": "0.1.460",
+  "node": "v26.13.0",
+  "vitest": "5.0.3",
+  "partFormat": "squeal-ci-part/4",
+  "coverage": {
+    "provider": "squeal",
+    "collector": "squeal",
+    "providerVersion": 3,
+    "recordVersion": 4
+  },
+  "mutation": {
+    "path": "test/refused.test.ts",
+    "original": "44f9950c69e2b7c0400c25517c1324f94dd1ed6e",
+    "replacement": "0000000000000000000000000000000000000000"
+  },
+  "files": [
+    {
+      "path": "test/accepted.test.ts",
+      "outcome": "pass",
+      "record": 0
+    },
+    {
+      "path": "test/refused.test.ts",
+      "outcome": "pass",
+      "record": 1
+    }
+  ],
+  "accepted": {
+    "verdict": "pass",
+    "from": {
+      "test/accepted.test.ts": "parts",
+      "test/refused.test.ts": "parts"
+    }
+  },
+  "refused": {
+    "verdict": "pass",
+    "from": {
+      "test/accepted.test.ts": "parts",
+      "test/refused.test.ts": "run"
+    }
+  },
+  "assertions": "all passed"
+}

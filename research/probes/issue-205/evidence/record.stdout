@@ -1,0 +1,10 @@
+
+ RUN  v5.0.3 /home/agent/projects/squeal/.ai/cezar/worktrees/12531320-509f-4a06-86f7-0b582b3c0af1/research/probes/issue-205/.tmp/fixture-iDDOyS
+      Coverage enabled with squeal
+
+
+ Test Files  2 passed (2)
+      Tests  2 passed (2)
+   Start at  02:09:39
+   Duration  409ms (worker 53%, import 21%, transform 18%, tests 8%)
+
