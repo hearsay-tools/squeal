@@ -25,6 +25,7 @@ export type RunWaitName = "checkpoint" | "group" | "lint group";
 /** A field of a read record (`WaitRecord`) that a read fills. */
 export type ReadField =
   | "store"
+  | "unavailable"
   | "end"
   | "revision"
   | "late"
@@ -38,6 +39,7 @@ export type ReadField =
 /** A condition on a read record; `FIELD_OF` names the field it reads. */
 export type Condition =
   | "store unopened"
+  | "store busy"
   | "newer revision"
   | "abandoned"
   | "running"
@@ -57,6 +59,7 @@ export type Condition =
 /** The field each condition reads; `poll` is given, never read. */
 export const FIELD_OF: Readonly<Record<Condition, ReadField | "poll">> = {
   "store unopened": "store",
+  "store busy": "store",
   "newer revision": "revision",
   abandoned: "end",
   running: "end",
@@ -86,8 +89,13 @@ export interface WaitRecord {
   readonly poll: number;
   /** The checkpoint's revision, which a newer one ends (the checkpoint wait; given, not read). */
   readonly since?: RevisionNumber;
-  /** Whether the worktree's store opened for this read. */
-  readonly store?: "opened" | "unopened";
+  /**
+   * Whether the worktree's store opened for this read: `busy`, its lock was
+   * held past the read's busy timeout; `unopened`, it cannot be read.
+   */
+  readonly store?: "opened" | "busy" | "unopened";
+  /** Why the store was not read, in the words of `withStatusStore` (row 011-327). */
+  readonly unavailable?: string;
   /** The checkpoint's end: `null` while it runs. */
   readonly end?: CheckpointEnd | null;
   /** The worktree's latest revision. */
@@ -106,9 +114,16 @@ export interface WaitRecord {
   readonly daemon?: "answered" | "none" | "unanswered";
 }
 
+/** Row 011-327: the worktree's store did not open, or was busy at the deadline's read; why. */
+export interface UnopenedOutcome {
+  readonly kind: "unopened";
+  readonly unavailable: string;
+}
+
 /** How the checkpoint wait ended (spec 005 D1). */
 export type CheckpointOutcome =
   | { readonly kind: "ended"; readonly verdict: FileVerdict }
+  | UnopenedOutcome
   /** Row 011-73 (C6 as amended 2026-10-21): its files are queued while the worktree is on hold. */
   | { readonly kind: "on-hold"; readonly hold: StatusHold }
   | { readonly kind: "abandoned" | "stopped" }
@@ -120,6 +135,7 @@ export type GroupOutcome =
   | { readonly kind: "ended"; readonly verdict: FileVerdict }
   | { readonly kind: "deadline"; readonly verdict: FileVerdict; readonly install?: InstallHold }
   | { readonly kind: "on-hold"; readonly hold: StatusHold }
+  | UnopenedOutcome
   | { readonly kind: "stopped" };
 
 /** How the wait on a lint group's checks ended (row 019-22). */
@@ -137,12 +153,15 @@ export interface OutcomeOf {
 export type WaitOutcome = OutcomeOf[RunWaitName];
 
 /** The fields an outcome carries. */
-export type PayloadField = "verdict" | "hold" | "revision" | "install" | "counts";
+export type PayloadField = "verdict" | "hold" | "revision" | "install" | "counts" | "unavailable";
 
-/** One link of a chain: when every condition holds, the wait ends with `then`, carrying `with`. */
+/**
+ * One link of a chain: when every condition holds, the wait ends with
+ * `then`, carrying `with`; `go on` ends the chain with no outcome.
+ */
 export interface Rule {
   readonly when: readonly Condition[];
-  readonly then: WaitOutcome["kind"];
+  readonly then: WaitOutcome["kind"] | "go on";
   /** The outcome's fields, read in this order before it ends. */
   readonly with: readonly PayloadField[];
 }
@@ -166,15 +185,27 @@ const rule = (
 /** The daemon check, last in every chain: a ping every `PING_POLLS` reads that no daemon hears. */
 const GONE = rule(["ping due", "no daemon"], "stopped");
 
+/**
+ * Row 011-327 (decision 4 item 1), the status waits' rule (`waitForStatus`):
+ * the worktree's store read through `withStatusStore`, its busy timeout
+ * bounded by what is left and the full one at the deadline's read. A store
+ * that does not open ends the wait with why; a busy one is read again, and
+ * at the deadline's read ends it with why.
+ */
+const STORE: readonly Rule[] = [
+  rule(["store unopened"], "unopened", "unavailable"),
+  rule(["store busy", "late"], "unopened", "unavailable"),
+  rule(["store busy"], "go on"),
+];
+
 /** The run waits' rows. */
 export const RUN_WAITS: Readonly<Record<RunWaitName, RunWaitRow>> = {
   // `run --all --wait`: moved > abandoned > on hold > ended > deadline.
   checkpoint: {
-    // Accidental: a store that does not open is "stopped", and a busy one throws (`inStore`).
     store: "worktree",
     reads: ["end", "revision", "late"],
     rules: [
-      rule(["store unopened"], "stopped"),
+      ...STORE,
       rule(["newer revision"], "moved", "revision"),
       rule(["abandoned"], "abandoned"),
       rule(["running", "before deadline", "held"], "on-hold", "hold"),
@@ -185,11 +216,10 @@ export const RUN_WAITS: Readonly<Record<RunWaitName, RunWaitRow>> = {
   },
   // `run <group> [<path>...] --wait`: on hold > ended or deadline; the deadline names an install.
   group: {
-    // Accidental: a store that does not open is "stopped", and a busy one throws (`inStore`).
     store: "worktree",
     reads: ["classes", "late"],
     rules: [
-      rule(["store unopened"], "stopped"),
+      ...STORE,
       rule(["files pending", "before deadline", "held"], "on-hold", "hold"),
       rule(["files settled"], "ended", "verdict"),
       rule(["late"], "deadline", "verdict", "install"),
