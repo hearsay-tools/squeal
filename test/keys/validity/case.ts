@@ -1,6 +1,7 @@
 import type { CheckId } from "../../../src/core/types/check.js";
 import type { CoreEnvironmentInputs, TestFileRef } from "../../../src/core/types/keys.js";
 import type {
+  FileImports,
   FocusedFile,
   RunnerEnvironment,
   RunnerPackages,
@@ -134,8 +135,16 @@ export interface AssembleInput {
   readonly files: Readonly<Record<string, string>>;
   /** Written after the commit: gitignored artifacts among them. */
   readonly untracked?: Readonly<Record<string, string>>;
-  /** Each test file and the paths the runner reported it imports. */
-  readonly closures: readonly { readonly path: string; readonly imports: readonly string[] }[];
+  /**
+   * Each test file and the paths the runner reported it imports; with `walk`,
+   * the import edges the runner walked too (015 D11), which no key reads and
+   * a worktree keeps no copy of since row 021-28 (021 D21.1).
+   */
+  readonly closures: readonly {
+    readonly path: string;
+    readonly imports: readonly string[];
+    readonly walk?: readonly FileImports[];
+  }[];
   /** Paths among the files the stat cache holds before bootstrap, as a predecessor left them (011-36). */
   readonly cached?: readonly string[];
   /** Written over cached files after the seed, so bootstrap's start pass hashes them again (011-204). */
