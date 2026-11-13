@@ -13,7 +13,7 @@ import {
   type Pythons,
 } from "../case.js";
 import { type Decided, decided, Kept, selectedOf, storedRun } from "./reported.js";
-import { goneLogDir, writeTree } from "./shared.js";
+import { goneLogDir, traitsAsked, writeTree } from "./shared.js";
 
 /*
  * The `adapter:pytest` kind (011 C14, 007 D2 to D6, row 011-48): the tree's
@@ -188,6 +188,7 @@ export async function pytestCase(input: PytestInput, scratch: string): Promise<C
       core.add(report);
       loaded.push(report.environmentObserved ?? []);
       failures.push(report.failure);
+      traitsAsked(adapter, run.files.map(ref));
       steps.push(await decided(adapter, affected, core));
     }
     recreated.push((await adapter.recheck?.()) ?? null);
