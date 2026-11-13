@@ -6,17 +6,21 @@ import { readReleased } from "../../core/lint/pass/commit-entry.js";
 import { waitsToLint } from "../../core/lint/pass/commit-news.js";
 import { heldBy, lintGroupOf } from "../../core/lint/pass/moment.js";
 import { lintScope } from "../../core/lint/pass/records.js";
-import { lintStoreSource, readOrNull, withLint } from "../../core/lint/surface/source.js";
+import type { LintStore } from "../../core/lint/store/types.js";
+import { type LintStoreSource, lintStoreSource } from "../../core/lint/surface/source.js";
 import { groupView } from "../../core/scheduler/slow.js";
+import { isBusy } from "../../core/store/connection.js";
 import { isStoreOpenFailure, openStore } from "../../core/store/open.js";
 import type { AbsolutePath, RevisionNumber, WorktreeId } from "../../core/types/common.js";
 import type { TestFileRef } from "../../core/types/keys.js";
+import type { LintTool } from "../../core/types/lint.js";
+import type { Policy } from "../../core/types/policy.js";
 import type { StatusUnavailable } from "../../core/types/status.js";
 import type { Store } from "../../core/types/store.js";
 import type { CheckpointLane } from "../../core/types/store-records.js";
 import { laneFiles } from "../run-lanes.js";
 import { holdOfWait, readClasses, readVerdict } from "../verdict.js";
-import { presenceOf, presenceRead } from "./presence.js";
+import { presenceOf, presenceRead, readBound } from "./presence.js";
 import { checkpointEnd, installWait, latestRevision } from "./progress.js";
 import type { WaitPorts } from "./socket.js";
 import type { ReadField, WaitRecord } from "./table.js";
@@ -154,7 +158,7 @@ export function waitReads(ask: RunWaitAsk, ports: WaitPorts): (store: Store | nu
       const presence = presenceOf(ask.root, worktreeIdFor(ask.root), ports);
       return () => (field) => {
         if (field === "late") return late();
-        if (field === "counts") return { counts: lintCounts(ask.root, ask.files.group) };
+        if (field === "counts") return lintRead(ask.root, ask.files.group, ask.deadline, now);
         // The lint group reads no worktree store but here, in a read of its own (row 011-327).
         if (field === "daemon") return { daemon: presenceRead(ask, presence, now) };
         return unknownField(ask, field);
@@ -226,33 +230,71 @@ export interface LintCounts {
   readonly unknown: number;
 }
 
-/** One read of the group's lint checks; why not, when lint is off or its store cannot be read. */
-function lintCounts(root: AbsolutePath, group: string): LintCounts | "off" | "unread" {
+/**
+ * One read of the group's lint checks; why not, when lint is off or its
+ * store cannot be read. Row 011-327 (review 0.1.474 B1), the worktree
+ * store's rule: the lint store opens with `readBound`'s busy timeout, and a
+ * busy error, at the open or in the read, is `busy` with why and whether the
+ * deadline had passed when the read began, so the wait reads it again. Any
+ * other failure stays `unread`. `withLint` reads both as `failed`, so this
+ * read opens and closes the store itself.
+ */
+function lintRead(
+  root: AbsolutePath,
+  group: string,
+  deadline: number,
+  now: () => number,
+): Partial<WaitRecord> {
   const policy = readPolicy(root);
   const commonDir = resolveCommonDir(root);
-  if (!policy.lint.enabled || commonDir === null) return "off";
+  if (!policy.lint.enabled || commonDir === null) return { counts: "off" };
   const id = worktreeIdFor(root);
   const tools = policy.lint.tools.filter((tool) => lintGroupOf(policy, tool)?.name === group);
-  const read = withLint(lintStoreSource(commonDir, root), ({ store }) => {
-    const counts = { files: 0, failing: 0, linting: 0, held: 0, unknown: 0 };
-    for (const tool of tools) {
-      // At `commit` and `manual` (row 019-47) only a release lints a check: one edited after it waits.
-      const at = heldBy(policy, tool)?.at;
-      const released =
-        at !== undefined && heldUntilAsked(at)
-          ? readReleased(store.meta, lintScope(id, tool))
-          : null;
-      for (const state of store.states.list(id, { tool })) {
-        counts.files += 1;
-        // A stale check's outcome is an old one: it is no verdict until linted again (review 0.1.398 B1).
-        if (waitsToLint(state)) {
-          if (released === null || released.has(state.check.path)) counts.linting += 1;
-          else counts.held += 1;
-        } else if (state.outcome === "fail") counts.failing += 1;
-        else if (state.outcome === "unknown") counts.unknown += 1;
-      }
+  const { busyTimeoutMs, final } = readBound(deadline, now);
+  const started = Date.now();
+  let access: ReturnType<LintStoreSource["open"]> = null;
+  try {
+    access = lintStoreSource(commonDir, root, { busyTimeoutMs }).open();
+    if (access === null || access === "missing" || "unreadable" in access) {
+      return { counts: "unread" };
     }
-    return counts;
-  });
-  return readOrNull(read) ?? "unread";
+    return { counts: countsIn(access.store, policy, id, tools) };
+  } catch (error) {
+    if (!isBusy(error)) return { counts: "unread" };
+    const waited = Date.now() - started;
+    return { counts: "busy", unavailable: lintBusyText(waited), late: final };
+  } finally {
+    if (access !== null && access !== "missing" && "store" in access) access.store.close();
+  }
+}
+
+/** A busy lint read's why, in the words `withStatusStore` gives a busy worktree store. */
+function lintBusyText(waited: number): string {
+  return `lint store busy, waited ${waited} ms: another process holds the lint store's lock; run the command again once it is released`;
+}
+
+/** The group's lint checks in the open lint store, by its tools. */
+function countsIn(
+  store: LintStore,
+  policy: Policy,
+  id: WorktreeId,
+  tools: readonly LintTool[],
+): LintCounts {
+  const counts = { files: 0, failing: 0, linting: 0, held: 0, unknown: 0 };
+  for (const tool of tools) {
+    // At `commit` and `manual` (row 019-47) only a release lints a check: one edited after it waits.
+    const at = heldBy(policy, tool)?.at;
+    const released =
+      at !== undefined && heldUntilAsked(at) ? readReleased(store.meta, lintScope(id, tool)) : null;
+    for (const state of store.states.list(id, { tool })) {
+      counts.files += 1;
+      // A stale check's outcome is an old one: it is no verdict until linted again (review 0.1.398 B1).
+      if (waitsToLint(state)) {
+        if (released === null || released.has(state.check.path)) counts.linting += 1;
+        else counts.held += 1;
+      } else if (state.outcome === "fail") counts.failing += 1;
+      else if (state.outcome === "unknown") counts.unknown += 1;
+    }
+  }
+  return counts;
 }
