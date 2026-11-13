@@ -1131,7 +1131,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.471";
+  if (true) return "0.1.473";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -2970,6 +2970,26 @@ function runGit(cwd, args, options = {}) {
     child.stdin.end(options.input ?? "");
   });
 }
+
+// src/core/types/runner-traits.ts
+function declareTraits(stated = {}) {
+  const { omittedTestFiles, slowWidth, tierWidth, tierPart, besideBacklog, backlogSlot: backlogSlot2 } = stated;
+  const { focuses, lane } = stated;
+  return {
+    omittedTestFiles: () => omittedTestFiles?.() ?? 0,
+    slowWidth: (testFiles2) => Math.max(1, slowWidth?.(testFiles2) ?? testFiles2.length),
+    tierWidth: (testFile, grant) => Math.max(1, tierWidth?.(testFile, grant) ?? grant),
+    tierPart: (testFile) => tierPart?.(testFile) ?? "",
+    besideBacklog: (testFile) => besideBacklog?.(testFile) ?? false,
+    backlogSlot: (testFile) => {
+      const files2 = backlogSlot2?.(testFile) ?? null;
+      return files2 === null ? null : Math.max(1, Math.floor(files2));
+    },
+    focuses: (testFile) => focuses?.(testFile) ?? false,
+    lane: (testFile) => lane?.(testFile) ?? ""
+  };
+}
+var NO_TRAITS = declareTraits();
 
 // src/core/daemon/runner.ts
 var VITEST_CONFIG = /^(vitest\.(config|workspace|projects)|vite\.config)\.[cm]?[jt]s$/;
