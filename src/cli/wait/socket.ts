@@ -1,15 +1,18 @@
 import { setTimeout as sleep } from "node:timers/promises";
-import type { AbsolutePath } from "../../core/types/common.js";
+import { lockFileFor } from "../../core/store/paths.js";
+import type { AbsolutePath, WorktreeId } from "../../core/types/common.js";
 import type { DaemonRequest, DaemonResponse } from "../../core/types/daemon.js";
 import { askDaemon, CLI_SOCKET_TIMEOUT_MS } from "../daemon-access.js";
+import { type DaemonWatch, watchDaemon } from "../wait-liveness.js";
 
 /*
- * Row 011-326: the ports a wait's loop reads through, the clock and the
- * socket, each with its production adapter here; a test gives a stepped
- * clock. The store stays the real one: a test gives a scratch store.
+ * Row 011-326: the ports a wait's loop reads through, the clock, the
+ * socket and (row 011-327) the daemon watch, each with its production
+ * adapter here; a test gives a stepped clock. The store stays the real
+ * one: a test gives a scratch store.
  */
 
-/** The clock and the socket of a wait. */
+/** The clock, the socket and the daemon watch of a wait. */
 export interface WaitPorts {
   /** Epoch ms, as `Date.now`. */
   readonly now: () => number;
@@ -21,6 +24,11 @@ export interface WaitPorts {
     request: DaemonRequest,
     timeoutMs?: number,
   ) => Promise<DaemonResponse | null>;
+  /**
+   * Row 011-327 (decision 4 item 2): watches worktree `worktreeId`'s daemon
+   * across a wait's reads, as the status waits do (`watchDaemon`).
+   */
+  readonly watch: (worktreeId: WorktreeId, commonDir: AbsolutePath) => DaemonWatch;
 }
 
 export const REAL_PORTS: WaitPorts = {
@@ -29,6 +37,9 @@ export const REAL_PORTS: WaitPorts = {
     await sleep(ms);
   },
   ask: (socketPath, request, timeoutMs) => askDaemon(socketPath, request, timeoutMs),
+  // As `waitForStatus` watches it: the lock's marks and the record read again in a read of its own.
+  watch: (worktreeId, commonDir) =>
+    watchDaemon(worktreeId, { lockFile: lockFileFor(commonDir, worktreeId), commonDir }),
 };
 
 /** The least a socket request at the deadline waits, so a daemon that answers at once is heard. */

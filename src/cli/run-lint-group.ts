@@ -6,6 +6,8 @@ import type { RunGroupResponse } from "../core/types/daemon.js";
 import { daemonSocket } from "./daemon-access.js";
 import { deadlineText } from "./group-pending.js";
 import type { CliIo } from "./main.js";
+import { statusCommand } from "./status-command.js";
+import { stoppedText } from "./wait/presence.js";
 import { askWithin, socketBound } from "./wait/socket.js";
 import type { LintGroupOutcome } from "./wait/table.js";
 import { runWait, untilTaken } from "./wait/wait.js";
@@ -60,7 +62,11 @@ export async function runLintGroupCommand(run: LintGroupRun, io: CliIo): Promise
   // The lint group wait (`src/cli/wait/`): until none of the group's checks is left to lint.
   const files = { kind: "group", group: group.name } as const;
   const outcome = await runWait({ wait: "lint group", root, socketPath, deadline, files });
-  const [verdict, code] = lintGroupVerdictLine(outcome, group);
+  const [verdict, code] = lintGroupVerdictLine(
+    outcome,
+    group,
+    statusCommand(io.env ?? process.env),
+  );
   io.stdout(`Group ${group.name} ${verdict}\n${line}`);
   return code;
 }
@@ -113,6 +119,7 @@ function requestedText(group: string, { revision, queued }: Requested): string {
 export function lintGroupVerdictLine(
   outcome: LintGroupOutcome,
   group: ResolvedGroup,
+  command: string,
 ): [string, 0 | 1 | 3] {
   const none = (why: string): [string, 3] => [`has no verdict: ${why}`, 3];
   switch (outcome.kind) {
@@ -121,7 +128,9 @@ export function lintGroupVerdictLine(
     case "unread":
       return none("the lint store cannot be read");
     case "stopped":
-      return none("the daemon stopped before the group's lint checks were linted");
+      return none(
+        `the daemon stopped before the group's lint checks were linted (${stoppedText(outcome.daemon, command)})`,
+      );
     case "deadline":
       return none(
         `the deadline passed with ${plural(outcome.counts.linting, "lint check")} pending; the group goes on in the daemon`,
