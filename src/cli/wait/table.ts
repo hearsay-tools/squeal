@@ -255,16 +255,17 @@ export const RUN_WAITS: Readonly<Record<RunWaitName, RunWaitRow>> = {
       GONE,
     ],
   },
-  // `run <lint group> --wait`: off or unread, then deadline > ended, then stopped.
-  // Accidental: `late` before `nothing to lint`, so the deadline's last read gives no verdict.
+  // `run <lint group> --wait`: off or unread, then ended > deadline, then stopped.
+  // Row 011-327 (decision 4 item 3): `nothing to lint` before `late`, so a group whose last
+  // check ended by the deadline's read gives its verdict, as a test group does (was deadline).
   "lint group": {
     store: "lint",
     reads: ["counts", "late"],
     rules: [
       rule(["lint off"], "off"),
       rule(["lint unread"], "unread"),
-      rule(["late"], "deadline", "counts"),
       rule(["nothing to lint"], "ended", "counts"),
+      rule(["late"], "deadline", "counts"),
       GONE,
     ],
   },

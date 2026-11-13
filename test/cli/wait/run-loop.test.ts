@@ -344,10 +344,10 @@ describe("the lint group wait's loop (row 011-326)", () => {
     });
   });
 
-  it("deadline at the deadline's read, though nothing is left to lint (accidental, 011-327)", async () => {
+  it("ended at the deadline's read with nothing left to lint: the verdict (011-327: was deadline)", async () => {
     const { clock, ask } = lintWait(0, { "src/a.js": "pass" });
     expect(await runWait(ask, clock.ports)).toMatchObject({
-      kind: "deadline",
+      kind: "ended",
       counts: { files: 1, linting: 0 },
     });
   });
