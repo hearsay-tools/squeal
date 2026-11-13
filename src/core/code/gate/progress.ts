@@ -86,7 +86,9 @@ export class FileProgress {
       // `performance.now()` reaches the limit (CI run 43349478847): it
       // fired because the limit passed, so it never reads under it.
       const seconds = Math.max(Math.floor(limit), Math.floor((now - at) / 1000));
-      const usedSeconds = Math.floor((now - since) / 1000);
+      // The file started inside the budget, so the budget used is never less
+      // than its own seconds (row 020-47, review 0.1.464-r3 S1).
+      const usedSeconds = Math.max(seconds, Math.floor((now - since) / 1000));
       overran({ runner, path: ref.path, seconds, storedSeconds, usedSeconds, budgetSeconds });
     }, limit * 1000);
     timer.unref();

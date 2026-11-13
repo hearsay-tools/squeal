@@ -74,7 +74,7 @@ describe("FileProgress", () => {
     const now = performance.now.bind(performance);
     vi.spyOn(performance, "now").mockImplementation(() => now() - 0.5);
     vi.advanceTimersByTime(30_000);
-    expect(told.map((t) => [t.path, t.seconds])).toEqual([[SLOW.path, 30]]);
+    expect(told.map((t) => [t.path, t.seconds, t.usedSeconds])).toEqual([[SLOW.path, 30, 30]]);
   });
 
   it("does not name a file that ended, or once the runs ended", () => {
