@@ -1,0 +1,9 @@
+{"step":"start","at":"2026-11-13T02:30:25.984Z","load1m":9.42,"cpuCount":24}
+{"version":"0.1.463","cli":"/home/agent/.claude/plugins/cache/hearsay/squeal/0.1.463/dist/cli/squeal.mjs","mode":"nodaemon","fixture":"$TMPDIR/issue-206-nodaemon-XXXXXX/repo"}
+{"step":"gate-1","at":"2026-11-13T02:30:26.126Z","load1m":9.42,"cpuCount":24}
+{"run":1,"cmd":"squeal code --base main --json --timeout 60","exit":0,"ms":1385,"verdict":"pass","runs":[{"runner":"vitest","selected":["test/plain.test.ts","test/reads.test.ts"]}],"stderr":[]}
+{"step":"gate-2","at":"2026-11-13T02:30:27.512Z","load1m":9.42,"cpuCount":24}
+{"run":2,"cmd":"squeal code --base main --json --timeout 60","exit":0,"ms":899,"verdict":"pass","runs":[{"runner":"vitest","selected":["test/plain.test.ts","test/reads.test.ts"],"from":{"test/plain.test.ts":"store","test/reads.test.ts":"store"}}],"stderr":["squeal code: Vitest: 2 test files selected (tests 2): none to run, 2 read from the stores","squeal code: 2 of 2 selected test files read from the stores"]}
+{"step":"gate-3","at":"2026-11-13T02:30:28.413Z","load1m":9.47,"cpuCount":24}
+{"run":3,"cmd":"squeal code --base main --json --timeout 60","exit":0,"ms":892,"verdict":"pass","runs":[{"runner":"vitest","selected":["test/plain.test.ts","test/reads.test.ts"],"from":{"test/plain.test.ts":"store","test/reads.test.ts":"store"}}],"stderr":["squeal code: Vitest: 2 test files selected (tests 2): none to run, 2 read from the stores","squeal code: 2 of 2 selected test files read from the stores"]}
+{"kept":"$TMPDIR/issue-206-nodaemon-XXXXXX"}
