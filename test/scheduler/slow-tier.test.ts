@@ -133,7 +133,9 @@ describe("the slow tier (spec 004 D2)", SLOW, () => {
     await h.scheduler.idle();
     expect(slowRuns(h)).toEqual([]);
     const request = await h.scheduler.requestSlowSuite();
-    expect(request).toEqual({ revision: h.scheduler.status().revision, queued: 2 });
+    // Row 011-325: the answer names the record of its covered files.
+    const revision = h.scheduler.status().revision;
+    expect(request).toEqual({ revision, queued: 2, coveredId: expect.any(String) });
     await waitFor(() => slowRuns(h).length === 2, 30_000);
     await h.scheduler.idle();
     // Every slow file is current now: a second request queues nothing.
