@@ -228,7 +228,9 @@ export async function runOpenCode(options: OpenCodeRunOptions): Promise<OpenCode
       stdout: out.stdout(),
       stderr: out.stderr(),
       exitCode,
-      cleanup: () => rmSync(dir, { recursive: true, force: true }),
+      // A killed OpenCode can still write here while the delete runs (ENOTEMPTY, Node 26 CI,
+      // candidate 0.1.463): retry until it stops.
+      cleanup: () => rmSync(dir, { recursive: true, force: true, maxRetries: 20, retryDelay: 50 }),
     };
   } catch (error) {
     if (earlier === undefined) rmSync(dir, { recursive: true, force: true });
