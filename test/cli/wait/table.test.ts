@@ -274,10 +274,10 @@ const LINT: readonly Row[] = [
     end({ kind: "deadline", counts: counts(2) }, "late"),
   ],
   [
-    "deadline beats ended at the deadline's read: no verdict (accidental, 011-327)",
+    "ended beats deadline at the deadline's read: the verdict, as a test group (011-327: was deadline)",
     "lint group",
     lint({ counts: counts(0), late: true }),
-    end({ kind: "deadline", counts: counts(0) }, "late"),
+    end({ kind: "ended", counts: counts(0) }, "nothing to lint"),
   ],
   [
     "off: lint is off",
