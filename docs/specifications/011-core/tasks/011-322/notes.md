@@ -79,3 +79,17 @@ Paths today, all in one task that `RunnerWork.afterTier` runs under the lock beh
 Kept: `runnerWork: { always }` holds the lock behind the runner work through every try; the install-wait answer is made from the selection (`installWait: { answer }`), with no write. Its state is read at the start of the locked task, before `selectNarrow`; today it is read after it, in the same lock task, and nothing in `selectNarrow` sets it, so the value is the same. The unknown-group and lint answers stay first (the plan's `{ answer: null }` and its throw).
 
 Moved within the same lock task: the record after the commit; the lane's `preempt` from inside the stage to the wake after the record (`wake: { lane }`; `wakeLane` syncs the lanes and preempts the group's). `narrowAnswer` and the covered set do not read the lane, so the answer is the same.
+
+### `squeal run --all` (`requestFullSuite`, today's 629-707; declaration `fullSuiteRequest` in `checkpoint-requests.ts`)
+
+Paths today:
+- no closed check. With the change feed's passes: notes how many started, awaits a pass, and throws `NO_PASS` unless one numbered above the note was delivered (row 011-198); no pump.
+- awaiting an install: `#request` around `#handleBatch(interval)`, the pass that may end the wait (review wave 11, B1).
+- every lane preempted (`#groups.preempt()`), before the lock (quirk 2), also when it will abandon.
+- first stage, the lock taken again on each busy try: in the transaction, awaiting or reinstalled: `abandonFullSuite` (an abandoned checkpoint, written); else the ledger broken, runner work queued or a refinement in flight: `null` (an empty transaction); else `queue`: `queueFullSuite`, ask its own files (review wave 3.6, B1), end the backlog's quiet, start a warm-up.
+- `null`: `RunnerWork.afterTier`, the lock held through every try: awaiting or reinstalled read once; if not, `fetchRunnerRetry` (asks the runner when the ledger is broken), its keys by `keyRunnerRetry` busy-retried (`lagging` from the second try), then one busy-retried transaction: abandon, or store the runner retry and `queue`. Closed meanwhile: `afterTier` rejects.
+- busy at the stop: rejects with the operation named; other error: rolled back and restored; no pump. Every checkpoint answered (queued, joined, completed at once, abandoned): pump.
+
+Kept, all five design quirks hold: the lock per busy try in the first stage and held through every try after the runner work (quirk 1, `runnerWork: { whenPending }`); every lane woken before the lock (quirk 2, `wake: { allLanes: "<reason>" }`); no pump after a throw (quirk 4); the delivered pass and the install's pass first (quirk 5, `start.afterPass`, `installWait.passFirst`). The deferral check stays inside the first transaction after the install-wait check, so an awaited install still abandons at once while runner work is pending. The abandon decision after the runner work is read once before the runner is asked and used in the transaction, as today (`reason` passed in). The checkpoint's files are recorded after the commit, in the same lock task; `queueFullSuite` committed the ledger before the ask today too.
+
+The key counter of `#request` and `NO_PASS` moved with the request into `request-intake.ts`; the scheduler keeps `#retries` for `#reconcilePaths`.
