@@ -106,3 +106,49 @@ The host rebooted near 19:52Z and stayed at load ~110 on 24 CPUs (another projec
 - Over `test/scheduler`, `test/code/gate`, `test/runner-host`, `test/keys`, `test/daemon` and `test/runners/{vitest,node-test,pytest}` (710 files): 366 pass, 2 fail (the two above), 304 pending, 38 unknown. `test/scheduler/busy-merge.test.ts` timed out once in a poll at load 7.7 per CPU and was pending a load retry. Other files that failed once in a hook or at 5 s at load 90 to 210 (`collect-inputs`, `touched-in-flight` passed on retry; `cancel-cause`, `imports`, `setup-rejection`, `coverage-default`, `observe*`, `overlap`, `keep-grown*`, `lock`, `reach`, `test-command-listing`, integration stamps files) had load retries queued.
 - No full suite was run or requested.
 
+
+## W2: review 0.1.473 S1, the holder table completed
+
+Worker e8ca62ce, 2026-11-13. Brief: `tasks/wave-84.md` W2. Tests only; no product file changed. Commit `1b843fc07`.
+
+### New rows in `test/daemon/runner-traits-holders.test.ts`
+
+| Row | Holder | Expected |
+|---|---|---|
+| The in-process adapter: "is pytest's with no batch size at runner.tierSize, read per answer" | `createPytestAdapter` as `pytest-runners.ts` makes it: a missing `cwd`, no environment, `source: {}`, so no Python runs | `PYTEST` at `tierSize` 4, width 6 at 6 |
+| The same, "with a batch size of 2" | project `batchSize` 2 and the option `batchSize: () => 2` | slot 2 |
+| The recovering runner: "in a runner host is node:test's through open, an idle close and a replacement (spec 021 D20.1)" | `createNodeTestRunners` with `host: sourceHost(squealVersion())` and `idleMs` | `NODE_TEST` at 4 and 6: before creation, live, after the idle close, after the next host |
+| The same, "pytest with a batch size of 2's" | `createPytestRunners` with the same options | `PYTEST` with slot 2, each phase |
+
+All eight columns at `tierSize` 4 then 6 (`bySize`, beside the table's `tierSize`).
+
+How the hosted rows reach each phase:
+
+- Seams: the factories' `host` and `idleMs` options, and `sourceHost` from `test/runner-host/process-helpers.ts` (a real `squeal runner-host` from the sources, as the parity files use). The factories pass `idleMs` and `gone` only with a host, so a hosted runner is the only path through the factory to an idle close.
+- Each host's adapter notes its missing `cwd` once ("is not a directory"). The count of these notes is the count of hosts started: 1 after `open`, 2 after the call that follows the idle close. No `/proc` read, so the rows hold on every platform.
+- The idle close: `idleMs` answers 0 at `open`, then 1 for one `testFiles` call, whose end arms a 1 ms timer. A 50 ms timer started after it fires after it, so the next read is of the parked adapter. The second host shows that the first closed.
+
+### Against the base (`73abdb9e1`)
+
+- In-process pytest: the base adapter stated only `focuses: true` (`pytest/adapter.ts:348` there). The old fallbacks gave omitted 0, slow width 3 (the files), width 8 (the grant), part `""`, beside false, slot `null`, focus true, lane `""`. Now width 4 then 6, beside true, slot 5 or 2. These are the three answers N1 names; the other five columns are the base's.
+- Hosted recovering runners: at the base the recovering runner took the width from its `tierWidth` option (`runner.tierSize`), beside and slot from its options (true; 1, or the batch size), and focus from its option (node:test none, so false; pytest true). Omitted, slow width and part came from the proxy (the host sent 0 and no widths: 0, 3, `""`). Lane was no member: `""`. Today's answers are the same in each phase. No difference outside N1.
+- How this was checked: by reading the base's `runner.ts:247-254`, `pytest-runners.ts`, `node-test-runners.ts`, `proxy.ts:222-231` and `pytest/adapter.ts`. The base has no `traits` member, so the rows cannot run against it.
+
+### What the rows prove, and what they do not
+
+- They prove each holder's wiring. The in-process pytest adapter's `concurrency` and `batchSize` options reach its traits. The hosted proxy's width follows `runner.tierSize` at each answer through `process-host.ts`'s policy getter. Its slot follows the project's `batchSize` across the wire: no default gives 2.
+- For node:test and pytest, the live, parked and option traits give the same answers by design (decision 3). So no row shows which one answers: a reversed order in `liveTraits(() => (inner ?? parked?.last)?.traits ?? options.traits)` still passes here. The unchanged Vitest idle and host-died rows are the ones that tell the order apart.
+
+### Choices
+
+- No hosted pytest row with no batch size. Each hosted case starts two hosts: node:test took 4.5 s to 6.0 s and pytest 6.2 s to 9.5 s, at host load about 74 on 24 CPUs. The proxy row already covers the default batch size, and the batch-2 row covers its path over the wire. A first version had the row; it passed at revision 3 in 7.0 s.
+- The file is 359 lines, over the ~300-line signal. The brief keeps the rows in the existing table, and W2 owns no other file. A later split could move the start-reply section (about 45 lines) to a file of its own.
+- `test/version-sensitive.txt` is unchanged. The file stays flagged (`createNodeTestAdapter`, `NodeTestProject`) and exempt. The hosted node:test case runs no node:test (missing `cwd`), and its host runs on the Node that runs the test.
+- `test/daemon/runner-traits-fixture.ts` is unchanged. `bySize` stays in the table file, since it sets that file's `tierSize`.
+
+### Verification
+
+- `pnpm run typecheck`: exit 0. `pnpm run lint`: `Checked 3366 files in 15s. No fixes applied.`
+- `squeal status --wait 60000 test/daemon/runner-traits-holders.test.ts test/version-sensitive.test.ts` at revision 5: no known failures, both current. Each new case passed (`--check`).
+- Two known failures elsewhere in the worktree, both with no baseline result and neither importing these files: `test/code/delivery/cost.test.ts` (394 ms against 300 ms, a timing limit) and `test/commit/boundary-daemon.test.ts` (a real daemon). Host load was about 74 on 24 CPUs.
+- No full suite, no `squeal run --all`, no build.
