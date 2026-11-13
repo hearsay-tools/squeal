@@ -1,12 +1,20 @@
 import type { TestFileRef } from "../types/keys.js";
+import type { Policy } from "../types/policy.js";
+import type { SlowSuiteRequest } from "../types/scheduler.js";
+import type { FeedPasses } from "../types/watcher.js";
+import { releaseLint } from "./commit-moment.js";
 import { mayFocus } from "./focused.js";
+import type { GroupTiers } from "./group-tiers.js";
 import { answeredOf } from "./promoted-tier.js";
 import type { Request, Skip } from "./request-intake-types.js";
+import { groupView } from "./slow.js";
+import { queueGroup } from "./slow-tier.js";
 
 /*
  * Row 011-322: the declarations of the requests whose code the intake's
- * files hold, the files that queue theirs being another row's: a named
- * wait's promotion and focused checks (`focused.ts`, `promoted-tier.ts`).
+ * files hold, the files that queue theirs being another row's: `squeal run
+ * <group>` (`slow-tier.ts`'s `queueGroup`, card 8's file), a named wait's
+ * promotion and focused checks (`focused.ts`, `promoted-tier.ts`).
  */
 
 /** Promote and focus write no store: only the queue's order, in memory. */
@@ -69,5 +77,60 @@ export function focusRequest(
       },
     },
     wake: { cutTiers: true },
+  };
+}
+
+/**
+ * Spec 019 D6: group `group`'s files run now, whatever its moment; its lane
+ * still waits for the groups `after` names (D1). A lint group's pending
+ * checks lint now (row 019-22): its released paths, then a pass, whose end
+ * nudges the lint pass (`passes`, the change feed's; absent, none). `null`
+ * for a group the policy in force does not have. `groups`: its lanes.
+ */
+export function groupRequest(
+  group: string,
+  groups: GroupTiers,
+  passes: FeedPasses | undefined,
+): Request<SlowSuiteRequest | null> {
+  const known = (policy: Policy) => groupView(policy).groups.some((g) => g.name === group);
+  return {
+    operation: `taking a squeal run ${group} request`,
+    start: { skip: "no closed answer: before the start the scheduler throws (`started`)" },
+    installWait: {
+      stage: (context, ledger) =>
+        known(context.policy) ? { revision: ledger.revision.number, queued: 0 } : null,
+    },
+    runnerWork: { skip: "waits for no runner work: it queues the group's files at their keys" },
+    store: {
+      outside: {
+        skip:
+          "a lint group's release writes the lint store, never inside the store's transaction " +
+          "(D3); it covers no test file and wakes no lane; while an install is awaited the " +
+          "stage answers",
+        release: (context, ledger) => {
+          const resolved = groupView(context.policy).groups.find((g) => g.name === group);
+          if (resolved?.select.kind !== "lint") return null;
+          return {
+            answer: { revision: ledger.revision.number, queued: releaseLint(context, group) },
+          };
+        },
+        work: () => void passes?.pass().catch(() => {}),
+      },
+      stage: (context, ledger) => {
+        const revision = ledger.revision.number;
+        const view = groupView(context.policy);
+        if (!known(context.policy)) return { answer: null, covered: [] };
+        groups.lanes(context.policy);
+        groups.get(group)?.request();
+        const queued = queueGroup(context, ledger, group);
+        const covered = [...ledger.files.values()].filter((f) => view.of(f.ref).name === group);
+        return { answer: { revision, queued }, covered };
+      },
+    },
+    wake: {
+      skip:
+        "its lane is marked requested inside the stage (`SlowTier.request`, which preempts " +
+        "it), before its files are queued, as before row 011-322",
+    },
   };
 }
