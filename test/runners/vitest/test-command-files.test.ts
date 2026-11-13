@@ -84,7 +84,7 @@ describe("a listing that leaves files out (spec 005 D8 step 3, review wave-2 B1)
       const listing = await fx.adapter.testFiles();
       expect(listing.map((ref) => ref.path)).not.toContain("test/outside.test-d.ts");
       expect(await vitestList(fx.root, [])).toContain("test/outside.test-d.ts");
-      expect(fx.adapter.omittedTestFiles?.()).toBe(1);
+      expect(fx.adapter.traits.omittedTestFiles()).toBe(1);
       const all = { runner: "vitest", filters: [] } as const;
       expect(resolveTestFiles(all, listing, fx.root, new Set(), 1)).toBeNull();
       expect(resolveTestFiles(all, listing, fx.root, new Set(), null)).toBeNull();
@@ -97,7 +97,7 @@ describe("a listing that leaves files out (spec 005 D8 step 3, review wave-2 B1)
   it("counts none for a configuration it lists completely", SLOW, async () => {
     const fx = await openFixture("basic");
     const listing = await fx.adapter.testFiles();
-    expect(fx.adapter.omittedTestFiles?.()).toBe(0);
+    expect(fx.adapter.traits.omittedTestFiles()).toBe(0);
     const all = { runner: "vitest", filters: [] } as const;
     expect(resolveTestFiles(all, listing, fx.root, new Set(), 0)).toEqual(listing);
   });

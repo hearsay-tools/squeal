@@ -123,8 +123,8 @@ export default defineConfig({ test: { projects: [
   it("runs an isolated project's files alone at 1 beside an isolate: false project of one group, and both at 2", async () => {
     const { fx, a, b } = await twoProjects(", maxWorkers: 3");
     expect(Math.max(...(await workerIds(fx, a, 1)).values())).toBe(1);
-    expect(fx.adapter.tierWidth?.(a[0] ?? ref("x"), 1)).toBe(1);
-    expect(fx.adapter.tierWidth?.(b[0] ?? ref("x"), 1)).toBe(2);
+    expect(fx.adapter.traits.tierWidth(a[0] ?? ref("x"), 1)).toBe(1);
+    expect(fx.adapter.traits.tierWidth(b[0] ?? ref("x"), 1)).toBe(2);
     const both = await workerIds(fx, [...a, ...b], 2);
     expect(Math.max(...both.values())).toBeLessThanOrEqual(2);
     // A grant below the tier's floor, as the slow instance's own width can be: both at 2, no throw.
@@ -133,8 +133,8 @@ export default defineConfig({ test: { projects: [
 
   it("runs an isolated project at 1 beside an isolate: false sibling that reads the root's width too (review 0.1.255 B3)", async () => {
     const { fx, a, b } = await twoProjects("");
-    expect(fx.adapter.tierWidth?.(a[0] ?? ref("x"), 1)).toBe(1);
-    expect(fx.adapter.tierWidth?.(b[0] ?? ref("x"), 1)).toBe(2);
+    expect(fx.adapter.traits.tierWidth(a[0] ?? ref("x"), 1)).toBe(1);
+    expect(fx.adapter.traits.tierWidth(b[0] ?? ref("x"), 1)).toBe(2);
     expect(new Set((await workerIds(fx, a, 1)).values())).toEqual(new Set([1]));
     expect(Math.max(...(await workerIds(fx, [...a, ...b], 2)).values())).toBeLessThanOrEqual(2);
     expect(Math.max(...(await workerIds(fx, [...a, ...b], 1)).values())).toBe(2);
@@ -195,10 +195,10 @@ describe("vitest adapter: the slow width it reports (review 001-394 B2)", SLOW, 
   const four = refs.slice(0, 4);
 
   it("is the project's own maxWorkers, 1 included, and every file without one", async () => {
-    expect((await fixture(", maxWorkers: 2")).adapter.slowWidth?.(four)).toBe(2);
-    expect((await fixture(", maxWorkers: 1")).adapter.slowWidth?.(four)).toBe(1);
-    expect((await fixture()).adapter.slowWidth?.(four)).toBe(4);
-    expect((await fixture(", maxWorkers: 6")).adapter.slowWidth?.(four)).toBe(4);
+    expect((await fixture(", maxWorkers: 2")).adapter.traits.slowWidth(four)).toBe(2);
+    expect((await fixture(", maxWorkers: 1")).adapter.traits.slowWidth(four)).toBe(1);
+    expect((await fixture()).adapter.traits.slowWidth(four)).toBe(4);
+    expect((await fixture(", maxWorkers: 6")).adapter.traits.slowWidth(four)).toBe(4);
   });
 
   it("starts that many at once on the slow tier's instance", async () => {
@@ -208,7 +208,7 @@ describe("vitest adapter: the slow width it reports (review 001-394 B2)", SLOW, 
       ["", 4],
     ] as const) {
       const fx = await fixture(test, make);
-      const files = four.slice(0, fx.adapter.slowWidth?.(four));
+      const files = four.slice(0, fx.adapter.traits.slowWidth(four));
       expect(files).toHaveLength(width);
       // One worker each: none waits for another's end.
       expect(new Set((await workerIds(fx, files)).values()).size).toBe(width);
@@ -225,9 +225,9 @@ export default defineConfig({ test: { maxWorkers: 3, projects: [
     const fx = await openFixture("basic", { "vitest.config.ts": projects });
     const a = (i: number) => ref(`test/w/a${i}.test.ts`, "a");
     const b = (i: number) => ref(`test/v/b${i}.test.ts`, "b");
-    expect(fx.adapter.slowWidth?.([a(0), a(1), a(2), a(3)])).toBe(3);
-    expect(fx.adapter.slowWidth?.([b(0), b(1), b(2), b(3)])).toBe(2);
-    expect(fx.adapter.slowWidth?.([a(0), b(0), a(1)])).toBe(1);
+    expect(fx.adapter.traits.slowWidth([a(0), a(1), a(2), a(3)])).toBe(3);
+    expect(fx.adapter.traits.slowWidth([b(0), b(1), b(2), b(3)])).toBe(2);
+    expect(fx.adapter.traits.slowWidth([a(0), b(0), a(1)])).toBe(1);
   });
 });
 
@@ -239,13 +239,13 @@ export default defineConfig({ test: { maxWorkers: 3, projects: [
 describe("vitest adapter: the backlog tier's width it reports (001-366)", SLOW, () => {
   it("is the offer under the project's ceiling, at least 2 for isolate: false, and a ceiling of 1 kept", async () => {
     const four = await fixture(", maxWorkers: 4");
-    expect(four.adapter.tierWidth?.(refs[0] ?? ref("x"), 23)).toBe(4);
-    expect(four.adapter.tierWidth?.(refs[0] ?? ref("x"), 1)).toBe(1);
+    expect(four.adapter.traits.tierWidth(refs[0] ?? ref("x"), 23)).toBe(4);
+    expect(four.adapter.traits.tierWidth(refs[0] ?? ref("x"), 1)).toBe(1);
     const shared = await fixture(", isolate: false, maxWorkers: 4");
-    expect(shared.adapter.tierWidth?.(refs[0] ?? ref("x"), 1)).toBe(2);
+    expect(shared.adapter.traits.tierWidth(refs[0] ?? ref("x"), 1)).toBe(2);
     const unset = await fixture();
-    expect(unset.adapter.tierWidth?.(refs[0] ?? ref("x"), 23)).toBe(23);
+    expect(unset.adapter.traits.tierWidth(refs[0] ?? ref("x"), 23)).toBe(23);
     const one = await fixture(", maxWorkers: 1");
-    expect(one.adapter.tierWidth?.(refs[0] ?? ref("x"), 23)).toBe(1);
+    expect(one.adapter.traits.tierWidth(refs[0] ?? ref("x"), 23)).toBe(1);
   });
 });

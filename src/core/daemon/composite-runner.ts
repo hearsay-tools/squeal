@@ -2,6 +2,7 @@ import { compare } from "../fs/compare.js";
 import type { ProjectName } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { RunEnd, RunnerAdapter, RunReport } from "../types/runner.js";
+import { declareTraits } from "../types/runner-traits.js";
 import { Flights, withheld } from "./composite-flights.js";
 import type { RunnerSet } from "./runner-set.js";
 
@@ -9,9 +10,10 @@ import type { RunnerSet } from "./runner-set.js";
  * Several runners behind one `RunnerAdapter`. Spec 003 D7: "`testFiles()`
  * and `environment()` concatenate, `affected()` and `invalidate()` fan out
  * and merge, `run()` dispatches by project, `close()` closes each.
- * `RunnerAdapter` is unchanged." `lane()` names a file's runner by its
- * adapter's name, so a tier of one runner runs beside another runner's
- * (001 D5 as amended, task 001-140); adapters of one name share a lane.
+ * `RunnerAdapter` is unchanged." Its traits are each file's owner's, but
+ * its lane names a file's runner by its adapter's name, so a tier of one
+ * runner runs beside another runner's (001 D5 as amended, task 001-140);
+ * adapters of one name share a lane.
  * `releaseLane` goes to every adapter, and `run` passes its options,
  * the lane among them, to each part (task 004-18).
  *
@@ -94,6 +96,34 @@ export function createCompositeRunner(
     return owner;
   };
 
+  /** The traits of the runner that owns `testFile`'s project; none listed it yet: undefined. */
+  const of = (testFile: TestFileRef) => owners.get(testFile.project)?.traits;
+  // Each answer is the owner's, so a project no member owns yet gets the defaults (`declareTraits`).
+  const traits = declareTraits({
+    omittedTestFiles: () =>
+      members.reduce((sum, adapter) => sum + adapter.traits.omittedTestFiles(), 0),
+    // The parts run one after another: a slow tier starts only the first file's owner's (004 D2).
+    slowWidth(testFiles) {
+      const owner = testFiles[0] === undefined ? undefined : owners.get(testFiles[0].project);
+      const end = testFiles.findIndex((f) => owners.get(f.project) !== owner);
+      return owner?.traits.slowWidth(end === -1 ? testFiles : testFiles.slice(0, end));
+    },
+    // A backlog tier holds one lane, so one owner's files (task 001-366).
+    tierWidth: (testFile, grant) => of(testFile)?.tierWidth(testFile, grant),
+    // `run` below runs the owners one after another (review wave-3 B1).
+    tierPart(testFile) {
+      const owner = owners.get(testFile.project);
+      if (owner === undefined) return undefined;
+      return `${members.indexOf(owner)}:${owner.traits.tierPart(testFile)}`;
+    },
+    besideBacklog: (testFile) => of(testFile)?.besideBacklog(testFile),
+    backlogSlot: (testFile) => of(testFile)?.backlogSlot(testFile),
+    // Row 011-145: a focused tier goes only to a file whose owner honours `RunOptions.checks`.
+    focuses: (testFile) => of(testFile)?.focuses(testFile),
+    // A project no adapter listed yet has the composite's lane: its run fails on its own.
+    lane: (testFile) => owners.get(testFile.project)?.name ?? members.map((a) => a.name).join("+"),
+  });
+
   return {
     get name() {
       return members.map((adapter) => adapter.name).join("+");
@@ -101,6 +131,7 @@ export function createCompositeRunner(
     get adapterVersion() {
       return members.map((adapter) => adapter.adapterVersion).join("+");
     },
+    traits,
     async invalidate(paths) {
       const reconciled = reconcile();
       const parts = await Promise.all(members.map((adapter) => adapter.invalidate(paths)));
@@ -121,8 +152,6 @@ export function createCompositeRunner(
         transitive: parts.flatMap((part) => part.transitive).sort(compareRefs),
       };
     },
-    // A project no adapter listed yet has the composite's lane: its run fails on its own.
-    lane: (testFile) => owners.get(testFile.project)?.name ?? members.map((a) => a.name).join("+"),
     closure: async (testFile) => (await ownerOf(testFile)).closure(testFile),
     enumerate: async (testFile) => (await ownerOf(testFile)).enumerate(testFile),
     async testFiles() {
@@ -134,30 +163,7 @@ export function createCompositeRunner(
         );
       return parts.flatMap((part) => part.value);
     },
-    omittedTestFiles: () =>
-      members.reduce((sum, adapter) => sum + (adapter.omittedTestFiles?.() ?? 0), 0),
     environment,
-    // The parts run one after another: a slow tier starts only the first file's owner's (004 D2).
-    slowWidth(testFiles) {
-      const owner = testFiles[0] === undefined ? undefined : owners.get(testFiles[0].project);
-      if (owner === undefined) return testFiles.length;
-      const end = testFiles.findIndex((f) => owners.get(f.project) !== owner);
-      const own = end === -1 ? testFiles : testFiles.slice(0, end);
-      return owner.slowWidth?.(own) ?? own.length;
-    },
-    // A backlog tier holds one lane, so one owner's files (task 001-366).
-    tierWidth: (testFile, grant) =>
-      owners.get(testFile.project)?.tierWidth?.(testFile, grant) ?? grant,
-    // `run` below runs the owners one after another (review wave-3 B1).
-    tierPart(testFile) {
-      const owner = owners.get(testFile.project);
-      if (owner === undefined) return "";
-      return `${members.indexOf(owner)}:${owner.tierPart?.(testFile) ?? ""}`;
-    },
-    besideBacklog: (testFile) => owners.get(testFile.project)?.besideBacklog?.(testFile) ?? false,
-    backlogSlot: (testFile) => owners.get(testFile.project)?.backlogSlot?.(testFile) ?? null,
-    // Row 011-145: a focused tier goes only to a file whose owner honours `RunOptions.checks`.
-    focusesFile: (testFile) => focusesFile(owners.get(testFile.project), testFile),
     async run(testFiles, options) {
       // Grouped in one synchronous pass once every owner is known: no reload lands between files.
       if (testFiles.some((f) => !owners.has(f.project))) await environment();
@@ -192,14 +198,6 @@ export function createCompositeRunner(
       if (failed !== undefined) throw failed.reason;
     },
   };
-}
-
-/**
- * Whether `runner` runs `testFile` for its texts (`RunOptions.checks`, spec
- * 011 C14): its per-file answer, else `focuses`. No runner: it does not.
- */
-export function focusesFile(runner: RunnerAdapter | undefined, testFile: TestFileRef): boolean {
-  return runner?.focusesFile?.(testFile) ?? runner?.focuses === true;
 }
 
 /** One part of a run and its report; `adapter.name` prefixes the part's failure. */

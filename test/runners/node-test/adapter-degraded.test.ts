@@ -6,6 +6,7 @@ import { createCompositeRunner } from "../../../src/core/daemon/composite-runner
 import { createNodeTestRunners } from "../../../src/core/daemon/node-test-runners.js";
 import type { NodeTestProject } from "../../../src/core/types/policy.js";
 import type { RunnerAdapter, RunnerEnvironment } from "../../../src/core/types/runner.js";
+import { NO_TRAITS } from "../../../src/core/types/runner-traits.js";
 import { createNodeTestAdapter } from "../../../src/runners/node-test/adapter.js";
 
 /**
@@ -43,6 +44,7 @@ const project = (name: string, cwd: string): NodeTestProject => ({
 const vitest: RunnerAdapter = {
   name: "vitest",
   adapterVersion: "v",
+  traits: NO_TRAITS,
   invalidate: async () => ({ recreatedProjects: [] }),
   affected: async () => ({ direct: [], transitive: [] }),
   closure: async (testFile) => ({ testFile, paths: [testFile.path] }),

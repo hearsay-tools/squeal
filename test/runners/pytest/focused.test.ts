@@ -105,7 +105,7 @@ describe("pytest adapter: focused runs", SLOW, () => {
   it("runs and reports only the checks a text selects, the others deselected", async (ctx) => {
     const { report, logDir } = await run(ctx, ["test_four"], [{ testFile: FILE, texts: ["new"] }]);
 
-    expect(adapter?.focuses).toBe(true);
+    expect(adapter?.traits.focuses(FILE)).toBe(true);
     expect(report.end).toBe("completed");
     expect(report.completedFiles).toEqual([FILE]);
     expect(checks(report)).toEqual([

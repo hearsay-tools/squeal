@@ -9,6 +9,7 @@ import { CAPACITY_RECHECK_MS } from "../../src/core/scheduler/capacity.js";
 import { takePermit } from "../../src/core/slow/slot.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import type { RunOptions } from "../../src/core/types/runner.js";
+import { declareTraits } from "../../src/core/types/runner-traits.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { SLOW } from "./cleanup.js";
 import { createRepo, openRepoStore } from "./repo.js";
@@ -105,7 +106,7 @@ describe("a tier holds only the permits it runs (row 011-97)", SLOW, () => {
     });
     // The harness's runner reports no widths: these are the Vitest adapter's for such a project
     // (`width.test.ts`), 2 workers at a grant of 1.
-    h.runner.tierWidth = (_file, grant) => Math.max(2, grant);
+    h.runner.traits = declareTraits({ tierWidth: (_file, grant) => Math.max(2, grant) });
     const runs: { files: readonly TestFileRef[]; options: RunOptions }[] = [];
     h.gate.before = (files, options) => {
       runs.push({ files, options });

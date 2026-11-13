@@ -38,7 +38,7 @@ describe("vitest.exclude (004 D7, task 004-81)", () => {
       const { fx, notes } = await open(() => ["e2e/**", "test/web.test.ts"]);
       expect(sorted(await fx.adapter.testFiles())).toEqual(FOUR.filter((r) => r.project !== "web"));
       // A bare `vitest run` still runs them, so the hook must not answer it (005 D8 step 3).
-      expect(fx.adapter.omittedTestFiles?.()).toBe(2);
+      expect(fx.adapter.traits.omittedTestFiles()).toBe(2);
       const shared = await fx.adapter.affected(["src/shared.ts"]);
       expect(sorted([...shared.direct, ...shared.transitive])).toEqual(
         FOUR.filter((r) => r.project !== "web"),

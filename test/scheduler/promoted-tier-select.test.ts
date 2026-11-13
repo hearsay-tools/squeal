@@ -10,6 +10,7 @@ import type { WorktreeId } from "../../src/core/types/common.js";
 import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
 import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 import type { RunnerAdapter } from "../../src/core/types/runner.js";
+import { declareTraits, NO_TRAITS } from "../../src/core/types/runner-traits.js";
 import type { Store } from "../../src/core/types/store.js";
 import { liveDaemon } from "../delivery/fakes.js";
 import { freshStore } from "../state/helpers.js";
@@ -49,7 +50,7 @@ function setup(runner: Partial<RunnerAdapter> = {}) {
     note: () => {},
     runsDir: "/repo/.git/squeal/runs",
     hostLoad: () => ({ oneMinute: null, cpus: 1 }),
-    runner,
+    runner: { traits: NO_TRAITS, ...runner },
     keys: {
       runnerOf: () => undefined,
       runtimeIdentity: () => "",
@@ -173,7 +174,7 @@ describe("selectTier and a tier of promoted files only (row 011-265)", () => {
   });
 
   it("a lane that runs its backlog in slots keeps promoted files in an edit's tier", () => {
-    const { ledger, context, at } = setup({ backlogSlot: () => 1 });
+    const { ledger, context, at } = setup({ traits: declareTraits({ backlogSlot: () => 1 }) });
     queue(ledger, paths("b", 5));
     const promoted = queue(ledger, paths("p", 10));
     ledger.queue.promote(promoted, at.now + 60_000);

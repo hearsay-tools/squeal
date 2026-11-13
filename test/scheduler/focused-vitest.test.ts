@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type FocusedRun, readFocused } from "../../src/core/scheduler/focused-row.js";
 import type { RunnerAdapter } from "../../src/core/types/runner.js";
+import { NO_TRAITS } from "../../src/core/types/runner-traits.js";
 import { SLOW } from "./cleanup.js";
 import { createRepo, openRepoStore, ref } from "./repo.js";
 import { openHarness } from "./vitest-harness.js";
@@ -149,6 +150,7 @@ function emptyAdapter(project: string): RunnerAdapter {
   return {
     name: "empty",
     adapterVersion: "empty-1",
+    traits: NO_TRAITS,
     invalidate: async () => ({ recreatedProjects: [] }),
     affected: async () => ({ direct: [], transitive: [] }),
     closure: async (testFile) => ({ testFile, paths: [testFile.path] }),

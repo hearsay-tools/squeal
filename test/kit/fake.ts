@@ -11,6 +11,7 @@ import type {
   RunOptions,
   RunReport,
 } from "../../src/core/types/runner.js";
+import { NO_TRAITS } from "../../src/core/types/runner-traits.js";
 import type { Pack } from "./driver.js";
 import { isTest, type Module } from "./scenarios/types.js";
 import type { Gap } from "./verdicts.js";
@@ -63,6 +64,7 @@ function parse(text: string): Module | null {
 class FakeAdapter implements RunnerAdapter {
   readonly name = "fake";
   readonly adapterVersion = "1";
+  readonly traits = NO_TRAITS;
   private readonly seen = new Map<string, string>();
   private runs = 0;
   /** `marks: "memory"`: a child's loads by test file, which no restart or other worktree sees. */

@@ -7,6 +7,7 @@ import {
 } from "../../src/core/runner-host/host.js";
 import type { HostPolicy } from "../../src/core/runner-host/protocol.js";
 import type { RunnerAdapter, RunReport } from "../../src/core/types/runner.js";
+import { NO_TRAITS } from "../../src/core/types/runner-traits.js";
 
 /** A host served in this process over stream pairs, and the daemon's channel to it. */
 export interface InProcessHost {
@@ -89,6 +90,7 @@ export function fakeAdapter(over: Partial<HostedAdapter> = {}): HostedAdapter {
   const base: RunnerAdapter = {
     name: "vitest",
     adapterVersion: "fake-1",
+    traits: NO_TRAITS,
     invalidate: async () => ({ recreatedProjects: [] }),
     affected: async () => ({ direct: [], transitive: [] }),
     closure: async (testFile) => ({ testFile, paths: [testFile.path] }),

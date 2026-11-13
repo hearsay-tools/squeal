@@ -72,15 +72,15 @@ describe("the Vitest adapter through a runner host", DAEMON_SLOW, () => {
     const { local, remote } = await both(async ({ adapter }) => ({
       name: adapter.name,
       adapterVersion: adapter.adapterVersion,
-      focuses: adapter.focuses,
+      focuses: adapter.traits.focuses(ref("test/math.test.ts")),
       testFiles: await adapter.testFiles(),
-      omitted: adapter.omittedTestFiles?.(),
+      omitted: adapter.traits.omittedTestFiles(),
       environment: await adapter.environment(),
       globalSetups: await adapter.globalSetups?.(),
       closures: await Promise.all(refs.map((f) => adapter.closure(f))),
       checks: await Promise.all(refs.map((f) => adapter.enumerate(f))),
-      tierWidth: adapter.tierWidth?.(ref("test/math.test.ts"), 64),
-      slowWidth: adapter.slowWidth?.(refs),
+      tierWidth: adapter.traits.tierWidth(ref("test/math.test.ts"), 64),
+      slowWidth: adapter.traits.slowWidth(refs),
     }));
     expect(remote).toEqual(local);
     expect(local.testFiles.map((f) => f.path)).toEqual(ALL_TEST_FILES);
@@ -168,7 +168,7 @@ describe("the Vitest adapter through a runner host", DAEMON_SLOW, () => {
     const { local, remote } = await both(
       async ({ adapter }) => ({
         files: await adapter.testFiles(),
-        omitted: adapter.omittedTestFiles?.(),
+        omitted: adapter.traits.omittedTestFiles(),
       }),
       "basic",
       TYPECHECKED,

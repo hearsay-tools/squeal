@@ -14,6 +14,7 @@ import type {
   RunOptions,
   RunReport,
 } from "../../src/core/types/runner.js";
+import { NO_TRAITS } from "../../src/core/types/runner-traits.js";
 import { fakeCommonDir, open } from "../store/helpers.js";
 
 /*
@@ -57,6 +58,7 @@ function build(entry: Entry, run?: Hold): Built {
     calls,
     name: "node-test",
     adapterVersion: "nt-1",
+    traits: NO_TRAITS,
     invalidate: async () => ({ recreatedProjects: [] }),
     affected: async () => ({ direct: [], transitive: [] }),
     closure: async (testFile) => ({ testFile, paths: [testFile.path] }),
@@ -334,13 +336,13 @@ describe("the node:test and pytest sets (row 011-78)", () => {
     const pySet = createPytestRunnerSet(() => pytest, { ...common, stateDir: dir });
     expect(nodeSet.members().map((r) => r.name)).toEqual(["node-test", "node-test"]);
     const [p] = pySet.members();
-    expect(p?.backlogSlot?.({ project: "p", path: "p/test_a.py" })).toBe(2);
+    expect(p?.traits.backlogSlot({ project: "p", path: "p/test_a.py" })).toBe(2);
 
     nodeTest = [nt("b"), nt("c")];
     pytest = [py("p", 3)];
     expect(nodeSet.reconcile().projects).toEqual(["a", "c"]);
     expect(pySet.reconcile()).toMatchObject({ removed: [], replaced: [p], projects: ["p"] });
-    expect(pySet.members()[0]?.backlogSlot?.({ project: "p", path: "p/test_a.py" })).toBe(3);
+    expect(pySet.members()[0]?.traits.backlogSlot({ project: "p", path: "p/test_a.py" })).toBe(3);
     expect(nodeSet.reconcile().projects).toEqual([]);
   });
 });

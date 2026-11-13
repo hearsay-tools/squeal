@@ -15,6 +15,7 @@ import type { EpochMs } from "../../src/core/types/common.js";
 import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
 import { DEFAULT_POLICY, type Policy } from "../../src/core/types/policy.js";
 import type { RunEnd, RunnerAdapter, RunReport } from "../../src/core/types/runner.js";
+import { NO_TRAITS } from "../../src/core/types/runner-traits.js";
 import type { Scheduler } from "../../src/core/types/scheduler.js";
 import type { Store } from "../../src/core/types/store.js";
 import { git } from "../hash/git-repo.js";
@@ -74,6 +75,7 @@ function gate(): { shut: Promise<void>; open: () => void } {
 export class FakeRunner implements RunnerAdapter {
   readonly name = "fake";
   readonly adapterVersion = "1";
+  readonly traits = NO_TRAITS;
   /** The files of every run, in start order. */
   readonly runs: TestFileRef[][] = [];
   /** Runs in flight. */

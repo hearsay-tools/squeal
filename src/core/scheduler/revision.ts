@@ -207,7 +207,7 @@ export async function fetchRunnerRetry(
   let omitted = 0;
   const listed = await tryRunner(context, "testFiles", async () => {
     const files = await bound.call(() => context.runner.testFiles());
-    omitted = context.runner.omittedTestFiles?.() ?? 0;
+    omitted = context.runner.traits.omittedTestFiles();
     return files;
   });
   // As `applyListing` leaves them: its files without a closure, and the blocked ones it keeps.
