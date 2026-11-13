@@ -57,7 +57,7 @@ export async function runWait<A extends RunWaitAsk>(
           ) ?? unopened(row, given));
     if (step.kind === "read") {
       // Only the daemon check is left once the store closed: `settle` reads every other field.
-      record = { ...record, daemon: await daemonCheck(row, ask, ports) };
+      record = { ...record, daemon: await daemonCheck(ask, ports) };
       step = decideRunWait(row, record);
       if (step.kind === "read")
         throw new Error(`run wait ${ask.wait}: no field after the daemon's`);
@@ -88,17 +88,12 @@ function unopened(row: RunWaitRow, given: WaitRecord): [WaitRecord, WaitStep] {
   return [record, decideRunWait(row, record)];
 }
 
-/** The daemon check: a ping, bounded by the row's socket cell. */
+/** The daemon check: a ping that ends by the deadline; a late answer is a busy daemon (011-327). */
 async function daemonCheck(
-  row: RunWaitRow,
   ask: RunWaitAsk,
   ports: WaitPorts,
 ): Promise<NonNullable<WaitRecord["daemon"]>> {
-  const ping = { type: "ping" } as const;
-  if (row.socket === "unbounded") {
-    return (await ports.ask(ask.socketPath, ping)) === null ? "none" : "answered";
-  }
-  const pong = await askWithin(ask.socketPath, ping, ask.deadline, ports);
+  const pong = await askWithin(ask.socketPath, { type: "ping" }, ask.deadline, ports);
   if (pong === null) return "none";
   return "unanswered" in pong ? "unanswered" : "answered";
 }
@@ -116,8 +111,8 @@ export interface RequestAsk<L extends RequestLoopName> {
 
 /**
  * Asks the request's status until the scheduler took it, it failed, or the
- * deadline passed: its outcome, which the command words as before. The
- * row's cells bound each socket request and pause.
+ * deadline passed: its outcome, which the command words. Each socket
+ * request ends by the deadline (row 011-327); the row's cell bounds the pause.
  */
 export async function untilTaken<L extends RequestLoopName>(
   ask: RequestAsk<L>,
@@ -144,10 +139,7 @@ export async function untilTaken<L extends RequestLoopName>(
       ask.loop,
       (row.askBy === "first" ? first : step.answer).requestId,
     );
-    const answer =
-      row.socket === "unbounded"
-        ? await ports.ask(ask.socketPath, request)
-        : await askWithin(ask.socketPath, request, ask.deadline, ports);
+    const answer = await askWithin(ask.socketPath, request, ask.deadline, ports);
     record = { answer, before: step.answer };
   }
 }
