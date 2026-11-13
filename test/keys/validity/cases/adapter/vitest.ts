@@ -217,6 +217,12 @@ const BLOCKED: Readonly<Record<string, string>> = {
 };
 
 const ref = (path: string, project = ""): TestFileRef => ({ project, path });
+/** Row 020-43: `FAILING`'s held, failing and unloadable files. */
+const OUTCOME_FILES = [
+  ref("test/held.test.ts"),
+  ref("test/fails.test.ts"),
+  ref("test/broken.test.ts"),
+];
 const SLOW = [1, 2, 3].map((n) => ref(`test/slow${n}.test.ts`));
 const [, SLOW2, SLOW3] = SLOW;
 const EVERY = [SLOW2, SLOW3, ref("test/computed.test.ts")].filter((r) => r !== undefined);
@@ -547,5 +553,15 @@ export const VITEST_RUNS: readonly Case[] = [
       closures: [ref("test/a.test.ts"), ref("test/b.test.ts")],
       runs: [{ files: [ref("test/b.test.ts")], touched: [] }],
     },
+  ),
+  vitest(
+    "a run with the gate's file-start hook stores alike (row 020-43)",
+    "020 D18 as amended (#196): the gate gives the adapter a hook told as each file is queued, whose returned end is called as the file's module ends, which the daemon gives none of and the last release ignores; the hook only tells, so a passing, a failing and an unloadable file store what the last release stored",
+    { files: FAILING, fileStarted: "ends", runs: [{ files: OUTCOME_FILES, touched: [] }] },
+  ),
+  vitest(
+    "a run whose file-start hook returns no end stores alike (row 020-43)",
+    "020 row 020-43: a hook that returns no end, as a caller outside the types may, leaves the adapter its own empty end for each file; it only tells, so the run stores what the last release stored",
+    { files: FAILING, fileStarted: "bare", runs: [{ files: OUTCOME_FILES, touched: [] }] },
   ),
 ];

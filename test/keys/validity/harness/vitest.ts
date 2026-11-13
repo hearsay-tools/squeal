@@ -10,7 +10,7 @@ import { VitestAdapter } from "../../../../src/runners/vitest/adapter.js";
 import { loadVitest, type VitestNode } from "../../../../src/runners/vitest/load.js";
 import type { CaseOutput, VitestInput } from "../case.js";
 import { selectedOf, storedOf } from "./reported.js";
-import { goneLogDir, writeTree } from "./shared.js";
+import { goneLogDir, tell, writeTree } from "./shared.js";
 
 /*
  * The `adapter:vitest` kind (011 C14, task 011-37 section 2, row 011-41):
@@ -21,7 +21,9 @@ import { goneLogDir, writeTree } from "./shared.js";
  * and withheld, each result's identity, outcome and fingerprint, the files
  * that failed to load with theirs, as `recordsForFile` stores them (review of
  * cand/0.1.232, B1). The reason a run gives is wording. Vitest resolves from the
- * candidate's install at both trees (`compare.ts`).
+ * candidate's install at both trees (`compare.ts`). Row 020-43: with
+ * `fileStarted`, the gate's file-start hook, which a release before it
+ * ignores; what it is told is wording.
  */
 
 async function until(holds: () => boolean, what: string): Promise<void> {
@@ -184,6 +186,19 @@ async function recheckAfter(input: VitestInput, adapter: RunnerAdapter, rechecks
   if (input.coverage === "unloadable") rechecks.push((await adapter.recheck?.()) ?? null);
 }
 
+/** Row 020-43: the file-start hook when `input` asks it, and what it was told, as wording. */
+function fileStartedOf(input: VitestInput) {
+  const { fileStarted } = input;
+  if (fileStarted === undefined) return { started: undefined, wording: {} };
+  const told: string[] = [];
+  const started = (ref: TestFileRef) => {
+    const end = tell(told, ref);
+    // `bare`: a caller outside the types, whose hook returns no end.
+    return (fileStarted === "ends" ? end : undefined) as unknown as () => void;
+  };
+  return { started, wording: { told } };
+}
+
 /** Runs `input`'s runs in turn on one adapter over its fixture, under `scratch`. */
 export async function vitestCase(input: VitestInput, scratch: string): Promise<CaseOutput> {
   const markers = join(scratch, "markers");
@@ -200,6 +215,7 @@ export async function vitestCase(input: VitestInput, scratch: string): Promise<C
   const root = writeTree(join(scratch, "worktree"), files);
   const exclude = input.exclude ?? [];
   const heard = new Set<string>();
+  const hook = fileStartedOf(input);
   const adapter = new VitestAdapter(
     new WorktreePaths(root),
     witnessed(await loadVitest(root), heard),
@@ -211,6 +227,8 @@ export async function vitestCase(input: VitestInput, scratch: string): Promise<C
     undefined,
     () => exclude,
     coverageOf(input, scratch),
+    undefined,
+    hook.started,
   );
   const reports: RunReport[] = [];
   const rechecks: unknown[] = [];
@@ -265,6 +283,10 @@ export async function vitestCase(input: VitestInput, scratch: string): Promise<C
   return {
     ...keysOf(environments, closures),
     outputs: { runs: reports.map(storedOf) },
-    wording: { failures: reports.map((r) => r.failure), rechecks },
+    wording: {
+      failures: reports.map((r) => r.failure),
+      rechecks,
+      ...hook.wording,
+    },
   };
 }

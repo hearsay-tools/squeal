@@ -219,6 +219,25 @@ const ASYNC_LOADER: Readonly<Record<string, string>> = {
   "test/pass.test.mjs": lines('import { test } from "node:test";', "", 'test("passes", () => {});'),
 };
 
+/** Rows 020-43 and 020-44: a test that waits past any deadline a case sets. */
+const WAITS = lines(
+  'import { test } from "node:test";',
+  'import { setTimeout as delay } from "node:timers/promises";',
+  "",
+  'test("waits past the deadline", () => delay(120_000));',
+);
+
+/**
+ * Rows 020-43 and 020-44 (#196): the outcomes, two files that wait past
+ * the deadline, and a file that removes the case's run logs.
+ */
+const GATED: Readonly<Record<string, string>> = {
+  ...OUTCOMES,
+  "test/waits.test.mjs": WAITS,
+  "test/waits-too.test.mjs": WAITS,
+  "test/removes-logs.test.mjs": LOGS_REMOVED["test/removes-logs.test.mjs"] ?? "",
+};
+
 export const NODE_TEST_RUNS: readonly Case[] = [
   {
     kind: "adapter:node-test",
@@ -331,5 +350,19 @@ export const NODE_TEST_RUNS: readonly Case[] = [
     name: "a worktree whose git metadata cannot be read runs and stores alike (row 005-88)",
     why: "005 D3, project-first process commands: the node:test leader's display label reads the worktree's git layout, and a layout it cannot read keeps the command as argv0, so the leader still starts and its run stores what the last release stored",
     input: { files: UNREADABLE_GIT, runs: [{ files: ["test/pass.test.mjs"] }] },
+  },
+  {
+    kind: "adapter:node-test",
+    name: "runs through the gate's one-slot pool and file-start hook store alike (rows 020-43, 020-44)",
+    why: "020 D18 as amended (#196): the gate gives the adapter a pool of process slots and a file-start hook, which the daemon gives none of and the last release ignores. Each run starts every file at once, so each file but the first waits for the one slot: the outcomes run one by one; at the deadline the waiting file never starts and the running one is stopped; when the log folder goes, the file granted the freed slot gives it back and never starts. The pool and the hook bound how many processes run and tell when each starts and ends, never what a run stores, so each run stores what the last release stored",
+    input: {
+      files: GATED,
+      gate: { slots: 1 },
+      runs: [
+        { files: OUTCOME_FILES },
+        { files: ["test/waits.test.mjs", "test/waits-too.test.mjs"], timeoutMs: 2_000 },
+        { files: ["test/removes-logs.test.mjs", "test/pass.test.mjs"] },
+      ],
+    },
   },
 ];

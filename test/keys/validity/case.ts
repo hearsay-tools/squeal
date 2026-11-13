@@ -331,6 +331,14 @@ export interface VitestInput {
    * workers cannot load; what `recheck` answers after each run is wording.
    */
   readonly coverage?: true | "unloadable";
+  /**
+   * Spec 020 row 020-43: the gate's `fileStarted` hook, the adapter's
+   * twelfth argument, which a release before it ignores. What it is told
+   * is wording, so the runs must store alike. `bare`: it returns no end,
+   * as a caller outside the types may, so the adapter ends each file with
+   * its own empty one.
+   */
+  readonly fileStarted?: "ends" | "bare";
 }
 
 /**
@@ -448,7 +456,16 @@ export interface NodeTestInput {
      * Its processes write their records into that folder.
      */
     readonly storeGone?: true;
+    /** The run's deadline (`RunOptions.timeoutMs`); default 60 s. */
+    readonly timeoutMs?: number;
   }[];
+  /**
+   * Spec 020 rows 020-43 and 020-44: the gate's adapter options, which a
+   * release before them ignores: a pool of `slots` process slots that every
+   * run takes from, as the gate's `SlotPool` gives them, and the file-start
+   * hook, whose calls are wording. The runs must store alike.
+   */
+  readonly gate?: { readonly slots: number };
   /** The project's flags before `--test`; default none. */
   readonly argv?: readonly string[];
   /**

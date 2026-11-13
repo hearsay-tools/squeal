@@ -6,7 +6,7 @@ import type { TestFileRef } from "../../../../src/core/types/keys.js";
 import { createNodeTestAdapter } from "../../../../src/runners/node-test/adapter.js";
 import type { CaseOutput, NodeTestInput } from "../case.js";
 import { type Decided, decided, Kept, storedRun } from "./reported.js";
-import { goneLogDir, writeTree } from "./shared.js";
+import { goneLogDir, tell, writeTree } from "./shared.js";
 
 /*
  * The `adapter:node-test` kind (011 C14, spec 003 D1 to D6, row 016-17): the
@@ -31,6 +31,11 @@ import { goneLogDir, writeTree } from "./shared.js";
  * payloads go to the driver's own `NODE_V8_COVERAGE`, where the recorder's
  * lines in a covered test file's process count (`sides.ts`). What
  * `invalidate` answers after the runs is a key.
+ *
+ * Rows 020-43 and 020-44: with `gate`, the adapter takes the gate's slot
+ * pool and file-start hook, which a release before them ignores. They
+ * bound how many processes run at once and tell each file's start and
+ * end, never what a run stores; what the hook was told is wording.
  */
 
 const PROJECT = "validity";
@@ -42,7 +47,8 @@ export async function nodeTestCase(input: NodeTestInput, scratch: string): Promi
   mkdirSync(tempDir, { recursive: true });
   const notes: string[] = [];
   const recorded: string[] = [];
-  const { concurrency } = input;
+  const { concurrency, gate } = input;
+  const told: string[] = [];
   const adapter = await createNodeTestAdapter(
     {
       name: PROJECT,
@@ -56,6 +62,9 @@ export async function nodeTestCase(input: NodeTestInput, scratch: string): Promi
       note: (text) => notes.push(text),
       tempDir,
       ...(concurrency === undefined ? {} : { concurrency: () => concurrency }),
+      ...(gate === undefined
+        ? {}
+        : { slots: slotPool(gate.slots), fileStarted: (ref: TestFileRef) => tell(told, ref) }),
       ...(input.coverage === undefined
         ? {}
         : {
@@ -86,7 +95,7 @@ export async function nodeTestCase(input: NodeTestInput, scratch: string): Promi
         runId: `validity-${at}`,
         logDir:
           run.storeGone === true ? goneLogDir(scratch, at) : join(scratch, "logs", String(at)),
-        timeoutMs: 60_000,
+        timeoutMs: run.timeoutMs ?? 60_000,
         ...(run.lane === undefined ? {} : { lane: run.lane }),
         ...(run.storeGone === true ? { stop: AbortSignal.abort() } : {}),
       });
@@ -108,7 +117,48 @@ export async function nodeTestCase(input: NodeTestInput, scratch: string): Promi
       failures,
       notes: notes.map((n) => n.replaceAll(root, "<root>")),
       ...(input.coverage === undefined ? {} : { markers }),
+      ...(gate === undefined ? {} : { told }),
     },
+  };
+}
+
+/**
+ * A pool of `size` slots, as the gate's `SlotPool` (row 020-44) gives them:
+ * at once while one is free, else in the order asked, and `null` once the
+ * signal aborted. The harness holds its own: a release has no `SlotPool`
+ * to bundle.
+ */
+function slotPool(size: number): (signal: AbortSignal) => Promise<(() => void) | null> {
+  let free = size;
+  const waiting: ((release: () => void) => void)[] = [];
+  const release = (): (() => void) => {
+    let held = true;
+    return () => {
+      if (!held) return;
+      held = false;
+      const next = waiting.shift();
+      if (next === undefined) free += 1;
+      else next(release());
+    };
+  };
+  return (signal) => {
+    if (signal.aborted) return Promise.resolve(null);
+    if (free > 0) {
+      free -= 1;
+      return Promise.resolve(release());
+    }
+    return new Promise((resolve) => {
+      const grant = (slot: () => void) => {
+        signal.removeEventListener("abort", onAbort);
+        resolve(slot);
+      };
+      const onAbort = () => {
+        waiting.splice(waiting.indexOf(grant), 1);
+        resolve(null);
+      };
+      signal.addEventListener("abort", onAbort, { once: true });
+      waiting.push(grant);
+    });
   };
 }
 

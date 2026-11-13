@@ -3,12 +3,18 @@ import { mkdirSync, realpathSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { isStoreOpenFailure, openStore } from "../../../../src/core/store/open.js";
 import type { WorktreeId } from "../../../../src/core/types/common.js";
-import type { CheckKey } from "../../../../src/core/types/keys.js";
+import type { CheckKey, TestFileRef } from "../../../../src/core/types/keys.js";
 import type { RunReport } from "../../../../src/core/types/runner.js";
 import type { Store } from "../../../../src/core/types/store.js";
 import type { Provenance, ResultRecord } from "../../../../src/core/types/store-records.js";
 
 /* What the case kinds share: a store of the tree's own schema, a fixture worktree, a row's projections. */
+
+/** Row 020-43's file-start hook: `told` gets each file's start, and its end through what it returns. */
+export function tell(told: string[], ref: TestFileRef): () => void {
+  told.push(`started ${ref.path}`);
+  return () => told.push(`ended ${ref.path}`);
+}
 
 /** Row 018-38: a run's log folder under a store that is not there, `<scratch>/gone/runs/<at>`. */
 export const goneLogDir = (scratch: string, at: number) =>
