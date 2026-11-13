@@ -66,7 +66,8 @@ export function takeRetries(
  * `squeal retry` (001-368) as the request intake takes it (row 011-322):
  * claims and queues the requests in the store that may run now. Its covered
  * files are those `takeRetries` claims, all queued (row 011-325: its answer
- * carries no id; the record is for its progress and a later reader).
+ * carries no id; the record is for its progress and a later reader); their
+ * lanes are woken (row 011-323).
  */
 export function retryRequest(): Request<void> {
   return {
@@ -81,10 +82,11 @@ export function retryRequest(): Request<void> {
         return { answer: undefined, covered };
       },
     },
+    // Row 011-323 (`research/request-intake.md`, difference 2): `retry-slow-lane.test.ts`.
     wake: {
-      skip:
-        "wakes no lane: a retried slow-lane file may wait for its lane's next planning " +
-        "(difference 2 of research/request-intake.md, row 011-323)",
+      coveredLanes:
+        "a slow selection in flight plans again, so a file it claimed joins the tier " +
+        "instead of waiting for the lane's next planning",
     },
   };
 }

@@ -67,6 +67,7 @@ export interface IntakeHost {
   /** Row 018-12: a request's covered files; their ends are activity. */
   record(files: readonly FileState[]): void;
   wakeAll(): void;
+  /** `group`'s lane; a group with no lane of its own (`tests`) has none to wake. */
   wakeLane(group: string): void;
   cutTiers(): void;
   pump(): void;
@@ -137,7 +138,7 @@ export class RequestIntake {
       return lock.run(() => {
         const { context, ledger } = this.#host.started();
         const answer = store.apply(context, ledger);
-        this.#wake(request.wake);
+        this.#wake(request.wake, []);
         return answer;
       }, operation);
     }
@@ -243,7 +244,7 @@ export class RequestIntake {
     if (done === DEFERRED) return DEFERRED;
     if ("waited" in done) return done.waited;
     this.#host.record(done.covered);
-    this.#wake(request.wake);
+    this.#wake(request.wake, done.covered);
     return done.answer;
   }
 
@@ -252,10 +253,15 @@ export class RequestIntake {
     return answer;
   }
 
-  /** Rule 6 after the record; `allLanes` woke before the lock. */
-  #wake(wake: WakeRule): void {
+  /** Rule 6 after the record of `covered`; `allLanes` woke before the lock. */
+  #wake(wake: WakeRule, covered: readonly FileState[]): void {
     if ("lane" in wake) this.#host.wakeLane(wake.lane);
-    else if ("cutTiers" in wake) this.#host.cutTiers();
+    else if ("coveredLanes" in wake) {
+      const { queue } = this.#host.started().ledger;
+      for (const group of new Set(covered.map((file) => queue.checkGroup(file.ref)))) {
+        this.#host.wakeLane(group);
+      }
+    } else if ("cutTiers" in wake) this.#host.cutTiers();
   }
 
   /**
