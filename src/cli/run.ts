@@ -192,6 +192,9 @@ export function checkpointVerdictLine(
       );
     case "stopped":
       return none(`the daemon stopped before it ended${owedText(root, checkpoint)}`);
+    // Row 011-327: the store did not open, or was busy at the deadline's read.
+    case "unopened":
+      return none(outcome.unavailable);
     case "moved":
       return none(
         `revision ${outcome.revision} was recorded after the checkpoint's revision ${checkpoint.revision}`,

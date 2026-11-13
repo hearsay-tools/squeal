@@ -3,6 +3,8 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { runWait } from "../../../src/cli/wait/wait.js";
 import { isLintStoreOpenFailure, openLintStore } from "../../../src/core/lint/store/open.js";
+import { STATUS_BUSY_TIMEOUT_MS } from "../../../src/core/status/open.js";
+import { storePaths } from "../../../src/core/store/paths.js";
 import type { RevisionNumber } from "../../../src/core/types/common.js";
 import { DEFAULT_POLICY } from "../../../src/core/types/policy.js";
 import {
@@ -115,7 +117,7 @@ describe("the checkpoint wait's loop (row 011-326)", () => {
     expect(await runWait(ask, clock.ports)).toEqual({ kind: "moved", revision: 4 });
   });
 
-  it("stopped: a store that does not open (accidental, 011-327 gives its reason)", async () => {
+  it("unopened: a store that does not open ends the wait with why (011-327: was stopped)", async () => {
     const { clock, socket } = checkpointWait(60_000);
     const repo = fakeRepo();
     const ask = {
@@ -126,15 +128,41 @@ describe("the checkpoint wait's loop (row 011-326)", () => {
       checkpoint: { id: "c1", worktreeId: repo.mainId, revision: 3 },
       files: { kind: "lane", lane: null },
     } as const;
-    expect(await runWait(ask, clock.ports)).toEqual({ kind: "stopped" });
+    expect(await runWait(ask, clock.ports)).toEqual({
+      kind: "unopened",
+      unavailable: `no Squeal store at ${storePaths(repo.commonDir).database}`,
+    });
     expect(clock.pauses).toEqual([]);
   });
 
-  it("a busy store throws out of the wait (accidental, 011-327 reads again)", async () => {
-    const { w, clock, ask } = checkpointWait(60_000);
+  it("a busy store is read again, no stack (011-327: was a throw)", async () => {
+    const { w, clock, ask } = checkpointWait(100);
+    w.file(A);
+    w.store.checkpoints.finish("c1", "completed", 2);
     w.store.close();
     lockStore(w.commonDir);
-    await expect(runWait(ask, clock.ports)).rejects.toThrow(/locked/);
+    // The lock is let go during the first pause: the read at the deadline opens the store.
+    clock.onPause(closeFakeDaemons);
+    expect(await runWait(ask, clock.ports)).toMatchObject({
+      kind: "ended",
+      verdict: { testFiles: 1 },
+    });
+    expect(clock.pauses).toEqual([100]);
+  });
+
+  it("a store busy at the deadline's read ends the wait with why, after the full busy timeout (011-327)", async () => {
+    const { w, clock, ask } = checkpointWait(0);
+    w.store.close();
+    lockStore(w.commonDir);
+    const started = performance.now();
+    expect(await runWait(ask, clock.ports)).toEqual({
+      kind: "unopened",
+      unavailable: expect.stringMatching(
+        /^store busy, waited \d+ ms: another process holds the store's lock; /,
+      ),
+    });
+    expect(performance.now() - started).toBeGreaterThanOrEqual(STATUS_BUSY_TIMEOUT_MS - 50);
+    expect(clock.pauses).toEqual([]);
   });
 });
 
