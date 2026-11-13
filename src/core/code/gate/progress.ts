@@ -82,7 +82,10 @@ export class FileProgress {
     const timer = setTimeout(() => {
       this.#open.delete(end);
       const now = performance.now();
-      const seconds = Math.floor((now - at) / 1000);
+      // Node may fire the timer a fraction of a millisecond before
+      // `performance.now()` reaches the limit (CI run 43349478847): it
+      // fired because the limit passed, so it never reads under it.
+      const seconds = Math.max(Math.floor(limit), Math.floor((now - at) / 1000));
       const usedSeconds = Math.floor((now - since) / 1000);
       overran({ runner, path: ref.path, seconds, storedSeconds, usedSeconds, budgetSeconds });
     }, limit * 1000);
