@@ -6,6 +6,7 @@ import { resolveScope } from "../../../src/core/code/gate/scope.js";
 import type { Evidence, TestFileEvidence } from "../../../src/core/code/gate/types.js";
 import type { TestFileRef } from "../../../src/core/types/keys.js";
 import type { GlobalSetupEntry, RunnerAdapter, RunReport } from "../../../src/core/types/runner.js";
+import { NO_TRAITS } from "../../../src/core/types/runner-traits.js";
 import { changedSet, NO_ADAPTERS, project } from "./collect-fixture.js";
 
 /*
@@ -44,6 +45,7 @@ interface Fake {
 /** An adapter that lists `listed`, selects each of them, and records when it runs. */
 function fake({ listed = [LOADS], closures = {}, setups, calls }: Fake): RunnerAdapter {
   const adapter: Partial<RunnerAdapter> = {
+    traits: NO_TRAITS,
     testFiles: async () => listed,
     affected: async () => ({ direct: [...listed], transitive: [] }),
     closure: async (ref) => {

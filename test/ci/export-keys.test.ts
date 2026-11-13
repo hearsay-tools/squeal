@@ -32,6 +32,7 @@ import type { WorktreeId } from "../../src/core/types/common.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 import type { RunnerAdapter, RunnerEnvironment } from "../../src/core/types/runner.js";
+import { NO_TRAITS } from "../../src/core/types/runner-traits.js";
 
 /*
  * Spec 018 D9 (row 018-17): what the export job keys and leaves out, over a
@@ -66,7 +67,8 @@ const ENVIRONMENT: RunnerEnvironment = {
  */
 function runner(listed: readonly string[], inspected: readonly string[] = []): RunnerAdapter {
   const builtins = { imports: [], builtins: ["fs", "inspector"] };
-  const fake: Pick<RunnerAdapter, "environment" | "testFiles" | "closure" | "close"> = {
+  const fake: Pick<RunnerAdapter, "traits" | "environment" | "testFiles" | "closure" | "close"> = {
+    traits: NO_TRAITS,
     environment: async () => [ENVIRONMENT],
     testFiles: async () => listed.map((path) => ({ project: "", path })),
     closure: async (testFile: TestFileRef) => ({

@@ -6,6 +6,7 @@ import { type GateScope, resolveScope } from "../../../src/core/code/gate/scope.
 import type { TestFileRef } from "../../../src/core/types/keys.js";
 import type { PolicyInputs } from "../../../src/core/types/policy.js";
 import type { RunnerAdapter, RunReport } from "../../../src/core/types/runner.js";
+import { NO_TRAITS } from "../../../src/core/types/runner-traits.js";
 import { changedSet, NO_ADAPTERS, project, scopeOf } from "./collect-fixture.js";
 
 /*
@@ -40,6 +41,7 @@ const EMPTY_REPORT = {
 function fake(ran: string[], listed: readonly TestFileRef[] = [UNIT, RELEASE, OTHER]) {
   const closureOf = (ref: TestFileRef) => CLOSURES[ref.path] ?? [ref.path];
   const adapter: Partial<RunnerAdapter> = {
+    traits: NO_TRAITS,
     testFiles: async () => listed,
     affected: async (paths) => ({
       direct: listed.filter((ref) => closureOf(ref).some((p) => paths.includes(p))),

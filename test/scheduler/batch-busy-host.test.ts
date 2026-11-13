@@ -12,6 +12,7 @@ import type { WorktreeId } from "../../src/core/types/common.js";
 import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
 import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 import type { RunReport } from "../../src/core/types/runner.js";
+import { NO_TRAITS } from "../../src/core/types/runner-traits.js";
 import type { Store } from "../../src/core/types/store.js";
 import { liveDaemon } from "../delivery/fakes.js";
 import { freshStore } from "../state/helpers.js";
@@ -89,6 +90,7 @@ function setup(grant: number | null) {
     hostLoad: () => ({ oneMinute: null, cpus: 1 }),
     capacity: pool.capacity,
     runner: {
+      traits: NO_TRAITS,
       run: (_files: readonly TestFileRef[], options: { workers?: number }) => {
         runs.push({ workers: options.workers });
         return Promise.resolve(report);

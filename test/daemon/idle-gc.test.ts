@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { type GcFunction, IDLE_GC_AFTER_MS, idleGcDue } from "../../src/core/daemon/idle-gc.js";
 import type { RunnerAdapter, RunReport } from "../../src/core/types/runner.js";
+import { NO_TRAITS } from "../../src/core/types/runner-traits.js";
 import { LAST_RESORT, MIB, subject, tier } from "./idle-gc-subject.js";
 
 /*
@@ -180,7 +181,12 @@ describe("IdleGc.track", () => {
   const report = {} as RunReport;
 
   function runner(run: RunnerAdapter["run"]): RunnerAdapter {
-    return { name: "fake", adapterVersion: "1", run } as unknown as RunnerAdapter;
+    return {
+      name: "fake",
+      adapterVersion: "1",
+      traits: NO_TRAITS,
+      run,
+    } as unknown as RunnerAdapter;
   }
 
   it("counts each run of the runner as a tier, to its end, rejected or not", async () => {
