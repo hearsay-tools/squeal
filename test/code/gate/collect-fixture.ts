@@ -19,6 +19,7 @@ import type { Policy } from "../../../src/core/types/policy.js";
 import type { RunnerAdapter, RunOptions } from "../../../src/core/types/runner.js";
 import { git, initRepo } from "../../hash/git-repo.js";
 import { TIMES, VERSIONS } from "./evaluate-fixture.js";
+import { quiet } from "./host-load.js";
 
 /*
  * Spec 020 D3 (row 020-03): fixture projects for the one-shot collector,
@@ -132,8 +133,9 @@ export async function changedSet(root: string, paths: readonly string[]): Promis
 }
 
 /**
- * The collector over the fixture: a 600 s budget and the CLI's adapters,
- * `options` on top. Its notes and the `prepare` output are kept.
+ * The collector over the fixture: a 600 s budget, the CLI's adapters and a
+ * host load below the rerun's threshold (`quiet`, row 020-54), `options`
+ * on top. Its notes and the `prepare` output are kept.
  */
 export async function collect(
   root: string,
@@ -146,6 +148,7 @@ export async function collect(
     tests: [],
     budgetSeconds: 600,
     adapters: ADAPTERS,
+    hostLoad: quiet,
     note: (text) => notes.push(text),
     output: (text) => {
       output += text;

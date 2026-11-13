@@ -57,7 +57,8 @@ async function gate(oneMinute: number) {
 
 /** The gate once more in `root`, at the load set now. */
 async function again(root: string) {
-  const ran = await code(root, ["--base", "main", "--json"]);
+  // `null`: no pin, so the gate reads the daemon's own `hostLoad`, mocked above.
+  const ran = await code(root, ["--base", "main", "--json"], { hostLoad: null });
   const report = JSON.parse(ran.stdout) as GateReport;
   const lines = ran.stderr.split("\n").filter((line) => line.includes("ran once more"));
   return { ran, report, lines, run: report.runs.find((r) => r.runner === "vitest") };
