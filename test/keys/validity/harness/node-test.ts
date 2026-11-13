@@ -6,7 +6,7 @@ import type { TestFileRef } from "../../../../src/core/types/keys.js";
 import { createNodeTestAdapter } from "../../../../src/runners/node-test/adapter.js";
 import type { CaseOutput, NodeTestInput } from "../case.js";
 import { type Decided, decided, Kept, storedRun } from "./reported.js";
-import { goneLogDir, tell, writeTree } from "./shared.js";
+import { goneLogDir, tell, traitsAsked, writeTree } from "./shared.js";
 
 /*
  * The `adapter:node-test` kind (011 C14, spec 003 D1 to D6, row 016-17): the
@@ -104,6 +104,7 @@ export async function nodeTestCase(input: NodeTestInput, scratch: string): Promi
       core.add(report);
       loaded.push(report.environmentObserved ?? []);
       failures.push(report.failure);
+      traitsAsked(adapter, run.files.map(ref));
       await step();
     }
     if (input.coverage !== undefined) invalidated.push(await adapter.invalidate([]));
