@@ -5,6 +5,7 @@ import type { AffectedTestFiles } from "../types/runner.js";
 import type { NarrowNotRun, NarrowRun, NarrowRunRequest } from "../types/scheduler.js";
 import type { CommitAsk } from "./commit-asks.js";
 import { NOTHING_CHANGED, type SchedulerContext, tryRunner } from "./context.js";
+import { coveredOf } from "./covered-files.js";
 import { editWork, fetchEditCut, observedDirectOf } from "./edit-cut.js";
 import { classify, type FileState } from "./files.js";
 import type { GroupTiers } from "./group-tiers.js";
@@ -120,10 +121,14 @@ export function narrowRequest(
     },
     // Review 0.1.411, B2: the answer says why nothing was queued, of the files it selected.
     installWait: {
-      answer: (context, ledger, { revision, selection }, reason) => ({
-        revision,
-        queued: 0,
-        narrow: narrowAnswer(context, ledger, group, selection, reason),
+      answer: (context, ledger, { revision, selection }, reason, id) => ({
+        answer: {
+          revision,
+          queued: 0,
+          narrow: narrowAnswer(context, ledger, group, selection, reason),
+          coveredId: id,
+        },
+        covered: selectedOf(ledger, group, selection),
       }),
     },
     runnerWork: {
@@ -138,19 +143,25 @@ export function narrowRequest(
       },
     },
     store: {
-      stage: (context, ledger, { revision, selection }) => {
+      stage: (context, ledger, { revision, selection }, id) => {
         const selected = selection.selected.get(group) ?? new Set<string>();
         const { queued, asks } = queueNarrow(ledger, selected);
         groups.lanes(context.policy);
         groups.get(group)?.narrow.add(asks, ledger);
         // Review 0.1.411, B2: the answer says which selected files are current, after queuing.
         const narrow = narrowAnswer(context, ledger, group, selection, null);
-        const covered = [...selected].flatMap((id) => ledger.files.get(id) ?? []);
-        return { answer: { revision, queued, narrow }, covered };
+        const covered = selectedOf(ledger, group, selection);
+        return { answer: { revision, queued, narrow, coveredId: id }, covered };
       },
     },
     wake: { lane: group },
   };
+}
+
+/** Group `group`'s selected files, a narrow run's covered files. */
+function selectedOf(ledger: Ledger, group: string, selection: Selection): FileState[] {
+  const selected = selection.selected.get(group) ?? new Set<string>();
+  return [...selected].flatMap((id) => ledger.files.get(id) ?? []);
 }
 
 /**
@@ -218,18 +229,10 @@ export function narrowAnswer(
 
 /**
  * Review 0.1.411, B2: a selected file that is neither current nor queued,
- * with why, as the ledger knows it; `[]` for one that is. A blocked file's
- * reason is the first line of its runner's message.
+ * with why, as its covered-files record says it (`coveredOf`, row
+ * 011-325); `[]` for one that is.
  */
 function notRunOf(file: FileState, waiting: string | null): NarrowNotRun[] {
-  // While the daemon waits for an install, a queued file does not run either.
-  if (classify(file) === "current" || (waiting === null && file.phase !== null)) return [];
-  const reason =
-    waiting ??
-    (file.blocked !== null
-      ? `its runner failed: ${file.blocked.split("\n")[0]}`
-      : file.key === null
-        ? "Squeal cannot key it"
-        : "it has no result at its key and was not queued");
-  return [{ testFile: file.ref, reason }];
+  const covered = coveredOf(file, waiting);
+  return covered.state === "not-queued" ? [{ testFile: file.ref, reason: covered.reason }] : [];
 }

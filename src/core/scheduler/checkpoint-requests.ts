@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { TestFileRef } from "../types/keys.js";
 import type { FullSuiteCheckpoint, FullSuiteRequest } from "../types/scheduler.js";
 import type { CheckpointLane, CheckpointRecord } from "../types/store-records.js";
-import { NOTHING_CHANGED } from "./context.js";
+import { NOTHING_CHANGED, type SchedulerContext } from "./context.js";
 import { classify, type FileState } from "./files.js";
 import type { Ledger } from "./ledger.js";
 import { priorityOf } from "./queue.js";
@@ -62,9 +62,7 @@ export function queueFullSuite(
   const lane = only?.lane;
   // A file another worktree's heal left held here is not done (review wave 13i, B1).
   ledger.confirmHeld();
-  const files = [...ledger.files.values()].filter(
-    (file) => only === undefined || only.isSlow(file.ref) === (only.lane === "slow"),
-  );
+  const files = laneFiles(ledger, only);
   const unrunnable = files.filter((file) => file.key === null || file.blocked !== null);
   const runnable = files.filter((file) => file.key !== null && file.blocked === null);
   const open = force ? runnable : runnable.filter((file) => classify(file) !== "current");
@@ -129,6 +127,8 @@ export function fullSuiteRequest(
   const warmUp = request.observeIgnored === true;
   const force = request.force === true || warmUp;
   const lane = request.lane;
+  const laneOf = (context: SchedulerContext): LaneFilter | undefined =>
+    lane === undefined ? undefined : { lane, isSlow: slowView(context.policy).isSlow };
   return {
     operation: "taking a squeal run --all request",
     start: {
@@ -137,7 +137,14 @@ export function fullSuiteRequest(
     },
     // An install the next reconciliation pass would find ends the wait first; still waiting,
     // nothing can be listed or keyed and the checkpoint is abandoned at once (review wave 11, B1).
-    installWait: { passFirst: true, stage: (_, ledger) => abandonFullSuite(ledger) },
+    installWait: {
+      passFirst: true,
+      stage: (context, ledger, id) => ({
+        answer: { ...abandonFullSuite(ledger), coveredId: id },
+        // Row 011-325: its lane's files, none queued, with the reason.
+        covered: laneFiles(ledger, laneOf(context)),
+      }),
+    },
     runnerWork: {
       // Re-review of 0.1.434, B2: the runner is asked once; what it said is keyed, then stored
       // with the checkpoint, each tried again on a busy store with the answers kept.
@@ -154,15 +161,19 @@ export function fullSuiteRequest(
       },
     },
     store: {
-      stage: (context, ledger) => {
-        const { policy } = context;
-        const only = lane === undefined ? undefined : { lane, isSlow: slowView(policy).isSlow };
+      stage: (context, ledger, _, id) => {
+        const only = laneOf(context);
         const record = queueFullSuite(ledger, force, warmUp, only);
         host.quiet.end(context.now());
         if (warmUp) host.warmUp.start(context, ledger, record);
         // Review wave 3.6, B1: its own files, never the rest of a checkpoint it joined.
-        const covered = record.testFiles.flatMap((ref) => ledger.file(ref) ?? []);
-        return { answer: record, covered };
+        const own = record.testFiles.flatMap((ref) => ledger.file(ref) ?? []);
+        // Row 011-325: and its lane's files already current, which the checkpoint does not hold.
+        const owned = new Set(own);
+        const current = laneFiles(ledger, only).filter(
+          (file) => classify(file) === "current" && !owned.has(file),
+        );
+        return { answer: { ...record, coveredId: id }, covered: [...own, ...current] };
       },
     },
     wake: {
@@ -171,6 +182,13 @@ export function fullSuiteRequest(
         "planning meanwhile would miss the request (slow-tier.ts:357)",
     },
   };
+}
+
+/** The listed files of `only`'s lane; every listed file without one. */
+function laneFiles(ledger: Ledger, only: LaneFilter | undefined): FileState[] {
+  return [...ledger.files.values()].filter(
+    (file) => only === undefined || only.isSlow(file.ref) === (only.lane === "slow"),
+  );
 }
 
 /** What the last daemon owed (task 001-219), taken once at the baseline (`Checkpoints.takeOwed`). */

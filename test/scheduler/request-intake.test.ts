@@ -1,58 +1,44 @@
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { askRetry } from "../../src/core/retry/records.js";
-import type { SchedulerContext } from "../../src/core/scheduler/context.js";
-import { GroupTiers } from "../../src/core/scheduler/group-tiers.js";
+import { fullSuiteRequest } from "../../src/core/scheduler/checkpoint-requests.js";
 import { AWAITING_INSTALL_REASON } from "../../src/core/scheduler/install.js";
-import { Ledger } from "../../src/core/scheduler/ledger.js";
-import { Mutex } from "../../src/core/scheduler/mutex.js";
 import { REINSTALLED_REASON } from "../../src/core/scheduler/narrow-run.js";
-import {
-  type IntakeHost,
-  NO_PASS,
-  RequestIntake,
-} from "../../src/core/scheduler/request-intake.js";
+import { BacklogQuiet } from "../../src/core/scheduler/quiet.js";
+import { NO_PASS } from "../../src/core/scheduler/request-intake.js";
 import { groupRequest } from "../../src/core/scheduler/request-intake-requests.js";
-import type { NowRequest, Request, Skip } from "../../src/core/scheduler/request-intake-types.js";
+import type { NowRequest, Request } from "../../src/core/scheduler/request-intake-types.js";
 import { retryRequest } from "../../src/core/scheduler/retries.js";
-import type { SlowTier } from "../../src/core/scheduler/slow-tier.js";
-import { createStateSink } from "../../src/core/state/sink.js";
-import { BusyWaits } from "../../src/core/store/busy.js";
-import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
-import { storePaths } from "../../src/core/store/paths.js";
-import type { AbsolutePath, WorktreeId } from "../../src/core/types/common.js";
-import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
+import { WarmUp } from "../../src/core/scheduler/warm-up.js";
+import type { CheckKey } from "../../src/core/types/keys.js";
 import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 import { TESTS_GROUP } from "../../src/core/types/scheduler.js";
-import type { Store } from "../../src/core/types/store.js";
-import type { DeliveredPass } from "../../src/core/types/watcher.js";
 import { threadLockHolder } from "../helpers/busy-store.js";
-import { HARNESS_DAEMON } from "./store-wait.js";
+import {
+  A,
+  B,
+  KEYS,
+  NO_RUNNER,
+  NOTHING,
+  OPERATION,
+  probe,
+  probeHost,
+  queueA,
+  WT,
+  waited,
+} from "./request-intake-probe.js";
 
 /*
  * Row 011-322: the request intake's table. A probe request goes through
  * `RequestIntake.take`, the entry point every scheduler request takes, over
- * a real store and a real ledger; a second connection holding `BEGIN
- * IMMEDIATE` makes the store busy. The host's lanes, pump and progress
- * record are a log, so each row reads what the intake did and in what
- * order. No runner: the probe asks none.
+ * a real store and a real ledger (`request-intake-probe.ts`); a second
+ * connection holding `BEGIN IMMEDIATE` makes the store busy. The host's
+ * lanes and pump are a log, and its progress record a log line and the
+ * real `RequestProgress`, so each row reads what the intake did, in what
+ * order, and what the progress counts. No runner: the probe asks none.
+ * The covered files' record (row 011-325) is `request-covered.test.ts`.
  */
 
-const WT = "wt-011-322" as WorktreeId;
-const A: TestFileRef = { project: "", path: "test/a.test.ts" };
-const B: TestFileRef = { project: "", path: "test/b.test.ts" };
-const KEYS = new Map([
-  [A.path, "a".repeat(64) as CheckKey],
-  [B.path, "b".repeat(64) as CheckKey],
-]);
-const NOTHING = new Set<never>();
-/** The daemon's `BUSY_SLICE_MS`, short. */
-const SLICE_MS = 25;
 const HOLD_MS = 300;
-const OPERATION = "taking a probe request";
-const NO_RUNNER: Skip = { skip: "the probe waits for no runner work" };
 /** What the intake does with the probe, in order: its stage, then after the commit its record, wake and pump. */
 const TAKEN = [
   "stage (A not queued)",
@@ -60,158 +46,6 @@ const TAKEN = [
   "wake lane probe",
   "pump",
 ];
-
-const cleanups: (() => void)[] = [];
-afterEach(() => {
-  for (const cleanup of cleanups.splice(0).reverse()) cleanup();
-});
-
-interface Probe {
-  readonly intake: RequestIntake;
-  readonly store: Store;
-  readonly database: string;
-  readonly ledger: Ledger;
-  readonly lock: Mutex;
-  /** What the intake and the probe did, in order. */
-  readonly log: string[];
-  readonly notes: string[];
-  /** The host's state: open, stopping, waiting, started. */
-  readonly state: {
-    open: boolean;
-    stopping: boolean;
-    waiting: string | null;
-    started: boolean;
-    delivered: number;
-  };
-  /** `A`'s row as another connection reads it: what the store committed. */
-  committed(): { key: CheckKey | null; pending: string | null } | undefined;
-  /** `A`'s pending phase as the store committed it. */
-  seen(): string;
-}
-
-/** A store with `B` queued and `A` listed, unkeyed; the intake over it. */
-function probeHost(): Probe {
-  const dir = mkdtempSync(join(tmpdir(), "squeal-011-322-")) as AbsolutePath;
-  cleanups.push(() => rmSync(dir, { recursive: true, force: true }));
-  const store = open(dir);
-  const reader = open(dir);
-  store.worktrees.upsert({
-    id: WT,
-    root: join(dir, "wt"),
-    commonDir: dir,
-    isMain: true,
-    registeredAt: Date.now(),
-    daemon: {
-      ...HARNESS_DAEMON,
-      socketPath: "/tmp/squeal-011-322.sock",
-      heartbeatAt: Date.now(),
-      heartbeatIntervalMs: 600_000,
-    },
-  });
-  const context = {
-    store,
-    sink: createStateSink(store),
-    worktreeId: WT,
-    policy: DEFAULT_POLICY,
-    now: Date.now,
-    note: () => {},
-    keys: {
-      runnerOf: () => undefined,
-      runtimeIdentity: () => "",
-      writeRuntimeApplications: () => {},
-      index: { key: (ref: TestFileRef) => KEYS.get(ref.path) ?? null, keysReadAsOne: () => null },
-      stabilityPaths: () => [],
-      removeTestFile: () => {},
-    },
-  } as unknown as SchedulerContext;
-  const ledger = new Ledger(context);
-  ledger.addFile(A);
-  ledger.addFile(B);
-  ledger.settle([B], NOTHING);
-  ledger.commit();
-  const log: string[] = [];
-  const notes: string[] = [];
-  const lock = new Mutex();
-  const state = { open: true, stopping: false, waiting: null, started: true, delivered: 2 };
-  const waits = new BusyWaits({ now: Date.now, note: (text) => notes.push(text) });
-  const host: IntakeHost = {
-    lock,
-    started: () => {
-      if (!state.started) throw new Error("squeal scheduler: not started");
-      return { context, ledger };
-    },
-    open: () => state.open,
-    stopping: () => state.stopping,
-    waiting: () => state.waiting,
-    awaitingInstall: () => state.waiting === AWAITING_INSTALL_REASON,
-    installPass: async () => {
-      log.push("install pass");
-      state.waiting = null;
-    },
-    passes: () => ({
-      started: () => 1,
-      pass: async () => void log.push("pass"),
-      deliveredPass: () => ({ number: state.delivered }) as DeliveredPass,
-    }),
-    busy: () => ({ waits, sliceMs: SLICE_MS }),
-    runnerPending: () => false,
-    afterRunnerWork: (task, operation) => lock.run(task, operation),
-    record: (files) => log.push(`record ${files.map((f) => f.ref.path).join(" ")} (${seen()})`),
-    wakeAll: () => log.push("wake all lanes"),
-    wakeLane: (group) => log.push(`wake lane ${group}`),
-    cutTiers: () => log.push("cut tiers"),
-    pump: () => log.push("pump"),
-  };
-  const committed = () => {
-    const row = reader.testFileKeys.list(WT).find((r) => r.testFile.path === A.path);
-    return row === undefined ? undefined : { key: row.key, pending: row.pending };
-  };
-  const seen = () => `A ${committed()?.pending ?? "not queued"}`;
-  return {
-    intake: new RequestIntake(host),
-    store,
-    database: storePaths(dir).database,
-    ledger,
-    lock,
-    log,
-    notes,
-    state,
-    committed,
-    seen,
-  };
-}
-
-function open(dir: AbsolutePath): Store {
-  const store = openStore(dir, { busyTimeoutMs: 10_000 });
-  if (isStoreOpenFailure(store)) throw new Error(`store: ${JSON.stringify(store)}`);
-  cleanups.push(() => store.close());
-  return store;
-}
-
-/** The probe's stage: keys and queues `A`, its covered file, and commits; logs what the store had. */
-function queueA(p: Probe) {
-  return (_: SchedulerContext, ledger: Ledger) => {
-    p.log.push(`stage (${p.seen()})`);
-    ledger.settle([A], NOTHING);
-    ledger.commit();
-    const file = ledger.file(A);
-    if (file === undefined) throw new Error("A is not listed");
-    return { answer: "queued", covered: [file] };
-  };
-}
-
-/** The probe request: rules as given, else at-once waiting, no runner work, `queueA`, its lane woken. */
-function probe(p: Probe, rules: Partial<Request<string>> = {}): Request<string> {
-  return {
-    operation: OPERATION,
-    start: { skip: "the probe's host throws before the start" },
-    installWait: { atOnce: "waiting" },
-    runnerWork: NO_RUNNER,
-    store: { stage: queueA(p) },
-    wake: { lane: "probe" },
-    ...rules,
-  };
-}
 
 describe("request intake: a busy store (spec 021 D2)", () => {
   it("runs the stage once, after the holder ends, and names the wait", async () => {
@@ -279,7 +113,7 @@ describe("request intake: the install wait", () => {
     async (reason) => {
       const p = probeHost();
       p.state.waiting = reason;
-      const installWait = { stage: () => "abandoned" };
+      const installWait = { stage: waited("abandoned") };
       expect(await p.intake.take(probe(p, { installWait }))).toBe("abandoned");
       expect(p.log).toEqual(["pump"]);
       expect(p.ledger.file(A)?.phase).toBeNull();
@@ -291,7 +125,7 @@ describe("request intake: the install wait", () => {
     p.state.waiting = reason;
     const request: Request<string, string> = {
       ...probe(p),
-      installWait: { answer: (_c, _l, plan, why) => `${plan}: ${why}` },
+      installWait: { answer: (_c, _l, plan, why) => ({ answer: `${plan}: ${why}`, covered: [] }) },
       runnerWork: { always: async () => ({ plan: "selected" }) },
       store: { stage: (context, ledger) => queueA(p)(context, ledger) },
     };
@@ -303,7 +137,7 @@ describe("request intake: the install wait", () => {
   it("runs an awaited install's pass first; the wait it ended takes the stage", async () => {
     const p = probeHost();
     p.state.waiting = AWAITING_INSTALL_REASON;
-    const installWait = { stage: () => "abandoned", passFirst: true as const };
+    const installWait = { stage: waited("abandoned"), passFirst: true as const };
     expect(await p.intake.take(probe(p, { installWait }))).toBe("queued");
     expect(p.log[0]).toBe("install pass");
   });
@@ -321,15 +155,36 @@ describe("request intake: the progress record (row 018-12)", () => {
 
   // The per-request registration cases this replaces: `request-progress.test.ts`'s "run tests counts
   // each of its files" (the group's files) and the retry request's claimed files (review wave 3.6, B3).
-  it("records the real group request's files: the group's, queued or not", async () => {
+  it("records the real group request's files: a running one counts once it ended", async () => {
     const p = probeHost();
-    const lane = { request: () => p.log.push("lane requested") } as unknown as SlowTier;
-    const answer = await p.intake.take(
-      groupRequest(TESTS_GROUP, new GroupTiers(() => lane), undefined),
-    );
-    // `B` was queued; `A` has no key, so it is not queued and its ask counts nothing.
+    const b = p.ledger.file(B);
+    const key = KEYS.get(B.path) as CheckKey;
+    if (b === undefined) throw new Error("B is not listed");
+    p.ledger.setRunning(b, key);
+    const answer = await p.intake.take(groupRequest(TESTS_GROUP, p.groups, undefined));
+    // `B` was running; `A` has no key, so it is not queued and its ask counts nothing.
     expect(answer).toMatchObject({ queued: 1 });
     expect(p.log).toEqual(["record test/a.test.ts test/b.test.ts (A not queued)", "pump"]);
+    expect(p.progress.count).toBe(0);
+    p.ledger.setRunning(b, null);
+    p.ledger.applyResults(b, key, [], null);
+    expect(p.progress.count).toBe(1);
+  });
+
+  // Review 0.1.470, S1: `request-progress.test.ts`'s "run --all counts each of its files once it
+  // ended, slow files included", with the real `run --all` declaration.
+  it("records the real run --all request's files: a slow one counts once it ended", async () => {
+    const slow = { ...DEFAULT_POLICY.slow, include: [B.path] };
+    const p = probeHost({ policy: { ...DEFAULT_POLICY, slow } });
+    const host = { quiet: new BacklogQuiet(), warmUp: new WarmUp() };
+    const record = await p.intake.take(fullSuiteRequest({}, host));
+    // `A` cannot be keyed, so the checkpoint fails it; `B`, slow and queued, is its work.
+    expect(record.testFiles.map((ref) => ref.path)).toEqual([B.path, A.path]);
+    expect(p.log).toContain("record test/b.test.ts test/a.test.ts (A not queued)");
+    const b = p.ledger.file(B);
+    if (b === undefined) throw new Error("B is not listed");
+    p.ledger.applyResults(b, KEYS.get(B.path) as CheckKey, [], record.id);
+    expect(p.progress.count).toBe(1);
   });
 
   it("records the real retry request's claimed files only", async () => {
@@ -429,7 +284,7 @@ describe("request intake: the order", () => {
     p.state.waiting = AWAITING_INSTALL_REASON;
     const request = probe(p, {
       start: { skip: "probe", afterPass: true },
-      installWait: { stage: () => "abandoned", passFirst: true },
+      installWait: { stage: waited("abandoned"), passFirst: true },
       wake: { allLanes: "the probe's lanes" },
     });
     await p.intake.take(request);
