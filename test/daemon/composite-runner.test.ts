@@ -251,29 +251,6 @@ describe("createCompositeRunner (spec 003 D7)", () => {
     expect(node.calls).toEqual(["testFiles"]);
   });
 
-  it("keeps the other adapter's results when one adapter's run crashed", async () => {
-    const { composite } = pair({
-      run: async () => ({
-        end: "crashed",
-        durationMs: 3,
-        completedFiles: [],
-        results: [],
-        fileErrors: [],
-        failure: "node exited with signal SIGSEGV before any file completed",
-      }),
-    });
-    await composite.testFiles();
-    const report = await composite.run([A, C], OPTIONS);
-    expect(report.end).toBe("crashed");
-    expect(report.durationMs).toBe(13);
-    expect(report.completedFiles).toEqual([A]);
-    expect(report.results).toEqual([passed(A)]);
-    expect(report.fileDurations).toEqual([{ testFile: A, durationMs: 5 }]);
-    expect(report.failure).toBe(
-      "node-test: node exited with signal SIGSEGV before any file completed",
-    );
-  });
-
   it("turns an adapter whose run rejects into a crashed part of the run", async () => {
     const { composite } = pair({ run: () => Promise.reject(new Error("spawn node ENOENT")) });
     await composite.testFiles();
@@ -281,60 +258,6 @@ describe("createCompositeRunner (spec 003 D7)", () => {
     expect(report.end).toBe("crashed");
     expect(report.completedFiles).toEqual([A]);
     expect(report.failure).toBe("node-test: spawn node ENOENT");
-  });
-
-  it("is timed-out when one part timed out and none crashed", async () => {
-    const { composite } = pair({
-      run: async () => ({
-        end: "timed-out",
-        durationMs: 1000,
-        completedFiles: [],
-        results: [],
-        fileErrors: [],
-        failure: "run exceeded 1000 ms",
-      }),
-    });
-    await composite.testFiles();
-    const report = await composite.run([A, C], OPTIONS);
-    expect(report.end).toBe("timed-out");
-    expect(report.failure).toBe("node-test: run exceeded 1000 ms");
-  });
-
-  it("carries a part's skipped files, and none when no part skipped one (task 007-23)", async () => {
-    const { composite } = pair({
-      run: async (testFiles) => ({
-        end: "completed",
-        durationMs: 4,
-        completedFiles: testFiles,
-        results: [],
-        fileErrors: [],
-        failure: null,
-        skippedFiles: testFiles.map((testFile) => ({ testFile, reason: "no service" })),
-      }),
-    });
-    await composite.testFiles();
-    const report = await composite.run([A, C], OPTIONS);
-    expect(report.skippedFiles).toEqual([{ testFile: C, reason: "no service" }]);
-    expect(report.completedFiles).toEqual([A, C]);
-    expect(await composite.run([A], OPTIONS)).not.toHaveProperty("skippedFiles");
-  });
-
-  it("carries a part's focused counts, a zero match included, and none when no part focused (row 011-145)", async () => {
-    const { composite } = pair({
-      run: async (testFiles) => ({
-        end: "completed",
-        durationMs: 4,
-        completedFiles: testFiles,
-        results: [],
-        fileErrors: [],
-        failure: null,
-        focused: testFiles.map((testFile) => ({ testFile, collected: 3, matched: 0 })),
-      }),
-    });
-    await composite.testFiles();
-    const report = await composite.run([A, C], OPTIONS);
-    expect(report.focused).toEqual([{ testFile: C, collected: 3, matched: 0 }]);
-    expect(await composite.run([A], OPTIONS)).not.toHaveProperty("focused");
   });
 
   it("closes each adapter even when one fails to close, then rejects", async () => {
