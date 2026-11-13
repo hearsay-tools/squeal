@@ -1,5 +1,6 @@
-import type { WorktreeId } from "../types/common.js";
+import type { ProjectName, WorktreeId } from "../types/common.js";
 import { type Store, worktreeMetaKey } from "../types/store.js";
+import type { NowRequest } from "./request-intake-types.js";
 
 /*
  * Review of 0.1.428, B1 (row 018-28, spec 018 D5): an import into a running
@@ -61,4 +62,38 @@ export function importsKeyed(
 /** A start keys every import the store holds: the keys wait for none. */
 export function clearImportsWaiting(store: Store, worktreeId: WorktreeId): void {
   store.meta.delete(importsWaitingMetaKey(worktreeId));
+}
+
+/**
+ * Row 018-28 as the request intake takes it (row 011-322): an import's
+ * observed reads, or with neither argument the daemon lifecycle's refresh.
+ * The files whose set grew in `projects` wait for the refinement's regrow,
+ * as another worktree's do; until that regrow is applied, status names the
+ * `imports` it waits for (review of 0.1.428, B1). `queueObserved` queues
+ * that runner work. `false`: closed, not started, or waiting for an install.
+ */
+export function observedRequest(
+  projects: readonly ProjectName[],
+  imports: readonly string[],
+  queueObserved: () => void,
+): NowRequest<boolean> {
+  return {
+    operation: "refreshing the observed reads of an import",
+    start: { closed: false },
+    installWait: { atOnce: false },
+    runnerWork: { skip: "waits for no runner work: it queues its own (`queueObserved`)" },
+    store: {
+      skip:
+        "synchronous: the daemon's lifecycle reads its answer at once (daemon.ts:416); its " +
+        "waiting mark is written outside the busy-store retry until row 011-323 (difference 1)",
+      covers: { skip: "covers no file: the refinement's regrow re-keys the files it reaches" },
+      now: (context) => {
+        if (projects.length > 0) context.keys.refreshObserved(projects);
+        markImportsWaiting(context.store, context.worktreeId, imports);
+        queueObserved();
+        return true;
+      },
+    },
+    wake: { skip: "wakes no lane: the pump applies its runner work first" },
+  };
 }

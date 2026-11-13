@@ -46,3 +46,12 @@ Paths today, the same for both:
 - No install-wait check: while an install is awaited they still order the queue; the pump then stops at its own install check.
 
 Kept: no install-wait answer (`installWait: { skip: "writes no store: ..." }`); no store write (`store: { skip, covers, apply }`); no progress record (`covers: { skip }`); `cutTiers` under the lock after the change; no runner work. Focus's "no texts" is the closed answer's `nothing: true`.
+
+### An import's observed refresh (`refreshObserved`, today's 901-910; declaration `observedRequest` in `imports-waiting.ts`)
+
+Two callers: the daemon's import take (`daemon.ts:1095`, with projects and imports) and the lifecycle's refresh (`daemon.ts:416`, neither; it writes nothing). Paths today:
+- closed, not started, awaiting an install or reinstalled: `false` at once; nothing else.
+- otherwise, synchronously and with no lock: the keys refresh the projects' observed sets (`keys.refreshObserved`, when any); `markImportsWaiting` writes the waiting mark in its own transaction with the store's own busy wait, outside any retry (with no imports it writes nothing); `queueObserved` queues the runner work; pump; `true`.
+- `markImportsWaiting` throwing (a busy store past the store's wait): the call throws after the keys' refresh, with no runner work queued and no pump; `squeal import` ignores it (`src/cli/import.ts:224`).
+
+Kept: synchronous (`NowRequest`, the intake's `#now`): the closed and install-wait answers at once, then `now`, then the pump; a throw starts nothing. Named skips: the store write outside the busy-store retry until row 011-323 (difference 1), no covered files, no lane woken, no runner work waited for.
