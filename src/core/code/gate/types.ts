@@ -4,6 +4,7 @@ import type { FileHash } from "../../types/keys.js";
 import type { CoverageRecord } from "../coverage/types.js";
 import type { RunEstimate } from "./estimate.js";
 import type { KeptLog } from "./evidence.js";
+import type { PartRefusal } from "./parts-refused.js";
 import type { PrepareRun } from "./prepare.js";
 import type { ScopeEvidence } from "./scope.js";
 import type { ClosureGaps } from "./select-closures.js";
@@ -223,6 +224,8 @@ export interface Evidence {
    * the rerun command with a `--timeout` that fits it; absent otherwise.
    */
   readonly rerun?: GateRerun;
+  /** Row 020-49 (#205): each selected file a part holds and did not give, and why; absent when none. */
+  readonly refused?: readonly PartRefusal[];
 }
 
 /** Row 020-45: a rerun of the gate that fits its estimate. */
