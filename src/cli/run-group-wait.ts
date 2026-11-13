@@ -77,6 +77,9 @@ export function groupVerdictLine(
       return none(
         `the daemon stopped before the ${narrow ? "selected" : "group's"} test files had results`,
       );
+    // Row 011-327: the store did not open, or was busy at the deadline's read.
+    case "unopened":
+      return none(outcome.unavailable);
     case "deadline": {
       const { byClass, revision } = outcome.verdict;
       if (outcome.install !== undefined) {
