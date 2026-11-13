@@ -1,18 +1,11 @@
-import { setTimeout as sleep } from "node:timers/promises";
 import { testFileId } from "../core/keys/reverse-index.js";
 import { formatStatus } from "../core/status/format-status.js";
 import { holdVerdictLine } from "../core/status/holds.js";
 import { readStatus } from "../core/status/snapshot.js";
 import { plural } from "../core/text.js";
-import type { AbsolutePath, RevisionNumber } from "../core/types/common.js";
+import type { AbsolutePath } from "../core/types/common.js";
 import type { RunAllResponse } from "../core/types/daemon.js";
-import {
-  type CheckpointProgress,
-  checkpointMetaKey,
-  parseCheckpointProgress,
-} from "../core/types/scheduler.js";
-import type { StatusHold } from "../core/types/standing.js";
-import type { Store } from "../core/types/store.js";
+import type { CheckpointProgress } from "../core/types/scheduler.js";
 import type { CheckpointRecord } from "../core/types/store-records.js";
 import { askDaemon, daemonSocket, worktreeRoot } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
@@ -20,37 +13,17 @@ import { groupArgs, runGroupCommand } from "./run-group.js";
 import { LANE_FLAGS, laneFiles, laneText, runLanes } from "./run-lanes.js";
 import { runSlowCommand } from "./run-slow.js";
 import { statusCommand } from "./status-command.js";
-import {
-  type FileVerdict,
-  failuresText,
-  gapText,
-  holdOfWait,
-  noVerdictText,
-  readClasses,
-  readVerdict,
-  verdictCode,
-} from "./verdict.js";
+import { failuresText, gapText, noVerdictText, readClasses, verdictCode } from "./verdict.js";
+import { openCheckpoint } from "./wait/progress.js";
 import { inStore } from "./wait/reads.js";
+import type { CheckpointOutcome } from "./wait/table.js";
+import { runWait, untilTaken } from "./wait/wait.js";
 import { takeWait } from "./wait-arg.js";
 
 const USAGE =
   "usage: squeal run --all|--fast [--force] [--wait [<ms>]]\n       squeal run --slow [--wait <ms>]\n";
 /** Without `--wait`, how long to wait for the scheduler to record the checkpoint. */
 const RECORD_WAIT_MS = 10_000;
-const POLL_MS = 100;
-/** How often `--wait` reads the store (C6 as amended, task 011-42). */
-const STORE_POLL_MS = 1_000;
-/** Every this many polls, `--wait` asks whether the daemon is still there: every 5 s. */
-const PING_POLLS = 5;
-
-/** How a waited checkpoint ended for the CLI (spec 005 D1). */
-type Outcome =
-  | { readonly kind: "ended"; readonly verdict: FileVerdict }
-  /** Row 011-73 (C6 as amended 2026-10-21): its files are queued while the worktree is on hold. */
-  | { readonly kind: "on-hold"; readonly hold: StatusHold }
-  | { readonly kind: "abandoned" | "stopped" }
-  | { readonly kind: "moved"; readonly revision: RevisionNumber }
-  | { readonly kind: "deadline"; readonly verdict: FileVerdict };
 
 /** What a caller inside the CLI asks of `run --all` beyond its flags; no user flag sets it. */
 export interface RunInternal {
@@ -140,7 +113,19 @@ export async function runCommand(
     io.stdout(started);
     return 0;
   }
-  const outcome = await ended(root, socketPath, checkpoint, deadline);
+  // Spec 005 D1: the checkpoint wait (`src/cli/wait/`), on the checkpoint's lane.
+  const outcome = await runWait({
+    wait: "checkpoint",
+    root,
+    socketPath,
+    deadline,
+    checkpoint: {
+      id: checkpoint.id,
+      worktreeId: checkpoint.worktreeId,
+      revision: checkpoint.revision,
+    },
+    files: { kind: "lane", lane: checkpoint.lane ?? null },
+  });
   const now = io.now ?? Date.now;
   const command = statusCommand(io.env ?? process.env);
   const [line, code] = verdictLine(root, checkpoint, outcome, joined, command);
@@ -170,7 +155,7 @@ function takeAllWait(args: readonly string[]): ReturnType<typeof takeWait> {
 function verdictLine(
   root: AbsolutePath,
   checkpoint: CheckpointRecord,
-  outcome: Outcome,
+  outcome: CheckpointOutcome,
   joined: Joined | null,
   command: string,
 ): [string, 0 | 1 | 3] {
@@ -218,27 +203,20 @@ function verdictLine(
   }
 }
 
-/** Polls the daemon until the scheduler recorded the request's checkpoint; `null` past `deadline`, a string when it failed. */
+/** Waits until the scheduler recorded the request's checkpoint; `null` past `deadline`, a string when it failed. */
 async function recorded(
   socketPath: AbsolutePath,
   first: RunAllResponse,
   deadline: number,
 ): Promise<Recorded | string | null> {
-  let state: RunAllResponse = first;
-  for (;;) {
-    if (state.checkpoint !== null) return { checkpoint: state.checkpoint, owner: state.owner };
-    if (state.error !== null) return `run --all failed: ${state.error}`;
-    if (Date.now() > deadline) return null;
-    await sleep(POLL_MS);
-    const next = await askDaemon(socketPath, {
-      type: "run-all-status",
-      requestId: first.requestId,
-    });
-    if (next === null || !next.ok || next.type !== "run-all") {
-      return "the daemon stopped before recording the checkpoint";
-    }
-    state = next;
+  const outcome = await untilTaken({ loop: "run-all", socketPath, first, deadline });
+  if (outcome.kind === "taken" && outcome.answer.checkpoint !== null) {
+    return { checkpoint: outcome.answer.checkpoint, owner: outcome.answer.owner };
   }
+  if (outcome.kind === "failed") return `run --all failed: ${outcome.error}`;
+  if (outcome.kind === "pending") return null;
+  // The `run-all` row reads any other answer, and none, as a stopped daemon.
+  return "the daemon stopped before recording the checkpoint";
 }
 
 /**
@@ -260,7 +238,10 @@ function filesText(root: AbsolutePath, checkpoint: CheckpointRecord): string {
 
 /** Task 001-219: a checkpoint the stopped daemon owes resumes in the next one. */
 function owedText(root: AbsolutePath, checkpoint: CheckpointRecord): string {
-  const owed = inStore(root, (store) => openCheckpoint(store, checkpoint)?.owed?.ids ?? []);
+  const owed = inStore(
+    root,
+    (store) => openCheckpoint(store, checkpoint.worktreeId)?.owed?.ids ?? [],
+  );
   return owed?.includes(checkpoint.id) === true
     ? "; the next daemon resumes it, and `run --all --wait` then waits for it"
     : "";
@@ -298,7 +279,7 @@ function joinedCheckpoint(
   if (owner === undefined || owner === checkpoint.id) return null;
   return inStore(root, (store): Joined => {
     const record = store.checkpoints.get(owner);
-    const open = openCheckpoint(store, checkpoint);
+    const open = openCheckpoint(store, checkpoint.worktreeId);
     return {
       id: owner,
       open: open?.id === owner ? open : null,
@@ -316,69 +297,4 @@ function joinedText(joined: Joined | null): string {
     return `, joining the ${what} checkpoint ${id} already running them; both had ended when this command read them`;
   }
   return `, joining the ${what} checkpoint ${id} already running them (${open.done} of ${open.total} test files done); it ends when that one ends`;
-}
-
-/** The worktree's open checkpoint as the store holds it (`checkpointMetaKey`). */
-function openCheckpoint(store: Store, checkpoint: CheckpointRecord): CheckpointProgress | null {
-  return parseCheckpointProgress(store.meta.get(checkpointMetaKey(checkpoint.worktreeId)));
-}
-
-/**
- * Polls the store once a second until the checkpoint ended and none of the
- * worktree's test files is pending (a new failure's re-run, spec 001 D6 as
- * amended), a newer revision was recorded, `deadline` passed, or the daemon
- * went away. A poll reads the checkpoint's end and the latest revision, and
- * the verdict only once the checkpoint ended or at the deadline (C6 as
- * amended, task 011-42).
- */
-async function ended(
-  root: AbsolutePath,
-  socketPath: AbsolutePath,
-  checkpoint: CheckpointRecord,
-  deadline: number,
-): Promise<Outcome> {
-  for (let polls = 0; ; polls++) {
-    const seen = inStore(root, (store) => pollCheckpoint(store, checkpoint, deadline));
-    if (seen === null) return { kind: "stopped" };
-    if (seen !== "open") return seen;
-    // A killed daemon never ends its checkpoint; check that it is still there now and then.
-    if (
-      polls % PING_POLLS === PING_POLLS - 1 &&
-      (await askDaemon(socketPath, { type: "ping" })) === null
-    ) {
-      return { kind: "stopped" };
-    }
-    await sleep(Math.max(0, Math.min(STORE_POLL_MS, deadline - Date.now())));
-  }
-}
-
-/**
- * One poll of `ended`: the outcome, or `open` while the checkpoint runs, or
- * it completed with a test file still pending, before `deadline`.
- */
-function pollCheckpoint(
-  store: Store,
-  checkpoint: CheckpointRecord,
-  deadline: number,
-): Outcome | "open" {
-  const end = store.checkpoints.get(checkpoint.id)?.end ?? null;
-  const revision = store.revisions.latest(checkpoint.worktreeId)?.number ?? 0;
-  if (revision > checkpoint.revision) return { kind: "moved", revision };
-  if (end === "abandoned") return { kind: "abandoned" };
-  const late = Date.now() >= deadline;
-  if (end !== "completed" && !late) {
-    // Row 011-73 (C6 as amended 2026-10-21): no tier starts on hold, so the wait returns with it.
-    const id = checkpoint.worktreeId;
-    const files = laneFiles(store, checkpoint.worktreeId, checkpoint.lane ?? null) ?? undefined;
-    const hold = holdOfWait(store, id, () => store.testFileKeys.list(id, files), Date.now());
-    return hold === null ? "open" : { kind: "on-hold", hold };
-  }
-  const verdict = readVerdict(
-    store,
-    checkpoint.worktreeId,
-    laneFiles(store, checkpoint.worktreeId, checkpoint.lane ?? null),
-  );
-  const settled = verdict.byClass.pending === 0 && !verdict.unlisted;
-  if (end === "completed" && settled) return { kind: "ended", verdict };
-  return late ? { kind: "deadline", verdict } : "open";
 }
