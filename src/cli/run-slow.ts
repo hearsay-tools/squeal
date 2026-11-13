@@ -2,9 +2,10 @@ import { SLOW_NOT_SUPPORTED } from "../core/daemon/run-slow.js";
 import { plural } from "../core/text.js";
 import type { AbsolutePath } from "../core/types/common.js";
 import type { DaemonResponse, RunSlowResponse } from "../core/types/daemon.js";
-import { askDaemon, daemonSocket, worktreeRoot } from "./daemon-access.js";
+import { daemonSocket, worktreeRoot } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
 import { statusWaitCommand } from "./status-wait.js";
+import { askWithin } from "./wait/socket.js";
 import { untilTaken } from "./wait/wait.js";
 import { takeWait } from "./wait-arg.js";
 
@@ -23,6 +24,8 @@ const RECORD_WAIT_MS = 10_000;
  * no daemon runs, the daemon has no slow tier or the request failed, 2 on a
  * usage error, 3 when the wait ended before the scheduler took the request or
  * before the queued slow files had results (`slowWaitCode`, task 004-66).
+ * Row 011-327: a request the daemon did not answer within its bound has no
+ * verdict, 3 with `--wait`, 1 without.
  */
 export async function runSlowCommand(
   args: readonly string[],
@@ -43,7 +46,17 @@ export async function runSlowCommand(
   const socketPath = await daemonSocket(root);
   const started = Date.now();
   const deadline = started + (wait.waitMs ?? RECORD_WAIT_MS);
-  const first = await askDaemon(socketPath, { type: "run-slow" });
+  // Row 011-327 (decision 4 item 1): the request ends by the deadline; a busy daemon is words.
+  const first = await askWithin(socketPath, { type: "run-slow" }, deadline);
+  if (first !== null && "unanswered" in first) {
+    const text = `the daemon did not answer the run --slow request${first.unanswered}; it may still take it once its current work allows`;
+    if (wait.waitMs === null) {
+      io.stderr(`squeal: ${text}\n`);
+      return 1;
+    }
+    io.stdout(`No verdict: ${text}\n`);
+    return 3;
+  }
   const requested = await taken(socketPath, first, io, deadline);
   if (requested === "no-daemon") {
     io.stderr(`squeal: no daemon running for ${root}; start one with squeal start\n`);
