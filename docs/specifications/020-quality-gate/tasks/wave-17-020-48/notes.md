@@ -61,7 +61,7 @@ Run:
 
 - `pnpm run lint`: `Checked 3327 files in 966ms. No fixes applied.`
 - `pnpm run typecheck`: exit 0, no output.
-- `squeal status --wait`: see the final report for the verdict on the changed paths. Each new or changed keep test file read current and passing at its revision: `keep-grown.test.ts`, `keep-grown-daemon.test.ts`, `keep-daemon-lost.test.ts`, `keep-daemon.test.ts` (revisions 11 to 14), `test/daemon/keep-seen.test.ts` (15), `test/cli/code-gate-keep-grown-daemon.test.ts` (18).
+- `squeal status --wait 600000 <the src and test paths this row changed>` at revision 20 (`bc7809b92`): 496 affected test files, each with a current result, after 313.2 s; 492 pass, 4 fail, the four bundle checks named under "Not run". Each new or changed keep test file read current and passing at its revision: `keep-grown.test.ts`, `keep-grown-daemon.test.ts`, `keep-daemon-lost.test.ts`, `keep-daemon.test.ts` (revisions 11 to 14), `test/daemon/keep-seen.test.ts` (15), `test/cli/code-gate-keep-grown-daemon.test.ts` (18).
 - `pnpm exec vitest run test/code/gate/keep-grown-daemon.test.ts test/code/gate/keep-grown.test.ts`, once, to see the count Squeal does not print for passes: 10 passed.
 
 Not run:
