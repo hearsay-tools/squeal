@@ -95,28 +95,6 @@ describe("Scheduler.requestProgress: ends of a request's files (row 018-12)", SL
     expect(h.scheduler.requestProgress?.()).toBe(0);
   });
 
-  it("run tests counts each of its files once it ended", async () => {
-    const { h, release } = await heldBaseline();
-    const requested = await h.scheduler.requestGroup?.(TESTS_GROUP);
-    // The three fast files: one held, two queued; none ended yet.
-    expect(requested?.queued).toBe(3);
-    expect(h.scheduler.requestProgress?.()).toBe(0);
-    release();
-    await h.scheduler.idle();
-    expect(h.scheduler.requestProgress?.()).toBe(3);
-    // A read counts nothing again.
-    expect(h.scheduler.requestProgress?.()).toBe(3);
-  });
-
-  it("run --all counts each of its files once it ended, slow files included", async () => {
-    const { h, release } = await heldBaseline();
-    await h.scheduler.requestFullSuite();
-    expect(h.scheduler.requestProgress?.()).toBe(0);
-    release();
-    await h.scheduler.idle();
-    await waitFor(() => h.scheduler.requestProgress?.() === 5, 60_000);
-  });
-
   // Review wave 3.6, B1: a joined request owns its own files, never the open baseline's other lane.
   it("run --all --fast joined to the baseline counts its fast files, not the baseline's slow ones", async () => {
     const { h, release, releaseSlow } = await heldBaseline(true);

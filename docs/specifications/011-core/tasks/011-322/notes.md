@@ -93,3 +93,33 @@ Paths today:
 Kept, all five design quirks hold: the lock per busy try in the first stage and held through every try after the runner work (quirk 1, `runnerWork: { whenPending }`); every lane woken before the lock (quirk 2, `wake: { allLanes: "<reason>" }`); no pump after a throw (quirk 4); the delivered pass and the install's pass first (quirk 5, `start.afterPass`, `installWait.passFirst`). The deferral check stays inside the first transaction after the install-wait check, so an awaited install still abandons at once while runner work is pending. The abandon decision after the runner work is read once before the runner is asked and used in the transaction, as today (`reason` passed in). The checkpoint's files are recorded after the commit, in the same lock task; `queueFullSuite` committed the ledger before the ask today too.
 
 The key counter of `#request` and `NO_PASS` moved with the request into `request-intake.ts`; the scheduler keeps `#retries` for `#reconcilePaths`.
+
+## The table (`test/scheduler/request-intake.test.ts`)
+
+A probe request through `RequestIntake.take` over a real store and a real `Ledger` (a minimal context, as `retry-claims.test.ts` builds; no runner, so no hand-written `RunnerAdapter` fake, per the coordinator's note of 2026-11-13); `threadLockHolder` (`test/helpers/busy-store.ts`) holds `BEGIN IMMEDIATE` on a second connection. The host's record, wakes and pump write a log; the stage and the record line read `A`'s row through a second store connection, so the log shows the record follows the commit. Rows:
+
+- busy store: the stage runs once after the holder ends, the wait's note names the request; a refusal at the daemon's stop rejects with the operation named and records nothing; with no runner work the lock is let go between tries, with `always` runner work it is held (quirk 1).
+- install wait, each reason (`AWAITING_INSTALL_REASON`, `REINSTALLED_REASON`): `atOnce` answers before the lock with nothing else; `stage` answers in the transaction, records and wakes nothing, then pumps; `answer` makes the answer from the plan with the reason and writes nothing; `passFirst` runs the install's pass first, and a wait it ended takes the stage.
+- progress record: only the stage's covered files, after the commit (`B`, queued by no request, is not recorded); the real group request records the group's files; the real retry request records only the file it claimed; a stage that throws records nothing and leaves the ledger and store as they were.
+- stop: the closed answer once closed; `nothing: true`; before the start with no closed answer it rejects and starts nothing; a `NowRequest` answers at once closed or waiting.
+- order: record, then wake, then pump; a delivered pass, the install's pass and every lane's wake before the lock (quirks 5 and 2); no delivered pass rejects with `NO_PASS` and takes nothing; a store skip applies under the lock then cuts the tiers; a release outside the store first, or the stage when it declines.
+- typecheck: `@ts-expect-error` for a request with no install-wait answer, a stage that returns no covered files, and a store skip that names no `covers`. Each was checked to fail typecheck with its directive removed.
+
+### Deleted cases and the table rows that replace them
+
+| Deleted | What it asserted | Table rows |
+|---|---|---|
+| `test/scheduler/busy-requests.test.ts:71` "takes a squeal retry once the holder ends, its request claimed once" | a busy store: the retry's stage runs once after the holder; the wait's note names it; claimed once | busy store "runs the stage once, after the holder ends, and names the wait"; progress record "records the real retry request's claimed files only" |
+| `test/scheduler/busy-requests.test.ts:93` "takes a squeal run --all once the holder ends, with one checkpoint" | a busy store: `run --all`'s first stage runs once after the holder | busy store "runs the stage once ..." and the lock-per-try row (the per-try path `run --all`'s first stage takes) |
+| `test/scheduler/request-progress.test.ts:98` "run tests counts each of its files once it ended" | the group request asks its files, a running one included | progress record "records only the covered files the stage queued, after the commit" and "records the real group request's files" |
+| `test/scheduler/request-progress.test.ts:111` "run --all counts each of its files once it ended, slow files included" | `run --all` asks its checkpoint's files | progress record "records only the covered files ..."; `run --all`'s own covered set stays tested by `:121` (now `:99`), `:134` (now `:112`) and `request-progress-forced.test.ts:43` |
+
+Kept in `busy-requests.test.ts`: the runner fake and the runner-recovery race (was `:111`, now `:52`). Kept in `request-progress.test.ts`: the baseline (`:89`), wave-3.6 B1 (was `:121`), the empty `--fast` request (was `:134`) and the re-queue end, B2 (was `:147`).
+
+### Tests the table repeats, kept (removing them is a later quality row)
+
+- `test/scheduler/install-wait.test.ts:230`, `test/scheduler/reinstall.test.ts:159,200,272`: `run --all`'s install wait, kept as proof it did not move.
+- `test/scheduler/full-suite-pass.test.ts:117,138,169,186`: no delivered pass, no checkpoint (the table's `NO_PASS` row).
+- `test/scheduler/busy-requests.test.ts` (was `:111`): the held lock after runner work (quirk 1, second half), with the runner retry's keys outside the stage.
+- `test/daemon/busy-requests.test.ts:71,86`, `test/daemon/busy-writes.test.ts:60`: the busy-store race through the daemon's socket (the bridge).
+- `test/scheduler/request-progress-forced.test.ts:43`, `test/scheduler/request-progress-retry.test.ts:19,37`: the progress record of a forced `run --all`, and of retries taken in a pass and at start.
