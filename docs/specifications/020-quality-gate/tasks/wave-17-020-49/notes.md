@@ -21,8 +21,10 @@ Example, the issue's shape (an input of `test/refused.test.ts` differs from what
 ```
 
 ```text
-squeal code: Vitest: 1 test file not taken from the parts, 1 run here: its part does not certify an input as it is here (test/refused.test.ts: test/refused.test.ts)
+squeal code: Vitest: 1 test file not taken from the parts, 1 ran here: its part does not certify an input as it is here (test/refused.test.ts: test/refused.test.ts)
 ```
+
+(Repair R1 changed "run here" to "ran here" and added the "did not run" and "started here and did not finish" counts; see the last section.)
 
 ## Commits
 
@@ -121,3 +123,69 @@ The done-when line most likely to be false was "a later store hit reads apart fr
 - **Docs.** `commands.md` (three copies) needs the text above. The spec needs the D7 and D13.2 text above.
 - **Text report.** `code-gate-text.ts` does not show refusals. If the human wants them in the text report too, that is a separate small change there.
 - **Original 148 files of #205.** This row does not find their cause. With this release, a rerun of that gate names the reason for each file.
+
+## Repair R1 (review `reviews/0.1.465.md` B1, `tasks/wave-17.5.md`)
+
+### The defect
+
+The stderr summary counted every refused file that the stores did not give as "run here". A refused file in `notStarted` or `overBudget` never ran, but the line said it did. The review reproduced it with `--timeout 1` and a Vitest config that spends the budget at start: exit 3, `notStarted: ["test/refused.test.ts"]`, and the line `1 test file not taken from the parts, 1 run here: …`. The verdict and the JSON were right; the stderr line was false.
+
+### The fix
+
+`refusedText` (`src/core/code/gate/parts-refused.ts`) now classifies each refused file from the final run report (`GateRunReport`), in this order:
+
+| Class | Rule | Words on the line |
+| --- | --- | --- |
+| read from the stores | `from[path]` is `store` | `N read from the stores` |
+| ran here | in `completed` | `N ran here` |
+| did not run | in `notStarted` or `overBudget`, or in no run list (for example a node:test file its `prepare` kept from running) | `N did not run` |
+| started and did not finish | in `notFinished` and not in `notStarted` | `N started here and did not finish` |
+
+The line lists the non-zero counts in the order ran here, started here and did not finish, did not run, read from the stores. One line per reason and the three-name limit stay. "run here" now reads "ran here" for a completed file. `src/cli/code-gate.ts` needed no change: it already passes `report.runs`, the final run report.
+
+Example, the review's case:
+
+```text
+squeal code: Vitest: 1 test file not taken from the parts, 1 did not run: its part does not certify an input as it is here (test/grade.test.ts: test/grade.test.ts)
+```
+
+### Proposed D13.2 wording change (candidate `cand/0.1.465` spec, D13.2 item 2, last paragraph)
+
+Replace:
+
+> After the verdict, stderr gives one line per runner and per-file reason (`duplicate`, `closure`, `input`, `record`, `unread`, `source`): how many files it refused, how many of those ran here and how many the stores gave, and up to three of them, each with its `input`; the others are counted.
+
+with:
+
+> After the verdict, stderr gives one line per runner and per-file reason (`duplicate`, `closure`, `input`, `record`, `unread`, `source`): how many files it refused; of those, from the final run report, how many ran here (completed), started here and did not finish, did not run (never started, the early stop kept them from running, or no run took them), and were read from the stores, each count only when it is not zero; and up to three of them, each with its `input`; the others are counted. A file that did not run is never counted as run (review 0.1.465 B1).
+
+### Proposed D7 clarification (same amendment, row 020-49 sentence)
+
+Replace "`from` says whether the stores then gave the file or this command ran it." with "`from` says whether the stores then gave the file or it went to a run here; `completed`, `notFinished`, `notStarted` and `overBudget` say whether it ran." The `run` value of `from` is unchanged; this only stops the spec text from claiming a run.
+
+### `commands.md` (three copies), line 126 on the candidate
+
+Replace the example `` `Vitest: 2 test files not taken from the parts, 2 run here: …` `` with `` `Vitest: 2 test files not taken from the parts, 2 ran here: its part does not certify an input as it is here (test/add.test.ts: test/add.test.ts, test/reads.test.ts: data/input.txt)` `` (the line `code-gate-parts-cases.test.ts` now expects) and add after it: "The counts come from the run report: a file the budget never reached says `did not run`, and one stopped before it finished says `started here and did not finish`."
+
+### Repair commits
+
+- `3e3c625fe` fix(020-49): the refusal summary says a file did not run when the gate never started it. `src/core/code/gate/parts-refused.ts`; tests `test/code/gate/report-refused.test.ts`, `test/cli/code-gate-parts-unstarted.test.ts` (new), and the "ran here" wording in `test/cli/code-gate-parts-cases.test.ts`.
+- This notes addition.
+
+### Done-when mapped to tests
+
+| Done-when (R1) | Test |
+| --- | --- |
+| A summary regression with unstarted and over-budget refusals | `report-refused.test.ts` "counts a file that never started or that the gate stopped before as not run (review 0.1.465 B1)": six refused files: one completed, one started and stopped, one `notStarted`, one `overBudget`, one from the stores, one in no run list, giving `1 ran here, 1 started here and did not finish, 3 did not run, 1 read from the stores` and the three-name bound. Also "never says a file ran when none started". |
+| A CLI regression for the review's spent-before-run case | `test/cli/code-gate-parts-unstarted.test.ts`: real `ci record` with a config that waits 1.5 s at load, one input hash zeroed in the part, `--timeout 1`. It asserts exit 3, verdict `incomplete`, `completed: [test/add.test.ts]` (from the parts), `notStarted: [test/grade.test.ts]`, the `input` refusal with the part and input, the `1 did not run` line, and no "ran here". Run against the old `parts-refused.ts`, it fails with the review's false line (`1 run here`). |
+| The later-store-hit case and every exit and verdict assertion unchanged | `code-gate-parts-cases.test.ts` "runs a file two parts hold, and takes the rest; then the stores give it": unchanged apart from "run here" becoming "ran here" in the first gate's expected line; the second gate still expects `1 read from the stores`. No exit, verdict, `from` or `refused` assertion changed anywhere. |
+| A started file that did not finish still counts as having run | It reads `started here and did not finish`, its own count, separate from "did not run" (the summary regression's `test/b.test.ts`). |
+
+### Repair checks
+
+- `pnpm run lint`, `pnpm run typecheck`, and Squeal's affected verdict: see the final report to the parent.
+- `pnpm exec vitest run test/cli/code-gate-parts-unstarted.test.ts`: 1 passed in 9.84 s, load 3.70 on 24 CPUs. With `parts-refused.ts` from `d6ec89d20` put back for one run, it fails on the expected line and prints `1 run here`; the fix was then restored.
+- `squeal status --wait 60000 test/code/gate/report-refused.test.ts`: pass at revision 33.
+- Not run: the full suite and `pnpm run build` (wave rule). The bundles still drift until the coordinator rebuilds.
+- `git fetch origin` failed twice with HTTP 502 from GitHub; the repair brief and review were read from the local `origin/main` ref at `2ab1588ff` (2026-11-13 11:01 +0100), which already holds both.
+
