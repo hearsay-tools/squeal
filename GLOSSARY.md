@@ -85,3 +85,17 @@ _Avoid_: checkpoint wait (that is one kind of run wait)
 **Wait outcome**:
 Why a wait ended, from a closed set for each kind of wait, with its reason: for a run wait, ended, deadline, on hold, stopped, moved or abandoned. Which outcome wins when several hold is a rule of the wait, written beside the other waits' rules.
 _Avoid_: verdict (the pass or fail of the files), result (a check's)
+
+## Runners
+
+**Lane**:
+The runner instances that run one tier of test files at a time between them. Each test file waits in one lane, and tiers of different lanes run at once: Vitest's fast instance is one lane, its slow instance another, and every node:test project together a third.
+_Avoid_: queue, instance (one lane may hold several instances in turn)
+
+**Runner traits**:
+What a runner kind states, once, about how its test files may be scheduled: the lane a file waits in, how many files one run starts at once, which part of a tier a file runs in, whether a file may start beside catch-up work, how many files one catch-up slot holds, whether it can run single tests of a file, and how many test files its listing left out. Every layer between the scheduler and the runner carries them whole. They are never part of a test file's key.
+_Avoid_: scheduling hints, scheduling answers, optional members
+
+**Report merge**:
+How the reports of a run's parts become one run report, by one rule per report field. A part is the share of a tier that one runner, or one machine, ran.
+_Avoid_: combined report (when you mean the rules), merge (when you mean only the function)
