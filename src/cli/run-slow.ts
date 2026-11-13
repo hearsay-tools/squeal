@@ -1,4 +1,3 @@
-import { setTimeout as sleep } from "node:timers/promises";
 import { SLOW_NOT_SUPPORTED } from "../core/daemon/run-slow.js";
 import { plural } from "../core/text.js";
 import type { AbsolutePath } from "../core/types/common.js";
@@ -6,11 +5,11 @@ import type { DaemonResponse, RunSlowResponse } from "../core/types/daemon.js";
 import { askDaemon, daemonSocket, worktreeRoot } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
 import { statusWaitCommand } from "./status-wait.js";
+import { untilTaken } from "./wait/wait.js";
 import { takeWait } from "./wait-arg.js";
 
 /** How long to wait for the scheduler to take the request without `--wait`. */
 const RECORD_WAIT_MS = 10_000;
-const POLL_MS = 100;
 
 /**
  * `squeal run --slow [--wait <ms>]`: the slow tier's explicit trigger (spec
@@ -81,9 +80,9 @@ function pendingText(requestId: string, waitedMs: number | null): string {
 }
 
 /**
- * Polls the daemon until the scheduler took the request or `deadline` (epoch
- * ms) passed. `null` after printing why it failed; `pending` with the
- * request's id when the deadline passed first.
+ * Waits until the scheduler took the request or `deadline` (epoch ms)
+ * passed (`untilTaken`). `null` after printing why it failed; `pending` with
+ * the request's id when the deadline passed first.
  */
 async function taken(
   socketPath: AbsolutePath,
@@ -92,33 +91,32 @@ async function taken(
   deadline: number,
 ): Promise<RunSlowResponse["requested"] | { readonly pending: string } | "no-daemon"> {
   if (first === null) return "no-daemon";
-  let state = first;
-  for (;;) {
-    if (!state.ok || state.type !== "run-slow") {
-      // A daemon from before `run-slow` does not know the request.
-      const error = state.ok ? "unexpected answer" : state.error;
-      io.stderr(
-        `squeal: ${error.startsWith("unknown request type") ? SLOW_NOT_SUPPORTED : `run --slow failed: ${error}`}\n`,
+  const outcome = await untilTaken({ loop: "run-slow", socketPath, first, deadline });
+  const failed = (text: string) => {
+    io.stderr(`squeal: ${text}\n`);
+    return null;
+  };
+  switch (outcome.kind) {
+    case "taken":
+      return outcome.answer.requested;
+    case "pending":
+      return { pending: outcome.answer.requestId };
+    // A daemon from before `run-slow` does not know the request.
+    case "unsupported":
+      return failed(SLOW_NOT_SUPPORTED);
+    case "refused":
+      return failed(`run --slow failed: ${outcome.error}`);
+    case "failed":
+      return failed(
+        outcome.error === SLOW_NOT_SUPPORTED
+          ? SLOW_NOT_SUPPORTED
+          : `run --slow failed: ${outcome.error}`,
       );
-      return null;
-    }
-    if (state.requested !== null) return state.requested;
-    if (state.error !== null) {
-      io.stderr(
-        `squeal: ${state.error === SLOW_NOT_SUPPORTED ? SLOW_NOT_SUPPORTED : `run --slow failed: ${state.error}`}\n`,
-      );
-      return null;
-    }
-    if (Date.now() > deadline) return { pending: state.requestId };
-    await sleep(POLL_MS);
-    const next = await askDaemon(socketPath, {
-      type: "run-slow-status",
-      requestId: state.requestId,
-    });
-    if (next === null) {
-      io.stderr("squeal: the daemon stopped before taking the request\n");
-      return null;
-    }
-    state = next;
+    case "stopped":
+      return failed("the daemon stopped before taking the request");
+    case "unknown group":
+    case "unanswered":
+      // The `run-slow` row asks without a deadline bound, and its answers name no group.
+      throw new Error(`squeal run --slow: the request loop ended as ${outcome.kind}`);
   }
 }

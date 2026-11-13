@@ -1,4 +1,3 @@
-import { setTimeout as sleep } from "node:timers/promises";
 import { readPolicy } from "../core/daemon/policy.js";
 import { GROUP_NOT_SUPPORTED, NARROW_NOT_SUPPORTED } from "../core/daemon/run-group.js";
 import { groupView } from "../core/scheduler/slow.js";
@@ -10,9 +9,11 @@ import { daemonSocket, worktreeRoot } from "./daemon-access.js";
 import { deadlineText } from "./group-pending.js";
 import type { CliIo } from "./main.js";
 import { runNarrowCommand } from "./run-group-narrow.js";
-import { askWithin, BEFORE_DEADLINE, socketBound, waitForGroup } from "./run-group-wait.js";
+import { waitForGroup } from "./run-group-wait.js";
 import type { RunLanes } from "./run-lanes.js";
 import { runLintGroupCommand } from "./run-lint-group.js";
+import { askWithin, socketBound } from "./wait/socket.js";
+import { untilTaken } from "./wait/wait.js";
 
 /**
  * `run <group>`'s usage line, printed after `run`'s usage with a group's
@@ -21,7 +22,6 @@ import { runLintGroupCommand } from "./run-lint-group.js";
 const GROUP_USAGE = "       squeal run <group> [<path>...] [--wait [<ms>]]\n";
 /** How long to wait for the scheduler to take the request without `--wait`. */
 const RECORD_WAIT_MS = 10_000;
-const POLL_MS = 100;
 
 /** `run`'s arguments once `--wait` and its milliseconds are taken out (`takeAllWait`). */
 export interface GroupArgs {
@@ -147,11 +147,11 @@ export function pendingText(root: AbsolutePath, answer: RunGroupResponse, waited
 export type TakenGroup = RunGroupResponse & { readonly requested: Requested };
 
 /**
- * Polls `run-group-status` until the scheduler took the request or
- * `deadline` (epoch ms) passed: its answer then, `pending` with the
- * request's last answer, or why it failed. Each poll and sleep ends by the deadline;
- * a poll with no answer by then is `pending` (row 019-24). A daemon that
- * does not know the request is `unsupported`: `GROUP_NOT_SUPPORTED` for
+ * Waits until the scheduler took the request or `deadline` (epoch ms)
+ * passed (`untilTaken`): its answer then, `pending` with the request's last
+ * answer, or why it failed. Each poll and sleep ends by the deadline; a
+ * poll with no answer by then is `pending` (row 019-24). A daemon that does
+ * not know the request is `unsupported`: `GROUP_NOT_SUPPORTED` for
  * `run-group`, `NARROW_NOT_SUPPORTED` for `run-group-paths` (row 019-49).
  */
 export async function takenRequest(
@@ -160,31 +160,28 @@ export async function takenRequest(
   deadline: number,
   unsupported: string = GROUP_NOT_SUPPORTED,
 ): Promise<TakenGroup | { readonly pending: RunGroupResponse } | string> {
-  let state = first;
-  for (;;) {
-    if (!state.ok || state.type !== "run-group") {
-      // A daemon from before check groups, or before narrow runs, does not know the request.
-      const error = state.ok ? "unexpected answer" : state.error;
-      return error.startsWith("unknown request type") ? unsupported : runFailed(error);
+  const outcome = await untilTaken({ loop: "run-group", socketPath, first, deadline });
+  switch (outcome.kind) {
+    case "taken":
+      return outcome.answer as TakenGroup;
+    case "pending":
+      return { pending: outcome.answer };
+    // A daemon from before check groups, or before narrow runs, does not know the request.
+    case "unsupported":
+      return unsupported;
+    case "refused":
+      return runFailed(outcome.error);
+    case "unknown group":
+      return `the daemon's policy has no group "${outcome.answer.group}" yet; it reloads squeal.config.json when it sees the file change`;
+    case "failed": {
+      const { error } = outcome;
+      const known = error === GROUP_NOT_SUPPORTED || error === NARROW_NOT_SUPPORTED;
+      return known ? error : runFailed(error);
     }
-    if (state.requested !== null) return state as TakenGroup;
-    if (state.unknown) {
-      return `the daemon's policy has no group "${state.group}" yet; it reloads squeal.config.json when it sees the file change`;
-    }
-    if (state.error !== null) {
-      const known = state.error === GROUP_NOT_SUPPORTED || state.error === NARROW_NOT_SUPPORTED;
-      return known ? state.error : runFailed(state.error);
-    }
-    const { requestId } = state;
-    if (Date.now() > deadline) return { pending: state };
-    await sleep(Math.max(0, Math.min(POLL_MS, deadline - Date.now())));
-    const next = await askWithin(socketPath, { type: "run-group-status", requestId }, deadline);
-    if (next === null) return "the daemon stopped before taking the request";
-    if ("unanswered" in next) {
-      if (next.unanswered === BEFORE_DEADLINE) return { pending: state };
-      return `the daemon did not answer about request ${requestId}${next.unanswered}; the request is pending, and the daemon takes it once its current work allows`;
-    }
-    state = next;
+    case "stopped":
+      return "the daemon stopped before taking the request";
+    case "unanswered":
+      return `the daemon did not answer about request ${outcome.answer.requestId}${outcome.words}; the request is pending, and the daemon takes it once its current work allows`;
   }
 }
 
