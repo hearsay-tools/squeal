@@ -5,6 +5,7 @@ import {
 } from "../../src/core/scheduler/focused-row.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import type { FocusedFile, RunOptions, RunReport } from "../../src/core/types/runner.js";
+import { declareTraits } from "../../src/core/types/runner-traits.js";
 import { focusedTexts, holdsCheckText } from "../../src/runners/focus.js";
 import type { CatchUpRun, CatchUpSide } from "./catch-up-fixture.js";
 
@@ -30,7 +31,8 @@ export function focusing(side: CatchUpSide): Focusing {
   const record: Focusing = { checks: [], writes: [] };
   const run = runner.run.bind(runner);
   Object.assign(runner, {
-    focuses: true,
+    // Row 011-329: focus is a trait, read through `traits` as the scheduler reads it.
+    traits: declareTraits({ ...runner.traits, focuses: () => true }),
     run: async (files: readonly TestFileRef[], options: RunOptions): Promise<RunReport> => {
       record.checks[runner.runs.length] = options.checks;
       return focused(await run(files, options), options.checks);
