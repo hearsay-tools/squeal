@@ -1,6 +1,6 @@
 import type { RunOutcome } from "../types/check.js";
 import type { SourceLocation, WorktreeId } from "../types/common.js";
-import type { KeepRequest, KeepWrite } from "../types/daemon-writes.js";
+import type { KeepRequest, KeepWrite, SeenReads } from "../types/daemon-writes.js";
 import type { CheckKey } from "../types/keys.js";
 import type { Provenance, ResultRecord } from "../types/store-records.js";
 
@@ -10,7 +10,9 @@ import type { Provenance, ResultRecord } from "../types/store-records.js";
  * keeper writes (spec 020 D17.3): one test file's coverage record at its
  * key, or that file's results at that key, as `recordsForFile` builds them
  * (test and file checks, `pass`, `fail` or `skip`, the gate's run, this
- * worktree's provenance). Anything else is refused, so nothing is written.
+ * worktree's provenance). Row 020-48: or the reads of the gate's runs, per
+ * test file, for the shared observed rows. Anything else is refused, so
+ * nothing is written.
  */
 
 /** Records one results write may carry; a test file has far fewer checks. */
@@ -62,9 +64,46 @@ function parseKeepWrite(value: unknown, worktreeId: WorktreeId): KeepWrite | str
     }
     case "results":
       return parseResults(value, worktreeId);
+    case "seen":
+      return parseSeen(value);
     default:
-      return '"write.kind" must be "coverage" or "results"';
+      return '"write.kind" must be "coverage", "results" or "seen"';
   }
+}
+
+/** Row 020-48: the reads of the gate's runs, one entry per test file (`SeenReads`). */
+function parseSeen(value: Fields): KeepWrite | string {
+  const extra = unknownField(value, ["kind", "seen"]);
+  if (extra !== null) return `"write.${extra}" is not a field of a seen write`;
+  const { seen } = value;
+  if (!Array.isArray(seen) || seen.length === 0 || seen.length > MAX_RECORDS) {
+    return `"write.seen" must be a list of 1 to ${MAX_RECORDS} test files' reads`;
+  }
+  for (const [at, one] of seen.entries()) {
+    const why = seenReads(one);
+    if (why !== null) return `"write.seen[${at}]" ${why}`;
+  }
+  return { kind: "seen", seen: seen as SeenReads[] };
+}
+
+/** Why `value` is not one test file's reads; `null` when it is. */
+function seenReads(value: unknown): string | null {
+  if (!isFields(value)) return "must be an object";
+  const extra = unknownField(value, ["ref", "add", "direct", "modules"]);
+  if (extra !== null) return `has the unknown field "${extra}"`;
+  const { ref } = value;
+  if (
+    !isFields(ref) ||
+    typeof ref.project !== "string" ||
+    !isPath(ref.path) ||
+    unknownField(ref, ["project", "path"]) !== null
+  ) {
+    return '"ref" must name a project and a test file';
+  }
+  for (const field of ["add", "direct", "modules"] as const) {
+    if (!isPathList(value[field])) return `"${field}" must be a list of relative paths`;
+  }
+  return null;
 }
 
 function parseResults(value: Fields, worktreeId: WorktreeId): KeepWrite | string {

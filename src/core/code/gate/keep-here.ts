@@ -15,8 +15,8 @@ import { type KeepWriter, notKept, type Tried } from "./keep-write.js";
 
 /**
  * The writer with no daemon serving: each try on the keeper's own
- * connections, one busy slice. Row 020-39: it alone merges the runs' reads
- * into the shared observed rows.
+ * connections, one busy slice. Row 020-39: it merges the runs' reads into
+ * the shared observed rows; row 020-48: a serving daemon merges them too.
  */
 export function writeHere(
   stores: { readonly store: Store; readonly code: CodeStore },
@@ -52,8 +52,9 @@ function tried(write: () => unknown): Tried {
 /**
  * The keeper's writer: its own under the worktree's lock (`locked`), with
  * the code store it opened, created as a daemon creates it; else the
- * serving daemon's (spec 021 D15), for `at.files` files: `null` when there
- * are none, or when the daemon keeps its own, which `at.tell` says.
+ * serving daemon's (spec 021 D15), for `at.files` files kept at the key
+ * they ran under and `at.seen` files' reads (row 020-48): `null` when
+ * there are none, or when the daemon keeps its own, which `at.tell` says.
  */
 export function writerFor(
   store: Store,
@@ -65,6 +66,7 @@ export function writerFor(
     readonly now: () => EpochMs;
     readonly daemonWaits: DaemonWaits | undefined;
     readonly files: number;
+    readonly seen: number;
     readonly tell: (text: string) => void;
   },
 ): { readonly writer: KeepWriter; readonly code: CodeStore | null } | null {
@@ -75,8 +77,8 @@ export function writerFor(
       throw new Error(`the code store did not open: ${code.reason}`);
     return { writer: writeHere({ store, code }, worktreeId, now), code };
   }
-  if (at.files === 0) return null;
+  if (at.files + at.seen === 0) return null;
   const sent = sentWriter(store, worktreeId, now(), at.daemonWaits);
-  if (sent === null) at.tell(`${notKept(at.files)}: ${DAEMON_KEEPS_ITS_OWN}`);
+  if (sent === null && at.files > 0) at.tell(`${notKept(at.files)}: ${DAEMON_KEEPS_ITS_OWN}`);
   return sent === null ? null : { writer: sent, code: null };
 }

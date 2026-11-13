@@ -230,11 +230,12 @@ export class Keeper {
    * told as not kept. From that first busy write on, each file is checked
    * again before each of its writes and after every pause (review 0.1.444
    * B2): the opening check of `flush` no longer holds after a wait. Row
-   * 020-39: where no daemon serves, the runs' reads are merged first, in
-   * one transaction tried as the files' are (`keepSeen`); where one
-   * serves, nothing is merged, and a file kept at its grown key is told as
-   * not kept, as before (row 021-20 sends the writes to it). With no file
-   * to write, the merge takes one try and no wait: the next run merges again.
+   * 020-39: the runs' reads are merged first, in one transaction tried as
+   * the files' are (`keepSeen`). Row 020-48: where a daemon serves, it
+   * merges them (row 021-20 sends it the writes); where none does, or one
+   * before that row, a file kept at its grown key is told as not kept, as
+   * before, and the others are written. With no file to write, the merge
+   * takes one try and no wait: the next run merges again.
    */
   async #write(runs: readonly Queued[]): Promise<void> {
     const { root, commonDir, policy, daemonWaits } = this.#options;
@@ -242,8 +243,9 @@ export class Keeper {
     const worktreeId = worktreeIdFor(root);
     const head = await this.#options.head();
     const lock = acquireDaemonLock(lockFileFor(commonDir, worktreeId));
-    const queued = lock === null ? runs.map((q) => this.#withoutGrown(q)) : runs;
-    const all = queued.flatMap((q) => q.files);
+    const seen = runs.flatMap((q) => q.seen);
+    let queued = runs;
+    let all = queued.flatMap((q) => q.files);
     let written = 0;
     let changed = 0;
     /** The files a merge held by their write: among `changed`. */
@@ -256,9 +258,22 @@ export class Keeper {
       if (isStoreOpenFailure(opened)) throw new Error(`the store did not open: ${opened.reason}`);
       store = opened;
       const tell = (text: string) => this.#tell(text);
-      const at = { commonDir, policy, worktreeId, now, daemonWaits, files: all.length, tell };
+      const files = all.filter((file) => file.grown === undefined).length;
+      const at = {
+        commonDir,
+        policy,
+        worktreeId,
+        now,
+        daemonWaits,
+        files,
+        seen: seen.length,
+        tell,
+      };
       const chosen = writerFor(store, lock !== null, at);
-      if (chosen === null) return;
+      if (chosen === null) {
+        this.#withoutGrown(runs);
+        return;
+      }
       code = chosen.code;
       const { writer } = chosen;
       const boundMs = this.#options.busyBoundMs ?? KEEP_BUSY_BOUND_MS;
@@ -267,11 +282,15 @@ export class Keeper {
       const databases = databasesOf(commonDir);
       const giveUp = (database: AbsolutePath) =>
         all.length === 0 || wait.giveUp(database, all.slice(written + changed));
-      const seen = queued.flatMap((q) => q.seen);
       const merge = { database: databases.main, giveUp, check };
-      if ((await keepSeen(writer, seen, merge)) === "spent") {
+      const merged = await keepSeen(writer, seen, merge);
+      if (merged === "spent") {
         if (all.length > 0) this.#tell(wait.spent(all.length, 0));
         return;
+      }
+      if (merged === "older") {
+        queued = this.#withoutGrown(runs);
+        all = queued.flatMap((q) => q.files);
       }
       const revision = store.revisions.latest(worktreeId)?.number ?? 0;
       for (const { files, report, pending } of queued) {
@@ -332,13 +351,19 @@ export class Keeper {
     for (const line of this.#notKept.take()) this.#tell(line);
   }
 
-  /** `q` without its files kept at a grown key, each told as not kept for it (row 020-39). */
-  #withoutGrown(q: Queued): Queued {
-    const files = q.files.filter((file) => {
-      if (file.grown !== undefined) this.#notKept.add(file.ref.path, file.grown);
-      return file.grown === undefined;
+  /**
+   * `runs` without their files kept at a grown key, each told as not kept
+   * for it (row 020-39), when no writer merged the reads that key holds:
+   * no daemon serves, or one before row 020-48 does.
+   */
+  #withoutGrown(runs: readonly Queued[]): Queued[] {
+    return runs.map((q) => {
+      const files = q.files.filter((file) => {
+        if (file.grown !== undefined) this.#notKept.add(file.ref.path, file.grown);
+        return file.grown === undefined;
+      });
+      return { ...q, files };
     });
-    return { ...q, files };
   }
 
   /**

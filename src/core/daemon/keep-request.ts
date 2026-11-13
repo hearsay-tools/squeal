@@ -1,6 +1,7 @@
 import { shareRecord } from "../code/coverage/parts.js";
 import { COVERAGE_RECORD_VERSION } from "../code/coverage/record.js";
 import type { CoverageRecord } from "../code/coverage/types.js";
+import { mergeSeen } from "../code/gate/keep-seen.js";
 import { isCodeStoreOpenFailure, openCodeStore } from "../code/store/open.js";
 import { healsUnheld } from "../scheduler/hold.js";
 import type { WorktreeKeys } from "../scheduler/keying.js";
@@ -33,12 +34,19 @@ export interface KeepInDaemonContext {
  * it asks again (D17.5), as it does when it writes itself. The rows are the
  * ones the gate writes itself: the record's parts at its key, and the
  * results through `storeResults` with the heals of `healsUnheld`.
+ * Row 020-48 (spec 020 D17.3): and the reads of the gate's runs, merged
+ * into the shared observed rows as the gate merges them where no daemon
+ * serves (`mergeSeen`, the daemon's own `ObservedSets` and `ModuleSets`),
+ * so the gate keeps a file at the key with what its run read.
  */
 export async function keepInDaemon(
   context: KeepInDaemonContext,
   request: KeepRequest,
 ): Promise<KeepOutcome> {
   const { write } = request;
+  if (write.kind === "seen") {
+    return once(context, "the reads of a gate's runs", () => mergeSeen(context.store, write.seen));
+  }
   if (write.kind === "coverage") {
     const code = openCodeStore(context.commonDir, context.policy(), {
       busyTimeoutMs: BUSY_SLICE_MS,

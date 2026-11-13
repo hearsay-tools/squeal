@@ -150,7 +150,11 @@ export interface KeepWriter {
   coverage(file: Kept): Promise<Tried>;
   /** The file's results in one transaction (`storeResults`), `keys` its lookup's. */
   results(file: Kept, records: readonly ResultRecord[], keys: WorktreeKeys): Promise<Tried>;
-  /** Row 020-39: the runs' reads merged into the shared observed rows (`mergeSeen`); here only. */
+  /**
+   * Row 020-39: the runs' reads merged into the shared observed rows
+   * (`mergeSeen`); row 020-48, by a serving daemon too, which throws
+   * `OlderDaemon` when it is one before that row.
+   */
   seen?(seen: readonly Seen[]): Promise<Tried>;
 }
 

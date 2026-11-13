@@ -5,7 +5,7 @@ import { testFileId } from "../../keys/reverse-index.js";
 import type { FileDecision } from "../../run-evidence/run-evidence.js";
 import type { WorktreeKeys } from "../../scheduler/keying.js";
 import type { AbsolutePath, RelativePath } from "../../types/common.js";
-import type { TestFileRef } from "../../types/keys.js";
+import type { SeenReads } from "../../types/daemon-writes.js";
 import type { RunReport } from "../../types/runner.js";
 import type { Store } from "../../types/store.js";
 import { type InputCheck, type KeepWriter, type Kept, sliced } from "./keep-write.js";
@@ -21,19 +21,12 @@ import { type InputCheck, type KeepWriter, type Kept, sliced } from "./keep-writ
  * repository's store through the daemon's own views (`ObservedSets`,
  * `ModuleSets`, `SharedPaths.write`). A read first seen during the run, a
  * git-ignored one say, keeps no file, but its merge keys the next run with
- * it, which keeps the file.
+ * it, which keeps the file. Row 020-48: where a daemon serves, the keeper
+ * sends the same reads to it (`keep-sent.ts`), and it merges them here.
  */
 
-/** What one completed file's run read that the shared rows may lack. */
-export interface Seen {
-  readonly ref: TestFileRef;
-  /** Its reads beyond its key (`ObservedGrowth.add`): the `observed.` row. */
-  readonly add: readonly RelativePath[];
-  /** What a process it started imported (`markDirect`): the `observedDirect.` row. */
-  readonly direct: readonly RelativePath[];
-  /** Its module loads (`markModules`): the `observedModules.` row. */
-  readonly modules: readonly RelativePath[];
-}
+/** What one completed file's run read that the shared rows may lack; row 020-48 sends it as it is. */
+export type Seen = SeenReads;
 
 /**
  * The reads of each of `files` to merge, as the daemon's record merges
@@ -138,7 +131,8 @@ function copyMissing(before: StatCache, cache: StatCache, paths: readonly Relati
  * The merge of `seen` by `writer`, before the files' writes, tried as they
  * are (`sliced`): a busy store's refusal owes every later write its input
  * check and counts toward the one bound (D17.5). "kept" when there is
- * nothing to merge, or the writer merges nothing (a serving daemon's).
+ * nothing to merge, or the writer merges nothing. Row 020-48: "older" when the serving daemon is one
+ * before that row, which merges no reads (`OlderDaemon`).
  */
 export async function keepSeen(
   writer: KeepWriter,
@@ -148,15 +142,23 @@ export async function keepSeen(
     readonly giveUp: (database: AbsolutePath) => boolean;
     readonly check: InputCheck;
   },
-): Promise<"kept" | "spent"> {
+): Promise<"kept" | "spent" | "older"> {
   const merge = writer.seen;
   if (merge === undefined || seen.length === 0) return "kept";
-  const outcome = await sliced(
-    () => merge(seen),
-    async (busy) => {
-      at.check.owe();
-      return busy && at.giveUp(at.database) ? "spent" : null;
-    },
-  );
-  return outcome === "spent" ? "spent" : "kept";
+  try {
+    const outcome = await sliced(
+      () => merge(seen),
+      async (busy) => {
+        at.check.owe();
+        return busy && at.giveUp(at.database) ? "spent" : null;
+      },
+    );
+    return outcome === "spent" ? "spent" : "kept";
+  } catch (error) {
+    if (error instanceof OlderDaemon) return "older";
+    throw error;
+  }
 }
+
+/** Row 020-48: the serving daemon refused the reads as a write it does not know. */
+export class OlderDaemon extends Error {}

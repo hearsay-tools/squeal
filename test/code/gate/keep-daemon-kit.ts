@@ -13,7 +13,8 @@ import { DaemonWrites } from "../../../src/core/daemon/busy-writes.js";
 import { createHandlers } from "../../../src/core/daemon/handlers.js";
 import { keepInDaemon } from "../../../src/core/daemon/keep-request.js";
 import { acquireDaemonLock } from "../../../src/core/daemon/lock.js";
-import { createDaemonServer } from "../../../src/core/daemon/server.js";
+import { errorResponse } from "../../../src/core/daemon/protocol.js";
+import { createDaemonServer, type DaemonHandler } from "../../../src/core/daemon/server.js";
 import { worktreeIdFor } from "../../../src/core/fs/git-layout.js";
 import { createFsHasher, type Hasher } from "../../../src/core/hash/hasher.js";
 import { StatCache } from "../../../src/core/hash/stat-cache.js";
@@ -156,6 +157,8 @@ export interface Served {
 export interface ServedOptions {
   /** False: a daemon before the keep request. */
   readonly takesKeeps?: boolean;
+  /** False: a daemon before row 020-48, which refuses a `seen` write as its parse did. */
+  readonly takesSeen?: boolean;
   readonly phase?: DaemonPhase;
   /** Records a proxy as the daemon's socket, with this plan for each request. */
   readonly proxy?: ProxyPlan;
@@ -184,22 +187,23 @@ export async function served(options: ServedOptions = {}): Promise<Served> {
       ),
     );
   };
+  const handle = createHandlers({
+    worktreeId,
+    root,
+    squealVersion: "0.0.0-test",
+    startedAt: 1 as EpochMs,
+    token: "t",
+    phase: () => options.phase ?? "ready",
+    requestFullSuite: () => Promise.reject(new Error("not in this test")),
+    onActivity: () => {},
+    onStop: () => {},
+    onStepDown: () => {},
+    storeSchema: store.schemaVersion,
+    ...(options.takesKeeps === false ? {} : { requestKeep }),
+  });
   const server = await createDaemonServer(
     socketPath,
-    createHandlers({
-      worktreeId,
-      root,
-      squealVersion: "0.0.0-test",
-      startedAt: 1 as EpochMs,
-      token: "t",
-      phase: () => options.phase ?? "ready",
-      requestFullSuite: () => Promise.reject(new Error("not in this test")),
-      onActivity: () => {},
-      onStop: () => {},
-      onStepDown: () => {},
-      storeSchema: store.schemaVersion,
-      ...(options.takesKeeps === false ? {} : { requestKeep }),
-    }),
+    options.takesSeen === false ? withoutSeen(handle) : handle,
   );
   const recorded =
     options.proxy === undefined
@@ -241,6 +245,19 @@ export async function served(options: ServedOptions = {}): Promise<Served> {
   };
   const { schemaVersion: storeSchema } = store;
   return { root, commonDir, worktreeId, storeSchema, socketPath, keeps, hold };
+}
+
+/** `handle` as a daemon before row 020-48 answers: a `seen` write is a kind its parse refused. */
+function withoutSeen(handle: DaemonHandler): DaemonHandler {
+  return (request) =>
+    request.type === "keep" && request.write.kind === "seen"
+      ? errorResponse('"write.kind" must be "coverage" or "results"')
+      : handle(request);
+}
+
+/** Each keep request the daemon ran: its kind, and its key, `null` for a `seen` write. */
+export function keepsOf(at: Pick<Served, "keeps">): (readonly [string, CheckKey | null])[] {
+  return at.keeps.map(({ write }) => [write.kind, write.kind === "seen" ? null : write.key]);
 }
 
 /** A socket at `path` that passes each request to `target` as `plan` says; closed when the test ends. */
