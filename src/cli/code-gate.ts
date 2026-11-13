@@ -8,6 +8,7 @@ import {
 import { BaseRefError, changedFunctions, mergeBase } from "../core/code/gate/changed.js";
 import { type CollectOptions, CollectUsageError } from "../core/code/gate/collect.js";
 import { evaluate } from "../core/code/gate/evaluate.js";
+import { TeardownWarnings } from "../core/code/gate/evidence.js";
 import { refusedText } from "../core/code/gate/parts-refused.js";
 import { type BasePolicy, loadBasePolicy } from "../core/code/gate/policy.js";
 import type { EngineVersions, GateRunner, GateRunReport } from "../core/code/gate/report.js";
@@ -173,6 +174,8 @@ async function gate(
   const durations = storedDurations(root);
   const note = (text: string) => io.stderr(`squeal code: ${text}\n`);
   const logs = runLogKeeper(root, { note });
+  // Row 020-50 (#207): the files of each worker Vitest timed out terminating, until its close.
+  const teardowns = new TeardownWarnings();
   const collected = await collectWithStores(
     root,
     io.env ?? process.env,
@@ -196,6 +199,7 @@ async function gate(
       overran: (file) => io.stderr(overrunText(file)),
       // #197: a run with a failed or unfinished file keeps its log where a daemon keeps its runs'.
       keepLog: logs.keep,
+      teardown: teardowns.hear,
     },
     parts,
   )
@@ -208,6 +212,8 @@ async function gate(
   // D17.5: the completed files are kept once the report is out, so a busy store never delays it.
   afterReport.push(collected.keep);
   const { evidence } = collected;
+  // Row 020-50 (#207): whether each warned file's result counts, before the report.
+  teardowns.tell(evidence.testFiles, io.stderr);
   const createdAt = new Date((io.now ?? Date.now)()).toISOString();
   const times = { createdAt, durationsMs };
   const report = evaluate(changed, evidence, policy, versions(), times, exceptions);
