@@ -106,7 +106,7 @@ describe("squeal code --base --parts: what makes a file run (spec 020 D13.2)", (
           "test/reads.test.ts": { part: partFile, input: "data/input.txt", ...differs },
         });
         expect(ran.stderr).toContain(
-          "squeal code: Vitest: 2 test files not taken from the parts, 2 run here: its part does not certify an input as it is here (test/add.test.ts: test/add.test.ts, test/reads.test.ts: data/input.txt)\n",
+          "squeal code: Vitest: 2 test files not taken from the parts, 2 ran here: its part does not certify an input as it is here (test/add.test.ts: test/add.test.ts, test/reads.test.ts: data/input.txt)\n",
         );
       } finally {
         writeFileSync(join(fixture.root, "test/add.test.ts"), add);
@@ -153,7 +153,7 @@ describe("squeal code --base --parts: what makes a file run (spec 020 D13.2)", (
     });
     expect(ran.report.runs[0]?.refused).toEqual({ "test/add.test.ts": duplicate });
     expect(ran.stderr).toContain(
-      "squeal code: Vitest: 1 test file not taken from the parts, 1 run here: more than one part holds it (test/add.test.ts)\n",
+      "squeal code: Vitest: 1 test file not taken from the parts, 1 ran here: more than one part holds it (test/add.test.ts)\n",
     );
 
     // Row 020-49 (#205): the gate kept the file it ran (D17.3); the stores give it next, still refused.
