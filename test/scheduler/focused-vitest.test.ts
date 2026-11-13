@@ -36,8 +36,7 @@ describe("focused checks on a real Vitest adapter (row 011-145)", SLOW, () => {
     const h = await openHarness(repo.main, openRepoStore(repo.commonDir), repo.commonDir, {
       policy: { baseline: { onStart: "lookup-then-run-missing" } },
     });
-    // The daemon's fast Vitest runner focuses (`createRecoveringRunner`'s `focuses`).
-    Object.assign(h.runner, { focuses: true });
+    // The daemon's fast Vitest runner focuses: Vitest's traits (`vitestTraits`, row 011-329).
     const { focus } = h.scheduler;
     if (focus === undefined) throw new Error("the scheduler cannot focus");
     await h.scheduler.start();
@@ -100,7 +99,6 @@ describe("focused checks on a real Vitest adapter (row 011-145)", SLOW, () => {
       policy: { baseline: { onStart: "lookup-then-run-missing" } },
       adapters: [emptyAdapter("x")],
     });
-    Object.assign(h.runner, { focuses: true });
     const { focus } = h.scheduler;
     if (focus === undefined) throw new Error("the scheduler cannot focus");
     await h.scheduler.start();

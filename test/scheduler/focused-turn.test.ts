@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import { DEFAULT_POLICY, type Policy } from "../../src/core/types/policy.js";
+import { declareTraits } from "../../src/core/types/runner-traits.js";
 import { type CatchUpFile, catchUpRepo, catchUpSide } from "./catch-up-fixture.js";
 import { focus, focusedRows, focusing, runsSince } from "./focused-fixture.js";
 import { heldRun, ref } from "./tier-yields-fixture.js";
@@ -239,7 +240,12 @@ describe("a focused tier and the rest of the queue (spec 011 C4 and C15, row 011
     });
     const record = focusing(s);
     // Project "f" runs on a runner that runs whole files only, as node:test's does.
-    Object.assign(s.runner, { focusesFile: (file: TestFileRef) => file.project !== "f" });
+    Object.assign(s.runner, {
+      traits: declareTraits({
+        ...s.runner.traits,
+        focuses: (file: TestFileRef) => file.project !== "f",
+      }),
+    });
     let holding = false;
     s.runner.beforeRun = (run) => {
       if (holding && run.some((f) => f.path === S)) s.runner.hold();
