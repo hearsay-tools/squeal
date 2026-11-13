@@ -233,3 +233,37 @@ stores, because neither run of a retried file is kept),
 real child (`code-gate-json-stdout`, `code-gate-keep-stop`,
 `code-gate-prepare-cancel`) select no failing file, and the in-process
 cases of `code-gate-relaunch` change no function.
+
+**R1 checks run.**
+
+- `pnpm exec tsc --noEmit -p .` (the typecheck): no diagnostics after each
+  edit. `pnpm exec biome check` on the changed source and test folders:
+  "Checked 283 files ... No fixes applied."
+- `squeal status --wait` on the three CI tests and the four rerun test files
+  (`code-gate-failed-outside`, `collect-prepare`, `code-gate-log`,
+  `code-gate-retry`, `collect-retry`, `lanes-retry`, `retry-text`):
+  "no known failures; 7 test files, each with a current result, after
+  22.4 s" (revision 35). One earlier `code-gate-log` case, the runLogKeeper
+  copy test, timed out at 5 s at load 5.70 per CPU and passed when Squeal
+  ran it again (FAIL -> PASS, flaky under load).
+- Mutation check, direct `pnpm exec vitest run` of the three CI tests with
+  both fixture pins removed and the daemon's `hostLoad` mocked as loaded:
+  3 failed, 14 passed, with the CI failures exactly: B read `run` not
+  `store`; the kept-log line not last; `[118134, 117603]`, two adapter
+  runs, not one. Pins restored with `git checkout`.
+
+**R1 checks not run, and why.**
+
+- The instrumented sweep over the other 90 gate test files (a setup file
+  logging each read of the daemon's own `hostLoad` from `lanes.ts`, which
+  happens only when a file failed here with no pin): not run. The host load
+  was 160 to 190 on 24 CPUs from other projects' test runs, and the
+  coordinator chose to skip it (request d0ffd634): candidate CI runs every
+  gate test on small runners at or over their CPU count, the condition that
+  broke the three tests. The reading above stands in for it until then.
+- The affected-check wait over the repair's paths: skipped by the same
+  decision. Squeal's runs at revision 40 failed many tests that this repair
+  does not reach (setup, Codex harness, `status-wait-pool`), each a timeout
+  or a CPU-wait text at load 160 to 190.
+- `pnpm run build` and a full suite: the wave rules. The four bundle drift
+  checks still fail until the coordinator rebuilds the bundles.
