@@ -109,6 +109,11 @@ export class LoaderMap {
     for (const path of this.#sets.keys()) if (!judged.has(path)) this.#sets.delete(path);
   }
 
+  /** How many sources have a loader set kept, for `StepCache.keep` to look at its own. */
+  get setsKept(): number {
+    return this.#sets.size;
+  }
+
   get withoutImports(): number {
     return this.#everywhere.length;
   }
