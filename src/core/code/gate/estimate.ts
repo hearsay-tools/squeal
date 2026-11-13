@@ -76,11 +76,11 @@ export const EARLY_FACTOR = 2;
 export const EARLY_KNOWN = 20;
 
 /**
- * D18: the run's estimate from each runner's estimate. The runners run
- * one after another, so it is their sum.
+ * D18 as amended (row 020-44): the run's estimate from each runner's
+ * estimate. The runners run at once, so it is the larger one.
  */
 export function runSeconds(runners: readonly number[]): number {
-  return runners.reduce((sum, seconds) => sum + seconds, 0);
+  return runners.reduce((longest, seconds) => Math.max(longest, seconds), 0);
 }
 
 /** One runner kind's files to run, grouped as `estimateRun` takes them. */

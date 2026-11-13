@@ -71,21 +71,27 @@ describe("median", () => {
  */
 
 describe("estimateAll", () => {
-  it("adds the runners' estimates, as they run one after another (D18)", () => {
+  it("takes the larger runner's estimate, as the runners run at once (D18 as amended, row 020-44)", () => {
     const run = estimateAll([
       { runner: "vitest", groups: [{ width: 2, seconds: [10, 10, 10, 10] }] },
       { runner: "node-test", groups: [{ width: 1, seconds: [3, 4] }] },
     ]);
-    expect(run).toEqual({ seconds: 20 + 7, known: 6 });
+    // Vitest 20, node:test 7: the run takes the longer lane, not 27.
+    expect(run).toEqual({ seconds: 20, known: 6 });
+    const longer = estimateAll([
+      { runner: "vitest", groups: [{ width: 2, seconds: [1, 1] }] },
+      { runner: "node-test", groups: [{ width: 1, seconds: [30, 4] }] },
+    ]);
+    expect(longer).toEqual({ seconds: 34, known: 4 });
   });
 
   it("counts a runner with no stored duration at every runner's median (D18.2)", () => {
     const run = estimateAll([
       { runner: "vitest", groups: [{ width: 1, seconds: [2, 4, 6] }] },
-      { runner: "node-test", groups: [{ width: 2, seconds: [null, null, null, null] }] },
+      { runner: "node-test", groups: [{ width: 1, seconds: [null, null, null, null, null] }] },
     ]);
-    // Vitest 12; node:test four files at the median 4, two at once: 8.
-    expect(run).toEqual({ seconds: 12 + 8, known: 3 });
+    // Vitest 12; node:test five files at the median 4, one at a time: 20, the longer lane.
+    expect(run).toEqual({ seconds: 20, known: 3 });
   });
 
   it("is unknown with no stored duration at all", () => {
