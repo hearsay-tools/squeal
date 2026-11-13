@@ -183,7 +183,8 @@ Replace the example `` `Vitest: 2 test files not taken from the parts, 2 run her
 
 ### Repair checks
 
-- `pnpm run lint`, `pnpm run typecheck`, and Squeal's affected verdict: see the final report to the parent.
+- `pnpm run lint` (biome check .): exit 0, 3,328 files. `pnpm run typecheck`: exit 0.
+- Affected-test verdict: `squeal status --wait 60000 $(git diff --name-only d6ec89d20..HEAD -- src test)` at revision 39 (commit `3e3c625fe`, notes `dce86deb3`): 328 test files, each with a current result. 324 pass. 4 tests fail, all bundle drift (`cli/squeal.mjs differs from the build`): `test/harness/plugin.test.ts`, `test/harness/codex/packaging/runtime.test.ts`, `test/harness/opencode/package.test.ts`, `test/harness/pi/package.test.ts`. A provider error stopped this session and the worktree's daemon at 10:22 UTC with 9 files queued; `squeal start` restarted it, and those 9 then passed.
 - `pnpm exec vitest run test/cli/code-gate-parts-unstarted.test.ts`: 1 passed in 9.84 s, load 3.70 on 24 CPUs. With `parts-refused.ts` from `d6ec89d20` put back for one run, it fails on the expected line and prints `1 run here`; the fix was then restored.
 - `squeal status --wait 60000 test/code/gate/report-refused.test.ts`: pass at revision 33.
 - Not run: the full suite and `pnpm run build` (wave rule). The bundles still drift until the coordinator rebuilds.
