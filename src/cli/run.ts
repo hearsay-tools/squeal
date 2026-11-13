@@ -4,10 +4,10 @@ import { holdVerdictLine } from "../core/status/holds.js";
 import { readStatus } from "../core/status/snapshot.js";
 import { plural } from "../core/text.js";
 import type { AbsolutePath } from "../core/types/common.js";
-import type { RunAllResponse } from "../core/types/daemon.js";
+import type { DaemonRequest, RunAllResponse } from "../core/types/daemon.js";
 import type { CheckpointProgress } from "../core/types/scheduler.js";
 import type { CheckpointRecord } from "../core/types/store-records.js";
-import { askDaemon, daemonSocket, worktreeRoot } from "./daemon-access.js";
+import { daemonSocket, worktreeRoot } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
 import { groupArgs, runGroupCommand } from "./run-group.js";
 import { LANE_FLAGS, laneFiles, laneText, runLanes } from "./run-lanes.js";
@@ -17,6 +17,7 @@ import { failuresText, gapText, noVerdictText, readClasses, verdictCode } from "
 import type { RequestOutcome } from "./wait/decide.js";
 import { openCheckpoint } from "./wait/progress.js";
 import { inStore } from "./wait/reads.js";
+import { askWithin } from "./wait/socket.js";
 import type { CheckpointOutcome } from "./wait/table.js";
 import { runWait, untilTaken } from "./wait/wait.js";
 import { takeWait } from "./wait-arg.js";
@@ -82,18 +83,14 @@ export async function runCommand(
     return 3;
   };
   const socketPath = await daemonSocket(root);
-  const response = await askDaemon(socketPath, {
+  const request = {
     type: "run-all",
     force: flags.has("--force"),
     ...(internal.observeIgnored === true ? { observeIgnored: true } : {}),
     ...(lane === null ? {} : { lane }),
-  });
-  if (response === null) {
-    return noVerdict(`no daemon running for ${root}; start one with squeal start`);
-  }
-  if (!response.ok || response.type !== "run-all") {
-    return noVerdict(`run --all failed: ${response.ok ? "unexpected answer" : response.error}`);
-  }
+  } as const;
+  const response = await requestRunAll(root, socketPath, request, deadline);
+  if (typeof response === "string") return noVerdict(response);
   const state = await recorded(socketPath, response, deadline ?? Date.now() + RECORD_WAIT_MS);
   if (typeof state === "string") return noVerdict(state);
   if (state === null) {
@@ -136,6 +133,28 @@ export async function runCommand(
   io.stdout(`${named} ${line}${gap}\n${started}\n`);
   io.stdout(formatStatus(status, now(), command));
   return code;
+}
+
+/**
+ * The `run-all` request's answer, or why there is none. Row 011-327 (decision
+ * 4 item 1): it ends by the deadline, or without `--wait` by the loop's own
+ * bound; a busy daemon is words, never a stack.
+ */
+async function requestRunAll(
+  root: AbsolutePath,
+  socketPath: AbsolutePath,
+  request: Extract<DaemonRequest, { type: "run-all" }>,
+  deadline: number | null,
+): Promise<RunAllResponse | string> {
+  const response = await askWithin(socketPath, request, deadline ?? Date.now() + RECORD_WAIT_MS);
+  if (response === null) return `no daemon running for ${root}; start one with squeal start`;
+  if ("unanswered" in response) {
+    return `the daemon did not answer the run --all request${response.unanswered}; it may still take it once its current work allows`;
+  }
+  if (!response.ok || response.type !== "run-all") {
+    return `run --all failed: ${response.ok ? "unexpected answer" : response.error}`;
+  }
+  return response;
 }
 
 /**
