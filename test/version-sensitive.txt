@@ -221,6 +221,8 @@ test/cli/code-gate-closures.test.ts
 test/cli/code-gate-inputs.test.ts
 # Rows 020-43 and 020-44 (#196): the runners at once and one node:test pool over real node:test runs.
 test/code/gate/collect-lanes.test.ts
+# Row 020-53 (#210): a covered callback beside an unrelated failing file, over real node:test runs.
+test/cli/code-gate-failed-outside.test.ts
 # The kit (spec 016 D1): a real `node --test` through the node:test adapter,
 # so the same identity path.
 test/kit/node-test
