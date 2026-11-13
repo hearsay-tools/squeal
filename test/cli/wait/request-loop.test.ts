@@ -179,22 +179,41 @@ describe("until the daemon takes a request (row 011-326)", () => {
     ).toEqual({ kind: "refused", error: "busy" });
   });
 
-  it("run-all and run-slow: a status request with no answer throws (review 0.1.469 N2; 011-327 flips it)", async () => {
+  it("run-all and run-slow: a status request with no answer within 2 s is a busy daemon, no throw (011-327, review 0.1.469 N2)", async () => {
     const c = clock();
     const socket = socketPath();
     const ports = timingOut(c.ports, ["run-all-status", "run-slow-status"]);
     const deadline = c.start + 60_000;
-    await expect(
-      untilTaken(
+    expect(
+      await untilTaken(
         { loop: "run-all", socketPath: socket, first: runAll("r1", null), deadline },
         ports,
       ),
-    ).rejects.toThrow(/no answer from .* in 2000 ms/);
-    await expect(
-      untilTaken(
+    ).toEqual({ kind: "unanswered", answer: runAll("r1", null), words: " within 2 s" });
+    expect(
+      await untilTaken(
         { loop: "run-slow", socketPath: socket, first: runSlow("s1", null), deadline },
         ports,
       ),
-    ).rejects.toThrow(/no answer from .* in 2000 ms/);
+    ).toEqual({ kind: "unanswered", answer: runSlow("s1", null), words: " within 2 s" });
+  });
+
+  it("run-all and run-slow: a status request the deadline cut short leaves the request pending (011-327)", async () => {
+    const c = clock();
+    const socket = socketPath();
+    const ports = timingOut(c.ports, ["run-all-status", "run-slow-status"]);
+    const deadline = c.start + 150;
+    expect(
+      await untilTaken(
+        { loop: "run-all", socketPath: socket, first: runAll("r1", null), deadline },
+        ports,
+      ),
+    ).toEqual({ kind: "pending", answer: runAll("r1", null) });
+    expect(
+      await untilTaken(
+        { loop: "run-slow", socketPath: socket, first: runSlow("s1", null), deadline },
+        ports,
+      ),
+    ).toEqual({ kind: "pending", answer: runSlow("s1", null) });
   });
 });

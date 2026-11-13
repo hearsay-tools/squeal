@@ -51,7 +51,7 @@ export async function runSlowCommand(
   }
   if (requested === null) return 1;
   if ("pending" in requested) {
-    io.stdout(pendingText(requested.pending, wait.waitMs === null ? null : Date.now() - started));
+    io.stdout(pendingText(requested, wait.waitMs === null ? null : Date.now() - started));
     return wait.waitMs === null ? 0 : 3;
   }
   const { revision, queued } = requested;
@@ -65,18 +65,34 @@ export async function runSlowCommand(
   return statusWaitCommand(left, false, io, queued > 0);
 }
 
+/** A request the scheduler had not taken: its id, and the words after "did not answer" when a status request got no answer. */
+export interface Pending {
+  readonly pending: string;
+  readonly unanswered?: string;
+}
+
 /**
  * The line for a request the scheduler has not taken by the deadline: a
  * receipt without `--wait`; with it, after `waitedMs`, the wait's end with
  * no verdict and the command that waits on (row 011-271). It says only what
  * is known of the request: the store may hold slow results from before it
- * (review 0.1.382 B2).
+ * (review 0.1.382 B2). Row 011-327: a status request the daemon did not
+ * answer within its bound, a busy daemon, says so in place of the deadline.
  */
-function pendingText(requestId: string, waitedMs: number | null): string {
+export function pendingText(
+  { pending: requestId, unanswered }: Pending,
+  waitedMs: number | null,
+): string {
   if (waitedMs === null) {
-    return `Slow tier requested (request ${requestId}); the daemon takes it once its current work allows\n`;
+    const busy = unanswered === undefined ? "" : ` did not answer about it${unanswered} and`;
+    return `Slow tier requested (request ${requestId}); the daemon${busy} takes it once its current work allows\n`;
   }
-  return `Returned on timeout after ${(waitedMs / 1000).toFixed(1)} s: the daemon has not taken slow tier request ${requestId} yet; the request is pending and this command has no verdict for it. The daemon takes it once its current work allows; \`squeal status --wait 60000 <slow test file>\` then waits for that file's result.\n`;
+  const after = `after ${(waitedMs / 1000).toFixed(1)} s`;
+  const ended =
+    unanswered === undefined
+      ? `Returned on timeout ${after}: the daemon has not taken slow tier request ${requestId} yet`
+      : `Returned without a verdict ${after}: the daemon did not answer about slow tier request ${requestId}${unanswered}`;
+  return `${ended}; the request is pending and this command has no verdict for it. The daemon takes it once its current work allows; \`squeal status --wait 60000 <slow test file>\` then waits for that file's result.\n`;
 }
 
 /**
@@ -89,7 +105,7 @@ async function taken(
   first: DaemonResponse | null,
   io: CliIo,
   deadline: number,
-): Promise<RunSlowResponse["requested"] | { readonly pending: string } | "no-daemon"> {
+): Promise<RunSlowResponse["requested"] | Pending | "no-daemon"> {
   if (first === null) return "no-daemon";
   const outcome = await untilTaken({ loop: "run-slow", socketPath, first, deadline });
   const failed = (text: string) => {
@@ -114,9 +130,11 @@ async function taken(
       );
     case "stopped":
       return failed("the daemon stopped before taking the request");
-    case "unknown group":
+    // Row 011-327: a status request the daemon did not answer within its bound is a busy daemon.
     case "unanswered":
-      // The `run-slow` row asks without a deadline bound, and its answers name no group.
+      return { pending: outcome.answer.requestId, unanswered: outcome.words };
+    case "unknown group":
+      // A `run-slow` answer names no group.
       throw new Error(`squeal run --slow: the request loop ended as ${outcome.kind}`);
   }
 }
