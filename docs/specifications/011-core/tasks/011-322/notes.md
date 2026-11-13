@@ -65,3 +65,17 @@ Paths today:
 - every answer from the stage (`null`, `queued: 0`, the count): pump.
 
 Kept: the lint branch first, in its own lock task, outside the store's transaction (`store.outside`, a named skip); the install-wait answer in the stage's transaction after the unknown-group answer (`installWait.stage` answers `null` for an unknown group); the lane marked requested inside the stage (quirk 3; `wake: { skip }`); the lock per busy try; no pump after a throw. An unknown group's answer now goes through the record step with no file (`ask([])`, which does nothing).
+
+### `squeal run <group> <path>...` (`requestGroupPaths`, today's 768-821; declaration `narrowRequest` in `narrow-run.ts`)
+
+Paths today, all in one task that `RunnerWork.afterTier` runs under the lock behind the runner work queued before it:
+- closed: `afterTier` rejects "squeal scheduler: closed"; before the start, `#started` throws. No pump.
+- an unknown group: `null`; pump.
+- a lint group: throws "group X is a lint group, which runs whole: squeal run X"; no pump.
+- `selectNarrow` (asks the runner's `affected` for a source path, bounded as a runner part), also while an install is awaited.
+- awaiting an install or reinstalled: `{ revision, queued: 0, narrow }` with the reason in each selected file's `notRun`, no store write; pump.
+- otherwise `#request(#transact(...))` with the lock held through every busy try (quirk 1, second half): `queueNarrow` settles and commits, the selected files are asked, the lanes synced, the asks added to the group's lane, the lane preempted, the answer made. Busy at the stop: rejects with the operation named; other error: rolled back and restored; no pump. Success: pump.
+
+Kept: `runnerWork: { always }` holds the lock behind the runner work through every try; the install-wait answer is made from the selection (`installWait: { answer }`), with no write. Its state is read at the start of the locked task, before `selectNarrow`; today it is read after it, in the same lock task, and nothing in `selectNarrow` sets it, so the value is the same. The unknown-group and lint answers stay first (the plan's `{ answer: null }` and its throw).
+
+Moved within the same lock task: the record after the commit; the lane's `preempt` from inside the stage to the wake after the record (`wake: { lane }`; `wakeLane` syncs the lanes and preempts the group's). `narrowAnswer` and the covered set do not read the lane, so the answer is the same.
