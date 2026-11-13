@@ -93,6 +93,10 @@ export function importRequest(
         // No covered file: the refinement's regrow re-keys the files it reaches, and runs none.
         return { answer: true, covered: [] };
       },
+      // Row 011-325, at the integration with row 011-323.
+      record: {
+        skip: "an import's answer is a boolean and carries no id, so no wait reads a record of its files",
+      },
     },
     wake: { skip: "wakes no lane: the pump applies its runner work first" },
   };
