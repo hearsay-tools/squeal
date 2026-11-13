@@ -16,10 +16,14 @@ import { LAST_RESORT, MIB, subject, tier } from "./idle-gc-subject.js";
  * to `heap.live`.
  */
 
+const BUSY_LINE =
+  /^busy, heap in use (\d+) MiB over twice the last live size of (\d+) MiB: a last-resort GC took private memory from 900 to 500 MiB in a \d+ ms pause; (\d+) MiB of heap in use after it$/;
+
 describe("busyGcDue", () => {
   const busy = {
     now: 1_000_000,
     tierEnded: true,
+    tierRunning: false,
     lastGc: 1_000_000 - BUSY_GC_EVERY_MS,
     live: 100 * MIB,
   };
@@ -37,17 +41,15 @@ describe("busyGcDue", () => {
     expect(busyGcDue({ ...over, lastGc: null })).toBe(true);
   });
 
-  it("is never due without a tier's end since the last check, or before a live size was read", () => {
+  it("is never due without a tier's end since the last check, while a tier runs, or before a live size was read", () => {
     const over = { ...busy, heapInUse: 300 * MIB };
     expect(busyGcDue({ ...over, tierEnded: false })).toBe(false);
+    expect(busyGcDue({ ...over, tierRunning: true })).toBe(false);
     expect(busyGcDue({ ...over, live: null })).toBe(false);
   });
 });
 
 describe("the busy GC (row 021-29)", () => {
-  const BUSY_LINE =
-    /^busy, heap in use (\d+) MiB over twice the last live size of (\d+) MiB: a last-resort GC took private memory from 900 to 500 MiB in a \d+ ms pause; (\d+) MiB of heap in use after it$/;
-
   it("after a tier, collects above twice the live size the last GC left, and logs before and after", () => {
     const t = subject();
     t.idle.ready();
@@ -178,6 +180,86 @@ describe("the busy GC (row 021-29)", () => {
     expect(t.notes).toEqual([
       "no last-resort GC: V8's gc is not available; this daemon runs on without it",
     ]);
+    expect(t.lines).toEqual([]);
+  });
+});
+
+/*
+ * Review 0.1.463 B1: the busy GC never runs while a tier runs in any lane. A
+ * tier's end stays pending until none runs, and the rule is also read once
+ * the last running tier ended, deferred off that tier's path, so a busy
+ * daemon need not meet a gap at the 5 s check.
+ */
+describe("the busy GC waits for no tier to run (review 0.1.463 B1)", () => {
+  it("keeps a tier's end pending while the next tier runs, and collects once that one ended", () => {
+    const t = subject();
+    t.idle.ready();
+    t.idle.started(); // A
+    t.advance(1_000);
+    t.idle.ended(); // A
+    t.idle.started(); // B, before the check and before the deferred one ran
+    t.heap.now = 301 * MIB;
+    t.flush();
+    t.idle.check();
+    t.advance(1_000);
+    t.idle.check();
+    expect(t.gc).not.toHaveBeenCalled();
+    t.idle.ended(); // B
+    t.idle.check();
+    expect(t.gc).toHaveBeenCalledTimes(1);
+    expect(t.lines).toEqual([expect.stringMatching(BUSY_LINE)]);
+  });
+
+  it("collects nothing while overlapping tiers run, and at the gap after the last of them", () => {
+    const t = subject();
+    t.idle.ready();
+    t.idle.started(); // A
+    t.idle.started(); // B, in another lane
+    t.advance(1_000);
+    t.idle.ended(); // A
+    t.heap.now = 301 * MIB;
+    expect(t.deferred).toEqual([]);
+    t.idle.check();
+    expect(t.gc).not.toHaveBeenCalled();
+    t.idle.ended(); // B
+    t.flush();
+    expect(t.gc).toHaveBeenCalledTimes(1);
+    expect(t.lines).toEqual([expect.stringMatching(BUSY_LINE)]);
+  });
+
+  it("collects at the gap after the last tier with no lifecycle check, never on the tier's path, once a minute", () => {
+    const t = subject();
+    t.idle.ready();
+    t.heap.now = 301 * MIB;
+    tier(t);
+    expect(t.gc).not.toHaveBeenCalled();
+    const first = t.now();
+    t.flush();
+    expect(t.gc).toHaveBeenCalledTimes(1);
+    expect(t.lines).toEqual([expect.stringMatching(BUSY_LINE)]);
+    // Two tiers end before the event loop turns: one deferred check.
+    t.heap.now = 301 * MIB;
+    tier(t, 0);
+    tier(t, BUSY_GC_EVERY_MS - 1);
+    expect(t.deferred).toHaveLength(1);
+    t.flush();
+    expect(t.gc).toHaveBeenCalledTimes(1);
+    tier(t, 1);
+    t.flush();
+    expect(t.gcAt.map((at) => at - first)).toEqual([0, BUSY_GC_EVERY_MS]);
+  });
+
+  it("runs no GC once the daemon is stopping, at the deferred check or at a check", () => {
+    const t = subject();
+    t.idle.ready();
+    t.heap.now = 301 * MIB;
+    tier(t);
+    t.daemon.stopping = true;
+    t.flush();
+    t.idle.check();
+    t.advance(IDLE_GC_AFTER_MS);
+    t.idle.check();
+    expect(t.gc).not.toHaveBeenCalled();
     expect(t.lines).toEqual([]);
   });
 });
