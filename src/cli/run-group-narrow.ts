@@ -7,9 +7,10 @@ import { daemonSocket } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
 import { worktreePath } from "./named-selection.js";
 import { andList, pendingText, takenRequest } from "./run-group.js";
-import { askWithin, socketBound, waitForGroup } from "./run-group-wait.js";
+import { waitForGroup } from "./run-group-wait.js";
 import { statusCommand } from "./status-command.js";
 import { LEFT_FOR } from "./status-wait-groups.js";
+import { askWithin, socketBound } from "./wait/socket.js";
 
 /*
  * Spec 019 D6 "Narrow run" (row 019-49): `squeal run <group> <path>...
