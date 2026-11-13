@@ -15,6 +15,7 @@ import {
   SLOW,
   status,
 } from "./collect-fixture.js";
+import { quiet } from "./host-load.js";
 
 /*
  * Spec 020 D3 (row 020-03): the one-shot collector selects the test files
@@ -24,10 +25,12 @@ import {
  * project, and its temporary files are removed.
  */
 
+/** Row 020-54: below the rerun's load threshold, so the failing files run once whatever the host. */
 const options = (tests: readonly string[] = []): CollectOptions => ({
   tests,
   budgetSeconds: 600,
   adapters: ADAPTERS,
+  hostLoad: quiet,
 });
 
 const summary = (files: readonly { runner: string; path: string; completed: boolean }[]) =>
