@@ -3,6 +3,7 @@ import {
   type NodeTestAdapterOptions,
 } from "../../runners/node-test/adapter.js";
 import type { NodeTestCoverage } from "../../runners/node-test/coverage.js";
+import { nodeTestTraits } from "../../runners/node-test/traits.js";
 import { NODE_TEST_ADAPTER_VERSION } from "../../runners/node-test/version.js";
 import { createHostedNodeTest, type ProcessHost } from "../runner-host/process-host.js";
 import { runnerHostGone } from "../runner-host/proxy.js";
@@ -100,12 +101,7 @@ function nodeTestRunner(
         : createHostedNodeTest(host, project, adapterOptions),
     // Spec 021 D7: a host that exited or missed a deadline is replaced; D20: an idle one closes.
     ...(host === undefined ? {} : hosted(options.idleMs)),
-    // A run starts `runner.tierSize` files at once whatever its grant (task 001-366).
-    tierWidth: () => options.tierSize(),
-    // It cannot cancel a run: an edit's tier starts beside a backlog tier (task 011-21).
-    besideBacklog: true,
-    // A process per file: the backlog runs in one-file slots (task 011-21 slice 2).
-    backlogSlot: 1,
+    traits: nodeTestTraits({ tierSize: options.tierSize }),
     onFailure: (text) =>
       options.note(`${text} (node-test project ${JSON.stringify(project.name)})`),
     onRecovered: () => options.note(`node-test project ${JSON.stringify(project.name)} started`),

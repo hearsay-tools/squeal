@@ -42,8 +42,12 @@ export function timedRunner(
         return run.report;
       },
     },
-    backlogSlot: {
-      value: (testFile: TestFileRef) => (slots() ? (runner.backlogSlot?.(testFile) ?? null) : null),
+    traits: {
+      value: {
+        ...runner.traits,
+        backlogSlot: (testFile: TestFileRef) =>
+          slots() ? runner.traits.backlogSlot(testFile) : null,
+      },
     },
   });
   return { timed, runs };

@@ -8,6 +8,7 @@ import { projectCwd } from "./adapter-files.js";
 import { openProject, type ProjectContext, unavailable } from "./adapter-project.js";
 import type { NodeTestCoverage } from "./coverage.js";
 import type { NodeTestRunOptions } from "./run/run.js";
+import { nodeTestTraits } from "./traits.js";
 import { NODE_TEST_ADAPTER_VERSION } from "./version.js";
 
 export { NODE_TEST_ADAPTER_VERSION };
@@ -129,6 +130,7 @@ export async function createNodeTestAdapter(
   return {
     name: "node-test",
     adapterVersion: NODE_TEST_ADAPTER_VERSION,
+    traits: nodeTestTraits({ tierSize: options.concurrency }),
     async invalidate(paths) {
       if (inner !== null) return inner.invalidate(paths);
       if (!mayFix(paths) || !(await attempt())) return { recreatedProjects: [] };

@@ -1,4 +1,3 @@
-import { focusesFile } from "../daemon/composite-runner.js";
 import type { CheckKey, TestFileRef } from "../types/keys.js";
 import { peekClaim } from "./claims.js";
 import type { SchedulerContext } from "./context.js";
@@ -27,7 +26,9 @@ import { laneOf, newTier, type Tier, type TierFile } from "./tiers.js";
  */
 export function mayFocus(context: SchedulerContext, ledger: Ledger, ref: TestFileRef): boolean {
   return (
-    ledger.file(ref) !== undefined && !ledger.queue.isSlow(ref) && focusesFile(context.runner, ref)
+    ledger.file(ref) !== undefined &&
+    !ledger.queue.isSlow(ref) &&
+    context.runner.traits.focuses(ref)
   );
 }
 

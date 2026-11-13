@@ -32,6 +32,7 @@ import { runEnvironment } from "./environment/hash.js";
 import { readEnvironment } from "./environment/index.js";
 import { createPytestGraph, type PytestGraph } from "./graph/index.js";
 import type { PytestObservedClosure } from "./run/observed.js";
+import { pytestTraits } from "./traits.js";
 import { PYTEST_ADAPTER_VERSION } from "./version.js";
 
 export { PYTEST_ADAPTER_VERSION };
@@ -255,6 +256,8 @@ export async function createPytestAdapter(
   return {
     name: "pytest",
     adapterVersion: PYTEST_ADAPTER_VERSION,
+    // 007 D6 (row 011-135): `runPytest` takes `RunOptions.checks`, so its traits focus.
+    traits: pytestTraits({ tierSize: options.concurrency, batchSize: options.batchSize }),
     invalidate: async (paths) => invalidate(paths, await reread()),
     recheck,
     async affected(changed) {
@@ -344,8 +347,6 @@ export async function createPytestAdapter(
           : {}),
       };
     },
-    // 007 D6 (row 011-135): `runPytest` takes `RunOptions.checks`.
-    focuses: true,
     close: async () => {},
   };
 }

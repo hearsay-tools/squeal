@@ -6,6 +6,7 @@ import { afterEachRun, EscapedChildren, type RunSweeper } from "../../src/core/d
 import { statOf } from "../../src/core/daemon/terminate.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import type { RunnerAdapter, RunOptions, RunReport } from "../../src/core/types/runner.js";
+import { declareTraits } from "../../src/core/types/runner-traits.js";
 import { isAlive } from "./strays.js";
 
 /*
@@ -59,7 +60,9 @@ function fakeRunner(run: RunnerAdapter["run"]): RunnerAdapter {
     enumerate: async () => [],
     testFiles: async () => [LONG, SHORT],
     environment: async () => [],
-    lane: (testFile) => (testFile.project === "" ? "vitest" : "node-test"),
+    traits: declareTraits({
+      lane: (testFile) => (testFile.project === "" ? "vitest" : "node-test"),
+    }),
     run,
     close: async () => {},
   };
@@ -121,7 +124,7 @@ describe.runIf(process.platform === "linux")(
         children,
         ({ text }) => notes.push(text),
       );
-      expect(runner.lane?.(SHORT)).toBe("node-test");
+      expect(runner.traits.lane(SHORT)).toBe("node-test");
 
       const long = runner.run([LONG], options("long"));
       await expect.poll(() => worker).not.toBeNull();

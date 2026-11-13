@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createRecoveringRunner } from "../../src/core/daemon/runner.js";
 import type { RunnerAdapter, RunnerEnvironment } from "../../src/core/types/runner.js";
+import { NO_TRAITS } from "../../src/core/types/runner-traits.js";
 
 function fakeAdapter(log: string[]): RunnerAdapter {
   const environment: RunnerEnvironment = {
@@ -14,6 +15,7 @@ function fakeAdapter(log: string[]): RunnerAdapter {
   return {
     name: "vitest",
     adapterVersion: "2",
+    traits: NO_TRAITS,
     invalidate: async () => {
       log.push("invalidate");
       return { recreatedProjects: [] };
@@ -62,6 +64,7 @@ function runner(f: ReturnType<typeof factory>) {
   const adapter = createRecoveringRunner({
     name: "vitest",
     adapterVersion: "2",
+    traits: NO_TRAITS,
     create: f.create,
     onFailure: (message) => failures.push(message),
     onRecovered: () => recovered.push(1),
@@ -145,6 +148,7 @@ describe("recovering runner: a broken config is a state, never an exit (review B
     const rechecking = createRecoveringRunner({
       name: "pytest",
       adapterVersion: "1",
+      traits: NO_TRAITS,
       create: async () => ({ ...built, recheck: async () => ({ recreatedProjects: ["py"] }) }),
       onFailure: () => {},
     });

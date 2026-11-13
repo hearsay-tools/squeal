@@ -72,8 +72,8 @@ async function untilStarted(marker: string, heard: ReadonlySet<string>): Promise
  */
 function hinted(adapter: RunnerAdapter, files: readonly TestFileRef[]): void {
   const [first] = files;
-  adapter.slowWidth?.(files);
-  if (first !== undefined) adapter.tierWidth?.(first, 2);
+  adapter.traits.slowWidth(files);
+  if (first !== undefined) adapter.traits.tierWidth(first, 2);
 }
 
 /**

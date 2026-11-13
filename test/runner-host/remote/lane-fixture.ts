@@ -23,6 +23,7 @@ import type {
   RunOptions,
   RunReport,
 } from "../../../src/core/types/runner.js";
+import { NO_TRAITS } from "../../../src/core/types/runner-traits.js";
 import { inProcessHost, POLICY, REPORT } from "../fake-channel.js";
 
 /*
@@ -111,6 +112,7 @@ export async function setup({
   const fake = (env: () => RunnerEnvironment, run: HostedAdapter["run"]): HostedAdapter => ({
     name: "vitest",
     adapterVersion: "1",
+    traits: NO_TRAITS,
     invalidate: async () => ({ recreatedProjects: [] }),
     affected: async () => ({ direct: [REF], transitive: [] }),
     closure: async (testFile) => ({ testFile, paths: ["src/a.ts", "test/a.test.ts"] }),

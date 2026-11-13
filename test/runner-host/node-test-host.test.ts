@@ -2,9 +2,6 @@ import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { type RunningDaemon, startDaemon } from "../../src/core/daemon/daemon.js";
-import { createNodeTestRunners } from "../../src/core/daemon/node-test-runners.js";
-import { squealVersion } from "../../src/core/daemon/version.js";
-import type { AbsolutePath } from "../../src/core/types/common.js";
 import type { NodeTestProject } from "../../src/core/types/policy.js";
 import {
   createFixtureRepo,
@@ -15,7 +12,7 @@ import {
   withStore,
 } from "../daemon/helpers.js";
 import { runMissingConfig } from "../helpers/baseline.js";
-import { hostsOf, SOURCE_LAUNCH, sourceHost } from "./process-helpers.js";
+import { hostsOf, SOURCE_LAUNCH } from "./process-helpers.js";
 
 /*
  * Spec 021 D7, D8 (row 021-12): a daemon with `runnerHost` runs its
@@ -65,29 +62,6 @@ const outcomes = (repo: FixtureRepo, path: string) =>
   );
 
 describe("a node:test runner in a runner host", SLOW, () => {
-  it("keeps runner.tierSize as its tier width, as in process", async () => {
-    const repo = createFixtureRepo({ files: { [PLAIN]: PLAIN_TEST } });
-    onTestFinished(repo.cleanup);
-    const options = {
-      root: repo.root as AbsolutePath,
-      tempDir: repo.runtimeDir as AbsolutePath,
-      tierSize: () => 3,
-      note: () => {},
-    };
-    const [local] = createNodeTestRunners([NT], options);
-    const [hosted] = createNodeTestRunners([NT], {
-      ...options,
-      host: sourceHost(squealVersion()),
-    });
-    if (local === undefined || hosted === undefined) throw new Error("no node:test runner");
-    onTestFinished(() => Promise.all([local.close(), hosted.close()]).then(() => {}));
-    await Promise.all([local.open(), hosted.open()]);
-    const file = { project: "nt", path: PLAIN };
-    // The proxy answers a width of its own: the grant, without Vitest's widths.
-    expect([local.tierWidth?.(file, 8), hosted.tierWidth?.(file, 8)]).toEqual([3, 3]);
-    expect((await hosted.testFiles()).map((f) => f.path)).toEqual([PLAIN]);
-  });
-
   it.runIf(process.platform === "linux")(
     "replaces a host killed during a tier, whose checks end unknown",
     async () => {

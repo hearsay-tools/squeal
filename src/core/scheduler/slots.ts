@@ -14,8 +14,7 @@ import { laneOf, type Tier, type TierFile } from "./tiers.js";
  * tiers (Vitest).
  */
 export function backlogSlot(context: SchedulerContext, ref: TestFileRef): number | null {
-  const files = context.runner.backlogSlot?.(ref) ?? null;
-  return files === null ? null : Math.max(1, Math.floor(files));
+  return context.runner.traits.backlogSlot(ref);
 }
 
 /**
@@ -51,7 +50,7 @@ export function busyLanes(
     const queued = ledger.queue.hasFirstGroup(inLane) || focusedWaiting(context, ledger, inLane);
     const lead = backlog[0]?.files[0]?.file.ref;
     const beside =
-      queued && !edit && lead !== undefined && context.runner.besideBacklog?.(lead) === true;
+      queued && !edit && lead !== undefined && context.runner.traits.besideBacklog(lead);
     const any = tiers[0]?.files[0]?.file.ref;
     const slots =
       !queued &&

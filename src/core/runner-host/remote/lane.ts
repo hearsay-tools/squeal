@@ -262,7 +262,7 @@ export function withRemoteLane(options: RemoteLaneOptions): RunnerAdapter {
   > => {
     for (let late = 1; ; late++) {
       const grant = await admitRun((ask) => host.admit(ask), testFiles, run, {
-        tierWidth: (file, grant) => local.tierWidth?.(file, grant) ?? grant,
+        tierWidth: (file, grant) => local.traits.tierWidth(file, grant),
         everyMs: options.admitEveryMs ?? ADMIT_EVERY_MS,
         log: (line) => options.log(`remote ${target}: ${line}`),
       }).catch((error: Error) => error);

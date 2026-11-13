@@ -31,7 +31,7 @@ export async function listTestFilesOf(
 ): Promise<readonly TestFileRef[]> {
   const { runner, store, worktreeId } = context;
   const listed = await bound.call(() => runner.testFiles());
-  recordOmittedTestFiles(store, worktreeId, runner.omittedTestFiles?.() ?? 0);
+  recordOmittedTestFiles(store, worktreeId, runner.traits.omittedTestFiles());
   return listed;
 }
 

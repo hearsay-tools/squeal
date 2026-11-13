@@ -1,5 +1,9 @@
+import { nodeTestTraits } from "../../runners/node-test/traits.js";
+import { pytestTraits } from "../../runners/pytest/traits.js";
+import { vitestTraits } from "../../runners/vitest/traits.js";
 import type { CoverageRun } from "../code/coverage/types.js";
 import type { TestFileRef } from "../types/keys.js";
+import type { PytestProject } from "../types/policy.js";
 import type {
   AffectedTestFiles,
   EnumeratedCheck,
@@ -12,6 +16,7 @@ import type {
   RunOptions,
   RunReport,
 } from "../types/runner.js";
+import type { RunnerTraits } from "../types/runner-traits.js";
 import type { HostChannel } from "./channel.js";
 import { type Deadline, HostConnection, HostLost } from "./connection.js";
 import { decodeCoverageRun } from "./coverage-wire.js";
@@ -27,13 +32,12 @@ import type {
 } from "./protocol.js";
 import { RUNNER_HOST_PROTOCOL } from "./protocol.js";
 import type { RemoteRunOptions } from "./remote/tree-wire.js";
-import { type Widths, widthsOf } from "./runners.js";
 
 /*
  * Spec 021 D7 (row 021-11): the daemon's side. A `RunnerAdapter` whose
  * members are requests to a runner host; one more `create` under
- * `createRecoveringRunner`. The synchronous members answer from the values
- * the host sent last. A host that exits or misses a deadline makes the run
+ * `createRecoveringRunner`. Its traits are its runner kind's, answering from
+ * the values the host sent last (`hostTraits`). A host that exits or misses a deadline makes the run
  * in flight incomplete (`crashed`, `timed-out`: every check of its tier
  * `unknown`) and every other call fail; the proxy is then gone
  * (`runnerHostGone`), and the recovering runner starts a new host.
@@ -128,7 +132,7 @@ interface OpenRun {
 class HostProxy implements RunnerAdapter {
   name: string;
   adapterVersion = "";
-  focuses?: true;
+  readonly traits: RunnerTraits;
   recheck?: () => Promise<InvalidateResult>;
   globalSetups?: () => Promise<readonly GlobalSetupEntry[]>;
   readonly #options: HostProxyOptions;
@@ -136,7 +140,6 @@ class HostProxy implements RunnerAdapter {
   readonly #connection: HostConnection;
   readonly #runs = new Map<number, OpenRun>();
   #values: HostValues = { omittedTestFiles: 0, widths: null };
-  #widths: Widths | null = null;
   #policy = "";
   #closed: Promise<void> | null = null;
   /** A host lost before its start answered is the start's error, noted as the runner's failure. */
@@ -146,6 +149,7 @@ class HostProxy implements RunnerAdapter {
     this.#options = options;
     this.name = options.runner;
     this.#deadlines = { ...HOST_DEADLINES, ...options.deadlines };
+    this.traits = hostTraits(options, () => this.#values);
     this.#connection = new HostConnection({
       channel: options.channel,
       label: `the ${options.runner} runner host`,
@@ -183,7 +187,7 @@ class HostProxy implements RunnerAdapter {
     }
     this.name = started.adapter.name;
     this.adapterVersion = started.adapter.adapterVersion;
-    if (started.adapter.focuses) this.focuses = true;
+    // `started.adapter.focuses` is sent and no longer read: the kind's traits answer (row 011-329).
     if (started.adapter.members.includes("recheck"))
       this.recheck = () => this.#call("recheck", []) as Promise<InvalidateResult>;
     if (started.adapter.members.includes("globalSetups"))
@@ -217,18 +221,6 @@ class HostProxy implements RunnerAdapter {
 
   environment(): Promise<readonly RunnerEnvironment[]> {
     return this.#call("environment", []) as Promise<readonly RunnerEnvironment[]>;
-  }
-
-  omittedTestFiles(): number {
-    return this.#values.omittedTestFiles;
-  }
-
-  slowWidth(testFiles: readonly TestFileRef[]): number {
-    return this.#widths?.slowWidth(testFiles) ?? testFiles.length;
-  }
-
-  tierWidth(testFile: TestFileRef, grant: number): number {
-    return this.#widths?.tierWidth(testFile, grant) ?? grant;
   }
 
   async run(testFiles: readonly TestFileRef[], options: RunOptions): Promise<RunReport> {
@@ -327,7 +319,6 @@ class HostProxy implements RunnerAdapter {
 
   #take(values: HostValues): void {
     this.#values = values;
-    this.#widths = widthsOf(values.widths);
   }
 
   #event(message: HostEvent): void {
@@ -359,6 +350,29 @@ class HostProxy implements RunnerAdapter {
       case "alive":
         this.#connection.renew(message.run, "alive");
         return;
+    }
+  }
+}
+
+/**
+ * Spec 021 D7 (row 011-329): a proxy's traits, its runner kind's over the
+ * values the host sent last, one choice per kind. node:test's and pytest's
+ * width is the policy's `tierSize` the proxy sends (row 021-12), pytest's
+ * slot its project's batch.
+ */
+function hostTraits(options: HostProxyOptions, values: () => HostValues): RunnerTraits {
+  const tierSize = () => options.policy().tierSize;
+  switch (options.runner) {
+    case "vitest":
+      return vitestTraits({
+        widths: () => values().widths,
+        omitted: () => values().omittedTestFiles,
+      });
+    case "node-test":
+      return nodeTestTraits({ tierSize });
+    case "pytest": {
+      const project = options.options.process?.project as PytestProject | undefined;
+      return pytestTraits({ tierSize, batchSize: () => project?.batchSize });
     }
   }
 }

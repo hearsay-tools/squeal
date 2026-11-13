@@ -6,6 +6,7 @@ import type {
   RunnerEnvironment,
   RunReport,
 } from "../../src/core/types/runner.js";
+import { NO_TRAITS } from "../../src/core/types/runner-traits.js";
 
 /*
  * Spec 021 D20 (row 021-26): a recovering runner closes its adapter once no
@@ -51,6 +52,7 @@ function fakes(
     return {
       name: "node-test",
       adapterVersion: "1",
+      traits: NO_TRAITS,
       invalidate: async (paths) => ({
         recreatedProjects: paths.some((p) => p.path === "unit.config.ts") ? ["unit"] : [],
       }),
@@ -60,7 +62,6 @@ function fakes(
       testFiles: async () => [],
       environment: async () => [environment("unit", values.unit), environment("e2e", values.e2e)],
       run,
-      slowWidth: () => 10 * n,
       close: async () => {
         closed.push(n);
         await teardown();
@@ -77,6 +78,7 @@ function runner(f: ReturnType<typeof fakes>, idleMs: (() => number) | null = () 
   const adapter = createRecoveringRunner({
     name: "node-test",
     adapterVersion: "1",
+    traits: NO_TRAITS,
     create: f.create,
     onFailure: (text) => failures.push(text),
     onRecovered: () => recovered.push("recovered"),
@@ -206,19 +208,6 @@ describe("recovering runner: an idle adapter closes (spec 021 D20)", () => {
     expect(f.closed).toEqual([1]);
     expect(await adapter.recheck?.()).toEqual({ recreatedProjects: [] });
     expect(f.made).toEqual([1]);
-  });
-
-  it("answers the synchronous members from the closed adapter until another exists", async () => {
-    const f = fakes();
-    const { adapter } = runner(f);
-    expect(adapter.slowWidth?.([ref])).toBe(1);
-    await adapter.closure(ref);
-    expect(adapter.slowWidth?.([ref])).toBe(10);
-    vi.advanceTimersByTime(IDLE);
-    expect(f.closed).toEqual([1]);
-    expect(adapter.slowWidth?.([ref])).toBe(10);
-    await adapter.closure(ref);
-    expect(adapter.slowWidth?.([ref])).toBe(20);
   });
 
   it("makes the next adapter only once the idle adapter's close has ended (review 0.1.461 B1)", async () => {
