@@ -1,11 +1,17 @@
 import { randomUUID } from "node:crypto";
 import type { TestFileRef } from "../types/keys.js";
-import type { FullSuiteCheckpoint } from "../types/scheduler.js";
+import type { FullSuiteCheckpoint, FullSuiteRequest } from "../types/scheduler.js";
 import type { CheckpointLane, CheckpointRecord } from "../types/store-records.js";
 import { NOTHING_CHANGED } from "./context.js";
 import { classify, type FileState } from "./files.js";
 import type { Ledger } from "./ledger.js";
 import { priorityOf } from "./queue.js";
+import type { BacklogQuiet } from "./quiet.js";
+import { lagging } from "./refine-apply.js";
+import type { Request } from "./request-intake-types.js";
+import { fetchRunnerRetry, keyRunnerRetry, storeRunnerRetry } from "./revision.js";
+import { slowView } from "./slow.js";
+import type { WarmUp } from "./warm-up.js";
 
 /**
  * `run --all` while the worktree waits for an install: nothing can be listed
@@ -95,6 +101,76 @@ export function queueFullSuite(
   }
   ledger.commit();
   return { ...record, owner: joins ? attributed : record.id };
+}
+
+/** What `run --all` changes of its scheduler beside the store. */
+export interface FullSuiteHost {
+  /** Row 011-82: the caller asked for the backlog; its quiet ends. */
+  readonly quiet: BacklogQuiet;
+  /** Task 001-307: a warm-up's checkpoint runs flagged. */
+  readonly warmUp: WarmUp;
+}
+
+/**
+ * `squeal run --all` as the request intake takes it (row 011-322): queues
+ * the checkpoint once a pass that started after the request was delivered
+ * (row 011-198), unless it needs the runner: while a runner failure is
+ * outstanding the runner is retried first, and while a revision waits for
+ * its runner part the checkpoint follows it. A warm-up (`observeIgnored`)
+ * runs every runnable file forced, in a checkpoint of its own: only its own
+ * tiers run flagged, and a forced checkpoint counts only its own tiers'
+ * results (review wave 13ar, B1). With a `lane`, only that lane's test
+ * files (task 004-61).
+ */
+export function fullSuiteRequest(
+  request: FullSuiteRequest,
+  host: FullSuiteHost,
+): Request<FullSuiteCheckpoint> {
+  const warmUp = request.observeIgnored === true;
+  const force = request.force === true || warmUp;
+  const lane = request.lane;
+  return {
+    operation: "taking a squeal run --all request",
+    start: {
+      skip: "no closed answer: before the start the scheduler throws (`started`)",
+      afterPass: true,
+    },
+    // An install the next reconciliation pass would find ends the wait first; still waiting,
+    // nothing can be listed or keyed and the checkpoint is abandoned at once (review wave 11, B1).
+    installWait: { passFirst: true, stage: (_, ledger) => abandonFullSuite(ledger) },
+    runnerWork: {
+      // Re-review of 0.1.434, B2: the runner is asked once; what it said is keyed, then stored
+      // with the checkpoint, each tried again on a busy store with the answers kept.
+      whenPending: async (context, ledger) => {
+        const retry = await fetchRunnerRetry(context, ledger);
+        if (retry === null) return null;
+        let touched: TestFileRef[] = [];
+        return {
+          key: async (n) => {
+            touched = await keyRunnerRetry(context, retry, n === 0 ? [] : lagging(context, ledger));
+          },
+          store: (held) => storeRunnerRetry(context, held, retry, touched),
+        };
+      },
+    },
+    store: {
+      stage: (context, ledger) => {
+        const { policy } = context;
+        const only = lane === undefined ? undefined : { lane, isSlow: slowView(policy).isSlow };
+        const record = queueFullSuite(ledger, force, warmUp, only);
+        host.quiet.end(context.now());
+        if (warmUp) host.warmUp.start(context, ledger, record);
+        // Review wave 3.6, B1: its own files, never the rest of a checkpoint it joined.
+        const covered = record.testFiles.flatMap((ref) => ledger.file(ref) ?? []);
+        return { answer: record, covered };
+      },
+    },
+    wake: {
+      allLanes:
+        "before the lock, as before row 011-322: after the transaction a slow selection " +
+        "planning meanwhile would miss the request (slow-tier.ts:357)",
+    },
+  };
 }
 
 /** What the last daemon owed (task 001-219), taken once at the baseline (`Checkpoints.takeOwed`). */

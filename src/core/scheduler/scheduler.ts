@@ -40,7 +40,7 @@ import { besideDone, besideFiles } from "./beside.js";
 import { baseline, scan, type UnseenChanges } from "./bootstrap.js";
 import { BusyResume } from "./busy-resume.js";
 import { CAPACITY_RECHECK_MS, TierCapacity } from "./capacity.js";
-import { abandonFullSuite, queueFullSuite } from "./checkpoint-requests.js";
+import { fullSuiteRequest } from "./checkpoint-requests.js";
 import { claimWake } from "./claims.js";
 import { CommandHold } from "./command-hold.js";
 import { attachCommitLanes } from "./commit-moment.js";
@@ -74,16 +74,14 @@ import { PoolWaits, publishPoolWaits } from "./pool-wait.js";
 import { priorityOf } from "./queue.js";
 import { BacklogQuiet, publishQuiet, quietSleepMs } from "./quiet.js";
 import { TierRecords } from "./record.js";
-import { lagging } from "./refine-apply.js";
 import { RequestIntake } from "./request-intake.js";
 import { focusRequest, groupRequest, promoteRequest } from "./request-intake-requests.js";
 import { RequestProgress } from "./request-progress.js";
 import { RERUN_CAP } from "./rerun.js";
 import { retryRequest, takeRetries } from "./retries.js";
-import { fetchRunnerRetry, keyRunnerRetry, storeRunnerRetry } from "./revision.js";
 import { RunnerWork } from "./runner-work.js";
 import { busyLanes } from "./slots.js";
-import { groupView, slowView } from "./slow.js";
+import { groupView } from "./slow.js";
 import { SlowRelease } from "./slow-release.js";
 import { type SlowRun, SlowTier } from "./slow-tier.js";
 import { supersededIn } from "./store-decision.js";
@@ -104,11 +102,6 @@ interface InFlight {
    */
   readonly held: AbortController | null;
 }
-
-/** Row 011-198: `run --all` gives no verdict rather than one at a revision older than the tree. */
-const NO_PASS =
-  "the change feed delivered no reconciliation pass that started after the request " +
-  "(its pass failed, or the daemon closed first), so no checkpoint was planned";
 
 /** Creates the scheduler of one worktree. Call `start` before anything else. */
 export function createScheduler(options: SchedulerOptions): Scheduler {
@@ -658,84 +651,11 @@ class TierScheduler implements Scheduler {
     }
   }
 
-  /**
-   * Queues the checkpoint once a pass that started after the request was
-   * delivered (`passes`, row 011-198), unless it needs the runner: while a
-   * runner failure is outstanding the runner is retried first, and while a
-   * revision waits for its runner part the checkpoint follows it. A warm-up
-   * (`observeIgnored`) runs every runnable file forced, in a checkpoint of
-   * its own: only its own tiers run flagged, and a forced checkpoint counts
-   * only its own tiers' results (review wave 13ar, B1). With a `lane`, only
-   * that lane's test files (task 004-61).
-   */
-  async requestFullSuite(request: FullSuiteRequest = {}): Promise<FullSuiteCheckpoint> {
-    const passes = this.options.passes;
-    if (passes !== undefined) {
-      const asked = passes.started();
-      await passes.pass();
-      if ((passes.deliveredPass()?.number ?? 0) <= asked) throw new Error(NO_PASS);
-    }
-    const warmUp = request.observeIgnored === true;
-    const force = request.force === true || warmUp;
-    const lane = request.lane;
-    const queue = (ledger: Ledger) => {
-      const { policy } = this.#started().context;
-      const only = lane === undefined ? undefined : { lane, isSlow: slowView(policy).isSlow };
-      const record = queueFullSuite(ledger, force, warmUp, only);
-      // Review wave 3.6, B1: its own files, never the rest of a checkpoint it joined.
-      this.#requests.ask(record.testFiles.flatMap((ref) => ledger.file(ref) ?? []));
-      // Row 011-82: the caller asked for the backlog; it starts at the next tier boundary.
-      this.#quiet.end(this.#started().context.now());
-      if (warmUp) this.#warmUp.start(this.#started().context, ledger, record);
-      return record;
-    };
-    const operation = "taking a squeal run --all request";
-    // An install the next reconciliation pass would find ends the wait first; still waiting,
-    // nothing can be listed or keyed and the checkpoint is abandoned at once (review wave 11, B1).
-    // Spec 021 D2: the request's pass is tried again on a busy store, as the feed's are.
-    if (this.#awaitingInstall) {
-      await this.#request(operation, () =>
-        this.#handleBatch({ trigger: "interval", paths: [] }, true),
-      );
-    }
-    this.#groups.preempt();
-    const record =
-      (await this.#request(operation, () =>
-        this.#lock.run(
-          () =>
-            this.#transact((_, ledger) => {
-              if (this.#awaitingInstall || this.#reinstalled) return abandonFullSuite(ledger);
-              if (ledger.broken || this.#runnerWork.size > 0 || this.#runnerWork.refining) {
-                return null;
-              }
-              return queue(ledger);
-            }),
-          operation,
-        ),
-      )) ??
-      (await this.#runnerWork.afterTier(async () => {
-        const { context, ledger } = this.#started();
-        const abandon = this.#awaitingInstall || this.#reinstalled;
-        // Re-review of 0.1.434, B2: the runner is asked once; what it said is keyed, then stored
-        // with the checkpoint, each tried again on a busy store with the answers kept.
-        const retry = abandon ? null : await fetchRunnerRetry(context, ledger);
-        const touched =
-          retry === null
-            ? []
-            : await this.#request(operation, (n) =>
-                keyRunnerRetry(context, retry, n === 0 ? [] : lagging(context, ledger)),
-              );
-        // Under the lock already: a refused stage is tried again without giving the lock up.
-        return this.#request(operation, async () =>
-          this.#transact((_, held) => {
-            if (abandon) return abandonFullSuite(held);
-            if (retry !== null) storeRunnerRetry(context, held, retry, touched);
-            return queue(held);
-          }),
-        );
-      }, `${operation} after the runner work`));
-    this.#pump();
-    return record;
+  /** `squeal run --all` (`fullSuiteRequest`): the checkpoint, after a pass delivered after it. */
+  requestFullSuite(request: FullSuiteRequest = {}): Promise<FullSuiteCheckpoint> {
+    return this.#intake.take(
+      fullSuiteRequest(request, { quiet: this.#quiet, warmUp: this.#warmUp }),
+    );
   }
 
   /** Row 011-302: what holds the lock, to a `run-group` request that waits for it. */
@@ -1263,51 +1183,6 @@ class TierScheduler implements Scheduler {
   #sliced<T>(fn: () => Promise<T>): Promise<T> {
     const ms = this.options.busySliceMs;
     return ms === undefined || this.#busy === null ? fn() : withBusySlice(ms, fn);
-  }
-
-  /**
-   * Spec 021 D2 (review 0.1.434, B2): `stage`, the synchronous part of a
-   * socket request that changes the ledger and writes it, in one store
-   * transaction taken before it changes anything. A busy store refuses that
-   * transaction at its start, so the stage can be tried again whole
-   * (`#request`) and never runs twice. Another error rolls the store back,
-   * and the ledger is put back as the store holds it (`Ledger.hold`).
-   */
-  #transact<T>(stage: (context: SchedulerContext, ledger: Ledger) => T): T {
-    const { context, ledger } = this.#started();
-    const restore = ledger.hold([...ledger.files.values()].map((file) => file.ref));
-    try {
-      return context.store.transaction(() => stage(context, ledger));
-    } catch (error) {
-      restore();
-      throw error;
-    }
-  }
-
-  /**
-   * `once`, a socket request's write (`#transact`, its pass, or a runner
-   * retry's keys), tried again while a busy store refuses it, a slice per
-   * try (spec 021 D2), with `busyWaits`; once without. `n` counts the tries. A refusal once the scheduler closes or its
-   * daemon stops answers the request with an error that says the store was
-   * busy, so no request waits past the daemon.
-   */
-  async #request<T>(operation: string, once: (n: number) => Promise<T>): Promise<T> {
-    const waits = this.options.busyWaits;
-    if (waits === undefined || this.#busy === null) return once(0);
-    try {
-      return await retryWhileBusy(once, {
-        sliceMs: this.options.busySliceMs,
-        waits,
-        key: `scheduler:request:${++this.#retries}`,
-        what: operation.replace(/^taking /, ""),
-        stopped: () => this.#stopping(),
-      });
-    } catch (error) {
-      if (!isBusy(error)) throw error;
-      throw new Error(`${operation}: the store was still busy when the daemon stopped`, {
-        cause: error,
-      });
-    }
   }
 
   /** `task` under the lock, `#sliced`; `operation` names it to a lock watcher (row 011-302). */
