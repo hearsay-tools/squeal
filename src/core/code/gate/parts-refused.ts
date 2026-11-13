@@ -67,12 +67,37 @@ const TOLD: readonly (readonly [PartRefusalReason, string])[] = [
 /** The file names a line gives at most; the rest are counted. */
 const REFUSED_NAMES = 3;
 
+/** What became of a refused file, as the final run report has it, in the order a line tells them. */
+const OUTCOMES = [
+  ["ran", "ran here"],
+  ["unfinished", "started here and did not finish"],
+  ["not-run", "did not run"],
+  ["stored", "read from the stores"],
+] as const;
+
+type Outcome = (typeof OUTCOMES)[number][0];
+
+/**
+ * Review 0.1.465 B1: `path`'s outcome in `run`. The stores gave it; it
+ * completed here; it never started (`notStarted`), the gate stopped early
+ * before it (`overBudget`) or it went to no run; or it started and did not
+ * finish.
+ */
+function outcomeOf(run: GateRunReport, path: RelativePath): Outcome {
+  if (run.from?.[path] === "store") return "stored";
+  if (run.completed.includes(path)) return "ran";
+  if (run.notStarted?.includes(path) || run.overBudget?.includes(path)) return "not-run";
+  return run.notFinished.includes(path) ? "unfinished" : "not-run";
+}
+
 /**
  * Row 020-49: the stderr text, one line per runner and per-file reason,
- * with how many files it refused, how many of those ran here and how many
- * the stores gave, and up to `REFUSED_NAMES` of them, each with its input;
- * `""` when the parts refused none. `unusable` and `environment` are told
- * once per part as the parts are read, so they add no line here.
+ * with how many files it refused and, from the final run report, how many
+ * of those ran here, started here and did not finish, did not run, and
+ * were read from the stores (review 0.1.465 B1); and up to
+ * `REFUSED_NAMES` of them, each with its input. `""` when the parts
+ * refused none. `unusable` and `environment` are told once per part as
+ * the parts are read, so they add no line here.
  */
 export function refusedText(runs: readonly GateRunReport[]): string {
   return refusedLines(runs).join("");
@@ -84,11 +109,11 @@ function refusedLines(runs: readonly GateRunReport[]): string[] {
     return TOLD.flatMap(([reason, text]) => {
       const files = refused.filter(([, r]) => r.reason === reason);
       if (files.length === 0) return [];
-      const stored = files.filter(([path]) => run.from?.[path] === "store").length;
-      const where = [
-        ...(files.length > stored ? [`${files.length - stored} run here`] : []),
-        ...(stored > 0 ? [`${stored} read from the stores`] : []),
-      ].join(", ");
+      const outcomes = files.map(([path]) => outcomeOf(run, path));
+      const where = OUTCOMES.flatMap(([outcome, said]) => {
+        const count = outcomes.filter((o) => o === outcome).length;
+        return count === 0 ? [] : [`${count} ${said}`];
+      }).join(", ");
       const names = files
         .slice(0, REFUSED_NAMES)
         .map(([path, r]) => (r.input === undefined ? path : `${path}: ${r.input}`));

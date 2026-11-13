@@ -147,10 +147,40 @@ describe("the stderr summary of refused files (row 020-49)", () => {
     const text = refusedText([run(refused, { "test/b.test.ts": "store" })]);
 
     expect(text.split("\n")).toEqual([
-      "squeal code: Vitest: 1 test file not taken from the parts, 1 run here: more than one part holds it (test/twice.test.ts)",
-      "squeal code: Vitest: 5 test files not taken from the parts, 4 run here, 1 read from the stores: its part does not certify an input as it is here (test/a.test.ts: src/a.ts, test/b.test.ts: src/b.ts, test/c.test.ts: src/c.ts, and 2 more)",
+      "squeal code: Vitest: 1 test file not taken from the parts, 1 ran here: more than one part holds it (test/twice.test.ts)",
+      "squeal code: Vitest: 5 test files not taken from the parts, 4 ran here, 1 read from the stores: its part does not certify an input as it is here (test/a.test.ts: src/a.ts, test/b.test.ts: src/b.ts, test/c.test.ts: src/c.ts, and 2 more)",
       "",
     ]);
+  });
+
+  it("counts a file that never started or that the gate stopped before as not run (review 0.1.465 B1)", () => {
+    const paths = ["a", "b", "c", "d", "e", "f"].map((n) => `test/${n}.test.ts`);
+    const refused = Object.fromEntries(paths.map((p) => [p, input("src/a.ts")]));
+    const report: GateRunReport = {
+      ...run(refused, { "test/e.test.ts": "store" }),
+      // a ran, b started and was stopped, c never started, d the early stop kept from running, e the stores gave, f went to no run.
+      completed: ["test/a.test.ts", "test/e.test.ts"],
+      notFinished: ["test/b.test.ts", "test/c.test.ts"],
+      notStarted: ["test/c.test.ts"],
+      overBudget: ["test/d.test.ts"],
+    };
+
+    expect(refusedText([report])).toBe(
+      "squeal code: Vitest: 6 test files not taken from the parts, 1 ran here, 1 started here and did not finish, 3 did not run, 1 read from the stores: its part does not certify an input as it is here (test/a.test.ts: src/a.ts, test/b.test.ts: src/a.ts, test/c.test.ts: src/a.ts, and 3 more)\n",
+    );
+  });
+
+  it("never says a file ran when none started", () => {
+    const report: GateRunReport = {
+      ...run({ "test/c.test.ts": input("src/a.ts") }),
+      completed: [],
+      notFinished: ["test/c.test.ts"],
+      notStarted: ["test/c.test.ts"],
+    };
+
+    expect(refusedText([report])).toBe(
+      "squeal code: Vitest: 1 test file not taken from the parts, 1 did not run: its part does not certify an input as it is here (test/c.test.ts: src/a.ts)\n",
+    );
   });
 
   it("gives a file the stores gave alone as read from the stores", () => {
