@@ -8,9 +8,9 @@ import { fakeAdapter, inProcessHost, POLICY, REPORT } from "./fake-channel.js";
 /*
  * Spec 021 D6, D7 (row 021-11): the proxy against a fake adapter in a host
  * served in this process. Each request is answered once; the adapter's
- * callbacks arrive as events; the synchronous members answer from the
- * values the host sent last; a cancelled run still answers once; the input's
- * end stops the run and closes the adapter.
+ * callbacks arrive as events; a cancelled run still answers once; the
+ * input's end stops the run and closes the adapter. The proxy's traits, from
+ * the values the host sent last, are rows of `test/daemon/runner-traits.test.ts`.
  */
 
 const VERSION = "0.0.0-test";
@@ -43,32 +43,14 @@ const options = (over: Partial<RunOptions> = {}): RunOptions => ({
 });
 
 describe("runner host and proxy", () => {
-  it("answers members, and the synchronous ones from the values sent last", async () => {
-    let omitted = 0;
-    const host = inProcessHost(async () =>
-      fakeAdapter({
-        testFiles: async () => {
-          omitted = 3;
-          return [A, B];
-        },
-        omittedTestFiles: () => omitted,
-        widthValues: () => ({
-          projects: [{ project: "", ceiling: 2, floor: 1, group: 0 }],
-        }),
-        focuses: true,
-      }),
-    );
+  it("answers members", async () => {
+    const host = inProcessHost(async () => fakeAdapter({ testFiles: async () => [A, B] }));
     const { proxy } = proxyOver(host);
     const adapter = await proxy;
     expect(adapter.name).toBe("vitest");
     expect(adapter.adapterVersion).toBe("fake-1");
-    expect(adapter.focuses).toBe(true);
     expect(adapter.recheck).toBeUndefined();
-    expect(adapter.omittedTestFiles?.()).toBe(0);
-    expect(adapter.tierWidth?.(A, 8)).toBe(2);
-    expect(adapter.slowWidth?.([A, B, A])).toBe(2);
     expect(await adapter.testFiles()).toEqual([A, B]);
-    expect(adapter.omittedTestFiles?.()).toBe(3);
     expect(await adapter.closure(A)).toEqual({ testFile: A, paths: [A.path] });
     await adapter.close();
     await host.served;

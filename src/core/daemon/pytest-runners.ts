@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { createPytestAdapter } from "../../runners/pytest/adapter.js";
-import { DEFAULT_BATCH_SIZE } from "../../runners/pytest/run/run.js";
+import { pytestTraits } from "../../runners/pytest/traits.js";
 import { PYTEST_ADAPTER_VERSION } from "../../runners/pytest/version.js";
 import { createHostedPytest, type ProcessHost } from "../runner-host/process-host.js";
 import type { AbsolutePath, ProjectName } from "../types/common.js";
@@ -92,14 +92,7 @@ function pytestRunner(project: PytestProject, options: PytestRunnersOptions): Re
         : createHostedPytest(host, project, adapterOptions),
     // Spec 021 D7: a host that exited or missed a deadline is replaced; D20: an idle one closes.
     ...(host === undefined ? {} : hosted(options.idleMs)),
-    // A run starts `runner.tierSize` processes at once whatever its grant (task 001-366).
-    tierWidth: () => options.tierSize(),
-    // It cannot cancel a run: an edit's tier starts beside a backlog tier (task 011-21).
-    besideBacklog: true,
-    // A slot is one batch process (spec 007 D6): light files packed, a heavy file alone.
-    backlogSlot: batchSize ?? DEFAULT_BATCH_SIZE,
-    // Spec 007 D6 (row 011-145): its deselection hook runs a focused tier's texts.
-    focuses: true,
+    traits: pytestTraits({ tierSize: options.tierSize, batchSize: () => batchSize }),
     onFailure: (text) => options.note(`${text} (pytest project ${JSON.stringify(project.name)})`),
     onRecovered: () => options.note(`pytest project ${JSON.stringify(project.name)} started`),
   });

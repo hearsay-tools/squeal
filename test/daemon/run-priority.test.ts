@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import type { RunOptions, RunReport } from "../../src/core/types/runner.js";
+import { NO_TRAITS } from "../../src/core/types/runner-traits.js";
 
 /*
  * Spec 019 D3 (row 019-12): a run's processes take idle I/O (`ionice -c 3`)
@@ -58,6 +59,7 @@ const CARRIER = 101;
 const runner = {
   name: "vitest",
   adapterVersion: "1",
+  traits: NO_TRAITS,
   invalidate: async () => ({ recreatedProjects: [] }),
   affected: async () => ({ direct: [], transitive: [] }),
   closure: async (testFile: TestFileRef) => ({ testFile, paths: [] }),

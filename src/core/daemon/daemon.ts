@@ -563,6 +563,7 @@ class Daemon {
         { describeFailure },
         { createVitestAdapter },
         { VITEST_ADAPTER_VERSION },
+        { vitestTraits },
         nodeTest,
         pytest,
         runnerModule,
@@ -585,6 +586,7 @@ class Daemon {
         import("../state/fingerprint.js"),
         import("../../runners/vitest/index.js"),
         import("../../runners/vitest/version.js"),
+        import("../../runners/vitest/traits.js"),
         import("./node-test-runners.js"),
         import("./pytest-runners.js"),
         import("./runner.js"),
@@ -650,8 +652,8 @@ class Daemon {
             name: "vitest",
             adapterVersion: VITEST_ADAPTER_VERSION,
             create: vitestInstance("vitest"),
-            // Spec 011 C14 (row 011-145): the fast instance runs focused tiers; no slow file gets one.
-            focuses: true,
+            // Spec 011 C14 (rows 011-145, 011-329): the fast instance runs focused tiers.
+            traits: vitestTraits(),
             onFailure: (text) =>
               this.#note(`${text}; every check of this worktree is unknown until the config loads`),
             onRecovered: () => this.#note("Vitest started after the config changed"),
@@ -691,6 +693,7 @@ class Daemon {
           name: "vitest",
           adapterVersion: VITEST_ADAPTER_VERSION,
           create: vitestInstance(lane, workers),
+          traits: vitestTraits(),
           onFailure: (text) => this.#note(`${whose} ${text}`),
           around,
           ...vitest.recovery,
@@ -703,6 +706,7 @@ class Daemon {
           name: "vitest",
           adapterVersion: VITEST_ADAPTER_VERSION,
           create: vitestInstance(`${BESIDE_LANE_PREFIX}vitest`, this.#policy.runner.tierSize),
+          traits: vitestTraits(),
           onFailure: (text) => this.#note(`the tier beside a named wait's batch: ${text}`),
           around,
           ...vitest.recovery,

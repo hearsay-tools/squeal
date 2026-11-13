@@ -21,6 +21,7 @@ import { projectEnv } from "./recorders.js";
 import { coveragePayloads } from "./run/coverage.js";
 import type { ObservedClosure } from "./run/observed.js";
 import { runNodeTest } from "./run/run.js";
+import { nodeTestTraits } from "./traits.js";
 
 /** One project as `createNodeTestAdapter` resolved it. */
 export interface ProjectContext {
@@ -97,6 +98,7 @@ export async function openProject(context: ProjectContext): Promise<RunnerAdapte
   return {
     name: NODE_TEST_LANE,
     adapterVersion: context.adapterVersion,
+    traits: nodeTestTraits({ tierSize: options.concurrency }),
     async invalidate(paths) {
       graph.invalidate(paths);
       if (paths.some((p) => p.kind !== "change")) {

@@ -40,6 +40,7 @@ function dyingRemote(runner: CatchUpRunner, root: string, remoteRuns: string[]) 
   const adapter = (): HostedAdapter => ({
     name: runner.name,
     adapterVersion: runner.adapterVersion,
+    traits: runner.traits,
     invalidate: async () => ({ recreatedProjects: [] }),
     affected: async () => ({ direct: [], transitive: [] }),
     closure: (testFile) => runner.closure(testFile),

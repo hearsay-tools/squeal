@@ -10,7 +10,6 @@ import {
 } from "../types/runner.js";
 import { groupLane, isGroupLane } from "../types/scheduler.js";
 import { resolveGroups } from "./check-groups.js";
-import { focusesFile } from "./composite-runner.js";
 
 /**
  * Spec 004 D2: "a slow file runs in its own runner process, never in the
@@ -51,12 +50,14 @@ export function withSlowInstance(
   // By lane: an entry stays once made, so a lane's next run waits for its close.
   const lanes = new Map<string, LaneInstance>();
   const beside = createBeside === undefined ? null : new LaneInstance(createBeside);
-  const lane = fast.lane?.bind(fast);
   const recheck = fast.recheck?.bind(fast);
 
   return {
     name: fast.name,
     adapterVersion: fast.adapterVersion,
+    // A lane's instance may not exist yet, and the fast one has the same configs (review 001-394
+    // B2); a backlog tier and a focused one run on the fast instance (task 001-366, row 011-145).
+    traits: fast.traits,
     invalidate(paths) {
       for (const instance of lanes.values()) instance.invalidate(paths);
       beside?.invalidate(paths);
@@ -68,18 +69,7 @@ export function withSlowInstance(
     closure: (testFile) => fast.closure(testFile),
     enumerate: (testFile) => fast.enumerate(testFile),
     testFiles: () => fast.testFiles(),
-    omittedTestFiles: () => fast.omittedTestFiles?.() ?? 0,
-    // A lane's instance may not exist yet; the fast one has the same configs (review 001-394 B2).
-    slowWidth: (testFiles) => fast.slowWidth?.(testFiles) ?? testFiles.length,
-    // A backlog tier runs on the fast instance (task 001-366).
-    tierWidth: (testFile, grant) => fast.tierWidth?.(testFile, grant) ?? grant,
-    tierPart: (testFile) => fast.tierPart?.(testFile) ?? "",
-    besideBacklog: (testFile) => fast.besideBacklog?.(testFile) ?? false,
-    backlogSlot: (testFile) => fast.backlogSlot?.(testFile) ?? null,
-    // Row 011-145: a focused tier runs on the fast instance; a slow file gets none.
-    focusesFile: (testFile) => focusesFile(fast, testFile),
     environment: () => fast.environment(),
-    ...(lane === undefined ? {} : { lane }),
     async run(testFiles, options) {
       const at = options.lane;
       // Row 019-12: a group's lane, the default `slow` group's or another's, has an instance of its own.

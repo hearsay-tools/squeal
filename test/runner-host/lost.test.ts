@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createRecoveringRunner } from "../../src/core/daemon/runner.js";
 import { runnerHostGone, startHostProxy } from "../../src/core/runner-host/proxy.js";
 import type { RunReport } from "../../src/core/types/runner.js";
+import { NO_TRAITS } from "../../src/core/types/runner-traits.js";
 import { fakeAdapter, inProcessHost, POLICY, REPORT } from "./fake-channel.js";
 
 /*
@@ -125,6 +126,7 @@ describe("a lost runner host", () => {
     const runner = createRecoveringRunner({
       name: "vitest",
       adapterVersion: "fake-1",
+      traits: NO_TRAITS,
       create: async () => {
         const host = inProcessHost(async () => fakeAdapter({ run: never }));
         hosts.push(host);

@@ -4,7 +4,6 @@ import { readFile } from "node:fs/promises";
 import { setTimeout as sleep } from "node:timers/promises";
 import type { TestFileRef } from "../types/keys.js";
 import type { RunnerAdapter, RunOptions } from "../types/runner.js";
-import { focusesFile } from "./composite-runner.js";
 import { lowerWhile, runPriority } from "./low-priority.js";
 import { cutReading, HOST, type HostTable } from "./outlived.js";
 import {
@@ -452,34 +451,27 @@ export function afterEachRun(
   let first = 0;
   // The runs since `first`, in start order: whose a shared leftover may be.
   let overlapped: string[] = [];
-  const lane = runner.lane?.bind(runner);
+  const { traits } = runner;
   const releaseLane = runner.releaseLane?.bind(runner);
   const recheck = runner.recheck?.bind(runner);
   const laneOf = (testFiles: readonly TestFileRef[], options: RunOptions): string =>
-    options.lane ?? (testFiles[0] === undefined ? "" : (lane?.(testFiles[0]) ?? ""));
+    options.lane ?? (testFiles[0] === undefined ? "" : traits.lane(testFiles[0]));
   return {
     name: runner.name,
     adapterVersion: runner.adapterVersion,
+    traits,
     invalidate: (paths) => runner.invalidate(paths),
     ...(recheck === undefined ? {} : { recheck }),
     affected: (changedPaths) => runner.affected(changedPaths),
     closure: (testFile) => runner.closure(testFile),
     enumerate: (testFile) => runner.enumerate(testFile),
     testFiles: () => runner.testFiles(),
-    omittedTestFiles: () => runner.omittedTestFiles?.() ?? 0,
-    slowWidth: (testFiles) => runner.slowWidth?.(testFiles) ?? testFiles.length,
-    tierWidth: (testFile, grant) => runner.tierWidth?.(testFile, grant) ?? grant,
-    tierPart: (testFile) => runner.tierPart?.(testFile) ?? "",
-    besideBacklog: (testFile) => runner.besideBacklog?.(testFile) ?? false,
-    backlogSlot: (testFile) => runner.backlogSlot?.(testFile) ?? null,
-    focusesFile: (testFile) => focusesFile(runner, testFile),
     environment: () => runner.environment(),
-    ...(lane === undefined ? {} : { lane }),
     ...(releaseLane === undefined ? {} : { releaseLane }),
     async run(testFiles, options) {
       const at = laneOf(testFiles, options);
       const lead = testFiles[0];
-      const overlaps = lead !== undefined && runner.besideBacklog?.(lead) === true;
+      const overlaps = lead !== undefined && traits.besideBacklog(lead);
       const mark = overlaps ? `${at}#${options.runId}` : at;
       const since = children.mark();
       if (inFlight === 0) {

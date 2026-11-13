@@ -121,9 +121,9 @@ describe("the node:test adapter through a runner host", SLOW, () => {
       const answers = {
         name: adapter.name,
         adapterVersion: adapter.adapterVersion,
-        focuses: adapter.focuses,
+        focuses: adapter.traits.focuses(ref(`${UNIT}/title.test.ts`)),
         testFiles: await adapter.testFiles(),
-        omitted: adapter.omittedTestFiles?.() ?? 0,
+        omitted: adapter.traits.omittedTestFiles(),
         environment: await adapter.environment(),
         closures: await Promise.all(refs.map((f) => adapter.closure(f))),
         checks: await Promise.all(refs.map((f) => adapter.enumerate(f))),

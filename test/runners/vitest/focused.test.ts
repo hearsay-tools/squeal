@@ -29,7 +29,7 @@ const checks = (report: RunReport) => report.results.map((r) => [r.check.fullNam
 describe("vitest adapter: focused runs", SLOW, () => {
   it("runs and reports only the checks a text selects, the red one with its error", async () => {
     const fx = await openFixture("basic", { "test/four.test.ts": FOUR });
-    expect(fx.adapter.focuses).toBe(true);
+    expect(fx.adapter.traits.focuses(FILE)).toBe(true);
     const report = await fx.adapter.run(
       [FILE],
       fx.runOptions({ checks: [{ testFile: FILE, texts: ["new"] }] }),

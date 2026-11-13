@@ -69,6 +69,7 @@ function busyRemote(runner: CatchUpRunner, root: string, seen: (at: string) => v
   const adapter = (): HostedAdapter => ({
     name: runner.name,
     adapterVersion: runner.adapterVersion,
+    traits: runner.traits,
     invalidate: async () => ({ recreatedProjects: [] }),
     affected: async () => ({ direct: [], transitive: [] }),
     closure: (testFile) => runner.closure(testFile),

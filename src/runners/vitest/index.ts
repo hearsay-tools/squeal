@@ -108,16 +108,16 @@ export async function createVitestAdapter(
   return adapter;
 }
 
-/** What a runner host sends for `slowWidth` and `tierWidth` (spec 021 D6, row 021-11). */
+/** What a runner host sends for the widths Vitest's traits answer from (spec 021 D6, row 021-11). */
 export interface WidthValues {
   /** The widths of the instance started last; `null` before the first start. */
   widthValues(): WidthTable | null;
 }
 
 /**
- * The adapter, the scheduler's width questions answered from its hints
- * (task 011-37 section 5, row 011-40): width changes nothing a check
- * stores, so `adapter.ts` holds none of it.
+ * The adapter, each run sized by its hints, whose widths its traits answer
+ * from (task 011-37 section 5, rows 011-40 and 011-329): width changes
+ * nothing a check stores, so `adapter.ts` holds none of it.
  */
 class SizedVitestAdapter extends VitestAdapter implements WidthValues {
   readonly #widths: VitestWidths;
@@ -153,14 +153,6 @@ class SizedVitestAdapter extends VitestAdapter implements WidthValues {
       teardown,
     );
     this.#widths = widths;
-  }
-
-  slowWidth(testFiles: readonly TestFileRef[]): number {
-    return this.#widths.slowWidth(testFiles);
-  }
-
-  tierWidth(testFile: TestFileRef, grant: number): number {
-    return this.#widths.tierWidth(testFile, grant);
   }
 
   widthValues(): WidthTable | null {

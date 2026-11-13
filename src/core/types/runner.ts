@@ -2,6 +2,7 @@ import type { CheckError, RunOutcome, TestCheckId } from "./check.js";
 import type { CheckPriority } from "./check-groups.js";
 import type { AbsolutePath, ProjectName, RelativePath, SourceLocation } from "./common.js";
 import type { TestFileRef } from "./keys.js";
+import type { RunnerTraits } from "./runner-traits.js";
 
 /**
  * A changed path handed to the runner. The kind tells the adapter whether
@@ -288,11 +289,11 @@ export interface RunOptions {
    */
   readonly stop?: AbortSignal;
   /**
-   * The tier's lane (`RunnerAdapter.lane`, or `SLOW_LANE_PREFIX` and it for a
-   * slow file, spec 004 D2, or a check group's prefix and it for the group's
-   * file, spec 019 D3, or `BESIDE_LANE_PREFIX` and it for a tier beside a
-   * batch's, row 011-269): the runner instance that runs it. Absent: the
-   * adapter's own.
+   * The tier's lane (the lane trait, `RunnerTraits.lane`, or
+   * `SLOW_LANE_PREFIX` and it for a slow file, spec 004 D2, or a check
+   * group's prefix and it for the group's file, spec 019 D3, or
+   * `BESIDE_LANE_PREFIX` and it for a tier beside a batch's, row 011-269):
+   * the runner instance that runs it. Absent: the adapter's own.
    */
   readonly lane?: string;
   /**
@@ -355,8 +356,9 @@ export interface RunOptions {
    * holds a text (`holdsCheckText`, `src/runners/focus.ts`), through the
    * runner's own filter, and the report holds results for those alone, its
    * file errors as for any run, and its count in `RunReport.focused`. A
-   * file without an entry runs whole. Given only to an adapter with
-   * `RunnerAdapter.focuses`. Absent: every file runs whole.
+   * file without an entry runs whole. Given only to an adapter whose focus
+   * trait holds for the file (`RunnerTraits.focuses`). Absent: every file
+   * runs whole.
    */
   readonly checks?: readonly FocusedFile[];
   /**
@@ -618,6 +620,14 @@ export interface RunnerAdapter {
   readonly name: string;
   readonly adapterVersion: string;
 
+  /**
+   * The runner's traits (spec 011 C14, row 011-329): how its test files may
+   * be scheduled, stated once by its kind (`src/runners/<runner>/traits.ts`)
+   * and carried whole by every layer around it. Synchronous: selection
+   * holds the scheduler's lock. A runner that states none has `NO_TRAITS`.
+   */
+  readonly traits: RunnerTraits;
+
   /** Spec 001 D4: "`invalidate(paths)`". */
   invalidate(paths: readonly InvalidatedPath[]): Promise<InvalidateResult>;
 
@@ -653,13 +663,6 @@ export interface RunnerAdapter {
   testFiles(): Promise<readonly TestFileRef[]>;
 
   /**
-   * How many test files the last successful `testFiles()` left out because
-   * the adapter does not run them, such as Vitest's typecheck files (spec 005
-   * D8 step 3, task 005-26). Absent for a runner that lists every file.
-   */
-  omittedTestFiles?(): number;
-
-  /**
    * Spec 020 D14.4 (row 020-15b): each project with a `globalSetup`, the
    * root project's included, read from the config alone: no setup runs, and
    * no key reads it. Absent: the runner has no global setup (node:test).
@@ -670,79 +673,10 @@ export interface RunnerAdapter {
   environment(): Promise<readonly RunnerEnvironment[]>;
 
   /**
-   * How many of `testFiles`, in order, one slow run of theirs starts at
-   * once, at least 1. Spec 004 D2: a slow tier of several files starts them
-   * all at once, so none starts after an edit or a close; the slow tier
-   * takes only these (review 001-394 B2). Synchronous: selection holds the
-   * scheduler's lock. Absent: all of them.
-   */
-  slowWidth?(testFiles: readonly TestFileRef[]): number;
-
-  /**
-   * How many test files a backlog tier holding `testFile` runs at once at a
-   * grant of `grant` workers, at least 1 (spec 011 C4 step 5, task 001-366):
-   * Vitest's `maxWorkers` for it, at least 2 and never above the project's
-   * own; node:test's and pytest's `runner.tierSize`, whatever the grant. The
-   * scheduler budgets the tier's wall time over it and asks the pool for no
-   * more. Synchronous: selection holds the scheduler's lock. Absent: `grant`.
-   */
-  tierWidth?(testFile: TestFileRef, grant: number): number;
-
-  /**
-   * Which part of a backlog tier `testFile` runs in (task 001-366, review
-   * wave-3 B1): the parts of one tier run one after another, so the
-   * scheduler sums their wall estimates. A composite's adapters share a
-   * lane but run in turn. Synchronous, as `tierWidth`. Absent: one part.
-   */
-  tierPart?(testFile: TestFileRef): string;
-
-  /**
-   * Whether an edit's tier holding `testFile` may start beside a backlog
-   * tier of its lane (spec 011 C4 step 5 as amended 2026-10-19, task
-   * 011-21): node:test and pytest, which cannot cancel a run and start the
-   * processes of each run with that run's `childEnv`, so the run's sweep
-   * can be its own. Synchronous, as `tierWidth`. Absent: `false`, the edit
-   * cancels the backlog tier instead (Vitest).
-   */
-  besideBacklog?(testFile: TestFileRef): boolean;
-
-  /**
-   * The test files one backlog slot holding `testFile` runs (spec 011 C4
-   * step 5 as amended for slots, task 011-21 slice 2): node:test 1, a
-   * process per file; pytest its batch size, light files packed into one
-   * process. A runner that answers runs its backlog in slots, up to
-   * `runner.tierSize` runs in flight per lane, each storing when it ends.
-   * Synchronous, as `tierWidth`. Absent or `null`: the backlog runs in
-   * tiers (Vitest, one run per instance).
-   */
-  backlogSlot?(testFile: TestFileRef): number | null;
-
-  /**
    * Spec 001 D4: "`run(testFiles) -> results`: `runTestSpecifications`. [...]
    * `process.exitCode` is reset after each run."
    */
   run(testFiles: readonly TestFileRef[], options: RunOptions): Promise<RunReport>;
-
-  /**
-   * The adapter honours `RunOptions.checks` (spec 011 C14, row 011-135).
-   * Absent: it runs whole files only, and is given no focused run.
-   */
-  readonly focuses?: true;
-
-  /**
-   * Whether the adapter that runs `testFile` honours `RunOptions.checks`,
-   * for a runner of several adapters (the daemon's composite, spec 003 D7;
-   * row 011-145). Absent: `focuses` answers for every file.
-   */
-  focusesFile?(testFile: TestFileRef): boolean;
-
-  /**
-   * The lane that runs `testFile`: runner instances that run one tier at a
-   * time between them. Tiers of different lanes run at once (spec 001 D5 as
-   * amended, task 001-140); a tier holds files of one lane. Absent: one lane,
-   * so one tier at a time.
-   */
-  lane?(testFile: TestFileRef): string;
 
   /**
    * The scheduler has no tier queued for `lane` any more: what serves only
