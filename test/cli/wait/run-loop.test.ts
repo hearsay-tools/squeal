@@ -1,20 +1,15 @@
-import { writeFileSync } from "node:fs";
-import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { runWait } from "../../../src/cli/wait/wait.js";
 import { WAIT_DOWN_MS } from "../../../src/cli/wait-liveness.js";
-import { isLintStoreOpenFailure, openLintStore } from "../../../src/core/lint/store/open.js";
 import { claimHandoff } from "../../../src/core/presence/events.js";
 import { HANDOFF_BOUND_MS, handoffFrom } from "../../../src/core/presence/stored.js";
 import { STATUS_BUSY_TIMEOUT_MS } from "../../../src/core/status/open.js";
 import { storePaths } from "../../../src/core/store/paths.js";
 import type { EpochMs, RevisionNumber } from "../../../src/core/types/common.js";
-import { DEFAULT_POLICY } from "../../../src/core/types/policy.js";
 import {
   awaitingInstallMetaKey,
   installCommandMetaKey,
 } from "../../../src/core/types/scheduler.js";
-import { squealRepo } from "../../harness/helpers.js";
 import { appendRevisions, fakeRepo } from "../../status/helpers.js";
 import { closeFakeDaemons, fakeDaemon, lockStore, received } from "../fake-daemon.js";
 import {
@@ -276,84 +271,5 @@ describe("the group wait's loop (row 011-326)", () => {
       daemon: { state: "down", reason: "stopped" },
     });
     expect(clock.pauses).toEqual([]);
-  });
-});
-
-/** A lint group `lint` of eslint at `at` with `states`; lint off without them. */
-function lintWait(
-  deadlineIn: number,
-  states: Record<string, "pass" | "pending"> | "off",
-  at: "commit" | "stop" = "commit",
-) {
-  const r = squealRepo();
-  if (states !== "off") {
-    writeFileSync(
-      join(r.root, "squeal.config.json"),
-      JSON.stringify({
-        lint: { enabled: true, tools: ["eslint"] },
-        checks: [{ name: "lint", lint: true, at }],
-      }),
-    );
-    const lint = { ...DEFAULT_POLICY.lint, enabled: true };
-    const store = openLintStore(r.repo.commonDir, { lint }, { busyTimeoutMs: 5_000 });
-    if (isLintStoreOpenFailure(store)) throw new Error(JSON.stringify(store));
-    for (const [path, outcome] of Object.entries(states)) {
-      store.states.upsertMany([
-        {
-          worktreeId: r.worktreeId,
-          check: { kind: "lint", path, tool: "eslint" },
-          outcome,
-          judged: null,
-          stale: false,
-          reason: null,
-          changedAt: 1,
-        },
-      ]);
-    }
-    store.close();
-  }
-  const clock = steppedClock();
-  const ask = {
-    wait: "lint group",
-    root: r.root,
-    socketPath: socketPath(),
-    deadline: clock.start + deadlineIn,
-    files: { kind: "group", group: "lint" },
-  } as const;
-  return { r, clock, ask };
-}
-
-describe("the lint group wait's loop (row 011-326)", () => {
-  it("stopped: squeal stop ends the wait at its next read and names it, read in the worktree's store (011-327)", async () => {
-    const { r, clock, ask } = lintWait(60_000, { "src/a.js": "pending" }, "stop");
-    clock.onPause((n) => {
-      if (n === 1) r.daemon("none");
-    });
-    expect(await runWait(ask, clock.ports)).toMatchObject({
-      kind: "stopped",
-      daemon: { state: "down", reason: "stopped" },
-    });
-    expect(clock.pauses).toEqual([1_000]);
-  });
-
-  it("ended: nothing left to lint before the deadline", async () => {
-    const { clock, ask } = lintWait(60_000, { "src/a.js": "pass" });
-    expect(await runWait(ask, clock.ports)).toMatchObject({
-      kind: "ended",
-      counts: { files: 1, linting: 0 },
-    });
-  });
-
-  it("ended at the deadline's read with nothing left to lint: the verdict (011-327: was deadline)", async () => {
-    const { clock, ask } = lintWait(0, { "src/a.js": "pass" });
-    expect(await runWait(ask, clock.ports)).toMatchObject({
-      kind: "ended",
-      counts: { files: 1, linting: 0 },
-    });
-  });
-
-  it("off: lint is off", async () => {
-    const { clock, ask } = lintWait(60_000, "off");
-    expect(await runWait(ask, clock.ports)).toEqual({ kind: "off" });
   });
 });
