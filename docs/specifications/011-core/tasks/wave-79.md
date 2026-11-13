@@ -32,3 +32,20 @@ Leave alone: `src/core/**` (`src/core/scheduler/` is row 011-322's; `src/core/pr
 If some behaviour cannot be kept, keep today's and name the case in your notes; ask the coordinator if a `src/core` file must change.
 
 Done when: the row's done-when holds; `grep -n "sleep(\|for (;;)" src/cli/run*.ts` finds no wait loop; `test/keys/key-format.test.ts` and `test/version-sensitive.test.ts` pass with no raise; the record's "Stay" tests pass unchanged; lint and typecheck pass; affected results read through `squeal status --wait 60000 <paths>`. Notes in `tasks/011-326/notes.md`: the table, each deleted case mapped to its table row, each accidental difference and its cell. Your final message lists decisions the record did not settle, type changes, and any call of the record that did not hold.
+
+## R1: review of cand/0.1.469
+
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.469` at `b765896215c31b6ebf9e223e3e1ababe1b1cd78e`; range `a8a4216c8..b76589621`: five worker commits of 81156091, cherry-picked (`49c21590a..3d65832b4`), then the 0.1.469 version raise and bundles. The behaviour to compare against is `a8a4216c8`. Read: board row 011-326, `research/waits.md`, `tasks/011-326/notes.md`, this file's W1. Candidate CI: run 43485856699.
+
+Check, each as proven, plausible or unverified:
+
+1. **Nothing a user sees changed.** For `run --all [--fast] --wait`, `run --slow [--wait]`, `run <group> [--wait]`, `run <group> <path> --wait` and the lint group: every outcome, line, JSON payload and exit code is the same as at `a8a4216c8`, including the order in which outcomes win when several hold, the deadline comparisons (`>=` in the run waits, `>` in the request loops), the pauses, the fifth-read ping and its socket bound, and which request id a status request names.
+2. **Reads stay as they were** (the rule of review `0.1.403.md` B2). Per poll, each wait opens the same store, reads the same fields in the same order, and reads a field only where the old code read it. The ping runs after the store closed. Judge the staged decision (notes, "How the decision keeps today's reads") against this.
+3. **One decision path** (the rule of review `0.1.452.md` B1). The table tests call `decideRunWait`, `decideRequest`, `runWait` and `untilTaken` as the commands do; no test holds a copy of the rules.
+4. **Replace, don't layer.** Each deleted case maps to a table, loop or line row that proves the same thing; each case the notes keep is justified; `test/cli/wait/lines.test.ts` is not a second decision surface.
+5. **Done-when and scope.** No wait loop is left outside `src/cli/wait/`; the rule table names each difference between the run waits; the accidental differences are cells, unchanged; card 4's progress reads sit in one file through today's parsers; nothing under `src/core/`, `status-wait*.ts`, `status-paths.ts`, `verdict.ts`, `wait-liveness.ts`, `src/cli/code*.ts` or `run-group.ts` `requestedText` changed beyond an import.
+6. **Deviations.** Judge the notes' "Calls of the record that did not hold as written" and decisions 1 to 6 against the row's done-when.
+
+`test/keys/key-format.test.ts` and `test/version-sensitive.test.ts` passed on the coordinator's tree at the candidate; lint and typecheck are clean. Squeal flags `holds` in `src/cli/wait/decide.ts` at complexity 27 (threshold 20); say whether it matters.
+
+Host policy: no local full suite, no `squeal run --all`, no `pnpm run build`; targeted runs with `env -u PLUGIN_ROOT -u PLUGIN_DATA`; affected results through `squeal status --wait 60000 <paths>`. Write `reviews/0.1.469.md` and commit it on your branch.
