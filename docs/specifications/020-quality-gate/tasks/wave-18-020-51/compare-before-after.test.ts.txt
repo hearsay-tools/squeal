@@ -1,0 +1,133 @@
+// Row 020-51: the one-off before/after comparison (notes.md, section 6). Not a suite test.
+// To run it again: copy the base's `src/core/ci/export.ts` to `src/core/ci/export-before.ts`
+// and `src/core/code/gate/stored.ts` to `src/core/code/gate/stored-before.ts`
+// (`git show c5cefb465:<path>`), put this file as `compare.test.ts` in a scratch directory with
+// a `node_modules` symlink to the worktree's and a `vitest.config.mjs` of
+// `export default { test: { include: ["compare.test.ts"] } };`, set `W` to the worktree, run
+// `node_modules/.bin/vitest run --root <scratch> --config <scratch>/vitest.config.mjs`,
+// then delete the two copies.
+import { createHash } from "node:crypto";
+import { readdirSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { expect, it } from "vitest";
+
+const W = "/home/agent/projects/squeal/.ai/squawk/worktrees/5192531d-1d8f-46f0-9999-7c27b4bb7618";
+const { ciExport } = await import(`${W}/src/core/ci/export.ts`);
+const { ciExport: ciExportBefore } = await import(`${W}/src/core/ci/export-before.ts`);
+const { openStored } = await import(`${W}/src/core/code/gate/stored.ts`);
+const { openStored: openStoredBefore } = await import(`${W}/src/core/code/gate/stored-before.ts`);
+const { readPart } = await import(`${W}/src/core/ci/parts.ts`);
+const { readHead } = await import(`${W}/src/core/daemon-loop/head.ts`);
+const { worktreeIdFor } = await import(`${W}/src/core/fs/git-layout.ts`);
+const { KEY_FORMAT_VERSION } = await import(`${W}/src/core/keys/key-format.ts`);
+const { encodeBundle } = await import(`${W}/src/core/store/transfer-bundle.ts`);
+const { DEFAULT_POLICY } = await import(`${W}/src/core/types/policy.ts`);
+const { createVitestAdapter } = await import(`${W}/src/runners/vitest/index.ts`);
+const { openRepoStore } = await import(`${W}/test/scheduler/repo.ts`);
+const { openHarness } = await import(`${W}/test/scheduler/vitest-harness.ts`);
+const { cloneOf, committed, recordVitest, scratch } = await import(`${W}/test/ci/fixture.ts`);
+
+const NAMES = ["a", "b", "c", "d"];
+const SQUEAL = "0.0.0-test";
+const NOW = 1_700_000_000_000;
+
+function fixture(dir: string): string {
+  return committed(dir, {
+    "package.json": JSON.stringify({ name: "ci-export-fixture", private: true, type: "module" }),
+    "vitest.config.ts": `import { defineConfig } from "vitest/config";\nexport default defineConfig({ test: { include: ["test/**/*.test.ts"] } });\n`,
+    "src/upper.ts": "export const upper = (text: string): string => text.toUpperCase();\n",
+    "test/inspect.test.ts": `import "node:inspector";\nimport { expect, it } from "vitest";\nit("inspects", () => expect(1).toBe(1));\n`,
+    "test/fails.test.ts": `import { expect, it } from "vitest";\nit("fails", () => expect(1).toBe(2));\n`,
+    ...Object.fromEntries(
+      NAMES.flatMap((name) => [
+        [`data/${name}.txt`, `${name}\n`],
+        [
+          `test/${name}.test.ts`,
+          `import { readFileSync } from "node:fs";\nimport { expect, it } from "vitest";\nimport { upper } from "../src/upper.js";\nit("reads ${name}", () => {\n  expect(upper(readFileSync(new URL("../data/${name}.txt", import.meta.url), "utf8"))).toBe("${name.toUpperCase()}\\n");\n});\nit.skip("waits ${name}", () => {});\n`,
+        ],
+      ]),
+    ),
+  });
+}
+
+const policy = { ...DEFAULT_POLICY, observe: { runtimeInputs: true } };
+
+async function exportWith(fn: typeof ciExport, root: string, parts: unknown, tag: string) {
+  const store = openRepoStore(join(scratch(`ci-export-store-${tag}`), "common"));
+  const head = await readHead(root);
+  const header = {
+    squealVersion: SQUEAL,
+    keyFormat: KEY_FORMAT_VERSION,
+    commit: head.head,
+    dirty: head.dirty,
+    createdAt: NOW,
+    source: { kind: "local" },
+  };
+  return fn({
+    root,
+    worktreeId: worktreeIdFor(root),
+    store,
+    runner: () => createVitestAdapter({ root, observe: () => true }),
+    policy,
+    squealVersion: SQUEAL,
+    env: process.env,
+    parts,
+    header,
+    now: () => NOW,
+  });
+}
+
+it("old and new code give the same export bytes and the same gate keys", { timeout: 600_000 }, async () => {
+  const origin = fixture(scratch("ci-export-compare"));
+  const out = join(dirname(origin), "parts");
+  for (const shard of ["1/2", "2/2"]) await recordVitest(origin, out, [`--shard=${shard}`]);
+  const parts = readdirSync(out).map((name) => {
+    const part = readPart(join(out, name));
+    if (typeof part === "string") throw new Error(part);
+    return { file: name, part };
+  });
+  const root = cloneOf(origin, "export");
+  const before = await exportWith(ciExportBefore, root, parts, "before");
+  const after = await exportWith(ciExport, root, parts, "after");
+  if (!("bundle" in before) || !("bundle" in after)) throw new Error("refused");
+  const hash = (b: Buffer) => createHash("sha256").update(b).digest("hex");
+  const bytesBefore = encodeBundle(before.bundle);
+  const bytesAfter = encodeBundle(after.bundle);
+  console.log("export counts", JSON.stringify(after.counts));
+  console.log("export uncertified", JSON.stringify(after.uncertified));
+  console.log("export sha256 before", hash(bytesBefore), bytesBefore.length);
+  console.log("export sha256 after ", hash(bytesAfter), bytesAfter.length);
+  expect(after.counts).toEqual(before.counts);
+  expect(after.uncertified).toEqual(before.uncertified);
+  expect(bytesAfter.equals(bytesBefore)).toBe(true);
+
+  // The gate's keys, over a daemon's stores with observed rows.
+  const daemonRoot = cloneOf(origin, "daemon");
+  const common = join(daemonRoot, ".git");
+  const h = await openHarness(daemonRoot, openRepoStore(common), common, { observe: true });
+  await h.scheduler.start();
+  await h.scheduler.requestFullSuite();
+  await h.scheduler.idle();
+  const refs = [...NAMES.map((n) => `test/${n}.test.ts`), "test/inspect.test.ts", "test/fails.test.ts", "test/missing.test.ts"].map((path) => ({ project: "", path }));
+  const keysOf = async (open: typeof openStored) => {
+    const stored = open({
+      root: daemonRoot,
+      commonDir: common,
+      policy,
+      squealVersion: SQUEAL,
+      env: process.env,
+      adapters: async () => [await createVitestAdapter({ root: daemonRoot, observe: () => true })],
+    });
+    try {
+      const keys = await stored.keys(refs);
+      return refs.map((r) => [r.path, keys.get(r)]);
+    } finally {
+      await stored.close();
+    }
+  };
+  const gateBefore = await keysOf(openStoredBefore);
+  const gateAfter = await keysOf(openStored);
+  console.log("gate keys before", JSON.stringify(gateBefore));
+  console.log("gate keys after ", JSON.stringify(gateAfter));
+  expect(gateAfter).toEqual(gateBefore);
+});
