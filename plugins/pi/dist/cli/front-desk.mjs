@@ -743,7 +743,12 @@ function groupRequests(requestGroup, max, step = () => null, now = Date.now) {
       type: "run-group",
       requestId,
       group: request.group,
-      requested: requested === null ? null : { revision: requested.revision, queued: requested.queued },
+      requested: requested === null ? null : {
+        revision: requested.revision,
+        queued: requested.queued,
+        // Row 011-325: the id of its covered files, when the scheduler recorded them.
+        ...requested.coveredId === void 0 ? {} : { coveredId: requested.coveredId }
+      },
       unknown: request.unknown,
       error: request.error,
       holder: holderOf(request),
@@ -1050,8 +1055,8 @@ function createHandlers(context) {
       error: state.error
     };
     if (state.checkpoint === null) return { ...answer2, checkpoint: null };
-    const { owner, ...checkpoint } = state.checkpoint;
-    return { ...answer2, checkpoint, owner };
+    const { owner, coveredId, ...checkpoint } = state.checkpoint;
+    return { ...answer2, checkpoint, owner, ...coveredId === void 0 ? {} : { coveredId } };
   };
   const runSlow = (requestId, state) => ({
     schemaVersion: PAYLOAD_SCHEMA_VERSION,

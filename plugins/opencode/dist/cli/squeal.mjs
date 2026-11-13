@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.477";
+  if (true) return "0.1.478";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -3946,7 +3946,12 @@ function groupRequests(requestGroup2, max, step = () => null, now = Date.now) {
       type: "run-group",
       requestId,
       group: request.group,
-      requested: requested === null ? null : { revision: requested.revision, queued: requested.queued },
+      requested: requested === null ? null : {
+        revision: requested.revision,
+        queued: requested.queued,
+        // Row 011-325: the id of its covered files, when the scheduler recorded them.
+        ...requested.coveredId === void 0 ? {} : { coveredId: requested.coveredId }
+      },
       unknown: request.unknown,
       error: request.error,
       holder: holderOf5(request),
@@ -16434,8 +16439,9 @@ function retryRequest() {
         return { answer: void 0, covered };
       }
     },
+    // Row 011-323 (`research/request-intake.md`, difference 2): `retry-slow-lane.test.ts`.
     wake: {
-      skip: "wakes no lane: a retried slow-lane file may wait for its lane's next planning (difference 2 of research/request-intake.md, row 011-323)"
+      coveredLanes: "a slow selection in flight plans again, so a file it claimed joins the tier instead of waiting for the lane's next planning"
     }
   };
 }
@@ -22541,18 +22547,37 @@ function importsKeyed(store, worktreeId, imports2) {
 function clearImportsWaiting(store, worktreeId) {
   store.meta.delete(importsWaitingMetaKey(worktreeId));
 }
-function observedRequest(projects2, imports2, queueObserved) {
+function importRequest(projects2, imports2, queueObserved) {
   return {
-    operation: "refreshing the observed reads of an import",
+    operation: "taking the observed reads of an import",
     start: { closed: false },
     installWait: { atOnce: false },
     runnerWork: { skip: "waits for no runner work: it queues its own (`queueObserved`)" },
     store: {
-      skip: "synchronous: the daemon's lifecycle reads its answer at once (daemon.ts:416); its waiting mark is written outside the busy-store retry until row 011-323 (difference 1)",
-      covers: { skip: "covers no file: the refinement's regrow re-keys the files it reaches" },
-      now: (context) => {
+      stage: (context) => {
         if (projects2.length > 0) context.keys.refreshObserved(projects2);
         markImportsWaiting(context.store, context.worktreeId, imports2);
+        queueObserved();
+        return { answer: true, covered: [] };
+      },
+      // Row 011-325, at the integration with row 011-323.
+      record: {
+        skip: "an import's answer is a boolean and carries no id, so no wait reads a record of its files"
+      }
+    },
+    wake: { skip: "wakes no lane: the pump applies its runner work first" }
+  };
+}
+function observedRequest(queueObserved) {
+  return {
+    operation: "refreshing the observed reads",
+    start: { closed: false },
+    installWait: { atOnce: false },
+    runnerWork: { skip: "waits for no runner work: it queues its own (`queueObserved`)" },
+    store: {
+      skip: "writes no store, so it needs no lock nor busy retry; synchronous: the daemon's lifecycle reads its answer at once (daemon.ts:416)",
+      covers: { skip: "covers no file: the refinement's regrow re-keys the files it reaches" },
+      now: () => {
         queueObserved();
         return true;
       }
@@ -54260,9 +54285,7 @@ function queueFullSuite(ledger, force, fresh = false, only2) {
   const { checkpoints } = ledger;
   const lane = only2?.lane;
   ledger.confirmHeld();
-  const files5 = [...ledger.files.values()].filter(
-    (file) => only2 === void 0 || only2.isSlow(file.ref) === (only2.lane === "slow")
-  );
+  const files5 = laneFiles(ledger, only2);
   const unrunnable = files5.filter((file) => file.key === null || file.blocked !== null);
   const runnable2 = files5.filter((file) => file.key !== null && file.blocked === null);
   const open7 = force ? runnable2 : runnable2.filter((file) => classify2(file) !== "current");
@@ -54300,6 +54323,7 @@ function fullSuiteRequest(request, host) {
   const warmUp2 = request.observeIgnored === true;
   const force = request.force === true || warmUp2;
   const lane = request.lane;
+  const laneOf3 = (context) => lane === void 0 ? void 0 : { lane, isSlow: slowView(context.policy).isSlow };
   return {
     operation: "taking a squeal run --all request",
     start: {
@@ -54308,7 +54332,14 @@ function fullSuiteRequest(request, host) {
     },
     // An install the next reconciliation pass would find ends the wait first; still waiting,
     // nothing can be listed or keyed and the checkpoint is abandoned at once (review wave 11, B1).
-    installWait: { passFirst: true, stage: (_, ledger) => abandonFullSuite(ledger) },
+    installWait: {
+      passFirst: true,
+      stage: (context, ledger, id) => ({
+        answer: { ...abandonFullSuite(ledger), coveredId: id },
+        // Row 011-325: its lane's files, none queued, with the reason.
+        covered: laneFiles(ledger, laneOf3(context))
+      })
+    },
     runnerWork: {
       // Re-review of 0.1.434, B2: the runner is asked once; what it said is keyed, then stored
       // with the checkpoint, each tried again on a busy store with the answers kept.
@@ -54325,20 +54356,28 @@ function fullSuiteRequest(request, host) {
       }
     },
     store: {
-      stage: (context, ledger) => {
-        const { policy } = context;
-        const only2 = lane === void 0 ? void 0 : { lane, isSlow: slowView(policy).isSlow };
+      stage: (context, ledger, _, id) => {
+        const only2 = laneOf3(context);
         const record2 = queueFullSuite(ledger, force, warmUp2, only2);
         host.quiet.end(context.now());
         if (warmUp2) host.warmUp.start(context, ledger, record2);
-        const covered = record2.testFiles.flatMap((ref3) => ledger.file(ref3) ?? []);
-        return { answer: record2, covered };
+        const own = record2.testFiles.flatMap((ref3) => ledger.file(ref3) ?? []);
+        const owned = new Set(own);
+        const current2 = laneFiles(ledger, only2).filter(
+          (file) => classify2(file) === "current" && !owned.has(file)
+        );
+        return { answer: { ...record2, coveredId: id }, covered: [...own, ...current2] };
       }
     },
     wake: {
       allLanes: "before the lock, as before row 011-322: after the transaction a slow selection planning meanwhile would miss the request (slow-tier.ts:357)"
     }
   };
+}
+function laneFiles(ledger, only2) {
+  return [...ledger.files.values()].filter(
+    (file) => only2 === void 0 || only2.isSlow(file.ref) === (only2.lane === "slow")
+  );
 }
 function owedStrict(ledger, owed) {
   if (owed === null) return [];
@@ -55700,6 +55739,117 @@ var init_mutex = __esm({
   }
 });
 
+// src/core/store/covered-files.ts
+function writeCoveredFiles(store, record2, pending) {
+  const conn = connection(store);
+  if (conn === null) return;
+  if (!hasTable(conn)) conn.db.exec(TABLE_SQL);
+  const now = record2.recordedAt;
+  const open7 = conn.all(
+    `SELECT id, files FROM ${COVERED_FILES_TABLE} WHERE worktree_id = ? AND idle_since IS NULL`,
+    record2.worktreeId
+  );
+  for (const row2 of open7) {
+    if (parseFiles(row2.files).some((file) => pending(file.testFile))) continue;
+    conn.run(`UPDATE ${COVERED_FILES_TABLE} SET idle_since = ? WHERE id = ?`, now, String(row2.id));
+  }
+  conn.run(
+    `DELETE FROM ${COVERED_FILES_TABLE} WHERE worktree_id = ? AND idle_since <= ?`,
+    record2.worktreeId,
+    now - COVERED_FILES_KEPT_MS
+  );
+  const busy2 = record2.files.some((file) => pending(file.testFile));
+  conn.run(
+    `INSERT INTO ${COVERED_FILES_TABLE} (id, worktree_id, revision, recorded_at, idle_since, files)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    record2.id,
+    record2.worktreeId,
+    record2.revision,
+    now,
+    busy2 ? null : now,
+    JSON.stringify(record2.files)
+  );
+}
+function connection(store) {
+  try {
+    return connectionOf(store);
+  } catch {
+    return null;
+  }
+}
+function hasTable(conn) {
+  const sql = "SELECT 1 AS found FROM sqlite_master WHERE type = 'table' AND name = ?";
+  return conn.get(sql, COVERED_FILES_TABLE) !== null;
+}
+function parseFiles(text3) {
+  let value;
+  try {
+    value = JSON.parse(String(text3));
+  } catch {
+    return [];
+  }
+  return Array.isArray(value) ? value.filter(isCoveredFile) : [];
+}
+function isCoveredFile(value) {
+  if (typeof value !== "object" || value === null) return false;
+  const { testFile, state, reason: reason2 } = value;
+  if (typeof testFile !== "object" || testFile === null) return false;
+  const { project, path } = testFile;
+  if (typeof project !== "string" || typeof path !== "string") return false;
+  if (state === "queued" || state === "current") return true;
+  return state === "not-queued" && typeof reason2 === "string";
+}
+var COVERED_FILES_TABLE, TABLE_SQL, COVERED_FILES_KEPT_MS;
+var init_covered_files = __esm({
+  "src/core/store/covered-files.ts"() {
+    "use strict";
+    init_store3();
+    COVERED_FILES_TABLE = "request_covered_files";
+    TABLE_SQL = `
+CREATE TABLE request_covered_files (
+  id TEXT PRIMARY KEY,
+  worktree_id TEXT NOT NULL,
+  revision INTEGER NOT NULL,
+  recorded_at INTEGER NOT NULL,
+  idle_since INTEGER,
+  files TEXT NOT NULL
+) STRICT;
+CREATE INDEX request_covered_files_by_worktree ON request_covered_files (worktree_id, idle_since);
+`;
+    COVERED_FILES_KEPT_MS = 10 * 6e4;
+  }
+});
+
+// src/core/scheduler/covered-files.ts
+function coveredOf(file, waiting2) {
+  const testFile = file.ref;
+  if (classify2(file) === "current") return { testFile, state: "current" };
+  if (waiting2 === null && file.phase !== null) return { testFile, state: "queued" };
+  const reason2 = waiting2 ?? (file.blocked !== null ? `its runner failed: ${file.blocked.split("\n")[0]}` : file.key === null ? "Squeal cannot key it" : "it has no result at its key and was not queued");
+  return { testFile, state: "not-queued", reason: reason2 };
+}
+function recordCovered(context, ledger, id, files5, waiting2) {
+  const unique = [...new Map(files5.map((file) => [file.id, file])).values()];
+  writeCoveredFiles(
+    context.store,
+    {
+      id,
+      worktreeId: context.worktreeId,
+      revision: ledger.revision.number,
+      recordedAt: context.now(),
+      files: unique.map((file) => coveredOf(file, waiting2))
+    },
+    (ref3) => (ledger.file(ref3)?.phase ?? null) !== null
+  );
+}
+var init_covered_files2 = __esm({
+  "src/core/scheduler/covered-files.ts"() {
+    "use strict";
+    init_covered_files();
+    init_files();
+  }
+});
+
 // src/core/scheduler/narrow-run.ts
 async function selectNarrow(context, ledger, paths) {
   const { of } = groupView(context.policy);
@@ -55755,10 +55905,14 @@ function narrowRequest(group, paths, groups3) {
     },
     // Review 0.1.411, B2: the answer says why nothing was queued, of the files it selected.
     installWait: {
-      answer: (context, ledger, { revision, selection }, reason2) => ({
-        revision,
-        queued: 0,
-        narrow: narrowAnswer(context, ledger, group, selection, reason2)
+      answer: (context, ledger, { revision, selection }, reason2, id) => ({
+        answer: {
+          revision,
+          queued: 0,
+          narrow: narrowAnswer(context, ledger, group, selection, reason2),
+          coveredId: id
+        },
+        covered: selectedOf(ledger, group, selection)
       })
     },
     runnerWork: {
@@ -55773,18 +55927,22 @@ function narrowRequest(group, paths, groups3) {
       }
     },
     store: {
-      stage: (context, ledger, { revision, selection }) => {
+      stage: (context, ledger, { revision, selection }, id) => {
         const selected2 = selection.selected.get(group) ?? /* @__PURE__ */ new Set();
         const { queued, asks } = queueNarrow(ledger, selected2);
         groups3.lanes(context.policy);
         groups3.get(group)?.narrow.add(asks, ledger);
         const narrow2 = narrowAnswer(context, ledger, group, selection, null);
-        const covered = [...selected2].flatMap((id) => ledger.files.get(id) ?? []);
-        return { answer: { revision, queued, narrow: narrow2 }, covered };
+        const covered = selectedOf(ledger, group, selection);
+        return { answer: { revision, queued, narrow: narrow2, coveredId: id }, covered };
       }
     },
     wake: { lane: group }
   };
+}
+function selectedOf(ledger, group, selection) {
+  const selected2 = selection.selected.get(group) ?? /* @__PURE__ */ new Set();
+  return [...selected2].flatMap((id) => ledger.files.get(id) ?? []);
 }
 function queueNarrow(ledger, ids) {
   const open7 = [...ids].flatMap((id) => ledger.files.get(id) ?? []).filter((file) => file.key !== null && file.blocked === null && classify2(file) !== "current");
@@ -55826,9 +55984,8 @@ function narrowAnswer(context, ledger, group, selection, waiting2) {
   };
 }
 function notRunOf(file, waiting2) {
-  if (classify2(file) === "current" || waiting2 === null && file.phase !== null) return [];
-  const reason2 = waiting2 ?? (file.blocked !== null ? `its runner failed: ${file.blocked.split("\n")[0]}` : file.key === null ? "Squeal cannot key it" : "it has no result at its key and was not queued");
-  return [{ testFile: file.ref, reason: reason2 }];
+  const covered = coveredOf(file, waiting2);
+  return covered.state === "not-queued" ? [{ testFile: file.ref, reason: covered.reason }] : [];
 }
 var REINSTALLED_REASON;
 var init_narrow_run = __esm({
@@ -55836,6 +55993,7 @@ var init_narrow_run = __esm({
     "use strict";
     init_reverse_index();
     init_context();
+    init_covered_files2();
     init_edit_cut();
     init_files();
     init_runner_work_bound();
@@ -56190,12 +56348,14 @@ var init_record2 = __esm({
 });
 
 // src/core/scheduler/request-intake.ts
+import { randomUUID as randomUUID16 } from "node:crypto";
 var NO_PASS, DEFERRED, RequestIntake;
 var init_request_intake = __esm({
   "src/core/scheduler/request-intake.ts"() {
     "use strict";
     init_busy();
     init_connection();
+    init_covered_files2();
     NO_PASS = "the change feed delivered no reconciliation pass that started after the request (its pass failed, or the daemon closed first), so no checkpoint was planned";
     DEFERRED = /* @__PURE__ */ Symbol("deferred");
     RequestIntake = class {
@@ -56244,11 +56404,12 @@ var init_request_intake = __esm({
       #locked(request) {
         const { operation, runnerWork, store } = request;
         const { lock: lock2 } = this.#host;
+        const id = randomUUID16();
         if ("apply" in store) {
           return lock2.run(() => {
             const { context, ledger } = this.#host.started();
             const answer4 = store.apply(context, ledger);
-            this.#wake(request.wake);
+            this.#wake(request.wake, []);
             return answer4;
           }, operation);
         }
@@ -56260,22 +56421,31 @@ var init_request_intake = __esm({
             if ("answer" in planned) return planned.answer;
             const { installWait: installWait2 } = request;
             if (reason2 !== null && "answer" in installWait2) {
-              return installWait2.answer(context, ledger, planned.plan, reason2);
+              const { plan: plan2 } = planned;
+              return this.#request(
+                operation,
+                async () => this.#transact((context2, ledger2) => {
+                  const waited = installWait2.answer(context2, ledger2, plan2, reason2, id);
+                  if (store.record === void 0)
+                    recordCovered(context2, ledger2, id, waited.covered, reason2);
+                  return waited.answer;
+                })
+              );
             }
             return this.#request(
               operation,
-              async () => this.#staged(this.#stage(request, store, planned.plan, reason2, null, false))
+              async () => this.#staged(this.#stage(request, store, planned.plan, id, reason2, null, false))
             );
           }, operation);
         }
-        return this.#perTry(request, store);
+        return this.#perTry(request, store, id);
       }
       /**
        * A request with no runner work, or whose runner work is only pending:
        * the lock taken again on each busy try (today's quirk 1). A stage that
        * met pending runner work waits for it, under the lock through every try.
        */
-      async #perTry(request, store) {
+      async #perTry(request, store, id) {
         const { operation, runnerWork } = request;
         const host = this.#host;
         const plan2 = void 0;
@@ -56294,7 +56464,7 @@ var init_request_intake = __esm({
         const first2 = await this.#request(
           operation,
           () => host.lock.run(
-            () => this.#stage(request, store, plan2, host.waiting(), null, pending !== null),
+            () => this.#stage(request, store, plan2, id, host.waiting(), null, pending !== null),
             operation
           )
         );
@@ -56306,40 +56476,51 @@ var init_request_intake = __esm({
           if (recovered !== null) await this.#request(operation, (n) => recovered.key(n));
           return this.#request(
             operation,
-            async () => this.#staged(this.#stage(request, store, plan2, reason2, recovered, false))
+            async () => this.#staged(this.#stage(request, store, plan2, id, reason2, recovered, false))
           );
         }, `${operation} after the runner work`);
       }
       /**
        * One try, under the lock: the install-wait answer or the stage, in one
-       * transaction; after its commit, the stage's covered files are recorded
-       * and its lane or the tiers in flight woken. An install-wait answer
-       * records and wakes nothing.
+       * transaction with the record of its covered files under `id` (row
+       * 011-325); after its commit, the stage's covered files are its progress
+       * record and its lane or the tiers in flight are woken. An install-wait
+       * answer records its covered files not queued, with the reason, and has
+       * no progress record and wakes nothing.
        */
-      #stage(request, store, plan2, reason2, recovered, deferWhenPending) {
+      #stage(request, store, plan2, id, reason2, recovered, deferWhenPending) {
         const { installWait: installWait2 } = request;
         const done = this.#transact((context, ledger) => {
           if (reason2 !== null && "stage" in installWait2) {
-            return { waited: installWait2.stage(context, ledger) };
+            const waited = installWait2.stage(context, ledger, id);
+            if (store.record === void 0) recordCovered(context, ledger, id, waited.covered, reason2);
+            return { waited: waited.answer };
           }
           if (deferWhenPending && (ledger.broken || this.#host.runnerPending())) return DEFERRED;
           recovered?.store(ledger);
-          return store.stage(context, ledger, plan2);
+          const staged = store.stage(context, ledger, plan2, id);
+          if (store.record === void 0) recordCovered(context, ledger, id, staged.covered, null);
+          return staged;
         });
         if (done === DEFERRED) return DEFERRED;
         if ("waited" in done) return done.waited;
         this.#host.record(done.covered);
-        this.#wake(request.wake);
+        this.#wake(request.wake, done.covered);
         return done.answer;
       }
       #staged(answer4) {
         if (answer4 === DEFERRED) throw new Error("squeal scheduler: a stage deferred twice");
         return answer4;
       }
-      /** Rule 6 after the record; `allLanes` woke before the lock. */
-      #wake(wake) {
+      /** Rule 6 after the record of `covered`; `allLanes` woke before the lock. */
+      #wake(wake, covered) {
         if ("lane" in wake) this.#host.wakeLane(wake.lane);
-        else if ("cutTiers" in wake) this.#host.cutTiers();
+        else if ("coveredLanes" in wake) {
+          const { queue } = this.#host.started().ledger;
+          for (const group of new Set(covered.map((file) => queue.checkGroup(file.ref)))) {
+            this.#host.wakeLane(group);
+          }
+        } else if ("cutTiers" in wake) this.#host.cutTiers();
       }
       /**
        * Spec 021 D2 (review 0.1.434, B2): `stage`, the synchronous part of a
@@ -57187,11 +57368,18 @@ function focusRequest(testFiles3, texts2, withinMs) {
 }
 function groupRequest(group, groups3, passes) {
   const known3 = (policy) => groupView(policy).groups.some((g2) => g2.name === group);
+  const groupFiles = (policy, ledger) => {
+    const view = groupView(policy);
+    return [...ledger.files.values()].filter((f) => view.of(f.ref).name === group);
+  };
   return {
     operation: `taking a squeal run ${group} request`,
     start: { skip: "no closed answer: before the start the scheduler throws (`started`)" },
     installWait: {
-      stage: (context, ledger) => known3(context.policy) ? { revision: ledger.revision.number, queued: 0 } : null
+      stage: (context, ledger, id) => known3(context.policy) ? {
+        answer: { revision: ledger.revision.number, queued: 0, coveredId: id },
+        covered: groupFiles(context.policy, ledger)
+      } : { answer: null, covered: [] }
     },
     runnerWork: { skip: "waits for no runner work: it queues the group's files at their keys" },
     store: {
@@ -57207,15 +57395,14 @@ function groupRequest(group, groups3, passes) {
         work: () => void passes?.pass().catch(() => {
         })
       },
-      stage: (context, ledger) => {
+      stage: (context, ledger, _, id) => {
         const revision = ledger.revision.number;
-        const view = groupView(context.policy);
         if (!known3(context.policy)) return { answer: null, covered: [] };
         groups3.lanes(context.policy);
         groups3.get(group)?.request();
         const queued = queueGroup(context, ledger, group);
-        const covered = [...ledger.files.values()].filter((f) => view.of(f.ref).name === group);
-        return { answer: { revision, queued }, covered };
+        const covered = groupFiles(context.policy, ledger);
+        return { answer: { revision, queued, coveredId: id }, covered };
       }
     },
     wake: {
@@ -58412,10 +58599,14 @@ var init_scheduler2 = __esm({
         if (this.#closed || !this.#context) return Promise.resolve();
         return this.#updateCommit();
       }
-      /** Row 018-28: an import's observed reads (`observedRequest`); synchronous. */
-      refreshObserved(projects2 = [], imports2 = []) {
+      /** Task 003-26: the lifecycle's refresh of the observed reads (`observedRequest`); synchronous. */
+      refreshObserved() {
+        return this.#intake.take(observedRequest(() => this.#runnerWork.queueObserved()));
+      }
+      /** Row 018-28: an import's observed reads (`importRequest`), its mark busy-retried (row 011-323). */
+      requestImports(projects2, imports2) {
         return this.#intake.take(
-          observedRequest(projects2, imports2, () => this.#runnerWork.queueObserved())
+          importRequest(projects2, imports2, () => this.#runnerWork.queueObserved())
         );
       }
       status() {
@@ -74208,7 +74399,7 @@ function codeSource(commonDir, root, {
     open() {
       const complexity = policy();
       if (complexity === null) return null;
-      let connection;
+      let connection2;
       const wait = holdingAny() ? 0 : busyTimeoutMs;
       const store = openCodeStore(
         commonDir,
@@ -74216,11 +74407,11 @@ function codeSource(commonDir, root, {
         {
           create: false,
           ...wait === void 0 ? {} : { busyTimeoutMs: wait },
-          ...holding ? { connection: (db) => connection = new HoldingConnection(db) } : {}
+          ...holding ? { connection: (db) => connection2 = new HoldingConnection(db) } : {}
         }
       );
       if (!isCodeStoreOpenFailure(store)) {
-        return { store, complexity, ...connection === void 0 ? {} : { connection } };
+        return { store, complexity, ...connection2 === void 0 ? {} : { connection: connection2 } };
       }
       return store.reason === "missing" ? "missing" : null;
     }
@@ -80907,9 +81098,9 @@ function decodeBatch(batch) {
 }
 var SENT_WRITE_BOUND_MS = 3e4;
 function writeBatch(store, statements) {
-  const connection = connectionOf(store);
+  const connection2 = connectionOf(store);
   store.transaction(() => {
-    for (const { sql, params } of statements) connection.run(sql, ...params);
+    for (const { sql, params } of statements) connection2.run(sql, ...params);
   });
 }
 function parseBatch(value) {
@@ -81480,13 +81671,13 @@ function openSentStore(commonDir, options) {
   });
   if (isStoreOpenFailure(store)) return store;
   opened3 = store;
-  const connection = made;
-  if (connection === null) throw new Error("squeal: the store opened without its connection");
+  const connection2 = made;
+  if (connection2 === null) throw new Error("squeal: the store opened without its connection");
   const record2 = store.worktrees.get(worktreeId)?.daemon ?? null;
   const now = (options.now ?? Date.now)();
-  if (daemonLiveness(record2, now).state !== "alive") connection.writeDirectly();
+  if (daemonLiveness(record2, now).state !== "alive") connection2.writeDirectly();
   const acquire = () => sender?.acquire() ?? Promise.resolve(false);
-  return { store, connection, write: (work) => connection.unit(work, acquire) };
+  return { store, connection: connection2, write: (work) => connection2.unit(work, acquire) };
 }
 
 // src/cli/store-writes.ts
@@ -85233,7 +85424,7 @@ function openCommandStore(root, options = {}) {
     if (opened3.reason === "missing") return NO_STORE;
     return { not: "none", why: `its Squeal store could not be opened (${opened3.reason})` };
   }
-  const { store, connection } = opened3;
+  const { store, connection: connection2 } = opened3;
   return {
     store,
     commonDir,
@@ -85242,7 +85433,7 @@ function openCommandStore(root, options = {}) {
       const started2 = Date.now();
       try {
         return await opened3.write(
-          () => connection.direct ? whileBusy(store, deadline, write3) : write3()
+          () => connection2.direct ? whileBusy(store, deadline, write3) : write3()
         );
       } catch (error) {
         if (!isBusy(error)) throw error;
@@ -92763,7 +92954,7 @@ function codexStatusLine(cwd, env) {
 init_git_layout();
 init_notes();
 init_events();
-import { randomUUID as randomUUID16 } from "node:crypto";
+import { randomUUID as randomUUID17 } from "node:crypto";
 import { dirname as dirname58 } from "node:path";
 import { setTimeout as sleep16 } from "node:timers/promises";
 import { fileURLToPath as fileURLToPath19 } from "node:url";
@@ -92823,18 +93014,25 @@ var ImportsSeen = class {
   #seen;
   /**
    * Hands `reread` the projects of the imports not seen yet, and their ids,
-   * and sees them when it takes them; when it does not, the next call hands
-   * them again.
+   * and sees them when it takes them; when it answers false or throws, the
+   * next call hands them again. While `reread` runs they count as seen, so
+   * a call meanwhile does not hand them twice (row 011-323: the scheduler's
+   * request waits for the lock and for a busy store).
    */
-  take(reread) {
+  async take(reread) {
     const fresh = listImports(this.store).filter((i3) => !this.#seen.has(i3.id));
     if (fresh.length === 0) return;
     const projects2 = new Set(
       fresh.flatMap((i3) => importFiles(this.store, i3.id).map((f) => f.project))
     );
     const ids = fresh.map((i3) => i3.id);
-    if (projects2.size > 0 && !reread([...projects2].sort(), ids)) return;
-    for (const i3 of fresh) this.#seen.add(i3.id);
+    for (const id of ids) this.#seen.add(id);
+    let taken3 = false;
+    try {
+      taken3 = projects2.size === 0 || await reread([...projects2].sort(), ids);
+    } finally {
+      if (!taken3) for (const id of ids) this.#seen.delete(id);
+    }
   }
 };
 
@@ -93148,8 +93346,8 @@ function createHandlers(context) {
       error: state.error
     };
     if (state.checkpoint === null) return { ...answer4, checkpoint: null };
-    const { owner: owner2, ...checkpoint } = state.checkpoint;
-    return { ...answer4, checkpoint, owner: owner2 };
+    const { owner: owner2, coveredId, ...checkpoint } = state.checkpoint;
+    return { ...answer4, checkpoint, owner: owner2, ...coveredId === void 0 ? {} : { coveredId } };
   };
   const runSlow = (requestId, state) => ({
     schemaVersion: PAYLOAD_SCHEMA_VERSION,
@@ -95430,7 +95628,7 @@ var Daemon = class {
   #socketPath;
   #startedAt;
   /** Drawn at start: with the version and `#startedAt`, its incarnation (task 001-270). */
-  #token = randomUUID16();
+  #token = randomUUID17();
   /** The incarnation registered before this daemon's (`predecessorIncarnation`, task 001-268). */
   #predecessor = void 0;
   /** Its start resumes a rest (`resumesRest`, read before it registers; row 011-91). */
@@ -96166,7 +96364,7 @@ var Daemon = class {
     await this.#starting;
     if (this.#loop === null || this.#phase === "stopping") return;
     const { scheduler } = this.#loop;
-    this.#imports?.take((projects2, imports2) => scheduler.refreshObserved(projects2, imports2));
+    await this.#imports?.take((projects2, imports2) => scheduler.requestImports(projects2, imports2));
     await scheduler.requestRetries();
   }
   /** Spec 011 C15: a named wait promotes its test files for `withinMs`. */
@@ -97815,7 +98013,7 @@ init_git_layout();
 init_command_hold();
 init_hold_rows();
 import { spawn as spawn14 } from "node:child_process";
-import { randomUUID as randomUUID17 } from "node:crypto";
+import { randomUUID as randomUUID18 } from "node:crypto";
 import { constants as constants11 } from "node:os";
 import { setTimeout as sleep17 } from "node:timers/promises";
 var HOLD_WAIT_MS = 3e3;
@@ -97923,7 +98121,7 @@ function parse12(args2) {
 }
 async function begin(root, parsed3, since, boundMs) {
   const held3 = {
-    token: randomUUID17(),
+    token: randomUUID18(),
     since,
     until: since + parsed3.maxMs,
     command: parsed3.command.join(" ")
@@ -104373,7 +104571,7 @@ function laneText2(checkpoint, asked) {
   }
   return asked === null ? "" : ` (both lanes: this daemon predates \`--${asked}\`)`;
 }
-function laneFiles(store, worktreeId, lane) {
+function laneFiles2(store, worktreeId, lane) {
   if (lane === null) return null;
   const root = store.worktrees.get(worktreeId)?.root;
   const isSlow = root === void 0 ? () => false : slowView(readPolicy(root)).isSlow;
@@ -104444,7 +104642,7 @@ function waitReads(ask2, ports) {
       const { id, worktreeId } = ask2.checkpoint;
       const presence = presenceOf(ask2.root, worktreeId, ports);
       return (store) => {
-        const lane = () => laneFiles(opened2(ask2, store), worktreeId, ask2.files.lane);
+        const lane = () => laneFiles2(opened2(ask2, store), worktreeId, ask2.files.lane);
         return (field) => {
           switch (field) {
             case "late":
@@ -105603,7 +105801,7 @@ function filesText3(root, checkpoint) {
   const toRun2 = plural(checkpoint.testFiles.length, "test file");
   const current2 = inStore(root, (store) => {
     const requested = new Set(checkpoint.testFiles.map(testFileId));
-    const listed9 = laneFiles(store, checkpoint.worktreeId, checkpoint.lane ?? null) ?? store.testFileKeys.list(checkpoint.worktreeId).map((row2) => row2.testFile);
+    const listed9 = laneFiles2(store, checkpoint.worktreeId, checkpoint.lane ?? null) ?? store.testFileKeys.list(checkpoint.worktreeId).map((row2) => row2.testFile);
     const rest2 = listed9.filter((file) => !requested.has(testFileId(file)));
     return readClasses(store, checkpoint.worktreeId, rest2).byClass.current;
   });
