@@ -46,8 +46,10 @@ export const BUSY_GC_RATIO = 2;
 /** What the busy GC's decision reads. */
 export interface BusyGcClock {
   readonly now: EpochMs;
-  /** A tier ended since the last check. */
+  /** A tier ended since the busy rule was last read with no tier running. */
   readonly tierEnded: boolean;
+  /** A tier runs in some lane. */
+  readonly tierRunning: boolean;
   /** The last GC's start, idle or busy; `null` while none ran. */
   readonly lastGc: EpochMs | null;
   /** V8's heap in use now, bytes. */
@@ -59,10 +61,11 @@ export interface BusyGcClock {
 /**
  * Spec 021 D21.2 (row 021-29): a daemon with a long queue never has 60 s
  * without a tier, so it also collects after a tier ends once its heap in use
- * is above twice the last live size, at most once a minute.
+ * is above twice the last live size, at most once a minute. Never while a
+ * tier runs in any lane (review 0.1.463 B1).
  */
 export function busyGcDue(clock: BusyGcClock): boolean {
-  if (!clock.tierEnded || clock.live === null) return false;
+  if (!clock.tierEnded || clock.tierRunning || clock.live === null) return false;
   if (clock.lastGc !== null && clock.now - clock.lastGc < BUSY_GC_EVERY_MS) return false;
   return clock.heapInUse > BUSY_GC_RATIO * clock.live;
 }
@@ -85,6 +88,10 @@ export interface IdleGcOptions {
   readonly memory?: () => MemoryReading;
   /** V8's heap in use, bytes, for the busy GC (row 021-29). Default `readHeapInUse`. */
   readonly heapInUse?: () => number;
+  /** Runs the busy rule's read off the last tier's path. Default `setImmediate`. */
+  readonly defer?: (run: () => void) => void;
+  /** The daemon stops: no GC runs from here. Default never. */
+  readonly stopping?: () => boolean;
 }
 
 /**
@@ -104,8 +111,11 @@ export interface IdleGcOptions {
  * neither stands for nor holds back the idle one.
  *
  * Every run of the runner `track` wraps is a tier. The daemon calls `ready`
- * once its start scan is done, and the lifecycle check loop calls `check`,
- * so a busy GC runs at the first check after a tier, off the tier's own path.
+ * once its start scan is done, and the lifecycle check loop calls `check`.
+ * The busy GC never runs while a tier runs in any lane (review 0.1.463 B1):
+ * a tier's end stays pending until none runs. Its rule is read at each check
+ * and once the last running tier ended, deferred off that tier's path, since
+ * a daemon with a long queue may seldom be between tiers at a check.
  * Kept by the daemon, so a policy reload that restarts the timers keeps it.
  */
 export class IdleGc {
@@ -113,8 +123,10 @@ export class IdleGc {
   #running = 0;
   #quietSince: EpochMs | null = null;
   #collected = false;
-  /** A tier ended since the last check: the busy GC is considered then only. */
+  /** A tier ended, and the busy rule was not read since with no tier running. */
   #tierEnded = false;
+  /** The busy rule's read is deferred after the last running tier's end. */
+  #deferred = false;
   /** The last GC's start, idle or busy. */
   #lastGc: EpochMs | null = null;
   /** Heap in use after the last GC; before the first, the lowest read so far. */
@@ -141,6 +153,7 @@ export class IdleGc {
     this.#quietSince = this.#options.now();
     this.#collected = false;
     this.#tierEnded = true;
+    if (this.#running === 0) this.#defer();
   }
 
   /** `runner`, each of whose runs counts as a tier to its end. `runner` is a plain object. */
@@ -160,10 +173,8 @@ export class IdleGc {
 
   /** Runs the GC when it is due, idle or busy. Never throws. */
   check(): void {
-    if (this.#gc === null) return;
+    if (this.#gc === null || this.#stopping()) return;
     const now = this.#options.now();
-    const tierEnded = this.#tierEnded;
-    this.#tierEnded = false;
     const idle = idleGcDue({
       now,
       quietSince: this.#quietSince,
@@ -176,10 +187,33 @@ export class IdleGc {
       if (took !== null) this.#options.log(`no tier for ${IDLE_GC_AFTER_MS / 1000} s: ${took}`);
       return;
     }
-    if (!tierEnded) return;
+    this.#busy(now);
+  }
+
+  /** The busy rule's read once the event loop leaves the last tier's path; at most one waits. */
+  #defer(): void {
+    if (this.#deferred || this.#gc === null) return;
+    this.#deferred = true;
+    (this.#options.defer ?? setImmediate)(() => {
+      this.#deferred = false;
+      if (this.#gc === null || this.#stopping()) return;
+      try {
+        this.#busy(this.#options.now());
+      } catch (error) {
+        this.#options.log(`busy GC check failed: ${String(error)}`);
+      }
+    });
+  }
+
+  /** The busy GC when it is due. A tier's end stays pending while a tier runs. */
+  #busy(now: EpochMs): void {
+    const tierRunning = this.#running > 0;
+    const tierEnded = this.#tierEnded;
+    if (!tierEnded || tierRunning) return;
+    this.#tierEnded = false;
     const heapInUse = this.#heapInUse();
     const live = this.#live;
-    const busy = busyGcDue({ now, tierEnded, lastGc: this.#lastGc, heapInUse, live });
+    const busy = busyGcDue({ now, tierEnded, tierRunning, lastGc: this.#lastGc, heapInUse, live });
     if (this.#lastGc === null) this.#lowest(heapInUse);
     if (!busy) return;
     const took = this.#collect(now);
@@ -215,6 +249,10 @@ export class IdleGc {
       `a last-resort GC took ${what} from ${mib(before.bytes)} to ${mib(after.bytes)} MiB ` +
       `in a ${pause} ms pause`
     );
+  }
+
+  #stopping(): boolean {
+    return this.#options.stopping?.() ?? false;
   }
 
   #heapInUse(): number {
