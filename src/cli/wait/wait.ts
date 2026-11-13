@@ -1,3 +1,4 @@
+import { STATUS_BUSY_TIMEOUT_MS, withStatusStore } from "../../core/status/open.js";
 import type { AbsolutePath } from "../../core/types/common.js";
 import type { DaemonRequest } from "../../core/types/daemon.js";
 import type { Store } from "../../core/types/store.js";
@@ -10,7 +11,7 @@ import {
   type RequestRecord,
   type WaitStep,
 } from "./decide.js";
-import { type FieldReader, inStore, type RunWaitAsk, waitReads } from "./reads.js";
+import { type FieldReader, type RunWaitAsk, unavailableText, waitReads } from "./reads.js";
 import { askWithin, REAL_PORTS, type WaitPorts } from "./socket.js";
 import {
   type OutcomeOf,
@@ -52,9 +53,7 @@ export async function runWait<A extends RunWaitAsk>(
     let [record, step] =
       row.store === "lint"
         ? settle(row, given, reads(null))
-        : (inStore(ask.root, (store: Store) =>
-            settle(row, { ...given, store: "opened" }, reads(store)),
-          ) ?? unopened(row, given));
+        : worktreeRead(row, ask, given, reads, ports);
     if (step.kind === "read") {
       // Only the daemon check is left once the store closed: `settle` reads every other field.
       record = { ...record, daemon: await daemonCheck(ask, ports) };
@@ -72,19 +71,50 @@ export async function runWait<A extends RunWaitAsk>(
 function settle(row: RunWaitRow, given: WaitRecord, read: FieldReader): [WaitRecord, WaitStep] {
   let record = given;
   for (const field of row.reads) {
-    if (field !== "store" && field !== "daemon") record = { ...record, ...read(field) };
+    if (field !== "store" && field !== "unavailable" && field !== "daemon") {
+      record = { ...record, ...read(field) };
+    }
   }
   for (;;) {
     const step = decideRunWait(row, record);
     if (step.kind !== "read" || step.field === "daemon") return [record, step];
-    if (step.field === "store") throw new Error("run wait: the loop gives the store field");
+    if (step.field === "store" || step.field === "unavailable") {
+      throw new Error(`run wait: the loop gives the ${step.field} field`);
+    }
     record = { ...record, ...read(step.field) };
   }
 }
 
-/** A read whose store did not open: no field is read. */
-function unopened(row: RunWaitRow, given: WaitRecord): [WaitRecord, WaitStep] {
-  const record: WaitRecord = { ...given, store: "unopened" };
+/**
+ * Row 011-327 (decision 4 item 1): one read of the worktree's store as the
+ * status waits read it (`waitForStatus`): in one read transaction, its busy
+ * timeout bounded by what is left before the deadline, the deadline's read
+ * waiting the full `STATUS_BUSY_TIMEOUT_MS`. A store not read fills no
+ * field but why, and, when busy, whether the read was the deadline's.
+ */
+function worktreeRead(
+  row: RunWaitRow,
+  ask: RunWaitAsk,
+  given: WaitRecord,
+  reads: (store: Store) => FieldReader,
+  ports: WaitPorts,
+): [WaitRecord, WaitStep] {
+  const left = ask.deadline - ports.now();
+  const final = left <= 0;
+  const busyTimeoutMs = final
+    ? STATUS_BUSY_TIMEOUT_MS
+    : Math.round(Math.max(50, Math.min(STATUS_BUSY_TIMEOUT_MS, left)));
+  const read = withStatusStore(ask.root, { busyTimeoutMs }, ({ store }) =>
+    settle(row, { ...given, store: "opened" }, reads(store)),
+  );
+  if (Array.isArray(read)) return read;
+  const busy = read.reason === "timeout";
+  const record: WaitRecord = {
+    ...given,
+    store: busy ? "busy" : "unopened",
+    unavailable: unavailableText(read),
+    ...(busy ? { late: final } : {}),
+  };
   return [record, decideRunWait(row, record)];
 }
 
