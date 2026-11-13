@@ -1,7 +1,9 @@
+import { randomUUID } from "node:crypto";
 import { type BusyWaits, retryWhileBusy } from "../store/busy.js";
 import { isBusy } from "../store/connection.js";
 import type { FeedPasses } from "../types/watcher.js";
 import type { SchedulerContext } from "./context.js";
+import { recordCovered } from "./covered-files.js";
 import type { FileState } from "./files.js";
 import type { Ledger } from "./ledger.js";
 import type { Mutex } from "./mutex.js";
@@ -9,6 +11,7 @@ import type {
   NowRequest,
   Recovery,
   Request,
+  RequestId,
   Staged,
   StageRule,
   WakeRule,
@@ -24,7 +27,8 @@ import type {
  *   1. the start or closed answer;
  *   2. the install-wait answer;
  *   3. the runner work it waits for;
- *   4. the store write, in one transaction tried again while the store is busy;
+ *   4. the store write, in one transaction tried again while the store is busy,
+ *      with the record of its covered files under the request's id (row 011-325);
  *   5. the progress record of its covered files, after the commit;
  *   6. waking the lanes;
  *   7. starting work (the pump), never after a request that threw.
@@ -127,6 +131,8 @@ export class RequestIntake {
   #locked<A, P>(request: Request<A, P>): Promise<A> {
     const { operation, runnerWork, store } = request;
     const { lock } = this.#host;
+    // Row 011-325: one id per request, the same on every busy try.
+    const id = randomUUID();
     if ("apply" in store) {
       return lock.run(() => {
         const { context, ledger } = this.#host.started();
@@ -142,16 +148,23 @@ export class RequestIntake {
         const planned = await runnerWork.always(context, ledger);
         if ("answer" in planned) return planned.answer;
         const { installWait } = request;
+        // Under the lock already: a refused write is tried again without giving the lock up.
         if (reason !== null && "answer" in installWait) {
-          return installWait.answer(context, ledger, planned.plan, reason);
+          const { plan } = planned;
+          return this.#request(operation, async () =>
+            this.#transact((context, ledger) => {
+              const waited = installWait.answer(context, ledger, plan, reason, id);
+              recordCovered(context, ledger, id, waited.covered, reason);
+              return waited.answer;
+            }),
+          );
         }
-        // Under the lock already: a refused stage is tried again without giving the lock up.
         return this.#request(operation, async () =>
-          this.#staged(this.#stage(request, store, planned.plan, reason, null, false)),
+          this.#staged(this.#stage(request, store, planned.plan, id, reason, null, false)),
         );
       }, operation);
     }
-    return this.#perTry(request, store);
+    return this.#perTry(request, store, id);
   }
 
   /**
@@ -159,7 +172,7 @@ export class RequestIntake {
    * the lock taken again on each busy try (today's quirk 1). A stage that
    * met pending runner work waits for it, under the lock through every try.
    */
-  async #perTry<A, P>(request: Request<A, P>, store: StageRule<A, P>): Promise<A> {
+  async #perTry<A, P>(request: Request<A, P>, store: StageRule<A, P>, id: RequestId): Promise<A> {
     const { operation, runnerWork } = request;
     const host = this.#host;
     // No plan without `always` runner work: `P` is `undefined` here.
@@ -178,7 +191,7 @@ export class RequestIntake {
     const pending = "whenPending" in runnerWork ? runnerWork.whenPending : null;
     const first = await this.#request(operation, () =>
       host.lock.run(
-        () => this.#stage(request, store, plan, host.waiting(), null, pending !== null),
+        () => this.#stage(request, store, plan, id, host.waiting(), null, pending !== null),
         operation,
       ),
     );
@@ -191,21 +204,24 @@ export class RequestIntake {
       if (recovered !== null) await this.#request(operation, (n) => recovered.key(n));
       // Under the lock already: a refused stage is tried again without giving the lock up.
       return this.#request(operation, async () =>
-        this.#staged(this.#stage(request, store, plan, reason, recovered, false)),
+        this.#staged(this.#stage(request, store, plan, id, reason, recovered, false)),
       );
     }, `${operation} after the runner work`);
   }
 
   /**
    * One try, under the lock: the install-wait answer or the stage, in one
-   * transaction; after its commit, the stage's covered files are recorded
-   * and its lane or the tiers in flight woken. An install-wait answer
-   * records and wakes nothing.
+   * transaction with the record of its covered files under `id` (row
+   * 011-325); after its commit, the stage's covered files are its progress
+   * record and its lane or the tiers in flight are woken. An install-wait
+   * answer records its covered files not queued, with the reason, and has
+   * no progress record and wakes nothing.
    */
   #stage<A, P>(
     request: Request<A, P>,
     store: StageRule<A, P>,
     plan: P,
+    id: RequestId,
     reason: string | null,
     recovered: Recovery | null,
     deferWhenPending: boolean,
@@ -213,11 +229,15 @@ export class RequestIntake {
     const { installWait } = request;
     const done = this.#transact((context, ledger): Staged<A> | { waited: A } | typeof DEFERRED => {
       if (reason !== null && "stage" in installWait) {
-        return { waited: installWait.stage(context, ledger) };
+        const waited = installWait.stage(context, ledger, id);
+        recordCovered(context, ledger, id, waited.covered, reason);
+        return { waited: waited.answer };
       }
       if (deferWhenPending && (ledger.broken || this.#host.runnerPending())) return DEFERRED;
       recovered?.store(ledger);
-      return store.stage(context, ledger, plan);
+      const staged = store.stage(context, ledger, plan, id);
+      recordCovered(context, ledger, id, staged.covered, null);
+      return staged;
     });
     if (done === DEFERRED) return DEFERRED;
     if ("waited" in done) return done.waited;

@@ -5,6 +5,7 @@ import type { FeedPasses } from "../types/watcher.js";
 import { releaseLint } from "./commit-moment.js";
 import { mayFocus } from "./focused.js";
 import type { GroupTiers } from "./group-tiers.js";
+import type { Ledger } from "./ledger.js";
 import { answeredOf } from "./promoted-tier.js";
 import type { Request, Skip } from "./request-intake-types.js";
 import { groupView } from "./slow.js";
@@ -93,12 +94,22 @@ export function groupRequest(
   passes: FeedPasses | undefined,
 ): Request<SlowSuiteRequest | null> {
   const known = (policy: Policy) => groupView(policy).groups.some((g) => g.name === group);
+  /** Row 011-325: the group's files, queued, current or not, are its covered files. */
+  const groupFiles = (policy: Policy, ledger: Ledger) => {
+    const view = groupView(policy);
+    return [...ledger.files.values()].filter((f) => view.of(f.ref).name === group);
+  };
   return {
     operation: `taking a squeal run ${group} request`,
     start: { skip: "no closed answer: before the start the scheduler throws (`started`)" },
     installWait: {
-      stage: (context, ledger) =>
-        known(context.policy) ? { revision: ledger.revision.number, queued: 0 } : null,
+      stage: (context, ledger, id) =>
+        known(context.policy)
+          ? {
+              answer: { revision: ledger.revision.number, queued: 0, coveredId: id },
+              covered: groupFiles(context.policy, ledger),
+            }
+          : { answer: null, covered: [] },
     },
     runnerWork: { skip: "waits for no runner work: it queues the group's files at their keys" },
     store: {
@@ -116,15 +127,14 @@ export function groupRequest(
         },
         work: () => void passes?.pass().catch(() => {}),
       },
-      stage: (context, ledger) => {
+      stage: (context, ledger, _, id) => {
         const revision = ledger.revision.number;
-        const view = groupView(context.policy);
         if (!known(context.policy)) return { answer: null, covered: [] };
         groups.lanes(context.policy);
         groups.get(group)?.request();
         const queued = queueGroup(context, ledger, group);
-        const covered = [...ledger.files.values()].filter((f) => view.of(f.ref).name === group);
-        return { answer: { revision, queued }, covered };
+        const covered = groupFiles(context.policy, ledger);
+        return { answer: { revision, queued, coveredId: id }, covered };
       },
     },
     wake: {
