@@ -185,3 +185,51 @@ The coordinator files this row. What it needs:
 - No full suite (wave rule; CI runs it).
 - No experiment on a really overloaded host (no artificial load). The tests
   replace the load reading only.
+
+## Repair R1 (wave 19.5, review `reviews/0.1.468.md` B1)
+
+Base: this branch with row 020-53 cherry-picked (`029499709..cez/f3c22710`,
+nine commits, no conflict). The repair commits come after them.
+
+**The defect.** Gate tests that are not about the rerun read the real host
+load. On a small CI runner the load is at or over the CPU count, so a test
+with a failing file got a rerun it did not expect. CI failed
+`code-gate-failed-outside.test.ts` (B was run again, not read from the
+stores, because neither run of a retried file is kept),
+`collect-prepare.test.ts` (two adapter runs, not one) and
+`code-gate-log.test.ts` (the kept-log line). The product behaviour is right.
+
+**The repair.**
+
+- Seam, CLI (`src/cli/code-gate.ts`): `GateIo extends CliIo` with an
+  optional `hostLoad`, which the gate gives the collector as
+  `CollectOptions.hostLoad`. `codeCommand` passes its io object through, so
+  a test's io reaches the gate unchanged. No environment variable. A
+  `--json` relaunch's child reads the host's own; the seam is in-process.
+  `CliIo` (`main.ts`) does not change.
+- Seam, collector: `CollectOptions.hostLoad` (row 020-54) as it was.
+- Test constants: `test/code/gate/host-load.ts`: `QUIET` (0 on 24),
+  `AT` (24 on 24), `OVER` (48 on 24), and `quiet`.
+- Fixture defaults: the collector fixture's `collect()` and the CLI
+  fixture's `code()` give `quiet` unless the test gives a load. `code()`
+  takes `hostLoad: null` for the daemon's own reading. The keep and parts
+  kits go through `code()`, so they are pinned too.
+- Direct callers: `collect.test.ts`'s `options()` runs `fails.test.ts` and
+  `broken.test.ts` here, so it gives `quiet`.
+- The three CI tests now mock the daemon's own `hostLoad` as a loaded host:
+  `code-gate-failed-outside` over (48 on 24), `collect-prepare` and
+  `code-gate-log` at (24 on 24). They pass only because of the pin.
+- The rerun tests keep their loads: `lanes-retry` and `collect-retry` give
+  them through the seam; `code-gate-retry` gives `hostLoad: null` and mocks
+  the daemon's `hostLoad`, so it still proves the default reading. Its
+  no-storage test (choice A) is unchanged.
+
+**What I checked for other unpinned tests.** By reading: the direct
+`collectEvidence` callers `collect-prerun`, `collect-closure` and
+`collect-inputs` use fake adapters that complete no file;
+`collect-stored`'s failing file comes from the stores; `collect-mixed`,
+`collect-scope`, `collect-skipped`, `collect-order`, `collect-budget` and
+`ci-record-coverage` select no failing file. The CLI tests that start a
+real child (`code-gate-json-stdout`, `code-gate-keep-stop`,
+`code-gate-prepare-cancel`) select no failing file, and the in-process
+cases of `code-gate-relaunch` change no function.
