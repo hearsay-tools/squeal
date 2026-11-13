@@ -55,8 +55,16 @@ export interface StoredOptions {
    * Opens the adapters a daemon builds in this worktree, with `tempDir` as
    * their temporary directory; they key and run nothing. The CLI gives them,
    * since nothing under `src/core/code` imports a runner (row 016-36).
+   * Called only when `runners` gives none.
    */
   readonly adapters: (tempDir: AbsolutePath) => Promise<readonly RunnerAdapter[]>;
+  /**
+   * Row 020-51: the adapters the gate's run opened, built as a daemon here
+   * builds them (`code-gate-stored.ts`), read when the keys open. The
+   * stores are keyed with them, and the run closes them. Absent or empty,
+   * `adapters` opens a set of the keys' own.
+   */
+  readonly runners?: () => readonly RunnerAdapter[];
   /** Why the stores gave nothing, told once; every selected file then runs. */
   readonly note?: (text: string) => void;
 }
@@ -236,15 +244,18 @@ interface Keyer {
  */
 async function openKeyer(options: StoredOptions, main: Store | undefined): Promise<Keyer> {
   const temp = mkdtempSync(join(tmpdir(), "squeal-gate-keys-"));
-  const adapters: RunnerAdapter[] = [];
+  // Row 020-51: the run's own adapters when it opened them; else a set this keyer opens and closes.
+  const own: RunnerAdapter[] = [];
   let scratch: Store | null = null;
   const close = async () => {
-    await Promise.allSettled(adapters.map((a) => a.close()));
+    await Promise.allSettled(own.map((a) => a.close()));
     scratch?.close();
     rmSync(temp, { recursive: true, force: true });
   };
   try {
-    adapters.push(...(await options.adapters(temp)));
+    const runners = options.runners?.() ?? [];
+    if (runners.length === 0) own.push(...(await options.adapters(temp)));
+    const adapters = runners.length === 0 ? own : runners;
     const opened = openStore(temp);
     if (isStoreOpenFailure(opened)) throw new Error(`no scratch store: ${opened.reason}`);
     scratch = opened;
