@@ -123,3 +123,32 @@ Kept in `busy-requests.test.ts`: the runner fake and the runner-recovery race (w
 - `test/scheduler/busy-requests.test.ts` (was `:111`): the held lock after runner work (quirk 1, second half), with the runner retry's keys outside the stage.
 - `test/daemon/busy-requests.test.ts:71,86`, `test/daemon/busy-writes.test.ts:60`: the busy-store race through the daemon's socket (the bridge).
 - `test/scheduler/request-progress-forced.test.ts:43`, `test/scheduler/request-progress-retry.test.ts:19,37`: the progress record of a forced `run --all`, and of retries taken in a pass and at start.
+
+## Decisions the design did not settle, and my choice
+
+1. Where the install-wait state is read: under the lock, at the start of the request's locked task, for every request with a lock; before the lock only for `atOnce` (retry, import), as today. The state changes only under the lock, so this equals today's reads: inside the transaction (`run --all`, group) and after `selectNarrow` (narrow run).
+2. The narrow run's install-wait answer needs its selection, which asks the runner. So for `always` runner work, the lock is taken behind the queued runner work first (`afterTier`), then the install-wait state is read, then the plan, then the answer or the store write. For `whenPending` (`run --all`) the install-wait answer comes before the runner work, as today. All five design quirks hold; no question was needed.
+3. A synchronous request shape (`NowRequest`, `take`'s first overload) for the import's refresh, which the daemon's lifecycle reads at once.
+4. Focus with no texts: the closed answer's `nothing: true`.
+5. Promote, focus and the group request are declared in `request-intake-requests.ts` (`focused.ts` and `slow-tier.ts` are card 8's).
+6. The busy-retry key counter moved with `#request` (`scheduler:request:N`, the intake's own count).
+7. The progress record follows the commit in the same lock task. A stage that throws now records nothing; today its asks before the throw stayed. A stage that answers `null` (an unknown group) passes an empty list, which records nothing, as today.
+8. The narrow run's lane `preempt` moved from inside the stage to the wake after the record, in the same lock task.
+9. `takeRetries`' callback is required (coordinator, option A); `test/scheduler/retry-claims.test.ts:95` and `:125` pass `() => {}`.
+10. Two table rows take the real group and retry declarations through the intake, so their covered files stay tested once `request-progress.test.ts:98` and `busy-requests.test.ts:71` are gone.
+11. `test/scheduler/request-intake.test.ts` is about 500 lines, over the styleguide's 300; the brief asks for one table file, so it stays one.
+
+## Type changes
+
+All under `src/core/scheduler/`; nothing under `src/core/types/`, `src/core/daemon/` or `src/cli/`.
+
+- New: `request-intake-types.ts` (`Skip`, `Staged`, `StartRule`, `InstallWaitRule`, `Planned`, `Recovery`, `RunnerWorkRule`, `Outside`, `StageRule`, `ApplyRule`, `WakeRule`, `Request`, `NowRequest`); `request-intake.ts` (`IntakeHost`, `RequestIntake`, `NO_PASS`, which moved from `scheduler.ts`).
+- New declarations: `fullSuiteRequest` and `FullSuiteHost` (`checkpoint-requests.ts`), `narrowRequest` (`narrow-run.ts`), `retryRequest` (`retries.ts`), `observedRequest` (`imports-waiting.ts`), `groupRequest`, `promoteRequest`, `focusRequest` (`request-intake-requests.ts`).
+- Changed: `takeRetries(context, ledger, claimed)`, `claimed` required (was defaulted to `() => {}`).
+- The scheduler's public methods keep their signatures; `requestRetries`, `promote`, `focus`, `requestGroup`, `requestGroupPaths` and `requestFullSuite` are no longer `async` functions but still return the same promises (a throw inside rejects, as before).
+
+## For the next rows
+
+- 011-323: remove the import's named skip (`observedRequest`'s `store.skip` names difference 1) by making it a busy-retried request; it is a `NowRequest` today because the lifecycle's refresh reads its boolean at once (`daemon.ts:416`), so the import's call and the lifecycle's may need two declarations. Remove the retry's `wake.skip` (difference 2) by `wake: { lane }` per queued lane, or a new wake variant.
+- 011-324: the group's `installWait.stage` answers `{ revision, queued: 0 }`; the reason is not passed to a `stage` install-wait answer today (only to `answer`).
+- 011-325: covered files are `Staged.covered`, returned by each stage and recorded in `#stage` after the commit; a store record keyed by a request id would be written inside the stage's transaction.
