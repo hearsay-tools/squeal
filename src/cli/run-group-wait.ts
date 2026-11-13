@@ -20,7 +20,6 @@ import type { StatusHold } from "../core/types/standing.js";
 import type { Store } from "../core/types/store.js";
 import { askDaemon, CLI_SOCKET_TIMEOUT_MS } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
-import { inStore } from "./run-lanes.js";
 import { statusCommand } from "./status-command.js";
 import {
   type FileVerdict,
@@ -31,6 +30,7 @@ import {
   readVerdict,
   verdictCode,
 } from "./verdict.js";
+import { inStore } from "./wait/reads.js";
 
 /** How often the wait reads the store, as `run --all --wait` (C6 as amended, task 011-42). */
 const STORE_POLL_MS = 1_000;
