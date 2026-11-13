@@ -68,7 +68,7 @@ import { InstallStamps, refreshInstall } from "./install-stamp.js";
 import { WorktreeKeys } from "./keying.js";
 import { Ledger } from "./ledger.js";
 import { Mutex } from "./mutex.js";
-import { narrowAnswer, queueNarrow, REINSTALLED_REASON, selectNarrow } from "./narrow-run.js";
+import { narrowRequest, REINSTALLED_REASON } from "./narrow-run.js";
 import type { SchedulerOptions } from "./options.js";
 import { PoolWaits, publishPoolWaits } from "./pool-wait.js";
 import { priorityOf } from "./queue.js";
@@ -757,59 +757,12 @@ class TierScheduler implements Scheduler {
     return this.#intake.take(groupRequest(group, this.#groups, this.options.passes));
   }
 
-  /**
-   * Spec 019 D6 "Narrow run" (row 019-49): of group `group`, only the test
-   * files `paths` select run now (`selectNarrow`), whatever its moment; a
-   * current one does not run again. Its lane runs them as asks at their
-   * keys, so the group's other files keep waiting and the group is never
-   * made current by it. A source path asks the runner, so the request waits
-   * for the runner work before it. `null` for a group the policy in force
-   * does not have; rejects for a lint group.
-   */
-  async requestGroupPaths(
+  /** Spec 019 D6 "Narrow run" (row 019-49): `narrowRequest`. */
+  requestGroupPaths(
     group: string,
     paths: readonly RelativePath[],
   ): Promise<NarrowRunRequest | null> {
-    const operation = `taking a squeal run ${group} <path>... request`;
-    const request = await this.#runnerWork.afterTier(async () => {
-      const { context, ledger } = this.#started();
-      const revision = ledger.revision.number;
-      const resolved = groupView(context.policy).groups.find((g) => g.name === group);
-      if (resolved === undefined) return null;
-      if (resolved.select.kind === "lint") {
-        throw new Error(`group ${group} is a lint group, which runs whole: squeal run ${group}`);
-      }
-      const selection = await selectNarrow(context, ledger, paths);
-      // Review 0.1.411, B2: the answer says which selected files are current, after queuing.
-      const waiting = this.#awaitingInstall
-        ? AWAITING_INSTALL_REASON
-        : this.#reinstalled
-          ? REINSTALLED_REASON
-          : null;
-      if (waiting !== null) {
-        return {
-          revision,
-          queued: 0,
-          narrow: narrowAnswer(context, ledger, group, selection, waiting),
-        };
-      }
-      // Under the lock already: a refused stage is tried again without giving the lock up.
-      return this.#request(operation, async () =>
-        this.#transact(() => {
-          const selected = selection.selected.get(group) ?? new Set<string>();
-          const { queued, asks } = queueNarrow(ledger, selected);
-          this.#requests.ask([...selected].flatMap((id) => ledger.files.get(id) ?? []));
-          this.#groups.lanes(context.policy);
-          const lane = this.#groups.get(group);
-          lane?.narrow.add(asks, ledger);
-          lane?.preempt();
-          const narrow = narrowAnswer(context, ledger, group, selection, null);
-          return { revision, queued, narrow };
-        }),
-      );
-    }, operation);
-    this.#pump();
-    return request;
+    return this.#intake.take(narrowRequest(group, paths, this.#groups));
   }
 
   /** `squeal retry` (001-368): queues the requests in the store that may run now. */
