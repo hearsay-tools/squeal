@@ -127,6 +127,9 @@ export function lintGroupVerdictLine(
       return none("lint is off: lint.enabled is false in squeal.config.json");
     case "unread":
       return none("the lint store cannot be read");
+    // Row 011-327 (review 0.1.474 B1): the lint store was still busy at the deadline's read.
+    case "unopened":
+      return none(outcome.unavailable);
     case "stopped":
       return none(
         `the daemon stopped before the group's lint checks were linted (${stoppedText(outcome.daemon, command)})`,

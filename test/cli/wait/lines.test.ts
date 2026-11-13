@@ -202,6 +202,15 @@ describe("the lint group wait's lines (row 019-22)", () => {
     ["off", { kind: "off" }, `${NONE} lint is off: lint.enabled is false in squeal.config.json`],
     ["unread", { kind: "unread" }, `${NONE} the lint store cannot be read`],
     [
+      "unopened: the lint store busy at the deadline's read (011-327, review 0.1.474 B1)",
+      {
+        kind: "unopened",
+        unavailable:
+          "lint store busy, waited 1000 ms: another process holds the lint store's lock; run the command again once it is released",
+      },
+      `${NONE} lint store busy, waited 1000 ms: another process holds the lint store's lock; run the command again once it is released`,
+    ],
+    [
       "stopped, named (011-327)",
       { kind: "stopped", daemon: STOPPED },
       `${NONE} the daemon stopped before the group's lint checks were linted (${SINCE}: the daemon stopped)`,
