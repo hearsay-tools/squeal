@@ -7,6 +7,7 @@ import {
 import { KEY_FORMAT_VERSION } from "../keys/key-format.js";
 import type { ProjectName } from "../types/common.js";
 import type { Part, PartProject } from "./parts.js";
+import { firstShared } from "./reuse.js";
 
 /*
  * Spec 018 D9 (row 018-17): the parts `squeal ci export` refuses, each with
@@ -18,7 +19,9 @@ import type { Part, PartProject } from "./parts.js";
  * Whether one part's run of a project is evidence somewhere else has one
  * owner, `reuseRefusal`, which `squeal code --base --parts` applies too
  * (020 D13.2; the human, 2026-11-10, after review 0.1.427-r2 B1). A new
- * refusal of one run goes there, so that both commands make it.
+ * refusal of one run goes there, so that both commands make it. Whether a
+ * part gives one test file, and which parts hold it, is `FileReuse`'s
+ * (`reuse.ts`, row 020-52), which asks `reuseRefusal` of the file's run.
  */
 
 /** Why one part's run of a project is no evidence elsewhere: the kinds `reuseRefusal` gives. */
@@ -216,24 +219,18 @@ function shardRefusal(parts: readonly NamedPart[]): Refusal | null {
   return { kind: "shards", text };
 }
 
-/** A test file two parts hold: the shards overlapped, so neither result is the one. */
+/**
+ * A test file two parts hold: the shards overlapped, so neither result is
+ * the one. The first such file refuses the whole set (`firstShared`); the
+ * gate refuses only that file (`FileReuse.owner`).
+ */
 function duplicateRefusal(parts: readonly NamedPart[]): Refusal | null {
-  const seen = new Map<string, string>();
-  for (const { file, part } of parts) {
-    for (const testFile of part.testFiles) {
-      const id = `${testFile.project}\0${testFile.path}`;
-      const other = seen.get(id);
-      if (other !== undefined) {
-        const name = `${testFile.project === "" ? "" : `${testFile.project}:`}${testFile.path}`;
-        return {
-          kind: "duplicate",
-          text: `test file ${name} is in two parts: ${other} and ${file}`,
-        };
-      }
-      seen.set(id, file);
-    }
-  }
-  return null;
+  const shared = firstShared(parts);
+  if (shared === null) return null;
+  const { project, path } = shared.file;
+  const name = `${project === "" ? "" : `${project}:`}${path}`;
+  const text = `test file ${name} is in two parts: ${shared.first} and ${shared.second}`;
+  return { kind: "duplicate", text };
 }
 
 /** Two parts that ran one project in environments an imported pass may not share (D9, D10). */
