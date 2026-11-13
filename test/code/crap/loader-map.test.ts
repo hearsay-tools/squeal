@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { COVERAGE_RECORD_VERSION, encodeRecord } from "../../../src/core/code/coverage/record.js";
 import { StepCache } from "../../../src/core/code/crap/cache.js";
 import { LoaderMap } from "../../../src/core/code/crap/loader-map.js";
@@ -198,5 +198,51 @@ describe("the loader map kept across reads (row 021-31)", () => {
     );
     same();
     expect(map.moved()).toBe("all");
+  });
+
+  it("drops the loader sets of sources gone while the listing turns empty and back (review 0.1.463 B2)", () => {
+    const rig = coverageRig();
+    const cache = new StepCache();
+    const maps = new Set<LoaderMap>();
+    const TEST = "test/a.test.ts";
+    // Sources no test file loads, each renamed at the next read; their set is the no-loader marker.
+    const gone: string[] = [];
+    for (let i = 0; i < 1_000; i++) {
+      const listed = i % 2 === 0;
+      if (listed) rig.loader(TEST, { closure: [], record: [] });
+      else rig.main.testFileKeys.remove(WT, [{ project: "", path: TEST }]);
+      const source = `src/renamed-${i}.ts`;
+      cache.invalidate();
+      const loaders = cache.loaders(
+        (map) => {
+          maps.add(map);
+          return new LoaderBuild(inputs(rig), map);
+        },
+        () => true,
+      );
+      if (loaders === null) throw new Error("the map was not read whole");
+      cache.condition(source, loaders);
+      cache.keep([{ path: source }]);
+      if (listed) gone.push(source);
+    }
+    expect(maps.size).toBe(1);
+    const [map] = maps;
+    if (map === undefined) throw new Error("no map was read");
+    // A set made again calls `of`; one kept does not. Of 500 sources gone, at most
+    // as many sets are kept as sources are judged now: one.
+    const of = vi.spyOn(map, "of");
+    for (const path of gone) map.set(path);
+    expect(gone).toHaveLength(500);
+    expect(gone.length - of.mock.calls.length).toBeLessThanOrEqual(1);
+  });
+
+  it("counts each kept cache on its own: failures of sources gone go without any condition (review 0.1.463 B2)", () => {
+    const cache = new StepCache();
+    const read = vi.fn(() => true);
+    const gone = ["src/x.ts", "src/y.ts", "src/z.ts"];
+    for (const path of gone) cache.failing({ path, blob: "b1" }, read, () => true);
+    cache.keep([{ path: "src/renamed.ts" }]);
+    for (const path of gone) cache.failing({ path, blob: "b1" }, read, () => true);
+    expect(read).toHaveBeenCalledTimes(6);
   });
 });

@@ -137,14 +137,17 @@ export class StepCache {
   /**
    * Drops what was made for sources a step no longer judges, as a revision
    * removed or moved them: kept across reads (row 021-31), it would grow
-   * with each. Looked at only once more sources have conditions than `files` holds.
+   * with each. Each cache holds a source at most once, so it is looked at
+   * only once one of them holds more sources than `files`, each counted on
+   * its own: a read that clears conditions leaves the loader sets and
+   * failures as they were (review 0.1.463 B2).
    */
   keep(files: readonly Pick<CodeFile, "path">[]): void {
-    if (this.#conditions.size <= files.length) return;
+    const made = [this.#conditions, this.#signatures, this.#early, this.#failing];
+    const over = (size: number) => size > files.length;
+    if (!over(this.#map.setsKept) && !made.some((by) => over(by.size))) return;
     const judged = new Set(files.map((f) => f.path));
-    for (const by of [this.#conditions, this.#signatures, this.#early, this.#failing]) {
-      for (const path of by.keys()) if (!judged.has(path)) by.delete(path);
-    }
+    for (const by of made) for (const path of by.keys()) if (!judged.has(path)) by.delete(path);
     this.#map.keep(judged);
   }
 
