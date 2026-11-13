@@ -54,6 +54,7 @@ export type Condition =
   | "files settled"
   | "lint off"
   | "lint unread"
+  | "lint busy"
   | "nothing to lint"
   | "daemon down";
 
@@ -73,6 +74,7 @@ export const FIELD_OF: Readonly<Record<Condition, ReadField>> = {
   "files settled": "classes",
   "lint off": "counts",
   "lint unread": "counts",
+  "lint busy": "counts",
   "nothing to lint": "counts",
   "daemon down": "daemon",
 };
@@ -120,8 +122,12 @@ export interface WaitRecord {
   readonly classes?: FileClasses;
   /** The install the worktree waits for; `null`: none. */
   readonly install?: InstallHold | null;
-  /** The lint group's checks; `off` when lint is off, `unread` when the lint store cannot be read. */
-  readonly counts?: LintCounts | "off" | "unread";
+  /**
+   * The lint group's checks; `off` when lint is off, `unread` when the lint
+   * store cannot be read, `busy` when its lock was held past the read's busy
+   * timeout (row 011-327, review 0.1.474 B1; `unavailable` says why).
+   */
+  readonly counts?: LintCounts | "off" | "unread" | "busy";
   /** The daemon check: daemon presence's wait view (row 011-327). */
   readonly daemon?: DaemonReading;
 }
@@ -156,6 +162,7 @@ export type GroupOutcome =
 export type LintGroupOutcome =
   | { readonly kind: "ended" | "deadline"; readonly counts: LintCounts }
   | { readonly kind: "off" | "unread" }
+  | UnopenedOutcome
   | { readonly kind: "stopped"; readonly daemon: DaemonDown };
 
 /** Each run wait's closed set of outcomes (GLOSSARY "Wait outcome"). */
@@ -255,7 +262,8 @@ export const RUN_WAITS: Readonly<Record<RunWaitName, RunWaitRow>> = {
       GONE,
     ],
   },
-  // `run <lint group> --wait`: off or unread, then ended > deadline, then stopped.
+  // `run <lint group> --wait`: off or unread, a busy lint store at the deadline's read, then
+  // ended > deadline, then stopped.
   // Row 011-327 (decision 4 item 3): `nothing to lint` before `late`, so a group whose last
   // check ended by the deadline's read gives its verdict, as a test group does (was deadline).
   "lint group": {
@@ -264,6 +272,9 @@ export const RUN_WAITS: Readonly<Record<RunWaitName, RunWaitRow>> = {
     rules: [
       rule(["lint off"], "off"),
       rule(["lint unread"], "unread"),
+      // Review 0.1.474 B1: a busy lint store takes the worktree store's rule (`STORE`).
+      rule(["lint busy", "late"], "unopened", "unavailable"),
+      rule(["lint busy"], "go on"),
       rule(["nothing to lint"], "ended", "counts"),
       rule(["late"], "deadline", "counts"),
       GONE,

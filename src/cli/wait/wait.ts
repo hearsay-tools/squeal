@@ -64,7 +64,10 @@ export async function runWait<A extends RunWaitAsk>(
 function settle(row: RunWaitRow, given: WaitRecord, read: FieldReader): EndedStep {
   let record = given;
   for (const field of row.reads) {
-    if (field !== "store" && field !== "unavailable") record = { ...record, ...read(field) };
+    // A busy lint read gives `late` with its counts: whether the deadline had passed when it began.
+    if (field !== "store" && field !== "unavailable" && record[field] === undefined) {
+      record = { ...record, ...read(field) };
+    }
   }
   for (;;) {
     const step = decideRunWait(row, record);
