@@ -1,0 +1,11 @@
+{"at":"2026-11-13T11:32:37.666Z","node":"v26.13.0","load":0.53,"cpus":24}
+{"scenario":"tracked-directory-symlink","gitStatus":"","committedLinkedPaths":["linked"],"report":{"files":5,"failures":0,"notDetermined":5,"running":0,"unknown":0,"untracked":5,"notDeterminedFiles":[{"project":"probe","path":"case-1.test.mjs","through":["linked/value.mjs"]},{"project":"probe","path":"case-2.test.mjs","through":["linked/value.mjs"]},{"project":"probe","path":"case-3.test.mjs","through":["linked/value.mjs"]},{"project":"probe","path":"case-4.test.mjs","through":["linked/value.mjs"]},{"project":"probe","path":"case-5.test.mjs","through":["linked/value.mjs"]}]}}
+Commit 26b25f6: 0 known failures; 5 test files not determined (untracked files)
+  probe: case-1.test.mjs is not determined: linked/value.mjs differs from the commit
+  probe: case-2.test.mjs is not determined: linked/value.mjs differs from the commit
+  probe: case-3.test.mjs is not determined: linked/value.mjs differs from the commit
+  probe: case-4.test.mjs is not determined: linked/value.mjs differs from the commit
+  probe: case-5.test.mjs is not determined: linked/value.mjs differs from the commit
+{"scenario":"ignored-control","gitStatus":"","report":{"files":5,"failures":0,"notDetermined":0,"running":0,"unknown":5}}
+{"scenario":"stored-report-after-ignore","gitStatus":"","stored":{"files":5,"failures":0,"notDetermined":5,"running":0,"unknown":0,"untracked":5,"notDeterminedFiles":[{"project":"probe","path":"case-1.test.mjs","through":["temporary.mjs"]},{"project":"probe","path":"case-2.test.mjs","through":["temporary.mjs"]},{"project":"probe","path":"case-3.test.mjs","through":["temporary.mjs"]},{"project":"probe","path":"case-4.test.mjs","through":["temporary.mjs"]},{"project":"probe","path":"case-5.test.mjs","through":["temporary.mjs"]}]},"freshlyComputed":{"files":5,"failures":0,"notDetermined":0,"running":0,"unknown":5}}
+All assertions passed; no daemon or test suite started.
