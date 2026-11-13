@@ -22,17 +22,26 @@ export class ImportsSeen {
 
   /**
    * Hands `reread` the projects of the imports not seen yet, and their ids,
-   * and sees them when it takes them; when it does not, the next call hands
-   * them again.
+   * and sees them when it takes them; when it answers false or throws, the
+   * next call hands them again. While `reread` runs they count as seen, so
+   * a call meanwhile does not hand them twice (row 011-323: the scheduler's
+   * request waits for the lock and for a busy store).
    */
-  take(reread: (projects: readonly ProjectName[], imports: readonly string[]) => boolean): void {
+  async take(
+    reread: (projects: readonly ProjectName[], imports: readonly string[]) => Promise<boolean>,
+  ): Promise<void> {
     const fresh = listImports(this.store).filter((i) => !this.#seen.has(i.id));
     if (fresh.length === 0) return;
     const projects = new Set(
       fresh.flatMap((i) => importFiles(this.store, i.id).map((f) => f.project)),
     );
     const ids = fresh.map((i) => i.id);
-    if (projects.size > 0 && !reread([...projects].sort(), ids)) return;
-    for (const i of fresh) this.#seen.add(i.id);
+    for (const id of ids) this.#seen.add(id);
+    let taken = false;
+    try {
+      taken = projects.size === 0 || (await reread([...projects].sort(), ids));
+    } finally {
+      if (!taken) for (const id of ids) this.#seen.delete(id);
+    }
   }
 }

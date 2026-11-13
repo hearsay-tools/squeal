@@ -1,11 +1,11 @@
 import type { ProjectName, WorktreeId } from "../types/common.js";
 import { type Store, worktreeMetaKey } from "../types/store.js";
-import type { NowRequest } from "./request-intake-types.js";
+import type { NowRequest, Request } from "./request-intake-types.js";
 
 /*
  * Review of 0.1.428, B1 (row 018-28, spec 018 D5): an import into a running
  * daemon's store adds observed entries that its keys take only at the next
- * refinement's apply (`ImportsSeen`, `Scheduler.refreshObserved`). Until
+ * refinement's apply (`ImportsSeen`, `Scheduler.requestImports`). Until
  * then each of the import's files holds its old key, and status, which reads
  * the store alone, would call it "content differs". The daemon names the
  * imports its keys have not taken in a row of the worktree's: the retry
@@ -65,31 +65,57 @@ export function clearImportsWaiting(store: Store, worktreeId: WorktreeId): void 
 }
 
 /**
- * Row 018-28 as the request intake takes it (row 011-322): an import's
- * observed reads, or with neither argument the daemon lifecycle's refresh.
- * The files whose set grew in `projects` wait for the refinement's regrow,
- * as another worktree's do; until that regrow is applied, status names the
- * `imports` it waits for (review of 0.1.428, B1). `queueObserved` queues
- * that runner work. `false`: closed, not started, or waiting for an install.
+ * Row 018-28 as the request intake takes it (rows 011-322, 011-323): an
+ * import's observed reads. `projects`, whose observed entries the import
+ * added, are read again first, so the files whose set grew wait for the
+ * refinement's regrow, as another worktree's do; until that regrow is
+ * applied, status names the `imports` it waits for (review of 0.1.428, B1).
+ * `queueObserved` queues that runner work. The mark is written in the
+ * stage's transaction, tried again while the store is busy (spec 021 D2;
+ * `research/request-intake.md`, difference 1). `false`: closed, not
+ * started, or waiting for an install.
  */
-export function observedRequest(
+export function importRequest(
   projects: readonly ProjectName[],
   imports: readonly string[],
   queueObserved: () => void,
-): NowRequest<boolean> {
+): Request<boolean> {
   return {
-    operation: "refreshing the observed reads of an import",
+    operation: "taking the observed reads of an import",
+    start: { closed: false },
+    installWait: { atOnce: false },
+    runnerWork: { skip: "waits for no runner work: it queues its own (`queueObserved`)" },
+    store: {
+      stage: (context) => {
+        if (projects.length > 0) context.keys.refreshObserved(projects);
+        markImportsWaiting(context.store, context.worktreeId, imports);
+        queueObserved();
+        // No covered file: the refinement's regrow re-keys the files it reaches, and runs none.
+        return { answer: true, covered: [] };
+      },
+    },
+    wake: { skip: "wakes no lane: the pump applies its runner work first" },
+  };
+}
+
+/**
+ * Task 003-26 as the request intake takes it: the daemon lifecycle's
+ * refresh once another worktree grew the shared observed paths. It queues
+ * the refinement's regrow (`queueObserved`) and writes no store. `false`:
+ * closed, not started, or waiting for an install; the lifecycle asks again.
+ */
+export function observedRequest(queueObserved: () => void): NowRequest<boolean> {
+  return {
+    operation: "refreshing the observed reads",
     start: { closed: false },
     installWait: { atOnce: false },
     runnerWork: { skip: "waits for no runner work: it queues its own (`queueObserved`)" },
     store: {
       skip:
-        "synchronous: the daemon's lifecycle reads its answer at once (daemon.ts:416); its " +
-        "waiting mark is written outside the busy-store retry until row 011-323 (difference 1)",
+        "writes no store, so it needs no lock nor busy retry; synchronous: the daemon's " +
+        "lifecycle reads its answer at once (daemon.ts:416)",
       covers: { skip: "covers no file: the refinement's regrow re-keys the files it reaches" },
-      now: (context) => {
-        if (projects.length > 0) context.keys.refreshObserved(projects);
-        markImportsWaiting(context.store, context.worktreeId, imports);
+      now: () => {
         queueObserved();
         return true;
       },

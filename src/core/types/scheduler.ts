@@ -510,14 +510,20 @@ export interface Scheduler {
    * closures and environments are fetched again. `idle` waits for it.
    * False when nothing took it: before the baseline ends, while waiting for
    * the install, or once closed (004 review wave 2.5, B3); the caller asks
-   * again.
-   *
-   * Row 018-28: `projects` are read again first, whatever their runner, so
-   * the observed entries an import added key their files as a start would.
-   * `imports` names those imports for status until their keys are applied
-   * (`imports-waiting.ts`; review of 0.1.428, B1).
+   * again. Synchronous, and it writes no store: the daemon's lifecycle reads
+   * its answer at once.
    */
-  refreshObserved(projects?: readonly ProjectName[], imports?: readonly string[]): boolean;
+  refreshObserved(): boolean;
+  /**
+   * Row 018-28: an import added observed entries for `projects`. They are
+   * read again first, whatever their runner, so they key their files as a
+   * start would; `imports` names those imports for status until their keys
+   * are applied (`imports-waiting.ts`; review of 0.1.428, B1); then the
+   * refinement `refreshObserved` queues is queued. Row 011-323: the mark is
+   * written in a transaction tried again while the store is busy (spec 021
+   * D2). False as `refreshObserved`'s; the caller asks again.
+   */
+  requestImports(projects: readonly ProjectName[], imports: readonly string[]): Promise<boolean>;
   status(): SchedulerStatus;
   /**
    * Row 011-234 (005 D2 as amended): a named wait's sync, its revision and,
