@@ -10,6 +10,7 @@ import {
   type Inputs,
   KEY_A,
   KEY_B,
+  keepsOf,
   kept,
   type ProxiedRequest,
   type ProxyPlan,
@@ -201,7 +202,7 @@ describe("an input that moves while a try is lost (review 0.1.450 R1-B2)", () =>
       const notes: string[] = [];
       await kept(at, notes, { daemonWaits: WAITS, inputs, files: BOTH });
       expect(notes).toEqual([NOT_KEPT]);
-      expect(at.keeps.map((k) => [k.write.kind, k.write.key])).toEqual([
+      expect(keepsOf(at)).toEqual([
         ["coverage", KEY_A],
         ["results", KEY_A],
       ]);

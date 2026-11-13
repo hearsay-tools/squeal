@@ -21,7 +21,14 @@ import { storePaths } from "../../../src/core/store/paths.js";
 import type { CheckKey, TestFileRef } from "../../../src/core/types/keys.js";
 import type { ObservedInputs, RunReport } from "../../../src/core/types/runner.js";
 import { git, scratchStore, writeTree } from "../../keys/validity/harness/shared.js";
-import { POLICY, RECORD, served } from "./keep-daemon-kit.js";
+import {
+  keepsOf,
+  POLICY,
+  RECORD,
+  type Served,
+  type ServedOptions,
+  served,
+} from "./keep-daemon-kit.js";
 
 /*
  * Row 020-39 (spec 020 D17.3, D17.5): the keeper with a lookup's real keys
@@ -29,8 +36,10 @@ import { POLICY, RECORD, served } from "./keep-daemon-kit.js";
  * repository's store. Where no daemon serves, a file whose run read a
  * path beyond its key is kept at the key with it, and its read and its
  * marks join the shared rows; a busy store, or a read that moved before
- * the write, keeps nothing at that key. Where a daemon serves, nothing
- * changes: the file is told as not kept, and nothing is merged.
+ * the write, keeps nothing at that key. Row 020-48: where a daemon
+ * serves, the keeper sends it the reads first, and it merges them and
+ * writes the file at that key; a daemon before that row merges nothing,
+ * so the file is told as not kept, as before, and the others are written.
  */
 
 const A: TestFileRef = { project: "", path: "test/a.test.ts" };
@@ -233,20 +242,67 @@ describe("squeal code keeps a file whose run read beyond its key (row 020-39)", 
     expect(notes).toEqual([]);
   });
 
-  it("does not keep it, and merges nothing, while a daemon serves the worktree", async () => {
-    const served_ = await served();
-    const at = { ...(await lookup(served_.root)), commonDir: served_.commonDir };
+  it("keeps it at that key through a serving daemon, which merges the read and its marks (row 020-48)", async () => {
+    const at = await servedLookup();
+    const notes: string[] = [];
+
+    const ran = await keep(at, notes, { files: [A, B] });
+
+    const grown = keyOf(at.keys, A);
+    expect(grown).not.toBe(ran);
+    expect(keepsOf(at.served)).toEqual([
+      ["seen", null],
+      ["coverage", grown],
+      ["results", grown],
+      ["coverage", keyOf(at.keys, B)],
+      ["results", keyOf(at.keys, B)],
+    ]);
+    expect(at.served.keeps[0]?.write).toEqual({
+      kind: "seen",
+      seen: [{ ref: A, add: [READ], direct: [READ], modules: ["src/a.ts"] }],
+    });
+    expect([resultsAt(at.commonDir, grown), resultsAt(at.commonDir, ran)]).toEqual([1, 0]);
+    expect(rowsOf(at.commonDir)).toEqual([[READ], [READ], ["src/a.ts"]]);
+    expect(notes).toEqual([]);
+  });
+
+  it("writes the other files, and tells the grown one as before, to a daemon before row 020-48", async () => {
+    const at = await servedLookup({ takesSeen: false });
     const notes: string[] = [];
 
     await keep(at, notes, { files: [A, B] });
 
-    expect(served_.keeps.map((k) => [k.write.kind, k.write.key])).toEqual([
+    expect(keepsOf(at.served)).toEqual([
       ["coverage", keyOf(at.keys, B)],
       ["results", keyOf(at.keys, B)],
     ]);
-    expect(notes).toEqual([
-      `1 completed test file was not kept in the stores, because it read paths its key lacks (${READ}): test/a.test.ts; the next run will run it again`,
-    ]);
+    expect(resultsAt(at.commonDir, keyOf(at.keys, B))).toBe(1);
+    expect(notes).toEqual([GROWN_NOT_KEPT]);
     expect(rowsOf(at.commonDir)).toEqual([undefined, undefined, undefined]);
   });
+
+  it("keeps nothing, with the notes before row 020-48, where the daemon takes no kept files", async () => {
+    const at = await servedLookup({ takesKeeps: false });
+    const notes: string[] = [];
+
+    await keep(at, notes, { files: [A, B] });
+
+    expect(notes).toEqual([
+      "1 completed test file was not kept in the stores: a daemon runs in this worktree, and it keeps its own",
+      GROWN_NOT_KEPT,
+    ]);
+    expect(rowsOf(at.commonDir)).toEqual([undefined, undefined, undefined]);
+    expect(resultsAt(at.commonDir, keyOf(at.keys, B))).toBe(0);
+  });
 });
+
+/** The note before row 020-48 on `a`, kept at its grown key with no reads merged. */
+const GROWN_NOT_KEPT = `1 completed test file was not kept in the stores, because it read paths its key lacks (${READ}): test/a.test.ts; the next run will run it again`;
+
+/** A lookup in a worktree whose daemon serves it (`served`), with the daemon's kit. */
+async function servedLookup(
+  options: ServedOptions = {},
+): Promise<Lookup & { readonly commonDir: string; readonly served: Served }> {
+  const daemon = await served(options);
+  return { ...(await lookup(daemon.root)), commonDir: daemon.commonDir, served: daemon };
+}

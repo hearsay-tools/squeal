@@ -4,8 +4,9 @@ import { type DaemonRequestError, requestDaemon } from "../../daemon/client.js";
 import { heartbeatFresh } from "../../presence/heartbeat.js";
 import type { AbsolutePath, EpochMs, WorktreeId } from "../../types/common.js";
 import type { DaemonRequest, DaemonResponse } from "../../types/daemon.js";
-import type { KeepResponse, KeepWrite } from "../../types/daemon-writes.js";
+import type { KeepResponse, KeepWrite, SeenReads } from "../../types/daemon-writes.js";
 import type { Store } from "../../types/store.js";
+import { OlderDaemon } from "./keep-seen.js";
 import type { KeepWriter, Tried } from "./keep-write.js";
 
 /** How long the keeper waits for the daemon (review 0.1.450 B2). */
@@ -26,6 +27,23 @@ const RECONCILE_PAUSE_MS = 250;
 
 /** The 020-28 note for a daemon that keeps the files: one before this request answers so. */
 export const DAEMON_KEEPS_ITS_OWN = "a daemon runs in this worktree, and it keeps its own";
+
+/**
+ * Row 020-48: how many bytes of reads one `seen` write carries at most, far
+ * below a `keep` line's limit (`MAX_WRITE_LINE_BYTES`, 32 MiB); a gate
+ * run's reads are some KB, so most runs send one.
+ */
+export const SEEN_BYTES = 4 * 1024 * 1024;
+
+/**
+ * Row 020-48: the refusals of a daemon before that row, to a `seen` write:
+ * a kind it does not know, or no `keep` request at all.
+ */
+const OLDER_SEEN: ReadonlySet<string> = new Set([
+  '"write.kind" must be "coverage" or "results"',
+  'unknown request type "keep"',
+  "this daemon takes no kept files",
+]);
 
 /** Socket errors that prove the request never reached a daemon. */
 const NOT_REACHED: ReadonlySet<string> = new Set(["ENOENT", "ECONNREFUSED"]);
@@ -50,7 +68,10 @@ class KeepRefused extends Error {}
  * twice. A try the daemon does not know ran nowhere and is `lost`, so the
  * keeper tries anew; one it does not tell of within the bound is
  * `KeepUnknown`. B1: a refusal says why, and only a daemon before this
- * request gives the 020-28 note.
+ * request gives the 020-28 note. Row 020-48: the runs' reads go first, as
+ * `seen` writes of at most `SEEN_BYTES` each, which the daemon merges into
+ * the shared observed rows; a daemon before that row refuses them, which
+ * throws `OlderDaemon`.
  */
 export function writeThroughDaemon(target: {
   readonly socketPath: AbsolutePath;
@@ -87,10 +108,10 @@ export function writeThroughDaemon(target: {
     let state: KeepResponse | "lost";
     try {
       const answer = await ask({ type: "keep", id, worktreeId, storeSchema, write });
-      if (!isKeep(answer)) throw refusal(answer);
+      if (!isKeep(answer)) throw refusal(answer, write.kind);
       state = answer;
     } catch (error) {
-      if (error instanceof KeepRefused) throw error;
+      if (error instanceof KeepRefused || error instanceof OlderDaemon) throw error;
       const { code, message } = error as DaemonRequestError;
       if (NOT_REACHED.has(code)) throw new Error(`the daemon did not answer: ${message}`);
       // Sent, its answer lost: it may have run.
@@ -107,6 +128,13 @@ export function writeThroughDaemon(target: {
   };
 
   return {
+    seen: async (seen) => {
+      for (const part of partsOf(seen)) {
+        const tried = await tryOnce({ kind: "seen", seen: part });
+        if (tried !== "kept") return tried;
+      }
+      return "kept";
+    },
     coverage: (file) => tryOnce({ kind: "coverage", key: file.key, record: file.record }),
     results: (file, records, keys) =>
       tryOnce({
@@ -137,11 +165,35 @@ export function sentWriter(
   return writeThroughDaemon({ socketPath, worktreeId, storeSchema, ...(waits ? { waits } : {}) });
 }
 
-/** The daemon's refusal of a try: the 020-28 note for one before this request, else its words. */
-function refusal(answer: DaemonResponse): KeepRefused {
+/**
+ * The daemon's refusal of a try of a `kind` write: `OlderDaemon` for reads
+ * a daemon before row 020-48 does not take; the 020-28 note for one before
+ * this request; else its words.
+ */
+function refusal(answer: DaemonResponse, kind: KeepWrite["kind"]): Error {
   const why = whyNot(answer);
+  if (kind === "seen" && OLDER_SEEN.has(why)) return new OlderDaemon(why);
   const older = why === 'unknown request type "keep"' || why === "this daemon takes no kept files";
   return new KeepRefused(older ? DAEMON_KEEPS_ITS_OWN : `the daemon refused the write: ${why}`);
+}
+
+/** `seen` in order, in parts of at most `SEEN_BYTES` as JSON; one file's reads never split. */
+export function partsOf(seen: readonly SeenReads[], bytes = SEEN_BYTES): SeenReads[][] {
+  const parts: SeenReads[][] = [];
+  let part: SeenReads[] = [];
+  let size = 0;
+  for (const one of seen) {
+    const length = Buffer.byteLength(JSON.stringify(one));
+    if (part.length > 0 && size + length > bytes) {
+      parts.push(part);
+      part = [];
+      size = 0;
+    }
+    part.push(one);
+    size += length;
+  }
+  if (part.length > 0) parts.push(part);
+  return parts;
 }
 
 function isKeep(answer: DaemonResponse): answer is KeepResponse {
