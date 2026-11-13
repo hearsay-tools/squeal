@@ -27,3 +27,18 @@ Leave alone: `slow-tier.ts`, `tiers.ts`, `focused.ts`, `slots.ts`, `revision.ts`
 Stop and ask the coordinator if a response type, an answer, a daemon file or a pump file must change.
 
 Done when: the row's done-when holds; `git diff <base> -- src/core/daemon src/cli src/core/types` is empty; the tests the design's "stay" list names pass unchanged; `test/keys/key-format.test.ts` passes with no version raise; lint and typecheck pass; affected results read through `squeal status --wait 60000 <paths>`. Notes in `tasks/011-322/notes.md`: per request, its paths and kept quirks; each deleted case and its table row; the tests the table repeats and keeps. Your final message lists decisions the design did not settle, type changes, and any of the design's calls that did not hold.
+
+## R1: review of cand/0.1.470
+
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.470` at `1611852899cb1d0ff4e04b1fcd9d97e9557b66e9`; range `12143af15..1611852899` (nine worker commits of a49fbac4, cherry-picked, then the 0.1.470 bundles). Read: board row 011-322, `research/request-intake.md`, `tasks/011-322/notes.md`, this file's W1. Candidate CI: run 43487298535.
+
+Check, each as proven, plausible or unverified:
+
+1. Nothing a user sees changed. For every path the notes list per request (each early answer, `null`, throw, lock and busy-retry boundary), the answer, the rejection message and whether work starts afterwards match the base `12143af15`. The public request methods are no longer `async`: show that every throw on their paths (before the start, closed, `NO_PASS`, a lint group's narrow run, a busy store at the stop) still reaches the caller as a rejected promise, not a synchronous throw (callers such as `daemon.ts:947` use `.catch`).
+2. The five order quirks of the design's "Coordinator's calls" hold, each traced in the code.
+3. Judge the shifts the notes accept, and say whether any changes an answer, what the progress tracker reports, or when the daemon stays awake: the progress record after the commit (a stage that throws now records nothing); the narrow run's lane wake moved after the record; the narrow run's install-wait state read before `selectNarrow`.
+4. The done-when: no request method calls `#transact`, `#request`, `#requests.ask`, `#groups.preempt`, `#cutTiers` or `#pump` itself; each skipped rule is a named reason; each `@ts-expect-error` case fails without its directive.
+5. The table drives the entry point the scheduler calls, not a parallel path (review 0.1.452 B1), and each deleted case maps to a table row that proves the same thing.
+6. `git diff 12143af15..1611852899 -- src/core/daemon src/cli src/core/types src/core/scheduler/slow-tier.ts src/core/scheduler/tiers.ts src/core/scheduler/focused.ts src/core/scheduler/request-progress.ts` is empty; `test/keys/key-format.test.ts` passes with no version raise.
+
+Host policy: no local full suite, no `squeal run --all`, no `pnpm run build`; targeted runs with `env -u PLUGIN_ROOT -u PLUGIN_DATA`; affected results through `squeal status --wait 60000 <paths>`. Write `reviews/0.1.470.md` and commit it on your branch.
