@@ -44,7 +44,7 @@ Same cases, same expected values; only the trait read moved to `traits` (coordin
 - `test/runners/vitest/width.test.ts` (17 reads)
 - `test/runner-host/vitest-parity.test.ts`, `node-test-parity.test.ts`, `pytest-parity.test.ts` (their trait members kept; `focuses` is now `traits.focuses(<a file of the fixture>)`, compared in process against the host)
 - `test/runners/vitest/exclude-files.test.ts`, `test-command-files.test.ts`, `focused.test.ts`; `test/runners/pytest/focused.test.ts`
-- `test/keys/validity/harness/vitest.ts` (`hinted`)
+- `test/keys/validity/harness/vitest.ts` (`hinted`, coverage only, answers dropped): the key alarm runs this harness at the last release too, whose adapter has `slowWidth` and `tierWidth` and no `traits`. A first edit that read `adapter.traits` threw there in 27 Vitest cases ("Cannot read properties of undefined (reading 'slowWidth')"), so `hinted` reads `traits` when the adapter has it, else the adapter's own members (commit `c3cb70cd8`)
 - `test/daemon/composite-reconcile.test.ts`, `escaped-overlap.test.ts`, `escaped-run-mark.test.ts`
 - `test/scheduler/tier-holds.test.ts` (the harness runner's width: `h.runner.traits = declareTraits(...)`)
 
