@@ -46,9 +46,7 @@ describe("squeal code --base keys with its own Vitest (row 020-51)", () => {
     const first = await gate(repo, ["src/one.ts"]);
 
     expect(first.ran).toEqual([ONE.path]);
-    expect(first.report.runs.map((r) => [r.runner, r.completed])).toEqual([
-      ["vitest", [ONE.path]],
-    ]);
+    expect(first.report.runs.map((r) => [r.runner, r.completed])).toEqual([["vitest", [ONE.path]]]);
     expect(vitests.opened).toBe(1);
 
     // The key the run kept the file at is the one a daemon's own adapters give.
