@@ -1,0 +1,13 @@
+{"time":"2026-11-13T11:37:26.858Z","node":"v26.13.0","version":"0.1.465","commit":"b5eba8432c317fa259495873e6a223d4501cf142","cpus":24,"available":24,"load":[0.89,1.5,6.68]}
+{"changedListedTests":9,"catchUp":false}
+{"changedListedTests":10,"catchUp":true}
+{"changedListedTests":35,"catchUp":true}
+{"fiveRevisionsOfSevenTests":[false,false,false,false,false]}
+{"changedPaths":35,"keyedPaths":9,"catchUp":false}
+{"case":"35 edits, unmarked e2e","first":["test/other.test.ts","packages/web/e2e/activity.e2e.ts","packages/web/src/components/unit-0.test.ts"],"editedRank":3,"catchUp":true}
+{"case":"edit class control","editedRank":1}
+{"case":"unknown edited durations","catchUpRank":3,"editRank":1}
+{"case":"e2e marked slow","fast":36,"slow":1,"e2eInFastOrder":false}
+{"case":"named promotion","editedRank":1,"catchUp":false}
+{"case":"previous recent survives catch-up add","recent":true,"catchUp":false}
+{"assertions":"PASS","elapsedMs":9}
