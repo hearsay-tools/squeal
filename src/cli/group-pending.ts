@@ -3,7 +3,7 @@ import { heartbeatLateBy } from "../core/presence/heartbeat.js";
 import { durationText, shellWord } from "../core/text.js";
 import type { AbsolutePath } from "../core/types/common.js";
 import type { GroupHolder, RunGroupResponse } from "../core/types/daemon.js";
-import { inStore } from "./run-lanes.js";
+import { inStore } from "./wait/reads.js";
 
 /*
  * Row 011-302 (gh-154): what `squeal run <group> --wait` says when its
