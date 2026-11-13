@@ -19,8 +19,8 @@ import { connectionOf } from "./store.js";
  *
  * - `request_covered_files`: by request id, the worktree and revision the
  *   request was taken at, when, its files as JSON (`CoveredFile[]`), and
- *   `idle_since`: when a write first found none of its files queued or
- *   running (`NULL` until then).
+ *   `idle_since`: the time its retention counts from, `NULL` while a write
+ *   found one of its files queued or running (`idleSince`).
  */
 export const COVERED_FILES_TABLE = "request_covered_files";
 
@@ -53,6 +53,21 @@ export type CoveredFile =
   /** Neither: why, as the scheduler knew it (an install wait, a runner failure, no key). */
   | { readonly testFile: TestFileRef; readonly state: "not-queued"; readonly reason: string };
 
+/** What the scheduler knows of the files now, for the prune (`writeCoveredFiles`). */
+export interface CoveredActivity {
+  /** Whether the scheduler lists `testFile` now. */
+  listed(testFile: TestFileRef): boolean;
+  /** Whether `testFile` is queued or running now. */
+  pending(testFile: TestFileRef): boolean;
+  /** When `testFile` last left queued or running, as far as known; `null`: not known to have. */
+  leftAt(testFile: TestFileRef): EpochMs | null;
+  /**
+   * Exits before it are not known (a daemon handoff: the earlier daemon saw
+   * them): a record idle before it counts as idle from it.
+   */
+  readonly knownSince: EpochMs;
+}
+
 /** A request's covered files (`readCoveredFiles`). */
 export interface CoveredFiles {
   /** The request id the daemon's answer carries (`coveredId`). */
@@ -66,34 +81,37 @@ export interface CoveredFiles {
 
 /**
  * Writes `record`, inside the caller's transaction (the request's own). The
- * worktree's older records are pruned first: one none of whose files
- * `pending` says is queued or running is marked idle, and one idle for
- * `COVERED_FILES_KEPT_MS` is deleted. A store `openStore` did not open (a
- * test's fake) records nothing.
+ * worktree's older records are pruned first, each by what `activity` says
+ * of its files now (`idleSince`): one with a file queued or running is
+ * kept and counts as idle again only once none is; one idle for
+ * `COVERED_FILES_KEPT_MS` after the latest known exit of its files is
+ * deleted (review 0.1.478, B1). A store `openStore` did not open (a test's
+ * fake) records nothing.
  */
 export function writeCoveredFiles(
   store: Store,
   record: CoveredFiles,
-  pending: (testFile: TestFileRef) => boolean,
+  activity: CoveredActivity,
 ): void {
   const conn = connection(store);
   if (conn === null) return;
   if (!hasTable(conn)) conn.db.exec(TABLE_SQL);
   const now = record.recordedAt;
-  const open = conn.all(
-    `SELECT id, files FROM ${COVERED_FILES_TABLE} WHERE worktree_id = ? AND idle_since IS NULL`,
+  const rows = conn.all(
+    `SELECT id, recorded_at, idle_since, files FROM ${COVERED_FILES_TABLE} WHERE worktree_id = ?`,
     record.worktreeId,
   );
-  for (const row of open) {
-    if (parseFiles(row.files).some((file) => pending(file.testFile))) continue;
-    conn.run(`UPDATE ${COVERED_FILES_TABLE} SET idle_since = ? WHERE id = ?`, now, String(row.id));
+  for (const row of rows) {
+    const id = String(row.id);
+    const was = row.idle_since === null ? null : Number(row.idle_since);
+    const files = parseFiles(row.files);
+    const idle = idleSince(files, was, Number(row.recorded_at), now, activity);
+    if (idle !== null && idle <= now - COVERED_FILES_KEPT_MS) {
+      conn.run(`DELETE FROM ${COVERED_FILES_TABLE} WHERE id = ?`, id);
+    } else if (idle !== was) {
+      conn.run(`UPDATE ${COVERED_FILES_TABLE} SET idle_since = ? WHERE id = ?`, idle, id);
+    }
   }
-  conn.run(
-    `DELETE FROM ${COVERED_FILES_TABLE} WHERE worktree_id = ? AND idle_since <= ?`,
-    record.worktreeId,
-    now - COVERED_FILES_KEPT_MS,
-  );
-  const busy = record.files.some((file) => pending(file.testFile));
   conn.run(
     `INSERT INTO ${COVERED_FILES_TABLE} (id, worktree_id, revision, recorded_at, idle_since, files)
      VALUES (?, ?, ?, ?, ?, ?)`,
@@ -101,9 +119,32 @@ export function writeCoveredFiles(
     record.worktreeId,
     record.revision,
     now,
-    busy ? null : now,
+    idleSince(record.files, null, now, now, activity),
     JSON.stringify(record.files),
   );
+}
+
+/**
+ * Condition 3: when a record of `files`, written at `recordedAt`, counts
+ * as idle from; `null` while one of them is queued or running. Otherwise
+ * the latest of: `was`, the time a write gave it (`recordedAt` before
+ * any); each file's last exit, also one that began and ended between two
+ * writes; and `knownSince`. A record a write last found busy with a file
+ * the scheduler lists no more counts from `now`: that file's exit is not
+ * held anywhere and came no later.
+ */
+function idleSince(
+  files: readonly CoveredFile[],
+  was: EpochMs | null,
+  recordedAt: EpochMs,
+  now: EpochMs,
+  activity: CoveredActivity,
+): EpochMs | null {
+  if (files.some((file) => activity.pending(file.testFile))) return null;
+  if (was === null && files.some((file) => !activity.listed(file.testFile))) return now;
+  let idle = Math.max(was ?? recordedAt, activity.knownSince);
+  for (const file of files) idle = Math.max(idle, activity.leftAt(file.testFile) ?? idle);
+  return idle;
 }
 
 /**

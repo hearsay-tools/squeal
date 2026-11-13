@@ -1,6 +1,6 @@
 import { testFileId } from "../keys/reverse-index.js";
 import type { CheckId } from "../types/check.js";
-import type { RevisionNumber } from "../types/common.js";
+import type { EpochMs, RevisionNumber } from "../types/common.js";
 import type { CheckKey, TestFileRef } from "../types/keys.js";
 import type { PendingPhase, Validity } from "../types/state.js";
 import type { ResultRecord } from "../types/store-records.js";
@@ -42,6 +42,13 @@ export interface FileState {
    */
   durationMs: number | null;
   phase: PendingPhase | null;
+  /**
+   * Row 011-325 (review 0.1.478, B1): when `phase` last became `null`, on
+   * the scheduler's clock; `null` while it has not in this ledger. Memory
+   * only: a request's covered-files record is kept 10 minutes after its
+   * files' last exit (`recordCovered`, its only reader).
+   */
+  leftPendingAt: EpochMs | null;
   /** Key of the tier in flight that holds this file. */
   runningKey: CheckKey | null;
   /**
@@ -97,6 +104,7 @@ export function newFileState(ref: TestFileRef): FileState {
     failing: false,
     durationMs: null,
     phase: null,
+    leftPendingAt: null,
     runningKey: null,
     unknownKey: null,
     discards: 0,

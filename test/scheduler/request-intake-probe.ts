@@ -73,7 +73,10 @@ export interface Probe {
   /** What the intake and the probe did, in order. */
   readonly log: string[];
   readonly notes: string[];
-  /** The host's state: open, stopping, waiting, started; `now`, the context's clock. */
+  /**
+   * The host's state: open, stopping, waiting, started; `now`, the context's
+   * clock; `keys`, each file's key (`KEYS` at first), which an edit moves.
+   */
   readonly state: {
     open: boolean;
     stopping: boolean;
@@ -81,6 +84,7 @@ export interface Probe {
     started: boolean;
     delivered: number;
     now: EpochMs;
+    readonly keys: Map<string, CheckKey>;
   };
   /** `A`'s row as another connection reads it: what the store committed. */
   committed(): { key: CheckKey | null; pending: string | null } | undefined;
@@ -90,9 +94,12 @@ export interface Probe {
 
 /**
  * A store with `B` queued and `A` listed, unkeyed; the intake over it. With
- * `dir`, the store there, as a daemon that took the worktree over opens it.
+ * `dir`, the store there, as a daemon that took the worktree over opens it;
+ * with `queued: false`, `B` is listed and unkeyed too.
  */
-export function probeHost(options: { dir?: AbsolutePath; policy?: Policy } = {}): Probe {
+export function probeHost(
+  options: { dir?: AbsolutePath; policy?: Policy; queued?: boolean } = {},
+): Probe {
   const dir = options.dir ?? tempDir();
   const store = open(dir);
   const reader = open(dir);
@@ -119,6 +126,7 @@ export function probeHost(options: { dir?: AbsolutePath; policy?: Policy } = {})
     started: true,
     delivered: 2,
     now: Date.now(),
+    keys: new Map(KEYS),
   };
   const context = {
     store,
@@ -131,7 +139,10 @@ export function probeHost(options: { dir?: AbsolutePath; policy?: Policy } = {})
       runnerOf: () => undefined,
       runtimeIdentity: () => "",
       writeRuntimeApplications: () => {},
-      index: { key: (ref: TestFileRef) => KEYS.get(ref.path) ?? null, keysReadAsOne: () => null },
+      index: {
+        key: (ref: TestFileRef) => state.keys.get(ref.path) ?? null,
+        keysReadAsOne: () => null,
+      },
       stabilityPaths: () => [],
       removeTestFile: () => {},
     },
@@ -141,7 +152,7 @@ export function probeHost(options: { dir?: AbsolutePath; policy?: Policy } = {})
   ledger.ends = progress;
   ledger.addFile(A);
   ledger.addFile(B);
-  ledger.settle([B], NOTHING);
+  if (options.queued !== false) ledger.settle([B], NOTHING);
   ledger.commit();
   const lane = {
     request: () => log.push("lane requested"),
