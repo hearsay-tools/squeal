@@ -73,7 +73,7 @@ async function untilStarted(marker: string, heard: ReadonlySet<string>): Promise
  * adapter's traits since row 011-329, and its own members at a release
  * before it, which this harness runs too.
  */
-function hinted(adapter: RunnerAdapter, files: readonly TestFileRef[]): void {
+function hinted(adapter: Omit<RunnerAdapter, "traits">, files: readonly TestFileRef[]): void {
   const widths: Partial<Pick<RunnerTraits, "slowWidth" | "tierWidth">> =
     (adapter as Partial<RunnerAdapter>).traits ?? (adapter as Partial<RunnerTraits>);
   const [first] = files;
@@ -87,7 +87,7 @@ function hinted(adapter: RunnerAdapter, files: readonly TestFileRef[]): void {
  * Its `imports` key nothing and are left out.
  */
 async function closuresOf(
-  adapter: RunnerAdapter,
+  adapter: Omit<RunnerAdapter, "traits">,
   refs: readonly TestFileRef[] | undefined,
 ): Promise<unknown[] | undefined> {
   if (refs === undefined) return undefined;
@@ -189,7 +189,11 @@ const startsHeld = (run: VitestInput["runs"][number]) =>
   run.cancelBefore === undefined && run.removeTempDir !== true && run.unwaited !== true;
 
 /** Row 015-70: after each run of an `unloadable` case, what `recheck` answers; a release before it has none. */
-async function recheckAfter(input: VitestInput, adapter: RunnerAdapter, rechecks: unknown[]) {
+async function recheckAfter(
+  input: VitestInput,
+  adapter: Omit<RunnerAdapter, "traits">,
+  rechecks: unknown[],
+) {
   if (input.coverage === "unloadable") rechecks.push((await adapter.recheck?.()) ?? null);
 }
 

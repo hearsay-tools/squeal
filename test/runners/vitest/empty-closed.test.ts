@@ -16,7 +16,7 @@ import {
 import { loadVitest, type VitestNode } from "../../../src/runners/vitest/load.js";
 import { RunCollector } from "../../../src/runners/vitest/reporter.js";
 import { abandon } from "../../../src/runners/vitest/run.js";
-import { openFixture, outcomes, ref, SLOW } from "./helpers.js";
+import { openFixture, outcomes, ref, SLOW, withVitestTraits } from "./helpers.js";
 
 /*
  * Task 013-06 (research `vitest-close-leak.md` 3a): Vite 8 keeps every
@@ -66,7 +66,7 @@ async function tracked(root: string, created: Created[]): Promise<VitestNode> {
 async function opened(root: string, created: Created[]) {
   const real = realpathSync(root);
   const node = await tracked(real, created);
-  const adapter = new VitestAdapter(new WorktreePaths(real), node);
+  const adapter = withVitestTraits(new VitestAdapter(new WorktreePaths(real), node));
   await adapter.open();
   return adapter;
 }
@@ -160,9 +160,8 @@ describe("a closed Vitest instance is freed (task 013-06)", SLOW, () => {
       const fx = await openFixture("basic", files);
       const root = realpathSync(fx.root);
       const node = await tracked(root, created);
-      const runner = withSlowInstance(
-        fx.adapter,
-        () => new VitestAdapter(new WorktreePaths(root), node),
+      const runner = withSlowInstance(fx.adapter, () =>
+        withVitestTraits(new VitestAdapter(new WorktreePaths(root), node)),
       );
       const lane = `${SLOW_LANE_PREFIX}vitest`;
       for (let i = 0; i < 3; i++) {

@@ -6,7 +6,7 @@ import { VitestAdapter } from "../../../src/runners/vitest/adapter.js";
 import { depToPath } from "../../../src/runners/vitest/graph.js";
 import { loadVitest, type VitestNode } from "../../../src/runners/vitest/load.js";
 import { FALLBACK_NOTE } from "../../../src/runners/vitest/stale.js";
-import { openFixture, paths, ref, SLOW } from "./helpers.js";
+import { openFixture, paths, ref, SLOW, withVitestTraits } from "./helpers.js";
 
 /** An adapter whose Vitest instance the test can reach. */
 async function exposed(
@@ -23,7 +23,9 @@ async function exposed(
       return vitest;
     },
   } as VitestNode;
-  const adapter = new VitestAdapter(new WorktreePaths(realpathSync(root)), node, note);
+  const adapter = withVitestTraits(
+    new VitestAdapter(new WorktreePaths(realpathSync(root)), node, note),
+  );
   await adapter.open();
   return adapter;
 }

@@ -7,7 +7,7 @@ import type { CancelCause } from "../../../src/core/types/runner.js";
 import { VitestAdapter } from "../../../src/runners/vitest/adapter.js";
 import { loadVitest } from "../../../src/runners/vitest/load.js";
 import { witnessed } from "../../keys/validity/harness/vitest.js";
-import { openFixture, ref, SLOW } from "./helpers.js";
+import { openFixture, ref, SLOW, withVitestTraits } from "./helpers.js";
 
 /*
  * Row 011-137 (`tasks/011-137/notes.md`): a step-down's cancel dropped every
@@ -140,7 +140,9 @@ async function runOf(sources: Sources, cause?: CancelCause, ran: readonly string
   const heard = new Set<string>();
   const fx = await openFixture("basic", files, async (root) => {
     const vitest = witnessed(await loadVitest(root), heard);
-    const adapter = new VitestAdapter(new WorktreePaths(realpathSync(root)), vitest);
+    const adapter = withVitestTraits(
+      new VitestAdapter(new WorktreePaths(realpathSync(root)), vitest),
+    );
     await adapter.open();
     return adapter;
   });
