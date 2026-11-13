@@ -5,6 +5,7 @@ import { isStoreOpenFailure, openStore } from "../../../../src/core/store/open.j
 import type { WorktreeId } from "../../../../src/core/types/common.js";
 import type { CheckKey, TestFileRef } from "../../../../src/core/types/keys.js";
 import type { RunReport } from "../../../../src/core/types/runner.js";
+import type { RunnerTraits } from "../../../../src/core/types/runner-traits.js";
 import type { Store } from "../../../../src/core/types/store.js";
 import type { Provenance, ResultRecord } from "../../../../src/core/types/store-records.js";
 
@@ -84,4 +85,27 @@ export function wordingOf(row: ResultRecord) {
     location: row.location,
     durationMs: row.durationMs,
   };
+}
+
+/**
+ * For coverage only (row 011-329): every trait the adapter answers, for
+ * `files`. Traits decide no stored row (spec 011 C14), so what they answer
+ * is dropped. An adapter of a release before row 011-329 has no `traits`,
+ * and is asked nothing.
+ */
+export function traitsAsked(
+  adapter: { readonly traits?: RunnerTraits },
+  files: readonly TestFileRef[],
+): void {
+  const { traits } = adapter;
+  const [first] = files;
+  if (traits === undefined || first === undefined) return;
+  traits.omittedTestFiles();
+  traits.slowWidth(files);
+  traits.tierWidth(first, 2);
+  traits.tierPart(first);
+  traits.besideBacklog(first);
+  traits.backlogSlot(first);
+  traits.focuses(first);
+  traits.lane(first);
 }
