@@ -59,6 +59,8 @@ export async function runWait<A extends RunWaitAsk>(
       // Only the daemon check is left once the store closed: `settle` reads every other field.
       record = { ...record, daemon: await daemonCheck(row, ask, ports) };
       step = decideRunWait(row, record);
+      if (step.kind === "read")
+        throw new Error(`run wait ${ask.wait}: no field after the daemon's`);
     }
     // The row's outcomes are the wait's: `RUN_WAITS` gives each wait its own.
     if (step.kind === "end") return step.outcome as OutcomeOf[A["wait"]];
