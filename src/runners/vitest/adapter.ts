@@ -20,7 +20,6 @@ import type {
   RunOptions,
   RunReport,
 } from "../../core/types/runner.js";
-import type { RunnerTraits } from "../../core/types/runner-traits.js";
 import { focusedTexts } from "../focus.js";
 import { readsOfEvery } from "../observe/inputs.js";
 import { withRecorderSignatures } from "../observe/signature.js";
@@ -75,9 +74,7 @@ import { invalidateStructural } from "./stale.js";
 import { closeRejected, startupFailure, withStartup } from "./startup.js";
 import { hearTeardowns } from "./teardown.js";
 import { sortTouched, Touches } from "./touched.js";
-import { vitestTraits } from "./traits.js";
 import { VITEST_ADAPTER_VERSION } from "./version.js";
-import type { WidthTable } from "./width.js";
 
 /**
  * Vitest adapter over one warm `vitest/node` instance per worktree.
@@ -99,17 +96,17 @@ export interface VitestHints {
   started(vitest: Vitest): void;
   /** Sizes `vitest`'s next run for `workers`, a tier's grant; absent, the instance's own width. */
   size(vitest: Vitest, workers: number | undefined, testFiles: readonly TestFileRef[]): void;
-  /** The widths of the instance started last, which the traits answer from; absent, none. */
-  table?(): WidthTable | null;
 }
 
 const NO_HINTS: VitestHints = { started: () => {}, size: () => {} };
 
-export class VitestAdapter implements RunnerAdapter {
+/**
+ * The adapter but its traits, which change nothing a check stores: the sized
+ * adapter (`index.ts`) states them (spec 011 C14, row 011-329).
+ */
+export class VitestAdapter implements Omit<RunnerAdapter, "traits"> {
   readonly name = "vitest";
   readonly adapterVersion = VITEST_ADAPTER_VERSION;
-  /** Spec 011 C14 (row 011-329): Vitest's, from the hints' widths and the last listing. */
-  readonly traits: RunnerTraits;
 
   #vitest: Vitest | null = null;
   /** Where the current instance copies transformed modules (`instanceTempDirs`). */
@@ -227,7 +224,6 @@ export class VitestAdapter implements RunnerAdapter {
     this.#hints = hints;
     this.#note = note;
     this.#observer = new VitestObserver(paths, observe);
-    this.traits = vitestTraits({ widths: () => hints.table?.(), omitted: () => this.#omitted });
   }
 
   /** Spec 001 D4: `createVitest('test', { root, watch: false, ... })`, then `standalone()`. */
@@ -581,6 +577,11 @@ export class VitestAdapter implements RunnerAdapter {
       this.#omitted = specs.length - covered.length;
       return covered.map((s) => this.#ref(s)).sort(compareRefs);
     });
+  }
+
+  /** The files the last listing left out, which Vitest's traits answer from (`index.ts`). */
+  omittedTestFiles(): number {
+    return this.#omitted;
   }
 
   /** Spec 020 D14.4: read from each project's resolved config; nothing runs. */
