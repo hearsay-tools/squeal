@@ -8,8 +8,9 @@ import {
 import { BaseRefError, changedFunctions, mergeBase } from "../core/code/gate/changed.js";
 import { type CollectOptions, CollectUsageError } from "../core/code/gate/collect.js";
 import { evaluate } from "../core/code/gate/evaluate.js";
+import { refusedText } from "../core/code/gate/parts-refused.js";
 import { type BasePolicy, loadBasePolicy } from "../core/code/gate/policy.js";
-import type { EngineVersions, GateRunner } from "../core/code/gate/report.js";
+import type { EngineVersions, GateRunner, GateRunReport } from "../core/code/gate/report.js";
 import type { GateAdapters } from "../core/code/gate/runners.js";
 import { resolveScope } from "../core/code/gate/scope.js";
 import type { ChangedSet, GateVerdict } from "../core/code/gate/types.js";
@@ -23,7 +24,7 @@ import { createVitestAdapter } from "../runners/vitest/index.js";
 import { CODE_GATE_USAGE, parseGateArgs } from "./code-gate-args.js";
 import { storedDurations } from "./code-gate-durations.js";
 import { exceptionsOf } from "./code-gate-exceptions.js";
-import { keptLogsLine, runLogKeeper } from "./code-gate-log.js";
+import { keptLogsLine, type LogRetention, runLogKeeper } from "./code-gate-log.js";
 import { estimateOptions, preRunOptions } from "./code-gate-prerun.js";
 import { overrunText, timed } from "./code-gate-progress.js";
 import { relaunchGate, runAsChild, takeReportFd } from "./code-gate-relaunch.js";
@@ -212,10 +213,24 @@ async function gate(
   const report = evaluate(changed, evidence, policy, versions(), times, exceptions);
   const json = `${statusCommand(io.env ?? process.env)} code ${[...args.map(shellWord), "--json"].join(" ")}`;
   io.stdout(parsed.json ? `${JSON.stringify(report, null, 2)}\n` : formatGateReport(report, json));
-  // #197: the kept logs, after the verdict, on stderr, so `--json` keeps stdout to the report.
-  const kept = keptLogsLine(report.runs, logs.retention());
-  if (kept !== null) io.stderr(kept);
+  afterVerdict(report.runs, logs.retention(), io);
   return EXIT[report.verdict];
+}
+
+/**
+ * What stderr tells after the verdict, so `--json` keeps stdout to the
+ * report: why the parts did not give files they hold, one bounded line per
+ * reason (row 020-49, #205); then the kept logs (#197).
+ */
+function afterVerdict(
+  runs: readonly GateRunReport[],
+  retention: LogRetention | null,
+  io: CliIo,
+): void {
+  const refused = refusedText(runs);
+  if (refused !== "") io.stderr(refused);
+  const kept = keptLogsLine(runs, retention);
+  if (kept !== null) io.stderr(kept);
 }
 
 /** The collector's options read at the base, as the limits are (D6). */
