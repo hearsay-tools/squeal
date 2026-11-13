@@ -295,6 +295,7 @@ class Daemon {
       now: this.#now,
       note: (text) => this.#note(text),
       log: this.#log,
+      stopping: () => this.#phase === "stopping",
       ...(options.gc === undefined ? {} : { lookup: options.gc }),
       ...(options.heapInUse === undefined ? {} : { heapInUse: options.heapInUse }),
     });
