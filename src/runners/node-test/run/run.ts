@@ -208,8 +208,10 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
         slot();
         break;
       }
-      const ended = options.fileStarted?.(run.testFile);
+      // Review 0.1.464 S1: the slot goes back however the file ends, a hook's throw too.
+      let ended: (() => void) | undefined;
       try {
+        ended = options.fileStarted?.(run.testFile);
         const group = startGroup({
           command: node,
           args: run.args,
@@ -232,8 +234,11 @@ export async function runNodeTest(options: NodeTestRunOptions): Promise<NodeTest
         run.signalled = expired || cancelled;
         running.delete(group);
       } finally {
-        ended?.();
-        slot();
+        try {
+          ended?.();
+        } finally {
+          slot();
+        }
       }
       run.stream = readFileStream(
         { testFile: run.testFile, arg: run.arg, events: readEvents(options.logDir, run.index) },

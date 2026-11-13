@@ -118,4 +118,32 @@ describe("runNodeTest with the gate's pool and start hook (rows 020-43, 020-44)"
     const again = await pool.take(new AbortController().signal);
     expect(again).not.toBeNull();
   });
+
+  // Review 0.1.464 S1: the slot goes back to the pool when the start or the end hook throws.
+  it.each([
+    { hook: "start", fileStarted: (): (() => void) => thrower("start hook threw")() },
+    { hook: "end", fileStarted: (): (() => void) => thrower("end hook threw") },
+  ])("gives its slot back when the $hook hook throws", async ({ hook, fileStarted }) => {
+    const pool = new SlotPool(1);
+    const run = runNodeTest({
+      root,
+      project: projectOf(`throws-${hook}`),
+      files: files(`throws-${hook}`, [`d-${hook}`]),
+      logDir: logDir(`throws-${hook}`),
+      timeoutMs: 60_000,
+      slots: pool.take,
+      fileStarted,
+    });
+
+    await expect(run).rejects.toThrow(`${hook} hook threw`);
+    // A free slot is given at once; a leaked one leaves the wait to its abort.
+    const waiting = new AbortController();
+    const next = pool.take(waiting.signal);
+    waiting.abort();
+    expect(await next).not.toBeNull();
+  });
 });
+
+const thrower = (message: string) => () => {
+  throw new Error(message);
+};
