@@ -67,3 +67,21 @@ _Avoid_: request handler, entry path
 **Covered files**:
 The test files a request covers, as the scheduler decided them when it took the request: each queued, already current, or not queued with the reason. They are what the request's progress counts and what a wait on the request waits for.
 _Avoid_: the request's files (when guessed from a lane or a group afterwards)
+
+## Waits
+
+**Wait**:
+A command's hold until the test files or lint checks it is for have results, or until something ends it first: its deadline, no daemon, or a hold on the worktree. A wait ends with one outcome and its reason.
+_Avoid_: poll, loop (these are how a wait reads, not what it is)
+
+**Status wait**:
+A wait that `squeal status` runs: on the test files an edit re-keyed (`--wait`), or on the files that named paths select (`<path>`, with or without `--wait`).
+_Avoid_: edit wait (when the named form is meant too)
+
+**Run wait**:
+A wait that a `squeal run` command runs once the daemon took its request: on a checkpoint, on a group's test files, or on a group's lint checks.
+_Avoid_: checkpoint wait (that is one kind of run wait)
+
+**Wait outcome**:
+Why a wait ended, from a closed set for each kind of wait, with its reason: for a run wait, ended, deadline, on hold, stopped, moved or abandoned. Which outcome wins when several hold is a rule of the wait, written beside the other waits' rules.
+_Avoid_: verdict (the pass or fail of the files), result (a check's)
