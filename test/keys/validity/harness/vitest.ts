@@ -6,6 +6,7 @@ import type { Reporter } from "vitest/node";
 import { WorktreePaths } from "../../../../src/core/fs/worktree-paths.js";
 import type { TestFileRef } from "../../../../src/core/types/keys.js";
 import type { RunnerAdapter, RunReport } from "../../../../src/core/types/runner.js";
+import type { RunnerTraits } from "../../../../src/core/types/runner-traits.js";
 import { VitestAdapter } from "../../../../src/runners/vitest/adapter.js";
 import { loadVitest, type VitestNode } from "../../../../src/runners/vitest/load.js";
 import type { CaseOutput, VitestInput } from "../case.js";
@@ -68,12 +69,16 @@ async function untilStarted(marker: string, heard: ReadonlySet<string>): Promise
 /**
  * For coverage only: the width hints the adapter answers, which the class
  * held at the last release and `index.ts` holds since 011-40. Hints decide
- * no stored row (C14), so what they answer is dropped.
+ * no stored row (C14), so what they answer is dropped. They are the
+ * adapter's traits since row 011-329, and its own members at a release
+ * before it, which this harness runs too.
  */
 function hinted(adapter: RunnerAdapter, files: readonly TestFileRef[]): void {
+  const widths: Partial<Pick<RunnerTraits, "slowWidth" | "tierWidth">> =
+    (adapter as Partial<RunnerAdapter>).traits ?? (adapter as Partial<RunnerTraits>);
   const [first] = files;
-  adapter.traits.slowWidth(files);
-  if (first !== undefined) adapter.traits.tierWidth(first, 2);
+  widths.slowWidth?.(files);
+  if (first !== undefined) widths.tierWidth?.(first, 2);
 }
 
 /**
