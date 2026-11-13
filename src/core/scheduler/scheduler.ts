@@ -53,7 +53,7 @@ import { updateCommitReport } from "./head-move.js";
 import { MergeHold } from "./hold.js";
 import { IgnoredMarks } from "./ignored-marks.js";
 import { ImportRewalk } from "./import-rewalk.js";
-import { clearImportsWaiting, markImportsWaiting } from "./imports-waiting.js";
+import { clearImportsWaiting, observedRequest } from "./imports-waiting.js";
 import {
   AWAITING_INSTALL_REASON,
   missingInstall,
@@ -892,15 +892,11 @@ class TierScheduler implements Scheduler {
     return this.#updateCommit();
   }
 
+  /** Row 018-28: an import's observed reads (`observedRequest`); synchronous. */
   refreshObserved(projects: readonly ProjectName[] = [], imports: readonly string[] = []): boolean {
-    if (this.#closed || this.#reinstalled || this.#awaitingInstall || !this.#context) return false;
-    // Row 018-28: the files whose set grew wait for the refinement's regrow, as another worktree's do.
-    if (projects.length > 0) this.#context.keys.refreshObserved(projects);
-    // Review of 0.1.428, B1: until that regrow is applied, status names the imports it waits for.
-    markImportsWaiting(this.#context.store, this.#context.worktreeId, imports);
-    this.#runnerWork.queueObserved();
-    this.#pump();
-    return true;
+    return this.#intake.take(
+      observedRequest(projects, imports, () => this.#runnerWork.queueObserved()),
+    );
   }
 
   status(): SchedulerStatus {
