@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.471";
+  if (true) return "0.1.474";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -104187,6 +104187,42 @@ function laneFiles(store, worktreeId, lane) {
   return store.testFileKeys.list(worktreeId).map((row2) => row2.testFile).filter((ref3) => isSlow(ref3) === (lane === "slow"));
 }
 
+// src/cli/wait/presence.ts
+init_git_layout();
+init_heartbeat();
+function readBound(deadline, now) {
+  const left = deadline - now();
+  const final = left <= 0;
+  const busyTimeoutMs = final ? STATUS_BUSY_TIMEOUT_MS : Math.round(Math.max(50, Math.min(STATUS_BUSY_TIMEOUT_MS, left)));
+  return { busyTimeoutMs, final };
+}
+function presenceOf(root, worktreeId, ports) {
+  let watch2;
+  return (store) => {
+    if (watch2 === void 0) {
+      const commonDir = resolveCommonDir(root);
+      if (commonDir === null) throw new Error(`run wait: no git common dir for ${root}`);
+      watch2 = ports.watch(worktreeId, commonDir);
+    }
+    const worktree = store.worktrees.get(worktreeId);
+    const at2 = ports.now();
+    const stopping = stoppingOf2(store, worktree, at2);
+    const view = watch2.judge(worktree?.daemon ?? null, at2, stopping);
+    if (view.state !== "down") return { state: view.state };
+    const heartbeat = worktreeLiveness(worktree, at2);
+    const liveness = stopping === void 0 ? heartbeat : { ...heartbeat, stopping };
+    return { state: "down", reason: view.reason, liveness };
+  };
+}
+function presenceRead(ask2, presence, now) {
+  const { busyTimeoutMs } = readBound(ask2.deadline, now);
+  const read5 = withStatusStore(ask2.root, { busyTimeoutMs }, ({ store }) => presence(store));
+  return "available" in read5 ? { state: "unread" } : read5;
+}
+function stoppedText(daemon, command) {
+  return noDaemonText(daemon.liveness, daemon.reason, command);
+}
+
 // src/cli/wait/progress.ts
 init_scheduler();
 function checkpointEnd(store, id) {
@@ -104207,11 +104243,13 @@ function installWait(store, worktreeId) {
 }
 
 // src/cli/wait/reads.ts
-function waitReads(ask2, now) {
+function waitReads(ask2, ports) {
+  const { now } = ports;
   const late = () => ({ late: now() >= ask2.deadline });
   switch (ask2.wait) {
     case "checkpoint": {
       const { id, worktreeId } = ask2.checkpoint;
+      const presence = presenceOf(ask2.root, worktreeId, ports);
       return (store) => {
         const lane = () => laneFiles(opened2(ask2, store), worktreeId, ask2.files.lane);
         return (field) => {
@@ -104236,6 +104274,8 @@ function waitReads(ask2, now) {
             }
             case "verdict":
               return { verdict: readVerdict(opened2(ask2, store), worktreeId, lane()) };
+            case "daemon":
+              return { daemon: presence(opened2(ask2, store)) };
             default:
               return unknownField2(ask2, field);
           }
@@ -104245,6 +104285,7 @@ function waitReads(ask2, now) {
     case "group": {
       const own = ownOf(ask2.root, ask2.files);
       const id = worktreeIdFor(ask2.root);
+      const presence = presenceOf(ask2.root, id, ports);
       return (store) => {
         let files5 = null;
         const listed8 = () => {
@@ -104266,18 +104307,23 @@ function waitReads(ask2, now) {
               return { verdict: readVerdict(opened2(ask2, store), id, listed8()) };
             case "install":
               return { install: installWait(opened2(ask2, store), id) };
+            case "daemon":
+              return { daemon: presence(opened2(ask2, store)) };
             default:
               return unknownField2(ask2, field);
           }
         };
       };
     }
-    case "lint group":
+    case "lint group": {
+      const presence = presenceOf(ask2.root, worktreeIdFor(ask2.root), ports);
       return () => (field) => {
         if (field === "late") return late();
         if (field === "counts") return { counts: lintCounts(ask2.root, ask2.files.group) };
+        if (field === "daemon") return { daemon: presenceRead(ask2, presence, now) };
         return unknownField2(ask2, field);
       };
+    }
   }
 }
 function opened2(ask2, store) {
@@ -104305,6 +104351,11 @@ function inStore(root, read5, busyTimeoutMs = 1e3) {
   } finally {
     store.close();
   }
+}
+var UNAVAILABLE_LEAD = "status unavailable, ";
+function unavailableText(unavailable4) {
+  const { message: message3 } = unavailable4;
+  return message3.startsWith(UNAVAILABLE_LEAD) ? message3.slice(UNAVAILABLE_LEAD.length) : message3;
 }
 function lintCounts(root, group) {
   const policy = readPolicy(root);
@@ -104389,13 +104440,16 @@ init_install();
 init_text();
 
 // src/cli/wait/socket.ts
+init_paths();
 import { setTimeout as sleep21 } from "node:timers/promises";
 var REAL_PORTS = {
   now: () => Date.now(),
   pause: async (ms2) => {
     await sleep21(ms2);
   },
-  ask: (socketPath, request, timeoutMs) => askDaemon(socketPath, request, timeoutMs)
+  ask: (socketPath, request, timeoutMs) => askDaemon(socketPath, request, timeoutMs),
+  // As `waitForStatus` watches it: the lock's marks and the record read again in a read of its own.
+  watch: (worktreeId, commonDir) => watchDaemon(worktreeId, { lockFile: lockFileFor(commonDir, worktreeId), commonDir })
 };
 var SOCKET_FLOOR_MS = 50;
 function socketBound(deadline, now = REAL_PORTS.now) {
@@ -104419,6 +104473,7 @@ async function askWithin(socketPath, request, deadline, ports = REAL_PORTS) {
 // src/cli/wait/table.ts
 var FIELD_OF = {
   "store unopened": "store",
+  "store busy": "store",
   "newer revision": "revision",
   abandoned: "end",
   running: "end",
@@ -104432,64 +104487,61 @@ var FIELD_OF = {
   "lint off": "counts",
   "lint unread": "counts",
   "nothing to lint": "counts",
-  "ping due": "poll",
-  "no daemon": "daemon"
+  "daemon down": "daemon"
 };
-var PING_POLLS = 5;
 var rule = (when, then2, ...fields) => ({ when, then: then2, with: fields });
-var GONE = rule(["ping due", "no daemon"], "stopped");
+var GONE = rule(["daemon down"], "stopped", "daemon");
+var STORE = [
+  rule(["store unopened"], "unopened", "unavailable"),
+  rule(["store busy", "late"], "unopened", "unavailable"),
+  rule(["store busy"], "go on")
+];
 var RUN_WAITS = {
   // `run --all --wait`: moved > abandoned > on hold > ended > deadline.
   checkpoint: {
-    // Accidental: a store that does not open is "stopped", and a busy one throws (`inStore`).
     store: "worktree",
     reads: ["end", "revision", "late"],
     rules: [
-      rule(["store unopened"], "stopped"),
+      ...STORE,
       rule(["newer revision"], "moved", "revision"),
       rule(["abandoned"], "abandoned"),
       rule(["running", "before deadline", "held"], "on-hold", "hold"),
       rule(["completed", "verdict settled"], "ended", "verdict"),
       rule(["late"], "deadline", "verdict"),
       GONE
-    ],
-    // Accidental: the ping has no deadline bound, and a late answer throws a stack.
-    socket: "unbounded"
+    ]
   },
   // `run <group> [<path>...] --wait`: on hold > ended or deadline; the deadline names an install.
   group: {
-    // Accidental: a store that does not open is "stopped", and a busy one throws (`inStore`).
     store: "worktree",
     reads: ["classes", "late"],
     rules: [
-      rule(["store unopened"], "stopped"),
+      ...STORE,
       rule(["files pending", "before deadline", "held"], "on-hold", "hold"),
       rule(["files settled"], "ended", "verdict"),
       rule(["late"], "deadline", "verdict", "install"),
       GONE
-    ],
-    socket: "deadline"
+    ]
   },
-  // `run <lint group> --wait`: off or unread, then deadline > ended, then stopped.
-  // Accidental: `late` before `nothing to lint`, so the deadline's last read gives no verdict.
+  // `run <lint group> --wait`: off or unread, then ended > deadline, then stopped.
+  // Row 011-327 (decision 4 item 3): `nothing to lint` before `late`, so a group whose last
+  // check ended by the deadline's read gives its verdict, as a test group does (was deadline).
   "lint group": {
     store: "lint",
     reads: ["counts", "late"],
     rules: [
       rule(["lint off"], "off"),
       rule(["lint unread"], "unread"),
-      rule(["late"], "deadline", "counts"),
       rule(["nothing to lint"], "ended", "counts"),
+      rule(["late"], "deadline", "counts"),
       GONE
-    ],
-    socket: "deadline"
+    ]
   }
 };
 var REQUEST_LOOPS = {
-  // Accidental: `run-all` and `run-slow` ask with no deadline bound; a late answer throws a stack.
-  "run-all": { askBy: "first", wrong: "stopped", socket: "unbounded", pause: "fixed" },
-  "run-slow": { askBy: "last", wrong: "refused", socket: "unbounded", pause: "fixed" },
-  "run-group": { askBy: "last", wrong: "refused", socket: "deadline", pause: "to deadline" }
+  "run-all": { askBy: "first", wrong: "stopped", pause: "fixed" },
+  "run-slow": { askBy: "last", wrong: "refused", pause: "fixed" },
+  "run-group": { askBy: "last", wrong: "refused", pause: "to deadline" }
 };
 
 // src/cli/wait/decide.ts
@@ -104499,6 +104551,7 @@ function decideRunWait(row2, record2) {
     const held3 = allHold(rule2.when, record2);
     if (held3 === false) continue;
     if (held3 !== true) return held3;
+    if (rule2.then === "go on") return GO_ON;
     const missing2 = rule2.with.find((field) => record2[field] === void 0);
     if (missing2 !== void 0) return { kind: "read", field: missing2 };
     return { kind: "end", outcome: outcomeOf4(rule2, record2), reason: rule2.when };
@@ -104508,47 +104561,32 @@ function decideRunWait(row2, record2) {
 function allHold(when, record2) {
   for (const condition of when) {
     const field = FIELD_OF[condition];
-    if (field !== "poll" && record2[field] === void 0) return { kind: "read", field };
+    if (record2[field] === void 0) return { kind: "read", field };
     if (!holds4(condition, record2)) return false;
   }
   return true;
 }
 function holds4(condition, r) {
-  switch (condition) {
-    case "store unopened":
-      return r.store === "unopened";
-    case "newer revision":
-      return r.since !== void 0 && (r.revision ?? 0) > r.since;
-    case "abandoned":
-      return r.end === "abandoned";
-    case "running":
-      return r.end !== "completed";
-    case "completed":
-      return r.end === "completed";
-    case "before deadline":
-      return r.late === false;
-    case "late":
-      return r.late === true;
-    case "held":
-      return r.hold !== null && r.hold !== void 0;
-    case "verdict settled":
-      return r.verdict !== void 0 && r.verdict.byClass.pending === 0 && !r.verdict.unlisted;
-    case "files pending":
-      return r.classes !== void 0 && (r.classes.byClass.pending > 0 || r.classes.unlisted);
-    case "files settled":
-      return r.classes !== void 0 && r.classes.byClass.pending === 0 && !r.classes.unlisted;
-    case "lint off":
-      return r.counts === "off";
-    case "lint unread":
-      return r.counts === "unread";
-    case "nothing to lint":
-      return typeof r.counts === "object" && r.counts.linting === 0;
-    case "ping due":
-      return r.poll % PING_POLLS === PING_POLLS - 1;
-    case "no daemon":
-      return r.daemon === "none";
-  }
+  return HOLDS[condition](r);
 }
+var HOLDS = {
+  "store unopened": (r) => r.store === "unopened",
+  "store busy": (r) => r.store === "busy",
+  "newer revision": (r) => r.since !== void 0 && (r.revision ?? 0) > r.since,
+  abandoned: (r) => r.end === "abandoned",
+  running: (r) => r.end !== "completed",
+  completed: (r) => r.end === "completed",
+  "before deadline": (r) => r.late === false,
+  late: (r) => r.late === true,
+  held: (r) => r.hold !== null && r.hold !== void 0,
+  "verdict settled": (r) => r.verdict !== void 0 && r.verdict.byClass.pending === 0 && !r.verdict.unlisted,
+  "files pending": (r) => r.classes !== void 0 && (r.classes.byClass.pending > 0 || r.classes.unlisted),
+  "files settled": (r) => r.classes !== void 0 && r.classes.byClass.pending === 0 && !r.classes.unlisted,
+  "lint off": (r) => r.counts === "off",
+  "lint unread": (r) => r.counts === "unread",
+  "nothing to lint": (r) => typeof r.counts === "object" && r.counts.linting === 0,
+  "daemon down": (r) => r.daemon?.state === "down"
+};
 function outcomeOf4(rule2, record2) {
   const fields = {};
   for (const field of rule2.with) {
@@ -104588,20 +104626,10 @@ var STORE_POLL_MS = 1e3;
 var REQUEST_POLL_MS = 100;
 async function runWait(ask2, ports = REAL_PORTS) {
   const row2 = RUN_WAITS[ask2.wait];
-  const reads2 = waitReads(ask2, ports.now);
-  const since = ask2.wait === "checkpoint" ? { since: ask2.checkpoint.revision } : {};
-  for (let poll = 0; ; poll++) {
-    const given2 = { poll, ...since };
-    let [record2, step] = row2.store === "lint" ? settle(row2, given2, reads2(null)) : inStore(
-      ask2.root,
-      (store) => settle(row2, { ...given2, store: "opened" }, reads2(store))
-    ) ?? unopened(row2, given2);
-    if (step.kind === "read") {
-      record2 = { ...record2, daemon: await daemonCheck(row2, ask2, ports) };
-      step = decideRunWait(row2, record2);
-      if (step.kind === "read")
-        throw new Error(`run wait ${ask2.wait}: no field after the daemon's`);
-    }
+  const reads2 = waitReads(ask2, ports);
+  const given2 = ask2.wait === "checkpoint" ? { since: ask2.checkpoint.revision } : {};
+  for (; ; ) {
+    const step = row2.store === "lint" ? settle(row2, given2, reads2(null)) : worktreeRead(row2, ask2, given2, reads2, ports);
     if (step.kind === "end") return step.outcome;
     await ports.pause(Math.max(0, Math.min(STORE_POLL_MS, ask2.deadline - ports.now())));
   }
@@ -104609,27 +104637,36 @@ async function runWait(ask2, ports = REAL_PORTS) {
 function settle(row2, given2, read5) {
   let record2 = given2;
   for (const field of row2.reads) {
-    if (field !== "store" && field !== "daemon") record2 = { ...record2, ...read5(field) };
+    if (field !== "store" && field !== "unavailable") record2 = { ...record2, ...read5(field) };
   }
   for (; ; ) {
     const step = decideRunWait(row2, record2);
-    if (step.kind !== "read" || step.field === "daemon") return [record2, step];
-    if (step.field === "store") throw new Error("run wait: the loop gives the store field");
+    if (step.kind !== "read") return step;
+    if (step.field === "store" || step.field === "unavailable") {
+      throw new Error(`run wait: the loop gives the ${step.field} field`);
+    }
     record2 = { ...record2, ...read5(step.field) };
   }
 }
-function unopened(row2, given2) {
-  const record2 = { ...given2, store: "unopened" };
-  return [record2, decideRunWait(row2, record2)];
-}
-async function daemonCheck(row2, ask2, ports) {
-  const ping2 = { type: "ping" };
-  if (row2.socket === "unbounded") {
-    return await ports.ask(ask2.socketPath, ping2) === null ? "none" : "answered";
-  }
-  const pong = await askWithin(ask2.socketPath, ping2, ask2.deadline, ports);
-  if (pong === null) return "none";
-  return "unanswered" in pong ? "unanswered" : "answered";
+function worktreeRead(row2, ask2, given2, reads2, ports) {
+  const { busyTimeoutMs, final } = readBound(ask2.deadline, ports.now);
+  const read5 = withStatusStore(
+    ask2.root,
+    { busyTimeoutMs },
+    ({ store }) => settle(row2, { ...given2, store: "opened" }, reads2(store))
+  );
+  if (!("available" in read5)) return read5;
+  const busy2 = read5.reason === "timeout";
+  const record2 = {
+    ...given2,
+    store: busy2 ? "busy" : "unopened",
+    unavailable: unavailableText(read5),
+    ...busy2 ? { late: final } : {}
+  };
+  const step = decideRunWait(row2, record2);
+  if (step.kind === "read")
+    throw new Error(`run wait ${ask2.wait}: an unread store has no ${step.field}`);
+  return step;
 }
 async function untilTaken(ask2, ports = REAL_PORTS) {
   const row2 = REQUEST_LOOPS[ask2.loop];
@@ -104650,7 +104687,7 @@ async function untilTaken(ask2, ports = REAL_PORTS) {
       ask2.loop,
       (row2.askBy === "first" ? first2 : step.answer).requestId
     );
-    const answer4 = row2.socket === "unbounded" ? await ports.ask(ask2.socketPath, request) : await askWithin(ask2.socketPath, request, ask2.deadline, ports);
+    const answer4 = await askWithin(ask2.socketPath, request, ask2.deadline, ports);
     record2 = { answer: answer4, before: step.answer };
   }
 }
@@ -104690,8 +104727,11 @@ function groupVerdictLine(wait, outcome2, command) {
     }
     case "stopped":
       return none3(
-        `the daemon stopped before the ${narrow2 ? "selected" : "group's"} test files had results`
+        `the daemon stopped before the ${narrow2 ? "selected" : "group's"} test files had results (${stoppedText(outcome2.daemon, command)})`
       );
+    // Row 011-327: the store did not open, or was busy at the deadline's read.
+    case "unopened":
+      return none3(outcome2.unavailable);
     case "deadline": {
       const { byClass, revision } = outcome2.verdict;
       if (outcome2.install !== void 0) {
@@ -104870,7 +104910,11 @@ async function runLintGroupCommand(run7, io) {
   }
   const files5 = { kind: "group", group: group.name };
   const outcome2 = await runWait({ wait: "lint group", root, socketPath, deadline, files: files5 });
-  const [verdict, code] = lintGroupVerdictLine(outcome2, group);
+  const [verdict, code] = lintGroupVerdictLine(
+    outcome2,
+    group,
+    statusCommand(io.env ?? process.env)
+  );
   io.stdout(`Group ${group.name} ${verdict}
 ${line}`);
   return code;
@@ -104911,7 +104955,7 @@ function requestedText(group, { revision, queued }) {
   return `Group ${group} requested at revision ${revision}: ${plural(queued, "lint check")} queued; they lint now.
 `;
 }
-function lintGroupVerdictLine(outcome2, group) {
+function lintGroupVerdictLine(outcome2, group, command) {
   const none3 = (why2) => [`has no verdict: ${why2}`, 3];
   switch (outcome2.kind) {
     case "off":
@@ -104919,7 +104963,9 @@ function lintGroupVerdictLine(outcome2, group) {
     case "unread":
       return none3("the lint store cannot be read");
     case "stopped":
-      return none3("the daemon stopped before the group's lint checks were linted");
+      return none3(
+        `the daemon stopped before the group's lint checks were linted (${stoppedText(outcome2.daemon, command)})`
+      );
     case "deadline":
       return none3(
         `the deadline passed with ${plural(outcome2.counts.linting, "lint check")} pending; the group goes on in the daemon`
@@ -105095,7 +105141,18 @@ ${usage3}`);
   const socketPath = await daemonSocket(root);
   const started2 = Date.now();
   const deadline = started2 + (wait.waitMs ?? RECORD_WAIT_MS5);
-  const first2 = await askDaemon(socketPath, { type: "run-slow" });
+  const first2 = await askWithin(socketPath, { type: "run-slow" }, deadline);
+  if (first2 !== null && "unanswered" in first2) {
+    const text3 = `the daemon did not answer the run --slow request${first2.unanswered}; it may still take it once its current work allows`;
+    if (wait.waitMs === null) {
+      io.stderr(`squeal: ${text3}
+`);
+      return 1;
+    }
+    io.stdout(`No verdict: ${text3}
+`);
+    return 3;
+  }
   const requested = await taken2(socketPath, first2, io, deadline);
   if (requested === "no-daemon") {
     io.stderr(`squeal: no daemon running for ${root}; start one with squeal start
@@ -105104,7 +105161,7 @@ ${usage3}`);
   }
   if (requested === null) return 1;
   if ("pending" in requested) {
-    io.stdout(pendingText4(requested.pending, wait.waitMs === null ? null : Date.now() - started2));
+    io.stdout(pendingText4(requested, wait.waitMs === null ? null : Date.now() - started2));
     return wait.waitMs === null ? 0 : 3;
   }
   const { revision, queued } = requested;
@@ -105117,12 +105174,15 @@ ${usage3}`);
   const left = Math.max(0, wait.waitMs - (Date.now() - started2));
   return statusWaitCommand(left, false, io, queued > 0);
 }
-function pendingText4(requestId, waitedMs) {
+function pendingText4({ pending: requestId, unanswered }, waitedMs) {
   if (waitedMs === null) {
-    return `Slow tier requested (request ${requestId}); the daemon takes it once its current work allows
+    const busy2 = unanswered === void 0 ? "" : ` did not answer about it${unanswered} and`;
+    return `Slow tier requested (request ${requestId}); the daemon${busy2} takes it once its current work allows
 `;
   }
-  return `Returned on timeout after ${(waitedMs / 1e3).toFixed(1)} s: the daemon has not taken slow tier request ${requestId} yet; the request is pending and this command has no verdict for it. The daemon takes it once its current work allows; \`squeal status --wait 60000 <slow test file>\` then waits for that file's result.
+  const after3 = `after ${(waitedMs / 1e3).toFixed(1)} s`;
+  const ended2 = unanswered === void 0 ? `Returned on timeout ${after3}: the daemon has not taken slow tier request ${requestId} yet` : `Returned without a verdict ${after3}: the daemon did not answer about slow tier request ${requestId}${unanswered}`;
+  return `${ended2}; the request is pending and this command has no verdict for it. The daemon takes it once its current work allows; \`squeal status --wait 60000 <slow test file>\` then waits for that file's result.
 `;
 }
 async function taken2(socketPath, first2, io, deadline) {
@@ -105149,8 +105209,10 @@ async function taken2(socketPath, first2, io, deadline) {
       );
     case "stopped":
       return failed7("the daemon stopped before taking the request");
-    case "unknown group":
+    // Row 011-327: a status request the daemon did not answer within its bound is a busy daemon.
     case "unanswered":
+      return { pending: outcome2.answer.requestId, unanswered: outcome2.words };
+    case "unknown group":
       throw new Error(`squeal run --slow: the request loop ended as ${outcome2.kind}`);
   }
 }
@@ -105187,18 +105249,14 @@ ${USAGE9}`);
     return 3;
   };
   const socketPath = await daemonSocket(root);
-  const response = await askDaemon(socketPath, {
+  const request = {
     type: "run-all",
     force: flags2.has("--force"),
     ...internal.observeIgnored === true ? { observeIgnored: true } : {},
     ...lane === null ? {} : { lane }
-  });
-  if (response === null) {
-    return noVerdict(`no daemon running for ${root}; start one with squeal start`);
-  }
-  if (!response.ok || response.type !== "run-all") {
-    return noVerdict(`run --all failed: ${response.ok ? "unexpected answer" : response.error}`);
-  }
+  };
+  const response = await requestRunAll(root, socketPath, request, deadline);
+  if (typeof response === "string") return noVerdict(response);
   const state = await recorded(socketPath, response, deadline ?? Date.now() + RECORD_WAIT_MS6);
   if (typeof state === "string") return noVerdict(state);
   if (state === null) {
@@ -105244,6 +105302,17 @@ ${started2}
   io.stdout(formatStatus(status3, now(), command));
   return code;
 }
+async function requestRunAll(root, socketPath, request, deadline) {
+  const response = await askWithin(socketPath, request, deadline ?? Date.now() + RECORD_WAIT_MS6);
+  if (response === null) return `no daemon running for ${root}; start one with squeal start`;
+  if ("unanswered" in response) {
+    return `the daemon did not answer the run --all request${response.unanswered}; it may still take it once its current work allows`;
+  }
+  if (!response.ok || response.type !== "run-all") {
+    return `run --all failed: ${response.ok ? "unexpected answer" : response.error}`;
+  }
+  return response;
+}
 function takeAllWait(args2) {
   const at2 = args2.indexOf("--wait");
   if (at2 === -1 || /^\d+$/.test(args2[at2 + 1] ?? "")) return takeWait(args2);
@@ -105262,7 +105331,12 @@ function checkpointVerdictLine(root, checkpoint, outcome2, joined2, command) {
         "it was abandoned before every test file had a result (a newer request replaced it, a test file's inputs never held still, a tier crashed or timed out, or the daemon stopped)"
       );
     case "stopped":
-      return none3(`the daemon stopped before it ended${owedText(root, checkpoint)}`);
+      return none3(
+        `the daemon stopped before it ended (${stoppedText(outcome2.daemon, command)})${owedText(root, checkpoint)}`
+      );
+    // Row 011-327: the store did not open, or was busy at the deadline's read.
+    case "unopened":
+      return none3(outcome2.unavailable);
     case "moved":
       return none3(
         `revision ${outcome2.revision} was recorded after the checkpoint's revision ${checkpoint.revision}`
@@ -105290,12 +105364,17 @@ function checkpointVerdictLine(root, checkpoint, outcome2, joined2, command) {
   }
 }
 async function recorded(socketPath, first2, deadline) {
-  const outcome2 = await untilTaken({ loop: "run-all", socketPath, first: first2, deadline });
+  return recordedOf(await untilTaken({ loop: "run-all", socketPath, first: first2, deadline }));
+}
+function recordedOf(outcome2) {
   if (outcome2.kind === "taken" && outcome2.answer.checkpoint !== null) {
     return { checkpoint: outcome2.answer.checkpoint, owner: outcome2.answer.owner };
   }
   if (outcome2.kind === "failed") return `run --all failed: ${outcome2.error}`;
   if (outcome2.kind === "pending") return null;
+  if (outcome2.kind === "unanswered") {
+    return `the daemon did not answer about request ${outcome2.answer.requestId}${outcome2.words}; the daemon records the checkpoint once its current work allows`;
+  }
   return "the daemon stopped before recording the checkpoint";
 }
 function filesText3(root, checkpoint) {
