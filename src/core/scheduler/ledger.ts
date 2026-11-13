@@ -882,6 +882,7 @@ export class Ledger {
     const phase = running ? "running" : this.queue.has(file.ref) ? "queued" : null;
     if (phase === file.phase) return;
     file.phase = phase;
+    if (phase === null) file.leftPendingAt = this.context.now();
     this.#dirty.add(file.id);
   }
 

@@ -1,4 +1,5 @@
 import { type CoveredFile, writeCoveredFiles } from "../store/covered-files.js";
+import type { EpochMs } from "../types/common.js";
 import type { SchedulerContext } from "./context.js";
 import { classify, type FileState } from "./files.js";
 import type { Ledger } from "./ledger.js";
@@ -34,11 +35,19 @@ export function coveredOf(file: FileState, waiting: string | null): CoveredFile 
 }
 
 /**
+ * Review 0.1.478, B1: by ledger, when it first recorded covered files. Its
+ * files' `leftPendingAt` holds the exits it saw; one an earlier daemon saw
+ * before a handoff came no later than this.
+ */
+const knownSince = new WeakMap<Ledger, EpochMs>();
+
+/**
  * Writes request `id`'s covered `files` in the transaction the caller
  * holds, after its stage, each decided by `coveredOf` (`waiting`: an
  * install-wait answer's reason). A file named twice is recorded once. The
  * worktree's older records are pruned by the ledger's queued and running
- * files (`writeCoveredFiles`).
+ * files and the time each last left them (`FileState.leftPendingAt`, read
+ * only here; `writeCoveredFiles`).
  */
 export function recordCovered(
   context: SchedulerContext,
@@ -47,6 +56,9 @@ export function recordCovered(
   files: readonly FileState[],
   waiting: string | null,
 ): void {
+  const now = context.now();
+  const since = knownSince.get(ledger) ?? now;
+  knownSince.set(ledger, since);
   const unique = [...new Map(files.map((file) => [file.id, file])).values()];
   writeCoveredFiles(
     context.store,
@@ -54,9 +66,14 @@ export function recordCovered(
       id,
       worktreeId: context.worktreeId,
       revision: ledger.revision.number,
-      recordedAt: context.now(),
+      recordedAt: now,
       files: unique.map((file) => coveredOf(file, waiting)),
     },
-    (ref) => (ledger.file(ref)?.phase ?? null) !== null,
+    {
+      listed: (ref) => ledger.file(ref) !== undefined,
+      pending: (ref) => (ledger.file(ref)?.phase ?? null) !== null,
+      leftAt: (ref) => ledger.file(ref)?.leftPendingAt ?? null,
+      knownSince: since,
+    },
   );
 }
