@@ -1,0 +1,73 @@
+import type { TestFileRef } from "../types/keys.js";
+import { mayFocus } from "./focused.js";
+import { answeredOf } from "./promoted-tier.js";
+import type { Request, Skip } from "./request-intake-types.js";
+
+/*
+ * Row 011-322: the declarations of the requests whose code the intake's
+ * files hold, the files that queue theirs being another row's: a named
+ * wait's promotion and focused checks (`focused.ts`, `promoted-tier.ts`).
+ */
+
+/** Promote and focus write no store: only the queue's order, in memory. */
+const WRITES_NO_STORE =
+  "writes no store: it orders the queued files in memory, which the next commit writes";
+const QUEUES_NO_FILE: Skip = {
+  skip: "covers no file: it queues none, and the named wait reads its own files' results",
+};
+
+/**
+ * Spec 011 C15: a named wait promotes `testFiles` for `withinMs` on this
+ * daemon's clock. Only the order of queued files changes; the pump takes a
+ * promoted file at the next tier boundary of a free lane, and the tier in
+ * flight there may yield to it (C4 step 5 as amended 2026-10-21, row 011-51).
+ */
+export function promoteRequest(testFiles: readonly TestFileRef[], withinMs: number): Request<void> {
+  return {
+    operation: "promoting the test files of a named wait",
+    start: { closed: undefined },
+    installWait: { skip: WRITES_NO_STORE },
+    runnerWork: { skip: "waits for no runner work: it orders files queued at their keys" },
+    store: {
+      skip: WRITES_NO_STORE,
+      covers: QUEUES_NO_FILE,
+      apply: (context, ledger) => {
+        // Row 011-283 (review 0.1.384 B1): `Promotions` asks which selected file has its answer.
+        ledger.queue.promote(testFiles, context.now() + withinMs, answeredOf(context, ledger));
+      },
+    },
+    wake: { cutTiers: true },
+  };
+}
+
+/**
+ * Spec 011 C15, focused checks (row 011-145): a named wait asks for the
+ * checks of `testFiles` that hold one of `texts`, first and alone, for
+ * `withinMs` on this daemon's clock. A file that is not listed, slow or of
+ * a runner that runs whole files only gets no entry. The tier in flight in
+ * a file's lane may yield to it as to a promoted file (C4 step 5).
+ */
+export function focusRequest(
+  testFiles: readonly TestFileRef[],
+  texts: readonly string[],
+  withinMs: number,
+): Request<void> {
+  return {
+    operation: "focusing the checks of a named wait",
+    // With no texts it asks for nothing.
+    start: { closed: undefined, nothing: texts.length === 0 },
+    installWait: { skip: WRITES_NO_STORE },
+    runnerWork: { skip: "waits for no runner work: its tier is planned by the pump" },
+    store: {
+      skip: WRITES_NO_STORE,
+      covers: QUEUES_NO_FILE,
+      apply: (context, ledger) => {
+        const until = context.now() + withinMs;
+        for (const ref of testFiles) {
+          if (mayFocus(context, ledger, ref)) ledger.queue.focused.add(ref, texts, until);
+        }
+      },
+    },
+    wake: { cutTiers: true },
+  };
+}
