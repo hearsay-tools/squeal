@@ -15,6 +15,7 @@ import { createStateSink } from "../../src/core/state/sink.js";
 import type { AbsolutePath, WorktreeId } from "../../src/core/types/common.js";
 import type { CheckKey } from "../../src/core/types/keys.js";
 import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
+import { declareTraits } from "../../src/core/types/runner-traits.js";
 import type { PoolGate, PoolWait } from "../../src/core/types/standing.js";
 import type { Store } from "../../src/core/types/store.js";
 import { liveDaemon } from "../delivery/fakes.js";
@@ -227,7 +228,7 @@ describe("selectTier names the lane of a refused tier, not a batch's (row 011-30
       runsDir: "/repo/.git/squeal/runs",
       hostLoad: () => ({ oneMinute: null, cpus: 1 }),
       capacity,
-      runner: { lane: () => "vitest" },
+      runner: { traits: declareTraits({ lane: () => "vitest" }) },
       keys: {
         runnerOf: () => undefined,
         runtimeIdentity: () => "",

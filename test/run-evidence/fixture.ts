@@ -39,6 +39,7 @@ import type {
 import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
 import type { Policy } from "../../src/core/types/policy.js";
 import type { RunReport } from "../../src/core/types/runner.js";
+import { NO_TRAITS } from "../../src/core/types/runner-traits.js";
 import type { Store } from "../../src/core/types/store.js";
 import { git, scratchStore, writeTree } from "../keys/validity/harness/shared.js";
 
@@ -228,7 +229,10 @@ async function daemonColumn(
     store,
     keys,
     hasher,
-    runner: { environment: () => Promise.reject(new Error("no runner in this table")) },
+    runner: {
+      traits: NO_TRAITS,
+      environment: () => Promise.reject(new Error("no runner in this table")),
+    },
     note: () => {},
   } as unknown as SchedulerContext;
   const hold = new MergeHold({

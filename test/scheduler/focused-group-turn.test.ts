@@ -9,6 +9,7 @@ import { createStateSink } from "../../src/core/state/sink.js";
 import type { WorktreeId } from "../../src/core/types/common.js";
 import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
 import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
+import { declareTraits } from "../../src/core/types/runner-traits.js";
 import type { Store } from "../../src/core/types/store.js";
 import { liveDaemon } from "../delivery/fakes.js";
 import { freshStore } from "../state/helpers.js";
@@ -44,7 +45,7 @@ function setup() {
     note: () => {},
     runsDir: "/repo/.git/squeal/runs",
     hostLoad: () => ({ oneMinute: null, cpus: 1 }),
-    runner: { focuses: true },
+    runner: { traits: declareTraits({ focuses: () => true }) },
     keys: {
       runnerOf: () => undefined,
       runtimeIdentity: () => "",

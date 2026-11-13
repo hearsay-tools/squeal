@@ -11,6 +11,7 @@ import {
   psTable,
 } from "../../src/core/daemon/outlived.js";
 import type { RunnerAdapter, RunOptions, RunReport } from "../../src/core/types/runner.js";
+import { NO_TRAITS } from "../../src/core/types/runner-traits.js";
 import type { RunCollector } from "../../src/runners/vitest/reporter.js";
 import { execute } from "../../src/runners/vitest/run.js";
 
@@ -400,6 +401,7 @@ describe("afterEachRun names what a cut run left (row 011-245)", () => {
     });
     const runner = {
       name: "fake",
+      traits: NO_TRAITS,
       run: async (_: unknown, options: RunOptions) => {
         await options.beforeForce?.(ENV);
         return CUT_REPORT;
