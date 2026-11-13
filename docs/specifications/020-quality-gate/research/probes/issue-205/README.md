@@ -5,7 +5,7 @@ Throwaway research probe. It is not a product test or a benchmark.
 From the repository root, with its pnpm dependencies already installed:
 
 ```sh
-node research/probes/issue-205/probe.mjs /home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal
+node docs/specifications/020-quality-gate/research/probes/issue-205/probe.mjs /home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal
 ```
 
 The optional argument selects a Squeal executable. The captured run used the session-pinned 0.1.460 launcher, Node 26.13.0 and Vitest 5.0.3.
@@ -16,4 +16,4 @@ The script checks the one-minute load before recording and before each gate. It 
 
 `evidence/` preserves stdout, stderr, exact command arguments, host samples and the mutation summary. `commands.json` replaces only the random fixture working directory with `<fixture>`. No environment dump or raw CI part is kept. The summary records the original and replacement hashes, both passing file records, and both gates' evidence sources. The assertions require the control to reuse both files and the mutated case to rerun exactly the intended file while keeping the other from parts.
 
-The mismatch is intentional. It establishes the missing diagnostic; it does not establish why the original incident's 148 files were refused. See the [findings](../../../docs/specifications/020-quality-gate/research/issue-205.md).
+The mismatch is intentional. It establishes the missing diagnostic; it does not establish why the original incident's 148 files were refused. See the [findings](../../issue-205.md).

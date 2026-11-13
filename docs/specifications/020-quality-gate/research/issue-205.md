@@ -23,7 +23,7 @@ The brief states one reproduction task. These questions split its required evide
 Reproduction command, from this worktree's root:
 
 ```sh
-node research/probes/issue-205/probe.mjs
+node docs/specifications/020-quality-gate/research/probes/issue-205/probe.mjs
 ```
 
 The script invokes the following with `CI=true` in its disposable fixture. `$probe_cli` denotes `/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal`; `$probe_vitest` is this worktree's absolute `node_modules/vitest/vitest.mjs`. Exact expanded arguments are in `evidence/commands.json`.
@@ -77,4 +77,6 @@ Checks: the bounded probe exited 0 with all assertions passed; recording ran two
 - [Issue 205](https://github.com/hearsay-tools/squeal/issues/205), fetched with `gh issue view 205 --repo hearsay-tools/squeal --json body,comments,url`; incident figures are reported evidence, not independently verified here.
 - [Spec D7 and D13.2](../spec.md), [decision log](../status.md), at checkout commit `2df6d0f2949099de1e9a5fc5805268fcbcf52398`.
 - [Release `parts.ts`](https://github.com/hearsay-tools/squeal/blob/18fe3988a6d8f38227d2b1c1b5df68b014398a53/src/core/code/gate/parts.ts), [input certification](https://github.com/hearsay-tools/squeal/blob/18fe3988a6d8f38227d2b1c1b5df68b014398a53/src/core/ci/inputs.ts), [run report](https://github.com/hearsay-tools/squeal/blob/18fe3988a6d8f38227d2b1c1b5df68b014398a53/src/core/code/gate/runs.ts); read with `git show squeal--v0.1.460:<path>` and local file reads.
-- [Probe and raw evidence](../../../../research/probes/issue-205/README.md), especially `evidence/summary.json`, `load.json`, `commands.json`, and accepted/refused stdout and stderr.
+- [Probe and raw evidence](probes/issue-205/README.md), especially `evidence/summary.json`, `load.json`, `commands.json`, and accepted/refused stdout and stderr.
+
+Coordinator integration: moved the probe from repository-root `research/probes/issue-205/` into this spec’s `research/probes/issue-205/` to match triage ownership. Updated its repository-root lookup and links; the captured commands above retain the original execution paths. Syntax checked after the move; no live rerun was needed.
