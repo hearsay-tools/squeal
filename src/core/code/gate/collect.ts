@@ -7,6 +7,7 @@ import { findWorktreeRoot } from "../../fs/git-layout.js";
 import { readObjectFormat } from "../../hash/git-index.js";
 import { createDeclaredInputs } from "../../keys/closure.js";
 import { testFileId } from "../../keys/reverse-index.js";
+import type { HostLoad } from "../../retry/load.js";
 import type { AbsolutePath, RelativePath } from "../../types/common.js";
 import type { TestFileRef } from "../../types/keys.js";
 import type { PolicyInputs } from "../../types/policy.js";
@@ -122,6 +123,12 @@ export interface CollectOptions {
    * which ends before this returns. Absent, none is told.
    */
   readonly teardown?: (files: readonly RelativePath[]) => void;
+  /**
+   * Row 020-54 (#210): the host's load, read when a run with a failed file
+   * ends, to rerun that file once when the load is at or over the CPU
+   * count. Absent, the daemon's own (`hostLoad`).
+   */
+  readonly hostLoad?: () => HostLoad;
 }
 
 /** D17.3: one runner's run, its report and each completed file's mapped record, by `testFileId`. */
