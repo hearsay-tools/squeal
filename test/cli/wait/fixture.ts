@@ -116,3 +116,22 @@ export function closeLoopFixtures(): void {
   for (const server of servers.splice(0)) server.close();
   for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 }
+
+/**
+ * Review 0.1.469 N2: a socket that takes each request of `types` and gives
+ * no answer within its bound, as `askDaemon` meets a busy daemon: an
+ * `ETIMEDOUT` error after the bound, with no real time spent. Other
+ * requests go to `ports`' own socket.
+ */
+export function timingOut(ports: WaitPorts, types: readonly string[]): WaitPorts {
+  return {
+    ...ports,
+    ask: async (socketPath, request, timeoutMs) => {
+      if (!types.includes(request.type)) return ports.ask(socketPath, request, timeoutMs);
+      const ms = timeoutMs ?? 2_000;
+      throw Object.assign(new Error(`no answer from ${socketPath} in ${ms} ms`), {
+        code: "ETIMEDOUT",
+      });
+    },
+  };
+}

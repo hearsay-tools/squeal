@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { untilTaken } from "../../../src/cli/wait/wait.js";
 import type { DaemonResponse } from "../../../src/core/types/daemon.js";
 import { type Answer, closeFakeDaemons, fakeDaemon, received } from "../fake-daemon.js";
-import { closeLoopFixtures, socketPath, stalling, steppedClock } from "./fixture.js";
+import { closeLoopFixtures, socketPath, stalling, steppedClock, timingOut } from "./fixture.js";
 
 /*
  * Row 011-326: the loop that waits for the daemon to take a request, one
@@ -177,5 +177,24 @@ describe("until the daemon takes a request (row 011-326)", () => {
         c.ports,
       ),
     ).toEqual({ kind: "refused", error: "busy" });
+  });
+
+  it("run-all and run-slow: a status request with no answer throws (review 0.1.469 N2; 011-327 flips it)", async () => {
+    const c = clock();
+    const socket = socketPath();
+    const ports = timingOut(c.ports, ["run-all-status", "run-slow-status"]);
+    const deadline = c.start + 60_000;
+    await expect(
+      untilTaken(
+        { loop: "run-all", socketPath: socket, first: runAll("r1", null), deadline },
+        ports,
+      ),
+    ).rejects.toThrow(/no answer from .* in 2000 ms/);
+    await expect(
+      untilTaken(
+        { loop: "run-slow", socketPath: socket, first: runSlow("s1", null), deadline },
+        ports,
+      ),
+    ).rejects.toThrow(/no answer from .* in 2000 ms/);
   });
 });
