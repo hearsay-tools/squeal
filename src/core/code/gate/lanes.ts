@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { hostLoad } from "../../retry/load.js";
 import type { AbsolutePath } from "../../types/common.js";
 import type { TestFileRef } from "../../types/keys.js";
 import type { RunReport } from "../../types/runner.js";
@@ -9,6 +10,7 @@ import type { PrepareRun } from "./prepare.js";
 import type { KnownEvidence, Picked } from "./prerun.js";
 import type { FileProgress } from "./progress.js";
 import { type MapOptions, mapPayloads } from "./records.js";
+import { afterRetry, type Overloaded, overloadedOf, withoutRetried } from "./retry.js";
 import type { Runner } from "./runners.js";
 import { preparedBefore, tellRan } from "./steps.js";
 import type { TestFileEvidence } from "./types.js";
@@ -95,7 +97,7 @@ export interface Lanes {
   /** Every selected file of the runs given: known, not prepared, or run. */
   readonly testFiles: readonly TestFileEvidence[];
   readonly prepares: readonly PrepareRun[];
-  /** Each run as it ended, in the order of `runs`. */
+  /** Each run as it ended, in the order of `runs`; a rerun after its first run (row 020-54). */
   readonly ended: readonly EndedRun[];
   /** The budget ended before every file ran. */
   readonly timedOut: boolean;
@@ -108,7 +110,10 @@ type Planned = PlannedRun<Picked & { readonly runner: Runner }>;
  * then every run with a file left at once; a run that starts after the
  * deadline runs nothing. Row 020-46: a file the gate stopped early before
  * goes to no `prepare` and no run, so it reads `overBudget`, never
- * `notStarted`.
+ * `notStarted`. Row 020-54: once every run ended, the files that failed
+ * in a run that ended while the host's load was at or over its CPU count
+ * run once more, through the same runner, each run's at once; a rerun
+ * that starts after the deadline runs nothing, and changes nothing.
  */
 export async function runLanes(runs: readonly Planned[], context: LaneContext): Promise<Lanes> {
   const testFiles: TestFileEvidence[] = [];
@@ -130,12 +135,37 @@ export async function runLanes(runs: readonly Planned[], context: LaneContext): 
     const files = planned.files.filter((ref) => !before.known.has(ref));
     if (files.length > 0) toRun.push({ planned, files });
   }
-  const ended = await Promise.all(toRun.map((run) => runOne(run.planned, run.files, context)));
-  for (const run of ended) {
-    testFiles.push(...run.ran);
+  const first = await Promise.all(toRun.map((run) => runOne(run.planned, run.files, context)));
+  // Row 020-54: what failed while the host was overloaded runs once more, after every other file.
+  const reruns = await Promise.all(
+    toRun.map(({ planned }, i) => {
+      const files = first[i]?.overloaded?.files;
+      return files === undefined ? null : runOne(planned, files, context, RERUN);
+    }),
+  );
+  const ended: EndedRun[] = [];
+  first.forEach((run, i) => {
+    const rerun = reruns[i] ?? null;
+    const { overloaded } = run;
+    const again = rerun?.report == null ? null : rerun.ran;
+    testFiles.push(
+      ...(overloaded === undefined ? run.ran : afterRetry(run.files, run.ran, overloaded, again)),
+    );
+    ended.push(run);
     timedOut ||= run.report === null || run.report.end === "timed-out";
-  }
+    if (rerun === null || rerun.report === null) return;
+    ended.push(rerun);
+    timedOut ||= rerun.report.end === "timed-out";
+  });
   return { testFiles, prepares, ended, timedOut };
+}
+
+/** Row 020-54: a rerun's suffix to its run id and log folder; it is not told to the keeper. */
+const RERUN = "-rerun";
+
+/** One run as it ended, with the files that failed in it while the host was overloaded. */
+interface LaneRun extends EndedRun {
+  readonly overloaded?: Overloaded;
 }
 
 /**
@@ -147,26 +177,48 @@ async function runOne(
   { pick, index: i }: Planned,
   files: readonly TestFileRef[],
   context: LaneContext,
-): Promise<EndedRun> {
+  rerun?: typeof RERUN,
+): Promise<LaneRun> {
   const { runner } = pick;
   const { options, progress } = context;
   const left = Math.ceil(context.deadline - performance.now());
-  const logDir = join(context.temp, "runs", String(i));
+  const id = `${i}${rerun ?? ""}`;
+  const logDir = join(context.temp, "runs", id);
   // Review 0.1.464 B1: the run's end, in any way, ends its files; the other runs' stay open.
   const report: RunReport | null =
     left > 0
       ? await runner.adapter
-          .run(files, { runId: `gate-${i}`, logDir, timeoutMs: left })
+          .run(files, { runId: `gate-${id}`, logDir, timeoutMs: left })
           .finally(() => progress.runEnded(runner.kind, files))
       : null;
   if (report?.failure != null) context.note(`${runner.kind} run: ${report.failure}`);
   const records = mapPayloads(runner.covered.splice(0), context.mapping);
-  await tellRan(options.ran, { runner: runner.kind, files, report, records });
+  // Row 020-54: a first run's failures under load run again; a rerun runs once.
+  const overloaded =
+    rerun === undefined
+      ? overloadedOf(
+          files,
+          report,
+          options.hostLoad ?? hostLoad,
+          context.deadline - performance.now(),
+        )
+      : null;
+  if (rerun === undefined) {
+    const kept = withoutRetried(records, overloaded);
+    await tellRan(options.ran, { runner: runner.kind, files, report, records: kept });
+  }
   const ran: TestFileEvidence[] = [];
   for (const ref of files) {
     const evidence = await evidenceOf(runner, ref, report, records, context.children);
     const started = evidence.completed || progress.wasStarted(runner.kind, ref);
     ran.push(started ? evidence : { ...evidence, notStarted: true });
   }
-  return { runner: runner.kind, files, logDir, report, ran };
+  return {
+    runner: runner.kind,
+    files,
+    logDir,
+    report,
+    ran,
+    ...(overloaded === null ? {} : { overloaded }),
+  };
 }
