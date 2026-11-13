@@ -17,7 +17,7 @@ import type { CheckpointRecord } from "../core/types/store-records.js";
 import { askDaemon, daemonSocket, worktreeRoot } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
 import { groupArgs, runGroupCommand } from "./run-group.js";
-import { inStore, LANE_FLAGS, laneFiles, laneText, runLanes } from "./run-lanes.js";
+import { LANE_FLAGS, laneFiles, laneText, runLanes } from "./run-lanes.js";
 import { runSlowCommand } from "./run-slow.js";
 import { statusCommand } from "./status-command.js";
 import {
@@ -30,6 +30,7 @@ import {
   readVerdict,
   verdictCode,
 } from "./verdict.js";
+import { inStore } from "./wait/reads.js";
 import { takeWait } from "./wait-arg.js";
 
 const USAGE =
@@ -249,7 +250,7 @@ function filesText(root: AbsolutePath, checkpoint: CheckpointRecord): string {
   const current = inStore(root, (store) => {
     const requested = new Set(checkpoint.testFiles.map(testFileId));
     const listed =
-      laneFiles(store, checkpoint) ??
+      laneFiles(store, checkpoint.worktreeId, checkpoint.lane ?? null) ??
       store.testFileKeys.list(checkpoint.worktreeId).map((row) => row.testFile);
     const rest = listed.filter((file) => !requested.has(testFileId(file)));
     return readClasses(store, checkpoint.worktreeId, rest).byClass.current;
@@ -368,11 +369,15 @@ function pollCheckpoint(
   if (end !== "completed" && !late) {
     // Row 011-73 (C6 as amended 2026-10-21): no tier starts on hold, so the wait returns with it.
     const id = checkpoint.worktreeId;
-    const files = laneFiles(store, checkpoint) ?? undefined;
+    const files = laneFiles(store, checkpoint.worktreeId, checkpoint.lane ?? null) ?? undefined;
     const hold = holdOfWait(store, id, () => store.testFileKeys.list(id, files), Date.now());
     return hold === null ? "open" : { kind: "on-hold", hold };
   }
-  const verdict = readVerdict(store, checkpoint.worktreeId, laneFiles(store, checkpoint));
+  const verdict = readVerdict(
+    store,
+    checkpoint.worktreeId,
+    laneFiles(store, checkpoint.worktreeId, checkpoint.lane ?? null),
+  );
   const settled = verdict.byClass.pending === 0 && !verdict.unlisted;
   if (end === "completed" && settled) return { kind: "ended", verdict };
   return late ? { kind: "deadline", verdict } : "open";
