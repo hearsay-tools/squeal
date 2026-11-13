@@ -5,6 +5,7 @@ import type { FileHash } from "../../types/keys.js";
 import type { CoverageSource } from "../coverage/types.js";
 import { type JoinedFunction, joinCoverage } from "../crap/join.js";
 import { applyExceptions, type Judged } from "./exceptions.js";
+import { failedFiles, withFailedTests } from "./failed-tests.js";
 import { byIdentity } from "./omitted.js";
 import type { BasePolicy } from "./policy.js";
 import {
@@ -246,10 +247,11 @@ export function evaluate(
 ): GateReport {
   const counted = new Map(changed.counted.map((c) => [c.path, c]));
   const cache = new Map<string, PathEvidence>();
+  const failed = failedFiles(evidence.testFiles);
   const ctx: Context = {
     policy,
     excluded: createInputMatcher(policy.coverageExclude),
-    failed: evidence.testFiles.some((f) => f.failed.length > 0),
+    failed: failed.length > 0,
     counted: (path) => counted.get(path),
     leftOut: (path) => leftOutLoaders(evidence.scope?.files ?? [], path),
     evidenceOf: ({ path, blob }) => {
@@ -272,7 +274,9 @@ export function evaluate(
           policy,
           baseCommit: changed.baseCommit,
         });
-  const functions = (applied?.functions ?? judged.map((j) => j.row)).sort(byPosition);
+  const functions = (applied?.functions ?? judged.map((j) => j.row))
+    .map((f) => withFailedTests(f, failed))
+    .sort(byPosition);
   const { incompleteClosures } = evidence;
   const uncounted: GatePathReport[] = changed.uncounted
     .map((u) => ({ path: u.path, reason: u.reason, gap: "not-counted" as const }))
