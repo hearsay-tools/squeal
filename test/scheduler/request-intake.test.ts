@@ -187,7 +187,7 @@ describe("request intake: the progress record (row 018-12)", () => {
     expect(p.progress.count).toBe(1);
   });
 
-  it("records the real retry request's claimed files only", async () => {
+  it("records the real retry request's claimed files only, then wakes their lanes", async () => {
     const p = probeHost();
     p.ledger.settle([A], NOTHING);
     p.ledger.commit();
@@ -202,7 +202,8 @@ describe("request intake: the progress record (row 018-12)", () => {
     });
     await p.intake.take(retryRequest());
     expect(p.ledger.file(A)?.retryKey).toBe(key);
-    expect(p.log).toEqual(["record test/a.test.ts (A queued)", "pump"]);
+    // Row 011-323: the lane of each claimed file's group, after the record; `A` is a `tests` file.
+    expect(p.log).toEqual(["record test/a.test.ts (A queued)", "wake lane tests", "pump"]);
   });
 
   it("records nothing for a stage that throws, and leaves the ledger and store as they were", async () => {
