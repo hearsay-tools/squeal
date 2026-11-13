@@ -1,5 +1,5 @@
 import type { PayloadSchemaVersion, RelativePath, WorktreeId } from "./common.js";
-import type { CheckKey } from "./keys.js";
+import type { CheckKey, TestFileRef } from "./keys.js";
 import type { ResultRecord } from "./store-records.js";
 
 /*
@@ -197,11 +197,32 @@ export interface KeepRequest {
 }
 
 /**
+ * Row 020-48 (spec 020 D17.3): what one completed test file's gate run
+ * read that the repository's shared observed rows (spec 016 D4) may lack.
+ */
+export interface SeenReads {
+  readonly ref: TestFileRef;
+  /** Its reads beyond its key (`ObservedGrowth.add`): the `observed.` row. */
+  readonly add: readonly RelativePath[];
+  /** What a process it started imported (`markDirect`): the `observedDirect.` row. */
+  readonly direct: readonly RelativePath[];
+  /** Its module loads (`markModules`): the `observedModules.` row. */
+  readonly modules: readonly RelativePath[];
+}
+
+/**
  * What one try writes: the file's coverage record at its key (`putParts`),
  * or its results (`storeResults`) with the paths its heal is judged by and
  * the environment files its project's key read (`unresolvedPreloads`).
+ * Row 020-48: or the reads of the gate's runs, merged into the shared
+ * observed rows before any file is written at a key that holds them. A
+ * daemon before this row refuses the kind.
  */
 export type KeepWrite =
+  | {
+      readonly kind: "seen";
+      readonly seen: readonly SeenReads[];
+    }
   | {
       readonly kind: "coverage";
       readonly key: CheckKey;
