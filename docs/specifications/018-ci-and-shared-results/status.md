@@ -115,6 +115,7 @@ Started: 2026-10-31
 - 2026-11-12, review 0.1.459 (`reviews/0.1.459.md`): FAIL B1 (the first worktree to import an export, matching CI with no file re-keyed, fetched it a second time after a restart: its import had the file-only id). Repair: every reader import takes the id of the file and the worktree's environments; file-only ids from `squeal import` or earlier releases still read. The accepted `allowOnly` gap was confirmed as non-blocking; a release must not claim it repaired.
 - 2026-11-12, released 0.1.459 (tag squeal--v0.1.459 at cfbd3ae6e, hub 056e2bc; tags v0.1.459 and v0 moved). Re-review PASS; main CI 43277051575 green. Rows 018-43 and 018-44 done.
 - 2026-11-12, the human: "squawk pin: Yes, open the PR": hearsay-tools/squawk#3460 moves the pinned Action to v0.1.460 (6a7b41c08), before Dependabot's weekly update; its first merge group gives the measured export count for row 018-43. "Focus gap: Leave it": the `allowOnly` gap of row 018-44 stays (it loses reuse only, never gives a wrong result); no row.
+- 2026-11-13, hearsay-tools/squawk#3460 merged (1949c6815; the human: "Yes, you merge it"). Its merge-group run 43389121989 (Squeal 0.1.460, Node 26.13.0) exported 1,628 test files and 27,204 results (was 1,484 and 24,272 on 0.1.443) and left out 47 files whose inputs differ, none for repeated names (was 150 + 31). Row 018-43's measured gain: +144 files, above the modelled 1,568.
 
 ## Open questions
 
