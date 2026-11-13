@@ -45,9 +45,11 @@ export function presenceOf(
 ): (store: Store) => DaemonReading {
   let watch: DaemonWatch | undefined;
   return (store) => {
-    const commonDir = resolveCommonDir(root);
-    if (commonDir === null) throw new Error(`run wait: no git common dir for ${root}`);
-    watch ??= ports.watch(worktreeId, commonDir);
+    if (watch === undefined) {
+      const commonDir = resolveCommonDir(root);
+      if (commonDir === null) throw new Error(`run wait: no git common dir for ${root}`);
+      watch = ports.watch(worktreeId, commonDir);
+    }
     const worktree = store.worktrees.get(worktreeId);
     const at = ports.now() as EpochMs;
     const stopping = stoppingOf(store, worktree, at);
