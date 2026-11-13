@@ -1,0 +1,118 @@
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { createServer, type Server, type Socket } from "node:net";
+import { join } from "node:path";
+import { REAL_PORTS, type WaitPorts } from "../../../src/cli/wait/socket.js";
+import type { CheckId } from "../../../src/core/types/check.js";
+import type { RevisionNumber } from "../../../src/core/types/common.js";
+import type { CheckKey } from "../../../src/core/types/keys.js";
+import type { KnownOutcome, PendingPhase, Validity } from "../../../src/core/types/state.js";
+import { appendRevisions, check, fakeRepo, seedStore, state } from "../../status/helpers.js";
+import { clientGone } from "../fake-daemon.js";
+
+/*
+ * Row 011-326: what the wait module's loop rows run on. A scratch store at
+ * revision 3, a socket path in a private runtime dir (the existing fake
+ * daemon listens there, or a stand-in that holds a request without a word),
+ * and a stepped clock: a pause moves it on by its ms at once.
+ */
+
+export const ref = (path: string) => ({ project: "", path: path as never });
+const fileCheck = (path: string): CheckId => ({ kind: "file", project: "", testPath: path });
+
+/** A worktree at revision 3 with its store; `config` is its `squeal.config.json`. */
+export function scratch(config?: object) {
+  const repo = fakeRepo();
+  if (config !== undefined) {
+    writeFileSync(join(repo.main, "squeal.config.json"), JSON.stringify(config));
+  }
+  const store = seedStore(repo);
+  const id = repo.mainId;
+  store.worktrees.upsert({
+    id,
+    root: repo.main,
+    commonDir: repo.commonDir,
+    isMain: true,
+    registeredAt: 1,
+    daemon: null,
+  });
+  appendRevisions(store, id, 3, { head: null, dirty: false });
+  /** `path` listed, with a test and its file-level check. */
+  const file = (
+    path: string,
+    {
+      validity = "current",
+      outcome = "pass",
+      pending = null,
+    }: { validity?: Validity; outcome?: KnownOutcome; pending?: PendingPhase | null } = {},
+  ) => {
+    const row = { worktreeId: id, testFile: ref(path), key: `key-${path}` as CheckKey };
+    store.testFileKeys.upsertMany([{ ...row, revision: 3 as RevisionNumber, pending }]);
+    const pendingPhase = validity === "pending" ? ("queued" as const) : null;
+    store.knownStates.upsertMany([
+      state(id, check(path, "works"), { validity, outcome, pendingPhase, observedAt: 3 }),
+      state(id, fileCheck(path), { validity, outcome: "pass", pendingPhase, observedAt: 3 }),
+    ]);
+  };
+  return { root: repo.main, commonDir: repo.commonDir, id, store, file };
+}
+
+/** A clock a pause moves on at once; `onPause` runs after the n-th pause moved it. */
+export function steppedClock(start = Date.now()) {
+  let at = start;
+  const pauses: number[] = [];
+  let hook: (n: number) => void = () => {};
+  const ports: WaitPorts = {
+    now: () => at,
+    pause: async (ms) => {
+      pauses.push(ms);
+      at += ms;
+      hook(pauses.length);
+    },
+    ask: REAL_PORTS.ask,
+  };
+  return {
+    ports,
+    pauses,
+    start,
+    at: () => at,
+    onPause: (fn: (n: number) => void) => {
+      hook = fn;
+    },
+  };
+}
+
+const dirs: string[] = [];
+const servers: Server[] = [];
+const held: Socket[] = [];
+
+/** A socket path no one listens on yet, in a private runtime dir. */
+export function socketPath(): string {
+  const dir = mkdtempSync("/tmp/sq-wait-");
+  dirs.push(dir);
+  return join(dir, "daemon.sock");
+}
+
+/** A stand-in that answers each request by `answer`, or holds it without a word at `null`. */
+export function stalling(
+  path: string,
+  answer: (type: string) => Record<string, unknown> | null,
+): Promise<void> {
+  const server = createServer((socket) => {
+    socket.on("error", clientGone);
+    socket.once("data", (data) => {
+      const { type } = JSON.parse(data.toString()) as { type: string };
+      const reply = answer(type);
+      if (reply === null) held.push(socket);
+      else socket.end(`${JSON.stringify({ schemaVersion: 1, ok: true, type, ...reply })}\n`);
+    });
+  });
+  servers.push(server);
+  return new Promise((resolve) => server.listen(path, resolve));
+}
+
+/** Closes the stand-ins and removes the runtime dirs; call after each test. */
+export function closeLoopFixtures(): void {
+  for (const socket of held.splice(0)) socket.destroy();
+  for (const server of servers.splice(0)) server.close();
+  for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+}
