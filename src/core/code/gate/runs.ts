@@ -1,6 +1,7 @@
 import { compare } from "../../fs/compare.js";
 import type { RelativePath } from "../../types/common.js";
 import type { RunEstimate } from "./estimate.js";
+import type { GatePartRefusal, PartRefusal } from "./parts-refused.js";
 import type { PrepareRun } from "./prepare.js";
 import type { GateEvidenceSource, GateRunReport, GateTimes } from "./report.js";
 import { type ChildFiles, type Evidence, GATE_RUNNERS, type TestFileEvidence } from "./types.js";
@@ -23,6 +24,7 @@ export function runsOf(evidence: Evidence, durationsMs: GateTimes["durationsMs"]
       .map((f) => ({ path: f.path, tests: [...f.failed].sort(compare) }))
       .sort((a, b) => compare(a.path, b.path));
     const from = sourcesOf(files);
+    const refused = refusedOf(evidence.refused ?? [], runner, files);
     const children = childFilesOf(files);
     const prepare = runner === "node-test" ? preparesOf(evidence) : null;
     const estimate = evidence.estimates?.find((e) => e.runner === runner);
@@ -41,6 +43,7 @@ export function runsOf(evidence: Evidence, durationsMs: GateTimes["durationsMs"]
         failed,
         ...(log === undefined ? {} : { log }),
         ...(from === null ? {} : { from }),
+        ...(refused === null ? {} : { refused }),
         ...(children === null ? {} : { children }),
         ...(prepare === null ? {} : { prepare }),
         ...(estimate === undefined ? {} : { estimate: withoutRunner(estimate) }),
@@ -81,6 +84,22 @@ function sourcesOf(
   if (files.every((f) => f.from === undefined)) return null;
   const byPath = [...files].sort((a, b) => compare(a.path, b.path));
   return Object.fromEntries(byPath.map((f) => [f.path, f.from ?? "run"]));
+}
+
+/**
+ * Row 020-49: `runner`'s refusals of its selected `files`, by path, each
+ * without its runner and path; `null` when none.
+ */
+function refusedOf(
+  refusals: readonly PartRefusal[],
+  runner: TestFileEvidence["runner"],
+  files: readonly TestFileEvidence[],
+): Record<RelativePath, GatePartRefusal> | null {
+  const selected = new Set(files.map((f) => f.path));
+  const mine = refusals.filter((r) => r.runner === runner && selected.has(r.path));
+  if (mine.length === 0) return null;
+  const byPath = [...mine].sort((a, b) => compare(a.path, b.path));
+  return Object.fromEntries(byPath.map(({ runner: _r, path, ...refusal }) => [path, refusal]));
 }
 
 /** D12.7: the sum of the files' child coverage files; `null` when none counts them. */

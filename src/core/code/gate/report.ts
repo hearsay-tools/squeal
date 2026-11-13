@@ -2,6 +2,7 @@ import { compare } from "../../fs/compare.js";
 import type { AbsolutePath, RelativePath } from "../../types/common.js";
 import type { FileHash } from "../../types/keys.js";
 import type { RunEstimate } from "./estimate.js";
+import type { GatePartRefusal } from "./parts-refused.js";
 import type { PrepareRun } from "./prepare.js";
 import type { LeftOutGroup, ScopeGroup } from "./scope.js";
 import type { ClosureGaps } from "./select-closures.js";
@@ -171,6 +172,12 @@ export interface GateRunReport {
    * so a report whose every file ran is as before. By path.
    */
   readonly from?: Readonly<Record<RelativePath, GateEvidenceSource>>;
+  /**
+   * Row 020-49 (#205): each selected file a part holds that the parts did
+   * not give, and why, by path; `from` says whether the stores gave it or
+   * this command ran it. Absent when the parts gave every such file.
+   */
+  readonly refused?: Readonly<Record<RelativePath, GatePartRefusal>>;
   /**
    * D12.7: with `coverage.children`, the child coverage files this run
    * read and dropped, over its files; absent with the key off.
