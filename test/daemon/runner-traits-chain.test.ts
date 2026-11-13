@@ -82,21 +82,25 @@ describe("runner traits by holder: the daemon's chain", () => {
     // Before a listing no project has an owner: the defaults, in a lane of their own.
     expect(answers(daemon.traits, NT)).toEqual({ ...none, slowWidth: 3 });
     await daemon.testFiles();
-    const nodeTest = {
+    const perProcess = {
       ...DEFAULTS,
       slowWidth: 1,
       tierWidth: 4,
       besideBacklog: true,
       backlogSlot: 1,
     };
-    const pytest = { ...nodeTest, focuses: true, lane: "pytest" };
+    const pytest = { ...perProcess, focuses: true, lane: "pytest" };
     expect(answers(daemon.traits, A)).toEqual({
       ...DEFAULTS,
       tierPart: "0:",
       focuses: true,
       lane: "vitest",
     });
-    expect(answers(daemon.traits, NT)).toEqual({ ...nodeTest, tierPart: "1:", lane: "node-test" });
+    expect(answers(daemon.traits, NT)).toEqual({
+      ...perProcess,
+      tierPart: "1:",
+      lane: "node-test",
+    });
     expect(answers(daemon.traits, PY)).toEqual({ ...pytest, tierPart: "2:", backlogSlot: 5 });
     expect(answers(daemon.traits, PB)).toEqual({ ...pytest, tierPart: "3:", backlogSlot: 2 });
     expect(answers(daemon.traits, OTHER)).toEqual(none);
