@@ -1,7 +1,7 @@
-import { readFileSync, rmSync, writeFileSync } from "node:fs";
+import { readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import type { Part } from "../../src/core/ci/parts.js";
+import { PART_PREFIX, type Part } from "../../src/core/ci/parts.js";
 import { COVERAGE_RECORD_VERSION } from "../../src/core/code/coverage/record.js";
 import { scratchDir } from "../ci/fixture.js";
 import {
@@ -19,7 +19,8 @@ import {
 /*
  * Spec 020 D13.2 (row 020-08b; research `ci-evidence.md` Q3, rule 3): what
  * makes `squeal code --base --parts` run a selected file it would otherwise
- * take from the parts, and what a part's failed and skipped tests read as.
+ * take from the parts, and why (row 020-49, #205), and what a part's failed
+ * and skipped tests read as.
  * One `ci record` serves every case; each case reads the parts only.
  * `code-gate-parts-environment.test.ts` has the cases of a part's
  * environment and snapshot update mode.
@@ -37,11 +38,15 @@ const MATH = ["src/math.ts", "--test", "test/reads.test.ts"];
 let fixture: Recorded;
 let dir: string;
 let part: Part;
+/** The one part's file, as the report names it. */
+let partFile: string;
 
 beforeAll(async () => {
   dir = scratchDir("gate-parts-cases");
   fixture = await recorded(READS, EDITS, dir);
   part = onlyPart(fixture.parts);
+  const name = readdirSync(fixture.parts).find((n) => n.startsWith(PART_PREFIX));
+  partFile = join(fixture.parts, name ?? "");
 }, SLOW.timeout);
 
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
@@ -94,6 +99,15 @@ describe("squeal code --base --parts: what makes a file run (spec 020 D13.2)", (
           "test/grade.test.ts": "parts",
           "test/reads.test.ts": "run",
         });
+        // Row 020-49 (#205): the part and the input that differs, and one line on stderr.
+        const differs = { reason: "input", detail: "its part read other content" };
+        expect(ran.report.runs[0]?.refused).toEqual({
+          "test/add.test.ts": { part: partFile, input: "test/add.test.ts", ...differs },
+          "test/reads.test.ts": { part: partFile, input: "data/input.txt", ...differs },
+        });
+        expect(ran.stderr).toContain(
+          "squeal code: Vitest: 2 test files not taken from the parts, 2 run here: its part does not certify an input as it is here (test/add.test.ts: test/add.test.ts, test/reads.test.ts: data/input.txt)\n",
+        );
       } finally {
         writeFileSync(join(fixture.root, "test/add.test.ts"), add);
         writeFileSync(join(fixture.root, "data/input.txt"), READS["data/input.txt"] as string);
@@ -114,11 +128,21 @@ describe("squeal code --base --parts: what makes a file run (spec 020 D13.2)", (
     expect(ran.stderr).toContain(
       `1 part gives no evidence, so its test files run: its records were made at provider`,
     );
+    // Row 020-49: each file names its part's reason; stderr told it once, above.
+    const refused = Object.values(ran.report.runs[0]?.refused ?? {});
+    expect(refused.map((r) => r.reason)).toEqual(["unusable", "unusable", "unusable"]);
+    expect(ran.stderr).not.toContain("not taken from the parts");
   });
 
-  it("runs a file two parts hold, and takes the rest", SLOW, async () => {
+  it("runs a file two parts hold, and takes the rest; then the stores give it", SLOW, async () => {
     const add = part.testFiles.filter((f) => f.path === "test/add.test.ts");
     const twice = partsDir(fixture.root, "twice", [part, { ...part, testFiles: add }]);
+    const [first, second] = readdirSync(twice).sort();
+    const duplicate = {
+      part: join(twice, first ?? ""),
+      reason: "duplicate",
+      detail: `also in ${join(twice, second ?? "")}`,
+    };
 
     const ran = await gate(fixture.root, [...MATH, "--parts", twice]);
 
@@ -127,6 +151,20 @@ describe("squeal code --base --parts: what makes a file run (spec 020 D13.2)", (
       "test/add.test.ts": "run",
       "test/grade.test.ts": "parts",
     });
+    expect(ran.report.runs[0]?.refused).toEqual({ "test/add.test.ts": duplicate });
+    expect(ran.stderr).toContain(
+      "squeal code: Vitest: 1 test file not taken from the parts, 1 run here: more than one part holds it (test/add.test.ts)\n",
+    );
+
+    // Row 020-49 (#205): the gate kept the file it ran (D17.3); the stores give it next, still refused.
+    const again = await gate(fixture.root, [...MATH, "--parts", twice]);
+
+    expect(again.ran).toEqual([]);
+    expect(again.report.runs[0]?.from?.["test/add.test.ts"]).toBe("store");
+    expect(again.report.runs[0]?.refused).toEqual({ "test/add.test.ts": duplicate });
+    expect(again.stderr).toContain(
+      "squeal code: Vitest: 1 test file not taken from the parts, 1 read from the stores: more than one part holds it (test/add.test.ts)\n",
+    );
   });
 
   it("runs every file of a format 3 part, which holds no record", SLOW, async () => {
