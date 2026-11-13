@@ -1,4 +1,4 @@
-import { STATUS_BUSY_TIMEOUT_MS, withStatusStore } from "../../core/status/open.js";
+import { withStatusStore } from "../../core/status/open.js";
 import type { AbsolutePath } from "../../core/types/common.js";
 import type { DaemonRequest } from "../../core/types/daemon.js";
 import type { Store } from "../../core/types/store.js";
@@ -11,6 +11,7 @@ import {
   type RequestRecord,
   type WaitStep,
 } from "./decide.js";
+import { readBound } from "./presence.js";
 import { type FieldReader, type RunWaitAsk, unavailableText, waitReads } from "./reads.js";
 import { askWithin, REAL_PORTS, type WaitPorts } from "./socket.js";
 import {
@@ -37,47 +38,37 @@ const REQUEST_POLL_MS = 100;
 
 /**
  * Reads the store once a second until the wait's row ends it: its outcome,
- * one of today's for that wait. Each read opens the store, fills the fields
- * the row's chain reaches and closes it; then the daemon check, when it is
- * due, and the pause, which ends by the deadline.
+ * one of that wait's. Each read opens the store, fills the fields the row's
+ * chain reaches, the daemon's presence last (row 011-327), and closes it;
+ * then the pause, which ends by the deadline.
  */
 export async function runWait<A extends RunWaitAsk>(
   ask: A,
   ports: WaitPorts = REAL_PORTS,
 ): Promise<OutcomeOf[A["wait"]]> {
   const row = RUN_WAITS[ask.wait];
-  const reads = waitReads(ask, ports.now);
-  const since = ask.wait === "checkpoint" ? { since: ask.checkpoint.revision } : {};
-  for (let poll = 0; ; poll++) {
-    const given: WaitRecord = { poll, ...since };
-    let [record, step] =
+  const reads = waitReads(ask, ports);
+  const given: WaitRecord = ask.wait === "checkpoint" ? { since: ask.checkpoint.revision } : {};
+  for (;;) {
+    const step =
       row.store === "lint"
         ? settle(row, given, reads(null))
         : worktreeRead(row, ask, given, reads, ports);
-    if (step.kind === "read") {
-      // Only the daemon check is left once the store closed: `settle` reads every other field.
-      record = { ...record, daemon: await daemonCheck(ask, ports) };
-      step = decideRunWait(row, record);
-      if (step.kind === "read")
-        throw new Error(`run wait ${ask.wait}: no field after the daemon's`);
-    }
     // The row's outcomes are the wait's: `RUN_WAITS` gives each wait its own.
     if (step.kind === "end") return step.outcome as OutcomeOf[A["wait"]];
     await ports.pause(Math.max(0, Math.min(STORE_POLL_MS, ask.deadline - ports.now())));
   }
 }
 
-/** One read: the row's first fields in order, then each field the decision asks for, but the daemon's. */
-function settle(row: RunWaitRow, given: WaitRecord, read: FieldReader): [WaitRecord, WaitStep] {
+/** One read: the row's first fields in order, then each field the decision asks for. */
+function settle(row: RunWaitRow, given: WaitRecord, read: FieldReader): EndedStep {
   let record = given;
   for (const field of row.reads) {
-    if (field !== "store" && field !== "unavailable" && field !== "daemon") {
-      record = { ...record, ...read(field) };
-    }
+    if (field !== "store" && field !== "unavailable") record = { ...record, ...read(field) };
   }
   for (;;) {
     const step = decideRunWait(row, record);
-    if (step.kind !== "read" || step.field === "daemon") return [record, step];
+    if (step.kind !== "read") return step;
     if (step.field === "store" || step.field === "unavailable") {
       throw new Error(`run wait: the loop gives the ${step.field} field`);
     }
@@ -85,12 +76,16 @@ function settle(row: RunWaitRow, given: WaitRecord, read: FieldReader): [WaitRec
   }
 }
 
+/** A read's step once it read what its chain reached: go on, or end. */
+type EndedStep = Exclude<WaitStep, { kind: "read" }>;
+
 /**
  * Row 011-327 (decision 4 item 1): one read of the worktree's store as the
  * status waits read it (`waitForStatus`): in one read transaction, its busy
  * timeout bounded by what is left before the deadline, the deadline's read
- * waiting the full `STATUS_BUSY_TIMEOUT_MS`. A store not read fills no
- * field but why, and, when busy, whether the read was the deadline's.
+ * waiting the full `STATUS_BUSY_TIMEOUT_MS` (`readBound`). A store not read
+ * fills no field but why, and, when busy, whether the read was the
+ * deadline's.
  */
 function worktreeRead(
   row: RunWaitRow,
@@ -98,16 +93,12 @@ function worktreeRead(
   given: WaitRecord,
   reads: (store: Store) => FieldReader,
   ports: WaitPorts,
-): [WaitRecord, WaitStep] {
-  const left = ask.deadline - ports.now();
-  const final = left <= 0;
-  const busyTimeoutMs = final
-    ? STATUS_BUSY_TIMEOUT_MS
-    : Math.round(Math.max(50, Math.min(STATUS_BUSY_TIMEOUT_MS, left)));
+): EndedStep {
+  const { busyTimeoutMs, final } = readBound(ask.deadline, ports.now);
   const read = withStatusStore(ask.root, { busyTimeoutMs }, ({ store }) =>
     settle(row, { ...given, store: "opened" }, reads(store)),
   );
-  if (Array.isArray(read)) return read;
+  if (!("available" in read)) return read;
   const busy = read.reason === "timeout";
   const record: WaitRecord = {
     ...given,
@@ -115,17 +106,10 @@ function worktreeRead(
     unavailable: unavailableText(read),
     ...(busy ? { late: final } : {}),
   };
-  return [record, decideRunWait(row, record)];
-}
-
-/** The daemon check: a ping that ends by the deadline; a late answer is a busy daemon (011-327). */
-async function daemonCheck(
-  ask: RunWaitAsk,
-  ports: WaitPorts,
-): Promise<NonNullable<WaitRecord["daemon"]>> {
-  const pong = await askWithin(ask.socketPath, { type: "ping" }, ask.deadline, ports);
-  if (pong === null) return "none";
-  return "unanswered" in pong ? "unanswered" : "answered";
+  const step = decideRunWait(row, record);
+  if (step.kind === "read")
+    throw new Error(`run wait ${ask.wait}: an unread store has no ${step.field}`);
+  return step;
 }
 
 /** A request a command waits for the daemon to take. */

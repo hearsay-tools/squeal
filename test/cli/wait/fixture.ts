@@ -2,10 +2,13 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { createServer, type Server, type Socket } from "node:net";
 import { join } from "node:path";
 import { REAL_PORTS, type WaitPorts } from "../../../src/cli/wait/socket.js";
+import { WAIT_DOWN_MS } from "../../../src/cli/wait-liveness.js";
+import { type SocketState, waitView } from "../../../src/core/presence/wait.js";
 import type { CheckId } from "../../../src/core/types/check.js";
-import type { RevisionNumber } from "../../../src/core/types/common.js";
+import type { AbsolutePath, EpochMs, RevisionNumber } from "../../../src/core/types/common.js";
 import type { CheckKey } from "../../../src/core/types/keys.js";
 import type { KnownOutcome, PendingPhase, Validity } from "../../../src/core/types/state.js";
+import type { DaemonRecord } from "../../../src/core/types/store-records.js";
 import { appendRevisions, check, fakeRepo, seedStore, state } from "../../status/helpers.js";
 import { clientGone } from "../fake-daemon.js";
 
@@ -13,7 +16,9 @@ import { clientGone } from "../fake-daemon.js";
  * Row 011-326: what the wait module's loop rows run on. A scratch store at
  * revision 3, a socket path in a private runtime dir (the existing fake
  * daemon listens there, or a stand-in that holds a request without a word),
- * and a stepped clock: a pause moves it on by its ms at once.
+ * and a stepped clock: a pause moves it on by its ms at once. Row 011-327:
+ * the scratch worktree's daemon heartbeats at the start, and a wait watches
+ * it through presence's wait view (`watchDaemon`, or `presenceWatch`).
  */
 
 export const ref = (path: string) => ({ project: "", path: path as never });
@@ -36,6 +41,22 @@ export function scratch(config?: object) {
     daemon: null,
   });
   appendRevisions(store, id, 3, { head: null, dirty: false });
+  /** Row 011-327: its daemon, its last heartbeat at `heartbeatAt`; `null` clears it, as `squeal stop` does. */
+  const daemon = (heartbeatAt: number | null = Date.now()): DaemonRecord | null => {
+    const record =
+      heartbeatAt === null
+        ? null
+        : {
+            socketPath: socketPath() as AbsolutePath,
+            startedAt: (heartbeatAt - 1_000) as EpochMs,
+            heartbeatAt: heartbeatAt as EpochMs,
+            heartbeatIntervalMs: 5_000,
+            squealVersion: "0.0.0-test",
+          };
+    store.worktrees.setDaemon(id, record);
+    return record;
+  };
+  daemon();
   /** `path` listed, with a test and its file-level check. */
   const file = (
     path: string,
@@ -53,7 +74,7 @@ export function scratch(config?: object) {
       state(id, fileCheck(path), { validity, outcome: "pass", pendingPhase, observedAt: 3 }),
     ]);
   };
-  return { root: repo.main, commonDir: repo.commonDir, id, store, file };
+  return { root: repo.main, commonDir: repo.commonDir, id, store, file, daemon };
 }
 
 /** A clock a pause moves on at once; `onPause` runs after the n-th pause moved it. */
@@ -69,6 +90,7 @@ export function steppedClock(start = Date.now()) {
       hook(pauses.length);
     },
     ask: REAL_PORTS.ask,
+    watch: REAL_PORTS.watch,
   };
   return {
     ports,
@@ -134,4 +156,29 @@ export function timingOut(ports: WaitPorts, types: readonly string[]): WaitPorts
       });
     },
   };
+}
+
+/**
+ * Row 011-327: a daemon watch on presence's own wait view (`waitView`), its
+ * socket check found `socket` at once and no lock marks: a stale heartbeat
+ * whose socket holds a daemon (`listening`) is a busy daemon, one nobody
+ * listens on (`absent`) is down once the stepped clock passed the
+ * heartbeat's grace and `WAIT_DOWN_MS`. `watchDaemon` asks the socket in
+ * the background, which a stepped clock does not wait for.
+ */
+export function presenceWatch(socket: SocketState): WaitPorts["watch"] {
+  return () => ({
+    judge: (record, at, stopping) =>
+      waitView({
+        record,
+        at,
+        stopping,
+        marks: () => null,
+        socket,
+        deadMs: () => 0,
+        recordedAgain: () => false,
+        downMs: WAIT_DOWN_MS,
+      }).liveness,
+    lapse: () => null,
+  });
 }

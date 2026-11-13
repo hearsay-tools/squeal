@@ -8,7 +8,6 @@ import { BEFORE_DEADLINE, type Unanswered } from "./socket.js";
 import {
   type Condition,
   FIELD_OF,
-  PING_POLLS,
   type ReadField,
   type RequestLoopName,
   type RequestRow,
@@ -64,7 +63,7 @@ function allHold(
 ): boolean | Extract<WaitStep, { kind: "read" }> {
   for (const condition of when) {
     const field = FIELD_OF[condition];
-    if (field !== "poll" && record[field] === undefined) return { kind: "read", field };
+    if (record[field] === undefined) return { kind: "read", field };
     if (!holds(condition, record)) return false;
   }
   return true;
@@ -94,8 +93,7 @@ const HOLDS: Readonly<Record<Condition, (r: WaitRecord) => boolean>> = {
   "lint off": (r) => r.counts === "off",
   "lint unread": (r) => r.counts === "unread",
   "nothing to lint": (r) => typeof r.counts === "object" && r.counts.linting === 0,
-  "ping due": (r) => r.poll % PING_POLLS === PING_POLLS - 1,
-  "no daemon": (r) => r.daemon === "none",
+  "daemon down": (r) => r.daemon?.state === "down",
 };
 
 /** The rule's outcome with its fields; an `install` of `null` is left out, as no install wait. */

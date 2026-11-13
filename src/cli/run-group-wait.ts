@@ -8,6 +8,7 @@ import type { TestFileRef } from "../core/types/keys.js";
 import type { CliIo } from "./main.js";
 import { statusCommand } from "./status-command.js";
 import { type FileVerdict, failuresText, noVerdictText, verdictCode } from "./verdict.js";
+import { stoppedText } from "./wait/presence.js";
 import type { InstallHold } from "./wait/progress.js";
 import type { GroupOutcome } from "./wait/table.js";
 import { runWait } from "./wait/wait.js";
@@ -75,7 +76,7 @@ export function groupVerdictLine(
     }
     case "stopped":
       return none(
-        `the daemon stopped before the ${narrow ? "selected" : "group's"} test files had results`,
+        `the daemon stopped before the ${narrow ? "selected" : "group's"} test files had results (${stoppedText(outcome.daemon, command)})`,
       );
     // Row 011-327: the store did not open, or was busy at the deadline's read.
     case "unopened":
