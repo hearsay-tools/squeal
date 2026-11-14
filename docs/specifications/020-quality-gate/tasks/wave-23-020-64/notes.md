@@ -54,7 +54,8 @@ Type changes: `Pause` (new export), `KeepOptions.pause` (new optional field), `E
 - `pnpm run typecheck`: pass (after the `MAX_PAUSE_MS` type fix).
 - `pnpm run lint`: pass (`biome check .`, no fixes).
 - `squeal status --wait 60000` on the keep-early, keep-early-moved, keep-early-retry and keep-busy test files: no known failures, each with a current result at revision 5.
-- Squeal's affected verdict on the changed source files: see the final report. The vitest lane queues about 350 dependants behind its quiet window.
+- `squeal status --wait 180000` on the 20 keeper test files (`test/code/gate/keep*.test.ts`, `test/cli/code-gate-keep*.test.ts`, `test/run-evidence/keeper.test.ts`): no known failures, each with a current result at revision 10.
+- Squeal's wider affected set (about 360 files that read `keep.ts`): no verdict yet. About 200 were still queued when this row ended; pending, not passed. Three failures are expected bundle drift, because `src` changed and no build ran in this tree: `test/harness/plugin.test.ts`, `test/harness/opencode/package.test.ts` and `test/harness/pi/package.test.ts` ("cli/squeal.mjs differs from the build"). The coordinator's bundle rebuild clears them.
 - `node_modules/.bin/vitest run test/code/gate/keep-early-moved.test.ts test/code/gate/keep-early.test.ts` 20 times: 20 passed.
 - Mutation (`InputCheck.holds` forced to `true`): case 1 fails, as it should; reverted.
 
