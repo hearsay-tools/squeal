@@ -23,7 +23,6 @@ import {
   type FullSuiteRequest,
   isGroupLane,
   type LockHolder,
-  laneGroup,
   type NarrowRunRequest,
   type Scheduler,
   type SchedulerCloseOptions,
@@ -31,7 +30,6 @@ import {
   SLOW_GROUP,
   type SlowSuiteRequest,
   type SlowWaiting,
-  TESTS_GROUP,
 } from "../types/scheduler.js";
 import type { CandidateBatch } from "../types/watcher.js";
 import { type Admission, admit, checkTurn, type StartFacts } from "./admission.js";
@@ -83,7 +81,7 @@ import { RunnerWork } from "./runner-work.js";
 import { busyLanes } from "./slots.js";
 import { groupView } from "./slow.js";
 import { SlowRelease } from "./slow-release.js";
-import { type SlowRun, SlowTier } from "./slow-tier.js";
+import { type SlowHost, type SlowRun, SlowTier } from "./slow-tier.js";
 import { supersededIn } from "./store-decision.js";
 import { StoredKeys } from "./stored-keys.js";
 import { cancels, endTier, executeTier, laneOf, selectTier, type Tier } from "./tiers.js";
@@ -281,20 +279,14 @@ class TierScheduler implements Scheduler {
             (message) => this.#note(message),
             waits,
           );
-    const host = {
+    const host: SlowHost = {
       lock: this.#lock,
       started: () => this.#started(),
       ready: () => this.#context !== null,
       closed: () => this.#closed,
-      halted: () => this.#halted(),
-      held: () => this.#onHold(),
-      holdCheck: () => this.#holdCheck(),
-      runtimeMissing: () => this.#runtimeMissing(),
       pump: () => this.#pump(),
-      editPending: () => this.#editPending(),
-      fastIdle: () => this.#fastIdle(),
-      normalIdle: () => this.#normalIdle(),
-      groupHolds: (name: string) => this.#groupHolds(name),
+      probe: () => this.#probe(),
+      admit: () => this.#admit(),
     };
     this.#groups = new GroupTiers((group) => new SlowTier(host, options.slow, group));
     this.#slowRelease = new SlowRelease(
@@ -601,18 +593,13 @@ class TierScheduler implements Scheduler {
    */
   async #probe(): Promise<"gone" | "held" | "released" | "free"> {
     if (await this.#runtimeMissing()) return "gone";
-    return this.#holdCheck();
-  }
-
-  /** The merge hold before a tier, as `#probe`'s second read (row 011-72). */
-  async #holdCheck(): Promise<"held" | "released" | "free"> {
     await this.#hold.check();
     const released = this.#hold.takeReleased();
     if (released.length > 0) {
       await this.#reconcilePaths(released);
       return "released";
     }
-    return this.#onHold() ? "held" : "free";
+    return this.#hold.holding || this.#commandHold.holding ? "held" : "free";
   }
 
   /** Either hold holds (011 C9, "Holds"): no tier starts in any lane, and none is cut. */
@@ -1494,43 +1481,6 @@ class TierScheduler implements Scheduler {
       if (after !== null) return true;
     }
     return false;
-  }
-
-  /** A tier of group `name`'s lane is in flight. */
-  #groupInFlight(name: string): boolean {
-    return this.#lanes().some((lane) => laneGroup(lane) === name);
-  }
-
-  /**
-   * Spec 019 D1 `after`: group `name` has a tier in flight, or a queued file
-   * that holds its followers (`SlowTier.holdsFollowers`, row 019-26).
-   */
-  #groupHolds(name: string): boolean {
-    if (this.#groupInFlight(name)) return true;
-    const lane = this.#groups.get(name);
-    return lane === undefined
-      ? (this.#ledger?.queue.hasGroup(name) ?? false)
-      : lane.holdsFollowers();
-  }
-
-  /**
-   * `fastIdle`, and no group of `normal` priority other than `tests` has
-   * work in flight or queued work that runs without a further ask (spec 019
-   * D3; `#groupHolds`): a `low` group's lane then may take several files.
-   * A `commit` group's file no commit asked for runs for no one until a
-   * later commit or `squeal run <group>`, so it leaves the width (row
-   * 019-27, 019-26's known limit). With no `checks` key it is `fastIdle`.
-   */
-  #normalIdle(): boolean {
-    if (!this.#fastIdle()) return false;
-    const context = this.#context;
-    if (context === null) return true;
-    return groupView(context.policy).groups.every(
-      (group) =>
-        group.name === TESTS_GROUP ||
-        group.limits.priority !== "normal" ||
-        !this.#groupHolds(group.name),
-    );
   }
 
   #retireSlow(): void {
