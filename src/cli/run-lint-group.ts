@@ -7,8 +7,8 @@ import { daemonSocket } from "./daemon-access.js";
 import { deadlineText } from "./group-pending.js";
 import type { CliIo } from "./main.js";
 import { statusCommand } from "./status-command.js";
-import { stoppedText } from "./wait/presence.js";
 import { askWithin, socketBound } from "./wait/socket.js";
+import { stoppedText } from "./wait/stopped.js";
 import type { LintGroupOutcome } from "./wait/table.js";
 import { runWait, untilTaken } from "./wait/wait.js";
 

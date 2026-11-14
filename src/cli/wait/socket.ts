@@ -37,10 +37,26 @@ export const REAL_PORTS: WaitPorts = {
     await sleep(ms);
   },
   ask: (socketPath, request, timeoutMs) => askDaemon(socketPath, request, timeoutMs),
-  // As `waitForStatus` watches it: the lock's marks and the record read again in a read of its own.
-  watch: (worktreeId, commonDir) =>
-    watchDaemon(worktreeId, { lockFile: lockFileFor(commonDir, worktreeId), commonDir }),
+  watch: (worktreeId, commonDir) => watchOf(worktreeId, commonDir),
 };
+
+/**
+ * Row 011-331: the watch of worktree `worktreeId`'s daemon across a wait's
+ * reads, for every wait but the snapshot: the lock's marks and the record
+ * read again in a read of its own. `downMs`, default `WAIT_DOWN_MS`, is a
+ * status wait's test seam.
+ */
+export function watchOf(
+  worktreeId: WorktreeId,
+  commonDir: AbsolutePath,
+  downMs?: number,
+): DaemonWatch {
+  return watchDaemon(worktreeId, {
+    downMs,
+    lockFile: lockFileFor(commonDir, worktreeId),
+    commonDir,
+  });
+}
 
 /** The least a socket request at the deadline waits, so a daemon that answers at once is heard. */
 const SOCKET_FLOOR_MS = 50;

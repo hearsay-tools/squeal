@@ -7,9 +7,9 @@ import type { AbsolutePath } from "../core/types/common.js";
 import type { CliIo } from "./main.js";
 import { statusCommand } from "./status-command.js";
 import { type FileVerdict, failuresText, noVerdictText, verdictCode } from "./verdict.js";
-import { stoppedText } from "./wait/presence.js";
 import type { InstallHold } from "./wait/progress.js";
 import type { WaitFiles } from "./wait/reads.js";
+import { stoppedText } from "./wait/stopped.js";
 import type { GroupOutcome } from "./wait/table.js";
 import { runWait } from "./wait/wait.js";
 

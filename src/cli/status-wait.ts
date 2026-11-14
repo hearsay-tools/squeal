@@ -1,106 +1,35 @@
-import { worktreeIdFor } from "../core/fs/git-layout.js";
-import type { DownReason } from "../core/presence/wait.js";
-import {
-  answerMoves,
-  type MovesAnswer,
-  movesSeq,
-  movesTrusted,
-} from "../core/scheduler/rekeyed-moves.js";
-import { isPending } from "../core/state/header.js";
 import { formatStatus } from "../core/status/format-status.js";
-import { STATUS_BUSY_TIMEOUT_MS, withStatusStore } from "../core/status/open.js";
-import { buildSnapshot } from "../core/status/snapshot.js";
-import { lockFileFor } from "../core/store/paths.js";
-import type { AbsolutePath, EpochMs, RelativePath, RevisionNumber } from "../core/types/common.js";
-import type { StatusHold } from "../core/types/standing.js";
-import type { StatusResult, StatusSnapshot, StatusUnavailable } from "../core/types/status.js";
+import type { AbsolutePath } from "../core/types/common.js";
+import type { StatusResult, StatusSnapshot } from "../core/types/status.js";
 import type { CliIo } from "./main.js";
 import { namedWaitCommand } from "./named-print.js";
 import { baseOf } from "./named-selection.js";
 import { statusCommand } from "./status-command.js";
-import {
-  type DaemonSync,
-  pollPause,
-  SYNC_POLL_MS,
-  syncDaemon,
-} from "./status-sync.js";
-import {
-  type EditWindow,
-  editWindow,
-  heldPending,
-  heldRows,
-  lastHeard,
-  splitNews,
-  windowRefined,
-} from "./status-wait-edit.js";
-import { readHeld, type StartView, startView } from "./status-wait-held.js";
+import { syncDaemon } from "./status-sync.js";
 import { type NamedTextOptions, waitLine, waitText } from "./status-wait-lines.js";
-import { testFilesListed } from "./status-wait-listing.js";
-import { type HeldSlow, heldSlowLeft, heldSlowNews, pendingSlow } from "./status-wait-slow.js";
-import { holdOfWait } from "./verdict.js";
-import { STATUS_WAITS } from "./wait/status-table.js";
-import { fallbackOf, holdsPass, passReached } from "./wait/synced.js";
-import {
-  type DaemonWatch,
-  type HeartbeatLapse,
-  lockedOf,
-  stoppingOf,
-  watchDaemon,
-} from "./wait-liveness.js";
+import type { StatusWait, StatusWaitEdit, StatusWaitOptions } from "./wait/status.js";
+import { SETTLE_MS, STATUS_POLL_MS, type StatusWaitOutcome } from "./wait/status-table.js";
+import { statusWait } from "./wait/wait.js";
+
+export type {
+  StatusWait,
+  StatusWaitEdit,
+  StatusWaitOptions,
+  StatusWaitSlow,
+} from "./wait/status.js";
+export type { StatusWaitOutcome } from "./wait/status-table.js";
 
 /** How often `status --wait` reads the store (C6 as amended, task 011-42). */
-export const STATUS_WAIT_POLL_MS = 1_000;
+export const STATUS_WAIT_POLL_MS = STATUS_POLL_MS;
 
 /**
  * The shortest wait that may end without a daemon, which a daemon a hook
  * just spawned needs to record its heartbeat, and the shortest that may end
  * on quiet when no daemon can sync (one from before the `sync` request). A
- * daemon that syncs decides quiet instead (lessons, defect 30).
+ * daemon that syncs decides quiet instead (lessons, defect 30). Row 011-331:
+ * the status waits' settle cell (`SETTLE_MS`).
  */
-export const STATUS_WAIT_SETTLE_MS = 750;
-
-export interface StatusWaitOptions {
-  readonly timeoutMs: number;
-  /** Default `STATUS_WAIT_POLL_MS`. */
-  readonly pollMs?: number;
-  /** Default `STATUS_WAIT_SETTLE_MS`. */
-  readonly settleMs?: number;
-  /** Clock for heartbeat ages in the snapshot. Default `Date.now`. */
-  readonly now?: () => EpochMs;
-  /**
-   * The harness session the wait runs in (`waitConsumer`): its consumers'
-   * told revision starts the window (`lastHeard`). Default none.
-   */
-  readonly session?: string | null;
-  /**
-   * The agent of `session` the wait runs in, when the shell names one: only
-   * that consumer's told revision counts. Default every consumer of `session`.
-   */
-  readonly agent?: string | null;
-  /** Default `syncDaemon`; tests replace it. */
-  readonly sync?: (root: AbsolutePath, pollMs: number) => DaemonSync;
-  /**
-   * `run --slow --wait` (task 001-282): also hold for the slow files pending
-   * at the first read, the ones the request queued, until each has a result;
-   * their checks' transitions are news. Default `false`: slow files never
-   * hold a wait (spec 004 D9, as Stop).
-   */
-  readonly holdSlow?: boolean;
-  /** Default `WAIT_DOWN_MS`: how long a stale record's dead socket may stay so (task 004-66). */
-  readonly downMs?: number;
-}
-
-/**
- * Why the wait ended: `quiet`, nothing pending at the current revision, or
- * none of the edit's test files (`StatusWaitEdit`); `news`, a check, or a
- * check of the edit's test files, changed notably since the wait started; `no-daemon`, no
- * daemon is validating, so nothing pending would ever finish and quiet would
- * say nothing about the files (review wave 4.5, S2); `on-hold`, a file it
- * holds for is queued while the worktree is on hold, so nothing runs it until
- * the hold ends (row 011-73, C6 as amended 2026-10-21); `timeout`, none of
- * these within the given time.
- */
-export type StatusWaitOutcome = "quiet" | "news" | "no-daemon" | "on-hold" | "timeout";
+export const STATUS_WAIT_SETTLE_MS = SETTLE_MS;
 
 /**
  * The `wait` field `status --json --wait` adds to the snapshot: the same
@@ -113,58 +42,6 @@ export interface StatusWaitPayload {
   /** Present when the daemon named the edit's test files (task 001-186). */
   readonly edit?: StatusWaitEdit;
 }
-
-/**
- * The wait's window once the daemon named its files (lessons, defect 32):
- * the revisions from `since` to the sync pass's, the test files they
- * re-keyed, how many of those are still pending (slow ones aside), and the
- * transitions of other checks, which did not end the wait.
- */
-export interface StatusWaitEdit {
-  readonly since: RevisionNumber;
-  readonly testFiles: number;
-  readonly pending: number;
-  readonly otherTransitions: number;
-}
-
-/** The slow files a `run --slow --wait` held for (`holdSlow`), and those still pending by path. */
-export interface StatusWaitSlow {
-  readonly held: number;
-  readonly pending: readonly RelativePath[];
-  /**
-   * Of the wait's `transitions`, those of the held files outside the edit's
-   * window (review wave-13ak, S1); 0 while the window is not known, when no
-   * transition is named as the edit's either.
-   */
-  readonly transitions: number;
-}
-
-export type StatusWait =
-  | {
-      readonly outcome: StatusWaitOutcome;
-      readonly waitedMs: number;
-      /**
-       * Notable differences between the known states at the start and at the
-       * end (D6); with `edit`, those of the edit's test files only.
-       */
-      readonly transitions: number;
-      readonly edit?: StatusWaitEdit;
-      readonly slow?: StatusWaitSlow;
-      /** With `no-daemon`: why (task 004-66). */
-      readonly down?: DownReason;
-      /** A heartbeat lapse the wait went on through, the daemon alive (task 004-66). */
-      readonly lapse?: HeartbeatLapse;
-      /** Row 011-250: the last read found no record while a daemon held the worktree's lock. */
-      readonly locked?: true;
-      /** With `on-hold`: the hold its verdict line names (row 011-73). */
-      readonly hold?: StatusHold;
-      readonly result: StatusSnapshot;
-    }
-  | {
-      readonly outcome: "unavailable";
-      readonly waitedMs: number;
-      readonly result: StatusUnavailable;
-    };
 
 /**
  * Spec 001 D7: "`squeal status --wait <ms>` blocks until nothing is pending
@@ -212,201 +89,9 @@ export type StatusWait =
  * `watchDaemon` finds none, a cleared record or a socket dead for `downMs`;
  * a daemon whose heartbeat lapsed keeps the wait going, and the line says so.
  */
-export async function waitForStatus(
-  cwd: AbsolutePath,
-  options: StatusWaitOptions,
-): Promise<StatusWait> {
-  const now = options.now ?? Date.now;
-  const pollMs = options.pollMs ?? STATUS_WAIT_POLL_MS;
-  const settleMs = options.settleMs ?? STATUS_WAIT_SETTLE_MS;
-  const startSync = options.sync ?? syncDaemon;
-  const session = options.session ?? null;
-  const agent = options.agent ?? null;
-  const started = performance.now();
-  const elapsed = () => performance.now() - started;
-  let start: StartView | null = null;
-  let watch: DaemonWatch | undefined;
-  // Started at the first read, which finds the root; a box, since the read is a callback.
-  const syncing: {
-    sync?: DaemonSync;
-    heard?: RevisionNumber;
-    /** The moves' commit with the start view: a move resolved after it is the wait's (001-258). */
-    sinceSeq?: number;
-    window?: EditWindow | undefined;
-    /** The moves' commit the window was read at: a later one is read again (S1, 001-267). */
-    windowSeq?: number | null;
-    /** The moves cannot name the window: the wait takes the no-files path. */
-    fallback?: boolean;
-    /** With `holdSlow`: the slow files pending at the first read. */
-    slow?: HeldSlow;
-  } = {};
-  try {
-    for (;;) {
-      // The read at the deadline decides with what it finds and waits the full busy timeout.
-      const final = elapsed() >= options.timeoutMs;
-      const left = options.timeoutMs - elapsed();
-      const busyTimeoutMs = final
-        ? STATUS_BUSY_TIMEOUT_MS
-        : Math.round(Math.max(50, Math.min(STATUS_BUSY_TIMEOUT_MS, left)));
-      const read = withStatusStore(cwd, { busyTimeoutMs }, ({ store, root, commonDir }) => {
-        const id = worktreeIdFor(root);
-        if (start === null) {
-          // The edit's files are not known yet: the start view is every state (task 011-42).
-          const states = store.knownStates.list(id);
-          start = startView(states);
-          syncing.sinceSeq = movesSeq(store, id) ?? 0;
-          if (options.holdSlow === true) {
-            syncing.slow = pendingSlow(store, id, states, store.testFileKeys.list(id));
-          }
-        }
-        const view = start;
-        const revision = store.revisions.latest(id)?.number ?? 0;
-        syncing.heard ??= lastHeard(store, id, revision, session, agent);
-        const heard = syncing.heard;
-        syncing.sync ??= startSync(root, Math.min(pollMs, SYNC_POLL_MS));
-        const current = syncing.sync.current();
-        if (current.state === "synced" && !syncing.fallback) {
-          const seq = movesSeq(store, id);
-          if (syncing.window === undefined || seq !== syncing.windowSeq) {
-            // Every revision's files: a told one counts while its files are not seen through
-            // (001-191); a move recorded after the window joins it (review wave 13ad, S1).
-            const answer: MovesAnswer = answerMoves(
-              store,
-              id,
-              current.revision,
-              syncing.sinceSeq ?? 0,
-              current.incarnation,
-            );
-            if (answer.state === "answered") {
-              syncing.window = editWindow(store, id, heard, current.revision, answer.rekeyed);
-              syncing.windowSeq = seq;
-            }
-            syncing.fallback = answer.state === "incomplete";
-          } else if (!movesTrusted(store, id, syncing.sinceSeq ?? 0, current.incarnation)) {
-            // Another daemon registered since the window was read: it names no files (B1).
-            syncing.fallback = true;
-          }
-          if (syncing.fallback) syncing.window = undefined;
-        }
-        const window = syncing.window;
-        const held = syncing.slow;
-        const heldFiles = held === undefined ? [] : [...held.values()];
-        const settled = final || elapsed() >= settleMs;
-        const fallback = fallbackOf(STATUS_WAITS.edit, settled);
-        watch ??= watchDaemon(id, {
-          downMs: options.downMs,
-          lockFile: lockFileFor(commonDir, id),
-          commonDir,
-        });
-        const worktree = store.worktrees.get(id);
-        const at = now();
-        const daemon = watch.judge(worktree?.daemon ?? null, at, stoppingOf(store, worktree, at));
-        // Which files are the edit's is not known yet: no check's news is the edit's.
-        const naming =
-          window === undefined &&
-          (current.state === "pending" || (current.state === "synced" && !syncing.fallback));
-        // Task 011-42: a poll reads the files it holds for; the fallback holds for every one.
-        const files =
-          window !== undefined ? [...window.files, ...heldFiles] : naming ? heldFiles : null;
-        // A window of no files still reads the revision and its runner part.
-        const seen = naming && heldFiles.length === 0 ? null : readHeld(store, id, view, files);
-        const slowLeft =
-          held === undefined || seen === null ? [] : heldSlowLeft(held, seen.states, seen.keys);
-        // Never quiet before the pass, not even at the deadline: that would be defect 30 again.
-        let transitions: number;
-        let quiet: boolean;
-        // The held files' own news, outside the edit's window: named as theirs (review wave-13ak, S1).
-        let slowNews = 0;
-        if (window !== undefined && seen !== null) {
-          slowNews = held === undefined ? 0 : heldSlowNews(held, seen.news, window.ids);
-          transitions = splitNews(window, seen.news).own + slowNews;
-          quiet =
-            holdsPass(seen.header.revision, window.revision) &&
-            windowRefined(window, seen.header) &&
-            heldPending(window, seen.keys) === 0;
-        } else if (naming || seen === null) {
-          transitions = 0;
-          quiet = false;
-        } else {
-          transitions = seen.news.length;
-          quiet = passReached(current, seen.header.revision, fallback) && !isPending(seen.header);
-        }
-        // A lapsed heartbeat decides nothing: the daemon may be mid-run (review wave 4.5, S2; 004-66).
-        quiet &&=
-          seen !== null &&
-          testFilesListed(store, id, seen.header) &&
-          slowLeft.length === 0 &&
-          daemon.state === "alive";
-        // Row 011-73 (C6 as amended 2026-10-21): at a read that holds the sync pass, which read
-        // the index first, a file it holds for queued on hold ends the wait with the hold.
-        const holding =
-          seen === null || naming || quiet || transitions > 0 || daemon.state !== "alive"
-            ? null
-            : window !== undefined
-              ? holdsPass(seen.header.revision, window.revision)
-                ? heldRows(window, seen.keys)
-                : null
-              : passReached(current, seen.header.revision, fallback)
-                ? seen.keys
-                : null;
-        const slowRows =
-          seen === null ? [] : seen.keys.filter((row) => slowLeft.includes(row.testFile.path));
-        const hold = holding === null ? null : holdOfWait(store, id, [...holding, ...slowRows], at);
-        const outcome: StatusWaitOutcome | null =
-          transitions > 0
-            ? "news"
-            : settled && daemon.state === "down"
-              ? "no-daemon"
-              : quiet
-                ? "quiet"
-                : hold !== null
-                  ? "on-hold"
-                  : final
-                    ? "timeout"
-                    : null;
-        if (outcome === null) return null;
-        // The wait ends: the other checks' transitions it names read every state, once.
-        const edit: StatusWaitEdit | undefined =
-          window === undefined
-            ? undefined
-            : {
-                since: window.since,
-                testFiles: window.ids.size,
-                pending: seen === null ? 0 : heldPending(window, seen.keys),
-                otherTransitions:
-                  splitNews(window, readHeld(store, id, view, null).news).other - slowNews,
-              };
-        const result = buildSnapshot(store, root, now());
-        const slow =
-          held === undefined
-            ? {}
-            : { slow: { held: held.size, pending: slowLeft, transitions: slowNews } };
-        const lapse = watch.lapse();
-        return {
-          outcome,
-          transitions,
-          ...(edit === undefined ? {} : { edit }),
-          ...slow,
-          ...(daemon.state === "down" ? { down: daemon.reason } : {}),
-          ...lockedOf(daemon),
-          ...(lapse === null ? {} : { lapse }),
-          ...(hold === null ? {} : { hold }),
-          result,
-        };
-      });
-      if (read !== null && "available" in read) {
-        if (start === null || final) {
-          return { outcome: "unavailable", waitedMs: elapsed(), result: read };
-        }
-      } else if (read !== null) {
-        return { ...read, waitedMs: elapsed() };
-      }
-      const remaining = options.timeoutMs - elapsed();
-      if (remaining > 0) await pollPause(Math.min(pollMs, remaining), syncing.sync);
-    }
-  } finally {
-    syncing.sync?.stop();
-  }
+export function waitForStatus(cwd: AbsolutePath, options: StatusWaitOptions): Promise<StatusWait> {
+  // Row 011-331: the wait module's edit wait polls and decides.
+  return statusWait({ wait: "edit", cwd, options });
 }
 
 /**

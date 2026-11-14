@@ -1,53 +1,10 @@
-import { setTimeout as sleep } from "node:timers/promises";
-import { worktreeIdFor } from "../core/fs/git-layout.js";
-import { testFileId } from "../core/keys/reverse-index.js";
-import { daemonLiveness } from "../core/presence/heartbeat.js";
-import {
-  STATUS_BUSY_TIMEOUT_MS,
-  type StatusContext,
-  withStatusStore,
-} from "../core/status/open.js";
-import { buildSnapshot } from "../core/status/snapshot.js";
-import { pauseOnlyIds, readNamedFiles } from "../core/status/standing.js";
-import type { AbsolutePath, EpochMs, RelativePath } from "../core/types/common.js";
+import type { AbsolutePath } from "../core/types/common.js";
 import type { CliIo } from "./main.js";
 import { type NamedPrint, printNamed } from "./named-print.js";
-import { selectNamedFiles, sourcePaths } from "./named-selection.js";
-import {
-  type DaemonSync,
-  pollPause,
-  SYNC_POLL_MS,
-  syncDaemon,
-  syncedReaders,
-} from "./status-sync.js";
-import { STATUS_WAIT_SETTLE_MS } from "./status-wait.js";
-import { CheckUsageError, checkUsage, snapshotFocus } from "./status-wait-focus.js";
-import { leftGroupsOf } from "./status-wait-groups.js";
-import {
-  decidedOutcome,
-  type NamedWait,
-  type NamedWaitOutcome,
-  ownNamedFiles,
-} from "./status-wait-paths.js";
-import { holdOfWait, readClasses, readVerdict } from "./verdict.js";
-import { STATUS_WAITS } from "./wait/status-table.js";
-import { fallbackOf, selectionReady } from "./wait/synced.js";
+import type { NamedSnapshotOptions, NamedWait } from "./wait/named-types.js";
+import { statusWait } from "./wait/wait.js";
 
-export interface NamedSnapshotOptions {
-  /** Default `STATUS_WAIT_SETTLE_MS`: the longest the snapshot waits for the daemon's sync. */
-  readonly settleMs?: number;
-  /** Default `SYNC_POLL_MS`: how often it reads a sync that does not say when it answered. */
-  readonly pollMs?: number;
-  readonly now: () => EpochMs;
-  /** Default `syncDaemon`; tests replace it. Row 011-234: `paths`, the named source paths. */
-  readonly sync?: (
-    root: AbsolutePath,
-    pollMs: number,
-    paths: readonly RelativePath[],
-  ) => DaemonSync;
-  /** Row 011-146: `--check` texts, whose focused answers it reads and requests nothing for (C6). */
-  readonly checks?: readonly string[];
-}
+export type { NamedSnapshotOptions } from "./wait/named-types.js";
 
 /**
  * `squeal status <path>...` without `--wait` (row 011-28, 005 D2 as amended
@@ -59,103 +16,13 @@ export interface NamedSnapshotOptions {
  * gives no verdict either, and one that is not validating gives none, as
  * status says of it. It promotes nothing (C15).
  */
-export async function readNamedSnapshot(
+export function readNamedSnapshot(
   cwd: AbsolutePath,
   paths: readonly string[],
   options: NamedSnapshotOptions,
 ): Promise<NamedWait> {
-  const started = performance.now();
-  const elapsed = () => performance.now() - started;
-  const settleMs = options.settleMs ?? STATUS_WAIT_SETTLE_MS;
-  const pollMs = options.pollMs ?? SYNC_POLL_MS;
-  let sync: DaemonSync | undefined;
-  try {
-    const found = withStatusStore(cwd, { busyTimeoutMs: STATUS_BUSY_TIMEOUT_MS }, (context) => {
-      const sources = sourcePaths(
-        context.store,
-        worktreeIdFor(context.root),
-        context.root,
-        cwd,
-        paths,
-      );
-      sync = (options.sync ?? syncDaemon)(context.root, pollMs, sources);
-      return { root: context.root };
-    });
-    if ("available" in found) return { outcome: "unavailable", waitedMs: elapsed(), result: found };
-    for (;;) {
-      const state = sync?.current().state;
-      const left = settleMs - elapsed();
-      if (state === "synced" || left <= 0) break;
-      await (state === "unsupported" ? sleep(left) : pollPause(Math.min(pollMs, left), sync));
-    }
-    const read = withStatusStore(cwd, { busyTimeoutMs: STATUS_BUSY_TIMEOUT_MS }, (context) =>
-      readOnce(context, cwd, paths, sync, options.now(), options.checks ?? []),
-    );
-    if ("usage" in read) throw new CheckUsageError(read.usage);
-    if ("available" in read) return { outcome: "unavailable", waitedMs: elapsed(), result: read };
-    return { ...read, waitedMs: elapsed() };
-  } finally {
-    sync?.stop();
-  }
-}
-
-/** The snapshot's one read: `waitForNamed`'s last read, but liveness as status reads it. */
-function readOnce(
-  { store, root }: StatusContext,
-  cwd: AbsolutePath,
-  paths: readonly string[],
-  sync: DaemonSync | undefined,
-  now: EpochMs,
-  checks: readonly string[],
-) {
-  const id = worktreeIdFor(root);
-  const current = sync?.current() ?? { state: "unsupported" as const };
-  // Row 011-234: a synced daemon's readers of the source paths, else the stored closures.
-  const selection = selectNamedFiles(store, id, root, cwd, paths, syncedReaders(current));
-  const all = readClasses(store, id, selection.files);
-  const record = store.worktrees.get(id)?.daemon ?? null;
-  const liveness = daemonLiveness(record, now);
-  // Only a daemon that answered its sync says the store holds the latest
-  // edits: one that could not (paused, its socket gone, its pass failed)
-  // gives no verdict, though its heartbeat is fresh (review of
-  // cand/0.1.233, B1). A wait falls back to its settle time instead.
-  const ready =
-    liveness.state === "alive" &&
-    selectionReady(current, all, fallbackOf(STATUS_WAITS.snapshot, true));
-  const own = ownNamedFiles(root, cwd, paths, selection);
-  // Row 011-146 (C15): a source path selects no focus (review 0.1.286 B4).
-  const usage = checkUsage(checks, ready, own);
-  if (usage !== null) return usage;
-  const paused = new Set(
-    ready ? pauseOnlyIds(store, id, root, selection.files, liveness, now) : [],
-  );
-  const leftForPause = selection.files.filter((f) => paused.has(testFileId(f)));
-  const held = selection.files.filter((f) => !paused.has(testFileId(f)));
-  const classes = paused.size === 0 ? all : readClasses(store, id, held);
-  const decided = ready ? decidedOutcome(selection, held, classes) : null;
-  // Row 011-73 (C6 as amended 2026-10-21): a held file queued on hold has the hold as its verdict.
-  const hold =
-    ready && decided === null
-      ? holdOfWait(store, id, () => store.testFileKeys.list(id, held), now)
-      : null;
-  const outcome: NamedWaitOutcome =
-    liveness.state !== "alive" ? "no-daemon" : (decided ?? (hold !== null ? "on-hold" : "timeout"));
-  const result = buildSnapshot(store, root, now);
-  // Row 011-146 (C6 as amended 2026-10-23): the selected checks' focused answers; it requests nothing.
-  const focus = snapshotFocus(store, id, root, own, checks);
-  return {
-    outcome,
-    ...(hold === null ? {} : { hold }),
-    ...(focus === undefined ? {} : { focus }),
-    selection,
-    leftForPause,
-    ...leftGroupsOf(root, leftForPause),
-    verdict: readVerdict(store, id, held),
-    files: readNamedFiles(store, id, root, selection.files, result.daemon, now),
-    result,
-    sync: current,
-    snapshot: true,
-  };
+  // Row 011-331: the wait module's snapshot reads and decides.
+  return statusWait({ wait: "snapshot", cwd, paths, options });
 }
 
 /** `squeal status [--json] [--full] <path>...`: `readNamedSnapshot`, then `printNamed`. */

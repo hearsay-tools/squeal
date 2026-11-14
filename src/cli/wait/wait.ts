@@ -1,19 +1,27 @@
-import { withStatusStore } from "../../core/status/open.js";
+import { type StatusContext, withStatusStore } from "../../core/status/open.js";
 import type { AbsolutePath } from "../../core/types/common.js";
 import type { DaemonRequest } from "../../core/types/daemon.js";
+import type { StatusUnavailable } from "../../core/types/status.js";
 import type { Store } from "../../core/types/store.js";
+import { type DaemonSync, pollPause, syncDaemon } from "../status-sync.js";
 import {
   type AnswerOf,
   decideRequest,
   decideRunWait,
+  decideStatusWait,
   type RequestAnswer,
   type RequestOutcome,
   type RequestRecord,
   type WaitStep,
 } from "./decide.js";
+import { namedPoll } from "./named.js";
+import type { NamedSnapshotOptions, NamedWait, NamedWaitOptions } from "./named-types.js";
 import { readBound } from "./presence.js";
 import { type FieldReader, type RunWaitAsk, unavailableText, waitReads } from "./reads.js";
+import { namedSnapshot } from "./snapshot.js";
 import { askWithin, REAL_PORTS, type WaitPorts } from "./socket.js";
+import { editPoll, type StatusWait, type StatusWaitOptions } from "./status.js";
+import { SETTLE_MS, STATUS_POLL_MS, STATUS_WAITS } from "./status-table.js";
 import {
   type OutcomeOf,
   REQUEST_LOOPS,
@@ -31,8 +39,8 @@ import {
  * read means. A command asks with plain data and words the outcome.
  */
 
-/** How often a run wait reads the store (C6 as amended, task 011-42). */
-const STORE_POLL_MS = 1_000;
+/** How often a run wait reads the store, as a status wait (C6 as amended, task 011-42). */
+const STORE_POLL_MS = STATUS_POLL_MS;
 /** How often a request loop asks whether the daemon took the request. */
 const REQUEST_POLL_MS = 100;
 
@@ -169,5 +177,124 @@ function statusRequest(loop: RequestLoopName, requestId: string): DaemonRequest 
       return { type: "run-slow-status", requestId };
     case "run-group":
       return { type: "run-group-status", requestId };
+  }
+}
+
+/**
+ * Row 011-331: a status wait by name with its data (the options keep their
+ * test seams: the sync, the clock, the promotion, the focus and the asks).
+ */
+export type StatusWaitAsk =
+  | { readonly wait: "edit"; readonly cwd: AbsolutePath; readonly options: StatusWaitOptions }
+  | {
+      readonly wait: "named";
+      readonly cwd: AbsolutePath;
+      readonly paths: readonly string[];
+      readonly options: NamedWaitOptions;
+    }
+  | {
+      readonly wait: "snapshot";
+      readonly cwd: AbsolutePath;
+      readonly paths: readonly string[];
+      readonly options: NamedSnapshotOptions;
+    };
+
+/**
+ * Row 011-331: runs a status wait by name; the commands word what it
+ * returns as before. The edit and named waits poll the store (`pollStatus`);
+ * the snapshot reads it once, after its sync or the settle time.
+ */
+export function statusWait(ask: Extract<StatusWaitAsk, { wait: "edit" }>): Promise<StatusWait>;
+export function statusWait(
+  ask: Extract<StatusWaitAsk, { wait: "named" | "snapshot" }>,
+): Promise<NamedWait>;
+export async function statusWait(ask: StatusWaitAsk): Promise<StatusWait | NamedWait> {
+  switch (ask.wait) {
+    case "edit": {
+      const { options } = ask;
+      const pollMs = options.pollMs ?? STATUS_POLL_MS;
+      const settleMs = options.settleMs ?? SETTLE_MS;
+      const sync = options.sync ?? syncDaemon;
+      const poll = editPoll({ ...options, pollMs, settleMs, sync });
+      const read = await pollStatus(ask.cwd, options.timeoutMs, pollMs, poll);
+      return "end" in read ? { ...read.end, waitedMs: read.waitedMs } : read;
+    }
+    case "named": {
+      const { options } = ask;
+      const poll = namedPoll(ask.cwd, ask.paths, options);
+      const read = await pollStatus(ask.cwd, options.timeoutMs, options.pollMs, poll);
+      if (!("end" in read)) return read;
+      return { ...read.end, waitedMs: read.waitedMs, timeoutMs: options.timeoutMs };
+    }
+    case "snapshot":
+      return namedSnapshot(ask.cwd, ask.paths, ask.options);
+  }
+}
+
+/** One read of an edit or named wait: its end, go on (`null`), or an act before the next read. */
+export type PollStep<T> = { readonly end: T } | { readonly act: () => Promise<void> } | null;
+
+/** An edit or named wait's reads, which keep their own state between reads. */
+export interface StatusPoll<T> {
+  readonly name: "edit" | "named";
+  /** No read decided yet, by the wait's own reckoning; by default, no read went on. */
+  readonly first?: () => boolean;
+  /** The wait's sync once a read started it: a pause ends at its answer. */
+  readonly sync: () => DaemonSync | undefined;
+  /** One read in the store's read transaction; `final`, the deadline's. */
+  readonly read: (context: StatusContext, final: boolean, elapsed: () => number) => PollStep<T>;
+}
+
+/** A status wait that ended on a store it did not read. */
+export interface UnavailableEnd {
+  readonly outcome: "unavailable";
+  readonly waitedMs: number;
+  readonly result: StatusUnavailable;
+}
+
+/**
+ * Row 011-331: the one polling loop of the edit and named waits. Each read
+ * opens the store in one read transaction, its busy timeout bounded by
+ * what is left before the deadline and the deadline's read waiting the
+ * full one (`readBound`, as the run waits); the read decides by its row. A
+ * read that did not read the store is decided by the row's store rules: the
+ * first or the deadline's ends the wait, one between is skipped. An act
+ * (`named`: ask runs, or a usage error) runs before the next read, with no
+ * pause. The pause ends by the deadline, or at the sync's answer.
+ */
+export async function pollStatus<T>(
+  cwd: AbsolutePath,
+  timeoutMs: number,
+  pollMs: number,
+  poll: StatusPoll<T>,
+): Promise<{ readonly end: T; readonly waitedMs: number } | UnavailableEnd> {
+  const started = performance.now();
+  const elapsed = () => performance.now() - started;
+  const row = STATUS_WAITS[poll.name];
+  let wentOn = false;
+  try {
+    for (;;) {
+      // The read at the deadline decides with what it finds and waits the full busy timeout.
+      const { busyTimeoutMs, final } = readBound(timeoutMs, elapsed);
+      const read = withStatusStore(cwd, { busyTimeoutMs }, (context) =>
+        poll.read(context, final, elapsed),
+      );
+      if (read !== null && "available" in read) {
+        const first = poll.first?.() ?? !wentOn;
+        const step = decideStatusWait(row, { store: "unread", first, late: final });
+        if (step.kind === "end")
+          return { outcome: "unavailable", waitedMs: elapsed(), result: read };
+      } else if (read !== null && "act" in read) {
+        await read.act();
+        continue;
+      } else if (read !== null) {
+        return { end: read.end, waitedMs: elapsed() };
+      }
+      wentOn = true;
+      const remaining = timeoutMs - elapsed();
+      if (remaining > 0) await pollPause(Math.min(pollMs, remaining), poll.sync());
+    }
+  } finally {
+    poll.sync()?.stop();
   }
 }
