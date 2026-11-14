@@ -3,7 +3,7 @@
 Run from the repository root, using its installed dependencies:
 
 ```sh
-pnpm exec tsx research/probes/issue-214/probe.ts > research/probes/issue-214/output.txt 2>&1
+pnpm exec tsx docs/specifications/011-core/research/probes/issue-214/probe.ts > docs/specifications/011-core/research/probes/issue-214/output.txt 2>&1
 ```
 
 This is a research fixture, not a product regression test. It refuses to run
