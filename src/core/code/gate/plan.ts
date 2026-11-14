@@ -1,16 +1,20 @@
 import { availableParallelism } from "node:os";
 import { compare } from "../../fs/compare.js";
 import { testFileId } from "../../keys/reverse-index.js";
+import type { HostLoad } from "../../retry/load.js";
 import { shellWord } from "../../text.js";
 import type { RelativePath } from "../../types/common.js";
 import type { TestFileRef } from "../../types/keys.js";
 import {
   type BudgetFit,
   type EstimateGroup,
+  type EstimateLoad,
   estimateAll,
   estimateRun,
   fitBudget,
+  loadFactor,
   type RunEstimate,
+  scaleEstimate,
 } from "./estimate.js";
 import { evidenceOf, loadsOf } from "./evidence.js";
 import { loaderOrder, splitEarly } from "./order.js";
@@ -30,6 +34,8 @@ import type { ChangedSet, TestFileEvidence } from "./types.js";
  * to what is left of the budget; over it, a rerun command with a fitted
  * `--timeout`; at twice it, the gate stops early, before the files that
  * load no changed function.
+ * Row 020-57 (#212): above one one-minute load per CPU, read once before
+ * the estimate, every estimate is multiplied by that load.
  */
 
 /** One runner's run: what the selection picked for it, its place among the picks, its files to run. */
@@ -50,8 +56,12 @@ export interface PlannedRun<P extends Picked> {
 export interface RunOrder<P extends Picked> {
   readonly runs: readonly PlannedRun<P>[];
   readonly estimates: readonly RunEstimate[];
-  /** Rows 020-45, 020-46: the whole run's estimate, `estimateAll`'s. */
-  readonly whole: { readonly seconds: number | null; readonly known: number };
+  /** Rows 020-45, 020-46: the whole run's estimate, `estimateAll`'s; row 020-57: scaled as `estimates` are. */
+  readonly whole: {
+    readonly seconds: number | null;
+    readonly known: number;
+    readonly load?: EstimateLoad;
+  };
 }
 
 export interface PlanContext {
@@ -59,6 +69,11 @@ export interface PlanContext {
   readonly durations?: ((ref: TestFileRef) => number | null) | undefined;
   /** node:test's `runner.tierSize`: the processes it starts at once. */
   readonly tierSize: number;
+  /**
+   * Row 020-57 (#212): the host's load, read once before the estimate;
+   * above one per CPU, it scales every estimate. Absent: none is scaled.
+   */
+  readonly load?: HostLoad | undefined;
 }
 
 /**
@@ -71,7 +86,8 @@ const vitestWidth = () => Math.max(1, availableParallelism() - 1);
  * D17.1, D18: each of `picked`'s files to run, those `known` does not give,
  * estimated per runner kind, and the picks in the order they run: the
  * runner kinds in ascending order of their estimate, each kind's picks in
- * their own order. Reads no closure.
+ * their own order. Reads no closure. Row 020-57: each estimate and the
+ * whole run's are multiplied by `context.load` per CPU when that is over 1.
  */
 export function orderRuns<P extends Picked>(
   picked: readonly P[],
@@ -92,11 +108,12 @@ export function orderRuns<P extends Picked>(
   }
   const runners = [...groups].map(([runner, of]) => ({ runner, groups: of }));
   const kinds = runnerOrder(runners);
+  const factor = loadFactor(context.load);
   const estimates = kinds.flatMap((kind) => {
     const of = groups.get(kind) ?? [];
-    return of.length === 0 ? [] : [estimateRun(kind, of)];
+    return of.length === 0 ? [] : [scaleEstimate(estimateRun(kind, of), factor)];
   });
-  const whole = estimateAll(runners.filter((r) => r.groups.length > 0));
+  const whole = scaleEstimate(estimateAll(runners.filter((r) => r.groups.length > 0)), factor);
   return {
     runs: kinds.flatMap((kind) => runs.filter((r) => r.pick.kind === kind)),
     estimates,

@@ -4,8 +4,11 @@ import {
   estimateAll,
   estimateRun,
   fitBudget,
+  loadFactor,
   median,
+  scaleEstimate,
 } from "../../../src/core/code/gate/estimate.js";
+import { AT, OVER, QUIET } from "./host-load.js";
 
 /*
  * Spec 020 D17.1 (row 020-17a): one runner's estimate before its first run.
@@ -143,5 +146,39 @@ describe("fitBudget", () => {
     const few = fitBudget({ seconds: 5000, known: EARLY_KNOWN - 1 }, budget);
     expect(few.rerunSeconds).toBe(10020);
     expect(few.early).toBeUndefined();
+  });
+});
+
+describe("loadFactor and scaleEstimate (row 020-57)", () => {
+  it("scales by the one-minute load per CPU only above 1", () => {
+    expect(loadFactor(OVER)).toBe(2);
+    expect(loadFactor({ oneMinute: 100, cpus: 24 })).toBe(4.17);
+    // At the CPU count, below it, unknown (Windows) or not read: no factor.
+    expect(loadFactor(AT)).toBeNull();
+    expect(loadFactor(QUIET)).toBeNull();
+    expect(loadFactor({ oneMinute: 24.1, cpus: 24 })).toBeNull();
+    expect(loadFactor({ oneMinute: null, cpus: 24 })).toBeNull();
+    expect(loadFactor(undefined)).toBeNull();
+  });
+
+  it("multiplies the seconds, rounds up, and keeps the seconds before it", () => {
+    const estimate = estimateRun("vitest", [{ width: 1, seconds: [7] }]);
+    expect(scaleEstimate(estimate, 1.5)).toEqual({
+      ...estimate,
+      seconds: 11,
+      load: { perCpu: 1.5, unscaled: 7 },
+    });
+    expect(scaleEstimate(estimate, null)).toBe(estimate);
+    const unknown = estimateRun("vitest", [{ width: 1, seconds: [null] }]);
+    expect(scaleEstimate(unknown, 2)).toBe(unknown);
+  });
+
+  it("keeps the load on the fit, and fits the scaled seconds", () => {
+    const load = { perCpu: 2, unscaled: 300 };
+    const fit = fitBudget(
+      { seconds: 600, known: 40, load },
+      { budgetSeconds: 600, leftSeconds: 590 },
+    );
+    expect(fit).toEqual({ leftSeconds: 590, seconds: 600, known: 40, load, rerunSeconds: 1260 });
   });
 });

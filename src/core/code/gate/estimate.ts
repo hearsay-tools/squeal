@@ -1,3 +1,4 @@
+import { type HostLoad, perCpu } from "../../retry/load.js";
 import type { TestFileEvidence } from "./types.js";
 
 /*
@@ -9,6 +10,9 @@ import type { TestFileEvidence } from "./types.js";
  * twice what is left, the gate runs only the files that may load a changed
  * function. A summed estimate over 20 or more files is more than 2x wrong
  * in about 2.5% of 11,813 stored runs (`research/gate-budget.md`, Q2).
+ * Row 020-57 (#212): the durations assume a free host, so above one
+ * one-minute load per CPU the estimate is multiplied by that load, and the
+ * over-budget line, the rerun and the early stop follow the product.
  */
 
 /** Files that run together: up to `width` at once, each with its stored seconds. */
@@ -30,6 +34,44 @@ export interface RunEstimate {
   readonly known: number;
   /** The most of them that run at once: its widest group's width. */
   readonly width: number;
+  /** Row 020-57: present when `seconds` was scaled by the host's load. */
+  readonly load?: EstimateLoad;
+}
+
+/** Row 020-57 (#212): how the host's load scaled an estimate. */
+export interface EstimateLoad {
+  /** The host's one-minute load per CPU, to two decimals, the factor; always over 1. */
+  readonly perCpu: number;
+  /** The estimate from the stored durations alone, in whole seconds. */
+  readonly unscaled: number;
+}
+
+/**
+ * Row 020-57: the factor an estimate is multiplied by under `load`, the
+ * host's one-minute load per CPU to two decimals (`perCpu`, the daemon's
+ * own measure); `null` when it is not over 1, when the platform has none
+ * (Windows), or when no load was read.
+ */
+export function loadFactor(load: HostLoad | undefined): number | null {
+  const per = load === undefined ? null : perCpu(load);
+  if (per === null) return null;
+  const factor = Math.round(per * 100) / 100;
+  return factor > 1 ? factor : null;
+}
+
+/**
+ * Row 020-57: `estimate` with its seconds multiplied by `factor` and
+ * rounded up, and the seconds before it in `load`; as it is when `factor`
+ * is `null` or its time is unknown.
+ */
+export function scaleEstimate<E extends { readonly seconds: number | null }>(
+  estimate: E,
+  factor: number | null,
+): E & { readonly load?: EstimateLoad } {
+  const { seconds } = estimate;
+  if (factor === null || seconds === null) return estimate;
+  const load = { perCpu: factor, unscaled: seconds };
+  return { ...estimate, seconds: Math.ceil(seconds * factor), load };
 }
 
 /** The middle of `values`, or the mean of the two middle ones; `null` when there is none. */
@@ -122,6 +164,8 @@ export interface BudgetFit {
   readonly seconds: number | null;
   /** Of the files to run, those with a stored duration. */
   readonly known: number;
+  /** Row 020-57: present when `seconds` was scaled by the host's load. */
+  readonly load?: EstimateLoad;
   /**
    * Row 020-45: the `--timeout` of a rerun that fits, when the estimate is
    * over what is left: the seconds spent before the first run plus
@@ -142,12 +186,12 @@ export interface BudgetFit {
  * against the `leftSeconds` of a budget of `budgetSeconds`.
  */
 export function fitBudget(
-  run: { readonly seconds: number | null; readonly known: number },
+  run: { readonly seconds: number | null; readonly known: number; readonly load?: EstimateLoad },
   budget: { readonly budgetSeconds: number; readonly leftSeconds: number },
 ): BudgetFit {
-  const { seconds, known } = run;
+  const { seconds, known, load } = run;
   const { leftSeconds } = budget;
-  const fit = { leftSeconds, seconds, known };
+  const fit = { leftSeconds, seconds, known, ...(load === undefined ? {} : { load }) };
   if (seconds === null || seconds <= leftSeconds) return fit;
   const spent = Math.max(0, budget.budgetSeconds - leftSeconds);
   const rerunSeconds = Math.ceil((spent + RERUN_FACTOR * seconds) / 60) * 60;

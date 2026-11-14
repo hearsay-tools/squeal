@@ -12,6 +12,7 @@ import type { RelativePath } from "../../../src/core/types/common.js";
 import type { TestFileRef } from "../../../src/core/types/keys.js";
 import type { RunnerAdapter } from "../../../src/core/types/runner.js";
 import { NO_TRAITS } from "../../../src/core/types/runner-traits.js";
+import { AT, OVER, QUIET } from "./host-load.js";
 
 /*
  * Rows 020-45 and 020-46 (#196, #198): the plan fits the whole run's
@@ -20,6 +21,8 @@ import { NO_TRAITS } from "../../../src/core/types/runner-traits.js";
  * durations, each run keeps only the files that may load a changed
  * function, and the others are its `overBudget`; under twice, nothing is
  * left out. The adapters here only give closures: nothing runs.
+ * Row 020-57 (#212): above one one-minute load per CPU, the estimates are
+ * multiplied by it, and the rerun and the early stop follow the product.
  */
 
 const ref = (path: string): TestFileRef => ({ project: "", path });
@@ -55,7 +58,7 @@ const LEAF = "src/leaf.ts" as RelativePath;
  * `configOnly` files that load none (the config imports the changed
  * sequencer), all 10 s each, run one at a time.
  */
-function shape(configOnly: number) {
+function shape(configOnly: number, load?: Parameters<typeof orderRuns>[2]["load"]) {
   const loaders = ["test/leaf-a.test.ts", "test/leaf-b.test.ts"];
   const others = many("test/config", configOnly);
   const loads = Object.fromEntries([
@@ -63,7 +66,7 @@ function shape(configOnly: number) {
     ...others.map((p) => [p, ["src/other.ts", p]] as const),
   ]);
   const picked = [pick("node-test", [...others, ...loaders], loads)];
-  const order = orderRuns(picked, new Map(), { durations: () => 10, tierSize: 1 });
+  const order = orderRuns(picked, new Map(), { durations: () => 10, tierSize: 1, load });
   return { order, loaders, others };
 }
 
@@ -169,5 +172,50 @@ describe("inLoaderOrder with an early stop", () => {
     const runs = await inLoaderOrder(order.runs, { changed: [LEAF], early });
     expect(runs[0]?.files.map((r) => r.path)).toEqual(["test/unknown.test.ts"]);
     expect(runs[0]?.overBudget).toBeUndefined();
+  });
+});
+
+describe("the estimate under the host's load (row 020-57)", () => {
+  const picked = () => [
+    pick("vitest", ["test/a.test.ts"], { "test/a.test.ts": [] }),
+    pick("node-test", ["test/b.test.mjs", "test/c.test.mjs"], {}),
+  ];
+  const durations = (r: TestFileRef) => (r.path === "test/a.test.ts" ? 30 : 4);
+
+  it("at twice the CPU count, doubles each estimate and the whole run's, beside the unscaled seconds", () => {
+    const order = orderRuns(picked(), new Map(), { durations, tierSize: 1, load: OVER });
+    expect(order.estimates.map((e) => [e.runner, e.seconds, e.load])).toEqual([
+      ["node-test", 16, { perCpu: 2, unscaled: 8 }],
+      ["vitest", 60, { perCpu: 2, unscaled: 30 }],
+    ]);
+    expect(order.whole).toEqual({ seconds: 60, known: 3, load: { perCpu: 2, unscaled: 30 } });
+  });
+
+  it("at or below the CPU count, or with the load unknown, changes nothing", () => {
+    const same = picked();
+    const plain = orderRuns(same, new Map(), { durations, tierSize: 1 });
+    for (const load of [QUIET, AT, { oneMinute: null, cpus: 24 }]) {
+      expect(orderRuns(same, new Map(), { durations, tierSize: 1, load })).toEqual(plain);
+    }
+  });
+
+  it("the rerun and the early stop follow the scaled estimate", async () => {
+    // 22 files of 10 s, one at a time: 220 s, which fits 220 s left on a free host.
+    const free = fitAt(shape(EARLY_KNOWN).order, 220);
+    expect(free.rerunSeconds).toBeUndefined();
+    const { order, loaders, others } = shape(EARLY_KNOWN, OVER);
+    // At a load of twice the CPU count, 440 s: twice the 220 s left, so the gate stops early.
+    const fit = fitAt(order, 220);
+    expect(fit).toMatchObject({ seconds: 440, load: { perCpu: 2, unscaled: 220 }, early: true });
+    const early = { functions: [LEAF], tests: [] };
+    const runs = await inLoaderOrder(order.runs, { changed: [LEAF], early });
+    expect(runs[0]?.files.map((r) => r.path)).toEqual(loaders);
+    const told = budgetTold(fit, runs, defaultRerun("main"));
+    expect(told.early).toEqual({ run: 2, overBudget: others });
+    // 380 s spent, then 2 x 440 s: 1260 s, a whole minute.
+    expect(told.rerun).toEqual({
+      seconds: 1260,
+      command: "squeal code --base main --timeout 1260",
+    });
   });
 });
