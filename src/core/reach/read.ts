@@ -23,6 +23,7 @@ import type { Policy } from "../types/policy.js";
 import type { Store } from "../types/store.js";
 import { sourceCalls } from "./called.js";
 import { moduleFacts } from "./modules.js";
+import { readLoadedLists } from "./read-loaded.js";
 import type { CoverageView, DeclaredPattern, ReachSnapshot, ReachTestFile } from "./types.js";
 
 /*
@@ -55,6 +56,7 @@ export function readSnapshot({ store, root, code }: SnapshotSource): {
   const on = coverageOn(policy);
   const counted = countedFunctions(code, id);
   const walked = walkedClosure(store, id, policy, graph);
+  const lists = readLoadedLists(store);
   const testFiles = rows.map(({ testFile: ref, key }): ReachTestFile => {
     const runner = runnerOf(policy, ref.project);
     // `usedAt` 0: reading a duration is not a lookup hit (spec 001 D8) and writes nothing.
@@ -72,6 +74,11 @@ export function readSnapshot({ store, root, code }: SnapshotSource): {
       childProcess,
       runtimeRead,
       coverage: !on || runner === "pytest" ? { kind: "unknown" } : coverageView(code, key, counted),
+      loaded: {
+        lists: lists(ref),
+        recordAt: recordedAt(code, key),
+        failed: atKey.some((r) => r.outcome === "fail"),
+      },
     };
   });
   const snapshot: ReachSnapshot = {
@@ -150,6 +157,12 @@ function coverageView(
     if (calls === "called") called.add(source.path);
   }
   return { kind: "record", called, loaded, unread };
+}
+
+/** Spec 022 D4: when the coverage record at the key was stored; `null` with none. */
+function recordedAt(code: CodeStore | null, key: CheckKey | null) {
+  if (code === null || key === null) return null;
+  return code.coverage.storedAt({ resultKey: key, providerVersion: COVERAGE_RECORD_VERSION });
 }
 
 /** The counter's functions of a file at its current bytes (D3); `null` without a count. */
