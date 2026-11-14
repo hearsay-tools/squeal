@@ -52,3 +52,18 @@ Check, each as proven, plausible or unverified:
 4. **Scope**: only `src/core/retry/text.ts`, `src/cli/retry.ts`, the four test files and the notes, apart from the version and bundles; no key change. The worker's calls (wait sentence, unquoted path, eval fixtures left as past output) hold.
 
 The coordinator's tree passed lint, typecheck, `check:version`, `key-format`, `version-sensitive`, every retry and status-retry test file and the bundle tests (25 files, 229 tests) at the candidate. About 990 files import `text.ts` only: CI is their evidence. Host policy as in `wave-85.md`; never the real `HOME`. Write `reviews/0.1.504.md` and commit it on your branch.
+
+## R2 (W2): review of cand/0.1.505
+
+Use /reviewer (codex gpt-6.1-sol high). Candidate CI: run 43635424483. Pinned to `cand/0.1.505` at `ba176011e9ac68ed3ce6de6c6be6cea6d5e58833`; range `c075347d8..ba176011e`: three commits of worker 7d9aa85a (`87785f624`, `580250526`, `657e88140`, cherry-picked from `e85930fbb..a4301c423` without conflict), then the 0.1.505 raise and bundles. It sits on 0.1.504 (row 011-343, reviewed in `reviews/0.1.504.md`; `f9fcc2b64..c075347d8`), which lands on main first. Behaviour to compare against: `c075347d8`. Read: board row 011-344, `tasks/011-344/notes.md`, this file's W2, `reviews/0.1.487.md`, `tasks/011-49/notes.md`.
+
+Grants beyond W2's list (coordinator, 2026-11-14): `src/core/daemon/ensure.ts` (`ProbeOptions.signal`, passed to the lookup ping only); `src/cli/wait-liveness.ts` (`DaemonWatch.stop()`), `src/cli/wait/wait.ts` (`StatusPoll.stop`), one stop line each in `src/cli/wait/status.ts` and `src/cli/wait/named.ts`. The worker found that the liveness watch's ping also held the process about 1.4 s.
+
+Check, each as proven, plausible or unverified:
+
+1. **The process ends near its outcome.** `status <path> --wait` and `status --wait` against a socket that accepts and never answers exit within about 300 ms of their outcome line, every connection closed; codes and lines as at `c075347d8`. `test/cli/status-wait-paused.test.ts` fails on the base.
+2. **Nothing changes before the outcome.** No liveness decision, sync answer, read or timing before the wait decides differs; `stop` runs only after it. `src/core/presence/` untouched.
+3. **The signal is safe.** `requestDaemon` with an aborted or aborting signal closes its socket, clears its timer and rejects once; every caller that passes no signal behaves as before (the 2 s bound); the snapshot of row 011-49 is unchanged.
+4. **Scope**: the files above, their tests and notes, apart from the version and bundles; no key change; `src/cli/code*.ts` untouched.
+
+The coordinator's tree passed lint, typecheck, `check:version`, `key-format`, `version-sensitive`, the new tests, the wait and status-wait tests, the daemon lookup tests and the bundle tests (66 files, 632 tests) at the candidate. Host policy as in `wave-85.md`; never the real `HOME`; signal only processes your probe started. Write `reviews/0.1.505.md` and commit it on your branch.
