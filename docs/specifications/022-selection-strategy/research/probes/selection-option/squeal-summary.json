@@ -1,0 +1,31 @@
+{
+  "label": "squeal",
+  "testFiles": 2069,
+  "withCoverageRecord": 1830,
+  "closureEqualsRecord": 0,
+  "noUnloadedCodeModule": 1549,
+  "medianClosurePaths": 281,
+  "medianRecordPaths": 166,
+  "medianUnloadedCodeModules": 0,
+  "closurePathsNotInRecord": {
+    "observed read": 90194,
+    "coverage.exclude": 51019,
+    "code module, not loaded": 18062,
+    "declared input": 80779,
+    "not JS/TS": 2
+  },
+  "recordPathsNotInClosure": {
+    "code module": 2713,
+    "coverage.exclude": 11
+  },
+  "perProject": {
+    "": {
+      "files": 2069,
+      "withRecord": 1830,
+      "s": 678834,
+      "l": 441502,
+      "onlyKeep": 1549,
+      "narrowedFiles": 281
+    }
+  }
+}
