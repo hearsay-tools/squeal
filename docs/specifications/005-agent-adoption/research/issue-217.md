@@ -59,7 +59,7 @@ Open: whether changed wording makes agents choose reach first; whether the histo
 ## Sources and reproducible evidence
 
 - [Issue 217](https://github.com/hearsay-tools/squeal/issues/217), fetched with `gh issue view 217 --repo hearsay-tools/squeal --json number,title,body,comments,url,createdAt,updatedAt`; no comments at fetch time.
-- [CLI transcript](../../../../research/probes/issue-217/cli.txt), [named-path transcript](../../../../research/probes/issue-217/named.txt), [guidance and issue snapshot](../../../../research/probes/issue-217/guidance.txt), [probe instructions](../../../../research/probes/issue-217/README.md).
+- [CLI transcript](probes/issue-217/cli.txt), [named-path transcript](probes/issue-217/named.txt), [guidance and issue snapshot](probes/issue-217/guidance.txt), [probe instructions](probes/issue-217/README.md).
 - Installed launcher: `/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal`. Installed texts: `/home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.475/skills/`.
 - [Shared primer at the examined release](https://github.com/hearsay-tools/squeal/blob/95350e5e916f45540b251545a34351bfb2f4c6d1/src/harness/shared/primer.ts), read with `git show squeal--v0.1.475:src/harness/shared/primer.ts`.
 - [005 D6](../spec.md#d6-texts), [005 amendment log](../status.md), [015 D11](../../015-coverage-complexity/spec.md#d11-edit-reach-which-files-make-an-edit-re-run-much-of-the-suite-approved-by-the-human-2026-11-07-name-squeal-reach-coverage-off-option-a-rows-015-108-015-109-015-114-015-115), [015 amendment log](../../015-coverage-complexity/status.md), at checkout `e9cf07c6`.
