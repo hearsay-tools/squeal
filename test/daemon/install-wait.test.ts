@@ -13,6 +13,7 @@ import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { socketPathFor } from "../../src/core/daemon/paths.js";
 import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
+import { AWAITING_INSTALL_REASON } from "../../src/core/scheduler/install.js";
 import { readHeader } from "../../src/core/state/header.js";
 import { git } from "../hash/git-repo.js";
 import { runMissingConfig } from "../helpers/baseline.js";
@@ -22,6 +23,7 @@ import {
   type FixtureRepo,
   readNotes,
   SLOW,
+  spawnCli,
   waitFor,
   waitReady,
   withStore,
@@ -112,5 +114,36 @@ describe("squeal daemon in a worktree without installed dependencies (D5, defect
     expect(header.awaitingInstall).toBeUndefined();
     expect(header.testFilesListed).toBe(true);
     expect(readNotes(repo).filter((text) => /vitest/i.test(text))).toEqual([]);
+  });
+
+  /*
+   * Row 011-324 (research/request-intake.md, difference 3): the group's
+   * answer names the install it waits for, as the narrow run's does, in
+   * place of "the group has none or all are current"; the exit codes are
+   * those of an answer that queued nothing.
+   */
+  it("squeal run <group> names the install it waits for, with and without --wait", async () => {
+    const repo = freshWorktree();
+    suite.cleanup(repo.cleanup);
+    await waitReady(repo, suite.daemon(repo));
+    const run = async (args: readonly string[]) => {
+      const cli = spawnCli(suite.cli, ["run", "tests", ...args], { cwd: repo.root, env: repo.env });
+      const { code } = await cli.exited;
+      return { code, stdout: cli.stdout(), stderr: cli.stderr() };
+    };
+    const receipt = new RegExp(
+      `^No test files of group tests run at revision \\d+: ${AWAITING_INSTALL_REASON}\\.$`,
+      "m",
+    );
+
+    const asked = await run([]);
+    expect(asked).toMatchObject({ code: 0, stderr: "" });
+    expect(asked.stdout).toMatch(receipt);
+    expect(asked.stdout.split("\n").filter(Boolean)).toHaveLength(1);
+
+    const waited = await run(["--wait", "3000"]);
+    expect(waited).toMatchObject({ code: 3, stderr: "" });
+    expect(waited.stdout).toMatch(receipt);
+    expect(waited.stdout).not.toContain("the group has none or all are current");
   });
 });
