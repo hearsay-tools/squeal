@@ -24,7 +24,8 @@ import type { Connection } from "./connection.js";
  * daemon registers before it writes a row (task 001-268), and only one of
  * this release claims its worktree's marker. So a reader trusts a marker
  * only while its worktree's registered daemon claimed it and so did every
- * other registered daemon of the store (`statesMark`); otherwise, or with
+ * other registered daemon of the store (`statesMark`, `everyDaemonClaims`,
+ * which other store-wide markers share); otherwise, or with
  * no marker, it reads every state as before. Removing the worktree drops
  * the row with its other `meta` rows.
  */
@@ -103,10 +104,20 @@ export function statesMark(store: Store, worktreeId: WorktreeId): string | null 
   if (daemonIncarnation(store.worktrees.get(worktreeId)?.daemon ?? null) !== own.writer) {
     return null;
   }
-  for (const { id, daemon } of store.worktrees.list()) {
-    if (daemon === null || id === worktreeId) continue;
+  return everyDaemonClaims(store, worktreeId) ? `${own.seq}@${own.writer}` : null;
+}
+
+/**
+ * Whether every daemon registered on the store, `except`'s aside, has an
+ * incarnation and claimed its own worktree's states marker: whether each
+ * one is of a release that bumps a marker with its writes. A daemon before
+ * row 011-45 claims none, and may write any worktree's rows (`storeResults`)
+ * with no bump. Read it in the read transaction of what it vouches for.
+ */
+export function everyDaemonClaims(store: Store, except?: WorktreeId): boolean {
+  return store.worktrees.list().every(({ id, daemon }) => {
+    if (daemon === null || id === except) return true;
     const incarnation = daemonIncarnation(daemon);
-    if (incarnation === null || readMarker(store, id)?.writer !== incarnation) return null;
-  }
-  return `${own.seq}@${own.writer}`;
+    return incarnation !== null && readMarker(store, id)?.writer === incarnation;
+  });
 }
