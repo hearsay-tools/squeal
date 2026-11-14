@@ -8,7 +8,8 @@ import type { TestFileKeyRecord } from "../core/types/store-records.js";
 /*
  * Row 011-44: the stored closures a named selection reads for a path the
  * daemon did not answer (`selectNamedFiles`), kept across a wait's polls.
- * Reading every closure is the large read (about 11.8 MB of JSON in cezar);
+ * Reading every closure is the large read (about 45 MB of JSON in cezar's
+ * store on 2026-11-14);
  * a wait reads them again only when the store's closure-write marker moved
  * since (`closureWrites`), and reads them each time from a store with no
  * marker. Whether a closure is this worktree's (001 D6's rule) is read on
@@ -16,10 +17,28 @@ import type { TestFileKeyRecord } from "../core/types/store-records.js";
  * moves without a closure write.
  */
 
-/** One stored closure: the worktree that wrote it and its paths. */
-interface StoredClosure {
+/**
+ * One stored closure: the worktree that wrote it, and whether it holds a
+ * path. A kept closure builds its path set at its first question; one read
+ * for a single selection searches its list, as a set would cost as much.
+ */
+class StoredClosure {
   readonly updatedBy: WorktreeId;
-  readonly paths: ReadonlySet<RelativePath>;
+  readonly #paths: readonly RelativePath[];
+  readonly #kept: boolean;
+  #set: ReadonlySet<RelativePath> | undefined;
+
+  constructor(updatedBy: WorktreeId, paths: readonly RelativePath[], kept: boolean) {
+    this.updatedBy = updatedBy;
+    this.#paths = paths;
+    this.#kept = kept;
+  }
+
+  holds(rel: RelativePath): boolean {
+    if (!this.#kept) return this.#paths.includes(rel);
+    this.#set ??= new Set(this.#paths);
+    return this.#set.has(rel);
+  }
 }
 
 /** Test files per key read: two parameters each, well under SQLite's limit. */
@@ -38,8 +57,8 @@ export class StoredClosures {
     }
     const closures = new Map<string, StoredClosure>();
     for (const record of store.testFiles.list()) {
-      const paths = new Set(record.closure.paths);
-      closures.set(testFileId(record.testFile), { updatedBy: record.updatedBy, paths });
+      const closure = new StoredClosure(record.updatedBy, record.closure.paths, marker !== null);
+      closures.set(testFileId(record.testFile), closure);
     }
     this.#marker = marker;
     this.#closures = closures;
@@ -60,9 +79,7 @@ export function storedReaders(
   closures: ReadonlyMap<string, StoredClosure>,
   rel: RelativePath,
 ): TestFileKeyRecord[] {
-  const holding = rows.filter(
-    (row) => closures.get(testFileId(row.testFile))?.paths.has(rel) === true,
-  );
+  const holding = rows.filter((row) => closures.get(testFileId(row.testFile))?.holds(rel) === true);
   const writerOf = (row: TestFileKeyRecord) =>
     closures.get(testFileId(row.testFile))?.updatedBy ?? worktreeId;
   const keys = writerKeys(
