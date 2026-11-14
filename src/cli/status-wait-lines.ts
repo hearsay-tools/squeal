@@ -28,6 +28,7 @@ import { focusedVerdictText, focusLines, refusedLine } from "./status-wait-focus
 import { groupsQuietText, leftForGroups, leftGroupText } from "./status-wait-groups.js";
 import { type NamedWait, namedResult } from "./status-wait-paths.js";
 import { failuresText, noVerdictText, verdictCode } from "./verdict.js";
+import { anyPending } from "./wait/listing.js";
 import type { HeartbeatLapse } from "./wait-liveness.js";
 
 /** A wait that ended with a snapshot. */
@@ -504,11 +505,6 @@ function worktreeText(snapshot: StatusSnapshot): string {
   // Current failures only, as the `Known failures` headline counts them (011 C6, 011-15).
   const current = splitByValidity(snapshot.knownFailures).current;
   return `. Worktree: known failures ${failureCountText(current.map((f) => f.check))}${notCurrentText(snapshot)}`;
-}
-
-function anyPending(snapshot: StatusSnapshot): boolean {
-  const { counts, testFilesWithoutChecks, runnerPartPending } = snapshot;
-  return counts.pending + testFilesWithoutChecks.pending > 0 || runnerPartPending === true;
 }
 
 /** `2 checks (1 test, 1 test file loaded) and 1 test file without checks pending` (spec 005 D1). */
