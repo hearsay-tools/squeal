@@ -146,7 +146,7 @@ describe("squeal code --base keeps its files after the report when the store is 
       expect(first.order).toEqual(["report", "wait"]);
       expect(first.stderr).toContain(`${busy(held.pid)}`);
       expect(first.stderr).toContain(
-        `waiting up to 30 s to keep 6 completed test files: ${NAMED}\n`,
+        `waiting to keep 6 completed test files until no write lands for 30 s, at most 30 s in all: ${NAMED}\n`,
       );
       expect(first.stderr).toMatch(
         /the store was free after [\d.]+ s: 6 completed test files kept\n/,
@@ -191,7 +191,7 @@ describe("squeal code --base keeps its files after the report when the store is 
     expect(notKept).toHaveLength(1);
     expect(notKept[0]).toMatch(
       new RegExp(
-        `^squeal code: 6 completed test files were not kept in the stores: the store stayed busy for 30 s \\(held by pid ${held.pid} \\(node -e .*\\)\\); the next run will run them again$`,
+        `^squeal code: 6 completed test files were not kept in the stores: no write landed for 30 s \\(held by pid ${held.pid} \\(node -e .*\\)\\); the next run will run them again$`,
       ),
     );
     expect([second.code, second.report?.verdict, fromStores(second)]).toEqual([0, "pass", []]);

@@ -48,10 +48,10 @@ describe("squeal code keeps a file whose run read beyond its key (row 020-39)", 
 
     expect(notes).toHaveLength(2);
     expect(notes[0]).toMatch(
-      /^the store is busy \(.+\); waiting up to 0\.6 s to keep 1 completed test file: test\/a\.test\.ts$/,
+      /^the store is busy \(.+\); waiting to keep 1 completed test file until no write lands for 0\.6 s, at most 0\.6 s in all: test\/a\.test\.ts$/,
     );
     expect(notes[1]).toMatch(
-      /^1 completed test file was not kept in the stores: the store stayed busy for 0\.6 s \(.+\); the next run will run it again$/,
+      /^1 completed test file was not kept in the stores: no write landed for 0\.6 s \(.+\); the next run will run it again$/,
     );
     expect(resultsAt(at.commonDir, keyOf(at.keys, A))).toBe(0);
     expect(rowsOf(at.commonDir)).toEqual([undefined, undefined, undefined]);

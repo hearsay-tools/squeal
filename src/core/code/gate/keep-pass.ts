@@ -14,17 +14,16 @@ import type { Pause } from "./keep-queue.js";
 import type { NotKept } from "./keep-reasons.js";
 import { keepSeen, type Seen } from "./keep-seen.js";
 import { type DaemonWaits, KeepUnknown } from "./keep-sent.js";
+import { KEEP_BUSY_BOUND_MS, runTime, StoreWait } from "./keep-wait.js";
 import {
   changedAfterLoss,
   databasesOf,
   type InputCheck,
-  KEEP_BUSY_BOUND_MS,
   type KeepWriter,
   type Kept,
   keepFile,
   notKept,
   perhapsKept,
-  StoreWait,
 } from "./keep-write.js";
 
 /*
@@ -38,8 +37,8 @@ import {
  * An early pass runs while the gate's other runs go on: at the first write
  * a busy store refuses, or any failure, it hands back every file it has not
  * written, tells nothing of the wait, and its files wait for the next pass.
- * The last pass runs once the report is out: it waits for a busy store up
- * to one bound from the first write it refused (`StoreWait`), and tells
+ * The last pass runs once the report is out: it waits for a busy store
+ * while writes land, up to a ceiling (`StoreWait`, row 020-67), and tells
  * what was not kept. From the first try that did not land on, each file is
  * checked again before each of its writes and after every pause (review
  * 0.1.444 B2), in every later pass too (`InputCheck`). Row 020-39: the
@@ -62,9 +61,9 @@ export interface KeepOptions {
   readonly note?: (text: string) => void;
   readonly now?: () => EpochMs;
   /**
-   * How long the last pass waits for a store whose write lock another
-   * connection holds, from the first write it refused, before the files
-   * still queued are not kept; default `KEEP_BUSY_BOUND_MS` (D17.5).
+   * How long the last pass waits with no write landing on a store whose
+   * write lock another connection holds, before the files still queued are
+   * not kept; default `KEEP_BUSY_BOUND_MS` (D17.5, row 020-67).
    */
   readonly busyBoundMs?: number;
   /** How long a daemon that writes the files is waited for; default `DAEMON_WAITS` (review 0.1.450 B2). */
@@ -227,19 +226,21 @@ async function writeQueued(
   const { tell, check } = at;
   const boundMs = at.early ? 0 : (at.options.busyBoundMs ?? KEEP_BUSY_BOUND_MS);
   const quiet = at.early ? () => {} : tell;
-  const wait = new StoreWait({ now, boundMs, tell: quiet, keptEarly: at.keptEarly });
+  const runMs = runTime(state.queued);
+  const wait = new StoreWait({ now, boundMs, tell: quiet, keptEarly: at.keptEarly, runMs });
   const databases = databasesOf(commonDir);
   const giveUp = (database: AbsolutePath) =>
     at.early ||
     state.all.length === 0 ||
     wait.giveUp(database, state.all.slice(state.written + state.changed));
+  const landed = () => wait.landed();
   const spent = (): Pass => {
     if (at.early) return { written: state.written, left: state.left() };
     if (state.all.length > 0) tell(wait.spent(state.all.length - state.written, state.changed));
     return { written: state.written, left: [] };
   };
   const seen = state.queued.flatMap((q) => q.seen);
-  const merged = await keepSeen(writer, seen, { database: databases.main, giveUp, check });
+  const merged = await keepSeen(writer, seen, { database: databases.main, giveUp, landed, check });
   if (merged === "spent") return spent();
   state.merged = true;
   if (merged === "older") state.withoutGrown(at.notKept);
@@ -259,7 +260,7 @@ async function writeQueued(
         if (!free) state.held.push(file);
         return free;
       };
-      const one = { file, report, provenance, databases, giveUp, check, steady, unheld };
+      const one = { file, report, provenance, databases, giveUp, landed, check, steady, unheld };
       const outcome = await keepFile(stores, one);
       if (outcome === "spent") return spent();
       if (outcome === "changed") state.changed += 1;

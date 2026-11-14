@@ -130,7 +130,7 @@ function copyMissing(before: StatCache, cache: StatCache, paths: readonly Relati
 /**
  * The merge of `seen` by `writer`, before the files' writes, tried as they
  * are (`sliced`): a busy store's refusal owes every later write its input
- * check and counts toward the one bound (D17.5). "kept" when there is
+ * check and counts toward the one wait (D17.5). "kept" when there is
  * nothing to merge, or the writer merges nothing. Row 020-48: "older" when the serving daemon is one
  * before that row, which merges no reads (`OlderDaemon`).
  */
@@ -140,6 +140,8 @@ export async function keepSeen(
   at: {
     readonly database: AbsolutePath;
     readonly giveUp: (database: AbsolutePath) => boolean;
+    /** Told when the merge landed after a refusal (row 020-67). */
+    readonly landed?: () => void;
     readonly check: InputCheck;
   },
 ): Promise<"kept" | "spent" | "older"> {
@@ -153,7 +155,9 @@ export async function keepSeen(
         return busy && at.giveUp(at.database) ? "spent" : null;
       },
     );
-    return outcome === "spent" ? "spent" : "kept";
+    if (outcome === "spent") return "spent";
+    at.landed?.();
+    return "kept";
   } catch (error) {
     if (error instanceof OlderDaemon) return "older";
     throw error;

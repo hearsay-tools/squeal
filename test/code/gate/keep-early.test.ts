@@ -101,8 +101,8 @@ describe("the keeper writes while the runs go on (row 020-59)", () => {
     }
 
     expect(notes).toEqual([
-      `the store is busy (${held.holder}); waiting up to 0.6 s to keep 1 completed test file (1 kept while the runs went on): test/b.test.ts`,
-      `1 completed test file was not kept in the stores: the store stayed busy for 0.6 s (${held.holder}); the next run will run it again`,
+      `the store is busy (${held.holder}); waiting to keep 1 completed test file (1 kept while the runs went on) until no write lands for 0.6 s, at most 0.6 s in all: test/b.test.ts`,
+      `1 completed test file was not kept in the stores: no write landed for 0.6 s (${held.holder}); the next run will run it again`,
     ]);
     expect([resultsAt(at.commonDir, KEY_A), resultsAt(at.commonDir, KEY_B)]).toEqual([1, 0]);
   });

@@ -225,10 +225,10 @@ describe("squeal code --base keeps each chunk's files while the runs go on (row 
       expect(first.afterReportMs).toBeLessThan(10_000);
       const tail = [...(runs[2] ?? [])].sort().join(", ");
       expect(first.stderr).toContain(
-        `waiting up to 30 s to keep 2 completed test files (4 kept while the runs went on): ${tail}\n`,
+        `waiting to keep 2 completed test files (4 kept while the runs went on) until no write lands for 30 s, at most 30 s in all: ${tail}\n`,
       );
       expect(first.stderr).toMatch(
-        /2 completed test files were not kept in the stores: the store stayed busy for 30 s \(held by pid \d+ .*\); the next run will run them again\n/,
+        /2 completed test files were not kept in the stores: no write landed for 30 s \(held by pid \d+ .*\); the next run will run them again\n/,
       );
       expect(fromStores(second)).toEqual([...(runs[0] ?? []), ...(runs[1] ?? [])].sort());
     },

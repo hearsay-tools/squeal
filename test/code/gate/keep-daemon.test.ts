@@ -64,7 +64,7 @@ describe("the keeper while a daemon serves the worktree (021 D15, row 021-20)", 
     expect(count.stop()).toBe(0);
     expect(notes).toHaveLength(2);
     expect(notes[0]).toBe(
-      `the store is busy (${locked.holder}); waiting up to 5 s to keep 1 completed test file: test/a.test.ts`,
+      `the store is busy (${locked.holder}); waiting to keep 1 completed test file until no write lands for 5 s, at most 5 s in all: test/a.test.ts`,
     );
     expect(notes[1]).toMatch(/^the store was free after \d+(\.\d)? s: 1 completed test file kept$/);
     expect(resultsAt(at.commonDir)).toBe(1);
@@ -81,8 +81,8 @@ describe("the keeper while a daemon serves the worktree (021 D15, row 021-20)", 
       locked.release();
     }
     expect(notes).toEqual([
-      `the store is busy (${locked.holder}); waiting up to 0.6 s to keep 1 completed test file: test/a.test.ts`,
-      `1 completed test file was not kept in the stores: the store stayed busy for 0.6 s (${locked.holder}); the next run will run it again`,
+      `the store is busy (${locked.holder}); waiting to keep 1 completed test file until no write lands for 0.6 s, at most 0.6 s in all: test/a.test.ts`,
+      `1 completed test file was not kept in the stores: no write landed for 0.6 s (${locked.holder}); the next run will run it again`,
     ]);
     expect(resultsAt(at.commonDir)).toBe(0);
   });
