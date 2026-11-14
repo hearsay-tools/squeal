@@ -60,7 +60,8 @@ export class EarlyWrites {
   async #loop(): Promise<void> {
     for (;;) {
       this.#again = false;
-      const end = await this.#pass();
+      // Review 0.1.495 B3: a pass that throws, which it should not, counts as one that left files.
+      const end = await this.#pass().catch((): PassEnd => "left");
       if (this.#stopped) return;
       if (end === "left") {
         const pause = PAUSES_MS[Math.min(this.#busy, PAUSES_MS.length - 1)] ?? MAX_PAUSE_MS;

@@ -102,34 +102,52 @@ export interface Pass {
   readonly left: readonly Queued[];
 }
 
-/** One pass over `runs`; it never throws. */
+/**
+ * One pass over `runs`; it never throws. An early pass that cannot write
+ * (its opening check or any step fails, or no writer is usable: the
+ * worktree's lock is held with no fresh daemon to send to) hands back
+ * every run it did not write, whole, its reads and grown-key files
+ * included, and tells nothing (review 0.1.495 B1, B3). A run handed back
+ * that way is checked again at its next pass (`unchecked`): its inputs
+ * and the merge hold.
+ */
 export async function writePass(runs: readonly Queued[], at: PassContext): Promise<Pass> {
-  const opened = await openingCheck(runs, at);
-  if (opened.length === 0) return { written: 0, left: [] };
   const { root, commonDir } = at.options;
-  const state = new PassState(opened);
+  let state: PassState | null = null;
   let store: Store | null = null;
   let code: CodeStore | null = null;
   let lock: ReturnType<typeof acquireDaemonLock> = null;
   try {
+    const opened = await openingCheck(runs, at);
+    if (opened.length === 0) return { written: 0, left: [] };
+    state = new PassState(opened);
     const head = await at.options.head();
     lock = acquireDaemonLock(lockFileFor(commonDir, worktreeIdFor(root)));
     const open = openStore(commonDir);
     if (isStoreOpenFailure(open)) throw new Error(`the store did not open: ${open.reason}`);
     store = open;
     const chosen = chooseWriter(store, lock !== null, state, at);
-    if (chosen === null) return { written: 0, left: [] };
+    if (chosen === null) {
+      return at.early ? { written: 0, left: unchecked(state.left()) } : { written: 0, left: [] };
+    }
     code = chosen.code;
     return await writeQueued(state, { store, writer: chosen.writer, head }, at);
   } catch (error) {
-    if (at.early) return { written: state.written, left: state.left() };
-    at.tell(failed(state.all.length - state.written, error));
-    return { written: state.written, left: [] };
+    const written = state?.written ?? 0;
+    if (at.early) return { written, left: unchecked(state === null ? runs : state.left()) };
+    const all = state?.all.length ?? runs.flatMap((q) => q.files).length;
+    at.tell(failed(all - written, error));
+    return { written, left: [] };
   } finally {
     code?.close();
     store?.close();
     lock?.release();
   }
+}
+
+/** `runs` with their opening check owed again, at the next pass. */
+function unchecked(runs: readonly Queued[]): Queued[] {
+  return runs.map(({ checked: _, ...q }) => q);
 }
 
 /** Where a pass is in its runs, and what it wrote. */
@@ -167,7 +185,11 @@ class PassState {
   }
 }
 
-/** The pass's writer (`writerFor`); `null` when none writes, its files then told. */
+/**
+ * The pass's writer (`writerFor`); `null` when none writes. The last pass
+ * then tells its files as not kept; an early one tells nothing and leaves
+ * its runs whole, to be tried again (review 0.1.495 B1).
+ */
 function chooseWriter(
   store: Store,
   locked: boolean,
@@ -180,8 +202,9 @@ function chooseWriter(
   const files = state.all.filter((file) => file.grown === undefined).length;
   const worktreeId = worktreeIdFor(root);
   const writing = { commonDir, policy, worktreeId, now, daemonWaits, files, seen };
-  const chosen = writerFor(store, locked, { ...writing, tell: at.tell, early: at.early });
-  if (chosen === null) state.withoutGrown(at.notKept);
+  const tell = at.early ? () => {} : at.tell;
+  const chosen = writerFor(store, locked, { ...writing, tell, early: at.early });
+  if (chosen === null && !at.early) state.withoutGrown(at.notKept);
   return chosen;
 }
 
