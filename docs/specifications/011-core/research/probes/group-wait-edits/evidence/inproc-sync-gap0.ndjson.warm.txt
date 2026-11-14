@@ -1,0 +1,10 @@
+Group e2e completed at revision 0: no known failures; 1 test file, 1 queued by this request
+Group e2e requested at revision 0: 1 test file queued; they run now.
+
+Revision: 0
+Known failures: 0; not current: 5 of 6 test files (5 unknown)
+Affected checks: 2 passed (1 test, 1 test file loaded), 0 running, 0 queued
+Full-suite checkpoint: none completed at any revision (the counts are for revision 0; `squeal run --all` requests one)
+Outstanding:
+  5 test files never run at their inputs, nothing queued them (the baseline is lookup-only): test/gen.test.ts, test/math.test.ts, test/plain.test.ts and 2 more; `squeal retry <test file>...` runs each once, `squeal run --all --wait` runs all 5 test files not current here
+More: `squeal status --full` adds the worktree and daemon, the 5 test files without a result one by one and 1 note

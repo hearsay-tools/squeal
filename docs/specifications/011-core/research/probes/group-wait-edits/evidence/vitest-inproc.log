@@ -1,0 +1,9 @@
+
+ RUN  v5.0.3 /home/agent/projects/squeal/.ai/squawk/worktrees/3214dce5-c65a-4b8e-a30b-ae55903c2134/docs/specifications/011-core/research/probes/group-wait-edits
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  10:43:00
+   Duration  112.83s (tests 88%, transform 11%, import 1%)
+
