@@ -8,11 +8,11 @@ import { type Store, worktreeMetaKey } from "../types/store.js";
  * commit, a partial one among them), a JSON `HeadMove` (task 001-406). A
  * revision records `HEAD` only when files change, so this is how headers
  * and status learn of a commit before the next edit. Apart from
- * `head-move.ts`, which loads commit and git code the header must not load.
+ * `scheduler/head-move.ts`, which loads commit and git code the header must not load.
  *
  * Its readers read it two ways, kept as they are: the code pass takes a
  * move at exactly revision N as `HEAD` at the end of N; the header and
- * `head-move.ts` take one at N or later as the current `HEAD`.
+ * `scheduler/head-move.ts` take one at N or later as the current `HEAD`.
  */
 
 function headMoveMetaKey(worktreeId: WorktreeId): string {
