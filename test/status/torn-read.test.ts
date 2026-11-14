@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { waitForStatus } from "../../src/cli/status-wait.js";
-import type { readHeader as ReadHeader } from "../../src/core/state/header.js";
+import type {
+  headerWith as HeaderWith,
+  readHeader as ReadHeader,
+} from "../../src/core/state/header.js";
 import { buildSnapshot, readStatus } from "../../src/core/status/snapshot.js";
 import {
   isStoreOpenFailure,
@@ -51,16 +54,26 @@ vi.mock("../../src/core/store/open.js", async (importOriginal) => {
   return { ...original, openStore };
 });
 
+// Row 011-345: the fallback `--wait` poll reads the header through `headerWith`, with a kept part.
 vi.mock("../../src/core/state/header.js", async (importOriginal) => {
-  const original = await importOriginal<{ readHeader: typeof ReadHeader }>();
-  const readHeader: typeof ReadHeader = (...args) => {
-    hooks.afterRead ??= hooks.atPoll;
-    hooks.atPoll = null;
-    const header = original.readHeader(...args);
-    hooks.headers.push(header);
-    return header;
+  const original = await importOriginal<{
+    readHeader: typeof ReadHeader;
+    headerWith: typeof HeaderWith;
+  }>();
+  const polled =
+    <A extends unknown[]>(read: (...args: A) => StatusHeader) =>
+    (...args: A): StatusHeader => {
+      hooks.afterRead ??= hooks.atPoll;
+      hooks.atPoll = null;
+      const header = read(...args);
+      hooks.headers.push(header);
+      return header;
+    };
+  return {
+    ...original,
+    readHeader: polled(original.readHeader),
+    headerWith: polled(original.headerWith),
   };
-  return { ...original, readHeader };
 });
 
 const NOW = Date.UTC(2026, 9, 8, 12, 0, 0);

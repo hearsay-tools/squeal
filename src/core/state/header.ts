@@ -1,57 +1,20 @@
 import { readPolicy } from "../daemon/policy.js";
 import { runsVitest } from "../daemon/runner.js";
-import { testFileId } from "../keys/reverse-index.js";
 import { readInstallWait } from "../scheduler/install-wait.js";
 import { covers, readRefined } from "../scheduler/refined.js";
 import type { RevisionNumber, WorktreeId } from "../types/common.js";
-import type { CheckKey, TestFileRef } from "../types/keys.js";
+import type { TestFileRef } from "../types/keys.js";
 import type { Policy } from "../types/policy.js";
-import type { KnownState, Validity } from "../types/state.js";
-import type {
-  FullSuiteState,
-  KnownFailure,
-  SlowPendingCounts,
-  SlowTierState,
-  StatusHeader,
-  TestFileCounts,
-} from "../types/status.js";
+import { SLOW_GROUP } from "../types/scheduler.js";
+import type { KnownState } from "../types/state.js";
+import type { FullSuiteState, KnownFailure, StatusHeader } from "../types/status.js";
 import type { Store } from "../types/store.js";
 import type { CheckpointRecord, TestFileKeyRecord } from "../types/store-records.js";
-import { testFileKeyOf, testFileOf } from "./derive.js";
-import { countNotCurrent } from "./file-class.js";
-import {
-  groupTextsShown,
-  inGroupLane,
-  readCommitLine,
-  readGroupTiers,
-  testsAtEdit,
-} from "./groups.js";
+import { groupTiersOf, readCommitLine } from "./groups.js";
+import { type HeaderPart, headerPart } from "./header-part.js";
 import { readOptimizerOff } from "./optimizer-note.js";
 import { readRevisionCommit } from "./revision-commit.js";
-import { readSlowTier, type SlowPolicyView, slowPolicyView } from "./slow.js";
-
-/** The validity counts of `states`, and how many current ones are inherited or imported. */
-function countStates(states: readonly KnownState[]) {
-  const counts: Record<Validity, number> = { current: 0, pending: 0, stale: 0, unknown: 0 };
-  const fileLevelCounts: Record<Validity, number> = { ...counts };
-  let inheritedCount = 0;
-  let inheritedFileLevelCount = 0;
-  let importedCount = 0;
-  for (const state of states) {
-    // Task 001-382: a global setup is no test's check; it counts among known failures only.
-    if (state.check.kind === "setup") continue;
-    counts[state.validity]++;
-    if (state.check.kind === "file") fileLevelCounts[state.validity]++;
-    if (state.validity !== "current") continue;
-    if (state.origin?.kind === "inherited") {
-      inheritedCount++;
-      if (state.check.kind === "file") inheritedFileLevelCount++;
-    }
-    // Spec 018 D4: the hook header's count of imported results.
-    if (state.origin?.kind === "imported") importedCount++;
-  }
-  return { counts, fileLevelCounts, inheritedCount, inheritedFileLevelCount, importedCount };
-}
+import { liveActivity, slowTierOf } from "./slow.js";
 
 /**
  * Spec 001 D6: "Every delivered message carries a header [...]. Delivery and
@@ -95,21 +58,47 @@ export function readHeader(
   isSlow?: (testFile: TestFileRef) => boolean,
   openFiles?: ReadonlySet<string>,
 ): StatusHeader {
+  const at = headerPolicy(store, worktreeId);
+  const part = headerPart(states, keys, at.policy, isSlow, openFiles);
+  return headerWith(store, worktreeId, at, keys, part);
+}
+
+/** The worktree's root and the policy there, as the header reads them; `null` policy without a row. */
+export interface HeaderPolicy {
+  readonly root: string | undefined;
+  readonly policy: Policy | null;
+}
+
+export function headerPolicy(store: Store, worktreeId: WorktreeId): HeaderPolicy {
+  const root = store.worktrees.get(worktreeId)?.root;
+  return { root, policy: root === undefined ? null : readPolicy(root) };
+}
+
+/**
+ * Row 011-345: the header from `part`, made from the worktree's states,
+ * `keys` and `at`'s policy (`headerPart`), and every other input read now:
+ * the revision and its commit, the refined revision, the install wait,
+ * checkpoints, the lanes' activity, the commit line and the optimizer note.
+ * `readHeader` is this over a part it makes; a caller that kept the states,
+ * the keys and the policy may pass the part it made from them.
+ */
+export function headerWith(
+  store: Store,
+  worktreeId: WorktreeId,
+  { root, policy }: HeaderPolicy,
+  keys: readonly TestFileKeyRecord[],
+  part: HeaderPart,
+): StatusHeader {
   const latest = store.revisions.latest(worktreeId);
   const revision = latest?.number ?? 0;
   const commit = readRevisionCommit(store, worktreeId, latest);
   const { counts, fileLevelCounts, inheritedCount, inheritedFileLevelCount, importedCount } =
-    countStates(states);
+    part.counted;
   const refinedRevision = readRefined(store, worktreeId);
   const wait = readInstallWait(store, worktreeId);
-  const missing = wait?.workspaces ?? null;
   const awaiting = wait !== null;
   const last = store.checkpoints.lastCompletedFull(worktreeId);
   const lane = awaiting ? null : laneAfter(store.checkpoints.lastCompleted(worktreeId), last);
-  const root = store.worktrees.get(worktreeId)?.root;
-  const policy = root === undefined ? null : readPolicy(root);
-  const view = policy === null ? null : slowPolicyView(policy);
-  const slow = isSlow ?? view?.isSlow;
   const optimizerOff = readOptimizerOff(store, worktreeId);
   const runnerPartPending = !covers(refinedRevision, revision);
   return {
@@ -117,50 +106,57 @@ export function readHeader(
     ...(commit === undefined ? {} : { commit }),
     counts,
     fileLevelCounts,
-    testFilesWithoutChecks: countFilesWithoutChecks(states, keys),
-    ...countNotCurrent(states, keys, openFiles),
+    testFilesWithoutChecks: part.testFilesWithoutChecks,
+    ...part.notCurrent,
     fullSuite: {
       atCurrentRevision: !awaiting && last !== null && last.revision === revision,
       lastCompletedRevision: last?.revision ?? null,
       ...(lane === null ? {} : { lane }),
     },
-    testFilesListed: keys.length > 0 || (!awaiting && last !== null),
+    testFilesListed: part.listed || (!awaiting && last !== null),
     inheritedCount,
     inheritedFileLevelCount,
     ...(importedCount === 0 ? {} : { importedCount }),
     refinedRevision,
     runnerPartPending,
     ...listingRunnersField(runnerPartPending, root, policy),
-    ...(slow === undefined ? {} : { slowPending: countSlowPending(states, keys, slow) }),
-    ...slowTierField(store, worktreeId, states, keys, policy, view),
-    ...(policy !== null && groupTextsShown(policy)
-      ? groupFields(store, worktreeId, states, keys, policy)
-      : {}),
-    ...(awaiting ? { awaitingInstall: true } : {}),
-    ...(missing !== null && missing.length > 0 ? { missingInstalls: missing } : {}),
-    ...(wait === null || wait.command === null ? {} : { installCommand: wait.command }),
+    ...(part.slowPending === undefined ? {} : { slowPending: part.slowPending }),
+    ...slowTierField(store, worktreeId, keys, part),
+    ...groupFields(store, worktreeId, keys, part),
+    ...installFields(wait),
     ...(optimizerOff === undefined ? {} : { optimizerOff }),
   };
 }
 
+/** The install wait's fields: awaited, the workspaces it misses, and the command that ends it. */
+function installFields(
+  wait: ReturnType<typeof readInstallWait>,
+): Pick<StatusHeader, "awaitingInstall" | "missingInstalls" | "installCommand"> {
+  if (wait === null) return {};
+  const missing = wait.workspaces;
+  return {
+    awaitingInstall: true,
+    ...(missing.length > 0 ? { missingInstalls: missing } : {}),
+    ...(wait.command === null ? {} : { installCommand: wait.command }),
+  };
+}
+
 /**
- * The slow-tier line's state when `policy` declares slow files (D8). With a
+ * The slow-tier line's state when the policy declares slow files (D8). With a
  * `checks` key, none once the listed files are in and the default `slow`
  * group owns none of them: configured groups own every file marked slow,
- * and their lines tell them (spec 019 D2, D6).
+ * and their lines tell them (spec 019 D2, D6). The part decides which; the
+ * activity is read now.
  */
 function slowTierField(
   store: Store,
   worktreeId: WorktreeId,
-  states: readonly KnownState[],
   keys: readonly TestFileKeyRecord[],
-  policy: Policy | null,
-  view: SlowPolicyView | null,
-): { slowTier?: SlowTierState } {
-  if (policy === null || view === null) return {};
-  const slowTier = readSlowTier(store, worktreeId, states, keys, view);
-  const owned = slowTier.testFiles > 0 || keys.length === 0 || !groupTextsShown(policy);
-  return owned ? { slowTier } : {};
+  { view, slowLane }: HeaderPart,
+): Pick<StatusHeader, "slowTier"> {
+  if (view === null || slowLane === undefined) return {};
+  const activity = liveActivity(store, worktreeId, keys, view.isSlow, SLOW_GROUP);
+  return { slowTier: slowTierOf({ ...slowLane, activity }, view) };
 }
 
 /**
@@ -171,15 +167,15 @@ function slowTierField(
 function groupFields(
   store: Store,
   worktreeId: WorktreeId,
-  states: readonly KnownState[],
   keys: readonly TestFileKeyRecord[],
-  policy: Policy,
+  { groups }: HeaderPart,
 ): Pick<StatusHeader, "groupTiers" | "lanePending" | "noTestsAtEdit" | "commitLine"> {
+  if (groups === undefined) return {};
   const commitLine = readCommitLine(store, worktreeId);
   return {
-    groupTiers: readGroupTiers(store, worktreeId, states, keys, policy),
-    lanePending: countSlowPending(states, keys, inGroupLane(policy)),
-    ...(testsAtEdit(policy, keys) ? {} : { noTestsAtEdit: true as const }),
+    groupTiers: groupTiersOf(store, worktreeId, keys, groups.lanes),
+    lanePending: groups.lanePending,
+    ...(groups.testsAtEdit ? {} : { noTestsAtEdit: true as const }),
     ...(commitLine === undefined ? {} : { commitLine }),
   };
 }
@@ -263,67 +259,6 @@ export function fullSuiteText({ revision, fullSuite }: StatusHeader, command: st
       ? ""
       : `; only the ${fullSuite.lane.lane} lane completed, at revision ${fullSuite.lane.revision}`;
   return `${none}${lane} (the counts are for revision ${revision}; \`${command} run --all\` requests one)`;
-}
-
-/**
- * An unkeyed file (key `null`, its runner could not key it) or a keyed file
- * with no pending phase has never run at its key: `unknown`. A queued or
- * running one is `pending`.
- */
-function countFilesWithoutChecks(
-  states: readonly KnownState[],
-  keys: readonly TestFileKeyRecord[],
-): TestFileCounts {
-  const withChecks = new Set(states.map((s) => testFileKeyOf(s.check)));
-  const counts = { pending: 0, unknown: 0 };
-  for (const row of keys) {
-    if (withChecks.has(testFileId(row.testFile))) continue;
-    counts[hasKey(row) && row.pending !== null ? "pending" : "unknown"]++;
-  }
-  return counts;
-}
-
-/** How many pending slow files the `Affected checks` line names before counting the rest. */
-const SLOW_FILES_NAMED = 3;
-
-/** The pending work of the slow test files, counted as `readHeader` counts all of it. */
-function countSlowPending(
-  states: readonly KnownState[],
-  keys: readonly TestFileKeyRecord[],
-  isSlow: (testFile: TestFileRef) => boolean,
-): SlowPendingCounts {
-  const withChecks = new Set(states.map((s) => testFileKeyOf(s.check)));
-  const files = new Map<string, TestFileRef>();
-  let checks = 0;
-  for (const state of states) {
-    const ref = testFileOf(state.check);
-    if (state.validity !== "pending" || !isSlow(ref)) continue;
-    checks++;
-    files.set(testFileKeyOf(state.check), ref);
-  }
-  let testFilesWithoutChecks = 0;
-  for (const row of keys) {
-    const id = testFileId(row.testFile);
-    if (withChecks.has(id) || !hasKey(row) || row.pending === null || !isSlow(row.testFile)) {
-      continue;
-    }
-    testFilesWithoutChecks++;
-    files.set(id, row.testFile);
-  }
-  const named = [...files.values()]
-    .sort((a, b) => a.path.localeCompare(b.path) || a.project.localeCompare(b.project))
-    .slice(0, SLOW_FILES_NAMED);
-  return {
-    testFiles: files.size,
-    checks,
-    testFilesWithoutChecks,
-    ...(named.length === 0 ? {} : { files: named }),
-  };
-}
-
-/** Task 001-23 widens `TestFileKeyRecord.key` to `CheckKey | null` for unkeyed files. */
-function hasKey(row: { readonly key: CheckKey | null }): boolean {
-  return row.key !== null;
 }
 
 /**
