@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.502";
+  if (true) return "0.1.503";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -92342,6 +92342,48 @@ function foldOutside(functions) {
   return { listed: functions.filter((f) => !folded.has(f)), folded: shared2.map(foldedLine) };
 }
 
+// src/cli/code-gate-text-reruns.ts
+init_compare();
+init_text();
+var RERUN_NAMED = 3;
+var LOAD_OUTCOMES = [
+  ["passed", "passed"],
+  ["failed", "failed again"],
+  ["not-finished", "did not finish, so the first failure stands"]
+];
+var STORED_OUTCOMES2 = [
+  ["passed", "passed"],
+  ["failed", "failed again"],
+  ["not-finished", "did not finish, so the stored failure stands"]
+];
+function outcomesText(reran, words) {
+  return words.flatMap(([outcome2, said]) => {
+    const paths = reran.filter(([, r]) => r.outcome === outcome2).map(([path]) => path);
+    return paths.length === 0 ? [] : [`${paths.length} ${said} (${listPaths(paths.sort(compare), RERUN_NAMED)})`];
+  }).join(", ");
+}
+function loadRerunLine(run7) {
+  const reran = Object.entries(run7.retried ?? {});
+  if (reran.length === 0) return [];
+  const highest = reran.map(([, r]) => r).reduce((top, r) => r.load / r.cpus > top.load / top.cpus ? r : top);
+  const files5 = plural(reran.length, `${RUNNER_NAMES[run7.runner]} test file`);
+  const load = `${highest.load} on ${highest.cpus} CPUs`;
+  return [
+    `  ${files5} failed while the host load was at or over its CPU count (${load}) and ran once more: ${outcomesText(reran, LOAD_OUTCOMES)}`
+  ];
+}
+function storedRerunLine(run7) {
+  const reran = Object.entries(run7.storedRerun ?? {});
+  if (reran.length === 0) return [];
+  const files5 = plural(reran.length, `failed ${RUNNER_NAMES[run7.runner]} test file`);
+  return [
+    `  ${files5} read from the stores ran once more (--rerun-stored-failures): ${outcomesText(reran, STORED_OUTCOMES2)}`
+  ];
+}
+function rerunLines(run7) {
+  return [...loadRerunLine(run7), ...storedRerunLine(run7)];
+}
+
 // src/cli/code-gate-text.ts
 var GAP_WORDS = {
   "not-counted": "not counted: it is inside code that does not parse",
@@ -92440,7 +92482,14 @@ function runLines(run7, budgetSeconds) {
     `  ${plural(notStarted2.size, `${RUNNER_NAMES[run7.runner]} test file`)} did not start in the ${budgetSeconds} s budget; --json lists them`
   ];
   const prepares = (run7.prepare ?? []).flatMap(prepareLine);
-  return [...failed7, ...late, ...unstarted, ...overBudgetLine(run7), ...prepares];
+  return [
+    ...failed7,
+    ...late,
+    ...unstarted,
+    ...overBudgetLine(run7),
+    ...prepares,
+    ...rerunLines(run7)
+  ];
 }
 var OVER_BUDGET_NAMED = 3;
 function overBudgetLine({ runner, overBudget = [] }) {
