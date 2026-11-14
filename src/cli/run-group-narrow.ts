@@ -76,7 +76,7 @@ export async function runNarrowCommand(
       `the daemon did not answer the request to run group ${name} for these paths${first.unanswered}; it may still take it once its current work allows`,
     );
   }
-  const taken = await takenRequest(socketPath, first, deadline, NARROW_NOT_SUPPORTED);
+  const taken = await takenRequest(socketPath, first, deadline, name, NARROW_NOT_SUPPORTED);
   if (typeof taken === "string") return noVerdict(taken);
   if ("pending" in taken) {
     io.stdout(pendingText(root, taken.pending, waitMs !== null));
