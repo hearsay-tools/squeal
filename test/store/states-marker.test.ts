@@ -5,6 +5,7 @@ import {
   bumpStatesMarker,
   bumpStatesMarkerOf,
   claimStatesMarker,
+  everyDaemonClaims,
   statesMark,
   statesMarkerMetaKey,
 } from "../../src/core/store/states-marker.js";
@@ -179,6 +180,28 @@ describe("the states marker (row 011-45)", () => {
     expect(statesMark(store, ID)).not.toBe(before);
     store.worktrees.setDaemon(OTHER, null);
     expect(statesMark(store, ID)).not.toBeNull();
+  });
+
+  it("everyDaemonClaims: each registered daemon, but the one set aside, claimed its own marker", () => {
+    const store = seeded();
+    // ID's daemon claimed nothing; OTHER has no daemon.
+    expect(everyDaemonClaims(store)).toBe(false);
+    expect(everyDaemonClaims(store, ID)).toBe(true);
+    claimStatesMarker(store, ID, INCARNATION);
+    expect(everyDaemonClaims(store)).toBe(true);
+    const other = { ...LIVE, token: "other", startedAt: 1_500 };
+    store.worktrees.setDaemon(OTHER, other);
+    expect(everyDaemonClaims(store)).toBe(false);
+    expect(everyDaemonClaims(store, OTHER)).toBe(true);
+    // A claim for another incarnation is not this daemon's.
+    claimStatesMarker(store, OTHER, INCARNATION);
+    expect(everyDaemonClaims(store)).toBe(false);
+    claimStatesMarker(store, OTHER, daemonIncarnation(other));
+    expect(everyDaemonClaims(store)).toBe(true);
+    // A daemon with no incarnation (no token) claims nothing.
+    const { token: _token, ...untokened } = other;
+    store.worktrees.setDaemon(OTHER, untokened);
+    expect(everyDaemonClaims(store)).toBe(false);
   });
 
   it("an unreadable marker reads as none, and a bump starts it again", () => {
