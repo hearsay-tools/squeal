@@ -51,3 +51,17 @@ Question: what writes into a test's temporary directory after the test removes i
 Sources: the CI logs (`gh run view <id> --log-failed`), the tests, their fixture helpers, and the writers that can outlive them (runner log writes, daemon processes, bridges). Cheap experiments: run each test alone a few times at the host's real load, with a wrapper that lists what is left in the directory when the removal fails.
 
 Write `research/enotempty-cleanup.md`: per test, the writer (verified or inferred), whether the three share one cause, and a proposed fix with its owner, for example one cleanup helper that waits for the writers it started. Commit it with any probe under `research/probes/enotempty-cleanup/` on your branch.
+
+## R1 (W1): review of cand/0.1.484
+
+Use /reviewer (codex gpt-6.1-sol high). Candidate CI: run 43594358811. Pinned to `cand/0.1.484` at `12c8c47788f68ebf86bf1af1d251dcdff7050683`; range `4a978153a..12c8c4778`: eight commits of worker e28cc221, cherry-picked onto main without conflict (on the worker branch `7dc5f83f3..063712bf1`, rebased from `f206c9146`), then the 0.1.484 version raise and bundles. Behaviour to compare against: `4a978153a`. Read: board row 011-331, `research/waits.md` (decisions 1 and 3; "Not in scope"), `tasks/011-331/notes.md`, this file's W1, and the two earlier move reviews `reviews/0.1.469.md` and `reviews/0.1.474.md`.
+
+Check, each as proven, plausible or unverified:
+
+1. **Nothing a user sees changed.** `status --wait`, `status <path> --wait`, `status <path>` and the file wait of `run --slow --wait` give the same lines, JSON payloads (the `wait` payload included) and exit codes as at `4a978153a`, including which outcome wins when several hold.
+2. **Reads and timing stay as they were** (review 0.1.403 B2's rule): the settle time, the per-read busy timeout and the deadline's read, the snapshot's raw heartbeat, the sync request, and the order of the store reads; a field is read only where it was before.
+3. **Copies made one rule are the same rule.** The seven copies of "has the daemon's pass reached this read" that `passReached` (`src/cli/wait/synced.ts`) replaces, `verdict.ts` `unsynced` included, had the same effect; any that differed is a named cell, not merged.
+4. **One decision path; replace, don't layer.** The status table tests call the decision and loop the commands call; the two deleted cases of `status-wait-deadline.test.ts` map to table rows (the notes).
+5. **Scope.** No change under `src/core/` or in `src/cli/code*.ts`; `STATUS_WAIT_SETTLE_MS` and `waitConsumer` still exported from `status-wait.ts`; `verdict.ts` changed only in `unsynced` (the coordinator's grant); the run commands change only an import; the listing SQL and `anyPending` moved unchanged.
+
+The coordinator's tree passed lint, typecheck, `check:version`, the wait-module tests, `status-wait-deadline`, `run-busy-reads`, `run-covered`, `key-format` and `version-sensitive` (16 files, 236 tests) and the bundle tests at the candidate; the worker's Squeal run left 22 slow files to CI (its final report). Host policy as above. Write `reviews/0.1.484.md` and commit it on your branch.
