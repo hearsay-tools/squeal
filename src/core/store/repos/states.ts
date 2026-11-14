@@ -22,6 +22,7 @@ import {
   strOrNull,
 } from "../codec.js";
 import type { Connection, Row } from "../connection.js";
+import { bumpStatesMarker } from "../states-marker.js";
 
 const OUTCOMES = ["pass", "fail", "skip", "unknown"] as const;
 const VALIDITIES = ["current", "pending", "stale", "unknown"] as const;
@@ -98,6 +99,11 @@ export function createKnownStateRepo(conn: Connection): KnownStateRepo {
             s.fingerprint,
           );
         }
+        // Row 011-45: in the transaction that wrote them.
+        bumpStatesMarker(
+          conn,
+          states.map((s) => s.worktreeId),
+        );
       }),
     removeMany: (worktreeId, checks) =>
       conn.transaction(() => {
@@ -110,6 +116,7 @@ export function createKnownStateRepo(conn: Connection): KnownStateRepo {
             id,
           );
         }
+        if (checks.length > 0) bumpStatesMarker(conn, [worktreeId]);
       }),
   };
 }

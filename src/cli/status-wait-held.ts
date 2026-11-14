@@ -60,6 +60,18 @@ export function readHeld(
   const only = files ?? undefined;
   const states = store.knownStates.list(worktreeId, only);
   const keys = store.testFileKeys.list(worktreeId, only);
+  return heldOf(store, worktreeId, start, files, states, keys);
+}
+
+/** `readHeld` of `states` and `keys` already read for `files` (row 011-45). */
+export function heldOf(
+  store: Store,
+  worktreeId: WorktreeId,
+  start: StartView,
+  files: readonly TestFileRef[] | null,
+  states: readonly KnownState[],
+  keys: readonly TestFileKeyRecord[],
+): HeldRead {
   const header = readHeader(store, worktreeId, states, keys);
   const view =
     files === null

@@ -23,6 +23,7 @@ import { BUSY_SLICE_MS, BusyWaits } from "../store/busy.js";
 import { isBusy } from "../store/connection.js";
 import { setBusyTimeout } from "../store/open.js";
 import { lockFileFor } from "../store/paths.js";
+import { claimStatesMarker } from "../store/states-marker.js";
 import type { Capacity } from "../types/capacity.js";
 import type { AbsolutePath, EpochMs, RelativePath, WorktreeId } from "../types/common.js";
 import type { DaemonExit, DaemonExitReason, DaemonPhase, SyncAnswer } from "../types/daemon.js";
@@ -519,6 +520,8 @@ class Daemon {
       // Its heartbeat below ends the rest: whether it resumes one is read first (011 C9).
       this.#resumesRest = resumesRest(store, existing);
       store.testFileKeys.releaseRunning(id);
+      // Row 011-45: the rows it writes from here on bump the states marker it claims.
+      claimStatesMarker(store, id, this.#incarnation());
       // Row 011-32: a daemon serves, so the handoff a hook claimed ends at the clock's first reading.
       recordRegistration(store, {
         id,
