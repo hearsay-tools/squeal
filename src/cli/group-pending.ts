@@ -3,7 +3,7 @@ import { heartbeatLateBy } from "../core/presence/heartbeat.js";
 import { durationText, shellWord } from "../core/text.js";
 import type { AbsolutePath } from "../core/types/common.js";
 import type { GroupHolder, RunGroupResponse } from "../core/types/daemon.js";
-import { inStore } from "./wait/reads.js";
+import { notReadText, readBeside } from "./wait/beside.js";
 
 /*
  * Row 011-302 (gh-154): what `squeal run <group> --wait` says when its
@@ -25,24 +25,31 @@ import { inStore } from "./wait/reads.js";
  */
 const HEARTBEAT_BUSY_MS = 100;
 
+/** Why the store was not read for the heartbeat (row 011-334, `readBeside`). */
+export interface SilenceUnread {
+  readonly unread: string;
+}
+
 /**
  * How long the daemon of `root` has sent no heartbeat, once that is past
- * its grace; `null` while it is on time, when no daemon is recorded, or when
- * the store cannot be read within `HEARTBEAT_BUSY_MS` (busy, absent, or any
- * other failure): the line then names what the socket recorded, and exit 3
+ * its grace; `null` while it is on time or when no daemon is recorded. Row
+ * 011-334: read with the run waits' busy-store rule (`readBeside`), within
+ * `HEARTBEAT_BUSY_MS`; a store not read (busy past it, absent, or any other
+ * failure) is why, and the line says so in place of the heartbeat; exit 3
  * stays (review 0.1.409 B1).
  */
-export function heartbeatSilence(root: AbsolutePath, now: number = Date.now()): number | null {
-  try {
-    const daemon = inStore(
-      root,
-      (store) => store.worktrees.get(worktreeIdFor(root))?.daemon,
-      HEARTBEAT_BUSY_MS,
-    );
-    return daemon === undefined || daemon === null ? null : heartbeatLateBy(daemon, now);
-  } catch {
-    return null;
-  }
+export function heartbeatSilence(
+  root: AbsolutePath,
+  now: number = Date.now(),
+): number | null | SilenceUnread {
+  const read = readBeside(
+    root,
+    HEARTBEAT_BUSY_MS,
+    (store) => store.worktrees.get(worktreeIdFor(root))?.daemon,
+  );
+  if ("unread" in read) return { unread: read.unread };
+  const daemon = read.read;
+  return daemon === undefined || daemon === null ? null : heartbeatLateBy(daemon, now);
 }
 
 /**
@@ -50,13 +57,21 @@ export function heartbeatSilence(root: AbsolutePath, now: number = Date.now()): 
  * fact has held; `silentMs` is `heartbeatSilence`'s. A daemon before row
  * 011-302 sends no `holder`.
  */
-export function holderText(holder: RunGroupResponse["holder"], silentMs: number | null): string {
+export function holderText(
+  holder: RunGroupResponse["holder"],
+  silentMs: number | null | SilenceUnread,
+): string {
   const main: string[] = [];
-  if (silentMs !== null) main.push(`has sent no heartbeat for ${age(silentMs)}`);
+  const silence = typeof silentMs === "number" ? silentMs : null;
+  if (silence !== null) main.push(`has sent no heartbeat for ${age(silence)}`);
   if (holder?.kind === "unanswered")
     main.push(`has not read the request for ${age(holder.heldMs)}`);
   if (holder?.step) main.push(`has been ${holder.step.operation} for ${age(holder.step.heldMs)}`);
   const parts = main.length === 0 ? [] : [`the daemon's main thread ${andList(main)}`];
+  // Row 011-334: a heartbeat not read says so, in its place before what the socket recorded.
+  if (silentMs !== null && typeof silentMs === "object") {
+    parts.unshift(notReadText("the daemon's heartbeat", silentMs.unread));
+  }
   const held = holder === undefined || holder === null ? null : heldText(holder);
   if (held !== null) parts.push(held);
   if (parts.length > 0) return parts.join("; ");
