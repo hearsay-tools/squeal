@@ -1,9 +1,9 @@
-import { spawnSync } from "node:child_process";
-import { writeFileSync } from "node:fs";
-import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { type ChildProcess, spawn, spawnSync } from "node:child_process";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
 import { tempDir } from "../../store/helpers.js";
-import { IDLE_DEADLINE_MS, stopGone } from "./held-stop.js";
+import { barriers, IDLE_DEADLINE_MS, OLD, saw, stopGone } from "./held-stop.js";
 
 /*
  * Review 008-32 B2: the dispose test retries an attempt whose held Stop is
@@ -72,5 +72,64 @@ describe("stopGone, the held Stop's end (review 008-32 B2)", () => {
   it("is nothing while the Stop runs, or once it answered", () => {
     expect(stopGone(log([], process.pid), now)).toBeNull();
     expect(stopGone(log([["answered", 1_500]]), now)).toBeNull();
+  });
+});
+
+/*
+ * Row 011-338: a held stand-in Stop outlives a run cancelled mid-test,
+ * since the cancel kills the Vitest worker before any cleanup. It ends by
+ * itself once its barriers' folder is gone or OpenCode's process is gone,
+ * as the `wait` bridge does at OpenCode's exit.
+ */
+describe("the held stand-in Stop ends with its run (row 011-338)", () => {
+  /** Well above the stand-in's own checks, well below a test's timeout. */
+  const BOUND_MS = 2_000;
+  const started: ChildProcess[] = [];
+  afterEach(() => {
+    for (const child of started.splice(0)) if (child.exitCode === null) child.kill("SIGKILL");
+  });
+
+  /** A held Stop started as the plugin starts it, its own group leader, with `pid` as OpenCode's. */
+  async function held(pid: number) {
+    const dist = tempDir("squeal-held-stop-dist-");
+    mkdirSync(join(dist, "hooks"));
+    const b = barriers(dist, false);
+    const child = spawn(process.execPath, [join(dist, "hooks", "stop.mjs")], {
+      detached: true,
+      stdio: ["pipe", "pipe", "ignore"],
+    });
+    started.push(child);
+    let out = "";
+    child.stdout?.on("data", (chunk: Buffer) => {
+      out += chunk.toString();
+    });
+    const exited = new Promise<number | null>((resolve) => child.on("exit", resolve));
+    child.stdin?.end(JSON.stringify({ kind: "stop", worktree: dist, pid }));
+    await expect.poll(() => saw(b, "stop"), { timeout: BOUND_MS }).toBe(true);
+    return { b, dir: dirname(b.log), child, exited, out: () => out };
+  }
+
+  const ended = (child: ChildProcess) => child.exitCode !== null || child.signalCode !== null;
+
+  it("ends once its folder is gone", async () => {
+    const { dir, child } = await held(process.pid);
+    rmSync(dir, { recursive: true, force: true });
+    await expect.poll(() => ended(child), { timeout: BOUND_MS }).toBe(true);
+  });
+
+  it("ends once OpenCode's process is gone", async () => {
+    const { b, child } = await held(dead);
+    await expect.poll(() => ended(child), { timeout: BOUND_MS }).toBe(true);
+    expect(saw(b, "answered")).toBe(false);
+  });
+
+  it("still holds while both live, and answers at its release", async () => {
+    const { b, child, exited, out } = await held(process.pid);
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    expect(ended(child)).toBe(false);
+    writeFileSync(b.release, "");
+    expect(await exited).toBe(0);
+    expect(saw(b, "answered")).toBe(true);
+    expect(JSON.parse(out())).toEqual({ answer: { report: OLD } });
   });
 });
