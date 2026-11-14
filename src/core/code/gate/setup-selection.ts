@@ -1,6 +1,6 @@
 import { compare } from "../../fs/compare.js";
 import type { RelativePath } from "../../types/common.js";
-import type { TestFileRef } from "../../types/keys.js";
+import type { FileHash, TestFileRef } from "../../types/keys.js";
 import type { RunnerEnvironment } from "../../types/runner.js";
 import type { KnownEvidence, Picked } from "./prerun.js";
 import type { TestFileEvidence } from "./types.js";
@@ -101,13 +101,55 @@ export async function projectInputs(picked: readonly Picked[]): Promise<ProjectI
   return inputs;
 }
 
+/** Row 020-57 R1 (review 0.1.483 B1): what gives a `setupFiles` entry a loader before the run. */
+export interface SetupLoaders {
+  /**
+   * A selected file the fitted plan runs: not one the early stop leaves
+   * out (D17.1), nor one the stores or the parts give.
+   */
+  readonly planned: (ref: TestFileRef) => boolean;
+  /** The evidence of selected files the stores or the parts give (D11.7, D13.2). */
+  readonly known: KnownEvidence;
+  /** A changed path's blob at the head; absent when no changed function is in it. */
+  readonly blob: (path: RelativePath) => FileHash | undefined;
+}
+
 /**
- * The `setupFiles` entries of every project with a selected file the
- * scope runs: each such file's record holds them, so a function of one
- * has a loader though no closure holds it (row 020-57).
+ * The `setupFiles` entries that a selected file of their own project will
+ * measure: one the fitted plan runs, as each run's record holds them, or
+ * one whose evidence from the stores or the parts measured the entry at
+ * its head bytes. A function of such an entry has a loader though no
+ * closure holds it (row 020-57). Any other entry keeps its no-loader
+ * line: review 0.1.483 B1, where the early stop left every file out.
  */
-export function loadedSetupFiles(inputs: readonly ProjectInputs[]): Set<RelativePath> {
-  return new Set(inputs.filter((i) => i.selected.length > 0).flatMap((i) => [...i.setupFiles]));
+export function loadedSetupFiles(
+  inputs: readonly ProjectInputs[],
+  loaders: SetupLoaders,
+): Set<RelativePath> {
+  const loaded = new Set<RelativePath>();
+  for (const { setupFiles, selected } of inputs) {
+    for (const path of setupFiles) {
+      const blob = loaders.blob(path);
+      const measuredBy = (ref: TestFileRef) =>
+        loaders.planned(ref) || measures(loaders.known.get(ref), path, blob);
+      if (selected.some(measuredBy)) loaded.add(path);
+    }
+  }
+  return loaded;
+}
+
+/**
+ * Whether `evidence`, given without a run, measured `path` at its head
+ * bytes `blob`, as D5 reads a record (`standing()` in `evaluate.ts`).
+ */
+function measures(
+  evidence: TestFileEvidence | undefined,
+  path: RelativePath,
+  blob: FileHash | undefined,
+): boolean {
+  const record = evidence?.completed === true ? evidence.record : null;
+  if (record === null || blob === undefined || record.unread.includes(path)) return false;
+  return record.sources.some((source) => source.path === path && source.blob === blob);
 }
 
 /**
