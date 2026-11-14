@@ -7,6 +7,7 @@ import { formatCheck } from "../../../src/core/state/check-name.js";
 import type { ConsumerRecord } from "../../../src/core/types/store-records.js";
 import type { ScriptedStep } from "../../fixtures/opencode/scripted-provider.js";
 import { type OpenCodeLive, type OpenCodeRun, runOpenCode } from "../../helpers/opencode.js";
+import { awaitGroups, groupsRunning } from "../../helpers/process-groups.js";
 import type { FakeRepo } from "../../status/helpers.js";
 import { tempDir } from "../../store/helpers.js";
 import { liveSocket, quietCli, runtimeDir } from "../bundle-helpers.js";
@@ -81,6 +82,7 @@ export async function squealOpenCode(options: SquealRunOptions): Promise<SquealR
       plugins: [options.plugin ?? pluginShim(options.dist)],
       env,
       ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
+      settle: () => awaitBridges(options.dist),
       setup: async (cwd) => {
         const r = squealRepo(repoAt(cwd));
         r.apply(r.pass());
@@ -143,4 +145,30 @@ function storeEvidence(r: SquealRepo): string {
 export function bridgesRunning(dist: string, file: string): number[] {
   const out = spawnSync("pgrep", ["-f", join(dist, "hooks", file)], { encoding: "utf8" });
   return out.stdout.split("\n").filter(Boolean).map(Number);
+}
+
+/**
+ * How long the plugin's bridges may run on once OpenCode's process group is gone. Each ends
+ * within its hook's deadline, and the idle wake's `wait` within a second of OpenCode's end
+ * (`PID_POLL_MS`); 30 s is a hang, as `HOSTS_LEAVE_MS` is for a daemon's runner hosts.
+ */
+const BRIDGES_LEAVE_MS = 30_000;
+
+/**
+ * Waits for the bridges the plugin from `dist` started (`<dist>/hooks/*.mjs`) to end, kills what
+ * is left after `graceMs`, and then fails naming it. `callBridge` starts each with `detached:
+ * true`, in a process group of its own, so the end of OpenCode's group misses them: OpenCode's
+ * SIGTERM runs `dispose`, whose `end` bridge opens the store under the project while the run's
+ * folder is removed (row 011-336, `research/enotempty-cleanup.md` finding 3). Each test file
+ * builds its own `dist` and runs one OpenCode at a time, so what matches is this run's.
+ */
+export async function awaitBridges(dist: string, graceMs = BRIDGES_LEAVE_MS): Promise<void> {
+  const hooks = [...new Set([dist, realpathSync(dist)])].map((dir) => `${join(dir, "hooks")}/`);
+  const groups = groupsRunning((args) => hooks.some((prefix) => args.includes(prefix)));
+  const killed = await awaitGroups(groups, graceMs);
+  if (killed.length === 0) return;
+  const named = killed.map(({ pid, args }) => `${pid} ${args}`).join("; ");
+  throw new Error(
+    `bridges from ${dist} still ran ${graceMs} ms after OpenCode ended; killed: ${named}`,
+  );
 }
