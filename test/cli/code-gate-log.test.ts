@@ -282,11 +282,13 @@ describe("squeal code --base: the plain report and the kept log (#197)", () => {
       expect(ran.stdout).toContain("Code gate: incomplete.");
       const [log] = keptLogs(root);
       expect(readFileSync(join(log ?? "", "vitest.log"), "utf8")).toContain("expected 2 to be 4");
-      // The report first, then the one line that names the log, last.
-      expect(writes.at(-2)?.startsWith("stdout ")).toBe(true);
-      expect(writes.at(-1)).toBe(
+      // The report first, then the one line that names the log, then (row 020-68) the
+      // keeper's count, once the report is out.
+      expect(writes.at(-3)?.startsWith("stdout ")).toBe(true);
+      expect(writes.at(-2)).toBe(
         `stderr squeal code: log of the failed or unfinished test files, ${NEXT_PRUNE}: Vitest ${log}\n`,
       );
+      expect(writes.at(-1)).toMatch(/^stderr squeal code: .+ kept in the stores/);
     },
   );
 

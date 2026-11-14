@@ -96,6 +96,10 @@ async function gate(
 }
 
 /** D14.4 (row 020-34): the line when some selected file runs, so a process it starts may run the script. */
+/** Row 020-68: the keeper's count when both run files were kept while the runs went on. */
+const KEPT_TWO =
+  "squeal code: all 2 completed test files are kept in the stores (2 while the runs went on); the next run on the same bytes reads them from the stores\n";
+
 const CHILD_MAY_LOAD =
   "squeal code: no selected test file imports scripts/tool.mjs. With coverage.children, it is measured only if a process one of them starts loads it; else its 1 changed function will read incomplete (no-loader). To select a test that starts it, give the test with --test or declare the path for it in inputs at the base; to skip its coverage, name it in coverage.exclude at the base.";
 
@@ -109,8 +113,9 @@ describe("squeal code --base with coverage.children (spec 020 D12)", () => {
 
     // D14.4 (row 020-34): no selected file imports the script, but a process one starts may run it.
     // Row 020-39: with no daemon, the keeper keeps the files that read beyond their keys, and says nothing.
+    // Row 020-68: the keeper's count after the report.
     expect(ran.stderr).toBe(
-      `squeal code: Vitest: 2 test files to run (tests 2)\n${CHILD_MAY_LOAD}\n${noEstimate("Vitest", 2)}`,
+      `squeal code: Vitest: 2 test files to run (tests 2)\n${CHILD_MAY_LOAD}\n${noEstimate("Vitest", 2)}${KEPT_TWO}`,
     );
     expect(states).toEqual(["classify pass 2", "grade pass 6"]);
     expect(ran.code).toBe(0);

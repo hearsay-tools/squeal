@@ -7,6 +7,7 @@ import { result } from "../store/helpers.js";
 import {
   BASE,
   edit,
+  KEPT_ONE,
   ownHomeAndTmp,
   repo,
   SLOW,
@@ -60,7 +61,8 @@ describe("squeal code --base: the estimate before the first run (spec 020 D17.1)
 
     expect(ran.code).toBe(0);
     expect(ran.before).toEqual(["squeal code: Vitest: 1 test file to run (tests 1)", LINE]);
-    expect(ran.lines).toEqual(ran.before);
+    // Row 020-68: the keeper's count, after the report.
+    expect(ran.lines).toEqual([...ran.before, KEPT_ONE.trimEnd()]);
     const report = JSON.parse(ran.stdout) as GateReport;
     expect(report.runs.map((r) => r.estimate)).toEqual([
       { seconds: 42, files: 1, known: 1, width: VITEST_WIDTH },

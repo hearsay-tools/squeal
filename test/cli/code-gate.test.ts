@@ -8,6 +8,7 @@ import {
   BASE,
   code,
   edit,
+  KEPT_ONE,
   keptLogs,
   noEstimate,
   ownHomeAndTmp,
@@ -32,9 +33,9 @@ describe("squeal code --base: pass (spec 020 D1, exit 0)", () => {
 
     const ran = await code(root, ["--base", "main", "--json"]);
 
-    // D14.4: the selection, then D17.1's estimate, before the run; nothing else.
+    // D14.4: the selection, then D17.1's estimate, before the run; row 020-68's count after it.
     expect(ran.stderr).toBe(
-      `squeal code: Vitest: 1 test file to run (tests 1)\n${noEstimate("Vitest", 1)}`,
+      `squeal code: Vitest: 1 test file to run (tests 1)\n${noEstimate("Vitest", 1)}${KEPT_ONE}`,
     );
     expect(ran.code).toBe(0);
     const report = JSON.parse(ran.stdout) as GateReport;
@@ -222,7 +223,10 @@ describe("squeal code --base: a changed test file always runs (spec 020 D3.1)", 
     const text = readFileSync(join(log, "vitest.log"), "utf8");
     expect(text).toContain("FAIL test/order.test.ts > reads");
     expect(text).toContain("AssertionError: expected +0 to be 1");
-    expect(ran.stderr.endsWith(` Vitest ${log}\n`)).toBe(true);
+    // Row 020-68: the keeper's count comes after the kept logs, once the report is out.
+    const lines = ran.stderr.trimEnd().split("\n");
+    expect(lines.at(-2)?.endsWith(` Vitest ${log}`)).toBe(true);
+    expect(lines.at(-1)).toMatch(/^squeal code: .+ kept in the stores/);
   });
 });
 
@@ -274,7 +278,10 @@ describe("squeal code --base: an unfinished loading file never passes (spec 020 
     const log = report.runs[0]?.log ?? "";
     expect(keptLogs(root)).toEqual([log]);
     expect(readFileSync(join(log, "vitest.log"), "utf8")).toContain("end: timed-out");
-    expect(ran.stderr.endsWith(` Vitest ${log}\n`)).toBe(true);
+    // Row 020-68: the keeper's count comes after the kept logs, once the report is out.
+    const lines = ran.stderr.trimEnd().split("\n");
+    expect(lines.at(-2)?.endsWith(` Vitest ${log}`)).toBe(true);
+    expect(lines.at(-1)).toMatch(/^squeal code: .+ kept in the stores/);
   });
 });
 

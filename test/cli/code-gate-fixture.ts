@@ -92,6 +92,13 @@ export function noEstimate(runner: "Vitest" | "node:test", files: number): strin
   return `squeal code: ${runner}: ${what} to run here, up to ${width} at once; no stored duration, so the time is unknown\n`;
 }
 
+/**
+ * Row 020-68: the keeper's last stderr line when the gate ran one file and
+ * kept it while the runs went on.
+ */
+export const KEPT_ONE =
+  "squeal code: the 1 completed test file is kept in the stores (1 while the runs went on); the next run on the same bytes reads it from the stores\n";
+
 export interface Ran {
   readonly code: number;
   readonly stdout: string;

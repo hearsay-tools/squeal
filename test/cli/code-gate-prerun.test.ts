@@ -3,6 +3,7 @@ import type { GateReport } from "../../src/core/code/gate/report.js";
 import {
   BASE,
   edit,
+  KEPT_ONE,
   noEstimate,
   ownHomeAndTmp,
   repo,
@@ -79,7 +80,8 @@ describe("squeal code --base: the selection before the first run (spec 020 D14.4
         // D17.1: no store, so the time is unknown.
         noEstimate("Vitest", 1).trimEnd(),
       ]);
-      expect(ran.lines).toEqual(ran.before);
+      // Row 020-68: the keeper's count, after the report.
+      expect(ran.lines).toEqual([...ran.before, KEPT_ONE.trimEnd()]);
       const report = JSON.parse(ran.stdout) as GateReport;
       expect(report.runs.flatMap((r) => r.completed)).toEqual(["test/math.test.ts"]);
     },
@@ -120,6 +122,7 @@ describe("squeal code --base: the selection before the first run (spec 020 D14.4
     expect(ran.lines).toEqual([
       "squeal code: node:test: 1 test file to run (tests 1)",
       noEstimate("node:test", 1).trimEnd(),
+      KEPT_ONE.trimEnd(),
     ]);
   });
 });
