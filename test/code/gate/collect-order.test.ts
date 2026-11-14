@@ -9,6 +9,7 @@ import type { AbsolutePath } from "../../../src/core/types/common.js";
 import type { TestFileRef } from "../../../src/core/types/keys.js";
 import { ADAPTERS, changedSet, onRun, project } from "./collect-fixture.js";
 import { TIMES, VERSIONS } from "./evaluate-fixture.js";
+import { quiet } from "./host-load.js";
 
 /*
  * Spec 020 D17 (row 020-17ab): the collector gives a runner its files in
@@ -47,6 +48,7 @@ async function gate(byPath: boolean) {
   const events: string[] = [];
   const told: { estimates: readonly RunEstimate[]; left: number }[] = [];
   const evidence = await collectEvidence(root, changed, {
+    hostLoad: quiet,
     tests: [],
     budgetSeconds: BUDGET,
     adapters: adapters(events, byPath),

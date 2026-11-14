@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { collectEvidence, type StoredEvidence } from "../../../src/core/code/gate/collect.js";
 import type { TestFileEvidence } from "../../../src/core/code/gate/types.js";
 import { changedSet, ownTmpdir, project, SLOW, watched } from "./collect-fixture.js";
+import { quiet } from "./host-load.js";
 
 /*
  * Spec 020 D11.7 (row 020-07c): the collector asks `stored` for the
@@ -32,6 +33,7 @@ describe("collectEvidence: stored evidence (spec 020 D11.7)", () => {
     };
 
     const evidence = await collectEvidence(root, await changedSet(root, ["src/changed.ts"]), {
+      hostLoad: quiet,
       tests: [],
       budgetSeconds: 600,
       adapters: watched(ran),
@@ -52,6 +54,7 @@ describe("collectEvidence: stored evidence (spec 020 D11.7)", () => {
       root,
       await changedSet(root, ["src/changed.ts", "src/fails.ts"]),
       {
+        hostLoad: quiet,
         tests: [],
         budgetSeconds: 600,
         adapters: watched(ran),

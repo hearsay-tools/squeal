@@ -6,6 +6,7 @@ import { joinCoverage } from "../../../src/core/code/crap/join.js";
 import { type CollectOptions, collectEvidence } from "../../../src/core/code/gate/collect.js";
 import type { TestFileEvidence } from "../../../src/core/code/gate/types.js";
 import { ADAPTERS, changedSet, project, SLOW } from "./collect-fixture.js";
+import { quiet } from "./host-load.js";
 
 /*
  * Spec 020 D3.2 (row 020-03; research `quality-gate.md` Q5): one adapter
@@ -14,7 +15,12 @@ import { ADAPTERS, changedSet, project, SLOW } from "./collect-fixture.js";
  * one source, each file keeps its own record of it.
  */
 
-const OPTIONS: CollectOptions = { tests: [], budgetSeconds: 600, adapters: ADAPTERS };
+const OPTIONS: CollectOptions = {
+  tests: [],
+  budgetSeconds: 600,
+  adapters: ADAPTERS,
+  hostLoad: quiet,
+};
 
 const blobsOf = (file: TestFileEvidence | undefined, path: string) =>
   file?.record?.sources.filter((s) => s.path === path).map((s) => s.blob);

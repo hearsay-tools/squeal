@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { collectEvidence } from "../../../src/core/code/gate/collect.js";
 import { ADAPTERS, changedSet, project, SLOW, scopeOf, status } from "./collect-fixture.js";
+import { quiet } from "./host-load.js";
 
 /*
  * Spec 020 D14.2 (row 020-15a): cezar's shape in #172. A browser spec loads
@@ -34,6 +35,7 @@ describe("collectEvidence: the scope by check group (spec 020 D14.2)", () => {
     const root = project("scope");
     const before = status(root);
     const evidence = await collectEvidence(root, await changedSet(root, ["src/store.ts"]), {
+      hostLoad: quiet,
       tests: [],
       budgetSeconds: 600,
       adapters: ADAPTERS,
@@ -55,6 +57,7 @@ describe("collectEvidence: the scope by check group (spec 020 D14.2)", () => {
     const root = project("scope");
     const changed = await changedSet(root, ["src/store.ts"]);
     const added = await collectEvidence(root, changed, {
+      hostLoad: quiet,
       tests: [],
       budgetSeconds: 600,
       adapters: ADAPTERS,
@@ -74,6 +77,7 @@ describe("collectEvidence: the scope by check group (spec 020 D14.2)", () => {
     expect(readFileSync(marker, "utf8")).toBe("browser-setup\n");
 
     const named = await collectEvidence(root, changed, {
+      hostLoad: quiet,
       tests: ["e2e/page.test.ts"],
       budgetSeconds: 600,
       adapters: ADAPTERS,

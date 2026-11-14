@@ -5,6 +5,7 @@ import { countFile } from "../../../src/core/code/count/index.js";
 import { joinCoverage } from "../../../src/core/code/crap/join.js";
 import { collectEvidence } from "../../../src/core/code/gate/collect.js";
 import { ADAPTERS, changedSet, project, SLOW } from "./collect-fixture.js";
+import { quiet } from "./host-load.js";
 
 /*
  * Spec 020 D2, D3 (row 020-03; research `quality-gate.md` Q5, `vi.mock`
@@ -19,6 +20,7 @@ describe("collectEvidence: a changed test file with vi.mock factories", () => {
     const path = "test/mock.test.ts";
     const changed = await changedSet(root, [path]);
     const evidence = await collectEvidence(root, changed, {
+      hostLoad: quiet,
       tests: [],
       budgetSeconds: 600,
       adapters: ADAPTERS,

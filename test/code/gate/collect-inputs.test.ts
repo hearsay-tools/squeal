@@ -8,6 +8,7 @@ import type { PolicyInputs } from "../../../src/core/types/policy.js";
 import type { RunnerAdapter, RunReport } from "../../../src/core/types/runner.js";
 import { NO_TRAITS } from "../../../src/core/types/runner-traits.js";
 import { changedSet, NO_ADAPTERS, project, scopeOf } from "./collect-fixture.js";
+import { quiet } from "./host-load.js";
 
 /*
  * Spec 020 D3.1 as amended 2026-11-12 (row 020-35, #194): the gate also
@@ -77,6 +78,7 @@ async function told(
   if ("error" in fallback) throw new Error(fallback.error);
   let summary: SelectionSummary | null = null;
   await collectEvidence(root, await changedSet(root, paths), {
+    hostLoad: quiet,
     tests: [],
     budgetSeconds: 600,
     adapters,
