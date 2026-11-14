@@ -96,7 +96,7 @@ async function taken(
       return GROUP_NOT_SUPPORTED;
     case "refused":
     case "failed":
-      return failed(outcome.error);
+      return failed(group, outcome.error);
     case "unknown group":
       return `the daemon's policy has no group "${outcome.answer.group}" yet; it reloads squeal.config.json when it sees the file change`;
     case "stopped":
@@ -106,7 +106,8 @@ async function taken(
   }
 }
 
-const failed = (error: string) => `squeal run <group> failed: ${error}`;
+/** Row 011-337: the group's name, not the literal `<group>`. */
+const failed = (group: string, error: string) => `squeal run ${group} failed: ${error}`;
 
 function requestedText(group: string, { revision, queued }: Requested): string {
   if (queued === 0) {

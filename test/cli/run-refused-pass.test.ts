@@ -45,8 +45,8 @@ function repo() {
 const PASS =
   "the change feed delivered no reconciliation pass that started after the request " +
   "(its pass failed, or the daemon closed first)";
-/** The daemon's refusal as it reads before row 011-337, for every request. */
-const REFUSED = `${PASS}, so no checkpoint was planned`;
+/** A daemon's refusal before row 011-337, for every request. */
+const BEFORE = `${PASS}, so no checkpoint was planned`;
 
 type Taken = { revision: number; queued: number; installWait?: string } | null;
 
@@ -84,32 +84,36 @@ async function run(argv: string[], cwd: string) {
 }
 
 /** Per command: its words, the request it sends and group, and what it prints without and with `--wait`. */
+const GROUP = `${PASS}, so nothing was queued for group unit`;
+const NARROW = `${PASS}, so no test file of group unit that the paths select was queued`;
+const LINT = `${PASS}, so nothing was queued for group lint`;
+const SLOW = `${PASS}, so nothing was queued for group slow`;
 const COMMANDS = [
   {
     argv: ["run", "unit"],
     request: "run-group",
     group: "unit",
-    refused: REFUSED,
-    without: `squeal: squeal run <group> failed: ${REFUSED}\n`,
-    waited: { code: 3, stdout: `No verdict: squeal run <group> failed: ${REFUSED}\n`, stderr: "" },
+    refused: GROUP,
+    without: `squeal: squeal run unit failed: ${GROUP}\n`,
+    waited: { code: 3, stdout: `No verdict: squeal run unit failed: ${GROUP}\n`, stderr: "" },
   },
   {
     argv: ["run", "unit", "test/a.test.ts"],
     request: "run-group-paths",
     group: "unit",
-    refused: REFUSED,
-    without: `squeal: squeal run <group> failed: ${REFUSED}\n`,
-    waited: { code: 3, stdout: `No verdict: squeal run <group> failed: ${REFUSED}\n`, stderr: "" },
+    refused: NARROW,
+    without: `squeal: squeal run unit failed: ${NARROW}\n`,
+    waited: { code: 3, stdout: `No verdict: squeal run unit failed: ${NARROW}\n`, stderr: "" },
   },
   {
     argv: ["run", "lint"],
     request: "run-group",
     group: "lint",
-    refused: REFUSED,
-    without: `squeal: squeal run <group> failed: ${REFUSED}\n`,
+    refused: LINT,
+    without: `squeal: squeal run lint failed: ${LINT}\n`,
     waited: {
       code: 3,
-      stdout: `Group lint has no verdict: squeal run <group> failed: ${REFUSED}\n`,
+      stdout: `Group lint has no verdict: squeal run lint failed: ${LINT}\n`,
       stderr: "",
     },
   },
@@ -117,9 +121,9 @@ const COMMANDS = [
     argv: ["run", "--slow"],
     request: "run-slow",
     group: "slow",
-    refused: REFUSED,
-    without: `squeal: run --slow failed: ${REFUSED}\n`,
-    waited: { code: 1, stdout: "", stderr: `squeal: run --slow failed: ${REFUSED}\n` },
+    refused: SLOW,
+    without: `squeal: run --slow failed: ${SLOW}\n`,
+    waited: { code: 3, stdout: `No verdict: run --slow failed: ${SLOW}\n`, stderr: "" },
   },
 ];
 
@@ -141,6 +145,27 @@ describe("the run commands word a refused pass for the request they made (row 01
     await fakeDaemon(socketPathFor(r.worktreeId), answers);
     expect(await run([...command.argv, "--wait", "5000"], r.root)).toEqual(command.waited);
   });
+
+  it("run --slow --wait: a daemon before the row refuses in its words, also no verdict", async () => {
+    const r = repo();
+    await fakeDaemon(socketPathFor(r.worktreeId), refusing("slow", "run-slow", BEFORE));
+    expect(await run(["run", "--slow", "--wait", "5000"], r.root)).toEqual({
+      code: 3,
+      stdout: `No verdict: run --slow failed: ${BEFORE}\n`,
+      stderr: "",
+    });
+  });
+
+  it("run --slow --wait: any other failure keeps exit 1", async () => {
+    const r = repo();
+    const error = "squeal scheduler: not started";
+    await fakeDaemon(socketPathFor(r.worktreeId), refusing("slow", "run-slow", error));
+    expect(await run(["run", "--slow", "--wait", "5000"], r.root)).toEqual({
+      code: 1,
+      stdout: "",
+      stderr: `squeal: run --slow failed: ${error}\n`,
+    });
+  });
 });
 
 describe("run --slow names the install wait its answer carries (row 011-337)", () => {
@@ -151,8 +176,7 @@ describe("run --slow names the install wait its answer carries (row 011-337)", (
     });
     expect(await run(["run", "--slow"], r.root)).toEqual({
       code: 0,
-      stdout:
-        "No slow files to run at revision 5: none are declared in squeal.config.json or all are current.\n",
+      stdout: `No slow files run at revision 5: ${reason}.\n`,
       stderr: "",
     });
   });
