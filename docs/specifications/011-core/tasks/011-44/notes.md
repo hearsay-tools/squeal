@@ -60,3 +60,13 @@ The first poll with a marker builds the path sets it asks about; every later pol
 - Rebased the three commits onto row 011-45's `d52c02e0a` (`git rebase --onto d52c02e0a 4244f2cb6`). No conflict. 011-45 bumps its states marker in `TestFileKeyRepo`'s upserts; this row no longer touches `repos/test-files.ts` (decision 1), so that file is 011-45's as it was.
 - The trust rule (decision 6): `src/core/store/closure-writes.ts` `trustedClosureWrites`, read by `StoredClosures.read`. The bump moved to the writers (decision 1) after key-format refused the repository's lines.
 - The CPU table above was measured before the rule. The rule adds one `worktrees` list and one `meta` read per registered daemon per poll; on cezar's store copy (about 80 worktree rows) that is small beside the 9 to 19 ms the poll took. Not measured again: the store copy was removed.
+
+## Repair round for review 0.1.489 (wave 90.5)
+
+Review 0.1.489 failed the closure marker's writers and trust (B1). Worker 6702c043 repaired both markers in one round; the full record is in `tasks/011-45/notes.md`, section "Repair round for review 0.1.489 (wave 90.5)". For this row:
+
+- Triggers on `test_files` (`squeal_marker_test_files_insert|update|delete`) set `closure-writes` to a new random value for every closure write by any writer of any release. They are in `src/core/store/write-markers.ts`, which replaces `closure-writes.ts`.
+- `storeClosures` (`scheduler/revision.ts`) and `addClosures` (`store/transfer-rows.ts`) no longer call `markClosureWrite`. Both files are back to `5e8dcc223`.
+- `trustedClosureWrites` trusts the marker only while the three `test_files` triggers exist and the marker has a row, read in the selection's read transaction. `everyDaemonClaims` is gone.
+- `test/cli/older-writers.test.ts` pins the review's sequences for the named selection: an older closure write that adds `START`, then one that drops it, with and without an older daemon's registration between the reads.
+- The source-scan test "is moved by both writers of closures, and by no other code" is deleted. The triggers cover every writer, so no list of writers is kept.

@@ -2,6 +2,8 @@
 
 Worker 6702c043, 2026-11-14. Brief: `tasks/wave-90.md` W2. Board row 011-45. Starts from row 011-331 (`tasks/011-331/notes.md`: the edit wait's read is `editPoll` in `src/cli/wait/status.ts`).
 
+Review 0.1.489 failed this design (B1). The repair below, "Repair round for review 0.1.489 (wave 90.5)", replaces the marker's writers and its trust rule. The sections "What changed" (the writer rows), "Trust", "Key format" and the store and daemon test rows describe the first round and are kept as the record.
+
 ## What changed
 
 | File | What |
@@ -68,3 +70,79 @@ The header is made each poll from the kept rows on purpose. Its other inputs (th
 - Row 011-44 adds a closure marker beside this one in `WORKTREE_META_ROWS`. Whichever lands second rebases that line.
 - A new caller of `knownStates.removeMany` or `testFileKeys.remove` must bump the marker in its transaction (`bumpStatesMarkerOf`). The test in `test/store/states-marker.test.ts` names the callers, so a new caller fails it.
 - A new writer of known states or key rows that uses raw SQL instead of the repositories must bump too. Today there is none (`grep` for `INTO known_states`, `UPDATE test_file_keys` and similar).
+
+## Repair round for review 0.1.489 (wave 90.5)
+
+Worker 6702c043, resumed 2026-11-14. Brief: `tasks/wave-90.5.md` W1. Review: `reviews/0.1.489.md`, B1. This round owns both markers: row 011-44's closure marker and this row's states marker. Start: `git reset --hard 73c8277ea`.
+
+**B1.** The markers moved only when a writer of this release bumped them. Trust (`everyDaemonClaims`) saw only the daemons registered at the read. Two writes changed the rows and left the marker, so both caches kept stale rows:
+
+- (a) an older daemon that registers, writes and exits between two reads;
+- (b) an older `squeal code` gate that writes through `storeResults` with no daemon.
+
+The fallback wait ended `timeout` with 0 transitions where a full read gives `news` with 1.
+
+### The rule now: the database moves the markers
+
+`src/core/store/write-markers.ts` replaces `states-marker.ts` and `closure-writes.ts`. It is the one owner of both markers:
+
+- Nine triggers, `squeal_marker_<table>_<insert|update|delete>`:
+  - `known_states` and `test_file_keys` set `states-marker.<worktree_id>` (of the old row and the new row) to `lower(hex(randomblob(8)));
+  - `test_files` sets `closure-writes` the same way.
+  - They run in the writing statement's own transaction, for every writer of every release: an older daemon, a gate with no daemon, the transfer import, raw SQL. A random value, so a store made again never repeats a value a reader holds.
+- `ensureWriteMarkers(store)`:
+  - Makes missing triggers with `CREATE TRIGGER IF NOT EXISTS`, outside `schema.ts`, with no `user_version` raise (as `ensureImportTables`).
+  - In the same transaction, sets the closure marker and the states marker of every worktree that has rows, so the rows written before the triggers count as a write.
+  - A store that has all nine triggers is left alone: one `sqlite_master` read.
+  - The daemon calls it in `#register`, in the registration transaction, before `releaseRunning`.
+- Trust (`statesMark`, `trustedClosureWrites`):
+  - The marker's table's triggers all exist (by name in `sqlite_master`), and the marker has a row. This is read in the reader's read transaction, beside the marker and the rows.
+  - Otherwise the reader reads in full each poll, as at `5e8dcc223`: a store no daemon of this release opened, a dropped trigger (a release that makes a table again), a removed worktree (its row goes after its rows), or a test's store with no connection.
+  - A change to a trigger's body must take a new name. A reader checks names, not bodies.
+
+### Deleted (replace, not layer)
+
+- The repositories' bumps: `KnownStateRepo.upsertMany` and `TestFileKeyRepo.upsertMany` (`repos/states.ts`, `repos/test-files.ts`, back to `5e8dcc223`).
+- The ledger commit's removal bump (`scheduler/ledger.ts`, back to `5e8dcc223`).
+- `storeClosures`' and `addClosures`' `markClosureWrite` (`scheduler/revision.ts`, `store/transfer-rows.ts`, back to `5e8dcc223`).
+- The registration's `claimStatesMarker` (`daemon/daemon.ts`; `ensureWriteMarkers` takes its line).
+- `everyDaemonClaims`, `bumpStatesMarker`, `bumpStatesMarkerOf`, `claimStatesMarker`, `markClosureWrite`, `closureWrites`, and the files `src/core/store/states-marker.ts` and `src/core/store/closure-writes.ts`.
+- The writer source-scan tests: "leaves the removals to the ledger's commit" (`test/store/states-marker.test.ts`) and "is moved by both writers of closures, and by no other code" (`test/cli/stored-closures.test.ts`).
+- The trust tests on daemon claims: `test/store/states-marker.test.ts` (whole file), `test/daemon/states-marker-claim.test.ts` (whole file), and "is trusted while every registered daemon claimed", "is not trusted with no daemon registered", "sees a closure an unclaimed daemon wrote" in `test/cli/stored-closures.test.ts`.
+- `claimAll` in `test/cli/closure-trust.ts` (now `armMarkers`).
+
+`WORKTREE_META_ROWS.statesMarker` stays (owner now `store/write-markers`), so `WorktreeRepo.remove` drops the row after the worktree's rows.
+
+### Tests
+
+| Test | What it pins |
+|---|---|
+| `test/cli/older-writers.test.ts` (new, red on `73c8277ea`: 6 of 6 failed, now 6 pass) | Both B1 sequences, each with writes in raw SQL that runs no marker code. (a) X registers as an older daemon, writes, and clears its registration before the next read. (b) No registration at all. After each: the kept fallback read deep-equals `readHeld(…, null)` and has the recovery as 1 news; a named selection with kept closures equals a full one after an older closure write adds `START` and after one drops it; a real fallback `waitForStatus`, with B pending, ends `news` with 1 transition, as the same wait on a store without triggers. |
+| `test/store/write-markers.test.ts` (new) | `ensureWriteMarkers` makes 9 triggers once, keeps `user_version`, and sets the markers of worktrees with rows and the closure marker. Every insert, replace, raw update and removal of states and key rows moves its worktree's marker only. Every put, replace, raw update and removal of a closure moves the closure marker. A write that changes no row moves nothing. A rolled-back write leaves both. Trust: none before the triggers, per table (a dropped key-row trigger leaves the closure marker trusted and the reverse), none after the worktree's removal, none from a store without a connection. |
+| `test/daemon/write-markers-start.test.ts` (new) | A real daemon's registration makes the triggers. Both markers stay trusted after it exits, and a write after its exit moves the states marker. |
+| `test/cli/wait-every-state.test.ts` | Counting tests unchanged in substance: a quiet poll reads nothing, and a write is found on the next poll with the same news and quiet as a full read. "Reads every time with no triggers, once they are dropped, or with no marker row" replaces the daemon-claim case. Counting now wraps the store in place, so the reader keeps the store's connection. |
+| `test/cli/stored-closures.test.ts`, `test/cli/named-wait-closures.test.ts` | The marker is set when the triggers are made, and moves on each transfer-import write and on a removal. A store with no triggers lists every time. The kept selection equals a full read after each closure write and key move. The named wait lists again only on the poll after a write. |
+
+### Checks
+
+- `pnpm run lint`: `Checked 3430 files`, no fixes. `pnpm run typecheck`: clean.
+- `test/keys/key-format.test.ts` passes with no raise (Squeal, revision 53). The repositories, `ledger.ts`, `revision.ts` and `transfer-rows.ts` are back to `5e8dcc223`. `write-markers.ts` is imported only by `daemon.ts` and the waits, which are off the validity path.
+- Run directly while Squeal had them queued (`env -u PLUGIN_ROOT -u PLUGIN_DATA pnpm exec vitest run <paths>`): the six focused files above, 36 tests, then 17. All passed after the two test fixes recorded in the commit.
+
+### Cost of the triggers
+
+A fresh private store, `knownStates.upsertMany` of 30,000 states that replace 30,000 existing ones (the daemon's usual write) in one transaction. CPU of the upsert, 6 runs each, alternating order. `nice 10`. Host load average 33 to 37 on 24 vCPUs, the host's real load from parallel coordinators.
+
+| Store | ms CPU per 30,000-row upsert, sorted | Median |
+|---|---|---|
+| Without triggers | 265, 317, 317, 325, 347, 351 | 325 |
+| With triggers | 337, 342, 380, 384, 408, 455 | 384 |
+
+About 59 ms, 18%, per 30,000 rows: one `meta` upsert per row written. At this load the spread is wide, so the figure is a size, not a precise ratio. A daemon's usual commit writes far fewer rows. The fallback wait's read side is unchanged from the first round: median 486 ms before, 98 ms after (section above); the trust check is now one `sqlite_master` read in place of the worktree scan.
+
+### Calls the review did not settle
+
+1. Who makes the triggers: the daemon of this release, at registration. Readers never write. A store whose daemons are all older releases keeps full reads.
+2. Trust checks trigger names, not bodies. A changed body takes a new name.
+3. A missing marker row is untrusted, not "no write". This covers a removed worktree, and a worktree that has had no write since the triggers were made (it has no rows, so a full read is cheap).
+4. An older release's `WorktreeRepo.remove` does not know `states-marker.<id>`. When an older release removes a worktree, it leaves that one small `meta` row. The triggers have moved it, so no reader trusts stale rows from it.
