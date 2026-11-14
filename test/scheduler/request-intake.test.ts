@@ -164,7 +164,8 @@ describe("request intake: the progress record (row 018-12)", () => {
     const answer = await p.intake.take(groupRequest(TESTS_GROUP, p.groups, undefined));
     // `B` was running; `A` has no key, so it is not queued and its ask counts nothing.
     expect(answer).toMatchObject({ queued: 1 });
-    expect(p.log).toEqual(["record test/a.test.ts test/b.test.ts (A not queued)", "pump"]);
+    // Row 011-335: a pass that started after the request first.
+    expect(p.log).toEqual(["pass", "record test/a.test.ts test/b.test.ts (A not queued)", "pump"]);
     expect(p.progress.count).toBe(0);
     p.ledger.setRunning(b, null);
     p.ledger.applyResults(b, key, [], null);
