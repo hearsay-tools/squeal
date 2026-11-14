@@ -18,8 +18,8 @@ import {
  * lock and serves it, the code gate's keeper sends each try of each write
  * to it, and the daemon writes in its retried path, so the gate makes no
  * write transaction of its own. Spec 020 D17.5 (row 020-28) holds as with
- * no daemon: the files are written by `flush` once the report is out, the
- * wait names the lock's holder first, the bound counts from the first
+ * no daemon: the files still queued once the report is out are written by
+ * `flush` (row 020-59: the others while the runs go on), the wait names the lock's holder first, the bound counts from the first
  * refused write, and a file whose inputs moved during the wait is not
  * kept. A daemon without this request keeps nothing of the gate's, as
  * before.
@@ -47,10 +47,16 @@ describe("the keeper while a daemon serves the worktree (021 D15, row 021-20)", 
     const at = await served();
     const notes: string[] = [];
     const locked = at.hold();
-    const freed = setTimeout(locked.release, 400);
+    // Row 020-59: freed after the busy note, as `keep-busy.test.ts` frees it; a timer started
+    // before the gate could free it while an early pass waits, so the last pass never waits.
+    let freed: NodeJS.Timeout | undefined;
     const count = countGateWrites();
     try {
-      await kept(at, notes);
+      await kept(at, notes, {
+        onBusy: () => {
+          freed = setTimeout(locked.release, 400);
+        },
+      });
     } finally {
       clearTimeout(freed);
       locked.release();

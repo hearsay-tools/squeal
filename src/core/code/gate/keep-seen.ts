@@ -149,7 +149,7 @@ export async function keepSeen(
     const outcome = await sliced(
       () => merge(seen),
       async (busy) => {
-        at.check.owe();
+        at.check.owe(busy);
         return busy && at.giveUp(at.database) ? "spent" : null;
       },
     );

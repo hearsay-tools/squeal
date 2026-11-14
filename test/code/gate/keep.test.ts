@@ -15,8 +15,10 @@ import type { RunReport } from "../../../src/core/types/runner.js";
  * keep is the run evidence table's (`test/run-evidence/table.test.ts`, row
  * 011-319). Here: it never reaches the write for a file with no record,
  * and a failure while keeping costs only the write, told once, and never
- * fails the gate. D17.5 (row 020-28): a run only queues its files, and
- * `flush` writes them; a busy store is `keep-busy.test.ts`'s.
+ * fails the gate. D17.5 as amended by row 020-59: a run's files are
+ * written while the runs go on, and what a pass could not write is told
+ * only at `flush`, after the report; a busy store is `keep-busy.test.ts`'s
+ * and `keep-early.test.ts`'s.
  */
 
 const REF: TestFileRef = { project: "", path: "test/a.test.ts" };
@@ -75,11 +77,12 @@ describe("Keeper (spec 020 D17.3)", () => {
     expect(notes).toEqual([]);
   });
 
-  it("writes nothing until `flush` (D17.5)", async () => {
+  it("tells nothing until `flush`, even of a write that failed while the runs went on (row 020-59)", async () => {
     const notes: string[] = [];
     const keep = keeper(() => Promise.reject(new Error("the write was reached")), notes);
 
     await keep.ran(run([REF], RECORD));
+    await new Promise((done) => setTimeout(done, 50));
     expect(notes).toEqual([]);
 
     // The root does not exist, so the write fails at its first step.
@@ -116,7 +119,7 @@ describe("Keeper (spec 020 D17.3)", () => {
         runs.inFlight -= 1;
       },
     } as unknown as WorktreeKeys;
-    // Each flush with files starts its write with the head, which fails here and counts the files.
+    // Each pass with files starts its write with the head, which fails here; the last pass counts the files.
     let writes = 0;
     const notes: string[] = [];
     const keep = new Keeper({
@@ -124,7 +127,10 @@ describe("Keeper (spec 020 D17.3)", () => {
       root: tmpdir(),
       commonDir: "/nowhere/.git",
       policy: DEFAULT_POLICY,
-      head: () => Promise.reject(new Error(`write ${++writes}`)),
+      head: () => {
+        writes += 1;
+        return Promise.reject(new Error("no head"));
+      },
       note: (text) => notes.push(text),
     });
     const ref = (project: string): TestFileRef => ({ project, path: "test/x.test.mjs" });
@@ -145,13 +151,14 @@ describe("Keeper (spec 020 D17.3)", () => {
     expect(runs.inFlight).toBe(1);
     await keep.flush();
     // `a` once and `b`: the second run of `a` found its lookup taken.
-    expect(notes).toEqual(["2 completed test files were not kept in the stores: write 1"]);
+    expect(notes).toEqual(["2 completed test files were not kept in the stores: no head"]);
 
     // `c`'s runner never ran: closing ends its run, and a late completion keeps nothing.
+    const before = writes;
     keep.close();
     await keep.ran(ranOf(c));
     await keep.flush();
-    expect([writes, runs.inFlight]).toEqual([1, 0]);
+    expect([writes, runs.inFlight]).toEqual([before, 0]);
   });
 
   it("does nothing for a runner it was not told of", async () => {

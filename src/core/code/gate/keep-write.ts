@@ -78,7 +78,10 @@ export class StoreWait {
     this.#database = database;
     if (this.#since === null) {
       this.#since = now();
-      const wait = `waiting up to ${seconds(boundMs)} s to keep ${completed(left.length)}`;
+      // Row 020-59: the files earlier passes wrote while the runs went on are named apart.
+      const { keptEarly = 0 } = this.#options;
+      const early = keptEarly === 0 ? "" : ` (${keptEarly} kept while the runs went on)`;
+      const wait = `waiting up to ${seconds(boundMs)} s to keep ${completed(left.length)}${early}`;
       tell(`the store is busy (${holderOf(database)}); ${wait}: ${names(left)}`);
     }
     return now() - this.#since >= boundMs;
@@ -121,6 +124,8 @@ export interface StoreWaitOptions {
   readonly now: () => EpochMs;
   readonly boundMs: number;
   readonly tell: (text: string) => void;
+  /** Row 020-59: how many files were written before this wait's pass, while the runs went on. */
+  readonly keptEarly?: number;
 }
 
 /** The databases a file's write touches, as `lockHolders` reads them. */
@@ -170,15 +175,22 @@ export interface KeepWriter {
  */
 export class InputCheck {
   #owed = false;
+  #lost = false;
 
   /** Whether a try failed, so every later write reads its file's inputs first. */
   get owed(): boolean {
     return this.#owed;
   }
 
-  /** A try did not land. */
-  owe(): void {
+  /** Whether a daemon never received a try: a moved file is then told as moved after it. */
+  get lost(): boolean {
+    return this.#lost;
+  }
+
+  /** A try did not land: a busy store refused it, or (`busy` false) a daemon never received it. */
+  owe(busy = true): void {
     this.#owed = true;
+    this.#lost ||= !busy;
   }
 
   /** Whether the file whose inputs `read` reads may be written now; it reads them once owed. */
@@ -219,7 +231,7 @@ export async function keepFile(
   const { file, report, provenance, databases, giveUp, check } = at;
   const steady = async () => (await at.unheld()) && (await check.holds(at.steady));
   const paused = (database: AbsolutePath) => async (busy: boolean) => {
-    check.owe();
+    check.owe(busy);
     if (busy && giveUp(database)) return "spent";
     return (await steady()) ? null : "changed";
   };

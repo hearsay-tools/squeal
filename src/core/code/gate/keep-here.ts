@@ -22,8 +22,10 @@ export function writeHere(
   stores: { readonly store: Store; readonly code: CodeStore },
   worktreeId: WorktreeId,
   now: () => EpochMs,
+  sliceMs: number = BUSY_SLICE_MS,
 ): KeepWriter {
   const { store, code } = stores;
+  const tried = (write: () => unknown) => triedOnce(write, sliceMs);
   return {
     coverage: async (file) => {
       const recordKey = { resultKey: file.key, providerVersion: COVERAGE_RECORD_VERSION };
@@ -38,10 +40,17 @@ export function writeHere(
   };
 }
 
-/** `write`, one synchronous transaction, tried once with one busy slice. */
-function tried(write: () => unknown): Tried {
+/**
+ * Row 020-59: how long a write while the runs go on waits for a busy
+ * store before it is handed back to a later pass. The wait blocks this
+ * process, which the gate's runs share, so it is short.
+ */
+export const EARLY_SLICE_MS = 20;
+
+/** `write`, one synchronous transaction, tried once with one busy slice of `sliceMs`. */
+function triedOnce(write: () => unknown, sliceMs: number): Tried {
   try {
-    withBusySliceSync(BUSY_SLICE_MS, write);
+    withBusySliceSync(sliceMs, write);
     return "kept";
   } catch (error) {
     if (!isBusy(error)) throw error;
@@ -68,6 +77,8 @@ export function writerFor(
     readonly files: number;
     readonly seen: number;
     readonly tell: (text: string) => void;
+    /** Row 020-59: a write while the runs go on, with a short busy slice (`EARLY_SLICE_MS`). */
+    readonly early?: boolean;
   },
 ): { readonly writer: KeepWriter; readonly code: CodeStore | null } | null {
   const { worktreeId, now } = at;
@@ -75,7 +86,8 @@ export function writerFor(
     const code = openCodeStore(at.commonDir, at.policy);
     if (isCodeStoreOpenFailure(code))
       throw new Error(`the code store did not open: ${code.reason}`);
-    return { writer: writeHere({ store, code }, worktreeId, now), code };
+    const sliceMs = at.early === true ? EARLY_SLICE_MS : BUSY_SLICE_MS;
+    return { writer: writeHere({ store, code }, worktreeId, now, sliceMs), code };
   }
   if (at.files + at.seen === 0) return null;
   const sent = sentWriter(store, worktreeId, now(), at.daemonWaits);
