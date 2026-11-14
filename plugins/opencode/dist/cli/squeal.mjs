@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.497";
+  if (true) return "0.1.499";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -91509,40 +91509,54 @@ function messageOf3(error) {
 
 // src/core/code/gate/keep-queue.ts
 var PAUSES_MS = [250, 500, 1e3, 2e3];
-var MAX_PAUSE_MS = PAUSES_MS[PAUSES_MS.length - 1];
+var MAX_PAUSE_MS = PAUSES_MS[PAUSES_MS.length - 1] ?? 2e3;
+var timerPause = (ms2, then2) => {
+  const timer = setTimeout(then2, ms2);
+  timer.unref();
+  return () => clearTimeout(timer);
+};
 var EarlyWrites = class {
   #pass;
+  #pause;
+  /** The passes and the pauses between them, until no pass is left to run. */
   #running = null;
   #again = false;
   #stopped = false;
-  #timer = null;
+  /** Ends the pause under way, if any, with no pass after it. */
+  #cancel = null;
   #busy = 0;
-  /** `pass` writes what is queued; it never rejects. */
-  constructor(pass) {
+  /** `pass` writes what is queued; it never rejects. `pause` times the pauses between passes. */
+  constructor(pass, pause = timerPause) {
     this.#pass = pass;
+    this.#pause = pause;
   }
   /** Whether `stop` was called: a pass then gives up at its next busy refusal. */
   get stopped() {
     return this.#stopped;
   }
-  /** Something was queued: a pass starts now, or once the running one ends; never during a pause. */
+  /** Something was queued: a pass starts now, or once the running pass or pause ends. */
   kick() {
     if (this.#stopped) return;
-    if (this.#running !== null || this.#timer !== null) {
-      this.#again ||= this.#running !== null;
+    if (this.#running !== null) {
+      this.#again = true;
       return;
     }
     this.#running = this.#loop().finally(() => {
       this.#running = null;
     });
   }
-  /** No pass starts any more; resolves once the running one ended. */
+  /** No pass starts any more; ends a pause under way and resolves once the running pass ended. */
   async stop() {
     this.#stopped = true;
-    if (this.#timer !== null) clearTimeout(this.#timer);
-    this.#timer = null;
+    this.#cancel?.();
     await this.#running;
   }
+  /**
+   * One pass after another while files are queued. A pass that left files
+   * is followed by a pause, inside the loop, so a pause that ends at any
+   * time starts the next pass (row 020-64); a pass that wrote everything
+   * is followed at once by another only when something was queued during it.
+   */
   async #loop() {
     for (; ; ) {
       this.#again = false;
@@ -91551,16 +91565,26 @@ var EarlyWrites = class {
       if (end === "left") {
         const pause = PAUSES_MS[Math.min(this.#busy, PAUSES_MS.length - 1)] ?? MAX_PAUSE_MS;
         this.#busy += 1;
-        this.#timer = setTimeout(() => {
-          this.#timer = null;
-          this.kick();
-        }, pause);
-        this.#timer.unref();
-        return;
+        if (!await this.#paused(pause)) return;
+        continue;
       }
       this.#busy = 0;
       if (!this.#again) return;
     }
+  }
+  /** Resolves `true` once a pause of `ms` ended, `false` when `stop` ended it first. */
+  #paused(ms2) {
+    return new Promise((resolve45) => {
+      const cancel2 = this.#pause(ms2, () => {
+        this.#cancel = null;
+        resolve45(true);
+      });
+      this.#cancel = () => {
+        this.#cancel = null;
+        cancel2();
+        resolve45(false);
+      };
+    });
   }
 };
 
@@ -91630,7 +91654,7 @@ var Keeper = class {
   /** The files a pass did not keep for their write (a grown key, a merge hold), told after the last pass. */
   #passNotKept = new NotKept();
   /** Row 020-59: the passes while the runs go on. */
-  #early = new EarlyWrites(() => this.#earlyPass());
+  #early;
   /** Owed from the first try that did not land, in any pass (review 0.1.444 B2). */
   #check = new InputCheck();
   /** What the early passes would tell, told at `flush`: what no pass tells before the report. */
@@ -91640,6 +91664,7 @@ var Keeper = class {
   constructor(options) {
     this.#options = options;
     this.#hold = mergeHoldOf(options.root);
+    this.#early = new EarlyWrites(() => this.#earlyPass(), options.pause);
   }
   /**
    * Before `runner`'s run: the files of `keyed` it will run, each at the
