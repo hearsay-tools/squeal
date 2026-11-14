@@ -14,6 +14,14 @@
 
 // The environment hash, the check key, closure helpers, observed sets, installed packages.
 export * as keys from "../../../../src/core/keys/index.js";
+// The record's outcome (the barrier, the requeue), the run's end and each file's store decision (row 011-319).
+export {
+  decisionOf,
+  recordOutcome,
+  runEnd,
+} from "../../../../src/core/run-evidence/run-evidence.js";
+// Row 011-321: the record's check of what a run read beyond its keys, moved out of `observed.ts` by row 011-319.
+export { observedMoves } from "../../../../src/core/run-evidence/sources.js";
 // Accept or hold, the checks a set retires, the read of the listed formats (011-40).
 export * as accept from "../../../../src/core/scheduler/accept.js";
 // Closures, declared inputs, listings, gitignored paths.

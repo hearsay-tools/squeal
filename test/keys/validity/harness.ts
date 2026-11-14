@@ -25,6 +25,7 @@ import {
   writeTree,
 } from "./harness/shared.js";
 import { storeCase } from "./harness/store.js";
+import { storeReads } from "./harness/store-reads.js";
 import { vitestCase } from "./harness/vitest.js";
 
 /*
@@ -96,6 +97,7 @@ export async function runCase(c: Case, scratch: string, runtime: string): Promis
     case "assemble":
       return assemble(c.input, scratch);
     case "store":
+      if (c.input.reads !== undefined) return storeReads(c.input, c.input.reads, scratch);
       return storeCase(c.input, scratch);
     case "prune":
       return pruneCase(c.input, join(scratch, "store"));
