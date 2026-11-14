@@ -50,7 +50,7 @@ Owns: `test/harness/opencode/held-stop.ts` and its test. Leave alone: `src/**`, 
 
 ## R4 (W4): review of cand/011-338
 
-Use /reviewer (codex gpt-6.1-sol high). Candidate CI: run . Pinned to `cand/011-338` at `e3e2d77c862715e5674d2da40743b42e628180cc`; range `1ae8f3e6a..e3e2d77c8`: one commit of worker 2a1811a6, cherry-picked; tests only, no version. Read: board row 011-338, `tasks/011-338/notes.md`, `tasks/011-336/notes.md` (the leak), this file's W4.
+Use /reviewer (codex gpt-6.1-sol high). Candidate CI: run 43602968476. Pinned to `cand/011-338` at `e3e2d77c862715e5674d2da40743b42e628180cc`; range `1ae8f3e6a..e3e2d77c8`: one commit of worker 2a1811a6, cherry-picked; tests only, no version. Read: board row 011-338, `tasks/011-338/notes.md`, `tasks/011-336/notes.md` (the leak), this file's W4.
 
 Check, each as proven, plausible or unverified:
 
