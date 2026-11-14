@@ -71,4 +71,8 @@ The rows of 011-346's table that named `batch-select`, `focused-group-turn`, `pr
 
 ## Checks run (2026-11-14)
 
-See the final report for the outputs; summary here once the runs end.
+- `pnpm run lint`: clean. `pnpm run typecheck`: clean (exit 0), both at 45c74a36a.
+- The 9 owned test files (`queue-promotion`, `tier-plan`, `tier-plan-batches`, `tier-plan-quiet`, `tier-start`, `tier-start-batch`, `backlog-quiet-select`, `catch-up-quiet-select`, `pool-wait`), direct `vitest run`: 75 of 75 pass.
+- `test/keys/validity/compare.test.ts`, `reach.test.ts`, `test/keys/key-format.test.ts`: 35 of 35 at 9a5ae7233 (80 s). At 45c74a36a the first run failed in a setup hook (10 s timeout) at load average 113, no test ran: load. Rerun with `--hookTimeout=300000 --maxWorkers=2`: 35 of 35 pass, 412 s, no version raise.
+- `test/scheduler` (every scheduler test, the real-pump ones included), direct `vitest run --maxWorkers=4 --hookTimeout=120000`, because Squeal had 930 affected files pending: 297 of 298 files, 1309 tests pass, 8 skipped; 2 fail, both `busy-record.test.ts` ("starts nothing from a busy wait another error overtook ..." and "starts nothing from a resume armed before a stall ..."), the baseline failure the parent repaired on the candidate (c56242d99). 1000 s, load average about 94.
+- `squeal status --wait 60000` on the changed paths, revision 31: 1 pass (`pool-wait`), 930 pending behind a run in flight (not waited for). Squeal also reported `test/status/checkpoint.test.ts` failing on a 10 s hook timeout at load average 136: load, not run again.
