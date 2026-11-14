@@ -47,3 +47,16 @@ Read: board row 011-338; `tasks/011-336/notes.md` (the leak and its candidate fi
 The stand-in (`stop.mjs`, polling for its release file every 5 ms) exits once its release folder is gone or once OpenCode's process is gone. First edit: a test that starts a stand-in, removes its folder, and finds no stand-in left within a bound.
 
 Owns: `test/harness/opencode/held-stop.ts` and its test. Leave alone: `src/**`, `test/helpers/opencode.ts`, `test/harness/opencode/real.ts`. Done when: the row's done-when; the dispose tests still pass on the Node versions available; lint and typecheck pass. Notes in `tasks/011-338/notes.md`.
+
+## R4 (W4): review of cand/011-338
+
+Use /reviewer (codex gpt-6.1-sol high). Candidate CI: run . Pinned to `cand/011-338` at `e3e2d77c862715e5674d2da40743b42e628180cc`; range `1ae8f3e6a..e3e2d77c8`: one commit of worker 2a1811a6, cherry-picked; tests only, no version. Read: board row 011-338, `tasks/011-338/notes.md`, `tasks/011-336/notes.md` (the leak), this file's W4.
+
+Check, each as proven, plausible or unverified:
+
+1. **The stand-in ends on its own**: `stop.mjs` exits once its barriers folder or the request's OpenCode process is gone, checked on each tick, with no answer written; a stand-in whose test is alive behaves as before.
+2. **The dispose tests keep their subject**: the held Stop still holds while the test needs it; the new exit cannot fire while the folder and OpenCode exist.
+3. **The new cases test the real stand-in**, and two of them fail without the change, as the notes say; the simulated cancel (folder removed or a dead pid) is a fair stand-in for a cancelled run.
+4. **Scope**: nothing under `src/`; `test/helpers/opencode.ts` and `test/harness/opencode/real.ts` unchanged.
+
+Host policy as in `wave-85.md`; never the real `HOME`; signal only processes your probe started. Write `reviews/011-338.md` and commit it on your branch.
