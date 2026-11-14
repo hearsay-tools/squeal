@@ -15,6 +15,7 @@ import type { StatusResult } from "../core/types/status.js";
 import type { Store } from "../core/types/store.js";
 import type { TestFileKeyRecord } from "../core/types/store-records.js";
 import type { SyncState } from "./status-sync.js";
+import { passReached } from "./wait/synced.js";
 
 /**
  * How a set of test files stands at the worktree's current revision: how
@@ -226,9 +227,8 @@ export function resultCode(result: SelectionResult): 0 | 1 | 3 {
  * to its settle time.
  */
 export function unsynced(sync: SyncState, revision: number, snapshot = false): boolean {
-  if (sync.state === "pending") return true;
-  if (sync.state === "unsupported") return snapshot;
-  return sync.revision > revision;
+  // Row 011-331: the status waits' one rule; a wait's timeout is past its settle time.
+  return !passReached(sync, revision, !snapshot);
 }
 
 /** The class that leaves `verdict`'s files without one, by D1's order; `null` when every file is current. */
