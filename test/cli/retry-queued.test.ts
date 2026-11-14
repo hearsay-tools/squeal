@@ -20,8 +20,7 @@ import { closeFakeDaemons, fakeDaemon } from "./fake-daemon.js";
 const A = "test/a.test.ts";
 const B = "test/b.test.ts";
 const ref = (path: string) => ({ project: "", path: path as never });
-const TAIL =
-  "Its FAIL stays counted until a retry passes; squeal status lists the retry while it is pending.";
+const TAIL = `Its FAIL stays counted until a retry passes; squeal status lists the retry while it is pending. squeal status --wait 60000 ${A} waits for its result; the wait leaves the retry at its normal priority.`;
 const QUEUED = `Retry queued (reason: environment): ${A} runs once more in its turn at its normal priority`;
 
 const saved = { ...process.env };

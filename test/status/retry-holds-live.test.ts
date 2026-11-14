@@ -244,8 +244,7 @@ function ping(worktreeId: string, root: string) {
   };
 }
 
-const TAIL =
-  "Its FAIL stays counted until a retry passes; squeal status lists the retry while it is pending.";
+const TAIL = `Its FAIL stays counted until a retry passes; squeal status lists the retry while it is pending. squeal status --wait 60000 ${SLOW} waits for its result; the wait leaves the retry at its normal priority.`;
 
 function held(): { shut: Promise<void>; open: () => void } {
   let open = () => {};
