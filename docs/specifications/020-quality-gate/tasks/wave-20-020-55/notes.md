@@ -166,8 +166,31 @@ Host load during the work: one-minute load 70 to 104 on 24 CPUs.
   keeps the first failure" failed with `expected [ 'fail' ] to deeply equal
   []`. Source restored from a copy; `git status` showed only the intended
   changes.
-- Affected checks over the five changed source paths: see "Affected-check
-  result" below.
+- Affected checks, `squeal status --wait 1200000` over the five changed
+  source paths (revision 21, the notes commit): 359 test files selected.
+  After 1202.7 s: 135 pass, 1 fails, 224 still queued for CPU ("the host
+  is busy (23 of 24 cores in use)"); exit 3. Load at the end: 92.07,
+  109.84, 92.20 on 24 CPUs. The one failure is
+  `test/cli/status-wait-pool.test.ts` "with no row, a predecessor's, ...
+  the text is today's": the status text said "the deadline passed after
+  0.3 s" where the test's first reading said "0.1 s". It is a timing text
+  in the status-wait code, which this row does not touch; row 020-54's
+  notes saw the same file fail under load. I asked `squeal retry
+  test/cli/status-wait-pool.test.ts --reason load` and did not rerun it
+  myself.
+- A second wait, named on the 35 keeper, collector and lanes test files
+  (`test/code/gate/keep*`, `collect-*`, `lanes*`, `test/cli/code-gate-keep*`,
+  `code-gate-failed-outside`, `code-gate-log`) and `status-wait-pool`
+  (revision 22): "no known failures; 36 test files, each with a current
+  result, after 210.7 s"; exit 0; load 43.28, 72.35, 80.87 at the end.
+  `status-wait-pool` went FAIL -> PASS on its load retry, under the same
+  tracked inputs.
+- End state of the affected checks: the 36 named files pass at revision
+  22. Of all 359 files that read the changed sources, 135 had passed at
+  revision 21 (some of them among the 36); the others not named were
+  still queued for CPU when I stopped waiting, and their results are not
+  known to me. I did not wait for them (wave rule: targeted tests only; CI
+  runs them all).
 
 ## Checks not run
 
