@@ -109,18 +109,25 @@ describe("request intake: each request words its refused pass (row 011-337)", ()
         p.intake.take(fullSuiteRequest({}, { quiet: new BacklogQuiet(), warmUp: new WarmUp() })),
       `${PASS}, so no checkpoint was planned`,
     ],
-    ...REQUESTS.map(
-      ([name, take]) => [name, take, `${PASS}, so no checkpoint was planned`] as const,
-    ),
+    [
+      "run <group>",
+      (p: Probe) => p.intake.take(groupRequest(TESTS_GROUP, p.groups, undefined)),
+      `${PASS}, so nothing was queued for group tests`,
+    ],
+    [
+      "run <group> <path>",
+      (p: Probe) => p.intake.take(narrowRequest(TESTS_GROUP, [C.path], p.groups)),
+      `${PASS}, so no test file of group tests that the paths select was queued`,
+    ],
     [
       "run --slow",
       (p: Probe) => p.intake.take(groupRequest(SLOW_GROUP, p.groups, undefined)),
-      `${PASS}, so no checkpoint was planned`,
+      `${PASS}, so nothing was queued for group slow`,
     ],
     [
       "run <lint group>",
       (p: Probe) => p.intake.take(groupRequest("lint", p.groups, undefined)),
-      `${PASS}, so no checkpoint was planned`,
+      `${PASS}, so nothing was queued for group lint`,
     ],
   ] as const;
 
