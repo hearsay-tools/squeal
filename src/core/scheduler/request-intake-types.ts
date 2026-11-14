@@ -44,11 +44,17 @@ export type InstallWaitRule<A, P> =
   | { readonly atOnce: A }
   /**
    * Under the lock, in its transaction instead of its stage; its covered
-   * files are recorded not queued, with the reason. `passFirst`: an awaited
-   * install's pass, which may end the wait, runs before the lock.
+   * files are recorded not queued, with the reason, which it may answer
+   * (row 011-324). `passFirst`: an awaited install's pass, which may end
+   * the wait, runs before the lock.
    */
   | {
-      readonly stage: (context: SchedulerContext, ledger: Ledger, id: RequestId) => Staged<A>;
+      readonly stage: (
+        context: SchedulerContext,
+        ledger: Ledger,
+        id: RequestId,
+        reason: string,
+      ) => Staged<A>;
       readonly passFirst?: true;
     }
   /** Under the lock, from its plan (`always`), queuing nothing; its covered files as `stage`'s. */

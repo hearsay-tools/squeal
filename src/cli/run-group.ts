@@ -125,9 +125,13 @@ export async function runGroupCommand(args: GroupArgs, io: CliIo, usage: string)
 /**
  * `Group <name> requested at revision <n>: <k> test files queued; they run
  * now.`, or once the groups it runs after (D1 `after`) have nothing pending.
+ * Row 011-324: an answer that names the install it waits for says so.
  */
-function requestedText(group: ResolvedGroup, { revision, queued }: Requested): string {
+function requestedText(group: ResolvedGroup, { revision, queued, installWait }: Requested): string {
   const { name, after } = group;
+  if (installWait !== undefined) {
+    return `No test files of group ${name} run at revision ${revision}: ${installWait}.\n`;
+  }
   if (queued === 0) {
     return `No test files of group ${name} to run at revision ${revision}: the group has none or all are current.\n`;
   }
