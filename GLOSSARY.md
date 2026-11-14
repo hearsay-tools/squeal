@@ -32,6 +32,16 @@ _Avoid_: dead (a death is the note "last one died"), down
 Something a daemon, a hook or the CLI reports about a daemon (registered, beat, exiting, rested, spawned, stopped by request). Presence is built only from these events.
 _Avoid_: mark (when you mean the event, not its stored form)
 
+## Progress
+
+**Progress record**:
+What the daemon keeps per worktree about how far it has got: the refined revision, an install it waits for, an open checkpoint, a HEAD that moved with no file change, and the end of its start scan. Each has one owner, which alone knows how it is stored and what a missing value means.
+_Avoid_: progress facts, meta row (when you mean what the record says)
+
+**Refined revision**:
+The newest revision whose runner part the daemon has applied, or counted as applied after it failed. A revision after it is pending. With none recorded, no revision is pending.
+_Avoid_: taken-in revision, listed revision (the listing is a record of its own)
+
 ## Results
 
 **Run evidence**:
