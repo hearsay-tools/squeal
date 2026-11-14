@@ -285,7 +285,7 @@ function batchFile(vitest: Vitest, batch: CoverageBatch, paths: WorktreePaths): 
 
 /**
  * Spec 022 D1: of each wanted file's batch, the worktree's files its worker
- * loaded, sorted. A list without the test file itself is lost and dropped,
+ * loaded, sorted, the lists by test file. A list without the test file itself is lost and dropped,
  * as is a batch `coveredFiles` drops. Read before the payloads go.
  */
 export function loadedLists(
@@ -306,7 +306,9 @@ export function loadedLists(
     if (!loaded.has(ref.path)) continue;
     lists.push({ testFile: ref, paths: [...loaded].sort(compare) });
   }
-  return lists;
+  // In the order the workers ended, which varies: sorted by test file.
+  const by = ({ testFile }: LoadedList) => `${testFile.project}\0${testFile.path}`;
+  return lists.sort((a, b) => compare(by(a), by(b)));
 }
 
 /** Deletes each batch's payload and its children's: a hung, crashed or rejected run keeps no record (D8). */

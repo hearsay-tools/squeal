@@ -46,6 +46,19 @@ describe("loadedLists (022 D1)", () => {
     expect(lists).toEqual([{ testFile: A, paths: ["src/z.ts", "test/a.test.ts"] }]);
   });
 
+  it("orders the lists by test file, whatever order the workers ended in", () => {
+    const lists = loadedLists(
+      vitest,
+      [
+        batch(["test/b.test.ts"], ["/w/test/b.test.ts"]),
+        batch(["test/a.test.ts"], ["/w/test/a.test.ts"]),
+      ],
+      all,
+      paths,
+    );
+    expect(lists.map((l) => l.testFile)).toEqual([A, B]);
+  });
+
   it("drops a list without its own test file as lost", () => {
     expect(loadedLists(vitest, [batch(["test/a.test.ts"], ["/w/src/z.ts"])], all, paths)).toEqual(
       [],
