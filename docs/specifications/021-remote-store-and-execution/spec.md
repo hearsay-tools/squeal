@@ -55,7 +55,7 @@ Revision apply, refinement apply, socket requests that write (retry, promote, fo
 
 - The hook's hand-off hold (`delivery/held-connection.ts`, row 011-288) no longer waits on `code.sqlite` or for the host to read its output while it holds `store.sqlite`. Whatever it reads from the code store, it reads before it takes the write lock. The rule it protects (a report is marked delivered only once the host has it) stays; how is the worker's choice, within: no wait on another file and no wait on the host inside the hold.
 - Any write transaction that holds the lock for more than 250 ms writes one daemon log line with its operation name, duration and rows written, to the worktree's daemon log `<commonDir>/squeal/logs/daemon-<worktree id>.log` (001 D10; row 021-32, 2026-11-14: until then a spawned daemon's lines went to `/dev/null`) (2026-11-11: frames cannot be read without dropping the lock; see status). This finds the daemons' 0-frame holds of up to 1.2 s (`store-contention.md` open question 1).
-- Import (`transfer-import.ts`) and prune write in slices like tier records.
+- Import (`transfer-import.ts`) and prune write in slices like tier records. After each slice, the lock stays free for as long as the slice held it, at least 10 ms, so a writer in another process gets turns; the code-store prune runs as slices of the same driver after the main store's (amended 2026-11-14, row 011-350, GitHub #220: back-to-back transactions let a waiter in 0 times in 8 s, `../020-quality-gate/research/issue-220.md` Q1).
 
 #### D4. WAL size
 
