@@ -28,10 +28,14 @@
 // `coverageFilesDirectory`. Vitest 4.1.10 passes neither (row 013-09):
 // `reportsDirectory` is then read from the worker's config, and the payload
 // goes where Vitest 5 puts it, `<reportsDirectory>/.tmp`.
+//
+// Spec 022 D1 (row 022-03): `takeCoverage` also returns the files the
+// worker's module runner fetched for the test file (`loadedFiles`), beside
+// the payload's path; the main side keeps them with the batch.
 const { randomUUID } = process.getBuiltinModule("node:crypto");
 const { existsSync, mkdirSync, readFileSync, writeFileSync } = process.getBuiltinModule("node:fs");
 const inspector = process.getBuiltinModule("node:inspector/promises");
-const { join } = process.getBuiltinModule("node:path");
+const { isAbsolute, join } = process.getBuiltinModule("node:path");
 const { fileURLToPath } = process.getBuiltinModule("node:url");
 
 // The module runner may evaluate this file more than once in a worker
@@ -40,6 +44,9 @@ const { fileURLToPath } = process.getBuiltinModule("node:url");
 const SESSION = Symbol.for("squeal.coverage.session");
 /** The id of the next payload, whose children's directory the variable names (020 D12). */
 const CHILDREN = Symbol.for("squeal.coverage.children");
+
+/** This file, which the module runner may have fetched too: in no list (D1). */
+const OWN = fileURLToPath(import.meta.url);
 
 /** The test files of this worker's run (`globalThis.__vitest_worker__`, Vitest 4 and 5). */
 function workerFiles() {
@@ -92,6 +99,39 @@ function kept(script) {
   return script.url.startsWith("file://") && !script.url.includes("/node_modules/");
 }
 
+/**
+ * Spec 022 D1: the files of the module nodes this worker's runner holds, by
+ * node presence, not `evaluated` (`vi.resetModules()` clears that flag and
+ * keeps the node). A query or hash is cut (`a.txt?raw`), `mock:<path>` is
+ * `<path>`, and a virtual id, a package's file and this file are left out.
+ * The adapter keeps the worktree's files among them.
+ */
+function loadedFiles() {
+  const modules = globalThis.__vitest_worker__?.evaluatedModules?.idToModuleMap;
+  if (modules === undefined) return [];
+  const files = new Set();
+  for (const id of modules.keys()) {
+    const file = loadedFile(id);
+    if (file !== null) files.add(file);
+  }
+  return [...files];
+}
+
+/** The file of one module id, `null` when it names none a list keeps. */
+function loadedFile(id) {
+  let file = id.startsWith("mock:") ? id.slice("mock:".length) : id;
+  if (file.startsWith("file://")) {
+    try {
+      file = fileURLToPath(file);
+    } catch {
+      return null;
+    }
+  }
+  file = file.replace(/[?#].*$/s, "");
+  if (!isAbsolute(file) || file.includes("/node_modules/") || file === OWN) return null;
+  return file;
+}
+
 export default {
   async startCoverage({ isolate, reportsDirectory = workerCoverage().reportsDirectory } = {}) {
     if (isolate === false || globalThis[SESSION] !== undefined) return;
@@ -120,7 +160,7 @@ export default {
     const file = join(coverageFilesDirectory, `coverage-${children ?? randomUUID()}.json`);
     writeFileSync(file, JSON.stringify({ result: scripts }));
     if (children !== undefined) pointChildren(coverageFilesDirectory);
-    return file;
+    return { file, loaded: loadedFiles() };
   },
 
   async stopCoverage() {
@@ -147,7 +187,10 @@ export default {
         this.batches = [];
       },
       onAfterSuiteRun(meta) {
-        if (typeof meta.coverage === "string") this.batches.push(meta);
+        const taken = meta.coverage;
+        if (typeof taken?.file !== "string") return;
+        const loaded = Array.isArray(taken.loaded) ? taken.loaded : [];
+        this.batches.push({ ...meta, coverage: taken.file, loaded });
       },
       /** The batches since the last call, for the daemon's adapter. */
       takeBatches() {
