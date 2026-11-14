@@ -17,10 +17,10 @@ import { failuresText, gapText, noVerdictText, readClasses, verdictCode } from "
 import { besideBound, notReadText, readBeside } from "./wait/beside.js";
 import { checkpointFiles, requestFiles } from "./wait/covered.js";
 import type { RequestOutcome } from "./wait/decide.js";
-import { stoppedText } from "./wait/presence.js";
 import { openCheckpoint } from "./wait/progress.js";
 import type { CheckpointFiles } from "./wait/reads.js";
 import { askWithin } from "./wait/socket.js";
+import { stoppedText } from "./wait/stopped.js";
 import type { CheckpointOutcome } from "./wait/table.js";
 import { runWait, untilTaken } from "./wait/wait.js";
 import { takeWait } from "./wait-arg.js";

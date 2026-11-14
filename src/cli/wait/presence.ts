@@ -1,12 +1,14 @@
 import { resolveCommonDir } from "../../core/fs/git-layout.js";
 import { worktreeLiveness } from "../../core/presence/heartbeat.js";
+import type { WaitLiveness } from "../../core/presence/wait.js";
 import { STATUS_BUSY_TIMEOUT_MS, withStatusStore } from "../../core/status/open.js";
 import type { AbsolutePath, EpochMs, WorktreeId } from "../../core/types/common.js";
+import type { DaemonStopping } from "../../core/types/status.js";
 import type { Store } from "../../core/types/store.js";
-import { noDaemonText } from "../status-wait-lines.js";
+import type { WorktreeRecord } from "../../core/types/store-records.js";
 import { type DaemonWatch, stoppingOf } from "../wait-liveness.js";
 import type { WaitPorts } from "./socket.js";
-import type { DaemonDown, DaemonReading } from "./table.js";
+import type { DaemonReading } from "./table.js";
 
 /*
  * Row 011-327 (`research/waits.md`, decision 4 items 1 and 2): the status
@@ -50,15 +52,36 @@ export function presenceOf(
       if (commonDir === null) throw new Error(`run wait: no git common dir for ${root}`);
       watch = ports.watch(worktreeId, commonDir);
     }
-    const worktree = store.worktrees.get(worktreeId);
-    const at = ports.now() as EpochMs;
-    const stopping = stoppingOf(store, worktree, at);
-    const view = watch.judge(worktree?.daemon ?? null, at, stopping);
+    const { view, worktree, at, stopping } = judgeWait(watch, store, worktreeId, ports.now);
     if (view.state !== "down") return { state: view.state };
     const heartbeat = worktreeLiveness(worktree, at);
     const liveness = stopping === undefined ? heartbeat : { ...heartbeat, stopping };
     return { state: "down", reason: view.reason, liveness };
   };
+}
+
+/**
+ * Row 011-331: the daemon check of one read of any wait but the snapshot,
+ * daemon presence's wait view: worktree `id`'s record in the open store,
+ * then the clock, then the stopping reading of the same read, judged by the
+ * wait's one watch. Was written in each status wait and in `presenceOf`.
+ */
+export function judgeWait(
+  watch: DaemonWatch,
+  store: Store,
+  id: WorktreeId,
+  now: () => number,
+): {
+  readonly view: WaitLiveness;
+  readonly worktree: WorktreeRecord | null;
+  readonly at: EpochMs;
+  readonly stopping: DaemonStopping | undefined;
+} {
+  const worktree = store.worktrees.get(id);
+  const at = now() as EpochMs;
+  const stopping = stoppingOf(store, worktree, at);
+  const view = watch.judge(worktree?.daemon ?? null, at, stopping);
+  return { view, worktree, at, stopping };
 }
 
 /**
@@ -74,13 +97,4 @@ export function presenceRead(
   const { busyTimeoutMs } = readBound(ask.deadline, now);
   const read = withStatusStore(ask.root, { busyTimeoutMs }, ({ store }) => presence(store));
   return "available" in read ? { state: "unread" } : read;
-}
-
-/**
- * Row 011-327: why the wait view found the daemon down, in the status
- * waits' words (`noDaemonText`): a cleared record, "the daemon stopped"; a
- * dead socket past the heartbeat's grace; a handoff past its bound.
- */
-export function stoppedText(daemon: DaemonDown, command: string): string {
-  return noDaemonText(daemon.liveness, daemon.reason, command);
 }
