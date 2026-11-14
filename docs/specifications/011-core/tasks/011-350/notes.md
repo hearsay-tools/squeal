@@ -65,4 +65,5 @@ The prune's lookup-then-delete race at `prune.ts` (`pruneCoverage`: the keys rea
 ## For the next worker
 
 - The rig (`holdEvery` with a TEMP trigger, and the waiter thread) fits any other back-to-back write loop. Examples are `removeWorktree` in the main prune, which already pauses, and other writers that #220's research names.
-- Squeal's verdict was hard to read on a host at load average 110 to 150. `test/shared/reader-upstream.test.ts` timed out at 5 s with and without the pause, so its failure comes from load.
+- Squeal's verdict was hard to read on a host at load average 110 to 150. `test/shared/reader.test.ts`, `reader-upstream.test.ts` and `test/cli/status-wait-paused.test.ts` timed out at 5 s there, and `reader-upstream` did so with the pause disabled too. At load average 80, all three passed in direct runs with the pause in place. A reader test's import pauses twice, 10 ms each (measured). `test/keys/key-format.test.ts` hit its 10 s `beforeAll` timeout (it extracts the last release); it passed 12 of 12 with `--hookTimeout=120000`.
+- `plugins/*/dist` now differs from the build (`test/harness/opencode/package.test.ts` fails on `cli/squeal.mjs`). The bundles are not this row's to rebuild.
