@@ -19,6 +19,12 @@ import { later } from "./wait-clock.js";
  * stored the revision holding the edits made before it exits 3, however
  * current the old result looks; one that was ready at its last read still
  * gives that read's verdict.
+ *
+ * Row 011-331: the cases "a pending pass" and "a pass at a revision the
+ * store has not reached" are decided by the pure rows (`passReached` and
+ * `selectionReady` in `test/cli/wait/synced.test.ts`, the named row's
+ * timeout in `status-table.test.ts`, `unsynced` in `selection-result.test.ts`)
+ * and their lines pinned in `wait-again.test.ts`.
  */
 
 const PENDING: SyncState = { state: "pending" };
@@ -70,30 +76,6 @@ function rekeyed(store: Store, worktreeId: string) {
 }
 
 describe("a named wait's deadline before its sync reached the current revision", () => {
-  it("exits 3 while the daemon's pass is still pending, not 0 on the old result", async () => {
-    const { repo } = edited();
-    const result = await command(
-      repo.main,
-      options(() => PENDING, 30),
-    );
-    expect(result.code).toBe(3);
-    expect(result.last).toMatch(
-      /^Named test files have no verdict: the deadline passed after \d+\.\d s: 1 test file passed at revision 4; the daemon has not stored its pass over the edits made before the wait, so this result may not cover them\. Worktree: .*\. A later pass is not reported\. A failure arrives with a later tool call\. For the verdict, wait again: `squeal status --wait 30 src\/a\.test\.ts`$/,
-    );
-  });
-
-  it("exits 3 when the pass names a revision the store has not reached", async () => {
-    const { repo } = edited();
-    const result = await command(
-      repo.main,
-      options(() => synced(5), 30),
-    );
-    expect(result.code).toBe(3);
-    expect(result.last).toMatch(
-      /^Named test files have no verdict: the deadline passed after \d+\.\d s: 1 test file passed at revision 4; the daemon's pass is at revision 5, so this result may not cover it\. Worktree: /,
-    );
-  });
-
   it("exits 3 when the pass re-keyed the edited file and its result has not landed", async () => {
     const { repo, store } = edited();
     let current: SyncState = PENDING;
