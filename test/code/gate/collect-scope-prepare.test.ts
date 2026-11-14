@@ -71,4 +71,26 @@ describe("collectEvidence: a prepare and the scope by check group (spec 020 D14.
     expect(evidence.scope?.files).toEqual([]);
     expect(status(root)).toBe("!! dist/stamp.json\n!! dist/tool.mjs\n");
   });
+
+  it(
+    "counts a --test file whose prepare failed as named, not as run (review 0.1.490 B3)",
+    SLOW,
+    async () => {
+      const root = project("prepare");
+      const changed = await changedSet(root, ["src/names.mjs"]);
+      const scope = scopeOf(root, [], E2E_GROUP);
+      const failing: BasePrepares = new Map([
+        ["package", { command: ["node", "-e", "process.exit(1)"] }],
+      ]);
+      const { evidence } = await collect(root, changed, { prepares: failing, scope, tests: [E2E] });
+      expect(evidence.prepares?.map((p) => [p.project, p.outcome, p.notRun])).toEqual([
+        ["package", "failed", [E2E]],
+      ]);
+      expect(evidence.testFiles.find((f) => f.path === E2E)?.completed).toBe(false);
+      // `tests` counts what --test named; that it did not run is in the runs.
+      expect(evidence.scope?.leftOut).toEqual([
+        { name: "e2e", at: "manual", files: 1, selected: 0, add: "--group e2e", tests: 1 },
+      ]);
+    },
+  );
 });

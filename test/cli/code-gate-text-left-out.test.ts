@@ -1,4 +1,6 @@
+import { spawnSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
+import { parseGateArgs } from "../../src/cli/code-gate-args.js";
 import { preRunText } from "../../src/cli/code-gate-prerun.js";
 import { formatGateReport } from "../../src/cli/code-gate-text.js";
 import { leftOutCountText } from "../../src/cli/code-gate-text-left-out.js";
@@ -6,6 +8,8 @@ import type { SelectionSummary } from "../../src/core/code/gate/prerun.js";
 import type { GateFunctionReport, GateReport } from "../../src/core/code/gate/report.js";
 import type { LeftOutGroup } from "../../src/core/code/gate/scope.js";
 import type { ChangedSet } from "../../src/core/code/gate/types.js";
+import type { RelativePath } from "../../src/core/types/common.js";
+import type { FileHash } from "../../src/core/types/keys.js";
 import { functionRow, gateReport } from "./code-gate-text-kit.js";
 
 /*
@@ -43,13 +47,27 @@ const edited = (path: string): GateFunctionReport =>
     loaders: { expected: [], measured: [], leftOut: [path] },
   });
 
+/**
+ * A report with `functions` and the left-out groups `leftOut`; its changed
+ * paths are the functions' files and `edited`, test files changed outside
+ * any function.
+ */
 const report = (
   leftOut: readonly LeftOutGroup[],
   functions: readonly GateFunctionReport[] = [source],
+  edited: readonly string[] = [],
 ): GateReport =>
   gateReport({
     verdict: "incomplete",
     functions,
+    head: {
+      commit: "fedcba",
+      dirty: true,
+      paths: [...new Set([...functions.map((f) => f.path), ...edited])].map((path) => ({
+        path: path as RelativePath,
+        blob: "b" as FileHash,
+      })),
+    },
     counts: { pass: 0, violation: 0, incomplete: functions.length, skipped: 0, accepted: 0 },
     scope: { groups: [{ name: "tests", at: "edit", from: "default" }], leftOut },
   });
@@ -87,6 +105,32 @@ describe("the verdict line: --test for an edited test file left out (row 020-61,
     );
   });
 
+  it("quotes a path the shell would split, and the shell gives the gate the same path (review 0.1.490 B1)", () => {
+    const paths = ["e2e/edited spec.test.ts", "e2e/it's.test.ts"];
+    const line = verdictLine(report([browser(2)], paths.map(edited))) ?? "";
+    const flags = /add (--test .*?); the other/.exec(line)?.[1] ?? "";
+    expect(flags).toBe("--test 'e2e/edited spec.test.ts' --test 'e2e/it'\\''s.test.ts'");
+    const shell = spawnSync("bash", ["-c", `printf '%s\\0' ${flags}`], { encoding: "utf8" });
+    const argv = shell.stdout.split("\0").slice(0, -1);
+    const parsed = parseGateArgs(["--base", "main", ...argv]);
+    expect("error" in parsed ? parsed.error : parsed.tests).toEqual(paths);
+  });
+
+  it("names a left-out test file edited outside its functions (review 0.1.490 B2)", () => {
+    const line = verdictLine(report([browser(1)], [source], ["e2e/target.test.ts"]));
+    expect(line).toMatch(/ add --test e2e\/target\.test\.ts; the other selected/);
+  });
+
+  it("never names an unchanged left-out test, nor an edited test that ran in scope", () => {
+    const ran = functionRow({
+      path: "test/a.test.ts",
+      qualifiedName: "it.<callback>",
+      loaders: { expected: ["test/a.test.ts"], measured: ["test/a.test.ts"] },
+    });
+    const line = verdictLine(report([browser(1)], [source, ran], ["test/b.test.ts"]));
+    expect(line).toMatch(/add --group browser to run it\.$/);
+  });
+
   it("prints as before when no edited test file was left out", () => {
     expect(verdictLine(report([browser(100)]))).toMatch(/add --group browser to run them\.$/);
   });
@@ -102,15 +146,15 @@ describe("leftOutCountText: the count of a left-out group (row 020-61)", () => {
     );
   });
 
-  it("after --test, says which files ran and counts only the others", () => {
+  it("after --test, says which files it named, never that they ran, and counts only the others (review 0.1.490 B3)", () => {
     expect(leftOutCountText(browser(0, { files: 3, tests: 1 }))).toBe(
-      "1 of its 3 test files runs by --test; none of the other 2 loads changed code",
+      "1 of its 3 test files is named by --test; none of the other 2 loads changed code",
     );
     expect(leftOutCountText(browser(1, { files: 4, tests: 2 }))).toBe(
-      "2 of its 4 test files run by --test; 1 of the other 2 loads changed code; add --group browser to run it",
+      "2 of its 4 test files are named by --test; 1 of the other 2 loads changed code; add --group browser to run it",
     );
     expect(leftOutCountText(browser(0, { files: 1, tests: 1 }))).toBe(
-      "its 1 test file runs by --test",
+      "its 1 test file is named by --test",
     );
   });
 });
@@ -125,7 +169,7 @@ describe("the pre-run left-out line after --test (row 020-61, #203)", () => {
     };
     const changed = { functions: [] } as unknown as ChangedSet;
     expect(preRunText(summary, changed)).toContain(
-      "browser (manual) is left out: 1 of its 3 test files runs by --test; none of the other 2 loads changed code",
+      "browser (manual) is left out: 1 of its 3 test files is named by --test; none of the other 2 loads changed code",
     );
   });
 });

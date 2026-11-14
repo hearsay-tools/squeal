@@ -62,8 +62,10 @@ export interface LeftOutGroup {
   /** What adds it for one run. */
   readonly add: string;
   /**
-   * Row 020-61: of its test files, the ones that ran because `--test`
-   * named them; not among `selected`. Absent when none did.
+   * Row 020-61: of its test files, the ones `--test` named, so the scope
+   * selects them to run; not among `selected`. Whether each ran, or a
+   * failed `prepare` or the budget stopped it, is in `runs[]` (review
+   * 0.1.490 B3). Absent when `--test` named none.
    */
   readonly tests?: number;
 }

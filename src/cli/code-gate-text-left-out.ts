@@ -1,6 +1,6 @@
 import type { GateReport } from "../core/code/gate/report.js";
 import type { LeftOutGroup } from "../core/code/gate/scope.js";
-import { plural } from "../core/text.js";
+import { plural, shellWord } from "../core/text.js";
 
 /*
  * Spec 020 D14.3 (rows 020-15, 020-61, #203): what the scope left out, in
@@ -20,8 +20,9 @@ export function loadsChangedText(selected: number, add: string): string {
 
 /**
  * D14.3, row 020-61: the count words of a left-out group, for the pre-run
- * line: the files `--test` ran (`tests`) apart, then how many of the others
- * load changed code, and the flag that runs them.
+ * line: the files `--test` named (`tests`) apart, then how many of the
+ * others load changed code, and the flag that runs them. A named file is
+ * selected to run; whether it ran is in `runs[]` (review 0.1.490 B3).
  */
 export function leftOutCountText({ files, selected, add, tests = 0 }: LeftOutGroup): string {
   const loads = (n: number) => (n === 0 ? "none" : `${n}`);
@@ -30,28 +31,32 @@ export function leftOutCountText({ files, selected, add, tests = 0 }: LeftOutGro
   if (tests === 0) {
     return `${loads(selected)} of its ${plural(files, "test file")} ${changed}`;
   }
-  const ran = `${tests === files ? "its" : `${tests} of its`} ${plural(files, "test file")} ${tests === 1 ? "runs" : "run"} by --test`;
-  if (others === 0) return ran;
-  return `${ran}; ${loads(selected)} of the other ${others} ${changed}`;
+  const which = tests === files ? "its" : `${tests} of its`;
+  const named = `${which} ${plural(files, "test file")} ${tests === 1 ? "is" : "are"} named by --test`;
+  if (others === 0) return named;
+  return `${named}; ${loads(selected)} of the other ${others} ${changed}`;
 }
 
 /** Row 020-61: how many `--test` commands the verdict line names. */
 const NAMED_TESTS = 3;
 
 /**
- * Row 020-61 (#203): the edited test files the scope left out, by path:
- * a changed function in a test file that lists itself as a left-out loader.
+ * Row 020-61 (#203): the edited test files the scope left out, by path: a
+ * changed path (`head.paths`) that a changed function lists as a left-out
+ * loader. A data-only edit counts, with no changed function in the file
+ * (review 0.1.490 B2); a file that ran in scope is never a left-out loader.
  */
 function editedLeftOut(report: GateReport): string[] {
-  const own = report.functions.filter((f) => f.loaders.leftOut?.includes(f.path) === true);
-  return [...new Set(own.map((f) => f.path))].sort();
+  const leftOut = new Set(report.functions.flatMap((f) => f.loaders.leftOut ?? []));
+  const edited = report.head.paths.map((p) => p.path).filter((path) => leftOut.has(path));
+  return [...new Set(edited)].sort();
 }
 
 /** Row 020-61: the `--test` command for the edited test files left out; empty when none was. */
 function testText(report: GateReport): string {
   const edited = editedLeftOut(report);
   if (edited.length === 0) return "";
-  const named = edited.slice(0, NAMED_TESTS).map((path) => `--test ${path}`);
+  const named = edited.slice(0, NAMED_TESTS).map((path) => `--test ${shellWord(path)}`);
   const rest = edited.length - named.length;
   const it = rest === 1 ? "test file: --json lists it" : "test files: --json lists them";
   const more = rest === 0 ? "" : ` (${rest} more edited ${it} under loaders.leftOut)`;

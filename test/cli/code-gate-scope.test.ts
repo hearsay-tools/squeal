@@ -81,6 +81,26 @@ describe("squeal code --base: the scope by check group (spec 020 D14)", () => {
     expect(report.scope?.groups[0]).toEqual({ name: "browser", at: "manual", from: "--group" });
   });
 
+  it(
+    "names --test for a left-out spec edited outside its functions (row 020-61, review 0.1.490 B2)",
+    SLOW,
+    async () => {
+      ownHomeAndTmp();
+      const root = repo(files("manual"));
+      const page = files("manual")["e2e/page.test.ts"] ?? "";
+      edit(root, {
+        "src/math.ts": DOUBLED,
+        "e2e/page.test.ts": `${page}export const label = "page";\n`,
+      });
+
+      const text = await code(root, ["--base", "main"]);
+
+      expect(text.stdout.split("\n")[0]).toMatch(
+        / browser \(manual\) did not run: 1 test file loads changed code; add --group browser to run it\. To run only the edited test file of them, add --test e2e\/page\.test\.ts; the other selected test files in scope still run, with their setup\.$/,
+      );
+    },
+  );
+
   it("refuses a --group no test group has at the base, before any run (exit 2)", SLOW, async () => {
     ownHomeAndTmp();
     const root = repo(files("manual"));
