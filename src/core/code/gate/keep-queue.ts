@@ -91,7 +91,8 @@ export class EarlyWrites {
       if (end === "left") {
         const pause = PAUSES_MS[Math.min(this.#busy, PAUSES_MS.length - 1)] ?? MAX_PAUSE_MS;
         this.#busy += 1;
-        if (!(await this.#paused(pause))) return;
+        // Row 020-66: `stop` in the turn that ended the pause still starts no pass.
+        if (!(await this.#paused(pause)) || this.#stopped) return;
         continue;
       }
       this.#busy = 0;
