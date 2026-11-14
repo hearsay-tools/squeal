@@ -21,3 +21,17 @@ Stop and ask me if either fix needs a rule change beyond its row's done-when, or
 Owns: `src/core/scheduler/admission.ts`, `scheduler.ts` (`#facts()` only), `test/scheduler/admission*.test.ts`, new test files under `test/scheduler/` for these rows, one line in spec 019's `status.md`. Leave alone: `slow-tier.ts` beyond a read the fix needs, `tiers.ts`, `record.ts`, `request-intake.ts` (cards 6 and 7 may start in these files now).
 
 Done when: each row's done-when; lint and typecheck pass; `squeal status --wait 60000` on the changed paths, with pending or unknown files named; `test/keys/key-format.test.ts` passes with no raise. Notes in `tasks/011-341/notes.md` (both rows): each test's result before the fix, the fix or the reason for none, and a "behaviour" line naming what a user would see change.
+
+## R1: review of cand/0.1.502
+
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.502` at `b83018e0e07d97cd5ad8a863d2140c255acea697`; range `049563bc2..b83018e0e`: worker 0c0970aa's three commits (row 011-341 fix, row 011-342 fix, notes), then the 0.1.502 version raise and bundles. Behaviour to compare against: `049563bc2` (0.1.501). Read: board rows 011-341 and 011-342, `research/admission.md` (differences 1 and 2, Rows items 2 and 3), `tasks/011-341/notes.md`, this file's W1, `reviews/0.1.498.md`.
+
+Check, each as proven, plausible or unverified:
+
+1. **Each defect was real before its fix.** `admission-runner-work.test.ts` and `admission-rewalk-lanes.test.ts` fail at `049563bc2` (revert only the `src/` part of each fix) and pass at the pin; neither depends on a timing race (the notes claim 5 of 5 and 3 of 3).
+2. **011-341**: no lane starts a tier while runner work is pending, whatever its `after`; the refusal order (`stopping`, `runtime-gone`, `held`, `runner-work`, then the lane's rules) holds; a lane refused for runner work is asked again after the drain and cannot stall (no lost wake, no busy loop); `waits` and the published activity are unchanged; spec 019's `status.md` line reads D3 as the row says.
+3. **011-342**: the re-walk gives way to any group lane's waiting activity; the read stays lazy (at most once per answer, after the halt check); a group with no stored activity reads as not waiting.
+4. **Nothing else a user sees changes**: no message, status field, CLI output or key; `test/keys/key-format.test.ts` passes with no raise.
+5. **Scope**: only `admission.ts`, `scheduler.ts` (`#facts`, `#laneWaiting`), the scheduler tests and the one spec 019 line.
+
+The coordinator's tree at the pin passed lint, typecheck, build, `check:version origin/main` (0.1.501 to 0.1.502), and directly `key-format`, `version-sensitive`, `admission`, `admission-runner-work`, `admission-rewalk-lanes`, `admission-rewalk` (64 tests). Host policy as in `wave-85.md`. Write `reviews/0.1.502.md` and commit it on your branch.
