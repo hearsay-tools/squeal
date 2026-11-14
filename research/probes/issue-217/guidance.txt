@@ -1,0 +1,526 @@
+/home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.475/skills/squeal/SKILL.md
+sha256: 736541a48fd2db8b004959d1bbb15c05d6e1d20b241c1822f14e1eacd5b13c67
+Lines matching word reach: 0
+---
+name: squeal
+description: Use when about to run tests (vitest, npm test) or to check whether a change broke something, in a repository that uses Squeal (it has squeal.config.json, or SQUEAL messages appear). Squeal already runs the suites its primer lists as covered; this says when to wait for their results and how to read its reports.
+---
+
+# Squeal
+
+Under Codex `squeal` is not on the PATH: wherever this skill and its references say `squeal`, run the command the SQUEAL primer names. That is the launcher `<plugin data>/bin/squeal`, in the plugin data directory where Squeal keeps a copy of each version; before the first copy, it is `node --disable-warning=ExperimentalWarning "<plugin root>/dist/cli/squeal.mjs"`, the plugin root being the directory that holds `skills/squeal/`. The last line of a FAIL report names it too. A plugin update deletes the plugin root of the version a session started on; this skill stays readable at `<plugin data>/versions/<version>/skills/squeal/`, the path the SessionStart message names.
+
+Squeal runs this repository's tests in the background after every edit. It reports only changes, in messages that start with `SQUEAL ·`: a check that went `PASS -> FAIL`, `FAIL -> PASS`, or failed differently. It covers what the SQUEAL primer lists from `squeal.config.json`: the Vitest tests, the node:test tests of the `nodeTest` projects, the pytest tests of the `pytest` projects, and the slow test files `slow` marks; a test file you add that matches them is picked up too. Typecheck, build and anything else the repository checks are yours to run.
+
+## Steps
+
+1. **Keep working, and read the reports.** Results arrive with your next tool call, as SQUEAL messages. No message means nothing changed, not that everything passes; where the primer says no test group runs after each edit, nothing ran: use `squeal run <group> <path>... --wait 60000`. Running the test files beside your edit to learn sooner duplicates what Squeal is already running. Done when you have read every FAIL in every SQUEAL message that arrived.
+2. **On a FAIL**, read its first error line and location. When they are not enough, run the message's last line, `Full output: squeal why '<name>'`, for the full output and history. Squeal re-runs a new failure once on its own, but not one from a forced run (`squeal run --all --force`, `squeal warmup`, a re-run), one already re-run at the same inputs, a slow file's, nor any when more than eight eligible test files fail anew in one tier; a passing re-run arrives as a PASS with the line `Flaky: FAIL -> PASS under the same tracked inputs`. So rather than re-running such a failure yourself to see whether it is flaky, let that re-run answer. After your fix the recovery arrives as `FAIL -> PASS`. Done when each FAIL is fixed or you can say why it stays.
+3. **Wait only when you need a result before your next step**; otherwise results arrive with your next tool call. For files you just changed, `squeal status --wait 60000 <path>...` gives the verdict of the test files they select. Before saying the task is done, run `squeal status --wait 60000`, or `--wait 120000` on a busy host: it returns once the test files your edits re-keyed have results, or one of their checks changed, but not for slow files (step 4); `squeal run --all --wait` is a full-suite checkpoint. Done when the last line gives a verdict, `Returned on quiet` or `Returned on news`; on a timeout, wait again.
+4. **Before you say the task is done, make the evidence current.** Where `squeal.config.json` marks slow test files, the header's second line starts `Slow tier:`. If the last one says `Stop waits`, they are required once you edit: while one is not current, run `squeal run --slow --wait 60000`. Without `Stop waits`, say how many are not current. Claim slow tests pass only once it says every slow file is current. Done when no check of your edits is pending, the slow tier is current or counted, and every claim about tests matches a line of `squeal status`. When a check stays pending after you waited again, say it is pending: `Known failures: 0; not current: …` means "no known failures yet".
+5. **Run tests yourself only** when a header says no daemon is validating, a result is unknown, or the repository's own gate (CI, a pre-commit hook, the task) requires a run. A SQUEAL line `No result for <path>: no test Squeal runs reads it` means the same for that file: run whatever tests it yourself. Done when the suites the primer does not list have run as the repository says; a gate the repository requires is still yours to run.
+
+## Reading a header
+
+The registration and Stop's report start with a header like `Revision 21 (changed src/math.ts): 40 current (34 tests, 6 test files loaded), 3 pending (3 tests), 0 stale, 0 unknown.`, naming the files changed since your last report: what changed, not what caused a failure, which may be any earlier edit or none of yours. Other SQUEAL messages carry the news, those files and non-zero counts only.
+
+## Reference
+
+- `references/reports.md`: when reports arrive and what every header count and line means: pending, stale, unknown, inherited, `git-ignored`, the slow tier, no daemon validating. Read it when a header says something the steps do not cover.
+- `references/commands.md`: what `squeal status`, `squeal why` and `squeal run` print, what the last line of each wait means, what a path selects, and red/green through the wait. Read it when a command's output is not what step 3 or 4 expects, or before a red/green check.
+- `references/policy.md`: an edit denied after a regression, a Stop that keeps you going or waits for the slow tier, and every key of `squeal.config.json`. Read it when Squeal denies an edit or blocks a stop, or before changing the config.
+
+
+/home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.475/skills/setup/SKILL.md
+sha256: c3641292106371c7988c6de5c81627dededd06998b14896cd3d34b1947f75cb7
+Lines matching word reach: 0
+---
+name: setup
+description: Use when the user asks to set Squeal up in this repository, or to upgrade or change its setup (/squeal:setup in Claude Code, $squeal:setup in Codex). Runs squeal setup's plan, asks its questions, applies the answers and shows the diff.
+---
+
+# Squeal setup
+
+`squeal setup` decides what to ask and writes every file: the harnesses, the Squeal block in the instruction files, the gate lines that run tests, the slow test files, the suites that test a build output, Codex trust. You ask the user its questions and pass the answers back as flags.
+
+In Claude Code `squeal` is on the Bash tool's PATH; if not, run `"${CLAUDE_PLUGIN_ROOT}/bin/squeal"`. In Codex it is not: run `node --disable-warning=ExperimentalWarning "<plugin root>/dist/cli/squeal.mjs"`, the plugin root being the directory that holds `skills/setup/`. Below, `squeal` means that command.
+
+## Steps
+
+1. **Read the plan.** Run `squeal setup --plan --json` for the ids the flags take, then `squeal setup < /dev/null` for the questions: with no terminal it prints each question with its choices, the default first, writes nothing and exits 1. Done when you have each question and the flag that answers it (table below).
+2. **Ask.** Do not ask again what the user already said ("take the defaults", "no block"). Ask the warm-up question with step 4's note on where it runs, and add one for the launcher (step 5). When the plan's `squealMentions` names a line, that file already holds Squeal instructions outside the block: show the user that line with the block question, since a block would repeat them. Show the user the plan's `not run:` and `run twice:` lines, each with its fix: no question or flag covers them. With `AskUserQuestion` (an interactive Claude Code session), ask the rest at most four questions a round, the default first and marked so; it takes four choices, so name any further ones in the question for a typed answer. Without it (`claude -p`, `codex exec`, Codex), print the plan's summary and each question with its numbered choices, say the user can reply with answers or "defaults", and end the turn without writing anything. Done when every question has an answer.
+3. **Apply** with `squeal setup --yes --no-warmup` and one flag per answer:
+
+   | Question | Flag |
+   |---|---|
+   | Set up a harness here? | `--harness claude-code`, `--harness codex`: each one chosen; `--harness none` when none |
+   | Write or upgrade the Squeal block? | `--block <file>` for each file written; `--block none` when none |
+   | Gate line `<id>` | `--gate <id>=reword` or `--gate <id>=keep` |
+   | Leave a group's tests to CI and to runs after a build? | `--exclude <glob>` for each group answered yes, the glob as the question shows it; a group answered no is then asked whether it is slow |
+   | Run a group in the slow tier? | `--slow <glob>` for each group answered slow, the glob ending in `/**` as the question shows it; `--slow none` when none |
+   | Codex trust | `--no-trust` when declined |
+
+   Setup asks no input question: Squeal covers no test of a build output, which goes in the runner's `exclude` instead; show the user the evidence the question names, and that Squeal never builds. Give `--input <glob>=<path>` only for a committed file the user says a slow group reads at runtime, and `--input <glob>=none` when none; never a file the suite's own bootstrap rewrites on each run (an environment descriptor, a log, a PID file): declared, every boot re-runs the group. `--slow`, `--input` and `--exclude` answer every slow group together, so once you give one, give them for each group. Setup refuses a glob that selects no test file. Then show the user the `Changes:` part of the output: the diff stat, each instruction file's diff and the files to commit. Never commit or stage. Done when the command exited 0 and the user has seen the diff, or you said which step failed and what its output says.
+4. **Warm up**, when the user chose it: `squeal warmup` runs every test file once, so the results carry over to the repository's other worktrees. From here it runs on this session's daemon, which exits 3 s after the last session ends, so it stops with the session; in Claude Code give the Bash tool a 600000 ms timeout, and in Codex poll the running command. Say that `squeal warmup` from a terminal runs it on a daemon of its own, for the rest or for later worktrees. Done when it printed its verdict, or the user has that command.
+5. **The launcher**, when the user wants `squeal` in a terminal: copy `<plugin root>/bin/squeal-launcher` to `${SQUEAL_BIN_DIR:-$HOME/.local/bin}/squeal` with `mkdir -p`, `cp` and `chmod 755`, as `install.sh` does. A file already there without the line `# squeal-launcher format` is not Squeal's: leave it and say so. When that directory is not on the PATH, give the line for the shell's profile: `export PATH="$HOME/.local/bin:$PATH"`. Done when `squeal --version` runs from that path, or the user declined.
+
+
+/home/agent/.codex/plugins/data/squeal-hearsay/versions/0.1.475/skills/squeal/references/commands.md
+sha256: 6964976cea117dbec349ff699a3dfc85238ddcff4431ca4c623563d4e66f0de0
+Lines matching word reach: 5
+## squeal reach
+
+`squeal reach` says what one edit of each file re-runs, from the stores. You ask for it; no message pushes it. It needs no daemon, runs no test, and writes nothing. Use it when you want to know why an edit re-runs much of the suite, or which change would cut that. Every number is relative to this repository's own suite, recorded seconds and edits.
+
+```text
+Reach: what one edit of each file re-runs, of 1490 test files and 6696 s recorded.
+Edits: 1523 from 2026-10-06 to 2026-11-07, every worktree's watch revisions in which HEAD did not move, of files this worktree has.
+
+Files, by avoidable seconds per edit, then seconds re-run:
+  1. src/core/state/slow.ts
+     re-runs 85% of the suite: 959 test files, 5692 s; 6 edits in the window re-ran 34152 s
+     coverage: loaded only 41%, called 29%, not loaded 25%, outside the test's process 5%; avoidable 3700 s
+     paths: barrel 80%, runtime read 20%
+     gateway: barrel through src/core/state/index.ts, for example test/a.test.ts → src/core/state/index.ts → src/core/state/slow.ts
+     suggestion: import src/core/state/slow.ts from its own path in the files that use it, or split src/core/state/index.ts
+
+Files, by seconds re-run over the window's edits:
+  1. src/core/state/slow.ts: 6 edits re-ran 34152 s, 5692 s each; avoidable 3700 s; rank 1 above
+```
+
+The first part ranks files by their avoidable seconds per edit: the seconds of test files that load the file through their imports, or through the setup files that run in each test's process, but call none of its functions, or do not load it at all. Setup reached from the config or a global setup file runs outside the test's process, and its seconds are never avoidable. Where coverage cannot tell (coverage off, or a runner such as pytest that gives no records), the seconds on import paths count instead, and the entry says `on import paths with called unknown`. Then it ranks by the seconds one edit re-runs. Files that share a gateway and the same test files are one entry, such as `11 files in src/core/types/ through src/core/types/index.ts`. Each entry gives the share of the suite, the edits in the window, the coverage split (`called`, `loaded only`, `not loaded`, `unread`, `no record`, `outside the test's process`, `unknown`; `unread` also means the record cannot tell the file's top level from a function that starts with it), the path kinds (`setup`, `declared input`, `child process`, `runtime read`, `direct`, `barrel`, `test helper`, `transitive`, or `import` while import chains are not stored), the gateway with one example chain, and one suggestion. The gateway is that of the route with the most avoidable seconds, when the file has one. A suggestion is evidence and an option, not an instruction: a barrel's file that exports no runtime value can leave the tests' closure with `export type *`; a test helper is worth splitting only when some test file that loads the file through it never calls it, so with none there is no suggestion. When the module that imports the file also imports many of its sibling modules, such as a factory that loads every runner, and a barrel or helper comes before it on the chain, the entry names it as a `second gateway` with its own suggestion, which counts the test files that load the file through that module and never call it; when every one of them calls it, there is no such suggestion. Tests that start the program from source (`child process`, `runtime read`) get a note when their seconds outweigh the import seconds: Squeal re-runs them by design, and their seconds are never avoidable. A second, short list ranks the same entries by the seconds the window's edits re-ran, with each entry's rank in the first list; with no edits recorded yet, as in a repository that just installed Squeal, it says so in one line and ranks nothing. The last part ranks test files by avoidable pair-seconds: a test file's seconds times the source files it loads on import paths and never calls (`avoidablePairSeconds`), with the direct import that brings in most of the uncalled files.
+
+`squeal reach <path>...` gives those files or directories in full: each path kind and gateway with its test files, their seconds and coverage, and one chain. Each list lists 10 entries and says how many more there are; `--limit <n>` lists `n`. In the named view, it bounds the routes of each file and the test files of each route the same way. `--json` gives every entry in a versioned object (`v`, `history`, `suite`, `window`, `coverage`, `absent`, `files`, `byEdits`, `testFiles`, `named`, `proposals`), or `--limit` entries when given. The lists hold only paths this worktree has: files of other worktrees or commits that tests read at run time are left out, and one line counts them (`absent`). Edits count only the paths this worktree has.
+
+While no daemon has listed this worktree's test files, the whole answer is a proposal: `squeal start`, which lists them and looks up the results stored for their inputs in any worktree of the repository; under the default `baseline.onStart` it runs no test. With test files listed and no recorded result, the whole answer is `squeal warmup`, how many test files it runs, and its cost, about one run of the whole suite. Test files with no recorded seconds are left out of every share, and the report counts them. With coverage off, `called` reads `unknown`: the path kinds are only a proxy. The report then proposes the `squeal.config.json` key and `squeal warmup`, with the cost: every Vitest and node:test file runs once more, and each later run takes about a tenth more CPU. When some test files have no coverage record at their current inputs, it gives their share and names them: `squeal retry <test file>...` runs once each one that has no result at its inputs; a current result is re-run only by `squeal run --all --force`, which re-runs every test file, about one run of the whole suite. It never starts a run or changes the configuration. Exit 0 with an answer, the proposal included; 1 when there is no store; 2 on a usage error.
+
+
+
+$ git show squeal--v0.1.475:src/harness/shared/primer.ts
+import {
+  formatRegistration,
+  MESSAGE_CAP_CHARS,
+  SQUEAL_COMMAND,
+} from "../../core/delivery/format.js";
+import { holdsText } from "../../core/state/slow-text.js";
+import { excludedProjectsText } from "../../core/text.js";
+import type { CheckMoment } from "../../core/types/check-groups.js";
+import type { Registration } from "../../core/types/delivery.js";
+import {
+  type Covered,
+  type CoveredProject,
+  DESCRIPTIONS,
+  type RunnerDescription,
+} from "../../runners/descriptions.js";
+import { type Coverage, DEFAULT_COVERAGE, type GroupsCoverage } from "./coverage.js";
+
+/**
+ * The longest primer: the coverage list folds its projects into "and N more",
+ * then the primer names the CLI fewer times, to stay within it, so the
+ * sentence saying what is not covered is always whole (task 001-234; review
+ * wave 13aa, B3: a Codex CLI's path may be thousands of characters). Codex
+ * keeps a trailing primer of at most this length whole when it cuts a hook's
+ * text.
+ */
+export const PRIMER_CAP_CHARS = 1_500;
+
+/** How every primer starts, so a hook's cut can find one at the end of a text. */
+export const PRIMER_OPENING = "Squeal runs this repository's ";
+
+/**
+ * Spec 005 D6, the human's wording (2026-10-10): revisions defined once, here,
+ * since every result and `squeal why`'s `Changed since revision N:` line
+ * (001-225) name one and agents guessed at what a jump meant.
+ */
+export const REVISION =
+  "A revision is Squeal's number for each saved change to this worktree's files; every result names the revision it ran at, and a header names the files its revision changed.";
+
+/** Where the primer names the CLI: in every command, in the first only, or nowhere. */
+type Naming = "every" | "first" | "none";
+
+/**
+ * Which wait sentence the primer says: the path wait (005-68), the sentence
+ * it replaced, or that sentence without its example, which names the CLI at
+ * the wait where the others no longer fit (task 004-78).
+ */
+type WaitForm = "paths" | "plain" | "short";
+
+/**
+ * How to work with Squeal, decided by the human (task 001-88). The one
+ * prohibition D6's factual wording allows, paired with what to do instead.
+ * `command` is how it names the CLI (spec 002 D1 as amended). It names the
+ * runners the daemon builds (spec 003 lessons, defect 1: agents told of one
+ * runner ran another's tests themselves; review wave 13aa, B1: a repository
+ * is never told of a runner the daemon does not build there).
+ *
+ * Task 001-234: it lists what Squeal covers, each runner's config or its
+ * projects with their globs (spec 007 D8), and the slow files as a count,
+ * then says typecheck, build and any other test suite are not, so the agent
+ * can work out what is left to run (005's pilot: every false "pass" came
+ * from an uncovered suite). What it says of a runner is that runner's
+ * description (spec 016 D5).
+ *
+ * With slow files declared (spec 004 D8, D9) it says what the policy
+ * requires of them before the agent finishes, with the header line that
+ * says they are current and `run --slow --wait`, and when a slow failure
+ * arrives. Codex names the CLI by its path, never `squeal`, and has no idle
+ * wake (002): there a slow failure arrives with the next prompt or tool call. Task 001-283 (`research/primer-skill-writing.md`):
+ * the arrival of results is said once, and the slow step sits beside the
+ * wait it extends. Spec 005 D6: that sentence says passing results are
+ * silent and a message means a check changed (an agent with only the primer
+ * took silence for lost messages), and the primer defines a revision once.
+ */
+export function primer(
+  command: string = SQUEAL_COMMAND,
+  coverage: Coverage = DEFAULT_COVERAGE,
+): string {
+  const names = runnersOf(coverage).map((runner) => runner.name);
+  const groups = coverage.groups;
+  // Spec 019 D6 (row 019-16): with check groups, the moments sentence says when each runs.
+  const when = groups === undefined ? " after each edit" : "";
+  // Row 019-49 (D6): with no test group at `edit`, silence between edits is not a pass.
+  const quiet = groups?.noTestsAtEdit === true;
+  // Review 0.1.411, B1: where D6's clause leaves no rendering within the cap, the same folds
+  // run again with a compact clause that keeps the warning and is shorter than the edit one.
+  const arrivals = quiet
+    ? [
+        ", but no test group runs after each edit, so silence between edits is not a pass; a SQUEAL message with your next tool call means a check changed;",
+        ", but not after each edit, so silence between edits is not a pass; a SQUEAL message means a check changed;",
+      ]
+    : [
+        `${when}; a SQUEAL message with your next tool call means a check changed, and passing results stay silent, so keep working;`,
+      ];
+  const most = Math.max(
+    0,
+    ...DESCRIPTIONS.map((runner) => projectsOf(runner.covered(coverage))?.length ?? 0),
+  );
+  let text = "";
+  for (const arrival of arrivals) {
+    const sentences = (covers: string, naming: Naming, wait: WaitForm) =>
+      [
+        `${PRIMER_OPENING}${listed(names, "and")} tests in the background${arrival} do not run ${listed(names, "or")} to learn whether your edits broke something.`,
+        ...(groups === undefined ? [] : [momentsSentence(command, naming, groups)]),
+        waitSentence(command, naming, wait, quiet),
+        ...(coverage.slow === null ? [] : slowSentences(command, naming, coverage.slow)),
+        "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
+        retrySentence(command, naming),
+        REVISION,
+        covers,
+        notCovered(coverage),
+      ].join(" ");
+    text = folded(sentences, coverage, most);
+    if (text.length <= PRIMER_CAP_CHARS) return text;
+  }
+  return text;
+}
+
+/**
+ * Fold the runners' projects first, then name the CLI less, until the primer fits;
+ * the path wait joins only where it fits without folding more (task 005-68). Before the
+ * CLI goes unnamed, the wait sentence drops its example, so a long CLI is still named at
+ * the wait (task 004-78: a 217-character Codex CLI went unnamed and agents ran a bare wait).
+ * Over the cap at every fold, the last one tried.
+ */
+function folded(
+  sentences: (covers: string, naming: Naming, wait: WaitForm) => string,
+  coverage: Coverage,
+  most: number,
+): string {
+  let text = "";
+  for (const naming of ["every", "first", "none"] as const) {
+    for (let node = most; node >= 0; node--) {
+      text = sentences(coversSentence(coverage, node), naming, "plain");
+      if (text.length > PRIMER_CAP_CHARS) continue;
+      const paths = sentences(coversSentence(coverage, node), naming, "paths");
+      return paths.length <= PRIMER_CAP_CHARS ? paths : text;
+    }
+    if (naming !== "first") continue;
+    for (let node = most; node >= 0; node--) {
+      text = sentences(coversSentence(coverage, node), naming, "short");
+      if (text.length <= PRIMER_CAP_CHARS) return text;
+    }
+  }
+  return text;
+}
+
+/**
+ * Spec 005 D6 as amended by the human (2026-10-17, task 005-68, issue 18):
+ * which wait applies when. A path wait for the files just changed, with its
+ * verdict line; the pathless wait and `run --all --wait` before saying the
+ * task is done. An agent that knew only the pathless wait reported waiting
+ * on most of a suite other work had re-keyed. What a path selects (005-67) is the
+ * skill's: the primer is at its cap. Where it does not fit, `paths` off
+ * gives the sentence it replaced, so no primer says less than before it,
+ * projects and the CLI's naming included (the 005 coordinator, 2026-10-17).
+ * `short` is that sentence in fewer words, for a CLI too long for it, so the
+ * CLI stays named at the wait (task 004-78). Row 019-49 (019 D6): with no
+ * test group at `edit` (`quiet`), the path wait becomes the narrow run, since
+ * a path wait does not start a file its group's moment holds.
+ */
+function waitSentence(command: string, naming: Naming, form: WaitForm, quiet = false): string {
+  if (form === "short") {
+    return `Wait only when you need a result, as before you finish: \`${command} status --wait 60000\`.`;
+  }
+  if (form === "plain") {
+    const wait =
+      naming === "none"
+        ? "`status --wait 60000` on the CLI SQUEAL messages name"
+        : `\`${command} status --wait 60000\``;
+    return `Wait only when you need a result before your next step, for example before saying the task is done: ${wait}.`;
+  }
+  // A Codex CLI is a long path: named in full once, as the path wait; unnamed, said once, up front.
+  const full = naming === "every" && command === SQUEAL_COMMAND;
+  const cli = (sub: string, first: boolean) =>
+    naming !== "none" && (first || full)
+      ? `\`${command} ${sub}\``
+      : naming === "none"
+        ? `\`${sub}\``
+        : `the CLI's \`${sub}\``;
+  const on = naming === "none" ? ", on the CLI SQUEAL messages name" : "";
+  const finish = `before you finish, ${cli("status --wait 60000", false)} or a checkpoint, ${cli("run --all --wait", false)}.`;
+  // Row 019-49 (D6): with no test group at `edit`, the path wait is the narrow run.
+  if (quiet) {
+    return `Before you rely on a result for files you changed${on}: ${cli("run <group> <path>... --wait 60000", true)}; ${finish}`;
+  }
+  return `Wait only when you need a result before your next step${on}: ${cli("status --wait 60000 <path>...", true)} for the verdict on files you just changed; ${finish}`;
+}
+
+/** D6's words for a moment, as the agent meets it; a `manual` group's clause names its run instead. */
+const AT: Readonly<Record<Exclude<CheckMoment, "manual">, string>> = {
+  edit: "after each edit",
+  pause: "between your turns",
+  stop: "at Stop, and Stop waits for them",
+  commit: "when you commit",
+};
+
+/**
+ * Spec 019 D6 (row 019-16): one clause per moment that has groups, naming
+ * them, then the command that runs one group now (D6 "Command"). The
+ * default `tests` group is said with what it holds, once: its name is the
+ * one status and `after` use. For example: `Check groups: unit and tests
+ * (the test files no group selects) after each edit; e2e at Stop, and Stop
+ * waits for them; lint when you commit; parity waits for `squeal run
+ * parity`; `squeal run <group> --wait 60000` runs one now.`
+ */
+function momentsSentence(command: string, naming: Naming, groups: GroupsCoverage): string {
+  // A Codex CLI is a long path: named in full only where it is `squeal`, as the retry sentence does.
+  const cli = (sub: string) =>
+    naming === "every" && command === SQUEAL_COMMAND
+      ? `\`${command} ${sub}\``
+      : `the CLI's \`${sub}\``;
+  const clauses = groups.moments.map(({ at, names }) => {
+    const named = listed(
+      names.map((name) => (name === "tests" ? "tests (the test files no group selects)" : name)),
+      "and",
+    );
+    if (at !== "manual") return `${named} ${AT[at]}`;
+    // Row 019-47: nothing but its run starts a `manual` group.
+    const one = names.length === 1;
+    return `${named} ${one ? "waits" : "wait"} for ${cli(`run ${one ? names[0] : "<group>"}`)}`;
+  });
+  return `Check groups: ${clauses.join("; ")}; ${cli("run <group> --wait 60000")} runs one now.`;
+}
+
+/**
+ * Spec 001 D6 as amended (001-348, 001-368): when to ask for a retry, and the
+ * one use it never has. Squeal cannot tell a failure caused outside the code
+ * from a real one, so the agent asks, once per file at its inputs.
+ */
+function retrySentence(command: string, naming: Naming): string {
+  // A Codex CLI is a long path: named in full only where it is `squeal`, so the primer keeps its naming.
+  const cli =
+    naming === "every" && command === SQUEAL_COMMAND ? `\`${command} retry` : "the CLI's `retry";
+  return `For a failure from load or a stopped service: ${cli} <file> --reason load|environment\`, never past a real one.`;
+}
+
+/** The runners the daemon builds: each one built, and the fallback when no other is (spec 003 D7). */
+function runnersOf(coverage: Coverage): RunnerDescription[] {
+  const others = DESCRIPTIONS.some((runner) => !runner.fallback && runner.built(coverage));
+  return DESCRIPTIONS.filter((runner) => runner.built(coverage) || (runner.fallback && !others));
+}
+
+/** The projects a runner's entry lists, or `null` for an entry named by its config. */
+function projectsOf(covered: Covered): readonly CoveredProject[] | null {
+  return "projects" in covered ? covered.projects : null;
+}
+
+/** `words` as "a and b", or "a, b and c" past two (spec 007 D8: the third runner). */
+function listed(words: readonly string[], conjunction: "and" | "or"): string {
+  if (words.length <= 2) return words.join(` ${conjunction} `);
+  return `${words.slice(0, -1).join(", ")} ${conjunction} ${words.at(-1)}`;
+}
+
+/** What Squeal covers, naming the first `node` projects of each runner that lists projects. */
+function coversSentence(coverage: Coverage, node: number): string {
+  const suites = runnersOf(coverage).map((runner) =>
+    suite(runner.name, runner.covered(coverage), node),
+  );
+  const files = coverage.slow?.files;
+  const slow =
+    coverage.slow === null
+      ? ""
+      : files === null || files === undefined
+        ? ", with slow test files not counted yet"
+        : `, with ${files} slow test ${files === 1 ? "file" : "files"} at the daemon's last listing`;
+  return `Squeal covers ${listed(suites, "and")}${slow}.`;
+}
+
+/** A runner's entry: its name with its config, or with its first `shown` projects. */
+function suite(runner: string, covered: Covered, shown: number): string {
+  if (!("projects" in covered)) {
+    const config = covered.config === null ? runner : `${runner} (${covered.config})`;
+    return `${config}${excluded(covered.excludedProjects)}`;
+  }
+  const entries = covered.projects.map(
+    ({ name, include }) => `${JSON.stringify(name)} (${include.join(", ")})`,
+  );
+  const list = named("project", entries, shown);
+  return shown === 0 ? `${runner} (${list})` : `${runner} ${list}`;
+}
+
+/**
+ * Task 001-349: the projects of a runner that squeal.config.json excludes,
+ * as not run, so the agent runs them itself when its change needs them.
+ */
+function excluded(entries: readonly string[]): string {
+  if (entries.length === 0) return "";
+  const { text, plural } = excludedProjectsText(entries);
+  return `; its ${text} ${plural ? "are" : "is"} not run, excluded by squeal.config.json`;
+}
+
+/**
+ * Task 001-234: what Squeal does not cover, always whole; spec 004 D8 as
+ * amended 2026-10-18 (task 004-81): with the test files each runner's
+ * excludes drop named, as its description names them.
+ */
+function notCovered(coverage: Coverage): string {
+  const files = DESCRIPTIONS.flatMap((runner) => runner.excluded(coverage) ?? []);
+  const what =
+    files.length === 0
+      ? "typecheck, build"
+      : `typecheck, build, the ${files.join(", the ")}, which squeal.config.json excludes,`;
+  return `Squeal does not cover ${what} or any other test suite: run those yourself.`;
+}
+
+/** `entries` as "projects a, b and c", the first `shown` of them, the rest as "and N more". */
+function named(noun: string, entries: readonly string[], shown: number): string {
+  const nouns = entries.length === 1 ? noun : `${noun}s`;
+  if (shown === 0) return `${entries.length} ${nouns}`;
+  const listed = entries.slice(0, shown);
+  const rest = entries.length - shown;
+  const tail = rest > 0 ? [...listed, `${rest} more`] : listed;
+  const last = tail.pop() as string;
+  return `${nouns} ${tail.length === 0 ? last : `${tail.join(", ")} and ${last}`}`;
+}
+
+/**
+ * Spec 004 D8, D9: when slow files run, what this repository's "done"
+ * requires of them, and how a slow failure arrives, by harness. D8 as
+ * amended 2026-10-16 (task 004-62, issue #5): with `stop.requireSlowSuite`
+ * on, task 001-283's step before a claim, read off the `Slow tier:` line,
+ * and that Stop waits or holds once (or up to `stop.maxHolds` times in a
+ * turn, row 019-24), as that line says (001-285; Pi and
+ * OpenCode have no waiting entry, so their Stop holds; review wave-7 B1); off, the slow tier is not required before the
+ * agent finishes, and a claim that slow tests pass needs that line current.
+ * Task 004-67 (issue 19): on, the requirement starts once the agent changes
+ * a file, since Stop holds no main agent whose worktree had no revision
+ * since it registered; no longer than the sentence it replaced, so no
+ * primer folds more.
+ * Row 004-80 (D8 as amended 2026-10-18): slow files run after the fast
+ * tests under `slow.trigger: "continuous"`, when the agent pauses under
+ * `"idle"` (`pausesOnly`).
+ * Row 004-83 (D8 as amended 2026-10-19): under both policies `run --slow
+ * --wait` is named as the wait for the slow files' results, which joins a
+ * file already running; "runs them now" read as a second run.
+ * Each within 280 characters under `squeal`, which the longest Claude Code
+ * primer of the coverage matrix keeps with every project named.
+ */
+function slowSentences(
+  command: string,
+  naming: Naming,
+  slow: NonNullable<Coverage["slow"]>,
+): string[] {
+  const run =
+    naming === "every"
+      ? `\`${command} run --slow --wait 60000\``
+      : "the CLI's `run --slow --wait 60000`";
+  const when = slow.pausesOnly === true ? "between your turns" : "after the fast tests";
+  return [
+    slow.requireSlowSuite === true
+      ? `Slow test files run ${when}; this repository requires them once you change a file: before you say the task is done, wait with ${run} unless the latest \`Slow tier:\` line says every slow file is current; Stop waits or holds you ${holdsText(slow.maxHolds)}.`
+      : `Slow test files run ${when}; this repository does not require them before you finish: say slow tests pass only when the latest \`Slow tier:\` line states every slow file is current, else say how many are not, or wait for them with ${run}.`,
+    command === SQUEAL_COMMAND
+      ? "A slow failure wakes you when you are idle in an interactive session; otherwise it arrives with your next prompt or tool call."
+      : "A slow failure arrives with your next prompt or tool call.",
+  ];
+}
+
+/**
+ * The primer at the end of `text`, after a blank line, or `""`: what a hook's
+ * cut keeps whole. A primer is one paragraph within `PRIMER_CAP_CHARS`.
+ */
+export function trailingPrimer(text: string): string {
+  const at = text.lastIndexOf(`\n\n${PRIMER_OPENING}`);
+  if (at < 0) return "";
+  const tail = text.slice(at);
+  return tail.length - 2 <= PRIMER_CAP_CHARS && !tail.slice(2).includes("\n") ? tail : "";
+}
+
+/** The primer as the Claude Code plugin says it, with `squeal` on PATH, for the default coverage. */
+export const PRIMER = primer();
+
+/**
+ * A registration with the primer after it, within the message cap. Task
+ * 001-88: every registration that starts a session's use of Squeal carries it.
+ */
+export function withPrimer(
+  registration: Registration,
+  command: string = SQUEAL_COMMAND,
+  coverage: Coverage = DEFAULT_COVERAGE,
+): string {
+  const tail = primer(command, coverage);
+  // Room the registration leaves for the primer within the message cap.
+  const max = MESSAGE_CAP_CHARS - tail.length - 2;
+  return `${formatRegistration(registration, max, command)}\n\n${tail}`;
+}
+
+Exit: 0
+
+$ gh issue view 217 --repo hearsay-tools/squeal --json number,title,body,comments,url,createdAt,updatedAt
+{"body":"### What happened\n\nA user asked why their repository runs so many tests on each edit, and for a report of which files select the most test files. The agent (Claude Code) read the session primer and searched `squeal --help` for \"closure\", \"graph\" and \"import\". It found nothing for this question, so it read Squeal's `store.sqlite` directly: it decoded the raw-deflate `test_file_imports` and `environment_walks` blobs and joined `test_files.closure_paths`, `test_file_keys` and `results`. It also wrote its own static import walker. Only near the end, a search of this repository's issues for \"import graph\" returned #183, which names `squeal reach`. That command already answers the question: the share of the suite each file re-runs, path kinds, the gateway chain and a suggestion.\n\nThe agent also missed that `test_files.closure_paths` leaves out the environment (vitest config and setup chain). Its first trigger counts were too low for setup-chain files (for example 1,204 instead of 1,469 test files for a contract module that the cezar `vitest.setup.ts` imports). `squeal reach` showed the gap.\n\n### What you expected\n\nThe session primer, or the `squeal` skill, names `squeal reach` for questions such as \"why do so many tests run\", \"what does an edit of X re-run\" or \"which files select the most tests\". Then an agent uses it first and does not read the store.\n\n### Command and output\n\n```text\n$ squeal --help | grep -iE \"graph|closure|import|select|dep\"\n  (squeal run's description of selection; squeal import; nothing about reach)\n$ grep -c reach skills/squeal/SKILL.md skills/setup/SKILL.md   # plugin 0.1.475\n0\n0\n$ squeal reach --limit 15\nReach: what one edit of each file re-runs, of 1816 test files and 20389 s recorded; 99 test files of manual groups left out.\n  1. packages/contract/src/usage-limit-hold.ts\n     re-runs 93% of the suite: 1469 test files, 19002 s; no edits in the window\n     paths: setup 95%, barrel 2%, test helper 2%, import 1%, ...\n```\n\n### Squeal version\n\n0.1.475\n\n### Squeal revision\n\n0\n\n### Harness\n\nClaude Code\n\n### Model\n\nclaude-opus-5-5\n\n### Cost\n\nAbout 25 minutes and roughly 30 tool calls spent reverse-engineering the store. One wrong intermediate result: trigger counts for setup-chain files were too low.\n\n### Did a daemon restart clear it?\n\nNot tried\n","comments":[],"createdAt":"2026-11-14T10:03:30Z","number":217,"title":"Agents asking why many tests run do not find squeal reach and read store.sqlite instead","updatedAt":"2026-11-14T10:04:16Z","url":"https://github.com/hearsay-tools/squeal/issues/217"}
+
+Exit: 0
+
+$ /home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal --help | rg -i 'graph|closure|import|select|dep'
+                                The verdict of the test files the paths select (a test
+                                file, or a file in test files' closures) now, if the
+                                that selects nothing is named beside it, exit 3 unless
+                                a selected file fails; --full prints this worktree's
+                                selection.testFiles; --check shows the focused outcome
+                                Wait up to <ms> for the test files the paths select,
+                                --json in selection.testFiles too; --check runs first,
+                                failed, else 3 (--json: selection.focused)
+                                commit, time, duration, fingerprint; paths select
+                                select, whatever its moment: a test file selects
+                                its direct importers, then the runner.tierSize
+                                shortest of its other direct importers; with
+  squeal import <file> [--dry-run]
+                                Fixed Codex plugin: select a complete local runtime
+                                Download, validate and select a newer runtime for new
+                                selected runtime stays; --background prints nothing
+
+Tagged Claude Code skill comparison:
+--- tagged Claude Code skill
++++ installed Codex runtime skill
+@@ -4,6 +4,8 @@
+ ---
+
+ # Squeal
++
++Under Codex `squeal` is not on the PATH: wherever this skill and its references say `squeal`, run the command the SQUEAL primer names. That is the launcher `<plugin data>/bin/squeal`, in the plugin data directory where Squeal keeps a copy of each version; before the first copy, it is `node --disable-warning=ExperimentalWarning "<plugin root>/dist/cli/squeal.mjs"`, the plugin root being the directory that holds `skills/squeal/`. The last line of a FAIL report names it too. A plugin update deletes the plugin root of the version a session started on; this skill stays readable at `<plugin data>/versions/<version>/skills/squeal/`, the path the SessionStart message names.
+
+ Squeal runs this repository's tests in the background after every edit. It reports only changes, in messages that start with `SQUEAL ·`: a check that went `PASS -> FAIL`, `FAIL -> PASS`, or failed differently. It covers what the SQUEAL primer lists from `squeal.config.json`: the Vitest tests, the node:test tests of the `nodeTest` projects, the pytest tests of the `pytest` projects, and the slow test files `slow` marks; a test file you add that matches them is picked up too. Typecheck, build and anything else the repository checks are yours to run.
+
+skills/setup/SKILL.md: byte-equal to tagged Claude Code copy: True
+skills/squeal/references/commands.md: byte-equal to tagged Claude Code copy: True
+dist/cli/squeal.mjs: byte-equal to tagged Claude Code copy: True

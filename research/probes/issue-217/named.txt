@@ -1,0 +1,21 @@
+UTC: 2026-11-14T11:05:29.628243+00:00
+Load 1m: 8.75244140625; CPUs: 24
+$ /home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal reach test/global-teardown.ts --limit 2
+Reach: what one edit of each file re-runs, of 1795 test files and 7552 s recorded.
+Edits: 219 from 2026-10-07 to 2026-11-14, every worktree's watch revisions in which HEAD did not move, of files this worktree has.
+2704 paths with no bytes in this worktree are left out of the lists: files of other worktrees or commits, or paths tests look for at run time.
+
+test/global-teardown.ts: re-runs 100% of the suite: 1795 test files, 7552 s; 0 edits in the window
+  coverage: no record 72%, outside the test's process 28%, called <1%
+  setup: 1795 test files, 7552 s; no record 72%, outside the test's process 28%, called <1%
+    chain: test/global-teardown.ts
+    test/scheduler/backlog-tiers.test.ts  362 s  no record
+    test/keys/validity/adapters.test.ts  249 s  no record
+    … and 1793 more test files; --limit lists more.
+  suggestion: test/global-teardown.ts is a setup file: keep its imports leaf-only
+
+917 test files have no coverage record at the current inputs, 72% of the suite's seconds, so their pairs read no record.
+869 test files have no result at the current inputs; `/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal retry <test file>...` runs each once: test/capacity/host-gate.test.ts, test/capacity/pool.test.ts, test/capacity/priority.test.ts, test/ci-action/readme.test.ts, test/ci-action/record-squeal-fails.test.ts, test/ci-action/setup.test.ts, test/ci-action/wrapper.test.ts, test/ci/export-evidence.test.ts, test/ci/export-formats.test.ts, test/ci/export-snapshot.test.ts and 859 more (--json lists every one).
+48 test files have a result and no record: test/ci/issue-intake-candidates.test.ts, test/cli/named-wait-reasons.test.ts, test/cli/stop-root.test.ts, test/cli/update-codex-runtime.test.ts, test/code/coverage/mapper.test.ts, test/commit/compute.test.ts, test/commit/store.test.ts, test/core/process-label.test.ts, test/daemon/lease-process.test.ts, test/daemon/start-opens.test.ts and 38 more (--json lists every one). Squeal re-runs a current result only in a forced checkpoint, /home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal run --all --force, which re-runs every test file, about one run of the whole suite.
+
+Exit: 0; elapsed: 5.977s

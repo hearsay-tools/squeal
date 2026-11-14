@@ -1,0 +1,330 @@
+UTC: 2026-11-14T11:04:39.024999+00:00
+Load 1m: 8.130859375; CPUs: 24
+$ /home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal --version
+0.1.475
+
+Exit: 0; elapsed: 0.150s
+
+UTC: 2026-11-14T11:04:39.175516+00:00
+Load 1m: 8.130859375; CPUs: 24
+$ /home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal --help
+squeal: continuous validation for coding agents. Push transitions, pull state.
+
+Usage:
+  squeal status [--full] [--notes] [--json]
+                                Current validation state of this worktree: its verdict,
+                                known failures and outstanding work, each with what
+                                advances it; --full adds the worktree, daemon,
+                                inheritance, each file without a result and the notes;
+                                --notes is --full with every note in full
+  squeal status <path>... [--check <text>]... [--full] [--json]
+                                The verdict of the test files the paths select (a test
+                                file, or a file in test files' closures) now, if the
+                                daemon stores its pass over your edits within 750 ms:
+                                exit 0, 1 on known failures, 3 without one; a path
+                                that selects nothing is named beside it, exit 3 unless
+                                a selected file fails; --full prints this worktree's
+                                status first; --json: the files and their verdicts in
+                                selection.testFiles; --check shows the focused outcome
+                                of the named test files' checks whose name holds the
+                                text, and asks for nothing
+  squeal status --wait <ms> [--full] [--json]
+                                Wait up to <ms> until nothing is pending at the current
+                                revision or a check changed, then print status (--full:
+                                in full) and last the line saying why it returned
+  squeal status --wait <ms> <path>... [--check <text>]... [--full] [--json]
+                                Wait up to <ms> for the test files the paths select,
+                                then give their verdict as status <path>... does,
+                                --json in selection.testFiles too; --check runs first,
+                                alone, the checks of each test file named by its own
+                                path whose name holds the text, and returns with their
+                                outcome, not the file's verdict: exit 1 when one
+                                failed, else 3 (--json: selection.focused)
+  squeal why <check> [--include-logs] [--json]
+                                History and provenance of one check, and the run log
+                                holding its console output; --include-logs also prints
+                                that log's lines from the check's test file
+  squeal failures [<test file or directory>...] [--check <text>]... [--error <text>]...
+                  [--per-check] [--limit <n>|all] [--all-worktrees] [--since <duration>]
+                  [--json]
+                                Stored failing results of this worktree, or every
+                                worktree's, newest first: check, worktree, revision,
+                                commit, time, duration, fingerprint; paths select
+                                the checks of those test files or below those
+                                directories, --check those whose name holds the
+                                text, --error the failures whose error holds it;
+                                --per-check lists each check once, at its newest
+                                failure; --limit lists more than 20, all lists
+                                every one; --since 2h lists only the last two hours
+  squeal code [<path>...] [--changed | --told] [--json]
+                                With complexity.enabled: every function over the
+                                complexity threshold, newest first, with its location,
+                                complexity, decision points by kind and the revision it
+                                went over; paths list every function in those files or
+                                directories; --changed keeps those whose state changed
+                                since this session registered, --told those over that
+                                this session was told about and the files it changed
+                                that are not judged; files not counted follow, with why
+  squeal code --base <ref> [<path>...] [--test <file>...] [--group <name>...]
+              [--timeout <seconds>] [--parts <dir>...] [--exceptions <file>] [--json]
+                                Runs tests, with no daemon, for up to --timeout
+                                seconds (default 600) in all: judges every JS/TS
+                                function changed since git merge-base <ref> HEAD, test
+                                callbacks included, against the CC and CRAP limits in
+                                squeal.config.json at that commit; the test files that
+                                load a changed file, the changed test files and the
+                                --test files run with coverage, except a file whose
+                                results and coverage for these bytes are in the parts
+                                squeal ci record wrote to a --parts <dir>, or in the
+                                repository's stores, both only read; of the first two,
+                                only the files of a check group in scope run: every
+                                test group not at manual, or gate.groups, at that
+                                commit, and each --group <name>; paths keep the
+                                functions in those files or directories. Prints the
+                                verdict and each function not pass with its gap or
+                                measure; --exceptions <file>: a
+                                squeal-code-exceptions/1 file of verified entries; a
+                                violation an entry covers reads accepted and does not
+                                block; --json: the squeal-code-gate/1 report; exit 0
+                                pass, 1 violations, 3 incomplete, 2 on a usage or
+                                setup error
+  squeal reach [<path>...] [--limit <n>] [--json]
+                                What one edit of each file re-runs, from the stores,
+                                with no daemon and no test run: files and test files
+                                ranked by the seconds their tests load but do not
+                                call, then by seconds re-run; each file's share of
+                                the suite, edits in the window, coverage split, path
+                                kinds, gateway and one suggestion; paths give those
+                                files in full; --limit lists more than 10 per part;
+                                without history it proposes squeal warmup
+  squeal lint [<path>...] [--changed] [--json]
+                                With lint.enabled: every file with ESLint findings,
+                                newest first, each finding with its line, severity,
+                                rule and message; paths show those files' findings,
+                                or why they have none; --changed lists the files
+                                whose lint state changed since this session registered
+  squeal init                   Set up this repository: squeal.config.json and the
+                                plugin entries in .claude/settings.json
+  squeal init --harness codex [--print-launcher-config | --trust [--yes]]
+                                Write squeal.config.json and print the Codex plugin
+                                install and trust steps; or print the hooks and their
+                                trust as thread/start config for a launcher; --trust
+                                then shows the hooks Codex has not trusted and, on
+                                your yes (--yes: without asking), has Codex trust them
+  squeal init [--block <file|none>] [--gate <id>=<reword|keep>]...
+              [--slow <glob>]... [--input <test glob>=<input glob|none>]...
+                                Set the harness up, then apply these setup choices
+  squeal setup --plan [--json]  What setting this repository up would change: harnesses,
+                                runners, instruction files and their Squeal block, gate
+                                lines, slow groups and their inputs, the warm-up's size
+  squeal setup --check [--json] The plan; exit 1 when anything in it is outdated
+  squeal setup [--yes] [<choice flags>]
+                                Ask one question per open choice of the plan (--yes:
+                                take the defaults), apply them, warm up, show the diff
+  squeal warmup                 Start the daemon and run every test file without a
+                                current result; exit 0, 1 on known failures, 3 without
+                                a verdict; suggestions it finds, applied by squeal setup
+  squeal start [root]           Start this worktree's daemon if none runs, end every
+                                hold command of it, print status
+  squeal run --all [--force] [--wait]
+                                Request a full-suite checkpoint from the daemon; both
+                                lanes, fast files first
+  squeal run --fast [--force] [--wait]
+                                A checkpoint of the fast lane only, which is not a
+                                full-suite checkpoint
+  squeal run --slow [--wait <ms>]
+                                Run the slow lane once no fast work is pending; with
+                                --wait, wait up to <ms> in all: for the daemon to take
+                                the request, then as status --wait does; exit 3 when
+                                they end with the request or a slow file pending.
+                                --fast --slow is --all
+  squeal run <group> [--wait [<ms>]]
+                                Run one group of checks in squeal.config.json now,
+                                whatever its moment; with --wait, wait for its
+                                results: exit 0 all current and passing, 1 with a
+                                known failure, 3 without a verdict
+  squeal run <group> <path>... [--wait [<ms>]]
+                                Run now only the group's test files the paths
+                                select, whatever its moment: a test file selects
+                                itself; another path its namesakes or, with none,
+                                its direct importers, then the runner.tierSize
+                                shortest of its other direct importers; with
+                                --wait, wait for those files only, exit codes as
+                                above; a lint group takes no paths
+  squeal retry <test file>... [--reason load|environment]
+                                Re-run each file's failure once, caused outside the
+                                code: load waits until the one-minute load average is
+                                below the CPU count, environment is queued at once; the
+                                run waits its turn, which status names; once per file,
+                                inputs and session; the FAIL stays counted until a
+                                retry passes. A file with no result at its inputs
+                                (stale, never run, timed out) is queued once at once,
+                                any reason or none
+  squeal retry --cancel <test file>...
+                                Withdraw a pending retry
+  squeal export [--out <file>]  Write this worktree's passing results at its current
+                                inputs to one gzipped file (default
+                                squeal-results-<commit8>.json.gz), with what another
+                                store needs to compute the same inputs; a test file with
+                                a failure there is left out; needs no daemon
+  squeal import <file> [--dry-run]
+                                Add an export's results to this repository's store; a
+                                result counts only where this worktree's inputs equal
+                                the export's; prints the results added and each
+                                difference of the export's environment from this
+                                worktree's; --dry-run writes nothing
+  squeal ci record [--out <dir>] -- <command> [args...]
+                                In CI: run the project's Vitest command unchanged and
+                                exit with its code; also write one part per Vitest
+                                process into --out (default squeal-parts/): each test
+                                file's outcome, checks, duration and observed reads,
+                                and each project's environment; other runners only run.
+                                The part holds each test file's coverage record. With
+                                no coverage of the run's own, it adds Squeal's coverage
+                                provider to the run (not when Node lacks
+                                process.getBuiltinModule). With the run's own V8
+                                coverage (coverage.enabled, --coverage) on Vitest 4.1
+                                or 5.0, it adds none and reads that provider's data:
+                                the project's report and thresholds stay its own. With
+                                Istanbul, a custom provider, browser mode or another
+                                Vitest version, it records no coverage. The part names
+                                which applied. No record for a file run with a test
+                                name filter, with isolate: false, with child-process
+                                coverage or beside node:inspector. The exit code stays
+                                the command's.
+                                Requires that no other program changes the tests' input
+                                files while the command runs: Squeal sees the reads and
+                                writes of the command's Node processes, not every change
+                                another program makes, so such a change can be exported
+                                at content the test did not see
+  squeal ci export --parts <dir>... [--out <file>]
+                                In CI, after the shards: write the parts as one export
+                                (default squeal-results-<commit8>.json.gz), keyed as a
+                                daemon in this checkout of their commit keys
+  squeal ci publish <export> [--keep <n>]
+                                In CI, in the export job: push the export as
+                                <shared.ref>/<commit> (default refs/squeal) to origin
+                                and delete refs beyond the newest n main commits
+                                (default 100)
+  squeal ps [--repo] [--full] [--json] [--locks]
+                                Every Squeal daemon of this user on this host, with its
+                                test processes, their CPU and memory over 2 s, the host's
+                                totals, and what should not be up, each with the command
+                                that would end it; --repo: this repository only; --full
+                                adds each test's child processes; exit 0, 1 with a flag,
+                                3 on a platform other than Linux and macOS. --locks
+                                (Linux): who holds or waits for each store's write lock
+  squeal stop [--until-start] [root]
+                                Stop this worktree's daemon; a hook starts one at the
+                                next edit. --until-start: no edit or Git operation
+                                starts one until squeal start
+  squeal hold [--max <duration>] -- <command> [args...]
+                                Run the command with this worktree's validation on hold:
+                                the daemon cancels the runs it can, starts none, and
+                                records and queues each edit; the queued work runs when
+                                the command exits, after --max (default 3h), or when
+                                start ends the hold; exits with the command's code
+  squeal remove [--config]      Take Squeal out of this repository: stop every worktree's
+                                daemon, delete the store and temp directories; --config
+                                also deletes squeal.config.json
+  squeal update                 Update the plugin in every harness that has it, to one
+                                version, the fixed Codex plugin's runtime, and the
+                                launcher install.sh put on the PATH
+  squeal codex-runtime ensure --plugin-root <absolute> [--data <absolute>]
+                                Fixed Codex plugin: select a complete local runtime
+                                for new sessions, the current one or the plugin's
+                                seed, with no network; exit 0 only when ready
+  squeal codex-runtime update --plugin-root <absolute> [--data <absolute>]
+                              [--tag squeal--v<version>] [--background]
+                                Download, validate and select a newer runtime for new
+                                sessions within 120 s, never an older one; running
+                                sessions keep theirs; exit 1 when it failed, and the
+                                selected runtime stays; --background prints nothing
+                                and keeps the retry delays
+  squeal codex-runtime status --plugin-root <absolute> [--data <absolute>] [--json]
+                                Adapter and runtime versions, pinned sessions and the
+                                last update check; exit 0 when ready, 1 when not
+  squeal daemon <root> [--await-lock <ms>]
+                                Run the daemon in the foreground (hooks start it); a
+                                step-down's successor waits up to <ms> for the lock
+  squeal runner-host <root> --runner vitest
+                                Host the project's runner for a daemon over stdin and
+                                stdout (the daemon starts it)
+  squeal --version              Print the version
+  squeal --help                 Print this help
+  squeal <command> --help       Print that command's part of this help
+
+A check is named as in status output: "path > describe > test", or any
+unique part of that name. Status reads the store directly; no daemon needed.
+
+Exit: 0; elapsed: 0.155s
+
+UTC: 2026-11-14T11:04:39.330344+00:00
+Load 1m: 8.130859375; CPUs: 24
+$ /home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal reach --help
+Usage:
+  squeal reach [<path>...] [--limit <n>] [--json]
+                                What one edit of each file re-runs, from the stores,
+                                with no daemon and no test run: files and test files
+                                ranked by the seconds their tests load but do not
+                                call, then by seconds re-run; each file's share of
+                                the suite, edits in the window, coverage split, path
+                                kinds, gateway and one suggestion; paths give those
+                                files in full; --limit lists more than 10 per part;
+                                without history it proposes squeal warmup
+
+Exit: 0; elapsed: 0.168s
+
+UTC: 2026-11-14T11:04:39.498477+00:00
+Load 1m: 8.130859375; CPUs: 24
+$ /home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal reach --limit 3
+Reach: what one edit of each file re-runs, of 1795 test files and 7552 s recorded.
+Edits: 217 from 2026-10-07 to 2026-11-14, every worktree's watch revisions in which HEAD did not move, of files this worktree has.
+2706 paths with no bytes in this worktree are left out of the lists: files of other worktrees or commits, or paths tests look for at run time.
+
+Files, by avoidable seconds per edit, then seconds re-run:
+  1. src/core/store/prune-rules.ts
+     re-runs 89% of the suite: 1250 test files, 6733 s; no edits in the window
+     coverage: no record 79%, loaded only 21%, called <1%; avoidable 1410 s
+     paths: test helper 64%, transitive 28%, child process 5%, declared input 3%, runtime read <1%
+     gateway: test helper through test/scheduler/catch-up-fixture.ts, for example test/cli/status-wait-ask-scheduler.test.ts → test/scheduler/catch-up-fixture.ts → src/core/store/open.ts → src/core/store/store.ts → src/core/store/prune.ts → src/core/store/prune-rules.ts
+     suggestion: split test/scheduler/catch-up-fixture.ts: 50 of the 57 test files that load src/core/store/prune-rules.ts through it never call it
+  2. src/core/daemon/terminate.ts
+     re-runs 89% of the suite: 1158 test files, 6708 s; no edits in the window
+     coverage: no record 78%, loaded only 21%, called 1%, not loaded <1%; avoidable 1401 s
+     paths: test helper 42%, transitive 36%, barrel 7%, runtime read 7%, child process 5%, declared input 3%, direct 1%
+     gateway: transitive through src/core/ps/proc.ts, for example test/capacity/ceiling.test.ts → src/core/capacity/pool.ts → src/core/capacity/cores.ts → src/core/ps/proc.ts → src/core/daemon/terminate.ts
+  3. 2 files in src/core/store/ through test/scheduler/catch-up-fixture.ts
+     re-runs 89% of the suite (each): 1251 test files, 6734 s; no edits in the window
+     coverage: no record 79%, loaded only 21%, called 1%, outside the test's process <1%; avoidable 1379 s
+     paths: test helper 64%, transitive 28%, child process 5%, declared input 3%, runtime read <1%, direct <1%
+     gateway: test helper through test/scheduler/catch-up-fixture.ts, for example test/cli/status-wait-ask-scheduler.test.ts → test/scheduler/catch-up-fixture.ts → src/core/store/open.ts → src/core/store/store.ts → src/core/store/prune.ts
+     suggestion: split test/scheduler/catch-up-fixture.ts: 50 of the 57 test files that load these files through it never call it
+  … and 1206 more; --limit lists more.
+
+Files, by seconds re-run over the window's edits:
+  1. package.json: 9 edits re-ran 47265 s, 5252 s each; avoidable 0 s; rank 689 above
+     note: these tests start the program from source; Squeal re-runs them by design
+  2. 40 files in plugins/codex-runtime/ (declared input): 463 edits re-ran 28710 s, 62 s each file; avoidable 0 s; rank 944 above
+     suggestion: the input "plugins/codex*/**" in squeal.config.json gives these files to the test files "test/harness/codex/**/*.test.ts" matches: 42 test files here
+  3. 6 files in src/core/scheduler/ through test/scheduler/catch-up-fixture.ts: 5 edits re-ran 23263 s, 4653 s each file; avoidable 0.3 s; rank 644 above
+     suggestion: split test/scheduler/catch-up-fixture.ts: 1 of the 92 test files that load these files through it never call it
+  … and 226 more; --limit lists more.
+
+Test files, by avoidable pair-seconds (seconds times the source files they load on import paths and never call), then seconds re-run:
+  1. test/lint/integration/injection.test.ts, 72 s
+     loads 151 source files on import paths, calls 22; 5 edits in the window re-ran it
+     most uncalled files come through test/code/pass/helpers.ts (68)
+  2. test/scheduler/tier-ended-files.test.ts, 69 s
+     loads 288 source files on import paths, calls 186; 15 edits in the window re-ran it
+     most uncalled files come through test/scheduler/catch-up-fixture.ts (99)
+  3. test/code/gate/collect-lanes.test.ts, 25 s
+     loads 405 source files on import paths, calls 136; 37 edits in the window re-ran it
+     most uncalled files come through test/code/gate/collect-fixture.ts (267)
+  … and 1771 more; --limit lists more.
+
+917 test files have no coverage record at the current inputs, 72% of the suite's seconds, so their pairs read no record.
+869 test files have no result at the current inputs; `/home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal retry <test file>...` runs each once: test/capacity/host-gate.test.ts, test/capacity/pool.test.ts, test/capacity/priority.test.ts, test/ci-action/readme.test.ts, test/ci-action/record-squeal-fails.test.ts, test/ci-action/setup.test.ts, test/ci-action/wrapper.test.ts, test/ci/export-evidence.test.ts, test/ci/export-formats.test.ts, test/ci/export-snapshot.test.ts and 859 more (--json lists every one).
+48 test files have a result and no record: test/ci/issue-intake-candidates.test.ts, test/cli/named-wait-reasons.test.ts, test/cli/stop-root.test.ts, test/cli/update-codex-runtime.test.ts, test/code/coverage/mapper.test.ts, test/commit/compute.test.ts, test/commit/store.test.ts, test/core/process-label.test.ts, test/daemon/lease-process.test.ts, test/daemon/start-opens.test.ts and 38 more (--json lists every one). Squeal re-runs a current result only in a forced checkpoint, /home/agent/.codex/plugins/data/squeal-hearsay/bin/squeal run --all --force, which re-runs every test file, about one run of the whole suite.
+
+Exit: 0; elapsed: 6.262s
