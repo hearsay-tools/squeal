@@ -34,10 +34,7 @@ export interface DaemonSync {
   current(): SyncState;
   /** Settles once `current` left `pending`; a stub without it is read at the wait's next poll. */
   readonly answered?: Promise<void>;
-  /**
-   * Stops asking; a request on the wire still ends within the CLI socket
-   * timeout, or by the sync's deadline when it has one (row 011-49).
-   */
+  /** Stops asking, and aborts a request on the wire (row 011-344). */
   stop(): void;
 }
 
@@ -66,9 +63,8 @@ export const SYNC_POLL_MS = 250;
  * sync sleeping between `sync-status` polls settles `unsupported` at its next
  * loop step, after the deadline; the sleep is unref'd and holds no process
  * (review 0.1.487 N1). A request on the wire holds its socket, and so the
- * CLI, until it ends; `stop` cannot end it sooner, so a wait that ends at a
- * known time bounds its sync by that time (row 011-49: the snapshot's process
- * ended at the 2 s socket timeout).
+ * CLI, until it ends: `stop` aborts it (row 011-344: the named and edit
+ * waits' processes ended at the 2 s socket timeout after their outcome).
  */
 export function syncDaemon(
   root: AbsolutePath,
@@ -77,13 +73,13 @@ export function syncDaemon(
   deadline = Number.POSITIVE_INFINITY,
 ): DaemonSync {
   let current: SyncState = { state: "pending" };
-  let stopped = false;
-  const isStopped = () => stopped;
+  const abort = new AbortController();
+  const isStopped = () => abort.signal.aborted;
   const request = syncRequest(paths);
   const timeoutMs = () => Math.min(CLI_SOCKET_TIMEOUT_MS, Math.ceil(deadline - performance.now()));
   const answered = (async () => {
     for (;;) {
-      const outcome = await syncOnce(root, request, pollMs, isStopped, timeoutMs);
+      const outcome = await syncOnce(root, request, pollMs, isStopped, timeoutMs, abort.signal);
       if (outcome !== "again") return outcome;
     }
   })().then(
@@ -97,9 +93,7 @@ export function syncDaemon(
   return {
     current: () => current,
     answered,
-    stop: () => {
-      stopped = true;
-    },
+    stop: () => abort.abort(),
   };
 }
 
@@ -152,13 +146,14 @@ async function syncOnce(
   pollMs: number,
   stopped: () => boolean,
   timeoutMs: () => number,
+  signal: AbortSignal,
 ): Promise<SyncState | "again"> {
   // A deadline that passed asks nothing more: the wait it serves has ended.
   const ended = () => stopped() || timeoutMs() <= 0;
   if (ended()) return UNSUPPORTED;
-  const socketPath = await daemonSocket(root, timeoutMs()).catch(() => null);
+  const socketPath = await daemonSocket(root, timeoutMs(), signal).catch(() => null);
   if (socketPath === null || ended()) return UNSUPPORTED;
-  const first = await askDaemon(socketPath, request, timeoutMs()).catch(() => null);
+  const first = await askDaemon(socketPath, request, timeoutMs(), signal).catch(() => null);
   if (first === null || !first.ok || first.type !== "sync") return UNSUPPORTED;
   let state: SyncResponse = first;
   for (;;) {
@@ -172,6 +167,7 @@ async function syncOnce(
       socketPath,
       { type: "sync-status", requestId: first.requestId },
       timeoutMs(),
+      signal,
     ).catch(() => undefined);
     if (next === undefined) continue;
     if (next === null || !next.ok || next.type !== "sync") return "again";
