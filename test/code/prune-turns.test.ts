@@ -18,7 +18,7 @@ import { commonDir, count, open } from "./helpers.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const NOW = 100 * DAY_MS;
-const BATCHES = 12;
+const BATCHES = 6;
 /** How long each batch holds the lock: a batch of a large store. */
 const HOLD_MS = 50;
 

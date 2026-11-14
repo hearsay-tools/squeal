@@ -1,3 +1,4 @@
+import { setTimeout as delay } from "node:timers/promises";
 import { KEY_FORMAT_VERSION } from "../keys/key-format.js";
 import type { ImportCounts } from "../types/daemon-writes.js";
 import type { SquealBuild } from "../types/status.js";
@@ -13,6 +14,7 @@ import {
   type ImportTally,
   importSlices,
 } from "./transfer-import-slices.js";
+import { turnGapMs } from "./write-turns.js";
 
 export type { ImportCounts } from "../types/daemon-writes.js";
 export type { ImportOptions, ImportSlice } from "./transfer-import-slices.js";
@@ -64,7 +66,9 @@ export type SliceRunner = (slice: ImportSlice) => Promise<void>;
 /**
  * Spec 021 D3 (row 021-20): `importResults`, each slice given to `run`,
  * which tries it again while a busy store refuses it, so the write lock is
- * free between slices and no one wait outlasts the bound. `stopped`, asked
+ * free between slices and no one wait outlasts the bound; after each slice,
+ * a pause as long as it held the lock (`turnGapMs`, row
+ * 011-350), so a waiting writer in another process gets turns. `stopped`, asked
  * before each slice, ends the import with `ImportStopped`; what committed
  * stays, and the import's record, written last, is not among it. Default
  * `run`: `retriedSlice` within `BUSY_BOUND_MS`, which `stopped` ends too.
@@ -75,15 +79,34 @@ export async function importSliced(
   options: ImportOptions & {
     readonly run?: SliceRunner;
     readonly stopped?: () => boolean;
+    /** Waits `ms` between slices; tests make it short. Default: a timer. */
+    readonly pause?: (ms: number) => Promise<void>;
   },
 ): Promise<ImportCounts> {
   const tally = emptyTally();
   const run = options.run ?? retriedSlice(BUSY_BOUND_MS, options.stopped);
+  const pause = options.pause ?? ((ms: number) => delay(ms));
   for (const slice of slicesOf(store, bundle, options, tally)) {
     if (options.stopped?.() === true) throw new ImportStopped();
-    await run(slice);
+    let held = 0;
+    await run(timed(slice, (ms) => (held = ms)));
+    // Row 011-350 (#220): the lock free after each slice for as long as it held it, before
+    // the next slice is read.
+    await pause(turnGapMs(held));
   }
   return { ...tally };
+}
+
+/** `slice`, telling `took` how long its try that committed ran; a refused try tells nothing. */
+function timed(slice: ImportSlice, took: (ms: number) => void): ImportSlice {
+  return {
+    what: slice.what,
+    run: () => {
+      const started = performance.now();
+      slice.run();
+      took(performance.now() - started);
+    },
+  };
 }
 
 /** An import `stopped` ended between two slices. */
