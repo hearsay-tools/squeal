@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { preRunText } from "../../src/cli/code-gate-prerun.js";
 import { formatGateReport } from "../../src/cli/code-gate-text.js";
 import { leftOutCountText } from "../../src/cli/code-gate-text-left-out.js";
+import type { SelectionSummary } from "../../src/core/code/gate/prerun.js";
 import type { GateFunctionReport, GateReport } from "../../src/core/code/gate/report.js";
 import type { LeftOutGroup } from "../../src/core/code/gate/scope.js";
+import type { ChangedSet } from "../../src/core/code/gate/types.js";
 import { functionRow, gateReport } from "./code-gate-text-kit.js";
 
 /*
@@ -112,3 +115,17 @@ describe("leftOutCountText: the count of a left-out group (row 020-61)", () => {
   });
 });
 
+describe("the pre-run left-out line after --test (row 020-61, #203)", () => {
+  it("counts what was left out, not the file --test ran", () => {
+    const summary: SelectionSummary = {
+      runners: [],
+      leftOut: [browser(0, { files: 3, tests: 1 })],
+      setups: [],
+      unloaded: [],
+    };
+    const changed = { functions: [] } as unknown as ChangedSet;
+    expect(preRunText(summary, changed)).toContain(
+      "browser (manual) is left out: 1 of its 3 test files runs by --test; none of the other 2 loads changed code",
+    );
+  });
+});

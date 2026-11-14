@@ -9,7 +9,7 @@ import { createInputMatcher } from "../core/keys/glob.js";
 import { listPaths, plural, shellWord } from "../core/text.js";
 import type { GlobalSetupEntry } from "../core/types/runner.js";
 import type { GateArgs } from "./code-gate-args.js";
-import { loadsChangedText } from "./code-gate-text.js";
+import { leftOutCountText } from "./code-gate-text-left-out.js";
 import type { CliIo } from "./main.js";
 import { statusCommand } from "./status-command.js";
 
@@ -64,19 +64,8 @@ function byInputsText(byInputs: readonly string[]): string {
   return `; ${byInputs.length} by declared inputs at the base, not by imports: ${names}`;
 }
 
-function leftOutLine({
-  name,
-  at,
-  files,
-  selected,
-  add,
-}: SelectionSummary["leftOut"][number]): string {
-  const of = `of its ${plural(files, "test file")}`;
-  const what =
-    selected === 0
-      ? `none ${of} loads changed code`
-      : `${selected} ${of} ${loadsChangedText(selected, add)}`;
-  return `${name} (${at}) is left out: ${what}`;
+function leftOutLine(group: SelectionSummary["leftOut"][number]): string {
+  return `${group.name} (${group.at}) is left out: ${leftOutCountText(group)}`;
 }
 
 const setupName = (s: GlobalSetupEntry) =>
