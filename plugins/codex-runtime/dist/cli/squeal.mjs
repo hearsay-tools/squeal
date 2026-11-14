@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.501";
+  if (true) return "0.1.504";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -1203,7 +1203,7 @@ function waitsText(reason2, load, gate2 = null) {
   return `${waits2}: at or above it for ${oldest} of at most ${BOUND_TEXT}, then runs once anyway (${loadText(load)} now)`;
 }
 function loadRetryWhenText(load) {
-  return loadAllows(load) ? `${IN_TURN_TEXT}: the one-minute load average is below the CPU count (${loadText(load)})` : `runs once more when the one-minute load average falls below the CPU count, or after at most ${BOUND_TEXT} above it, then with a load note (${loadText(load)} now)`;
+  return loadAllows(load) ? `${IN_TURN_TEXT}: the one-minute load average is below the CPU count (${loadText(load)})` : `joins the queue when the one-minute load average falls below the CPU count, or after at most ${BOUND_TEXT} above it, then with a load note, and ${IN_TURN_TEXT}, at no set time (${loadText(load)} now)`;
 }
 function holdText(wait, command) {
   switch (wait.kind) {
@@ -106855,11 +106855,14 @@ async function askLine(store, row2, where3, reason2, asker, load) {
   const joins = others.length > 0 ? " It joins a retry another session asked for." : "";
   return {
     ok: true,
-    text: `Retry queued (reason: ${reason2}): ${shown} ${when}${start2}.${joins} Its FAIL stays counted until a retry passes; squeal status lists the retry while it is pending.`
+    text: `Retry queued (reason: ${reason2}): ${shown} ${when}${start2}.${joins} Its FAIL stays counted until a retry passes; squeal status lists the retry while it is pending. ` + retryWaitText(shown)
   };
 }
 function waitText2(shown) {
   return `squeal status --wait 60000 ${shown} waits for its result and moves it ahead in the queue.`;
+}
+function retryWaitText(shown) {
+  return `squeal status --wait 60000 ${shown} waits for its result; the wait leaves the retry at its normal priority.`;
 }
 function noResultText(store, row2, own, { root, worktreeId }, states) {
   if (own.length > 0 && own.every((s) => s.validity !== "unknown")) {
