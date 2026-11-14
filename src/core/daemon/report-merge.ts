@@ -68,6 +68,8 @@ export const MERGE_RULES: MergeRules = {
   },
   fileDurations: listedWhenAny((report) => report.fileDurations),
   observed: listedWhenAny((report) => report.observed),
+  // Spec 022 D1: one list per completed file, so each part's.
+  loaded: listedWhenFound((report) => report.loaded),
   reads: listedWhenAny((report) => report.reads),
   environmentObserved: listedWhenFound((report) => report.environmentObserved),
   skippedFiles: listedWhenFound((report) => report.skippedFiles),

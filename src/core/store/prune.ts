@@ -3,6 +3,7 @@ import { join, resolve, sep } from "node:path";
 import type { PruneOptions, PruneReport, WorktreeRepo } from "../types/store.js";
 import { num, str } from "./codec.js";
 import type { Connection } from "./connection.js";
+import { dropOrphanLoadedModules } from "./loaded-modules.js";
 import type { StorePaths } from "./paths.js";
 import {
   DAY_MS,
@@ -98,6 +99,9 @@ export function* pruneSlices(
   if (options.maxSizeMb !== null) {
     yield* evictToCap(conn, options.maxSizeMb * 1024 * 1024, counts);
   }
+
+  // Spec 022 D3: a loaded list goes with the last result at its key.
+  yield* dropOrphanLoadedModules(conn);
 
   yield* dropRuns(conn, paths, cutoff, counts);
 

@@ -44,7 +44,7 @@ function loggingProvider(dir: string, log: string): string {
       "  ...provider,",
       "  async takeCoverage(options) {",
       "    const payload = await provider.takeCoverage(options);",
-      `    if (payload !== undefined) appendFileSync(${JSON.stringify(log)}, payload + "\\n");`,
+      `    if (payload !== undefined) appendFileSync(${JSON.stringify(log)}, payload.file + "\\n");`,
       "    return payload;",
       "  },",
       "};",

@@ -42,6 +42,7 @@ import {
   inspectorFiles,
   inspectorNote,
   KEPT_NOTE,
+  loadedLists,
   providerFailed,
   recordProviderFailure,
   type VitestCoverage,
@@ -54,7 +55,7 @@ import { fileImports, importClosure, missingCandidates } from "./graph.js";
 import { loadVitest, type VitestNode } from "./load.js";
 import { mayHaveReadTouched, mayHaveRun, withoutFiles, withoutTouched } from "./moved.js";
 import { namePattern } from "./name-pattern.js";
-import { VitestObserver } from "./observe.js";
+import { VitestObserver, withLoaded } from "./observe.js";
 import { noteOnce, withoutOptimizer } from "./optimizer.js";
 import { closurePackages, environmentPackages } from "./packages.js";
 import {
@@ -175,6 +176,8 @@ export class VitestAdapter implements Omit<RunnerAdapter, "traits"> {
   readonly #coverageDirs: InstanceCoverage[] = [];
   /** The projects of the last `environment` answer that held coverage: their keys hold it. */
   #keyedCoverage: string[] = [];
+  /** Spec 022 D2: per project, the files its last `environment` answer named; no list adds them. */
+  #environmentFiles = new Map<string, ReadonlySet<RelativePath>>();
 
   /**
    * `vitest` is the project's own `vitest/node` (`loadVitest`). Only types
@@ -634,6 +637,7 @@ export class VitestAdapter implements Omit<RunnerAdapter, "traits"> {
         });
       }
       this.#keyedCoverage = this.#instanceCoverage === null ? [] : envs.map((e) => e.project);
+      this.#environmentFiles = new Map(envs.map((e) => [e.project, new Set(e.files)]));
       return envs.sort((a, b) => compare(a.project, b.project));
     });
   }
@@ -762,11 +766,13 @@ export class VitestAdapter implements Omit<RunnerAdapter, "traits"> {
           const counted = [...touched.inputs, ...touched.modules].map(
             (file) => this.paths.toRelative(file) ?? file,
           );
-          const report = withoutTouched(kept, reread, counted.sort());
+          let report = withoutTouched(kept, reread, counted.sort());
           if (uncovered !== null) {
             const clean = !execution.hung && !unfit;
-            if (clean) this.#collect(vitest, batches, report, uncovered, options.runId);
-            else dropPayloads(batches);
+            if (clean) {
+              report = this.#withLoaded(vitest, batches, report, uncovered);
+              this.#collect(vitest, batches, report, uncovered, options.runId);
+            } else dropPayloads(batches);
           }
           // One persisted note for status, besides the crash's delivered line (D5).
           if (broken !== null && report.failure !== null) this.#note(report.failure);
@@ -812,6 +818,24 @@ export class VitestAdapter implements Omit<RunnerAdapter, "traits"> {
     const skipped = [...focused, ...reading.map((file) => file.ref)];
     coverage.skip(skipped.map((ref) => this.paths.toAbsolute(ref.path)));
     return new Set(skipped.map(fileKey));
+  }
+
+  /**
+   * Spec 022 D1, D2: a clean run's report with the loaded lists of its
+   * completed, covered files, as `#collect` picks their payloads.
+   */
+  #withLoaded(
+    vitest: Vitest,
+    batches: readonly CoverageBatch[],
+    report: RunReport,
+    uncovered: ReadonlySet<string>,
+  ): RunReport {
+    const completed = new Set(report.completedFiles.map(fileKey));
+    const wanted = (ref: TestFileRef) =>
+      completed.has(fileKey(ref)) && !uncovered.has(fileKey(ref));
+    const lists = loadedLists(vitest, batches, wanted, this.paths);
+    const none = new Set<RelativePath>();
+    return withLoaded(report, lists, (project) => this.#environmentFiles.get(project) ?? none);
   }
 
   /**

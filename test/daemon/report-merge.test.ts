@@ -159,6 +159,29 @@ const TABLE: { readonly [K in keyof RunReport]-?: readonly Case<K>[] } = {
       merged: { observed: [seen(A), seen(B)] },
     },
   ],
+  loaded: [
+    { name: "absent when no part has them", parts: [{}, {}], merged: {} },
+    { name: "absent when every list is empty", parts: [{ loaded: [] }], merged: {} },
+    {
+      name: "a later part's",
+      parts: [{}, { loaded: [{ testFile: C, paths: [C.path] }] }],
+      merged: { loaded: [{ testFile: C, paths: [C.path] }] },
+    },
+    {
+      name: "over three, one empty",
+      parts: [
+        { loaded: [{ testFile: B, paths: [B.path] }] },
+        { loaded: [] },
+        { loaded: [{ testFile: A, paths: [A.path] }] },
+      ],
+      merged: {
+        loaded: [
+          { testFile: B, paths: [B.path] },
+          { testFile: A, paths: [A.path] },
+        ],
+      },
+    },
+  ],
   reads: [
     { name: "absent when no part has them", parts: [{}, {}], merged: {} },
     {

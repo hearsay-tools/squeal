@@ -513,6 +513,14 @@ export interface RunReport {
    */
   readonly observed?: readonly ObservedInputs[];
   /**
+   * Spec 022 D1: of the completed files, the repository modules each one's
+   * worker loaded, one list per file, the file itself among them. The core
+   * stores each beside the result it stores the file's run under (D3). Its
+   * paths that join a key arrive in `observed` too (D2). Absent: none
+   * recorded (coverage off, `isolate: false`, another runner).
+   */
+  readonly loaded?: readonly LoadedList[];
+  /**
    * Of the completed files, what each read at run time, in a run with
    * `RunOptions.observeIgnored` (task 001-307). Only for the warm-up's list of
    * ignored paths: never keyed, never a closure. Absent: not asked, or the
@@ -565,6 +573,12 @@ export interface RunReport {
    * selected in each, sorted as `completedFiles`. Absent: no file had texts.
    */
   readonly focused?: readonly FocusedCount[];
+}
+
+/** One completed file's loaded modules (`RunReport.loaded`, spec 022 D1), sorted. */
+export interface LoadedList {
+  readonly testFile: TestFileRef;
+  readonly paths: readonly RelativePath[];
 }
 
 /** A run that failed to start (`RunReport.startupFailure`). */
