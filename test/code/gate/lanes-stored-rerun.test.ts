@@ -49,7 +49,9 @@ function fake(
       return [f, script[f.path]?.[i] ?? "pass"] as const;
     });
     const hangs = ends.some(([, end]) => end === "hang");
-    await new Promise((resolve) => setTimeout(resolve, hangs ? (options.timeoutMs ?? 0) : 20));
+    // A hang ends after its timeout, as a real run ends after the deadline: Node can fire a timer
+    // under 1 ms early by performance.now, which left the lane about 1 ms of budget (row 020-65).
+    await new Promise((resolve) => setTimeout(resolve, hangs ? (options.timeoutMs ?? 0) + 10 : 20));
     const done = ends.filter(([, end]) => end !== "hang");
     return {
       end: hangs ? "timed-out" : "completed",
