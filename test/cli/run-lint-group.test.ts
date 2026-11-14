@@ -295,7 +295,7 @@ describe("squeal run <lint group> (019-22)", () => {
     );
   });
 
-  // Review 0.1.409 B1: a store no one can read drops only the heartbeat detail.
+  // Review 0.1.409 B1: a store no one can read drops the heartbeat detail; row 011-334 says so in its place.
   it("has no verdict, in time and naming the holder, while the store is locked", async () => {
     const r = repo();
     r.daemon("stale", Date.now() - 111_000);
@@ -314,12 +314,12 @@ describe("squeal run <lint group> (019-22)", () => {
       }
       return type === "ping" ? {} : pending;
     });
-    expect(await timed(["run", "lint", "--wait", "300"], r.root)).toEqual({
-      code: 3,
-      stdout: `Group lint has no verdict: the deadline passed before the daemon took request g1; it waits for the scheduler, which has been applying revision 412 for 48 s. ${STAYS}\n`,
-      stderr: "",
-      inTime: true,
-    });
+    const result = await timed(["run", "lint", "--wait", "300"], r.root);
+    expect({ ...result, stdout: "" }).toEqual({ code: 3, stdout: "", stderr: "", inTime: true });
+    expect(result.stdout).toMatch(
+      /^Group lint has no verdict: the deadline passed before the daemon took request g1; the daemon's heartbeat was not read \(store busy, waited \d+ ms: another process holds the store's lock; run the command again once it is released\); it waits for the scheduler, which has been applying revision 412 for 48 s\. /,
+    );
+    expect(result.stdout.endsWith(`. ${STAYS}\n`)).toBe(true);
   });
 });
 
