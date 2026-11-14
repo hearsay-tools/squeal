@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { Vitest } from "vitest/node";
+import { withLoaded } from "../../../src/core/ci/loaded-inputs.js";
 import { WorktreePaths } from "../../../src/core/fs/worktree-paths.js";
 import type { TestFileRef } from "../../../src/core/types/keys.js";
 import type { ObservedInputs, RunReport } from "../../../src/core/types/runner.js";
 import { type CoverageBatch, loadedLists } from "../../../src/runners/vitest/coverage.js";
-import { withLoaded } from "../../../src/runners/vitest/observe.js";
 
 /*
  * Spec 022 D1 and D2 (row 022-03), without Vitest: which batches give a

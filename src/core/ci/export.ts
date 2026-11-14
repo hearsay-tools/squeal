@@ -223,7 +223,12 @@ async function keyFiles(
   leftOut: (file: PartFile, closure: RunnerClosure) => boolean,
 ): Promise<{ closures: ReadonlyMap<string, RunnerClosure>; report: RunReport; inspected: number }> {
   const { closures, leftOut: inspected } = await keying.keyFiles(passed, { leftOut });
-  const report = partsReport(passed.filter((file) => closures.has(fileId(file))));
+  const { keys } = keying;
+  const environmentFiles = (project: ProjectName) => new Set(keys.environmentFiles(project));
+  const report = partsReport(
+    passed.filter((file) => closures.has(fileId(file))),
+    environmentFiles,
+  );
   await keying.grow(report);
   return { closures, report, inspected };
 }

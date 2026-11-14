@@ -18,7 +18,10 @@ import { cloneOf, committed, scratch } from "./fixture.js";
  * with Squeal's provider write `squeal-ci-part/4` parts with records; the
  * same shards recorded without it, read as format 3 parts, export to the
  * same bundle: the same files, keys, closures and results. Records travel
- * in parts only; D10 of 018 lets the shards' coverage options differ.
+ * in parts only; D10 of 018 lets the shards' coverage options differ. Spec
+ * 022 D2: with the provider, each file's loaded list joins its observed
+ * modules, as the daemon's does (review of 0.1.493 B1); here every loaded
+ * path is in the file's closure, so no key moves.
  */
 
 const SQUEAL = "0.0.0-test";
@@ -126,7 +129,17 @@ describe("squeal ci export of format 3 and format 4 parts (spec 020 D13.3)", () 
       ...bundle,
       results: bundle.results.map(({ durationMs: _ms, ...r }) => r),
     });
-    expect(durationless(fromFour)).toEqual(durationless(fromThree));
+    const withoutLoaded = (bundle: ResultsBundle) => ({
+      ...durationless(bundle),
+      testFiles: bundle.testFiles.map(({ observed, ...file }) => {
+        const { observedModules: _loaded, ...rest } = observed ?? {};
+        return { ...file, observed: rest };
+      }),
+    });
+    expect(withoutLoaded(fromFour)).toEqual(withoutLoaded(fromThree));
+    expect(fromFour.testFiles.map((f) => f.observed?.observedModules)).toEqual(
+      NAMES.map((n) => ["src/upper.ts", `test/${n}.test.ts`]),
+    );
     expect(fromFour.testFiles.map((f) => f.path)).toEqual(NAMES.map((n) => `test/${n}.test.ts`));
   });
 });

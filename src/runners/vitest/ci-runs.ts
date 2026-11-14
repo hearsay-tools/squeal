@@ -14,7 +14,7 @@ import type { WorktreePaths } from "../../core/fs/worktree-paths.js";
 import { coreEnvironmentInputs } from "../../core/keys/environment.js";
 import { describeEnvironment, sawCi } from "../../core/keys/environment-descriptor.js";
 import { KEY_FORMAT_VERSION } from "../../core/keys/key-format.js";
-import type { AbsolutePath, ProjectName } from "../../core/types/common.js";
+import type { AbsolutePath, ProjectName, RelativePath } from "../../core/types/common.js";
 import type { TestFileRef } from "../../core/types/keys.js";
 import { observedInputs } from "../observe/inputs.js";
 import type { RecordedFile } from "../observe/read.js";
@@ -58,6 +58,8 @@ interface RawModule {
   readonly tests: readonly RawTest[];
   /** Spec 020 D13: its record, or why none; absent without the provider. */
   readonly coverage?: RawFileCoverage;
+  /** Spec 022 D1: the files its worker loaded, as Squeal's provider lists them; absent without it. */
+  readonly loaded?: readonly AbsolutePath[];
 }
 
 interface RawProject {
@@ -162,7 +164,11 @@ function testFiles(run: RawRun, context: RunContext, table: PartRecordTable | nu
     if (path === null || !ENDED.has(module.state)) continue;
     const ref = { project: module.project, path };
     const coverage = table === null ? {} : table.fileCoverage(module.coverage);
-    files.push({ ref, file: { ...ref, ...outcomes(module, named.has(path)), ...coverage } });
+    const loaded = context.observing ? loadedOf(module, path, paths) : {};
+    files.push({
+      ref,
+      file: { ...ref, ...outcomes(module, named.has(path)), ...coverage, ...loaded },
+    });
   }
   files.sort((a, b) => compareRefs(a.ref, b.ref));
   const observed = new Map(
@@ -178,6 +184,26 @@ function testFiles(run: RawRun, context: RunContext, table: PartRecordTable | nu
     const reads = observed.get(refKey(ref));
     return reads === undefined ? file : { ...file, observed: reads };
   });
+}
+
+/**
+ * Spec 022 D1, as the daemon's adapter keeps a list (`loadedLists`): the
+ * worktree's files `module`'s worker loaded, sorted; none when the list
+ * lacks the test file itself, which is then lost. The caller asks only
+ * while the recorder observes: without it no list joins a key (D2).
+ */
+function loadedOf(
+  module: RawModule,
+  path: RelativePath,
+  paths: WorktreePaths,
+): Pick<PartFile, "loaded"> {
+  if (!Array.isArray(module.loaded)) return {};
+  const loaded = new Set<RelativePath>();
+  for (const file of module.loaded) {
+    const relative = paths.isProjectFile(file) ? paths.toRelative(file) : null;
+    if (relative !== null) loaded.add(relative);
+  }
+  return loaded.has(path) ? { loaded: [...loaded].sort(compare) } : {};
 }
 
 function outcomes(

@@ -239,6 +239,14 @@ export interface PartFile {
   readonly record?: number;
   /** Format 4, with the provider in the run: why the file has no record. */
   readonly noRecord?: NoRecord;
+  /**
+   * Spec 022 D1, with the recorder in the run (`PartHeader.observing`):
+   * the project files the file's worker loaded, the file itself among
+   * them, sorted, from Squeal's provider. `ci export` joins them to
+   * `observed` as the daemon joins its own run's list (`withLoaded`; review
+   * of 0.1.493 B1); no export stores them (D3). Absent: none recorded.
+   */
+  readonly loaded?: readonly RelativePath[];
 }
 
 export interface Part {
