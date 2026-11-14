@@ -58,47 +58,40 @@ export function readHeader(
   isSlow?: (testFile: TestFileRef) => boolean,
   openFiles?: ReadonlySet<string>,
 ): StatusHeader {
-  const at = headerPolicy(store, worktreeId);
-  const part = headerPart(states, keys, at.policy, isSlow, openFiles);
-  return headerWith(store, worktreeId, at, keys, part);
-}
-
-/** The worktree's root and the policy there, as the header reads them; `null` policy without a row. */
-export interface HeaderPolicy {
-  readonly root: string | undefined;
-  readonly policy: Policy | null;
-}
-
-export function headerPolicy(store: Store, worktreeId: WorktreeId): HeaderPolicy {
-  const root = store.worktrees.get(worktreeId)?.root;
-  return { root, policy: root === undefined ? null : readPolicy(root) };
+  return headerWith(store, worktreeId, keys, (policy) =>
+    headerPart(states, keys, policy, isSlow, openFiles),
+  );
 }
 
 /**
- * Row 011-345: the header from `part`, made from the worktree's states,
- * `keys` and `at`'s policy (`headerPart`), and every other input read now:
- * the revision and its commit, the refined revision, the install wait,
- * checkpoints, the lanes' activity, the commit line and the optimizer note.
- * `readHeader` is this over a part it makes; a caller that kept the states,
- * the keys and the policy may pass the part it made from them.
+ * Row 011-345: the header from the part `partOf` gives for the policy at
+ * the worktree's root, made from the worktree's states and `keys`
+ * (`headerPart`), and every other input read now: the revision and its
+ * commit, the refined revision, the install wait, checkpoints, the policy,
+ * the lanes' activity, the commit line and the optimizer note, in the order
+ * the header always read them (`test/presence/reads.test.ts`). `readHeader`
+ * makes the part each time; a caller that kept the states, the keys and the
+ * policy may give the part it made from them.
  */
 export function headerWith(
   store: Store,
   worktreeId: WorktreeId,
-  { root, policy }: HeaderPolicy,
   keys: readonly TestFileKeyRecord[],
-  part: HeaderPart,
+  partOf: (policy: Policy | null) => HeaderPart,
 ): StatusHeader {
   const latest = store.revisions.latest(worktreeId);
   const revision = latest?.number ?? 0;
   const commit = readRevisionCommit(store, worktreeId, latest);
-  const { counts, fileLevelCounts, inheritedCount, inheritedFileLevelCount, importedCount } =
-    part.counted;
   const refinedRevision = readRefined(store, worktreeId);
   const wait = readInstallWait(store, worktreeId);
   const awaiting = wait !== null;
   const last = store.checkpoints.lastCompletedFull(worktreeId);
   const lane = awaiting ? null : laneAfter(store.checkpoints.lastCompleted(worktreeId), last);
+  const root = store.worktrees.get(worktreeId)?.root;
+  const policy = root === undefined ? null : readPolicy(root);
+  const part = partOf(policy);
+  const { counts, fileLevelCounts, inheritedCount, inheritedFileLevelCount, importedCount } =
+    part.counted;
   const optimizerOff = readOptimizerOff(store, worktreeId);
   const runnerPartPending = !covers(refinedRevision, revision);
   return {
