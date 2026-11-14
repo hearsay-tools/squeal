@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.479";
+  if (true) return "0.1.481";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -3950,7 +3950,9 @@ function groupRequests(requestGroup2, max, step = () => null, now = Date.now) {
         revision: requested.revision,
         queued: requested.queued,
         // Row 011-325: the id of its covered files, when the scheduler recorded them.
-        ...requested.coveredId === void 0 ? {} : { coveredId: requested.coveredId }
+        ...requested.coveredId === void 0 ? {} : { coveredId: requested.coveredId },
+        // Row 011-324: why it queued nothing, while an install is awaited.
+        ...requested.installWait === void 0 ? {} : { installWait: requested.installWait }
       },
       unknown: request.unknown,
       error: request.error,
@@ -55934,7 +55936,8 @@ function narrowRequest(group, paths, groups3) {
   return {
     operation: `taking a squeal run ${group} <path>... request`,
     start: {
-      skip: "no closed answer: once closed its runner-work wait rejects; before the start it throws"
+      skip: "no closed answer: once closed its runner-work wait rejects; before the start it throws",
+      afterPass: true
     },
     // Review 0.1.411, B2: the answer says why nothing was queued, of the files it selected.
     installWait: {
@@ -56525,7 +56528,7 @@ var init_request_intake = __esm({
         const { installWait: installWait2 } = request;
         const done = this.#transact((context, ledger) => {
           if (reason2 !== null && "stage" in installWait2) {
-            const waited = installWait2.stage(context, ledger, id);
+            const waited = installWait2.stage(context, ledger, id, reason2);
             if (store.record === void 0) recordCovered(context, ledger, id, waited.covered, reason2);
             return { waited: waited.answer };
           }
@@ -57407,10 +57410,19 @@ function groupRequest(group, groups3, passes) {
   };
   return {
     operation: `taking a squeal run ${group} request`,
-    start: { skip: "no closed answer: before the start the scheduler throws (`started`)" },
+    start: {
+      skip: "no closed answer: before the start the scheduler throws (`started`)",
+      afterPass: true
+    },
+    // Row 011-324: the answer names why nothing was queued, as the narrow run's does.
     installWait: {
-      stage: (context, ledger, id) => known3(context.policy) ? {
-        answer: { revision: ledger.revision.number, queued: 0, coveredId: id },
+      stage: (context, ledger, id, reason2) => known3(context.policy) ? {
+        answer: {
+          revision: ledger.revision.number,
+          queued: 0,
+          coveredId: id,
+          installWait: reason2
+        },
         covered: groupFiles(context.policy, ledger)
       } : { answer: null, covered: [] }
     },
@@ -105559,8 +105571,12 @@ ${usage3}${GROUP_USAGE}`);
     io
   );
 }
-function requestedText2(group, { revision, queued }) {
+function requestedText2(group, { revision, queued, installWait: installWait2 }) {
   const { name: name3, after: after3 } = group;
+  if (installWait2 !== void 0) {
+    return `No test files of group ${name3} run at revision ${revision}: ${installWait2}.
+`;
+  }
   if (queued === 0) {
     return `No test files of group ${name3} to run at revision ${revision}: the group has none or all are current.
 `;
