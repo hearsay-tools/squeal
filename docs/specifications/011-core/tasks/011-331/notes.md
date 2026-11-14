@@ -159,6 +159,6 @@ I found no earlier test of the skip.
 ## For the next worker
 
 - **011-44** (fewer closure reads) and **011-45** (fewer state reads): the reads are now `wait/named.ts` `namedPoll.read` and `wait/status.ts` `editPoll.read` with `wait/edit-window.ts`. **011-49** (the snapshot's end time) is in `wait/snapshot.ts`. They stay planned (decision 7).
-- **011-328** works in `wait/reads.ts` (`WaitFiles`). This row does not touch `reads.ts`. `wait.ts` gained imports and the status loop at its end, so a rebase meets at most an import line.
+- **011-328** landed on main (0.1.479) before this row's rebase onto `1afd35922`. The one conflict was an import line in `run-group-wait.ts`: 011-328's `WaitFiles` type import beside this row's `stoppedText` import from `wait/stopped.ts`; both kept. `wait/covered.ts` (011-328) reads `readBound` from `presence.ts`, which this row leaves in place. `reads.ts` is untouched by this row.
 - **Group-wait edits (011-332):** the status waits' sync before deciding is the edit and named reads' `sync ??= …` at the first read. If 011-332 reproduces the missed edit, `passReached` is the rule a group wait would take.
 - **Bundles:** this row changes CLI code, so the committed plugin bundles differ from the build. The coordinator rebuilds them on the candidate.
