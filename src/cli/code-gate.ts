@@ -12,7 +12,12 @@ import { TeardownWarnings } from "../core/code/gate/evidence.js";
 import { refusedText } from "../core/code/gate/parts-refused.js";
 import { type BasePolicy, loadBasePolicy } from "../core/code/gate/policy.js";
 import type { EngineVersions, GateRunner, GateRunReport } from "../core/code/gate/report.js";
-import { retriedText } from "../core/code/gate/retry.js";
+import {
+  RERUN_STORED_FLAG,
+  retriedText,
+  storedFailuresText,
+  storedRerunText,
+} from "../core/code/gate/retry.js";
 import type { GateAdapters } from "../core/code/gate/runners.js";
 import { resolveScope } from "../core/code/gate/scope.js";
 import type { ChangedSet, GateVerdict } from "../core/code/gate/types.js";
@@ -225,6 +230,7 @@ async function gate(
       ...seams(io),
     },
     parts,
+    parsed.rerunStoredFailures === true,
   )
     .catch((error: unknown) => (error instanceof Error ? error : new Error(String(error))))
     .finally(() => durations?.close());
@@ -240,9 +246,11 @@ async function gate(
   const createdAt = new Date((io.now ?? Date.now)()).toISOString();
   const times = { createdAt, durationsMs };
   const report = evaluate(changed, evidence, policy, versions(), times, exceptions);
-  const json = `${statusCommand(io.env ?? process.env)} code ${[...args.map(shellWord), "--json"].join(" ")}`;
+  const command = (flag: string) =>
+    `${statusCommand(io.env ?? process.env)} code ${[...args.map(shellWord), flag].join(" ")}`;
+  const json = command("--json");
   io.stdout(parsed.json ? `${JSON.stringify(report, null, 2)}\n` : formatGateReport(report, json));
-  afterVerdict(report.runs, logs.retention(), io);
+  afterVerdict(report.runs, logs.retention(), io, command(RERUN_STORED_FLAG));
   return EXIT[report.verdict];
 }
 
@@ -250,18 +258,25 @@ async function gate(
  * What stderr tells after the verdict, so `--json` keeps stdout to the
  * report: why the parts did not give files they hold, one bounded line per
  * reason (row 020-49, #205); the files that ran once more because they
- * failed under load (row 020-54, #210); then the kept logs (#197).
+ * failed under load (row 020-54, #210); the failures the stores gave,
+ * run once more with `--rerun-stored-failures` or named with `rerunStored`,
+ * the command that does (row 020-60, #200, #214); then the kept logs (#197).
  */
 function afterVerdict(
   runs: readonly GateRunReport[],
   retention: LogRetention | null,
   io: CliIo,
+  rerunStored: string,
 ): void {
   const refused = refusedText(runs);
   if (refused !== "") io.stderr(refused);
   // Row 020-54 (#210): the files that failed under load and ran once more, in one line.
   const retried = retriedText(runs);
   if (retried !== "") io.stderr(retried);
+  // Row 020-60: the stored failures that ran once more, then those that did not, with the command.
+  for (const line of [storedRerunText(runs), storedFailuresText(runs, rerunStored)]) {
+    if (line !== "") io.stderr(line);
+  }
   const kept = keptLogsLine(runs, retention);
   if (kept !== null) io.stderr(kept);
 }
