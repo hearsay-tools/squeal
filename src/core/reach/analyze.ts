@@ -81,6 +81,8 @@ export interface TestReach {
   readonly uncalledVia: Map<RelativePath, number>;
   /** Window edits that changed it or a file of its reach. */
   edits: number;
+  /** Spec 022 D4: each source of its reach, by the path kind it takes. */
+  readonly kinds: ReadonlyMap<RelativePath, PathKind>;
 }
 
 export interface Analysis {
@@ -245,5 +247,6 @@ function testReach(test: ReachTestFile, pairs: readonly Pair[], edits: readonly 
     uncalled: uncalled.length,
     uncalledVia,
     edits: edits.filter((e) => e.paths.some((p) => reach.has(p))).length,
+    kinds: new Map(pairs.map((p) => [p.path, p.kind])),
   };
 }
