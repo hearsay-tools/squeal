@@ -1,6 +1,6 @@
 # 022 Selection strategy: status
 
-Stage: draft (2026-11-14; research landed, spec awaiting approval)
+Stage: approved (2026-11-14); wave 1 (phase 1) building
 Started: 2026-11-14
 
 ## Decisions so far
@@ -11,6 +11,7 @@ Started: 2026-11-14
 - 2026-11-14, the coordinator: wave 0 landed (`research/loaded-modules.md`, `research/selection-option.md`). Kody's rule as it is (re-run only when a loaded module changed) is not safe in Squeal: on this repository's history it would have skipped 11 of 19 real new failures, all in tests that read source files as data. It would save 24% to 31% of re-run seconds, and those are the same non-module inputs. A safe form replaces only the import part of the closure with the loaded set and keeps every other input. It saves about 1% here and in cezar, and 57% in Kody's node-unit project, whose lazy `import()` fan-out is what the static graph over-counts. The loaded set is also wider than the import graph where a runtime pulls code in without an import (Kody workers-unit, +25%). Built as a narrower key with a per-file fallback, the switch moves 15% to 25% of keys, needs no key-format raise, and stores lists in a new additive table. Recording uses Vitest's `evaluatedModules` from Squeal's in-worker coverage provider; node:test already records; pytest falls back. The human decides the shape (card, 2026-11-14) before a spec is written.
 - 2026-11-14, the human on the wave 0 card. Shape: "Phase 1: add loaded modules to today's rule for everyone, and record them. Add to squeal reach an estimate, per project, of what narrowing by loaded modules would save. Phase 2: the safe setting, off by default, built when a project shows a gain in that estimate. Do not offer Kody's rule." Runners: Vitest first. From CI: local runs only. Switch: run narrowed files once.
 - 2026-11-14, the coordinator: `spec.md` drafted from 022-01 and 022-02 and the human's answers. D1 recording through the in-worker coverage provider (no injected setup file, which would move every environment hash; coverage off gives no lists); D2 the union through the existing observed-input route, minus paths the closure or environment hash already holds, no key-format raise; D3 lists per result key in a new additive table; D4 the reach estimate; D5 phase 2, rows only on the human's ask. Slices 022-03 to 022-05, filed on approval.
+- 2026-11-14, the human: "Spec 022: Approve, build phase 1"; phase 2: "I decide on each reading". The coordinator folded the table slice into 022-03 (rows 022-03 and 022-04, `tasks/wave-1.md`) and committed the D3 contract `src/core/store/loaded-modules.ts` on its branch, to land with the wave after review.
 
 ## Open questions
 
