@@ -112,7 +112,11 @@ export async function runGroupCommand(args: GroupArgs, io: CliIo, usage: string)
     io.stdout(line);
     return 0;
   }
-  return waitForGroup({ root, socketPath, group: name, queued: state.queued, deadline, line }, io);
+  const files = { kind: "group", group: name } as const;
+  return waitForGroup(
+    { root, socketPath, group: name, queued: state.queued, deadline, line, files },
+    io,
+  );
 }
 
 /**
