@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.505";
+  if (true) return "0.1.506";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -3509,55 +3509,6 @@ var init_refined = __esm({
   }
 });
 
-// src/core/state/file-class.ts
-function fileClassOf(row2, own) {
-  const has3 = (validity) => own.some((s) => s.validity === validity);
-  const queued = row2 !== void 0 && row2.key !== null && row2.pending !== null;
-  const unkeyed = row2 === void 0 || row2.key === null;
-  if (queued || has3("pending")) return "pending";
-  if (unkeyed || own.length === 0 || has3("unknown")) return "unknown";
-  return has3("stale") ? "stale" : "current";
-}
-function countNotCurrent(states, keys, openFiles2 = /* @__PURE__ */ new Set()) {
-  const checks = /* @__PURE__ */ new Map();
-  for (const state of states) {
-    if (state.check.kind === "setup") continue;
-    const id = testFileKeyOf(state.check);
-    const own = checks.get(id);
-    if (own === void 0) checks.set(id, [state]);
-    else own.push(state);
-  }
-  const testFileCounts = { current: 0, pending: 0, stale: 0, unknown: 0 };
-  const testFilesByPhase = { running: 0, queued: 0 };
-  const testsByPhase = { running: 0, queued: 0 };
-  for (const row2 of keys) {
-    const id = testFileId(row2.testFile);
-    const own = checks.get(id) ?? [];
-    const fileClass = fileClassOf(row2, own);
-    testFileCounts[fileClass]++;
-    if (fileClass !== "pending") continue;
-    const running = openFiles2.has(id) || row2.pending === "running" || own.some(isRunning);
-    testFilesByPhase[running ? "running" : "queued"]++;
-  }
-  const filePhase = new Map(keys.map((row2) => [testFileId(row2.testFile), row2.pending]));
-  for (const state of states) {
-    if (state.check.kind !== "test" || state.validity !== "pending") continue;
-    const id = testFileKeyOf(state.check);
-    const phase = openFiles2.has(id) ? "running" : state.pendingPhase ?? filePhase.get(id) ?? "queued";
-    testsByPhase[phase]++;
-  }
-  return { testFileCounts, testFilesByPhase, testsByPhase };
-}
-var isRunning;
-var init_file_class = __esm({
-  "src/core/state/file-class.ts"() {
-    "use strict";
-    init_reverse_index();
-    init_derive();
-    isRunning = (state) => state.pendingPhase === "running";
-  }
-});
-
 // src/core/commit/report.ts
 function countsOf(raw, keys) {
   if (typeof raw !== "object" || raw === null) return null;
@@ -4103,6 +4054,55 @@ var init_stop_wait = __esm({
   }
 });
 
+// src/core/state/file-class.ts
+function fileClassOf(row2, own) {
+  const has3 = (validity) => own.some((s) => s.validity === validity);
+  const queued = row2 !== void 0 && row2.key !== null && row2.pending !== null;
+  const unkeyed = row2 === void 0 || row2.key === null;
+  if (queued || has3("pending")) return "pending";
+  if (unkeyed || own.length === 0 || has3("unknown")) return "unknown";
+  return has3("stale") ? "stale" : "current";
+}
+function countNotCurrent(states, keys, openFiles2 = /* @__PURE__ */ new Set()) {
+  const checks = /* @__PURE__ */ new Map();
+  for (const state of states) {
+    if (state.check.kind === "setup") continue;
+    const id = testFileKeyOf(state.check);
+    const own = checks.get(id);
+    if (own === void 0) checks.set(id, [state]);
+    else own.push(state);
+  }
+  const testFileCounts = { current: 0, pending: 0, stale: 0, unknown: 0 };
+  const testFilesByPhase = { running: 0, queued: 0 };
+  const testsByPhase = { running: 0, queued: 0 };
+  for (const row2 of keys) {
+    const id = testFileId(row2.testFile);
+    const own = checks.get(id) ?? [];
+    const fileClass = fileClassOf(row2, own);
+    testFileCounts[fileClass]++;
+    if (fileClass !== "pending") continue;
+    const running = openFiles2.has(id) || row2.pending === "running" || own.some(isRunning);
+    testFilesByPhase[running ? "running" : "queued"]++;
+  }
+  const filePhase = new Map(keys.map((row2) => [testFileId(row2.testFile), row2.pending]));
+  for (const state of states) {
+    if (state.check.kind !== "test" || state.validity !== "pending") continue;
+    const id = testFileKeyOf(state.check);
+    const phase = openFiles2.has(id) ? "running" : state.pendingPhase ?? filePhase.get(id) ?? "queued";
+    testsByPhase[phase]++;
+  }
+  return { testFileCounts, testFilesByPhase, testsByPhase };
+}
+var isRunning;
+var init_file_class = __esm({
+  "src/core/state/file-class.ts"() {
+    "use strict";
+    init_reverse_index();
+    init_derive();
+    isRunning = (state) => state.pendingPhase === "running";
+  }
+});
+
 // src/core/slow/state.ts
 function slowTierMetaKey(worktreeId) {
   return worktreeMetaKey("slowTier", worktreeId);
@@ -4261,14 +4261,23 @@ function laneChecks(states, inLane) {
   return checks;
 }
 function readSlowTier(store, worktreeId, states, keys, view) {
+  return slowTierOf(readLane(store, worktreeId, states, keys, view.isSlow, SLOW_GROUP), view);
+}
+function slowTierOf(lane, view) {
   return {
-    ...readLane(store, worktreeId, states, keys, view.isSlow, SLOW_GROUP),
+    ...lane,
     ...view.stopWaitMs === null ? {} : { stopWaitMs: view.stopWaitMs },
     ...view.stopWaitMs === null || view.maxHolds === 1 ? {} : { maxHolds: view.maxHolds },
     ...view.pausesOnly ? { pausesOnly: true } : {}
   };
 }
 function readLane(store, worktreeId, states, keys, inLane, group, classify5 = classifySlowFiles) {
+  return {
+    ...laneCounts(states, keys, inLane, classify5),
+    activity: liveActivity(store, worktreeId, keys, inLane, group)
+  };
+}
+function laneCounts(states, keys, inLane, classify5 = classifySlowFiles) {
   const files5 = classify5(states, keys, inLane);
   const counts = { current: 0, pending: 0, notRun: 0 };
   for (const { class: cls } of files5.values()) counts[cls]++;
@@ -4285,8 +4294,7 @@ function readLane(store, worktreeId, states, keys, inLane, group, classify5 = cl
     testFiles: files5.size,
     ...counts,
     currentAt,
-    ...currentUpTo !== null && currentUpTo !== currentAt ? { currentUpTo } : {},
-    activity: liveActivity(store, worktreeId, keys, inLane, group)
+    ...currentUpTo !== null && currentUpTo !== currentAt ? { currentUpTo } : {}
   };
 }
 function liveActivity(store, worktreeId, keys, inLane, group) {
@@ -4344,6 +4352,9 @@ function testsAtEdit(policy, listed9) {
   );
 }
 function readGroupTiers(store, worktreeId, states, keys, policy) {
+  return groupTiersOf(store, worktreeId, keys, groupLaneCounts(states, keys, policy));
+}
+function groupLaneCounts(states, keys, policy) {
   const view = groupView(policy);
   const waitMs = stopWaitBoundMs(policy);
   return view.groups.flatMap((group) => {
@@ -4352,14 +4363,25 @@ function readGroupTiers(store, worktreeId, states, keys, policy) {
     return [
       {
         name: group.name,
-        at: group.at,
-        after: group.after,
-        quietMs: group.quietMs,
-        ...readLane(store, worktreeId, states, keys, inLane, group.name, classifyGroupFiles),
+        inLane,
+        head: {
+          name: group.name,
+          at: group.at,
+          after: group.after,
+          quietMs: group.quietMs,
+          ...laneCounts(states, keys, inLane, classifyGroupFiles)
+        },
         ...group.stopRequires ? { stopWaitMs: waitMs } : {}
       }
     ];
   });
+}
+function groupTiersOf(store, worktreeId, keys, lanes) {
+  return lanes.map(({ name: name3, inLane, head: head2, stopWaitMs }) => ({
+    ...head2,
+    activity: liveActivity(store, worktreeId, keys, inLane, name3),
+    ...stopWaitMs === void 0 ? {} : { stopWaitMs }
+  }));
 }
 function classifyGroupFiles(states, keys, inLane) {
   const checks = laneChecks(states, inLane);
@@ -4401,6 +4423,102 @@ var init_groups = __esm({
     init_scheduler();
     init_file_class();
     init_slow2();
+  }
+});
+
+// src/core/state/header-part.ts
+function headerPart(states, keys, policy, isSlow, openFiles2) {
+  const view = policy === null ? null : slowPolicyView(policy);
+  const slow = isSlow ?? view?.isSlow;
+  const shown = policy !== null && groupTextsShown(policy);
+  const slowLane = view === null ? void 0 : laneCounts(states, keys, view.isSlow);
+  const owned = slowLane !== void 0 && (slowLane.testFiles > 0 || keys.length === 0 || !shown);
+  return {
+    policy,
+    view,
+    counted: countStates(states),
+    testFilesWithoutChecks: countFilesWithoutChecks(states, keys),
+    notCurrent: countNotCurrent(states, keys, openFiles2),
+    listed: keys.length > 0,
+    ...slow === void 0 ? {} : { slowPending: countSlowPending(states, keys, slow) },
+    ...owned ? { slowLane } : {},
+    ...policy !== null && shown ? {
+      groups: {
+        lanes: groupLaneCounts(states, keys, policy),
+        lanePending: countSlowPending(states, keys, inGroupLane(policy)),
+        testsAtEdit: testsAtEdit(policy, keys)
+      }
+    } : {}
+  };
+}
+function countStates(states) {
+  const counts = { current: 0, pending: 0, stale: 0, unknown: 0 };
+  const fileLevelCounts = { ...counts };
+  let inheritedCount = 0;
+  let inheritedFileLevelCount = 0;
+  let importedCount = 0;
+  for (const state of states) {
+    if (state.check.kind === "setup") continue;
+    counts[state.validity]++;
+    if (state.check.kind === "file") fileLevelCounts[state.validity]++;
+    if (state.validity !== "current") continue;
+    if (state.origin?.kind === "inherited") {
+      inheritedCount++;
+      if (state.check.kind === "file") inheritedFileLevelCount++;
+    }
+    if (state.origin?.kind === "imported") importedCount++;
+  }
+  return { counts, fileLevelCounts, inheritedCount, inheritedFileLevelCount, importedCount };
+}
+function countFilesWithoutChecks(states, keys) {
+  const withChecks = new Set(states.map((s) => testFileKeyOf(s.check)));
+  const counts = { pending: 0, unknown: 0 };
+  for (const row2 of keys) {
+    if (withChecks.has(testFileId(row2.testFile))) continue;
+    counts[hasKey(row2) && row2.pending !== null ? "pending" : "unknown"]++;
+  }
+  return counts;
+}
+function countSlowPending(states, keys, isSlow) {
+  const withChecks = new Set(states.map((s) => testFileKeyOf(s.check)));
+  const files5 = /* @__PURE__ */ new Map();
+  let checks = 0;
+  for (const state of states) {
+    const ref3 = testFileOf(state.check);
+    if (state.validity !== "pending" || !isSlow(ref3)) continue;
+    checks++;
+    files5.set(testFileKeyOf(state.check), ref3);
+  }
+  let testFilesWithoutChecks = 0;
+  for (const row2 of keys) {
+    const id = testFileId(row2.testFile);
+    if (withChecks.has(id) || !hasKey(row2) || row2.pending === null || !isSlow(row2.testFile)) {
+      continue;
+    }
+    testFilesWithoutChecks++;
+    files5.set(id, row2.testFile);
+  }
+  const named4 = [...files5.values()].sort((a, b) => a.path.localeCompare(b.path) || a.project.localeCompare(b.project)).slice(0, SLOW_FILES_NAMED);
+  return {
+    testFiles: files5.size,
+    checks,
+    testFilesWithoutChecks,
+    ...named4.length === 0 ? {} : { files: named4 }
+  };
+}
+function hasKey(row2) {
+  return row2.key !== null;
+}
+var SLOW_FILES_NAMED;
+var init_header_part = __esm({
+  "src/core/state/header-part.ts"() {
+    "use strict";
+    init_reverse_index();
+    init_derive();
+    init_file_class();
+    init_groups();
+    init_slow2();
+    SLOW_FILES_NAMED = 3;
   }
 });
 
@@ -4485,40 +4603,27 @@ var init_revision_commit = __esm({
 });
 
 // src/core/state/header.ts
-function countStates(states) {
-  const counts = { current: 0, pending: 0, stale: 0, unknown: 0 };
-  const fileLevelCounts = { ...counts };
-  let inheritedCount = 0;
-  let inheritedFileLevelCount = 0;
-  let importedCount = 0;
-  for (const state of states) {
-    if (state.check.kind === "setup") continue;
-    counts[state.validity]++;
-    if (state.check.kind === "file") fileLevelCounts[state.validity]++;
-    if (state.validity !== "current") continue;
-    if (state.origin?.kind === "inherited") {
-      inheritedCount++;
-      if (state.check.kind === "file") inheritedFileLevelCount++;
-    }
-    if (state.origin?.kind === "imported") importedCount++;
-  }
-  return { counts, fileLevelCounts, inheritedCount, inheritedFileLevelCount, importedCount };
-}
 function readHeader(store, worktreeId, states = store.knownStates.list(worktreeId), keys = store.testFileKeys.list(worktreeId), isSlow, openFiles2) {
+  return headerWith(
+    store,
+    worktreeId,
+    keys,
+    (policy) => headerPart(states, keys, policy, isSlow, openFiles2)
+  );
+}
+function headerWith(store, worktreeId, keys, partOf2) {
   const latest = store.revisions.latest(worktreeId);
   const revision = latest?.number ?? 0;
   const commit = readRevisionCommit(store, worktreeId, latest);
-  const { counts, fileLevelCounts, inheritedCount, inheritedFileLevelCount, importedCount } = countStates(states);
   const refinedRevision = readRefined(store, worktreeId);
   const wait = readInstallWait(store, worktreeId);
-  const missing2 = wait?.workspaces ?? null;
   const awaiting2 = wait !== null;
   const last = store.checkpoints.lastCompletedFull(worktreeId);
   const lane = awaiting2 ? null : laneAfter(store.checkpoints.lastCompleted(worktreeId), last);
   const root = store.worktrees.get(worktreeId)?.root;
   const policy = root === void 0 ? null : readPolicy(root);
-  const view = policy === null ? null : slowPolicyView(policy);
-  const slow = isSlow ?? view?.isSlow;
+  const part2 = partOf2(policy);
+  const { counts, fileLevelCounts, inheritedCount, inheritedFileLevelCount, importedCount } = part2.counted;
   const optimizerOff = readOptimizerOff(store, worktreeId);
   const runnerPartPending = !covers(refinedRevision, revision);
   return {
@@ -4526,41 +4631,48 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
     ...commit === void 0 ? {} : { commit },
     counts,
     fileLevelCounts,
-    testFilesWithoutChecks: countFilesWithoutChecks(states, keys),
-    ...countNotCurrent(states, keys, openFiles2),
+    testFilesWithoutChecks: part2.testFilesWithoutChecks,
+    ...part2.notCurrent,
     fullSuite: {
       atCurrentRevision: !awaiting2 && last !== null && last.revision === revision,
       lastCompletedRevision: last?.revision ?? null,
       ...lane === null ? {} : { lane }
     },
-    testFilesListed: keys.length > 0 || !awaiting2 && last !== null,
+    testFilesListed: part2.listed || !awaiting2 && last !== null,
     inheritedCount,
     inheritedFileLevelCount,
     ...importedCount === 0 ? {} : { importedCount },
     refinedRevision,
     runnerPartPending,
     ...listingRunnersField(runnerPartPending, root, policy),
-    ...slow === void 0 ? {} : { slowPending: countSlowPending(states, keys, slow) },
-    ...slowTierField(store, worktreeId, states, keys, policy, view),
-    ...policy !== null && groupTextsShown(policy) ? groupFields(store, worktreeId, states, keys, policy) : {},
-    ...awaiting2 ? { awaitingInstall: true } : {},
-    ...missing2 !== null && missing2.length > 0 ? { missingInstalls: missing2 } : {},
-    ...wait === null || wait.command === null ? {} : { installCommand: wait.command },
+    ...part2.slowPending === void 0 ? {} : { slowPending: part2.slowPending },
+    ...slowTierField(store, worktreeId, keys, part2),
+    ...groupFields(store, worktreeId, keys, part2),
+    ...installFields(wait),
     ...optimizerOff === void 0 ? {} : { optimizerOff }
   };
 }
-function slowTierField(store, worktreeId, states, keys, policy, view) {
-  if (policy === null || view === null) return {};
-  const slowTier = readSlowTier(store, worktreeId, states, keys, view);
-  const owned = slowTier.testFiles > 0 || keys.length === 0 || !groupTextsShown(policy);
-  return owned ? { slowTier } : {};
+function installFields(wait) {
+  if (wait === null) return {};
+  const missing2 = wait.workspaces;
+  return {
+    awaitingInstall: true,
+    ...missing2.length > 0 ? { missingInstalls: missing2 } : {},
+    ...wait.command === null ? {} : { installCommand: wait.command }
+  };
 }
-function groupFields(store, worktreeId, states, keys, policy) {
+function slowTierField(store, worktreeId, keys, { view, slowLane }) {
+  if (view === null || slowLane === void 0) return {};
+  const activity = liveActivity(store, worktreeId, keys, view.isSlow, SLOW_GROUP);
+  return { slowTier: slowTierOf({ ...slowLane, activity }, view) };
+}
+function groupFields(store, worktreeId, keys, { groups: groups3 }) {
+  if (groups3 === void 0) return {};
   const commitLine2 = readCommitLine(store, worktreeId);
   return {
-    groupTiers: readGroupTiers(store, worktreeId, states, keys, policy),
-    lanePending: countSlowPending(states, keys, inGroupLane(policy)),
-    ...testsAtEdit(policy, keys) ? {} : { noTestsAtEdit: true },
+    groupTiers: groupTiersOf(store, worktreeId, keys, groups3.lanes),
+    lanePending: groups3.lanePending,
+    ...groups3.testsAtEdit ? {} : { noTestsAtEdit: true },
     ...commitLine2 === void 0 ? {} : { commitLine: commitLine2 }
   };
 }
@@ -4587,45 +4699,6 @@ function fullSuiteText({ revision, fullSuite }, command) {
   const lane = fullSuite.lane === void 0 ? "" : `; only the ${fullSuite.lane.lane} lane completed, at revision ${fullSuite.lane.revision}`;
   return `${none3}${lane} (the counts are for revision ${revision}; \`${command} run --all\` requests one)`;
 }
-function countFilesWithoutChecks(states, keys) {
-  const withChecks = new Set(states.map((s) => testFileKeyOf(s.check)));
-  const counts = { pending: 0, unknown: 0 };
-  for (const row2 of keys) {
-    if (withChecks.has(testFileId(row2.testFile))) continue;
-    counts[hasKey(row2) && row2.pending !== null ? "pending" : "unknown"]++;
-  }
-  return counts;
-}
-function countSlowPending(states, keys, isSlow) {
-  const withChecks = new Set(states.map((s) => testFileKeyOf(s.check)));
-  const files5 = /* @__PURE__ */ new Map();
-  let checks = 0;
-  for (const state of states) {
-    const ref3 = testFileOf(state.check);
-    if (state.validity !== "pending" || !isSlow(ref3)) continue;
-    checks++;
-    files5.set(testFileKeyOf(state.check), ref3);
-  }
-  let testFilesWithoutChecks = 0;
-  for (const row2 of keys) {
-    const id = testFileId(row2.testFile);
-    if (withChecks.has(id) || !hasKey(row2) || row2.pending === null || !isSlow(row2.testFile)) {
-      continue;
-    }
-    testFilesWithoutChecks++;
-    files5.set(id, row2.testFile);
-  }
-  const named4 = [...files5.values()].sort((a, b) => a.path.localeCompare(b.path) || a.project.localeCompare(b.project)).slice(0, SLOW_FILES_NAMED);
-  return {
-    testFiles: files5.size,
-    checks,
-    testFilesWithoutChecks,
-    ...named4.length === 0 ? {} : { files: named4 }
-  };
-}
-function hasKey(row2) {
-  return row2.key !== null;
-}
 function toKnownFailure(state, revision) {
   if (state.outcome !== "fail") return null;
   return {
@@ -4638,22 +4711,19 @@ function toKnownFailure(state, revision) {
     location: state.location
   };
 }
-var SLOW_FILES_NAMED;
 var init_header = __esm({
   "src/core/state/header.ts"() {
     "use strict";
     init_policy2();
     init_runner2();
-    init_reverse_index();
     init_install_wait();
     init_refined();
-    init_derive();
-    init_file_class();
+    init_scheduler();
     init_groups();
+    init_header_part();
     init_optimizer_note();
     init_revision_commit();
     init_slow2();
-    SLOW_FILES_NAMED = 3;
   }
 });
 
@@ -86278,6 +86348,8 @@ function newsOf(window2, seen, held3, naming, current2, fallback2) {
 
 // src/cli/wait/every-state.ts
 init_header();
+init_header_part();
+import { isDeepStrictEqual as isDeepStrictEqual2 } from "node:util";
 function keptAtStart(store, id, states) {
   const mark = statesMark(store, id);
   return mark === null ? void 0 : { mark, states };
@@ -86287,9 +86359,19 @@ function readEvery(store, id, start2, every) {
   const kept6 = mark !== null && every.kept?.mark === mark ? every.kept : void 0;
   const states = kept6?.states ?? store.knownStates.list(id);
   const keys = kept6?.keys ?? store.testFileKeys.list(id);
-  const header2 = readHeader(store, id, states, keys);
+  let part2;
+  const header2 = headerWith(store, id, keys, (policy) => {
+    part2 = kept6?.part !== void 0 && isDeepStrictEqual2(kept6.part.policy, policy) ? kept6.part : headerPart(states, keys, policy);
+    return part2;
+  });
   const news = kept6?.news?.revision === header2.revision ? kept6.news.entries : newsSince(start2.all, states, header2.revision);
-  every.kept = mark === null ? void 0 : { mark, states, keys, news: { revision: header2.revision, entries: news } };
+  every.kept = mark === null ? void 0 : {
+    mark,
+    states,
+    keys,
+    news: { revision: header2.revision, entries: news },
+    ...part2 === void 0 ? {} : { part: part2 }
+  };
   return { header: header2, states, keys, news };
 }
 
