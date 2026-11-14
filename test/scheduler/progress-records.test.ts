@@ -12,6 +12,7 @@ import {
   recordInstallWait,
 } from "../../src/core/scheduler/install-wait.js";
 import {
+  covers,
   isRefined,
   readRefined,
   recordRefinedApplied,
@@ -54,6 +55,8 @@ describe("the refined revision", () => {
     recordRefinedApplied(store, WT, 4);
     expect(readRefined(store, WT)).toBe(4);
     expect([3, 4, 5].map((r) => isRefined(store, WT, r))).toEqual([true, true, false]);
+    expect([3, 4, 5].map((r) => covers(4, r))).toEqual([true, true, false]);
+    expect(covers(null, 5)).toBe(true);
     expect(readRefined(store, OTHER)).toBeNull();
   });
 
