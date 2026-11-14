@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.488";
+  if (true) return "0.1.490";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -88408,7 +88408,7 @@ function tallyScope(scope2) {
   const count3 = (place2) => {
     let tally2 = counts.get(place2.group);
     if (tally2 === void 0) {
-      tally2 = { at: place2.at, files: 0, selected: 0 };
+      tally2 = { at: place2.at, files: 0, selected: 0, tests: 0 };
       counts.set(place2.group, tally2);
     }
     return tally2;
@@ -88423,8 +88423,11 @@ function tallyScope(scope2) {
       const leftOut3 = [];
       for (const ref3 of chosen) {
         const place2 = placeFile(scope2, runner, ref3);
-        if (place2.inScope || tests2.has(ref3.path)) run7.push(ref3);
-        else {
+        if (place2.inScope) run7.push(ref3);
+        else if (tests2.has(ref3.path)) {
+          run7.push(ref3);
+          count3(place2).tests += 1;
+        } else {
           leftOut3.push({ ref: ref3, group: place2.group });
           count3(place2).selected += 1;
         }
@@ -88438,7 +88441,8 @@ function tallyScope(scope2) {
         at: t.at,
         files: t.files,
         selected: t.selected,
-        add: addGroup(name3)
+        add: addGroup(name3),
+        ...t.tests === 0 ? {} : { tests: t.tests }
       }));
       const byRunner = (f) => GATE_RUNNERS.indexOf(f.runner);
       const sorted3 = [...files5].sort(
@@ -89661,222 +89665,48 @@ function messageOf2(error) {
 init_glob();
 init_text();
 
-// src/cli/code-gate-text.ts
+// src/cli/code-gate-text-left-out.ts
 init_text();
-
-// src/cli/code-gate-text-failed.ts
-init_text();
-function outsideOf(f) {
-  const failed7 = f.failedTests ?? [];
-  if (f.gap !== "test-failed" || failed7.length === 0) return null;
-  return failed7.some((t) => t.loader) ? null : failed7;
-}
-function causeText2(failed7) {
-  const first2 = failed7[0];
-  const named4 = first2 === void 0 ? "" : `${first2.path} \u203A ${first2.tests[0] ?? ""}`;
-  const more2 = failed7.reduce((sum2, t) => sum2 + t.tests.length, 0) - 1;
-  return more2 > 0 ? `${named4} and ${plural(more2, "more failed test")}` : named4;
-}
-function outsideWords(f) {
-  const failed7 = outsideOf(f);
-  return failed7 === null ? null : `a selected test failed outside its loaders: ${causeText2(failed7)}`;
-}
-var causeKey = (failed7) => JSON.stringify(failed7.map((t) => [t.path, t.tests]));
-function foldedLine(group) {
-  const [first2] = group;
-  if (first2 === void 0) return "";
-  const where3 = `${first2.path}:${first2.line} ${functionName({ kind: "code", ...first2 })}`;
-  const cause = causeText2(outsideOf(first2) ?? []);
-  return `  ${plural(group.length, "changed function")}: incomplete: a selected test failed outside their loaders: ${cause} (first: ${where3}; --json lists them all)`;
-}
-function foldOutside(functions) {
-  const groups3 = /* @__PURE__ */ new Map();
-  for (const f of functions) {
-    const failed7 = outsideOf(f);
-    if (failed7 === null) continue;
-    const key3 = causeKey(failed7);
-    groups3.set(key3, [...groups3.get(key3) ?? [], f]);
-  }
-  const shared2 = [...groups3.values()].filter((group) => group.length > 1);
-  const folded = new Set(shared2.flat());
-  return { listed: functions.filter((f) => !folded.has(f)), folded: shared2.map(foldedLine) };
-}
-
-// src/cli/code-gate-text.ts
-var GAP_WORDS = {
-  "not-counted": "not counted: it is inside code that does not parse",
-  "no-loader": "no test Squeal runs loads its file",
-  "not-finished": "a test file that loads it did not finish in the budget",
-  "no-record": "no coverage record of its file's bytes now",
-  "not-joined": "its coverage could not be matched to it",
-  "test-failed": "a selected test failed",
-  skipped: "a test file that loads it skipped a test",
-  "left-out": "a test file that loads it is in a check group this run left out",
-  "not-prepared": "a test file that loads it did not run: its node:test entry's prepare did not pass, or the base does not declare it"
-};
-var UNCOUNTED_WORDS = {
-  "too-large": "over complexity.maxFileBytes, not counted",
-  "parse-error": "does not parse, so a changed function can be hidden in it",
-  unsupported: "not a regular file, not counted"
-};
-var UNUSED_WORDS = {
-  "base-commit": "its base commit is not the merge base",
-  "body-hash": "the changed function of that name has another body hash",
-  "no-function": "no changed function has that path and name"
-};
-var STATES = ["violation", "incomplete", "skipped", "accepted", "pass"];
-var NAMED_TESTS = 3;
-function crapText(value, limit) {
-  if (Number.isInteger(value)) return `${value}`;
-  for (const digits of [1, 2, 3]) {
-    const text3 = value.toFixed(digits);
-    if (Number(text3) > limit === value > limit) return text3;
-  }
-  return `${value}`;
-}
-var percent = (share2) => `${Math.round(share2 * 100)}%`;
-function measureText(f, report4) {
-  const { complexityThreshold: ccLimit, crapThreshold: crapLimit } = report4.base.policy;
-  const cc = `CC ${f.complexity}${f.complexity > ccLimit ? ` over ${ccLimit}` : ""}`;
-  if (f.crap === null || f.coverage === null) return cc;
-  const over = f.crap > crapLimit ? ` over ${crapLimit}` : "";
-  return `${cc}, coverage ${percent(f.coverage.share)}, CRAP ${crapText(f.crap, crapLimit)}${over}`;
-}
-var entryText2 = (e) => `${e.kind} ${e.measure} exception`;
-function missText(u, ccLimit) {
-  const { entry: entry4, baseComplexity: base } = u;
-  const measure2 = entry4.measure === "complexity" ? "CC" : "CRAP";
-  switch (u.outcome) {
-    case "over-value":
-      return entry4.kind === "inherited" && entry4.measure === "complexity" ? `CC ${base} at the base is over its value ${entry4.value}` : `${measure2} is over its value ${entry4.value}`;
-    case "worse-than-base":
-      return `CC is over the base's ${base}`;
-    case "not-over-at-base":
-      return `CC ${base} at the base is not over ${ccLimit}`;
-    case "not-at-base":
-      return "the function is not at the base";
-    default:
-      return null;
-  }
-}
-function exceptionsText(f, ccLimit) {
-  const uses = f.exceptions ?? [];
-  if (f.state === "accepted") {
-    const covering = uses.filter((u) => u.outcome === "covers");
-    return `: ${covering.map((u) => `${entryText2(u.entry)}, ${u.entry.issue}`).join("; ")}`;
-  }
-  if (f.state !== "violation") return "";
-  const missed = uses.flatMap((u) => {
-    const why2 = missText(u, ccLimit);
-    return why2 === null ? [] : [`${entryText2(u.entry)} does not cover it: ${why2}`];
-  });
-  return missed.length === 0 ? "" : `; ${missed.join("; ")}`;
-}
-function stateText(f, ccLimit) {
-  if (f.state === "incomplete") {
-    return `incomplete: ${f.gap === null ? "" : outsideWords(f) ?? GAP_WORDS[f.gap]}`;
-  }
-  if (f.state === "skipped") return "skipped: its file is in coverage.exclude";
-  return `${f.state}${exceptionsText(f, ccLimit)}`;
-}
-function functionLine(f, report4) {
-  const name3 = functionName({ kind: "code", ...f });
-  const state = stateText(f, report4.base.policy.complexityThreshold);
-  return `  ${f.path}:${f.line}  ${name3}  ${measureText(f, report4)}: ${state}`;
-}
-function unusedLine({ entry: entry4, why: why2 }) {
-  const name3 = `${entry4.path} ${entry4.qualifiedName}`;
-  return `  ${entryText2(entry4)} for ${name3}: unused: ${UNUSED_WORDS[why2]}`;
-}
-function runLines(run7, budgetSeconds) {
-  const failed7 = run7.failed.map(({ path, tests: tests2 }) => {
-    const shown = tests2.slice(0, NAMED_TESTS).join("; ");
-    const more2 = tests2.length > NAMED_TESTS ? ` and ${tests2.length - NAMED_TESTS} more` : "";
-    return `  ${path}: failed: ${shown}${more2}`;
-  });
-  const notStarted2 = new Set(run7.notStarted ?? []);
-  const late = run7.notFinished.filter((path) => !notStarted2.has(path)).map((path) => `  ${path}: did not finish in the ${budgetSeconds} s budget`);
-  const unstarted = notStarted2.size === 0 ? [] : [
-    `  ${plural(notStarted2.size, `${RUNNER_NAMES[run7.runner]} test file`)} did not start in the ${budgetSeconds} s budget; --json lists them`
-  ];
-  const prepares = (run7.prepare ?? []).flatMap(prepareLine);
-  return [...failed7, ...late, ...unstarted, ...overBudgetLine(run7), ...prepares];
-}
-var OVER_BUDGET_NAMED = 3;
-function overBudgetLine({ runner, overBudget = [] }) {
-  if (overBudget.length === 0) return [];
-  const files5 = plural(overBudget.length, `${RUNNER_NAMES[runner]} test file`);
-  const load = overBudget.length === 1 ? "it loads" : "they load";
-  const named4 = listPaths(overBudget, OVER_BUDGET_NAMED);
-  return [
-    `  ${files5} did not run: the estimate was at least twice what was left of the budget, and ${load} no changed function (${named4}; --json lists them all)`
-  ];
-}
-var PREPARE_WORDS = {
-  failed: "prepare failed",
-  "timed-out": "prepare did not finish in time",
-  "not-at-base": "prepare is declared only at the head, so it did not run; land the declaration on the base branch first"
-};
-function prepareLine(p) {
-  if (p.outcome === "passed") return [];
-  const exit2 = p.exit === null ? "" : ` (exit ${p.exit})`;
-  const files5 = `${plural(p.notRun.length, "test file")} did not run`;
-  return [
-    `  node:test entry ${JSON.stringify(p.project)}: ${PREPARE_WORDS[p.outcome]}${exit2}: ${files5}`
-  ];
-}
 function loadsChangedText(selected2, add3) {
   const one = selected2 === 1;
   return `${one ? "loads" : "load"} changed code; add ${add3} to run ${one ? "it" : "them"}`;
 }
+function leftOutCountText({ files: files5, selected: selected2, add: add3, tests: tests2 = 0 }) {
+  const loads2 = (n) => n === 0 ? "none" : `${n}`;
+  const others = files5 - tests2;
+  const changed2 = selected2 === 0 ? "loads changed code" : loadsChangedText(selected2, add3);
+  if (tests2 === 0) {
+    return `${loads2(selected2)} of its ${plural(files5, "test file")} ${changed2}`;
+  }
+  const which = tests2 === files5 ? "its" : `${tests2} of its`;
+  const named4 = `${which} ${plural(files5, "test file")} ${tests2 === 1 ? "is" : "are"} named by --test`;
+  if (others === 0) return named4;
+  return `${named4}; ${loads2(selected2)} of the other ${others} ${changed2}`;
+}
+var NAMED_TESTS = 3;
+function editedLeftOut(report4) {
+  const leftOut3 = new Set(report4.functions.flatMap((f) => f.loaders.leftOut ?? []));
+  const edited = report4.head.paths.map((p) => p.path).filter((path) => leftOut3.has(path));
+  return [...new Set(edited)].sort();
+}
+function testText(report4) {
+  const edited = editedLeftOut(report4);
+  if (edited.length === 0) return "";
+  const named4 = edited.slice(0, NAMED_TESTS).map((path) => `--test ${shellWord(path)}`);
+  const rest2 = edited.length - named4.length;
+  const it = rest2 === 1 ? "test file: --json lists it" : "test files: --json lists them";
+  const more2 = rest2 === 0 ? "" : ` (${rest2} more edited ${it} under loaders.leftOut)`;
+  const which = edited.length === 1 ? "the edited test file" : "the edited test files";
+  return ` To run only ${which} of them, add ${named4.join(" ")}${more2}; the other selected test files in scope still run, with their setup.`;
+}
 function leftOutText(report4) {
   const groups3 = (report4.scope?.leftOut ?? []).filter((g2) => g2.selected > 0);
-  return groups3.map(({ name: name3, at: at2, selected: selected2, add: add3 }) => {
+  if (groups3.length === 0) return "";
+  const lines = groups3.map(({ name: name3, at: at2, selected: selected2, add: add3 }) => {
     const files5 = `${plural(selected2, "test file")} ${loadsChangedText(selected2, add3)}`;
     return ` ${name3} (${at2}) did not run: ${files5}.`;
-  }).join("");
-}
-function omittedText(report4) {
-  const omitted = report4.omitted?.length ?? 0;
-  return omitted === 0 ? "" : ` ${omitted} left out as moved or unchanged; --json lists them.`;
-}
-function verdictLine(report4) {
-  const { counts, base } = report4;
-  const against = `against ${base.ref} (merge base ${base.commit.slice(0, 8)})`;
-  const judged2 = Object.values(counts).reduce((a, b) => a + b, 0);
-  const states = STATES.filter((s) => counts[s] > 0).map(
-    (s) => s === "violation" ? plural(counts[s], s) : `${counts[s]} ${s}`
-  );
-  const uncounted = report4.uncounted.length === 0 ? [] : [`${plural(report4.uncounted.length, "path")} not counted`];
-  const unused = report4.exceptions?.unused.length ?? 0;
-  const unusedText2 = unused === 0 ? [] : [`${plural(unused, "exception")} unused`];
-  const parts3 = [...states, ...uncounted, ...unusedText2];
-  const what = judged2 === 0 ? `No function changed ${against}` : `${plural(judged2, "changed function")} ${against}`;
-  const tally2 = parts3.length === 0 ? "" : `: ${parts3.join(", ")}`;
-  return `Code gate: ${report4.verdict}. ${what}${tally2}.${leftOutText(report4)}${omittedText(report4)}`;
-}
-function rerunLine(report4) {
-  const { rerun } = report4.budget;
-  return rerun === void 0 ? [] : [`A rerun that fits the estimate: ${rerun.command}`];
-}
-function formatGateReport(report4, json3) {
-  const { listed: listed9, folded } = foldOutside(report4.functions.filter((f) => f.state !== "pass"));
-  const functions = listed9.map((f) => functionLine(f, report4));
-  const paths = report4.uncounted.map((u) => `  ${u.path}: ${UNCOUNTED_WORDS[u.reason]}`);
-  const unused = (report4.exceptions?.unused ?? []).map(unusedLine);
-  const runs = report4.runs.flatMap((run7) => runLines(run7, report4.budget.seconds));
-  const lines = [
-    verdictLine(report4),
-    ...functions,
-    ...folded,
-    ...paths,
-    ...unused,
-    ...runs,
-    ...rerunLine(report4),
-    `JSON report: ${json3}`
-  ];
-  return `${lines.join("\n")}
-`;
+  });
+  return `${lines.join("")}${testText(report4)}`;
 }
 
 // src/cli/code-gate-prerun.ts
@@ -89901,16 +89731,8 @@ function byInputsText(byInputs) {
   const names7 = `${byInputs.slice(0, NAMED2).join(", ")}${more2}`;
   return `; ${byInputs.length} by declared inputs at the base, not by imports: ${names7}`;
 }
-function leftOutLine({
-  name: name3,
-  at: at2,
-  files: files5,
-  selected: selected2,
-  add: add3
-}) {
-  const of = `of its ${plural(files5, "test file")}`;
-  const what = selected2 === 0 ? `none ${of} loads changed code` : `${selected2} ${of} ${loadsChangedText(selected2, add3)}`;
-  return `${name3} (${at2}) is left out: ${what}`;
+function leftOutLine(group) {
+  return `${group.name} (${group.at}) is left out: ${leftOutCountText(group)}`;
 }
 var setupName = (s) => s.root ? "the root project (any selection)" : s.project;
 function unloadedLine(path, functions) {
@@ -91543,6 +91365,213 @@ async function daemonAdapters(root, policy, tempDir) {
     await Promise.allSettled(adapters.map((a) => a.close()));
     throw error;
   }
+}
+
+// src/cli/code-gate-text.ts
+init_text();
+
+// src/cli/code-gate-text-failed.ts
+init_text();
+function outsideOf(f) {
+  const failed7 = f.failedTests ?? [];
+  if (f.gap !== "test-failed" || failed7.length === 0) return null;
+  return failed7.some((t) => t.loader) ? null : failed7;
+}
+function causeText2(failed7) {
+  const first2 = failed7[0];
+  const named4 = first2 === void 0 ? "" : `${first2.path} \u203A ${first2.tests[0] ?? ""}`;
+  const more2 = failed7.reduce((sum2, t) => sum2 + t.tests.length, 0) - 1;
+  return more2 > 0 ? `${named4} and ${plural(more2, "more failed test")}` : named4;
+}
+function outsideWords(f) {
+  const failed7 = outsideOf(f);
+  return failed7 === null ? null : `a selected test failed outside its loaders: ${causeText2(failed7)}`;
+}
+var causeKey = (failed7) => JSON.stringify(failed7.map((t) => [t.path, t.tests]));
+function foldedLine(group) {
+  const [first2] = group;
+  if (first2 === void 0) return "";
+  const where3 = `${first2.path}:${first2.line} ${functionName({ kind: "code", ...first2 })}`;
+  const cause = causeText2(outsideOf(first2) ?? []);
+  return `  ${plural(group.length, "changed function")}: incomplete: a selected test failed outside their loaders: ${cause} (first: ${where3}; --json lists them all)`;
+}
+function foldOutside(functions) {
+  const groups3 = /* @__PURE__ */ new Map();
+  for (const f of functions) {
+    const failed7 = outsideOf(f);
+    if (failed7 === null) continue;
+    const key3 = causeKey(failed7);
+    groups3.set(key3, [...groups3.get(key3) ?? [], f]);
+  }
+  const shared2 = [...groups3.values()].filter((group) => group.length > 1);
+  const folded = new Set(shared2.flat());
+  return { listed: functions.filter((f) => !folded.has(f)), folded: shared2.map(foldedLine) };
+}
+
+// src/cli/code-gate-text.ts
+var GAP_WORDS = {
+  "not-counted": "not counted: it is inside code that does not parse",
+  "no-loader": "no test Squeal runs loads its file",
+  "not-finished": "a test file that loads it did not finish in the budget",
+  "no-record": "no coverage record of its file's bytes now",
+  "not-joined": "its coverage could not be matched to it",
+  "test-failed": "a selected test failed",
+  skipped: "a test file that loads it skipped a test",
+  "left-out": "a test file that loads it is in a check group this run left out",
+  "not-prepared": "a test file that loads it did not run: its node:test entry's prepare did not pass, or the base does not declare it"
+};
+var UNCOUNTED_WORDS = {
+  "too-large": "over complexity.maxFileBytes, not counted",
+  "parse-error": "does not parse, so a changed function can be hidden in it",
+  unsupported: "not a regular file, not counted"
+};
+var UNUSED_WORDS = {
+  "base-commit": "its base commit is not the merge base",
+  "body-hash": "the changed function of that name has another body hash",
+  "no-function": "no changed function has that path and name"
+};
+var STATES = ["violation", "incomplete", "skipped", "accepted", "pass"];
+var NAMED_TESTS2 = 3;
+function crapText(value, limit) {
+  if (Number.isInteger(value)) return `${value}`;
+  for (const digits of [1, 2, 3]) {
+    const text3 = value.toFixed(digits);
+    if (Number(text3) > limit === value > limit) return text3;
+  }
+  return `${value}`;
+}
+var percent = (share2) => `${Math.round(share2 * 100)}%`;
+function measureText(f, report4) {
+  const { complexityThreshold: ccLimit, crapThreshold: crapLimit } = report4.base.policy;
+  const cc = `CC ${f.complexity}${f.complexity > ccLimit ? ` over ${ccLimit}` : ""}`;
+  if (f.crap === null || f.coverage === null) return cc;
+  const over = f.crap > crapLimit ? ` over ${crapLimit}` : "";
+  return `${cc}, coverage ${percent(f.coverage.share)}, CRAP ${crapText(f.crap, crapLimit)}${over}`;
+}
+var entryText2 = (e) => `${e.kind} ${e.measure} exception`;
+function missText(u, ccLimit) {
+  const { entry: entry4, baseComplexity: base } = u;
+  const measure2 = entry4.measure === "complexity" ? "CC" : "CRAP";
+  switch (u.outcome) {
+    case "over-value":
+      return entry4.kind === "inherited" && entry4.measure === "complexity" ? `CC ${base} at the base is over its value ${entry4.value}` : `${measure2} is over its value ${entry4.value}`;
+    case "worse-than-base":
+      return `CC is over the base's ${base}`;
+    case "not-over-at-base":
+      return `CC ${base} at the base is not over ${ccLimit}`;
+    case "not-at-base":
+      return "the function is not at the base";
+    default:
+      return null;
+  }
+}
+function exceptionsText(f, ccLimit) {
+  const uses = f.exceptions ?? [];
+  if (f.state === "accepted") {
+    const covering = uses.filter((u) => u.outcome === "covers");
+    return `: ${covering.map((u) => `${entryText2(u.entry)}, ${u.entry.issue}`).join("; ")}`;
+  }
+  if (f.state !== "violation") return "";
+  const missed = uses.flatMap((u) => {
+    const why2 = missText(u, ccLimit);
+    return why2 === null ? [] : [`${entryText2(u.entry)} does not cover it: ${why2}`];
+  });
+  return missed.length === 0 ? "" : `; ${missed.join("; ")}`;
+}
+function stateText(f, ccLimit) {
+  if (f.state === "incomplete") {
+    return `incomplete: ${f.gap === null ? "" : outsideWords(f) ?? GAP_WORDS[f.gap]}`;
+  }
+  if (f.state === "skipped") return "skipped: its file is in coverage.exclude";
+  return `${f.state}${exceptionsText(f, ccLimit)}`;
+}
+function functionLine(f, report4) {
+  const name3 = functionName({ kind: "code", ...f });
+  const state = stateText(f, report4.base.policy.complexityThreshold);
+  return `  ${f.path}:${f.line}  ${name3}  ${measureText(f, report4)}: ${state}`;
+}
+function unusedLine({ entry: entry4, why: why2 }) {
+  const name3 = `${entry4.path} ${entry4.qualifiedName}`;
+  return `  ${entryText2(entry4)} for ${name3}: unused: ${UNUSED_WORDS[why2]}`;
+}
+function runLines(run7, budgetSeconds) {
+  const failed7 = run7.failed.map(({ path, tests: tests2 }) => {
+    const shown = tests2.slice(0, NAMED_TESTS2).join("; ");
+    const more2 = tests2.length > NAMED_TESTS2 ? ` and ${tests2.length - NAMED_TESTS2} more` : "";
+    return `  ${path}: failed: ${shown}${more2}`;
+  });
+  const notStarted2 = new Set(run7.notStarted ?? []);
+  const late = run7.notFinished.filter((path) => !notStarted2.has(path)).map((path) => `  ${path}: did not finish in the ${budgetSeconds} s budget`);
+  const unstarted = notStarted2.size === 0 ? [] : [
+    `  ${plural(notStarted2.size, `${RUNNER_NAMES[run7.runner]} test file`)} did not start in the ${budgetSeconds} s budget; --json lists them`
+  ];
+  const prepares = (run7.prepare ?? []).flatMap(prepareLine);
+  return [...failed7, ...late, ...unstarted, ...overBudgetLine(run7), ...prepares];
+}
+var OVER_BUDGET_NAMED = 3;
+function overBudgetLine({ runner, overBudget = [] }) {
+  if (overBudget.length === 0) return [];
+  const files5 = plural(overBudget.length, `${RUNNER_NAMES[runner]} test file`);
+  const load = overBudget.length === 1 ? "it loads" : "they load";
+  const named4 = listPaths(overBudget, OVER_BUDGET_NAMED);
+  return [
+    `  ${files5} did not run: the estimate was at least twice what was left of the budget, and ${load} no changed function (${named4}; --json lists them all)`
+  ];
+}
+var PREPARE_WORDS = {
+  failed: "prepare failed",
+  "timed-out": "prepare did not finish in time",
+  "not-at-base": "prepare is declared only at the head, so it did not run; land the declaration on the base branch first"
+};
+function prepareLine(p) {
+  if (p.outcome === "passed") return [];
+  const exit2 = p.exit === null ? "" : ` (exit ${p.exit})`;
+  const files5 = `${plural(p.notRun.length, "test file")} did not run`;
+  return [
+    `  node:test entry ${JSON.stringify(p.project)}: ${PREPARE_WORDS[p.outcome]}${exit2}: ${files5}`
+  ];
+}
+function omittedText(report4) {
+  const omitted = report4.omitted?.length ?? 0;
+  return omitted === 0 ? "" : ` ${omitted} left out as moved or unchanged; --json lists them.`;
+}
+function verdictLine(report4) {
+  const { counts, base } = report4;
+  const against = `against ${base.ref} (merge base ${base.commit.slice(0, 8)})`;
+  const judged2 = Object.values(counts).reduce((a, b) => a + b, 0);
+  const states = STATES.filter((s) => counts[s] > 0).map(
+    (s) => s === "violation" ? plural(counts[s], s) : `${counts[s]} ${s}`
+  );
+  const uncounted = report4.uncounted.length === 0 ? [] : [`${plural(report4.uncounted.length, "path")} not counted`];
+  const unused = report4.exceptions?.unused.length ?? 0;
+  const unusedText2 = unused === 0 ? [] : [`${plural(unused, "exception")} unused`];
+  const parts3 = [...states, ...uncounted, ...unusedText2];
+  const what = judged2 === 0 ? `No function changed ${against}` : `${plural(judged2, "changed function")} ${against}`;
+  const tally2 = parts3.length === 0 ? "" : `: ${parts3.join(", ")}`;
+  return `Code gate: ${report4.verdict}. ${what}${tally2}.${leftOutText(report4)}${omittedText(report4)}`;
+}
+function rerunLine(report4) {
+  const { rerun } = report4.budget;
+  return rerun === void 0 ? [] : [`A rerun that fits the estimate: ${rerun.command}`];
+}
+function formatGateReport(report4, json3) {
+  const { listed: listed9, folded } = foldOutside(report4.functions.filter((f) => f.state !== "pass"));
+  const functions = listed9.map((f) => functionLine(f, report4));
+  const paths = report4.uncounted.map((u) => `  ${u.path}: ${UNCOUNTED_WORDS[u.reason]}`);
+  const unused = (report4.exceptions?.unused ?? []).map(unusedLine);
+  const runs = report4.runs.flatMap((run7) => runLines(run7, report4.budget.seconds));
+  const lines = [
+    verdictLine(report4),
+    ...functions,
+    ...folded,
+    ...paths,
+    ...unused,
+    ...runs,
+    ...rerunLine(report4),
+    `JSON report: ${json3}`
+  ];
+  return `${lines.join("\n")}
+`;
 }
 
 // src/cli/code-gate.ts
