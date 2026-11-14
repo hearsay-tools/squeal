@@ -129,10 +129,12 @@ export function writeThroughDaemon(target: {
   };
 
   return {
-    seen: async (seen) => {
+    seen: async (seen, landed) => {
       for (const part of partsOf(seen)) {
         const tried = await tryOnce({ kind: "seen", seen: part });
         if (tried !== "kept") return tried;
+        // Review 0.1.508 B2: each part that landed restarts the keeper's quiet bound.
+        landed?.();
       }
       return "kept";
     },

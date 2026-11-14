@@ -36,7 +36,12 @@ export function writeHere(
       tried(() =>
         storeResults({ store, keys, worktreeId, now }, records, healsUnheld(store, file.paths)),
       ),
-    seen: async (seen) => tried(() => mergeSeen(store, seen)),
+    seen: async (seen, landed) => {
+      // One transaction: one landed write (row 020-67).
+      const merged = await tried(() => mergeSeen(store, seen));
+      if (merged === "kept") landed?.();
+      return merged;
+    },
   };
 }
 

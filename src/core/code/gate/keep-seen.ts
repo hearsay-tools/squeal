@@ -140,7 +140,7 @@ export async function keepSeen(
   at: {
     readonly database: AbsolutePath;
     readonly giveUp: (database: AbsolutePath) => boolean;
-    /** Told when the merge landed after a refusal (row 020-67). */
+    /** Told by the writer after each write of the merge that landed (row 020-67, review 0.1.508 B2). */
     readonly landed?: () => void;
     readonly check: InputCheck;
   },
@@ -149,15 +149,13 @@ export async function keepSeen(
   if (merge === undefined || seen.length === 0) return "kept";
   try {
     const outcome = await sliced(
-      () => merge(seen),
+      () => merge(seen, at.landed),
       async (busy) => {
         at.check.owe(busy);
         return busy && at.giveUp(at.database) ? "spent" : null;
       },
     );
-    if (outcome === "spent") return "spent";
-    at.landed?.();
-    return "kept";
+    return outcome === "spent" ? "spent" : "kept";
   } catch (error) {
     if (error instanceof OlderDaemon) return "older";
     throw error;

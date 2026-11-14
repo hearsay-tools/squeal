@@ -72,9 +72,11 @@ export interface KeepWriter {
   /**
    * Row 020-39: the runs' reads merged into the shared observed rows
    * (`mergeSeen`); row 020-48, by a serving daemon too, which throws
-   * `OlderDaemon` when it is one before that row.
+   * `OlderDaemon` when it is one before that row. `landed` hears each
+   * write of the merge that landed, before the next one is tried: the
+   * one transaction here, each part a daemon writes (review 0.1.508 B2).
    */
-  seen?(seen: readonly Seen[]): Promise<Tried>;
+  seen?(seen: readonly Seen[], landed?: () => void): Promise<Tried>;
 }
 
 /**
