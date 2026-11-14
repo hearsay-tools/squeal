@@ -1763,6 +1763,9 @@ var MOVES_RETENTION_MS = 60 * 6e4;
 // src/harness/shared/coverage.ts
 var DEFAULT_COVERAGE = { ...UNCONFIGURED3, slow: null };
 
+// src/core/daemon/log-file.ts
+var DAEMON_LOG_MAX_BYTES = 4 * 1024 * 1024;
+
 // src/harness/shared/hand-off.ts
 var HandOff = class {
   #taken = [];
