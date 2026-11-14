@@ -209,6 +209,7 @@ async function gate(
       // D17.1: the estimate on stderr, after the stored lookup and before the first run.
       ...(durations === null ? {} : { durations: durations.of }),
       // Rows 020-45, 020-46: over what is left, one rerun command with a fitted --timeout.
+      // Row 020-57: the estimate lines themselves, with the setup-selection line, come from preRunOptions.
       ...estimateOptions(parsed, io),
       // Row 020-43: a file still running past its estimate, named once on stderr.
       overran: (file) => io.stderr(overrunText(file)),
