@@ -2416,8 +2416,8 @@ Spec folder `specifications/022-selection-strategy/` (stage: approved 2026-11-14
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 022-03 recorder, union and the loaded-list table (D1, D2, D3) | review (worker 29ad9cc0 done, commits on cand/0.1.493 `d5d89179b`; reviewer ec07058a, codex gpt-6.1-sol high; candidate CI 43613892958) | The coverage provider reads `evaluatedModules` per test file; loaded paths outside the closure and environment join the key through observed inputs; lists stored per result key in `loaded_modules` (contract `src/core/store/loaded-modules.ts`), pruned with results. Vitest only. | Spec Testing cases for recorder, union, no-loss and store pass; key-format alarm passes or is explained |
-| 022-04 `squeal reach` estimate of narrowing by loaded modules (D4) | review (worker 4d985a36 done, on cand/0.1.493 `d5d89179b`; reviewer ec07058a) | Per project: avoidable re-run seconds and share, top source files (imported by vs loaded by), files without a list by reason; text and JSON; store reads only. | Spec Testing cases for reach pass on a fixture store; D11 rules hold |
+| 022-03 recorder, union and the loaded-list table (D1, D2, D3) | repair (review `reviews/0.1.493.md` FAIL on `d5d89179b`: B1 CI export omits runtime-loaded modules; wave 1.5 row 022-03r, `tasks/wave-1.5.md`) | The coverage provider reads `evaluatedModules` per test file; loaded paths outside the closure and environment join the key through observed inputs; lists stored per result key in `loaded_modules` (contract `src/core/store/loaded-modules.ts`), pruned with results. Vitest only. | Spec Testing cases for recorder, union, no-loss and store pass; key-format alarm passes or is explained |
+| 022-04 `squeal reach` estimate of narrowing by loaded modules (D4) | repair (review `reviews/0.1.493.md` FAIL: B2 avoidance read from route labels; wave 1.5 row 022-04r) | Per project: avoidable re-run seconds and share, top source files (imported by vs loaded by), files without a list by reason; text and JSON; store reads only. | Spec Testing cases for reach pass on a fixture store; D11 rules hold |
 
 ## Later
 
