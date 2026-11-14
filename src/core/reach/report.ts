@@ -64,7 +64,7 @@ export function buildReport(snapshot: ReachSnapshot, options: ReportOptions): Re
     ...(options.paths === null || !history
       ? {}
       : { named: namedFiles(analysis, snapshot, options.paths, limit) }),
-    narrowing: history ? narrowingEstimates(analysis, snapshot.coverage, limit) : [],
+    narrowing: history ? narrowingEstimates(analysis, snapshot, limit) : [],
     proposals: proposals(snapshot, analysis, history, options),
   };
 }

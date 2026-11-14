@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { formatReach } from "../../src/cli/reach-format.js";
 import { buildReport } from "../../src/core/reach/report.js";
 import type { LoadedFacts } from "../../src/core/reach/types.js";
-import { snapshot, testFile } from "./fixture.js";
+import { fakeGraph, snapshot, testFile } from "./fixture.js";
 
 /*
  * Row 022-04 (spec 022 D4): the estimate of narrowing by loaded modules,
@@ -21,9 +21,19 @@ function loaded(
   return { lists: lists.map(([at, paths]) => ({ at, paths: new Set(paths) })), recordAt, failed };
 }
 
+/** Each test file but c imports LAZY, c imports nothing; a also imports src/other.ts. */
+const GRAPH = fakeGraph({
+  ...Object.fromEntries("abdefgh".split("").map((t) => [`${t}.test.ts`, [LAZY]])),
+  "a.test.ts": [LAZY, "src/other.ts"],
+  "c.test.ts": [],
+  [LAZY]: [],
+  "src/other.ts": [],
+});
+
 const report = (files: Parameters<typeof snapshot>[0], options = {}) =>
   buildReport(
     snapshot(files, {
+      graph: GRAPH,
       declared: { [DATA]: { tests: null, input: "data/*.json" } },
       edits: [
         { at: 100, paths: [LAZY] },
@@ -68,6 +78,7 @@ describe("squeal reach: narrowing by loaded modules (022 D4)", () => {
       share: 2 / 11,
       files: [{ path: LAZY, avoidableSeconds: 2, importedBy: 7, loadedBy: 2 }],
       moreFiles: 0,
+      unproved: [],
     });
   });
 

@@ -1,4 +1,5 @@
 import type { EpochMs, RelativePath } from "../types/common.js";
+import type { UnprovedReason } from "./inputs.js";
 import type { CoverageState, PathKind } from "./pairs.js";
 import type { SecondGateway, Suggestion } from "./suggest.js";
 
@@ -110,11 +111,23 @@ export interface NoList extends NoListDetail {
   seconds: number;
 }
 
+/**
+ * Re-keyed test files with a list whose changed path's input kind cannot
+ * be proved (review 0.1.493 B2): no walk at the key, or a walk that stops
+ * at an unrecorded module. Their seconds stay re-run seconds, never
+ * avoidable ones.
+ */
+export interface Unproved {
+  readonly reason: UnprovedReason;
+  readonly testFiles: number;
+  seconds: number;
+}
+
 /** A source file whose edits re-ran test files that did not load it (PR #5108's table). */
 export interface NarrowingFile {
   readonly path: RelativePath;
   readonly avoidableSeconds: number;
-  /** Test files of the project with it on an import path. */
+  /** Test files of the project whose keyed walk's stored edges reach it. */
   readonly importedBy: number;
   /** Test files of the project whose newest list holds it. */
   readonly loadedBy: number;
@@ -139,6 +152,8 @@ export interface NarrowingEstimate {
   readonly files: readonly NarrowingFile[];
   readonly moreFiles: number;
   readonly withoutList: readonly NoList[];
+  /** Pairs with a list left out of the estimate, by reason. */
+  readonly unproved: readonly Unproved[];
 }
 
 /** What the report proposes; it starts nothing. */
