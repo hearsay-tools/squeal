@@ -2,7 +2,8 @@ import { describe, expect, it, onTestFinished } from "vitest";
 import type { DaemonSync, SyncState } from "../../src/cli/status-sync.js";
 import { waitForStatus } from "../../src/cli/status-wait.js";
 import type { RunnerEnvironment } from "../../src/core/types/runner.js";
-import { type DaemonNote, notesMetaKey } from "../../src/core/types/scheduler.js";
+import type { DaemonNote } from "../../src/core/types/scheduler.js";
+import { worktreeMetaKey } from "../../src/core/types/store.js";
 import { SLOW } from "./cleanup.js";
 import { createRepo, openRepoStore } from "./repo.js";
 import { HARNESS_INCARNATION, liveDaemon } from "./store-wait.js";
@@ -21,7 +22,7 @@ const BOUND_MS = 1_000;
 const ABANDONED = /^runner environment failed: no answer within 1 s; the call was abandoned$/;
 
 function notes(h: Harness): string[] {
-  const raw = h.store.meta.get(notesMetaKey(h.worktreeId));
+  const raw = h.store.meta.get(worktreeMetaKey("notes", h.worktreeId));
   return raw === null ? [] : (JSON.parse(raw) as DaemonNote[]).map((note) => note.text);
 }
 

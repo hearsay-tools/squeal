@@ -2,11 +2,12 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
+import { writeCheckpointProgress } from "../../src/core/scheduler/checkpoint-progress.js";
 import { recordUnknownFiles } from "../../src/core/scheduler/unknown-files.js";
 import type { CheckId } from "../../src/core/types/check.js";
 import type { RevisionNumber } from "../../src/core/types/common.js";
 import type { CheckKey } from "../../src/core/types/keys.js";
-import { type CheckpointProgress, checkpointMetaKey } from "../../src/core/types/scheduler.js";
+import type { CheckpointProgress } from "../../src/core/types/scheduler.js";
 import type { KnownOutcome, PendingPhase, Validity } from "../../src/core/types/state.js";
 import type { Store } from "../../src/core/types/store.js";
 import type { CheckpointRecord } from "../../src/core/types/store-records.js";
@@ -274,7 +275,7 @@ describe("run --all --wait: the checkpoint's verdict (spec 005 D1)", () => {
       total: 2,
     };
     w.store.checkpoints.start({ ...open, worktreeId: w.id, testFiles: [ref(A), ref(B)] });
-    w.store.meta.set(checkpointMetaKey(w.id), JSON.stringify(open));
+    writeCheckpointProgress(w.store, w.id, open);
     const c1 = w.checkpoint([]);
     const joined = { ok: true, type: "run-all", requestId: "r1", checkpoint: c1, error: null };
     await daemonFor(w.socket, c1, { "run-all": [{ ...joined, owner: "c0" }] });

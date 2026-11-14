@@ -7,13 +7,9 @@ import { retryCommand } from "../../src/cli/retry.js";
 import { CLOSURE_METHOD } from "../../src/core/keys/closure.js";
 import { readRetries } from "../../src/core/retry/records.js";
 import { AWAITING_INSTALL_REASON } from "../../src/core/scheduler/install.js";
+import { recordInstallWait } from "../../src/core/scheduler/install-wait.js";
 import type { RevisionNumber } from "../../src/core/types/common.js";
 import type { CheckKey } from "../../src/core/types/keys.js";
-import {
-  awaitingInstallMetaKey,
-  awaitingInstallValue,
-  installCommandMetaKey,
-} from "../../src/core/types/scheduler.js";
 import type { Store } from "../../src/core/types/store.js";
 import { check, state } from "../status/helpers.js";
 import { BUSY, config, doneKey, marked, named, waited } from "./next-step-seed.js";
@@ -159,8 +155,7 @@ describe("a stale or unknown selected file names what advances it (011-27)", () 
     const { repo, store, id } = keyed();
     unkeyed(store, id, U);
     marked(store, id, U, AWAITING_INSTALL_REASON, { cause: "install", key: null });
-    store.meta.set(awaitingInstallMetaKey(id), awaitingInstallValue(["."]));
-    store.meta.set(installCommandMetaKey(id), "npm ci");
+    recordInstallWait(store, id, ["."], "npm ci");
 
     const { lines, entries } = named(store, id, repo.main, [U]);
 

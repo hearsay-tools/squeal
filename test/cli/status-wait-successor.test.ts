@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { waitForStatus } from "../../src/cli/status-wait.js";
-import { refinedMetaKey } from "../../src/core/types/scheduler.js";
+import { recordRefinedApplied } from "../../src/core/scheduler/refined.js";
 import {
   A,
   B,
@@ -66,7 +66,7 @@ describe("status --wait after an older daemon succeeds the one that synced (revi
       sync: syncThen(async () => {
         await h.close();
         h.commit([row(A, "a-2", "queued")], [A]);
-        h.store.meta.set(refinedMetaKey(h.id), "4");
+        recordRefinedApplied(h.store, h.id, 4);
       }),
     });
     expect(wait.outcome).toBe("timeout");

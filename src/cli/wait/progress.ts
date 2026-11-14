@@ -1,19 +1,14 @@
+import { readCheckpointProgress } from "../../core/scheduler/checkpoint-progress.js";
+import { readInstallWait } from "../../core/scheduler/install-wait.js";
 import type { RevisionNumber, WorktreeId } from "../../core/types/common.js";
-import {
-  awaitingInstallMetaKey,
-  type CheckpointProgress,
-  checkpointMetaKey,
-  installCommandMetaKey,
-  parseAwaitingInstall,
-  parseCheckpointProgress,
-} from "../../core/types/scheduler.js";
+import type { CheckpointProgress } from "../../core/types/scheduler.js";
 import type { Store } from "../../core/types/store.js";
 import type { CheckpointEnd } from "../../core/types/store-records.js";
 
 /*
  * Row 011-326 (`research/waits.md`, "Progress reads"; card 4's seam): the
- * daemon's progress records a run wait reads, through today's parsers, with
- * no meaning added. Card 4 replaces these reads and nothing else.
+ * daemon's progress records a run wait reads, through their owners (row
+ * 011-339), with no meaning added.
  */
 
 /** How checkpoint `id` ended; `null` while it runs, or when the store holds no record of it. */
@@ -21,9 +16,9 @@ export function checkpointEnd(store: Store, id: string): CheckpointEnd | null {
   return store.checkpoints.get(id)?.end ?? null;
 }
 
-/** The worktree's open checkpoint and what it has done (`checkpointMetaKey`), `null` with none. */
+/** The worktree's open checkpoint and what it has done (`readCheckpointProgress`), `null` with none. */
 export function openCheckpoint(store: Store, worktreeId: WorktreeId): CheckpointProgress | null {
-  return parseCheckpointProgress(store.meta.get(checkpointMetaKey(worktreeId)));
+  return readCheckpointProgress(store, worktreeId);
 }
 
 /** The worktree's latest revision, 0 before the first. */
@@ -40,11 +35,8 @@ export interface InstallHold {
   readonly command: string | null;
 }
 
-/** The install the worktree waits for (`parseAwaitingInstall`), with the command that ends it; `null`: none. */
+/** The install the worktree waits for (`readInstallWait`), with the command that ends it; `null`: none. */
 export function installWait(store: Store, worktreeId: WorktreeId): InstallHold | null {
-  if (parseAwaitingInstall(store.meta.get(awaitingInstallMetaKey(worktreeId))) === null) {
-    return null;
-  }
-  const command = store.meta.get(installCommandMetaKey(worktreeId));
-  return { command: command === "" ? null : command };
+  const wait = readInstallWait(store, worktreeId);
+  return wait === null ? null : { command: wait.command };
 }

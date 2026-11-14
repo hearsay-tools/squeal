@@ -4,10 +4,10 @@ import { formatDelta } from "../../src/core/delivery/format.js";
 import { testFileId } from "../../src/core/keys/reverse-index.js";
 import { markRest, spawnedAfterRest } from "../../src/core/presence/events.js";
 import { DAEMON_START_GRACE_MS, worktreeLiveness } from "../../src/core/presence/heartbeat.js";
+import { recordRefinedApplied } from "../../src/core/scheduler/refined.js";
 import { recordRekeyed } from "../../src/core/scheduler/rekeyed-record.js";
 import { createStateSink } from "../../src/core/state/sink.js";
 import type { Consumer, HarnessDelivery } from "../../src/core/types/delivery.js";
-import { refinedMetaKey } from "../../src/core/types/scheduler.js";
 import type { StateSink } from "../../src/core/types/state.js";
 import type { Store } from "../../src/core/types/store.js";
 import { check, FILE, freshStore, result, setKey, WT } from "../state/helpers.js";
@@ -89,7 +89,7 @@ describe("a header delivered while the daemon rests (review 001-417 B2)", () => 
       trigger: "watch",
       changes: [{ path: "src/a.ts", oldHash: null, newHash: "h2" }],
     }).number;
-    store.meta.set(refinedMetaKey(WT), String(revision));
+    recordRefinedApplied(store, WT, revision);
     store.testFileKeys.upsertMany([
       { worktreeId: WT, testFile: FILE, key: "k2", revision, pending: "queued" },
     ]);

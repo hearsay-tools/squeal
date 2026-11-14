@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { readRefined } from "../../src/core/scheduler/refined.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import type { Policy } from "../../src/core/types/policy.js";
-import { refinedMetaKey } from "../../src/core/types/scheduler.js";
 import type { KnownState } from "../../src/core/types/state.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { claimRepo, fileName, type Side, side } from "./claims-fixture.js";
@@ -47,7 +47,7 @@ const ran = (s: Side) => s.runner.runs.flat().map((file) => file.path);
 /** What a start had committed when the recheck asked the runner for a closure. */
 interface AtRecheck {
   readonly path: string;
-  readonly refined: string | null;
+  readonly refined: number | null;
   readonly rows: number;
   readonly f1Phase: string | null | undefined;
   readonly states: ReadonlyMap<string, Pick<KnownState, "outcome" | "validity"> | undefined>;
@@ -86,7 +86,7 @@ async function stored(policy: Pick<Policy, "baseline">) {
     const states = new Map([F0, F1, F2, F3, F4].map((path) => [path, stateOf(b, path)]));
     recheck.push({
       path: testFile.path,
-      refined: b.store.meta.get(refinedMetaKey(b.worktreeId)),
+      refined: readRefined(b.store, b.worktreeId),
       rows: b.store.testFileKeys.list(b.worktreeId).length,
       f1Phase: b.phase(F1),
       states,

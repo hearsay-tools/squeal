@@ -6,12 +6,12 @@ import { readHead } from "../../src/core/daemon-loop/head.js";
 import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
 import { createFsHasher } from "../../src/core/hash/hasher.js";
 import { statCandidates } from "../../src/core/revision/reconcile.js";
+import { readRefined } from "../../src/core/scheduler/refined.js";
 import { createScheduler } from "../../src/core/scheduler/scheduler.js";
 import { storePaths } from "../../src/core/store/paths.js";
 import type { RevisionNumber } from "../../src/core/types/common.js";
 import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 import type { RunnerAdapter, RunReport } from "../../src/core/types/runner.js";
-import { refinedMetaKey } from "../../src/core/types/scheduler.js";
 import { createNodeTestAdapter } from "../../src/runners/node-test/adapter.js";
 import { git } from "../hash/git-repo.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
@@ -150,7 +150,7 @@ describe("status --wait over an edit whose run grew its environment (task 003-45
       captured = scheduler.status().revision;
       return captured;
     });
-    const refined = () => Number(store.meta.get(refinedMetaKey(worktreeId)));
+    const refined = () => readRefined(store, worktreeId) ?? 0;
     let ended = null as StatusWait | null;
     const wait = waitForStatus(root, { timeoutMs: 60_000, pollMs: 50, settleMs: 0, sync }).then(
       (result) => {

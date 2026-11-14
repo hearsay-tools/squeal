@@ -1,12 +1,12 @@
 import { statSync } from "node:fs";
 import { join, posix } from "node:path";
+import { lastScannedBy } from "../core/daemon/bootstrapped.js";
 import { readPolicy } from "../core/daemon/policy.js";
 import { runsVitest } from "../core/daemon/runner.js";
 import { createInputMatcher } from "../core/keys/glob.js";
 import { readHeader } from "../core/state/header.js";
 import { shellWord } from "../core/text.js";
 import type { AbsolutePath, WorktreeId } from "../core/types/common.js";
-import { bootstrappedMetaKey } from "../core/types/daemon.js";
 import type { Policy } from "../core/types/policy.js";
 import type { Store } from "../core/types/store.js";
 import type { TestFileKeyRecord } from "../core/types/store-records.js";
@@ -84,11 +84,10 @@ function unkeyedPath(
   }
   const pending = header.runnerPartPending === true;
   const listed = pending ? (header.refinedRevision as number) : header.revision;
-  // The daemon that finished its start scan listed what was on disk then (`bootstrappedMetaKey`).
-  const marker = store.meta.get(bootstrappedMetaKey(worktreeId));
+  // The daemon that finished its start scan listed what was on disk then (`lastScannedBy`).
   const times = [
     store.revisions.get(worktreeId, listed)?.createdAt,
-    marker === null ? undefined : Number(marker),
+    lastScannedBy(store, worktreeId) ?? undefined,
   ].filter((t): t is number => t !== undefined && Number.isFinite(t));
   if (times.length === 0 || stat.ctimeMs <= Math.max(...times)) return { kind: "other" };
   return {

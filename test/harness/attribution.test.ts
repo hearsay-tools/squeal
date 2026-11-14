@@ -1,6 +1,6 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
-import { bootstrappedMetaKey } from "../../src/core/types/daemon.js";
+import { markScanned } from "../../src/core/daemon/bootstrapped.js";
 import { runHook } from "../../src/harness/claude-code/hooks.js";
 import type { HookResult } from "../../src/harness/claude-code/run.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
@@ -116,7 +116,7 @@ describe("SessionStart after spawning a daemon", () => {
               changes: scanned.map((path) => ({ path, oldHash: "a", newHash: "scanned" })),
             });
           }
-          r.store.meta.set(bootstrappedMetaKey(r.worktreeId), String(startedAt));
+          markScanned(r.store, r.worktreeId, startedAt);
         }, scanMs);
         return "spawned";
       },

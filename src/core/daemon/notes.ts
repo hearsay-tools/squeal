@@ -1,8 +1,8 @@
 import { DatabaseSync } from "node:sqlite";
-import { appendNote, withNote } from "../notes.js";
+import { appendNote, storeNote } from "../notes.js";
 import { storePaths } from "../store/paths.js";
 import type { AbsolutePath, WorktreeId } from "../types/common.js";
-import { type DaemonNote, notesMetaKey } from "../types/scheduler.js";
+import type { DaemonNote } from "../types/scheduler.js";
 import type { Store } from "../types/store.js";
 
 /** Persists a note for status; a store that cannot take it costs only the log line. */
@@ -38,13 +38,16 @@ export function noteInNewerStore(
     const columns = db.prepare("SELECT name FROM pragma_table_info('meta')").all();
     const names = new Set(columns.map((c) => String(c.name)));
     if (!names.has("key") || !names.has("value")) return false;
-    const key = notesMetaKey(worktreeId);
+    const table = db;
     db.exec("BEGIN IMMEDIATE");
-    const row = db.prepare("SELECT value FROM meta WHERE key = ?").get(key);
-    const notes = withNote(row?.value, note);
-    db.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)").run(
-      key,
-      JSON.stringify(notes),
+    storeNote(
+      {
+        get: (key) => table.prepare("SELECT value FROM meta WHERE key = ?").get(key)?.value,
+        set: (key, value) =>
+          table.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)").run(key, value),
+      },
+      worktreeId,
+      note,
     );
     db.exec("COMMIT");
     return true;

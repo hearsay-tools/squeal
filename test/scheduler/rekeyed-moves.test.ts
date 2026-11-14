@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { testFileId } from "../../src/core/keys/reverse-index.js";
+import { recordRefinedApplied } from "../../src/core/scheduler/refined.js";
 import {
   adoptsAtFirstCommit,
   answerMoves,
@@ -13,7 +14,6 @@ import type { RekeyedMark } from "../../src/core/scheduler/rekeyed-record.js";
 import type { RevisionNumber } from "../../src/core/types/common.js";
 import { daemonIncarnation, predecessorIncarnation } from "../../src/core/types/daemon.js";
 import type { CheckKey } from "../../src/core/types/keys.js";
-import { refinedMetaKey } from "../../src/core/types/scheduler.js";
 import type { Store } from "../../src/core/types/store.js";
 import { FILE, freshStore, WT } from "../state/helpers.js";
 
@@ -164,16 +164,16 @@ describe("the store's re-key moves (task 001-258)", () => {
   it("answers nothing until the refined revision reaches the capture", () => {
     const s = store();
     commit(s, [open(2)], 2);
-    s.meta.set(refinedMetaKey(WT), "1");
+    recordRefinedApplied(s, WT, 1);
     expect(answer(s, 2, 0)).toEqual({ state: "refining" });
-    s.meta.set(refinedMetaKey(WT), "2");
+    recordRefinedApplied(s, WT, 2);
     expect(answer(s, 2, 0)).toMatchObject({ state: "answered" });
   });
 
   // Control `ageOnly` (reviews 13q S1, 13s B2, 13t S1).
   it("prunes an old resolved move only once refinement has been caught up for the grace", () => {
     const s = store();
-    s.meta.set(refinedMetaKey(WT), "1");
+    recordRefinedApplied(s, WT, 1);
     commit(s, [open(1)], 1);
     const start = movesSeq(s, WT) ?? 0;
     commit(s, [resolved()], 1);
@@ -182,7 +182,7 @@ describe("the store's re-key moves (task 001-258)", () => {
     commit(s, [], 2, T0 + 3 * MOVES_RETENTION_MS);
     expect(answer(s, 1, start)).toMatchObject({ rekeyed: [{ resolved: true }] });
     // Refined; caught up from the next commit, which does not prune within the grace.
-    s.meta.set(refinedMetaKey(WT), "2");
+    recordRefinedApplied(s, WT, 2);
     const caughtUp = T0 + 3 * MOVES_RETENTION_MS;
     commit(s, [], 2, caughtUp);
     commit(s, [], 2, caughtUp + MOVES_GRACE_MS - 1);

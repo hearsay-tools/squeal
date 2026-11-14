@@ -1,7 +1,8 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { bootstrappedMetaKey } from "../../src/core/types/daemon.js";
+import { markScanned } from "../../src/core/daemon/bootstrapped.js";
+import { worktreeMetaKey } from "../../src/core/types/store.js";
 import { runHook } from "../../src/harness/claude-code/hooks.js";
 import { git } from "../hash/git-repo.js";
 import { recorded, type SquealRepo } from "./helpers.js";
@@ -36,9 +37,9 @@ async function beforeScan(
 ): Promise<SquealRepo> {
   const r = committedRepo();
   prepare(r);
-  r.store.meta.delete(bootstrappedMetaKey(r.worktreeId));
+  r.store.meta.delete(worktreeMetaKey("daemonBootstrapped", r.worktreeId));
   await harness.startTurn(r);
-  r.store.meta.set(bootstrappedMetaKey(r.worktreeId), "1");
+  markScanned(r.store, r.worktreeId, 1);
   markStopWait(r, harness.name);
   pendingLint(r);
   expect(status(r)).toBe("");

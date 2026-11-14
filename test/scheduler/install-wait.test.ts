@@ -10,7 +10,7 @@ import {
   awaitsInstall,
   missingInstall,
 } from "../../src/core/scheduler/install.js";
-import { awaitingInstallMetaKey, awaitingInstallValue } from "../../src/core/types/scheduler.js";
+import { recordInstallWait } from "../../src/core/scheduler/install-wait.js";
 import type { Store } from "../../src/core/types/store.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { SLOW } from "./cleanup.js";
@@ -183,12 +183,12 @@ describe("scheduler: a worktree without installed dependencies (defect 18)", SLO
     );
     // N2: a wait for some workspaces names a few, then counts the rest.
     const probe = await h.consumer("probe");
-    const key = awaitingInstallMetaKey(h.worktreeId);
-    store.meta.set(key, awaitingInstallValue(["pkg/a", "pkg/b", "pkg/c", "pkg/d", "pkg/e"]));
+    const workspaces = ["pkg/a", "pkg/b", "pkg/c", "pkg/d", "pkg/e"];
+    recordInstallWait(store, h.worktreeId, workspaces, "npm install");
     expect(formatRegistration(await probe.delivery.register(probe.consumer))).toContain(
       "No dependencies are installed at this worktree's root or in pkg/a, pkg/b, pkg/c and 2 more, so",
     );
-    store.meta.set(key, "true");
+    recordInstallWait(store, h.worktreeId, [], "npm install");
     // N5: with no daemon live the flag a killed daemon left says nothing.
     store.worktrees.setDaemon(h.worktreeId, null);
     expect(formatRegistration(await probe.delivery.register(probe.consumer))).not.toContain(

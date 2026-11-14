@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { recordRefinedApplied } from "../../src/core/scheduler/refined.js";
 import type { CheckGroup } from "../../src/core/types/check-groups.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import { DEFAULT_POLICY, type PolicyFile } from "../../src/core/types/policy.js";
-import { refinedMetaKey } from "../../src/core/types/scheduler.js";
 import type { SquealRepo } from "./helpers.js";
 import {
   decision,
@@ -102,7 +102,7 @@ describe.each(HARNESSES)("Stop's words for a configured group, $name (019 D4, D6
   it("with only the runner part pending, the bound names the group's files not listed yet", async () => {
     const r = await withPolicy(harness, { checks: [E2E], stop: { slowWaitMs: 400 } });
     landSlow(r, "pass");
-    r.store.meta.set(refinedMetaKey(r.worktreeId), "0");
+    recordRefinedApplied(r.store, r.worktreeId, 0);
     const out = await stopThenWait(harness, r);
     expect(out.waiting.reason).toMatch(
       new RegExp(

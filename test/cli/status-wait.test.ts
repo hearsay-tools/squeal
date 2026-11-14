@@ -3,9 +3,10 @@ import { type CliIo, main } from "../../src/cli/main.js";
 import { statusCommand } from "../../src/cli/status-command.js";
 import type { SyncState } from "../../src/cli/status-sync.js";
 import { STATUS_WAIT_SETTLE_MS, waitForStatus } from "../../src/cli/status-wait.js";
+import { writeCheckpointProgress } from "../../src/core/scheduler/checkpoint-progress.js";
+import { recordRefinedApplied } from "../../src/core/scheduler/refined.js";
 import { readStatus } from "../../src/core/status/snapshot.js";
 import type { RevisionNumber } from "../../src/core/types/common.js";
-import { checkpointMetaKey, refinedMetaKey } from "../../src/core/types/scheduler.js";
 import type { KnownState } from "../../src/core/types/state.js";
 import type { Store } from "../../src/core/types/store.js";
 import type { DaemonRecord } from "../../src/core/types/store-records.js";
@@ -193,7 +194,7 @@ describe("squeal status --wait <ms>", WAITS, () => {
 
   it("waits while the runner part of the current revision is pending (review wave 4.5, S1)", async () => {
     const { repo, store } = repoWith(currentPass());
-    store.meta.set(refinedMetaKey(repo.mainId), "2");
+    recordRefinedApplied(store, repo.mainId, 2);
 
     const { code, stdout } = await run(["status", "--wait", "1000"], repo.main);
 
@@ -205,8 +206,8 @@ describe("squeal status --wait <ms>", WAITS, () => {
 
   it("returns once the runner part was applied", async () => {
     const { repo, store } = repoWith(currentPass());
-    store.meta.set(refinedMetaKey(repo.mainId), "2");
-    later(900, () => store.meta.set(refinedMetaKey(repo.mainId), "3"));
+    recordRefinedApplied(store, repo.mainId, 2);
+    later(900, () => recordRefinedApplied(store, repo.mainId, 3));
 
     const { stdout, elapsed } = await run(["status", "--wait", "5000"], repo.main);
 
@@ -421,7 +422,7 @@ describe("squeal status --wait names a checkpoint still running (task 001-217)",
     });
     const { id, kind, revision, startedAt } = record;
     const progress = { id, kind, revision, startedAt, done: 40, total: 200 };
-    store.meta.set(checkpointMetaKey(repo.mainId), JSON.stringify(progress));
+    writeCheckpointProgress(store, repo.mainId, progress);
     return repo;
   }
 

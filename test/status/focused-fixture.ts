@@ -1,8 +1,8 @@
 import { type FocusedRun, writeFocused } from "../../src/core/scheduler/focused-row.js";
+import { recordRefinedApplied } from "../../src/core/scheduler/refined.js";
 import type { CheckId } from "../../src/core/types/check.js";
 import type { EpochMs, RevisionNumber } from "../../src/core/types/common.js";
 import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
-import { refinedMetaKey } from "../../src/core/types/scheduler.js";
 import type { PendingPhase } from "../../src/core/types/state.js";
 import type { Store } from "../../src/core/types/store.js";
 import { appendRevisions, fakeRepo, seedStore, state } from "./helpers.js";
@@ -43,7 +43,7 @@ export function worktree() {
     },
   });
   appendRevisions(store, repo.mainId, 4, { head: null, dirty: false });
-  store.meta.set(refinedMetaKey(repo.mainId), "4");
+  recordRefinedApplied(store, repo.mainId, 4);
   return { repo, store, id: repo.mainId };
 }
 

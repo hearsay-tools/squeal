@@ -4,8 +4,9 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { appendNote, readDaemonNotes } from "../../../src/core/notes.js";
 import type { AbsolutePath } from "../../../src/core/types/common.js";
 import type { PytestProject } from "../../../src/core/types/policy.js";
-import { type DaemonNote, notesMetaKey } from "../../../src/core/types/scheduler.js";
+import type { DaemonNote } from "../../../src/core/types/scheduler.js";
 import type { Store } from "../../../src/core/types/store.js";
+import { worktreeMetaKey } from "../../../src/core/types/store.js";
 import { createPytestAdapter } from "../../../src/runners/pytest/adapter.js";
 import type { Clock } from "../../../src/runners/pytest/adapter-environment.js";
 import {
@@ -65,7 +66,7 @@ const environmentNotes = (store: Store) =>
 
 /** The topic's stored notes, history included; the graph's own notes are not this row's. */
 const ofTopic = (store: Store) =>
-  (JSON.parse(store.meta.get(notesMetaKey("wt")) ?? "[]") as DaemonNote[]).filter(
+  (JSON.parse(store.meta.get(worktreeMetaKey("notes", "wt")) ?? "[]") as DaemonNote[]).filter(
     (n) => n.topic === TOPIC,
   );
 

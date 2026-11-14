@@ -10,11 +10,12 @@ import type {
   GroupOutcome,
   LintGroupOutcome,
 } from "../../../src/cli/wait/table.js";
+import { writeCheckpointProgress } from "../../../src/core/scheduler/checkpoint-progress.js";
 import { AWAITING_INSTALL_REASON } from "../../../src/core/scheduler/install.js";
 import type { ResolvedGroup } from "../../../src/core/types/check-groups.js";
 import type { RevisionNumber } from "../../../src/core/types/common.js";
 import type { RunAllResponse } from "../../../src/core/types/daemon.js";
-import { checkpointMetaKey } from "../../../src/core/types/scheduler.js";
+import type { TestFileRef } from "../../../src/core/types/keys.js";
 import type { StatusHold } from "../../../src/core/types/standing.js";
 import { closeLoopFixtures, ref, scratch } from "./fixture.js";
 
@@ -65,9 +66,16 @@ describe("the checkpoint wait's lines (spec 005 D1)", () => {
       startedAt: 1,
     });
     if (owed) {
-      const progress = { id: "c1", kind: "run-all", revision: 3, startedAt: 1, done: 0, total: 1 };
-      const due = { ids: ["c1"], remaining: [ref("test/a.test.ts")], strict: [] };
-      w.store.meta.set(checkpointMetaKey(w.id), JSON.stringify({ ...progress, owed: due }));
+      const progress = {
+        id: "c1",
+        kind: "run-all" as const,
+        revision: 3,
+        startedAt: 1,
+        done: 0,
+        total: 1,
+      };
+      const due = { ids: ["c1"], remaining: [ref("test/a.test.ts")], strict: [] as TestFileRef[] };
+      writeCheckpointProgress(w.store, w.id, { ...progress, owed: due });
     }
     return checkpointVerdictLine(w.root, checkpoint, outcome, null, "squeal");
   };

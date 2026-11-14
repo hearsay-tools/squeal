@@ -5,7 +5,8 @@ import {
   RunnerPartBound,
   runnerPartBoundMs,
 } from "../../src/core/scheduler/runner-work-bound.js";
-import { type DaemonNote, notesMetaKey } from "../../src/core/types/scheduler.js";
+import type { DaemonNote } from "../../src/core/types/scheduler.js";
+import { worktreeMetaKey } from "../../src/core/types/store.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { SLOW } from "./cleanup.js";
 import { createRepo, openRepoStore } from "./repo.js";
@@ -21,7 +22,7 @@ import { type Harness, openHarness } from "./vitest-harness.js";
 const BOUND_MS = 400;
 
 function notes(h: Harness): string[] {
-  const raw = h.store.meta.get(notesMetaKey(h.worktreeId));
+  const raw = h.store.meta.get(worktreeMetaKey("notes", h.worktreeId));
   return raw === null ? [] : (JSON.parse(raw) as DaemonNote[]).map((note) => note.text);
 }
 

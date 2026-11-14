@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { startTurn } from "../../src/core/delivery/turn.js";
-import { refinedMetaKey } from "../../src/core/types/scheduler.js";
+import { recordRefinedApplied } from "../../src/core/scheduler/refined.js";
 import type { SquealRepo } from "./helpers.js";
 import {
   clock,
@@ -30,16 +30,16 @@ import {
 async function unlisted(harness: Harness): Promise<SquealRepo> {
   const r = await repo(harness, { requireSlowSuite: true, slowWaitMs: 400 });
   r.store.testFileKeys.remove(r.worktreeId, [SLOW_FILE]);
-  r.store.meta.set(refinedMetaKey(r.worktreeId), "0");
+  recordRefinedApplied(r.store, r.worktreeId, 0);
   return r;
 }
 
 /** The runner part lists and queues the slow file, its run lands, and refinement ends at `refined`. */
-function listAndLand(r: SquealRepo, outcome: "pass" | "fail", refined = "1"): void {
+function listAndLand(r: SquealRepo, outcome: "pass" | "fail", refined = 1): void {
   r.store.transaction(() => {
     slowKey(r, "queued");
     landSlow(r, outcome);
-    r.store.meta.set(refinedMetaKey(r.worktreeId), refined);
+    recordRefinedApplied(r.store, r.worktreeId, refined);
   });
 }
 
@@ -47,7 +47,7 @@ function listAndLand(r: SquealRepo, outcome: "pass" | "fail", refined = "1"): vo
 function moveAndLand(r: SquealRepo, outcome: "pass" | "fail"): void {
   queueSlowAgain(r);
   landSlow(r, outcome, "slow2");
-  r.store.meta.set(refinedMetaKey(r.worktreeId), "2");
+  recordRefinedApplied(r.store, r.worktreeId, 2);
 }
 
 const FAILS_AT = (revision: number) =>
@@ -107,7 +107,7 @@ describe.each(HARNESSES)(
         const out = await run(
           r,
           () => moveAndLand(r, "fail"),
-          () => listAndLand(r, "fail", "0"),
+          () => listAndLand(r, "fail", 0),
         );
         expect(out.quick).toEqual({});
         expect(out.waiting.decision).toBe("block");
@@ -120,7 +120,7 @@ describe.each(HARNESSES)(
         const out = await run(
           r,
           () => moveAndLand(r, "pass"),
-          () => listAndLand(r, "fail", "0"),
+          () => listAndLand(r, "fail", 0),
         );
         expect(out).toEqual({ quick: {}, waiting: {} });
         expect(turnOf(r)).toBe("idle");
@@ -129,7 +129,7 @@ describe.each(HARNESSES)(
 
     it("13ap B1: the late file failed during the first read, moved and failed during the next, blocks", async () => {
       const r = await unlisted(harness);
-      const at = clock({ 2: () => listAndLand(r, "fail", "0"), 3: () => moveAndLand(r, "fail") });
+      const at = clock({ 2: () => listAndLand(r, "fail", 0), 3: () => moveAndLand(r, "fail") });
       const out = await stopThenWait(harness, r, () => {}, at);
       expect(out.waiting.decision).toBe("block");
       expect(out.waiting.reason).toMatch(FAILS_AT(2));
@@ -152,7 +152,7 @@ describe.each(HARNESSES)(
       const r = await repo(harness, { requireSlowSuite: true, slowWaitMs: 2_000 });
       const owed = () => {
         landSlow(r, "pass");
-        r.store.meta.set(refinedMetaKey(r.worktreeId), "0");
+        recordRefinedApplied(r.store, r.worktreeId, 0);
       };
       const out = await stopThenWait(harness, r, owed, clock({ 3: () => moveAndLand(r, "fail") }));
       expect(out.waiting.decision).toBe("block");
@@ -164,7 +164,7 @@ describe.each(HARNESSES)(
       const r = await unlisted(harness);
       const out = await stopThenWait(harness, r, () => {
         r.apply();
-        listAndLand(r, "fail", "2");
+        listAndLand(r, "fail", 2);
       });
       expect(out.waiting.decision).toBe("block");
       expect(out.waiting.reason).toMatch(FAILS_AT(2));
@@ -181,9 +181,9 @@ describe.each(HARNESSES)(
       // The new registration starts unmarked: without this the 2 s entry decides, and holds
       // for the pending runner part (review 0.1.406-r2 B2-R1).
       markStopWait(r, harness.name);
-      r.store.meta.set(refinedMetaKey(r.worktreeId), "0");
+      recordRefinedApplied(r.store, r.worktreeId, 0);
       const out = await stopThenWait(harness, r, () =>
-        r.store.meta.set(refinedMetaKey(r.worktreeId), "1"),
+        recordRefinedApplied(r.store, r.worktreeId, 1),
       );
       expect(out).toEqual({ quick: {}, waiting: {} });
       expect(turnOf(r)).toBe("idle");
@@ -225,7 +225,7 @@ describe.each(HARNESSES)(
       const out = await stopThenWait(harness, r, () => {
         queueSlowAgain(r);
         landSlow(r, "fail", "slow2", "ledger total drifted");
-        r.store.meta.set(refinedMetaKey(r.worktreeId), "2");
+        recordRefinedApplied(r.store, r.worktreeId, 2);
       });
       expect(out.waiting.decision).toBe("block");
       expect(out.waiting.reason).toContain("ledger total drifted");

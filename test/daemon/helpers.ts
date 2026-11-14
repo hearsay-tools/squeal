@@ -18,8 +18,9 @@ import { socketPathFor } from "../../src/core/daemon/paths.js";
 import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
 import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
 import type { PingResponse } from "../../src/core/types/daemon.js";
-import { type DaemonNote, notesMetaKey } from "../../src/core/types/scheduler.js";
+import type { DaemonNote } from "../../src/core/types/scheduler.js";
 import type { Store } from "../../src/core/types/store.js";
+import { worktreeMetaKey } from "../../src/core/types/store.js";
 import { git } from "../hash/git-repo.js";
 import { compileObserved } from "../helpers/build-inputs.js";
 import { CODE_OFF } from "../helpers/policy.js";
@@ -286,7 +287,7 @@ export function readNoteRecords(repo: Pick<FixtureRepo, "commonDir" | "worktreeI
     const opened = openStore(repo.commonDir, { create: false, busyTimeoutMs: 10_000 });
     if (isStoreOpenFailure(opened)) return [{ text: `(store: ${JSON.stringify(opened)})` }];
     store = opened;
-    const raw = store.meta.get(notesMetaKey(repo.worktreeId));
+    const raw = store.meta.get(worktreeMetaKey("notes", repo.worktreeId));
     return raw === null ? [] : (JSON.parse(raw) as NoteRecord[]);
   } catch (error) {
     return [{ text: `(store unreadable: ${String(error)})` }];
