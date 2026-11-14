@@ -3,7 +3,7 @@ import type { Connection } from "../../store/connection.js";
 import type { AbsolutePath } from "../../types/common.js";
 import { createCountRepo, createFileRepo } from "./counts.js";
 import { createCoverageRepo } from "./coverage.js";
-import { pruneCodeStore } from "./prune.js";
+import { pruneCodeSlices, pruneCodeStore } from "./prune.js";
 import { createStateRepo } from "./states.js";
 import { createTransitionRepo } from "./transitions.js";
 import type { CodeMetaRepo, CodeStore } from "./types.js";
@@ -28,6 +28,7 @@ export function createCodeStore(
     transaction: (fn) => conn.transaction(fn),
     read: (fn) => conn.read(fn),
     prune: (options) => pruneCodeStore(conn, options),
+    pruneSlices: (options, counts) => pruneCodeSlices(conn, options, counts),
     close: () => conn.close(),
   };
 }

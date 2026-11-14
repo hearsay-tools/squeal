@@ -29,6 +29,16 @@ const prune = (store: ReturnType<typeof open>, resultKeys: string[], now = NOW) 
     resultKeys,
   } satisfies CodePruneOptions);
 
+/** `sweepParts` with each slice run at once; the number of parts it deleted. */
+function sweep(conn: Connection, cutoff: number, marked: ReadonlySet<number>): number {
+  let removed = 0;
+  for (const slice of sweepParts(conn, cutoff, marked, 256, (n) => {
+    removed += n;
+  }))
+    slice();
+  return removed;
+}
+
 const connections: Connection[] = [];
 afterEach(() => {
   for (const conn of connections.splice(0)) conn.close();
@@ -104,7 +114,7 @@ describe("the coverage parts' prune (row 015-85)", () => {
 
     const marked = markParts(prunes, CUTOFF + PART_REFRESH_MS);
     share(store, "new", record([A]), NOW);
-    const removed = sweepParts(prunes, CUTOFF, marked, 256);
+    const removed = sweep(prunes, CUTOFF, marked);
 
     expect(marked.size).toBe(0);
     expect(removed).toBe(1);
@@ -122,7 +132,7 @@ describe("the coverage parts' prune (row 015-85)", () => {
     const marked = markParts(prunes, CUTOFF + PART_REFRESH_MS);
     // A record stored with the clock 29 days back gives its parts that time as their last use.
     share(store, "back", record([A, C]), NOW - 29 * DAY_MS);
-    sweepParts(prunes, CUTOFF, marked, 256);
+    sweep(prunes, CUTOFF, marked);
 
     expect(read(store, "back")).toEqual(record([], ["src/a.ts", "src/c.ts"]));
   });

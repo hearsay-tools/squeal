@@ -1,11 +1,12 @@
 import { rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { MIN_PRUNE_GAP_MS, SlicedPrune } from "../../src/core/daemon/sliced-prune.js";
+import { SlicedPrune } from "../../src/core/daemon/sliced-prune.js";
 import { BusyWaits } from "../../src/core/store/busy.js";
 import { storePaths } from "../../src/core/store/paths.js";
 import { noneRemoved, type PruneSlice, pruneSlices } from "../../src/core/store/prune.js";
 import { connectionOf } from "../../src/core/store/store.js";
+import { MIN_PRUNE_GAP_MS } from "../../src/core/store/write-turns.js";
 import type { Store } from "../../src/core/types/store.js";
 import {
   DAY_MS,

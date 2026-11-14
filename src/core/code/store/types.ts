@@ -1,3 +1,4 @@
+import type { PruneSlice } from "../../store/prune.js";
 import type {
   CodeCheckId,
   CodeFile,
@@ -215,6 +216,9 @@ export interface CodePruneOptions {
 /** Those of `keys` the main store holds a result at (`ResultRepo.keysWithResults`, row 011-315). */
 export type ResultKeysOf = (keys: readonly CheckKey[]) => readonly CheckKey[];
 
+/** What a code prune removed so far, filled in as its slices run (row 011-350). */
+export type CodePruneCounts = { -readonly [K in keyof CodePruneReport]: CodePruneReport[K] };
+
 export interface CodePruneReport {
   readonly countsRemoved: number;
   readonly coverageRemoved: number;
@@ -242,6 +246,11 @@ export interface CodeStore {
   /** One read transaction: every statement in `fn` sees one committed state, and nothing is written. */
   read<T>(fn: () => T): T;
   prune(options: CodePruneOptions): CodePruneReport;
+  /**
+   * Row 011-350: `prune` as slices, one write transaction each, for a driver
+   * that leaves the lock free between them; `counts` fills in as they run.
+   */
+  pruneSlices(options: CodePruneOptions, counts: CodePruneCounts): Iterable<PruneSlice>;
   close(): void;
 }
 
