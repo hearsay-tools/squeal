@@ -3,7 +3,7 @@ import { MAX_LINE_BYTES } from "../core/daemon/protocol.js";
 import type { AbsolutePath, RelativePath, RevisionNumber } from "../core/types/common.js";
 import type { SyncRequest, SyncResponse } from "../core/types/daemon.js";
 import type { TestFileRef } from "../core/types/keys.js";
-import { askDaemon, daemonSocket } from "./daemon-access.js";
+import { askDaemon, CLI_SOCKET_TIMEOUT_MS, daemonSocket } from "./daemon-access.js";
 
 /**
  * Where a wait's sync stands: `pending` until the daemon stored its pass;
@@ -34,7 +34,10 @@ export interface DaemonSync {
   current(): SyncState;
   /** Settles once `current` left `pending`; a stub without it is read at the wait's next poll. */
   readonly answered?: Promise<void>;
-  /** Stops asking; a request on the wire still ends within the CLI socket timeout. */
+  /**
+   * Stops asking; a request on the wire still ends within the CLI socket
+   * timeout, or by the sync's deadline when it has one (row 011-49).
+   */
   stop(): void;
 }
 
@@ -57,19 +60,27 @@ export const SYNC_POLL_MS = 250;
  * asked again where `daemonSocket` finds one now, a successor included.
  * With `paths`, a named wait's source paths, it asks for their readers too
  * (row 011-234), unless they do not fit in one request line.
+ *
+ * With `deadline` (a `performance.now()` time), no request waits past it, and
+ * none starts after it: the sync is then `unsupported`. A request on the
+ * wire holds its socket, and so the CLI, until it ends; `stop` cannot end it
+ * sooner, so a wait that ends at a known time bounds its sync by that time
+ * (row 011-49: the snapshot's process ended at the 2 s socket timeout).
  */
 export function syncDaemon(
   root: AbsolutePath,
   pollMs: number,
   paths: readonly RelativePath[] = [],
+  deadline = Number.POSITIVE_INFINITY,
 ): DaemonSync {
   let current: SyncState = { state: "pending" };
   let stopped = false;
   const isStopped = () => stopped;
   const request = syncRequest(paths);
+  const timeoutMs = () => Math.min(CLI_SOCKET_TIMEOUT_MS, Math.ceil(deadline - performance.now()));
   const answered = (async () => {
     for (;;) {
-      const outcome = await syncOnce(root, request, pollMs, isStopped);
+      const outcome = await syncOnce(root, request, pollMs, isStopped, timeoutMs);
       if (outcome !== "again") return outcome;
     }
   })().then(
@@ -137,10 +148,14 @@ async function syncOnce(
   request: SyncRequest,
   pollMs: number,
   stopped: () => boolean,
+  timeoutMs: () => number,
 ): Promise<SyncState | "again"> {
-  const socketPath = await daemonSocket(root).catch(() => null);
-  if (socketPath === null || stopped()) return UNSUPPORTED;
-  const first = await askDaemon(socketPath, request).catch(() => null);
+  // A deadline that passed asks nothing more: the wait it serves has ended.
+  const ended = () => stopped() || timeoutMs() <= 0;
+  if (ended()) return UNSUPPORTED;
+  const socketPath = await daemonSocket(root, timeoutMs()).catch(() => null);
+  if (socketPath === null || ended()) return UNSUPPORTED;
+  const first = await askDaemon(socketPath, request, timeoutMs()).catch(() => null);
   if (first === null || !first.ok || first.type !== "sync") return UNSUPPORTED;
   let state: SyncResponse = first;
   for (;;) {
@@ -148,12 +163,13 @@ async function syncOnce(
     if (state.error !== null) return UNSUPPORTED;
     // Unref'd: a wait that ended does not keep the CLI alive for its sync.
     await sleep(pollMs, undefined, { ref: false });
-    if (stopped()) return UNSUPPORTED;
+    if (ended()) return UNSUPPORTED;
     // A timeout is asked again; a daemon gone or replaced, which forgot the id, is synced anew.
-    const next = await askDaemon(socketPath, {
-      type: "sync-status",
-      requestId: first.requestId,
-    }).catch(() => undefined);
+    const next = await askDaemon(
+      socketPath,
+      { type: "sync-status", requestId: first.requestId },
+      timeoutMs(),
+    ).catch(() => undefined);
     if (next === undefined) continue;
     if (next === null || !next.ok || next.type !== "sync") return "again";
     state = next;
