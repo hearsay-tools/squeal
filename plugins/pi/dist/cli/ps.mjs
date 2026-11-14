@@ -843,6 +843,7 @@ var WORKTREE_META_ROWS = {
   commandHold: { prefix: "command-hold:", owner: "scheduler/hold-rows" },
   rekeyed: { prefix: "rekeyed.", owner: "scheduler/rekeyed-record" },
   rekeyedMoves: { prefix: "rekeyed-moves.", owner: "scheduler/rekeyed-moves" },
+  statesMarker: { prefix: "states-marker.", owner: "store/write-markers" },
   optimizerOff: { prefix: "optimizer-off.", owner: "state/optimizer-note" },
   baselineFindings: { prefix: "state.baseline-findings.", owner: "state/baseline" },
   stopWait: { prefix: "stop-wait:", owner: "slow/stop-wait" },

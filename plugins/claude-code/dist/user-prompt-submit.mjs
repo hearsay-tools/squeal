@@ -174,6 +174,7 @@ var WORKTREE_META_ROWS = {
   commandHold: { prefix: "command-hold:", owner: "scheduler/hold-rows" },
   rekeyed: { prefix: "rekeyed.", owner: "scheduler/rekeyed-record" },
   rekeyedMoves: { prefix: "rekeyed-moves.", owner: "scheduler/rekeyed-moves" },
+  statesMarker: { prefix: "states-marker.", owner: "store/write-markers" },
   optimizerOff: { prefix: "optimizer-off.", owner: "state/optimizer-note" },
   baselineFindings: { prefix: "state.baseline-findings.", owner: "state/baseline" },
   stopWait: { prefix: "stop-wait:", owner: "slow/stop-wait" },
@@ -2886,7 +2887,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.490";
+  if (true) return "0.1.494";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
