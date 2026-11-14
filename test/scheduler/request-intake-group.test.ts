@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { fullSuiteRequest } from "../../src/core/scheduler/checkpoint-requests.js";
 import { AWAITING_INSTALL_REASON } from "../../src/core/scheduler/install.js";
 import { narrowRequest, REINSTALLED_REASON } from "../../src/core/scheduler/narrow-run.js";
-import { NO_PASS } from "../../src/core/scheduler/request-intake.js";
+import { BacklogQuiet } from "../../src/core/scheduler/quiet.js";
 import { groupRequest } from "../../src/core/scheduler/request-intake-requests.js";
+import { WarmUp } from "../../src/core/scheduler/warm-up.js";
 import type { CheckKey } from "../../src/core/types/keys.js";
 import { SLOW_GROUP, TESTS_GROUP } from "../../src/core/types/scheduler.js";
 import { C, keyOf, NOTHING, type Probe, probeHost } from "./request-intake-probe.js";
@@ -89,14 +91,43 @@ describe("request intake: the group and narrow requests wait for a pass (row 011
     expect(p.ledger.file(C)?.phase).toBe("queued");
     expect(p.log[0]).toBe("pass");
   });
+});
 
-  it.each(REQUESTS)(
-    "%s: no pass delivered after it rejects with NO_PASS, and takes nothing",
-    async (_, take) => {
-      const p = probeHost();
-      p.state.delivered = 1;
-      await expect(take(p)).rejects.toThrow(NO_PASS);
-      expect(p.log).toEqual(["pass"]);
-    },
-  );
+/*
+ * Row 011-337: with no pass delivered after it, each request rejects with
+ * `NO_PASS` worded for that request, and takes nothing. `run --all` keeps
+ * the words it had before the row, byte for byte.
+ */
+describe("request intake: each request words its refused pass (row 011-337)", () => {
+  const PASS =
+    "the change feed delivered no reconciliation pass that started after the request " +
+    "(its pass failed, or the daemon closed first)";
+  const REFUSED = [
+    [
+      "run --all",
+      (p: Probe) =>
+        p.intake.take(fullSuiteRequest({}, { quiet: new BacklogQuiet(), warmUp: new WarmUp() })),
+      `${PASS}, so no checkpoint was planned`,
+    ],
+    ...REQUESTS.map(
+      ([name, take]) => [name, take, `${PASS}, so no checkpoint was planned`] as const,
+    ),
+    [
+      "run --slow",
+      (p: Probe) => p.intake.take(groupRequest(SLOW_GROUP, p.groups, undefined)),
+      `${PASS}, so no checkpoint was planned`,
+    ],
+    [
+      "run <lint group>",
+      (p: Probe) => p.intake.take(groupRequest("lint", p.groups, undefined)),
+      `${PASS}, so no checkpoint was planned`,
+    ],
+  ] as const;
+
+  it.each(REFUSED)("%s: rejects with its own words", async (_, take, words) => {
+    const p = probeHost();
+    p.state.delivered = 1;
+    await expect(take(p)).rejects.toThrow(new Error(words));
+    expect(p.log).toEqual(["pass"]);
+  });
 });
