@@ -117,17 +117,16 @@ A key in `squeal.config.json`, repository level. Its name and values are decided
 - **Key format:** `pnpm exec vitest run test/keys/key-format.test.ts test/version-sensitive.test.ts`.
 - **Dogfood:** after release, `squeal reach` on this repository and cezar. The estimates are set beside the research's replay (about 0% and 1%).
 
-## Slices (rows filed when the spec is approved)
+## Slices (wave 1, `tasks/wave-1.md`)
 
-- **022-03** Recorder and union (D1, D2): the coverage provider's list, its rules, the observed-input route, the environment exclusion.
-- **022-04** The loaded-list table (D3), written by 022-03's path; its schema is a contract file committed before the wave.
-- **022-05** The reach estimate (D4), against the D3 contract.
+- **022-03** Recorder, union and the loaded-list table (D1, D2, D3).
+- **022-04** The reach estimate (D4), against the D3 contract (`src/core/store/loaded-modules.ts`).
 
-022-03 and 022-05 can run in parallel once the D3 contract is on the branch; 022-04 is small and folds into 022-03 if the wave brief finds it so. Phase 2 (D5) gets rows only when the human asks.
+The two run in parallel. Phase 2 (D5) gets rows only when the human asks, on reading an estimate (the human, 2026-11-14).
 
 ## Open questions
 
-1. **Phase 2 trigger** (the human). The research expects phase 1's estimate to show about 0% here and 1% on cezar. Is there a threshold, such as 10% for one project, at which phase 2 should be proposed, or does the human decide on each reading?
+1. Answered (the human, 2026-11-14): no threshold; the human decides on each reading of the estimate whether phase 2 is built.
 2. **Coverage off** (coordinator, in the phase 1 wave). A project with coverage off gets no lists. If a project asks for lists without coverage, a runner hook (Vitest's `onAfterRunFiles`, which also runs after a failed load) is the candidate. That needs its own research, since the hook must not move the environment hash.
 3. **node:test lists** (later row). The node:test recorder already records the modules each process loads. Feeding them into D3 and D4 is the next runner.
 

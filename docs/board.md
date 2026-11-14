@@ -2378,7 +2378,7 @@ Spec folder `specifications/021-remote-store-and-execution/` (stage: research; t
 
 ## Feature 022: selection strategy
 
-Spec folder `specifications/022-selection-strategy/` (stage: research; the human, 2026-11-14: an option to choose the selection strategy, adding selection by the modules a test loads beside today's import closure). Coordinator 3d192245.
+Spec folder `specifications/022-selection-strategy/` (stage: approved 2026-11-14, phase 1 building; the human, 2026-11-14: an option to choose the selection strategy, adding selection by the modules a test loads beside today's import closure). Coordinator 3d192245.
 
 ### Wave 0: research (parallel; brief `specifications/022-selection-strategy/research/README.md`)
 
@@ -2386,6 +2386,13 @@ Spec folder `specifications/022-selection-strategy/` (stage: research; the human
 |---|---|---|---|
 | 022-01 research: record the modules a test file loads; safety, savings and misses | done (researcher c2c50555, `research/loaded-modules.md`: recording is cheap (Vitest `evaluatedModules` from Squeal's in-worker coverage provider, 0.3 ms per file; node:test recorder exists; pytest batches share a process). Kody's pure rule is unsafe here: replay skips 11 of 19 real new failures in this repository (bundle tests and a test that read sources as data); it would save 24% (squeal) and 31% (cezar) of re-run seconds, all of it non-module inputs. The safe form (loaded set replaces only the import part, every other input kept) saves 0.0% here, 0.8% in cezar, 57% in Kody node-unit. Kody workers-unit: the loaded set is wider than the import graph (+25%, 970 selections the graph missed)) | Topic `loaded-modules`: what in today's closure a test never loads (edit-reach's 33%), how each runner records loads, the edits that escape a loaded set (fixtures), replay of savings and missed failures on this repository's and cezar's store copies, the fallback with no record. Researcher, Opus high. | `research/loaded-modules.md` committed with every brief question answered and tagged |
 | 022-02 research: what reads the closure, and how other tools offer a strategy option | done (researcher a6276f71, `research/selection-option.md`: 15 closure readers, four would break (shared `test_files.method`, CI import re-key, code gate lookup, status `closureMethod`); mixing strategies in one store is sound; a repository-level option with a per-file fallback; built as a narrower key, 85% (here) and 75% (cezar) of files keep their key at the switch, no key-format raise; loaded lists in a new additive table; no sets from CI without relaxing 018 D6/D11. Prior art: Kody's env opt-out, Vitest 5.1 `experimental.recordDependencies`, Nx `affected.legacy`) | Topic `selection-option`: every closure reader in Squeal (keys, edit cut, named waits, reach, code gate, CI import, shared store) and the effect of a loaded-set closure on each; the level of the option; prior art (Jest, Vitest, Wallaby, testmon, Ekstazi, Nx, Bazel); the cost of a switch. Researcher, Opus high. | `research/selection-option.md` committed with every brief question answered and tagged |
+
+### Wave 1: phase 1 (approved by the human 2026-11-14; brief `specifications/022-selection-strategy/tasks/wave-1.md`)
+
+| Task | Status | Scope | Done when |
+|---|---|---|---|
+| 022-03 recorder, union and the loaded-list table (D1, D2, D3) | planned | The coverage provider reads `evaluatedModules` per test file; loaded paths outside the closure and environment join the key through observed inputs; lists stored per result key in `loaded_modules` (contract `src/core/store/loaded-modules.ts`), pruned with results. Vitest only. | Spec Testing cases for recorder, union, no-loss and store pass; key-format alarm passes or is explained |
+| 022-04 `squeal reach` estimate of narrowing by loaded modules (D4) | planned | Per project: avoidable re-run seconds and share, top source files (imported by vs loaded by), files without a list by reason; text and JSON; store reads only. | Spec Testing cases for reach pass on a fixture store; D11 rules hold |
 
 ## Later
 
