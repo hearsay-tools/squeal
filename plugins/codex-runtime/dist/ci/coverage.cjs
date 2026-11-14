@@ -18,7 +18,9 @@
 // `isolate: false`, a payload with a child process's scripts, or a file
 // whose worker ran a module that imports `node:inspector`, known only after
 // the run. Every error of its own is a reason in the part; none reaches the
-// run.
+// run. Spec 022 D1: each single-file batch's loaded files, as Squeal's
+// provider lists them, go with its module, for `ci export` to join as the
+// daemon does (review of 0.1.493 B1).
 "use strict";
 const path = require("node:path");
 const clock = require("./clock.cjs");
@@ -131,6 +133,8 @@ function runCoverage(vitest, settings, stamps, batchesOf) {
   const { root, provider } = settings;
   const filtered = new Set();
   const results = new Map();
+  /** Spec 022 D1: each single-file batch's loaded files (`provider.mjs`), by `project\0moduleId`. */
+  const loaded = new Map();
   const sourceIds = new Map();
   let mapper = null;
   let note;
@@ -174,6 +178,7 @@ function runCoverage(vitest, settings, stamps, batchesOf) {
     const ids = batch.testFiles.map((f) => (project ? path.resolve(project.config.root, f) : f));
     const keys = ids.map((id) => keyOf(batch.projectName, id));
     const payload = batch.coverage;
+    if (ids.length === 1 && Array.isArray(batch.loaded)) loaded.set(keys[0], batch.loaded);
     if (ids.length !== 1 || project === undefined || environment === undefined) {
       for (const key of keys) results.set(key, { none: "not-whole", payload, environment });
       return;
@@ -248,7 +253,7 @@ function runCoverage(vitest, settings, stamps, batchesOf) {
           files.set(key, await settle(result, vitest, project, inspector, root));
         }
         const header = { on: true, ...collector, ...(note === undefined ? {} : { note }) };
-        return { header, files };
+        return { header, files, loaded };
       } catch (error) {
         // The provider was in the run: every file reads `unmapped`, the error the note.
         failed(error);
@@ -299,11 +304,19 @@ function coveredReporter(reporter, coverage, modules, raw) {
   };
 }
 
-/** The run file's modules, each with its record or why it has none, by `project\0moduleId`. */
+/**
+ * The run file's modules, each with its record or why it has none, and the
+ * files its worker loaded (spec 022 D1), by `project\0moduleId`.
+ */
 function coveredModules(modules, covered) {
   return [...modules].map(([key, module]) => {
     const record = covered.files.get(key);
-    return record === undefined ? module : { ...module, coverage: record };
+    const loaded = covered.loaded?.get(key);
+    return {
+      ...module,
+      ...(record === undefined ? {} : { coverage: record }),
+      ...(loaded === undefined ? {} : { loaded }),
+    };
   });
 }
 

@@ -233,7 +233,7 @@ function withWatch(covered, raw, ended) {
       for (const { project, path: file } of loaded)
         files.set(keyOf(project, file), { none: "inspector" });
     }
-    return { header: { ...covered.header, inspector: { loaded, unknown } }, files };
+    return { ...covered, header: { ...covered.header, inspector: { loaded, unknown } }, files };
   } catch {
     const unknown = ended.map(({ project, moduleId }) => ({ project, path: moduleId }));
     return { ...covered, header: { ...covered.header, inspector: { loaded: [], unknown } } };
