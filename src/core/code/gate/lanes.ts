@@ -11,7 +11,13 @@ import type { PrepareRun } from "./prepare.js";
 import type { KnownEvidence, Picked } from "./prerun.js";
 import type { FileProgress } from "./progress.js";
 import { type MapOptions, mapPayloads } from "./records.js";
-import { afterRetry, type Overloaded, overloadedOf } from "./retry.js";
+import {
+  afterRetry,
+  afterStoredRerun,
+  type Overloaded,
+  overloadedOf,
+  storedToRerun,
+} from "./retry.js";
 import type { Runner } from "./runners.js";
 import { preparedBefore, tellRan } from "./steps.js";
 import type { TestFileEvidence } from "./types.js";
@@ -121,11 +127,14 @@ type Planned = PlannedRun<Picked & { readonly runner: Runner }>;
  * (`chunks.ts`), so the keeper hears each chunk as it ends; a runner's
  * rerun runs once, after its last chunk, with the files that failed under
  * load in any of them.
+ * Row 020-60: then the stored failures `--rerun-stored-failures` marked
+ * run once, each run's at once, as a rerun does (`storedToRerun`).
  */
 export async function runLanes(runs: readonly Planned[], context: LaneContext): Promise<Lanes> {
   const testFiles: TestFileEvidence[] = [];
   const prepares: PrepareRun[] = [];
   const toRun: { readonly planned: Planned; readonly files: readonly TestFileRef[] }[] = [];
+  const storedRuns: (typeof toRun)[number][] = [];
   let timedOut = false;
   for (const planned of runs) {
     const { runner } = planned.pick;
@@ -141,6 +150,8 @@ export async function runLanes(runs: readonly Planned[], context: LaneContext): 
     // D17.2: the files left to run, in loader order.
     const files = planned.files.filter((ref) => !before.known.has(ref));
     if (files.length > 0) toRun.push({ planned, files });
+    const stored = storedToRerun(chosen, context.known);
+    if (stored.length > 0) storedRuns.push({ planned, files: stored });
   }
   const first = await Promise.all(toRun.map((run) => runChunks(run.planned, run.files, context)));
   // Row 020-54: what failed while the host was overloaded runs once more, after every other file.
@@ -173,11 +184,26 @@ export async function runLanes(runs: readonly Planned[], context: LaneContext): 
     ended.push(rerun);
     timedOut ||= rerun.report.end === "timed-out";
   });
-  return { testFiles, prepares, ended, timedOut };
+  // Row 020-60: the stored failures run once more, after every other run.
+  const again = await Promise.all(
+    storedRuns.map((r) => runOne(r.planned, r.files, context, STORED)),
+  );
+  for (const run of again.filter((r) => r.report !== null)) {
+    ended.push(run);
+    timedOut ||= run.report?.end === "timed-out";
+  }
+  return {
+    testFiles: afterStoredRerun(testFiles, context.known, again),
+    prepares,
+    ended,
+    timedOut,
+  };
 }
 
 /** Row 020-54: a rerun's suffix to its run id and log folder. */
 const RERUN = "-rerun";
+/** Row 020-60: a stored failure's rerun's suffix. */
+const STORED = "-stored";
 
 /**
  * Row 020-59: `planned`'s first run of `files`, in the chunks `chunksFor`
@@ -219,7 +245,8 @@ async function runOne(
   const { runner } = pick;
   const { options, progress } = context;
   const left = Math.ceil(context.deadline - performance.now());
-  const rerun = suffix === RERUN;
+  // A rerun (row 020-54) or a stored failure's rerun (row 020-60) runs once.
+  const rerun = suffix === RERUN || suffix === STORED;
   const id = `${i}${suffix}`;
   const logDir = join(context.temp, "runs", id);
   // Review 0.1.464 B1: the run's end, in any way, ends its files; the other runs' stay open.
