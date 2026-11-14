@@ -23,3 +23,17 @@ Owns: `run.ts` (those three reads), `group-pending.ts`, a new file under `src/cl
 Leave alone: `src/core/**`; `src/cli/wait/reads.ts` and the other module files; `status-wait*.ts`, `status-paths.ts`; `src/cli/code*.ts`; `run-group.ts` `requestedText` (row 011-324); `KEY_FORMAT_VERSION`.
 
 Done when: the row's done-when holds; each new line is listed in the notes, so the coordinator can amend spec 005 D1 if it names them; lint and typecheck pass; `test/keys/key-format.test.ts` and `test/version-sensitive.test.ts` pass with no raise; affected results through `squeal status --wait 60000 <paths>`. Notes in `tasks/011-334/notes.md`.
+
+## R1: review of cand/0.1.482
+
+Use /reviewer (codex gpt-6.1-sol high). Candidate CI: run 43586994011. Pinned to `cand/0.1.482` at `8e6a2dd2a70eec881d9dd8b6849b102002ec239b`; range `746eedc3c..8e6a2dd2a`: four commits of worker ac85bcd7, cherry-picked (`51df3084d` tests pinned to today's throw, `bb4f46785` the fix, `9694d1532` and `21badcaa9` notes), then the 0.1.482 version raise and bundles. Behaviour to compare against: `746eedc3c`. Read: board row 011-334, review `reviews/0.1.474.md` N1, `tasks/011-334/notes.md`, this file's W1.
+
+Check, each as proven, plausible or unverified:
+
+1. **No stack trace on a busy store** from `run.ts` `filesText`, `owedText`, `joinedCheckpoint` and `group-pending.ts` `heartbeatSilence`: each reads through `readBeside` (`src/cli/wait/beside.ts`) with the run waits' bounded busy timeout and, when the store stays unreadable, prints its "was not read" line; reproduce N1's `run --all --wait` case.
+2. **Nothing else a user sees changed**: with a readable store every line and exit code is as at `746eedc3c`; the new lines are the ones the notes list. Judge decision 1 (a store that does not open now also prints a line) and decision 2 (two separate reads: two lines and up to 2 s on a busy store when a request joins a running checkpoint).
+3. **One rule, not a new one**: `readBeside` uses `withStatusStore` and `readBound` as the run waits do; `inStore` has no callers left, as the notes say.
+4. **Replace, don't layer**: the pinned throw rows were flipped, not kept beside new ones.
+5. **Scope**: no change under `src/core/`, `src/cli/wait/reads.ts`, `status-wait*.ts`, `src/cli/code*.ts` or `run-group.ts` `requestedText`.
+
+The coordinator's tree passed lint, typecheck, `check:version` and `key-format`, `version-sensitive`, `run-busy-reads` and `group-pending` (40 tests) at the candidate. Host policy as in `wave-85.md`. Write `reviews/0.1.482.md` and commit it on your branch.
