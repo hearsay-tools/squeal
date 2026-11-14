@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.500";
+  if (true) return "0.1.501";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -91749,7 +91749,7 @@ var EarlyWrites = class {
       if (end === "left") {
         const pause = PAUSES_MS[Math.min(this.#busy, PAUSES_MS.length - 1)] ?? MAX_PAUSE_MS;
         this.#busy += 1;
-        if (!await this.#paused(pause)) return;
+        if (!await this.#paused(pause) || this.#stopped) return;
         continue;
       }
       this.#busy = 0;
