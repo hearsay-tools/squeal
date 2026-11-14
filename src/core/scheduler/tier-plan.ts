@@ -13,7 +13,7 @@ import type { Tier, TierFile, TierKind } from "./tiers.js";
  * starts next in the fast lanes, decided apart from starting it. The plan
  * reads the queue through a `QueueView` and asks its questions that write
  * (a saved result, a claim, the pool's offer, the end of a pass) through
- * `PlanAsks`, lazily and in the order `selectTier` asked them; it writes
+ * `PlanAsks`, lazily and in the order the former `selectTier` asked them; it writes
  * nothing itself. The act step (`startNext`, `tier-start.ts`) takes the
  * grant and starts the candidate; a refusal takes the next candidate.
  */
@@ -78,9 +78,9 @@ export interface QueueView {
 export type Lookup = "settled" | { readonly mayWait: boolean };
 
 /**
- * The plan's questions whose answers may write, in `selectTier`'s order.
+ * The plan's questions whose answers may write, in the former `selectTier`'s order.
  * The live adapter (`tier-live.ts`) reads and writes exactly as
- * `selectTier` did; a table answers in tests.
+ * the former `selectTier` did; a table answers in tests.
  */
 export interface PlanAsks {
   /** A pass starts: `Claims.begin`. */
@@ -101,7 +101,7 @@ export interface PlanAsks {
   backlogSize(queued: number): number;
   /** The grant the pool would give now; the host's slots without a pool. */
   offer(want: number, kind: PoolTierKind): number;
-  /** Where `selectTier` committed: `Ledger.commit`. */
+  /** Where the former `selectTier` committed: `Ledger.commit`. */
   endPass(): void;
   /** `Claims.waiting`: a file waited on a claim since the last pass began. */
   claimsWaiting(): boolean;
