@@ -1,0 +1,25 @@
+{
+ "project": "server",
+ "pattern": "packages/cezar/src/.*preview",
+ "testFiles": 1248,
+ "sources": {
+  "packages/cezar/src/preview/registration.ts": 630,
+  "packages/cezar/src/preview/agent-address.ts": 628,
+  "packages/cezar/src/preview/run-tools.ts": 586,
+  "packages/cezar/src/preview/cdp.ts": 180,
+  "packages/cezar/src/preview/chromium.ts": 180,
+  "packages/cezar/src/preview/chromium-launch-progress.ts": 174,
+  "packages/cezar/src/preview/dev-server.ts": 173,
+  "packages/cezar/src/preview/agent-marker.ts": 170,
+  "packages/cezar/src/preview/url.ts": 55,
+  "packages/cezar/src/preview/session.ts": 54,
+  "packages/cezar/src/preview/density.ts": 53,
+  "packages/cezar/src/preview/browser-launch.ts": 52
+ },
+ "sourceCount": 22,
+ "loaders": 724,
+ "summedSeconds": 9258,
+ "longest": 93.98603021900001,
+ "estimateAtWidth": 403,
+ "width": 23
+}

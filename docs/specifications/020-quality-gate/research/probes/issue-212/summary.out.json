@@ -1,0 +1,436 @@
+[
+ {
+  "step": "cold",
+  "load1mBefore": 22.55,
+  "load1mAfter": 31.86,
+  "exit": 0,
+  "wallSeconds": 29.9,
+  "verdict": "pass",
+  "counts": {
+   "pass": 8,
+   "violation": 0,
+   "incomplete": 0,
+   "skipped": 0,
+   "accepted": 0
+  },
+  "budget": {
+   "seconds": 900,
+   "timedOut": false
+  },
+  "runs": [
+   {
+    "runner": "vitest",
+    "selected": 300,
+    "notFinished": 0,
+    "overBudget": 0,
+    "failed": 0,
+    "durationMs": 26350
+   }
+  ],
+  "functions": {
+   "src/p1.ts pass loaders=3/3 crap=2": 1,
+   "src/p2.ts pass loaders=3/3 crap=2": 1,
+   "src/p3.ts pass loaders=3/3 crap=2": 1,
+   "src/p4.ts pass loaders=3/3 crap=2": 1,
+   "src/p5.ts pass loaders=3/3 crap=2": 1,
+   "src/p6.ts pass loaders=3/3 crap=2": 1,
+   "vitest.setup.ts pass loaders=300/300 crap=2": 2
+  }
+ },
+ {
+  "step": "warm",
+  "load1mBefore": 23.24,
+  "load1mAfter": 21.35,
+  "exit": 0,
+  "wallSeconds": 10.6,
+  "verdict": "pass",
+  "counts": {
+   "pass": 8,
+   "violation": 0,
+   "incomplete": 0,
+   "skipped": 0,
+   "accepted": 0
+  },
+  "budget": {
+   "seconds": 900,
+   "timedOut": false
+  },
+  "runs": [
+   {
+    "runner": "vitest",
+    "selected": 300,
+    "notFinished": 0,
+    "overBudget": 0,
+    "failed": 0,
+    "durationMs": 8537
+   }
+  ],
+  "functions": {
+   "src/p1.ts pass loaders=3/3 crap=2": 1,
+   "src/p2.ts pass loaders=3/3 crap=2": 1,
+   "src/p3.ts pass loaders=3/3 crap=2": 1,
+   "src/p4.ts pass loaders=3/3 crap=2": 1,
+   "src/p5.ts pass loaders=3/3 crap=2": 1,
+   "src/p6.ts pass loaders=3/3 crap=2": 1,
+   "vitest.setup.ts pass loaders=300/300 crap=2": 2
+  }
+ },
+ {
+  "step": "breaks",
+  "load1mBefore": 21.35,
+  "load1mAfter": 19.54,
+  "exit": 3,
+  "wallSeconds": 11.3,
+  "verdict": "incomplete",
+  "counts": {
+   "pass": 0,
+   "violation": 0,
+   "incomplete": 8,
+   "skipped": 0,
+   "accepted": 0
+  },
+  "budget": {
+   "seconds": 900,
+   "timedOut": false
+  },
+  "runs": [
+   {
+    "runner": "vitest",
+    "selected": 300,
+    "notFinished": 0,
+    "overBudget": 0,
+    "failed": 30,
+    "durationMs": 9265
+   }
+  ],
+  "functions": {
+   "src/p1.ts incomplete test-failed loaders=3/3 crap=2": 1,
+   "src/p2.ts incomplete test-failed loaders=3/3 crap=2": 1,
+   "src/p3.ts incomplete test-failed loaders=3/3 crap=2": 1,
+   "src/p4.ts incomplete test-failed loaders=3/3 crap=2": 1,
+   "src/p5.ts incomplete test-failed loaders=3/3 crap=2": 1,
+   "src/p6.ts incomplete test-failed loaders=3/3 crap=2": 1,
+   "vitest.setup.ts incomplete test-failed loaders=300/300 crap=2": 2
+  }
+ },
+ {
+  "step": "sleep-full",
+  "load1mBefore": 19.54,
+  "load1mAfter": 12.71,
+  "exit": 0,
+  "wallSeconds": 53.7,
+  "verdict": "pass",
+  "counts": {
+   "pass": 8,
+   "violation": 0,
+   "incomplete": 0,
+   "skipped": 0,
+   "accepted": 0
+  },
+  "budget": {
+   "seconds": 900,
+   "timedOut": false
+  },
+  "runs": [
+   {
+    "runner": "vitest",
+    "selected": 300,
+    "notFinished": 0,
+    "overBudget": 0,
+    "failed": 0,
+    "durationMs": 51538
+   }
+  ],
+  "functions": {
+   "src/p1.ts pass loaders=3/3 crap=2": 1,
+   "src/p2.ts pass loaders=3/3 crap=2": 1,
+   "src/p3.ts pass loaders=3/3 crap=2": 1,
+   "src/p4.ts pass loaders=3/3 crap=2": 1,
+   "src/p5.ts pass loaders=3/3 crap=2": 1,
+   "src/p6.ts pass loaders=3/3 crap=2": 1,
+   "vitest.setup.ts pass loaders=300/300 crap=2": 2
+  }
+ },
+ {
+  "step": "sleep-tight",
+  "load1mBefore": 12.71,
+  "load1mAfter": 12.89,
+  "exit": 3,
+  "wallSeconds": 5.4,
+  "verdict": "incomplete",
+  "counts": {
+   "pass": 8,
+   "violation": 0,
+   "incomplete": 0,
+   "skipped": 0,
+   "accepted": 0
+  },
+  "budget": {
+   "seconds": 15,
+   "timedOut": false,
+   "rerun": {
+    "seconds": 120,
+    "command": "squeal code --base main --timeout 120 --json"
+   }
+  },
+  "runs": [
+   {
+    "runner": "vitest",
+    "selected": 300,
+    "notFinished": 0,
+    "overBudget": 282,
+    "failed": 0,
+    "durationMs": 3622
+   }
+  ],
+  "functions": {
+   "src/p1.ts pass loaders=3/3 crap=2": 1,
+   "src/p2.ts pass loaders=3/3 crap=2": 1,
+   "src/p3.ts pass loaders=3/3 crap=2": 1,
+   "src/p4.ts pass loaders=3/3 crap=2": 1,
+   "src/p5.ts pass loaders=3/3 crap=2": 1,
+   "src/p6.ts pass loaders=3/3 crap=2": 1,
+   "vitest.setup.ts pass loaders=18/18 crap=2": 2
+  }
+ },
+ {
+  "step": "sleep-breaks",
+  "load1mBefore": 12.89,
+  "load1mAfter": 12.74,
+  "exit": 3,
+  "wallSeconds": 6.9,
+  "verdict": "incomplete",
+  "counts": {
+   "pass": 0,
+   "violation": 0,
+   "incomplete": 8,
+   "skipped": 0,
+   "accepted": 0
+  },
+  "budget": {
+   "seconds": 15,
+   "timedOut": false,
+   "rerun": {
+    "seconds": 120,
+    "command": "squeal code --base main --timeout 120 --json"
+   }
+  },
+  "runs": [
+   {
+    "runner": "vitest",
+    "selected": 300,
+    "notFinished": 0,
+    "overBudget": 282,
+    "failed": 2,
+    "durationMs": 4789
+   }
+  ],
+  "functions": {
+   "src/p1.ts incomplete test-failed loaders=3/3 crap=2": 1,
+   "src/p2.ts incomplete test-failed loaders=3/3 crap=2": 1,
+   "src/p3.ts incomplete test-failed loaders=3/3 crap=2": 1,
+   "src/p4.ts incomplete test-failed loaders=3/3 crap=2": 1,
+   "src/p5.ts incomplete test-failed loaders=3/3 crap=2": 1,
+   "src/p6.ts incomplete test-failed loaders=3/3 crap=2": 1,
+   "vitest.setup.ts incomplete test-failed loaders=18/18 crap=2": 2
+  }
+ },
+ {
+  "step": "sleep-top",
+  "load1mBefore": 12.74,
+  "load1mAfter": 12.36,
+  "exit": 3,
+  "wallSeconds": 5.3,
+  "verdict": "incomplete",
+  "counts": {
+   "pass": 6,
+   "violation": 0,
+   "incomplete": 0,
+   "skipped": 0,
+   "accepted": 0
+  },
+  "budget": {
+   "seconds": 15,
+   "timedOut": false,
+   "rerun": {
+    "seconds": 120,
+    "command": "squeal code --base main --timeout 120 --json"
+   }
+  },
+  "runs": [
+   {
+    "runner": "vitest",
+    "selected": 300,
+    "notFinished": 0,
+    "overBudget": 282,
+    "failed": 0,
+    "durationMs": 3604
+   }
+  ],
+  "functions": {
+   "src/p1.ts pass loaders=3/3 crap=2": 1,
+   "src/p2.ts pass loaders=3/3 crap=2": 1,
+   "src/p3.ts pass loaders=3/3 crap=2": 1,
+   "src/p4.ts pass loaders=3/3 crap=2": 1,
+   "src/p5.ts pass loaders=3/3 crap=2": 1,
+   "src/p6.ts pass loaders=3/3 crap=2": 1
+  }
+ },
+ {
+  "step": "sleep-fit",
+  "load1mBefore": 12.36,
+  "load1mAfter": 10.89,
+  "exit": 0,
+  "wallSeconds": 53.8,
+  "verdict": "pass",
+  "counts": {
+   "pass": 8,
+   "violation": 0,
+   "incomplete": 0,
+   "skipped": 0,
+   "accepted": 0
+  },
+  "budget": {
+   "seconds": 900,
+   "timedOut": false
+  },
+  "runs": [
+   {
+    "runner": "vitest",
+    "selected": 300,
+    "notFinished": 0,
+    "overBudget": 0,
+    "failed": 0,
+    "durationMs": 51495
+   }
+  ],
+  "functions": {
+   "src/p1.ts pass loaders=3/3 crap=2": 1,
+   "src/p2.ts pass loaders=3/3 crap=2": 1,
+   "src/p3.ts pass loaders=3/3 crap=2": 1,
+   "src/p4.ts pass loaders=3/3 crap=2": 1,
+   "src/p5.ts pass loaders=3/3 crap=2": 1,
+   "src/p6.ts pass loaders=3/3 crap=2": 1,
+   "vitest.setup.ts pass loaders=300/300 crap=2": 2
+  }
+ },
+ {
+  "step": "late-full",
+  "load1mBefore": 11.31,
+  "load1mAfter": 9.68,
+  "exit": 0,
+  "wallSeconds": 53.5,
+  "verdict": "pass",
+  "counts": {
+   "pass": 8,
+   "violation": 0,
+   "incomplete": 0,
+   "skipped": 0,
+   "accepted": 0
+  },
+  "budget": {
+   "seconds": 900,
+   "timedOut": false
+  },
+  "runs": [
+   {
+    "runner": "vitest",
+    "selected": 300,
+    "notFinished": 0,
+    "overBudget": 0,
+    "failed": 0,
+    "durationMs": 51224
+   }
+  ],
+  "functions": {
+   "src/p1.ts pass loaders=3/3 crap=2": 1,
+   "src/p2.ts pass loaders=3/3 crap=2": 1,
+   "src/p3.ts pass loaders=3/3 crap=2": 1,
+   "src/p4.ts pass loaders=3/3 crap=2": 1,
+   "src/p5.ts pass loaders=3/3 crap=2": 1,
+   "src/p6.ts pass loaders=3/3 crap=2": 1,
+   "vitest.setup.ts pass loaders=300/300 crap=2": 2
+  }
+ },
+ {
+  "step": "late-breaks",
+  "load1mBefore": 9.68,
+  "load1mAfter": 9.47,
+  "exit": 3,
+  "wallSeconds": 5.4,
+  "verdict": "incomplete",
+  "counts": {
+   "pass": 8,
+   "violation": 0,
+   "incomplete": 0,
+   "skipped": 0,
+   "accepted": 0
+  },
+  "budget": {
+   "seconds": 15,
+   "timedOut": false,
+   "rerun": {
+    "seconds": 120,
+    "command": "squeal code --base main --timeout 120 --json"
+   }
+  },
+  "runs": [
+   {
+    "runner": "vitest",
+    "selected": 300,
+    "notFinished": 0,
+    "overBudget": 282,
+    "failed": 0,
+    "durationMs": 3619
+   }
+  ],
+  "functions": {
+   "src/p1.ts pass loaders=3/3 crap=2": 1,
+   "src/p2.ts pass loaders=3/3 crap=2": 1,
+   "src/p3.ts pass loaders=3/3 crap=2": 1,
+   "src/p4.ts pass loaders=3/3 crap=2": 1,
+   "src/p5.ts pass loaders=3/3 crap=2": 1,
+   "src/p6.ts pass loaders=3/3 crap=2": 1,
+   "vitest.setup.ts pass loaders=18/18 crap=2": 1,
+   "vitest.setup.ts pass loaders=18/18 crap=6": 1
+  }
+ },
+ {
+  "step": "late-breaks-full",
+  "load1mBefore": 9.47,
+  "load1mAfter": 9.92,
+  "exit": 3,
+  "wallSeconds": 56.5,
+  "verdict": "incomplete",
+  "counts": {
+   "pass": 0,
+   "violation": 0,
+   "incomplete": 8,
+   "skipped": 0,
+   "accepted": 0
+  },
+  "budget": {
+   "seconds": 900,
+   "timedOut": false
+  },
+  "runs": [
+   {
+    "runner": "vitest",
+    "selected": 300,
+    "notFinished": 0,
+    "overBudget": 0,
+    "failed": 28,
+    "durationMs": 54474
+   }
+  ],
+  "functions": {
+   "src/p1.ts incomplete test-failed loaders=3/3 crap=2": 1,
+   "src/p2.ts incomplete test-failed loaders=3/3 crap=2": 1,
+   "src/p3.ts incomplete test-failed loaders=3/3 crap=2": 1,
+   "src/p4.ts incomplete test-failed loaders=3/3 crap=2": 1,
+   "src/p5.ts incomplete test-failed loaders=3/3 crap=2": 1,
+   "src/p6.ts incomplete test-failed loaders=3/3 crap=2": 1,
+   "vitest.setup.ts incomplete test-failed loaders=300/300 crap=2": 2
+  }
+ }
+]

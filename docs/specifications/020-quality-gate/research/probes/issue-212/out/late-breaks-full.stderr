@@ -1,0 +1,6 @@
+[   1.4s] squeal code: Vitest: 300 test files selected (tests 300): 282 to run, 18 read from the stores
+[   1.4s] squeal code: no test Squeal runs loads vitest.setup.ts: no Vitest or node:test project lists it, and no listed test file imports it. Its 2 changed functions will read incomplete (no-loader). To measure it, give it to a runner (a nodeTest entry, with prepare when it needs a build); to skip its coverage, name it in coverage.exclude at the base.
+[   1.4s] squeal code: Vitest: 282 test files to run here, up to 7 at once: about 43 s from their stored durations
+[  56.2s] squeal code: 18 of 300 selected test files read from the stores
+[  56.2s] squeal code: 28 test files failed while the host load was at or over its CPU count (10.44 on 8 CPUs) and ran once more: 28 failed again (test/t100.test.ts, test/t110.test.ts, test/t120.test.ts and 25 more).
+[  56.2s] squeal code: log of the failed or unfinished test files, kept until the next prune, within about 1 h while a daemon of this repository runs (none serves this worktree): Vitest /tmp/issue-212/r-late/.git/squeal/runs/gate-01a320ca-63b2-41c1-a110-88d9065b8c1c
