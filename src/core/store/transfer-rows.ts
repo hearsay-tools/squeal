@@ -6,7 +6,6 @@ import type { EpochMs, ProjectName, WorktreeId } from "../types/common.js";
 import type { CheckKey } from "../types/keys.js";
 import { importMark } from "../types/state.js";
 import type { Store } from "../types/store.js";
-import { markClosureWrite } from "./closure-writes.js";
 import { location, num, oneOf, str } from "./codec.js";
 import type { Connection } from "./connection.js";
 import { connectionOf } from "./store.js";
@@ -108,8 +107,6 @@ export function addClosures(
       closures++;
     }
   }
-  // Row 011-44: after the closures, in their slice's transaction.
-  if (closures > 0) markClosureWrite(store);
   return closures;
 }
 

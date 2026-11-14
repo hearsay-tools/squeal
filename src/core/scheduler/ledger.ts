@@ -2,7 +2,6 @@ import { testFileId } from "../keys/reverse-index.js";
 import { fsRankSource, SlowRanker } from "../slow/rank.js";
 import { metaTokenRecords, publishSlowEvidence, readSlowEvidence } from "../slow/rank-store.js";
 import { isBusy } from "../store/connection.js";
-import { bumpStatesMarkerOf } from "../store/states-marker.js";
 import type { CheckId } from "../types/check.js";
 import type { CommitSha, RelativePath, RevisionNumber } from "../types/common.js";
 import type { CheckKey, TestFileRef } from "../types/keys.js";
@@ -731,8 +730,6 @@ export class Ledger {
         });
       }
       if (retired.length > 0) sink.retire(worktreeId, retired);
-      // Row 011-45: the removals' write to the states marker, which the repositories leave to it.
-      if (removed.length > 0 || retired.length > 0) bumpStatesMarkerOf(store, worktreeId);
       store.checks.recordRunners(worktreeId, runners(this.context.keys, rows, applied, setups));
       for (const outcome of setups) sink.setupOutcome(worktreeId, revision, outcome);
       // Only rows that changed: no other file's key, phase or validity moved.

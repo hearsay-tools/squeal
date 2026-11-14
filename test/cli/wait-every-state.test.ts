@@ -4,9 +4,11 @@ import { waitForStatus } from "../../src/cli/status-wait.js";
 import { readHeld, startView } from "../../src/cli/status-wait-held.js";
 import { type Every, keptAtStart, readEvery } from "../../src/cli/wait/every-state.js";
 import type { openStore as OpenStore } from "../../src/core/store/open.js";
-import { claimStatesMarker } from "../../src/core/store/states-marker.js";
+import { connectionOf } from "../../src/core/store/store.js";
+import { statesMarkerMetaKey } from "../../src/core/store/write-markers.js";
 import type { Store } from "../../src/core/types/store.js";
 import { appendRevisions } from "../status/helpers.js";
+import { armMarkers } from "./closure-trust.js";
 import {
   A,
   ADDS,
@@ -14,7 +16,6 @@ import {
   B,
   fail,
   finish,
-  INCARNATION,
   key,
   options,
   repoWith,
@@ -24,33 +25,35 @@ import {
  * Row 011-45 (C6 as amended 2026-10-20, 011-42): the edit wait's fallback,
  * which holds for every check, reads every known state and every
  * `test_file_keys` row only when the states marker moved since its last
- * read. A store whose daemon claimed no marker reads them each poll, as
- * before. Each store the wait opens logs its unfiltered reads of both.
+ * read. A store with no marker triggers reads them each poll, as before.
+ * Each store the wait opens logs its unfiltered reads of both.
  */
 
 type Read = "states" | "keys";
 const sessions = vi.hoisted((): Read[][] => []);
 
-/** Logs `store`'s unfiltered reads of states and keys into `reads`. */
-function counted(store: Store, reads: Read[]): Store {
+/**
+ * Logs `store`'s unfiltered reads of states and keys into `reads`, in place:
+ * the store stays the one `openStore` opened, with its connection.
+ */
+function counted(opened: Store, reads: Read[]): Store {
+  const store = opened as { -readonly [K in keyof Store]: Store[K] };
   const { knownStates, testFileKeys } = store;
-  return {
-    ...store,
-    knownStates: {
-      ...knownStates,
-      list: (id, files) => {
-        if (files === undefined) reads.push("states");
-        return knownStates.list(id, files);
-      },
-    },
-    testFileKeys: {
-      ...testFileKeys,
-      list: (id, files) => {
-        if (files === undefined) reads.push("keys");
-        return testFileKeys.list(id, files);
-      },
+  store.knownStates = {
+    ...knownStates,
+    list: (id, files) => {
+      if (files === undefined) reads.push("states");
+      return knownStates.list(id, files);
     },
   };
+  store.testFileKeys = {
+    ...testFileKeys,
+    list: (id, files) => {
+      if (files === undefined) reads.push("keys");
+      return testFileKeys.list(id, files);
+    },
+  };
+  return store;
 }
 
 vi.mock("../../src/core/store/open.js", async (importOriginal) => {
@@ -60,11 +63,7 @@ vi.mock("../../src/core/store/open.js", async (importOriginal) => {
     if (!("knownStates" in opened)) return opened;
     const reads: Read[] = [];
     sessions.push(reads);
-    const store = opened as { -readonly [K in keyof Store]: Store[K] };
-    const wrapped = counted(opened, reads);
-    store.knownStates = wrapped.knownStates;
-    store.testFileKeys = wrapped.testFileKeys;
-    return store;
+    return counted(opened, reads);
   };
   return { ...original, openStore: counting };
 });
@@ -81,10 +80,10 @@ afterEach(() => {
   process.env = { ...saved };
 });
 
-/** A worktree whose live daemon claimed the states marker, as its registration does. */
+/** A worktree whose store has the marker triggers, as a daemon of this release makes them. */
 function claimed(pending: readonly string[], done: readonly string[] = []) {
   const made = repoWith(pending, done);
-  claimStatesMarker(made.store, made.repo.mainId, INCARNATION);
+  armMarkers(made.store);
   return made;
 }
 
@@ -92,14 +91,16 @@ describe("the fallback read of every state (row 011-45)", () => {
   it("reads again only when the marker moved, and equals a full read each time", () => {
     const { repo, store } = claimed([A], [B]);
     const id = repo.mainId;
-    const reads: Read[] = [];
     const view = startView(store.knownStates.list(id));
     const every: Every = { kept: keptAtStart(store, id, store.knownStates.list(id)) };
+    const reads: Read[] = [];
+    counted(store, reads);
     const read = () => {
       reads.length = 0;
-      const seen = readEvery(counted(store, reads), id, view, every);
+      const seen = readEvery(store, id, view, every);
+      const got = [...reads];
       expect(seen).toEqual(readHeld(store, id, view, null));
-      return [...reads];
+      return got;
     };
 
     // The first read takes the start view's states and reads the rows.
@@ -118,29 +119,35 @@ describe("the fallback read of every state (row 011-45)", () => {
     expect(read()).toEqual([]);
   });
 
-  it("reads every time with no marker, or once another daemon registered", () => {
+  it("reads every time with no triggers, once they are dropped, or with no marker row", () => {
     const { repo, store } = repoWith([A], [B]);
     const id = repo.mainId;
-    const reads: Read[] = [];
     const view = startView(store.knownStates.list(id));
     const every: Every = { kept: keptAtStart(store, id, store.knownStates.list(id)) };
     expect(every.kept).toBeUndefined();
-    for (let i = 0; i < 2; i++) {
-      readEvery(counted(store, reads), id, view, every);
-      expect(reads.splice(0)).toEqual(["states", "keys"]);
-    }
+    const reads: Read[] = [];
+    counted(store, reads);
+    const twice = () => {
+      for (let i = 0; i < 2; i++) {
+        readEvery(store, id, view, every);
+        expect(reads.splice(0)).toEqual(["states", "keys"]);
+      }
+    };
+    twice();
 
-    claimStatesMarker(store, id, INCARNATION);
-    readEvery(counted(store, reads), id, view, every);
-    readEvery(counted(store, reads), id, view, every);
+    armMarkers(store);
+    readEvery(store, id, view, every);
+    readEvery(store, id, view, every);
     expect(reads.splice(0)).toEqual(["states", "keys"]);
-    // An older daemon registers; it claims nothing and may write with no bump.
-    const daemon = store.worktrees.get(id)?.daemon ?? null;
-    store.worktrees.setDaemon(id, daemon && { ...daemon, squealVersion: "0.1.112" });
-    for (let i = 0; i < 2; i++) {
-      readEvery(counted(store, reads), id, view, every);
-      expect(reads.splice(0)).toEqual(["states", "keys"]);
-    }
+    // A release that drops a trigger (a table made again) leaves the marker unmoved by its writes.
+    connectionOf(store).db.exec("DROP TRIGGER squeal_marker_known_states_update");
+    twice();
+    armMarkers(store);
+    readEvery(store, id, view, every);
+    reads.length = 0;
+    // A removed worktree's marker row goes with it.
+    store.meta.delete(statesMarkerMetaKey(id));
+    twice();
   });
 });
 

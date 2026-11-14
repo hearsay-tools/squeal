@@ -1,6 +1,5 @@
 import type { KeyChange } from "../keys/key-index.js";
 import { testFileId } from "../keys/reverse-index.js";
-import { markClosureWrite } from "../store/closure-writes.js";
 import { type FetchedPart, recordImportGraph } from "../store/import-edges.js";
 import type { RelativePath } from "../types/common.js";
 import type { CheckKey, TestFileRef } from "../types/keys.js";
@@ -378,7 +377,6 @@ export function storeClosures(
 ): void {
   const { store, keys } = context;
   store.transaction(() => {
-    let wrote = false;
     for (const ref of refs) {
       const closure = keys.index.closure(ref);
       if (!closure) continue;
@@ -388,10 +386,7 @@ export function storeClosures(
         updatedAt: context.now(),
         updatedBy: context.worktreeId,
       });
-      wrote = true;
     }
-    // Row 011-44: after the closures, in their transaction.
-    if (wrote) markClosureWrite(store);
     recordImportGraph(context, fetched);
   });
 }

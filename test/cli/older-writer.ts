@@ -1,8 +1,7 @@
 import { CLOSURE_METHOD } from "../../src/core/keys/closure.js";
-import { closureWrites, markClosureWrite } from "../../src/core/store/closure-writes.js";
 import { connectionOf } from "../../src/core/store/store.js";
 import type { Store } from "../../src/core/types/store.js";
-import { claimAll } from "./closure-trust.js";
+import { armMarkers } from "./closure-trust.js";
 
 /*
  * Review 0.1.489, B1: writes by a release before rows 011-44 and 011-45,
@@ -12,8 +11,7 @@ import { claimAll } from "./closure-trust.js";
 
 /** The store as this release leaves it for a reader that may keep what it read. */
 export function asThisRelease(store: Store): void {
-  claimAll(store);
-  if (closureWrites(store.meta) === null) markClosureWrite(store);
+  armMarkers(store);
 }
 
 /** An older writer's state of `fullName` in `worktreeId`: `outcome`, with no marker code. */
