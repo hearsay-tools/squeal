@@ -294,12 +294,18 @@ export class Admission {
     return facts.runnerWork > 0 || facts.fastQueued() || facts.focused();
   }
 
-  /** A lane's halts under the lock, in the pump's order: a lane reads no install fact (the pump did). */
+  /**
+   * A lane's halts under the lock, in the pump's order: a lane reads no
+   * install fact (the pump did). No lane starts while runner work is
+   * pending (row 011-341): its keys would come from a revision the runner
+   * has not invalidated yet, whatever the group's `after`.
+   */
   #laneHalt(): Refusal | null {
     const facts = this.#facts;
     if (facts.stopping) return { reason: "stopping" };
     if (facts.runtimeGone) return { reason: "runtime-gone" };
-    return facts.held ? { reason: "held" } : null;
+    if (facts.held) return { reason: "held" };
+    return facts.runnerWork > 0 ? { reason: "runner-work" } : null;
   }
 
   /**
