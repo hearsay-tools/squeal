@@ -129,8 +129,13 @@ export function readSlowTier(
   keys: readonly TestFileKeyRecord[],
   view: SlowPolicyView,
 ): SlowTierState {
+  return slowTierOf(readLane(store, worktreeId, states, keys, view.isSlow, SLOW_GROUP), view);
+}
+
+/** The slow-tier line's state from its lane's (`readLane`) and the policy's Stop wait and moment. */
+export function slowTierOf(lane: LaneState, view: SlowPolicyView): SlowTierState {
   return {
-    ...readLane(store, worktreeId, states, keys, view.isSlow, SLOW_GROUP),
+    ...lane,
     ...(view.stopWaitMs === null ? {} : { stopWaitMs: view.stopWaitMs }),
     ...(view.stopWaitMs === null || view.maxHolds === 1 ? {} : { maxHolds: view.maxHolds }),
     ...(view.pausesOnly ? { pausesOnly: true as const } : {}),
@@ -139,6 +144,9 @@ export function readSlowTier(
 
 /** What a lane's line counts, without the Stop wait or the moment. */
 export type LaneState = Omit<SlowTierState, "stopWaitMs" | "maxHolds" | "pausesOnly">;
+
+/** A lane's state without its activity: a function of the states and keys alone (row 011-345). */
+export type LaneCounts = Omit<LaneState, "activity">;
 
 /**
  * The files of `group`'s lane by class, the revisions the current ones ran
@@ -157,6 +165,23 @@ export function readLane(
   group: string,
   classify: typeof classifySlowFiles = classifySlowFiles,
 ): LaneState {
+  return {
+    ...laneCounts(states, keys, inLane, classify),
+    activity: liveActivity(store, worktreeId, keys, inLane, group),
+  };
+}
+
+/**
+ * `readLane` without the activity: the lane's files by class and the
+ * revisions the current ones ran at, from `states` and `keys` alone, so a
+ * caller that keeps them may keep this too (row 011-345).
+ */
+export function laneCounts(
+  states: readonly KnownState[],
+  keys: readonly TestFileKeyRecord[],
+  inLane: (testFile: TestFileRef) => boolean,
+  classify: typeof classifySlowFiles = classifySlowFiles,
+): LaneCounts {
   const files = classify(states, keys, inLane);
   const counts = { current: 0, pending: 0, notRun: 0 };
   for (const { class: cls } of files.values()) counts[cls]++;
@@ -174,7 +199,6 @@ export function readLane(
     ...counts,
     currentAt,
     ...(currentUpTo !== null && currentUpTo !== currentAt ? { currentUpTo } : {}),
-    activity: liveActivity(store, worktreeId, keys, inLane, group),
   };
 }
 
@@ -190,7 +214,7 @@ export function readLane(
  * files, which fast tiers can put off for minutes. `null` when nothing is
  * true of it.
  */
-function liveActivity(
+export function liveActivity(
   store: Store,
   worktreeId: WorktreeId,
   keys: readonly TestFileKeyRecord[],

@@ -13,7 +13,7 @@ import type { CommitLine, GroupTierState } from "../types/status.js";
 import type { Store } from "../types/store.js";
 import type { TestFileKeyRecord } from "../types/store-records.js";
 import { fileClassOf } from "./file-class.js";
-import { type LaneFiles, laneChecks, readLane, slowPolicyView } from "./slow.js";
+import { type LaneFiles, laneChecks, laneCounts, liveActivity, slowPolicyView } from "./slow.js";
 
 /*
  * Spec 019 D5 step 3 and D6 (row 019-16): what headers and status read of a
@@ -67,6 +67,28 @@ export function readGroupTiers(
   keys: readonly TestFileKeyRecord[],
   policy: Policy,
 ): readonly GroupTierState[] {
+  return groupTiersOf(store, worktreeId, keys, groupLaneCounts(states, keys, policy));
+}
+
+/** A configured test group's lane without its activity (`laneCounts`), and what tells its files. */
+export interface GroupLaneCounts {
+  readonly name: string;
+  readonly inLane: (testFile: TestFileRef) => boolean;
+  /** The group's tier state up to its lane's activity, in `readGroupTiers`' key order. */
+  readonly head: Omit<GroupTierState, "activity" | "stopWaitMs">;
+  readonly stopWaitMs?: number;
+}
+
+/**
+ * `readGroupTiers` without the lanes' activity: a function of `states`,
+ * `keys` and `policy` alone, so a caller that keeps them may keep this too
+ * (row 011-345).
+ */
+export function groupLaneCounts(
+  states: readonly KnownState[],
+  keys: readonly TestFileKeyRecord[],
+  policy: Policy,
+): readonly GroupLaneCounts[] {
   const view = groupView(policy);
   const waitMs = stopWaitBoundMs(policy);
   return view.groups.flatMap((group) => {
@@ -75,14 +97,32 @@ export function readGroupTiers(
     return [
       {
         name: group.name,
-        at: group.at,
-        after: group.after,
-        quietMs: group.quietMs,
-        ...readLane(store, worktreeId, states, keys, inLane, group.name, classifyGroupFiles),
+        inLane,
+        head: {
+          name: group.name,
+          at: group.at,
+          after: group.after,
+          quietMs: group.quietMs,
+          ...laneCounts(states, keys, inLane, classifyGroupFiles),
+        },
         ...(group.stopRequires ? { stopWaitMs: waitMs } : {}),
       },
     ];
   });
+}
+
+/** Each group's tier state from its kept lane (`groupLaneCounts`) and its activity read now. */
+export function groupTiersOf(
+  store: Store,
+  worktreeId: WorktreeId,
+  keys: readonly TestFileKeyRecord[],
+  lanes: readonly GroupLaneCounts[],
+): readonly GroupTierState[] {
+  return lanes.map(({ name, inLane, head, stopWaitMs }) => ({
+    ...head,
+    activity: liveActivity(store, worktreeId, keys, inLane, name),
+    ...(stopWaitMs === undefined ? {} : { stopWaitMs }),
+  }));
 }
 
 /**
