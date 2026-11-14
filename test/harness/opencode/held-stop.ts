@@ -39,9 +39,10 @@ export interface Barriers {
 /**
  * Replaces the built Stop in `dist` with one that logs its start and any
  * end of its own, waits for `release` and answers `OLD`, the first time
- * only; and wraps the built plugin to log `dispose`, the new input, an
- * abort and its kills of live bridge groups, releasing Stop at the input
- * when `releaseAtInput`.
+ * only, or ends unanswered once the barriers' folder or OpenCode's process
+ * (the request's `pid`) is gone (row 011-338); and wraps the built plugin
+ * to log `dispose`, the new input, an abort and its kills of live bridge
+ * groups, releasing Stop at the input when `releaseAtInput`.
  */
 export function barriers(dist: string, releaseAtInput: boolean): Barriers {
   const dir = tempDir("squeal-oc-dispose-");
@@ -53,20 +54,29 @@ export function barriers(dist: string, releaseAtInput: boolean): Barriers {
   writeFileSync(
     join(dist, "hooks", "stop.mjs"),
     `import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
-readFileSync(0, "utf8");
+const { pid } = JSON.parse(readFileSync(0, "utf8"));
+const alive = (p) => {
+  try { process.kill(p, 0); return true; } catch (error) { return error.code === "EPERM"; }
+};
 const once = !existsSync(${JSON.stringify(answered)});
 writeFileSync(${JSON.stringify(answered)}, "");
 if (once) {
   appendFileSync(${JSON.stringify(log)}, \`stop \${Date.now()} \${process.pid}\\n\`);
   // Every end but SIGKILL's: an exit, a crash, a catchable signal.
-  process.on("exit", (code) => appendFileSync(${JSON.stringify(log)}, \`exit \${Date.now()} \${code}\\n\`));
+  process.on("exit", (code) => {
+    // The folder may be gone: the end that ended it.
+    try { appendFileSync(${JSON.stringify(log)}, \`exit \${Date.now()} \${code}\\n\`); } catch {}
+  });
   for (const [signal, code] of [["SIGTERM", 143], ["SIGINT", 130], ["SIGHUP", 129]])
     process.on(signal, () => process.exit(code));
 }
 const answer = (report) => process.stdout.write(JSON.stringify({ answer: { report } }));
 if (!once) answer(null);
 else {
+  // Row 011-338: a run cancelled mid-test never releases it, so it also ends
+  // once its folder or OpenCode's process is gone, as the \`wait\` bridge does.
   const timer = setInterval(() => {
+    if (!existsSync(${JSON.stringify(dir)}) || !alive(pid)) process.exit(0);
     if (!existsSync(${JSON.stringify(release)})) return;
     clearInterval(timer);
     appendFileSync(${JSON.stringify(log)}, \`answered \${Date.now()}\\n\`);
