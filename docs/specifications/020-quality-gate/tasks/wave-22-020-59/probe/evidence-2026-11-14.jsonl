@@ -1,0 +1,9 @@
+{"round":0,"mode":"one-run","code":0,"reportMs":12253,"totalMs":12726,"runs":[9728],"load":17.94,"after":22.15,"cpuCount":24}
+{"round":0,"mode":"default","code":0,"reportMs":25362,"totalMs":25565,"runs":[6724,8985,6792],"load":22.15,"after":39.66,"cpuCount":24}
+{"round":0,"mode":"small","skip":"load","load":39.66,"cpuCount":24}
+{"round":1,"mode":"one-run","skip":"load","load":39.66,"cpuCount":24}
+{"round":1,"mode":"default","skip":"load","load":39.66,"cpuCount":24}
+{"round":1,"mode":"small","skip":"load","load":39.66,"cpuCount":24}
+{"round":2,"mode":"one-run","skip":"load","load":39.66,"cpuCount":24}
+{"round":2,"mode":"default","skip":"load","load":39.66,"cpuCount":24}
+{"round":2,"mode":"small","skip":"load","load":39.66,"cpuCount":24}

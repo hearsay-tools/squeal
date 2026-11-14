@@ -63,7 +63,14 @@ D7: no report change. `runs[].durationMs` sums the chunks' runs, which run one a
 
 ## Measurement (the parent's condition 2)
 
-Pending: the host's one-minute load was 64–67 on 24 CPUs from 15:30Z to 16:50Z. The probe is `probe/chunks.probe.ts` (240 Vitest files that sleep 30–1230 ms, no CPU work; one run, the default chunks, chunks of 24; three rounds; it skips a gate when the load is at or over the CPU count).
+Probe `probe/chunks.probe.ts`, run 2026-11-14 17:19Z as a job (exit 0), raw lines in `probe/evidence-2026-11-14.jsonl`. 240 Vitest files that each sleep 30–1230 ms (no CPU work), each loading its own changed module, a fresh repository per gate, 24 CPUs. The default chunk size here is max(8, 4 × 23) = 92 files, so 3 chunks.
+
+| Gate | One-minute load before → after | Report at | Return at | Adapter runs (ms) |
+|---|---|---:|---:|---|
+| One run | 17.94 → 22.15 | 12.3 s | 12.7 s | 9728 |
+| Default chunks (3) | 22.15 → 39.66 | 25.4 s | 25.6 s | 6724, 8985, 6792 |
+
+Then the load passed 24 (39.66) and the probe skipped the other 7 gates, as designed. One pair only, and the load rose during the chunked gate, so the size is not confirmed. But the gap is large: the chunked gate took **2.0 times** the one-run gate (+12.8 s, about +100 %), about 6.4 s for each chunk after the first. A Vitest run of 92 files took 6.7–9.0 s against 9.7 s for all 240, so most of a run's time does not depend on its file count (per-run work in the Vitest adapter: invalidation, the uncovered-files pass, the coverage take; not measured apart here). This is over the parent's 10 % limit: asked the parent before finishing (fallback C).
 
 ## For the next worker
 
