@@ -129,7 +129,15 @@ describe("squeal daemon in a worktree without installed dependencies (D5, defect
     const run = async (args: readonly string[]) => {
       const cli = spawnCli(suite.cli, ["run", "tests", ...args], { cwd: repo.root, env: repo.env });
       const { code } = await cli.exited;
-      return { code, stdout: cli.stdout(), stderr: cli.stderr() };
+      // Node's own warnings (Node 22's `node:sqlite` ExperimentalWarning, CI 43586106691) are not the CLI's output.
+      const stderr = cli
+        .stderr()
+        .split("\n")
+        .filter(
+          (line) => !/^\(node:\d+\) /.test(line) && !line.startsWith("(Use `node --trace-warnings"),
+        )
+        .join("\n");
+      return { code, stdout: cli.stdout(), stderr };
     };
     const receipt = new RegExp(
       `^No test files of group tests run at revision \\d+: ${AWAITING_INSTALL_REASON}\\.$`,
