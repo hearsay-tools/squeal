@@ -66,8 +66,10 @@ export interface SelectionSummary {
    * Each path of a changed function that no runner lists as a test file
    * and no selected test file loads, so its functions will read
    * `no-loader`; sorted. A path `excluded` matches is not looked for. Row
-   * 020-57: a `setupFiles` entry of a project with a selected file the
-   * scope runs is loaded: each such file's record holds it.
+   * 020-57: a `setupFiles` entry is loaded when a selected file of its
+   * project runs in the fitted plan, as each run's record holds it, or
+   * its evidence from the stores or the parts measured it (R1, review
+   * 0.1.483 B1: not when the early stop leaves every such file out).
    * With `coverage.children` (row 020-34), only when no selected file runs
    * or is read; else such a path is in `childMayLoad`.
    */
@@ -107,7 +109,8 @@ export type KnownEvidence = ReadonlyMap<TestFileRef, TestFileEvidence>;
 /**
  * D14.4: tells `tell` the summary of `picked`, the runners' selection,
  * with the left-out groups of `tally` and the files `known` keeps from
- * running; nothing when `tell` is absent.
+ * running; nothing when `tell` is absent. `planned` says which selected
+ * files the fitted plan runs (R1, review 0.1.483 B1).
  */
 export async function tellSelection(
   tell: ((summary: SelectionSummary) => void) | undefined,
@@ -117,14 +120,15 @@ export async function tellSelection(
     readonly scope?: GateScope | undefined;
     readonly tally: ScopeTally | null;
     readonly known: KnownEvidence;
+    readonly planned: (ref: TestFileRef) => boolean;
     readonly excluded?: ((path: RelativePath) => boolean) | undefined;
     readonly children?: boolean | undefined;
   },
 ): Promise<void> {
   if (tell === undefined) return;
-  const { scope, tally, known, excluded = () => false } = context;
+  const { scope, tally, known, planned, excluded = () => false } = context;
   const leftOut = tally?.evidence([]).leftOut ?? [];
-  const summary = await summarize(picked, changed, { scope, leftOut, known, excluded });
+  const summary = await summarize(picked, changed, { scope, leftOut, known, planned, excluded });
   tell(context.children === true ? withChildren(summary) : summary);
 }
 
@@ -145,7 +149,9 @@ function withChildren(summary: SelectionSummary): SelectionSummary {
  * The summary of `picked`: the counts, the left-out groups `leftOut`, the
  * setups of the files that run, those `known` holds left out, and the
  * paths of `changed`'s functions that no selected file loads. A path
- * `excluded` matches needs no loader (D6).
+ * `excluded` matches needs no loader (D6). Row 020-57: a `setupFiles`
+ * entry has a loader only through a file `planned` runs or `known`'s
+ * evidence that measured it.
  */
 export async function summarize(
   picked: readonly Picked[],
@@ -154,6 +160,8 @@ export async function summarize(
     readonly scope: GateScope | undefined;
     readonly leftOut: readonly LeftOutGroup[];
     readonly known: KnownEvidence;
+    /** A selected file the fitted plan runs (D17.1: not one the early stop leaves out). */
+    readonly planned: (ref: TestFileRef) => boolean;
     readonly excluded: (path: RelativePath) => boolean;
   },
 ): Promise<SelectionSummary> {
@@ -181,7 +189,13 @@ export async function summarize(
     (path) => !context.excluded(path),
   );
   const inputs = await projectInputs(picked);
-  const setupFiles = loadedSetupFiles(inputs);
+  const blobs = new Map(changed.functions.map((f) => [f.path, f.blob]));
+  const loaders = {
+    planned: context.planned,
+    known,
+    blob: (path: RelativePath) => blobs.get(path),
+  };
+  const setupFiles = loadedSetupFiles(inputs, loaders);
   const unloaded = (await unloadedPaths(picked, candidates)).filter((p) => !setupFiles.has(p));
   const whole = wholeProjects(inputs, changed.paths, known);
   const { leftOut } = context;

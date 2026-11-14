@@ -58,15 +58,28 @@ const changed = (paths: readonly RelativePath[]) =>
   ({
     ref: "main",
     paths: [...paths].sort(),
-    functions: paths.map((path) => ({ path })),
+    functions: paths.map((path) => ({ path, blob: headBlob(path) })),
   }) as unknown as ChangedSet;
 
+/** A changed path's blob at the head, as `changed` gives it. */
+const headBlob = (path: string) => `head-${path}`;
+
+/** Every selected file runs in the fitted plan: no early stop, nothing given without a run. */
 const context = {
   scope: undefined,
   leftOut: [],
   known: new Map<TestFileRef, TestFileEvidence>(),
+  planned: () => true,
   excluded: () => false,
 };
+
+/** Evidence the stores give of a completed file whose record holds `path` at `blob`. */
+const stored = (path: string, blob: string, completed = true) =>
+  ({
+    from: "store",
+    completed,
+    record: { sources: [{ path, blob, lines: "", covered: "" }], unread: [] },
+  }) as unknown as TestFileEvidence;
 
 const refs = (project: string, count: number): TestFileRef[] =>
   Array.from({ length: count }, (_, i) => ({ project, path: `test/${project}${i}.test.ts` }));
@@ -151,7 +164,7 @@ describe("summarize: a setup file before the run (row 020-57)", () => {
     const summary = await summarize(
       [pick([...server, ...client], [environment("server", [SETUP]), environment("client", [])])],
       changed([SETUP]),
-      { ...context, known },
+      { ...context, known, planned: (ref) => !known.has(ref) },
     );
     expect(summary.unloaded).toEqual([]);
     expect(summary.wholeProjects).toEqual([
@@ -174,5 +187,46 @@ describe("summarize: a setup file before the run (row 020-57)", () => {
     );
     expect(summary.unloaded).toEqual([SETUP]);
     expect(summary.wholeProjects).toBeUndefined();
+  });
+
+  it("keeps the no-loader line when the plan runs no file of its project, as an early stop leaves them out", async () => {
+    const files = refs("server", 3);
+    const summary = await summarize(
+      [pick(files, [environment("server", [SETUP])])],
+      changed([SETUP]),
+      { ...context, planned: () => false },
+    );
+    expect(summary.unloaded).toEqual([SETUP]);
+    // The selection counts stay whole.
+    expect(summary.wholeProjects?.[0]).toMatchObject({ files: 3, run: 3 });
+  });
+
+  it("drops it when one file of its project still runs, or a file of another project does not count", async () => {
+    const [server, client] = [refs("server", 2), refs("client", 1)];
+    const environments = [environment("server", [SETUP]), environment("client", [])];
+    const runs = async (planned: TestFileRef) =>
+      summarize([pick([...server, ...client], environments)], changed([SETUP]), {
+        ...context,
+        planned: (ref) => ref === planned,
+      });
+    expect((await runs(server[1] as TestFileRef)).unloaded).toEqual([]);
+    expect((await runs(client[0] as TestFileRef)).unloaded).toEqual([SETUP]);
+  });
+
+  it("drops it when the stores' record measured the setup file at its head bytes, and only then", async () => {
+    const files = refs("server", 2);
+    const at = async (evidence: TestFileEvidence) => {
+      const known = new Map([[files[0] as TestFileRef, evidence]]);
+      const summary = await summarize(
+        [pick(files, [environment("server", [SETUP])])],
+        changed([SETUP]),
+        { ...context, known, planned: () => false },
+      );
+      return summary.unloaded;
+    };
+    expect(await at(stored(SETUP, headBlob(SETUP)))).toEqual([]);
+    expect(await at(stored(SETUP, "older"))).toEqual([SETUP]);
+    expect(await at(stored(SETUP, headBlob(SETUP), false))).toEqual([SETUP]);
+    expect(await at(stored(HELPER, headBlob(SETUP)))).toEqual([SETUP]);
   });
 });

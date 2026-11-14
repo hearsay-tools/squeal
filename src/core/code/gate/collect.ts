@@ -233,11 +233,14 @@ export async function collectEvidence(
     const load = (options.hostLoad ?? hostLoad)();
     const order = orderRuns(picked, known, { durations, tierSize: policy.runner.tierSize, load });
     const inOrder = order.runs.map((run) => run.pick);
-    await tellSelection(options.selected, inOrder, changed, { ...options, tally, known });
+    // D17.2; rows 020-45, 020-46: the estimate against what is left; at twice it, the gate stops early.
+    // Row 020-57 R1 (review 0.1.483 B1): fitted before the selection is told, which reads what runs.
+    const { runs, told } = await fitRuns(order, changed, { ...options, deadline });
+    const scheduled = new Set(runs.flatMap((run) => run.files).map(testFileId));
+    const planned = (ref: TestFileRef) => scheduled.has(testFileId(ref));
+    await tellSelection(options.selected, inOrder, changed, { ...options, tally, known, planned });
     // #193: each project's files with an incomplete closure, once, scoped to this selection.
     const gaps = tellClosures(lists, picked, note);
-    // D17.2; rows 020-45, 020-46: the estimate against what is left; at twice it, the gate stops early.
-    const { runs, told } = await fitRuns(order, changed, { ...options, deadline });
     const estimates = tellEstimates(options.estimated, order.estimates, told);
     const blobs: BlobCache = new Map();
     const mapping = { format, blobs, provider, children, note };
