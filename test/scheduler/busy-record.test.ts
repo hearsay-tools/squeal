@@ -160,7 +160,7 @@ describe("a tier recorded on a busy store (001-422)", () => {
     };
     try {
       // The edit's selection gives up on a busy store.
-      writes.fail(busyError(), "selectTier");
+      writes.fail(busyError(), "startNext");
       h.write("src/math.ts", "export const add = (a: number, b: number) => a - b;\n");
       await h.batch("src/math.ts");
       await expect.poll(() => deferred.resume() !== null, { timeout: 30_000 }).toBe(true);
@@ -203,12 +203,12 @@ describe("a tier recorded on a busy store (001-422)", () => {
         runs++;
       };
       try {
-        writes.fail(busyError(), "selectTier");
+        writes.fail(busyError(), "startNext");
         h.write("src/math.ts", "export const add = (a: number, b: number) => a - b;\n");
         await h.batch("src/math.ts");
         await expect.poll(() => deferred.resume() !== null, { timeout: 30_000 }).toBe(true);
         // The restarted pump's first write fails otherwise, before any write of it lands.
-        writes.fail(new Error("not a busy store"), "selectTier");
+        writes.fail(new Error("not a busy store"), "startNext");
         await h.batch("src/math.ts");
         await expect
           .poll(() => h.errors.some((error) => error.message === "not a busy store"), {
