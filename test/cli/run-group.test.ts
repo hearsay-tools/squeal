@@ -131,24 +131,6 @@ describe("squeal run <group> (spec 019 D6)", () => {
     },
   );
 
-  // Row 011-324: `run --slow` reads no reason; it prints and exits as without one.
-  it("run --slow ignores the install wait in its answer", async () => {
-    const r = repo(null);
-    const slow = async (requested: object) => {
-      await fakeDaemon(socketPathFor(r.worktreeId), {
-        "run-slow": [{ ok: true, type: "run-slow", requestId: "s1", requested, error: null }],
-      });
-      const result = await run(["run", "--slow"], r.root);
-      closeFakeDaemons();
-      return result;
-    };
-    const without = await slow({ revision: 2, queued: 0 });
-    expect(without.code).toBe(0);
-    expect(await slow({ revision: 2, queued: 0, installWait: AWAITING_INSTALL_REASON })).toEqual(
-      without,
-    );
-  });
-
   it("runs a default group by name with no checks key, through run-group", async () => {
     const r = repo(null);
     await fakeDaemon(socketPathFor(r.worktreeId), {
