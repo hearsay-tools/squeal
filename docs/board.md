@@ -2380,7 +2380,7 @@ Spec folder `specifications/021-remote-store-and-execution/` (stage: research; t
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 021-32 a daemon log that is kept | approved (the human, 2026-11-14); briefed, not dispatched | Spawned daemons log to `/dev/null` (`stdio: "ignore"`, `ensure.ts`), so D3's 250 ms long-write line, failed writes, ceiling refusals and GC lines are lost. Stdout and stderr go to `<commonDir>/squeal/logs/daemon-<worktree id>.log`, lines with UTC time and pid, 4 MiB with one previous file; `ignore` when the file cannot be opened. Amends 001 D10 and 021 D3. Needed by 021-17 and 021-19 (2026-11-19): released on the hub by 2026-11-18 12:00Z. | A daemon spawned through `ensureDaemonProcess` writes its lines, a long write included, to the file; rotation bounds it; an unwritable log directory still spawns; the spawn does not wait; review PASS on the exact candidate; released. |
+| 021-32 a daemon log that is kept | running (worker 0609276a, opus high; approved (the human, 2026-11-14)) | Spawned daemons log to `/dev/null` (`stdio: "ignore"`, `ensure.ts`), so D3's 250 ms long-write line, failed writes, ceiling refusals and GC lines are lost. Stdout and stderr go to `<commonDir>/squeal/logs/daemon-<worktree id>.log`, lines with UTC time and pid, 4 MiB with one previous file; `ignore` when the file cannot be opened. Amends 001 D10 and 021 D3. Needed by 021-17 and 021-19 (2026-11-19): released on the hub by 2026-11-18 12:00Z. | A daemon spawned through `ensureDaemonProcess` writes its lines, a long write included, to the file; rotation bounds it; an unwritable log directory still spawns; the spawn does not wait; review PASS on the exact candidate; released. |
 
 ## Feature 022: selection strategy
 
