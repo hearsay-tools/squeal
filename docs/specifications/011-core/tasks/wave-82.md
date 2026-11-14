@@ -1,6 +1,6 @@
-# Wave 82: row 011-324 (`squeal run <group>` names the install wait)
+# Wave 82: rows 011-324 (`squeal run <group>` names the install wait) and 011-335 (a group request waits for the edits made before it)
 
-Coordinator 9ddca779, 2026-11-14. Rows 011-322 (0.1.470), 011-323 and 011-325 (0.1.478) landed; every scheduler request goes through `RequestIntake.take`. This wave is 011-324 alone. Coordinator cdd216e5's row 011-328 (wave 86) edits `src/cli/run-group.ts` except `requestedText`, and other run CLI files; whichever lands second rebases.
+Coordinator 9ddca779, 2026-11-14. Rows 011-322 (0.1.470), 011-323 and 011-325 (0.1.478) landed; every scheduler request goes through `RequestIntake.take`. This wave is 011-324, then 011-335 (the human's decision "In the daemon", 2026-11-14, on row 011-332's reproduction `research/group-wait-edits.md`; numbered by coordinator cdd216e5, taken in this lane because both rows change `groupRequest`). One worker, one commit series per row, one candidate. Coordinator cdd216e5's row 011-328 (wave 86) edits `src/cli/run-group.ts` except `requestedText`, and other run CLI files; whichever lands second rebases.
 
 Host policy, as in `wave-81.md`: no local full suite, no `squeal run --all`, no `pnpm run build`; `env -u PLUGIN_ROOT -u PLUGIN_DATA` on every test command; private `/tmp` fixtures; never make CPU load on purpose; a failure only on timing is load: `squeal retry <file> --reason load`, never past a real one. Not yours: the board, `spec.md`, `status.md`, `plugins/*/dist`, the `package.json` version.
 
@@ -23,3 +23,19 @@ Leave alone: the rest of `src/cli/run-group.ts` and every other `src/cli` file (
 Stop and ask the coordinator if the reason needs a change to the intake's types, to `run --slow`'s output, or to an exit code.
 
 Done when: the row's done-when holds; lint and typecheck pass; affected results read through `squeal status --wait 60000 <paths>`. Notes in `tasks/011-324/notes.md`. Your final message lists decisions the design did not settle, type changes, and the commits.
+
+## W1, part 2: row 011-335
+
+After 011-324's commits, in the same worktree. Test first.
+
+Outcome: a `run <group>` or `run <group> <path>` request is taken only after a reconciliation pass that started after it was delivered, as `run --all` is (row 011-198), so a verdict includes an edit stored just before the request.
+
+Read: `research/group-wait-edits.md` (F1, the decision options, the probe in `research/probes/group-wait-edits/`); board row 011-335; `checkpoint-requests.ts` `fullSuiteRequest`'s `start: { skip, afterPass: true }` and the intake's `#afterPass`.
+
+Seam and lead: `groupRequest`'s start rule (`request-intake-requests.ts`, about line 98) and `narrowRequest`'s (`narrow-run.ts`, about line 118), both a plain skip today. First edit: a failing test in the probe's in-process order: an edit, then the request at once, the file current before the edit; the answer and the verdict must be at the edit's revision.
+
+Report in your notes: `groupRequest` also serves `run --slow` (`requestSlowSuite`) and a lint group's release, so they wait for a pass too; when the pass fails or the daemon closes first, each answers `NO_PASS`: say what `squeal run <group>`, `squeal run <group> <path>` and `squeal run --slow` print and exit with then, against `run --all`, and whether a CLI file must change (ask before changing one).
+
+Owns: the start rules of `groupRequest` and `narrowRequest`, their tests, the expectations of existing tests that took a request before any pass (name each in the notes).
+
+Done when: the row's done-when holds; the probe's in-process order gives the edit's revision; lint and typecheck pass; affected results through `squeal status --wait 60000 <paths>`. Notes in `tasks/011-335/notes.md`.
