@@ -1,0 +1,2451 @@
+{
+ "vitest": "5.0.3",
+ "vite": "8.3.2",
+ "node": "v26.13.0",
+ "squealCommit": "2856d26e8",
+ "date": "2026-11-14",
+ "cases": [
+  {
+   "case": "1a-resolve-dir-then-file",
+   "run1": "passed",
+   "run2": "failed",
+   "run2Message": "AssertionError: expected 2 to be 1 // Object.is equality",
+   "changed": true,
+   "editedIn": [
+    {
+     "path": "util.ts",
+     "inLoadedSet": false,
+     "anyIdMentions": false
+    }
+   ],
+   "run1LoadedSet": [
+    "<pnpm>/vitest/dist/index.js",
+    "a.test.ts",
+    "fs",
+    "lm-recorder.ts",
+    "path",
+    "util/index.ts"
+   ],
+   "run1Nodes": [
+    {
+     "id": "lm-recorder.ts",
+     "ev": true
+    },
+    {
+     "id": "fs",
+     "ev": true,
+     "ext": "node:fs",
+     "type": "builtin"
+    },
+    {
+     "id": "path",
+     "ev": true,
+     "ext": "node:path",
+     "type": "builtin"
+    },
+    {
+     "id": "a.test.ts",
+     "ev": true
+    },
+    {
+     "id": "util/index.ts",
+     "ev": true
+    }
+   ],
+   "importGraph": "no (path did not exist; graph held util/index.ts)",
+   "load1": 10
+  },
+  {
+   "case": "1b-resolve-extension-priority",
+   "run1": "passed",
+   "run2": "failed",
+   "run2Message": "AssertionError: expected 2 to be 1 // Object.is equality",
+   "changed": true,
+   "editedIn": [
+    {
+     "path": "util.js",
+     "inLoadedSet": false,
+     "anyIdMentions": false
+    }
+   ],
+   "run1LoadedSet": [
+    "<pnpm>/vitest/dist/index.js",
+    "a.test.ts",
+    "fs",
+    "lm-recorder.ts",
+    "path",
+    "util.ts"
+   ],
+   "run1Nodes": [
+    {
+     "id": "lm-recorder.ts",
+     "ev": true
+    },
+    {
+     "id": "fs",
+     "ev": true,
+     "ext": "node:fs",
+     "type": "builtin"
+    },
+    {
+     "id": "path",
+     "ev": true,
+     "ext": "node:path",
+     "type": "builtin"
+    },
+    {
+     "id": "a.test.ts",
+     "ev": true
+    },
+    {
+     "id": "util.ts",
+     "ev": true
+    }
+   ],
+   "importGraph": "no (new file; graph held util.ts)",
+   "load1": 10
+  },
+  {
+   "case": "1c-glob-new-file",
+   "run1": "passed",
+   "run2": "failed",
+   "run2Message": "AssertionError: expected [ './plugins/a.ts', './plugins/b.ts' ] to deeply equal [ './plugins/a.ts' ]",
+   "changed": true,
+   "editedIn": [
+    {
+     "path": "plugins/b.ts",
+     "inLoadedSet": false,
+     "anyIdMentions": false
+    }
+   ],
+   "run1LoadedSet": [
+    "<pnpm>/vitest/dist/index.js",
+    "a.test.ts",
+    "fs",
+    "lm-recorder.ts",
+    "path",
+    "plugins/a.ts"
+   ],
+   "run1Nodes": [
+    {
+     "id": "lm-recorder.ts",
+     "ev": true
+    },
+    {
+     "id": "fs",
+     "ev": true,
+     "ext": "node:fs",
+     "type": "builtin"
+    },
+    {
+     "id": "path",
+     "ev": true,
+     "ext": "node:path",
+     "type": "builtin"
+    },
+    {
+     "id": "a.test.ts",
+     "ev": true
+    },
+    {
+     "id": "plugins/a.ts",
+     "ev": true
+    }
+   ],
+   "importGraph": "yes if the closure keeps the glob pattern (Squeal: 'glob expansions'); the new file itself was not in run 1's graph",
+   "load1": 10
+  },
+  {
+   "case": "1d-new-manual-mock-file",
+   "run1": "passed",
+   "run2": "failed",
+   "run2Message": "AssertionError: expected 'manual' to be undefined",
+   "changed": true,
+   "editedIn": [
+    {
+     "path": "__mocks__/dep.ts",
+     "inLoadedSet": false,
+     "anyIdMentions": false
+    }
+   ],
+   "run1LoadedSet": [
+    "<pnpm>/vitest/dist/index.js",
+    "a.test.ts",
+    "dep.ts",
+    "fs",
+    "lm-recorder.ts",
+    "path"
+   ],
+   "run1Nodes": [
+    {
+     "id": "lm-recorder.ts",
+     "ev": true
+    },
+    {
+     "id": "fs",
+     "ev": true,
+     "ext": "node:fs",
+     "type": "builtin"
+    },
+    {
+     "id": "path",
+     "ev": true,
+     "ext": "node:path",
+     "type": "builtin"
+    },
+    {
+     "id": "a.test.ts",
+     "ev": true
+    },
+    {
+     "id": "dep.ts",
+     "ev": false
+    },
+    {
+     "id": "mock:/home/agent/projects/squeal/.ai/squawk/t/c2c50555/lm-vitest/cases/1d-new-manual-mock-file/dep.ts",
+     "ev": true
+    }
+   ],
+   "importGraph": "no (new file, found by Vitest's __mocks__ lookup, not an import)",
+   "load1": 9.92
+  },
+  {
+   "case": "2a-vi-mock-factory",
+   "run1": "passed",
+   "run2": "passed",
+   "run2Message": "",
+   "changed": false,
+   "editedIn": [
+    {
+     "path": "dep.ts",
+     "inLoadedSet": false,
+     "anyIdMentions": true
+    }
+   ],
+   "run1LoadedSet": [
+    "<pnpm>/vitest/dist/index.js",
+    "a.test.ts",
+    "fs",
+    "lm-recorder.ts",
+    "path"
+   ],
+   "run1Nodes": [
+    {
+     "id": "lm-recorder.ts",
+     "ev": true
+    },
+    {
+     "id": "fs",
+     "ev": true,
+     "ext": "node:fs",
+     "type": "builtin"
+    },
+    {
+     "id": "path",
+     "ev": true,
+     "ext": "node:path",
+     "type": "builtin"
+    },
+    {
+     "id": "a.test.ts",
+     "ev": true
+    },
+    {
+     "id": "dep.ts",
+     "ev": false
+    },
+    {
+     "id": "mock:/home/agent/projects/squeal/.ai/squawk/t/c2c50555/lm-vitest/cases/2a-vi-mock-factory/dep.ts",
+     "ev": false
+    }
+   ],
+   "importGraph": "yes (static import of ./dep)",
+   "load1": 9.92
+  },
+  {
+   "case": "2b-vi-mock-importOriginal",
+   "run1": "passed",
+   "run2": "failed",
+   "run2Message": "AssertionError: expected 'changed' to be 'real' // Object.is equality",
+   "changed": true,
+   "editedIn": [
+    {
+     "path": "dep.ts",
+     "inLoadedSet": true,
+     "anyIdMentions": true
+    }
+   ],
+   "run1LoadedSet": [
+    "<pnpm>/vitest/dist/index.js",
+    "a.test.ts",
+    "dep.ts",
+    "fs",
+    "lm-recorder.ts",
+    "path"
+   ],
+   "run1Nodes": [
+    {
+     "id": "lm-recorder.ts",
+     "ev": true
+    },
+    {
+     "id": "fs",
+     "ev": true,
+     "ext": "node:fs",
+     "type": "builtin"
+    },
+    {
+     "id": "path",
+     "ev": true,
+     "ext": "node:path",
+     "type": "builtin"
+    },
+    {
+     "id": "a.test.ts",
+     "ev": true
+    },
+    {
+     "id": "dep.ts",
+     "ev": true
+    },
+    {
+     "id": "mock:/home/agent/projects/squeal/.ai/squawk/t/c2c50555/lm-vitest/cases/2b-vi-mock-importOriginal/dep.ts",
+     "ev": false
+    }
+   ],
+   "importGraph": "yes",
+   "load1": 9.92
+  },
+  {
+   "case": "2c-vi-mock-automock",
+   "run1": "passed",
+   "run2": "failed",
+   "run2Message": "AssertionError: expected 6 to be 5 // Object.is equality",
+   "changed": true,
+   "editedIn": [
+    {
+     "path": "dep.ts",
+     "inLoadedSet": true,
+     "anyIdMentions": true
+    }
+   ],
+   "run1LoadedSet": [
+    "<pnpm>/vitest/dist/index.js",
+    "a.test.ts",
+    "dep.ts",
+    "fs",
+    "lm-recorder.ts",
+    "path"
+   ],
+   "run1Nodes": [
+    {
+     "id": "lm-recorder.ts",
+     "ev": true
+    },
+    {
+     "id": "fs",
+     "ev": true,
+     "ext": "node:fs",
+     "type": "builtin"
+    },
+    {
+     "id": "path",
+     "ev": true,
+     "ext": "node:path",
+     "type": "builtin"
+    },
+    {
+     "id": "a.test.ts",
+     "ev": true
+    },
+    {
+     "id": "dep.ts",
+     "ev": false
+    },
+    {
+     "id": "mock:/home/agent/projects/squeal/.ai/squawk/t/c2c50555/lm-vitest/cases/2c-vi-mock-automock/dep.ts",
+     "ev": true
+    }
+   ],
+   "importGraph": "yes",
+   "load1": 9.92
+  },
+  {
+   "case": "3a-fs-readFileSync-json",
+   "run1": "passed",
+   "run2": "failed",
+   "run2Message": "AssertionError: expected 2 to be 1 // Object.is equality",
+   "changed": true,
+   "editedIn": [
+    {
+     "path": "data.json",
+     "inLoadedSet": false,
+     "anyIdMentions": false
+    }
+   ],
+   "run1LoadedSet": [
+    "<pnpm>/vitest/dist/index.js",
+    "a.test.ts",
+    "fs",
+    "lm-recorder.ts",
+    "path"
+   ],
+   "run1Nodes": [
+    {
+     "id": "lm-recorder.ts",
+     "ev": true
+    },
+    {
+     "id": "fs",
+     "ev": true,
+     "ext": "node:fs",
+     "type": "builtin"
+    },
+    {
+     "id": "path",
+     "ev": true,
+     "ext": "node:path",
+     "type": "builtin"
+    },
+    {
+     "id": "a.test.ts",
+     "ev": true
+    }
+   ],
+   "importGraph": "no in the import graph (Squeal's observed reads may record it; not checked here)",
+   "load1": 9.92
+  },
+  {
+   "case": "3b-raw-import",
+   "run1": "passed",
+   "run2": "failed",
+   "run2Message": "AssertionError: expected 'bye' to be 'hello' // Object.is equality",
+   "changed": true,
+   "editedIn": [
+    {
+     "path": "a.txt",
+     "inLoadedSet": true,
+     "anyIdMentions": true
+    }
+   ],
+   "run1LoadedSet": [
+    "<pnpm>/vitest/dist/index.js",
+    "a.test.ts",
+    "a.txt",
+    "fs",
+    "lm-recorder.ts",
+    "path"
+   ],
+   "run1Nodes": [
+    {
+     "id": "lm-recorder.ts",
+     "ev": true
+    },
+    {
+     "id": "fs",
+     "ev": true,
+     "ext": "node:fs",
+     "type": "builtin"
+    },
+    {
+     "id": "path",
+     "ev": true,
+     "ext": "node:path",
+     "type": "builtin"
+    },
+    {
+     "id": "a.test.ts",
+     "ev": true
+    },
+    {
+     "id": "a.txt?raw",
+     "ev": true
+    }
+   ],
+   "importGraph": "yes (import with ?raw query)",
+   "load1": 10.09
+  },
+  {
+   "case": "3c-json-import",
+   "run1": "passed",
+   "run2": "failed",
+   "run2Message": "AssertionError: expected 2 to be 1 // Object.is equality",
+   "changed": true,
+   "editedIn": [
+    {
+     "path": "data.json",
+     "inLoadedSet": true,
+     "anyIdMentions": true
+    }
+   ],
+   "run1LoadedSet": [
+    "<pnpm>/vitest/dist/index.js",
+    "a.test.ts",
+    "data.json",
+    "fs",
+    "lm-recorder.ts",
+    "path"
+   ],
+   "run1Nodes": [
+    {
+     "id": "lm-recorder.ts",
+     "ev": true
+    },
+    {
+     "id": "fs",
+     "ev": true,
+     "ext": "node:fs",
+     "type": "builtin"
+    },
+    {
+     "id": "path",
+     "ev": true,
+     "ext": "node:path",
+     "type": "builtin"
+    },
+    {
+     "id": "a.test.ts",
+     "ev": true
+    },
+    {
+     "id": "data.json",
+     "ev": true
+    }
+   ],
+   "importGraph": "yes",
+   "load1": 10.09
+  },
+  {
+   "case": "4a-config-test-env",
+   "run1": "passed",
+   "run2": "failed",
+   "run2Message": "AssertionError: expected '2' to be '1' // Object.is equality",
+   "changed": true,
+   "editedIn": [
+    {
+     "path": "vitest.config.ts",
+     "inLoadedSet": false,
+     "anyIdMentions": false
+    }
+   ],
+   "run1LoadedSet": [
+    "<pnpm>/vitest/dist/index.js",
+    "a.test.ts",
+    "fs",
+    "lm-recorder.ts",
+    "path"
+   ],
+   "run1Nodes": [
+    {
+     "id": "lm-recorder.ts",
+     "ev": true
+    },
+    {
+     "id": "fs",
+     "ev": true,
+     "ext": "node:fs",
+     "type": "builtin"
+    },
+    {
+     "id": "path",
+     "ev": true,
+     "ext": "node:path",
+     "type": "builtin"
+    },
+    {
+     "id": "a.test.ts",
+     "ev": true
+    }
+   ],
+   "importGraph": "no in the test's import graph; yes in Squeal's config closure",
+   "load1": 10.09
+  },
+  {
+   "case": "4b-dotenv-file",
+   "run1": "passed",
+   "run2": "failed",
+   "run2Message": "AssertionError: expected '2' to be '1' // Object.is equality",
+   "changed": true,
+   "editedIn": [
+    {
+     "path": ".env",
+     "inLoadedSet": false,
+     "anyIdMentions": false
+    }
+   ],
+   "run1LoadedSet": [
+    "<pnpm>/vitest/dist/index.js",
+    "a.test.ts",
+    "fs",
+    "lm-recorder.ts",
+    "path"
+   ],
+   "run1Nodes": [
+    {
+     "id": "lm-recorder.ts",
+     "ev": true
+    },
+    {
+     "id": "fs",
+     "ev": true,
+     "ext": "node:fs",
+     "type": "builtin"
+    },
+    {
+     "id": "path",
+     "ev": true,
+     "ext": "node:path",
+     "type": "builtin"
+    },
+    {
+     "id": "a.test.ts",
+     "ev": true
+    }
+   ],
+   "importGraph": "no (not imported; config closure only if Squeal hashes .env files)",
+   "load1": 10.09
+  },
+  {
+   "case": "4c-shell-env",
+   "run1": "passed",
+   "run2": "failed",
+   "run2Message": "AssertionError: expected '2' to be '1' // Object.is equality",
+   "changed": true,
+   "editedIn": [],
+   "run1LoadedSet": [
+    "<pnpm>/vitest/dist/index.js",
+    "a.test.ts",
+    "fs",
+    "lm-recorder.ts",
+    "path"
+   ],
+   "run1Nodes": [
+    {
+     "id": "lm-recorder.ts",
+     "ev": true
+    },
+    {
+     "id": "fs",
+     "ev": true,
+     "ext": "node:fs",
+     "type": "builtin"
+    },
+    {
+     "id": "path",
+     "ev": true,
+     "ext": "node:path",
+     "type": "builtin"
+    },
+    {
+     "id": "a.test.ts",
+     "ev": true
+    }
+   ],
+   "importGraph": "no file at all (process environment of the runner)",
+   "load1": 11.92
+  },
+  {
+   "case": "5-child-process",
+   "run1": "passed",
+   "run2": "failed",
+   "run2Message": "AssertionError: expected '2' to be '1' // Object.is equality",
+   "changed": true,
+   "editedIn": [
+    {
+     "path": "lib.mjs",
+     "inLoadedSet": false,
+     "anyIdMentions": false
+    }
+   ],
+   "run1LoadedSet": [
+    "<pnpm>/vitest/dist/index.js",
+    "a.test.ts",
+    "child_process",
+    "fs",
+    "lm-recorder.ts",
+    "path"
+   ],
+   "run1Nodes": [
+    {
+     "id": "lm-recorder.ts",
+     "ev": true
+    },
+    {
+     "id": "fs",
+     "ev": true,
+     "ext": "node:fs",
+     "type": "builtin"
+    },
+    {
+     "id": "path",
+     "ev": true,
+     "ext": "node:path",
+     "type": "builtin"
+    },
+    {
+     "id": "a.test.ts",
+     "ev": true
+    },
+    {
+     "id": "child_process",
+     "ev": true,
+     "ext": "node:child_process",
+     "type": "builtin"
+    }
+   ],
+   "importGraph": "no (child.mjs is a path string, not an import)",
+   "load1": 11.92
+  },
+  {
+   "case": "6a-setup-file-import",
+   "run1": "passed",
+   "run2": "failed",
+   "run2Message": "AssertionError: expected 2 to be 1 // Object.is equality",
+   "changed": true,
+   "editedIn": [
+    {
+     "path": "setup-helper.ts",
+     "inLoadedSet": true,
+     "anyIdMentions": true
+    }
+   ],
+   "run1LoadedSet": [
+    "<pnpm>/vitest/dist/index.js",
+    "a.test.ts",
+    "fs",
+    "lm-recorder.ts",
+    "path",
+    "setup-helper.ts",
+    "setup.ts"
+   ],
+   "run1Nodes": [
+    {
+     "id": "lm-recorder.ts",
+     "ev": true
+    },
+    {
+     "id": "fs",
+     "ev": true,
+     "ext": "node:fs",
+     "type": "builtin"
+    },
+    {
+     "id": "path",
+     "ev": true,
+     "ext": "node:path",
+     "type": "builtin"
+    },
+    {
+     "id": "setup.ts",
+     "ev": true
+    },
+    {
+     "id": "setup-helper.ts",
+     "ev": true
+    },
+    {
+     "id": "a.test.ts",
+     "ev": true
+    }
+   ],
+   "importGraph": "no in the test's graph; yes in Squeal's setup closure",
+   "load1": 11.92
+  },
+  {
+   "case": "6b-config-define",
+   "run1": "passed",
+   "run2": "failed",
+   "run2Message": "AssertionError: expected 2 to be 1 // Object.is equality",
+   "changed": true,
+   "editedIn": [
+    {
+     "path": "vitest.config.ts",
+     "inLoadedSet": false,
+     "anyIdMentions": false
+    }
+   ],
+   "run1LoadedSet": [
+    "<pnpm>/vitest/dist/index.js",
+    "a.test.ts",
+    "fs",
+    "lm-recorder.ts",
+    "path"
+   ],
+   "run1Nodes": [
+    {
+     "id": "lm-recorder.ts",
+     "ev": true
+    },
+    {
+     "id": "fs",
+     "ev": true,
+     "ext": "node:fs",
+     "type": "builtin"
+    },
+    {
+     "id": "path",
+     "ev": true,
+     "ext": "node:path",
+     "type": "builtin"
+    },
+    {
+     "id": "a.test.ts",
+     "ev": true
+    }
+   ],
+   "importGraph": "config closure only",
+   "load1": 11.92
+  },
+  {
+   "case": "6c-config-globals",
+   "run1": "passed",
+   "run2": "failed",
+   "run2Message": "test is not defined",
+   "changed": true,
+   "editedIn": [
+    {
+     "path": "vitest.config.ts",
+     "inLoadedSet": false,
+     "anyIdMentions": false
+    }
+   ],
+   "run1LoadedSet": [
+    "<pnpm>/vitest/dist/index.js",
+    "a.test.ts",
+    "fs",
+    "lm-recorder.ts",
+    "path"
+   ],
+   "run1Nodes": [
+    {
+     "id": "lm-recorder.ts",
+     "ev": true
+    },
+    {
+     "id": "fs",
+     "ev": true,
+     "ext": "node:fs",
+     "type": "builtin"
+    },
+    {
+     "id": "path",
+     "ev": true,
+     "ext": "node:path",
+     "type": "builtin"
+    },
+    {
+     "id": "a.test.ts",
+     "ev": true
+    }
+   ],
+   "importGraph": "config closure only",
+   "load1": 12.49
+  },
+  {
+   "case": "6d-globalSetup-provide",
+   "run1": "passed",
+   "run2": "failed",
+   "run2Message": "AssertionError: expected 2 to be 1 // Object.is equality",
+   "changed": true,
+   "editedIn": [
+    {
+     "path": "gs-helper.ts",
+     "inLoadedSet": false,
+     "anyIdMentions": false
+    }
+   ],
+   "run1LoadedSet": [
+    "<pnpm>/vitest/dist/index.js",
+    "a.test.ts",
+    "fs",
+    "lm-recorder.ts",
+    "path"
+   ],
+   "run1Nodes": [
+    {
+     "id": "lm-recorder.ts",
+     "ev": true
+    },
+    {
+     "id": "fs",
+     "ev": true,
+     "ext": "node:fs",
+     "type": "builtin"
+    },
+    {
+     "id": "path",
+     "ev": true,
+     "ext": "node:path",
+     "type": "builtin"
+    },
+    {
+     "id": "a.test.ts",
+     "ev": true
+    }
+   ],
+   "importGraph": "no in the test's graph; config closure if Squeal follows globalSetup imports",
+   "load1": 12.49
+  },
+  {
+   "case": "7a-untaken-dynamic-edit-heavy",
+   "run1": "passed",
+   "run2": "passed",
+   "run2Message": "",
+   "changed": false,
+   "editedIn": [
+    {
+     "path": "heavy.ts",
+     "inLoadedSet": false,
+     "anyIdMentions": false
+    }
+   ],
+   "run1LoadedSet": [
+    "<pnpm>/vitest/dist/index.js",
+    "a.test.ts",
+    "flag.ts",
+    "fs",
+    "lm-recorder.ts",
+    "path"
+   ],
+   "run1Nodes": [
+    {
+     "id": "lm-recorder.ts",
+     "ev": true
+    },
+    {
+     "id": "fs",
+     "ev": true,
+     "ext": "node:fs",
+     "type": "builtin"
+    },
+    {
+     "id": "path",
+     "ev": true,
+     "ext": "node:path",
+     "type": "builtin"
+    },
+    {
+     "id": "a.test.ts",
+     "ev": true
+    },
+    {
+     "id": "flag.ts",
+     "ev": true
+    }
+   ],
+   "importGraph": "yes (dynamic import)",
+   "load1": 12.49
+  },
+  {
+   "case": "7b-untaken-dynamic-flip-flag",
+   "run1": "passed",
+   "run2": "failed",
+   "run2Message": "AssertionError: expected 'heavy' to be 'none' // Object.is equality",
+   "changed": true,
+   "editedIn": [
+    {
+     "path": "flag.ts",
+     "inLoadedSet": true,
+     "anyIdMentions": true
+    }
+   ],
+   "run1LoadedSet": [
+    "<pnpm>/vitest/dist/index.js",
+    "a.test.ts",
+    "flag.ts",
+    "fs",
+    "lm-recorder.ts",
+    "path"
+   ],
+   "run1Nodes": [
+    {
+     "id": "lm-recorder.ts",
+     "ev": true
+    },
+    {
+     "id": "fs",
+     "ev": true,
+     "ext": "node:fs",
+     "type": "builtin"
+    },
+    {
+     "id": "path",
+     "ev": true,
+     "ext": "node:path",
+     "type": "builtin"
+    },
+    {
+     "id": "a.test.ts",
+     "ev": true
+    },
+    {
+     "id": "flag.ts",
+     "ev": true
+    }
+   ],
+   "importGraph": "yes",
+   "load1": 12.49
+  },
+  {
+   "case": "8a-import-type",
+   "run1": "passed",
+   "run2": "passed",
+   "run2Message": "",
+   "changed": false,
+   "editedIn": [
+    {
+     "path": "types.ts",
+     "inLoadedSet": false,
+     "anyIdMentions": false
+    }
+   ],
+   "run1LoadedSet": [
+    "<pnpm>/vitest/dist/index.js",
+    "a.test.ts",
+    "fs",
+    "lm-recorder.ts",
+    "path"
+   ],
+   "run1Nodes": [
+    {
+     "id": "lm-recorder.ts",
+     "ev": true
+    },
+    {
+     "id": "fs",
+     "ev": true,
+     "ext": "node:fs",
+     "type": "builtin"
+    },
+    {
+     "id": "path",
+     "ev": true,
+     "ext": "node:path",
+     "type": "builtin"
+    },
+    {
+     "id": "a.test.ts",
+     "ev": true
+    }
+   ],
+   "importGraph": "Vite's transformed graph: no (import elided); a source-level import scan: yes",
+   "load1": 12.49
+  },
+  {
+   "case": "8b-import-without-type-keyword",
+   "run1": "passed",
+   "run2": "passed",
+   "run2Message": "",
+   "changed": false,
+   "editedIn": [
+    {
+     "path": "types.ts",
+     "inLoadedSet": false,
+     "anyIdMentions": false
+    }
+   ],
+   "run1LoadedSet": [
+    "<pnpm>/vitest/dist/index.js",
+    "a.test.ts",
+    "fs",
+    "lm-recorder.ts",
+    "path"
+   ],
+   "run1Nodes": [
+    {
+     "id": "lm-recorder.ts",
+     "ev": true
+    },
+    {
+     "id": "fs",
+     "ev": true,
+     "ext": "node:fs",
+     "type": "builtin"
+    },
+    {
+     "id": "path",
+     "ev": true,
+     "ext": "node:path",
+     "type": "builtin"
+    },
+    {
+     "id": "a.test.ts",
+     "ev": true
+    }
+   ],
+   "importGraph": "transformed graph: no if elided",
+   "load1": 14.37
+  },
+  {
+   "case": "8c-export-type-reexport",
+   "run1": "passed",
+   "run2": "passed",
+   "run2Message": "",
+   "changed": false,
+   "editedIn": [
+    {
+     "path": "types.ts",
+     "inLoadedSet": false,
+     "anyIdMentions": false
+    }
+   ],
+   "run1LoadedSet": [
+    "<pnpm>/vitest/dist/index.js",
+    "a.test.ts",
+    "fs",
+    "index.ts",
+    "lm-recorder.ts",
+    "path"
+   ],
+   "run1Nodes": [
+    {
+     "id": "lm-recorder.ts",
+     "ev": true
+    },
+    {
+     "id": "fs",
+     "ev": true,
+     "ext": "node:fs",
+     "type": "builtin"
+    },
+    {
+     "id": "path",
+     "ev": true,
+     "ext": "node:path",
+     "type": "builtin"
+    },
+    {
+     "id": "a.test.ts",
+     "ev": true
+    },
+    {
+     "id": "index.ts",
+     "ev": true
+    }
+   ],
+   "importGraph": "transformed graph: no",
+   "load1": 14.37
+  },
+  {
+   "case": "8d-plain-reexport-of-type",
+   "run1": "passed",
+   "run2": "failed",
+   "run2Message": "boom",
+   "changed": true,
+   "editedIn": [
+    {
+     "path": "types.ts",
+     "inLoadedSet": true,
+     "anyIdMentions": true
+    }
+   ],
+   "run1LoadedSet": [
+    "<pnpm>/vitest/dist/index.js",
+    "a.test.ts",
+    "fs",
+    "index.ts",
+    "lm-recorder.ts",
+    "path",
+    "types.ts"
+   ],
+   "run1Nodes": [
+    {
+     "id": "lm-recorder.ts",
+     "ev": true
+    },
+    {
+     "id": "fs",
+     "ev": true,
+     "ext": "node:fs",
+     "type": "builtin"
+    },
+    {
+     "id": "path",
+     "ev": true,
+     "ext": "node:path",
+     "type": "builtin"
+    },
+    {
+     "id": "a.test.ts",
+     "ev": true
+    },
+    {
+     "id": "index.ts",
+     "ev": true
+    },
+    {
+     "id": "types.ts",
+     "ev": true
+    }
+   ],
+   "importGraph": "yes (re-export kept: isolated transform cannot know T is a type)",
+   "load1": 14.37
+  },
+  {
+   "case": "9-snapshot-file",
+   "run1": "passed",
+   "run2": "failed",
+   "run2Message": "Error: Snapshot `snap 1` mismatched",
+   "changed": true,
+   "editedIn": [
+    {
+     "path": "__snapshots__/a.test.ts.snap",
+     "inLoadedSet": false,
+     "anyIdMentions": false
+    }
+   ],
+   "run1LoadedSet": [
+    "<pnpm>/vitest/dist/index.js",
+    "a.test.ts",
+    "fs",
+    "lm-recorder.ts",
+    "path"
+   ],
+   "run1Nodes": [
+    {
+     "id": "lm-recorder.ts",
+     "ev": true
+    },
+    {
+     "id": "fs",
+     "ev": true,
+     "ext": "node:fs",
+     "type": "builtin"
+    },
+    {
+     "id": "path",
+     "ev": true,
+     "ext": "node:path",
+     "type": "builtin"
+    },
+    {
+     "id": "a.test.ts",
+     "ev": true
+    }
+   ],
+   "importGraph": "no (read by the snapshot state via fs)",
+   "load1": 14.37
+  },
+  {
+   "case": "10a-node_modules-package-inner",
+   "run1": "passed",
+   "run2": "failed",
+   "run2Message": "AssertionError: expected 2 to be 1 // Object.is equality",
+   "changed": true,
+   "editedIn": [
+    {
+     "path": "node_modules/fakepkg/inner.js",
+     "inLoadedSet": false,
+     "anyIdMentions": false
+    }
+   ],
+   "run1LoadedSet": [
+    "<pnpm>/vitest/dist/index.js",
+    "a.test.ts",
+    "fs",
+    "lm-recorder.ts",
+    "node_modules/fakepkg/index.js",
+    "path"
+   ],
+   "run1Nodes": [
+    {
+     "id": "lm-recorder.ts",
+     "ev": true
+    },
+    {
+     "id": "fs",
+     "ev": true,
+     "ext": "node:fs",
+     "type": "builtin"
+    },
+    {
+     "id": "path",
+     "ev": true,
+     "ext": "node:path",
+     "type": "builtin"
+    },
+    {
+     "id": "a.test.ts",
+     "ev": true
+    },
+    {
+     "id": "node_modules/fakepkg/index.js",
+     "ev": true,
+     "ext": "node_modules/fakepkg/index.js",
+     "type": "module"
+    }
+   ],
+   "importGraph": "package files: depends on whether Squeal follows into node_modules",
+   "load1": 14.02
+  },
+  {
+   "case": "10b-file-linked-package",
+   "run1": "passed",
+   "run2": "failed",
+   "run2Message": "AssertionError: expected 2 to be 1 // Object.is equality",
+   "changed": true,
+   "editedIn": [
+    {
+     "path": "linkpkg-src/inner.js",
+     "inLoadedSet": true,
+     "anyIdMentions": true
+    }
+   ],
+   "run1LoadedSet": [
+    "<pnpm>/vitest/dist/index.js",
+    "a.test.ts",
+    "fs",
+    "linkpkg-src/index.js",
+    "linkpkg-src/inner.js",
+    "lm-recorder.ts",
+    "path"
+   ],
+   "run1Nodes": [
+    {
+     "id": "lm-recorder.ts",
+     "ev": true
+    },
+    {
+     "id": "fs",
+     "ev": true,
+     "ext": "node:fs",
+     "type": "builtin"
+    },
+    {
+     "id": "path",
+     "ev": true,
+     "ext": "node:path",
+     "type": "builtin"
+    },
+    {
+     "id": "a.test.ts",
+     "ev": true
+    },
+    {
+     "id": "linkpkg-src/index.js",
+     "ev": true
+    },
+    {
+     "id": "linkpkg-src/inner.js",
+     "ev": true
+    }
+   ],
+   "importGraph": "yes if the graph follows the realpath (inlined)",
+   "load1": 14.02
+  },
+  {
+   "case": "11a-createRequire-cjs",
+   "run1": "passed",
+   "run2": "failed",
+   "run2Message": "AssertionError: expected 2 to be 1 // Object.is equality",
+   "changed": true,
+   "editedIn": [
+    {
+     "path": "c2.cjs",
+     "inLoadedSet": false,
+     "anyIdMentions": false
+    }
+   ],
+   "run1LoadedSet": [
+    "<pnpm>/vitest/dist/index.js",
+    "a.test.ts",
+    "fs",
+    "lm-recorder.ts",
+    "module",
+    "path"
+   ],
+   "run1Nodes": [
+    {
+     "id": "lm-recorder.ts",
+     "ev": true
+    },
+    {
+     "id": "fs",
+     "ev": true,
+     "ext": "node:fs",
+     "type": "builtin"
+    },
+    {
+     "id": "path",
+     "ev": true,
+     "ext": "node:path",
+     "type": "builtin"
+    },
+    {
+     "id": "a.test.ts",
+     "ev": true
+    },
+    {
+     "id": "module",
+     "ev": true,
+     "ext": "node:module",
+     "type": "builtin"
+    }
+   ],
+   "importGraph": "no (createRequire: Squeal marks an 'unnamed load')",
+   "load1": 14.02
+  },
+  {
+   "case": "11b-plain-require-in-esm-test",
+   "run1": "passed",
+   "run2": "failed",
+   "run2Message": "AssertionError: expected 2 to be 1 // Object.is equality",
+   "changed": true,
+   "editedIn": [
+    {
+     "path": "c2.cjs",
+     "inLoadedSet": false,
+     "anyIdMentions": false
+    }
+   ],
+   "run1LoadedSet": [
+    "<pnpm>/vitest/dist/index.js",
+    "a.test.ts",
+    "fs",
+    "lm-recorder.ts",
+    "path"
+   ],
+   "run1Nodes": [
+    {
+     "id": "lm-recorder.ts",
+     "ev": true
+    },
+    {
+     "id": "fs",
+     "ev": true,
+     "ext": "node:fs",
+     "type": "builtin"
+    },
+    {
+     "id": "path",
+     "ev": true,
+     "ext": "node:path",
+     "type": "builtin"
+    },
+    {
+     "id": "a.test.ts",
+     "ev": true
+    }
+   ],
+   "importGraph": "c.cjs yes (literal require); c2.cjs only if the closure scans c.cjs's requires",
+   "load1": 15.86
+  },
+  {
+   "case": "11c-import-cjs-project-file",
+   "run1": "passed",
+   "run2": "failed",
+   "run2Message": "AssertionError: expected 2 to be 1 // Object.is equality",
+   "changed": true,
+   "editedIn": [
+    {
+     "path": "c2.cjs",
+     "inLoadedSet": false,
+     "anyIdMentions": false
+    }
+   ],
+   "run1LoadedSet": [
+    "<pnpm>/vitest/dist/index.js",
+    "a.test.ts",
+    "c.cjs",
+    "fs",
+    "lm-recorder.ts",
+    "path"
+   ],
+   "run1Nodes": [
+    {
+     "id": "lm-recorder.ts",
+     "ev": true
+    },
+    {
+     "id": "fs",
+     "ev": true,
+     "ext": "node:fs",
+     "type": "builtin"
+    },
+    {
+     "id": "path",
+     "ev": true,
+     "ext": "node:path",
+     "type": "builtin"
+    },
+    {
+     "id": "a.test.ts",
+     "ev": true
+    },
+    {
+     "id": "c.cjs",
+     "ev": true
+    }
+   ],
+   "importGraph": "c.cjs yes; c2.cjs if literal require is followed",
+   "load1": 15.86
+  },
+  {
+   "case": "11d-tsconfig-useDefineForClassFields",
+   "run1": "passed",
+   "run2": "failed",
+   "run2Message": "AssertionError: expected undefined to be 5 // Object.is equality",
+   "changed": true,
+   "editedIn": [
+    {
+     "path": "tsconfig.json",
+     "inLoadedSet": false,
+     "anyIdMentions": false
+    }
+   ],
+   "run1LoadedSet": [
+    "<pnpm>/vitest/dist/index.js",
+    "a.test.ts",
+    "cls.ts",
+    "fs",
+    "lm-recorder.ts",
+    "path"
+   ],
+   "run1Nodes": [
+    {
+     "id": "lm-recorder.ts",
+     "ev": true
+    },
+    {
+     "id": "fs",
+     "ev": true,
+     "ext": "node:fs",
+     "type": "builtin"
+    },
+    {
+     "id": "path",
+     "ev": true,
+     "ext": "node:path",
+     "type": "builtin"
+    },
+    {
+     "id": "a.test.ts",
+     "ev": true
+    },
+    {
+     "id": "cls.ts",
+     "ev": true
+    }
+   ],
+   "importGraph": "no (transform input, not a module)",
+   "load1": 15.86
+  },
+  {
+   "case": "11e-package-json-imports-alias",
+   "run1": "passed",
+   "run2": "failed",
+   "run2Message": "AssertionError: expected 2 to be 1 // Object.is equality",
+   "changed": true,
+   "editedIn": [
+    {
+     "path": "package.json",
+     "inLoadedSet": false,
+     "anyIdMentions": false
+    },
+    {
+     "path": "(u2.ts now resolved)",
+     "inLoadedSet": false,
+     "anyIdMentions": false
+    }
+   ],
+   "run1LoadedSet": [
+    "<pnpm>/vitest/dist/index.js",
+    "a.test.ts",
+    "fs",
+    "lm-recorder.ts",
+    "path",
+    "u1.ts"
+   ],
+   "run1Nodes": [
+    {
+     "id": "lm-recorder.ts",
+     "ev": true
+    },
+    {
+     "id": "fs",
+     "ev": true,
+     "ext": "node:fs",
+     "type": "builtin"
+    },
+    {
+     "id": "path",
+     "ev": true,
+     "ext": "node:path",
+     "type": "builtin"
+    },
+    {
+     "id": "a.test.ts",
+     "ev": true
+    },
+    {
+     "id": "u1.ts",
+     "ev": true
+    }
+   ],
+   "importGraph": "no (package.json is resolution input)",
+   "load1": 15.86
+  },
+  {
+   "case": "11f-worker-thread",
+   "run1": "passed",
+   "run2": "failed",
+   "run2Message": "AssertionError: expected 2 to be 1 // Object.is equality",
+   "changed": true,
+   "editedIn": [
+    {
+     "path": "wlib.mjs",
+     "inLoadedSet": false,
+     "anyIdMentions": false
+    }
+   ],
+   "run1LoadedSet": [
+    "<pnpm>/vitest/dist/index.js",
+    "a.test.ts",
+    "fs",
+    "lm-recorder.ts",
+    "path",
+    "worker_threads"
+   ],
+   "run1Nodes": [
+    {
+     "id": "lm-recorder.ts",
+     "ev": true
+    },
+    {
+     "id": "fs",
+     "ev": true,
+     "ext": "node:fs",
+     "type": "builtin"
+    },
+    {
+     "id": "path",
+     "ev": true,
+     "ext": "node:path",
+     "type": "builtin"
+    },
+    {
+     "id": "a.test.ts",
+     "ev": true
+    },
+    {
+     "id": "worker_threads",
+     "ev": true,
+     "ext": "node:worker_threads",
+     "type": "builtin"
+    }
+   ],
+   "importGraph": "no (URL string, not an import)",
+   "load1": 14.99
+  },
+  {
+   "case": "12-load-failure-run1",
+   "run1": "failed",
+   "run2": "passed",
+   "run2Message": "broken at load",
+   "changed": true,
+   "editedIn": [
+    {
+     "path": "b.ts",
+     "inLoadedSet": "no record",
+     "anyIdMentions": "no record"
+    }
+   ],
+   "run1LoadedSet": null,
+   "run1Nodes": [],
+   "importGraph": "yes",
+   "load1": 14.99
+  },
+  {
+   "case": "13-vi-resetModules-in-afterEach",
+   "run1": "passed",
+   "run2": "failed",
+   "run2Message": "AssertionError: expected 2 to be 1 // Object.is equality",
+   "changed": true,
+   "editedIn": [
+    {
+     "path": "dep.ts",
+     "inLoadedSet": false,
+     "anyIdMentions": true
+    }
+   ],
+   "run1LoadedSet": [
+    "<pnpm>/vitest/dist/index.js"
+   ],
+   "run1Nodes": [
+    {
+     "id": "lm-recorder.ts",
+     "ev": false
+    },
+    {
+     "id": "fs",
+     "ev": false,
+     "ext": "node:fs",
+     "type": "builtin"
+    },
+    {
+     "id": "path",
+     "ev": false,
+     "ext": "node:path",
+     "type": "builtin"
+    },
+    {
+     "id": "a.test.ts",
+     "ev": false
+    },
+    {
+     "id": "dep.ts",
+     "ev": false
+    }
+   ],
+   "importGraph": "yes",
+   "load1": 9.51
+  }
+ ],
+ "isolation": [
+  {
+   "variant": "forks-isolate",
+   "via": "setup",
+   "statuses": {
+    "1-a.test.ts": "passed",
+    "2-b.test.ts": "passed",
+    "3-c.test.ts": "passed"
+   },
+   "load1": 11.91,
+   "1-a.test.ts": {
+    "pid": 382171,
+    "loaded": [
+     "1-a.test.ts",
+     "lm-recorder.ts",
+     "onlyA.ts",
+     "shared.ts"
+    ],
+    "notEvaluatedNodes": []
+   },
+   "2-b.test.ts": {
+    "pid": 382181,
+    "loaded": [
+     "2-b.test.ts",
+     "lm-recorder.ts",
+     "shared.ts"
+    ],
+    "notEvaluatedNodes": []
+   },
+   "3-c.test.ts": {
+    "pid": 382194,
+    "loaded": [
+     "3-c.test.ts",
+     "lm-recorder.ts"
+    ],
+    "notEvaluatedNodes": []
+   }
+  },
+  {
+   "variant": "forks-isolate",
+   "via": "runner",
+   "statuses": {
+    "1-a.test.ts": "passed",
+    "2-b.test.ts": "passed",
+    "3-c.test.ts": "passed"
+   },
+   "load1": 11.91,
+   "1-a.test.ts": {
+    "pid": 382316,
+    "loaded": [
+     "1-a.test.ts",
+     "onlyA.ts",
+     "shared.ts"
+    ],
+    "notEvaluatedNodes": [
+     "fs",
+     "lm-runner.ts",
+     "path"
+    ]
+   },
+   "2-b.test.ts": {
+    "pid": 382345,
+    "loaded": [
+     "2-b.test.ts",
+     "shared.ts"
+    ],
+    "notEvaluatedNodes": [
+     "fs",
+     "lm-runner.ts",
+     "path"
+    ]
+   },
+   "3-c.test.ts": {
+    "pid": 382375,
+    "loaded": [
+     "3-c.test.ts"
+    ],
+    "notEvaluatedNodes": [
+     "fs",
+     "lm-runner.ts",
+     "path"
+    ]
+   }
+  },
+  {
+   "variant": "forks-noisolate",
+   "via": "setup",
+   "statuses": {
+    "1-a.test.ts": "passed",
+    "2-b.test.ts": "passed",
+    "3-c.test.ts": "passed"
+   },
+   "load1": 11.91,
+   "1-a.test.ts": {
+    "pid": 382534,
+    "loaded": [
+     "1-a.test.ts",
+     "lm-recorder.ts",
+     "onlyA.ts",
+     "shared.ts"
+    ],
+    "notEvaluatedNodes": []
+   },
+   "2-b.test.ts": {
+    "pid": 382534,
+    "loaded": [
+     "1-a.test.ts",
+     "2-b.test.ts",
+     "lm-recorder.ts",
+     "onlyA.ts",
+     "shared.ts"
+    ],
+    "notEvaluatedNodes": []
+   },
+   "3-c.test.ts": {
+    "pid": 382534,
+    "loaded": [
+     "1-a.test.ts",
+     "2-b.test.ts",
+     "3-c.test.ts",
+     "lm-recorder.ts",
+     "onlyA.ts",
+     "shared.ts"
+    ],
+    "notEvaluatedNodes": []
+   }
+  },
+  {
+   "variant": "forks-noisolate",
+   "via": "runner",
+   "statuses": {
+    "1-a.test.ts": "passed",
+    "2-b.test.ts": "passed",
+    "3-c.test.ts": "passed"
+   },
+   "load1": 11.91,
+   "1-a.test.ts": {
+    "pid": 382663,
+    "loaded": [
+     "1-a.test.ts",
+     "lm-runner.ts",
+     "onlyA.ts",
+     "shared.ts"
+    ],
+    "notEvaluatedNodes": []
+   },
+   "2-b.test.ts": {
+    "pid": 382663,
+    "loaded": [
+     "1-a.test.ts",
+     "2-b.test.ts",
+     "lm-runner.ts",
+     "onlyA.ts",
+     "shared.ts"
+    ],
+    "notEvaluatedNodes": []
+   },
+   "3-c.test.ts": {
+    "pid": 382663,
+    "loaded": [
+     "1-a.test.ts",
+     "2-b.test.ts",
+     "3-c.test.ts",
+     "lm-runner.ts",
+     "onlyA.ts",
+     "shared.ts"
+    ],
+    "notEvaluatedNodes": []
+   }
+  },
+  {
+   "variant": "threads-isolate",
+   "via": "setup",
+   "statuses": {
+    "1-a.test.ts": "passed",
+    "2-b.test.ts": "passed",
+    "3-c.test.ts": "passed"
+   },
+   "load1": 11.91,
+   "1-a.test.ts": {
+    "pid": 382703,
+    "loaded": [
+     "1-a.test.ts",
+     "lm-recorder.ts",
+     "onlyA.ts",
+     "shared.ts"
+    ],
+    "notEvaluatedNodes": []
+   },
+   "2-b.test.ts": {
+    "pid": 382703,
+    "loaded": [
+     "2-b.test.ts",
+     "lm-recorder.ts",
+     "shared.ts"
+    ],
+    "notEvaluatedNodes": []
+   },
+   "3-c.test.ts": {
+    "pid": 382703,
+    "loaded": [
+     "3-c.test.ts",
+     "lm-recorder.ts"
+    ],
+    "notEvaluatedNodes": []
+   }
+  },
+  {
+   "variant": "threads-isolate",
+   "via": "runner",
+   "statuses": {
+    "1-a.test.ts": "passed",
+    "2-b.test.ts": "passed",
+    "3-c.test.ts": "passed"
+   },
+   "load1": 11.2,
+   "1-a.test.ts": {
+    "pid": 383094,
+    "loaded": [
+     "1-a.test.ts",
+     "onlyA.ts",
+     "shared.ts"
+    ],
+    "notEvaluatedNodes": [
+     "fs",
+     "lm-runner.ts",
+     "path"
+    ]
+   },
+   "2-b.test.ts": {
+    "pid": 383094,
+    "loaded": [
+     "2-b.test.ts",
+     "shared.ts"
+    ],
+    "notEvaluatedNodes": [
+     "fs",
+     "lm-runner.ts",
+     "path"
+    ]
+   },
+   "3-c.test.ts": {
+    "pid": 383094,
+    "loaded": [
+     "3-c.test.ts"
+    ],
+    "notEvaluatedNodes": [
+     "fs",
+     "lm-runner.ts",
+     "path"
+    ]
+   }
+  },
+  {
+   "variant": "threads-noisolate",
+   "via": "setup",
+   "statuses": {
+    "1-a.test.ts": "passed",
+    "2-b.test.ts": "passed",
+    "3-c.test.ts": "passed"
+   },
+   "load1": 11.2,
+   "1-a.test.ts": {
+    "pid": 383181,
+    "loaded": [
+     "1-a.test.ts",
+     "lm-recorder.ts",
+     "onlyA.ts",
+     "shared.ts"
+    ],
+    "notEvaluatedNodes": []
+   },
+   "2-b.test.ts": {
+    "pid": 383181,
+    "loaded": [
+     "1-a.test.ts",
+     "2-b.test.ts",
+     "lm-recorder.ts",
+     "onlyA.ts",
+     "shared.ts"
+    ],
+    "notEvaluatedNodes": []
+   },
+   "3-c.test.ts": {
+    "pid": 383181,
+    "loaded": [
+     "1-a.test.ts",
+     "2-b.test.ts",
+     "3-c.test.ts",
+     "lm-recorder.ts",
+     "onlyA.ts",
+     "shared.ts"
+    ],
+    "notEvaluatedNodes": []
+   }
+  },
+  {
+   "variant": "threads-noisolate",
+   "via": "runner",
+   "statuses": {
+    "1-a.test.ts": "passed",
+    "2-b.test.ts": "passed",
+    "3-c.test.ts": "passed"
+   },
+   "load1": 11.2,
+   "1-a.test.ts": {
+    "pid": 383265,
+    "loaded": [
+     "1-a.test.ts",
+     "lm-runner.ts",
+     "onlyA.ts",
+     "shared.ts"
+    ],
+    "notEvaluatedNodes": []
+   },
+   "2-b.test.ts": {
+    "pid": 383265,
+    "loaded": [
+     "1-a.test.ts",
+     "2-b.test.ts",
+     "lm-runner.ts",
+     "onlyA.ts",
+     "shared.ts"
+    ],
+    "notEvaluatedNodes": []
+   },
+   "3-c.test.ts": {
+    "pid": 383265,
+    "loaded": [
+     "1-a.test.ts",
+     "2-b.test.ts",
+     "3-c.test.ts",
+     "lm-runner.ts",
+     "onlyA.ts",
+     "shared.ts"
+    ],
+    "notEvaluatedNodes": []
+   }
+  },
+  {
+   "variant": "threads-noisolate-nofileparallel",
+   "via": "setup",
+   "statuses": {
+    "1-a.test.ts": "passed",
+    "2-b.test.ts": "passed",
+    "3-c.test.ts": "passed"
+   },
+   "load1": 11.2,
+   "1-a.test.ts": {
+    "pid": 383359,
+    "loaded": [
+     "1-a.test.ts",
+     "lm-recorder.ts",
+     "onlyA.ts",
+     "shared.ts"
+    ],
+    "notEvaluatedNodes": []
+   },
+   "2-b.test.ts": {
+    "pid": 383359,
+    "loaded": [
+     "1-a.test.ts",
+     "2-b.test.ts",
+     "lm-recorder.ts",
+     "onlyA.ts",
+     "shared.ts"
+    ],
+    "notEvaluatedNodes": []
+   },
+   "3-c.test.ts": {
+    "pid": 383359,
+    "loaded": [
+     "1-a.test.ts",
+     "2-b.test.ts",
+     "3-c.test.ts",
+     "lm-recorder.ts",
+     "onlyA.ts",
+     "shared.ts"
+    ],
+    "notEvaluatedNodes": []
+   }
+  },
+  {
+   "variant": "threads-noisolate-nofileparallel",
+   "via": "runner",
+   "statuses": {
+    "1-a.test.ts": "passed",
+    "2-b.test.ts": "passed",
+    "3-c.test.ts": "passed"
+   },
+   "load1": 11.2,
+   "1-a.test.ts": {
+    "pid": 383481,
+    "loaded": [
+     "1-a.test.ts",
+     "lm-runner.ts",
+     "onlyA.ts",
+     "shared.ts"
+    ],
+    "notEvaluatedNodes": []
+   },
+   "2-b.test.ts": {
+    "pid": 383481,
+    "loaded": [
+     "1-a.test.ts",
+     "2-b.test.ts",
+     "lm-runner.ts",
+     "onlyA.ts",
+     "shared.ts"
+    ],
+    "notEvaluatedNodes": []
+   },
+   "3-c.test.ts": {
+    "pid": 383481,
+    "loaded": [
+     "1-a.test.ts",
+     "2-b.test.ts",
+     "3-c.test.ts",
+     "lm-runner.ts",
+     "onlyA.ts",
+     "shared.ts"
+    ],
+    "notEvaluatedNodes": []
+   }
+  },
+  {
+   "variant": "vmThreads",
+   "via": "setup",
+   "statuses": {
+    "1-a.test.ts": "passed",
+    "2-b.test.ts": "passed",
+    "3-c.test.ts": "passed"
+   },
+   "load1": 11.2,
+   "1-a.test.ts": {
+    "pid": 383607,
+    "loaded": [
+     "1-a.test.ts",
+     "lm-recorder.ts",
+     "onlyA.ts",
+     "shared.ts"
+    ],
+    "notEvaluatedNodes": []
+   },
+   "2-b.test.ts": {
+    "pid": 383607,
+    "loaded": [
+     "2-b.test.ts",
+     "lm-recorder.ts",
+     "shared.ts"
+    ],
+    "notEvaluatedNodes": []
+   },
+   "3-c.test.ts": {
+    "pid": 383607,
+    "loaded": [
+     "3-c.test.ts",
+     "lm-recorder.ts"
+    ],
+    "notEvaluatedNodes": []
+   }
+  },
+  {
+   "variant": "vmThreads",
+   "via": "runner",
+   "statuses": {
+    "1-a.test.ts": "passed",
+    "2-b.test.ts": "passed",
+    "3-c.test.ts": "passed"
+   },
+   "load1": 11.2,
+   "1-a.test.ts": {
+    "pid": 383686,
+    "loaded": [
+     "1-a.test.ts",
+     "lm-runner.ts",
+     "onlyA.ts",
+     "shared.ts"
+    ],
+    "notEvaluatedNodes": []
+   },
+   "2-b.test.ts": {
+    "pid": 383686,
+    "loaded": [
+     "2-b.test.ts",
+     "lm-runner.ts",
+     "shared.ts"
+    ],
+    "notEvaluatedNodes": []
+   },
+   "3-c.test.ts": {
+    "pid": 383686,
+    "loaded": [
+     "3-c.test.ts",
+     "lm-runner.ts"
+    ],
+    "notEvaluatedNodes": []
+   }
+  },
+  {
+   "variant": "vmForks",
+   "via": "setup",
+   "statuses": {
+    "1-a.test.ts": "passed",
+    "2-b.test.ts": "passed",
+    "3-c.test.ts": "passed"
+   },
+   "load1": 11.2,
+   "1-a.test.ts": {
+    "pid": 383933,
+    "loaded": [
+     "1-a.test.ts",
+     "lm-recorder.ts",
+     "onlyA.ts",
+     "shared.ts"
+    ],
+    "notEvaluatedNodes": []
+   },
+   "2-b.test.ts": {
+    "pid": 383933,
+    "loaded": [
+     "2-b.test.ts",
+     "lm-recorder.ts",
+     "shared.ts"
+    ],
+    "notEvaluatedNodes": []
+   },
+   "3-c.test.ts": {
+    "pid": 383933,
+    "loaded": [
+     "3-c.test.ts",
+     "lm-recorder.ts"
+    ],
+    "notEvaluatedNodes": []
+   }
+  },
+  {
+   "variant": "vmForks",
+   "via": "runner",
+   "statuses": {
+    "1-a.test.ts": "passed",
+    "2-b.test.ts": "passed",
+    "3-c.test.ts": "passed"
+   },
+   "load1": 11.2,
+   "1-a.test.ts": {
+    "pid": 384068,
+    "loaded": [
+     "1-a.test.ts",
+     "lm-runner.ts",
+     "onlyA.ts",
+     "shared.ts"
+    ],
+    "notEvaluatedNodes": []
+   },
+   "2-b.test.ts": {
+    "pid": 384068,
+    "loaded": [
+     "2-b.test.ts",
+     "lm-runner.ts",
+     "shared.ts"
+    ],
+    "notEvaluatedNodes": []
+   },
+   "3-c.test.ts": {
+    "pid": 384068,
+    "loaded": [
+     "3-c.test.ts",
+     "lm-runner.ts"
+    ],
+    "notEvaluatedNodes": []
+   }
+  }
+ ],
+ "serverGraph": {
+  "ssr": [
+   {
+    "id": "a.test.ts",
+    "transformed": true,
+    "importers": [],
+    "imported": [
+     "flag.ts",
+     "dep.ts",
+     "<nm>/vitest/dist/index.js",
+     "heavy.ts"
+    ]
+   },
+   {
+    "id": "flag.ts",
+    "transformed": true,
+    "importers": [
+     "a.test.ts"
+    ],
+    "imported": []
+   },
+   {
+    "id": "dep.ts",
+    "transformed": false,
+    "importers": [
+     "a.test.ts"
+    ],
+    "imported": []
+   },
+   {
+    "id": "heavy.ts",
+    "transformed": true,
+    "importers": [
+     "a.test.ts",
+     "b.test.ts"
+    ],
+    "imported": []
+   },
+   {
+    "id": "b.test.ts",
+    "transformed": true,
+    "importers": [],
+    "imported": [
+     "<nm>/vitest/dist/index.js",
+     "heavy.ts"
+    ]
+   }
+  ],
+  "__vitest__": [],
+  "client": []
+ },
+ "cost300": [
+  {
+   "round": 0,
+   "rec": false,
+   "wallMs": 2522,
+   "load1Before": 10.71,
+   "load1After": 10.71,
+   "passed": 20,
+   "recorded": 0,
+   "loadedPerFile": null,
+   "readMsMax": null,
+   "readMsAvg": null
+  },
+  {
+   "round": 0,
+   "rec": true,
+   "wallMs": 2288,
+   "load1Before": 10.71,
+   "load1After": 10.65,
+   "passed": 20,
+   "recorded": 20,
+   "loadedPerFile": 303,
+   "readMsMax": 0.6484710000000007,
+   "readMsAvg": 0.30964715000000353
+  },
+  {
+   "round": 1,
+   "rec": false,
+   "wallMs": 2024,
+   "load1Before": 10.65,
+   "load1After": 10.65,
+   "passed": 20,
+   "recorded": 0,
+   "loadedPerFile": null,
+   "readMsMax": null,
+   "readMsAvg": null
+  },
+  {
+   "round": 1,
+   "rec": true,
+   "wallMs": 2368,
+   "load1Before": 10.65,
+   "load1After": 11.32,
+   "passed": 20,
+   "recorded": 20,
+   "loadedPerFile": 303,
+   "readMsMax": 0.5129459999999995,
+   "readMsAvg": 0.3762064499999866
+  },
+  {
+   "round": 2,
+   "rec": false,
+   "wallMs": 2343,
+   "load1Before": 11.32,
+   "load1After": 11.32,
+   "passed": 20,
+   "recorded": 0,
+   "loadedPerFile": null,
+   "readMsMax": null,
+   "readMsAvg": null
+  },
+  {
+   "round": 2,
+   "rec": true,
+   "wallMs": 2402,
+   "load1Before": 11.32,
+   "load1After": 11.32,
+   "passed": 20,
+   "recorded": 20,
+   "loadedPerFile": 303,
+   "readMsMax": 0.6625080000000025,
+   "readMsAvg": 0.3965542999999954
+  },
+  {
+   "round": 3,
+   "rec": false,
+   "wallMs": 2787,
+   "load1Before": 11.32,
+   "load1After": 11.14,
+   "passed": 20,
+   "recorded": 0,
+   "loadedPerFile": null,
+   "readMsMax": null,
+   "readMsAvg": null
+  },
+  {
+   "round": 3,
+   "rec": true,
+   "wallMs": 2338,
+   "load1Before": 11.14,
+   "load1After": 11.14,
+   "passed": 20,
+   "recorded": 20,
+   "loadedPerFile": 303,
+   "readMsMax": 1.08886099999998,
+   "readMsAvg": 0.38518275000001123
+  },
+  {
+   "round": 4,
+   "rec": false,
+   "wallMs": 2966,
+   "load1Before": 11.14,
+   "load1After": 12.89,
+   "passed": 20,
+   "recorded": 0,
+   "loadedPerFile": null,
+   "readMsMax": null,
+   "readMsAvg": null
+  },
+  {
+   "round": 4,
+   "rec": true,
+   "wallMs": 2031,
+   "load1Before": 12.89,
+   "load1After": 12.89,
+   "passed": 20,
+   "recorded": 20,
+   "loadedPerFile": 303,
+   "readMsMax": 0.6572679999999878,
+   "readMsAvg": 0.3265179999999958
+  }
+ ]
+}
