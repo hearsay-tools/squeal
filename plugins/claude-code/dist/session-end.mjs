@@ -648,6 +648,30 @@ var LAST_COMPLETED_CHECKPOINTS = `
     FROM worktrees w
   ) WHERE id IS NOT NULL`;
 
+// src/core/store/loaded-modules.ts
+var LOADED_MODULES_TABLE = "loaded_modules";
+function* dropOrphanLoadedModules(conn) {
+  if (!conn.read(() => hasLoadedModulesTable(conn))) return;
+  let removed = DELETE_BATCH;
+  while (removed === DELETE_BATCH) {
+    removed = 0;
+    yield () => {
+      removed = conn.transaction(
+        () => conn.run(
+          `DELETE FROM ${LOADED_MODULES_TABLE} WHERE (project, path, key) IN (
+             SELECT project, path, key FROM ${LOADED_MODULES_TABLE} l
+             WHERE NOT EXISTS (SELECT 1 FROM results r WHERE r.key = l.key) LIMIT ?)`,
+          DELETE_BATCH
+        )
+      );
+    };
+  }
+}
+function hasLoadedModulesTable(conn) {
+  const sql = "SELECT 1 AS found FROM sqlite_master WHERE type = 'table' AND name = ?";
+  return conn.get(sql, LOADED_MODULES_TABLE) !== null;
+}
+
 // src/core/types/store.ts
 var WORKTREE_META_ROWS = {
   runtimeFiles: { prefix: "runtimeFiles.", owner: "keys/runtime-applied" },
@@ -906,6 +930,7 @@ function* pruneSlices(conn, worktrees, paths, options, counts) {
   if (options.maxSizeMb !== null) {
     yield* evictToCap(conn, options.maxSizeMb * 1024 * 1024, counts);
   }
+  yield* dropOrphanLoadedModules(conn);
   yield* dropRuns(conn, paths, cutoff, counts);
   yield () => {
     counts.checkpointsRemoved += conn.transaction(
@@ -7884,7 +7909,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.488";
+  if (true) return "0.1.493";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {

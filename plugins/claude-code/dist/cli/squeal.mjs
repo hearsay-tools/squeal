@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.488";
+  if (true) return "0.1.493";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -2738,10 +2738,10 @@ function createDeclaredInputs(inputs2, files5) {
     applies: createInputMatcher([testGlob]),
     selected: select2(globs4)
   }));
-  const union = (lists) => lists.length === 1 ? lists[0] : [...new Set(lists.flat())].sort(compare);
+  const union2 = (lists) => lists.length === 1 ? lists[0] : [...new Set(lists.flat())].sort(compare);
   return {
-    for: (testFile) => union(rules.filter((r) => r.applies(testFile)).map((r) => r.selected)),
-    all: union(rules.map((r) => r.selected))
+    for: (testFile) => union2(rules.filter((r) => r.applies(testFile)).map((r) => r.selected)),
+    all: union2(rules.map((r) => r.selected))
   };
 }
 function unmatchedInputs(inputs2, testFiles3, files5) {
@@ -6179,6 +6179,69 @@ var init_prune_rules = __esm({
   }
 });
 
+// src/core/store/loaded-modules.ts
+function writeLoadedModules(store, record2) {
+  const conn = connectionOrNull(store);
+  if (conn === null) return;
+  if (!hasLoadedModulesTable(conn)) conn.db.exec(LOADED_MODULES_SQL);
+  conn.run(
+    `INSERT OR REPLACE INTO ${LOADED_MODULES_TABLE} (project, path, key, recorded_at, modules)
+     VALUES (?, ?, ?, ?, ?)`,
+    record2.project,
+    record2.path,
+    record2.key,
+    record2.recordedAt,
+    JSON.stringify(record2.modules)
+  );
+}
+function* dropOrphanLoadedModules(conn) {
+  if (!conn.read(() => hasLoadedModulesTable(conn))) return;
+  let removed = DELETE_BATCH;
+  while (removed === DELETE_BATCH) {
+    removed = 0;
+    yield () => {
+      removed = conn.transaction(
+        () => conn.run(
+          `DELETE FROM ${LOADED_MODULES_TABLE} WHERE (project, path, key) IN (
+             SELECT project, path, key FROM ${LOADED_MODULES_TABLE} l
+             WHERE NOT EXISTS (SELECT 1 FROM results r WHERE r.key = l.key) LIMIT ?)`,
+          DELETE_BATCH
+        )
+      );
+    };
+  }
+}
+function hasLoadedModulesTable(conn) {
+  const sql = "SELECT 1 AS found FROM sqlite_master WHERE type = 'table' AND name = ?";
+  return conn.get(sql, LOADED_MODULES_TABLE) !== null;
+}
+function connectionOrNull(store) {
+  try {
+    return connectionOf(store);
+  } catch {
+    return null;
+  }
+}
+var LOADED_MODULES_TABLE, LOADED_MODULES_SQL;
+var init_loaded_modules = __esm({
+  "src/core/store/loaded-modules.ts"() {
+    "use strict";
+    init_prune_rules();
+    init_store3();
+    LOADED_MODULES_TABLE = "loaded_modules";
+    LOADED_MODULES_SQL = `
+CREATE TABLE loaded_modules (
+  project TEXT NOT NULL,
+  path TEXT NOT NULL,
+  key TEXT NOT NULL,
+  recorded_at INTEGER NOT NULL,
+  modules TEXT NOT NULL,
+  PRIMARY KEY (project, path, key)
+) STRICT, WITHOUT ROWID;
+`;
+  }
+});
+
 // src/core/store/repos/worktrees.ts
 function toDaemonToken(value, startedAt, version2) {
   if (!isRecord(value) || typeof value.token !== "string") return void 0;
@@ -6378,6 +6441,7 @@ function* pruneSlices(conn, worktrees, paths, options, counts) {
   if (options.maxSizeMb !== null) {
     yield* evictToCap(conn, options.maxSizeMb * 1024 * 1024, counts);
   }
+  yield* dropOrphanLoadedModules(conn);
   yield* dropRuns(conn, paths, cutoff, counts);
   yield () => {
     counts.checkpointsRemoved += conn.transaction(
@@ -6526,6 +6590,7 @@ var init_prune = __esm({
   "src/core/store/prune.ts"() {
     "use strict";
     init_codec();
+    init_loaded_modules();
     init_prune_rules();
     init_replaced();
     init_unknown_runs();
@@ -14908,11 +14973,11 @@ function recordFailureProducers(store, worktreeId, results3) {
       changed2 = kept6.delete(id) || changed2;
       continue;
     }
-    const { runId, recordedAt } = r.provenance;
+    const { runId, recordedAt: recordedAt2 } = r.provenance;
     const was = kept6.get(id);
-    if (was?.runId === runId && was.recordedAt === recordedAt) continue;
+    if (was?.runId === runId && was.recordedAt === recordedAt2) continue;
     kept6.delete(id);
-    kept6.set(id, { runId, recordedAt });
+    kept6.set(id, { runId, recordedAt: recordedAt2 });
     changed2 = true;
   }
   if (!changed2) return;
@@ -20121,6 +20186,7 @@ function storeFile(record2, entry4, decision, storeKey) {
   const failing = store.failures.failingAt(storeKey);
   const inputs2 = [...entry4.inputs, ...growth?.growth ?? []];
   const prior = storeResults(context, records, healsUnheld(store, inputs2));
+  storeLoaded(record2, file.ref, storeKey);
   recordFailedLoad(context, tier.runId, tier.loadPerCpu ?? null, records);
   store.failures.keepReplaced(failing, records, (run7) => readRunLoads(store).get(run7) ?? null);
   if (forced && file.rerunKey === key3) endRerun(context, file);
@@ -20134,6 +20200,25 @@ function storeFile(record2, entry4, decision, storeKey) {
     });
   }
   if (decision.current) ledger.applyResults(file, key3, records, checkpointId);
+}
+function storeLoaded(record2, ref3, key3) {
+  const { context, report: report4 } = record2;
+  const list2 = report4.loaded?.find(
+    (l) => l.testFile.project === ref3.project && l.testFile.path === ref3.path
+  );
+  if (list2 === void 0) return;
+  const modules = [];
+  for (const path of list2.paths) {
+    const hash4 = context.keys.cache.hashOf(path);
+    if (typeof hash4 === "string") modules.push({ path, hash: hash4 });
+  }
+  writeLoadedModules(context.store, {
+    project: ref3.project,
+    path: ref3.path,
+    key: key3,
+    recordedAt: record2.provenance.recordedAt,
+    modules
+  });
 }
 function endRecord(record2, environment) {
   const { context, ledger, tier } = record2;
@@ -20191,6 +20276,7 @@ var init_record_tier = __esm({
   "src/core/scheduler/record-tier.ts"() {
     "use strict";
     init_load();
+    init_loaded_modules();
     init_context();
     init_environment_growth();
     init_hold();
@@ -24257,10 +24343,31 @@ var init_environment2 = __esm({
 import { mkdtempSync as mkdtempSync2, rmSync as rmSync8 } from "node:fs";
 import { tmpdir as tmpdir3 } from "node:os";
 import { join as join46, sep as sep7 } from "node:path";
-var OBSERVED_ADAPTER_SUFFIX, VitestObserver;
+function withLoaded(report4, lists, environmentFiles2) {
+  if (lists.length === 0) return report4;
+  if (report4.observed === void 0) return { ...report4, loaded: lists };
+  const observed2 = new Map(report4.observed.map((o) => [refKey(o.testFile), o]));
+  for (const { testFile, paths } of lists) {
+    const held3 = environmentFiles2(testFile.project);
+    const loaded = paths.filter((path) => !held3.has(path));
+    if (loaded.length === 0) continue;
+    const found3 = observed2.get(refKey(testFile));
+    observed2.set(refKey(testFile), {
+      ...found3 ?? { testFile, directories: [] },
+      paths: union(found3?.paths ?? [], loaded),
+      modules: union(found3?.modules ?? [], loaded)
+    });
+  }
+  return { ...report4, observed: [...observed2.values()], loaded: lists };
+}
+function union(a, b) {
+  return [.../* @__PURE__ */ new Set([...a, ...b])].sort(compare);
+}
+var OBSERVED_ADAPTER_SUFFIX, VitestObserver, refKey;
 var init_observe = __esm({
   "src/runners/vitest/observe.ts"() {
     "use strict";
+    init_compare();
     init_inputs();
     init_read();
     init_runtime2();
@@ -24381,6 +24488,7 @@ var init_observe = __esm({
         return this.#recorder === null;
       }
     };
+    refKey = (ref3) => `${ref3.project}\0${ref3.path}`;
   }
 });
 
@@ -24498,7 +24606,7 @@ function toCheckRunResult(testCase, testFile, paths, fullName) {
 function compareRefs(a, b) {
   return a.project === b.project ? compare(a.path, b.path) : compare(a.project, b.project);
 }
-var OUTCOMES7, CAUSE_DEPTH, CAUSE_MESSAGE_CHARS, TIMEOUT, currentLoad, refKey;
+var OUTCOMES7, CAUSE_DEPTH, CAUSE_MESSAGE_CHARS, TIMEOUT, currentLoad, refKey2;
 var init_results3 = __esm({
   "src/runners/vitest/results.ts"() {
     "use strict";
@@ -24513,7 +24621,7 @@ var init_results3 = __esm({
     CAUSE_MESSAGE_CHARS = 200;
     TIMEOUT = /^(?:Test|Hook) timed out in \d+ms/;
     currentLoad = () => process.platform === "win32" ? null : loadavg2()[0] ?? null;
-    refKey = (ref3) => `${ref3.project}\0${ref3.path}`;
+    refKey2 = (ref3) => `${ref3.project}\0${ref3.path}`;
   }
 });
 
@@ -24614,11 +24722,11 @@ var init_reporter = __esm({
         this.paths = paths;
         this.ended = ended2;
         this.started = started2;
-        this.#requested = new Map(requested.map((r) => [refKey(r), r]));
+        this.#requested = new Map(requested.map((r) => [refKey2(r), r]));
         this.#texts = new Map(
           requested.flatMap((r) => {
             const texts2 = focusedTexts(checks, r);
-            return texts2 === null ? [] : [[refKey(r), texts2]];
+            return texts2 === null ? [] : [[refKey2(r), texts2]];
           })
         );
       }
@@ -24651,13 +24759,13 @@ var init_reporter = __esm({
       }
       #ref(project, moduleId) {
         const path = this.paths.toRelative(moduleId);
-        return path === null ? null : this.#requested.get(refKey({ project, path })) ?? null;
+        return path === null ? null : this.#requested.get(refKey2({ project, path })) ?? null;
       }
       testCase(testCase) {
         const ref3 = this.#ref(testCase.project.name, testCase.module.moduleId);
         if (!ref3) return;
         if (!this.cancelRequested) this.#beforeCancel.set(testCase.id, testCase.result().state);
-        const texts2 = this.#texts.get(refKey(ref3));
+        const texts2 = this.#texts.get(refKey2(ref3));
         if (texts2 !== void 0 && !holdsCheckText(testCase.fullName, texts2)) return;
         const result = toCheckRunResult(testCase, ref3, this.paths, this.#name(testCase));
         if (!result) return;
@@ -24680,9 +24788,9 @@ var init_reporter = __esm({
         const ref3 = this.#ref(module2.project.name, module2.moduleId);
         if (!ref3) return;
         this.queued++;
-        if (this.started === void 0 || this.#running.has(refKey(ref3))) return;
+        if (this.started === void 0 || this.#running.has(refKey2(ref3))) return;
         this.#hook("fileStarted", ref3, () => {
-          this.#running.set(refKey(ref3), this.started?.(ref3) ?? (() => {
+          this.#running.set(refKey2(ref3), this.started?.(ref3) ?? (() => {
           }));
         });
       }
@@ -24699,19 +24807,19 @@ var init_reporter = __esm({
           cut: cutShort(module2, this.#beforeCancel),
           durationMs: moduleDuration(module2)
         };
-        this.modules.set(refKey(ref3), end);
+        this.modules.set(refKey2(ref3), end);
         this.log.push(`MODULE ${module2.state()} ${label(ref3)}`);
-        const texts2 = this.#texts.get(refKey(ref3));
+        const texts2 = this.#texts.get(refKey2(ref3));
         if (texts2 !== void 0) {
           const tests2 = [...module2.children.allTests()];
           const matched = tests2.filter((test) => holdsCheckText(test.fullName, texts2)).length;
-          this.focused.set(refKey(ref3), { testFile: ref3, collected: tests2.length, matched });
+          this.focused.set(refKey2(ref3), { testFile: ref3, collected: tests2.length, matched });
           this.log.push(indent(`focused on ${JSON.stringify(texts2)}: ${matched} of ${tests2.length}`));
         }
         if (endedInTime(end)) this.#tell(ref3);
-        const stop2 = this.#running.get(refKey(ref3));
+        const stop2 = this.#running.get(refKey2(ref3));
         if (stop2 !== void 0) {
-          this.#running.delete(refKey(ref3));
+          this.#running.delete(refKey2(ref3));
           this.#hook("fileStarted's end", ref3, stop2);
         }
         for (const error of module2.errors()) {
@@ -26720,16 +26828,16 @@ function buildReport(collector, execution, durationMs2) {
     ...unattributed.map((e) => `unhandled error outside any test file: ${errorText(e)}`)
   ].join("\n");
   const completed2 = end === "crashed" ? [] : [...collector.modules.values()].filter((m) => endedInTime(m) || execution.keepsWhole === true && endedWhole(m)).map((m) => m.ref).sort(compareRefs);
-  const completedKeys = new Set(completed2.map(refKey));
+  const completedKeys = new Set(completed2.map(refKey2));
   const started2 = startedProjects(collector);
   const errors = /* @__PURE__ */ new Map();
   const addErrors = (ref3, list2) => {
     if (list2.length === 0) return;
-    const existing2 = errors.get(refKey(ref3))?.errors ?? [];
-    errors.set(refKey(ref3), { testFile: ref3, errors: [...existing2, ...list2] });
+    const existing2 = errors.get(refKey2(ref3))?.errors ?? [];
+    errors.set(refKey2(ref3), { testFile: ref3, errors: [...existing2, ...list2] });
   };
   for (const module2 of collector.modules.values()) {
-    if (completedKeys.has(refKey(module2.ref))) {
+    if (completedKeys.has(refKey2(module2.ref))) {
       addErrors(
         module2.ref,
         module2.errors.map((e) => toCheckError(e, collector.paths))
@@ -26746,10 +26854,10 @@ function buildReport(collector, execution, durationMs2) {
     end,
     durationMs: durationMs2,
     completedFiles: completed2,
-    results: collector.results.filter((r) => completedKeys.has(refKey(r.ref))).sort((a, b) => compareRefs(a.ref, b.ref)).map((r) => r.result),
+    results: collector.results.filter((r) => completedKeys.has(refKey2(r.ref))).sort((a, b) => compareRefs(a.ref, b.ref)).map((r) => r.result),
     fileErrors: [...errors.values()].sort((a, b) => compareRefs(a.testFile, b.testFile)),
     failure: failure2 === "" ? null : collector.paths.relativizeText(failure2),
-    fileDurations: [...collector.modules.values()].filter((m) => completedKeys.has(refKey(m.ref)) && m.durationMs !== null).sort((a, b) => compareRefs(a.ref, b.ref)).map((m) => ({ testFile: m.ref, durationMs: m.durationMs ?? 0 })),
+    fileDurations: [...collector.modules.values()].filter((m) => completedKeys.has(refKey2(m.ref)) && m.durationMs !== null).sort((a, b) => compareRefs(a.ref, b.ref)).map((m) => ({ testFile: m.ref, durationMs: m.durationMs ?? 0 })),
     ...started2.length === 0 ? {} : { startedProjects: started2 },
     ...focusedOf(collector, completed2)
   };
@@ -26759,7 +26867,7 @@ function unattributedErrors(collector) {
 }
 function focusedOf(collector, completed2) {
   const focused = completed2.flatMap((ref3) => {
-    const count3 = collector.focused.get(refKey(ref3));
+    const count3 = collector.focused.get(refKey2(ref3));
     return count3 === void 0 ? [] : [count3];
   });
   return focused.length === 0 ? {} : { focused };
@@ -27537,12 +27645,10 @@ function coveredFiles(vitest, batches2, wanted, stamps, paths, children = false)
   const executed = /* @__PURE__ */ new Map();
   const files5 = [];
   for (const batch of batches2) {
-    const [file, ...more2] = batch.testFiles;
     const project = vitest.projects.find((p) => p.name === batch.projectName);
     const environment = project?.vite.environments[batch.environment];
-    const path = file === void 0 || project === void 0 ? null : paths.toRelative(resolve12(project.config.root, file));
-    const ref3 = path === null ? null : { project: batch.projectName, path };
-    if (more2.length > 0 || environment === void 0 || ref3 === null || !wanted(ref3)) {
+    const ref3 = batchFile(vitest, batch, paths);
+    if (environment === void 0 || ref3 === null || !wanted(ref3)) {
       dropPayloads([batch]);
       continue;
     }
@@ -27555,6 +27661,29 @@ function coveredFiles(vitest, batches2, wanted, stamps, paths, children = false)
     files5.push({ testFile: ref3, payload: batch.coverage, sources, ...child });
   }
   return files5;
+}
+function batchFile(vitest, batch, paths) {
+  const [file, ...more2] = batch.testFiles;
+  const project = vitest.projects.find((p) => p.name === batch.projectName);
+  if (file === void 0 || more2.length > 0 || project === void 0) return null;
+  const path = paths.toRelative(resolve12(project.config.root, file));
+  return path === null ? null : { project: batch.projectName, path };
+}
+function loadedLists(vitest, batches2, wanted, paths) {
+  const lists = [];
+  for (const batch of batches2) {
+    const ref3 = batchFile(vitest, batch, paths);
+    if (ref3 === null || batch.loaded === void 0 || !wanted(ref3)) continue;
+    const loaded = /* @__PURE__ */ new Set();
+    for (const file of batch.loaded) {
+      const path = paths.isProjectFile(file) ? paths.toRelative(file) : null;
+      if (path !== null) loaded.add(path);
+    }
+    if (!loaded.has(ref3.path)) continue;
+    lists.push({ testFile: ref3, paths: [...loaded].sort(compare) });
+  }
+  const by = ({ testFile }) => `${testFile.project}\0${testFile.path}`;
+  return lists.sort((a, b) => compare(by(a), by(b)));
 }
 function dropPayloads(batches2) {
   for (const batch of batches2) {
@@ -27582,6 +27711,7 @@ var INSPECTOR2, failed2, LOAD_FAILED, InstanceCoverage, readsInspector, KEPT_NOT
 var init_coverage2 = __esm({
   "src/runners/vitest/coverage.ts"() {
     "use strict";
+    init_compare();
     init_fingerprint();
     init_graph();
     init_project();
@@ -27812,9 +27942,9 @@ function mayHaveRun(vitest, stale, testFiles3, paths) {
   const tainted = /* @__PURE__ */ new Set();
   for (const file of stale) {
     const reached = testFiles3.filter((ref3) => reaches(vitest, file, ref3, paths));
-    for (const ref3 of reached.length > 0 ? reached : testFiles3) tainted.add(refKey(ref3));
+    for (const ref3 of reached.length > 0 ? reached : testFiles3) tainted.add(refKey2(ref3));
   }
-  return testFiles3.filter((ref3) => tainted.has(refKey(ref3)));
+  return testFiles3.filter((ref3) => tainted.has(refKey2(ref3)));
 }
 function reaches(vitest, file, ref3, paths) {
   const target = paths.toAbsolute(ref3.path);
@@ -27863,10 +27993,10 @@ function mayHaveReadTouched(vitest, touched2, testFiles3, paths) {
         queue.push(...node2.importers);
       }
       const hit = files5.filter((ref3) => reached.has(paths.toAbsolute(ref3.path)));
-      for (const ref3 of hit.length > 0 ? hit : files5) tainted.add(refKey(ref3));
+      for (const ref3 of hit.length > 0 ? hit : files5) tainted.add(refKey2(ref3));
     }
   }
-  return testFiles3.filter((ref3) => tainted.has(refKey(ref3)));
+  return testFiles3.filter((ref3) => tainted.has(refKey2(ref3)));
 }
 function withoutTouched(report4, dropped, touched2) {
   const reason2 = pathsReason(
@@ -27879,8 +28009,8 @@ function withoutTouched(report4, dropped, touched2) {
 }
 function dropFiles(report4, dropped, reason2) {
   if (dropped.length === 0) return report4;
-  const gone4 = new Set(dropped.map(refKey));
-  const kept6 = (ref3) => !gone4.has(refKey(ref3));
+  const gone4 = new Set(dropped.map(refKey2));
+  const kept6 = (ref3) => !gone4.has(refKey2(ref3));
   const { fileDurations, observed: observed2, reads: reads2 } = report4;
   const withheld2 = [...report4.withheld ?? [], ...report4.completedFiles.filter((f) => !kept6(f))];
   return {
@@ -28678,6 +28808,8 @@ var init_adapter = __esm({
       #coverageDirs = [];
       /** The projects of the last `environment` answer that held coverage: their keys hold it. */
       #keyedCoverage = [];
+      /** Spec 022 D2: per project, the files its last `environment` answer named; no list adds them. */
+      #environmentFiles = /* @__PURE__ */ new Map();
       /** Spec 001 D4: `createVitest('test', { root, watch: false, ... })`, then `standalone()`. */
       async #start() {
         if (this.#reload) {
@@ -29022,6 +29154,7 @@ var init_adapter = __esm({
             });
           }
           this.#keyedCoverage = this.#instanceCoverage === null ? [] : envs.map((e) => e.project);
+          this.#environmentFiles = new Map(envs.map((e) => [e.project, new Set(e.files)]));
           return envs.sort((a, b) => compare(a.project, b.project));
         });
       }
@@ -29121,11 +29254,13 @@ var init_adapter = __esm({
               const counted3 = [...touched2.inputs, ...touched2.modules].map(
                 (file) => this.paths.toRelative(file) ?? file
               );
-              const report4 = withoutTouched(kept6, reread, counted3.sort());
+              let report4 = withoutTouched(kept6, reread, counted3.sort());
               if (uncovered !== null) {
                 const clean = !execution.hung && !unfit2;
-                if (clean) this.#collect(vitest, batches2, report4, uncovered, options.runId);
-                else dropPayloads(batches2);
+                if (clean) {
+                  report4 = this.#withLoaded(vitest, batches2, report4, uncovered);
+                  this.#collect(vitest, batches2, report4, uncovered, options.runId);
+                } else dropPayloads(batches2);
               }
               if (broken !== null && report4.failure !== null) this.#note(report4.failure);
               writeRunLog(options, collector, report4);
@@ -29162,6 +29297,24 @@ var init_adapter = __esm({
         const skipped2 = [...focused, ...reading.map((file) => file.ref)];
         coverage.skip(skipped2.map((ref3) => this.paths.toAbsolute(ref3.path)));
         return new Set(skipped2.map(fileKey));
+      }
+      /**
+       * Spec 022 D1, D2: a clean run's report with the loaded lists of its
+       * completed, covered files, as `#collect` picks their payloads, less a
+       * file that failed to load: its worker still hands over a list.
+       */
+      #withLoaded(vitest, batches2, report4, uncovered) {
+        const completed2 = new Set(report4.completedFiles.map(fileKey));
+        const ran = new Set(
+          report4.results.map(({ check: check3 }) => fileKey({ project: check3.project, path: check3.testPath }))
+        );
+        for (const { testFile } of report4.fileErrors) {
+          if (!ran.has(fileKey(testFile))) completed2.delete(fileKey(testFile));
+        }
+        const wanted = (ref3) => completed2.has(fileKey(ref3)) && !uncovered.has(fileKey(ref3));
+        const lists = loadedLists(vitest, batches2, wanted, this.paths);
+        const none3 = /* @__PURE__ */ new Set();
+        return withLoaded(report4, lists, (project) => this.#environmentFiles.get(project) ?? none3);
       }
       /**
        * Hands the payloads of a clean run's completed, covered files to the
@@ -29894,10 +30047,10 @@ function writeCoveredFiles(store, record2, activity) {
     JSON.stringify(record2.files)
   );
 }
-function idleSince(files5, was, recordedAt, now, activity) {
+function idleSince(files5, was, recordedAt2, now, activity) {
   if (files5.some((file) => activity.pending(file.testFile))) return null;
   if (was === null && files5.some((file) => !activity.listed(file.testFile))) return now;
-  let idle2 = Math.max(was ?? recordedAt, activity.knownSince);
+  let idle2 = Math.max(was ?? recordedAt2, activity.knownSince);
   for (const file of files5) idle2 = Math.max(idle2, activity.leftAt(file.testFile) ?? idle2);
   return idle2;
 }
@@ -52777,7 +52930,7 @@ function* resultSlices(bundle, rekeyed) {
 }
 function addResults(store, bundle, group, options) {
   const conn = connectionOf(store);
-  const recordedAt = options.clock?.() ?? options.now;
+  const recordedAt2 = options.clock?.() ?? options.now;
   const held3 = /* @__PURE__ */ new Map();
   const records = [];
   let alreadyStored = 0;
@@ -52804,7 +52957,7 @@ function addResults(store, bundle, group, options) {
         commit: bundle.header.commit,
         dirty: bundle.header.dirty,
         runId: importMark(options.importId),
-        recordedAt
+        recordedAt: recordedAt2
       }
     });
   }
@@ -57890,7 +58043,7 @@ var init_stored_keys = __esm({
       adopt(context, ledger) {
         const since = this.#readAt - STORED_KEYS_OVERLAP_MS;
         const readAt2 = context.now();
-        const fresh = context.store.results.keysSince(since).filter(({ key: key3, recordedAt }) => this.#seen.get(key3) !== recordedAt);
+        const fresh = context.store.results.keysSince(since).filter(({ key: key3, recordedAt: recordedAt2 }) => this.#seen.get(key3) !== recordedAt2);
         const keys = new Set(fresh.map(({ key: key3 }) => key3));
         const { index } = context.keys;
         const refs2 = keys.size === 0 ? [] : [...ledger.files.values()].filter((file) => withoutResult(file, keys, index)).map((f) => f.ref);
@@ -57907,7 +58060,7 @@ var init_stored_keys = __esm({
         }
         this.#readAt = readAt2;
         for (const [key3, at2] of this.#seen) if (at2 <= since) this.#seen.delete(key3);
-        for (const { key: key3, recordedAt } of fresh) this.#seen.set(key3, recordedAt);
+        for (const { key: key3, recordedAt: recordedAt2 } of fresh) this.#seen.set(key3, recordedAt2);
       }
     };
   }
@@ -67486,6 +67639,8 @@ var init_report_merge = __esm({
       },
       fileDurations: listedWhenAny((report4) => report4.fileDurations),
       observed: listedWhenAny((report4) => report4.observed),
+      // Spec 022 D1: one list per completed file, so each part's.
+      loaded: listedWhenFound((report4) => report4.loaded),
       reads: listedWhenAny((report4) => report4.reads),
       environmentObserved: listedWhenFound((report4) => report4.environmentObserved),
       skippedFiles: listedWhenFound((report4) => report4.skippedFiles),
@@ -79352,8 +79507,8 @@ function replacement(store, knownState2, key3, all2, shown) {
   if (shown !== null || knownState2?.validity !== "current" || key3 === null) return void 0;
   const atKey = all2.find((r) => r.key === key3);
   if (atKey === void 0) return void 0;
-  const { runId, worktreeId, recordedAt } = atKey.provenance;
-  return { runId, worktreeId, recordedAt, key: key3, logDir: store.runs.get(runId)?.logDir ?? null };
+  const { runId, worktreeId, recordedAt: recordedAt2 } = atKey.provenance;
+  return { runId, worktreeId, recordedAt: recordedAt2, key: key3, logDir: store.runs.get(runId)?.logDir ?? null };
 }
 function unshownLog(store, worktreeId, knownState2, key3, replaced, logOf) {
   const gap = (runLogUnavailable) => ({ runLog: null, runLogUnavailable });
@@ -80034,10 +80189,10 @@ function testFiles(run7, context, table) {
       context.recorded,
       files5.map((f) => f.ref),
       paths
-    ).map(({ testFile, ...reads2 }) => [refKey(testFile), reads2])
+    ).map(({ testFile, ...reads2 }) => [refKey2(testFile), reads2])
   );
   return files5.map(({ ref: ref3, file }) => {
-    const reads2 = observed2.get(refKey(ref3));
+    const reads2 = observed2.get(refKey2(ref3));
     return reads2 === void 0 ? file : { ...file, observed: reads2 };
   });
 }
@@ -83732,7 +83887,7 @@ function gateProvenance(value, worktreeId) {
   if (!isFields(value)) return '"provenance" must be an object';
   const fields = ["worktreeId", "revision", "commit", "dirty", "runId", "recordedAt"];
   if (unknownField(value, fields) !== null) return '"provenance" has an unknown field';
-  const { revision, commit, dirty, runId, recordedAt } = value;
+  const { revision, commit, dirty, runId, recordedAt: recordedAt2 } = value;
   if (value.worktreeId !== worktreeId) return '"provenance.worktreeId" must be this worktree';
   if (!isCount4(revision, false)) return '"provenance.revision" must be a revision';
   if (commit !== null && !(typeof commit === "string" && /^[0-9a-f]{40,64}$/.test(commit))) {
@@ -83741,7 +83896,7 @@ function gateProvenance(value, worktreeId) {
   if (typeof dirty !== "boolean") return '"provenance.dirty" must be true or false';
   if (typeof runId !== "string" || !/^gate-[0-9a-f-]{36}$/.test(runId))
     return '"provenance.runId" must be a gate run';
-  if (!isCount4(recordedAt, false)) return '"provenance.recordedAt" must be a time';
+  if (!isCount4(recordedAt2, false)) return '"provenance.recordedAt" must be a time';
   return null;
 }
 function coverageRecord(value) {
@@ -104184,6 +104339,44 @@ function sourceCalls(source2, firstLineFunction) {
   return firstLineFunction === false ? "loaded only" : "uncertain";
 }
 
+// src/core/reach/read-loaded.ts
+init_codec();
+init_loaded_modules();
+init_store3();
+function readLoadedLists(store) {
+  const conn = connectionOf(store);
+  const table = conn.all(
+    "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
+    LOADED_MODULES_TABLE
+  );
+  const lists = /* @__PURE__ */ new Map();
+  if (table.length > 0) {
+    const rows = conn.all(
+      `SELECT project, path, recorded_at, modules FROM ${LOADED_MODULES_TABLE} ORDER BY recorded_at`
+    );
+    for (const row2 of rows) {
+      const id = refId({ project: str(row2, "project"), path: str(row2, "path") });
+      const modules = parseModules(str(row2, "modules"));
+      if (modules === null) continue;
+      const list2 = { at: num(row2, "recorded_at"), paths: new Set(modules.map((m) => m.path)) };
+      lists.set(id, [...lists.get(id) ?? [], list2]);
+    }
+  }
+  return (ref3) => lists.get(refId(ref3)) ?? [];
+}
+var refId = (ref3) => `${ref3.project}\0${ref3.path}`;
+function parseModules(text3) {
+  try {
+    const value = JSON.parse(text3);
+    if (!Array.isArray(value)) return null;
+    return value.filter(
+      (m) => typeof m === "object" && m !== null && typeof m.path === "string"
+    );
+  } catch {
+    return null;
+  }
+}
+
 // src/core/reach/read.ts
 function readSnapshot({ store, root, code }) {
   const policy = readPolicy(root);
@@ -104197,6 +104390,7 @@ function readSnapshot({ store, root, code }) {
   const on = coverageOn(policy);
   const counted3 = countedFunctions(code, id);
   const walked = walkedClosure(store, id, policy, graph);
+  const lists = readLoadedLists(store);
   const testFiles3 = rows.map(({ testFile: ref3, key: key3 }) => {
     const runner = runnerOf(policy, ref3.project);
     const atKey = store.results.byKey(key3, 0);
@@ -104212,7 +104406,12 @@ function readSnapshot({ store, root, code }) {
       closure: closure(ref3) ?? walked(ref3, [...childProcess, ...runtimeRead]),
       childProcess,
       runtimeRead,
-      coverage: !on || runner === "pytest" ? { kind: "unknown" } : coverageView(code, key3, counted3)
+      coverage: !on || runner === "pytest" ? { kind: "unknown" } : coverageView(code, key3, counted3),
+      loaded: {
+        lists: lists(ref3),
+        recordAt: recordedAt(code, key3),
+        failed: atKey.some((r) => r.outcome === "fail")
+      }
     };
   });
   const snapshot3 = {
@@ -104268,6 +104467,10 @@ function coverageView(code, key3, counted3) {
     if (calls === "called") called.add(source2.path);
   }
   return { kind: "record", called, loaded, unread };
+}
+function recordedAt(code, key3) {
+  if (code === null || key3 === null) return null;
+  return code.coverage.storedAt({ resultKey: key3, providerVersion: COVERAGE_RECORD_VERSION });
 }
 function countedFunctions(code, id) {
   const known3 = /* @__PURE__ */ new Map();
@@ -104557,7 +104760,8 @@ function testReach(test, pairs, edits) {
     called: tells ? imports2.filter((p) => p.coverage === "called").length : null,
     uncalled: uncalled.length,
     uncalledVia,
-    edits: edits.filter((e) => e.paths.some((p) => reach2.has(p))).length
+    edits: edits.filter((e) => e.paths.some((p) => reach2.has(p))).length,
+    kinds: new Map(pairs.map((p) => [p.path, p.kind]))
   };
 }
 
@@ -104843,6 +105047,153 @@ function namedFiles(analysis, snapshot3, paths, limit) {
   ];
 }
 
+// src/core/reach/narrowing.ts
+init_compare();
+function narrowingEstimates(analysis, coverage, limit) {
+  const projects2 = /* @__PURE__ */ new Map();
+  for (const reach2 of analysis.tests) {
+    const { project } = reach2.test.ref;
+    const sums = projects2.get(project) ?? {
+      runner: reach2.test.runner,
+      tests: [],
+      rerun: 0,
+      avoidable: 0,
+      files: /* @__PURE__ */ new Map(),
+      noList: /* @__PURE__ */ new Map()
+    };
+    sums.tests.push(reach2);
+    projects2.set(project, sums);
+  }
+  return [...projects2.entries()].sort(([a], [b]) => compare(a, b)).map(([project, sums]) => estimateOf(project, sums, analysis.kept, coverage, limit));
+}
+function estimateOf(project, sums, edits, coverage, limit) {
+  const lists = "lists: the newest recorded at or before each edit";
+  if (sums.runner !== "vitest") {
+    return { project, status: "not Vitest", lists, ...EMPTY2 };
+  }
+  const facts = projectFacts(sums.tests, coverage);
+  const keyedBy = sums.tests.filter((reach2) => reach2.test.closure !== null).map((reach2) => {
+    const paths = /* @__PURE__ */ new Set([
+      reach2.test.ref.path,
+      ...reach2.test.closure ?? [],
+      ...reach2.kinds.keys()
+    ]);
+    return [reach2, paths];
+  });
+  for (const edit of edits) {
+    for (const [reach2, keyed] of keyedBy) addPair2(sums, reach2, keyed, edit, facts);
+  }
+  const withoutList = [...sums.noList.values()].map(({ reason: reason2, detail, testFiles: testFiles3, seconds: seconds5 }) => ({ reason: reason2, detail, testFiles: testFiles3, seconds: seconds5 })).sort(
+    (a, b) => b.testFiles - a.testFiles || compare(a.reason, b.reason) || compare(a.detail ?? "", b.detail ?? "")
+  );
+  if (facts.first === null) {
+    return {
+      project,
+      status: "no lists",
+      lists,
+      ...EMPTY2,
+      reason: noListsReason(facts),
+      withoutList
+    };
+  }
+  const ranked = [...sums.files.entries()].sort(([a, x], [b, y]) => y - x || compare(a, b));
+  const files5 = ranked.slice(0, limit).map(
+    ([path, seconds5]) => ({
+      path,
+      avoidableSeconds: seconds5,
+      importedBy: sums.tests.filter((t) => IMPORT_KINDS.has(t.kinds.get(path) ?? "setup")).length,
+      loadedBy: sums.tests.filter((t) => t.test.loaded.lists.at(-1)?.paths.has(path) === true).length
+    })
+  );
+  return {
+    project,
+    status: "estimate",
+    lists,
+    rerunSeconds: sums.rerun,
+    avoidableSeconds: sums.avoidable,
+    share: sums.rerun > 0 ? sums.avoidable / sums.rerun : 0,
+    files: files5,
+    moreFiles: Math.max(0, ranked.length - limit),
+    withoutList
+  };
+}
+var EMPTY2 = {
+  rerunSeconds: 0,
+  avoidableSeconds: 0,
+  share: 0,
+  files: [],
+  moreFiles: 0,
+  withoutList: []
+};
+function addPair2(sums, reach2, keyedBy, edit, facts) {
+  const { test } = reach2;
+  const changed2 = edit.paths.filter((p) => keyedBy.has(p));
+  if (changed2.length === 0) return;
+  const seconds5 = test.seconds ?? 0;
+  sums.rerun += seconds5;
+  const list2 = listAt(test.loaded.lists, edit.at);
+  if (list2 === null) {
+    const { reason: reason2, detail } = reasonOf3(reach2, facts);
+    const id = `${reason2}\0${detail ?? ""}`;
+    const entry4 = sums.noList.get(id) ?? {
+      reason: reason2,
+      detail,
+      testFiles: 0,
+      seconds: 0,
+      seen: /* @__PURE__ */ new Set()
+    };
+    entry4.seconds += seconds5;
+    if (!entry4.seen.has(test.ref.path)) {
+      entry4.seen.add(test.ref.path);
+      entry4.testFiles++;
+    }
+    sums.noList.set(id, entry4);
+    return;
+  }
+  const avoidable = changed2.every((p) => {
+    const kind = reach2.kinds.get(p);
+    return kind !== void 0 && IMPORT_KINDS.has(kind) && !list2.paths.has(p);
+  });
+  if (!avoidable) return;
+  sums.avoidable += seconds5;
+  for (const path of changed2) {
+    sums.files.set(path, (sums.files.get(path) ?? 0) + seconds5 / changed2.length);
+  }
+}
+function listAt(lists, at2) {
+  let found3 = null;
+  for (const list2 of lists) if (list2.at <= at2) found3 = list2;
+  return found3;
+}
+function projectFacts(tests2, coverage) {
+  const firsts = tests2.flatMap((t) => t.test.loaded.lists.slice(0, 1).map((l) => l.at));
+  const ran = tests2.some((t) => t.test.current);
+  const recorded2 = tests2.some((t) => t.test.loaded.recordAt !== null);
+  return {
+    coverageOn: coverage.on,
+    first: firsts.length === 0 ? null : Math.min(...firsts),
+    unisolated: ran && !recorded2
+  };
+}
+function reasonOf3(reach2, facts) {
+  const { loaded } = reach2.test;
+  if (!facts.coverageOn) return { reason: "coverage off", detail: null };
+  if (loaded.lists.length > 0) {
+    return { reason: "never recorded", detail: "edited before its first list" };
+  }
+  if (facts.unisolated) return { reason: "isolate: false", detail: null };
+  if (loaded.failed && loaded.recordAt === null) return { reason: "incomplete run", detail: null };
+  if (loaded.recordAt !== null && facts.first !== null) {
+    if (loaded.recordAt >= facts.first) return { reason: "list lost", detail: null };
+    return { reason: "never recorded", detail: "ran before lists were recorded" };
+  }
+  return { reason: "never recorded", detail: null };
+}
+function noListsReason(facts) {
+  if (!facts.coverageOn) return "coverage off";
+  return facts.unisolated ? "isolate: false" : "never recorded";
+}
+
 // src/core/reach/proposals.ts
 init_compare();
 var COVERAGE_KEY2 = '"coverage": { "enabled": true }';
@@ -104918,6 +105269,7 @@ function buildReport2(snapshot3, options) {
     testFiles: tests2.slice(0, limit),
     moreTestFiles: Math.max(0, tests2.length - limit),
     ...options.paths === null || !history2 ? {} : { named: namedFiles(analysis, snapshot3, options.paths, limit) },
+    narrowing: history2 ? narrowingEstimates(analysis, snapshot3.coverage, limit) : [],
     proposals: proposals(snapshot3, analysis, history2, options)
   };
 }
@@ -104926,9 +105278,62 @@ var RUNNER_NAMES2 = { vitest: "Vitest", nodeTest: "node:test", pytest: "pytest" 
 // src/cli/reach-format.ts
 init_text();
 
+// src/cli/reach-narrowing.ts
+init_text();
+
+// src/cli/reach-text.ts
+var pct = (share2) => share2 > 0 && share2 < 5e-3 ? "<1%" : `${Math.round(share2 * 100)}%`;
+var secs = (s) => `${s < 10 ? Math.round(s * 10) / 10 : Math.round(s)} s`;
+
+// src/cli/reach-narrowing.ts
+var REASONS4 = {
+  "never recorded": "never recorded",
+  "coverage off": "coverage off, so no list is recorded",
+  "isolate: false": "isolate: false, so no list is recorded",
+  "incomplete run": "the run did not complete",
+  "list lost": "the list was lost"
+};
+function noListText(entry4) {
+  const detail = entry4.detail === null ? "" : ` (${entry4.detail})`;
+  return `${entry4.reason}${detail}: ${plural(entry4.testFiles, "test file")}, ${secs(entry4.seconds)}`;
+}
+function projectLines(estimate) {
+  const name3 = estimate.project === "" ? "default project" : estimate.project;
+  if (estimate.status === "not Vitest") {
+    return [`  ${name3}: its runner records no lists (Vitest only); nothing estimated.`];
+  }
+  const without2 = estimate.withoutList.length === 0 ? [] : [`    re-run without a list: ${estimate.withoutList.map(noListText).join("; ")}`];
+  if (estimate.status === "no lists") {
+    const reason2 = REASONS4[estimate.reason ?? "never recorded"];
+    return [`  ${name3}: no lists: ${reason2}; nothing estimated.`, ...without2];
+  }
+  if (estimate.rerunSeconds === 0) {
+    return [
+      `  ${name3}: no edit in the window re-ran a test file with recorded seconds.`,
+      ...without2
+    ];
+  }
+  return [
+    `  ${name3}: would save ${pct(estimate.share)} of re-run seconds, ${secs(estimate.avoidableSeconds)} of ${secs(estimate.rerunSeconds)} over the window's edits.`,
+    ...estimate.files.map(
+      (f) => `    ${f.path}: avoidable ${secs(f.avoidableSeconds)}; imported by ${plural(f.importedBy, "test file")}, loaded by ${f.loadedBy}`
+    ),
+    ...estimate.moreFiles === 0 ? [] : [`    \u2026 and ${estimate.moreFiles} more; --limit lists more.`],
+    ...without2
+  ];
+}
+function narrowingLines(estimates) {
+  const [first2] = estimates;
+  if (first2 === void 0) return [];
+  return [
+    `Narrowing by loaded modules (${first2.lists}): seconds re-run only because an edited file is on an import path the test file did not load. An upper bound on what narrowing saves, not proof those tests are waste.`,
+    ...estimates.flatMap(projectLines)
+  ];
+}
+
 // src/cli/reach-proposals.ts
 init_text();
-var pct = (share2) => share2 > 0 && share2 < 5e-3 ? "<1%" : `${Math.round(share2 * 100)}%`;
+var pct2 = (share2) => share2 > 0 && share2 < 5e-3 ? "<1%" : `${Math.round(share2 * 100)}%`;
 var has2 = (n) => n === 1 ? "has" : "have";
 var NAMED_PATHS = 10;
 function pathList(paths) {
@@ -104943,7 +105348,7 @@ function recordsLines(proposal) {
   const count3 = (n) => `${plural(n, "test file")} ${has2(n)}`;
   const retry2 = noResult.length <= NAMED_PATHS ? `: \`${proposal.retry} ${noResult.join(" ")}\` runs ${noResult.length === 1 ? "it" : "each"} once.` : `; \`${proposal.retry} <test file>...\` runs each once: ${pathList(noResult)}.`;
   return [
-    `${count3(testFiles3)} no coverage record at the current inputs, ${pct(proposal.share)} of the suite's seconds, so their pairs read no record.`,
+    `${count3(testFiles3)} no coverage record at the current inputs, ${pct2(proposal.share)} of the suite's seconds, so their pairs read no record.`,
     ...noResult.length === 0 ? [] : [`${count3(noResult.length)} no result at the current inputs${retry2}`],
     ...current2.length === 0 ? [] : [
       `${count3(current2.length)} a result and no record: ${pathList(current2)}. Squeal re-runs a current result only in a forced checkpoint, ${proposal.command}, which re-runs every test file, about one run of the whole suite.`
@@ -104983,13 +105388,11 @@ function proposalLines(proposal, coverage) {
 }
 
 // src/cli/reach-format.ts
-var pct2 = (share2) => share2 > 0 && share2 < 5e-3 ? "<1%" : `${Math.round(share2 * 100)}%`;
-var secs = (s) => `${s < 10 ? Math.round(s * 10) / 10 : Math.round(s)} s`;
 var day = (at2) => new Date(at2).toISOString().slice(0, 10);
 function splitText(split5) {
   const parts3 = Object.entries(split5).sort((a, b) => b[1] - a[1]);
   if (parts3.length === 1 && parts3[0]?.[0] === "unknown") return "called: unknown";
-  return parts3.map(([k, v]) => `${k} ${pct2(v)}`).join(", ") || "none";
+  return parts3.map(([k, v]) => `${k} ${pct(v)}`).join(", ") || "none";
 }
 var COVERAGE_OFF = "Coverage is off, so called reads unknown: Squeal cannot tell which of these tests call the file; the path kinds are a proxy.";
 function head(report4) {
@@ -105048,7 +105451,7 @@ function fileLines4(entry4) {
   const edits = entry4.edits === 0 ? "no edits in the window" : `${plural(entry4.edits, "edit")} in the window re-ran ${secs(entry4.editSeconds)}`;
   return [
     `  ${entry4.rank}. ${entryName2(entry4)}`,
-    `     re-runs ${pct2(entry4.share)} of the suite${each}: ${plural(entry4.testFiles, "test file")}, ${secs(entry4.seconds)}; ${edits}`,
+    `     re-runs ${pct(entry4.share)} of the suite${each}: ${plural(entry4.testFiles, "test file")}, ${secs(entry4.seconds)}; ${edits}`,
     `     coverage: ${splitText(entry4.coverage)}; ${ordered(entry4)}`,
     `     paths: ${splitText(entry4.kinds)}`,
     ...entry4.gateway === null ? [] : [
@@ -105107,7 +105510,7 @@ function namedLines(file) {
     return [`${file.path}: no test file of the suite re-runs on an edit of it.`];
   }
   return [
-    `${file.path}: re-runs ${pct2(file.share)} of the suite: ${plural(file.testFiles, "test file")}, ${secs(file.seconds)}; ${plural(file.edits, "edit")} in the window`,
+    `${file.path}: re-runs ${pct(file.share)} of the suite: ${plural(file.testFiles, "test file")}, ${secs(file.seconds)}; ${plural(file.edits, "edit")} in the window`,
     `  coverage: ${splitText(file.coverage)}`,
     ...file.routes.flatMap((route) => [
       `  ${routeLine(route)}: ${plural(route.testFiles, "test file")}, ${secs(route.seconds)}; ${splitText(route.coverage)}`,
@@ -105138,7 +105541,8 @@ function formatReach(report4) {
     "",
     title.tests,
     ...report4.testFiles.flatMap((e, i3) => testLines(e, i3 + 1)),
-    ...more(report4.moreTestFiles)
+    ...more(report4.moreTestFiles),
+    ...report4.narrowing.length === 0 ? [] : ["", ...narrowingLines(report4.narrowing)]
   ] : ["", ...named4.flatMap(namedLines)];
   const proposals2 = report4.proposals.flatMap((p) => proposalLines(p, report4.coverage));
   return `${[...head(report4), ...body2, ...proposals2.length === 0 ? [] : ["", ...proposals2]].join("\n")}
