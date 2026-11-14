@@ -11,8 +11,8 @@ import { RETRIES_META_KEY } from "../../src/core/retry/records.js";
 import { slowTokensMetaKey } from "../../src/core/slow/rank-store.js";
 import { FLAKY_META_KEY } from "../../src/core/state/flaky.js";
 import { RERUN_FIRST_META_KEY } from "../../src/core/state/rerun-first.js";
-import { CLOSURE_WRITES_KEY } from "../../src/core/store/closure-writes.js";
 import { META_FULL_CHECK, META_STORE_RECOVERED } from "../../src/core/store/open.js";
+import { CLOSURE_WRITES_KEY } from "../../src/core/store/write-markers.js";
 import {
   WORKTREE_META_ROWS,
   type WorktreeMetaRow,

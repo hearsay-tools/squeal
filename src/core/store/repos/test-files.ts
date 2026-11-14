@@ -22,7 +22,6 @@ import {
   strOrNull,
 } from "../codec.js";
 import type { Connection, Row } from "../connection.js";
-import { bumpStatesMarker } from "../states-marker.js";
 import { readMetaList, writeMetaList } from "./meta-list.js";
 
 const METHODS = ["static imports plus declared inputs"] as const;
@@ -113,11 +112,6 @@ export function createTestFileKeyRepo(conn: Connection): TestFileKeyRepo {
             r.pending,
           );
         }
-        // Row 011-45: in the transaction that wrote them; a removal's caller bumps its own.
-        bumpStatesMarker(
-          conn,
-          records.map((r) => r.worktreeId),
-        );
       }),
     remove: (worktreeId, testFiles) =>
       conn.transaction(() => {

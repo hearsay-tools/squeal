@@ -1,5 +1,5 @@
 import { testFileId } from "../core/keys/reverse-index.js";
-import { trustedClosureWrites } from "../core/store/closure-writes.js";
+import { trustedClosureWrites } from "../core/store/write-markers.js";
 import type { RelativePath, WorktreeId } from "../core/types/common.js";
 import type { CheckKey, TestFileRef } from "../core/types/keys.js";
 import type { Store } from "../core/types/store.js";
@@ -10,8 +10,10 @@ import type { TestFileKeyRecord } from "../core/types/store-records.js";
  * daemon did not answer (`selectNamedFiles`), kept across a wait's polls.
  * Reading every closure is the large read (about 45 MB of JSON in cezar's
  * store on 2026-11-14); a wait reads them again only when the store's
- * closure-write marker moved since, and reads them each time while the
- * marker is not to be trusted (`trustedClosureWrites`). Whether a closure is this worktree's (001 D6's rule) is read on
+ * closure-write marker moved since (the database's triggers move it on every
+ * closure write, whoever writes), and reads them each time while the marker
+ * is not to be trusted (`trustedClosureWrites`). Whether a closure is this
+ * worktree's (001 D6's rule) is read on
  * each selection, for the files whose closure holds the path only: a key
  * moves without a closure write.
  */

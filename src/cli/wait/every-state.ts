@@ -1,5 +1,5 @@
 import { readHeader } from "../../core/state/header.js";
-import { statesMark } from "../../core/store/states-marker.js";
+import { statesMark } from "../../core/store/write-markers.js";
 import type { RevisionNumber, WorktreeId } from "../../core/types/common.js";
 import type { DeltaEntry } from "../../core/types/delivery.js";
 import type { KnownState } from "../../core/types/state.js";
@@ -11,9 +11,9 @@ import { type HeldRead, newsSince, type StartView } from "../status-wait-held.js
  * Row 011-45 (C6 as amended 2026-10-20, 011-42): the edit wait's fallback
  * holds for every check, so a poll read every known state and every
  * `test_file_keys` row of the worktree. It now keeps the last ones it read
- * with the states marker they were read at (`statesMark`), and reads them
- * again only when the marker moved, or when no marker can be trusted, as
- * before. The news since the start is kept too while the revision stays
+ * with the states marker they were read at (`statesMark`, which the
+ * database's triggers move on every write, whoever writes), and reads them
+ * again only when the marker moved, or when it cannot be trusted, as before. The news since the start is kept too while the revision stays
  * (`newsSince` is a function of the start, the states and the revision).
  * The header is made each poll from what it kept, so the revision, the
  * runner part and every other part read fresh.

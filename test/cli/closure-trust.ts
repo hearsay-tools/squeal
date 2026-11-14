@@ -1,33 +1,26 @@
-import { markClosureWrite } from "../../src/core/store/closure-writes.js";
-import { claimStatesMarker } from "../../src/core/store/states-marker.js";
-import { daemonIncarnation } from "../../src/core/types/daemon.js";
+import { ensureWriteMarkers } from "../../src/core/store/write-markers.js";
 import type { Store } from "../../src/core/types/store.js";
 import { storeClosures as putClosures } from "./source-path-fixture.js";
 import { NOW } from "./status-wait-fixture.js";
 
 /*
- * Row 011-44: the closure-write marker is trusted only while every daemon
- * registered on the store claimed its states marker (row 011-45's
- * `everyDaemonClaims`). These helpers record closures, register and claim
- * as a daemon of this release does.
+ * Rows 011-44 and 011-45 (repaired after review 0.1.489): the database
+ * moves the write markers once a daemon of this release made their
+ * triggers. These helpers make them, record closures, and register a
+ * daemon of an earlier release.
  */
 
-/** `putClosures`' rows with the marker moved after them in their transaction, as `storeClosures` writes. */
+/** `putClosures`' rows in one transaction, as `storeClosures` writes them; the triggers move the marker. */
 export function recordClosures(store: Store, files: readonly string[], by: string): void {
-  store.transaction(() => {
-    putClosures(store, files, by);
-    markClosureWrite(store);
-  });
+  store.transaction(() => putClosures(store, files, by));
 }
 
-/** Each registered daemon claims its states marker, as one of this release registers. */
-export function claimAll(store: Store): void {
-  for (const { id, daemon } of store.worktrees.list()) {
-    if (daemon !== null) claimStatesMarker(store, id, daemonIncarnation(daemon));
-  }
+/** The store as a daemon of this release leaves it when it registers: the triggers made. */
+export function armMarkers(store: Store): void {
+  ensureWriteMarkers(store);
 }
 
-/** A daemon of an earlier release registered for worktree `id` at `root`: it claims no marker. */
+/** A daemon of an earlier release registered for worktree `id` at `root`. */
 export function registerUnclaimed(store: Store, id: string, root: string, commonDir: string): void {
   store.worktrees.upsert({
     id,
