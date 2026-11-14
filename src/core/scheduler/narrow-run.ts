@@ -107,7 +107,8 @@ interface NarrowPlan {
  * other files keep waiting and the group is never made current by it. A
  * source path asks the runner, so the request waits for the runner work
  * before it. `null` for a group the policy in force does not have; rejects
- * for a lint group.
+ * for a lint group. Row 011-335: taken only after a reconciliation pass
+ * that started after it, as `run --all` is.
  */
 export function narrowRequest(
   group: string,
@@ -118,6 +119,7 @@ export function narrowRequest(
     operation: `taking a squeal run ${group} <path>... request`,
     start: {
       skip: "no closed answer: once closed its runner-work wait rejects; before the start it throws",
+      afterPass: true,
     },
     // Review 0.1.411, B2: the answer says why nothing was queued, of the files it selected.
     installWait: {
