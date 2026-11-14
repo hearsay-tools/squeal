@@ -6,7 +6,6 @@ import {
   worktreeMetaKey,
 } from "../../types/store.js";
 import type { CheckRecord, TestFileKeyRecord, TestFileRecord } from "../../types/store-records.js";
-import { markClosureWrite } from "../closure-writes.js";
 import {
   bool,
   CHECK_COLUMNS,
@@ -40,31 +39,27 @@ export function createTestFileRepo(conn: Connection): TestFileRepo {
       return row === null ? null : toTestFile(row);
     },
     list: () => conn.all("SELECT * FROM test_files ORDER BY project, path").map(toTestFile),
-    put: (record) =>
-      conn.transaction(() => {
-        conn.run(
-          `INSERT OR REPLACE INTO test_files
+    put: (record) => {
+      conn.run(
+        `INSERT OR REPLACE INTO test_files
            (project, path, closure_paths, complete, method, updated_at, updated_by)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
-          record.testFile.project,
-          record.testFile.path,
-          JSON.stringify(record.closure.paths),
-          flag(record.closure.complete),
-          record.closure.method,
-          record.updatedAt,
-          record.updatedBy,
-        );
-        markClosureWrite(conn);
-      }),
-    remove: (testFile) =>
-      conn.transaction(() => {
-        conn.run(
-          "DELETE FROM test_files WHERE project = ? AND path = ?",
-          testFile.project,
-          testFile.path,
-        );
-        markClosureWrite(conn);
-      }),
+        record.testFile.project,
+        record.testFile.path,
+        JSON.stringify(record.closure.paths),
+        flag(record.closure.complete),
+        record.closure.method,
+        record.updatedAt,
+        record.updatedBy,
+      );
+    },
+    remove: (testFile) => {
+      conn.run(
+        "DELETE FROM test_files WHERE project = ? AND path = ?",
+        testFile.project,
+        testFile.path,
+      );
+    },
   };
 }
 
