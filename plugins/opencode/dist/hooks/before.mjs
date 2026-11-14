@@ -2726,7 +2726,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.504";
+  if (true) return "0.1.505";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -4624,8 +4624,12 @@ function endpointAt(socketPath) {
 function sameEndpoint(a, b) {
   return a !== null && a.dev === b.dev && a.ino === b.ino && a.ctimeNs === b.ctimeNs && a.birthtimeNs === b.birthtimeNs;
 }
-function requestDaemon(socketPath, request, timeoutMs, endpoint) {
+function requestDaemon(socketPath, request, timeoutMs, endpoint, signal) {
   return new Promise((resolve9, reject) => {
+    if (signal?.aborted) {
+      reject(failure("ABORT_ERR", `request to ${socketPath} aborted`));
+      return;
+    }
     const socket = createConnection(socketPath);
     let buffer = "";
     let settled3 = false;
@@ -4633,6 +4637,7 @@ function requestDaemon(socketPath, request, timeoutMs, endpoint) {
       if (settled3) return;
       settled3 = true;
       clearTimeout(timer);
+      signal?.removeEventListener("abort", aborted);
       socket.destroy();
       if (error) reject(error);
       else resolve9(response);
@@ -4641,6 +4646,8 @@ function requestDaemon(socketPath, request, timeoutMs, endpoint) {
       () => settle(failure("ETIMEDOUT", `no answer from ${socketPath} in ${timeoutMs} ms`)),
       timeoutMs
     );
+    const aborted = () => settle(failure("ABORT_ERR", `request to ${socketPath} aborted`));
+    signal?.addEventListener("abort", aborted, { once: true });
     socket.setEncoding("utf8");
     socket.on("connect", () => {
       if (endpoint !== void 0 && !sameEndpoint(endpointAt(socketPath), endpoint)) {

@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.504";
+  if (true) return "0.1.505";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -3850,8 +3850,12 @@ async function pinDaemon(record2, timeoutMs) {
     return null;
   }
 }
-function requestDaemon(socketPath, request, timeoutMs, endpoint) {
+function requestDaemon(socketPath, request, timeoutMs, endpoint, signal2) {
   return new Promise((resolve45, reject) => {
+    if (signal2?.aborted) {
+      reject(failure("ABORT_ERR", `request to ${socketPath} aborted`));
+      return;
+    }
     const socket = createConnection(socketPath);
     let buffer = "";
     let settled2 = false;
@@ -3859,6 +3863,7 @@ function requestDaemon(socketPath, request, timeoutMs, endpoint) {
       if (settled2) return;
       settled2 = true;
       clearTimeout(timer);
+      signal2?.removeEventListener("abort", aborted);
       socket.destroy();
       if (error) reject(error);
       else resolve45(response);
@@ -3867,6 +3872,8 @@ function requestDaemon(socketPath, request, timeoutMs, endpoint) {
       () => settle2(failure("ETIMEDOUT", `no answer from ${socketPath} in ${timeoutMs} ms`)),
       timeoutMs
     );
+    const aborted = () => settle2(failure("ABORT_ERR", `request to ${socketPath} aborted`));
+    signal2?.addEventListener("abort", aborted, { once: true });
     socket.setEncoding("utf8");
     socket.on("connect", () => {
       if (endpoint !== void 0 && !sameEndpoint(endpointAt(socketPath), endpoint)) {
@@ -81498,14 +81505,20 @@ async function locateDaemon(root, timeoutMs, options = {}) {
   const record2 = options.record === void 0 ? recordedDaemon(root) : options.record;
   const now = options.now ?? Date.now;
   if (record2 !== null && record2.socketPath !== socketPath && daemonLiveness(record2, now()).state === "alive") {
-    const probe2 = await ping(record2.socketPath, timeoutMs);
+    const probe2 = await ping(record2.socketPath, timeoutMs, options.signal);
     if (probe2.state !== "absent") return { socketPath: record2.socketPath, probe: probe2 };
   }
-  return { socketPath, probe: await ping(socketPath, timeoutMs) };
+  return { socketPath, probe: await ping(socketPath, timeoutMs, options.signal) };
 }
-async function ping(socketPath, timeoutMs) {
+async function ping(socketPath, timeoutMs, signal2) {
   try {
-    const response = await requestDaemon(socketPath, { type: "ping" }, timeoutMs);
+    const response = await requestDaemon(
+      socketPath,
+      { type: "ping" },
+      timeoutMs,
+      void 0,
+      signal2
+    );
     if (response.ok && response.type === "ping") return { state: "alive", ping: response };
     return { state: "unresponsive", reason: `unexpected answer: ${JSON.stringify(response)}` };
   } catch (error) {
@@ -81609,13 +81622,13 @@ function worktreeRoot(path, io) {
 `);
   return root;
 }
-async function daemonSocket(root, timeoutMs = CLI_SOCKET_TIMEOUT_MS) {
+async function daemonSocket(root, timeoutMs = CLI_SOCKET_TIMEOUT_MS, signal2) {
   const record2 = recordedDaemon(root, 1e3);
-  return (await locateDaemon(root, timeoutMs, { record: record2 })).socketPath;
+  return (await locateDaemon(root, timeoutMs, { record: record2, signal: signal2 })).socketPath;
 }
-async function askDaemon(socketPath, request, timeoutMs = CLI_SOCKET_TIMEOUT_MS) {
+async function askDaemon(socketPath, request, timeoutMs = CLI_SOCKET_TIMEOUT_MS, signal2) {
   try {
-    return await requestDaemon(socketPath, request, timeoutMs);
+    return await requestDaemon(socketPath, request, timeoutMs, void 0, signal2);
   } catch (error) {
     if (noDaemonCode(error) !== null) return null;
     throw error;
@@ -84481,13 +84494,13 @@ var UNSUPPORTED = { state: "unsupported" };
 var SYNC_POLL_MS = 250;
 function syncDaemon(root, pollMs, paths = [], deadline = Number.POSITIVE_INFINITY) {
   let current2 = { state: "pending" };
-  let stopped = false;
-  const isStopped = () => stopped;
+  const abort2 = new AbortController();
+  const isStopped = () => abort2.signal.aborted;
   const request = syncRequest(paths);
   const timeoutMs = () => Math.min(CLI_SOCKET_TIMEOUT_MS, Math.ceil(deadline - performance.now()));
   const answered2 = (async () => {
     for (; ; ) {
-      const outcome2 = await syncOnce(root, request, pollMs, isStopped, timeoutMs);
+      const outcome2 = await syncOnce(root, request, pollMs, isStopped, timeoutMs, abort2.signal);
       if (outcome2 !== "again") return outcome2;
     }
   })().then(
@@ -84501,9 +84514,7 @@ function syncDaemon(root, pollMs, paths = [], deadline = Number.POSITIVE_INFINIT
   return {
     current: () => current2,
     answered: answered2,
-    stop: () => {
-      stopped = true;
-    }
+    stop: () => abort2.abort()
   };
 }
 function syncedReaders(sync) {
@@ -84533,12 +84544,12 @@ function syncedOf(response, revision) {
   if (response.readers === void 0) return synced;
   return { ...synced, readers: new Map(Object.entries(response.readers)) };
 }
-async function syncOnce(root, request, pollMs, stopped, timeoutMs) {
+async function syncOnce(root, request, pollMs, stopped, timeoutMs, signal2) {
   const ended2 = () => stopped() || timeoutMs() <= 0;
   if (ended2()) return UNSUPPORTED;
-  const socketPath = await daemonSocket(root, timeoutMs()).catch(() => null);
+  const socketPath = await daemonSocket(root, timeoutMs(), signal2).catch(() => null);
   if (socketPath === null || ended2()) return UNSUPPORTED;
-  const first2 = await askDaemon(socketPath, request, timeoutMs()).catch(() => null);
+  const first2 = await askDaemon(socketPath, request, timeoutMs(), signal2).catch(() => null);
   if (first2 === null || !first2.ok || first2.type !== "sync") return UNSUPPORTED;
   let state = first2;
   for (; ; ) {
@@ -84549,7 +84560,8 @@ async function syncOnce(root, request, pollMs, stopped, timeoutMs) {
     const next = await askDaemon(
       socketPath,
       { type: "sync-status", requestId: first2.requestId },
-      timeoutMs()
+      timeoutMs(),
+      signal2
     ).catch(() => void 0);
     if (next === void 0) continue;
     if (next === null || !next.ok || next.type !== "sync") return "again";
@@ -84616,10 +84628,11 @@ function watchDaemon(worktreeId, options = {}) {
   let asking = false;
   let deadSince = null;
   let staleMs = null;
+  const abort2 = new AbortController();
   const ask2 = (record2, asked) => {
-    if (asking) return;
+    if (asking || abort2.signal.aborted) return;
     asking = true;
-    void listening([.../* @__PURE__ */ new Set([record2.socketPath, computed])]).then((found3) => {
+    void listening([.../* @__PURE__ */ new Set([record2.socketPath, computed])], abort2.signal).then((found3) => {
       socket = found3;
       if (found3 !== "absent") staleMs = Math.max(staleMs ?? 0, asked);
       asking = false;
@@ -84648,7 +84661,8 @@ function watchDaemon(worktreeId, options = {}) {
       if (reading.lapse !== void 0) staleMs = Math.max(staleMs ?? 0, reading.lapse);
       return reading.liveness;
     },
-    lapse: () => staleMs === null ? null : { staleMs }
+    lapse: () => staleMs === null ? null : { staleMs },
+    stop: () => abort2.abort()
   };
 }
 function freshRecord(commonDir, worktreeId) {
@@ -84671,10 +84685,10 @@ function lockedOf(daemon) {
 function stoppingOf2(store, worktree, at2) {
   return readStopping(store, worktree, at2);
 }
-async function listening(paths) {
+async function listening(paths, signal2) {
   const answers2 = await Promise.all(
     paths.map(
-      (path) => askDaemon(path, { type: "ping" }).then(
+      (path) => askDaemon(path, { type: "ping" }, void 0, signal2).then(
         (answer4) => answer4 === null ? "absent" : answer4.ok && answer4.type === "ping" && answer4.phase === "stopping" ? "stopping" : "listening",
         // A socket that accepts and does not answer in time: a daemon whose event loop is stalled.
         () => "listening"
@@ -85522,6 +85536,7 @@ function namedPoll(cwd, paths, options) {
   return {
     name: "named",
     sync: () => sync,
+    stop: () => watch2?.stop?.(),
     read: ({ store, root, commonDir }, final, elapsed) => {
       const id = worktreeIdFor(root);
       const pollMs = Math.min(options.pollMs, SYNC_POLL_MS);
@@ -86301,6 +86316,7 @@ function editPoll(options) {
     // Edit: no read took the start view yet.
     first: () => start2 === null,
     sync: () => syncing.sync,
+    stop: () => watch2?.stop?.(),
     read: ({ store, root, commonDir }, final, elapsed) => {
       const id = worktreeIdFor(root);
       if (start2 === null) {
@@ -86519,6 +86535,7 @@ async function pollStatus(cwd, timeoutMs, pollMs, poll) {
     }
   } finally {
     poll.sync()?.stop();
+    poll.stop?.();
   }
 }
 

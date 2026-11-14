@@ -7416,8 +7416,12 @@ async function pinDaemon(record, timeoutMs) {
     return null;
   }
 }
-function requestDaemon(socketPath, request, timeoutMs, endpoint) {
+function requestDaemon(socketPath, request, timeoutMs, endpoint, signal) {
   return new Promise((resolve9, reject) => {
+    if (signal?.aborted) {
+      reject(failure("ABORT_ERR", `request to ${socketPath} aborted`));
+      return;
+    }
     const socket = createConnection(socketPath);
     let buffer = "";
     let settled3 = false;
@@ -7425,6 +7429,7 @@ function requestDaemon(socketPath, request, timeoutMs, endpoint) {
       if (settled3) return;
       settled3 = true;
       clearTimeout(timer);
+      signal?.removeEventListener("abort", aborted);
       socket.destroy();
       if (error) reject(error);
       else resolve9(response);
@@ -7433,6 +7438,8 @@ function requestDaemon(socketPath, request, timeoutMs, endpoint) {
       () => settle(failure("ETIMEDOUT", `no answer from ${socketPath} in ${timeoutMs} ms`)),
       timeoutMs
     );
+    const aborted = () => settle(failure("ABORT_ERR", `request to ${socketPath} aborted`));
+    signal?.addEventListener("abort", aborted, { once: true });
     socket.setEncoding("utf8");
     socket.on("connect", () => {
       if (endpoint !== void 0 && !sameEndpoint(endpointAt(socketPath), endpoint)) {
@@ -8136,7 +8143,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.504";
+  if (true) return "0.1.505";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -16159,14 +16166,20 @@ async function locateDaemon(root, timeoutMs, options = {}) {
   const record = options.record === void 0 ? recordedDaemon(root) : options.record;
   const now = options.now ?? Date.now;
   if (record !== null && record.socketPath !== socketPath && daemonLiveness(record, now()).state === "alive") {
-    const probe2 = await ping(record.socketPath, timeoutMs);
+    const probe2 = await ping(record.socketPath, timeoutMs, options.signal);
     if (probe2.state !== "absent") return { socketPath: record.socketPath, probe: probe2 };
   }
-  return { socketPath, probe: await ping(socketPath, timeoutMs) };
+  return { socketPath, probe: await ping(socketPath, timeoutMs, options.signal) };
 }
-async function ping(socketPath, timeoutMs) {
+async function ping(socketPath, timeoutMs, signal) {
   try {
-    const response = await requestDaemon(socketPath, { type: "ping" }, timeoutMs);
+    const response = await requestDaemon(
+      socketPath,
+      { type: "ping" },
+      timeoutMs,
+      void 0,
+      signal
+    );
     if (response.ok && response.type === "ping") return { state: "alive", ping: response };
     return { state: "unresponsive", reason: `unexpected answer: ${JSON.stringify(response)}` };
   } catch (error) {
