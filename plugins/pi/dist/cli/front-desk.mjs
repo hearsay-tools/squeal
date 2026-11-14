@@ -747,7 +747,9 @@ function groupRequests(requestGroup, max, step = () => null, now = Date.now) {
         revision: requested.revision,
         queued: requested.queued,
         // Row 011-325: the id of its covered files, when the scheduler recorded them.
-        ...requested.coveredId === void 0 ? {} : { coveredId: requested.coveredId }
+        ...requested.coveredId === void 0 ? {} : { coveredId: requested.coveredId },
+        // Row 011-324: why it queued nothing, while an install is awaited.
+        ...requested.installWait === void 0 ? {} : { installWait: requested.installWait }
       },
       unknown: request.unknown,
       error: request.error,
