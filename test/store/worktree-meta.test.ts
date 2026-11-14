@@ -11,6 +11,7 @@ import { RETRIES_META_KEY } from "../../src/core/retry/records.js";
 import { slowTokensMetaKey } from "../../src/core/slow/rank-store.js";
 import { FLAKY_META_KEY } from "../../src/core/state/flaky.js";
 import { RERUN_FIRST_META_KEY } from "../../src/core/state/rerun-first.js";
+import { CLOSURE_WRITES_KEY } from "../../src/core/store/closure-writes.js";
 import { META_FULL_CHECK, META_STORE_RECOVERED } from "../../src/core/store/open.js";
 import {
   WORKTREE_META_ROWS,
@@ -39,6 +40,7 @@ const SHARED_KEY_FUNCTIONS = [
 /** `meta` key constants of rows shared across worktrees. */
 const SHARED_KEY_CONSTANTS = [
   "ASKED_KEYS_META_KEY",
+  "CLOSURE_WRITES_KEY",
   "FLAKY_META_KEY",
   "META_FULL_CHECK",
   "META_STORE_RECOVERED",
@@ -67,6 +69,7 @@ describe("worktree removal and its meta rows (task 001-254, review wave 13u S1)"
     // Shared, and named with the removed worktree's id as a suffix: never matched.
     const shared = [
       ASKED_KEYS_META_KEY,
+      CLOSURE_WRITES_KEY,
       FLAKY_META_KEY,
       META_FULL_CHECK,
       META_STORE_RECOVERED,
