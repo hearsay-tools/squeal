@@ -10,15 +10,15 @@ import type {
 import { chainText } from "../core/reach/suggest.js";
 import { plural } from "../core/text.js";
 import type { EpochMs } from "../core/types/common.js";
+import { narrowingLines } from "./reach-narrowing.js";
 import { proposalLines } from "./reach-proposals.js";
+import { pct, secs } from "./reach-text.js";
 
 /*
  * Spec 015 D11: the human rendering of `squeal reach`. Every number is
  * relative to this repository's own suite, seconds and edits.
  */
 
-const pct = (share: number) => (share > 0 && share < 0.005 ? "<1%" : `${Math.round(share * 100)}%`);
-const secs = (s: number) => `${s < 10 ? Math.round(s * 10) / 10 : Math.round(s)} s`;
 const day = (at: EpochMs) => new Date(at).toISOString().slice(0, 10);
 
 /** `called 24%, loaded only 41%`; with coverage off, `called: unknown`. */
@@ -221,6 +221,7 @@ export function formatReach(report: ReachReport): string {
           title.tests,
           ...report.testFiles.flatMap((e, i) => testLines(e, i + 1)),
           ...more(report.moreTestFiles),
+          ...(report.narrowing.length === 0 ? [] : ["", ...narrowingLines(report.narrowing)]),
         ]
       : ["", ...named.flatMap(namedLines)];
   const proposals = report.proposals.flatMap((p) => proposalLines(p, report.coverage));

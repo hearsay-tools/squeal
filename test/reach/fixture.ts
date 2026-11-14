@@ -63,6 +63,7 @@ export function testFile(
     childProcess: new Set(),
     runtimeRead: new Set(),
     coverage: UNKNOWN,
+    loaded: { lists: [], recordAt: null, failed: false },
     ...rest,
   };
 }

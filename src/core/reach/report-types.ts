@@ -89,6 +89,58 @@ export interface NamedFile {
   readonly note?: string;
 }
 
+/** Spec 022 D4: why a re-keyed test file had no loaded list to read. */
+export type NoListReason =
+  | "never recorded"
+  | "coverage off"
+  | "isolate: false"
+  | "incomplete run"
+  | "list lost";
+
+export interface NoListDetail {
+  readonly reason: NoListReason;
+  /** For `never recorded`: `ran before lists were recorded`, `edited before its first list`; else `null`. */
+  readonly detail: string | null;
+}
+
+/** Re-keyed test files without a list, for one reason. */
+export interface NoList extends NoListDetail {
+  readonly testFiles: number;
+  /** Their re-run seconds over the window's edits. */
+  seconds: number;
+}
+
+/** A source file whose edits re-ran test files that did not load it (PR #5108's table). */
+export interface NarrowingFile {
+  readonly path: RelativePath;
+  readonly avoidableSeconds: number;
+  /** Test files of the project with it on an import path. */
+  readonly importedBy: number;
+  /** Test files of the project whose newest list holds it. */
+  readonly loadedBy: number;
+}
+
+/**
+ * Spec 022 D4, one per project: what narrowing by loaded modules would save
+ * over the window's edits. `estimate` counts; `no lists` names `reason` and
+ * estimates nothing; `not Vitest`: its runner records no lists.
+ */
+export interface NarrowingEstimate {
+  readonly project: string;
+  readonly status: "estimate" | "no lists" | "not Vitest";
+  /** Which list each edit reads. */
+  readonly lists: string;
+  readonly reason?: NoListReason;
+  /** Recorded seconds the window's edits re-ran in the project. */
+  readonly rerunSeconds: number;
+  readonly avoidableSeconds: number;
+  /** `avoidableSeconds` over `rerunSeconds`; 0 with none. */
+  readonly share: number;
+  readonly files: readonly NarrowingFile[];
+  readonly moreFiles: number;
+  readonly withoutList: readonly NoList[];
+}
+
 /** What the report proposes; it starts nothing. */
 export type Proposal =
   /** No daemon listed this worktree's test files yet: the whole answer (015-116, P9). */
@@ -149,5 +201,7 @@ export interface ReachReport {
   readonly testFiles: readonly TestEntry[];
   readonly moreTestFiles: number;
   readonly named?: readonly NamedFile[];
+  /** Spec 022 D4: narrowing by loaded modules, per project; empty without history. */
+  readonly narrowing: readonly NarrowingEstimate[];
   readonly proposals: readonly Proposal[];
 }

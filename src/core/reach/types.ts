@@ -45,6 +45,23 @@ export interface ReachTestFile {
   /** Paths its runs read beyond its imports (`observed.`). */
   readonly runtimeRead: ReadonlySet<RelativePath>;
   readonly coverage: CoverageView;
+  /** Spec 022 D4: its stored loaded lists and the facts that tell why it has none. */
+  readonly loaded: LoadedFacts;
+}
+
+/** Spec 022 D1: one stored list of the modules a test file's worker loaded. */
+export interface LoadedList {
+  readonly at: EpochMs;
+  readonly paths: ReadonlySet<RelativePath>;
+}
+
+/** Spec 022 D4: a test file's lists, oldest first, and what its current key says when none applies. */
+export interface LoadedFacts {
+  readonly lists: readonly LoadedList[];
+  /** When the coverage record at its current key was stored; `null` with none. */
+  readonly recordAt: EpochMs | null;
+  /** Its result at its current key failed (a failed load stores a failed result). */
+  readonly failed: boolean;
 }
 
 /** One edit: a `watch` revision in which `HEAD` did not move, of any worktree. */
