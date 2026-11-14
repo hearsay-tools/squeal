@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.480";
+  if (true) return "0.1.482";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -104583,6 +104583,42 @@ init_git_layout();
 init_heartbeat();
 init_text();
 
+// src/cli/wait/presence.ts
+init_git_layout();
+init_heartbeat();
+function readBound(deadline, now) {
+  const left = deadline - now();
+  const final = left <= 0;
+  const busyTimeoutMs = final ? STATUS_BUSY_TIMEOUT_MS : Math.round(Math.max(50, Math.min(STATUS_BUSY_TIMEOUT_MS, left)));
+  return { busyTimeoutMs, final };
+}
+function presenceOf(root, worktreeId, ports) {
+  let watch2;
+  return (store) => {
+    if (watch2 === void 0) {
+      const commonDir = resolveCommonDir(root);
+      if (commonDir === null) throw new Error(`run wait: no git common dir for ${root}`);
+      watch2 = ports.watch(worktreeId, commonDir);
+    }
+    const worktree = store.worktrees.get(worktreeId);
+    const at2 = ports.now();
+    const stopping = stoppingOf2(store, worktree, at2);
+    const view = watch2.judge(worktree?.daemon ?? null, at2, stopping);
+    if (view.state !== "down") return { state: view.state };
+    const heartbeat = worktreeLiveness(worktree, at2);
+    const liveness = stopping === void 0 ? heartbeat : { ...heartbeat, stopping };
+    return { state: "down", reason: view.reason, liveness };
+  };
+}
+function presenceRead(ask2, presence, now) {
+  const { busyTimeoutMs } = readBound(ask2.deadline, now);
+  const read5 = withStatusStore(ask2.root, { busyTimeoutMs }, ({ store }) => presence(store));
+  return "available" in read5 ? { state: "unread" } : read5;
+}
+function stoppedText(daemon, command) {
+  return noDaemonText(daemon.liveness, daemon.reason, command);
+}
+
 // src/cli/wait/reads.ts
 init_check_groups();
 init_policy2();
@@ -104625,42 +104661,6 @@ function laneFiles2(store, worktreeId, lane) {
   const root = store.worktrees.get(worktreeId)?.root;
   const isSlow = root === void 0 ? () => false : slowView(readPolicy(root)).isSlow;
   return store.testFileKeys.list(worktreeId).map((row2) => row2.testFile).filter((ref3) => isSlow(ref3) === (lane === "slow"));
-}
-
-// src/cli/wait/presence.ts
-init_git_layout();
-init_heartbeat();
-function readBound(deadline, now) {
-  const left = deadline - now();
-  const final = left <= 0;
-  const busyTimeoutMs = final ? STATUS_BUSY_TIMEOUT_MS : Math.round(Math.max(50, Math.min(STATUS_BUSY_TIMEOUT_MS, left)));
-  return { busyTimeoutMs, final };
-}
-function presenceOf(root, worktreeId, ports) {
-  let watch2;
-  return (store) => {
-    if (watch2 === void 0) {
-      const commonDir = resolveCommonDir(root);
-      if (commonDir === null) throw new Error(`run wait: no git common dir for ${root}`);
-      watch2 = ports.watch(worktreeId, commonDir);
-    }
-    const worktree = store.worktrees.get(worktreeId);
-    const at2 = ports.now();
-    const stopping = stoppingOf2(store, worktree, at2);
-    const view = watch2.judge(worktree?.daemon ?? null, at2, stopping);
-    if (view.state !== "down") return { state: view.state };
-    const heartbeat = worktreeLiveness(worktree, at2);
-    const liveness = stopping === void 0 ? heartbeat : { ...heartbeat, stopping };
-    return { state: "down", reason: view.reason, liveness };
-  };
-}
-function presenceRead(ask2, presence, now) {
-  const { busyTimeoutMs } = readBound(ask2.deadline, now);
-  const read5 = withStatusStore(ask2.root, { busyTimeoutMs }, ({ store }) => presence(store));
-  return "available" in read5 ? { state: "unread" } : read5;
-}
-function stoppedText(daemon, command) {
-  return noDaemonText(daemon.liveness, daemon.reason, command);
 }
 
 // src/cli/wait/covered.ts
@@ -104805,17 +104805,6 @@ function ownOf(root, files5) {
   const view = groupView(readPolicy(root));
   return (ref3) => view.of(ref3).name === files5.group;
 }
-function inStore(root, read5, busyTimeoutMs = 1e3) {
-  const commonDir = resolveCommonDir(root);
-  if (commonDir === null) return null;
-  const store = openStore(commonDir, { create: false, busyTimeoutMs });
-  if (isStoreOpenFailure(store)) return null;
-  try {
-    return read5(store);
-  } finally {
-    store.close();
-  }
-}
 var UNAVAILABLE_LEAD = "status unavailable, ";
 function unavailableText(unavailable4) {
   const { message: message3 } = unavailable4;
@@ -104864,27 +104853,41 @@ function countsIn(store, policy, id, tools2) {
   return counts;
 }
 
+// src/cli/wait/beside.ts
+function readBeside(root, busyTimeoutMs, read5) {
+  const result = withStatusStore(root, { busyTimeoutMs }, ({ store }) => ({ read: read5(store) }));
+  return "available" in result ? { unread: unavailableText(result) } : result;
+}
+function besideBound(deadline, now = Date.now) {
+  return readBound(deadline, now).busyTimeoutMs;
+}
+function notReadText(what, unread) {
+  return `${what} was not read (${unread})`;
+}
+
 // src/cli/group-pending.ts
 var HEARTBEAT_BUSY_MS = 100;
 function heartbeatSilence(root, now = Date.now()) {
-  try {
-    const daemon = inStore(
-      root,
-      (store) => store.worktrees.get(worktreeIdFor(root))?.daemon,
-      HEARTBEAT_BUSY_MS
-    );
-    return daemon === void 0 || daemon === null ? null : heartbeatLateBy(daemon, now);
-  } catch {
-    return null;
-  }
+  const read5 = readBeside(
+    root,
+    HEARTBEAT_BUSY_MS,
+    (store) => store.worktrees.get(worktreeIdFor(root))?.daemon
+  );
+  if ("unread" in read5) return { unread: read5.unread };
+  const daemon = read5.read;
+  return daemon === void 0 || daemon === null ? null : heartbeatLateBy(daemon, now);
 }
 function holderText(holder, silentMs) {
   const main2 = [];
-  if (silentMs !== null) main2.push(`has sent no heartbeat for ${age2(silentMs)}`);
+  const silence = typeof silentMs === "number" ? silentMs : null;
+  if (silence !== null) main2.push(`has sent no heartbeat for ${age2(silence)}`);
   if (holder?.kind === "unanswered")
     main2.push(`has not read the request for ${age2(holder.heldMs)}`);
   if (holder?.step) main2.push(`has been ${holder.step.operation} for ${age2(holder.step.heldMs)}`);
   const parts3 = main2.length === 0 ? [] : [`the daemon's main thread ${andList(main2)}`];
+  if (silentMs !== null && typeof silentMs === "object") {
+    parts3.unshift(notReadText("the daemon's heartbeat", silentMs.unread));
+  }
   const held3 = holder === void 0 || holder === null ? null : heldText(holder);
   if (held3 !== null) parts3.push(held3);
   if (parts3.length > 0) return parts3.join("; ");
@@ -105786,13 +105789,14 @@ ${USAGE9}`);
     return 1;
   }
   const { checkpoint } = state;
+  const bound = deadline ?? Number.POSITIVE_INFINITY;
   const { files: files5 } = requestFiles(
-    { root, coveredId: state.coveredId, deadline: deadline ?? Number.POSITIVE_INFINITY },
+    { root, coveredId: state.coveredId, deadline: bound },
     { kind: "lane", lane: checkpoint.lane ?? null }
   );
-  const joined2 = joinedCheckpoint(root, checkpoint, state.owner);
+  const joined2 = joinedCheckpoint(root, checkpoint, state.owner, bound);
   const named4 = `Checkpoint ${checkpoint.id}${laneText2(checkpoint, lane)}`;
-  const started2 = `${named4} started at revision ${checkpoint.revision}: ${filesText3(root, checkpoint, files5)}${joinedText(joined2)}
+  const started2 = `${named4} started at revision ${checkpoint.revision}: ${filesText3(root, checkpoint, files5, bound)}${joinedText(joined2)}
 `;
   if (deadline === null) {
     io.stdout(started2);
@@ -105812,7 +105816,7 @@ ${USAGE9}`);
   });
   const now = io.now ?? Date.now;
   const command = statusCommand(io.env ?? process.env);
-  const [line, code] = checkpointVerdictLine(root, checkpoint, outcome2, joined2, command);
+  const [line, code] = checkpointVerdictLine(root, checkpoint, outcome2, joined2, command, deadline);
   const status3 = readStatus(root, { now });
   const gap = outcome2.kind === "abandoned" || code === 3 ? gapText2(status3) : "";
   io.stdout(`${named4} ${line}${gap}
@@ -105837,7 +105841,7 @@ function takeAllWait(args2) {
   if (at2 === -1 || /^\d+$/.test(args2[at2 + 1] ?? "")) return takeWait(args2);
   return { waitMs: Number.POSITIVE_INFINITY, rest: args2.filter((_, i3) => i3 !== at2) };
 }
-function checkpointVerdictLine(root, checkpoint, outcome2, joined2, command) {
+function checkpointVerdictLine(root, checkpoint, outcome2, joined2, command, deadline = Number.POSITIVE_INFINITY) {
   const none3 = (why2) => [`has no verdict: ${why2}`, 3];
   switch (outcome2.kind) {
     case "on-hold":
@@ -105851,7 +105855,7 @@ function checkpointVerdictLine(root, checkpoint, outcome2, joined2, command) {
       );
     case "stopped":
       return none3(
-        `the daemon stopped before it ended (${stoppedText(outcome2.daemon, command)})${owedText(root, checkpoint)}`
+        `the daemon stopped before it ended (${stoppedText(outcome2.daemon, command)})${owedText(root, checkpoint, deadline)}`
       );
     // Row 011-327: the store did not open, or was busy at the deadline's read.
     case "unopened":
@@ -105871,9 +105875,9 @@ function checkpointVerdictLine(root, checkpoint, outcome2, joined2, command) {
       const why2 = noVerdictText(verdict);
       if (why2 !== null) return none3(why2);
       const files5 = plural(verdict.testFiles, "test file");
-      const owner2 = joined2 === null ? checkpoint : joined2.record;
+      const owner2 = joined2 === null ? checkpoint : "unread" in joined2 ? null : joined2.record;
       const ran = owner2 === null ? 0 : Math.min(owner2.testFiles.length, verdict.testFiles);
-      const by = joined2 === null ? "run now" : `run by the ${joined2.what} checkpoint ${joined2.id} it joined`;
+      const by = joined2 === null || "unread" in joined2 ? "run now" : `run by the ${joined2.what} checkpoint ${joined2.id} it joined`;
       const counts = owner2 === null ? files5 : `${files5}, ${verdict.testFiles - ran} already current, ${ran} ${by}`;
       return [
         `completed at revision ${verdict.revision}: ${failuresText(verdict.failures)}; ${counts}`,
@@ -105897,26 +105901,32 @@ function recordedOf(outcome2) {
   }
   return "the daemon stopped before recording the checkpoint";
 }
-function filesText3(root, checkpoint, files5) {
+function filesText3(root, checkpoint, files5, deadline) {
   const toRun2 = plural(checkpoint.testFiles.length, "test file");
-  const current2 = inStore(root, (store) => {
+  const current2 = readBeside(root, besideBound(deadline), (store) => {
     const requested = new Set(checkpoint.testFiles.map(testFileId));
     const listed9 = checkpointFiles(store, checkpoint.worktreeId, files5) ?? store.testFileKeys.list(checkpoint.worktreeId).map((row2) => row2.testFile);
     const rest2 = listed9.filter((file) => !requested.has(testFileId(file)));
     return readClasses(store, checkpoint.worktreeId, rest2).byClass.current;
   });
-  return `${toRun2} to run${current2 === null ? "" : `, ${current2} already current`}`;
+  if ("unread" in current2) {
+    return `${toRun2} to run, ${notReadText("the count already current", current2.unread)}`;
+  }
+  return `${toRun2} to run, ${current2.read} already current`;
 }
-function owedText(root, checkpoint) {
-  const owed = inStore(
+function owedText(root, checkpoint, deadline) {
+  const owed = readBeside(
     root,
+    besideBound(deadline),
     (store) => openCheckpoint2(store, checkpoint.worktreeId)?.owed?.ids ?? []
   );
-  return owed?.includes(checkpoint.id) === true ? "; the next daemon resumes it, and `run --all --wait` then waits for it" : "";
+  if ("unread" in owed)
+    return `; ${notReadText("whether the next daemon resumes it", owed.unread)}`;
+  return owed.read.includes(checkpoint.id) ? "; the next daemon resumes it, and `run --all --wait` then waits for it" : "";
 }
-function joinedCheckpoint(root, checkpoint, owner2) {
+function joinedCheckpoint(root, checkpoint, owner2, deadline) {
   if (owner2 === void 0 || owner2 === checkpoint.id) return null;
-  return inStore(root, (store) => {
+  const joined2 = readBeside(root, besideBound(deadline), (store) => {
     const record2 = store.checkpoints.get(owner2);
     const open7 = openCheckpoint2(store, checkpoint.worktreeId);
     return {
@@ -105926,9 +105936,14 @@ function joinedCheckpoint(root, checkpoint, owner2) {
       what: record2?.kind === "baseline" ? "baseline" : "`run --all`"
     };
   });
+  return "unread" in joined2 ? { id: owner2, unread: joined2.unread } : joined2.read;
 }
 function joinedText(joined2) {
   if (joined2 === null) return "";
+  if ("unread" in joined2) {
+    const progress2 = notReadText("whose progress", joined2.unread);
+    return `, joining the checkpoint ${joined2.id} already running them, ${progress2}`;
+  }
   const { id, open: open7, what } = joined2;
   if (open7 === null) {
     return `, joining the ${what} checkpoint ${id} already running them; both had ended when this command read them`;
