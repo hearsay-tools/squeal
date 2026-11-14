@@ -7,7 +7,7 @@ import { findWorktreeRoot } from "../../fs/git-layout.js";
 import { readObjectFormat } from "../../hash/git-index.js";
 import { createDeclaredInputs } from "../../keys/closure.js";
 import { testFileId } from "../../keys/reverse-index.js";
-import type { HostLoad } from "../../retry/load.js";
+import { type HostLoad, hostLoad } from "../../retry/load.js";
 import type { AbsolutePath, RelativePath } from "../../types/common.js";
 import type { TestFileRef } from "../../types/keys.js";
 import type { PolicyInputs } from "../../types/policy.js";
@@ -229,7 +229,9 @@ export async function collectEvidence(
     // Review 0.1.432 B2: the stores and the parts first, so the print names only what runs.
     const known = await storedOf(picked, options);
     // D18: the runners in the order they start, which the print follows (D18.4); no closure read.
-    const order = orderRuns(picked, known, { durations, tierSize: policy.runner.tierSize });
+    // Row 020-57: the host's load, read once, scales the estimate above one per CPU.
+    const load = (options.hostLoad ?? hostLoad)();
+    const order = orderRuns(picked, known, { durations, tierSize: policy.runner.tierSize, load });
     const inOrder = order.runs.map((run) => run.pick);
     await tellSelection(options.selected, inOrder, changed, { ...options, tally, known });
     // #193: each project's files with an incomplete closure, once, scoped to this selection.
