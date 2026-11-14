@@ -39,3 +39,16 @@ Report in your notes: `groupRequest` also serves `run --slow` (`requestSlowSuite
 Owns: the start rules of `groupRequest` and `narrowRequest`, their tests, the expectations of existing tests that took a request before any pass (name each in the notes).
 
 Done when: the row's done-when holds; the probe's in-process order gives the edit's revision; lint and typecheck pass; affected results through `squeal status --wait 60000 <paths>`. Notes in `tasks/011-335/notes.md`.
+
+## R1: review of cand/0.1.481
+
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.481` at `e0b32db36e9ee4103367f5c7b92ea9f9a1c7f931`; range `a6225adda..e0b32db36`: three commits of worker 99f00902 (row 011-324 `a91ad9468`, row 011-335 `a757af2b1`, notes `ca7297f4a`), cherry-picked, then the 0.1.481 bundles. Read: board rows 011-324 and 011-335, `research/request-intake.md` (difference 3), `research/group-wait-edits.md`, `tasks/011-324/notes.md`, `tasks/011-335/notes.md`, this file's W1 and part 2. Candidate CI: run 43586106691.
+
+Check, each as proven, plausible or unverified:
+
+1. 011-324: while no dependencies are installed, and after a reinstall, `squeal run <group>` prints the reason and not "the group has none or all are current"; exit codes are unchanged with and without `--wait`; the new optional `installWait` on `RequestTaken` and `SlowSuiteRequest` is set only by the install-wait answer; an older CLI that ignores it prints and exits as before. The intake change is one added `reason` parameter of `InstallWaitRule.stage` and one argument in `#stage`: nothing else in the intake moved.
+2. 011-335: `groupRequest` and `narrowRequest` are taken only after a reconciliation pass that started after the request was delivered, as `run --all` is (row 011-198); the research probe's in-process order (an edit, then at once the request, the file current before the edit) now gives the edit's revision. Who else now waits for a pass: `run --slow`, a lint group's release, Stop's waiting entry (the notes). Say whether any of them can now wait where a user did not before, how long at most, and whether a `NO_PASS` there is reachable in normal use (a daemon that closes, a pass that fails).
+3. The notes' `NO_PASS` table (exit codes per command): the CLI files are unchanged; judge whether any exit code or message a user meets is now wrong, as opposed to worded loosely (the wording points went to coordinator cdd216e5, who owns those files).
+4. No key change: `test/keys/key-format.test.ts` passes with no version raise; `git diff a6225adda..e0b32db36 -- src/cli` touches only `requestedText` in `src/cli/run-group.ts`.
+
+Host policy: no local full suite, no `squeal run --all`, no `pnpm run build`; targeted runs with `env -u PLUGIN_ROOT -u PLUGIN_DATA`, a small `--maxWorkers` and a longer `--hookTimeout`; record any load timeout with its retry. Write `reviews/0.1.481.md` and commit it on your branch.
