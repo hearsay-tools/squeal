@@ -90,8 +90,11 @@ describe("squeal code --base: a setup file change (row 020-57)", () => {
       expect(ran.before).toContain(
         "squeal code: every Vitest test file depends on global-setup.ts, so all 2 of them are selected; the whole run's time is unknown: no stored duration",
       );
-      expect(ran.before).toContain(
-        "squeal code: no test Squeal runs loads global-setup.ts: no Vitest or node:test project lists it, and no listed test file imports it. Its 1 changed function will read incomplete (no-loader). To measure it, give it to a runner (a nodeTest entry, with prepare when it needs a build); to skip its coverage, name it in coverage.exclude at the base.",
+      // The line as `code-gate-prerun.test.ts` pins it; matched here without its runner hint.
+      expect(ran.before).toContainEqual(
+        expect.stringMatching(
+          /^squeal code: no test Squeal runs loads global-setup\.ts: .* Its 1 changed function will read incomplete \(no-loader\)\. /,
+        ),
       );
       expect(ran.stdout).toMatch(/^Code gate: incomplete\./);
       expect(ran.code).toBe(3);
