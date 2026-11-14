@@ -1,13 +1,13 @@
 import { spawnSync } from "node:child_process";
 import { realpathSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { readTurn } from "../../../src/core/delivery/turn.js";
 import { worktreeIdFor } from "../../../src/core/fs/git-layout.js";
 import { formatCheck } from "../../../src/core/state/check-name.js";
 import type { ConsumerRecord } from "../../../src/core/types/store-records.js";
 import type { ScriptedStep } from "../../fixtures/opencode/scripted-provider.js";
 import { type OpenCodeLive, type OpenCodeRun, runOpenCode } from "../../helpers/opencode.js";
-import { awaitGroups, groupsRunning } from "../../helpers/process-groups.js";
+import { awaitGroups, detachedLeaders, named, StillAlive } from "../../helpers/process-groups.js";
 import type { FakeRepo } from "../../status/helpers.js";
 import { tempDir } from "../../store/helpers.js";
 import { liveSocket, quietCli, runtimeDir } from "../bundle-helpers.js";
@@ -82,7 +82,7 @@ export async function squealOpenCode(options: SquealRunOptions): Promise<SquealR
       plugins: [options.plugin ?? pluginShim(options.dist)],
       env,
       ...(options.timeoutMs === undefined ? {} : { timeoutMs: options.timeoutMs }),
-      settle: () => awaitBridges(options.dist),
+      settle: (owned) => awaitBridges(options.dist, owned),
       setup: async (cwd) => {
         const r = squealRepo(repoAt(cwd));
         r.apply(r.pass());
@@ -155,20 +155,38 @@ export function bridgesRunning(dist: string, file: string): number[] {
 const BRIDGES_LEAVE_MS = 30_000;
 
 /**
- * Waits for the bridges the plugin from `dist` started (`<dist>/hooks/*.mjs`) to end, kills what
- * is left after `graceMs`, and then fails naming it. `callBridge` starts each with `detached:
- * true`, in a process group of its own, so the end of OpenCode's group misses them: OpenCode's
- * SIGTERM runs `dispose`, whose `end` bridge opens the store under the project while the run's
- * folder is removed (row 011-336, `research/enotempty-cleanup.md` finding 3). Each test file
- * builds its own `dist` and runs one OpenCode at a time, so what matches is this run's.
+ * Waits for this run's bridges from `dist` to end, kills what is left after `graceMs`, and then
+ * fails naming it; a bridge still alive after that kill fails it too (`StillAlive`).
+ * `callBridge` starts each bridge with `detached: true`, in a process group of its own, so the
+ * end of OpenCode's group misses them: OpenCode's SIGTERM runs `dispose`, whose `end` bridge
+ * opens the store under the project while the run's folder is removed (row 011-336,
+ * `research/enotempty-cleanup.md` finding 3). A bridge is this run's when it is Node running a
+ * hook entry of `dist` (`<dist>/hooks/<name>.mjs`, its last argument), leads its own group and
+ * session, and has the run's private `owned.home` as its HOME, which OpenCode passes to what it
+ * starts; any other process is never waited for or signalled (review 011-336 B1). Linux only:
+ * elsewhere nothing is identified and nothing waited for.
  */
-export async function awaitBridges(dist: string, graceMs = BRIDGES_LEAVE_MS): Promise<void> {
-  const hooks = [...new Set([dist, realpathSync(dist)])].map((dir) => `${join(dir, "hooks")}/`);
-  const groups = groupsRunning((args) => hooks.some((prefix) => args.includes(prefix)));
-  const killed = await awaitGroups(groups, graceMs);
-  if (killed.length === 0) return;
-  const named = killed.map(({ pid, args }) => `${pid} ${args}`).join("; ");
-  throw new Error(
-    `bridges from ${dist} still ran ${graceMs} ms after OpenCode ended; killed: ${named}`,
+export async function awaitBridges(
+  dist: string,
+  owned: { readonly home: string },
+  graceMs = BRIDGES_LEAVE_MS,
+): Promise<void> {
+  const hooks = new Set([dist, realpathSync(dist)].map((dir) => join(dir, "hooks")));
+  const entry = (argv: readonly string[]) => {
+    const last = argv.at(-1);
+    return argv.length > 1 && last?.endsWith(".mjs") === true && hooks.has(dirname(last));
+  };
+  const bridges = detachedLeaders(
+    entry,
+    ({ exe, env }) => /^node(js)?$/.test(basename(exe)) && env.get("HOME") === owned.home,
   );
+  const { killed, alive } = await awaitGroups(
+    bridges.map(({ pgid }) => pgid),
+    { graceMs },
+  );
+  if (alive.length > 0) throw new StillAlive(`bridges from ${dist}`, alive);
+  if (killed.length > 0)
+    throw new Error(
+      `bridges from ${dist} still ran ${graceMs} ms after OpenCode ended; killed: ${named(killed)}`,
+    );
 }
