@@ -14,12 +14,12 @@ import { LANE_FLAGS, laneText, runLanes } from "./run-lanes.js";
 import { runSlowCommand } from "./run-slow.js";
 import { statusCommand } from "./status-command.js";
 import { failuresText, gapText, noVerdictText, readClasses, verdictCode } from "./verdict.js";
+import { besideBound, notReadText, readBeside } from "./wait/beside.js";
 import { checkpointFiles, requestFiles } from "./wait/covered.js";
 import type { RequestOutcome } from "./wait/decide.js";
 import { stoppedText } from "./wait/presence.js";
 import { openCheckpoint } from "./wait/progress.js";
 import type { CheckpointFiles } from "./wait/reads.js";
-import { inStore } from "./wait/reads.js";
 import { askWithin } from "./wait/socket.js";
 import type { CheckpointOutcome } from "./wait/table.js";
 import { runWait, untilTaken } from "./wait/wait.js";
@@ -107,14 +107,15 @@ export async function runCommand(
     return 1;
   }
   const { checkpoint } = state;
+  const bound = deadline ?? Number.POSITIVE_INFINITY;
   // Row 011-328: the request's files, read once from its record, for the start line and the wait.
   const { files } = requestFiles(
-    { root, coveredId: state.coveredId, deadline: deadline ?? Number.POSITIVE_INFINITY },
+    { root, coveredId: state.coveredId, deadline: bound },
     { kind: "lane", lane: checkpoint.lane ?? null },
   );
-  const joined = joinedCheckpoint(root, checkpoint, state.owner);
+  const joined = joinedCheckpoint(root, checkpoint, state.owner, bound);
   const named = `Checkpoint ${checkpoint.id}${laneText(checkpoint, lane)}`;
-  const started = `${named} started at revision ${checkpoint.revision}: ${filesText(root, checkpoint, files)}${joinedText(joined)}\n`;
+  const started = `${named} started at revision ${checkpoint.revision}: ${filesText(root, checkpoint, files, bound)}${joinedText(joined)}\n`;
   if (deadline === null) {
     io.stdout(started);
     return 0;
@@ -134,7 +135,7 @@ export async function runCommand(
   });
   const now = io.now ?? Date.now;
   const command = statusCommand(io.env ?? process.env);
-  const [line, code] = checkpointVerdictLine(root, checkpoint, outcome, joined, command);
+  const [line, code] = checkpointVerdictLine(root, checkpoint, outcome, joined, command, deadline);
   const status = readStatus(root, { now });
   // Task 001-403: an abandoned or incomplete checkpoint names the file it lacks and why.
   const gap = outcome.kind === "abandoned" || code === 3 ? gapText(status) : "";
@@ -178,14 +179,16 @@ function takeAllWait(args: readonly string[]): ReturnType<typeof takeWait> {
 /**
  * The verdict line after `Checkpoint <id> `, and the exit code (spec 005 D1).
  * A request that joined a running checkpoint counts that one's work (review
- * wave-1, S2), or only the files when its record is gone.
+ * wave-1, S2), or only the files when its record is gone or was not read.
+ * `deadline` (epoch ms) bounds the stopped line's read (row 011-334).
  */
 export function checkpointVerdictLine(
   root: AbsolutePath,
   checkpoint: CheckpointRecord,
   outcome: CheckpointOutcome,
-  joined: Joined | null,
+  joined: Joined | JoinedUnread | null,
   command: string,
+  deadline: number = Number.POSITIVE_INFINITY,
 ): [string, 0 | 1 | 3] {
   const none = (why: string): [string, 3] => [`has no verdict: ${why}`, 3];
   switch (outcome.kind) {
@@ -200,7 +203,7 @@ export function checkpointVerdictLine(
       );
     case "stopped":
       return none(
-        `the daemon stopped before it ended (${stoppedText(outcome.daemon, command)})${owedText(root, checkpoint)}`,
+        `the daemon stopped before it ended (${stoppedText(outcome.daemon, command)})${owedText(root, checkpoint, deadline)}`,
       );
     // Row 011-327: the store did not open, or was busy at the deadline's read.
     case "unopened":
@@ -220,10 +223,12 @@ export function checkpointVerdictLine(
       const why = noVerdictText(verdict);
       if (why !== null) return none(why);
       const files = plural(verdict.testFiles, "test file");
-      const owner = joined === null ? checkpoint : joined.record;
+      const owner = joined === null ? checkpoint : "unread" in joined ? null : joined.record;
       const ran = owner === null ? 0 : Math.min(owner.testFiles.length, verdict.testFiles);
       const by =
-        joined === null ? "run now" : `run by the ${joined.what} checkpoint ${joined.id} it joined`;
+        joined === null || "unread" in joined
+          ? "run now"
+          : `run by the ${joined.what} checkpoint ${joined.id} it joined`;
       const counts =
         owner === null
           ? files
@@ -265,14 +270,17 @@ export function recordedOf(outcome: RequestOutcome<RunAllResponse>): Recorded | 
  * Spec 005 D1: `N test files to run, M already current`, never queued work
  * alone; the second count only when the store says it. Row 011-328: of the
  * wait's `files`, the request's covered files when its answer named them.
+ * Row 011-334: read within `deadline`'s bound (`besideBound`); a store not
+ * read says so in place of the second count.
  */
 function filesText(
   root: AbsolutePath,
   checkpoint: CheckpointRecord,
   files: CheckpointFiles,
+  deadline: number,
 ): string {
   const toRun = plural(checkpoint.testFiles.length, "test file");
-  const current = inStore(root, (store) => {
+  const current = readBeside(root, besideBound(deadline), (store) => {
     const requested = new Set(checkpoint.testFiles.map(testFileId));
     const listed =
       checkpointFiles(store, checkpoint.worktreeId, files) ??
@@ -280,16 +288,25 @@ function filesText(
     const rest = listed.filter((file) => !requested.has(testFileId(file)));
     return readClasses(store, checkpoint.worktreeId, rest).byClass.current;
   });
-  return `${toRun} to run${current === null ? "" : `, ${current} already current`}`;
+  if ("unread" in current) {
+    return `${toRun} to run, ${notReadText("the count already current", current.unread)}`;
+  }
+  return `${toRun} to run, ${current.read} already current`;
 }
 
-/** Task 001-219: a checkpoint the stopped daemon owes resumes in the next one. */
-function owedText(root: AbsolutePath, checkpoint: CheckpointRecord): string {
-  const owed = inStore(
+/**
+ * Task 001-219: a checkpoint the stopped daemon owes resumes in the next
+ * one. Row 011-334: read within `deadline`'s bound; a store not read says so.
+ */
+function owedText(root: AbsolutePath, checkpoint: CheckpointRecord, deadline: number): string {
+  const owed = readBeside(
     root,
+    besideBound(deadline),
     (store) => openCheckpoint(store, checkpoint.worktreeId)?.owed?.ids ?? [],
   );
-  return owed?.includes(checkpoint.id) === true
+  if ("unread" in owed)
+    return `; ${notReadText("whether the next daemon resumes it", owed.unread)}`;
+  return owed.read.includes(checkpoint.id)
     ? "; the next daemon resumes it, and `run --all --wait` then waits for it"
     : "";
 }
@@ -313,6 +330,13 @@ export interface Joined {
   readonly what: "baseline" | "`run --all`";
 }
 
+/** Row 011-334: the running checkpoint a request joined, whose record the store did not give. */
+export interface JoinedUnread {
+  readonly id: string;
+  /** Why the store was not read (`unavailableText`). */
+  readonly unread: string;
+}
+
 /**
  * Task 001-217: the checkpoint the request joined, the `owner` the daemon
  * named when it is not the request's own; `null` when it is, or when an
@@ -324,9 +348,11 @@ function joinedCheckpoint(
   root: AbsolutePath,
   checkpoint: CheckpointRecord,
   owner: string | undefined,
-): Joined | null {
+  deadline: number,
+): Joined | JoinedUnread | null {
   if (owner === undefined || owner === checkpoint.id) return null;
-  return inStore(root, (store): Joined => {
+  // Row 011-334: read within `deadline`'s bound; a store not read keeps the daemon's word, the join.
+  const joined = readBeside(root, besideBound(deadline), (store): Joined => {
     const record = store.checkpoints.get(owner);
     const open = openCheckpoint(store, checkpoint.worktreeId);
     return {
@@ -336,11 +362,16 @@ function joinedCheckpoint(
       what: record?.kind === "baseline" ? "baseline" : "`run --all`",
     };
   });
+  return "unread" in joined ? { id: owner, unread: joined.unread } : joined.read;
 }
 
 /** Task 001-217: says the request joined, and what that one has done. */
-function joinedText(joined: Joined | null): string {
+function joinedText(joined: Joined | JoinedUnread | null): string {
   if (joined === null) return "";
+  if ("unread" in joined) {
+    const progress = notReadText("whose progress", joined.unread);
+    return `, joining the checkpoint ${joined.id} already running them, ${progress}`;
+  }
   const { id, open, what } = joined;
   if (open === null) {
     return `, joining the ${what} checkpoint ${id} already running them; both had ended when this command read them`;

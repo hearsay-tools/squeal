@@ -22,8 +22,11 @@ import { closeFakeDaemons, fakeDaemon, lockStore } from "./fake-daemon.js";
 /*
  * Row 011-334 (review 0.1.474 N1): the reads beside the run waits
  * (`run.ts` `filesText`, `joinedCheckpoint`, `owedText`) meet a store a
- * second connection holds the write lock of. Pinned to today: each throws
- * "database is locked" out of the command.
+ * second connection holds the write lock of. Each reads with the run
+ * waits' busy-store rule and, past its bound, says the part was not read
+ * and why in place of the part, never "database is locked" out of the
+ * command. The command cannot reach the stopped line with the lock held (a
+ * locked store ends its wait unopened), so `owedText`'s row is the line's.
  */
 
 const A = "test/a.test.ts";
@@ -115,7 +118,7 @@ async function run(argv: string[], cwd: string) {
 }
 
 describe("the reads beside the run waits on a locked store (row 011-334)", () => {
-  it("filesText: run --all --wait throws before its wait (review 0.1.474 N1)", async () => {
+  it("filesText: run --all --wait says the count was not read, and its wait ends without a stack (review 0.1.474 N1)", async () => {
     const root = await lockedAtRequest((checkpoints) => {
       checkpoints.finish("completed");
       return {
@@ -123,20 +126,34 @@ describe("the reads beside the run waits on a locked store (row 011-334)", () =>
         owner: "c1",
       };
     });
-    await expect(run(["run", "--all", "--wait", "300"], root)).rejects.toThrow(
-      "database is locked",
+    const { code, stdout } = await run(["run", "--all", "--wait", "300"], root);
+    const [verdict, started] = stdout.split("\n");
+    expect(verdict).toMatch(line(`Checkpoint c1 has no verdict: ${BUSY}`));
+    expect(started).toMatch(
+      line(
+        `Checkpoint c1 started at revision 1: 1 test file to run, the count already current was not read (${BUSY})`,
+      ),
     );
+    expect(stdout).not.toContain("database is locked");
+    expect(code).toBe(3);
   });
 
-  it("joinedCheckpoint: run --all that joined a running checkpoint throws", async () => {
+  it("joinedCheckpoint: run --all that joined a running checkpoint names it, its progress not read", async () => {
     const root = await lockedAtRequest((checkpoints) => ({
       record: checkpoints.join("c1", "run-all", 1 as RevisionNumber, [ref]),
       owner: "c0",
     }));
-    await expect(run(["run", "--all"], root)).rejects.toThrow("database is locked");
+    const { code, stdout } = await run(["run", "--all"], root);
+    expect(stdout).toMatch(
+      line(
+        `Checkpoint c1 started at revision 1: 1 test file to run, the count already current was not read (${BUSY}), joining the checkpoint c0 already running them, whose progress was not read (${BUSY})`,
+      ),
+    );
+    expect(stdout.split("\n")).toHaveLength(2);
+    expect(code).toBe(0);
   });
 
-  it("owedText: the stopped line of a checkpoint the next daemon may owe throws", () => {
+  it("owedText: the stopped line says whether the next daemon resumes it was not read, within the deadline's bound", () => {
     const w = worktree();
     const checkpoint = w.checkpoints.join("c1", "run-all", 1 as RevisionNumber, [ref]);
     const progress = { id: "c1", kind: "run-all", revision: 1, startedAt: 1, done: 0, total: 1 };
@@ -144,15 +161,23 @@ describe("the reads beside the run waits on a locked store (row 011-334)", () =>
     w.store.meta.set(checkpointMetaKey(w.id), JSON.stringify({ ...progress, owed: due }));
     w.store.close();
     lockStore(w.repo.commonDir);
-    expect(() =>
-      checkpointVerdictLine(
-        w.repo.main,
-        checkpoint,
-        { kind: "stopped", daemon: STOPPED },
-        null,
-        "squeal",
+    const started = performance.now();
+    const [text, code] = checkpointVerdictLine(
+      w.repo.main,
+      checkpoint,
+      { kind: "stopped", daemon: STOPPED },
+      null,
+      "squeal",
+      Date.now() + 100,
+    );
+    // The read's bound is what is left of the deadline, not the status busy timeout's 1 s.
+    expect(performance.now() - started).toBeLessThan(1_000);
+    expect(text).toMatch(
+      line(
+        `has no verdict: the daemon stopped before it ended (no daemon has validated since 2026-11-13T21:00:00.000Z: the daemon stopped); whether the next daemon resumes it was not read (${BUSY})`,
       ),
-    ).toThrow("database is locked");
+    );
+    expect(code).toBe(3);
   });
 });
 
@@ -162,3 +187,13 @@ const STOPPED: DaemonDown = {
   reason: "stopped",
   liveness: { state: "down", since: Date.UTC(2026, 10, 13, 21) },
 };
+
+/** `withStatusStore`'s why for a store busy past its bound, as `unavailableText` gives it. */
+const BUSY =
+  "store busy, waited <ms> ms: another process holds the store's lock; run the command again once it is released";
+
+/** One whole line: `pattern` taken literally but for `<ms>`, a whole number. */
+function line(pattern: string): RegExp {
+  const source = pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replaceAll("<ms>", "\\d+");
+  return new RegExp(`^${source}$`, "m");
+}

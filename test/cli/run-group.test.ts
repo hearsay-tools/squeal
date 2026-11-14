@@ -224,7 +224,7 @@ describe("squeal run <group> (spec 019 D6)", () => {
     });
   });
 
-  // Review 0.1.409 B1: a store no one can read drops only the heartbeat detail.
+  // Review 0.1.409 B1: a store no one can read drops the heartbeat detail; row 011-334 says so in its place.
   it("has no verdict, in time and naming the holder, while the store is locked", async () => {
     const r = repo();
     r.daemon("stale", Date.now() - 111_000);
@@ -244,12 +244,11 @@ describe("squeal run <group> (spec 019 D6)", () => {
       },
     );
     const started = performance.now();
-    expect(await run(["run", "e2e", "--wait", "300"], r.root)).toEqual({
-      code: 3,
-      stdout:
-        "Group e2e has no verdict: the deadline passed before the daemon took request g1; it waits for the daemon's startup, which has run for 5 s. The request stays pending: wait again with squeal run e2e --wait.\n",
-      stderr: "",
-    });
+    const result = await run(["run", "e2e", "--wait", "300"], r.root);
     expect(performance.now() - started).toBeLessThan(1_500);
+    expect({ ...result, stdout: "" }).toEqual({ code: 3, stdout: "", stderr: "" });
+    expect(result.stdout).toMatch(
+      /^Group e2e has no verdict: the deadline passed before the daemon took request g1; the daemon's heartbeat was not read \(store busy, waited \d+ ms: another process holds the store's lock; run the command again once it is released\); it waits for the daemon's startup, which has run for 5 s\. The request stays pending: wait again with squeal run e2e --wait\.\n$/,
+    );
   });
 });
