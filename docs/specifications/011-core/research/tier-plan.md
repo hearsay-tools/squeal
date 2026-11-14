@@ -86,6 +86,8 @@ The defect count alone is small now. The card's value is a base for card 7 (the 
   - The 19 hand-built contexts outside selection are not this card's; narrowing their parameters is a later quality row.
 - **Key format.** Unchanged. The plan decides which files start, never a key. `test/keys/validity/` reaches `ledger.ts`, `queue.ts`, `claims.ts` and `promotions.ts` at run time, `tiers.ts` and `yields.ts` only through types: 011-346 and 011-347 re-read `compare.test.ts` and `reach.test.ts` and pass `test/keys/key-format.test.ts` without a version raise.
 
+**Amended 2026-11-14 (row 011-346, `reviews/0.1.507.md`; `status.md`):** the plan spans seven files; `TierPlan` adds `afterUnstarted` and `afterStart`; `Idle.wakeAt` is the chosen reason's own wake, not the earliest; `PlanAsks` has more asks (each a write or read the table must control); a slot is a grant ask of 1; the pump keeps reading `claims.waiting` and `capacity.refused()` beside `Idle` for the slow lanes; the quiet sleep counts from the plan's clock reading (review N2).
+
 ## Not in scope
 
 - What a running tier's yield decides, its events, timers and status record: card 7. Only its "starts sooner" check moves (decision 2).
