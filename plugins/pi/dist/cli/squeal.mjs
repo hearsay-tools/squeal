@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.478";
+  if (true) return "0.1.479";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -55780,6 +55780,19 @@ function idleSince(files5, was, recordedAt, now, activity) {
   for (const file of files5) idle2 = Math.max(idle2, activity.leftAt(file.testFile) ?? idle2);
   return idle2;
 }
+function readCoveredFiles(store, id) {
+  const conn = connection(store);
+  if (conn === null || !hasTable(conn)) return null;
+  const row2 = conn.get(`SELECT * FROM ${COVERED_FILES_TABLE} WHERE id = ?`, id);
+  if (row2 === null) return null;
+  return {
+    id,
+    worktreeId: String(row2.worktree_id),
+    revision: Number(row2.revision),
+    recordedAt: Number(row2.recorded_at),
+    files: parseFiles(row2.files)
+  };
+}
 function connection(store) {
   try {
     return connectionOf(store);
@@ -104561,7 +104574,6 @@ init_text();
 init_check_groups();
 init_policy2();
 init_git_layout();
-init_reverse_index();
 init_commit_entry();
 init_commit_news();
 init_moment();
@@ -104570,6 +104582,10 @@ init_source();
 init_slow();
 init_connection();
 init_open();
+
+// src/cli/wait/covered.ts
+init_reverse_index();
+init_covered_files();
 
 // src/cli/run-lanes.ts
 init_policy2();
@@ -104634,6 +104650,33 @@ function stoppedText(daemon, command) {
   return noDaemonText(daemon.liveness, daemon.reason, command);
 }
 
+// src/cli/wait/covered.ts
+function requestFiles(ask2, guess, now = Date.now) {
+  const all2 = guess.kind === "lane" && guess.lane === null;
+  const covered = all2 ? null : readCovered(ask2, now);
+  if (covered === null) return { files: guess, covered };
+  return { files: { kind: "list", files: covered.files.map((file) => file.testFile) }, covered };
+}
+function readCovered({ root, coveredId, deadline }, now) {
+  if (coveredId === void 0) return null;
+  const { busyTimeoutMs } = readBound(deadline, now);
+  const read5 = withStatusStore(
+    root,
+    { busyTimeoutMs },
+    ({ store }) => readCoveredFiles(store, coveredId)
+  );
+  return read5 !== null && "available" in read5 ? null : read5;
+}
+function inList(files5) {
+  const ids = new Set(files5.map(testFileId));
+  return (ref3) => ids.has(testFileId(ref3));
+}
+function checkpointFiles(store, worktreeId, files5) {
+  if (files5.kind === "lane") return laneFiles2(store, worktreeId, files5.lane);
+  const listed9 = inList(files5.files);
+  return store.testFileKeys.list(worktreeId).map((row2) => row2.testFile).filter(listed9);
+}
+
 // src/cli/wait/progress.ts
 init_scheduler();
 function checkpointEnd(store, id) {
@@ -104662,7 +104705,7 @@ function waitReads(ask2, ports) {
       const { id, worktreeId } = ask2.checkpoint;
       const presence = presenceOf(ask2.root, worktreeId, ports);
       return (store) => {
-        const lane = () => laneFiles2(opened2(ask2, store), worktreeId, ask2.files.lane);
+        const lane = () => checkpointFiles(opened2(ask2, store), worktreeId, ask2.files);
         return (field) => {
           switch (field) {
             case "late":
@@ -104745,10 +104788,7 @@ function unknownField2(ask2, field) {
   throw new Error(`run wait ${ask2.wait}: its reads have no field ${field}`);
 }
 function ownOf(root, files5) {
-  if (files5.kind === "list") {
-    const ids = new Set(files5.files.map(testFileId));
-    return (ref3) => ids.has(testFileId(ref3));
-  }
+  if (files5.kind === "list") return inList(files5.files);
   const view = groupView(readPolicy(root));
   return (ref3) => view.of(ref3).name === files5.group;
 }
@@ -105141,13 +105181,12 @@ function statusRequest(loop, requestId) {
 
 // src/cli/run-group-wait.ts
 async function waitForGroup(wait, io) {
-  const { root, socketPath, deadline, group } = wait;
-  const files5 = wait.files === void 0 ? { kind: "group", group } : { kind: "list", files: wait.files };
+  const { root, socketPath, deadline, files: files5 } = wait;
   const outcome2 = await runWait({ wait: "group", root, socketPath, deadline, files: files5 });
   const now = io.now ?? Date.now;
   const command = statusCommand(io.env ?? process.env);
   const [line, code] = groupVerdictLine(wait, outcome2, command);
-  const subject = wait.files === void 0 ? `Group ${wait.group}` : `Selected test files of group ${wait.group}`;
+  const subject = wait.narrow === void 0 ? `Group ${wait.group}` : `Selected test files of group ${wait.group}`;
   io.stdout(`${subject} ${line}
 ${wait.line}
 `);
@@ -105155,7 +105194,7 @@ ${wait.line}
   return code;
 }
 function groupVerdictLine(wait, outcome2, command) {
-  const narrow2 = wait.files !== void 0;
+  const narrow2 = wait.narrow !== void 0;
   const none3 = (why2) => [`${narrow2 ? "have" : "has"} no verdict: ${why2}`, 3];
   switch (outcome2.kind) {
     case "on-hold": {
@@ -105195,7 +105234,7 @@ function endedLine(wait, verdict, none3) {
   }
   const why2 = noVerdictText(verdict);
   if (why2 !== null) return none3(why2);
-  const unmatched2 = wait.unmatched ?? [];
+  const unmatched2 = wait.narrow?.unmatched ?? [];
   const nothing = unmatched2.length === 0 ? "" : `${unmatched2.join(", ")} ${unmatched2.length === 1 ? "selects" : "select"} no test file of any group`;
   const code = verdictCode(verdict);
   if (code === 0 && nothing !== "") return none3(nothing);
@@ -105245,7 +105284,13 @@ async function runNarrowCommand({ root, group, paths, waitMs }, io, usageError) 
     return waitMs === null ? 0 : 3;
   }
   if (taken3.narrow === void 0) return noVerdict(NARROW_NOT_SUPPORTED);
-  const { narrow: narrow2, requested } = taken3;
+  const { requested } = taken3;
+  const guess = { kind: "list", files: taken3.narrow.selected };
+  const { files: files5, covered } = requestFiles(
+    { root, coveredId: requested.coveredId, deadline },
+    guess
+  );
+  const narrow2 = recordedNarrow(taken3.narrow, covered);
   const command = statusCommand(io.env ?? process.env);
   const line = narrowText(group, requested, narrow2, command);
   if (waitMs === null) {
@@ -105267,11 +105312,23 @@ ${line}`
       queued: requested.queued,
       deadline,
       line,
-      files: narrow2.selected,
-      unmatched: narrow2.unmatched
+      files: files5,
+      narrow: { unmatched: narrow2.unmatched }
     },
     io
   );
+}
+function recordedNarrow(narrow2, covered) {
+  if (covered === null) return narrow2;
+  const { files: files5 } = covered;
+  return {
+    ...narrow2,
+    selected: files5.map((file) => file.testFile),
+    current: files5.filter((file) => file.state === "current").length,
+    notRun: files5.flatMap(
+      (file) => file.state === "not-queued" ? [{ testFile: file.testFile, reason: file.reason }] : []
+    )
+  };
 }
 function narrowText(group, requested, narrow2, command) {
   const { name: name3 } = group;
@@ -105495,7 +105552,12 @@ ${usage3}${GROUP_USAGE}`);
     io.stdout(line);
     return 0;
   }
-  return waitForGroup({ root, socketPath, group: name3, queued: state.queued, deadline, line }, io);
+  const guess = { kind: "group", group: name3 };
+  const { files: files5 } = requestFiles({ root, coveredId: state.coveredId, deadline }, guess);
+  return waitForGroup(
+    { root, socketPath, group: name3, queued: state.queued, deadline, line, files: files5 },
+    io
+  );
 }
 function requestedText2(group, { revision, queued }) {
   const { name: name3, after: after3 } = group;
@@ -105711,9 +105773,13 @@ ${USAGE9}`);
     return 1;
   }
   const { checkpoint } = state;
+  const { files: files5 } = requestFiles(
+    { root, coveredId: state.coveredId, deadline: deadline ?? Number.POSITIVE_INFINITY },
+    { kind: "lane", lane: checkpoint.lane ?? null }
+  );
   const joined2 = joinedCheckpoint(root, checkpoint, state.owner);
   const named4 = `Checkpoint ${checkpoint.id}${laneText2(checkpoint, lane)}`;
-  const started2 = `${named4} started at revision ${checkpoint.revision}: ${filesText3(root, checkpoint)}${joinedText(joined2)}
+  const started2 = `${named4} started at revision ${checkpoint.revision}: ${filesText3(root, checkpoint, files5)}${joinedText(joined2)}
 `;
   if (deadline === null) {
     io.stdout(started2);
@@ -105729,7 +105795,7 @@ ${USAGE9}`);
       worktreeId: checkpoint.worktreeId,
       revision: checkpoint.revision
     },
-    files: { kind: "lane", lane: checkpoint.lane ?? null }
+    files: files5
   });
   const now = io.now ?? Date.now;
   const command = statusCommand(io.env ?? process.env);
@@ -105808,7 +105874,8 @@ async function recorded(socketPath, first2, deadline) {
 }
 function recordedOf(outcome2) {
   if (outcome2.kind === "taken" && outcome2.answer.checkpoint !== null) {
-    return { checkpoint: outcome2.answer.checkpoint, owner: outcome2.answer.owner };
+    const { checkpoint, owner: owner2, coveredId } = outcome2.answer;
+    return { checkpoint, owner: owner2, coveredId };
   }
   if (outcome2.kind === "failed") return `run --all failed: ${outcome2.error}`;
   if (outcome2.kind === "pending") return null;
@@ -105817,11 +105884,11 @@ function recordedOf(outcome2) {
   }
   return "the daemon stopped before recording the checkpoint";
 }
-function filesText3(root, checkpoint) {
+function filesText3(root, checkpoint, files5) {
   const toRun2 = plural(checkpoint.testFiles.length, "test file");
   const current2 = inStore(root, (store) => {
     const requested = new Set(checkpoint.testFiles.map(testFileId));
-    const listed9 = laneFiles2(store, checkpoint.worktreeId, checkpoint.lane ?? null) ?? store.testFileKeys.list(checkpoint.worktreeId).map((row2) => row2.testFile);
+    const listed9 = checkpointFiles(store, checkpoint.worktreeId, files5) ?? store.testFileKeys.list(checkpoint.worktreeId).map((row2) => row2.testFile);
     const rest2 = listed9.filter((file) => !requested.has(testFileId(file)));
     return readClasses(store, checkpoint.worktreeId, rest2).byClass.current;
   });
