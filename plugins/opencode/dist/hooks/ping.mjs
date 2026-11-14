@@ -1909,7 +1909,7 @@ function primer(command = SQUEAL_COMMAND, coverage = DEFAULT_COVERAGE) {
   );
   let text = "";
   for (const arrival of arrivals) {
-    const sentences = (covers, naming, wait) => [
+    const sentences = (covers2, naming, wait) => [
       `${PRIMER_OPENING}${listed(names2, "and")} tests in the background${arrival} do not run ${listed(names2, "or")} to learn whether your edits broke something.`,
       ...groups2 === void 0 ? [] : [momentsSentence(command, naming, groups2)],
       waitSentence(command, naming, wait, quiet),
@@ -1917,7 +1917,7 @@ function primer(command = SQUEAL_COMMAND, coverage = DEFAULT_COVERAGE) {
       "Run tests yourself only when no daemon is validating, when results are unknown, or when the repository's own gate requires it.",
       retrySentence(command, naming),
       REVISION,
-      covers,
+      covers2,
       notCovered(coverage)
     ].join(" ");
     text = folded(sentences, coverage, most);
