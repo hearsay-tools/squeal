@@ -61,6 +61,11 @@ export interface LeftOutGroup {
   readonly selected: number;
   /** What adds it for one run. */
   readonly add: string;
+  /**
+   * Row 020-61: of its test files, the ones that ran because `--test`
+   * named them; not among `selected`. Absent when none did.
+   */
+  readonly tests?: number;
 }
 
 /** D14: what the collector gives the evaluator of the scope. */
@@ -202,11 +207,14 @@ export interface ScopeTally {
 
 /** A tally of `scope` over the runners' selections, in the order they are split. */
 export function tallyScope(scope: GateScope): ScopeTally {
-  const counts = new Map<string, { at: CheckMoment; files: number; selected: number }>();
+  const counts = new Map<
+    string,
+    { at: CheckMoment; files: number; selected: number; tests: number }
+  >();
   const count = (place: ReturnType<typeof placeFile>) => {
     let tally = counts.get(place.group);
     if (tally === undefined) {
-      tally = { at: place.at, files: 0, selected: 0 };
+      tally = { at: place.at, files: 0, selected: 0, tests: 0 };
       counts.set(place.group, tally);
     }
     return tally;
@@ -221,8 +229,11 @@ export function tallyScope(scope: GateScope): ScopeTally {
       const leftOut: LeftOutRef[] = [];
       for (const ref of chosen) {
         const place = placeFile(scope, runner, ref);
-        if (place.inScope || tests.has(ref.path)) run.push(ref);
-        else {
+        if (place.inScope) run.push(ref);
+        else if (tests.has(ref.path)) {
+          run.push(ref);
+          count(place).tests += 1;
+        } else {
           leftOut.push({ ref, group: place.group });
           count(place).selected += 1;
         }
@@ -239,6 +250,7 @@ export function tallyScope(scope: GateScope): ScopeTally {
           files: t.files,
           selected: t.selected,
           add: addGroup(name),
+          ...(t.tests === 0 ? {} : { tests: t.tests }),
         }));
       const byRunner = (f: LeftOutFile) => GATE_RUNNERS.indexOf(f.runner);
       const sorted = [...files].sort(

@@ -89,7 +89,7 @@ describe("collectEvidence: the scope by check group (spec 020 D14.2)", () => {
     ]);
     expect(named.scope?.files).toEqual([]);
     expect(named.scope?.leftOut).toEqual([
-      { name: "browser", at: "manual", files: 1, selected: 0, add: "--group browser" },
+      { name: "browser", at: "manual", files: 1, selected: 0, add: "--group browser", tests: 1 },
     ]);
   });
 });

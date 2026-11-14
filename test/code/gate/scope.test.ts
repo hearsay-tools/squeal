@@ -4,6 +4,7 @@ import {
   placeFile,
   readScope,
   resolveScope,
+  tallyScope,
 } from "../../../src/core/code/gate/scope.js";
 import { CHECK_RUNNERS } from "../../../src/core/daemon/check-groups.js";
 import type { CheckGroup } from "../../../src/core/types/check-groups.js";
@@ -138,5 +139,29 @@ describe("the gate's scope (spec 020 D14.1)", () => {
     expect(resolveScope(base, ["lint"])).toEqual({
       error: '--group lint: "lint" is a lint group, and the gate runs test groups only',
     });
+  });
+});
+
+describe("tallyScope: the left-out counts (spec 020 D14.3, row 020-61)", () => {
+  const ref = (path: string) => ({ project: "browser", path });
+  const listed = ["e2e/a.test.ts", "e2e/b.test.ts", "e2e/c.test.ts"].map(ref);
+
+  it("counts a --test file of a left-out group apart from the files it left out", () => {
+    const tally = tallyScope(scopeOf(policy([BROWSER])));
+    const chosen = [ref("e2e/a.test.ts"), ref("e2e/b.test.ts")];
+    const split = tally.split("vitest", listed, chosen, new Set(["e2e/a.test.ts"]));
+    expect(split.run.map((r) => r.path)).toEqual(["e2e/a.test.ts"]);
+    expect(split.leftOut.map((l) => l.ref.path)).toEqual(["e2e/b.test.ts"]);
+    expect(tally.evidence([]).leftOut).toEqual([
+      { name: "browser", at: "manual", files: 3, selected: 1, add: "--group browser", tests: 1 },
+    ]);
+  });
+
+  it("gives no tests count when no --test file is in the group", () => {
+    const tally = tallyScope(scopeOf(policy([BROWSER])));
+    tally.split("vitest", listed, [ref("e2e/a.test.ts")], new Set());
+    expect(tally.evidence([]).leftOut).toEqual([
+      { name: "browser", at: "manual", files: 3, selected: 1, add: "--group browser" },
+    ]);
   });
 });

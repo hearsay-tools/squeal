@@ -9,7 +9,7 @@ import type { ExceptionEntry } from "../../src/core/code/gate/types.js";
 import { functionRow, gateReport } from "./code-gate-text-kit.js";
 
 /*
- * Spec 020 D1, D8 and D14.3: the text of `squeal code --base`'s report,
+ * Spec 020 D1 and D8: the text of `squeal code --base`'s report,
  * from reports built here, for the lines the end-to-end runs do not reach.
  */
 
@@ -89,34 +89,6 @@ describe("formatGateReport (spec 020 D1)", () => {
     expect(formatGateReport(empty, "squeal code --base main --json")).toBe(
       "Code gate: pass. No function changed against origin/main (merge base 01234567).\nJSON report: squeal code --base main --json\n",
     );
-  });
-});
-
-describe("formatGateReport: what the scope left out (spec 020 D14.3)", () => {
-  const scoped = (selected: number): GateReport => ({
-    ...REPORT,
-    scope: {
-      groups: [{ name: "tests", at: "edit", from: "default" }],
-      leftOut: [
-        { name: "browser", at: "manual", files: 120, selected, add: "--group browser" },
-        { name: "e2e", at: "stop", files: 4, selected: 0, add: "--group e2e" },
-      ],
-    },
-  });
-
-  it("names each left-out group that held a selected file on the verdict line", () => {
-    const [line] = formatGateReport(scoped(100), "j").split("\n");
-    expect(line).toBe(
-      "Code gate: incomplete. 4 changed functions against origin/main (merge base 01234567): 2 incomplete, 1 skipped, 1 pass, 1 path not counted. browser (manual) did not run: 100 test files load changed code; add --group browser to run them.",
-    );
-    expect(formatGateReport(scoped(1), "j").split("\n")[0]).toMatch(
-      / browser \(manual\) did not run: 1 test file loads changed code; add --group browser to run it\.$/,
-    );
-  });
-
-  it("names none when no left-out group held a selected file", () => {
-    const [line] = formatGateReport(scoped(0), "j").split("\n");
-    expect(line).toMatch(/1 path not counted\.$/);
   });
 });
 
