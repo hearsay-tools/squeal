@@ -93,8 +93,10 @@ describe("each decision reaches the alarm (risk 4)", SLOW, () => {
     expect(differing).toEqual([
       "a touch of one file's input (013-01 test 11, T1)",
       "the same touch on the run once more (013-01 test 11, T2)",
+      // Row 011-321: the read that held still is withheld beside the touched one.
+      "observed reads that changed or were touched during the run",
     ]);
-    expect(failures(result, release())).toHaveLength(2);
+    expect(failures(result, release())).toHaveLength(3);
   });
 
   // Row 011-321 (review 0.1.453-r2 N1): the check row 011-319 moved out of `observed.ts`.
