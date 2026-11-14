@@ -7,6 +7,7 @@ import {
   readdirSync,
   readFileSync,
   realpathSync,
+  renameSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -16,6 +17,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import type { TestFileRef } from "../../../src/core/types/keys.js";
 import type { NodeTestProject } from "../../../src/core/types/policy.js";
 import { type NodeTestRunOptions, runNodeTest } from "../../../src/runners/node-test/run/run.js";
+import { removeTree } from "../../helpers/remove-tree.js";
 
 /**
  * Live runs of `runNodeTest` against the node:test fixtures under the Node
@@ -252,11 +254,14 @@ describe("runNodeTest", () => {
         if (waited > 20_000) throw new Error("the busy loop never started");
         await new Promise((r) => setTimeout(r, 50));
       }
-      // A log line written during the delete makes `rmdir` meet a new file (ENOTEMPTY, Node 22 CI,
-      // candidate 0.1.461): retry until the run stops writing.
-      rmSync(checkout, { recursive: true, maxRetries: 20, retryDelay: 50 });
+      // The checkout goes in one step. A delete raced the run's own processes, which still add
+      // files to the log folder as they start (ENOTEMPTY on Node 22 CI; row 011-336,
+      // `research/enotempty-cleanup.md` finding 2); renamed away, they write outside it.
+      const gone = join(logs, randomUUID());
+      renameSync(checkout, gone);
       stop.abort();
       const { report } = await running;
+      removeTree(gone);
       expect(report).toMatchObject({ end: "crashed", completedFiles: [], results: [] });
       expect(report.failure).toContain(logDir);
       expect(existsSync(checkout)).toBe(false);
