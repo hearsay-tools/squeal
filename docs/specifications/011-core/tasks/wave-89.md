@@ -25,3 +25,17 @@ Owns: the intake lines above; `run-slow.ts`; `run-group.ts` except `requestedTex
 Leave alone: every other `src/core` line; `status-wait*.ts`, `status-paths.ts`; `src/cli/code*.ts`; `KEY_FORMAT_VERSION`.
 
 Done when: the four changes hold with one command row each; no other line or exit code changes; lint and typecheck pass; `test/keys/key-format.test.ts` and `test/version-sensitive.test.ts` pass with no raise; affected results through `squeal status --wait 60000 <paths>`. Notes in `tasks/011-337/notes.md` with each new line, so the coordinator can amend spec 005 D1 and spec 019 D6.
+
+## R1: review of cand/0.1.486
+
+Use /reviewer (codex gpt-6.1-sol high). Candidate CI: run 43597872117. Pinned to `cand/0.1.486` at `214d1f0f249004486b8aaf13551e03899b627ef6`; range `5f7998206..214d1f0f2`: six commits of worker e3df2f70, cherry-picked (`063ded510` tests pinned to today's output, `b62421e2c` the intake, `8f1259b4f` the CLI, three notes commits), then the 0.1.486 version raise and bundles. Behaviour to compare against: `5f7998206`. Read: board row 011-337, `tasks/011-337/notes.md`, this file's W1.
+
+Check, each as proven, plausible or unverified:
+
+1. **`run --all` is unchanged byte for byte**: its refusal still ends "so no checkpoint was planned", and its exit codes are as before.
+2. **Each other request words its own refusal** (group, narrow, slow, lint), with no word of a checkpoint; the words come from each request's start rule in the intake (`afterPass`), with no switch on kind; nothing else in the intake changed.
+3. **The CLI changes are exactly the row's**: `run <group>` and the lint group name the group in a failed request; `run --slow --wait` exits 3 on a refused pass and keeps exit 1 without `--wait`; `run --slow` prints the answer's `installWait`; no other line or exit code changed.
+4. **Replace, don't layer**: the rows pinned to today's output were flipped, the 011-324 pin "run --slow ignores the install wait" retired as the notes say.
+5. **Scope**: in `src/core/` only the intake lines 9ddca779 granted (the `NO_PASS` constant and its throw, the `afterPass` variant, the start rules of `groupRequest`, `narrowRequest`, `fullSuiteRequest`); no key change (`test/keys/key-format.test.ts` passes with no raise).
+
+The coordinator's tree passed lint, typecheck, `check:version`, `run-refused-pass`, `request-intake`, `request-intake-group`, `run-group`, `key-format` and `version-sensitive` (80 tests) and the bundle tests at the candidate. Host policy as in `wave-85.md`. Write `reviews/0.1.486.md` and commit it on your branch.
