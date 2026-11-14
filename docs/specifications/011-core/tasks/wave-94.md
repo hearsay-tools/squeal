@@ -67,3 +67,19 @@ Check, each as proven, plausible or unverified:
 4. **Scope**: the files above, their tests and notes, apart from the version and bundles; no key change; `src/cli/code*.ts` untouched.
 
 The coordinator's tree passed lint, typecheck, `check:version`, `key-format`, `version-sensitive`, the new tests, the wait and status-wait tests, the daemon lookup tests and the bundle tests (66 files, 632 tests) at the candidate. Host policy as in `wave-85.md`; never the real `HOME`; signal only processes your probe started. Write `reviews/0.1.505.md` and commit it on your branch.
+
+## R3 (W3): review of cand/0.1.506
+
+Use /reviewer (codex gpt-6.1-sol high). Candidate CI: run 43637995391. Pinned to `cand/0.1.506` at `b09f0095ca32423c8e510ab9ddb263a74dfd59e5`; range `f38b0c9b5..b09f0095c`: five commits of worker 14e7717d (`a250d14fc`, `04fa4a022`, `df430fc8e`, `662d98e87`, `ae1267cc4`, cherry-picked from `864224a8b..9c3c1f5dd` without conflict), then the 0.1.506 raise and bundles. It sits on 0.1.505 (row 011-344, `reviews/0.1.505.md`), which lands on main first. Behaviour to compare against: `f38b0c9b5`. Read: board row 011-345, `tasks/011-345/notes.md`, this file's W3, `tasks/011-45/notes.md` (with its repair round), `reviews/0.1.489-r2.md`, `src/core/state/header.ts`, `src/core/state/header-part.ts`.
+
+Grant beyond W3's list (coordinator, 2026-11-14): `src/core/state/slow.ts` and `src/core/state/groups.ts`, an additive split of each lane's state into counts and activity read fresh; every other caller gets the same object.
+
+Check, each as proven, plausible or unverified:
+
+1. **A kept header equals a full read.** While the trusted states marker stays and the policy reads the same, the kept part plus the fresh part equal `readHeader` at the same point: after each kind of write, a policy change, a lane's activity change, the revision, runner part, checkpoints and progress records. `test/cli/kept-header.test.ts` fails when the part is kept across a policy change.
+2. **Reads stay where they were.** The header reads the policy and the store in today's order (`test/presence/reads.test.ts` pins it); the lanes' activity is read each poll; the trust rule in `write-markers.ts` is unchanged.
+3. **Nothing a user sees changes**: `status --wait`'s lines, JSON payloads and exit codes, and every other caller of `readHeader`, `readLane` and `readGroupTiers`.
+4. **Cost**: the notes' CPU per quiet poll (median 85–96 ms to 1.5–1.7 ms on a cezar copy) is plausible.
+5. **Scope**: the files above, their tests and notes, apart from the version and bundles; key-format with no raise; `src/cli/code*.ts`, `src/core/presence/` untouched.
+
+The coordinator's tree passed lint, typecheck, `check:version`, `key-format`, `version-sensitive`, the row's tests, `test/status`, `test/presence/reads.test.ts`, `test/cli/wait`, the latency test and the bundle tests (107 files, 1,296 tests) at the candidate. Host policy as in `wave-85.md`; never the real `HOME`; a store copy lives in private `/tmp`. Write `reviews/0.1.506.md` and commit it on your branch.
