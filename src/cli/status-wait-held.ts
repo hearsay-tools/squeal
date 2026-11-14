@@ -60,31 +60,20 @@ export function readHeld(
   const only = files ?? undefined;
   const states = store.knownStates.list(worktreeId, only);
   const keys = store.testFileKeys.list(worktreeId, only);
-  return heldOf(store, worktreeId, start, files, states, keys);
-}
-
-/** `readHeld` of `states` and `keys` already read for `files` (row 011-45). */
-export function heldOf(
-  store: Store,
-  worktreeId: WorktreeId,
-  start: StartView,
-  files: readonly TestFileRef[] | null,
-  states: readonly KnownState[],
-  keys: readonly TestFileKeyRecord[],
-): HeldRead {
   const header = readHeader(store, worktreeId, states, keys);
   const view =
     files === null
       ? start.all
       : [...new Set(files.map(testFileId))].flatMap((id) => start.byFile.get(id) ?? []);
-  return { header, states, keys, news: newsOf(view, states, header.revision) };
+  return { header, states, keys, news: newsSince(view, states, header.revision) };
 }
 
 function toStartView(state: KnownState): ViewEntry {
   return { check: state.check, outcome: state.outcome, fingerprint: state.fingerprint, toldAt: 0 };
 }
 
-function newsOf(
+/** The news of `states` since `start`, at `revision`: a pure function of the three (row 011-45). */
+export function newsSince(
   start: readonly ViewEntry[],
   states: readonly KnownState[],
   revision: RevisionNumber,
