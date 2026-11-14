@@ -58,6 +58,8 @@ import {
   resultCode,
   selectionResult,
 } from "./verdict.js";
+import { STATUS_WAITS } from "./wait/status-table.js";
+import { fallbackOf, selectionReady } from "./wait/synced.js";
 import {
   type DaemonWatch,
   type HeartbeatLapse,
@@ -383,7 +385,7 @@ function readiness(
   settled: boolean,
   focusing: boolean,
 ): { readonly ready: boolean; readonly covered: boolean } {
-  const synced = current.state === "synced" && all.revision >= current.revision && !all.unlisted;
+  const synced = current.state === "synced" && selectionReady(current, all, false);
   const covered =
     daemon.state === "lapsed" &&
     !focusing &&
@@ -391,7 +393,7 @@ function readiness(
     all.testFiles > 0 &&
     all.byClass.current === all.testFiles;
   if (daemon.state !== "alive") return { ready: covered, covered };
-  const ready = current.state === "synced" ? synced : current.state === "unsupported" && settled;
+  const ready = selectionReady(current, all, fallbackOf(STATUS_WAITS.named, settled));
   return { ready, covered: false };
 }
 

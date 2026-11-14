@@ -30,6 +30,8 @@ import {
   ownNamedFiles,
 } from "./status-wait-paths.js";
 import { holdOfWait, readClasses, readVerdict } from "./verdict.js";
+import { STATUS_WAITS } from "./wait/status-table.js";
+import { fallbackOf, selectionReady } from "./wait/synced.js";
 
 export interface NamedSnapshotOptions {
   /** Default `STATUS_WAIT_SETTLE_MS`: the longest the snapshot waits for the daemon's sync. */
@@ -119,9 +121,7 @@ function readOnce(
   // cand/0.1.233, B1). A wait falls back to its settle time instead.
   const ready =
     liveness.state === "alive" &&
-    current.state === "synced" &&
-    all.revision >= current.revision &&
-    !all.unlisted;
+    selectionReady(current, all, fallbackOf(STATUS_WAITS.snapshot, true));
   const own = ownNamedFiles(root, cwd, paths, selection);
   // Row 011-146 (C15): a source path selects no focus (review 0.1.286 B4).
   const usage = checkUsage(checks, ready, own);

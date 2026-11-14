@@ -22,7 +22,6 @@ import {
   type DaemonSync,
   pollPause,
   SYNC_POLL_MS,
-  type SyncState,
   syncDaemon,
 } from "./status-sync.js";
 import {
@@ -39,6 +38,8 @@ import { type NamedTextOptions, waitLine, waitText } from "./status-wait-lines.j
 import { testFilesListed } from "./status-wait-listing.js";
 import { type HeldSlow, heldSlowLeft, heldSlowNews, pendingSlow } from "./status-wait-slow.js";
 import { holdOfWait } from "./verdict.js";
+import { STATUS_WAITS } from "./wait/status-table.js";
+import { fallbackOf, holdsPass, passReached } from "./wait/synced.js";
 import {
   type DaemonWatch,
   type HeartbeatLapse,
@@ -291,6 +292,7 @@ export async function waitForStatus(
         const held = syncing.slow;
         const heldFiles = held === undefined ? [] : [...held.values()];
         const settled = final || elapsed() >= settleMs;
+        const fallback = fallbackOf(STATUS_WAITS.edit, settled);
         watch ??= watchDaemon(id, {
           downMs: options.downMs,
           lockFile: lockFileFor(commonDir, id),
@@ -319,7 +321,7 @@ export async function waitForStatus(
           slowNews = held === undefined ? 0 : heldSlowNews(held, seen.news, window.ids);
           transitions = splitNews(window, seen.news).own + slowNews;
           quiet =
-            seen.header.revision >= window.revision &&
+            holdsPass(seen.header.revision, window.revision) &&
             windowRefined(window, seen.header) &&
             heldPending(window, seen.keys) === 0;
         } else if (naming || seen === null) {
@@ -327,7 +329,7 @@ export async function waitForStatus(
           quiet = false;
         } else {
           transitions = seen.news.length;
-          quiet = isSynced(current, seen.header.revision, settled) && !isPending(seen.header);
+          quiet = passReached(current, seen.header.revision, fallback) && !isPending(seen.header);
         }
         // A lapsed heartbeat decides nothing: the daemon may be mid-run (review wave 4.5, S2; 004-66).
         quiet &&=
@@ -341,10 +343,10 @@ export async function waitForStatus(
           seen === null || naming || quiet || transitions > 0 || daemon.state !== "alive"
             ? null
             : window !== undefined
-              ? seen.header.revision >= window.revision
+              ? holdsPass(seen.header.revision, window.revision)
                 ? heldRows(window, seen.keys)
                 : null
-              : isSynced(current, seen.header.revision, settled)
+              : passReached(current, seen.header.revision, fallback)
                 ? seen.keys
                 : null;
         const slowRows =
@@ -405,15 +407,6 @@ export async function waitForStatus(
   } finally {
     syncing.sync?.stop();
   }
-}
-
-/**
- * Quiet may be decided at `revision`: it holds the daemon's pass, or no
- * daemon can sync and the settle time passed.
- */
-function isSynced(current: SyncState, revision: RevisionNumber, settled: boolean): boolean {
-  if (current.state === "synced") return revision >= current.revision;
-  return current.state === "unsupported" && settled;
 }
 
 /**
