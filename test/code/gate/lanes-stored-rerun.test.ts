@@ -123,6 +123,8 @@ async function lanes(
   const known = new Map(runs.flatMap((r) => [...r.known]));
   const context: LaneContext = {
     root: temp as AbsolutePath,
+    // Row 020-59: what sizes a chunk; no stored durations here, so one run per runner.
+    tierSize: 2,
     deadline: since + budgetMs,
     note,
     options,
