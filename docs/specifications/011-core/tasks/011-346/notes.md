@@ -110,3 +110,10 @@ Unchanged. The plan decides which files start, never a key. `test/keys/validity/
 - **011-348:** `planTiers` takes any `QueueView` and `PlanAsks`. A yield view needs only the read methods the pass uses. The table adapter in `test/scheduler/tier-plan-table.ts` is a working model. `Candidate.estimateMs` is the estimate to sum. Set `slots` false and `beside()` to `null`.
 - **011-349:** the wrapper is `selectTier` in `tiers.ts` (about 10 lines). The 7 files' cases map to the plan table rows above. `tiers.ts` still carries `selectTier`'s long doc comment, which states the rules. Move it to `tier-pass.ts` when the wrapper goes.
 - `pickFiles` (`tier-pick.ts`) has complexity 50 (Squeal's count; `selectTier` was 130). Its loop is `selectTier`'s loop unchanged. Splitting it further is a later quality row.
+
+## Checks run (2026-11-14)
+
+- `pnpm run lint`: clean. `pnpm run typecheck`: clean.
+- `test/keys/key-format.test.ts`: 12 of 12 pass, no version raise.
+- Direct `vitest run` (Squeal's queue was 855 deep): the 7 `selectTier` files 36 of 36; `tier-plan.test.ts` 25 and `tier-start.test.ts` 8; 16 real-pump scheduler files (batch-tier, backlog-slots, slots-backlog-turn, catch-up-turn, focused-turn, claims, edit-beside-backlog, promoted-tier, promotion-cut, handover-batches, pytest-slots, slot-records, backlog-quiet-exempt, catch-up-claims, claims-split, focused-vitest) 62 of 62; 42 `tier-yields-*`, `group-lanes-*`, `edit-cut*`, `backlog-*` and `catch-up-*` files 164 of 164.
+- `squeal status --wait 60000` on the changed `src` and `test` paths, revision 33 (`cb93ae07`): 23 pass, 0 fail, 855 pending (queued behind a Vitest tier; the host was busy). Not waited for, as the parent asked: CI runs the full suite on the candidate.
