@@ -196,9 +196,12 @@ describe("squeal ci record", () => {
       ]);
 
       // An error outside every test file: Vitest's own code, and a part that trusts no file.
+      // Row 020-62: the test waits for a later timer, so the throwing one has fired before the
+      // test ends; a bare `setTimeout(throw, 0)` could still be pending when the worker ended,
+      // and the plain run then exited 0 (main CI 43609758910, 43616683145).
       writeFileSync(
         join(root, "test/a.test.ts"),
-        `import { it } from "vitest";\nit("leaks", () => { setTimeout(() => { throw new Error("outside"); }, 0); });\n`,
+        `import { it } from "vitest";\nit("leaks", async () => { setTimeout(() => { throw new Error("outside"); }, 0); await new Promise((r) => setTimeout(r, 20)); });\n`,
       );
       const crashing = ["run", "test/a.test.ts"];
       const crash = await record(root, join(root, "p3"), [node, VITEST, ...crashing]);
