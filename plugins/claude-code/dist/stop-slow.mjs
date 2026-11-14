@@ -1080,7 +1080,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.505";
+  if (true) return "0.1.506";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -3007,219 +3007,6 @@ function covers(refined, revision) {
   return refined === null || revision <= refined;
 }
 
-// src/core/types/state.ts
-var IMPORT_MARK = "import:";
-function importMark(importId) {
-  return `${IMPORT_MARK}${importId}`;
-}
-function importIdOf(worktreeId) {
-  return worktreeId.startsWith(IMPORT_MARK) ? worktreeId.slice(IMPORT_MARK.length) : null;
-}
-function originWorktree(origin) {
-  if (origin.kind === "own") return null;
-  return origin.kind === "inherited" ? origin.worktreeId : importMark(origin.importId);
-}
-
-// src/core/state/fingerprint.ts
-import { realpathSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { stripVTControlCharacters } from "node:util";
-var SUMMARY_MAX_CHARS = 300;
-var VOLATILE = [
-  [/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?/g, "<time>"],
-  [/\b\d+(?:\.\d+)?\s?ms\b/g, "<n>ms"],
-  [/\b0x[0-9a-f]+\b/gi, "0x<addr>"],
-  // An IPv4 address, `localhost`, a bracketed IPv6 address or a URL's host; never `path:line:col`.
-  [
-    /(?<![\w.-])((?:\d{1,3}\.){3}\d{1,3}|localhost|\[[0-9a-f:.]+\]|(?<=:\/\/)[\w.-]+):\d{1,5}\b(?!:\d)/gi,
-    "$1:<port>"
-  ],
-  [/\b(port\s+)\d{1,5}\b/gi, "$1<port>"],
-  // A cache path names a tool's scratch space; its segments are hashes and run ids.
-  [/(?:[^\s'"`(]*\/)?node_modules\/\.cache\/[^\s'"`):,]*/g, "<cache>"],
-  [() => tempRoots().pattern, maskTemp],
-  [/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, "<uuid>"],
-  // At least one letter, so a long decimal value in an assertion is kept.
-  [/\b(?=[0-9a-f]*[a-f])[0-9a-f]{16,}\b/gi, "<hex>"]
-];
-var SQUEAL_SCRATCH = /^squeal-\d+\/tmp\/[^/]+(?=\/)/;
-var MASKED_SQUEAL_SCRATCH = /^<tmp>\/tmp\/(?:<hex>|\d{16})(?=\/)/;
-function maskTemp(path) {
-  const root = deepestRoot(path);
-  if (root === null) return path;
-  const [, ...tail] = path.slice(root.length + 1).split("/");
-  return ["<tmp>", ...tail].join("/");
-}
-function deepestRoot(path) {
-  if (path.startsWith("<tmp>/")) return MASKED_SQUEAL_SCRATCH.exec(path)?.[0] ?? null;
-  const held = tempRoots().roots.filter((r) => path.startsWith(`${r}/`)).map((r) => {
-    const scratch = SQUEAL_SCRATCH.exec(path.slice(r.length + 1));
-    return scratch === null ? r : `${r}/${scratch[0]}`;
-  });
-  return held.reduce((a, b) => a === null || b.length > a.length ? b : a, null);
-}
-var cachedRoots = null;
-function tempRoots() {
-  const dir = tmpdir().replace(/\/+$/, "");
-  if (cachedRoots?.dir === dir) return cachedRoots;
-  let real2 = dir;
-  try {
-    real2 = realpathSync(dir);
-  } catch {
-  }
-  const roots = [.../* @__PURE__ */ new Set([dir, real2, "/tmp"])].filter((p) => p !== "").sort((a, b) => b.length - a.length);
-  const pattern = new RegExp(
-    `(?<![\\w.-])(?:<tmp>|${roots.map(escapeRegExp).join("|")})(?:/[^\\s/'"\`):,]+)+`,
-    "g"
-  );
-  cachedRoots = { dir, roots, pattern };
-  return cachedRoots;
-}
-function escapeRegExp(text2) {
-  return text2.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-function firstLine(text2) {
-  const line = stripVTControlCharacters(text2).split(/\r?\n/).find((l) => l.trim() !== "");
-  return (line ?? "").trim().replace(/\s+/g, " ");
-}
-function normalize(line) {
-  return VOLATILE.reduce((text2, [rule, replacement]) => {
-    const pattern = typeof rule === "function" ? rule() : rule;
-    return typeof replacement === "string" ? text2.replace(pattern, replacement) : text2.replace(pattern, replacement);
-  }, line);
-}
-function where(location2) {
-  return location2 === null ? "?" : `${location2.path}:${location2.line}:${location2.column}`;
-}
-var PHASE_PREFIX = {
-  load: "",
-  "after-tests": "error after its tests ran: ",
-  setup: "setup failed: "
-};
-function describeFailure(errors, fallback2) {
-  const first = errors[0];
-  if (first === void 0) {
-    return { fingerprint: `fail @ ${where(fallback2)}`, summary: "failed without an error message" };
-  }
-  const line = firstLine(first.message);
-  const location2 = first.location ?? fallback2;
-  const more = errors.length - 1;
-  const text2 = withCauses(
-    `${PHASE_PREFIX[first.phase ?? "load"]}${withCode(line === "" ? first.name : line, first.code)}`,
-    first.causes ?? []
-  );
-  const summary = more > 0 ? `${text2} (${more} more error${more === 1 ? "" : "s"})` : text2;
-  const recorder = errors.find((e) => e.recorder !== void 0)?.recorder;
-  return {
-    fingerprint: `${first.name}: ${normalize(line)} @ ${where(location2)}`,
-    summary: withRecorder(
-      withDiff(summary, first.diff === null ? null : diffText(first.diff)),
-      recorder
-    )
-  };
-}
-function renormalizeFingerprint(fingerprint) {
-  const at = fingerprint.lastIndexOf(" @ ");
-  if (at < 0) return fingerprint;
-  let text2 = fingerprint.slice(0, at);
-  for (let next = normalize(text2); next !== text2; next = normalize(text2)) text2 = next;
-  return `${text2}${fingerprint.slice(at)}`;
-}
-function sameFingerprint(a, b) {
-  if (a === b) return true;
-  return a !== null && b !== null && renormalizeFingerprint(a) === renormalizeFingerprint(b);
-}
-function withRecorder(summary, recorder) {
-  if (recorder === void 0) return summary;
-  const note = cap(
-    `; ran under Squeal's recorder in NODE_OPTIONS: ${recorder}`,
-    SUMMARY_MAX_CHARS / 2
-  );
-  return `${cap(summary, SUMMARY_MAX_CHARS - note.length)}${note}`;
-}
-function causeText(cause) {
-  return withCode(cause.message === "" ? cause.code ?? "" : cause.message, cause.code);
-}
-function withCode(text2, code) {
-  return code === void 0 || text2.includes(code) ? text2 : `${text2} (${code})`;
-}
-function withCauses(text2, causes) {
-  if (causes.length === 0) return text2;
-  const chain = causes.map((c) => `; cause: ${causeText(c)}`).join("");
-  const shown = cap(chain, SUMMARY_MAX_CHARS - Math.min(text2.length, LINE_MIN_CHARS));
-  return `${cap(text2, SUMMARY_MAX_CHARS - shown.length)}${shown}`;
-}
-var LINE_MIN_CHARS = 120;
-var DIFF_LINES = 8;
-function diffText(diff) {
-  const lines = stripVTControlCharacters(diff).split(/\r?\n/);
-  const legend = lines.slice(0, 2).map((l) => l.trim());
-  const labelled = /^- \S/.test(legend[0] ?? "") && /^\+ \S/.test(legend[1] ?? "");
-  const changed = (labelled ? lines.slice(2) : lines).filter((l) => /^[-+]/.test(l)).slice(0, DIFF_LINES).map((l) => `${l[0]} ${l.slice(1).trim().replace(/\s+/g, " ")}`);
-  if (changed.length === 0) return null;
-  return `diff${labelled ? ` (${legend.join(", ")})` : ""}: ${changed.join(" | ")}`;
-}
-function withDiff(summary, diff) {
-  if (diff === null) return cap(summary, SUMMARY_MAX_CHARS);
-  const separator = "; ";
-  const room = SUMMARY_MAX_CHARS - separator.length;
-  const shownDiff = cap(diff, room - Math.min(summary.length, LINE_MIN_CHARS));
-  return `${cap(summary, room - shownDiff.length)}${separator}${shownDiff}`;
-}
-
-// src/core/state/derive.ts
-function checkIdentity(check) {
-  const name2 = check.kind === "test" ? check.fullName : "";
-  return `${check.kind}\0${check.project}\0${check.testPath}\0${name2}`;
-}
-function testFileKeyOf(check) {
-  return testFileId(testFileOf(check));
-}
-function testFileOf(check) {
-  return { project: check.project, path: check.testPath };
-}
-
-// src/core/state/file-class.ts
-function fileClassOf(row, own) {
-  const has = (validity) => own.some((s) => s.validity === validity);
-  const queued = row !== void 0 && row.key !== null && row.pending !== null;
-  const unkeyed = row === void 0 || row.key === null;
-  if (queued || has("pending")) return "pending";
-  if (unkeyed || own.length === 0 || has("unknown")) return "unknown";
-  return has("stale") ? "stale" : "current";
-}
-function countNotCurrent(states, keys, openFiles2 = /* @__PURE__ */ new Set()) {
-  const checks = /* @__PURE__ */ new Map();
-  for (const state of states) {
-    if (state.check.kind === "setup") continue;
-    const id = testFileKeyOf(state.check);
-    const own = checks.get(id);
-    if (own === void 0) checks.set(id, [state]);
-    else own.push(state);
-  }
-  const testFileCounts = { current: 0, pending: 0, stale: 0, unknown: 0 };
-  const testFilesByPhase = { running: 0, queued: 0 };
-  const testsByPhase = { running: 0, queued: 0 };
-  for (const row of keys) {
-    const id = testFileId(row.testFile);
-    const own = checks.get(id) ?? [];
-    const fileClass = fileClassOf(row, own);
-    testFileCounts[fileClass]++;
-    if (fileClass !== "pending") continue;
-    const running = openFiles2.has(id) || row.pending === "running" || own.some(isRunning);
-    testFilesByPhase[running ? "running" : "queued"]++;
-  }
-  const filePhase = new Map(keys.map((row) => [testFileId(row.testFile), row.pending]));
-  for (const state of states) {
-    if (state.check.kind !== "test" || state.validity !== "pending") continue;
-    const id = testFileKeyOf(state.check);
-    const phase = openFiles2.has(id) ? "running" : state.pendingPhase ?? filePhase.get(id) ?? "queued";
-    testsByPhase[phase]++;
-  }
-  return { testFileCounts, testFilesByPhase, testsByPhase };
-}
-var isRunning = (state) => state.pendingPhase === "running";
-
 // src/core/commit/report.ts
 var isFailedReport = (report) => "failed" in report;
 var isCount = (value) => typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
@@ -3589,6 +3376,219 @@ function forgetStopWait(store, consumer) {
   writeSlot(store, stopWaitMetaKey(consumer.worktreeId), consumer, null);
 }
 
+// src/core/types/state.ts
+var IMPORT_MARK = "import:";
+function importMark(importId) {
+  return `${IMPORT_MARK}${importId}`;
+}
+function importIdOf(worktreeId) {
+  return worktreeId.startsWith(IMPORT_MARK) ? worktreeId.slice(IMPORT_MARK.length) : null;
+}
+function originWorktree(origin) {
+  if (origin.kind === "own") return null;
+  return origin.kind === "inherited" ? origin.worktreeId : importMark(origin.importId);
+}
+
+// src/core/state/fingerprint.ts
+import { realpathSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { stripVTControlCharacters } from "node:util";
+var SUMMARY_MAX_CHARS = 300;
+var VOLATILE = [
+  [/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?/g, "<time>"],
+  [/\b\d+(?:\.\d+)?\s?ms\b/g, "<n>ms"],
+  [/\b0x[0-9a-f]+\b/gi, "0x<addr>"],
+  // An IPv4 address, `localhost`, a bracketed IPv6 address or a URL's host; never `path:line:col`.
+  [
+    /(?<![\w.-])((?:\d{1,3}\.){3}\d{1,3}|localhost|\[[0-9a-f:.]+\]|(?<=:\/\/)[\w.-]+):\d{1,5}\b(?!:\d)/gi,
+    "$1:<port>"
+  ],
+  [/\b(port\s+)\d{1,5}\b/gi, "$1<port>"],
+  // A cache path names a tool's scratch space; its segments are hashes and run ids.
+  [/(?:[^\s'"`(]*\/)?node_modules\/\.cache\/[^\s'"`):,]*/g, "<cache>"],
+  [() => tempRoots().pattern, maskTemp],
+  [/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, "<uuid>"],
+  // At least one letter, so a long decimal value in an assertion is kept.
+  [/\b(?=[0-9a-f]*[a-f])[0-9a-f]{16,}\b/gi, "<hex>"]
+];
+var SQUEAL_SCRATCH = /^squeal-\d+\/tmp\/[^/]+(?=\/)/;
+var MASKED_SQUEAL_SCRATCH = /^<tmp>\/tmp\/(?:<hex>|\d{16})(?=\/)/;
+function maskTemp(path) {
+  const root = deepestRoot(path);
+  if (root === null) return path;
+  const [, ...tail] = path.slice(root.length + 1).split("/");
+  return ["<tmp>", ...tail].join("/");
+}
+function deepestRoot(path) {
+  if (path.startsWith("<tmp>/")) return MASKED_SQUEAL_SCRATCH.exec(path)?.[0] ?? null;
+  const held = tempRoots().roots.filter((r) => path.startsWith(`${r}/`)).map((r) => {
+    const scratch = SQUEAL_SCRATCH.exec(path.slice(r.length + 1));
+    return scratch === null ? r : `${r}/${scratch[0]}`;
+  });
+  return held.reduce((a, b) => a === null || b.length > a.length ? b : a, null);
+}
+var cachedRoots = null;
+function tempRoots() {
+  const dir = tmpdir().replace(/\/+$/, "");
+  if (cachedRoots?.dir === dir) return cachedRoots;
+  let real2 = dir;
+  try {
+    real2 = realpathSync(dir);
+  } catch {
+  }
+  const roots = [.../* @__PURE__ */ new Set([dir, real2, "/tmp"])].filter((p) => p !== "").sort((a, b) => b.length - a.length);
+  const pattern = new RegExp(
+    `(?<![\\w.-])(?:<tmp>|${roots.map(escapeRegExp).join("|")})(?:/[^\\s/'"\`):,]+)+`,
+    "g"
+  );
+  cachedRoots = { dir, roots, pattern };
+  return cachedRoots;
+}
+function escapeRegExp(text2) {
+  return text2.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+function firstLine(text2) {
+  const line = stripVTControlCharacters(text2).split(/\r?\n/).find((l) => l.trim() !== "");
+  return (line ?? "").trim().replace(/\s+/g, " ");
+}
+function normalize(line) {
+  return VOLATILE.reduce((text2, [rule, replacement]) => {
+    const pattern = typeof rule === "function" ? rule() : rule;
+    return typeof replacement === "string" ? text2.replace(pattern, replacement) : text2.replace(pattern, replacement);
+  }, line);
+}
+function where(location2) {
+  return location2 === null ? "?" : `${location2.path}:${location2.line}:${location2.column}`;
+}
+var PHASE_PREFIX = {
+  load: "",
+  "after-tests": "error after its tests ran: ",
+  setup: "setup failed: "
+};
+function describeFailure(errors, fallback2) {
+  const first = errors[0];
+  if (first === void 0) {
+    return { fingerprint: `fail @ ${where(fallback2)}`, summary: "failed without an error message" };
+  }
+  const line = firstLine(first.message);
+  const location2 = first.location ?? fallback2;
+  const more = errors.length - 1;
+  const text2 = withCauses(
+    `${PHASE_PREFIX[first.phase ?? "load"]}${withCode(line === "" ? first.name : line, first.code)}`,
+    first.causes ?? []
+  );
+  const summary = more > 0 ? `${text2} (${more} more error${more === 1 ? "" : "s"})` : text2;
+  const recorder = errors.find((e) => e.recorder !== void 0)?.recorder;
+  return {
+    fingerprint: `${first.name}: ${normalize(line)} @ ${where(location2)}`,
+    summary: withRecorder(
+      withDiff(summary, first.diff === null ? null : diffText(first.diff)),
+      recorder
+    )
+  };
+}
+function renormalizeFingerprint(fingerprint) {
+  const at = fingerprint.lastIndexOf(" @ ");
+  if (at < 0) return fingerprint;
+  let text2 = fingerprint.slice(0, at);
+  for (let next = normalize(text2); next !== text2; next = normalize(text2)) text2 = next;
+  return `${text2}${fingerprint.slice(at)}`;
+}
+function sameFingerprint(a, b) {
+  if (a === b) return true;
+  return a !== null && b !== null && renormalizeFingerprint(a) === renormalizeFingerprint(b);
+}
+function withRecorder(summary, recorder) {
+  if (recorder === void 0) return summary;
+  const note = cap(
+    `; ran under Squeal's recorder in NODE_OPTIONS: ${recorder}`,
+    SUMMARY_MAX_CHARS / 2
+  );
+  return `${cap(summary, SUMMARY_MAX_CHARS - note.length)}${note}`;
+}
+function causeText(cause) {
+  return withCode(cause.message === "" ? cause.code ?? "" : cause.message, cause.code);
+}
+function withCode(text2, code) {
+  return code === void 0 || text2.includes(code) ? text2 : `${text2} (${code})`;
+}
+function withCauses(text2, causes) {
+  if (causes.length === 0) return text2;
+  const chain = causes.map((c) => `; cause: ${causeText(c)}`).join("");
+  const shown = cap(chain, SUMMARY_MAX_CHARS - Math.min(text2.length, LINE_MIN_CHARS));
+  return `${cap(text2, SUMMARY_MAX_CHARS - shown.length)}${shown}`;
+}
+var LINE_MIN_CHARS = 120;
+var DIFF_LINES = 8;
+function diffText(diff) {
+  const lines = stripVTControlCharacters(diff).split(/\r?\n/);
+  const legend = lines.slice(0, 2).map((l) => l.trim());
+  const labelled = /^- \S/.test(legend[0] ?? "") && /^\+ \S/.test(legend[1] ?? "");
+  const changed = (labelled ? lines.slice(2) : lines).filter((l) => /^[-+]/.test(l)).slice(0, DIFF_LINES).map((l) => `${l[0]} ${l.slice(1).trim().replace(/\s+/g, " ")}`);
+  if (changed.length === 0) return null;
+  return `diff${labelled ? ` (${legend.join(", ")})` : ""}: ${changed.join(" | ")}`;
+}
+function withDiff(summary, diff) {
+  if (diff === null) return cap(summary, SUMMARY_MAX_CHARS);
+  const separator = "; ";
+  const room = SUMMARY_MAX_CHARS - separator.length;
+  const shownDiff = cap(diff, room - Math.min(summary.length, LINE_MIN_CHARS));
+  return `${cap(summary, room - shownDiff.length)}${separator}${shownDiff}`;
+}
+
+// src/core/state/derive.ts
+function checkIdentity(check) {
+  const name2 = check.kind === "test" ? check.fullName : "";
+  return `${check.kind}\0${check.project}\0${check.testPath}\0${name2}`;
+}
+function testFileKeyOf(check) {
+  return testFileId(testFileOf(check));
+}
+function testFileOf(check) {
+  return { project: check.project, path: check.testPath };
+}
+
+// src/core/state/file-class.ts
+function fileClassOf(row, own) {
+  const has = (validity) => own.some((s) => s.validity === validity);
+  const queued = row !== void 0 && row.key !== null && row.pending !== null;
+  const unkeyed = row === void 0 || row.key === null;
+  if (queued || has("pending")) return "pending";
+  if (unkeyed || own.length === 0 || has("unknown")) return "unknown";
+  return has("stale") ? "stale" : "current";
+}
+function countNotCurrent(states, keys, openFiles2 = /* @__PURE__ */ new Set()) {
+  const checks = /* @__PURE__ */ new Map();
+  for (const state of states) {
+    if (state.check.kind === "setup") continue;
+    const id = testFileKeyOf(state.check);
+    const own = checks.get(id);
+    if (own === void 0) checks.set(id, [state]);
+    else own.push(state);
+  }
+  const testFileCounts = { current: 0, pending: 0, stale: 0, unknown: 0 };
+  const testFilesByPhase = { running: 0, queued: 0 };
+  const testsByPhase = { running: 0, queued: 0 };
+  for (const row of keys) {
+    const id = testFileId(row.testFile);
+    const own = checks.get(id) ?? [];
+    const fileClass = fileClassOf(row, own);
+    testFileCounts[fileClass]++;
+    if (fileClass !== "pending") continue;
+    const running = openFiles2.has(id) || row.pending === "running" || own.some(isRunning);
+    testFilesByPhase[running ? "running" : "queued"]++;
+  }
+  const filePhase = new Map(keys.map((row) => [testFileId(row.testFile), row.pending]));
+  for (const state of states) {
+    if (state.check.kind !== "test" || state.validity !== "pending") continue;
+    const id = testFileKeyOf(state.check);
+    const phase = openFiles2.has(id) ? "running" : state.pendingPhase ?? filePhase.get(id) ?? "queued";
+    testsByPhase[phase]++;
+  }
+  return { testFileCounts, testFilesByPhase, testsByPhase };
+}
+var isRunning = (state) => state.pendingPhase === "running";
+
 // src/core/slow/state.ts
 function slowTierMetaKey(worktreeId) {
   return worktreeMetaKey("slowTier", worktreeId);
@@ -3699,14 +3699,23 @@ function laneChecks(states, inLane) {
   return checks;
 }
 function readSlowTier(store, worktreeId, states, keys, view) {
+  return slowTierOf(readLane(store, worktreeId, states, keys, view.isSlow, SLOW_GROUP), view);
+}
+function slowTierOf(lane, view) {
   return {
-    ...readLane(store, worktreeId, states, keys, view.isSlow, SLOW_GROUP),
+    ...lane,
     ...view.stopWaitMs === null ? {} : { stopWaitMs: view.stopWaitMs },
     ...view.stopWaitMs === null || view.maxHolds === 1 ? {} : { maxHolds: view.maxHolds },
     ...view.pausesOnly ? { pausesOnly: true } : {}
   };
 }
 function readLane(store, worktreeId, states, keys, inLane, group, classify2 = classifySlowFiles) {
+  return {
+    ...laneCounts(states, keys, inLane, classify2),
+    activity: liveActivity(store, worktreeId, keys, inLane, group)
+  };
+}
+function laneCounts(states, keys, inLane, classify2 = classifySlowFiles) {
   const files2 = classify2(states, keys, inLane);
   const counts = { current: 0, pending: 0, notRun: 0 };
   for (const { class: cls } of files2.values()) counts[cls]++;
@@ -3723,8 +3732,7 @@ function readLane(store, worktreeId, states, keys, inLane, group, classify2 = cl
     testFiles: files2.size,
     ...counts,
     currentAt,
-    ...currentUpTo !== null && currentUpTo !== currentAt ? { currentUpTo } : {},
-    activity: liveActivity(store, worktreeId, keys, inLane, group)
+    ...currentUpTo !== null && currentUpTo !== currentAt ? { currentUpTo } : {}
   };
 }
 function liveActivity(store, worktreeId, keys, inLane, group) {
@@ -3765,7 +3773,7 @@ function testsAtEdit(policy, listed3) {
     (group) => group.at === "edit" && group.select.kind !== "lint" && (group.index !== null || group.name === TESTS_GROUP && listed3.length === 0 || owns(group.name))
   );
 }
-function readGroupTiers(store, worktreeId, states, keys, policy) {
+function groupLaneCounts(states, keys, policy) {
   const view = groupView(policy);
   const waitMs = stopWaitBoundMs(policy);
   return view.groups.flatMap((group) => {
@@ -3774,14 +3782,25 @@ function readGroupTiers(store, worktreeId, states, keys, policy) {
     return [
       {
         name: group.name,
-        at: group.at,
-        after: group.after,
-        quietMs: group.quietMs,
-        ...readLane(store, worktreeId, states, keys, inLane, group.name, classifyGroupFiles),
+        inLane,
+        head: {
+          name: group.name,
+          at: group.at,
+          after: group.after,
+          quietMs: group.quietMs,
+          ...laneCounts(states, keys, inLane, classifyGroupFiles)
+        },
         ...group.stopRequires ? { stopWaitMs: waitMs } : {}
       }
     ];
   });
+}
+function groupTiersOf(store, worktreeId, keys, lanes) {
+  return lanes.map(({ name: name2, inLane, head, stopWaitMs }) => ({
+    ...head,
+    activity: liveActivity(store, worktreeId, keys, inLane, name2),
+    ...stopWaitMs === void 0 ? {} : { stopWaitMs }
+  }));
 }
 function classifyGroupFiles(states, keys, inLane) {
   const checks = laneChecks(states, inLane);
@@ -3804,6 +3823,91 @@ function inGroupLane(policy) {
 function readCommitLine(store, worktreeId) {
   const report = newestCommitReport(store.meta, worktreeId);
   return report === null ? void 0 : commitLine(report);
+}
+
+// src/core/state/header-part.ts
+function headerPart(states, keys, policy, isSlow, openFiles2) {
+  const view = policy === null ? null : slowPolicyView(policy);
+  const slow = isSlow ?? view?.isSlow;
+  const shown = policy !== null && groupTextsShown(policy);
+  const slowLane = view === null ? void 0 : laneCounts(states, keys, view.isSlow);
+  const owned = slowLane !== void 0 && (slowLane.testFiles > 0 || keys.length === 0 || !shown);
+  return {
+    policy,
+    view,
+    counted: countStates(states),
+    testFilesWithoutChecks: countFilesWithoutChecks(states, keys),
+    notCurrent: countNotCurrent(states, keys, openFiles2),
+    listed: keys.length > 0,
+    ...slow === void 0 ? {} : { slowPending: countSlowPending(states, keys, slow) },
+    ...owned ? { slowLane } : {},
+    ...policy !== null && shown ? {
+      groups: {
+        lanes: groupLaneCounts(states, keys, policy),
+        lanePending: countSlowPending(states, keys, inGroupLane(policy)),
+        testsAtEdit: testsAtEdit(policy, keys)
+      }
+    } : {}
+  };
+}
+function countStates(states) {
+  const counts = { current: 0, pending: 0, stale: 0, unknown: 0 };
+  const fileLevelCounts = { ...counts };
+  let inheritedCount = 0;
+  let inheritedFileLevelCount = 0;
+  let importedCount = 0;
+  for (const state of states) {
+    if (state.check.kind === "setup") continue;
+    counts[state.validity]++;
+    if (state.check.kind === "file") fileLevelCounts[state.validity]++;
+    if (state.validity !== "current") continue;
+    if (state.origin?.kind === "inherited") {
+      inheritedCount++;
+      if (state.check.kind === "file") inheritedFileLevelCount++;
+    }
+    if (state.origin?.kind === "imported") importedCount++;
+  }
+  return { counts, fileLevelCounts, inheritedCount, inheritedFileLevelCount, importedCount };
+}
+function countFilesWithoutChecks(states, keys) {
+  const withChecks = new Set(states.map((s) => testFileKeyOf(s.check)));
+  const counts = { pending: 0, unknown: 0 };
+  for (const row of keys) {
+    if (withChecks.has(testFileId(row.testFile))) continue;
+    counts[hasKey(row) && row.pending !== null ? "pending" : "unknown"]++;
+  }
+  return counts;
+}
+var SLOW_FILES_NAMED = 3;
+function countSlowPending(states, keys, isSlow) {
+  const withChecks = new Set(states.map((s) => testFileKeyOf(s.check)));
+  const files2 = /* @__PURE__ */ new Map();
+  let checks = 0;
+  for (const state of states) {
+    const ref2 = testFileOf(state.check);
+    if (state.validity !== "pending" || !isSlow(ref2)) continue;
+    checks++;
+    files2.set(testFileKeyOf(state.check), ref2);
+  }
+  let testFilesWithoutChecks = 0;
+  for (const row of keys) {
+    const id = testFileId(row.testFile);
+    if (withChecks.has(id) || !hasKey(row) || row.pending === null || !isSlow(row.testFile)) {
+      continue;
+    }
+    testFilesWithoutChecks++;
+    files2.set(id, row.testFile);
+  }
+  const named2 = [...files2.values()].sort((a, b) => a.path.localeCompare(b.path) || a.project.localeCompare(b.project)).slice(0, SLOW_FILES_NAMED);
+  return {
+    testFiles: files2.size,
+    checks,
+    testFilesWithoutChecks,
+    ...named2.length === 0 ? {} : { files: named2 }
+  };
+}
+function hasKey(row) {
+  return row.key !== null;
 }
 
 // src/core/state/optimizer-note.ts
@@ -3854,40 +3958,27 @@ function revisionText(revision, commit) {
 }
 
 // src/core/state/header.ts
-function countStates(states) {
-  const counts = { current: 0, pending: 0, stale: 0, unknown: 0 };
-  const fileLevelCounts = { ...counts };
-  let inheritedCount = 0;
-  let inheritedFileLevelCount = 0;
-  let importedCount = 0;
-  for (const state of states) {
-    if (state.check.kind === "setup") continue;
-    counts[state.validity]++;
-    if (state.check.kind === "file") fileLevelCounts[state.validity]++;
-    if (state.validity !== "current") continue;
-    if (state.origin?.kind === "inherited") {
-      inheritedCount++;
-      if (state.check.kind === "file") inheritedFileLevelCount++;
-    }
-    if (state.origin?.kind === "imported") importedCount++;
-  }
-  return { counts, fileLevelCounts, inheritedCount, inheritedFileLevelCount, importedCount };
-}
 function readHeader(store, worktreeId, states = store.knownStates.list(worktreeId), keys = store.testFileKeys.list(worktreeId), isSlow, openFiles2) {
+  return headerWith(
+    store,
+    worktreeId,
+    keys,
+    (policy) => headerPart(states, keys, policy, isSlow, openFiles2)
+  );
+}
+function headerWith(store, worktreeId, keys, partOf) {
   const latest = store.revisions.latest(worktreeId);
   const revision = latest?.number ?? 0;
   const commit = readRevisionCommit(store, worktreeId, latest);
-  const { counts, fileLevelCounts, inheritedCount, inheritedFileLevelCount, importedCount } = countStates(states);
   const refinedRevision = readRefined(store, worktreeId);
   const wait = readInstallWait(store, worktreeId);
-  const missing = wait?.workspaces ?? null;
   const awaiting2 = wait !== null;
   const last = store.checkpoints.lastCompletedFull(worktreeId);
   const lane = awaiting2 ? null : laneAfter(store.checkpoints.lastCompleted(worktreeId), last);
   const root = store.worktrees.get(worktreeId)?.root;
   const policy = root === void 0 ? null : readPolicy(root);
-  const view = policy === null ? null : slowPolicyView(policy);
-  const slow = isSlow ?? view?.isSlow;
+  const part = partOf(policy);
+  const { counts, fileLevelCounts, inheritedCount, inheritedFileLevelCount, importedCount } = part.counted;
   const optimizerOff = readOptimizerOff(store, worktreeId);
   const runnerPartPending = !covers(refinedRevision, revision);
   return {
@@ -3895,41 +3986,48 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
     ...commit === void 0 ? {} : { commit },
     counts,
     fileLevelCounts,
-    testFilesWithoutChecks: countFilesWithoutChecks(states, keys),
-    ...countNotCurrent(states, keys, openFiles2),
+    testFilesWithoutChecks: part.testFilesWithoutChecks,
+    ...part.notCurrent,
     fullSuite: {
       atCurrentRevision: !awaiting2 && last !== null && last.revision === revision,
       lastCompletedRevision: last?.revision ?? null,
       ...lane === null ? {} : { lane }
     },
-    testFilesListed: keys.length > 0 || !awaiting2 && last !== null,
+    testFilesListed: part.listed || !awaiting2 && last !== null,
     inheritedCount,
     inheritedFileLevelCount,
     ...importedCount === 0 ? {} : { importedCount },
     refinedRevision,
     runnerPartPending,
     ...listingRunnersField(runnerPartPending, root, policy),
-    ...slow === void 0 ? {} : { slowPending: countSlowPending(states, keys, slow) },
-    ...slowTierField(store, worktreeId, states, keys, policy, view),
-    ...policy !== null && groupTextsShown(policy) ? groupFields(store, worktreeId, states, keys, policy) : {},
-    ...awaiting2 ? { awaitingInstall: true } : {},
-    ...missing !== null && missing.length > 0 ? { missingInstalls: missing } : {},
-    ...wait === null || wait.command === null ? {} : { installCommand: wait.command },
+    ...part.slowPending === void 0 ? {} : { slowPending: part.slowPending },
+    ...slowTierField(store, worktreeId, keys, part),
+    ...groupFields(store, worktreeId, keys, part),
+    ...installFields(wait),
     ...optimizerOff === void 0 ? {} : { optimizerOff }
   };
 }
-function slowTierField(store, worktreeId, states, keys, policy, view) {
-  if (policy === null || view === null) return {};
-  const slowTier = readSlowTier(store, worktreeId, states, keys, view);
-  const owned = slowTier.testFiles > 0 || keys.length === 0 || !groupTextsShown(policy);
-  return owned ? { slowTier } : {};
+function installFields(wait) {
+  if (wait === null) return {};
+  const missing = wait.workspaces;
+  return {
+    awaitingInstall: true,
+    ...missing.length > 0 ? { missingInstalls: missing } : {},
+    ...wait.command === null ? {} : { installCommand: wait.command }
+  };
 }
-function groupFields(store, worktreeId, states, keys, policy) {
+function slowTierField(store, worktreeId, keys, { view, slowLane }) {
+  if (view === null || slowLane === void 0) return {};
+  const activity = liveActivity(store, worktreeId, keys, view.isSlow, SLOW_GROUP);
+  return { slowTier: slowTierOf({ ...slowLane, activity }, view) };
+}
+function groupFields(store, worktreeId, keys, { groups: groups2 }) {
+  if (groups2 === void 0) return {};
   const commitLine2 = readCommitLine(store, worktreeId);
   return {
-    groupTiers: readGroupTiers(store, worktreeId, states, keys, policy),
-    lanePending: countSlowPending(states, keys, inGroupLane(policy)),
-    ...testsAtEdit(policy, keys) ? {} : { noTestsAtEdit: true },
+    groupTiers: groupTiersOf(store, worktreeId, keys, groups2.lanes),
+    lanePending: groups2.lanePending,
+    ...groups2.testsAtEdit ? {} : { noTestsAtEdit: true },
     ...commitLine2 === void 0 ? {} : { commitLine: commitLine2 }
   };
 }
@@ -3952,46 +4050,6 @@ function fullSuiteText({ revision, fullSuite }, command) {
   const none2 = fullSuite.lastCompletedRevision === null ? "none completed at any revision" : `none completed since revision ${fullSuite.lastCompletedRevision}`;
   const lane = fullSuite.lane === void 0 ? "" : `; only the ${fullSuite.lane.lane} lane completed, at revision ${fullSuite.lane.revision}`;
   return `${none2}${lane} (the counts are for revision ${revision}; \`${command} run --all\` requests one)`;
-}
-function countFilesWithoutChecks(states, keys) {
-  const withChecks = new Set(states.map((s) => testFileKeyOf(s.check)));
-  const counts = { pending: 0, unknown: 0 };
-  for (const row of keys) {
-    if (withChecks.has(testFileId(row.testFile))) continue;
-    counts[hasKey(row) && row.pending !== null ? "pending" : "unknown"]++;
-  }
-  return counts;
-}
-var SLOW_FILES_NAMED = 3;
-function countSlowPending(states, keys, isSlow) {
-  const withChecks = new Set(states.map((s) => testFileKeyOf(s.check)));
-  const files2 = /* @__PURE__ */ new Map();
-  let checks = 0;
-  for (const state of states) {
-    const ref2 = testFileOf(state.check);
-    if (state.validity !== "pending" || !isSlow(ref2)) continue;
-    checks++;
-    files2.set(testFileKeyOf(state.check), ref2);
-  }
-  let testFilesWithoutChecks = 0;
-  for (const row of keys) {
-    const id = testFileId(row.testFile);
-    if (withChecks.has(id) || !hasKey(row) || row.pending === null || !isSlow(row.testFile)) {
-      continue;
-    }
-    testFilesWithoutChecks++;
-    files2.set(id, row.testFile);
-  }
-  const named2 = [...files2.values()].sort((a, b) => a.path.localeCompare(b.path) || a.project.localeCompare(b.project)).slice(0, SLOW_FILES_NAMED);
-  return {
-    testFiles: files2.size,
-    checks,
-    testFilesWithoutChecks,
-    ...named2.length === 0 ? {} : { files: named2 }
-  };
-}
-function hasKey(row) {
-  return row.key !== null;
 }
 function toKnownFailure(state, revision) {
   if (state.outcome !== "fail") return null;
