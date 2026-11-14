@@ -41,3 +41,18 @@ Owns: `test/keys/validity/**`, `test/run-evidence/**`. Product code is not yours
 Must not raise `KEY_FORMAT_VERSION`. If the alarm asks for a raise rather than a pin, stop and ask.
 
 Done when: the row's done-when; lint and typecheck pass; the alarm tests you touched pass, run directly when Squeal does not cover them; notes in `tasks/011-321/notes.md` with the mutation result before and after.
+
+## R1: review of cand/0.1.498
+
+Use /reviewer (codex gpt-6.1-sol high). Candidate CI: run 43617276092. Pinned to `cand/0.1.498` at `22b4832f6ab79d2c4ae99f37d06daea9e784233b`; range `91fb3cd6c..22b4832f6`: worker 3c07e157's two commits (row 011-321, tests only), worker 29e1f6d0's six (row 011-340), then the 0.1.498 version raise and bundles and one `status.md` commit. Behaviour to compare against: `91fb3cd6c`. Read: board rows 011-340 and 011-321, `research/admission.md`, `tasks/011-340/notes.md`, `tasks/011-321/notes.md`, `reviews/0.1.453-r2.md` N1, this file's W1 and W2, and the two `status.md` lines of 2026-11-14 for these rows.
+
+Check, each as proven, plausible or unverified:
+
+1. **No parallel decision path** (the failure of `reviews/0.1.452.md` B1): no path in `scheduler.ts` or `slow-tier.ts` reads the start facts to decide a start, a re-arm or a status answer except `#facts()` and `#probe()`; re-run the notes' grep and judge each remaining hit. The tests call the same `admit` the scheduler calls.
+2. **Behaviour preserved, proven by tests** (the failure of `reviews/0.1.452.md` B2): the check order the design names holds in the pump, each slow lane and the status answers; each fact checked before a wait is checked again after it; the width answer equals both of today's (`#want`, `#select`). A claim with no test covering it is a finding. The two changed orders in `status.md` are the only ones, and neither changes anything a user sees.
+3. **The stamp**: an answer read in one lock turn and acted on in a later one throws, at `#fly` for the pump and for a slow lane's launch; with this code it never fires.
+4. **`SlowHost`** has exactly `lock`, `started`, `ready`, `closed`, `pump`, `probe`, `admit`; differences 1 and 2 are pinned table rows, not fixed.
+5. **Row 011-321**: removing the observed-read check fires the alarm; the case runs the change and the touch through the record outcome and the per-file store decision; no `KEY_FORMAT_VERSION` raise; judge whether the "reported, not raised" reading meets the row's done-when.
+6. **Scope**: no edit to `record.ts`, `tiers.ts` `selectTier`, `request-intake.ts`, `types/scheduler.ts`, the remote lane or any key.
+
+The coordinator's tree passed lint, typecheck, `check:version origin/main` (0.1.494 to 0.1.498), `key-format` and `version-sensitive` (19 tests). The workers' trees: Squeal's affected results passing, all 29 named scheduler files current (worker notes). Two functions stay over the complexity threshold, both already over it before (`#pump` 35, `SlowTier.#select` 27): a finding only if this candidate made them worse. Host policy as in `wave-85.md`. Write `reviews/0.1.498.md` and commit it on your branch.
