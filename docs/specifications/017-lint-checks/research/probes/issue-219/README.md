@@ -4,7 +4,7 @@ This is research evidence, not a product test or proposed implementation.
 Run from the Squeal repository root with its already-installed dependencies:
 
 ```sh
-timeout 45s pnpm exec tsx research/probes/issue-219/run.mts
+timeout 45s pnpm exec tsx docs/specifications/017-lint-checks/research/probes/issue-219/run.mts
 ```
 
 The probe checks one-minute load against the CPU count and skips when load is

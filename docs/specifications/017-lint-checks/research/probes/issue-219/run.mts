@@ -6,14 +6,14 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSyn
 import { cpus, loadavg, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { oxlintProvider } from '../../../src/core/lint/provider/oxlint/provider.js';
-import { lintCounts } from '../../../src/core/commit/lint.js';
-import { commitReportText } from '../../../src/core/commit/text.js';
-import { lintEntryLine } from '../../../src/core/lint/surface/format.js';
-import { lintTransition } from '../../../src/core/lint/transition.js';
-import { blobHash } from '../../../src/core/hash/blob.js';
+import { oxlintProvider } from '../../../../../../src/core/lint/provider/oxlint/provider.js';
+import { lintCounts } from '../../../../../../src/core/commit/lint.js';
+import { commitReportText } from '../../../../../../src/core/commit/text.js';
+import { lintEntryLine } from '../../../../../../src/core/lint/surface/format.js';
+import { lintTransition } from '../../../../../../src/core/lint/transition.js';
+import { blobHash } from '../../../../../../src/core/hash/blob.js';
 
-const repo = resolve(import.meta.dirname, '../../..');
+const repo = resolve(import.meta.dirname, '../../../../../..');
 const cezar = process.env.ISSUE_219_CEZAR ?? '/home/user/projects/cezar';
 const helperPath = join(cezar, 'packages/cezar/src/ast-grep-rules.testkit.ts');
 assert.equal(createHash('sha256').update(readFileSync(helperPath)).digest('hex'),

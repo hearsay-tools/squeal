@@ -36,7 +36,10 @@ Exact probe command from the repository root:
 timeout 45s pnpm exec tsx research/probes/issue-219/run.mts > research/probes/issue-219/result.json
 ```
 
-It exited 0. It used Node 26.13.0, pnpm 12.15.0 and tsx 4.23.15. Every child
+It exited 0. After collection, the coordinator moved the probe from root `research/`
+to this spec's `research/probes/issue-219/`, as the triage scope requires,
+and adjusted source imports. The command above records the original run;
+the probe README gives its new invocation. It used Node 26.13.0, pnpm 12.15.0 and tsx 4.23.15. Every child
 has a 15-second bound; the real oxlint provider retains its 5-second guard.
 The fixture has `lint.enabled: true`, `lint.tools: ["oxlint"]` and an explicit
 `no-unused-vars: error` rule. The probe opens that provider directly, verifies
@@ -133,4 +136,4 @@ claim; no suite run is needed for this documentation-only research.
 - Fetched with `gh issue view 170 --repo hearsay-tools/squeal --json title,body,url`: [#170](https://github.com/hearsay-tools/squeal/issues/170). Availability contrast only; not rerun here.
 - [Squeal source at examined commit](https://github.com/hearsay-tools/squeal/tree/1c74feb5768324fc89e894e9989e445d7b25b480/src/core), paths cited above; [017 spec](../spec.md) D2/D8/D11 and [019 spec](../../019-run-triggers/spec.md) D5, with both amendment logs read.
 - Local Cezar source: `~/projects/cezar` at the pinned revision above; `package.json`, `packages/cezar/src/lint/run.ts`, `packages/cezar/src/ast-grep-rules.testkit.ts`, `.ai/ast-grep/rules/active-run-literal.yml` and its rule tests.
-- [Probe README](../../../../research/probes/issue-219/README.md), [script](../../../../research/probes/issue-219/run.mts), [captured output](../../../../research/probes/issue-219/result.json). The README pins external helper/rule hashes and documents the reduced command.
+- [Probe README](probes/issue-219/README.md), [script](probes/issue-219/run.mts), [captured output](probes/issue-219/result.json). The README pins external helper/rule hashes and documents the reduced command.
