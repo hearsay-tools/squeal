@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.506";
+  if (true) return "0.1.509";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -8337,24 +8337,26 @@ function markParts(conn, bound) {
   }
   return marked4;
 }
-function sweepParts(conn, cutoff, marked4, batch) {
+function* sweepParts(conn, cutoff, marked4, batch, removed) {
   const ids = conn.all("SELECT id FROM coverage_parts WHERE used_at < ?", cutoff).map((row2) => num(row2, "id")).filter((id) => !marked4.has(id));
-  let removed = 0;
   for (let i3 = 0; i3 < ids.length; i3 += batch) {
     const some = JSON.stringify(ids.slice(i3, i3 + batch));
-    removed += conn.transaction(
-      () => conn.run(
-        "DELETE FROM coverage_parts WHERE id IN (SELECT value FROM json_each(?)) AND used_at < ?",
-        some,
-        cutoff
-      )
-    );
+    yield () => {
+      removed(
+        conn.transaction(
+          () => conn.run(
+            "DELETE FROM coverage_parts WHERE id IN (SELECT value FROM json_each(?)) AND used_at < ?",
+            some,
+            cutoff
+          )
+        )
+      );
+    };
   }
-  return removed;
 }
-function pruneParts(conn, cutoff, batch) {
-  if (!hasParts(conn)) return 0;
-  return sweepParts(conn, cutoff, markParts(conn, cutoff + PART_REFRESH_MS), batch);
+function* pruneParts(conn, cutoff, batch, removed) {
+  if (!hasParts(conn)) return;
+  yield* sweepParts(conn, cutoff, markParts(conn, cutoff + PART_REFRESH_MS), batch, removed);
 }
 var PART_REFRESH_MS;
 var init_parts2 = __esm({
@@ -8909,17 +8911,36 @@ var init_record = __esm({
 
 // src/core/code/store/prune.ts
 function pruneCodeStore(conn, options) {
+  const counts = noCodeRemoved();
+  for (const slice of pruneCodeSlices(conn, options, counts)) slice();
+  return { ...counts };
+}
+function noCodeRemoved() {
+  return {
+    countsRemoved: 0,
+    coverageRemoved: 0,
+    partsRemoved: 0,
+    worktreesRemoved: 0,
+    viewsRemoved: 0,
+    checksRemoved: 0
+  };
+}
+function* pruneCodeSlices(conn, options, counts) {
   const cutoff = options.now - options.retentionDays * DAY_MS2;
   const live = JSON.stringify(options.worktrees);
   const dead = deadWorktrees(conn, options.worktrees);
   if (dead.length > 0) {
     for (const [table, key3] of PER_WORKTREE) {
-      deleteInBatches(conn, table, key3, OF_WORKTREES, JSON.stringify(dead));
+      yield* deleteInBatches(conn, nothing, table, key3, OF_WORKTREES, JSON.stringify(dead));
     }
   }
-  deleteInBatches(conn, "meta", "key", COVERAGE_META_OF_DEAD, live);
-  const viewsRemoved = deleteInBatches(
+  counts.worktreesRemoved = dead.length;
+  yield* deleteInBatches(conn, nothing, "meta", "key", COVERAGE_META_OF_DEAD, live);
+  yield* deleteInBatches(
     conn,
+    (n) => {
+      counts.viewsRemoved += n;
+    },
     "views",
     "worktree_id, session_id, agent_id, check_id, measure",
     `(worktree_id, session_id, agent_id) NOT IN (
@@ -8927,8 +8948,11 @@ function pruneCodeStore(conn, options) {
        FROM json_each(?))`,
     JSON.stringify(options.consumers)
   );
-  const countsRemoved = deleteInBatches(
+  yield* deleteInBatches(
     conn,
+    (n) => {
+      counts.countsRemoved += n;
+    },
     "counts",
     "blob, language, counter_version",
     `counted_at < ? AND NOT EXISTS (SELECT 1 FROM files f WHERE f.blob = counts.blob
@@ -8936,24 +8960,23 @@ function pruneCodeStore(conn, options) {
      AND counts.blob NOT IN (SELECT s.blob FROM states s)`,
     cutoff
   );
-  const coverageRemoved = pruneCoverage(conn, options.resultKeys, cutoff);
-  const partsRemoved = pruneParts(conn, cutoff, DELETE_BATCH2);
-  const checksRemoved = deleteInBatches(
+  yield* pruneCoverage(conn, options.resultKeys, cutoff, (n) => {
+    counts.coverageRemoved += n;
+  });
+  yield* pruneParts(conn, cutoff, DELETE_BATCH2, (n) => {
+    counts.partsRemoved += n;
+  });
+  yield* deleteInBatches(
     conn,
+    (n) => {
+      counts.checksRemoved += n;
+    },
     "checks",
     "id",
     `id NOT IN (SELECT check_id FROM states UNION SELECT check_id FROM views
        UNION SELECT check_id FROM transitions)`
   );
-  vacuum2(conn);
-  return {
-    countsRemoved,
-    coverageRemoved,
-    partsRemoved,
-    worktreesRemoved: dead.length,
-    viewsRemoved,
-    checksRemoved
-  };
+  yield* vacuum2(conn);
 }
 function deadWorktrees(conn, live) {
   const kept6 = new Set(live);
@@ -8962,21 +8985,24 @@ function deadWorktrees(conn, live) {
   );
   return [...found3].filter((id) => !kept6.has(id));
 }
-function pruneCoverage(conn, resultKeys, cutoff) {
+function* pruneCoverage(conn, resultKeys, cutoff, removed) {
   if (resultKeys === void 0) {
-    return deleteInBatches(
+    yield* deleteInBatches(
       conn,
+      removed,
       "coverage",
       COVERAGE_KEY,
       `recorded_at < ? OR ${OLDER_RECORD}`,
       cutoff,
       COVERAGE_RECORD_VERSION
     );
+    return;
   }
   const held3 = conn.all("SELECT DISTINCT result_key FROM coverage").map((row2) => str(row2, "result_key"));
   const kept6 = new Set(typeof resultKeys === "function" ? resultKeys(held3) : resultKeys);
-  return deleteInBatches(
+  yield* deleteInBatches(
     conn,
+    removed,
     "coverage",
     COVERAGE_KEY,
     `result_key IN (SELECT value FROM json_each(?)) OR ${OLDER_RECORD}`,
@@ -8984,24 +9010,26 @@ function pruneCoverage(conn, resultKeys, cutoff) {
     COVERAGE_RECORD_VERSION
   );
 }
-function deleteInBatches(conn, table, key3, where3, ...params) {
-  let removed = 0;
-  for (; ; ) {
-    const changed2 = conn.transaction(
-      () => conn.run(
-        `DELETE FROM ${table} WHERE (${key3}) IN (
-           SELECT ${key3} FROM ${table} WHERE ${where3} LIMIT ${DELETE_BATCH2})`,
-        ...params
-      )
-    );
-    removed += changed2;
-    if (changed2 < DELETE_BATCH2) return removed;
+function* deleteInBatches(conn, removed, table, key3, where3, ...params) {
+  let changed2 = DELETE_BATCH2;
+  while (changed2 === DELETE_BATCH2) {
+    changed2 = 0;
+    yield () => {
+      changed2 = conn.transaction(
+        () => conn.run(
+          `DELETE FROM ${table} WHERE (${key3}) IN (
+             SELECT ${key3} FROM ${table} WHERE ${where3} LIMIT ${DELETE_BATCH2})`,
+          ...params
+        )
+      );
+      removed(changed2);
+    };
   }
 }
-function vacuum2(conn) {
+function* vacuum2(conn) {
   let free = freePages(conn);
   while (free > 0) {
-    conn.db.exec(`PRAGMA incremental_vacuum(${VACUUM_PAGES2})`);
+    yield () => conn.transaction(() => conn.db.exec(`PRAGMA incremental_vacuum(${VACUUM_PAGES2})`));
     const left = freePages(conn);
     if (left >= free) return;
     free = left;
@@ -9010,7 +9038,7 @@ function vacuum2(conn) {
 function freePages(conn) {
   return Number(conn.get("PRAGMA freelist_count")?.freelist_count ?? 0);
 }
-var DAY_MS2, DELETE_BATCH2, VACUUM_PAGES2, OF_WORKTREES, worktreeIdsOf, COVERAGE_META_OF_DEAD, OLDER_RECORD, COVERAGE_KEY, PER_WORKTREE;
+var DAY_MS2, DELETE_BATCH2, VACUUM_PAGES2, OF_WORKTREES, worktreeIdsOf, COVERAGE_META_OF_DEAD, OLDER_RECORD, COVERAGE_KEY, PER_WORKTREE, nothing;
 var init_prune2 = __esm({
   "src/core/code/store/prune.ts"() {
     "use strict";
@@ -9037,6 +9065,8 @@ var init_prune2 = __esm({
       ["views", "worktree_id, session_id, agent_id, check_id, measure"],
       ["transitions", "id"]
     ];
+    nothing = () => {
+    };
   }
 });
 
@@ -9463,6 +9493,7 @@ function createCodeStore(conn, schemaVersion, path) {
     transaction: (fn) => conn.transaction(fn),
     read: (fn) => conn.read(fn),
     prune: (options) => pruneCodeStore(conn, options),
+    pruneSlices: (options, counts) => pruneCodeSlices(conn, options, counts),
     close: () => conn.close()
   };
 }
@@ -53133,7 +53164,20 @@ var init_transfer_import_slices = __esm({
   }
 });
 
+// src/core/store/write-turns.ts
+function turnGapMs(heldMs) {
+  return Math.max(MIN_PRUNE_GAP_MS, Math.ceil(heldMs));
+}
+var MIN_PRUNE_GAP_MS;
+var init_write_turns = __esm({
+  "src/core/store/write-turns.ts"() {
+    "use strict";
+    MIN_PRUNE_GAP_MS = 10;
+  }
+});
+
 // src/core/store/transfer-import.ts
+import { setTimeout as delay3 } from "node:timers/promises";
 function importRefusal(bundle) {
   const theirs = otherKeyFormat(bundle);
   if (theirs === null) return null;
@@ -53146,11 +53190,24 @@ function otherKeyFormat(bundle) {
 async function importSliced(store, bundle, options) {
   const tally2 = emptyTally();
   const run7 = options.run ?? retriedSlice(BUSY_BOUND_MS, options.stopped);
+  const pause = options.pause ?? ((ms2) => delay3(ms2));
   for (const slice of slicesOf(store, bundle, options, tally2)) {
     if (options.stopped?.() === true) throw new ImportStopped();
-    await run7(slice);
+    let held3 = 0;
+    await run7(timed2(slice, (ms2) => held3 = ms2));
+    await pause(turnGapMs(held3));
   }
   return { ...tally2 };
+}
+function timed2(slice, took) {
+  return {
+    what: slice.what,
+    run: () => {
+      const started2 = performance.now();
+      slice.run();
+      took(performance.now() - started2);
+    }
+  };
 }
 function retriedSlice(boundMs = BUSY_BOUND_MS, stopping = () => false) {
   return (slice) => {
@@ -53192,6 +53249,7 @@ var init_transfer_import = __esm({
     init_sliced_write();
     init_store3();
     init_transfer_import_slices();
+    init_write_turns();
     ImportStopped = class extends Error {
       constructor() {
         super("the import stopped before its last slice; the next import adds the rest");
@@ -58563,7 +58621,7 @@ var init_warm_up = __esm({
 
 // src/core/scheduler/scheduler.ts
 import { stat as stat6 } from "node:fs/promises";
-import { setTimeout as delay4 } from "node:timers/promises";
+import { setTimeout as delay5 } from "node:timers/promises";
 function createScheduler(options) {
   return new TierScheduler(options);
 }
@@ -59754,7 +59812,7 @@ var init_scheduler2 = __esm({
       async #eventOrAfter(ms2) {
         const stop2 = new AbortController();
         try {
-          await Promise.race([this.#nextEvent(), delay4(ms2, void 0, { signal: stop2.signal })]);
+          await Promise.race([this.#nextEvent(), delay5(ms2, void 0, { signal: stop2.signal })]);
         } finally {
           stop2.abort();
         }
@@ -68310,8 +68368,8 @@ var init_pace = __esm({
        * unit meanwhile, so `due` says whether to wait again.
        */
       wait() {
-        const delay5 = Math.max(0, this.#notBefore - this.#now());
-        return new Promise((resolve45) => setTimeout(resolve45, delay5));
+        const delay6 = Math.max(0, this.#notBefore - this.#now());
+        return new Promise((resolve45) => setTimeout(resolve45, delay6));
       }
       /** Calls `next` once the next unit may start; a call while one waits joins it. */
       after(next) {
@@ -77863,17 +77921,17 @@ init_state();
 
 // src/core/status/durations.ts
 function durationsOf(results3) {
-  const timed2 = results3.filter((r) => r.outcome !== "skip");
-  const sorted3 = timed2.map((r) => r.durationMs).sort((a, b) => a - b);
+  const timed3 = results3.filter((r) => r.outcome !== "skip");
+  const sorted3 = timed3.map((r) => r.durationMs).sort((a, b) => a - b);
   const max = sorted3.at(-1);
   if (max === void 0) return null;
   const rank4 = (p) => sorted3[Math.max(0, Math.ceil(p * sorted3.length) - 1)] ?? max;
-  const fail3 = timed2.filter((r) => r.outcome === "fail").length;
+  const fail3 = timed3.filter((r) => r.outcome === "fail").length;
   return {
-    results: timed2.length,
-    pass: timed2.length - fail3,
+    results: timed3.length,
+    pass: timed3.length - fail3,
     fail: fail3,
-    skip: results3.length - timed2.length,
+    skip: results3.length - timed3.length,
     minMs: sorted3[0] ?? max,
     medianMs: rank4(0.5),
     p95Ms: rank4(0.95),
@@ -93533,12 +93591,12 @@ function isDue(state, now) {
   return Number.isNaN(next) || next <= now || next - now > CHECK_INTERVAL_MS;
 }
 function recordCheck(data2, result, now) {
-  const delay5 = result.failure === null ? CHECK_INTERVAL_MS : result.failure.transient ? TRANSIENT_RETRY_MS : FAILURE_RETRY_MS;
+  const delay6 = result.failure === null ? CHECK_INTERVAL_MS : result.failure.transient ? TRANSIENT_RETRY_MS : FAILURE_RETRY_MS;
   const at2 = new Date(now).toISOString();
   const state = {
     schema: 1,
     checkedAt: at2,
-    nextCheckAt: new Date(now + delay5).toISOString(),
+    nextCheckAt: new Date(now + delay6).toISOString(),
     ...result,
     lastSuccessAt: result.failure === null ? at2 : readUpdateState(data2)?.lastSuccessAt ?? null
   };
@@ -97010,27 +97068,34 @@ function isEpochMs(value) {
 }
 
 // src/core/daemon/lifecycle.ts
+init_prune2();
 import { existsSync as existsSync41 } from "node:fs";
 
 // src/core/code/store/prune-main.ts
 init_open2();
-function pruneCodeStoreAfter(main2, commonDir, policy, now) {
+init_prune2();
+function* pruneCodeSlicesAfter(main2, commonDir, policy, now, counts, opened3 = () => {
+}) {
   const code = openCodeStore(commonDir, policy, { create: false });
-  if (isCodeStoreOpenFailure(code)) return null;
+  if (isCodeStoreOpenFailure(code)) return;
+  opened3();
   try {
-    const worktrees = main2.worktrees.list().map((w2) => w2.id);
-    const consumers = worktrees.flatMap((id) => main2.consumers.list(id).map((r) => r.consumer));
-    return code.prune({
-      now,
-      retentionDays: policy.store.retentionDays,
-      worktrees,
-      consumers,
-      // Row 011-315: only the keys the code store's records hold, never every key.
-      resultKeys: (keys) => main2.results.keysWithResults(keys)
-    });
+    yield* code.pruneSlices(keptBy(main2, policy, now), counts);
   } finally {
     code.close();
   }
+}
+function keptBy(main2, policy, now) {
+  const worktrees = main2.worktrees.list().map((w2) => w2.id);
+  const consumers = worktrees.flatMap((id) => main2.consumers.list(id).map((r) => r.consumer));
+  return {
+    now,
+    retentionDays: policy.store.retentionDays,
+    worktrees,
+    consumers,
+    // Row 011-315: only the keys the code store's records hold, never every key.
+    resultKeys: (keys) => main2.results.keysWithResults(keys)
+  };
 }
 
 // src/core/delivery/expiry.ts
@@ -97421,9 +97486,10 @@ var IdleCheckpoint = class {
 // src/core/daemon/sliced-prune.ts
 init_busy();
 init_connection();
-import { setTimeout as delay3 } from "node:timers/promises";
-var MIN_PRUNE_GAP_MS = 10;
+init_write_turns();
+import { setTimeout as delay4 } from "node:timers/promises";
 var PRUNING = "pruning";
+var unrefDelay = (ms2) => delay4(ms2, void 0, { ref: false });
 var SlicedPrune = class {
   #running = false;
   #stopped = false;
@@ -97433,9 +97499,10 @@ var SlicedPrune = class {
   }
   /**
    * Runs the slices `slices` makes, then `then`, unless a prune runs or the
-   * driver stopped. A failure is logged and ends the prune; `then` runs.
+   * driver stopped. A failure is logged as `what`'s and ends the prune;
+   * `then` runs.
    */
-  async run(slices2, then2) {
+  async run(slices2, then2, what = "prune") {
     if (this.#running || this.#stopped) return;
     this.#running = true;
     let waited = false;
@@ -97458,13 +97525,13 @@ var SlicedPrune = class {
             if (!isBusy(error)) throw error;
             waited = true;
             this.#context.busyWaits?.waiting(PRUNING, PRUNING);
-            await delay3(busyBackoffMs(attempt), void 0, { ref: false });
+            await delay4(busyBackoffMs(attempt), void 0, { ref: false });
           }
         }
-        await delay3(Math.max(MIN_PRUNE_GAP_MS, Math.ceil(took)), void 0, { ref: false });
+        await (this.#context.pause ?? unrefDelay)(turnGapMs(took));
       }
     } catch (error) {
-      this.#context.log(`prune failed: ${String(error)}`);
+      this.#context.log(`${what} failed: ${String(error)}`);
     } finally {
       iterator?.return?.();
       this.#running = false;
@@ -97733,13 +97800,13 @@ function startTimers(context) {
       noneRemoved()
     ),
     // Spec 015 D4 and D8 (row 015-11, agreed with the coordinator): the code store
-    // after the main store, while it exists and the policy is on.
-    () => retries.run("pruning", [
-      [
-        "code prune",
-        () => pruneCodeStoreAfter(store, context.commonDir, context.policy, now())
-      ]
-    ])
+    // after the main store, while it exists and the policy is on. Row 011-350 (#220): in
+    // slices by the same driver, so a writer of another worktree gets turns between them.
+    () => void pruning.run(
+      () => pruneCodeSlicesAfter(store, context.commonDir, context.policy, now(), noCodeRemoved()),
+      void 0,
+      "code prune"
+    )
   );
   const timers = [
     setInterval(heartbeat, context.heartbeatMs),
@@ -107205,12 +107272,12 @@ function endedLine(wait, verdict, none3) {
   const why2 = noVerdictText(verdict);
   if (why2 !== null) return none3(why2);
   const unmatched2 = wait.narrow?.unmatched ?? [];
-  const nothing = unmatched2.length === 0 ? "" : `${unmatched2.join(", ")} ${unmatched2.length === 1 ? "selects" : "select"} no test file of any group`;
+  const nothing2 = unmatched2.length === 0 ? "" : `${unmatched2.join(", ")} ${unmatched2.length === 1 ? "selects" : "select"} no test file of any group`;
   const code = verdictCode(verdict);
-  if (code === 0 && nothing !== "") return none3(nothing);
+  if (code === 0 && nothing2 !== "") return none3(nothing2);
   const queued = Math.min(wait.queued, verdict.testFiles);
   return [
-    `completed at revision ${verdict.revision}: ${failuresText(verdict.failures)}; ${plural(verdict.testFiles, "test file")}, ${queued} queued by this request${nothing === "" ? "" : `; ${nothing}`}`,
+    `completed at revision ${verdict.revision}: ${failuresText(verdict.failures)}; ${plural(verdict.testFiles, "test file")}, ${queued} queued by this request${nothing2 === "" ? "" : `; ${nothing2}`}`,
     code
   ];
 }
