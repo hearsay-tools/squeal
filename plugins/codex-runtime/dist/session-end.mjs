@@ -1589,8 +1589,8 @@ function keepReplaced(conn, failing, records, loadOf2) {
   );
   const added = [];
   for (const { result, failureId } of failing) {
-    const pass = passes.get(identity(result.check));
-    if (pass === void 0 || pass.key !== result.key) continue;
+    const pass2 = passes.get(identity(result.check));
+    if (pass2 === void 0 || pass2.key !== result.key) continue;
     added.push({
       check: result.check,
       key: result.key,
@@ -1602,9 +1602,9 @@ function keepReplaced(conn, failing, records, loadOf2) {
       failureId,
       loadPerCpu: loadOf2(result.provenance.runId),
       replacedBy: {
-        runId: pass.provenance.runId,
-        worktreeId: pass.provenance.worktreeId,
-        recordedAt: pass.provenance.recordedAt
+        runId: pass2.provenance.runId,
+        worktreeId: pass2.provenance.worktreeId,
+        recordedAt: pass2.provenance.recordedAt
       }
     });
   }
@@ -8007,7 +8007,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.509";
+  if (true) return "0.1.510";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
@@ -12407,9 +12407,9 @@ function focusedCheckOf(c) {
 }
 function countsOf3(outcomes) {
   if (typeof outcomes !== "object" || outcomes === null) return null;
-  const { pass, fail, skip } = outcomes;
+  const { pass: pass2, fail, skip } = outcomes;
   const whole = (n) => Number.isInteger(n) && n >= 0;
-  return whole(pass) && whole(fail) && whole(skip) ? { outcomes: { pass, fail, skip } } : null;
+  return whole(pass2) && whole(fail) && whole(skip) ? { outcomes: { pass: pass2, fail, skip } } : null;
 }
 
 // src/core/status/identity.ts
@@ -13412,7 +13412,7 @@ function userConfigPath(env = process.env) {
   const base = xdg !== void 0 && xdg !== "" && isAbsolute11(xdg) ? xdg : join27(env.HOME !== void 0 && env.HOME !== "" ? env.HOME : homedir2(), ".config");
   return join27(base, "squeal", "config.json");
 }
-function defaultHostSlots2(cpus = availableParallelism2()) {
+function defaultHostSlots(cpus = availableParallelism2()) {
   return Math.max(1, cpus - 1);
 }
 function loadUserConfig(options = {}) {
@@ -13420,7 +13420,7 @@ function loadUserConfig(options = {}) {
   const cpus = options.cpus ?? availableParallelism2();
   const defaults = {
     capacity: {
-      hostSlots: defaultHostSlots2(cpus),
+      hostSlots: defaultHostSlots(cpus),
       projects: {},
       groupSlotScope: DEFAULT_GROUP_SLOT_SCOPE,
       backgroundShare: DEFAULT_BACKGROUND_SHARE
@@ -14042,7 +14042,7 @@ function yieldId(tier) {
   if (tier.kind === "remainder") return `remainder ${remainderSeconds(tier.remainderMs)}`;
   return tier.kind === "overrun" ? `overrun ${timeText(tier.yieldsAt)}` : tier.kind;
 }
-function widest(a, b) {
+function widest2(a, b) {
   if (a.kind === "running" && b.kind === "running") {
     return a.since === null || b.since !== null && b.since < a.since ? b : a;
   }
@@ -14096,7 +14096,7 @@ function outstandingOf(store, worktreeId, root, reads, now, load) {
       return;
     }
     if (ref2 !== null) group.files.push(ref2);
-    group.standing = widest(group.standing, standing3);
+    group.standing = widest2(group.standing, standing3);
   };
   for (const file of files) {
     const retry = retries.get(testFileId(file.testFile));
