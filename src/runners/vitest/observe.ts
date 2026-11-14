@@ -2,10 +2,11 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, sep } from "node:path";
 import type { Vitest } from "vitest/node";
+import { compare } from "../../core/fs/compare.js";
 import type { WorktreePaths } from "../../core/fs/worktree-paths.js";
-import type { AbsolutePath } from "../../core/types/common.js";
+import type { AbsolutePath, ProjectName, RelativePath } from "../../core/types/common.js";
 import type { TestFileRef } from "../../core/types/keys.js";
-import type { ObservedInputs } from "../../core/types/runner.js";
+import type { LoadedList, ObservedInputs, RunReport } from "../../core/types/runner.js";
 import { observedInputs } from "../observe/inputs.js";
 import { takeRecorded } from "../observe/read.js";
 import {
@@ -168,4 +169,41 @@ export class VitestObserver {
   #recorderMissing(): boolean {
     return this.#recorder === null;
   }
+}
+
+/**
+ * Spec 022 D2: `report` with the run's loaded lists (D1). While the
+ * instance observes (`report.observed` is there, policy
+ * `observe.runtimeInputs`), each list's paths join its file's observed
+ * paths and module loads, less the files the project's environment hash
+ * holds (`environmentFiles`: setup files and their closures, which every
+ * file loads). The core drops the paths the file's closure holds. Without
+ * observation no list joins a key; the lists are stored all the same (D3).
+ */
+export function withLoaded(
+  report: RunReport,
+  lists: readonly LoadedList[],
+  environmentFiles: (project: ProjectName) => ReadonlySet<RelativePath>,
+): RunReport {
+  if (lists.length === 0) return report;
+  if (report.observed === undefined) return { ...report, loaded: lists };
+  const observed = new Map(report.observed.map((o) => [refKey(o.testFile), o]));
+  for (const { testFile, paths } of lists) {
+    const held = environmentFiles(testFile.project);
+    const loaded = paths.filter((path) => !held.has(path));
+    if (loaded.length === 0) continue;
+    const found = observed.get(refKey(testFile));
+    observed.set(refKey(testFile), {
+      ...(found ?? { testFile, directories: [] }),
+      paths: union(found?.paths ?? [], loaded),
+      modules: union(found?.modules ?? [], loaded),
+    });
+  }
+  return { ...report, observed: [...observed.values()], loaded: lists };
+}
+
+const refKey = (ref: TestFileRef) => `${ref.project}\0${ref.path}`;
+
+function union(a: readonly RelativePath[], b: readonly RelativePath[]): RelativePath[] {
+  return [...new Set([...a, ...b])].sort(compare);
 }

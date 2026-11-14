@@ -6,10 +6,12 @@ import type {
   ExecutedSource,
   VitestCoverageOptions,
 } from "../../core/code/coverage/types.js";
+import { compare } from "../../core/fs/compare.js";
 import type { WorktreePaths } from "../../core/fs/worktree-paths.js";
 import { causeText } from "../../core/state/fingerprint.js";
-import type { AbsolutePath } from "../../core/types/common.js";
+import type { AbsolutePath, RelativePath } from "../../core/types/common.js";
 import type { TestFileRef } from "../../core/types/keys.js";
+import type { LoadedList } from "../../core/types/runner.js";
 import { type ImportClosure, importClosure } from "./graph.js";
 import { findProject } from "./project.js";
 import type { RunCollector } from "./reporter.js";
@@ -30,6 +32,8 @@ export interface CoverageBatch {
   readonly testFiles: readonly string[];
   readonly environment: string;
   readonly projectName: string;
+  /** Spec 022 D1: the files the worker's module runner held for the batch (`loadedFiles`). */
+  readonly loaded?: readonly string[];
 }
 
 /** Spec 015 D8 Fidelity: a test file whose closure imports `node:inspector` can read V8 coverage itself. */
@@ -245,16 +249,10 @@ export function coveredFiles(
   const executed = new Map<Environment, ReadonlyMap<AbsolutePath, ExecutedSource>>();
   const files: CoveredFile[] = [];
   for (const batch of batches) {
-    const [file, ...more] = batch.testFiles;
     const project = vitest.projects.find((p) => p.name === batch.projectName);
     const environment = project?.vite.environments[batch.environment];
-    // Row 013-10: Vitest names the file from its project's root (`file.name`, Vitest 4 and 5).
-    const path =
-      file === undefined || project === undefined
-        ? null
-        : paths.toRelative(resolve(project.config.root, file));
-    const ref = path === null ? null : { project: batch.projectName, path };
-    if (more.length > 0 || environment === undefined || ref === null || !wanted(ref)) {
+    const ref = batchFile(vitest, batch, paths);
+    if (environment === undefined || ref === null || !wanted(ref)) {
       dropPayloads([batch]);
       continue;
     }
@@ -269,6 +267,46 @@ export function coveredFiles(
     files.push({ testFile: ref, payload: batch.coverage, sources, ...child });
   }
   return files;
+}
+
+/**
+ * The test file of a batch of one file, `null` for a batch of several
+ * (`isolate: false` gives none) or of a file outside the worktree. Row
+ * 013-10: Vitest names the file from its project's root (`file.name`,
+ * Vitest 4 and 5).
+ */
+function batchFile(vitest: Vitest, batch: CoverageBatch, paths: WorktreePaths): TestFileRef | null {
+  const [file, ...more] = batch.testFiles;
+  const project = vitest.projects.find((p) => p.name === batch.projectName);
+  if (file === undefined || more.length > 0 || project === undefined) return null;
+  const path = paths.toRelative(resolve(project.config.root, file));
+  return path === null ? null : { project: batch.projectName, path };
+}
+
+/**
+ * Spec 022 D1: of each wanted file's batch, the worktree's files its worker
+ * loaded, sorted. A list without the test file itself is lost and dropped,
+ * as is a batch `coveredFiles` drops. Read before the payloads go.
+ */
+export function loadedLists(
+  vitest: Vitest,
+  batches: readonly CoverageBatch[],
+  wanted: (ref: TestFileRef) => boolean,
+  paths: WorktreePaths,
+): LoadedList[] {
+  const lists: LoadedList[] = [];
+  for (const batch of batches) {
+    const ref = batchFile(vitest, batch, paths);
+    if (ref === null || batch.loaded === undefined || !wanted(ref)) continue;
+    const loaded = new Set<RelativePath>();
+    for (const file of batch.loaded) {
+      const path = paths.isProjectFile(file) ? paths.toRelative(file) : null;
+      if (path !== null) loaded.add(path);
+    }
+    if (!loaded.has(ref.path)) continue;
+    lists.push({ testFile: ref, paths: [...loaded].sort(compare) });
+  }
+  return lists;
 }
 
 /** Deletes each batch's payload and its children's: a hung, crashed or rejected run keeps no record (D8). */

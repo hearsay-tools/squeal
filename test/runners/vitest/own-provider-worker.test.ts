@@ -22,6 +22,19 @@ afterEach(() => {
 
 const WORKER_FILE = "/w/test/a.test.ts";
 
+/** Spec 022 D1: the module runner's ids in the fake worker, as Vitest 5 names them. */
+const MODULE_IDS = [
+  WORKER_FILE,
+  "/w/src/a.ts",
+  "/w/src/a.ts?t=1",
+  "/w/data/a.txt?raw",
+  "mock:/w/src/mocked.ts",
+  "file:///w/src/url.ts",
+  "/w/node_modules/dep/index.js",
+  "\0virtual:thing",
+  "virtual:other",
+];
+
 /** A child that loads the provider, runs `covered.mjs` under it and prints the payload's path. */
 const CHILD = `
 import { pathToFileURL } from "node:url";
@@ -29,6 +42,9 @@ const [provider, reports, shape, isolate] = process.argv.slice(2);
 globalThis.__vitest_worker__ = {
   config: { coverage: { reportsDirectory: reports } },
   ctx: { files: [{ filepath: ${JSON.stringify(WORKER_FILE)} }] },
+  evaluatedModules: {
+    idToModuleMap: new Map(${JSON.stringify(MODULE_IDS)}.map((id) => [id, { id, evaluated: false }])),
+  },
 };
 const { default: coverage } = await import(pathToFileURL(provider).href);
 const start = { isolate: isolate === "true" };
@@ -62,7 +78,8 @@ function takeAs(shape: "4" | "5", options: { isolate?: boolean; skip?: boolean }
     [join(dir, "child.mjs"), provider, reports, shape, String(options.isolate ?? true)],
     { env: { ...process.env, COVERED: covered }, encoding: "utf8" },
   );
-  return { payload: JSON.parse(out) as string | null, reports, covered };
+  const taken = JSON.parse(out) as { file: string; loaded: string[] } | null;
+  return { payload: taken?.file ?? null, loaded: taken?.loaded ?? null, reports, covered };
 }
 
 describe("Squeal's provider, called as each Vitest's worker calls it", () => {
@@ -78,6 +95,19 @@ describe("Squeal's provider, called as each Vitest's worker calls it", () => {
       expect(
         script?.functions.some((f) => f.functionName === "covered" && f.ranges[0]?.count === 1),
       ).toBe(true);
+    },
+  );
+
+  it.each(["4", "5"] as const)(
+    "Vitest %s: returns the files of every module node, evaluated or not, without packages and virtual ids (022 D1)",
+    (shape) => {
+      expect(takeAs(shape).loaded?.sort()).toEqual([
+        "/w/data/a.txt",
+        "/w/src/a.ts",
+        "/w/src/mocked.ts",
+        "/w/src/url.ts",
+        WORKER_FILE,
+      ]);
     },
   );
 
