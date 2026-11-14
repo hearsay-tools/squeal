@@ -5,6 +5,7 @@ import type { TestFileRef } from "../../../src/core/types/keys.js";
 import type { RunnerAdapter, RunnerClosure } from "../../../src/core/types/runner.js";
 import { NO_TRAITS } from "../../../src/core/types/runner-traits.js";
 import { changedSet, NO_ADAPTERS, project } from "./collect-fixture.js";
+import { quiet } from "./host-load.js";
 
 /*
  * Spec 020 D13.2 (row 020-08b): the collector gives the known evidence its
@@ -47,6 +48,7 @@ describe("collectEvidence: the closure it gives the known evidence (spec 020 D13
     const closures: (RunnerClosure | null | undefined)[] = [];
 
     const evidence = await collectEvidence(root, await changedSet(root, ["src/changed.ts"]), {
+      hostLoad: quiet,
       tests: [],
       budgetSeconds: 600,
       adapters: { ...NO_ADAPTERS, vitest: async () => noClosure() },

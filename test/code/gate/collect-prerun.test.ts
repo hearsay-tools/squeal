@@ -8,6 +8,7 @@ import type { TestFileRef } from "../../../src/core/types/keys.js";
 import type { GlobalSetupEntry, RunnerAdapter, RunReport } from "../../../src/core/types/runner.js";
 import { NO_TRAITS } from "../../../src/core/types/runner-traits.js";
 import { changedSet, NO_ADAPTERS, project } from "./collect-fixture.js";
+import { quiet } from "./host-load.js";
 
 /*
  * Spec 020 D14.4 (row 020-15b, with 020-16a): the collector tells the
@@ -75,6 +76,7 @@ async function told(
   let summary: SelectionSummary | null = null;
   const calls: string[] = [];
   const evidence = await collectEvidence(root, await changedSet(root, paths), {
+    hostLoad: quiet,
     tests: [],
     budgetSeconds: 600,
     adapters,

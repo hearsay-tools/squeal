@@ -3,6 +3,7 @@ import { collectEvidence } from "../../../src/core/code/gate/collect.js";
 import { evaluate } from "../../../src/core/code/gate/evaluate.js";
 import { ADAPTERS, changedSet, project, SLOW } from "./collect-fixture.js";
 import { POLICY, TIMES, VERSIONS } from "./evaluate-fixture.js";
+import { quiet } from "./host-load.js";
 
 /*
  * Spec 020 D11.3 (row 020-07a): the gate adopts 015 D9's rule for skipped
@@ -16,6 +17,7 @@ describe("a gate run whose loader skipped a test (spec 020 D11.3)", () => {
     const root = project("selection");
     const changed = await changedSet(root, ["src/skips.ts"]);
     const evidence = await collectEvidence(root, changed, {
+      hostLoad: quiet,
       tests: [],
       budgetSeconds: 600,
       adapters: ADAPTERS,

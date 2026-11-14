@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { type CollectOptions, collectEvidence } from "../../../src/core/code/gate/collect.js";
 import type { TestFileEvidence } from "../../../src/core/code/gate/types.js";
 import { ADAPTERS, changedSet, project } from "./collect-fixture.js";
+import { quiet } from "./host-load.js";
 
 /*
  * Spec 020 D3.4 (row 020-03): one deadline over every run. A file that
@@ -24,6 +25,7 @@ async function collect(durations?: CollectOptions["durations"]) {
   const told: { runners: string[]; estimates: string[] } = { runners: [], estimates: [] };
   const started = performance.now();
   const evidence = await collectEvidence(root, changed, {
+    hostLoad: quiet,
     tests: [],
     budgetSeconds: BUDGET,
     adapters: ADAPTERS,
