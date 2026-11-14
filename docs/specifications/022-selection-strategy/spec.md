@@ -66,9 +66,9 @@ Effect: a test file that reaches a module only at runtime re-keys when that modu
 
 ### D3. The loaded list in the store
 
-Lists are kept apart from the closure. Reach needs to know which closure paths the file did not load, and phase 2 needs the same. A new table in the shared store is created at open, with no schema version raise, as `IMPORT_TABLES` and `CODE_TABLES` are. It holds one list per result key: the project, the test path, the key, and the loaded paths with their blob ids.
+Lists are kept apart from the closure. Reach needs to know which closure paths the file did not load, and phase 2 needs the same. A new table in the shared store is created by its first write, with no schema version raise, as `request_covered_files` is (amended 2026-11-14, review 0.1.493 S1). A reader of a store without it reads no lists. It holds one list per result key: the project, the test path, the key, and the loaded paths with their blob ids.
 
-- Prune removes a list with its result.
+- Prune removes a list with its result. A daemon from before 0.1.493 does not, so in a store shared with one, a list can outlive its result until a newer daemon prunes. Such a list is still a true record of one run; reach reads it as a list of that time (accepted 2026-11-14, review 0.1.493 compatibility note).
 - `test_files.method` keeps its one value. A new value there makes older daemons that share the store throw (`store/codec.ts` `oneOf`; `selection-option.md` 1).
 - CI export and import carry no lists (non-goal).
 
