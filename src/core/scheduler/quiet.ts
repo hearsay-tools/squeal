@@ -177,7 +177,7 @@ export function quietCaughtUp(
 }
 
 /**
- * Whether `selectTier` leaves `ref`, queued in `lane`, queued at `now` in a
+ * Whether the tier plan leaves `ref`, queued in `lane`, queued at `now` in a
  * backlog tier or the second group's turn (`tier`): in a backlog tier while
  * the lane waits for quiet after a cancel; in either while it is catch-up
  * and the lane's catch-up waits (row 011-153). An edit's tier takes it.
@@ -200,12 +200,15 @@ export function quietHolds(
  * How long the pump sleeps before it looks again: until the earliest end of
  * a wait whose lane has a fast file queued, or of a catch-up's wait whose
  * lane has a catch-up file queued, at most `QUIET_RECHECK_MS`; `null` when
- * no such lane waits.
+ * no such lane waits. `now` is the tier plan's clock reading (row 011-346).
  */
-export function quietSleepMs(context: SchedulerContext, ledger: Ledger): number | null {
+export function quietSleepMs(
+  context: SchedulerContext,
+  ledger: Ledger,
+  now: EpochMs = context.now(),
+): number | null {
   const { quiet } = context;
   if (quiet === undefined) return null;
-  const now = context.now();
   const { queue } = ledger;
   const holding = (ends: ReadonlyMap<string, EpochMs>, held: (ref: TestFileRef) => boolean) =>
     [...ends]

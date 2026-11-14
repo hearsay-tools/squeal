@@ -1,12 +1,10 @@
 import type { CheckKey, TestFileRef } from "../types/keys.js";
-import { peekClaim } from "./claims.js";
 import type { SchedulerContext } from "./context.js";
 import type { FileState } from "./files.js";
 import type { FocusEntry } from "./focused-entries.js";
 import { writeFocused } from "./focused-row.js";
 import type { Ledger } from "./ledger.js";
-import { quietHolds } from "./quiet.js";
-import { laneOf, newTier, type Tier, type TierFile } from "./tiers.js";
+import { newTier, type Tier, type TierFile } from "./tiers.js";
 
 /*
  * Spec 011 C4 and C15 as amended 2026-10-23 (row 011-135; code row
@@ -37,7 +35,7 @@ export function mayFocus(context: SchedulerContext, ledger: Ledger, ref: TestFil
  * the file left the listing, is blocked, unkeyed or slow now, or has a
  * result at its current key, which answers it with no run (C4).
  */
-function runnable(
+export function runnable(
   context: SchedulerContext,
   ledger: Ledger,
   entry: FocusEntry,
@@ -62,84 +60,20 @@ export function focusedWaiting(
 }
 
 /**
- * Whether the backlog's turn after four tiers of the first group (C4 step
- * 4) goes before the focused tier: it is due and a file of the second
- * group may start in a free lane. A focused tier counts toward the four, so
- * a stream of focused waits cannot starve the backlog.
- */
-function turnFirst(
-  context: SchedulerContext,
-  ledger: Ledger,
-  busy: ReadonlySet<string>,
-  turnDue: boolean,
-): boolean {
-  if (!turnDue) return false;
-  const now = context.now();
-  const { queue } = ledger;
-  // Only a file that may start now takes the turn: a departure drain's paused
-  // backlog does not, nor a file another worktree's claim holds or a stored
-  // result stands for (review 0.1.280).
-  return ledger.fastQueued((ref) => {
-    const lane = laneOf(context, ref);
-    if (busy.has(lane) || queue.isFirstGroup(ref)) return false;
-    if (quietHolds(context, ledger, ref, lane, { backlog: true, turn: true }, now)) return false;
-    const file = ledger.file(ref);
-    if (!file || file.key === null || file.blocked !== null) return false;
-    return peekClaim(context, ledger, ref) === "free";
-  });
-}
-
-/**
- * The focused tier to start now, `null` when none: the waiting entries in
- * request order, of the lane of the first that may run there, up to
- * `runner.tierSize` files, each for its own texts (C14, `RunOptions.checks`).
- * A lane in `busy` takes none; its tier in flight may yield to the entry as
- * to a promoted file (`TierYields`). An entry that may not run goes. The
- * tier claims no key, leaves its files queued as they were, writes each
+ * Starts the focused tier of `picked`, whose files are `files` in the same
+ * order (the plan's `focused` candidate, `focusedCandidate`, row 011-346):
+ * it claims no key, leaves its files queued as they were, writes each
  * file's entry in the focused meta row with `endedAt` null, and counts as a
  * tier of its named wait's group, or of the first group when no wait's
  * group holds a file of it (`RunQueue.focusedSelected`, row 011-283).
  */
-export function selectFocusedTier(
-  context: SchedulerContext,
-  ledger: Ledger,
-  busy: ReadonlySet<string>,
-  turnDue: boolean,
-): Tier | null {
-  const { focused } = ledger.queue;
-  if (focused.size === 0 || turnFirst(context, ledger, busy, turnDue)) return null;
-  const picked: { entry: FocusEntry; file: FileState; key: CheckKey }[] = [];
-  let lane: string | null = null;
-  for (const entry of focused.waiting(context.now())) {
-    if (picked.length >= context.policy.runner.tierSize) break;
-    const run = runnable(context, ledger, entry);
-    if (run === null) {
-      focused.drop(entry);
-      continue;
-    }
-    const at = laneOf(context, entry.ref);
-    if (busy.has(at) || (lane !== null && at !== lane)) continue;
-    lane = at;
-    picked.push({ entry, ...run });
-  }
-  if (lane === null) return null;
-  return startFocusedTier(context, ledger, picked);
-}
-
-function startFocusedTier(
+export function startFocusedTier(
   context: SchedulerContext,
   ledger: Ledger,
   picked: readonly { entry: FocusEntry; file: FileState; key: CheckKey }[],
+  files: readonly TierFile[],
 ): Tier | null {
-  const { keys, store, worktreeId } = context;
-  const files: TierFile[] = picked.map(({ file, key }) => ({
-    file,
-    key,
-    inputs: keys.stabilityPaths(file.ref),
-    runtimePolicy: keys.runtimeIdentity(file.ref),
-    checkpointId: null,
-    forced: false,
-  }));
+  const { store, worktreeId } = context;
   const first = files[0];
   if (first === undefined) return null;
   // The focused row's write takes the store first, as `startTier`'s
