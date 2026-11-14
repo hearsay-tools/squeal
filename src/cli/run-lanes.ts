@@ -41,7 +41,9 @@ export function laneText(checkpoint: CheckpointRecord, asked: CheckpointLane | n
 
 /**
  * The worktree's listed test files of a one-lane checkpoint's lane, which its
- * verdict is on (task 004-61); `null` for a checkpoint of both lanes. The
+ * verdict is on (task 004-61); `null` for a checkpoint of both lanes. Row
+ * 011-328: the guess a checkpoint wait keeps when the daemon's answer names
+ * no covered-files record, or one that is gone (`requestFiles`). The
  * lane is the daemon's (`slowView`, which `requestFullSuite` filters by)
  * under the policy at the worktree's root: a file of any group but `tests`
  * is outside the fast lane, a manual one too (row 018-11). A policy change

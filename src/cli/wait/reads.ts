@@ -1,7 +1,6 @@
 import { heldUntilAsked } from "../../core/daemon/check-groups.js";
 import { readPolicy } from "../../core/daemon/policy.js";
 import { resolveCommonDir, worktreeIdFor } from "../../core/fs/git-layout.js";
-import { testFileId } from "../../core/keys/reverse-index.js";
 import { readReleased } from "../../core/lint/pass/commit-entry.js";
 import { waitsToLint } from "../../core/lint/pass/commit-news.js";
 import { heldBy, lintGroupOf } from "../../core/lint/pass/moment.js";
@@ -18,8 +17,8 @@ import type { Policy } from "../../core/types/policy.js";
 import type { StatusUnavailable } from "../../core/types/status.js";
 import type { Store } from "../../core/types/store.js";
 import type { CheckpointLane } from "../../core/types/store-records.js";
-import { laneFiles } from "../run-lanes.js";
 import { holdOfWait, readClasses, readVerdict } from "../verdict.js";
+import { checkpointFiles, inList } from "./covered.js";
 import { presenceOf, presenceRead, readBound } from "./presence.js";
 import { checkpointEnd, installWait, latestRevision } from "./progress.js";
 import type { WaitPorts } from "./socket.js";
@@ -32,14 +31,19 @@ import type { ReadField, WaitRecord } from "./table.js";
  */
 
 /**
- * The files a run wait is for (011-328 reads them from the scheduler's
- * record): a checkpoint's lane, `null` for both lanes; a group's, by the
- * policy at the wait's start; or a list, a narrow run's selection.
+ * The files a run wait is for: a list, the request's covered files as the
+ * scheduler recorded them (row 011-328, `requestFiles`), or, with no
+ * record, a narrow run's selection from its answer; else today's guess, a
+ * checkpoint's lane by the policy (`null`: both lanes, every listed file),
+ * or a group's by the policy at the wait's start.
  */
 export type WaitFiles =
   | { readonly kind: "lane"; readonly lane: CheckpointLane | null }
   | { readonly kind: "group"; readonly group: string }
   | { readonly kind: "list"; readonly files: readonly TestFileRef[] };
+
+/** A checkpoint wait's files: its lane's, or its covered files. */
+export type CheckpointFiles = Exclude<WaitFiles, { kind: "group" }>;
 
 interface AskBase {
   readonly root: AbsolutePath;
@@ -57,7 +61,7 @@ export type RunWaitAsk =
         readonly worktreeId: WorktreeId;
         readonly revision: RevisionNumber;
       };
-      readonly files: Extract<WaitFiles, { kind: "lane" }>;
+      readonly files: CheckpointFiles;
     })
   | (AskBase & { readonly wait: "group"; readonly files: Exclude<WaitFiles, { kind: "lane" }> })
   | (AskBase & {
@@ -85,7 +89,7 @@ export function waitReads(ask: RunWaitAsk, ports: WaitPorts): (store: Store | nu
       const { id, worktreeId } = ask.checkpoint;
       const presence = presenceOf(ask.root, worktreeId, ports);
       return (store) => {
-        const lane = () => laneFiles(opened(ask, store), worktreeId, ask.files.lane);
+        const lane = () => checkpointFiles(opened(ask, store), worktreeId, ask.files);
         return (field) => {
           switch (field) {
             case "late":
@@ -176,15 +180,12 @@ function unknownField(ask: RunWaitAsk, field: StoreField): never {
   throw new Error(`run wait ${ask.wait}: its reads have no field ${field}`);
 }
 
-/** Which files a group wait is for: a narrow run's selection (row 019-49), else the group's. */
+/** Which files a group wait is for: a list's (row 011-328; a narrow run's, row 019-49), else the group's. */
 function ownOf(
   root: AbsolutePath,
   files: Exclude<WaitFiles, { kind: "lane" }>,
 ): (ref: TestFileRef) => boolean {
-  if (files.kind === "list") {
-    const ids = new Set(files.files.map(testFileId));
-    return (ref) => ids.has(testFileId(ref));
-  }
+  if (files.kind === "list") return inList(files.files);
   const view = groupView(readPolicy(root));
   return (ref) => view.of(ref).name === files.group;
 }

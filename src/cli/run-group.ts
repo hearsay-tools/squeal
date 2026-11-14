@@ -12,6 +12,7 @@ import { runNarrowCommand } from "./run-group-narrow.js";
 import { waitForGroup } from "./run-group-wait.js";
 import type { RunLanes } from "./run-lanes.js";
 import { runLintGroupCommand } from "./run-lint-group.js";
+import { requestFiles } from "./wait/covered.js";
 import { askWithin, socketBound } from "./wait/socket.js";
 import { untilTaken } from "./wait/wait.js";
 
@@ -112,7 +113,9 @@ export async function runGroupCommand(args: GroupArgs, io: CliIo, usage: string)
     io.stdout(line);
     return 0;
   }
-  const files = { kind: "group", group: name } as const;
+  // Row 011-328: the request's files, read once from its record; the group's by the policy without one.
+  const guess = { kind: "group", group: name } as const;
+  const { files } = requestFiles({ root, coveredId: state.coveredId, deadline }, guess);
   return waitForGroup(
     { root, socketPath, group: name, queued: state.queued, deadline, line, files },
     io,
