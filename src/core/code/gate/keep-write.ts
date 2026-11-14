@@ -231,16 +231,25 @@ export function changedAfterLoss(count: number): string {
  * Row 020-68 (#220): the line after the keeper's last pass, when a run
  * completed a file: how many of the `completed` files are `kept`, `early`
  * of them while the runs went on, and what the next run on the same bytes
- * runs.
+ * runs. Review 0.1.508 B1: `unknown` files the daemon may have kept are
+ * named apart, and the next run's work is told as conditional on them.
  */
 export function keptCount(counts: {
   readonly kept: number;
   readonly completed: number;
   readonly early: number;
+  /** Review 0.1.508 B1: files whose write the daemon took and did not say how it went. */
+  readonly unknown?: number;
 }): string {
   const { completed: all, early } = counts;
   const kept = Math.min(counts.kept, all);
+  const unknown = Math.min(counts.unknown ?? 0, all - kept);
   const during = early === 0 ? "" : ` (${early} while the runs went on)`;
+  if (unknown > 0) {
+    const are = kept === 1 ? "is" : "are";
+    const them = `${unknown} of them`;
+    return `${kept} of ${all} completed test files ${are} kept in the stores${during}, and whether the daemon kept ${them} is not known; the next run on the same bytes reads what was kept and runs the rest`;
+  }
   if (kept === all) {
     const these =
       all === 1 ? "the 1 completed test file is" : `all ${all} completed test files are`;

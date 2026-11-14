@@ -122,13 +122,45 @@ describe("a keep whose answer is lost (review 0.1.450 B2)", () => {
       const notes: string[] = [];
       await kept(at, notes, { daemonWaits: WAITS });
       expect(notes).toHaveLength(2);
-      expect(notes[1]).toBe(NONE_KEPT);
+      // Review 0.1.508 B1: the count names the file apart, never as definitely not kept.
+      expect(notes[1]).toBe(
+        "0 of 1 completed test files are kept in the stores, and whether the daemon kept 1 of them is not known; the next run on the same bytes reads what was kept and runs the rest",
+      );
       expect(notes[0]).toMatch(
         /^1 completed test file may not be kept in the stores: whether the daemon kept it is not known \(the daemon took the write and did not say how it went: .+\); the next run reads it if it was kept, else runs it again$/,
       );
       expect(runs(at, "results")).toBe(1);
       // The daemon wrote it: the next run reads it.
       expect(resultsAt(at.commonDir)).toBe(1);
+    },
+  );
+
+  it(
+    "counts a file kept once a later pass wrote it, though an earlier try's outcome was not known (review 0.1.508 B1)",
+    SLOW,
+    async () => {
+      // The first results try's answer and its status asks are held past the bound, so
+      // that pass ends not knowing; once a later try is sent, every request goes through.
+      let taken = false;
+      let retried = false;
+      const at = await served({
+        proxy: (request) => {
+          if (keepOf("results")(request) && !taken) {
+            taken = true;
+            return { answerAfterMs: 30_000 };
+          }
+          if (taken && keepOf("coverage")(request)) retried = true;
+          if (taken && !retried) return "drop";
+          return "forward";
+        },
+      });
+      const notes: string[] = [];
+      await kept(at, notes, { daemonWaits: WAITS });
+      expect(retried).toBe(true);
+      expect(resultsAt(at.commonDir)).toBe(1);
+      expect(notes.at(-1)).toMatch(
+        /^the 1 completed test file is kept in the stores( \(1 while the runs went on\))?; the next run on the same bytes reads it from the stores$/,
+      );
     },
   );
 

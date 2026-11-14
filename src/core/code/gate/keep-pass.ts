@@ -102,6 +102,13 @@ export interface PassContext {
 export interface Pass {
   readonly written: number;
   readonly left: readonly Queued[];
+  /** Review 0.1.508 B1: the files whose results write landed, which the next run reads. */
+  readonly kept?: readonly Kept[];
+  /**
+   * Review 0.1.508 B1: the file whose write the daemon took and did not
+   * say how it went (`KeepUnknown`): it may be kept.
+   */
+  readonly unknown?: readonly Kept[];
 }
 
 /**
@@ -135,16 +142,36 @@ export async function writePass(runs: readonly Queued[], at: PassContext): Promi
     code = chosen.code;
     return await writeQueued(state, { store, writer: chosen.writer, head }, at);
   } catch (error) {
-    const written = state?.written ?? 0;
-    if (at.early) return { written, left: unchecked(state === null ? runs : state.left()) };
-    const all = state?.all.length ?? runs.flatMap((q) => q.files).length;
-    at.tell(failed(all - written, error));
-    return { written, left: [] };
+    return afterFailure(error, state, runs, at);
   } finally {
     code?.close();
     store?.close();
     lock?.release();
   }
+}
+
+/**
+ * What a pass that `error` ended wrote and left: an early one hands back
+ * what it did not write; the last one tells the files not written. A file
+ * whose write the daemon took without saying how it went is `unknown`
+ * (review 0.1.508 B1).
+ */
+function afterFailure(
+  error: unknown,
+  state: PassState | null,
+  runs: readonly Queued[],
+  at: PassContext,
+): Pass {
+  const written = state?.written ?? 0;
+  const kept = state?.kept ?? [];
+  const inFlight = state?.inFlight ?? null;
+  const unknown = error instanceof KeepUnknown && inFlight !== null ? [inFlight] : [];
+  if (at.early) {
+    return { written, kept, unknown, left: unchecked(state === null ? runs : state.left()) };
+  }
+  const all = state?.all.length ?? runs.flatMap((q) => q.files).length;
+  at.tell(failed(all - written, error, unknown.length > 0));
+  return { written, kept, unknown, left: [] };
 }
 
 /** `runs` with their opening check owed again, at the next pass. */
@@ -157,6 +184,10 @@ class PassState {
   queued: readonly Queued[];
   all: readonly Kept[];
   written = 0;
+  /** The files written, results and all (review 0.1.508 B1). */
+  readonly kept: Kept[] = [];
+  /** The file whose writes are being tried, while they are. */
+  inFlight: Kept | null = null;
   changed = 0;
   merged = false;
   /** The files a merge held by their write: among `changed`. */
@@ -235,9 +266,10 @@ async function writeQueued(
     wait.giveUp(database, state.all.slice(state.written + state.changed));
   const landed = () => wait.landed();
   const spent = (): Pass => {
-    if (at.early) return { written: state.written, left: state.left() };
-    if (state.all.length > 0) tell(wait.spent(state.all.length - state.written, state.changed));
-    return { written: state.written, left: [] };
+    const { written, kept } = state;
+    if (at.early) return { written, kept, left: state.left() };
+    if (state.all.length > 0) tell(wait.spent(state.all.length - written, state.changed));
+    return { written, kept, left: [] };
   };
   const seen = state.queued.flatMap((q) => q.seen);
   const merged = await keepSeen(writer, seen, { database: databases.main, giveUp, landed, check });
@@ -261,11 +293,14 @@ async function writeQueued(
         return free;
       };
       const one = { file, report, provenance, databases, giveUp, landed, check, steady, unheld };
+      state.inFlight = file;
       const outcome = await keepFile(stores, one);
+      state.inFlight = null;
       if (outcome === "spent") return spent();
       if (outcome === "changed") state.changed += 1;
       else {
         state.written += 1;
+        state.kept.push(file);
         freed ||= wait.waited;
       }
     }
@@ -274,7 +309,7 @@ async function writeQueued(
   const { written, changed, held } = state;
   wait.done({ written, changed, freed });
   if (!wait.waited) tellUnwaited(changed, held, at);
-  return { written, left: [] };
+  return { written, kept: state.kept, left: [] };
 }
 
 /**
@@ -331,9 +366,14 @@ const HELD = {
   reason: "a merge holds a path its key names",
 } as const;
 
-/** The note on the `left` files not written once `error` ended the writes. */
-function failed(left: number, error: unknown): string {
-  if (error instanceof KeepUnknown) return perhapsKept(left, error.message);
+/**
+ * The note on the `left` files not written once `error` ended the writes;
+ * `perhaps` when the daemon took the first one's write and did not say how
+ * it went. An unknown reads merge, with no file in flight, keeps no file
+ * (review 0.1.508 B1).
+ */
+function failed(left: number, error: unknown, perhaps: boolean): string {
+  if (perhaps) return perhapsKept(left, messageOf(error));
   return `${notKept(left)}: ${messageOf(error)}`;
 }
 

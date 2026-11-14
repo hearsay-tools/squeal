@@ -11,7 +11,7 @@ import type { WorktreeKeys } from "../../scheduler/keying.js";
 import type { CheckKey, TestFileRef } from "../../types/keys.js";
 import type { GateRun } from "./collect.js";
 import { Expectations, type LookupSources, type Pending, type Taken } from "./keep-expected.js";
-import { type KeepOptions, messageOf, type Queued, writePass } from "./keep-pass.js";
+import { type KeepOptions, messageOf, type Pass, type Queued, writePass } from "./keep-pass.js";
 import { EarlyWrites, type PassEnd } from "./keep-queue.js";
 import { NotKept } from "./keep-reasons.js";
 import { atStoreKey, type Seen, seenOf } from "./keep-seen.js";
@@ -60,8 +60,8 @@ export class Keeper {
   #keptEarly = 0;
   /** Row 020-68: how many files the runs completed, each counted by the run that decides it. */
   #completed = 0;
-  /** Row 020-68: how many files the last passes wrote. */
-  #keptLast = 0;
+  /** Row 020-68, review 0.1.508 B1: the files kept, and those a daemon may have kept. */
+  readonly #tally = new KeptTally();
 
   constructor(options: KeepOptions) {
     this.#options = options;
@@ -108,12 +108,12 @@ export class Keeper {
     this.#tellNotKept(this.#notKept);
     for (const text of this.#deferred.splice(0)) this.#tell(text);
     const queued = this.#queued.splice(0);
-    if (queued.length > 0) this.#keptLast += (await writePass(queued, this.#pass(false))).written;
+    if (queued.length > 0) this.#tally.heard(await writePass(queued, this.#pass(false)));
     this.#tellNotKept(this.#passNotKept);
     // Row 020-68 (#220): how many completed files are kept, so an agent knows what a rerun runs.
     if (this.#completed === 0) return;
-    const kept = this.#keptEarly + this.#keptLast;
-    this.#tell(keptCount({ kept, completed: this.#completed, early: this.#keptEarly }));
+    const counts = { completed: this.#completed, early: this.#keptEarly };
+    this.#tell(keptCount({ ...counts, kept: this.#tally.kept, unknown: this.#tally.unknown }));
   }
 
   /** Ends what no run took, such as a runner the budget ended before, and drops the queue. */
@@ -127,8 +127,10 @@ export class Keeper {
   async #earlyPass(): Promise<PassEnd> {
     const queued = this.#queued.splice(0);
     if (queued.length === 0) return "done";
-    const { written, left } = await writePass(queued, this.#pass(true));
+    const pass = await writePass(queued, this.#pass(true));
+    const { written, left } = pass;
     this.#keptEarly += written;
+    this.#tally.heard(pass);
     if (left.length === 0) return "done";
     this.#queued.unshift(...left);
     return "left";
@@ -232,4 +234,38 @@ export class Keeper {
     this.#told.add(text);
     this.#options.note?.(text);
   }
+}
+
+/**
+ * Review 0.1.508 B1: the files the keeper's passes kept, their results
+ * written, and those a daemon took a write of without saying how it went.
+ * A file a later pass wrote is kept, though an earlier try's outcome was
+ * not known; one kept stays kept.
+ */
+export class KeptTally {
+  readonly #kept = new Set<string>();
+  readonly #unknown = new Set<string>();
+
+  get kept(): number {
+    return this.#kept.size;
+  }
+
+  get unknown(): number {
+    return this.#unknown.size;
+  }
+
+  heard(pass: Pick<Pass, "kept" | "unknown">): void {
+    for (const file of pass.kept ?? []) {
+      this.#kept.add(fileOf(file));
+      this.#unknown.delete(fileOf(file));
+    }
+    for (const file of pass.unknown ?? []) {
+      if (!this.#kept.has(fileOf(file))) this.#unknown.add(fileOf(file));
+    }
+  }
+}
+
+/** One completed file, as the keeper counts it: its test file at its key. */
+function fileOf(file: Kept): string {
+  return `${testFileId(file.ref)}\0${file.key}`;
 }
