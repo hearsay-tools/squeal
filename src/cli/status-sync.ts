@@ -62,10 +62,13 @@ export const SYNC_POLL_MS = 250;
  * (row 011-234), unless they do not fit in one request line.
  *
  * With `deadline` (a `performance.now()` time), no request waits past it, and
- * none starts after it: the sync is then `unsupported`. A request on the
- * wire holds its socket, and so the CLI, until it ends; `stop` cannot end it
- * sooner, so a wait that ends at a known time bounds its sync by that time
- * (row 011-49: the snapshot's process ended at the 2 s socket timeout).
+ * none starts after it. The deadline bounds the requests, not `answered`: a
+ * sync sleeping between `sync-status` polls settles `unsupported` at its next
+ * loop step, after the deadline; the sleep is unref'd and holds no process
+ * (review 0.1.487 N1). A request on the wire holds its socket, and so the
+ * CLI, until it ends; `stop` cannot end it sooner, so a wait that ends at a
+ * known time bounds its sync by that time (row 011-49: the snapshot's process
+ * ended at the 2 s socket timeout).
  */
 export function syncDaemon(
   root: AbsolutePath,
