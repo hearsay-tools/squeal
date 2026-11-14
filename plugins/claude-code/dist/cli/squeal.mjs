@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.497";
+  if (true) return "0.1.498";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -53246,6 +53246,227 @@ var init_required_commands = __esm({
   }
 });
 
+// src/core/scheduler/admission.ts
+function admit(facts) {
+  return new Admission(facts);
+}
+function checkTurn(answer4, turn, lane) {
+  if (answer4.turn === turn) return;
+  throw new Error(
+    `squeal scheduler: an admission read in lock turn ${answer4.turn} was acted on in lock turn ${turn}, lane ${lane}`
+  );
+}
+var HALT_REASONS, Admission;
+var init_admission = __esm({
+  "src/core/scheduler/admission.ts"() {
+    "use strict";
+    init_scheduler();
+    HALT_REASONS = [
+      "stopping",
+      "runtime-gone",
+      "not-started",
+      "install-wait",
+      "reinstalled",
+      "held",
+      "install-missing"
+    ];
+    Admission = class {
+      #facts;
+      /** Every reason no lane starts that holds. */
+      halts;
+      /** Each costly fact and derived flag, read once per answer. */
+      #read = /* @__PURE__ */ new Map();
+      constructor(facts) {
+        this.#facts = facts;
+        const holding = {
+          stopping: facts.stopping,
+          "runtime-gone": facts.runtimeGone,
+          "not-started": !facts.started,
+          "install-wait": facts.awaitingInstall,
+          reinstalled: facts.reinstalled,
+          held: facts.held,
+          "install-missing": facts.installMissing
+        };
+        this.halts = new Set(HALT_REASONS.filter((reason2) => holding[reason2]));
+      }
+      get turn() {
+        return this.#facts.turn;
+      }
+      /** The first reason no lane starts, in `HALT_REASONS` order; `null` when none. */
+      get halt() {
+        return HALT_REASONS.find((reason2) => this.halts.has(reason2)) ?? null;
+      }
+      /** The daemon stops or its runtime went: the pump ends, no lane is asked, no chunk taken. */
+      get halted() {
+        return this.#facts.stopping || this.#facts.runtimeGone;
+      }
+      /** Before the lock, with tiers in flight: a free lane has a file, or a lane may be asked. */
+      get any() {
+        const facts = this.#facts;
+        if (facts.inFlight.length === 0 || facts.freeLaneQueued()) return true;
+        return facts.groups !== null && facts.lanes().some(({ group }) => this.asked(group) === null);
+      }
+      /** The fast lanes' answer under the lock: a halt, `runner-work`, or `null` to select. */
+      get fast() {
+        return this.halt ?? (this.#facts.runnerWork > 0 ? "runner-work" : null);
+      }
+      /** The group lanes the pump asks, in `GroupTiers.lanes` order. */
+      get ask() {
+        if (this.#facts.groups === null) return [];
+        const groups3 = this.#facts.lanes().map(({ group }) => group);
+        return groups3.filter((group) => this.asked(group) === null);
+      }
+      /**
+       * Nothing in flight (the pump then also ends a drained pass), or files of
+       * the group queued and no tier of it in flight (one at a time per group,
+       * whatever its runner), nor an edit's work while it follows `tests`
+       * (spec 004 D2, 019 D1). Groups that follow no `tests` start beside fast
+       * work (019 D3).
+       */
+      asked(name3) {
+        if (this.#facts.inFlight.length === 0) return null;
+        const group = this.#group(name3);
+        const queued = group !== void 0 && this.#once(`queued:${name3}`, () => this.#facts.queued(name3));
+        if (group === void 0 || !queued) return { reason: "nothing-queued" };
+        if (this.#inFlightOf(name3)) return { reason: "lane-busy" };
+        const editFirst = group.after.includes(TESTS_GROUP) && this.editPending;
+        return editFirst ? { reason: "after-tests" } : null;
+      }
+      /** Group `name`'s lane under the lock, with its own request and load. */
+      lane(name3, load) {
+        const answer4 = this;
+        let waits2 = null;
+        const waitsOnce = () => {
+          waits2 ??= { value: answer4.#waits(name3, load) };
+          return waits2.value;
+        };
+        return {
+          turn: this.turn,
+          group: name3,
+          get refusal() {
+            return answer4.#laneHalt() ?? waitsOnce();
+          },
+          get waits() {
+            return waitsOnce();
+          },
+          get width() {
+            return answer4.#width(name3, load) ? "wide" : "one";
+          }
+        };
+      }
+      /** The import re-walk's answer (row 015-117); `null` when it may take a chunk. */
+      get rewalk() {
+        const { stopping, runtimeGone } = this.#facts;
+        if (stopping || runtimeGone) return { reason: stopping ? "stopping" : "runtime-gone" };
+        const waiting2 = this.#once("slow-waiting", () => this.#facts.slowWaiting());
+        return waiting2 ? { reason: "files-waiting" } : null;
+      }
+      /** The status answers say nothing: closed, or on hold (011 C9, row 011-72). */
+      get quiet() {
+        return this.#facts.closed || this.#facts.held;
+      }
+      /**
+       * An edit's fast work goes before a slow file (spec 004 D2 as amended):
+       * runner work, a refinement in flight included, a recent fast file queued,
+       * a focused entry, or an edit's tier in flight, the backlog's turn included.
+       */
+      get editPending() {
+        return this.#once("edit-pending", () => {
+          const facts = this.#facts;
+          if (facts.runnerWork > 0 || facts.refining || facts.editQueued()) return true;
+          if (facts.focused()) return true;
+          return facts.inFlight.some(({ edit }) => edit);
+        });
+      }
+      /**
+       * No fast work pending or running: an idle slow tier may take several
+       * files (D2). During a drain, the paused backlog is not pending (row 011-93).
+       */
+      get fastIdle() {
+        return this.#once("fast-idle", () => {
+          const facts = this.#facts;
+          if (facts.runnerWork > 0 || facts.refining || facts.fastQueued()) return false;
+          if (facts.focused()) return false;
+          return facts.inFlight.every(({ lane }) => isGroupLane(lane));
+        });
+      }
+      /**
+       * `fastIdle`, and no group of `normal` priority other than `tests` has
+       * work in flight or queued work that runs without a further ask (spec 019
+       * D3): a `low` group's lane then may take several files. A `commit`
+       * group's file no commit asked for leaves the width (row 019-27). Before
+       * start it is `fastIdle`.
+       */
+      get normalIdle() {
+        return this.#once("normal-idle", () => {
+          if (!this.fastIdle) return false;
+          return (this.#facts.groups ?? []).every(
+            (group) => group.name === TESTS_GROUP || group.limits.priority !== "normal" || !this.#groupHolds(group.name)
+          );
+        });
+      }
+      /**
+       * Never while waiting or reinstalled, so the pump cannot re-arm into a wait
+       * (review wave 11c, B1). On hold the runner part goes on and the queue
+       * waits (row 011-72).
+       */
+      get hasWork() {
+        const facts = this.#facts;
+        if (facts.awaitingInstall || facts.reinstalled) return false;
+        if (facts.held) return facts.runnerWork > 0;
+        return facts.runnerWork > 0 || facts.fastQueued() || facts.focused();
+      }
+      /** A lane's halts under the lock, in the pump's order: a lane reads no install fact (the pump did). */
+      #laneHalt() {
+        const facts = this.#facts;
+        if (facts.stopping) return { reason: "stopping" };
+        if (facts.runtimeGone) return { reason: "runtime-gone" };
+        return facts.held ? { reason: "held" } : null;
+      }
+      /**
+       * The groups `after` names go first (spec 019 D1): a group's while it has
+       * a file that holds its followers or a tier in flight. For `tests`, an
+       * edit's fast work always (004 D2 as amended 2026-10-09), and any fast
+       * work unless a request is open (task 004-60).
+       */
+      #waits(name3, load) {
+        for (const first2 of this.#group(name3)?.after ?? []) {
+          if (first2 !== TESTS_GROUP) {
+            if (this.#groupHolds(first2)) return { reason: "after-group", group: first2 };
+          } else if (this.editPending || !load.requested && !this.fastIdle) {
+            return { reason: "after-tests" };
+          }
+        }
+        return null;
+      }
+      /** A `normal` group's width, or a `low` one's on an idle machine with no `normal` work (019 D3). */
+      #width(name3, load) {
+        const priority = this.#group(name3)?.limits.priority;
+        return priority === "normal" || priority === "low" && load.idle && this.normalIdle;
+      }
+      #group(name3) {
+        return this.#facts.groups?.find((group) => group.name === name3);
+      }
+      #inFlightOf(name3) {
+        return this.#facts.inFlight.some(({ lane }) => laneGroup(lane) === name3);
+      }
+      /** Group `name` has a tier in flight, or a queued file that holds its followers (row 019-26). */
+      #groupHolds(name3) {
+        if (this.#inFlightOf(name3)) return true;
+        return this.#once(`holds:${name3}`, () => this.#facts.holdsFollowers(name3));
+      }
+      #once(key3, read5) {
+        let value = this.#read.get(key3);
+        if (value === void 0) {
+          value = read5();
+          this.#read.set(key3, value);
+        }
+        return value;
+      }
+    };
+  }
+});
+
 // src/core/commit/compute.ts
 async function differingPaths(view, committed) {
   const differing = /* @__PURE__ */ new Set();
@@ -56013,6 +56234,7 @@ var init_mutex = __esm({
     Mutex = class {
       #tail = Promise.resolve();
       #holder = null;
+      #turn = 0;
       #watchers = /* @__PURE__ */ new Set();
       #now;
       #free = () => this.#hold(null);
@@ -56022,11 +56244,19 @@ var init_mutex = __esm({
       /** `task` once the tasks before it settled; `operation` says what it does, for a watcher. */
       run(task, operation = null) {
         const next = this.#tail.then(() => {
+          this.#turn += 1;
           this.#hold({ operation, since: this.#now() });
           return task();
         });
         this.#tail = next.then(this.#free, this.#free);
         return next;
+      }
+      /**
+       * Row 011-340: how many tasks have started; during a task, its own turn.
+       * An admission carries the turn it was read in (`checkTurn`).
+       */
+      get turn() {
+        return this.#turn;
       }
       /**
        * Tells `listener` the holder at once, then at each change, until the
@@ -57154,7 +57384,7 @@ var init_slow_tier = __esm({
         const want = this.#want(context, group, guard, refs2.length);
         const slot2 = this.#takeSlot(context, dir2, group, want);
         if (slot2 === null) return null;
-        return this.#launch(refs2, guard.ranUnderLoad, slot2, group, launch);
+        return this.#launch(refs2, guard, slot2, group, launch);
       }
       /**
        * The load guard for the lane whose first file is `first`, or none: an
@@ -57173,20 +57403,22 @@ var init_slow_tier = __esm({
         return refs2.some((ref3) => this.narrow.has(ledger, ref3));
       }
       /**
-       * After the guard's wait: no preemption since `preemptions` was read, the
-       * daemon's runtime still there and no hold begun; else the pump plans again.
+       * After the guard's wait: the daemon's runtime still there and no hold
+       * begun (`probe`), and no preemption since `preemptions` was read; else
+       * the pump plans again. A runtime gone since the pump read it starts no
+       * tier, and its files take no slot (review 0.1.262, B3); so is a hold that
+       * began meanwhile, a merge's included, which no preemption tells (011 C9;
+       * review 0.1.269, B1): the pump plans again and stops on it.
        */
       async #mayStart(preemptions) {
-        if (await this.host.runtimeMissing() || preemptions !== this.#preemptions) return false;
-        return await this.host.holdCheck() === "free" && preemptions === this.#preemptions;
+        return await this.host.probe() === "free" && preemptions === this.#preemptions;
       }
       /**
-       * How many of `count` files the tier may take: a `normal` group's, or a
-       * `low` one's on an idle machine with no `normal` work (`normalIdle`), up
-       * to its full width; else one (spec 019 D3).
+       * How many of `count` files the tier may take: up to its full width when
+       * the admission's width is wide, else one (spec 019 D3).
        */
       #want(context, group, guard, count4) {
-        const wide = group.limits.priority === "normal" || guard.idle && this.host.normalIdle();
+        const wide = this.#admitted(group, guard.idle).width === "wide";
         return wide ? Math.min(fullWidth(group, context.policy), count4) : 1;
       }
       /**
@@ -57210,13 +57442,13 @@ var init_slow_tier = __esm({
        * Selects the tier under the lock and launches it with `slot`, whose
        * permits go back when no tier flies.
        */
-      async #launch(refs2, ranUnderLoad, slot2, group, launch) {
+      async #launch(refs2, guard, slot2, group, launch) {
         let flown = false;
         try {
           const selected2 = await this.host.lock.run(() => {
-            const picked = this.#select(refs2, ranUnderLoad, slot2, group);
+            const picked = this.#select(refs2, guard, slot2, group);
             if (picked === null || typeof picked !== "object") return picked;
-            launch({ ...picked, slot: slot2 });
+            launch({ tier: picked.tier, slot: slot2, turn: picked.admitted.turn });
             flown = true;
             return "flown";
           }, `selecting a tier of group ${this.group}`);
@@ -57231,19 +57463,16 @@ var init_slow_tier = __esm({
         }
       }
       /**
-       * The groups `after` names go first (spec 019 D1): a group's while it has
-       * a file queued or a tier in flight. For `tests`, the default `slow`
-       * group's: fast work of this daemon, an edit's always (004 D2 as amended
-       * 2026-10-09), its fast backlog (a baseline, a checkpoint, `run --all`)
-       * queued or running unless a request is open (D2 as amended 2026-10-14,
-       * task 004-60), so a warm-up's slow files never contend with its fast
-       * ones. During a departure drain only the drain's fast work counts: the
-       * paused backlog is not pending (`fastIdle`, row 011-93).
+       * The admission of this lane now, with its open request and the load
+       * guard's `idle` (row 011-340). Its `waits`: the groups `after` names go
+       * first (spec 019 D1); for `tests`, the default `slow` group's, fast work
+       * of this daemon, an edit's always (004 D2 as amended 2026-10-09), its
+       * fast backlog queued or running unless a request is open (task 004-60),
+       * so a warm-up's slow files never contend with its fast ones. During a
+       * departure drain only the drain's fast work counts (row 011-93).
        */
-      #waitsForAfter(group) {
-        return group.after.some(
-          (name3) => name3 === TESTS_GROUP ? this.host.editPending() || !this.#requested && !this.host.fastIdle() : this.host.groupHolds(name3)
-        );
+      #admitted(group, idle2) {
+        return this.host.admit().lane(group.name, { requested: this.#requested, idle: idle2 });
       }
       /**
        * Under the lock: a queued file of this group holds the groups that name
@@ -57303,7 +57532,7 @@ var init_slow_tier = __esm({
           this.#publish(null);
           return [];
         }
-        if (this.#waitsForAfter(group)) {
+        if (this.#admitted(group, false).waits !== null) {
           this.#publish({ kind: "waiting", for: "fast" });
           return [];
         }
@@ -57407,12 +57636,11 @@ var init_slow_tier = __esm({
        * grant it waits (`WAIT_FOR_CAPACITY`), unless a `run --slow` request is
        * open: that runs now, without a grant, as an edit's tier does.
        */
-      #select(refs2, ranUnderLoad, slot2, group) {
-        if (this.host.halted() || this.host.held()) return null;
+      #select(refs2, { ranUnderLoad, idle: idle2 }, slot2, group) {
+        const admitted = this.#admitted(group, idle2);
+        if (admitted.refusal !== null) return null;
         const { context, ledger } = this.host.started();
-        if (this.#waitsForAfter(group)) return null;
-        const low = group.limits.priority === "low";
-        const width = !low || this.host.normalIdle() ? slot2.permits : 1;
+        const width = admitted.width === "wide" ? slot2.permits : 1;
         const triggered = this.#trigger(context, ledger, group);
         const picked = [];
         for (const ref3 of refs2) {
@@ -57451,7 +57679,7 @@ var init_slow_tier = __esm({
             this.group === SLOW_GROUP ? `slow file ${file.ref.path} ran under load ${ranUnderLoad.toFixed(2)} per CPU, above slow.maxLoadPerCpu ${bound}, once the load guard had waited slow.maxDeferMs for this slow pass (spec 004 D3)` : `file ${file.ref.path} of group "${this.group}" ran under load ${ranUnderLoad.toFixed(2)} per CPU, above its deferUnderLoad.maxLoadPerCpu ${bound}, once the load guard had waited its maxDeferMs for this pass (spec 019 D3)`
           );
         }
-        return { tier };
+        return { tier, admitted };
       }
       /** `startTier` of `picked`, and the activity naming its files in the same transaction. */
       #start(context, ledger, picked, since, lease, group) {
@@ -57515,7 +57743,8 @@ var init_slow_tier = __esm({
         const queued = this.#queued(ledger);
         const group = this.#resolved(context);
         if (queued.length === 0 || group === null) this.#publish(null);
-        else if (this.#waitsForAfter(group)) this.#publish({ kind: "waiting", for: "fast" });
+        else if (this.#admitted(group, false).waits !== null)
+          this.#publish({ kind: "waiting", for: "fast" });
         else if (queued.some(this.#trigger(context, ledger, group))) this.#publish(null);
         else this.#publishUntriggered(group);
       }
@@ -58273,6 +58502,7 @@ var init_scheduler2 = __esm({
     init_text();
     init_runner();
     init_scheduler();
+    init_admission();
     init_batch();
     init_beside();
     init_bootstrap();
@@ -58360,15 +58590,9 @@ var init_scheduler2 = __esm({
           started: () => this.#started(),
           ready: () => this.#context !== null,
           closed: () => this.#closed,
-          halted: () => this.#halted(),
-          held: () => this.#onHold(),
-          holdCheck: () => this.#holdCheck(),
-          runtimeMissing: () => this.#runtimeMissing(),
           pump: () => this.#pump(),
-          editPending: () => this.#editPending(),
-          fastIdle: () => this.#fastIdle(),
-          normalIdle: () => this.#normalIdle(),
-          groupHolds: (name3) => this.#groupHolds(name3)
+          probe: () => this.#probe(),
+          admit: () => this.#admit()
         };
         this.#groups = new GroupTiers((group) => new SlowTier(host, options.slow, group));
         this.#slowRelease = new SlowRelease(
@@ -58497,6 +58721,8 @@ var init_scheduler2 = __esm({
       #reinstallTold = false;
       /** The daemon's own runtime went (`runtimeDir`, row 011-106): no tier starts, the queue stays. */
       #runtimeGone = false;
+      /** The pump's last install check found the install gone (task 001-113): a start fact (row 011-340). */
+      #installMissing = false;
       #install;
       /** The per-user pool's side of this scheduler (spec 001 D11 Capacity); `null` without one. */
       #capacity;
@@ -58676,7 +58902,7 @@ var init_scheduler2 = __esm({
        * 001-364).
        */
       #cutTiers(revision) {
-        if (this.#onHold()) return;
+        if (this.#admit().halts.has("held")) return;
         const { context, ledger } = this.#started();
         const tiers = [...this.#inFlight.values()].map(({ tier }) => tier);
         this.#yields.check(context, ledger, tiers, revision);
@@ -58745,23 +58971,66 @@ var init_scheduler2 = __esm({
         else this.#note(note);
       }
       /**
-       * Row 011-72: the merge hold before a tier, the index read when it moved.
-       * A hold that ended released its paths: an abort restored their bytes,
-       * and their revision comes before any tier, so no tier runs at the keys
-       * of the conflicted bytes.
+       * Row 011-340: the start facts on disk and in Git, read again before a
+       * tier, by the pump and the slow lanes after their waits. The runtime
+       * folder first (row 011-106), then the merge hold, the index read when it
+       * moved (row 011-72). A hold that ended released its paths: an abort
+       * restored their bytes, and their revision comes before any tier, so no
+       * tier runs at the keys of the conflicted bytes. What it finds stays in
+       * memory for `#facts`.
        */
-      async #holdCheck() {
+      async #probe() {
+        if (await this.#runtimeMissing()) return "gone";
         await this.#hold.check();
         const released = this.#hold.takeReleased();
         if (released.length > 0) {
           await this.#reconcilePaths(released);
           return "released";
         }
-        return this.#onHold() ? "held" : "free";
+        return this.#hold.holding || this.#commandHold.holding ? "held" : "free";
       }
-      /** Either hold holds (011 C9, "Holds"): no tier starts in any lane, and none is cut. */
-      #onHold() {
-        return this.#hold.holding || this.#commandHold.holding;
+      /**
+       * Row 011-340: the start facts in memory now (GLOSSARY "Start facts"),
+       * for `admit`. The costly ones are read when an answer needs them.
+       */
+      #facts() {
+        const context = this.#context;
+        const ledger = this.#ledger;
+        const work = this.#runnerWork;
+        const ready = context !== null && ledger !== null;
+        return {
+          turn: this.#lock.turn,
+          closed: this.#closed,
+          stopping: this.#stopping(),
+          runtimeGone: this.#runtimeGone,
+          started: ready,
+          awaitingInstall: this.#awaitingInstall,
+          reinstalled: this.#reinstalled,
+          held: this.#hold.holding || this.#commandHold.holding,
+          installMissing: this.#installMissing,
+          runnerWork: work.size,
+          refining: work.refining,
+          inFlight: [...this.#inFlight.values()].map(({ tier }) => ({
+            lane: tier.lane,
+            edit: tier.kind !== "backlog" && !isGroupLane(tier.lane)
+          })),
+          groups: context === null ? null : groupView(context.policy).groups,
+          editQueued: () => ledger?.queue.hasFirstGroup() === true,
+          fastQueued: () => ledger?.fastQueued() === true,
+          focused: () => this.#focused(),
+          freeLaneQueued: () => ready && this.#freeLaneQueued(),
+          lanes: () => context === null ? [] : this.#groups.lanes(context.policy).map((lane) => ({ kind: "local", group: lane.group })),
+          queued: (name3) => ledger?.queue.hasGroup(name3) ?? false,
+          holdsFollowers: (name3) => {
+            const lane = this.#groups.get(name3);
+            return lane === void 0 ? ledger?.queue.hasGroup(name3) ?? false : lane.holdsFollowers();
+          },
+          slowWaiting: () => context !== null && readSlowActivity(context.store, context.worktreeId)?.kind === "waiting"
+        };
+      }
+      /** `admit` of the start facts now (row 011-340). */
+      #admit() {
+        return admit(this.#facts());
       }
       async commandHold() {
         if (this.#closed) return false;
@@ -58893,13 +59162,15 @@ var init_scheduler2 = __esm({
       /**
        * Use is the work an edit, a request or a wait caused (011 C9 as amended
        * 2026-10-21, row 011-92): an edit's work and a promoted file
-       * (`#editPending`), what is owed (`owedWork`), an open `run --slow`
+       * (`Admission.editPending`), what is owed (`owedWork`), an open `run --slow`
        * request. The backlog is no use, queued or running.
        */
       inUse() {
-        if (this.#closed || !this.#ledger || this.#onHold()) return false;
+        if (!this.#ledger) return false;
+        const admitted = this.#admit();
+        if (admitted.quiet) return false;
         if (this.#groups.requested && this.slowPending()) return true;
-        return this.#editPending() || this.owedWork() !== null;
+        return admitted.editPending || this.owedWork() !== null;
       }
       /**
        * A departure drain runs only its session's work (011 C9 as amended
@@ -58925,7 +59196,7 @@ var init_scheduler2 = __esm({
         return this.#requests.count;
       }
       slowPending() {
-        if (this.#closed || !this.#ledger || this.#onHold()) return false;
+        if (!this.#ledger || this.#admit().quiet) return false;
         if (this.#lanes().some(isGroupLane)) return true;
         return this.#drainable().length > 0;
       }
@@ -58953,7 +59224,7 @@ var init_scheduler2 = __esm({
         return waiting2.size === 0 ? queued : queued.filter(runs);
       }
       owedWork() {
-        if (this.#closed || !this.#ledger || this.#onHold()) return null;
+        if (!this.#ledger || this.#admit().quiet) return null;
         const ledger = this.#ledger;
         const owed = [];
         const active = ledger.checkpoints.active;
@@ -58972,10 +59243,11 @@ var init_scheduler2 = __esm({
        * drain, and the last slow run's end (row 011-163).
        */
       slowWaiting() {
-        if (this.#closed || !this.#ledger || !this.#context || !this.#backlogPaused) return null;
-        if (this.#onHold()) return null;
+        if (!this.#ledger || !this.#context || !this.#backlogPaused) return null;
+        const admitted = this.#admit();
+        if (admitted.quiet) return null;
         const queued = this.#drainable();
-        const busy2 = this.#lanes().some(isGroupLane) || this.#editPending() || !this.#fastIdle();
+        const busy2 = this.#lanes().some(isGroupLane) || admitted.editPending || !admitted.fastIdle;
         if (busy2 || queued.length === 0 || this.#drainBusyAt === null) {
           this.#drainBusyAt = this.#context.now();
           return null;
@@ -59039,19 +59311,19 @@ var init_scheduler2 = __esm({
       #stopping() {
         return this.#closed || this.options.stopping?.() === true;
       }
-      /** No tier starts: the daemon stops, or its own runtime went (row 011-106). */
       /**
        * Row 015-117: queues the next chunk of the re-walk under the lock, so its
        * marker is written as the scheduler's other writes are; false once the
-       * pass is over or the scheduler halts.
+       * pass is over or the scheduler halts. Row 011-340: the admission is read
+       * again in the lock block, so a stop begun meanwhile queues no chunk.
        */
       async #queueRewalk() {
-        if (this.#halted() || this.#context === null) return false;
+        if (this.#admit().halted || this.#context === null) return false;
         this.#rewalk ??= new ImportRewalk(this.options.squealVersion);
         const rewalk = this.#rewalk;
         return this.#lock.run(() => {
           const { context, ledger } = this.#started();
-          if (readSlowActivity(context.store, context.worktreeId)?.kind === "waiting") return false;
+          if (this.#admit().rewalk !== null) return false;
           const chunk = rewalk.next(context, ledger);
           if (chunk === null) return false;
           this.#runnerWork.queueRewalk(
@@ -59060,9 +59332,6 @@ var init_scheduler2 = __esm({
           );
           return true;
         }, "queueing the import re-walk");
-      }
-      #halted() {
-        return this.#stopping() || this.#runtimeGone;
       }
       /**
        * Runs tiers until the queue is empty, one at a time per lane (spec 001 D5
@@ -59095,7 +59364,7 @@ var init_scheduler2 = __esm({
        * or request starts the pump again.
        */
       #pump() {
-        if (this.#halted() || !this.#ledger) return;
+        if (this.#admit().halted || !this.#ledger) return;
         if (this.#pumping) {
           this.#asked = true;
           this.#notify();
@@ -59106,19 +59375,21 @@ var init_scheduler2 = __esm({
         this.#asked = false;
         this.#pumping = (async () => {
           try {
-            while (!this.#halted() && !this.#stalled) {
+            while (!this.#admit().halted && !this.#stalled) {
               this.#woken = false;
               this.#drain();
               if (this.#draining) {
                 await this.#nextEvent();
                 continue;
               }
-              if (this.#awaitingInstall || this.#reinstalled) break;
-              if (this.#inFlight.size > 0 && !this.#freeLaneQueued() && !this.#someLaneMayStart()) {
+              const before4 = this.#admit();
+              if (before4.halts.has("install-wait") || before4.halts.has("reinstalled")) break;
+              if (!before4.any) {
                 await this.#nextEvent();
                 continue;
               }
               const install = await this.#install.check();
+              this.#installMissing = install.missing !== null;
               if (install.missing === null && this.#install.takeChange(install)) {
                 await this.#lock.run(() => {
                   const { context, ledger } = this.#started();
@@ -59126,31 +59397,32 @@ var init_scheduler2 = __esm({
                 }, "refreshing the install");
                 continue;
               }
-              if (await this.#runtimeMissing()) break;
-              const hold = await this.#holdCheck();
-              if (hold === "held") {
+              const probe2 = await this.#probe();
+              if (probe2 === "gone") break;
+              if (probe2 === "held") {
                 await this.#slowRelease.idle();
                 break;
               }
-              if (hold === "released") continue;
+              if (probe2 === "released") continue;
               const next = await this.#runSliced(() => {
-                if (this.#halted() || this.#awaitingInstall || this.#reinstalled) return null;
-                if (this.#onHold()) return "held";
-                const { context, ledger } = this.#started();
-                if (install.missing !== null) {
-                  this.#reinstall(ledger);
+                const admitted = this.#admit();
+                if (admitted.fast === "held") return "held";
+                if (admitted.fast === "install-missing") {
+                  this.#reinstall(this.#started().ledger);
                   return null;
                 }
-                if (this.#runnerWork.size > 0) return "runner-work";
+                if (admitted.fast === "runner-work") return "runner-work";
+                if (admitted.fast !== null) return null;
+                const { context, ledger } = this.#started();
                 this.#adopt(context, ledger);
                 const tier = selectTier(context, ledger, this.#busyLanes(), this.#yields) ?? this.#besideTier(context, ledger);
                 if (tier === null) return null;
-                this.#fly(tier, install.stamp, null);
+                this.#fly(tier, install.stamp, null, admitted);
                 if (tier.beside === true) this.#cutTiers(null);
                 for (let more2 = tier; more2.slot === true; ) {
                   const again2 = selectTier(context, ledger, this.#busyLanes(), this.#yields);
                   if (again2 === null) break;
-                  this.#fly(again2, install.stamp, null);
+                  this.#fly(again2, install.stamp, null, admitted);
                   more2 = again2;
                 }
                 return "flown";
@@ -59161,7 +59433,7 @@ var init_scheduler2 = __esm({
                 break;
               }
               if (next !== null) continue;
-              if (this.#reinstalled) break;
+              if (this.#admit().halts.has("reinstalled")) break;
               if (await this.#groupLanesNext(install.stamp)) continue;
               if (this.#started().ledger.claims.waiting) {
                 await this.#claimWake();
@@ -59181,12 +59453,14 @@ var init_scheduler2 = __esm({
             await Promise.all([...this.#inFlight.values()].map((flight) => flight.done));
             await this.#draining;
             this.#pumping = null;
-            if (this.#reinstalled) this.#tellReinstall();
-            else if (this.#runtimeGone)
+            const ended2 = this.#admit();
+            if (ended2.halts.has("reinstalled")) this.#tellReinstall();
+            else if (ended2.halts.has("runtime-gone"))
               this.#tellReinstall(runtimeGoneNote(this.options.runtimeDir ?? ""));
             const again2 = !this.#stalled || this.#asked;
-            const work = this.#hasWork() || this.#busy?.waiting === true;
-            if (!this.#halted() && again2 && work) this.#pump();
+            const rearm = this.#admit();
+            const work = rearm.hasWork || this.#busy?.waiting === true;
+            if (!rearm.halted && again2 && work) this.#pump();
             else if (this.#isIdle()) for (const resolve45 of this.#idle.splice(0)) resolve45();
           }
         })();
@@ -59198,9 +59472,11 @@ var init_scheduler2 = __esm({
        * C4 step 5 as amended for slots, task 011-21 slice 2) returns its permit
        * and frees its place in the lane once its run ends, so the lane's next
        * file starts while it records, and its record joins the other slots that
-       * ended by then (`SlotRecords`).
+       * ended by then (`SlotRecords`). `admitted` is the admission it starts
+       * on, read in this lock turn (row 011-340).
        */
-      #fly(tier, installStamp, slow) {
+      #fly(tier, installStamp, slow, admitted) {
+        checkTurn(admitted, this.#lock.turn, tier.lane);
         const { context } = this.#started();
         const first2 = tier.files[0]?.file.ref;
         const cancellable = tier.slot !== true && first2 !== void 0 && cancels(context, first2);
@@ -59284,7 +59560,7 @@ var init_scheduler2 = __esm({
       async #slowEnded(lane) {
         const { context, ledger } = this.#started();
         const queued = ledger.orderedSlow().some((ref3) => laneOf(context, ref3) === lane);
-        if (!queued || this.#onHold()) await this.#slowRelease.release(lane);
+        if (!queued || this.#admit().halts.has("held")) await this.#slowRelease.release(lane);
       }
       /** The runner's `releaseLane` of `lane`: its instance closes. */
       async #releaseLane(lane) {
@@ -59425,70 +59701,11 @@ var init_scheduler2 = __esm({
         this.options.onError?.(error instanceof Error ? error : new Error(String(error)));
         this.#notify();
       }
-      /**
-       * Never while waiting or reinstalled, so the pump cannot re-arm into a wait
-       * (review wave 11c, B1). Slow files are not work here: the slow tier pumps
-       * again itself while they wait for a trigger or the slot (spec 004 D2).
-       */
-      #hasWork() {
-        if (this.#awaitingInstall || this.#reinstalled) return false;
-        if (this.#onHold()) return this.#runnerWork.size > 0;
-        return this.#runnerWork.size > 0 || this.#ledger?.fastQueued() === true || this.#focused();
-      }
       /** A focused entry waits for its tier (row 011-145): fast work, an edit's for the slow tier. */
       #focused() {
         const context = this.#context;
         const ledger = this.#ledger;
         return context !== null && ledger !== null && focusedWaiting(context, ledger);
-      }
-      /**
-       * An edit's fast work goes before a slow file (spec 004 D2 as amended):
-       * runner work, a refinement in flight included, a recent fast file queued,
-       * or an edit's tier in flight, the backlog's turn included.
-       */
-      #editPending() {
-        const work = this.#runnerWork;
-        if (work.size > 0 || work.refining || this.#ledger?.queue.hasFirstGroup()) return true;
-        if (this.#focused()) return true;
-        return [...this.#inFlight.values()].some(
-          ({ tier }) => tier.kind !== "backlog" && !isGroupLane(tier.lane)
-        );
-      }
-      /**
-       * No fast work pending or running: an idle slow tier may take several
-       * files (D2). During a drain, the paused backlog is not pending (row 011-93).
-       */
-      #fastIdle() {
-        const work = this.#runnerWork;
-        if (work.size > 0 || work.refining || this.#ledger?.fastQueued() === true) return false;
-        if (this.#focused()) return false;
-        return this.#lanes().every(isGroupLane);
-      }
-      /**
-       * The pump may ask `lane`, the lane of a group other than `tests`: nothing
-       * is in flight (it then also ends a drained pass), or files of its group
-       * are queued and no tier of the group is in flight (one at a time per
-       * group, whatever its runner), nor an edit's tier while the group follows
-       * `tests` (spec 004 D2, 019 D1). Groups that follow no `tests` start
-       * beside fast work (019 D3).
-       */
-      #laneMayStart(lane, group) {
-        if (this.#inFlight.size === 0) return true;
-        if (group === void 0 || !(this.#ledger?.queue.hasGroup(lane.group) ?? false)) return false;
-        if (this.#groupInFlight(lane.group)) return false;
-        return !group.after.includes(TESTS_GROUP) || !this.#editPending();
-      }
-      /** Some group's lane may start (`#laneMayStart`). */
-      #someLaneMayStart() {
-        const context = this.#context;
-        if (context === null) return false;
-        const { groups: groups3 } = groupView(context.policy);
-        return this.#groups.lanes(context.policy).some(
-          (lane) => this.#laneMayStart(
-            lane,
-            groups3.find((g2) => g2.name === lane.group)
-          )
-        );
       }
       /**
        * Asks each group's lane that may start, in `GroupTiers.lanes` order;
@@ -59498,49 +59715,16 @@ var init_scheduler2 = __esm({
        */
       async #groupLanesNext(stamp2) {
         const { context } = this.#started();
-        const { groups: groups3 } = groupView(context.policy);
         for (const lane of this.#groups.lanes(context.policy)) {
-          if (this.#halted()) return false;
-          if (!this.#laneMayStart(
-            lane,
-            groups3.find((g2) => g2.name === lane.group)
-          ))
-            continue;
+          const admitted = this.#admit();
+          if (admitted.halted) return false;
+          if (admitted.asked(lane.group) !== null) continue;
           const after3 = await this.#slowRelease.selecting(
-            () => lane.next((run7) => this.#fly(run7.tier, stamp2, run7))
+            () => lane.next((run7) => this.#fly(run7.tier, stamp2, run7, run7))
           );
           if (after3 !== null) return true;
         }
         return false;
-      }
-      /** A tier of group `name`'s lane is in flight. */
-      #groupInFlight(name3) {
-        return this.#lanes().some((lane) => laneGroup(lane) === name3);
-      }
-      /**
-       * Spec 019 D1 `after`: group `name` has a tier in flight, or a queued file
-       * that holds its followers (`SlowTier.holdsFollowers`, row 019-26).
-       */
-      #groupHolds(name3) {
-        if (this.#groupInFlight(name3)) return true;
-        const lane = this.#groups.get(name3);
-        return lane === void 0 ? this.#ledger?.queue.hasGroup(name3) ?? false : lane.holdsFollowers();
-      }
-      /**
-       * `fastIdle`, and no group of `normal` priority other than `tests` has
-       * work in flight or queued work that runs without a further ask (spec 019
-       * D3; `#groupHolds`): a `low` group's lane then may take several files.
-       * A `commit` group's file no commit asked for runs for no one until a
-       * later commit or `squeal run <group>`, so it leaves the width (row
-       * 019-27, 019-26's known limit). With no `checks` key it is `fastIdle`.
-       */
-      #normalIdle() {
-        if (!this.#fastIdle()) return false;
-        const context = this.#context;
-        if (context === null) return true;
-        return groupView(context.policy).groups.every(
-          (group) => group.name === TESTS_GROUP || group.limits.priority !== "normal" || !this.#groupHolds(group.name)
-        );
       }
       #retireSlow() {
         try {
@@ -59608,7 +59792,7 @@ var init_scheduler2 = __esm({
       #isIdle() {
         if (this.#closed) return true;
         if (this.#busy?.pending === true) return false;
-        return this.#pumping === null && (this.#stalled || !this.#hasWork());
+        return this.#pumping === null && (this.#stalled || !this.#admit().hasWork);
       }
       #started() {
         if (!this.#context || !this.#ledger) throw new Error("squeal scheduler: not started");
@@ -65354,7 +65538,7 @@ function environmentDir(root, project) {
   const cwd = projectDir(root, project);
   return project.python === void 0 ? join122(cwd, ".venv") : resolve31(cwd, project.python);
 }
-async function admit(project, read5, fingerprint, clock = REAL_CLOCK) {
+async function admit2(project, read5, fingerprint, clock = REAL_CLOCK) {
   const end = clock.now() + SETTLE_LIMIT_MS;
   let environment = await read5();
   while (environment.state === "no-pytest" && clock.now() < end) {
@@ -67284,7 +67468,7 @@ async function createPytestAdapter(project, options) {
   const ref3 = (path) => ({ project: project.name, path });
   const source2 = options.source ?? process.env;
   const readNow = async () => admitEnvironment(root, project, await readEnvironment2(root, project, source2));
-  const settle2 = async () => (await admit(project, readNow, currentFingerprint, options.clock)).environment;
+  const settle2 = async () => (await admit2(project, readNow, currentFingerprint, options.clock)).environment;
   const place2 = () => {
     const dir3 = environmentDir(root, project);
     return { dir: dir3, settings: projectSettings(root, project, runEnvironment(dir3, project, source2)) };
@@ -72864,10 +73048,10 @@ function machinePool(root, env = process.env) {
     });
   };
 }
-async function remoteAdmission(admit2, ask2, wait) {
+async function remoteAdmission(admit3, ask2, wait) {
   const cancelled2 = () => wait.cancel?.aborted === true;
   while (!cancelled2()) {
-    const answer4 = await admit2(ask2);
+    const answer4 = await admit3(ask2);
     if (answer4.failed !== void 0) {
       wait.log(
         `its machine's capacity pool failed (${answer4.failed}); the run goes without a grant`
@@ -72875,7 +73059,7 @@ async function remoteAdmission(admit2, ask2, wait) {
     }
     if (answer4.grant > 0) {
       if (!cancelled2()) return answer4.grant;
-      await admit2({ want: 0, least: 0 });
+      await admit3({ want: 0, least: 0 });
       return null;
     }
     if (answer4.refusal !== void 0) wait.log(`on its machine, ${answer4.refusal}`);
@@ -72885,14 +73069,14 @@ async function remoteAdmission(admit2, ask2, wait) {
   }
   return null;
 }
-function admitRun(admit2, testFiles3, run7, wait) {
+function admitRun(admit3, testFiles3, run7, wait) {
   run7.permits?.away();
   const widthAt = (grant) => Math.min(
     testFiles3.length,
     Math.max(1, ...testFiles3.map((file) => wait.tierWidth(file, grant)))
   );
   const ask2 = { want: widthAt(testFiles3.length), least: widthAt(1) };
-  return remoteAdmission(admit2, ask2, { ...wait, cancel: cancelOf(run7) });
+  return remoteAdmission(admit3, ask2, { ...wait, cancel: cancelOf(run7) });
 }
 function cancelOf(run7) {
   const signals = [run7.signal, run7.stop].filter((signal2) => signal2 !== void 0);
@@ -72909,7 +73093,7 @@ function notStarted() {
   };
 }
 var UNGRANTED, ADMITTED_HOLD_MS, ADMIT_EVERY_MS;
-var init_admission = __esm({
+var init_admission2 = __esm({
   "src/core/runner-host/remote/admission.ts"() {
     "use strict";
     init_pool();
@@ -73400,7 +73584,7 @@ var init_lane = __esm({
     init_runner();
     init_scheduler();
     init_proxy();
-    init_admission();
+    init_admission2();
     init_connect();
     init_lane_compare();
     init_lane_repository();
@@ -107833,7 +108017,7 @@ function call(adapter, method, args2) {
 
 // src/cli/runner-host.ts
 init_protocol();
-init_admission();
+init_admission2();
 
 // src/core/runner-host/remote/tree-host.ts
 init_environment();
