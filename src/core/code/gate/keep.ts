@@ -51,7 +51,7 @@ export class Keeper {
   /** The files a pass did not keep for their write (a grown key, a merge hold), told after the last pass. */
   readonly #passNotKept = new NotKept();
   /** Row 020-59: the passes while the runs go on. */
-  readonly #early = new EarlyWrites(() => this.#earlyPass());
+  readonly #early: EarlyWrites;
   /** Owed from the first try that did not land, in any pass (review 0.1.444 B2). */
   readonly #check = new InputCheck();
   /** What the early passes would tell, told at `flush`: what no pass tells before the report. */
@@ -62,6 +62,7 @@ export class Keeper {
   constructor(options: KeepOptions) {
     this.#options = options;
     this.#hold = mergeHoldOf(options.root);
+    this.#early = new EarlyWrites(() => this.#earlyPass(), options.pause);
   }
 
   /**

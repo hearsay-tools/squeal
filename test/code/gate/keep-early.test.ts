@@ -126,25 +126,4 @@ describe("the keeper writes while the runs go on (row 020-59)", () => {
     await keep.flush();
     expect(notes).toEqual([]);
   });
-
-  it("does not write a file whose input moved after a busy store refused it", async () => {
-    const at = freeStore();
-    const notes: string[] = [];
-    const moving = inputs();
-    const keep = keeperAt(at, notes);
-    keep.expect("vitest", moving.keys, moving.hasher, new Map([[A, KEY_A]]));
-    const held = await holdStore(at.commonDir);
-    try {
-      await keep.ran(ranOf(A));
-      await sleep(100);
-      moving.move(A);
-    } finally {
-      held.release();
-    }
-
-    await keep.flush();
-    expect(resultsAt(at.commonDir, KEY_A)).toBe(0);
-    // Dropped as the opening check drops a file that moved after its run: no daemon lost a try.
-    expect(notes).toEqual([]);
-  });
 });

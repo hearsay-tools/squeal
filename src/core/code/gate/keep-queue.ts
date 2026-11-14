@@ -3,8 +3,9 @@
  * writes each run's decided files while the gate's other runs go on. One
  * pass at a time writes what is queued; a pass that a busy store refused
  * leaves the rest queued, and the next pass starts after a pause that
- * grows to `MAX_PAUSE_MS`. Nothing here waits for the run: `kick` returns
- * at once, and `stop`, once the report is out, ends the pauses and waits
+ * grows to `MAX_PAUSE_MS`, timed by a `Pause`. Nothing here waits for the
+ * run: `kick` returns at once, and `stop`, once the report is out, ends
+ * the pause under way and waits
  * only for the pass that is writing, which gives up at its next busy
  * refusal. The bounded wait for what is still queued is the keeper's
  * last pass (`Keeper.flush`).
@@ -14,22 +15,41 @@
 const PAUSES_MS = [250, 500, 1_000, 2_000] as const;
 
 /** The longest pause between two passes. */
-export const MAX_PAUSE_MS = PAUSES_MS[PAUSES_MS.length - 1];
+export const MAX_PAUSE_MS: number = PAUSES_MS[PAUSES_MS.length - 1] ?? 2_000;
 
 /** How one pass ended: everything it took was written or decided, or some is left for a later pass. */
 export type PassEnd = "done" | "left";
 
+/**
+ * Times one pause between passes: calls `then` after `ms`, unless the
+ * returned function cancels it first. The default is an unref'd timer;
+ * tests drive the order of a refusal and its retry with their own (row
+ * 020-64).
+ */
+export type Pause = (ms: number, then: () => void) => () => void;
+
+/** An unref'd timer: a pending pause never keeps the process alive. */
+const timerPause: Pause = (ms, then) => {
+  const timer = setTimeout(then, ms);
+  timer.unref();
+  return () => clearTimeout(timer);
+};
+
 export class EarlyWrites {
   readonly #pass: () => Promise<PassEnd>;
+  readonly #pause: Pause;
+  /** The passes and the pauses between them, until no pass is left to run. */
   #running: Promise<void> | null = null;
   #again = false;
   #stopped = false;
-  #timer: NodeJS.Timeout | null = null;
+  /** Ends the pause under way, if any, with no pass after it. */
+  #cancel: (() => void) | null = null;
   #busy = 0;
 
-  /** `pass` writes what is queued; it never rejects. */
-  constructor(pass: () => Promise<PassEnd>) {
+  /** `pass` writes what is queued; it never rejects. `pause` times the pauses between passes. */
+  constructor(pass: () => Promise<PassEnd>, pause: Pause = timerPause) {
     this.#pass = pass;
+    this.#pause = pause;
   }
 
   /** Whether `stop` was called: a pass then gives up at its next busy refusal. */
@@ -37,11 +57,11 @@ export class EarlyWrites {
     return this.#stopped;
   }
 
-  /** Something was queued: a pass starts now, or once the running one ends; never during a pause. */
+  /** Something was queued: a pass starts now, or once the running pass or pause ends. */
   kick(): void {
     if (this.#stopped) return;
-    if (this.#running !== null || this.#timer !== null) {
-      this.#again ||= this.#running !== null;
+    if (this.#running !== null) {
+      this.#again = true;
       return;
     }
     this.#running = this.#loop().finally(() => {
@@ -49,14 +69,19 @@ export class EarlyWrites {
     });
   }
 
-  /** No pass starts any more; resolves once the running one ended. */
+  /** No pass starts any more; ends a pause under way and resolves once the running pass ended. */
   async stop(): Promise<void> {
     this.#stopped = true;
-    if (this.#timer !== null) clearTimeout(this.#timer);
-    this.#timer = null;
+    this.#cancel?.();
     await this.#running;
   }
 
+  /**
+   * One pass after another while files are queued. A pass that left files
+   * is followed by a pause, inside the loop, so a pause that ends at any
+   * time starts the next pass (row 020-64); a pass that wrote everything
+   * is followed at once by another only when something was queued during it.
+   */
   async #loop(): Promise<void> {
     for (;;) {
       this.#again = false;
@@ -66,15 +91,26 @@ export class EarlyWrites {
       if (end === "left") {
         const pause = PAUSES_MS[Math.min(this.#busy, PAUSES_MS.length - 1)] ?? MAX_PAUSE_MS;
         this.#busy += 1;
-        this.#timer = setTimeout(() => {
-          this.#timer = null;
-          this.kick();
-        }, pause);
-        this.#timer.unref();
-        return;
+        if (!(await this.#paused(pause))) return;
+        continue;
       }
       this.#busy = 0;
       if (!this.#again) return;
     }
+  }
+
+  /** Resolves `true` once a pause of `ms` ended, `false` when `stop` ended it first. */
+  #paused(ms: number): Promise<boolean> {
+    return new Promise((resolve) => {
+      const cancel = this.#pause(ms, () => {
+        this.#cancel = null;
+        resolve(true);
+      });
+      this.#cancel = () => {
+        this.#cancel = null;
+        cancel();
+        resolve(false);
+      };
+    });
   }
 }

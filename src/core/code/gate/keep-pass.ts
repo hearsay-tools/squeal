@@ -10,6 +10,7 @@ import type { Store } from "../../types/store.js";
 import type { CodeStore } from "../store/types.js";
 import type { Pending } from "./keep-expected.js";
 import { writerFor } from "./keep-here.js";
+import type { Pause } from "./keep-queue.js";
 import type { NotKept } from "./keep-reasons.js";
 import { keepSeen, type Seen } from "./keep-seen.js";
 import { type DaemonWaits, KeepUnknown } from "./keep-sent.js";
@@ -68,6 +69,8 @@ export interface KeepOptions {
   readonly busyBoundMs?: number;
   /** How long a daemon that writes the files is waited for; default `DAEMON_WAITS` (review 0.1.450 B2). */
   readonly daemonWaits?: DaemonWaits;
+  /** Times the pauses between the passes while the runs go on; default an unref'd timer (row 020-64). */
+  readonly pause?: Pause;
 }
 
 /** One run's files that may be kept, and its reads to merge (row 020-39), until a pass writes them. */
