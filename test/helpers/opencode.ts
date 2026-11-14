@@ -5,7 +5,6 @@ import {
   mkdtempSync,
   readFileSync,
   realpathSync,
-  rmSync,
   symlinkSync,
   writeFileSync,
 } from "node:fs";
@@ -20,6 +19,8 @@ import {
   startScriptedProvider,
 } from "../fixtures/opencode/scripted-provider.js";
 import { piBase as runBase } from "./pi.js";
+import { awaitGroups } from "./process-groups.js";
+import { removeTree } from "./remove-tree.js";
 
 /**
  * The real OpenCode with a scripted model (spec 008 Testing). Each run gets its own temp
@@ -101,6 +102,13 @@ export interface OpenCodeRunOptions {
    * provider. The earlier run's `cleanup` removes both.
    */
   continue?: OpenCodeRun;
+  /**
+   * Awaited once OpenCode's process group is gone and before anything removes the run's
+   * directory, on success and on failure: waits for what OpenCode started outside its group,
+   * such as a plugin's detached processes, which can still write there (row 011-336). Its
+   * rejection fails a run that had not failed already.
+   */
+  settle?: () => Promise<void>;
   timeoutMs?: number;
 }
 
@@ -217,6 +225,7 @@ export async function runOpenCode(options: OpenCodeRunOptions): Promise<OpenCode
         ? await serve({ server: child, out, cwd, options, provider, deadline })
         : undefined;
     const exitCode = await Promise.race([out.exited, deadline]);
+    await ended(child, options);
     const events = options.mode === "run" ? out.lines().flatMap(parseEvent) : [];
     sessionID ??= events.find((event) => typeof event.sessionID === "string")?.sessionID as string;
     return {
@@ -228,12 +237,15 @@ export async function runOpenCode(options: OpenCodeRunOptions): Promise<OpenCode
       stdout: out.stdout(),
       stderr: out.stderr(),
       exitCode,
-      // A killed OpenCode can still write here while the delete runs (ENOTEMPTY, Node 26 CI,
-      // candidate 0.1.463): retry until it stops.
-      cleanup: () => rmSync(dir, { recursive: true, force: true, maxRetries: 20, retryDelay: 50 }),
+      // What wrote here has ended (`ended`); the whole removal repeats, as Node 22's
+      // `maxRetries` does not (ENOTEMPTY on Node 22 and 26 CI; row 011-336).
+      cleanup: () => removeTree(dir),
     };
   } catch (error) {
-    if (earlier === undefined) rmSync(dir, { recursive: true, force: true });
+    // OpenCode and what it started can still write in the run's directory: end them first. The
+    // run's own error is the one to report; `settle` has ended what it waited for.
+    await ended(child, options).catch(() => undefined);
+    if (earlier === undefined) removeTree(dir);
     throw error;
   } finally {
     if (child) killGroup(child, "SIGKILL");
@@ -493,6 +505,21 @@ export function spawnGroup(
 
 function killLiveGroups(): void {
   for (const pid of liveGroups) kill(pid, "SIGKILL");
+}
+
+/** How long OpenCode's process group may take to go after its SIGKILL before the run goes on. */
+const GROUP_GONE_MS = 10_000;
+
+/**
+ * SIGKILL to OpenCode's process group, the wait until no process of it is left, then the
+ * caller's `settle`: after it, nothing the run started writes in the run's directory.
+ */
+async function ended(child: ChildProcess | undefined, options: OpenCodeRunOptions): Promise<void> {
+  if (child?.pid !== undefined) {
+    killGroup(child, "SIGKILL");
+    await awaitGroups([child.pid], GROUP_GONE_MS);
+  }
+  await options.settle?.();
 }
 
 function killGroup(child: ChildProcess, signal: NodeJS.Signals): void {
