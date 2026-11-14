@@ -1,0 +1,3 @@
+[   1.4s] squeal code: Vitest: 300 test files to run (tests 300)
+[   1.4s] squeal code: no test Squeal runs loads vitest.setup.ts: no Vitest or node:test project lists it, and no listed test file imports it. Its 2 changed functions will read incomplete (no-loader). To measure it, give it to a runner (a nodeTest entry, with prepare when it needs a build); to skip its coverage, name it in coverage.exclude at the base.
+[   1.5s] squeal code: Vitest: 300 test files to run here, up to 7 at once: about 8 s from their stored durations
