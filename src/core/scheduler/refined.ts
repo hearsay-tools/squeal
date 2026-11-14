@@ -37,7 +37,11 @@ export function isRefined(
   worktreeId: WorktreeId,
   revision: RevisionNumber,
 ): boolean {
-  const refined = readRefined(store, worktreeId);
+  return covers(readRefined(store, worktreeId), revision);
+}
+
+/** Whether `refined`, as `readRefined` read it, counts `revision` refined: a reader that needs both reads once. */
+export function covers(refined: RevisionNumber | null, revision: RevisionNumber): boolean {
   return refined === null || revision <= refined;
 }
 
