@@ -332,6 +332,13 @@ export interface VitestInput {
    */
   readonly coverage?: true | "unloadable";
   /**
+   * Policy `observe.runtimeInputs` on: the recorder runs in the workers and
+   * each run reports what its files observed (task 001-132). The outputs
+   * compare no observed path; with coverage on, the loaded lists join it
+   * (spec 022 D2, row 022-03), so the case runs that code at the candidate.
+   */
+  readonly observe?: true;
+  /**
    * Spec 020 row 020-43: the gate's `fileStarted` hook, the adapter's
    * twelfth argument, which a release before it ignores. What it is told
    * is wording, so the runs must store alike. `bare`: it returns no end,
@@ -394,6 +401,12 @@ export interface PruneInput {
    * store's prune asks (row 011-315, `ResultRepo.keysWithResults`).
    */
   readonly asked?: readonly string[];
+  /**
+   * Spec 022 D3 (row 022-03): result keys a loaded list is stored at, in a
+   * `loaded_modules` table made by SQL. No key reads the table, so what a
+   * prune leaves of it is wording: a release before it leaves every list.
+   */
+  readonly loadedLists?: readonly string[];
 }
 
 /** The Pythons the `adapter:pytest` kind runs on, as CI installs them (`test/helpers/pytest-env.ts`). */
