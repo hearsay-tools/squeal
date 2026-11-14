@@ -1,15 +1,16 @@
 import { compare } from "../fs/compare.js";
 import type { EpochMs, RelativePath } from "../types/common.js";
 import type { Analysis, TestReach } from "./analyze.js";
-import { IMPORT_KINDS } from "./pairs.js";
+import { type InputFacts, inputFacts } from "./inputs.js";
 import type {
   NarrowingEstimate,
   NarrowingFile,
   NoList,
   NoListDetail,
   NoListReason,
+  Unproved,
 } from "./report-types.js";
-import type { LoadedList, ReachCoverage, ReachEdit } from "./types.js";
+import type { LoadedList, ReachCoverage, ReachEdit, ReachSnapshot } from "./types.js";
 
 /*
  * Spec 022 D4: per project, the re-run seconds that narrowing each test
@@ -20,6 +21,9 @@ import type { LoadedList, ReachCoverage, ReachEdit } from "./types.js";
  * past keys, so the list of an edit is the newest recorded at or before the
  * edit's time. The reasons a file has no list are read from its current key,
  * in `reasonOf`'s order.
+ *
+ * Review 0.1.493 B2: avoidance and importer counts come from `inputs.ts`'s
+ * graph and input facts, not from the display routes.
  */
 
 interface ProjectSums {
@@ -28,12 +32,25 @@ interface ProjectSums {
   rerun: number;
   avoidable: number;
   readonly files: Map<RelativePath, number>;
-  readonly noList: Map<string, NoList & { testFiles: number; readonly seen: Set<RelativePath> }>;
+  readonly noList: Map<string, NoList & Counted>;
+  readonly unproved: Map<string, Unproved & Counted>;
+}
+
+/** A bucket's test files, each counted once. */
+interface Counted {
+  testFiles: number;
+  readonly seen: Set<RelativePath>;
+}
+
+/** A test file whose closure is known, with its input facts. */
+interface Keyed {
+  readonly reach: TestReach;
+  readonly facts: InputFacts;
 }
 
 export function narrowingEstimates(
   analysis: Analysis,
-  coverage: ReachCoverage,
+  snapshot: ReachSnapshot,
   /** Source files listed per project; the text gives D4's ten (`REACH_LIMIT`). */
   limit: number,
 ): NarrowingEstimate[] {
@@ -47,40 +64,33 @@ export function narrowingEstimates(
       avoidable: 0,
       files: new Map(),
       noList: new Map(),
+      unproved: new Map(),
     };
     sums.tests.push(reach);
     projects.set(project, sums);
   }
   return [...projects.entries()]
     .sort(([a], [b]) => compare(a, b))
-    .map(([project, sums]) => estimateOf(project, sums, analysis.kept, coverage, limit));
+    .map(([project, sums]) => estimateOf(project, sums, analysis.kept, snapshot, limit));
 }
 
 function estimateOf(
   project: string,
   sums: ProjectSums,
   edits: readonly ReachEdit[],
-  coverage: ReachCoverage,
+  snapshot: ReachSnapshot,
   limit: number,
 ): NarrowingEstimate {
   const lists = "lists: the newest recorded at or before each edit";
   if (sums.runner !== "vitest") {
     return { project, status: "not Vitest", lists, ...EMPTY };
   }
-  const facts = projectFacts(sums.tests, coverage);
-  // The paths whose edit re-keys each test file: itself, its closure, its setup files.
-  const keyedBy = sums.tests
+  const facts = projectFacts(sums.tests, snapshot.coverage);
+  const keyed: Keyed[] = sums.tests
     .filter((reach) => reach.test.closure !== null)
-    .map((reach) => {
-      const paths = new Set([
-        reach.test.ref.path,
-        ...(reach.test.closure ?? []),
-        ...reach.kinds.keys(),
-      ]);
-      return [reach, paths] as const;
-    });
+    .map((reach) => ({ reach, facts: inputFacts(reach.test, snapshot) }));
   for (const edit of edits) {
-    for (const [reach, keyed] of keyedBy) addPair(sums, reach, keyed, edit, facts);
+    for (const test of keyed) addPair(sums, test, edit, facts);
   }
   const withoutList = [...sums.noList.values()]
     .map(({ reason, detail, testFiles, seconds }) => ({ reason, detail, testFiles, seconds }))
@@ -90,6 +100,9 @@ function estimateOf(
         compare(a.reason, b.reason) ||
         compare(a.detail ?? "", b.detail ?? ""),
     );
+  const unproved = [...sums.unproved.values()]
+    .map(({ reason, testFiles, seconds }) => ({ reason, testFiles, seconds }))
+    .sort((a, b) => b.testFiles - a.testFiles || compare(a.reason, b.reason));
   if (facts.first === null) {
     return {
       project,
@@ -98,6 +111,7 @@ function estimateOf(
       ...EMPTY,
       reason: noListsReason(facts),
       withoutList,
+      unproved,
     };
   }
   const ranked = [...sums.files.entries()].sort(([a, x], [b, y]) => y - x || compare(a, b));
@@ -105,7 +119,8 @@ function estimateOf(
     ([path, seconds]): NarrowingFile => ({
       path,
       avoidableSeconds: seconds,
-      importedBy: sums.tests.filter((t) => IMPORT_KINDS.has(t.kinds.get(path) ?? "setup")).length,
+      // Review 0.1.493 B2: importers by stored edges, whatever route the report displays.
+      importedBy: keyed.filter((t) => t.facts.imports(path)).length,
       loadedBy: sums.tests.filter((t) => t.test.loaded.lists.at(-1)?.paths.has(path) === true)
         .length,
     }),
@@ -120,6 +135,7 @@ function estimateOf(
     files,
     moreFiles: Math.max(0, ranked.length - limit),
     withoutList,
+    unproved,
   };
 }
 
@@ -130,51 +146,66 @@ const EMPTY = {
   files: [],
   moreFiles: 0,
   withoutList: [],
+  unproved: [],
 } as const;
 
-/** One (edit, test file) pair: re-run seconds, and avoidable or why no list tells. */
+/** One (edit, test file) pair: re-run seconds, and avoidable, or why no list or no proof tells. */
 function addPair(
   sums: ProjectSums,
-  reach: TestReach,
-  keyedBy: ReadonlySet<RelativePath>,
+  { reach, facts: inputs }: Keyed,
   edit: ReachEdit,
   facts: ProjectFacts,
 ) {
   const { test } = reach;
-  const changed = edit.paths.filter((p) => keyedBy.has(p));
+  const changed = edit.paths.filter((p) => inputs.keyedBy.has(p));
   if (changed.length === 0) return;
   const seconds = test.seconds ?? 0;
   sums.rerun += seconds;
   const list = listAt(test.loaded.lists, edit.at);
   if (list === null) {
     const { reason, detail } = reasonOf(reach, facts);
-    const id = `${reason}\0${detail ?? ""}`;
-    const entry = sums.noList.get(id) ?? {
-      reason,
-      detail,
-      testFiles: 0,
-      seconds: 0,
-      seen: new Set(),
-    };
-    entry.seconds += seconds;
-    if (!entry.seen.has(test.ref.path)) {
-      entry.seen.add(test.ref.path);
-      entry.testFiles++;
-    }
-    sums.noList.set(id, entry);
+    count(
+      sums.noList,
+      `${reason}\0${detail ?? ""}`,
+      { reason, detail, testFiles: 0, seconds: 0 },
+      test.ref.path,
+      seconds,
+    );
     return;
   }
   // D4: a change through any input other than an import-graph path the list does not hold is never avoidable.
-  const avoidable = changed.every((p) => {
-    const kind = reach.kinds.get(p);
-    return kind !== undefined && IMPORT_KINDS.has(kind) && !list.paths.has(p);
-  });
-  if (!avoidable) return;
+  const kinds = changed.map((p) => inputs.kindOf(p));
+  const held = changed.some((p, at) => kinds[at]?.kind === "kept" || list.paths.has(p));
+  if (held) return;
+  const unproved = kinds.find((k) => k.kind === "unproved");
+  if (unproved !== undefined) {
+    // An input kind not proved: the pair re-runs and is not estimated.
+    const { reason } = unproved;
+    count(sums.unproved, reason, { reason, testFiles: 0, seconds: 0 }, test.ref.path, seconds);
+    return;
+  }
   sums.avoidable += seconds;
   // Decision (3), 2026-11-14: a pair re-keyed by several files splits its seconds evenly among them.
   for (const path of changed) {
     sums.files.set(path, (sums.files.get(path) ?? 0) + seconds / changed.length);
   }
+}
+
+/** Adds `seconds` of `testFile` to the bucket `id`, made from `entry` when new. */
+function count<T extends { seconds: number; testFiles: number }>(
+  buckets: Map<string, T & Counted>,
+  id: string,
+  entry: T,
+  testFile: RelativePath,
+  seconds: number,
+) {
+  const bucket = buckets.get(id) ?? { ...entry, seen: new Set<RelativePath>() };
+  bucket.seconds += seconds;
+  if (!bucket.seen.has(testFile)) {
+    bucket.seen.add(testFile);
+    bucket.testFiles++;
+  }
+  buckets.set(id, bucket);
 }
 
 /** The newest list recorded at or before `at`; `null` with none. Lists are oldest first. */

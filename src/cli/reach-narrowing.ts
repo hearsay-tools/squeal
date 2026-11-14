@@ -1,4 +1,4 @@
-import type { NarrowingEstimate, NoList } from "../core/reach/report-types.js";
+import type { NarrowingEstimate, NoList, Unproved } from "../core/reach/report-types.js";
 import { plural } from "../core/text.js";
 import { pct, secs } from "./reach-text.js";
 
@@ -20,6 +20,16 @@ function noListText(entry: NoList): string {
   return `${entry.reason}${detail}: ${plural(entry.testFiles, "test file")}, ${secs(entry.seconds)}`;
 }
 
+/** Review 0.1.493 B2: why a pair with a list is left out of the estimate. */
+const UNPROVED = {
+  "no recorded walk": "no import walk at its key",
+  "walk incomplete": "its import walk stops at an unrecorded module",
+} as const;
+
+function unprovedText(entry: Unproved): string {
+  return `${UNPROVED[entry.reason]}: ${plural(entry.testFiles, "test file")}, ${secs(entry.seconds)}`;
+}
+
 function projectLines(estimate: NarrowingEstimate): string[] {
   const name = estimate.project === "" ? "default project" : estimate.project;
   if (estimate.status === "not Vitest") {
@@ -29,6 +39,12 @@ function projectLines(estimate: NarrowingEstimate): string[] {
     estimate.withoutList.length === 0
       ? []
       : [`    re-run without a list: ${estimate.withoutList.map(noListText).join("; ")}`];
+  const unproved =
+    estimate.unproved.length === 0
+      ? []
+      : [
+          `    re-run, input not proved an import, not estimated: ${estimate.unproved.map(unprovedText).join("; ")}`,
+        ];
   if (estimate.status === "no lists") {
     const reason = REASONS[estimate.reason ?? "never recorded"];
     return [`  ${name}: no lists: ${reason}; nothing estimated.`, ...without];
@@ -37,6 +53,7 @@ function projectLines(estimate: NarrowingEstimate): string[] {
     return [
       `  ${name}: no edit in the window re-ran a test file with recorded seconds.`,
       ...without,
+      ...unproved,
     ];
   }
   return [
@@ -49,6 +66,7 @@ function projectLines(estimate: NarrowingEstimate): string[] {
       ? []
       : [`    … and ${estimate.moreFiles} more; --limit lists more.`]),
     ...without,
+    ...unproved,
   ];
 }
 
