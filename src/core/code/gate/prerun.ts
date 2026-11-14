@@ -10,6 +10,12 @@ import {
   placeFile,
   type ScopeTally,
 } from "./scope.js";
+import {
+  loadedSetupFiles,
+  projectInputs,
+  type WholeProject,
+  wholeProjects,
+} from "./setup-selection.js";
 import type { ChangedSet, TestFileEvidence } from "./types.js";
 
 /*
@@ -19,6 +25,9 @@ import type { ChangedSet, TestFileEvidence } from "./types.js";
  * selection already gave, the evidence known without a run, and the
  * runners' static graphs: no test runs. Review 0.1.432 B2: a file known
  * from the stores or the parts does not run, so it starts no setup.
+ * Row 020-57 (#212): a `setupFiles` entry is loaded by its project's
+ * selected files, and a changed path every test file of a project depends
+ * on is named with the projects it selects whole (`setup-selection.ts`).
  */
 
 /** One runner's selected files, by check group, and how many of them run. */
@@ -56,7 +65,9 @@ export interface SelectionSummary {
   /**
    * Each path of a changed function that no runner lists as a test file
    * and no selected test file loads, so its functions will read
-   * `no-loader`; sorted. A path `excluded` matches is not looked for.
+   * `no-loader`; sorted. A path `excluded` matches is not looked for. Row
+   * 020-57: a `setupFiles` entry of a project with a selected file the
+   * scope runs is loaded: each such file's record holds it.
    * With `coverage.children` (row 020-34), only when no selected file runs
    * or is read; else such a path is in `childMayLoad`.
    */
@@ -68,6 +79,12 @@ export interface SelectionSummary {
    * it. Sorted; absent when none.
    */
   readonly childMayLoad?: readonly RelativePath[];
+  /**
+   * Row 020-57 (#212): per runner, the changed paths every test file of a
+   * project depends on (config, setup and global setup inputs), so D3.1
+   * selected those projects whole; absent when none.
+   */
+  readonly wholeProjects?: readonly WholeProject[];
 }
 
 /** One opened runner and what the selection gave it (D3.1, D14.2). */
@@ -163,8 +180,18 @@ export async function summarize(
   const candidates = [...new Set(changed.functions.map((f) => f.path))].filter(
     (path) => !context.excluded(path),
   );
-  const unloaded = await unloadedPaths(picked, candidates);
-  return { runners, leftOut: context.leftOut, setups, unloaded };
+  const inputs = await projectInputs(picked);
+  const setupFiles = loadedSetupFiles(inputs);
+  const unloaded = (await unloadedPaths(picked, candidates)).filter((p) => !setupFiles.has(p));
+  const whole = wholeProjects(inputs, changed.paths, known);
+  const { leftOut } = context;
+  return {
+    runners,
+    leftOut,
+    setups,
+    unloaded,
+    ...(whole.length === 0 ? {} : { wholeProjects: whole }),
+  };
 }
 
 /** The files `run` holds per group of `scope`, in its ownership order; none with no scope. */

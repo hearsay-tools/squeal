@@ -1,8 +1,9 @@
 import type { CollectOptions } from "../core/code/gate/collect.js";
-import type { RunEstimate } from "../core/code/gate/estimate.js";
+import type { BudgetFit, EstimateLoad, RunEstimate } from "../core/code/gate/estimate.js";
 import type { BudgetTold } from "../core/code/gate/plan.js";
 import type { BasePolicy } from "../core/code/gate/policy.js";
 import type { SelectionSummary } from "../core/code/gate/prerun.js";
+import type { WholeProject } from "../core/code/gate/setup-selection.js";
 import { type ChangedSet, RUNNER_NAMES } from "../core/code/gate/types.js";
 import { createInputMatcher } from "../core/keys/glob.js";
 import { listPaths, plural, shellWord } from "../core/text.js";
@@ -25,6 +26,10 @@ import { statusCommand } from "./status-command.js";
  * Rows 020-45 and 020-46 (#196, #198): over what is left of the budget,
  * one rerun command with a fitted `--timeout`; at twice it, the files the
  * gate runs and those it stops early before.
+ * Row 020-57 (#212): an estimate the host's load scaled says so, and a
+ * changed path every test file of a project depends on, such as a
+ * `setupFiles` entry, is named with the files it selects and the whole
+ * run's estimate against the budget, before the runners' estimates.
  */
 
 /**
@@ -117,19 +122,59 @@ export function preRunText(summary: SelectionSummary, changed: ChangedSet): stri
 }
 
 /**
- * The collector's options that write the selection to `stderr` before the
- * first run (D14.4). A path `coverage.exclude` matches at the base needs no
- * loader, so it gets no line (D6).
+ * The collector's options that write the selection (D14.4) and the
+ * estimate (D17.1) to `stderr` before the first run. A path
+ * `coverage.exclude` matches at the base needs no loader, so it gets no
+ * line (D6). Row 020-57: the estimate comes after the selection, so its
+ * text leads with the selection's projects selected whole.
  */
 export function preRunOptions(
   changed: ChangedSet,
   policy: BasePolicy,
   stderr: (text: string) => void,
-): Pick<CollectOptions, "selected" | "excluded"> {
+): Pick<CollectOptions, "selected" | "excluded" | "estimated"> {
+  let whole: readonly WholeProject[] = [];
   return {
-    selected: (summary) => stderr(preRunText(summary, changed)),
+    selected: (summary) => {
+      whole = summary.wholeProjects ?? [];
+      stderr(preRunText(summary, changed));
+    },
     excluded: createInputMatcher(policy.coverageExclude),
+    estimated: (estimates, left, budget) =>
+      stderr(wholeProjectText(whole, budget.fit) + estimateText(estimates, left, budget)),
   };
+}
+
+/**
+ * Row 020-57 (#212): one line per runner with a changed path every test
+ * file of a project depends on: the paths, each `setupFiles` entry marked,
+ * the files that selects, and the whole run's estimate against what is
+ * left of the budget.
+ */
+export function wholeProjectText(whole: readonly WholeProject[], fit: BudgetFit): string {
+  return whole.map((w) => `squeal code: ${wholeProjectLine(w, fit)}\n`).join("");
+}
+
+function wholeProjectLine(whole: WholeProject, fit: BudgetFit): string {
+  const { runner, paths, setupFiles, projects, files, run } = whole;
+  const name = RUNNER_NAMES[runner];
+  const named = projects.filter((p) => p !== "").map((p) => JSON.stringify(p));
+  const of =
+    named.length === 0
+      ? `every ${name} test file`
+      : `every test file of ${name} ${named.length === 1 ? "project" : "projects"} ${listPaths(named, NAMED)}`;
+  const marked = paths.map((p) => (setupFiles.includes(p) ? `${p} (setupFiles)` : p));
+  const all = files === 1 ? "its 1 test file is" : `all ${files} of them are`;
+  const here = run === files ? "" : `, ${run === 0 ? "none" : run} to run here`;
+  return `${of} depends on ${listPaths(marked, NAMED)}, so ${all} selected${here}; ${wholeRunText(fit)}`;
+}
+
+/** Row 020-57: the whole run's estimate against what is left of the budget. */
+function wholeRunText({ seconds, leftSeconds, load }: BudgetFit): string {
+  if (seconds === null) return "the whole run's time is unknown: no stored duration";
+  const at = load === undefined ? "" : " at the host's load";
+  const where = seconds > leftSeconds ? "over" : "within";
+  return `the whole run takes about ${seconds} s${at}, ${where} the ${leftSeconds} s left of the budget`;
 }
 
 /** D17.1: what shortens a run that does not fit what is left of the budget. */
@@ -149,7 +194,7 @@ export function estimateText(
   leftSeconds: number,
   budget?: BudgetTold,
 ): string {
-  const lines = estimates.map(({ runner, seconds, files, known, width }) => {
+  const lines = estimates.map(({ runner, seconds, files, known, width, load }) => {
     const name = RUNNER_NAMES[runner];
     const run = `${plural(files, "test file")} to run here, up to ${width} at once`;
     if (seconds === null) return `${name}: ${run}; no stored duration, so the time is unknown`;
@@ -161,12 +206,22 @@ export function estimateText(
           : "their stored durations";
     const over =
       seconds > leftSeconds ? `, over the ${leftSeconds} s left of the budget. ${WAYS_OUT}` : "";
-    return `${name}: ${run}: about ${seconds} s from ${from}${over}`;
+    return `${name}: ${run}: about ${seconds} s from ${from}${scaledText(load)}${over}`;
   });
   const fit = budget === undefined ? null : budgetLine(budget);
   return [...lines, ...(fit === null ? [] : [fit])]
     .map((line) => `squeal code: ${line}\n`)
     .join("");
+}
+
+/**
+ * Row 020-57 (#212): what an estimate the host's load scaled says of it:
+ * the seconds from the stored durations alone and the factor; nothing
+ * when it was not scaled.
+ */
+function scaledText(load: EstimateLoad | undefined): string {
+  if (load === undefined) return "";
+  return `, scaled by the host's load (${load.unscaled} s times ${load.perCpu}, its one-minute load per CPU)`;
 }
 
 /**
@@ -177,7 +232,7 @@ export function estimateText(
  */
 export function budgetLine({ fit, rerun, early }: BudgetTold): string | null {
   if (rerun === undefined || fit.seconds === null) return null;
-  const all = `about ${fit.seconds} s in all`;
+  const all = `about ${fit.seconds} s in all${fit.load === undefined ? "" : " at the host's load"}`;
   if (early === undefined || early.overBudget.length === 0) {
     return `${all}, over the ${fit.leftSeconds} s left of the budget. A rerun that fits: ${rerun.command}`;
   }
@@ -221,16 +276,13 @@ export function rerunCommand(args: GateArgs, squeal: string): (seconds: number) 
 }
 
 /**
- * D17.1, rows 020-45 and 020-46: the collector's options that tell the
- * estimate on `io.stderr` before the first run, with the rerun command of
- * `args` run as Squeal runs under `io.env`.
+ * Rows 020-45 and 020-46: the collector's option that names the rerun
+ * command of `args`, run as Squeal runs under `io.env`, in the estimate
+ * `preRunOptions` tells (row 020-57 moved the telling there).
  */
 export function estimateOptions(
   args: GateArgs,
-  io: Pick<CliIo, "env" | "stderr">,
-): Pick<CollectOptions, "estimated" | "rerun"> {
-  return {
-    estimated: (estimates, left, budget) => io.stderr(estimateText(estimates, left, budget)),
-    rerun: rerunCommand(args, statusCommand(io.env ?? process.env)),
-  };
+  io: Pick<CliIo, "env">,
+): Pick<CollectOptions, "rerun"> {
+  return { rerun: rerunCommand(args, statusCommand(io.env ?? process.env)) };
 }
