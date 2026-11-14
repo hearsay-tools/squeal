@@ -72,7 +72,11 @@ export async function namedSnapshot(
         cwd,
         paths,
       );
-      sync = (options.sync ?? syncDaemon)(context.root, pollMs, sources);
+      // Row 011-49: its sync's requests end by the read, and the process with them.
+      sync =
+        options.sync === undefined
+          ? syncDaemon(context.root, pollMs, sources, started + settleMs)
+          : options.sync(context.root, pollMs, sources);
       return { root: context.root };
     });
     if ("available" in found) return unread(found);
