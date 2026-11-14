@@ -15,7 +15,7 @@ import type { CutFiles } from "./sharing.js";
 import { laneOf, type Tier, type TierFile } from "./tiers.js";
 import { YieldHistory } from "./yield-history.js";
 import { readYieldRow, type YieldRow, yieldRowText } from "./yield-row.js";
-import { type RankedFile, startsSooner } from "./yield-sooner.js";
+import { type RankedFile, startsSooner } from "./yield-view.js";
 
 /**
  * A running tier yields only when its estimated remainder exceeds this (spec

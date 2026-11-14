@@ -2,16 +2,19 @@ import { describe, expect, it } from "vitest";
 import { type FileState, newFileState } from "../../src/core/scheduler/files.js";
 import { Priority } from "../../src/core/scheduler/queue.js";
 import { type CutFiles, NONE_CUT } from "../../src/core/scheduler/sharing.js";
-import { startsSooner as byModel } from "../../src/core/scheduler/yield-sooner.js";
 import { type RankedFile, startsSooner } from "../../src/core/scheduler/yield-view.js";
 import type { CheckKey } from "../../src/core/types/keys.js";
 
 /*
- * Row 011-348 (`research/tier-plan.md`, decision 2): a yield's "starts
- * sooner" check asks the tier plan over a view of the cut files and the
- * waiting file. First, the plan and `startsSooner`'s own model give the same
- * answer on every case of `yield-sooner.test.ts` and
- * `tier-yields-next-tier.test.ts` (row 011-263), and on a seeded sweep.
+ * Row 011-348 (`research/tier-plan.md`, decision 2; row 011-263, spec 011
+ * C4 step 5 and C15 Rank as amended 2026-10-28): a tier yields to a
+ * promoted file only when the files that would run before it after the cut
+ * end, by last-known durations, before the tier's estimated remainder. The
+ * check asks the tier plan over a view of the cut files and the waiting
+ * file; these rows were `yield-sooner.test.ts`'s and the cuts
+ * `tier-yields-next-tier.test.ts` would ask about, on which the plan gave
+ * the answer of the model it replaced (commit da4963d76, with 3,000 seeded
+ * cuts).
  */
 const S = 1_000;
 
@@ -48,8 +51,8 @@ interface Case {
   readonly sooner: boolean;
 }
 
-/** Both checks' answers on `c`: the model's, then the plan's. */
-function answers(c: Case): [boolean, boolean] {
+/** Whether a cut of `c` starts Q before the tier's remainder. */
+function sooner(c: Case): boolean {
   const longest = Math.max(0, ...c.files.map((f) => f.file.durationMs ?? 0));
   const remainderMs = longest - c.elapsedMs;
   const q = {
@@ -59,7 +62,7 @@ function answers(c: Case): [boolean, boolean] {
   };
   const cut = { files: c.files, size: c.size ?? 4, past: remainderMs < 0, remainderMs };
   const marks = c.marks ?? NONE_CUT;
-  return [byModel(cut, q, marks), startsSooner(cut, q, marks)];
+  return startsSooner(cut, q, marks);
 }
 
 const CASES: readonly Case[] = [
@@ -217,43 +220,8 @@ const CASES: readonly Case[] = [
   },
 ];
 
-describe("the plan answers as startsSooner's model did (row 011-348)", () => {
+describe("a cut starts a promoted file before the tier's remainder (rows 011-263, 011-348)", () => {
   it.each(CASES)("$name", (c) => {
-    expect(answers(c)).toEqual([c.sooner, c.sooner]);
-  });
-
-  it("agrees with the model on 3,000 seeded cuts", () => {
-    // mulberry32: an integer below `n`, from a fixed seed.
-    let seed = 348;
-    const next = (n: number) => {
-      seed = (seed + 0x6d2b79f5) | 0;
-      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-      return ((t ^ (t >>> 14)) >>> 0) % n;
-    };
-    const durations = [null, 1, 500, 2 * S, 20 * S, 60 * S, 150 * S, 308 * S];
-    const differ: string[] = [];
-    for (let i = 0; i < 3_000; i++) {
-      const files = Array.from({ length: 1 + next(6) }, (_, j) =>
-        ranked(
-          file(`test/r${j}.test.ts`, durations[next(durations.length)] ?? null, next(4) === 0),
-          next(3) === 0 ? null : next(3),
-        ),
-      );
-      const c: Case = {
-        name: `seeded ${i}`,
-        files,
-        elapsedMs: next(30) * S,
-        qMs: durations[next(durations.length)] ?? null,
-        qRank: next(3),
-        priority:
-          [Priority.edited, Priority.failing, Priority.transitive][next(3)] ?? Priority.direct,
-        size: 1 + next(4),
-        sooner: false,
-      };
-      const [model, plan] = answers(c);
-      if (model !== plan) differ.push(JSON.stringify({ i, model, plan }));
-    }
-    expect(differ).toEqual([]);
+    expect(sooner(c)).toBe(c.sooner);
   });
 });
