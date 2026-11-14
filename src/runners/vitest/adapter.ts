@@ -1,4 +1,5 @@
 import type { TestSpecification, Vitest } from "vitest/node";
+import { withLoaded } from "../../core/ci/loaded-inputs.js";
 import { POLICY_FILE } from "../../core/daemon/policy.js";
 import { compare } from "../../core/fs/compare.js";
 import type { WorktreePaths } from "../../core/fs/worktree-paths.js";
@@ -55,7 +56,7 @@ import { fileImports, importClosure, missingCandidates } from "./graph.js";
 import { loadVitest, type VitestNode } from "./load.js";
 import { mayHaveReadTouched, mayHaveRun, withoutFiles, withoutTouched } from "./moved.js";
 import { namePattern } from "./name-pattern.js";
-import { VitestObserver, withLoaded } from "./observe.js";
+import { VitestObserver } from "./observe.js";
 import { noteOnce, withoutOptimizer } from "./optimizer.js";
 import { closurePackages, environmentPackages } from "./packages.js";
 import {

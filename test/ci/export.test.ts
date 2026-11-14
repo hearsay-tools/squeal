@@ -1,22 +1,11 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { type CiExport, ciExport } from "../../src/core/ci/export.js";
-import { readPart } from "../../src/core/ci/parts.js";
 import { committedBlobs } from "../../src/core/commit/tree.js";
-import { readHead } from "../../src/core/daemon-loop/head.js";
-import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
 import { encodeSegment, keyFromSegments } from "../../src/core/keys/check-key.js";
-import { KEY_FORMAT_VERSION } from "../../src/core/keys/key-format.js";
-import type { ExportHeader } from "../../src/core/store/imports.js";
-import { exportResults } from "../../src/core/store/transfer.js";
 import { decodeBundle, type ResultsBundle } from "../../src/core/store/transfer-bundle.js";
-import type { WorktreeId } from "../../src/core/types/common.js";
-import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
-import { createVitestAdapter } from "../../src/runners/vitest/index.js";
-import { openRepoStore } from "../scheduler/repo.js";
-import { openHarness } from "../scheduler/vitest-harness.js";
-import { ci, cloneOf, committed, recordVitest, scratch } from "./fixture.js";
+import { daemonExport, partsExport } from "./export-harness.js";
+import { ci, committed, recordVitest, scratch } from "./fixture.js";
 
 /*
  * Spec 018 D9 (row 018-17): `squeal ci export` in a fresh checkout of the
@@ -29,8 +18,6 @@ import { ci, cloneOf, committed, recordVitest, scratch } from "./fixture.js";
  */
 
 const NAMES = ["a", "b", "c", "d"];
-const SQUEAL = "0.0.0-test";
-
 /** Four test files, each reading its own data file and importing one source file. */
 function fixture(dir: string): string {
   return committed(dir, {
@@ -55,53 +42,6 @@ async function recordShards(root: string, out: string): Promise<void> {
     const recorded = await recordVitest(root, out, [`--shard=${shard}`]);
     expect(recorded.code, recorded.said).toBe(0);
   }
-}
-
-async function headerOf(root: string): Promise<ExportHeader> {
-  const head = await readHead(root);
-  return {
-    squealVersion: SQUEAL,
-    keyFormat: KEY_FORMAT_VERSION,
-    commit: head.head,
-    dirty: head.dirty,
-    createdAt: Date.now(),
-    source: { kind: "local" },
-  };
-}
-
-/** `squeal export` of a daemon that ran every file of a clone of `origin`. */
-async function daemonExport(origin: string): Promise<ResultsBundle> {
-  const root = cloneOf(origin, "daemon");
-  const common = join(root, ".git");
-  const h = await openHarness(root, openRepoStore(common), common, { observe: true });
-  await h.scheduler.start();
-  await h.scheduler.requestFullSuite();
-  await h.scheduler.idle();
-  return exportResults(h.store, h.worktreeId as WorktreeId, await headerOf(root)).bundle;
-}
-
-/** `ciExport` of the parts in `out`, in a fresh clone of `origin`, as the daemon's harness keys. */
-async function partsExport(origin: string, out: string): Promise<CiExport & { root: string }> {
-  const root = cloneOf(origin, "export");
-  const parts = readdirSync(out).map((name) => {
-    const part = readPart(join(out, name));
-    if (typeof part === "string") throw new Error(part);
-    return { file: name, part };
-  });
-  const store = openRepoStore(join(scratch("ci-export-store"), "common"));
-  const exported = await ciExport({
-    root,
-    worktreeId: worktreeIdFor(root),
-    store,
-    runner: () => createVitestAdapter({ root, observe: () => true }),
-    policy: { ...DEFAULT_POLICY, observe: { runtimeInputs: true } },
-    squealVersion: SQUEAL,
-    env: process.env,
-    parts,
-    header: await headerOf(root),
-    now: Date.now,
-  });
-  return { ...exported, root };
 }
 
 /**
@@ -129,7 +69,7 @@ describe("squeal ci export (spec 018 D9)", () => {
     await recordShards(origin, out);
     expect(readdirSync(out)).toHaveLength(2);
 
-    const daemon = await daemonExport(origin);
+    const { bundle: daemon } = await daemonExport(origin);
     const job = await partsExport(origin, out);
     if (!("bundle" in job)) throw new Error(job.refused.text);
     expect(job.counts, JSON.stringify(job.uncertified)).toEqual({
