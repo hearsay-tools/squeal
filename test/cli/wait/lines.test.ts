@@ -134,7 +134,9 @@ describe("the group wait's lines (spec 019 D6)", () => {
     queued: 1,
     deadline: 0,
     line: "",
-    ...(narrow ? { files: [ref("test/e2e/a.test.ts")] } : {}),
+    ...(narrow
+      ? { files: { kind: "list", files: [ref("test/e2e/a.test.ts")] }, narrow: { unmatched: [] } }
+      : { files: { kind: "group", group: "e2e" } }),
   });
   const install = { command: "pnpm install" };
 
