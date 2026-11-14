@@ -96,6 +96,8 @@ export interface SlowHost {
 export interface SlowRun {
   readonly tier: Tier;
   readonly slot: SlowSlot;
+  /** The lock turn of the admission it starts on (row 011-340). */
+  readonly turn: number;
 }
 
 /**
@@ -418,7 +420,7 @@ export class SlowTier {
       const selected = await this.host.lock.run(() => {
         const picked = this.#select(refs, ranUnderLoad, slot, group);
         if (picked === null || typeof picked !== "object") return picked;
-        launch({ ...picked, slot });
+        launch({ ...picked, slot, turn: this.host.lock.turn });
         flown = true;
         return "flown" as const;
       }, `selecting a tier of group ${this.group}`);
