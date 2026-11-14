@@ -24,8 +24,8 @@ const E2E = "test/e2e/a.test.ts";
 const OTHER = "test/e2e/b.test.ts";
 const FAST = "test/b.test.ts";
 const ref = (path: string) => ({ project: "", path: path as never });
-const TAIL =
-  "Its FAIL stays counted until a retry passes; squeal status lists the retry while it is pending.";
+const tail = (path: string) =>
+  `Its FAIL stays counted until a retry passes; squeal status lists the retry while it is pending. squeal status --wait 60000 ${path} waits for its result; the wait leaves the retry at its normal priority.`;
 const queued = (path: string) =>
   `Retry queued (reason: environment): ${path} runs once more in its turn at its normal priority`;
 
@@ -127,7 +127,7 @@ describe("squeal retry words a configured group's file by its group (019-27)", (
     w.turn();
     publishGroupActivity(w.store, w.id, "e2e", { kind: "waiting", for: "idle" });
     expect(await retry(w.root, E2E)).toBe(
-      `${queued(E2E)}; it has not started: the e2e group waits for the agent to pause; \`squeal run e2e\` runs it now. ${TAIL}\n`,
+      `${queued(E2E)}; it has not started: the e2e group waits for the agent to pause; \`squeal run e2e\` runs it now. ${tail(E2E)}\n`,
     );
   });
 
@@ -142,7 +142,7 @@ describe("squeal retry words a configured group's file by its group (019-27)", (
       lastDurationMs: null,
     });
     expect(await retry(w.root, E2E)).toBe(
-      `${queued(E2E)}; it has not started: the e2e group runs other files, since ${timeText(since)}. ${TAIL}\n`,
+      `${queued(E2E)}; it has not started: the e2e group runs other files, since ${timeText(since)}. ${tail(E2E)}\n`,
     );
   });
 
@@ -150,7 +150,7 @@ describe("squeal retry words a configured group's file by its group (019-27)", (
     const w = await worktree();
     w.run(OTHER, (w.at + 1_000) as EpochMs);
     expect(await retry(w.root, FAST)).toBe(
-      `${queued(FAST)}; it has not started; what holds it is not known. ${TAIL}\n`,
+      `${queued(FAST)}; it has not started; what holds it is not known. ${tail(FAST)}\n`,
     );
   });
 
@@ -158,7 +158,7 @@ describe("squeal retry words a configured group's file by its group (019-27)", (
     const w = await worktree(false);
     publishGroupActivity(w.store, w.id, "e2e", { kind: "waiting", for: "idle" });
     expect(await retry(w.root, E2E)).toBe(
-      `${queued(E2E)}; it has not started; what holds it is not known. ${TAIL}\n` +
+      `${queued(E2E)}; it has not started; what holds it is not known. ${tail(E2E)}\n` +
         "No daemon took the request now; it waits in the store for the next daemon at this file's inputs (squeal start starts one).\n",
     );
   });

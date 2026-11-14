@@ -82,12 +82,14 @@ export const IN_TURN_TEXT = "runs once more in its turn at its normal priority";
 /**
  * When a `load` retry asked now runs (row 011-213), as `squeal retry`
  * answers: in its turn once the load is below the CPU count, or at the
- * bound. Row 011-272: never "now", which its queue need not give it.
+ * bound. Row 011-272: never "now", which its queue need not give it. Row
+ * 011-343 (gh-214): the bound only queues it at its normal priority (C5),
+ * so the text names no start time.
  */
 export function loadRetryWhenText(load: HostLoad): string {
   return loadAllows(load)
     ? `${IN_TURN_TEXT}: the one-minute load average is below the CPU count (${loadText(load)})`
-    : `runs once more when the one-minute load average falls below the CPU count, or after at most ${BOUND_TEXT} above it, then with a load note (${loadText(load)} now)`;
+    : `joins the queue when the one-minute load average falls below the CPU count, or after at most ${BOUND_TEXT} above it, then with a load note, and ${IN_TURN_TEXT}, at no set time (${loadText(load)} now)`;
 }
 
 /**

@@ -259,13 +259,22 @@ async function askLine(
     ok: true,
     text:
       `Retry queued (reason: ${reason}): ${shown} ${when}${start}.${joins} ` +
-      "Its FAIL stays counted until a retry passes; squeal status lists the retry while it is pending.",
+      "Its FAIL stays counted until a retry passes; squeal status lists the retry while it is pending. " +
+      retryWaitText(shown),
   };
 }
 
 /** The named wait that waits for `shown`'s run and moves it ahead in the queue (011 C15). */
 function waitText(shown: string): string {
   return `squeal status --wait 60000 ${shown} waits for its result and moves it ahead in the queue.`;
+}
+
+/**
+ * The named wait for a retried failure's result (row 011-343, gh-214): it
+ * waits, and moves the retry no further than its normal priority (011 C5).
+ */
+function retryWaitText(shown: string): string {
+  return `squeal status --wait 60000 ${shown} waits for its result; the wait leaves the retry at its normal priority.`;
 }
 
 /**
