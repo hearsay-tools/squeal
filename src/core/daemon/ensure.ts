@@ -1,11 +1,11 @@
 import { spawn } from "node:child_process";
-import { existsSync, mkdirSync } from "node:fs";
+import { closeSync, existsSync, mkdirSync } from "node:fs";
 import { resolveCommonDir, worktreeIdFor } from "../fs/git-layout.js";
 import { pathFirst, pinnedNode } from "../node-pin.js";
 import { daemonLiveness } from "../presence/heartbeat.js";
 import { argv0For, displayId, worktreeLabel } from "../process-label.js";
 import { isStoreOpenFailure, openStore } from "../store/open.js";
-import { storePaths } from "../store/paths.js";
+import { daemonLogFor, storePaths } from "../store/paths.js";
 import type { AbsolutePath } from "../types/common.js";
 import {
   DAEMON_SOCKET_TIMEOUT_MS,
@@ -14,6 +14,7 @@ import {
 } from "../types/daemon.js";
 import type { DaemonRecord } from "../types/store-records.js";
 import { type DaemonRequestError, requestDaemon } from "./client.js";
+import { openDaemonLog } from "./log-file.js";
 import { socketPathFor } from "./paths.js";
 
 /*
@@ -203,6 +204,11 @@ export async function ensureDaemon(
  * 13); the daemon takes its own temp directory once it holds the lock.
  * On Linux its argv0 is `worktreeLabel` (005 D3, row 005-88), display only:
  * the executable and arguments stay as above.
+ *
+ * Row 021-32: its stdout and stderr are the worktree's log,
+ * `daemonLogFor`, opened for append and rotated at its bound
+ * (`openDaemonLog`); when that file cannot be made or opened, `ignore` as
+ * D10 says. This process closes its descriptor once the child has its own.
  */
 export async function ensureDaemonProcess(
   root: AbsolutePath,
@@ -225,18 +231,17 @@ export async function ensureDaemonProcess(
     mkdirSync(cwd, { recursive: true });
     const node = pinnedNode(root);
     const pinned = "binary" in node;
-    const child = spawn(
-      pinned ? node.binary : process.execPath,
-      [cli, "daemon", root, ...lockWait],
-      {
+    const log = openDaemonLog(daemonLogFor(commonDir, worktreeIdFor(root)));
+    const child = spawnLogging(log, () =>
+      spawn(pinned ? node.binary : process.execPath, [cli, "daemon", root, ...lockWait], {
         argv0: argv0For(worktreeLabel("daemon", root, commonDir, displayId(root))),
         cwd,
         detached: true,
-        stdio: "ignore",
+        stdio: log === null ? "ignore" : ["ignore", log, log],
         env: pinned
           ? { ...process.env, PATH: pathFirst(node.binary, process.env.PATH) }
           : process.env,
-      },
+      }),
     );
     // A spawn that failed has no pid; its error is reported asynchronously, and a hook must never
     // crash on it.
@@ -250,6 +255,21 @@ export async function ensureDaemonProcess(
     return { result: "spawned", pid: child.pid ?? null, ended: () => ended };
   } catch {
     return UNAVAILABLE;
+  }
+}
+
+/** `start()`'s result, with descriptor `log` closed after it, whether it threw or not. */
+function spawnLogging<T>(log: number | null, start: () => T): T {
+  try {
+    return start();
+  } finally {
+    if (log !== null) {
+      try {
+        closeSync(log);
+      } catch {
+        // Already closed: nothing holds it.
+      }
+    }
   }
 }
 

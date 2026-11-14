@@ -1,9 +1,10 @@
-import { existsSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it } from "vitest";
 import { ensureDaemon, probeDaemon } from "../../src/core/daemon/ensure.js";
-import { storePaths } from "../../src/core/store/paths.js";
+import { resolveCommonDir } from "../../src/core/fs/git-layout.js";
+import { daemonLogFor, storePaths } from "../../src/core/store/paths.js";
 import { SCHEMA_VERSION } from "../../src/core/store/schema.js";
 import { notesMetaKey } from "../../src/core/types/scheduler.js";
 import { rootVersion } from "../../src/harness/build.js";
@@ -235,6 +236,19 @@ describe("ensureDaemon (spec 001 D10, for the hooks of 001-31)", SLOW, () => {
       () => withStore(repo, (store) => store.worktrees.get(repo.worktreeId)?.daemon === null),
       60_000,
       "spawned daemon stopped",
+    );
+    // Row 021-32: its lines are in the worktree's log, with the UTC time and its pid.
+    const commonDir = resolveCommonDir(repo.root);
+    if (commonDir === null) throw new Error(`no common dir for ${repo.root}`);
+    const log = daemonLogFor(commonDir, repo.worktreeId);
+    const prefix = new RegExp(
+      `^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z \\[${answer.pid}\\] squeal daemon: `,
+      "m",
+    );
+    await waitFor(
+      () => existsSync(log) && prefix.test(readFileSync(log, "utf8")),
+      30_000,
+      "the daemon's line in its log",
     );
   });
 
