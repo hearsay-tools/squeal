@@ -16,3 +16,19 @@ Owns and leave alone as in `wave-87.md` W1. Done when: both tests pass, the exis
 ## R2: narrow re-review
 
 Use /reviewer (codex gpt-6.1-sol high), pinned to `cand/011-336-r2` at `ef4b9bf089351c39b5d37dae302fdeec2cc7b979`; candidate CI 43587375906. The candidate is main at `c9cff26e6` plus the four reviewed commits (`4350ad35b..6ed90c5a0`) and the three repair commits of worker 398af59b (`dabc628ae` tests, `a9ea72e91` change, `ef4b9bf08` notes; on the worker branch `ade7ff5f7..37051cb00`). Diff the repair alone with `git diff 6ed90c5a0..ef4b9bf08`. Scope: B1 (`awaitBridges` takes only a node process running a `.mjs` directly under `<dist>/hooks`, leading its own group and session, whose environment `HOME` is the run's private `HOME`; nothing else is waited for or signalled) and S1 (`awaitGroups` reports survivors; `afterFailure` keeps the folder and names them with the run's error as the cause); that checks 1, 2 and 4 of R1 still hold; that `test/harness/opencode/real.test.ts`, a new file beside `real.ts`, is in scope. The coordinator's tree passed lint, typecheck and the five helper and test files (34 tests) at the candidate. Write `reviews/011-336-r2.md` and commit it on your branch.
+
+## W2: second repair (the human, 2026-11-14, "Match bridgeStart's shape")
+
+Review `reviews/011-336-r2.md` FAIL on `cand/011-336-r2` at `ef4b9bf08`: B1 remains. A Node process `node observer.mjs <dist>/hooks/end.mjs` with the run's private `HOME` is taken as a bridge and killed, because the selector reads only the last argument; S1 and checks 1, 2 and 4 hold. This is the second FAIL; the human chose one owner for the rule: the command `bridgeStart` builds (`src/harness/opencode/bridge-client.ts:50`).
+
+Use /worker. Worker 398af59b, resumed. Shape: repair, test first. Tests only.
+
+- A process is a bridge only when its command line is exactly the shape `bridgeStart` builds: the Node executable, `--disable-warning=ExperimentalWarning`, optionally `--import <the restore preload>`, then one entry directly under `<dist>/hooks`, and nothing after it. Keep the detached leader and session, the private `HOME` and the survivor report.
+- One test calls `bridgeStart` for both of its forms (with and without the proxy switch) and checks that the selector accepts exactly those command lines, so the two cannot drift apart.
+- First edit: the review's Node-observer case as a negative row (it stays alive and uses none of the bridge grace), and both `bridgeStart` forms as positive rows.
+
+Owns and leave alone as in W1; `src/harness/opencode/bridge-client.ts` is read and imported, never changed. Done when: those rows and the existing helper tests pass on the Node versions available; lint and typecheck pass; the notes say what changed.
+
+## R3: narrow re-review
+
+Use /reviewer (codex gpt-6.1-sol high), pinned to the repaired candidate: B1 only, against the shape `bridgeStart` builds, and that S1 and checks 1, 2 and 4 still hold. Write `reviews/011-336-r3.md`. A further FAIL goes to the human.
