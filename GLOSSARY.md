@@ -78,6 +78,16 @@ _Avoid_: request handler, entry path
 The test files a request covers, as the scheduler decided them when it took the request: each queued, already current, or not queued with the reason. They are what the request's progress counts and what a wait on the request waits for.
 _Avoid_: the request's files (when guessed from a lane or a group afterwards)
 
+## Starting tiers
+
+**Start facts**:
+What decides whether tiers may start, as known at one moment: whether the daemon stops or its runtime went, whether a hold holds, whether it waits for an install or the install went, whether runner work is pending, the tiers in flight, and each lane's queued files and request. The facts that live on disk or in Git (the runtime folder, the index's unmerged paths, the install) are read again after every wait, before a tier starts.
+_Avoid_: conditions, state (when you mean these facts)
+
+**Admission**:
+The answer, for every lane at one moment, whether a tier may start in it now, whether it may take one file or several, and if not, why, from a closed set of reasons. One place answers it from the start facts, and every path that starts a tier or reports work acts on it. An answer read before a wait is not acted on after it.
+_Avoid_: may-start check, gate. Request intake answers whether a request is taken; admission answers whether a tier starts.
+
 ## Waits
 
 **Wait**:
