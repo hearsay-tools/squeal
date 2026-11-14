@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { CliIo } from "../../src/cli/main.js";
 import { retryCommand } from "../../src/cli/retry.js";
+import { notKeyed } from "../../src/cli/retry-unlisted.js";
 import { markScanned } from "../../src/core/daemon/bootstrapped.js";
 import { readRetries } from "../../src/core/retry/records.js";
 import { recordRefinedApplied } from "../../src/core/scheduler/refined.js";
@@ -10,6 +11,7 @@ import { shellWord } from "../../src/core/text.js";
 import type { RevisionNumber } from "../../src/core/types/common.js";
 import type { CheckKey } from "../../src/core/types/keys.js";
 import { fakeRepo, seedStore } from "../status/helpers.js";
+import { open } from "../store/helpers.js";
 
 /*
  * Row 011-134 (gh-76, 011 C5): `squeal retry` on an existing file that may be
@@ -76,7 +78,7 @@ function worktree(latest: number, refined: number, listedAt: number) {
     mkdirSync(dirname(join(repo.main, path)), { recursive: true });
     writeFileSync(join(repo.main, path), text);
   };
-  return { root: repo.main, store, id, write };
+  return { root: repo.main, commonDir: repo.commonDir, store, id, write };
 }
 
 async function retry(argv: string[], cwd: string) {
@@ -187,6 +189,47 @@ describe("squeal retry on a test file the daemon has not listed yet (011-134, gh
       code: 1,
       stdout: `Not retried: ${NEW} is not a test file Squeal has keyed in this worktree.\n`,
       stderr: "",
+    });
+  });
+});
+
+describe("squeal retry reads the start-scan marker before the listed revision (review 0.1.491 B1)", () => {
+  it("a scan and key another connection commits between the two reads leave the path unlisted", () => {
+    // Revision 1 and an old scan, both before the new file changed.
+    const w = worktree(1, 1, 1);
+    markScanned(w.store, w.id, 1);
+    w.write(NEW);
+    const keys = w.store.testFileKeys.list(w.id);
+    const daemon = open(w.commonDir);
+    const revisions = w.store.revisions;
+    const get = revisions.get.bind(revisions);
+    let committed = false;
+    revisions.get = (worktreeId, number) => {
+      const row = get(worktreeId, number);
+      if (!committed) {
+        committed = true;
+        // A daemon that started after the file changed lists it and finishes its scan.
+        daemon.transaction(() => {
+          daemon.testFileKeys.upsertMany([
+            {
+              worktreeId: w.id,
+              testFile: { project: "", path: NEW as never },
+              key: "key-new" as CheckKey,
+              revision: 1 as RevisionNumber,
+              pending: null,
+            },
+          ]);
+          markScanned(daemon, w.id, Date.now() + 60_000);
+        });
+      }
+      return row;
+    };
+    const path = { root: w.root, worktreeId: w.id, rel: NEW, shown: NEW, given: NEW };
+    const answer = notKeyed(w.store, path, keys);
+    expect(committed).toBe(true);
+    expect(answer).toEqual({
+      unlisted: true,
+      text: unlisted(NEW, "it changed after revision 1, the newest the daemon listed").trimEnd(),
     });
   });
 });

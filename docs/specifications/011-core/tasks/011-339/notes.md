@@ -24,7 +24,7 @@ Every write stays at its call site and in its transaction; every read at its poi
 Refined revision:
 - write `scheduler/ledger.ts` `Ledger.commit`: `recordRefinedApplied`, inside the commit's `store.transaction`.
 - write `scheduler/refine-apply.ts` `recordRefined`: `recordRefinedFailed`, inside its own `store.transaction` (the function's, as before; retried while busy as before).
-- read `state/header.ts` `readHeader`: one `readRefined`; `runnerPartPending = !covers(refinedRevision, revision)`. Before, the same comparison by hand.
+- read `state/header.ts` `readHeader`: one `readRefined`; `runnerPartPending = !covers(refinedRevision, revision)`. One read, as before, with the same comparison the header made by hand. (Commit 19197a9ae's note that the header read it twice described this branch's first commit only; the baseline read it once.)
 - read `scheduler/bootstrap.ts` `scan`: `readRefined(…) ?? latest ?? 0`. Its private copy is deleted.
 - read `delivery/edits.ts` `editNotes`: `!isRefined(store, wt, revision)` replaces `refined(…) < revision` with its +Infinity default. Same answer.
 - read `scheduler/rekeyed-moves.ts` `nextMoves` (caught-up check) and `answerMoves` (`refining`): `isRefined`. Its private `refinedRevision` is deleted.
@@ -45,7 +45,7 @@ Head move:
 
 Bootstrap marker:
 - write `daemon/daemon.ts` start, the "start's scan mark" busy write: `markScanned`.
-- read `cli/retry-unlisted.ts` `unkeyedPath`: `lastScannedBy`. Before: `Number(marker)` filtered to finite; same.
+- read `cli/retry-unlisted.ts` `unkeyedPath`: `lastScannedBy`, read into `scanned` before `store.revisions.get` of the listed revision, as the baseline read the marker before the revision. No read transaction holds the two together, so the order is part of the output (review 0.1.491 B1: the first commit read it after, and a daemon's scan committed between the two reads turned `Not listed yet`, exit 3, into `Not retried`, exit 1). Before: `Number(marker)` filtered to finite; same value. Regression case: `test/cli/retry-unlisted.test.ts` "a scan and key another connection commits between the two reads leave the path unlisted", a second store connection committing the key and the scan marker inside `revisions.get`; checked failing with the reads swapped (1 failed, 6 passed) and passing with the fix (7 passed).
 - read `delivery/registered.ts` `scannedDaemon`: `scannedBy`. Before: `Number(marker) === startedAt`; same.
 
 Notes:

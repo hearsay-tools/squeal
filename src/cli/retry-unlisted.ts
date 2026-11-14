@@ -85,10 +85,11 @@ function unkeyedPath(
   const pending = header.runnerPartPending === true;
   const listed = pending ? (header.refinedRevision as number) : header.revision;
   // The daemon that finished its start scan listed what was on disk then (`lastScannedBy`).
-  const times = [
-    store.revisions.get(worktreeId, listed)?.createdAt,
-    lastScannedBy(store, worktreeId) ?? undefined,
-  ].filter((t): t is number => t !== undefined && Number.isFinite(t));
+  // Read before the revision, as before row 011-339: no read transaction holds the two together.
+  const scanned = lastScannedBy(store, worktreeId);
+  const times = [store.revisions.get(worktreeId, listed)?.createdAt, scanned ?? undefined].filter(
+    (t): t is number => t !== undefined && Number.isFinite(t),
+  );
   if (times.length === 0 || stat.ctimeMs <= Math.max(...times)) return { kind: "other" };
   return {
     kind: "unlisted",
