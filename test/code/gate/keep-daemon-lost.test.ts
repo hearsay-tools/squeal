@@ -53,6 +53,13 @@ const keepOf = (kind: string) => (request: ProxiedRequest) =>
 
 const runs = (at: Served, kind: string) => at.keeps.filter((k) => k.write.kind === kind).length;
 
+/** Row 020-68: the count after the last pass, the file kept while the runs went on. */
+const KEPT_EARLY =
+  "the 1 completed test file is kept in the stores (1 while the runs went on); the next run on the same bytes reads it from the stores";
+/** Row 020-68: the count after the last pass, the file not kept. */
+const NONE_KEPT =
+  "0 of 1 completed test files are kept in the stores; the next run on the same bytes runs it";
+
 describe("a keep whose answer is lost (review 0.1.450 B2)", () => {
   it("asks again for a results write whose answer was held, and runs it once", SLOW, async () => {
     const at = await served({ proxy: once(keepOf("results"), HELD) });
@@ -60,7 +67,7 @@ describe("a keep whose answer is lost (review 0.1.450 B2)", () => {
     const count = countGateWrites();
     await kept(at, notes, { daemonWaits: WAITS });
     expect(count.stop()).toBe(0);
-    expect(notes).toEqual([]);
+    expect(notes).toEqual([KEPT_EARLY]);
     expect([runs(at, "coverage"), runs(at, "results")]).toEqual([1, 1]);
     expect(resultsAt(at.commonDir)).toBe(1);
     expect(recordAt(at.commonDir)).toEqual(RECORD);
@@ -70,7 +77,7 @@ describe("a keep whose answer is lost (review 0.1.450 B2)", () => {
     const at = await served({ proxy: once(keepOf("coverage"), HELD) });
     const notes: string[] = [];
     await kept(at, notes, { daemonWaits: WAITS });
-    expect(notes).toEqual([]);
+    expect(notes).toEqual([KEPT_EARLY]);
     expect([runs(at, "coverage"), runs(at, "results")]).toEqual([1, 1]);
     expect(resultsAt(at.commonDir)).toBe(1);
     expect(recordAt(at.commonDir)).toEqual(RECORD);
@@ -84,7 +91,7 @@ describe("a keep whose answer is lost (review 0.1.450 B2)", () => {
     });
     const notes: string[] = [];
     await kept(at, notes, { daemonWaits: WAITS });
-    expect(notes).toEqual([]);
+    expect(notes).toEqual([KEPT_EARLY]);
     expect([runs(at, "coverage"), runs(at, "results")]).toEqual([1, 1]);
     expect(resultsAt(at.commonDir)).toBe(1);
   });
@@ -93,7 +100,7 @@ describe("a keep whose answer is lost (review 0.1.450 B2)", () => {
     const at = await served({ proxy: once(keepOf("results"), "drop") });
     const notes: string[] = [];
     await kept(at, notes, { daemonWaits: WAITS });
-    expect(notes).toEqual([]);
+    expect(notes).toEqual([KEPT_EARLY]);
     expect([runs(at, "coverage"), runs(at, "results")]).toEqual([1, 1]);
     expect(resultsAt(at.commonDir)).toBe(1);
   });
@@ -114,7 +121,8 @@ describe("a keep whose answer is lost (review 0.1.450 B2)", () => {
       });
       const notes: string[] = [];
       await kept(at, notes, { daemonWaits: WAITS });
-      expect(notes).toHaveLength(1);
+      expect(notes).toHaveLength(2);
+      expect(notes[1]).toBe(NONE_KEPT);
       expect(notes[0]).toMatch(
         /^1 completed test file may not be kept in the stores: whether the daemon kept it is not known \(the daemon took the write and did not say how it went: .+\); the next run reads it if it was kept, else runs it again$/,
       );
@@ -130,10 +138,11 @@ describe("a keep whose answer is lost (review 0.1.450 B2)", () => {
     rmSync(at.socketPath);
     const notes: string[] = [];
     await kept(at, notes, { daemonWaits: WAITS });
-    expect(notes).toHaveLength(1);
+    expect(notes).toHaveLength(2);
     expect(notes[0]).toMatch(
       /^1 completed test file was not kept in the stores: the daemon did not answer: /,
     );
+    expect(notes[1]).toBe(NONE_KEPT);
     expect(at.keeps).toEqual([]);
   });
 });
@@ -172,7 +181,7 @@ describe("an input that moves while a try is lost (review 0.1.450 R1-B2)", () =>
       await kept(at, notes, { daemonWaits: WAITS, inputs });
       expect(count.stop()).toBe(0);
       expect(dropped()).toBe(true);
-      expect(notes).toEqual([NOT_KEPT]);
+      expect(notes).toEqual([NOT_KEPT, NONE_KEPT]);
       expect([runs(at, "coverage"), runs(at, "results")]).toEqual([1, 0]);
       expect(resultsAt(at.commonDir)).toBe(0);
     },
@@ -186,7 +195,7 @@ describe("an input that moves while a try is lost (review 0.1.450 R1-B2)", () =>
       const notes: string[] = [];
       await kept(at, notes, { daemonWaits: WAITS, inputs });
       expect(dropped()).toBe(true);
-      expect(notes).toEqual([NOT_KEPT]);
+      expect(notes).toEqual([NOT_KEPT, NONE_KEPT]);
       expect([runs(at, "coverage"), runs(at, "results")]).toEqual([0, 0]);
       expect(recordAt(at.commonDir)).toBeNull();
       expect(resultsAt(at.commonDir)).toBe(0);
@@ -201,7 +210,10 @@ describe("an input that moves while a try is lost (review 0.1.450 R1-B2)", () =>
       const { at, inputs } = await lostWhileMoving(keepOf("results"), B);
       const notes: string[] = [];
       await kept(at, notes, { daemonWaits: WAITS, inputs, files: BOTH });
-      expect(notes).toEqual([NOT_KEPT]);
+      expect(notes).toEqual([
+        NOT_KEPT,
+        "1 of 2 completed test files is kept in the stores (1 while the runs went on); the next run on the same bytes runs the other 1",
+      ]);
       expect(keepsOf(at)).toEqual([
         ["coverage", KEY_A],
         ["results", KEY_A],

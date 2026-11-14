@@ -50,7 +50,10 @@ describe("the keeper while a daemon serves, a file whose run read beyond its key
     });
     expect([resultsAt(at.commonDir, grown), resultsAt(at.commonDir, ran)]).toEqual([1, 0]);
     expect(rowsOf(at.commonDir)).toEqual([[READ], [READ], ["src/a.ts"]]);
-    expect(notes).toEqual([]);
+    // Row 020-68: only the count after the last pass.
+    expect(notes).toEqual([
+      "all 2 completed test files are kept in the stores (2 while the runs went on); the next run on the same bytes reads them from the stores",
+    ]);
   });
 
   it("is told as not kept, as before, by a daemon before this row, which writes the others", async () => {
@@ -64,7 +67,10 @@ describe("the keeper while a daemon serves, a file whose run read beyond its key
       ["results", keyOf(at.keys, B)],
     ]);
     expect(resultsAt(at.commonDir, keyOf(at.keys, B))).toBe(1);
-    expect(notes).toEqual([GROWN_NOT_KEPT]);
+    expect(notes).toEqual([
+      GROWN_NOT_KEPT,
+      "1 of 2 completed test files is kept in the stores (1 while the runs went on); the next run on the same bytes runs the other 1",
+    ]);
     expect(rowsOf(at.commonDir)).toEqual([undefined, undefined, undefined]);
   });
 
@@ -77,6 +83,7 @@ describe("the keeper while a daemon serves, a file whose run read beyond its key
     expect(notes).toEqual([
       "1 completed test file was not kept in the stores: a daemon runs in this worktree, and it keeps its own",
       GROWN_NOT_KEPT,
+      "0 of 2 completed test files are kept in the stores; the next run on the same bytes runs all 2",
     ]);
     expect(rowsOf(at.commonDir)).toEqual([undefined, undefined, undefined]);
     expect(resultsAt(at.commonDir, keyOf(at.keys, B))).toBe(0);
@@ -122,7 +129,10 @@ describe("what bars a keep while a daemon serves (row 020-48)", () => {
       ["coverage", keyOf(at.keys, B)],
       ["results", keyOf(at.keys, B)],
     ]);
-    expect(notes).toEqual([note]);
+    expect(notes).toEqual([
+      note,
+      "1 of 2 completed test files is kept in the stores (1 while the runs went on); the next run on the same bytes runs the other 1",
+    ]);
   });
 
   it("merges a first-seen read through the daemon, so the next run keys the file with it", async () => {
@@ -152,6 +162,7 @@ describe("what bars a keep while a daemon serves (row 020-48)", () => {
     expect(keepsOf(at.served).filter(([kind]) => kind !== "seen")).toEqual([]);
     expect(notes).toEqual([
       "2 completed test files were not kept in the stores, because the runtime's identity moved during the run: test/a.test.ts, test/b.test.ts; the next run will run them again",
+      "0 of 2 completed test files are kept in the stores; the next run on the same bytes runs all 2",
     ]);
   });
 });

@@ -28,7 +28,10 @@ describe("squeal code keeps a file whose run read beyond its key (row 020-39)", 
     expect(grown).not.toBe(ran);
     expect([resultsAt(at.commonDir, grown), resultsAt(at.commonDir, ran)]).toEqual([1, 0]);
     expect(rowsOf(at.commonDir)).toEqual([[READ], [READ], ["src/a.ts"]]);
-    expect(notes).toEqual([]);
+    // Row 020-68: only the count after the last pass.
+    expect(notes).toEqual([
+      "the 1 completed test file is kept in the stores (1 while the runs went on); the next run on the same bytes reads it from the stores",
+    ]);
   });
 
   it("keeps nothing, and merges nothing, while the store stays busy past the bound", async () => {
@@ -46,7 +49,10 @@ describe("squeal code keeps a file whose run read beyond its key (row 020-39)", 
       holder.close();
     }
 
-    expect(notes).toHaveLength(2);
+    expect(notes).toHaveLength(3);
+    expect(notes[2]).toBe(
+      "0 of 1 completed test files are kept in the stores; the next run on the same bytes runs it",
+    );
     expect(notes[0]).toMatch(
       /^the store is busy \(.+\); waiting to keep 1 completed test file until no write lands for 0\.6 s, at most 0\.6 s in all: test\/a\.test\.ts$/,
     );
@@ -71,6 +77,8 @@ describe("squeal code keeps a file whose run read beyond its key (row 020-39)", 
 
     expect(resultsAt(at.commonDir, keyOf(at.keys, A))).toBe(0);
     expect(rowsOf(at.commonDir)[0]).toEqual([READ]);
-    expect(notes).toEqual([]);
+    expect(notes).toEqual([
+      "0 of 1 completed test files are kept in the stores; the next run on the same bytes runs it",
+    ]);
   });
 });

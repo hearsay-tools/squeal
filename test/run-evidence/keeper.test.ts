@@ -54,6 +54,13 @@ const REPORT: RunReport = {
 };
 
 const dirs: string[] = [];
+
+/** Row 020-68: the keeper's last line, by how many of the one completed file it kept. */
+function counted(results: number): string {
+  return results === 1
+    ? "the 1 completed test file is kept in the stores (1 while the runs went on); the next run on the same bytes reads it from the stores"
+    : "0 of 1 completed test files are kept in the stores; the next run on the same bytes runs it";
+}
 afterEach(() => {
   for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
@@ -113,7 +120,7 @@ describe("squeal code's merge hold (row 011-320, 011 C9)", () => {
       },
     });
 
-    expect([resultsAt(join(root, ".git")), notes]).toEqual([results, []]);
+    expect([resultsAt(join(root, ".git")), notes]).toEqual([results, [counted(results)]]);
   });
 });
 
@@ -128,6 +135,7 @@ describe("squeal code's merge hold before each write (review 0.1.458 B4)", () =>
       0,
       [
         "1 completed test file was not kept in the stores, because a merge holds a path its key names: test/a.test.ts; the next run will run it again",
+        counted(0),
       ],
     ]);
   });
@@ -204,9 +212,10 @@ describe("squeal code's runtime identity (row 011-320, difference 2)", () => {
     expect(resultsAt(join(root, ".git"))).toBe(results);
     expect(notes).toEqual(
       results === 1
-        ? []
+        ? [counted(1)]
         : [
             "1 completed test file was not kept in the stores, because the runtime's identity moved during the run: test/a.test.ts; the next run will run it again",
+            counted(0),
           ],
     );
   });
@@ -235,7 +244,11 @@ describe("squeal code's runtime identity (row 011-320, difference 2)", () => {
       started: () => writeTree(root, { [POLICY_FILE]: `${JSON.stringify(policy)}\n` }),
     });
 
-    expect([resultsAt(join(root, ".git")), notes.length]).toEqual([results, 1 - results]);
+    expect([resultsAt(join(root, ".git")), notes.length, notes.at(-1)]).toEqual([
+      results,
+      2 - results,
+      counted(results),
+    ]);
   });
 });
 
@@ -280,9 +293,10 @@ describe("squeal code's revisions during the run (review 0.1.458 B1)", () => {
     expect(resultsAt(join(root, ".git"))).toBe(results);
     expect(notes).toEqual(
       results === 1
-        ? []
+        ? [counted(1)]
         : [
             "1 completed test file was not kept in the stores, because a file was added to or removed from a directory its key lists (src/): test/a.test.ts; the next run will run it again",
+            counted(0),
           ],
     );
   });

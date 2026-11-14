@@ -230,6 +230,10 @@ describe("squeal code --base keeps each chunk's files while the runs go on (row 
       expect(first.stderr).toMatch(
         /2 completed test files were not kept in the stores: no write landed for 30 s \(held by pid \d+ .*\); the next run will run them again\n/,
       );
+      // Row 020-68: the count, the last line after the last pass.
+      expect(first.stderr).toMatch(
+        /squeal code: 4 of 6 completed test files are kept in the stores \(4 while the runs went on\); the next run on the same bytes runs the other 2\n$/,
+      );
       expect(fromStores(second)).toEqual([...(runs[0] ?? []), ...(runs[1] ?? [])].sort());
     },
   );

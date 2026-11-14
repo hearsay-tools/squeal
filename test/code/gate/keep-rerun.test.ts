@@ -140,7 +140,10 @@ describe("the keeper keeps a retried file's rerun result (row 020-55)", SLOW, ()
 
     expect(outcomesAt(at.commonDir, keys.a)).toEqual(["pass"]);
     expect(outcomesAt(at.commonDir, keys.b)).toEqual(["pass"]);
-    expect(notes).toEqual([]);
+    // Row 020-68: the count after the last pass; the retried file counts once.
+    expect(notes).toEqual([
+      "all 2 completed test files are kept in the stores (1 while the runs went on); the next run on the same bytes reads them from the stores",
+    ]);
     // Held open past the first run's tell, ended by the rerun's, not again by `close`.
     expect(runEnds).toEqual([0, 1, 1]);
   });
@@ -160,7 +163,10 @@ describe("the keeper keeps a retried file's rerun result (row 020-55)", SLOW, ()
 
     expect(outcomesAt(at.commonDir, keys.a)).toEqual([]);
     expect(outcomesAt(at.commonDir, keys.b)).toEqual(["pass"]);
-    expect(notes).toEqual([]);
+    // Row 020-68: a file whose rerun never started is decided by no run, so it is not counted.
+    expect(notes).toEqual([
+      "the 1 completed test file is kept in the stores (1 while the runs went on); the next run on the same bytes reads it from the stores",
+    ]);
     expect(runEnds).toEqual([0, 0, 1]);
   });
 
@@ -173,6 +179,7 @@ describe("the keeper keeps a retried file's rerun result (row 020-55)", SLOW, ()
     expect(outcomesAt(at.commonDir, keys.b)).toEqual(["pass"]);
     expect(notes).toEqual([
       "1 completed test file was not kept in the stores, because what its key names changed during the run (src/a.ts): test/a.test.ts; the next run will run it again",
+      "1 of 2 completed test files is kept in the stores (1 while the runs went on); the next run on the same bytes runs the other 1",
     ]);
   });
 
@@ -186,6 +193,7 @@ describe("the keeper keeps a retried file's rerun result (row 020-55)", SLOW, ()
     expect(outcomesAt(at.commonDir, keys.b)).toEqual(["pass"]);
     expect(notes).toEqual([
       "1 completed test file was not kept in the stores, because what its key names changed during the run (src/a.ts): test/a.test.ts; the next run will run it again",
+      "1 of 2 completed test files is kept in the stores (1 while the runs went on); the next run on the same bytes runs the other 1",
     ]);
   });
 });

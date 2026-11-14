@@ -74,7 +74,10 @@ describe("Keeper (spec 020 D17.3)", () => {
     await keep.ran(run([REF], null));
     await keep.flush();
 
-    expect(notes).toEqual([]);
+    // Row 020-68: the file completed, so the count is told.
+    expect(notes).toEqual([
+      "0 of 1 completed test files are kept in the stores; the next run on the same bytes runs it",
+    ]);
   });
 
   it("tells nothing until `flush`, even of a write that failed while the runs went on (row 020-59)", async () => {
@@ -87,8 +90,11 @@ describe("Keeper (spec 020 D17.3)", () => {
 
     // The root does not exist, so the write fails at its first step.
     await keep.flush();
-    expect(notes).toHaveLength(1);
+    expect(notes).toHaveLength(2);
     expect(notes[0]).toMatch(/^1 completed test file was not kept in the stores: /);
+    expect(notes[1]).toBe(
+      "0 of 1 completed test files are kept in the stores; the next run on the same bytes runs it",
+    );
   });
 
   it("tells a failure once and never throws it", async () => {
@@ -102,8 +108,13 @@ describe("Keeper (spec 020 D17.3)", () => {
     await keep.flush();
 
     // The root does not exist, so the write fails at its first step; it is told once.
-    expect(notes).toHaveLength(1);
+    // Row 020-68: each flush counts what the gate completed so far.
+    expect(notes).toHaveLength(3);
     expect(notes[0]).toMatch(/^1 completed test file was not kept in the stores: /);
+    expect(notes.slice(1)).toEqual([
+      "0 of 1 completed test files are kept in the stores; the next run on the same bytes runs it",
+      "0 of 2 completed test files are kept in the stores; the next run on the same bytes runs all 2",
+    ]);
   });
 
   it("keeps each lookup of one runner kind apart, and ends each run once (review 0.1.433 B2)", async () => {
@@ -151,7 +162,10 @@ describe("Keeper (spec 020 D17.3)", () => {
     expect(runs.inFlight).toBe(1);
     await keep.flush();
     // `a` once and `b`: the second run of `a` found its lookup taken.
-    expect(notes).toEqual(["2 completed test files were not kept in the stores: no head"]);
+    expect(notes).toEqual([
+      "2 completed test files were not kept in the stores: no head",
+      "0 of 2 completed test files are kept in the stores; the next run on the same bytes runs all 2",
+    ]);
 
     // `c`'s runner never ran: closing ends its run, and a late completion keeps nothing.
     const before = writes;
@@ -159,6 +173,16 @@ describe("Keeper (spec 020 D17.3)", () => {
     await keep.ran(ranOf(c));
     await keep.flush();
     expect([writes, runs.inFlight]).toEqual([before, 0]);
+  });
+
+  it("tells no count when no file completed (row 020-68)", async () => {
+    const notes: string[] = [];
+    const keep = keeper(() => Promise.reject(new Error("the write was reached")), notes);
+
+    await keep.ran(run([], RECORD));
+    await keep.flush();
+
+    expect(notes).toEqual([]);
   });
 
   it("does nothing for a runner it was not told of", async () => {

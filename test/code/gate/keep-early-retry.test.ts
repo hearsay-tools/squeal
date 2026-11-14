@@ -87,7 +87,10 @@ describe("an early pass that cannot write keeps its run for a later try (review 
 
     await keep.flush();
     expect(resultsAt(at.commonDir, KEY_A)).toBe(1);
-    expect(notes).toEqual([]);
+    // Row 020-68: only the count after the last pass, which wrote the file.
+    expect(notes).toEqual([
+      "the 1 completed test file is kept in the stores; the next run on the same bytes reads it from the stores",
+    ]);
   });
 
   it("checks the inputs again on the later try: a file that moved meanwhile is not kept", async () => {
@@ -102,7 +105,9 @@ describe("an early pass that cannot write keeps its run for a later try (review 
 
     await keep.flush();
     expect(resultsAt(at.commonDir, KEY_A)).toBe(0);
-    expect(notes).toEqual([]);
+    expect(notes).toEqual([
+      "0 of 1 completed test files are kept in the stores; the next run on the same bytes runs it",
+    ]);
   });
 
   it("gives the last pass's note, once, when the lock is still held after the report", async () => {
@@ -120,6 +125,7 @@ describe("an early pass that cannot write keeps its run for a later try (review 
     expect(resultsAt(at.commonDir, KEY_A)).toBe(0);
     expect(notes).toEqual([
       "1 completed test file was not kept in the stores: a daemon runs in this worktree, and it keeps its own",
+      "0 of 1 completed test files are kept in the stores; the next run on the same bytes runs it",
     ]);
   });
 });
@@ -137,7 +143,10 @@ describe("an input read that fails in an early pass stays in the keeper (review 
     await keep.ran(ranA);
     await expect(keep.flush()).resolves.toBeUndefined();
     expect(resultsAt(at.commonDir, KEY_A)).toBe(1);
-    expect(notes).toEqual([]);
+    // Row 020-68: only the count after the last pass, which wrote the file.
+    expect(notes).toEqual([
+      "the 1 completed test file is kept in the stores; the next run on the same bytes reads it from the stores",
+    ]);
   });
 
   it("gives the bounded not-kept note when the read still fails after the report", async () => {
@@ -154,6 +163,7 @@ describe("an input read that fails in an early pass stays in the keeper (review 
     expect(resultsAt(at.commonDir, KEY_A)).toBe(0);
     expect(notes).toEqual([
       "1 completed test file was not kept in the stores: EACCES: cannot stat src/a.mjs after the chunk",
+      "0 of 1 completed test files are kept in the stores; the next run on the same bytes runs it",
     ]);
   });
 });

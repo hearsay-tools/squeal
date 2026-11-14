@@ -123,7 +123,10 @@ describe("a keep line past 64 KiB (review 0.1.450 B1)", () => {
       const count = countGateWrites();
       await kept(at, notes, { record, results });
       expect(count.stop()).toBe(0);
-      expect(notes).toEqual([]);
+      // Row 020-68: the count after the last pass.
+      expect(notes).toEqual([
+        "the 1 completed test file is kept in the stores (1 while the runs went on); the next run on the same bytes reads it from the stores",
+      ]);
       expect(recordAt(at.commonDir)).toEqual(record);
       expect(resultsAt(at.commonDir)).toBe(1_501);
     },
@@ -162,6 +165,7 @@ describe("a keep line past 64 KiB (review 0.1.450 B1)", () => {
     await kept(stopping, notes);
     expect(notes).toEqual([
       "1 completed test file was not kept in the stores: the daemon refused the write: daemon is stopping",
+      "0 of 1 completed test files are kept in the stores; the next run on the same bytes runs it",
     ]);
   });
 });

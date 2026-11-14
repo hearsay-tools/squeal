@@ -15,7 +15,7 @@ import { type KeepOptions, messageOf, type Queued, writePass } from "./keep-pass
 import { EarlyWrites, type PassEnd } from "./keep-queue.js";
 import { NotKept } from "./keep-reasons.js";
 import { atStoreKey, type Seen, seenOf } from "./keep-seen.js";
-import { InputCheck, type Kept } from "./keep-write.js";
+import { InputCheck, type Kept, keptCount } from "./keep-write.js";
 
 export type { KeepOptions } from "./keep-pass.js";
 
@@ -58,6 +58,10 @@ export class Keeper {
   readonly #deferred: string[] = [];
   /** How many files the early passes wrote. */
   #keptEarly = 0;
+  /** Row 020-68: how many files the runs completed, each counted by the run that decides it. */
+  #completed = 0;
+  /** Row 020-68: how many files the last passes wrote. */
+  #keptLast = 0;
 
   constructor(options: KeepOptions) {
     this.#options = options;
@@ -93,18 +97,23 @@ export class Keeper {
   /**
    * D17.5, once the report is out: ends the passes while the runs went on,
    * waiting only for the one writing, which gives up at its next busy
-   * refusal; then writes what is still queued, waiting for a busy store up
-   * to the bound, counted from the first write it refused, and tells what
-   * was not kept; a failure only costs the files not yet written, told
-   * once, and never throws.
+   * refusal; then writes what is still queued, waiting for a busy store
+   * while writes land (row 020-67), and tells what was not kept; a failure
+   * only costs the files not yet written, told once, and never throws.
+   * Last, when a run completed a file, how many of them are kept (row
+   * 020-68).
    */
   async flush(): Promise<void> {
     await this.#early.stop();
     this.#tellNotKept(this.#notKept);
     for (const text of this.#deferred.splice(0)) this.#tell(text);
     const queued = this.#queued.splice(0);
-    if (queued.length > 0) await writePass(queued, this.#pass(false));
+    if (queued.length > 0) this.#keptLast += (await writePass(queued, this.#pass(false))).written;
     this.#tellNotKept(this.#passNotKept);
+    // Row 020-68 (#220): how many completed files are kept, so an agent knows what a rerun runs.
+    if (this.#completed === 0) return;
+    const kept = this.#keptEarly + this.#keptLast;
+    this.#tell(keptCount({ kept, completed: this.#completed, early: this.#keptEarly }));
   }
 
   /** Ends what no run took, such as a runner the budget ended before, and drops the queue. */
@@ -183,6 +192,7 @@ export class Keeper {
   ): Promise<{ readonly files: Kept[]; readonly seen: Seen[] }> {
     const { report } = run;
     const completed = new Set(report.completedFiles.map(testFileId));
+    for (const id of pending.files.keys()) if (completed.has(id)) this.#completed += 1;
     const candidates: Kept[] = [];
     for (const [id, file] of pending.files) {
       const record = run.records.get(testFileId(file.ref))?.record ?? null;

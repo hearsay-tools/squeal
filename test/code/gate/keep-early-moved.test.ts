@@ -116,7 +116,10 @@ describe("an input that moves around a busy store's refusal (row 020-64)", () =>
 
     expect(resultsAt(at.commonDir, KEY_A)).toBe(0);
     // Dropped as the opening check drops a file that moved after its run: no daemon lost a try.
-    expect(notes).toEqual([]);
+    // Row 020-68: only the count after the last pass.
+    expect(notes).toEqual([
+      "0 of 1 completed test files are kept in the stores; the next run on the same bytes runs it",
+    ]);
   });
 
   it("keeps a file whose input moved only after the retry wrote it", async () => {
@@ -139,7 +142,9 @@ describe("an input that moves around a busy store's refusal (row 020-64)", () =>
     await keep.flush();
 
     expect(resultsAt(at.commonDir, KEY_A)).toBe(1);
-    expect(notes).toEqual([]);
+    expect(notes).toEqual([
+      "the 1 completed test file is kept in the stores (1 while the runs went on); the next run on the same bytes reads it from the stores",
+    ]);
   });
 
   it("keeps a file whose input moved after its pass's opening check, when no write was refused", async () => {
@@ -167,6 +172,8 @@ describe("an input that moves around a busy store's refusal (row 020-64)", () =>
     await keep.flush();
 
     expect(resultsAt(at.commonDir, KEY_A)).toBe(1);
-    expect(notes).toEqual([]);
+    expect(notes).toEqual([
+      "the 1 completed test file is kept in the stores (1 while the runs went on); the next run on the same bytes reads it from the stores",
+    ]);
   });
 });

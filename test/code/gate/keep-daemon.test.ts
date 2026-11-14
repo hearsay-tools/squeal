@@ -32,7 +32,10 @@ describe("the keeper while a daemon serves the worktree (021 D15, row 021-20)", 
     const count = countGateWrites();
     await kept(at, notes, { files: BOTH });
     expect(count.stop()).toBe(0);
-    expect(notes).toEqual([]);
+    // Row 020-68: the count after the last pass.
+    expect(notes).toEqual([
+      "all 2 completed test files are kept in the stores (2 while the runs went on); the next run on the same bytes reads them from the stores",
+    ]);
     expect([resultsAt(at.commonDir, KEY_A), resultsAt(at.commonDir, KEY_B)]).toEqual([1, 1]);
     expect(recordAt(at.commonDir)).toEqual(RECORD);
     expect(at.keeps.map((k) => k.write.kind)).toEqual([
@@ -62,11 +65,14 @@ describe("the keeper while a daemon serves the worktree (021 D15, row 021-20)", 
       locked.release();
     }
     expect(count.stop()).toBe(0);
-    expect(notes).toHaveLength(2);
+    expect(notes).toHaveLength(3);
     expect(notes[0]).toBe(
       `the store is busy (${locked.holder}); waiting to keep 1 completed test file until no write lands for 5 s, at most 5 s in all: test/a.test.ts`,
     );
     expect(notes[1]).toMatch(/^the store was free after \d+(\.\d)? s: 1 completed test file kept$/);
+    expect(notes[2]).toBe(
+      "the 1 completed test file is kept in the stores; the next run on the same bytes reads it from the stores",
+    );
     expect(resultsAt(at.commonDir)).toBe(1);
     expect(at.keeps.filter((k) => k.write.kind === "results").length).toBeGreaterThan(1);
   });
@@ -83,6 +89,7 @@ describe("the keeper while a daemon serves the worktree (021 D15, row 021-20)", 
     expect(notes).toEqual([
       `the store is busy (${locked.holder}); waiting to keep 1 completed test file until no write lands for 0.6 s, at most 0.6 s in all: test/a.test.ts`,
       `1 completed test file was not kept in the stores: no write landed for 0.6 s (${locked.holder}); the next run will run it again`,
+      "0 of 1 completed test files are kept in the stores; the next run on the same bytes runs it",
     ]);
     expect(resultsAt(at.commonDir)).toBe(0);
   });
@@ -125,6 +132,7 @@ describe("the keeper while a daemon serves the worktree (021 D15, row 021-20)", 
     await kept(at, notes);
     expect(notes).toEqual([
       "1 completed test file was not kept in the stores: a daemon runs in this worktree, and it keeps its own",
+      "0 of 1 completed test files are kept in the stores; the next run on the same bytes runs it",
     ]);
     expect(at.keeps).toEqual([]);
     expect(resultsAt(at.commonDir)).toBe(0);
@@ -136,6 +144,7 @@ describe("the keeper while a daemon serves the worktree (021 D15, row 021-20)", 
     await kept(at, notes);
     expect(notes).toEqual([
       "1 completed test file was not kept in the stores: a daemon runs in this worktree, and it keeps its own",
+      "0 of 1 completed test files are kept in the stores; the next run on the same bytes runs it",
     ]);
     expect(resultsAt(at.commonDir)).toBe(0);
   });
