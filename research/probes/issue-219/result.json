@@ -1,0 +1,79 @@
+{
+  "at": "2026-11-14T18:03:30.015Z",
+  "node": "v26.13.0",
+  "load": 6.07,
+  "cpus": 24,
+  "squeal": "0.1.497",
+  "declaration": {
+    "tool": "oxlint",
+    "toolVersion": "1.90.0",
+    "providerVersion": 1,
+    "configFiles": [
+      ".oxlintrc.json"
+    ]
+  },
+  "astGrep": {
+    "code": 0,
+    "stdout": "ast-grep 0.51.0",
+    "stderr": ""
+  },
+  "results": [
+    {
+      "name": "both-fail-control",
+      "oxlint": [
+        {
+          "rule": "eslint(no-unused-vars)",
+          "message": "Variable 'unusedIssue219' is declared but never used. Unused variables should start with a '_'.",
+          "severity": "error",
+          "line": 3,
+          "column": 7,
+          "lineHash": "36c87f410e98d8ea"
+        }
+      ],
+      "counts": {
+        "findings": 1,
+        "notDetermined": 0,
+        "running": 0
+      },
+      "summary": "Commit abcdef0: 0 known failures; lint 1 finding",
+      "transition": "FAIL lint: packages/cezar/src/workflows/issue-219.test.ts (oxlint): 1 finding, +1 eslint(no-unused-vars) (Variable 'unusedIssue219' is declared but never used. Unused variables should start with a '_'.)",
+      "repositoryLint": {
+        "code": 1,
+        "stdout": "{\"matches\":1,\"added\":[{\"file\":\"packages/cezar/src/workflows/issue-219.test.ts\",\"rule\":\"active-run-literal\",\"site\":\"const run: ActiveRun = { a: 1 };\",\"count\":1}]}",
+        "stderr": "$ '/home/user/.nvm/versions/node/v26.13.0/bin/node' '--import' '/home/user/projects/squeal/.ai/squawk/worktrees/3eccdb22-d06e-4ddf-9f3f-6873cb51f355/node_modules/tsx/dist/loader.mjs' '/home/user/projects/squeal/.ai/squawk/worktrees/3eccdb22-d06e-4ddf-9f3f-6873cb51f355/research/probes/issue-219/run.mts' '--repository-lint' '/home/user/projects/squeal/.ai/squawk/t/3eccdb22/squeal-issue-219-lszjbk'\n[ELIFECYCLE] Command failed with exit code 1."
+      }
+    },
+    {
+      "name": "scope-mismatch",
+      "oxlint": [],
+      "counts": {
+        "findings": 0,
+        "notDetermined": 0,
+        "running": 0
+      },
+      "summary": "Commit abcdef0: 0 known failures; lint 0 findings",
+      "transition": "PASS lint: packages/cezar/src/workflows/issue-219.test.ts (oxlint): no findings",
+      "repositoryLint": {
+        "code": 1,
+        "stdout": "{\"matches\":1,\"added\":[{\"file\":\"packages/cezar/src/workflows/issue-219.test.ts\",\"rule\":\"active-run-literal\",\"site\":\"const run: ActiveRun = { a: 1 };\",\"count\":1}]}",
+        "stderr": "$ '/home/user/.nvm/versions/node/v26.13.0/bin/node' '--import' '/home/user/projects/squeal/.ai/squawk/worktrees/3eccdb22-d06e-4ddf-9f3f-6873cb51f355/node_modules/tsx/dist/loader.mjs' '/home/user/projects/squeal/.ai/squawk/worktrees/3eccdb22-d06e-4ddf-9f3f-6873cb51f355/research/probes/issue-219/run.mts' '--repository-lint' '/home/user/projects/squeal/.ai/squawk/t/3eccdb22/squeal-issue-219-lszjbk'\n[ELIFECYCLE] Command failed with exit code 1."
+      }
+    },
+    {
+      "name": "both-pass-control",
+      "oxlint": [],
+      "counts": {
+        "findings": 0,
+        "notDetermined": 0,
+        "running": 0
+      },
+      "summary": "Commit abcdef0: 0 known failures; lint 0 findings",
+      "transition": null,
+      "repositoryLint": {
+        "code": 0,
+        "stdout": "{\"matches\":0,\"added\":[]}",
+        "stderr": "$ '/home/user/.nvm/versions/node/v26.13.0/bin/node' '--import' '/home/user/projects/squeal/.ai/squawk/worktrees/3eccdb22-d06e-4ddf-9f3f-6873cb51f355/node_modules/tsx/dist/loader.mjs' '/home/user/projects/squeal/.ai/squawk/worktrees/3eccdb22-d06e-4ddf-9f3f-6873cb51f355/research/probes/issue-219/run.mts' '--repository-lint' '/home/user/projects/squeal/.ai/squawk/t/3eccdb22/squeal-issue-219-lszjbk'"
+      }
+    }
+  ]
+}

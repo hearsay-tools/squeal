@@ -1,0 +1,28 @@
+id: active-run-literal
+language: typescript
+severity: warning
+message: >-
+  Build an ActiveRun only in createActiveRun (workflows/active-run.ts), which RunManager.execute and
+  RunManager.runContinuation both call before RunManager.activate. A second literal misses fields
+  the factory sets (open-mercato/cezar#811): add the field to createActiveRun, as a required
+  ActiveRunInit field when it differs by entry path (hearsay-tools/cezarion#1806).
+files:
+  - packages/cezar/src/**/*.ts
+# Matches a literal that names its type in the same statement. It does not match one returned from
+# a function typed `: ActiveRun` (createActiveRun's own literal is one) or annotated as a union such
+# as `ActiveRun | undefined`: the rule sees syntax, not types.
+rule:
+  any:
+    - pattern: 'const $V: ActiveRun = { $$$ }'
+    - pattern: 'let $V: ActiveRun = { $$$ }'
+    # A pattern that starts with `{` parses as a block, so the cast forms name their statement
+    # as `context` and the node to match as `selector`.
+    - pattern:
+        context: 'const $V = { $$$ } as ActiveRun'
+        selector: as_expression
+    - pattern:
+        context: 'const $V = { $$$ } as unknown as ActiveRun'
+        selector: as_expression
+    - pattern:
+        context: 'const $V = { $$$ } satisfies ActiveRun'
+        selector: satisfies_expression
