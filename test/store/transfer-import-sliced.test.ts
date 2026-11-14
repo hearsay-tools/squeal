@@ -17,7 +17,7 @@ import { MIN_PRUNE_GAP_MS } from "../../src/core/store/write-turns.js";
 import type { CheckKey } from "../../src/core/types/keys.js";
 import type { Store } from "../../src/core/types/store.js";
 import { fakeCommonDir, open } from "./helpers.js";
-import { holdEvery, startWaiter } from "./write-turns-rig.js";
+import { holdEvery, startWaiter, TURNS_TIMEOUT_MS } from "./write-turns-rig.js";
 
 /*
  * Spec 021 D3 (row 021-20): an import writes in slices, each one short
@@ -241,29 +241,33 @@ describe("an import in slices (021 D3, row 021-20)", () => {
   });
 
   // Row 011-350 (#220): a writer of another worktree's daemon gets turns during an import.
-  it("lets a waiting writer of another thread land between its slices", async () => {
-    const { store, database } = storeAndFile();
-    const slices = 6;
-    const files = (slices * IMPORT_SLICE_RESULTS) / TESTS;
-    const waiter = await startWaiter(database);
-    try {
-      // Without its own checkpoints, whose page copies after a commit leave the lock free too.
-      connectionOf(store).db.exec("PRAGMA wal_autocheckpoint = 0");
-      const holds = holdEvery(
-        connectionOf(store).db,
-        "INSERT",
-        "results",
-        IMPORT_SLICE_RESULTS,
-        50,
-        waiter.landed,
-      );
-      const counts = await importSliced(store, bundle(files), OPTIONS);
-      expect(counts).toMatchObject({ results: files * TESTS, alreadyStored: 0 });
-      expect(holds.count).toBe(slices);
-      // The waiter wrote while the import still had slices to run.
-      expect(holds.last - holds.first).toBeGreaterThan(0);
-    } finally {
-      await waiter.stop();
-    }
-  });
+  it(
+    "lets a waiting writer of another thread land between its slices",
+    async () => {
+      const { store, database } = storeAndFile();
+      const slices = 6;
+      const files = (slices * IMPORT_SLICE_RESULTS) / TESTS;
+      const waiter = await startWaiter(database);
+      try {
+        // Without its own checkpoints, whose page copies after a commit leave the lock free too.
+        connectionOf(store).db.exec("PRAGMA wal_autocheckpoint = 0");
+        const holds = holdEvery(
+          connectionOf(store).db,
+          "INSERT",
+          "results",
+          IMPORT_SLICE_RESULTS,
+          50,
+          waiter.landed,
+        );
+        const counts = await importSliced(store, bundle(files), OPTIONS);
+        expect(counts).toMatchObject({ results: files * TESTS, alreadyStored: 0 });
+        expect(holds.count).toBe(slices);
+        // The waiter wrote while the import still had slices to run.
+        expect(holds.last - holds.first).toBeGreaterThan(0);
+      } finally {
+        await waiter.stop();
+      }
+    },
+    TURNS_TIMEOUT_MS,
+  );
 });

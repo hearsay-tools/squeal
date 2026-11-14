@@ -40,6 +40,9 @@ while (Atomics.load(flags, 0) === 0) {
 db.close();
 `;
 
+/** A holder-and-waiter test runs for seconds by design; a loaded host makes it longer. */
+export const TURNS_TIMEOUT_MS = 30_000;
+
 export interface Waiter {
   /** The writes the waiter landed so far. */
   landed(): number;
