@@ -172,11 +172,14 @@ describe("runLanes: a failure under load runs once more (row 020-54)", () => {
       retried: { load: 30.46, cpus: 24, outcome: "passed" },
     });
     expect(out.byPath("n/fine.test.ts")?.retried).toBeUndefined();
-    // The keeper hears each first run once, and never the rerun.
-    expect(out.told.map((r) => [r.runner, r.files.map((f) => f.path)])).toEqual([
-      ["node-test", ["n/flaky.test.ts", "n/fine.test.ts"]],
-      ["vitest", ["t/slow.test.ts"]],
+    // Row 020-55: the keeper hears each run, the rerun last; the first names the file it reruns.
+    const paths = (refs?: readonly TestFileRef[]) => refs?.map((f) => f.path);
+    expect(out.told.map((r) => [r.runner, paths(r.files), paths(r.retrying)])).toEqual([
+      ["node-test", ["n/flaky.test.ts", "n/fine.test.ts"], ["n/flaky.test.ts"]],
+      ["vitest", ["t/slow.test.ts"], undefined],
+      ["node-test", ["n/flaky.test.ts"], undefined],
     ]);
+    expect(out.told[2]?.report.completedFiles.map((f) => f.path)).toEqual(["n/flaky.test.ts"]);
     expect(out.ended.map((r) => basename(r.logDir))).toEqual(["1", "1-rerun", "0"]);
     const runs = runsOf(
       { testFiles: out.testFiles, timedOut: out.timedOut, budgetSeconds: 60 },
@@ -263,6 +266,9 @@ describe("runLanes: a failure under load runs once more (row 020-54)", () => {
     expect(node.given).toHaveLength(1);
     expect(out.byPath("n/broken.test.ts")?.failed).toEqual(["n/broken.test.ts works"]);
     expect(out.byPath("n/broken.test.ts")?.retried).toBeUndefined();
+    // Row 020-55: its first run still names it, so the keeper never keeps that failure.
+    const node1 = out.told.filter((r) => r.runner === "node-test");
+    expect(node1.map((r) => r.retrying?.map((f) => f.path))).toEqual([["n/broken.test.ts"]]);
   });
 
   it("never reruns a failure the stores or the parts gave", async () => {

@@ -137,6 +137,13 @@ export interface GateRun {
   readonly files: readonly TestFileRef[];
   readonly report: RunReport;
   readonly records: ReadonlyMap<string, Mapped>;
+  /**
+   * Row 020-55: the files of `files` that run once more under load (D3.4),
+   * whose result is their rerun's. The keeper decides them only when it
+   * hears that rerun, against what their lookup read, so their first
+   * failure is never kept.
+   */
+  readonly retrying?: readonly TestFileRef[];
 }
 
 /**

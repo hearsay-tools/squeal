@@ -10,7 +10,7 @@ import type { PrepareRun } from "./prepare.js";
 import type { KnownEvidence, Picked } from "./prerun.js";
 import type { FileProgress } from "./progress.js";
 import { type MapOptions, mapPayloads } from "./records.js";
-import { afterRetry, type Overloaded, overloadedOf, withoutRetried } from "./retry.js";
+import { afterRetry, type Overloaded, overloadedOf } from "./retry.js";
 import type { Runner } from "./runners.js";
 import { preparedBefore, tellRan } from "./steps.js";
 import type { TestFileEvidence } from "./types.js";
@@ -160,7 +160,7 @@ export async function runLanes(runs: readonly Planned[], context: LaneContext): 
   return { testFiles, prepares, ended, timedOut };
 }
 
-/** Row 020-54: a rerun's suffix to its run id and log folder; it is not told to the keeper. */
+/** Row 020-54: a rerun's suffix to its run id and log folder. */
 const RERUN = "-rerun";
 
 /** One run as it ended, with the files that failed in it while the host was overloaded. */
@@ -203,10 +203,9 @@ async function runOne(
           context.deadline - performance.now(),
         )
       : null;
-  if (rerun === undefined) {
-    const kept = withoutRetried(records, overloaded);
-    await tellRan(options.ran, { runner: runner.kind, files, report, records: kept });
-  }
+  // Row 020-55: the keeper hears the rerun too; a first run names the files whose rerun decides them.
+  const retrying = overloaded === null ? {} : { retrying: overloaded.files };
+  await tellRan(options.ran, { runner: runner.kind, files, report, records, ...retrying });
   const ran: TestFileEvidence[] = [];
   for (const ref of files) {
     const evidence = await evidenceOf(runner, ref, report, records, context.children);

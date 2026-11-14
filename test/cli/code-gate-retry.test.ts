@@ -12,9 +12,11 @@ import { BASE, code, edit, ownHomeAndTmp, repo, SLOW } from "./code-gate-fixture
  * count. Only the daemon's reading of the load (`hostLoad`) is replaced
  * here; its threshold (`loadAllows`) is the real one. Over it, a test that
  * fails its first run only reads passed, exit 0, named in `runs[].retried`
- * and in one stderr line. Under it, the failure stands, as before. Neither
- * run of a retried file is kept (the coordinator, request 27108c13, "A"),
- * so the next gate on the same bytes runs it again.
+ * and in one stderr line. Under it, the failure stands, as before. Row
+ * 020-55: the rerun's result is kept at the file's key, so the next gate on
+ * the same bytes reads it from the store; an input written during the rerun
+ * bars that keep. The first failure is never kept
+ * (`test/code/gate/keep-rerun.test.ts`).
  */
 
 const load = vi.hoisted(() => ({ now: { oneMinute: 0, cpus: 24 } as HostLoad }));
@@ -42,13 +44,34 @@ it("doubles once warm", () => {
 });
 `;
 
+/** As `flaky`, and its second run writes `src/math.ts` again with the bytes it holds, once. */
+const flakyWrites = (
+  marker: string,
+) => `import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { expect, it } from "vitest";
+import { double } from "../src/math";
+
+it("doubles once warm", () => {
+  if (!existsSync(${JSON.stringify(marker)})) {
+    writeFileSync(${JSON.stringify(marker)}, "");
+    throw new Error("the first run fails");
+  }
+  if (!existsSync(${JSON.stringify(`${marker}-wrote`)})) {
+    writeFileSync(${JSON.stringify(`${marker}-wrote`)}, "");
+    const math = new URL("../src/math.ts", import.meta.url);
+    writeFileSync(math, readFileSync(math));
+  }
+  expect(double(3)).toBe(6);
+});
+`;
+
 /** The gate with the host's load read as `oneMinute` on 24 CPUs, `double` changed. */
-async function gate(oneMinute: number) {
+async function gate(oneMinute: number, test = flaky) {
   ownHomeAndTmp();
   load.now = { oneMinute, cpus: 24 };
   const scratch = mkdtempSync(join(tmpdir(), "squeal-gate-retry-"));
   temps.push(scratch);
-  const root = repo({ ...BASE, "test/flaky.test.ts": flaky(join(scratch, "ran-once")) });
+  const root = repo({ ...BASE, "test/flaky.test.ts": test(join(scratch, "ran-once")) });
   edit(root, {
     "src/math.ts": "export function double(x: number): number {\n  return x + x;\n}\n",
   });
@@ -79,24 +102,36 @@ describe("squeal code --base: a failure under load runs once more (row 020-54)",
     ]);
   });
 
-  it(
-    "keeps neither run of the retried file: the next gate on the same bytes runs it",
-    SLOW,
-    async () => {
-      const { root, run } = await gate(24);
-      expect(run?.retried?.["test/flaky.test.ts"]?.outcome).toBe("passed");
+  it("keeps the rerun's result: the next gate on the same bytes reads it", SLOW, async () => {
+    const { root, run, ran } = await gate(24);
+    expect(run?.retried?.["test/flaky.test.ts"]?.outcome).toBe("passed");
+    expect(ran.stderr).not.toContain("not kept");
 
-      load.now = { oneMinute: 3, cpus: 24 };
-      const next = await again(root);
-      // The other file was kept and is read; the retried one is in no store, so it runs here.
-      expect(next.run?.from).toEqual({
-        "test/flaky.test.ts": "run",
-        "test/math.test.ts": "store",
-      });
-      expect(next.run?.retried).toBeUndefined();
-      expect(next.ran.code).toBe(0);
-    },
-  );
+    load.now = { oneMinute: 3, cpus: 24 };
+    const next = await again(root);
+    // Row 020-55: the rerun's pass is at the file's key, so neither file runs here.
+    expect(next.run?.from).toEqual({
+      "test/flaky.test.ts": "store",
+      "test/math.test.ts": "store",
+    });
+    expect(next.run?.failed).toEqual([]);
+    expect(next.run?.retried).toBeUndefined();
+    expect(next.report.verdict).toBe("pass");
+    expect(next.ran.code).toBe(0);
+  });
+
+  it("does not keep the rerun's result when an input was written during it", SLOW, async () => {
+    const { root, run, ran } = await gate(24, flakyWrites);
+    expect(run?.retried?.["test/flaky.test.ts"]?.outcome).toBe("passed");
+    expect(ran.stderr).toMatch(
+      /^squeal code: 1 completed test file was not kept in the stores, because .+ \(src\/math\.ts\): test\/flaky\.test\.ts; the next run will run it again$/m,
+    );
+
+    load.now = { oneMinute: 3, cpus: 24 };
+    const next = await again(root);
+    expect(next.run?.from?.["test/flaky.test.ts"]).toBe("run");
+    expect(next.ran.code).toBe(0);
+  });
 
   it("keeps the failure under the threshold, with no rerun and no line", SLOW, async () => {
     const { ran, report, lines, run } = await gate(23.99);
