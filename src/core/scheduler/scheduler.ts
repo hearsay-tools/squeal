@@ -985,20 +985,20 @@ class TierScheduler implements Scheduler {
     return this.#closed || this.options.stopping?.() === true;
   }
 
-  /** No tier starts: the daemon stops, or its own runtime went (row 011-106). */
   /**
    * Row 015-117: queues the next chunk of the re-walk under the lock, so its
    * marker is written as the scheduler's other writes are; false once the
-   * pass is over or the scheduler halts.
+   * pass is over or the scheduler halts. Row 011-340: the admission is read
+   * again in the lock block, so a stop begun meanwhile queues no chunk.
    */
   async #queueRewalk(): Promise<boolean> {
-    if (this.#halted() || this.#context === null) return false;
+    if (this.#admit().halted || this.#context === null) return false;
     this.#rewalk ??= new ImportRewalk(this.options.squealVersion);
     const rewalk = this.#rewalk;
     return this.#lock.run(() => {
       const { context, ledger } = this.#started();
       // A slow file waiting for the shared slot or the load guard goes first (spec 004 D2, D3).
-      if (readSlowActivity(context.store, context.worktreeId)?.kind === "waiting") return false;
+      if (this.#admit().rewalk !== null) return false;
       const chunk = rewalk.next(context, ledger);
       if (chunk === null) return false;
       this.#runnerWork.queueRewalk(chunk, (closures, changed) =>
@@ -1006,10 +1006,6 @@ class TierScheduler implements Scheduler {
       );
       return true;
     }, "queueing the import re-walk");
-  }
-
-  #halted(): boolean {
-    return this.#stopping() || this.#runtimeGone;
   }
 
   /**
