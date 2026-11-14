@@ -2,7 +2,16 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
-import { daemonSuite, SLOW, spawnCli, waitReady } from "../daemon/helpers.js";
+import type { CliIo } from "../../src/cli/main.js";
+import { runGroupCommand } from "../../src/cli/run-group.js";
+import {
+  daemonSuite,
+  type FixtureRepo,
+  SLOW,
+  spawnCli,
+  waitReady,
+  withStore,
+} from "../daemon/helpers.js";
 import { CODE_OFF } from "../helpers/policy.js";
 
 /*
@@ -79,6 +88,83 @@ describe("squeal run <group> --wait on a real daemon (spec 019 D6)", SLOW, () =>
     }
   });
 });
+
+/*
+ * Row 011-335 (research `group-wait-edits.md`, F1 and F2): the probe's
+ * in-process order, with no CLI start-up between an edit and the request.
+ * The group's file is current; an edit of the source it reads, then at once
+ * the request. Before the row the daemon took it at the revision before the
+ * edit and gave that revision's verdict (24 of 24 in the probe).
+ */
+describe(
+  "squeal run <group> --wait right after an edit, on a real daemon (row 011-335)",
+  SLOW,
+  () => {
+    const TEST = `import { expect, it } from "vitest";
+import { value } from "../../src/value.ts";
+
+it("reads the value", () => {
+  expect(value()).toBe(1);
+});
+`;
+    const source = (value: number) => `export const value = (): number => ${value};\n`;
+
+    it("takes the group's and the narrow run's request at the edit's revision, and gives its verdict", async () => {
+      const repo = fixture({
+        "squeal.config.json": `${JSON.stringify(POLICY)}\n`,
+        "src/value.ts": source(1),
+        "test/e2e/value.test.ts": TEST,
+      });
+      daemon(repo);
+      await waitReady(repo);
+      const warm = spawnCli(suite.cli, ["run", "e2e", "--wait", "150000"], {
+        cwd: repo.root,
+        env: repo.env,
+      });
+      expect((await warm.exited).code, warm.stdout()).toBe(0);
+
+      for (const [rest, value, code] of [
+        [["e2e"], 2, 1],
+        [["e2e", "test/e2e/value.test.ts"], 1, 0],
+      ] as const) {
+        const before = await stillRevision(repo);
+        writeFileSync(join(repo.root, "src/value.ts"), source(value));
+        const run = await inProcess(repo, [...rest]);
+        const taken = /at revision (\d+)/.exec(run.stdout.split("\n")[1] ?? "")?.[1];
+        expect(Number(taken), run.stdout).toBeGreaterThan(before);
+        expect(run.code, run.stdout).toBe(code);
+      }
+    });
+  },
+);
+
+/** The store's revision once it has not moved for 1.5 s: no edit is left to store. */
+async function stillRevision(repo: FixtureRepo): Promise<number> {
+  const revision = () =>
+    withStore(repo, (store) => store.revisions.latest(repo.worktreeId as never)?.number ?? 0);
+  let last = revision();
+  let since = Date.now();
+  for (const end = Date.now() + 60_000; Date.now() < end; ) {
+    await sleep(100);
+    const now = revision();
+    if (now !== last) [last, since] = [now, Date.now()];
+    else if (Date.now() - since >= 1_500) return now;
+  }
+  throw new Error(`the revision did not stay still: ${last}`);
+}
+
+/** `squeal run <rest> --wait 150000` in this process, as the probe's `inproc` batch. */
+async function inProcess(repo: FixtureRepo, rest: string[]) {
+  const out: string[] = [];
+  const io: CliIo = {
+    stdout: (text) => void out.push(text),
+    stderr: (text) => void out.push(text),
+    cwd: repo.root,
+    env: repo.env,
+  };
+  const code = await runGroupCommand({ waitMs: 150_000, rest }, io, "");
+  return { code, stdout: out.join("") };
+}
 
 /** A Vitest config that holds the daemon's startup: it writes `entered`, then waits for `release`. */
 function gatedConfig(entered: string, release: string): string {

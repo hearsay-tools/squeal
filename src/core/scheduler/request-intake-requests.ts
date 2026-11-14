@@ -87,6 +87,9 @@ export function focusRequest(
  * checks lint now (row 019-22): its released paths, then a pass, whose end
  * nudges the lint pass (`passes`, the change feed's; absent, none). `null`
  * for a group the policy in force does not have. `groups`: its lanes.
+ * Row 011-335: taken only after a reconciliation pass that started after
+ * it, as `run --all` is, so an edit made just before it is in its answer;
+ * `run --slow` and a lint group's release take it too.
  */
 export function groupRequest(
   group: string,
@@ -101,7 +104,10 @@ export function groupRequest(
   };
   return {
     operation: `taking a squeal run ${group} request`,
-    start: { skip: "no closed answer: before the start the scheduler throws (`started`)" },
+    start: {
+      skip: "no closed answer: before the start the scheduler throws (`started`)",
+      afterPass: true,
+    },
     // Row 011-324: the answer names why nothing was queued, as the narrow run's does.
     installWait: {
       stage: (context, ledger, id, reason) =>
