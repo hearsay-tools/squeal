@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.484";
+  if (true) return "0.1.486";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -54434,7 +54434,7 @@ function fullSuiteRequest(request, host) {
     operation: "taking a squeal run --all request",
     start: {
       skip: "no closed answer: before the start the scheduler throws (`started`)",
-      afterPass: true
+      afterPass: "no checkpoint was planned"
     },
     // An install the next reconciliation pass would find ends the wait first; still waiting,
     // nothing can be listed or keyed and the checkpoint is abandoned at once (review wave 11, B1).
@@ -55937,7 +55937,7 @@ function narrowRequest(group, paths, groups3) {
     operation: `taking a squeal run ${group} <path>... request`,
     start: {
       skip: "no closed answer: once closed its runner-work wait rejects; before the start it throws",
-      afterPass: true
+      afterPass: `no test file of group ${group} that the paths select was queued`
     },
     // Review 0.1.411, B2: the answer says why nothing was queued, of the files it selected.
     installWait: {
@@ -56392,7 +56392,7 @@ var init_request_intake = __esm({
     init_busy();
     init_connection();
     init_covered_files2();
-    NO_PASS = "the change feed delivered no reconciliation pass that started after the request (its pass failed, or the daemon closed first), so no checkpoint was planned";
+    NO_PASS = "the change feed delivered no reconciliation pass that started after the request (its pass failed, or the daemon closed first)";
     DEFERRED = /* @__PURE__ */ Symbol("deferred");
     RequestIntake = class {
       #host;
@@ -56419,7 +56419,7 @@ var init_request_intake = __esm({
         const { start: start2, installWait: installWait2, wake } = request;
         if ("closed" in start2 && (!host.open() || start2.nothing === true)) return start2.closed;
         if ("atOnce" in installWait2 && host.waiting() !== null) return installWait2.atOnce;
-        if ("afterPass" in start2) await this.#afterPass();
+        if ("afterPass" in start2) await this.#afterPass(start2.afterPass);
         if ("passFirst" in installWait2 && host.awaitingInstall()) {
           await this.#request(request.operation, () => host.installPass());
         }
@@ -56428,13 +56428,14 @@ var init_request_intake = __esm({
         host.pump();
         return answer4;
       }
-      /** Row 011-198: once a pass that started after the request was delivered. */
-      async #afterPass() {
+      /** Row 011-198: once a pass that started after the request was delivered; else `NO_PASS`, so `refused`. */
+      async #afterPass(refused) {
         const passes = this.#host.passes();
         if (passes === void 0) return;
         const asked = passes.started();
         await passes.pass();
-        if ((passes.deliveredPass()?.number ?? 0) <= asked) throw new Error(NO_PASS);
+        if ((passes.deliveredPass()?.number ?? 0) <= asked)
+          throw new Error(`${NO_PASS}, so ${refused}`);
       }
       /** Rules 2 to 6 under the lock: once, behind the runner work, or again on each busy try. */
       #locked(request) {
@@ -57412,7 +57413,7 @@ function groupRequest(group, groups3, passes) {
     operation: `taking a squeal run ${group} request`,
     start: {
       skip: "no closed answer: before the start the scheduler throws (`started`)",
-      afterPass: true
+      afterPass: `nothing was queued for group ${group}`
     },
     // Row 011-324: the answer names why nothing was queued, as the narrow run's does.
     installWait: {
@@ -105599,7 +105600,7 @@ async function runNarrowCommand({ root, group, paths, waitMs }, io, usageError) 
       `the daemon did not answer the request to run group ${name3} for these paths${first2.unanswered}; it may still take it once its current work allows`
     );
   }
-  const taken3 = await takenRequest(socketPath, first2, deadline, NARROW_NOT_SUPPORTED);
+  const taken3 = await takenRequest(socketPath, first2, deadline, name3, NARROW_NOT_SUPPORTED);
   if (typeof taken3 === "string") return noVerdict(taken3);
   if ("pending" in taken3) {
     io.stdout(pendingText3(root, taken3.pending, waitMs !== null));
@@ -105753,7 +105754,7 @@ async function taken(root, socketPath, group, deadline) {
       return GROUP_NOT_SUPPORTED;
     case "refused":
     case "failed":
-      return failed6(outcome2.error);
+      return failed6(group, outcome2.error);
     case "unknown group":
       return `the daemon's policy has no group "${outcome2.answer.group}" yet; it reloads squeal.config.json when it sees the file change`;
     case "stopped":
@@ -105762,7 +105763,7 @@ async function taken(root, socketPath, group, deadline) {
       return `the daemon did not answer about request ${outcome2.answer.requestId}${outcome2.words}; ${PENDING5}`;
   }
 }
-var failed6 = (error) => `squeal run <group> failed: ${error}`;
+var failed6 = (group, error) => `squeal run ${group} failed: ${error}`;
 function requestedText(group, { revision, queued }) {
   if (queued === 0) {
     return `No lint checks of group ${group} to lint at revision ${revision}: none is pending.
@@ -105862,7 +105863,7 @@ ${usage3}${GROUP_USAGE}`);
       `the daemon did not answer the request to run group ${name3}${first2.unanswered}; it may still take it once its current work allows`
     );
   }
-  const taken3 = await takenRequest(socketPath, first2, deadline);
+  const taken3 = await takenRequest(socketPath, first2, deadline, name3);
   if (typeof taken3 === "string") return noVerdict(taken3);
   if ("pending" in taken3) {
     io.stdout(pendingText3(root, taken3.pending, wait !== null));
@@ -105901,7 +105902,7 @@ function pendingText3(root, answer4, waited) {
 ` : `Group ${group} requested (request ${requestId}); the daemon takes it once its current work allows
 `;
 }
-async function takenRequest(socketPath, first2, deadline, unsupported = GROUP_NOT_SUPPORTED) {
+async function takenRequest(socketPath, first2, deadline, group, unsupported = GROUP_NOT_SUPPORTED) {
   const outcome2 = await untilTaken({ loop: "run-group", socketPath, first: first2, deadline });
   switch (outcome2.kind) {
     case "taken":
@@ -105912,13 +105913,13 @@ async function takenRequest(socketPath, first2, deadline, unsupported = GROUP_NO
     case "unsupported":
       return unsupported;
     case "refused":
-      return runFailed(outcome2.error);
+      return runFailed(group, outcome2.error);
     case "unknown group":
       return `the daemon's policy has no group "${outcome2.answer.group}" yet; it reloads squeal.config.json when it sees the file change`;
     case "failed": {
       const { error } = outcome2;
       const known3 = error === GROUP_NOT_SUPPORTED || error === NARROW_NOT_SUPPORTED;
-      return known3 ? error : runFailed(error);
+      return known3 ? error : runFailed(group, error);
     }
     case "stopped":
       return "the daemon stopped before taking the request";
@@ -105926,8 +105927,8 @@ async function takenRequest(socketPath, first2, deadline, unsupported = GROUP_NO
       return `the daemon did not answer about request ${outcome2.answer.requestId}${outcome2.words}; the request is pending, and the daemon takes it once its current work allows`;
   }
 }
-function runFailed(error) {
-  return `squeal run <group> failed: ${error}`;
+function runFailed(group, error) {
+  return `squeal run ${group} failed: ${error}`;
 }
 function andList2(words) {
   if (words.length <= 1) return words.join("");
@@ -105935,6 +105936,7 @@ function andList2(words) {
 }
 
 // src/cli/run-slow.ts
+init_request_intake();
 init_text();
 
 // src/cli/wait-arg.ts
@@ -105969,9 +105971,7 @@ ${usage3}`);
   const socketPath = await daemonSocket(root);
   const started2 = Date.now();
   const deadline = started2 + (wait.waitMs ?? RECORD_WAIT_MS5);
-  const first2 = await askWithin(socketPath, { type: "run-slow" }, deadline);
-  if (first2 !== null && "unanswered" in first2) {
-    const text3 = `the daemon did not answer the run --slow request${first2.unanswered}; it may still take it once its current work allows`;
+  const noVerdict = (text3) => {
     if (wait.waitMs === null) {
       io.stderr(`squeal: ${text3}
 `);
@@ -105980,6 +105980,12 @@ ${usage3}`);
     io.stdout(`No verdict: ${text3}
 `);
     return 3;
+  };
+  const first2 = await askWithin(socketPath, { type: "run-slow" }, deadline);
+  if (first2 !== null && "unanswered" in first2) {
+    return noVerdict(
+      `the daemon did not answer the run --slow request${first2.unanswered}; it may still take it once its current work allows`
+    );
   }
   const requested = await taken2(socketPath, first2, io, deadline);
   if (requested === "no-daemon") {
@@ -105988,19 +105994,24 @@ ${usage3}`);
     return 1;
   }
   if (requested === null) return 1;
+  if ("refused" in requested) return noVerdict(requested.refused);
   if ("pending" in requested) {
     io.stdout(pendingText4(requested, wait.waitMs === null ? null : Date.now() - started2));
     return wait.waitMs === null ? 0 : 3;
   }
-  const { revision, queued } = requested;
-  io.stdout(
-    queued > 0 ? `Slow tier requested at revision ${revision}: ${plural(queued, "slow file")} queued; they run once no fast work is pending.
-` : `No slow files to run at revision ${revision}: none are declared in squeal.config.json or all are current.
-`
-  );
+  io.stdout(requestedText3(requested));
+  const { queued } = requested;
   if (wait.waitMs === null) return 0;
   const left = Math.max(0, wait.waitMs - (Date.now() - started2));
   return statusWaitCommand(left, false, io, queued > 0);
+}
+function requestedText3({ revision, queued, installWait: installWait2 }) {
+  if (installWait2 !== void 0)
+    return `No slow files run at revision ${revision}: ${installWait2}.
+`;
+  return queued > 0 ? `Slow tier requested at revision ${revision}: ${plural(queued, "slow file")} queued; they run once no fast work is pending.
+` : `No slow files to run at revision ${revision}: none are declared in squeal.config.json or all are current.
+`;
 }
 function pendingText4({ pending: requestId, unanswered }, waitedMs) {
   if (waitedMs === null) {
@@ -106032,9 +106043,10 @@ async function taken2(socketPath, first2, io, deadline) {
     case "refused":
       return failed7(`run --slow failed: ${outcome2.error}`);
     case "failed":
-      return failed7(
-        outcome2.error === SLOW_NOT_SUPPORTED ? SLOW_NOT_SUPPORTED : `run --slow failed: ${outcome2.error}`
-      );
+      if (outcome2.error === SLOW_NOT_SUPPORTED) return failed7(SLOW_NOT_SUPPORTED);
+      if (outcome2.error.startsWith(NO_PASS))
+        return { refused: `run --slow failed: ${outcome2.error}` };
+      return failed7(`run --slow failed: ${outcome2.error}`);
     case "stopped":
       return failed7("the daemon stopped before taking the request");
     // Row 011-327: a status request the daemon did not answer within its bound is a busy daemon.
