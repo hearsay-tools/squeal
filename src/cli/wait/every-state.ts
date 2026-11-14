@@ -1,5 +1,5 @@
 import { isDeepStrictEqual } from "node:util";
-import { headerPolicy, headerWith } from "../../core/state/header.js";
+import { headerWith } from "../../core/state/header.js";
 import { type HeaderPart, headerPart } from "../../core/state/header-part.js";
 import { statesMark } from "../../core/store/write-markers.js";
 import type { RevisionNumber, WorktreeId } from "../../core/types/common.js";
@@ -60,12 +60,14 @@ export function readEvery(store: Store, id: WorktreeId, start: StartView, every:
   const kept = mark !== null && every.kept?.mark === mark ? every.kept : undefined;
   const states = kept?.states ?? store.knownStates.list(id);
   const keys = kept?.keys ?? store.testFileKeys.list(id);
-  const at = headerPolicy(store, id);
-  const part =
-    kept?.part !== undefined && isDeepStrictEqual(kept.part.policy, at.policy)
-      ? kept.part
-      : headerPart(states, keys, at.policy);
-  const header = headerWith(store, id, at, keys, part);
+  let part: HeaderPart | undefined;
+  const header = headerWith(store, id, keys, (policy) => {
+    part =
+      kept?.part !== undefined && isDeepStrictEqual(kept.part.policy, policy)
+        ? kept.part
+        : headerPart(states, keys, policy);
+    return part;
+  });
   const news =
     kept?.news?.revision === header.revision
       ? kept.news.entries
@@ -73,6 +75,12 @@ export function readEvery(store: Store, id: WorktreeId, start: StartView, every:
   every.kept =
     mark === null
       ? undefined
-      : { mark, states, keys, news: { revision: header.revision, entries: news }, part };
+      : {
+          mark,
+          states,
+          keys,
+          news: { revision: header.revision, entries: news },
+          ...(part === undefined ? {} : { part }),
+        };
   return { header, states, keys, news };
 }
