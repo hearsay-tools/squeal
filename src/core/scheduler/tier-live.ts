@@ -26,7 +26,8 @@ export interface LiveViewOptions {
 /**
  * The daemon's queue as a `QueueView` (row 011-346): each read goes to the
  * ledger, the queue, the runner's traits or the quiet state when the plan
- * asks it, as `selectTier` read them; one clock reading, `now`.
+ * asks it, as the selection read them before the plan; one clock reading,
+ * `now`, which orders the queue too (row 011-347).
  */
 export function liveView(
   context: SchedulerContext,
@@ -81,7 +82,7 @@ export function liveView(
 
 /**
  * The plan's asks against the daemon (row 011-346): each reads and writes
- * as `selectTier` did at the same point. A lookup's hit is applied there
+ * as the selection did before the plan. A lookup's hit is applied there
  * (`Ledger.applyResults`), an unkeyed, blocked or unlisted file leaves the
  * queue, and `endPass` commits; every write lands in the ledger's next
  * commit or the claims' memory, as before.

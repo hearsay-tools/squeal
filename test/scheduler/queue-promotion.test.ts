@@ -160,3 +160,51 @@ describe("RunQueue promotion (spec 011 C15)", () => {
     expect(names(queue.ordered())).toEqual(["b", "z"]);
   });
 });
+
+describe("a batch's place and what a focused tier counts (rows 011-268 and 011-283, from batch-select and focused-group-turn)", () => {
+  it("a re-wait of files already in a batch forms no batch, and the first keeps its place", () => {
+    const { queue, clock } = queueAt();
+    const first = ["a0", "a1"].map(ref);
+    const second = ["c0", "c1"].map(ref);
+    for (const r of [...first, ...second]) queue.add(r, Priority.transitive);
+    queue.promote(first, clock.now + 1_000);
+    queue.promote(second, clock.now + 60_000);
+    clock.now += 2_000;
+    // Past the first wait's deadline, its re-wait names the same files and one of the second's.
+    queue.promote([...first, ref("c0")], clock.now + 60_000);
+    expect(names(queue.orderedBatches())).toEqual(["a0", "a1", "c0", "c1"]);
+    expect(queue.rankAt(ref("a0"), clock.now)?.rank).toBeLessThan(
+      queue.rankAt(ref("c0"), clock.now)?.rank ?? 0,
+    );
+  });
+
+  it("a focused tier of a wait's group makes the backlog's turn due, before or after the edits' tiers", () => {
+    const { queue, clock } = queueAt();
+    queue.add(ref("b"), Priority.transitive);
+    queue.add(ref("e"), Priority.edited, false, true);
+    queue.promote([ref("f")], clock.now + 60_000);
+    queue.focusedSelected([ref("f")]);
+    expect(queue.batchTurn()).toBe(true);
+    // A turn that takes the backlog ends it.
+    queue.tierSelected(true);
+    expect(queue.batchTurn()).toBe(false);
+  });
+
+  it("a focused tier of a wait's group counts not toward the four first-group tiers", () => {
+    const { queue, clock } = queueAt();
+    queue.add(ref("b"), Priority.transitive);
+    queue.add(ref("e"), Priority.edited, false, true);
+    queue.promote([ref("f")], clock.now + 60_000);
+    for (let t = 0; t < RECENT_TIERS_PER_BACKLOG_TIER; t++) queue.focusedSelected([ref("f")]);
+    expect(queue.backlogTurn()).toBe(false);
+  });
+
+  it("a focused entry of no wait's group counts as a first-group tier (row 011-145)", () => {
+    const { queue } = queueAt();
+    queue.add(ref("b"), Priority.transitive);
+    queue.add(ref("e"), Priority.edited, false, true);
+    for (let t = 0; t < RECENT_TIERS_PER_BACKLOG_TIER; t++) queue.focusedSelected([ref("f")]);
+    expect(queue.batchTurn()).toBe(false);
+    expect(queue.backlogTurn()).toBe(true);
+  });
+});

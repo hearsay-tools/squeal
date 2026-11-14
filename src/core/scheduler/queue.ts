@@ -567,9 +567,9 @@ export class RunQueue {
    */
   #ranks(now?: number): ReadonlyMap<Entry, number> {
     const ranks = new Map<Entry, number>();
-    let at = now;
+    const at = now ?? this.#promotions.now();
     for (const [id, entry] of this.#entries) {
-      const rank = this.#promotions.rankOf(id, (at ??= this.#promotions.now()));
+      const rank = this.#promotions.rankOf(id, at);
       if (rank !== null) ranks.set(entry, rank);
     }
     return ranks;

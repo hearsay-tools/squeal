@@ -54,6 +54,8 @@ export interface Table {
   /** Lanes that wait for quiet after a backlog cancel. */
   readonly quiet?: readonly string[];
   readonly quietWakeMs?: number;
+  /** Lanes whose catch-up waits for quiet: a backlog tier or a turn takes none of its catch-up rows. */
+  readonly catchUpQuiet?: readonly string[];
   /** The paths a tier beside a running batch's takes. */
   readonly beside?: readonly string[];
   readonly slots?: boolean;
@@ -140,10 +142,17 @@ export function tableOf(table: Table) {
     hasFirstGroup: (where) => live().some((r) => first(r) && where(r)),
     fastSize: () => live().length,
     batchTurn: () => table.batchTurn ?? false,
-    quietHolds: (_, at, tier) => tier.backlog && (table.quiet ?? []).includes(at),
+    quietHolds: (r, at, tier) =>
+      (tier.backlog && (table.quiet ?? []).includes(at)) ||
+      ((tier.backlog || tier.turn) &&
+        of(r).catchUp === true &&
+        (table.catchUpQuiet ?? []).includes(at)),
     quietWakeMs: () => {
       const quiet = table.quiet ?? [];
-      const holds = live().some((r) => quiet.includes(lane(r)));
+      const catchUp = table.catchUpQuiet ?? [];
+      const holds = live().some(
+        (r) => quiet.includes(lane(r)) || (of(r).catchUp === true && catchUp.includes(lane(r))),
+      );
       return holds ? (table.quietWakeMs ?? 1_000) : null;
     },
     focusedSize: () => entries.length,

@@ -126,13 +126,6 @@ describe("the tier plan's candidates (row 011-346)", () => {
     expect(paths(cut.plan.first)).toEqual(["e1"]);
   });
 
-  it("a lane that waits for quiet takes no backlog tier, but an edit's tier takes the backlog's files", () => {
-    const held = plan({ rows: rows("b", 2), quiet: ["fast"], quietWakeMs: 400 });
-    expect(idle(held.plan.first)).toEqual({ idle: "quiet", at: NOW, wakeAt: NOW + 400 });
-    const edit = plan({ rows: [{ path: "e1", recent: true }, ...rows("b", 1)], quiet: ["fast"] });
-    expect(paths(edit.plan.first)).toEqual(["e1", "b1"]);
-  });
-
   it("an edit's tier leaves a slot lane's backlog to its slots", () => {
     const { plan: p } = plan({
       rows: [

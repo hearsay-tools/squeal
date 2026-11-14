@@ -1,8 +1,4 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { StatCache } from "../../src/core/hash/stat-cache.js";
-import type { SchedulerContext } from "../../src/core/scheduler/context.js";
-import { Ledger } from "../../src/core/scheduler/ledger.js";
-import { Priority } from "../../src/core/scheduler/queue.js";
 import {
   BACKLOG_QUIET_MS,
   BacklogQuiet,
@@ -10,21 +6,15 @@ import {
   publishQuiet,
   quietMetaKey,
 } from "../../src/core/scheduler/quiet.js";
-import { selectTier } from "../../src/core/scheduler/tiers.js";
-import { createStateSink } from "../../src/core/state/sink.js";
 import type { WorktreeId } from "../../src/core/types/common.js";
-import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
-import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
-import { NO_TRAITS } from "../../src/core/types/runner-traits.js";
 import type { Store } from "../../src/core/types/store.js";
-import { liveDaemon } from "../delivery/fakes.js";
 import { freshStore } from "../state/helpers.js";
 
 /*
  * Row 011-94 (spec 011 C4 step 5 as amended 2026-10-21, `tasks/011-82/design.md`
- * row A, the lead): a lane that waits for quiet after its backlog tier's
- * cancel starts no backlog tier; an edit's work in it still runs at once.
- * One Vitest-like lane, every file with a key and no result.
+ * row A, the lead): a lane's wait for quiet after its backlog tier's cancel,
+ * and what it publishes. What the tier plan starts while a lane waits is
+ * `tier-plan-quiet.test.ts`'s (row 011-349).
  */
 
 const WT = "wt-011-94" as WorktreeId;
@@ -35,84 +25,7 @@ afterEach(() => {
   for (const store of stores.splice(0)) store.close();
 });
 
-function setup(): {
-  ledger: Ledger;
-  context: SchedulerContext;
-  quiet: BacklogQuiet;
-  at: { now: number };
-} {
-  const store = freshStore();
-  stores.push(store);
-  liveDaemon(store, WT);
-  const at = { now: T0 };
-  const quiet = new BacklogQuiet();
-  const context = {
-    root: "/repo/wt-011-94",
-    store,
-    sink: createStateSink(store),
-    worktreeId: WT,
-    policy: DEFAULT_POLICY,
-    now: () => at.now,
-    note: () => {},
-    runsDir: "/repo/.git/squeal/runs",
-    hostLoad: () => ({ oneMinute: null, cpus: 1 }),
-    runner: { traits: NO_TRAITS },
-    keys: {
-      runnerOf: () => undefined,
-      runtimeIdentity: () => "",
-      writeRuntimeApplications: () => {},
-      index: { key: () => null, keysReadAsOne: () => null },
-      cache: new StatCache(),
-      stabilityPaths: () => [],
-      beginRun: () => 1,
-      endRun: () => {},
-    },
-    quiet,
-  } as unknown as SchedulerContext;
-  return { ledger: new Ledger(context), context, quiet, at };
-}
-
-/** Queues `paths`, each at a key of its own; `recent` ones as an edit's work. */
-function queue(ledger: Ledger, paths: readonly string[], recent = false): TestFileRef[] {
-  return paths.map((path, i) => {
-    const ref = { project: "", path };
-    const file = ledger.addFile(ref);
-    file.key = `${path.length}${i}${recent ? "r" : "b"}`.padEnd(64, "0") as CheckKey;
-    ledger.enqueue(file, recent ? Priority.edited : Priority.neverRun, false, recent);
-    return ref;
-  });
-}
-
-const BACKLOG = Array.from({ length: 6 }, (_, i) => `test/b${i}.test.ts`);
-
-describe("selectTier and a lane's wait for quiet (row 011-94)", () => {
-  it("starts no backlog tier in a lane that waits, and one once the wait ends", () => {
-    const { ledger, context, quiet, at } = setup();
-    queue(ledger, BACKLOG);
-    quiet.cancelled("", at.now);
-
-    expect(selectTier(context, ledger)).toBeNull();
-    expect(ledger.queue.fastSize).toBe(BACKLOG.length);
-
-    at.now += BACKLOG_QUIET_MS;
-    const tier = selectTier(context, ledger);
-    expect(tier?.kind).toBe("backlog");
-    expect(tier?.files.map((f) => f.file.ref.path).sort()).toEqual(BACKLOG);
-  });
-
-  it("takes an edit's file at once in a lane that waits, and leaves the backlog's queued", () => {
-    const { ledger, context, quiet, at } = setup();
-    queue(ledger, BACKLOG);
-    const [edited] = queue(ledger, ["test/edited.test.ts"], true);
-    quiet.cancelled("", at.now);
-
-    const tier = selectTier(context, ledger);
-    expect(tier?.kind).toBe("edit");
-    expect(tier?.files.map((f) => f.file.ref.path)).toContain(edited?.path);
-    // The edit's tier of 4 may take backlog files beside it, as before; the rest stay queued.
-    expect(ledger.queue.fastSize).toBeGreaterThan(0);
-  });
-
+describe("a lane's wait for quiet (row 011-94)", () => {
   it("a revision that queues a file of the lane starts the wait again; another lane's does not", () => {
     const quiet = new BacklogQuiet();
     quiet.cancelled("vitest", T0);

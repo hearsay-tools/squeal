@@ -66,7 +66,7 @@ export interface Pick {
   readonly focusWaits: number;
 }
 
-/** `selectTier`'s pick loop: the files of one lane in queue order, asked lazily up to the tier's size. */
+/** A pass's pick loop: the files of one lane in queue order, asked lazily up to the tier's size. */
 export function pickFiles(view: QueueView, asks: PlanAsks, p: Pass, shape: Shape): Pick {
   const { batch, backlog, turn, offer } = shape;
   const files: TierFile[] = [];
