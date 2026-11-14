@@ -5,7 +5,6 @@ import { listPaths } from "../../text.js";
 import type { RelativePath } from "../../types/common.js";
 import type { TestFileRef } from "../../types/keys.js";
 import type { RunReport } from "../../types/runner.js";
-import type { Mapped } from "./records.js";
 import type { GateRunReport } from "./report.js";
 import type { FileRetry, TestFileEvidence } from "./types.js";
 
@@ -58,20 +57,6 @@ export function overloadedOf(
   const sample = load();
   if (loadAllows(sample) || sample.oneMinute === null) return null;
   return { load: { oneMinute: sample.oneMinute, cpus: sample.cpus }, files: failed };
-}
-
-/**
- * `records` without those of `overloaded`'s files, for the keeper: the
- * rerun decides their result, and the keeper's lookup of a file serves
- * its first run only, so neither run of such a file is kept (D17.3).
- */
-export function withoutRetried(
-  records: ReadonlyMap<string, Mapped>,
-  overloaded: Overloaded | null,
-): ReadonlyMap<string, Mapped> {
-  if (overloaded === null) return records;
-  const retried = new Set(overloaded.files.map(testFileId));
-  return new Map([...records].filter(([id]) => !retried.has(id)));
 }
 
 /**

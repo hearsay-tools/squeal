@@ -21,7 +21,7 @@ import type { RunReport } from "../../types/runner.js";
 import type { Store } from "../../types/store.js";
 import type { CodeStore } from "../store/types.js";
 import type { GateRun } from "./collect.js";
-import { Expectations, type LookupSources, type Pending } from "./keep-expected.js";
+import { Expectations, type LookupSources, type Pending, type Taken } from "./keep-expected.js";
 import { writerFor } from "./keep-here.js";
 import { NotKept } from "./keep-reasons.js";
 import { atStoreKey, keepSeen, type Seen, seenOf } from "./keep-seen.js";
@@ -119,7 +119,7 @@ export class Keeper {
    * costs the write.
    */
   async ran(run: GateRun): Promise<void> {
-    for (const pending of this.#expected.take(run)) await this.#queue(pending, run);
+    for (const taken of this.#expected.take(run)) await this.#queue(taken, run);
   }
 
   /**
@@ -153,13 +153,13 @@ export class Keeper {
     this.#queued.splice(0);
   }
 
-  async #queue(pending: Pending, run: GateRun): Promise<void> {
+  async #queue({ pending, endsRun }: Taken, run: GateRun): Promise<void> {
     try {
       let kept: { readonly files: readonly Kept[]; readonly seen: readonly Seen[] };
       try {
         kept = await this.#keepable(pending, run);
       } finally {
-        pending.keys.endRun();
+        if (endsRun) pending.keys.endRun();
       }
       const { files, seen } = kept;
       if (files.length + seen.length > 0)

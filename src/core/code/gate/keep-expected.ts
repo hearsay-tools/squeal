@@ -20,6 +20,8 @@ import type { GateRun } from "./collect.js";
  * any run (D14.4), and two node:test entries are one runner kind. So each
  * lookup holds its own files, their inputs and its run of `WorktreeKeys`;
  * each of its files finds it, and only a run of one of its files takes it.
+ * Row 020-55: a file that runs once more under load (D3.4) is taken by its
+ * rerun, not its first run, over the same lookup.
  */
 
 /** A file a lookup keyed and found nothing for: it runs, and may be kept. */
@@ -48,6 +50,12 @@ export interface Pending {
   readonly revisions?: RevisionsSince;
   /** By `testFileId`. */
   readonly files: ReadonlyMap<string, Expected>;
+}
+
+/** A lookup a run took; `endsRun` false while its retried files wait for their rerun (row 020-55). */
+export interface Taken {
+  readonly pending: Pending;
+  readonly endsRun: boolean;
 }
 
 /**
@@ -104,30 +112,51 @@ export class Expectations {
       ...(runtime === undefined ? {} : { runtime }),
       ...(sources.revisions === undefined ? {} : { revisions: revisionsSince(sources.revisions) }),
     };
-    this.#open.add(pending);
-    for (const id of files.keys()) this.#expected.set(expectationOf(runner, id), pending);
+    this.#hold(pending);
   }
 
   /**
    * The lookups that expected one of `run`'s files, each taken whole, so
-   * no other run takes it. The caller ends each one's run of `keys`.
+   * no other run takes it. The caller ends each one's run of `keys` when
+   * `endsRun`. Row 020-55: the files of `run.retrying` are not decided by
+   * this run, so its first failure is never kept. Their lookup stays
+   * expected for them alone, with its inputs and its run of `keys` as the
+   * lookup began them: their rerun takes it, and the window their keep is
+   * judged over runs from the lookup to the rerun's end.
    */
-  take(run: Pick<GateRun, "runner" | "files">): Pending[] {
+  take(run: Pick<GateRun, "runner" | "files" | "retrying">): Taken[] {
     const taken = new Set<Pending>();
     for (const ref of run.files) {
       const pending = this.#expected.get(expectationOf(run.runner, testFileId(ref)));
       if (pending !== undefined) taken.add(pending);
     }
-    for (const pending of taken) this.#drop(pending);
-    return [...taken];
+    const retrying = new Set((run.retrying ?? []).map(testFileId));
+    return [...taken].map((pending) => {
+      this.#drop(pending);
+      const files = [...pending.files];
+      const rest = new Map(files.filter(([id]) => retrying.has(id)));
+      if (rest.size === 0) return { pending, endsRun: true };
+      this.#hold({ ...pending, files: rest });
+      const now = new Map(files.filter(([id]) => !retrying.has(id)));
+      return { pending: { ...pending, files: now }, endsRun: false };
+    });
   }
 
-  /** Ends the run of each lookup no run took, such as one the budget ended before. */
+  /**
+   * Ends the run of each lookup no run took, such as one the budget ended
+   * before, or one whose retried files' rerun never started (row 020-55).
+   */
   close(): void {
     for (const pending of [...this.#open]) {
       this.#drop(pending);
       pending.keys.endRun();
     }
+  }
+
+  #hold(pending: Pending): void {
+    this.#open.add(pending);
+    for (const id of pending.files.keys())
+      this.#expected.set(expectationOf(pending.runner, id), pending);
   }
 
   #drop(pending: Pending): void {
