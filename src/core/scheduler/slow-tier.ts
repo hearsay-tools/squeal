@@ -12,8 +12,9 @@ import { publishGroupActivity, readGroupActivity } from "../slow/state.js";
 import type { DeferUnderLoad, ResolvedGroup } from "../types/check-groups.js";
 import type { AbsolutePath, EpochMs, WorktreeId } from "../types/common.js";
 import type { CheckKey, TestFileRef } from "../types/keys.js";
-import { SLOW_GROUP, TESTS_GROUP } from "../types/scheduler.js";
+import { SLOW_GROUP } from "../types/scheduler.js";
 import type { SlowTierActivity } from "../types/status.js";
+import type { Admission, LaneAnswer } from "./admission.js";
 import { perFileLease, WAIT_FOR_CAPACITY } from "./capacity.js";
 import { claimOf } from "./claims.js";
 import { CommitAsks } from "./commit-asks.js";
@@ -44,49 +45,25 @@ export const SLOW_RECHECK_MS = 15_000;
 /** After this long without the slot, a note says another daemon holds it. */
 export const SLOT_HELD_NOTE_MS = 60_000;
 
-/** What the slow tier needs from its scheduler. */
+/**
+ * What the slow tier needs from its scheduler. It reads the start facts
+ * only through `probe` and `admit` (row 011-340).
+ */
 export interface SlowHost {
   readonly lock: Mutex;
   started(): { context: SchedulerContext; ledger: Ledger };
   /** `start` has ended: `started` no longer throws. */
   ready(): boolean;
   closed(): boolean;
-  /** No tier starts: the daemon stops, or its own runtime went (rows 011-66, 011-106). */
-  halted(): boolean;
-  /** Either hold holds (011 C9, "Holds"; rows 011-72, 011-74): no tier starts. */
-  held(): boolean;
-  /**
-   * The pump's hold check (row 011-72): the index read again when it moved;
-   * a merge hold that ended reconciles what it released, `"released"`.
-   */
-  holdCheck(): Promise<"held" | "released" | "free">;
-  /** Whether the daemon's own runtime went, read again now (row 011-106). */
-  runtimeMissing(): Promise<boolean>;
   pump(): void;
   /**
-   * An edit's fast work is pending or running: runner work, a recent fast
-   * file queued, or an edit's tier in flight. It goes first (D2 as amended
-   * 2026-10-09), even before a `run --slow` request.
+   * The start facts on disk and in Git, read again after a wait: the
+   * daemon's own runtime (row 011-106), then the hold check (row 011-72);
+   * a merge hold that ended reconciles what it released, `"released"`.
    */
-  editPending(): boolean;
-  /**
-   * No fast work at all is pending or running: only then does a slow tier
-   * start without a `run --slow` request (D2 as amended 2026-10-14, task
-   * 004-60), and an idle slow tier may take several files (D2).
-   */
-  fastIdle(): boolean;
-  /**
-   * `fastIdle`, and no group of `normal` priority has work pending or
-   * running (spec 019 D3): only then may a `low` group's tier take several
-   * files. With no `checks` key it is `fastIdle`.
-   */
-  normalIdle(): boolean;
-  /**
-   * Group `name`, not `tests`, has a tier in flight or a queued file that
-   * holds its followers (`SlowTier.holdsFollowers`): a group that names it
-   * in `after` waits (spec 019 D1; row 019-26).
-   */
-  groupHolds(name: string): boolean;
+  probe(): Promise<"gone" | "held" | "released" | "free">;
+  /** The admission now, read from the start facts in memory. */
+  admit(): Admission;
 }
 
 /**
@@ -324,7 +301,7 @@ export class SlowTier {
     const want = this.#want(context, group, guard, refs.length);
     const slot = this.#takeSlot(context, dir, group, want);
     if (slot === null) return null;
-    return this.#launch(refs, guard.ranUnderLoad, slot, group, launch);
+    return this.#launch(refs, guard, slot, group, launch);
   }
 
   /**
@@ -353,24 +330,23 @@ export class SlowTier {
   }
 
   /**
-   * After the guard's wait: no preemption since `preemptions` was read, the
-   * daemon's runtime still there and no hold begun; else the pump plans again.
+   * After the guard's wait: the daemon's runtime still there and no hold
+   * begun (`probe`), and no preemption since `preemptions` was read; else
+   * the pump plans again. A runtime gone since the pump read it starts no
+   * tier, and its files take no slot (review 0.1.262, B3); so is a hold that
+   * began meanwhile, a merge's included, which no preemption tells (011 C9;
+   * review 0.1.269, B1): the pump plans again and stops on it.
    */
   async #mayStart(preemptions: number): Promise<boolean> {
-    // A runtime gone since the pump read it starts no tier, and its files take no slot (review 0.1.262, B3).
-    if ((await this.host.runtimeMissing()) || preemptions !== this.#preemptions) return false;
-    // So is a hold that began meanwhile, a merge's included, which no preemption tells
-    // (011 C9; review 0.1.269, B1): the pump plans again and stops on it.
-    return (await this.host.holdCheck()) === "free" && preemptions === this.#preemptions;
+    return (await this.host.probe()) === "free" && preemptions === this.#preemptions;
   }
 
   /**
-   * How many of `count` files the tier may take: a `normal` group's, or a
-   * `low` one's on an idle machine with no `normal` work (`normalIdle`), up
-   * to its full width; else one (spec 019 D3).
+   * How many of `count` files the tier may take: up to its full width when
+   * the admission's width is wide, else one (spec 019 D3).
    */
   #want(context: SchedulerContext, group: ResolvedGroup, guard: Guarded, count: number): number {
-    const wide = group.limits.priority === "normal" || (guard.idle && this.host.normalIdle());
+    const wide = this.#admitted(group, guard.idle).width === "wide";
     return wide ? Math.min(fullWidth(group, context.policy), count) : 1;
   }
 
@@ -410,7 +386,7 @@ export class SlowTier {
    */
   async #launch(
     refs: readonly TestFileRef[],
-    ranUnderLoad: number | null,
+    guard: Guarded,
     slot: SlowSlot,
     group: ResolvedGroup,
     launch: (run: SlowRun) => void,
@@ -418,9 +394,9 @@ export class SlowTier {
     let flown = false;
     try {
       const selected = await this.host.lock.run(() => {
-        const picked = this.#select(refs, ranUnderLoad, slot, group);
+        const picked = this.#select(refs, guard, slot, group);
         if (picked === null || typeof picked !== "object") return picked;
-        launch({ ...picked, slot, turn: this.host.lock.turn });
+        launch({ tier: picked.tier, slot, turn: picked.admitted.turn });
         flown = true;
         return "flown" as const;
       }, `selecting a tier of group ${this.group}`);
@@ -439,21 +415,16 @@ export class SlowTier {
   }
 
   /**
-   * The groups `after` names go first (spec 019 D1): a group's while it has
-   * a file queued or a tier in flight. For `tests`, the default `slow`
-   * group's: fast work of this daemon, an edit's always (004 D2 as amended
-   * 2026-10-09), its fast backlog (a baseline, a checkpoint, `run --all`)
-   * queued or running unless a request is open (D2 as amended 2026-10-14,
-   * task 004-60), so a warm-up's slow files never contend with its fast
-   * ones. During a departure drain only the drain's fast work counts: the
-   * paused backlog is not pending (`fastIdle`, row 011-93).
+   * The admission of this lane now, with its open request and the load
+   * guard's `idle` (row 011-340). Its `waits`: the groups `after` names go
+   * first (spec 019 D1); for `tests`, the default `slow` group's, fast work
+   * of this daemon, an edit's always (004 D2 as amended 2026-10-09), its
+   * fast backlog queued or running unless a request is open (task 004-60),
+   * so a warm-up's slow files never contend with its fast ones. During a
+   * departure drain only the drain's fast work counts (row 011-93).
    */
-  #waitsForAfter(group: ResolvedGroup): boolean {
-    return group.after.some((name) =>
-      name === TESTS_GROUP
-        ? this.host.editPending() || (!this.#requested && !this.host.fastIdle())
-        : this.host.groupHolds(name),
-    );
+  #admitted(group: ResolvedGroup, idle: boolean): LaneAnswer {
+    return this.host.admit().lane(group.name, { requested: this.#requested, idle });
   }
 
   /**
@@ -517,7 +488,8 @@ export class SlowTier {
       this.#publish(null);
       return [];
     }
-    if (this.#waitsForAfter(group)) {
+    // No width is read here: the load guard has not run.
+    if (this.#admitted(group, false).waits !== null) {
       this.#publish({ kind: "waiting", for: "fast" });
       return [];
     }
@@ -644,17 +616,18 @@ export class SlowTier {
    */
   #select(
     refs: readonly TestFileRef[],
-    ranUnderLoad: number | null,
+    { ranUnderLoad, idle }: Guarded,
     slot: SlowSlot,
     group: ResolvedGroup,
-  ): { tier: Tier } | "claimed" | typeof WAIT_FOR_CAPACITY | null {
-    // A close since the guard or the slot: a daemon that accepted a stop starts no tier (001-367),
-    // nor one whose runtime another tier's end found gone (011-106), nor one on hold (011 C9).
-    if (this.host.halted() || this.host.held()) return null;
+  ): { tier: Tier; admitted: LaneAnswer } | "claimed" | typeof WAIT_FOR_CAPACITY | null {
+    // Read in this lock turn (row 011-340). A close since the guard or the slot: a daemon that
+    // accepted a stop starts no tier (001-367), nor one whose runtime another tier's end found
+    // gone (011-106), nor one on hold (011 C9), nor one whose `after` groups hold.
+    const admitted = this.#admitted(group, idle);
+    if (admitted.refusal !== null) return null;
     const { context, ledger } = this.host.started();
-    if (this.#waitsForAfter(group)) return null;
-    const low = group.limits.priority === "low";
-    const width = !low || this.host.normalIdle() ? slot.permits : 1;
+    // The slot's permits carry `#want`'s width already; the width is read again here.
+    const width = admitted.width === "wide" ? slot.permits : 1;
     const triggered = this.#trigger(context, ledger, group);
     const picked: TierFile[] = [];
     for (const ref of refs) {
@@ -707,7 +680,7 @@ export class SlowTier {
               "once the load guard had waited its maxDeferMs for this pass (spec 019 D3)",
       );
     }
-    return { tier };
+    return { tier, admitted };
   }
 
   /** `startTier` of `picked`, and the activity naming its files in the same transaction. */
@@ -781,7 +754,8 @@ export class SlowTier {
     const queued = this.#queued(ledger);
     const group = this.#resolved(context);
     if (queued.length === 0 || group === null) this.#publish(null);
-    else if (this.#waitsForAfter(group)) this.#publish({ kind: "waiting", for: "fast" });
+    else if (this.#admitted(group, false).waits !== null)
+      this.#publish({ kind: "waiting", for: "fast" });
     else if (queued.some(this.#trigger(context, ledger, group))) this.#publish(null);
     else this.#publishUntriggered(group);
   }
