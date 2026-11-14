@@ -146,6 +146,10 @@ describe("the comparison, under a change unmade", SLOW, () => {
       expect.stringMatching(
         /T2\)": test\/slow1.test.ts: unknown .*, store at ran:.* \(the candidate stores more\)$/,
       ),
+      // Row 011-321: a touched observed read no longer withholds its file.
+      expect.stringMatching(
+        /run": test\/touched.test.ts: requeue .*, store at moved:.* \(the candidate stores more\)$/,
+      ),
     ]);
   });
 
