@@ -4,13 +4,15 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
-import { awaitBridges } from "./real.js";
+import { bridgeStart } from "../../../src/harness/opencode/bridge-client.js";
+import { awaitBridges, bridgeCommand } from "./real.js";
 
 /*
- * Review 011-336 B1: `awaitBridges` waits for, and at its deadline kills, only the plugin's
- * bridges of this run: Node running a hook entry of the run's built `dist`, leading a detached
- * group of its own, with the run's private HOME. Every other process stays untouched, even one
- * whose command line names a hook file. Linux only: the identity is read from `/proc`.
+ * Review 011-336 B1 (and its re-review): `awaitBridges` waits for, and at its deadline kills,
+ * only the plugin's bridges of this run: Node started with exactly the arguments `bridgeStart`
+ * builds for a hook entry of the run's built `dist`, leading a detached group of its own, with
+ * the run's private HOME. Every other process stays untouched, even one whose command line names
+ * a hook file. Linux only: the identity is read from `/proc`.
  */
 
 const base = mkdtempSync(join(tmpdir(), "squeal-oc-bridges-"));
@@ -38,6 +40,18 @@ const timer = setInterval(() => {
 `,
 );
 
+/** This process's environment without Node's proxy switch, so `bridgeStart`'s plain form is plain. */
+const { NODE_USE_ENV_PROXY: _proxy, ...unproxied } = process.env;
+/** `bridgeStart`'s two forms: without Node's proxy switch, and with it, carried by a preload. */
+const FORMS = { plain: unproxied, proxy: { ...unproxied, NODE_USE_ENV_PROXY: "1" } } as const;
+type Form = keyof typeof FORMS;
+
+/** A bridge of `entry` as the plugin starts it, in `form`, with `env` added to its environment. */
+function asPlugin(form: Form, env: Record<string, string>, hook = entry) {
+  const start = bridgeStart(hook, FORMS[form]);
+  return { args: start.args, env: { ...start.env, ...env } };
+}
+
 const spawned: ChildProcess[] = [];
 afterEach(() => {
   for (const child of spawned.splice(0)) {
@@ -61,12 +75,12 @@ const marker = (name: string) => join(base, `${name}-${made++}`);
 async function start(
   command: string,
   args: string[],
-  options: { detached: boolean; env?: Record<string, string>; started?: string },
+  options: { detached: boolean; env?: NodeJS.ProcessEnv; started?: string },
 ): Promise<ChildProcess> {
   const child = spawn(command, args, {
     detached: options.detached,
     stdio: "ignore",
-    env: { ...process.env, ...options.env },
+    env: options.env ?? process.env,
   });
   spawned.push(child);
   await once(child, "spawn");
@@ -93,6 +107,43 @@ async function timed(owned: { home: string }, graceMs: number) {
   return { outcome, ms: Date.now() - began };
 }
 
+// Re-review 011-336-r2: the rule has one owner, the command `bridgeStart` builds.
+describe("the bridge command", () => {
+  const selects = bridgeCommand(dist);
+  const node = process.execPath;
+  const flag = bridgeStart(entry, FORMS.plain).args[0] ?? "";
+
+  it("is exactly what bridgeStart builds for a hook entry of the dist, in both its forms", () => {
+    const plain = bridgeStart(entry, FORMS.plain).args;
+    const proxy = bridgeStart(entry, FORMS.proxy).args;
+    // The proxy form is the other form: it carries the switch past Node's start with a preload.
+    expect(plain).not.toContain("--import");
+    expect(proxy).toContain("--import");
+    expect(selects([node, ...plain])).toBe(true);
+    expect(selects([node, ...proxy])).toBe(true);
+    expect(selects(["node", ...plain])).toBe(true);
+  });
+
+  it("is nothing else that names a hook entry", () => {
+    const preload = bridgeStart(entry, FORMS.proxy).args;
+    const observer = join(base, "observer.mjs");
+    for (const argv of [
+      [node, observer, entry],
+      [node, flag, observer, entry],
+      [node, entry],
+      [node, ...bridgeStart(entry, FORMS.plain).args, "--flag"],
+      [node, flag, "--import", "data:text/javascript,0", entry],
+      [node, ...preload.slice(0, -1), "--trace-warnings", entry],
+      [node, ...bridgeStart(join(dist, "hooks", "sub", "end.mjs"), FORMS.plain).args],
+      [node, ...bridgeStart(join(base, "other", "hooks", "end.mjs"), FORMS.plain).args],
+      [node, ...bridgeStart(join(dist, "hooks", "end.cjs"), FORMS.plain).args],
+      [node],
+      [],
+    ])
+      expect(selects(argv), JSON.stringify(argv)).toBe(false);
+  });
+});
+
 describe.skipIf(process.platform !== "linux")("awaitBridges", () => {
   it("leaves alone an unrelated process whose command line names a hook file", async () => {
     const observer = await start("tail", ["-f", entry], { detached: true });
@@ -102,26 +153,43 @@ describe.skipIf(process.platform !== "linux")("awaitBridges", () => {
     expect(running(observer)).toBe(true);
   });
 
+  // Re-review 011-336-r2 B1: Node runs the observer; the hook path is only its data argument.
+  it("leaves alone a Node process of this run that only names a hook entry", async () => {
+    const started = marker("started");
+    const observer = join(base, "observer.mjs");
+    writeFileSync(
+      observer,
+      `import { writeFileSync } from "node:fs";\nwriteFileSync(process.env.STARTED, "");\nsetInterval(() => {}, 1000);\n`,
+    );
+    const child = await start(process.execPath, [observer, entry], {
+      detached: true,
+      env: { ...unproxied, HOME: home, STARTED: started },
+      started,
+    });
+    const { outcome, ms } = await timed({ home }, 20_000);
+    expect(outcome).toBe("resolved");
+    expect(ms).toBeLessThan(5_000);
+    expect(running(child)).toBe(true);
+  });
+
   it("leaves alone a bridge of another run, with another HOME", async () => {
     const started = marker("started");
     const other = join(base, "other-run", "home");
-    const bridge = await start(process.execPath, [entry], {
-      detached: true,
-      env: { HOME: other, STARTED: started },
-      started,
-    });
+    const { args, env } = asPlugin("plain", { HOME: other, STARTED: started });
+    const bridge = await start(process.execPath, args, { detached: true, env, started });
     const { outcome, ms } = await timed({ home }, 20_000);
     expect(outcome).toBe("resolved");
     expect(ms).toBeLessThan(5_000);
     expect(running(bridge)).toBe(true);
   });
 
-  it("leaves alone the hook entry run inside a group it does not lead", async () => {
+  it("leaves alone a bridge command run inside a group it does not lead", async () => {
     const started = marker("started");
-    // A detached shell leads the group; its Node child runs the entry with the run's HOME.
-    const leader = await start("sh", ["-c", `"$0" "$1"; exit 0`, process.execPath, entry], {
+    const { args, env } = asPlugin("plain", { HOME: home, STARTED: started });
+    // A detached shell leads the group; its Node child runs the bridge command with the run's HOME.
+    const leader = await start("sh", ["-c", `"$0" "$@"; exit 0`, process.execPath, ...args], {
       detached: true,
-      env: { HOME: home, STARTED: started },
+      env,
       started,
     });
     const { outcome, ms } = await timed({ home }, 20_000);
@@ -130,36 +198,33 @@ describe.skipIf(process.platform !== "linux")("awaitBridges", () => {
     expect(running(leader)).toBe(true);
   });
 
-  it("waits for this run's bridge and for the child that outlives it, and kills nothing", async () => {
-    const [started, release, childDone] = [marker("started"), marker("release"), marker("done")];
-    const bridge = await start(process.execPath, [entry], {
-      detached: true,
-      env: {
+  it.each(Object.keys(FORMS) as Form[])(
+    "waits for this run's bridge in bridgeStart's %s form and for the child that outlives it, and kills nothing",
+    async (form) => {
+      const [started, release, childDone] = [marker("started"), marker("release"), marker("done")];
+      const { args, env } = asPlugin(form, {
         HOME: home,
         STARTED: started,
         RELEASE: release,
         CHILD_MS: "1500",
         CHILD_DONE: childDone,
-      },
-      started,
-    });
-    const exited = once(bridge, "exit");
-    // `awaitBridges` takes the bridges at its call; the bridge then ends, its child lives on.
-    const waiting = awaitBridges(dist, { home }, 20_000);
-    writeFileSync(release, "");
-    expect(await exited).toEqual([0, null]);
-    expect(existsSync(childDone)).toBe(false);
-    await waiting;
-    expect(existsSync(childDone)).toBe(true);
-  });
+      });
+      const bridge = await start(process.execPath, args, { detached: true, env, started });
+      const exited = once(bridge, "exit");
+      // `awaitBridges` takes the bridges at its call; the bridge then ends, its child lives on.
+      const waiting = awaitBridges(dist, { home }, 20_000);
+      writeFileSync(release, "");
+      expect(await exited).toEqual([0, null]);
+      expect(existsSync(childDone)).toBe(false);
+      await waiting;
+      expect(existsSync(childDone)).toBe(true);
+    },
+  );
 
   it("kills this run's bridge still there after the grace, and fails naming it", async () => {
     const started = marker("started");
-    const bridge = await start(process.execPath, [entry], {
-      detached: true,
-      env: { HOME: home, STARTED: started },
-      started,
-    });
+    const { args, env } = asPlugin("plain", { HOME: home, STARTED: started });
+    const bridge = await start(process.execPath, args, { detached: true, env, started });
     const exited = once(bridge, "exit");
     const { outcome } = await timed({ home }, 300);
     expect(outcome).toMatch(
