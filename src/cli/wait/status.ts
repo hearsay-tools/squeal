@@ -138,6 +138,7 @@ export function editPoll(options: EditConfig): StatusPoll<StatusWaitEnded> {
     // Edit: no read took the start view yet.
     first: () => start === null,
     sync: () => syncing.sync,
+    stop: () => watch?.stop?.(),
     read: ({ store, root, commonDir }, final, elapsed): PollStep<StatusWaitEnded> => {
       const id = worktreeIdFor(root);
       if (start === null) {

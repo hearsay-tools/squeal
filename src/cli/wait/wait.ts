@@ -241,6 +241,8 @@ export interface StatusPoll<T> {
   readonly first?: () => boolean;
   /** The wait's sync once a read started it: a pause ends at its answer. */
   readonly sync: () => DaemonSync | undefined;
+  /** Row 011-344: called once the wait ended, beside the sync's `stop`: stops its daemon watch. */
+  readonly stop?: () => void;
   /** One read in the store's read transaction; `final`, the deadline's. */
   readonly read: (context: StatusContext, final: boolean, elapsed: () => number) => PollStep<T>;
 }
@@ -296,5 +298,6 @@ export async function pollStatus<T>(
     }
   } finally {
     poll.sync()?.stop();
+    poll.stop?.();
   }
 }

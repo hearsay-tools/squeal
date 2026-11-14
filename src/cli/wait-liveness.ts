@@ -38,6 +38,11 @@ export interface DaemonWatch {
   judge(record: DaemonRecord | null, at: EpochMs, stopping?: DaemonStopping): WaitLiveness;
   /** The lapse a socket check found the daemon alive through, if any. */
   lapse(): HeartbeatLapse | null;
+  /**
+   * Row 011-344: aborts a socket check on the wire, so a wait that ended
+   * does not keep the CLI alive for its timeout; a stub may omit it.
+   */
+  stop?(): void;
 }
 
 export interface DaemonWatchOptions {
@@ -77,10 +82,11 @@ export function watchDaemon(worktreeId: WorktreeId, options: DaemonWatchOptions 
   let asking = false;
   let deadSince: number | null = null;
   let staleMs: number | null = null;
+  const abort = new AbortController();
   const ask = (record: DaemonRecord, asked: number) => {
-    if (asking) return;
+    if (asking || abort.signal.aborted) return;
     asking = true;
-    void listening([...new Set([record.socketPath, computed])]).then((found) => {
+    void listening([...new Set([record.socketPath, computed])], abort.signal).then((found) => {
       socket = found;
       // The lapse the check began on counts, even when the heartbeat is fresh by the next read.
       if (found !== "absent") staleMs = Math.max(staleMs ?? 0, asked);
@@ -111,6 +117,7 @@ export function watchDaemon(worktreeId: WorktreeId, options: DaemonWatchOptions 
       return reading.liveness;
     },
     lapse: () => (staleMs === null ? null : { staleMs }),
+    stop: () => abort.abort(),
   };
 }
 
@@ -158,10 +165,13 @@ export function stoppingOf(
   return readStopping(store, worktree, at);
 }
 
-async function listening(paths: readonly AbsolutePath[]): Promise<SocketState> {
+async function listening(
+  paths: readonly AbsolutePath[],
+  signal: AbortSignal,
+): Promise<SocketState> {
   const answers = await Promise.all(
     paths.map((path) =>
-      askDaemon(path, { type: "ping" }).then(
+      askDaemon(path, { type: "ping" }, undefined, signal).then(
         (answer): SocketState =>
           answer === null
             ? "absent"
