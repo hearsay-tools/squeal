@@ -1,9 +1,11 @@
 import { existsSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { dirname, join } from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
 import { COVERAGE_RECORD_VERSION } from "../../../src/core/code/coverage/record.js";
 import { codeStorePath } from "../../../src/core/code/store/open.js";
 import { pruneCodeStoreAfter } from "../../../src/core/code/store/prune-main.js";
+import { startTimers } from "../../../src/core/daemon/lifecycle.js";
+import { waitFor } from "../../daemon/helpers.js";
 import { POLICY_CODE_OFF } from "../../helpers/policy.js";
 import {
   DAY_MS,
@@ -25,6 +27,11 @@ import { count, ON, open } from "../helpers.js";
 const NOW = 100 * DAY_MS;
 const RECORD = new Uint8Array([1]);
 const at = (resultKey: string) => ({ resultKey, providerVersion: COVERAGE_RECORD_VERSION });
+
+const stops: (() => void)[] = [];
+afterEach(() => {
+  for (const stop of stops.splice(0)) stop();
+});
 
 describe("the code store's prune after the main store's", () => {
   it("drops a coverage record with its result, and a count nothing uses past the retention", () => {
@@ -94,5 +101,43 @@ describe("the code store's prune after the main store's", () => {
     expect(pruneCodeStoreAfter(main, commonDir, ON, NOW)).toBeNull();
     expect(pruneCodeStoreAfter(main, commonDir, POLICY_CODE_OFF, NOW)).toBeNull();
     expect(existsSync(codeStorePath(commonDir))).toBe(false);
+  });
+
+  // Row 011-350: the daemon's timer runs it in slices after the main store's, by one driver.
+  it("runs through the daemon's prune timer, in batches, after the main store's prune", async () => {
+    const commonDir = fakeCommonDir();
+    const main = openMain(commonDir);
+    const code = open(commonDir);
+    const blobs = Array.from({ length: 300 }, (_, i) => `unused-${i}`);
+    code.transaction(() => {
+      for (const blob of blobs) code.counts.put(count(blob), NOW - 30 * DAY_MS);
+    });
+    const logged: string[] = [];
+    stops.push(
+      startTimers({
+        root: dirname(commonDir),
+        worktreeId: "0123456789abcdef",
+        commonDir,
+        store: main,
+        policy: ON,
+        now: () => NOW,
+        linkedDir: null,
+        timings: { checkMs: 60_000, pruneMs: 60 * 60_000, firstPruneMs: 0 },
+        heartbeatMs: 60 * 60_000,
+        presence: { since: 0, lastPresentAt: null },
+        lastActive: () => NOW,
+        active: () => {},
+        note: () => {},
+        log: (line) => logged.push(line),
+        shutdown: () => {},
+      }),
+    );
+
+    await waitFor(
+      () => blobs.every((blob) => code.counts.get(blob, "typescript", 1) === null),
+      3_000,
+      "the code store's counts pruned",
+    );
+    expect(logged.filter((line) => line.includes("prune"))).toEqual([]);
   });
 });
