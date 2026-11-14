@@ -2,7 +2,6 @@ import { appendFileSync } from "node:fs";
 import { cpus, loadavg } from "node:os";
 import { expect, it } from "vitest";
 import { ADAPTERS, codeGateCommand } from "../../../../../../src/cli/code-gate.js";
-import { CHUNK_WIDTHS, chunkSize, MIN_CHUNK } from "../../../../../../src/core/code/gate/chunks.js";
 import type { GateAdapters } from "../../../../../../src/core/code/gate/runners.js";
 import type { RunnerAdapter } from "../../../../../../src/core/types/runner.js";
 import { quiet } from "../../../../../../test/code/gate/host-load.js";
@@ -16,7 +15,9 @@ import { ownHomeAndTmp } from "../../../../../../test/cli/code-gate-fixture.js";
  * fixed, uneven time (no CPU work: no artificial load), each loads its own
  * changed module, so every file is selected and none is in a store (each
  * gate gets a fresh repository). Modes alternate, `ROUNDS` times each.
- * Output: one JSON line per gate to `$PROBE_OUT`.
+ * Output: one JSON line per gate to `$PROBE_OUT`. Its run of 2026-11-14
+ * measured the count rule of 3f5306379 ("default": max(8, 4 x width) files),
+ * which row 020-59 then replaced by `chunksFor`'s time rule.
  */
 
 const N = Number(process.env.PROBE_FILES ?? 240);
@@ -107,5 +108,5 @@ it("measures one run against chunks", async () => {
       repo.cleanup();
     }
   }
-  expect([CHUNK_WIDTHS, MIN_CHUNK, typeof chunkSize]).toEqual([4, 8, "function"]);
+  expect(cpuCount).toBeGreaterThan(0);
 });

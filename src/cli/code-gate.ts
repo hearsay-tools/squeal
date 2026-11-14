@@ -64,8 +64,8 @@ export interface GateIo extends CliIo {
    */
   readonly hostLoad?: () => HostLoad;
   /**
-   * Row 020-59: the most files one run takes (`CollectOptions.chunkFiles`).
-   * Absent, from the run's worker width. Like `hostLoad`, it does not
+   * Row 020-59, for tests: the files one run takes (`CollectOptions.chunkFiles`).
+   * Absent, only a long stored estimate splits a run. Like `hostLoad`, it does not
    * cross to a `--json` relaunch's child.
    */
   readonly chunkFiles?: number;

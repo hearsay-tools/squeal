@@ -82,7 +82,9 @@ export function fake(
     };
   };
   const closure = async (r: TestFileRef) => ({ paths: [r.path] });
-  const adapter = { run, closure } as unknown as RunnerAdapter;
+  // Each file runs as wide as the grant (row 020-59's `chunksFor` reads it).
+  const traits = { tierWidth: (_ref: TestFileRef, grant: number) => grant };
+  const adapter = { run, closure, traits } as unknown as RunnerAdapter;
   return { runner: { kind, adapter, covered: [] }, given, started };
 }
 
@@ -120,11 +122,14 @@ export interface Lanes {
   readonly known?: ReadonlyMap<TestFileRef, TestFileEvidence>;
   /** Row 020-59: the most files one run takes. */
   readonly chunkFiles?: number;
+  /** Row 020-59: each file's stored seconds, which split a long run into chunks. */
+  readonly durations?: (ref: TestFileRef) => number | null;
 }
 
 /** `runLanes` over `runs`, with the load `load` reads; the keeper's tells and the load reads kept. */
 export async function lanes(at: Lanes) {
   const { runs, load = OVERLOADED, budgetMs = 60_000, known = new Map(), chunkFiles } = at;
+  const { durations } = at;
   const temp = mkdtempSync(join(tmpdir(), "squeal-lanes-retry-"));
   temps.push(temp);
   const told: GateRun[] = [];
@@ -139,6 +144,7 @@ export async function lanes(at: Lanes) {
     adapters: {} as CollectOptions["adapters"],
     hostLoad,
     ...(chunkFiles === undefined ? {} : { chunkFiles }),
+    ...(durations === undefined ? {} : { durations }),
     ran: async (run) => {
       told.push(run);
     },

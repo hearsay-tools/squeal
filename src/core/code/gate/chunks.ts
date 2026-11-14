@@ -15,20 +15,24 @@ import type { EndedRun } from "./evidence.js";
 import type { Picked } from "./prerun.js";
 
 /*
- * Spec 020 D17.5 as amended by row 020-59 (#201, #216): a runner's files
- * run in chunks, one run after another, so the keeper hears each chunk's
- * completed files when that chunk ends and writes them while the next
- * chunk runs (`Keeper.ran`); a gate killed later keeps them. A chunk holds
- * at most `CHUNK_WIDTHS` times the run's worker width, so each worker
- * takes several files a chunk, and never fewer than `MIN_CHUNK` files. A
- * runner whose files fit in one chunk runs them in one run, as before.
+ * Spec 020 D17.5 as amended by row 020-59 (#201, #216; the parent's
+ * choice C2 after the measurement in `tasks/wave-22-020-59/notes.md`): a
+ * runner whose stored estimate is long runs its files in chunks, one run
+ * after another, so the keeper hears each chunk's completed files when
+ * that chunk ends and writes them while the next chunk runs; a gate killed
+ * later keeps them. Each chunk holds at least `CHUNK_SECONDS` of estimated
+ * work, and a runner is split only when its estimate covers at least two
+ * chunks. A run costs about 6.4 s whatever its file count (the
+ * measurement), so a chunk that long costs about 2 percent; and a killed
+ * long gate loses at most about that much work. A runner with no stored
+ * duration, or a shorter estimate, runs in one run, as before.
  */
 
-/** How many files per worker one chunk holds. */
-export const CHUNK_WIDTHS = 4;
-
-/** The fewest files a chunk holds, whatever the width. */
-export const MIN_CHUNK = 8;
+/**
+ * The policy: the least estimated work in one chunk, in seconds; the work a
+ * killed long gate may lose, at about 2 percent of run overhead.
+ */
+export const CHUNK_SECONDS = 300;
 
 /**
  * Vitest's own width for a project that sets no `maxWorkers`, outside watch
@@ -38,21 +42,51 @@ export const MIN_CHUNK = 8;
 const vitestWidth = () => Math.max(1, availableParallelism() - 1);
 
 /**
- * The most files one chunk of `pick`'s run of `files` holds: `CHUNK_WIDTHS`
- * times the widest width its files run at, as the estimate reads it
- * (Vitest's from the CPU count, node:test's `tierSize`), at least
- * `MIN_CHUNK`; `chunkFiles` when given.
+ * `files` of `pick`'s run, in their order, in chunks. With `chunkFiles`, of
+ * that many files each. Else by estimated work: each file at its stored
+ * seconds (`durations`), one with none at the median of the stored ones,
+ * over the widest width its files run at, as the estimate reads it
+ * (Vitest's from the CPU count, node:test's `tierSize`). A chunk closes
+ * once it holds `seconds` of work; a last chunk below it joins the one
+ * before. One chunk when no file has a stored duration, or when the whole
+ * run's work is below twice `seconds`.
  */
-export function chunkSize(
+export function chunksFor(
   pick: Pick<Picked, "kind" | "adapter">,
   files: readonly TestFileRef[],
-  at: { readonly tierSize: number; readonly chunkFiles?: number | undefined },
-): number {
-  if (at.chunkFiles !== undefined) return Math.max(1, Math.floor(at.chunkFiles));
-  if (files.length <= MIN_CHUNK) return MIN_CHUNK;
+  at: {
+    readonly tierSize: number;
+    readonly durations?: ((ref: TestFileRef) => number | null) | undefined;
+    readonly chunkFiles?: number | undefined;
+    readonly seconds?: number;
+  },
+): TestFileRef[][] {
+  if (at.chunkFiles !== undefined) return chunksOf(files, Math.max(1, Math.floor(at.chunkFiles)));
+  const bound = at.seconds ?? CHUNK_SECONDS;
+  const stored = files.map((ref) => at.durations?.(ref) ?? null);
+  const known = stored.filter((s): s is number => s !== null).sort((a, b) => a - b);
+  if (known.length === 0) return [[...files]];
+  const median = known[Math.floor(known.length / 2)] ?? 0;
   const grant = pick.kind === "vitest" ? vitestWidth() : at.tierSize;
-  const widths = files.map((ref) => pick.adapter.traits.tierWidth(ref, grant));
-  return Math.max(MIN_CHUNK, CHUNK_WIDTHS * Math.max(1, ...widths));
+  const width = Math.max(1, ...files.map((ref) => pick.adapter.traits.tierWidth(ref, grant)));
+  const work = stored.map((s) => (s ?? median) / width);
+  if (work.reduce((sum, w) => sum + w, 0) < 2 * bound) return [[...files]];
+  const chunks: TestFileRef[][] = [];
+  let chunk: TestFileRef[] = [];
+  let held = 0;
+  files.forEach((ref, i) => {
+    chunk.push(ref);
+    held += work[i] ?? 0;
+    if (held < bound) return;
+    chunks.push(chunk);
+    chunk = [];
+    held = 0;
+  });
+  if (chunk.length > 0) {
+    const last = chunks.pop();
+    chunks.push(last === undefined ? chunk : [...last, ...chunk]);
+  }
+  return chunks;
 }
 
 /** `files` in chunks of at most `size`, in their order. */

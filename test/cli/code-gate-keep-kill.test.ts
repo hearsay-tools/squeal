@@ -7,18 +7,21 @@ import { DatabaseSync } from "node:sqlite";
 import { pathToFileURL } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { GateReport } from "../../src/core/code/gate/report.js";
+import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
 import { storePaths } from "../../src/core/store/paths.js";
 import { type FixtureRepo, waitFor } from "../daemon/helpers.js";
+import { result } from "../store/helpers.js";
 import { featureRepo, keepPolicy } from "./code-gate-keep-kit.js";
 
 /*
  * Spec 020 D17.5 as amended by row 020-59 (#216): a gate killed mid-run,
  * as a reboot or `kill -9` ends it, keeps the files it wrote while its
- * runs went on, and the next gate reads them from the stores. With
- * `runner.tierSize` 1, node:test runs one process at a time, so a chunk
- * holds `MIN_CHUNK` (8) files: the eight quick files are the first chunk,
- * and `z-late`, which never ends, is the second. The CLI runs from source
- * through tsx, so its own `--json` relaunch is real.
+ * runs went on, and the next gate reads them from the stores. Stored
+ * durations from an earlier key (40 s for each quick file, 500 s for
+ * `z-late`), with `runner.tierSize` 1, make an estimate of 820 s, over twice
+ * `CHUNK_SECONDS`: the eight quick files (320 s) are the first chunk, and
+ * `z-late`, which loads its own changed path and never ends, the second.
+ * The CLI runs from source through tsx, so its own `--json` relaunch is real.
  */
 
 const SLOW = { timeout: 240_000 } as const;
@@ -30,10 +33,11 @@ const QUICK = ["a", "b", "c", "d", "e", "f", "g", "h"].map((n) => `test/${n}.tes
 const LATE = "test/z-late.test.mjs";
 
 const quick = `import test from "node:test";\nimport assert from "node:assert/strict";\nimport { one } from "../src/keep.mjs";\n\ntest("quick", () => assert.equal(one(1), 1));\n`;
-const late = `import { writeFileSync } from "node:fs";\nimport { join } from "node:path";\nimport test from "node:test";\nimport assert from "node:assert/strict";\nimport { one } from "../src/keep.mjs";\n\ntest("late", async () => {\n  writeFileSync(join(process.env.GATE_MARKS ?? "", "late"), "");\n  await new Promise((done) => setTimeout(done, 600_000));\n  assert.equal(one(1), 1);\n});\n`;
+const late = `import { writeFileSync } from "node:fs";\nimport { join } from "node:path";\nimport test from "node:test";\nimport assert from "node:assert/strict";\nimport { one } from "../src/late.mjs";\n\ntest("late", async () => {\n  writeFileSync(join(process.env.GATE_MARKS ?? "", "late"), "");\n  await new Promise((done) => setTimeout(done, 600_000));\n  assert.equal(one(1), 1);\n});\n`;
 
 const FEATURE: Readonly<Record<string, string>> = {
   "src/keep.mjs": "export const one = (x) => (x > 0 ? 1 : 0);\n",
+  "src/late.mjs": "export const one = (x) => (x > 0 ? 1 : 0);\n",
   ...Object.fromEntries(QUICK.map((path) => [path, quick])),
   [LATE]: late,
 };
@@ -44,9 +48,26 @@ function keptKeys(repo: FixtureRepo): number {
   if (!existsSync(database)) return 0;
   const db = new DatabaseSync(database, { readOnly: true });
   try {
-    return Number(db.prepare("SELECT count(DISTINCT key) AS n FROM results").get()?.n);
+    return Number(
+      db.prepare("SELECT count(DISTINCT key) AS n FROM results WHERE key != 'seed'").get()?.n,
+    );
   } finally {
     db.close();
+  }
+}
+
+/** Each file's whole-file duration stored at an earlier key, as an older run left it. */
+function seedDurations(repo: FixtureRepo): void {
+  const store = openStore(repo.commonDir);
+  if (isStoreOpenFailure(store)) throw new Error(store.reason);
+  const at = (path: string, ms: number) => ({
+    ...result({ kind: "file", project: "t", testPath: path }, "seed"),
+    durationMs: ms,
+  });
+  try {
+    store.results.putMany([...QUICK.map((path) => at(path, 40_000)), at(LATE, 500_000)]);
+  } finally {
+    store.close();
   }
 }
 
@@ -60,6 +81,7 @@ describe("squeal code --base killed mid-run (row 020-59, #216)", () => {
       runner: { tierSize: 1 },
     });
     repo = featureRepo(policy, FEATURE);
+    seedDurations(repo);
     scratch = mkdtempSync(join(tmpdir(), "squeal-gate-kill-"));
   });
 

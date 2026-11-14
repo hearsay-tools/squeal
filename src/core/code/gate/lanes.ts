@@ -3,7 +3,7 @@ import { hostLoad } from "../../retry/load.js";
 import type { AbsolutePath } from "../../types/common.js";
 import type { TestFileRef } from "../../types/keys.js";
 import type { RunReport } from "../../types/runner.js";
-import { chunkSize, chunksOf, joinedLogs } from "./chunks.js";
+import { chunksFor, joinedLogs } from "./chunks.js";
 import type { CollectOptions } from "./collect.js";
 import { type EndedRun, evidenceOf } from "./evidence.js";
 import { type PlannedRun, stoppedEarly } from "./plan.js";
@@ -180,9 +180,9 @@ export async function runLanes(runs: readonly Planned[], context: LaneContext): 
 const RERUN = "-rerun";
 
 /**
- * Row 020-59: `planned`'s first run of `files`, in chunks of at most
- * `chunkSize`, one after another; one run when they fit in one. A chunk
- * that starts after the deadline runs nothing, as a run does.
+ * Row 020-59: `planned`'s first run of `files`, in the chunks `chunksFor`
+ * gives, one after another; one run when there is one chunk. A chunk that
+ * starts after the deadline runs nothing, as a run does.
  */
 async function runChunks(
   planned: Planned,
@@ -190,8 +190,8 @@ async function runChunks(
   context: LaneContext,
 ): Promise<LaneRun[]> {
   const { tierSize, options } = context;
-  const size = chunkSize(planned.pick, files, { tierSize, chunkFiles: options.chunkFiles });
-  const chunks = chunksOf(files, size);
+  const { durations, chunkFiles } = options;
+  const chunks = chunksFor(planned.pick, files, { tierSize, durations, chunkFiles });
   if (chunks.length <= 1) return [await runOne(planned, files, context)];
   const runs: LaneRun[] = [];
   for (const [k, chunk] of chunks.entries()) {

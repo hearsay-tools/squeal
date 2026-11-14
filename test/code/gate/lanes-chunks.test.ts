@@ -5,8 +5,9 @@ import type { TestFileRef } from "../../../src/core/types/keys.js";
 import { fake, IDLE, lanes, planned, removeTemps } from "./lanes-kit.js";
 
 /*
- * Row 020-59 (#201, #216): each runner's files run in chunks, one run
- * after another, so the keeper hears each chunk's files as it ends and
+ * Row 020-59 (#201, #216): a runner with a long stored estimate runs its
+ * files in chunks, one run after another (most cases here set the chunk's
+ * file count, `chunkFiles`), so the keeper hears each chunk's files as it ends and
  * writes them while the next chunk runs. Files that fit in one chunk run
  * in one run, as before. The rerun of row 020-54 runs once per runner,
  * after its last chunk; the budget, `notStarted`, the early stop and the
@@ -37,6 +38,19 @@ describe("runLanes in chunks (row 020-59)", () => {
       FIVE.map((path) => [path, true]),
     );
     expect(out.timedOut).toBe(false);
+  });
+
+  it("splits a long stored estimate into chunks, and runs a short one in one run (no `chunkFiles`)", async () => {
+    // node:test at the kit's `tierSize` 4: five files at 600 s each are 750 s of work, two chunks.
+    const long = fake("node-test", {});
+    await lanes({ runs: [planned(long.runner, 1, FIVE)], durations: () => 600, load: IDLE });
+    expect(long.given.map((g) => [g.runId, g.files.length])).toEqual([
+      ["gate-1-c1", 2],
+      ["gate-1-c2", 3],
+    ]);
+    const short = fake("node-test", {});
+    await lanes({ runs: [planned(short.runner, 1, FIVE)], durations: () => 100, load: IDLE });
+    expect(short.given.map((g) => g.runId)).toEqual(["gate-1"]);
   });
 
   it("runs files that fit in one chunk in one run, as before", async () => {
