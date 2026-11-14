@@ -1,4 +1,5 @@
 import { startDaemon } from "../core/daemon/daemon.js";
+import { daemonLogSink } from "../core/daemon/log-file.js";
 import { cgroupUnit, ownSignals, signalNote } from "../core/daemon/signals.js";
 import { eslintProvider } from "../core/lint/provider/eslint-provider.js";
 import { oxlintProvider } from "../core/lint/provider/oxlint/provider.js";
@@ -13,7 +14,10 @@ const USAGE = "usage: squeal daemon <root> [--await-lock <ms>]\n";
  * the lock the old daemon holds; without it, a daemon that loses the lock
  * waits only while no daemon is recorded serving (task 001-340,
  * `VACANT_LOCK_WAIT_MS`). It moves out of the root and
- * into its own temp directory however it was started. Logs to stderr. Exit code 0 when
+ * into its own temp directory however it was started. Logs to stderr; when
+ * stderr is the worktree's log file, as a spawned daemon has it (row
+ * 021-32), each line carries the UTC time and the pid, and the log is kept
+ * within its bound (`daemonLogSink`). Exit code 0 when
  * it stopped normally or another daemon serves the worktree, 1 when it could
  * not serve.
  */
@@ -24,7 +28,11 @@ export async function daemonCommand(args: readonly string[], io: CliIo): Promise
     io.stderr(USAGE);
     return 2;
   }
-  const log = (line: string) => io.stderr(`squeal daemon: ${line}\n`);
+  const sink = daemonLogSink(root);
+  const log =
+    sink === null
+      ? (line: string) => io.stderr(`squeal daemon: ${line}\n`)
+      : (line: string) => sink(`squeal daemon: ${line}`);
   const script = process.argv[1];
   // Row 011-250: the note names the signal and the unit, read once, at the signal.
   let signalled: string | null = null;
