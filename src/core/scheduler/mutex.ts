@@ -17,6 +17,7 @@ type Watcher = {
 export class Mutex {
   #tail: Promise<unknown> = Promise.resolve();
   #holder: LockHolder | null = null;
+  #turn = 0;
   readonly #watchers = new Set<Watcher>();
   readonly #now: () => number;
   readonly #free = () => this.#hold(null);
@@ -28,12 +29,21 @@ export class Mutex {
   /** `task` once the tasks before it settled; `operation` says what it does, for a watcher. */
   run<T>(task: () => T | Promise<T>, operation: string | null = null): Promise<T> {
     const next = this.#tail.then(() => {
+      this.#turn += 1;
       // Kept with no watcher too: a request that starts watching mid-task hears this holder.
       this.#hold({ operation, since: this.#now() });
       return task();
     });
     this.#tail = next.then(this.#free, this.#free);
     return next;
+  }
+
+  /**
+   * Row 011-340: how many tasks have started; during a task, its own turn.
+   * An admission carries the turn it was read in (`checkTurn`).
+   */
+  get turn(): number {
+    return this.#turn;
   }
 
   /**
