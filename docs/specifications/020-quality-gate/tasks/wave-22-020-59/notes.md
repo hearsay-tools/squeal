@@ -61,6 +61,7 @@ D7: no report change. `runs[].durationMs` sums the chunks' runs, which run one a
   - `test/cli/code-gate-keep{,-busy,-early,-kill,-node-test,-stop}.test.ts`, `test/version-sensitive.test.ts`: no known failures.
   - After the change to the time rule: `test/code/gate/{chunks,lanes-chunks,lanes-retry,collect-lanes,collect-budget}.test.ts`, `test/cli/code-gate-keep-{kill,early}.test.ts`: no known failures at revision 47.
   - `test/code/gate/{collect,collect-lanes,collect-retry,collect-early,collect-budget,collect-kept-log,collect-stored}.test.ts`, `test/cli/code-gate{,-log,-retry,-stored,-relaunch}.test.ts`: no known failures.
+- Final `squeal status --wait 60000` over every changed `src`/`test` path at revision 48: 59 test files pass; 4 fail with bundle drift only (`test/harness/{plugin,pi/package,opencode/package,codex/packaging/runtime}.test.ts`: `cli/squeal.mjs differs from the build`), expected because the wave forbids a build in a worker tree; 335 still queued (the host was busy, 21 of 24 cores), so their verdict is unknown.
 - Not run: `pnpm run build` (the wave forbids it in a worker tree), a full suite (CI's).
 
 ## Measurement (the parent's condition 2)
