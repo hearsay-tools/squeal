@@ -1,4 +1,5 @@
 import { readRunLoads } from "../retry/load.js";
+import { type LoadedModule, writeLoadedModules } from "../store/loaded-modules.js";
 import type { ProjectName, RelativePath } from "../types/common.js";
 import type { CheckKey, TestFileRef } from "../types/keys.js";
 import type { RunReport } from "../types/runner.js";
@@ -187,6 +188,7 @@ function storeFile(
   // Review 0.1.266, B1: a worktree whose merge hold names the stored key's inputs takes no heal.
   const inputs = [...entry.inputs, ...(growth?.growth ?? [])];
   const prior = storeResults(context, records, healsUnheld(store, inputs));
+  storeLoaded(record, file.ref, storeKey);
   recordFailedLoad(context, tier.runId, tier.loadPerCpu ?? null, records);
   store.failures.keepReplaced(failing, records, (run) => readRunLoads(store).get(run) ?? null);
   if (forced && file.rerunKey === key) endRerun(context, file);
@@ -202,6 +204,31 @@ function storeFile(
     });
   }
   if (decision.current) ledger.applyResults(file, key, records, checkpointId);
+}
+
+/**
+ * Spec 022 D3: the file's loaded list (`RunReport.loaded`), stored at the
+ * key its results are, each path with its hash now. A path nothing tracks,
+ * or gone, is left out; the run's own stability check holds the rest.
+ */
+function storeLoaded(record: TierRecord, ref: TestFileRef, key: CheckKey): void {
+  const { context, report } = record;
+  const list = report.loaded?.find(
+    (l) => l.testFile.project === ref.project && l.testFile.path === ref.path,
+  );
+  if (list === undefined) return;
+  const modules: LoadedModule[] = [];
+  for (const path of list.paths) {
+    const hash = context.keys.cache.hashOf(path);
+    if (typeof hash === "string") modules.push({ path, hash });
+  }
+  writeLoadedModules(context.store, {
+    project: ref.project,
+    path: ref.path,
+    key,
+    recordedAt: record.provenance.recordedAt,
+    modules,
+  });
 }
 
 /**
