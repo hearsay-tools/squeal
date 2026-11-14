@@ -2,16 +2,17 @@ import { describe, expect, it, vi } from "vitest";
 import { selectNamedFiles } from "../../src/cli/named-selection.js";
 import { waitForNamed } from "../../src/cli/status-wait-paths.js";
 import { CLOSURE_METHOD } from "../../src/core/keys/closure.js";
+import { markClosureWrite } from "../../src/core/store/closure-writes.js";
 import type { openStore as OpenStore } from "../../src/core/store/open.js";
 import type { Store } from "../../src/core/types/store.js";
 import { check, state } from "../status/helpers.js";
+import { claimAll, recordClosures } from "./closure-trust.js";
 import {
   ALL,
   answeringReaders,
   RUNTIME_READERS,
   SPAWNED,
   START,
-  storeClosures,
   TYPES,
 } from "./source-path-fixture.js";
 import { finish, key, NOW, ref, repoWith } from "./status-wait-fixture.js";
@@ -58,12 +59,14 @@ const CHANGED = RUNTIME_READERS[1] ?? "";
 function waiting() {
   const { repo, store } = repoWith([], ALL);
   const w = repo.mainId;
-  storeClosures(
+  recordClosures(
     store,
     ALL.filter((p) => p !== SPAWNED),
     w,
   );
   key(store, w, HELD, "queued");
+  // W's daemon is of this release: it claimed its states marker, so the closure marker is trusted.
+  claimAll(store);
   store.knownStates.upsertMany([
     state(w, check(HELD, "holds"), { validity: "pending", pendingPhase: "queued" }),
   ]);
@@ -83,10 +86,11 @@ function dropStart(store: Store, w: string) {
     updatedAt: NOW,
     updatedBy: w,
   });
+  markClosureWrite(store);
 }
 
 const CASES = [
-  { name: "adds the path", write: (s: Store, w: string) => storeClosures(s, [SPAWNED], w), n: 13 },
+  { name: "adds the path", write: (s: Store, w: string) => recordClosures(s, [SPAWNED], w), n: 13 },
   { name: "drops the path", write: dropStart, n: 11 },
 ];
 
