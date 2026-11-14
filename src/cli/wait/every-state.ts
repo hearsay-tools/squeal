@@ -1,4 +1,6 @@
-import { readHeader } from "../../core/state/header.js";
+import { isDeepStrictEqual } from "node:util";
+import { headerPolicy, headerWith } from "../../core/state/header.js";
+import { type HeaderPart, headerPart } from "../../core/state/header-part.js";
 import { statesMark } from "../../core/store/write-markers.js";
 import type { RevisionNumber, WorktreeId } from "../../core/types/common.js";
 import type { DeltaEntry } from "../../core/types/delivery.js";
@@ -15,8 +17,10 @@ import { type HeldRead, newsSince, type StartView } from "../status-wait-held.js
  * database's triggers move on every write, whoever writes), and reads them
  * again only when the marker moved, or when it cannot be trusted, as before. The news since the start is kept too while the revision stays
  * (`newsSince` is a function of the start, the states and the revision).
- * The header is made each poll from what it kept, so the revision, the
- * runner part and every other part read fresh.
+ * Row 011-345: so is the header's part made from the states, the rows and
+ * the policy (`headerPart`), kept while the policy reads the same; the
+ * revision, the runner part and every other input read fresh each poll
+ * (`headerWith`).
  */
 
 /** What a wait read every state at; kept across its polls. */
@@ -25,6 +29,8 @@ export interface EveryState {
   readonly states: readonly KnownState[];
   readonly keys?: readonly TestFileKeyRecord[];
   readonly news?: { readonly revision: RevisionNumber; readonly entries: readonly DeltaEntry[] };
+  /** The header's part made from `states`, `keys` and the policy it names. */
+  readonly part?: HeaderPart;
 }
 
 /** A wait's kept read, if any. */
@@ -54,7 +60,12 @@ export function readEvery(store: Store, id: WorktreeId, start: StartView, every:
   const kept = mark !== null && every.kept?.mark === mark ? every.kept : undefined;
   const states = kept?.states ?? store.knownStates.list(id);
   const keys = kept?.keys ?? store.testFileKeys.list(id);
-  const header = readHeader(store, id, states, keys);
+  const at = headerPolicy(store, id);
+  const part =
+    kept?.part !== undefined && isDeepStrictEqual(kept.part.policy, at.policy)
+      ? kept.part
+      : headerPart(states, keys, at.policy);
+  const header = headerWith(store, id, at, keys, part);
   const news =
     kept?.news?.revision === header.revision
       ? kept.news.entries
@@ -62,6 +73,6 @@ export function readEvery(store: Store, id: WorktreeId, start: StartView, every:
   every.kept =
     mark === null
       ? undefined
-      : { mark, states, keys, news: { revision: header.revision, entries: news } };
+      : { mark, states, keys, news: { revision: header.revision, entries: news }, part };
   return { header, states, keys, news };
 }
