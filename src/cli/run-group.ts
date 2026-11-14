@@ -101,7 +101,7 @@ export async function runGroupCommand(args: GroupArgs, io: CliIo, usage: string)
       `the daemon did not answer the request to run group ${name}${first.unanswered}; it may still take it once its current work allows`,
     );
   }
-  const taken = await takenRequest(socketPath, first, deadline);
+  const taken = await takenRequest(socketPath, first, deadline, name);
   if (typeof taken === "string") return noVerdict(taken);
   if ("pending" in taken) {
     io.stdout(pendingText(root, taken.pending, wait !== null));
@@ -164,11 +164,13 @@ export type TakenGroup = RunGroupResponse & { readonly requested: Requested };
  * poll with no answer by then is `pending` (row 019-24). A daemon that does
  * not know the request is `unsupported`: `GROUP_NOT_SUPPORTED` for
  * `run-group`, `NARROW_NOT_SUPPORTED` for `run-group-paths` (row 019-49).
+ * A failed request names `group` (row 011-337).
  */
 export async function takenRequest(
   socketPath: AbsolutePath,
   first: DaemonResponse,
   deadline: number,
+  group: string,
   unsupported: string = GROUP_NOT_SUPPORTED,
 ): Promise<TakenGroup | { readonly pending: RunGroupResponse } | string> {
   const outcome = await untilTaken({ loop: "run-group", socketPath, first, deadline });
@@ -181,13 +183,13 @@ export async function takenRequest(
     case "unsupported":
       return unsupported;
     case "refused":
-      return runFailed(outcome.error);
+      return runFailed(group, outcome.error);
     case "unknown group":
       return `the daemon's policy has no group "${outcome.answer.group}" yet; it reloads squeal.config.json when it sees the file change`;
     case "failed": {
       const { error } = outcome;
       const known = error === GROUP_NOT_SUPPORTED || error === NARROW_NOT_SUPPORTED;
-      return known ? error : runFailed(error);
+      return known ? error : runFailed(group, error);
     }
     case "stopped":
       return "the daemon stopped before taking the request";
@@ -196,8 +198,9 @@ export async function takenRequest(
   }
 }
 
-function runFailed(error: string): string {
-  return `squeal run <group> failed: ${error}`;
+/** Row 011-337: the group's name, not the literal `<group>`. */
+function runFailed(group: string, error: string): string {
+  return `squeal run ${group} failed: ${error}`;
 }
 
 /** `a`, `a and b`, `a, b and c`. */

@@ -1,7 +1,8 @@
 import { SLOW_NOT_SUPPORTED } from "../core/daemon/run-slow.js";
+import { NO_PASS } from "../core/scheduler/request-intake.js";
 import { plural } from "../core/text.js";
 import type { AbsolutePath } from "../core/types/common.js";
-import type { DaemonResponse, RunSlowResponse } from "../core/types/daemon.js";
+import type { DaemonResponse, RequestTaken, RunSlowResponse } from "../core/types/daemon.js";
 import { daemonSocket, worktreeRoot } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
 import { statusWaitCommand } from "./status-wait.js";
@@ -25,7 +26,9 @@ const RECORD_WAIT_MS = 10_000;
  * usage error, 3 when the wait ended before the scheduler took the request or
  * before the queued slow files had results (`slowWaitCode`, task 004-66).
  * Row 011-327: a request the daemon did not answer within its bound has no
- * verdict, 3 with `--wait`, 1 without.
+ * verdict, 3 with `--wait`, 1 without. Row 011-337: so has a request the
+ * daemon refused for want of a reconciliation pass (`NO_PASS`), as with
+ * `run --all --wait`.
  */
 export async function runSlowCommand(
   args: readonly string[],
@@ -46,16 +49,20 @@ export async function runSlowCommand(
   const socketPath = await daemonSocket(root);
   const started = Date.now();
   const deadline = started + (wait.waitMs ?? RECORD_WAIT_MS);
-  // Row 011-327 (decision 4 item 1): the request ends by the deadline; a busy daemon is words.
-  const first = await askWithin(socketPath, { type: "run-slow" }, deadline);
-  if (first !== null && "unanswered" in first) {
-    const text = `the daemon did not answer the run --slow request${first.unanswered}; it may still take it once its current work allows`;
+  const noVerdict = (text: string): number => {
     if (wait.waitMs === null) {
       io.stderr(`squeal: ${text}\n`);
       return 1;
     }
     io.stdout(`No verdict: ${text}\n`);
     return 3;
+  };
+  // Row 011-327 (decision 4 item 1): the request ends by the deadline; a busy daemon is words.
+  const first = await askWithin(socketPath, { type: "run-slow" }, deadline);
+  if (first !== null && "unanswered" in first) {
+    return noVerdict(
+      `the daemon did not answer the run --slow request${first.unanswered}; it may still take it once its current work allows`,
+    );
   }
   const requested = await taken(socketPath, first, io, deadline);
   if (requested === "no-daemon") {
@@ -63,19 +70,33 @@ export async function runSlowCommand(
     return 1;
   }
   if (requested === null) return 1;
+  if ("refused" in requested) return noVerdict(requested.refused);
   if ("pending" in requested) {
     io.stdout(pendingText(requested, wait.waitMs === null ? null : Date.now() - started));
     return wait.waitMs === null ? 0 : 3;
   }
-  const { revision, queued } = requested;
-  io.stdout(
-    queued > 0
-      ? `Slow tier requested at revision ${revision}: ${plural(queued, "slow file")} queued; they run once no fast work is pending.\n`
-      : `No slow files to run at revision ${revision}: none are declared in squeal.config.json or all are current.\n`,
-  );
+  io.stdout(requestedText(requested));
+  const { queued } = requested;
   if (wait.waitMs === null) return 0;
   const left = Math.max(0, wait.waitMs - (Date.now() - started));
   return statusWaitCommand(left, false, io, queued > 0);
+}
+
+/**
+ * What the scheduler queued (spec 004 D2). Row 011-337: an answer that names
+ * the install it waits for says so, as `run <group>`'s does (row 011-324).
+ */
+function requestedText({ revision, queued, installWait }: RequestTaken): string {
+  if (installWait !== undefined)
+    return `No slow files run at revision ${revision}: ${installWait}.\n`;
+  return queued > 0
+    ? `Slow tier requested at revision ${revision}: ${plural(queued, "slow file")} queued; they run once no fast work is pending.\n`
+    : `No slow files to run at revision ${revision}: none are declared in squeal.config.json or all are current.\n`;
+}
+
+/** Row 011-337: a request the daemon refused for want of a pass; the words after `squeal: ` or `No verdict: `. */
+interface Refused {
+  readonly refused: string;
 }
 
 /** A request the scheduler had not taken: its id, and the words after "did not answer" when a status request got no answer. */
@@ -111,14 +132,15 @@ export function pendingText(
 /**
  * Waits until the scheduler took the request or `deadline` (epoch ms)
  * passed (`untilTaken`). `null` after printing why it failed; `pending` with
- * the request's id when the deadline passed first.
+ * the request's id when the deadline passed first; `refused` when the daemon
+ * refused it for want of a pass, which the command words by `--wait`.
  */
 async function taken(
   socketPath: AbsolutePath,
   first: DaemonResponse | null,
   io: CliIo,
   deadline: number,
-): Promise<RunSlowResponse["requested"] | Pending | "no-daemon"> {
+): Promise<RunSlowResponse["requested"] | Pending | Refused | "no-daemon"> {
   if (first === null) return "no-daemon";
   const outcome = await untilTaken({ loop: "run-slow", socketPath, first, deadline });
   const failed = (text: string) => {
@@ -136,11 +158,11 @@ async function taken(
     case "refused":
       return failed(`run --slow failed: ${outcome.error}`);
     case "failed":
-      return failed(
-        outcome.error === SLOW_NOT_SUPPORTED
-          ? SLOW_NOT_SUPPORTED
-          : `run --slow failed: ${outcome.error}`,
-      );
+      if (outcome.error === SLOW_NOT_SUPPORTED) return failed(SLOW_NOT_SUPPORTED);
+      // Row 011-337: no verdict, as `run --all` gives; a daemon before the row words it alike.
+      if (outcome.error.startsWith(NO_PASS))
+        return { refused: `run --slow failed: ${outcome.error}` };
+      return failed(`run --slow failed: ${outcome.error}`);
     case "stopped":
       return failed("the daemon stopped before taking the request");
     // Row 011-327: a status request the daemon did not answer within its bound is a busy daemon.
