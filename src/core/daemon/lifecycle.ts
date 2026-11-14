@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
-import { pruneCodeStoreAfter } from "../code/store/prune-main.js";
+import { noCodeRemoved } from "../code/store/prune.js";
+import { pruneCodeSlicesAfter } from "../code/store/prune-main.js";
 import { dropGoneHarnesses, dropLeft, expireConsumers, lastDeparture } from "../delivery/expiry.js";
 import { OBSERVED_META_KEYS } from "../keys/observed-rows.js";
 import { markRest, recordHeartbeat } from "../presence/events.js";
@@ -440,14 +441,15 @@ export function startTimers(context: TimerContext): () => void {
           noneRemoved(),
         ),
       // Spec 015 D4 and D8 (row 015-11, agreed with the coordinator): the code store
-      // after the main store, while it exists and the policy is on.
+      // after the main store, while it exists and the policy is on. Row 011-350 (#220): in
+      // slices by the same driver, so a writer of another worktree gets turns between them.
       () =>
-        retries.run("pruning", [
-          [
-            "code prune",
-            () => pruneCodeStoreAfter(store, context.commonDir, context.policy, now()),
-          ],
-        ]),
+        void pruning.run(
+          () =>
+            pruneCodeSlicesAfter(store, context.commonDir, context.policy, now(), noCodeRemoved()),
+          undefined,
+          "code prune",
+        ),
     );
 
   const timers = [

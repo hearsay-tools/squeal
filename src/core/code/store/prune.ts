@@ -1,9 +1,10 @@
 import { str } from "../../store/codec.js";
 import type { Connection, Params } from "../../store/connection.js";
+import type { PruneSlice } from "../../store/prune.js";
 import type { EpochMs } from "../../types/common.js";
 import { COVERAGE_RECORD_VERSION } from "../coverage/record.js";
 import { pruneParts } from "./parts.js";
-import type { CodePruneOptions, CodePruneReport } from "./types.js";
+import type { CodePruneCounts, CodePruneOptions, CodePruneReport } from "./types.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -69,6 +70,35 @@ const PER_WORKTREE = [
  * `checks` rows nothing references go last.
  */
 export function pruneCodeStore(conn: Connection, options: CodePruneOptions): CodePruneReport {
+  const counts = noCodeRemoved();
+  for (const slice of pruneCodeSlices(conn, options, counts)) slice();
+  return { ...counts };
+}
+
+export function noCodeRemoved(): CodePruneCounts {
+  return {
+    countsRemoved: 0,
+    coverageRemoved: 0,
+    partsRemoved: 0,
+    worktreesRemoved: 0,
+    viewsRemoved: 0,
+    checksRemoved: 0,
+  };
+}
+
+/**
+ * Row 011-350 (#220): `pruneCodeStore` as slices, each one write transaction
+ * of at most `DELETE_BATCH` rows or `VACUUM_PAGES` pages, so its driver can
+ * leave the lock free between them (the daemon's `SlicedPrune`, as
+ * `pruneSlices` is for the main store). Each slice is yielded before it
+ * runs, and what follows is read once it ran. `counts` is filled in as the
+ * slices run.
+ */
+export function* pruneCodeSlices(
+  conn: Connection,
+  options: CodePruneOptions,
+  counts: CodePruneCounts,
+): Generator<PruneSlice, void, undefined> {
   const cutoff = options.now - options.retentionDays * DAY_MS;
   const live = JSON.stringify(options.worktrees);
 
@@ -76,14 +106,18 @@ export function pruneCodeStore(conn: Connection, options: CodePruneOptions): Cod
   const dead = deadWorktrees(conn, options.worktrees);
   if (dead.length > 0) {
     for (const [table, key] of PER_WORKTREE) {
-      deleteInBatches(conn, table, key, OF_WORKTREES, JSON.stringify(dead));
+      yield* deleteInBatches(conn, nothing, table, key, OF_WORKTREES, JSON.stringify(dead));
     }
   }
+  counts.worktreesRemoved = dead.length;
   // Row 015-12: the coverage step's meta, `coverage:<worktreeId>` and `coverage:<worktreeId>:<path>`.
-  deleteInBatches(conn, "meta", "key", COVERAGE_META_OF_DEAD, live);
+  yield* deleteInBatches(conn, nothing, "meta", "key", COVERAGE_META_OF_DEAD, live);
 
-  const viewsRemoved = deleteInBatches(
+  yield* deleteInBatches(
     conn,
+    (n) => {
+      counts.viewsRemoved += n;
+    },
     "views",
     "worktree_id, session_id, agent_id, check_id, measure",
     `(worktree_id, session_id, agent_id) NOT IN (
@@ -92,8 +126,11 @@ export function pruneCodeStore(conn: Connection, options: CodePruneOptions): Cod
     JSON.stringify(options.consumers),
   );
 
-  const countsRemoved = deleteInBatches(
+  yield* deleteInBatches(
     conn,
+    (n) => {
+      counts.countsRemoved += n;
+    },
     "counts",
     "blob, language, counter_version",
     `counted_at < ? AND NOT EXISTS (SELECT 1 FROM files f WHERE f.blob = counts.blob
@@ -101,27 +138,31 @@ export function pruneCodeStore(conn: Connection, options: CodePruneOptions): Cod
      AND counts.blob NOT IN (SELECT s.blob FROM states s)`,
     cutoff,
   );
-  const coverageRemoved = pruneCoverage(conn, options.resultKeys, cutoff);
-  const partsRemoved = pruneParts(conn, cutoff, DELETE_BATCH);
+  yield* pruneCoverage(conn, options.resultKeys, cutoff, (n) => {
+    counts.coverageRemoved += n;
+  });
+  yield* pruneParts(conn, cutoff, DELETE_BATCH, (n) => {
+    counts.partsRemoved += n;
+  });
 
-  const checksRemoved = deleteInBatches(
+  yield* deleteInBatches(
     conn,
+    (n) => {
+      counts.checksRemoved += n;
+    },
     "checks",
     "id",
     `id NOT IN (SELECT check_id FROM states UNION SELECT check_id FROM views
        UNION SELECT check_id FROM transitions)`,
   );
 
-  vacuum(conn);
-  return {
-    countsRemoved,
-    coverageRemoved,
-    partsRemoved,
-    worktreesRemoved: dead.length,
-    viewsRemoved,
-    checksRemoved,
-  };
+  yield* vacuum(conn);
 }
+
+/** Where a batch's deleted rows are counted. */
+type Removed = (n: number) => void;
+
+const nothing: Removed = () => {};
 
 /** The worktree ids the per-worktree tables hold that are not in `live`. */
 function deadWorktrees(conn: Connection, live: readonly string[]): string[] {
@@ -140,27 +181,31 @@ function deadWorktrees(conn: Connection, live: readonly string[]): string[] {
  * (from `coverage_stored`, without the records), so a record stored after
  * that read stays (row 011-315).
  */
-function pruneCoverage(
+function* pruneCoverage(
   conn: Connection,
   resultKeys: CodePruneOptions["resultKeys"],
   cutoff: EpochMs,
-): number {
+  removed: Removed,
+): Generator<PruneSlice, void, undefined> {
   if (resultKeys === undefined) {
-    return deleteInBatches(
+    yield* deleteInBatches(
       conn,
+      removed,
       "coverage",
       COVERAGE_KEY,
       `recorded_at < ? OR ${OLDER_RECORD}`,
       cutoff,
       COVERAGE_RECORD_VERSION,
     );
+    return;
   }
   const held = conn
     .all("SELECT DISTINCT result_key FROM coverage")
     .map((row) => str(row, "result_key"));
   const kept = new Set(typeof resultKeys === "function" ? resultKeys(held) : resultKeys);
-  return deleteInBatches(
+  yield* deleteInBatches(
     conn,
+    removed,
     "coverage",
     COVERAGE_KEY,
     `result_key IN (SELECT value FROM json_each(?)) OR ${OLDER_RECORD}`,
@@ -171,35 +216,42 @@ function pruneCoverage(
 
 /**
  * Deletes the rows of `table` matching `where`, `DELETE_BATCH` at a time,
- * each batch its own write transaction that re-tests its rows. Returns the
- * number deleted.
+ * each batch one slice, its own write transaction that re-tests its rows;
+ * `removed` counts what each batch deleted. The next batch follows only one
+ * that was full.
  */
-function deleteInBatches(
+function* deleteInBatches(
   conn: Connection,
+  removed: Removed,
   table: string,
   key: string,
   where: string,
   ...params: Params
-): number {
-  let removed = 0;
-  for (;;) {
-    const changed = conn.transaction(() =>
-      conn.run(
-        `DELETE FROM ${table} WHERE (${key}) IN (
-           SELECT ${key} FROM ${table} WHERE ${where} LIMIT ${DELETE_BATCH})`,
-        ...params,
-      ),
-    );
-    removed += changed;
-    if (changed < DELETE_BATCH) return removed;
+): Generator<PruneSlice, void, undefined> {
+  let changed = DELETE_BATCH;
+  while (changed === DELETE_BATCH) {
+    changed = 0;
+    yield () => {
+      changed = conn.transaction(() =>
+        conn.run(
+          `DELETE FROM ${table} WHERE (${key}) IN (
+             SELECT ${key} FROM ${table} WHERE ${where} LIMIT ${DELETE_BATCH})`,
+          ...params,
+        ),
+      );
+      removed(changed);
+    };
   }
 }
 
-/** Frees pages a few hundred per step, so no step holds the write lock for long. */
-function vacuum(conn: Connection): void {
+/**
+ * Frees pages `VACUUM_PAGES` per slice, each its own write transaction, so
+ * no step holds the write lock for long; stops when a step frees nothing.
+ */
+function* vacuum(conn: Connection): Generator<PruneSlice, void, undefined> {
   let free = freePages(conn);
   while (free > 0) {
-    conn.db.exec(`PRAGMA incremental_vacuum(${VACUUM_PAGES})`);
+    yield () => conn.transaction(() => conn.db.exec(`PRAGMA incremental_vacuum(${VACUUM_PAGES})`));
     const left = freePages(conn);
     if (left >= free) return;
     free = left;

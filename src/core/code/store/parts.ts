@@ -1,5 +1,6 @@
 import { num } from "../../store/codec.js";
 import type { Connection } from "../../store/connection.js";
+import type { PruneSlice } from "../../store/prune.js";
 import type { EpochMs } from "../../types/common.js";
 import { isManifest, readManifest } from "../coverage/parts.js";
 
@@ -60,33 +61,45 @@ export function markParts(conn: Connection, bound: EpochMs): Set<number> {
   return marked;
 }
 
-/** Deletes the parts used before `cutoff` that `marked` does not hold, `batch` per transaction. */
-export function sweepParts(
+/**
+ * Deletes the parts used before `cutoff` that `marked` does not hold,
+ * `batch` per slice, each its own write transaction (row 011-350);
+ * `removed` counts what each deleted.
+ */
+export function* sweepParts(
   conn: Connection,
   cutoff: EpochMs,
   marked: ReadonlySet<number>,
   batch: number,
-): number {
+  removed: (n: number) => void,
+): Generator<PruneSlice, void, undefined> {
   const ids = conn
     .all("SELECT id FROM coverage_parts WHERE used_at < ?", cutoff)
     .map((row) => num(row, "id"))
     .filter((id) => !marked.has(id));
-  let removed = 0;
   for (let i = 0; i < ids.length; i += batch) {
     const some = JSON.stringify(ids.slice(i, i + batch));
-    removed += conn.transaction(() =>
-      conn.run(
-        "DELETE FROM coverage_parts WHERE id IN (SELECT value FROM json_each(?)) AND used_at < ?",
-        some,
-        cutoff,
-      ),
-    );
+    yield () => {
+      removed(
+        conn.transaction(() =>
+          conn.run(
+            "DELETE FROM coverage_parts WHERE id IN (SELECT value FROM json_each(?)) AND used_at < ?",
+            some,
+            cutoff,
+          ),
+        ),
+      );
+    };
   }
-  return removed;
 }
 
-/** `markParts`, then `sweepParts`; 0 with no `coverage_parts`. */
-export function pruneParts(conn: Connection, cutoff: EpochMs, batch: number): number {
-  if (!hasParts(conn)) return 0;
-  return sweepParts(conn, cutoff, markParts(conn, cutoff + PART_REFRESH_MS), batch);
+/** `markParts`, then `sweepParts`; no slice with no `coverage_parts`. */
+export function* pruneParts(
+  conn: Connection,
+  cutoff: EpochMs,
+  batch: number,
+  removed: (n: number) => void,
+): Generator<PruneSlice, void, undefined> {
+  if (!hasParts(conn)) return;
+  yield* sweepParts(conn, cutoff, markParts(conn, cutoff + PART_REFRESH_MS), batch, removed);
 }
