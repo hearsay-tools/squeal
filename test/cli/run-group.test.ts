@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
 import { socketPathFor } from "../../src/core/daemon/paths.js";
 import { GROUP_NOT_SUPPORTED } from "../../src/core/daemon/run-group.js";
+import { AWAITING_INSTALL_REASON } from "../../src/core/scheduler/install.js";
+import { REINSTALLED_REASON } from "../../src/core/scheduler/narrow-run.js";
 import { squealRepo } from "../harness/helpers.js";
 import { closeFakeDaemons, fakeDaemon, lockStore, received } from "./fake-daemon.js";
 
@@ -43,7 +45,7 @@ function repo(checks: readonly object[] | null = CHECKS) {
 
 function group(
   name: string,
-  requested: { revision: number; queued: number } | null,
+  requested: { revision: number; queued: number; installWait?: string } | null,
   extra: { unknown?: boolean; error?: string | null } = {},
 ) {
   return {
@@ -111,6 +113,40 @@ describe("squeal run <group> (spec 019 D6)", () => {
         "No test files of group e2e to run at revision 6: the group has none or all are current.\n",
       stderr: "",
     });
+  });
+
+  // Row 011-324 (research `request-intake.md`, difference 3): not "none or all are current".
+  it.each([AWAITING_INSTALL_REASON, REINSTALLED_REASON])(
+    "names the install wait that queued nothing: %s",
+    async (reason) => {
+      const r = repo();
+      await fakeDaemon(socketPathFor(r.worktreeId), {
+        "run-group": [group("e2e", { revision: 6, queued: 0, installWait: reason })],
+      });
+      expect(await run(["run", "e2e"], r.root)).toEqual({
+        code: 0,
+        stdout: `No test files of group e2e run at revision 6: ${reason}.\n`,
+        stderr: "",
+      });
+    },
+  );
+
+  // Row 011-324: `run --slow` reads no reason; it prints and exits as without one.
+  it("run --slow ignores the install wait in its answer", async () => {
+    const r = repo(null);
+    const slow = async (requested: object) => {
+      await fakeDaemon(socketPathFor(r.worktreeId), {
+        "run-slow": [{ ok: true, type: "run-slow", requestId: "s1", requested, error: null }],
+      });
+      const result = await run(["run", "--slow"], r.root);
+      closeFakeDaemons();
+      return result;
+    };
+    const without = await slow({ revision: 2, queued: 0 });
+    expect(without.code).toBe(0);
+    expect(await slow({ revision: 2, queued: 0, installWait: AWAITING_INSTALL_REASON })).toEqual(
+      without,
+    );
   });
 
   it("runs a default group by name with no checks key, through run-group", async () => {
