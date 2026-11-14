@@ -70,7 +70,7 @@ import { narrowRequest, REINSTALLED_REASON } from "./narrow-run.js";
 import type { SchedulerOptions } from "./options.js";
 import { PoolWaits, publishPoolWaits } from "./pool-wait.js";
 import { priorityOf } from "./queue.js";
-import { BacklogQuiet, publishQuiet, quietSleepMs } from "./quiet.js";
+import { BacklogQuiet, publishQuiet } from "./quiet.js";
 import { TierRecords } from "./record.js";
 import { RequestIntake } from "./request-intake.js";
 import { focusRequest, groupRequest, promoteRequest } from "./request-intake-requests.js";
@@ -84,7 +84,10 @@ import { SlowRelease } from "./slow-release.js";
 import { type SlowHost, type SlowRun, SlowTier } from "./slow-tier.js";
 import { supersededIn } from "./store-decision.js";
 import { StoredKeys } from "./stored-keys.js";
-import { cancels, endTier, executeTier, laneOf, selectTier, type Tier } from "./tiers.js";
+import { liveAsks, liveView } from "./tier-live.js";
+import { type Idle, idleOf, planTiers, type TierPlan } from "./tier-plan.js";
+import { startNext } from "./tier-start.js";
+import { cancels, endTier, executeTier, laneOf, type Tier } from "./tiers.js";
 import { WarmUp } from "./warm-up.js";
 import { TierYields } from "./yields.js";
 
@@ -1105,39 +1108,34 @@ class TierScheduler implements Scheduler {
             if (admitted.fast !== null) return null;
             const { context, ledger } = this.#started();
             this.#adopt(context, ledger);
-            // Row 011-269: with no lane free, a tier may start beside a named wait's batch.
-            const tier =
-              selectTier(context, ledger, this.#busyLanes(), this.#yields) ??
-              this.#besideTier(context, ledger);
-            if (tier === null) return null;
-            this.#fly(tier, install.stamp, null, admitted);
-            // The batch's tier no longer stands for the work that went beside it (row 011-269).
-            if (tier.beside === true) this.#cutTiers(null);
-            // A lane of slots fills every free slot in this hold, so its slots end, and record,
-            // together rather than one record per selection (task 011-21 slice 2).
-            for (let more = tier; more.slot === true; ) {
-              const again = selectTier(context, ledger, this.#busyLanes(), this.#yields);
-              if (again === null) break;
-              this.#fly(again, install.stamp, null, admitted);
-              more = again;
-            }
-            return "flown" as const;
+            // Row 011-346: the tier plan, then its act step, in this lock turn.
+            const next = startNext(context, ledger, this.#plan(context, ledger), {
+              check: (lane) => checkTurn(admitted, this.#lock.turn, lane),
+              fly: (tier) => {
+                this.#fly(tier, install.stamp, null, admitted);
+                // The batch's tier no longer stands for the work that went beside it (row 011-269).
+                if (tier.beside === true) this.#cutTiers(null);
+              },
+            });
+            return "tier" in next ? ("flown" as const) : next.idle;
           }, "selecting the next tier");
           this.#busy?.landed();
           if (next === "held") {
             await this.#slowRelease.idle();
             break;
           }
-          if (next !== null) continue;
+          if (next === "flown" || next === "runner-work") continue;
           if (this.#admit().halts.has("reinstalled")) break;
           // Spec 004 D2, 019 D3: each group's lane that may start decides the rest.
           if (await this.#groupLanesNext(install.stamp)) continue;
-          if (this.#started().ledger.claims.waiting) {
+          // Row 011-346: the plan's idle answer, or, when no plan ran, the same answer read now.
+          const idle = next ?? this.#idleNow();
+          if (idle.idle === "claims" || this.#started().ledger.claims.waiting) {
             await this.#claimWake();
             continue;
           }
-          if (await this.#quietWake()) continue;
-          if (await this.#capacityWake()) continue;
+          if (await this.#quietWake(idle)) continue;
+          if (await this.#capacityWake(idle)) continue;
           if (this.#inFlight.size === 0 && !this.#woken) {
             // Row 015-117: with nothing else to do, the once-after-upgrade re-walk takes a chunk.
             if (await this.#queueRewalk()) continue;
@@ -1300,14 +1298,29 @@ class TierScheduler implements Scheduler {
   }
 
   /**
-   * A tier beside a running batch's tier (`besideFiles`, spec 011 C4 step 5
-   * as amended 2026-10-29, row 011-269), an edit's tier of its lane in the
-   * lane's second instance; `null` when none is due.
+   * The tier plan of the fast lanes (row 011-346): the free lanes first;
+   * when they start nothing, a tier beside a running batch's tier
+   * (`besideFiles`, spec 011 C4 step 5 as amended 2026-10-29, row 011-269),
+   * an edit's tier of its lane in the lane's second instance; after a
+   * backlog slot, the next selection again, so a lane of slots fills every
+   * free slot in this hold and its slots end, and record, together (task
+   * 011-21 slice 2).
    */
-  #besideTier(context: SchedulerContext, ledger: Ledger): Tier | null {
-    const beside = besideFiles(context, ledger, this.#running());
-    if (beside === null) return null;
-    return selectTier(context, ledger, new Set(), this.#yields, false, { wide: false, beside });
+  #plan(context: SchedulerContext, ledger: Ledger): TierPlan {
+    const view = liveView(context, ledger, {
+      busy: () => this.#busyLanes(),
+      cut: this.#yields,
+      beside: () => besideFiles(context, ledger, this.#running()),
+      slots: true,
+    });
+    return planTiers(view, liveAsks(context, ledger));
+  }
+
+  /** Why no fast tier starts, read now: what the plan answers when it ends idle. */
+  #idleNow(): Idle {
+    const { context, ledger } = this.#started();
+    const view = liveView(context, ledger, { busy: () => this.#busyLanes(), cut: this.#yields });
+    return idleOf(view, liveAsks(context, ledger));
   }
 
   /** A batch's tier or one beside it in `lane` ended: with no batch left there, its second instance closes. */
@@ -1363,13 +1376,12 @@ class TierScheduler implements Scheduler {
   /**
    * A lane with a fast file queued waits for quiet (C4 step 5 as amended
    * 2026-10-21, row 011-82): the pump looks again at the wait's end, at most
-   * `QUIET_RECHECK_MS` on, or on `#notify`. False when no such lane waits.
+   * `QUIET_RECHECK_MS` on, or on `#notify`. The wait is the plan's, from its
+   * clock reading (row 011-346). False when no such lane waits.
    */
-  async #quietWake(): Promise<boolean> {
-    const { context, ledger } = this.#started();
-    const ms = quietSleepMs(context, ledger);
-    if (ms === null) return false;
-    await this.#eventOrAfter(ms);
+  async #quietWake(idle: Idle): Promise<boolean> {
+    if (idle.idle !== "quiet" || idle.wakeAt === null) return false;
+    await this.#eventOrAfter(idle.wakeAt - idle.at);
     return true;
   }
 
@@ -1377,10 +1389,12 @@ class TierScheduler implements Scheduler {
    * A tier the pool refused waits as a waiter (011 C10 as amended
    * 2026-10-21, row 011-96): the pump looks again when a tier of this daemon
    * ends, on `#notify`, or after `CAPACITY_RECHECK_MS`. False when the pool
-   * refused none since the last look.
+   * refused none since the last look: the plan's tier, a slow lane's or a
+   * lint part's (`TierCapacity.refused`, which this look clears).
    */
-  async #capacityWake(): Promise<boolean> {
-    if (this.#capacity?.refused() !== true) return false;
+  async #capacityWake(idle: Idle): Promise<boolean> {
+    const refused = this.#capacity?.refused() === true;
+    if (!refused && idle.idle !== "pool") return false;
     await this.#eventOrAfter(CAPACITY_RECHECK_MS);
     return true;
   }
