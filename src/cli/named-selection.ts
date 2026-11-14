@@ -3,11 +3,12 @@ import { isAbsolute, relative, resolve, sep } from "node:path";
 import { readPolicy } from "../core/daemon/policy.js";
 import { testFileId } from "../core/keys/reverse-index.js";
 import type { AbsolutePath, RelativePath, WorktreeId } from "../core/types/common.js";
-import type { CheckKey, TestFileRef } from "../core/types/keys.js";
+import type { TestFileRef } from "../core/types/keys.js";
 import type { Policy } from "../core/types/policy.js";
 import type { Store } from "../core/types/store.js";
 import type { TestFileKeyRecord } from "../core/types/store-records.js";
 import { notRunTestFile } from "./retry-unlisted.js";
+import { StoredClosures, storedReaders } from "./stored-closures.js";
 
 /**
  * The test files named paths select (spec 005 D2), in the worktree's listing
@@ -62,7 +63,8 @@ export interface UnmatchedPath {
  * `readers`, the daemon's answer to the wait's sync, a path it names selects
  * the listed test files whose closure in the daemon's key index holds it, at
  * the synced revision, whatever another worktree wrote since; a path it does
- * not name reads the stored closures. The stored closure is
+ * not name reads the stored closures, which `stored` keeps across a wait's
+ * polls until a closure is written (row 011-44). The stored closure is
  * the newest any worktree wrote; it is this worktree's when this worktree
  * wrote it, or when the writer's current key for the file is this
  * worktree's, since a key covers every closure path and its content (as
@@ -78,19 +80,18 @@ export function selectNamedFiles(
   cwd: AbsolutePath,
   paths: readonly string[],
   readers?: ReadonlyMap<RelativePath, readonly TestFileRef[]>,
+  stored: StoredClosures = new StoredClosures(),
 ): NamedSelection {
   const rows = store.testFileKeys.list(worktreeId);
-  // Read only for a path no test file has: every stored closure is a large read (task 011-42).
-  let closures: ReturnType<typeof validClosures> | undefined;
   const readersOf = (rel: RelativePath): TestFileKeyRecord[] => {
     const named = readers?.get(rel);
     if (named !== undefined) {
       const ids = new Set(named.map(testFileId));
       return rows.filter((row) => ids.has(testFileId(row.testFile)));
     }
-    closures ??= validClosures(store, worktreeId, rows);
-    const valid = closures;
-    return rows.filter((row) => valid.get(row)?.has(rel) === true);
+    // Read only for a path no test file has: every stored closure is a large read (task 011-42),
+    // which a wait's `stored` keeps until a closure is written (row 011-44).
+    return storedReaders(store, worktreeId, rows, stored.read(store), rel);
   };
   const selected = new Map<string, TestFileRef>();
   const unmatched: UnmatchedPath[] = [];
@@ -164,34 +165,6 @@ function unmatchedOf(
   const fromRoot = worktreePath(root, root, path);
   const listed = fromRoot !== null && rows.some((row) => row.testFile.path === fromRoot);
   return listed ? { ...own, fromRoot } : own;
-}
-
-/** Each row's stored closure, when it is valid for the row's key (`selectNamedFiles`). */
-function validClosures(
-  store: Store,
-  worktreeId: WorktreeId,
-  rows: readonly TestFileKeyRecord[],
-): ReadonlyMap<TestFileKeyRecord, ReadonlySet<RelativePath>> {
-  const records = new Map(store.testFiles.list().map((r) => [testFileId(r.testFile), r]));
-  const keys = new Map<WorktreeId, ReadonlyMap<string, CheckKey | null>>();
-  const keyOf = (id: WorktreeId, ref: TestFileRef) => {
-    let byFile = keys.get(id);
-    if (byFile === undefined) {
-      byFile = new Map(store.testFileKeys.list(id).map((r) => [testFileId(r.testFile), r.key]));
-      keys.set(id, byFile);
-    }
-    return byFile.get(testFileId(ref)) ?? null;
-  };
-  const closures = new Map<TestFileKeyRecord, ReadonlySet<RelativePath>>();
-  for (const row of rows) {
-    const record = records.get(testFileId(row.testFile));
-    if (record === undefined) continue;
-    const own =
-      record.updatedBy === worktreeId ||
-      (row.key !== null && row.key === keyOf(record.updatedBy, row.testFile));
-    if (own) closures.set(row, new Set(record.closure.paths));
-  }
-  return closures;
 }
 
 /**
