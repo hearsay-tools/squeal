@@ -19,7 +19,7 @@ import {
   startScriptedProvider,
 } from "../fixtures/opencode/scripted-provider.js";
 import { piBase as runBase } from "./pi.js";
-import { awaitGroups } from "./process-groups.js";
+import { awaitGroups, StillAlive } from "./process-groups.js";
 import { removeTree } from "./remove-tree.js";
 
 /**
@@ -105,10 +105,12 @@ export interface OpenCodeRunOptions {
   /**
    * Awaited once OpenCode's process group is gone and before anything removes the run's
    * directory, on success and on failure: waits for what OpenCode started outside its group,
-   * such as a plugin's detached processes, which can still write there (row 011-336). Its
-   * rejection fails a run that had not failed already.
+   * such as a plugin's detached processes, which can still write there (row 011-336). `home` is
+   * the run's private HOME, which OpenCode passes to every process it starts, so `settle` can
+   * tell this run's processes from any other. Its rejection fails a run that had not failed
+   * already; a `StillAlive` rejection also leaves the run's directory in place.
    */
-  settle?: () => Promise<void>;
+  settle?: (owned: { readonly home: string }) => Promise<void>;
   timeoutMs?: number;
 }
 
@@ -186,6 +188,8 @@ export async function runOpenCode(options: OpenCodeRunOptions): Promise<OpenCode
   const dir = earlier?.dir ?? mkdtempSync(join(runBase(), "squeal-opencode-"));
   const provider = await startScriptedProvider({ plan: options.plan });
   let child: ChildProcess | undefined;
+  let ending: Promise<void> | undefined;
+  const end = () => (ending ??= ended(child, options, dir));
   try {
     const cwd = join(dir, "proj");
     const env = isolate(dir, options, provider.url);
@@ -225,7 +229,7 @@ export async function runOpenCode(options: OpenCodeRunOptions): Promise<OpenCode
         ? await serve({ server: child, out, cwd, options, provider, deadline })
         : undefined;
     const exitCode = await Promise.race([out.exited, deadline]);
-    await ended(child, options);
+    await end();
     const events = options.mode === "run" ? out.lines().flatMap(parseEvent) : [];
     sessionID ??= events.find((event) => typeof event.sessionID === "string")?.sessionID as string;
     return {
@@ -242,11 +246,7 @@ export async function runOpenCode(options: OpenCodeRunOptions): Promise<OpenCode
       cleanup: () => removeTree(dir),
     };
   } catch (error) {
-    // OpenCode and what it started can still write in the run's directory: end them first. The
-    // run's own error is the one to report; `settle` has ended what it waited for.
-    await ended(child, options).catch(() => undefined);
-    if (earlier === undefined) removeTree(dir);
-    throw error;
+    throw await afterFailure(error, end, dir, earlier === undefined);
   } finally {
     if (child) killGroup(child, "SIGKILL");
     await provider.close();
@@ -276,7 +276,7 @@ function isolate(dir: string, options: OpenCodeRunOptions, url: string): NodeJS.
   return {
     PATH: [dirname(process.execPath), process.env.PATH ?? ""].join(delimiter),
     ...options.env,
-    HOME: join(dir, "home"),
+    HOME: homeOf(dir),
     TMPDIR: join(dir, "tmp"),
     XDG_CONFIG_HOME: xdg("config"),
     XDG_DATA_HOME: xdg("data"),
@@ -507,19 +507,51 @@ function killLiveGroups(): void {
   for (const pid of liveGroups) kill(pid, "SIGKILL");
 }
 
-/** How long OpenCode's process group may take to go after its SIGKILL before the run goes on. */
+/** The run's private HOME, which OpenCode and every process it starts inherit. */
+const homeOf = (dir: string) => join(dir, "home");
+
+/** How long OpenCode's process group may take to go after its SIGKILL. */
 const GROUP_GONE_MS = 10_000;
 
 /**
  * SIGKILL to OpenCode's process group, the wait until no process of it is left, then the
- * caller's `settle`: after it, nothing the run started writes in the run's directory.
+ * caller's `settle`: after it, nothing the run started writes in the run's directory. A process
+ * of the group still alive after the wait fails it (`StillAlive`), before `settle`.
  */
-async function ended(child: ChildProcess | undefined, options: OpenCodeRunOptions): Promise<void> {
+async function ended(
+  child: ChildProcess | undefined,
+  options: OpenCodeRunOptions,
+  dir: string,
+): Promise<void> {
   if (child?.pid !== undefined) {
     killGroup(child, "SIGKILL");
-    await awaitGroups([child.pid], GROUP_GONE_MS);
+    const { alive } = await awaitGroups([child.pid], { graceMs: GROUP_GONE_MS });
+    if (alive.length > 0) throw new StillAlive("OpenCode's processes", alive);
   }
-  await options.settle?.();
+  await options.settle?.({ home: homeOf(dir) });
+}
+
+/**
+ * A failed run's end, and the error to throw: `end` ends what the run started, then a `fresh`
+ * run's directory `dir` is removed, and the error is the run's own. When a process outlived its
+ * SIGKILL, `dir` stays, as that process can still write there, and the error names it, with the
+ * run's error as its cause (review 011-336 S1). Another failure of `end`, such as a bridge that
+ * had to be killed, is dropped: what it waited for has ended, and the run's error comes first.
+ */
+export async function afterFailure(
+  error: unknown,
+  end: () => Promise<void>,
+  dir: string,
+  fresh: boolean,
+): Promise<unknown> {
+  const failure = await end().then(
+    () => null,
+    (thrown: unknown) => thrown,
+  );
+  if (failure instanceof StillAlive)
+    return new Error(`${failure.message}; ${dir} was not removed`, { cause: error });
+  if (fresh) removeTree(dir);
+  return error;
 }
 
 function killGroup(child: ChildProcess, signal: NodeJS.Signals): void {
