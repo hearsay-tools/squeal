@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.486";
+  if (true) return "0.1.487";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -83940,14 +83940,15 @@ function errorResponse(error) {
 // src/cli/status-sync.ts
 var UNSUPPORTED = { state: "unsupported" };
 var SYNC_POLL_MS = 250;
-function syncDaemon(root, pollMs, paths = []) {
+function syncDaemon(root, pollMs, paths = [], deadline = Number.POSITIVE_INFINITY) {
   let current2 = { state: "pending" };
   let stopped = false;
   const isStopped = () => stopped;
   const request = syncRequest(paths);
+  const timeoutMs = () => Math.min(CLI_SOCKET_TIMEOUT_MS, Math.ceil(deadline - performance.now()));
   const answered2 = (async () => {
     for (; ; ) {
-      const outcome2 = await syncOnce(root, request, pollMs, isStopped);
+      const outcome2 = await syncOnce(root, request, pollMs, isStopped, timeoutMs);
       if (outcome2 !== "again") return outcome2;
     }
   })().then(
@@ -83993,21 +83994,24 @@ function syncedOf(response, revision) {
   if (response.readers === void 0) return synced;
   return { ...synced, readers: new Map(Object.entries(response.readers)) };
 }
-async function syncOnce(root, request, pollMs, stopped) {
-  const socketPath = await daemonSocket(root).catch(() => null);
-  if (socketPath === null || stopped()) return UNSUPPORTED;
-  const first2 = await askDaemon(socketPath, request).catch(() => null);
+async function syncOnce(root, request, pollMs, stopped, timeoutMs) {
+  const ended2 = () => stopped() || timeoutMs() <= 0;
+  if (ended2()) return UNSUPPORTED;
+  const socketPath = await daemonSocket(root, timeoutMs()).catch(() => null);
+  if (socketPath === null || ended2()) return UNSUPPORTED;
+  const first2 = await askDaemon(socketPath, request, timeoutMs()).catch(() => null);
   if (first2 === null || !first2.ok || first2.type !== "sync") return UNSUPPORTED;
   let state = first2;
   for (; ; ) {
     if (state.revision !== null) return syncedOf(state, state.revision);
     if (state.error !== null) return UNSUPPORTED;
     await sleep9(pollMs, void 0, { ref: false });
-    if (stopped()) return UNSUPPORTED;
-    const next = await askDaemon(socketPath, {
-      type: "sync-status",
-      requestId: first2.requestId
-    }).catch(() => void 0);
+    if (ended2()) return UNSUPPORTED;
+    const next = await askDaemon(
+      socketPath,
+      { type: "sync-status", requestId: first2.requestId },
+      timeoutMs()
+    ).catch(() => void 0);
     if (next === void 0) continue;
     if (next === null || !next.ok || next.type !== "sync") return "again";
     state = next;
@@ -85238,7 +85242,7 @@ async function namedSnapshot(cwd, paths, options) {
         cwd,
         paths
       );
-      sync = (options.sync ?? syncDaemon)(context.root, pollMs, sources);
+      sync = options.sync === void 0 ? syncDaemon(context.root, pollMs, sources, started2 + settleMs) : options.sync(context.root, pollMs, sources);
       return { root: context.root };
     });
     if ("available" in found3) return unread(found3);
