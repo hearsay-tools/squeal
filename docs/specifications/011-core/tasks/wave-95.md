@@ -34,3 +34,33 @@ Check, each as proven, plausible or unverified:
 6. **Scope**: only `src/core/scheduler/`, `test/scheduler/`, the notes, the version and bundles; no key change (`test/keys/key-format.test.ts` passes without a raise); the 7 `selectTier` test files unchanged.
 
 The coordinator's tree passed lint, typecheck, `check:version`, `key-format` and `version-sensitive` (19 tests) at the candidate; the worker ran the 7 `selectTier` files, the new plan and act tests, and 58 real-scheduler files directly (notes). CI is the full suite. Host policy as in `wave-85.md`; never the real `HOME`. Write `reviews/0.1.507.md` and commit it on your branch.
+
+## W2: rows 011-347 and 011-349, one clock reading orders the queue; the old entry point goes
+
+Use /worker. Shape: repair (011-347, test first), then finish (011-349). Effort medium. Starts after 011-346 lands; runs beside W3, one candidate for both.
+
+Outcome: one decision orders the queue at the plan's `now`, and `selectTier` is gone with its plan and act cases moved to the plan table and the act tests.
+
+Read: board rows 011-347 and 011-349; `research/tier-plan.md` ("One clock reading", "Tests: replace, don't layer"); `tasks/011-346/notes.md` ("For 011-347, 011-348 and 011-349" and the table of cases the plan repeats); `test/keys/validity/compare.test.ts` and `reach.test.ts` before any edit to `queue.ts` or `promotions.ts`.
+
+Seam for 011-347: `Promotions.rankOf` (`promotions.ts:145`) and `queue.ts:548-563`; the live view's `ordered` and `orderedBatches` (`tier-live.ts:60-61`). First edit: a test of a promotion that expires between two of the queue's clock readings in one decision; then pass `view.now` through. If it cannot fail today, say why in the notes and pin it in the plan table.
+
+Seam for 011-349: the `selectTier` wrapper in `tiers.ts`; move its doc comment to `tier-pass.ts`. `batch-select`, `focused-group-turn` and `promoted-tier-select` go whole; `backlog-quiet-select`, `catch-up-quiet-select`, `batch-busy-host` and `pool-wait` keep only their quiet-state, publishing and `PoolWaits` cases. Each moved case is named in the notes with its new row.
+
+Owns: `queue.ts`, `promotions.ts`, `tier-live.ts`, `tiers.ts`, `tier-pass.ts`, `tier-pick.ts`, `test/scheduler/tier-plan.test.ts`, `tier-plan-table.ts`, `tier-start.test.ts`, the 7 `selectTier` test files. Leave alone: W3's files (`yields.ts`, `yield-sooner.ts`, `tier-plan.ts`, the yield tests); `scheduler.ts` except a `selectTier` import; every test that drives a real scheduler.
+
+Done when: both board rows' done-when hold; lint, typecheck, `test/keys/key-format.test.ts` with no version raise, `compare.test.ts` and `reach.test.ts` pass; `squeal status --wait 60000` on the changed paths, pending reported as pending. Notes in `tasks/011-347/notes.md` and `tasks/011-349/notes.md`.
+
+## W3: row 011-348, a yield asks the tier plan whether the waiting file starts sooner
+
+Use /worker. Shape: slice, test first. Effort medium. Starts after 011-346 lands; runs beside W2.
+
+Outcome: `TierYields`' "starts sooner" check asks `planTiers` over a view of the cut files and the waiting file only, and `yield-sooner.ts` is gone.
+
+Read: board row 011-348; `research/tier-plan.md` decision 2; `tasks/011-346/notes.md` (decision 7, `Candidate.estimateMs`, and "For 011-348"); `yields.ts:350-395`; `yield-sooner.ts`; `test/scheduler/yield-sooner.test.ts`, `tier-yields-next-tier.test.ts`.
+
+Seam: `startsSooner`'s call in `yields.ts:390`. First edit: a new `test/scheduler/yield-check.test.ts` that runs `startsSooner` and the plan (a yield view: no saved result, no claim, no pool; `slots` false, `beside()` null) side by side on every case of the two files and expects the same answer. A difference is a bug: stop, write it in the notes and ask me; it gets its own row with a failing test. Then switch `TierYields` to the plan and turn `yield-sooner.test.ts`'s cases into rows of the new file.
+
+Owns: `yields.ts` (the check only), `yield-sooner.ts` (delete), `tier-plan.ts` (the estimate and a yield view, if needed), a new `src/core/scheduler/yield-view.ts` if the view needs a home, `yield-sooner.test.ts`, the new `yield-check.test.ts`. Leave alone: W2's files; every `tier-yields-*` test (they pass unchanged; `tier-yields-kept.test.ts` is row 011-301's); yield events, timers and status (card 7).
+
+Done when: the board row's done-when holds; every `tier-yields-*` file passes unchanged (run directly); lint, typecheck, `test/keys/key-format.test.ts` with no version raise; `squeal status --wait 60000` on the changed paths. Notes in `tasks/011-348/notes.md`.
