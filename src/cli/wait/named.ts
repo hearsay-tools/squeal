@@ -87,6 +87,7 @@ export function namedPoll(
   return {
     name: "named",
     sync: () => sync,
+    stop: () => watch?.stop?.(),
     read: ({ store, root, commonDir }, final, elapsed): PollStep<NamedWaitEnded> => {
       const id = worktreeIdFor(root);
       const pollMs = Math.min(options.pollMs, SYNC_POLL_MS);
