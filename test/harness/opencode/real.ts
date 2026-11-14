@@ -5,6 +5,7 @@ import { readTurn } from "../../../src/core/delivery/turn.js";
 import { worktreeIdFor } from "../../../src/core/fs/git-layout.js";
 import { formatCheck } from "../../../src/core/state/check-name.js";
 import type { ConsumerRecord } from "../../../src/core/types/store-records.js";
+import { bridgeStart } from "../../../src/harness/opencode/bridge-client.js";
 import type { ScriptedStep } from "../../fixtures/opencode/scripted-provider.js";
 import { type OpenCodeLive, type OpenCodeRun, runOpenCode } from "../../helpers/opencode.js";
 import { awaitGroups, detachedLeaders, named, StillAlive } from "../../helpers/process-groups.js";
@@ -155,14 +156,40 @@ export function bridgesRunning(dist: string, file: string): number[] {
 const BRIDGES_LEAVE_MS = 30_000;
 
 /**
+ * The environments that give `bridgeStart`'s two forms: without Node's proxy switch, and with
+ * it, which `bridgeStart` carries past Node's start with an `--import` preload.
+ */
+const BRIDGE_FORMS: readonly NodeJS.ProcessEnv[] = [{}, { NODE_USE_ENV_PROXY: "1" }];
+
+/**
+ * Whether a command line (`argv`, the executable first) is one the plugin starts a bridge of
+ * `dist` with: after the executable, exactly the arguments `bridgeStart` builds, in either form,
+ * for one `.mjs` entry directly under `<dist>/hooks`, with nothing after it. `bridgeStart` is
+ * the rule's one owner (re-review 011-336-r2 B1): what Node executes is then that entry, and a
+ * hook path another script takes as data does not match.
+ */
+export function bridgeCommand(dist: string): (argv: readonly string[]) => boolean {
+  const hooks = new Set([dist, realpathSync(dist)].map((dir) => join(dir, "hooks")));
+  return (argv) => {
+    const entry = argv.at(-1);
+    if (entry === undefined || !entry.endsWith(".mjs") || !hooks.has(dirname(entry))) return false;
+    const args = argv.slice(1);
+    return BRIDGE_FORMS.some((env) => {
+      const built = bridgeStart(entry, env).args;
+      return built.length === args.length && built.every((arg, at) => arg === args[at]);
+    });
+  };
+}
+
+/**
  * Waits for this run's bridges from `dist` to end, kills what is left after `graceMs`, and then
  * fails naming it; a bridge still alive after that kill fails it too (`StillAlive`).
  * `callBridge` starts each bridge with `detached: true`, in a process group of its own, so the
  * end of OpenCode's group misses them: OpenCode's SIGTERM runs `dispose`, whose `end` bridge
  * opens the store under the project while the run's folder is removed (row 011-336,
- * `research/enotempty-cleanup.md` finding 3). A bridge is this run's when it is Node running a
- * hook entry of `dist` (`<dist>/hooks/<name>.mjs`, its last argument), leads its own group and
- * session, and has the run's private `owned.home` as its HOME, which OpenCode passes to what it
+ * `research/enotempty-cleanup.md` finding 3). A bridge is this run's when its command is a
+ * bridge command of `dist` (`bridgeCommand`), its executable is Node, it leads its own group
+ * and session, and its HOME is the run's private `owned.home`, which OpenCode passes to what it
  * starts; any other process is never waited for or signalled (review 011-336 B1). Linux only:
  * elsewhere nothing is identified and nothing waited for.
  */
@@ -171,13 +198,8 @@ export async function awaitBridges(
   owned: { readonly home: string },
   graceMs = BRIDGES_LEAVE_MS,
 ): Promise<void> {
-  const hooks = new Set([dist, realpathSync(dist)].map((dir) => join(dir, "hooks")));
-  const entry = (argv: readonly string[]) => {
-    const last = argv.at(-1);
-    return argv.length > 1 && last?.endsWith(".mjs") === true && hooks.has(dirname(last));
-  };
   const bridges = detachedLeaders(
-    entry,
+    bridgeCommand(dist),
     ({ exe, env }) => /^node(js)?$/.test(basename(exe)) && env.get("HOME") === owned.home,
   );
   const { killed, alive } = await awaitGroups(
