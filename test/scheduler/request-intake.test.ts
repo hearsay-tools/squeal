@@ -285,7 +285,7 @@ describe("request intake: the order", () => {
     const p = probeHost();
     p.state.waiting = AWAITING_INSTALL_REASON;
     const request = probe(p, {
-      start: { skip: "probe", afterPass: true },
+      start: { skip: "probe", afterPass: "the probe took nothing" },
       installWait: { stage: waited("abandoned"), passFirst: true },
       wake: { allLanes: "the probe's lanes" },
     });
@@ -300,11 +300,14 @@ describe("request intake: the order", () => {
     ]);
   });
 
+  // Row 011-337: the refusal ends with the words the request's start rule names.
   it("rejects with no pass delivered after the request, and takes nothing", async () => {
     const p = probeHost();
     p.state.delivered = 1;
-    const request = probe(p, { start: { skip: "probe", afterPass: true } });
-    await expect(p.intake.take(request)).rejects.toThrow(NO_PASS);
+    const request = probe(p, { start: { skip: "probe", afterPass: "the probe took nothing" } });
+    await expect(p.intake.take(request)).rejects.toThrow(
+      new Error(`${NO_PASS}, so the probe took nothing`),
+    );
     expect(p.log).toEqual(["pass"]);
   });
 

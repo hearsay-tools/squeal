@@ -34,8 +34,12 @@ export type RequestId = string;
 export type StartRule<A> =
   /** Answered at once, before the lock, once closed or before the start; `nothing`: it asks for nothing. */
   | { readonly closed: A; readonly nothing?: boolean }
-  /** Row 011-198: taken only once a pass started after it was delivered; else it throws (`NO_PASS`). */
-  | (Skip & { readonly afterPass: true })
+  /**
+   * Row 011-198: taken only once a pass started after it was delivered; else
+   * it throws `NO_PASS`, then ", so " and what was not done for this request
+   * (row 011-337): `run --all`'s "no checkpoint was planned".
+   */
+  | (Skip & { readonly afterPass: string })
   | Skip;
 
 /** Rule 2: the answer while an install is awaited, or after a reinstall. */

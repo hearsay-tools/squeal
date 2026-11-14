@@ -133,7 +133,7 @@ export function fullSuiteRequest(
     operation: "taking a squeal run --all request",
     start: {
       skip: "no closed answer: before the start the scheduler throws (`started`)",
-      afterPass: true,
+      afterPass: "no checkpoint was planned",
     },
     // An install the next reconciliation pass would find ends the wait first; still waiting,
     // nothing can be listed or keyed and the checkpoint is abandoned at once (review wave 11, B1).

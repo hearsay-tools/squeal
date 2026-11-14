@@ -119,7 +119,7 @@ export function narrowRequest(
     operation: `taking a squeal run ${group} <path>... request`,
     start: {
       skip: "no closed answer: once closed its runner-work wait rejects; before the start it throws",
-      afterPass: true,
+      afterPass: `no test file of group ${group} that the paths select was queued`,
     },
     // Review 0.1.411, B2: the answer says why nothing was queued, of the files it selected.
     installWait: {
