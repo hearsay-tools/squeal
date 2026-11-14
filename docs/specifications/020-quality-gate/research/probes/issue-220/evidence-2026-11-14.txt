@@ -1,0 +1,12 @@
+# bound.probe.ts, 2026-11-14T22:06Z, deterministic (fake clock), load 46.54 at start
+{"case":"every second try lands","written":86,"spentAt":30350,"lastWriteAt":30100,"lines":["the store is busy (the holder is not known); waiting up to 30 s to keep 340 completed test files: test/f0.test.ts, test/f1.test.ts, test/f10.test.ts, test/f100.test.ts, test/f101.test.ts and 335 more","254 completed test files were not kept in the stores: the store stayed busy for 30 s; the next run will run them again"]}
+
+# starve.mjs, 2026-11-14T22:2xZ, scratch SQLite, one fake holder; load1 per line (all under 24)
+{"holdMs":50,"gapMs":0,"sliceMs":20,"forMs":8000,"landed":0,"refused":32,"longestNoWriteMs":8267,"load1Before":13.73}
+{"holdMs":50,"gapMs":0,"sliceMs":250,"forMs":8000,"landed":0,"refused":17,"longestNoWriteMs":8126,"load1Before":12.88}
+{"holdMs":50,"gapMs":50,"sliceMs":20,"forMs":8000,"landed":130,"refused":80,"longestNoWriteMs":185,"load1Before":12.05}
+{"holdMs":50,"gapMs":50,"sliceMs":250,"forMs":8000,"landed":187,"refused":0,"longestNoWriteMs":80,"load1Before":11.72}
+{"holdMs":250,"gapMs":0,"sliceMs":20,"forMs":8000,"landed":0,"refused":32,"longestNoWriteMs":8268,"load1Before":11.69}
+{"holdMs":250,"gapMs":0,"sliceMs":250,"forMs":8000,"landed":0,"refused":17,"longestNoWriteMs":8125,"load1Before":11.41}
+{"holdMs":250,"gapMs":250,"sliceMs":20,"forMs":8000,"landed":68,"refused":50,"longestNoWriteMs":449,"load1Before":11.06}
+{"holdMs":250,"gapMs":250,"sliceMs":250,"forMs":8000,"landed":188,"refused":1,"longestNoWriteMs":274,"load1Before":10.76}
