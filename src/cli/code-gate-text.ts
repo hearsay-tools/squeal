@@ -17,6 +17,7 @@ import { functionName } from "../core/delivery/code-format.js";
 import { listPaths, plural } from "../core/text.js";
 import { foldOutside, outsideWords } from "./code-gate-text-failed.js";
 import { leftOutText } from "./code-gate-text-left-out.js";
+import { rerunLines } from "./code-gate-text-reruns.js";
 
 /*
  * Spec 020 D1 (row 020-05): the text of `squeal code --base`. The verdict
@@ -24,7 +25,8 @@ import { leftOutText } from "./code-gate-text-left-out.js";
  * 020-53: the ones that share a failure outside their loaders fold into
  * one line after the others), the paths not counted, the exceptions that applied to no function, the
  * failed tests and the files that did not finish (row 020-46: or that the
- * gate stopped early before), the rerun that fits (row 020-45), then the
+ * gate stopped early before), the files that ran once more under load or
+ * as stored failures (row 020-63), the rerun that fits (row 020-45), then the
  * command for the JSON report. CRAP is rounded here only; the
  * JSON keeps the score.
  */
@@ -160,7 +162,14 @@ function runLines(run: GateRunReport, budgetSeconds: number): string[] {
           `  ${plural(notStarted.size, `${RUNNER_NAMES[run.runner]} test file`)} did not start in the ${budgetSeconds} s budget; --json lists them`,
         ];
   const prepares = (run.prepare ?? []).flatMap(prepareLine);
-  return [...failed, ...late, ...unstarted, ...overBudgetLine(run), ...prepares];
+  return [
+    ...failed,
+    ...late,
+    ...unstarted,
+    ...overBudgetLine(run),
+    ...prepares,
+    ...rerunLines(run),
+  ];
 }
 
 /** How many paths of the files a run stopped early before its line names. */
