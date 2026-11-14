@@ -3577,24 +3577,26 @@ function markParts(conn, bound) {
   }
   return marked2;
 }
-function sweepParts(conn, cutoff, marked2, batch) {
+function* sweepParts(conn, cutoff, marked2, batch, removed) {
   const ids = conn.all("SELECT id FROM coverage_parts WHERE used_at < ?", cutoff).map((row) => num(row, "id")).filter((id) => !marked2.has(id));
-  let removed = 0;
   for (let i = 0; i < ids.length; i += batch) {
     const some = JSON.stringify(ids.slice(i, i + batch));
-    removed += conn.transaction(
-      () => conn.run(
-        "DELETE FROM coverage_parts WHERE id IN (SELECT value FROM json_each(?)) AND used_at < ?",
-        some,
-        cutoff
-      )
-    );
+    yield () => {
+      removed(
+        conn.transaction(
+          () => conn.run(
+            "DELETE FROM coverage_parts WHERE id IN (SELECT value FROM json_each(?)) AND used_at < ?",
+            some,
+            cutoff
+          )
+        )
+      );
+    };
   }
-  return removed;
 }
-function pruneParts(conn, cutoff, batch) {
-  if (!hasParts(conn)) return 0;
-  return sweepParts(conn, cutoff, markParts(conn, cutoff + PART_REFRESH_MS), batch);
+function* pruneParts(conn, cutoff, batch, removed) {
+  if (!hasParts(conn)) return;
+  yield* sweepParts(conn, cutoff, markParts(conn, cutoff + PART_REFRESH_MS), batch, removed);
 }
 
 // src/core/code/store/coverage.ts
@@ -3728,17 +3730,36 @@ var PER_WORKTREE = [
   ["transitions", "id"]
 ];
 function pruneCodeStore(conn, options) {
+  const counts = noCodeRemoved();
+  for (const slice of pruneCodeSlices(conn, options, counts)) slice();
+  return { ...counts };
+}
+function noCodeRemoved() {
+  return {
+    countsRemoved: 0,
+    coverageRemoved: 0,
+    partsRemoved: 0,
+    worktreesRemoved: 0,
+    viewsRemoved: 0,
+    checksRemoved: 0
+  };
+}
+function* pruneCodeSlices(conn, options, counts) {
   const cutoff = options.now - options.retentionDays * DAY_MS2;
   const live = JSON.stringify(options.worktrees);
   const dead = deadWorktrees(conn, options.worktrees);
   if (dead.length > 0) {
     for (const [table, key] of PER_WORKTREE) {
-      deleteInBatches(conn, table, key, OF_WORKTREES, JSON.stringify(dead));
+      yield* deleteInBatches(conn, nothing, table, key, OF_WORKTREES, JSON.stringify(dead));
     }
   }
-  deleteInBatches(conn, "meta", "key", COVERAGE_META_OF_DEAD, live);
-  const viewsRemoved = deleteInBatches(
+  counts.worktreesRemoved = dead.length;
+  yield* deleteInBatches(conn, nothing, "meta", "key", COVERAGE_META_OF_DEAD, live);
+  yield* deleteInBatches(
     conn,
+    (n) => {
+      counts.viewsRemoved += n;
+    },
     "views",
     "worktree_id, session_id, agent_id, check_id, measure",
     `(worktree_id, session_id, agent_id) NOT IN (
@@ -3746,8 +3767,11 @@ function pruneCodeStore(conn, options) {
        FROM json_each(?))`,
     JSON.stringify(options.consumers)
   );
-  const countsRemoved = deleteInBatches(
+  yield* deleteInBatches(
     conn,
+    (n) => {
+      counts.countsRemoved += n;
+    },
     "counts",
     "blob, language, counter_version",
     `counted_at < ? AND NOT EXISTS (SELECT 1 FROM files f WHERE f.blob = counts.blob
@@ -3755,25 +3779,26 @@ function pruneCodeStore(conn, options) {
      AND counts.blob NOT IN (SELECT s.blob FROM states s)`,
     cutoff
   );
-  const coverageRemoved = pruneCoverage(conn, options.resultKeys, cutoff);
-  const partsRemoved = pruneParts(conn, cutoff, DELETE_BATCH2);
-  const checksRemoved = deleteInBatches(
+  yield* pruneCoverage(conn, options.resultKeys, cutoff, (n) => {
+    counts.coverageRemoved += n;
+  });
+  yield* pruneParts(conn, cutoff, DELETE_BATCH2, (n) => {
+    counts.partsRemoved += n;
+  });
+  yield* deleteInBatches(
     conn,
+    (n) => {
+      counts.checksRemoved += n;
+    },
     "checks",
     "id",
     `id NOT IN (SELECT check_id FROM states UNION SELECT check_id FROM views
        UNION SELECT check_id FROM transitions)`
   );
-  vacuum2(conn);
-  return {
-    countsRemoved,
-    coverageRemoved,
-    partsRemoved,
-    worktreesRemoved: dead.length,
-    viewsRemoved,
-    checksRemoved
-  };
+  yield* vacuum2(conn);
 }
+var nothing = () => {
+};
 function deadWorktrees(conn, live) {
   const kept3 = new Set(live);
   const found2 = new Set(
@@ -3781,21 +3806,24 @@ function deadWorktrees(conn, live) {
   );
   return [...found2].filter((id) => !kept3.has(id));
 }
-function pruneCoverage(conn, resultKeys, cutoff) {
+function* pruneCoverage(conn, resultKeys, cutoff, removed) {
   if (resultKeys === void 0) {
-    return deleteInBatches(
+    yield* deleteInBatches(
       conn,
+      removed,
       "coverage",
       COVERAGE_KEY,
       `recorded_at < ? OR ${OLDER_RECORD}`,
       cutoff,
       COVERAGE_RECORD_VERSION
     );
+    return;
   }
   const held = conn.all("SELECT DISTINCT result_key FROM coverage").map((row) => str(row, "result_key"));
   const kept3 = new Set(typeof resultKeys === "function" ? resultKeys(held) : resultKeys);
-  return deleteInBatches(
+  yield* deleteInBatches(
     conn,
+    removed,
     "coverage",
     COVERAGE_KEY,
     `result_key IN (SELECT value FROM json_each(?)) OR ${OLDER_RECORD}`,
@@ -3803,24 +3831,26 @@ function pruneCoverage(conn, resultKeys, cutoff) {
     COVERAGE_RECORD_VERSION
   );
 }
-function deleteInBatches(conn, table, key, where3, ...params) {
-  let removed = 0;
-  for (; ; ) {
-    const changed = conn.transaction(
-      () => conn.run(
-        `DELETE FROM ${table} WHERE (${key}) IN (
-           SELECT ${key} FROM ${table} WHERE ${where3} LIMIT ${DELETE_BATCH2})`,
-        ...params
-      )
-    );
-    removed += changed;
-    if (changed < DELETE_BATCH2) return removed;
+function* deleteInBatches(conn, removed, table, key, where3, ...params) {
+  let changed = DELETE_BATCH2;
+  while (changed === DELETE_BATCH2) {
+    changed = 0;
+    yield () => {
+      changed = conn.transaction(
+        () => conn.run(
+          `DELETE FROM ${table} WHERE (${key}) IN (
+             SELECT ${key} FROM ${table} WHERE ${where3} LIMIT ${DELETE_BATCH2})`,
+          ...params
+        )
+      );
+      removed(changed);
+    };
   }
 }
-function vacuum2(conn) {
+function* vacuum2(conn) {
   let free = freePages(conn);
   while (free > 0) {
-    conn.db.exec(`PRAGMA incremental_vacuum(${VACUUM_PAGES2})`);
+    yield () => conn.transaction(() => conn.db.exec(`PRAGMA incremental_vacuum(${VACUUM_PAGES2})`));
     const left = freePages(conn);
     if (left >= free) return;
     free = left;
@@ -4222,6 +4252,7 @@ function createCodeStore(conn, schemaVersion, path) {
     transaction: (fn) => conn.transaction(fn),
     read: (fn) => conn.read(fn),
     prune: (options) => pruneCodeStore(conn, options),
+    pruneSlices: (options, counts) => pruneCodeSlices(conn, options, counts),
     close: () => conn.close()
   };
 }
@@ -8303,7 +8334,7 @@ import { fileURLToPath } from "node:url";
 var UNKNOWN_VERSION = "0.0.0-unknown";
 var PACKAGE_NAME = "squeal";
 function squealVersion() {
-  if (true) return "0.1.506";
+  if (true) return "0.1.509";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module) {
