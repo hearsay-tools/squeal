@@ -335,12 +335,16 @@ export interface RunSlowResponse {
  * revision it was taken at and how many files it queued. `coveredId` (row
  * 011-325): the id of the request's covered files (`readCoveredFiles`);
  * absent from a daemon before it and for a lint group. A CLI that gets
- * none keeps its own reading of the request's files.
+ * none keeps its own reading of the request's files. `installWait` (row
+ * 011-324): why it queued nothing while the daemon waits for an install or
+ * after a reinstall; absent otherwise and from a daemon before it. A CLI
+ * before it ignores the field.
  */
 export interface RequestTaken {
   readonly revision: RevisionNumber;
   readonly queued: number;
   readonly coveredId?: string;
+  readonly installWait?: string;
 }
 
 /**
