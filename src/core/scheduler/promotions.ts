@@ -139,10 +139,18 @@ export class Promotions {
     if (changed) this.#told();
   }
 
-  /** The order of the batch of `id`; `null` when none holds it. */
-  rankOf(id: string): number | null {
+  /**
+   * The order of the batch of `id` at `now`, by default a fresh reading of
+   * this clock; `null` when none holds it. No live batch reads no clock.
+   */
+  rankOf(id: string, now?: number): number | null {
     if (this.#promotions.length === 0) return null;
-    return this.rankAt(id, this.#now())?.rank ?? null;
+    return this.rankAt(id, now ?? this.#now())?.rank ?? null;
+  }
+
+  /** A reading of this clock, the one deadlines are on (row 011-347: one per decision). */
+  now(): number {
+    return this.#now();
   }
 
   /**

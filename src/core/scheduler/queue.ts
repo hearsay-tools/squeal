@@ -469,10 +469,16 @@ export class RunQueue {
    * do not divide it." After `RECENT_TIERS_PER_BACKLOG_TIER` tiers of
    * recent entries only (`tierSelected`), the second group comes first
    * once, catch-up first. A promoted entry (C15) is of the first group and
-   * leads it, failing files included. Fast entries only.
+   * leads it, failing files included. Fast entries only. `now` is the
+   * decision's reading of the promotions' clock; without one the order reads
+   * it once (row 011-347).
    */
-  ordered(durationOf: DurationOf = () => null, turn = this.backlogTurn()): TestFileRef[] {
-    return sorted(this.#fast(), durationOf, turn, this.#ranks());
+  ordered(
+    durationOf: DurationOf = () => null,
+    turn = this.backlogTurn(),
+    now?: number,
+  ): TestFileRef[] {
+    return sorted(this.#fast(), durationOf, turn, this.#ranks(now));
   }
 
   /**
@@ -480,10 +486,10 @@ export class RunQueue {
    * 011-268, `research/named-wait-batches.md` Recommendation 1): the earlier
    * batch first, then the longest last-known duration first, unknown ones
    * last, then first queued, project and path. A tier's end waits for its
-   * longest file, so that file starts first.
+   * longest file, so that file starts first. `now` as `ordered`'s.
    */
-  orderedBatches(durationOf: DurationOf = () => null): TestFileRef[] {
-    const ranks = this.#ranks();
+  orderedBatches(durationOf: DurationOf = () => null, now?: number): TestFileRef[] {
+    const ranks = this.#ranks(now);
     const longest = (entry: Entry) => durationOf(entry.ref) ?? Number.NEGATIVE_INFINITY;
     return [...ranks.keys()]
       .filter((entry) => !this.#isSlow(entry.ref))
@@ -553,11 +559,17 @@ export class RunQueue {
     return groupOf(entry, this.#promotions.rankOf(testFileId(entry.ref)) !== null);
   }
 
-  /** Each promoted entry's request order, for `sorted`. */
-  #ranks(): ReadonlyMap<Entry, number> {
+  /**
+   * Each promoted entry's request order at `now`, for `sorted`: every rank at
+   * one reading of the promotions' clock, the decision's when it passes one,
+   * so a wait that ends during the loop cannot rank one entry and not the
+   * next (row 011-347).
+   */
+  #ranks(now?: number): ReadonlyMap<Entry, number> {
     const ranks = new Map<Entry, number>();
+    let at = now;
     for (const [id, entry] of this.#entries) {
-      const rank = this.#promotions.rankOf(id);
+      const rank = this.#promotions.rankOf(id, (at ??= this.#promotions.now()));
       if (rank !== null) ranks.set(entry, rank);
     }
     return ranks;

@@ -36,8 +36,9 @@ export function liveView(
   const { queue } = ledger;
   const { traits } = context.runner;
   const { runner } = context.policy;
+  const now = context.now();
   return {
-    now: context.now(),
+    now,
     runner: {
       tierSize: runner.tierSize,
       backlogTierSize: runner.backlogTierSize,
@@ -57,8 +58,8 @@ export function liveView(
     runtimePolicy: (ref) => context.keys.runtimeIdentity(ref),
     checkpointIdFor: (ref) => ledger.checkpoints.idFor(ref),
     checkpointActive: () => ledger.checkpoints.active,
-    ordered: (turn) => ledger.ordered(turn),
-    orderedBatches: () => ledger.orderedBatches(),
+    ordered: (turn) => ledger.ordered(turn, now),
+    orderedBatches: () => ledger.orderedBatches(now),
     rankAt: (ref, now) => queue.rankAt(ref, now)?.rank ?? null,
     has: (ref) => queue.has(ref),
     isFirstGroup: (ref) => queue.isFirstGroup(ref),
