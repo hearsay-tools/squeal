@@ -56,3 +56,14 @@ Check, each as proven, plausible or unverified:
 6. **Scope**: no edit to `record.ts`, `tiers.ts` `selectTier`, `request-intake.ts`, `types/scheduler.ts`, the remote lane or any key.
 
 The coordinator's tree passed lint, typecheck, `check:version origin/main` (0.1.494 to 0.1.498), `key-format` and `version-sensitive` (19 tests). The workers' trees: Squeal's affected results passing, all 29 named scheduler files current (worker notes). Two functions stay over the complexity threshold, both already over it before (`#pump` 35, `SlowTier.#select` 27): a finding only if this candidate made them worse. Host policy as in `wave-85.md`. Write `reviews/0.1.498.md` and commit it on your branch.
+
+## R2: narrow re-review of cand/0.1.498 after rebase onto 0.1.497
+
+Use /reviewer (codex gpt-6.1-sol high). Pinned to `cand/0.1.498` at `95b605dbf272440f35ca3db8c85363d9c1432b0b`; base `3d2526dc6` (main 0.1.497). R1 passed on `22b4832f6` (`reviews/0.1.498.md`). Since then 0.1.495 (spec 020), 0.1.496 (spec 022, rows 022-03 and 022-04: loaded modules join test keys) and 0.1.497 (row 011-339) landed. The only source or test file the candidate shares with them is `test/keys/validity/case.ts` (0.1.496 added `VitestInput.observe` and `PruneInput.loadedLists`; this candidate adds `StoreInput.reads`); the rest shared is version files. The cherry-picks applied without conflict.
+
+Check, each as proven, plausible or unverified:
+
+1. The key alarm, with both rows' cases at this tree: removing the observed-read check in `src/core/run-evidence/sources.ts` still fires the alarm with the two reported lines; 0.1.496's loaded-module cases still behave as their row says; no `KEY_FORMAT_VERSION` raise against the newest release tag.
+2. No other interaction between rows 011-340/011-321 and the three landed versions (for example 011-339's owners read by `#facts()` or the status answers).
+
+The coordinator's tree at the pin passed lint, typecheck, `check:version origin/main` (0.1.497 to 0.1.498), build, and directly `key-format`, `version-sensitive`, `keys/validity/{reach,compare,self-test}`, `scheduler/admission`, `scheduler/admission-rewalk` (85 passed, 2 expected fail). Host policy as in `wave-85.md`. Write `reviews/0.1.498-r2.md` and commit it on your branch.
