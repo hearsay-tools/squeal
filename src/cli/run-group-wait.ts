@@ -4,12 +4,12 @@ import { holdVerdictLine } from "../core/status/holds.js";
 import { readStatus } from "../core/status/snapshot.js";
 import { plural } from "../core/text.js";
 import type { AbsolutePath } from "../core/types/common.js";
-import type { TestFileRef } from "../core/types/keys.js";
 import type { CliIo } from "./main.js";
 import { statusCommand } from "./status-command.js";
 import { type FileVerdict, failuresText, noVerdictText, verdictCode } from "./verdict.js";
 import { stoppedText } from "./wait/presence.js";
 import type { InstallHold } from "./wait/progress.js";
+import type { WaitFiles } from "./wait/reads.js";
 import type { GroupOutcome } from "./wait/table.js";
 import { runWait } from "./wait/wait.js";
 
@@ -25,12 +25,18 @@ export interface GroupWait {
   /** The `requested` line, printed after the verdict line. */
   readonly line: string;
   /**
-   * Row 019-49 (019 D6 "Narrow run"): the test files the paths selected;
-   * the wait is for them alone. Absent: every file of the group.
+   * Row 011-328: the files the wait is for, as `requestFiles` decided them
+   * right after the answer: the request's covered files, else the group's
+   * by the policy, or a narrow run's selection.
    */
-  readonly files?: readonly TestFileRef[];
-  /** The paths that select no test file of any group: no clean verdict, as a named wait. */
-  readonly unmatched?: readonly string[];
+  readonly files: Exclude<WaitFiles, { kind: "lane" }>;
+  /**
+   * Row 019-49 (019 D6 "Narrow run"): the wait is a narrow run's, for the
+   * files its paths selected, and `unmatched`, the paths that select no
+   * test file of any group: no clean verdict, as a named wait. Absent: the
+   * group's wait.
+   */
+  readonly narrow?: { readonly unmatched: readonly string[] };
 }
 
 /**
@@ -45,17 +51,15 @@ export interface GroupWait {
  * moment does not run again, ends the wait with no verdict.
  */
 export async function waitForGroup(wait: GroupWait, io: CliIo): Promise<number> {
-  const { root, socketPath, deadline, group } = wait;
-  const files =
-    wait.files === undefined
-      ? ({ kind: "group", group } as const)
-      : ({ kind: "list", files: wait.files } as const);
+  const { root, socketPath, deadline, files } = wait;
   const outcome = await runWait({ wait: "group", root, socketPath, deadline, files });
   const now = io.now ?? Date.now;
   const command = statusCommand(io.env ?? process.env);
   const [line, code] = groupVerdictLine(wait, outcome, command);
   const subject =
-    wait.files === undefined ? `Group ${wait.group}` : `Selected test files of group ${wait.group}`;
+    wait.narrow === undefined
+      ? `Group ${wait.group}`
+      : `Selected test files of group ${wait.group}`;
   io.stdout(`${subject} ${line}\n${wait.line}\n`);
   io.stdout(formatStatus(readStatus(wait.root, { now }), now(), command));
   return code;
@@ -67,7 +71,7 @@ export function groupVerdictLine(
   outcome: GroupOutcome,
   command: string,
 ): [string, 0 | 1 | 3] {
-  const narrow = wait.files !== undefined;
+  const narrow = wait.narrow !== undefined;
   const none = (why: string): [string, 3] => [`${narrow ? "have" : "has"} no verdict: ${why}`, 3];
   switch (outcome.kind) {
     case "on-hold": {
@@ -122,7 +126,7 @@ function endedLine(
   }
   const why = noVerdictText(verdict);
   if (why !== null) return none(why);
-  const unmatched = wait.unmatched ?? [];
+  const unmatched = wait.narrow?.unmatched ?? [];
   const nothing =
     unmatched.length === 0
       ? ""

@@ -103,8 +103,8 @@ export async function runNarrowCommand(
       queued: requested.queued,
       deadline,
       line,
-      files: narrow.selected,
-      unmatched: narrow.unmatched,
+      files: { kind: "list", files: narrow.selected },
+      narrow: { unmatched: narrow.unmatched },
     },
     io,
   );
