@@ -60,3 +60,17 @@ Check, each as proven, plausible or unverified:
 4. **Scope**: nothing under `src/`; `test/helpers/opencode.ts` and `test/harness/opencode/real.ts` unchanged.
 
 Host policy as in `wave-85.md`; never the real `HOME`; signal only processes your probe started. Write `reviews/011-338.md` and commit it on your branch.
+
+## R5 (W3): review of cand/0.1.487
+
+Use /reviewer (codex gpt-6.1-sol high). Candidate CI: run 43605804828. Pinned to `cand/0.1.487` at `3718c2ea8949c328dffd729034e639cac515fa38`; range `9c067c165..3718c2ea8`: one commit of worker bc573417 (`4e39e2c9a`, cherry-picked from `d9270d22a` without conflict), then the 0.1.487 version raise and bundles. Behaviour to compare against: `9c067c165`. Read: board row 011-49, `tasks/011-49/notes.md`, this file's W3, `src/cli/status-sync.ts`, `src/cli/wait/snapshot.ts`.
+
+Check, each as proven, plausible or unverified:
+
+1. **The process ends near its bound.** `squeal status <path>` against a daemon that accepts and never answers exits near 750 ms, not at the 2 s socket timeout; its exit code and output stay as at `9c067c165` (exit 3, no verdict). `test/cli/status-paths-paused.test.ts` times the process's own exit and fails against the old code.
+2. **The other waits are unchanged.** The named wait (`status <path> --wait`) and the edit wait pass no deadline: their sync requests, timeouts and outcomes stay as before. A test stub passed as `options.sync` is called as before.
+3. **The deadline.** No request waits past it or starts after it; the sync then reads `unsupported`. Does that change any outcome of the snapshot, for example a daemon that answers after the bound but within 2 s? The worker's known limit (two paused daemons: up to about 1.5 s, from the lookup's two pings) is proven, plausible or wrong.
+4. **The worker's call.** It bounded the requests by the deadline and did not cancel them on `stop()`, since a cancel needs an abort signal in `src/core/daemon/client.ts`. Say whether that leaves a case the row's done-when names.
+5. **Scope.** Only `status-sync.ts`, `wait/snapshot.ts`, the new test and the notes change, apart from the version and bundles; nothing under `src/core/` or in `src/cli/code*.ts`; no key change.
+
+The coordinator's tree passed lint, typecheck, `check:version`, `key-format`, `version-sensitive` and the new test (3 files, 21 tests), and 10 bundle and version-bump test files (124 tests), at the candidate. The worker ran 23 status test files (319 tests) directly; 112 affected files had not run in its Squeal when it stopped: CI is their evidence. Host policy as in `wave-85.md`; never the real `HOME`; signal only processes your probe started. Write `reviews/0.1.487.md` and commit it on your branch.
