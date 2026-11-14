@@ -159,7 +159,11 @@ describe("a wait with a stale record while its replacement marks its start (revi
     expect(result.stdout).not.toContain("squeal start");
   });
 
-  it("with a spawn mark alone: named and pathless read as with no mark", async () => {
+  // Four 1.5 s waits in turn, about 4 s on an idle runner: past Vitest's 5 s
+  // default on a loaded one (main CI 43621729125, 7.2 s on Node 26).
+  it("with a spawn mark alone: named and pathless read as with no mark", {
+    timeout: 20_000,
+  }, async () => {
     for (const argv of [
       ["status", "--wait", "1500", A],
       ["status", "--wait", "1500"],
