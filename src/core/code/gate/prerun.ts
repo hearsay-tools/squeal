@@ -28,6 +28,10 @@ import type { ChangedSet, TestFileEvidence } from "./types.js";
  * Row 020-57 (#212): a `setupFiles` entry is loaded by its project's
  * selected files, and a changed path every test file of a project depends
  * on is named with the projects it selects whole (`setup-selection.ts`).
+ * Review 0.1.495 B2 (row 020-60): a stored failure marked for a rerun
+ * (`storedRerun`, `--rerun-stored-failures`) runs, so it counts with the
+ * files that run and starts its project's setup and the root's; it stays
+ * out of the estimate and the early stop (D3.4), which read `plan.ts`.
  */
 
 /** One runner's selected files, by check group, and how many of them run. */
@@ -37,10 +41,19 @@ export interface RunnerSelection {
   readonly files: number;
   /**
    * Of `files`, those the runner runs: the ones with no evidence known
-   * without a run. A node:test entry's run still waits for its `prepare`.
+   * without a run, and the stored failures run once more. A node:test
+   * entry's run still waits for its `prepare`.
    */
   readonly run: number;
-  /** Of `files`, those whose evidence is read from the stores (D11.7) or the parts (D13.2). */
+  /**
+   * Review 0.1.495 B2 (row 020-60): of `run`, the stored failures that
+   * run once more with `--rerun-stored-failures`; absent when none.
+   */
+  readonly storedRerun?: number;
+  /**
+   * Of `files`, those whose evidence is read from the stores (D11.7) or
+   * the parts (D13.2), and does not run again.
+   */
   readonly known: { readonly store: number; readonly parts: number };
   /** The selected files by group, in the groups' ownership order; empty when the run has no scope. */
   readonly groups: readonly { readonly name: string; readonly files: number }[];
@@ -107,6 +120,15 @@ export interface Picked {
 export type KnownEvidence = ReadonlyMap<TestFileRef, TestFileEvidence>;
 
 /**
+ * Whether the gate runs `ref`: it has no evidence known without a run, or
+ * its stored failure runs once more (row 020-60, review 0.1.495 B2).
+ */
+export function runsHere(known: KnownEvidence, ref: TestFileRef): boolean {
+  const evidence = known.get(ref);
+  return evidence === undefined || evidence.storedRerun !== undefined;
+}
+
+/**
  * D14.4: tells `tell` the summary of `picked`, the runners' selection,
  * with the left-out groups of `tally` and the files `known` keeps from
  * running; nothing when `tell` is absent. `planned` says which selected
@@ -171,19 +193,21 @@ export async function summarize(
     const of = picked.filter((p) => p.kind === runner);
     const selected = of.flatMap((p) => p.run);
     const from = (where: TestFileEvidence["from"]) =>
-      selected.filter((ref) => known.get(ref)?.from === where).length;
+      selected.filter((ref) => !runsHere(known, ref) && known.get(ref)?.from === where).length;
+    const again = selected.filter((ref) => known.get(ref)?.storedRerun !== undefined).length;
     const declared = new Set(of.flatMap((p) => p.byInputs ?? []).map(testFileId));
     const byInputs = selected.filter((ref) => declared.has(testFileId(ref))).map((r) => r.path);
     return {
       runner,
       files: selected.length,
-      run: selected.filter((ref) => !known.has(ref)).length,
+      run: selected.filter((ref) => runsHere(known, ref)).length,
+      ...(again === 0 ? {} : { storedRerun: again }),
       known: { store: from("store"), parts: from("parts") },
       groups: byGroup(context.scope, runner, selected),
       ...(byInputs.length === 0 ? {} : { byInputs: [...new Set(byInputs)].sort(compare) }),
     };
   });
-  const runs = picked.map((p) => ({ ...p, run: p.run.filter((ref) => !known.has(ref)) }));
+  const runs = picked.map((p) => ({ ...p, run: p.run.filter((ref) => runsHere(known, ref)) }));
   const setups = (await Promise.all(runs.map(setupsOf))).flat();
   const candidates = [...new Set(changed.functions.map((f) => f.path))].filter(
     (path) => !context.excluded(path),

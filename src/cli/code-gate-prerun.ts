@@ -36,6 +36,8 @@ import { statusCommand } from "./status-command.js";
  * One runner's line: its selected files by group, and, when the stores or
  * the parts give some of them, how many run apart (review 0.1.432 B2).
  * Row 020-35: then the files only their declared `inputs` chose.
+ * Review 0.1.495 B2 (row 020-60): the stored failures that run once more
+ * are counted with the files to run, and named apart.
  */
 function runnerLine(selection: SelectionSummary["runners"][number]): string {
   const { runner, files, run, known, groups } = selection;
@@ -44,12 +46,16 @@ function runnerLine(selection: SelectionSummary["runners"][number]): string {
   const byGroup =
     groups.length === 0 ? "" : ` (${groups.map((g) => `${g.name} ${g.files}`).join(", ")})`;
   const declared = byInputsText(selection.byInputs ?? []);
-  if (run === files) return `${name}: ${plural(files, "test file")} to run${byGroup}${declared}`;
+  const again = selection.storedRerun ?? 0;
+  const rerun = again === 0 ? "" : ` (${again} once more after a stored failure)`;
+  if (run === files) {
+    return `${name}: ${plural(files, "test file")} to run${byGroup}${rerun}${declared}`;
+  }
   const read = [
     ...(known.parts === 0 ? [] : [`${known.parts} read from the parts`]),
     ...(known.store === 0 ? [] : [`${known.store} read from the stores`]),
   ];
-  const runs = `${run === 0 ? "none" : run} to run`;
+  const runs = `${run === 0 ? "none" : run} to run${rerun}`;
   return `${name}: ${plural(files, "test file")} selected${byGroup}: ${[runs, ...read].join(", ")}${declared}`;
 }
 
