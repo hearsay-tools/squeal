@@ -30,6 +30,8 @@ export interface ProbeOptions {
    */
   readonly record?: DaemonRecord | null;
   readonly now?: () => number;
+  /** Row 011-344: aborts a ping on the wire (`requestDaemon`); it then reads as unresponsive. */
+  readonly signal?: AbortSignal | undefined;
 }
 
 export interface EnsureDaemonOptions extends ProbeOptions {
@@ -97,15 +99,19 @@ export async function locateDaemon(
     record.socketPath !== socketPath &&
     daemonLiveness(record, now()).state === "alive"
   ) {
-    const probe = await ping(record.socketPath, timeoutMs);
+    const probe = await ping(record.socketPath, timeoutMs, options.signal);
     if (probe.state !== "absent") return { socketPath: record.socketPath, probe };
   }
-  return { socketPath, probe: await ping(socketPath, timeoutMs) };
+  return { socketPath, probe: await ping(socketPath, timeoutMs, options.signal) };
 }
 
-async function ping(socketPath: AbsolutePath, timeoutMs: number): Promise<DaemonProbe> {
+async function ping(
+  socketPath: AbsolutePath,
+  timeoutMs: number,
+  signal?: AbortSignal,
+): Promise<DaemonProbe> {
   try {
-    const response = await requestDaemon(socketPath, { type: "ping" }, timeoutMs);
+    const response = await requestDaemon(socketPath, { type: "ping" }, timeoutMs, undefined, signal);
     if (response.ok && response.type === "ping") return { state: "alive", ping: response };
     return { state: "unresponsive", reason: `unexpected answer: ${JSON.stringify(response)}` };
   } catch (error) {
