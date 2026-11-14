@@ -88,6 +88,22 @@ _Avoid_: conditions, state (when you mean these facts)
 The answer, for every lane at one moment, whether a tier may start in it now, whether it may take one file or several, and if not, why, from a closed set of reasons. One place answers it from the start facts, and every path that starts a tier or reports work acts on it. An answer read before a wait is not acted on after it.
 _Avoid_: may-start check, gate. Request intake answers whether a request is taken; admission answers whether a tier starts.
 
+**Tier**:
+The test files of one lane that one run starts together. Its kind says what may stop it: an edit's, the backlog's, the backlog's turn, a named wait's batch, a focused one, a slow one.
+_Avoid_: batch (a batch is a named wait's files, which one tier may hold)
+
+**Tier plan**:
+The answer to "which tier starts next in the fast lanes, and if none, why": the candidate tiers in order, each with its files, its width, its estimated duration and its reason, or the reason nothing starts and when to look again. It writes nothing. The pump starts its first candidate that the pool grants; a refusal takes the next candidate.
+_Avoid_: selection pass, select (when you mean the plan, not the act of starting)
+
+**Queue view**:
+The queue a tier plan is made from, given to it as a value: the daemon's queue as it is, or a queue that does not exist yet, such as the queue after a yield. The plan's questions about saved results, claims and the pool are answered beside it, by the daemon or by a table.
+_Avoid_: snapshot (it is read as the plan goes, not copied first)
+
+**Yield**:
+A running tier stops so queued work starts sooner, and its unfinished files go back to the queue. A yield happens only when the waiting file would start sooner, by the tier plan over the queue after the yield.
+_Avoid_: give way (the plain-language name in decision cards), cut (the files a yield puts back), cancel (also a stop, by `squeal stop` or a superseding revision)
+
 ## Waits
 
 **Wait**:
