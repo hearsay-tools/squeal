@@ -24,6 +24,14 @@ export function lockFileFor(commonDir: AbsolutePath, worktreeId: WorktreeId): Ab
   return join(storePaths(commonDir).locksDir, `${worktreeId}.sqlite`);
 }
 
+/**
+ * Row 021-32: the log of the worktree's spawned daemon, its stdout and
+ * stderr, `logs/daemon-<worktree id>.log`, the id of `lockFileFor`.
+ */
+export function daemonLogFor(commonDir: AbsolutePath, worktreeId: WorktreeId): AbsolutePath {
+  return join(storePaths(commonDir).dir, "logs", `daemon-${worktreeId}.log`);
+}
+
 const LOCK_NAME = /^([0-9a-f]{16})\.sqlite$/;
 
 /** The worktree id a `lockFileFor` file name holds; `null` for any other name, a waiter's lock among them. */
