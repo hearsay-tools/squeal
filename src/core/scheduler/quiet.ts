@@ -40,7 +40,7 @@ export const QUIET_RECHECK_MS = 1_000;
  * starts no backlog tier, catch-up included, until `BACKLOG_QUIET_MS` pass
  * with no revision whose re-key queues a test file of the lane. The edit's
  * tiers, a promoted file and the backlog's turn start as before
- * (`selectTier`).
+ * (the tier plan, `planTiers`).
  *
  * As amended 2026-10-23 (row 011-153), catch-up of an edit waits too, cancel
  * or not: a lane whose edit made catch-up (`caughtUp`) starts none of its
