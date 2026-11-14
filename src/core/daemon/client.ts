@@ -79,15 +79,23 @@ export async function pinDaemon(
  * With `endpoint` (`pinDaemon`), the request is written only when the file
  * at the path, read once connected, is still that one: a successor that
  * replaced it since got the connection, which is closed unwritten and
- * rejects with `ESTALE`.
+ * rejects with `ESTALE`. With `signal` (row 011-344), its abort destroys the
+ * socket and clears the timer at once, and the request rejects with
+ * `ABORT_ERR`: a caller that no longer needs the answer does not hold its
+ * process until the timeout.
  */
 export function requestDaemon(
   socketPath: AbsolutePath,
   request: DaemonRequest,
   timeoutMs: number,
   endpoint?: DaemonEndpoint,
+  signal?: AbortSignal,
 ): Promise<DaemonResponse> {
   return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(failure("ABORT_ERR", `request to ${socketPath} aborted`));
+      return;
+    }
     const socket = createConnection(socketPath);
     let buffer = "";
     let settled = false;
@@ -95,6 +103,7 @@ export function requestDaemon(
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      signal?.removeEventListener("abort", aborted);
       socket.destroy();
       if (error) reject(error);
       else resolve(response as DaemonResponse);
@@ -103,6 +112,8 @@ export function requestDaemon(
       () => settle(failure("ETIMEDOUT", `no answer from ${socketPath} in ${timeoutMs} ms`)),
       timeoutMs,
     );
+    const aborted = () => settle(failure("ABORT_ERR", `request to ${socketPath} aborted`));
+    signal?.addEventListener("abort", aborted, { once: true });
     socket.setEncoding("utf8");
     socket.on("connect", () => {
       if (endpoint !== undefined && !sameEndpoint(endpointAt(socketPath), endpoint)) {
