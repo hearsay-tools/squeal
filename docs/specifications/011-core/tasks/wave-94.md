@@ -39,3 +39,16 @@ Lead: split `readHeader` into a part computed from (states, keys, policy), kept 
 Owns: `header.ts` (the split), `every-state.ts`, `status-wait-held.ts` as its callers need, their tests. Leave alone: `write-markers.ts`; the progress-record owners of row 011-339; W1's and W2's files.
 
 Done when: the equality test; CPU per quiet poll on a cezar store copy before and after, at the stated load, well under 98 ms; outcomes and payloads equal a full read's; lint, typecheck, key-format pass. Notes in `tasks/011-345/notes.md`.
+
+## R1 (W1): review of cand/0.1.504
+
+Use /reviewer (codex gpt-6.1-sol high). Candidate CI: run 43632404705. Pinned to `cand/0.1.504` at `66bb054eb880c720814cd2678fa8d3abaf58a489`; range `cf5f9f00c..66bb054eb`: one commit of worker 291305a0 (`251bd35bb`, cherry-picked from `7a169dcc0` without conflict), then the 0.1.504 raise and bundles. Behaviour to compare against: `cf5f9f00c`. Read: board row 011-343, `research/issue-214.md` (F2, F7, question 4), `tasks/011-343/notes.md`, this file's W1.
+
+Check, each as proven, plausible or unverified:
+
+1. **The receipt promises no start time.** A load retry's receipt says it joins the queue when the load falls below the CPU count or after at most 10 min, and runs in its turn at its normal priority; nothing reads as a start deadline (research F2).
+2. **The wait is named, without a priority promise.** Every failed-result `Retry queued` receipt names `squeal status --wait 60000 <file>` and says the wait leaves the retry at its normal priority (F7); the no-result `Run queued` receipts, refusals, `--cancel`, busy and no-daemon lines are unchanged.
+3. **Nothing else changes**: when a retry starts (`queueDue`, priorities), exit codes, JSON payloads, and `squeal status`'s pending-retry lines except where they quote the changed text.
+4. **Scope**: only `src/core/retry/text.ts`, `src/cli/retry.ts`, the four test files and the notes, apart from the version and bundles; no key change. The worker's calls (wait sentence, unquoted path, eval fixtures left as past output) hold.
+
+The coordinator's tree passed lint, typecheck, `check:version`, `key-format`, `version-sensitive`, every retry and status-retry test file and the bundle tests (25 files, 229 tests) at the candidate. About 990 files import `text.ts` only: CI is their evidence. Host policy as in `wave-85.md`; never the real `HOME`. Write `reviews/0.1.504.md` and commit it on your branch.
