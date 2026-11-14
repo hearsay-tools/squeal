@@ -86,7 +86,7 @@ stay as they are.
 
 - `pnpm run lint`: clean (`Checked 3393 files … No fixes applied.`).
 - `pnpm run typecheck`: clean.
-- Squeal affected tests, through `squeal status --wait` on the changed sources (revision 22, `da19c4620`). The new and named test files pass: `setup-selection`, `collect-load`, `plan`, `estimate`, `collect-prerun`, `code-gate-setup`, `code-gate-prerun-text`, `version-sensitive`. The final affected verdict is in the worker's final message.
+- Squeal affected tests, through `squeal status --wait` on the changed sources (revision 22, `da19c4620`). The new and named test files pass: `setup-selection`, `collect-load`, `plan`, `estimate`, `collect-prerun`, `code-gate-setup`, `code-gate-prerun-text`, `version-sensitive`. Final verdict at revision 24 (the code of `da19c4620`): 359 affected test files, each with a current result, after 535.6 s; 4 known failures, all bundle drift (below); every other affected file passes, `code-gate-prerun`, `code-gate-estimate`, `code-gate-budget`, `collect-early`, `collect-retry`, `code-gate-retry` and `code-gate-failed-outside` among them.
 - Expected failures, not fixed: the four bundle-drift checks (`test/harness/plugin.test.ts`, `test/harness/opencode/package.test.ts`, `test/harness/pi/package.test.ts`, `test/harness/codex/packaging/runtime.test.ts`: "cli/squeal.mjs differs from the build"). The wave forbids `pnpm run build` in a worker tree; the integration rebuilds `plugins/claude-code/dist` and the other bundles.
 
 ## Checks not run
