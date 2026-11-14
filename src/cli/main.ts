@@ -95,7 +95,8 @@ Usage:
                                 this session was told about and the files it changed
                                 that are not judged; files not counted follow, with why
   squeal code --base <ref> [<path>...] [--test <file>...] [--group <name>...]
-              [--timeout <seconds>] [--parts <dir>...] [--exceptions <file>] [--json]
+              [--timeout <seconds>] [--parts <dir>...] [--exceptions <file>]
+              [--rerun-stored-failures] [--json]
                                 Runs tests, with no daemon, for up to --timeout
                                 seconds (default 600) in all: judges every JS/TS
                                 function changed since git merge-base <ref> HEAD, test

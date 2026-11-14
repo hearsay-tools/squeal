@@ -123,6 +123,10 @@ Each selected test file's results and coverage come from the first of these that
 
 stderr counts what did not run, for example `2 of 3 selected test files read from the parts`.
 
+`--rerun-stored-failures`: run once more each selected test file whose failure the gate read from the stores, after the other files, with what is left of the `--timeout` budget. A completed rerun's result counts and is saved at the file's key. A file whose rerun does not finish keeps the stored failure. Without it, a stored failure is reused, and stderr names it with this command.
+
+The gate saves each test file's result while the other runs go on; a runner with a long stored estimate runs in chunks of at least 300 s, each saved as it ends, so a gate stopped part-way keeps what it finished. After the report, only the files still queued wait up to 30 s for a busy store.
+
 A test file that fails here while the host's one-minute load is at or over its CPU count runs once more, within the budget; the rerun's result is the file's result, a second failure stays failed, `runs[].retried` names it with the load, and stderr says so in one line after the verdict. Neither run of such a file is kept in the stores, so the next gate on the same bytes runs it again.
 
 When the parts hold a selected test file and do not give it, stderr says why after the verdict, one line per reason, for example `Vitest: 2 test files not taken from the parts, 2 ran here: its part does not certify an input as it is here (test/add.test.ts: test/add.test.ts, test/reads.test.ts: data/input.txt)`. It names at most three files per line and counts the rest. The counts come from the run report: a file the budget never reached says `did not run`, and one stopped before it finished says `started here and did not finish`.
