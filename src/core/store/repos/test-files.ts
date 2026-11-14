@@ -113,7 +113,7 @@ export function createTestFileKeyRepo(conn: Connection): TestFileKeyRepo {
             r.pending,
           );
         }
-        // Row 011-45: in the transaction that wrote them.
+        // Row 011-45: in the transaction that wrote them; a removal's caller bumps its own.
         bumpStatesMarker(
           conn,
           records.map((r) => r.worktreeId),
@@ -129,16 +129,13 @@ export function createTestFileKeyRepo(conn: Connection): TestFileKeyRepo {
             t.path,
           );
         }
-        if (testFiles.length > 0) bumpStatesMarker(conn, [worktreeId]);
       }),
-    releaseRunning: (worktreeId) =>
-      conn.transaction(() => {
-        const released = conn.run(
-          "UPDATE test_file_keys SET pending = 'queued' WHERE worktree_id = ? AND pending = 'running'",
-          worktreeId,
-        );
-        if (released > 0) bumpStatesMarker(conn, [worktreeId]);
-      }),
+    releaseRunning: (worktreeId) => {
+      conn.run(
+        "UPDATE test_file_keys SET pending = 'queued' WHERE worktree_id = ? AND pending = 'running'",
+        worktreeId,
+      );
+    },
     claimed: (worktreeId, key, live) =>
       conn.get(
         `SELECT 1 AS one FROM test_file_keys k JOIN worktrees w ON w.id = k.worktree_id

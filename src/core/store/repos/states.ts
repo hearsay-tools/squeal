@@ -99,7 +99,7 @@ export function createKnownStateRepo(conn: Connection): KnownStateRepo {
             s.fingerprint,
           );
         }
-        // Row 011-45: in the transaction that wrote them.
+        // Row 011-45: in the transaction that wrote them; a removal's caller bumps its own.
         bumpStatesMarker(
           conn,
           states.map((s) => s.worktreeId),
@@ -116,7 +116,6 @@ export function createKnownStateRepo(conn: Connection): KnownStateRepo {
             id,
           );
         }
-        if (checks.length > 0) bumpStatesMarker(conn, [worktreeId]);
       }),
   };
 }
