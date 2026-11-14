@@ -822,7 +822,8 @@ export class VitestAdapter implements Omit<RunnerAdapter, "traits"> {
 
   /**
    * Spec 022 D1, D2: a clean run's report with the loaded lists of its
-   * completed, covered files, as `#collect` picks their payloads.
+   * completed, covered files, as `#collect` picks their payloads, less a
+   * file that failed to load: its worker still hands over a list.
    */
   #withLoaded(
     vitest: Vitest,
@@ -831,6 +832,13 @@ export class VitestAdapter implements Omit<RunnerAdapter, "traits"> {
     uncovered: ReadonlySet<string>,
   ): RunReport {
     const completed = new Set(report.completedFiles.map(fileKey));
+    // A file error with no test result is a failed load, as the core's records read it.
+    const ran = new Set(
+      report.results.map(({ check }) => fileKey({ project: check.project, path: check.testPath })),
+    );
+    for (const { testFile } of report.fileErrors) {
+      if (!ran.has(fileKey(testFile))) completed.delete(fileKey(testFile));
+    }
     const wanted = (ref: TestFileRef) =>
       completed.has(fileKey(ref)) && !uncovered.has(fileKey(ref));
     const lists = loadedLists(vitest, batches, wanted, this.paths);

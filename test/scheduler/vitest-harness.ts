@@ -1,5 +1,6 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import type { VitestCoverageOptions } from "../../src/core/code/coverage/types.js";
 import { createCompositeRunner } from "../../src/core/daemon/composite-runner.js";
 import { withSlowInstance } from "../../src/core/daemon/slow-instance.js";
 import { readHead } from "../../src/core/daemon-loop/head.js";
@@ -100,6 +101,8 @@ export interface HarnessOptions {
   readonly onReinstall?: SchedulerOptions["onReinstall"];
   /** The adapter records runtime inputs while policy `observe.runtimeInputs` holds (task 001-132). */
   readonly observe?: boolean;
+  /** Spec 015 D8: the adapter collects coverage through Squeal's provider (spec 022: loaded lists too). */
+  readonly coverage?: VitestCoverageOptions;
   /** `SchedulerOptions.slow` (spec 004): give tests with slow files their own slot directory. */
   readonly slow?: SchedulerOptions["slow"];
   /** A slow lane's runs go to a Vitest instance of their own, as the daemon's do (`withSlowInstance`, row 011-211). */
@@ -206,6 +209,7 @@ export async function openHarness(
     note,
     optimizer,
     ...(observe ? { observe } : {}),
+    ...(options.coverage === undefined ? {} : { coverage: options.coverage }),
   });
   const inner =
     options.slowInstance === true

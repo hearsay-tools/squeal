@@ -539,6 +539,25 @@ export const VITEST_RUNS: readonly Case[] = [
     },
   ),
   vitest(
+    "an observed run with coverage on stores what it stores without loaded lists (row 022-03)",
+    "022 D1, D2: each completed file's loaded list joins what it observed, less the setup file; a computed import's module joins its key, a file that failed to load hands over no list, and no outcome moves",
+    {
+      files: FAILING,
+      coverage: true,
+      observe: true,
+      runs: [
+        {
+          files: [
+            ref("test/held.test.ts"),
+            ref("test/computed.test.ts"),
+            ref("test/broken.test.ts"),
+          ],
+          touched: [],
+        },
+      ],
+    },
+  ),
+  vitest(
     "a run with coverage on whose global setup throws stores nothing (review 0.1.295 B3)",
     "015 D8: a rejected run keeps no coverage record and deletes its payloads, and stores what it stores with coverage off",
     { files: REJECTING, coverage: true, runs: [{ files: [ref("test/one.test.ts")], touched: [] }] },
