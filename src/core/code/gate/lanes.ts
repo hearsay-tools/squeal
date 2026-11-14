@@ -3,6 +3,7 @@ import { hostLoad } from "../../retry/load.js";
 import type { AbsolutePath } from "../../types/common.js";
 import type { TestFileRef } from "../../types/keys.js";
 import type { RunReport } from "../../types/runner.js";
+import { chunkSize, chunksOf, joinedLogs } from "./chunks.js";
 import type { CollectOptions } from "./collect.js";
 import { type EndedRun, evidenceOf } from "./evidence.js";
 import { type PlannedRun, stoppedEarly } from "./plan.js";
@@ -90,6 +91,8 @@ export interface LaneContext {
   readonly mapping: MapOptions;
   /** Which files the runners told started (row 020-43). */
   readonly progress: FileProgress;
+  /** node:test's `runner.tierSize`: with Vitest's width, what sizes a chunk (row 020-59). */
+  readonly tierSize: number;
 }
 
 /** The runs' outcome, for the collector's evidence. */
@@ -113,7 +116,11 @@ type Planned = PlannedRun<Picked & { readonly runner: Runner }>;
  * `notStarted`. Row 020-54: once every run ended, the files that failed
  * in a run that ended while the host's load was at or over its CPU count
  * run once more, through the same runner, each run's at once; a rerun
- * that starts after the deadline runs nothing, and changes nothing.
+ * that starts after the deadline runs nothing, and changes nothing. Row
+ * 020-59: each runner's files run in chunks, one after another
+ * (`chunks.ts`), so the keeper hears each chunk as it ends; a runner's
+ * rerun runs once, after its last chunk, with the files that failed under
+ * load in any of them.
  */
 export async function runLanes(runs: readonly Planned[], context: LaneContext): Promise<Lanes> {
   const testFiles: TestFileEvidence[] = [];
@@ -135,24 +142,33 @@ export async function runLanes(runs: readonly Planned[], context: LaneContext): 
     const files = planned.files.filter((ref) => !before.known.has(ref));
     if (files.length > 0) toRun.push({ planned, files });
   }
-  const first = await Promise.all(toRun.map((run) => runOne(run.planned, run.files, context)));
+  const first = await Promise.all(toRun.map((run) => runChunks(run.planned, run.files, context)));
   // Row 020-54: what failed while the host was overloaded runs once more, after every other file.
+  // Row 020-59: one rerun per runner, after its last chunk, of what failed under load in any.
   const reruns = await Promise.all(
     toRun.map(({ planned }, i) => {
-      const files = first[i]?.overloaded?.files;
-      return files === undefined ? null : runOne(planned, files, context, RERUN);
+      const files = (first[i] ?? []).flatMap((chunk) => chunk.overloaded?.files ?? []);
+      return files.length === 0 ? null : runOne(planned, files, context, RERUN);
     }),
   );
   const ended: EndedRun[] = [];
-  first.forEach((run, i) => {
+  first.forEach((chunks, i) => {
     const rerun = reruns[i] ?? null;
-    const { overloaded } = run;
     const again = rerun?.report == null ? null : rerun.ran;
-    testFiles.push(
-      ...(overloaded === undefined ? run.ran : afterRetry(run.files, run.ran, overloaded, again)),
-    );
-    ended.push(run);
-    timedOut ||= run.report === null || run.report.end === "timed-out";
+    // The rerun's evidence is in the order of the chunks' overloaded files.
+    let at = 0;
+    for (const run of chunks) {
+      const { overloaded } = run;
+      if (overloaded === undefined) testFiles.push(...run.ran);
+      else {
+        const own = again?.slice(at, at + overloaded.files.length) ?? null;
+        at += overloaded.files.length;
+        testFiles.push(...afterRetry(run.files, run.ran, overloaded, own));
+      }
+      timedOut ||= run.report === null || run.report.end === "timed-out";
+    }
+    const index = toRun[i]?.planned.index ?? i;
+    ended.push(...joinedLogs(chunks, join(context.temp, "runs", `${index}`)));
     if (rerun === null || rerun.report === null) return;
     ended.push(rerun);
     timedOut ||= rerun.report.end === "timed-out";
@@ -163,6 +179,27 @@ export async function runLanes(runs: readonly Planned[], context: LaneContext): 
 /** Row 020-54: a rerun's suffix to its run id and log folder. */
 const RERUN = "-rerun";
 
+/**
+ * Row 020-59: `planned`'s first run of `files`, in chunks of at most
+ * `chunkSize`, one after another; one run when they fit in one. A chunk
+ * that starts after the deadline runs nothing, as a run does.
+ */
+async function runChunks(
+  planned: Planned,
+  files: readonly TestFileRef[],
+  context: LaneContext,
+): Promise<LaneRun[]> {
+  const { tierSize, options } = context;
+  const size = chunkSize(planned.pick, files, { tierSize, chunkFiles: options.chunkFiles });
+  const chunks = chunksOf(files, size);
+  if (chunks.length <= 1) return [await runOne(planned, files, context)];
+  const runs: LaneRun[] = [];
+  for (const [k, chunk] of chunks.entries()) {
+    runs.push(await runOne(planned, chunk, context, `-c${k + 1}`));
+  }
+  return runs;
+}
+
 /** One run as it ended, with the files that failed in it while the host was overloaded. */
 interface LaneRun extends EndedRun {
   readonly overloaded?: Overloaded;
@@ -171,18 +208,19 @@ interface LaneRun extends EndedRun {
 /**
  * One runner's run of `files`, given what is left of the budget, and each
  * file's evidence; a file that neither completed nor started reads not
- * started (row 020-43).
+ * started (row 020-43). `suffix` names a rerun (`RERUN`) or a chunk.
  */
 async function runOne(
   { pick, index: i }: Planned,
   files: readonly TestFileRef[],
   context: LaneContext,
-  rerun?: typeof RERUN,
+  suffix = "",
 ): Promise<LaneRun> {
   const { runner } = pick;
   const { options, progress } = context;
   const left = Math.ceil(context.deadline - performance.now());
-  const id = `${i}${rerun ?? ""}`;
+  const rerun = suffix === RERUN;
+  const id = `${i}${suffix}`;
   const logDir = join(context.temp, "runs", id);
   // Review 0.1.464 B1: the run's end, in any way, ends its files; the other runs' stay open.
   const report: RunReport | null =
@@ -194,15 +232,14 @@ async function runOne(
   if (report?.failure != null) context.note(`${runner.kind} run: ${report.failure}`);
   const records = mapPayloads(runner.covered.splice(0), context.mapping);
   // Row 020-54: a first run's failures under load run again; a rerun runs once.
-  const overloaded =
-    rerun === undefined
-      ? overloadedOf(
-          files,
-          report,
-          options.hostLoad ?? hostLoad,
-          context.deadline - performance.now(),
-        )
-      : null;
+  const overloaded = !rerun
+    ? overloadedOf(
+        files,
+        report,
+        options.hostLoad ?? hostLoad,
+        context.deadline - performance.now(),
+      )
+    : null;
   // Row 020-55: the keeper hears the rerun too; a first run names the files whose rerun decides them.
   const retrying = overloaded === null ? {} : { retrying: overloaded.files };
   await tellRan(options.ran, { runner: runner.kind, files, report, records, ...retrying });

@@ -129,6 +129,13 @@ export interface CollectOptions {
    * count. Absent, the daemon's own (`hostLoad`).
    */
   readonly hostLoad?: () => HostLoad;
+  /**
+   * Row 020-59: the most files one run of a runner takes; its files run in
+   * chunks of that many, one after another, so the keeper writes each
+   * chunk's while the next runs. Absent, `chunkSize`'s, from the run's
+   * worker width.
+   */
+  readonly chunkFiles?: number;
 }
 
 /** D17.3: one runner's run, its report and each completed file's mapped record, by `testFileId`. */
@@ -244,9 +251,11 @@ export async function collectEvidence(
     const estimates = tellEstimates(options.estimated, order.estimates, told);
     const blobs: BlobCache = new Map();
     const mapping = { format, blobs, provider, children, note };
+    const { tierSize } = policy.runner;
     const context = { root, deadline, note, options, children, temp, known, mapping, progress };
+    // Row 020-59: the runs go in chunks, sized from their width, so each chunk's files are kept as it ends.
     // D18 as amended (row 020-44): every runner at once, the node:test entries from one pool.
-    const lanes = await runLanes(runs, context).finally(() => progress.close());
+    const lanes = await runLanes(runs, { ...context, tierSize }).finally(() => progress.close());
     const { testFiles, prepares, timedOut } = lanes;
     const logs = await keptLogs(options.keepLog, lanes.ended);
     return {

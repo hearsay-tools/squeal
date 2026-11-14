@@ -21,7 +21,8 @@ import type { GateRun } from "./collect.js";
  * lookup holds its own files, their inputs and its run of `WorktreeKeys`;
  * each of its files finds it, and only a run of one of its files takes it.
  * Row 020-55: a file that runs once more under load (D3.4) is taken by its
- * rerun, not its first run, over the same lookup.
+ * rerun, not its first run, over the same lookup. Row 020-59: a runner's
+ * files run in parts, and each part takes its own files of the lookup.
  */
 
 /** A file a lookup keyed and found nothing for: it runs, and may be kept. */
@@ -116,13 +117,16 @@ export class Expectations {
   }
 
   /**
-   * The lookups that expected one of `run`'s files, each taken whole, so
-   * no other run takes it. The caller ends each one's run of `keys` when
-   * `endsRun`. Row 020-55: the files of `run.retrying` are not decided by
-   * this run, so its first failure is never kept. Their lookup stays
-   * expected for them alone, with its inputs and its run of `keys` as the
-   * lookup began them: their rerun takes it, and the window their keep is
-   * judged over runs from the lookup to the rerun's end.
+   * The lookups that expected one of `run`'s files, each with only the
+   * files of `run` it decides, so no other run takes them. The caller ends
+   * each one's run of `keys` when `endsRun`. Row 020-55: the files of
+   * `run.retrying` are not decided by this run, so its first failure is
+   * never kept. Row 020-59: nor are the files of the lookup another run
+   * holds, a later part of a runner's files (`lanes.ts`). The lookup stays
+   * expected for the files it did not decide, with its inputs and its run
+   * of `keys` as the lookup began them: the run that holds each takes it,
+   * and the window its keep is judged over runs from the lookup to that
+   * run's end.
    */
   take(run: Pick<GateRun, "runner" | "files" | "retrying">): Taken[] {
     const taken = new Set<Pending>();
@@ -130,14 +134,16 @@ export class Expectations {
       const pending = this.#expected.get(expectationOf(run.runner, testFileId(ref)));
       if (pending !== undefined) taken.add(pending);
     }
+    const ran = new Set(run.files.map(testFileId));
     const retrying = new Set((run.retrying ?? []).map(testFileId));
+    const decides = (id: string) => ran.has(id) && !retrying.has(id);
     return [...taken].map((pending) => {
       this.#drop(pending);
       const files = [...pending.files];
-      const rest = new Map(files.filter(([id]) => retrying.has(id)));
+      const rest = new Map(files.filter(([id]) => !decides(id)));
       if (rest.size === 0) return { pending, endsRun: true };
       this.#hold({ ...pending, files: rest });
-      const now = new Map(files.filter(([id]) => !retrying.has(id)));
+      const now = new Map(files.filter(([id]) => decides(id)));
       return { pending: { ...pending, files: now }, endsRun: false };
     });
   }

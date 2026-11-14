@@ -63,6 +63,12 @@ export interface GateIo extends CliIo {
    * relaunch's child reads the host's own: this does not cross processes.
    */
   readonly hostLoad?: () => HostLoad;
+  /**
+   * Row 020-59: the most files one run takes (`CollectOptions.chunkFiles`).
+   * Absent, from the run's worker width. Like `hostLoad`, it does not
+   * cross to a `--json` relaunch's child.
+   */
+  readonly chunkFiles?: number;
 }
 
 /** The runners' adapters as the CLI gives them to the collector (D3.2). */
@@ -216,7 +222,7 @@ async function gate(
       // #197: a run with a failed or unfinished file keeps its log where a daemon keeps its runs'.
       keepLog: logs.keep,
       teardown: teardowns.hear,
-      ...(io.hostLoad === undefined ? {} : { hostLoad: io.hostLoad }),
+      ...seams(io),
     },
     parts,
   )
@@ -258,6 +264,14 @@ function afterVerdict(
   if (retried !== "") io.stderr(retried);
   const kept = keptLogsLine(runs, retention);
   if (kept !== null) io.stderr(kept);
+}
+
+/** What a test gives the collector through `io`: the host's load (row 020-54), the chunk size (row 020-59). */
+function seams(io: GateIo): Pick<CollectOptions, "hostLoad" | "chunkFiles"> {
+  return {
+    ...(io.hostLoad === undefined ? {} : { hostLoad: io.hostLoad }),
+    ...(io.chunkFiles === undefined ? {} : { chunkFiles: io.chunkFiles }),
+  };
 }
 
 /** The collector's options read at the base, as the limits are (D6). */

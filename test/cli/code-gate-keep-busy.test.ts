@@ -11,9 +11,10 @@ import { initRepo, writeFile } from "../hash/git-repo.js";
 import { code, ownHomeAndTmp } from "./code-gate-fixture.js";
 
 /*
- * Spec 020 D17.5 (row 020-28, #192): `squeal code --base` writes the files
- * it completed after its report, so a store whose write lock another
- * process holds never delays the report or changes the verdict. It waits
+ * Spec 020 D17.5 (row 020-28, #192): a store whose write lock another
+ * process holds never delays the report or changes the verdict. Row
+ * 020-59: the files are written while the runs go on; a busy store hands
+ * them on, and what is still queued once the report is out waits. It waits
  * up to 30 s from the first busy write, names the holder first, and on
  * exhaustion says how many files were not kept and that the next run runs
  * them again. Six node:test files: five load `src/math.mjs`, one loads
@@ -197,25 +198,29 @@ describe("squeal code --base keeps its files after the report when the store is 
     expect(second.stderr).not.toContain("read from the stores");
   });
 
-  it("does not keep a file whose input changed after its run, before the write", SLOW, async () => {
-    ownHomeAndTmp();
-    const root = fixture();
-    let edited = false;
-    const first = await code(root, ["--base", "main", "--json"], {
-      stdout: () => {
-        // After the report, before the write: `z`'s input moves.
-        writeFile(root, "src/other.mjs", "export function square(x) {\n  return x * x * 1;\n}\n");
-        edited = true;
-      },
-    });
-    // The bytes `z` ran with again: its key is the one the first run had.
-    writeFile(root, "src/other.mjs", OTHER_RAN);
-    const second = await gate(root, true);
+  it(
+    "never keeps a result at bytes its run did not read, when an input changes after its run (row 020-59)",
+    SLOW,
+    async () => {
+      ownHomeAndTmp();
+      const root = fixture();
+      let edited = false;
+      const first = await code(root, ["--base", "main", "--json"], {
+        stdout: () => {
+          // After the report: `z`'s write may have landed already, on the bytes it ran with, or not yet.
+          writeFile(root, "src/other.mjs", "export function square(x) {\n  return x * x * 1;\n}\n");
+          edited = true;
+        },
+      });
+      const changed = await gate(root, true);
 
-    expect([edited, first.code]).toEqual([true, 0]);
-    expect(first.stderr).not.toContain("not kept");
-    expect(fromStores(second)).toEqual(MATH);
-  });
+      expect([edited, first.code]).toEqual([true, 0]);
+      expect(first.stderr).not.toContain("not kept");
+      // At the changed bytes `z` has another key: nothing the first run kept is read for it.
+      expect(fromStores(changed)).toEqual(MATH);
+      expect(changed.report?.runs.flatMap((run) => run.completed)).toContain(OTHER);
+    },
+  );
 
   it(
     "does not keep a file whose input changed during the busy wait (review 0.1.444 B2)",
