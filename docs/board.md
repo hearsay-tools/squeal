@@ -2397,8 +2397,8 @@ Spec folder `specifications/022-selection-strategy/` (stage: approved 2026-11-14
 
 | Task | Status | Scope | Done when |
 |---|---|---|---|
-| 022-03 recorder, union and the loaded-list table (D1, D2, D3) | planned | The coverage provider reads `evaluatedModules` per test file; loaded paths outside the closure and environment join the key through observed inputs; lists stored per result key in `loaded_modules` (contract `src/core/store/loaded-modules.ts`), pruned with results. Vitest only. | Spec Testing cases for recorder, union, no-loss and store pass; key-format alarm passes or is explained |
-| 022-04 `squeal reach` estimate of narrowing by loaded modules (D4) | planned | Per project: avoidable re-run seconds and share, top source files (imported by vs loaded by), files without a list by reason; text and JSON; store reads only. | Spec Testing cases for reach pass on a fixture store; D11 rules hold |
+| 022-03 recorder, union and the loaded-list table (D1, D2, D3) | running (coordinator 3d192245, worker 29ad9cc0, claude opus high, from `e633848d7`, 2026-11-14) | The coverage provider reads `evaluatedModules` per test file; loaded paths outside the closure and environment join the key through observed inputs; lists stored per result key in `loaded_modules` (contract `src/core/store/loaded-modules.ts`), pruned with results. Vitest only. | Spec Testing cases for recorder, union, no-loss and store pass; key-format alarm passes or is explained |
+| 022-04 `squeal reach` estimate of narrowing by loaded modules (D4) | running (coordinator 3d192245, worker 4d985a36, claude opus medium, from `e633848d7`, 2026-11-14) | Per project: avoidable re-run seconds and share, top source files (imported by vs loaded by), files without a list by reason; text and JSON; store reads only. | Spec Testing cases for reach pass on a fixture store; D11 rules hold |
 
 ## Later
 
