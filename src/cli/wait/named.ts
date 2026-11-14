@@ -24,6 +24,7 @@ import {
 } from "../status-wait-focus.js";
 import { leftGroupsOf } from "../status-wait-groups.js";
 import { type FocusReply, focusNamed, promoteNamed } from "../status-wait-promote.js";
+import { StoredClosures } from "../stored-closures.js";
 import { type FileClasses, holdOfWait, readClasses, readVerdict } from "../verdict.js";
 import { type DaemonWatch, lockedOf } from "../wait-liveness.js";
 import { decideStatusWait } from "./decide.js";
@@ -81,6 +82,8 @@ export function namedPoll(
   const asks = new WaitAsks(checks.length === 0);
   const promote = options.promote ?? promoteNamed;
   const paused = new Set<string>();
+  // Row 011-44: the stored closures, read again only after a closure was written.
+  const stored = new StoredClosures();
   return {
     name: "named",
     sync: () => sync,
@@ -90,7 +93,8 @@ export function namedPoll(
       sync ??= options.sync(root, pollMs, sourcePaths(store, id, root, cwd, paths));
       // Row 011-234: one read of the sync in this transaction, for the selection and the verdict.
       const current = sync.current();
-      const selection = selectNamedFiles(store, id, root, cwd, paths, syncedReaders(current));
+      const readers = syncedReaders(current);
+      const selection = selectNamedFiles(store, id, root, cwd, paths, readers, stored);
       // Task 011-42: a poll reads the selected files' states only; the verdict, once it ends.
       const all = readClasses(store, id, selection.files);
       const settled = final || elapsed() >= options.settleMs;
