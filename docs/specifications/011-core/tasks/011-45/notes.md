@@ -87,7 +87,7 @@ The fallback wait ended `timeout` with 0 transitions where a full read gives `ne
 `src/core/store/write-markers.ts` replaces `states-marker.ts` and `closure-writes.ts`. It is the one owner of both markers:
 
 - Nine triggers, `squeal_marker_<table>_<insert|update|delete>`:
-  - `known_states` and `test_file_keys` set `states-marker.<worktree_id>` (of the old row and the new row) to `lower(hex(randomblob(8)));
+  - `known_states` and `test_file_keys` set `states-marker.<worktree_id>` (of the old row and the new row) to `lower(hex(randomblob(8)))`;
   - `test_files` sets `closure-writes` the same way.
   - They run in the writing statement's own transaction, for every writer of every release: an older daemon, a gate with no daemon, the transfer import, raw SQL. A random value, so a store made again never repeats a value a reader holds.
 - `ensureWriteMarkers(store)`:
@@ -127,7 +127,7 @@ The fallback wait ended `timeout` with 0 transitions where a full read gives `ne
 
 - `pnpm run lint`: `Checked 3430 files`, no fixes. `pnpm run typecheck`: clean.
 - `test/keys/key-format.test.ts` passes with no raise (Squeal, revision 53). The repositories, `ledger.ts`, `revision.ts` and `transfer-rows.ts` are back to `5e8dcc223`. `write-markers.ts` is imported only by `daemon.ts` and the waits, which are off the validity path.
-- Run directly while Squeal had them queued (`env -u PLUGIN_ROOT -u PLUGIN_DATA pnpm exec vitest run <paths>`): the six focused files above, 36 tests, then 17. All passed after the two test fixes recorded in the commit.
+- Run directly while Squeal had them queued (`env -u PLUGIN_ROOT -u PLUGIN_DATA pnpm exec vitest run <paths>`). Six focused files: 35 of 36 passed; the failing one counted the full read's list after counting moved in place, and was fixed in the test. Then `write-markers`, `stored-closures` and the daemon test: 17 of 17 passed.
 
 ### Cost of the triggers
 
