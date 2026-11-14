@@ -89,7 +89,7 @@ export interface StartFacts {
   queued(name: string): boolean;
   /** Group `name` has a queued file that holds its followers (`SlowTier.holdsFollowers`, row 019-26). */
   holdsFollowers(name: string): boolean;
-  /** The default `slow` group's stored activity is "waiting" (spec 004 D8). */
+  /** A group lane's stored activity is "waiting", the default `slow` group's or a configured one's (spec 004 D8, row 011-342). */
   slowWaiting(): boolean;
 }
 

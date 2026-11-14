@@ -7,7 +7,7 @@ import { createFsHasher } from "../hash/hasher.js";
 import { appendNote } from "../notes.js";
 import { hostLoad } from "../retry/load.js";
 import { statCandidates } from "../revision/reconcile.js";
-import { readSlowActivity } from "../slow/state.js";
+import { readGroupActivity, readSlowActivity } from "../slow/state.js";
 import { describeFailure } from "../state/fingerprint.js";
 import { retryWhileBusy } from "../store/busy.js";
 import { isBusy, withBusySlice } from "../store/connection.js";
@@ -643,9 +643,20 @@ class TierScheduler implements Scheduler {
         const lane = this.#groups.get(name);
         return lane === undefined ? (ledger?.queue.hasGroup(name) ?? false) : lane.holdsFollowers();
       },
-      slowWaiting: () =>
-        context !== null && readSlowActivity(context.store, context.worktreeId)?.kind === "waiting",
+      slowWaiting: () => context !== null && this.#laneWaiting(context),
     };
+  }
+
+  /**
+   * The default `slow` group's stored activity is "waiting", or a
+   * configured group's (row 011-342): each publishes under its own key.
+   */
+  #laneWaiting(context: SchedulerContext): boolean {
+    const { store, worktreeId } = context;
+    if (readSlowActivity(store, worktreeId)?.kind === "waiting") return true;
+    return this.#groups
+      .lanes(context.policy)
+      .some(({ group }) => readGroupActivity(store, worktreeId, group)?.kind === "waiting");
   }
 
   /** `admit` of the start facts now (row 011-340). */

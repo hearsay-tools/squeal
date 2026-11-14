@@ -331,10 +331,15 @@ describe("admission: pinned differences between the copies (research/admission.m
     expect(lane(held, "lint").refusal).toEqual({ reason: "held" });
   });
 
-  it("difference 2, row 011-342: the re-walk reads only the default slow lane's activity", () => {
-    // A configured lane's waiting file is stored under its own key, which `slowWaiting` does not read.
-    const answer = admit(facts({ inFlight: [], queued: (name) => name === "lint" }));
-    expect(answer.rewalk).toBeNull();
+  it("difference 2, row 011-342: the re-walk gives way to any lane's waiting files", () => {
+    // `slowWaiting` reads every lane's stored activity, a configured group's too (`#facts`);
+    // the scheduler's test is `admission-rewalk-lanes.test.ts`. A queued file that waits for
+    // nothing stored, here lint's, leaves the re-walk free.
+    const lint = (name: string) => name === "lint";
+    expect(admit(facts({ queued: lint, slowWaiting: () => true })).rewalk).toEqual({
+      reason: "files-waiting",
+    });
+    expect(admit(facts({ queued: lint })).rewalk).toBeNull();
   });
 });
 
