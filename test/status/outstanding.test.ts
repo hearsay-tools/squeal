@@ -2,16 +2,12 @@ import { describe, expect, it } from "vitest";
 import type { EndedWait } from "../../src/cli/status-wait-lines.js";
 import { waitText } from "../../src/cli/status-wait-lines.js";
 import { AWAITING_INSTALL_REASON } from "../../src/core/scheduler/install.js";
+import { recordInstallWait } from "../../src/core/scheduler/install-wait.js";
+import { recordRefinedApplied } from "../../src/core/scheduler/refined.js";
 import { formatStatus } from "../../src/core/status/format-status.js";
 import { readStatus } from "../../src/core/status/snapshot.js";
 import { timeText } from "../../src/core/text.js";
 import type { RevisionNumber } from "../../src/core/types/common.js";
-import {
-  awaitingInstallMetaKey,
-  awaitingInstallValue,
-  installCommandMetaKey,
-  refinedMetaKey,
-} from "../../src/core/types/scheduler.js";
 import type { LoadNow } from "../../src/core/types/standing.js";
 import type { StatusSnapshot } from "../../src/core/types/status.js";
 import type { Store } from "../../src/core/types/store.js";
@@ -126,7 +122,7 @@ describe("each outstanding group names what advances it (011-29, design section 
 
   it("the revision's runner part: its queued files, each call's bound, and the wait for it", () => {
     const { repo, store } = repoWith([B]);
-    store.meta.set(refinedMetaKey(repo.mainId), "3");
+    recordRefinedApplied(store, repo.mainId, 3);
 
     expect(outstanding(repo.main)).toEqual([
       expect.stringMatching(
@@ -200,8 +196,7 @@ describe("each outstanding group names what advances it (011-29, design section 
       { worktreeId: id, testFile: ref(U), key: null, revision: 4, pending: null },
     ]);
     marked(store, id, U, AWAITING_INSTALL_REASON, { cause: "install", key: null });
-    store.meta.set(awaitingInstallMetaKey(id), awaitingInstallValue(["."]));
-    store.meta.set(installCommandMetaKey(id), "npm ci");
+    recordInstallWait(store, id, ["."], "npm ci");
 
     expect(outstanding(repo.main)).toEqual([
       `  1 test file without a result, no dependencies are installed in this worktree: ${U}; \`npm ci\` installs them`,

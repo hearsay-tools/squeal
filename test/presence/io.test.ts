@@ -18,8 +18,8 @@ import {
 } from "../../src/core/presence/stored.js";
 import { lockFileFor } from "../../src/core/store/paths.js";
 import type { WorktreeId } from "../../src/core/types/common.js";
-import { notesMetaKey } from "../../src/core/types/scheduler.js";
 import type { Store } from "../../src/core/types/store.js";
+import { worktreeMetaKey } from "../../src/core/types/store.js";
 import { at, type Stored, scratch } from "./fixture.js";
 
 /*
@@ -72,7 +72,7 @@ function reads<T>(
   const row = store.worktrees.get(id);
   const names = new Map([
     [daemonExitMetaKey(id), "exit"],
-    [notesMetaKey(id), "notes"],
+    [worktreeMetaKey("notes", id), "notes"],
     [handoffMetaKey(id), "claim"],
     [shortHandoffMetaKey(id), "short"],
     [daemonRestMetaKey(id), "rest"],

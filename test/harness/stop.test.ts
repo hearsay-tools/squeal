@@ -1,9 +1,9 @@
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 import { askRetry } from "../../src/core/retry/records.js";
+import { recordRefinedApplied } from "../../src/core/scheduler/refined.js";
 import { storePaths } from "../../src/core/store/paths.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
-import { refinedMetaKey } from "../../src/core/types/scheduler.js";
 import { HOOK_TIMEOUT_MS } from "../../src/core/types/store-records.js";
 import { runHook } from "../../src/harness/claude-code/hooks.js";
 import type { HookResult } from "../../src/harness/claude-code/run.js";
@@ -131,12 +131,9 @@ describe("Stop's wait for pending checks (review wave 4.5, S1)", () => {
     r.apply(r.pass());
     const revision = r.store.revisions.latest(r.worktreeId)?.number ?? 0;
     // Every check is current, but the runner has not looked at this revision yet.
-    r.store.meta.set(refinedMetaKey(r.worktreeId), String(revision - 1));
+    recordRefinedApplied(r.store, r.worktreeId, revision - 1);
     r.policy({ stop: { waitMs: 1_000 } });
-    const refined = setTimeout(
-      () => r.store.meta.set(refinedMetaKey(r.worktreeId), String(revision)),
-      300,
-    );
+    const refined = setTimeout(() => recordRefinedApplied(r.store, r.worktreeId, revision), 300);
     try {
       const started = performance.now();
       await runHook("stop", recorded("stop", r.root), deps());

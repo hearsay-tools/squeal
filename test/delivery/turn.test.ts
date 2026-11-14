@@ -7,9 +7,9 @@ import {
   turnMetaKey,
   waitedFor,
 } from "../../src/core/delivery/turn.js";
+import { recordRefinedApplied } from "../../src/core/scheduler/refined.js";
 import { createStateSink } from "../../src/core/state/sink.js";
 import type { Consumer, HarnessDelivery, TransitionEntry } from "../../src/core/types/delivery.js";
-import { refinedMetaKey } from "../../src/core/types/scheduler.js";
 import type { Store } from "../../src/core/types/store.js";
 import { check, freshStore, result, setKey, WT } from "../state/helpers.js";
 import { fixedStatus } from "./fakes.js";
@@ -92,7 +92,7 @@ describe("turn state", () => {
       trigger: "watch",
       changes: [{ path: "src/new.test.ts", oldHash: null, newHash: "h" }],
     });
-    store.meta.set(refinedMetaKey(WT), "0");
+    recordRefinedApplied(store, WT, 0);
     await delivery.endTurn(C1);
 
     const turn = readTurn(store, C1);

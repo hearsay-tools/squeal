@@ -6,8 +6,8 @@ import { CommandHold } from "../../src/core/scheduler/command-hold.js";
 import { readCommandHolds } from "../../src/core/scheduler/hold-rows.js";
 import { isStoreOpenFailure, openStore } from "../../src/core/store/open.js";
 import { storePaths } from "../../src/core/store/paths.js";
-import { notesMetaKey } from "../../src/core/types/scheduler.js";
 import type { Store } from "../../src/core/types/store.js";
+import { worktreeMetaKey } from "../../src/core/types/store.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { fakeCommonDir, open } from "../store/helpers.js";
 import { catchUpRepo, catchUpSide } from "./catch-up-fixture.js";
@@ -120,7 +120,11 @@ describe("a command hold's removal and its notes are one write (row 011-231)", (
     // The entries another connection reads when the scheduler's own store writes the end note.
     let atNote: number | null = null;
     vi.spyOn(side.store.meta, "set").mockImplementation((key, value) => {
-      if (atNote === null && key === notesMetaKey(side.worktreeId) && value.includes(note)) {
+      if (
+        atNote === null &&
+        key === worktreeMetaKey("notes", side.worktreeId) &&
+        value.includes(note)
+      ) {
         atNote = readCommandHolds(other, side.worktreeId).length;
       }
       set(key, value);

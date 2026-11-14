@@ -1,11 +1,11 @@
 import { isRecord } from "../fs/json.js";
 import { testFileId } from "../keys/reverse-index.js";
+import { isRefined } from "../scheduler/refined.js";
 import { pruneRekeyed, readRekeyed } from "../scheduler/rekeyed-record.js";
 import { testFileKeyOf } from "../state/derive.js";
 import type { CheckId } from "../types/check.js";
 import type { RevisionNumber, WorktreeId } from "../types/common.js";
 import type { Consumer, EditsSettled } from "../types/delivery.js";
-import { refinedMetaKey } from "../types/scheduler.js";
 import type { KnownState } from "../types/state.js";
 import type { StatusHeader } from "../types/status.js";
 import { type Store, worktreeMetaKey } from "../types/store.js";
@@ -91,13 +91,6 @@ function prune(store: Store, worktreeId: WorktreeId): void {
   );
 }
 
-/** The revision whose runner part the daemon applied last; with none recorded, every one. */
-function refined(store: Store, worktreeId: WorktreeId): number {
-  const raw = store.meta.get(refinedMetaKey(worktreeId));
-  const value = raw === null ? Number.NaN : Number(raw);
-  return Number.isInteger(value) ? value : Number.POSITIVE_INFINITY;
-}
-
 /** What a delivery says about the consumer's edits, and what saying it records. */
 export interface EditNotes {
   readonly sawEdit?: { readonly queued: number };
@@ -110,7 +103,7 @@ export interface EditNotes {
 
 /**
  * The notes on `consumer`'s edits after its edit state's revision, once the
- * runner part of the latest revision is applied (`refinedMetaKey`): until
+ * runner part of the latest revision is applied (`isRefined`): until
  * then the files it adds have no key. `null` with nothing to say, before any edit, or for a
  * consumer registered before these notes (no edit state). `delivering`
  * says the delivery has other news; without it, and with 001-224 said, only
@@ -126,7 +119,7 @@ export function editNotes(
   // Once 001-224 was said, only a delivery with other news carries a note.
   if (state === null || (state.said && !delivering)) return null;
   const revision = store.revisions.latest(consumer.worktreeId)?.number ?? 0;
-  if (revision <= state.since || refined(store, consumer.worktreeId) < revision) return null;
+  if (revision <= state.since || !isRefined(store, consumer.worktreeId, revision)) return null;
   const gaps = registration(store, consumer)?.gaps ?? [];
   const { changed } = changedAfter(
     store,

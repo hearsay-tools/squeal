@@ -26,7 +26,7 @@ import { lockFileFor } from "../store/paths.js";
 import type { Capacity } from "../types/capacity.js";
 import type { AbsolutePath, EpochMs, RelativePath, WorktreeId } from "../types/common.js";
 import type { DaemonExit, DaemonExitReason, DaemonPhase, SyncAnswer } from "../types/daemon.js";
-import { bootstrappedMetaKey, daemonIncarnation, predecessorIncarnation } from "../types/daemon.js";
+import { daemonIncarnation, predecessorIncarnation } from "../types/daemon.js";
 import type { TestFileRef } from "../types/keys.js";
 import type { LintTool } from "../types/lint.js";
 import type { Policy } from "../types/policy.js";
@@ -38,6 +38,7 @@ import type {
   FullSuiteRequest,
   StoppedProcesses,
 } from "../types/scheduler.js";
+import { markScanned } from "./bootstrapped.js";
 import { DaemonWrites, SHUTDOWN_WRITE_MS, within } from "./busy-writes.js";
 import { describeProblems } from "./config-file.js";
 import { type FrontDesk, type PreparedDesk, prepareFrontDesk } from "./desk.js";
@@ -963,7 +964,7 @@ class Daemon {
       // daemon as scanned, which "none of the files changed here" needs (D6).
       await this.#writes.write(
         "the start's scan mark",
-        () => store.meta.set(bootstrappedMetaKey(worktreeId), String(this.#startedAt)),
+        () => markScanned(store, worktreeId, this.#startedAt),
         within(DAEMON_START_BUSY_TIMEOUT_MS, () => this.#exit !== null),
       );
       // Started: from here a write waits as long as a serving daemon's (task 001-161).

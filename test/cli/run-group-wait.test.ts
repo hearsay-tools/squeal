@@ -3,11 +3,12 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
 import { AWAITING_INSTALL_REASON } from "../../src/core/scheduler/install.js";
+import { recordInstallWait } from "../../src/core/scheduler/install-wait.js";
 import type { CheckId } from "../../src/core/types/check.js";
 import type { RevisionNumber } from "../../src/core/types/common.js";
 import type { CheckKey } from "../../src/core/types/keys.js";
-import { awaitingInstallMetaKey, installCommandMetaKey } from "../../src/core/types/scheduler.js";
 import type { KnownOutcome, PendingPhase, Validity } from "../../src/core/types/state.js";
+import { worktreeMetaKey } from "../../src/core/types/store.js";
 import { appendRevisions, check, fakeRepo, seedStore, state } from "../status/helpers.js";
 import { closeFakeDaemons, fakeDaemon } from "./fake-daemon.js";
 
@@ -86,8 +87,9 @@ function worktree() {
   };
   /** The daemon waits for an install, which `command` ends (none: the daemon names none). */
   const awaitInstall = (command?: string) => {
-    store.meta.set(awaitingInstallMetaKey(id), "true");
-    if (command !== undefined) store.meta.set(installCommandMetaKey(id), command);
+    // A daemon before task 001-410 stored the wait alone.
+    if (command === undefined) store.meta.set(worktreeMetaKey("awaitingInstall", id), "true");
+    else recordInstallWait(store, id, [], command);
   };
   return { root: repo.main, store, socket, file, awaitInstall };
 }

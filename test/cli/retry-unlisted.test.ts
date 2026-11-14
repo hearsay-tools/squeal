@@ -3,12 +3,12 @@ import { dirname, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { CliIo } from "../../src/cli/main.js";
 import { retryCommand } from "../../src/cli/retry.js";
+import { markScanned } from "../../src/core/daemon/bootstrapped.js";
 import { readRetries } from "../../src/core/retry/records.js";
+import { recordRefinedApplied } from "../../src/core/scheduler/refined.js";
 import { shellWord } from "../../src/core/text.js";
 import type { RevisionNumber } from "../../src/core/types/common.js";
-import { bootstrappedMetaKey } from "../../src/core/types/daemon.js";
 import type { CheckKey } from "../../src/core/types/keys.js";
-import { refinedMetaKey } from "../../src/core/types/scheduler.js";
 import { fakeRepo, seedStore } from "../status/helpers.js";
 
 /*
@@ -62,7 +62,7 @@ function worktree(latest: number, refined: number, listedAt: number) {
       });
     }
   });
-  store.meta.set(refinedMetaKey(id), String(refined));
+  recordRefinedApplied(store, id, refined);
   store.testFileKeys.upsertMany([
     {
       worktreeId: id,
@@ -118,7 +118,7 @@ describe("squeal retry on a test file the daemon has not listed yet (011-134, gh
   it("says the file changed after the newest listed revision when the daemon has not recorded it", async () => {
     // gh-76: a worktree at revision 0, listed by the daemon that started at `startedAt`.
     const w = worktree(0, 0, 0);
-    w.store.meta.set(bootstrappedMetaKey(w.id), String(Date.now() - 60_000));
+    markScanned(w.store, w.id, Date.now() - 60_000);
     w.write(NEW);
     const out = await retry([NEW, KEYED], w.root);
     expect(out.code).toBe(3);

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readPolicy } from "../../../src/core/daemon/policy.js";
 import { readStopHolds } from "../../../src/core/delivery/turn.js";
 import { releaseLintGroup } from "../../../src/core/lint/pass/commit-entry.js";
-import { refinedMetaKey } from "../../../src/core/types/scheduler.js";
+import { recordRefinedApplied } from "../../../src/core/scheduler/refined.js";
 import { ADDS, FILE, type SquealRepo } from "../../harness/helpers.js";
 import {
   HARNESSES,
@@ -64,7 +64,7 @@ function landUnit(r: SquealRepo): void {
 }
 
 /** The runner part of the latest revision applied: it listed no new file. */
-const refine = (r: SquealRepo) => r.store.meta.set(refinedMetaKey(r.worktreeId), String(latest(r)));
+const refine = (r: SquealRepo) => recordRefinedApplied(r.store, r.worktreeId, latest(r));
 
 /**
  * A session in a turn whose edit to `src/a.js` the lint group at `stop`
@@ -83,7 +83,7 @@ async function mixed(harness: Harness, open: Open, maxHolds: number, known: bool
   await harness.startTurn(r);
   if (known) markStopWait(r, harness.name);
   await hooked.edit({ "src/a.js": "bad no-undef\n" });
-  if (open === "runner part") r.store.meta.set(refinedMetaKey(r.worktreeId), String(latest(r) - 1));
+  if (open === "runner part") recordRefinedApplied(r.store, r.worktreeId, latest(r) - 1);
   else unitKey(r, open === "queued" ? "queued" : null);
   const blobOf = (path: string) => tree.source.file(path)?.hash ?? null;
   releaseLintGroup(r.repo.commonDir, readPolicy(r.root), r.worktreeId, "lint", blobOf);

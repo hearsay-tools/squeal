@@ -1,5 +1,5 @@
+import { markScanned } from "../../src/core/daemon/bootstrapped.js";
 import type { EpochMs, WorktreeId } from "../../src/core/types/common.js";
-import { bootstrappedMetaKey } from "../../src/core/types/daemon.js";
 import type { StatusBuilder, StatusResult } from "../../src/core/types/status.js";
 import type { Store } from "../../src/core/types/store.js";
 
@@ -46,5 +46,5 @@ export function liveDaemon(
     squealVersion: "0.0.0-test",
     token: "live",
   });
-  if (scanned) store.meta.set(bootstrappedMetaKey(worktreeId), String(startedAt));
+  if (scanned) markScanned(store, worktreeId, startedAt);
 }

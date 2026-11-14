@@ -4,11 +4,11 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { squealEvidence } from "../../evals/lib/index.mjs";
 import { type CliIo, main } from "../../src/cli/main.js";
 import { selectNamedFiles } from "../../src/cli/named-selection.js";
+import { markScanned } from "../../src/core/daemon/bootstrapped.js";
 import { socketPathFor } from "../../src/core/daemon/paths.js";
 import { worktreeIdFor } from "../../src/core/fs/git-layout.js";
 import { CLOSURE_METHOD } from "../../src/core/keys/closure.js";
 import { withStatusStore } from "../../src/core/status/open.js";
-import { bootstrappedMetaKey } from "../../src/core/types/daemon.js";
 import type { Store } from "../../src/core/types/store.js";
 import { check } from "../status/helpers.js";
 import { type Answer, closeFakeDaemons, fakeDaemon } from "./fake-daemon.js";
@@ -78,7 +78,7 @@ function covered() {
   write(repo.main, E2E);
   write(repo.main, SHARED);
   for (const file of [A, B]) closure(store, repo.mainId, file, [E2E, SHARED]);
-  store.meta.set(bootstrappedMetaKey(repo.mainId), String(Date.now() + 60_000));
+  markScanned(store, repo.mainId, Date.now() + 60_000);
   return seeded;
 }
 
@@ -244,7 +244,7 @@ describe("a source path (row 011-206)", () => {
     write(repo.main, "src/foo.py");
     write(repo.main, "tests/test_bar.py");
     closure(store, repo.mainId, "tests/test_foo.py", ["src/foo.py", "tests/test_bar.py"]);
-    store.meta.set(bootstrappedMetaKey(repo.mainId), String(Date.now() + 60_000));
+    markScanned(store, repo.mainId, Date.now() + 60_000);
 
     expect(paths(repo.main, ["src/foo.py", "tests/test_bar.py"])).toEqual([
       { path: "src/foo.py", kind: "source", selects: 1 },

@@ -1,12 +1,7 @@
 import { testFileId } from "../keys/reverse-index.js";
 import type { EpochMs, RevisionNumber, WorktreeId } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
-import {
-  type CheckpointProgress,
-  checkpointMetaKey,
-  type OwedCheckpoint,
-  parseCheckpointProgress,
-} from "../types/scheduler.js";
+import type { CheckpointProgress, OwedCheckpoint } from "../types/scheduler.js";
 import type { Store } from "../types/store.js";
 import type {
   CheckpointEnd,
@@ -14,6 +9,7 @@ import type {
   CheckpointLane,
   CheckpointRecord,
 } from "../types/store-records.js";
+import { readCheckpointProgress, writeCheckpointProgress } from "./checkpoint-progress.js";
 
 interface Active {
   /** The checkpoint whose id its results carry (`idFor`). */
@@ -48,12 +44,12 @@ interface Active {
  * joins it (`join`): its record ends with the open one instead of replacing
  * it. Task 001-219: a daemon that stops with an explicit checkpoint open owes
  * it (`owe`), and the next daemon resumes it (`resume`). The open checkpoint
- * and its progress are kept in `meta` for status (`checkpointMetaKey`).
+ * and its progress are kept in `meta` for status (`writeCheckpointProgress`).
  */
 export class Checkpoints {
   #active: Active | null = null;
-  /** What `meta` holds, as this tracker last wrote it; `null` before its first write. */
-  #published: string | null = null;
+  /** The progress this tracker last wrote, as JSON (`null`: ended); `undefined` before its first write. */
+  #published: string | null | undefined = undefined;
 
   /** What the last daemon left in `meta`, read before this one records anything. */
   #left: CheckpointProgress | null;
@@ -63,7 +59,7 @@ export class Checkpoints {
     private readonly worktreeId: WorktreeId,
     private readonly now: () => EpochMs,
   ) {
-    this.#left = parseCheckpointProgress(store.meta.get(checkpointMetaKey(worktreeId)));
+    this.#left = readCheckpointProgress(store, worktreeId);
   }
 
   /**
@@ -362,10 +358,10 @@ export class Checkpoints {
   }
 
   #write(value: CheckpointProgress | null): void {
-    const text = value === null ? "" : JSON.stringify(value);
-    if (text === this.#published) return;
+    const text = value === null ? null : JSON.stringify(value);
+    if (this.#published !== undefined && text === this.#published) return;
     this.#published = text;
-    this.store.meta.set(checkpointMetaKey(this.worktreeId), text);
+    writeCheckpointProgress(this.store, this.worktreeId, value);
   }
 }
 

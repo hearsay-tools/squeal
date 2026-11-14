@@ -7,13 +7,13 @@ import { headerLines } from "../../src/core/delivery/header.js";
 import { readLiveHeader } from "../../src/core/delivery/liveness.js";
 import { FeedDeliveredRow } from "../../src/core/presence/events.js";
 import { feedDeliveredMetaKey, readFeedDelivered } from "../../src/core/presence/stored.js";
+import { recordRefinedApplied } from "../../src/core/scheduler/refined.js";
 import { FEED_LATE_MS } from "../../src/core/status/feed-late.js";
 import { formatStatus } from "../../src/core/status/format-status.js";
 import { readStatus } from "../../src/core/status/snapshot.js";
 import { timeText } from "../../src/core/text.js";
 import type { Consumer } from "../../src/core/types/delivery.js";
 import type { CheckKey } from "../../src/core/types/keys.js";
-import { refinedMetaKey } from "../../src/core/types/scheduler.js";
 import type { Store } from "../../src/core/types/store.js";
 import type { DaemonRecord } from "../../src/core/types/store-records.js";
 import { statusText } from "../../src/harness/shared/text.js";
@@ -59,7 +59,7 @@ function worktree(daemon: DaemonRecord | null = LIVE): Seeded {
     daemon,
   });
   appendRevisions(store, wt, HEAD, { head: null, dirty: true });
-  store.meta.set(refinedMetaKey(wt), String(HEAD));
+  recordRefinedApplied(store, wt, HEAD);
   for (const path of ["test/a.test.ts", "test/b.test.ts"]) {
     store.testFileKeys.upsertMany([
       {
@@ -152,7 +152,7 @@ describe("a late change feed is said (011-200)", () => {
 describe("a late feed and an unlisted revision are one sentence (011-311)", () => {
   const behind = (since: number, runners: string) =>
     `Squeal is behind: it has not read edits made after ${timeText(since)}, and ${runners} not listed revision ${HEAD}'s test files yet, so new test files are not counted.`;
-  const unlisted = (w: Seeded) => w.store.meta.set(refinedMetaKey(w.wt), String(HEAD - 1));
+  const unlisted = (w: Seeded) => recordRefinedApplied(w.store, w.wt, HEAD - 1);
   const occurrences = (text: string, part: string) => text.split(part).length - 1;
 
   it("status, Stop, the registration and a news header say both delays once", async () => {

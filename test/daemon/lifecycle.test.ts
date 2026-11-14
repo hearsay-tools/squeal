@@ -6,7 +6,7 @@ import { ensureDaemon, probeDaemon } from "../../src/core/daemon/ensure.js";
 import { resolveCommonDir } from "../../src/core/fs/git-layout.js";
 import { daemonLogFor, storePaths } from "../../src/core/store/paths.js";
 import { SCHEMA_VERSION } from "../../src/core/store/schema.js";
-import { notesMetaKey } from "../../src/core/types/scheduler.js";
+import { worktreeMetaKey } from "../../src/core/types/store.js";
 import { rootVersion } from "../../src/harness/build.js";
 import {
   daemonSuite,
@@ -169,7 +169,7 @@ describe("squeal daemon: singleton and restart (spec 001 D10)", SLOW, () => {
     const raw = new DatabaseSync(storePaths(repo.commonDir).database);
     const row = raw
       .prepare("SELECT value FROM meta WHERE key = ?")
-      .get(notesMetaKey(repo.worktreeId)) as { value: string } | undefined;
+      .get(worktreeMetaKey("notes", repo.worktreeId)) as { value: string } | undefined;
     raw.close();
     const texts = (JSON.parse(row?.value ?? "[]") as { text: string }[]).map((n) => n.text);
     expect(texts.at(-1)).toMatch(

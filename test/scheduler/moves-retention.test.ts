@@ -1,5 +1,6 @@
 import { describe, expect, it, onTestFinished } from "vitest";
 import { waitForStatus } from "../../src/cli/status-wait.js";
+import { readRefined } from "../../src/core/scheduler/refined.js";
 import {
   answerMoves,
   MOVES_GRACE_MS,
@@ -8,7 +9,6 @@ import {
   recordMoves,
   rekeyedMovesMetaKey,
 } from "../../src/core/scheduler/rekeyed-moves.js";
-import { refinedMetaKey } from "../../src/core/types/scheduler.js";
 import { SLOW } from "./cleanup.js";
 import { createRepo, openRepoStore } from "./repo.js";
 import { captureSync, HARNESS_INCARNATION, liveDaemon } from "./store-wait.js";
@@ -139,7 +139,7 @@ describe("a wait behind an unbounded run --all retry (spec 001 D5, task 001-228)
 
       // The runner part is abandoned at its bound and the revision recorded refined.
       await expect
-        .poll(() => Number(h.store.meta.get(refinedMetaKey(h.worktreeId))), { timeout: 30_000 })
+        .poll(() => readRefined(h.store, h.worktreeId) ?? 0, { timeout: 30_000 })
         .toBeGreaterThanOrEqual(revision);
       // The retry has started and hangs in `environment`, under the lock.
       await expect.poll(() => environmentCalls, { timeout: 30_000 }).toBe(2);

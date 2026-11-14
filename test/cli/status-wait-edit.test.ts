@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { waitForStatus } from "../../src/cli/status-wait.js";
 import { type EndedWait, waitLine } from "../../src/cli/status-wait-lines.js";
-import { refinedMetaKey } from "../../src/core/types/scheduler.js";
+import { recordRefinedApplied } from "../../src/core/scheduler/refined.js";
 import {
   A,
   ADDS,
@@ -110,8 +110,8 @@ describe("status --wait holds for the edit's own test files (lessons, defect 32)
 
   it("is not quiet before the window's runner part is applied", async () => {
     const { repo, store } = repoWith([], [A]);
-    store.meta.set(refinedMetaKey(repo.mainId), "3");
-    const applied = later(300, () => store.meta.set(refinedMetaKey(repo.mainId), "4"));
+    recordRefinedApplied(store, repo.mainId, 3);
+    const applied = later(300, () => recordRefinedApplied(store, repo.mainId, 4));
 
     const daemon = answering(store, repo.mainId, [A]);
     const { wait, endedBy } = await timed(() => waitForStatus(repo.main, options(daemon.sync)));

@@ -5,12 +5,12 @@ import { afterEach } from "vitest";
 import { syncDaemon } from "../../src/cli/status-sync.js";
 import { prepareFrontDesk } from "../../src/core/daemon/desk.js";
 import { testFileId } from "../../src/core/keys/reverse-index.js";
+import { recordRefinedApplied } from "../../src/core/scheduler/refined.js";
 import { adoptsAtFirstCommit, recordMoves } from "../../src/core/scheduler/rekeyed-moves.js";
 import { recordRekeyed } from "../../src/core/scheduler/rekeyed-record.js";
 import type { AbsolutePath, RevisionNumber } from "../../src/core/types/common.js";
 import { daemonIncarnation, predecessorIncarnation } from "../../src/core/types/daemon.js";
 import type { CheckKey } from "../../src/core/types/keys.js";
-import { refinedMetaKey } from "../../src/core/types/scheduler.js";
 import type { Store } from "../../src/core/types/store.js";
 import type { DaemonRecord, TestFileKeyRecord } from "../../src/core/types/store-records.js";
 import { appendRevisions, check, fakeRepo, seedStore, state } from "../status/helpers.js";
@@ -72,7 +72,7 @@ export async function worktree(refined: number) {
   const dir = mkdtempSync("/tmp/sq-succ-");
   cleanups.push(() => rmSync(dir, { recursive: true, force: true }));
   appendRevisions(store, repo.mainId, 4, { head: null, dirty: false });
-  store.meta.set(refinedMetaKey(repo.mainId), String(refined));
+  recordRefinedApplied(store, repo.mainId, refined);
   return { repo, store, id: repo.mainId, dir };
 }
 
@@ -174,7 +174,7 @@ export function olderCommit(
     const marks = rekeyed.map((path) => ({ id: testFileId(ref(path)), open: 4, moved: 4 }));
     recordRekeyed(w.store, w.id, marks, []);
     states(w.store, w.id, owned);
-    if (refined !== null) w.store.meta.set(refinedMetaKey(w.id), String(refined));
+    if (refined !== null) recordRefinedApplied(w.store, w.id, refined);
   });
 }
 

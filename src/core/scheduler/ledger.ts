@@ -5,7 +5,7 @@ import { isBusy } from "../store/connection.js";
 import type { CheckId } from "../types/check.js";
 import type { CommitSha, RelativePath, RevisionNumber } from "../types/common.js";
 import type { CheckKey, TestFileRef } from "../types/keys.js";
-import { refinedMetaKey, SLOW_GROUP } from "../types/scheduler.js";
+import { SLOW_GROUP } from "../types/scheduler.js";
 import type { SetupOutcome } from "../types/state.js";
 import type { MarkedUnknown, ResultRecord, TestFileKeyRecord } from "../types/store-records.js";
 import { acceptedAt, currentChecks, type ReadAsOne } from "./accept.js";
@@ -25,6 +25,7 @@ import { takeHeldFiles } from "./held.js";
 import { sinkWithoutResults } from "./hold.js";
 import { publishPromotions } from "./promotions-row.js";
 import { type Priority, priorityOf, RunQueue } from "./queue.js";
+import { recordRefinedApplied } from "./refined.js";
 import { adoptsAtFirstCommit, movesWouldChange, recordMoves } from "./rekeyed-moves.js";
 import { recordRekeyed } from "./rekeyed-record.js";
 import { endRerun } from "./rerun.js";
@@ -650,7 +651,7 @@ export class Ledger {
   /**
    * Writes what this round of work owes the store and the sink, in one
    * transaction. `refined` is the revision whose runner part this commit
-   * applies; it becomes the worktree's refined revision (`refinedMetaKey`,
+   * applies; it becomes the worktree's refined revision (`recordRefinedApplied`,
    * spec 001 D2 as amended), so headers stop counting that runner part as
    * pending in the same transaction that applies it.
    */
@@ -738,7 +739,7 @@ export class Ledger {
         this.#refresh(revision, checkpointId, testFiles);
       }
       if (options.refined !== undefined) {
-        store.meta.set(refinedMetaKey(worktreeId), String(options.refined));
+        recordRefinedApplied(store, worktreeId, options.refined);
       }
     });
     this.#adopted = true;

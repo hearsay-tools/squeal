@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { waitForStatus } from "../../src/cli/status-wait.js";
-import { refinedMetaKey } from "../../src/core/types/scheduler.js";
+import { recordRefinedApplied } from "../../src/core/scheduler/refined.js";
 import {
   A,
   B,
@@ -89,7 +89,7 @@ describe("status --wait over an older daemon's key round trip (review wave 13ad,
       sync: syncThen(async () => {
         h.commit([row(A, "a-k2", "queued")], [A]);
         h.commit([row(A, K, "queued"), row(B, "b-2", null)], [A]);
-        h.store.meta.set(refinedMetaKey(h.id), "4");
+        recordRefinedApplied(h.store, h.id, 4);
       }),
     });
     expect(wait.outcome).toBe("timeout");

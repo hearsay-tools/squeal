@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { refinedMetaKey } from "../../src/core/types/scheduler.js";
+import { recordRefinedApplied } from "../../src/core/scheduler/refined.js";
 import {
   clock,
   HARNESSES,
@@ -98,7 +98,7 @@ describe.each(HARNESSES)("the waiting Stop at its read boundaries, $name (13am)"
   it("B2: an unrefined revision is not complete, and the bound names it pending", async () => {
     const r = await repo(harness, { requireSlowSuite: true, slowWaitMs: 400 });
     landSlow(r, "pass");
-    r.store.meta.set(refinedMetaKey(r.worktreeId), "0");
+    recordRefinedApplied(r.store, r.worktreeId, 0);
     const out = await stopThenWait(harness, r, () => {});
     expect(out.quick).toEqual({});
     expect(out.waiting.decision).toBe("block");
@@ -111,7 +111,7 @@ describe.each(HARNESSES)("the waiting Stop at its read boundaries, $name (13am)"
   it("B2 control: a refined revision whose slow files passed stays silent", async () => {
     const r = await repo(harness, { requireSlowSuite: true, slowWaitMs: 400 });
     landSlow(r, "pass");
-    r.store.meta.set(refinedMetaKey(r.worktreeId), "1");
+    recordRefinedApplied(r.store, r.worktreeId, 1);
     const out = await stopThenWait(harness, r, () => {});
     expect(out).toEqual({ quick: {}, waiting: {} });
     expect(turnOf(r)).toBe("idle");
@@ -120,8 +120,8 @@ describe.each(HARNESSES)("the waiting Stop at its read boundaries, $name (13am)"
   it("B2: an unrefined revision refined while it waits, its slow files passing, stays silent", async () => {
     const r = await repo(harness, { requireSlowSuite: true, slowWaitMs: 2_000 });
     landSlow(r, "pass");
-    r.store.meta.set(refinedMetaKey(r.worktreeId), "0");
-    const refined = setTimeout(() => r.store.meta.set(refinedMetaKey(r.worktreeId), "1"), 300);
+    recordRefinedApplied(r.store, r.worktreeId, 0);
+    const refined = setTimeout(() => recordRefinedApplied(r.store, r.worktreeId, 1), 300);
     try {
       expect((await stopThenWait(harness, r, () => {})).waiting).toEqual({});
     } finally {

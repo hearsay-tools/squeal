@@ -13,7 +13,7 @@ import { yieldsMetaKey } from "../../src/core/scheduler/yields.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
 import { isSlowLane, type RunOptions, type RunReport } from "../../src/core/types/runner.js";
-import { notesMetaKey } from "../../src/core/types/scheduler.js";
+import { worktreeMetaKey } from "../../src/core/types/store.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import {
   type CatchUpFile,
@@ -253,7 +253,7 @@ export class Model {
 
   /** Notes of errors the scheduler had no caller for. */
   errors(): string[] {
-    const raw = this.side.store.meta.get(notesMetaKey(this.side.worktreeId));
+    const raw = this.side.store.meta.get(worktreeMetaKey("notes", this.side.worktreeId));
     const notes = raw === null ? [] : (JSON.parse(raw) as { text?: unknown }[]);
     return notes.flatMap(({ text }) =>
       typeof text === "string" && text.includes("Error: ") ? [text] : [],

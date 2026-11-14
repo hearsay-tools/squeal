@@ -3,10 +3,10 @@ import { createServer, type Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, onTestFinished } from "vitest";
+import { recordRefinedApplied } from "../../src/core/scheduler/refined.js";
 import type { CheckGroup } from "../../src/core/types/check-groups.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import { DEFAULT_POLICY, type PolicyFile } from "../../src/core/types/policy.js";
-import { refinedMetaKey } from "../../src/core/types/scheduler.js";
 import type { HookDeps } from "../../src/harness/shared/hook.js";
 import { FILE, type SquealRepo } from "./helpers.js";
 import {
@@ -152,7 +152,7 @@ describe.each(HARNESSES)("Stop for every group it waits for, $name (019 D4)", (h
       stop: { requireSlowSuite: true, slowWaitMs: 1_500 },
     });
     landSlow(r, "pass");
-    r.store.meta.set(refinedMetaKey(r.worktreeId), "0");
+    recordRefinedApplied(r.store, r.worktreeId, 0);
     const LATE: TestFileRef = { project: "", path: "test/e2e/late.test.ts" };
     const asked = await countRequests(r, null);
     let beforeListing: number | null = null;
@@ -162,7 +162,7 @@ describe.each(HARNESSES)("Stop for every group it waits for, $name (019 D4)", (h
       r.store.testFileKeys.upsertMany([
         { worktreeId: r.worktreeId, testFile: LATE, key: "late1", revision: 1, pending: null },
       ]);
-      r.store.meta.set(refinedMetaKey(r.worktreeId), "1");
+      recordRefinedApplied(r.store, r.worktreeId, 1);
     };
     const timer = setTimeout(list, 400);
     onTestFinished(() => clearTimeout(timer));

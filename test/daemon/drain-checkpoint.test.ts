@@ -2,7 +2,7 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { checkpointMetaKey, parseCheckpointProgress } from "../../src/core/types/scheduler.js";
+import { readCheckpointProgress } from "../../src/core/scheduler/checkpoint-progress.js";
 import { runHook } from "../../src/harness/claude-code/hooks.js";
 import { findHarnessProcess } from "../../src/harness/shared/harness-process.js";
 import { recorded } from "../harness/helpers.js";
@@ -92,9 +92,7 @@ describe.runIf(process.platform === "linux")(
           );
         expect(said, cli.stdout()).not.toBeNull();
         const id = said?.[1] ?? "";
-        const open = withStore(repo, (store) =>
-          parseCheckpointProgress(store.meta.get(checkpointMetaKey(repo.worktreeId))),
-        );
+        const open = withStore(repo, (store) => readCheckpointProgress(store, repo.worktreeId));
         // Joined: the baseline stays the open checkpoint, now explicit.
         expect(open).toMatchObject({ kind: "run-all" });
         expect(open?.id).toBe(said?.[2]);

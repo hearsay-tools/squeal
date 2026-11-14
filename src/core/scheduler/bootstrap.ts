@@ -3,10 +3,8 @@ import { testFileId } from "../keys/reverse-index.js";
 import { type BusyRetry, retryWhileBusy } from "../store/busy.js";
 import { isBusy } from "../store/connection.js";
 import type { CheckId } from "../types/check.js";
-import type { RelativePath, RevisionNumber, WorktreeId } from "../types/common.js";
+import type { RelativePath } from "../types/common.js";
 import type { TestFileRef } from "../types/keys.js";
-import { refinedMetaKey } from "../types/scheduler.js";
-import type { Store } from "../types/store.js";
 import { owedStrict, resumeOwed } from "./checkpoint-requests.js";
 import { NOTHING_CHANGED, type SchedulerContext, tryRunner } from "./context.js";
 import { cutAtStart } from "./edit-cut.js";
@@ -18,6 +16,7 @@ import type { Ledger } from "./ledger.js";
 import { persistedNoteTexts, unmatchedInputNotes } from "./notes.js";
 import { listTestFilesOf } from "./omitted-test-files.js";
 import { priorityOf } from "./queue.js";
+import { readRefined } from "./refined.js";
 import { openMoves } from "./rekeyed-moves.js";
 import { restoreReruns } from "./rerun.js";
 import { isCatchUp, readEnvironments, resolveClosures } from "./revision.js";
@@ -71,7 +70,7 @@ import { runnerPartBound } from "./runner-work-bound.js";
  * `scan` is step 1, which needs no runner: the `start` revision and the
  * revision the ledger starts at. It returns the paths no runner has seen
  * change, one set per revision: those of the `start` revision and of every
- * revision after the refined one (`refinedMetaKey`), which an earlier daemon
+ * revision after the refined one (`readRefined`), which an earlier daemon
  * stored and never refined, as one that exited at a reinstall did (task
  * 001-113). The baseline queues them as edits (D5 step 4). A start that
  * resumes a rest counts the paths it hashed for the first time as its
@@ -101,13 +100,6 @@ export async function scan(
   // The start revision is the last of the range; with none, the new files are one of their own.
   const startPaths = started === null ? [] : [...(unseen.pop() ?? [])];
   return [...unseen, new Set([...startPaths, ...keys.seededAtStart])];
-}
-
-/** `null` when absent or not a number, as the header reads it. */
-function readRefined(store: Store, worktreeId: WorktreeId): RevisionNumber | null {
-  const raw = store.meta.get(refinedMetaKey(worktreeId));
-  const value = raw === null ? Number.NaN : Number(raw);
-  return Number.isInteger(value) ? value : null;
 }
 
 /**

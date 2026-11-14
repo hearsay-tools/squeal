@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import type { DaemonSync, SyncState } from "../../src/cli/status-sync.js";
 import { namedText } from "../../src/cli/status-wait-lines.js";
 import { waitForNamed } from "../../src/cli/status-wait-paths.js";
+import { recordRefinedApplied } from "../../src/core/scheduler/refined.js";
 import { NO_YIELD_ROW } from "../../src/core/scheduler/yield-row.js";
 import { writeYieldRow } from "../../src/core/scheduler/yields.js";
 import type { RevisionNumber } from "../../src/core/types/common.js";
-import { refinedMetaKey } from "../../src/core/types/scheduler.js";
 import { A, B, C, NOW, ref, repoWith } from "./status-wait-fixture.js";
 
 /*
@@ -40,7 +40,7 @@ describe("an unlisted revision's line names the run its runner part waits for (r
       trigger: "watch",
       changes: [{ path: "vitest.config.ts", oldHash: "a", newHash: "b" }],
     });
-    store.meta.set(refinedMetaKey(repo.mainId), "4");
+    recordRefinedApplied(store, repo.mainId, 4);
     store.runs.start({
       id: "r1",
       worktreeId: repo.mainId,

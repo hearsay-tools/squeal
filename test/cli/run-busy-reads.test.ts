@@ -4,10 +4,10 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
 import { checkpointVerdictLine } from "../../src/cli/run.js";
 import type { DaemonDown } from "../../src/cli/wait/table.js";
+import { writeCheckpointProgress } from "../../src/core/scheduler/checkpoint-progress.js";
 import { Checkpoints } from "../../src/core/scheduler/checkpoints.js";
 import type { RevisionNumber } from "../../src/core/types/common.js";
-import type { CheckKey } from "../../src/core/types/keys.js";
-import { checkpointMetaKey } from "../../src/core/types/scheduler.js";
+import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
 import type { CheckpointRecord } from "../../src/core/types/store-records.js";
 import {
   appendRevisions,
@@ -156,9 +156,16 @@ describe("the reads beside the run waits on a locked store (row 011-334)", () =>
   it("owedText: the stopped line says whether the next daemon resumes it was not read, within the deadline's bound", () => {
     const w = worktree();
     const checkpoint = w.checkpoints.join("c1", "run-all", 1 as RevisionNumber, [ref]);
-    const progress = { id: "c1", kind: "run-all", revision: 1, startedAt: 1, done: 0, total: 1 };
-    const due = { ids: ["c1"], remaining: [ref], strict: [] };
-    w.store.meta.set(checkpointMetaKey(w.id), JSON.stringify({ ...progress, owed: due }));
+    const progress = {
+      id: "c1",
+      kind: "run-all" as const,
+      revision: 1,
+      startedAt: 1,
+      done: 0,
+      total: 1,
+    };
+    const due = { ids: ["c1"], remaining: [ref], strict: [] as TestFileRef[] };
+    writeCheckpointProgress(w.store, w.id, { ...progress, owed: due });
     w.store.close();
     lockStore(w.repo.commonDir);
     const started = performance.now();

@@ -3,13 +3,10 @@ import { runWait } from "../../../src/cli/wait/wait.js";
 import { WAIT_DOWN_MS } from "../../../src/cli/wait-liveness.js";
 import { claimHandoff } from "../../../src/core/presence/events.js";
 import { HANDOFF_BOUND_MS, handoffFrom } from "../../../src/core/presence/stored.js";
+import { recordInstallWait } from "../../../src/core/scheduler/install-wait.js";
 import { STATUS_BUSY_TIMEOUT_MS } from "../../../src/core/status/open.js";
 import { storePaths } from "../../../src/core/store/paths.js";
 import type { EpochMs, RevisionNumber } from "../../../src/core/types/common.js";
-import {
-  awaitingInstallMetaKey,
-  installCommandMetaKey,
-} from "../../../src/core/types/scheduler.js";
 import { appendRevisions, fakeRepo } from "../../status/helpers.js";
 import { closeFakeDaemons, fakeDaemon, lockStore, received } from "../fake-daemon.js";
 import {
@@ -232,8 +229,7 @@ describe("the group wait's loop (row 011-326)", () => {
   it("deadline at the last read names the install the worktree waits for", async () => {
     const { w, clock, ask } = groupWait(1_000);
     w.file(E2E, { validity: "pending", pending: "queued" });
-    w.store.meta.set(awaitingInstallMetaKey(w.id), "true");
-    w.store.meta.set(installCommandMetaKey(w.id), "pnpm install");
+    recordInstallWait(w.store, w.id, [], "pnpm install");
     expect(await runWait(ask, clock.ports)).toMatchObject({
       kind: "deadline",
       verdict: { byClass: { pending: 1 } },

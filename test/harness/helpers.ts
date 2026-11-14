@@ -1,9 +1,9 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { markScanned } from "../../src/core/daemon/bootstrapped.js";
 import { testFileId } from "../../src/core/keys/reverse-index.js";
 import { recordRekeyed } from "../../src/core/scheduler/rekeyed-record.js";
 import { createStateSink } from "../../src/core/state/sink.js";
-import { bootstrappedMetaKey } from "../../src/core/types/daemon.js";
 import { type Consumer, MAIN_AGENT } from "../../src/core/types/delivery.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
 import type { PolicyFile } from "../../src/core/types/policy.js";
@@ -76,7 +76,7 @@ export function squealRepo(repo: FakeRepo = fakeRepo()): SquealRepo {
   const daemon: SquealRepo["daemon"] = (state, staleSince = 1) => {
     if (state === "none") return store.worktrees.upsert(row);
     // A daemon past its start scan: a registration may be told "none of the files changed here" (001-96).
-    store.meta.set(bootstrappedMetaKey(worktreeId), "1");
+    markScanned(store, worktreeId, 1);
     store.worktrees.setDaemon(worktreeId, {
       // Nobody listens here; the hooks' socket probe falls back to the runtime dir.
       socketPath: `/tmp/squeal-test-${worktreeId}.sock`,

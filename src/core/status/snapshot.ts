@@ -12,6 +12,7 @@ import { statusView } from "../presence/views.js";
 import { hostLoad } from "../retry/load.js";
 import { pendingRetriesOf } from "../retry/pending.js";
 import { withRecorded } from "../retry/recorded.js";
+import { readCheckpointProgress } from "../scheduler/checkpoint-progress.js";
 import { testFileKeyOf } from "../state/derive.js";
 import { readHeader } from "../state/header.js";
 import { META_STORE_RECOVERED } from "../store/open.js";
@@ -22,7 +23,6 @@ import {
   PAYLOAD_SCHEMA_VERSION,
   type WorktreeId,
 } from "../types/common.js";
-import { checkpointMetaKey, parseCheckpointProgress } from "../types/scheduler.js";
 import type { LoadNow } from "../types/standing.js";
 import type { KnownState } from "../types/state.js";
 import type {
@@ -256,7 +256,7 @@ function openCheckpoint(
   worktreeId: WorktreeId,
   daemon: DaemonLiveness,
 ): { checkpoint?: CheckpointInProgress } {
-  const progress = parseCheckpointProgress(store.meta.get(checkpointMetaKey(worktreeId)));
+  const progress = readCheckpointProgress(store, worktreeId);
   if (progress === null) return {};
   const { owed, ...rest } = progress;
   if (owed !== undefined) {

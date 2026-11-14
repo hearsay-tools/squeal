@@ -1,15 +1,11 @@
 import { readPolicy } from "../daemon/policy.js";
 import { runsVitest } from "../daemon/runner.js";
 import { testFileId } from "../keys/reverse-index.js";
+import { readInstallWait } from "../scheduler/install-wait.js";
+import { isRefined, readRefined } from "../scheduler/refined.js";
 import type { RevisionNumber, WorktreeId } from "../types/common.js";
 import type { CheckKey, TestFileRef } from "../types/keys.js";
 import type { Policy } from "../types/policy.js";
-import {
-  awaitingInstallMetaKey,
-  installCommandMetaKey,
-  parseAwaitingInstall,
-  refinedMetaKey,
-} from "../types/scheduler.js";
 import type { KnownState, Validity } from "../types/state.js";
 import type {
   FullSuiteState,
@@ -70,10 +66,10 @@ function countStates(states: readonly KnownState[]) {
  * first revision is recorded. Test files count as listed once a key row or a
  * completed checkpoint exists: a project with no test files at all is listed
  * when its baseline completes. The runner part of the current revision is
- * pending while the refined revision the daemon recorded (`refinedMetaKey`)
+ * pending while the refined revision the daemon recorded (`readRefined`)
  * is behind it (review wave 4.5, S1).
  *
- * While the worktree waits for an install (`awaitingInstallMetaKey`) nothing
+ * While the worktree waits for an install (`readInstallWait`) nothing
  * was listed or run at the current revision: no checkpoint counts as a
  * listing or as a full suite at it (review wave 11, B1).
  *
@@ -105,8 +101,9 @@ export function readHeader(
   const { counts, fileLevelCounts, inheritedCount, inheritedFileLevelCount, importedCount } =
     countStates(states);
   const refinedRevision = readRefined(store, worktreeId);
-  const missing = parseAwaitingInstall(store.meta.get(awaitingInstallMetaKey(worktreeId)));
-  const awaiting = missing !== null;
+  const wait = readInstallWait(store, worktreeId);
+  const missing = wait?.workspaces ?? null;
+  const awaiting = wait !== null;
   const last = store.checkpoints.lastCompletedFull(worktreeId);
   const lane = awaiting ? null : laneAfter(store.checkpoints.lastCompleted(worktreeId), last);
   const root = store.worktrees.get(worktreeId)?.root;
@@ -114,7 +111,7 @@ export function readHeader(
   const view = policy === null ? null : slowPolicyView(policy);
   const slow = isSlow ?? view?.isSlow;
   const optimizerOff = readOptimizerOff(store, worktreeId);
-  const runnerPartPending = refinedRevision !== null && refinedRevision < revision;
+  const runnerPartPending = !isRefined(store, worktreeId, revision);
   return {
     revision,
     ...(commit === undefined ? {} : { commit }),
@@ -141,7 +138,7 @@ export function readHeader(
       : {}),
     ...(awaiting ? { awaitingInstall: true } : {}),
     ...(missing !== null && missing.length > 0 ? { missingInstalls: missing } : {}),
-    ...(awaiting ? installCommandField(store, worktreeId) : {}),
+    ...(wait === null || wait.command === null ? {} : { installCommand: wait.command }),
     ...(optimizerOff === undefined ? {} : { optimizerOff }),
   };
 }
@@ -187,12 +184,6 @@ function groupFields(
   };
 }
 
-/** The stored install command (task 001-410); nothing when a daemon from before it waits. */
-function installCommandField(store: Store, worktreeId: WorktreeId): { installCommand?: string } {
-  const command = store.meta.get(installCommandMetaKey(worktreeId));
-  return command === null || command === "" ? {} : { installCommand: command };
-}
-
 /**
  * Task 004-61: the one-lane checkpoint that completed after the last full
  * one, by lane and revision; `null` when the newest is a full one or none.
@@ -203,13 +194,6 @@ function laneAfter(
 ): NonNullable<FullSuiteState["lane"]> | null {
   if (latest?.lane === undefined || latest.id === full?.id) return null;
   return { lane: latest.lane, revision: latest.revision };
-}
-
-/** `null` when absent or not a number: a store no daemon of this version refined. */
-function readRefined(store: Store, worktreeId: WorktreeId): RevisionNumber | null {
-  const raw = store.meta.get(refinedMetaKey(worktreeId));
-  const value = raw === null ? Number.NaN : Number(raw);
-  return Number.isInteger(value) ? value : null;
 }
 
 /**

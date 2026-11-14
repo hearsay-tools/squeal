@@ -3,10 +3,10 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type CliIo, main } from "../../src/cli/main.js";
 import { appendNote } from "../../src/core/notes.js";
+import { recordRefinedApplied } from "../../src/core/scheduler/refined.js";
 import { formatStatus } from "../../src/core/status/format-status.js";
 import { readStatus } from "../../src/core/status/snapshot.js";
 import type { CheckKey } from "../../src/core/types/keys.js";
-import { refinedMetaKey } from "../../src/core/types/scheduler.js";
 import type { StatusSnapshot } from "../../src/core/types/status.js";
 import type { DaemonRecord } from "../../src/core/types/store-records.js";
 import { CODE_OFF } from "../helpers/policy.js";
@@ -54,7 +54,7 @@ function gh44() {
     daemon: LIVE,
   });
   appendRevisions(store, wt, 1, { head: HEAD, dirty: true });
-  store.meta.set(refinedMetaKey(wt), "1");
+  recordRefinedApplied(store, wt, 1);
   store.testFileKeys.upsertMany(
     Array.from({ length: 25 }, (_, i) => ({
       worktreeId: wt,

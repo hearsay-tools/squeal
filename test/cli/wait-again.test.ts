@@ -3,8 +3,8 @@ import { printNamed } from "../../src/cli/named-print.js";
 import { waitAgainCommand } from "../../src/cli/no-verdict-lines.js";
 import { namedLine } from "../../src/cli/status-wait-lines.js";
 import { namedResult, waitForNamed } from "../../src/cli/status-wait-paths.js";
+import { recordRefinedApplied } from "../../src/core/scheduler/refined.js";
 import type { NamedFile } from "../../src/core/status/standing.js";
-import { refinedMetaKey } from "../../src/core/types/scheduler.js";
 import { A, B, NOW, ref, repoWith } from "./status-wait-fixture.js";
 import { ended, ISSUE_99, NINE, SYNCED } from "./wait-again-fixture.js";
 
@@ -168,7 +168,7 @@ describe("a real named wait at an unlisted revision (row 011-243)", () => {
       trigger: "watch",
       changes: [{ path: "src/other.ts", oldHash: "a", newHash: "b" }],
     });
-    store.meta.set(refinedMetaKey(repo.mainId), "4");
+    recordRefinedApplied(store, repo.mainId, 4);
 
     const wait = await waitForNamed(repo.main, [A], {
       timeoutMs: 60,

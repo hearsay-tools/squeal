@@ -4,11 +4,11 @@ import { editsMetaKey } from "../../src/core/delivery/edits.js";
 import { drop } from "../../src/core/delivery/expiry.js";
 import { formatDelta } from "../../src/core/delivery/format.js";
 import { testFileId } from "../../src/core/keys/reverse-index.js";
+import { recordRefinedApplied } from "../../src/core/scheduler/refined.js";
 import { readRekeyed, recordRekeyed } from "../../src/core/scheduler/rekeyed-record.js";
 import { createStateSink } from "../../src/core/state/sink.js";
 import type { Consumer, HarnessDelivery } from "../../src/core/types/delivery.js";
 import type { TestFileRef } from "../../src/core/types/keys.js";
-import { refinedMetaKey } from "../../src/core/types/scheduler.js";
 import type { StateSink } from "../../src/core/types/state.js";
 import type { Store } from "../../src/core/types/store.js";
 import { CONSUMER_EXPIRY_MS, type TestFileKeyRecord } from "../../src/core/types/store-records.js";
@@ -78,7 +78,7 @@ function edit(paths: readonly string[], refinedTo = Number.NaN): void {
     trigger: "watch",
     changes: paths.map((path) => ({ path, oldHash: null, newHash: `h-${path}-${revision}` })),
   }).number;
-  store.meta.set(refinedMetaKey(WT), String(Number.isNaN(refinedTo) ? revision : refinedTo));
+  recordRefinedApplied(store, WT, Number.isNaN(refinedTo) ? revision : refinedTo);
 }
 
 /** The consumer's edit of `src/a.ts` re-keys `FILE` and queues it. */
@@ -170,7 +170,7 @@ describe("the first delivery after the consumer's first edit (task 001-224)", ()
     await delivery.register(C1);
     edit(["src/a.ts"], 0);
     expect(await text()).toBeNull();
-    store.meta.set(refinedMetaKey(WT), String(revision));
+    recordRefinedApplied(store, WT, revision);
     key(FILE, "k9", "queued");
     moved(FILE);
     expect(await text()).toMatch(SAW);

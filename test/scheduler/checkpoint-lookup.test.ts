@@ -1,7 +1,7 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { checkpointMetaKey } from "../../src/core/types/scheduler.js";
+import { readCheckpointProgress } from "../../src/core/scheduler/checkpoint-progress.js";
 import { RUN_MISSING } from "../helpers/baseline.js";
 import { waitFor } from "../watcher/helpers.js";
 import { SLOW } from "./cleanup.js";
@@ -75,7 +75,7 @@ describe("scheduler: a checkpoint counts a file current by lookup (row 011-118)"
       expect(h.keyOf(LISTS)).toBe(stored);
       expect(store.checkpoints.get(checkpoint)?.end).toBe("completed");
       // Status shows no checkpoint in progress.
-      expect(store.meta.get(checkpointMetaKey(h.worktreeId))).toBe("");
+      expect(readCheckpointProgress(store, h.worktreeId)).toBeNull();
     } finally {
       release();
     }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { headAfterMove, mainStoreSource } from "../../../src/core/code/pass/source.js";
+import { writeHeadMove } from "../../../src/core/scheduler/head-move-record.js";
 import type { CommitSha } from "../../../src/core/types/common.js";
-import { headMoveMetaKey } from "../../../src/core/types/scheduler.js";
 import { freshStore, WT } from "../../state/helpers.js";
 
 /**
@@ -21,7 +21,7 @@ function source(heads: readonly CommitSha[], moved?: { head: CommitSha; revision
     });
   });
   if (moved !== undefined) {
-    store.meta.set(headMoveMetaKey(WT), JSON.stringify({ ...moved, dirty: false }));
+    writeHeadMove(store, WT, { ...moved, dirty: false });
   }
   return mainStoreSource(store, WT, () => []);
 }

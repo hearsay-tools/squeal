@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { recordRefinedApplied } from "../../src/core/scheduler/refined.js";
 import { formatStatus } from "../../src/core/status/format-status.js";
 import { readStatus } from "../../src/core/status/snapshot.js";
 import type { RevisionNumber } from "../../src/core/types/common.js";
 import type { CheckKey, TestFileRef } from "../../src/core/types/keys.js";
-import { refinedMetaKey } from "../../src/core/types/scheduler.js";
 import type { PendingPhase } from "../../src/core/types/state.js";
 import type { StatusSnapshot } from "../../src/core/types/status.js";
 import type { Store } from "../../src/core/types/store.js";
@@ -38,7 +38,7 @@ function worktree() {
     },
   });
   appendRevisions(store, repo.mainId, 2, { head: null, dirty: false });
-  store.meta.set(refinedMetaKey(repo.mainId), "2");
+  recordRefinedApplied(store, repo.mainId, 2);
   return { repo, store, id: repo.mainId };
 }
 

@@ -103,7 +103,7 @@ export interface SlowPendingCounts {
 
 /**
  * The open checkpoint status names (task 001-217), read from
- * `checkpointMetaKey`: running while a daemon validates, or owed to the next
+ * `readCheckpointProgress`: running while a daemon validates, or owed to the next
  * daemon when the last one stopped first (task 001-219).
  */
 export interface CheckpointInProgress {
@@ -320,7 +320,7 @@ export interface StatusHeader {
   readonly testFilesListed?: boolean;
   /**
    * `true` while the daemon waits for an install and lists and runs nothing
-   * (`awaitingInstallMetaKey`; spec 001 D5 as amended, task 001-100). Set by
+   * (`readInstallWait`; spec 001 D5 as amended, task 001-100). Set by
    * `readHeader` only when `true`; absent reads as not waiting.
    */
   readonly awaitingInstall?: boolean;
@@ -332,7 +332,7 @@ export interface StatusHeader {
   readonly missingInstalls?: readonly RelativePath[];
   /**
    * While `awaitingInstall`, the command that installs the dependencies
-   * (`installCommandMetaKey`, task 001-410). Absent when a daemon from
+   * (`readInstallWait`, task 001-410). Absent when a daemon from
    * before it started the wait.
    */
   readonly installCommand?: string;
@@ -372,7 +372,7 @@ export interface StatusHeader {
   readonly importedCount?: number;
   /**
    * The newest revision whose runner part the daemon applied
-   * (`refinedMetaKey`); `null` when no daemon recorded one. Set by
+   * (`readRefined`); `null` when no daemon recorded one. Set by
    * `readHeader`.
    */
   readonly refinedRevision?: RevisionNumber | null;

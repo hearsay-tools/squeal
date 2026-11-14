@@ -4,17 +4,13 @@ import { basename, join } from "node:path";
 import { isMissing } from "../fs/errors.js";
 import { findInstalledLockfile, isInstalledLockfile } from "../keys/environment.js";
 import type { AbsolutePath, RelativePath } from "../types/common.js";
-import {
-  awaitingInstallMetaKey,
-  awaitingInstallValue,
-  installCommandMetaKey,
-} from "../types/scheduler.js";
 import type { CandidateBatch } from "../types/watcher.js";
 import { awaitingInstallNote } from "./awaiting-install.js";
 import { reconcileBatch } from "./batch.js";
 import type { UnseenChanges } from "./bootstrap.js";
 import type { SchedulerContext } from "./context.js";
 import { installCommand } from "./install-command.js";
+import { endInstallWait, recordInstallWait } from "./install-wait.js";
 import type { Ledger } from "./ledger.js";
 import { persistedNoteTexts } from "./notes.js";
 import {
@@ -216,8 +212,7 @@ function recordWait(
   worktreeId: SchedulerContext["worktreeId"],
   missing: MissingInstall,
 ): void {
-  store.meta.set(awaitingInstallMetaKey(worktreeId), awaitingInstallValue(missing.workspaces));
-  store.meta.set(installCommandMetaKey(worktreeId), missing.command);
+  recordInstallWait(store, worktreeId, missing.workspaces, missing.command);
 }
 
 /**
@@ -232,5 +227,5 @@ export function touchesInstall(path: RelativePath): boolean {
 
 /** Ends the wait in the store; the caller runs the baseline next. */
 export function stopWaiting(context: Pick<SchedulerContext, "store" | "worktreeId">): void {
-  context.store.meta.set(awaitingInstallMetaKey(context.worktreeId), "false");
+  endInstallWait(context.store, context.worktreeId);
 }

@@ -1,12 +1,18 @@
 import { stripVTControlCharacters } from "node:util";
 import type { WorktreeId } from "./types/common.js";
-import {
-  type DaemonNote,
-  MAX_PERSISTED_NOTES,
-  notesMetaKey,
-  type StoppedProcesses,
-} from "./types/scheduler.js";
-import type { Store } from "./types/store.js";
+import { type DaemonNote, MAX_PERSISTED_NOTES, type StoppedProcesses } from "./types/scheduler.js";
+import { type Store, worktreeMetaKey } from "./types/store.js";
+
+/** `meta` key of a worktree's persisted notes, a JSON array, newest last (row 011-339: owned here). */
+function notesMetaKey(worktreeId: WorktreeId): string {
+  return worktreeMetaKey("notes", worktreeId);
+}
+
+/** The `meta` reads and writes a note needs: the store's, or a raw table's in a newer store. */
+export interface NotesMeta {
+  get(key: string): unknown;
+  set(key: string, value: string): void;
+}
 
 /**
  * Appends a note to the worktree's persisted notes and keeps the newest
@@ -20,11 +26,17 @@ import type { Store } from "./types/store.js";
  * (lessons, defect 6).
  */
 export function appendNote(store: Store, worktreeId: WorktreeId, note: DaemonNote): void {
-  const key = notesMetaKey(worktreeId);
   const plain = { ...note, text: stripVTControlCharacters(note.text) };
-  store.transaction(() => {
-    store.meta.set(key, JSON.stringify(withNote(store.meta.get(key), plain)));
-  });
+  store.transaction(() => storeNote(store.meta, worktreeId, plain));
+}
+
+/**
+ * Appends `note` as it is to the notes `meta` holds, in the caller's
+ * transaction (`withNote`); `noteInNewerStore` writes through a raw table.
+ */
+export function storeNote(meta: NotesMeta, worktreeId: WorktreeId, note: DaemonNote): void {
+  const key = notesMetaKey(worktreeId);
+  meta.set(key, JSON.stringify(withNote(meta.get(key), note)));
 }
 
 /**

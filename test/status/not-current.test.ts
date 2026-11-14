@@ -10,13 +10,13 @@ import { readVerdict } from "../../src/cli/verdict.js";
 import { createDelivery } from "../../src/core/delivery/delivery.js";
 import { formatRegistration } from "../../src/core/delivery/format.js";
 import { readLiveHeader } from "../../src/core/delivery/liveness.js";
+import { recordRefinedApplied } from "../../src/core/scheduler/refined.js";
 import { readHeader } from "../../src/core/state/header.js";
 import { formatStatus } from "../../src/core/status/format-status.js";
 import { readStatus } from "../../src/core/status/snapshot.js";
 import type { CheckId } from "../../src/core/types/check.js";
 import type { Consumer } from "../../src/core/types/delivery.js";
 import type { CheckKey } from "../../src/core/types/keys.js";
-import { refinedMetaKey } from "../../src/core/types/scheduler.js";
 import type { PendingPhase, Validity } from "../../src/core/types/state.js";
 import type { StatusSnapshot } from "../../src/core/types/status.js";
 import type { Store } from "../../src/core/types/store.js";
@@ -75,7 +75,7 @@ function worktree(daemon: DaemonRecord | null = LIVE): Seeded {
     daemon,
   });
   appendRevisions(store, wt, HEAD, { head: null, dirty: true });
-  store.meta.set(refinedMetaKey(wt), String(HEAD));
+  recordRefinedApplied(store, wt, HEAD);
   return { repo, store, wt };
 }
 
@@ -333,7 +333,7 @@ describe("all N test files current only with a live daemon, the files listed and
 
   it("not while the runner part of the revision is pending", () => {
     const w = current();
-    w.store.meta.set(refinedMetaKey(w.wt), String(HEAD - 1));
+    recordRefinedApplied(w.store, w.wt, HEAD - 1);
     expect(knownLine(formatStatus(snapshotOf(w), NOW))).toBe(
       "Known failures: 0; 2 test files current; revision 26 is not listed yet, so test files it adds are not counted",
     );
@@ -348,7 +348,7 @@ describe("all N test files current only with a live daemon, the files listed and
 
   it("names the unlisted revision after what is not current", () => {
     const w = zero();
-    w.store.meta.set(refinedMetaKey(w.wt), String(HEAD - 1));
+    recordRefinedApplied(w.store, w.wt, HEAD - 1);
     expect(knownLine(formatStatus(snapshotOf(w), NOW))).toBe(
       `${ZERO}; revision 26 is not listed yet, so test files it adds are not counted`,
     );

@@ -1,13 +1,13 @@
+import { readHeadMove } from "../scheduler/head-move-record.js";
 import type { RevisionNumber, WorktreeId } from "../types/common.js";
 import type { Revision } from "../types/revision.js";
-import { headMoveMetaKey, parseHeadMove } from "../types/scheduler.js";
 import type { RevisionCommit } from "../types/status.js";
 import type { Store } from "../types/store.js";
 
 /**
  * Task 001-406: the commit beside the worktree's revision, from the store
  * only. `HEAD` is the latest revision's, or the one a reconciliation pass
- * found moved after it with no file change (`headMoveMetaKey`: a commit).
+ * found moved after it with no file change (`readHeadMove`: a commit).
  * The count is the revisions recorded since `HEAD` last moved: after a move
  * the pass saw, the revisions after it; else after the newest revision at
  * another `HEAD`, whose successor brought this one (a checkout's files) and
@@ -23,7 +23,7 @@ export function readRevisionCommit(
   worktreeId: WorktreeId,
   latest: Revision | null = store.revisions.latest(worktreeId),
 ): RevisionCommit | undefined {
-  const moved = parseHeadMove(store.meta.get(headMoveMetaKey(worktreeId)));
+  const moved = readHeadMove(store, worktreeId);
   const number = latest?.number ?? 0;
   if (moved !== null && moved.revision >= number && moved.head !== latest?.head) {
     return moved.head === null ? undefined : { head: moved.head, sinceHead: 0, dirty: moved.dirty };
