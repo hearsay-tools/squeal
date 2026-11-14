@@ -500,7 +500,7 @@ class TierScheduler implements Scheduler {
    */
   #cutTiers(revision: Revision | null): void {
     // Row 011-72: a tier in flight when a hold begins runs to its end; nothing would start instead.
-    if (this.#onHold()) return;
+    if (this.#admit().halts.has("held")) return;
     const { context, ledger } = this.#started();
     const tiers = [...this.#inFlight.values()].map(({ tier }) => tier);
     this.#yields.check(context, ledger, tiers, revision);
@@ -600,11 +600,6 @@ class TierScheduler implements Scheduler {
       return "released";
     }
     return this.#hold.holding || this.#commandHold.holding ? "held" : "free";
-  }
-
-  /** Either hold holds (011 C9, "Holds"): no tier starts in any lane, and none is cut. */
-  #onHold(): boolean {
-    return this.#hold.holding || this.#commandHold.holding;
   }
 
   /**
@@ -815,14 +810,16 @@ class TierScheduler implements Scheduler {
   /**
    * Use is the work an edit, a request or a wait caused (011 C9 as amended
    * 2026-10-21, row 011-92): an edit's work and a promoted file
-   * (`#editPending`), what is owed (`owedWork`), an open `run --slow`
+   * (`Admission.editPending`), what is owed (`owedWork`), an open `run --slow`
    * request. The backlog is no use, queued or running.
    */
   inUse(): boolean {
     // A hold is no request and no activity for the idle and unused periods (011 C9, row 011-72).
-    if (this.#closed || !this.#ledger || this.#onHold()) return false;
+    if (!this.#ledger) return false;
+    const admitted = this.#admit();
+    if (admitted.quiet) return false;
     if (this.#groups.requested && this.slowPending()) return true;
-    return this.#editPending() || this.owedWork() !== null;
+    return admitted.editPending || this.owedWork() !== null;
   }
 
   /**
@@ -853,7 +850,7 @@ class TierScheduler implements Scheduler {
 
   slowPending(): boolean {
     // A departure while on hold drains nothing (011 C9, row 011-72).
-    if (this.#closed || !this.#ledger || this.#onHold()) return false;
+    if (!this.#ledger || this.#admit().quiet) return false;
     if (this.#lanes().some(isGroupLane)) return true;
     return this.#drainable().length > 0;
   }
@@ -886,7 +883,7 @@ class TierScheduler implements Scheduler {
   }
 
   owedWork(): string | null {
-    if (this.#closed || !this.#ledger || this.#onHold()) return null;
+    if (!this.#ledger || this.#admit().quiet) return null;
     const ledger = this.#ledger;
     const owed: string[] = [];
     const active = ledger.checkpoints.active;
@@ -906,10 +903,11 @@ class TierScheduler implements Scheduler {
    * drain, and the last slow run's end (row 011-163).
    */
   slowWaiting(): SlowWaiting | null {
-    if (this.#closed || !this.#ledger || !this.#context || !this.#backlogPaused) return null;
-    if (this.#onHold()) return null;
+    if (!this.#ledger || !this.#context || !this.#backlogPaused) return null;
+    const admitted = this.#admit();
+    if (admitted.quiet) return null;
     const queued = this.#drainable();
-    const busy = this.#lanes().some(isGroupLane) || this.#editPending() || !this.#fastIdle();
+    const busy = this.#lanes().some(isGroupLane) || admitted.editPending || !admitted.fastIdle;
     if (busy || queued.length === 0 || this.#drainBusyAt === null) {
       this.#drainBusyAt = this.#context.now();
       return null;
@@ -1263,7 +1261,7 @@ class TierScheduler implements Scheduler {
   async #slowEnded(lane: string): Promise<void> {
     const { context, ledger } = this.#started();
     const queued = ledger.orderedSlow().some((ref) => laneOf(context, ref) === lane);
-    if (!queued || this.#onHold()) await this.#slowRelease.release(lane);
+    if (!queued || this.#admit().halts.has("held")) await this.#slowRelease.release(lane);
   }
 
   /** The runner's `releaseLane` of `lane`: its instance closes. */
@@ -1431,31 +1429,6 @@ class TierScheduler implements Scheduler {
     const context = this.#context;
     const ledger = this.#ledger;
     return context !== null && ledger !== null && focusedWaiting(context, ledger);
-  }
-
-  /**
-   * An edit's fast work goes before a slow file (spec 004 D2 as amended):
-   * runner work, a refinement in flight included, a recent fast file queued,
-   * or an edit's tier in flight, the backlog's turn included.
-   */
-  #editPending(): boolean {
-    const work = this.#runnerWork;
-    if (work.size > 0 || work.refining || this.#ledger?.queue.hasFirstGroup()) return true;
-    if (this.#focused()) return true;
-    return [...this.#inFlight.values()].some(
-      ({ tier }) => tier.kind !== "backlog" && !isGroupLane(tier.lane),
-    );
-  }
-
-  /**
-   * No fast work pending or running: an idle slow tier may take several
-   * files (D2). During a drain, the paused backlog is not pending (row 011-93).
-   */
-  #fastIdle(): boolean {
-    const work = this.#runnerWork;
-    if (work.size > 0 || work.refining || this.#ledger?.fastQueued() === true) return false;
-    if (this.#focused()) return false;
-    return this.#lanes().every(isGroupLane);
   }
 
   /**
