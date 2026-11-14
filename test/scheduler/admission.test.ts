@@ -181,7 +181,9 @@ describe("admission: a group lane's answer under the lock (row 011-340)", () => 
     for (const edit of [{ runnerWork: 1 }, { editQueued: () => true }, { focused: () => true }]) {
       const answer = admit(facts(edit));
       expect(lane(answer, "e2e", true, true).waits).toEqual({ reason: "after-tests" });
-      expect(lane(answer, "e2e", true, true).refusal).toEqual({ reason: "after-tests" });
+      // Runner work refuses every lane first (row 011-341).
+      const refusal = "runnerWork" in edit ? "runner-work" : "after-tests";
+      expect(lane(answer, "e2e", true, true).refusal).toEqual({ reason: refusal });
     }
   });
 
@@ -318,10 +320,15 @@ describe("admission: the re-walk, the re-arm and the status answers (row 011-340
 });
 
 describe("admission: pinned differences between the copies (research/admission.md)", () => {
-  it("difference 1, row 011-341: a group after no `tests` starts while runner work is pending", () => {
+  it("difference 1, row 011-341: no lane starts while runner work is pending, `after` or not", () => {
     const answer = admit(facts({ runnerWork: 1, queued: () => true }));
     expect(answer.fast).toBe("runner-work");
-    expect(lane(answer, "lint").refusal).toBeNull();
+    for (const name of ["lint", "e2e", "slow"]) {
+      expect(lane(answer, name, true, true).refusal).toEqual({ reason: "runner-work" });
+    }
+    // A halt goes first, in the pump's order.
+    const held = admit(facts({ runnerWork: 1, held: true }));
+    expect(lane(held, "lint").refusal).toEqual({ reason: "held" });
   });
 
   it("difference 2, row 011-342: the re-walk reads only the default slow lane's activity", () => {
