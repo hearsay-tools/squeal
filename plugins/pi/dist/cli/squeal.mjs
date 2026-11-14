@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.501";
+  if (true) return "0.1.502";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -53416,12 +53416,18 @@ var init_admission = __esm({
         if (facts.held) return facts.runnerWork > 0;
         return facts.runnerWork > 0 || facts.fastQueued() || facts.focused();
       }
-      /** A lane's halts under the lock, in the pump's order: a lane reads no install fact (the pump did). */
+      /**
+       * A lane's halts under the lock, in the pump's order: a lane reads no
+       * install fact (the pump did). No lane starts while runner work is
+       * pending (row 011-341): its keys would come from a revision the runner
+       * has not invalidated yet, whatever the group's `after`.
+       */
       #laneHalt() {
         const facts = this.#facts;
         if (facts.stopping) return { reason: "stopping" };
         if (facts.runtimeGone) return { reason: "runtime-gone" };
-        return facts.held ? { reason: "held" } : null;
+        if (facts.held) return { reason: "held" };
+        return facts.runnerWork > 0 ? { reason: "runner-work" } : null;
       }
       /**
        * The groups `after` names go first (spec 019 D1): a group's while it has
@@ -59025,8 +59031,17 @@ var init_scheduler2 = __esm({
             const lane = this.#groups.get(name3);
             return lane === void 0 ? ledger?.queue.hasGroup(name3) ?? false : lane.holdsFollowers();
           },
-          slowWaiting: () => context !== null && readSlowActivity(context.store, context.worktreeId)?.kind === "waiting"
+          slowWaiting: () => context !== null && this.#laneWaiting(context)
         };
+      }
+      /**
+       * The default `slow` group's stored activity is "waiting", or a
+       * configured group's (row 011-342): each publishes under its own key.
+       */
+      #laneWaiting(context) {
+        const { store, worktreeId } = context;
+        if (readSlowActivity(store, worktreeId)?.kind === "waiting") return true;
+        return this.#groups.lanes(context.policy).some(({ group }) => readGroupActivity(store, worktreeId, group)?.kind === "waiting");
       }
       /** `admit` of the start facts now (row 011-340). */
       #admit() {
