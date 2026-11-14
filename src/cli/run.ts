@@ -10,13 +10,15 @@ import type { CheckpointRecord } from "../core/types/store-records.js";
 import { daemonSocket, worktreeRoot } from "./daemon-access.js";
 import type { CliIo } from "./main.js";
 import { groupArgs, runGroupCommand } from "./run-group.js";
-import { LANE_FLAGS, laneFiles, laneText, runLanes } from "./run-lanes.js";
+import { LANE_FLAGS, laneText, runLanes } from "./run-lanes.js";
 import { runSlowCommand } from "./run-slow.js";
 import { statusCommand } from "./status-command.js";
 import { failuresText, gapText, noVerdictText, readClasses, verdictCode } from "./verdict.js";
+import { checkpointFiles, requestFiles } from "./wait/covered.js";
 import type { RequestOutcome } from "./wait/decide.js";
 import { stoppedText } from "./wait/presence.js";
 import { openCheckpoint } from "./wait/progress.js";
+import type { CheckpointFiles } from "./wait/reads.js";
 import { inStore } from "./wait/reads.js";
 import { askWithin } from "./wait/socket.js";
 import type { CheckpointOutcome } from "./wait/table.js";
@@ -105,9 +107,14 @@ export async function runCommand(
     return 1;
   }
   const { checkpoint } = state;
+  // Row 011-328: the request's files, read once from its record, for the start line and the wait.
+  const { files } = requestFiles(
+    { root, coveredId: state.coveredId, deadline: deadline ?? Number.POSITIVE_INFINITY },
+    { kind: "lane", lane: checkpoint.lane ?? null },
+  );
   const joined = joinedCheckpoint(root, checkpoint, state.owner);
   const named = `Checkpoint ${checkpoint.id}${laneText(checkpoint, lane)}`;
-  const started = `${named} started at revision ${checkpoint.revision}: ${filesText(root, checkpoint)}${joinedText(joined)}\n`;
+  const started = `${named} started at revision ${checkpoint.revision}: ${filesText(root, checkpoint, files)}${joinedText(joined)}\n`;
   if (deadline === null) {
     io.stdout(started);
     return 0;
@@ -123,7 +130,7 @@ export async function runCommand(
       worktreeId: checkpoint.worktreeId,
       revision: checkpoint.revision,
     },
-    files: { kind: "lane", lane: checkpoint.lane ?? null },
+    files,
   });
   const now = io.now ?? Date.now;
   const command = statusCommand(io.env ?? process.env);
@@ -241,7 +248,8 @@ async function recorded(
 /** The request loop's outcome as `recorded` gives it: the checkpoint, `null` past the deadline, or why not. */
 export function recordedOf(outcome: RequestOutcome<RunAllResponse>): Recorded | string | null {
   if (outcome.kind === "taken" && outcome.answer.checkpoint !== null) {
-    return { checkpoint: outcome.answer.checkpoint, owner: outcome.answer.owner };
+    const { checkpoint, owner, coveredId } = outcome.answer;
+    return { checkpoint, owner, coveredId };
   }
   if (outcome.kind === "failed") return `run --all failed: ${outcome.error}`;
   if (outcome.kind === "pending") return null;
@@ -255,14 +263,19 @@ export function recordedOf(outcome: RequestOutcome<RunAllResponse>): Recorded | 
 
 /**
  * Spec 005 D1: `N test files to run, M already current`, never queued work
- * alone; the second count only when the store says it.
+ * alone; the second count only when the store says it. Row 011-328: of the
+ * wait's `files`, the request's covered files when its answer named them.
  */
-function filesText(root: AbsolutePath, checkpoint: CheckpointRecord): string {
+function filesText(
+  root: AbsolutePath,
+  checkpoint: CheckpointRecord,
+  files: CheckpointFiles,
+): string {
   const toRun = plural(checkpoint.testFiles.length, "test file");
   const current = inStore(root, (store) => {
     const requested = new Set(checkpoint.testFiles.map(testFileId));
     const listed =
-      laneFiles(store, checkpoint.worktreeId, checkpoint.lane ?? null) ??
+      checkpointFiles(store, checkpoint.worktreeId, files) ??
       store.testFileKeys.list(checkpoint.worktreeId).map((row) => row.testFile);
     const rest = listed.filter((file) => !requested.has(testFileId(file)));
     return readClasses(store, checkpoint.worktreeId, rest).byClass.current;
@@ -286,6 +299,8 @@ export interface Recorded {
   readonly checkpoint: CheckpointRecord;
   /** `RunAllResponse.owner`: absent from a daemon before 005-36. */
   readonly owner: string | undefined;
+  /** `RunAllResponse.coveredId` (row 011-325): absent from a daemon before it. */
+  readonly coveredId: string | undefined;
 }
 
 /** The running checkpoint a request joined, as it stood when the request was recorded. */

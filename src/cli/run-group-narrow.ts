@@ -1,4 +1,5 @@
 import { NARROW_NOT_SUPPORTED } from "../core/daemon/run-group.js";
+import type { CoveredFiles } from "../core/store/covered-files.js";
 import { plural } from "../core/text.js";
 import type { ResolvedGroup } from "../core/types/check-groups.js";
 import type { AbsolutePath, RelativePath, RevisionNumber } from "../core/types/common.js";
@@ -10,6 +11,7 @@ import { andList, pendingText, takenRequest } from "./run-group.js";
 import { waitForGroup } from "./run-group-wait.js";
 import { statusCommand } from "./status-command.js";
 import { LEFT_FOR } from "./status-wait-groups.js";
+import { requestFiles } from "./wait/covered.js";
 import { askWithin, socketBound } from "./wait/socket.js";
 
 /*
@@ -82,7 +84,14 @@ export async function runNarrowCommand(
   }
   // A daemon that took it without a selection ran the whole group's request: not a narrow run.
   if (taken.narrow === undefined) return noVerdict(NARROW_NOT_SUPPORTED);
-  const { narrow, requested } = taken;
+  const { requested } = taken;
+  // Row 011-328: the selection as the request's record has it, read once; the answer's without one.
+  const guess = { kind: "list", files: taken.narrow.selected } as const;
+  const { files, covered } = requestFiles(
+    { root, coveredId: requested.coveredId, deadline },
+    guess,
+  );
+  const narrow = recordedNarrow(taken.narrow, covered);
   const command = statusCommand(io.env ?? process.env);
   const line = narrowText(group, requested, narrow, command);
   if (waitMs === null) {
@@ -103,11 +112,31 @@ export async function runNarrowCommand(
       queued: requested.queued,
       deadline,
       line,
-      files: { kind: "list", files: narrow.selected },
+      files,
       narrow: { unmatched: narrow.unmatched },
     },
     io,
   );
+}
+
+/**
+ * Row 011-328: the answer's narrow run with its selection, its current
+ * files and its not-run files with their reasons as the request's record
+ * has them; the answer's own without a record. The record holds the
+ * selection only: the files the paths reach, other groups' selections and
+ * the unmatched paths stay the answer's.
+ */
+function recordedNarrow(narrow: NarrowRun, covered: CoveredFiles | null): NarrowRun {
+  if (covered === null) return narrow;
+  const { files } = covered;
+  return {
+    ...narrow,
+    selected: files.map((file) => file.testFile),
+    current: files.filter((file) => file.state === "current").length,
+    notRun: files.flatMap((file) =>
+      file.state === "not-queued" ? [{ testFile: file.testFile, reason: file.reason }] : [],
+    ),
+  };
 }
 
 /**
