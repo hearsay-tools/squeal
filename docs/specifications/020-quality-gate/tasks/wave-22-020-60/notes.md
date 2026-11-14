@@ -63,7 +63,9 @@ Under `squeal code --base`, after `--timeout`:
 - `pnpm exec tsc --noEmit -p .`: no output (passes), after every change.
 - `pnpm run lint` (`biome check .`): "Checked 3424 files in 5s. No fixes applied."
 - `squeal status --wait 60000` on the new and directly related tests, revision 19: `test/code/gate/lanes-stored-rerun.test.ts`, `test/code/gate/retry-text.test.ts`, `test/cli/code-gate-stored-rerun.test.ts`, `test/code/gate/lanes-retry.test.ts`: "no known failures; 4 test files, each with a current result".
-- `squeal status --wait 600000` on every changed path, revision 19: 22 current, all pass (among them `code-gate.test.ts`, `code-gate-args.test.ts`, `code-gate-stored.test.ts`, `code-gate-stored-rerun.test.ts`); 349 still queued after 601 s, the host busy (23 of 24 cores). See the final report for a later read.
+- `squeal status --wait 600000` on every changed path, revision 19: 22 current, all pass (among them `code-gate.test.ts`, `code-gate-args.test.ts`, `code-gate-stored.test.ts`, `code-gate-stored-rerun.test.ts`); 349 still queued after 601 s, the host busy (23 of 24 cores).
+- Again at revision 20 (the commits): 26 current, all pass; 345 still queued after 542 s (24 of 24 cores busy). No failure known.
+- Because the queue did not drain, run directly: `pnpm exec vitest run --maxWorkers=2` on `test/code/gate/{lanes,lanes-retry,collect-retry,collect-stored,keep-rerun,stored,evaluate-golden,evaluate-failed-tests}.test.ts` and `test/cli/{code-gate-retry,code-gate-keep}.test.ts`: "Test Files 10 passed (10), Tests 45 passed (45)", 119 s.
 
 ## Checks not run
 
