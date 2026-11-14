@@ -1,6 +1,9 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   bumpStatesMarker,
+  bumpStatesMarkerOf,
   claimStatesMarker,
   statesMark,
   statesMarkerMetaKey,
@@ -15,8 +18,10 @@ import { fakeCommonDir, open } from "./helpers.js";
 
 /*
  * Row 011-45: every write to a worktree's known states or `test_file_keys`
- * rows bumps its states marker in the same transaction, and a reader trusts
- * the marker only while the daemon that claimed it is the registered one.
+ * rows bumps its states marker in the same transaction (an upsert in its
+ * repository, a removal in the ledger's commit, its one caller), and a
+ * reader trusts the marker only while every registered daemon claimed its
+ * own.
  */
 
 const ID = "wt-marker";
@@ -77,34 +82,46 @@ const keyRow = (pending: "queued" | "running" | null) => ({
 });
 
 describe("the states marker (row 011-45)", () => {
-  it("counts each write to known states and test_file_keys rows, of that worktree only", () => {
+  it("counts each upsert of known states and test_file_keys rows, of that worktree only", () => {
     const store = seeded();
     claimStatesMarker(store, ID, INCARNATION);
     const writes: (() => void)[] = [
       () => store.knownStates.upsertMany([stateOf("pass")]),
       () => store.knownStates.upsertMany([stateOf("fail")]),
-      () => store.knownStates.removeMany(ID, [CHECK]),
       () => store.testFileKeys.upsertMany([keyRow("running")]),
-      () => store.testFileKeys.releaseRunning(ID),
-      () => store.testFileKeys.remove(ID, [FILE]),
+      () => bumpStatesMarkerOf(store, ID),
     ];
     for (const write of writes) {
       const before = seq(store) ?? 0;
+      const mark = statesMark(store, ID);
       write();
       expect(seq(store)).toBe(before + 1);
+      // The writer stays: the marker is still trusted, at another mark.
+      expect(statesMark(store, ID)).not.toBe(mark);
+      expect(statesMark(store, ID)).not.toBeNull();
     }
     expect(seq(store, OTHER)).toBeNull();
-  });
-
-  it("is not bumped by a write that changes nothing", () => {
-    const store = seeded();
-    claimStatesMarker(store, ID, INCARNATION);
-    const before = seq(store);
     store.knownStates.upsertMany([]);
     store.testFileKeys.upsertMany([]);
-    store.testFileKeys.releaseRunning(ID);
-    store.knownStates.removeMany(ID, []);
-    expect(seq(store)).toBe(before);
+    expect(seq(store)).toBe(writes.length + 1);
+  });
+
+  it("leaves the removals to the ledger's commit, their one caller", () => {
+    const SRC = join(import.meta.dirname, "../../src");
+    const callers = readdirSync(SRC, { recursive: true, encoding: "utf8" })
+      .filter((path) => path.endsWith(".ts"))
+      .filter((path) => {
+        const text = readFileSync(join(SRC, path), "utf8");
+        return /knownStates\.removeMany\(|testFileKeys\.remove\(|\.retire\(worktreeId/.test(text);
+      })
+      .map((path) => relative(SRC, join(SRC, path)))
+      .sort();
+    // The sink's `retire` removes states; only the ledger retires, beside its key removals.
+    expect(callers).toEqual(["core/scheduler/ledger.ts", "core/state/sink.ts"]);
+    const ledger = readFileSync(join(SRC, "core/scheduler/ledger.ts"), "utf8");
+    expect(ledger).toMatch(
+      /if \(removed\.length > 0 \|\| retired\.length > 0\) bumpStatesMarkerOf/,
+    );
   });
 
   it("moves with the rows it counts: a rolled-back write leaves both", () => {
@@ -148,11 +165,30 @@ describe("the states marker (row 011-45)", () => {
     expect(statesMark(store, ID)).toBeNull();
   });
 
+  it("is not trusted while another worktree's daemon claimed none: it may heal this one's", () => {
+    const store = seeded();
+    claimStatesMarker(store, ID, INCARNATION);
+    const other = { ...LIVE, token: "other", startedAt: 1_500 };
+    store.worktrees.setDaemon(OTHER, other);
+    expect(statesMark(store, ID)).toBeNull();
+    claimStatesMarker(store, OTHER, daemonIncarnation(other));
+    expect(statesMark(store, ID)).not.toBeNull();
+    // A cross-worktree write of this release bumps this worktree's marker, not the writer's.
+    const before = statesMark(store, ID);
+    store.testFileKeys.upsertMany([keyRow("queued")]);
+    expect(statesMark(store, ID)).not.toBe(before);
+    store.worktrees.setDaemon(OTHER, null);
+    expect(statesMark(store, ID)).not.toBeNull();
+  });
+
   it("an unreadable marker reads as none, and a bump starts it again", () => {
     const store = seeded();
     store.meta.set(statesMarkerMetaKey(ID), "not json");
     expect(statesMark(store, ID)).toBeNull();
     store.knownStates.upsertMany([stateOf("pass")]);
+    expect(seq(store)).toBe(1);
+    store.meta.set(statesMarkerMetaKey(ID), "[1]");
+    bumpStatesMarkerOf(store, ID);
     expect(seq(store)).toBe(1);
   });
 
