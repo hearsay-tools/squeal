@@ -86,6 +86,7 @@ export function pruneCase(input: PruneInput, dir: string): CaseOutput {
         ended === null ? null : "completed",
       );
     }
+    addLoadedLists(db, input.loadedLists);
     db.exec("COMMIT");
 
     const report = store.prune({
@@ -114,7 +115,10 @@ export function pruneCase(input: PruneInput, dir: string): CaseOutput {
                   (SELECT count(*) FROM file_hashes) || ' hashes'`,
         ),
       },
-      wording: { bytesAfter },
+      wording: {
+        bytesAfter,
+        ...loadedListsLeft(db, input.loadedLists),
+      },
     };
   } finally {
     store.close();
@@ -139,6 +143,27 @@ function withResults(
   }
   const stored = new Set(results.keysSince(0).map((k) => k.key));
   return { withResults: [...new Set(asked)].filter((key) => stored.has(key)) };
+}
+
+/** Spec 022 D3's table, as `LOADED_MODULES_SQL` makes it, with a list at each of `keys`. */
+function addLoadedLists(db: ReturnType<typeof connectionOf>["db"], keys?: readonly string[]) {
+  if (keys === undefined) return;
+  db.exec(`CREATE TABLE loaded_modules (
+    project TEXT NOT NULL, path TEXT NOT NULL, key TEXT NOT NULL,
+    recorded_at INTEGER NOT NULL, modules TEXT NOT NULL,
+    PRIMARY KEY (project, path, key)) STRICT, WITHOUT ROWID`);
+  for (const key of keys) {
+    db.prepare(
+      `INSERT INTO loaded_modules (project, path, key, recorded_at, modules) VALUES ('', ?, ?, ?, '[]')`,
+    ).run(`test/${key}.test.ts`, key, ago(0));
+  }
+}
+
+/** The keys whose list a prune left, as wording: no key reads the table (a release leaves all). */
+function loadedListsLeft(db: ReturnType<typeof connectionOf>["db"], keys?: readonly string[]) {
+  if (keys === undefined) return {};
+  const rows = db.prepare("SELECT key FROM loaded_modules ORDER BY key").all();
+  return { loadedLists: rows.map((row) => String(row.key)) };
 }
 
 /** A check row, its id `id`. */

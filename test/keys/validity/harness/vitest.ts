@@ -244,7 +244,7 @@ export async function vitestCase(input: VitestInput, scratch: string): Promise<C
     new WorktreePaths(root),
     witnessed(await loadVitest(root), heard),
     undefined,
-    undefined,
+    input.observe === true ? () => true : undefined,
     undefined,
     undefined,
     undefined,
