@@ -3,23 +3,10 @@ import { availableParallelism, tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { clearMark, type PoolMark, writeMark } from "../../src/core/capacity/marks.js";
-import { StatCache } from "../../src/core/hash/stat-cache.js";
 import { TierCapacity, WAIT_FOR_CAPACITY } from "../../src/core/scheduler/capacity.js";
-import type { SchedulerContext } from "../../src/core/scheduler/context.js";
-import { Ledger } from "../../src/core/scheduler/ledger.js";
 import { POOL_WAIT_REFRESH_MS, PoolWaits } from "../../src/core/scheduler/pool-wait.js";
-import { Priority } from "../../src/core/scheduler/queue.js";
-import { NONE_CUT } from "../../src/core/scheduler/sharing.js";
-import { selectTier } from "../../src/core/scheduler/tiers.js";
-import { createStateSink } from "../../src/core/state/sink.js";
 import type { AbsolutePath, WorktreeId } from "../../src/core/types/common.js";
-import type { CheckKey } from "../../src/core/types/keys.js";
-import { DEFAULT_POLICY } from "../../src/core/types/policy.js";
-import { declareTraits } from "../../src/core/types/runner-traits.js";
 import type { PoolGate, PoolWait } from "../../src/core/types/standing.js";
-import type { Store } from "../../src/core/types/store.js";
-import { liveDaemon } from "../delivery/fakes.js";
-import { freshStore } from "../state/helpers.js";
 
 /*
  * Row 011-309 (spec 011 C10 Capacity as amended 2026-11-07, "a pool wait is
@@ -28,7 +15,8 @@ import { freshStore } from "../state/helpers.js";
  * logs one line at its start and one, with its seconds, at its grant, none
  * per recheck, and publishes since when and what the pool read for status.
  * A batch's tier, which goes on without a permit (row 011-308), names no
- * lane: nothing waits.
+ * lane: nothing waits. What the act step asks the pool for each is
+ * `tier-start-batch.test.ts`'s (row 011-349).
  */
 
 const GATE: PoolGate = { busyCores: 21.4, cpus: 24, hostSlots: 12, grants: 7 };
@@ -186,81 +174,5 @@ describe("TierCapacity tells a lane's wait what the pool read (row 011-309)", ()
     } finally {
       capacity.close();
     }
-  });
-});
-
-describe("selectTier names the lane of a refused tier, not a batch's (row 011-309)", () => {
-  const stores: Store[] = [];
-  afterEach(() => {
-    for (const store of stores.splice(0)) store.close();
-  });
-
-  function setup() {
-    const store = freshStore();
-    stores.push(store);
-    const wt = "wt-011-309" as WorktreeId;
-    liveDaemon(store, wt);
-    const asked: { waitsIn: string | null; refusalWaits: boolean }[] = [];
-    const capacity = {
-      offer: () => 0,
-      take: (
-        _w: number,
-        _l: string,
-        _least: number,
-        _k: string,
-        waitsIn: string | null = null,
-        refusalWaits = true,
-      ) => {
-        asked.push({ waitsIn, refusalWaits });
-        return WAIT_FOR_CAPACITY;
-      },
-      running: () => () => {},
-      refused: () => true,
-    } as unknown as TierCapacity;
-    const context = {
-      root: "/repo/wt-011-309",
-      store,
-      sink: createStateSink(store),
-      worktreeId: wt,
-      policy: DEFAULT_POLICY,
-      now: () => 1_000_000,
-      note: () => {},
-      runsDir: "/repo/.git/squeal/runs",
-      hostLoad: () => ({ oneMinute: null, cpus: 1 }),
-      capacity,
-      runner: { traits: declareTraits({ lane: () => "vitest" }) },
-      keys: {
-        runnerOf: () => undefined,
-        runtimeIdentity: () => "",
-        writeRuntimeApplications: () => {},
-        index: { key: () => null, keysReadAsOne: () => null },
-        cache: new StatCache(),
-        stabilityPaths: () => [],
-        beginRun: () => 1,
-        endRun: () => {},
-      },
-    } as unknown as SchedulerContext;
-    const ledger = new Ledger(context);
-    const queue = (path: string) => {
-      const ref = { project: "", path };
-      const file = ledger.addFile(ref);
-      file.key = Buffer.from(path).toString("hex").padEnd(64, "0") as CheckKey;
-      ledger.enqueue(file, Priority.transitive, false, false);
-      return ref;
-    };
-    return { context, ledger, asked, queue };
-  }
-
-  it("a refused backlog tier waits in its lane; a refused batch's goes on and starts no wait", () => {
-    const backlog = setup();
-    backlog.queue("test/b.test.ts");
-    expect(selectTier(backlog.context, backlog.ledger, new Set(), NONE_CUT)).toBeNull();
-    expect(backlog.asked).toEqual([{ waitsIn: "vitest", refusalWaits: true }]);
-
-    const batch = setup();
-    batch.ledger.queue.promote([batch.queue("test/w.test.ts")], 1_060_000);
-    expect(selectTier(batch.context, batch.ledger, new Set(), NONE_CUT)?.promoted).toBe(true);
-    // Review 0.1.413 B2: it still names its lane, so a grant there ends the lane's wait.
-    expect(batch.asked).toEqual([{ waitsIn: "vitest", refusalWaits: false }]);
   });
 });
