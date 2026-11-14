@@ -15,7 +15,7 @@ import { keysOf, observationsOf, recorded, refOf } from "./store-input.js";
  * under a key an edit moved, or first saw a path with no re-run due.
  */
 
-function named(d: StoreDecision, keys: ReturnType<typeof keysOf>): string {
+export function named(d: StoreDecision, keys: ReturnType<typeof keysOf>): string {
   switch (d.kind) {
     case "superseded":
     case "withheld":
@@ -39,10 +39,9 @@ function named(d: StoreDecision, keys: ReturnType<typeof keysOf>): string {
   }
 }
 
-/** What recording `input`'s tier decides for each file. */
-export function storeCase(input: StoreInput, _scratch: string): CaseOutput {
-  const { report, requeue } = recorded(input);
-  const files = input.files.map((f) => {
+/** Each of `input`'s files: its case input, its keys, and the entry its tier ran it as. */
+export function entriesOf(input: StoreInput) {
+  return input.files.map((f) => {
     const keys = keysOf(f);
     const file = newFileState(refOf(f.path));
     Object.assign(file, { key: keys.key, runningKey: keys.running, resultKey: keys.result });
@@ -52,6 +51,12 @@ export function storeCase(input: StoreInput, _scratch: string): CaseOutput {
       entry: { file, key: keys.ran, inputs: f.inputs ?? [], runtimePolicy: f.runtimePolicy ?? "" },
     };
   });
+}
+
+/** What recording `input`'s tier decides for each file. */
+export function storeCase(input: StoreInput, _scratch: string): CaseOutput {
+  const { report, requeue } = recorded(input);
+  const files = entriesOf(input);
   const end = tierEnd(
     {
       files: files.map(({ entry }) => ({ ...entry, checkpointId: null, forced: false })),

@@ -268,6 +268,14 @@ export interface StoreInput {
   readonly startup?: readonly string[];
   /** Files whose run loaded environment files their key lacked (003-43). */
   readonly environment?: readonly string[];
+  /**
+   * Row 011-321: the files' growth paths are written before the run, then
+   * these change or are touched during it. The record reads them as the
+   * daemon's does (`observedMoves`) and decides through `recordOutcome`,
+   * `runEnd` and `decisionOf`, in place of `touched` and the store harness's
+   * own barrier (`harness/store-reads.ts`).
+   */
+  readonly reads?: { readonly changed: readonly string[]; readonly touched: readonly string[] };
 }
 
 /** A fixture the Vitest adapter runs, each run held until the paths it names are heard touched. */
