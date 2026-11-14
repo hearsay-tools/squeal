@@ -22,6 +22,7 @@ import type { DaemonWatch, HeartbeatLapse } from "../wait-liveness.js";
 import { lockedOf } from "../wait-liveness.js";
 import { decideStatusWait } from "./decide.js";
 import { heldAt, type News, newsOf, readWindow, type Syncing } from "./edit-window.js";
+import { type Every, keptAtStart, readEvery } from "./every-state.js";
 import { testFilesListed } from "./listing.js";
 import { judgeWait } from "./presence.js";
 import { watchOf } from "./socket.js";
@@ -129,6 +130,8 @@ export function editPoll(options: EditConfig): StatusPoll<StatusWaitEnded> {
   const now = options.now ?? Date.now;
   let start: StartView | null = null;
   let watch: DaemonWatch | undefined;
+  // Row 011-45: the fallback's last read of every state, with the states marker it was read at.
+  const every: Every = {};
   const syncing: Syncing = {};
   return {
     name: "edit",
@@ -141,6 +144,7 @@ export function editPoll(options: EditConfig): StatusPoll<StatusWaitEnded> {
         // The edit's files are not known yet: the start view is every state (task 011-42).
         const states = store.knownStates.list(id);
         start = startView(states);
+        every.kept = keptAtStart(store, id, states);
         startSlow(store, id, states, options.holdSlow === true, syncing);
       }
       const view = start;
@@ -171,7 +175,12 @@ export function editPoll(options: EditConfig): StatusPoll<StatusWaitEnded> {
       const files =
         window !== undefined ? [...window.files, ...heldFiles] : naming ? heldFiles : null;
       // A window of no files still reads the revision and its runner part.
-      const seen = naming && heldFiles.length === 0 ? null : readHeld(store, id, view, files);
+      const seen =
+        files === null
+          ? readEvery(store, id, view, every)
+          : naming && heldFiles.length === 0
+            ? null
+            : readHeld(store, id, view, files);
       const slowLeft =
         held === undefined || seen === null ? [] : heldSlowLeft(held, seen.states, seen.keys);
       const news = newsOf(window, seen, held, naming, current, fallback);

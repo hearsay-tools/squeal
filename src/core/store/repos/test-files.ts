@@ -22,6 +22,7 @@ import {
   strOrNull,
 } from "../codec.js";
 import type { Connection, Row } from "../connection.js";
+import { bumpStatesMarker } from "../states-marker.js";
 import { readMetaList, writeMetaList } from "./meta-list.js";
 
 const METHODS = ["static imports plus declared inputs"] as const;
@@ -112,6 +113,11 @@ export function createTestFileKeyRepo(conn: Connection): TestFileKeyRepo {
             r.pending,
           );
         }
+        // Row 011-45: in the transaction that wrote them.
+        bumpStatesMarker(
+          conn,
+          records.map((r) => r.worktreeId),
+        );
       }),
     remove: (worktreeId, testFiles) =>
       conn.transaction(() => {
@@ -123,13 +129,16 @@ export function createTestFileKeyRepo(conn: Connection): TestFileKeyRepo {
             t.path,
           );
         }
+        if (testFiles.length > 0) bumpStatesMarker(conn, [worktreeId]);
       }),
-    releaseRunning: (worktreeId) => {
-      conn.run(
-        "UPDATE test_file_keys SET pending = 'queued' WHERE worktree_id = ? AND pending = 'running'",
-        worktreeId,
-      );
-    },
+    releaseRunning: (worktreeId) =>
+      conn.transaction(() => {
+        const released = conn.run(
+          "UPDATE test_file_keys SET pending = 'queued' WHERE worktree_id = ? AND pending = 'running'",
+          worktreeId,
+        );
+        if (released > 0) bumpStatesMarker(conn, [worktreeId]);
+      }),
     claimed: (worktreeId, key, live) =>
       conn.get(
         `SELECT 1 AS one FROM test_file_keys k JOIN worktrees w ON w.id = k.worktree_id
