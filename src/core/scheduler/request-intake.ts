@@ -36,10 +36,14 @@ import type {
  * A request leaves a rule out only by a named `skip`. The pump is opaque here.
  */
 
-/** Row 011-198: `run --all` gives no verdict rather than one at a revision older than the tree. */
+/**
+ * Row 011-198: `run --all` gives no verdict rather than one at a revision
+ * older than the tree. Row 011-337: the head of the refusal; the request's
+ * start rule (`afterPass`) ends it with what was not done for it.
+ */
 export const NO_PASS =
   "the change feed delivered no reconciliation pass that started after the request " +
-  "(its pass failed, or the daemon closed first), so no checkpoint was planned";
+  "(its pass failed, or the daemon closed first)";
 
 /** What the intake reads and calls of its scheduler. */
 export interface IntakeHost {
@@ -108,7 +112,7 @@ export class RequestIntake {
     const { start, installWait, wake } = request;
     if ("closed" in start && (!host.open() || start.nothing === true)) return start.closed;
     if ("atOnce" in installWait && host.waiting() !== null) return installWait.atOnce;
-    if ("afterPass" in start) await this.#afterPass();
+    if ("afterPass" in start) await this.#afterPass(start.afterPass);
     // Review wave 11, B1: an install the next reconciliation pass would find ends the wait first.
     if ("passFirst" in installWait && host.awaitingInstall()) {
       await this.#request(request.operation, () => host.installPass());
@@ -119,13 +123,14 @@ export class RequestIntake {
     return answer;
   }
 
-  /** Row 011-198: once a pass that started after the request was delivered. */
-  async #afterPass(): Promise<void> {
+  /** Row 011-198: once a pass that started after the request was delivered; else `NO_PASS`, so `refused`. */
+  async #afterPass(refused: string): Promise<void> {
     const passes = this.#host.passes();
     if (passes === undefined) return;
     const asked = passes.started();
     await passes.pass();
-    if ((passes.deliveredPass()?.number ?? 0) <= asked) throw new Error(NO_PASS);
+    if ((passes.deliveredPass()?.number ?? 0) <= asked)
+      throw new Error(`${NO_PASS}, so ${refused}`);
   }
 
   /** Rules 2 to 6 under the lock: once, behind the runner work, or again on each busy try. */
