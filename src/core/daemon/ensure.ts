@@ -111,7 +111,13 @@ async function ping(
   signal?: AbortSignal,
 ): Promise<DaemonProbe> {
   try {
-    const response = await requestDaemon(socketPath, { type: "ping" }, timeoutMs, undefined, signal);
+    const response = await requestDaemon(
+      socketPath,
+      { type: "ping" },
+      timeoutMs,
+      undefined,
+      signal,
+    );
     if (response.ok && response.type === "ping") return { state: "alive", ping: response };
     return { state: "unresponsive", reason: `unexpected answer: ${JSON.stringify(response)}` };
   } catch (error) {
