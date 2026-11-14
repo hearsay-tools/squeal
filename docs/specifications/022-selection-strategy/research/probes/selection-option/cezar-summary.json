@@ -1,0 +1,97 @@
+{
+  "label": "cezar",
+  "testFiles": 2449,
+  "withCoverageRecord": 2010,
+  "closureEqualsRecord": 0,
+  "noUnloadedCodeModule": 1510,
+  "medianClosurePaths": 168,
+  "medianRecordPaths": 73,
+  "medianUnloadedCodeModules": 0,
+  "closurePathsNotInRecord": {
+    "observed read": 45405,
+    "snapshot": 1832,
+    "not JS/TS": 415,
+    "code module, not loaded": 12538,
+    "coverage.exclude": 6155,
+    "test file itself": 5,
+    "declared input": 390387
+  },
+  "recordPathsNotInClosure": {
+    "code module": 13475,
+    "coverage.exclude": 1
+  },
+  "perProject": {
+    "web": {
+      "files": 412,
+      "withRecord": 394,
+      "s": 34970,
+      "l": 26714,
+      "onlyKeep": 319,
+      "narrowedFiles": 75
+    },
+    "e2e": {
+      "files": 114,
+      "withRecord": 101,
+      "s": 353519,
+      "l": 5811,
+      "onlyKeep": 101,
+      "narrowedFiles": 0
+    },
+    "server": {
+      "files": 1674,
+      "withRecord": 1305,
+      "s": 351636,
+      "l": 294501,
+      "onlyKeep": 900,
+      "narrowedFiles": 405
+    },
+    "root:test:unit": {
+      "files": 171,
+      "withRecord": 148,
+      "s": 31595,
+      "l": 1480,
+      "onlyKeep": 135,
+      "narrowedFiles": 13
+    },
+    "test:package": {
+      "files": 13,
+      "withRecord": 0,
+      "s": 0,
+      "l": 0,
+      "onlyKeep": 0,
+      "narrowedFiles": 0
+    },
+    "test:unit": {
+      "files": 15,
+      "withRecord": 12,
+      "s": 431,
+      "l": 357,
+      "onlyKeep": 6,
+      "narrowedFiles": 6
+    },
+    "f2:package": {
+      "files": 17,
+      "withRecord": 17,
+      "s": 907,
+      "l": 962,
+      "onlyKeep": 16,
+      "narrowedFiles": 1
+    },
+    "api-client": {
+      "files": 2,
+      "withRecord": 2,
+      "s": 7,
+      "l": 5,
+      "onlyKeep": 2,
+      "narrowedFiles": 0
+    },
+    "contract": {
+      "files": 31,
+      "withRecord": 31,
+      "s": 396,
+      "l": 370,
+      "onlyKeep": 31,
+      "narrowedFiles": 0
+    }
+  }
+}
