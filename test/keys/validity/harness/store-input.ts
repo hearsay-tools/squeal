@@ -38,7 +38,29 @@ export function recorded(input: StoreInput): {
   readonly report: RunReport;
   readonly requeue: boolean | ReadonlySet<string>;
 } {
-  const ran: RunReport = {
+  const ran = reportOf(input);
+  const ranOf = (path: string) => ({
+    file: { id: testFileId(refOf(path)), ref: refOf(path) },
+    key: keyOf("ran", path),
+  });
+  const files = input.files.map((f) => ({ ...ranOf(f.path), inputs: f.inputs ?? [] }));
+  const { growth } = observationsOf(input);
+  const { report, barred } = barredByTouch(ran, files, input.touched ?? [], growth);
+  const withholds = new Withholds();
+  withholds.record((input.touchedBefore ?? []).map(ranOf));
+  const withhold = barred.length === 0 ? null : withholds.record(barred);
+  if (input.requeue === true) return { report, requeue: true };
+  if (withhold === null && input.requeue === undefined) return { report, requeue: false };
+  const again = [...(withhold?.again ?? []).map(({ file }) => file.id)];
+  return {
+    report,
+    requeue: new Set([...again, ...(input.requeue ?? []).map((p) => testFileId(refOf(p)))]),
+  };
+}
+
+/** The run's report as the runner gives it, before the barrier. */
+export function reportOf(input: StoreInput): RunReport {
+  return {
     ...REPORT,
     end: input.end ?? "completed",
     completedFiles: input.completed.map(refOf),
@@ -66,23 +88,6 @@ export function recorded(input: StoreInput): {
             },
           },
         }),
-  };
-  const ranOf = (path: string) => ({
-    file: { id: testFileId(refOf(path)), ref: refOf(path) },
-    key: keyOf("ran", path),
-  });
-  const files = input.files.map((f) => ({ ...ranOf(f.path), inputs: f.inputs ?? [] }));
-  const { growth } = observationsOf(input);
-  const { report, barred } = barredByTouch(ran, files, input.touched ?? [], growth);
-  const withholds = new Withholds();
-  withholds.record((input.touchedBefore ?? []).map(ranOf));
-  const withhold = barred.length === 0 ? null : withholds.record(barred);
-  if (input.requeue === true) return { report, requeue: true };
-  if (withhold === null && input.requeue === undefined) return { report, requeue: false };
-  const again = [...(withhold?.again ?? []).map(({ file }) => file.id)];
-  return {
-    report,
-    requeue: new Set([...again, ...(input.requeue ?? []).map((p) => testFileId(refOf(p)))]),
   };
 }
 

@@ -96,6 +96,29 @@ describe("each decision reaches the alarm (risk 4)", SLOW, () => {
     ]);
     expect(failures(result, release())).toHaveLength(2);
   });
+
+  // Row 011-321 (review 0.1.453-r2 N1): the check row 011-319 moved out of `observed.ts`.
+  it("fires and runs the changed line when the run's observed reads are not checked", async () => {
+    const result = await compare(
+      edited(
+        "src/core/run-evidence/sources.ts",
+        "return { growth, ...(await changedSince(before, paths, context.hasher)) };",
+        "return { growth, changed: new Set(), touched: new Set() };",
+      ),
+      only("store"),
+    );
+    expect(result.fired).toBe(true);
+    expect(result.uncovered).toEqual([]);
+    // The `store` kind reads by direction: a candidate that stores more is reported, not raised.
+    const differing = result.cases.filter((c) => c.reported.length > 0);
+    expect(differing.map((c) => c.name)).toEqual([
+      "observed reads that changed or were touched during the run",
+    ]);
+    expect(differing[0]?.reported).toEqual([
+      "test/changed.test.ts: unstable: data/changed.txt at the last release, store at moved:test/changed.test.ts at the candidate (the candidate stores more)",
+      "test/touched.test.ts: requeue at the last release, store at moved:test/touched.test.ts at the candidate (the candidate stores more)",
+    ]);
+  });
 });
 
 /** Every `.ts` file under `src/`, repository-relative. */

@@ -39,6 +39,7 @@ import { OBSERVED_WRITTEN } from "./observe/written.js";
 import { PRUNE_KEYS } from "./prune/keys.js";
 import { PRUNE_SLICES } from "./prune/slices.js";
 import { GOLDEN_ROWS } from "./rows/golden.js";
+import { STORE_READS } from "./store/reads.js";
 import { RUNTIME_STORES } from "./store/runtime.js";
 import { STORE_TIERS } from "./store/tier.js";
 
@@ -78,6 +79,7 @@ export const CASES: readonly Case[] = [
   ...DESCRIBED,
   ...IGNORED_LISTING,
   ...STORE_TIERS,
+  ...STORE_READS,
   ...RUNTIME_STORES,
   ...VITEST_RUNS,
   ...VITEST_ENVIRONMENT,
