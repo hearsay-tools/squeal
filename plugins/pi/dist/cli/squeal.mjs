@@ -64,7 +64,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 function squealVersion() {
-  if (true) return "0.1.506";
+  if (true) return "0.1.507";
   return manifestVersion(new URL(import.meta.url)) ?? UNKNOWN_VERSION;
 }
 function manifestVersion(module2) {
@@ -3097,12 +3097,12 @@ var init_git = __esm({
 
 // src/core/types/runner-traits.ts
 function declareTraits(stated = {}) {
-  const { omittedTestFiles, slowWidth, tierWidth: tierWidth3, tierPart, besideBacklog, backlogSlot: backlogSlot2 } = stated;
+  const { omittedTestFiles, slowWidth, tierWidth: tierWidth2, tierPart, besideBacklog, backlogSlot: backlogSlot2 } = stated;
   const { focuses, lane } = stated;
   return {
     omittedTestFiles: () => omittedTestFiles?.() ?? 0,
     slowWidth: (testFiles3) => Math.max(1, slowWidth?.(testFiles3) ?? testFiles3.length),
-    tierWidth: (testFile, grant) => Math.max(1, tierWidth3?.(testFile, grant) ?? grant),
+    tierWidth: (testFile, grant) => Math.max(1, tierWidth2?.(testFile, grant) ?? grant),
     tierPart: (testFile) => tierPart?.(testFile) ?? "",
     besideBacklog: (testFile) => besideBacklog?.(testFile) ?? false,
     backlogSlot: (testFile) => {
@@ -4611,7 +4611,7 @@ function readHeader(store, worktreeId, states = store.knownStates.list(worktreeI
     (policy) => headerPart(states, keys, policy, isSlow, openFiles2)
   );
 }
-function headerWith(store, worktreeId, keys, partOf2) {
+function headerWith(store, worktreeId, keys, partOf) {
   const latest = store.revisions.latest(worktreeId);
   const revision = latest?.number ?? 0;
   const commit = readRevisionCommit(store, worktreeId, latest);
@@ -4622,7 +4622,7 @@ function headerWith(store, worktreeId, keys, partOf2) {
   const lane = awaiting2 ? null : laneAfter(store.checkpoints.lastCompleted(worktreeId), last);
   const root = store.worktrees.get(worktreeId)?.root;
   const policy = root === void 0 ? null : readPolicy(root);
-  const part2 = partOf2(policy);
+  const part2 = partOf(policy);
   const { counts, fileLevelCounts, inheritedCount, inheritedFileLevelCount, importedCount } = part2.counted;
   const optimizerOff = readOptimizerOff(store, worktreeId);
   const runnerPartPending = !covers(refinedRevision, revision);
@@ -6125,8 +6125,8 @@ function keepReplaced(conn, failing, records, loadOf3) {
   );
   const added = [];
   for (const { result, failureId } of failing) {
-    const pass = passes.get(identity(result.check));
-    if (pass === void 0 || pass.key !== result.key) continue;
+    const pass2 = passes.get(identity(result.check));
+    if (pass2 === void 0 || pass2.key !== result.key) continue;
     added.push({
       check: result.check,
       key: result.key,
@@ -6138,9 +6138,9 @@ function keepReplaced(conn, failing, records, loadOf3) {
       failureId,
       loadPerCpu: loadOf3(result.provenance.runId),
       replacedBy: {
-        runId: pass.provenance.runId,
-        worktreeId: pass.provenance.worktreeId,
-        recordedAt: pass.provenance.recordedAt
+        runId: pass2.provenance.runId,
+        worktreeId: pass2.provenance.worktreeId,
+        recordedAt: pass2.provenance.recordedAt
       }
     });
   }
@@ -8542,18 +8542,18 @@ var init_ranges = __esm({
           at2 = Math.max(at2, to);
         };
         const close = (until) => {
-          for (let top = open7.at(-1); top !== void 0 && top.end <= until; top = open7.at(-1)) {
-            emit(top.end, top.count);
+          for (let top2 = open7.at(-1); top2 !== void 0 && top2.end <= until; top2 = open7.at(-1)) {
+            emit(top2.end, top2.count);
             open7.pop();
           }
         };
         for (const range of ranges) {
           close(range.start);
-          const top = open7.at(-1);
-          if (top === void 0) at2 = range.start;
-          else emit(range.start, top.count);
+          const top2 = open7.at(-1);
+          if (top2 === void 0) at2 = range.start;
+          else emit(range.start, top2.count);
           open7.push({
-            end: top === void 0 ? range.end : Math.min(range.end, top.end),
+            end: top2 === void 0 ? range.end : Math.min(range.end, top2.end),
             count: range.count
           });
         }
@@ -19178,319 +19178,6 @@ var init_run_evidence = __esm({
   }
 });
 
-// src/core/scheduler/sharing.ts
-function joinSpan(span, durationMs2, cut = false) {
-  if (span !== null && span.cut !== cut) return null;
-  const time = durationMs2 ?? 0;
-  const fastest = Math.min(span?.fastest ?? time, time);
-  const slowest = Math.max(span?.slowest ?? time, time);
-  const shares = slowest <= Math.max(SHARE_FLOOR_MS, SHARE_RATIO * fastest);
-  return shares ? { fastest, slowest, cut } : null;
-}
-var SHARE_FLOOR_MS, SHARE_RATIO, NONE_CUT;
-var init_sharing = __esm({
-  "src/core/scheduler/sharing.ts"() {
-    "use strict";
-    SHARE_FLOOR_MS = 1e3;
-    SHARE_RATIO = 4;
-    NONE_CUT = { cutPastEstimate: () => false };
-  }
-});
-
-// src/core/scheduler/slots.ts
-function backlogSlot(context, ref3) {
-  return context.runner.traits.backlogSlot(ref3);
-}
-function busyLanes(context, ledger, inFlight) {
-  const held3 = /* @__PURE__ */ new Map();
-  for (const tier of inFlight) held3.set(tier.lane, [...held3.get(tier.lane) ?? [], tier]);
-  const busy2 = /* @__PURE__ */ new Set();
-  for (const [lane, tiers] of held3) {
-    const backlog = tiers.filter((tier) => tier.kind === "backlog");
-    const edit = backlog.length < tiers.length;
-    const inLane = (ref3) => laneOf(context, ref3) === lane;
-    const queued = ledger.queue.hasFirstGroup(inLane) || focusedWaiting(context, ledger, inLane);
-    const lead = backlog[0]?.files[0]?.file.ref;
-    const beside = queued && !edit && lead !== void 0 && context.runner.traits.besideBacklog(lead);
-    const any = tiers[0]?.files[0]?.file.ref;
-    const slots = !queued && !isGroupLane(lane) && any !== void 0 && backlogSlot(context, any) !== null && backlog.length < context.policy.runner.tierSize;
-    if (!beside && !slots) busy2.add(lane);
-  }
-  return busy2;
-}
-function joinsSlot(picked, file, partOf2) {
-  const light = (ms2) => (ms2 ?? 0) <= SHARE_FLOOR_MS;
-  const part2 = partOf2(file.ref);
-  return light(file.durationMs) && picked.every((p) => light(p.file.durationMs) && partOf2(p.file.ref) === part2);
-}
-var init_slots2 = __esm({
-  "src/core/scheduler/slots.ts"() {
-    "use strict";
-    init_scheduler();
-    init_focused();
-    init_sharing();
-    init_tiers();
-  }
-});
-
-// src/core/scheduler/quiet.ts
-function waiting(until, lane, now) {
-  const end = until.get(lane);
-  if (end !== void 0 && end <= now) until.delete(lane);
-  return end !== void 0 && end > now;
-}
-function after(until, now) {
-  return new Map([...until].filter(([, end]) => end > now));
-}
-function quietQueued(context, ledger, misses, changes = []) {
-  const { quiet } = context;
-  if (quiet === void 0 || onlyEditorScratch(changes)) return;
-  const now = context.now();
-  const lanes = /* @__PURE__ */ new Set();
-  for (const { ref: ref3 } of misses) if (ledger.queue.has(ref3)) lanes.add(laneOf(context, ref3));
-  for (const lane of lanes) quiet.queued(lane, now);
-}
-function quietCaughtUp(context, ledger, ids) {
-  const { quiet } = context;
-  if (quiet === void 0) return;
-  const now = context.now();
-  const lanes = /* @__PURE__ */ new Set();
-  for (const id of ids) {
-    const ref3 = ledger.files.get(id)?.ref;
-    if (ref3 === void 0 || !ledger.queue.isCatchUp(ref3) || backlogSlot(context, ref3) !== null)
-      continue;
-    lanes.add(laneOf(context, ref3));
-  }
-  for (const lane of lanes) quiet.caughtUp(lane, now);
-}
-function quietHolds(context, ledger, ref3, lane, tier, now) {
-  const { quiet } = context;
-  if (quiet === void 0 || !(tier.backlog || tier.turn)) return false;
-  if (tier.backlog && quiet.waits(lane, now)) return true;
-  return ledger.queue.isCatchUp(ref3) && quiet.catchUpWaits(lane, now);
-}
-function quietSleepMs(context, ledger) {
-  const { quiet } = context;
-  if (quiet === void 0) return null;
-  const now = context.now();
-  const { queue } = ledger;
-  const holding = (ends, held3) => [...ends].filter(([lane]) => queue.hasFast((ref3) => laneOf(context, ref3) === lane && held3(ref3))).map(([, until2]) => until2);
-  const until = [
-    ...holding(quiet.ends(now), () => true),
-    ...holding(quiet.catchUpEnds(now), (ref3) => queue.isCatchUp(ref3))
-  ];
-  if (until.length === 0) return null;
-  return Math.min(QUIET_RECHECK_MS, Math.max(0, Math.min(...until) - now));
-}
-function quietMetaKey(worktreeId) {
-  return worktreeMetaKey("quiet", worktreeId);
-}
-function publishQuiet(store, worktreeId, ends, at2, catchUp = NO_ENDS) {
-  const key3 = quietMetaKey(worktreeId);
-  if (ends.size === 0 && catchUp.size === 0) store.meta.delete(key3);
-  else {
-    const row2 = {
-      at: at2,
-      lanes: Object.fromEntries(ends),
-      ...catchUp.size === 0 ? {} : { catchUp: Object.fromEntries(catchUp) }
-    };
-    store.meta.set(key3, JSON.stringify(row2));
-  }
-}
-function publishedWaits(store, worktreeId, daemonStartedAt, now) {
-  const none3 = { backlog: NO_ENDS, catchUp: NO_ENDS };
-  const raw = store.meta.get(quietMetaKey(worktreeId));
-  if (raw === null) return none3;
-  try {
-    const { at: at2, lanes, catchUp } = JSON.parse(raw);
-    if (typeof at2 !== "number" || at2 < daemonStartedAt) return none3;
-    return { backlog: endsAfter(lanes, now), catchUp: endsAfter(catchUp, now) };
-  } catch {
-    return none3;
-  }
-}
-function endsAfter(lanes, now) {
-  if (typeof lanes !== "object" || lanes === null) return NO_ENDS;
-  return new Map(
-    Object.entries(lanes).filter(
-      (entry4) => typeof entry4[1] === "number" && entry4[1] > now
-    )
-  );
-}
-var BACKLOG_QUIET_MS, CATCHUP_QUIET_MS, QUIET_RECHECK_MS, BacklogQuiet, NO_ENDS;
-var init_quiet = __esm({
-  "src/core/scheduler/quiet.ts"() {
-    "use strict";
-    init_store();
-    init_editor_scratch();
-    init_slots2();
-    init_tiers();
-    BACKLOG_QUIET_MS = 2e4;
-    CATCHUP_QUIET_MS = 12e4;
-    QUIET_RECHECK_MS = 1e3;
-    BacklogQuiet = class {
-      constructor(publish = () => {
-      }) {
-        this.publish = publish;
-      }
-      publish;
-      /** When each lane's wait ends, on the scheduler's clock; an end not after now is no wait. */
-      #until = /* @__PURE__ */ new Map();
-      /** When each lane's wait for its catch-up ends, as `#until`. */
-      #catchUp = /* @__PURE__ */ new Map();
-      /** A revision or an edit's work cancelled the backlog tier of `lane` at `now`: its wait starts. */
-      cancelled(lane, now) {
-        this.#until.set(lane, now + BACKLOG_QUIET_MS);
-        this.#told(now);
-      }
-      /** A revision's re-key queued a test file of `lane` at `now`: each wait of the lane starts again. */
-      queued(lane, now) {
-        const backlog = this.waits(lane, now);
-        const catchUp = this.catchUpWaits(lane, now);
-        if (backlog) this.#until.set(lane, now + BACKLOG_QUIET_MS);
-        if (catchUp) this.#catchUp.set(lane, now + CATCHUP_QUIET_MS);
-        if (backlog || catchUp) this.#told(now);
-      }
-      /** An edit's revision made catch-up in `lane` at `now`: the lane's wait for it starts. */
-      caughtUp(lane, now) {
-        this.#catchUp.set(lane, now + CATCHUP_QUIET_MS);
-        this.#told(now);
-      }
-      /** `squeal run --all`: every wait ends. */
-      end(now) {
-        if (this.#until.size === 0 && this.#catchUp.size === 0) return;
-        this.#until.clear();
-        this.#catchUp.clear();
-        this.#told(now);
-      }
-      /** Whether `lane` waits for quiet at `now`. */
-      waits(lane, now) {
-        return waiting(this.#until, lane, now);
-      }
-      /** Whether `lane`'s catch-up waits for quiet at `now`. */
-      catchUpWaits(lane, now) {
-        return waiting(this.#catchUp, lane, now);
-      }
-      /** The end of each wait after `now`, by lane. */
-      ends(now) {
-        return after(this.#until, now);
-      }
-      /** The end of each catch-up's wait after `now`, by lane. */
-      catchUpEnds(now) {
-        return after(this.#catchUp, now);
-      }
-      #told(now) {
-        this.publish(this.ends(now), now, this.catchUpEnds(now));
-      }
-    };
-    NO_ENDS = /* @__PURE__ */ new Map();
-  }
-});
-
-// src/core/scheduler/focused.ts
-function mayFocus(context, ledger, ref3) {
-  return ledger.file(ref3) !== void 0 && !ledger.queue.isSlow(ref3) && context.runner.traits.focuses(ref3);
-}
-function runnable(context, ledger, entry4) {
-  const file = ledger.file(entry4.ref);
-  if (file === void 0 || file.blocked !== null || file.key === null) return null;
-  if (!mayFocus(context, ledger, entry4.ref) || file.resultKey === file.key) return null;
-  return { file, key: file.key };
-}
-function focusedWaiting(context, ledger, where3 = () => true) {
-  const { focused } = ledger.queue;
-  if (focused.size === 0) return false;
-  return focused.waiting(context.now()).some((entry4) => where3(entry4.ref) && runnable(context, ledger, entry4) !== null);
-}
-function turnFirst(context, ledger, busy2, turnDue) {
-  if (!turnDue) return false;
-  const now = context.now();
-  const { queue } = ledger;
-  return ledger.fastQueued((ref3) => {
-    const lane = laneOf(context, ref3);
-    if (busy2.has(lane) || queue.isFirstGroup(ref3)) return false;
-    if (quietHolds(context, ledger, ref3, lane, { backlog: true, turn: true }, now)) return false;
-    const file = ledger.file(ref3);
-    if (!file || file.key === null || file.blocked !== null) return false;
-    return peekClaim(context, ledger, ref3) === "free";
-  });
-}
-function selectFocusedTier(context, ledger, busy2, turnDue) {
-  const { focused } = ledger.queue;
-  if (focused.size === 0 || turnFirst(context, ledger, busy2, turnDue)) return null;
-  const picked = [];
-  let lane = null;
-  for (const entry4 of focused.waiting(context.now())) {
-    if (picked.length >= context.policy.runner.tierSize) break;
-    const run7 = runnable(context, ledger, entry4);
-    if (run7 === null) {
-      focused.drop(entry4);
-      continue;
-    }
-    const at2 = laneOf(context, entry4.ref);
-    if (busy2.has(at2) || lane !== null && at2 !== lane) continue;
-    lane = at2;
-    picked.push({ entry: entry4, ...run7 });
-  }
-  if (lane === null) return null;
-  return startFocusedTier(context, ledger, picked);
-}
-function startFocusedTier(context, ledger, picked) {
-  const { keys, store, worktreeId } = context;
-  const files5 = picked.map(({ file, key: key3 }) => ({
-    file,
-    key: key3,
-    inputs: keys.stabilityPaths(file.ref),
-    runtimePolicy: keys.runtimeIdentity(file.ref),
-    checkpointId: null,
-    forced: false
-  }));
-  const first2 = files5[0];
-  if (first2 === void 0) return null;
-  const tier = store.transaction(() => {
-    const started2 = {
-      ...newTier(context, ledger, first2, files5, "focused"),
-      focus: picked.map(({ entry: entry4 }) => ({ testFile: entry4.ref, texts: entry4.texts }))
-    };
-    writeFocused(
-      store,
-      worktreeId,
-      picked.map(({ entry: entry4, key: key3 }) => ({
-        testFile: entry4.ref,
-        key: key3,
-        revision: started2.revision.number,
-        texts: entry4.texts,
-        runId: started2.runId,
-        logDir: started2.logDir,
-        startedAt: started2.startedAt,
-        endedAt: null,
-        end: null,
-        reason: null,
-        collected: null,
-        matched: null,
-        checks: [],
-        more: 0
-      }))
-    );
-    return started2;
-  });
-  ledger.queue.focused.started(
-    picked.map((p) => p.entry),
-    tier.runId
-  );
-  ledger.queue.focusedSelected(picked.map((p) => p.entry.ref));
-  return tier;
-}
-var init_focused = __esm({
-  "src/core/scheduler/focused.ts"() {
-    "use strict";
-    init_claims();
-    init_focused_row();
-    init_quiet();
-    init_tiers();
-  }
-});
-
 // src/core/scheduler/local-permits.ts
 import { setTimeout as sleep5 } from "node:timers/promises";
 var TierPermits;
@@ -19547,42 +19234,6 @@ var init_local_permits = __esm({
         if (this.#again) this.#lease?.release();
       }
     };
-  }
-});
-
-// src/core/scheduler/promoted-tier.ts
-function batchFiles(context, ledger, free) {
-  const { queue } = ledger;
-  const takes2 = (ref3) => free(ref3) && queue.isPromoted(ref3) && backlogSlot(context, ref3) === null;
-  return queue.hasFast(takes2) ? takes2 : null;
-}
-function batchTurnDue(ledger, free) {
-  const { queue } = ledger;
-  return queue.batchTurn() && queue.hasFast((ref3) => free(ref3) && !queue.isFirstGroup(ref3));
-}
-function batchBudget(timeoutMs) {
-  return timeoutMs ?? Number.POSITIVE_INFINITY;
-}
-function answeredOf(context, ledger) {
-  let raw;
-  let requests = [];
-  return (ref3) => {
-    const file = ledger.file(ref3);
-    const key3 = file?.key ?? null;
-    if (key3 === null || file?.resultKey !== key3) return { key: key3, answered: false };
-    const now = context.store.meta.get(RETRIES_META_KEY);
-    if (now !== raw) {
-      raw = now;
-      requests = readRetries(context.store);
-    }
-    return { key: key3, answered: !requests.some(pendingAt(ref3, key3)) };
-  };
-}
-var init_promoted_tier = __esm({
-  "src/core/scheduler/promoted-tier.ts"() {
-    "use strict";
-    init_records();
-    init_slots2();
   }
 });
 
@@ -19845,6 +19496,274 @@ var init_omitted_test_files = __esm({
   "src/core/scheduler/omitted-test-files.ts"() {
     "use strict";
     init_store();
+  }
+});
+
+// src/core/scheduler/focused.ts
+function mayFocus(context, ledger, ref3) {
+  return ledger.file(ref3) !== void 0 && !ledger.queue.isSlow(ref3) && context.runner.traits.focuses(ref3);
+}
+function runnable(context, ledger, entry4) {
+  const file = ledger.file(entry4.ref);
+  if (file === void 0 || file.blocked !== null || file.key === null) return null;
+  if (!mayFocus(context, ledger, entry4.ref) || file.resultKey === file.key) return null;
+  return { file, key: file.key };
+}
+function focusedWaiting(context, ledger, where3 = () => true) {
+  const { focused } = ledger.queue;
+  if (focused.size === 0) return false;
+  return focused.waiting(context.now()).some((entry4) => where3(entry4.ref) && runnable(context, ledger, entry4) !== null);
+}
+function startFocusedTier(context, ledger, picked, files5) {
+  const { store, worktreeId } = context;
+  const first2 = files5[0];
+  if (first2 === void 0) return null;
+  const tier = store.transaction(() => {
+    const started2 = {
+      ...newTier(context, ledger, first2, files5, "focused"),
+      focus: picked.map(({ entry: entry4 }) => ({ testFile: entry4.ref, texts: entry4.texts }))
+    };
+    writeFocused(
+      store,
+      worktreeId,
+      picked.map(({ entry: entry4, key: key3 }) => ({
+        testFile: entry4.ref,
+        key: key3,
+        revision: started2.revision.number,
+        texts: entry4.texts,
+        runId: started2.runId,
+        logDir: started2.logDir,
+        startedAt: started2.startedAt,
+        endedAt: null,
+        end: null,
+        reason: null,
+        collected: null,
+        matched: null,
+        checks: [],
+        more: 0
+      }))
+    );
+    return started2;
+  });
+  ledger.queue.focused.started(
+    picked.map((p) => p.entry),
+    tier.runId
+  );
+  ledger.queue.focusedSelected(picked.map((p) => p.entry.ref));
+  return tier;
+}
+var init_focused = __esm({
+  "src/core/scheduler/focused.ts"() {
+    "use strict";
+    init_focused_row();
+    init_tiers();
+  }
+});
+
+// src/core/scheduler/sharing.ts
+function joinSpan(span, durationMs2, cut = false) {
+  if (span !== null && span.cut !== cut) return null;
+  const time = durationMs2 ?? 0;
+  const fastest = Math.min(span?.fastest ?? time, time);
+  const slowest = Math.max(span?.slowest ?? time, time);
+  const shares = slowest <= Math.max(SHARE_FLOOR_MS, SHARE_RATIO * fastest);
+  return shares ? { fastest, slowest, cut } : null;
+}
+var SHARE_FLOOR_MS, SHARE_RATIO;
+var init_sharing = __esm({
+  "src/core/scheduler/sharing.ts"() {
+    "use strict";
+    SHARE_FLOOR_MS = 1e3;
+    SHARE_RATIO = 4;
+  }
+});
+
+// src/core/scheduler/slots.ts
+function backlogSlot(context, ref3) {
+  return context.runner.traits.backlogSlot(ref3);
+}
+function busyLanes(context, ledger, inFlight) {
+  const held3 = /* @__PURE__ */ new Map();
+  for (const tier of inFlight) held3.set(tier.lane, [...held3.get(tier.lane) ?? [], tier]);
+  const busy2 = /* @__PURE__ */ new Set();
+  for (const [lane, tiers] of held3) {
+    const backlog = tiers.filter((tier) => tier.kind === "backlog");
+    const edit = backlog.length < tiers.length;
+    const inLane = (ref3) => laneOf(context, ref3) === lane;
+    const queued = ledger.queue.hasFirstGroup(inLane) || focusedWaiting(context, ledger, inLane);
+    const lead = backlog[0]?.files[0]?.file.ref;
+    const beside = queued && !edit && lead !== void 0 && context.runner.traits.besideBacklog(lead);
+    const any = tiers[0]?.files[0]?.file.ref;
+    const slots = !queued && !isGroupLane(lane) && any !== void 0 && backlogSlot(context, any) !== null && backlog.length < context.policy.runner.tierSize;
+    if (!beside && !slots) busy2.add(lane);
+  }
+  return busy2;
+}
+function joinsSlot(picked, file, partOf) {
+  const light = (ms2) => (ms2 ?? 0) <= SHARE_FLOOR_MS;
+  const part2 = partOf(file.ref);
+  return light(file.durationMs) && picked.every((p) => light(p.file.durationMs) && partOf(p.file.ref) === part2);
+}
+var init_slots2 = __esm({
+  "src/core/scheduler/slots.ts"() {
+    "use strict";
+    init_scheduler();
+    init_focused();
+    init_sharing();
+    init_tiers();
+  }
+});
+
+// src/core/scheduler/quiet.ts
+function waiting(until, lane, now) {
+  const end = until.get(lane);
+  if (end !== void 0 && end <= now) until.delete(lane);
+  return end !== void 0 && end > now;
+}
+function after(until, now) {
+  return new Map([...until].filter(([, end]) => end > now));
+}
+function quietQueued(context, ledger, misses, changes = []) {
+  const { quiet } = context;
+  if (quiet === void 0 || onlyEditorScratch(changes)) return;
+  const now = context.now();
+  const lanes = /* @__PURE__ */ new Set();
+  for (const { ref: ref3 } of misses) if (ledger.queue.has(ref3)) lanes.add(laneOf(context, ref3));
+  for (const lane of lanes) quiet.queued(lane, now);
+}
+function quietCaughtUp(context, ledger, ids) {
+  const { quiet } = context;
+  if (quiet === void 0) return;
+  const now = context.now();
+  const lanes = /* @__PURE__ */ new Set();
+  for (const id of ids) {
+    const ref3 = ledger.files.get(id)?.ref;
+    if (ref3 === void 0 || !ledger.queue.isCatchUp(ref3) || backlogSlot(context, ref3) !== null)
+      continue;
+    lanes.add(laneOf(context, ref3));
+  }
+  for (const lane of lanes) quiet.caughtUp(lane, now);
+}
+function quietHolds(context, ledger, ref3, lane, tier, now) {
+  const { quiet } = context;
+  if (quiet === void 0 || !(tier.backlog || tier.turn)) return false;
+  if (tier.backlog && quiet.waits(lane, now)) return true;
+  return ledger.queue.isCatchUp(ref3) && quiet.catchUpWaits(lane, now);
+}
+function quietSleepMs(context, ledger, now = context.now()) {
+  const { quiet } = context;
+  if (quiet === void 0) return null;
+  const { queue } = ledger;
+  const holding = (ends, held3) => [...ends].filter(([lane]) => queue.hasFast((ref3) => laneOf(context, ref3) === lane && held3(ref3))).map(([, until2]) => until2);
+  const until = [
+    ...holding(quiet.ends(now), () => true),
+    ...holding(quiet.catchUpEnds(now), (ref3) => queue.isCatchUp(ref3))
+  ];
+  if (until.length === 0) return null;
+  return Math.min(QUIET_RECHECK_MS, Math.max(0, Math.min(...until) - now));
+}
+function quietMetaKey(worktreeId) {
+  return worktreeMetaKey("quiet", worktreeId);
+}
+function publishQuiet(store, worktreeId, ends, at2, catchUp = NO_ENDS) {
+  const key3 = quietMetaKey(worktreeId);
+  if (ends.size === 0 && catchUp.size === 0) store.meta.delete(key3);
+  else {
+    const row2 = {
+      at: at2,
+      lanes: Object.fromEntries(ends),
+      ...catchUp.size === 0 ? {} : { catchUp: Object.fromEntries(catchUp) }
+    };
+    store.meta.set(key3, JSON.stringify(row2));
+  }
+}
+function publishedWaits(store, worktreeId, daemonStartedAt, now) {
+  const none3 = { backlog: NO_ENDS, catchUp: NO_ENDS };
+  const raw = store.meta.get(quietMetaKey(worktreeId));
+  if (raw === null) return none3;
+  try {
+    const { at: at2, lanes, catchUp } = JSON.parse(raw);
+    if (typeof at2 !== "number" || at2 < daemonStartedAt) return none3;
+    return { backlog: endsAfter(lanes, now), catchUp: endsAfter(catchUp, now) };
+  } catch {
+    return none3;
+  }
+}
+function endsAfter(lanes, now) {
+  if (typeof lanes !== "object" || lanes === null) return NO_ENDS;
+  return new Map(
+    Object.entries(lanes).filter(
+      (entry4) => typeof entry4[1] === "number" && entry4[1] > now
+    )
+  );
+}
+var BACKLOG_QUIET_MS, CATCHUP_QUIET_MS, QUIET_RECHECK_MS, BacklogQuiet, NO_ENDS;
+var init_quiet = __esm({
+  "src/core/scheduler/quiet.ts"() {
+    "use strict";
+    init_store();
+    init_editor_scratch();
+    init_slots2();
+    init_tiers();
+    BACKLOG_QUIET_MS = 2e4;
+    CATCHUP_QUIET_MS = 12e4;
+    QUIET_RECHECK_MS = 1e3;
+    BacklogQuiet = class {
+      constructor(publish = () => {
+      }) {
+        this.publish = publish;
+      }
+      publish;
+      /** When each lane's wait ends, on the scheduler's clock; an end not after now is no wait. */
+      #until = /* @__PURE__ */ new Map();
+      /** When each lane's wait for its catch-up ends, as `#until`. */
+      #catchUp = /* @__PURE__ */ new Map();
+      /** A revision or an edit's work cancelled the backlog tier of `lane` at `now`: its wait starts. */
+      cancelled(lane, now) {
+        this.#until.set(lane, now + BACKLOG_QUIET_MS);
+        this.#told(now);
+      }
+      /** A revision's re-key queued a test file of `lane` at `now`: each wait of the lane starts again. */
+      queued(lane, now) {
+        const backlog = this.waits(lane, now);
+        const catchUp = this.catchUpWaits(lane, now);
+        if (backlog) this.#until.set(lane, now + BACKLOG_QUIET_MS);
+        if (catchUp) this.#catchUp.set(lane, now + CATCHUP_QUIET_MS);
+        if (backlog || catchUp) this.#told(now);
+      }
+      /** An edit's revision made catch-up in `lane` at `now`: the lane's wait for it starts. */
+      caughtUp(lane, now) {
+        this.#catchUp.set(lane, now + CATCHUP_QUIET_MS);
+        this.#told(now);
+      }
+      /** `squeal run --all`: every wait ends. */
+      end(now) {
+        if (this.#until.size === 0 && this.#catchUp.size === 0) return;
+        this.#until.clear();
+        this.#catchUp.clear();
+        this.#told(now);
+      }
+      /** Whether `lane` waits for quiet at `now`. */
+      waits(lane, now) {
+        return waiting(this.#until, lane, now);
+      }
+      /** Whether `lane`'s catch-up waits for quiet at `now`. */
+      catchUpWaits(lane, now) {
+        return waiting(this.#catchUp, lane, now);
+      }
+      /** The end of each wait after `now`, by lane. */
+      ends(now) {
+        return after(this.#until, now);
+      }
+      /** The end of each catch-up's wait after `now`, by lane. */
+      catchUpEnds(now) {
+        return after(this.#catchUp, now);
+      }
+      #told(now) {
+        this.publish(this.ends(now), now, this.catchUpEnds(now));
+      }
+    };
+    NO_ENDS = /* @__PURE__ */ new Map();
   }
 });
 
@@ -20425,36 +20344,192 @@ var init_record_tier = __esm({
   }
 });
 
-// src/core/scheduler/tiers.ts
-import { randomUUID as randomUUID4 } from "node:crypto";
-import { join as join29 } from "node:path";
-function laneOf(context, ref3) {
-  return laneFor(context.policy, ref3, context.runner.traits.lane(ref3));
+// src/core/scheduler/tier-live.ts
+function liveView(context, ledger, options) {
+  const { queue } = ledger;
+  const { traits } = context.runner;
+  const { runner } = context.policy;
+  return {
+    now: context.now(),
+    runner: {
+      tierSize: runner.tierSize,
+      backlogTierSize: runner.backlogTierSize,
+      timeoutMs: runner.timeoutMs
+    },
+    cut: options.cut,
+    slots: options.slots ?? false,
+    busy: options.busy,
+    turnDue: options.turnDue ?? (() => queue.backlogTurn()),
+    beside: options.beside ?? (() => null),
+    lane: (ref3) => laneOf(context, ref3),
+    tierWidth: (ref3, grant) => traits.tierWidth(ref3, grant),
+    tierPart: (ref3) => traits.tierPart(ref3),
+    backlogSlot: (ref3) => backlogSlot(context, ref3),
+    file: (ref3) => ledger.file(ref3),
+    inputs: (ref3) => context.keys.stabilityPaths(ref3),
+    runtimePolicy: (ref3) => context.keys.runtimeIdentity(ref3),
+    checkpointIdFor: (ref3) => ledger.checkpoints.idFor(ref3),
+    checkpointActive: () => ledger.checkpoints.active,
+    ordered: (turn) => ledger.ordered(turn),
+    orderedBatches: () => ledger.orderedBatches(),
+    rankAt: (ref3, now) => queue.rankAt(ref3, now)?.rank ?? null,
+    has: (ref3) => queue.has(ref3),
+    isFirstGroup: (ref3) => queue.isFirstGroup(ref3),
+    isForced: (ref3) => queue.isForced(ref3),
+    isRecent: (ref3) => queue.isRecent(ref3),
+    isCatchUp: (ref3) => queue.isCatchUp(ref3),
+    isPromoted: (ref3) => queue.isPromoted(ref3),
+    hasFast: (where3) => queue.hasFast(where3),
+    fastQueued: (where3) => ledger.fastQueued(where3),
+    hasFirstGroup: (where3) => queue.hasFirstGroup(where3),
+    fastSize: () => queue.fastSize,
+    batchTurn: () => queue.batchTurn(),
+    quietHolds: (ref3, lane, tier, now) => quietHolds(context, ledger, ref3, lane, tier, now),
+    quietWakeMs: (now) => quietSleepMs(context, ledger, now),
+    focusedSize: () => queue.focused.size,
+    focusRunnable: (entry4) => runnable(context, ledger, entry4)
+  };
 }
-function selectTier(context, ledger, busy2 = /* @__PURE__ */ new Set(), cut = NONE_CUT, turnDue = ledger.queue.backlogTurn(), pass = {}) {
-  const { keys, policy } = context;
-  const { wide = true, rest: rest2 = false } = pass;
-  const beside = pass.beside ?? null;
-  const free = beside ?? ((ref3) => !busy2.has(laneOf(context, ref3)));
-  const again2 = pass.asEdit === true;
-  const postBatch = wide && beside === null && !again2 && batchTurnDue(ledger, free);
-  const focused = beside === null && !again2 ? selectFocusedTier(context, ledger, busy2, turnDue || postBatch) : null;
-  if (focused !== null) return focused;
-  if (postBatch) {
-    const turnOfRest = selectTier(context, ledger, busy2, cut, true, { wide: false, rest: true });
-    if (turnOfRest !== null) return turnOfRest;
+function liveAsks(context, ledger) {
+  const { queue, claims: claims2 } = ledger;
+  return {
+    beginPass: () => claims2.begin(),
+    focusWaiting: (now) => queue.focused.waiting(now),
+    dropFocus: (entry4) => queue.focused.drop(entry4),
+    peek: (ref3) => peekClaim(context, ledger, ref3),
+    drop: (ref3) => {
+      queue.remove(ref3);
+      const file = ledger.file(ref3);
+      if (file) ledger.touch(file);
+    },
+    lookup: (file, key3) => {
+      const { hits, mayWait } = ledger.probe(key3);
+      if (hits.length === 0) return { mayWait };
+      ledger.applyResults(file, key3, hits, ledger.checkpoints.idFor(file.ref));
+      return "settled";
+    },
+    held: (key3, now) => claims2.holds(key3, now),
+    backlogSize: (queued) => claims2.backlogSize(queued),
+    // Without a pool a runner runs as wide as its own default: CPUs − 1 for Vitest and node:test.
+    offer: (want, kind) => context.capacity?.offer(want, kind) ?? defaultHostSlots(),
+    endPass: () => ledger.commit(),
+    claimsWaiting: () => claims2.waiting
+  };
+}
+var init_tier_live = __esm({
+  "src/core/scheduler/tier-live.ts"() {
+    "use strict";
+    init_pool();
+    init_claims();
+    init_focused();
+    init_quiet();
+    init_slots2();
+    init_tiers();
   }
+});
+
+// src/core/scheduler/tier-focus.ts
+function focusedCandidate(view, asks, busy2, turnDue) {
+  if (view.focusedSize() === 0 || turnFirst(view, asks, busy2, turnDue)) return null;
   const picked = [];
-  ledger.claims.begin();
-  const batch = wide && beside === null ? batchFiles(context, ledger, free) : null;
-  const asEdit = again2 && batch !== null;
-  const backlog = !rest2 && (batch !== null || !ledger.queue.hasFirstGroup(free));
-  const turn = !backlog && (turnDue || rest2);
+  let lane = null;
+  for (const entry4 of asks.focusWaiting(view.now)) {
+    if (picked.length >= view.runner.tierSize) break;
+    const run7 = view.focusRunnable(entry4);
+    if (run7 === null) {
+      asks.dropFocus(entry4);
+      continue;
+    }
+    const at2 = view.lane(entry4.ref);
+    if (busy2.has(at2) || lane !== null && at2 !== lane) continue;
+    lane = at2;
+    picked.push({ entry: entry4, ...run7 });
+  }
+  if (lane === null) return null;
+  const files5 = picked.map(({ file, key: key3 }) => ({
+    file,
+    key: key3,
+    inputs: view.inputs(file.ref),
+    runtimePolicy: view.runtimePolicy(file.ref),
+    checkpointId: null,
+    forced: false
+  }));
+  return {
+    reason: "focused",
+    kind: "focused",
+    lane,
+    files: files5,
+    focus: picked,
+    width: null,
+    promoted: false,
+    beside: false,
+    counts: "none",
+    tookBacklog: false,
+    estimateMs: 0
+  };
+}
+function turnFirst(view, asks, busy2, turnDue) {
+  if (!turnDue) return false;
+  const now = view.now;
+  return view.fastQueued((ref3) => {
+    const lane = view.lane(ref3);
+    if (busy2.has(lane) || view.isFirstGroup(ref3)) return false;
+    if (view.quietHolds(ref3, lane, { backlog: true, turn: true }, now)) return false;
+    const file = view.file(ref3);
+    if (!file || file.key === null || file.blocked !== null) return false;
+    return asks.peek(ref3) === "free";
+  });
+}
+var init_tier_focus = __esm({
+  "src/core/scheduler/tier-focus.ts"() {
+    "use strict";
+  }
+});
+
+// src/core/scheduler/promoted-tier.ts
+function batchBudget(timeoutMs) {
+  return timeoutMs ?? Number.POSITIVE_INFINITY;
+}
+function answeredOf(context, ledger) {
+  let raw;
+  let requests = [];
+  return (ref3) => {
+    const file = ledger.file(ref3);
+    const key3 = file?.key ?? null;
+    if (key3 === null || file?.resultKey !== key3) return { key: key3, answered: false };
+    const now = context.store.meta.get(RETRIES_META_KEY);
+    if (now !== raw) {
+      raw = now;
+      requests = readRetries(context.store);
+    }
+    return { key: key3, answered: !requests.some(pendingAt(ref3, key3)) };
+  };
+}
+var init_promoted_tier = __esm({
+  "src/core/scheduler/promoted-tier.ts"() {
+    "use strict";
+    init_records();
+  }
+});
+
+// src/core/scheduler/tier-pick.ts
+function shapeOf(view, asks, p, free) {
+  const { runner } = view;
+  const batch = p.wide && p.beside === null ? batchFiles(view, free) : null;
+  const asEdit = p.asEdit && batch !== null;
+  const backlog = !p.rest && (batch !== null || !view.hasFirstGroup(free));
+  const turn = !backlog && (p.turnDue || p.rest);
+  const size = batch !== null ? asEdit ? runner.tierSize : runner.backlogTierSize : backlog ? asks.backlogSize(view.fastSize()) : runner.tierSize;
+  const offer = backlog && !asEdit ? asks.offer(size, poolKind(view.checkpointActive())) : 0;
+  const budget2 = (batch !== null ? batchBudget : backlogBudget)(runner.timeoutMs);
+  return { free, batch, asEdit, backlog, turn, size, offer, budget: budget2 };
+}
+function pickFiles(view, asks, p, shape) {
+  const { batch, backlog, turn, offer } = shape;
+  const files5 = [];
+  const wall = backlog && !shape.asEdit ? new BacklogWall(shape.budget) : null;
+  let { size } = shape;
   let turnTier = false;
-  let size = batch !== null ? asEdit ? policy.runner.tierSize : policy.runner.backlogTierSize : backlog ? ledger.claims.backlogSize(ledger.queue.fastSize) : policy.runner.tierSize;
-  const offer = backlog && !asEdit ? context.capacity?.offer(size, poolKind(ledger.checkpoints.active)) ?? defaultHostSlots() : 0;
-  const budget2 = (batch !== null ? batchBudget : backlogBudget)(policy.runner.timeoutMs);
-  const wall = backlog && !asEdit ? new BacklogWall(budget2) : null;
   let batchRank = null;
   let span = null;
   let tookBacklog = false;
@@ -20462,171 +20537,418 @@ function selectTier(context, ledger, busy2 = /* @__PURE__ */ new Set(), cut = NO
   let slot2 = null;
   let skipped2 = false;
   let trimmed = false;
-  const now = context.now();
-  const focusWaits = new Set(ledger.queue.focused.waiting(now).map((e) => testFileId(e.ref)));
-  const order = batch === null ? ledger.ordered(turnDue || rest2) : ledger.orderedBatches().filter(batch);
+  const { now } = view;
+  const focusWaits = new Set(asks.focusWaiting(now).map((e) => testFileId(e.ref)));
+  const order = batch === null ? view.ordered(p.turnDue || p.rest) : view.orderedBatches().filter(batch);
   for (const ref3 of order) {
-    if (picked.length >= size) break;
-    const at2 = laneOf(context, ref3);
-    if (!free(ref3) || lane !== null && at2 !== lane) continue;
-    if (rest2 && ledger.queue.isFirstGroup(ref3)) continue;
+    if (files5.length >= size) break;
+    const at2 = view.lane(ref3);
+    if (!shape.free(ref3) || lane !== null && at2 !== lane) continue;
+    if (p.rest && view.isFirstGroup(ref3)) continue;
     if (focusWaits.has(testFileId(ref3))) continue;
-    const rank4 = batch === null ? null : ledger.queue.rankAt(ref3, now)?.rank ?? null;
+    const rank4 = batch === null ? null : view.rankAt(ref3, now);
     if (batchRank !== null && rank4 !== batchRank) break;
-    if (quietHolds(context, ledger, ref3, at2, { backlog: backlog && batch === null, turn }, now))
-      continue;
-    const file = ledger.file(ref3);
+    if (view.quietHolds(ref3, at2, { backlog: backlog && batch === null, turn }, now)) continue;
+    const file = view.file(ref3);
     const key3 = file?.key ?? null;
     if (!file || key3 === null || file.blocked !== null) {
-      ledger.queue.remove(ref3);
-      if (file) ledger.touch(file);
+      asks.drop(ref3);
       continue;
     }
-    const forced = ledger.queue.isForced(ref3);
-    const recent = ledger.queue.isRecent(ref3);
-    const catchUp = ledger.queue.isCatchUp(ref3);
-    if (!backlog && !ledger.queue.isFirstGroup(ref3) && !turn && backlogSlot(context, ref3) !== null) {
+    const forced = view.isForced(ref3);
+    const recent = view.isRecent(ref3);
+    const catchUp = view.isCatchUp(ref3);
+    if (!backlog && !view.isFirstGroup(ref3) && !turn && view.backlogSlot(ref3) !== null) {
       skipped2 = true;
       continue;
     }
     let waits2 = false;
     if (!forced) {
-      const { hits, mayWait } = ledger.probe(key3);
-      if (hits.length > 0) {
-        ledger.applyResults(file, key3, hits, ledger.checkpoints.idFor(ref3));
-        continue;
-      }
-      waits2 = mayWait && !recent;
-      if (waits2 && ledger.claims.holds(key3)) continue;
+      const found3 = asks.lookup(file, key3);
+      if (found3 === "settled") continue;
+      waits2 = found3.mayWait && !recent;
+      if (waits2 && asks.held(key3, now)) continue;
     }
     const cap2 = Math.min(size, file.tierCap ?? size);
-    if (picked.length >= cap2) continue;
-    if (picked.length === 0 && (backlog || turn && !ledger.queue.isFirstGroup(ref3))) {
+    if (files5.length >= cap2) continue;
+    if (files5.length === 0 && (backlog || turn && !view.isFirstGroup(ref3))) {
       turnTier = !backlog;
-      slot2 = backlogSlot(context, ref3);
-    } else if (slot2 !== null && !joinsSlot(picked, file, (r) => partOf(context, r))) break;
+      slot2 = view.backlogSlot(ref3);
+    } else if (slot2 !== null && !joinsSlot(files5, file, (r) => view.tierPart(r))) break;
     if (!backlog && slot2 === null) {
-      const joined2 = joinSpan(span, file.durationMs, cut.cutPastEstimate(file));
+      const joined2 = joinSpan(span, file.durationMs, view.cut.cutPastEstimate(file));
       if (joined2 === null) continue;
       span = joined2;
     }
-    if (slot2 === null && wall !== null && !wall.take(file.durationMs, tierWidth(context, ref3, offer), partOf(context, ref3))) {
+    if (slot2 === null && wall !== null && !wall.take(file.durationMs, view.tierWidth(ref3, offer), view.tierPart(ref3))) {
       trimmed = true;
       break;
     }
-    tookBacklog ||= !recent && !ledger.queue.isPromoted(ref3);
+    tookBacklog ||= !recent && !view.isPromoted(ref3);
     lane = at2;
     batchRank ??= rank4;
     size = Math.min(cap2, slot2 ?? cap2);
-    const checkpointId = ledger.checkpoints.idFor(ref3);
-    const inputs2 = keys.stabilityPaths(ref3);
-    picked.push({
-      file,
-      key: key3,
-      inputs: inputs2,
-      runtimePolicy: keys.runtimeIdentity(ref3),
-      checkpointId,
-      forced,
-      recent,
-      waits: waits2,
-      catchUp
-    });
+    const checkpointId = view.checkpointIdFor(ref3);
+    const inputs2 = view.inputs(ref3);
+    const runtimePolicy = view.runtimePolicy(ref3);
+    files5.push({ file, key: key3, inputs: inputs2, runtimePolicy, checkpointId, forced, recent, waits: waits2, catchUp });
   }
-  if (turnDue && !turnTier && focusWaits.size > 0) {
-    ledger.commit();
-    return selectTier(context, ledger, busy2, cut, false, pass);
-  }
-  const batchAsEdit = () => {
-    ledger.commit();
-    return selectTier(context, ledger, busy2, cut, turnDue, { ...pass, asEdit: true });
+  return {
+    files: files5,
+    turnTier,
+    slot: slot2,
+    skipped: skipped2,
+    trimmed,
+    tookBacklog,
+    lane,
+    focusWaits: focusWaits.size
   };
-  const granted = (backlog || turnTier) && !asEdit;
-  const width = slot2 !== null ? 1 : granted ? widest(context, picked) : 0;
-  const least = slot2 !== null ? 1 : fewest(context, picked);
-  const asks = poolKind(ledger.checkpoints.active, picked);
-  const taken3 = picked.length > 0 && granted ? context.capacity?.take(width, "fast", least, asks, lane, batch === null) : null;
-  if (batch !== null && taken3 === WAIT_FOR_CAPACITY) return batchAsEdit();
-  if (taken3 === WAIT_FOR_CAPACITY) {
-    ledger.commit();
-    return turnTier && !rest2 ? selectTier(context, ledger, busy2, cut, false, pass) : null;
+}
+function batchFiles(view, free) {
+  const takes2 = (ref3) => free(ref3) && view.isPromoted(ref3) && view.backlogSlot(ref3) === null;
+  return view.hasFast(takes2) ? takes2 : null;
+}
+var init_tier_pick = __esm({
+  "src/core/scheduler/tier-pick.ts"() {
+    "use strict";
+    init_reverse_index();
+    init_backlog();
+    init_capacity();
+    init_promoted_tier();
+    init_sharing();
+    init_slots2();
   }
-  const lease = taken3 ? widthLease(taken3, width) : taken3;
-  if (backlog && slot2 === null && lease && lease.grant < Math.min(width, offer)) {
-    const fits = new BacklogWall(budget2);
-    const keep = picked.findIndex(
-      (p) => !fits.take(
-        p.file.durationMs,
-        tierWidth(context, p.file.ref, lease.grant),
-        partOf(context, p.file.ref)
-      )
-    );
-    if (keep !== -1) {
-      picked.splice(keep);
-      trimmed = true;
+});
+
+// src/core/scheduler/tier-width.ts
+function widest(traits, picked) {
+  const widths = picked.map((p) => traits.tierWidth(p.file.ref, picked.length));
+  return Math.min(picked.length, Math.max(1, ...widths));
+}
+function fewest(traits, picked) {
+  const widths = picked.map((p) => traits.tierWidth(p.file.ref, 1));
+  return Math.min(picked.length, Math.max(1, ...widths));
+}
+function grantFit(traits, picked, pick) {
+  return (grant) => {
+    let files5 = picked;
+    let { trimmed } = pick;
+    if (pick.backlog && pick.slot === null && grant < Math.min(pick.width, pick.offer)) {
+      const fits = new BacklogWall(pick.budget);
+      const keep = picked.findIndex(
+        (p) => !fits.take(
+          p.file.durationMs,
+          traits.tierWidth(p.file.ref, grant),
+          traits.tierPart(p.file.ref)
+        )
+      );
+      if (keep !== -1) {
+        files5 = picked.slice(0, keep);
+        trimmed = true;
+      }
     }
-  }
-  if (batch !== null && lease && narrowerThanEdit(context, picked, lease.grant, trimmed)) {
-    lease.release();
-    return batchAsEdit();
-  }
-  let tier = null;
-  try {
-    const kind = backlog || turnTier && slot2 !== null ? "backlog" : turnTier ? "turn" : "edit";
-    tier = picked.length === 0 ? null : startTier(context, ledger, picked, kind, lease ?? void 0, {
-      promoted: batch !== null,
-      beside: beside !== null
-    });
-  } finally {
-    if (tier === null) lease?.release();
-  }
-  if (tier !== null) {
-    const grant = lease?.grant ?? (asEdit ? tier.files.length : offer);
-    if (batch !== null) batchStarted(context, ledger, tier, grant);
-    else if (beside === null) ledger.queue.tierSelected(tookBacklog);
-    return tier;
-  }
-  ledger.commit();
-  if (batch !== null && picked.length === 0)
-    return selectTier(context, ledger, busy2, cut, turnDue, { ...pass, wide: false });
-  const settled2 = picked.some((p) => !ledger.queue.has(p.file.ref));
-  const slots = skipped2 && picked.length === 0 && !ledger.queue.hasFirstGroup(free);
-  return settled2 || slots ? selectTier(context, ledger, busy2, cut, turnDue, pass) : null;
+    const narrower = pick.batch && narrowerThanEdit(traits, pick.tierSize, files5, grant, trimmed);
+    return { files: files5, narrower };
+  };
 }
-function batchStarted(context, ledger, tier, grant) {
-  const first2 = tier.files[0]?.file.ref;
-  if (first2 === void 0) return;
-  const durations2 = tier.files.map(({ file }) => file.durationMs ?? 0);
-  const sum2 = durations2.reduce((total, ms2) => total + ms2, 0);
-  const width = Math.min(tier.files.length, tierWidth(context, first2, grant));
-  const estimate = wallEstimate(sum2, Math.max(0, ...durations2), width);
-  ledger.queue.batchSelected();
-  ledger.queue.batchStarted(first2, (tier.startedAt ?? context.now()) + estimate);
-}
-function narrowerThanEdit(context, picked, grant, trimmed) {
-  const { tierSize } = context.policy.runner;
+function narrowerThanEdit(traits, tierSize, picked, grant, trimmed) {
   if (picked.length === 0) return trimmed;
   const files5 = trimmed ? Math.max(tierSize, picked.length) : picked.length;
   const edit = Math.min(
     tierSize,
     files5,
-    Math.max(1, ...picked.slice(0, tierSize).map((p) => tierWidth(context, p.file.ref, tierSize)))
+    Math.max(1, ...picked.slice(0, tierSize).map((p) => traits.tierWidth(p.file.ref, tierSize)))
   );
-  const leased = Math.max(1, ...picked.map((p) => tierWidth(context, p.file.ref, grant)));
+  const leased = Math.max(1, ...picked.map((p) => traits.tierWidth(p.file.ref, grant)));
   return Math.min(picked.length, leased) < edit;
 }
-function tierWidth(context, ref3, grant) {
-  return context.runner.traits.tierWidth(ref3, grant);
+function estimateMs(traits, files5, grant) {
+  const first2 = files5[0]?.file.ref;
+  if (first2 === void 0) return 0;
+  const durations2 = files5.map(({ file }) => file.durationMs ?? 0);
+  const sum2 = durations2.reduce((total, ms2) => total + ms2, 0);
+  const width = Math.min(files5.length, traits.tierWidth(first2, grant));
+  return wallEstimate(sum2, Math.max(0, ...durations2), width);
 }
-function partOf(context, ref3) {
-  return context.runner.traits.tierPart(ref3);
+var init_tier_width = __esm({
+  "src/core/scheduler/tier-width.ts"() {
+    "use strict";
+    init_backlog();
+  }
+});
+
+// src/core/scheduler/tier-pass.ts
+function* pass(view, asks, p) {
+  const free = p.beside ?? ((ref3) => !p.busy.has(view.lane(ref3)));
+  const postBatch = p.wide && p.beside === null && !p.asEdit && batchTurnDue(view, free);
+  if (p.beside === null && !p.asEdit) {
+    const focus = focusedCandidate(view, asks, p.busy, p.turnDue || postBatch);
+    if (focus !== null) {
+      const outcome2 = yield focus;
+      if ("started" in outcome2) return outcome2.started;
+    }
+  }
+  if (postBatch) {
+    const rest2 = { ...p, turnDue: true, wide: false, rest: true, asEdit: false };
+    const turnOfRest = yield* pass(view, asks, { ...rest2, origin: "turn-after-batch" });
+    if (turnOfRest !== null) return turnOfRest;
+  }
+  asks.beginPass();
+  const shape = shapeOf(view, asks, p, free);
+  const pick = pickFiles(view, asks, p, shape);
+  if (p.turnDue && !pick.turnTier && pick.focusWaits > 0) {
+    asks.endPass();
+    return yield* pass(view, asks, { ...p, turnDue: false });
+  }
+  let picked = pick.files;
+  if (pick.lane !== null) {
+    const outcome2 = yield candidateOf(view, p, shape, { ...pick, lane: pick.lane });
+    if ("started" in outcome2) return outcome2.started;
+    if ("refused" in outcome2) {
+      asks.endPass();
+      if (shape.batch !== null) return yield* pass(view, asks, { ...p, asEdit: true });
+      return pick.turnTier && !p.rest ? yield* pass(view, asks, { ...p, turnDue: false }) : null;
+    }
+    picked = outcome2.unstarted;
+  }
+  asks.endPass();
+  if (shape.batch !== null && picked.length === 0)
+    return yield* pass(view, asks, { ...p, wide: false, origin: "after-claims" });
+  const settled2 = picked.some((f) => !view.has(f.file.ref));
+  const slots = pick.skipped && picked.length === 0 && !view.hasFirstGroup(shape.free);
+  return settled2 || slots ? yield* pass(view, asks, p) : null;
 }
-function widest(context, picked) {
-  const widths = picked.map((p) => tierWidth(context, p.file.ref, picked.length));
-  return Math.min(picked.length, Math.max(1, ...widths));
+function candidateOf(view, p, shape, pick) {
+  const { backlog, asEdit, offer } = shape;
+  const { files: files5, turnTier, slot: slot2, lane } = pick;
+  const batch = shape.batch !== null;
+  const granted = (backlog || turnTier) && !asEdit;
+  const kind = backlog || turnTier && slot2 !== null ? "backlog" : turnTier ? "turn" : "edit";
+  const width = slot2 !== null ? 1 : granted ? widest(view, files5) : 0;
+  const atGrant = grantFit(view, [...files5], {
+    ...{ budget: shape.budget, offer, width, slot: slot2, trimmed: pick.trimmed, backlog, batch },
+    tierSize: view.runner.tierSize
+  });
+  return {
+    reason: reasonOf2(p, { batch, asEdit, backlog, turnTier }),
+    kind,
+    lane,
+    files: [...files5],
+    focus: null,
+    width: granted ? {
+      want: width,
+      least: slot2 !== null ? 1 : fewest(view, files5),
+      offer,
+      kind: poolKind(view.checkpointActive(), files5),
+      lane,
+      // Row 011-309: a refusal holds the lane's files, unless the batch's tier goes on as an
+      // edit's; a grant ends the lane's wait either way (review 0.1.413 B2).
+      refusalWaits: !batch,
+      atGrant
+    } : null,
+    promoted: batch,
+    beside: p.beside !== null,
+    // A batch's tier does not count toward the backlog's turn (row 011-268); one beside it counts
+    // toward neither (row 011-269).
+    counts: batch ? "batch" : p.beside === null ? "tier" : "none",
+    tookBacklog: pick.tookBacklog,
+    estimateMs: estimateMs(view, files5, granted ? offer : files5.length)
+  };
 }
-function fewest(context, picked) {
-  const widths = picked.map((p) => tierWidth(context, p.file.ref, 1));
-  return Math.min(picked.length, Math.max(1, ...widths));
+function reasonOf2(p, tier) {
+  if (p.origin === "beside" || p.origin === "turn-after-batch") return p.origin;
+  if (tier.batch) return tier.asEdit ? "batch-as-edit" : "batch";
+  if (p.origin !== "main") return p.origin;
+  return tier.turnTier ? "turn" : tier.backlog ? "backlog" : "edit";
+}
+function batchTurnDue(view, free) {
+  return view.batchTurn() && view.hasFast((ref3) => free(ref3) && !view.isFirstGroup(ref3));
+}
+var init_tier_pass = __esm({
+  "src/core/scheduler/tier-pass.ts"() {
+    "use strict";
+    init_capacity();
+    init_tier_focus();
+    init_tier_pick();
+    init_tier_width();
+  }
+});
+
+// src/core/scheduler/tier-plan.ts
+function isIdle(step) {
+  return "idle" in step;
+}
+function planTiers(view, asks) {
+  return new Plan(stages(view, asks));
+}
+function* stages(view, asks) {
+  let started2 = yield* pass(view, asks, top(view, "main"));
+  if (started2 === null) {
+    const beside = view.beside();
+    if (beside !== null) started2 = yield* pass(view, asks, besidePass(beside));
+    if (started2 === null) return idleOf(view, asks);
+  }
+  while (view.slots && started2.slot === true) {
+    started2 = yield* pass(view, asks, top(view, "slot"));
+    if (started2 === null) return idleOf(view, asks);
+  }
+  return null;
+}
+function top(view, origin) {
+  return {
+    busy: view.busy(),
+    turnDue: view.turnDue(),
+    wide: true,
+    rest: false,
+    beside: null,
+    asEdit: false,
+    origin
+  };
+}
+function besidePass(beside) {
+  return {
+    busy: /* @__PURE__ */ new Set(),
+    turnDue: false,
+    wide: false,
+    rest: false,
+    beside,
+    asEdit: false,
+    origin: "beside"
+  };
+}
+function idleOf(view, asks) {
+  const at2 = view.now;
+  if (asks.claimsWaiting())
+    return { idle: "claims", at: at2, wakeAt: at2 + CLAIM_RECHECK_MS };
+  const quiet = view.quietWakeMs(at2);
+  if (quiet !== null) return { idle: "quiet", at: at2, wakeAt: at2 + quiet };
+  return { idle: view.hasFast(() => true) ? "lane-busy" : "nothing-queued", at: at2, wakeAt: null };
+}
+var Plan;
+var init_tier_plan = __esm({
+  "src/core/scheduler/tier-plan.ts"() {
+    "use strict";
+    init_claims();
+    init_tier_pass();
+    Plan = class {
+      #steps;
+      /** A candidate is out and waits for its outcome: each is answered once. */
+      #pending = false;
+      first;
+      constructor(steps) {
+        this.#steps = steps;
+        this.first = this.#continued(this.#read(steps.next()));
+      }
+      afterRefusal(refused = "pool") {
+        return this.#continued(this.#send({ refused }));
+      }
+      afterUnstarted(files5) {
+        return this.#continued(this.#send({ unstarted: files5 }));
+      }
+      afterStart(tier) {
+        return this.#send({ started: tier });
+      }
+      #send(outcome2) {
+        if (!this.#pending)
+          throw new Error("squeal scheduler: a tier plan was asked with no candidate out");
+        return this.#read(this.#steps.next(outcome2));
+      }
+      #read(result) {
+        this.#pending = result.done !== true;
+        return result.value;
+      }
+      /** Only a start ends the plan without an answer. */
+      #continued(step) {
+        if (step === null) throw new Error("squeal scheduler: a tier plan ended without a start");
+        return step;
+      }
+    };
+  }
+});
+
+// src/core/scheduler/tier-start.ts
+function startNext(context, ledger, plan2, options = {}) {
+  let step = plan2.first;
+  let first2 = null;
+  let refused = false;
+  for (; ; ) {
+    if (step === null || isIdle(step)) {
+      if (first2 !== null) return { tier: first2 };
+      if (step === null) throw new Error("squeal scheduler: a tier plan ended without an answer");
+      if (!refused || waitsFirst(step)) return { idle: step };
+      return {
+        idle: { idle: "pool", at: step.at, wakeAt: step.at + CAPACITY_RECHECK_MS }
+      };
+    }
+    options.check?.(step.lane);
+    const done = act(context, ledger, step);
+    if ("tier" in done) {
+      first2 ??= done.tier;
+      if (options.fly === void 0) return { tier: first2 };
+      options.fly(done.tier);
+      step = plan2.afterStart(done.tier);
+    } else if ("refused" in done) {
+      refused ||= done.refused === "pool";
+      step = plan2.afterRefusal(done.refused);
+    } else step = plan2.afterUnstarted(done.unstarted);
+  }
+}
+function waitsFirst(idle2) {
+  return idle2.idle === "claims" || idle2.idle === "quiet";
+}
+function act(context, ledger, candidate) {
+  if (candidate.focus !== null) {
+    const tier2 = startFocusedTier(context, ledger, candidate.focus, candidate.files);
+    return tier2 === null ? { unstarted: [] } : { tier: tier2 };
+  }
+  const ask2 = candidate.width;
+  const taken3 = ask2 === null ? null : context.capacity?.take(ask2.want, "fast", ask2.least, ask2.kind, ask2.lane, ask2.refusalWaits);
+  if (taken3 === WAIT_FOR_CAPACITY) return { refused: "pool" };
+  const lease = taken3 ? widthLease(taken3, ask2?.want ?? 0) : taken3;
+  let files5 = candidate.files;
+  let tier = null;
+  try {
+    if (lease && ask2 !== null) {
+      const fits = ask2.atGrant(lease.grant);
+      if (fits.narrower) return { refused: "narrower" };
+      files5 = fits.files;
+    }
+    tier = files5.length === 0 ? null : startTier(context, ledger, files5, candidate.kind, lease ?? void 0, {
+      promoted: candidate.promoted,
+      beside: candidate.beside
+    });
+  } finally {
+    if (tier === null) lease?.release();
+  }
+  if (tier === null) return { unstarted: files5 };
+  const grant = lease?.grant ?? (ask2 === null ? tier.files.length : ask2.offer);
+  if (candidate.counts === "batch") batchStarted(context, ledger, tier, grant);
+  else if (candidate.counts === "tier") ledger.queue.tierSelected(candidate.tookBacklog);
+  return { tier };
+}
+function batchStarted(context, ledger, tier, grant) {
+  const first2 = tier.files[0]?.file.ref;
+  if (first2 === void 0) return;
+  const estimate = estimateMs(context.runner.traits, tier.files, grant);
+  ledger.queue.batchSelected();
+  ledger.queue.batchStarted(first2, (tier.startedAt ?? context.now()) + estimate);
+}
+var init_tier_start = __esm({
+  "src/core/scheduler/tier-start.ts"() {
+    "use strict";
+    init_capacity();
+    init_focused();
+    init_tier_plan();
+    init_tier_width();
+    init_tiers();
+  }
+});
+
+// src/core/scheduler/tiers.ts
+import { randomUUID as randomUUID4 } from "node:crypto";
+import { join as join29 } from "node:path";
+function laneOf(context, ref3) {
+  return laneFor(context.policy, ref3, context.runner.traits.lane(ref3));
 }
 function startTier(context, ledger, picked, kind, lease, { promoted = false, beside = false } = {}) {
   const { store } = context;
@@ -20755,7 +21077,7 @@ async function executeTier(context, tier, observeIgnored = false, stop2, onFileE
 }
 function tierPermits(context, tier) {
   if (tier.lease === void 0 || !background(tier) || context.capacity === void 0) return null;
-  return new TierPermits(context.capacity, tier.lease, fewest(context, tier.files));
+  return new TierPermits(context.capacity, tier.lease, fewest(context.runner.traits, tier.files));
 }
 function background(tier) {
   return (tier.kind === "backlog" || tier.kind === "turn") && tier.promoted !== true;
@@ -20793,22 +21115,20 @@ function recordTier(context, ledger, tier, report4, changedOnDisk2, requeue = fa
 var init_tiers = __esm({
   "src/core/scheduler/tiers.ts"() {
     "use strict";
-    init_pool();
     init_reverse_index();
     init_run_evidence();
     init_runner();
-    init_backlog();
-    init_capacity();
-    init_focused();
     init_local_permits();
     init_observed2();
-    init_promoted_tier();
-    init_quiet();
     init_record_tier();
     init_retries();
     init_sharing();
     init_slots2();
     init_slow();
+    init_tier_live();
+    init_tier_plan();
+    init_tier_start();
+    init_tier_width();
   }
 });
 
@@ -27106,8 +27426,8 @@ ${error.stack ?? ""}`;
   if (isMissingFile(error) && mentionedPaths(text3).some((p) => underAny(p, files5.tempDirs))) {
     return true;
   }
-  const top = topFrame(error.stack ?? "");
-  if (top === null || !isModuleRunner(top)) return false;
+  const top2 = topFrame(error.stack ?? "");
+  if (top2 === null || !isModuleRunner(top2)) return false;
   return !mentionedPaths(text3).some(
     (p) => files5.paths.isProjectFile(p) && !underAny(p, files5.tempDirs)
   );
@@ -29505,7 +29825,7 @@ var init_adapter = __esm({
 });
 
 // src/runners/vitest/width.ts
-function tierWidth2(want, ceiling, floor2 = 1) {
+function tierWidth(want, ceiling, floor2 = 1) {
   if (want === void 0 || ceiling === 1) return ceiling;
   const width = Math.max(floor2, Math.floor(want));
   return ceiling === void 0 ? width : Math.min(width, ceiling);
@@ -29545,7 +29865,7 @@ var init_width = __esm({
       atOnce(testFiles3) {
         const first2 = testFiles3[0] === void 0 ? void 0 : this.#byName.get(testFiles3[0].project);
         if (first2 === void 0) return testFiles3.length;
-        const width = tierWidth2(testFiles3.length, first2.ceiling ?? void 0, first2.floor) ?? testFiles3.length;
+        const width = tierWidth(testFiles3.length, first2.ceiling ?? void 0, first2.floor) ?? testFiles3.length;
         let count4 = 0;
         for (const { project } of testFiles3) {
           if (count4 >= width || this.#byName.get(project)?.group !== first2.group) break;
@@ -29560,7 +29880,7 @@ var init_width = __esm({
        */
       of(project, grant) {
         const known3 = this.#byName.get(project);
-        return tierWidth2(grant, known3?.ceiling ?? void 0, known3?.floor) ?? Math.max(1, grant);
+        return tierWidth(grant, known3?.ceiling ?? void 0, known3?.floor) ?? Math.max(1, grant);
       }
     };
     Widths = class extends WidthAnswers {
@@ -29584,10 +29904,10 @@ var init_width = __esm({
        */
       apply(vitest, want, testFiles3) {
         const floor2 = Math.max(1, ...testFiles3.map((f) => this.of(f.project, 1)));
-        vitest.config.maxWorkers = tierWidth2(want, this.#root, floor2);
+        vitest.config.maxWorkers = tierWidth(want, this.#root, floor2);
         for (const [project, own] of this.#projects) {
           if (project.config !== vitest.config && own !== void 0) {
-            project.config.maxWorkers = tierWidth2(want, own, floor2);
+            project.config.maxWorkers = tierWidth(want, own, floor2);
           }
         }
       }
@@ -45335,8 +45655,8 @@ var require_entrypoints = __commonJS({
     function computeConditionalMapping(conditionalMapping_, conditionNames) {
       const lookup = [[conditionalMapping_, cachedKeys(conditionalMapping_), 0]];
       loop: while (lookup.length > 0) {
-        const top = lookup[lookup.length - 1];
-        const [mapping, conditions, j] = top;
+        const top2 = lookup[lookup.length - 1];
+        const [mapping, conditions, j] = top2;
         for (let i3 = j; i3 < conditions.length; i3++) {
           const condition = conditions[i3];
           if (condition === "default" || conditionNames.has(condition)) {
@@ -45346,7 +45666,7 @@ var require_entrypoints = __commonJS({
                 /** @type {ConditionalMapping} */
                 innerMapping
               );
-              top[2] = i3 + 1;
+              top2[2] = i3 + 1;
               lookup.push([nested, cachedKeys(nested), 0]);
               continue loop;
             }
@@ -58626,6 +58946,9 @@ var init_scheduler2 = __esm({
     init_slow_tier();
     init_store_decision();
     init_stored_keys();
+    init_tier_live();
+    init_tier_plan();
+    init_tier_start();
     init_tiers();
     init_warm_up();
     init_yields();
@@ -58940,8 +59263,8 @@ var init_scheduler2 = __esm({
               if (!this.#awaitingInstall) await this.#baseline(context, ledger);
               return;
             }
-            const pass = () => this.#pass(context, ledger, batch);
-            await (sliced2 ? this.#sliced(pass) : pass());
+            const pass2 = () => this.#pass(context, ledger, batch);
+            await (sliced2 ? this.#sliced(pass2) : pass2());
           },
           batch.paths.length === 0 ? "reconciling the worktree" : `reconciling ${plural(batch.paths.length, "changed path")}`
         );
@@ -59507,32 +59830,30 @@ var init_scheduler2 = __esm({
                 if (admitted.fast !== null) return null;
                 const { context, ledger } = this.#started();
                 this.#adopt(context, ledger);
-                const tier = selectTier(context, ledger, this.#busyLanes(), this.#yields) ?? this.#besideTier(context, ledger);
-                if (tier === null) return null;
-                this.#fly(tier, install.stamp, null, admitted);
-                if (tier.beside === true) this.#cutTiers(null);
-                for (let more2 = tier; more2.slot === true; ) {
-                  const again2 = selectTier(context, ledger, this.#busyLanes(), this.#yields);
-                  if (again2 === null) break;
-                  this.#fly(again2, install.stamp, null, admitted);
-                  more2 = again2;
-                }
-                return "flown";
+                const next2 = startNext(context, ledger, this.#plan(context, ledger), {
+                  check: (lane) => checkTurn(admitted, this.#lock.turn, lane),
+                  fly: (tier) => {
+                    this.#fly(tier, install.stamp, null, admitted);
+                    if (tier.beside === true) this.#cutTiers(null);
+                  }
+                });
+                return "tier" in next2 ? "flown" : next2.idle;
               }, "selecting the next tier");
               this.#busy?.landed();
               if (next === "held") {
                 await this.#slowRelease.idle();
                 break;
               }
-              if (next !== null) continue;
+              if (next === "flown" || next === "runner-work") continue;
               if (this.#admit().halts.has("reinstalled")) break;
               if (await this.#groupLanesNext(install.stamp)) continue;
-              if (this.#started().ledger.claims.waiting) {
+              const idle2 = next ?? this.#idleNow();
+              if (idle2.idle === "claims" || this.#started().ledger.claims.waiting) {
                 await this.#claimWake();
                 continue;
               }
-              if (await this.#quietWake()) continue;
-              if (await this.#capacityWake()) continue;
+              if (await this.#quietWake(idle2)) continue;
+              if (await this.#capacityWake(idle2)) continue;
               if (this.#inFlight.size === 0 && !this.#woken) {
                 if (await this.#queueRewalk()) continue;
                 break;
@@ -59676,14 +59997,28 @@ var init_scheduler2 = __esm({
         return [...this.#inFlight.values()].filter(({ ran }) => !ran).map(({ tier }) => tier);
       }
       /**
-       * A tier beside a running batch's tier (`besideFiles`, spec 011 C4 step 5
-       * as amended 2026-10-29, row 011-269), an edit's tier of its lane in the
-       * lane's second instance; `null` when none is due.
+       * The tier plan of the fast lanes (row 011-346): the free lanes first;
+       * when they start nothing, a tier beside a running batch's tier
+       * (`besideFiles`, spec 011 C4 step 5 as amended 2026-10-29, row 011-269),
+       * an edit's tier of its lane in the lane's second instance; after a
+       * backlog slot, the next selection again, so a lane of slots fills every
+       * free slot in this hold and its slots end, and record, together (task
+       * 011-21 slice 2).
        */
-      #besideTier(context, ledger) {
-        const beside = besideFiles(context, ledger, this.#running());
-        if (beside === null) return null;
-        return selectTier(context, ledger, /* @__PURE__ */ new Set(), this.#yields, false, { wide: false, beside });
+      #plan(context, ledger) {
+        const view = liveView(context, ledger, {
+          busy: () => this.#busyLanes(),
+          cut: this.#yields,
+          beside: () => besideFiles(context, ledger, this.#running()),
+          slots: true
+        });
+        return planTiers(view, liveAsks(context, ledger));
+      }
+      /** Why no fast tier starts, read now: what the plan answers when it ends idle. */
+      #idleNow() {
+        const { context, ledger } = this.#started();
+        const view = liveView(context, ledger, { busy: () => this.#busyLanes(), cut: this.#yields });
+        return idleOf(view, liveAsks(context, ledger));
       }
       /** A batch's tier or one beside it in `lane` ended: with no batch left there, its second instance closes. */
       #besideEnded(lane) {
@@ -59730,23 +60065,24 @@ var init_scheduler2 = __esm({
       /**
        * A lane with a fast file queued waits for quiet (C4 step 5 as amended
        * 2026-10-21, row 011-82): the pump looks again at the wait's end, at most
-       * `QUIET_RECHECK_MS` on, or on `#notify`. False when no such lane waits.
+       * `QUIET_RECHECK_MS` on, or on `#notify`. The wait is the plan's, from its
+       * clock reading (row 011-346). False when no such lane waits.
        */
-      async #quietWake() {
-        const { context, ledger } = this.#started();
-        const ms2 = quietSleepMs(context, ledger);
-        if (ms2 === null) return false;
-        await this.#eventOrAfter(ms2);
+      async #quietWake(idle2) {
+        if (idle2.idle !== "quiet" || idle2.wakeAt === null) return false;
+        await this.#eventOrAfter(idle2.wakeAt - idle2.at);
         return true;
       }
       /**
        * A tier the pool refused waits as a waiter (011 C10 as amended
        * 2026-10-21, row 011-96): the pump looks again when a tier of this daemon
        * ends, on `#notify`, or after `CAPACITY_RECHECK_MS`. False when the pool
-       * refused none since the last look.
+       * refused none since the last look: the plan's tier, a slow lane's or a
+       * lint part's (`TierCapacity.refused`, which this look clears).
        */
-      async #capacityWake() {
-        if (this.#capacity?.refused() !== true) return false;
+      async #capacityWake(idle2) {
+        const refused = this.#capacity?.refused() === true;
+        if (!refused && idle2.idle !== "pool") return false;
         await this.#eventOrAfter(CAPACITY_RECHECK_MS);
         return true;
       }
@@ -59868,13 +60204,13 @@ var init_scheduler2 = __esm({
       async #reconcilePaths(paths) {
         const waits2 = this.options.busyWaits;
         const sliced2 = this.#busy !== null && waits2 !== void 0;
-        const pass = async () => {
+        const pass2 = async () => {
           const { context } = this.#started();
           const candidates = await statCandidates(paths, context.hasher);
           await this.#handleBatch({ trigger: "watch", paths: candidates }, sliced2);
         };
-        if (!sliced2) return pass();
-        await retryWhileBusy(pass, {
+        if (!sliced2) return pass2();
+        await retryWhileBusy(pass2, {
           waits: waits2,
           key: `scheduler:paths:${++this.#retries}`,
           what: `a pass over ${plural(paths.length, "path")}`,
@@ -62102,9 +62438,9 @@ var init_batch_retry = __esm({
         this.#onError = onError;
       }
       /** `error` of a batch task: reported, or retried with `pass` while `retry` accepts it. */
-      async failed(error, pass) {
+      async failed(error, pass2) {
         const retry2 = this.#retry;
-        if (pass === void 0 || retry2 === void 0 || !retry2.accepts(error)) {
+        if (pass2 === void 0 || retry2 === void 0 || !retry2.accepts(error)) {
           this.#onError(error);
           return;
         }
@@ -62112,7 +62448,7 @@ var init_batch_retry = __esm({
           await this.#pause(retry2.delayMs(attempt));
           if (this.#closed) return;
           try {
-            await pass();
+            await pass2();
             retry2.ran();
             return;
           } catch (again2) {
@@ -62635,7 +62971,7 @@ var init_change_feed = __esm({
        */
       async reconcileNow(trigger) {
         this.passesStarted += 1;
-        const pass = { number: this.passesStarted, startedAt: this.now() };
+        const pass2 = { number: this.passesStarted, startedAt: this.now() };
         const head2 = await gitHead(this.root);
         const status3 = await gitStatus(this.root);
         await this.rebuildSpec(status3);
@@ -62645,9 +62981,9 @@ var init_change_feed = __esm({
         this.linkTargets = new Map(links);
         await this.linked?.update(linkedDirs);
         const batch = { trigger, paths: this.tempHold.filter(paths, this.trackedPaths) };
-        if (!await this.emit(batch, pass.startedAt)) return;
+        if (!await this.emit(batch, pass2.startedAt)) return;
         this.passHead = head2;
-        this.deliveredPass = pass;
+        this.deliveredPass = pass2;
       }
       /** True when a link of the batch is new, gone or points elsewhere than when last seen. */
       async relinked(hinted) {
@@ -62708,8 +63044,8 @@ var init_change_feed = __esm({
           try {
             await task();
           } catch (error) {
-            const pass = retryAs && (() => this.reconcileNow(retryAs()));
-            await this.retries.failed(toError(error), pass);
+            const pass2 = retryAs && (() => this.reconcileNow(retryAs()));
+            await this.retries.failed(toError(error), pass2);
           } finally {
             this.armIdle();
           }
@@ -67000,14 +67336,14 @@ function deriveRoots(root) {
   const entries3 = [];
   const mapped = [];
   const notes = [];
-  const top = readPyproject(root, notes);
-  if (top === null) return { pthPaths: [], mapped, notes };
+  const top2 = readPyproject(root, notes);
+  if (top2 === null) return { pthPaths: [], mapped, notes };
   const installed2 = /* @__PURE__ */ new Map();
-  if (nameOf2(top) !== void 0 && isPackage(top)) installed2.set(root, top);
-  const members = workspaceMembers(root, top, notes);
+  if (nameOf2(top2) !== void 0 && isPackage(top2)) installed2.set(root, top2);
+  const members = workspaceMembers(root, top2, notes);
   const seen = /* @__PURE__ */ new Set();
   const walk6 = (dir2, project) => {
-    const sources = get(project, "tool", "uv", "sources") ?? get(top, "tool", "uv", "sources") ?? {};
+    const sources = get(project, "tool", "uv", "sources") ?? get(top2, "tool", "uv", "sources") ?? {};
     for (const dep of dependencyNames(project)) {
       if (seen.has(dep)) continue;
       seen.add(dep);
@@ -67026,7 +67362,7 @@ function deriveRoots(root) {
       }
     }
   };
-  walk6(root, top);
+  walk6(root, top2);
   for (const [dir2, project] of installed2) {
     layout(dir2, project, {
       entry: (pth, path) => entries3.push({ pth, path }),
@@ -67135,9 +67471,9 @@ function setuptools(dir2, project, sink2) {
     sink2.map(p, join131(dir2, base), "setuptools");
   }
 }
-function workspaceMembers(root, top, notes) {
+function workspaceMembers(root, top2, notes) {
   const members = /* @__PURE__ */ new Map();
-  for (const glob2 of get(top, "tool", "uv", "workspace", "members") ?? []) {
+  for (const glob2 of get(top2, "tool", "uv", "workspace", "members") ?? []) {
     let dirs = [root];
     for (const part2 of glob2.split("/")) {
       const pattern2 = new RegExp(
@@ -67450,11 +67786,11 @@ var init_graph4 = __esm({
       /** Every `conftest.py` from the rootdir down to the file's directory (module-graph Q2). */
       conftests(file) {
         const dirs = [];
-        const top = this.settings.rootdir;
+        const top2 = this.settings.rootdir;
         let at2 = dirname54(file);
         for (; ; ) {
           dirs.unshift(at2);
-          if (at2 === top || !at2.startsWith(top + sep28)) break;
+          if (at2 === top2 || !at2.startsWith(top2 + sep28)) break;
           at2 = dirname54(at2);
         }
         return dirs.map((d) => join133(d, "conftest.py")).filter((c) => c !== file && existsSync49(c));
@@ -69957,8 +70293,8 @@ async function committedPaths(ctx, since, upTo, files5) {
   );
 }
 function operationRevisions(root) {
-  const top = findWorktreeRoot(root);
-  const gitDir = top === null ? null : gitDirOf(top);
+  const top2 = findWorktreeRoot(root);
+  const gitDir = top2 === null ? null : gitDirOf(top2);
   if (gitDir === null) return [];
   const revs = OPERATIONS.flatMap(([file, rev]) => shasIn(join136(gitDir, file)).map(rev));
   if (REBASE_DIRS.some((dir2) => existsSync51(join136(gitDir, dir2)))) revs.push("HEAD");
@@ -75605,17 +75941,17 @@ function focusedCheckOf(c) {
 }
 function focusedTally(run7) {
   if (run7.outcomes !== void 0) {
-    const { pass, fail: fail3, skip } = run7.outcomes;
-    return { failed: fail3, total: pass + fail3 + skip, atLeast: false };
+    const { pass: pass2, fail: fail3, skip } = run7.outcomes;
+    return { failed: fail3, total: pass2 + fail3 + skip, atLeast: false };
   }
   const failed7 = run7.checks.filter((c) => c.outcome === "fail").length;
   return { failed: failed7, total: run7.checks.length + run7.more, atLeast: run7.more > 0 };
 }
 function countsOf2(outcomes2) {
   if (typeof outcomes2 !== "object" || outcomes2 === null) return null;
-  const { pass, fail: fail3, skip } = outcomes2;
+  const { pass: pass2, fail: fail3, skip } = outcomes2;
   const whole = (n) => Number.isInteger(n) && n >= 0;
-  return whole(pass) && whole(fail3) && whole(skip) ? { outcomes: { pass, fail: fail3, skip } } : null;
+  return whole(pass2) && whole(fail3) && whole(skip) ? { outcomes: { pass: pass2, fail: fail3, skip } } : null;
 }
 function ownName(c) {
   return c.check.kind === "test" ? c.check.fullName : c.name;
@@ -77094,8 +77430,8 @@ function runningStep(s, context) {
   const where3 = `${runText(s.lane, s.since, s.files, s.ended)}${batchText(s.batch)}`;
   const kept6 = s.lastYield !== void 0 ? keptYieldText(s.lastYield) : context.named && s.yieldsSince !== void 0 ? noKeptYieldText(s.yieldsSince) : "";
   if (isSlowLane(s.lane) || isGroupLane(s.lane) && s.yields === void 0) {
-    const pass = isSlowLane(s.lane) ? "slow" : laneGroup(s.lane);
-    const setup = s.setup === void 0 ? "" : `; its project's global setup${s.setup.file === "" ? "" : ` (${s.setup.file})`} ran once when this ${pass} pass started, and Squeal does not hold what it started, so another run of that project meanwhile may replace it`;
+    const pass2 = isSlowLane(s.lane) ? "slow" : laneGroup(s.lane);
+    const setup = s.setup === void 0 ? "" : `; its project's global setup${s.setup.file === "" ? "" : ` (${s.setup.file})`} ran once when this ${pass2} pass started, and Squeal does not hold what it started, so another run of that project meanwhile may replace it`;
     return {
       reason: `${where3}${setup}${kept6}`,
       short: where3,
@@ -78766,7 +79102,7 @@ function readImports(store, worktreeId, keys, states) {
     let currentFiles = 0;
     let currentResults = 0;
     for (const file of files5) {
-      const reason2 = reasonOf2(file, here);
+      const reason2 = reasonOf3(file, here);
       if (reason2 === "current") currentFiles++;
       else notCurrent[reason2]++;
       const current2 = here.current.get(testFileId(file)) ?? [];
@@ -78787,7 +79123,7 @@ function readImports(store, worktreeId, keys, states) {
     ];
   });
 }
-function reasonOf2(file, here) {
+function reasonOf3(file, here) {
   const key3 = here.keys.get(testFileId(file));
   if (key3?.key === file.key) return adoption(file, here);
   const environment = here.environments.get(file.project);
@@ -83812,8 +84148,8 @@ function passReached(sync, revision, fallback2) {
   if (sync.state === "synced") return holdsPass(revision, sync.revision);
   return sync.state === "unsupported" && fallback2;
 }
-function holdsPass(revision, pass) {
-  return revision >= pass;
+function holdsPass(revision, pass2) {
+  return revision >= pass2;
 }
 function fallbackOf(row2, settled2) {
   return row2.unsupported === "after settle" && settled2;
@@ -83980,9 +84316,9 @@ function unsyncedText(sync, revision, snapshot3, these) {
   if (sync.state === "unsupported") {
     return these === null ? `results are as of revision ${revision}; the daemon did not answer its sync, so they may not hold the latest edits` : `the daemon did not answer its sync, so ${these} may not hold the latest edits`;
   }
-  const pass = `the daemon has not stored its pass over ${snapshot3 ? "the latest edits" : "the edits made before the wait"}`;
-  if (these !== null) return `${pass}, so ${these} may not cover them`;
-  return snapshot3 ? `results are as of revision ${revision}; ${pass}` : `${pass}; results are as of revision ${revision}`;
+  const pass2 = `the daemon has not stored its pass over ${snapshot3 ? "the latest edits" : "the edits made before the wait"}`;
+  if (these !== null) return `${pass2}, so ${these} may not cover them`;
+  return snapshot3 ? `results are as of revision ${revision}; ${pass2}` : `${pass2}; results are as of revision ${revision}`;
 }
 function unlistedText3(snapshot3, revision, these) {
   const { running = 0, queued = 0 } = snapshot3.testFilesByPhase ?? {};
@@ -88737,7 +89073,7 @@ var OUTCOMES9 = [
 function retriedText(runs) {
   const retried = runs.flatMap((run7) => Object.entries(run7.retried ?? {}));
   if (retried.length === 0) return "";
-  const highest = retried.map(([, r]) => r).reduce((top, r) => r.load / r.cpus > top.load / top.cpus ? r : top);
+  const highest = retried.map(([, r]) => r).reduce((top2, r) => r.load / r.cpus > top2.load / top2.cpus ? r : top2);
   const outcomes2 = OUTCOMES9.flatMap(([outcome2, said]) => {
     const paths = retried.filter(([, r]) => r.outcome === outcome2).map(([path]) => path);
     return paths.length === 0 ? [] : [`${paths.length} ${said} (${listPaths(paths.sort(compare), RETRIED_NAMES)})`];
@@ -91824,8 +92160,8 @@ var EarlyWrites = class {
   #cancel = null;
   #busy = 0;
   /** `pass` writes what is queued; it never rejects. `pause` times the pauses between passes. */
-  constructor(pass, pause = timerPause) {
-    this.#pass = pass;
+  constructor(pass2, pause = timerPause) {
+    this.#pass = pass2;
     this.#pause = pause;
   }
   /** Whether `stop` was called: a pass then gives up at its next busy refusal. */
@@ -92464,7 +92800,7 @@ function outcomesText(reran, words) {
 function loadRerunLine(run7) {
   const reran = Object.entries(run7.retried ?? {});
   if (reran.length === 0) return [];
-  const highest = reran.map(([, r]) => r).reduce((top, r) => r.load / r.cpus > top.load / top.cpus ? r : top);
+  const highest = reran.map(([, r]) => r).reduce((top2, r) => r.load / r.cpus > top2.load / top2.cpus ? r : top2);
   const files5 = plural(reran.length, `${RUNNER_NAMES[run7.runner]} test file`);
   const load = `${highest.load} on ${highest.cpus} CPUs`;
   return [
@@ -93562,8 +93898,8 @@ var invalid4 = (message3) => new RuntimeReleaseError("runtime", message3);
 var sha256Of = (bytes2) => createHash28("sha256").update(bytes2).digest("hex");
 var runtimeModeOf = (mode) => mode & 73 ? 493 : 420;
 function walk2(root) {
-  const top = lstatSync7(root, { throwIfNoEntry: false });
-  if (top === void 0 || !top.isDirectory())
+  const top2 = lstatSync7(root, { throwIfNoEntry: false });
+  if (top2 === void 0 || !top2.isDirectory())
     throw invalid4(`runtime root ${root} is not a directory`);
   const files5 = [];
   const visit2 = (dir2, prefix) => {
@@ -98391,7 +98727,7 @@ var Daemon = class {
         for (const [tool, provider2] of this.#policy.lint.enabled ? providers : []) {
           if (lintPass === null || lintIdle === null || this.#lints.has(tool)) continue;
           const label2 = tool === "eslint" ? "lint" : `lint (${tool})`;
-          const pass = lintPass.createLintPass({
+          const pass2 = lintPass.createLintPass({
             worktreeId,
             tool,
             root,
@@ -98422,9 +98758,9 @@ var Daemon = class {
             // Row 011-302 (gh-154): a keying may block the main thread; the socket names it meanwhile.
             onKeying: (keying) => this.#desk?.step(keyingStep(tool), keying)
           });
-          this.#lints.set(tool, pass);
+          this.#lints.set(tool, pass2);
         }
-        for (const pass of this.#lints.values()) pass.nudge();
+        for (const pass2 of this.#lints.values()) pass2.nudge();
       };
       const loop = createDaemonLoop2({
         root,
@@ -98766,7 +99102,7 @@ var Daemon = class {
       });
       await this.#step("code.close", () => this.#code?.close());
       await this.#step("lint.close", async () => {
-        await Promise.all([...this.#lints.values()].map((pass) => pass.close()));
+        await Promise.all([...this.#lints.values()].map((pass2) => pass2.close()));
       });
       await this.#step("coverage.close", () => this.#coverage?.close());
       await this.#step("runner.close", () => this.#runner?.close());
@@ -104424,7 +104760,7 @@ function pids2(entries3) {
 
 // src/core/ps/snapshot-shape.ts
 init_source2();
-function shapeOf(r, findings, o) {
+function shapeOf2(r, findings, o) {
   const { model, costs } = r;
   const { first: first2, second } = model;
   const ticks = model.source.clockTicks();
@@ -104880,7 +105216,7 @@ function message2(error) {
 var SAMPLE_MS = 2e3;
 async function takeSnapshot(options) {
   const read5 = await readWindow2(options);
-  return shapeOf(read5, options.flag(read5.model), options);
+  return shapeOf2(read5, options.flag(read5.model), options);
 }
 async function readWindow2(o) {
   const { source: source2, places } = o;
@@ -106123,7 +106459,7 @@ function addPair2(sums, { reach: reach2, facts: inputs2 }, edit, facts) {
   sums.rerun += seconds5;
   const list2 = listAt(test.loaded.lists, edit.at);
   if (list2 === null) {
-    const { reason: reason2, detail } = reasonOf3(reach2, facts);
+    const { reason: reason2, detail } = reasonOf4(reach2, facts);
     count3(
       sums.noList,
       `${reason2}\0${detail ?? ""}`,
@@ -106171,7 +106507,7 @@ function projectFacts(tests2, coverage) {
     unisolated: ran && !recorded2
   };
 }
-function reasonOf3(reach2, facts) {
+function reasonOf4(reach2, facts) {
   const { loaded } = reach2.test;
   if (!facts.coverageOn) return { reason: "coverage off", detail: null };
   if (loaded.lists.length > 0) {
