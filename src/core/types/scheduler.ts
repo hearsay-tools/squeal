@@ -307,6 +307,12 @@ export interface SlowSuiteRequest {
    * group, which covers no test file.
    */
   readonly coveredId?: string;
+  /**
+   * Row 011-324: why it queued nothing, set only by a group request's
+   * install-wait answer: no dependencies are installed, or a reinstall
+   * removed them (`IntakeHost.waiting`). Absent from a scheduler before it.
+   */
+  readonly installWait?: string;
 }
 
 /**

@@ -194,6 +194,10 @@ export function groupRequests(
               queued: requested.queued,
               // Row 011-325: the id of its covered files, when the scheduler recorded them.
               ...(requested.coveredId === undefined ? {} : { coveredId: requested.coveredId }),
+              // Row 011-324: why it queued nothing, while an install is awaited.
+              ...(requested.installWait === undefined
+                ? {}
+                : { installWait: requested.installWait }),
             },
       unknown: request.unknown,
       error: request.error,

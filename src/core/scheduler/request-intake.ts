@@ -231,7 +231,7 @@ export class RequestIntake {
     const { installWait } = request;
     const done = this.#transact((context, ledger): Staged<A> | { waited: A } | typeof DEFERRED => {
       if (reason !== null && "stage" in installWait) {
-        const waited = installWait.stage(context, ledger, id);
+        const waited = installWait.stage(context, ledger, id, reason);
         if (store.record === undefined) recordCovered(context, ledger, id, waited.covered, reason);
         return { waited: waited.answer };
       }

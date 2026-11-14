@@ -102,11 +102,17 @@ export function groupRequest(
   return {
     operation: `taking a squeal run ${group} request`,
     start: { skip: "no closed answer: before the start the scheduler throws (`started`)" },
+    // Row 011-324: the answer names why nothing was queued, as the narrow run's does.
     installWait: {
-      stage: (context, ledger, id) =>
+      stage: (context, ledger, id, reason) =>
         known(context.policy)
           ? {
-              answer: { revision: ledger.revision.number, queued: 0, coveredId: id },
+              answer: {
+                revision: ledger.revision.number,
+                queued: 0,
+                coveredId: id,
+                installWait: reason,
+              },
               covered: groupFiles(context.policy, ledger),
             }
           : { answer: null, covered: [] },
