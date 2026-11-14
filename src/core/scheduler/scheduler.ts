@@ -12,7 +12,6 @@ import { describeFailure } from "../state/fingerprint.js";
 import { retryWhileBusy } from "../store/busy.js";
 import { isBusy, withBusySlice } from "../store/connection.js";
 import { plural } from "../text.js";
-import type { ResolvedGroup } from "../types/check-groups.js";
 import type { EpochMs, ProjectName, RelativePath } from "../types/common.js";
 import type { SyncAnswer } from "../types/daemon.js";
 import type { TestFileRef } from "../types/keys.js";
@@ -35,6 +34,7 @@ import {
   TESTS_GROUP,
 } from "../types/scheduler.js";
 import type { CandidateBatch } from "../types/watcher.js";
+import { type Admission, admit, checkTurn, type StartFacts } from "./admission.js";
 import { reconcileBatch } from "./batch.js";
 import { besideDone, besideFiles } from "./beside.js";
 import { baseline, scan, type UnseenChanges } from "./bootstrap.js";
@@ -211,6 +211,8 @@ class TierScheduler implements Scheduler {
   #reinstallTold = false;
   /** The daemon's own runtime went (`runtimeDir`, row 011-106): no tier starts, the queue stays. */
   #runtimeGone = false;
+  /** The pump's last install check found the install gone (task 001-113): a start fact (row 011-340). */
+  #installMissing = false;
   readonly #install: InstallStamps;
   /** The per-user pool's side of this scheduler (spec 001 D11 Capacity); `null` without one. */
   readonly #capacity: TierCapacity | null;
@@ -589,11 +591,20 @@ class TierScheduler implements Scheduler {
   }
 
   /**
-   * Row 011-72: the merge hold before a tier, the index read when it moved.
-   * A hold that ended released its paths: an abort restored their bytes,
-   * and their revision comes before any tier, so no tier runs at the keys
-   * of the conflicted bytes.
+   * Row 011-340: the start facts on disk and in Git, read again before a
+   * tier, by the pump and the slow lanes after their waits. The runtime
+   * folder first (row 011-106), then the merge hold, the index read when it
+   * moved (row 011-72). A hold that ended released its paths: an abort
+   * restored their bytes, and their revision comes before any tier, so no
+   * tier runs at the keys of the conflicted bytes. What it finds stays in
+   * memory for `#facts`.
    */
+  async #probe(): Promise<"gone" | "held" | "released" | "free"> {
+    if (await this.#runtimeMissing()) return "gone";
+    return this.#holdCheck();
+  }
+
+  /** The merge hold before a tier, as `#probe`'s second read (row 011-72). */
   async #holdCheck(): Promise<"held" | "released" | "free"> {
     await this.#hold.check();
     const released = this.#hold.takeReleased();
@@ -607,6 +618,57 @@ class TierScheduler implements Scheduler {
   /** Either hold holds (011 C9, "Holds"): no tier starts in any lane, and none is cut. */
   #onHold(): boolean {
     return this.#hold.holding || this.#commandHold.holding;
+  }
+
+  /**
+   * Row 011-340: the start facts in memory now (GLOSSARY "Start facts"),
+   * for `admit`. The costly ones are read when an answer needs them.
+   */
+  #facts(): StartFacts {
+    const context = this.#context;
+    const ledger = this.#ledger;
+    const work = this.#runnerWork;
+    const ready = context !== null && ledger !== null;
+    return {
+      turn: this.#lock.turn,
+      closed: this.#closed,
+      stopping: this.#stopping(),
+      runtimeGone: this.#runtimeGone,
+      started: ready,
+      awaitingInstall: this.#awaitingInstall,
+      reinstalled: this.#reinstalled,
+      held: this.#hold.holding || this.#commandHold.holding,
+      installMissing: this.#installMissing,
+      runnerWork: work.size,
+      refining: work.refining,
+      inFlight: [...this.#inFlight.values()].map(({ tier }) => ({
+        lane: tier.lane,
+        edit: tier.kind !== "backlog" && !isGroupLane(tier.lane),
+      })),
+      groups: context === null ? null : groupView(context.policy).groups,
+      editQueued: () => ledger?.queue.hasFirstGroup() === true,
+      fastQueued: () => ledger?.fastQueued() === true,
+      focused: () => this.#focused(),
+      freeLaneQueued: () => ready && this.#freeLaneQueued(),
+      lanes: () =>
+        context === null
+          ? []
+          : this.#groups
+              .lanes(context.policy)
+              .map((lane) => ({ kind: "local", group: lane.group })),
+      queued: (name) => ledger?.queue.hasGroup(name) ?? false,
+      holdsFollowers: (name) => {
+        const lane = this.#groups.get(name);
+        return lane === undefined ? (ledger?.queue.hasGroup(name) ?? false) : lane.holdsFollowers();
+      },
+      slowWaiting: () =>
+        context !== null && readSlowActivity(context.store, context.worktreeId)?.kind === "waiting",
+    };
+  }
+
+  /** `admit` of the start facts now (row 011-340). */
+  #admit(): Admission {
+    return admit(this.#facts());
   }
 
   async commandHold(): Promise<boolean> {
@@ -994,7 +1056,7 @@ class TierScheduler implements Scheduler {
    * or request starts the pump again.
    */
   #pump(): void {
-    if (this.#halted() || !this.#ledger) return;
+    if (this.#admit().halted || !this.#ledger) return;
     if (this.#pumping) {
       this.#asked = true;
       this.#notify();
@@ -1005,20 +1067,22 @@ class TierScheduler implements Scheduler {
     this.#asked = false;
     this.#pumping = (async () => {
       try {
-        while (!this.#halted() && !this.#stalled) {
+        while (!this.#admit().halted && !this.#stalled) {
           this.#woken = false;
           this.#drain();
           if (this.#draining) {
             await this.#nextEvent();
             continue;
           }
-          if (this.#awaitingInstall || this.#reinstalled) break;
+          const before = this.#admit();
+          if (before.halts.has("install-wait") || before.halts.has("reinstalled")) break;
           // The check before a tier, never during one: only when a free lane has a file to take.
-          if (this.#inFlight.size > 0 && !this.#freeLaneQueued() && !this.#someLaneMayStart()) {
+          if (!before.any) {
             await this.#nextEvent();
             continue;
           }
           const install = await this.#install.check();
+          this.#installMissing = install.missing !== null;
           if (install.missing === null && this.#install.takeChange(install)) {
             // Task 001-109 (review wave-11b S2, agreed with the coordinator).
             await this.#lock.run(() => {
@@ -1028,31 +1092,33 @@ class TierScheduler implements Scheduler {
             continue;
           }
           // Row 011-106: a daemon whose own runtime went starts no tier; its files stay queued.
-          if (await this.#runtimeMissing()) break;
           // Row 011-72: the check before a tier; a hold that ended first reconciles what it released.
-          const hold = await this.#holdCheck();
-          if (hold === "held") {
+          const probe = await this.#probe();
+          if (probe === "gone") break;
+          if (probe === "held") {
             await this.#slowRelease.idle();
             break;
           }
-          if (hold === "released") continue;
+          if (probe === "released") continue;
           // Row 011-126: the selection's lookups and the tier's start wait a slice on a busy store.
           const next = await this.#runSliced(() => {
-            if (this.#halted() || this.#awaitingInstall || this.#reinstalled) return null;
-            if (this.#onHold()) return "held" as const;
-            const { context, ledger } = this.#started();
-            if (install.missing !== null) {
-              this.#reinstall(ledger);
+            // Row 011-340: the answer read in this lock turn; `#fly` throws on one from another.
+            const admitted = this.#admit();
+            if (admitted.fast === "held") return "held" as const;
+            if (admitted.fast === "install-missing") {
+              this.#reinstall(this.#started().ledger);
               return null;
             }
-            if (this.#runnerWork.size > 0) return "runner-work" as const;
+            if (admitted.fast === "runner-work") return "runner-work" as const;
+            if (admitted.fast !== null) return null;
+            const { context, ledger } = this.#started();
             this.#adopt(context, ledger);
             // Row 011-269: with no lane free, a tier may start beside a named wait's batch.
             const tier =
               selectTier(context, ledger, this.#busyLanes(), this.#yields) ??
               this.#besideTier(context, ledger);
             if (tier === null) return null;
-            this.#fly(tier, install.stamp, null);
+            this.#fly(tier, install.stamp, null, admitted);
             // The batch's tier no longer stands for the work that went beside it (row 011-269).
             if (tier.beside === true) this.#cutTiers(null);
             // A lane of slots fills every free slot in this hold, so its slots end, and record,
@@ -1060,7 +1126,7 @@ class TierScheduler implements Scheduler {
             for (let more = tier; more.slot === true; ) {
               const again = selectTier(context, ledger, this.#busyLanes(), this.#yields);
               if (again === null) break;
-              this.#fly(again, install.stamp, null);
+              this.#fly(again, install.stamp, null, admitted);
               more = again;
             }
             return "flown" as const;
@@ -1071,7 +1137,7 @@ class TierScheduler implements Scheduler {
             break;
           }
           if (next !== null) continue;
-          if (this.#reinstalled) break;
+          if (this.#admit().halts.has("reinstalled")) break;
           // Spec 004 D2, 019 D3: each group's lane that may start decides the rest.
           if (await this.#groupLanesNext(install.stamp)) continue;
           if (this.#started().ledger.claims.waiting) {
@@ -1093,13 +1159,16 @@ class TierScheduler implements Scheduler {
         await Promise.all([...this.#inFlight.values()].map((flight) => flight.done));
         await this.#draining;
         this.#pumping = null;
-        if (this.#reinstalled) this.#tellReinstall();
-        else if (this.#runtimeGone)
+        const ended = this.#admit();
+        if (ended.halts.has("reinstalled")) this.#tellReinstall();
+        else if (ended.halts.has("runtime-gone"))
           this.#tellReinstall(runtimeGoneNote(this.options.runtimeDir ?? ""));
         const again = !this.#stalled || this.#asked;
-        // A resume after a busy store runs once with nothing queued too: its writes end the wait.
-        const work = this.#hasWork() || this.#busy?.waiting === true;
-        if (!this.#halted() && again && work) this.#pump();
+        // Read after the note: a daemon may close on it. A resume after a busy store runs once
+        // with nothing queued too: its writes end the wait.
+        const rearm = this.#admit();
+        const work = rearm.hasWork || this.#busy?.waiting === true;
+        if (!rearm.halted && again && work) this.#pump();
         else if (this.#isIdle()) for (const resolve of this.#idle.splice(0)) resolve();
       }
     })();
@@ -1112,9 +1181,16 @@ class TierScheduler implements Scheduler {
    * C4 step 5 as amended for slots, task 011-21 slice 2) returns its permit
    * and frees its place in the lane once its run ends, so the lane's next
    * file starts while it records, and its record joins the other slots that
-   * ended by then (`SlotRecords`).
+   * ended by then (`SlotRecords`). `admitted` is the admission it starts
+   * on, read in this lock turn (row 011-340).
    */
-  #fly(tier: Tier, installStamp: string, slow: SlowRun | null): void {
+  #fly(
+    tier: Tier,
+    installStamp: string,
+    slow: SlowRun | null,
+    admitted: { readonly turn: number },
+  ): void {
+    checkTurn(admitted, this.#lock.turn, tier.lane);
     const { context } = this.#started();
     const first = tier.files[0]?.file.ref;
     const cancellable = tier.slot !== true && first !== undefined && cancels(context, first);
@@ -1367,18 +1443,6 @@ class TierScheduler implements Scheduler {
     this.#notify();
   }
 
-  /**
-   * Never while waiting or reinstalled, so the pump cannot re-arm into a wait
-   * (review wave 11c, B1). Slow files are not work here: the slow tier pumps
-   * again itself while they wait for a trigger or the slot (spec 004 D2).
-   */
-  #hasWork(): boolean {
-    if (this.#awaitingInstall || this.#reinstalled) return false;
-    // Row 011-72: on hold, the runner part goes on (D5 step 5) and the queue waits.
-    if (this.#onHold()) return this.#runnerWork.size > 0;
-    return this.#runnerWork.size > 0 || this.#ledger?.fastQueued() === true || this.#focused();
-  }
-
   /** A focused entry waits for its tier (row 011-145): fast work, an edit's for the slow tier. */
   #focused(): boolean {
     const context = this.#context;
@@ -1412,34 +1476,6 @@ class TierScheduler implements Scheduler {
   }
 
   /**
-   * The pump may ask `lane`, the lane of a group other than `tests`: nothing
-   * is in flight (it then also ends a drained pass), or files of its group
-   * are queued and no tier of the group is in flight (one at a time per
-   * group, whatever its runner), nor an edit's tier while the group follows
-   * `tests` (spec 004 D2, 019 D1). Groups that follow no `tests` start
-   * beside fast work (019 D3).
-   */
-  #laneMayStart(lane: SlowTier, group: ResolvedGroup | undefined): boolean {
-    if (this.#inFlight.size === 0) return true;
-    if (group === undefined || !(this.#ledger?.queue.hasGroup(lane.group) ?? false)) return false;
-    if (this.#groupInFlight(lane.group)) return false;
-    return !group.after.includes(TESTS_GROUP) || !this.#editPending();
-  }
-
-  /** Some group's lane may start (`#laneMayStart`). */
-  #someLaneMayStart(): boolean {
-    const context = this.#context;
-    if (context === null) return false;
-    const { groups } = groupView(context.policy);
-    return this.#groups.lanes(context.policy).some((lane) =>
-      this.#laneMayStart(
-        lane,
-        groups.find((g) => g.name === lane.group),
-      ),
-    );
-  }
-
-  /**
    * Asks each group's lane that may start, in `GroupTiers.lanes` order;
    * `true` when one started a run or wants the pump to plan again. A lane
    * its load guard holds answers at once, so the next lane is asked (spec
@@ -1447,18 +1483,13 @@ class TierScheduler implements Scheduler {
    */
   async #groupLanesNext(stamp: string): Promise<boolean> {
     const { context } = this.#started();
-    const { groups } = groupView(context.policy);
     for (const lane of this.#groups.lanes(context.policy)) {
-      if (this.#halted()) return false;
-      if (
-        !this.#laneMayStart(
-          lane,
-          groups.find((g) => g.name === lane.group),
-        )
-      )
-        continue;
+      // Read again for each lane: the lane before it may have waited.
+      const admitted = this.#admit();
+      if (admitted.halted) return false;
+      if (admitted.asked(lane.group) !== null) continue;
       const after = await this.#slowRelease.selecting(() =>
-        lane.next((run) => this.#fly(run.tier, stamp, run)),
+        lane.next((run) => this.#fly(run.tier, stamp, run, run)),
       );
       if (after !== null) return true;
     }
@@ -1574,7 +1605,7 @@ class TierScheduler implements Scheduler {
   #isIdle(): boolean {
     if (this.#closed) return true;
     if (this.#busy?.pending === true) return false;
-    return this.#pumping === null && (this.#stalled || !this.#hasWork());
+    return this.#pumping === null && (this.#stalled || !this.#admit().hasWork);
   }
 
   #started(): { context: SchedulerContext; ledger: Ledger } {
