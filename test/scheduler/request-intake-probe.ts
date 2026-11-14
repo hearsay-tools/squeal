@@ -75,7 +75,9 @@ export interface Probe {
   readonly notes: string[];
   /**
    * The host's state: open, stopping, waiting, started; `now`, the context's
-   * clock; `keys`, each file's key (`KEYS` at first), which an edit moves.
+   * clock; `keys`, each file's key (`KEYS` at first), which an edit moves;
+   * `stores`, what the change feed's next pass stores (row 011-335: an edit
+   * made before the request), `null` for nothing.
    */
   readonly state: {
     open: boolean;
@@ -85,6 +87,7 @@ export interface Probe {
     delivered: number;
     now: EpochMs;
     readonly keys: Map<string, CheckKey>;
+    stores: (() => void) | null;
   };
   /** `A`'s row as another connection reads it: what the store committed. */
   committed(): { key: CheckKey | null; pending: string | null } | undefined;
@@ -127,6 +130,7 @@ export function probeHost(
     delivered: 2,
     now: Date.now(),
     keys: new Map(KEYS),
+    stores: null as (() => void) | null,
   };
   const context = {
     store,
@@ -175,7 +179,11 @@ export function probeHost(
     },
     passes: () => ({
       started: () => 1,
-      pass: async () => void log.push("pass"),
+      pass: async () => {
+        log.push("pass");
+        state.stores?.();
+        state.stores = null;
+      },
       deliveredPass: () => ({ number: state.delivered }) as DeliveredPass,
     }),
     busy: () => ({ waits, sliceMs: SLICE_MS }),
